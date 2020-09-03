@@ -1,15 +1,14 @@
 # Site title will be used everywhere
-title: VBET - Valley Bottom Extraction Tool
+title:  RSContext
 description: > # this means to ignore newlines until "baseurl:"
-  This tool helps delineate valley bottoms from digital elevation models and a riverscape network.
-destination: ../../../PUBLIC/vbet
+  Online help and documentation site for RSContext
+
 # Final root url of the site. No ending slash. No subdirectory
-url: https://riverscapes.github.io/vbet 
-# If the site is in a subdirectory url you should do it like this: "/subdirectory". Otherwise ""
-baseurl: "/vbet"
+url:
+# If the site is in a subdirectory you should do it like this: "/subdirectory". Otherwise ""
+baseurl: "/rscontext"
 # When serving locally what port should we use:
 port: 4001
-# google_analytics: UA-XXXXXXXXXXX-X
 
 # Markdown style
 markdown: kramdown
@@ -31,13 +30,11 @@ exclude:
   - LICENSE
   - README.md
   - _config.yml
-  - package.json
-  - yarn.lock
-  - script
-  - js
-  - TEMPLATE
   - Gemfile*
 
+remote_theme: Riverscapes/riverscapes-jekyll-theme
+plugins:
+  - jekyll-remote-theme
 
 # These are theme settings that will be used to turn features on and off
 # They are not part of Jekyll, they are entirely custom.
@@ -81,14 +78,8 @@ settings:
 # 
 # The url you have to call is: http://siteurl.com/baseurl/?APPKEY=KEY1
 # ---------------------------------------------------------------
-AppRedirects:
-  - key: KEY1
-    url: ThingsA
-  - key: KEY2
-    url: ThingsB/subpageB.html
-
-# Here is how we retrieve the remote theme. Changes to this remote theme will show up after you 
-# push the repo with your /docs folder
-remote_theme: Riverscapes/riverscapes-jekyll-theme
-plugins:
-  - jekyll-remote-theme
+#AppRedirects:
+#  - key: KEY1
+#    url: ThingsA
+#  - key: KEY2
+#    url: ThingsB/subpageB.html

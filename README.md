@@ -10,7 +10,18 @@ This is a monorepo housing all of the python open-gis tools.
 
 This repo makes extensive use of a single `virtualenv` and `pip install -e`
 
-To get things going run `./bootstrap.sh`
+To get things going run `./scripts/bootstrap.sh`
+
+```
+./scripts/bootstrap.sh
+```
+
+This will:
+
+1. Create a `virtualenv` that all the packages in this repo can use
+2. Install some trick prerequisites like GDAL, Cython, Scipy and rasterio etc.
+2. Run `pip install -e` on each repo to link them up.
+
 
 ### `./lib` and `./packages`
 

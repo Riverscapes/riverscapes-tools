@@ -3,9 +3,12 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# PUBLIC is where the GH pages branch gets built
+PUBLIC
+
 # C extensions
 *.so
-
+_site
 # Distribution / packaging
 .Python
 build/
