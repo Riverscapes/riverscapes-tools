@@ -2,7 +2,6 @@
 
 Python 3 package to build the contextual layers used by our outher python riverscapes tools.
 
-
 ```
 usage: rs-context [-h] [--force] [--temp_folder TEMP_FOLDER] [--verbose]
                   huc existing historic ownership ecoregions output download
@@ -26,31 +25,6 @@ optional arguments:
                         (optional) cache for downloading files
   --verbose             (optional) a little extra logging
 
-```
-
-## Developer notes
-
-### Installing this locally
-
-If you want to use rs-context as a command-line util on your system you can either 
-
-```
-pip install git+https://github.com/Riverscapes/rs-context@master
-```
-
-For developers it's best to symlink an editable version of this package to work on.
-
-``` bash
-# In the root of this repo
-pip install -e .
-```
-
-## Upgrading `rs-commons`
-
-`rs-commons` is a shared code repo. pip has no upgrade workflow so if you need to update your version of `rs-commons` to the latest just reinstall it: 
-
-```
-pip install git+https://github.com/Riverscapes/rs-commons-python@master
 ```
 
 

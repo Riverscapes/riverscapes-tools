@@ -1,5 +1,4 @@
-# vbet
-Valley Bottom Extraction Tool
+# Valley Bottom Extraction Tool (VBET)
 
 This is a placeholder repo for capturing issues and documentation. The VBET code will be migrated here soon.
 
@@ -29,40 +28,6 @@ optional arguments:
   --verbose             (optional) a little extra logging
   --meta META           riverscapes project metadata as comma separated key=value pairs
 
-```
-
-
-## Developer notes
-
-1. get your virtualenv set up
-
-***NB: # On OSX you must have run `brew install gdal` so that the header files are findable***
-
-```bash
-./scripts/create_venv.py
-```
-
-### Installing this locally
-
-If you want to use vbet as a command-line util on your system you can either 
-
-```
-pip install git+https://github.com/Riverscapes/vbet@master
-```
-
-For developers it's best to symlink an editable version of this package to work on.
-
-``` bash
-# In the root of this repo
-pip install -e .
-```
-
-## Upgrading `rs-commons`
-
-`rs-commons` is a shared code repo. pip has no upgrade workflow so if you need to update your version of `rs-commons` to the latest just reinstall it: 
-
-```
-pip install git+https://github.com/Riverscapes/rs-commons-python@master
 ```
 
 ## `.env` File

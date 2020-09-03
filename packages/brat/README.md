@@ -1,3 +1,5 @@
+# Beaver Restoration Assessment Tool (BRAT)
+
 This repo contains a new, experimental version of the [Beaver Restoration Assessment Tool](http://brat.riverscapes.xyz) (BRAT). The official version of this software is still [pyBRAT 3](https://github.com/Riverscapes/pyBRAT) that relies on ArcGIS geoprocessing. This new version uses only open source technologies and does not require ArcGIS to run.
 
 It is strongly advised that you continue to use pyBRAT 3 until this new version of BRAT is verified and published as an official version of the BRAT model.
@@ -73,22 +75,6 @@ Questions about this repo can be directed to info@northarrowresearch.com
 ## License
 
 [GNU general public license](https://github.com/NorthArrowResearch/pyBRAT4/blob/master/LICENSE)
-
-
-## GDAL 3.0 migration guide
-
-https://github.com/OSGeo/gdal/blob/release/3.0/gdal/MIGRATION_GUIDE.TXT
-
-
-
-## Upgrading `rs-commons`
-
-`rs-commons` is a shared code repo. pip has no upgrade workflow so if you need to update your version of `rs-commons` to the latest just reinstall it: 
-
-```
-pip install git+https://github.com/Riverscapes/rs-commons-python@master
-```
-
 
 
 ## Environments
