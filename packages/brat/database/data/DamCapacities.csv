@@ -1,0 +1,6 @@
+CapacityID,Name,MinCapacity,MaxCapacity
+1,None,,0
+2,Rare,,1
+3,Occasional,,5
+4,Frequent,,15
+5,Pervasive,,40

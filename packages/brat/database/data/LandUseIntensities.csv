@@ -1,0 +1,5 @@
+IntensityID,Name,MaxIntensity,TargetCol
+1,Very Low,0,iPC_VLowLU
+2,Low,0.33,iPC_LowLU
+3,Moderate,0.66,iPC_ModLU
+4,High,1,iPC_HighLU

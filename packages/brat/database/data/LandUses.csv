@@ -1,0 +1,205 @@
+LandUseID,Name,Intensity
+1,Agricultual-Aquaculture,0
+2,Agricultural-Bush fruit and berries,0.66
+3,Agricultural-Close Grown Crop,0.66
+4,Agricultural-Fallow/Idle Cropland,0.33
+5,Agricultural-Orchard,0.66
+6,Agricultural-Pasture and Hayland,0.33
+7,Agricultural-Row Crop,0.66
+8,Agricultural-Row Crop-Close Grown Crop,0.66
+9,Agricultural-Vineyard,0.66
+10,Agricultural-Wheat,0.66
+11,Agriculture-Cultivated Crops and Irrigated Agriculture,0
+12,Agriculture-Pasture and Hay,0
+13,Alder Shrubland,0
+14,"Alpine Dwarf-Shrubland, Fell-field and Meadow",0
+15,Alpine-Subalpine Barrens,0
+16,"Aspen Forest, Woodland, and Parkland",0
+17,Aspen-Birch Forest,0
+18,Aspen-Mixed Conifer Forest and Woodland,0
+19,Atlantic Coastal Marsh,0
+20,Atlantic Dunes and Grasslands,0
+21,Atlantic Swamp Forests,0
+22,Avalanche Slope Shrubland,0
+23,Balsam Poplar-Aspen Woodland,0
+24,Barren,0
+25,Beach Meadow,0
+26,"Bedrock, Scree, and Talus",0
+27,Beech-Maple-Basswood Forest,0
+28,Big Sagebrush Shrubland and Steppe,0
+29,Bigtooth Maple Woodland,0
+30,Birch-Aspen Forest,0
+31,Birch-Cottonwood-Poplar Forest,0
+32,Black Oak Woodland and Savanna,0
+33,Black Spruce Forest and Woodland,0
+34,Blackbrush Shrubland,0
+35,Boreal Grassland,0
+36,Bur Oak Woodland and Savanna,0
+37,California Mixed Evergreen Forest and Woodland,0
+38,Caribbean Deciduous Forest,0
+39,Caribbean Evergreen Forest,0
+40,Caribbean Forested Wetland,0
+41,Caribbean Mangrove Forest,0
+42,Caribbean Mixed Evergreen Deciduous Forest,0
+43,Caribbean Shrub/Herbaceous Wetland,0
+44,Chaparral,0
+45,Chestnut Oak Forest and Woodland,0
+46,Chestnut Oak-Virginia Pine Forest and Woodland,0
+47,Coastal Plain Oak Forest,0
+48,Conifer-Oak Forest and Woodland,0
+49,Creosotebush Desert Scrub,0
+50,Cypress,0
+51,Deciduous Shrubland,0
+52,Depressional Wetland,0
+53,Desert Scrub,0
+54,Developed-General,0
+55,Developed-High Intensity,1
+56,Developed-Low Intensity,1
+57,Developed-Medium Intensity,1
+58,Developed-Open Space,0
+59,Developed-Roads,1
+60,Developed-Upland Deciduous Forest,1
+61,Developed-Upland Evergreen Forest,1
+62,Developed-Upland Herbaceous,1
+63,Developed-Upland Mixed Forest,1
+64,Developed-Upland Shrubland,1
+65,Douglas-fir Forest and Woodland,0
+66,Douglas-fir-Grand Fir-White Fir Forest and Woodland,0
+67,Douglas-fir-Ponderosa Pine-Lodgepole Pine Forest and Woodland,0
+68,Douglas-fir-Western Hemlock Forest and Woodland,0
+69,Dry Aspen-Steppe Bluff,0
+70,Dry Tundra,0
+71,Dune Grassland,0
+72,Dwarf Shrubland,0
+73,Eastern Floodplain Forests,0
+74,Eastern Small Stream Riparian Forests,0
+75,Floodplain Forest and Shrubland,0
+76,Freshwater Aquatic Bed,0
+77,Freshwater Marsh,0
+78,Glades and Barrens,0
+79,Grassland,0
+80,Grassland and Steppe,0
+81,Greasewood Shrubland,0
+82,Great Lakes Alvar,0
+83,Hammocks,0
+84,Hardwood Flatwoods,0
+85,Hawai'i Dry Forest,0
+86,Hawai'i Dry Grassland,0
+87,Hawai'i Dry Shrubland,0
+88,Hawai'i Mesic Forest,0
+89,Hawai'i Mesic Grassland,0
+90,Hawai'i Mesic Shrubland,0
+91,Hawai'i Rainforest,0
+92,Heathland and Grassland,0
+93,Herbaceous Meadow,0
+94,Inland Marshes and Prairies,0
+95,Introduced Annual Grassland,0
+96,Introduced Annual and Biennial Forbland,0
+97,Introduced Herbaceous Wetland Vegetation,0
+98,Introduced Perennial Grassland and Forbland,0
+99,Introduced Riparian Vegetation,0
+100,Introduced Upland Vegetation-Shrub,0
+101,Introduced Upland Vegetation-Treed,0
+102,Introduced Wetland Vegetation,0
+103,Introduced Woody Wetland Vegetation,0
+104,Jack Pine Forest,0
+105,Juniper Woodland and Savanna,0
+106,Juniper-Oak,0
+107,Limber Pine Woodland,0
+108,Loblolly Pine Forest and Woodland,0
+109,Loblolly Pine-Slash Pine Forest and Woodland,0
+110,Lodgepole Pine Forest and Woodland,0
+111,Longleaf Pine Woodland,0
+112,Low Sagebrush Shrubland and Steppe,0
+113,Managed Tree Plantation,0.66
+114,Mangrove,0
+115,Maritime Forest,0
+116,Mesquite Woodland and Scrub,0
+117,Mixedgrass Prairie,0
+118,Modified-Managed Prairie Grassland,0
+119,Montane Oak Forest,0
+120,Mountain Hemlock Forest and Woodland,0
+121,Mountain Mahogany Woodland and Shrubland,0
+122,Nodata,0
+123,Open Water,0
+124,Pacific Coastal Marsh,0
+125,Pacific Coastal Scrub,0
+126,Pacific Islands Limestone Forest,0
+127,Pacific Islands Littoral/Strand Vegetation,0
+128,Pacific Islands Lowland Forest,0
+129,Pacific Islands Mangrove Forest,0
+130,Pacific Islands Palm Forest,0
+131,Pacific Islands Ravine Forest,0
+132,Pacific Islands Savannah,0
+133,Pacific Islands Scrub Forest/Shrub,0
+134,Pacific Islands Swamp/Marsh,0
+135,Pacific Islands Upland Forest,0
+136,Peatland Forests,0
+137,Periglacial Woodland and Shrubland,0
+138,Pine Flatwoods,0
+139,Pine-Hemlock-Hardwood Forest,0
+140,Pinyon-Juniper Woodland,0
+141,Pitch Pine Woodlands,0
+142,Pocosin,0
+143,"Ponderosa Pine Forest, Woodland and Savanna",0
+144,Post Oak Woodland and Savanna,0
+145,Prairies and Barrens,0
+146,Quarries-Strip Mines-Gravel Pits,1
+147,Red Alder Forest and Woodland,0
+148,Red Fir Forest and Woodland,0
+149,Red Pine-White Pine Forest and Woodland,0
+150,Redwood Forest and Woodland,0
+151,Riparian Stringer Forest and Shrubland,0
+152,Ruderal Forest,0
+153,Salt Desert Scrub,0
+154,Sand Prairie,0
+155,Sand Shrubland,0
+156,Shortgrass Prairie,0
+157,Shortleaf Pine Woodland,0
+158,Shortleaf Pine-Oak Forest and Woodland,0
+159,Shrub Swamp,0
+160,Shrub Tundra,0
+161,Shrub and Herbaceous Floodplain Wetland,0
+162,Shrub and Herbaceous Peatlands,0
+163,Sitka Spruce Forest,0
+164,Snow-Ice,0
+165,Southern Scrub Oak,0
+166,Sparse Shrub and Fell-field,0
+167,Sparse Tundra,0
+168,Sparse Vegetation,0
+169,Spruce Flats and Barrens,0
+170,Spruce-Fir Forest and Woodland,0
+171,Spruce-Fir-Hardwood Forest,0
+172,Spruce-Lichen Woodland,0
+173,Subalpine Woodland and Parkland,0
+174,Succulent Desert Scrub,0
+175,Sweetgum-Water Oak Forest,0
+176,Tallgrass Prairie,0
+177,Texas Live Oak,0
+178,Tidal Flat,0
+179,Tidal Marsh,0
+180,Transitional Forest Vegetation,0
+181,Transitional Herbacous Vegetation,0
+182,Transitional Shrub Vegetation,0
+183,Tussock Tundra,0
+184,Virginia Pine Forest,0
+185,Western Hemlock-Silver Fir Forest,0
+186,Western Hemlock-Yellow-cedar Forest,0
+187,Western Herbaceous Wetland,0
+188,Western Larch Forest and Woodland,0
+189,Western Oak Woodland and Savanna,0
+190,Western Red-cedar-Western Hemlock Forest,0
+191,Western Riparian Woodland and Shrubland,0
+192,Wet Meadow,0
+193,White Oak-Beech Forest and Woodland,0
+194,White Oak-Red Oak-Hickory Forest and Woodland,0
+195,White Spruce Forest and Woodland,0
+196,White Spruce-Hardwood Forest and Woodland,0
+197,Willow Shrubland,0
+198,Yellow Birch-Sugar Maple Forest,0
+199,Agricultural-Aquaculture,0.66
+200,Pinyon-Juniper Shrubland,0
+201,Developed-Wetland Mixed Forest,0
+202,Developed-Wetland Herbaceous,0
+203,Developed-Wetland Shrubland,0
+204,Quarries-Strip Mines-Gravel Pits-Well and Wind Pads,0

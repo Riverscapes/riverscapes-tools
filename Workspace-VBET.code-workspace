@@ -1,0 +1,15 @@
+{
+	"folders": [
+		{
+			"path": "packages/vbet"
+		},
+		{
+			"path": "lib/commons"
+		},
+		{
+			"name": "ROOT",
+			"path": "."
+		}
+	],
+	"settings": {}
+}

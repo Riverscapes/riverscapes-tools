@@ -1,0 +1,1 @@
+sqlite3 ./brat_template.sqlite < ./dump_brat_schema.sql
