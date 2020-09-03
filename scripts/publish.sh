@@ -15,3 +15,11 @@ for file in $ORIGPWD/packages/*/docs ; do
     jekyllbuild $file
   fi; 
 done
+
+cd $ORIGPWD
+git checkout gh-pages
+rm -fr site
+mv PUBLIC site
+git add site
+git commit -m "Publish"
+git push
