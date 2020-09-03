@@ -1,0 +1,15 @@
+{
+	"folders": [
+		{
+			"path": "../packages/rscontext"
+		},
+		{
+			"path": "../lib/commons"
+		},
+		{
+			"name": "Workspaces",
+			"path": "."
+		}
+	],
+	"settings": {}
+}

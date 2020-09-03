@@ -1,0 +1,15 @@
+{
+	"folders": [
+		{
+			"path": "../packages/brat"
+		},
+		{
+			"path": "../lib/commons"
+		},
+		{
+			"name": "Workspaces",
+			"path": "."
+		}
+	],
+	"settings": {}
+}
