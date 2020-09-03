@@ -27,18 +27,3 @@ from rscommons import Logger, ProgressBar
 ```
 
 We also use it to make classes we'd rather people use more convenient
-
-## Installing this
-
-```bash
-pip install git+https://github.com/Riverscapes/rs-commons-python
-```
-
-### Editable copy
-
-You can also work on this repo inside another one by pip install linking it
-
-```bash 
-cd /path/to/tool_repo
-pip install -e /path/to/this/repo/rs-commons-python
-```
