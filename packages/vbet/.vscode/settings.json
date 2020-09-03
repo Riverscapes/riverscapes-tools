@@ -16,4 +16,13 @@
   ],
   "python.terminal.activateEnvironment": true,
   "python.autoComplete.showAdvancedMembers": false,
+  "files.exclude": {
+    "**/*.egg-info": true
+  },
+  "files.watcherExclude": {
+    "**/*.egg-info/**": true
+  },
+  "search.exclude": {
+    "**/*.egg-info": true
+  },
 }
