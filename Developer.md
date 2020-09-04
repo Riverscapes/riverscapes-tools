@@ -45,6 +45,46 @@ pip install Cython-0.29.21-cp38-cp38-win_amd64.whl
 
 Now run `./scripts/bootstrap-win.sh` from the root of this repo using git bash
 
+
+## VSCode Settings
+
+Minor note: for windows machines the pythonpath should be:
+
+```
+"python.pythonPath": "../../.venv/scripts/python.exe",
+```
+
 ***CAVEAT:*** You will need to select a new interpreter for windows and this means that your `settings.json` files will constantly show up as having been changed. Please don't commit these files to git as they will change the environment for everyone else.
 
 Microsoft is looking into platform-specific settings for VSCode but these haven't been implemented yet so we're ahead of the curve.
+
+```json
+{
+  "python.pythonPath": "../../.venv/bin/python",
+  "[python]": {
+    "editor.tabSize": 4,
+    "editor.formatOnSave": true,
+  },
+  "python.linting.enabled": true,
+  "python.linting.lintOnSave": true,
+  "python.linting.pycodestyleEnabled": true,
+  "python.linting.pylintEnabled": true,
+  "python.linting.pycodestyleArgs": [
+    "--ignore=E501"
+  ],
+  "python.formatting.autopep8Args": [
+    "--ignore=E501"
+  ],
+  "python.terminal.activateEnvironment": true,
+  "python.autoComplete.showAdvancedMembers": false,
+  "files.exclude": {
+    "**/*.egg-info": true
+  },
+  "files.watcherExclude": {
+    "**/*.egg-info/**": true
+  },
+  "search.exclude": {
+    "**/*.egg-info": true
+  },
+}
+```
