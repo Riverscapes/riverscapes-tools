@@ -2,6 +2,7 @@ import codecs
 import re
 import os
 import argparse
+from pathlib import Path
 
 
 def parse_dotenv(dotenv_path):
@@ -61,6 +62,6 @@ def parse_args_env(parser: argparse.ArgumentParser, env_path=None):
                 else:
                     raise Exception('COULD NOT FIND ENVIRONMENT VARIABLE: {}'.format(envname))
                 # Finally, make the substitution
-                setattr(args, k, re.sub(pattern, sub, v))
+                setattr(args, k, str(Path(re.sub(pattern, sub.replace("\\","/"), v))))
 
     return args
