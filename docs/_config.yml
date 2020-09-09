@@ -6,7 +6,7 @@ destination: ../PUBLIC
 # Final root url of the site. No ending slash. No subdirectory
 url:
 # If the site is in a subdirectory you should do it like this: "/subdirectory". Otherwise ""
-# baseurl: "/"
+# baseurl: "/riverscapes-tools"
 # When serving locally what port should we use:
 port: 4001
 

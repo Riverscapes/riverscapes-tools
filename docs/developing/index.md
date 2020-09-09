@@ -1,5 +1,6 @@
-
-## Developing
+---
+title: Developing
+---
 
 This repo makes extensive use of a single `virtualenv` and `pip install -e`
 
