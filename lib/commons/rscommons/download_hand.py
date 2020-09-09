@@ -43,7 +43,7 @@ def download_hand(huc6, epsg, download_folder, boundary, raster_path, force_down
     else:
         safe_makedirs(download_folder)
         # Download the HAND raster
-        raster_url = os.path.join(base_url, huc6, huc6 + 'hand.tif')
+        raster_url = '/'.join(s.strip('/') for s in [base_url, huc6, huc6 + 'hand.tif'])
         log.info('HAND URL {}'.format(raster_url))
         temp_path = download_file(raster_url, download_folder)
 
