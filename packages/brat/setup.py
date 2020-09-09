@@ -6,7 +6,7 @@ import re
 # https://packaging.python.org/discussions/install-requires-vs-requirements/
 install_requires = [
     'termcolor', 'Cython>=0.29.7', 'numpy>=1.16.3', 'scipy>=1.5'
-    'argparse', 'GDAL>=3.0', 'rasterio>=1.1.5', 'Shapely==1.7.0', 'scikit-fuzzy>=0.4.2',
+    'argparse', 'GDAL>=3.0', 'rasterio>=1.1.5', 'Shapely==1.7.1', 'scikit-fuzzy>=0.4.2',
     'rs-commons@git+https://github.com/Riverscapes/rs-commons-python@master#egg=rs-commons'
 ]
 

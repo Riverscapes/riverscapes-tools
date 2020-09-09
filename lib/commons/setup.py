@@ -7,7 +7,7 @@ import re
 install_requires = [
     'geojson', 'sciencebasepy', 'requests', 'semver>=2.10.2',
     'termcolor', 'Cython>=0.29.7', 'numpy>=1.16.3', 'scipy>=1.5'
-    'argparse', 'GDAL>=3.0', 'rasterio>=1.1.5', 'Shapely==1.7.0'
+    'argparse', 'GDAL>=3.0', 'rasterio>=1.1.5', 'Shapely==1.7.1'
 ]
 
 with open("README.md", "rb") as f:

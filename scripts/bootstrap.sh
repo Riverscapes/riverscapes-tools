@@ -8,7 +8,7 @@ python3 -m virtualenv .venv
 .venv/bin/pip --timeout=120 install \
   Cython==0.29.7 \
   numpy==1.16.3 \
-  shapely==1.7.0 \
+  shapely==1.7.1 \
   scipy==1.5.1 \
   --no-binary shapely
 
