@@ -36,6 +36,7 @@ Cython-0.29.21-cp38-cp38-win_amd64.whl
 GDAL-3.1.2-cp38-cp38-win_amd64.whl
 rasterio-1.1.5-cp38-cp38-win_amd64.whl
 Rtree-0.9.4-cp38-cp38-win_amd64.whl
+Shapely‑1.7.1‑cp38‑cp38‑win_amd64.whl
 ```
 
 once you've downloaded these make sure to pip install them OUTSIDE of any virtualenv (so just pip install in terminal)
