@@ -129,7 +129,7 @@ def brat_run(project_root, csv_dir):
         combined_fis(database, epoch, prefix, max_drainage_area)
 
         orig_raster = os.path.join(project.project_dir, input_node.find('Raster[@id="{}"]/Path'.format(orig_id)).text)
-        veg_suit_raster = project.add_project_raster(intermediate_node, LayerTypes[ltype], None, True)
+        veg_suit_raster_node, veg_suit_raster = project.add_project_raster(intermediate_node, LayerTypes[ltype], None, True)
         output_vegetation_raster(database, orig_raster, veg_suit_raster, epoch, prefix, ecoregion)
 
     # Calculate departure from historical conditions
