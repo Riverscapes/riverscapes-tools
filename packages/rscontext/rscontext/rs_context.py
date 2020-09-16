@@ -26,6 +26,7 @@ from rscommons.download_dem import download_dem, verify_areas
 from rscommons.science_base import download_shapefile_collection, get_ntd_urls, us_states
 from rscommons.geographic_raster import gdal_dem_geographic
 from rscommons.download_hand import download_hand
+from rscommons.prism import mean_area_precip, calculate_bankfull_width
 
 from rscontext.flow_accumulation import flow_accumulation, flow_accum_to_drainage_area
 from rscontext.clip_ownership import clip_ownership
@@ -52,7 +53,7 @@ LayerTypes = {
 }
 
 
-def rs_context(huc, existing_veg, historic_veg, ownership, ecoregions, output_folder, download_folder, temp_folder, force_download):
+def rs_context(huc, existing_veg, historic_veg, ownership, ecoregions, prism, output_folder, download_folder, temp_folder, force_download):
     """
     Download riverscapes context layers for the specified HUC and organize them as a Riverscapes project
     :param huc: Eight digit HUC identification number
@@ -63,6 +64,7 @@ def rs_context(huc, existing_veg, historic_veg, ownership, ecoregions, output_fo
     :param download_folder: Temporary folder where downloads are cached. This can be shared between rs_context processes
     :param temp_folder: (optional) Temporary folder for unzipping etc. Download_folder is used if this is ommitted.
     :param force_download: If false then downloads can be skipped if the files already exist
+    :param prism: prism data geopackage
     :return:
     """
 
@@ -107,6 +109,9 @@ def rs_context(huc, existing_veg, historic_veg, ownership, ecoregions, output_fo
 
     nhd, db_path, huc_name = clean_nhd_data(huc, nhd_download_folder, nhd_unzip_folder, os.path.join(output_folder, 'hydrology'), cfg.OUTPUT_EPSG, False)
     project.add_metadata({'Watershed': huc_name})
+
+    precip = mean_area_precip(nhd['WBDHU{}'.format(len(huc))], prism)
+    calculate_bankfull_width(nhd['NHDFlowline'], precip)
 
     # Add the DB record to the Project XML
     db_lyr = RSLayer('NHD Tables', 'NHDTABLES', 'SQLiteDB', os.path.relpath(db_path, output_folder))
@@ -281,6 +286,7 @@ def main():
     parser.add_argument('historic', help='National historic vegetation raster', type=str)
     parser.add_argument('ownership', help='National land ownership shapefile', type=str)
     parser.add_argument('ecoregions', help='National EcoRegions shapefile', type=str)
+    parser.add_argument('prism', help='Prism Data Geopackage', type=str)
     parser.add_argument('output', help='Path to the output folder', type=str)
     parser.add_argument('download', help='Temporary folder for downloading data. Different HUCs may share this', type=str)
     parser.add_argument('--force', help='(optional) download existing files ', action='store_true', default=False)
@@ -304,7 +310,7 @@ def main():
     log.info('Force download: {}'.format(args.force))
 
     try:
-        rs_context(args.huc, args.existing, args.historic, args.ownership, args.ecoregions, args.output, args.download, args.temp_folder, args.force)
+        rs_context(args.huc, args.existing, args.historic, args.ownership, args.ecoregions, args.prism, args.output, args.download, args.temp_folder, args.force)
 
     except Exception as e:
         log.error(e)

@@ -8,7 +8,7 @@ set -eu
 python -m virtualenv .venv
 # Make sure pip is at a good version
 
-source ./venv/Scripts/activate
+source ./.venv/Scripts/activate
 
 pip --timeout=120 install \
   Cython==0.29.7 \

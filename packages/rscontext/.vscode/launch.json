@@ -27,6 +27,7 @@
         "{env:NATIONAL_PROJECT}/landfire/200/us_200bps.tif",
         "{env:NATIONAL_PROJECT}/ownership/surface_management_agency.shp",
         "{env:NATIONAL_PROJECT}/ecoregions/us_eco_l3_state_boundaries.shp",
+        "{env:NATIONAL_PROJECT}/prism/Prism.gpkg",
         "{env:DATA_ROOT}/rs_context/${input:HUC}",
         "{env:DOWNLOAD_FOLDER}",
         // "--temp_folder", "{env:DOWNLOAD_FOLDER}/tmp",
