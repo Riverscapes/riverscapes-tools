@@ -49,7 +49,8 @@ LayerTypes = {
     'HISTVEG': RSLayer('Historic Vegetation', 'HISTVEG', 'Raster', 'vegetation/historic_veg.tif'),
     'NETWORK': RSLayer('NHD Flowlines', 'NETWORK', 'Vector', 'inputs/network.shp'),
     'OWNERSHIP': RSLayer('Ownership', 'Ownership', 'Vector', 'inputs/ownership.shp'),
-    'ECOREGIONS': RSLayer('Ecoregions', 'Ecoregions', 'Vector', 'inputs/ecoregions.shp')
+    'ECOREGIONS': RSLayer('Ecoregions', 'Ecoregions', 'Vector', 'inputs/ecoregions.shp'),
+    'PRISM': RSLayer('Prism', 'Prism', 'Vector', 'inputs/Prism.gpkg')
 }
 
 
