@@ -6,8 +6,16 @@ from shapely.geometry import mapping, shape, Polygon, MultiPolygon
 from shapely.ops import unary_union
 from rscommons.shapefile import get_transform_from_epsg
 
+
 def load_mean_annual_data(gpkg, input_csv, attribute_name):
-    '''Loads PRISM attribute csv file into PRISM geopackage as mean annual value'''
+    """
+    Loads PRISM attribute csv file into PRISM geopackage as mean annual value
+
+    Args:
+        gpkg (str): Geopackage of PRISM Locations
+        input_csv (str): name of PRISM csv attribute file to load
+        attribute_name (str): Name of new field to add to geopackage
+    """
 
     # Load GPKG
     driver = ogr.GetDriverByName("GPKG")
@@ -38,6 +46,15 @@ def load_mean_annual_data(gpkg, input_csv, attribute_name):
 
 
 def mean_area_precip(polygon, gpkg):
+    """Calculates the average mean annual precipitation from all PRISIM stations within polygon
+
+    Args:
+        polygon (str): HUC or polygon feature class to summarize PRISM data
+        gpkg (str): PRISM geopackage with precipitation loaded
+
+    Returns:
+        float: preciptation (mm)
+    """
 
     # Assumptions
     # One HUC Polygon, first feature in shp
@@ -74,6 +91,12 @@ def mean_area_precip(polygon, gpkg):
 
 
 def calculate_bankfull_width(nhd_flowlines, precip):
+    """calculate and add the bankfull width buffer attribute to nhd flowlines
+
+    Args:
+        nhd_flowlines (str): nhd flowlines feature class to add the bankfull width buffer
+        precip (float): mean annual precipitation (mm) for the HUC
+    """
 
     fieldname_bfbuffer = "BFwidth"
     p = precip / 10.0  # prism data in mm, need cm
@@ -102,6 +125,17 @@ def calculate_bankfull_width(nhd_flowlines, precip):
 
 
 def buffer_by_field(flowlines, field, epsg, conversion=1):
+    """generate buffered polygons by value in field
+
+    Args:
+        flowlines (str): feature class of line features to buffer
+        field (str): field with buffer value
+        epsg (int): output srs
+        conversion (int, optional): apply a conversion value for the buffer value. Defaults to 1.
+
+    Returns:
+        geometry: unioned polygon geometry of buffered lines 
+    """
 
     driver = ogr.GetDriverByName("ESRI Shapefile")
     source = driver.Open(flowlines, 0)
@@ -126,6 +160,15 @@ def buffer_by_field(flowlines, field, epsg, conversion=1):
 
 
 def bankfull_width_buffer(flowlines, precip):
+    """generate bankfull buffer polygon from precipitation value
+
+    Args:
+        flowlines (str): feature class of line features to buffer
+        precip (str): mean annual precipitation (mm) for the HUC
+
+    Returns:
+        geometry: unioned polygon geometry of buffered lines 
+    """
 
     p = precip / 10.0  # prism data in mm, need cm
 
@@ -149,14 +192,3 @@ def bankfull_width_buffer(flowlines, precip):
     source = None
 
     return outpoly
-
-
-if __name__ == "__main__":
-
-    precip = mean_area_precip(r"D:\NAR_Data\Data\rs_context\17060304\hydrology\WBDHU8.shp", r"D:\NAR\Projects\VBET\Prism_Test02.gpkg")
-
-    calculate_bankfull_width(r"D:\NAR\Projects\VBET\NHDFlowlineCopy.shp", precip)
-
-    polygon = buffer_by_field(r"D:\NAR\Projects\VBET\NHDFlowlineCopy.shp", "BFbuffer")
-
-    print(polygon.area)
