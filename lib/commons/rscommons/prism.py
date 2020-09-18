@@ -133,7 +133,7 @@ def buffer_by_field(flowlines, field, epsg, conversion_factor=1, min_buffer=None
         field (str): field with buffer value
         epsg (int): output srs
         conversion_factor (int, optional): apply a conversion value for the buffer value. Defaults to 1.
-        min_buffer: use this buffer value for field values that are less than this (conversion factor will be applied)
+        min_buffer: use this buffer value for field values that are less than this
 
     Returns:
         geometry: unioned polygon geometry of buffered lines
@@ -149,8 +149,8 @@ def buffer_by_field(flowlines, field, epsg, conversion_factor=1, min_buffer=None
     outpolys = []
     for feature in layer:
         geom = feature.GetGeometryRef()
-        bufferDist = feature.GetField(field) if feature.GetField(field) > min_buffer else min_buffer
-        geom_buffer = geom.Buffer(bufferDist * conversion_factor)
+        bufferDist = feature.GetField(field) * conversion_factor
+        geom_buffer = geom.Buffer(bufferDist if bufferDist > min_buffer else min_buffer)
         geom_buffer.Transform(transform)
         outpolys.append(wkt_load(geom_buffer.ExportToWkt()))
 
