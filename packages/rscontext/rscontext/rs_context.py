@@ -146,9 +146,6 @@ def rs_context(huc, existing_veg, historic_veg, ownership, ecoregions, prism_fol
 
             calculate_bankfull_width(nhd['NHDFlowline'], mean_annual_precip)
 
-    precip = mean_area_precip(nhd['WBDHU{}'.format(len(huc))], prism)
-    calculate_bankfull_width(nhd['NHDFlowline'], precip)
-
     # Add the DB record to the Project XML
     db_lyr = RSLayer('NHD Tables', 'NHDTABLES', 'SQLiteDB', os.path.relpath(db_path, output_folder))
     project.add_dataset(realization, db_path, db_lyr, 'SQLiteDB')
