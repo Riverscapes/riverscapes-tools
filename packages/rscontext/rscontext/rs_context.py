@@ -47,11 +47,14 @@ LayerTypes = {
     'HILLSHADE': RSLayer('DEM Hillshade', 'HILLSHADE', 'Raster', 'topography/dem_hillshade.tif'),
     'SLOPE': RSLayer('Slope', 'SLOPE', 'Raster', 'topography/slope.tif'),
     'HAND': RSLayer('Height above nearest drainage', 'HAND', 'Raster', 'topography/hand.tif'),
+    # Veg Layers
     'EXVEG': RSLayer('Existing Vegetation', 'EXVEG', 'Raster', 'vegetation/existing_veg.tif'),
     'HISTVEG': RSLayer('Historic Vegetation', 'HISTVEG', 'Raster', 'vegetation/historic_veg.tif'),
+    # Inputs
     'NETWORK': RSLayer('NHD Flowlines', 'NETWORK', 'Vector', 'inputs/network.shp'),
     'OWNERSHIP': RSLayer('Ownership', 'Ownership', 'Vector', 'inputs/ownership.shp'),
     'ECOREGIONS': RSLayer('Ecoregions', 'Ecoregions', 'Vector', 'inputs/ecoregions.shp'),
+    # Prism Layers
     'PPT': RSLayer('Precipitation', 'Precip', 'Raster', 'climate/precipitation.tif'),
     'TMEAN': RSLayer('Mean Temperature', 'MeanTemp', 'Raster', 'climate/mean_temp.tif'),
     'TMIN': RSLayer('Minimum Temperature', 'MinTemp', 'Raster', 'climate/min_temp.tif'),
@@ -101,14 +104,14 @@ def rs_context(huc, existing_veg, historic_veg, ownership, ecoregions, prism_fol
 
     project, realization = create_project(huc, output_folder)
 
-    dem_raster_node, dem_raster = project.add_project_raster(realization, LayerTypes['DEM'])
-    hill_raster_node, hill_raster = project.add_project_raster(realization, LayerTypes['HILLSHADE'])
-    flow_accum_node, flow_accum = project.add_project_raster(realization, LayerTypes['FA'])
-    drain_area_node, drain_area = project.add_project_raster(realization, LayerTypes['DA'])
-    hand_raster_node, hand_raster = project.add_project_raster(realization, LayerTypes['HAND'])
-    slope_raster_node, slope_raster = project.add_project_raster(realization, LayerTypes['SLOPE'])
-    existing_clip_node, existing_clip = project.add_project_raster(realization, LayerTypes['EXVEG'])
-    historic_clip_node, historic_clip = project.add_project_raster(realization, LayerTypes['HISTVEG'])
+    _node, dem_raster = project.add_project_raster(realization, LayerTypes['DEM'])
+    _node, hill_raster = project.add_project_raster(realization, LayerTypes['HILLSHADE'])
+    _node, flow_accum = project.add_project_raster(realization, LayerTypes['FA'])
+    _node, drain_area = project.add_project_raster(realization, LayerTypes['DA'])
+    _node, hand_raster = project.add_project_raster(realization, LayerTypes['HAND'])
+    _node, slope_raster = project.add_project_raster(realization, LayerTypes['SLOPE'])
+    _node, existing_clip = project.add_project_raster(realization, LayerTypes['EXVEG'])
+    _node, historic_clip = project.add_project_raster(realization, LayerTypes['HISTVEG'])
 
     # Download the four digit NHD archive containing the flow lines and watershed boundaries
     log.info('Processing NHD')

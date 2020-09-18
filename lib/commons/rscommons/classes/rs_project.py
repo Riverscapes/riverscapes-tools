@@ -153,7 +153,7 @@ class RSProject:
         existingPaths = [aPath.text for aPath in self.XMLBuilder.root.iter('Path')]
 
         file_path = os.path.join(folder, name)
-        pre, ext = os.path.splitext(file_path)
+        pre, _ext = os.path.splitext(file_path)
         file_path = '{}.{}'.format(pre, extension)
 
         i = 1
