@@ -37,6 +37,7 @@ from vbet.vbet_network import vbet_network
 from rscommons.util import safe_makedirs, parse_metadata
 from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, dotenv
 from rscommons.shapefile import _rough_convert_metres_to_raster_units, polygonize, copy_feature_class, intersect_feature_classes, remove_holes, get_pts, get_rings, get_geometry_unary_union, export_geojson
+from rscommons.prism import buffer_by_field
 from vbet.__version__ import __version__
 
 cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/VBET.xsd', __version__)
@@ -84,11 +85,18 @@ def vbet(huc, flowlines, flowareas, orig_slope, max_slope, orig_hand, hillshade,
     vbet_network(flowlines, flowareas, cfg.OUTPUT_EPSG, vbet_network_path)
     project.add_project_vector(proj_nodes['Intermediates'], LayerTypes['VBET_NETWORK'])
 
+    # If bankfull width field exists, buffer by this
+
+    conversion = _rough_convert_metres_to_raster_units(proj_slope, 1)
+    reach_polygon = buffer_by_field(vbet_network_path, "BFwidth", cfg.OUTPUT_EPSG, conversion)
+    log.info("Buffering Polyine by bankfull width buffers")
+
+    # Old single 25m buffer
     # Load all the reaches into single polyline and also buffer them into single polygon
-    polyline = get_geometry_unary_union(vbet_network_path, cfg.OUTPUT_EPSG)
-    reach_buffer = _rough_convert_metres_to_raster_units(proj_slope, 25)
-    log.info('Buffering Polyline by: {}'.format(reach_buffer))
-    reach_polygon = polyline.buffer(reach_buffer)
+    # polyline = get_geometry_unary_union(vbet_network_path, cfg.OUTPUT_EPSG)
+    # reach_buffer = _rough_convert_metres_to_raster_units(proj_slope, 25)
+    # log.info('Buffering Polyline by: {}'.format(reach_buffer))
+    # reach_polygon = polyline.buffer(reach_buffer)
 
     # Create channel polygon by combining the reach polygon with the flow area polygon
     area_polygon = get_geometry_unary_union(flowareas, cfg.OUTPUT_EPSG)
@@ -187,8 +195,8 @@ def vbet(huc, flowlines, flowareas, orig_slope, max_slope, orig_hand, hillshade,
             progbar.finish()
 
         # Hand and slope are duplicated so we can safely remove them
-        rasterio.shutil.delete(slope_ev)
-        rasterio.shutil.delete(hand_ev)
+        # rasterio.shutil.delete(slope_ev)
+        # rasterio.shutil.delete(hand_ev)
         # The remaining rasters get added to the project
         project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['EVIDENCE'])
 

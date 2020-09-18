@@ -124,17 +124,18 @@ def calculate_bankfull_width(nhd_flowlines, precip):
     return
 
 
-def buffer_by_field(flowlines, field, epsg, conversion=1):
+def buffer_by_field(flowlines, field, epsg, conversion_factor=1, min_buffer=None):
     """generate buffered polygons by value in field
 
     Args:
         flowlines (str): feature class of line features to buffer
         field (str): field with buffer value
         epsg (int): output srs
-        conversion (int, optional): apply a conversion value for the buffer value. Defaults to 1.
+        conversion_factor (int, optional): apply a conversion value for the buffer value. Defaults to 1.
+        min_buffer: use this buffer value for field values that are less than this (conversion factor will be applied)
 
     Returns:
-        geometry: unioned polygon geometry of buffered lines 
+        geometry: unioned polygon geometry of buffered lines
     """
 
     driver = ogr.GetDriverByName("ESRI Shapefile")
@@ -147,8 +148,8 @@ def buffer_by_field(flowlines, field, epsg, conversion=1):
     outpolys = []
     for feature in layer:
         geom = feature.GetGeometryRef()
-        bufferDist = feature.GetField(field)
-        geom_buffer = geom.Buffer(bufferDist * conversion)
+        bufferDist = feature.GetField(field) if feature.GetField(field) > min_buffer else min_buffer
+        geom_buffer = geom.Buffer(bufferDist * conversion_factor)
         geom_buffer.Transform(transform)
         outpolys.append(wkt_load(geom_buffer.ExportToWkt()))
 
