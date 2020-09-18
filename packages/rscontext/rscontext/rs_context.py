@@ -11,6 +11,7 @@
 import argparse
 import sys
 import os
+import glob
 import traceback
 import uuid
 import datetime
@@ -38,6 +39,9 @@ from rscontext.__version__ import __version__
 initGDALOGRErrors()
 
 cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/RSContext.xsd', __version__)
+
+# These are the Prism BIL types we expect
+PrismTypes = ['PPT', 'TMEAN', 'TMIN', 'TMAX', 'TDMEAN', 'VPDMIN', 'VPDMAX']
 
 LayerTypes = {
     # key: (name, id, tag, relpath)
@@ -125,17 +129,24 @@ def rs_context(huc, existing_veg, historic_veg, ownership, ecoregions, prism_fol
 
     # PRISM climate rasters
     mean_annual_precip = None
-    for variable in ['PPT', 'TMEAN', 'TMIN', 'TMAX', 'TDMEAN', 'VPDMIN', 'VPDMAX']:
-        file_name = 'PRISM_{}_30yr_normal_800mM2_annual_bil'.format(variable.lower())
-        source_raster_path = os.path.join(prism_folder, file_name, file_name + '.bil')
-        project_raster_path = project.add_project_raster(realization, LayerTypes[variable])[1]
+    bil_files = glob.glob(os.path.join(prism_folder, '**', '*.bil'))
+    if (len(bil_files) == 0):
+        raise Exception('Could not find any .bil files in the prism folder')
+    for ptype in PrismTypes:
+        try:
+            # Next should always be guarded
+            source_raster_path = next(x for x in bil_files if ptype.lower() in os.path.basename(x).lower())
+        except StopIteration:
+            raise Exception('Could not find .bil file corresponding to "{}"'.format(ptype))
+        _node, project_raster_path = project.add_project_raster(realization, LayerTypes[ptype])
         raster_warp(source_raster_path, project_raster_path, cfg.OUTPUT_EPSG, nhd[boundary])
-        if variable.lower() == 'ppt':
+
+        # Use the mean annual precipitation to calculate bankfull width
+        if ptype.lower() == 'ppt':
             polygon = get_geometry_union(nhd[boundary], cfg.OUTPUT_EPSG)
             mean_annual_precip = raster_buffer_stats2({1: polygon}, project_raster_path)[1]['Mean']
 
-    # Use the mean annual precipitation to calculate bankfull width
-    calculate_bankfull_width(nhd['NHDFlowline'], mean_annual_precip)
+            calculate_bankfull_width(nhd['NHDFlowline'], mean_annual_precip)
 
     # Add the DB record to the Project XML
     db_lyr = RSLayer('NHD Tables', 'NHDTABLES', 'SQLiteDB', os.path.relpath(db_path, output_folder))
