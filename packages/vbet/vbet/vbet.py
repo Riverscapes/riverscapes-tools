@@ -85,10 +85,12 @@ def vbet(huc, flowlines, flowareas, orig_slope, max_slope, orig_hand, hillshade,
     vbet_network(flowlines, flowareas, cfg.OUTPUT_EPSG, vbet_network_path)
     project.add_project_vector(proj_nodes['Intermediates'], LayerTypes['VBET_NETWORK'])
 
-    # If bankfull width field exists, buffer by this
-
+    # Get raster resolution as min buffer and apply bankfull width buffer to reaches
+    with rasterio.open(proj_slope) as raster:
+        t = raster.transform
+        min_buffer = (t[0] + (-t[4])) / 2
     conversion = _rough_convert_metres_to_raster_units(proj_slope, 1)
-    reach_polygon = buffer_by_field(vbet_network_path, "BFwidth", cfg.OUTPUT_EPSG, conversion)
+    reach_polygon = buffer_by_field(vbet_network_path, "BFwidth", cfg.OUTPUT_EPSG, conversion, min_buffer)
     log.info("Buffering Polyine by bankfull width buffers")
 
     # Old single 25m buffer
