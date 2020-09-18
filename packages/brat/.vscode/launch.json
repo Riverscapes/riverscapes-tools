@@ -54,7 +54,7 @@
       "name": "BRAT Run",
       "type": "python",
       "request": "launch",
-      "program": "sqlbrat.brat_run",
+      "module": "sqlbrat.brat_run",
       "console": "integratedTerminal",
       "args": [
         "{env:DATA_ROOT}/brat/${input:HUC}",

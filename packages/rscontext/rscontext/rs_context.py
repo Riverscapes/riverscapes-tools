@@ -11,6 +11,7 @@
 import argparse
 import sys
 import os
+import glob
 import traceback
 import uuid
 import datetime
@@ -26,7 +27,9 @@ from rscommons.download_dem import download_dem, verify_areas
 from rscommons.science_base import download_shapefile_collection, get_ntd_urls, us_states
 from rscommons.geographic_raster import gdal_dem_geographic
 from rscommons.download_hand import download_hand
-from rscommons.prism import mean_area_precip, calculate_bankfull_width
+from rscommons.prism import calculate_bankfull_width
+from rscommons.raster_buffer_stats import raster_buffer_stats2
+from rscommons.shapefile import get_geometry_union
 
 from rscontext.flow_accumulation import flow_accumulation, flow_accum_to_drainage_area
 from rscontext.clip_ownership import clip_ownership
@@ -37,6 +40,9 @@ initGDALOGRErrors()
 
 cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/RSContext.xsd', __version__)
 
+# These are the Prism BIL types we expect
+PrismTypes = ['PPT', 'TMEAN', 'TMIN', 'TMAX', 'TDMEAN', 'VPDMIN', 'VPDMAX']
+
 LayerTypes = {
     # key: (name, id, tag, relpath)
     'DEM': RSLayer('NED 10m DEM', 'DEM', 'DEM', 'topography/dem.tif'),
@@ -45,16 +51,25 @@ LayerTypes = {
     'HILLSHADE': RSLayer('DEM Hillshade', 'HILLSHADE', 'Raster', 'topography/dem_hillshade.tif'),
     'SLOPE': RSLayer('Slope', 'SLOPE', 'Raster', 'topography/slope.tif'),
     'HAND': RSLayer('Height above nearest drainage', 'HAND', 'Raster', 'topography/hand.tif'),
+    # Veg Layers
     'EXVEG': RSLayer('Existing Vegetation', 'EXVEG', 'Raster', 'vegetation/existing_veg.tif'),
     'HISTVEG': RSLayer('Historic Vegetation', 'HISTVEG', 'Raster', 'vegetation/historic_veg.tif'),
+    # Inputs
     'NETWORK': RSLayer('NHD Flowlines', 'NETWORK', 'Vector', 'inputs/network.shp'),
     'OWNERSHIP': RSLayer('Ownership', 'Ownership', 'Vector', 'inputs/ownership.shp'),
     'ECOREGIONS': RSLayer('Ecoregions', 'Ecoregions', 'Vector', 'inputs/ecoregions.shp'),
-    'PRISM': RSLayer('Prism', 'Prism', 'Vector', 'inputs/Prism.gpkg')
+    # Prism Layers
+    'PPT': RSLayer('Precipitation', 'Precip', 'Raster', 'climate/precipitation.tif'),
+    'TMEAN': RSLayer('Mean Temperature', 'MeanTemp', 'Raster', 'climate/mean_temp.tif'),
+    'TMIN': RSLayer('Minimum Temperature', 'MinTemp', 'Raster', 'climate/min_temp.tif'),
+    'TMAX': RSLayer('Maximum Temperature', 'MaxTemp', 'Raster', 'climate/max_temp.tif'),
+    'TDMEAN': RSLayer('Mean Dew Point Temperature', 'MeanDew', 'Raster', 'climate/mean_dew_temp.tif'),
+    'VPDMIN': RSLayer('Minimum Vapor Pressure Deficit', 'MinVap', 'Raster', 'climate/min_vapor_pressure.tif'),
+    'VPDMAX': RSLayer('Maximum Vapor Pressure Deficit', 'MaxVap', 'Raster', 'climate/max_vapor_pressure.tif')
 }
 
 
-def rs_context(huc, existing_veg, historic_veg, ownership, ecoregions, prism, output_folder, download_folder, temp_folder, force_download):
+def rs_context(huc, existing_veg, historic_veg, ownership, ecoregions, prism_folder, output_folder, download_folder, temp_folder, force_download):
     """
     Download riverscapes context layers for the specified HUC and organize them as a Riverscapes project
     :param huc: Eight digit HUC identification number
@@ -65,7 +80,7 @@ def rs_context(huc, existing_veg, historic_veg, ownership, ecoregions, prism, ou
     :param download_folder: Temporary folder where downloads are cached. This can be shared between rs_context processes
     :param temp_folder: (optional) Temporary folder for unzipping etc. Download_folder is used if this is ommitted.
     :param force_download: If false then downloads can be skipped if the files already exist
-    :param prism: prism data geopackage
+    :param prism_folder: folder containing PRISM rasters in *.bil format
     :return:
     """
 
@@ -93,14 +108,14 @@ def rs_context(huc, existing_veg, historic_veg, ownership, ecoregions, prism, ou
 
     project, realization = create_project(huc, output_folder)
 
-    dem_raster_node, dem_raster = project.add_project_raster(realization, LayerTypes['DEM'])
-    hill_raster_node, hill_raster = project.add_project_raster(realization, LayerTypes['HILLSHADE'])
-    flow_accum_node, flow_accum = project.add_project_raster(realization, LayerTypes['FA'])
-    drain_area_node, drain_area = project.add_project_raster(realization, LayerTypes['DA'])
-    hand_raster_node, hand_raster = project.add_project_raster(realization, LayerTypes['HAND'])
-    slope_raster_node, slope_raster = project.add_project_raster(realization, LayerTypes['SLOPE'])
-    existing_clip_node, existing_clip = project.add_project_raster(realization, LayerTypes['EXVEG'])
-    historic_clip_node, historic_clip = project.add_project_raster(realization, LayerTypes['HISTVEG'])
+    _node, dem_raster = project.add_project_raster(realization, LayerTypes['DEM'])
+    _node, hill_raster = project.add_project_raster(realization, LayerTypes['HILLSHADE'])
+    _node, flow_accum = project.add_project_raster(realization, LayerTypes['FA'])
+    _node, drain_area = project.add_project_raster(realization, LayerTypes['DA'])
+    _node, hand_raster = project.add_project_raster(realization, LayerTypes['HAND'])
+    _node, slope_raster = project.add_project_raster(realization, LayerTypes['SLOPE'])
+    _node, existing_clip = project.add_project_raster(realization, LayerTypes['EXVEG'])
+    _node, historic_clip = project.add_project_raster(realization, LayerTypes['HISTVEG'])
 
     # Download the four digit NHD archive containing the flow lines and watershed boundaries
     log.info('Processing NHD')
@@ -110,6 +125,28 @@ def rs_context(huc, existing_veg, historic_veg, ownership, ecoregions, prism, ou
 
     nhd, db_path, huc_name = clean_nhd_data(huc, nhd_download_folder, nhd_unzip_folder, os.path.join(output_folder, 'hydrology'), cfg.OUTPUT_EPSG, False)
     project.add_metadata({'Watershed': huc_name})
+    boundary = 'WBDHU{}'.format(len(huc))
+
+    # PRISM climate rasters
+    mean_annual_precip = None
+    bil_files = glob.glob(os.path.join(prism_folder, '**', '*.bil'))
+    if (len(bil_files) == 0):
+        raise Exception('Could not find any .bil files in the prism folder')
+    for ptype in PrismTypes:
+        try:
+            # Next should always be guarded
+            source_raster_path = next(x for x in bil_files if ptype.lower() in os.path.basename(x).lower())
+        except StopIteration:
+            raise Exception('Could not find .bil file corresponding to "{}"'.format(ptype))
+        _node, project_raster_path = project.add_project_raster(realization, LayerTypes[ptype])
+        raster_warp(source_raster_path, project_raster_path, cfg.OUTPUT_EPSG, nhd[boundary])
+
+        # Use the mean annual precipitation to calculate bankfull width
+        if ptype.lower() == 'ppt':
+            polygon = get_geometry_union(nhd[boundary], cfg.OUTPUT_EPSG)
+            mean_annual_precip = raster_buffer_stats2({1: polygon}, project_raster_path)[1]['Mean']
+
+            calculate_bankfull_width(nhd['NHDFlowline'], mean_annual_precip)
 
     precip = mean_area_precip(nhd['WBDHU{}'.format(len(huc))], prism)
     calculate_bankfull_width(nhd['NHDFlowline'], precip)
@@ -123,7 +160,6 @@ def rs_context(huc, existing_veg, historic_veg, ownership, ecoregions, prism, ou
         lyr_obj = RSLayer(name, name, 'Vector', os.path.relpath(file_path, output_folder))
         project.add_project_vector(realization, lyr_obj)
 
-    boundary = 'WBDHU{}'.format(len(huc))
     states = get_nhd_states(nhd[boundary])
 
     # Download the NTD archive containing roads and rail
@@ -287,7 +323,7 @@ def main():
     parser.add_argument('historic', help='National historic vegetation raster', type=str)
     parser.add_argument('ownership', help='National land ownership shapefile', type=str)
     parser.add_argument('ecoregions', help='National EcoRegions shapefile', type=str)
-    parser.add_argument('prism', help='Prism Data Geopackage', type=str)
+    parser.add_argument('prism', help='Folder containing PRISM rasters in BIL format', type=str)
     parser.add_argument('output', help='Path to the output folder', type=str)
     parser.add_argument('download', help='Temporary folder for downloading data. Different HUCs may share this', type=str)
     parser.add_argument('--force', help='(optional) download existing files ', action='store_true', default=False)

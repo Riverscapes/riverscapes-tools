@@ -143,7 +143,7 @@ def buffer_by_field(flowlines, field, epsg, conversion_factor=1, min_buffer=None
     layer = source.GetLayer()
     in_spatial_ref = layer.GetSpatialRef()
 
-    out_spatial_ref, transform = get_transform_from_epsg(in_spatial_ref, epsg)
+    _out_spatial_ref, transform = get_transform_from_epsg(in_spatial_ref, epsg)
 
     outpolys = []
     for feature in layer:
