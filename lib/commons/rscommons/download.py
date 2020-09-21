@@ -47,13 +47,7 @@ def download_unzip(url, download_folder, unzip_folder=None, force_download=False
 
     final_unzip_folder = unzip_folder if unzip_folder is not None else os.path.splitext(zipfilepath)[0]
 
-    try:
-        unzip(zipfilepath, final_unzip_folder, force_download, retries)
-    except Exception as e:
-        log.debug(e)
-        log.info('Waiting 5 seconds and Retrying once')
-        time.sleep(5)
-        unzip(zipfilepath, unzip_folder, force_download, retries)
+    unzip(zipfilepath, final_unzip_folder, force_download, retries)
 
     return final_unzip_folder
 
@@ -199,11 +193,18 @@ def download_file(s3_url, download_folder, force_download=False):
 
 
 def unzip(file_path, destination_folder, force_overwrite=False, retries=3):
-    """
-    Uncompress a zip archive into the specified destination folder
-    :param file_path: Full path to an existing zip archive
-    :param destination_folder: Path where the zip archive will be unzipped
-    :return: None
+    """[summary]
+
+    Args:
+        file_path: Full path to an existing zip archive
+        destination_folder: Path where the zip archive will be unzipped
+        force_overwrite (bool, optional): Force overwrite of a file if it's already there. Defaults to False.
+        retries (int, optional): Number of retries on a single file. Defaults to 3.
+
+    Raises:
+        Exception: [description]
+        Exception: [description]
+        Exception: [description]
     """
     log = Logger('Unzipper')
 
@@ -252,8 +253,12 @@ def unzip(file_path, destination_folder, force_overwrite=False, retries=3):
         zip_ref.close()
         log.info('Done')
 
-    except Exception as e:
-        log.error('Error unzipping. Cleaning up zip file and output folder')
+    except zipfile.BadZipFile as e:
+        # If the zip file is bad then we have to remove it.
+        log.error('BadZipFile. Cleaning up zip file and output folder')    
         safe_remove_file(file_path)
+        safe_remove_dir(destination_folder)
+    except Exception as e:
+        log.error('Error unzipping. Cleaning up output folder')        
         safe_remove_dir(destination_folder)
         raise Exception('Unzip error: file could not be unzipped')
