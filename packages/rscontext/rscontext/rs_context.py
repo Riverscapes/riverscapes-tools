@@ -341,7 +341,7 @@ def main():
 
     # This is a general place for unzipping downloaded files and other temporary work.
     # We use GUIDS to make it specific to a particular run of the tool to avoid unzip collisions
-    parallel_code = "-" + uuid.uuid4() if args.parallel is True else ""
+    parallel_code = "-" + str(uuid.uuid4()) if args.parallel is True else ""
     scratch_dir = args.temp_folder if args.temp_folder else os.path.join(args.download, 'scratch', 'rs_context{}'.format(parallel_code))
     safe_makedirs(scratch_dir)
 
