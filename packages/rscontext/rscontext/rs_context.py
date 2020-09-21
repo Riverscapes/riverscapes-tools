@@ -19,7 +19,7 @@ from osgeo import ogr
 from osgeo import gdal
 
 from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALOGRErrors
-from rscommons.util import safe_makedirs
+from rscommons.util import safe_makedirs, safe_remove_dir
 from rscommons.clean_nhd_data import clean_nhd_data
 from rscommons.clean_ntd_data import clean_ntd_data
 from rscommons.raster_warp import raster_warp, raster_vrt_stitch
@@ -69,7 +69,7 @@ LayerTypes = {
 }
 
 
-def rs_context(huc, existing_veg, historic_veg, ownership, ecoregions, prism_folder, output_folder, download_folder, temp_folder, force_download):
+def rs_context(huc, existing_veg, historic_veg, ownership, ecoregions, prism_folder, output_folder, download_folder, scratch_dir, force_download):
     """
     Download riverscapes context layers for the specified HUC and organize them as a Riverscapes project
     :param huc: Eight digit HUC identification number
@@ -78,7 +78,6 @@ def rs_context(huc, existing_veg, historic_veg, ownership, ecoregions, prism_fol
     :param ownership: Path to the national land ownership Shapefile
     :param output_folder: Output location for the riverscapes context project
     :param download_folder: Temporary folder where downloads are cached. This can be shared between rs_context processes
-    :param temp_folder: (optional) Temporary folder for unzipping etc. Download_folder is used if this is ommitted.
     :param force_download: If false then downloads can be skipped if the files already exist
     :param prism_folder: folder containing PRISM rasters in *.bil format
     :return:
@@ -97,10 +96,6 @@ def rs_context(huc, existing_veg, historic_veg, ownership, ecoregions, prism_fol
 
     safe_makedirs(output_folder)
     safe_makedirs(download_folder)
-
-    # This is a general place for unzipping downloaded files and other temporary work.
-    scratch_dir = temp_folder if temp_folder else os.path.join(download_folder, 'scratch')
-    safe_makedirs(scratch_dir)
 
     # We need a temporary folder for slope rasters, Stitching inputs, intermeditary products, etc.
     scratch_dem_folder = os.path.join(scratch_dir, 'rs_context', huc)
@@ -324,6 +319,7 @@ def main():
     parser.add_argument('output', help='Path to the output folder', type=str)
     parser.add_argument('download', help='Temporary folder for downloading data. Different HUCs may share this', type=str)
     parser.add_argument('--force', help='(optional) download existing files ', action='store_true', default=False)
+    parser.add_argument('--parallel', help='(optional) for running multiple instances of this at the same time', action='store_true', default=False)
     parser.add_argument('--temp_folder', help='(optional) cache folder for downloading files ', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
 
@@ -343,14 +339,24 @@ def main():
     log.info('Download folder: {}'.format(args.download))
     log.info('Force download: {}'.format(args.force))
 
+    # This is a general place for unzipping downloaded files and other temporary work.
+    # We use GUIDS to make it specific to a particular run of the tool to avoid unzip collisions
+    parallel_code = "-" + str(uuid.uuid4()) if args.parallel is True else ""
+    scratch_dir = args.temp_folder if args.temp_folder else os.path.join(args.download, 'scratch', 'rs_context{}'.format(parallel_code))
+    safe_makedirs(scratch_dir)
+
     try:
-        rs_context(args.huc, args.existing, args.historic, args.ownership, args.ecoregions, args.prism, args.output, args.download, args.temp_folder, args.force)
+        rs_context(args.huc, args.existing, args.historic, args.ownership, args.ecoregions, args.prism, args.output, args.download, scratch_dir, args.force)
 
     except Exception as e:
         log.error(e)
         traceback.print_exc(file=sys.stdout)
+        # Cleaning up the scratch folder is essential
+        safe_remove_dir(scratch_dir)
         sys.exit(1)
 
+    # Cleaning up the scratch folder is essential
+    safe_remove_dir(scratch_dir)
     sys.exit(0)
 
 

@@ -4,6 +4,7 @@ import gc
 import sys
 import glob
 import shutil
+import hashlib
 import os
 from math import cos, sin, asin, sqrt, radians
 from rscommons import Logger
@@ -26,6 +27,84 @@ def batch(iterable, n=1):
     for ndx in range(0, length, n):
         yield iterable[ndx:min(ndx + n, length)]
 
+
+def safe_remove_file(file_path):
+    """Remove a file without throwing an error
+
+    Args:
+        file_path ([type]): [description]
+    """
+    log = Logger("safe_remove_file")
+    try:
+        if not os.path.isfile(file_path):
+            log.warning('File not found: {}'.format(file_path))
+        os.remove(file_path)
+        log.debug('File removed: {}'.format(file_path))
+    except Exception as e:
+        log.error(str(e))
+
+
+def file_compare(file_a, file_b, md5=True):
+    """Do a file comparison, starting with file size and finishing with md5
+
+    Args:
+        file_a ([type]): [description]
+        file_b ([type]): [description]
+
+    Returns:
+        [type]: [description]
+    """
+    log = Logger("file_compare")
+    log.debug('Comparing: {} {}'.format(file_a, file_b))
+    try:
+        # If the file sizes aren't the same then there's
+        # no reason to do anything more
+        a_stats = os.stat(file_a)
+        b_stats = os.stat(file_b)
+        if a_stats.st_size != b_stats.st_size:
+            log.debug('Files are NOT the same size: {:,} vs. {:,}')
+            return False
+
+        # If we want this to be a quick-compare and not do MD5 then we just
+        # do the file size and leave it at that
+        if not md5:
+            return True
+
+        with open(file_a, 'rb') as afile:
+            hasher1 = hashlib.md5()
+            buf1 = afile.read()
+            hasher1.update(buf1)
+            md5_a=(str(hasher1.hexdigest()))
+
+        with open(file_b, 'rb') as bfile:
+            hasher2 = hashlib.md5()
+            buf1 = bfile.read()
+            hasher2.update(buf1)
+            md5_b=(str(hasher2.hexdigest()))
+
+        #Compare md5
+        if(md5_a==md5_b):
+            log.debug('File MD5 hashes match')
+            return True
+        else:
+            log.debug('File MD5 hashes DO NOT match')
+            return False
+    except Exception as e:
+        log.error('Error comparing files: {}', str(e))
+        return False
+
+def safe_remove_dir(dir_path):
+    """Remove a directory without throwing an error
+
+    Args:
+        file_path ([type]): [description]
+    """
+    log = Logger("safe_remove_dir")
+    try:
+        shutil.rmtree(dir_path, ignore_errors=True)
+        log.debug('Directory removed: {}'.format(dir_path))
+    except Exception as e:
+        log.error(str(e))
 
 def safe_makedirs(dir_create_path):
     """safely, recursively make a directory

@@ -32,6 +32,7 @@
         "{env:DOWNLOAD_FOLDER}",
         // "--temp_folder", "{env:DOWNLOAD_FOLDER}/tmp",
         // "--force",
+        // "--parallel",
         "--verbose"
       ]
     },
