@@ -5,6 +5,7 @@
 from rscommons.classes.gdal_errors import initGDALOGRErrors
 from rscommons.classes.geotransform import Geotransform
 from rscommons.classes.logger import Logger
+from rscommons.classes.timer import Timer
 from rscommons.classes.loop_timer import LoopTimer
 from rscommons.classes.model_config import ModelConfig
 from rscommons.classes.progress_bar import ProgressBar

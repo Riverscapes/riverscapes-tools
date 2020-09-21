@@ -5,8 +5,9 @@ import shutil
 import zipfile
 import requests
 import tempfile
-from rscommons.util import safe_makedirs
-from rscommons import Logger, ProgressBar
+from datetime import datetime
+from rscommons.util import safe_makedirs, safe_remove_dir, safe_remove_file, file_compare
+from rscommons import Logger, ProgressBar, Timer
 
 
 def download_unzip(url, download_folder, unzip_folder=None, force_download=False, retries=3):
@@ -96,50 +97,103 @@ def download_file(s3_url, download_folder, force_download=False):
 
     # If file already exists and forcing download then ensure unique file name
     file_path = os.path.join(download_folder, os.path.basename(result.group(2)))
+    file_path_pending = os.path.join(download_folder, os.path.basename(result.group(2))+ '.pending')
 
     if os.path.isfile(file_path) and force_download:
-        os.remove(file_path)
+        safe_remove_file(file_path)
 
     # Skip the download if the file exists
     if os.path.isfile(file_path) and os.path.getsize(file_path) > 0:
         log.info('Skipping download because file exists.')
     else:
+        # If there is a pending path  and the pending path is fairly new
+        # then wait for it.
+        if (os.path.isfile(file_path_pending)):
+            a_stats = os.stat(file_path_pending)
+            # TODO: add a time comparison. we want to clean up old pending files
+            a_stats.st_mtime
+            log.info('.pending file found. We will wait...')
+            counter = 0
+            while os.path.isfile(file_path_pending) and counter < (20):
+                log.debug('Pausing for 30 seconds')
+                time.sleep(30)
+                a_stats = os.stat(file_path_pending)
+                counter += 1
+
+        tmpfilepath = tempfile.mktemp(".temp")
+
+        # Write our pending file. No matter what we must clean this file up!!!
+        def refresh_pending():
+            with open(file_path_pending, 'w') as f:
+                f.write(datetime.datetime.now())
+
+        # Cleaning up the commone areas is really important
+        def download_cleanup():
+            safe_remove_file(tmpfilepath)
+            safe_remove_file(file_path_pending)
+
+        if not os.path.isfile(file_path_pending):
+            refresh_pending()
+
+        pending_timer = Timer()
         log.info('Downloading {}'.format(s3_url))
 
-        try:
-            dl = 0
-            tmpfilepath = tempfile.mktemp(".temp")
-            with requests.get(s3_url, stream=True) as r:
-                r.raise_for_status()
-                byte_total = int(r.headers.get('content-length'))
-                progbar = ProgressBar(byte_total, 50, s3_url, byteFormat=True)
+        # Actual file download
+        for download_retries in range(3):
+            if download_retries> 0:
+                log.warning('Download file retry: {}', download_retries)
+            try:
+                dl = 0
+                tmpfilepath = tempfile.mktemp(".temp")
+                with requests.get(s3_url, stream=True) as r:
+                    r.raise_for_status()
+                    byte_total = int(r.headers.get('content-length'))
+                    progbar = ProgressBar(byte_total, 50, s3_url, byteFormat=True)
 
-                with open(tmpfilepath, 'wb') as tempf:
-                    for chunk in r.iter_content(chunk_size=8192):
-                        if chunk:  # filter out keep-alive new chunks
-                            dl += len(chunk)
-                            tempf.write(chunk)
-                            progbar.update(dl)
+                    # Binary write to file
+                    with open(tmpfilepath, 'wb') as tempf:
+                        for chunk in r.iter_content(chunk_size=8192):
+                            # Periodically refreshing our .pending file
+                            # so other processes will be aware we are still working on it.
+                            if pending_timer.ellapsed() > 10:
+                                refresh_pending()
+                            if chunk:  # filter out keep-alive new chunks
+                                dl += len(chunk)
+                                tempf.write(chunk)
+                                progbar.update(dl)
                     # Close the temporary file. It will be removed
-                if (not os.path.isfile(tmpfilepath)):
-                    raise Exception('Error writing to temporary file: {}'.format(tmpfilepath))
+                    if (not os.path.isfile(tmpfilepath)):
+                        raise Exception('Error writing to temporary file: {}'.format(tmpfilepath))
 
-            progbar.finish()
+                progbar.finish()
+                continue
+            except Exception as e:
+                log.debug('Error downloading file from s3 {}: \n{}'.format(s3_url, str(e)))
+                # if this is our last chance then the function must fail [0,1,2]
+                if download_retries == 2:
+                    download_cleanup() # Always clean up
+                    raise e
 
-            shutil.copy(tmpfilepath, file_path)
-            srcStats = os.stat(file_path)
-            dstStats = os.stat(tmpfilepath)
+        # Now copy the temporary file (retry 3 times)
+        for copy_retries in range(3):
+            if copy_retries> 0:
+                log.warning('Copy file retry: {}', copy_retries)            
+            try:
+                shutil.copy(tmpfilepath, file_path)
+                
+                if file_compare(file_path, tmpfilepath):
+                    # Make sure to clean up so the next process doesn't encounter a broken file
+                    raise Exception('Error copying temporary download to final path')
+                safe_remove_file(tmpfilepath)
 
-            os.remove(tmpfilepath)
-            if (srcStats.st_size != dstStats.st_size):
-                # Make sure to clean up so the next process doesn't encounter a broken file
-                os.remove(file_path)
-                raise Exception('Error copying temporary download to final path')
+            except Exception as e:
+                log.debug('Error copying file from temporary location {}: \n{}'.format(tmpfilepath, str(e)))
+                # if this is our last chance then the function must fail [0,1,2]
+                if copy_retries == 2:
+                    download_cleanup() # Always clean up
+                    raise e
 
-        except Exception as e:
-            print(e)
-            raise Exception('Error downloading file from s3 {}'.format(s3_url))
-
+    download_cleanup() # Always clean up
     return file_path
 
 
@@ -198,7 +252,7 @@ def unzip(file_path, destination_folder, force_overwrite=False, retries=3):
         log.info('Done')
 
     except Exception as e:
-        log.error('Error unzipping. Cleaning up file')
-        if os.path.isfile(file_path):
-            os.remove(file_path)
+        log.error('Error unzipping. Cleaning up zip file and output folder')
+        safe_remove_file(file_path)
+        safe_remove_dir(destination_folder)
         raise Exception('Unzip error: file could not be unzipped')
