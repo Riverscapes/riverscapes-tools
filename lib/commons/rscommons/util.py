@@ -84,10 +84,10 @@ def file_compare(file_a, file_b, md5=True):
 
         #Compare md5
         if(md5_a==md5_b):
-            log.info('File MD5 hashes match')
+            log.debug('File MD5 hashes match')
             return True
         else:
-            log.info('File MD5 hashes DO NOT match')
+            log.debug('File MD5 hashes DO NOT match')
             return False
     except Exception as e:
         log.error('Error comparing files: {}', str(e))

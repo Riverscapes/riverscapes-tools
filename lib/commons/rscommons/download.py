@@ -5,7 +5,7 @@ import shutil
 import zipfile
 import requests
 import tempfile
-from datetime import datetime
+import datetime
 from rscommons.util import safe_makedirs, safe_remove_dir, safe_remove_file, file_compare
 from rscommons import Logger, ProgressBar, Timer
 
@@ -105,27 +105,28 @@ def download_file(s3_url, download_folder, force_download=False):
     # Skip the download if the file exists
     if os.path.isfile(file_path) and os.path.getsize(file_path) > 0:
         log.info('Skipping download because file exists.')
+        # If there is a zip file AND a pending file we clean up the pending file
+        if (os.path.isfile(file_path_pending)):
+            safe_remove_file(file_path_pending)
     else:
         # If there is a pending path  and the pending path is fairly new
         # then wait for it.
         if (os.path.isfile(file_path_pending)):
             a_stats = os.stat(file_path_pending)
-            # TODO: add a time comparison. we want to clean up old pending files
-            a_stats.st_mtime
             log.info('.pending file found. We will wait...')
-            counter = 0
-            while os.path.isfile(file_path_pending) and counter < (20):
+
+            # We wait while the pending file exists and is not stale (modified less than 60 seconds ago)
+            while time.time() - a_stats.st_mtime < 60 and os.path.isfile(file_path_pending):
                 log.debug('Pausing for 30 seconds')
                 time.sleep(30)
                 a_stats = os.stat(file_path_pending)
-                counter += 1
 
         tmpfilepath = tempfile.mktemp(".temp")
 
         # Write our pending file. No matter what we must clean this file up!!!
         def refresh_pending():
             with open(file_path_pending, 'w') as f:
-                f.write(datetime.datetime.now())
+                f.write(str(datetime.datetime.now()))
 
         # Cleaning up the commone areas is really important
         def download_cleanup():
@@ -141,7 +142,7 @@ def download_file(s3_url, download_folder, force_download=False):
         # Actual file download
         for download_retries in range(3):
             if download_retries> 0:
-                log.warning('Download file retry: {}', download_retries)
+                log.warning('Download file retry: {}'.format(download_retries))
             try:
                 dl = 0
                 tmpfilepath = tempfile.mktemp(".temp")
@@ -166,7 +167,7 @@ def download_file(s3_url, download_folder, force_download=False):
                         raise Exception('Error writing to temporary file: {}'.format(tmpfilepath))
 
                 progbar.finish()
-                continue
+                break
             except Exception as e:
                 log.debug('Error downloading file from s3 {}: \n{}'.format(s3_url, str(e)))
                 # if this is our last chance then the function must fail [0,1,2]
@@ -177,14 +178,13 @@ def download_file(s3_url, download_folder, force_download=False):
         # Now copy the temporary file (retry 3 times)
         for copy_retries in range(3):
             if copy_retries> 0:
-                log.warning('Copy file retry: {}', copy_retries)            
+                log.warning('Copy file retry: {}'.format(copy_retries))            
             try:
                 shutil.copy(tmpfilepath, file_path)
-                
-                if file_compare(file_path, tmpfilepath):
-                    # Make sure to clean up so the next process doesn't encounter a broken file
+                # Make sure to clean up so the next process doesn't encounter a broken file
+                if not file_compare(file_path, tmpfilepath):
                     raise Exception('Error copying temporary download to final path')
-                safe_remove_file(tmpfilepath)
+                break
 
             except Exception as e:
                 log.debug('Error copying file from temporary location {}: \n{}'.format(tmpfilepath, str(e)))
@@ -193,7 +193,8 @@ def download_file(s3_url, download_folder, force_download=False):
                     download_cleanup() # Always clean up
                     raise e
 
-    download_cleanup() # Always clean up
+        download_cleanup() # Always clean up
+    
     return file_path
 
 

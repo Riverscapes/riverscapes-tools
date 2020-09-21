@@ -319,6 +319,7 @@ def main():
     parser.add_argument('output', help='Path to the output folder', type=str)
     parser.add_argument('download', help='Temporary folder for downloading data. Different HUCs may share this', type=str)
     parser.add_argument('--force', help='(optional) download existing files ', action='store_true', default=False)
+    parser.add_argument('--parallel', help='(optional) for running multiple instances of this at the same time', action='store_true', default=False)
     parser.add_argument('--temp_folder', help='(optional) cache folder for downloading files ', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
 
@@ -340,7 +341,8 @@ def main():
 
     # This is a general place for unzipping downloaded files and other temporary work.
     # We use GUIDS to make it specific to a particular run of the tool to avoid unzip collisions
-    scratch_dir = args.temp_folder if args.temp_folder else os.path.join(args.download, 'scratch', 'rs_context-{}'.format(uuid.uuid4()))
+    parallel_code = "-" + uuid.uuid4() if args.parallel is True else ""
+    scratch_dir = args.temp_folder if args.temp_folder else os.path.join(args.download, 'scratch', 'rs_context{}'.format(parallel_code))
     safe_makedirs(scratch_dir)
 
     try:
