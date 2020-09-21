@@ -127,14 +127,14 @@ def download_file(s3_url, download_folder, force_download=False):
             safe_remove_file(tmpfilepath)
             safe_remove_file(file_path_pending)
 
-        if not os.path.isfile(file_path_pending):
-            refresh_pending()
+        refresh_pending()
 
         pending_timer = Timer()
         log.info('Downloading {}'.format(s3_url))
 
         # Actual file download
-        for download_retries in range(3):
+        max_attempts = 3
+        for download_retries in range(max_attempts):
             if download_retries> 0:
                 log.warning('Download file retry: {}'.format(download_retries))
             try:
@@ -165,12 +165,12 @@ def download_file(s3_url, download_folder, force_download=False):
             except Exception as e:
                 log.debug('Error downloading file from s3 {}: \n{}'.format(s3_url, str(e)))
                 # if this is our last chance then the function must fail [0,1,2]
-                if download_retries == 2:
+                if download_retries == max_attempts -1:
                     download_cleanup() # Always clean up
                     raise e
 
         # Now copy the temporary file (retry 3 times)
-        for copy_retries in range(3):
+        for copy_retries in range(max_attempts):
             if copy_retries> 0:
                 log.warning('Copy file retry: {}'.format(copy_retries))            
             try:
@@ -183,7 +183,7 @@ def download_file(s3_url, download_folder, force_download=False):
             except Exception as e:
                 log.debug('Error copying file from temporary location {}: \n{}'.format(tmpfilepath, str(e)))
                 # if this is our last chance then the function must fail [0,1,2]
-                if copy_retries == 2:
+                if copy_retries == max_attempts -1:
                     download_cleanup() # Always clean up
                     raise e
 

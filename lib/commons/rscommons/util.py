@@ -62,7 +62,7 @@ def file_compare(file_a, file_b, md5=True):
         a_stats = os.stat(file_a)
         b_stats = os.stat(file_b)
         if a_stats.st_size != b_stats.st_size:
-            log.info('Files are NOT the same size: {:,} vs. {:,}')
+            log.debug('Files are NOT the same size: {:,} vs. {:,}')
             return False
 
         # If we want this to be a quick-compare and not do MD5 then we just
