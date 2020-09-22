@@ -69,7 +69,7 @@ LayerTypes = {
 }
 
 
-def rs_context(huc, existing_veg, historic_veg, ownership, ecoregions, prism_folder, output_folder, download_folder, scratch_dir, force_download):
+def rs_context(huc, existing_veg, historic_veg, ownership, ecoregions, prism_folder, output_folder, download_folder, scratch_dir, parallel, force_download):
     """
     Download riverscapes context layers for the specified HUC and organize them as a Riverscapes project
     :param huc: Eight digit HUC identification number
@@ -119,6 +119,9 @@ def rs_context(huc, existing_veg, historic_veg, ownership, ecoregions, prism_fol
     nhd_unzip_folder = os.path.join(scratch_dir, 'nhd', huc[:4])
 
     nhd, db_path, huc_name = clean_nhd_data(huc, nhd_download_folder, nhd_unzip_folder, os.path.join(output_folder, 'hydrology'), cfg.OUTPUT_EPSG, False)
+    # Clean up the unzipped files. We won't need them again
+    if parallel:
+        safe_remove_dir(nhd_unzip_folder)
     project.add_metadata({'Watershed': huc_name})
     boundary = 'WBDHU{}'.format(len(huc))
 
@@ -157,12 +160,19 @@ def rs_context(huc, existing_veg, historic_veg, ownership, ecoregions, prism_fol
     # Download the NTD archive containing roads and rail
     log.info('Processing NTD')
     ntd_raw = {}
+    ntd_unzip_folders = []
     for state, ntd_url in get_ntd_urls(states).items():
         ntd_download_folder = os.path.join(download_folder, 'ntd', state.lower())
         ntd_unzip_folder = os.path.join(scratch_dir, 'ntd', state.lower(), 'unzipped')  # a little awkward but I need a folder for this and this was the best name I could find
         ntd_raw[state] = download_shapefile_collection(ntd_url, ntd_download_folder, ntd_unzip_folder, force_download)
+        ntd_unzip_folders.append(ntd_unzip_folder)
 
     ntd_clean = clean_ntd_data(ntd_raw, nhd['NHDFlowline'], nhd[boundary], os.path.join(output_folder, 'transportation'), cfg.OUTPUT_EPSG)
+
+    # clean up the NTD Unzip folder. We won't need it again
+    if parallel:
+        for unzip_path in ntd_unzip_folders:
+            safe_remove_dir(unzip_path)
 
     # Write transportation layers to project file
     log.info('Write transportation layers to project file')
@@ -209,16 +219,20 @@ def rs_context(huc, existing_veg, historic_veg, ownership, ecoregions, prism_fol
             need_hs_build = True
 
     if (need_slope_build):
-        raster_vrt_stitch(slope_parts, slope_raster, cfg.OUTPUT_EPSG, nhd[boundary])
+        raster_vrt_stitch(slope_parts, slope_raster, cfg.OUTPUT_EPSG, nhd[boundary], clean=parallel)
         verify_areas(slope_raster, nhd[boundary])
     else:
         log.info('Skipping slope build because nothing has changed.')
 
     if (need_hs_build):
-        raster_vrt_stitch(hillshade_parts, hill_raster, cfg.OUTPUT_EPSG, nhd[boundary])
+        raster_vrt_stitch(hillshade_parts, hill_raster, cfg.OUTPUT_EPSG, nhd[boundary], clean=parallel)
         verify_areas(hill_raster, nhd[boundary])
     else:
         log.info('Skipping hillshade build because nothing has changed.')
+
+    # Remove the unzipped rasters. We won't need them anymore
+    if parallel:
+        safe_remove_dir(ned_unzip_folder)
 
     # Calculate flow accumulation raster based on the DEM
     log.info('Running flow accumulation and converting to drainage area.')
@@ -346,7 +360,7 @@ def main():
     safe_makedirs(scratch_dir)
 
     try:
-        rs_context(args.huc, args.existing, args.historic, args.ownership, args.ecoregions, args.prism, args.output, args.download, scratch_dir, args.force)
+        rs_context(args.huc, args.existing, args.historic, args.ownership, args.ecoregions, args.prism, args.output, args.download, scratch_dir, args.parallel, args.force)
 
     except Exception as e:
         log.error(e)

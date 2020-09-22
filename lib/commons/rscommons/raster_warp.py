@@ -21,10 +21,11 @@ import sys
 import traceback
 import gdal
 from rscommons.download import get_unique_file_path
+from rscommons.util import safe_remove_file
 from rscommons import Logger
 
 
-def raster_vrt_stitch(inrasters, outraster, epsg, clip=None):
+def raster_vrt_stitch(inrasters, outraster, epsg, clip=None, clean=False):
     """[summary]
     https://gdal.org/python/osgeo.gdal-module.html#BuildVRT
     Keyword arguments are :
@@ -68,6 +69,10 @@ def raster_vrt_stitch(inrasters, outraster, epsg, clip=None):
     gdal.BuildVRT(path_vrt, inrasters, options=vrt_options)
 
     raster_warp(path_vrt, outraster, epsg, clip)
+
+    if clean:
+        for rpath in inrasters:
+            safe_remove_file(rpath)
 
     # Clean up the VRT
     # if os.path.isfile(path_vrt):
