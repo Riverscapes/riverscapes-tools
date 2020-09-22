@@ -9,6 +9,8 @@ import datetime
 from rscommons.util import safe_makedirs, safe_remove_dir, safe_remove_file, file_compare
 from rscommons import Logger, ProgressBar, Timer
 
+MAX_ATTEMPTS = 3 # Number of attempts for things like downloading and copying
+PENDING_TIMEOUT = 60 # number of seconds before pending files are deemed stale
 
 def download_unzip(url, download_folder, unzip_folder=None, force_download=False, retries=3):
     """
@@ -73,6 +75,27 @@ def get_unique_file_path(folder, file):
     return new_path
 
 
+def pending_check(file_path_pending, timeout):
+    """returns true if we're still pending
+
+    Args:
+        file_path_pending ([type]): path to pending file
+        file_path_pending ([itn]): in seconds
+    """
+    pending_exists = os.path.isfile(file_path_pending)
+    if not pending_exists:
+         return False
+
+    pf_stats = os.stat(file_path_pending)
+    # If the pending file is older than the timeout 
+    # then we need to delete the file and keep going
+    if time.time() - pf_stats.st_mtime > timeout:
+        safe_remove_file(file_path_pending)
+        return False
+    else:
+        return True
+        
+
 def download_file(s3_url, download_folder, force_download=False):
     """
     Download a file given a HTTPS URL that points to a file on S3
@@ -96,29 +119,21 @@ def download_file(s3_url, download_folder, force_download=False):
     if os.path.isfile(file_path) and force_download:
         safe_remove_file(file_path)
 
+    # If there is a pending path  and the pending path is fairly new
+    # then wait for it.
+    while pending_check(file_path_pending, PENDING_TIMEOUT):
+        log.debug('Waiting for .pending file. Another process is working on this.')
+        time.sleep(30)
+    log.info('Waiting done. Proceeding.')
+
     # Skip the download if the file exists
     if os.path.isfile(file_path) and os.path.getsize(file_path) > 0:
         log.info('Skipping download because file exists.')
-        # If there is a zip file AND a pending file we clean up the pending file
-        if (os.path.isfile(file_path_pending)):
-            safe_remove_file(file_path_pending)
     else:
-        # If there is a pending path  and the pending path is fairly new
-        # then wait for it.
-        if (os.path.isfile(file_path_pending)):
-            a_stats = os.stat(file_path_pending)
-            log.info('.pending file found. We will wait...')
-
-            # We wait while the pending file exists and is not stale (modified less than 60 seconds ago)
-            while time.time() - a_stats.st_mtime < 60 and os.path.isfile(file_path_pending):
-                log.debug('Pausing for 30 seconds')
-                time.sleep(30)
-                a_stats = os.stat(file_path_pending)
-
         tmpfilepath = tempfile.mktemp(".temp")
 
         # Write our pending file. No matter what we must clean this file up!!!
-        def refresh_pending():
+        def refresh_pending(init=False):
             with open(file_path_pending, 'w') as f:
                 f.write(str(datetime.datetime.now()))
 
@@ -133,8 +148,7 @@ def download_file(s3_url, download_folder, force_download=False):
         log.info('Downloading {}'.format(s3_url))
 
         # Actual file download
-        max_attempts = 3
-        for download_retries in range(max_attempts):
+        for download_retries in range(MAX_ATTEMPTS):
             if download_retries> 0:
                 log.warning('Download file retry: {}'.format(download_retries))
             try:
@@ -165,12 +179,12 @@ def download_file(s3_url, download_folder, force_download=False):
             except Exception as e:
                 log.debug('Error downloading file from s3 {}: \n{}'.format(s3_url, str(e)))
                 # if this is our last chance then the function must fail [0,1,2]
-                if download_retries == max_attempts -1:
+                if download_retries == MAX_ATTEMPTS -1:
                     download_cleanup() # Always clean up
                     raise e
 
         # Now copy the temporary file (retry 3 times)
-        for copy_retries in range(max_attempts):
+        for copy_retries in range(MAX_ATTEMPTS):
             if copy_retries> 0:
                 log.warning('Copy file retry: {}'.format(copy_retries))            
             try:
@@ -183,7 +197,7 @@ def download_file(s3_url, download_folder, force_download=False):
             except Exception as e:
                 log.debug('Error copying file from temporary location {}: \n{}'.format(tmpfilepath, str(e)))
                 # if this is our last chance then the function must fail [0,1,2]
-                if copy_retries == max_attempts -1:
+                if copy_retries == MAX_ATTEMPTS -1:
                     download_cleanup() # Always clean up
                     raise e
 
