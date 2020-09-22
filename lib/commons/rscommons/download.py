@@ -272,6 +272,7 @@ def unzip(file_path, destination_folder, force_overwrite=False, retries=3):
         log.error('BadZipFile. Cleaning up zip file and output folder')    
         safe_remove_file(file_path)
         safe_remove_dir(destination_folder)
+        raise Exception('Unzip error: BadZipFile')
     except Exception as e:
         log.error('Error unzipping. Cleaning up output folder')        
         safe_remove_dir(destination_folder)
