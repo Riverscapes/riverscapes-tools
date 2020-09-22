@@ -112,8 +112,9 @@ def calculate_bankfull_width(nhd_flowlines, precip):
 
     for feature in layer:
         a = feature.GetField("TotDASqKm")
-        a = a if a is not None else 0.0
+        a = a if a is not None and a >= 0 else 0.0
         w = 0.177 * (a ** 0.397) * (p ** 0.453)
+
         feature.SetField(fieldname_bfbuffer, w)
         layer.SetFeature(feature)
         feature = None
