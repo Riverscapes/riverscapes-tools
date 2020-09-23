@@ -18,3 +18,6 @@ ParamID,Name,Description,Aliases,DataUnits,EquationUnits,Conversion,Definition
 17,A7500,"Percent of drainage area above 7,500ft",A7500,percent,percent,1,"Percentage of the drainage area above 7,500ft elevation"
 18,JANMINT2K,Mean Min January Temp,JANMINT2K,degrees celcius,degrees celcius,1,Mean Minimum January Temperature from 2K resolution PRISM 1961-1990 data
 19,SOILCAPACITY,Average Soil Capacity,SOILCAPACITY,milimeteres,inches,0.0393701,Average Soil Capacity (From NRCS)
+20,MINANTEMP,Minimum Annual Temperature,MINANTEMP,degrees fahrenheit,degrees fahrenheit,1,Mean annual minimum air temperature in degrees Fahrenheit (PRISM)
+21,MAXELEV,Maximum Basin Elevation,MAXELEV,metres,feet,3.28084,
+22,DRAINDENS,Drainage Density,DRAINDENS,km per sq. km,km per sq. km,1,"Basin drainage density; defined as total stream length divided by drainage area, in kilometers per square kilomete"
