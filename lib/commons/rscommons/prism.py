@@ -139,7 +139,6 @@ def buffer_by_field(flowlines, field, epsg, min_buffer=None):
         flowlines (str): feature class of line features to buffer
         field (str): field with buffer value
         epsg (int): output srs
-        conversion_factor (int, optional): apply a conversion value for the buffer value. Defaults to 1.
         min_buffer: use this buffer value for field values that are less than this
 
     Returns:
