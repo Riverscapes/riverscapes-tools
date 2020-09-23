@@ -158,7 +158,7 @@ def get_geometry_union(inpath, epsg, attribute_filter=None):
     if attribute_filter:
         layer.SetAttributeFilter(attribute_filter)
 
-    out_spatial_ref, transform = get_transform_from_epsg(in_spatial_ref, epsg)
+    _out_spatial_ref, transform = get_transform_from_epsg(in_spatial_ref, epsg)
 
     geom = None
     progbar = ProgressBar(layer.GetFeatureCount(), 50, "Unioning features")
@@ -799,6 +799,17 @@ def _rough_convert_metres_to_shapefile_units(shapefile_path, distance):
 
     return _rough_convert_metres_to_dataset_units(in_spatial_ref, extent, distance)
 
+
+def _rough_convert_metres_to_gpkg_units(gpkg_path, distance):
+
+    driver = ogr.GetDriverByName("GPKG")
+    data_source = driver.Open(gpkg_path, 0)
+    layer = data_source.GetLayer()
+    in_spatial_ref = layer.GetSpatialRef()
+    extent = layer.GetExtent()
+    data_source = None
+
+    return _rough_convert_metres_to_dataset_units(in_spatial_ref, extent, distance)
 
 def _rough_convert_metres_to_raster_units(raster_path, distance):
 

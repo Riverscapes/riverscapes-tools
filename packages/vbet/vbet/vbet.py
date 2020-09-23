@@ -70,12 +70,12 @@ def vbet(huc, flowlines, flowareas, orig_slope, max_slope, orig_hand, hillshade,
     log = Logger('VBET')
     log.info('Starting VBET v.{}'.format(cfg.version))
 
-    project, realization, proj_nodes = create_project(huc, project_folder)
+    project, _realization, proj_nodes = create_project(huc, project_folder)
 
     # Copy the inp
-    proj_slope_node, proj_slope = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['SLOPE_RASTER'], orig_slope)
-    proj_hand_node, proj_hand = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HAND_RASTER'], orig_hand)
-    hillshade_node, hillshade = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], hillshade)
+    _proj_slope_node, proj_slope = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['SLOPE_RASTER'], orig_slope)
+    _proj_hand_node, proj_hand = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HAND_RASTER'], orig_hand)
+    _hillshade_node, hillshade = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], hillshade)
 
     # Create a copy of the flow lines with just the perennial and also connectors inside flow areas
     project.add_project_vector(proj_nodes['Inputs'], LayerTypes['FLOWLINES'], flowlines)
@@ -88,9 +88,9 @@ def vbet(huc, flowlines, flowareas, orig_slope, max_slope, orig_hand, hillshade,
     # Get raster resolution as min buffer and apply bankfull width buffer to reaches
     with rasterio.open(proj_slope) as raster:
         t = raster.transform
-        min_buffer = (t[0] + (-t[4])) / 2
-    conversion = _rough_convert_metres_to_raster_units(proj_slope, 1)
-    reach_polygon = buffer_by_field(vbet_network_path, "BFwidth", cfg.OUTPUT_EPSG, conversion, min_buffer)
+        min_buffer = (t[0] + abs(t[4])) / 2
+
+    reach_polygon = buffer_by_field(vbet_network_path, "BFwidth", cfg.OUTPUT_EPSG, min_buffer)
     log.info("Buffering Polyine by bankfull width buffers")
 
     # Old single 25m buffer
