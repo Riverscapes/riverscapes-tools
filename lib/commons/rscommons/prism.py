@@ -4,10 +4,10 @@ from osgeo import ogr
 from shapely.wkt import loads as wkt_load
 from shapely.geometry import mapping, shape, Polygon, MultiPolygon
 from shapely.ops import unary_union
-from rscommons.shapefile import get_transform_from_epsg
+from rscommons.shapefile import get_transform_from_epsg, _rough_convert_metres_to_shapefile_units
 
 
-def load_mean_annual_data(gpkg, input_csv, attribute_name):
+def load_mean_annual_data(gpkg, input_csv, attribute_name, epsg):
     """
     Loads PRISM attribute csv file into PRISM geopackage as mean annual value
 
@@ -22,6 +22,9 @@ def load_mean_annual_data(gpkg, input_csv, attribute_name):
     source = driver.Open(gpkg, 1)
     layer = source.GetLayerByName("PRISM_Data")
 
+    in_spatial_ref = layer.GetSpatialRef()
+    _out_spatial_ref, transform = get_transform_from_epsg(in_spatial_ref, epsg)
+
     # Read through CSV Lines and write to layer features
     layer.StartTransaction()
     with open(input_csv, 'r') as csvfile:
@@ -35,6 +38,10 @@ def load_mean_annual_data(gpkg, input_csv, attribute_name):
             # Convert values into annual precip in mm
             tot = (float(sum(valint)) / 100.0) / years
             feature = layer.GetFeature(int(row[0]))
+
+            new_geom = feature.GetGeometryRef()
+            new_geom.Transform(transform)
+            feature.SetGeometry(new_geom)
             feature.SetField(attribute_name, tot)
             layer.SetFeature(feature)
             feature = None
@@ -125,17 +132,17 @@ def calculate_bankfull_width(nhd_flowlines, precip):
     return
 
 
-def buffer_by_field(flowlines, field, epsg, conversion=1):
+def buffer_by_field(flowlines, field, epsg, min_buffer=None):
     """generate buffered polygons by value in field
 
     Args:
         flowlines (str): feature class of line features to buffer
         field (str): field with buffer value
         epsg (int): output srs
-        conversion (int, optional): apply a conversion value for the buffer value. Defaults to 1.
+        min_buffer: use this buffer value for field values that are less than this
 
     Returns:
-        geometry: unioned polygon geometry of buffered lines 
+        geometry: unioned polygon geometry of buffered lines
     """
 
     driver = ogr.GetDriverByName("ESRI Shapefile")
@@ -144,12 +151,13 @@ def buffer_by_field(flowlines, field, epsg, conversion=1):
     in_spatial_ref = layer.GetSpatialRef()
 
     _out_spatial_ref, transform = get_transform_from_epsg(in_spatial_ref, epsg)
+    conversion = _rough_convert_metres_to_shapefile_units(flowlines, 1)
 
     outpolys = []
     for feature in layer:
         geom = feature.GetGeometryRef()
-        bufferDist = feature.GetField(field)
-        geom_buffer = geom.Buffer(bufferDist * conversion)
+        bufferDist = feature.GetField(field) * conversion
+        geom_buffer = geom.Buffer(bufferDist if bufferDist > min_buffer else min_buffer)
         geom_buffer.Transform(transform)
         outpolys.append(wkt_load(geom_buffer.ExportToWkt()))
 
@@ -165,7 +173,7 @@ def bankfull_width_buffer(flowlines, precip):
 
     Args:
         flowlines (str): feature class of line features to buffer
-        precip (str): mean annual precipitation (mm) for the HUC
+        precip (float): mean annual precipitation (mm) for the HUC
 
     Returns:
         geometry: unioned polygon geometry of buffered lines 

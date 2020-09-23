@@ -37,6 +37,7 @@ from vbet.vbet_network import vbet_network
 from rscommons.util import safe_makedirs, parse_metadata
 from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, dotenv
 from rscommons.shapefile import _rough_convert_metres_to_raster_units, polygonize, copy_feature_class, intersect_feature_classes, remove_holes, get_pts, get_rings, get_geometry_unary_union, export_geojson
+from rscommons.prism import buffer_by_field
 from vbet.__version__ import __version__
 
 cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/VBET.xsd', __version__)
@@ -50,9 +51,9 @@ LayerTypes = {
     'CHANNEL_RASTER': RSLayer('Channel Raster', 'CHANNEL_RASTER', 'Raster', 'inputs/channel.tif'),
     'FLOWLINES': RSLayer('NHD Flowlines', 'FLOWLINES', 'Vector', 'inputs/flowlines.shp'),
     'FLOW_AREA': RSLayer('NHD Flow Areas', 'FLOW_AREA', 'Vector', 'inputs/flow_areas.shp'),
-    'SLOPE_EV': RSLayer('Evidence Raster', 'SLOPE_EV_TMP', 'Raster', 'intermediates/SlopeEvidenceIn.tif'),
-    'HAND_EV': RSLayer('Evidence Raster', 'HAND_EV_TMP', 'Raster', 'intermediates/HandEvidenceIn.tif'),
-    'CHANNEL_MASK': RSLayer('Evidence Raster', 'CH_MASK', 'Raster', 'intermediates/ChannelMask.tif'),
+    'SLOPE_EV': RSLayer('Evidence Raster', 'SLOPE_EV_TMP', 'Raster', 'intermediates/nLoE_Slope.tif'),
+    'HAND_EV': RSLayer('Evidence Raster', 'HAND_EV_TMP', 'Raster', 'intermediates/nLoE_HAND.tif'),
+    'CHANNEL_MASK': RSLayer('Evidence Raster', 'CH_MASK', 'Raster', 'intermediates/nLOE_Channels.tif'),
     'EVIDENCE': RSLayer('Evidence Raster', 'EVIDENCE', 'Raster', 'intermediates/Evidence.tif'),
     'COMBINED_VRT': RSLayer('Combined VRT', 'COMBINED_VRT', 'VRT', 'intermediates/slope-hand-channel.vrt'),
     'VBET_NETWORK': RSLayer('VBET Network', 'VBET_NETWORK', 'Vector', 'intermediates/vbet_network.shp'),
@@ -69,12 +70,12 @@ def vbet(huc, flowlines, flowareas, orig_slope, max_slope, orig_hand, hillshade,
     log = Logger('VBET')
     log.info('Starting VBET v.{}'.format(cfg.version))
 
-    project, realization, proj_nodes = create_project(huc, project_folder)
+    project, _realization, proj_nodes = create_project(huc, project_folder)
 
     # Copy the inp
-    proj_slope_node, proj_slope = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['SLOPE_RASTER'], orig_slope)
-    proj_hand_node, proj_hand = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HAND_RASTER'], orig_hand)
-    hillshade_node, hillshade = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], hillshade)
+    _proj_slope_node, proj_slope = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['SLOPE_RASTER'], orig_slope)
+    _proj_hand_node, proj_hand = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HAND_RASTER'], orig_hand)
+    _hillshade_node, hillshade = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], hillshade)
 
     # Create a copy of the flow lines with just the perennial and also connectors inside flow areas
     project.add_project_vector(proj_nodes['Inputs'], LayerTypes['FLOWLINES'], flowlines)
@@ -84,11 +85,20 @@ def vbet(huc, flowlines, flowareas, orig_slope, max_slope, orig_hand, hillshade,
     vbet_network(flowlines, flowareas, cfg.OUTPUT_EPSG, vbet_network_path)
     project.add_project_vector(proj_nodes['Intermediates'], LayerTypes['VBET_NETWORK'])
 
+    # Get raster resolution as min buffer and apply bankfull width buffer to reaches
+    with rasterio.open(proj_slope) as raster:
+        t = raster.transform
+        min_buffer = (t[0] + abs(t[4])) / 2
+
+    reach_polygon = buffer_by_field(vbet_network_path, "BFwidth", cfg.OUTPUT_EPSG, min_buffer)
+    log.info("Buffering Polyine by bankfull width buffers")
+
+    # Old single 25m buffer
     # Load all the reaches into single polyline and also buffer them into single polygon
-    polyline = get_geometry_unary_union(vbet_network_path, cfg.OUTPUT_EPSG)
-    reach_buffer = _rough_convert_metres_to_raster_units(proj_slope, 25)
-    log.info('Buffering Polyline by: {}'.format(reach_buffer))
-    reach_polygon = polyline.buffer(reach_buffer)
+    # polyline = get_geometry_unary_union(vbet_network_path, cfg.OUTPUT_EPSG)
+    # reach_buffer = _rough_convert_metres_to_raster_units(proj_slope, 25)
+    # log.info('Buffering Polyline by: {}'.format(reach_buffer))
+    # reach_polygon = polyline.buffer(reach_buffer)
 
     # Create channel polygon by combining the reach polygon with the flow area polygon
     area_polygon = get_geometry_unary_union(flowareas, cfg.OUTPUT_EPSG)
@@ -187,8 +197,8 @@ def vbet(huc, flowlines, flowareas, orig_slope, max_slope, orig_hand, hillshade,
             progbar.finish()
 
         # Hand and slope are duplicated so we can safely remove them
-        rasterio.shutil.delete(slope_ev)
-        rasterio.shutil.delete(hand_ev)
+        # rasterio.shutil.delete(slope_ev)
+        # rasterio.shutil.delete(hand_ev)
         # The remaining rasters get added to the project
         project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['EVIDENCE'])
 

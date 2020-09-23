@@ -27,9 +27,9 @@ from rscommons.download_dem import download_dem, verify_areas
 from rscommons.science_base import download_shapefile_collection, get_ntd_urls, us_states
 from rscommons.geographic_raster import gdal_dem_geographic
 from rscommons.download_hand import download_hand
-from rscommons.prism import calculate_bankfull_width
 from rscommons.raster_buffer_stats import raster_buffer_stats2
 from rscommons.shapefile import get_geometry_union
+from rscommons.prism import mean_area_precip, calculate_bankfull_width
 
 from rscontext.flow_accumulation import flow_accumulation, flow_accum_to_drainage_area
 from rscontext.clip_ownership import clip_ownership
