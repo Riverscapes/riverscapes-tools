@@ -61,7 +61,12 @@ def clean_nhd_data(huc, download_folder, unzip_folder, out_dir, out_epsg, force_
 
 def download_unzip_nhd(huc, download_folder, unzip_folder, out_epsg, force_download):
 
-    nhd_url = get_nhdhr_url(huc[:4])
+    try:
+        nhd_url = get_nhdhr_url(huc[:4])
+    except Exception:
+        # Fallback to guess at an address
+        nhd_url = 'https://prd-tnm.s3.amazonaws.com/StagedProducts/Hydrography/NHDPlusHR/Beta/GDB/NHDPLUS_H_{}_HU4_GDB.zip'.format(huc[:4])
+
     safe_makedirs(download_folder)
     safe_makedirs(unzip_folder)
 
