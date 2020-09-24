@@ -91,8 +91,8 @@ def rs_context(huc, existing_veg, historic_veg, ownership, ecoregions, prism_fol
     except ValueError:
         raise Exception('Invalid HUC identifier "{}". Must be an integer'.format(huc))
 
-    if not (len(huc) == 4 or len(huc) == 8):
-        raise Exception('Invalid HUC identifier. Must be four digit integer')
+    if not (len(huc) in [4, 8, 10, 12]):
+        raise Exception('Invalid HUC identifier. Must be 4, 8, 10 or 12 digit integer')
 
     safe_makedirs(output_folder)
     safe_makedirs(download_folder)
