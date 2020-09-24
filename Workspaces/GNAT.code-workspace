@@ -1,0 +1,15 @@
+{
+	"folders": [
+		{
+			"path": "../packages/gnat"
+		},
+		{
+			"path": "../lib"
+		},
+		{
+			"name": "Workspaces",
+			"path": "."
+		}
+	],
+	"settings": {}
+}
