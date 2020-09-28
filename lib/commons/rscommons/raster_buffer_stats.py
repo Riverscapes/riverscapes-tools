@@ -140,7 +140,7 @@ def raster_buffer_stats2(polygons, raster):
             # print('ReachID {}'.format(feature.GetField('ReachID')))
 
             # retrieve an array for the cells under the polygon
-            raw_raster, out_transform = mask(src, [polygon], crop=True)
+            raw_raster, _out_transform = mask(src, [polygon], crop=True)
             mask_raster = np.ma.masked_values(raw_raster, src.nodata)
             # print(mask_raster)
 
@@ -149,13 +149,13 @@ def raster_buffer_stats2(polygons, raster):
             minimum = None
 
             if not mask_raster.mask.all():
-                mean = mask_raster.mean()
+                mean = float(mask_raster.mean())
                 maximum = float(mask_raster.max())
                 minimum = float(mask_raster.min())
                 count = int(mask_raster.count())
-                sum = float(mask_raster.sum())
+                rsum = float(mask_raster.sum())
 
-            results[reach_id] = {'Mean': mean, 'Maximum': maximum, 'Minimum': minimum, 'Count': count, 'Sum': sum}
+            results[reach_id] = {'Mean': mean, 'Maximum': maximum, 'Minimum': minimum, 'Count': count, 'Sum': rsum}
         progbar.finish()
     log.info('Process completed successfully.')
     return results
