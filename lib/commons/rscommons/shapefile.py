@@ -942,6 +942,11 @@ def intersect_geometry_with_feature_class(geometry, feature_class, epsg, out_pat
 
     geom_inter = geometry.intersection(geom_union)
 
+    # Nothing to do if the intersection is empty
+    if geom_inter.is_empty:
+        data_source = None
+        return
+
     # Single features and collections need to be converted into Multi-features
     if output_geom_type == ogr.wkbMultiPoint and not isinstance(geom_inter, MultiPoint):
         if isinstance(geom_inter, Point):
