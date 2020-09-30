@@ -51,7 +51,7 @@ def report(database, report_path):
 
     hydrology_plots(database, images_dir, inner_div)
     ownership(database, inner_div)
-    # vegetation(database, images_dir, inner_div)
+    vegetation(database, images_dir, inner_div)
     conservation(database, images_dir, inner_div)
 
     xmlstr = minidom.parseString(ET.tostring(html)).toprettyxml(indent="   ")
@@ -316,17 +316,19 @@ def ownership(database, elParent):
 
 
 def vegetation(database, image_dir, elParent):
+
     wrapper = ET.Element('div', attrib={'class': 'Vegetation'})
-    for epochid, veg_type in [(1, 'Historic Vegetation'), (2, 'Existing Vegetation')]:
+    for epochid, veg_type in [(2, 'Historic Vegetation'), (1, 'Existing Vegetation')]:
 
         header(2, veg_type, wrapper)
 
-        create_table_from_sql(['Type ID', 'Name', 'Effective Suitability', 'Override Suitability', 'Default Suitability', 'Total Area', '%'],
-                              'SELECT VT.VegetationID, Name, EffectiveSuitability, OverrideSuitability, DefaultSuitability, TotalArea , 100 * TotalArea / AreaSum "Percent"'
-                              ' FROM vwReachVegetationTypes VT INNER JOIN vwVegetationSuitability VS ON VT.VegetationID = VS.VegetationID'
-                              ' INNER JOIN (SELECT Sum(TotalArea) AS AreaSum FROM vwReachVegetationTypes)'
-                              ' WHERE EpochID = {} ORDER BY TotalArea DESC'.format(epochid),
-                              database, wrapper)
+        pEl = ET.Element('p')
+        pEl.text = 'The 30 most common {} types within the 100m reach buffer.'.format(veg_type.lower())
+        wrapper.append(pEl)
+
+        create_table_from_sql(['Epoch', 'Vegetation ID', 'Vegetation Type', 'Total Area (sqkm)'],
+                              'SELECT Epoch, VegetationID, Name, (CAST(TotalArea AS REAL) / 1000000) AS TotalAreaSqKm FROM vwReachVegetationTypes WHERE (EpochID = {}) AND (Buffer = 100) ORDER BY TotalArea DESC LIMIT 30'.format(epochid), database, wrapper)
+
     elParent.append(wrapper)
 
 
