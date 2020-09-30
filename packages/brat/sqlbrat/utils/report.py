@@ -326,8 +326,13 @@ def vegetation(database, image_dir, elParent):
         pEl.text = 'The 30 most common {} types within the 100m reach buffer.'.format(veg_type.lower())
         wrapper.append(pEl)
 
-        create_table_from_sql(['Epoch', 'Vegetation ID', 'Vegetation Type', 'Total Area (sqkm)'],
-                              'SELECT Epoch, VegetationID, Name, (CAST(TotalArea AS REAL) / 1000000) AS TotalAreaSqKm FROM vwReachVegetationTypes WHERE (EpochID = {}) AND (Buffer = 100) ORDER BY TotalArea DESC LIMIT 30'.format(epochid), database, wrapper)
+        create_table_from_sql(['Vegetation ID', 'Vegetation Type', 'Total Area (sqkm)', 'Default Suitability', 'Override Suitability', 'Effective Suitability'],
+                              """SELECT VegetationID,
+                              Name, (CAST(TotalArea AS REAL) / 1000000) AS TotalAreaSqKm,
+                              DefaultSuitability,
+                              OverrideSuitability,
+                              EffectiveSuitability
+                              FROM vwReachVegetationTypes WHERE (EpochID = {}) AND (Buffer = 100) ORDER BY TotalArea DESC LIMIT 30""".format(epochid), database, wrapper)
 
     elParent.append(wrapper)
 
@@ -432,12 +437,12 @@ def create_table_from_dict(values, elParent, attrib=None):
     """Keys go in first col, values in second
 
     Arguments:
-        values {[type]} -- [description]
-        database {[type]} -- [description]
-        elParent {[type]} -- [description]
+        values {[type]} - - [description]
+        database {[type]} - - [description]
+        elParent {[type]} - - [description]
 
     Returns:
-        [type] -- [description]
+        [type] - - [description]
     """
     if attrib is None:
         attrib = {}

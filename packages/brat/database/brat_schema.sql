@@ -92,16 +92,28 @@ CREATE VIEW vwVegetationSuitability AS SELECT VT.VegetationID,
 CREATE VIEW vwReachVegetationTypes AS SELECT E.EpochID,
        E.Name Epoch,
        RV.VegetationID,
+       W.EcoregionID,
        VT.Name,
        Buffer,
-       Round(SUM(Area), 0) TotalArea
+       Round(SUM(Area), 0) TotalArea,
+       VS.DefaultSuitability,
+       VS.OverrideSuitability,
+       VS.EffectiveSuitability
   FROM ReachVegetation RV
        INNER JOIN
        VegetationTypes VT ON RV.VegetationID = VT.VegetationID
        INNER JOIN
        Epochs E ON VT.EpochID = E.EpochID
+       INNER JOIN
+       Reaches R ON RV.ReachID = R.ReachID
+       INNER JOIN
+       Watersheds W ON R.WatershedID = W.WatershedID
+       INNER JOIN
+       vwVegetationSuitability VS ON RV.VegetationID = VS.VegetationID AND 
+                                     W.EcoregionID = VS.EcoregionID
  GROUP BY RV.VegetationID,
-          Buffer
+          Buffer,
+          W.EcoregionID
  ORDER BY E.Name,
           TotalArea DESC
-/* vwReachVegetationTypes(EpochID,Epoch,VegetationID,Name,Buffer,TotalArea) */;
+/* vwReachVegetationTypes(EpochID,Epoch,VegetationID,Name,Buffer,TotalArea) */
