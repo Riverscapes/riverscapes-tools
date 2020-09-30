@@ -334,6 +334,32 @@ def vegetation(database, image_dir, elParent):
                               EffectiveSuitability
                               FROM vwReachVegetationTypes WHERE (EpochID = {}) AND (Buffer = 100) ORDER BY TotalArea DESC LIMIT 30""".format(epochid), database, wrapper)
 
+        try:
+            # Calculate the area weighted suitability
+            conn = sqlite3.connect(database)
+            curs = conn.cursor()
+            curs.execute("""SELECT WeightedSum / SumTotalArea FROM
+                        (SELECT Sum(CAST(TotalArea AS REAL) * CAST(EffectiveSuitability AS REAL) / 1000000) WeightedSum FROM vwReachVegetationTypes WHERE EpochID = {0} AND Buffer = 100)
+                        JOIN
+                        (SELECT CAST(Sum(TotalArea) AS REAL) / 1000000 SumTotalArea FROM vwReachVegetationTypes WHERE EpochID = {0} AND Buffer = 100)""".format(epochid))
+            area_weighted_avg_suitability = curs.fetchone()[0]
+
+            header(3, 'Suitability Breakdown', wrapper)
+            pEl = ET.Element('p')
+            pEl.text = """The area weighted average {} suitability is {}.
+                The breakdown of the percentage of the 100m buffer within each suitability class across all reaches in the watershed.""".format(veg_type.lower(), format_value(area_weighted_avg_suitability)[0])
+            wrapper.append(pEl)
+
+            create_table_from_sql(['Suitability Class', '% with 100m Buffer'],
+                                  """SELECT EffectiveSuitability, 100.0 * SArea / SumTotalArea FROM 
+                (SELECT CAST(Sum(TotalArea) AS REAL) / 1000000 SArea, EffectiveSuitability FROM vwReachVegetationTypes WHERE EpochID = {0} AND Buffer = 100 GROUP BY EffectiveSuitability)
+                JOIN
+                (SELECT CAST(Sum(TotalArea) AS REAL) / 1000000 SumTotalArea FROM vwReachVegetationTypes WHERE EpochID = {0} AND Buffer = 100)
+                ORDER BY EffectiveSuitability""".format(epochid), database, wrapper)
+        except Exception as ex:
+            log = Logger('Report')
+            log.warning('Error calculating vegetation report')
+
     elParent.append(wrapper)
 
 
