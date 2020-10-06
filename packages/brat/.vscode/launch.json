@@ -62,6 +62,16 @@
       ]
     },
     {
+      "name": "BRAT Parameters",
+      "type": "python",
+      "request": "launch",
+      "module": "scripts.crb_parameters2",
+      "console": "integratedTerminal",
+      "args": [
+        "{env:GOOGLE_SHEET}"
+      ]
+    },
+    {
       "name": "Version Bump",
       "type": "python",
       "module": "rscommons.version",
