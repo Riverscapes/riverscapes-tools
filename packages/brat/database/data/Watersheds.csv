@@ -1027,15 +1027,15 @@ WatershedID,Name,AreaSqKm,States,Geometry,EcoregionID,QLow,Q2,MaxDrainage,Metada
 04150200,Lake Ontario,20480.68,"CN,NY",,83,0.000133 * (DRNAREA ** 1.05) * (PRECIP) ** 2.1,0.000258 * (DRNAREA ** 0.893) * (PRECIP) ** 3.15,,,Grabbing Saras eqiations for OREGON region 5
 04150409,Richelieu River,2565.47,"CN,NY,VT",,83,0.000133 * (DRNAREA ** 1.05) * (PRECIP) ** 2.1,0.000258 * (DRNAREA ** 0.893) * (PRECIP) ** 3.15,,,Grabbing Saras eqiations for OREGON region 5
 10180001,North Platte Headwaters,3689.37,CO,,21,0.000133 * (DRNAREA ** 1.05) * (PRECIP) ** 2.1,0.000258 * (DRNAREA ** 0.893) * (PRECIP) ** 3.15,,,Grabbing Saras eqiations for OREGON region 5
-10190001,South Platte Headwaters,4154.89,CO,,21,0.000133 * (DRNAREA ** 1.05) * (PRECIP) ** 2.1,0.000258 * (DRNAREA ** 0.893) * (PRECIP) ** 3.15,,,Grabbing Saras eqiations for OREGON region 5
-10190002,Upper South Platte,4790.8,CO,,21,0.000133 * (DRNAREA ** 1.05) * (PRECIP) ** 2.1,0.000258 * (DRNAREA ** 0.893) * (PRECIP) ** 3.15,,,Grabbing Saras eqiations for OREGON region 5
-10190003,Middle South Platte-Cherry Creek,7439.9,CO,,25,0.000133 * (DRNAREA ** 1.05) * (PRECIP) ** 2.1,0.000258 * (DRNAREA ** 0.893) * (PRECIP) ** 3.15,,,Grabbing Saras eqiations for OREGON region 5
-10190004,Clear,1477.21,CO,,21,0.000133 * (DRNAREA ** 1.05) * (PRECIP) ** 2.1,0.000258 * (DRNAREA ** 0.893) * (PRECIP) ** 3.15,,,Grabbing Saras eqiations for OREGON region 5
-10190005,St. Vrain,2538.8,CO,,21,0.000133 * (DRNAREA ** 1.05) * (PRECIP) ** 2.1,0.000258 * (DRNAREA ** 0.893) * (PRECIP) ** 3.15,,,Grabbing Saras eqiations for OREGON region 5
+10190001,South Platte Headwaters,4154.89,CO,,21,0.000133 * (DRNAREA ** 1.05) * (PRECIP) ** 2.2,0.000258 * (DRNAREA ** 0.893) * (PRECIP) ** 3.16,,,Grabbing Saras eqiations for OREGON region 6
+10190002,Upper South Platte,4790.8,CO,,21,(10**-3.46)*(DRNAREA**1.10)*(PRECIP**1.59),(10**1.26)*(DRNAREA**0.52)*(I6H100Y**0.35),6313,,https://pubs.usgs.gov/sir/2009/5136/pdf/SIR09-5136.pdf
+10190003,Middle South Platte-Cherry Creek,7439.9,CO,,25,(10**-3.46)*(DRNAREA**1.10)*(PRECIP**1.59),(10**1.26)*(DRNAREA**0.52)*(I6H100Y**0.35),21064,,https://pubs.usgs.gov/sir/2009/5136/pdf/SIR09-5136.pdf
+10190004,Clear,1477.21,CO,,21,(10**-3.46)*(DRNAREA**1.10)*(PRECIP**1.59),(10**1.26)*(DRNAREA**0.52)*(I6H100Y**0.35),1736,,https://pubs.usgs.gov/sir/2009/5136/pdf/SIR09-5136.pdf
+10190005,St. Vrain,2538.8,CO,,21,(10**-3.46)*(DRNAREA**1.10)*(PRECIP**1.59),(10**1.26)*(DRNAREA**0.52)*(I6H100Y**0.35),2344,,https://pubs.usgs.gov/sir/2009/5136/pdf/SIR09-5136.pdf
 10190006,Big Thompson,2156.02,CO,,21,0.000133 * (DRNAREA ** 1.05) * (PRECIP) ** 2.1,0.000258 * (DRNAREA ** 0.893) * (PRECIP) ** 3.15,,,Grabbing Saras eqiations for OREGON region 5
 10190007,Cache La Poudre,4896.46,"CO,WY",,21,0.000133 * (DRNAREA ** 1.05) * (PRECIP) ** 2.1,0.000258 * (DRNAREA ** 0.893) * (PRECIP) ** 3.15,,,Grabbing Saras eqiations for OREGON region 5
 10190008,Lone Tree-Owl,1496.9,"CO,WY",,25,0.000133 * (DRNAREA ** 1.05) * (PRECIP) ** 2.1,0.000258 * (DRNAREA ** 0.893) * (PRECIP) ** 3.15,,,Grabbing Saras eqiations for OREGON region 5
-10190010,Kiowa,1856.47,CO,,25,0.000133 * (DRNAREA ** 1.05) * (PRECIP) ** 2.1,0.000258 * (DRNAREA ** 0.893) * (PRECIP) ** 3.15,,,Grabbing Saras eqiations for OREGON region 5
+10190010,Kiowa,1856.47,CO,,25,(10**-3.46)*(DRNAREA**1.10)*(PRECIP**1.59),(10**1.26)*(DRNAREA**0.52)*(I6H100Y**0.35),26890,,https://pubs.usgs.gov/sir/2009/5136/pdf/SIR09-5136.pdf
 10190011,Bijou,3583.73,CO,,26,0.000133 * (DRNAREA ** 1.05) * (PRECIP) ** 2.1,0.000258 * (DRNAREA ** 0.893) * (PRECIP) ** 3.15,,,Grabbing Saras eqiations for OREGON region 5
 10190012,Middle South Platte-Sterling,7725.48,"CO,NE",,25,0.000133 * (DRNAREA ** 1.05) * (PRECIP) ** 2.1,0.000258 * (DRNAREA ** 0.893) * (PRECIP) ** 3.15,,,Grabbing Saras eqiations for OREGON region 5
 10190013,Beaver,2865.6,CO,,25,0.000133 * (DRNAREA ** 1.05) * (PRECIP) ** 2.1,0.000258 * (DRNAREA ** 0.893) * (PRECIP) ** 3.15,,,Grabbing Saras eqiations for OREGON region 5
