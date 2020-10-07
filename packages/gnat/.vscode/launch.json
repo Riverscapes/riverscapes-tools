@@ -38,6 +38,25 @@
       ],
       "request": "launch",
       "console": "integratedTerminal"
-    }    
+    },
+    {
+      "name": "Confinement",
+      "type": "python",
+      "request": "launch",
+      "module": "confinement.confinement",
+      "console": "integratedTerminal",
+      // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
+      "args": [
+        "${input:HUC}",
+        "D:\\NAR\\Projects\\Confinement\\flowlines.shp",
+        "D:\\NAR\\Projects\\Confinement\\bf.shp",
+        "D:\\NAR\\Projects\\Confinement\\vbet100.shp",
+        "D:\\NAR\\Projects\\Confinement\\Tool_Updates\\test",
+        // "--temp_folder", "{env:DOWNLOAD_FOLDER}/tmp",
+        // "--force",
+        // "--parallel",
+        "--verbose"
+      ]
+    },    
   ]
 }
