@@ -143,6 +143,8 @@ def rs_context(huc, existing_veg, historic_veg, ownership, ecoregions, prism_fol
         if ptype.lower() == 'ppt':
             polygon = get_geometry_union(nhd[boundary], cfg.OUTPUT_EPSG)
             mean_annual_precip = raster_buffer_stats2({1: polygon}, project_raster_path)[1]['Mean']
+            log.info('Mean annual precipitation for HUC {} is {} mm'.format(huc, mean_annual_precip))
+            project.add_metadata({'mean_annual_precipitation_mm': str(mean_annual_precip)})
 
             calculate_bankfull_width(nhd['NHDFlowline'], mean_annual_precip)
 
