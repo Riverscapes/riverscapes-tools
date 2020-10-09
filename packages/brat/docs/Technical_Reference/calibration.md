@@ -3,31 +3,27 @@ title: CONUS BRAT Calibration
 weight: 7
 ---
 
-The following instructions describe how to calibrate BRAT within the continental United States. You will need a completed [BRAT run]({{site.baseurl}}/Technical_Reference/architecture.html) before you can perform these steps. The objective is to calibrate an existing BRAT run by replacing the placeholder parameters with correct, watershed specific parameters that improve the results.
+The following instructions describe how to parameterize BRAT within the continental United States. Users outside the United States should refer to the [international instructions]({{site.baseurl}}/Technical_Reference/international.html).
 
-# 1. Pick a Watershed
+# BRAT Parameter Database
 
-Identify the eight digit HUC that you want to calibrate. Write down the eight digit code because you are going to need to cut and paste it a lot during the following steps.
+BRAT Parameters for the continental Unoted States are stored in a PostGres database. Email the BRAT development team at (info@northarrowresearch.com) for access to this database should you wish to get access to this database and contribute parameters.
 
-If a previous version of BRAT exists for your watershed then it is strongly recommended that you download and have those results available. Comparing these values with those from the new BRAT will be extremely helpful. Indeed, it is strongly recommended that the first time you attempt to calibrate BRAT that you perform this for a watershed that has existing results. This will help you understand the desired output and hone your skills.
+The BRAT parameter database schema is a subset of the database that is generated as part of each BRAT run. When the BRAT model is run, the contents of the parameter database are used to seed a copy of the model run database on your local computer. In this way the BRAT parameter database is intended to act as the central repository of BRAT parameters for BRAT runs, and a single place where analysts can share these parameters.
 
-# 2. Software
+Refer to the [BRAT model database documentation](database.html) for a description of the database tables. 
 
-You are going to need the following software. Note that you don't actually need the BRAT software!
+![BRAT Parameter Database](https://docs.google.com/drawings/d/e/2PACX-1vSKwIBhCgP7RBw6SdceOFOUrYvoOibm_e4I9-tJXGrH73aQJdwte4wP8K2MY3QnRCU6mfWqX4yquZ7M/pub?w=561&h=666)
 
-1. Desktop GIS. ArcGIS is going to make this easier, and that's what the following instructions are based around. QGIS will work but you will have to do some manual symbolization.
-1. The [RAVE](http://rave.riverscapes.xyz) AddIn for ArcGIS will be helpful.
-1. [SQLiteStudio](https://sqlitestudio.pl) is free software for working with SQLite databases.
+# Software
 
-# 3. Google Sheet
+To edit BRAT parameters you will need a piece of software that can connect to PostGres databases. We recommend [DataGrip](https://www.jetbrains.com/datagrip/) for which there is a free educational license. With DataGrip you can enter parameters using SQL statements or there are also editing tools that let you edit the data within a table, like a spreadsheet.
 
-BRAT parameters for the continental United States are stored in a Google Sheet. Use your browser to open this spreadsheet and read the instructions worksheet carefully. 
+Contact the BRAT development team (info@norrtharrowresearch.com) for credentials to access this database.
 
-[https://docs.google.com/spreadsheets/d/1LcrQwNuY4kYgC2DgZ8AbIN_hERgm3PwtaaZLtYWsFoY/edit?usp=sharing](https://docs.google.com/spreadsheets/d/1LcrQwNuY4kYgC2DgZ8AbIN_hERgm3PwtaaZLtYWsFoY/edit?usp=sharing)
+![DataGrip]({{site.baseurl}}/assets/images/calibration/data_grip_edit_parameters.png)
 
-Switch to the Watersheds worksheet and filter the worksheet to the eight digit HUC that you are calibrating. This can be done by clicking the button to the right of the column heading ***\*WatershedID\**** in the top, leftmost cell. Type your HUC code and click enter to filter the rows.
-
-![filter]({{site.baseurl}}/assets/images/calibration/watershed_filter.png)
+# Parameters
 
 # 4. Maximum Drainage Area
 
