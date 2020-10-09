@@ -62,13 +62,17 @@
       ]
     },
     {
-      "name": "BRAT Parameters",
+      "name": "Update BRAT Parameters",
       "type": "python",
       "request": "launch",
-      "module": "scripts.crb_parameters2",
+      "module": "scripts.update_brat_parameters",
       "console": "integratedTerminal",
       "args": [
-        "{env:GOOGLE_SHEET}"
+        "{env:POSTGRES_HOST}",
+        "{env:POSTGRES_PORT}",
+        "{env:POSTGRES_DB}",
+        "{env:POSTGRES_USER}",
+        "{env:POSTGRES_PASSWORD}"
       ]
     },
     {
