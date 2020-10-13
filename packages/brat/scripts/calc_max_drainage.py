@@ -53,7 +53,7 @@ def main():
     parser.add_argument('--bankfull', help='Bankfull width at which drainage area threshold is calculated', default=30.0, type=float)
     args = parser.parse_args()
 
-    calcmax_drainage(args.huc_search, args.precip_raster, args.wbd, args.bankfull)
+    calc_max_drainage(args.huc_search, args.precip_raster, args.wbd, args.bankfull)
 
 
 if __name__ == '__main__':
