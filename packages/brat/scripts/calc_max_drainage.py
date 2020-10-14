@@ -40,9 +40,12 @@ def calc_max_drainage(huc_search, precip_raster, wbd, bankfull):
     stats = raster_buffer_stats2(watersheds, precip_raster)
 
     for huc, stat in stats.items():
-        mean_precip = stat['Mean']
-        max_drain = pow(bankfull / (0.177) / (pow(mean_precip, 0.453)), 1 / 0.397)
-        print("UPDATE watersheds SET max_drainage = {} WHERE watershed_id = '{}'".format(max_drain, huc))
+
+        # PRISM precipitation is in mm but Beechie and Imaki require it in cm
+        mean_precip_cm = stat['Mean'] / 10.0
+
+        max_drain = pow(bankfull / (0.177) / (pow(mean_precip_cm, 0.453)), 1 / 0.397)
+        print("UPDATE watersheds SET max_drainage = {} WHERE watershed_id = '{}' AND ((max_drainage IS NULL) OR (max_drainage = 0)); -- {}".format(int(max_drain), huc, mean_precip_cm))
 
 
 def main():
