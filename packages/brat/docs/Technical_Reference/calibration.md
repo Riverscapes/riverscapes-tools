@@ -87,3 +87,44 @@ Information on how to import vegetation suitability values from old pyBRAT proje
 # 7. Run BRAT
 
 Once you have updated all three parameters for a particular watershed you should contact North Arrow Research to re-run BRAT for your watershed. The results will automatically be uploaded to the riverscapes Data Warehouse where you can download them and review the affects of your changes.
+
+# Useful BRAT Parameter Database Commands
+
+You can execute these commands by right clicking on the database node in DataGrip and choosing to open a new Console. Cut and paste in the following commands and then tweak as necessary.
+
+To update the max drainage value of a particular HUC:
+
+```sql
+UPDATE watersheds SET max_drainage = 1234.5678 WHERE watershed_id = '17050001'
+```
+
+To update the default suitability to zero for the existing vegetation type *Alaska Arctic Tidal Marsh* which has the LandFire ID of 2222:
+
+```sql
+UPDATE vegetation_types SET default_suitability = 0 WHERE vegetation_id = 2222
+```
+
+To update default suitabilities for several vegetation types:
+
+```sql
+UPDATE vegetation_types SET default_suitability = 3 WHERE vegetation_id IN (1234, 4567, 7777)
+```
+
+To add an override vegetation suitability for a specific vegetation type and ecoregion:
+
+```sql
+INSERT INTO vegetation_overrides (vegetation_id, ecoregion_it, override_suitability) VALUES (2222, 14, 0);
+```
+
+To find all the vegetation overrides for a particular ecoregion:
+
+```sql
+SELECT * FROM vegetation_overrides WHERE ecoregion_id = 14
+```
+
+To delete a particular vegetation override:
+
+```sql
+DELETE FROM vegetation_overrides WHERE vegetation_id = 2222 and ecoregion_id = 14
+```
+
