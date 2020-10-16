@@ -1,9 +1,10 @@
 import csv
 import os
 import argparse
-from rscommons import dotenv
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from rscommons import dotenv
+from rscommons import ProgressBar
 
 
 relative_path = '../database/data'
@@ -27,124 +28,144 @@ def update_brat_parameters(host, port, database, user_name, password, csv_dir):
     csv_dir = csv_dir if csv_dir else os.path.dirname(os.path.abspath(__file__))
 
     watershed_csv = os.path.join(csv_dir, relative_path, 'Watersheds.csv')
-    ecoregion_csv = os.path.join(csv_dir, relative_path, 'Ecoregions.csv')
     hydro_params_csv = os.path.join(csv_dir, relative_path, 'HydroParams.csv')
     veg_type_csv = os.path.join(csv_dir, relative_path, 'VegetationTypes.csv')
     override_csv = os.path.join(csv_dir, relative_path, 'intersect', 'VegetationOverrides.csv')
+    watershed_hydro_params_csv = os.path.join(csv_dir, relative_path, 'intersect', 'WatershedHydroParams.csv')
 
-    ecoregions = load_ecoregions(ecoregion_csv)
-    hydro_params = load_hydro_params(hydro_params_csv)
-    veg_types = load_veg_types(veg_type_csv)
+    # ecoregions = load_ecoregions(ecoregion_csv)
+    # hydro_params = load_hydro_params(hydro_params_csv)
+    # veg_types = load_veg_types(veg_type_csv)
 
     conn = psycopg2.connect(host=host, port=port, database=database, user=user_name, password=password)
     curs = conn.cursor(cursor_factory=RealDictCursor)
 
-    value_updates = 0
-    value_updates += update_watersheds(curs, ecoregions, hydro_params, watershed_csv)
-    value_updates += update_vegetation_types(curs, veg_type_csv)
-    value_updates += update_vegetation_overrides(curs, ecoregions, veg_types, override_csv)
-
-    print('Process complete.')
-    if value_updates > 0:
-        print('Git commit and push is required.')
-    else:
-        print('Watersheds CSV file writing skipped. No git commit required.')
+    # Update watersheds first, because it will attempt to verify the hydrologic equations
+    # and abort with errors and before any CSV files are changed.
+    update_watersheds(curs, watershed_csv)
+    update_vegetation_types(curs, veg_type_csv)
+    update_vegetation_overrides(curs, override_csv)
+    update_hydro_params(curs, hydro_params_csv)
+    update_watershed_hydro_params(curs, watershed_hydro_params_csv)
 
 
-def update_watersheds(curs, ecoregions, hydro_params, watershed_csv):
+def update_watersheds(curs, watershed_csv):
 
-    watersheds = load_watersheds(watershed_csv)
-
-    curs.execute('SELECT watershed_id, name, ecoregion_id, max_drainage, qlow, q2, notes, metadata FROM watersheds')
-    gsh_values = {row['watershed_id']: {
+    # Load all the watersheds from the database in a PREDICTABLE ORDER (so git diff is useful for previewing changes)
+    curs.execute("""SELECT * FROM watersheds ORDER BY watershed_id""")
+    watersheds = {row['watershed_id']: {
+        'WatershedID': row['watershed_id'],
         'Name': row['name'],
         'EcoregionID': row['ecoregion_id'],
         'MaxDrainage': row['max_drainage'],
         'QLow': row['qlow'],
         'Q2': row['q2'],
         'Notes': row['notes'],
-        'Metadata': row['metadata']
+        'MetaData': row['metadata']
     } for row in curs.fetchall()}
 
-    # Update the CSV values with those from the Google Sheet
-    value_updates = 0
-    watershed_updates = 0
-    for watershed, values in gsh_values.items():
+    # Validate the hydrologic equations. The following dictionary will be keyed by python exception concatenated to produce
+    # a unique string for each type of error for each equation. These will get printed to the screen for easy cut and paste
+    # into a GitHub issue for USU to resolve.
+    unique_errors = {}
+    for q in ['QLow', 'Q2']:
+        progbar = ProgressBar(len(watersheds), 50, 'Verifying {} equations'.format(q))
+        counter = 0
+        for watershed, values in watersheds.items():
+            counter += 1
+            progbar.update(counter)
 
-        # Google sheets stores HUC codes as strings. 7 character codes are not zero padded.
-        if (len(watershed) < 8):
-            watershed = '{:08d}'.format(int(watershed))
+            # proceed if the watershed has a hydrologic formula defined
+            if not values[q]:
+                continue
 
-        initial = value_updates
-        if watershed not in watersheds:
-            raise Exception('{} watershed found in PostGres database but not in CSV file'.format(watershed))
+            # Load the hydrologic parameters for this watershed and substitute a placeholder for drainage area
+            curs.execute('SELECT * FROM vw_watershed_hydro_params WHERE watershed_id = %s', [watershed])
+            params = {row['name']: row['value'] for row in curs.fetchall()}
+            params['DRNAREA'] = 1.0
 
-        for col, value in values.items():
-            if col not in watersheds[watershed]:
-                raise Exception('{} value not found in CSV data for watershed {}'.format(col, watershed))
+            try:
+                equation = values[q]
+                equation = equation.replace('^', '**')
+                _value = eval(equation, {'__builtins__': None}, params)
+            except Exception as ex:
+                exception_id = repr(ex) + values[q]
+                if exception_id in unique_errors:
+                    unique_errors[exception_id]['watersheds'][watershed] = params
+                else:
+                    unique_errors[exception_id] = {
+                        'watersheds': {watershed: params},
+                        'exception': repr(ex),
+                        'equation': values[q],
+                    }
 
-            if watersheds[watershed][col] != str(value):
-                # Skip replacing empty string with None
-                if not (watersheds[watershed][col] == '' and value is None):
-                    print('Changing {} for watershed {} from {} to {}'.format(col, watershed, watersheds[watershed][col], value))
-                    value_updates += 1
-                    watersheds[watershed][col] = value
+        progbar.finish()
 
-        if initial != value_updates:
-            watershed_updates += 1
+    if len(unique_errors) > 0:
+        for exception_id, values in unique_errors.items():
+            print('\n## Hydrologic equation Error\n```')
+            print('Equation:', values['equation'])
+            print('Exception:', values['exception'])
+            print('Watersheds:')
+            for watershed, params in values['watersheds'].items():
+                print('\t{}:'.format(watershed))
+                [print('\t\t{}: {}'.format(key, val)) for key, val in params.items()]
+            print('```')
+        # raise 'Aborting due to {} hydrology equation errors'.format(len(unique_errors))
 
-    # Quick and dirty validation of the regional curves
-    equation_errors = []
-    for watershed, values in watersheds.items():
-        for q in ['QLow', 'Q2']:
-            if values[q]:
-                try:
-                    equation = values[q]
-                    equation = equation.replace('^', '**')
-                    value = eval(equation, {'__builtins__': None}, hydro_params)
-                except Exception as e:
-                    print('{} HUC has error with {} discharge equation {}'.format(watershed, q, equation))
-                    equation_errors.append((watershed, q, values[q]))
+    write_values_to_csv(watershed_csv, watersheds)
 
-    if len(equation_errors) > 0:
-        print('Aborting due to {} hydrology equation errors'.format(len(equation)))
-        return
 
-    if value_updates > 0:
-        write_values_to_csv(watershed_csv, watersheds)
+def update_hydro_params(curs, hydro_params_csv):
 
-    print('{:,} CSV values changed across {:,} watersheds.'.format(value_updates, watershed_updates))
+    # Load all the hydro parameters from the database in a PREDICTABLE ORDER (so git diff is useful for previewing changes)
+    curs.execute('SELECT param_id, name, description, aliases, data_units, equation_units, conversion, definition FROM hydro_params ORDER BY param_id')
+    values = {row['param_id']: {
+        'ParamID': row['param_id'],
+        'Name': row['name'],
+        'Description': row['description'],
+        'Aliases': row['aliases'],
+        'DataUnits': row['data_units'],
+        'EquationUnits': row['equation_units'],
+        'Conversion': row['conversion'],
+        'Definition': row['definition']
+    } for row in curs.fetchall()}
 
-    return value_updates
+    write_values_to_csv(hydro_params_csv, values)
+
+
+def update_watershed_hydro_params(curs, watershed_hydro_params_csv):
+
+    # Load all the watershed hydro parameters from the database in a PREDICTABLE ORDER (so git diff is useful for previewing changes)
+    curs.execute('SELECT watershed_id, param_id, value FROM watershed_hydro_params ORDER BY watershed_id, param_id')
+    values = {(row['watershed_id'], row['param_id']): {
+        'WatershedID': row['watershed_id'],
+        'ParamID': row['param_id'],
+        'Value': row['value']
+    } for row in curs.fetchall()}
+
+    write_values_to_csv(watershed_hydro_params_csv, values)
 
 
 def update_vegetation_types(curs, veg_type_csv):
 
-    veg_types = load_veg_types(veg_type_csv)
-
     # Update the CSV values with those from the Google Sheet
     updates = 0
-    curs.execute('SELECT vegetation_id, default_suitability AS DefaultSuitability, notes AS Notes FROM vegetation_types')
-    for row in curs.fetchall():
-        initial = updates
-        vegetation_id = str(row['vegetation_id'])
+    curs.execute('SELECT * FROM vegetation_types ORDER BY vegetation_id')
+    values = {row['vegetation_id']: {
+        'VegetationID': row['vegetation_id'],
+        'EpochID': row['epoch_id'],
+        'Name': row['name'],
+        'DefaultSuitability': row['default_suitability'],
+        'LandUseID': row['land_use_id'],
+        'Physiognomy': row['physiognomy'],
+        'Notes': row['notes']
+    } for row in curs.fetchall()}
 
-        if vegetation_id not in veg_types:
-            raise Exception('{} VegetationID found in PostGres database but not in CSV file'.format(vegetation_id))
-
-        for col in ['DefaultSuitability', 'Notes']:
-            if str(row[col.lower()]) != veg_types[vegetation_id][col]:
-                veg_types[vegetation_id][col] = row[col.lower()]
-                updates += 1
-
-    if updates > 0:
-        write_values_to_csv(veg_type_csv, veg_types)
-
-    print('{:,} CSV values changed across {:,} vegetation types.'.format(updates, len(veg_types)))
-    return updates
+    write_values_to_csv(veg_type_csv, values)
 
 
-def update_vegetation_overrides(curs, ecoregions, veg_types, override_csv):
+def update_vegetation_overrides(curs, override_csv):
 
     curs.execute('SELECT vegetation_id, ecoregion_id, override_suitability, notes FROM vegetation_overrides ORDER BY vegetation_id, ecoregion_id')
     db_values = [{
@@ -166,49 +187,53 @@ def update_vegetation_overrides(curs, ecoregions, veg_types, override_csv):
     return 0
 
 
-def load_watersheds(csv_file):
+# def load_watersheds(csv_file):
 
-    infile = csv.DictReader(open(csv_file))
-    values = {rows['WatershedID']: {col: rows[col] for col in infile.fieldnames} for rows in infile}
-    print(len(values), 'watersheds retrieved from CSV file')
-    return values
-
-
-def load_veg_types(csv_file):
-
-    infile = csv.DictReader(open(csv_file))
-    values = {rows['VegetationID']: {col: rows[col] for col in infile.fieldnames} for rows in infile}
-    print(len(values), 'vegetation types retrieved from CSV file')
-    return values
+#     infile = csv.DictReader(open(csv_file))
+#     values = {rows['WatershedID']: {col: rows[col] for col in infile.fieldnames} for rows in infile}
+#     print(len(values), 'watersheds retrieved from CSV file')
+#     return values
 
 
-def load_ecoregions(csv_file):
+# def load_veg_types(csv_file):
 
-    infile = csv.DictReader(open(csv_file))
-    values = {rows['Name']: rows['EcoregionID'] for rows in infile}
-    print(len(values), 'ecoregions loaded from CSV file')
-    return values
+#     infile = csv.DictReader(open(csv_file))
+#     values = {rows['VegetationID']: {col: rows[col] for col in infile.fieldnames} for rows in infile}
+#     print(len(values), 'vegetation types retrieved from CSV file')
+#     return values
 
 
-def load_hydro_params(csv_file):
+# def load_ecoregions(csv_file):
 
-    infile = csv.DictReader(open(csv_file))
-    values = {rows['Name']: 1 for rows in infile}
-    print(len(values), 'hydro parameters loaded from CSV file')
-    return values
+#     infile = csv.DictReader(open(csv_file))
+#     values = {rows['Name']: rows['EcoregionID'] for rows in infile}
+#     print(len(values), 'ecoregions loaded from CSV file')
+#     return values
+
+
+# def load_hydro_params(csv_file):
+
+#     infile = csv.DictReader(open(csv_file))
+#     values = {rows['Name']: rows for rows in infile}
+#     print(len(values), 'hydro parameters loaded from CSV file')
+#     return values
 
 
 def write_values_to_csv(csv_file, values):
 
     cols = list(values[next(iter(values))].keys())
 
+    progBar = ProgressBar(len(values), 50, 'Writing to {}'.format(os.path.basename(csv_file)))
     with open(csv_file, 'w') as file:
         writer = csv.writer(file)
         writer.writerow(cols)
+        counter = 0
         for vals in values.values():
+            counter += 1
+            progBar.update(counter)
             writer.writerow([vals[col] for col in cols])
 
-    print('watersheds CSV file written')
+    progBar.finish()
 
 
 def main():
