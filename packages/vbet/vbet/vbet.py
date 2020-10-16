@@ -361,6 +361,7 @@ def create_project(huc, output_dir):
 
     project.add_metadata({
         'HUC{}'.format(len(huc)): str(huc),
+        'HUC': str(huc),
         'VBETVersion': cfg.version,
         'VBETTimestamp': str(int(time.time()))
     })

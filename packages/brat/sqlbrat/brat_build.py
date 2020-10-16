@@ -189,6 +189,7 @@ def create_project(huc, output_dir):
 
     project.add_metadata({
         'HUC{}'.format(len(huc)): str(huc),
+        'HUC': str(huc),
         'BRATBuildVersion': cfg.version,
         'BRATBuildTimestamp': str(int(time.time()))
     })
