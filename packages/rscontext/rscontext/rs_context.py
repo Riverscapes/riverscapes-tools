@@ -72,7 +72,7 @@ LayerTypes = {
 def rs_context(huc, existing_veg, historic_veg, ownership, ecoregions, prism_folder, output_folder, download_folder, scratch_dir, parallel, force_download):
     """
     Download riverscapes context layers for the specified HUC and organize them as a Riverscapes project
-    :param huc: Eight digit HUC identification number
+    :param huc: Eight, 10 or 12 digit HUC identification number
     :param existing_veg: Path to the existing vegetation conditions raster
     :param historic_veg: Path to the historical vegetation conditions raster
     :param ownership: Path to the national land ownership Shapefile
@@ -272,9 +272,8 @@ def create_project(huc, output_dir):
     project = RSProject(cfg, output_dir)
     project.create(project_name, 'RSContext')
 
-    project.add_metadata({
-        'HUC{}'.format(len(huc)): str(huc)
-    })
+    project.add_metadata({'HUC{}'.format(len(huc)): str(huc)})
+    project.add_metadata({'HUC': str(huc)})
 
     realizations = project.XMLBuilder.add_sub_element(project.XMLBuilder.root, 'Realizations')
     realization = project.XMLBuilder.add_sub_element(realizations, 'RSContext', None, {
