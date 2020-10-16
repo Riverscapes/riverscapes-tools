@@ -111,7 +111,7 @@ def update_watersheds(curs, watershed_csv):
                 print('\t{}:'.format(watershed))
                 [print('\t\t{}: {}'.format(key, val)) for key, val in params.items()]
             print('```')
-        # raise 'Aborting due to {} hydrology equation errors'.format(len(unique_errors))
+        raise 'Aborting due to {} hydrology equation errors'.format(len(unique_errors))
 
     write_values_to_csv(watershed_csv, watersheds)
 
