@@ -33,10 +33,6 @@ def update_brat_parameters(host, port, database, user_name, password, csv_dir):
     override_csv = os.path.join(csv_dir, relative_path, 'intersect', 'VegetationOverrides.csv')
     watershed_hydro_params_csv = os.path.join(csv_dir, relative_path, 'intersect', 'WatershedHydroParams.csv')
 
-    # ecoregions = load_ecoregions(ecoregion_csv)
-    # hydro_params = load_hydro_params(hydro_params_csv)
-    # veg_types = load_veg_types(veg_type_csv)
-
     conn = psycopg2.connect(host=host, port=port, database=database, user=user_name, password=password)
     curs = conn.cursor(cursor_factory=RealDictCursor)
 
@@ -185,38 +181,6 @@ def update_vegetation_overrides(curs, override_csv):
 
     print('{} vegetetation overrides CSV file written'.format(len(db_values)))
     return 0
-
-
-# def load_watersheds(csv_file):
-
-#     infile = csv.DictReader(open(csv_file))
-#     values = {rows['WatershedID']: {col: rows[col] for col in infile.fieldnames} for rows in infile}
-#     print(len(values), 'watersheds retrieved from CSV file')
-#     return values
-
-
-# def load_veg_types(csv_file):
-
-#     infile = csv.DictReader(open(csv_file))
-#     values = {rows['VegetationID']: {col: rows[col] for col in infile.fieldnames} for rows in infile}
-#     print(len(values), 'vegetation types retrieved from CSV file')
-#     return values
-
-
-# def load_ecoregions(csv_file):
-
-#     infile = csv.DictReader(open(csv_file))
-#     values = {rows['Name']: rows['EcoregionID'] for rows in infile}
-#     print(len(values), 'ecoregions loaded from CSV file')
-#     return values
-
-
-# def load_hydro_params(csv_file):
-
-#     infile = csv.DictReader(open(csv_file))
-#     values = {rows['Name']: rows for rows in infile}
-#     print(len(values), 'hydro parameters loaded from CSV file')
-#     return values
 
 
 def write_values_to_csv(csv_file, values):
