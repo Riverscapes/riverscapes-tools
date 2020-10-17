@@ -83,7 +83,8 @@ def update_watersheds(curs, watershed_csv):
             try:
                 equation = values[q]
                 equation = equation.replace('^', '**')
-                _value = eval(equation, {'__builtins__': None}, params)
+                value = eval(equation, {'__builtins__': None}, params)
+                _float_val = float(value)
             except Exception as ex:
                 exception_id = repr(ex) + values[q]
                 if exception_id in unique_errors:
@@ -107,7 +108,7 @@ def update_watersheds(curs, watershed_csv):
                 print('\t{}:'.format(watershed))
                 [print('\t\t{}: {}'.format(key, val)) for key, val in params.items()]
             print('```')
-        raise 'Aborting due to {} hydrology equation errors'.format(len(unique_errors))
+        raise Exception('Aborting due to {} hydrology equation errors'.format(len(unique_errors)))
 
     write_values_to_csv(watershed_csv, watersheds)
 
@@ -210,7 +211,11 @@ def main():
     parser.add_argument('--csv_dir', help='directory where the csv lives', type=str)
     args = dotenv.parse_args_env(parser)
 
-    update_brat_parameters(args.host, args.port, args.database, args.user_name, args.password, args.csv_dir)
+    try:
+        update_brat_parameters(args.host, args.port, args.database, args.user_name, args.password, args.csv_dir)
+        print('Processing completed successfully. Review changes using git.')
+    except Exception as ex:
+        print('Errors occurred:', str(ex))
 
 
 if __name__ == "__main__":
