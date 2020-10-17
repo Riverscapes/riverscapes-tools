@@ -1,24 +1,24 @@
 ParamID,Name,Description,Aliases,DataUnits,EquationUnits,Conversion,Definition
 1,ELEV,Mean Basin Elevation,ELEV,metres,feet,3.28084,
-2,FOREST,Percent Forest Cover,FOREST,percent,percent,1,Percentage of area covered by forest
-3,RR,Relative Relief,RR,metres,feet,3.28084,Maximum elevation minus minimun elevation
+2,FOREST,Percent Forest Cover,FOREST,percent,percent,1.0,Percentage of area covered by forest
+3,RR,Relative Relief,RR,metres,feet,1.0,Maximum elevation minus minimun elevation
 4,PRECIP,Mean Annual Precipitation,"PRECIP,PRECPRIS10",millimetres,inches,0.0393701,Basin average mean annual precipitation for 1981 to 2010 from PRISM
-5,SLOP30_30M,Percent slope greater than 30 degrees?,SLOP30_30M,percent,percent,1,
-6,CSL10_85,Stream_Slope_10_and_85_Method,CSL10_85,unknown,unknown,1,
+5,SLOP30_30M,Percent slope greater than 30 degrees?,SLOP30_30M,percent,percent,1.0,
+6,CSL10_85,Stream_Slope_10_and_85_Method,CSL10_85,unknown,unknown,1.0,
 7,MINELEV,Minimum Basin Elevation,"MINELEV,MINBELEV",metres,feet,3.28084,Minimum basin elevation
-8,MEANSLOPE,Mean Slope,MEANSLOPE,percent,percent,1,
+8,MEANSLOPE,Mean Slope,MEANSLOPE,percent,percent,1.0,
 9,DRNAREA,Contributing Drainage Area,"DRNAREA,CONTDA",square kilometres,square miles,0.386102,Area that contributes flow to a point on a stream (total drainage area minus non-contributing areas within basin)
-10,CANOPY_PCT,Percent Area Under Canopy,CANOPY_PCT,percent,percent,1,Percentage of drainage area covered by canopy comprised of classes 41-43 from 2001 National Land Cover Dataset
-11,SOILPERM,Average Soil Permeability,SOILPERM,unknown,unknown,1,Average Soil Permeability
-12,JANMAXT2K,Mean Max January Temp,JANMAXT2K,degrees celcius,degrees celcius,1,Mean Maximum January Temperature from 2K resolution PRISM 1961-1990 data
+10,CANOPY_PCT,Percent Area Under Canopy,CANOPY_PCT,percent,percent,1.0,Percentage of drainage area covered by canopy comprised of classes 41-43 from 2001 National Land Cover Dataset
+11,SOILPERM,Average Soil Permeability,SOILPERM,unknown,unknown,1.0,Average Soil Permeability
+12,JANMAXT2K,Mean Max January Temp,JANMAXT2K,degrees celcius,degrees celcius,1.0,Mean Maximum January Temperature from 2K resolution PRISM 1961-1990 data
 13,I24H2Y,24hr 2 Year Precipitation,I24H2Y,millimetres,inches,0.0393701,Maximum 24-hour precipitation that occurs on average once in 2 years - Equivalent to precitation intensity index
-14,LC11Forest,Percent Forest From NLCD2011,LC11Forest,percent,percent,1,Percentage of forest from NLCD 2011 classes 41-43
+14,LC11Forest,Percent Forest From NLCD2011,LC11Forest,percent,percent,1.0,Percentage of forest from NLCD 2011 classes 41-43
 15,ELEV1K,Mean Basin Elevation,ELEV1K,metres,thousands of feet,0.00328084,Mean basin elevation in thousands of feet
-16,FORESTP1,Percent Forest Cover + 1%,FORESTP1,percent,percent,1,Percentage of area covered by forest + 1%
-17,A7500,"Percent of drainage area above 7,500ft",A7500,percent,percent,1,"Percentage of the drainage area above 7,500ft elevation"
-18,JANMINT2K,Mean Min January Temp,JANMINT2K,degrees celcius,degrees celcius,1,Mean Minimum January Temperature from 2K resolution PRISM 1961-1990 data
+16,FORESTP1,Percent Forest Cover + 1%,FORESTP1,percent,percent,1.0,Percentage of area covered by forest + 1%
+17,A7500,"Percent of drainage area above 7,500ft",A7500,percent,percent,1.0,"Percentage of the drainage area above 7,500ft elevation"
+18,JANMINT2K,Mean Min January Temp,JANMINT2K,degrees celcius,degrees celcius,1.0,Mean Minimum January Temperature from 2K resolution PRISM 1961-1990 data
 19,SOILCAPACITY,Average Soil Capacity,SOILCAPACITY,milimeteres,inches,0.0393701,Average Soil Capacity (From NRCS)
-20,MINANTEMP,Minimum Annual Temperature,MINANTEMP,degrees fahrenheit,degrees fahrenheit,1,Mean annual minimum air temperature in degrees Fahrenheit (PRISM)
+20,MINANTEMP,Minimum Annual Temperature,MINANTEMP,degrees fahrenheit,degrees fahrenheit,1.0,Mean annual minimum air temperature in degrees Fahrenheit (PRISM)
 21,MAXELEV,Maximum Basin Elevation,MAXELEV,metres,feet,3.28084,
-22,DRAINDENS,Drainage Density,DRAINDENS,km per sq. km,km per sq. km,1,"Basin drainage density; defined as total stream length divided by drainage area, in kilometers per square kilomete"
-23,I6H100Y,6hr 100 Year Precipitation,I6H100Y,inches,inches,1,Maximum 6-hour precipitation that occurs on average once in 100 years
+22,DRAINDENS,Drainage Density,DRAINDENS,km per sq. km,km per sq. km,1.0,"Basin drainage density; defined as total stream length divided by drainage area, in kilometers per square kilomete"
+23,I6H100Y,6hr 100 Year Precipitation,I6H100Y,inches,inches,1.0,Maximum 6-hour precipitation that occurs on average once in 100 years
