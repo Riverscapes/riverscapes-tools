@@ -14,6 +14,7 @@ import subprocess
 import math
 from osgeo import ogr
 from osgeo import osr
+from copy import copy
 from functools import reduce
 from shapely.wkb import loads as wkbload
 from shapely.ops import unary_union
@@ -1092,16 +1093,17 @@ def get_rings(geom):
 
 
 def export_geojson(shapely_geom, props=None):
-    new_props = props if props is not None else {}
+    new_props = copy(props) if props is not None else {}
     the_dict = {
         "type": "FeatureCollection",
         "features": [
-            {
-                "type": "Feature",
-                "properties": new_props,
-                "geometry": mapping(shapely_geom),
-
-            }
         ]
     }
+    if shapely_geom is not None:
+        the_dict["features"].append({
+            "type": "Feature",
+            "properties": new_props,
+            "geometry": mapping(shapely_geom),
+        })
+        
     return the_dict

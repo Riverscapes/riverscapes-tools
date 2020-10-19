@@ -233,16 +233,38 @@ def PrintArr(arr):
 
     Int this scenario:
         - '-' means masked
-        - '_' means nodata
+        - 'n' means Nan
+        - '.' means None
         - '#' means a number
         - '0' means 0
+        - '?' means unknown
     :param arr:
     """
+    print("""
+        -  => masked
+        n  => Nan
+        .  => None
+        0  => 0
+        #  => numeric
+        ?  => unknown
+        """)
     print('\n')
     for row in range(arr.shape[0]):
         rowStr = ""
+
         for col in range(arr[row].shape[0]):
-            rowStr += str(arr[row][col])
+            colstr = '?'
+            if np.ma.is_masked(arr[row][col]):
+                colstr = '-'
+            elif np.isnan(arr[row][col]):
+                colstr = 'n'
+            elif arr[row][col] is None:
+                colstr = '.'
+            elif arr[row][col] == 0:
+                colstr = '0'
+            elif arr[row][col] > 0 or arr[row][col] < 0:
+                colstr = '#'
+            rowStr += colstr
         print("{0}:: {1}".format(row, rowStr))
     print("\n")
 
