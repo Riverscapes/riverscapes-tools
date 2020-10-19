@@ -11,6 +11,14 @@
       // "default": "17070202" // North Fork John Day
       "default": "17060304" // Really small HUC
       // "default": "17060103" // Asotin
+    },
+    {
+      "type": "promptString",
+      "id": "VPU",
+      "description": "What VPU?",
+      // "default": "17070202" // North Fork John Day
+      "default": "1701" // Really small HUC
+      // "default": "17060103" // Asotin
     }
   ],  
   "configurations": [
@@ -34,6 +42,21 @@
         // "--force",
         // "--parallel",
         "--verbose"
+      ]
+    },
+    {
+      "name": "Modis (LST)",
+      "type": "python",
+      "request": "launch",
+      "module": "scripts.land_surface_temp",
+      "console": "integratedTerminal",
+      // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
+      "args": [
+        "{env:DATA_ROOT}/MODIS/outputs/${input:VPU}/${input:VPU}.sqlite",
+        "{env:DATA_ROOT}/MODIS/MODIS_Mosaic",
+        "{env:NHD_ROOT}/NHDPLUS_H_${input:VPU}_HU4_GDB.gdb",
+        "--verbose",
+        "--debug"
       ]
     },
     {
