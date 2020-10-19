@@ -4,7 +4,7 @@ set -eu
 # On OSX you must have run `brew install gdal` so that the header files are findable 
 python3 -m virtualenv .venv
 # Make sure pip is at a good version
-
+.venv/bin/python -m pip install --upgrade pip
 .venv/bin/pip --timeout=120 install \
   Cython==0.29.7 \
   numpy==1.16.3 \

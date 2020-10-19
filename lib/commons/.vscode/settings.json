@@ -1,9 +1,12 @@
 {
-  "python.pythonPath": "../../.venv/bin/python",
+  "python.pythonPath": "${workspaceFolder}/../../.venv/bin/python",
   "[python]": {
     "editor.tabSize": 4,
     "editor.formatOnSave": true,
   },
+  "python.linting.pylintArgs": [
+    "--extension-pkg-whitelist=scipy"
+  ],
   "python.linting.enabled": true,
   "python.linting.lintOnSave": true,
   "python.linting.pycodestyleEnabled": true,
@@ -24,5 +27,5 @@
   },
   "search.exclude": {
     "**/*.egg-info": true
-  },
+  }
 }
