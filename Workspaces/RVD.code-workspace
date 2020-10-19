@@ -1,0 +1,15 @@
+{
+	"folders": [
+		{
+			"path": "../packages/rvd"
+		},
+		{
+			"path": "../lib/commons"
+		},
+		{
+			"name": "Workspaces",
+			"path": "."
+		}
+	],
+	"settings": {}
+}
