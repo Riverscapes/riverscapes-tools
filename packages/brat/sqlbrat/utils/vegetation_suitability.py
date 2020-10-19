@@ -20,7 +20,7 @@ import rasterio
 import numpy as np
 from rscommons import Logger, ProgressBar, dotenv
 from rscommons.util import safe_makedirs
-from sqlbrat.lib.database import write_attributes
+from rscommons.database import write_attributes
 
 
 def vegetation_suitability(database, buffer, epoch, prefix, ecoregion):

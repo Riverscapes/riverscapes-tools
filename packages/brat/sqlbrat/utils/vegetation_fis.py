@@ -16,8 +16,8 @@ import numpy as np
 import skfuzzy as fuzz
 from skfuzzy import control as ctrl
 from rscommons import Logger, ProgressBar, dotenv
-from sqlbrat.lib.database import load_attributes
-from sqlbrat.lib.database import write_attributes
+from rscommons.database import load_attributes
+from rscommons.database import write_attributes
 
 
 def vegetation_fis(database, label, veg_type):

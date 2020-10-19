@@ -10,8 +10,8 @@ import os
 import argparse
 import sqlite3
 from rscommons import Logger, dotenv
-from sqlbrat.lib.database import write_attributes
-from sqlbrat.lib.database import load_attributes
+from rscommons.database import write_attributes
+from rscommons.database import load_attributes
 
 
 def land_use(database, buffer):

@@ -23,7 +23,7 @@ from rscommons import Logger, ProgressBar, dotenv
 from rscommons.shapefile import _rough_convert_metres_to_raster_units
 from rscommons.shapefile import get_utm_zone_epsg
 from rscommons.shapefile import get_transform_from_epsg
-from sqlbrat.lib.database import load_geometries, write_attributes, get_db_srs
+from rscommons.database import load_geometries, write_attributes, get_db_srs
 
 reachfld = 'ReachID'
 slopefld = 'iGeo_Slope'

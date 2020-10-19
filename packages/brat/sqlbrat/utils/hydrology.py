@@ -12,8 +12,8 @@ import traceback
 import sqlite3
 import math
 from rscommons import Logger, dotenv
-from sqlbrat.lib.database import write_attributes
-from sqlbrat.lib.database import load_attributes
+from rscommons.database import write_attributes
+from rscommons.database import load_attributes
 
 
 # This is the reach drainage area variable in the regional curve equations
