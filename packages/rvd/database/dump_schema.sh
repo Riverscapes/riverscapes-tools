@@ -1,0 +1,1 @@
+sqlite3 ./rvd_template.sqlite < ./dump_schema.sql
