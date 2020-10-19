@@ -7,32 +7,30 @@ from osgeo import ogr, osr
 from rscommons import ProgressBar, Logger, ModelConfig, dotenv
 from rscommons.shapefile import create_field
 from rscommons.shapefile import get_transform_from_epsg
-from sqlbrat.lib.build_network import FCodeValues
+from rscommons.build_network import FCodeValues
 from shapely.wkb import loads as wkbload
 from shapely.geometry import shape
 
 perennial_reach_code = 46006
 
 
-def create_database(huc, db_path, metadata, epsg):
+def create_database(huc, db_path, metadata, epsg, schema_path):
 
     # We need to create a projection for this DB
     db_srs = osr.SpatialReference()
     db_srs.ImportFromEPSG(int(epsg))
-    db_src_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', '..', 'database')
     metadata['gdal_srs_proj4'] = db_srs.ExportToProj4()
     metadata['gdal_srs_axis_mapping_strategy'] = osr.OAMS_TRADITIONAL_GIS_ORDER
 
-    schema_path = os.path.join(db_src_path, 'brat_schema.sql')
     if not os.path.isfile(schema_path):
         raise Exception('Unable to find database schema file at {}'.format(schema_path))
 
     log = Logger('Database')
     if os.path.isfile(db_path):
-        log.info('Removing existing BRAT database at {0}'.format(db_path))
+        log.info('Removing existing SQLite database at {0}'.format(db_path))
         os.remove(db_path)
 
-    log.info('Creating BRAT database at {0}'.format(db_path))
+    log.info('Creating SQLite database at {0}'.format(db_path))
     qry = open(schema_path, 'r').read()
     sqlite3.complete_statement(qry)
     conn = sqlite3.connect(db_path)
@@ -40,7 +38,7 @@ def create_database(huc, db_path, metadata, epsg):
     curs.executescript(qry)
 
     # Load lookup table data into the database
-    for dirName, dirs, files in os.walk(os.path.join(db_src_path, 'data')):
+    for dirName, dirs, files in os.walk(os.path.join(os.path.dirname(schema_path), 'data')):
         for file in files:
             with open(os.path.join(dirName, file), mode='r') as csvfile:
                 d = csv.DictReader(csvfile)
@@ -88,7 +86,7 @@ def update_database(db_path, csv_path):
     if not os.path.isfile(db_path):
         raise Exception('No existing db found at path: {}'.format(db_path))
 
-    log.info('Updating BRAT database at {0}'.format(db_path))
+    log.info('Updating SQLite database at {0}'.format(db_path))
 
     conn = sqlite3.connect(db_path)
     conn.row_factory = dict_factory
@@ -139,7 +137,7 @@ def populate_database(database, network, huc):
     transform = osr.CoordinateTransformation(in_spatial_ref, db_spatial_ref)
 
     log = Logger('Database')
-    log.info('Populating BRAT database with {0:,} features'.format(layer.GetFeatureCount()))
+    log.info('Populating SQLite database with {0:,} features'.format(layer.GetFeatureCount()))
 
     # Determine the transformation if user provides an EPSG
     create_field(layer, 'ReachID', ogr.OFTInteger)

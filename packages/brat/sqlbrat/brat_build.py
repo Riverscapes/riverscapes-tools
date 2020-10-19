@@ -21,12 +21,12 @@ import rasterio.shutil
 from rscommons.shapefile import copy_feature_class
 from rscommons import Logger, initGDALOGRErrors, RSLayer, RSProject, ModelConfig, dotenv
 from rscommons.util import safe_makedirs
-from sqlbrat.lib.build_network import build_network
-from sqlbrat.lib.database import create_database
-from sqlbrat.lib.database import populate_database
-from sqlbrat.lib.reach_attributes import write_reach_attributes
+from rscommons.segment_network import segment_network
+from rscommons.build_network import build_network
+from rscommons.database import create_database
+from rscommons.database import populate_database
+from rscommons.reach_attributes import write_reach_attributes
 from sqlbrat.utils.vegetation_summary import vegetation_summary
-from sqlbrat.utils.segment_network import segment_network
 from sqlbrat.utils.reach_geometry import reach_geometry
 from sqlbrat.utils.conflict_attributes import conflict_attributes
 from sqlbrat.__version__ import __version__
@@ -120,9 +120,9 @@ def brat_build(huc, flowlines, max_length, min_length,
     project, realization, proj_nodes = create_project(huc, output_folder)
 
     log.info('Adding input rasters to project')
-    dem_raster_path_node, dem_raster_path = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], dem)
-    prj_existing_path_node, prj_existing_path = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['EXVEG'], existing_veg)
-    prj_historic_path_node, prj_historic_path = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HISTVEG'], historical_veg)
+    _dem_raster_path_node, dem_raster_path = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], dem)
+    _existing_path_node, prj_existing_path = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['EXVEG'], existing_veg)
+    _historic_path_node, prj_historic_path = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HISTVEG'], historical_veg)
 
     # Copy in the rasters we need
     project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], hillshade)
@@ -131,14 +131,14 @@ def brat_build(huc, flowlines, max_length, min_length,
     project.add_project_raster(proj_nodes['Inputs'], LayerTypes['SLOPE'], slope)
 
     # Copy in the vectors we need
-    prj_flowlines_node, prj_flowlines = project.add_project_vector(proj_nodes['Inputs'], LayerTypes['FLOWLINES'], flowlines, att_filter="\"ReachCode\" Like '{}%'".format(huc))
-    prj_flow_areas_node, prj_flow_areas = project.add_project_vector(proj_nodes['Inputs'], LayerTypes['FLOW_AREA'], flow_areas) if flow_areas else None
-    prj_waterbodies_node, prj_waterbodies = project.add_project_vector(proj_nodes['Inputs'], LayerTypes['WATERBODIES'], waterbodies) if waterbodies else None
-    prj_valley_bottom_node, prj_valley_bottom = project.add_project_vector(proj_nodes['Inputs'], LayerTypes['VALLEY_BOTTOM'], valley_bottom) if valley_bottom else None
+    _flowlines_node, prj_flowlines = project.add_project_vector(proj_nodes['Inputs'], LayerTypes['FLOWLINES'], flowlines, att_filter="\"ReachCode\" Like '{}%'".format(huc))
+    _flow_areas_node, prj_flow_areas = project.add_project_vector(proj_nodes['Inputs'], LayerTypes['FLOW_AREA'], flow_areas) if flow_areas else None
+    _waterbodies_node, prj_waterbodies = project.add_project_vector(proj_nodes['Inputs'], LayerTypes['WATERBODIES'], waterbodies) if waterbodies else None
+    _valley_bottom_node, prj_valley_bottom = project.add_project_vector(proj_nodes['Inputs'], LayerTypes['VALLEY_BOTTOM'], valley_bottom) if valley_bottom else None
 
     # Other layers we need
-    cleaned_path_node, cleaned_path = project.add_project_vector(proj_nodes['Intermediates'], LayerTypes['CLEANED'], replace=True)
-    segmented_path_node, segmented_path = project.add_project_vector(proj_nodes['Outputs'], LayerTypes['SEGMENTED'], replace=True)
+    _cleaned_path_node, cleaned_path = project.add_project_vector(proj_nodes['Intermediates'], LayerTypes['CLEANED'], replace=True)
+    _segmented_path_node, segmented_path = project.add_project_vector(proj_nodes['Outputs'], LayerTypes['SEGMENTED'], replace=True)
 
     # Filter the flow lines to just the required features and then segment to desired length
     build_network(prj_flowlines, prj_flow_areas, prj_waterbodies, cleaned_path, cfg.OUTPUT_EPSG, reach_codes, max_waterbody)
@@ -157,7 +157,7 @@ def brat_build(huc, flowlines, max_length, min_length,
     }
 
     db_path = os.path.join(output_folder, LayerTypes['BRATDB'].rel_path)
-    watesrhed_name = create_database(huc, db_path, metadata, cfg.OUTPUT_EPSG)
+    watesrhed_name = create_database(huc, db_path, metadata, cfg.OUTPUT_EPSG, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'brat_schema.sql'))
     populate_database(db_path, segmented_path, huc)
     project.add_metadata({'Watershed': watesrhed_name})
 

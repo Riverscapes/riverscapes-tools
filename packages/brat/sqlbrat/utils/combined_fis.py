@@ -15,7 +15,7 @@ import traceback
 import numpy as np
 import skfuzzy as fuzz
 from skfuzzy import control as ctrl
-from sqlbrat.lib.database import load_attributes, write_attributes
+from rscommons.database import load_attributes, write_attributes
 from rscommons import ProgressBar, Logger, dotenv
 
 

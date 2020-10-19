@@ -109,7 +109,7 @@ def build_network(flowlines, flowareas, waterbodies, outpath, epsg,
     process_reaches(inLayer, outLayer, transform)
 
     # Process artifical paths through small waterbodies
-    if waterbodies:
+    if waterbodies and waterbody_max_size:
         small_waterbodies = get_geometry_union(waterbodies, epsg, 'AreaSqKm <= ({0})'.format(waterbody_max_size))
         log.info('Retaining artificial features within waterbody features smaller than {0}km2'.format(waterbody_max_size))
         inLayer.SetAttributeFilter('FCode = {0}'.format(artifical_reaches))

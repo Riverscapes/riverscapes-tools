@@ -35,9 +35,7 @@ from rscommons.shapefile import delete_shapefile
 from rscommons.shapefile import get_transform_from_epsg
 from rscommons.shapefile import copy_feature_class
 from rscommons.util import safe_makedirs
-
-from sqlbrat.lib.database import load_geometries, get_metadata
-from sqlbrat.lib.database import write_attributes
+from rscommons.database import load_geometries, get_metadata, write_attributes
 
 
 def conflict_attributes(database, valley_bottom, roads, rail, canals, ownership, buffer_distance_metres, cell_size_meters, epsg):

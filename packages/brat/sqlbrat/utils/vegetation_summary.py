@@ -17,7 +17,7 @@ import ogr
 from ogr import osr
 from rscommons import ProgressBar, Logger, dotenv
 from rscommons.shapefile import _rough_convert_metres_to_raster_units
-from sqlbrat.lib.database import load_geometries
+from rscommons.database import load_geometries
 import rasterio
 from rasterio.mask import mask
 import numpy as np
