@@ -26,6 +26,7 @@ from shapely.geometry import Point, Polygon, MultiPolygon, LineString, MultiLine
 from rscommons import shapefile
 from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALOGRErrors, ProgressBar
 from rscommons.util import safe_makedirs, safe_remove_dir, safe_remove_file
+from gnat.utils.confinement_report import report
 from gnat.__version__ import __version__
 
 initGDALOGRErrors()
@@ -37,6 +38,7 @@ LayerTypes = {
     # key: (name, id, tag, relpath)
     'FLOWLINES': RSLayer('Flowlines', 'FLOWLINES', 'Vector', 'inputs/Flowlines.shp'),
     'CONFINING_POLYGON': RSLayer('Confining Polygon', 'CONFINING_POLYGON', 'Vector', 'inputs/confining.shp'),
+    'CONFINEMENT_RUN_REPORT': RSLayer('Confinement Report', 'CONFINEMENT_RUN_REPORT', 'HTMLFile', 'outputs/confinement.html'),
     'CONFINEMENT': RSLayer('Confinement', 'CONFINEMENT', 'Geopackage', 'outputs/confinement.gpkg', {
         'CONFINEMENT_RAW': RSLayer('Confinement Raw', 'CONFINEMENT_RAW', 'Vector', 'main.Confinement_Raw'),
         'CONFINEMENT_MARGINS': RSLayer('Confinement Margins', 'CONFINEMENT_MARGINS', 'Vector', 'main.Confining_Margins'),
@@ -324,6 +326,12 @@ def create_project(huc, output_dir, realization_meta):
     safe_makedirs(os.path.join(proj_dir, 'outputs'))
 
     project.XMLBuilder.write()
+
+    # Write a report
+    report_path = os.path.join(project.project_dir, LayerTypes['CONFINEMENT_RUN_REPORT'].rel_path)
+    project.add_report(proj_nodes['Outputs'], LayerTypes['CONFINEMENT_RUN_REPORT'], replace=True)
+    # report(database, report_path)
+
     return project, realization, proj_nodes
 
 
