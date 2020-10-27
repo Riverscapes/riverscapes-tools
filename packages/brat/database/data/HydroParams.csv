@@ -22,3 +22,4 @@ ParamID,Name,Description,Aliases,DataUnits,EquationUnits,Conversion,Definition
 21,MAXELEV,Maximum Basin Elevation,MAXELEV,metres,feet,3.28084,
 22,DRAINDENS,Drainage Density,DRAINDENS,km per sq. km,km per sq. km,1.0,"Basin drainage density; defined as total stream length divided by drainage area, in kilometers per square kilomete"
 23,I6H100Y,6hr 100 Year Precipitation,I6H100Y,inches,inches,1.0,Maximum 6-hour precipitation that occurs on average once in 100 years
+24,LAT,Latitude (Degrees),LAT,Degrees,Degrees,1.0,
