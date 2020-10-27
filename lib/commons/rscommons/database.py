@@ -1,4 +1,5 @@
 import os
+import glob
 import csv
 import json
 import sqlite3
@@ -38,8 +39,9 @@ def create_database(huc, db_path, metadata, epsg, schema_path):
     curs.executescript(qry)
 
     # Load lookup table data into the database
-    for dirName, dirs, files in os.walk(os.path.join(os.path.dirname(schema_path), 'data')):
-        for file in files:
+    for dirName in ['data', os.path.join('data', 'intersect')]:
+        dirSearch = os.path.join(os.path.dirname(schema_path), dirName, '*.sql')
+        for file in glob.glob(dirSearch):
             with open(os.path.join(dirName, file), mode='r') as csvfile:
                 d = csv.DictReader(csvfile)
                 sql = 'INSERT INTO {0} ({1}) VALUES ({2})'.format(os.path.splitext(file)[0], ','.join(d.fieldnames), ','.join('?' * len(d.fieldnames)))
@@ -53,7 +55,8 @@ def create_database(huc, db_path, metadata, epsg, schema_path):
 
     # Retrieve the name of the watershed so it can be stored in riverscapes project
     curs.execute('SELECT Name FROM Watersheds WHERE WatershedID = ?', [huc])
-    watershed_name = curs.fetchone()[0]
+    row = curs.fetchone()
+    watershed_name = row[0] if row else None
 
     conn.commit()
     conn.execute("VACUUM")
