@@ -25,23 +25,27 @@ from shapely.geometry import Point, Polygon, MultiPolygon, LineString, MultiLine
 
 from rscommons import shapefile
 from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALOGRErrors, ProgressBar
-from rscommons.util import safe_makedirs, safe_remove_dir
-
-# from confinement.__version__ import __version__
+from rscommons.util import safe_makedirs, safe_remove_dir, safe_remove_file
+from gnat.__version__ import __version__
 
 initGDALOGRErrors()
 gdal.UseExceptions()
 
-# cfg = (None, "0.0.0")  # ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/GNAT.xsd', __version__)
+cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/Confinement.xsd', __version__)
 
 LayerTypes = {
     # key: (name, id, tag, relpath)
-    'DEM': RSLayer('NED 10m DEM', 'DEM', 'DEM', 'topography/dem.tif'),
-    'VBET_NETWORK': RSLayer('VBET Network', 'VBET_NETWORK', 'Vector', 'intermediates/vbet_network.shp'),
+    'FLOWLINES': RSLayer('Flowlines', 'FLOWLINES', 'Vector', 'inputs/Flowlines.shp'),
+    'CONFINING_POLYGON': RSLayer('Confining Polygon', 'CONFINING_POLYGON', 'Vector', 'inputs/confining.shp'),
+    'CONFINEMENT': RSLayer('Confinement', 'CONFINEMENT', 'Geopackage', 'outputs/confinement.gpkg', {
+        'CONFINEMENT_RAW': RSLayer('Confinement Raw', 'CONFINEMENT_RAW', 'Vector', 'main.Confinement_Raw'),
+        'CONFINEMENT_MARGINS': RSLayer('Confinement Margins', 'CONFINEMENT_MARGINS', 'Vector', 'main.Confining_Margins'),
+        'CONFINEMENT_RATIO': RSLayer('Confinement Margins', 'CONFINEMENT_RATIO', 'Vector', 'main.Confinement_Ratio')
+    }),
 }
 
 
-def confinement(huc, flowlines, confining_polygon, output_folder, buffer_field=None, debug=False):
+def confinement(huc, flowlines_orig, confining_polygon_orig, output_folder, buffer_field, confinement_type, debug=False):
     """Generate confinement attribute for a stream network
 
     Args:
@@ -55,7 +59,7 @@ def confinement(huc, flowlines, confining_polygon, output_folder, buffer_field=N
     """
 
     log = Logger("Confinement")
-    log.info(f'Confinement v.{0.0}')  # .format(cfg.version))
+    log.info(f'Confinement v.{cfg.version}')  # .format(cfg.version))
 
     try:
         int(huc)
@@ -65,10 +69,24 @@ def confinement(huc, flowlines, confining_polygon, output_folder, buffer_field=N
     if not (len(huc) == 4 or len(huc) == 8):
         raise Exception('Invalid HUC identifier. Must be four digit integer')
 
-    safe_makedirs(output_folder)
-    output_gpkg = os.path.join(output_folder, "Confinement_Test_32.gpkg")
+    output_gpkg = os.path.join(output_folder, LayerTypes['CONFINEMENT'].rel_path)
+
+    # Clean up the old result
     if os.path.exists(output_gpkg):
-        os.remove(output_gpkg)
+        safe_remove_file(output_gpkg)
+
+    # Make the projectXML
+    project, realization, proj_nodes = create_project(huc, output_folder, {
+        'ConfinementType': confinement_type
+    })
+    # Add the flowlines file with some metadata
+    flowline_node, flowlines_shp = project.add_project_vector(proj_nodes['Inputs'], LayerTypes['FLOWLINES'], flowlines_orig)
+    project.add_metadata({'BufferField': buffer_field}, flowline_node)
+    # Add the confinement polygon
+    _vbet_node, confinement_shp = project.add_project_vector(proj_nodes['Inputs'], LayerTypes['CONFINING_POLYGON'], confining_polygon_orig)
+
+    project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['CONFINEMENT'])
+
     log.info(f"Preparing output geopackage: {output_gpkg}")
     driver_gpkg = ogr.GetDriverByName("GPKG")
     driver_gpkg.CreateDataSource(output_gpkg)
@@ -78,15 +96,18 @@ def confinement(huc, flowlines, confining_polygon, output_folder, buffer_field=N
 
     # Load input datasets
     driver = ogr.GetDriverByName("ESRI Shapefile")  # will need to check source for GPKG
-    data_flowlines = driver.Open(flowlines, 0)
+    data_flowlines = driver.Open(flowlines_shp, 0)
     lyr_flowlines = data_flowlines.GetLayer()
-    data_confining_polygon = driver.Open(confining_polygon, 0)
+    data_confining_polygon = driver.Open(confinement_shp, 0)
     lyr_confining_polygon = data_confining_polygon.GetLayer()
     srs = lyr_flowlines.GetSpatialRef()
 
     # Calculate Spatial Constants
-    offset = shapefile._rough_convert_metres_to_shapefile_units(flowlines, 0.1)
-    selection_buffer = shapefile._rough_convert_metres_to_shapefile_units(flowlines, 0.1)
+    # Get a very rough conversion factor for 1m to whatever units the shapefile uses
+    meter_conversion = shapefile._rough_convert_metres_to_shapefile_units(flowlines_shp, 1)
+
+    offset = 0.1 * meter_conversion
+    selection_buffer = 0.1 * meter_conversion
 
     # Load confing polygon
     geom_confining_polygon = unary_union([wkt_load(feat.GetGeometryRef().ExportToWkt()) for feat in lyr_confining_polygon])
@@ -139,13 +160,14 @@ def confinement(huc, flowlines, confining_polygon, output_folder, buffer_field=N
     progbar = ProgressBar(lyr_flowlines.GetFeatureCount(), 50, "Generating confinement for flowlines")
     flowline_counter = 0
     progbar.update(flowline_counter)
+
     for flowline in lyr_flowlines:
         flowline_counter += 1
         progbar.update(flowline_counter)
 
         # Load Flowline
         flowlineID = int(flowline.GetFieldAsInteger64("NHDPlusID"))
-        buffer_value = shapefile._rough_convert_metres_to_shapefile_units(flowlines, flowline.GetField(buffer_field))
+        buffer_value = flowline.GetField(buffer_field) * meter_conversion
         g = flowline.GetGeometryRef()
         g.FlattenTo2D()  # to avoid error if z value is present, even if 0.0
         geom_flowline = wkb_load(g.ExportToWkb())
@@ -204,6 +226,7 @@ def confinement(huc, flowlines, confining_polygon, output_folder, buffer_field=N
                     # print(f"WARNING: Flowline FID {flowline.GetFID()} | No Confining Margins for {side} side.")
 
         else:
+            progbar.erase()
             log.warning(f"WARNING: Flowline FID {flowline.GetFID()} | Incorrect number of split buffer polygons: {len(geom_buffer_splits)}")
             # TODO: if debug, save the offending features!
 
@@ -253,8 +276,10 @@ def confinement(huc, flowlines, confining_polygon, output_folder, buffer_field=N
                 if g.geom_type == "LineString":
                     save_geom_to_feature(lyr_out_confinement_raw, feature_def_confinement_raw, g, {"NHDPlusID": flowlineID, "Confinement_Type": con_type})
                 elif geoms.geom_type in ["Point", "MultiPoint"]:
+                    progbar.erase()
                     log.warning(f"Flowline FID: {flowline.GetFID()} | Point geometry identified generating outputs for Raw Confinement.")
                 else:
+                    progbar.erase()
                     log.warning(f"Flowline FID: {flowline.GetFID()} | Unknown geometry identified generating outputs for Raw Confinement.")
 
         # Calculated Confinement per Flowline
@@ -264,7 +289,42 @@ def confinement(huc, flowlines, confining_polygon, output_folder, buffer_field=N
         # Save Confinement Ratio
         save_geom_to_feature(lyr_out_confinement_ratio, feature_def_confinement_ratio, geom_flowline, {"NHDPlusID": flowlineID, "Confinement_Ratio": confinement_ratio, "Constriction_Ratio": constricted_ratio})
 
+    progbar.finish()
+    log.info('Confinement Finished')
     return
+
+
+def create_project(huc, output_dir, realization_meta):
+
+    project_name = 'Confinement for HUC {}'.format(huc)
+    project = RSProject(cfg, output_dir)
+    project.create(project_name, 'Confinement')
+
+    project.add_metadata({'HUC{}'.format(len(huc)): str(huc)})
+    project.add_metadata({'HUC': str(huc)})
+
+    realizations = project.XMLBuilder.add_sub_element(project.XMLBuilder.root, 'Realizations')
+    realization = project.XMLBuilder.add_sub_element(realizations, 'Confinement', None, {
+        'id': 'Confinement1',
+        'dateCreated': datetime.datetime.now().isoformat(),
+        'guid': str(uuid.uuid4()),
+        'productVersion': cfg.version
+    })
+    project.XMLBuilder.add_sub_element(realization, 'Name', project_name)
+
+    project.add_metadata(realization_meta)
+
+    proj_nodes = {
+        'Inputs': project.XMLBuilder.add_sub_element(realization, 'Inputs'),
+        'Outputs': project.XMLBuilder.add_sub_element(realization, 'Outputs')
+    }
+
+    proj_dir = os.path.dirname(project.xml_path)
+    safe_makedirs(os.path.join(proj_dir, 'inputs'))
+    safe_makedirs(os.path.join(proj_dir, 'outputs'))
+
+    project.XMLBuilder.write()
+    return project, realization, proj_nodes
 
 
 def generate_confining_margins(active_channel_polygon, confining_polygon, output_gpkg, type="Unspecified"):
@@ -454,7 +514,7 @@ def main():
     log.title('Confinement For HUC: {}'.format(args.huc))
 
     try:
-        confinement(args.huc, args.flowlines, args.confining_polygon, args.output_folder, args.buffer_field, debug=args.debug)
+        confinement(args.huc, args.flowlines, args.confining_polygon, args.output_folder, args.buffer_field, args.confinement_type, debug=args.debug)
 
     except Exception as e:
         log.error(e)

@@ -371,7 +371,6 @@ def clip(features, clip, output):
     proc = subprocess.Popen(callstr, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = proc.communicate()
 
-
 def copy_feature_class(inpath, epsg, outpath, clip_shape=None, attribute_filter=None):
     """Copy a Shapefile from one location to another
 
@@ -812,6 +811,7 @@ def _rough_convert_metres_to_gpkg_units(gpkg_path, distance):
 
     return _rough_convert_metres_to_dataset_units(in_spatial_ref, extent, distance)
 
+
 def _rough_convert_metres_to_raster_units(raster_path, distance):
 
     ds = gdal.Open(raster_path)
@@ -1105,5 +1105,5 @@ def export_geojson(shapely_geom, props=None):
             "properties": new_props,
             "geometry": mapping(shapely_geom),
         })
-        
+
     return the_dict

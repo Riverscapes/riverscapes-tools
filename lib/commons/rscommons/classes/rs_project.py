@@ -47,13 +47,22 @@ LayerTypes = {
 
 
 class RSLayer:
-    def __init__(self, name, id, tag, rel_path):
+    def __init__(self, name, id, tag, rel_path, sub_layers=None):
         if name is None:
             raise Exception('Name is required')
         if id is None:
             raise Exception('id is required')
         if rel_path is None:
             raise Exception('rel_path is required')
+        if tag != 'Geopackage' and sub_layers is not None:
+            raise Exception('Only Geopackages can have sub layers')
+        if sub_layers is not None:
+            # Make sure if we're a sub_layer that we've got the right shape
+            if not type(sub_layers) == dict or \
+                    not all([type(list(sub_layers.values())[0]) == RSLayer for a in sub_layers]):
+                raise Exception('sub_layers must but a list of RSLayer(s)')
+            self.sub_layers = sub_layers
+
         self.name = name
         self.id = id
         self.tag = tag
@@ -207,7 +216,7 @@ class RSProject:
     def get_relative_path(self, abs_path):
         return abs_path[len() + 1:]
 
-    def add_dataset(self, parent_node, abs_path, rs_lyr, default_tag, replace=False):
+    def add_dataset(self, parent_node, path_val, rs_lyr, default_tag, replace=False, rel_path=False):
 
         xml_tag = rs_lyr.tag if rs_lyr.tag is not None else default_tag
         id = rs_lyr.id if replace else RSProject.unique_type_id(parent_node, xml_tag, rs_lyr.id)
@@ -221,7 +230,10 @@ class RSProject:
         }
         nod_dataset = self.XMLBuilder.add_sub_element(parent_node, xml_tag, attribs=attribs)
         self.XMLBuilder.add_sub_element(nod_dataset, 'Name', rs_lyr.name)
-        self.XMLBuilder.add_sub_element(nod_dataset, 'Path', os.path.relpath(abs_path, os.path.dirname(self.xml_path)))
+        if rel_path:
+            self.XMLBuilder.add_sub_element(nod_dataset, 'Path', path_val)
+        else:
+            self.XMLBuilder.add_sub_element(nod_dataset, 'Path', os.path.relpath(path_val, os.path.dirname(self.xml_path)))
         self.XMLBuilder.write()
         return nod_dataset
 
@@ -282,6 +294,40 @@ class RSProject:
             log.info('Raster Copied {} to {}'.format(copy_path, file_path))
 
         nod_dataset = self.add_dataset(parent_node, file_path, rs_lyr, 'Raster', replace)
+        return nod_dataset, file_path
+
+    def add_project_geopackage(self, parent_node, rs_lyr, copy_path=None, replace=False):
+        log = Logger('add_project_geopackage')
+
+        file_path = os.path.join(os.path.dirname(self.xml_path), rs_lyr.rel_path)
+        file_dir = os.path.dirname(file_path)
+
+        # Create the folder if we need to
+        safe_makedirs(file_dir)
+        driver = ogr.GetDriverByName("GPKG")
+
+        if copy_path is not None or replace is True:
+            # Delete existing copies so we can re-copy them
+            if os.path.exists(file_path):
+                log.debug('Existing file found. deleting: {}'.format(file_path))
+                driver.DeleteDataSource(file_path)
+
+        if copy_path is not None:
+            if not os.path.exists(copy_path):
+                log.error('Could not find mandatory input "{}" geopackage at path "{}"'.format(rs_lyr.name, copy_path))
+            log.info('Copying dataset: {}'.format(rs_lyr.name))
+            driver.CopyDataSource(copy_path, file_path)
+
+            # Rasterio copies datasets efficiently
+            log.debug('Geopackage Copied {} to {}'.format(copy_path, file_path))
+
+        # Add in our sublayers
+        if rs_lyr.sub_layers and len(rs_lyr.sub_layers) > 0:
+            nod_dataset = self.add_dataset(parent_node, file_path, rs_lyr, 'Geopackage', replace)
+            layers_node = self.XMLBuilder.add_sub_element(nod_dataset, 'Layers')
+            for rssublyr in rs_lyr.sub_layers.values():
+                self.add_dataset(layers_node, rssublyr.rel_path, rssublyr, rssublyr.tag, rel_path=True)
+
         return nod_dataset, file_path
 
     def add_report(self, parent_node, rs_lyr, replace=False):
