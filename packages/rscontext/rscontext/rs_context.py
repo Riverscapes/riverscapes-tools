@@ -279,7 +279,7 @@ def create_project(huc, output_dir):
     realization = project.XMLBuilder.add_sub_element(realizations, 'RSContext', None, {
         'id': 'RSContext1',
         'dateCreated': datetime.datetime.now().isoformat(),
-        'guid': str(uuid.uuid1()),
+        'guid': str(uuid.uuid4()),
         'productVersion': cfg.version
     })
     project.XMLBuilder.add_sub_element(realization, 'Name', project_name)
