@@ -1,6 +1,6 @@
 import unittest
 from shapely.geometry import LineString, Point
-from confinement.confinement import select_geoms_by_intersection
+from gnat.confinement import select_geoms_by_intersection
 
 
 class Test_Confinement_Functions(unittest.TestCase):

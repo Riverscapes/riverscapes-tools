@@ -29,7 +29,8 @@ setup(name='gnat',
       author_email='info@northarrowresearch.com',
       install_requires=install_requires,
       entry_points={
-          "console_scripts": ['gnat = gnat.gnat:main']
+          "console_scripts": ['gnat = gnat.gnat:main',
+                              'confinement = gnat.confinement:main']
       },
       zip_safe=False,
       url='https://github.com/Riverscapes/gnat',
