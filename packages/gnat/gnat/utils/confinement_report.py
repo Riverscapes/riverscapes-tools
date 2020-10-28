@@ -71,6 +71,14 @@ def dam_capacity_lengths(database, elParent, capacity_field):
     data.append(('Total', cumulative_length_km, cumulative_length_km * 0.621371, 100 * cumulative_length_km / total_length_km))
     create_table_from_tuple_list((capacity_field, 'Stream Length (km)', 'Stream Length (mi)', 'Percent'), data, elParent)
 
+def confinement_ratio(database, attribute, label):
+
+
+    
+
+
+
+
 
 def reach_attribute_summary(database, images_dir, elParent):
     wrapper = ET.Element('div', attrib={'id': 'ReachAttributeSummary'})
