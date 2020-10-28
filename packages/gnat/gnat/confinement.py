@@ -20,7 +20,6 @@ from osgeo import ogr
 from osgeo import gdal
 from shapely.ops import unary_union, split, nearest_points, linemerge, substring
 from shapely.wkb import loads as wkb_load
-from shapely.wkt import loads as wkt_load
 from shapely.geometry import Point, Polygon, MultiPolygon, LineString, MultiLineString, mapping
 
 from rscommons import shapefile
@@ -112,7 +111,7 @@ def confinement(huc, flowlines_orig, confining_polygon_orig, output_folder, buff
     selection_buffer = 0.1 * meter_conversion
 
     # Load confing polygon
-    geom_confining_polygon = unary_union([wkt_load(feat.GetGeometryRef().ExportToWkt()) for feat in lyr_confining_polygon])
+    geom_confining_polygon = unary_union([wkb_load(feat.GetGeometryRef().ExportToWkb()) for feat in lyr_confining_polygon])
 
     # Standard Outputs
     out_driver = ogr.GetDriverByName("GPKG")
@@ -124,6 +123,9 @@ def confinement(huc, flowlines_orig, confining_polygon_orig, output_folder, buff
     field_confinement_type.SetWidth(5)
     field_confinement_ratio = ogr.FieldDefn("Confinement_Ratio", ogr.OFTReal)
     field_constriction_ratio = ogr.FieldDefn("Constriction_Ratio", ogr.OFTReal)
+    field_length = ogr.FieldDefn("ApproxLeng", ogr.OFTReal)
+    field_confined_length = ogr.FieldDefn("ConfinLeng", ogr.OFTReal)
+    field_constricted_length = ogr.FieldDefn("ConstrLeng", ogr.OFTReal)
 
     # lyr_out_floodplain_polygons = data_out.CreateLayer('Floodplain_Polygons', srs, geom_type=ogr.wkbPolygon)
     # lyr_out_floodplain_polygons.CreateField(field_side)
@@ -133,17 +135,22 @@ def confinement(huc, flowlines_orig, confining_polygon_orig, output_folder, buff
     lyr_out_confining_margins = data_out.CreateLayer("Confining_Margins", srs, geom_type=ogr.wkbLineString)
     lyr_out_confining_margins.CreateField(field_side)
     lyr_out_confining_margins.CreateField(field_flowlineID)
+    lyr_out_confining_margins.CreateField(field_length)
     feature_def_confining_margins = lyr_out_confining_margins.GetLayerDefn()
 
     lyr_out_confinement_raw = data_out.CreateLayer("Confinement_Raw", srs, geom_type=ogr.wkbLineString)
     lyr_out_confinement_raw.CreateField(field_flowlineID)
     lyr_out_confinement_raw.CreateField(field_confinement_type)
+    lyr_out_confinement_raw.CreateField(field_length)
     feature_def_confinement_raw = lyr_out_confinement_raw.GetLayerDefn()
 
     lyr_out_confinement_ratio = data_out.CreateLayer("Confinement_Ratio", srs, geom_type=ogr.wkbLineString)
     lyr_out_confinement_ratio.CreateField(field_flowlineID)
     lyr_out_confinement_ratio.CreateField(field_confinement_ratio)
     lyr_out_confinement_ratio.CreateField(field_constriction_ratio)
+    lyr_out_confinement_ratio.CreateField(field_length)
+    lyr_out_confinement_ratio.CreateField(field_confined_length)
+    lyr_out_confinement_ratio.CreateField(field_constricted_length)
     feature_def_confinement_ratio = lyr_out_confinement_ratio.GetLayerDefn()
 
     # Debug Outputs
@@ -157,6 +164,23 @@ def confinement(huc, flowlines_orig, confining_polygon_orig, output_folder, buff
         lyr_debug_flowline_segments.CreateField(field_side)
         lyr_debug_flowline_segments.CreateField(field_flowlineID)
         feature_def_flowline_segments = lyr_debug_flowline_segments.GetLayerDefn()
+
+        lyr_debug_buffers = data_out.CreateLayer('DEBUG_buffers', srs, geom_type=ogr.wkbPolygon)
+        lyr_debug_buffers.CreateField(field_side)
+        lyr_debug_buffers.CreateField(field_flowlineID)
+        feat_def_buffers = lyr_debug_buffers.GetLayerDefn()
+
+        field_process = ogr.FieldDefn("ErrorProcess", ogr.OFTString)
+        field_message = ogr.FieldDefn("ErrorMessage", ogr.OFTString)
+        lyr_debug_line_errors = data_out.CreateLayer("DEBUG_Error_Polylines", srs, geom_type=ogr.wkbLineString)
+        lyr_debug_line_errors.CreateField(field_process)
+        lyr_debug_line_errors.CreateField(field_message)
+        feat_def_debug_lines = lyr_debug_line_errors.GetLayerDefn()
+
+        lyr_debug_polygon_errors = data_out.CreateLayer("DEBUG_Error_Polygons", srs, geom_type=ogr.wkbPolygon)
+        lyr_debug_polygon_errors.CreateField(field_process)
+        lyr_debug_polygon_errors.CreateField(field_message)
+        feat_def_debug_polygon = lyr_debug_polygon_errors.GetLayerDefn()
 
     # Generate confinement per Flowline
     progbar = ProgressBar(lyr_flowlines.GetFeatureCount(), 50, "Generating confinement for flowlines")
@@ -200,7 +224,7 @@ def confinement(huc, flowlines_orig, confining_polygon_orig, output_folder, buff
                     lines = [line for line in geom_confined_margins] if geom_confined_margins.geom_type == 'MultiLineString' else [geom_confined_margins]
                     for line in lines:
 
-                        save_geom_to_feature(lyr_out_confining_margins, feature_def_confining_margins, line, {"Side": side, "NHDPlusID": flowlineID})
+                        save_geom_to_feature(lyr_out_confining_margins, feature_def_confining_margins, line, {"Side": side, "NHDPlusID": flowlineID, "ApproxLeng": line.length / meter_conversion})
 
                         # Split flowline by Near Geometry
                         pt_start = nearest_points(Point(line.coords[0]), geom_flowline)[1]
@@ -220,17 +244,20 @@ def confinement(huc, flowlines_orig, confining_polygon_orig, output_folder, buff
                             save_geom_to_feature(lyr_debug_flowline_segments, feature_def_flowline_segments, segment, {"Side": side, "NHDPlusID": flowlineID})
                             for point in [pt_start, pt_end]:
                                 save_geom_to_feature(lyr_debug_split_points, feature_def_split_points, point, {"Side": side, "NHDPlusID": flowlineID})
+                if debug:
+                    save_geom_to_feature(lyr_debug_buffers, feat_def_buffers, geom_side, {"Side": side, "NHDPlusID": flowlineID})
 
                 # TODO: genertate floodplain polygons, here, or at the end of processing
                 # geom_floodplain_polygons = geom_confining_polygon.difference(geom_side)
 
-                # else:
-                    # print(f"WARNING: Flowline FID {flowline.GetFID()} | No Confining Margins for {side} side.")
-
         else:
+            error_message = f"WARNING: Flowline FID {flowline.GetFID()} | Incorrect number of split buffer polygons: {len(geom_buffer_splits)}"
             progbar.erase()
-            log.warning(f"WARNING: Flowline FID {flowline.GetFID()} | Incorrect number of split buffer polygons: {len(geom_buffer_splits)}")
-            # TODO: if debug, save the offending features!
+            log.warning(error_message)
+            if debug:
+                save_geom_to_feature(lyr_debug_line_errors, feat_def_debug_lines, geom_flowline, {"ErrorProcess": "Buffer Split", "ErrorMessage": error_message})
+                if len(geom_buffer_splits) > 0:
+                    save_geom_to_feature(lyr_debug_polygon_errors, feat_def_debug_polygon, geom_buffer_splits, {"ErrorProcess": "Buffer Split", "ErrorMessage": error_message})
 
         # Raw Confinement Output
         # Prepare flowline splits
@@ -276,7 +303,7 @@ def confinement(huc, flowlines_orig, confining_polygon_orig, output_folder, buff
         for con_type, geoms in zip(["Left", "Right", "Both", "None"], [lgeoms_confined_left, lgeoms_confined_right, lgeoms_constricted, lgeoms_unconfined]):
             for g in geoms:
                 if g.geom_type == "LineString":
-                    save_geom_to_feature(lyr_out_confinement_raw, feature_def_confinement_raw, g, {"NHDPlusID": flowlineID, "Confinement_Type": con_type})
+                    save_geom_to_feature(lyr_out_confinement_raw, feature_def_confinement_raw, g, {"NHDPlusID": flowlineID, "Confinement_Type": con_type, "ApproxLeng": g.length / meter_conversion})
                 elif geoms.geom_type in ["Point", "MultiPoint"]:
                     progbar.erase()
                     log.warning(f"Flowline FID: {flowline.GetFID()} | Point geometry identified generating outputs for Raw Confinement.")
@@ -289,7 +316,13 @@ def confinement(huc, flowlines_orig, confining_polygon_orig, output_folder, buff
         constricted_ratio = geom_constricted.length / geom_flowline.length if geom_constricted else 0.0
 
         # Save Confinement Ratio
-        save_geom_to_feature(lyr_out_confinement_ratio, feature_def_confinement_ratio, geom_flowline, {"NHDPlusID": flowlineID, "Confinement_Ratio": confinement_ratio, "Constriction_Ratio": constricted_ratio})
+        attributes = {"NHDPlusID": flowlineID,
+                      "Confinement_Ratio": confinement_ratio,
+                      "Constriction_Ratio": constricted_ratio,
+                      "ApproxLeng": geom_flowline.length / meter_conversion,
+                      "ConfinLeng": geom_confined.length / meter_conversion if geom_confined else 0.0,
+                      "ConstrLeng": geom_constricted.length / meter_conversion if geom_constricted else 0.0}
+        save_geom_to_feature(lyr_out_confinement_ratio, feature_def_confinement_ratio, geom_flowline, attributes)
 
     progbar.finish()
     log.info('Confinement Finished')
