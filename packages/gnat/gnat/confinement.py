@@ -41,7 +41,7 @@ LayerTypes = {
     'CONFINEMENT': RSLayer('Confinement', 'CONFINEMENT', 'Geopackage', 'outputs/confinement.gpkg', {
         'CONFINEMENT_RAW': RSLayer('Confinement Raw', 'CONFINEMENT_RAW', 'Vector', 'main.Confinement_Raw'),
         'CONFINEMENT_MARGINS': RSLayer('Confinement Margins', 'CONFINEMENT_MARGINS', 'Vector', 'main.Confining_Margins'),
-        'CONFINEMENT_RATIO': RSLayer('Confinement Margins', 'CONFINEMENT_RATIO', 'Vector', 'main.Confinement_Ratio')
+        'CONFINEMENT_RATIO': RSLayer('Confinement Ratio', 'CONFINEMENT_RATIO', 'Vector', 'main.Confinement_Ratio')
     }),
 }
 
