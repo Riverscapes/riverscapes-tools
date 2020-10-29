@@ -72,3 +72,14 @@ def box_plot(values, ylabel, chart_title, file_path):
         os.makedirs(os.path.dirname(file_path))
 
     plt.savefig(file_path)
+
+
+def histogram(values, bins, file_path):
+
+    plt.clf()
+    plt.hist(values, bins)
+
+    if not os.path.isdir(os.path.dirname(file_path)):
+        os.makedirs(os.path.dirname(file_path))
+
+    plt.savefig(file_path)
