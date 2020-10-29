@@ -38,17 +38,7 @@ def create_database(huc, db_path, metadata, epsg, schema_path):
     curs = conn.cursor()
     curs.executescript(qry)
 
-    # Load lookup table data into the database
-    for dirName in ['data', os.path.join('data', 'intersect')]:
-        dirSearch = os.path.join(os.path.dirname(schema_path), dirName, '*.sql')
-        for file in glob.glob(dirSearch):
-            with open(os.path.join(dirName, file), mode='r') as csvfile:
-                d = csv.DictReader(csvfile)
-                sql = 'INSERT INTO {0} ({1}) VALUES ({2})'.format(os.path.splitext(file)[0], ','.join(d.fieldnames), ','.join('?' * len(d.fieldnames)))
-
-                to_db = [[i[col] for col in d.fieldnames] for i in d]
-                curs.executemany(sql, to_db)
-                log.info('{:,} records loaded into {} lookup data table'.format(curs.rowcount, os.path.splitext(file)[0]))
+    load_lookup_data(db_path, os.path.dirname(schema_path))
 
     # Keep only the designated watershed
     curs.execute('DELETE FROM Watersheds WHERE WatershedID <> ?', [huc])
@@ -102,24 +92,48 @@ def update_database(db_path, csv_path):
         raise e
 
     # Load lookup table data into the database
-    for dirName, dirs, files in os.walk(csv_path, '../database/data'):
-        for file in files:
-            filename = os.path.splitext(file)[0]
-            with open(os.path.join(dirName, file), mode='r') as csvfile:
-                d = csv.DictReader(csvfile)
-                sql = 'INSERT OR REPLACE INTO {0} ({1}) VALUES ({2})'.format(os.path.splitext(file)[0], ','.join(d.fieldnames), ','.join('?' * len(d.fieldnames)))
+    load_lookup_data(db_path, csv_path)
 
-                to_db = [[i[col] for col in d.fieldnames] for i in d]
-                curs.executemany(sql, to_db)
-                log.info('{:,} records updated or loaded into {} lookup data table'.format(curs.rowcount, os.path.splitext(file)[0]))
-
-    # Keep only the designated watershed
+    # Updated the database will reload ALL watersheds. Keep only the designated watershed for this run
     curs.execute('DELETE FROM Watersheds WHERE WatershedID <> ?', [huc])
 
     conn.commit()
     conn.execute("VACUUM")
 
     return db_path
+
+
+def load_lookup_data(db_path, csv_dir):
+    """Load the database lookup data from CSV files.
+    This gets called both during database creation during BRAT build,
+    but also during refresh of lookup data at the start of BRAT Run so that
+    the database has the latest hydrologic equations and other BRAT parameters
+
+    Args:
+        db_path (str): Full path to SQLite database
+        csv_dir (str): Full path to the root folder containing CSV lookup files
+    """
+
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = dict_factory
+    curs = conn.cursor()
+
+    log = Logger('Database')
+
+    # Load lookup table data into the database
+    for dir_name in ['data', os.path.join('data', 'intersect')]:
+        dir_search = os.path.join(csv_dir, dir_name, '*.csv')
+        for file_name in glob.glob(dir_search):
+            table_name = os.path.splitext(os.path.basename(file_name))[0]
+            with open(os.path.join(dir_name, file_name), mode='r') as csvfile:
+                d = csv.DictReader(csvfile)
+                sql = 'INSERT OR REPLACE INTO {0} ({1}) VALUES ({2})'.format(table_name, ','.join(d.fieldnames), ','.join('?' * len(d.fieldnames)))
+
+                to_db = [[i[col] for col in d.fieldnames] for i in d]
+                curs.executemany(sql, to_db)
+                log.info('{:,} records loaded into {} lookup data table'.format(curs.rowcount, table_name))
+
+    conn.commit()
 
 
 def get_db_srs(database):
