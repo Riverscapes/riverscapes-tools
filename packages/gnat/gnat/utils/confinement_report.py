@@ -8,7 +8,7 @@ from rscommons import Logger, dotenv, ModelConfig
 from rscommons.util import safe_makedirs
 from rscommons.report_common import create_report, write_report, header, format_value, dict_factory
 from rscommons.report_common import create_table_from_tuple_list, create_table_from_sql, create_table_from_dict
-from rscommons.plotting import xyscatter, box_plot
+from rscommons.plotting import xyscatter, box_plot, histogram
 from gnat.__version__ import __version__
 
 
@@ -20,6 +20,7 @@ def confinement_report(database, report_path, huc):
     # reach_attribute_summary(database, images_dir, inner_div)
 
     raw_confinement(database, inner_div)
+    [confinement_ratio(database, images_dir, field, field, inner_div) for field in ['Confinement_Ratio', 'Constriction_Ratio']]
 
     write_report(html, report_path)
 
@@ -82,40 +83,61 @@ def table_of_contents(elParent):
     elParent.append(wrapper)
 
 
-def dam_capacity_lengths(database, elParent, capacity_field):
+# def dam_capacity_lengths(database, elParent, capacity_field):
+
+#     conn = sqlite3.connect(database)
+#     curs = conn.cursor()
+
+#     curs.execute('SELECT Name, MaxCapacity FROM DamCapacities ORDER BY MaxCapacity')
+#     bins = [(row[0], row[1]) for row in curs.fetchall()]
+
+#     curs.execute('SELECT Sum(iGeo_Len) / 1000 FROM Reaches')
+#     total_length_km = curs.fetchone()[0]
+
+#     data = []
+#     last_bin = 0
+#     cumulative_length_km = 0
+#     for name, max_capacity in bins:
+#         curs.execute('SELECT Sum(iGeo_len) / 1000 FROM Reaches WHERE {} <= {}'.format(capacity_field, max_capacity))
+#         rowi = curs.fetchone()
+#         if not rowi or rowi[0] is None:
+#             bin_km = 0
+#         else:
+#             bin_km = rowi[0] - cumulative_length_km
+#             cumulative_length_km = rowi[0]
+#         data.append((
+#             '{}: {} - {}'.format(name, last_bin, max_capacity),
+#             bin_km,
+#             bin_km * 0.621371,
+#             100 * bin_km / total_length_km
+#         ))
+
+#         last_bin = max_capacity
+
+#     data.append(('Total', cumulative_length_km, cumulative_length_km * 0.621371, 100 * cumulative_length_km / total_length_km))
+#     create_table_from_tuple_list((capacity_field, 'Stream Length (km)', 'Stream Length (mi)', 'Percent'), data, elParent)
+
+
+def confinement_ratio(database, images_dir, db_field, label, elParent):
+
+    wrapper = ET.Element('div', attrib={'id': 'ratio_{}'.format(db_field)})
+    header(3, label, wrapper)
 
     conn = sqlite3.connect(database)
     curs = conn.cursor()
 
-    curs.execute('SELECT Name, MaxCapacity FROM DamCapacities ORDER BY MaxCapacity')
-    bins = [(row[0], row[1]) for row in curs.fetchall()]
+    curs.execute('SELECT {} FROM Confinement_Ratio'.format(db_field))
+    data = [row[0] for row in curs.fetchall()]
 
-    curs.execute('SELECT Sum(iGeo_Len) / 1000 FROM Reaches')
-    total_length_km = curs.fetchone()[0]
+    image_path = os.path.join(images_dir, '{}.png'.format(db_field.lower()))
+    histogram(data, 10, image_path)
 
-    data = []
-    last_bin = 0
-    cumulative_length_km = 0
-    for name, max_capacity in bins:
-        curs.execute('SELECT Sum(iGeo_len) / 1000 FROM Reaches WHERE {} <= {}'.format(capacity_field, max_capacity))
-        rowi = curs.fetchone()
-        if not rowi or rowi[0] is None:
-            bin_km = 0
-        else:
-            bin_km = rowi[0] - cumulative_length_km
-            cumulative_length_km = rowi[0]
-        data.append((
-            '{}: {} - {}'.format(name, last_bin, max_capacity),
-            bin_km,
-            bin_km * 0.621371,
-            100 * bin_km / total_length_km
-        ))
+    img_wrap = ET.Element('div', attrib={'class': 'imgWrap'})
+    img = ET.Element('img', attrib={'class': 'boxplot', 'src': '{}/{}'.format(os.path.basename(images_dir), os.path.basename(image_path))})
+    img_wrap.append(img)
+    wrapper.append(img_wrap)
 
-        last_bin = max_capacity
-
-    data.append(('Total', cumulative_length_km, cumulative_length_km * 0.621371, 100 * cumulative_length_km / total_length_km))
-    create_table_from_tuple_list((capacity_field, 'Stream Length (km)', 'Stream Length (mi)', 'Percent'), data, elParent)
-
+    elParent.append(wrapper)
 
 # def reach_attribute_summary(database, images_dir, elParent):
 #     wrapper = ET.Element('div', attrib={'id': 'ReachAttributeSummary'})
