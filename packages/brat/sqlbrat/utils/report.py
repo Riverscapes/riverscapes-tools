@@ -115,7 +115,6 @@ def reach_attribute(database, attribute, units, images_dir, elParent):
     elParent.append(wrapper)
 
 
-
 def table_of_contents(elParent):
     wrapper = ET.Element('div', attrib={'id': 'TOC'})
     header(3, 'Table of Contents', wrapper)
@@ -211,8 +210,8 @@ def hydrology_plots(database, images_dir, elParent):
 
     variables = [
         ('iHyd_QLow', 'Baseflow (CFS)'),
-        ('iHyd_Q2', 'Peak Flow (CSF)'),
-        ('iHyd_SPLow', 'Baseflow Stream Power (Watts'),
+        ('iHyd_Q2', 'Peak Flow (CFS)'),
+        ('iHyd_SPLow', 'Baseflow Stream Power (Watts)'),
         ('iHyd_SP2', 'Peak Flow Stream Power (Watts)'),
         ('iGeo_Slope', 'Slope (degrees)')
     ]
