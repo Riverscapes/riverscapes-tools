@@ -5,7 +5,7 @@ from xml.etree import ElementTree as ET
 
 from rscommons import Logger, dotenv, ModelConfig
 from rscommons.util import safe_makedirs
-from rscommons.report_common import create_report, write_report, report_intro, header, format_value, reach_attribute, dict_factory
+from rscommons.report_common import create_report, write_report, header, format_value, dict_factory
 from rscommons.report_common import create_table_from_tuple_list, create_table_from_sql, create_table_from_dict
 from rscommons.plotting import xyscatter, box_plot
 
@@ -35,6 +35,85 @@ def report(database, report_path):
     conservation(database, images_dir, inner_div)
 
     write_report(html, report_path)
+
+
+def report_intro(database, images_dir, elParent, tool_name, version):
+    wrapper = ET.Element('div', attrib={'id': 'ReportIntro'})
+    conn = sqlite3.connect(database)
+    conn.row_factory = dict_factory
+    curs = conn.cursor()
+    watershed = curs.execute('SELECT WatershedID, Name FROM Watersheds LIMIT 1').fetchone()
+
+    header_bar = ET.Element('div', attrib={'id': 'HeaderBar'})
+    wrapper.append(header_bar)
+
+    header(1, '{} for {} - {}'.format(tool_name, watershed['WatershedID'], watershed['Name']), header_bar)
+    header(4, 'Model Version: {}'.format(version), header_bar)
+
+    # table_of_contents(wrapper)
+
+    header(2, 'Introduction', wrapper)
+
+    row = curs.execute('SELECT Sum(iGeo_Len) AS TotalLength, Count(ReachID) AS TotalReaches FROM Reaches').fetchone()
+    values = {'Number of reaches': '{0:,d}'.format(row['TotalReaches']), 'Total reach length (km)': '{0:,.0f}'.format(row['TotalLength'] / 1000), 'Total reach length (miles)': '{0:,.0f}'.format(row['TotalLength'] * 0.000621371)}
+
+    row = curs.execute('SELECT WatershedID "Watershed ID", W.Name "Watershed Name", E.Name Ecoregion, CAST(AreaSqKm AS TEXT) "Area (Sqkm)", States FROM Watersheds W INNER JOIN Ecoregions E ON W.EcoregionID = E.EcoregionID').fetchone()
+    values.update(row)
+
+    table_wrapper = ET.Element('div', attrib={'class': 'tableWrapper'})
+    wrapper.append(table_wrapper)
+
+    # create_table_from_dict(values, table_wrapper, attrib={'id': 'SummTable'})
+
+    curs.execute('SELECT KeyInfo, ValueInfo FROM Metadata')
+    values.update({row['KeyInfo'].replace('_', ' '): row['ValueInfo'] for row in curs.fetchall()})
+
+    create_table_from_dict(values, table_wrapper, attrib={'id': 'SummTable'})
+
+    create_table_from_sql(
+        ['Reach Type', 'Total Length (km)', '% of Total'],
+        'SELECT ReachType, Sum(iGeo_Len) / 1000 As Length, 100 * Sum(iGeo_Len) / TotalLength AS TotalLength '
+        'FROM vwReaches INNER JOIN (SELECT Sum(iGeo_Len) AS TotalLength FROM Reaches) GROUP BY ReachType',
+        database, table_wrapper, attrib={'id': 'SummTable'})
+
+    elParent.append(wrapper)
+
+
+def reach_attribute(database, attribute, units, images_dir, elParent):
+    # Use a class here because it repeats
+    wrapper = ET.Element('div', attrib={'class': 'reachAtribute'})
+    header(3, attribute, wrapper)
+
+    conn = sqlite3.connect(database)
+    conn.row_factory = dict_factory
+    curs = conn.cursor()
+
+    # Summary statistics (min, max etc) for the current attribute
+    curs.execute('SELECT Count({0}) "Values", Max({0}) Maximum, Min({0}) Minimum, Avg({0}) Average FROM Reaches WHERE {0} IS NOT NULL'.format(attribute))
+    values = curs.fetchone()
+
+    reach_wrapper_inner = ET.Element('div', attrib={'class': 'reachAtributeInner'})
+    wrapper.append(reach_wrapper_inner)
+
+    # Add the number of NULL values
+    curs.execute('SELECT Count({0}) "NULL Values" FROM Reaches WHERE {0} IS NULL'.format(attribute))
+    values.update(curs.fetchone())
+    create_table_from_dict(values, reach_wrapper_inner)
+
+    # Box plot
+    image_path = os.path.join(images_dir, 'attribute_{}.png'.format(attribute))
+    curs.execute('SELECT {0} FROM Reaches WHERE {0} IS NOT NULL'.format(attribute))
+    values = [row[attribute] for row in curs.fetchall()]
+    box_plot(values, attribute, attribute, image_path)
+
+    img_wrap = ET.Element('div', attrib={'class': 'imgWrap'})
+    img = ET.Element('img', attrib={'class': 'boxplot', 'src': '{}/{}'.format(os.path.basename(images_dir), os.path.basename(image_path))})
+    img_wrap.append(img)
+
+    reach_wrapper_inner.append(img_wrap)
+
+    elParent.append(wrapper)
+
 
 
 def table_of_contents(elParent):

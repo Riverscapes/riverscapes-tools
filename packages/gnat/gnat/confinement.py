@@ -25,7 +25,7 @@ from shapely.geometry import Point, Polygon, MultiPolygon, LineString, MultiLine
 from rscommons import shapefile
 from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALOGRErrors, ProgressBar
 from rscommons.util import safe_makedirs, safe_remove_dir, safe_remove_file
-from gnat.utils.confinement_report import report
+from gnat.utils.confinement_report import confinement_report
 from gnat.__version__ import __version__
 
 initGDALOGRErrors()
@@ -77,7 +77,7 @@ def confinement(huc, flowlines_orig, confining_polygon_orig, output_folder, buff
         safe_remove_file(output_gpkg)
 
     # Make the projectXML
-    project, realization, proj_nodes = create_project(huc, output_folder, {
+    project, realization, proj_nodes, report_path = create_project(huc, output_folder, {
         'ConfinementType': confinement_type
     })
     # Add the flowlines file with some metadata
@@ -324,6 +324,9 @@ def confinement(huc, flowlines_orig, confining_polygon_orig, output_folder, buff
                       "ConstrLeng": geom_constricted.length / meter_conversion if geom_constricted else 0.0}
         save_geom_to_feature(lyr_out_confinement_ratio, feature_def_confinement_ratio, geom_flowline, attributes)
 
+    # Write a report
+    confinement_report(output_gpkg, report_path, huc)
+
     progbar.finish()
     log.info('Confinement Finished')
     return
@@ -358,14 +361,12 @@ def create_project(huc, output_dir, realization_meta):
     safe_makedirs(os.path.join(proj_dir, 'inputs'))
     safe_makedirs(os.path.join(proj_dir, 'outputs'))
 
-    project.XMLBuilder.write()
-
-    # Write a report
     report_path = os.path.join(project.project_dir, LayerTypes['CONFINEMENT_RUN_REPORT'].rel_path)
     project.add_report(proj_nodes['Outputs'], LayerTypes['CONFINEMENT_RUN_REPORT'], replace=True)
-    # report(database, report_path)
 
-    return project, realization, proj_nodes
+    project.XMLBuilder.write()
+
+    return project, realization, proj_nodes, report_path
 
 
 def generate_confining_margins(active_channel_polygon, confining_polygon, output_gpkg, type="Unspecified"):
