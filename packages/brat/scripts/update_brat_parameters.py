@@ -57,7 +57,9 @@ def update_watersheds(curs, watershed_csv):
         'QLow': row['qlow'],
         'Q2': row['q2'],
         'Notes': row['notes'],
-        'MetaData': row['metadata']
+        'MetaData': row['metadata'],
+        'AreaSqKm': row['area_sqkm'],
+        'States': row['states'].replace(',', '_') if row['states'] else None
     } for row in curs.fetchall()}
 
     # Validate the hydrologic equations. The following dictionary will be keyed by python exception concatenated to produce
