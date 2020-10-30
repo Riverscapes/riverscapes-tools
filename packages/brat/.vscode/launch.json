@@ -80,7 +80,7 @@
       "type": "python",
       "module": "rscommons.version",
       "args": [
-        "${workspaceFolder}/__version__.py"
+        "${workspaceFolder}/sqlbrat/__version__.py"
       ],
       "request": "launch",
       "console": "integratedTerminal"
