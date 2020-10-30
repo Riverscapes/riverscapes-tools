@@ -59,6 +59,18 @@
         "--debug"
       ]
     },
+    // {
+    //   "name": "Land Surface Temp XMLS",
+    //   "type": "python",
+    //   "request": "launch",
+    //   "module": "scripts.modis_xmls",
+    //   "console": "integratedTerminal",
+    //   // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
+    //   "args": [
+    //     "{env:DATA_ROOT}/MODIS/xmls",
+    //     "--verbose",
+    //   ]
+    // },    
     {
       "name": "Version Bump",
       "type": "python",
