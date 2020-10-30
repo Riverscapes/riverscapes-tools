@@ -6,3 +6,13 @@ into this git repository using the `scripts/update_brat_parameters.py` script.
 Note that you can use docker to initialize a local copy of this database, but the
 SQL files within the `initdb` folder will probably be out of date and lag the 
 latest values in this git repository and the live postgres database.
+
+
+ ## .env.database
+
+```
+# For PG. Substitute with appropriate values
+POSTGRES_USER=myuser
+POSTGRES_PASSWORD=password123
+POSTGRES_DB=postgres
+```
