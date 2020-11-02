@@ -1783,31 +1783,31 @@ WatershedID,Name,EcoregionID,MaxDrainage,QLow,Q2,Notes,MetaData,AreaSqKm,States
 16030007,Beaver Bottoms-Upper Beaver,13,,,,,,4472.62,UT
 16030008,Lower Beaver,13,,,,,,2078.94,UT
 16030009,Sevier Lake,13,,,,,,3613.93,UT
-16040101,Upper Humboldt,13,10714.0,0.0000115 * (DRNAREA**0.837) * (ELEV1K**4.658),13.1 * (DRNAREA**0.713),High: https://pubs.usgs.gov/fs/fs-123-98/pdf/fs-123-98.pdf Low: Loan from ID_NV watersheds,,7133.03,NV
-16040102,North Fork Humboldt,13,5483.0,0.0000115 * (DRNAREA**0.837) * (ELEV1K**4.658),13.1 * (DRNAREA**0.713),High: https://pubs.usgs.gov/fs/fs-123-98/pdf/fs-123-98.pdf Low: Loan from ID_NV watersheds,,2586.51,NV
-16040103,South Fork Humboldt,13,2810.0,0.0000115 * (DRNAREA**0.837) * (ELEV1K**4.658),13.1 * (DRNAREA**0.713),High: https://pubs.usgs.gov/fs/fs-123-98/pdf/fs-123-98.pdf Low: Loan from ID_NV watersheds,,3382.81,NV
-16040104,Pine,13,2168.0,0.0000115 * (DRNAREA**0.837) * (ELEV1K**4.658),13.1 * (DRNAREA**0.713),High: https://pubs.usgs.gov/fs/fs-123-98/pdf/fs-123-98.pdf Low: Loan from ID_NV watersheds,,2605.15,NV
+16040101,Upper Humboldt,13,10714.0,0.0000115 * (DRNAREA**0.837) * (ELEV1K**4.658),13.1 * ((DRNAREA/2.59)**0.713),High: https://pubs.usgs.gov/fs/fs-123-98/pdf/fs-123-98.pdf Low: Loan from ID_NV watersheds,,7133.03,NV
+16040102,North Fork Humboldt,13,5483.0,0.0000115 * (DRNAREA**0.837) * (ELEV1K**4.658),13.1 * ((DRNAREA/2.59)**0.713),High: https://pubs.usgs.gov/fs/fs-123-98/pdf/fs-123-98.pdf Low: Loan from ID_NV watersheds,,2586.51,NV
+16040103,South Fork Humboldt,13,2810.0,0.0000115 * (DRNAREA**0.837) * (ELEV1K**4.658),13.1 * ((DRNAREA/2.59)**0.713),High: https://pubs.usgs.gov/fs/fs-123-98/pdf/fs-123-98.pdf Low: Loan from ID_NV watersheds,,3382.81,NV
+16040104,Pine,13,2168.0,0.0000115 * (DRNAREA**0.837) * (ELEV1K**4.658),13.1 * ((DRNAREA/2.59)**0.713),High: https://pubs.usgs.gov/fs/fs-123-98/pdf/fs-123-98.pdf Low: Loan from ID_NV watersheds,,2605.15,NV
 16040105,Middle Humboldt,13,,,,,,8286.01,NV
-16040106,Rock,13,15839.0,0.0000115 * (DRNAREA**0.837) * (ELEV1K**4.658),13.1 * (DRNAREA**0.713),High: https://pubs.usgs.gov/fs/fs-123-98/pdf/fs-123-98.pdf Low: Loan from ID_NV watersheds,,2349.35,NV
+16040106,Rock,13,15839.0,0.0000115 * (DRNAREA**0.837) * (ELEV1K**4.658),13.1 * ((DRNAREA/2.59)**0.713),High: https://pubs.usgs.gov/fs/fs-123-98/pdf/fs-123-98.pdf Low: Loan from ID_NV watersheds,,2349.35,NV
 16040107,Reese,13,19029.0,0,0,High: https://pubs.usgs.gov/fs/fs-123-98/pdf/fs-123-98.pdf,,6160.36,NV
 16040108,Lower Humboldt,13,,,,,,6718.17,NV
-16040109,Little Humboldt,80,3347.0,0.0000115 * (DRNAREA**0.837) * (ELEV1K**4.658),13.1 * (DRNAREA**0.713),High: https://pubs.usgs.gov/fs/fs-123-98/pdf/fs-123-98.pdf Low: Loan from ID_NV watersheds,,4612.94,NV
-16040201,Upper Quinn,13,2426.0,0.0000115 * (DRNAREA**0.837) * (ELEV1K**4.658),13.1 * (DRNAREA**0.713),High: https://pubs.usgs.gov/fs/fs-123-98/pdf/fs-123-98.pdf Low: Loan from ID_NV watersheds,,9128.14,NV_OR
-16040202,Lower Quinn,13,8504.0,0.0000115 * (DRNAREA**0.837) * (ELEV1K**4.658),13.1 * (DRNAREA**0.713),High: https://pubs.usgs.gov/fs/fs-123-98/pdf/fs-123-98.pdf Low: Loan from ID_NV watersheds,,8481.72,NV
+16040109,Little Humboldt,80,3347.0,0.0000115 * (DRNAREA**0.837) * (ELEV1K**4.658),13.1 * ((DRNAREA/2.59)**0.713),High: https://pubs.usgs.gov/fs/fs-123-98/pdf/fs-123-98.pdf Low: Loan from ID_NV watersheds,,4612.94,NV
+16040201,Upper Quinn,13,2426.0,0.0000115 * (DRNAREA**0.837) * (ELEV1K**4.658),13.1 * ((DRNAREA/2.59)**0.713),High: https://pubs.usgs.gov/fs/fs-123-98/pdf/fs-123-98.pdf Low: Loan from ID_NV watersheds,,9128.14,NV_OR
+16040202,Lower Quinn,13,8504.0,0.0000115 * (DRNAREA**0.837) * (ELEV1K**4.658),13.1 * ((DRNAREA/2.59)**0.713),High: https://pubs.usgs.gov/fs/fs-123-98/pdf/fs-123-98.pdf Low: Loan from ID_NV watersheds,,8481.72,NV
 16040203,Smoke Creek Desert,80,,,,,,6376.57,CA_NV
 16040204,Massacre Lake,80,,,,,,3357.46,CA_NV
 16040205,Thousand-Virgin,80,,,,,,2998.41,NV_OR
-16050101,Lake Tahoe,5,248.0,1.27283*(10**-5.0867)*(DRNAREA**0.7934)*(PRECIP**3.1278),(0.0333*(DRNAREA**0.853))*(ELEV1K**2.68)*(((LAT-28)/10)**4.1),High: https://pubs.usgs.gov/fs/fs-123-98/pdf/fs-123-98.pdf Low: Loan from oregon,,1312.7,CA_NV
-16050102,Truckee,13,3801.0,1.27283*(10**-5.0867)*(DRNAREA**0.7934)*(PRECIP**3.1278),(0.0333*(DRNAREA**0.853))*(ELEV1K**2.68)*(((LAT-28)/10)**4.1),High: https://pubs.usgs.gov/fs/fs-123-98/pdf/fs-123-98.pdf Low: Loan from oregon,,3152.8,CA_NV
+16050101,Lake Tahoe,5,248.0,1.27283*(10**-5.0867)*(DRNAREA**0.7934)*(PRECIP**3.1278),(0.0333*((DRNAREA/2.59)**0.853))*(ELEV1K**2.68)*(((LAT-28)/10)**4.1),High: https://pubs.usgs.gov/fs/fs-123-98/pdf/fs-123-98.pdf Low: Loan from oregon,,1312.7,CA_NV
+16050102,Truckee,13,3801.0,1.27283*(10**-5.0867)*(DRNAREA**0.7934)*(PRECIP**3.1278),(0.0333*((DRNAREA/2.59)**0.853))*(ELEV1K**2.68)*(((LAT-28)/10)**4.1),High: https://pubs.usgs.gov/fs/fs-123-98/pdf/fs-123-98.pdf Low: Loan from oregon,,3152.8,CA_NV
 16050103,Pyramid-Winnemucca Lakes,13,3821.0,0,0,High: https://pubs.usgs.gov/fs/fs-123-98/pdf/fs-123-98.pdf,,3587.84,NV
 16050104,Granite Springs Valley,13,,,,,,4304.47,NV
-16050201,Upper Carson,13,1943.0,1.27283*(10**-5.0867)*(DRNAREA**0.7934)*(PRECIP**3.1278),(0.0333*(DRNAREA**0.853))*(ELEV1K**2.68)*(((LAT-28)/10)**4.1),High: https://pubs.usgs.gov/fs/fs-123-98/pdf/fs-123-98.pdf Low: Loan from oregon,,2482.68,CA_NV
+16050201,Upper Carson,13,1943.0,1.27283*(10**-5.0867)*(DRNAREA**0.7934)*(PRECIP**3.1278),(0.0333*((DRNAREA/2.59)**0.853))*(ELEV1K**2.68)*(((LAT-28)/10)**4.1),High: https://pubs.usgs.gov/fs/fs-123-98/pdf/fs-123-98.pdf Low: Loan from oregon,,2482.68,CA_NV
 16050202,Middle Carson,13,,,,,,2148.98,NV
 16050203,Carson Desert,13,,,,,,5633.21,NV
-16050301,East Walker,13,3326.0,1.27283*(10**-5.0867)*(DRNAREA**0.7934)*(PRECIP**3.1278),(0.0333*(DRNAREA**0.853))*(ELEV1K**2.68)*(((LAT-28)/10)**4.1),High: https://pubs.usgs.gov/fs/fs-123-98/pdf/fs-123-98.pdf Low: Loan from oregon,,3110.41,CA_NV
-16050302,West Walker,13,1429.0,1.27283*(10**-5.0867)*(DRNAREA**0.7934)*(PRECIP**3.1278),(0.0333*(DRNAREA**0.853))*(ELEV1K**2.68)*(((LAT-28)/10)**4.1),High: https://pubs.usgs.gov/fs/fs-123-98/pdf/fs-123-98.pdf Low: Loan from oregon,,2698.12,CA_NV
+16050301,East Walker,13,3326.0,1.27283*(10**-5.0867)*(DRNAREA**0.7934)*(PRECIP**3.1278),(0.0333*((DRNAREA/2.59)**0.853))*(ELEV1K**2.68)*(((LAT-28)/10)**4.1),High: https://pubs.usgs.gov/fs/fs-123-98/pdf/fs-123-98.pdf Low: Loan from oregon,,3110.41,CA_NV
+16050302,West Walker,13,1429.0,1.27283*(10**-5.0867)*(DRNAREA**0.7934)*(PRECIP**3.1278),(0.0333*((DRNAREA/2.59)**0.853))*(ELEV1K**2.68)*(((LAT-28)/10)**4.1),High: https://pubs.usgs.gov/fs/fs-123-98/pdf/fs-123-98.pdf Low: Loan from oregon,,2698.12,CA_NV
 16050303,Walker,13,,,,,,2315.83,NV
-16050304,Walker Lake,13,3957.0,1.27283*(10**-5.0867)*(DRNAREA**0.7934)*(PRECIP**3.1278),(0.0333*(DRNAREA**0.853))*(ELEV1K**2.68)*(((LAT-28)/10)**4.1),High: https://pubs.usgs.gov/fs/fs-123-98/pdf/fs-123-98.pdf Low: Loan from oregon,,2093.5,NV
+16050304,Walker Lake,13,3957.0,1.27283*(10**-5.0867)*(DRNAREA**0.7934)*(PRECIP**3.1278),(0.0333*((DRNAREA/2.59)**0.853))*(ELEV1K**2.68)*(((LAT-28)/10)**4.1),High: https://pubs.usgs.gov/fs/fs-123-98/pdf/fs-123-98.pdf Low: Loan from oregon,,2093.5,NV
 16060001,Dixie Valley,13,,,,,,10470.47,NV
 16060002,Gabbs Valley,13,,,,,,5390.74,NV
 16060003,Southern Big Smoky Valley,13,,,,,,5309.6,NV
