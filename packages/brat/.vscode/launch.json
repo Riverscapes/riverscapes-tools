@@ -76,6 +76,17 @@
       ]
     },
     {
+      "name": "Write BRAT report",
+      "type": "python",
+      "request": "launch",
+      "module": "sqlbrat.utils.report",
+      "console": "integratedTerminal",
+      "args": [
+        "{env:DATA_ROOT}/brat/${input:HUC}/outputs/brat.sqlite",
+        "{env:DATA_ROOT}/brat/${input:HUC}/outputs/brat_report.html"
+      ]
+    },    
+    {
       "name": "Version Bump",
       "type": "python",
       "module": "rscommons.version",
