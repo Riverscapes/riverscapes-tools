@@ -150,7 +150,7 @@ def brat_run(project_root, csv_dir):
     report_path = os.path.join(project.project_dir, LayerTypes['BRAT_RUN_REPORT'].rel_path)
     project.add_report(outputs_node, LayerTypes['BRAT_RUN_REPORT'], replace=True)
 
-    report(database, report_path)
+    report(database, report_path, cfg)
 
     log.info('BRAT run complete')
 
