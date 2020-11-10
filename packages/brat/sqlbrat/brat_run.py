@@ -25,7 +25,7 @@ from sqlbrat.utils.combined_fis import combined_fis
 from sqlbrat.utils.hydrology import hydrology
 from sqlbrat.utils.land_use import land_use
 from sqlbrat.utils.conservation import conservation
-from sqlbrat.utils.report import report
+from sqlbrat.brat_report import report
 from sqlbrat.__version__ import __version__
 
 cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/BRAT.xsd', __version__)

@@ -1,34 +1,37 @@
 import sqlite3
 import os
-import re
 from uuid import uuid4
 from xml.etree import ElementTree as ET
-
+from jinja2 import Template
+from html5print import HTMLBeautifier, CSSBeautifier
 from rscommons import Logger
-from rscommons.util import safe_makedirs
 
 
 class RSReport():
 
-    def __init__(self, report_title, filepath):
+    def __init__(self, title, subtitle, filepath):
         self.log = Logger('Report')
         self.template_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'templates')
 
         self.log.info('Creating report at {}'.format(filepath))
         self.filepath = filepath
+        self.title = title
+        self.subtitle = subtitle
+        self.css_files = []
+        self.footer = ''
 
         if os.path.isfile(self.filepath):
             os.remove(self.filepath)
 
         self.root_node = ET.Element('html', attrib={'lang': 'en'})
-        self.head = self.html_head(report_title, self.root_node)
+        self.head = self.html_head(title, self.root_node)
         self.body = ET.Element('body')
 
-        # Add in our CSS
-        self.head.append(self.get_css())
+        # Add in our common CSS. This can be extended
+        self.add_css(os.path.join(self.template_path, 'report.css'))
 
         self.container_div = ET.Element('div', attrib={'id': 'ReportContainer'})
-        self.inner_div = ET.Element('div', attrib={'id': 'ReportInner'})
+        self.inner_div = ET.Element('main', attrib={'id': 'ReportInner'})
 
         # A little div wrapping will help us out later
         self.body.append(self.container_div)
@@ -36,36 +39,45 @@ class RSReport():
         self.container_div.append(self.inner_div)
 
     def write(self):
-        xmlstr = ET.tostring(self.root_node, method="html")
-        with open(self.filepath, "wb") as f:
-            f.write(b'<!DOCTYPE html>\n')
-            f.write(xmlstr)
+        css_template = "<style>\n{}\n</style>"
+        html_inner = ET.tostring(self.inner_div, method="html", encoding='unicode')
+        styles = ''.join([css_template.format(css) for css in self.css_files])
+        # Get my HTML templae and render it
+
+        with open(os.path.join(self.template_path, 'template.html')) as t:
+            template = Template(t.read())
+
+        final_render = HTMLBeautifier.beautify(template.render(report={
+            'title': self.title,
+            'subtitle': self.subtitle,
+            'head': styles,
+            'body': html_inner,
+            'footer': self.footer
+        }))
+        with open(self.filepath, "w") as f:
+            f.write(final_render)
 
         self.log.info('Report Writing Completed')
 
-    def get_css(self):
-        style_tag = ET.Element('style')
-
-        css_path = os.path.join(self.template_path, 'report.css')
-        with open(css_path) as css_file:
+    def add_css(self, filepath):
+        with open(filepath) as css_file:
             css = css_file.read()
-            css = re.sub(r'\n', '\n        ', css)
-            style_tag.text = css
-        return style_tag
+        beautiful = CSSBeautifier.beautify(css)
+        self.css_files.append(beautiful)
 
     @staticmethod
-    def html_head(report_title, elParent):
+    def html_head(report_title, el_parent):
 
         head = ET.Element('head')
         title = ET.Element('title')
         title.text = report_title
         head.append(title)
-        elParent.append(head)
+        el_parent.append(head)
 
         return head
 
     @staticmethod
-    def table_of_contents(elParent):
+    def table_of_contents(el_parent):
         wrapper = ET.Element('div', attrib={'id': 'TOC'})
         RSReport.header(3, 'Table of Contents', wrapper)
 
@@ -78,10 +90,10 @@ class RSReport():
         anchor.text = 'Ownership'
         li.append(anchor)
 
-        elParent.append(wrapper)
+        el_parent.append(wrapper)
 
     @staticmethod
-    def create_table_from_sql(col_names, sql, database, elParent, attrib=None, id_cols=None):
+    def create_table_from_sql(col_names, sql, database, el_parent, attrib=None, id_cols=None):
         if attrib is None:
             attrib = {}
         table = ET.Element('table', attrib=attrib)
@@ -115,10 +127,10 @@ class RSReport():
                 td.text = val
                 tr.append(td)
 
-        elParent.append(table)
+        el_parent.append(table)
 
     @staticmethod
-    def create_table_from_tuple_list(col_names, data, elParent, attrib=None):
+    def create_table_from_tuple_list(col_names, data, el_parent, attrib=None):
 
         if attrib is None:
             attrib = {}
@@ -148,16 +160,16 @@ class RSReport():
                 td.text = val
                 tr.append(td)
 
-        elParent.append(table)
+        el_parent.append(table)
 
     @staticmethod
-    def create_table_from_dict(values, elParent, attrib=None):
+    def create_table_from_dict(values, el_parent, attrib=None):
         """Keys go in first col, values in second
 
         Arguments:
             values {[type]} - - [description]
             database {[type]} - - [description]
-            elParent {[type]} - - [description]
+            el_parent {[type]} - - [description]
 
         Returns:
             [type] - - [description]
@@ -188,7 +200,7 @@ class RSReport():
             td.text = val
             tr.append(td)
 
-        elParent.append(table)
+        el_parent.append(table)
 
     @staticmethod
     def format_value(value, val_type=None):
@@ -222,7 +234,7 @@ class RSReport():
         return formatted, class_name
 
     @staticmethod
-    def create_ul(values, elParent, attrib=None, ordered=False):
+    def create_ul(values, el_parent, attrib=None, ordered=False):
         if attrib is None:
             attrib = {}
 
@@ -234,7 +246,7 @@ class RSReport():
             li.text = val
             outer.append(val)
 
-        elParent.append(outer)
+        el_parent.append(outer)
 
     @staticmethod
     def _dict_factory(cursor, row):
@@ -244,8 +256,22 @@ class RSReport():
         return d
 
     @staticmethod
-    def header(level, text, elParent):
+    def header(level, text, el_parent):
 
         hEl = ET.Element('h{}'.format(level), attrib={'id': str(uuid4())})
         hEl.text = text
-        elParent.append(hEl)
+        el_parent.append(hEl)
+
+    @staticmethod
+    def section(sectionid, title, el_parent, attrib=None):
+        if attrib is None:
+            attrib = {}
+        section = ET.Element('section', attrib={'id': sectionid, 'class': 'report-section'})
+        section_inner = ET.Element('div', attrib={'class': 'section-inner'})
+        if title:
+            RSReport.header(2, title, section)
+
+        section.append(section_inner)
+        el_parent.append(section)
+
+        return section_inner

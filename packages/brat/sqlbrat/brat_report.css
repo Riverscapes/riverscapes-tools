@@ -1,0 +1,36 @@
+.reachAtributeInner {
+  display: flex;
+  flex-direction: row;
+}
+.reachAtributeInner table {
+  flex: 1 1 33%
+}
+
+.reachAtributeInner table th {
+  text-align: left;
+}
+.reachAtributeInner .imgWrap {
+  flex: 1 1 66%;
+  text-align: right;
+}
+.reachAtribute {
+  border-bottom: 1px solid #666666
+}
+
+.hydroPlotWrapper {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  flex-flow: wrap;
+}
+.hydroPlotWrapper .imgWrap{ 
+  flex: 0 1 49%;
+}
+.hydroPlotWrapper .imgWrap img{ 
+  width: 100%;
+}
+
+div {
+  /* border: 1px solid red;
+  background: blue; */
+}
