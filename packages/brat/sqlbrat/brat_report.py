@@ -24,16 +24,18 @@ def report(database, report_path, cfg):
     watershed = curs.execute('SELECT WatershedID, Name FROM Watersheds LIMIT 1').fetchone()
     report_title = 'BRAT for {} - {}'.format(watershed['WatershedID'], watershed['Name'])
 
-    report = RSReport(report_title, report_path)
+    css_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'brat_report.css')
+
+    report = RSReport(report_title, 'Model Version: {}'.format(cfg.version), report_path)
+    report.add_css(css_path)
 
     images_dir = os.path.join(os.path.dirname(report_path), 'images')
     safe_makedirs(images_dir)
 
-    report_intro(database, images_dir, report.inner_div, 'BRAT', cfg.version)
+    # report_intro(database, images_dir, report.inner_div, 'BRAT', cfg.version)
     reach_attribute_summary(database, images_dir, report.inner_div)
+
     dam_capacity(database, report.inner_div)
-    dam_capacity_lengths(database, report.inner_div, 'oCC_EX')
-    dam_capacity_lengths(database, report.inner_div, 'oCC_HPE')
 
     hydrology_plots(database, images_dir, report.inner_div)
     ownership(database, report.inner_div)
@@ -44,21 +46,10 @@ def report(database, report_path, cfg):
 
 
 def report_intro(database, images_dir, elParent, tool_name, version):
-    wrapper = ET.Element('div', attrib={'id': 'ReportIntro'})
+    section = RSReport.section('ReportIntro', 'Introduction', elParent)
     conn = sqlite3.connect(database)
     conn.row_factory = _dict_factory
     curs = conn.cursor()
-    watershed = curs.execute('SELECT WatershedID, Name FROM Watersheds LIMIT 1').fetchone()
-
-    header_bar = ET.Element('div', attrib={'id': 'HeaderBar'})
-    wrapper.append(header_bar)
-
-    RSReport.header(1, '{} for {} - {}'.format(tool_name, watershed['WatershedID'], watershed['Name']), header_bar)
-    RSReport.header(4, 'Model Version: {}'.format(version), header_bar)
-
-    # table_of_contents(wrapper)
-
-    RSReport.header(2, 'Introduction', wrapper)
 
     row = curs.execute('SELECT Sum(iGeo_Len) AS TotalLength, Count(ReachID) AS TotalReaches FROM Reaches').fetchone()
     values = {'Number of reaches': '{0:,d}'.format(row['TotalReaches']), 'Total reach length (km)': '{0:,.0f}'.format(row['TotalLength'] / 1000), 'Total reach length (miles)': '{0:,.0f}'.format(row['TotalLength'] * 0.000621371)}
@@ -67,7 +58,7 @@ def report_intro(database, images_dir, elParent, tool_name, version):
     values.update(row)
 
     table_wrapper = ET.Element('div', attrib={'class': 'tableWrapper'})
-    wrapper.append(table_wrapper)
+    section.append(table_wrapper)
 
     # create_table_from_dict(values, table_wrapper, attrib={'id': 'SummTable'})
 
@@ -82,13 +73,11 @@ def report_intro(database, images_dir, elParent, tool_name, version):
         'FROM vwReaches INNER JOIN (SELECT Sum(iGeo_Len) AS TotalLength FROM Reaches) GROUP BY ReachType',
         database, table_wrapper, attrib={'id': 'SummTable_sql'})
 
-    elParent.append(wrapper)
-
 
 def reach_attribute(database, attribute, units, images_dir, elParent):
     # Use a class here because it repeats
     wrapper = ET.Element('div', attrib={'class': 'reachAtribute'})
-    RSReport.header(3, attribute, wrapper)
+    RSReport.header(4, attribute, wrapper)
 
     conn = sqlite3.connect(database)
     conn.row_factory = _dict_factory
@@ -138,8 +127,7 @@ def table_of_contents(elParent):
 
 
 def dam_capacity(database, elParent):
-
-    RSReport.header(2, 'BRAT Dam Capacity Results', elParent)
+    section = RSReport.section('DamCapacity', 'BRAT Dam Capacity Results', elParent)
 
     fields = [
         ('Existing complex size', 'Sum(mCC_EX_CT)'),
@@ -157,7 +145,10 @@ def dam_capacity(database, elParent):
     row = curs.fetchone()
 
     table_dict = {fields[i][0]: row[i] for i in range(len(fields))}
-    RSReport.create_table_from_dict(table_dict, elParent)
+    RSReport.create_table_from_dict(table_dict, section)
+
+    dam_capacity_lengths(database, section, 'oCC_EX')
+    dam_capacity_lengths(database, section, 'oCC_HPE')
 
 
 def dam_capacity_lengths(database, elParent, capacity_field):
@@ -196,23 +187,22 @@ def dam_capacity_lengths(database, elParent, capacity_field):
 
 
 def hydrology_plots(database, images_dir, elParent):
-    wrapper = ET.Element('div', attrib={'id': 'HydrologyPlots'})
+    section = RSReport.section('HydrologyPlots', 'Hydrology', elParent)
+
     log = Logger('Report')
 
     conn = sqlite3.connect(database)
     curs = conn.cursor()
 
-    RSReport.header(2, 'Hydrology', wrapper)
-
     curs.execute('SELECT MaxDrainage, QLow, Q2 FROM Watersheds')
     row = curs.fetchone()
-    RSReport.create_table_from_dict({'Max Draiange (sqkm)': row[0], 'Baseflow': row[1], 'Peak Flow': row[2]}, wrapper)
+    RSReport.create_table_from_dict({'Max Draiange (sqkm)': row[0], 'Baseflow': row[1], 'Peak Flow': row[2]}, section)
 
-    RSReport.header(3, 'Hydrological Parameters', wrapper)
+    RSReport.header(3, 'Hydrological Parameters', section)
     RSReport.create_table_from_sql(
         ['Parameter', 'Data Value', 'Data Units', 'Conversion Factor', 'Equation Value', 'Equation Units'],
         'SELECT Parameter, Value, DataUnits, Conversion, ConvertedValue, EquationUnits FROM vwHydroParams',
-        database, wrapper)
+        database, section)
 
     variables = [
         ('iHyd_QLow', 'Baseflow (CFS)'),
@@ -223,7 +213,7 @@ def hydrology_plots(database, images_dir, elParent):
     ]
 
     plot_wrapper = ET.Element('div', attrib={'class': 'hydroPlotWrapper'})
-    wrapper.append(plot_wrapper)
+    section.append(plot_wrapper)
 
     for variable, ylabel in variables:
         log.info('Generating XY scatter for {} against drainage area.'.format(variable))
@@ -238,12 +228,9 @@ def hydrology_plots(database, images_dir, elParent):
         img_wrap.append(img)
         plot_wrapper.append(img_wrap)
 
-    elParent.append(wrapper)
-
 
 def reach_attribute_summary(database, images_dir, elParent):
-    wrapper = ET.Element('div', attrib={'id': 'ReachAttributeSummary'})
-    RSReport.header(2, 'Geophysical Attributes', wrapper)
+    section = RSReport.section('ReachAttributeSummary', 'Geophysical Attributes', elParent)
 
     attribs = [
         ('iGeo_Slope', 'Slope', 'ratio'),
@@ -251,82 +238,77 @@ def reach_attribute_summary(database, images_dir, elParent):
         ('iGeo_ElMin', 'Min Elevation', 'metres'),
         ('iGeo_Len', 'Length', 'metres'),
         ('iGeo_DA', 'Drainage Area', 'Sqkm')
-
     ]
     plot_wrapper = ET.Element('div', attrib={'class': 'plots'})
     [reach_attribute(database, attribute, units, images_dir, plot_wrapper) for attribute, name, units in attribs]
 
-    wrapper.append(plot_wrapper)
-    elParent.append(wrapper)
+    section.append(plot_wrapper)
 
 
 def ownership(database, elParent):
-    wrapper = ET.Element('div', attrib={'class': 'Ownership'})
-    RSReport.header(2, 'Ownership', wrapper)
+    section = RSReport.section('Ownership', 'Ownership', elParent)
 
     RSReport.create_table_from_sql(
         ['Ownership Agency', 'Number of Reach Segments', 'Length (km)', '% of Total Length'],
         'SELECT IFNULL(Agency, "None"), Count(ReachID), Sum(iGeo_Len) / 1000, 100* Sum(iGeo_Len) / TotalLength FROM vwReaches'
         ' INNER JOIN (SELECT Sum(iGeo_Len) AS TotalLength FROM Reaches) GROUP BY Agency',
-        database, wrapper)
-
-    elParent.append(wrapper)
+        database, section)
 
 
 def vegetation(database, image_dir, elParent):
+    section = RSReport.section('Vegetation', 'Vegetation', elParent)
 
-    wrapper = ET.Element('div', attrib={'class': 'Vegetation'})
     for epochid, veg_type in [(2, 'Historic Vegetation'), (1, 'Existing Vegetation')]:
 
-        RSReport.header(2, veg_type, wrapper)
+        RSReport.header(3, veg_type, section)
 
         pEl = ET.Element('p')
         pEl.text = 'The 30 most common {} types within the 100m reach buffer.'.format(veg_type.lower())
-        wrapper.append(pEl)
+        section.append(pEl)
 
-        RSReport.create_table_from_sql(['Vegetation ID', 'Vegetation Type', 'Total Area (sqkm)', 'Default Suitability', 'Override Suitability', 'Effective Suitability'],
-                                       """SELECT VegetationID,
-                              Name, (CAST(TotalArea AS REAL) / 1000000) AS TotalAreaSqKm,
-                              DefaultSuitability,
-                              OverrideSuitability,
-                              EffectiveSuitability
-                              FROM vwReachVegetationTypes WHERE (EpochID = {}) AND (Buffer = 100) ORDER BY TotalArea DESC LIMIT 30""".format(epochid), database, wrapper)
+        RSReport.create_table_from_sql(
+            ['Vegetation ID', 'Vegetation Type', 'Total Area (sqkm)', 'Default Suitability', 'Override Suitability', 'Effective Suitability'],
+            """
+                    SELECT VegetationID,
+                    Name, (CAST(TotalArea AS REAL) / 1000000) AS TotalAreaSqKm,
+                    DefaultSuitability,
+                    OverrideSuitability,
+                    EffectiveSuitability
+                    FROM vwReachVegetationTypes WHERE (EpochID = {}) AND (Buffer = 100) ORDER BY TotalArea DESC LIMIT 30""".format(epochid), database, section)
 
         try:
             # Calculate the area weighted suitability
             conn = sqlite3.connect(database)
             curs = conn.cursor()
-            curs.execute("""SELECT WeightedSum / SumTotalArea FROM
-                        (SELECT Sum(CAST(TotalArea AS REAL) * CAST(EffectiveSuitability AS REAL) / 1000000) WeightedSum FROM vwReachVegetationTypes WHERE EpochID = {0} AND Buffer = 100)
-                        JOIN
-                        (SELECT CAST(Sum(TotalArea) AS REAL) / 1000000 SumTotalArea FROM vwReachVegetationTypes WHERE EpochID = {0} AND Buffer = 100)""".format(epochid))
+            curs.execute("""
+            SELECT WeightedSum / SumTotalArea FROM
+            (SELECT Sum(CAST(TotalArea AS REAL) * CAST(EffectiveSuitability AS REAL) / 1000000) WeightedSum FROM vwReachVegetationTypes WHERE EpochID = {0} AND Buffer = 100)
+            JOIN
+            (SELECT CAST(Sum(TotalArea) AS REAL) / 1000000 SumTotalArea FROM vwReachVegetationTypes WHERE EpochID = {0} AND Buffer = 100)""".format(epochid))
             area_weighted_avg_suitability = curs.fetchone()[0]
 
-            RSReport.header(3, 'Suitability Breakdown', wrapper)
+            RSReport.header(3, 'Suitability Breakdown', section)
             pEl = ET.Element('p')
             pEl.text = """The area weighted average {} suitability is {}.
                 The breakdown of the percentage of the 100m buffer within each suitability class across all reaches in the watershed.""".format(veg_type.lower(), RSReport.format_value(area_weighted_avg_suitability)[0])
-            wrapper.append(pEl)
+            section.append(pEl)
 
             RSReport.create_table_from_sql(['Suitability Class', '% with 100m Buffer'],
                                            """
                 SELECT EffectiveSuitability, 100.0 * SArea / SumTotalArea FROM 
-                (SELECT CAST(Sum(TotalArea) AS REAL) / 1000000 SArea, EffectiveSuitability 
+                (SELECT CAST(Sum(TotalArea) AS REAL) / 1000000 SArea, EffectiveSuitability
                     FROM vwReachVegetationTypes WHERE EpochID = {0} AND Buffer = 100 GROUP BY EffectiveSuitability)
                 JOIN
                 (   SELECT CAST(Sum(TotalArea) AS REAL) / 1000000 SumTotalArea FROM vwReachVegetationTypes WHERE EpochID = {0} AND Buffer = 100)
                 ORDER BY EffectiveSuitability
-                """.format(epochid), database, wrapper, id_cols=id_cols)
+                """.format(epochid), database, section, id_cols=id_cols)
         except Exception as ex:
             log = Logger('Report')
             log.warning('Error calculating vegetation report')
 
-    elParent.append(wrapper)
-
 
 def conservation(database, images_dir, elParent):
-    wrapper = ET.Element('div', attrib={'class': 'Conservation'})
-    RSReport.header(2, 'Conservation', wrapper)
+    section = RSReport.section('Conservation', 'Conservation', elParent)
 
     fields = [
         ('Risk', 'DamRisks', 'RiskID'),
@@ -335,23 +317,19 @@ def conservation(database, images_dir, elParent):
     ]
 
     for label, table, idfield in fields:
-
-        RSReport.header(3, label, wrapper)
-
+        RSReport.header(3, label, section)
         RSReport.create_table_from_sql(
             [label, 'Total Length (km)', 'Reach Count', '%'],
             'SELECT DR.Name, Sum(iGeo_Len) / 1000, Count(R.{1}), 100 * Sum(iGeo_Len) / TotalLength'
             ' FROM {0} DR LEFT JOIN Reaches R ON DR.{1} = R.{1}'
             ' JOIN (SELECT Sum(iGeo_Len) AS TotalLength FROM Reaches)'
             ' GROUP BY DR.{1}'.format(table, idfield),
-            database, wrapper)
+            database, section)
 
-    RSReport.header(3, 'Conflict Attributes', wrapper)
+    RSReport.header(3, 'Conflict Attributes', section)
 
     for attribute in ['iPC_Canal', 'iPC_DivPts', 'iPC_Privat']:
-        reach_attribute(database, attribute, 'meters', images_dir, wrapper)
-
-    elParent.append(wrapper)
+        reach_attribute(database, attribute, 'meters', images_dir, section)
 
 
 def _dict_factory(cursor, row):

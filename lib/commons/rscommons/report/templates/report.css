@@ -83,7 +83,7 @@ h1 {
   font-size: 2rem;
 }
 h2 {
-  margin: 2rem 0 0 0;
+  margin: 0 0 2rem 0;
   background: #073040;
   padding: 5px 10px;
   color: #fffffaff;
@@ -97,6 +97,9 @@ h3{
 }
 h4{
   font-size: 0.9rem;
+  font-weight: bold;
+  padding: 5px 10px;
+  color: rgb(116, 121, 138);
 }
 h5{
   font-size: 0.6rem;
@@ -118,35 +121,22 @@ h5{
   display: flex;
   flex-direction: row;
 }
-.reachAtributeInner {
-  display: flex;
-  flex-direction: row;
-}
-.reachAtributeInner table {
-  flex: 1 1 33%
+
+.section-inner {
+  margin-bottom: 2rem;
+  padding: 1rem 2rem;
 }
 
-.reachAtributeInner table th {
-  text-align: left;
-}
-.reachAtributeInner .imgWrap {
-  flex: 1 1 66%;
-  text-align: right;
-}
-
-.hydroPlotWrapper {
-  width: 100%;
-  display: flex;
-  flex-direction: row;
-  flex-flow: wrap;
-}
-.hydroPlotWrapper .imgWrap{ 
-  flex: 0 1 49%;
-}
-.hydroPlotWrapper .imgWrap img{ 
-  width: 100%;
-}
 #HeaderBar {
+  padding: 20px 10px;
+  color: #fffffaff;
+  background: #40434E;
+}
+#HeaderBar h1, #HeaderBar h4{
+  padding: 5px 10px;
+}
+
+footer {
   padding: 20px 10px;
   color: #fffffaff;
   background: #40434E;
