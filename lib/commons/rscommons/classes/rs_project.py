@@ -88,6 +88,7 @@ class RSProject:
         # This might be an existing XML file
         if os.path.isfile(project_path):
             self.xml_path = project_path
+            self.XMLBuilder = XMLBuilder(self.xml_path)
 
         # This might be an existing directory
         elif os.path.isdir(project_path):
@@ -156,6 +157,26 @@ class RSProject:
             self.XMLBuilder.add_sub_element(metadata_element, "Meta", mval, {"name": mkey})
 
         self.XMLBuilder.write()
+
+    def get_metadata_dict(self, node=None, tag='MetaData'):
+        """Reverse lookup to pull Metadata out of the raw XML report
+
+        Args:
+            node ([type], optional): [description]. Defaults to None.
+            tag (str, optional): [description]. Defaults to 'MetaData'.
+
+        Returns:
+            [type]: [description]
+        """
+        metadata_element = node.find(tag) if node is not None else self.XMLBuilder.find(tag)
+        if metadata_element is None:
+            return None
+        children = metadata_element.getchildren()
+        valdict = {}
+        for child in children:
+            valdict[child.attrib['name']] = child.text
+
+        return valdict
 
     def get_unique_path(self, folder, name, extension):
 

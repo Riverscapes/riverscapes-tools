@@ -7,14 +7,52 @@
     {{report.head}}
   </head>
   <body>
+    <header id="HeaderBar">
+      <div id="HeaderInner">
+        <div id="RiverscapesLogo">&nbsp;</div>
+        <div id="HeaderRight">
+          <div id="HeaderTop">
+            <div class="date">Report Created: {{report.date}}</div>
+            <div class="projectType">Project Type: {{report.ProjectType}}</div>
+          </div>
+          <h1 id="title">{{report.title}}</h1>
+        </div>
+      </div>
+    </header>    
     <div id="ReportContainer">
       <div id="ReportInner">
-        <header id="HeaderBar">
-          <h1>{{report.title}}</h1>
-          <h4>{{report.subtitle}}</h4>
-        </header>
+        <!-- The Metadata and the TOC are at the top -->
+        <div id="ReportHeader">
+          {{report.toc}}
+          <!-- This is the section for metadata -->
+          <section id="ProjectMeta">
+            {% if report.MetaData %}
+            <h3>Project Meta</h3>
+            <ul class="project-meta">
+              {% for iname, idata in report.MetaData.items() -%}
+              <li><span class="key">{{iname}}:</span><span class="value">{{idata}}</span></li>
+              {% endfor %}
+            </ul>
+            {% endif %}
+            {% if report.Warehouse %}
+            <h3>Warehouse Meta:</h3>
+            <ul class="project-warehouse">
+              {% for iname, idata in report.Warehouse.items() -%}
+              <li><span class="key">{{iname}}:</span><span class="value">{{idata}}</span></li>
+              {% endfor %}
+            </ul>
+            {% endif %}            
+          </section>
+        </div>
         <main>{{report.body}}</main>
-        <footer>{{report.footer}}</footer>
+        <footer>
+          <div id="FooterLeft">
+            {{report.footer}}
+          </div>
+          <div id="FooterRight">
+            &nbsp;
+          </div>
+        </footer>
       </div>
     </div>
   </body>

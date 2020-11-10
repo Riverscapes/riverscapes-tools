@@ -83,6 +83,7 @@
       "console": "integratedTerminal",
       "args": [
         "{env:DATA_ROOT}/brat/${input:HUC}/outputs/brat.sqlite",
+        "{env:DATA_ROOT}/brat/${input:HUC}/project.rs.xml",
         "{env:DATA_ROOT}/brat/${input:HUC}/outputs/brat_report.html"
       ]
     },    
