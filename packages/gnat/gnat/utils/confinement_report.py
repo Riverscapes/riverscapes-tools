@@ -14,7 +14,7 @@ class ConfinementReport(RSReport):
 
     def __init__(self, database, report_path, rs_project):
         super().__init__(rs_project, report_path)
-        self.log = Logger('BratReport')
+        self.log = Logger('Confinement Report')
         self.database = database
 
         self.images_dir = os.path.join(os.path.dirname(report_path), 'images')
@@ -102,12 +102,12 @@ def _dict_factory(cursor, row):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('database', help='Path to the BRAT database', type=str)
-    parser.add_argument('projectxml', help='Path to the BRAT project.rs.xml', type=str)
+    parser.add_argument('database', help='Path to the database', type=str)
+    parser.add_argument('projectxml', help='Path to the project.rs.xml', type=str)
     parser.add_argument('report_path', help='Output path where report will be generated', type=str)
     args = dotenv.parse_args_env(parser)
 
-    cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/BRAT.xsd', __version__)
+    cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/Confinement.xsd', __version__)
     project = RSProject(cfg, args.projectxml)
     report = ConfinementReport(args.database, args.report_path, project)
     report.write()

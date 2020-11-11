@@ -44,11 +44,12 @@ class RSReport():
         with open(os.path.join(self.template_path, 'template.html')) as t:
             template = Template(t.read())
 
+        now = datetime.datetime.now()
         final_render = HTMLBeautifier.beautify(template.render(report={
             'title': self.xml_project.XMLBuilder.find('Name').text,
             'ProjectType': self.xml_project.XMLBuilder.find('ProjectType').text,
             'MetaData': self.xml_project.get_metadata_dict(),
-            'date': datetime.datetime.now().isoformat(),
+            'date': now.strftime('%B %d, %Y - %I:%M%p'),
             'Warehouse': self.xml_project.get_metadata_dict(tag='Warehouse'),
             'head': styles,
             'toc': toc,

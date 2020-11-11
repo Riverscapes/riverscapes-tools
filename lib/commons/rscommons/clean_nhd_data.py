@@ -19,7 +19,7 @@ flowline_fields = [
 
 def clean_nhd_data(huc, download_folder, unzip_folder, out_dir, out_epsg, force_download):
 
-    filegdb = download_unzip_nhd(huc, download_folder, unzip_folder, out_epsg, force_download)
+    filegdb, nhd_url = download_unzip_nhd(huc, download_folder, unzip_folder, out_epsg, force_download)
 
     # This is the dictionary of cleaned feature classes produced by this processed
     featureclasses = {}
@@ -56,7 +56,7 @@ def clean_nhd_data(huc, download_folder, unzip_folder, out_dir, out_epsg, force_
     db_path = os.path.join(out_dir, 'nhd_data.sqlite')
     export_table(filegdb, 'NHDPlusFlowlineVAA', db_path, None, "ReachCode LIKE '{}%'".format(huc))
 
-    return featureclasses, db_path, huc_name
+    return featureclasses, db_path, huc_name, nhd_url
 
 
 def download_unzip_nhd(huc, download_folder, unzip_folder, out_epsg, force_download):
@@ -82,7 +82,7 @@ def download_unzip_nhd(huc, download_folder, unzip_folder, out_epsg, force_downl
     except Exception:
         raise Exception("Could not find the GDB folder inside: {}".format(nhd_unzip_folder))
 
-    return filegdb
+    return filegdb, nhd_url
 
 
 def download_unzip_national(download_folder, unzip_folder, force_download):

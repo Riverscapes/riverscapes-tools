@@ -74,16 +74,16 @@ def file_compare(file_a, file_b, md5=True):
             hasher1 = hashlib.md5()
             buf1 = afile.read()
             hasher1.update(buf1)
-            md5_a=(str(hasher1.hexdigest()))
+            md5_a = (str(hasher1.hexdigest()))
 
         with open(file_b, 'rb') as bfile:
             hasher2 = hashlib.md5()
             buf1 = bfile.read()
             hasher2.update(buf1)
-            md5_b=(str(hasher2.hexdigest()))
+            md5_b = (str(hasher2.hexdigest()))
 
-        #Compare md5
-        if(md5_a==md5_b):
+        # Compare md5
+        if(md5_a == md5_b):
             log.debug('File MD5 hashes match')
             return True
         else:
@@ -92,6 +92,7 @@ def file_compare(file_a, file_b, md5=True):
     except Exception as e:
         log.error('Error comparing files: {}', str(e))
         return False
+
 
 def safe_remove_dir(dir_path):
     """Remove a directory without throwing an error
@@ -105,6 +106,7 @@ def safe_remove_dir(dir_path):
         log.debug('Directory removed: {}'.format(dir_path))
     except Exception as e:
         log.error(str(e))
+
 
 def safe_makedirs(dir_create_path):
     """safely, recursively make a directory
