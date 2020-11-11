@@ -16,7 +16,7 @@ import sqlite3
 import time
 import datetime
 from osgeo import ogr
-from rscommons import Logger, initGDALOGRErrors, RSLayer, RSProject, RSReport, ModelConfig, dotenv
+from rscommons import Logger, initGDALOGRErrors, RSLayer, RSProject, ModelConfig, dotenv
 from rscommons.database import execute_query, update_database, store_metadata, set_reach_fields_null
 from rscommons.reach_attributes import write_reach_attributes
 from sqlbrat.utils.vegetation_suitability import vegetation_suitability, output_vegetation_raster
@@ -25,7 +25,7 @@ from sqlbrat.utils.combined_fis import combined_fis
 from sqlbrat.utils.hydrology import hydrology
 from sqlbrat.utils.land_use import land_use
 from sqlbrat.utils.conservation import conservation
-from sqlbrat.brat_report import report
+from sqlbrat.brat_report import BratReport
 from sqlbrat.__version__ import __version__
 
 cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/BRAT.xsd', __version__)
@@ -150,7 +150,7 @@ def brat_run(project_root, csv_dir):
     report_path = os.path.join(project.project_dir, LayerTypes['BRAT_RUN_REPORT'].rel_path)
     project.add_report(outputs_node, LayerTypes['BRAT_RUN_REPORT'], replace=True)
 
-    report = RSReport(database, report_path, project)
+    report = BratReport(database, report_path, project)
     report.write()
 
     log.info('BRAT run complete')

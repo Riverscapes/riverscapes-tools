@@ -69,7 +69,13 @@ class RSReport():
         if attrib is None:
             attrib = {}
         the_id = sectionid if sectionid is not None else str(uuid4())
-        section = ET.Element('section', attrib={'id': the_id, 'class': 'report-section'})
+
+        if 'class' in attrib:
+            attrib['class'] = 'report-section {}'.format(attrib['class'])
+        else:
+            attrib['class'] = 'report-section'
+
+        section = ET.Element('section', attrib={'id': the_id, **attrib})
         section_inner = ET.Element('div', attrib={'class': 'section-inner'})
 
         hlevel = level + 1
