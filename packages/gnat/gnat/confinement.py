@@ -25,7 +25,7 @@ from shapely.geometry import Point, Polygon, MultiPolygon, LineString, MultiLine
 from rscommons import shapefile
 from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALOGRErrors, ProgressBar
 from rscommons.util import safe_makedirs, safe_remove_dir, safe_remove_file
-from gnat.utils.confinement_report import confinement_report
+from gnat.utils.confinement_report import ConfinementReport
 from gnat.__version__ import __version__
 
 initGDALOGRErrors()
@@ -325,7 +325,8 @@ def confinement(huc, flowlines_orig, confining_polygon_orig, output_folder, buff
         save_geom_to_feature(lyr_out_confinement_ratio, feature_def_confinement_ratio, geom_flowline, attributes)
 
     # Write a report
-    confinement_report(output_gpkg, report_path, huc)
+    report = ConfinementReport(output_gpkg, report_path, project)
+    report.write()
 
     progbar.finish()
     log.info('Confinement Finished')
