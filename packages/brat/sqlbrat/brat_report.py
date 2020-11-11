@@ -17,20 +17,24 @@ id_cols = [
 
 
 class BratReport(RSReport):
-
+    """In order to write a report we will extend the RSReport class from the rscommons
+    module which has useful styles and building blocks like Tables from lists etc.
+    """
     def __init__(self, database, report_path, rs_project):
+        # Need to call the constructor of the inherited class:
         super().__init__(rs_project, report_path)
+
         self.log = Logger('BratReport')
         self.database = database
 
+        # The report has a core CSS file but we can extend it with our own if we want:
         css_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'brat_report.css')
-
         self.add_css(css_path)
 
         self.images_dir = os.path.join(os.path.dirname(report_path), 'images')
         safe_makedirs(self.images_dir)
-        self.watershed = self.get_watershed()
 
+        # Now we just need to write the sections we want in the report in order
         self.report_intro()
         self.reach_attribute_summary()
         self.dam_capacity()
@@ -39,14 +43,13 @@ class BratReport(RSReport):
         self.vegetation()
         self.conservation()
 
-    def get_watershed(self):
-        conn = sqlite3.connect(self.database)
-        conn.row_factory = _dict_factory
-        curs = conn.cursor()
-        return curs.execute('SELECT WatershedID, Name FROM Watersheds LIMIT 1').fetchone()
-
     def report_intro(self):
+        # Create a section node to start adding things to. Section nodes are added to the table of contents if 
+        # they have a title. If you don't specify a el_parent argument these sections will simply be added
+        # to the report body in the order you call them.
         section = self.section('ReportIntro', 'Introduction')
+
+        # This project has a db so we'll need a connection
         conn = sqlite3.connect(self.database)
         conn.row_factory = _dict_factory
         curs = conn.cursor()
@@ -65,14 +68,11 @@ class BratReport(RSReport):
         ''').fetchone()
         values.update(row)
 
-        table_wrapper = ET.Element('div', attrib={'class': 'tableWrapper'})
-        section.append(table_wrapper)
-
-        # create_table_from_dict(values, table_wrapper, attrib={'id': 'SummTable'})
-
         curs.execute('SELECT KeyInfo, ValueInfo FROM Metadata')
         values.update({row['KeyInfo'].replace('_', ' '): row['ValueInfo'] for row in curs.fetchall()})
 
+        # Here we're creating a new <div> to wrap around the table for stylign purposes
+        table_wrapper = ET.Element('div', attrib={'class': 'tableWrapper'})
         RSReport.create_table_from_dict(values, table_wrapper, attrib={'id': 'SummTable'})
 
         RSReport.create_table_from_sql(
@@ -80,6 +80,9 @@ class BratReport(RSReport):
             'SELECT ReachType, Sum(iGeo_Len) / 1000 As Length, 100 * Sum(iGeo_Len) / TotalLength AS TotalLength '
             'FROM vwReaches INNER JOIN (SELECT Sum(iGeo_Len) AS TotalLength FROM Reaches) GROUP BY ReachType',
             self.database, table_wrapper, attrib={'id': 'SummTable_sql'})
+
+        # Append my table_wrapper div (which now contains both tables above) to the section
+        section.append(table_wrapper)
 
     def reach_attribute(self, attribute, units, parent_el):
         # Use a class here because it repeats
