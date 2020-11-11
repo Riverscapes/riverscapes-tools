@@ -34,6 +34,7 @@ import numpy as np
 from math import sqrt
 from scipy.interpolate import interp1d
 from vbet.vbet_network import vbet_network
+from vbet.vbet_report import VBETReport
 from rscommons.util import safe_makedirs, parse_metadata
 from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, dotenv
 from rscommons.shapefile import _rough_convert_metres_to_raster_units, polygonize, copy_feature_class, intersect_feature_classes, remove_holes, get_pts, get_rings, get_geometry_unary_union, export_geojson
@@ -57,7 +58,8 @@ LayerTypes = {
     'EVIDENCE': RSLayer('Evidence Raster', 'EVIDENCE', 'Raster', 'intermediates/Evidence.tif'),
     'COMBINED_VRT': RSLayer('Combined VRT', 'COMBINED_VRT', 'VRT', 'intermediates/slope-hand-channel.vrt'),
     'VBET_NETWORK': RSLayer('VBET Network', 'VBET_NETWORK', 'Vector', 'intermediates/vbet_network.shp'),
-    'CHANNEL_POLYGON': RSLayer('Combined VRT', 'CHANNEL_POLYGON', 'Vector', 'intermediates/channel.shp')
+    'CHANNEL_POLYGON': RSLayer('Combined VRT', 'CHANNEL_POLYGON', 'Vector', 'intermediates/channel.shp'),
+    'REPORT': RSLayer('RSContext Report', 'REPORT', 'HTMLFile', 'outputs/vbet.html')
 }
 # Build our threshold Layers programmatically
 for k, v in thresh_vals.items():
@@ -70,7 +72,7 @@ def vbet(huc, flowlines, flowareas, orig_slope, max_slope, orig_hand, hillshade,
     log = Logger('VBET')
     log.info('Starting VBET v.{}'.format(cfg.version))
 
-    project, _realization, proj_nodes = create_project(huc, project_folder)
+    project, realization, proj_nodes = create_project(huc, project_folder)
 
     # Copy the inp
     _proj_slope_node, proj_slope = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['SLOPE_RASTER'], orig_slope)
@@ -253,6 +255,12 @@ def vbet(huc, flowlines, flowareas, orig_slope, max_slope, orig_hand, hillshade,
 
     # Channel mask is duplicated from inputs so we delete it.
     rasterio.shutil.delete(channel_msk)
+
+    report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
+    project.add_report(realization, LayerTypes['REPORT'], replace=True)
+
+    report = VBETReport(report_path, project, project_folder)
+    report.write()
 
     # No need to keep the masks around
     try:
