@@ -34,6 +34,7 @@ from rscommons.prism import mean_area_precip, calculate_bankfull_width
 from rscontext.flow_accumulation import flow_accumulation, flow_accum_to_drainage_area
 from rscontext.clip_ownership import clip_ownership
 from rscontext.filter_ecoregions import filter_ecoregions
+from rs_context_report import RSContextReport
 from rscontext.__version__ import __version__
 
 initGDALOGRErrors()
@@ -65,7 +66,8 @@ LayerTypes = {
     'TMAX': RSLayer('Maximum Temperature', 'MaxTemp', 'Raster', 'climate/max_temp.tif'),
     'TDMEAN': RSLayer('Mean Dew Point Temperature', 'MeanDew', 'Raster', 'climate/mean_dew_temp.tif'),
     'VPDMIN': RSLayer('Minimum Vapor Pressure Deficit', 'MinVap', 'Raster', 'climate/min_vapor_pressure.tif'),
-    'VPDMAX': RSLayer('Maximum Vapor Pressure Deficit', 'MaxVap', 'Raster', 'climate/max_vapor_pressure.tif')
+    'VPDMAX': RSLayer('Maximum Vapor Pressure Deficit', 'MaxVap', 'Raster', 'climate/max_vapor_pressure.tif'),
+    'REPORT': RSLayer('RSContext Report', 'REPORT', 'HTMLFile', 'rs_context.html')
 }
 
 
@@ -255,6 +257,12 @@ def rs_context(huc, existing_veg, historic_veg, ownership, ecoregions, prism_fol
     eco_path = os.path.join(output_folder, 'ecoregions', 'ecoregions.shp')
     project.add_dataset(realization, eco_path, LayerTypes['ECOREGIONS'], 'Vector')
     filter_ecoregions(nhd[boundary], ecoregions, eco_path, cfg.OUTPUT_EPSG, 10000)
+
+    report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
+    project.add_report(realization, LayerTypes['REPORT'], replace=True)
+
+    report = RSContextReport(report_path, project)
+    report.write()
 
     log.info('Process completed successfully.')
     return {

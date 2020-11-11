@@ -70,7 +70,18 @@
     //     "{env:DATA_ROOT}/MODIS/xmls",
     //     "--verbose",
     //   ]
-    // },    
+    // },
+    {
+      "name": "Write report",
+      "type": "python",
+      "request": "launch",
+      "module": "rscontext.rs_context_report",
+      "console": "integratedTerminal",
+      "args": [
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/project.rs.xml",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/rsc_report.html"
+      ]
+    },    
     {
       "name": "Version Bump",
       "type": "python",
