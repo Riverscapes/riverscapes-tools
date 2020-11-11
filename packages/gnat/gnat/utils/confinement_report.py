@@ -4,210 +4,110 @@ import os
 from xml.etree import ElementTree as ET
 from collections import OrderedDict
 
-from rscommons import Logger, dotenv, ModelConfig
+from rscommons import Logger, dotenv, ModelConfig, RSReport, RSProject
 from rscommons.util import safe_makedirs
-from rscommons.report_common import create_report, write_report, header, format_value, dict_factory
-from rscommons.report_common import create_table_from_tuple_list, create_table_from_sql, create_table_from_dict
 from rscommons.plotting import xyscatter, box_plot, histogram
 from gnat.__version__ import __version__
 
 
-def confinement_report(database, report_path, huc):
+class ConfinementReport(RSReport):
 
-    html, images_dir, inner_div = create_report(database, report_path, 'Confinement for {}'.format(huc))
+    def __init__(self, database, report_path, rs_project):
+        super().__init__(rs_project, report_path)
+        self.log = Logger('BratReport')
+        self.database = database
 
-    report_intro(database, images_dir, inner_div, 'Confinement', __version__, huc)
-    # reach_attribute_summary(database, images_dir, inner_div)
+        self.images_dir = os.path.join(os.path.dirname(report_path), 'images')
+        safe_makedirs(self.images_dir)
 
-    raw_confinement(database, inner_div)
-    [confinement_ratio(database, images_dir, field, field, inner_div) for field in ['Confinement_Ratio', 'Constriction_Ratio']]
+        self.report_intro('Confinement')
+        # reach_attribute_summary(database, images_dir, inner_div)
 
-    write_report(html, report_path)
+        self.raw_confinement()
+        [self.confinement_ratio(field, field) for field in ['Confinement_Ratio', 'Constriction_Ratio']]
 
+    def report_intro(self, tool_name):
+        section = self.section('ReportIntro', 'Introduction')
+        conn = sqlite3.connect(self.database)
+        conn.row_factory = _dict_factory
+        curs = conn.cursor()
 
-def report_intro(database, images_dir, elParent, tool_name, version, huc):
-    wrapper = ET.Element('div', attrib={'id': 'ReportIntro'})
-    conn = sqlite3.connect(database)
-    conn.row_factory = dict_factory
-    curs = conn.cursor()
-    # watershed = curs.execute('SELECT WatershedID, Name FROM Watersheds LIMIT 1').fetchone()
+        row = curs.execute('SELECT Sum(ApproxLeng) AS TotalLength, Count(*) AS TotalReaches FROM Confinement_Ratio').fetchone()
+        values = {
+            'Number of reaches': '{0:,d}'.format(row['TotalReaches']),
+            'Total reach length (km)': '{0:,.0f}'.format(row['TotalLength'] / 1000),
+            'Total reach length (miles)': '{0:,.0f}'.format(row['TotalLength'] * 0.000621371)
+        }
 
-    header_bar = ET.Element('div', attrib={'id': 'HeaderBar'})
-    wrapper.append(header_bar)
+        self.create_table_from_dict(values, section)
 
-    header(1, '{} for {}'.format(tool_name, huc), header_bar)
-    header(4, 'Model Version: {}'.format(version), header_bar)
+    def confinement_ratio(self, db_field, label):
+        section = self.section(None, label)
 
-    # table_of_contents(wrapper)
+        conn = sqlite3.connect(self.database)
+        curs = conn.cursor()
 
-    header(2, 'Introduction', wrapper)
+        curs.execute('SELECT {} FROM Confinement_Ratio'.format(db_field))
+        data = [row[0] for row in curs.fetchall()]
 
-    row = curs.execute('SELECT Sum(ApproxLeng) AS TotalLength, Count(*) AS TotalReaches FROM Confinement_Ratio').fetchone()
-    values = {'Number of reaches': '{0:,d}'.format(row['TotalReaches']), 'Total reach length (km)': '{0:,.0f}'.format(row['TotalLength'] / 1000), 'Total reach length (miles)': '{0:,.0f}'.format(row['TotalLength'] * 0.000621371)}
+        image_path = os.path.join(self.images_dir, '{}.png'.format(db_field.lower()))
+        histogram(data, 10, image_path)
 
-    # row = curs.execute('SELECT WatershedID "Watershed ID", W.Name "Watershed Name", E.Name Ecoregion, CAST(AreaSqKm AS TEXT) "Area (Sqkm)", States FROM Watersheds W INNER JOIN Ecoregions E ON W.EcoregionID = E.EcoregionID').fetchone()
-    # values.update(row)
+        img_wrap = ET.Element('div', attrib={'class': 'imgWrap'})
+        img = ET.Element('img', attrib={
+            'class': 'boxplot',
+            'src': '{}/{}'.format(os.path.basename(self.images_dir), os.path.basename(image_path)),
+            'alt': '{}/{}'.format(os.path.basename(self.images_dir), os.path.basename(image_path))
+        })
+        img_wrap.append(img)
+        section.append(img_wrap)
 
-    table_wrapper = ET.Element('div', attrib={'class': 'tableWrapper'})
-    wrapper.append(table_wrapper)
+    def raw_confinement(self):
+        section = self.section('RawConfinement', 'Raw Confinement')
+        keys = OrderedDict()
+        keys['Left'] = {'label': 'Left Confined', 'length': 0.0, 'percent': 0.0}
+        keys['Right'] = {'label': 'Right Confinement', 'length': 0.0, 'percent': 0.0}
+        keys['None'] = {'label': 'Unconfined', 'length': 0.0, 'percent': 0.0}
+        keys['Both'] = {'label': 'Constricted - Both Left and Right Confined', 'length': 0.0, 'percent': 0.0}
+        keys['Total'] = {'label': 'Total', 'length': 0.0, 'percent': 100.0}
+        conn = sqlite3.connect(self.database)
+        conn.row_factory = _dict_factory
 
-    # create_table_from_dict(values, table_wrapper, attrib={'id': 'SummTable'})
+        curs = conn.cursor()
+        curs.execute("""
+        SELECT Confinement_Type, (TypeLength / 1000.0) TypeLength, (100.0 * TypeLength / TotalLength) Ratio, (TotalLength / 1000.0) TotalLength
+        FROM
+        (SELECT Confinement_Type, Sum(ApproxLeng) TypeLength FROM Confinement_Raw GROUP BY Confinement_Type)
+        JOIN (SELECT Sum(ApproxLeng) TotalLength FROM Confinement_Raw)
+        """)
 
-    # curs.execute('SELECT KeyInfo, ValueInfo FROM Metadata')
-    # values.update({row['KeyInfo'].replace('_', ' '): row['ValueInfo'] for row in curs.fetchall()})
+        for row in curs.fetchall():
+            item = keys[row['Confinement_Type']]
+            item['length'] = row['TypeLength']
+            item['percent'] = row['Ratio']
 
-    # create_table_from_dict(values, table_wrapper, attrib={'id': 'SummTable'})
+            keys['Total']['length'] = row['TotalLength']
 
-    # create_table_from_sql(
-    #     ['Reach Type', 'Total Length (km)', '% of Total'],
-    #     'SELECT ReachType, Sum(iGeo_Len) / 1000 As Length, 100 * Sum(iGeo_Len) / TotalLength AS TotalLength '
-    #     'FROM vwReaches INNER JOIN (SELECT Sum(iGeo_Len) AS TotalLength FROM Reaches) GROUP BY ReachType',
-    #     database, table_wrapper, attrib={'id': 'SummTable'})
-
-    elParent.append(wrapper)
-
-
-def table_of_contents(elParent):
-    wrapper = ET.Element('div', attrib={'id': 'TOC'})
-    header(3, 'Table of Contents', wrapper)
-
-    ul = ET.Element('ul')
-
-    li = ET.Element('li')
-    ul.append(li)
-
-    anchor = ET.Element('a', attrib={'href': '#ownership'})
-    anchor.text = 'Ownership'
-    li.append(anchor)
-
-    elParent.append(wrapper)
-
-
-# def dam_capacity_lengths(database, elParent, capacity_field):
-
-#     conn = sqlite3.connect(database)
-#     curs = conn.cursor()
-
-#     curs.execute('SELECT Name, MaxCapacity FROM DamCapacities ORDER BY MaxCapacity')
-#     bins = [(row[0], row[1]) for row in curs.fetchall()]
-
-#     curs.execute('SELECT Sum(iGeo_Len) / 1000 FROM Reaches')
-#     total_length_km = curs.fetchone()[0]
-
-#     data = []
-#     last_bin = 0
-#     cumulative_length_km = 0
-#     for name, max_capacity in bins:
-#         curs.execute('SELECT Sum(iGeo_len) / 1000 FROM Reaches WHERE {} <= {}'.format(capacity_field, max_capacity))
-#         rowi = curs.fetchone()
-#         if not rowi or rowi[0] is None:
-#             bin_km = 0
-#         else:
-#             bin_km = rowi[0] - cumulative_length_km
-#             cumulative_length_km = rowi[0]
-#         data.append((
-#             '{}: {} - {}'.format(name, last_bin, max_capacity),
-#             bin_km,
-#             bin_km * 0.621371,
-#             100 * bin_km / total_length_km
-#         ))
-
-#         last_bin = max_capacity
-
-#     data.append(('Total', cumulative_length_km, cumulative_length_km * 0.621371, 100 * cumulative_length_km / total_length_km))
-#     create_table_from_tuple_list((capacity_field, 'Stream Length (km)', 'Stream Length (mi)', 'Percent'), data, elParent)
+        table_data = [(val['label'], val['length'], val['percent']) for val in keys.values()]
+        self.create_table_from_tuple_list(['Type of Confinement', 'Length (km)', 'Percent'], table_data, section)
 
 
-def confinement_ratio(database, images_dir, db_field, label, elParent):
-
-    wrapper = ET.Element('div', attrib={'id': 'ratio_{}'.format(db_field)})
-    header(3, label, wrapper)
-
-    conn = sqlite3.connect(database)
-    curs = conn.cursor()
-
-    curs.execute('SELECT {} FROM Confinement_Ratio'.format(db_field))
-    data = [row[0] for row in curs.fetchall()]
-
-    image_path = os.path.join(images_dir, '{}.png'.format(db_field.lower()))
-    histogram(data, 10, image_path)
-
-    img_wrap = ET.Element('div', attrib={'class': 'imgWrap'})
-    img = ET.Element('img', attrib={'class': 'boxplot', 'src': '{}/{}'.format(os.path.basename(images_dir), os.path.basename(image_path))})
-    img_wrap.append(img)
-    wrapper.append(img_wrap)
-
-    elParent.append(wrapper)
-
-# def reach_attribute_summary(database, images_dir, elParent):
-#     wrapper = ET.Element('div', attrib={'id': 'ReachAttributeSummary'})
-#     header(2, 'Geophysical Attributes', wrapper)
-
-#     attribs = [
-#         ('iGeo_Slope', 'Slope', 'ratio'),
-#         ('iGeo_ElMax', 'Max Elevation', 'metres'),
-#         ('iGeo_ElMin', 'Min Elevation', 'metres'),
-#         ('iGeo_Len', 'Length', 'metres'),
-#         ('iGeo_DA', 'Drainage Area', 'Sqkm')
-
-#     ]
-#     plot_wrapper = ET.Element('div', attrib={'class': 'plots'})
-#     [reach_attribute(database, attribute, units, images_dir, plot_wrapper) for attribute, name, units in attribs]
-
-#     wrapper.append(plot_wrapper)
-#     elParent.append(wrapper)
-
-
-# def ownership(database, elParent):
-#     wrapper = ET.Element('div', attrib={'class': 'Ownership'})
-#     header(2, 'Ownership', wrapper)
-
-#     create_table_from_sql(
-#         ['Ownership Agency', 'Number of Reach Segments', 'Length (km)', '% of Total Length'],
-#         'SELECT IFNULL(Agency, "None"), Count(ReachID), Sum(iGeo_Len) / 1000, 100* Sum(iGeo_Len) / TotalLength FROM vwReaches'
-#         ' INNER JOIN (SELECT Sum(iGeo_Len) AS TotalLength FROM Reaches) GROUP BY Agency',
-#         database, wrapper)
-
-#     elParent.append(wrapper)
-
-
-def raw_confinement(database, elParent):
-
-    keys = OrderedDict()
-    keys['Left'] = {'label': 'Left Confined', 'length': 0.0, 'percent': 0.0}
-    keys['Right'] = {'label': 'Right Confinement', 'length': 0.0, 'percent': 0.0}
-    keys['None'] = {'label': 'Unconfined', 'length': 0.0, 'percent': 0.0}
-    keys['Both'] = {'label': 'Constricted - Both Left and Right Confined', 'length': 0.0, 'percent': 0.0}
-    keys['Total'] = {'label': 'Total', 'length': 0.0, 'percent': 100.0}
-    conn = sqlite3.connect(database)
-    conn.row_factory = dict_factory
-
-    curs = conn.cursor()
-    curs.execute("""SELECT Confinement_Type, (TypeLength / 1000.0) TypeLength, (100.0 * TypeLength / TotalLength) Ratio, (TotalLength / 1000.0) TotalLength FROM
-        (SELECT Confinement_Type, Sum(ApproxLeng) TypeLength FROM Confinement_Raw GROUP BY Confinement_Type)  JOIN
-        (SELECT Sum(ApproxLeng) TotalLength FROM Confinement_Raw)""")
-
-    for row in curs.fetchall():
-        item = keys[row['Confinement_Type']]
-        item['length'] = row['TypeLength']
-        item['percent'] = row['Ratio']
-
-        keys['Total']['length'] = row['TotalLength']
-
-    table_data = [(val['label'], val['length'], val['percent']) for val in keys.values()]
-    create_table_from_tuple_list(['Type of Confinement', 'Length (km)', 'Percent'], table_data, elParent)
-
-
-def main():
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument('database', help='Path to the confinement geopackage', type=str)
-    parser.add_argument('report_path', help='Output path where report will be generated', type=str)
-    parser.add_argument('huc', help='HUC', type=str)
-    args = dotenv.parse_args_env(parser)
-
-    confinement_report(args.database, args.report_path, args.huc)
+def _dict_factory(cursor, row):
+    d = {}
+    for idx, col in enumerate(cursor.description):
+        d[col[0]] = row[idx]
+    return d
 
 
 if __name__ == '__main__':
-    main()
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('database', help='Path to the BRAT database', type=str)
+    parser.add_argument('projectxml', help='Path to the BRAT project.rs.xml', type=str)
+    parser.add_argument('report_path', help='Output path where report will be generated', type=str)
+    args = dotenv.parse_args_env(parser)
+
+    cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/BRAT.xsd', __version__)
+    project = RSProject(cfg, args.projectxml)
+    report = ConfinementReport(args.database, args.report_path, project)
+    report.write()
