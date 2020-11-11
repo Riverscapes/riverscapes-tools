@@ -35,7 +35,7 @@ def download_hand(huc6, epsg, download_folder, boundary, raster_path, force_down
     log = Logger('HAND')
 
     file_path = os.path.join(download_folder, huc6 + 'hand.tif')
-
+    raster_url = 'unknown'
     # First check the cache of 6 digit HUC rasters (if it exists)
     if os.path.isfile(file_path):
         temp_path = file_path
@@ -50,7 +50,7 @@ def download_hand(huc6, epsg, download_folder, boundary, raster_path, force_down
     # Reproject to the desired SRS and clip to the watershed boundary
     raster_warp(temp_path, raster_path, epsg, boundary)
 
-    return raster_path
+    return raster_path, raster_url
 
 
 def main():

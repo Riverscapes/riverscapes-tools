@@ -12,6 +12,7 @@ import argparse
 import sys
 import os
 import glob
+import json
 import traceback
 import uuid
 import datetime
@@ -34,7 +35,7 @@ from rscommons.prism import mean_area_precip, calculate_bankfull_width
 from rscontext.flow_accumulation import flow_accumulation, flow_accum_to_drainage_area
 from rscontext.clip_ownership import clip_ownership
 from rscontext.filter_ecoregions import filter_ecoregions
-from rs_context_report import RSContextReport
+from rscontext.rs_context_report import RSContextReport
 from rscontext.__version__ import __version__
 
 initGDALOGRErrors()
@@ -105,11 +106,11 @@ def rs_context(huc, existing_veg, historic_veg, ownership, ecoregions, prism_fol
 
     project, realization = create_project(huc, output_folder)
 
-    _node, dem_raster = project.add_project_raster(realization, LayerTypes['DEM'])
+    dem_node, dem_raster = project.add_project_raster(realization, LayerTypes['DEM'])
     _node, hill_raster = project.add_project_raster(realization, LayerTypes['HILLSHADE'])
     _node, flow_accum = project.add_project_raster(realization, LayerTypes['FA'])
     _node, drain_area = project.add_project_raster(realization, LayerTypes['DA'])
-    _node, hand_raster = project.add_project_raster(realization, LayerTypes['HAND'])
+    hand_node, hand_raster = project.add_project_raster(realization, LayerTypes['HAND'])
     _node, slope_raster = project.add_project_raster(realization, LayerTypes['SLOPE'])
     _node, existing_clip = project.add_project_raster(realization, LayerTypes['EXVEG'])
     _node, historic_clip = project.add_project_raster(realization, LayerTypes['HISTVEG'])
@@ -120,7 +121,7 @@ def rs_context(huc, existing_veg, historic_veg, ownership, ecoregions, prism_fol
     nhd_download_folder = os.path.join(download_folder, 'nhd', huc[:4])
     nhd_unzip_folder = os.path.join(scratch_dir, 'nhd', huc[:4])
 
-    nhd, db_path, huc_name = clean_nhd_data(huc, nhd_download_folder, nhd_unzip_folder, os.path.join(output_folder, 'hydrology'), cfg.OUTPUT_EPSG, False)
+    nhd, db_path, huc_name, nhd_url = clean_nhd_data(huc, nhd_download_folder, nhd_unzip_folder, os.path.join(output_folder, 'hydrology'), cfg.OUTPUT_EPSG, False)
     # Clean up the unzipped files. We won't need them again
     if parallel:
         safe_remove_dir(nhd_unzip_folder)
@@ -152,12 +153,14 @@ def rs_context(huc, existing_veg, historic_veg, ownership, ecoregions, prism_fol
 
     # Add the DB record to the Project XML
     db_lyr = RSLayer('NHD Tables', 'NHDTABLES', 'SQLiteDB', os.path.relpath(db_path, output_folder))
-    project.add_dataset(realization, db_path, db_lyr, 'SQLiteDB')
+    sqlite_el = project.add_dataset(realization, db_path, db_lyr, 'SQLiteDB')
+    project.add_metadata({'origin_url': nhd_url}, sqlite_el)
 
     # Add any results to project XML
     for name, file_path in nhd.items():
         lyr_obj = RSLayer(name, name, 'Vector', os.path.relpath(file_path, output_folder))
-        project.add_project_vector(realization, lyr_obj)
+        vector_nod, _fpath = project.add_project_vector(realization, lyr_obj)
+        project.add_metadata({'origin_url': nhd_url}, vector_nod)
 
     states = get_nhd_states(nhd[boundary])
 
@@ -165,7 +168,8 @@ def rs_context(huc, existing_veg, historic_veg, ownership, ecoregions, prism_fol
     log.info('Processing NTD')
     ntd_raw = {}
     ntd_unzip_folders = []
-    for state, ntd_url in get_ntd_urls(states).items():
+    ntd_urls = get_ntd_urls(states)
+    for state, ntd_url in ntd_urls.items():
         ntd_download_folder = os.path.join(download_folder, 'ntd', state.lower())
         ntd_unzip_folder = os.path.join(scratch_dir, 'ntd', state.lower(), 'unzipped')  # a little awkward but I need a folder for this and this was the best name I could find
         ntd_raw[state] = download_shapefile_collection(ntd_url, ntd_download_folder, ntd_unzip_folder, force_download)
@@ -184,17 +188,19 @@ def rs_context(huc, existing_veg, historic_veg, ownership, ecoregions, prism_fol
     # Add any results to project XML
     for name, file_path in ntd_clean.items():
         lyr_obj = RSLayer(name, name, 'Vector', os.path.relpath(file_path, output_folder))
-        project.add_project_vector(realization, lyr_obj)
+        ntd_node, _fpath = project.add_project_vector(realization, lyr_obj)
+        project.add_metadata({**ntd_urls}, ntd_node)
 
     # Download the HAND raster
     huc6 = huc[0:6]
     hand_download_folder = os.path.join(download_folder, 'hand')
-    download_hand(huc6, cfg.OUTPUT_EPSG, hand_download_folder, nhd[boundary], hand_raster)
+    _hpath, hand_url = download_hand(huc6, cfg.OUTPUT_EPSG, hand_download_folder, nhd[boundary], hand_raster)
+    project.add_metadata({'origin_url': hand_url}, hand_node)
 
     # download contributing DEM rasters, mosaic and reproject into compressed GeoTIF
     ned_download_folder = os.path.join(download_folder, 'ned')
     ned_unzip_folder = os.path.join(scratch_dir, 'ned')
-    dem_rasters = download_dem(nhd[boundary], cfg.OUTPUT_EPSG, 0.01, ned_download_folder, ned_unzip_folder, force_download)
+    dem_rasters, urls = download_dem(nhd[boundary], cfg.OUTPUT_EPSG, 0.01, ned_download_folder, ned_unzip_folder, force_download)
 
     need_dem_rebuild = force_download or not os.path.exists(dem_raster)
     if need_dem_rebuild:
@@ -207,6 +213,11 @@ def rs_context(huc, existing_veg, historic_veg, ownership, ecoregions, prism_fol
 
     need_slope_build = need_dem_rebuild or not os.path.isfile(slope_raster)
     need_hs_build = need_dem_rebuild or not os.path.isfile(hill_raster)
+
+    project.add_metadata({
+        'num_rasters': str(len(urls)),
+        'origin_urls': json.dumps(urls)
+    }, dem_node)
 
     for dem_r in dem_rasters:
         slope_part_path = os.path.join(scratch_dem_folder, 'SLOPE__' + os.path.basename(dem_r).split('.')[0] + '.tif')
@@ -261,7 +272,7 @@ def rs_context(huc, existing_veg, historic_veg, ownership, ecoregions, prism_fol
     report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
     project.add_report(realization, LayerTypes['REPORT'], replace=True)
 
-    report = RSContextReport(report_path, project)
+    report = RSContextReport(report_path, project, output_folder)
     report.write()
 
     log.info('Process completed successfully.')

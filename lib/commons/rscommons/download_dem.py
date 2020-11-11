@@ -96,7 +96,7 @@ def download_dem(vector_path, epsg, buffer_dist, download_folder, unzip_folder, 
         #         dataset.SetGeoTransform(gt.gt)
         #         dataset = None
 
-    return list(rasters.keys())
+    return list(rasters.keys()), urls
 
 
 def find_rasters(search_dir):
