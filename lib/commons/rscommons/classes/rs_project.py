@@ -171,7 +171,7 @@ class RSProject:
         metadata_element = node.find(tag) if node is not None else self.XMLBuilder.find(tag)
         if metadata_element is None:
             return None
-        children = metadata_element.getchildren()
+        children = list(metadata_element)
         valdict = {}
         for child in children:
             valdict[child.attrib['name']] = child.text
