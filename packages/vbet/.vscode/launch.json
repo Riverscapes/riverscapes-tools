@@ -32,6 +32,17 @@
       ]
     },
     {
+      "name": "Write report",
+      "type": "python",
+      "request": "launch",
+      "module": "vbet.vbet_report",
+      "console": "integratedTerminal",
+      "args": [
+        "{env:DATA_ROOT}/vbet/${input:HUC}/project.rs.xml",
+        "{env:DATA_ROOT}/vbet/${input:HUC}/vbet_report.html"
+      ]
+    },    
+    {
       "name": "Version Bump",
       "type": "python",
       "module": "rscommons.version",

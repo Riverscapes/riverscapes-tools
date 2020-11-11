@@ -6,6 +6,7 @@ from xml.etree import ElementTree as ET
 from jinja2 import Template
 from html5print import HTMLBeautifier, CSSBeautifier
 from rscommons import Logger
+from rscommons.util import sizeof_fmt
 
 
 class RSReport():
@@ -316,3 +317,32 @@ class RSReport():
         hEl.text = text
         el_parent.append(hEl)
         return hEl
+
+    def layerprint(self, lyr_el, parent_el, project_root):
+        """Work in progress for printing Riverscapes layers
+
+        Args:
+            lyr_el ([type]): [description]
+            section ([type]): [description]
+            project_root ([type]): [description]
+        """
+        tag = lyr_el.tag
+        name = lyr_el.find('Name').text
+
+        section = self.section(None, '{}: {}'.format(tag, name), parent_el, level=2, attrib={'class': 'rsc-layer'})
+
+        meta = self.xml_project.get_metadata_dict(node=lyr_el)
+        if meta is not None:
+            self.create_table_from_dict(meta, section, attrib={'class': 'fullwidth'})
+
+        path_el = ET.Element('pre', attrib={'class': 'path'})
+        pathstr = lyr_el.find('Path').text
+        size = 0
+        fpath = os.path.join(project_root, pathstr)
+        if os.path.isfile(fpath):
+            size = os.path.getsize(fpath)
+
+        footer = ET.Element('div', attrib={'class': 'layer-footer'})
+        path_el.text = 'Project path: {}  ({})'.format(pathstr, sizeof_fmt(size))
+        footer.append(path_el)
+        section.append(footer)
