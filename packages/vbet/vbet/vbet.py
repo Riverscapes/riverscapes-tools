@@ -59,11 +59,18 @@ LayerTypes = {
     'COMBINED_VRT': RSLayer('Combined VRT', 'COMBINED_VRT', 'VRT', 'intermediates/slope-hand-channel.vrt'),
     'VBET_NETWORK': RSLayer('VBET Network', 'VBET_NETWORK', 'Vector', 'intermediates/vbet_network.shp'),
     'CHANNEL_POLYGON': RSLayer('Combined VRT', 'CHANNEL_POLYGON', 'Vector', 'intermediates/channel.shp'),
-    'REPORT': RSLayer('RSContext Report', 'REPORT', 'HTMLFile', 'outputs/vbet.html')
+    'THRESH': RSLayer('THRESH', 'Thresholded Shapes', 'Geopackage', 'outputs/vbet.gpkg', {
+        'THRESH_{}'.format(k): RSLayer('Threshold at {}%'.format(k), 'THRESH_{}'.format(k), 'Vector', 'main.thresh_{}'.format(k))
+        for k, v in thresh_vals.items()
+    }),
+    'VBET': RSLayer('VBET', 'VBET', 'Geopackage', 'outputs/vbet.gpkg', {
+        'VBET_{}'.format(k): RSLayer('VBET {}%'.format(k), 'VBET_{}'.format(k), 'Vector', 'main.vbet_{}'.format(k))
+        for k, v in thresh_vals.items()
+    }),
 }
 # Build our threshold Layers programmatically
+# TODO: Remdove when confirmed
 for k, v in thresh_vals.items():
-    LayerTypes['THRESH_{}'.format(k)] = RSLayer('Threshold at {}%'.format(k), 'THRESH_{}'.format(k), 'Vector', 'intermediates/thresh_{}.shp'.format(k))
     LayerTypes['VBET_{}'.format(k)] = RSLayer('VBET {}%'.format(k), 'VBET_{}'.format(k), 'Vector', 'outputs/vbet_{}.shp'.format(k))
 
 
