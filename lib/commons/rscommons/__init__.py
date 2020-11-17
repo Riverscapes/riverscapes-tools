@@ -10,9 +10,9 @@ from rscommons.classes.loop_timer import LoopTimer
 from rscommons.classes.model_config import ModelConfig
 from rscommons.classes.progress_bar import ProgressBar
 from rscommons.classes.raster import Raster
+from rscommons.classes.vector_classes import GeopackageLayer, ShapeLayer
 
 from rscommons.report.rs_report import RSReport
-
 from rscommons.classes.rs_project import RSLayer, RSProject
 # We don't make XMLBuilder convenient because people should be using RSProject
 # Whenever possible

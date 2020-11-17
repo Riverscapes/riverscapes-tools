@@ -371,6 +371,7 @@ def clip(features, clip, output):
     proc = subprocess.Popen(callstr, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = proc.communicate()
 
+
 def copy_feature_class(inpath, epsg, outpath, clip_shape=None, attribute_filter=None):
     """Copy a Shapefile from one location to another
 
