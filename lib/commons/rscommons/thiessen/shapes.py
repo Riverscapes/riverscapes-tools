@@ -5,6 +5,7 @@ import ogr
 import numpy as np
 from shapely.wkb import loads as wkbload
 from shapely.geometry import shape, mapping, Point, MultiPoint, LineString, MultiLineString, GeometryCollection, Polygon, MultiPolygon
+from shapely.ops import unary_union
 
 from rscommons import Logger, ProgressBar
 from rscommons.shapefile import get_transform_from_epsg
@@ -74,3 +75,118 @@ def get_riverpoints(inpath, epsg, attribute_filter=None):
     data_source = None
 
     return points
+
+
+def midpoints(in_lines):
+
+    driver = driver_shp = ogr.GetDriverByName("ESRI Shapefile")
+    data_in = driver_shp.Open(in_lines, 0)
+    lyr = data_in.GetLayer()
+    out_points = []
+    for feat in lyr:
+        geom = feat.GetGeometryRef()
+        line = wkbload(geom.ExportToWkb())
+        out_points.append(RiverPoint(line.interpolate(0.5, True)))
+        feat = None
+
+    return out_points
+
+def centerline_points(in_lines, distance=0.0, id_field=None, transform=None):
+    driver = driver_shp = ogr.GetDriverByName("ESRI Shapefile")
+    data_in = driver_shp.Open(in_lines, 0)
+    lyr = data_in.GetLayer()
+    out_group = {}
+    #inSpatialRef = lyr.GetSpatialRef()
+    #transform.SetAxisMappingStrategy(inSpatialRef.GetAxisMappingStrategy())
+
+    for feat in lyr:
+        geom = feat.GetGeometryRef()
+        if transform:
+            geom.Transform(transform)
+        line = wkbload(geom.ExportToWkb()) 
+        out_points = []
+        out_points.append(RiverPoint(line.interpolate(distance)))
+        out_points.append(RiverPoint(line.interpolate(0.5, True)))
+        out_points.append(RiverPoint(line.interpolate(-distance)))
+        if line.project(line.interpolate(0.25, True)) > distance: 
+            out_points.append(RiverPoint(line.interpolate(0.25, True)))
+            out_points.append(RiverPoint(line.interpolate(-0.25, True)))
+        out_group[str(int(feat.GetField(id_field)))] = out_points
+        feat = None
+    return out_group
+
+def centerline_vertex_between_distance(in_lines, distance=0.0):
+    driver = driver_shp = ogr.GetDriverByName("ESRI Shapefile")
+    data_in = driver_shp.Open(in_lines, 0)
+    lyr = data_in.GetLayer()
+    out_group = []
+    for feat in lyr:
+        geom = feat.GetGeometryRef()
+        line = wkbload(geom.ExportToWkb())
+        out_points = []
+        out_points.append(RiverPoint(line.interpolate(distance)))
+        out_points.append(RiverPoint(line.interpolate(-distance)))
+        max_distance = line.length - distance
+        for vertex in list(line.coords):
+            test_dist = line.project(Point(vertex)) 
+            if test_dist > distance and test_dist < max_distance:
+                out_points.append(RiverPoint(Point(vertex)))
+        out_group.append(out_points)
+        feat = None
+    return out_group
+
+
+def load_geoms(in_lines):
+    driver = driver_shp = ogr.GetDriverByName("ESRI Shapefile")
+    data_in = driver_shp.Open(in_lines, 0)
+    lyr = data_in.GetLayer()
+    out = []
+    for feat in lyr:
+        geom = feat.GetGeometryRef()
+        out.append(wkbload(geom.ExportToWkb()))
+    
+    return out
+
+
+def clip_polygons(clip_poly, polys):
+
+    progbar = ProgressBar(len(polys), 50, "Clipping Polygons...")
+    counter = 0
+    progbar.update(counter)
+    out_polys = {}
+    for key, poly in polys.items():
+        counter += 1
+        progbar.update(counter)
+        out_polys[key] = clip_poly.intersection(poly.buffer(0))
+    
+    return out_polys
+
+
+def dissolve_by_intersection(lines, polys):
+    
+    progbar = ProgressBar(len(polys), 50, "Dissolving Polygons...")
+    counter = 0
+    progbar.update(counter)
+    dissolved_polys = []
+    for line in lines:
+        counter += 1
+        progbar.update(counter)
+        intersected = [p for p in polys if line.intersects(p)]
+        dissolved_polys.append(unary_union(intersected))
+
+    return dissolved_polys
+
+def dissolve_by_points(groups, polys):
+    
+    progbar = ProgressBar(len(groups), 50, "Dissolving Polygons...")
+    counter = 0
+    progbar.update(counter)
+    dissolved_polys = {}
+    
+    for key, group in groups.items():
+        counter += 1
+        progbar.update(counter)
+        intersected = [p for p in polys if any([p.contains(pt.point) for pt in group])]
+        dissolved_polys[key] = unary_union(intersected)
+
+    return dissolved_polys

@@ -1,0 +1,13 @@
+ConversionValue,ConversionType,VeryMinor,Minor,Moderate,Significant
+-80,FromConifer,,,,
+-60,FromDevegetated,,,,
+-50,FromGrassShrubland,,,,
+-35,FromDeciduous,,,,
+0,NoChange,,,,
+35,Deciduous,80,81,82,83
+50,GrassShrubland,10,11,12,13
+60,Devegetation,20,21,22,23
+80,Conifer,30,31,32,33
+97,Invasive,40,41,42,43
+98,Development,50,51,52,53
+99,Agriculture,60,61,62,63
