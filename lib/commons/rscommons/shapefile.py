@@ -8,10 +8,10 @@
 # -------------------------------------------------------------------------------
 import os
 import sys
-import gdal
 import json
 import subprocess
 import math
+from osgeo import gdal
 from osgeo import ogr
 from osgeo import osr
 from copy import copy

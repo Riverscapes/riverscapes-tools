@@ -1,52 +1,54 @@
-# Name:     ShapeFile helper methods
+# Name:     Vector helper methods
 #
-# Purpose:  Miscellaneous routines for common tasks related to ShapeFiles
+# Purpose:  Miscellaneous routines for common tasks related to Vector Layers
 #
-# Author:   Philip Bailey
+# Author:   Matt Reimer
 #
-# Date:     30 May 2019
+# Date:     18 Nov 2020
 # -------------------------------------------------------------------------------
+from __future__ import annotations
 import os
-import sys
-from enum import Enum
-import json
-import subprocess
 import math
+from enum import Enum
 from osgeo import ogr, gdal, osr
-from copy import copy
-from functools import reduce
 from shapely.wkb import loads as wkbload
-from shapely.ops import unary_union
 from shapely.geometry.base import BaseGeometry
-from collections.abc import Callable
-from shapely.geometry import shape, mapping, Point, MultiPoint, LineString, MultiLineString, GeometryCollection, Polygon, MultiPolygon
-from rscommons import Logger, Raster, ProgressBar
-from rscommons.util import safe_makedirs, sizeof_fmt, get_obj_size
+from shapely.geometry import Point
+from rscommons import Logger, ProgressBar, Raster
+from rscommons.util import safe_makedirs
 
-NO_UI = os.environ.get('NO_UI') is not None
+# NO_UI = os.environ.get('NO_UI') is not None
 
-LINE_TYPES = [
-    ogr.wkbLineString, ogr.wkbLineString25D, ogr.wkbLineStringM, ogr.wkbLineStringZM,
-    ogr.wkbMultiLineString, ogr.wkbMultiLineString25D, ogr.wkbMultiLineStringM, ogr.wkbMultiLineStringZM
-]
-POLY_TYPES = [
-    ogr.wkbPolygon, ogr.wkbPolygon25D, ogr.wkbPolygonM, ogr.wkbPolygonZM,
-    ogr.wkbMultiPolygon, ogr.wkbMultiPolygon25D, ogr.wkbMultiPolygonM, ogr.wkbMultiPolygonZM
-]
-DRIVER_MAP = {
-    'shp': 'ESRI Shapefile',
-    'gpkg': 'GPKG'
-}
+
+class VectorLayerException(Exception):
+    pass
 
 
 class VectorLayer():
     log = Logger('VectorLayer')
 
-    def __init__(self, filepath: str, driver_name: str, layer_name: str):
+    class Drivers(Enum):
+        Shapefile = 'ESRI Shapefile'
+        Geopackage = 'GPKG'
+
+    LINE_TYPES = [
+        ogr.wkbLineString, ogr.wkbLineString25D, ogr.wkbLineStringM, ogr.wkbLineStringZM,
+        ogr.wkbMultiLineString, ogr.wkbMultiLineString25D, ogr.wkbMultiLineStringM,
+        ogr.wkbMultiLineStringZM
+    ]
+    POLY_TYPES = [
+        ogr.wkbPolygon, ogr.wkbPolygon25D, ogr.wkbPolygonM, ogr.wkbPolygonZM,
+        ogr.wkbMultiPolygon, ogr.wkbMultiPolygon25D, ogr.wkbMultiPolygonM, ogr.wkbMultiPolygonZM
+    ]
+
+    def __init__(self, filepath: str, driver: VectorLayer.Drivers, layer_name: str, replace_ds_on_open: bool = False, allow_write=False):
 
         self.filepath = filepath
-        self.driver_name = driver_name
+        self.driver_name = driver.value
         self.ogr_layer_name = layer_name
+        self.allow_write = allow_write
+        self.replace_ds_on_open = replace_ds_on_open
+        self.allow_write = allow_write
 
         # This shouldn't be used except to input a new layer
         self.spatial_ref = None
@@ -58,6 +60,25 @@ class VectorLayer():
         # This is just matching extensions
         self.driver = ogr.GetDriverByName(self.driver_name)
 
+    def __enter__(self):
+        self.log.debug('__enter__ called')
+        self._open_ds()
+        self._open_layer()
+        return self
+
+    def __exit__(self, _type, _value, _traceback):
+        self.log.debug('__exit__ called. Cleaning up.')
+        self.close()
+
+    def close(self):
+        """Close all file handles and clean up the memory trash for this layer
+        """
+        self.ogr_layer = None
+        self.ogr_layer_def = None
+        if self.ogr_ds is not None:
+            self.ogr_ds.Destroy()
+        self.log.debug('Dataset closed: {}'.format(self.filepath))
+
     def _create_ds(self):
         """Note: this wipes any existing Datasets (files). It also opens
 
@@ -65,61 +86,174 @@ class VectorLayer():
             Exception: [description]
         """
 
-        if self.driver_name == DRIVER_MAP['shp'] and os.path.exists(self.filepath):
-            self.driver.DeleteDataSource(self.filepath)
-
         # Make a folder if we need to
         ds_dir = os.path.dirname(self.filepath)
         if not os.path.isdir(ds_dir):
             self.log.debug('Creating directory: {}'.format(ds_dir))
             safe_makedirs(ds_dir)
 
+        if os.path.exists(self.filepath):
+            self.log.info('Deleting existing dataset: {}'.format(self.filepath))
+            self.close()
+            self.driver.DeleteDataSource(self.filepath)
+        else:
+            self.log.info('Dataset not found. Creating: {}'.format(self.filepath))
+
+        self.allow_write = True
         self.ogr_ds = self.driver.CreateDataSource(self.filepath)
+        self.log.debug('Dataset created: {}'.format(self.filepath))
 
-    def _create_layer(self, ogr_geom_type, epsg=None, spatial_ref=None):
-        # XOR (^) check to make sure only one of EPSG or spatial_ref are provided
+    def _open_ds(self):
+
+        if not os.path.exists(self.filepath) or self.replace_ds_on_open is True:
+            self._create_ds()
+            self.allow_write = True
+
+        elif not os.path.exists(self.filepath):
+            raise VectorLayerException('Could not open non-existent dataset: {}'.format(self.filepath))
+
+        permission = 1 if self.allow_write is True else 0
+
+        self.ogr_ds = self.driver.Open(self.filepath, permission)
+        self.log.debug('Dataset opened: {}'.format(self.filepath))
+
+    def _delete_layer(self):
+        """Delete this one layer from the geopackage
+
+        Raises:
+            VectorLayerException: [description]
+        """
+        if self.ogr_layer_name is None:
+            raise VectorLayerException('layer name is not specified')
+        self.ogr_ds.DeleteLayer(self.ogr_layer_name)
+        self.log.info('layer deleted: {} / {}'.format(self.filepath, self.ogr_layer_name))
+
+    def _create_layer(self, ogr_geom_type: int, epsg: int = None, spatial_ref: osr.SpatialReference = None, fields: dict = None):
+        """[summary]
+
+        Args:
+            ogr_geom_type (int): from the enum in ogr i.e. ogr.wkbPolygon
+            epsg (int, optional): EPSG Code
+            spatial_ref ([osr.SpatialReference], optional): OSR Spatial reference object
+            fields (dict, optional): dictionary in the form: {'field name': 4 } where the integer is the ogr.OFTType
+
+        Raises:
+            VectorLayerException: [description]
+            VectorLayerException: [description]
+            NotImplementedError: [description]
+        """
         self.ogr_layer = None
-        if epsg is not None ^ spatial_ref is not None:
-            raise Exception('Specify either an EPSG or a spatial_ref. Not both')
+        if self.ogr_layer_name is None:
+            raise VectorLayerException('No layer name set')
+        elif self.ogr_ds is None:
+            raise VectorLayerException('Dataset is not open. You must open it first')
+        # XOR (^) check to make sure only one of EPSG or spatial_ref are provided
+        elif not (epsg is not None) ^ (spatial_ref is not None):
+            raise VectorLayerException('Specify either an EPSG or a spatial_ref. Not both')
 
-        if self.driver_name == DRIVER_MAP['shp']:
+        elif ogr_geom_type is None:
+            raise VectorLayerException('You must specify ogr_geom_type when creating a layer')
+
+        if self.driver_name == VectorLayer.Drivers.Shapefile.value:
             pass
-        elif self.driver_name == DRIVER_MAP['gpkg']:
+        elif self.driver_name == VectorLayer.Drivers.Geopackage.value:
             tmplyr = self.ogr_ds.GetLayerByName(self.ogr_layer_name)
             if tmplyr is not None:
                 self.ogr_ds.DeleteLayer(self.ogr_layer_name)
         else:
             raise NotImplementedError('Not implemented: {}'.format(self.driver_name))
 
+        if fields is not None:
+            self.create_fields(fields)
+
         if epsg:
             self.spatial_ref = osr.SpatialReference()
             self.spatial_ref.ImportFromEPSG(epsg)
+            # NOTE: we hardcode the traditional axis order to help with older datasets
+            self.spatial_ref.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
         else:
             self.spatial_ref = spatial_ref
 
+        # Throw a warning if our axis mapping strategy is wrong
+        self.check_axis_mapping()
+
         # Get the output Layer's Feature Definition
-        self.ogr_layer = self.ogr_ds.CreateLayer(self.ogr_layer_name, self.spatial_ref, ogr_geom_type=ogr_geom_type)
+        self.ogr_layer = self.ogr_ds.CreateLayer(self.ogr_layer_name, self.spatial_ref, geom_type=ogr_geom_type)
         self.ogr_geom_type = self.ogr_layer.GetGeomType()
         self.ogr_layer_def = self.ogr_layer.GetLayerDefn()
 
-    def _open_ds(self, allow_write: bool = False):
-        permission = 1 if allow_write is True else 0
-        self.ogr_ds = self.driver.Open(self.filepath, permission)
+    def create_layer_from_ref(self, ref: VectorLayer, epsg: int = None):
+        """Create a layer by referencing another VectorLayer object
+
+        Args:
+            input (VectorLayer): [description]
+            epsg (int, optional): [description]. Defaults to None.
+        """
+        if epsg is not None:
+            self._create_layer(ref.ogr_geom_type, epsg=epsg)
+        else:
+            self._create_layer(ref.ogr_geom_type, spatial_ref=ref.spatial_ref)
+
+        # We do this instead of a simple key:val dict because we want to capture precision and length info
+        for i in range(0, ref.ogr_layer_def.GetFieldCount()):
+            fieldDefn = ref.ogr_layer_def.GetFieldDefn(i)
+            self.ogr_layer.CreateField(fieldDefn)
 
     def _open_layer(self):
-        if self.driver_name == DRIVER_MAP['shp']:
+        if self.driver_name == VectorLayer.Drivers.Shapefile.value:
             self.ogr_layer = self.ogr_ds.GetLayer()
-        elif self.driver_name == DRIVER_MAP['gpkg']:
+        elif self.driver_name == VectorLayer.Drivers.Geopackage.value:
             if self.ogr_layer_name is None:
-                raise Exception('For Geopackages you must specify a layer name.')
+                raise VectorLayerException('For Geopackages you must specify a layer name.')
             self.ogr_layer = self.ogr_ds.GetLayerByName(self.ogr_layer_name)
+            # this method is lazy so if there's no layer then just return
+            if self.ogr_layer is None:
+                self.log.debug('No layer named "{}" found'.format(self.ogr_layer_name))
+                return
         else:
-            raise Exception("Error opening layer: {}".format(self.ogr_layer_name))
+            raise VectorLayerException("Error opening layer: {}".format(self.ogr_layer_name))
 
         # Get the output Layer's Feature Definition and spatial ref
         self.ogr_layer_def = self.ogr_layer.GetLayerDefn()
         self.ogr_geom_type = self.ogr_layer.GetGeomType()
         self.spatial_ref = self.ogr_layer.GetSpatialRef()
+
+        self.check_axis_mapping()
+
+    def check_axis_mapping(self):
+        if self.spatial_ref.GetAxisMappingStrategy() != osr.OAMS_TRADITIONAL_GIS_ORDER:
+            _p4, axis_strat = self.get_srs_debug(self.spatial_ref)
+            self.log.warning('Axis mapping strategy is: "{}". This may cause axis flipping problems'.format(axis_strat))
+
+    def create_fields(self, fields: dict):
+        """Add fields to a layer
+
+        Args:
+            fields (dict): dictionary in the form: {'field name': 4 } where the integer is the ogr.OFTType
+
+        Raises:
+            VectorLayerException: [description]
+        """
+        if fields is None or not isinstance(fields, dict):
+            raise VectorLayerException('create_fields: Fields must be specified in the form: {\'MyInteger\': ogr.OFTInteger}')
+        for fname, ftype in fields.items():
+            self.create_field(fname, ftype)
+
+    def get_fields(self) -> dict:
+        """[summary]
+
+        Returns:
+            dict: Returns a dictionary in the form: {'field name': 4 } where the integer is the ogr.OFTType
+        """
+        if self.ogr_layer_def is None:
+            raise VectorLayerException('get_fields: Layer definition is not defined. Has this layer been created or opened yet?')
+
+        field_dict = {}
+        for i in range(0, self.ogr_layer_def.GetFieldCount()):
+            field_def = self.ogr_layer_def.GetFieldDefn(i)
+            field_dict[field_def.GetName()] = field_def.GetType()
+
+        return field_dict
 
     def create_field(self, field_name: str, field_type=ogr.OFTReal):
         """
@@ -131,11 +265,11 @@ class VectorLayer():
         """
 
         if self.ogr_layer is None:
-            raise Exception('No open layer to create fields on')
+            raise VectorLayerException('No open layer to create fields on')
         elif not field_name or len(field_name) < 1:
-            raise Exception('Attempting to create field with invalid field name "{}".'.format(field_name))
-        elif self.driver_name == DRIVER_MAP['shp'] and len(field_name) > 10:
-            raise Exception('Field names in geopackages cannot be greater than 31 characters. "{}" == {}.'.format(field_name, len(field_name)))
+            raise VectorLayerException('Attempting to create field with invalid field name "{}".'.format(field_name))
+        elif self.driver_name == VectorLayer.Drivers.Shapefile.value and len(field_name) > 10:
+            raise VectorLayerException('Field names in geopackages cannot be greater than 31 characters. "{}" == {}.'.format(field_name, len(field_name)))
         elif field_type == ogr.OFTInteger64:
             self.log.error('ERROR:: ogr.OFTInteger64 is not supported by ESRI!')
 
@@ -170,17 +304,16 @@ class VectorLayer():
             if field_name.lower() == actual_name.lower():
                 return actual_name
 
-        raise Exception('Missing field {} in {}'.format(field_name, self.ogr_layer.GetName()))
+        raise VectorLayerException('Missing field {} in {}'.format(field_name, self.ogr_layer.GetName()))
 
     def iterate_features(
-        self, name: str, callback: Callable[[ogr.Feature, int, ProgressBar]], out_layer: VectorLayer = None,
+        self, name: str, out_layer=None,
         commit_thresh=1000, attribute_filter: str = None, clip_shape: BaseGeometry = None
     ) -> None:
         """This method allows you to pass in a callback that gets run for each feature in a layer
 
         Args:
             name (str): [description]
-            callback (function): [description]
             out_layer (VectorLayer, optional): [description]. Defaults to None.
             commit_thresh (int, optional): [description]. Defaults to 1000.
         """
@@ -209,7 +342,7 @@ class VectorLayer():
         for feature in self.ogr_layer:
             counter += 1
             progbar.update(counter)
-            callback(feature, counter, progbar)
+            yield (feature, counter, progbar)
 
             if out_layer is not None and counter % commit_thresh == 0:
                 out_layer.CommitTransaction()
@@ -223,7 +356,7 @@ class VectorLayer():
 
         progbar.finish()
 
-    def get_transform(self, out_layer: VectorLayer) -> osr.CoordinateTransformation:
+    def get_transform(self, out_layer) -> osr.CoordinateTransformation:
         """Get a transform between this layer and another layer
 
         Args:
@@ -232,8 +365,21 @@ class VectorLayer():
         Returns:
             [type]: [description]
         """
-        self.log.debug('Input spatial reference is {0}'.format(self.spatial_ref.ExportToProj4()))
-        self.log.debug('Output spatial reference is {0}'.format(out_layer.spatial_ref.ExportToProj4()))
+        in_proj4, in_ax_strategy = self.get_srs_debug(self.spatial_ref)
+        out_proj4, out_ax_strategy = self.get_srs_debug(out_layer.spatial_ref)
+
+        if self.spatial_ref is None:
+            raise VectorLayerException('No input spatial ref found. Has this layer been created or loaded?')
+
+        elif out_layer.spatial_ref is None:
+            raise VectorLayerException('No output spatial ref found. Has this layer been created or loaded?')
+
+        elif in_ax_strategy != out_ax_strategy:
+            raise VectorLayerException('ERROR: Axis mapping strategy mismatch from "{}" to "{}". This will cause strange x and y coordinates to be transposed.')
+
+        self.log.debug('Input spatial reference is "{}"  Axis Strategy: "{}"'.format(in_proj4, in_ax_strategy))
+        self.log.debug('Output spatial reference is "{}"  Axis Strategy: "{}"'.format(out_proj4, out_ax_strategy))
+
         transform = osr.CoordinateTransformation(self.spatial_ref, out_layer.spatial_ref)
 
         return transform
@@ -257,27 +403,32 @@ class VectorLayer():
         # https://github.com/OSGeo/gdal/issues/1546
         out_spatial_ref.SetAxisMappingStrategy(self.spatial_ref.GetAxisMappingStrategy())
 
-        VectorLayer.log.debug('Input spatial reference is {0}'.format(self.spatial_ref.ExportToProj4()))
-        VectorLayer.log.debug('Output spatial reference is {0}'.format(out_spatial_ref.ExportToProj4()))
+        in_proj4, in_ax_strategy = self.get_srs_debug(self.spatial_ref)
+        out_proj4, out_ax_strategy = self.get_srs_debug(out_spatial_ref)
+
+        self.log.debug('Input spatial reference is "{}"  Axis Strategy: "{}"'.format(in_proj4, in_ax_strategy))
+        self.log.debug('Output spatial reference is "{}"  Axis Strategy: "{}"'.format(out_proj4, out_ax_strategy))
+
         transform = osr.CoordinateTransformation(self.spatial_ref, out_spatial_ref)
+
         return out_spatial_ref, transform
 
     def _rough_convert_metres_to_shapefile_units(self, distance: float) -> float:
         extent = self.ogr_layer.GetExtent()
         return VectorLayer._rough_convert_metres_to_dataset_units(self.spatial_ref, extent, distance)
 
-    @staticmethod
+    @ staticmethod
     def _rough_convert_metres_to_raster_units(raster_path: str, distance: float) -> float:
 
-        ds = gdal.Open(raster_path)
+        in_ds = gdal.Open(raster_path)
         in_spatial_ref = osr.SpatialReference()
-        in_spatial_ref.ImportFromWkt(ds.GetProjectionRef())
-        gt = ds.GetGeoTransform()
-        extent = (gt[0], gt[0] + gt[1] * ds.RasterXSize, gt[3] + gt[5] * ds.RasterYSize, gt[3])
+        in_spatial_ref.ImportFromWkt(in_ds.GetProjectionRef())
+        gt = in_ds.GetGeoTransform()
+        extent = (gt[0], gt[0] + gt[1] * in_ds.RasterXSize, gt[3] + gt[5] * in_ds.RasterYSize, gt[3])
 
         return VectorLayer._rough_convert_metres_to_dataset_units(in_spatial_ref, extent, distance)
 
-    @staticmethod
+    @ staticmethod
     def _rough_convert_metres_to_dataset_units(in_spatial_ref: osr.SpatialReference, extent: list, distance: float) -> float:
         """DO NOT USE THIS FOR ACCURATE DISTANCES. IT'S GOOD FOR A QUICK CALCULATION
         WHEN DISTANCE PRECISION ISN'T THAT IMPORTANT
@@ -297,7 +448,7 @@ class VectorLayer():
             if in_spatial_ref.GetAttrValue('unit').lower() in ['meter', 'metre', 'm']:
                 return distance
             else:
-                raise Exception('Unhandled projected coordinate system linear units: {}'.format(in_spatial_ref.GetAttrValue('unit')))
+                raise VectorLayerException('Unhandled projected coordinate system linear units: {}'.format(in_spatial_ref.GetAttrValue('unit')))
 
         # Get the centroid of the Shapefile spatial extent
         extent_ring = ogr.Geometry(ogr.wkbLinearRing)
@@ -344,9 +495,25 @@ class VectorLayer():
         VectorLayer.log.info('{}m distance converts to {:.10f} using UTM EPSG {}'.format(distance, output_distance, utm_epsg))
 
         if output_distance > 360:
-            raise Exception('Projection Error: \'{:,}\' is larger than the maximum allowed value'.format(output_distance))
+            raise VectorLayerException('Projection Error: \'{:,}\' is larger than the maximum allowed value'.format(output_distance))
 
         return output_distance
+
+    def verify_raster_spatial_ref(self, raster_path: str):
+
+        raster = Raster(raster_path)
+
+        ex = None
+        raster_ref = osr.SpatialReference(wkt=raster.proj)
+        if not self.spatial_ref.IsSame():
+            ex = Exception('ShapeFile and raster spatial references do not match.')
+            VectorLayer.log.debug('Original spatial reference is : \n       {0} (AxisMappingStrategy:{1})'.format(*VectorLayer.get_srs_debug(self.spatial_ref)))
+            VectorLayer.log.debug('Transform spatial reference is : \n       {0} (AxisMappingStrategy:{1})'.format(*VectorLayer.get_srs_debug(raster_ref)))
+
+        raster = None
+
+        if ex:
+            raise ex
 
     @ staticmethod
     def get_srs_debug(spatial_ref: osr.SpatialReference) -> [str, str]:

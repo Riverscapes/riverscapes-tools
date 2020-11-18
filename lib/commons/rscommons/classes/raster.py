@@ -1,6 +1,4 @@
-import gdal
-import ogr
-import osr
+from osgeo import ogr, osr, gdal
 import numpy as np
 import rasterio
 from shapely.geometry import Polygon
