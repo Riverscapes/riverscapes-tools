@@ -7,22 +7,16 @@
 #
 # Date:     Nov 16, 2020
 # -------------------------------------------------------------------------------
-import os
-import sys
-from enum import Enum
-import json
-import subprocess
-import math
-from osgeo import ogr, osr, gdal
 from copy import copy
 from functools import reduce
+from osgeo import ogr, gdal
 from shapely.wkb import loads as wkbload
 from shapely.ops import unary_union
 from shapely.geometry.base import BaseGeometry
-from shapely.geometry import shape, mapping, Point, MultiPoint, LineString, MultiLineString, GeometryCollection, Polygon, MultiPolygon
-from rscommons import Logger, Raster, ProgressBar
-from rscommons.util import safe_makedirs, sizeof_fmt, get_obj_size
-from rscommons.classes.vector_base import VectorLayer, LINE_TYPES, POLY_TYPES
+from shapely.geometry import mapping, Point, MultiPoint, LineString, MultiLineString, GeometryCollection, Polygon, MultiPolygon
+from rscommons import Logger, ProgressBar
+from rscommons.util import sizeof_fmt, get_obj_size
+from rscommons.classes.vector_base import VectorLayer, VectorLayerException
 
 
 def print_geom_size(logger, geom_obj):
@@ -43,7 +37,7 @@ def get_geometry_union(in_layer: VectorLayer, epsg: int = None, attribute_filter
     :return: Single Shapely geometry of all unioned features
     """
 
-    log = Logger('Shapefile')
+    log = Logger('get_geometry_union')
 
     transform = None
     if epsg:
@@ -51,14 +45,13 @@ def get_geometry_union(in_layer: VectorLayer, epsg: int = None, attribute_filter
 
     geom = None
 
-    def get_union(feature, counter, progbar):
-        nonlocal geom
+    for feature, _counter, progbar in in_layer.iterate_features("Getting geometry union", attribute_filter=attribute_filter):
         new_geom = feature.GetGeometryRef()
 
         if new_geom is None:
             progbar.erase()  # get around the progressbar
             log.warning('Feature with FID={} has no geometry. Skipping'.format(feature.GetFID()))
-            return
+            continue
 
         if transform is not None:
             new_geom.Transform(transform)
@@ -69,8 +62,6 @@ def get_geometry_union(in_layer: VectorLayer, epsg: int = None, attribute_filter
         except Exception:
             progbar.erase()  # get around the progressbar
             log.warning('Union failed for shape with FID={} and will be ignored'.format(feature.GetFID()))
-
-    in_layer.iterate_features("Getting geometry union", get_union, attribute_filter=attribute_filter)
 
     return geom
 
@@ -83,7 +74,7 @@ def get_geometry_unary_union(in_layer: VectorLayer, epsg: int = None):
     :return: Single Shapely geometry of all unioned features
     """
 
-    log = Logger('Unary Union')
+    log = Logger('get_geometry_unary_union')
 
     transform = None
     if epsg:
@@ -94,8 +85,7 @@ def get_geometry_unary_union(in_layer: VectorLayer, epsg: int = None):
 
     geom_list = []
 
-    def union_func(feature, counter, progbar):
-        nonlocal geom_list
+    for feature, _counter, progbar in in_layer.iterate_features("Unary Unioning features"):
         new_geom = feature.GetGeometryRef()
         geo_type = new_geom.GetGeometryType()
 
@@ -108,21 +98,21 @@ def get_geometry_unary_union(in_layer: VectorLayer, epsg: int = None):
                 if not new_geom.IsValid():
                     progbar.erase()  # get around the progressbar
                     log.warning('   Still invalid. Skipping this geometry')
-                    return
+                    continue
             except Exception:
                 progbar.erase()  # get around the progressbar
                 log.warning('Exception raised during buffer 0 technique. skipping this file')
-                return
+                continue
 
         if new_geom is None:
             progbar.erase()  # get around the progressbar
             log.warning('Feature with FID={} has no geoemtry. Skipping'.format(feature.GetFID()))
         # Filter out zero-length lines
-        elif geo_type in LINE_TYPES and new_geom.Length() == 0:
+        elif geo_type in VectorLayer.LINE_TYPES and new_geom.Length() == 0:
             progbar.erase()  # get around the progressbar
             log.warning('Zero Length for shape with FID={}'.format(feature.GetFID()))
         # Filter out zero-area polys
-        elif geo_type in POLY_TYPES and new_geom.Area() == 0:
+        elif geo_type in VectorLayer.POLY_TYPES and new_geom.Area() == 0:
             progbar.erase()  # get around the progressbar
             log.warning('Zero Area for shape with FID={}'.format(feature.GetFID()))
         else:
@@ -134,8 +124,6 @@ def get_geometry_unary_union(in_layer: VectorLayer, epsg: int = None):
             if len(geom_list) >= 500:
                 geom_list = [unionize(geom_list)]
         new_geom = None
-
-    in_layer.iterate_features("Unary Unioning features", union_func)
 
     log.debug('finished iterating with list of size: {}'.format(len(geom_list)))
 
@@ -156,7 +144,7 @@ def get_geometry_unary_union(in_layer: VectorLayer, epsg: int = None):
     return geom_union
 
 
-def copy_feature_class(in_layer: VectorLayer, out_layer: VectorLayer, clip_shape=None, attribute_filter=None):
+def copy_feature_class(in_layer: VectorLayer, out_layer: VectorLayer, epsg: int = None, clip_shape=None, attribute_filter=None):
     """Copy a Shapefile from one location to another
 
     This method is capable of reprojecting the geometries as they are copied.
@@ -178,42 +166,37 @@ def copy_feature_class(in_layer: VectorLayer, out_layer: VectorLayer, clip_shape
         attribute_filter {str} -- Attribute filter used to limit the input features that will be copied. (default: {None})
     """
 
-    log = Logger('Shapefile')
-
-    # Create the output shapefile
-    transform = in_layer.get_transform(out_layer)
+    log = Logger('copy_feature_class')
 
     # Add input Layer Fields to the output Layer if it is the one we want
-    for i in range(0, in_layer.ogr_layer.GetFieldCount()):
-        fieldDefn = in_layer.layer_def.GetFieldDefn(i)
-        out_layer.layer.CreateField(fieldDefn)
+    out_layer.create_layer_from_ref(in_layer, epsg=epsg)
+
+    transform = in_layer.get_transform(out_layer)
 
     # This is the callback method that will be run on each feature
-    def copy_feat(feature, counter, progbar):
+    for feature, _counter, progbar in in_layer.iterate_features("Copying features", clip_shape=clip_shape, attribute_filter=attribute_filter):
         geom = feature.GetGeometryRef()
 
         if geom is None:
             progbar.erase()  # get around the progressbar
             log.warning('Feature with FID={} has no geometry. Skipping'.format(feature.GetFID()))
-            return
+            continue
 
         geom.Transform(transform)
 
         # Create output Feature
-        outFeature = ogr.Feature(out_layer.ogr_layer_def)
-        outFeature.SetGeometry(geom)
+        out_feature = ogr.Feature(out_layer.ogr_layer_def)
+        out_feature.SetGeometry(geom)
 
         # Add field values from input Layer
         for i in range(0, out_layer.ogr_layer_def.GetFieldCount()):
-            outFeature.SetField(out_layer.ogr_layer_def.GetFieldDefn(i).GetNameRef(), feature.GetField(i))
+            out_feature.SetField(out_layer.ogr_layer_def.GetFieldDefn(i).GetNameRef(), feature.GetField(i))
 
-        out_layer.ogr_layer.CreateFeature(outFeature)
-        outFeature = None
-
-    in_layer.iterate_features("Copying features", copy_feat, attribute_filter=attribute_filter)
+        out_layer.ogr_layer.CreateFeature(out_feature)
+        out_feature = None
 
 
-def merge_feature_classes(feature_classes: list[VectorLayer], boundary: BaseGeometry, out_layer: VectorLayer):
+def merge_feature_classes(feature_classes, boundary: BaseGeometry, out_layer: VectorLayer):
 
     log = Logger('Shapefile')
     log.info('Merging {} feature classes.'.format(len(feature_classes)))
@@ -252,12 +235,12 @@ def merge_feature_classes(feature_classes: list[VectorLayer], boundary: BaseGeom
                 outFeature.SetField(out_layer.ogr_layer_def.GetFieldDefn(i).GetNameRef(), feature.GetField(i))
 
             outFeature.SetGeometry(geom)
-            out_layer.layer.CreateFeature(outFeature)
+            out_layer.ogr_layer.CreateFeature(outFeature)
 
     log.info('Merge complete.')
 
 
-def load_attributes(in_layer: VectorLayer, id_field: str, fields: list[str]):
+def load_attributes(in_layer: VectorLayer, id_field: str, fields):
     """
     Load ShapeFile attributes fields into a dictionary keyed by the id_field
     :param network: Full, absolute path to a ShapeFile
@@ -277,15 +260,12 @@ def load_attributes(in_layer: VectorLayer, id_field: str, fields: list[str]):
 
     feature_values = {}
 
-    def load_attr(feature, counter, progbar):
-        nonlocal feature_values
+    for feature, _counter, _progbar in in_layer.iterate_features("loading attributes"):
         reach = feature.GetField(id_field)
         feature_values[reach] = {}
 
         for field in fields:
             feature_values[reach][field] = feature.GetField(field)
-
-    in_layer.iterate_features("loading attributes", load_attr)
 
     return feature_values
 
@@ -300,8 +280,8 @@ def load_geometries(in_layer: VectorLayer, id_field: str, epsg=None):
 
     features = {}
 
-    def load_geoms(feature, counter, progbar):
-        nonlocal features
+    for feature, _counter, progbar in in_layer.iterate_features("Loading features"):
+
         reach = feature.GetField(id_field)
         geom = feature.GetGeometryRef()
 
@@ -319,17 +299,16 @@ def load_geometries(in_layer: VectorLayer, id_field: str, epsg=None):
             progbar.erase()  # get around the progressbar
             log.warning('Invalid feature with FID={} cannot be unioned and will be ignored'.format(feature.GetFID()))
         # Filter out zero-length lines
-        elif geo_type in LINE_TYPES and new_geom.Length() == 0:
+        elif geo_type in VectorLayer.LINE_TYPES and new_geom.Length() == 0:
             progbar.erase()  # get around the progressbar
             log.warning('Zero Length for feature with FID={}'.format(feature.GetFID()))
         # Filter out zero-area polys
-        elif geo_type in POLY_TYPES and new_geom.Area() == 0:
+        elif geo_type in VectorLayer.POLY_TYPES and new_geom.Area() == 0:
             progbar.erase()  # get around the progressbar
             log.warning('Zero Area for feature with FID={}'.format(feature.GetFID()))
         else:
             features[reach] = new_geom
 
-    in_layer.iterate_features("Loading features", load_geoms)
     return features
 
 
@@ -348,13 +327,13 @@ def write_attributes(in_layer: VectorLayer, output_values, id_field: str, fields
     # Create each field and store the name and index in a list of tuples
     field_indices = [(field, in_layer.create_field(field, field_type)) for field in fields]
 
-    def load_geoms(feature, counter, progbar):
+    for feature, _counter, _progbar in in_layer.iterate_features("Writing Attributes"):
         reach = feature.GetField(id_field)
         if reach not in output_values:
-            return
+            continue
 
         # Set all the field values and then store the feature
-        for field, idx in field_indices:
+        for field, _idx in field_indices:
             if field in output_values[reach]:
                 if not output_values[reach][field]:
                     if null_values:
@@ -364,29 +343,12 @@ def write_attributes(in_layer: VectorLayer, output_values, id_field: str, fields
                         feature.SetField(field, None)
                 else:
                     feature.SetField(field, output_values[reach][field])
-        in_layer.layer.SetFeature(feature)
-
-    in_layer.iterate_features("Writing Attributes", load_geoms)
-
-
-def verify_spatial_ref(vectorlayer: VectorLayer, raster_path: str):
-
-    raster = Raster(raster_path)
-
-    ex = None
-    if not vectorlayer.spatial_ref.IsSame(osr.SpatialReference(wkt=raster.proj)):
-        ex = Exception('ShapeFile and raster spatial references do not match.')
-        # TODO add more information to the exception
-
-    raster = None
-
-    if ex:
-        raise ex
+        in_layer.ogr_layer.SetFeature(feature)
 
 
 def network_statistics(label: str, vector_layer: VectorLayer):
 
-    log = Logger('shapefile')
+    log = Logger('network_statistics')
     log.info('Network ShapeFile Summary: {}'.format(vector_layer.filename))
 
     results = {}
@@ -400,13 +362,7 @@ def network_statistics(label: str, vector_layer: VectorLayer):
     for fieldidx in range(0, vector_layer.ogr_layer_def.GetFieldCount()):
         results[vector_layer.ogr_layer_def.GetFieldDefn(fieldidx).GetName()] = 0
 
-    def calc_stats(feature, counter, progbar):
-        nonlocal results
-        nonlocal total_length
-        nonlocal min_length
-        nonlocal max_length
-        nonlocal invalid_features
-        nonlocal no_geometry
+    for feature, _counter, _progbar in vector_layer.iterate_features("Calculating Stats"):
         geom = feature.GetGeometryRef()
 
         if geom is None:
@@ -429,8 +385,6 @@ def network_statistics(label: str, vector_layer: VectorLayer):
                 results[field] = 0
 
             results[field] += 0 if feature.GetField(field) else 1
-
-    vector_layer.iterate_features("Calculating Stats", calc_stats)
 
     features = vector_layer.ogr_layer.GetFeatureCount()
     results['Feature Count'] = features
@@ -465,7 +419,7 @@ def intersect_feature_classes(feature_class1: VectorLayer, feature_class2: Vecto
 def intersect_geometry_with_feature_class(geometry: BaseGeometry, in_layer: VectorLayer, epsg: int, out_layer: VectorLayer, output_geom_type):
 
     if output_geom_type not in [ogr.wkbMultiPoint, ogr.wkbMultiLineString]:
-        raise Exception('Unsupported ogr type for geometry intersection: "{}"'.format(output_geom_type))
+        raise VectorLayerException('Unsupported ogr type for geometry intersection: "{}"'.format(output_geom_type))
 
     geom_union = get_geometry_unary_union(in_layer, epsg)
 
@@ -491,7 +445,7 @@ def intersect_geometry_with_feature_class(geometry: BaseGeometry, in_layer: Vect
         elif isinstance(geom_inter, MultiLineString):
             # Break this linestring down into vertices as points
             geom_inter = MultiPoint(reduce(lambda acc, ls: acc + list(ls.coords), list(geom_inter.geoms), []))
-
+            reduce
         elif isinstance(geom_inter, GeometryCollection):
             geom_inter = MultiPoint([geom for geom in geom_inter.geoms if isinstance(geom, Point)])
 
@@ -499,7 +453,7 @@ def intersect_geometry_with_feature_class(geometry: BaseGeometry, in_layer: Vect
         if isinstance(geom_inter, LineString):
             geom_inter = MultiLineString([(geom_inter)])
         else:
-            raise Exception('Unsupported ogr type: "{}" does not match shapely type of "{}"'.format(output_geom_type, geom_inter.type))
+            raise VectorLayerException('Unsupported ogr type: "{}" does not match shapely type of "{}"'.format(output_geom_type, geom_inter.type))
 
     feature = ogr.Feature(out_layer.ogr_layer_def)
     feature.SetGeometry(ogr.CreateGeometryFromWkb(geom_inter.wkb))
@@ -570,7 +524,7 @@ def remove_holes(geom: BaseGeometry, min_hole_area: float) -> BaseGeometry:
         else:
             return MultiPolygon([_simpl(mgeo) for mgeo in geom.geoms])
     else:
-        raise Exception('Invalid geometry type used for "remove_holes": {}'.format(type(geom)))
+        raise VectorLayerException('Invalid geometry type used for "remove_holes": {}'.format(type(geom)))
 
 
 def get_num_pts(geom: BaseGeometry) -> int:

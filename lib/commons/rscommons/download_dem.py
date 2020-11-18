@@ -13,14 +13,11 @@
 import argparse
 import statistics
 import sys
+import math
 import os
 import traceback
-import gdal
-import geojson
-import gdal
-import math
+from osgeo import gdal
 import rasterio
-from shapely.geometry import shape
 from rscommons.download import download_unzip
 from rscommons.science_base import get_dem_urls
 from rscommons import Logger, Geotransform, ProgressBar
@@ -35,7 +32,7 @@ CELL_SIZE_THRESH_STDDEV = 1e-13
 CELL_SIZE_MAX_STDDEV = 1e-8
 
 
-def download_dem(vector_path, epsg, buffer_dist, download_folder, unzip_folder, force_download=False):
+def download_dem(vector_path, _epsg, buffer_dist, download_folder, unzip_folder, force_download=False):
     """
     Identify rasters within HUC8, download them and mosaic into single GeoTIF
     :param vector_path: Path to bounding polygon ShapeFile
@@ -83,7 +80,8 @@ def download_dem(vector_path, epsg, buffer_dist, download_folder, unzip_folder, 
         # so we bail out.
         if widthStdDev > CELL_SIZE_MAX_STDDEV or heightStdDev > CELL_SIZE_MAX_STDDEV:
             log.warning('Multiple DEM raster cells widths encountered.')
-            [log.warning('cell width {} :: ({}, {})'.format(rp, gt.CellWidth(), gt.CellHeight())) for rp, gt in rasters.items()]
+            for rp, gt in rasters.items():
+                log.warning('cell width {} :: ({}, {})'.format(rp, gt.CellWidth(), gt.CellHeight()))
             # raise Exception('Cannot continue. Raster cell sizes are too different and resampling will cause edge effects in the stitched raster')
 
         # Now that we know we have a problem we need to figure out where the truth is:
@@ -106,7 +104,7 @@ def find_rasters(search_dir):
     :return: List of full paths to any rasters found
     """
 
-    for root, subFolder, files in os.walk(search_dir):
+    for root, _subFolder, files in os.walk(search_dir):
         for item in files:
             if item.endswith('.img') or item.endswith('.tif'):
                 return os.path.join(root, item)
@@ -141,7 +139,7 @@ def verify_areas(raster_path, boundary_shp):
         # Incrememntally add the area of a block to the count
         progbar = ProgressBar(len(list(ds.block_windows(1))), 50, "Calculating Area")
         progcount = 0
-        for ji, window in ds.block_windows(1):
+        for _ji, window in ds.block_windows(1):
             r = ds.read(1, window=window, masked=True)
             progbar.update(progcount)
             cell_count += r.count()
