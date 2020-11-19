@@ -34,7 +34,7 @@ class ShapefileLayer(VectorLayer):
         # Shape files get deleted first
         self.allow_write = True
         self._create_ds()
-        self._create_layer(geom_type, epsg=epsg, spatial_ref=spatial_ref, fields=fields)
+        self.create_layer(geom_type, epsg=epsg, spatial_ref=spatial_ref, fields=fields)
 
     def open(self, write: bool = False):
         """This is implied in the constructor
@@ -88,7 +88,7 @@ class GeopackageLayer(VectorLayer):
                 self._open_ds()
             else:
                 self._create_ds()
-        self._create_layer(ogr_geom_type, epsg=epsg, spatial_ref=spatial_ref, fields=fields)
+        self.create_layer(ogr_geom_type, epsg=epsg, spatial_ref=spatial_ref, fields=fields)
 
     def delete_layer(self) -> GeopackageLayer:
         """Delete this one layer from the geopackage

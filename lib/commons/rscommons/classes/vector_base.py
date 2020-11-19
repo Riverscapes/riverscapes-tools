@@ -61,13 +61,13 @@ class VectorLayer():
         self.driver = ogr.GetDriverByName(self.driver_name)
 
     def __enter__(self):
-        self.log.debug('__enter__ called')
+        # self.log.debug('__enter__ called')
         self._open_ds()
         self._open_layer()
         return self
 
     def __exit__(self, _type, _value, _traceback):
-        self.log.debug('__exit__ called. Cleaning up.')
+        # self.log.debug('__exit__ called. Cleaning up.')
         self.close()
 
     def close(self):
@@ -128,7 +128,7 @@ class VectorLayer():
         self.ogr_ds.DeleteLayer(self.ogr_layer_name)
         self.log.info('layer deleted: {} / {}'.format(self.filepath, self.ogr_layer_name))
 
-    def _create_layer(self, ogr_geom_type: int, epsg: int = None, spatial_ref: osr.SpatialReference = None, fields: dict = None):
+    def create_layer(self, ogr_geom_type: int, epsg: int = None, spatial_ref: osr.SpatialReference = None, fields: dict = None):
         """[summary]
 
         Args:
@@ -190,9 +190,9 @@ class VectorLayer():
             epsg (int, optional): [description]. Defaults to None.
         """
         if epsg is not None:
-            self._create_layer(ref.ogr_geom_type, epsg=epsg)
+            self.create_layer(ref.ogr_geom_type, epsg=epsg)
         else:
-            self._create_layer(ref.ogr_geom_type, spatial_ref=ref.spatial_ref)
+            self.create_layer(ref.ogr_geom_type, spatial_ref=ref.spatial_ref)
 
         # We do this instead of a simple key:val dict because we want to capture precision and length info
         for i in range(0, ref.ogr_layer_def.GetFieldCount()):
@@ -307,7 +307,7 @@ class VectorLayer():
         raise VectorLayerException('Missing field {} in {}'.format(field_name, self.ogr_layer.GetName()))
 
     def iterate_features(
-        self, name: str, out_layer=None,
+        self, name: str, out_layer: VectorLayer = None,
         commit_thresh=1000, attribute_filter: str = None, clip_shape: BaseGeometry = None
     ) -> None:
         """This method allows you to pass in a callback that gets run for each feature in a layer
@@ -333,7 +333,7 @@ class VectorLayer():
             self.ogr_layer.SetAttributeFilter(attribute_filter)
 
         if out_layer is not None:
-            out_layer.StartTransaction()
+            out_layer.ogr_layer.StartTransaction()
 
         # Get an accurate feature count after clipping and filtering
         fcount = self.ogr_layer.GetFeatureCount()
@@ -345,10 +345,10 @@ class VectorLayer():
             yield (feature, counter, progbar)
 
             if out_layer is not None and counter % commit_thresh == 0:
-                out_layer.CommitTransaction()
+                out_layer.ogr_layer.CommitTransaction()
 
         if out_layer is not None:
-            out_layer.CommitTransaction()
+            out_layer.ogr_layer.CommitTransaction()
 
         # Reset the attribute filter
         if attribute_filter:
@@ -413,12 +413,12 @@ class VectorLayer():
 
         return out_spatial_ref, transform
 
-    def _rough_convert_metres_to_shapefile_units(self, distance: float) -> float:
+    def rough_convert_metres_to_shapefile_units(self, distance: float) -> float:
         extent = self.ogr_layer.GetExtent()
-        return VectorLayer._rough_convert_metres_to_dataset_units(self.spatial_ref, extent, distance)
+        return VectorLayer.rough_convert_metres_to_dataset_units(self.spatial_ref, extent, distance)
 
     @ staticmethod
-    def _rough_convert_metres_to_raster_units(raster_path: str, distance: float) -> float:
+    def rough_convert_metres_to_raster_units(raster_path: str, distance: float) -> float:
 
         in_ds = gdal.Open(raster_path)
         in_spatial_ref = osr.SpatialReference()
@@ -426,10 +426,10 @@ class VectorLayer():
         gt = in_ds.GetGeoTransform()
         extent = (gt[0], gt[0] + gt[1] * in_ds.RasterXSize, gt[3] + gt[5] * in_ds.RasterYSize, gt[3])
 
-        return VectorLayer._rough_convert_metres_to_dataset_units(in_spatial_ref, extent, distance)
+        return VectorLayer.rough_convert_metres_to_dataset_units(in_spatial_ref, extent, distance)
 
     @ staticmethod
-    def _rough_convert_metres_to_dataset_units(in_spatial_ref: osr.SpatialReference, extent: list, distance: float) -> float:
+    def rough_convert_metres_to_dataset_units(in_spatial_ref: osr.SpatialReference, extent: list, distance: float) -> float:
         """DO NOT USE THIS FOR ACCURATE DISTANCES. IT'S GOOD FOR A QUICK CALCULATION
         WHEN DISTANCE PRECISION ISN'T THAT IMPORTANT
 

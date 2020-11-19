@@ -28,7 +28,7 @@ def print_geom_size(logger, geom_obj):
         logger.debug('Byte Size of output object could not be determined')
 
 
-def get_geometry_union(in_layer: VectorLayer, epsg: int = None, attribute_filter: str = None, clip_shape=None) -> BaseGeometry:
+def get_geometry_union(in_layer: VectorLayer, epsg: int = None, attribute_filter: str = None, clip_shape: BaseGeometry = None) -> BaseGeometry:
     """
     TODO: Depprecated
     Load all features from a ShapeFile and union them together into a single geometry
@@ -66,7 +66,7 @@ def get_geometry_union(in_layer: VectorLayer, epsg: int = None, attribute_filter
     return geom
 
 
-def get_geometry_unary_union(in_layer: VectorLayer, epsg: int = None, attribute_filter: str = None, clip_shape=None) -> BaseGeometry:
+def get_geometry_unary_union(in_layer: VectorLayer, epsg: int = None, attribute_filter: str = None, clip_shape: BaseGeometry = None) -> BaseGeometry:
     """
     Load all features from a ShapeFile and union them together into a single geometry
     :param inpath: Path to a ShapeFile
@@ -144,7 +144,7 @@ def get_geometry_unary_union(in_layer: VectorLayer, epsg: int = None, attribute_
     return geom_union
 
 
-def copy_feature_class(in_layer: VectorLayer, out_layer: VectorLayer, epsg: int = None, clip_shape=None, attribute_filter=None):
+def copy_feature_class(in_layer: VectorLayer, out_layer: VectorLayer, epsg: int = None, clip_shape: BaseGeometry = None, attribute_filter: str = None):
     """Copy a Shapefile from one location to another
 
     This method is capable of reprojecting the geometries as they are copied.
@@ -467,7 +467,36 @@ def intersect_geometry_with_feature_class(geometry: BaseGeometry, in_layer: Vect
     out_layer.ogr_layer.CreateFeature(feature)
 
 
-def polygonize(raster_path, band, out_layer):
+def buffer_by_field(in_layer: VectorLayer, field: str, epsg: int = None, min_buffer=None) -> BaseGeometry:
+    """generate buffered polygons by value in field
+
+    Args:
+        flowlines (str): feature class of line features to buffer
+        field (str): field with buffer value
+        epsg (int): output srs
+        min_buffer: use this buffer value for field values that are less than this
+
+    Returns:
+        geometry: unioned polygon geometry of buffered lines
+    """
+
+    _out_spatial_ref, transform = in_layer.get_transform_from_epsg(epsg)
+    conversion = in_layer.rough_convert_metres_to_shapefile_units(1)
+
+    outpolys = []
+    for feature, _counter, _progbar in in_layer.iterate_features('Buffering'):
+        geom = feature.GetGeometryRef()
+        bufferDist = feature.GetField(field) * conversion
+        geom_buffer = geom.Buffer(bufferDist if bufferDist > min_buffer else min_buffer)
+        geom_buffer.Transform(transform)
+        outpolys.append(wkbload(geom_buffer.ExportToWkb()))
+
+    # unary union
+    outpoly = unary_union(outpolys)
+    return outpoly
+
+
+def polygonize(raster_path: str, band: int, out_layer: VectorLayer, epsg: int = None):
     # mapping between gdal type and ogr field type
     type_mapping = {
         gdal.GDT_Byte: ogr.OFTInteger,
@@ -483,15 +512,16 @@ def polygonize(raster_path, band, out_layer):
         gdal.GDT_CFloat64: ogr.OFTReal
     }
 
+    out_layer.create_layer(ogr.wkbPolygon, epsg=epsg)
+
     src_ds = gdal.Open(raster_path)
     src_band = src_ds.GetRasterBand(band)
 
-    raster_field = ogr.FieldDefn('id', type_mapping[src_band.DataType])
-    out_layer.create_field.CreateField(raster_field)
+    out_layer.create_field('id', type_mapping[src_band.DataType])
 
     progbar = ProgressBar(100, 50, "Polygonizing raster")
 
-    def poly_progress(progress, msg, data):
+    def poly_progress(progress, _msg, data_):
         # double dfProgress, char const * pszMessage=None, void * pData=None
         progbar.update(int(progress * 100))
 
