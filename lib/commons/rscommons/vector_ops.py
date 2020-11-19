@@ -28,9 +28,9 @@ def print_geom_size(logger, geom_obj):
         logger.debug('Byte Size of output object could not be determined')
 
 
-def get_geometry_union(in_layer: VectorLayer, epsg: int = None, attribute_filter: str = None) -> BaseGeometry:
+def get_geometry_union(in_layer: VectorLayer, epsg: int = None, attribute_filter: str = None, clip_shape=None) -> BaseGeometry:
     """
-    TODO: Remove this method and replace all references to the get_geometry_unary_union method below
+    TODO: Depprecated
     Load all features from a ShapeFile and union them together into a single geometry
     :param inpath: Path to a ShapeFile
     :param epsg: Desired output spatial reference
@@ -41,11 +41,11 @@ def get_geometry_union(in_layer: VectorLayer, epsg: int = None, attribute_filter
 
     transform = None
     if epsg:
-        _outref, transform = VectorLayer.get_transform_from_epsg(in_layer.spatial_ref, epsg)
+        _outref, transform = in_layer.get_transform_from_epsg(epsg)
 
     geom = None
 
-    for feature, _counter, progbar in in_layer.iterate_features("Getting geometry union", attribute_filter=attribute_filter):
+    for feature, _counter, progbar in in_layer.iterate_features("Getting geometry union", attribute_filter=attribute_filter, clip_shape=clip_shape):
         new_geom = feature.GetGeometryRef()
 
         if new_geom is None:
@@ -66,7 +66,7 @@ def get_geometry_union(in_layer: VectorLayer, epsg: int = None, attribute_filter
     return geom
 
 
-def get_geometry_unary_union(in_layer: VectorLayer, epsg: int = None):
+def get_geometry_unary_union(in_layer: VectorLayer, epsg: int = None, attribute_filter: str = None, clip_shape=None) -> BaseGeometry:
     """
     Load all features from a ShapeFile and union them together into a single geometry
     :param inpath: Path to a ShapeFile
@@ -78,14 +78,14 @@ def get_geometry_unary_union(in_layer: VectorLayer, epsg: int = None):
 
     transform = None
     if epsg:
-        _outref, transform = VectorLayer.get_transform_from_epsg(in_layer.spatial_ref, epsg)
+        _outref, transform = in_layer.get_transform_from_epsg(epsg)
 
     def unionize(wkb_lst):
         return unary_union([wkbload(g) for g in wkb_lst]).wkb
 
     geom_list = []
 
-    for feature, _counter, progbar in in_layer.iterate_features("Unary Unioning features"):
+    for feature, _counter, progbar in in_layer.iterate_features("Unary Unioning features", attribute_filter=attribute_filter, clip_shape=clip_shape):
         new_geom = feature.GetGeometryRef()
         geo_type = new_geom.GetGeometryType()
 
@@ -196,8 +196,14 @@ def copy_feature_class(in_layer: VectorLayer, out_layer: VectorLayer, epsg: int 
         out_feature = None
 
 
-def merge_feature_classes(feature_classes, boundary: BaseGeometry, out_layer: VectorLayer):
+def merge_feature_classes(feature_classes: list, boundary: BaseGeometry, out_layer: VectorLayer, epsg: int = None):
+    """[summary]
 
+    Args:
+        feature_classes ([type]): [description]
+        boundary (BaseGeometry): [description]
+        out_layer (VectorLayer): [description]
+    """
     log = Logger('Shapefile')
     log.info('Merging {} feature classes.'.format(len(feature_classes)))
 
@@ -238,9 +244,10 @@ def merge_feature_classes(feature_classes, boundary: BaseGeometry, out_layer: Ve
             out_layer.ogr_layer.CreateFeature(outFeature)
 
     log.info('Merge complete.')
+    return fccount,
 
 
-def load_attributes(in_layer: VectorLayer, id_field: str, fields):
+def load_attributes(in_layer: VectorLayer, id_field: str, fields: list) -> dict:
     """
     Load ShapeFile attributes fields into a dictionary keyed by the id_field
     :param network: Full, absolute path to a ShapeFile
@@ -256,7 +263,7 @@ def load_attributes(in_layer: VectorLayer, id_field: str, fields):
     # [networkLr.SetAttributeFilter('{} is not null'.format(field)) for field in [veg_field, drain_field, hydq2_field, hydlow_field, length_field, slope_field]]
     # layer.SetAttributeFilter("iGeo_Slope > 0 and iGeo_DA > 0")
 
-    print('{:,} features in polygon ShapeFile {}'.format(in_layer.ogr_layer.GetFeatureCount(), in_layer.filename))
+    print('{:,} features in polygon ShapeFile {}'.format(in_layer.ogr_layer.GetFeatureCount(), in_layer.filepath))
 
     feature_values = {}
 
@@ -270,7 +277,7 @@ def load_attributes(in_layer: VectorLayer, id_field: str, fields):
     return feature_values
 
 
-def load_geometries(in_layer: VectorLayer, id_field: str, epsg=None):
+def load_geometries(in_layer: VectorLayer, id_field: str, epsg=None) -> dict:
     log = Logger('Shapefile')
 
     # Determine the transformation if user provides an EPSG
@@ -290,7 +297,7 @@ def load_geometries(in_layer: VectorLayer, id_field: str, epsg=None):
             geom.Transform(transform)
 
         new_geom = wkbload(geom.ExportToWkb())
-        geo_type = new_geom.GetGeometryType()
+        geo_type = geom.GetGeometryType()
 
         if new_geom.is_empty:
             progbar.erase()  # get around the progressbar
@@ -299,11 +306,11 @@ def load_geometries(in_layer: VectorLayer, id_field: str, epsg=None):
             progbar.erase()  # get around the progressbar
             log.warning('Invalid feature with FID={} cannot be unioned and will be ignored'.format(feature.GetFID()))
         # Filter out zero-length lines
-        elif geo_type in VectorLayer.LINE_TYPES and new_geom.Length() == 0:
+        elif geo_type in VectorLayer.LINE_TYPES and new_geom.length == 0:
             progbar.erase()  # get around the progressbar
             log.warning('Zero Length for feature with FID={}'.format(feature.GetFID()))
         # Filter out zero-area polys
-        elif geo_type in VectorLayer.POLY_TYPES and new_geom.Area() == 0:
+        elif geo_type in VectorLayer.POLY_TYPES and new_geom.area == 0:
             progbar.erase()  # get around the progressbar
             log.warning('Zero Area for feature with FID={}'.format(feature.GetFID()))
         else:
