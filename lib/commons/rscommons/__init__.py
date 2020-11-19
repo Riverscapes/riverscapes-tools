@@ -11,6 +11,7 @@ from rscommons.classes.model_config import ModelConfig
 from rscommons.classes.progress_bar import ProgressBar
 from rscommons.classes.raster import Raster
 from rscommons.classes.vector_classes import GeopackageLayer, ShapefileLayer
+from rscommons.classes.vector_base import VectorLayer
 
 from rscommons.report.rs_report import RSReport
 from rscommons.classes.rs_project import RSLayer, RSProject
