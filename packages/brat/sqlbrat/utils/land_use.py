@@ -58,14 +58,21 @@ def calculate_land_use(database, buffer):
             values[target_col] = 0.0
 
         # Calculate the number
-        curs.execute('SELECT RV.ReachID, 100.0 * SUM(CAST(CellCount AS REAL) / CAST(TotalCells AS REAL)) AS Proportion'
-                     ' FROM ReachVegetation RV'
-                     ' INNER JOIN VegetationTypes VT ON RV.VegetationID = VT.VegetationID'
-                     ' INNER JOIN LandUses L ON VT.LandUseID = L.LandUseID'
-                     ' INNER JOIN Epochs EP ON VT.EpochID = EP.EpochID'
-                     ' INNER JOIN (SELECT ReachID, SUM(CellCount) AS TotalCells FROM ReachVegetation WHERE Buffer = ? GROUP BY ReachID) AS RS ON RV.ReachID = RS.ReachID'
-                     ' WHERE (Buffer = ?) AND (EP.Metadata = "EX") AND (Intensity < ?)'
-                     ' GROUP BY RV.ReachID', [buffer, buffer, max_intensity])
+        curs.execute("""SELECT RV.ReachID, 100.0 * SUM(CAST(CellCount AS REAL) / CAST(TotalCells AS REAL)) AS Proportion
+                      FROM ReachVegetation RV
+                      INNER JOIN VegetationTypes VT ON RV.VegetationID = VT.VegetationID
+                      INNER JOIN LandUses L ON VT.LandUseID = L.LandUseID
+                      INNER JOIN Epochs EP ON VT.EpochID = EP.EpochID
+                      INNER JOIN (
+                         SELECT ReachID, SUM(CellCount) AS TotalCells
+                         FROM ReachVegetation RV
+                             INNER JOIN VegetationTypes VT ON RV.VegetationID = VT.VegetationID
+                             INNER JOIN Epochs E ON VT.EpochID = E.EpochID
+                         WHERE (Buffer = ? AND E.Metadata = 'EX') GROUP BY ReachID
+                      ) AS RS ON RV.ReachID = RS.ReachID
+                      WHERE (Buffer = ?) AND (EP.Metadata = 'EX') AND (Intensity <= ?)
+                      GROUP BY RV.ReachID
+                      """, [buffer, buffer, max_intensity])
 
         for row in curs.fetchall():
             results[row[0]][target_col] = row[1] - results[row[0]]['Cumulative']
