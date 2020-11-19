@@ -36,10 +36,12 @@ from scipy.interpolate import interp1d
 from vbet.vbet_network import vbet_network
 from vbet.vbet_report import VBETReport
 from rscommons.util import safe_makedirs, parse_metadata
-from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, dotenv
-from rscommons.shapefile import _rough_convert_metres_to_raster_units, polygonize, copy_feature_class, intersect_feature_classes, remove_holes, get_pts, get_rings, get_geometry_unary_union, export_geojson
-from rscommons.prism import buffer_by_field
+from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, dotenv, initGDALOGRErrors
+from rscommons import GeopackageLayer, ShapefileLayer, VectorLayer
+from rscommons.vector_ops import polygonize, get_num_pts, get_num_rings, export_geojson, get_geometry_unary_union, remove_holes, buffer_by_field
 from vbet.__version__ import __version__
+
+initGDALOGRErrors()
 
 cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/VBET.xsd', __version__)
 
@@ -57,21 +59,15 @@ LayerTypes = {
     'CHANNEL_MASK': RSLayer('Evidence Raster', 'CH_MASK', 'Raster', 'intermediates/nLOE_Channels.tif'),
     'EVIDENCE': RSLayer('Evidence Raster', 'EVIDENCE', 'Raster', 'intermediates/Evidence.tif'),
     'COMBINED_VRT': RSLayer('Combined VRT', 'COMBINED_VRT', 'VRT', 'intermediates/slope-hand-channel.vrt'),
-    'VBET_NETWORK': RSLayer('VBET Network', 'VBET_NETWORK', 'Vector', 'intermediates/vbet_network.shp'),
-    'CHANNEL_POLYGON': RSLayer('Combined VRT', 'CHANNEL_POLYGON', 'Vector', 'intermediates/channel.shp'),
-    'THRESH': RSLayer('THRESH', 'Thresholded Shapes', 'Geopackage', 'outputs/vbet.gpkg', {
-        'THRESH_{}'.format(k): RSLayer('Threshold at {}%'.format(k), 'THRESH_{}'.format(k), 'Vector', 'main.thresh_{}'.format(k))
-        for k, v in thresh_vals.items()
+    'INTERMEDIATES': RSLayer('INTERMEDIATES', 'Intermediates', 'Geopackage', 'intermediates/vbet_intermediates.gpkg', {
+        'VBET_NETWORK': RSLayer('VBET Network', 'VBET_NETWORK', 'Vector', 'vbet_network'),
+        'CHANNEL_POLYGON': RSLayer('Combined VRT', 'CHANNEL_POLYGON', 'Vector', 'channel')
+        # We also add all tht raw thresholded shapes here but they get added dynamically later
     }),
-    'VBET': RSLayer('VBET', 'VBET', 'Geopackage', 'outputs/vbet.gpkg', {
-        'VBET_{}'.format(k): RSLayer('VBET {}%'.format(k), 'VBET_{}'.format(k), 'Vector', 'main.vbet_{}'.format(k))
-        for k, v in thresh_vals.items()
-    }),
+    # Same here. Sub layers are added dynamically later.
+    'VBET': RSLayer('VBET', 'VBET', 'Geopackage', 'outputs/vbet.gpkg'),
+    'REPORT': RSLayer('RSContext Report', 'REPORT', 'HTMLFile', 'outputs/vbet.html')
 }
-# Build our threshold Layers programmatically
-# TODO: Remdove when confirmed
-for k, v in thresh_vals.items():
-    LayerTypes['VBET_{}'.format(k)] = RSLayer('VBET {}%'.format(k), 'VBET_{}'.format(k), 'Vector', 'outputs/vbet_{}.shp'.format(k))
 
 
 def vbet(huc, flowlines, flowareas, orig_slope, max_slope, orig_hand, hillshade, max_hand, min_hole_area_m, project_folder, meta):
@@ -90,27 +86,26 @@ def vbet(huc, flowlines, flowareas, orig_slope, max_slope, orig_hand, hillshade,
     project.add_project_vector(proj_nodes['Inputs'], LayerTypes['FLOWLINES'], flowlines)
     project.add_project_vector(proj_nodes['Inputs'], LayerTypes['FLOW_AREA'], flowareas)
 
-    vbet_network_path = os.path.join(project_folder, LayerTypes['VBET_NETWORK'].rel_path)
-    vbet_network(flowlines, flowareas, cfg.OUTPUT_EPSG, vbet_network_path)
-    project.add_project_vector(proj_nodes['Intermediates'], LayerTypes['VBET_NETWORK'])
+    intermediates_gpkg_path = os.path.join(project_folder, LayerTypes['INTERMEDIATES'].rel_path)
+
+    with ShapefileLayer(flowlines) as fl_lyr, \
+            ShapefileLayer(flowareas) as flwar_lyr, \
+            GeopackageLayer(intermediates_gpkg_path, layer_name='vbet_network', write=True) as vbet_net:
+
+        vbet_network(fl_lyr, flwar_lyr, vbet_net, cfg.OUTPUT_EPSG)
 
     # Get raster resolution as min buffer and apply bankfull width buffer to reaches
     with rasterio.open(proj_slope) as raster:
         t = raster.transform
         min_buffer = (t[0] + abs(t[4])) / 2
 
-    reach_polygon = buffer_by_field(vbet_network_path, "BFwidth", cfg.OUTPUT_EPSG, min_buffer)
-    log.info("Buffering Polyine by bankfull width buffers")
-
-    # Old single 25m buffer
-    # Load all the reaches into single polyline and also buffer them into single polygon
-    # polyline = get_geometry_unary_union(vbet_network_path, cfg.OUTPUT_EPSG)
-    # reach_buffer = _rough_convert_metres_to_raster_units(proj_slope, 25)
-    # log.info('Buffering Polyline by: {}'.format(reach_buffer))
-    # reach_polygon = polyline.buffer(reach_buffer)
+    with GeopackageLayer(intermediates_gpkg_path, layer_name='vbet_network') as vbet_net_lyr:
+        log.info("Buffering Polyine by bankfull width buffers")
+        reach_polygon = buffer_by_field(vbet_net_lyr, "BFwidth", cfg.OUTPUT_EPSG, min_buffer)
 
     # Create channel polygon by combining the reach polygon with the flow area polygon
-    area_polygon = get_geometry_unary_union(flowareas, cfg.OUTPUT_EPSG)
+    with ShapefileLayer(flowareas) as flowarea_lyr:
+        area_polygon = get_geometry_unary_union(flowarea_lyr, cfg.OUTPUT_EPSG)
     log.info('Unioning reach and area polygons')
 
     # Union the buffered reach and area polygons
@@ -212,7 +207,7 @@ def vbet(huc, flowlines, flowareas, orig_slope, max_slope, orig_hand, hillshade,
         project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['EVIDENCE'])
 
     # Get the length of a meter (roughly)
-    degree_factor = _rough_convert_metres_to_raster_units(proj_slope, 1)
+    degree_factor = GeopackageLayer.rough_convert_metres_to_raster_units(proj_slope, 1)
     buff_dist = cell_size
     min_hole_degrees = min_hole_area_m * (degree_factor ** 2)
 
@@ -220,6 +215,10 @@ def vbet(huc, flowlines, flowareas, orig_slope, max_slope, orig_hand, hillshade,
     # These files get immediately polygonized so they are of very little value afterwards
     tmp_folder = os.path.join(project_folder, 'tmp')
     safe_makedirs(tmp_folder)
+
+    # Get the full paths to the geopackages
+    intermed_gpkg_path = os.path.join(project_folder, LayerTypes['INTERMEDIATES'].rel_path)
+    vbet_path = os.path.join(project_folder, LayerTypes['VBET'].rel_path)
 
     for str_val, thr_val in thresh_vals.items():
         thresh_raster_path = os.path.join(tmp_folder, 'evidence_mask_{}.tif'.format(str_val))
@@ -248,17 +247,32 @@ def vbet(huc, flowlines, flowareas, orig_slope, max_slope, orig_hand, hillshade,
                     dest.write(np.ma.filled(masked_arr, out_meta['nodata']), window=window, indexes=1)
                 progbar.finish()
 
-        log.info('Polygonizing')
-        thresh_type = LayerTypes['THRESH_{}'.format(str_val)]
-        polygonize_path = os.path.join(project_folder, thresh_type.rel_path)
-        polygonize(thresh_raster_path, 1, polygonize_path, cfg.OUTPUT_EPSG)
-        project.add_project_vector(proj_nodes['Intermediates'], thresh_type)
+        plgnize_id = 'THRESH_{}'.format(str_val)
+        plgnize_lyr = RSLayer('Threshold at {}%'.format(str_val), plgnize_id, 'Vector', plgnize_id.lower())
+        # Add a project node for this thresholded vector
+        LayerTypes['INTERMEDIATES'].add_sub_layer(plgnize_id, plgnize_lyr)
 
+        vbet_id = 'VBET_{}'.format(str_val)
+        vbet_lyr = RSLayer('Threshold at {}%'.format(str_val), vbet_id, 'Vector', vbet_id.lower())
+        # Add a project node for this thresholded vector
+        LayerTypes['VBET'].add_sub_layer(vbet_id, vbet_lyr)
+
+        # Now polygonize the raster
+        with GeopackageLayer(intermed_gpkg_path, plgnize_lyr.rel_path, write=True) as polygonize_lyr:
+            log.info('Polygonizing')
+            polygonize(thresh_raster_path, 1, polygonize_lyr, cfg.OUTPUT_EPSG)
+
+        # Now the final sanitization
         log.info('Sanitizing')
-        vbet_type = LayerTypes['VBET_{}'.format(str_val)]
-        final_path = os.path.join(project_folder, vbet_type.rel_path)
-        sanitize(polygonize_path, channel_polygon, final_path, min_hole_degrees, buff_dist)
-        project.add_project_vector(proj_nodes['Outputs'], vbet_type)
+        with GeopackageLayer(intermed_gpkg_path, plgnize_lyr.rel_path) as polygonize_lyr, \
+                GeopackageLayer(vbet_path, vbet_lyr.rel_path, write=True) as output_lyr:
+
+            sanitize(polygonize_lyr, channel_polygon, output_lyr, min_hole_degrees, buff_dist)
+            log.info('Completed thresholding at {}'.format(thr_val))
+
+    # Now add our Geopackages to the project XML
+    project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
+    project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['VBET'])
 
     # Channel mask is duplicated from inputs so we delete it.
     rasterio.shutil.delete(channel_msk)
@@ -282,52 +296,31 @@ def vbet(huc, flowlines, flowareas, orig_slope, max_slope, orig_hand, hillshade,
     log.info('VBET Completed Successfully')
 
 
-def sanitize(input_path, channel_polygon, output_path, min_hole_sq_deg, buff_dist):
-    """It's important to make sure we have the right kinds of geometries. Here we:
-        1. Buffer out then back in by the same amount. TODO: THIS IS SUPER SLOW.
-        2. Simply: for some reason area isn't calculated on inner rings so we need to simplify them first
-        3. Remove small holes: Do we have donuts? Filter anythign smaller than a certain area
+def sanitize(in_lyr: VectorLayer, channel_poly: Polygon, out_lyr: VectorLayer, min_hole_sq_deg: float, buff_dist: float):
+    """
+        It's important to make sure we have the right kinds of geometries. Here we:
+            1. Buffer out then back in by the same amount. TODO: THIS IS SUPER SLOW.
+            2. Simply: for some reason area isn't calculated on inner rings so we need to simplify them first
+            3. Remove small holes: Do we have donuts? Filter anythign smaller than a certain area
 
     Args:
-        input_path ([type]): [description]
-        channel_polygon ([type]): [description]
-        output_path ([type]): [description]
-        min_hole_sq_deg ([type]): Size of the minimul hole you want to keep.
-        buff_dist ([type]): Usually this is the cell size of the slope raster
+        in_lyr (VectorLayer): [description]
+        channel_poly (Polygon): [description]
+        out_lyr (VectorLayer): [description]
+        min_hole_sq_deg (float): [description]
+        buff_dist (float): [description]
     """
     log = Logger('VBET Simplify')
-    driver = ogr.GetDriverByName("ESRI Shapefile")
-    data_source_in = driver.Open(input_path, 0)
-    layer_in = data_source_in.GetLayer()
 
-    ogr_polygon = ogr.CreateGeometryFromWkb(channel_polygon.wkb)
-
-    if os.path.exists(output_path):
-        driver.DeleteDataSource(output_path)
-
-    data_source_out = driver.CreateDataSource(output_path)
-    out_spatial_ref = layer_in.GetSpatialRef()
-    layer_out = data_source_out.CreateLayer('vbet', out_spatial_ref, geom_type=ogr.wkbPolygon)
-    featureDefn = layer_in.GetLayerDefn()
-    layer_in.SetSpatialFilter(ogr_polygon)
+    out_lyr.create_layer(ogr.wkbPolygon, spatial_ref=in_lyr.spatial_ref)
 
     geoms = []
     pts = 0
     square_buff = buff_dist * buff_dist
+
     # NOTE: Order of operations really matters here.
-    counter = 0
-
-    # DEBUGGING
-    # debug_dir = os.path.join(os.path.dirname(input_path), 'debug')
-    # safe_makedirs(debug_dir)
-    # def debug_writer(shapely_geom, filename):
-    #     with open(os.path.join(debug_dir, filename), 'w') as f:
-    #         json.dump(export_geojson(shapely_geom), f)
-
-    for inFeature in layer_in:
-        counter += 1
+    for inFeature, _counter, _progbar in in_lyr.iterate_features("Sanitizing", clip_shape=channel_poly):
         geom = wkb_load(inFeature.GetGeometryRef().ExportToWkb())
-        # debug_writer(geom, '{}_A_ORIG.geojson'.format(counter))
 
         # First check. Just make sure this is a valid shape we can work with
         if geom.is_empty or geom.area < square_buff:
@@ -336,11 +329,14 @@ def sanitize(input_path, channel_polygon, output_path, min_hole_sq_deg, buff_dis
 
         pts += len(geom.exterior.coords)
         f_geom = geom
+
         # 1. Buffer out then back in by the same amount. TODO: THIS IS SUPER SLOW.
         f_geom = geom.buffer(buff_dist, resolution=1).buffer(-buff_dist, resolution=1)
         # debug_writer(f_geom, '{}_B_AFTER_BUFFER.geojson'.format(counter))
+
         # 2. Simply: for some reason area isn't calculated on inner rings so we need to simplify them first
         f_geom = f_geom.simplify(buff_dist, preserve_topology=True)
+
         # 3. Remove small holes: Do we have donuts? Filter anythign smaller than a certain area
         f_geom = remove_holes(f_geom, min_hole_sq_deg)
 
@@ -348,7 +344,9 @@ def sanitize(input_path, channel_polygon, output_path, min_hole_sq_deg, buff_dis
         if not f_geom.is_empty and f_geom.is_valid and f_geom.area > 0:
             geoms.append(f_geom)
             # debug_writer(f_geom, '{}_Z_FINAL.geojson'.format(counter))
-            log.debug('simplified: pts: {} ==> {}, rings: {} ==> {}'.format(get_pts(geom), get_pts(f_geom), get_rings(geom), get_rings(f_geom)))
+            log.debug('simplified: pts: {} ==> {}, rings: {} ==> {}'.format(
+                get_num_pts(geom), get_num_pts(f_geom), get_num_rings(geom), get_num_rings(f_geom))
+            )
         else:
             log.warning('Invalid GEOM')
             # debug_writer(f_geom, '{}_Z_REJECTED.geojson'.format(counter))
@@ -359,14 +357,11 @@ def sanitize(input_path, channel_polygon, output_path, min_hole_sq_deg, buff_dis
     new_geom = unary_union(geoms)
 
     log.info('Writing to disk')
-    outFeature = ogr.Feature(featureDefn)
+    outFeature = ogr.Feature(out_lyr.ogr_layer_def)
 
     outFeature.SetGeometry(ogr.CreateGeometryFromJson(json.dumps(mapping(new_geom))))
-    layer_out.CreateFeature(outFeature)
+    out_lyr.ogr_layer.CreateFeature(outFeature)
     outFeature = None
-
-    data_source_in = None
-    data_source_out = None
 
 
 def create_project(huc, output_dir):

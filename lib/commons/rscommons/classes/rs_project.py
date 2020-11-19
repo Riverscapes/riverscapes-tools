@@ -7,6 +7,7 @@
 #
 # Created:     09/25/2015
 # -------------------------------------------------------------------------------
+from __future__ import annotations
 import os
 import datetime
 import uuid
@@ -14,7 +15,7 @@ import uuid
 import rasterio.shutil
 from osgeo import ogr
 
-from rscommons import ModelConfig, ProgressBar, Logger
+from rscommons import Logger
 from rscommons.classes.xml_builder import XMLBuilder
 from rscommons.util import safe_makedirs
 from rscommons.shapefile import copy_feature_class
@@ -47,7 +48,23 @@ LayerTypes = {
 
 
 class RSLayer:
-    def __init__(self, name, id, tag, rel_path, sub_layers=None):
+    def __init__(self, name: str, id: str, tag: str, rel_path: str, sub_layers: dict = None):
+        """[summary]
+
+        Args:
+            name (str): The <Name> to be used 
+            id (str): The <Name id=""> id to be used
+            tag (str): The tag to be used for the vector layer
+            rel_path (str): The path relative to the project file
+            sub_layers (dict, optional): If this is a geopackage you can . Defaults to None.
+
+        Raises:
+            Exception: Name is required
+            Exception: id is required
+            Exception: rel_path is required
+            Exception: Only Geopackages can have sub layers
+            Exception: sub_layers must but a list of RSLayer(s)
+        """
         if name is None:
             raise Exception('Name is required')
         if id is None:
@@ -62,11 +79,25 @@ class RSLayer:
                     not all([type(list(sub_layers.values())[0]) == RSLayer for a in sub_layers]):
                 raise Exception('sub_layers must but a list of RSLayer(s)')
             self.sub_layers = sub_layers
+        else:
+            self.sub_layers = None
 
         self.name = name
         self.id = id
         self.tag = tag
         self.rel_path = rel_path
+
+    def add_sub_layer(self, key: str, layer: RSLayer):
+        """Add a geopackage sublayer
+
+        Args:
+            key (str): Name of the layer. For lookup purposes only
+            layer (RSLayer): RSLayer
+        """
+        if not self.sub_layers:
+            self.sub_layers = {key: layer}
+        else:
+            self.sub_layers[key] = layer
 
 
 class RSProject:
@@ -343,7 +374,7 @@ class RSProject:
             log.debug('Geopackage Copied {} to {}'.format(copy_path, file_path))
 
         # Add in our sublayers
-        if rs_lyr.sub_layers and len(rs_lyr.sub_layers) > 0:
+        if rs_lyr.sub_layers is not None and len(rs_lyr.sub_layers) > 0:
             nod_dataset = self.add_dataset(parent_node, file_path, rs_lyr, 'Geopackage', replace)
             layers_node = self.XMLBuilder.add_sub_element(nod_dataset, 'Layers')
             for rssublyr in rs_lyr.sub_layers.values():
