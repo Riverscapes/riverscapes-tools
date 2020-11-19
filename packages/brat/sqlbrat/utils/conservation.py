@@ -123,9 +123,9 @@ def calc_limited(limitations, ovc_hpe, ovc_ex, occ_ex, slope, landuse, splow, sp
     raise Exception('Unhandled dam limitation')
 
 
-def calc_opportunities(opportunities, risks, OpportunityID, occ_hpe, occ_ex, mCC_HisDep, iPC_VLowLU, iPC_HighLU):
+def calc_opportunities(opportunities, risks, RiskID, occ_hpe, occ_ex, mCC_HisDep, iPC_VLowLU, iPC_HighLU):
 
-    if OpportunityID == risks['Negligible Risk'] or OpportunityID == risks['Minor Risk']:
+    if RiskID == risks['Negligible Risk'] or RiskID == risks['Minor Risk']:
         # 'oCC_EX' Frequent or Pervasive
         # 'mCC_HisDep' <= 3
         if occ_ex >= 5 and mCC_HisDep <= 3:
