@@ -504,6 +504,7 @@ class VectorBase():
             # Write to the file only every N times using transactions
             if counter % commit_thresh == 0:
                 VectorBase.__commit_transaction(write_layers)
+                VectorBase.__start_transaction(write_layers)
                 uncommitted = False
 
         # If there's anything left to write at the end then write it
