@@ -333,7 +333,7 @@ def confinement(huc, flowlines_orig, confining_polygon_orig, output_folder, buff
                           "ConfinLeng": geom_confined.length / meter_conversion if geom_confined else 0.0,
                           "ConstrLeng": geom_constricted.length / meter_conversion if geom_constricted else 0.0}
 
-            lyr.create_feature(geom_flowline, attributes)
+            ratio_lyr.create_feature(geom_flowline, attributes)
 
     # Write a report
     report = ConfinementReport(output_gpkg, report_path, project)
