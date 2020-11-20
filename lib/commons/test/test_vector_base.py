@@ -44,9 +44,9 @@ class VectorBaseTest(unittest.TestCase):
 
         # Now we start to get into the detected cases:
         self.assertEqual(VectorBase.path_sorter('/path/to/file.gpkg/layer_name'), ('/path/to/file.gpkg', 'layer_name'))
-        self.assertEqual(VectorBase.path_sorter('/path/to/file.gpkg/layer_name\/LASDASDAS'), ('/path/to/file.gpkg', 'layer_name\/LASDASDAS'))
-        self.assertEqual(VectorBase.path_sorter('/path/file.gpkg/thing.shp/to/file.gpkg/layer_name\/LASDASDAS'), ('/path/file.gpkg/thing.shp/to/file.gpkg', 'layer_name\/LASDASDAS'))
-        self.assertEqual(VectorBase.path_sorter('/path/to /file.gpkg\layer_name'), ('/path/to /file.gpkg', 'layer_name'))
+        self.assertEqual(VectorBase.path_sorter('/path/to/file.gpkg/layer_name\\/LASDASDAS'), ('/path/to/file.gpkg', 'layer_name\\/LASDASDAS'))
+        self.assertEqual(VectorBase.path_sorter('/path/file.gpkg/thing.shp/to/file.gpkg/layer_name\\/LASDASDAS'), ('/path/file.gpkg/thing.shp/to/file.gpkg', 'layer_name\\/LASDASDAS'))
+        self.assertEqual(VectorBase.path_sorter('/path/to /file.gpkg\\layer_name'), ('/path/to /file.gpkg', 'layer_name'))
         self.assertEqual(VectorBase.path_sorter('D:\\path\\to\\file.gpkg\\layer_name'), ('D:\\path\\to\\file.gpkg', 'layer_name'))
 
         print('hi')

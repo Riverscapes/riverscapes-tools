@@ -6,7 +6,7 @@ from __future__ import annotations
 import os
 import re
 from osgeo import osr
-from .vector_base import VectorBase, VectorBaseException
+from rscommons.classes.vector_base import VectorBase
 
 
 def get_shp_or_gpkg(filepath: str) -> VectorBase:
@@ -113,6 +113,8 @@ class GeopackageLayer(VectorBase):
         self._delete_layer()
 
     def delete_ds(self) -> None:
+        """Delete the entire Geopackage including other layers as well
+        """
         if self.ogr_ds is not None:
             self.ogr_ds.Destroy()
         self.driver.DeleteDataSource(self.filepath)

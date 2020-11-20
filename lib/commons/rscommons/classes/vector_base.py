@@ -48,10 +48,25 @@ class VectorBase():
     ]
 
     def __init__(self, filepath: str, driver: VectorBase.Drivers, layer_name: str, replace_ds_on_open: bool = False, allow_write=False):
-        self.registry = DatasetRegistry()
-        self.driver_name = driver.value
+        """[summary]
+
+        Args:
+            filepath (str): path to the dataset. Could be a compound path for gropackages like '/path/to/geopackeg.gpkg/layer_name'
+            driver (VectorBase.Drivers): Enum element corresponding to shp or gpkg drivers
+            layer_name (str): name of the layer. Required but not used for shapefiles (make something up)
+            replace_ds_on_open (bool, optional): Blow away the whole DS and all layers on open. Defaults to False.
+            allow_write (bool, optional): Allow writing to this layer. Defaults to False.
+        """
+        # The Dataset registry is a singleton that keeps track of our datasets
+        self.__ds_reg = DatasetRegistry()
+
+        # Sometimes the path for the geopackage comes in as /path/to/layer.gpkg/schema.layer
+        # This could be a compound path
         self.filepath = None
-        self.ogr_layer_name = layer_name
+        self.ogr_layer_name = None
+        self.filepath, self.ogr_layer_name = VectorBase.path_sorter(filepath, layer_name)
+
+        self.driver_name = driver.value
         self.allow_write = allow_write
         self.replace_ds_on_open = replace_ds_on_open
         self.allow_write = allow_write
@@ -66,21 +81,34 @@ class VectorBase():
         # This is just matching extensions
         self.driver = ogr.GetDriverByName(self.driver_name)
 
-        # Sometimes the path for the geopackage comes in as /path/to/layer.gpkg/schema.layer
-        self.filepath, self.ogr_layer_name = VectorBase.path_sorter(filepath, layer_name)
-
-    def __enter__(self):
+    def __enter__(self) -> VectorBase:
+        """Behaviour on open when using the "with VectorBase():" Syntax
+        """
         # self.log.debug('__enter__ called')
         self._open_ds()
         self._open_layer()
         return self
 
     def __exit__(self, _type, _value, _traceback):
+        """Behaviour on close when using the "with VectorBase():" Syntax
+        """
         # self.log.debug('__exit__ called. Cleaning up.')
         self.close()
 
     @staticmethod
-    def path_sorter(filepath: str, layer_name: str = None):
+    def path_sorter(filepath: str, layer_name: str = None) -> (str, str):
+        """Sometimes the path for the geopackage comes in as /path/to/layer.gpkg/schema.layer
+
+        Args:
+            filepath (str): path or compound path to the dataset and/or layer_name
+            layer_name (str, optional): layer_name. Use this if it is specified. Defaults to None.
+
+        Raises:
+            VectorBaseException: [description]
+
+        Returns:
+            (str, str): checked and sanitized (filepath, layername) strings
+        """
         # No path, no work
         if filepath is None or len(filepath.strip()) == 0:
             raise VectorBaseException('Layer filepath must be specified')
@@ -100,6 +128,7 @@ class VectorBase():
         if '.gpkg' not in filepath:
             return filepath, None
 
+        # take our best guess at separating the file path from the layer name
         matches = re.match(r'(.*\.gpkg)[\\\/]+(.*)', filepath)
         if matches is None:
             return filepath, None
@@ -111,14 +140,15 @@ class VectorBase():
         """
         self.ogr_layer = None
         self.ogr_layer_def = None
-        self.registry.close(self.filepath, self.ogr_layer_name)
+        self.__ds_reg.close(self.filepath, self.ogr_layer_name)
         self.ogr_ds = None
 
     def _create_ds(self):
-        """Note: this wipes any existing Datasets (files). It also opens
+        """Note: this wipes any existing Datasets (files). It also creates and
+                opens the new dataset. This makes heavy use of the DatasetRegistry
 
         Raises:
-            Exception: [description]
+            VectorBaseException: [description]
         """
 
         # Make a folder if we need to
@@ -127,28 +157,35 @@ class VectorBase():
             self.log.debug('Creating directory: {}'.format(ds_dir))
             safe_makedirs(ds_dir)
 
+        # Wipe the existing dataset if it exists.
         if os.path.exists(self.filepath):
             self.log.info('Deleting existing dataset: {}'.format(self.filepath))
-            self.registry.delete_dataset(self.filepath, self.ogr_layer_name, self.driver)
+            self.__ds_reg.delete_dataset(self.filepath, self.driver)
         else:
             self.log.info('Dataset not found. Creating: {}'.format(self.filepath))
 
         self.allow_write = True
-        self.ogr_ds = self.registry.create(self.filepath, self.ogr_layer_name, self.driver)
+        self.ogr_ds = self.__ds_reg.create(self.filepath, self.ogr_layer_name, self.driver)
         self.log.debug('Dataset created: {}'.format(self.filepath))
 
     def _open_ds(self):
+        """Open a dataset. Makes heavy use of the dataset registry
 
+        Raises:
+            VectorBaseException: [description]
+        """
+        # If the dataset doesn't exist or if we've asked it to be recreated then do that
         if not os.path.exists(self.filepath) or self.replace_ds_on_open is True:
             self._create_ds()
             self.allow_write = True
+            return
 
+        # If it doesn't exist at all then throw
         elif not os.path.exists(self.filepath):
             raise VectorBaseException('Could not open non-existent dataset: {}'.format(self.filepath))
 
         permission = 1 if self.allow_write is True else 0
-
-        self.ogr_ds = self.registry.open(self.filepath, self.ogr_layer_name, self.driver, permission)
+        self.ogr_ds = self.__ds_reg.open(self.filepath, self.ogr_layer_name, self.driver, permission)
 
     def _delete_layer(self):
         """Delete this one layer from the geopackage
@@ -158,11 +195,14 @@ class VectorBase():
         """
         if self.ogr_layer_name is None:
             raise VectorBaseException('layer name is not specified')
+        elif self.ogr_ds is None:
+            raise VectorBaseException('Dataset is not open. Cannot delete layer')
+
         self.ogr_ds.DeleteLayer(self.ogr_layer_name)
         self.log.info('layer deleted: {} / {}'.format(self.filepath, self.ogr_layer_name))
 
     def create_layer(self, ogr_geom_type: int, epsg: int = None, spatial_ref: osr.SpatialReference = None, fields: dict = None):
-        """[summary]
+        """Create a layer in a dataset. Existing layers will be deleted
 
         Args:
             ogr_geom_type (int): from the enum in ogr i.e. ogr.wkbPolygon
@@ -172,7 +212,6 @@ class VectorBase():
 
         Raises:
             VectorBaseException: [description]
-            VectorBaseException: [description]
             NotImplementedError: [description]
         """
         self.ogr_layer = None
@@ -180,6 +219,7 @@ class VectorBase():
             raise VectorBaseException('No layer name set')
         elif self.ogr_ds is None:
             raise VectorBaseException('Dataset is not open. You must open it first')
+
         # XOR (^) check to make sure only one of EPSG or spatial_ref are provided
         elif not (epsg is not None) ^ (spatial_ref is not None):
             raise VectorBaseException('Specify either an EPSG or a spatial_ref. Not both')
@@ -187,18 +227,23 @@ class VectorBase():
         elif ogr_geom_type is None:
             raise VectorBaseException('You must specify ogr_geom_type when creating a layer')
 
+        # TODO: THis feels fishy. Test the Shapefile recreation workflow
         if self.driver_name == VectorBase.Drivers.Shapefile.value:
+            # There is only ever one layer in a shapefile
             pass
         elif self.driver_name == VectorBase.Drivers.Geopackage.value:
-            tmplyr = self.ogr_ds.GetLayerByName(self.ogr_layer_name)
-            if tmplyr is not None:
+            # Delete the layer if it already exists
+            if self.ogr_ds.GetLayerByName(self.ogr_layer_name) is not None:
                 self.ogr_ds.DeleteLayer(self.ogr_layer_name)
         else:
+            # Unrecognized driver
             raise NotImplementedError('Not implemented: {}'.format(self.driver_name))
 
+        # If we've supplied a fields dictionary then use it
         if fields is not None:
             self.create_fields(fields)
 
+        # CHoose the spatial ref one of two ways:
         if epsg:
             self.spatial_ref = osr.SpatialReference()
             self.spatial_ref.ImportFromEPSG(epsg)
@@ -215,12 +260,13 @@ class VectorBase():
         self.ogr_geom_type = self.ogr_layer.GetGeomType()
         self.ogr_layer_def = self.ogr_layer.GetLayerDefn()
 
-    def create_layer_from_ref(self, ref: VectorBase, epsg: int = None):
-        """Create a layer by referencing another VectorBase object
+    def create_layer_from_ref(self, ref: VectorBase, epsg: int = None, create_fields: bool = True):
+        """Create a layer by referencing another VectorBase object.
 
         Args:
             input (VectorBase): [description]
             epsg (int, optional): [description]. Defaults to None.
+            create_fields (bool, optional): Opt out of mirroring the fields. Defaults to True.
         """
         if epsg is not None:
             self.create_layer(ref.ogr_geom_type, epsg=epsg)
@@ -228,11 +274,17 @@ class VectorBase():
             self.create_layer(ref.ogr_geom_type, spatial_ref=ref.spatial_ref)
 
         # We do this instead of a simple key:val dict because we want to capture precision and length info
-        for i in range(0, ref.ogr_layer_def.GetFieldCount()):
-            fieldDefn = ref.ogr_layer_def.GetFieldDefn(i)
-            self.ogr_layer.CreateField(fieldDefn)
+        if create_fields is True:
+            for i in range(0, ref.ogr_layer_def.GetFieldCount()):
+                fieldDefn = ref.ogr_layer_def.GetFieldDefn(i)
+                self.ogr_layer.CreateField(fieldDefn)
 
     def _open_layer(self):
+        """Internal method for opening a layer and getting the ogr_layer, ogr_layer_def, spatial_ref etc.
+
+        Raises:
+            VectorBaseException: [description]
+        """
         if self.driver_name == VectorBase.Drivers.Shapefile.value:
             self.ogr_layer = self.ogr_ds.GetLayer()
         elif self.driver_name == VectorBase.Drivers.Geopackage.value:
@@ -247,13 +299,22 @@ class VectorBase():
             raise VectorBaseException("Error opening layer: {}".format(self.ogr_layer_name))
 
         # Get the output Layer's Feature Definition and spatial ref
-        self.ogr_layer_def = self.ogr_layer.GetLayerDefn()
-        self.ogr_geom_type = self.ogr_layer.GetGeomType()
-        self.spatial_ref = self.ogr_layer.GetSpatialRef()
+        # Note: For newly-created shapefiles there won't be a file or an ogr_layer object
+        if self.ogr_layer:
+            self.ogr_layer_def = self.ogr_layer.GetLayerDefn()
+            self.ogr_geom_type = self.ogr_layer.GetGeomType()
+            self.spatial_ref = self.ogr_layer.GetSpatialRef()
 
-        self.check_axis_mapping()
+            self.check_axis_mapping()
 
     def check_axis_mapping(self):
+        """Make sure our Axis Mapping strategy is correct (according to our arbitrary convention)
+            We set this in opposition to what GDAL3 Thinks is the default because that's what 
+            most of our old Geodatabases and Shapefiles seem to use.
+
+        Raises:
+            VectorBaseException: [description]
+        """
         if self.spatial_ref is None:
             raise VectorBaseException('Layer not initialized. No spatial_ref found')
         if self.spatial_ref.GetAxisMappingStrategy() != osr.OAMS_TRADITIONAL_GIS_ORDER:
@@ -264,7 +325,7 @@ class VectorBase():
         """Add fields to a layer
 
         Args:
-            fields (dict): dictionary in the form: {'field name': 4 } where the integer is the ogr.OFTType
+            fields (dict): dictionary in the form:  {'field name': ogr.FieldDefn } OR {'field name': 4 } where the integer is the ogr.OFTType 
 
         Raises:
             VectorBaseException: [description]
@@ -275,10 +336,10 @@ class VectorBase():
             self.create_field(fname, ftype)
 
     def get_fields(self) -> dict:
-        """[summary]
+        """ Get a layer's fields as a simple dictionary
 
         Returns:
-            dict: Returns a dictionary in the form: {'field name': 4 } where the integer is the ogr.OFTType
+            dict: Returns a dictionary in the form: {'field name': ogr.FieldDefn }
         """
         if self.ogr_layer_def is None:
             raise VectorBaseException('get_fields: Layer definition is not defined. Has this layer been created or opened yet?')
@@ -286,26 +347,40 @@ class VectorBase():
         field_dict = {}
         for i in range(0, self.ogr_layer_def.GetFieldCount()):
             field_def = self.ogr_layer_def.GetFieldDefn(i)
-            field_dict[field_def.GetName()] = field_def.GetType()
+            field_dict[field_def.GetName()] = field_def
 
         return field_dict
 
-    def create_field(self, field_name: str, field_type=ogr.OFTReal):
-        """
-        Remove and then re-add a field to a feature class
-        :param layer: Feature class that will receive the attribute field
-        :param field_name: Name of the attribute field to be created
-        :param log:
-        :return: name of the field created (same as function argument)
-        """
+    def create_field(self, field_name: str, field_type: int = None, field_def: ogr.FieldDefn = None):
+        """Remove and then re-add a field to a feature class
 
+        Args:
+            field_name (str): Name of the attribute field to be created
+            field_type (int, optional): ogr type to use. Defaults to None. OR
+            field_def (ogr.FieldDefn, optional): [description]. Defaults to None.
+
+        Raises:
+            VectorBaseException: [description]
+            VectorBaseException: [description]
+            VectorBaseException: [description]
+
+        Returns:
+            [type]: [description]
+        """
         if self.ogr_layer is None:
             raise VectorBaseException('No open layer to create fields on')
+
+        # XOR (^) check to make sure only one of field_type or field_def are provided
+        elif not (field_type is not None) ^ (field_def is not None):
+            raise VectorBaseException('create_field must have EITHER field_type or field_def as an input')
+
         elif not field_name or len(field_name) < 1:
             raise VectorBaseException('Attempting to create field with invalid field name "{}".'.format(field_name))
+
         elif self.driver_name == VectorBase.Drivers.Shapefile.value and len(field_name) > 10:
             raise VectorBaseException('Field names in geopackages cannot be greater than 31 characters. "{}" == {}.'.format(field_name, len(field_name)))
-        elif field_type == ogr.OFTInteger64:
+
+        elif field_type is not None and field_type == ogr.OFTInteger64:
             self.log.error('ERROR:: ogr.OFTInteger64 is not supported by ESRI!')
 
         # Delete output column from vector layer if it exists and then recreate it
@@ -316,10 +391,12 @@ class VectorBase():
                 break
 
         self.log.info('Creating output field "{}" in layer.'.format(field_name))
-        field_def = ogr.FieldDefn(field_name, field_type)
 
-        # Good convention for real valuues
-        if field_type == ogr.OFTReal:
+        if field_def is None:
+            field_def = ogr.FieldDefn(field_name, field_type)
+
+        # Good precision convention for Real floating point values
+        if field_type is not None and field_type == ogr.OFTReal:
             field_def.SetPrecision(10)
             field_def.SetWidth(18)
 
@@ -368,15 +445,17 @@ class VectorBase():
         feature = None
 
     def iterate_features(
-        self, name: str, write_layers: list = None,
+        self, name: str = None, write_layers: list = None,
         commit_thresh=1000, attribute_filter: str = None, clip_shape: BaseGeometry = None
     ) -> None:
-        """This method allows you to pass in a callback that gets run for each feature in a layer
+        """[summary]
 
         Args:
-            name (str): [description]
-            out_layer ([VectorBase], optional): [description]. Defaults to None.
-            commit_thresh (int, optional): [description]. Defaults to 1000.
+            name (str): Name for use on the progress bar. If ommitted you won't get a progress bar
+            write_layers (list, optional): [description]. Defaults to None.
+            commit_thresh (int, optional): Change how often CommitTransaction gets called. Defaults to 1000.
+            attribute_filter (str, optional): Attribute Query like "HUC = 17060104". Defaults to None.
+            clip_shape (BaseGeometry, optional): Iterate over a subset by clipping to a Shapely-ish geometry. Defaults to None.
         """
 
         if self.ogr_layer_def is None:
@@ -392,52 +471,72 @@ class VectorBase():
         clip_geom = None
         if clip_shape:
             clip_geom = ogr.CreateGeometryFromWkb(clip_shape.wkb)
+            # https://gdal.org/python/osgeo.ogr.Layer-class.html#SetSpatialFilter
             self.ogr_layer.SetSpatialFilter(clip_geom)
 
         if attribute_filter:
+            # https://gdal.org/python/osgeo.ogr.Layer-class.html#SetAttributeFilter
             self.ogr_layer.SetAttributeFilter(attribute_filter)
 
-        if write_layers is not None:
-            done = []
-            for lyr in write_layers:
-                if lyr.ogr_ds not in done:
-                    lyr.ogr_layer.StartTransaction()
-                    done.append(lyr.ogr_ds)
+        # For sql-based datasets we use transactions to optimize writing to the file
+        VectorBase.__start_transaction(write_layers)
 
         # Get an accurate feature count after clipping and filtering
         fcount = self.ogr_layer.GetFeatureCount()
-        progbar = ProgressBar(fcount, 50, name)
 
+        # Initialize the progress bar
+        progbar = None
+        if name is not None:
+            progbar = ProgressBar(fcount, 50, name)
+
+        # Marker for clean/dirty transactions
+        uncommitted = False
+
+        # Loop over every filtered feature
         for feature in self.ogr_layer:
             counter += 1
-            progbar.update(counter)
+            if progbar is not None:
+                progbar.update(counter)
             yield (feature, counter, progbar)
 
-            if write_layers is not None and counter % commit_thresh == 0:
-                done = []
-                for lyr in write_layers:
-                    if lyr.ogr_ds not in done:
-                        try:
-                            lyr.ogr_layer.CommitTransaction()
-                        except:
-                            pass
-                        done.append(lyr.ogr_ds)
+            uncommitted = True
 
-        if write_layers is not None:
-            done = []
-            for lyr in write_layers:
-                if lyr.ogr_ds not in done:
-                    try:
-                        lyr.ogr_layer.CommitTransaction()
-                    except:
-                        pass
-                    done.append(lyr.ogr_ds)
+            # Write to the file only every N times using transactions
+            if counter % commit_thresh == 0:
+                VectorBase.__commit_transaction(write_layers)
+                uncommitted = False
+
+        # If there's anything left to write at the end then write it
+        if uncommitted is True:
+            VectorBase.__commit_transaction(write_layers)
 
         # Reset the attribute filter
         if attribute_filter:
             self.ogr_layer.SetAttributeFilter('')
 
-        progbar.finish()
+        # Finalize the progress bar
+        if progbar is not None:
+            progbar.finish()
+
+    @staticmethod
+    def __start_transaction(write_layers: list):
+        if write_layers is None:
+            return
+        done = []
+        for lyr in write_layers:
+            if lyr.ogr_ds not in done:
+                lyr.ogr_layer.StartTransaction()
+                done.append(lyr.ogr_ds)
+
+    @staticmethod
+    def __commit_transaction(write_layers: list):
+        if write_layers is None:
+            return
+        done = []
+        for lyr in write_layers:
+            if lyr.ogr_ds not in done:
+                lyr.ogr_layer.CommitTransaction()
+                done.append(lyr.ogr_ds)
 
     def get_transform(self, out_layer) -> osr.CoordinateTransformation:
         """Get a transform between this layer and another layer
@@ -500,15 +599,44 @@ class VectorBase():
 
         return out_spatial_ref, transform
 
-    def rough_convert_metres_to_shapefile_units(self, distance: float) -> float:
+    def rough_convert_metres_to_vector_units(self, distance: float) -> float:
+        """Convert from Meters into this layer's units
+
+        DO NOT USE THIS FOR ACCURATE DISTANCES. IT'S GOOD FOR A QUICK CALCULATION
+        WHEN DISTANCE PRECISION ISN'T THAT IMPORTANT
+
+        Args:
+            distance (float): Distance in meters to convert
+
+        Raises:
+            VectorBaseException: [description]
+
+        Returns:
+            float: Distance in this layer's units
+        """
         if self.spatial_ref is None:
             raise VectorBaseException('No input spatial ref found. Has this layer been created or loaded?')
 
         extent = self.ogr_layer.GetExtent()
-        return VectorBase.rough_convert_metres_to_dataset_units(self.spatial_ref, extent, distance)
+        return VectorBase.rough_convert_metres_to_spatial_ref_units(self.spatial_ref, extent, distance)
 
     @ staticmethod
     def rough_convert_metres_to_raster_units(raster_path: str, distance: float) -> float:
+        """Convert from Meters into the units of the supplied raster
+
+        DO NOT USE THIS FOR ACCURATE DISTANCES. IT'S GOOD FOR A QUICK CALCULATION
+        WHEN DISTANCE PRECISION ISN'T THAT IMPORTANT
+
+        Args:
+            raster_path (str): Path to raster file
+            distance (float): Distance in meters
+
+        Returns:
+            float: Distance in Raster's units
+        """
+
+        if not os.path.isfile(raster_path):
+            raise VectorBaseException('Raster file not found: {}'.format(raster_path))
 
         in_ds = gdal.Open(raster_path)
         in_spatial_ref = osr.SpatialReference()
@@ -516,22 +644,28 @@ class VectorBase():
         gt = in_ds.GetGeoTransform()
         extent = (gt[0], gt[0] + gt[1] * in_ds.RasterXSize, gt[3] + gt[5] * in_ds.RasterYSize, gt[3])
 
-        return VectorBase.rough_convert_metres_to_dataset_units(in_spatial_ref, extent, distance)
+        return VectorBase.rough_convert_metres_to_spatial_ref_units(in_spatial_ref, extent, distance)
 
     @ staticmethod
-    def rough_convert_metres_to_dataset_units(in_spatial_ref: osr.SpatialReference, extent: list, distance: float) -> float:
-        """DO NOT USE THIS FOR ACCURATE DISTANCES. IT'S GOOD FOR A QUICK CALCULATION
+    def rough_convert_metres_to_spatial_ref_units(in_spatial_ref: osr.SpatialReference, extent: list, distance: float) -> float:
+        """Convert from meters to the units of a given spatial_ref
+
+        DO NOT USE THIS FOR ACCURATE DISTANCES. IT'S GOOD FOR A QUICK CALCULATION
         WHEN DISTANCE PRECISION ISN'T THAT IMPORTANT
 
-        Arguments:
-            shapefile_path {[type]} -- [description]
-            distance {[type]} -- [description]
+        Args:
+            in_spatial_ref (osr.SpatialReference): osr.SpatialRef to use as a reference 
+            extent (list): The extent of our dataset: [min_x, min_y, max_x, max_y]. We use this to find the centerpoint
+            distance (float): Distance in meters to convert
+
+        Raises:
+            VectorBaseException: [description]
 
         Returns:
-            [type] -- [description]
+            float: Distance in the spatial_ref's units
         """
 
-        # If the ShapeFile uses a projected coordinate system in meters then simply return the distance.
+        # If the input ref uses a projected coordinate system in meters then simply return the distance.
         # If it's projected but in some other units then throw an exception.
         # If it's in degrees then continue with the code below to convert it to metres.
         if in_spatial_ref.IsProjected() == 1:
@@ -568,12 +702,12 @@ class VectorBase():
         VectorBase.log.debug('Original spatial reference is : \n       {0} (AxisMappingStrategy:{1})'.format(*VectorBase.get_srs_debug(in_spatial_ref)))
         VectorBase.log.debug('Transform spatial reference is : \n       {0} (AxisMappingStrategy:{1})'.format(*VectorBase.get_srs_debug(out_spatial_ref)))
 
-        transformFwd = osr.CoordinateTransformation(in_spatial_ref, out_spatial_ref)
+        transform_forward = osr.CoordinateTransformation(in_spatial_ref, out_spatial_ref)
 
         pt1_ogr = ogr.CreateGeometryFromWkb(pt1_orig.wkb)
         pt2_ogr = ogr.CreateGeometryFromWkb(pt2_orig.wkb)
-        pt1_ogr.Transform(transformFwd)
-        pt2_ogr.Transform(transformFwd)
+        pt1_ogr.Transform(transform_forward)
+        pt2_ogr.Transform(transform_forward)
 
         pt1_proj = wkbload(pt1_ogr.ExportToWkb())
         pt2_proj = wkbload(pt2_ogr.ExportToWkb())
@@ -590,8 +724,18 @@ class VectorBase():
         return output_distance
 
     def verify_raster_spatial_ref(self, raster_path: str):
+        """Make sure our raster's spatial ref matches this layer's ref
+
+        Args:
+            raster_path (str): [description]
+
+        Raises:
+            VectorBaseException: [description]
+            ex: [description]
+        """
         if self.spatial_ref is None:
             raise VectorBaseException('No spatial ref found. Has this layer been created or loaded?')
+
         raster = Raster(raster_path)
 
         ex = None
@@ -608,6 +752,14 @@ class VectorBase():
 
     @ staticmethod
     def get_srs_debug(spatial_ref: osr.SpatialReference) -> [str, str]:
+        """useful method for printing spatial ref information to the log
+
+        Args:
+            spatial_ref (osr.SpatialReference): [description]
+
+        Returns:
+            [str, str]: [description]
+        """
         order = spatial_ref.GetAxisMappingStrategy()
         order_str = str(order)
         if order == 0:
@@ -621,7 +773,14 @@ class VectorBase():
 
 
 def get_utm_zone_epsg(longitude: float) -> int:
+    """Really crude EPSG lookup method
 
+    Args:
+        longitude (float): [description]
+
+    Returns:
+        int: [description]
+    """
     zone_number = math.floor((180.0 + longitude) / 6.0)
     epsg = 26901 + zone_number
     return epsg

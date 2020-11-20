@@ -15,7 +15,8 @@ import os
 import sys
 import traceback
 import shutil
-import gdal
+from osgeo import gdal
+
 # Pygeoprocessing has a bug where it looks like fill_pits doesn't exist
 # No idea what to do about this
 from pygeoprocessing.routing import fill_pits, flow_accumulation_d8, flow_accumulation_mfd, flow_dir_mfd, flow_dir_d8

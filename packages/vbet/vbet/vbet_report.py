@@ -23,15 +23,15 @@ class VBETReport(RSReport):
 
         section_in = self.section('Inputs', 'Inputs')
         inputs = list(realization.find('Inputs'))
-        [self.layerprint(lyr, section_in, self.project_root) for lyr in inputs if lyr.tag in ['DEM', 'Raster', 'Vector']]
+        [self.layerprint(lyr, section_in, self.project_root) for lyr in inputs if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']]
 
         section_inter = self.section('Intermediates', 'Intermediates')
         intermediates = list(realization.find('Intermediates'))
-        [self.layerprint(lyr, section_inter, self.project_root) for lyr in intermediates if lyr.tag in ['DEM', 'Raster', 'Vector']]
+        [self.layerprint(lyr, section_inter, self.project_root) for lyr in intermediates if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']]
 
         section_out = self.section('Outputs', 'Outputs')
         outputs = list(realization.find('Outputs'))
-        [self.layerprint(lyr, section_out, self.project_root) for lyr in outputs if lyr.tag in ['DEM', 'Raster', 'Vector']]
+        [self.layerprint(lyr, section_out, self.project_root) for lyr in outputs if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']]
 
 
 if __name__ == '__main__':
