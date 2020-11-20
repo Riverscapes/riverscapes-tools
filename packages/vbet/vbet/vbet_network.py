@@ -46,7 +46,7 @@ def vbet_network(flow_lines_lyr: VectorLayer, flow_areas_lyr: VectorLayer, out_l
 
 def include_features(source_layer: VectorLayer, out_layer: VectorLayer, attribute_filter: str = None, clip_shape: BaseGeometry = None):
 
-    for feature, _counter, _progbar in source_layer.iterate_features('Including Features', out_layer=out_layer, attribute_filter=attribute_filter, clip_shape=clip_shape):
+    for feature, _counter, _progbar in source_layer.iterate_features('Including Features', write_layers=[out_layer], attribute_filter=attribute_filter, clip_shape=clip_shape):
         out_feature = ogr.Feature(out_layer.ogr_layer_def)
 
         # Add field values from input Layer

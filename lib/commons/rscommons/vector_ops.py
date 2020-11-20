@@ -1,7 +1,7 @@
 # Name:     Vector Operations Methods
 #
 # Purpose:  Miscellaneous routines for common tasks related to Vector  files
-#           All methods should take and return VectorLayer derivative objects
+#           All methods should take and return VectorBase derivative objects
 #
 # Author:   Matt Reimer
 #
@@ -16,7 +16,7 @@ from shapely.geometry.base import BaseGeometry
 from shapely.geometry import mapping, Point, MultiPoint, LineString, MultiLineString, GeometryCollection, Polygon, MultiPolygon
 from rscommons import Logger, ProgressBar
 from rscommons.util import sizeof_fmt, get_obj_size
-from rscommons.classes.vector_base import VectorLayer, VectorLayerException
+from rscommons.classes.vector_base import VectorBase, VectorBaseException
 
 
 def print_geom_size(logger, geom_obj):
@@ -28,7 +28,7 @@ def print_geom_size(logger, geom_obj):
         logger.debug('Byte Size of output object could not be determined')
 
 
-def get_geometry_union(in_layer: VectorLayer, epsg: int = None, attribute_filter: str = None, clip_shape: BaseGeometry = None) -> BaseGeometry:
+def get_geometry_union(in_layer: VectorBase, epsg: int = None, attribute_filter: str = None, clip_shape: BaseGeometry = None) -> BaseGeometry:
     """
     TODO: Depprecated
     Load all features from a ShapeFile and union them together into a single geometry
@@ -66,7 +66,7 @@ def get_geometry_union(in_layer: VectorLayer, epsg: int = None, attribute_filter
     return geom
 
 
-def get_geometry_unary_union(in_layer: VectorLayer, epsg: int = None, attribute_filter: str = None, clip_shape: BaseGeometry = None) -> BaseGeometry:
+def get_geometry_unary_union(in_layer: VectorBase, epsg: int = None, attribute_filter: str = None, clip_shape: BaseGeometry = None) -> BaseGeometry:
     """
     Load all features from a ShapeFile and union them together into a single geometry
     :param inpath: Path to a ShapeFile
@@ -108,11 +108,11 @@ def get_geometry_unary_union(in_layer: VectorLayer, epsg: int = None, attribute_
             progbar.erase()  # get around the progressbar
             log.warning('Feature with FID={} has no geoemtry. Skipping'.format(feature.GetFID()))
         # Filter out zero-length lines
-        elif geo_type in VectorLayer.LINE_TYPES and new_geom.Length() == 0:
+        elif geo_type in VectorBase.LINE_TYPES and new_geom.Length() == 0:
             progbar.erase()  # get around the progressbar
             log.warning('Zero Length for shape with FID={}'.format(feature.GetFID()))
         # Filter out zero-area polys
-        elif geo_type in VectorLayer.POLY_TYPES and new_geom.Area() == 0:
+        elif geo_type in VectorBase.POLY_TYPES and new_geom.Area() == 0:
             progbar.erase()  # get around the progressbar
             log.warning('Zero Area for shape with FID={}'.format(feature.GetFID()))
         else:
@@ -144,7 +144,7 @@ def get_geometry_unary_union(in_layer: VectorLayer, epsg: int = None, attribute_
     return geom_union
 
 
-def copy_feature_class(in_layer: VectorLayer, out_layer: VectorLayer, epsg: int = None, clip_shape: BaseGeometry = None, attribute_filter: str = None):
+def copy_feature_class(in_layer: VectorBase, out_layer: VectorBase, epsg: int = None, clip_shape: BaseGeometry = None, attribute_filter: str = None):
     """Copy a Shapefile from one location to another
 
     This method is capable of reprojecting the geometries as they are copied.
@@ -159,9 +159,9 @@ def copy_feature_class(in_layer: VectorLayer, out_layer: VectorLayer, epsg: int 
     Keyword Arguments:
 
     Args:
-        in_layer (VectorLayer): Input layer of abstract type VectorLayer
+        in_layer (VectorBase): Input layer of abstract type VectorBase
         epsg ([type]): EPSG Code to use for the transformation
-        out_layer (VectorLayer): Output layer of abstract type VectorLayer
+        out_layer (VectorBase): Output layer of abstract type VectorBase
         clip_shape {shape} -- Shapely polygon geometry in the output EPSG used to clip the input geometries (default: {None})
         attribute_filter {str} -- Attribute filter used to limit the input features that will be copied. (default: {None})
     """
@@ -174,7 +174,7 @@ def copy_feature_class(in_layer: VectorLayer, out_layer: VectorLayer, epsg: int 
     transform = in_layer.get_transform(out_layer)
 
     # This is the callback method that will be run on each feature
-    for feature, _counter, progbar in in_layer.iterate_features("Copying features", clip_shape=clip_shape, attribute_filter=attribute_filter):
+    for feature, _counter, progbar in in_layer.iterate_features("Copying features", write_layers=[out_layer], clip_shape=clip_shape, attribute_filter=attribute_filter):
         geom = feature.GetGeometryRef()
 
         if geom is None:
@@ -196,13 +196,13 @@ def copy_feature_class(in_layer: VectorLayer, out_layer: VectorLayer, epsg: int 
         out_feature = None
 
 
-def merge_feature_classes(feature_classes: list, boundary: BaseGeometry, out_layer: VectorLayer, epsg: int = None):
+def merge_feature_classes(feature_classes: list, boundary: BaseGeometry, out_layer: VectorBase, epsg: int = None):
     """[summary]
 
     Args:
         feature_classes ([type]): [description]
         boundary (BaseGeometry): [description]
-        out_layer (VectorLayer): [description]
+        out_layer (VectorBase): [description]
     """
     log = Logger('Shapefile')
     log.info('Merging {} feature classes.'.format(len(feature_classes)))
@@ -247,7 +247,7 @@ def merge_feature_classes(feature_classes: list, boundary: BaseGeometry, out_lay
     return fccount,
 
 
-def load_attributes(in_layer: VectorLayer, id_field: str, fields: list) -> dict:
+def load_attributes(in_layer: VectorBase, id_field: str, fields: list) -> dict:
     """
     Load ShapeFile attributes fields into a dictionary keyed by the id_field
     :param network: Full, absolute path to a ShapeFile
@@ -277,7 +277,7 @@ def load_attributes(in_layer: VectorLayer, id_field: str, fields: list) -> dict:
     return feature_values
 
 
-def load_geometries(in_layer: VectorLayer, id_field: str, epsg=None) -> dict:
+def load_geometries(in_layer: VectorBase, id_field: str, epsg=None) -> dict:
     log = Logger('Shapefile')
 
     # Determine the transformation if user provides an EPSG
@@ -306,11 +306,11 @@ def load_geometries(in_layer: VectorLayer, id_field: str, epsg=None) -> dict:
             progbar.erase()  # get around the progressbar
             log.warning('Invalid feature with FID={} cannot be unioned and will be ignored'.format(feature.GetFID()))
         # Filter out zero-length lines
-        elif geo_type in VectorLayer.LINE_TYPES and new_geom.length == 0:
+        elif geo_type in VectorBase.LINE_TYPES and new_geom.length == 0:
             progbar.erase()  # get around the progressbar
             log.warning('Zero Length for feature with FID={}'.format(feature.GetFID()))
         # Filter out zero-area polys
-        elif geo_type in VectorLayer.POLY_TYPES and new_geom.area == 0:
+        elif geo_type in VectorBase.POLY_TYPES and new_geom.area == 0:
             progbar.erase()  # get around the progressbar
             log.warning('Zero Area for feature with FID={}'.format(feature.GetFID()))
         else:
@@ -319,7 +319,7 @@ def load_geometries(in_layer: VectorLayer, id_field: str, epsg=None) -> dict:
     return features
 
 
-def write_attributes(in_layer: VectorLayer, output_values, id_field: str, fields, field_type=ogr.OFTReal, null_values=None):
+def write_attributes(in_layer: VectorBase, output_values: dict, id_field: str, fields, field_type=ogr.OFTReal, null_values=None):
     """
     Write field values to a ShapeFile feature class
     :param feature_class: Path to feature class
@@ -334,7 +334,7 @@ def write_attributes(in_layer: VectorLayer, output_values, id_field: str, fields
     # Create each field and store the name and index in a list of tuples
     field_indices = [(field, in_layer.create_field(field, field_type)) for field in fields]
 
-    for feature, _counter, _progbar in in_layer.iterate_features("Writing Attributes"):
+    for feature, _counter, _progbar in in_layer.iterate_features("Writing Attributes", write_layers=[in_layer]):
         reach = feature.GetField(id_field)
         if reach not in output_values:
             continue
@@ -353,7 +353,7 @@ def write_attributes(in_layer: VectorLayer, output_values, id_field: str, fields
         in_layer.ogr_layer.SetFeature(feature)
 
 
-def network_statistics(label: str, vector_layer: VectorLayer):
+def network_statistics(label: str, vector_layer: VectorBase):
 
     log = Logger('network_statistics')
     log.info('Network ShapeFile Summary: {}'.format(vector_layer.filename))
@@ -417,16 +417,16 @@ def feature_class_bounds(shapefile_path):
     return layer.GetExtent()
 
 
-def intersect_feature_classes(feature_class1: VectorLayer, feature_class2: VectorLayer, epsg: int, out_layer: VectorLayer, output_geom_type):
+def intersect_feature_classes(feature_class1: VectorBase, feature_class2: VectorBase, epsg: int, out_layer: VectorBase, output_geom_type):
 
     union = get_geometry_unary_union(feature_class1, epsg)
     intersect_geometry_with_feature_class(union, feature_class2, epsg, out_layer, output_geom_type)
 
 
-def intersect_geometry_with_feature_class(geometry: BaseGeometry, in_layer: VectorLayer, epsg: int, out_layer: VectorLayer, output_geom_type):
+def intersect_geometry_with_feature_class(geometry: BaseGeometry, in_layer: VectorBase, epsg: int, out_layer: VectorBase, output_geom_type):
 
     if output_geom_type not in [ogr.wkbMultiPoint, ogr.wkbMultiLineString]:
-        raise VectorLayerException('Unsupported ogr type for geometry intersection: "{}"'.format(output_geom_type))
+        raise VectorBaseException('Unsupported ogr type for geometry intersection: "{}"'.format(output_geom_type))
 
     geom_union = get_geometry_unary_union(in_layer, epsg)
 
@@ -460,14 +460,14 @@ def intersect_geometry_with_feature_class(geometry: BaseGeometry, in_layer: Vect
         if isinstance(geom_inter, LineString):
             geom_inter = MultiLineString([(geom_inter)])
         else:
-            raise VectorLayerException('Unsupported ogr type: "{}" does not match shapely type of "{}"'.format(output_geom_type, geom_inter.type))
+            raise VectorBaseException('Unsupported ogr type: "{}" does not match shapely type of "{}"'.format(output_geom_type, geom_inter.type))
 
     feature = ogr.Feature(out_layer.ogr_layer_def)
     feature.SetGeometry(ogr.CreateGeometryFromWkb(geom_inter.wkb))
     out_layer.ogr_layer.CreateFeature(feature)
 
 
-def buffer_by_field(in_layer: VectorLayer, field: str, epsg: int = None, min_buffer=None) -> BaseGeometry:
+def buffer_by_field(in_layer: VectorBase, field: str, epsg: int = None, min_buffer=None) -> BaseGeometry:
     """generate buffered polygons by value in field
 
     Args:
@@ -496,7 +496,7 @@ def buffer_by_field(in_layer: VectorLayer, field: str, epsg: int = None, min_buf
     return outpoly
 
 
-def polygonize(raster_path: str, band: int, out_layer: VectorLayer, epsg: int = None):
+def polygonize(raster_path: str, band: int, out_layer: VectorBase, epsg: int = None):
     # mapping between gdal type and ogr field type
     type_mapping = {
         gdal.GDT_Byte: ogr.OFTInteger,
@@ -561,7 +561,7 @@ def remove_holes(geom: BaseGeometry, min_hole_area: float) -> BaseGeometry:
         else:
             return MultiPolygon([_simpl(mgeo) for mgeo in geom.geoms])
     else:
-        raise VectorLayerException('Invalid geometry type used for "remove_holes": {}'.format(type(geom)))
+        raise VectorBaseException('Invalid geometry type used for "remove_holes": {}'.format(type(geom)))
 
 
 def get_num_pts(geom: BaseGeometry) -> int:

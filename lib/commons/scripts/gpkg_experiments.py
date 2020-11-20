@@ -13,7 +13,7 @@ def main():
 
     currdir = os.path.dirname(__file__)
 
-    output_gpkg = os.path.join(currdir, 'data', 'WBD-8-10-12.gpkg')
+    output_gpkg = os.path.join(currdir, '..', 'test', 'data', 'WBD-8-10-12.gpkg')
 
     if os.path.exists(output_gpkg):
         os.remove(output_gpkg)
