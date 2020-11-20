@@ -12,13 +12,11 @@
 import argparse
 import os
 from rscommons import dotenv
-from rscommons.shapefile import load_attributes
-from rscommons.shapefile import load_geometries
-
-from sqlbrat.lib.database import get_db_srs
+from rscommons.shapefile import load_attributes, load_geometries
+from rscommons.database import get_db_srs
+from rscommons.plotting import validation_chart
 from sqlbrat.utils.reach_geometry import calculate_reach_geometry
-from sqlbrat.lib.plotting import validation_chart
-from scripts.load_hucs import get_hucs_present
+from sqlbrat.utils.load_hucs import get_hucs_present
 
 
 def reach_geometry_validation(top_level_folder, database, buffer_distance):
@@ -34,7 +32,7 @@ def reach_geometry_validation(top_level_folder, database, buffer_distance):
     fields = ['iGeo_Slope', 'iGeo_ElMin', 'iGeo_ElMax', 'iGeo_Len']
 
     results = {}
-    for huc, paths in hucs.items():
+    for _huc, paths in hucs.items():
         polylines = load_geometries(paths['Network'], 'ReachID')
         db_srs = get_db_srs(database)
         expected = load_attributes(paths['Network'], 'ReachID', fields)
@@ -44,7 +42,7 @@ def reach_geometry_validation(top_level_folder, database, buffer_distance):
             if field not in results:
                 results[field] = []
 
-            for reachid, values in results:
+            for reachid, values in results.items():
                 if reachid in expected:
                     results[field].append((expected[reachid][field], values[field]))
 

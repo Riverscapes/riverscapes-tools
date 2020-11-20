@@ -1,5 +1,5 @@
 
-from sqlbrat.lib.database import load_attributes
+from rscommons.database import load_attributes
 
 
 def hydrology_validation(idaho_db, brat_db):

@@ -2,8 +2,8 @@ import os
 import csv
 import argparse
 import sqlite3
-from sqlbrat.lib.plotting import validation_chart
 from rscommons import dotenv
+from rscommons.plotting import validation_chart
 
 
 def hydrology_param_validation(usu_params, database):

@@ -10,10 +10,10 @@
 #
 # -------------------------------------------------------------------------------
 import argparse
-from osgeo import ogr
 import sqlite3
 import os
 import re
+from osgeo import ogr
 
 
 def load_hucs(polygons, database):

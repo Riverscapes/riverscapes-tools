@@ -4,6 +4,11 @@
     "editor.tabSize": 4,
     "editor.formatOnSave": true,
   },
+  "python.linting.pylintArgs": [
+    "--extension-pkg-whitelist=scipy",
+    "--ignore=E501",
+    "--max-line-length=240"
+  ],  
   "python.linting.enabled": true,
   "python.linting.lintOnSave": true,
   "python.linting.pycodestyleEnabled": true,

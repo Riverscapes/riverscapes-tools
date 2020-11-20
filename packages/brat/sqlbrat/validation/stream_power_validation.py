@@ -9,11 +9,11 @@
 #
 # -------------------------------------------------------------------------------
 import os
-import sys
+# import sys
 import argparse
 from rscommons import dotenv
 from rscommons import shapefile
-from sqlbrat.lib import plotting
+from rscommons import plotting
 from sqlbrat.utils import load_hucs
 
 calculate_stream_power = __import__('stream_power', fromlist=[''])
