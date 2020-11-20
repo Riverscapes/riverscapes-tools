@@ -10,19 +10,17 @@
 # Date:     28 Aug 2019
 #
 # -------------------------------------------------------------------------------
-import argparse
-import gdal
-import ogr
-import osr
 import os
+import argparse
+# from osgeo import gdal, ogr, osr
 
 from rscommons import dotenv
 from rscommons.shapefile import load_geometries
 from rscommons.shapefile import load_attributes
-from rscommons.shapefile import _rough_convert_metres_to_shapefile_units
+from rscommons.plotting import validation_chart
+# from rscommons.shapefile import _rough_convert_metres_to_shapefile_units
 
 from sqlbrat.utils.vegetation_summary import calculate_vegetation_summary
-from sqlbrat.lib.plotting import validation_chart
 from sqlbrat.utils.load_hucs import get_hucs_present
 
 

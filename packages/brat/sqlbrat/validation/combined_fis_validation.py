@@ -12,12 +12,12 @@
 # -------------------------------------------------------------------------------
 import argparse
 import os
-from sqlbrat.utils.combined_fis import calculate_combined_fis
-from rscommons.shapefile import load_attributes
-from sqlbrat.lib.plotting import validation_chart
-from sqlbrat.utils.load_hucs import get_hucs_present
-from rscommons import dotenv
 import sqlite3
+from rscommons import dotenv
+from rscommons.shapefile import load_attributes
+from rscommons.plotting import validation_chart
+from sqlbrat.utils.combined_fis import calculate_combined_fis
+from sqlbrat.utils.load_hucs import get_hucs_present
 
 
 def combined_fis_validation(top_level_folder, database):
