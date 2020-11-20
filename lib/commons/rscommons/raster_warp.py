@@ -15,11 +15,10 @@
 # Date:     17 May 2019
 # -------------------------------------------------------------------------------
 import argparse
-import tempfile
 import os
 import sys
 import traceback
-import gdal
+from osgeo import gdal
 from rscommons.download import get_unique_file_path
 from rscommons.util import safe_remove_file
 from rscommons import Logger

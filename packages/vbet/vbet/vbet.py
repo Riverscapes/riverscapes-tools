@@ -36,9 +36,9 @@ from scipy.interpolate import interp1d
 from vbet.vbet_network import vbet_network
 from vbet.vbet_report import VBETReport
 from rscommons.util import safe_makedirs, parse_metadata
-from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, dotenv, initGDALOGRErrors
-from rscommons import GeopackageLayer, ShapefileLayer, VectorLayer
-from rscommons.vector_ops import polygonize, get_num_pts, get_num_rings, export_geojson, get_geometry_unary_union, remove_holes, buffer_by_field
+from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, dotenv, initGDALOGRErrors, get_shp_or_gpkg
+from rscommons import GeopackageLayer, ShapefileLayer, VectorBase
+from rscommons.vector_ops import polygonize, get_num_pts, get_num_rings, export_geojson, get_geometry_unary_union, remove_holes, buffer_by_field, copy_feature_class
 from vbet.__version__ import __version__
 
 initGDALOGRErrors()
@@ -59,13 +59,13 @@ LayerTypes = {
     'CHANNEL_MASK': RSLayer('Evidence Raster', 'CH_MASK', 'Raster', 'intermediates/nLOE_Channels.tif'),
     'EVIDENCE': RSLayer('Evidence Raster', 'EVIDENCE', 'Raster', 'intermediates/Evidence.tif'),
     'COMBINED_VRT': RSLayer('Combined VRT', 'COMBINED_VRT', 'VRT', 'intermediates/slope-hand-channel.vrt'),
-    'INTERMEDIATES': RSLayer('INTERMEDIATES', 'Intermediates', 'Geopackage', 'intermediates/vbet_intermediates.gpkg', {
+    'INTERMEDIATES': RSLayer('Intermediates', 'Intermediates', 'Geopackage', 'intermediates/vbet_intermediates.gpkg', {
         'VBET_NETWORK': RSLayer('VBET Network', 'VBET_NETWORK', 'Vector', 'vbet_network'),
         'CHANNEL_POLYGON': RSLayer('Combined VRT', 'CHANNEL_POLYGON', 'Vector', 'channel')
         # We also add all tht raw thresholded shapes here but they get added dynamically later
     }),
     # Same here. Sub layers are added dynamically later.
-    'VBET': RSLayer('VBET', 'VBET', 'Geopackage', 'outputs/vbet.gpkg'),
+    'VBET': RSLayer('VBET', 'VBET Outputs', 'Geopackage', 'outputs/vbet.gpkg'),
     'REPORT': RSLayer('RSContext Report', 'REPORT', 'HTMLFile', 'outputs/vbet.html')
 }
 
@@ -270,6 +270,17 @@ def vbet(huc, flowlines, flowareas, orig_slope, max_slope, orig_hand, hillshade,
             sanitize(polygonize_lyr, channel_polygon, output_lyr, min_hole_degrees, buff_dist)
             log.info('Completed thresholding at {}'.format(thr_val))
 
+        # ======================================================================
+        # TODO: Remove this when we don't need shapefiles anymore
+        #       This just copies the layer directly from the geopackage so it
+        #       should be quick.
+        # ======================================================================
+        legacy_shapefile_path = os.path.join(os.path.dirname(vbet_path), '{}.shp'.format(vbet_id.lower()))
+        log.info('Writing Legacy Shapefile: {}'.format(legacy_shapefile_path))
+        with GeopackageLayer(vbet_path, vbet_lyr.rel_path) as in_lyr, \
+                ShapefileLayer(legacy_shapefile_path, delete=True, write=True) as out_lyr:
+            copy_feature_class(in_lyr, out_lyr)
+
     # Now add our Geopackages to the project XML
     project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
     project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['VBET'])
@@ -278,7 +289,7 @@ def vbet(huc, flowlines, flowareas, orig_slope, max_slope, orig_hand, hillshade,
     rasterio.shutil.delete(channel_msk)
 
     report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
-    project.add_report(realization, LayerTypes['REPORT'], replace=True)
+    project.add_report(proj_nodes['Outputs'], LayerTypes['REPORT'], replace=True)
 
     report = VBETReport(report_path, project, project_folder)
     report.write()
@@ -296,7 +307,7 @@ def vbet(huc, flowlines, flowareas, orig_slope, max_slope, orig_hand, hillshade,
     log.info('VBET Completed Successfully')
 
 
-def sanitize(in_lyr: VectorLayer, channel_poly: Polygon, out_lyr: VectorLayer, min_hole_sq_deg: float, buff_dist: float):
+def sanitize(in_lyr: VectorBase, channel_poly: Polygon, out_lyr: VectorBase, min_hole_sq_deg: float, buff_dist: float):
     """
         It's important to make sure we have the right kinds of geometries. Here we:
             1. Buffer out then back in by the same amount. TODO: THIS IS SUPER SLOW.
@@ -304,9 +315,9 @@ def sanitize(in_lyr: VectorLayer, channel_poly: Polygon, out_lyr: VectorLayer, m
             3. Remove small holes: Do we have donuts? Filter anythign smaller than a certain area
 
     Args:
-        in_lyr (VectorLayer): [description]
+        in_lyr (VectorBase): [description]
         channel_poly (Polygon): [description]
-        out_lyr (VectorLayer): [description]
+        out_lyr (VectorBase): [description]
         min_hole_sq_deg (float): [description]
         buff_dist (float): [description]
     """

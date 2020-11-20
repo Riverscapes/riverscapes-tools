@@ -13,7 +13,7 @@
 import os
 import json
 from osgeo import gdal
-from rscommons import Logger, VectorLayer
+from rscommons import Logger, VectorBase
 from shapely.geometry import mapping
 from shapely.geometry.base import BaseGeometry
 from rscommons.vector_ops import get_geometry_unary_union
@@ -21,7 +21,7 @@ from osgeo import ogr
 import osgeo.osr as osr
 
 
-def vbet_network(flow_lines_lyr: VectorLayer, flow_areas_lyr: VectorLayer, out_lyr: VectorLayer, epsg: int = None):
+def vbet_network(flow_lines_lyr: VectorBase, flow_areas_lyr: VectorBase, out_lyr: VectorBase, epsg: int = None):
 
     log = Logger('VBET Network')
     log.info('Generating perennial network')
@@ -44,7 +44,7 @@ def vbet_network(flow_lines_lyr: VectorLayer, flow_areas_lyr: VectorLayer, out_l
     log.info('VBET network generated with {} features'.format(fcount))
 
 
-def include_features(source_layer: VectorLayer, out_layer: VectorLayer, attribute_filter: str = None, clip_shape: BaseGeometry = None):
+def include_features(source_layer: VectorBase, out_layer: VectorBase, attribute_filter: str = None, clip_shape: BaseGeometry = None):
 
     for feature, _counter, _progbar in source_layer.iterate_features('Including Features', write_layers=[out_layer], attribute_filter=attribute_filter, clip_shape=clip_shape):
         out_feature = ogr.Feature(out_layer.ogr_layer_def)
