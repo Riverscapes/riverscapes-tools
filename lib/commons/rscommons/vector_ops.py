@@ -481,13 +481,13 @@ def buffer_by_field(in_layer: VectorBase, field: str, epsg: int = None, min_buff
     """
 
     _out_spatial_ref, transform = in_layer.get_transform_from_epsg(epsg)
-    conversion = in_layer.rough_convert_metres_to_shapefile_units(1)
+    conversion = in_layer.rough_convert_metres_to_vector_units(1)
 
     outpolys = []
     for feature, _counter, _progbar in in_layer.iterate_features('Buffering'):
         geom = feature.GetGeometryRef()
-        bufferDist = feature.GetField(field) * conversion
-        geom_buffer = geom.Buffer(bufferDist if bufferDist > min_buffer else min_buffer)
+        buffer_dist = feature.GetField(field) * conversion
+        geom_buffer = geom.Buffer(buffer_dist if buffer_dist > min_buffer else min_buffer)
         geom_buffer.Transform(transform)
         outpolys.append(wkbload(geom_buffer.ExportToWkb()))
 
@@ -517,7 +517,7 @@ def polygonize(raster_path: str, band: int, out_layer: VectorBase, epsg: int = N
     src_ds = gdal.Open(raster_path)
     src_band = src_ds.GetRasterBand(band)
 
-    out_layer.create_field('id', type_mapping[src_band.DataType])
+    out_layer.create_field('id', field_type=type_mapping[src_band.DataType])
 
     progbar = ProgressBar(100, 50, "Polygonizing raster")
 

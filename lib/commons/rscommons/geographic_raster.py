@@ -11,9 +11,7 @@
 #           https://rosettacode.org/wiki/Haversine_formula#Python
 #           https://www.esri.com/arcgis-blog/products/product/imagery/setting-the-z-factor-parameter-correctly/
 # -------------------------------------------------------------------------------
-import argparse
-import os
-import gdal
+from osgeo import gdal
 from math import radians, cos, sin, asin, sqrt, degrees
 from rscommons import Logger
 

@@ -6,7 +6,7 @@ python3 -m virtualenv .venv
 # Make sure pip is at a good version
 .venv/bin/python -m pip install --upgrade pip
 .venv/bin/pip --timeout=120 install \
-  Cython==0.29.7 \
+  Cython==0.29.21 \
   numpy==1.16.3 \
   shapely==1.7.1 \
   scipy==1.5.1 \

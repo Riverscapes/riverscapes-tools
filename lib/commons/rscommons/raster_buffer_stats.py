@@ -15,20 +15,14 @@
 #           Rasterio projection and shapes not intersecting raster
 #           https://gis.stackexchange.com/questions/303089/masking-geotiff-file-after-geojson-through-rasterio-input-shapes-do-not-overl
 # -------------------------------------------------------------------------------
-import argparse
-import os
-import sys
-import traceback
-import json
-import csv
 import rasterio
+from osgeo import gdal
 from shapely.geometry import shape
 from osgeo import ogr
 from osgeo import osr
 from rscommons import ProgressBar, Logger
 from rasterio.mask import mask
 import numpy as np
-import gdal
 
 
 # def raster_buffer_stats(network, raster, buffer_dist, lookup, lookupcol, outputcol):

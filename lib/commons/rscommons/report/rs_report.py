@@ -319,7 +319,7 @@ class RSReport():
         el_parent.append(hEl)
         return hEl
 
-    def layerprint(self, lyr_el, parent_el, project_root):
+    def layerprint(self, lyr_el, parent_el, project_root, level: int = 2):
         """Work in progress for printing Riverscapes layers
 
         Args:
@@ -329,8 +329,10 @@ class RSReport():
         """
         tag = lyr_el.tag
         name = lyr_el.find('Name').text
+        # For geopackages
+        layers = lyr_el.find('Layers')
 
-        section = self.section(None, '{}: {}'.format(tag, name), parent_el, level=2, attrib={'class': 'rsc-layer'})
+        section = self.section(None, '{}: {}'.format(tag, name), parent_el, level=level, attrib={'class': 'rsc-layer'})
 
         meta = self.xml_project.get_metadata_dict(node=lyr_el)
         if meta is not None:
@@ -342,6 +344,14 @@ class RSReport():
         fpath = os.path.join(project_root, pathstr)
         if os.path.isfile(fpath):
             size = os.path.getsize(fpath)
+
+        if layers is not None:
+            layers_container = ET.Element('div', attrib={'class': 'inner-layer-container'})
+            RSReport.header(level + 1, 'Layers', layers_container)
+            for layer_el in list(layers):
+                self.layerprint(layer_el, layers_container, os.path.join(project_root, pathstr), level=level + 1)
+
+            section.append(layers_container)
 
         footer = ET.Element('div', attrib={'class': 'layer-footer'})
         path_el.text = 'Project path: {}  ({})'.format(pathstr, sizeof_fmt(size))

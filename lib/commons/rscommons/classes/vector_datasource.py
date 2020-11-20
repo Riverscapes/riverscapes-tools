@@ -15,12 +15,27 @@ class DatasetRegistryException(Exception):
 
 
 class Dataset():
+    """Basic class for holding dataset and its corresponding layers
+    """
+
     def __init__(self, layer_name: str, ds: ogr.DataSource):
         self.ds = ds
         self.layers = [layer_name]
 
 
 class DatasetRegistry(object):
+    """Singleton pattern for a dataset registry
+
+    Args:
+        object ([type]): [description]
+
+    Raises:
+        DatasetRegistryException: [description]
+        Exception: [description]
+
+    Returns:
+        [type]: [description]
+    """
     _instance = None
     log = Logger('DatasetRegistry')
     _registry = {}
@@ -42,7 +57,8 @@ class DatasetRegistry(object):
     # Now some public methods
 
     def create(self, filepath: str, layer_name: str, driver: ogr.Driver):
-        """Note: this wipes any existing Datasets (files). It also opens
+        """Note: Create a DATASET this wipes any existing Datasets (files). It also opens a new one.
+                This has nothing to do with layers
 
         Args:
             filepath (str): [description]
@@ -52,15 +68,29 @@ class DatasetRegistry(object):
             raise DatasetRegistryException('Cannot open a dataset twice')
 
         self._registry[filepath] = Dataset(layer_name, driver.CreateDataSource(filepath))
-        return self._registry[filepath]
+        return self._registry[filepath].ds
 
     def open(self, filepath: str, layer_name: str, driver: ogr.Driver, permission: int):
+        """Open a dataset
+
+        Args:
+            filepath (str): [description]
+            layer_name (str): [description]
+            driver (ogr.Driver): [description]
+            permission (int): [description]
+
+        Raises:
+            DatasetRegistryException: [description]
+
+        Returns:
+            [type]: [description]
+        """
         existing_ds = self.__get_ds(filepath)
 
-        # Something's here!
+        # Something's here. Just return it!
         if existing_ds is not None:
             if layer_name in existing_ds.layers:
-                raise Exception('Cannot open a layer twice')
+                raise DatasetRegistryException('Cannot open a layer twice')
             existing_ds.layers.append(layer_name)
 
         # Nope. Create it
@@ -93,22 +123,21 @@ class DatasetRegistry(object):
             if self._registry[filepath].ds is not None:
                 self._registry[filepath].ds.Destroy()
             del self._registry[filepath]
-            self.log.debug('Dataset closed: {}'.format(self.filepath))
+            self.log.debug('Dataset closed: {}'.format(filepath))
 
-    def delete_dataset(self, filepath: str, layer_name: str, driver: ogr.Driver):
+    def delete_dataset(self, filepath: str, driver: ogr.Driver):
         """Delete a dataset and remove that entry from the registry
         """
-        if layer_name not in self._registry[filepath].layers:
-            raise DatasetRegistryException('Close Error. Layer name not in registry')
-        elif len(self._registry[filepath].layers) > 1:
-            raise DatasetRegistryException('Cannot delete dataset when there are > 1 layers accessing it. {}'.format(self._registry[filepath].layers))
+        # If this dataset is known to the registry then we need to handle it
+        if filepath in self._registry:
+            if len(self._registry[filepath].layers) > 1:
+                raise DatasetRegistryException('Cannot delete dataset when there are > 1 layers accessing it. {}'.format(self._registry[filepath].layers))
 
-        # Unload the DS
-        if self._registry[filepath].ds is not None:
-            self._registry[filepath].ds.Destroy()
+            # Unload the DS
+            if self._registry[filepath].ds is not None:
+                self._registry[filepath].ds.Destroy()
+                # Clean up the registry entry
+                del self._registry[filepath]
 
         # Delete the Dataset
         driver.DeleteDataSource(filepath)
-
-        # Clean up the registry entry
-        del self._registry[filepath]
