@@ -5,7 +5,7 @@
     "editor.formatOnSave": true,
   },
   "python.linting.pylintArgs": [
-    "--extension-pkg-whitelist=scipy",
+    "--extension-pkg-whitelist=scipy,rasterio",
     "--ignore=E501",
     "--max-line-length=240"
   ],  
