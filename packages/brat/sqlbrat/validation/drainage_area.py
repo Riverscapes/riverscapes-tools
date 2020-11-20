@@ -1,17 +1,17 @@
 # The goal of this script is to validate the drainage area values used in Idaho BRAT with those of
 # provided with the NHD Plus HR data
 
-from sqlbrat.lib import plotting
-import math
-from rscommons import Logger, LoopTimer, dotenv, initGDALOGRErrors
-import json
+# import math
+# import json
 import argparse
 import os
-import sys
-import traceback
-import json
-import time
+# import sys
+# import traceback
+# import json
+# import time
 from osgeo import ogr, osr
+from rscommons import Logger, LoopTimer, dotenv, initGDALOGRErrors
+from rscommons import plotting
 
 initGDALOGRErrors()
 

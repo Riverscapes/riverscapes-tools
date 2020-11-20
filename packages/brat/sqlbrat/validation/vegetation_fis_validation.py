@@ -13,10 +13,10 @@
 import argparse
 import os
 from rscommons import dotenv
-from sqlbrat.utils.vegetation_fis import calculate_vegegtation_fis
 from rscommons.shapefile import load_attributes
-from sqlbrat.lib.plotting import validation_chart
+from rscommons.plotting import validation_chart
 from sqlbrat.utils.load_hucs import get_hucs_present
+from sqlbrat.utils.vegetation_fis import calculate_vegegtation_fis
 
 
 def vegetation_fis_validation(top_level_folder, database):
@@ -29,9 +29,9 @@ def vegetation_fis_validation(top_level_folder, database):
 
     hucs = get_hucs_present(top_level_folder, database)
 
-    for label, veg_type in {'Existing': 'EX', 'Historic': 'hpe'}.items():
+    for _label, veg_type in {'Existing': 'EX', 'Historic': 'hpe'}.items():
         plot_values = []
-        for huc, paths in hucs.items():
+        for _huc, paths in hucs.items():
             out_field = 'oVC_{}'.format(veg_type)
             streamside_field = 'iVeg_30{}'.format(veg_type)
             riparian_field = 'iVeg100{}'.format(veg_type)
