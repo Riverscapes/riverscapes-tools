@@ -3,27 +3,36 @@
 """
 import unittest
 import os
+from tempfile import mkdtemp
 from osgeo import ogr
 from shapely.wkb import loads as wkbload
 from shapely.geometry import MultiPolygon
 from rscommons import vector_ops
-from rscommons.classes.vector_classes import ShapefileLayer, GeopackageLayer
-from rscommons.classes.logger import Logger
-from rscommons.classes.gdal_errors import initGDALOGRErrors
+from rscommons import Logger, ShapefileLayer, GeopackageLayer, initGDALOGRErrors
+from rscommons.util import safe_remove_dir
 
 
 initGDALOGRErrors()
 log = Logger('RSCommons TEST')
 log.setup(verbose=True)
 
-datadir = os.path.join(os.path.dirname(__file__), '..', 'scripts', 'data')
+datadir = os.path.join(os.path.dirname(__file__), 'data')
 
 
 class VectorOpsTest(unittest.TestCase):
 
+    def setUp(self):
+        super(VectorOpsTest, self).setUp()
+        self.outdir = mkdtemp()
+
+    def tearDown(self):
+        super(VectorOpsTest, self).tearDown()
+        safe_remove_dir(self.outdir)
+
     def test_copy_feature_class(self):
+
         in_path = os.path.join(datadir, 'WBDHU12.shp')
-        out_path = os.path.join(datadir, 'WBDHU12_copy.gpkg')
+        out_path = os.path.join(self.outdir, 'WBDHU12_copy.gpkg')
 
         with ShapefileLayer(in_path) as in_lyr, GeopackageLayer(out_path, 'WBDHU12_no_ref', write=True) as out_lyr:
             vector_ops.copy_feature_class(in_lyr, out_lyr, epsg=4326)
@@ -42,7 +51,7 @@ class VectorOpsTest(unittest.TestCase):
     # def test_merge_feature_class(self):
     #     # WARNING: This should merge layers
     #     in_path = os.path.join(datadir, 'WBDHU12.shp')
-    #     out_path = os.path.join(datadir, 'WBDHU12_merge.gpkg')
+    #     out_path = os.path.join(self.outdir, 'WBDHU12_merge.gpkg')
 
     #     clip_shapes = []
 
@@ -106,7 +115,7 @@ class VectorOpsTest(unittest.TestCase):
 
             # Build a library of shapes to clip
             clip_shapes = {}
-            for clip_feat, _counter, progbar in clip_lyr.iterate_features("Gettingshapes"):
+            for clip_feat, _counter, _progbar in clip_lyr.iterate_features("Gettingshapes"):
                 huc10 = clip_feat.GetFieldAsString("HUC10")
                 clip_shapes[huc10] = wkbload(clip_feat.GetGeometryRef().ExportToWkb())
 
@@ -163,7 +172,7 @@ class VectorOpsTest(unittest.TestCase):
 
             # Build a library of shapes to clip
             clip_shapes = {}
-            for clip_feat, _counter, progbar in clip_lyr.iterate_features("Gettingshapes"):
+            for clip_feat, _counter, _progbar in clip_lyr.iterate_features("Gettingshapes"):
                 huc10 = clip_feat.GetFieldAsString("HUC10")
                 clip_shapes[huc10] = wkbload(clip_feat.GetGeometryRef().ExportToWkb())
 

@@ -62,6 +62,6 @@ def parse_args_env(parser: argparse.ArgumentParser, env_path=None):
                 else:
                     raise Exception('COULD NOT FIND ENVIRONMENT VARIABLE: {}'.format(envname))
                 # Finally, make the substitution
-                setattr(args, k, str(Path(re.sub(pattern, sub.replace("\\","/"), v))))
+                setattr(args, k, str(Path(re.sub(pattern, sub.replace("\\", "/"), v))))
 
     return args
