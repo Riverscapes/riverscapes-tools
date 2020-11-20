@@ -3,9 +3,9 @@
 # Purpose:  Perform initial VBET analysis that can be used by the BRAT conservation
 #           module
 #
-# Author:   Philip Bailey
+# Author:   Matt Reimer
 #
-# Date:     7 Oct 2019
+# Date:     November 20, 2020
 #
 # Vectorize polygons from raster
 # https://gis.stackexchange.com/questions/187877/how-to-polygonize-raster-to-shapely-polygons
@@ -18,27 +18,21 @@ import traceback
 import datetime
 import time
 import json
-import math
 import shutil
 from osgeo import gdal
 from osgeo import ogr
-import osgeo.osr as osr
 from shapely.wkb import loads as wkb_load
-from shapely.geometry import mapping, shape, Polygon, MultiPolygon
+from shapely.geometry import mapping, Polygon
 from shapely.ops import unary_union
 import rasterio
-from rasterio.mask import mask
-from rasterio.features import shapes
 from rasterio import features
 import numpy as np
-from math import sqrt
-from scipy.interpolate import interp1d
-from vbet.vbet_network import vbet_network
-from vbet.vbet_report import VBETReport
 from rscommons.util import safe_makedirs, parse_metadata
 from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, dotenv, initGDALOGRErrors, get_shp_or_gpkg
 from rscommons import GeopackageLayer, ShapefileLayer, VectorBase
 from rscommons.vector_ops import polygonize, get_num_pts, get_num_rings, export_geojson, get_geometry_unary_union, remove_holes, buffer_by_field, copy_feature_class
+from vbet.vbet_network import vbet_network
+from vbet.vbet_report import VBETReport
 from vbet.__version__ import __version__
 
 initGDALOGRErrors()
@@ -248,7 +242,7 @@ def vbet(huc, flowlines, flowareas, orig_slope, max_slope, orig_hand, hillshade,
                 progbar.finish()
 
         plgnize_id = 'THRESH_{}'.format(str_val)
-        plgnize_lyr = RSLayer('Threshold at {}%'.format(str_val), plgnize_id, 'Vector', plgnize_id.lower())
+        plgnize_lyr = RSLayer('Raw Threshold at {}%'.format(str_val), plgnize_id, 'Vector', plgnize_id.lower())
         # Add a project node for this thresholded vector
         LayerTypes['INTERMEDIATES'].add_sub_layer(plgnize_id, plgnize_lyr)
 
