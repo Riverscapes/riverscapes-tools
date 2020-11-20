@@ -11,6 +11,7 @@ from shapely.geometry.base import BaseGeometry
 from shapely.geometry import Point
 from rscommons import Logger, ProgressBar, Raster
 from rscommons.util import safe_makedirs
+from rscommons.classes.vector_datasource import DatasetRegistry
 
 # NO_UI = os.environ.get('NO_UI') is not None
 
@@ -47,7 +48,7 @@ class VectorBase():
     ]
 
     def __init__(self, filepath: str, driver: VectorBase.Drivers, layer_name: str, replace_ds_on_open: bool = False, allow_write=False):
-
+        self.registry = DatasetRegistry()
         self.driver_name = driver.value
         self.filepath = None
         self.ogr_layer_name = layer_name
@@ -95,10 +96,6 @@ class VectorBase():
             return filepath, None
 
         # Now the fun cases:
-        # replace any slashes with |
-        path_arr = filepath.split('.')
-        # Now work backwards and make a best guess about where the break should be
-
         # If this isn't a geopackage just give up.
         if '.gpkg' not in filepath:
             return filepath, None
@@ -114,9 +111,8 @@ class VectorBase():
         """
         self.ogr_layer = None
         self.ogr_layer_def = None
-        if self.ogr_ds is not None:
-            self.ogr_ds.Destroy()
-        self.log.debug('Dataset closed: {}'.format(self.filepath))
+        self.registry.close(self.filepath, self.ogr_layer_name)
+        self.ogr_ds = None
 
     def _create_ds(self):
         """Note: this wipes any existing Datasets (files). It also opens
@@ -133,13 +129,12 @@ class VectorBase():
 
         if os.path.exists(self.filepath):
             self.log.info('Deleting existing dataset: {}'.format(self.filepath))
-            self.close()
-            self.driver.DeleteDataSource(self.filepath)
+            self.registry.delete_dataset(self.filepath, self.ogr_layer_name, self.driver)
         else:
             self.log.info('Dataset not found. Creating: {}'.format(self.filepath))
 
         self.allow_write = True
-        self.ogr_ds = self.driver.CreateDataSource(self.filepath)
+        self.ogr_ds = self.registry.create(self.filepath, self.ogr_layer_name, self.driver)
         self.log.debug('Dataset created: {}'.format(self.filepath))
 
     def _open_ds(self):
@@ -153,8 +148,7 @@ class VectorBase():
 
         permission = 1 if self.allow_write is True else 0
 
-        self.ogr_ds = self.driver.Open(self.filepath, permission)
-        self.log.debug('Dataset opened: {}'.format(self.filepath))
+        self.ogr_ds = self.registry.open(self.filepath, self.ogr_layer_name, self.driver, permission)
 
     def _delete_layer(self):
         """Delete this one layer from the geopackage
@@ -404,8 +398,11 @@ class VectorBase():
             self.ogr_layer.SetAttributeFilter(attribute_filter)
 
         if write_layers is not None:
+            done = []
             for lyr in write_layers:
-                lyr.ogr_layer.StartTransaction()
+                if lyr.ogr_ds not in done:
+                    lyr.ogr_layer.StartTransaction()
+                    done.append(lyr.ogr_ds)
 
         # Get an accurate feature count after clipping and filtering
         fcount = self.ogr_layer.GetFeatureCount()
@@ -417,12 +414,24 @@ class VectorBase():
             yield (feature, counter, progbar)
 
             if write_layers is not None and counter % commit_thresh == 0:
+                done = []
                 for lyr in write_layers:
-                    lyr.ogr_layer.CommitTransaction()
+                    if lyr.ogr_ds not in done:
+                        try:
+                            lyr.ogr_layer.CommitTransaction()
+                        except:
+                            pass
+                        done.append(lyr.ogr_ds)
 
         if write_layers is not None:
+            done = []
             for lyr in write_layers:
-                lyr.ogr_layer.CommitTransaction()
+                if lyr.ogr_ds not in done:
+                    try:
+                        lyr.ogr_layer.CommitTransaction()
+                    except:
+                        pass
+                    done.append(lyr.ogr_ds)
 
         # Reset the attribute filter
         if attribute_filter:
