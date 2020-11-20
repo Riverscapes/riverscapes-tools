@@ -18,7 +18,7 @@ def main():
     if os.path.exists(output_shp):
         os.remove(output_shp)
 
-    copy_layer(os.path.join(currdir, 'data', 'WBDHU8.shp'), None, output_shp, 'weird')
+    copy_layer(os.path.join(currdir, '..', 'test', 'data', 'WBDHU8.shp'), None, output_shp, 'weird')
 
     print('done')
 
