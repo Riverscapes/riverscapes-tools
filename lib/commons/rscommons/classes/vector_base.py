@@ -489,9 +489,6 @@ class VectorBase():
         if name is not None:
             progbar = ProgressBar(fcount, 50, name)
 
-        # Marker for clean/dirty transactions
-        uncommitted = False
-
         # Loop over every filtered feature
         for feature in self.ogr_layer:
             counter += 1
@@ -499,17 +496,13 @@ class VectorBase():
                 progbar.update(counter)
             yield (feature, counter, progbar)
 
-            uncommitted = True
-
             # Write to the file only every N times using transactions
             if counter % commit_thresh == 0:
                 VectorBase.__commit_transaction(write_layers)
                 VectorBase.__start_transaction(write_layers)
-                uncommitted = False
 
         # If there's anything left to write at the end then write it
-        if uncommitted is True:
-            VectorBase.__commit_transaction(write_layers)
+        VectorBase.__commit_transaction(write_layers)
 
         # Reset the attribute filter
         if attribute_filter:
@@ -526,7 +519,10 @@ class VectorBase():
         done = []
         for lyr in write_layers:
             if lyr.ogr_ds not in done:
-                lyr.ogr_layer.StartTransaction()
+                try:
+                    lyr.ogr_layer.StartTransaction()
+                except Exception as e:
+                    print(e)
                 done.append(lyr.ogr_ds)
 
     @staticmethod
@@ -536,7 +532,10 @@ class VectorBase():
         done = []
         for lyr in write_layers:
             if lyr.ogr_ds not in done:
-                lyr.ogr_layer.CommitTransaction()
+                try:
+                    lyr.ogr_layer.CommitTransaction()
+                except Exception as e:
+                    print(e)
                 done.append(lyr.ogr_ds)
 
     def get_transform(self, out_layer) -> osr.CoordinateTransformation:
