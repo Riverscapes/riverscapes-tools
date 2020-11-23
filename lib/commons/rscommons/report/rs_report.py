@@ -56,7 +56,7 @@ class RSReport():
             'body': html_inner,
             'footer': self.footer
         }))
-        with open(self.filepath, "w") as f:
+        with open(self.filepath, "w", encoding="utf-8") as f:
             f.write(final_render)
 
         self.log.debug('Report Writing Completed')

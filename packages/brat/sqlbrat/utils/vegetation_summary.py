@@ -14,7 +14,7 @@ import sys
 import traceback
 import gdal
 import ogr
-from ogr import osr
+from osgeo import osr
 from rscommons import ProgressBar, Logger, dotenv
 from rscommons.shapefile import _rough_convert_metres_to_raster_units
 from rscommons.database import load_geometries

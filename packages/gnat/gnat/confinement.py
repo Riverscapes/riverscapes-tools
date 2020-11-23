@@ -98,7 +98,7 @@ def confinement(huc, flowlines_orig, confining_polygon_orig, output_folder, buff
     # Load input datasets
     with get_shp_or_gpkg(flowlines_shp) as flw_lyr, get_shp_or_gpkg(confining_polygon_orig) as confine_lyr:
         srs = flw_lyr.spatial_ref
-        meter_conversion = flw_lyr.rough_convert_metres_to_shapefile_units(1)
+        meter_conversion = flw_lyr.rough_convert_metres_to_vector_units(1)
         geom_confining_polygon = get_geometry_unary_union(confine_lyr, cfg.OUTPUT_EPSG)
 
     # Calculate Spatial Constants

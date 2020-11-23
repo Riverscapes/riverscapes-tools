@@ -14,7 +14,7 @@ import traceback
 import gdal
 import ogr
 import json
-from ogr import osr
+from osgeo import osr
 from shapely.geometry import Point, mapping
 import rasterio
 from rasterio.mask import mask

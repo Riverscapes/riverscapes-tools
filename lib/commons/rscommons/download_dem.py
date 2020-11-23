@@ -16,7 +16,7 @@ import sys
 import math
 import os
 import traceback
-from osgeo import gdal
+from osgeo import gdal, ogr, osr
 import rasterio
 from rscommons.download import download_unzip
 from rscommons.science_base import get_dem_urls
@@ -155,17 +155,17 @@ def verify_areas(raster_path, boundary_shp):
 
     # We could just use Rasterio's CRS object but it doesn't seem to play nice with GDAL so....
     raster_ds = gdal.Open(raster_path)
-    raster_srs = gdal.osr.SpatialReference(wkt=raster_ds.GetProjection())
+    raster_srs = osr.SpatialReference(wkt=raster_ds.GetProjection())
 
     # Load and transform ownership polygons by adminstration agency
-    driver = gdal.ogr.GetDriverByName("ESRI Shapefile")
+    driver = ogr.GetDriverByName("ESRI Shapefile")
     data_source = driver.Open(boundary_shp, 0)
     layer = data_source.GetLayer()
     in_spatial_ref = layer.GetSpatialRef()
 
     # https://github.com/OSGeo/gdal/issues/1546
     raster_srs.SetAxisMappingStrategy(in_spatial_ref.GetAxisMappingStrategy())
-    transform = gdal.osr.CoordinateTransformation(in_spatial_ref, raster_srs)
+    transform = osr.CoordinateTransformation(in_spatial_ref, raster_srs)
 
     shape_area = 0
     for polygon in layer:
