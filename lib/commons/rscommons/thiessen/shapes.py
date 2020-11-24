@@ -96,8 +96,6 @@ def centerline_points(in_lines, distance=0.0, id_field=None, transform=None):
     data_in = driver_shp.Open(in_lines, 0)
     lyr = data_in.GetLayer()
     out_group = {}
-    #inSpatialRef = lyr.GetSpatialRef()
-    #transform.SetAxisMappingStrategy(inSpatialRef.GetAxisMappingStrategy())
 
     for feat in lyr:
         geom = feat.GetGeometryRef()
@@ -111,7 +109,7 @@ def centerline_points(in_lines, distance=0.0, id_field=None, transform=None):
         if line.project(line.interpolate(0.25, True)) > distance: 
             out_points.append(RiverPoint(line.interpolate(0.25, True)))
             out_points.append(RiverPoint(line.interpolate(-0.25, True)))
-        out_group[str(int(feat.GetField(id_field)))] = out_points
+        out_group[int(feat.GetField(id_field))] = out_points
         feat = None
     return out_group
 
@@ -183,10 +181,24 @@ def dissolve_by_points(groups, polys):
     progbar.update(counter)
     dissolved_polys = {}
     
+    ## Original method
+    # for key, group in groups.items():
+    #     counter += 1
+    #     progbar.update(counter)
+    #     intersected = [p for p in polys if any([p.contains(pt.point) for pt in group])]
+    #     dissolved_polys[key] = unary_union(intersected)
+    
+    ## This method gradulally speeds up processing by removing polygons from the list. 
     for key, group in groups.items():
         counter += 1
         progbar.update(counter)
-        intersected = [p for p in polys if any([p.contains(pt.point) for pt in group])]
-        dissolved_polys[key] = unary_union(intersected)
+        intersected = []
+        indexes = []
+        for i, p in enumerate(polys):
+            if any([p.contains(pt.point) for pt in group]):
+                intersected.append(p)
+                indexes.append(i)
+        dissolved_polys[key] = unary_union(intersected)# MultiPolygon(intersected) #intersected 
+        polys = [p for i, p in enumerate(polys) if i not in indexes]
 
     return dissolved_polys

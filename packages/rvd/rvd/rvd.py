@@ -24,7 +24,7 @@ from rasterio import features
 import numpy as np
 import sqlite3
 import csv
-# from collections import namedtuple
+from collections import OrderedDict
 
 from rscommons.util import safe_makedirs
 from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALOGRErrors, ProgressBar
@@ -34,9 +34,7 @@ from rscommons.segment_network import segment_network
 from rscommons.database import create_database
 from rscommons.database import populate_database
 from rscommons.reach_attributes import write_attributes, write_reach_attributes
-
-from rscommons.shapefile import get_geometry_unary_union, _rough_convert_metres_to_shapefile_units, get_transform_from_epsg
-
+from rscommons.shapefile import get_geometry_unary_union_from_wkt, _rough_convert_metres_to_shapefile_units, get_transform_from_epsg, get_transform_from_wkt
 from rscommons.thiessen.vor import NARVoronoi
 from rscommons.thiessen.shapes import RiverPoint, get_riverpoints, midpoints, centerline_points, clip_polygons, dissolve_by_intersection, load_geoms, dissolve_by_points, centerline_vertex_between_distance
 
@@ -145,14 +143,15 @@ def rvd(huc, max_length, min_length, flowlines, existing_veg, historic_veg, vall
     spatialRef.ImportFromEPSG(cfg.OUTPUT_EPSG)
     spatialRef.SetAxisMappingStrategy(ogr.osr.OAMS_TRADITIONAL_GIS_ORDER)
 
-    raster_epsg = 2955
+    # Transform issues reading 102003 as espg id. Using sr wkt seems to work.
+    #raster_epsg = 102003
     srs = ogr.osr.SpatialReference()
-    srs.ImportFromEPSG(raster_epsg)
-    # dataset = gdal.Open(prj_existing_path, 0)
-    # sr = dataset.GetProjection()
-    # sr_raster_wkt = 'PROJCS["USA_Contiguous_Albers_Equal_Area_Conic_USGS_version",GEOGCS["GCS_North_American_1983",DATUM["D_North_American_1983",SPHEROID["GRS_1980",6378137.0,298.257222101]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.017453292519943295]],PROJECTION["Albers"],PARAMETER["False_Easting",0.0],PARAMETER["False_Northing",0.0],PARAMETER["Central_Meridian",-96.0],PARAMETER["Standard_Parallel_1",29.5],PARAMETER["Standard_Parallel_2",45.5],PARAMETER["Latitude_Of_Origin",23.0],UNIT["Meter",1.0]]'
-    # out_sr, transform_shp_to_raster = get_transform_from_wkt(spatialRef, sr_raster_wkt)
-    _out_sr, transform_shp_to_raster = get_transform_from_epsg(spatialRef, raster_epsg)
+    # srs.ImportFromEPSG(raster_epsg)
+    dataset = gdal.Open(prj_existing_path, 0)
+    sr = dataset.GetProjection()
+    srs.ImportFromWkt(sr)
+    out_sr, transform_shp_to_raster = get_transform_from_wkt(spatialRef, sr)
+    #_out_sr, transform_shp_to_raster = get_transform_from_epsg(spatialRef, raster_epsg)
 
     # Filter the flow lines to just the required features and then segment to desired length
     build_network(prj_flowlines, prj_flow_areas, prj_waterbodies, cleaned_path, cfg.OUTPUT_EPSG, reach_codes, None)
@@ -195,14 +194,20 @@ def rvd(huc, max_length, min_length, flowlines, existing_veg, historic_veg, vall
 
     # Clip Thiessen Polys
     log.info("Clipping Thiessen Polygons to Valley Bottom")
-    geom_vbottom = get_geometry_unary_union(prj_valley_bottom, raster_epsg)  # cfg.OUTPUT_EPSG)
+    geom_vbottom = get_geometry_unary_union_from_wkt(prj_valley_bottom, sr)  # cfg.OUTPUT_EPSG)
+    if waterbodies:
+        geom_waterbodies = get_geometry_unary_union_from_wkt(prj_waterbodies, sr)
+        geom_vbottom = geom_vbottom.difference(geom_waterbodies)
+    if flow_areas:
+        geom_flow_areas = get_geometry_unary_union_from_wkt(prj_flow_areas, sr)
+        geom_vbottom = geom_vbottom.difference(geom_flow_areas)
     clipped_thiessen = clip_polygons(geom_vbottom, dissolved_polys)
 
     # Save Intermediates
-    simple_save(clipped_thiessen.values(), ogr.wkbPolygon, srs, "Thiessen", intermediate_gpkg)
-    simple_save(dissolved_polys.values(), ogr.wkbPolygon, srs, "ThiessenPolygonsDissolved", intermediate_gpkg)
-    simple_save(myVorL.polys, ogr.wkbPolygon, srs, "ThiessenPolygonsRaw", intermediate_gpkg)
-    simple_save([pt.point for pt in flowline_thiessen_points], ogr.wkbPoint, srs, "Thiessen_Points", intermediate_gpkg)
+    simple_save(clipped_thiessen.values(), ogr.wkbPolygon, out_sr, "Thiessen", intermediate_gpkg)
+    simple_save(dissolved_polys.values(), ogr.wkbPolygon, out_sr, "ThiessenPolygonsDissolved", intermediate_gpkg)
+    simple_save(myVorL.polys, ogr.wkbPolygon, out_sr, "ThiessenPolygonsRaw", intermediate_gpkg)
+    simple_save([pt.point for pt in flowline_thiessen_points], ogr.wkbPoint, out_sr, "Thiessen_Points", intermediate_gpkg)
 
     # Load Vegetation Rasters
     log.info(f"Loading Existing and Historic Vegetation Rasters")
@@ -245,7 +250,7 @@ def rvd(huc, max_length, min_length, flowlines, existing_veg, historic_veg, vall
         cursor.execute('''
             CREATE TABLE rvd_values (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                ReachID TEXT,
+                ReachID INTEGER,
                 EXISTING_RIPARIAN_MEAN REAL,
                 HISTORIC_RIPARIAN_MEAN REAL,
                 RIPARIAN_DEPARTURE REAL,
@@ -338,10 +343,10 @@ def rvd(huc, max_length, min_length, flowlines, existing_veg, historic_veg, vall
 
 def classify_conversions(arrays, conversion_classifications, ):
 
-    bins = {"Very Minor": 0.1,
-            "Minor": 0.25,
-            "Moderate": 0.5,
-            "Significant": 1.0}  # value <= bin
+    bins = OrderedDict([("Very Minor", 0.1),
+                        ("Minor", 0.25),
+                        ("Moderate", 0.5),
+                        ("Significant", 1.0)])  # value <= bin
     output = {}
 
     pos_classes = {value["ConversionType"]: value for value in conversion_classifications if int(value["ConversionValue"]) > 0}
@@ -361,14 +366,16 @@ def classify_conversions(arrays, conversion_classifications, ):
                     reach_values["ConversionCode"] = int(code)
                     reach_values["ConversionType"] = f"{text} {f'Change' if text in ['Very Minor', 'Minor'] else 'Riparian Expansion'}"
                     output[reach_id] = reach_values
+                    break
         elif any([v > 0.0 for v in pos_reach_values.values()]):
             key = max(pos_reach_values, key=pos_reach_values.get)
             classification = pos_classes[key]
             for text, b in bins.items():
-                if reach_values[key] <= b:
+                if reach_values[key] <= b:  # check
                     reach_values["ConversionCode"] = int(classification[text.replace(" ", "")])
                     reach_values["ConversionType"] = f"{text} {f'Change' if text in ['Very Minor', 'Minor'] else f'Conversion to {key}'}"
                     output[reach_id] = reach_values
+                    break
         else:
             reach_values["ConversionCode"] = 0
             reach_values["ConversionType"] = f"Unknown"
@@ -399,9 +406,9 @@ def extract_mean_values_by_polygon(polys, rasters, reference_raster):
                     else:
                         values[key] = 0.0
                 output[reachid] = values
-                print(f"Reach: {reachid} | {sum([v for v in values.values() if v is not None])}")
+                print(f"Reach: {reachid} | {sum([v for v in values.values() if v is not None]):.2f}")
             else:
-                print(f"WARNING | no geom for reach {reachid}")
+                print(f"Reach: {reachid} | WARNING no geom")
     return output
 
 
@@ -487,14 +494,22 @@ def load_vegetation_raster(rasterpath, existing=False, output_folder=None):
         "Managed Tree Plantation - Southeast Conifer and Hardwood Plantation Group": 0.66,
         "Quarries-Strip Mines-Gravel Pits": 1.0}
 
-    # TODO switch to csv metafile?
-    # Read xml for reclass
+    # rows = [row for row in csv.Reader(open(f"{rasterpath}.meta.csv"), "rt")]
+    # field_names = rows.pop(0)
+
+    # conversion_values = {int(row[0]): conversion_lookup.setdefault(row[field_names.index("" if exisitng else "")], 0) for row in rows}
+    # riparian_values = {}
+    # native_riparian_values = {}
+    # vegetation_values = {}
+    # lui_values = {} if existing else None
+    # Read xml for reclass - arcgis tends to overwrite this file. use csv instead and make sure to ship with rasters
     root = ET.parse(f"{rasterpath}.aux.xml").getroot()
     ifield_value = int(root.findall(".//FieldDefn/[Name='VALUE']")[0].attrib['index'])
     ifield_conversion_source = int(root.findall(".//FieldDefn/[Name='EVT_PHYS']")[0].attrib['index']) if existing else int(root.findall(".//FieldDefn/[Name='GROUPVEG']")[0].attrib['index'])
     ifield_group_name = int(root.findall(".//FieldDefn/[Name='EVT_GP_N']")[0].attrib['index']) if existing else int(root.findall(".//FieldDefn/[Name='GROUPNAME']")[0].attrib['index'])
 
     # Load reclass values
+
     conversion_values = {int(n[ifield_value].text): conversion_lookup.setdefault(n[ifield_conversion_source].text, 0) for n in root.findall(".//Row")}
     riparian_values = {int(n[ifield_value].text): 1 if n[ifield_conversion_source].text == "Riparian" else 0 for n in root.findall(".//Row")}
     native_riparian_values = {int(n[ifield_value].text): 1 if n[ifield_conversion_source].text == "Riparian" and not ("Introduced" in n[ifield_group_name].text) else 0 for n in root.findall(".//Row")}
@@ -612,21 +627,6 @@ def save_geom_to_feature(out_layer, feature_def, geom, attributes=None):
             feature.SetField(field, value)
     out_layer.CreateFeature(feature)
     feature = None
-
-
-def get_transform_from_wkt(inSpatialRef, to_sr_wkt):
-    log = Logger('get_transform_from_epsg')
-    outSpatialRef = ogr.osr.SpatialReference()
-    outSpatialRef.ImportFromEPSG(to_sr_wkt)
-    # outSpatialRef.ImportFromProj4("+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=37.5 +lon_0=-96 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs")
-
-    # https://github.com/OSGeo/gdal/issues/1546
-    outSpatialRef.SetAxisMappingStrategy(inSpatialRef.GetAxisMappingStrategy())
-
-    log.info('Input spatial reference is {0}'.format(inSpatialRef.ExportToProj4()))
-    log.info('Output spatial reference is {0}'.format(outSpatialRef.ExportToProj4()))
-    transform = ogr.osr.CoordinateTransformation(inSpatialRef, outSpatialRef)
-    return outSpatialRef, transform
 
 
 def create_project(huc, output_dir):
