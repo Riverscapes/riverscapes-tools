@@ -275,6 +275,105 @@ def get_geometry_unary_union(inpath, epsg):
     data_source = None
     return geom_union
 
+def get_geometry_unary_union_from_wkt(inpath, to_sr_wkt):
+    """
+    Load all features from a ShapeFile and union them together into a single geometry
+    :param inpath: Path to a ShapeFile
+    :param epsg: Desired output spatial reference
+    :return: Single Shapely geometry of all unioned features
+    """
+
+    log = Logger('Unary Union')
+
+    driver = ogr.GetDriverByName("ESRI Shapefile")
+    data_source = driver.Open(inpath, 0)
+    layer = data_source.GetLayer()
+    in_spatial_ref = layer.GetSpatialRef()
+
+    out_spatial_ref, transform = get_transform_from_wkt(in_spatial_ref, to_sr_wkt)
+
+    fcount = layer.GetFeatureCount()
+    progbar = ProgressBar(fcount, 50, "Unary Unioning features")
+    counter = 0
+
+    def unionize(wkb_lst):
+        return unary_union([wkbload(g) for g in wkb_lst]).wkb
+
+    geom_list = []
+    for feature in layer:
+        counter += 1
+        progbar.update(counter)
+        new_geom = feature.GetGeometryRef()
+        geo_type = new_geom.GetGeometryType()
+
+        # We can't union non-valid shapes but sometimes a buffer by 0 can help
+        if not new_geom.IsValid():
+            progbar.erase()  # get around the progressbar
+            log.warning('Invalid shape with FID={} trying the Buffer0 technique...'.format(feature.GetFID()))
+            try:
+                new_geom = new_geom.Buffer(0)
+                if not new_geom.IsValid():
+                    progbar.erase()  # get around the progressbar
+                    log.warning('   Still invalid. Skipping this geometry')
+                    continue
+            except Exception as e:
+                progbar.erase()  # get around the progressbar
+                log.warning('Exception raised during buffer 0 technique. skipping this file')
+                continue
+
+        if new_geom is None:
+            progbar.erase()  # get around the progressbar
+            log.warning('Feature with FID={} has no geoemtry. Skipping'.format(feature.GetFID()))
+        # Filter out zero-length lines
+        elif geo_type in LINE_TYPES and new_geom.Length() == 0:
+            progbar.erase()  # get around the progressbar
+            log.warning('Zero Length for shape with FID={}'.format(feature.GetFID()))
+        # Filter out zero-area polys
+        elif geo_type in POLY_TYPES and new_geom.Area() == 0:
+            progbar.erase()  # get around the progressbar
+            log.warning('Zero Area for shape with FID={}'.format(feature.GetFID()))
+        else:
+            new_geom.Transform(transform)
+            geom_list.append(new_geom.ExportToWkb())
+
+            # IF we get past a certain size then run the union
+            if len(geom_list) >= 500:
+                geom_list = [unionize(geom_list)]
+        new_geom = None
+
+    log.debug('finished iterating with list of size: {}'.format(len(geom_list)))
+    progbar.finish()
+
+    if len(geom_list) > 1:
+        log.debug('Starting final union of geom_list of size: {}'.format(len(geom_list)))
+        # Do a final union to clean up anything that might still be in the list
+        geom_union = wkbload(unionize(geom_list))
+    elif len(geom_list) == 0:
+        log.warning('No geometry found to union')
+        return None
+    else:
+        log.debug('FINAL Unioning geom_list of size {}'.format(len(geom_list)))
+        geom_union = wkbload(geom_list[0])
+        log.debug('   done')
+
+    print_geom_size(log, geom_union)
+    log.debug('Complete')
+    data_source = None
+    return geom_union
+
+def get_transform_from_wkt(inSpatialRef, to_sr_wkt):
+    log = Logger('get_transform_from_epsg')
+    outSpatialRef = ogr.osr.SpatialReference()
+    outSpatialRef.ImportFromWkt(to_sr_wkt)
+
+    # https://github.com/OSGeo/gdal/issues/1546
+    outSpatialRef.SetAxisMappingStrategy(inSpatialRef.GetAxisMappingStrategy())
+
+    log.info('Input spatial reference is {0}'.format(inSpatialRef.ExportToProj4()))
+    log.info('Output spatial reference is {0}'.format(outSpatialRef.ExportToProj4()))
+    transform = ogr.osr.CoordinateTransformation(inSpatialRef, outSpatialRef)
+    return outSpatialRef, transform
+
 
 def create_shapefile(geometry, epsg, outpath):
     """
