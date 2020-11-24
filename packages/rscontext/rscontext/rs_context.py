@@ -30,7 +30,7 @@ from rscommons.geographic_raster import gdal_dem_geographic
 from rscommons.download_hand import download_hand
 from rscommons.raster_buffer_stats import raster_buffer_stats2
 from rscommons.shapefile import get_geometry_union
-from rscommons.prism import mean_area_precip, calculate_bankfull_width
+from rscommons.prism import calculate_bankfull_width
 
 from rscontext.flow_accumulation import flow_accumulation, flow_accum_to_drainage_area
 from rscontext.clip_ownership import clip_ownership
@@ -58,7 +58,8 @@ LayerTypes = {
     'HISTVEG': RSLayer('Historic Vegetation', 'HISTVEG', 'Raster', 'vegetation/historic_veg.tif'),
     # Inputs
     'NETWORK': RSLayer('NHD Flowlines', 'NETWORK', 'Vector', 'inputs/network.shp'),
-    'OWNERSHIP': RSLayer('Ownership', 'Ownership', 'Vector', 'inputs/ownership.shp'),
+    'OWNERSHIP': RSLayer('Ownership', 'Ownership', 'Vector', 'ownership/ownership.shp'),
+    'FAIR_MARKET': RSLayer('Fair Market Value', 'FAIRMARKETVALUE', 'Raster', 'ownership/fair_market_value.tif'),
     'ECOREGIONS': RSLayer('Ecoregions', 'Ecoregions', 'Vector', 'inputs/ecoregions.shp'),
     # Prism Layers
     'PPT': RSLayer('Precipitation', 'Precip', 'Raster', 'climate/precipitation.tif'),
@@ -72,7 +73,7 @@ LayerTypes = {
 }
 
 
-def rs_context(huc, existing_veg, historic_veg, ownership, ecoregions, prism_folder, output_folder, download_folder, scratch_dir, parallel, force_download):
+def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregions, prism_folder, output_folder, download_folder, scratch_dir, parallel, force_download):
     """
     Download riverscapes context layers for the specified HUC and organize them as a Riverscapes project
     :param huc: Eight, 10 or 12 digit HUC identification number
@@ -114,6 +115,7 @@ def rs_context(huc, existing_veg, historic_veg, ownership, ecoregions, prism_fol
     _node, slope_raster = project.add_project_raster(realization, LayerTypes['SLOPE'])
     _node, existing_clip = project.add_project_raster(realization, LayerTypes['EXVEG'])
     _node, historic_clip = project.add_project_raster(realization, LayerTypes['HISTVEG'])
+    _node, fair_market_clip = project.add_project_raster(realization, LayerTypes['FAIR_MARKET'])
 
     # Download the four digit NHD archive containing the flow lines and watershed boundaries
     log.info('Processing NHD')
@@ -140,7 +142,7 @@ def rs_context(huc, existing_veg, historic_veg, ownership, ecoregions, prism_fol
         except StopIteration:
             raise Exception('Could not find .bil file corresponding to "{}"'.format(ptype))
         _node, project_raster_path = project.add_project_raster(realization, LayerTypes[ptype])
-        raster_warp(source_raster_path, project_raster_path, cfg.OUTPUT_EPSG, nhd[boundary])
+        raster_warp(source_raster_path, project_raster_path, cfg.OUTPUT_EPSG, nhd[boundary], 2)
 
         # Use the mean annual precipitation to calculate bankfull width
         if ptype.lower() == 'ppt':
@@ -256,11 +258,15 @@ def rs_context(huc, existing_veg, historic_veg, ownership, ecoregions, prism_fol
 
     # Clip and re-project the existing and historic vegetation
     log.info('Processing existing and historic vegetation rasters.')
-    raster_warp(existing_veg, existing_clip, cfg.OUTPUT_EPSG, nhd[boundary])
-    raster_warp(historic_veg, historic_clip, cfg.OUTPUT_EPSG, nhd[boundary])
+    raster_warp(existing_veg, existing_clip, cfg.OUTPUT_EPSG, nhd[boundary], 2)
+    raster_warp(historic_veg, historic_clip, cfg.OUTPUT_EPSG, nhd[boundary], 2)
+
+    log.info('Process the Fair Market Value Raster.')
+    project.add_dataset(realization, fair_market_clip, LayerTypes['FAIR_MARKET'], 'Vector')
+    raster_warp(fair_market, fair_market_clip, cfg.OUTPUT_EPSG, nhd[boundary], 3)
 
     # Clip the landownership Shapefile to a 10km buffer around the watershed boundary
-    own_path = os.path.join(output_folder, 'ownership', 'ownership.shp')
+    own_path = os.path.join(output_folder, LayerTypes['OWNERSHIP'].rel_path)
     project.add_dataset(realization, own_path, LayerTypes['OWNERSHIP'], 'Vector')
     clip_ownership(nhd[boundary], ownership, own_path, cfg.OUTPUT_EPSG, 10000)
 
@@ -348,6 +354,7 @@ def main():
     parser.add_argument('existing', help='National existing vegetation raster', type=str)
     parser.add_argument('historic', help='National historic vegetation raster', type=str)
     parser.add_argument('ownership', help='National land ownership shapefile', type=str)
+    parser.add_argument('fairmarket', help='National fair market value raster', type=str)
     parser.add_argument('ecoregions', help='National EcoRegions shapefile', type=str)
     parser.add_argument('prism', help='Folder containing PRISM rasters in BIL format', type=str)
     parser.add_argument('output', help='Path to the output folder', type=str)
@@ -369,6 +376,7 @@ def main():
     log.info('Existing veg: {}'.format(args.existing))
     log.info('Historical veg: {}'.format(args.historic))
     log.info('Ownership: {}'.format(args.ownership))
+    log.info('Fair Market Value Raster: {}'.format(args.fairmarket))
     log.info('Output folder: {}'.format(args.output))
     log.info('Download folder: {}'.format(args.download))
     log.info('Force download: {}'.format(args.force))
@@ -380,7 +388,7 @@ def main():
     safe_makedirs(scratch_dir)
 
     try:
-        rs_context(args.huc, args.existing, args.historic, args.ownership, args.ecoregions, args.prism, args.output, args.download, scratch_dir, args.parallel, args.force)
+        rs_context(args.huc, args.existing, args.historic, args.ownership, args.fairmarket, args.ecoregions, args.prism, args.output, args.download, scratch_dir, args.parallel, args.force)
 
     except Exception as e:
         log.error(e)
