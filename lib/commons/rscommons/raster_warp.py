@@ -79,7 +79,7 @@ def raster_vrt_stitch(inrasters, outraster, epsg, clip=None, clean=False):
     #     os.remove(path_vrt)
 
 
-def raster_warp(inraster, outraster, epsg, clip=None):
+def raster_warp(inraster, outraster, epsg, clip=None, cutlineBlend=None):
     """
     Reproject a raster to a different coordinate system.
     :param inraster: Input dataset
@@ -109,7 +109,7 @@ def raster_warp(inraster, outraster, epsg, clip=None):
     warp_options = gdal.WarpOptions(dstSRS='EPSG:{}'.format(epsg), format='vrt')
     if clip:
         log.info('Clipping to polygons using {}'.format(clip))
-        warp_options = gdal.WarpOptions(dstSRS='EPSG:{}'.format(epsg), format='vrt', cutlineDSName=clip, cropToCutline=True)
+        warp_options = gdal.WarpOptions(dstSRS='EPSG:{}'.format(epsg), format='vrt', cutlineDSName=clip, cropToCutline=True, cutlineBlend=cutlineBlend)
 
     ds = gdal.Warp(warpvrt, inraster, options=warp_options)
 
