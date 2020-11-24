@@ -262,7 +262,6 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
     raster_warp(historic_veg, historic_clip, cfg.OUTPUT_EPSG, nhd[boundary], 2)
 
     log.info('Process the Fair Market Value Raster.')
-    project.add_dataset(realization, fair_market_clip, LayerTypes['FAIR_MARKET'], 'Vector')
     raster_warp(fair_market, fair_market_clip, cfg.OUTPUT_EPSG, nhd[boundary], 3)
 
     # Clip the landownership Shapefile to a 10km buffer around the watershed boundary
