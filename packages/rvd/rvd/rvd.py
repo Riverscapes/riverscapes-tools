@@ -536,11 +536,11 @@ def load_vegetation_raster(rasterpath, existing=False, output_folder=None):
 
         # Reclass array https://stackoverflow.com/questions/16992713/translate-every-element-in-numpy-array-according-to-key
         raw_array = raster.read(1)
-        riparian_array = np.vectorize(riparian_values.get)(raw_array)
-        native_riparian_array = np.vectorize(native_riparian_values.get)(raw_array)
-        vegetated_array = np.vectorize(vegetation_values.get)(raw_array)
-        conversion_array = np.vectorize(conversion_values.get)(raw_array)
-        lui_array = np.vectorize(lui_values.get)(raw_array) if existing else None
+        riparian_array = np.vectorize(riparian_values.get)(raw_array).astype(int)
+        native_riparian_array = np.vectorize(native_riparian_values.get)(raw_array).astype(int)
+        vegetated_array = np.vectorize(vegetation_values.get)(raw_array).astype(int)
+        conversion_array = np.vectorize(conversion_values.get)(raw_array).astype(int)
+        lui_array = np.vectorize(lui_values.get)(raw_array).astype(int) if existing else None
 
         output = {"RAW": raw_array,
                   "RIPARIAN": riparian_array,
