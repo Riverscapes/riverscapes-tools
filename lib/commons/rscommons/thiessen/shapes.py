@@ -10,6 +10,9 @@ from shapely.ops import unary_union
 from rscommons import Logger, ProgressBar
 from rscommons.shapefile import get_transform_from_epsg
 
+from typing import List, Dict
+Path = str
+Transform = ogr.osr.CoordinateTransformation
 
 class RiverPoint:
 
@@ -91,7 +94,19 @@ def midpoints(in_lines):
 
     return out_points
 
-def centerline_points(in_lines, distance=0.0, id_field=None, transform=None):
+def centerline_points(in_lines:Path, distance: float = 0.0, id_field: str = None, transform: Transform = None) -> Dict[int, List[RiverPoint]]:
+    """Generates points along each line feature at specified distances from the end as well as quarter and halfway
+
+    Args:
+        in_lines (Path): path of shapefile with features
+        distance (float, optional): distance from ends to generate points. Defaults to 0.0.
+        id_field (str, optional): field to obtain unique values for grouping points. Defaults to None.
+        transform (Transform, optional): coordinate transformation. Defaults to None.
+
+    Returns:
+        [type]: [description]
+    """
+
     driver = driver_shp = ogr.GetDriverByName("ESRI Shapefile")
     data_in = driver_shp.Open(in_lines, 0)
     lyr = data_in.GetLayer()
