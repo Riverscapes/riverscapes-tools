@@ -3,10 +3,10 @@
 #
 # Purpose:  Build a Riparian Vegetation Departure project.
 #
-# Author:   Philip Bailey
+# Author:   Philip Bailey/Kelly Whitehead
 #           Adapted from Jordan Gilbert
 #
-# Date:     1 Oct 2020
+# Date:     23 Nov 2020
 # -------------------------------------------------------------------------------
 import argparse
 import sys
@@ -34,13 +34,15 @@ from rscommons.segment_network import segment_network
 from rscommons.database import create_database
 from rscommons.database import populate_database
 from rscommons.reach_attributes import write_attributes, write_reach_attributes
-from rscommons.shapefile import get_geometry_unary_union_from_wkt, _rough_convert_metres_to_shapefile_units, get_transform_from_epsg, get_transform_from_wkt
+from rscommons.shapefile import get_geometry_unary_union_from_wkt, get_transform_from_epsg, get_transform_from_wkt
 from rscommons.thiessen.vor import NARVoronoi
-from rscommons.thiessen.shapes import RiverPoint, get_riverpoints, midpoints, centerline_points, clip_polygons, dissolve_by_intersection, load_geoms, dissolve_by_points, centerline_vertex_between_distance
+from rscommons.thiessen.shapes import centerline_points, clip_polygons, dissolve_by_points
 
 # from rvd.report import report
-
 from rvd.__version__ import __version__
+
+from typing import List, Dict
+Path = str
 
 initGDALOGRErrors()
 
@@ -58,9 +60,9 @@ LayerTypes = {
     'NETWORK': RSLayer('Network', 'NETWORK', 'Vector', 'intermediates/network.shp'),
     'THIESSEN': RSLayer('Network', 'THIESSEN', 'Vector', 'intermediates/thiessen.shp'),
     'SEGMENTED': RSLayer('BRAT Network', 'SEGMENTED', 'Vector', 'outputs/rvd.shp'),
-    'SQLITEDB': RSLayer('BRAT Database', 'BRATDB', 'SQLiteDB', 'outputs/rvd.sqlite'),
+    'SQLITEDB': RSLayer('BRAT Database', 'BRATDB', 'SQLiteDB', 'outputs/rvd.sqlite'),  # TODO: change this to output geopackage
     'REPORT': RSLayer('RVD Report', 'RVD_REPORT', 'HTMLFile', 'outputs/rvd.html')
-}
+}  # TODO: Include intermediate rasters?
 
 # Dictionary of fields that this process outputs, keyed by ShapeFile data type
 output_fields = {
@@ -84,20 +86,21 @@ Epochs = [
 ]
 
 
-def rvd(huc, max_length, min_length, flowlines, existing_veg, historic_veg, valley_bottom, output_folder, reach_codes, flow_areas, waterbodies):
-    """[summary]
+def rvd(huc: int, max_length: float, min_length: float, flowlines: Path, existing_veg: Path, historic_veg: Path, valley_bottom: Path, output_folder: Path, reach_codes: List[int], flow_areas: Path, waterbodies: Path):
+    """[Generate segmented reaches on flowline network and calculate RVD from historic and existing vegetation rasters
 
     Args:
-        huc ([type]): [description]
-
-    Raises:
-        Exception: [description]
-        Exception: [description]
-        Exception: [description]
-        Exception: [description]
-
-    Returns:
-        [type]: [description]
+        huc (integer): Watershed ID
+        max_length (float): maximum length for reach segmentation
+        min_length (float): minimum length for reach segmentation
+        flowlines (Path): NHD flowlines feature layer
+        existing_veg (Path): LANDFIRE version 2.00 evt raster, with adjacent xml metadata file
+        historic_veg (Path): LANDFIRE version 2.00 bps raster, with adjacent xml metadata file
+        valley_bottom (Path): Vbet polygon feature layer
+        output_folder (Path): destination folder for project output
+        reach_codes (List[int]): NHD reach codes for features to include in outputs
+        flow_areas (Path): NHD flow area polygon feature layer
+        waterbodies (Path): NHD waterbodies polygon feature layer
     """
 
     log = Logger("RVD")
@@ -131,7 +134,7 @@ def rvd(huc, max_length, min_length, flowlines, existing_veg, historic_veg, vall
     _segmented_path_node, segmented_path = project.add_project_vector(proj_nodes['Outputs'], LayerTypes['SEGMENTED'], replace=True)
     _report_path_node, report_path = project.add_project_vector(proj_nodes['Outputs'], LayerTypes['REPORT'], replace=True)
 
-    # Generate GPKG for Intermediates/Debug
+    # Generate GPKG for Intermediates
     driver_gpkg = ogr.GetDriverByName("GPKG")
     intermediate_gpkg = os.path.join(output_folder, "Intermediates", "rvd_intermediates.gpkg")
     driver_gpkg.CreateDataSource(intermediate_gpkg)
@@ -143,15 +146,15 @@ def rvd(huc, max_length, min_length, flowlines, existing_veg, historic_veg, vall
     spatialRef.ImportFromEPSG(cfg.OUTPUT_EPSG)
     spatialRef.SetAxisMappingStrategy(ogr.osr.OAMS_TRADITIONAL_GIS_ORDER)
 
-    # Transform issues reading 102003 as espg id. Using sr wkt seems to work.
-    #raster_epsg = 102003
+    # Transform issues reading 102003 as espg id. Using sr wkt seems to work, however arcgis has problems loading feature classes with this method...
     srs = ogr.osr.SpatialReference()
+    # raster_epsg = 102003
     # srs.ImportFromEPSG(raster_epsg)
     dataset = gdal.Open(prj_existing_path, 0)
     sr = dataset.GetProjection()
     srs.ImportFromWkt(sr)
     out_sr, transform_shp_to_raster = get_transform_from_wkt(spatialRef, sr)
-    #_out_sr, transform_shp_to_raster = get_transform_from_epsg(spatialRef, raster_epsg)
+    # _out_sr, transform_shp_to_raster = get_transform_from_epsg(spatialRef, raster_epsg)
 
     # Filter the flow lines to just the required features and then segment to desired length
     build_network(prj_flowlines, prj_flow_areas, prj_waterbodies, cleaned_path, cfg.OUTPUT_EPSG, reach_codes, None)
@@ -164,6 +167,7 @@ def rvd(huc, max_length, min_length, flowlines, existing_veg, historic_veg, vall
         'Reach_Codes': reach_codes,
     }
 
+    # TODO change to output geopackage
     db_path = os.path.join(output_folder, LayerTypes['SQLITEDB'].rel_path)
     watesrhed_name = create_database(huc, db_path, metadata, cfg.OUTPUT_EPSG, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'rvd_schema.sql'))
     populate_database(db_path, segmented_path, huc)
@@ -176,9 +180,7 @@ def rvd(huc, max_length, min_length, flowlines, existing_veg, historic_veg, vall
     log.info("Calculating Voronoi Polygons...")
 
     # Add all the points (including islands) to the list
-    # meter_conversion = _rough_convert_metres_to_shapefile_units(segmented_path, 1.0)
     flowline_thiessen_points_groups = centerline_points(segmented_path, 10.0, "ReachID", transform_shp_to_raster)
-    # flowline_thiessen_points_groups = centerline_vertex_between_distance(segmented_path, 10.0 * meter_conversion)
     flowline_thiessen_points = [pt for group in flowline_thiessen_points_groups.values() for pt in group]
 
     # Exterior is the shell and there is only ever 1
@@ -189,7 +191,6 @@ def rvd(huc, max_length, min_length, flowlines, existing_veg, historic_veg, vall
 
     # Dissolve by flowlines
     log.info("Dissolving Thiessen Polygons")
-    # dissoved_polys = dissolve_by_intersection(geoms, clipped_thiessen)
     dissolved_polys = dissolve_by_points(flowline_thiessen_points_groups, myVorL.polys)
 
     # Clip Thiessen Polys
@@ -245,6 +246,8 @@ def rvd(huc, max_length, min_length, flowlines, existing_veg, historic_veg, vall
     reach_values_with_conversion_codes = classify_conversions(reach_values, conversion_classifications)
 
     # Write Output to GPKG table
+    # TODO clean this up a bit?
+    # TODO figure out why main.empty_table is getting generated
     with sqlite3.connect(output_gkpg) as conn:
         cursor = conn.cursor()
         cursor.execute('''
@@ -328,11 +331,7 @@ def rvd(huc, max_length, min_length, flowlines, existing_veg, historic_veg, vall
     for epoch, prefix, ltype, orig_id in Epochs:
         log.info('Processing {} epoch'.format(epoch))
 
-        # TODO: summarize the vegetation within each Thiessen polygon
-
-        # TODO: calculate vegetation departure
-
-        # Copy BRAT build output fields from SQLite to ShapeFile in batches according to data type
+        # TODO Copy BRAT build output fields from SQLite to ShapeFile in batches according to data type
     log.info('Copying values from SQLite to output ShapeFile')
     # write_reach_attributes(segmented_path, db_path, output_fields, shapefile_field_aliases)
 
@@ -341,7 +340,16 @@ def rvd(huc, max_length, min_length, flowlines, existing_veg, historic_veg, vall
     log.info('RVD complete')
 
 
-def classify_conversions(arrays, conversion_classifications, ):
+def classify_conversions(arrays: Dict[int, Dict[str, float]], conversion_classifications: List[dict]):
+    """classify conversion by code and type using binned classes
+
+    Args:
+        arrays (dict): reach dictionaries with conversion type dictionaries to classify
+        conversion_classifications (List(dict)): list of dicitionaries generated by conversion csv
+
+    Returns:
+        Dict: reach dictionary of conversion types and codes
+    """
 
     bins = OrderedDict([("Very Minor", 0.1),
                         ("Minor", 0.25),
