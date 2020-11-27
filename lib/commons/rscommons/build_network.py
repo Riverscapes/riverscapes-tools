@@ -12,17 +12,11 @@
 #
 # Date:     15 May 2019
 # -------------------------------------------------------------------------------
-import argparse
 import os
-import sys
-import traceback
-import json
-from osgeo import ogr
-from osgeo import osr
-from shapely.geometry import mapping, shape
-from rscommons import ProgressBar, Logger, dotenv
-from rscommons.util import safe_makedirs
+from osgeo import ogr, osr
+from rscommons import ProgressBar, Logger, get_shp_or_gpkg, VectorBase
 from rscommons.shapefile import get_geometry_union, get_transform_from_epsg
+from typing import List, Dict
 
 # https://nhd.usgs.gov/userGuide/Robohelpfiles/NHD_User_Guide/Feature_Catalog/Hydrography_Dataset/Complete_FCode_List.htm
 FCodeValues = {
@@ -42,7 +36,7 @@ artifical_reaches = '55800'
 
 def build_network(flowlines, flowareas, waterbodies, outpath, epsg,
                   reach_codes, waterbody_max_size):
-    """Copy a polyline feature class and filter out features that are 
+    """Copy a polyline feature class and filter out features that are
     not needed.
 
     Arguments:
@@ -166,52 +160,89 @@ def process_reaches(inLayer, outLayer, transform):
 
     progbar.finish()
 
-
-# def main():
-#     parser = argparse.ArgumentParser(
-#         description='Build Networks:',
-#         # epilog="This is an epilog"
-#     )
-#     parser.add_argument('flowline', help='Input flowline ShapeFile path', type=str)
-#     parser.add_argument('area', help='Input river areas ShapeFile path', type=str)
-#     parser.add_argument('waterbody', help='Input waterbody ShapeFile path', type=str)
-#     parser.add_argument('network', help='Output network ShapeFile path', type=str)
-#     parser.add_argument('--perennial', help='(optional) include perennial channels', action='store_true', default=True)
-#     parser.add_argument('--intermittent', help='(optional) include intermittent channels', action='store_true', default=False)
-#     parser.add_argument('--ephemeral', help='(optional) include ephemeral channels', action='store_true', default=False)
-#     parser.add_argument('--waterbodysize', help='(optional) Water body size', type=float, default=0.01)
-#     parser.add_argument('--epsg', help='Output spatial reference EPSG', default=4269, type=int)
-#     parser.add_argument('--verbose', help='(optional) verbose logging mode', action='store_true', default=False)
-
-#     args = dotenv.parse_args_env(parser)
-
-#     # make sure the output folder exists
-#     results_folder = os.path.dirname(args.network)
-#     safe_makedirs(results_folder)
-
-#     # Initiate the log file
-#     logg = Logger("Build Network")
-#     logfile = os.path.join(results_folder, "build_network.log")
-#     logg.setup(logPath=logfile, verbose=args.verbose)
-
-#     if os.path.isfile(args.network):
-#         logg.info('Deleting existing output {}'.format(args.network))
-#         driver = ogr.GetDriverByName("ESRI Shapefile")
-#         driver.DeleteDataSource(args.network)
-
-#     reach_codes = args['reach_codes'].split('')
-
-#     try:
-#         build_network(args.flowline, args.area, args.waterbody, args.network, args.epsg,
-#                       args.perennial, args.intermittent, args.ephemeral, args.waterbodysize)
-
-#     except Exception as e:
-#         logg.error(e)
-#         traceback.print_exc(file=sys.stdout)
-#         sys.exit(1)
-
-#     sys.exit(0)
+# TODO: replace the above with this when BRAT no longer needs it
 
 
-# if __name__ == '__main__':
-#     main()
+def build_network_NEW(flowlines_lyr: VectorBase,
+                      flowareas_lyr: VectorBase,
+                      out_lyr: VectorBase,
+                      epsg: int = None,
+                      reach_codes: List[int] = None,
+                      waterbodies_lyr: VectorBase = None,
+                      waterbody_max_size=None):
+
+    log = Logger('Build Network')
+
+    if os.path.isfile(outpath):
+        log.info('Skipping building network because output exists {}'.format(outpath))
+        return None
+
+    log.info("Building network from flow lines {0}".format(flowlines))
+
+    if reach_codes:
+        [log.info('Retaining {} reaches with code {}'.format(FCodeValues[int(r)], r)) for r in reach_codes]
+    else:
+        log.info('Retaining all reaches. No reach filtering.')
+
+    # Get the transformation required to convert to the target spatial reference
+    if (epsg is not None):
+        out_spatial_ref, transform = flowareas_lyr.get_transform_from_epsg(epsg)
+    out_lyr.create_layer_from_ref(flowlines_lyr)
+
+    # Process all perennial/intermittment/ephemeral reaches first
+    att_filter = None
+    if reach_codes and len(reach_codes) > 0:
+        [log.info("{0} {1} network features (FCode {2})".format('Retaining', FCodeValues[int(key)], key)) for key in reach_codes]
+        att_filter = "FCode IN ({0})".format(','.join([key for key in reach_codes]))
+
+    log.info('Processing all reaches')
+
+    process_reaches_NEW(flowlines_lyr, out_lyr, att_filter)
+
+    # Process artifical paths through small waterbodies
+    if waterbodies_lyr is not None and waterbody_max_size is not None:
+        small_waterbodies = get_geometry_union(waterbodies, epsg, 'AreaSqKm <= ({0})'.format(waterbody_max_size))
+        log.info('Retaining artificial features within waterbody features smaller than {0}km2'.format(waterbody_max_size))
+        process_reaches_NEW(flowlines_lyr,
+                            out_lyr,
+                            transform=transform,
+                            att_filter='FCode = {0}'.format(artifical_reaches),
+                            clip_shape=small_waterbodies
+                            )
+
+    # Retain artifical paths through flow areas
+    if flowareas:
+        flow_polygons = get_geometry_union(flowareas, epsg)
+        if flow_polygons:
+            log.info('Retaining artificial features within flow area features')
+            process_reaches_NEW(flowlines_lyr,
+                                out_lyr,
+                                transform=transform,
+                                att_filter='FCode = {0}'.format(artifical_reaches),
+                                clip_shape=flow_polygons
+                                )
+
+        else:
+            log.info('Zero artifical paths to be retained.')
+
+    log.info(('{:,} features written to {:}'.format(outLayer.GetFeatureCount(), outpath)))
+    log.info('Process completed successfully.')
+
+
+def process_reaches_NEW(in_lyr, out_lyr, att_filter=None, transform=None, clip_shape=None):
+    for feature, _counter, _progbar in in_lyr.iterate_features("Processing reaches", att_filter=att_filter, clip_shape=clip_shape):
+        # get the input geometry and reproject the coordinates
+        geom = feature.GetGeometryRef()
+        if transform is not None:
+            geom.Transform(transform)
+
+        # Create output Feature
+        out_feature = ogr.Feature(out_lyr.ogr_layer_def)
+
+        # Add field values from input Layer
+        for i in range(0, out_lyr.ogr_layer_def.GetFieldCount()):
+            out_feature.SetField(out_lyr.ogr_layer_def.GetFieldDefn(i).GetNameRef(), feature.GetField(i))
+
+        # Add new feature to output Layer
+        out_feature.SetGeometry(geom)
+        out_lyr.ogr_layer.CreateFeature(out_feature)
