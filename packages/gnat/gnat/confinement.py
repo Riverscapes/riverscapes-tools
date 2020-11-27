@@ -25,7 +25,7 @@ from shapely.geometry import Point, Polygon, MultiPolygon, LineString, MultiLine
 
 from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALOGRErrors, ProgressBar
 from rscommons import GeopackageLayer, ShapefileLayer, VectorBase, get_shp_or_gpkg
-from rscommons.vector_ops import get_geometry_unary_union
+from rscommons.vector_ops import get_geometry_unary_union, copy_feature_class
 from rscommons.util import safe_makedirs, safe_remove_dir, safe_remove_file
 from gnat.utils.confinement_report import ConfinementReport
 from gnat.__version__ import __version__
@@ -36,14 +36,16 @@ gdal.UseExceptions()
 cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/Confinement.xsd', __version__)
 
 LayerTypes = {
-    # key: (name, id, tag, relpath)
-    'FLOWLINES': RSLayer('Flowlines', 'FLOWLINES', 'Vector', 'inputs/Flowlines.shp'),
-    'CONFINING_POLYGON': RSLayer('Confining Polygon', 'CONFINING_POLYGON', 'Vector', 'inputs/confining.shp'),
+    # key: (name, id, tag, relpath)]
+    'INPUTS': RSLayer('Confinement', 'INPUTS', 'Geopackage', 'inputs/inputs.gpkg', {
+        'FLOWLINES': RSLayer('Flowlines', 'FLOWLINES', 'Vector', 'Flowlines'),
+        'CONFINING_POLYGON': RSLayer('Confining Polygon', 'CONFINING_POLYGON', 'Vector', 'ConfiningPolygon'),
+    }),
     'CONFINEMENT_RUN_REPORT': RSLayer('Confinement Report', 'CONFINEMENT_RUN_REPORT', 'HTMLFile', 'outputs/confinement.html'),
     'CONFINEMENT': RSLayer('Confinement', 'CONFINEMENT', 'Geopackage', 'outputs/confinement.gpkg', {
-        'CONFINEMENT_RAW': RSLayer('Confinement Raw', 'CONFINEMENT_RAW', 'Vector', 'main.Confinement_Raw'),
-        'CONFINEMENT_MARGINS': RSLayer('Confinement Margins', 'CONFINEMENT_MARGINS', 'Vector', 'main.Confining_Margins'),
-        'CONFINEMENT_RATIO': RSLayer('Confinement Ratio', 'CONFINEMENT_RATIO', 'Vector', 'main.Confinement_Ratio')
+        'CONFINEMENT_RAW': RSLayer('Confinement Raw', 'CONFINEMENT_RAW', 'Vector', 'Confinement_Raw'),
+        'CONFINEMENT_MARGINS': RSLayer('Confinement Margins', 'CONFINEMENT_MARGINS', 'Vector', 'Confining_Margins'),
+        'CONFINEMENT_RATIO': RSLayer('Confinement Ratio', 'CONFINEMENT_RATIO', 'Vector', 'Confinement_Ratio')
     }),
 }
 
@@ -72,19 +74,28 @@ def confinement(huc, flowlines_orig, confining_polygon_orig, output_folder, buff
     if not (len(huc) == 4 or len(huc) == 8):
         raise Exception('Invalid HUC identifier. Must be four digit integer')
 
-    output_gpkg = os.path.join(output_folder, LayerTypes['CONFINEMENT'].rel_path)
-
-    # Creates an empty geopackage and replaces the old one
-    GeopackageLayer(output_gpkg, delete_dataset=True)
-
     # Make the projectXML
     project, _realization, proj_nodes, report_path = create_project(huc, output_folder, {
         'ConfinementType': confinement_type
     })
 
+    # Copy input shapes to a geopackage
+    flowlines_path = os.path.join(output_folder, LayerTypes['INPUTS'].rel_path, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
+    confining_path = os.path.join(output_folder, LayerTypes['INPUTS'].rel_path, LayerTypes['INPUTS'].sub_layers['CONFINING_POLYGON'].rel_path)
+
+    copy_feature_class(flowlines_orig, flowlines_path, epsg=cfg.OUTPUT_EPSG)
+    copy_feature_class(confining_polygon_orig, confining_path, epsg=cfg.OUTPUT_EPSG)
+
+    _nd, _inputs_gpkg_path, inputs_gpkg_lyrs = project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
+
+    output_gpkg = os.path.join(output_folder, LayerTypes['CONFINEMENT'].rel_path)
+
+    # Creates an empty geopackage and replaces the old one
+    GeopackageLayer(output_gpkg, delete_dataset=True)
+
     # Add the flowlines file with some metadata
-    flowline_node, flowlines_shp = project.add_project_vector(proj_nodes['Inputs'], LayerTypes['FLOWLINES'], flowlines_orig)
-    project.add_metadata({'BufferField': buffer_field}, flowline_node)
+    project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
+    project.add_metadata({'BufferField': buffer_field}, inputs_gpkg_lyrs['FLOWLINES'][0])
 
     # Add the confinement polygon
     # TODO: Since we don't know if the input layer is a shp or gpkg it's hard to add
@@ -95,11 +106,12 @@ def confinement(huc, flowlines_orig, confining_polygon_orig, output_folder, buff
     log.info(f"Preparing output geopackage: {output_gpkg}")
     log.info(f"Generating Confinement from buffer field: {buffer_field}")
 
-    # Load input datasets
-    with get_shp_or_gpkg(flowlines_shp) as flw_lyr, get_shp_or_gpkg(confining_polygon_orig) as confine_lyr:
+    # Load input datasets and set the global srs and a meter conversion factor
+    with GeopackageLayer(flowlines_path) as flw_lyr:
         srs = flw_lyr.spatial_ref
         meter_conversion = flw_lyr.rough_convert_metres_to_vector_units(1)
-        geom_confining_polygon = get_geometry_unary_union(confine_lyr, cfg.OUTPUT_EPSG)
+
+    geom_confining_polygon = get_geometry_unary_union(confining_path, cfg.OUTPUT_EPSG)
 
     # Calculate Spatial Constants
     # Get a very rough conversion factor for 1m to whatever units the shapefile uses
@@ -182,7 +194,7 @@ def confinement(huc, flowlines_orig, confining_polygon_orig, output_folder, buff
             lyr.ogr_layer.CreateField(field_lookup['message'])
 
     # Generate confinement per Flowline
-    with get_shp_or_gpkg(flowlines_shp) as flw_lyr, \
+    with GeopackageLayer(flowlines_path) as flw_lyr, \
             GeopackageLayer(output_gpkg, layer_name="Confining_Margins", write=True) as margins_lyr, \
             GeopackageLayer(output_gpkg, layer_name="Confinement_Raw", write=True) as raw_lyr, \
             GeopackageLayer(output_gpkg, layer_name="Confinement_Ratio", write=True) as ratio_lyr, \

@@ -239,10 +239,6 @@ class VectorBase():
             # Unrecognized driver
             raise NotImplementedError('Not implemented: {}'.format(self.driver_name))
 
-        # If we've supplied a fields dictionary then use it
-        if fields is not None:
-            self.create_fields(fields)
-
         # CHoose the spatial ref one of two ways:
         if epsg:
             self.spatial_ref = osr.SpatialReference()
@@ -255,10 +251,15 @@ class VectorBase():
         # Throw a warning if our axis mapping strategy is wrong
         self.check_axis_mapping()
 
-        # Get the output Layer's Feature Definition
         self.ogr_layer = self.ogr_ds.CreateLayer(self.ogr_layer_name, self.spatial_ref, geom_type=ogr_geom_type)
+
+        # Get the output Layer's Feature Definition
         self.ogr_geom_type = self.ogr_layer.GetGeomType()
         self.ogr_layer_def = self.ogr_layer.GetLayerDefn()
+
+        # If we've supplied a fields dictionary then use it
+        if fields is not None:
+            self.create_fields(fields)
 
     def create_layer_from_ref(self, ref: VectorBase, epsg: int = None, create_fields: bool = True):
         """Create a layer by referencing another VectorBase object.
@@ -383,17 +384,19 @@ class VectorBase():
         elif field_type is not None and field_type == ogr.OFTInteger64:
             self.log.error('ERROR:: ogr.OFTInteger64 is not supported by ESRI!')
 
-        # Delete output column from vector layer if it exists and then recreate it
-        for fieldidx in range(0, self.ogr_layer_def.GetFieldCount()):
-            if self.ogr_layer_def.GetFieldDefn(fieldidx).GetName() == field_name:
-                self.log.info('Deleting existing output field "{}" in vector layer.'.format(field_name))
-                self.ogr_layer.DeleteField(fieldidx)
-                break
-
-        self.log.info('Creating output field "{}" in layer.'.format(field_name))
-
         if field_def is None:
             field_def = ogr.FieldDefn(field_name, field_type)
+
+        # Delete output column from vector layer if it exists and then recreate it
+        for fieldidx in range(0, self.ogr_layer_def.GetFieldCount()):
+            old_def = self.ogr_layer_def.GetFieldDefn(fieldidx)
+            if old_def.GetName() == field_def.GetName():
+                if old_def.GetType() != field_def.GetType():
+                    raise VectorBaseException("Field already exists but types do not match: NEW: {} vs. OLD: {}".format(old_def.GetTypeName(), field_def.GetTypeName()))
+                self.log.info('Field "{}" already exists.'.format(field_name))
+                return old_def
+
+        self.log.info('Creating output field "{}" in layer.'.format(field_name))
 
         # Good precision convention for Real floating point values
         if field_type is not None and field_type == ogr.OFTReal:

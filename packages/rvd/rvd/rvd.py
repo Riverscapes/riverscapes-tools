@@ -17,31 +17,34 @@ import uuid
 import datetime
 import time
 import xml.etree.ElementTree as ET
-from osgeo import ogr
-from osgeo import gdal
+from osgeo import ogr, gdal, osr
 import rasterio
 from rasterio import features
 import numpy as np
 import sqlite3
 import csv
 from collections import OrderedDict
+from typing import List, Dict
 
 from rscommons.util import safe_makedirs
 from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALOGRErrors, ProgressBar
 from rscommons.util import safe_makedirs, safe_remove_dir
-from rscommons.build_network import build_network
-from rscommons.segment_network import segment_network
-from rscommons.database import create_database
-from rscommons.database import populate_database
+from rscommons import GeopackageLayer, ShapefileLayer, VectorBase, get_shp_or_gpkg
+from rscommons.build_network import build_network_NEW
+from rscommons.segment_network import segment_network_NEW
+from rscommons.database import create_database_NEW
+from rscommons.database import populate_database_NEW
 from rscommons.reach_attributes import write_attributes, write_reach_attributes
-from rscommons.shapefile import get_geometry_unary_union_from_wkt, get_transform_from_epsg, get_transform_from_wkt
+from rscommons.vector_ops import get_geometry_unary_union, copy_feature_class
 from rscommons.thiessen.vor import NARVoronoi
 from rscommons.thiessen.shapes import centerline_points, clip_polygons, dissolve_by_points
 
 # from rvd.report import report
+from rvd.lib.load_vegetation import load_vegetation_raster
+from rvd.lib.classify_conversions import classify_conversions
 from rvd.__version__ import __version__
 
-from typing import List, Dict
+
 Path = str
 
 initGDALOGRErrors()
@@ -52,54 +55,39 @@ LayerTypes = {
     # key: (name, id, tag, relpath)
     'EXVEG': RSLayer('Existing Vegetation', 'EXVEG', 'Raster', 'inputs/existing_veg.tif'),
     'HISTVEG': RSLayer('Historic Vegetation', 'HISTVEG', 'Raster', 'inputs/historic_veg.tif'),
-    'FLOWLINES': RSLayer('NHD Flowlines', 'FLOWLINES', 'Vector', 'inputs/NHDFlowline.shp'),
-    'FLOW_AREA': RSLayer('NHD Flow Area', 'FLOW_AREA', 'Vector', 'inputs/NHDArea.shp'),
-    'WATERBODIES': RSLayer('NHD Waterbody', 'WATERBODIES', 'Vector', 'inputs/NHDWaterbody.shp'),
-    'VALLEY_BOTTOM': RSLayer('Valley Bottom', 'VALLEY_BOTTOM', 'Vector', 'inputs/valley_bottom.shp'),
-    'CLEANED': RSLayer('Cleaned Network', 'CLEANED', 'Vector', 'intermediates/intermediate_nhd_network.shp'),
-    'NETWORK': RSLayer('Network', 'NETWORK', 'Vector', 'intermediates/network.shp'),
-    'THIESSEN': RSLayer('Network', 'THIESSEN', 'Vector', 'intermediates/thiessen.shp'),
-    'SEGMENTED': RSLayer('BRAT Network', 'SEGMENTED', 'Vector', 'outputs/rvd.shp'),
-    'SQLITEDB': RSLayer('BRAT Database', 'BRATDB', 'SQLiteDB', 'outputs/rvd.sqlite'),  # TODO: change this to output geopackage
+    'INPUTS': RSLayer('Confinement', 'INPUTS', 'Geopackage', 'inputs/inputs.gpkg', {
+        'FLOWLINES': RSLayer('NHD Flowlines', 'FLOWLINES', 'Vector', 'NHDFlowline'),
+        'FLOW_AREA': RSLayer('NHD Flow Area', 'FLOW_AREA', 'Vector', 'NHDArea'),
+        'WATERBODIES': RSLayer('NHD Waterbody', 'WATERBODIES', 'Vector', 'NHDWaterbody'),
+        'VALLEY_BOTTOM': RSLayer('Valley Bottom', 'VALLEY_BOTTOM', 'Vector', 'valley_bottom'),
+    }),
+    'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/intermediates.gpkg', {
+        'CLEANED': RSLayer('Cleaned Network', 'CLEANED', 'Vector', 'intermediate_nhd_network'),
+        'NETWORK': RSLayer('Network', 'NETWORK', 'Vector', 'network'),
+        'THIESSEN': RSLayer('Network', 'THIESSEN', 'Vector', 'thiessen'),
+    }),
+    'OUTPUTS': RSLayer('RVD', 'OUTPUTS', 'Geopackage', 'outputs/outputs.gpkg', {
+        'RVD': RSLayer('RVD', 'SEGMENTED', 'Vector', 'rvd')
+    }),
     'REPORT': RSLayer('RVD Report', 'RVD_REPORT', 'HTMLFile', 'outputs/rvd.html')
-}  # TODO: Include intermediate rasters?
-
-# Dictionary of fields that this process outputs, keyed by ShapeFile data type
-output_fields = {
-    ogr.OFTString: ['Risk', 'Limitation', 'Opportunity'],
-    ogr.OFTInteger: ['RiskID', 'LimitationID', 'OpportunityID'],
-    ogr.OFTReal: ['iVeg100EX', 'iVeg_30EX', 'iVeg100HPE', 'iVeg_30HPE', 'iPC_LU',
-                  'iPC_VLowLU', 'iPC_LowLU', 'iPC_ModLU', 'iPC_HighLU', 'iHyd_QLow',
-                  'iHyd_Q2', 'iHyd_SPLow', 'iHyd_SP2', 'oVC_HPE', 'oVC_EX', 'oCC_HPE',
-                  'mCC_HPE_CT', 'oCC_EX', 'mCC_EX_CT', 'mCC_HisDep']
 }
 
-# This dictionary reassigns databae column names to 10 character limit for the ShapeFile
-shapefile_field_aliases = {
-    'WatershedID': 'HUC'
-}
 
-Epochs = [
-    # (epoch, prefix, LayerType, OrigId)
-    ('Existing', 'EX', 'EXVEG_SUIT', 'EXVEG'),
-    ('Historic', 'HPE', 'HISTVEG_SUIT', 'HISTVEG')
-]
-
-
-def rvd(huc: int, max_length: float, min_length: float, flowlines: Path, existing_veg: Path, historic_veg: Path, valley_bottom: Path, output_folder: Path, reach_codes: List[int], flow_areas: Path, waterbodies: Path):
+def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_orig: Path,
+        valley_bottom_orig: Path, output_folder: Path, reach_codes: List[int], flow_areas_orig: Path, waterbodies_orig: Path):
     """[Generate segmented reaches on flowline network and calculate RVD from historic and existing vegetation rasters
 
     Args:
         huc (integer): Watershed ID
         max_length (float): maximum length for reach segmentation
         min_length (float): minimum length for reach segmentation
-        flowlines (Path): NHD flowlines feature layer
-        existing_veg (Path): LANDFIRE version 2.00 evt raster, with adjacent xml metadata file
-        historic_veg (Path): LANDFIRE version 2.00 bps raster, with adjacent xml metadata file
-        valley_bottom (Path): Vbet polygon feature layer
+        flowlines_orig (Path): NHD flowlines feature layer
+        existing_veg_orig (Path): LANDFIRE version 2.00 evt raster, with adjacent xml metadata file
+        historic_veg_orig (Path): LANDFIRE version 2.00 bps raster, with adjacent xml metadata file
+        valley_bottom_orig (Path): Vbet polygon feature layer
         output_folder (Path): destination folder for project output
         reach_codes (List[int]): NHD reach codes for features to include in outputs
-        flow_areas (Path): NHD flow area polygon feature layer
+        flow_areas_orig (Path): NHD flow area polygon feature layer
         waterbodies (Path): NHD waterbodies polygon feature layer
     """
 
@@ -119,62 +107,85 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines: Path, existin
     project, _realization, proj_nodes = create_project(huc, output_folder)
 
     log.info('Adding inputs to project')
-    _prj_existing_path_node, prj_existing_path = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['EXVEG'], existing_veg)
-    _prj_historic_path_node, prj_historic_path = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HISTVEG'], historic_veg)
+    _prj_existing_path_node, prj_existing_path = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['EXVEG'], existing_veg_orig)
+    _prj_historic_path_node, prj_historic_path = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HISTVEG'], historic_veg_orig)
 
+    # TODO: Don't forget the att_filter
+    # _prj_flowlines_node, prj_flowlines = project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'], flowlines, att_filter="\"ReachCode\" Like '{}%'".format(huc))
     # Copy in the vectors we need
-    _prj_flowlines_node, prj_flowlines = project.add_project_vector(proj_nodes['Inputs'], LayerTypes['FLOWLINES'], flowlines, att_filter="\"ReachCode\" Like '{}%'".format(huc))
-    _prj_flow_areas_node, prj_flow_areas = project.add_project_vector(proj_nodes['Inputs'], LayerTypes['FLOW_AREA'], flow_areas) if flow_areas else None
-    _prj_waterbodies_node, prj_waterbodies = project.add_project_vector(proj_nodes['Inputs'], LayerTypes['WATERBODIES'], waterbodies) if waterbodies else None
-    _prj_valley_bottom_node, prj_valley_bottom = project.add_project_vector(proj_nodes['Inputs'], LayerTypes['VALLEY_BOTTOM'], valley_bottom) if valley_bottom else None
+    inputs_gpkg_path = os.path.join(output_folder, LayerTypes['INPUTS'].rel_path)
+    intermediates_gpkg_path = os.path.join(output_folder, LayerTypes['INTERMEDIATES'].rel_path)
+    outputs_gpkg_path = os.path.join(output_folder, LayerTypes['OUTPUTS'].rel_path)
 
-    # Other layers we need
-    _cleaned_path_node, cleaned_path = project.add_project_vector(proj_nodes['Intermediates'], LayerTypes['CLEANED'], replace=True)
-    _thiessen_path_node, thiessen_path = project.add_project_vector(proj_nodes['Intermediates'], LayerTypes['THIESSEN'], replace=True)
-    _segmented_path_node, segmented_path = project.add_project_vector(proj_nodes['Outputs'], LayerTypes['SEGMENTED'], replace=True)
-    _report_path_node, report_path = project.add_project_vector(proj_nodes['Outputs'], LayerTypes['REPORT'], replace=True)
+    # Create 3 empty geopackages
+    GeopackageLayer(inputs_gpkg_path, delete_dataset=True)
+    GeopackageLayer(intermediates_gpkg_path, delete_dataset=True)
+    GeopackageLayer(outputs_gpkg_path, delete_dataset=True)
 
-    # Generate GPKG for Intermediates
-    driver_gpkg = ogr.GetDriverByName("GPKG")
-    intermediate_gpkg = os.path.join(output_folder, "Intermediates", "rvd_intermediates.gpkg")
-    driver_gpkg.CreateDataSource(intermediate_gpkg)
-    output_gkpg = os.path.join(output_folder, "Outputs", "rvd.gpkg")
-    driver_gpkg.CreateDataSource(output_gkpg)
+    # Copy our input layers and also find the difference in the geometry for the valley bottom
+    flowlines_path = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
+    vbottom_path = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['VALLEY_BOTTOM'].rel_path)
 
-    # Spatial Reference Setup
-    spatialRef = ogr.osr.SpatialReference()
-    spatialRef.ImportFromEPSG(cfg.OUTPUT_EPSG)
-    spatialRef.SetAxisMappingStrategy(ogr.osr.OAMS_TRADITIONAL_GIS_ORDER)
+    copy_feature_class(flowlines_orig, flowlines_path, epsg=cfg.OUTPUT_EPSG)
+    copy_feature_class(valley_bottom_orig, vbottom_path, epsg=cfg.OUTPUT_EPSG)
+
+    with GeopackageLayer(flowlines_path) as flow_lyr:
+        # Set the output spatial ref as this for the whole project
+        out_srs = flow_lyr.spatial_ref
+
+    geom_vbottom = get_geometry_unary_union(vbottom_path)
+
+    flowareas_path = None
+    if flow_areas_orig:
+        flowareas_path = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['FLOW_AREA'].rel_path)
+        copy_feature_class(flow_areas_orig, flowareas_path, epsg=cfg.OUTPUT_EPSG)
+        geom_flow_areas = get_geometry_unary_union(flowareas_path)
+        # Difference with existing vbottom
+        geom_vbottom = geom_vbottom.difference(geom_flow_areas)
+    else:
+        del LayerTypes['INPUTS'].sub_layers['FLOW_AREA']
+
+    waterbodies_path = None
+    if waterbodies_orig:
+        waterbodies_path = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['WATERBODIES'].rel_path)
+        copy_feature_class(waterbodies_orig, waterbodies_path, epsg=cfg.OUTPUT_EPSG)
+        geom_waterbodies = get_geometry_unary_union(waterbodies_path)
+        # Difference with existing vbottom
+        geom_vbottom = geom_vbottom.difference(geom_waterbodies)
+    else:
+        del LayerTypes['INPUTS'].sub_layers['WATERBODIES']
+
+    # Add the inputs to the XML
+    _nd, _in_gpkg_path, _sublayers = project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
 
     # Transform issues reading 102003 as espg id. Using sr wkt seems to work, however arcgis has problems loading feature classes with this method...
-    srs = ogr.osr.SpatialReference()
-    # raster_epsg = 102003
-    # srs.ImportFromEPSG(raster_epsg)
-    dataset = gdal.Open(prj_existing_path, 0)
-    sr = dataset.GetProjection()
-    srs.ImportFromWkt(sr)
-    out_sr, transform_shp_to_raster = get_transform_from_wkt(spatialRef, sr)
-    # _out_sr, transform_shp_to_raster = get_transform_from_epsg(spatialRef, raster_epsg)
+    raster_srs = ogr.osr.SpatialReference()
+    ds = gdal.Open(prj_existing_path, 0)
+    raster_srs.ImportFromWkt(ds.GetProjectionRef())
+    raster_srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+    transform_shp_to_raster = VectorBase.get_transform(out_srs, raster_srs)
 
     # Filter the flow lines to just the required features and then segment to desired length
-    build_network(prj_flowlines, prj_flow_areas, prj_waterbodies, cleaned_path, cfg.OUTPUT_EPSG, reach_codes, None)
-    segment_network(cleaned_path, segmented_path, max_length, min_length)
+    # TODO: These are brat methods that need to be refactored to use VectorBase layers
+    cleaned_path = os.path.join(output_folder, LayerTypes['INTERMEDIATES'].rel_path, LayerTypes['INTERMEDIATES'].sub_layers['CLEANED'].rel_path)
 
-    metadata = {
-        'RVD_DateTime': datetime.datetime.now().isoformat(),
-        'Max_Length': max_length,
-        'Min_Length': min_length,
-        'Reach_Codes': reach_codes,
-    }
+    output_gkpg = os.path.join(output_folder, LayerTypes['OUTPUTS'].rel_path)
+    segmented_path = os.path.join(output_gkpg, LayerTypes['OUTPUTS'].sub_layers['RVD'].rel_path)
 
-    # TODO change to output geopackage
-    db_path = os.path.join(output_folder, LayerTypes['SQLITEDB'].rel_path)
-    watesrhed_name = create_database(huc, db_path, metadata, cfg.OUTPUT_EPSG, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'rvd_schema.sql'))
-    populate_database(db_path, segmented_path, huc)
-    project.add_metadata({'Watershed': watesrhed_name})
+    build_network_NEW(flowlines_path, flowareas_path, cleaned_path, waterbodies_path=waterbodies_path, epsg=cfg.OUTPUT_EPSG, reach_codes=reach_codes)
+    segment_network_NEW(cleaned_path, segmented_path, max_length, min_length)
 
-    # Add this to the project file
-    project.add_dataset(proj_nodes['Outputs'], db_path, LayerTypes['SQLITEDB'], 'SQLiteDB')
+    # TODO: Bring back the data tables
+    # metadata = {
+    #     'RVD_DateTime': datetime.datetime.now().isoformat(),
+    #     'Max_Length': max_length,
+    #     'Min_Length': min_length,
+    #     'Reach_Codes': reach_codes,
+    # }
+
+    # watesrhed_name = create_database_NEW(huc, output_gkpg, metadata, cfg.OUTPUT_EPSG, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'rvd_schema.sql'))
+    # populate_database_NEW(output_gkpg, segmented_path, huc)
+    # project.add_metadata({'Watershed': watesrhed_name})
 
     # Generate Voroni polygons
     log.info("Calculating Voronoi Polygons...")
@@ -195,26 +206,23 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines: Path, existin
 
     # Clip Thiessen Polys
     log.info("Clipping Thiessen Polygons to Valley Bottom")
-    geom_vbottom = get_geometry_unary_union_from_wkt(prj_valley_bottom, sr)  # cfg.OUTPUT_EPSG)
-    if waterbodies:
-        geom_waterbodies = get_geometry_unary_union_from_wkt(prj_waterbodies, sr)
-        geom_vbottom = geom_vbottom.difference(geom_waterbodies)
-    if flow_areas:
-        geom_flow_areas = get_geometry_unary_union_from_wkt(prj_flow_areas, sr)
-        geom_vbottom = geom_vbottom.difference(geom_flow_areas)
+
     clipped_thiessen = clip_polygons(geom_vbottom, dissolved_polys)
 
     # Save Intermediates
-    simple_save(clipped_thiessen.values(), ogr.wkbPolygon, out_sr, "Thiessen", intermediate_gpkg)
-    simple_save(dissolved_polys.values(), ogr.wkbPolygon, out_sr, "ThiessenPolygonsDissolved", intermediate_gpkg)
-    simple_save(myVorL.polys, ogr.wkbPolygon, out_sr, "ThiessenPolygonsRaw", intermediate_gpkg)
-    simple_save([pt.point for pt in flowline_thiessen_points], ogr.wkbPoint, out_sr, "Thiessen_Points", intermediate_gpkg)
+    simple_save(clipped_thiessen.values(), ogr.wkbPolygon, out_srs, "Thiessen", intermediates_gpkg_path)
+    simple_save(dissolved_polys.values(), ogr.wkbPolygon, out_srs, "ThiessenPolygonsDissolved", intermediates_gpkg_path)
+    simple_save(myVorL.polys, ogr.wkbPolygon, out_srs, "ThiessenPolygonsRaw", intermediates_gpkg_path)
+    simple_save([pt.point for pt in flowline_thiessen_points], ogr.wkbPoint, out_srs, "Thiessen_Points", intermediates_gpkg_path)
 
     # Load Vegetation Rasters
     log.info(f"Loading Existing and Historic Vegetation Rasters")
     vegetation = {}
     vegetation["EXISTING"] = load_vegetation_raster(prj_existing_path, True, output_folder=os.path.join(output_folder, 'Intermediates'))
     vegetation["HISTORIC"] = load_vegetation_raster(prj_historic_path, False, output_folder=os.path.join(output_folder, 'Intermediates'))
+
+    if vegetation["EXISTING"]["RAW"].shape != vegetation["HISTORIC"]["RAW"].shape:
+        raise Exception('Vegetation raster shapes are not equal Existing={} Historic={}. Cannot continue'.format(vegetation["EXISTING"]["RAW"].shape, vegetation["HISTORIC"]["RAW"].shape))
 
     # Vegetation zone calculations
     riparian_zone_arrays = {}
@@ -224,7 +232,7 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines: Path, existin
 
     # Save Intermediate Rasters
     for name, raster in riparian_zone_arrays.items():
-        save_numpy_to_geotiff(raster, os.path.join(output_folder, "Intermediates", f"{name}.tif"), prj_existing_path)
+        save_intarr_to_geotiff(raster, os.path.join(output_folder, "Intermediates", f"{name}.tif"), prj_existing_path)
 
     # Calculate Riparian Departure per Reach
     riparian_arrays = {f"{epoch}_{name}_MEAN": array for epoch, arrays in vegetation.items() for name, array in arrays.items() if name in ["RIPARIAN", "NATIVE_RIPARIAN"]}
@@ -233,11 +241,14 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines: Path, existin
 
     # Generate Vegetation Conversions
     vegetation_change = (vegetation["HISTORIC"]["CONVERSION"] - vegetation["EXISTING"]["CONVERSION"])
-    save_numpy_to_geotiff(vegetation_change, os.path.join(output_folder, "Intermediates", "Conversion_Raster.tif"), prj_existing_path)
+    save_intarr_to_geotiff(vegetation_change, os.path.join(output_folder, "Intermediates", "Conversion_Raster.tif"), prj_existing_path)
     conversion_classifications = [row for row in csv.DictReader(open(os.path.join(os.path.dirname(__file__), "conversion_proportions.csv"), "rt"))]
 
     # Split vegetation change classes into binary arrays
-    vegetation_change_arrays = {c["ConversionType"]: (vegetation_change == int(c["ConversionValue"])) * 1 if int(c["ConversionValue"]) in np.unique(vegetation_change) else None for c in conversion_classifications}
+    vegetation_change_arrays = {
+        c["ConversionType"]: (vegetation_change == int(c["ConversionValue"])) * 1 if int(c["ConversionValue"]) in np.unique(vegetation_change) else None
+        for c in conversion_classifications
+    }
 
     # Calcuate vegetation conversion per reach
     reach_values = extract_mean_values_by_polygon(clipped_thiessen, vegetation_change_arrays, prj_existing_path)
@@ -327,68 +338,18 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines: Path, existin
             reachid) for reachid, value in riparian_departure_values.items()])
         conn.commit()
 
-    # Calculate the proportion of vegetation for each vegetation Epoch
-    for epoch, prefix, ltype, orig_id in Epochs:
-        log.info('Processing {} epoch'.format(epoch))
-
-        # TODO Copy BRAT build output fields from SQLite to ShapeFile in batches according to data type
     log.info('Copying values from SQLite to output ShapeFile')
-    # write_reach_attributes(segmented_path, db_path, output_fields, shapefile_field_aliases)
+
+    # Add intermediates and the report to the XML
+    project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
+    project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['OUTPUTS'])
+
+    # Add the report to the XML
+    project.add_project_vector(proj_nodes['Outputs'], LayerTypes['REPORT'], replace=True)
 
     # report(db_path, report_path)
 
     log.info('RVD complete')
-
-
-def classify_conversions(arrays: Dict[int, Dict[str, float]], conversion_classifications: List[dict]):
-    """classify conversion by code and type using binned classes
-
-    Args:
-        arrays (dict): reach dictionaries with conversion type dictionaries to classify
-        conversion_classifications (List(dict)): list of dicitionaries generated by conversion csv
-
-    Returns:
-        Dict: reach dictionary of conversion types and codes
-    """
-
-    bins = OrderedDict([("Very Minor", 0.1),
-                        ("Minor", 0.25),
-                        ("Moderate", 0.5),
-                        ("Significant", 1.0)])  # value <= bin
-    output = {}
-
-    pos_classes = {value["ConversionType"]: value for value in conversion_classifications if int(value["ConversionValue"]) > 0}
-    neg_classes = {value["ConversionType"]: value for value in conversion_classifications if int(value["ConversionValue"]) < 0}
-    for reach_id, reach_values in arrays.items():
-        pos_reach_values = {key: reach_values[key] for key in pos_classes.keys()}
-        neg_reach_values = {key: reach_values[key] for key in neg_classes.keys()}
-        sum_neg_classes = sum(list(neg_reach_values.values()))
-
-        if reach_values["NoChange"] >= 0.85:  # no change is over .85
-            reach_values["ConversionCode"] = 1
-            reach_values["ConversionType"] = "No Change"
-            output[reach_id] = reach_values
-        elif all([value < sum_neg_classes for value in pos_reach_values.values()]):
-            for text, b, code in zip(bins.keys(), bins.values(), [70, 71, 72, 73]):
-                if sum_neg_classes <= b:
-                    reach_values["ConversionCode"] = int(code)
-                    reach_values["ConversionType"] = f"{text} {f'Change' if text in ['Very Minor', 'Minor'] else 'Riparian Expansion'}"
-                    output[reach_id] = reach_values
-                    break
-        elif any([v > 0.0 for v in pos_reach_values.values()]):
-            key = max(pos_reach_values, key=pos_reach_values.get)
-            classification = pos_classes[key]
-            for text, b in bins.items():
-                if reach_values[key] <= b:  # check
-                    reach_values["ConversionCode"] = int(classification[text.replace(" ", "")])
-                    reach_values["ConversionType"] = f"{text} {f'Change' if text in ['Very Minor', 'Minor'] else f'Conversion to {key}'}"
-                    output[reach_id] = reach_values
-                    break
-        else:
-            reach_values["ConversionCode"] = 0
-            reach_values["ConversionType"] = f"Unknown"
-            output[reach_id] = reach_values
-    return output
 
 
 def extract_mean_values_by_polygon(polys, rasters, reference_raster):
@@ -397,7 +358,7 @@ def extract_mean_values_by_polygon(polys, rasters, reference_raster):
 
         output = {}
         for reachid, poly in polys.items():
-            if poly.geom_type in ["Polygon", "MultiPolygon"]:
+            if poly.geom_type in ["Polygon", "MultiPolygon"] and poly.area > 0:
                 values = {}
                 reach_raster = np.ma.masked_invalid(
                     features.rasterize(
@@ -420,152 +381,6 @@ def extract_mean_values_by_polygon(polys, rasters, reference_raster):
     return output
 
 
-def load_vegetation_raster(rasterpath, existing=False, output_folder=None):
-
-    conversion_lookup = {
-        "Open Water": 500,
-        "Riparian": 100,
-        "Hardwood": 100,
-        "Grassland": 50,
-        "Shrubland": 50,
-        "Non-vegetated": 40,
-        "Snow-Ice": 40,
-        "Sparsely Vegetated": 40,
-        "Barren": 40,
-        "Hardwood-Conifer": 20,  # New for LANDFIRE 200
-        "Conifer-Hardwood": 20,
-        "Conifer": 20,
-        "Developed": 2,
-        "Developed-Low Intensity": 2,
-        "Developed-Medium Intensity": 2,
-        "Developed-High Intensity": 2,
-        "Developed-Roads": 2,
-        "Quarries-Strip Mines-Gravel Pits-Well and Wind Pads": 2,  # Updated for LANDFIRE 200
-        "Exotic Tree-Shrub": 3,
-        "Exotic Herbaceous": 3,
-        "Ruderal Wet Meadow and Marsh": 3,  # New for LANDFIRE 200
-        "Agricultural": 1
-    } if existing else {
-        "Open Water": 500,
-        "Riparian": 100,
-        "Hardwood": 100,
-        "Shrubland": 50,
-        "Grassland": 50,
-        "Perennial Ice/Snow": 40,
-        "Barren-Rock/Sand/Clay": 40,
-        "Sparse": 40,
-        "Conifer": 20,
-        "Hardwood-Conifer": 20,
-        "Conifer-Hardwood": 20}
-
-    vegetated_classes = [
-        "Riparian",
-        "Hardwood",
-        "Hardwood-Conifer",
-        "Grassland",
-        "Shrubland",
-        "Sparsely Vegetated",
-        "Conifer-Hardwood",
-        "Conifer",
-        "Ruderal Wet Meadow and Marsh",
-        "Agricultural"
-    ] if existing else [
-        "Riparian",
-        "Hardwood",
-        "Conifer",
-        "Shrubland",
-        "Hardwood-Conifer",
-        "Conifer-Hardwood",
-        "Grassland"]
-
-    lui_lookup = {  # TODO check for Landfire 200 updates
-        "Agricultural-Aquaculture": 0.66,
-        "Agricultural-Bush fruit and berries": 0.66,
-        "Agricultural-Close Grown Crop": 0.66,
-        "Agricultural-Fallow/Idle Cropland": 0.33,
-        "Agricultural-Orchard": 0.66,
-        "Agricultural-Pasture and Hayland": 0.33,
-        "Agricultural-Row Crop": 0.66,
-        "Agricultural-Row Crop-Close Grown Crop": 0.66,
-        "Agricultural-Vineyard": 0.66,
-        "Agricultural-Wheat": 0.66,
-        "Developed-High Intensity": 1.0,
-        "Developed-Medium Intensity": 1.0,
-        "Developed-Low Intensity": 1.0,
-        "Developed-Roads": 1.0,
-        "Developed-Upland Deciduous Forest": 1.0,
-        "Developed-Upland Evergreen Forest": 1.0,
-        "Developed-Upland Herbaceous": 1.0,
-        "Developed-Upland Mixed Forest": 1.0,
-        "Developed-Upland Shrubland": 1.0,
-        "Managed Tree Plantation - Northern and Central Hardwood and Conifer Plantation Group": 0.66,
-        "Managed Tree Plantation - Southeast Conifer and Hardwood Plantation Group": 0.66,
-        "Quarries-Strip Mines-Gravel Pits": 1.0}
-
-    # rows = [row for row in csv.Reader(open(f"{rasterpath}.meta.csv"), "rt")]
-    # field_names = rows.pop(0)
-
-    # conversion_values = {int(row[0]): conversion_lookup.setdefault(row[field_names.index("" if exisitng else "")], 0) for row in rows}
-    # riparian_values = {}
-    # native_riparian_values = {}
-    # vegetation_values = {}
-    # lui_values = {} if existing else None
-    # Read xml for reclass - arcgis tends to overwrite this file. use csv instead and make sure to ship with rasters
-    root = ET.parse(f"{rasterpath}.aux.xml").getroot()
-    ifield_value = int(root.findall(".//FieldDefn/[Name='VALUE']")[0].attrib['index'])
-    ifield_conversion_source = int(root.findall(".//FieldDefn/[Name='EVT_PHYS']")[0].attrib['index']) if existing else int(root.findall(".//FieldDefn/[Name='GROUPVEG']")[0].attrib['index'])
-    ifield_group_name = int(root.findall(".//FieldDefn/[Name='EVT_GP_N']")[0].attrib['index']) if existing else int(root.findall(".//FieldDefn/[Name='GROUPNAME']")[0].attrib['index'])
-
-    # Load reclass values
-
-    conversion_values = {int(n[ifield_value].text): conversion_lookup.setdefault(n[ifield_conversion_source].text, 0) for n in root.findall(".//Row")}
-    riparian_values = {int(n[ifield_value].text): 1 if n[ifield_conversion_source].text == "Riparian" else 0 for n in root.findall(".//Row")}
-    native_riparian_values = {int(n[ifield_value].text): 1 if n[ifield_conversion_source].text == "Riparian" and not ("Introduced" in n[ifield_group_name].text) else 0 for n in root.findall(".//Row")}
-    vegetation_values = {int(n[ifield_value].text): 1 if n[ifield_conversion_source].text in vegetated_classes else 0 for n in root.findall(".//Row")}
-    lui_values = {int(n[ifield_value].text): lui_lookup.setdefault(n[ifield_group_name].text, 0) for n in root.findall(".//Row")} if existing else None
-
-    # Read array
-    with rasterio.open(rasterpath) as raster:
-        no_data = raster.nodatavals[0]
-        conversion_values[no_data] = 0
-        riparian_values[no_data] = 0
-        native_riparian_values[no_data] = 0
-        vegetation_values[no_data] = 0
-        if existing:
-            lui_values[no_data] = 0.0
-
-        # Reclass array https://stackoverflow.com/questions/16992713/translate-every-element-in-numpy-array-according-to-key
-        raw_array = raster.read(1)
-        riparian_array = np.vectorize(riparian_values.get)(raw_array).astype(int)
-        native_riparian_array = np.vectorize(native_riparian_values.get)(raw_array).astype(int)
-        vegetated_array = np.vectorize(vegetation_values.get)(raw_array).astype(int)
-        conversion_array = np.vectorize(conversion_values.get)(raw_array).astype(int)
-        lui_array = np.vectorize(lui_values.get)(raw_array).astype(int) if existing else None
-
-        output = {"RAW": raw_array,
-                  "RIPARIAN": riparian_array,
-                  "NATIVE_RIPARIAN": native_riparian_array,
-                  "VEGETATED": vegetated_array,
-                  "CONVERSION": conversion_array,
-                  "LUI": lui_array}
-
-        if output_folder:
-            for raster_name, raster_array in output.items():
-                if raster_array is not None:
-                    with rasterio.open(os.path.join(output_folder, f"{'EXISTING' if existing else 'HISTORIC'}_{raster_name}.tiff"),
-                                       'w',
-                                       driver='GTiff',
-                                       height=raster.height,
-                                       width=raster.width,
-                                       count=1,
-                                       dtype=raster_array.dtype,
-                                       crs=raster.crs,
-                                       transform=raster.transform) as dataset:
-                        dataset.write(raster_array, 1)
-
-    return output
-
-
 def riparian_departure(mean_riparian):
     output = {}
     for reachid, values in mean_riparian.items():
@@ -576,35 +391,32 @@ def riparian_departure(mean_riparian):
     return output
 
 
-def simple_save(list_geoms, ogr_type, srs, layer_name, out_folder):
-    if out_folder[-4:] == 'gpkg':
-        out_file = os.path.join(out_folder, f"{layer_name}")
-        driver = ogr.GetDriverByName("GPKG")
-        data_source = driver.Open(out_folder, 1)
-    else:
-        out_file = os.path.join(out_folder, f"{layer_name}.shp")
-        driver = ogr.GetDriverByName("ESRI Shapefile")
-        data_source = driver.CreateDataSource(out_file)
-        # driver.Open(out_file, 1)
+def simple_save(list_geoms, ogr_type, srs, layer_name, gpkg_path):
+    with GeopackageLayer(gpkg_path, layer_name, write=True) as lyr:
+        lyr.create_layer(ogr_type, spatial_ref=srs)
 
-    lyr = data_source.CreateLayer(layer_name, srs, geom_type=ogr_type)
-    featdef = lyr.GetLayerDefn()
-
-    progbar = ProgressBar(len(list_geoms), 50, f"Saving {out_file}")
-    counter = 0
-    progbar.update(counter)
-    lyr.StartTransaction()
-    for geom in list_geoms:
-        counter += 1
+        progbar = ProgressBar(len(list_geoms), 50, f"Saving {gpkg_path}/{layer_name}")
+        counter = 0
         progbar.update(counter)
-        save_geom_to_feature(lyr, featdef, geom)
-    lyr.CommitTransaction()
-    lyr = None
-    data_source = None
-    return out_file
+        lyr.ogr_layer.StartTransaction()
+        for geom in list_geoms:
+            counter += 1
+            progbar.update(counter)
+
+            feature = ogr.Feature(lyr.ogr_layer_def)
+            geom_ogr = ogr.CreateGeometryFromWkb(geom.wkb)
+            feature.SetGeometry(geom_ogr)
+            # if attributes:
+            #     for field, value in attributes.items():
+            #         feature.SetField(field, value)
+            lyr.ogr_layer.CreateFeature(feature)
+            feature = None
+
+        progbar.finish()
+        lyr.ogr_layer.CommitTransaction()
 
 
-def save_numpy_to_geotiff(array, out_file, reference_raster):
+def save_intarr_to_geotiff(array, out_file, reference_raster):
     with rasterio.open(reference_raster) as reference:
         with rasterio.open(out_file,
                            "w",
@@ -612,29 +424,10 @@ def save_numpy_to_geotiff(array, out_file, reference_raster):
                            height=array.shape[0],
                            width=array.shape[1],
                            count=1,
-                           dtype=array.dtype,
+                           dtype=np.int16,
                            crs=reference.crs,
                            transform=reference.transform) as new:
-            new.write(array, 1)
-
-
-def save_geom_to_feature(out_layer, feature_def, geom, attributes=None):
-    """save shapely geometry as a new feature
-
-    Args:
-        out_layer (ogr layer): output feature layer
-        feature_def (ogr feature definition): feature definition of the output feature layer
-        geom (geometry): geometry to save to feature
-        attributes (dict, optional): dictionary of fieldname and attribute values. Defaults to None.
-    """
-    feature = ogr.Feature(feature_def)
-    geom_ogr = ogr.CreateGeometryFromWkb(geom.wkb)
-    feature.SetGeometry(geom_ogr)
-    if attributes:
-        for field, value in attributes.items():
-            feature.SetField(field, value)
-    out_layer.CreateFeature(feature)
-    feature = None
+            new.write(array.astype(np.int16), 1)
 
 
 def create_project(huc, output_dir):
@@ -676,13 +469,12 @@ def main():
 
     parser.add_argument('huc', help='HUC identifier', type=str)
     parser.add_argument('max_length', help='Maximum length of features when segmenting. Zero causes no segmentation.', type=float)
-    parser.add_argument('min_length', help='min_length input', type=float)
+    parser.add_argument('min_length', help='Minimum length input', type=float)
     parser.add_argument('flowlines', help='flowlines input', type=str)
     parser.add_argument('existing', help='National existing vegetation raster', type=str)
     parser.add_argument('historic', help='National historic vegetation raster', type=str)
-    parser.add_argument('valley_bottom', help='Valley bottom shapeFile', type=str)
-    parser.add_argument('output_folder', help='output_folder input', type=str)
-
+    parser.add_argument('valley_bottom', help='Valley bottom (.shp, .gpkg/layer_name)', type=str)
+    parser.add_argument('output_folder', help='Output folder input', type=str)
     parser.add_argument('--reach_codes', help='Comma delimited reach codes (FCode) to retain when filtering features. Omitting this option retains all features.', type=str)
     parser.add_argument('--flow_areas', help='(optional) path to the flow area polygon feature class containing artificial paths', type=str)
     parser.add_argument('--waterbodies', help='(optional) waterbodies input', type=str)

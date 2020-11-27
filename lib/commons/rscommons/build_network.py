@@ -16,6 +16,7 @@ import os
 from osgeo import ogr, osr
 from rscommons import ProgressBar, Logger, get_shp_or_gpkg, VectorBase
 from rscommons.shapefile import get_geometry_union, get_transform_from_epsg
+from rscommons.vector_ops import get_geometry_unary_union as get_geometry_unary_union_NEW
 from typing import List, Dict
 
 # https://nhd.usgs.gov/userGuide/Robohelpfiles/NHD_User_Guide/Feature_Catalog/Hydrography_Dataset/Complete_FCode_List.htm
@@ -163,21 +164,17 @@ def process_reaches(inLayer, outLayer, transform):
 # TODO: replace the above with this when BRAT no longer needs it
 
 
-def build_network_NEW(flowlines_lyr: VectorBase,
-                      flowareas_lyr: VectorBase,
-                      out_lyr: VectorBase,
+def build_network_NEW(flowlines_path: str,
+                      flowareas_path: str,
+                      out_path: str,
                       epsg: int = None,
                       reach_codes: List[int] = None,
-                      waterbodies_lyr: VectorBase = None,
+                      waterbodies_path: str = None,
                       waterbody_max_size=None):
 
     log = Logger('Build Network')
 
-    if os.path.isfile(outpath):
-        log.info('Skipping building network because output exists {}'.format(outpath))
-        return None
-
-    log.info("Building network from flow lines {0}".format(flowlines))
+    log.info("Building network from flow lines {0}".format(flowlines_path))
 
     if reach_codes:
         [log.info('Retaining {} reaches with code {}'.format(FCodeValues[int(r)], r)) for r in reach_codes]
@@ -186,63 +183,68 @@ def build_network_NEW(flowlines_lyr: VectorBase,
 
     # Get the transformation required to convert to the target spatial reference
     if (epsg is not None):
-        out_spatial_ref, transform = flowareas_lyr.get_transform_from_epsg(epsg)
-    out_lyr.create_layer_from_ref(flowlines_lyr)
+        with get_shp_or_gpkg(flowareas_path) as flowareas_lyr:
+            out_spatial_ref, transform = flowareas_lyr.get_transform_from_epsg(epsg)
 
     # Process all perennial/intermittment/ephemeral reaches first
-    att_filter = None
+    attribute_filter = None
     if reach_codes and len(reach_codes) > 0:
         [log.info("{0} {1} network features (FCode {2})".format('Retaining', FCodeValues[int(key)], key)) for key in reach_codes]
-        att_filter = "FCode IN ({0})".format(','.join([key for key in reach_codes]))
+        attribute_filter = "FCode IN ({0})".format(','.join([key for key in reach_codes]))
+
+    with get_shp_or_gpkg(flowlines_path) as flowlines_lyr, get_shp_or_gpkg(out_path, write=True) as out_lyr:
+        out_lyr.create_layer_from_ref(flowlines_lyr)
 
     log.info('Processing all reaches')
-
-    process_reaches_NEW(flowlines_lyr, out_lyr, att_filter)
+    process_reaches_NEW(flowlines_path, out_path, attribute_filter=attribute_filter)
 
     # Process artifical paths through small waterbodies
-    if waterbodies_lyr is not None and waterbody_max_size is not None:
-        small_waterbodies = get_geometry_union(waterbodies, epsg, 'AreaSqKm <= ({0})'.format(waterbody_max_size))
+    if waterbodies_path is not None and waterbody_max_size is not None:
+        small_waterbodies = get_geometry_unary_union_NEW(waterbodies_path, epsg, 'AreaSqKm <= ({0})'.format(waterbody_max_size))
         log.info('Retaining artificial features within waterbody features smaller than {0}km2'.format(waterbody_max_size))
-        process_reaches_NEW(flowlines_lyr,
-                            out_lyr,
+        process_reaches_NEW(flowlines_path,
+                            out_path,
                             transform=transform,
-                            att_filter='FCode = {0}'.format(artifical_reaches),
+                            attribute_filter='FCode = {0}'.format(artifical_reaches),
                             clip_shape=small_waterbodies
                             )
 
     # Retain artifical paths through flow areas
-    if flowareas:
-        flow_polygons = get_geometry_union(flowareas, epsg)
+    if flowareas_path:
+        flow_polygons = get_geometry_unary_union_NEW(flowareas_path, epsg)
         if flow_polygons:
             log.info('Retaining artificial features within flow area features')
-            process_reaches_NEW(flowlines_lyr,
-                                out_lyr,
+            process_reaches_NEW(flowlines_path,
+                                out_path,
                                 transform=transform,
-                                att_filter='FCode = {0}'.format(artifical_reaches),
+                                attribute_filter='FCode = {0}'.format(artifical_reaches),
                                 clip_shape=flow_polygons
                                 )
 
         else:
             log.info('Zero artifical paths to be retained.')
 
-    log.info(('{:,} features written to {:}'.format(outLayer.GetFeatureCount(), outpath)))
+    with get_shp_or_gpkg(out_path) as out_lyr:
+        log.info(('{:,} features written to {:}'.format(out_lyr.ogr_layer.GetFeatureCount(), out_path)))
+
     log.info('Process completed successfully.')
 
 
-def process_reaches_NEW(in_lyr, out_lyr, att_filter=None, transform=None, clip_shape=None):
-    for feature, _counter, _progbar in in_lyr.iterate_features("Processing reaches", att_filter=att_filter, clip_shape=clip_shape):
-        # get the input geometry and reproject the coordinates
-        geom = feature.GetGeometryRef()
-        if transform is not None:
-            geom.Transform(transform)
+def process_reaches_NEW(in_path: str, out_path: str, attribute_filter=None, transform=None, clip_shape=None):
+    with get_shp_or_gpkg(in_path) as in_lyr, get_shp_or_gpkg(out_path, write=True) as out_lyr:
+        for feature, _counter, _progbar in in_lyr.iterate_features("Processing reaches", attribute_filter=attribute_filter, clip_shape=clip_shape):
+            # get the input geometry and reproject the coordinates
+            geom = feature.GetGeometryRef()
+            if transform is not None:
+                geom.Transform(transform)
 
-        # Create output Feature
-        out_feature = ogr.Feature(out_lyr.ogr_layer_def)
+            # Create output Feature
+            out_feature = ogr.Feature(out_lyr.ogr_layer_def)
 
-        # Add field values from input Layer
-        for i in range(0, out_lyr.ogr_layer_def.GetFieldCount()):
-            out_feature.SetField(out_lyr.ogr_layer_def.GetFieldDefn(i).GetNameRef(), feature.GetField(i))
+            # Add field values from input Layer
+            for i in range(0, out_lyr.ogr_layer_def.GetFieldCount()):
+                out_feature.SetField(out_lyr.ogr_layer_def.GetFieldDefn(i).GetNameRef(), feature.GetField(i))
 
-        # Add new feature to output Layer
-        out_feature.SetGeometry(geom)
-        out_lyr.ogr_layer.CreateFeature(out_feature)
+            # Add new feature to output Layer
+            out_feature.SetGeometry(geom)
+            out_lyr.ogr_layer.CreateFeature(out_feature)

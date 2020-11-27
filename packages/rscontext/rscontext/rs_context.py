@@ -17,7 +17,6 @@ import traceback
 import uuid
 import datetime
 from osgeo import ogr
-from osgeo import gdal
 
 from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALOGRErrors
 from rscommons.util import safe_makedirs, safe_remove_dir
@@ -29,7 +28,7 @@ from rscommons.science_base import download_shapefile_collection, get_ntd_urls, 
 from rscommons.geographic_raster import gdal_dem_geographic
 from rscommons.download_hand import download_hand
 from rscommons.raster_buffer_stats import raster_buffer_stats2
-from rscommons.shapefile import get_geometry_union
+from rscommons.vector_ops import get_geometry_unary_union
 from rscommons.prism import calculate_bankfull_width
 
 from rscontext.flow_accumulation import flow_accumulation, flow_accum_to_drainage_area
@@ -146,7 +145,7 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
 
         # Use the mean annual precipitation to calculate bankfull width
         if ptype.lower() == 'ppt':
-            polygon = get_geometry_union(nhd[boundary], cfg.OUTPUT_EPSG)
+            polygon = get_geometry_unary_union(nhd[boundary], epsg=cfg.OUTPUT_EPSG)
             mean_annual_precip = raster_buffer_stats2({1: polygon}, project_raster_path)[1]['Mean']
             log.info('Mean annual precipitation for HUC {} is {} mm'.format(huc, mean_annual_precip))
             project.add_metadata({'mean_annual_precipitation_mm': str(mean_annual_precip)})

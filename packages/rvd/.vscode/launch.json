@@ -27,7 +27,7 @@
             "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/NHDFlowline.shp",
             "{env:DATA_ROOT}/rs_context/${input:HUC}/vegetation/existing_veg.tif",
             "{env:DATA_ROOT}/rs_context/${input:HUC}/vegetation/historic_veg.tif",
-            "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet_50.shp",
+            "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/vbet_50",
             "{env:DATA_ROOT}/rvd/${input:HUC}", // output folder
             "--reach_codes", "33400,33600,33601,33603,46000,46003,46006,46007,55800",
             "--flow_areas", "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/NHDArea.shp",
