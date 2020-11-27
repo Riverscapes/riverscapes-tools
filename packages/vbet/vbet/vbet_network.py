@@ -10,38 +10,37 @@
 #
 # https://nhd.usgs.gov/userGuide/Robohelpfiles/NHD_User_Guide/Feature_Catalog/Hydrography_Dataset/Complete_FCode_List.htm
 # -------------------------------------------------------------------------------
-import os
-import json
-from osgeo import gdal
-from rscommons import Logger, VectorBase
-from shapely.geometry import mapping
-from shapely.geometry.base import BaseGeometry
-from rscommons.vector_ops import get_geometry_unary_union
 from osgeo import ogr
-import osgeo.osr as osr
+from shapely.geometry.base import BaseGeometry
+from rscommons import Logger, VectorBase
+from rscommons.vector_ops import get_geometry_unary_union
+from rscommons import get_shp_or_gpkg
 
 
-def vbet_network(flow_lines_lyr: VectorBase, flow_areas_lyr: VectorBase, out_lyr: VectorBase, epsg: int = None):
+def vbet_network(flow_lines_path: str, flow_areas_path: str, out_path: str, epsg: int = None):
 
     log = Logger('VBET Network')
     log.info('Generating perennial network')
 
-    # Add input Layer Fields to the output Layer if it is the one we want
-    out_lyr.create_layer_from_ref(flow_lines_lyr, epsg=epsg)
+    with get_shp_or_gpkg(flow_lines_path) as flow_lines_lyr, \
+            get_shp_or_gpkg(out_path, layer_name='vbet_network', write=True) as vbet_net:
 
-    # Perennial features
-    log.info('Incorporating perennial features')
-    include_features(flow_lines_lyr, out_lyr, "FCode = '46006'")
+        # Add input Layer Fields to the output Layer if it is the one we want
+        vbet_net.create_layer_from_ref(flow_lines_lyr, epsg=epsg)
 
-    # Flow area features
-    polygon = get_geometry_unary_union(flow_areas_lyr, epsg=epsg)
-    if polygon is not None:
-        log.info('Incorporating flow areas.')
-        include_features(flow_lines_lyr, out_lyr, "FCode <> '46006'", polygon)
+        # Perennial features
+        log.info('Incorporating perennial features')
+        include_features(flow_lines_lyr, vbet_net, "FCode = '46006'")
 
-    fcount = flow_lines_lyr.ogr_layer.GetFeatureCount()
+        # Flow area features
+        polygon = get_geometry_unary_union(flow_areas_path, epsg=epsg)
+        if polygon is not None:
+            log.info('Incorporating flow areas.')
+            include_features(flow_lines_lyr, vbet_net, "FCode <> '46006'", polygon)
 
-    log.info('VBET network generated with {} features'.format(fcount))
+        fcount = flow_lines_lyr.ogr_layer.GetFeatureCount()
+
+        log.info('VBET network generated with {} features'.format(fcount))
 
 
 def include_features(source_layer: VectorBase, out_layer: VectorBase, attribute_filter: str = None, clip_shape: BaseGeometry = None):
