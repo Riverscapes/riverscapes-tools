@@ -538,7 +538,7 @@ class VectorBase():
                     print(e)
                 done.append(lyr.ogr_ds)
 
-    def get_transform(self, out_layer) -> osr.CoordinateTransformation:
+    def get_transform_from_layer(self, out_layer: VectorBase) -> osr.CoordinateTransformation:
         """Get a transform between this layer and another layer
 
         Args:
@@ -547,23 +547,52 @@ class VectorBase():
         Returns:
             [type]: [description]
         """
+        if out_layer is None:
+            raise VectorBaseException('Layer not found')
+        return VectorBase.get_transform(self.spatial_ref, out_layer.spatial_ref)
 
-        if self.spatial_ref is None:
+    def get_transform_from_srs(self, out_srs: osr.SpatialReference) -> osr.CoordinateTransformation:
+        """Get a transform between this layer and an SRS
+
+        Args:
+            out_layer ([type]): Vector layer type
+
+        Returns:
+            [type]: [description]
+        """
+        return VectorBase.get_transform(self.spatial_ref, out_srs)
+
+    @staticmethod
+    def get_transform(in_srs, out_srs):
+        """[summary]
+
+        Args:
+            in_srs ([type]): [description]
+            out_srs ([type]): [description]
+
+        Raises:
+            VectorBaseException: [description]
+            VectorBaseException: [description]
+            VectorBaseException: [description]
+
+        Returns:
+            [type]: [description]
+        """
+        if in_srs is None:
             raise VectorBaseException('No input spatial ref found. Has this layer been created or loaded?')
-
-        elif out_layer.spatial_ref is None:
+        elif out_srs is None:
             raise VectorBaseException('No output spatial ref found. Has this layer been created or loaded?')
 
-        in_proj4, in_ax_strategy = self.get_srs_debug(self.spatial_ref)
-        out_proj4, out_ax_strategy = self.get_srs_debug(out_layer.spatial_ref)
+        in_proj4, in_ax_strategy = VectorBase.get_srs_debug(in_srs)
+        out_proj4, out_ax_strategy = VectorBase.get_srs_debug(out_srs)
 
         if in_ax_strategy != out_ax_strategy:
             raise VectorBaseException('ERROR: Axis mapping strategy mismatch from "{}" to "{}". This will cause strange x and y coordinates to be transposed.')
 
-        self.log.debug('Input spatial reference is "{}"  Axis Strategy: "{}"'.format(in_proj4, in_ax_strategy))
-        self.log.debug('Output spatial reference is "{}"  Axis Strategy: "{}"'.format(out_proj4, out_ax_strategy))
+        VectorBase.log.debug('Input spatial reference is "{}"  Axis Strategy: "{}"'.format(in_proj4, in_ax_strategy))
+        VectorBase.log.debug('Output spatial reference is "{}"  Axis Strategy: "{}"'.format(out_proj4, out_ax_strategy))
 
-        transform = osr.CoordinateTransformation(self.spatial_ref, out_layer.spatial_ref)
+        transform = osr.CoordinateTransformation(in_srs, out_srs)
 
         return transform
 
@@ -583,8 +612,7 @@ class VectorBase():
         if self.spatial_ref is None:
             raise VectorBaseException('No input spatial ref found. Has this layer been created or loaded?')
 
-        out_spatial_ref = osr.SpatialReference()
-        out_spatial_ref.ImportFromEPSG(int(epsg))
+        out_spatial_ref = VectorBase.get_srs_from_epsg(epsg)
 
         # https://github.com/OSGeo/gdal/issues/1546
         out_spatial_ref.SetAxisMappingStrategy(self.spatial_ref.GetAxisMappingStrategy())
@@ -595,9 +623,17 @@ class VectorBase():
         self.log.debug('Input spatial reference is "{}"  Axis Strategy: "{}"'.format(in_proj4, in_ax_strategy))
         self.log.debug('Output spatial reference is "{}"  Axis Strategy: "{}"'.format(out_proj4, out_ax_strategy))
 
-        transform = osr.CoordinateTransformation(self.spatial_ref, out_spatial_ref)
-
+        transform = VectorBase.get_transform(self.spatial_ref, out_spatial_ref)
         return out_spatial_ref, transform
+
+    @staticmethod
+    def get_srs_from_epsg(epsg: int) -> osr.SpatialReference:
+        out_spatial_ref = osr.SpatialReference()
+        out_spatial_ref.ImportFromEPSG(int(epsg))
+
+        out_spatial_ref.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+
+        return out_spatial_ref
 
     def rough_convert_metres_to_vector_units(self, distance: float) -> float:
         """Convert from Meters into this layer's units

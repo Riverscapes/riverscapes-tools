@@ -1,7 +1,7 @@
 import math
 import json
 import os
-import ogr
+from osgeo import ogr
 import numpy as np
 from shapely.wkb import loads as wkbload
 from shapely.geometry import shape, mapping, Point, MultiPoint, LineString, MultiLineString, GeometryCollection, Polygon, MultiPolygon
@@ -13,6 +13,7 @@ from rscommons.shapefile import get_transform_from_epsg
 from typing import List, Dict
 Path = str
 Transform = ogr.osr.CoordinateTransformation
+
 
 class RiverPoint:
 
@@ -94,7 +95,8 @@ def midpoints(in_lines):
 
     return out_points
 
-def centerline_points(in_lines:Path, distance: float = 0.0, id_field: str = None, transform: Transform = None) -> Dict[int, List[RiverPoint]]:
+
+def centerline_points(in_lines: Path, distance: float = 0.0, id_field: str = None, transform: Transform = None) -> Dict[int, List[RiverPoint]]:
     """Generates points along each line feature at specified distances from the end as well as quarter and halfway
 
     Args:
@@ -116,17 +118,18 @@ def centerline_points(in_lines:Path, distance: float = 0.0, id_field: str = None
         geom = feat.GetGeometryRef()
         if transform:
             geom.Transform(transform)
-        line = wkbload(geom.ExportToWkb()) 
+        line = wkbload(geom.ExportToWkb())
         out_points = []
         out_points.append(RiverPoint(line.interpolate(distance)))
         out_points.append(RiverPoint(line.interpolate(0.5, True)))
         out_points.append(RiverPoint(line.interpolate(-distance)))
-        if line.project(line.interpolate(0.25, True)) > distance: 
+        if line.project(line.interpolate(0.25, True)) > distance:
             out_points.append(RiverPoint(line.interpolate(0.25, True)))
             out_points.append(RiverPoint(line.interpolate(-0.25, True)))
         out_group[int(feat.GetField(id_field))] = out_points
         feat = None
     return out_group
+
 
 def centerline_vertex_between_distance(in_lines, distance=0.0):
     driver = driver_shp = ogr.GetDriverByName("ESRI Shapefile")
@@ -141,7 +144,7 @@ def centerline_vertex_between_distance(in_lines, distance=0.0):
         out_points.append(RiverPoint(line.interpolate(-distance)))
         max_distance = line.length - distance
         for vertex in list(line.coords):
-            test_dist = line.project(Point(vertex)) 
+            test_dist = line.project(Point(vertex))
             if test_dist > distance and test_dist < max_distance:
                 out_points.append(RiverPoint(Point(vertex)))
         out_group.append(out_points)
@@ -157,7 +160,7 @@ def load_geoms(in_lines):
     for feat in lyr:
         geom = feat.GetGeometryRef()
         out.append(wkbload(geom.ExportToWkb()))
-    
+
     return out
 
 
@@ -171,12 +174,12 @@ def clip_polygons(clip_poly, polys):
         counter += 1
         progbar.update(counter)
         out_polys[key] = clip_poly.intersection(poly.buffer(0))
-    
+
     return out_polys
 
 
 def dissolve_by_intersection(lines, polys):
-    
+
     progbar = ProgressBar(len(polys), 50, "Dissolving Polygons...")
     counter = 0
     progbar.update(counter)
@@ -189,21 +192,22 @@ def dissolve_by_intersection(lines, polys):
 
     return dissolved_polys
 
+
 def dissolve_by_points(groups, polys):
-    
+
     progbar = ProgressBar(len(groups), 50, "Dissolving Polygons...")
     counter = 0
     progbar.update(counter)
     dissolved_polys = {}
-    
-    ## Original method
+
+    # Original method
     # for key, group in groups.items():
     #     counter += 1
     #     progbar.update(counter)
     #     intersected = [p for p in polys if any([p.contains(pt.point) for pt in group])]
     #     dissolved_polys[key] = unary_union(intersected)
-    
-    ## This method gradulally speeds up processing by removing polygons from the list. 
+
+    # This method gradulally speeds up processing by removing polygons from the list.
     for key, group in groups.items():
         counter += 1
         progbar.update(counter)
@@ -213,7 +217,7 @@ def dissolve_by_points(groups, polys):
             if any([p.contains(pt.point) for pt in group]):
                 intersected.append(p)
                 indexes.append(i)
-        dissolved_polys[key] = unary_union(intersected)# MultiPolygon(intersected) #intersected 
+        dissolved_polys[key] = unary_union(intersected)  # MultiPolygon(intersected) #intersected
         polys = [p for i, p in enumerate(polys) if i not in indexes]
 
     return dissolved_polys

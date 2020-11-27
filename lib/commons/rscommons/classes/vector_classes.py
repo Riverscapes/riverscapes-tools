@@ -9,11 +9,11 @@ from osgeo import osr
 from rscommons.classes.vector_base import VectorBase
 
 
-def get_shp_or_gpkg(filepath: str) -> VectorBase:
+def get_shp_or_gpkg(filepath: str, *args, **kwargs) -> VectorBase:
     if re.match(r'.*\.shp', filepath) is not None:
-        return ShapefileLayer(filepath)
+        return ShapefileLayer(filepath, *args, **kwargs)
     else:
-        return GeopackageLayer(filepath)
+        return GeopackageLayer(filepath, *args, **kwargs)
 
 
 class ShapefileLayer(VectorBase):
