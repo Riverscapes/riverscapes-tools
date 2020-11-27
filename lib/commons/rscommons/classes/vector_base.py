@@ -201,7 +201,7 @@ class VectorBase():
         self.ogr_ds.DeleteLayer(self.ogr_layer_name)
         self.log.info('layer deleted: {} / {}'.format(self.filepath, self.ogr_layer_name))
 
-    def create_layer(self, ogr_geom_type: int, epsg: int = None, spatial_ref: osr.SpatialReference = None, fields: dict = None):
+    def create_layer(self, ogr_geom_type: int, epsg: int = None, spatial_ref: osr.SpatialReference = None, fields: dict = None, options=[]):
         """Create a layer in a dataset. Existing layers will be deleted
 
         Args:
@@ -251,7 +251,7 @@ class VectorBase():
         # Throw a warning if our axis mapping strategy is wrong
         self.check_axis_mapping()
 
-        self.ogr_layer = self.ogr_ds.CreateLayer(self.ogr_layer_name, self.spatial_ref, geom_type=ogr_geom_type)
+        self.ogr_layer = self.ogr_ds.CreateLayer(self.ogr_layer_name, self.spatial_ref, geom_type=ogr_geom_type, options=options)
 
         # Get the output Layer's Feature Definition
         self.ogr_geom_type = self.ogr_layer.GetGeomType()

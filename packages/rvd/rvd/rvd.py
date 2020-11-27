@@ -67,7 +67,7 @@ LayerTypes = {
         'THIESSEN': RSLayer('Network', 'THIESSEN', 'Vector', 'thiessen'),
     }),
     'OUTPUTS': RSLayer('RVD', 'OUTPUTS', 'Geopackage', 'outputs/outputs.gpkg', {
-        'RVD': RSLayer('RVD', 'SEGMENTED', 'Vector', 'rvd')
+        'RVD': RSLayer('RVD', 'SEGMENTED', 'Vector', 'Reaches')
     }),
     'REPORT': RSLayer('RVD Report', 'RVD_REPORT', 'HTMLFile', 'outputs/rvd.html')
 }
@@ -120,7 +120,6 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, ex
     # Create 3 empty geopackages
     GeopackageLayer(inputs_gpkg_path, delete_dataset=True)
     GeopackageLayer(intermediates_gpkg_path, delete_dataset=True)
-    GeopackageLayer(outputs_gpkg_path, delete_dataset=True)
 
     # Copy our input layers and also find the difference in the geometry for the valley bottom
     flowlines_path = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
@@ -132,6 +131,30 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, ex
     with GeopackageLayer(flowlines_path) as flow_lyr:
         # Set the output spatial ref as this for the whole project
         out_srs = flow_lyr.spatial_ref
+
+    # Create the output feature class fields
+    with GeopackageLayer(outputs_gpkg_path, layer_name='Reaches', delete_dataset=True) as out_lyr:
+        out_lyr.create_layer(ogr.wkbMultiLineString, spatial_ref=out_srs, fields={
+            'GNIS_NAME': ogr.OFTString,
+            'ReachCode': ogr.OFTString,
+            'TotDASqKm': ogr.OFTReal,
+            'NHDPlusID': ogr.OFTReal,
+            'ReachID': ogr.OFTInteger,
+            'WatershedID': ogr.OFTInteger,
+        }, options=['FID=ReachID'])
+
+    metadata = {
+        'RVD_DateTime': datetime.datetime.now().isoformat(),
+        'Max_Length': max_length,
+        'Min_Length': min_length,
+        'Reach_Codes': reach_codes,
+    }
+
+    # Execute the SQL to create the lookup tables in the RVD geopackage SQLite database
+    watershed_name = create_database_NEW(huc, outputs_gpkg_path, metadata, cfg.OUTPUT_EPSG, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'rvd_schema.sql'))
+
+    # populate_database_NEW(output_gkpg, segmented_path, huc)
+    # project.add_metadata({'Watershed': watesrhed_name})
 
     geom_vbottom = get_geometry_unary_union(vbottom_path)
 
@@ -168,24 +191,12 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, ex
     # Filter the flow lines to just the required features and then segment to desired length
     # TODO: These are brat methods that need to be refactored to use VectorBase layers
     cleaned_path = os.path.join(output_folder, LayerTypes['INTERMEDIATES'].rel_path, LayerTypes['INTERMEDIATES'].sub_layers['CLEANED'].rel_path)
-
-    output_gkpg = os.path.join(output_folder, LayerTypes['OUTPUTS'].rel_path)
-    segmented_path = os.path.join(output_gkpg, LayerTypes['OUTPUTS'].sub_layers['RVD'].rel_path)
-
     build_network_NEW(flowlines_path, flowareas_path, cleaned_path, waterbodies_path=waterbodies_path, epsg=cfg.OUTPUT_EPSG, reach_codes=reach_codes)
+
+    segmented_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['RVD'].rel_path)
     segment_network_NEW(cleaned_path, segmented_path, max_length, min_length)
 
     # TODO: Bring back the data tables
-    # metadata = {
-    #     'RVD_DateTime': datetime.datetime.now().isoformat(),
-    #     'Max_Length': max_length,
-    #     'Min_Length': min_length,
-    #     'Reach_Codes': reach_codes,
-    # }
-
-    # watesrhed_name = create_database_NEW(huc, output_gkpg, metadata, cfg.OUTPUT_EPSG, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'rvd_schema.sql'))
-    # populate_database_NEW(output_gkpg, segmented_path, huc)
-    # project.add_metadata({'Watershed': watesrhed_name})
 
     # Generate Voroni polygons
     log.info("Calculating Voronoi Polygons...")
