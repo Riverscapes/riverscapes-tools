@@ -236,7 +236,7 @@ def create_database_NEW(huc: str, db_path: str, metadata: Dict[str, str], epsg: 
         log.info('Removing existing SQLite database at {0}'.format(db_path))
         os.remove(db_path)
 
-    log.info('Creating SQLite database at {0}'.format(db_path))
+    log.info('Creating database schema at {0}'.format(db_path))
     qry = open(schema_path, 'r').read()
     sqlite3.complete_statement(qry)
     conn = sqlite3.connect(db_path)

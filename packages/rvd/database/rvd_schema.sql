@@ -4,7 +4,7 @@ CREATE TABLE ReachVegetation (ReachID INTEGER REFERENCES Reaches ON DELETE CASCA
 CREATE TABLE MetaData (KeyInfo TEXT PRIMARY KEY NOT NULL, ValueInfo TEXT);
 CREATE TABLE Watersheds (WatershedID TEXT PRIMARY KEY NOT NULL UNIQUE, Name TEXT NOT NULL, AreaSqKm REAL CONSTRAINT CHK_HUCs_Area CHECK (AreaSqKm >= 0), States TEXT, Metadata TEXT, Notes TEXT);
 CREATE TABLE VegetationTypes (VegetationID INTEGER PRIMARY KEY NOT NULL, EpochID INTEGER REFERENCES Epochs (EpochID) NOT NULL, Name TEXT NOT NULL, Physiognomy TEXT, Notes TEXT);
-CREATE TABLE Reaches (ReachID INTEGER PRIMARY KEY NOT NULL, WatershedID TEXT REFERENCES Watersheds (WatershedID) ON DELETE CASCADE, Geometry TEXT, ReachCode INTEGER REFERENCES ReachCodes (ReachCode), IsPeren INTEGER NOT NULL DEFAULT (0), StreamName TEXT, Orig_DA REAL, iGeo_DA REAL);
+
 CREATE INDEX FK_ReachVegetation_ReachID ON ReachVegetation (ReachID);
 CREATE INDEX FK_ReachVegetation_VegetationID ON ReachVegetation (VegetationID);
 CREATE INDEX IX_Watersheds_States ON Watersheds (States);
