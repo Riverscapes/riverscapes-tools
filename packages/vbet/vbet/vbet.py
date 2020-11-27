@@ -46,9 +46,9 @@ LayerTypes = {
     'HAND_RASTER': RSLayer('Hand Raster', 'HAND_RASTER', 'Raster', 'inputs/hand.tif'),
     'HILLSHADE': RSLayer('DEM Hillshade', 'HILLSHADE', 'Raster', 'inputs/dem_hillshade.tif'),
     'CHANNEL_RASTER': RSLayer('Channel Raster', 'CHANNEL_RASTER', 'Raster', 'inputs/channel.tif'),
-    'INPUTS': RSLayer('Inputs', 'INPUTS', 'Geopackage', 'intermediates/vbet_inputs.gpkg', {
-        'FLOWLINES': RSLayer('NHD Flowlines', 'FLOWLINES', 'Vector', 'inputs/flowlines.shp'),
-        'FLOW_AREA': RSLayer('NHD Flow Areas', 'FLOW_AREA', 'Vector', 'inputs/flow_areas.shp'),
+    'INPUTS': RSLayer('Inputs', 'INPUTS', 'Geopackage', 'inputs/vbet_inputs.gpkg', {
+        'FLOWLINES': RSLayer('NHD Flowlines', 'FLOWLINES', 'Vector', 'flowlines'),
+        'FLOW_AREA': RSLayer('NHD Flow Areas', 'FLOW_AREA', 'Vector', 'flow_areas'),
     }),
     'SLOPE_EV': RSLayer('Evidence Raster', 'SLOPE_EV_TMP', 'Raster', 'intermediates/nLoE_Slope.tif'),
     'HAND_EV': RSLayer('Evidence Raster', 'HAND_EV_TMP', 'Raster', 'intermediates/nLoE_HAND.tif'),
@@ -78,9 +78,12 @@ def vbet(huc, flowlines, flowareas, orig_slope, max_slope, orig_hand, hillshade,
     _proj_hand_node, proj_hand = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HAND_RASTER'], orig_hand)
     _hillshade_node, hillshade = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], hillshade)
 
-    # Create a copy of the flow lines with just the perennial and also connectors inside flow areas
+    # Copy input shapes to a geopackage
+    copy_feature_class(flowlines, os.path.join(project_folder, LayerTypes['INPUTS'].rel_path, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path))
+    copy_feature_class(flowareas, os.path.join(project_folder, LayerTypes['INPUTS'].rel_path, LayerTypes['INPUTS'].sub_layers['FLOW_AREA'].rel_path))
     project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
 
+    # Create a copy of the flow lines with just the perennial and also connectors inside flow areas
     intermediates_gpkg_path = os.path.join(project_folder, LayerTypes['INTERMEDIATES'].rel_path)
     vbet_network(flowlines, flowareas, intermediates_gpkg_path, cfg.OUTPUT_EPSG)
 
