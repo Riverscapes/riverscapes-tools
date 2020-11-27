@@ -29,6 +29,8 @@ class ShapefileLayer(VectorBase):
         """
         # layer name isn't important so we hardcode 'layer'
         super(ShapefileLayer, self).__init__(filepath, VectorBase.Drivers.Shapefile, 'layer', replace_ds_on_open=delete, allow_write=write)
+        if delete is True:
+            self.delete()
 
     def create(self, geom_type: int, epsg: int = None, spatial_ref: osr.SpatialReference = None, fields: dict = None):
         """Create a shapefile and associated layer
@@ -83,6 +85,8 @@ class GeopackageLayer(VectorBase):
             allow_write (bool, optional): For opening an existing ds only. Allows write access. Defaults to False.
         """
         super(GeopackageLayer, self).__init__(filepath, VectorBase.Drivers.Geopackage, layer_name=layer_name, replace_ds_on_open=delete_dataset, allow_write=write)
+        if delete_dataset is True:
+            self.delete_ds()
 
     def create(self, ogr_geom_type: int, epsg: int = None, spatial_ref: osr.SpatialReference = None, fields: dict = None):
         """Create a layer inside a Geopackage

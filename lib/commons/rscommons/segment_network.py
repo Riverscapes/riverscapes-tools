@@ -17,8 +17,8 @@ import os
 import sys
 import traceback
 from osgeo import ogr, osr
-from rscommons import Logger, ProgressBar, initGDALOGRErrors, dotenv
-from shapely.geometry import MultiLineString, LineString, Point, shape
+from shapely.geometry import LineString, Point
+from rscommons import Logger, ProgressBar, initGDALOGRErrors, dotenv, get_shp_or_gpkg
 from rscommons.shapefile import create_field, get_transform_from_epsg, get_utm_zone_epsg
 
 initGDALOGRErrors()
@@ -257,13 +257,158 @@ def cut(line, distance):
             )
 
 
+def segment_network_NEW(inpath: str, outpath: str, interval: float, minimum: float):
+    """
+    Chop the lines in a polyline feature class at the specified interval unless
+    this would create a line less than the minimum in which case the line is not segmented.
+    :param inpath: Original network feature class
+    :param outpath: Output segmented network feature class
+    :param interval: Distance at which to segment each line feature (map units)
+    :param minimum: Minimum length below which lines are not segmented (map units)
+    :return: None
+    """
+
+    log = Logger('Segment Network')
+
+    if interval <= 0:
+        log.info('Skipping segmentation.')
+    else:
+        log.info('Segmenting network to {}m, with minimum feature length of {}m'.format(interval, minimum))
+        log.info('Segmenting network from {0}'.format(inpath))
+
+    with get_shp_or_gpkg(inpath) as in_lyr, get_shp_or_gpkg(outpath, write=True) as out_lyr:
+        # Get the input NHD flow lines layer
+        srs = in_lyr.spatial_ref
+        feature_count = in_lyr.ogr_layer.GetFeatureCount()
+        log.info('Input feature count {:,}'.format(feature_count))
+
+        # Get the closest EPSG possible to calculate length
+        extent_poly = ogr.Geometry(ogr.wkbPolygon)
+        extent_centroid = extent_poly.Centroid()
+        utm_epsg = get_utm_zone_epsg(extent_centroid.GetX())
+        transform_ref, transform = in_lyr.get_transform_from_epsg(utm_epsg)
+
+        # IN order to get accurate lengths we are going to need to project into some coordinate system
+        transform_back = osr.CoordinateTransformation(transform_ref, srs)
+
+        # Create the output shapefile
+        out_lyr.create_layer(ogr.wkbMultiLineString, spatial_ref=srs, fields={
+            'GNIS_NAME': ogr.OFTString,
+            'FCode': ogr.OFTString,
+            'TotDASqKm': ogr.OFTReal,
+            'NHDPlusID': ogr.OFTReal,
+            'ReachID': ogr.OFTInteger,
+        })
+
+        # Retrieve all input features keeping track of which ones have GNIS names or not
+        namedFeatures = {}
+        allFeatures = []
+        junctions = []
+
+        # Omit pipelines with FCode 428**
+        attribute_filter = 'FCode < 42800 OR FCode > 42899'
+        log.info('Filtering out pipelines ({})'.format(attribute_filter))
+
+        for in_feature, _counter, _progbar in in_lyr.iterate_features("Loading Network", attribute_filter=attribute_filter):
+            # Store relevant items as a tuple:
+            # (name, FID, StartPt, EndPt, Length, FCode)
+            s_feat = SegmentFeature(in_feature, transform)
+
+            # Add the end points of all lines to a single list
+            junctions.extend([s_feat.start, s_feat.end])
+
+            if not s_feat.name or len(s_feat.name) < 1 or interval <= 0:
+                # Add features without a GNIS name to list. Also add to list if not segmenting
+                allFeatures.append(s_feat)
+            else:
+                # Build separate lists for each unique GNIS name
+                if s_feat.name not in namedFeatures:
+                    namedFeatures[s_feat.name] = [s_feat]
+                else:
+                    namedFeatures[s_feat.name].append(s_feat)
+
+        # Loop over all features with the same GNIS name.
+        # Only merge them if they meet at a junction where no other lines meet.
+        log.info('Merging simple features with the same GNIS name...')
+        for name, features in namedFeatures.items():
+            log.debug('   {} x{}'.format(name.encode('utf-8'), len(features)))
+            allFeatures.extend(features)
+
+        log.info('{:,} features after merging. Starting segmentation...'.format(len(allFeatures)))
+
+        # Segment the features at the desired interval
+        rid = 0
+        log.info('Segmenting Network...')
+        progbar = ProgressBar(len(allFeatures), 50, "Segmenting")
+        counter = 0
+
+        for origFeat in allFeatures:
+            counter += 1
+            progbar.update(counter)
+
+            oldFeat = in_lyr.ogr_layer.GetFeature(origFeat.fid)
+            oldGeom = oldFeat.GetGeometryRef()
+            #  Anything that produces reach shorter than the minimum just gets added. Also just add features if not segmenting
+            if origFeat.length_m < (interval + minimum) or interval <= 0:
+                newOGRFeat = ogr.Feature(out_lyr.ogr_layer_def)
+                # Set the attributes using the values from the delimited text file
+                newOGRFeat.SetField("GNIS_NAME", origFeat.name)
+                newOGRFeat.SetField("ReachID", rid)
+                newOGRFeat.SetField("FCode", origFeat.FCode)
+                newOGRFeat.SetField("TotDASqKm", origFeat.TotDASqKm)
+                newOGRFeat.SetField("NHDPlusID", origFeat.NHDPlusID)
+                newOGRFeat.SetGeometry(oldGeom)
+                out_lyr.ogr_layer.CreateFeature(newOGRFeat)
+                rid += 1
+            else:
+                # From here on out we use shapely and project to UTM. We'll transform back before writing to disk.
+                newGeom = oldGeom.Clone()
+                newGeom.Transform(transform)
+                remaining = LineString(newGeom.GetPoints())
+                while remaining and remaining.length >= (interval + minimum):
+                    part1shply, part2shply = cut(remaining, interval)
+                    remaining = part2shply
+
+                    newOGRFeat = ogr.Feature(out_lyr.ogr_layer_def)
+                    # Set the attributes using the values from the delimited text file
+                    newOGRFeat.SetField("GNIS_NAME", origFeat.name)
+                    newOGRFeat.SetField("ReachID", rid)
+                    newOGRFeat.SetField("FCode", origFeat.FCode)
+                    newOGRFeat.SetField("TotDASqKm", origFeat.TotDASqKm)
+                    newOGRFeat.SetField("NHDPlusID", origFeat.NHDPlusID)
+                    geo = ogr.CreateGeometryFromWkt(part1shply.wkt)
+                    geo.Transform(transform_back)
+                    newOGRFeat.SetGeometry(geo)
+                    out_lyr.ogr_layer.CreateFeature(newOGRFeat)
+                    rid += 1
+
+                # Add any remaining line to outGeometries
+                if remaining:
+                    newOGRFeat = ogr.Feature(out_lyr.ogr_layer_def)
+                    # Set the attributes using the values from the delimited text file
+                    newOGRFeat.SetField("GNIS_NAME", origFeat.name)
+                    newOGRFeat.SetField("ReachID", rid)
+                    newOGRFeat.SetField("FCode", origFeat.FCode)
+                    newOGRFeat.SetField("TotDASqKm", origFeat.TotDASqKm)
+                    newOGRFeat.SetField("NHDPlusID", origFeat.NHDPlusID)
+                    geo = ogr.CreateGeometryFromWkt(remaining.wkt)
+                    geo.Transform(transform_back)
+                    newOGRFeat.SetGeometry(geo)
+                    out_lyr.ogr_layer.CreateFeature(newOGRFeat)
+                    rid += 1
+
+        progbar.finish()
+
+        log.info(('{:,} features written to {:}'.format(out_lyr.ogr_layer.GetFeatureCount(), outpath)))
+        log.info('Process completed successfully.')
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('network', help='Input stream network ShapeFile path', type=str)
     parser.add_argument('segmented', help='Output segmented network ShapeFile path', type=str)
     parser.add_argument('interval', help='Interval distance at which to segment the network', type=float)
     parser.add_argument('minimum', help='Minimum feature length in the segmented network', type=float)
-    parser.add_argument('--tolerance', help='Tolerance for considering points are coincident', type=float, default=0.1)
     parser.add_argument('--verbose', help='(optional) verbose logging mode', action='store_true', default=False)
 
     args = dotenv.parse_args_env(parser)

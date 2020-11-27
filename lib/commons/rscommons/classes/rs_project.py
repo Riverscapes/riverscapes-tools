@@ -374,13 +374,16 @@ class RSProject:
             log.debug('Geopackage Copied {} to {}'.format(copy_path, file_path))
 
         # Add in our sublayers
+        sub_layers = {}
         if rs_lyr.sub_layers is not None and len(rs_lyr.sub_layers) > 0:
             nod_dataset = self.add_dataset(parent_node, file_path, rs_lyr, 'Geopackage', replace)
             layers_node = self.XMLBuilder.add_sub_element(nod_dataset, 'Layers')
-            for rssublyr in rs_lyr.sub_layers.values():
-                self.add_dataset(layers_node, rssublyr.rel_path, rssublyr, rssublyr.tag, rel_path=True)
+            for rssublyr_name, rssublyr in rs_lyr.sub_layers.items():
+                sub_abs_path = os.path.join(file_path, rssublyr.rel_path)
+                sub_nod = self.add_dataset(layers_node, rssublyr.rel_path, rssublyr, rssublyr.tag, rel_path=True)
+                sub_layers[rssublyr_name] = (sub_nod, sub_abs_path)
 
-        return nod_dataset, file_path
+        return nod_dataset, file_path, sub_layers
 
     def add_report(self, parent_node, rs_lyr, replace=False):
         log = Logger('add_html_report')

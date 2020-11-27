@@ -8,6 +8,8 @@ from scipy.spatial import Voronoi
 from shapely.geometry import Point, MultiPoint, LineString, Polygon, MultiPolygon
 from shapely.ops import unary_union, linemerge
 from rscommons import Logger, ProgressBar
+from rscommons.thiessen.shapes import RiverPoint
+from typing import List
 
 
 class NARVoronoi:
@@ -16,21 +18,23 @@ class NARVoronoi:
     shapes from it.
     """
 
-    def __init__(self, points):
+    def __init__(self, points: List[RiverPoint]):
         """
         The init method is where all the Voronoi magic happens.
         :param points:
         """
         # The centroid is what we're going to use to shift all the coords around
+        # NOTE: We drop the z coord here
+        multipoint = MultiPoint([x.point.coords[0][0:2] for x in points])
         self.points = points
         self.polys = None
-        self.centroid = MultiPoint([x.point for x in points]).centroid.coords[0]
+        self.centroid = multipoint.centroid.coords[0]
         self.log = Logger('NARVoronoi')
         self.log.info('initializing...')
 
         # Give us a numpy array that is easy to work with then subtract the centroid
         # centering our object around the origin so that the QHull method works properly
-        adjpoints = np.array(MultiPoint([x.point for x in points]))
+        adjpoints = np.array(multipoint)
         adjpoints = adjpoints - self.centroid
 
         try:

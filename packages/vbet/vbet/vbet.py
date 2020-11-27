@@ -28,9 +28,9 @@ import rasterio
 from rasterio import features
 import numpy as np
 from rscommons.util import safe_makedirs, parse_metadata
-from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, dotenv, initGDALOGRErrors, get_shp_or_gpkg
-from rscommons import GeopackageLayer, ShapefileLayer, VectorBase
-from rscommons.vector_ops import polygonize, get_num_pts, get_num_rings, export_geojson, get_geometry_unary_union, remove_holes, buffer_by_field, copy_feature_class
+from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, dotenv, initGDALOGRErrors
+from rscommons import GeopackageLayer, VectorBase
+from rscommons.vector_ops import polygonize, get_num_pts, get_num_rings, get_geometry_unary_union, remove_holes, buffer_by_field, copy_feature_class
 from vbet.vbet_network import vbet_network
 from vbet.vbet_report import VBETReport
 from vbet.__version__ import __version__
@@ -66,7 +66,7 @@ LayerTypes = {
 }
 
 
-def vbet(huc, flowlines, flowareas, orig_slope, max_slope, orig_hand, hillshade, max_hand, min_hole_area_m, project_folder, meta):
+def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, max_slope, orig_hand, hillshade, max_hand, min_hole_area_m, project_folder, meta):
 
     log = Logger('VBET')
     log.info('Starting VBET v.{}'.format(cfg.version))
@@ -79,13 +79,17 @@ def vbet(huc, flowlines, flowareas, orig_slope, max_slope, orig_hand, hillshade,
     _hillshade_node, hillshade = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], hillshade)
 
     # Copy input shapes to a geopackage
-    copy_feature_class(flowlines, os.path.join(project_folder, LayerTypes['INPUTS'].rel_path, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path))
-    copy_feature_class(flowareas, os.path.join(project_folder, LayerTypes['INPUTS'].rel_path, LayerTypes['INPUTS'].sub_layers['FLOW_AREA'].rel_path))
+    flowlines_path = os.path.join(project_folder, LayerTypes['INPUTS'].rel_path, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
+    flowareas_path = os.path.join(project_folder, LayerTypes['INPUTS'].rel_path, LayerTypes['INPUTS'].sub_layers['FLOW_AREA'].rel_path)
+
+    copy_feature_class(flowlines_orig, flowlines_path, epsg=cfg.OUTPUT_EPSG)
+    copy_feature_class(flowareas_orig, flowareas_path, epsg=cfg.OUTPUT_EPSG)
+
     project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
 
     # Create a copy of the flow lines with just the perennial and also connectors inside flow areas
     intermediates_gpkg_path = os.path.join(project_folder, LayerTypes['INTERMEDIATES'].rel_path)
-    vbet_network(flowlines, flowareas, intermediates_gpkg_path, cfg.OUTPUT_EPSG)
+    vbet_network(flowlines_path, flowareas_path, intermediates_gpkg_path, cfg.OUTPUT_EPSG)
 
     # Get raster resolution as min buffer and apply bankfull width buffer to reaches
     with rasterio.open(proj_slope) as raster:
@@ -96,7 +100,7 @@ def vbet(huc, flowlines, flowareas, orig_slope, max_slope, orig_hand, hillshade,
     reach_polygon = buffer_by_field('{}/vbet_network'.format(intermediates_gpkg_path), "BFwidth", cfg.OUTPUT_EPSG, min_buffer)
 
     # Create channel polygon by combining the reach polygon with the flow area polygon
-    area_polygon = get_geometry_unary_union(flowareas, cfg.OUTPUT_EPSG)
+    area_polygon = get_geometry_unary_union(flowareas_path, cfg.OUTPUT_EPSG)
     log.info('Unioning reach and area polygons')
 
     # Union the buffered reach and area polygons

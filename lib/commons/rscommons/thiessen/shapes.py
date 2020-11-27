@@ -7,7 +7,7 @@ from shapely.wkb import loads as wkbload
 from shapely.geometry import shape, mapping, Point, MultiPoint, LineString, MultiLineString, GeometryCollection, Polygon, MultiPolygon
 from shapely.ops import unary_union
 
-from rscommons import Logger, ProgressBar
+from rscommons import Logger, ProgressBar, get_shp_or_gpkg
 from rscommons.shapefile import get_transform_from_epsg
 
 from typing import List, Dict
@@ -109,26 +109,24 @@ def centerline_points(in_lines: Path, distance: float = 0.0, id_field: str = Non
         [type]: [description]
     """
 
-    driver = driver_shp = ogr.GetDriverByName("ESRI Shapefile")
-    data_in = driver_shp.Open(in_lines, 0)
-    lyr = data_in.GetLayer()
-    out_group = {}
+    with get_shp_or_gpkg(in_lines) as in_lyr:
+        out_group = {}
 
-    for feat in lyr:
-        geom = feat.GetGeometryRef()
-        if transform:
-            geom.Transform(transform)
-        line = wkbload(geom.ExportToWkb())
-        out_points = []
-        out_points.append(RiverPoint(line.interpolate(distance)))
-        out_points.append(RiverPoint(line.interpolate(0.5, True)))
-        out_points.append(RiverPoint(line.interpolate(-distance)))
-        if line.project(line.interpolate(0.25, True)) > distance:
-            out_points.append(RiverPoint(line.interpolate(0.25, True)))
-            out_points.append(RiverPoint(line.interpolate(-0.25, True)))
-        out_group[int(feat.GetField(id_field))] = out_points
-        feat = None
-    return out_group
+        for feat, _counter, _progbar in in_lyr.iterate_features(""):
+            geom = feat.GetGeometryRef()
+            if transform:
+                geom.Transform(transform)
+            line = wkbload(geom.ExportToWkb())
+            out_points = []
+            out_points.append(RiverPoint(line.interpolate(distance)))
+            out_points.append(RiverPoint(line.interpolate(0.5, True)))
+            out_points.append(RiverPoint(line.interpolate(-distance)))
+            if line.project(line.interpolate(0.25, True)) > distance:
+                out_points.append(RiverPoint(line.interpolate(0.25, True)))
+                out_points.append(RiverPoint(line.interpolate(-0.25, True)))
+            out_group[int(feat.GetField(id_field))] = out_points
+            feat = None
+        return out_group
 
 
 def centerline_vertex_between_distance(in_lines, distance=0.0):
@@ -175,6 +173,7 @@ def clip_polygons(clip_poly, polys):
         progbar.update(counter)
         out_polys[key] = clip_poly.intersection(poly.buffer(0))
 
+    progbar.finish()
     return out_polys
 
 
@@ -220,4 +219,5 @@ def dissolve_by_points(groups, polys):
         dissolved_polys[key] = unary_union(intersected)  # MultiPolygon(intersected) #intersected
         polys = [p for i, p in enumerate(polys) if i not in indexes]
 
+    progbar.finish()
     return dissolved_polys
