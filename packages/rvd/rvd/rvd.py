@@ -25,6 +25,7 @@ import sqlite3
 import csv
 from collections import OrderedDict
 from typing import List, Dict
+from rscommons.database import dict_factory
 
 from rscommons.util import safe_makedirs
 from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALOGRErrors, ProgressBar
@@ -152,9 +153,7 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, ex
 
     # Execute the SQL to create the lookup tables in the RVD geopackage SQLite database
     watershed_name = create_database_NEW(huc, outputs_gpkg_path, metadata, cfg.OUTPUT_EPSG, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'rvd_schema.sql'))
-
-    # populate_database_NEW(output_gkpg, segmented_path, huc)
-    # project.add_metadata({'Watershed': watesrhed_name})
+    project.add_metadata({'Watershed': watershed_name})
 
     geom_vbottom = get_geometry_unary_union(vbottom_path)
 
@@ -194,7 +193,7 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, ex
     build_network_NEW(flowlines_path, flowareas_path, cleaned_path, waterbodies_path=waterbodies_path, epsg=cfg.OUTPUT_EPSG, reach_codes=reach_codes)
 
     segmented_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['RVD'].rel_path)
-    segment_network_NEW(cleaned_path, segmented_path, max_length, min_length)
+    segment_network_NEW(cleaned_path, segmented_path, max_length, min_length, huc)
 
     # TODO: Bring back the data tables
 
@@ -253,13 +252,19 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, ex
     # Generate Vegetation Conversions
     vegetation_change = (vegetation["HISTORIC"]["CONVERSION"] - vegetation["EXISTING"]["CONVERSION"])
     save_intarr_to_geotiff(vegetation_change, os.path.join(output_folder, "Intermediates", "Conversion_Raster.tif"), prj_existing_path)
-    conversion_classifications = [row for row in csv.DictReader(open(os.path.join(os.path.dirname(__file__), "conversion_proportions.csv"), "rt"))]
 
     # Split vegetation change classes into binary arrays
     vegetation_change_arrays = {
         c["ConversionType"]: (vegetation_change == int(c["ConversionValue"])) * 1 if int(c["ConversionValue"]) in np.unique(vegetation_change) else None
         for c in conversion_classifications
     }
+
+    # load conversion types dictionary from database
+    conn = sqlite3.connect(outputs_gpkg_path)
+    conn.row_factory = dict_factory
+    curs = conn.cursor()
+    curs.execute('SELECT * FROM ConversionProportions')
+    conversion_classifications = curs.fetchall()
 
     # Calcuate vegetation conversion per reach
     reach_values = extract_mean_values_by_polygon(clipped_thiessen, vegetation_change_arrays, prj_existing_path)
@@ -270,36 +275,12 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, ex
     # Write Output to GPKG table
     # TODO clean this up a bit?
     # TODO figure out why main.empty_table is getting generated
-    with sqlite3.connect(output_gkpg) as conn:
+    with sqlite3.connect(outputs_gpkg_path) as conn:
         cursor = conn.cursor()
-        cursor.execute('''
-            CREATE TABLE rvd_values (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                ReachID INTEGER,
-                EXISTING_RIPARIAN_MEAN REAL,
-                HISTORIC_RIPARIAN_MEAN REAL,
-                RIPARIAN_DEPARTURE REAL,
-                EXISTING_NATIVE_RIPARIAN_MEAN REAL,
-                HISTORIC_NATIVE_RIPARIAN_MEAN REAL,
-                NATIVE_RIPARIAN_DEPARTURE REAL,
-                FromConifer REAL,
-                FromDevegetated REAL,
-                FromGrassShrubland REAL,
-                FromDeciduous REAL,
-                NoChange REAL,
-                Deciduous REAL,
-                GrassShrubland REAL,
-                Devegetation REAL,
-                Conifer REAL,
-                Invasive REAL,
-                Development REAL,
-                Agriculture REAL,
-                ConversionCode INTEGER,
-                ConversionType TEXT)''')
-        conn.commit()
-        cursor.execute('''INSERT INTO gpkg_contents (table_name, data_type) VALUES ('rvd_values', 'attributes')''')
-        conn.commit()
-        cursor.executemany('''INSERT INTO rvd_values (
+
+        # cursor.execute('''INSERT INTO gpkg_contents (table_name, data_type) VALUES ('rvd_values', 'attributes')''')
+        # conn.commit()
+        cursor.executemany('''INSERT INTO RVDValues (
                 ReachID,
                 FromConifer,
                 FromDevegetated,
@@ -313,9 +294,8 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, ex
                 Invasive,
                 Development,
                 Agriculture,
-                ConversionCode,
-                ConversionType)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''', [
+                ConversionID)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)''', [
             (reach_id,
              value["FromConifer"],
              value["FromDevegetated"],
@@ -329,10 +309,10 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, ex
              value["Invasive"],
              value["Development"],
              value["Agriculture"],
-             value["ConversionCode"],
-             value["ConversionType"]) for reach_id, value in reach_values_with_conversion_codes.items()])
+             value["ConversionCode"]) for reach_id, value in reach_values_with_conversion_codes.items()])
         conn.commit()
-        cursor.executemany('''UPDATE rvd_values SET
+
+        cursor.executemany('''UPDATE RVDValues SET
                 EXISTING_RIPARIAN_MEAN=?,
                 HISTORIC_RIPARIAN_MEAN=?,
                 RIPARIAN_DEPARTURE=?,

@@ -257,7 +257,7 @@ def cut(line, distance):
             )
 
 
-def segment_network_NEW(inpath: str, outpath: str, interval: float, minimum: float):
+def segment_network_NEW(inpath: str, outpath: str, interval: float, minimum: float, huc: str):
     """
     Chop the lines in a polyline feature class at the specified interval unless
     this would create a line less than the minimum in which case the line is not segmented.
@@ -292,13 +292,13 @@ def segment_network_NEW(inpath: str, outpath: str, interval: float, minimum: flo
         transform_back = osr.CoordinateTransformation(transform_ref, srs)
 
         # Create the output shapefile
-        out_lyr.create_layer(ogr.wkbMultiLineString, spatial_ref=srs, fields={
-            'GNIS_NAME': ogr.OFTString,
-            'FCode': ogr.OFTString,
-            'TotDASqKm': ogr.OFTReal,
-            'NHDPlusID': ogr.OFTReal,
-            'ReachID': ogr.OFTInteger,
-        })
+        # out_lyr.create_layer(ogr.wkbMultiLineString, spatial_ref=srs, fields={
+        #     'GNIS_NAME': ogr.OFTString,
+        #     'FCode': ogr.OFTString,
+        #     'TotDASqKm': ogr.OFTReal,
+        #     'NHDPlusID': ogr.OFTReal,
+        #     'ReachID': ogr.OFTInteger,
+        # })
 
         # Retrieve all input features keeping track of which ones have GNIS names or not
         namedFeatures = {}
@@ -337,7 +337,7 @@ def segment_network_NEW(inpath: str, outpath: str, interval: float, minimum: flo
         log.info('{:,} features after merging. Starting segmentation...'.format(len(allFeatures)))
 
         # Segment the features at the desired interval
-        rid = 0
+        # rid = 0
         log.info('Segmenting Network...')
         progbar = ProgressBar(len(allFeatures), 50, "Segmenting")
         counter = 0
@@ -353,13 +353,14 @@ def segment_network_NEW(inpath: str, outpath: str, interval: float, minimum: flo
                 newOGRFeat = ogr.Feature(out_lyr.ogr_layer_def)
                 # Set the attributes using the values from the delimited text file
                 newOGRFeat.SetField("GNIS_NAME", origFeat.name)
-                newOGRFeat.SetField("ReachID", rid)
-                newOGRFeat.SetField("FCode", origFeat.FCode)
+                # newOGRFeat.SetField("ReachID", rid)
+                newOGRFeat.SetField("ReachCode", origFeat.FCode)
                 newOGRFeat.SetField("TotDASqKm", origFeat.TotDASqKm)
                 newOGRFeat.SetField("NHDPlusID", origFeat.NHDPlusID)
+                newOGRFeat.SetField("WatershedID", huc)
                 newOGRFeat.SetGeometry(oldGeom)
                 out_lyr.ogr_layer.CreateFeature(newOGRFeat)
-                rid += 1
+                # rid += 1
             else:
                 # From here on out we use shapely and project to UTM. We'll transform back before writing to disk.
                 newGeom = oldGeom.Clone()
@@ -372,30 +373,32 @@ def segment_network_NEW(inpath: str, outpath: str, interval: float, minimum: flo
                     newOGRFeat = ogr.Feature(out_lyr.ogr_layer_def)
                     # Set the attributes using the values from the delimited text file
                     newOGRFeat.SetField("GNIS_NAME", origFeat.name)
-                    newOGRFeat.SetField("ReachID", rid)
-                    newOGRFeat.SetField("FCode", origFeat.FCode)
+                    # newOGRFeat.SetField("ReachID", rid)
+                    newOGRFeat.SetField("ReachCode", origFeat.FCode)
                     newOGRFeat.SetField("TotDASqKm", origFeat.TotDASqKm)
                     newOGRFeat.SetField("NHDPlusID", origFeat.NHDPlusID)
+                    newOGRFeat.SetField("WatershedID", huc)
                     geo = ogr.CreateGeometryFromWkt(part1shply.wkt)
                     geo.Transform(transform_back)
                     newOGRFeat.SetGeometry(geo)
                     out_lyr.ogr_layer.CreateFeature(newOGRFeat)
-                    rid += 1
+                    # rid += 1
 
                 # Add any remaining line to outGeometries
                 if remaining:
                     newOGRFeat = ogr.Feature(out_lyr.ogr_layer_def)
                     # Set the attributes using the values from the delimited text file
                     newOGRFeat.SetField("GNIS_NAME", origFeat.name)
-                    newOGRFeat.SetField("ReachID", rid)
-                    newOGRFeat.SetField("FCode", origFeat.FCode)
+                    # newOGRFeat.SetField("ReachID", rid)
+                    newOGRFeat.SetField("ReachCode", origFeat.FCode)
                     newOGRFeat.SetField("TotDASqKm", origFeat.TotDASqKm)
                     newOGRFeat.SetField("NHDPlusID", origFeat.NHDPlusID)
+                    newOGRFeat.SetField("WatershedID", huc)
                     geo = ogr.CreateGeometryFromWkt(remaining.wkt)
                     geo.Transform(transform_back)
                     newOGRFeat.SetGeometry(geo)
                     out_lyr.ogr_layer.CreateFeature(newOGRFeat)
-                    rid += 1
+                    # rid += 1
 
         progbar.finish()
 
