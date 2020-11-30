@@ -96,13 +96,12 @@ def midpoints(in_lines):
     return out_points
 
 
-def centerline_points(in_lines: Path, distance: float = 0.0, id_field: str = None, transform: Transform = None) -> Dict[int, List[RiverPoint]]:
+def centerline_points(in_lines: Path, distance: float = 0.0, transform: Transform = None) -> Dict[int, List[RiverPoint]]:
     """Generates points along each line feature at specified distances from the end as well as quarter and halfway
 
     Args:
         in_lines (Path): path of shapefile with features
         distance (float, optional): distance from ends to generate points. Defaults to 0.0.
-        id_field (str, optional): field to obtain unique values for grouping points. Defaults to None.
         transform (Transform, optional): coordinate transformation. Defaults to None.
 
     Returns:
@@ -124,7 +123,7 @@ def centerline_points(in_lines: Path, distance: float = 0.0, id_field: str = Non
             if line.project(line.interpolate(0.25, True)) > distance:
                 out_points.append(RiverPoint(line.interpolate(0.25, True)))
                 out_points.append(RiverPoint(line.interpolate(-0.25, True)))
-            out_group[int(feat.GetField(id_field))] = out_points
+            out_group[int(feat.GetFID())] = out_points
             feat = None
         return out_group
 
