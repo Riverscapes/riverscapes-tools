@@ -201,7 +201,7 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, ex
     log.info("Calculating Voronoi Polygons...")
 
     # Add all the points (including islands) to the list
-    flowline_thiessen_points_groups = centerline_points(segmented_path, 10.0, "ReachID", transform_shp_to_raster)
+    flowline_thiessen_points_groups = centerline_points(segmented_path, 10.0, transform_shp_to_raster)
     flowline_thiessen_points = [pt for group in flowline_thiessen_points_groups.values() for pt in group]
 
     # Exterior is the shell and there is only ever 1
