@@ -474,9 +474,9 @@ class VectorBase():
         # index which is much faster than manually checking if all pairs of features intersect.
         clip_geom = None
         if clip_shape:
-            if type(clip_shape) is BaseGeometry:
+            if isinstance(clip_shape, BaseGeometry):
                 clip_geom = self.shapely2ogr(clip_shape)
-            elif type(clip_shape) is ogr.Feature:
+            elif isinstance(clip_shape, ogr.Feature):
                 clip_geom = clip_shape.GetGeometryRef()
             else:
                 clip_geom = clip_shape
@@ -753,7 +753,7 @@ class VectorBase():
         pt2_ogr = VectorBase.shapely2ogr(pt2_orig, transform_forward)
 
         pt1_proj = VectorBase.ogr2shapely(pt1_ogr)
-        pt2_proj = VectorBase.ogr2shapely(pt1_ogr)
+        pt2_proj = VectorBase.ogr2shapely(pt2_ogr)
 
         proj_dist = pt1_proj.distance(pt2_proj)
 

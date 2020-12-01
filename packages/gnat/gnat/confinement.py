@@ -217,7 +217,7 @@ def confinement(huc, flowlines_orig, confining_polygon_orig, output_folder, buff
             flowlineID = int(flowline.GetFieldAsInteger64("NHDPlusID"))
             buffer_value = flowline.GetField(buffer_field) * meter_conversion
 
-            geom_flowline = GeopackageLayer.ogr2shapely(g)
+            geom_flowline = GeopackageLayer.ogr2shapely(flowline)
 
             # Generate buffer on each side of the flowline
             geom_buffer = geom_flowline.buffer(buffer_value, cap_style=2)
