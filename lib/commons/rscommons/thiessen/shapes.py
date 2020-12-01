@@ -6,22 +6,24 @@ import numpy as np
 from shapely.wkb import loads as wkbload
 from shapely.geometry import shape, mapping, Point, MultiPoint, LineString, MultiLineString, GeometryCollection, Polygon, MultiPolygon
 from shapely.ops import unary_union
+from rscommons import LoopTimer
 
 from rscommons import Logger, ProgressBar, get_shp_or_gpkg
 from rscommons.shapefile import get_transform_from_epsg
 
-from typing import List, Dict
+from typing import List, Dict, Any
 Path = str
 Transform = ogr.osr.CoordinateTransformation
 
 
 class RiverPoint:
 
-    def __init__(self, pt, interior=False, side=None, island=None):
+    def __init__(self, pt, interior=False, side=None, island=None, properties: Dict[str, Any] = None):
         self.point = pt
         self.side = side
         self.interior = interior
         self.island = island
+        self.properties = properties
 
 
 def get_riverpoints(inpath, epsg, attribute_filter=None):
@@ -112,18 +114,24 @@ def centerline_points(in_lines: Path, distance: float = 0.0, transform: Transfor
         out_group = {}
 
         for feat, _counter, _progbar in in_lyr.iterate_features(""):
+            fid = feat.GetFID()
             geom = feat.GetGeometryRef()
             if transform:
                 geom.Transform(transform)
             line = wkbload(geom.ExportToWkb())
             out_points = []
-            out_points.append(RiverPoint(line.interpolate(distance)))
-            out_points.append(RiverPoint(line.interpolate(0.5, True)))
-            out_points.append(RiverPoint(line.interpolate(-distance)))
+            # Attach the FID in case we need it later
+            props = {'fid': fid}
+
+            out_points.append(RiverPoint(line.interpolate(distance), properties=props))
+            out_points.append(RiverPoint(line.interpolate(0.5, True), properties=props))
+            out_points.append(RiverPoint(line.interpolate(-distance), properties=props))
+
             if line.project(line.interpolate(0.25, True)) > distance:
-                out_points.append(RiverPoint(line.interpolate(0.25, True)))
-                out_points.append(RiverPoint(line.interpolate(-0.25, True)))
-            out_group[int(feat.GetFID())] = out_points
+                out_points.append(RiverPoint(line.interpolate(0.25, True), properties=props))
+                out_points.append(RiverPoint(line.interpolate(-0.25, True), properties=props))
+
+            out_group[int(fid)] = out_points
             feat = None
         return out_group
 

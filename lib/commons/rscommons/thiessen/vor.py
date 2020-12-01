@@ -164,3 +164,44 @@ class NARVoronoi:
                 if len(regionVerts) >= 3:
                     polys.append(Polygon(regionVerts))
         self.polys = MultiPolygon(polys)
+
+    def dissolve_by_property(self, property_name):
+        """Group polygons by a property
+
+        Args:
+            property_name ([type]): [description]
+        """
+
+        poly_groups = {}
+
+        progbar1 = ProgressBar(len(self.point_region), 50, "Grouping Polygons...")
+        counter = 0
+        progbar1.update(counter)
+
+        for pt_id in range(len(self.point_region)):
+            region_id = self.point_region[pt_id]
+            fid = self.points[pt_id].properties[property_name]
+
+            counter += 1
+            progbar1.update(counter)
+
+            region = self.regions[region_id]
+            if len(region) >= 3:
+                region_verts = [self.vertices[ptidx] for ptidx in region if ptidx >= 0]
+                if len(region_verts) >= 3:
+                    poly = Polygon(region_verts)
+                    if fid not in poly_groups:
+                        poly_groups[fid] = []
+                    poly_groups[fid].append(poly)
+
+        progbar1.finish()
+
+        progbar2 = ProgressBar(len(poly_groups.values()), 50, "Dissolving...")
+        counter = 0
+        progbar2.update(counter)
+
+        dissolved = {}
+        for fid, group in poly_groups.items():
+            dissolved[fid] = unary_union(group)
+
+        return dissolved
