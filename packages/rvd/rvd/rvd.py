@@ -133,6 +133,13 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, ex
         # Set the output spatial ref as this for the whole project
         out_srs = flow_lyr.spatial_ref
 
+    # Transform issues reading 102003 as espg id. Using sr wkt seems to work, however arcgis has problems loading feature classes with this method...
+    raster_srs = ogr.osr.SpatialReference()
+    ds = gdal.Open(prj_existing_path, 0)
+    raster_srs.ImportFromWkt(ds.GetProjectionRef())
+    raster_srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+    transform_shp_to_raster = VectorBase.get_transform(out_srs, raster_srs)
+
     # Create the output feature class fields
     with GeopackageLayer(outputs_gpkg_path, layer_name='Reaches', delete_dataset=True) as out_lyr:
         out_lyr.create_layer(ogr.wkbMultiLineString, spatial_ref=out_srs, fields={
@@ -155,7 +162,7 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, ex
     watershed_name = create_database_NEW(huc, outputs_gpkg_path, metadata, cfg.OUTPUT_EPSG, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'rvd_schema.sql'))
     project.add_metadata({'Watershed': watershed_name})
 
-    geom_vbottom = get_geometry_unary_union(vbottom_path)
+    geom_vbottom = get_geometry_unary_union(vbottom_path, spatial_ref=raster_srs)
 
     flowareas_path = None
     if flow_areas_orig:
@@ -180,13 +187,6 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, ex
     # Add the inputs to the XML
     _nd, _in_gpkg_path, _sublayers = project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
 
-    # Transform issues reading 102003 as espg id. Using sr wkt seems to work, however arcgis has problems loading feature classes with this method...
-    raster_srs = ogr.osr.SpatialReference()
-    ds = gdal.Open(prj_existing_path, 0)
-    raster_srs.ImportFromWkt(ds.GetProjectionRef())
-    raster_srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
-    transform_shp_to_raster = VectorBase.get_transform(out_srs, raster_srs)
-
     # Filter the flow lines to just the required features and then segment to desired length
     # TODO: These are brat methods that need to be refactored to use VectorBase layers
     cleaned_path = os.path.join(output_folder, LayerTypes['INTERMEDIATES'].rel_path, LayerTypes['INTERMEDIATES'].sub_layers['CLEANED'].rel_path)
@@ -203,7 +203,7 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, ex
     # Add all the points (including islands) to the list
     flowline_thiessen_points_groups = centerline_points(segmented_path, 10.0, transform_shp_to_raster)
     flowline_thiessen_points = [pt for group in flowline_thiessen_points_groups.values() for pt in group]
-    simple_save([pt.point for pt in flowline_thiessen_points], ogr.wkbPoint, out_srs, "Thiessen_Points", intermediates_gpkg_path)
+    simple_save([pt.point for pt in flowline_thiessen_points], ogr.wkbPoint, raster_srs, "Thiessen_Points", intermediates_gpkg_path)
 
     # Exterior is the shell and there is only ever 1
     myVorL = NARVoronoi(flowline_thiessen_points)
@@ -221,9 +221,9 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, ex
     clipped_thiessen = clip_polygons(geom_vbottom, dissolved_polys)
 
     # Save Intermediates
-    simple_save(clipped_thiessen.values(), ogr.wkbPolygon, out_srs, "Thiessen", intermediates_gpkg_path)
-    simple_save(dissolved_polys.values(), ogr.wkbPolygon, out_srs, "ThiessenPolygonsDissolved", intermediates_gpkg_path)
-    simple_save(myVorL.polys, ogr.wkbPolygon, out_srs, "ThiessenPolygonsRaw", intermediates_gpkg_path)
+    simple_save(clipped_thiessen.values(), ogr.wkbPolygon, raster_srs, "Thiessen", intermediates_gpkg_path)
+    simple_save(dissolved_polys.values(), ogr.wkbPolygon, raster_srs, "ThiessenPolygonsDissolved", intermediates_gpkg_path)
+    simple_save(myVorL.polys, ogr.wkbPolygon, raster_srs, "ThiessenPolygonsRaw", intermediates_gpkg_path)
 
     # OLD METHOD FOR AUDIT
     # dissolved_polys2 = dissolve_by_points(flowline_thiessen_points_groups, myVorL.polys)
