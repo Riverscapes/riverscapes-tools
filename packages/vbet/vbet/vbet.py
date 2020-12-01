@@ -329,7 +329,7 @@ def sanitize(in_path: str, channel_poly: Polygon, out_path: str, min_hole_sq_deg
 
         # NOTE: Order of operations really matters here.
         for inFeature, _counter, _progbar in in_lyr.iterate_features("Sanitizing", clip_shape=channel_poly):
-            geom = wkb_load(inFeature.GetGeometryRef().ExportToWkb())
+            geom = VectorBase.ogr2shapely(inFeature)
 
             # First check. Just make sure this is a valid shape we can work with
             if geom.is_empty or geom.area < square_buff:

@@ -1,17 +1,13 @@
 import os
 import glob
 import csv
-import json
+from typing import List, Dict
 import sqlite3
 import argparse
 from osgeo import ogr, osr
-from rscommons import ProgressBar, Logger, ModelConfig, dotenv, get_shp_or_gpkg
+from rscommons import ProgressBar, Logger, ModelConfig, dotenv, get_shp_or_gpkg, VectorBase
 from rscommons.shapefile import create_field
-from rscommons.shapefile import get_transform_from_epsg
 from rscommons.build_network import FCodeValues
-from shapely.wkb import loads as wkbload
-from shapely.geometry import shape
-from typing import List, Dict
 
 perennial_reach_code = 46006
 
@@ -296,7 +292,7 @@ def populate_database_NEW(database, network_path, huc):
 
             # Store the feature in the SQLite database
             curs.execute(
-                'INSERT INTO Reaches (WatershedID, Geometry, ReachCode, StreamName, iGeo_DA, Orig_DA) VALUES (?, ?, ?, ?, ?, ?)', 
+                'INSERT INTO Reaches (WatershedID, Geometry, ReachCode, StreamName, iGeo_DA, Orig_DA) VALUES (?, ?, ?, ?, ?, ?)',
                 [huc, geojson, reach_code, name, drainage_area, drainage_area]
             )
 
@@ -346,7 +342,7 @@ def load_geometries(database, target_srs=None, where_clause=None):
         geom = ogr.CreateGeometryFromJson(row[1])
         if transform:
             geom.Transform(transform)
-        reaches[row[0]] = wkbload(geom.ExportToWkb())
+        reaches[row[0]] = VectorBase.ogr2shapely(geom)
     return reaches
 
 

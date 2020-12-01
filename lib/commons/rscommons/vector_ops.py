@@ -8,10 +8,9 @@
 # Date:     Nov 16, 2020
 # -------------------------------------------------------------------------------
 from copy import copy
-from typing import List, Dict
+from typing import List
 from functools import reduce
 from osgeo import ogr, gdal, osr
-from shapely.wkb import loads as wkbload
 from shapely.ops import unary_union
 from shapely.geometry.base import BaseGeometry
 from shapely.geometry import mapping, Point, MultiPoint, LineString, MultiLineString, GeometryCollection, Polygon, MultiPolygon
@@ -20,7 +19,7 @@ from rscommons.util import sizeof_fmt, get_obj_size
 from rscommons.classes.vector_base import VectorBase, VectorBaseException
 
 
-def print_geom_size(logger, geom_obj):
+def print_geom_size(logger: Logger, geom_obj: BaseGeometry):
     try:
         size_str = sizeof_fmt(get_obj_size(geom_obj.wkb))
         logger.debug('Byte Size of output object: {} Type: {} IsValid: {} Length: {} Area: {}'.format(size_str, geom_obj.type, geom_obj.is_valid, geom_obj.length, geom_obj.area))
@@ -49,19 +48,14 @@ def get_geometry_union(in_layer_path: str, epsg: int = None, attribute_filter: s
         geom = None
 
         for feature, _counter, progbar in in_layer.iterate_features("Getting geometry union", attribute_filter=attribute_filter, clip_shape=clip_shape):
-            new_geom = feature.GetGeometryRef()
-
-            if new_geom is None:
+            if feature.GetGeometryRef() is None:
                 progbar.erase()  # get around the progressbar
                 log.warning('Feature with FID={} has no geometry. Skipping'.format(feature.GetFID()))
                 continue
 
-            if transform is not None:
-                new_geom.Transform(transform)
-
-            new_shape = wkbload(new_geom.ExportToWkb())
+            new_shape = VectorBase.ogr2shapely(feature, transform=transform)
             try:
-                geom = geom.union(new_shape) if geom else new_shape
+                geom = geom.union(new_shape) if geom is not None else new_shape
             except Exception:
                 progbar.erase()  # get around the progressbar
                 log.warning('Union failed for shape with FID={} and will be ignored'.format(feature.GetFID()))
@@ -97,9 +91,6 @@ def get_geometry_unary_union(in_layer_path: str, epsg: int = None, spatial_ref: 
         elif spatial_ref is not None:
             transform = in_layer.get_transform(in_layer.spatial_ref, spatial_ref)
 
-        def unionize(wkb_lst):
-            return unary_union([wkbload(g) for g in wkb_lst]).wkb
-
         geom_list = []
 
         for feature, _counter, progbar in in_layer.iterate_features("Unary Unioning features", attribute_filter=attribute_filter, clip_shape=clip_shape):
@@ -133,13 +124,11 @@ def get_geometry_unary_union(in_layer_path: str, epsg: int = None, spatial_ref: 
                 progbar.erase()  # get around the progressbar
                 log.warning('Zero Area for shape with FID={}'.format(feature.GetFID()))
             else:
-                if transform is not None:
-                    new_geom.Transform(transform)
-                geom_list.append(new_geom.ExportToWkb())
+                geom_list.append(VectorBase.ogr2shapely(new_geom, transform))
 
                 # IF we get past a certain size then run the union
                 if len(geom_list) >= 500:
-                    geom_list = [unionize(geom_list)]
+                    geom_list = [unary_union(geom_list)]
             new_geom = None
 
     log.debug('finished iterating with list of size: {}'.format(len(geom_list)))
@@ -147,17 +136,18 @@ def get_geometry_unary_union(in_layer_path: str, epsg: int = None, spatial_ref: 
     if len(geom_list) > 1:
         log.debug('Starting final union of geom_list of size: {}'.format(len(geom_list)))
         # Do a final union to clean up anything that might still be in the list
-        geom_union = wkbload(unionize(geom_list))
+        geom_union = unary_union(geom_list)
     elif len(geom_list) == 0:
         log.warning('No geometry found to union')
         return None
     else:
         log.debug('FINAL Unioning geom_list of size {}'.format(len(geom_list)))
-        geom_union = wkbload(geom_list[0])
+        geom_union = geom_list[0]
         log.debug('   done')
 
     print_geom_size(log, geom_union)
     log.debug('Complete')
+    # Return a shapely object
     return geom_union
 
 
@@ -227,7 +217,7 @@ def merge_feature_classes(feature_class_paths: List[str], boundary: BaseGeometry
             log.info("Merging feature class {}/{}".format(fccount, len(feature_class_paths)))
 
             with get_shp_or_gpkg(in_layer_path) as in_layer:
-                in_layer.SetSpatialFilter(ogr.CreateGeometryFromWkb(boundary.wkb))
+                in_layer.SetSpatialFilter(VectorBase.shapely2ogr(boundary))
 
                 # First input spatial ref sets the SRS for the output file
                 transform = in_layer.get_transform(out_layer)
@@ -307,14 +297,11 @@ def load_geometries(in_layer_path: str, id_field: str, epsg=None) -> dict:
         for feature, _counter, progbar in in_layer.iterate_features("Loading features"):
 
             reach = feature.GetField(id_field)
+
             geom = feature.GetGeometryRef()
-
-            # Optional coordinate transformation
-            if transform:
-                geom.Transform(transform)
-
-            new_geom = wkbload(geom.ExportToWkb())
             geo_type = geom.GetGeometryType()
+
+            new_geom = VectorBase.ogr2shapely(geom, transform=transform)
 
             if new_geom.is_empty:
                 progbar.erase()  # get around the progressbar
@@ -396,7 +383,7 @@ def network_statistics(label: str, vector_layer_path: str):
                 no_geometry += 1
                 return
 
-            shapely_obj = wkbload(geom.ExportToWkb())
+            shapely_obj = VectorBase.ogr2shapely(geom)
             length = shapely_obj.length
 
             if shapely_obj.is_empty or shapely_obj.is_valid is False:
@@ -485,7 +472,8 @@ def intersect_geometry_with_feature_class(geometry: BaseGeometry, in_layer_path:
 
     with get_shp_or_gpkg(out_layer_path, write=True) as out_layer:
         feature = ogr.Feature(out_layer.ogr_layer_def)
-        feature.SetGeometry(ogr.CreateGeometryFromWkb(geom_inter.wkb))
+        geom = VectorBase.shapely2ogr(geom_inter)
+        feature.SetGeometry(geom)
         out_layer.ogr_layer.CreateFeature(feature)
 
 
@@ -511,8 +499,7 @@ def buffer_by_field(in_layer_path: str, field: str, epsg: int = None, min_buffer
             geom = feature.GetGeometryRef()
             buffer_dist = feature.GetField(field) * conversion
             geom_buffer = geom.Buffer(buffer_dist if buffer_dist > min_buffer else min_buffer)
-            geom_buffer.Transform(transform)
-            outpolys.append(wkbload(geom_buffer.ExportToWkb()))
+            outpolys.append(VectorBase.ogr2shapely(geom_buffer))
 
     # unary union
     outpoly = unary_union(outpolys)

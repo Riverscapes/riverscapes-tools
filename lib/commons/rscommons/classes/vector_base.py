@@ -5,8 +5,9 @@ import os
 import math
 import re
 from enum import Enum
+from typing import Union
 from osgeo import ogr, gdal, osr
-from shapely.wkb import loads as wkbload
+from shapely.wkb import loads as wkbload, dumps as wkbdumps
 from shapely.geometry.base import BaseGeometry
 from shapely.geometry import Point
 from rscommons import Logger, ProgressBar, Raster
@@ -436,7 +437,7 @@ class VectorBase():
             raise VectorBaseException('Layer not initialized. No ogr_layer_def found')
 
         feature = ogr.Feature(self.ogr_layer_def)
-        geom_ogr = ogr.CreateGeometryFromWkb(geom.wkb)
+        geom_ogr = self.shapely2ogr(geom)
 
         feature.SetGeometry(geom_ogr)
 
@@ -449,7 +450,7 @@ class VectorBase():
 
     def iterate_features(
         self, name: str = None, write_layers: list = None,
-        commit_thresh=1000, attribute_filter: str = None, clip_shape: BaseGeometry = None
+        commit_thresh=1000, attribute_filter: str = None, clip_shape: Union[BaseGeometry, ogr.Feature, ogr.Geometry] = None
     ) -> None:
         """[summary]
 
@@ -473,7 +474,12 @@ class VectorBase():
         # index which is much faster than manually checking if all pairs of features intersect.
         clip_geom = None
         if clip_shape:
-            clip_geom = ogr.CreateGeometryFromWkb(clip_shape.wkb)
+            if type(clip_shape) is BaseGeometry:
+                clip_geom = self.shapely2ogr(clip_shape)
+            elif type(clip_shape) is ogr.Feature:
+                clip_geom = clip_shape.GetGeometryRef()
+            else:
+                clip_geom = clip_shape
             # https://gdal.org/python/osgeo.ogr.Layer-class.html#SetSpatialFilter
             self.ogr_layer.SetSpatialFilter(clip_geom)
 
@@ -743,13 +749,11 @@ class VectorBase():
 
         transform_forward = osr.CoordinateTransformation(in_spatial_ref, out_spatial_ref)
 
-        pt1_ogr = ogr.CreateGeometryFromWkb(pt1_orig.wkb)
-        pt2_ogr = ogr.CreateGeometryFromWkb(pt2_orig.wkb)
-        pt1_ogr.Transform(transform_forward)
-        pt2_ogr.Transform(transform_forward)
+        pt1_ogr = VectorBase.shapely2ogr(pt1_orig, transform_forward)
+        pt2_ogr = VectorBase.shapely2ogr(pt2_orig, transform_forward)
 
-        pt1_proj = wkbload(pt1_ogr.ExportToWkb())
-        pt2_proj = wkbload(pt2_ogr.ExportToWkb())
+        pt1_proj = VectorBase.ogr2shapely(pt1_ogr)
+        pt2_proj = VectorBase.ogr2shapely(pt1_ogr)
 
         proj_dist = pt1_proj.distance(pt2_proj)
 
@@ -761,6 +765,59 @@ class VectorBase():
             raise VectorBaseException('Projection Error: \'{:,}\' is larger than the maximum allowed value'.format(output_distance))
 
         return output_distance
+
+    @staticmethod
+    def ogr2shapely(ogr_obj: Union[ogr.Feature, ogr.Geometry], transform: osr.CoordinateTransformation = None, flatten_to_2D=True) -> BaseGeometry:
+        """Retrieve the Shapely object from an ogr feature
+
+        Args:
+            ogr ([type]): [description]
+            ogr_feature (ogr.Feature, transform, optional): [description]. Defaults to None)->(BaseGeometry.
+
+        Returns:
+            [type]: [description]
+        """
+        if type(ogr_obj) is ogr.Feature:
+            geom = ogr_obj.GetGeometryRef()
+        elif type(ogr_obj) is ogr.Geometry:
+            geom = ogr_obj
+        else:
+            raise VectorBaseException('Could not detect type of object: {}. Must be of type ogr.Feature or ogr.Geometry'.format(type(ogr_obj)))
+
+        # Do the flatten first to speed up the potential transform
+        if flatten_to_2D is True and (geom.IsMeasured() > 0 or geom.Is3D() > 0):
+            geom.FlattenTo2D()
+
+        if transform:
+            geom.Transform(transform)
+
+        shapely_obj = wkbload(geom.ExportToWkb())
+        return shapely_obj
+
+    @staticmethod
+    def shapely2ogr(shapely_object: ogr.Feature, transform: osr.CoordinateTransformation = None, flatten_to_2D=True) -> ogr.Geometry:
+        """Get the OGR Geometry object from the shapely object
+
+        Args:
+            ogr ([type]): [description]
+            ogr_feature (ogr.Feature, transform, optional): [description]. Defaults to None)->(BaseGeometry.
+
+        Returns:
+            [type]: [description]
+        """
+
+        new_obj = shapely_object
+
+        if flatten_to_2D is True and (shapely_object.has_z):
+            # Shapely hack for flattening
+            new_obj = wkbload(wkbdumps(new_obj, output_dimension=2))
+
+        geom = ogr.CreateGeometryFromWkb(new_obj.wkb)
+
+        if transform:
+            geom.Transform(transform)
+
+        return geom
 
     def verify_raster_spatial_ref(self, raster_path: str):
         """Make sure our raster's spatial ref matches this layer's ref

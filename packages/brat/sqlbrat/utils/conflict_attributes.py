@@ -17,16 +17,14 @@ import traceback
 import json
 import time
 import sqlite3
-import gdal
 import shutil
-from osgeo import ogr
-from osgeo import osr
+from osgeo import ogr, osr, gdal
 from pygeoprocessing import geoprocessing
 from shapely.ops import unary_union
 from shapely.geometry import shape, mapping
 import rasterio.shutil
 
-from rscommons import ProgressBar, Logger, ModelConfig, dotenv
+from rscommons import ProgressBar, Logger, ModelConfig, dotenv, VectorBase
 from rscommons.raster_buffer_stats import raster_buffer_stats2
 from rscommons.shapefile import _rough_convert_metres_to_shapefile_units
 from rscommons.shapefile import intersect_feature_classes
@@ -168,7 +166,7 @@ def admin_agency(database, reaches, ownership, epsg, results):
         mid_point = polyline.interpolate(0.5, normalized=True)
         results[reach_id]['AgencyID'] = None
 
-        layer.SetSpatialFilter(ogr.CreateGeometryFromWkb(mid_point.wkb))
+        layer.SetSpatialFilter(VectorBase.shapely2ogr(mid_point))
         layer = data_source.GetLayer()
         for feature in layer:
             agency = feature.GetField('ADMIN_AGEN')

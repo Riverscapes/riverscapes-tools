@@ -3,7 +3,7 @@ from osgeo import ogr
 from osgeo import osr
 from rscommons.raster_buffer_stats import raster_buffer_stats2
 from rscommons.shapefile import get_transform_from_epsg
-from shapely.wkb import loads as wkbload
+from rscommons import VectorBase
 
 
 def calc_max_drainage(huc_search, precip_raster, wbd, bankfull):
@@ -33,9 +33,7 @@ def calc_max_drainage(huc_search, precip_raster, wbd, bankfull):
         huc = feature.GetField('HUC8')
         states = feature.GetField('states')
         if 'cn' not in states.lower():
-            geom = feature.GetGeometryRef()
-            geom.Transform(transform)
-            watersheds[huc] = wkbload(geom.ExportToWkb())
+            watersheds[huc] = VectorBase.ogr2shapely(feature, transform)
 
     stats = raster_buffer_stats2(watersheds, precip_raster)
 
