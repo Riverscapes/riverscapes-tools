@@ -19,8 +19,8 @@ def classify_conversions(arrays: Dict[int, Dict[str, float]], conversion_classif
                         ("Significant", 1.0)])  # value <= bin
     output = {}
 
-    pos_classes = {value["ConversionType"]: value for value in conversion_classifications if int(value["ConversionValue"]) > 0}
-    neg_classes = {value["ConversionType"]: value for value in conversion_classifications if int(value["ConversionValue"]) < 0}
+    pos_classes = {value["ConversionType"]: value for value in conversion_classifications if int(value["ConversionID"]) > 0}
+    neg_classes = {value["ConversionType"]: value for value in conversion_classifications if int(value["ConversionID"]) < 0}
     for reach_id, reach_values in arrays.items():
         pos_reach_values = {key: reach_values[key] for key in pos_classes.keys()}
         neg_reach_values = {key: reach_values[key] for key in neg_classes.keys()}

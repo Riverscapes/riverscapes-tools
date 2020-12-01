@@ -266,7 +266,7 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, ex
 
     # Split vegetation change classes into binary arrays
     vegetation_change_arrays = {
-        c["ConversionType"]: (vegetation_change == int(c["ConversionValue"])) * 1 if int(c["ConversionValue"]) in np.unique(vegetation_change) else None
+        c["ConversionType"]: (vegetation_change == int(c["ConversionID"])) * 1 if int(c["ConversionID"]) in np.unique(vegetation_change) else None
         for c in conversion_classifications
     }
 
