@@ -8,20 +8,17 @@
 # Date:     28 Aug 2019
 # -------------------------------------------------------------------------------
 import argparse
-import csv
 import os
 import sys
 import traceback
-import gdal
-import ogr
-from osgeo import osr
+import sqlite3
+from osgeo import osr, gdal
 from rscommons import ProgressBar, Logger, dotenv
 from rscommons.shapefile import _rough_convert_metres_to_raster_units
 from rscommons.database import load_geometries
 import rasterio
 from rasterio.mask import mask
 import numpy as np
-import sqlite3
 
 
 def vegetation_summary(database, veg_raster, buffer):
