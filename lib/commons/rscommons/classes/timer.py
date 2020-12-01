@@ -1,5 +1,6 @@
 import time
 
+
 class Timer:
 
     def __init__(self):
@@ -10,5 +11,5 @@ class Timer:
         self._stop_time = None
 
     def ellapsed(self):
-      self._stop_time = time.perf_counter() 
-      return self._stop_time - self._start_time
+        self._stop_time = time.perf_counter()
+        return self._stop_time - self._start_time

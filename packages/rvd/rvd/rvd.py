@@ -28,7 +28,7 @@ from typing import List, Dict
 from rscommons.database import dict_factory
 
 from rscommons.util import safe_makedirs
-from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALOGRErrors, ProgressBar
+from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALOGRErrors, ProgressBar, Timer
 from rscommons.util import safe_makedirs, safe_remove_dir
 from rscommons import GeopackageLayer, ShapefileLayer, VectorBase, get_shp_or_gpkg
 from rscommons.build_network import build_network_NEW
@@ -203,6 +203,7 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, ex
     # Add all the points (including islands) to the list
     flowline_thiessen_points_groups = centerline_points(segmented_path, 10.0, transform_shp_to_raster)
     flowline_thiessen_points = [pt for group in flowline_thiessen_points_groups.values() for pt in group]
+    simple_save([pt.point for pt in flowline_thiessen_points], ogr.wkbPoint, out_srs, "Thiessen_Points", intermediates_gpkg_path)
 
     # Exterior is the shell and there is only ever 1
     myVorL = NARVoronoi(flowline_thiessen_points)
@@ -212,7 +213,7 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, ex
 
     # Dissolve by flowlines
     log.info("Dissolving Thiessen Polygons")
-    dissolved_polys = dissolve_by_points(flowline_thiessen_points_groups, myVorL.polys)
+    dissolved_polys = myVorL.dissolve_by_property('fid')
 
     # Clip Thiessen Polys
     log.info("Clipping Thiessen Polygons to Valley Bottom")
@@ -223,7 +224,10 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, ex
     simple_save(clipped_thiessen.values(), ogr.wkbPolygon, out_srs, "Thiessen", intermediates_gpkg_path)
     simple_save(dissolved_polys.values(), ogr.wkbPolygon, out_srs, "ThiessenPolygonsDissolved", intermediates_gpkg_path)
     simple_save(myVorL.polys, ogr.wkbPolygon, out_srs, "ThiessenPolygonsRaw", intermediates_gpkg_path)
-    simple_save([pt.point for pt in flowline_thiessen_points], ogr.wkbPoint, out_srs, "Thiessen_Points", intermediates_gpkg_path)
+
+    # OLD METHOD FOR AUDIT
+    # dissolved_polys2 = dissolve_by_points(flowline_thiessen_points_groups, myVorL.polys)
+    # simple_save(dissolved_polys2.values(), ogr.wkbPolygon, out_srs, "ThiessenPolygonsDissolved_OLD", intermediates_gpkg_path)
 
     # Load Vegetation Rasters
     log.info(f"Loading Existing and Historic Vegetation Rasters")
@@ -253,18 +257,18 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, ex
     vegetation_change = (vegetation["HISTORIC"]["CONVERSION"] - vegetation["EXISTING"]["CONVERSION"])
     save_intarr_to_geotiff(vegetation_change, os.path.join(output_folder, "Intermediates", "Conversion_Raster.tif"), prj_existing_path)
 
-    # Split vegetation change classes into binary arrays
-    vegetation_change_arrays = {
-        c["ConversionType"]: (vegetation_change == int(c["ConversionValue"])) * 1 if int(c["ConversionValue"]) in np.unique(vegetation_change) else None
-        for c in conversion_classifications
-    }
-
     # load conversion types dictionary from database
     conn = sqlite3.connect(outputs_gpkg_path)
     conn.row_factory = dict_factory
     curs = conn.cursor()
     curs.execute('SELECT * FROM ConversionProportions')
     conversion_classifications = curs.fetchall()
+
+    # Split vegetation change classes into binary arrays
+    vegetation_change_arrays = {
+        c["ConversionType"]: (vegetation_change == int(c["ConversionValue"])) * 1 if int(c["ConversionValue"]) in np.unique(vegetation_change) else None
+        for c in conversion_classifications
+    }
 
     # Calcuate vegetation conversion per reach
     reach_values = extract_mean_values_by_polygon(clipped_thiessen, vegetation_change_arrays, prj_existing_path)
@@ -344,11 +348,17 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, ex
 
 
 def extract_mean_values_by_polygon(polys, rasters, reference_raster):
+    log = Logger('extract_mean_values_by_polygon')
+
+    progbar = ProgressBar(len(polys), 50, "Extracting Mean values...")
+    counter = 0
 
     with rasterio.open(reference_raster) as dataset:
 
         output = {}
         for reachid, poly in polys.items():
+            counter += 1
+            progbar.update(counter)
             if poly.geom_type in ["Polygon", "MultiPolygon"] and poly.area > 0:
                 values = {}
                 reach_raster = np.ma.masked_invalid(
@@ -366,9 +376,12 @@ def extract_mean_values_by_polygon(polys, rasters, reference_raster):
                     else:
                         values[key] = 0.0
                 output[reachid] = values
-                print(f"Reach: {reachid} | {sum([v for v in values.values() if v is not None]):.2f}")
+                # log.debug(f"Reach: {reachid} | {sum([v for v in values.values() if v is not None]):.2f}")
             else:
-                print(f"Reach: {reachid} | WARNING no geom")
+                progbar.erase()
+                log.warning(f"Reach: {reachid} | WARNING no geom")
+
+    progbar.finish()
     return output
 
 
