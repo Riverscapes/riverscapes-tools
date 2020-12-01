@@ -20,7 +20,6 @@ from osgeo import ogr
 from osgeo import gdal
 from shapely.geometry.base import BaseGeometry
 from shapely.ops import unary_union, split, nearest_points, linemerge, substring
-from shapely.wkb import loads as wkb_load
 from shapely.geometry import Point, Polygon, MultiPolygon, LineString, MultiLineString, mapping
 
 from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALOGRErrors, ProgressBar
@@ -217,9 +216,8 @@ def confinement(huc, flowlines_orig, confining_polygon_orig, output_folder, buff
             # Load Flowline
             flowlineID = int(flowline.GetFieldAsInteger64("NHDPlusID"))
             buffer_value = flowline.GetField(buffer_field) * meter_conversion
-            g = flowline.GetGeometryRef()
-            g.FlattenTo2D()  # to avoid error if z value is present, even if 0.0
-            geom_flowline = wkb_load(g.ExportToWkb())
+
+            geom_flowline = GeopackageLayer.ogr2shapely(g)
 
             # Generate buffer on each side of the flowline
             geom_buffer = geom_flowline.buffer(buffer_value, cap_style=2)
@@ -391,59 +389,6 @@ def create_project(huc, output_dir, realization_meta):
     project.XMLBuilder.write()
 
     return project, realization, proj_nodes, report_path
-
-
-# def generate_confining_margins(active_channel_polygon, confining_polygon, output_gpkg, type="Unspecified"):
-#     """Old method for confinement margins based on single active channel polygon.
-
-#     Args:
-#         active_channel_polygon (str): featureclass of active channel
-#         confining_margin_polygon (str): featureclass of confinig margins
-#         confinement_type (str): type of confinement
-
-#     Returns:
-#         geometry: confining margins polylines
-#         geometry: floodplain pockets polygons
-#     """
-
-#     # Load geoms
-#     driver = ogr.GetDriverByName("ESRI Shapefile")  # GPKG
-#     data_active_channel = driver.Open(active_channel_polygon, 0)
-#     lyr_active_channel = data_active_channel.GetLayer()
-#     data_confining_polygon = driver.Open(confining_polygon, 0)
-#     lyr_confining_polygon = data_confining_polygon.GetLayer()
-#     srs = lyr_active_channel.GetSpatialRef()
-
-#     geom_active_channel_polygon = unary_union([wkb_load(feat.GetGeometryRef().ExportToWkb()) for feat in lyr_active_channel])
-#     geom_confining_polygon = unary_union([wkb_load(feat.GetGeometryRef().ExportToWkb()) for feat in lyr_confining_polygon])
-
-#     geom_confined_area = geom_active_channel_polygon.difference(geom_confining_polygon)
-#     geom_confining_margins = geom_confined_area.boundary.intersection(geom_confining_polygon.boundary)
-#     geom_floodplain_pockets = geom_confining_polygon.difference(geom_active_channel_polygon)
-
-#     # Save Outputs to Geopackage
-
-#     out_driver = ogr.GetDriverByName("GPKG")
-#     data_out = out_driver.Open(output_gpkg, 1)
-#     lyr_out_confining_margins = data_out.CreateLayer('ConfiningMargins', srs, geom_type=ogr.wkbLineString)
-#     feature_def = lyr_out_confining_margins.GetLayerDefn()
-#     feature = ogr.Feature(feature_def)
-#     feature.SetGeometry(ogr.CreateGeometryFromWkb(geom_confining_margins.wkb))
-#     lyr_out_confining_margins.CreateFeature(feature)
-#     feature = None
-
-#     lyr_out_floodplain_pockets = data_out.CreateLayer('FloodplainPockets', srs, geom_type=ogr.wkbPolygon)
-#     feature_def = lyr_out_confining_margins.GetLayerDefn()
-#     feature = ogr.Feature(feature_def)
-#     feature.SetGeometry(ogr.CreateGeometryFromWkb(geom_floodplain_pockets.wkb))
-#     lyr_out_floodplain_pockets.CreateFeature(feature)
-#     feature = None
-
-#     data_out = None
-#     data_active_channel = None
-#     data_confining_polygon = None
-
-#     return geom_confining_margins, geom_floodplain_pockets
 
 
 def cut(line, distance):

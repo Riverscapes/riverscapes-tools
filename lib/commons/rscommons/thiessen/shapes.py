@@ -1,17 +1,11 @@
-import math
-import json
-import os
-from osgeo import ogr
-import numpy as np
-from shapely.wkb import loads as wkbload
-from shapely.geometry import shape, mapping, Point, MultiPoint, LineString, MultiLineString, GeometryCollection, Polygon, MultiPolygon
-from shapely.ops import unary_union
-from rscommons import LoopTimer
-
-from rscommons import Logger, ProgressBar, get_shp_or_gpkg
-from rscommons.shapefile import get_transform_from_epsg
-
 from typing import List, Dict, Any
+from osgeo import ogr
+from shapely.geometry import Point, Polygon, MultiPolygon
+from shapely.ops import unary_union
+from rscommons import Logger, ProgressBar, get_shp_or_gpkg, VectorBase
+from rscommons.shapefile import get_transform_from_epsg
+from rscommons.vector_ops import export_geojson
+
 Path = str
 Transform = ogr.osr.CoordinateTransformation
 
@@ -38,62 +32,50 @@ def get_riverpoints(inpath, epsg, attribute_filter=None):
         [type]: List of RiverPoint objects
     """
 
-    log = Logger('Shapefile')
+    log = Logger('get_riverpoints')
     points = []
 
-    driver = ogr.GetDriverByName("ESRI Shapefile")
-    data_source = driver.Open(inpath, 0)
-    layer = data_source.GetLayer()
-    in_spatial_ref = layer.GetSpatialRef()
+    with get_shp_or_gpkg(inpath) as in_lyr:
 
-    _out_spatial_ref, transform = get_transform_from_epsg(in_spatial_ref, epsg)
+        _out_spatial_ref, transform = get_transform_from_epsg(in_lyr.spatial_ref, epsg)
 
-    progbar = ProgressBar(layer.GetFeatureCount(), 50, "Getting points for use in Thiessen")
-    counter = 0
-    for feature in layer:
-        counter += 1
-        progbar.update(counter)
+        for feat, _counter, progbar in in_lyr.iterate_features('Getting points for use in Thiessen', attribute_filter=attribute_filter):
 
-        new_geom = feature.GetGeometryRef()
+            new_geom = feat.GetGeometryRef()
 
-        if new_geom is None:
-            progbar.erase()  # get around the progressbar
-            log.warning('Feature with FID={} has no geometry. Skipping'.format(feature.GetFID()))
-            continue
+            if new_geom is None:
+                progbar.erase()  # get around the progressbar
+                log.warning('Feature with FID={} has no geometry. Skipping'.format(feat.GetFID()))
+                continue
 
-        new_geom.Transform(transform)
-        new_shape = wkbload(new_geom.ExportToWkb())
+            new_geom.Transform(transform)
+            new_shape = VectorBase.ogr2shapely(new_geom)
 
-        if new_shape.type == 'Polygon':
-            new_shape = MultiPolygon([new_shape])
+            if new_shape.type == 'Polygon':
+                new_shape = MultiPolygon([new_shape])
 
-        for poly in new_shape:
-            # Exterior is the shell and there is only ever 1
-            for pt in list(poly.exterior.coords):
-                points.append(RiverPoint(pt, interior=False))
+            for poly in new_shape:
+                # Exterior is the shell and there is only ever 1
+                for pt in list(poly.exterior.coords):
+                    points.append(RiverPoint(pt, interior=False))
 
-            # Now we consider interiors. NB: Interiors are only qualifying islands in this case
-            for idx, island in enumerate(poly.interiors):
-                for pt in list(island.coords):
-                    points.append(RiverPoint(pt, interior=True, island=idx))
-
-    progbar.finish()
-    data_source = None
+                # Now we consider interiors. NB: Interiors are only qualifying islands in this case
+                for idx, island in enumerate(poly.interiors):
+                    for pt in list(island.coords):
+                        points.append(RiverPoint(pt, interior=True, island=idx))
 
     return points
 
 
 def midpoints(in_lines):
 
-    driver = driver_shp = ogr.GetDriverByName("ESRI Shapefile")
-    data_in = driver_shp.Open(in_lines, 0)
-    lyr = data_in.GetLayer()
     out_points = []
-    for feat in lyr:
-        geom = feat.GetGeometryRef()
-        line = wkbload(geom.ExportToWkb())
-        out_points.append(RiverPoint(line.interpolate(0.5, True)))
-        feat = None
+    with get_shp_or_gpkg(in_lines) as in_lyr:
+        for feat in in_lyr.iterate_features('Getting Midpoints'):
+            geom = feat.GetGeometryRef()
+            line = VectorBase.ogr2shapely(geom)
+            out_points.append(RiverPoint(line.interpolate(0.5, True)))
+            feat = None
 
     return out_points
 
@@ -109,27 +91,38 @@ def centerline_points(in_lines: Path, distance: float = 0.0, transform: Transfor
     Returns:
         [type]: [description]
     """
-
+    log = Logger('centerline_points')
     with get_shp_or_gpkg(in_lines) as in_lyr:
         out_group = {}
+        ogr_extent = in_lyr.ogr_layer.GetExtent()
+        extent = Polygon.from_bounds(ogr_extent[0], ogr_extent[2], ogr_extent[1], ogr_extent[3])
 
-        for feat, _counter, _progbar in in_lyr.iterate_features(""):
+        for feat, _counter, progbar in in_lyr.iterate_features("Centerline points"):
+
+            line = VectorBase.ogr2shapely(feat, transform)
+
             fid = feat.GetFID()
-            geom = feat.GetGeometryRef()
-            if transform:
-                geom.Transform(transform)
-            line = wkbload(geom.ExportToWkb())
             out_points = []
             # Attach the FID in case we need it later
             props = {'fid': fid}
 
-            out_points.append(RiverPoint(line.interpolate(distance), properties=props))
-            out_points.append(RiverPoint(line.interpolate(0.5, True), properties=props))
-            out_points.append(RiverPoint(line.interpolate(-distance), properties=props))
+            pts = [
+                line.interpolate(distance),
+                line.interpolate(0.5, True),
+                line.interpolate(-distance)
+            ]
 
             if line.project(line.interpolate(0.25, True)) > distance:
-                out_points.append(RiverPoint(line.interpolate(0.25, True), properties=props))
-                out_points.append(RiverPoint(line.interpolate(-0.25, True), properties=props))
+                pts.append(line.interpolate(0.25, True))
+                pts.append(line.interpolate(-0.25, True))
+
+            for pt in pts:
+                # Recall that interpolation can have multiple solutions due to pythagorean theorem
+                # Throw away anything that's not inside our bounds
+                if not extent.contains(pt):
+                    progbar.erase()
+                    log.warning('Point {} is outside of extent: {}'.format(pt.coords[0], ogr_extent))
+                out_points.append(RiverPoint(pt, properties=props))
 
             out_group[int(fid)] = out_points
             feat = None
@@ -137,34 +130,33 @@ def centerline_points(in_lines: Path, distance: float = 0.0, transform: Transfor
 
 
 def centerline_vertex_between_distance(in_lines, distance=0.0):
-    driver = driver_shp = ogr.GetDriverByName("ESRI Shapefile")
-    data_in = driver_shp.Open(in_lines, 0)
-    lyr = data_in.GetLayer()
+
     out_group = []
-    for feat in lyr:
-        geom = feat.GetGeometryRef()
-        line = wkbload(geom.ExportToWkb())
-        out_points = []
-        out_points.append(RiverPoint(line.interpolate(distance)))
-        out_points.append(RiverPoint(line.interpolate(-distance)))
-        max_distance = line.length - distance
-        for vertex in list(line.coords):
-            test_dist = line.project(Point(vertex))
-            if test_dist > distance and test_dist < max_distance:
-                out_points.append(RiverPoint(Point(vertex)))
-        out_group.append(out_points)
-        feat = None
+    with get_shp_or_gpkg(in_lines) as in_lyr:
+        for feat, _counter, _progbar in in_lyr.iterate_features("Centerline points between distance"):
+            line = VectorBase.ogr2shapely(feat)
+
+            out_points = []
+            out_points.append(RiverPoint(line.interpolate(distance)))
+            out_points.append(RiverPoint(line.interpolate(-distance)))
+
+            max_distance = line.length - distance
+
+            for vertex in list(line.coords):
+                test_dist = line.project(Point(vertex))
+                if test_dist > distance and test_dist < max_distance:
+                    out_points.append(RiverPoint(Point(vertex)))
+            out_group.append(out_points)
+            feat = None
     return out_group
 
 
 def load_geoms(in_lines):
-    driver = driver_shp = ogr.GetDriverByName("ESRI Shapefile")
-    data_in = driver_shp.Open(in_lines, 0)
-    lyr = data_in.GetLayer()
     out = []
-    for feat in lyr:
-        geom = feat.GetGeometryRef()
-        out.append(wkbload(geom.ExportToWkb()))
+    with get_shp_or_gpkg(in_lines) as in_lyr:
+        for feat, _counter, _progbar in in_lyr.iterate_features("Loading geometry"):
+            shapely_geom = VectorBase.ogr2shapely(feat)
+            out.append(shapely_geom)
 
     return out
 

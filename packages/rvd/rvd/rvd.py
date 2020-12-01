@@ -408,7 +408,7 @@ def simple_save(list_geoms, ogr_type, srs, layer_name, gpkg_path):
             progbar.update(counter)
 
             feature = ogr.Feature(lyr.ogr_layer_def)
-            geom_ogr = ogr.CreateGeometryFromWkb(geom.wkb)
+            geom_ogr = VectorBase.shapely2ogr(geom)
             feature.SetGeometry(geom_ogr)
             # if attributes:
             #     for field, value in attributes.items():

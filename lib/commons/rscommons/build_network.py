@@ -108,7 +108,7 @@ def build_network(flowlines, flowareas, waterbodies, outpath, epsg,
         small_waterbodies = get_geometry_union(waterbodies, epsg, 'AreaSqKm <= ({0})'.format(waterbody_max_size))
         log.info('Retaining artificial features within waterbody features smaller than {0}km2'.format(waterbody_max_size))
         inLayer.SetAttributeFilter('FCode = {0}'.format(artifical_reaches))
-        inLayer.SetSpatialFilter(ogr.CreateGeometryFromWkb(small_waterbodies.wkb))
+        inLayer.SetSpatialFilter(VectorBase.shapely2ogr(small_waterbodies))
         process_reaches(inLayer, outLayer, transform)
 
     # Retain artifical paths through flow areas
@@ -117,7 +117,7 @@ def build_network(flowlines, flowareas, waterbodies, outpath, epsg,
         if flow_polygons:
             log.info('Retaining artificial features within flow area features')
             inLayer.SetAttributeFilter('FCode = {0}'.format(artifical_reaches))
-            inLayer.SetSpatialFilter(ogr.CreateGeometryFromWkb(flow_polygons.wkb))
+            inLayer.SetSpatialFilter(VectorBase.shapely2ogr(flow_polygons))
             process_reaches(inLayer, outLayer, transform)
         else:
             log.info('Zero artifical paths to be retained.')

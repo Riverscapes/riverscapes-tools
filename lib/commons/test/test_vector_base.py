@@ -4,7 +4,8 @@
 import unittest
 import os
 from tempfile import mkdtemp
-from rscommons import Logger, initGDALOGRErrors
+from shapely.geometry import LineString
+from rscommons import Logger, initGDALOGRErrors, GeopackageLayer, ShapefileLayer
 from rscommons.classes.vector_base import VectorBase, VectorBaseException
 from rscommons.util import safe_remove_dir
 
@@ -50,6 +51,49 @@ class VectorBaseTest(unittest.TestCase):
         self.assertEqual(VectorBase.path_sorter('D:\\path\\to\\file.gpkg\\layer_name'), ('D:\\path\\to\\file.gpkg', 'layer_name'))
 
         print('hi')
+
+    def test_ogr2shapely(self):
+
+        # test bad objects
+        self.assertRaises(VectorBaseException, lambda: GeopackageLayer.ogr2shapely("this is not valid"))
+
+        with GeopackageLayer(os.path.join(datadir, 'sample.gpkg', 'WBDHU12')) as gpkg_lyr:
+            for feat, _counter, _prog in gpkg_lyr.iterate_features():
+                geom = feat.GetGeometryRef()
+                shply_obj = GeopackageLayer.ogr2shapely(feat)
+                self.assertTrue(shply_obj.is_valid)
+                self.assertFalse(shply_obj.has_z)
+
+                self.assertTrue(shply_obj.area > 0)
+                self.assertAlmostEqual(geom.Area(), shply_obj.area, 6)
+
+                # Make sure it works with geometries as well as features
+                shply_obj = GeopackageLayer.ogr2shapely(geom)
+                self.assertTrue(shply_obj.is_valid)
+                self.assertFalse(shply_obj.has_z)
+
+                self.assertTrue(shply_obj.area > 0)
+                self.assertAlmostEqual(geom.Area(), shply_obj.area, 6)
+
+        with ShapefileLayer(os.path.join(datadir, 'NHDFlowline.shp')) as shp_lyr:
+            for feat, _counter, _prog in shp_lyr.iterate_features():
+                geom = feat.GetGeometryRef()
+                shply_obj = GeopackageLayer.ogr2shapely(feat)
+                self.assertTrue(shply_obj.is_valid)
+                self.assertFalse(shply_obj.has_z)
+
+                self.assertTrue(shply_obj.length > 0)
+                self.assertEqual(geom.Length(), shply_obj.length)
+
+    def test_shapely2ogr(self):
+        linestring = LineString([[0, 0, 0], [0, 1, 2], [1, 2, 3]])
+        ogr_obj = GeopackageLayer.shapely2ogr(linestring)
+        self.assertTrue(ogr_obj.IsValid())
+        self.assertFalse(ogr_obj.Is3D())
+        self.assertFalse(ogr_obj.IsMeasured())
+
+        self.assertTrue(ogr_obj.Length() > 0)
+        self.assertEqual(ogr_obj.Length(), linestring.length)
 
 
 if __name__ == '__main__':

@@ -11,15 +11,14 @@ import argparse
 import os
 import sys
 import traceback
-import gdal
-import ogr
+from osgeo import gdal, ogr
 import json
 from osgeo import osr
 from shapely.geometry import Point, mapping
 import rasterio
 from rasterio.mask import mask
 import numpy as np
-from rscommons import Logger, ProgressBar, dotenv
+from rscommons import Logger, ProgressBar, dotenv, VectorBase
 from rscommons.shapefile import _rough_convert_metres_to_raster_units
 from rscommons.shapefile import get_utm_zone_epsg
 from rscommons.shapefile import get_transform_from_epsg
@@ -106,8 +105,7 @@ def calculate_reach_geometry(polylines, dem_path, polyline_srs, buffer_distance)
             counter += 1
             progbar.update(counter)
 
-            ogr_polyline = ogr.CreateGeometryFromWkb(polyline.wkb)
-            ogr_polyline.Transform(transform)
+            ogr_polyline = VectorBase.shapely2ogr(polyline, transform)
             length = ogr_polyline.Length()
 
             try:
