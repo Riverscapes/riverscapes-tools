@@ -8,6 +8,7 @@ CREATE TABLE VegetationTypes (VegetationID INTEGER PRIMARY KEY NOT NULL, EpochID
 
 CREATE TABLE ConversionProportions (
     ConversionID INTEGER PRIMARY KEY,
+    ConversionCode INTEGER,
     ConversionType TEXT,
     VeryMinor REAL,
     Minor REAL,
@@ -35,9 +36,10 @@ CREATE TABLE RVDValues (
                 Invasive REAL,
                 Development REAL,
                 Agriculture REAL,
-                ConversionID INTEGER REFERENCES ConversionProportions(ConversionID)
+                ConversionCode INTEGER,
+                ConversionType TEXT
+                -- INTEGER REFERENCES ConversionProportions(ConversionID)
 );
-
 
 CREATE INDEX FK_ReachVegetation_ReachID ON ReachVegetation (ReachID);
 CREATE INDEX FK_ReachVegetation_VegetationID ON ReachVegetation (VegetationID);
@@ -45,4 +47,13 @@ CREATE INDEX IX_Watersheds_States ON Watersheds (States);
 CREATE INDEX FK_VegetationTypes_EpochID ON VegetationTypes (EpochID);
 CREATE INDEX FX_Reaches_FCode ON Reaches (ReachCode);
 CREATE INDEX FX_Reaches_HUC ON Reaches (WatershedID);
-CREATE INDEX FX_RVDValues_ConversionID ON RVDValues (ConversionID);
+--CREATE INDEX FX_RVDValues_ConversionID ON RVDValues (ConversionID);
+
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('RVDValues', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Epochs', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachCodes', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachVegetation', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('MetaData', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Watersheds', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('VegetationTypes', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ConversionProportions', 'attributes');
