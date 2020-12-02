@@ -266,7 +266,7 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, ex
 
     # Split vegetation change classes into binary arrays
     vegetation_change_arrays = {
-        c["ConversionType"]: (vegetation_change == int(c["ConversionID"])) * 1 if int(c["ConversionID"]) in np.unique(vegetation_change) else None
+        c["ConversionType"]: (vegetation_change == int(c["ConversionCode"])) * 1 if int(c["ConversionCode"]) in np.unique(vegetation_change) else None
         for c in conversion_classifications
     }
 
@@ -298,8 +298,9 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, ex
                 Invasive,
                 Development,
                 Agriculture,
-                ConversionID)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)''', [
+                ConversionCode,
+                ConversionType)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''', [
             (reach_id,
              value["FromConifer"],
              value["FromDevegetated"],
@@ -313,7 +314,8 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, ex
              value["Invasive"],
              value["Development"],
              value["Agriculture"],
-             value["ConversionCode"]) for reach_id, value in reach_values_with_conversion_codes.items()])
+             value["ConversionCode"],
+             value["ConversionType"]) for reach_id, value in reach_values_with_conversion_codes.items()])
         conn.commit()
 
         cursor.executemany('''UPDATE RVDValues SET
