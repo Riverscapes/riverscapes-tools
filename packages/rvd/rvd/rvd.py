@@ -132,6 +132,7 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, ex
     with GeopackageLayer(flowlines_path) as flow_lyr:
         # Set the output spatial ref as this for the whole project
         out_srs = flow_lyr.spatial_ref
+        distance_buffer = flow_lyr.rough_convert_metres_to_vector_units(10)
 
     # Transform issues reading 102003 as espg id. Using sr wkt seems to work, however arcgis has problems loading feature classes with this method...
     raster_srs = ogr.osr.SpatialReference()
@@ -195,13 +196,11 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, ex
     segmented_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['RVD'].rel_path)
     segment_network_NEW(cleaned_path, segmented_path, max_length, min_length, huc)
 
-    # TODO: Bring back the data tables
-
     # Generate Voroni polygons
     log.info("Calculating Voronoi Polygons...")
 
     # Add all the points (including islands) to the list
-    flowline_thiessen_points_groups = centerline_points(segmented_path, 10.0, transform_shp_to_raster)
+    flowline_thiessen_points_groups = centerline_points(segmented_path, distance_buffer, transform_shp_to_raster)
     flowline_thiessen_points = [pt for group in flowline_thiessen_points_groups.values() for pt in group]
     simple_save([pt.point for pt in flowline_thiessen_points], ogr.wkbPoint, raster_srs, "Thiessen_Points", intermediates_gpkg_path)
 
