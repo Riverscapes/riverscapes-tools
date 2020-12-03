@@ -390,7 +390,11 @@ def riparian_departure(mean_riparian):
     output = {}
     for reachid, values in mean_riparian.items():
         for ripariantype in ["RIPARIAN", "NATIVE_RIPARIAN"]:
-            values[f"{ripariantype}_DEPARTURE"] = values[f"EXISTING_{ripariantype}_MEAN"] / values[f"HISTORIC_{ripariantype}_MEAN"] if values[f"HISTORIC_{ripariantype}_MEAN"] != 0.0 else 0.0
+            hist = values[f"HISTORIC_{ripariantype}_MEAN"] if values[f"HISTORIC_{ripariantype}_MEAN"] != 0.0 else 0.0001
+            exist = values[f"EXISTING_{ripariantype}_MEAN"] if values[f"EXISTING_{ripariantype}_MEAN"] != 0.0 else 0.0001
+            value = exist / hist
+            value = 1.0 if value > 1.0 and hist == 0.0001 else value
+            values[f"{ripariantype}_DEPARTURE"] = value
         output[reachid] = values
 
     return output
