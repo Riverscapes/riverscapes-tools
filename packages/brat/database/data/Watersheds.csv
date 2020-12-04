@@ -2067,7 +2067,7 @@ WatershedID,Name,EcoregionID,MaxDrainage,QLow,Q2,Notes,MetaData,AreaSqKm,States
 18010203,Upper Klamath Lake,9,,,,,,1875.15,OR
 18010204,Lost,9,,,,,,7833.03,CA_OR
 18010205,Butte,9,,,,,,1572.4,CA_OR
-18010206,Upper Klamath,78,,,,,,3686.68,CA_OR
+18010206,Upper Klamath,78,2901.0,1.20956*(10**-12.0355)*(DRNAREA**1.5711)*(PRECIP**3.0975)*(DRAINDENS**-3.6613)*(MINELEV**1.3091),9.136*(DRNAREA**0.9004)*(MEANSLOPE**0.4695)*(I24H2Y**0.8481),parameters copied from 17100308 for Chris Jordan at NOAA,,3686.68,CA_OR
 18010207,Shasta,9,,,,,,2056.52,CA
 18010208,Scott,78,,,,,,2108.68,CA
 18010209,Lower Klamath,78,,,,,,3966.44,CA_OR
