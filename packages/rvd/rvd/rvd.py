@@ -40,11 +40,10 @@ from rscommons.vector_ops import get_geometry_unary_union, copy_feature_class
 from rscommons.thiessen.vor import NARVoronoi
 from rscommons.thiessen.shapes import centerline_points, clip_polygons, dissolve_by_points
 
-# from rvd.report import report
+from rvd.rvd_report import RVDReport
 from rvd.lib.load_vegetation import load_vegetation_raster
 from rvd.lib.classify_conversions import classify_conversions
 from rvd.__version__ import __version__
-
 
 Path = str
 
@@ -398,9 +397,12 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, ex
     project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['OUTPUTS'])
 
     # Add the report to the XML
+    report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
     project.add_project_vector(proj_nodes['Outputs'], LayerTypes['REPORT'], replace=True)
 
-    # report(db_path, report_path)
+    report = RVDReport(report_path, project, output_folder)
+    report.write()
+    #report(db_path, report_path)
 
     log.info('RVD complete')
 
