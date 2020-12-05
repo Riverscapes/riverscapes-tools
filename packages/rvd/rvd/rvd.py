@@ -132,6 +132,7 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, ex
     with GeopackageLayer(flowlines_path) as flow_lyr:
         # Set the output spatial ref as this for the whole project
         out_srs = flow_lyr.spatial_ref
+        meter_conversion = flow_lyr.rough_convert_metres_to_vector_units(1)
         distance_buffer = flow_lyr.rough_convert_metres_to_vector_units(10)
 
     # Transform issues reading 102003 as espg id. Using sr wkt seems to work, however arcgis has problems loading feature classes with this method...
@@ -140,6 +141,9 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, ex
     raster_srs.ImportFromWkt(ds.GetProjectionRef())
     raster_srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
     transform_shp_to_raster = VectorBase.get_transform(out_srs, raster_srs)
+
+    gt = ds.GetGeoTransform()
+    cell_area = ((gt[1] / meter_conversion) * (-gt[5] / meter_conversion))
 
     # Create the output feature class fields
     with GeopackageLayer(outputs_gpkg_path, layer_name='Reaches', delete_dataset=True) as out_lyr:
@@ -334,7 +338,16 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, ex
             reachid) for reachid, value in riparian_departure_values.items()])
         conn.commit()
 
-    log.info('Copying values from SQLite to output ShapeFile')
+        for reachid, epochs in unique_vegetation_counts.items():
+            for epoch in epochs.values():
+                insert_values = [[reachid, int(vegetationid), float(count * cell_area), int(count)] for vegetationid, count in zip(epoch[0], epoch[1]) if vegetationid != 0]
+                cursor.executemany('''INSERT INTO ReachVegetation (
+                    ReachID,
+                    VegetationID,
+                    Area,
+                    CellCount)
+                    VALUES (?,?,?,?)''', insert_values)
+        conn.commit()
 
     # Add intermediates and the report to the XML
     project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
