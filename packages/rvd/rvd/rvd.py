@@ -253,8 +253,9 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, ex
 
     # Calculate Riparian Departure per Reach
     riparian_arrays = {f"{epoch}_{name}_MEAN": array for epoch, arrays in vegetation.items() for name, array in arrays.items() if name in ["RIPARIAN", "NATIVE_RIPARIAN"]}
-    reach_average_riparian = extract_mean_values_by_polygon(clipped_thiessen, riparian_arrays, prj_existing_path)
-    riparian_departure_values = riparian_departure(reach_average_riparian)
+
+    # Vegetation Cell Counts
+    raw_arrays = {f"{epoch}": array for epoch, arrays in vegetation.items() for name, array in arrays.items() if name == "RAW"}
 
     # Generate Vegetation Conversions
     vegetation_change = (vegetation["HISTORIC"]["CONVERSION"] - vegetation["EXISTING"]["CONVERSION"])
@@ -273,20 +274,63 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, ex
         for c in conversion_classifications
     }
 
-    # Calcuate vegetation conversion per reach
-    reach_values = extract_mean_values_by_polygon(clipped_thiessen, vegetation_change_arrays, prj_existing_path)
+    # Calcuate average and unique cell counts  per reach
+    progbar = ProgressBar(len(clipped_thiessen.keys()), 50, "Extracting array values by reach...")
+    counter = 0
+    with rasterio.open(prj_existing_path) as dataset:
+        unique_vegetation_counts = {}
+        reach_average_riparian = {}
+        reach_average_change = {}
+        for reachid, poly in clipped_thiessen.items():
+            counter += 1
+            progbar.update(counter)
+            if poly.geom_type in ["Polygon", "MultiPolygon"] and poly.area > 0:
+                raw_values_unique = {}
+                change_values_mean = {}
+                riparian_values_mean = {}
+                reach_raster = np.ma.masked_invalid(
+                    features.rasterize(
+                        [poly],
+                        out_shape=dataset.shape,
+                        transform=dataset.transform,
+                        all_touched=True,
+                        fill=np.nan))
+                for raster_name, raster in raw_arrays.items():
+                    if raster is not None:
+                        current_raster = np.ma.masked_array(raster, mask=reach_raster.mask)
+                        raw_values_unique[raster_name] = np.unique(np.ma.filled(current_raster, fill_value=0), return_counts=True)
+                    else:
+                        raw_values_unique[raster_name] = []
+                for raster_name, raster in riparian_arrays.items():
+                    if raster is not None:
+                        current_raster = np.ma.masked_array(raster, mask=reach_raster.mask)
+                        riparian_values_mean[raster_name] = np.ma.mean(current_raster)
+                    else:
+                        riparian_values_mean[raster_name] = 0.0
+                for raster_name, raster in vegetation_change_arrays.items():
+                    if raster is not None:
+                        current_raster = np.ma.masked_array(raster, mask=reach_raster.mask)
+                        change_values_mean[raster_name] = np.ma.mean(current_raster)
+                    else:
+                        change_values_mean[raster_name] = 0.0
+                unique_vegetation_counts[reachid] = raw_values_unique
+                reach_average_riparian[reachid] = riparian_values_mean
+                reach_average_change[reachid] = change_values_mean
+            else:
+                progbar.erase()
+                log.warning(f"Reach: {reachid} | WARNING no geom")
+    progbar.finish()
+
+    # Calcuate Average Departure for Riparian and Native Riparian
+    riparian_departure_values = riparian_departure(reach_average_riparian)
 
     # Add Conversion Code, Type to Vegetation Conversion
-    reach_values_with_conversion_codes = classify_conversions(reach_values, conversion_classifications)
+    reach_values_with_conversion_codes = classify_conversions(reach_average_change, conversion_classifications)
 
     # Write Output to GPKG table
-    # TODO clean this up a bit?
-    # TODO figure out why main.empty_table is getting generated
+    log.info('Insert values to GPKG tables')
     with sqlite3.connect(outputs_gpkg_path) as conn:
         cursor = conn.cursor()
-
-        # cursor.execute('''INSERT INTO gpkg_contents (table_name, data_type) VALUES ('rvd_values', 'attributes')''')
-        # conn.commit()
         cursor.executemany('''INSERT INTO RVDValues (
                 ReachID,
                 FromConifer,
@@ -369,12 +413,14 @@ def extract_mean_values_by_polygon(polys, rasters, reference_raster):
 
     with rasterio.open(reference_raster) as dataset:
 
-        output = {}
+        output_mean = {}
+        output_unique = {}
         for reachid, poly in polys.items():
             counter += 1
             progbar.update(counter)
             if poly.geom_type in ["Polygon", "MultiPolygon"] and poly.area > 0:
-                values = {}
+                values_mean = {}
+                values_unique = {}
                 reach_raster = np.ma.masked_invalid(
                     features.rasterize(
                         [poly],
@@ -386,17 +432,20 @@ def extract_mean_values_by_polygon(polys, rasters, reference_raster):
                 for key, raster in rasters.items():
                     if raster is not None:
                         current_raster = np.ma.masked_array(raster, mask=reach_raster.mask)
-                        values[key] = np.ma.mean(current_raster)
+                        values_mean[key] = np.ma.mean(current_raster)
+                        values_unique[key] = np.unique(np.ma.filled(current_raster, fill_value=0), return_counts=True)
                     else:
-                        values[key] = 0.0
-                output[reachid] = values
+                        values_mean[key] = 0.0
+                        values_unique[key] = []
+                output_mean[reachid] = values_mean
+                output_unique[reachid] = values_unique
                 # log.debug(f"Reach: {reachid} | {sum([v for v in values.values() if v is not None]):.2f}")
             else:
                 progbar.erase()
                 log.warning(f"Reach: {reachid} | WARNING no geom")
 
     progbar.finish()
-    return output
+    return output_mean, output_unique
 
 
 def riparian_departure(mean_riparian):
