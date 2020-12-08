@@ -108,7 +108,7 @@ class GeopackageLayer(VectorBase):
                 self._create_ds()
         self.create_layer(ogr_geom_type, epsg=epsg, spatial_ref=spatial_ref, fields=fields)
 
-    def delete_layer(self) -> GeopackageLayer:
+    def delete_layer(self) -> None:
         """Delete this one layer from the geopackage
 
         Returns:
@@ -122,3 +122,19 @@ class GeopackageLayer(VectorBase):
         if self.ogr_ds is not None:
             self.ogr_ds.Destroy()
         self.driver.DeleteDataSource(self.filepath)
+
+
+class GeodatabaseLayer(VectorBase):
+    """Geopackages
+    """
+
+    def __init__(self, filepath: str, layer_name: str = None, delete_dataset: bool = False, write: bool = False):
+        """[summary]
+
+        Args:
+            filepath (str): Path to geopackage
+            layer_name (str, optional): Layer name. Warning: If left as None you won't be able to create a layer or do any operations
+            delete_dataset (bool, optional): Replace an ENTIRE dataset if an existing one is already found. Defaults to False.
+            allow_write (bool, optional): For opening an existing ds only. Allows write access. Defaults to False.
+        """
+        super(GeodatabaseLayer, self).__init__(filepath, VectorBase.Drivers.GeoDatabase, layer_name=layer_name, replace_ds_on_open=delete_dataset, allow_write=write)

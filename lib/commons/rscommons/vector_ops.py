@@ -14,7 +14,7 @@ from osgeo import ogr, gdal, osr
 from shapely.ops import unary_union
 from shapely.geometry.base import BaseGeometry
 from shapely.geometry import mapping, Point, MultiPoint, LineString, MultiLineString, GeometryCollection, Polygon, MultiPolygon
-from rscommons import Logger, ProgressBar, get_shp_or_gpkg
+from rscommons import Logger, ProgressBar, get_shp_or_gpkg, Timer
 from rscommons.util import sizeof_fmt, get_obj_size
 from rscommons.classes.vector_base import VectorBase, VectorBaseException
 
@@ -28,13 +28,22 @@ def print_geom_size(logger: Logger, geom_obj: BaseGeometry):
         logger.debug('Byte Size of output object could not be determined')
 
 
-def get_geometry_union(in_layer_path: str, epsg: int = None, attribute_filter: str = None, clip_shape: BaseGeometry = None) -> BaseGeometry:
-    """
-    TODO: Depprecated
-    Load all features from a vector and union them together into a single geometry
-    :param inpath: Path to a vector
-    :param epsg: Desired output spatial reference
-    :return: Single Shapely geometry of all unioned features
+def get_geometry_union(in_layer_path: str, epsg: int = None,
+                       attribute_filter: str = None,
+                       clip_shape: BaseGeometry = None,
+                       clip_rect: List[float] = None
+                       ) -> BaseGeometry:
+    """[summary]
+
+    Args:
+        in_layer_path (str): [description]
+        epsg (int, optional): [description]. Defaults to None.
+        attribute_filter (str, optional): [description]. Defaults to None.
+        clip_shape (BaseGeometry, optional): [description]. Defaults to None.
+        clip_rect (List[double minx, double miny, double maxx, double maxy)]): Iterate over a subset by clipping to a Shapely-ish geometry. Defaults to None.
+
+    Returns:
+        BaseGeometry: [description]
     """
 
     log = Logger('get_geometry_union')
@@ -47,7 +56,7 @@ def get_geometry_union(in_layer_path: str, epsg: int = None, attribute_filter: s
 
         geom = None
 
-        for feature, _counter, progbar in in_layer.iterate_features("Getting geometry union", attribute_filter=attribute_filter, clip_shape=clip_shape):
+        for feature, _counter, progbar in in_layer.iterate_features("Getting geometry union", attribute_filter=attribute_filter, clip_shape=clip_shape, clip_rect=clip_rect):
             if feature.GetGeometryRef() is None:
                 progbar.erase()  # get around the progressbar
                 log.warning('Feature with FID={} has no geometry. Skipping'.format(feature.GetFID()))
@@ -63,7 +72,11 @@ def get_geometry_union(in_layer_path: str, epsg: int = None, attribute_filter: s
     return geom
 
 
-def get_geometry_unary_union(in_layer_path: str, epsg: int = None, spatial_ref: osr.SpatialReference = None, attribute_filter: str = None, clip_shape: BaseGeometry = None) -> BaseGeometry:
+def get_geometry_unary_union(in_layer_path: str, epsg: int = None, spatial_ref: osr.SpatialReference = None,
+                             attribute_filter: str = None,
+                             clip_shape: BaseGeometry = None,
+                             clip_rect: List[float] = None
+                             ) -> BaseGeometry:
     """Load all features from a ShapeFile and union them together into a single geometry
 
     Args:
@@ -72,6 +85,7 @@ def get_geometry_unary_union(in_layer_path: str, epsg: int = None, spatial_ref: 
         spatial_ref (osr.SpatialReference, optional): Spatial Ref to project to. Defaults to None.
         attribute_filter (str, optional): Filter to a set of attributes. Defaults to None.
         clip_shape (BaseGeometry, optional): Clip to a specified shape. Defaults to None.
+        clip_rect (List[double minx, double miny, double maxx, double maxy)]): Iterate over a subset by clipping to a Shapely-ish geometry. Defaults to None.
 
     Raises:
         VectorBaseException: [description]
@@ -93,7 +107,7 @@ def get_geometry_unary_union(in_layer_path: str, epsg: int = None, spatial_ref: 
 
         geom_list = []
 
-        for feature, _counter, progbar in in_layer.iterate_features("Unary Unioning features", attribute_filter=attribute_filter, clip_shape=clip_shape):
+        for feature, _counter, progbar in in_layer.iterate_features("Unary Unioning features", attribute_filter=attribute_filter, clip_shape=clip_shape, clip_rect=clip_rect):
             new_geom = feature.GetGeometryRef()
             geo_type = new_geom.GetGeometryType()
 
@@ -104,11 +118,9 @@ def get_geometry_unary_union(in_layer_path: str, epsg: int = None, spatial_ref: 
                 try:
                     new_geom = new_geom.Buffer(0)
                     if not new_geom.IsValid():
-                        progbar.erase()  # get around the progressbar
                         log.warning('   Still invalid. Skipping this geometry')
                         continue
                 except Exception:
-                    progbar.erase()  # get around the progressbar
                     log.warning('Exception raised during buffer 0 technique. skipping this file')
                     continue
 
@@ -151,7 +163,12 @@ def get_geometry_unary_union(in_layer_path: str, epsg: int = None, spatial_ref: 
     return geom_union
 
 
-def copy_feature_class(in_layer_path: str, out_layer_path: str, epsg: int = None, clip_shape: BaseGeometry = None, attribute_filter: str = None):
+def copy_feature_class(in_layer_path: str, out_layer_path: str,
+                       epsg: int = None,
+                       attribute_filter: str = None,
+                       clip_shape: BaseGeometry = None,
+                       clip_rect: List[float] = None
+                       ) -> None:
     """Copy a Shapefile from one location to another
 
     This method is capable of reprojecting the geometries as they are copied.
@@ -162,14 +179,16 @@ def copy_feature_class(in_layer_path: str, out_layer_path: str, epsg: int = None
         in_layer (str): Input layer path
         epsg ([type]): EPSG Code to use for the transformation
         out_layer (str): Output layer path
-        clip_shape {shape} -- Shapely polygon geometry in the output EPSG used to clip the input geometries (default: {None})
-        attribute_filter {str} -- Attribute filter used to limit the input features that will be copied. (default: {None})
+        attribute_filter (str, optional): [description]. Defaults to None.
+        clip_shape (BaseGeometry, optional): [description]. Defaults to None.
+        clip_rect (List[double minx, double miny, double maxx, double maxy)]): Iterate over a subset by clipping to a Shapely-ish geometry. Defaults to None.
     """
 
     log = Logger('copy_feature_class')
 
-    with get_shp_or_gpkg(in_layer_path) as in_layer, \
-            get_shp_or_gpkg(out_layer_path, write=True) as out_layer:
+    # NOTE: open the outlayer first so that write gets the dataset open priority
+    with get_shp_or_gpkg(out_layer_path, write=True) as out_layer, \
+            get_shp_or_gpkg(in_layer_path) as in_layer:
 
         # Add input Layer Fields to the output Layer if it is the one we want
         out_layer.create_layer_from_ref(in_layer, epsg=epsg)
@@ -199,7 +218,7 @@ def copy_feature_class(in_layer_path: str, out_layer_path: str, epsg: int = None
             out_feature = None
 
 
-def merge_feature_classes(feature_class_paths: List[str], boundary: BaseGeometry, out_layer_path: str, epsg: int = None):
+def merge_feature_classes(feature_class_paths: List[str], boundary: BaseGeometry, out_layer_path: str):
     """[summary]
 
     Args:
@@ -207,7 +226,7 @@ def merge_feature_classes(feature_class_paths: List[str], boundary: BaseGeometry
         boundary (BaseGeometry): [description]
         out_layer_path (str): [description]
     """
-    log = Logger('Shapefile')
+    log = Logger('merge_feature_classes')
     log.info('Merging {} feature classes.'.format(len(feature_class_paths)))
 
     with get_shp_or_gpkg(out_layer_path, write=True) as out_layer:
@@ -249,7 +268,52 @@ def merge_feature_classes(feature_class_paths: List[str], boundary: BaseGeometry
                     out_layer.ogr_layer.CreateFeature(out_feature)
 
     log.info('Merge complete.')
-    return fccount,
+    return fccount
+
+
+def collect_feature_class(feature_class_path: str,
+                          attribute_filter: str = None,
+                          clip_shape: BaseGeometry = None,
+                          clip_rect: List[float] = None
+                          ) -> ogr.Geometry:
+    """Collect simple types into Multi types. Does not use Shapely
+
+    Args:
+        feature_class_path (str): [description]
+        attribute_filter (str, optional): Attribute Query like "HUC = 17060104". Defaults to None.
+        clip_shape (BaseGeometry, optional): Iterate over a subset by clipping to a Shapely-ish geometry. Defaults to None.
+        clip_rect (List[double minx, double miny, double maxx, double maxy)]): Iterate over a subset by clipping to a Shapely-ish geometry. Defaults to None.
+
+    Raises:
+        Exception: [description]
+
+    Returns:
+        ogr.Geometry: [description]
+    """
+    log = Logger('collect_feature_class')
+    log.info('Collecting {} feature class.'.format(len(feature_class_path)))
+
+    with get_shp_or_gpkg(feature_class_path) as in_lyr:
+        in_geom_type = in_lyr.ogr_layer.GetGeomType()
+        output_geom_type = None
+        for tp, varr in VectorBase.MULTI_TYPES.items():
+            if in_geom_type in varr:
+                output_geom_type = tp
+                break
+        if output_geom_type is None:
+            raise Exception('collect_feature_class: Type "{}" not supported'.format(ogr.GeometryTypeToName(in_geom_type)))
+
+        new_geom = ogr.Geometry(output_geom_type)
+        for feat, _counter, _progbar in in_lyr.iterate_features('Collecting Geometry', attribute_filter=attribute_filter, clip_rect=clip_rect, clip_shape=clip_shape):
+            geom = feat.GetGeometryRef()
+            if geom.IsValid() and not geom.IsEmpty():
+                # Do the flatten first to speed up the potential transform
+                if geom.IsMeasured() > 0 or geom.Is3D() > 0:
+                    geom.FlattenTo2D()
+                new_geom.AddGeometry(geom)
+
+    log.info('Collect complete.')
+    return new_geom
 
 
 def load_attributes(in_layer_path: str, id_field: str, fields: list) -> dict:
@@ -325,17 +389,17 @@ def load_geometries(in_layer_path: str, id_field: str, epsg=None) -> dict:
 
 def write_attributes(in_layer_path: str, output_values: dict, id_field: str, fields, field_type=ogr.OFTReal, null_values=None):
     """
-    Write field values to a ShapeFile feature class
+    Write field values to a feature class
     :param feature_class: Path to feature class
     :param output_values: Dictionary of values keyed by id_field. Each feature is dictionary keyed by field names
     :param id_field: Unique key identifying each feature in both feature class and output_values dictionary
-    :param fields: List of fields in output_values to write to ShapeFile
+    :param fields: List of fields in output_values to write to
     :return: None
     """
 
-    log = Logger('ShapeFile')
+    log = Logger('write_attributes')
 
-    with get_shp_or_gpkg(in_layer_path) as in_layer:
+    with get_shp_or_gpkg(in_layer_path, write=True) as in_layer:
         # Create each field and store the name and index in a list of tuples
         field_indices = [(field, in_layer.create_field(field, field_type)) for field in fields] #TODO different field types
 
@@ -351,7 +415,7 @@ def write_attributes(in_layer_path: str, output_values: dict, id_field: str, fie
                         if null_values:
                             feature.SetField(field, null_values)
                         else:
-                            log.warning('Unhandled ShapeFile value for None type')
+                            log.warning('Unhandled feature class value for None type')
                             feature.SetField(field, None)
                     else:
                         feature.SetField(field, output_values[reach][field])
@@ -361,7 +425,7 @@ def write_attributes(in_layer_path: str, output_values: dict, id_field: str, fie
 def network_statistics(label: str, vector_layer_path: str):
 
     log = Logger('network_statistics')
-    log.info('Network ShapeFile Summary: {}'.format(vector_layer))
+    log.info('Network ShapeFile Summary: {}'.format(vector_layer_path))
 
     results = {}
     total_length = 0.0
@@ -424,25 +488,67 @@ def feature_class_bounds(shapefile_path):
     return layer.GetExtent()
 
 
-def intersect_feature_classes(feature_class_path1: str, feature_class_path2: str, epsg: int, out_layer_path: str, output_geom_type):
+def intersect_feature_classes(feature_class_path1: str, feature_class_path2: str,
+                              output_geom_type: int,
+                              epsg: int = None,
+                              attribute_filter: str = None,
+                              ) -> BaseGeometry:
+    """Mostly just a wrapper for intersect_geometry_with_feature_class that does a union first
+
+    Args:
+        feature_class_path1 (str): [description]
+        feature_class_path2 (str): [description]
+        epsg (int, optional): [description]. Defaults to None.
+        attribute_filter (str, optional): [description]. Defaults to None.
+
+    Returns:
+        BaseGeometry: [description]
+    """
 
     union = get_geometry_unary_union(feature_class_path1, epsg)
-    intersect_geometry_with_feature_class(union, feature_class_path2, epsg, out_layer_path, output_geom_type)
+    return intersect_geometry_with_feature_class(union, feature_class_path2, output_geom_type,
+                                                 epsg=epsg,
+                                                 attribute_filter=attribute_filter,
+                                                 )
 
 
-def intersect_geometry_with_feature_class(geometry: BaseGeometry, in_layer_path: str, epsg: int, out_layer_path: str, output_geom_type):
+def intersect_geometry_with_feature_class(geometry: BaseGeometry, in_layer_path: str,
+                                          output_geom_type: int,
+                                          epsg: int = None,
+                                          attribute_filter: str = None,
+                                          ) -> BaseGeometry:
+    """[summary]
 
+    Args:
+        geometry (BaseGeometry): [description]
+        in_layer_path (str): [description]
+        out_layer_path (str): [description]
+        output_geom_type (int): [description]
+        epsg (int, optional): [description]. Defaults to None.
+        attribute_filter (str, optional): [description]. Defaults to None.
+
+    Raises:
+        VectorBaseException: [description]
+        VectorBaseException: [description]
+
+    Returns:
+        BaseGeometry: [description]
+    """
+    log = Logger('intersect_geometry_with_feature_class')
     if output_geom_type not in [ogr.wkbMultiPoint, ogr.wkbMultiLineString]:
         raise VectorBaseException('Unsupported ogr type for geometry intersection: "{}"'.format(output_geom_type))
 
-    with get_shp_or_gpkg(in_layer_path) as in_layer:
-        geom_union = get_geometry_unary_union(in_layer, epsg)
+    log.debug('Intersection with feature class: Performing unary union on input: {}'.format(in_layer_path))
+    geom_union = get_geometry_unary_union(in_layer_path, epsg=epsg, attribute_filter=attribute_filter, clip_shape=geometry)
 
     # Nothing to do if there were no features in the feature class
     if not geom_union:
         return
 
+    log.debug('Finding intersections (may take a few minutes)...')
+    tmr = Timer()
     geom_inter = geometry.intersection(geom_union)
+    log.debug('Intersection done in {:.1f} seconds'.format(tmr.ellapsed()))
 
     # Nothing to do if the intersection is empty
     if geom_inter.is_empty:
@@ -455,12 +561,11 @@ def intersect_geometry_with_feature_class(geometry: BaseGeometry, in_layer_path:
 
         elif isinstance(geom_inter, LineString):
             # Break this linestring down into vertices as points
-            geom_inter = MultiPoint(list(geom_inter.coords))
+            geom_inter = MultiPoint([geom_inter.coords[0], geom_inter.coords[-1]])
 
         elif isinstance(geom_inter, MultiLineString):
             # Break this linestring down into vertices as points
-            geom_inter = MultiPoint(reduce(lambda acc, ls: acc + list(ls.coords), list(geom_inter.geoms), []))
-            reduce
+            geom_inter = MultiPoint(reduce(lambda acc, ls: acc + [ls.coords[0], ls.coords[-1]], list(geom_inter.geoms), []))
         elif isinstance(geom_inter, GeometryCollection):
             geom_inter = MultiPoint([geom for geom in geom_inter.geoms if isinstance(geom, Point)])
 
@@ -470,11 +575,7 @@ def intersect_geometry_with_feature_class(geometry: BaseGeometry, in_layer_path:
         else:
             raise VectorBaseException('Unsupported ogr type: "{}" does not match shapely type of "{}"'.format(output_geom_type, geom_inter.type))
 
-    with get_shp_or_gpkg(out_layer_path, write=True) as out_layer:
-        feature = ogr.Feature(out_layer.ogr_layer_def)
-        geom = VectorBase.shapely2ogr(geom_inter)
-        feature.SetGeometry(geom)
-        out_layer.ogr_layer.CreateFeature(feature)
+    return geom_inter
 
 
 def buffer_by_field(in_layer_path: str, field: str, epsg: int = None, min_buffer=None) -> BaseGeometry:

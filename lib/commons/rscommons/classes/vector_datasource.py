@@ -18,8 +18,16 @@ class Dataset():
     """Basic class for holding dataset and its corresponding layers
     """
 
-    def __init__(self, layer_name: str, ds: ogr.DataSource):
+    def __init__(self, layer_name: str, ds: ogr.DataSource, permission: int):
+        """[summary]
+
+        Args:
+            layer_name (str): Layer name for the registry
+            ds (ogr.DataSource): [description]
+            permission (int): 0 = read, 1=write
+        """
         self.ds = ds
+        self.permission = permission
         self.layers = [layer_name]
 
 
@@ -67,7 +75,7 @@ class DatasetRegistry(object):
         if filepath in self._registry:
             raise DatasetRegistryException('Cannot open a dataset twice')
 
-        self._registry[filepath] = Dataset(layer_name, driver.CreateDataSource(filepath))
+        self._registry[filepath] = Dataset(layer_name, driver.CreateDataSource(filepath), permission=1)
         return self._registry[filepath].ds
 
     def open(self, filepath: str, layer_name: str, driver: ogr.Driver, permission: int):
@@ -77,7 +85,7 @@ class DatasetRegistry(object):
             filepath (str): [description]
             layer_name (str): [description]
             driver (ogr.Driver): [description]
-            permission (int): [description]
+            permission (int): 0 = read, 1 = write
 
         Raises:
             DatasetRegistryException: [description]
@@ -89,15 +97,18 @@ class DatasetRegistry(object):
 
         # Something's here. Just return it!
         if existing_ds is not None:
+            # If the new handle needs more permissions than the old one then we have to close and re-open
+            if existing_ds.permission == 0 and permission > 0:
+                raise DatasetRegistryException('You cannot open a geopackage for reading and then open it for writing.')
             if layer_name in existing_ds.layers:
                 raise DatasetRegistryException('Cannot open a layer twice')
             existing_ds.layers.append(layer_name)
 
         # Nope. Create it
         else:
-            self._registry[filepath] = Dataset(layer_name, driver.Open(filepath, permission))
+            self._registry[filepath] = Dataset(layer_name, driver.Open(filepath, permission), permission)
             existing_ds = self._registry[filepath]
-            self.log.debug('Dataset opened: {}'.format(filepath))
+            self.log.debug('Dataset opened: {} for {}'.format(filepath, 'READING' if permission == 0 else 'WRITING'))
 
         # Otherwise open a new handle all the file existence checking is handled elsewhere
         return existing_ds.ds
