@@ -22,7 +22,7 @@ class RSContextReport(RSReport):
         section = self.section('LayerSummary', 'Layer Summary')
         layers = self.xml_project.XMLBuilder.find('Realizations').find('RSContext').getchildren()
 
-        [self.layerprint(lyr, section, self.project_root) for lyr in layers if lyr.tag in ['DEM', 'Raster', 'Vector']]
+        [self.layerprint(lyr, section, self.project_root) for lyr in layers if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']]
         [self.layerprint(lyr, section, self.project_root) for lyr in layers if lyr.tag in ['SQLiteDB']]
 
 

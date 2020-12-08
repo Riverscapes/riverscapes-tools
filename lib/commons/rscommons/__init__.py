@@ -10,7 +10,7 @@ from rscommons.classes.loop_timer import LoopTimer
 from rscommons.classes.model_config import ModelConfig
 from rscommons.classes.progress_bar import ProgressBar
 from rscommons.classes.raster import Raster
-from rscommons.classes.vector_classes import GeopackageLayer, ShapefileLayer, get_shp_or_gpkg
+from rscommons.classes.vector_classes import GeopackageLayer, GeodatabaseLayer, ShapefileLayer, get_shp_or_gpkg
 from rscommons.classes.vector_base import VectorBase
 
 from rscommons.report.rs_report import RSReport

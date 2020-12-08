@@ -129,27 +129,28 @@ def segment_network(inpath, outpath, interval, minimum, tolerance=0.1):
     progbarLoad = ProgressBar(inLayer.GetFeatureCount(), 50, "Loading Network")
     counterLoad = 0
 
-    for inFeature in inLayer:
-        counterLoad += 1
-        progbarLoad.update(counterLoad)
+    # TODO: Commenting this out for now so it doesn't undo our splitting at crossings
+    # for inFeature in inLayer:
+    #     counterLoad += 1
+    #     progbarLoad.update(counterLoad)
 
-        # Store relevant items as a tuple:
-        # (name, FID, StartPt, EndPt, Length, FCode)
-        sFeat = SegmentFeature(inFeature, transform)
+    #     # Store relevant items as a tuple:
+    #     # (name, FID, StartPt, EndPt, Length, FCode)
+    #     sFeat = SegmentFeature(inFeature, transform)
 
-        # Add the end points of all lines to a single list
-        junctions.extend([sFeat.start, sFeat.end])
+    #     # Add the end points of all lines to a single list
+    #     junctions.extend([sFeat.start, sFeat.end])
 
-        if not sFeat.name or len(sFeat.name) < 1 or interval <= 0:
-            # Add features without a GNIS name to list. Also add to list if not segmenting
-            allFeatures.append(sFeat)
-        else:
-            # Build separate lists for each unique GNIS name
-            if sFeat.name not in namedFeatures:
-                namedFeatures[sFeat.name] = [sFeat]
-            else:
-                namedFeatures[sFeat.name].append(sFeat)
-    progbarLoad.finish()
+    #     if not sFeat.name or len(sFeat.name) < 1 or interval <= 0:
+    #         # Add features without a GNIS name to list. Also add to list if not segmenting
+    #         allFeatures.append(sFeat)
+    #     else:
+    #         # Build separate lists for each unique GNIS name
+    #         if sFeat.name not in namedFeatures:
+    #             namedFeatures[sFeat.name] = [sFeat]
+    #         else:
+    #             namedFeatures[sFeat.name].append(sFeat)
+    # progbarLoad.finish()
 
     # Loop over all features with the same GNIS name.
     # Only merge them if they meet at a junction where no other lines meet.
@@ -257,7 +258,7 @@ def cut(line, distance):
             )
 
 
-def segment_network_NEW(inpath: str, outpath: str, interval: float, minimum: float, huc: str):
+def segment_network_NEW(inpath: str, outpath: str, interval: float, minimum: float, watershed_id: str, create_layer=False):
     """
     Chop the lines in a polyline feature class at the specified interval unless
     this would create a line less than the minimum in which case the line is not segmented.
@@ -265,6 +266,8 @@ def segment_network_NEW(inpath: str, outpath: str, interval: float, minimum: flo
     :param outpath: Output segmented network feature class
     :param interval: Distance at which to segment each line feature (map units)
     :param minimum: Minimum length below which lines are not segmented (map units)
+    :param watershed_id: Give this watershed an id (str)
+    :param create_layer: This layer may be created earlier. We can choose to create it. Defaults to false (bool)
     :return: None
     """
 
@@ -276,7 +279,8 @@ def segment_network_NEW(inpath: str, outpath: str, interval: float, minimum: flo
         log.info('Segmenting network to {}m, with minimum feature length of {}m'.format(interval, minimum))
         log.info('Segmenting network from {0}'.format(inpath))
 
-    with get_shp_or_gpkg(inpath) as in_lyr, get_shp_or_gpkg(outpath, write=True) as out_lyr:
+    # NOTE: Remember to always open the 'write' layer first in case it's the same geopackage
+    with get_shp_or_gpkg(outpath, write=True) as out_lyr, get_shp_or_gpkg(inpath) as in_lyr:
         # Get the input NHD flow lines layer
         srs = in_lyr.spatial_ref
         feature_count = in_lyr.ogr_layer.GetFeatureCount()
@@ -292,13 +296,15 @@ def segment_network_NEW(inpath: str, outpath: str, interval: float, minimum: flo
         transform_back = osr.CoordinateTransformation(transform_ref, srs)
 
         # Create the output shapefile
-        # out_lyr.create_layer(ogr.wkbMultiLineString, spatial_ref=srs, fields={
-        #     'GNIS_NAME': ogr.OFTString,
-        #     'FCode': ogr.OFTString,
-        #     'TotDASqKm': ogr.OFTReal,
-        #     'NHDPlusID': ogr.OFTReal,
-        #     'ReachID': ogr.OFTInteger,
-        # })
+        if create_layer is True:
+            out_lyr.create_layer(ogr.wkbMultiLineString, spatial_ref=srs, fields={
+                'GNIS_NAME': ogr.OFTString,
+                'ReachCode': ogr.OFTString,
+                'TotDASqKm': ogr.OFTReal,
+                'NHDPlusID': ogr.OFTReal,
+                'ReachID': ogr.OFTInteger,
+                'WatershedID': ogr.OFTString,
+            })
 
         # Retrieve all input features keeping track of which ones have GNIS names or not
         namedFeatures = {}
@@ -357,7 +363,7 @@ def segment_network_NEW(inpath: str, outpath: str, interval: float, minimum: flo
                 newOGRFeat.SetField("ReachCode", origFeat.FCode)
                 newOGRFeat.SetField("TotDASqKm", origFeat.TotDASqKm)
                 newOGRFeat.SetField("NHDPlusID", origFeat.NHDPlusID)
-                newOGRFeat.SetField("WatershedID", huc)
+                newOGRFeat.SetField("WatershedID", watershed_id)
                 newOGRFeat.SetGeometry(oldGeom)
                 out_lyr.ogr_layer.CreateFeature(newOGRFeat)
                 # rid += 1
@@ -377,7 +383,7 @@ def segment_network_NEW(inpath: str, outpath: str, interval: float, minimum: flo
                     newOGRFeat.SetField("ReachCode", origFeat.FCode)
                     newOGRFeat.SetField("TotDASqKm", origFeat.TotDASqKm)
                     newOGRFeat.SetField("NHDPlusID", origFeat.NHDPlusID)
-                    newOGRFeat.SetField("WatershedID", huc)
+                    newOGRFeat.SetField("WatershedID", watershed_id)
                     geo = ogr.CreateGeometryFromWkt(part1shply.wkt)
                     geo.Transform(transform_back)
                     newOGRFeat.SetGeometry(geo)
@@ -393,7 +399,7 @@ def segment_network_NEW(inpath: str, outpath: str, interval: float, minimum: flo
                     newOGRFeat.SetField("ReachCode", origFeat.FCode)
                     newOGRFeat.SetField("TotDASqKm", origFeat.TotDASqKm)
                     newOGRFeat.SetField("NHDPlusID", origFeat.NHDPlusID)
-                    newOGRFeat.SetField("WatershedID", huc)
+                    newOGRFeat.SetField("WatershedID", watershed_id)
                     geo = ogr.CreateGeometryFromWkt(remaining.wkt)
                     geo.Transform(transform_back)
                     newOGRFeat.SetGeometry(geo)

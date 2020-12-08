@@ -5,12 +5,12 @@ import os
 import math
 import re
 from enum import Enum
-from typing import Union
+from typing import Union, List
 from osgeo import ogr, gdal, osr
 from shapely.wkb import loads as wkbload, dumps as wkbdumps
 from shapely.geometry.base import BaseGeometry
 from shapely.geometry import Point
-from rscommons import Logger, ProgressBar, Raster
+from rscommons import Logger, ProgressBar, Raster, Timer
 from rscommons.util import safe_makedirs
 from rscommons.classes.vector_datasource import DatasetRegistry
 
@@ -37,7 +37,12 @@ class VectorBase():
     class Drivers(Enum):
         Shapefile = 'ESRI Shapefile'
         Geopackage = 'GPKG'
+        GeoDatabase = 'OpenFileGDB'
 
+    POINT_TYPES = [
+        ogr.wkbPoint, ogr.wkbPoint25D, ogr.wkbPointM, ogr.wkbPointZM,
+        ogr.wkbMultiPoint, ogr.wkbMultiPoint25D, ogr.wkbMultiPointM, ogr.wkbMultiPointZM
+    ]
     LINE_TYPES = [
         ogr.wkbLineString, ogr.wkbLineString25D, ogr.wkbLineStringM, ogr.wkbLineStringZM,
         ogr.wkbMultiLineString, ogr.wkbMultiLineString25D, ogr.wkbMultiLineStringM,
@@ -47,6 +52,15 @@ class VectorBase():
         ogr.wkbPolygon, ogr.wkbPolygon25D, ogr.wkbPolygonM, ogr.wkbPolygonZM,
         ogr.wkbMultiPolygon, ogr.wkbMultiPolygon25D, ogr.wkbMultiPolygonM, ogr.wkbMultiPolygonZM
     ]
+    POLY_TYPES = [
+        ogr.wkbPolygon, ogr.wkbPolygon25D, ogr.wkbPolygonM, ogr.wkbPolygonZM,
+        ogr.wkbMultiPolygon, ogr.wkbMultiPolygon25D, ogr.wkbMultiPolygonM, ogr.wkbMultiPolygonZM
+    ]
+    MULTI_TYPES = {
+        ogr.wkbMultiPoint: [ogr.wkbPoint, ogr.wkbPoint25D, ogr.wkbPointM, ogr.wkbPointZM],
+        ogr.wkbMultiPolygon: [ogr.wkbPolygon, ogr.wkbPolygon25D, ogr.wkbPolygonM, ogr.wkbPolygonZM],
+        ogr.wkbMultiLineString: [ogr.wkbLineString, ogr.wkbLineString25D, ogr.wkbLineStringM, ogr.wkbLineStringZM]
+    }
 
     def __init__(self, filepath: str, driver: VectorBase.Drivers, layer_name: str, replace_ds_on_open: bool = False, allow_write=False):
         """[summary]
@@ -236,6 +250,9 @@ class VectorBase():
             # Delete the layer if it already exists
             if self.ogr_ds.GetLayerByName(self.ogr_layer_name) is not None:
                 self.ogr_ds.DeleteLayer(self.ogr_layer_name)
+        elif self.driver_name == VectorBase.Drivers.GeoDatabase.value:
+            # Delete the layer if it already exists
+            raise NotImplementedError('Geodatabase writing not supported')
         else:
             # Unrecognized driver
             raise NotImplementedError('Not implemented: {}'.format(self.driver_name))
@@ -292,6 +309,14 @@ class VectorBase():
         elif self.driver_name == VectorBase.Drivers.Geopackage.value:
             if self.ogr_layer_name is None:
                 raise VectorBaseException('For Geopackages you must specify a layer name.')
+            self.ogr_layer = self.ogr_ds.GetLayerByName(self.ogr_layer_name)
+            # this method is lazy so if there's no layer then just return
+            if self.ogr_layer is None:
+                self.log.debug('No layer named "{}" found'.format(self.ogr_layer_name))
+                return
+        elif self.driver_name == VectorBase.Drivers.GeoDatabase.value:
+            if self.ogr_layer_name is None:
+                raise VectorBaseException('For GeoDatabase you must specify a layer name.')
             self.ogr_layer = self.ogr_ds.GetLayerByName(self.ogr_layer_name)
             # this method is lazy so if there's no layer then just return
             if self.ogr_layer is None:
@@ -380,7 +405,13 @@ class VectorBase():
             raise VectorBaseException('Attempting to create field with invalid field name "{}".'.format(field_name))
 
         elif self.driver_name == VectorBase.Drivers.Shapefile.value and len(field_name) > 10:
+            raise VectorBaseException('Field names in shapefiles cannot be greater than 10 characters. "{}" == {}.'.format(field_name, len(field_name)))
+
+        elif self.driver_name == VectorBase.Drivers.Geopackage.value and len(field_name) > 31:
             raise VectorBaseException('Field names in geopackages cannot be greater than 31 characters. "{}" == {}.'.format(field_name, len(field_name)))
+
+        elif self.driver_name == VectorBase.Drivers.GeoDatabase.value:
+            raise VectorBaseException('Cannot create fields in a Geodatabase')
 
         elif field_type is not None and field_type == ogr.OFTInteger64:
             self.log.error('ERROR:: ogr.OFTInteger64 is not supported by ESRI!')
@@ -450,7 +481,8 @@ class VectorBase():
 
     def iterate_features(
         self, name: str = None, write_layers: list = None,
-        commit_thresh=1000, attribute_filter: str = None, clip_shape: Union[BaseGeometry, ogr.Feature, ogr.Geometry] = None
+        commit_thresh=1000, attribute_filter: str = None, clip_shape: Union[BaseGeometry, ogr.Feature, ogr.Geometry] = None,
+        clip_rect: List[float, float, float, float] = None
     ) -> None:
         """[summary]
 
@@ -460,10 +492,14 @@ class VectorBase():
             commit_thresh (int, optional): Change how often CommitTransaction gets called. Defaults to 1000.
             attribute_filter (str, optional): Attribute Query like "HUC = 17060104". Defaults to None.
             clip_shape (BaseGeometry, optional): Iterate over a subset by clipping to a Shapely-ish geometry. Defaults to None.
+            clip_rect (List[double minx, double miny, double maxx, double maxy)]): Iterate over a subset by clipping to a Shapely-ish geometry. Defaults to None.
         """
 
         if self.ogr_layer_def is None:
-            raise VectorBaseException('Layer not initialized. No ogr_layer found')
+            raise VectorBaseException('iterate_features: Layer not initialized. No ogr_layer found')
+
+        if clip_shape is not None and clip_rect is not None:
+            raise VectorBaseException('iterate_features: You can only use clip_geom OR clip_rect, not both')
 
         counter = 0
 
@@ -482,6 +518,8 @@ class VectorBase():
                 clip_geom = clip_shape
             # https://gdal.org/python/osgeo.ogr.Layer-class.html#SetSpatialFilter
             self.ogr_layer.SetSpatialFilter(clip_geom)
+        elif clip_rect:
+            self.ogr_layer.SetSpatialFilterRect(*clip_rect)
 
         if attribute_filter:
             # https://gdal.org/python/osgeo.ogr.Layer-class.html#SetAttributeFilter

@@ -18,7 +18,7 @@ import uuid
 import datetime
 from osgeo import ogr
 
-from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALOGRErrors
+from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALOGRErrors, GeopackageLayer, Timer
 from rscommons.util import safe_makedirs, safe_remove_dir
 from rscommons.clean_nhd_data import clean_nhd_data
 from rscommons.clean_ntd_data import clean_ntd_data
@@ -28,9 +28,10 @@ from rscommons.science_base import download_shapefile_collection, get_ntd_urls, 
 from rscommons.geographic_raster import gdal_dem_geographic
 from rscommons.download_hand import download_hand
 from rscommons.raster_buffer_stats import raster_buffer_stats2
-from rscommons.vector_ops import get_geometry_unary_union
+from rscommons.vector_ops import get_geometry_unary_union, copy_feature_class
 from rscommons.prism import calculate_bankfull_width
 
+from rscontext.rs_segmentation import rs_segmentation
 from rscontext.flow_accumulation import flow_accumulation, flow_accum_to_drainage_area
 from rscontext.clip_ownership import clip_ownership
 from rscontext.filter_ecoregions import filter_ecoregions
@@ -56,10 +57,19 @@ LayerTypes = {
     'EXVEG': RSLayer('Existing Vegetation', 'EXVEG', 'Raster', 'vegetation/existing_veg.tif'),
     'HISTVEG': RSLayer('Historic Vegetation', 'HISTVEG', 'Raster', 'vegetation/historic_veg.tif'),
     # Inputs
-    'NETWORK': RSLayer('NHD Flowlines', 'NETWORK', 'Vector', 'inputs/network.shp'),
+
     'OWNERSHIP': RSLayer('Ownership', 'Ownership', 'Vector', 'ownership/ownership.shp'),
     'FAIR_MARKET': RSLayer('Fair Market Value', 'FAIRMARKETVALUE', 'Raster', 'ownership/fair_market_value.tif'),
     'ECOREGIONS': RSLayer('Ecoregions', 'Ecoregions', 'Vector', 'inputs/ecoregions.shp'),
+
+    # NHD Geopackage Layers
+    'HYDROLOGY': RSLayer('Hydrology', 'NHD', 'Geopackage', 'hydrology/hydrology.gpkg', {
+        'NETWORK': RSLayer('NHD Flowlines', 'NETWORK', 'Vector', 'network'),
+        'NETWORK300M': RSLayer('NHD Flowlines Segmented 300m', 'NETWORK300M', 'Vector', 'network_300m'),
+        'NETWORK300M': RSLayer('NHD Flowlines intersected with road, rail and ownership', 'NETWORK300M', 'Vector', 'network_intersected'),
+        'NETWORK300MCROSSINGS': RSLayer('NHD Flowlines intersected with road, rail and ownership, segmented to 300m', 'NETWORK300MCROSSINGS', 'Vector', 'network_intersected_300m')
+    }),
+
     # Prism Layers
     'PPT': RSLayer('Precipitation', 'Precip', 'Raster', 'climate/precipitation.tif'),
     'TMEAN': RSLayer('Mean Temperature', 'MeanTemp', 'Raster', 'climate/mean_temp.tif'),
@@ -71,10 +81,17 @@ LayerTypes = {
     'REPORT': RSLayer('RSContext Report', 'REPORT', 'HTMLFile', 'rs_context.html')
 }
 
+SEGMENTATION = {
+    'Max': 300,
+    'Min': 50
+}
+
 
 def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregions, prism_folder, output_folder, download_folder, scratch_dir, parallel, force_download):
     """
+
     Download riverscapes context layers for the specified HUC and organize them as a Riverscapes project
+
     :param huc: Eight, 10 or 12 digit HUC identification number
     :param existing_veg: Path to the existing vegetation conditions raster
     :param historic_veg: Path to the historical vegetation conditions raster
@@ -267,6 +284,26 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
     own_path = os.path.join(output_folder, LayerTypes['OWNERSHIP'].rel_path)
     project.add_dataset(realization, own_path, LayerTypes['OWNERSHIP'], 'Vector')
     clip_ownership(nhd[boundary], ownership, own_path, cfg.OUTPUT_EPSG, 10000)
+
+    #######################################################
+    # Segmentation
+    #######################################################
+
+    hydrology_gpkg_path = os.path.join(output_folder, LayerTypes['HYDROLOGY'].rel_path)
+    # For now let's just make a copy of the NHD FLowlines
+    tmr = Timer()
+    rs_segmentation(
+        nhd['NHDFlowline'],
+        ntd_clean['Roads'],
+        ntd_clean['Rail'],
+        own_path,
+        hydrology_gpkg_path,
+        SEGMENTATION['Max'],
+        SEGMENTATION['Min'],
+        huc
+    )
+    log.debug('Segmentation done in {:.1f} seconds'.format(tmr.ellapsed()))
+    project.add_project_geopackage(realization, LayerTypes['HYDROLOGY'])
 
     # Filter the ecoregions Shapefile to only include attributes that intersect with our HUC
     eco_path = os.path.join(output_folder, 'ecoregions', 'ecoregions.shp')
