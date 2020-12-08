@@ -297,18 +297,16 @@ def segment_network_NEW(inpath: str, outpath: str, interval: float, minimum: flo
 
         # Create the output shapefile
         if create_layer is True:
-            out_lyr.create_layer(ogr.wkbMultiLineString, spatial_ref=srs, fields={
-                'GNIS_NAME': ogr.OFTString,
-                'ReachCode': ogr.OFTString,
-                'TotDASqKm': ogr.OFTReal,
-                'NHDPlusID': ogr.OFTReal,
+            out_lyr.create_layer_from_ref(in_lyr)
+            # We add two features to this
+            out_lyr.create_fields({
                 'ReachID': ogr.OFTInteger,
-                'WatershedID': ogr.OFTString,
+                'WatershedID': ogr.OFTString
             })
 
         # Retrieve all input features keeping track of which ones have GNIS names or not
-        namedFeatures = {}
-        allFeatures = []
+        named_features = {}
+        all_features = []
         junctions = []
 
         # Omit pipelines with FCode 428**
@@ -325,91 +323,92 @@ def segment_network_NEW(inpath: str, outpath: str, interval: float, minimum: flo
 
             if not s_feat.name or len(s_feat.name) < 1 or interval <= 0:
                 # Add features without a GNIS name to list. Also add to list if not segmenting
-                allFeatures.append(s_feat)
+                all_features.append(s_feat)
             else:
                 # Build separate lists for each unique GNIS name
-                if s_feat.name not in namedFeatures:
-                    namedFeatures[s_feat.name] = [s_feat]
+                if s_feat.name not in named_features:
+                    named_features[s_feat.name] = [s_feat]
                 else:
-                    namedFeatures[s_feat.name].append(s_feat)
+                    named_features[s_feat.name].append(s_feat)
 
         # Loop over all features with the same GNIS name.
         # Only merge them if they meet at a junction where no other lines meet.
         log.info('Merging simple features with the same GNIS name...')
-        for name, features in namedFeatures.items():
+        for name, features in named_features.items():
             log.debug('   {} x{}'.format(name.encode('utf-8'), len(features)))
-            allFeatures.extend(features)
+            all_features.extend(features)
 
-        log.info('{:,} features after merging. Starting segmentation...'.format(len(allFeatures)))
+        log.info('{:,} features after merging. Starting segmentation...'.format(len(all_features)))
 
         # Segment the features at the desired interval
         # rid = 0
         log.info('Segmenting Network...')
-        progbar = ProgressBar(len(allFeatures), 50, "Segmenting")
+        progbar = ProgressBar(len(all_features), 50, "Segmenting")
         counter = 0
 
-        for origFeat in allFeatures:
+        for orig_feat in all_features:
             counter += 1
             progbar.update(counter)
 
-            oldFeat = in_lyr.ogr_layer.GetFeature(origFeat.fid)
-            oldGeom = oldFeat.GetGeometryRef()
+            old_feat = in_lyr.ogr_layer.GetFeature(orig_feat.fid)
+            old_geom = old_feat.GetGeometryRef()
             #  Anything that produces reach shorter than the minimum just gets added. Also just add features if not segmenting
-            if origFeat.length_m < (interval + minimum) or interval <= 0:
-                newOGRFeat = ogr.Feature(out_lyr.ogr_layer_def)
+            if orig_feat.length_m < (interval + minimum) or interval <= 0:
+                new_ogr_feat = ogr.Feature(out_lyr.ogr_layer_def)
+                copy_fields(old_feat, new_ogr_feat, in_lyr.ogr_layer_def, out_lyr.ogr_layer_def)
                 # Set the attributes using the values from the delimited text file
-                newOGRFeat.SetField("GNIS_NAME", origFeat.name)
-                # newOGRFeat.SetField("ReachID", rid)
-                newOGRFeat.SetField("ReachCode", origFeat.FCode)
-                newOGRFeat.SetField("TotDASqKm", origFeat.TotDASqKm)
-                newOGRFeat.SetField("NHDPlusID", origFeat.NHDPlusID)
-                newOGRFeat.SetField("WatershedID", watershed_id)
-                newOGRFeat.SetGeometry(oldGeom)
-                out_lyr.ogr_layer.CreateFeature(newOGRFeat)
+                new_ogr_feat.SetField("GNIS_NAME", orig_feat.name)
+                new_ogr_feat.SetField("WatershedID", watershed_id)
+                new_ogr_feat.SetGeometry(old_geom)
+                out_lyr.ogr_layer.CreateFeature(new_ogr_feat)
                 # rid += 1
             else:
                 # From here on out we use shapely and project to UTM. We'll transform back before writing to disk.
-                newGeom = oldGeom.Clone()
-                newGeom.Transform(transform)
-                remaining = LineString(newGeom.GetPoints())
+                new_geom = old_geom.Clone()
+                new_geom.Transform(transform)
+                remaining = LineString(new_geom.GetPoints())
                 while remaining and remaining.length >= (interval + minimum):
                     part1shply, part2shply = cut(remaining, interval)
                     remaining = part2shply
 
-                    newOGRFeat = ogr.Feature(out_lyr.ogr_layer_def)
+                    new_ogr_feat = ogr.Feature(out_lyr.ogr_layer_def)
+                    copy_fields(old_feat, new_ogr_feat, in_lyr.ogr_layer_def, out_lyr.ogr_layer_def)
+
                     # Set the attributes using the values from the delimited text file
-                    newOGRFeat.SetField("GNIS_NAME", origFeat.name)
-                    # newOGRFeat.SetField("ReachID", rid)
-                    newOGRFeat.SetField("ReachCode", origFeat.FCode)
-                    newOGRFeat.SetField("TotDASqKm", origFeat.TotDASqKm)
-                    newOGRFeat.SetField("NHDPlusID", origFeat.NHDPlusID)
-                    newOGRFeat.SetField("WatershedID", watershed_id)
+                    new_ogr_feat.SetField("GNIS_NAME", orig_feat.name)
+                    new_ogr_feat.SetField("WatershedID", watershed_id)
+
                     geo = ogr.CreateGeometryFromWkt(part1shply.wkt)
                     geo.Transform(transform_back)
-                    newOGRFeat.SetGeometry(geo)
-                    out_lyr.ogr_layer.CreateFeature(newOGRFeat)
+                    new_ogr_feat.SetGeometry(geo)
+                    out_lyr.ogr_layer.CreateFeature(new_ogr_feat)
                     # rid += 1
 
                 # Add any remaining line to outGeometries
                 if remaining:
-                    newOGRFeat = ogr.Feature(out_lyr.ogr_layer_def)
+                    new_ogr_feat = ogr.Feature(out_lyr.ogr_layer_def)
+                    copy_fields(old_feat, new_ogr_feat, in_lyr.ogr_layer_def, out_lyr.ogr_layer_def)
+
                     # Set the attributes using the values from the delimited text file
-                    newOGRFeat.SetField("GNIS_NAME", origFeat.name)
-                    # newOGRFeat.SetField("ReachID", rid)
-                    newOGRFeat.SetField("ReachCode", origFeat.FCode)
-                    newOGRFeat.SetField("TotDASqKm", origFeat.TotDASqKm)
-                    newOGRFeat.SetField("NHDPlusID", origFeat.NHDPlusID)
-                    newOGRFeat.SetField("WatershedID", watershed_id)
+                    new_ogr_feat.SetField("GNIS_NAME", orig_feat.name)
+                    new_ogr_feat.SetField("WatershedID", watershed_id)
+
                     geo = ogr.CreateGeometryFromWkt(remaining.wkt)
                     geo.Transform(transform_back)
-                    newOGRFeat.SetGeometry(geo)
-                    out_lyr.ogr_layer.CreateFeature(newOGRFeat)
+                    new_ogr_feat.SetGeometry(geo)
+                    out_lyr.ogr_layer.CreateFeature(new_ogr_feat)
                     # rid += 1
 
         progbar.finish()
 
         log.info(('{:,} features written to {:}'.format(out_lyr.ogr_layer.GetFeatureCount(), outpath)))
         log.info('Process completed successfully.')
+
+
+def copy_fields(in_feature, out_feature, in_layer_def, out_layer_def):
+    # Add field values from input Layer
+    for i in range(0, in_layer_def.GetFieldCount()):
+        out_feature.SetField(out_layer_def.GetFieldDefn(i).GetNameRef(), in_feature.GetField(i))
 
 
 def main():

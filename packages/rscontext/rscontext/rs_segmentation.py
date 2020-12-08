@@ -4,7 +4,7 @@ import os
 from osgeo import ogr
 from shapely.geometry import Point, MultiPoint, LineString
 from shapely.ops import split
-from rscommons import get_shp_or_gpkg, GeopackageLayer, Logger, initGDALOGRErrors
+from rscommons import get_shp_or_gpkg, GeopackageLayer, Logger
 from rscommons.segment_network import segment_network_NEW
 from rscommons.vector_ops import copy_feature_class
 from rscommons.vector_ops import collect_feature_class
