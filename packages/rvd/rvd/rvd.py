@@ -32,7 +32,6 @@ from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALO
 from rscommons.util import safe_makedirs, safe_remove_dir
 from rscommons import GeopackageLayer, ShapefileLayer, VectorBase, get_shp_or_gpkg
 from rscommons.build_network import build_network_NEW
-from rscommons.segment_network import segment_network_NEW
 from rscommons.database import create_database_NEW
 from rscommons.database import populate_database_NEW
 from rscommons.reach_attributes import write_attributes, write_reach_attributes
@@ -74,15 +73,13 @@ LayerTypes = {
 }
 
 
-def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_orig: Path,
+def rvd(huc: int, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_orig: Path,
         valley_bottom_orig: Path, output_folder: Path, reach_codes: List[int], flow_areas_orig: Path, waterbodies_orig: Path):
     """[Generate segmented reaches on flowline network and calculate RVD from historic and existing vegetation rasters
 
     Args:
         huc (integer): Watershed ID
-        max_length (float): maximum length for reach segmentation
-        min_length (float): minimum length for reach segmentation
-        flowlines_orig (Path): NHD flowlines feature layer
+        flowlines_orig (Path): Segmented flowlines feature layer
         existing_veg_orig (Path): LANDFIRE version 2.00 evt raster, with adjacent xml metadata file
         historic_veg_orig (Path): LANDFIRE version 2.00 bps raster, with adjacent xml metadata file
         valley_bottom_orig (Path): Vbet polygon feature layer
@@ -158,9 +155,7 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, ex
 
     metadata = {
         'RVD_DateTime': datetime.datetime.now().isoformat(),
-        'Max_Length': max_length,
-        'Min_Length': min_length,
-        'Reach_Codes': reach_codes,
+        'Reach_Codes': reach_codes
     }
 
     # Execute the SQL to create the lookup tables in the RVD geopackage SQLite database
@@ -197,14 +192,11 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, ex
     cleaned_path = os.path.join(output_folder, LayerTypes['INTERMEDIATES'].rel_path, LayerTypes['INTERMEDIATES'].sub_layers['CLEANED'].rel_path)
     build_network_NEW(flowlines_path, flowareas_path, cleaned_path, waterbodies_path=waterbodies_path, epsg=cfg.OUTPUT_EPSG, reach_codes=reach_codes)
 
-    segmented_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['RVD'].rel_path)
-    segment_network_NEW(cleaned_path, segmented_path, max_length, min_length, huc)
-
     # Generate Voroni polygons
     log.info("Calculating Voronoi Polygons...")
 
     # Add all the points (including islands) to the list
-    flowline_thiessen_points_groups = centerline_points(segmented_path, distance_buffer, transform_shp_to_raster)
+    flowline_thiessen_points_groups = centerline_points(flowlines_orig, distance_buffer, transform_shp_to_raster)
     flowline_thiessen_points = [pt for group in flowline_thiessen_points_groups.values() for pt in group]
     simple_save([pt.point for pt in flowline_thiessen_points], ogr.wkbPoint, raster_srs, "Thiessen_Points", intermediates_gpkg_path)
 
@@ -331,7 +323,7 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, ex
     log.info('Insert values to GPKG tables')
 
     # TODO move this to write_attirubtes method
-    with get_shp_or_gpkg(segmented_path, write=True) as in_layer:
+    with get_shp_or_gpkg(flowlines_orig, write=True) as in_layer:
         # Create each field and store the name and index in a list of tuples
         field_indices = [(field, in_layer.create_field(field, field_type)) for field, field_type in {
             "FromConifer": ogr.OFTReal,
@@ -388,56 +380,6 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, ex
 
     with sqlite3.connect(outputs_gpkg_path) as conn:
         cursor = conn.cursor()
-    #     cursor.executemany('''UPDATE Reaches SET
-    #             FromConifer=?,
-    #             FromDevegetated=?,
-    #             FromGrassShrubland=?,
-    #             FromDeciduous=?,
-    #             NoChange=?,
-    #             Deciduous=?,
-    #             GrassShrubland=?,
-    #             Devegetation=?,
-    #             Conifer=?,
-    #             Invasive=?,
-    #             Development=?,
-    #             Agriculture=?,
-    #             ConversionCode=?,
-    #             ConversionType=?
-    #             WHERE ReachID=?''', [
-    #         (value["FromConifer"],
-    #          value["FromDevegetated"],
-    #          value["FromGrassShrubland"],
-    #          value["FromDeciduous"],
-    #          value["NoChange"],
-    #          value["Deciduous"],
-    #          value["GrassShrubland"],
-    #          value["Devegetation"],
-    #          value["Conifer"],
-    #          value["Invasive"],
-    #          value["Development"],
-    #          value["Agriculture"],
-    #          value["ConversionCode"],
-    #          value["ConversionType"],
-    #          reach_id) for reach_id, value in reach_values_with_conversion_codes.items()])
-    #     conn.commit()
-
-    #     cursor.executemany('''UPDATE Reaches SET
-    #             EXISTING_RIPARIAN_MEAN=?,
-    #             HISTORIC_RIPARIAN_MEAN=?,
-    #             RIPARIAN_DEPARTURE=?,
-    #             EXISTING_NATIVE_RIPARIAN_MEAN=?,
-    #             HISTORIC_NATIVE_RIPARIAN_MEAN=?,
-    #             NATIVE_RIPARIAN_DEPARTURE=?
-    #             WHERE ReachID=?''', [(
-    #         value["EXISTING_RIPARIAN_MEAN"],
-    #         value["HISTORIC_RIPARIAN_MEAN"],
-    #         value["RIPARIAN_DEPARTURE"],
-    #         value["EXISTING_NATIVE_RIPARIAN_MEAN"],
-    #         value["HISTORIC_NATIVE_RIPARIAN_MEAN"],
-    #         value["NATIVE_RIPARIAN_DEPARTURE"],
-    #         reachid) for reachid, value in riparian_departure_values.items()])
-    #     conn.commit()
-
         for reachid, epochs in unique_vegetation_counts.items():
             for epoch in epochs.values():
                 insert_values = [[reachid, int(vegetationid), float(count * cell_area), int(count)] for vegetationid, count in zip(epoch[0], epoch[1]) if vegetationid != 0]
@@ -597,9 +539,7 @@ def main():
     )
 
     parser.add_argument('huc', help='HUC identifier', type=str)
-    parser.add_argument('max_length', help='Maximum length of features when segmenting. Zero causes no segmentation.', type=float)
-    parser.add_argument('min_length', help='Minimum length input', type=float)
-    parser.add_argument('flowlines', help='flowlines input', type=str)
+    parser.add_argument('flowlines', help='Segmented flowlines input.', type=str)
     parser.add_argument('existing', help='National existing vegetation raster', type=str)
     parser.add_argument('historic', help='National historic vegetation raster', type=str)
     parser.add_argument('valley_bottom', help='Valley bottom (.shp, .gpkg/layer_name)', type=str)
@@ -621,7 +561,7 @@ def main():
 
     try:
         rvd(args.huc,
-            args.max_length, args.min_length, args.flowlines,
+            args.flowlines,
             args.existing, args.historic, args.valley_bottom,
             args.output_folder,
             reach_codes,

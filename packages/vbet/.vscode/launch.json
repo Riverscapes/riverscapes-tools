@@ -22,7 +22,7 @@
       "console": "integratedTerminal",
       "args": [
         "${input:HUC}",
-        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/NHDFlowline.shp",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/network_intersected_300m",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/NHDArea.shp",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/topography/slope.tif",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/topography/hand.tif",
