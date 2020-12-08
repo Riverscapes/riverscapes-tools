@@ -39,6 +39,7 @@ from rscommons.reach_attributes import write_attributes, write_reach_attributes
 from rscommons.vector_ops import get_geometry_unary_union, copy_feature_class
 from rscommons.thiessen.vor import NARVoronoi
 from rscommons.thiessen.shapes import centerline_points, clip_polygons, dissolve_by_points
+from rscommons.vector_ops import write_attributes
 
 from rvd.rvd_report import RVDReport
 from rvd.lib.load_vegetation import load_vegetation_raster
@@ -66,7 +67,7 @@ LayerTypes = {
         'NETWORK': RSLayer('Network', 'NETWORK', 'Vector', 'network'),
         'THIESSEN': RSLayer('Network', 'THIESSEN', 'Vector', 'thiessen'),
     }),
-    'OUTPUTS': RSLayer('RVD', 'OUTPUTS', 'Geopackage', 'outputs/outputs.gpkg', {
+    'OUTPUTS': RSLayer('RVD', 'OUTPUTS', 'Geopackage', 'outputs/RVD.gpkg', {
         'RVD': RSLayer('RVD', 'SEGMENTED', 'Vector', 'Reaches')
     }),
     'REPORT': RSLayer('RVD Report', 'RVD_REPORT', 'HTMLFile', 'outputs/rvd.html')
@@ -152,7 +153,7 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, ex
             'TotDASqKm': ogr.OFTReal,
             'NHDPlusID': ogr.OFTReal,
             'ReachID': ogr.OFTInteger,
-            'WatershedID': ogr.OFTInteger,
+            'WatershedID': ogr.OFTInteger
         }, options=['FID=ReachID'])
 
     metadata = {
@@ -328,58 +329,114 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, ex
 
     # Write Output to GPKG table
     log.info('Insert values to GPKG tables')
+
+    # TODO move this to write_attirubtes method
+    with get_shp_or_gpkg(segmented_path, write=True) as in_layer:
+        # Create each field and store the name and index in a list of tuples
+        field_indices = [(field, in_layer.create_field(field, field_type)) for field, field_type in {
+            "FromConifer": ogr.OFTReal,
+            "FromDevegetated": ogr.OFTReal,
+            "FromGrassShrubland": ogr.OFTReal,
+            "FromDeciduous": ogr.OFTReal,
+            "NoChange": ogr.OFTReal,
+            "Deciduous": ogr.OFTReal,
+            "GrassShrubland": ogr.OFTReal,
+            "Devegetation": ogr.OFTReal,
+            "Conifer": ogr.OFTReal,
+            "Invasive": ogr.OFTReal,
+            "Development": ogr.OFTReal,
+            "Agriculture": ogr.OFTReal,
+            "ConversionCode": ogr.OFTInteger,
+            "ConversionType": ogr.OFTString}.items()]
+
+        for feature, _counter, _progbar in in_layer.iterate_features("Writing Attributes", write_layers=[in_layer]):
+            reach = feature.GetFID()
+            if reach not in reach_values_with_conversion_codes:
+                continue
+
+            # Set all the field values and then store the feature
+            for field, _idx in field_indices:
+                if field in reach_values_with_conversion_codes[reach]:
+                    if not reach_values_with_conversion_codes[reach][field]:
+                        feature.SetField(field, None)
+                    else:
+                        feature.SetField(field, reach_values_with_conversion_codes[reach][field])
+            in_layer.ogr_layer.SetFeature(feature)
+
+        # Create each field and store the name and index in a list of tuples
+        field_indices = [(field, in_layer.create_field(field, field_type)) for field, field_type in {
+            "EXISTING_RIPARIAN_MEAN": ogr.OFTReal,
+            "HISTORIC_RIPARIAN_MEAN": ogr.OFTReal,
+            "RIPARIAN_DEPARTURE": ogr.OFTReal,
+            "EXISTING_NATIVE_RIPARIAN_MEAN": ogr.OFTReal,
+            "HISTORIC_NATIVE_RIPARIAN_MEAN": ogr.OFTReal,
+            "NATIVE_RIPARIAN_DEPARTURE": ogr.OFTReal, }.items()]
+
+        for feature, _counter, _progbar in in_layer.iterate_features("Writing Attributes", write_layers=[in_layer]):
+            reach = feature.GetFID()
+            if reach not in riparian_departure_values:
+                continue
+
+            # Set all the field values and then store the feature
+            for field, _idx in field_indices:
+                if field in riparian_departure_values[reach]:
+                    if not riparian_departure_values[reach][field]:
+                        feature.SetField(field, None)
+                    else:
+                        feature.SetField(field, riparian_departure_values[reach][field])
+            in_layer.ogr_layer.SetFeature(feature)
+
     with sqlite3.connect(outputs_gpkg_path) as conn:
         cursor = conn.cursor()
-        cursor.executemany('''INSERT INTO RVDValues (
-                ReachID,
-                FromConifer,
-                FromDevegetated,
-                FromGrassShrubland,
-                FromDeciduous,
-                NoChange,
-                Deciduous,
-                GrassShrubland,
-                Devegetation,
-                Conifer,
-                Invasive,
-                Development,
-                Agriculture,
-                ConversionCode,
-                ConversionType)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''', [
-            (reach_id,
-             value["FromConifer"],
-             value["FromDevegetated"],
-             value["FromGrassShrubland"],
-             value["FromDeciduous"],
-             value["NoChange"],
-             value["Deciduous"],
-             value["GrassShrubland"],
-             value["Devegetation"],
-             value["Conifer"],
-             value["Invasive"],
-             value["Development"],
-             value["Agriculture"],
-             value["ConversionCode"],
-             value["ConversionType"]) for reach_id, value in reach_values_with_conversion_codes.items()])
-        conn.commit()
+    #     cursor.executemany('''UPDATE Reaches SET
+    #             FromConifer=?,
+    #             FromDevegetated=?,
+    #             FromGrassShrubland=?,
+    #             FromDeciduous=?,
+    #             NoChange=?,
+    #             Deciduous=?,
+    #             GrassShrubland=?,
+    #             Devegetation=?,
+    #             Conifer=?,
+    #             Invasive=?,
+    #             Development=?,
+    #             Agriculture=?,
+    #             ConversionCode=?,
+    #             ConversionType=?
+    #             WHERE ReachID=?''', [
+    #         (value["FromConifer"],
+    #          value["FromDevegetated"],
+    #          value["FromGrassShrubland"],
+    #          value["FromDeciduous"],
+    #          value["NoChange"],
+    #          value["Deciduous"],
+    #          value["GrassShrubland"],
+    #          value["Devegetation"],
+    #          value["Conifer"],
+    #          value["Invasive"],
+    #          value["Development"],
+    #          value["Agriculture"],
+    #          value["ConversionCode"],
+    #          value["ConversionType"],
+    #          reach_id) for reach_id, value in reach_values_with_conversion_codes.items()])
+    #     conn.commit()
 
-        cursor.executemany('''UPDATE RVDValues SET
-                EXISTING_RIPARIAN_MEAN=?,
-                HISTORIC_RIPARIAN_MEAN=?,
-                RIPARIAN_DEPARTURE=?,
-                EXISTING_NATIVE_RIPARIAN_MEAN=?,
-                HISTORIC_NATIVE_RIPARIAN_MEAN=?,
-                NATIVE_RIPARIAN_DEPARTURE=?
-                WHERE ReachID=?''', [(
-            value["EXISTING_RIPARIAN_MEAN"],
-            value["HISTORIC_RIPARIAN_MEAN"],
-            value["RIPARIAN_DEPARTURE"],
-            value["EXISTING_NATIVE_RIPARIAN_MEAN"],
-            value["HISTORIC_NATIVE_RIPARIAN_MEAN"],
-            value["NATIVE_RIPARIAN_DEPARTURE"],
-            reachid) for reachid, value in riparian_departure_values.items()])
-        conn.commit()
+    #     cursor.executemany('''UPDATE Reaches SET
+    #             EXISTING_RIPARIAN_MEAN=?,
+    #             HISTORIC_RIPARIAN_MEAN=?,
+    #             RIPARIAN_DEPARTURE=?,
+    #             EXISTING_NATIVE_RIPARIAN_MEAN=?,
+    #             HISTORIC_NATIVE_RIPARIAN_MEAN=?,
+    #             NATIVE_RIPARIAN_DEPARTURE=?
+    #             WHERE ReachID=?''', [(
+    #         value["EXISTING_RIPARIAN_MEAN"],
+    #         value["HISTORIC_RIPARIAN_MEAN"],
+    #         value["RIPARIAN_DEPARTURE"],
+    #         value["EXISTING_NATIVE_RIPARIAN_MEAN"],
+    #         value["HISTORIC_NATIVE_RIPARIAN_MEAN"],
+    #         value["NATIVE_RIPARIAN_DEPARTURE"],
+    #         reachid) for reachid, value in riparian_departure_values.items()])
+    #     conn.commit()
 
         for reachid, epochs in unique_vegetation_counts.items():
             for epoch in epochs.values():
@@ -402,7 +459,6 @@ def rvd(huc: int, max_length: float, min_length: float, flowlines_orig: Path, ex
 
     report = RVDReport(report_path, project, output_folder)
     report.write()
-    #report(db_path, report_path)
 
     log.info('RVD complete')
 
