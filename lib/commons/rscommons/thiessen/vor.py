@@ -48,6 +48,18 @@ class NARVoronoi:
         # bake in region adjacency (I have no idea why it's not in by default)
         self.region_neighbour = []
 
+        # Transform everything back to where it was (with some minor floating point rounding problems)
+        # Note that we will use the following and NOT anything from inside _vor
+        # (which is shifted to the origin)
+        self.log.info("Transform everything back")
+        self.vertices = self._vor.vertices + self.centroid
+        self.ridge_points = self._vor.ridge_points
+        self.ridge_vertices = self._vor.ridge_vertices
+        self.regions = self._vor.regions
+        self.point_region = self._vor.point_region
+
+    def calculate_neighbours(self):
+        self.region_neighbour = []
         # Find which regions are next to which other regions
         progbar = ProgressBar(len(self._vor.regions), 50, "baking in region adjacency")
         counter = 0
@@ -62,16 +74,6 @@ class NARVoronoi:
             self.region_neighbour.append(adj)
         progbar.finish()
 
-        # Transform everything back to where it was (with some minor floating point rounding problems)
-        # Note that we will use the following and NOT anything from inside _vor
-        # (which is shifted to the origin)
-        self.log.info("Transform everything back")
-        self.vertices = self._vor.vertices + self.centroid
-        self.ridge_points = self._vor.ridge_points
-        self.ridge_vertices = self._vor.ridge_vertices
-        self.regions = self._vor.regions
-        self.point_region = self._vor.point_region
-
     def collectCenterLines(self, rivershape, flipIsland=None):
         """
 
@@ -84,6 +86,8 @@ class NARVoronoi:
         # The first loop here asigns each polygon to either left or right side of the c
         # hannel based on the self.point object we passed in earlier.
         regions = []
+        if len(self.region_neighbour) == 0:
+            self.log.warning('Neighbours are empty. Have you run calculate_neighbours() before collectCenterLines?')
         for idx, reg in enumerate(self.region_neighbour):
             # obj will have everything we need to know.
             obj = {

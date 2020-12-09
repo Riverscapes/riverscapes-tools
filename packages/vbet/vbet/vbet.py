@@ -21,7 +21,6 @@ import json
 import shutil
 from osgeo import gdal
 from osgeo import ogr
-from shapely.wkb import loads as wkb_load
 from shapely.geometry import mapping, Polygon
 from shapely.ops import unary_union
 import rasterio
@@ -79,8 +78,15 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, max_slope, orig_hand, 
     _hillshade_node, hillshade = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], hillshade)
 
     # Copy input shapes to a geopackage
-    flowlines_path = os.path.join(project_folder, LayerTypes['INPUTS'].rel_path, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
-    flowareas_path = os.path.join(project_folder, LayerTypes['INPUTS'].rel_path, LayerTypes['INPUTS'].sub_layers['FLOW_AREA'].rel_path)
+    inputs_gpkg_path = os.path.join(project_folder, LayerTypes['INPUTS'].rel_path)
+    intermediates_gpkg_path = os.path.join(project_folder, LayerTypes['INTERMEDIATES'].rel_path)
+
+    flowlines_path = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
+    flowareas_path = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['FLOW_AREA'].rel_path)
+
+    # Make sure we're starting with a fresh slate of new geopackages
+    GeopackageLayer.delete(inputs_gpkg_path)
+    GeopackageLayer.delete(intermediates_gpkg_path)
 
     copy_feature_class(flowlines_orig, flowlines_path, epsg=cfg.OUTPUT_EPSG)
     copy_feature_class(flowareas_orig, flowareas_path, epsg=cfg.OUTPUT_EPSG)
@@ -88,7 +94,7 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, max_slope, orig_hand, 
     project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
 
     # Create a copy of the flow lines with just the perennial and also connectors inside flow areas
-    intermediates_gpkg_path = os.path.join(project_folder, LayerTypes['INTERMEDIATES'].rel_path)
+
     vbet_network(flowlines_path, flowareas_path, intermediates_gpkg_path, cfg.OUTPUT_EPSG)
 
     # Get raster resolution as min buffer and apply bankfull width buffer to reaches
