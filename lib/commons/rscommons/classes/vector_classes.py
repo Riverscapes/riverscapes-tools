@@ -5,7 +5,7 @@
 from __future__ import annotations
 import os
 import re
-from osgeo import osr
+from osgeo import osr, ogr
 from rscommons.classes.vector_base import VectorBase
 
 
@@ -63,12 +63,26 @@ class ShapefileLayer(VectorBase):
         self._open_ds()
         self._open_layer()
 
-    def delete(self) -> None:
+    def delete_ds(self) -> None:
         """Delete shapefile and associated sidecar files
         """
         if self.ogr_ds is not None:
             self.ogr_ds.Destroy()
-        self.driver.DeleteDataSource(self.filepath)
+        self.delete(self.filepath)
+
+    @staticmethod
+    def delete(filepath: str):
+        """Static method to safely delete the dataset if it exists
+
+        Args:
+            filepath ([type]): [description]
+        """
+        if os.path.isfile(filepath):
+            driver = ogr.GetDriverByName(VectorBase.Drivers.Shapefile.value)
+            VectorBase.log.info('Deleting existing dataset: {}'.format(filepath))
+            driver.DeleteDataSource(filepath)
+        else:
+            VectorBase.log.info('Dataset not found. Continuing: {}'.format(filepath))
 
 
 class GeopackageLayer(VectorBase):
@@ -121,7 +135,21 @@ class GeopackageLayer(VectorBase):
         """
         if self.ogr_ds is not None:
             self.ogr_ds.Destroy()
-        self.driver.DeleteDataSource(self.filepath)
+        self.delete(self.filepath)
+
+    @staticmethod
+    def delete(filepath: str):
+        """Static method to safely delete the dataset if it exists
+
+        Args:
+            filepath ([type]): [description]
+        """
+        if os.path.isfile(filepath):
+            driver = ogr.GetDriverByName(VectorBase.Drivers.Geopackage.value)
+            VectorBase.log.info('Deleting existing dataset: {}'.format(filepath))
+            driver.DeleteDataSource(filepath)
+        else:
+            VectorBase.log.info('Dataset not found. Continuing: {}'.format(filepath))
 
 
 class GeodatabaseLayer(VectorBase):

@@ -11,33 +11,27 @@
 import argparse
 import sys
 import os
-import glob
 import traceback
 import uuid
 import datetime
 import time
-import xml.etree.ElementTree as ET
-from osgeo import ogr, gdal, osr
+import sqlite3
+from typing import List
 import rasterio
 from rasterio import features
+from osgeo import ogr, gdal, osr
 import numpy as np
-import sqlite3
-import csv
-from collections import OrderedDict
-from typing import List, Dict
 from rscommons.database import dict_factory
 
-from rscommons.util import safe_makedirs
-from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALOGRErrors, ProgressBar, Timer
-from rscommons.util import safe_makedirs, safe_remove_dir
-from rscommons import GeopackageLayer, ShapefileLayer, VectorBase, get_shp_or_gpkg
+from rscommons.util import safe_makedirs, safe_remove_file
+from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALOGRErrors, ProgressBar
+from rscommons import GeopackageLayer, VectorBase, get_shp_or_gpkg
 from rscommons.build_network import build_network_NEW
 from rscommons.database import create_database_NEW
-from rscommons.database import populate_database_NEW
 from rscommons.reach_attributes import write_attributes, write_reach_attributes
 from rscommons.vector_ops import get_geometry_unary_union, copy_feature_class
 from rscommons.thiessen.vor import NARVoronoi
-from rscommons.thiessen.shapes import centerline_points, clip_polygons, dissolve_by_points
+from rscommons.thiessen.shapes import centerline_points, clip_polygons
 from rscommons.vector_ops import write_attributes
 
 from rvd.rvd_report import RVDReport
@@ -56,9 +50,9 @@ LayerTypes = {
     'EXVEG': RSLayer('Existing Vegetation', 'EXVEG', 'Raster', 'inputs/existing_veg.tif'),
     'HISTVEG': RSLayer('Historic Vegetation', 'HISTVEG', 'Raster', 'inputs/historic_veg.tif'),
     'INPUTS': RSLayer('Confinement', 'INPUTS', 'Geopackage', 'inputs/inputs.gpkg', {
-        'FLOWLINES': RSLayer('NHD Flowlines', 'FLOWLINES', 'Vector', 'NHDFlowline'),
-        'FLOW_AREA': RSLayer('NHD Flow Area', 'FLOW_AREA', 'Vector', 'NHDArea'),
-        'WATERBODIES': RSLayer('NHD Waterbody', 'WATERBODIES', 'Vector', 'NHDWaterbody'),
+        'FLOWLINES': RSLayer('Segmented Flowlines', 'FLOWLINES', 'Vector', 'flowlines'),
+        'FLOW_AREA': RSLayer('NHD Flow Area', 'FLOW_AREA', 'Vector', 'flowareas'),
+        'WATERBODIES': RSLayer('NHD Waterbody', 'WATERBODIES', 'Vector', 'waterbodies'),
         'VALLEY_BOTTOM': RSLayer('Valley Bottom', 'VALLEY_BOTTOM', 'Vector', 'valley_bottom'),
     }),
     'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/intermediates.gpkg', {
@@ -115,9 +109,10 @@ def rvd(huc: int, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_or
     intermediates_gpkg_path = os.path.join(output_folder, LayerTypes['INTERMEDIATES'].rel_path)
     outputs_gpkg_path = os.path.join(output_folder, LayerTypes['OUTPUTS'].rel_path)
 
-    # Create 3 empty geopackages
-    GeopackageLayer(inputs_gpkg_path, delete_dataset=True)
-    GeopackageLayer(intermediates_gpkg_path, delete_dataset=True)
+    # Make sure we're starting with empty/fresh geopackages
+    GeopackageLayer.delete(inputs_gpkg_path)
+    GeopackageLayer.delete(intermediates_gpkg_path)
+    GeopackageLayer.delete(outputs_gpkg_path)
 
     # Copy our input layers and also find the difference in the geometry for the valley bottom
     flowlines_path = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
@@ -189,7 +184,7 @@ def rvd(huc: int, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_or
 
     # Filter the flow lines to just the required features and then segment to desired length
     # TODO: These are brat methods that need to be refactored to use VectorBase layers
-    cleaned_path = os.path.join(output_folder, LayerTypes['INTERMEDIATES'].rel_path, LayerTypes['INTERMEDIATES'].sub_layers['CLEANED'].rel_path)
+    cleaned_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['RVD'].rel_path)
     build_network_NEW(flowlines_path, flowareas_path, cleaned_path, waterbodies_path=waterbodies_path, epsg=cfg.OUTPUT_EPSG, reach_codes=reach_codes)
 
     # Generate Voroni polygons
@@ -269,6 +264,7 @@ def rvd(huc: int, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_or
     # Calcuate average and unique cell counts  per reach
     progbar = ProgressBar(len(clipped_thiessen.keys()), 50, "Extracting array values by reach...")
     counter = 0
+    discarded = 0
     with rasterio.open(prj_existing_path) as dataset:
         unique_vegetation_counts = {}
         reach_average_riparian = {}
@@ -276,41 +272,43 @@ def rvd(huc: int, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_or
         for reachid, poly in clipped_thiessen.items():
             counter += 1
             progbar.update(counter)
-            if poly.geom_type in ["Polygon", "MultiPolygon"] and poly.area > 0:
-                raw_values_unique = {}
-                change_values_mean = {}
-                riparian_values_mean = {}
-                reach_raster = np.ma.masked_invalid(
-                    features.rasterize(
-                        [poly],
-                        out_shape=dataset.shape,
-                        transform=dataset.transform,
-                        all_touched=True,
-                        fill=np.nan))
-                for raster_name, raster in raw_arrays.items():
-                    if raster is not None:
-                        current_raster = np.ma.masked_array(raster, mask=reach_raster.mask)
-                        raw_values_unique[raster_name] = np.unique(np.ma.filled(current_raster, fill_value=0), return_counts=True)
-                    else:
-                        raw_values_unique[raster_name] = []
-                for raster_name, raster in riparian_arrays.items():
-                    if raster is not None:
-                        current_raster = np.ma.masked_array(raster, mask=reach_raster.mask)
-                        riparian_values_mean[raster_name] = np.ma.mean(current_raster)
-                    else:
-                        riparian_values_mean[raster_name] = 0.0
-                for raster_name, raster in vegetation_change_arrays.items():
-                    if raster is not None:
-                        current_raster = np.ma.masked_array(raster, mask=reach_raster.mask)
-                        change_values_mean[raster_name] = np.ma.mean(current_raster)
-                    else:
-                        change_values_mean[raster_name] = 0.0
-                unique_vegetation_counts[reachid] = raw_values_unique
-                reach_average_riparian[reachid] = riparian_values_mean
-                reach_average_change[reachid] = change_values_mean
-            else:
-                progbar.erase()
-                log.warning(f"Reach: {reachid} | WARNING no geom")
+            # we can discount a lot of shapes here.
+            if not poly.is_valid or poly.is_empty or poly.area == 0 or poly.geom_type not in ["Polygon", "MultiPolygon"]:
+                discarded += 1
+                continue
+
+            raw_values_unique = {}
+            change_values_mean = {}
+            riparian_values_mean = {}
+            reach_raster = np.ma.masked_invalid(
+                features.rasterize(
+                    [poly],
+                    out_shape=dataset.shape,
+                    transform=dataset.transform,
+                    all_touched=True,
+                    fill=np.nan))
+            for raster_name, raster in raw_arrays.items():
+                if raster is not None:
+                    current_raster = np.ma.masked_array(raster, mask=reach_raster.mask)
+                    raw_values_unique[raster_name] = np.unique(np.ma.filled(current_raster, fill_value=0), return_counts=True)
+                else:
+                    raw_values_unique[raster_name] = []
+            for raster_name, raster in riparian_arrays.items():
+                if raster is not None:
+                    current_raster = np.ma.masked_array(raster, mask=reach_raster.mask)
+                    riparian_values_mean[raster_name] = np.ma.mean(current_raster)
+                else:
+                    riparian_values_mean[raster_name] = 0.0
+            for raster_name, raster in vegetation_change_arrays.items():
+                if raster is not None:
+                    current_raster = np.ma.masked_array(raster, mask=reach_raster.mask)
+                    change_values_mean[raster_name] = np.ma.mean(current_raster)
+                else:
+                    change_values_mean[raster_name] = 0.0
+            unique_vegetation_counts[reachid] = raw_values_unique
+            reach_average_riparian[reachid] = riparian_values_mean
+            reach_average_change[reachid] = change_values_mean
+
     progbar.finish()
 
     # Calcuate Average Departure for Riparian and Native Riparian
