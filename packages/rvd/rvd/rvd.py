@@ -125,7 +125,7 @@ def rvd(huc: int, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_or
         # Set the output spatial ref as this for the whole project
         out_srs = flow_lyr.spatial_ref
         meter_conversion = flow_lyr.rough_convert_metres_to_vector_units(1)
-        distance_buffer = flow_lyr.rough_convert_metres_to_vector_units(10)
+        distance_buffer = flow_lyr.rough_convert_metres_to_vector_units(1)
 
     # Transform issues reading 102003 as espg id. Using sr wkt seems to work, however arcgis has problems loading feature classes with this method...
     raster_srs = ogr.osr.SpatialReference()
