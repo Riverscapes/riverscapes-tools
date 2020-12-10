@@ -5,7 +5,6 @@ CREATE TABLE MetaData (KeyInfo TEXT PRIMARY KEY NOT NULL, ValueInfo TEXT);
 CREATE TABLE Watersheds (WatershedID TEXT PRIMARY KEY NOT NULL UNIQUE, Name TEXT NOT NULL, AreaSqKm REAL CONSTRAINT CHK_HUCs_Area CHECK (AreaSqKm >= 0), States TEXT, Metadata TEXT, Notes TEXT);
 CREATE TABLE VegetationTypes (VegetationID INTEGER PRIMARY KEY NOT NULL, EpochID INTEGER REFERENCES Epochs (EpochID) NOT NULL, Name TEXT NOT NULL, Physiognomy TEXT, Notes TEXT);
 
-
 CREATE TABLE ConversionProportions (
     ConversionID INTEGER PRIMARY KEY,
     ConversionCode INTEGER,
@@ -16,40 +15,13 @@ CREATE TABLE ConversionProportions (
     Significant REAL
 );
 
-CREATE TABLE RVDValues (
-                ReachID INTEGER PRIMARY KEY,
-                EXISTING_RIPARIAN_MEAN REAL,
-                HISTORIC_RIPARIAN_MEAN REAL,
-                RIPARIAN_DEPARTURE REAL,
-                EXISTING_NATIVE_RIPARIAN_MEAN REAL,
-                HISTORIC_NATIVE_RIPARIAN_MEAN REAL,
-                NATIVE_RIPARIAN_DEPARTURE REAL,
-                FromConifer REAL,
-                FromDevegetated REAL,
-                FromGrassShrubland REAL,
-                FromDeciduous REAL,
-                NoChange REAL,
-                Deciduous REAL,
-                GrassShrubland REAL,
-                Devegetation REAL,
-                Conifer REAL,
-                Invasive REAL,
-                Development REAL,
-                Agriculture REAL,
-                ConversionCode INTEGER,
-                ConversionType TEXT
-                -- INTEGER REFERENCES ConversionProportions(ConversionID)
-);
-
 CREATE INDEX FK_ReachVegetation_ReachID ON ReachVegetation (ReachID);
 CREATE INDEX FK_ReachVegetation_VegetationID ON ReachVegetation (VegetationID);
 CREATE INDEX IX_Watersheds_States ON Watersheds (States);
 CREATE INDEX FK_VegetationTypes_EpochID ON VegetationTypes (EpochID);
 CREATE INDEX FX_Reaches_FCode ON Reaches (ReachCode);
 CREATE INDEX FX_Reaches_HUC ON Reaches (WatershedID);
---CREATE INDEX FX_RVDValues_ConversionID ON RVDValues (ConversionID);
 
-INSERT INTO gpkg_contents (table_name, data_type) VALUES ('RVDValues', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Epochs', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachCodes', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachVegetation', 'attributes');
