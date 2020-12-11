@@ -218,13 +218,26 @@ def confinement(huc, flowlines_orig, confining_polygon_orig, output_folder, buff
             buffer_value = flowline.GetField(buffer_field) * meter_conversion
 
             geom_flowline = GeopackageLayer.ogr2shapely(flowline)
-
+            if not geom_flowline.is_valid or geom_flowline.is_empty or geom_flowline.length == 0:
+                progbar.erase()
+                log.warning("Invalid flowline with id: {}".format(flowlineID))
+                continue
             # Generate buffer on each side of the flowline
             geom_buffer = geom_flowline.buffer(buffer_value, cap_style=2)
+            if not geom_buffer.is_valid or geom_buffer.is_empty or geom_buffer.area == 0:
+                progbar.erase()
+                log.warning("Invalid flowline (after buffering) id: {}".format(flowlineID))
+                continue
+
             geom_buffer_splits = split(geom_buffer, geom_flowline)  # snap(geom, geom_buffer)) <--shapely does not snap vertex to edge. need to make new function for this to ensure more buffers have 2 split polygons
 
             # Generate point to test side of flowline
-            geom_side_point = geom_flowline.parallel_offset(offset, "left").interpolate(0.5, True)
+            geom_offset = geom_flowline.parallel_offset(offset, "left")
+            if not geom_offset.is_valid or geom_offset.is_empty or geom_offset.length == 0:
+                progbar.erase()
+                log.warning("Invalid flowline (after offset) id: {}".format(flowlineID))
+                continue
+            geom_side_point = geom_offset.interpolate(0.5, True)
 
             # Store output segements
             lgeoms_right_confined_flowline_segments = []
