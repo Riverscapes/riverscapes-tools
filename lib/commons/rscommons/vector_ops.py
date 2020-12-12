@@ -306,11 +306,18 @@ def collect_feature_class(feature_class_path: str,
         new_geom = ogr.Geometry(output_geom_type)
         for feat, _counter, _progbar in in_lyr.iterate_features('Collecting Geometry', attribute_filter=attribute_filter, clip_rect=clip_rect, clip_shape=clip_shape):
             geom = feat.GetGeometryRef()
+
             if geom.IsValid() and not geom.IsEmpty():
-                # Do the flatten first to speed up the potential transform
                 if geom.IsMeasured() > 0 or geom.Is3D() > 0:
                     geom.FlattenTo2D()
-                new_geom.AddGeometry(geom)
+
+                # Do the flatten first to speed up the potential transform
+                if geom.GetGeometryType() in VectorBase.MULTI_TYPES.keys():
+                    sub_geoms = list(geom)
+                else:
+                    sub_geoms = [geom]
+                for subg in sub_geoms:
+                    new_geom.AddGeometry(subg)
 
     log.info('Collect complete.')
     return new_geom
@@ -401,10 +408,10 @@ def write_attributes(in_layer_path: str, output_values: dict, id_field: str, fie
 
     with get_shp_or_gpkg(in_layer_path, write=True) as in_layer:
         # Create each field and store the name and index in a list of tuples
-        field_indices = [(field, in_layer.create_field(field, field_type)) for field in fields] #TODO different field types
+        field_indices = [(field, in_layer.create_field(field, field_type)) for field in fields]  # TODO different field types
 
         for feature, _counter, _progbar in in_layer.iterate_features("Writing Attributes", write_layers=[in_layer]):
-            reach = feature.GetField(id_field) #TODO Error when id_field is same as FID field .GetFID() seems to work instead
+            reach = feature.GetField(id_field)  # TODO Error when id_field is same as FID field .GetFID() seems to work instead
             if reach not in output_values:
                 continue
 
