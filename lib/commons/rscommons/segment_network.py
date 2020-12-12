@@ -129,28 +129,27 @@ def segment_network(inpath, outpath, interval, minimum, tolerance=0.1):
     progbarLoad = ProgressBar(inLayer.GetFeatureCount(), 50, "Loading Network")
     counterLoad = 0
 
-    # TODO: Commenting this out for now so it doesn't undo our splitting at crossings
-    # for inFeature in inLayer:
-    #     counterLoad += 1
-    #     progbarLoad.update(counterLoad)
+    for inFeature in inLayer:
+        counterLoad += 1
+        progbarLoad.update(counterLoad)
 
-    #     # Store relevant items as a tuple:
-    #     # (name, FID, StartPt, EndPt, Length, FCode)
-    #     sFeat = SegmentFeature(inFeature, transform)
+        # Store relevant items as a tuple:
+        # (name, FID, StartPt, EndPt, Length, FCode)
+        sFeat = SegmentFeature(inFeature, transform)
 
-    #     # Add the end points of all lines to a single list
-    #     junctions.extend([sFeat.start, sFeat.end])
+        # Add the end points of all lines to a single list
+        junctions.extend([sFeat.start, sFeat.end])
 
-    #     if not sFeat.name or len(sFeat.name) < 1 or interval <= 0:
-    #         # Add features without a GNIS name to list. Also add to list if not segmenting
-    #         allFeatures.append(sFeat)
-    #     else:
-    #         # Build separate lists for each unique GNIS name
-    #         if sFeat.name not in namedFeatures:
-    #             namedFeatures[sFeat.name] = [sFeat]
-    #         else:
-    #             namedFeatures[sFeat.name].append(sFeat)
-    # progbarLoad.finish()
+        if not sFeat.name or len(sFeat.name) < 1 or interval <= 0:
+            # Add features without a GNIS name to list. Also add to list if not segmenting
+            allFeatures.append(sFeat)
+        else:
+            # Build separate lists for each unique GNIS name
+            if sFeat.name not in namedFeatures:
+                namedFeatures[sFeat.name] = [sFeat]
+            else:
+                namedFeatures[sFeat.name].append(sFeat)
+    progbarLoad.finish()
 
     # Loop over all features with the same GNIS name.
     # Only merge them if they meet at a junction where no other lines meet.
