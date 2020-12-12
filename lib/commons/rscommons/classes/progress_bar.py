@@ -27,7 +27,7 @@ class ProgressBar:
         self.timer = 20000 if NO_UI else timer
         self.progress = 0
         self.visible = False
-        self.total = total
+        self.total = total if total > 0 else 1
 
     def update(self, progress):
         self.progress = progress
