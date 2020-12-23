@@ -13,6 +13,7 @@ from typing import List
 import argparse
 import traceback
 from osgeo import ogr
+from typing import List
 from shapely.geometry import MultiPolygon, MultiLineString, LineString, Point, MultiPoint, Polygon
 from shapely.ops import polygonize, unary_union
 
