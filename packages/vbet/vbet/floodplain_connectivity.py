@@ -9,14 +9,12 @@
 # -------------------------------------------------------------------------------
 import os
 from osgeo import ogr
-from shapely.geometry import MultiPolygon, MultiLineString, LineString, Point
+from shapely.geometry import MultiPolygon, MultiLineString, LineString, Point, MultiPoint, Polygon
 from shapely.ops import polygonize, unary_union
 
 from rscommons import ProgressBar, initGDALOGRErrors, Logger
 from rscommons import GeopackageLayer
-from rscommons.vector_ops import get_geometry_unary_union
-# from vbet.vbet_network import vbet_network
-# from vbet.__version__ import __version__
+from rscommons.vector_ops import get_geometry_unary_union, load_geometries
 
 initGDALOGRErrors()
 
@@ -28,7 +26,7 @@ def floodplain_connectivity(vbet_network: Path, vbet_polygon: Path, roads: Path,
 
     Args:
         vbet_network (Path): [description]
-        vbet_polygon (Path): [description]
+        vbet_polygon (Path): Vbet polygons with clipped NHD Catchments
         roads (Path): [description]
         railroads (Path): [description]
         out_polygon (Path): [description]
@@ -41,80 +39,82 @@ def floodplain_connectivity(vbet_network: Path, vbet_polygon: Path, roads: Path,
     log = Logger('Floodplain Connectivity')
     log.info("Starting Floodplain Connectivity Script")
 
-    # Merge Transportation Networks if not empty
+    # Prepare vbet and catchments
+    geom_vbet = get_geometry_unary_union(vbet_polygon)
+    geoms_raw_vbet = list(load_geometries(vbet_polygon, None).values())
+    listgeoms = []
+    for geom in geoms_raw_vbet:
+        if geom.geom_type == "MultiPolygon":
+            for g in geom:
+                listgeoms.append(g)
+        else:
+            listgeoms.append(geom)
+    geoms_vbet = MultiPolygon(listgeoms)
+
+    # Clip Transportation Network by VBET
     log.info("Merging Transportation Networks")
+    # merge_feature_classes([roads, railroads], geom_vbet, os.path.join(debug_gpkg, "Transportation")) TODO: error when calling this method
     geom_roads = get_geometry_unary_union(roads)
     geom_railroads = get_geometry_unary_union(railroads)
     geom_transportation = geom_roads.union(geom_railroads) if geom_railroads is not None else geom_roads
-
-    # Clip Transportation Network by VBET
     log.info("Clipping Transportation Network by VBET")
-    geom_vbet = get_geometry_unary_union(vbet_polygon)
-    geom_transporation_clipped = geom_vbet.intersection(geom_transportation)
+    geom_transportation_clipped = geom_vbet.intersection(geom_transportation)
     if debug_gpkg:
-        with GeopackageLayer(debug_gpkg, "Clipped_Transportation", write=True) as out_lyr:
-            out_lyr.create_layer(ogr.wkbLineString, epsg=4326)
-            progbar = ProgressBar(len(geom_transporation_clipped), 50, f"saving {out_lyr.ogr_layer_name} features")
-            counter = 0
-            for shape in geom_transporation_clipped:
-                progbar.update(counter)
-                counter += 1
-                out_lyr.create_feature(shape)
+        quicksave(debug_gpkg, "Clipped_Transportation", geom_transportation_clipped, ogr.wkbLineString)
 
     # Split Valley Edges at transportation intersections
     log.info("Splitting Valley Edges at transportation network intersections")
-    geom_vbet_edges = MultiLineString([geom.exterior for geom in geom_vbet] + [g for geom in geom_vbet for g in geom.interiors])  # + [geom for geom in geom_transporation_clipped])
+    geom_vbet_edges = MultiLineString([geom.exterior for geom in geoms_vbet] + [g for geom in geoms_vbet for g in geom.interiors])
+    geom_vbet_interior_pts = MultiPoint([Polygon(g).representative_point() for geom in geom_vbet for g in geom.interiors])
+
     if debug_gpkg:
-        with GeopackageLayer(debug_gpkg, "Valley_Edges", write=True) as out_lyr:
-            out_lyr.create_layer(ogr.wkbLineString, epsg=4326)
-            progbar = ProgressBar(len(geom_vbet_edges), 50, f"saving {out_lyr.ogr_layer_name} features")
-            counter = 0
-            for shape in geom_vbet_edges:
-                progbar.update(counter)
-                counter += 1
-                out_lyr.create_feature(shape)
-    pts = geom_transportation.intersection(MultiLineString([geom.exterior for geom in geom_vbet]))
-    geom_boundaries = [geom for geom in geom_vbet_edges]
-    for pt in pts:
-        geom_boundaries = [new_line for line in geom_boundaries for new_line in line_splitter(line, pt)]
+        quicksave(debug_gpkg, "Valley_Edges_Raw", geom_vbet_edges, ogr.wkbLineString)
+
+    vbet_splitpoints = []
+    vbet_splitlines = []
+    progbar = ProgressBar(len(geom_vbet_edges), 50, f"Splitting edge features")
+    counter = 0
+    for geom_edge in geom_vbet_edges:
+        progbar.update(counter)
+        counter += 1
+        if geom_edge.is_valid:
+            if not geom_edge.intersects(geom_transportation):
+                vbet_splitlines = vbet_splitlines + [geom_edge]
+                continue
+            pts = geom_transportation.intersection(geom_edge)
+            if pts.is_empty:
+                vbet_splitlines = vbet_splitlines + [geom_edge]
+                continue
+            if isinstance(pts, Point):
+                pts = [pts]
+            geom_boundaries = [geom_edge]
+            for pt in pts:
+                geom_boundaries = [new_line for line in geom_boundaries if line is not None for new_line in line_splitter(line, pt) if new_line is not None]
+            vbet_splitlines = vbet_splitlines + geom_boundaries
+            vbet_splitpoints = vbet_splitpoints + [pt for pt in pts]
+
     if debug_gpkg:
-        with GeopackageLayer(debug_gpkg, "Split_Points", write=True) as out_lyr:
-            out_lyr.create_layer(ogr.wkbPoint, epsg=4326)
-            progbar = ProgressBar(len(pts), 50, f"saving {out_lyr.ogr_layer_name} features")
-            counter = 0
-            for shape in pts:
-                progbar.update(counter)
-                counter += 1
-                out_lyr.create_feature(shape)
-    if debug_gpkg:
-        with GeopackageLayer(debug_gpkg, "Valley_Edges_Split", write=True) as out_lyr:
-            out_lyr.create_layer(ogr.wkbLineString, epsg=4326)
-            progbar = ProgressBar(len(geom_boundaries), 50, f"saving {out_lyr.ogr_layer_name} features")
-            counter = 0
-            for shape in geom_boundaries:
-                progbar.update(counter)
-                counter += 1
-                out_lyr.create_feature(shape)
+        quicksave(debug_gpkg, "Split_Points", vbet_splitpoints, ogr.wkbPoint)
+        quicksave(debug_gpkg, "Valley_Edges_Split", vbet_splitlines, ogr.wkbLineString)
 
     # Generate Polygons from lines
     log.info("Generating Floodplain Polygons")
-    geoms_areas = [geom for geom in polygonize(geom_boundaries + [geom for geom in geom_transporation_clipped])]  # TODO some polys not getting generated
+    geom_lines = unary_union(vbet_splitlines + [geom_tc for geom_tc in geom_transportation_clipped])
+    geoms_areas = [geom for geom in polygonize(geom_lines) if not any(geom.contains(pt) for pt in geom_vbet_interior_pts)]
+
     if debug_gpkg:
-        with GeopackageLayer(debug_gpkg, "Split_Polygons", write=True) as out_lyr:
-            out_lyr.create_layer(ogr.wkbPolygon, epsg=4326)
-            progbar = ProgressBar(len(geoms_areas), 50, f"saving {out_lyr.ogr_layer_name} features")
-            counter = 0
-            for shape in geoms_areas:
-                progbar.update(counter)
-                counter += 1
-                out_lyr.create_feature(shape)
+        quicksave(debug_gpkg, "Split_Polygons", geoms_areas, ogr.wkbPolygon)
 
     # Select Polygons by flowline intersection
     log.info("Selecting connected floodplains")
     geom_vbet_network = get_geometry_unary_union(vbet_network)
     geoms_connected = []
     geoms_disconnected = []
+    progbar = ProgressBar(len(geoms_areas), 50, f"Running polygon selection")
+    counter = 0
     for geom in geoms_areas:
+        progbar.update(counter)
+        counter += 1
         if geom_vbet_network.intersects(geom):
             geoms_connected.append(geom)
         else:
@@ -142,31 +142,47 @@ def floodplain_connectivity(vbet_network: Path, vbet_polygon: Path, roads: Path,
 
 
 def line_splitter(line, pt):
-    if pt.buffer(0.0000001).intersects(line):
+    if pt.buffer(0.000001).intersects(line):
         distance = line.project(pt)
         coords = list(line.coords)
+        if distance == 0.0 or distance == line.length:
+            return [line]
         for i, p in enumerate(coords):
+            lim = len(coords) - 1
             pd = line.project(Point(p))
             if pd == distance:
-                return [
-                    LineString(coords[:i + 1]),
-                    LineString(coords[i:])]
+                if i == lim:
+                    return [line]
+                else:
+                    lines = [
+                        LineString(coords[:i + 1]),
+                        LineString(coords[i:])]
+                return lines
             if pd > distance:
                 cp = line.interpolate(distance)
-                return [
+                lines = [
                     LineString(coords[:i] + [(cp.x, cp.y)]),
                     LineString([(cp.x, cp.y)] + coords[i:])]
+                return lines
+        return [line]
     else:
         return [line]
 
 
+def quicksave(gpkg, name, geoms, geom_type):
+    with GeopackageLayer(gpkg, name, write=True) as out_lyr:
+        out_lyr.create_layer(geom_type, epsg=4326)
+        progbar = ProgressBar(len(geoms), 50, f"saving {out_lyr.ogr_layer_name} features")
+        counter = 0
+        for shape in geoms:
+            progbar.update(counter)
+            counter += 1
+            out_lyr.create_feature(shape)
+
+
 if __name__ == "__main__":
 
-    floodplain_connectivity(r"D:\NAR_Data\Data\vbet\17060304\intermediates\vbet_intermediates.gpkg\vbet_network",
-                            r"D:\NAR_Data\Data\vbet\17060304\outputs\vbet.gpkg\vbet_50",
-                            r"D:\NAR_Data\Data\vbet\17060304\intermediates\vbet_intermediates.gpkg\roads",
-                            r"D:\NAR_Data\Data\vbet\17060304\intermediates\vbet_intermediates.gpkg\railways",
-                            r"D:\NAR_Data\Data\vbet\17060304\intermediates\floodplain_connectivity.gpkg\Floodplains",
-                            r"D:\NAR_Data\Data\vbet\17060304\intermediates\floodplain_connectivity.gpkg")
+    pass
 
     # TODO Add transportation networks to vbet inputs
+    # TODO Prepare clipped NHD Catchments as vbet polygons input
