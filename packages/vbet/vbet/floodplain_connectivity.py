@@ -9,6 +9,7 @@
 # -------------------------------------------------------------------------------
 import os
 from osgeo import ogr
+from typing import List
 from shapely.geometry import MultiPolygon, MultiLineString, LineString, Point, MultiPoint, Polygon
 from shapely.ops import polygonize, unary_union
 
@@ -16,24 +17,22 @@ from rscommons import ProgressBar, initGDALOGRErrors, Logger
 from rscommons import GeopackageLayer
 from rscommons.vector_ops import get_geometry_unary_union, load_geometries
 
-initGDALOGRErrors()
 
 Path = str
+
+initGDALOGRErrors()
 
 
 def floodplain_connectivity(vbet_network: Path, vbet_polygon: Path, roads: Path, railroads: Path, out_polygon: Path, debug_gpkg: Path = None):
     """[summary]
 
     Args:
-        vbet_network (Path): [description]
+        vbet_network (Path): Filtered Flowline network used to generate VBET. Final selection is based on this intersection.
         vbet_polygon (Path): Vbet polygons with clipped NHD Catchments
-        roads (Path): [description]
-        railroads (Path): [description]
-        out_polygon (Path): [description]
-        debug_gpkg (Path, optional): [description]. Defaults to None.
-
-    Returns:
-        [type]: [description]
+        roads (Path): Road network
+        railroads (Path): railroad network
+        out_polygon (Path): Output path and layer name for floodplain polygons
+        debug_gpkg (Path, optional): geopackage for saving debug layers (may substantially increase processing time). Defaults to None.
     """
 
     log = Logger('Floodplain Connectivity')
@@ -141,7 +140,16 @@ def floodplain_connectivity(vbet_network: Path, vbet_polygon: Path, roads: Path,
             out_lyr.create_feature(shape, attributes={"Connected": 0})
 
 
-def line_splitter(line, pt):
+def line_splitter(line: LineString, pt: Point) -> List[LineString]:
+    """Split a shapley line at a point. Return list of LineStrings split at point
+
+    Args:
+        line (LineString): Line to split
+        pt ([Point]): Point to split line
+
+    Returns:
+        List(LineString): List of linestrings
+    """
     if pt.buffer(0.000001).intersects(line):
         distance = line.project(pt)
         coords = list(line.coords)
