@@ -16,7 +16,6 @@ from osgeo import osr, gdal
 from rscommons import ProgressBar, Logger, dotenv
 from rscommons.shapefile import _rough_convert_metres_to_raster_units
 from rscommons.vector_ops import load_geometries
-from rscommons.classes import  
 import rasterio
 from rasterio.mask import mask
 import numpy as np

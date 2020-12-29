@@ -26,6 +26,7 @@ from rscommons.database import create_database_NEW
 from sqlbrat.utils.vegetation_summary import vegetation_summary
 from sqlbrat.utils.reach_geometry import reach_geometry_NEW
 from sqlbrat.utils.conflict_attributes import conflict_attributes
+from rscommons.database import SQLiteCon
 from sqlbrat.__version__ import __version__
 
 Path = str
@@ -49,7 +50,7 @@ LayerTypes = {
         'VALLEY_BOTTOM': RSLayer('Valley Bottom', 'VALLEY_BOTTOM', 'Vector', 'valley_bottom'),
     }),
     'OUTPUTS': RSLayer('BRAT', 'OUTPUTS', 'Geopackage', 'outputs/brat.gpkg', {
-        'RVD': RSLayer('BRAT', 'SEGMENTED', 'Vector', 'Reaches')
+        'BRAT': RSLayer('BRAT', 'SEGMENTED', 'Vector', 'Reaches')
     })
 }
 
@@ -103,8 +104,7 @@ brat_reaches_fields = {
 }
 
 
-def brat_build(huc: int, flowlines: Path, max_length: float, min_length: float,
-               dem: Path, slope: Path, hillshade: Path,
+def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Path,
                existing_veg: Path, historical_veg: Path, output_folder: Path,
                streamside_buffer: float, riparian_buffer: float,
                reach_codes: List[str], canal_codes: List[str],
@@ -171,21 +171,22 @@ def brat_build(huc: int, flowlines: Path, max_length: float, min_length: float,
     copy_feature_class(waterbodies, waterbodies_path, epsg=cfg.OUTPUT_EPSG)
     copy_feature_class(flow_areas, flowareas_path, epsg=cfg.OUTPUT_EPSG)
 
-    cleaned_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['BRAT'].rel_path)
-    build_network_NEW(flowlines_path, flowareas_path, cleaned_path, waterbodies_path=waterbodies_path, epsg=cfg.OUTPUT_EPSG, reach_codes=reach_codes)
-
     with GeopackageLayer(flowlines_path) as flow_lyr:
         # Set the output spatial ref as this for the whole project
         out_srs = flow_lyr.spatial_ref
 
     # Create the output feature class fields
-    with GeopackageLayer(outputs_gpkg_path, layer_name='Reaches', delete_dataset=True) as out_lyr:
-        out_lyr.create_layer(ogr.wkbMultiLineString, spatial_ref=out_srs, fields=brat_reaches_fields, options=['FID=ReachID'])
+    with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['BRAT'].rel_path, delete_dataset=True) as out_lyr:
+        out_lyr.create_layer(ogr.wkbMultiLineString, spatial_ref=out_srs, options=['FID=ReachID'], fields={
+            'WatershedID': ogr.OFTString,
+            'FCode': ogr.OFTInteger,
+            'TotDASqKm': ogr.OFTReal,
+            'GNIS_Name': ogr.OFTString,
+            'NHDPlusID': ogr.OFTReal
+        })
 
     metadata = {
         'BRAT_Build_DateTime': datetime.datetime.now().isoformat(),
-        'Max_Length': max_length,
-        'Min_Length': min_length,
         'Streamside_Buffer': streamside_buffer,
         'Riparian_Buffer': riparian_buffer,
         'Reach_Codes': reach_codes,
@@ -198,16 +199,16 @@ def brat_build(huc: int, flowlines: Path, max_length: float, min_length: float,
     watershed_name = create_database_NEW(huc, outputs_gpkg_path, metadata, cfg.OUTPUT_EPSG, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'brat_schema.sql'))
     project.add_metadata({'Watershed': watershed_name})
 
+    # Copy the reaches into the output feature class layer, filtering by reach codes
+    cleaned_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['BRAT'].rel_path)
+    out_srs = build_network_NEW(flowlines_path, flowareas_path, cleaned_path, waterbodies_path=waterbodies_path, epsg=cfg.OUTPUT_EPSG, reach_codes=reach_codes, create_layer=False)
+
     # Data preparation SQL statements to handle any weird attributes
-    conn = sqlite3.connect(outputs_gpkg_path)
-    curs = conn.cursor()
-    # Store whether each reach is Perennial or not
-    curs.execute('UPDATE Reaches SET IsPeren = 1 WHERE (ReachCode = ?)', [PERENNIAL_REACH_CODE])
-    # Update reaches with NULL zero drainage area to have zero drainage area
-    curs.execute('UPDATE Reaches SET iGeo_DA = 0 WHERE iGeo_DA IS NULL')
-    conn.commit()
-    curs = None
-    conn = None
+    with SQLiteCon(outputs_gpkg_path) as database:
+        database.curs.execute('INSERT INTO ReachAttributes (ReachID, Orig_DA, iGeo_DA, ReachCode, WatershedID, StreamName) SELECT ReachID, TotDASqKm, TotDASqKm, FCode, WatershedID, GNIS_NAME FROM Reaches')
+        database.curs.execute('UPDATE ReachAttributes SET IsPeren = 1 WHERE (ReachCode = ?)', [PERENNIAL_REACH_CODE])
+        database.curs.execute('UPDATE ReachAttributes SET iGeo_DA = 0 WHERE iGeo_DA IS NULL')
+        database.conn.commit()
 
     # Calculate the geophysical properties slope, min and max elevations
     reach_geometry_NEW(cleaned_path, dem_raster_path, elevation_buffer, cfg.OUTPUT_EPSG)
@@ -261,8 +262,6 @@ def main():
         # epilog="This is an epilog"
     )
     parser.add_argument('huc', help='huc input', type=str)
-    parser.add_argument('max_length', help='Maximum length of features when segmenting. Zero causes no segmentation.', type=float)
-    parser.add_argument('min_length', help='min_length input', type=float)
 
     parser.add_argument('dem', help='dem input', type=str)
     parser.add_argument('slope', help='slope input', type=str)
@@ -280,8 +279,8 @@ def main():
 
     parser.add_argument('streamside_buffer', help='streamside_buffer input', type=float)
     parser.add_argument('riparian_buffer', help='riparian_buffer input', type=float)
-
     parser.add_argument('elevation_buffer', help='elevation_buffer input', type=float)
+
     parser.add_argument('output_folder', help='output_folder input', type=str)
 
     parser.add_argument('--reach_codes', help='Comma delimited reach codes (FCode) to retain when filtering features. Omitting this option retains all features.', type=str)
@@ -304,11 +303,10 @@ def main():
     log.title('BRAT Build Tool For HUC: {}'.format(args.huc))
     try:
         brat_build(
-            args.huc, args.flowlines, args.max_length, args.min_length, args.dem, args.slope,
-            args.hillshade, args.flow_accum, args.drainarea_sqkm, args.existing_veg, args.historical_veg, args.output_folder, args.streamside_buffer,
-            args.riparian_buffer,
-            reach_codes,
-            canal_codes,
+            args.huc, args.flowlines, args.dem, args.slope, args.hillshade,
+            args.existing_veg, args.historical_veg, args.output_folder,
+            args.streamside_buffer, args.riparian_buffer,
+            reach_codes, canal_codes,
             args.flow_areas, args.waterbodies, args.max_waterbody,
             args.valley_bottom, args.roads, args.rail, args.canals, args.ownership,
             args.elevation_buffer
