@@ -61,8 +61,8 @@ def calculate_vegegtation_fis(feature_values, streamside_field, riparian_field, 
     streamside_array = np.zeros(feature_count, np.float64)
 
     counter = 0
-    for reachID, values in feature_values.items():
-        reachid_array[counter] = reachID
+    for reach_id, values in feature_values.items():
+        reachid_array[counter] = reach_id
         riparian_array[counter] = values[riparian_field]
         streamside_array[counter] = values[streamside_field]
         counter += 1
@@ -141,7 +141,7 @@ def calculate_vegegtation_fis(feature_values, streamside_field, riparian_field, 
     # run fuzzy inference system on inputs and defuzzify output
     progbar = ProgressBar(len(reachid_array), 50, "Vegetation FIS")
     counter = 0
-    for i, reachID in enumerate(reachid_array):
+    for i, reach_id in enumerate(reachid_array):
         veg_fis.input['input1'] = riparian_array[i]
         veg_fis.input['input2'] = streamside_array[i]
         veg_fis.compute()
@@ -154,7 +154,7 @@ def calculate_vegegtation_fis(feature_values, streamside_field, riparian_field, 
         if round(result) >= defuzz_pervasive:
             result = 40.0
 
-        feature_values[reachID][out_field] = round(result, 2)
+        feature_values[reach_id][out_field] = round(result, 2)
 
         counter += 1
         progbar.update(counter)
@@ -178,8 +178,8 @@ def main():
         # vegetation_fis(args.network.name, 'historic', 'HPE')
         vegetation_fis(args.database.name, 'existing', 'EX')
 
-    except Exception as e:
-        logg.error(e)
+    except Exception as ex:
+        logg.error(ex)
         traceback.print_exc(file=sys.stdout)
         sys.exit(1)
 

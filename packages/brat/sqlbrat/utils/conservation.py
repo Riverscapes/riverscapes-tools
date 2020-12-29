@@ -11,15 +11,9 @@ import sys
 import traceback
 import argparse
 import sqlite3
-from osgeo import ogr
 from rscommons import Logger, dotenv
 from rscommons.database import load_attributes
 from rscommons.database import write_attributes
-import csv
-
-
-input_fields = ['oVC_HPE', 'oVC_EX', 'oCC_HPE', 'oCC_EX', 'iGeo_Slope', 'mCC_HisDep', 'iPC_VLowLU', 'iPC_HighLU', 'iPC_LU', 'oPC_Dist', 'iHyd_SPLow', 'iHyd_SP2', 'iPC_Canal']
-output_fields = ['OpportunityID', 'LimitationID', 'RiskID']
 
 
 def conservation(database):
@@ -32,7 +26,7 @@ def conservation(database):
     """
 
     results = calculate_conservation(database)
-    write_attributes(database, results, output_fields)
+    write_attributes(database, results, ['OpportunityID', 'LimitationID', 'RiskID'])
 
 
 def calculate_conservation(database):
@@ -40,7 +34,10 @@ def calculate_conservation(database):
     log = Logger('Conservation')
 
     # Verify all the input fields are present and load their values
-    reaches = load_attributes(database, input_fields, '(oCC_EX IS NOT NULL) AND (mCC_HisDep IS NOT NULL)')
+    reaches = load_attributes(database,
+                              ['oVC_HPE', 'oVC_EX', 'oCC_HPE', 'oCC_EX', 'iGeo_Slope', 'mCC_HisDep', 'iPC_VLowLU', 'iPC_HighLU', 'iPC_LU', 'oPC_Dist', 'iHyd_SPLow', 'iHyd_SP2', 'iPC_Canal'],
+                              '(oCC_EX IS NOT NULL) AND (mCC_HisDep IS NOT NULL)')
+
     log.info('Calculating conservation for {:,} reaches.'.format(len(reaches)))
 
     risks = load_lookup(database, 'SELECT Name, RiskID FROM DamRisks')

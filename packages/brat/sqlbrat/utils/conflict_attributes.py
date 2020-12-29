@@ -27,13 +27,13 @@ import rasterio.shutil
 from rscommons import ProgressBar, Logger, ModelConfig, dotenv, VectorBase
 from rscommons.raster_buffer_stats import raster_buffer_stats2
 from rscommons.shapefile import _rough_convert_metres_to_shapefile_units
-from rscommons.shapefile import intersect_feature_classes
 from rscommons.shapefile import intersect_geometry_with_feature_class
 from rscommons.shapefile import delete_shapefile
 from rscommons.shapefile import get_transform_from_epsg
 from rscommons.shapefile import copy_feature_class
 from rscommons.util import safe_makedirs
 from rscommons.database import load_geometries, get_metadata, write_attributes
+from rscommons.vector_ops import intersect_feature_classes
 
 
 def conflict_attributes(database, valley_bottom, roads, rail, canals, ownership, buffer_distance_metres, cell_size_meters, epsg):
