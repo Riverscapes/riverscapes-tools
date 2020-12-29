@@ -30,7 +30,7 @@ def combined_fis(database, label, veg_type, max_drainage_area):
     """
 
     log = Logger('Combined FIS')
-    log.info('Processing {} vegetation'.format(veg_type))
+    log.info('Processing {} vegetation'.format(label))
 
     veg_fis_field = 'oVC_{}'.format(veg_type)
     capacity_field = 'oCC_{}'.format(veg_type)
@@ -72,8 +72,8 @@ def calculate_combined_fis(feature_values, veg_fis_field, capacity_field, dam_co
     drain_array = np.zeros(feature_count, np.float64)
 
     counter = 0
-    for reachID, values in feature_values.items():
-        reachid_array[counter] = reachID
+    for reach_id, values in feature_values.items():
+        reachid_array[counter] = reach_id
         veg_array[counter] = values[veg_fis_field]
         hydlow_array[counter] = values['iHyd_SPLow']
         hydq2_array[counter] = values['iHyd_SP2']
@@ -214,7 +214,7 @@ def calculate_combined_fis(feature_values, veg_fis_field, capacity_field, dam_co
     progbar = ProgressBar(len(reachid_array), 50, "Combined FIS")
     counter = 0
 
-    for i, reachID in enumerate(reachid_array):
+    for i, reach_id in enumerate(reachid_array):
 
         capacity = 0.0
         # Only compute FIS if the reach has less than user-defined max drainage area.
@@ -235,11 +235,11 @@ def calculate_combined_fis(feature_values, veg_fis_field, capacity_field, dam_co
             if round(capacity, 6) == defuzz_centroid:
                 capacity = 0.0
 
-        count = capacity * (feature_values[reachID]['iGeo_Len'] / 1000.0)
+        count = capacity * (feature_values[reach_id]['iGeo_Len'] / 1000.0)
         count = 1.0 if 0 < count < 1 else count
 
-        feature_values[reachID][capacity_field] = round(capacity, 2)
-        feature_values[reachID][dam_count_field] = round(count, 2)
+        feature_values[reach_id][capacity_field] = round(capacity, 2)
+        feature_values[reach_id][dam_count_field] = round(count, 2)
 
         counter += 1
         progbar.update(counter)
@@ -264,8 +264,8 @@ def main():
         combined_fis(args.database.name, 'existing', 'EX', args.maxdrainage)
         # combined_fis(args.network.name, 'historic', 'HPE', args.maxdrainage)
 
-    except Exception as e:
-        logg.error(e)
+    except Exception as ex:
+        logg.error(ex)
         traceback.print_exc(file=sys.stdout)
         sys.exit(1)
 

@@ -15,16 +15,17 @@ import sqlite3
 from osgeo import osr, gdal
 from rscommons import ProgressBar, Logger, dotenv
 from rscommons.shapefile import _rough_convert_metres_to_raster_units
-from rscommons.database import load_geometries
+from rscommons.vector_ops import load_geometries
+from rscommons.classes import  
 import rasterio
 from rasterio.mask import mask
 import numpy as np
 
 
 def vegetation_summary(database, veg_raster, buffer):
-    """ Loop through every reach in a BRAT database and 
+    """ Loop through every reach in a BRAT database and
     retrieve the values from a vegetation raster within
-    the specified buffer. Then store the tally of 
+    the specified buffer. Then store the tally of
     vegetation values in the BRAT database.
 
     Arguments:
@@ -48,7 +49,8 @@ def vegetation_summary(database, veg_raster, buffer):
     cell_area = abs(gt[1] * gt[5]) / conversion_factor**2
 
     # Load the reach geometries and ensure they are in the same projection as the vegetation raster
-    geometries = load_geometries(database, raster_srs)
+    # TODO with Matt: load_geometries needs to be overloaded to take SRS not EPSG
+    geometries = load_geometries(database, 'ReachID', raster_srs)
 
     # Open the raster and then loop over all polyline features
     veg_counts = []
@@ -57,7 +59,7 @@ def vegetation_summary(database, veg_raster, buffer):
         progbar = ProgressBar(len(geometries), 50, "Unioning features")
         counter = 0
 
-        for reachID, polyline in geometries.items():
+        for reach_id, polyline in geometries.items():
 
             counter += 1
             progbar.update(counter)
@@ -74,9 +76,9 @@ def vegetation_summary(database, veg_raster, buffer):
                 for oldvalue in np.unique(mask_raster):
                     if oldvalue is not np.ma.masked:
                         cell_count = np.count_nonzero(mask_raster == oldvalue)
-                        veg_counts.append([reachID, int(oldvalue), buffer, cell_count * cell_area, cell_count])
+                        veg_counts.append([reach_id, int(oldvalue), buffer, cell_count * cell_area, cell_count])
             except Exception as ex:
-                log.warning('Error obtaining vegetation raster values for ReachID {}'.format(reachID))
+                log.warning('Error obtaining vegetation raster values for ReachID {}'.format(reach_id))
                 log.warning(ex)
 
         progbar.finish()

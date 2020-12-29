@@ -6,12 +6,10 @@
 #
 # Date:     17 Oct 2019
 # -------------------------------------------------------------------------------
-import os
 import argparse
 import sqlite3
 from rscommons import Logger, dotenv
 from rscommons.database import write_attributes
-from rscommons.database import load_attributes
 
 
 def land_use(database, buffer):

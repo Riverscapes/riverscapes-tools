@@ -16,9 +16,8 @@ import sqlite3
 import time
 import datetime
 from osgeo import ogr
-from rscommons import Logger, initGDALOGRErrors, RSLayer, RSProject, ModelConfig, dotenv
+from rscommons import Logger, RSLayer, RSProject, ModelConfig, dotenv
 from rscommons.database import execute_query, update_database, store_metadata, set_reach_fields_null
-from rscommons.reach_attributes import write_reach_attributes
 from sqlbrat.utils.vegetation_suitability import vegetation_suitability, output_vegetation_raster
 from sqlbrat.utils.vegetation_fis import vegetation_fis
 from sqlbrat.utils.combined_fis import combined_fis
@@ -40,15 +39,6 @@ output_fields = {
                   'mCC_HPE_CT', 'oCC_EX', 'mCC_EX_CT', 'mCC_HisDep']
 }
 
-# This dictionary reassigns databae column names to 10 character limit for the ShapeFile
-shapefile_field_aliases = {
-    'Risk': 'oPBRC_UI',
-    'RiskID': 'oPBRC_UIID',
-    'Opportunity': 'oPBRC_CR',
-    'OpportunityID': 'oPBRC_CRID',
-    'Limitation': 'oPBRC_UD',
-    'LimitationID': 'oPBRC_UDID'
-}
 
 LayerTypes = {
     'EXVEG_SUIT': RSLayer('Existing Vegetation', 'EXVEG_SUIT', 'Raster', 'intermediates/existing_veg_suitability.tif'),
@@ -96,7 +86,6 @@ def brat_run(project_root, csv_dir):
 
     # Get the filepaths for the DB and shapefile
     database = os.path.join(project.project_dir, r_node.find('Outputs/SQLiteDB[@id="BRATDB"]/Path').text)
-    shapefile = os.path.join(project.project_dir, r_node.find('Outputs/Vector[@id="SEGMENTED"]/Path').text)
 
     if not os.path.isfile(database):
         raise Exception('BRAT SQLite database file missing at {}. You must run Brat Build first.'.format(database))
@@ -138,14 +127,6 @@ def brat_run(project_root, csv_dir):
     # Land use intesity, conservation and restoration
     land_use(database, 100.0)
     conservation(database)
-
-    # Copy BRAT build output fields from SQLite to ShapeFile in batches according to data type
-    if shapefile:
-        if not os.path.isfile(shapefile):
-            raise Exception('BRAT ShapeFile file missing at {}'.format(shapefile))
-
-        log.info('Copying values from SQLite to output ShapeFile')
-        write_reach_attributes(shapefile, database, output_fields, shapefile_field_aliases)
 
     report_path = os.path.join(project.project_dir, LayerTypes['BRAT_RUN_REPORT'].rel_path)
     project.add_report(outputs_node, LayerTypes['BRAT_RUN_REPORT'], replace=True)

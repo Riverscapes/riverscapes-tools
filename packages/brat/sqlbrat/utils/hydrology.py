@@ -10,7 +10,6 @@ import os
 import sys
 import traceback
 import sqlite3
-import math
 from rscommons import Logger, dotenv
 from rscommons.database import write_attributes
 from rscommons.database import load_attributes
@@ -125,8 +124,8 @@ def main():
     try:
         hydrology(args.database, args.prefix, args.huc)
 
-    except Exception as e:
-        logg.error(e)
+    except Exception as ex:
+        logg.error(ex)
         traceback.print_exc(file=sys.stdout)
         sys.exit(1)
 
