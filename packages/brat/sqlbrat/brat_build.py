@@ -168,11 +168,19 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
     reach_geometry_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['BRAT_GEOMETRY'].rel_path)
     out_srs = build_network_NEW(input_layers['FLOWLINES'], input_layers['FLOW_AREA'], reach_geometry_path, waterbodies_path=input_layers['WATERBODIES'], epsg=cfg.OUTPUT_EPSG, reach_codes=reach_codes, create_layer=False)
 
-    # Data preparation SQL statements to handle any weird attributes
     with SQLiteCon(outputs_gpkg_path) as database:
+        # Data preparation SQL statements to handle any weird attributes
         database.curs.execute('INSERT INTO ReachAttributes (ReachID, Orig_DA, iGeo_DA, ReachCode, WatershedID, StreamName) SELECT ReachID, TotDASqKm, TotDASqKm, FCode, WatershedID, GNIS_NAME FROM ReachGeometry')
         database.curs.execute('UPDATE ReachAttributes SET IsPeren = 1 WHERE (ReachCode = ?)', [PERENNIAL_REACH_CODE])
         database.curs.execute('UPDATE ReachAttributes SET iGeo_DA = 0 WHERE iGeo_DA IS NULL')
+
+        # Register vwReaches as a feature layer and it's geometry column
+        database.curs.execute("""INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id)
+            SELECT 'vwReaches', data_type, 'Reaches', min_x, min_y, max_x, max_y, srs_id FROM gpkg_contents WHERE table_name = 'ReachGeometry'""")
+
+        database.curs.execute("""INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m)
+            SELECT 'vwReaches', column_name, geometry_type_name, srs_id, z, m FROM gpkg_geometry_columns WHERE table_name = 'ReachGeometry'""")
+
         database.conn.commit()
 
     # Calculate the geophysical properties slope, min and max elevations
