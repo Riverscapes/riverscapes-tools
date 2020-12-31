@@ -1,13 +1,13 @@
-# Name:   BRAT Build
-#
-#         Build a BRAT project by segmenting a river network to a specified
-#         length and then extract the input values required to run the
-#         BRAT model for each reach segment from various GIS layers.
-#
-# Author: Philip Bailey
-#
-# Date:   30 May 2019
-# -------------------------------------------------------------------------------
+""" Build a BRAT project by segmenting a river network to a specified
+    length and then extract the input values required to run the
+    BRAT model for each reach segment from various GIS layers.
+
+    Philip Bailey
+    30 May 2019
+
+    Returns:
+        [type]: [description]
+"""
 import argparse
 import os
 import sys
@@ -30,8 +30,6 @@ from sqlbrat.__version__ import __version__
 Path = str
 
 initGDALOGRErrors()
-
-PERENNIAL_REACH_CODE = 46006
 
 cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/BRAT.xsd', __version__)
 
@@ -61,7 +59,7 @@ LayerTypes = {
 def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Path,
                existing_veg: Path, historical_veg: Path, output_folder: Path,
                streamside_buffer: float, riparian_buffer: float,
-               reach_codes: List[str], canal_codes: List[str],
+               reach_codes: List[str], canal_codes: List[str], peren_codes: List[str],
                flow_areas: Path, waterbodies: Path, max_waterbody: float,
                valley_bottom: Path, roads: Path, rail: Path, canals: Path, ownership: Path,
                elevation_buffer: float):
@@ -106,6 +104,8 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
     _historic_path_node, prj_historic_path = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HISTVEG'], historical_veg)
     project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], hillshade)
     project.add_project_raster(proj_nodes['Inputs'], LayerTypes['SLOPE'], slope)
+    project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
+    project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['OUTPUTS'])
 
     inputs_gpkg_path = os.path.join(output_folder, LayerTypes['INPUTS'].rel_path)
     intermediates_gpkg_path = os.path.join(output_folder, LayerTypes['INTERMEDIATES'].rel_path)
@@ -132,17 +132,9 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
         input_layers[input_key] = os.path.join(inputs_gpkg_path, rslayer.rel_path)
         copy_feature_class(source_layers[input_key], input_layers[input_key], cfg.OUTPUT_EPSG)
 
-    # Store all the inputs in the project XML
-    project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
-    project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['OUTPUTS'])
-
-    with GeopackageLayer(input_layers['FLOWLINES']) as flow_lyr:
-        # Set the output spatial ref as this for the whole project
-        out_srs = flow_lyr.spatial_ref
-
-    # Create the output feature class fields
+    # Create the output feature class fields. Only those listed here will get copied from the source
     with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['BRAT_GEOMETRY'].rel_path, delete_dataset=True) as out_lyr:
-        out_lyr.create_layer(ogr.wkbMultiLineString, spatial_ref=out_srs, options=['FID=ReachID'], fields={
+        out_lyr.create_layer(ogr.wkbMultiLineString, epsg=cfg.OUTPUT_EPSG, options=['FID=ReachID'], fields={
             'WatershedID': ogr.OFTString,
             'FCode': ogr.OFTInteger,
             'TotDASqKm': ogr.OFTReal,
@@ -166,15 +158,15 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
 
     # Copy the reaches into the output feature class layer, filtering by reach codes
     reach_geometry_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['BRAT_GEOMETRY'].rel_path)
-    out_srs = build_network_NEW(input_layers['FLOWLINES'], input_layers['FLOW_AREA'], reach_geometry_path, waterbodies_path=input_layers['WATERBODIES'], epsg=cfg.OUTPUT_EPSG, reach_codes=reach_codes, create_layer=False)
+    build_network_NEW(input_layers['FLOWLINES'], input_layers['FLOW_AREA'], reach_geometry_path, waterbodies_path=input_layers['WATERBODIES'], epsg=cfg.OUTPUT_EPSG, reach_codes=reach_codes, create_layer=False)
 
     with SQLiteCon(outputs_gpkg_path) as database:
         # Data preparation SQL statements to handle any weird attributes
         database.curs.execute('INSERT INTO ReachAttributes (ReachID, Orig_DA, iGeo_DA, ReachCode, WatershedID, StreamName) SELECT ReachID, TotDASqKm, TotDASqKm, FCode, WatershedID, GNIS_NAME FROM ReachGeometry')
-        database.curs.execute('UPDATE ReachAttributes SET IsPeren = 1 WHERE (ReachCode = ?)', [PERENNIAL_REACH_CODE])
+        database.curs.execute('UPDATE ReachAttributes SET IsPeren = 1 WHERE (ReachCode IN ({}))'.format(','.join(peren_codes)))
         database.curs.execute('UPDATE ReachAttributes SET iGeo_DA = 0 WHERE iGeo_DA IS NULL')
 
-        # Register vwReaches as a feature layer and it's geometry column
+        # Register vwReaches as a feature layer as well as its geometry column
         database.curs.execute("""INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id)
             SELECT 'vwReaches', data_type, 'Reaches', min_x, min_y, max_x, max_y, srs_id FROM gpkg_contents WHERE table_name = 'ReachGeometry'""")
 
@@ -200,6 +192,15 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
 
 
 def create_project(huc, output_dir):
+    """ Create riverscapes project XML
+
+    Args:
+        huc (str): Watershed HUC code
+        output_dir (str): Full absolute path to output folder
+
+    Returns:
+        tuple: (project XML object, realization node, dictionary of other nodes)
+    """
 
     project_name = 'BRAT for HUC {}'.format(huc)
     project = RSProject(cfg, output_dir)
@@ -232,6 +233,9 @@ def create_project(huc, output_dir):
 
 
 def main():
+    """ Main BRAT Build routine
+    """
+
     parser = argparse.ArgumentParser(
         description='Build the inputs for an eventual brat_run:',
         # epilog="This is an epilog"
@@ -260,17 +264,19 @@ def main():
 
     parser.add_argument('--reach_codes', help='Comma delimited reach codes (FCode) to retain when filtering features. Omitting this option retains all features.', type=str)
     parser.add_argument('--canal_codes', help='Comma delimited reach codes (FCode) representing canals. Omitting this option retains all features.', type=str)
+    parser.add_argument('--peren_codes', help='Comma delimited reach codes (FCode) representing perennial features', type=str)
     parser.add_argument('--flow_areas', help='(optional) path to the flow area polygon feature class containing artificial paths', type=str)
     parser.add_argument('--waterbodies', help='(optional) waterbodies input', type=str)
     parser.add_argument('--max_waterbody', help='(optional) maximum size of small waterbody artificial flows to be retained', type=float)
 
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
 
-    # We can substitute patters for environment varaibles
+    # Substitute patterns for environment varaibles
     args = dotenv.parse_args_env(parser)
 
     reach_codes = args.reach_codes.split(',') if args.reach_codes else None
     canal_codes = args.canal_codes.split(',') if args.canal_codes else None
+    peren_codes = args.peren_codes.split(',') if args.peren_codes else None
 
     # Initiate the log file
     log = Logger("BRAT Build")
@@ -281,7 +287,7 @@ def main():
             args.huc, args.flowlines, args.dem, args.slope, args.hillshade,
             args.existing_veg, args.historical_veg, args.output_folder,
             args.streamside_buffer, args.riparian_buffer,
-            reach_codes, canal_codes,
+            reach_codes, canal_codes, peren_codes,
             args.flow_areas, args.waterbodies, args.max_waterbody,
             args.valley_bottom, args.roads, args.rail, args.canals, args.ownership,
             args.elevation_buffer
