@@ -176,7 +176,7 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
         database.conn.commit()
 
     # Calculate the geophysical properties slope, min and max elevations
-    reach_geometry_NEW(reach_geometry_path, dem_raster_path, elevation_buffer, cfg.OUTPUT_EPSG)
+    reach_geometry_NEW(reach_geometry_path, dem_raster_path, elevation_buffer)
 
     # Calculate the conflict attributes ready for conservation
     conflict_attributes(outputs_gpkg_path, reach_geometry_path,
