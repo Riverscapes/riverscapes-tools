@@ -8,18 +8,26 @@
 # Date:     23 May 2019
 # -------------------------------------------------------------------------------
 import os
+import gdal
 from shapely.geometry import Point
 from rscommons import Logger, VectorBase
 from rscommons.raster_buffer_stats import raster_buffer_stats2
 from rscommons.classes.vector_classes import get_shp_or_gpkg
 from rscommons.database import write_attributes_NEW
+from rscommons.classes.vector_base import get_utm_zone_epsg
 
 Path = str
 
 
-def reach_geometry_NEW(flow_lines: Path, dem_path: Path, buffer_distance: float, epsg: str):
+def reach_geometry_NEW(flow_lines: Path, dem_path: Path, buffer_distance: float):
 
     log = Logger('Reach Geometry')
+
+    # Determine the best projected coordinate system based on the raster
+    dataset = gdal.Open(dem_path)
+    gt = dataset.GetGeoTransform()
+    xcentre = gt[0] + (dataset.RasterXSize * gt[1]) / 2.0
+    epsg = get_utm_zone_epsg(xcentre)
 
     # Buffer the start and end point of each reach
     line_start_polygons = {}
@@ -27,26 +35,30 @@ def reach_geometry_NEW(flow_lines: Path, dem_path: Path, buffer_distance: float,
     reaches = {}
     with get_shp_or_gpkg(flow_lines) as lyr:
 
-        vector_buffer = lyr.rough_convert_metres_to_vector_units(buffer_distance)
+        # Transformations from original flow line features to metric EPSG, and to raster spatial reference
+        _srs, transform_to_metres = lyr.get_transform_from_epsg(epsg)
         _srs, transform_to_raster = lyr.get_transform_from_raster(dem_path)
-        _srs, transform_to_output = lyr.get_transform_from_epsg(epsg)
+
+        # Buffer distance converted to the units of the raster spatial reference
+        vector_buffer = VectorBase.rough_convert_metres_to_raster_units(dem_path, buffer_distance)
 
         for feature, _counter, _progbar in lyr.iterate_features("Processing reaches"):
             reach_id = feature.GetFID()
             geom = feature.GetGeometryRef()
+            geom_clone = geom.Clone()
 
             # Calculate the reach length in the output spatial reference
-            if transform_to_output is not None:
-                geom.Transform(transform_to_output)
+            if transform_to_metres is not None:
+                geom.Transform(transform_to_metres)
 
             reaches[reach_id] = {'iGeo_Len': geom.Length(), 'iGeo_Slope': 0.0, 'iGeo_ElMin': None, 'IGeo_ElMax': None}
 
-            # Buffer the ends of the reach polyline in the raster spatial reference
             if transform_to_raster is not None:
-                geom.Transform(transform_to_raster)
+                geom_clone.Transform(transform_to_raster)
 
-            line_start_polygons[reach_id] = Point(VectorBase.ogr2shapely(geom, transform_to_raster).coords[0]).buffer(vector_buffer)
-            line_end_polygons[reach_id] = Point(VectorBase.ogr2shapely(geom, transform_to_raster).coords[-1]).buffer(vector_buffer)
+            # Buffer the ends of the reach polyline in the raster spatial reference
+            line_start_polygons[reach_id] = Point(VectorBase.ogr2shapely(geom_clone, transform_to_raster).coords[0]).buffer(vector_buffer)
+            line_end_polygons[reach_id] = Point(VectorBase.ogr2shapely(geom_clone, transform_to_raster).coords[-1]).buffer(vector_buffer)
 
     # Retrieve the mean elevation of start and end of point
     line_start_elevations = raster_buffer_stats2(line_start_polygons, dem_path)
