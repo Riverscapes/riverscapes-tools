@@ -6,37 +6,37 @@
 #
 # Date:     17 Oct 2019
 #
-# Remarks:
-#           BLM National Surface Management Agency Area Polygons
+# Remarks:  BLM National Surface Management Agency Area Polygons
 #           https://catalog.data.gov/dataset/blm-national-surface-management-agency-area-polygons-national-geospatial-data-asset-ngda
 # -------------------------------------------------------------------------------
-import argparse
 import os
-import sys
-import traceback
-import json
-import time
-import sqlite3
 import shutil
-from osgeo import ogr, osr, gdal
+from typing import List
+from osgeo import ogr, gdal
 from pygeoprocessing import geoprocessing
-from shapely.ops import unary_union
-from shapely.geometry import shape, mapping
 import rasterio.shutil
-
-from rscommons import ProgressBar, Logger, ModelConfig, dotenv, VectorBase
+from rscommons import ProgressBar, Logger
 from rscommons.raster_buffer_stats import raster_buffer_stats2
-from rscommons.shapefile import _rough_convert_metres_to_shapefile_units
-from rscommons.shapefile import intersect_geometry_with_feature_class
-from rscommons.shapefile import delete_shapefile
-from rscommons.shapefile import get_transform_from_epsg
-from rscommons.shapefile import copy_feature_class
-from rscommons.util import safe_makedirs
-from rscommons.database import load_geometries, get_metadata, write_attributes
-from rscommons.vector_ops import intersect_feature_classes
+from rscommons.util import safe_makedirs, safe_remove_dir
+from rscommons.database import write_attributes_NEW
+from rscommons.vector_ops import intersect_feature_classes, get_geometry_unary_union, load_geometries, intersect_geometry_with_feature_class, copy_feature_class
+from rscommons.classes.vector_classes import get_shp_or_gpkg, GeopackageLayer
+from rscommons.database import SQLiteCon
 
 
-def conflict_attributes(database, valley_bottom, roads, rail, canals, ownership, buffer_distance_metres, cell_size_meters, epsg):
+def conflict_attributes(
+        output_gpkg: str,
+        flowlines_path: str,
+        valley_bottom: str,
+        roads: str,
+        rail: str,
+        canals: str,
+        ownership: str,
+        buffer_distance_metres: float,
+        cell_size_meters: float,
+        epsg: int,
+        canal_codes: List[int],
+        intermediates_gpkg_path: str):
     """Calculate conflict attributes and write them back to a BRAT database
 
     Arguments:
@@ -52,68 +52,53 @@ def conflict_attributes(database, valley_bottom, roads, rail, canals, ownership,
     """
 
     # Calculate conflict attributes
-    values = calc_conflict_attributes(database, valley_bottom, roads, rail, canals, ownership, buffer_distance_metres, cell_size_meters, epsg)
+    values = calc_conflict_attributes(flowlines_path, valley_bottom, roads, rail, canals, ownership, buffer_distance_metres, cell_size_meters, epsg, canal_codes, intermediates_gpkg_path)
 
-    # Write float and string fields separately
-    write_attributes(database, values, ['iPC_Road', 'iPC_RoadVB', 'iPC_Rail', 'iPC_RailVB', 'iPC_Canal', 'iPC_DivPts', 'iPC_RoadX', 'iPC_Privat', 'oPC_Dist'])
-    write_attributes(database, values, ['AgencyID'], summarize=False)
+    # Write float and string fields separately with log summary enabled
+    write_attributes_NEW(output_gpkg, values, ['iPC_Road', 'iPC_RoadVB', 'iPC_Rail', 'iPC_RailVB', 'iPC_Canal', 'iPC_DivPts', 'iPC_RoadX', 'iPC_Privat', 'oPC_Dist'])
+    write_attributes_NEW(output_gpkg, values, ['AgencyID'], summarize=False)
 
 
-def calc_conflict_attributes(database, valley_bottom, roads, rail, canals, ownership, buffer_distance_metres, cell_size_meters, epsg):
+def calc_conflict_attributes(flowlines_path, valley_bottom, roads, rail, canals, ownership, buffer_distance_metres, cell_size_meters, epsg, canal_codes, intermediates_gpkg_path):
 
-    start_time = time.time()
     log = Logger('Conflict')
     log.info('Calculating conflict attributes')
 
-    # Load all the stream network polylines
-    db_meta = get_metadata(database)
-    reaches = load_geometries(database)
+    # Create union of all reaches and another of the reaches without any canals
+    reach_union = get_geometry_unary_union(flowlines_path)
+    if canal_codes is None:
+        reach_union_no_canals = reach_union
+    else:
+        reach_union_no_canals = get_geometry_unary_union(flowlines_path, attribute_filter='FCode NOT IN ({})'.format(','.join(canal_codes)))
 
-    # Union all the reach geometries into a single geometry
-    reach_union = unary_union(reaches.values())
-    reach_union_no_canals = reach_union
+    crossin = intersect_geometry_to_layer(intermediates_gpkg_path, 'road_crossings', ogr.wkbMultiPoint, reach_union, roads, epsg)
+    diverts = intersect_geometry_to_layer(intermediates_gpkg_path, 'diversions', ogr.wkbMultiPoint, reach_union_no_canals, canals, epsg)
 
-    # If the user specified --canal_codes then we use them
-    if 'Canal_Codes' in db_meta:
-        reaches_no_canals = load_geometries(database, None, 'ReachCode NOT IN ({})'.format(db_meta['Canal_Codes']))
-        reach_union_no_canals = unary_union(reaches_no_canals.values())
+    road_vb = intersect_to_layer(intermediates_gpkg_path, valley_bottom, roads, 'road_valleybottom', ogr.wkbMultiLineString, epsg)
+    rail_vb = intersect_to_layer(intermediates_gpkg_path, valley_bottom, rail, 'rail_valleybottom', ogr.wkbMultiLineString, epsg)
 
-    # These files are temporary. We will clean them up afterwards
-    tmp_folder = os.path.join(os.path.dirname(database), 'tmp_conflict')
-    if os.path.isdir(tmp_folder):
-        shutil.rmtree(tmp_folder)
-    safe_makedirs(tmp_folder)
-
-    crossings = os.path.join(tmp_folder, 'road_crossings.shp')
-    intersect_geometry_with_feature_class(reach_union, roads, epsg, crossings, ogr.wkbMultiPoint)
-
-    roads_vb = os.path.join(tmp_folder, 'road_valleybottom.shp')
-    intersect_feature_classes(valley_bottom, roads, epsg, roads_vb, ogr.wkbMultiLineString)
-
-    rail_vb = os.path.join(tmp_folder, 'rail_valleybottom.shp')
-    intersect_feature_classes(valley_bottom, rail, epsg, rail_vb, ogr.wkbMultiLineString)
-
-    diversions = os.path.join(tmp_folder, 'diversions.shp')
-    intersect_geometry_with_feature_class(reach_union_no_canals, canals, epsg, diversions, ogr.wkbMultiPoint)
-
-    private = os.path.join(tmp_folder, 'private.shp')
-    copy_feature_class(ownership, epsg, private, None, "ADMIN_AGEN = 'PVT' OR ADMIN_AGEN = 'UND'")
+    private = os.path.join(intermediates_gpkg_path, 'private_land')
+    copy_feature_class(ownership, private, epsg, "ADMIN_AGEN = 'PVT' OR ADMIN_AGEN = 'UND'")
 
     # Buffer all reaches (being careful to use the units of the Shapefile)
-    buffer_distance = _rough_convert_metres_to_shapefile_units(roads, buffer_distance_metres)
+    reaches = load_geometries(flowlines_path, epsg=epsg)
+    with get_shp_or_gpkg(flowlines_path) as lyr:
+        buffer_distance = lyr.rough_convert_metres_to_vector_units(buffer_distance_metres)
+        cell_size = lyr.rough_convert_metres_to_vector_units(cell_size_meters)
+        geopackage_path = lyr.filepath
+
     polygons = {reach_id: polyline.buffer(buffer_distance) for reach_id, polyline in reaches.items()}
 
     results = {}
-
-    cell_size = _rough_convert_metres_to_shapefile_units(roads, cell_size_meters)
-    distance_from_features(polygons, tmp_folder, reach_union.bounds, cell_size_meters, cell_size, results, roads, 'Mean', 'iPC_Road')
-    distance_from_features(polygons, tmp_folder, reach_union.bounds, cell_size_meters, cell_size, results, roads_vb, 'Mean', 'iPC_RoadVB')
-    distance_from_features(polygons, tmp_folder, reach_union.bounds, cell_size_meters, cell_size, results, crossings, 'Mean', 'iPC_RoadX')
-    distance_from_features(polygons, tmp_folder, reach_union.bounds, cell_size_meters, cell_size, results, rail, 'Mean', 'iPC_Rail')
+    tmp_folder = os.path.join(os.path.dirname(intermediates_gpkg_path), 'tmp_conflict')
+    distance_from_features(polygons, tmp_folder, reach_union.bounds, cell_size_meters, cell_size, results, road_vb, 'Mean', 'iPC_RoadVB')
+    distance_from_features(polygons, tmp_folder, reach_union.bounds, cell_size_meters, cell_size, results, crossin, 'Mean', 'iPC_RoadX')
+    distance_from_features(polygons, tmp_folder, reach_union.bounds, cell_size_meters, cell_size, results, diverts, 'Mean', 'iPC_DivPts')
+    distance_from_features(polygons, tmp_folder, reach_union.bounds, cell_size_meters, cell_size, results, private, 'Mean', 'iPC_Privat')
     distance_from_features(polygons, tmp_folder, reach_union.bounds, cell_size_meters, cell_size, results, rail_vb, 'Mean', 'iPC_RailVB')
     distance_from_features(polygons, tmp_folder, reach_union.bounds, cell_size_meters, cell_size, results, canals, 'Mean', 'iPC_Canal')
-    distance_from_features(polygons, tmp_folder, reach_union.bounds, cell_size_meters, cell_size, results, diversions, 'Mean', 'iPC_DivPts')
-    distance_from_features(polygons, tmp_folder, reach_union.bounds, cell_size_meters, cell_size, results, private, 'Mean', 'iPC_Privat')
+    distance_from_features(polygons, tmp_folder, reach_union.bounds, cell_size_meters, cell_size, results, roads, 'Mean', 'iPC_Road')
+    distance_from_features(polygons, tmp_folder, reach_union.bounds, cell_size_meters, cell_size, results, rail, 'Mean', 'iPC_Rail')
 
     # Calculate minimum distance to conflict
     min_keys = ['iPC_Road', 'iPC_RoadX', 'iPC_RoadVB', 'iPC_Rail', 'iPC_RailVB']
@@ -121,61 +106,80 @@ def calc_conflict_attributes(database, valley_bottom, roads, rail, canals, owner
         values['oPC_Dist'] = min([values[x] for x in min_keys if x in values])
 
     # Retrieve the agency responsible for administering the land at the midpoint of each reach
-    admin_agency(database, reaches, ownership, epsg, results)
+    admin_agency(geopackage_path, reaches, ownership, results)
 
-    log.info('Conflict attribute calculation complete in {:04}s.'.format(time.time() - start_time))
+    log.info('Conflict attribute calculation complete')
 
     # Cleanup temporary feature classes
-    if os.path.isdir(tmp_folder):
-        log.info('Cleaning up temporary data')
-        shutil.rmtree(tmp_folder)
+    safe_remove_dir(tmp_folder)
 
     return results
 
 
-def admin_agency(database, reaches, ownership, epsg, results):
+def intersect_geometry_to_layer(gpkg_path, layer_name, geometry_type, geometry, feature_class, epsg):
 
-    start_time = time.time()
+    geom = intersect_geometry_with_feature_class(geometry, feature_class, geometry_type, epsg)
+    if geom is None:
+        return None
+
+    with GeopackageLayer(gpkg_path, layer_name=layer_name, write=True) as out_lyr:
+        out_lyr.create_layer(geometry_type, epsg=epsg)
+        feature = ogr.Feature(out_lyr.ogr_layer_def)
+        feature.SetGeometry(GeopackageLayer.shapely2ogr(geom))
+        out_lyr.ogr_layer.CreateFeature(feature)
+
+    return os.path.join(gpkg_path, layer_name)
+
+
+def intersect_to_layer(gpkg_path, feature_class1, feature_class2, layer_name, geometry_type, epsg):
+
+    geom = intersect_feature_classes(feature_class1, feature_class2, geometry_type, epsg)
+    if geom is None:
+        return None
+
+    with GeopackageLayer(gpkg_path, layer_name=layer_name, write=True) as out_lyr:
+        out_lyr.create_layer(geometry_type, epsg=epsg)
+        feature = ogr.Feature(out_lyr.ogr_layer_def)
+        feature.SetGeometry(GeopackageLayer.shapely2ogr(geom))
+        out_lyr.ogr_layer.CreateFeature(feature)
+
+    return os.path.join(gpkg_path, layer_name)
+
+
+def admin_agency(database, reaches, ownership, results):
+
     log = Logger('Conflict')
     log.info('Calculating land ownership administrating agency for {:,} reach(es)'.format(len(reaches)))
 
-    # Load the administration agency types and key by abbreviation
-    conn = sqlite3.connect(database)
-    curs = conn.cursor()
-    curs.execute('SELECT AgencyID, Name, Abbreviation FROM Agencies')
-    agencies = {row[2]: {'AgencyID': row[0], 'Name': row[1], 'RawGeometries': [], 'GeometryUnion': None} for row in curs.fetchall()}
+    # Load the agency lookups
+    with SQLiteCon(database) as database:
+        database.curs.execute('SELECT AgencyID, Name, Abbreviation FROM Agencies')
+        agencies = {row['Abbreviation']: {'AgencyID': row['AgencyID'], 'Name': row['Name'], 'RawGeometries': [], 'GeometryUnion': None} for row in database.curs.fetchall()}
 
-    # Load and transform ownership polygons by adminstration agency
-    driver = ogr.GetDriverByName("ESRI Shapefile")
-    data_source = driver.Open(ownership, 0)
-    layer = data_source.GetLayer()
-    # data_srs = layer.GetSpatialRef()
-    # output_srs, transform = get_transform_from_epsg(data_srs, epsg)
+    with get_shp_or_gpkg(ownership) as ownership_lyr:
 
-    progbar = ProgressBar(len(reaches), 50, "Calc administration agency")
-    counter = 0
+        progbar = ProgressBar(len(reaches), 50, "Calc administration agency")
+        counter = 0
 
-    # Loop over stream reaches and assign agency
-    for reach_id, polyline in reaches.items():
-        counter += 1
-        progbar.update(counter)
+        # Loop over stream reaches and assign agency
+        for reach_id, polyline in reaches.items():
+            counter += 1
+            progbar.update(counter)
 
-        if reach_id not in results:
-            results[reach_id] = {}
+            if reach_id not in results:
+                results[reach_id] = {}
 
-        mid_point = polyline.interpolate(0.5, normalized=True)
-        results[reach_id]['AgencyID'] = None
+            mid_point = polyline.interpolate(0.5, normalized=True)
+            results[reach_id]['AgencyID'] = None
 
-        layer.SetSpatialFilter(VectorBase.shapely2ogr(mid_point))
-        layer = data_source.GetLayer()
-        for feature in layer:
-            agency = feature.GetField('ADMIN_AGEN')
-            if agency not in agencies:
-                raise Exception('The ownership agency "{}" is not found in the BRAT SQLite database'.format(agency))
-            results[reach_id]['AgencyID'] = agencies[agency]['AgencyID']
+            for feature, _counter, _progbar in ownership_lyr.iterate_features(clip_shape=mid_point):
+                agency = feature.GetField('ADMIN_AGEN')
+                if agency not in agencies:
+                    raise Exception('The ownership agency "{}" is not found in the BRAT SQLite database'.format(agency))
+                results[reach_id]['AgencyID'] = agencies[agency]['AgencyID']
 
     progbar.finish()
-    log.info('Adminstration agency assignment complete in {:04}s'.format(time.time() - start_time))
+    log.info('Adminstration agency assignment complete')
 
 
 def distance_from_features(polygons, tmp_folder, bounds, cell_size_meters, cell_size_degrees, output, features, statistic, field):
@@ -193,21 +197,18 @@ def distance_from_features(polygons, tmp_folder, bounds, cell_size_meters, cell_
         temp_folder {[type]} -- [description]
     """
 
-    start_time = time.time()
     log = Logger('Conflict')
 
-    if not features:
+    if features is None:
         log.warning('Skipping distance calculation for {} because feature class does not exist.'.format(field))
         return
 
-    driver = ogr.GetDriverByName("ESRI Shapefile")
-    data_source = driver.Open(features, 0)
-    layer = data_source.GetLayer()
-    if layer.GetFeatureCount() < 1:
-        log.warning('Skipping distance calculation for {} because feature class is empty.'.format(field))
-        data_source = None
-        return
-    data_source = None
+    with get_shp_or_gpkg(features) as lyr:
+        if lyr.ogr_layer.GetFeatureCount() < 1:
+            log.warning('Skipping distance calculation for {} because feature class is empty.'.format(field))
+            return
+
+    safe_makedirs(tmp_folder)
 
     root_path = os.path.join(tmp_folder, os.path.splitext(os.path.basename(features))[0])
     features_raster = root_path + '_features.tif'
@@ -221,15 +222,15 @@ def distance_from_features(polygons, tmp_folder, bounds, cell_size_meters, cell_
 
     progbar = ProgressBar(100, 50, "Rasterizing ")
 
-    def poly_progress(progress, msg, data):
-        # double dfProgress, char const * pszMessage=None, void * pData=None
+    def poly_progress(progress, _msg, _data):
         progbar.update(int(progress * 100))
 
     # Rasterize the features (roads, rail etc) and calculate a raster of Euclidean distance from these features
     log.info('Rasterizing {:,} features at {}m cell size for generating {} field using {} distance.'.format(len(polygons), cell_size_meters, field, statistic))
     progbar.update(0)
     gdal.Rasterize(
-        features_raster, features,
+        features_raster, os.path.dirname(features),
+        layers=os.path.basename(features),
         xRes=cell_size_degrees, yRes=cell_size_degrees,
         burnValues=1, outputType=gdal.GDT_Int16,
         creationOptions=['COMPRESS=LZW'],
@@ -263,39 +264,4 @@ def distance_from_features(polygons, tmp_folder, bounds, cell_size_meters, cell_
     rasterio.shutil.delete(features_raster)
     rasterio.shutil.delete(distance_raster)
 
-    log.info('{} distance calculation complete in {:04}s.'.format(field, time.time() - start_time))
-
-
-def main():
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument('database', help='BRAT SQLite database', type=str)
-    parser.add_argument('valley_bottom', help='Valley bottom shapefile', type=str)
-    parser.add_argument('roads', help='road network shapefile', type=str)
-    parser.add_argument('rail', help='rail network shapefile', type=str)
-    parser.add_argument('canals', help='Canals network shapefile', type=str)
-    parser.add_argument('ownership', help='Land ownership shapefile', type=str)
-    parser.add_argument('--buffer', help='(optional) distance to buffer roads, canalas and rail (metres)', type=float, default=30)
-    parser.add_argument('--cell_size', help='(optional) cell size (metres) to rasterize features for Euclidean distance', type=float, default=5)
-    parser.add_argument('--epsg', help='(optional) EPSG of the reach geometries', type=str, default=4326)
-    parser.add_argument('--verbose', help='(optional) verbose logging mode', action='store_true', default=False)
-    args = dotenv.parse_args_env(parser)
-
-    # Initiate the log file
-    log = Logger("Conflict Attributes")
-    logfile = os.path.join(os.path.dirname(args.database), "conflict_attributes.log")
-    log.setup(logPath=logfile, verbose=args.verbose)
-
-    try:
-        conflict_attributes(args.database, args.valley_bottom, args.roads, args.rail, args.canals, args.ownership, args.buffer, args.cell_size, args.epsg)
-
-    except Exception as e:
-        log.error(e)
-        traceback.print_exc(file=sys.stdout)
-        sys.exit(1)
-
-    sys.exit(0)
-
-
-if __name__ == '__main__':
-    main()
+    log.info('{} distance calculation complete'.format(field))

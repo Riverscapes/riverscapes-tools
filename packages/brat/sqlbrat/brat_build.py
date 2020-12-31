@@ -15,18 +15,16 @@ import uuid
 import traceback
 import datetime
 import time
-import sqlite3
 from typing import List
 import ogr
 from rscommons import GeopackageLayer
 from rscommons.vector_ops import copy_feature_class
 from rscommons import Logger, initGDALOGRErrors, RSLayer, RSProject, ModelConfig, dotenv
 from rscommons.build_network import build_network_NEW
-from rscommons.database import create_database_NEW
+from rscommons.database import create_database_NEW, SQLiteCon
 from sqlbrat.utils.vegetation_summary import vegetation_summary
 from sqlbrat.utils.reach_geometry import reach_geometry_NEW
 from sqlbrat.utils.conflict_attributes import conflict_attributes
-from rscommons.database import SQLiteCon
 from sqlbrat.__version__ import __version__
 
 Path = str
@@ -48,59 +46,14 @@ LayerTypes = {
         'FLOW_AREA': RSLayer('NHD Flow Area', 'FLOW_AREA', 'Vector', 'flowareas'),
         'WATERBODIES': RSLayer('NHD Waterbody', 'WATERBODIES', 'Vector', 'waterbodies'),
         'VALLEY_BOTTOM': RSLayer('Valley Bottom', 'VALLEY_BOTTOM', 'Vector', 'valley_bottom'),
+        'ROADS': RSLayer('Roads', 'ROADS', 'Vector', 'roads'),
+        'RAIL': RSLayer('Rail', 'RAIL', 'Vector', 'rail'),
+        'CANALS': RSLayer('Canals', 'CANALS', 'Vector', 'canals')
     }),
+    'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/intermediates.gpkg', {}),
     'OUTPUTS': RSLayer('BRAT', 'OUTPUTS', 'Geopackage', 'outputs/brat.gpkg', {
-        'BRAT': RSLayer('BRAT', 'SEGMENTED', 'Vector', 'Reaches')
+        'BRAT': RSLayer('BRAT', 'SEGMENTED', 'Vector', 'ReachGeometry')
     })
-}
-
-# Attributes in the output BRAT geopackage Reaches feature class layer
-brat_reaches_fields = {
-    'WatershedID': ogr.OFTString,
-    'ReachCode': ogr.OFTInteger,
-    'IsPeren': ogr.OFTInteger,
-    'StreamName ': ogr.OFTString,
-    'Orig_DA': ogr.OFTReal,
-    'iGeo_Slope': ogr.OFTReal,
-    'iGeo_ElMax': ogr.OFTReal,
-    'iGeo_ElMin': ogr.OFTReal,
-    'iGeo_Len': ogr.OFTReal,
-    'iGeo_DA': ogr.OFTReal,
-    'iVeg100EX': ogr.OFTReal,
-    'iVeg_30EX': ogr.OFTReal,
-    'iVeg100HPE': ogr.OFTReal,
-    'iVeg_30HPE': ogr.OFTReal,
-    'iPC_Road': ogr.OFTReal,
-    'iPC_RoadX': ogr.OFTReal,
-    'iPC_RoadVB': ogr.OFTReal,
-    'iPC_Rail': ogr.OFTReal,
-    'iPC_RailVB': ogr.OFTReal,
-    'iPC_LU': ogr.OFTReal,
-    'iPC_VLowLU': ogr.OFTReal,
-    'iPC_LowLU': ogr.OFTReal,
-    'iPC_ModLU': ogr.OFTReal,
-    'iPC_HighLU': ogr.OFTReal,
-    'iHyd_QLow': ogr.OFTReal,
-    'iHyd_Q2': ogr.OFTReal,
-    'iHyd_SPLow': ogr.OFTReal,
-    'iHyd_SP2': ogr.OFTReal,
-    'AgencyID': ogr.OFTInteger,
-    'oVC_HPE': ogr.OFTReal,
-    'oVC_EX': ogr.OFTReal,
-    'oCC_HPE': ogr.OFTReal,
-    'mCC_HPE_CT': ogr.OFTReal,
-    'oCC_EX': ogr.OFTReal,
-    'mCC_EX_CT': ogr.OFTReal,
-    'LimitationID': ogr.OFTInteger,
-    'RiskID': ogr.OFTInteger,
-    'OpportunityID': ogr.OFTInteger,
-    'iPC_Canal': ogr.OFTReal,
-    'iPC_DivPts': ogr.OFTReal,
-    'iPC_Privat': ogr.OFTReal,
-    'oPC_Dist': ogr.OFTReal,
-    'IsMainCh': ogr.OFTInteger,
-    'IsMultiCh': ogr.OFTInteger,
-    'mCC_HisDep': ogr.OFTReal
 }
 
 
@@ -154,24 +107,34 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
     project.add_project_raster(proj_nodes['Inputs'], LayerTypes['SLOPE'], slope)
 
     inputs_gpkg_path = os.path.join(output_folder, LayerTypes['INPUTS'].rel_path)
+    intermediates_gpkg_path = os.path.join(output_folder, LayerTypes['INTERMEDIATES'].rel_path)
     outputs_gpkg_path = os.path.join(output_folder, LayerTypes['OUTPUTS'].rel_path)
 
     # Make sure we're starting with empty/fresh geopackages
     GeopackageLayer.delete(inputs_gpkg_path)
+    GeopackageLayer.delete(intermediates_gpkg_path)
     GeopackageLayer.delete(outputs_gpkg_path)
 
-    # Copy our input layers and also find the difference in the geometry for the valley bottom
-    flowlines_path = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
-    vbottom_path = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['VALLEY_BOTTOM'].rel_path)
-    waterbodies_path = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['WATERBODIES'].rel_path)
-    flowareas_path = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['FLOW_AREA'].rel_path)
+    # Copy all the original vectors to the inputs geopackage. This will ensure on same spatial reference
+    source_layers = {
+        'FLOWLINES': flowlines,
+        'FLOW_AREA': flow_areas,
+        'WATERBODIES': waterbodies,
+        'VALLEY_BOTTOM': valley_bottom,
+        'ROADS': roads,
+        'RAIL': rail,
+        'CANALS': canals
+    }
 
-    copy_feature_class(flowlines, flowlines_path, epsg=cfg.OUTPUT_EPSG)
-    copy_feature_class(valley_bottom, vbottom_path, epsg=cfg.OUTPUT_EPSG)
-    copy_feature_class(waterbodies, waterbodies_path, epsg=cfg.OUTPUT_EPSG)
-    copy_feature_class(flow_areas, flowareas_path, epsg=cfg.OUTPUT_EPSG)
+    input_layers = {}
+    for input_key, rslayer in LayerTypes['INPUTS'].sub_layers.items():
+        input_layers[input_key] = os.path.join(inputs_gpkg_path, rslayer.rel_path)
+        copy_feature_class(source_layers[input_key], input_layers[input_key], cfg.OUTPUT_EPSG)
 
-    with GeopackageLayer(flowlines_path) as flow_lyr:
+    # Store all the inputs in the project XML
+    project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
+
+    with GeopackageLayer(input_layers['FLOWLINES']) as flow_lyr:
         # Set the output spatial ref as this for the whole project
         out_srs = flow_lyr.spatial_ref
 
@@ -200,26 +163,28 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
     project.add_metadata({'Watershed': watershed_name})
 
     # Copy the reaches into the output feature class layer, filtering by reach codes
-    cleaned_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['BRAT'].rel_path)
-    out_srs = build_network_NEW(flowlines_path, flowareas_path, cleaned_path, waterbodies_path=waterbodies_path, epsg=cfg.OUTPUT_EPSG, reach_codes=reach_codes, create_layer=False)
+    reach_geometry_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['BRAT'].rel_path)
+    out_srs = build_network_NEW(input_layers['FLOWLINES'], input_layers['FLOW_AREA'], reach_geometry_path, waterbodies_path=input_layers['WATERBODIES'], epsg=cfg.OUTPUT_EPSG, reach_codes=reach_codes, create_layer=False)
 
     # Data preparation SQL statements to handle any weird attributes
     with SQLiteCon(outputs_gpkg_path) as database:
-        database.curs.execute('INSERT INTO ReachAttributes (ReachID, Orig_DA, iGeo_DA, ReachCode, WatershedID, StreamName) SELECT ReachID, TotDASqKm, TotDASqKm, FCode, WatershedID, GNIS_NAME FROM Reaches')
+        database.curs.execute('INSERT INTO ReachAttributes (ReachID, Orig_DA, iGeo_DA, ReachCode, WatershedID, StreamName) SELECT ReachID, TotDASqKm, TotDASqKm, FCode, WatershedID, GNIS_NAME FROM ReachGeometry')
         database.curs.execute('UPDATE ReachAttributes SET IsPeren = 1 WHERE (ReachCode = ?)', [PERENNIAL_REACH_CODE])
         database.curs.execute('UPDATE ReachAttributes SET iGeo_DA = 0 WHERE iGeo_DA IS NULL')
         database.conn.commit()
 
     # Calculate the geophysical properties slope, min and max elevations
-    reach_geometry_NEW(cleaned_path, dem_raster_path, elevation_buffer, cfg.OUTPUT_EPSG)
+    reach_geometry_NEW(reach_geometry_path, dem_raster_path, elevation_buffer, cfg.OUTPUT_EPSG)
 
     # Calculate the conflict attributes ready for conservation
-    conflict_attributes(outputs_gpkg_path, valley_bottom, roads, rail, canals, ownership, 30, 5, cfg.OUTPUT_EPSG)
+    conflict_attributes(outputs_gpkg_path, reach_geometry_path,
+                        input_layers['VALLEY_BOTTOM'], input_layers['ROADS'], input_layers['RAIL'], input_layers['CANALS'],
+                        ownership, 30, 5, cfg.OUTPUT_EPSG, canal_codes, intermediates_gpkg_path)
 
     # Calculate the vegetation cell counts for each epoch and buffer
-    for veg_raster in [prj_existing_path, prj_historic_path]:
+    for label, veg_raster in [('Existing Veg', prj_existing_path), ('Historical Veg', prj_historic_path)]:
         for buffer in [streamside_buffer, riparian_buffer]:
-            vegetation_summary(outputs_gpkg_path, veg_raster, buffer)
+            vegetation_summary(outputs_gpkg_path, '{} {}m'.format(label, buffer), veg_raster, buffer)
 
     log.info('BRAT build completed successfully.')
 
