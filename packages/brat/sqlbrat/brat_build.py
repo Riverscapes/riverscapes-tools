@@ -23,7 +23,7 @@ from rscommons import Logger, initGDALOGRErrors, RSLayer, RSProject, ModelConfig
 from rscommons.build_network import build_network_NEW
 from rscommons.database import create_database_NEW, SQLiteCon
 from sqlbrat.utils.vegetation_summary import vegetation_summary
-from sqlbrat.utils.reach_geometry import reach_geometry_NEW
+from sqlbrat.utils.reach_geometry import reach_geometry
 from sqlbrat.utils.conflict_attributes import conflict_attributes
 from sqlbrat.__version__ import __version__
 
@@ -176,7 +176,7 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
         database.conn.commit()
 
     # Calculate the geophysical properties slope, min and max elevations
-    reach_geometry_NEW(reach_geometry_path, dem_raster_path, elevation_buffer)
+    reach_geometry(reach_geometry_path, dem_raster_path, elevation_buffer)
 
     # Calculate the conflict attributes ready for conservation
     conflict_attributes(outputs_gpkg_path, reach_geometry_path,

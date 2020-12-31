@@ -1,15 +1,12 @@
-# Name:     Vegation Suitability
-#
-# Purpose:  Calculates the average vegetation suitability for each reach. It takes
-#           the raw areas of each vegetation type within a buffer and converts
-#           these values into suitabilities using the lookup in the BRAT database.
-#           The average suitability is then written to the appropriate column in
-#           the reaches table.
-#
-# Author:   Philip Bailey
-#
-# Date:     17 Jan 2019
-# -------------------------------------------------------------------------------
+""" Calculates the average vegetation suitability for each reach. It takes
+    the raw areas of each vegetation type within a buffer and converts
+    these values into suitabilities using the lookup in the BRAT database.
+    The average suitability is then written to the appropriate column in
+    the reaches table.
+
+    Philip Bailey
+    17 Jan 2019
+"""
 import argparse
 import os
 import sys
@@ -20,7 +17,7 @@ from rscommons import Logger, ProgressBar, dotenv
 from rscommons.database import write_attributes_NEW, SQLiteCon
 
 
-def vegetation_suitability(gpkg_path, buffer, prefix, ecoregion):
+def vegetation_suitability(gpkg_path: str, buffer: float, prefix: str, ecoregion: str):
     """Calculate vegetation suitability for each reach in a BRAT SQLite
     database
 
@@ -31,18 +28,33 @@ def vegetation_suitability(gpkg_path, buffer, prefix, ecoregion):
         ecoregion {int} -- Database ID of the ecoregion associated with the watershed
     """
 
-    vegCol = 'iVeg{}{}{}'.format('_' if len(str(int(buffer))) < 3 else '', int(buffer), prefix)
+    veg_col = 'iVeg{}{}{}'.format('_' if len(str(int(buffer))) < 3 else '', int(buffer), prefix)
 
-    reaches = calculate_vegetation_suitability(gpkg_path, buffer, prefix, vegCol, ecoregion)
-    write_attributes_NEW(gpkg_path, reaches, [vegCol])
+    reaches = calculate_vegetation_suitability(gpkg_path, buffer, prefix, veg_col, ecoregion)
+    write_attributes_NEW(gpkg_path, reaches, [veg_col])
 
 
-def calculate_vegetation_suitability(gpkg_path, buffer, epoch, vegCol, ecoregion):
+def calculate_vegetation_suitability(gpkg_path: str, buffer: float, epoch: str, veg_col: str, ecoregion: str) -> dict:
+    """ Calculation vegetation suitability
+
+    Args:
+        gpkg_path ([type]): [description]
+        buffer ([type]): [description]
+        epoch ([type]): [description]
+        veg_col ([type]): [description]
+        ecoregion ([type]): [description]
+
+    Raises:
+        Exception: [description]
+
+    Returns:
+        [type]: [description]
+    """
 
     log = Logger('Veg Suitability')
     log.info('Buffer: {}'.format(buffer))
     log.info('Epoch: {}'.format(epoch))
-    log.info('Veg Column: {}'.format(vegCol))
+    log.info('Veg Column: {}'.format(veg_col))
 
     with SQLiteCon(gpkg_path) as database:
 
@@ -69,7 +81,7 @@ def calculate_vegetation_suitability(gpkg_path, buffer, epoch, vegCol, ecoregion
                               ' LEFT JOIN VegetationOverrides VO ON E.EcoregionID = VO.EcoregionID AND VT.VegetationID = VO.VegetationID'
                               ' WHERE (Buffer = ?) AND (EP.Metadata = ?)  AND (E.EcoregionID = ? OR E.EcoregionID IS NULL)'
                               ' GROUP BY R.ReachID', [buffer, epoch, buffer, epoch, ecoregion])
-        results = {row['ReachID']: {vegCol: row['VegSuitability']} for row in database.curs.fetchall()}
+        results = {row['ReachID']: {veg_col: row['VegSuitability']} for row in database.curs.fetchall()}
 
     log.info('Vegetation suitability complete')
     return results
@@ -111,7 +123,7 @@ def output_vegetation_raster(gpkg_path, raster_path, output_path, epoch, prefix,
         log.warning('Could not find {} VegetationID={}'.format(prefix, in_val))
         return -1
 
-    vf = np.vectorize(translate_suit)
+    vector = np.vectorize(translate_suit)
 
     with rasterio.open(raster_path) as source_ds:
         out_meta = source_ds.meta
@@ -129,13 +141,15 @@ def output_vegetation_raster(gpkg_path, raster_path, output_path, epoch, prefix,
 
                 # Fill the masked values with the appropriate nodata vals
                 # Unthresholded in the base band (mostly for debugging)
-                out_data = vf(in_data, source_ds.meta['nodata'], out_meta['nodata'])
+                out_data = vector(in_data, source_ds.meta['nodata'], out_meta['nodata'])
                 dest_ds.write(np.int16(out_data), window=window, indexes=1)
 
             progbar.finish()
 
 
 def main():
+    """ Vegetation Suitability
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument('database', help='BRAT database path', type=argparse.FileType('r'))
     parser.add_argument('buffer', help='buffer distance (metres)', type=float)
@@ -149,8 +163,7 @@ def main():
     logg.setup(logPath=logfile, verbose=args.verbose)
 
     try:
-        pass
-        # vegetation_suitability(args.database.name, args.raster.name, args.buffer, args.table)
+        vegetation_suitability(args.database.name, args.raster.name, args.buffer, args.table)
 
     except Exception as e:
         logg.error(e)

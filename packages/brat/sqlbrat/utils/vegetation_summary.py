@@ -1,12 +1,9 @@
-# Name:     Vegation Summary
-#
-# Purpose:  Summarizes vegetation for each polyline feature within a buffer distance
-#           on a raster. Inserts the area of each vegetation type into the BRAT database
-#
-# Author:   Philip Bailey
-#
-# Date:     28 Aug 2019
-# -------------------------------------------------------------------------------
+""" Summarizes vegetation for each polyline feature within a buffer distance
+    on a raster. Inserts the area of each vegetation type into the BRAT database
+
+   Philip Bailey
+   28 Aug 2019
+"""
 import os
 import numpy as np
 from osgeo import gdal
@@ -17,7 +14,7 @@ from rscommons.database import SQLiteCon
 from rscommons.classes.vector_base import VectorBase
 
 
-def vegetation_summary(outputs_gpkg_path, label, veg_raster, buffer):
+def vegetation_summary(outputs_gpkg_path: str, label: str, veg_raster: str, buffer: float):
     """ Loop through every reach in a BRAT database and
     retrieve the values from a vegetation raster within
     the specified buffer. Then store the tally of
@@ -34,12 +31,12 @@ def vegetation_summary(outputs_gpkg_path, label, veg_raster, buffer):
 
     # Retrieve the raster spatial reference and geotransformation
     dataset = gdal.Open(veg_raster)
-    gt = dataset.GetGeoTransform()
+    geo_transform = dataset.GetGeoTransform()
     raster_buffer = VectorBase.rough_convert_metres_to_raster_units(veg_raster, buffer)
 
     # Calculate the area of each raster cell in square metres
     conversion_factor = VectorBase.rough_convert_metres_to_raster_units(veg_raster, 1.0)
-    cell_area = abs(gt[1] * gt[5]) / conversion_factor**2
+    cell_area = abs(geo_transform[1] * geo_transform[5]) / conversion_factor**2
 
     # Open the raster and then loop over all polyline features
     veg_counts = []

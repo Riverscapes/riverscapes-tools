@@ -1,13 +1,11 @@
-# Name:     Combined FIS
-#
-# Purpose:  Runs the combined FIS for the BRAT input table.
-#           Adapted from Jordan Gilbert's original BRAT script.
-#
-# Author:   Jordan Gilbert
-#           Philip Bailey
-#
-# Created:  30 May 2019
-# -------------------------------------------------------------------------------
+""" Runs the combined FIS for the BRAT input table.
+    Adapted from Jordan Gilbert's original BRAT script.
+
+    Jordan Gilbert
+    Philip Bailey
+
+    30 May 2019
+"""
 import os
 import sys
 import argparse
@@ -19,7 +17,7 @@ from rscommons.database import load_attributes, write_attributes_NEW
 from rscommons import ProgressBar, Logger, dotenv
 
 
-def combined_fis(database, label, veg_type, max_drainage_area):
+def combined_fis(database: str, label: str, veg_type: str, max_drainage_area: float):
     """
     Combined beaver dam capacity FIS
     :param network: Shapefile path containing necessary FIS inputs
@@ -45,7 +43,7 @@ def combined_fis(database, label, veg_type, max_drainage_area):
     log.info('Process completed successfully.')
 
 
-def calculate_combined_fis(feature_values, veg_fis_field, capacity_field, dam_count_field, max_drainage_area):
+def calculate_combined_fis(feature_values: dict, veg_fis_field: str, capacity_field: str, dam_count_field: str, max_drainage_area: float):
     """
     Calculate dam capacity and density using combined FIS
     :param feature_values: Dictionary of features keyed by ReachID and values are dictionaries of attributes
@@ -82,9 +80,6 @@ def calculate_combined_fis(feature_values, veg_fis_field, capacity_field, dam_co
         counter += 1
 
     # Adjust inputs to be within FIS membership range
-
-    # TODO: to improve the math handling we set 'nan' values to their lowest possible
-    # I'm not sure this is valid. What should be done with 'nan' values
     veg_array[veg_array < 0] = 0
     veg_array[veg_array > 45] = 45
 
@@ -206,10 +201,10 @@ def calculate_combined_fis(feature_values, veg_fis_field, capacity_field, dam_co
     # calculate defuzzified centroid value for density 'none' MF group
     # this will be used to re-classify output values that fall in this group
     # important: will need to update the array (x) and MF values (mfx) if the
-    #            density 'none' values are changed in the model
-    x = np.arange(0, 45, 0.01)
-    mfx = fuzz.trimf(x, [0, 0, 0.1])
-    defuzz_centroid = round(fuzz.defuzz(x, mfx, 'centroid'), 6)
+    # density 'none' values are changed in the model
+    x_vals = np.arange(0, 45, 0.01)
+    mfx = fuzz.trimf(x_vals, [0, 0, 0.1])
+    defuzz_centroid = round(fuzz.defuzz(x_vals, mfx, 'centroid'), 6)
 
     progbar = ProgressBar(len(reachid_array), 50, "Combined FIS")
     counter = 0
@@ -249,6 +244,8 @@ def calculate_combined_fis(feature_values, veg_fis_field, capacity_field, dam_co
 
 
 def main():
+    """ Combined FIS
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument('database', help='BRAT SQLite database', type=argparse.FileType('r'))
     parser.add_argument('maxdrainage', help='Maximum drainage area', type=float)
