@@ -28,20 +28,21 @@
         "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/network_intersected_300m",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/vegetation/existing_veg.tif",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/vegetation/historic_veg.tif",
-        "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/vbet_50", //VBET!!!!!
+        "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/vbet_50", // VBET!!!!!
         "{env:DATA_ROOT}/rs_context/${input:HUC}/transportation/roads.shp",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/transportation/railways.shp",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/transportation/canals.shp",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/ownership/ownership.shp",
-        "30", //streamside_buffer
-        "100", //riparian_buffer
-        "100", //elevation_buffer
+        "30", // streamside_buffer
+        "100", // riparian_buffer
+        "100", // elevation_buffer
         "{env:DATA_ROOT}/brat/${input:HUC}", // output folder
         "--reach_codes", "33400,33600,33601,33603,46000,46003,46006,46007,55800",
         "--canal_codes", "33600,33601,33603",
+        "--peren_codes", "46006",
         "--flow_areas", "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/NHDArea.shp",
         "--waterbodies", "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/NHDWaterbody.shp",
-        "--max_waterbody", "100", //max_waterbody
+        "--max_waterbody", "100", // max_waterbody
         "--verbose"
       ]
     },
