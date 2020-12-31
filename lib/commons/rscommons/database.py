@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 import glob
 import csv
@@ -10,6 +11,37 @@ from rscommons.shapefile import create_field
 from rscommons.build_network import FCodeValues
 
 perennial_reach_code = 46006
+
+
+class SQLiteCon():
+    """[summary]
+
+    Raises:
+        VectorBaseException: Various
+    """
+    log = Logger('SQLite')
+
+    def __init__(self, filepath: str):
+        self.filepath = filepath
+        self.conn = None
+        self.curs = None
+
+    def __enter__(self) -> SQLiteCon:
+        """Behaviour on open when using the "with VectorBase():" Syntax
+        """
+
+        self.conn = sqlite3.connect(self.filepath)
+        self.conn.row_factory = dict_factory
+        self.curs = self.conn.cursor()
+        return self
+
+    def __exit__(self, _type, _value, _traceback):
+        """Behaviour on close when using the "with VectorBase():" Syntax
+        """
+        self.curs.close()
+        self.conn.close()
+        self.curs = None
+        self.conn = None
 
 
 def create_database(huc, db_path, metadata, epsg, schema_path):
@@ -83,7 +115,7 @@ def update_database(db_path, csv_path):
     curs = conn.cursor()
 
     try:
-        huc = conn.execute('SELECT WatershedID FROM Reaches GROUP BY WatershedID').fetchall()[0]['WatershedID']
+        huc = conn.execute('SELECT WatershedID FROM vwReaches GROUP BY WatershedID').fetchall()[0]['WatershedID']
     except Exception as e:
         log.error('Error retrieving HUC from DB')
         raise e
@@ -386,6 +418,52 @@ def write_attributes(database, reaches, fields, set_null_first=True, summarize=T
         [summarize_reaches(database, field) for field in fields]
 
 
+def write_attributes_NEW(database, reaches, fields, set_null_first=True, summarize=True):
+
+    if len(reaches) < 1:
+        return
+
+    conn = sqlite3.connect(database)
+    conn.execute('pragma foreign_keys=ON')
+    curs = conn.cursor()
+
+    # Optionally clear all the values in the fields first
+    if set_null_first is True:
+        [curs.execute('UPDATE ReachAttributes SET {} = NULL'.format(field)) for field in fields]
+
+    results = []
+    for reachid, values in reaches.items():
+        results.append([values[field] if field in values else None for field in fields])
+        results[-1].append(reachid)
+
+    sql = 'UPDATE ReachAttributes SET {} WHERE ReachID = ?'.format(','.join(['{}=?'.format(field) for field in fields]))
+    curs.executemany(sql, results)
+    conn.commit()
+
+    if summarize is True:
+        [summarize_reaches_NEW(database, field) for field in fields]
+
+
+def summarize_reaches_NEW(database, field):
+
+    log = Logger('Database')
+    conn = sqlite3.connect(database)
+    curs = conn.cursor()
+
+    curs.execute('SELECT Max({0}), Min({0}), Avg({0}), Count({0}) FROM ReachAttributes WHERE ({0} IS NOT NULL)'.format(field))
+    row = curs.fetchone()
+    if row and row[3] > 0:
+        msg = '{}, max: {:.2f}, min: {:.2f}, avg: {:.2f}'.format(field, row[0], row[1], row[2])
+    else:
+        msg = "0 non null values"
+
+    curs.execute('SELECT Count(*) FROM ReachAttributes WHERE {0} IS NULL'.format(field))
+    row = curs.fetchone()
+    msg += ', nulls: {:,}'.format(row[0])
+
+    log.info(msg)
+
+
 def summarize_reaches(database, field):
 
     log = Logger('Database')
@@ -406,12 +484,12 @@ def summarize_reaches(database, field):
     log.info(msg)
 
 
-def set_reach_fields_null(database, fields):
+def set_reach_fields_null_NEW(database, fields):
 
     log = Logger('Database')
     log.info('Setting {} reach fields to NULL'.format(len(fields)))
     conn = sqlite3.connect(database)
-    conn.execute('UPDATE Reaches SET {}'.format(','.join(['{} = NULL'.format(field) for field in fields])))
+    conn.execute('UPDATE ReachAttributes SET {}'.format(','.join(['{} = NULL'.format(field) for field in fields])))
     conn.commit()
     conn.close()
 

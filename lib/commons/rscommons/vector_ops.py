@@ -354,20 +354,28 @@ def load_attributes(in_layer_path: str, id_field: str, fields: list) -> dict:
     return feature_values
 
 
-def load_geometries(in_layer_path: str, id_field: str, epsg=None) -> dict:
+def load_geometries(in_layer_path: str, id_field: str = None, epsg: int = None, spatial_ref: osr.SpatialReference = None,) -> dict:
     log = Logger('load_geometries')
+
+    if epsg is not None and spatial_ref is not None:
+        raise VectorBaseException('Specify either an EPSG or a spatial_ref. Not both')
 
     with get_shp_or_gpkg(in_layer_path) as in_layer:
         # Determine the transformation if user provides an EPSG
         transform = None
-        if epsg:
+        if epsg is not None:
             _outref, transform = in_layer.get_transform_from_epsg(epsg)
+        elif spatial_ref is not None:
+            transform = in_layer.get_transform(in_layer.spatial_ref, spatial_ref)
 
         features = {}
 
         for feature, _counter, progbar in in_layer.iterate_features("Loading features"):
 
-            reach = feature.GetField(id_field)
+            if id_field is None:
+                reach = feature.GetFID()
+            else:
+                reach = feature.GetField(id_field)
 
             geom = feature.GetGeometryRef()
             geo_type = geom.GetGeometryType()

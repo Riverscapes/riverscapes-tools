@@ -170,7 +170,8 @@ def build_network_NEW(flowlines_path: str,
                       epsg: int = None,
                       reach_codes: List[int] = None,
                       waterbodies_path: str = None,
-                      waterbody_max_size=None):
+                      waterbody_max_size=None,
+                      create_layer: bool = True):
 
     log = Logger('Build Network')
 
@@ -192,8 +193,9 @@ def build_network_NEW(flowlines_path: str,
         [log.info("{0} {1} network features (FCode {2})".format('Retaining', FCodeValues[int(key)], key)) for key in reach_codes]
         attribute_filter = "FCode IN ({0})".format(','.join([key for key in reach_codes]))
 
-    with get_shp_or_gpkg(flowlines_path) as flowlines_lyr, get_shp_or_gpkg(out_path, write=True) as out_lyr:
-        out_lyr.create_layer_from_ref(flowlines_lyr)
+    if create_layer == True:
+        with get_shp_or_gpkg(flowlines_path) as flowlines_lyr, get_shp_or_gpkg(out_path, write=True) as out_lyr:
+            out_lyr.create_layer_from_ref(flowlines_lyr)
 
     log.info('Processing all reaches')
     process_reaches_NEW(flowlines_path, out_path, attribute_filter=attribute_filter)
@@ -228,6 +230,7 @@ def build_network_NEW(flowlines_path: str,
         log.info(('{:,} features written to {:}'.format(out_lyr.ogr_layer.GetFeatureCount(), out_path)))
 
     log.info('Process completed successfully.')
+    return out_spatial_ref
 
 
 def process_reaches_NEW(in_path: str, out_path: str, attribute_filter=None, transform=None, clip_shape=None):
@@ -243,7 +246,10 @@ def process_reaches_NEW(in_path: str, out_path: str, attribute_filter=None, tran
 
             # Add field values from input Layer
             for i in range(0, out_lyr.ogr_layer_def.GetFieldCount()):
-                out_feature.SetField(out_lyr.ogr_layer_def.GetFieldDefn(i).GetNameRef(), feature.GetField(i))
+                field_name = out_lyr.ogr_layer_def.GetFieldDefn(i).GetNameRef()
+                output_field_index = feature.GetFieldIndex(field_name)
+                if output_field_index >= 0:
+                    out_feature.SetField(field_name, feature.GetField(output_field_index))
 
             # Add new feature to output Layer
             out_feature.SetGeometry(geom)
