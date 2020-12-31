@@ -123,6 +123,7 @@ def brat_run(project_root, csv_dir):
     with SQLiteCon(database) as db:
         log.info('Calculating departure from historic conditions')
         db.curs.execute('UPDATE ReachAttributes SET mCC_HisDep = mCC_HPE_CT - mCC_EX_CT WHERE (mCC_EX_CT IS NOT NULL) AND (mCC_HPE_CT IS NOT NULL)')
+        db.conn.commit()
 
     # Land use intesity, conservation and restoration
     land_use(database, 100.0)

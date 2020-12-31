@@ -673,6 +673,22 @@ class VectorBase():
         transform = VectorBase.get_transform(self.spatial_ref, out_spatial_ref)
         return out_spatial_ref, transform
 
+    def get_transform_from_raster(self, raster_path: str) -> (osr.SpatialReference, osr.CoordinateTransformation):
+
+        if self.spatial_ref is None:
+            raise VectorBaseException('No input spatial ref found. Has this layer been created or loaded?')
+
+        out_ds = gdal.Open(raster_path)
+        out_spatial_ref = osr.SpatialReference()
+        out_spatial_ref.ImportFromWkt(out_ds.GetProjectionRef())
+
+        # TODO: ask Matt!
+        # https://github.com/OSGeo/gdal/issues/1546
+        out_spatial_ref.SetAxisMappingStrategy(self.spatial_ref.GetAxisMappingStrategy())
+
+        transform = VectorBase.get_transform(self.spatial_ref, out_spatial_ref)
+        return out_spatial_ref, transform
+
     @staticmethod
     def get_srs_from_epsg(epsg: int) -> osr.SpatialReference:
         out_spatial_ref = osr.SpatialReference()
