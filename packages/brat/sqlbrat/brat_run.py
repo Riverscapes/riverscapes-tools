@@ -12,12 +12,11 @@ import os
 import sys
 import traceback
 import argparse
-import sqlite3
 import time
 import datetime
 from osgeo import ogr
 from rscommons import Logger, RSLayer, RSProject, ModelConfig, dotenv
-from rscommons.database import execute_query, update_database, store_metadata, set_reach_fields_null
+from rscommons.database import execute_query, update_database, store_metadata, set_reach_fields_null_NEW, SQLiteCon
 from sqlbrat.utils.vegetation_suitability import vegetation_suitability, output_vegetation_raster
 from sqlbrat.utils.vegetation_fis import vegetation_fis
 from sqlbrat.utils.combined_fis import combined_fis
@@ -85,10 +84,10 @@ def brat_run(project_root, csv_dir):
     outputs_node = r_node.find('Outputs')
 
     # Get the filepaths for the DB and shapefile
-    database = os.path.join(project.project_dir, r_node.find('Outputs/SQLiteDB[@id="BRATDB"]/Path').text)
+    database = os.path.join(project.project_dir, r_node.find('Outputs/Geopackage[@id="OUTPUTS"]/Path').text)
 
     if not os.path.isfile(database):
-        raise Exception('BRAT SQLite database file missing at {}. You must run Brat Build first.'.format(database))
+        raise Exception('BRAT geopackage file missing at {}. You must run Brat Build first.'.format(database))
 
     # Update any of the lookup tables we need
     update_database(database, csv_dir)
@@ -99,8 +98,8 @@ def brat_run(project_root, csv_dir):
     watershed, max_drainage_area, ecoregion = get_watershed_info(database)
 
     # Set database output columns to NULL before processing (note omission of string lookup fields from view)
-    set_reach_fields_null(database, output_fields[ogr.OFTReal])
-    set_reach_fields_null(database, output_fields[ogr.OFTInteger])
+    set_reach_fields_null_NEW(database, output_fields[ogr.OFTReal])
+    set_reach_fields_null_NEW(database, output_fields[ogr.OFTInteger])
 
     # Calculate the low and high flow using regional discharge equations
     hydrology(database, 'Low', watershed)
@@ -110,19 +109,20 @@ def brat_run(project_root, csv_dir):
     for epoch, prefix, ltype, orig_id in Epochs:
 
         # Calculate the vegetation suitability for each buffer
-        [vegetation_suitability(database, buffer, epoch, prefix, ecoregion) for buffer in get_stream_buffers(database)]
+        [vegetation_suitability(database, buffer, prefix, ecoregion) for buffer in get_stream_buffers(database)]
 
         # Run the vegetation and then combined FIS for this epoch
         vegetation_fis(database, epoch, prefix)
         combined_fis(database, epoch, prefix, max_drainage_area)
 
         orig_raster = os.path.join(project.project_dir, input_node.find('Raster[@id="{}"]/Path'.format(orig_id)).text)
-        veg_suit_raster_node, veg_suit_raster = project.add_project_raster(intermediate_node, LayerTypes[ltype], None, True)
+        _veg_suit_raster_node, veg_suit_raster = project.add_project_raster(intermediate_node, LayerTypes[ltype], None, True)
         output_vegetation_raster(database, orig_raster, veg_suit_raster, epoch, prefix, ecoregion)
 
     # Calculate departure from historical conditions
-    execute_query(database, 'UPDATE Reaches SET mCC_HisDep = mCC_HPE_CT - mCC_EX_CT WHERE (mCC_EX_CT IS NOT NULL) AND (mCC_HPE_CT IS NOT NULL)',
-                  'Calculating departure from historic conditions')
+    with SQLiteCon(database) as db:
+        log.info('Calculating departure from historic conditions')
+        db.curs.execute('UPDATE ReachAttributes SET mCC_HisDep = mCC_HPE_CT - mCC_EX_CT WHERE (mCC_EX_CT IS NOT NULL) AND (mCC_HPE_CT IS NOT NULL)')
 
     # Land use intesity, conservation and restoration
     land_use(database, 100.0)
@@ -150,10 +150,12 @@ def get_watershed_info(database):
         the watershed is associated.
     """
 
-    conn = sqlite3.connect(database)
-    curs = conn.execute('SELECT WatershedID, MaxDrainage, EcoregionID FROM Watersheds')
-    row = curs.fetchone()
-    watershed, max_drainage, ecoregion = row
+    with SQLiteCon(database) as db:
+        db.curs.execute('SELECT WatershedID, MaxDrainage, EcoregionID FROM Watersheds')
+        row = db.curs.fetchone()
+        watershed = row['WatershedID']
+        max_drainage = row['MaxDrainage']
+        ecoregion = row['EcoregionID']
 
     log = Logger('BRAT Run')
 
@@ -182,9 +184,9 @@ def get_stream_buffers(database):
         [list] -- all discrete vegetation buffers
     """
 
-    conn = sqlite3.connect(database)
-    curs = conn.execute('SELECT Buffer FROM ReachVegetation GROUP BY Buffer')
-    return [row[0] for row in curs.fetchall()]
+    with SQLiteCon(database) as db:
+        db.curs.execute('SELECT Buffer FROM ReachVegetation GROUP BY Buffer')
+        return [row['Buffer'] for row in db.curs.fetchall()]
 
 
 def main():
