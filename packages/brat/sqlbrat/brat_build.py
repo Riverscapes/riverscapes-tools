@@ -52,7 +52,8 @@ LayerTypes = {
     }),
     'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/intermediates.gpkg', {}),
     'OUTPUTS': RSLayer('BRAT', 'OUTPUTS', 'Geopackage', 'outputs/brat.gpkg', {
-        'BRAT': RSLayer('BRAT', 'SEGMENTED', 'Vector', 'ReachGeometry')
+        'BRAT_GEOMETRY': RSLayer('BRAT Geometry', 'BRAT_GEOMETRY', 'Vector', 'ReachGeometry'),
+        'BRAT': RSLayer('BRAT', 'BRAT', 'Vector', 'vwReaches')
     })
 }
 
@@ -133,13 +134,14 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
 
     # Store all the inputs in the project XML
     project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
+    project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['OUTPUTS'])
 
     with GeopackageLayer(input_layers['FLOWLINES']) as flow_lyr:
         # Set the output spatial ref as this for the whole project
         out_srs = flow_lyr.spatial_ref
 
     # Create the output feature class fields
-    with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['BRAT'].rel_path, delete_dataset=True) as out_lyr:
+    with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['BRAT_GEOMETRY'].rel_path, delete_dataset=True) as out_lyr:
         out_lyr.create_layer(ogr.wkbMultiLineString, spatial_ref=out_srs, options=['FID=ReachID'], fields={
             'WatershedID': ogr.OFTString,
             'FCode': ogr.OFTInteger,
@@ -163,7 +165,7 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
     project.add_metadata({'Watershed': watershed_name})
 
     # Copy the reaches into the output feature class layer, filtering by reach codes
-    reach_geometry_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['BRAT'].rel_path)
+    reach_geometry_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['BRAT_GEOMETRY'].rel_path)
     out_srs = build_network_NEW(input_layers['FLOWLINES'], input_layers['FLOW_AREA'], reach_geometry_path, waterbodies_path=input_layers['WATERBODIES'], epsg=cfg.OUTPUT_EPSG, reach_codes=reach_codes, create_layer=False)
 
     # Data preparation SQL statements to handle any weird attributes

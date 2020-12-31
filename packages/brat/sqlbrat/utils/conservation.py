@@ -10,10 +10,8 @@ import os
 import sys
 import traceback
 import argparse
-import sqlite3
 from rscommons import Logger, dotenv
-from rscommons.database import load_attributes
-from rscommons.database import write_attributes
+from rscommons.database import load_attributes, write_attributes_NEW, SQLiteCon
 
 
 def conservation(database):
@@ -26,7 +24,7 @@ def conservation(database):
     """
 
     results = calculate_conservation(database)
-    write_attributes(database, results, ['OpportunityID', 'LimitationID', 'RiskID'])
+    write_attributes_NEW(database, results, ['OpportunityID', 'LimitationID', 'RiskID'])
 
 
 def calculate_conservation(database):
@@ -40,9 +38,9 @@ def calculate_conservation(database):
 
     log.info('Calculating conservation for {:,} reaches.'.format(len(reaches)))
 
-    risks = load_lookup(database, 'SELECT Name, RiskID FROM DamRisks')
-    limitations = load_lookup(database, 'SELECT Name, LimitationID FROM DamLimitations')
-    opportunties = load_lookup(database, 'SELECT Name, OpportunityID FROM DamOpportunities')
+    risks = load_lookup(database, 'SELECT Name, RiskID AS ID FROM DamRisks')
+    limitations = load_lookup(database, 'SELECT Name, LimitationID AS ID FROM DamLimitations')
+    opportunties = load_lookup(database, 'SELECT Name, OpportunityID AS ID FROM DamOpportunities')
 
     for values in reaches.values():
 
@@ -150,10 +148,9 @@ def calc_opportunities(opportunities, risks, RiskID, occ_hpe, occ_ex, mCC_HisDep
 
 def load_lookup(database, sql):
 
-    conn = sqlite3.connect(database)
-    curs = conn.cursor()
-    curs.execute(sql)
-    return {row[0]: row[1] for row in curs.fetchall()}
+    with SQLiteCon(database) as db:
+        db.curs.execute(sql)
+        return {row['Name']: row['ID'] for row in db.curs.fetchall()}
 
 
 def main():

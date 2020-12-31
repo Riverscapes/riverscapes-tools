@@ -20,6 +20,7 @@ class BratReport(RSReport):
     """In order to write a report we will extend the RSReport class from the rscommons
     module which has useful styles and building blocks like Tables from lists etc.
     """
+
     def __init__(self, database, report_path, rs_project):
         # Need to call the constructor of the inherited class:
         super().__init__(rs_project, report_path)
@@ -44,7 +45,7 @@ class BratReport(RSReport):
         self.conservation()
 
     def report_intro(self):
-        # Create a section node to start adding things to. Section nodes are added to the table of contents if 
+        # Create a section node to start adding things to. Section nodes are added to the table of contents if
         # they have a title. If you don't specify a el_parent argument these sections will simply be added
         # to the report body in the order you call them.
         section = self.section('ReportIntro', 'Introduction')
@@ -54,7 +55,7 @@ class BratReport(RSReport):
         conn.row_factory = _dict_factory
         curs = conn.cursor()
 
-        row = curs.execute('SELECT Sum(iGeo_Len) AS TotalLength, Count(ReachID) AS TotalReaches FROM Reaches').fetchone()
+        row = curs.execute('SELECT Sum(iGeo_Len) AS TotalLength, Count(ReachID) AS TotalReaches FROM vwReaches').fetchone()
         values = {
             'Number of reaches': '{0:,d}'.format(row['TotalReaches']),
             'Total reach length (km)': '{0:,.0f}'.format(row['TotalLength'] / 1000),
@@ -78,7 +79,7 @@ class BratReport(RSReport):
         RSReport.create_table_from_sql(
             ['Reach Type', 'Total Length (km)', '% of Total'],
             'SELECT ReachType, Sum(iGeo_Len) / 1000 As Length, 100 * Sum(iGeo_Len) / TotalLength AS TotalLength '
-            'FROM vwReaches INNER JOIN (SELECT Sum(iGeo_Len) AS TotalLength FROM Reaches) GROUP BY ReachType',
+            'FROM vwReaches INNER JOIN (SELECT Sum(iGeo_Len) AS TotalLength FROM vwReaches) GROUP BY ReachType',
             self.database, table_wrapper, attrib={'id': 'SummTable_sql'})
 
         # Append my table_wrapper div (which now contains both tables above) to the section
@@ -92,20 +93,20 @@ class BratReport(RSReport):
         curs = conn.cursor()
 
         # Summary statistics (min, max etc) for the current attribute
-        curs.execute('SELECT Count({0}) "Values", Max({0}) Maximum, Min({0}) Minimum, Avg({0}) Average FROM Reaches WHERE {0} IS NOT NULL'.format(attribute))
+        curs.execute('SELECT Count({0}) "Values", Max({0}) Maximum, Min({0}) Minimum, Avg({0}) Average FROM vwReaches WHERE {0} IS NOT NULL'.format(attribute))
         values = curs.fetchone()
 
         reach_wrapper_inner = ET.Element('div', attrib={'class': 'reachAtributeInner'})
         section.append(reach_wrapper_inner)
 
         # Add the number of NULL values
-        curs.execute('SELECT Count({0}) "NULL Values" FROM Reaches WHERE {0} IS NULL'.format(attribute))
+        curs.execute('SELECT Count({0}) "NULL Values" FROM vwReaches WHERE {0} IS NULL'.format(attribute))
         values.update(curs.fetchone())
         RSReport.create_table_from_dict(values, reach_wrapper_inner)
 
         # Box plot
         image_path = os.path.join(self.images_dir, 'attribute_{}.png'.format(attribute))
-        curs.execute('SELECT {0} FROM Reaches WHERE {0} IS NOT NULL'.format(attribute))
+        curs.execute('SELECT {0} FROM vwReaches WHERE {0} IS NOT NULL'.format(attribute))
         values = [row[attribute] for row in curs.fetchall()]
         box_plot(values, attribute, attribute, image_path)
 
@@ -129,7 +130,7 @@ class BratReport(RSReport):
             ('Historic capacity', 'Sum((iGeo_len / 1000) * oCC_HPE)')
         ]
 
-        curs.execute('SELECT {} FROM Reaches'.format(', '.join([field for label, field in fields])))
+        curs.execute('SELECT {} FROM vwReaches'.format(', '.join([field for label, field in fields])))
         row = curs.fetchone()
 
         table_dict = {fields[i][0]: row[fields[i][1]] for i in range(len(fields))}
@@ -145,14 +146,14 @@ class BratReport(RSReport):
         curs.execute('SELECT Name, MaxCapacity FROM DamCapacities ORDER BY MaxCapacity')
         bins = [(row[0], row[1]) for row in curs.fetchall()]
 
-        curs.execute('SELECT Sum(iGeo_Len) / 1000 FROM Reaches')
+        curs.execute('SELECT Sum(iGeo_Len) / 1000 FROM vwReaches')
         total_length_km = curs.fetchone()[0]
 
         data = []
         last_bin = 0
         cumulative_length_km = 0
         for name, max_capacity in bins:
-            curs.execute('SELECT Sum(iGeo_len) / 1000 FROM Reaches WHERE {} <= {}'.format(capacity_field, max_capacity))
+            curs.execute('SELECT Sum(iGeo_len) / 1000 FROM vwReaches WHERE {} <= {}'.format(capacity_field, max_capacity))
             rowi = curs.fetchone()
             if not rowi or rowi[0] is None:
                 bin_km = 0
@@ -206,7 +207,7 @@ class BratReport(RSReport):
             self.log.info('Generating XY scatter for {} against drainage area.'.format(variable))
             image_path = os.path.join(self.images_dir, 'drainage_area_{}.png'.format(variable.lower()))
 
-            curs.execute('SELECT iGeo_DA, {} FROM Reaches'.format(variable))
+            curs.execute('SELECT iGeo_DA, {} FROM vwReaches'.format(variable))
             values = [(row[0], row[1]) for row in curs.fetchall()]
             xyscatter(values, 'Drainage Area (sqkm)', ylabel, variable, image_path)
 
@@ -240,7 +241,7 @@ class BratReport(RSReport):
         RSReport.create_table_from_sql(
             ['Ownership Agency', 'Number of Reach Segments', 'Length (km)', '% of Total Length'],
             'SELECT IFNULL(Agency, "None"), Count(ReachID), Sum(iGeo_Len) / 1000, 100* Sum(iGeo_Len) / TotalLength FROM vwReaches'
-            ' INNER JOIN (SELECT Sum(iGeo_Len) AS TotalLength FROM Reaches) GROUP BY Agency',
+            ' INNER JOIN (SELECT Sum(iGeo_Len) AS TotalLength FROM vwReaches) GROUP BY Agency',
             self.database, section, attrib={'class': 'fullwidth'})
 
     def vegetation(self):
@@ -317,8 +318,8 @@ class BratReport(RSReport):
             RSReport.create_table_from_sql(
                 [label, 'Total Length (km)', 'Reach Count', '%'],
                 'SELECT DR.Name, Sum(iGeo_Len) / 1000, Count(R.{1}), 100 * Sum(iGeo_Len) / TotalLength'
-                ' FROM {0} DR LEFT JOIN Reaches R ON DR.{1} = R.{1}'
-                ' JOIN (SELECT Sum(iGeo_Len) AS TotalLength FROM Reaches)'
+                ' FROM {0} DR LEFT JOIN vwReaches R ON DR.{1} = R.{1}'
+                ' JOIN (SELECT Sum(iGeo_Len) AS TotalLength FROM vwReaches)'
                 ' GROUP BY DR.{1}'.format(table, idfield),
                 self.database, section)
 
