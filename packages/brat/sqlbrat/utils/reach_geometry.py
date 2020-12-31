@@ -1,12 +1,9 @@
-# Name:     Reach Geometry
-#
-# Purpose:  Calculates several properties of each network polyline:
-#           Slope, length, min and max elevation.
-#
-# Author:   Philip Bailey
-#
-# Date:     23 May 2019
-# -------------------------------------------------------------------------------
+""" Calculates several properties of each network polyline:
+    Slope, length, min and max elevation.
+
+    Philip Bailey
+    23 May 2019
+"""
 import os
 import gdal
 from shapely.geometry import Point
@@ -19,14 +16,21 @@ from rscommons.classes.vector_base import get_utm_zone_epsg
 Path = str
 
 
-def reach_geometry_NEW(flow_lines: Path, dem_path: Path, buffer_distance: float):
+def reach_geometry(flow_lines: Path, dem_path: Path, buffer_distance: float):
+    """ Calculate reach geometry BRAT attributes
+
+    Args:
+        flow_lines (Path): [description]
+        dem_path (Path): [description]
+        buffer_distance (float): [description]
+    """
 
     log = Logger('Reach Geometry')
 
     # Determine the best projected coordinate system based on the raster
     dataset = gdal.Open(dem_path)
-    gt = dataset.GetGeoTransform()
-    xcentre = gt[0] + (dataset.RasterXSize * gt[1]) / 2.0
+    geo_transform = dataset.GetGeoTransform()
+    xcentre = geo_transform[0] + (dataset.RasterXSize * geo_transform[1]) / 2.0
     epsg = get_utm_zone_epsg(xcentre)
 
     # Buffer the start and end point of each reach
@@ -80,7 +84,7 @@ def reach_geometry_NEW(flow_lines: Path, dem_path: Path, buffer_distance: float)
     write_attributes_NEW(os.path.dirname(flow_lines), reaches, ['iGeo_Len', 'iGeo_ElMax', 'iGeo_ElMin', 'iGeo_Slope'])
 
 
-def _max_ignore_none(val1, val2):
+def _max_ignore_none(val1: float, val2: float) -> float:
 
     if val1 is not None:
         if val2 is not None:
@@ -94,7 +98,7 @@ def _max_ignore_none(val1, val2):
             return None
 
 
-def _min_ignore_none(val1, val2):
+def _min_ignore_none(val1: float, val2: float) -> float:
 
     if val1 is not None:
         if val2 is not None:

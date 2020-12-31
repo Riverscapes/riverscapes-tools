@@ -1,10 +1,8 @@
-# Name:   Hydrology
-#
-#         Calculate the low flow and
-# Author: Philip Bailey
-#
-# Date:   30 May 2019
-# -------------------------------------------------------------------------------
+""" Calculate the low and high flow hydrology
+
+    Philip Bailey
+    30 May 2019
+"""
 import argparse
 import os
 import sys
@@ -14,10 +12,10 @@ from rscommons.database import write_attributes_NEW, SQLiteCon, load_attributes
 
 
 # This is the reach drainage area variable in the regional curve equations
-drainage_area_param = 'DRNAREA'
+DRNAREA_PARAM = 'DRNAREA'
 
 
-def hydrology(gpkg_path, prefix, huc):
+def hydrology(gpkg_path: str, prefix: str, huc: str):
     """Calculate low flow, peak flow discharges for each reach
     in a BRAT database
 
@@ -55,7 +53,7 @@ def hydrology(gpkg_path, prefix, huc):
         [log.info('Param: {} = {:.2f}'.format(key, value)) for key, value in params.items()]
 
         # Load the conversion factor for converting reach attribute drainage areas to the values used in the regional equations
-        database.curs.execute('SELECT Conversion FROM HydroParams WHERE Name = ?', [drainage_area_param])
+        database.curs.execute('SELECT Conversion FROM HydroParams WHERE Name = ?', [DRNAREA_PARAM])
         drainage_conversion_factor = database.curs.fetchone()['Conversion']
         log.info('Reach drainage area attribute conversion factor = {}'.format(drainage_conversion_factor))
 
@@ -79,7 +77,22 @@ def hydrology(gpkg_path, prefix, huc):
     log.info('Hydrology calculation complete')
 
 
-def calculate_hydrology(reaches, equation, params, drainage_conversion_factor, field):
+def calculate_hydrology(reaches: dict, equation: str, params: dict, drainage_conversion_factor: float, field: str) -> dict:
+    """ Perform the actual hydrology calculation
+
+    Args:
+        reaches ([type]): [description]
+        equation ([type]): [description]
+        params ([type]): [description]
+        drainage_conversion_factor ([type]): [description]
+        field ([type]): [description]
+
+    Raises:
+        ex: [description]
+
+    Returns:
+        [type]: [description]
+    """
 
     results = {}
 
@@ -90,7 +103,7 @@ def calculate_hydrology(reaches, equation, params, drainage_conversion_factor, f
         for reachid, values in reaches.items():
 
             # Use the drainage area for the current reach and convert to the units used in the equation
-            params[drainage_area_param] = values['iGeo_DA'] * drainage_conversion_factor
+            params[DRNAREA_PARAM] = values['iGeo_DA'] * drainage_conversion_factor
 
             # Execute the equation but restrict the use of all built-in functions
             eval_result = eval(equation, {'__builtins__': None}, params)
@@ -105,6 +118,8 @@ def calculate_hydrology(reaches, equation, params, drainage_conversion_factor, f
 
 
 def main():
+    """ Main hydrology routine
+    """
 
     parser = argparse.ArgumentParser()
     parser.add_argument('database', help='BRAT SQLite database', type=str)

@@ -1,13 +1,11 @@
-# Name:     Vegetation FIS
-#
-# Purpose:  Runs the vegetation FIS for the BRAT input table.
-#           Adapted from Jordan Gilbert's original BRAT script.
-#
-# Author:   Jordan Gilbert
-#           Philip Bailey
-#
-# Created:  30 May 2019
-# -------------------------------------------------------------------------------
+""" Runs the vegetation FIS for the BRAT input table.
+    Adapted from Jordan Gilbert's original BRAT script.
+
+    Jordan Gilbert
+    Philip Bailey
+
+    30 May 2019
+"""
 import os
 import sys
 import argparse
@@ -20,7 +18,7 @@ from rscommons.database import load_attributes
 from rscommons.database import write_attributes_NEW
 
 
-def vegetation_fis(database, label, veg_type):
+def vegetation_fis(database: str, label: str, veg_type: str):
     """Calculate vegetation suitability for each reach in a BRAT
     SQLite database
 
@@ -44,7 +42,7 @@ def vegetation_fis(database, label, veg_type):
     log.info('Process completed successfully.')
 
 
-def calculate_vegegtation_fis(feature_values, streamside_field, riparian_field, out_field):
+def calculate_vegegtation_fis(feature_values: dict, streamside_field: str, riparian_field: str, out_field: str):
     """
     Beaver dam capacity vegetation FIS
     :param feature_values: Dictionary of features keyed by ReachID and values are dictionaries of attributes
@@ -131,12 +129,12 @@ def calculate_vegegtation_fis(feature_values, streamside_field, riparian_field, 
     # this will be used to re-classify output values that fall in this group
     # important: will need to update the array (x) and MF values (mfx) if the
     #            density 'none' values are changed in the model
-    x = np.arange(0, 45, 0.01)
-    mfx = fuzz.trimf(x, [0, 0, 0.1])
-    defuzz_centroid = round(fuzz.defuzz(x, mfx, 'centroid'), 6)
+    x_vals = np.arange(0, 45, 0.01)
+    mfx = fuzz.trimf(x_vals, [0, 0, 0.1])
+    defuzz_centroid = round(fuzz.defuzz(x_vals, mfx, 'centroid'), 6)
 
-    mfx_pervasive = fuzz.trapmf(x, [12, 25, 45, 45])
-    defuzz_pervasive = round(fuzz.defuzz(x, mfx_pervasive, 'centroid'))
+    mfx_pervasive = fuzz.trapmf(x_vals, [12, 25, 45, 45])
+    defuzz_pervasive = round(fuzz.defuzz(x_vals, mfx_pervasive, 'centroid'))
 
     # run fuzzy inference system on inputs and defuzzify output
     progbar = ProgressBar(len(reachid_array), 50, "Vegetation FIS")
@@ -164,6 +162,8 @@ def calculate_vegegtation_fis(feature_values, streamside_field, riparian_field, 
 
 
 def main():
+    """ Main Vegetation FIS
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument('database', help='BRAT SQLite database', type=argparse.FileType('r'))
     parser.add_argument('--verbose', help='(optional) verbose logging mode', action='store_true', default=False)

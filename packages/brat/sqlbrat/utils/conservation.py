@@ -1,11 +1,8 @@
-# Name:        Conservation Restoration
-#
-# Purpose:     Adds the conservation and restoration model to the BRAT capacity output
-#
-# Author:      Philip Bailey, adapted from pyBRAT3 script by Sara Bangen
-#
-# Created:     25 Oct 2019
-# -------------------------------------------------------------------------------
+""" dds the conservation and restoration model to the BRAT capacity output
+
+    Philip Bailey, adapted from pyBRAT3 script by Sara Bangen
+    25 Oct 2019
+"""
 import os
 import sys
 import traceback
@@ -14,7 +11,7 @@ from rscommons import Logger, dotenv
 from rscommons.database import load_attributes, write_attributes_NEW, SQLiteCon
 
 
-def conservation(database):
+def conservation(database: str):
     """Calculate conservation fields for an existing BRAT database
     Assumes that conflict attributes and the dam capacity model
     have already been run for the database
@@ -27,7 +24,15 @@ def conservation(database):
     write_attributes_NEW(database, results, ['OpportunityID', 'LimitationID', 'RiskID'])
 
 
-def calculate_conservation(database):
+def calculate_conservation(database: str):
+    """ Perform conservation calculations
+
+    Args:
+        database (str): path to BRAT geopackage
+
+    Returns:
+        dict: dictionary of conservation values keyed by Reach ID
+    """
 
     log = Logger('Conservation')
 
@@ -57,7 +62,22 @@ def calculate_conservation(database):
     return reaches
 
 
-def calc_risks(risks, occ_ex, opc_dist, ipc_lu, ipc_canal):
+def calc_risks(risks: dict, occ_ex: float, opc_dist: float, ipc_lu: float, ipc_canal: float):
+    """ Calculate risk values
+
+    Args:
+        risks (dict): risk type lookup
+        occ_ex ([type]): [description]
+        opc_dist ([type]): [description]
+        ipc_lu ([type]): [description]
+        ipc_canal ([type]): [description]
+
+    Raises:
+        Exception: [description]
+
+    Returns:
+        [type]: [description]
+    """
 
     if occ_ex <= 0:
         # if capacity is none risk is negligible
@@ -91,7 +111,25 @@ def calc_risks(risks, occ_ex, opc_dist, ipc_lu, ipc_canal):
     raise Exception('Unhandled undesireable dam risk')
 
 
-def calc_limited(limitations, ovc_hpe, ovc_ex, occ_ex, slope, landuse, splow, sp2):
+def calc_limited(limitations: dict, ovc_hpe: float, ovc_ex: float, occ_ex: float, slope: float, landuse: float, splow: float, sp2: float) -> int:
+    """ Calculate limitations to conservation
+
+    Args:
+        limitations ([type]): [description]
+        ovc_hpe ([type]): [description]
+        ovc_ex ([type]): [description]
+        occ_ex ([type]): [description]
+        slope ([type]): [description]
+        landuse ([type]): [description]
+        splow ([type]): [description]
+        sp2 ([type]): [description]
+
+    Raises:
+        Exception: [description]
+
+    Returns:
+        [type]: [description]
+    """
 
     # First deal with vegetation limitations
     # Find places historically veg limited first ('oVC_HPE' None)
@@ -118,25 +156,43 @@ def calc_limited(limitations, ovc_hpe, ovc_ex, occ_ex, slope, landuse, splow, sp
     raise Exception('Unhandled dam limitation')
 
 
-def calc_opportunities(opportunities, risks, RiskID, occ_hpe, occ_ex, mCC_HisDep, iPC_VLowLU, iPC_HighLU):
+def calc_opportunities(opportunities: dict, risks: dict, risk_id: float, occ_hpe: float, occ_ex: float, mcc_hisdep: float, ipc_vlowlu: float, ipc_highlu: float) -> int:
+    """ Calculate conservation opportunities
 
-    if RiskID == risks['Negligible Risk'] or RiskID == risks['Minor Risk']:
+    Args:
+        opportunities ([type]): [description]
+        risks ([type]): [description]
+        risk_id ([type]): [description]
+        occ_hpe ([type]): [description]
+        occ_ex ([type]): [description]
+        mcc_hisdep ([type]): [description]
+        ipc_vlowlu ([type]): [description]
+        ipc_highlu ([type]): [description]
+
+    Raises:
+        Exception: [description]
+
+    Returns:
+        [type]: [description]
+    """
+
+    if risk_id == risks['Negligible Risk'] or risk_id == risks['Minor Risk']:
         # 'oCC_EX' Frequent or Pervasive
         # 'mCC_HisDep' <= 3
-        if occ_ex >= 5 and mCC_HisDep <= 3:
+        if occ_ex >= 5 and mcc_hisdep <= 3:
             return opportunities['Easiest - Low-Hanging Fruit']
         # 'oCC_EX' Occasional, Frequent, or Pervasive
         # 'oCC_HPE' Frequent or Pervasive
         # 'mCC_HisDep' <= 3
-        # 'iPC_VLowLU'(i.e., Natural) > 75
-        # 'iPC_HighLU' (i.e., Developed) < 10
-        elif occ_ex > 1 and mCC_HisDep <= 3 and occ_hpe >= 5 and iPC_VLowLU > 75 and iPC_HighLU < 10:
+        # 'ipc_vlowlu'(i.e., Natural) > 75
+        # 'ipc_highlu' (i.e., Developed) < 10
+        elif occ_ex > 1 and mcc_hisdep <= 3 and occ_hpe >= 5 and ipc_vlowlu > 75 and ipc_highlu < 10:
             return opportunities['Straight Forward - Quick Return']
         # 'oCC_EX' Rare or Occasional
         # 'oCC_HPE' Frequent or Pervasive
         # 'iPC_VLowLU'(i.e., Natural) > 75
         # 'iPC_HighLU' (i.e., Developed) < 10
-        elif occ_ex > 0 and occ_ex < 5 and occ_hpe >= 5 and iPC_VLowLU > 75 and iPC_HighLU < 10:
+        elif occ_ex > 0 and occ_ex < 5 and occ_hpe >= 5 and ipc_vlowlu > 75 and ipc_highlu < 10:
             return opportunities['Strategic - Long-Term Investment']
         else:
             return opportunities['NA']
@@ -146,14 +202,25 @@ def calc_opportunities(opportunities, risks, RiskID, occ_hpe, occ_ex, mCC_HisDep
     raise Exception('Unhandled conservation opportunity')
 
 
-def load_lookup(database, sql):
+def load_lookup(gpkg_path: str, sql: str) -> dict:
+    """ Load one of the conservation tables as a dictionary
 
-    with SQLiteCon(database) as db:
-        db.curs.execute(sql)
-        return {row['Name']: row['ID'] for row in db.curs.fetchall()}
+    Args:
+        gpkg_path (str): [description]
+        sql (str): [description]
+
+    Returns:
+        dict: [description]
+    """
+
+    with SQLiteCon(gpkg_path) as database:
+        database.curs.execute(sql)
+        return {row['Name']: row['ID'] for row in database.curs.fetchall()}
 
 
 def main():
+    """ Conservation
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument('database', help='BRAT SQLite database', type=str)
     parser.add_argument('--verbose', help='(optional) verbose logging mode', action='store_true', default=False)
