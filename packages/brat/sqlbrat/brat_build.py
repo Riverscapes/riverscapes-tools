@@ -51,7 +51,7 @@ LayerTypes = {
     'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/intermediates.gpkg', {}),
     'OUTPUTS': RSLayer('BRAT', 'OUTPUTS', 'Geopackage', 'outputs/brat.gpkg', {
         'BRAT_GEOMETRY': RSLayer('BRAT Geometry', 'BRAT_GEOMETRY', 'Vector', 'ReachGeometry'),
-        'BRAT': RSLayer('BRAT', 'BRAT', 'Vector', 'vwReaches')
+        'BRAT': RSLayer('BRAT', 'BRAT_RESULTS', 'Vector', 'vwReaches')
     })
 }
 
