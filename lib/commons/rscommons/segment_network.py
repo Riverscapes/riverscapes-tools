@@ -18,13 +18,15 @@ import sys
 import traceback
 from osgeo import ogr, osr
 from shapely.geometry import LineString, Point
-from rscommons import Logger, ProgressBar, initGDALOGRErrors, dotenv, get_shp_or_gpkg
-from rscommons.shapefile import create_field, get_transform_from_epsg, get_utm_zone_epsg
+from rscommons import Logger, ProgressBar, initGDALOGRErrors, dotenv, get_shp_or_gpkg, VectorBase
+from rscommons.classes.vector_base import get_utm_zone_epsg
 
 initGDALOGRErrors()
 
 
 class SegmentFeature:
+    '''
+    '''
 
     def __init__(self, feature, transform):
         self.name = feature.GetField('GNIS_NAME')
@@ -84,7 +86,7 @@ def segment_network(inpath: str, outpath: str, interval: float, minimum: float, 
         extent_poly = ogr.Geometry(ogr.wkbPolygon)
         extent_centroid = extent_poly.Centroid()
         utm_epsg = get_utm_zone_epsg(extent_centroid.GetX())
-        transform_ref, transform = in_lyr.get_transform_from_epsg(utm_epsg)
+        transform_ref, transform = VectorBase.get_transform_from_epsg(in_lyr.spatial_ref, utm_epsg)
 
         # IN order to get accurate lengths we are going to need to project into some coordinate system
         transform_back = osr.CoordinateTransformation(transform_ref, srs)
