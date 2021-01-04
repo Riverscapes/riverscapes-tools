@@ -8,7 +8,7 @@ import os
 import sys
 import traceback
 from rscommons import Logger, dotenv
-from rscommons.database import write_attributes_NEW, SQLiteCon, load_attributes
+from rscommons.database import write_db_attributes, SQLiteCon, load_attributes
 
 
 # This is the reach drainage area variable in the regional curve equations
@@ -66,7 +66,7 @@ def hydrology(gpkg_path: str, prefix: str, huc: str):
     log.info('{:,} reach hydrology values calculated.'.format(len(results)))
 
     # Write the discharges to the database
-    write_attributes_NEW(gpkg_path, results, [hydrology_field])
+    write_db_attributes(gpkg_path, results, [hydrology_field])
 
     # Convert discharges to stream power
     with SQLiteCon(gpkg_path) as database:

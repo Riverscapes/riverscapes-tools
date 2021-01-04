@@ -18,7 +18,7 @@ import rasterio.shutil
 from rscommons import ProgressBar, Logger
 from rscommons.raster_buffer_stats import raster_buffer_stats2
 from rscommons.util import safe_makedirs, safe_remove_dir
-from rscommons.database import write_attributes_NEW
+from rscommons.database import write_db_attributes
 from rscommons.vector_ops import intersect_feature_classes, get_geometry_unary_union, load_geometries, intersect_geometry_with_feature_class, copy_feature_class
 from rscommons.classes.vector_classes import get_shp_or_gpkg, GeopackageLayer
 from rscommons.database import SQLiteCon
@@ -55,8 +55,8 @@ def conflict_attributes(
     values = calc_conflict_attributes(flowlines_path, valley_bottom, roads, rail, canals, ownership, buffer_distance_metres, cell_size_meters, epsg, canal_codes, intermediates_gpkg_path)
 
     # Write float and string fields separately with log summary enabled
-    write_attributes_NEW(output_gpkg, values, ['iPC_Road', 'iPC_RoadVB', 'iPC_Rail', 'iPC_RailVB', 'iPC_Canal', 'iPC_DivPts', 'iPC_RoadX', 'iPC_Privat', 'oPC_Dist'])
-    write_attributes_NEW(output_gpkg, values, ['AgencyID'], summarize=False)
+    write_db_attributes(output_gpkg, values, ['iPC_Road', 'iPC_RoadVB', 'iPC_Rail', 'iPC_RailVB', 'iPC_Canal', 'iPC_DivPts', 'iPC_RoadX', 'iPC_Privat', 'oPC_Dist'])
+    write_db_attributes(output_gpkg, values, ['AgencyID'], summarize=False)
 
 
 def calc_conflict_attributes(flowlines_path, valley_bottom, roads, rail, canals, ownership, buffer_distance_metres, cell_size_meters, epsg, canal_codes, intermediates_gpkg_path):

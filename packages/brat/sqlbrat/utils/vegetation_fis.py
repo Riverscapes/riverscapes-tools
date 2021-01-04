@@ -15,7 +15,7 @@ import skfuzzy as fuzz
 from skfuzzy import control as ctrl
 from rscommons import Logger, ProgressBar, dotenv
 from rscommons.database import load_attributes
-from rscommons.database import write_attributes_NEW
+from rscommons.database import write_db_attributes
 
 
 def vegetation_fis(database: str, label: str, veg_type: str):
@@ -37,7 +37,7 @@ def vegetation_fis(database: str, label: str, veg_type: str):
 
     feature_values = load_attributes(database, [streamside_field, riparian_field], '({} IS NOT NULL) AND ({} IS NOT NULL)'.format(streamside_field, riparian_field))
     calculate_vegegtation_fis(feature_values, streamside_field, riparian_field, out_field)
-    write_attributes_NEW(database, feature_values, [out_field])
+    write_db_attributes(database, feature_values, [out_field])
 
     log.info('Process completed successfully.')
 

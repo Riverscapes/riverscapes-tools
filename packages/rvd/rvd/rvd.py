@@ -26,8 +26,8 @@ from rscommons.database import dict_factory
 from rscommons.util import safe_makedirs, safe_remove_file
 from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALOGRErrors, ProgressBar
 from rscommons import GeopackageLayer, VectorBase, get_shp_or_gpkg
-from rscommons.build_network import build_network_NEW
-from rscommons.database import create_database_NEW
+from rscommons.build_network import build_network
+from rscommons.database import create_database
 from rscommons.reach_attributes import write_attributes, write_reach_attributes
 from rscommons.vector_ops import get_geometry_unary_union, copy_feature_class
 from rscommons.thiessen.vor import NARVoronoi
@@ -154,7 +154,7 @@ def rvd(huc: int, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_or
     }
 
     # Execute the SQL to create the lookup tables in the RVD geopackage SQLite database
-    watershed_name = create_database_NEW(huc, outputs_gpkg_path, metadata, cfg.OUTPUT_EPSG, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'rvd_schema.sql'))
+    watershed_name = create_database(huc, outputs_gpkg_path, metadata, cfg.OUTPUT_EPSG, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'rvd_schema.sql'))
     project.add_metadata({'Watershed': watershed_name})
 
     geom_vbottom = get_geometry_unary_union(vbottom_path, spatial_ref=raster_srs)
@@ -185,7 +185,7 @@ def rvd(huc: int, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_or
     # Filter the flow lines to just the required features and then segment to desired length
     # TODO: These are brat methods that need to be refactored to use VectorBase layers
     cleaned_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['RVD'].rel_path)
-    build_network_NEW(flowlines_path, flowareas_path, cleaned_path, waterbodies_path=waterbodies_path, epsg=cfg.OUTPUT_EPSG, reach_codes=reach_codes)
+    build_network(flowlines_path, flowareas_path, cleaned_path, waterbodies_path=waterbodies_path, epsg=cfg.OUTPUT_EPSG, reach_codes=reach_codes)
 
     # Generate Voroni polygons
     log.info("Calculating Voronoi Polygons...")
@@ -395,7 +395,7 @@ def rvd(huc: int, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_or
 
     # Add the report to the XML
     report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
-    project.add_project_vector(proj_nodes['Outputs'], LayerTypes['REPORT'], replace=True)
+    project.add_report(proj_nodes['Outputs'], LayerTypes['REPORT'], replace=True)
 
     report = RVDReport(report_path, project, output_folder)
     report.write()

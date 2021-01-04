@@ -14,7 +14,7 @@ import traceback
 import rasterio
 import numpy as np
 from rscommons import Logger, ProgressBar, dotenv
-from rscommons.database import write_attributes_NEW, SQLiteCon
+from rscommons.database import write_db_attributes, SQLiteCon
 
 
 def vegetation_suitability(gpkg_path: str, buffer: float, prefix: str, ecoregion: str):
@@ -31,7 +31,7 @@ def vegetation_suitability(gpkg_path: str, buffer: float, prefix: str, ecoregion
     veg_col = 'iVeg{}{}{}'.format('_' if len(str(int(buffer))) < 3 else '', int(buffer), prefix)
 
     reaches = calculate_vegetation_suitability(gpkg_path, buffer, prefix, veg_col, ecoregion)
-    write_attributes_NEW(gpkg_path, reaches, [veg_col])
+    write_db_attributes(gpkg_path, reaches, [veg_col])
 
 
 def calculate_vegetation_suitability(gpkg_path: str, buffer: float, epoch: str, veg_col: str, ecoregion: str) -> dict:
