@@ -1,18 +1,18 @@
+'''
+Database Methods
+'''
 from __future__ import annotations
 import os
 import glob
 import csv
-from typing import List, Dict
+from typing import Dict
 import sqlite3
-import argparse
 from osgeo import ogr, osr
-from rscommons import ProgressBar, Logger, ModelConfig, dotenv, get_shp_or_gpkg, VectorBase
-from rscommons.shapefile import create_field
-from rscommons.build_network import FCodeValues
+from rscommons import Logger, VectorBase
 
 
 class SQLiteCon():
-    """[summary]
+    """This is just a loose mapping class to allow us to use Python's 'with' keyword.
 
     Raises:
         VectorBaseException: Various
@@ -42,7 +42,23 @@ class SQLiteCon():
         self.conn = None
 
 
-def create_database(huc, db_path, metadata, epsg, schema_path):
+def create_database(huc: str, db_path: str, metadata: Dict[str, str], epsg: int, schema_path: str, delete: bool = False):
+    """[summary]
+
+    Args:
+        huc (str): [description]
+        db_path (str): [description]
+        metadata (Dict[str, str]): [description]
+        epsg (int): [description]
+        schema_path (str): [description]
+        delete (bool, optional): [description]. Defaults to False.
+
+    Raises:
+        Exception: [description]
+
+    Returns:
+        [type]: [description]
+    """
 
     # We need to create a projection for this DB
     db_srs = osr.SpatialReference()
@@ -54,11 +70,11 @@ def create_database(huc, db_path, metadata, epsg, schema_path):
         raise Exception('Unable to find database schema file at {}'.format(schema_path))
 
     log = Logger('Database')
-    if os.path.isfile(db_path):
+    if os.path.isfile(db_path) and delete is True:
         log.info('Removing existing SQLite database at {0}'.format(db_path))
         os.remove(db_path)
 
-    log.info('Creating SQLite database at {0}'.format(db_path))
+    log.info('Creating database schema at {0}'.format(db_path))
     qry = open(schema_path, 'r').read()
     sqlite3.complete_statement(qry)
     conn = sqlite3.connect(db_path)
@@ -171,49 +187,6 @@ def get_db_srs(database):
     return dbRef
 
 
-def create_database_NEW(huc: str, db_path: str, metadata: Dict[str, str], epsg: int, schema_path: str, delete: bool = False):
-
-    # We need to create a projection for this DB
-    db_srs = osr.SpatialReference()
-    db_srs.ImportFromEPSG(int(epsg))
-    metadata['gdal_srs_proj4'] = db_srs.ExportToProj4()
-    metadata['gdal_srs_axis_mapping_strategy'] = osr.OAMS_TRADITIONAL_GIS_ORDER
-
-    if not os.path.isfile(schema_path):
-        raise Exception('Unable to find database schema file at {}'.format(schema_path))
-
-    log = Logger('Database')
-    if os.path.isfile(db_path) and delete is True:
-        log.info('Removing existing SQLite database at {0}'.format(db_path))
-        os.remove(db_path)
-
-    log.info('Creating database schema at {0}'.format(db_path))
-    qry = open(schema_path, 'r').read()
-    sqlite3.complete_statement(qry)
-    conn = sqlite3.connect(db_path)
-    curs = conn.cursor()
-    curs.executescript(qry)
-
-    load_lookup_data(db_path, os.path.dirname(schema_path))
-
-    # Keep only the designated watershed
-    curs.execute('DELETE FROM Watersheds WHERE WatershedID <> ?', [huc])
-
-    # Retrieve the name of the watershed so it can be stored in riverscapes project
-    curs.execute('SELECT Name FROM Watersheds WHERE WatershedID = ?', [huc])
-    row = curs.fetchone()
-    watershed_name = row[0] if row else None
-
-    conn.commit()
-    conn.execute("VACUUM")
-
-    # Write the metadata to the database
-    if metadata:
-        [store_metadata(db_path, key, value) for key, value in metadata.items()]
-
-    return watershed_name
-
-
 def load_geometries(database, target_srs=None, where_clause=None):
 
     transform = None
@@ -249,33 +222,7 @@ def load_attributes(database, fields, where_clause=None):
     return reaches
 
 
-def write_attributes(database, reaches, fields, set_null_first=True, summarize=True):
-
-    if len(reaches) < 1:
-        return
-
-    conn = sqlite3.connect(database)
-    conn.execute('pragma foreign_keys=ON')
-    curs = conn.cursor()
-
-    # Optionally clear all the values in the fields first
-    if set_null_first is True:
-        [curs.execute('UPDATE Reaches SET {} = NULL'.format(field)) for field in fields]
-
-    results = []
-    for reachid, values in reaches.items():
-        results.append([values[field] if field in values else None for field in fields])
-        results[-1].append(reachid)
-
-    sql = 'UPDATE Reaches SET {} WHERE ReachID = ?'.format(','.join(['{}=?'.format(field) for field in fields]))
-    curs.executemany(sql, results)
-    conn.commit()
-
-    if summarize is True:
-        [summarize_reaches(database, field) for field in fields]
-
-
-def write_attributes_NEW(database, reaches, fields, set_null_first=True, summarize=True):
+def write_db_attributes(database, reaches, fields, set_null_first=True, summarize=True):
 
     if len(reaches) < 1:
         return
@@ -298,10 +245,10 @@ def write_attributes_NEW(database, reaches, fields, set_null_first=True, summari
     conn.commit()
 
     if summarize is True:
-        [summarize_reaches_NEW(database, field) for field in fields]
+        [summarize_reaches(database, field) for field in fields]
 
 
-def summarize_reaches_NEW(database, field):
+def summarize_reaches(database, field):
 
     log = Logger('Database')
     conn = sqlite3.connect(database)
@@ -321,27 +268,7 @@ def summarize_reaches_NEW(database, field):
     log.info(msg)
 
 
-def summarize_reaches(database, field):
-
-    log = Logger('Database')
-    conn = sqlite3.connect(database)
-    curs = conn.cursor()
-
-    curs.execute('SELECT Max({0}), Min({0}), Avg({0}), Count({0}) FROM Reaches WHERE ({0} IS NOT NULL)'.format(field))
-    row = curs.fetchone()
-    if row and row[3] > 0:
-        msg = '{}, max: {:.2f}, min: {:.2f}, avg: {:.2f}'.format(field, row[0], row[1], row[2])
-    else:
-        msg = "0 non null values"
-
-    curs.execute('SELECT Count(*) FROM Reaches WHERE {0} IS NULL'.format(field))
-    row = curs.fetchone()
-    msg += ', nulls: {:,}'.format(row[0])
-
-    log.info(msg)
-
-
-def set_reach_fields_null_NEW(database, fields):
+def set_reach_fields_null(database, fields):
 
     log = Logger('Database')
     log.info('Setting {} reach fields to NULL'.format(len(fields)))

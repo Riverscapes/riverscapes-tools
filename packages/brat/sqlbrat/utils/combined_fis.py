@@ -13,7 +13,7 @@ import traceback
 import numpy as np
 import skfuzzy as fuzz
 from skfuzzy import control as ctrl
-from rscommons.database import load_attributes, write_attributes_NEW
+from rscommons.database import load_attributes, write_db_attributes
 from rscommons import ProgressBar, Logger, dotenv
 
 
@@ -38,7 +38,7 @@ def combined_fis(database: str, label: str, veg_type: str, max_drainage_area: fl
     reaches = load_attributes(database, fields, ' AND '.join(['({} IS NOT NULL)'.format(f) for f in fields]))
 
     calculate_combined_fis(reaches, veg_fis_field, capacity_field, dam_count_field, max_drainage_area)
-    write_attributes_NEW(database, reaches, [capacity_field, dam_count_field], log)
+    write_db_attributes(database, reaches, [capacity_field, dam_count_field], log)
 
     log.info('Process completed successfully.')
 

@@ -14,7 +14,7 @@ from osgeo import ogr, gdal, osr
 from shapely.ops import unary_union
 from shapely.geometry.base import BaseGeometry
 from shapely.geometry import mapping, Point, MultiPoint, LineString, MultiLineString, GeometryCollection, Polygon, MultiPolygon
-from rscommons import Logger, ProgressBar, get_shp_or_gpkg, Timer
+from rscommons import Logger, ProgressBar, get_shp_or_gpkg, Timer, VectorBase
 from rscommons.util import sizeof_fmt, get_obj_size
 from rscommons.classes.vector_base import VectorBase, VectorBaseException
 
@@ -52,7 +52,7 @@ def get_geometry_union(in_layer_path: str, epsg: int = None,
 
         transform = None
         if epsg:
-            _outref, transform = in_layer.get_transform_from_epsg(epsg)
+            _outref, transform = VectorBase.get_transform_from_epsg(in_layer.spatial_ref, epsg)
 
         geom = None
 
@@ -101,7 +101,7 @@ def get_geometry_unary_union(in_layer_path: str, epsg: int = None, spatial_ref: 
     with get_shp_or_gpkg(in_layer_path) as in_layer:
         transform = None
         if epsg is not None:
-            _outref, transform = in_layer.get_transform_from_epsg(epsg)
+            _outref, transform = VectorBase.get_transform_from_epsg(in_layer.spatial_ref, epsg)
         elif spatial_ref is not None:
             transform = in_layer.get_transform(in_layer.spatial_ref, spatial_ref)
 
@@ -354,7 +354,21 @@ def load_attributes(in_layer_path: str, id_field: str, fields: list) -> dict:
     return feature_values
 
 
-def load_geometries(in_layer_path: str, id_field: str = None, epsg: int = None, spatial_ref: osr.SpatialReference = None,) -> dict:
+def load_geometries(in_layer_path: str, id_field: str = None, epsg: int = None, spatial_ref: osr.SpatialReference = None) -> dict:
+    """[summary]
+
+    Args:
+        in_layer_path (str): [description]
+        id_field (str, optional): [description]. Defaults to None.
+        epsg (int, optional): [description]. Defaults to None.
+        spatial_ref (osr.SpatialReference, optional): [description]. Defaults to None.
+
+    Raises:
+        VectorBaseException: [description]
+
+    Returns:
+        dict: [description]
+    """
     log = Logger('load_geometries')
 
     if epsg is not None and spatial_ref is not None:
@@ -364,7 +378,7 @@ def load_geometries(in_layer_path: str, id_field: str = None, epsg: int = None, 
         # Determine the transformation if user provides an EPSG
         transform = None
         if epsg is not None:
-            _outref, transform = in_layer.get_transform_from_epsg(epsg)
+            _outref, transform = VectorBase.get_transform_from_epsg(in_layer.spatial_ref, epsg)
         elif spatial_ref is not None:
             transform = in_layer.get_transform(in_layer.spatial_ref, spatial_ref)
 
@@ -608,7 +622,7 @@ def buffer_by_field(in_layer_path: str, field: str, epsg: int = None, min_buffer
 
     outpolys = []
     with get_shp_or_gpkg(in_layer_path) as in_layer:
-        _out_spatial_ref, transform = in_layer.get_transform_from_epsg(epsg)
+        _out_spatial_ref, transform = VectorBase.get_transform_from_epsg(in_layer.spatial_ref, epsg)
         conversion = in_layer.rough_convert_metres_to_vector_units(1)
 
         for feature, _counter, _progbar in in_layer.iterate_features('Buffering'):

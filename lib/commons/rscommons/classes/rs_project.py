@@ -290,6 +290,19 @@ class RSProject:
         return nod_dataset
 
     def add_project_vector(self, parent_node, rs_lyr, copy_path=None, replace=False, att_filter=None):
+        """NOTE: this is for shapefiles only and we might be phasing it out. Ask yourself "Should I really
+                have shapefiles in my project?"
+
+        Args:
+            parent_node ([type]): The Eltree XML node to use as the parent
+            rs_lyr ([type]): The Layer object to use as an input
+            copy_path ([type], optional): Copy this layer to a shapefile. Defaults to None.
+            replace (bool, optional): [description]. Defaults to False.
+            att_filter ([type], optional): [description]. Defaults to None.
+
+        Returns:
+            [type]: [description]
+        """
         log = Logger('add_project_vector')
 
         file_path = os.path.join(os.path.dirname(self.xml_path), rs_lyr.rel_path)

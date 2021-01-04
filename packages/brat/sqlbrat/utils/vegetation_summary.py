@@ -44,7 +44,7 @@ def vegetation_summary(outputs_gpkg_path: str, label: str, veg_raster: str, buff
 
         with GeopackageLayer(os.path.join(outputs_gpkg_path, 'ReachGeometry')) as lyr:
 
-            _srs, transform = lyr.get_transform_from_raster(veg_raster)
+            _srs, transform = VectorBase.get_transform_from_raster(lyr.spatial_ref, veg_raster)
 
             for feature, _counter, _progbar in lyr.iterate_features(label):
                 reach_id = feature.GetFID()

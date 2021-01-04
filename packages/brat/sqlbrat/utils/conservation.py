@@ -8,7 +8,7 @@ import sys
 import traceback
 import argparse
 from rscommons import Logger, dotenv
-from rscommons.database import load_attributes, write_attributes_NEW, SQLiteCon
+from rscommons.database import load_attributes, write_db_attributes, SQLiteCon
 
 
 def conservation(database: str):
@@ -21,7 +21,7 @@ def conservation(database: str):
     """
 
     results = calculate_conservation(database)
-    write_attributes_NEW(database, results, ['OpportunityID', 'LimitationID', 'RiskID'])
+    write_db_attributes(database, results, ['OpportunityID', 'LimitationID', 'RiskID'])
 
 
 def calculate_conservation(database: str):

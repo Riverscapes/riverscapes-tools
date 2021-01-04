@@ -97,8 +97,6 @@ def confinement(huc, flowlines_orig, confining_polygon_orig, output_folder, buff
     project.add_metadata({'BufferField': buffer_field}, inputs_gpkg_lyrs['FLOWLINES'][0])
 
     # Add the confinement polygon
-    # TODO: Since we don't know if the input layer is a shp or gpkg it's hard to add
-    # _vbet_node, confinement_shp = project.add_project_vector(proj_nodes['Inputs'], LayerTypes['CONFINING_POLYGON'], confining_polygon_orig)
     project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['CONFINEMENT'])
 
     # Generate confining margins

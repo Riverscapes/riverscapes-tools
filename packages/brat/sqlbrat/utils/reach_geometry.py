@@ -5,12 +5,12 @@
     23 May 2019
 """
 import os
-import gdal
+from osgeo import gdal
 from shapely.geometry import Point
 from rscommons import Logger, VectorBase
 from rscommons.raster_buffer_stats import raster_buffer_stats2
 from rscommons.classes.vector_classes import get_shp_or_gpkg
-from rscommons.database import write_attributes_NEW
+from rscommons.database import write_db_attributes
 from rscommons.classes.vector_base import get_utm_zone_epsg
 
 Path = str
@@ -40,8 +40,8 @@ def reach_geometry(flow_lines: Path, dem_path: Path, buffer_distance: float):
     with get_shp_or_gpkg(flow_lines) as lyr:
 
         # Transformations from original flow line features to metric EPSG, and to raster spatial reference
-        _srs, transform_to_metres = lyr.get_transform_from_epsg(epsg)
-        _srs, transform_to_raster = lyr.get_transform_from_raster(dem_path)
+        _srs, transform_to_metres = VectorBase.get_transform_from_epsg(lyr.spatial_ref, epsg)
+        _srs, transform_to_raster = VectorBase.get_transform_from_raster(lyr.spatial_ref, dem_path)
 
         # Buffer distance converted to the units of the raster spatial reference
         vector_buffer = VectorBase.rough_convert_metres_to_raster_units(dem_path, buffer_distance)
@@ -81,7 +81,7 @@ def reach_geometry(flow_lines: Path, dem_path: Path, buffer_distance: float):
         else:
             log.warning('{:,} features skipped because one or both ends of polyline not on DEM raster'.format(dem_path))
 
-    write_attributes_NEW(os.path.dirname(flow_lines), reaches, ['iGeo_Len', 'iGeo_ElMax', 'iGeo_ElMin', 'iGeo_Slope'])
+    write_db_attributes(os.path.dirname(flow_lines), reaches, ['iGeo_Len', 'iGeo_ElMax', 'iGeo_ElMin', 'iGeo_Slope'])
 
 
 def _max_ignore_none(val1: float, val2: float) -> float:

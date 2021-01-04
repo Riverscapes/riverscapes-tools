@@ -16,7 +16,7 @@ import time
 import datetime
 from osgeo import ogr
 from rscommons import Logger, RSLayer, RSProject, ModelConfig, dotenv
-from rscommons.database import update_database, store_metadata, set_reach_fields_null_NEW, SQLiteCon
+from rscommons.database import update_database, store_metadata, set_reach_fields_null, SQLiteCon
 from sqlbrat.utils.vegetation_suitability import vegetation_suitability, output_vegetation_raster
 from sqlbrat.utils.vegetation_fis import vegetation_fis
 from sqlbrat.utils.combined_fis import combined_fis
@@ -96,8 +96,8 @@ def brat_run(project_root, csv_dir):
     watershed, max_drainage_area, ecoregion = get_watershed_info(gpkg_path)
 
     # Set database output columns to NULL before processing (note omission of string lookup fields from view)
-    set_reach_fields_null_NEW(gpkg_path, output_fields[ogr.OFTReal])
-    set_reach_fields_null_NEW(gpkg_path, output_fields[ogr.OFTInteger])
+    set_reach_fields_null(gpkg_path, output_fields[ogr.OFTReal])
+    set_reach_fields_null(gpkg_path, output_fields[ogr.OFTInteger])
 
     # Calculate the low and high flow using regional discharge equations
     hydrology(gpkg_path, 'Low', watershed)

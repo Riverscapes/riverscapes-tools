@@ -6,7 +6,7 @@
 import argparse
 import sqlite3
 from rscommons import Logger, dotenv
-from rscommons.database import write_attributes_NEW
+from rscommons.database import write_db_attributes
 
 
 def land_use(database: str, buffer: float):
@@ -18,7 +18,7 @@ def land_use(database: str, buffer: float):
     """
 
     reaches = calculate_land_use(database, buffer)
-    write_attributes_NEW(database, reaches, ['iPC_LU', 'iPC_VLowLU', 'iPC_LowLU', 'iPC_ModLU', 'iPC_HighLU'])
+    write_db_attributes(database, reaches, ['iPC_LU', 'iPC_VLowLU', 'iPC_LowLU', 'iPC_ModLU', 'iPC_HighLU'])
 
 
 def calculate_land_use(database: str, buffer: float):
