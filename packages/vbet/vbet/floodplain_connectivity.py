@@ -8,13 +8,16 @@
 # Date:     December 08, 2020
 # -------------------------------------------------------------------------------
 import os
-from osgeo import ogr
+import sys
 from typing import List
+import argparse
+import traceback
+from osgeo import ogr
 from shapely.geometry import MultiPolygon, MultiLineString, LineString, Point, MultiPoint, Polygon
 from shapely.ops import polygonize, unary_union
 
-from rscommons import ProgressBar, initGDALOGRErrors, Logger
-from rscommons import GeopackageLayer
+from rscommons import ProgressBar, Logger, dotenv, initGDALOGRErrors, GeopackageLayer
+from rscommons.util import safe_makedirs
 from rscommons.vector_ops import get_geometry_unary_union, load_geometries
 
 
@@ -23,7 +26,7 @@ Path = str
 initGDALOGRErrors()
 
 
-def floodplain_connectivity(vbet_network: Path, vbet_polygon: Path, roads: Path, railroads: Path, out_polygon: Path, debug_gpkg: Path = None):
+def floodplain_connectivity(vbet_network: Path, vbet_polygon: Path, roads: Path, railroads: Path, output_dir: Path, debug_gpkg: Path = None):
     """[summary]
 
     Args:
@@ -37,6 +40,8 @@ def floodplain_connectivity(vbet_network: Path, vbet_polygon: Path, roads: Path,
 
     log = Logger('Floodplain Connectivity')
     log.info("Starting Floodplain Connectivity Script")
+
+    out_polygon = os.path.join(output_dir, 'fconn.gpkg/outputs')
 
     # Prepare vbet and catchments
     geom_vbet = get_geometry_unary_union(vbet_polygon)
@@ -71,11 +76,10 @@ def floodplain_connectivity(vbet_network: Path, vbet_polygon: Path, roads: Path,
 
     vbet_splitpoints = []
     vbet_splitlines = []
-    progbar = ProgressBar(len(geom_vbet_edges), 50, f"Splitting edge features")
     counter = 0
     for geom_edge in geom_vbet_edges:
-        progbar.update(counter)
         counter += 1
+        log.info('Splitting edge features {}/{}'.format(counter, len(geom_vbet_edges)))
         if geom_edge.is_valid:
             if not geom_edge.intersects(geom_transportation):
                 vbet_splitlines = vbet_splitlines + [geom_edge]
@@ -87,8 +91,25 @@ def floodplain_connectivity(vbet_network: Path, vbet_polygon: Path, roads: Path,
             if isinstance(pts, Point):
                 pts = [pts]
             geom_boundaries = [geom_edge]
+
+            progbar = ProgressBar(len(geom_boundaries), 50, "Processing")
+            counter = 0
             for pt in pts:
-                geom_boundaries = [new_line for line in geom_boundaries if line is not None for new_line in line_splitter(line, pt) if new_line is not None]
+                # TODO: I tried to break this out but I'm not sure
+                new_boundaries = []
+                for line in geom_boundaries:
+                    if line is not None:
+                        split_line = line_splitter(line, pt)
+                        progbar.total += len(split_line)
+                        for new_line in split_line:
+                            counter += 1
+                            progbar.update(counter)
+                            if new_line is not None:
+                                new_boundaries.append(new_line)
+                geom_boundaries = new_boundaries
+                # TODO: Not sure this is having the intended effect
+                # geom_boundaries = [new_line for line in geom_boundaries if line is not None for new_line in line_splitter(line, pt) if new_line is not None]
+            progbar.finish()
             vbet_splitlines = vbet_splitlines + geom_boundaries
             vbet_splitpoints = vbet_splitpoints + [pt for pt in pts]
 
@@ -120,12 +141,12 @@ def floodplain_connectivity(vbet_network: Path, vbet_polygon: Path, roads: Path,
             geoms_disconnected.append(geom)
 
     log.info("Union connected floodplains")
-    geoms_connected_output = [geom for geom in unary_union(geoms_connected)]
-    geoms_disconnected_output = [geom for geom in unary_union(geoms_disconnected)]
+    geoms_connected_output = [geom for geom in list(unary_union(geoms_connected))]
+    geoms_disconnected_output = [geom for geom in list(unary_union(geoms_disconnected))]
 
     # Save Outputs
     log.info("Save Floodplain Output")
-    with GeopackageLayer(os.path.split(out_polygon)[0], os.path.split(out_polygon)[1], write=True) as out_lyr:
+    with GeopackageLayer(out_polygon, write=True) as out_lyr:
         out_lyr.create_layer(ogr.wkbPolygon, epsg=4326)
         out_lyr.create_field("Connected", ogr.OFTInteger)
         progbar = ProgressBar(len(geoms_connected_output) + len(geoms_disconnected_output), 50, f"saving {out_lyr.ogr_layer_name} features")
@@ -150,6 +171,8 @@ def line_splitter(line: LineString, pt: Point) -> List[LineString]:
     Returns:
         List(LineString): List of linestrings
     """
+    # TODO: pt. inside line bounding box might be quicker.
+    # line.envelope.contains(pt)
     if pt.buffer(0.000001).intersects(line):
         distance = line.project(pt)
         coords = list(line.coords)
@@ -188,9 +211,42 @@ def quicksave(gpkg, name, geoms, geom_type):
             out_lyr.create_feature(shape)
 
 
-if __name__ == "__main__":
-
-    pass
-
+def main():
     # TODO Add transportation networks to vbet inputs
     # TODO Prepare clipped NHD Catchments as vbet polygons input
+
+    parser = argparse.ArgumentParser(
+        description='Floodplain Connectivity (BETA)',
+        # epilog="This is an epilog"
+    )
+    parser.add_argument('vbet_network', help='Vector line network', type=str)
+    parser.add_argument('vbet_polygon', help='Vector polygon layer', type=str)
+    parser.add_argument('roads', help='Vector line network', type=str)
+    parser.add_argument('railroads', help='Vector line network', type=str)
+    parser.add_argument('output_dir', help='Folder where output project will be created', type=str)
+    parser.add_argument('--debug_gpkg', help='Debug geopackage', type=str)
+    parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
+
+    args = dotenv.parse_args_env(parser)
+
+    # make sure the output folder exists
+    safe_makedirs(args.output_dir)
+
+    # Initiate the log file
+    log = Logger('FLOOD_CONN')
+    log.setup(logPath=os.path.join(args.output_dir, 'floodplain_connectivity.log'), verbose=args.verbose)
+    log.title('Floodplain Connectivity (BETA)')
+
+    try:
+        floodplain_connectivity(args.vbet_network, args.vbet_polygon, args.roads, args.railroads, args.output_dir, args.debug_gpkg)
+
+    except Exception as e:
+        log.error(e)
+        traceback.print_exc(file=sys.stdout)
+        sys.exit(1)
+
+    sys.exit(0)
+
+
+if __name__ == '__main__':
+    main()
