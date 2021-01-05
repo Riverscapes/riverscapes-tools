@@ -17,6 +17,8 @@ If you find that your tools have code they need to share you can either pull it 
 
 ## Repo guidelines:
 
+We're pretty much using the [Gitflow Workflow](https://www.atlassian.com/git/tutorials/comparing-workflows/gitflow-workflow)
+
 1. All work ***MUST*** happen on branches. 
 2. Make sure your pull requests merge onto `dev` and not `master`.
 3. Hotfixes may be applied directly to `master`... carefully and after lots of testing.
