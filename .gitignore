@@ -5,6 +5,8 @@ __pycache__/
 
 # PUBLIC is where the GH pages branch gets built
 PUBLIC
+# Ruby gems installed using bundler
+.vendor
 
 # C extensions
 *.so
