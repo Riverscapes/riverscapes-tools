@@ -26,6 +26,7 @@ from shapely.ops import unary_union
 import rasterio
 from rasterio import features
 import numpy as np
+from scipy import interpolate
 from rscommons.util import safe_makedirs, parse_metadata
 from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, dotenv, initGDALOGRErrors
 from rscommons import GeopackageLayer, VectorBase
@@ -40,11 +41,23 @@ cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/VBET.xsd', __versi
 
 thresh_vals = {"50": 0.5, "60": 0.6, "70": 0.7, "80": 0.8, "90": 0.9, "100": 1}
 
+# Transformation Curve Inputs
+tcurve_slope = {"values": np.array([0.0, 12.0]),
+                "output": np.array([1.0, 0.0])}
+tcurve_hand = {"values": np.array([0, 50]),
+               "output": np.array([1.0, 0.0])}
+tcurve_fa_dist = {"values": np.array([0, 2]),
+                  "output": np.array([1.0, 0.0])}
+tcurve_ch_dist = {"values": np.array([0, 2]),
+                  "output": np.array([1.0, 0.0])}
+
 LayerTypes = {
     'SLOPE_RASTER': RSLayer('Slope Raster', 'SLOPE_RASTER', 'Raster', 'inputs/slope.tif'),
     'HAND_RASTER': RSLayer('Hand Raster', 'HAND_RASTER', 'Raster', 'inputs/hand.tif'),
     'HILLSHADE': RSLayer('DEM Hillshade', 'HILLSHADE', 'Raster', 'inputs/dem_hillshade.tif'),
     'CHANNEL_RASTER': RSLayer('Channel Raster', 'CHANNEL_RASTER', 'Raster', 'inputs/channel.tif'),
+    'CHANNEL_BUFFER_RASTER': RSLayer('Channel Raster', 'CHANNEL_BUFFER_RASTER', 'Raster', 'inputs/channelbuffer.tif'),
+    'FLOW_AREA_RASTER': RSLayer('Flow Area Raster', 'FLOW_AREA_RASTER', 'Raster', 'inputs/flowarea.tif'),
     'INPUTS': RSLayer('Inputs', 'INPUTS', 'Geopackage', 'inputs/vbet_inputs.gpkg', {
         'FLOWLINES': RSLayer('NHD Flowlines', 'FLOWLINES', 'Vector', 'flowlines'),
         'FLOW_AREA': RSLayer('NHD Flow Areas', 'FLOW_AREA', 'Vector', 'flow_areas'),
@@ -52,6 +65,14 @@ LayerTypes = {
     'SLOPE_EV': RSLayer('Evidence Raster', 'SLOPE_EV_TMP', 'Raster', 'intermediates/nLoE_Slope.tif'),
     'HAND_EV': RSLayer('Evidence Raster', 'HAND_EV_TMP', 'Raster', 'intermediates/nLoE_HAND.tif'),
     'CHANNEL_MASK': RSLayer('Evidence Raster', 'CH_MASK', 'Raster', 'intermediates/nLOE_Channels.tif'),
+    'CHANNEL_DISTANCE': RSLayer('Evidence Raster', "CH_DIST", "Raster", "intermediates/nLOE_ChannelDist.tif"),
+    'FLOW_AREA_DISTANCE': RSLayer('Evidence Raster', "FA_DIST", "Raster", "intermediates/nLOE_FlowAreaDist.tif"),
+    'SLOPE_TRANSFORM': RSLayer('Evidence Raster', "SLOPE_TC", "Raster", "intermediates/T_Slope.tif"),
+    'HAND_TRANSFORM': RSLayer('Evidence Raster', "HAND_TC", "Raster", "intermediates/T_Hand.tif"),
+    'CHANNEL_DISTANCE_TRANSFORM': RSLayer('Evidence Raster', "CHAN_DIST_TC", "Raster", "intermediates/T_ChannelDist.tif"),
+    'FLOWAREA_DISTANCE_TRANSFORM': RSLayer('Evidence Raster', "FA_DIST_TC", "Raster", "intermediates/T_FlowAreaDist.tif"),
+    'TOPOGRAPHIC_EVIDENCE': RSLayer('Evidence Raster', 'TOPO_EVIDENCE', 'Raster', 'intermediates/TopographicEvidence.tif'),
+    'CHANNEL_EVIDENCE': RSLayer('Evidence Raster', 'CHANNEL_EVIDENCE', 'Raster', 'intermediates/ChannelEvidence.tif'),
     'EVIDENCE': RSLayer('Evidence Raster', 'EVIDENCE', 'Raster', 'intermediates/Evidence.tif'),
     'COMBINED_VRT': RSLayer('Combined VRT', 'COMBINED_VRT', 'VRT', 'intermediates/slope-hand-channel.vrt'),
     'INTERMEDIATES': RSLayer('Intermediates', 'Intermediates', 'Geopackage', 'intermediates/vbet_intermediates.gpkg', {
@@ -103,33 +124,69 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, max_slope, orig_hand, 
         min_buffer = (t[0] + abs(t[4])) / 2
 
     log.info("Buffering Polyine by bankfull width buffers")
-    reach_polygon = buffer_by_field('{}/vbet_network'.format(intermediates_gpkg_path), "BFwidth", cfg.OUTPUT_EPSG, min_buffer)
+    geom_reach_polygons = buffer_by_field('{}/vbet_network'.format(intermediates_gpkg_path), "BFwidth", cfg.OUTPUT_EPSG, min_buffer)
 
     # Create channel polygon by combining the reach polygon with the flow area polygon
-    area_polygon = get_geometry_unary_union(flowareas_path, cfg.OUTPUT_EPSG)
+    geom_flow_area_polygons = get_geometry_unary_union(flowareas_path, cfg.OUTPUT_EPSG)
     log.info('Unioning reach and area polygons')
 
     # Union the buffered reach and area polygons
-    if area_polygon is None or area_polygon.area == 0:
+    if geom_flow_area_polygons is None or geom_flow_area_polygons.area == 0:
         log.warning('Area of the area polygon is 0, we will disregard it')
-        channel_polygon = reach_polygon
+        geom_channel_polygon = geom_reach_polygons
     else:
-        channel_polygon = unary_union([reach_polygon, area_polygon])
-        reach_polygon = None  # free up some memory
-        area_polygon = None
+        geom_channel_polygon = unary_union([geom_reach_polygons, geom_flow_area_polygons])
+        # reach_polygon = None  # free up some memory
+        # area_polygon = None
 
     # Rasterize the channel polygon and write to raster
     log.info('Writing channel raster using slope as a template')
     channel_raster = os.path.join(project_folder, LayerTypes['CHANNEL_RASTER'].rel_path)
+    flow_area_raster = os.path.join(project_folder, LayerTypes['FLOW_AREA_RASTER'].rel_path)
+    channel_buffer_raster = os.path.join(project_folder, LayerTypes['CHANNEL_BUFFER_RASTER'].rel_path)
     with rasterio.open(proj_slope) as slope_src:
         chl_meta = slope_src.meta
         chl_meta['dtype'] = rasterio.uint8
         chl_meta['nodata'] = 0
         chl_meta['compress'] = 'deflate'
-        image = features.rasterize([(mapping(channel_polygon), 1)], out_shape=slope_src.shape, transform=slope_src.transform, fill=0)
+        image = features.rasterize([(mapping(geom_channel_polygon), 1)], out_shape=slope_src.shape, transform=slope_src.transform, fill=0)
         with rasterio.open(channel_raster, 'w', **chl_meta) as dst:
             dst.write(image, indexes=1)
-    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['CHANNEL_RASTER'])
+            project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['CHANNEL_RASTER'])
+        image = features.rasterize([(mapping(geom_flow_area_polygons), 1)], out_shape=slope_src.shape, transform=slope_src.transform, fill=0)
+        with rasterio.open(flow_area_raster, 'w', **chl_meta) as dest_fa_raster:
+            dest_fa_raster.write(image, indexes=1)
+            project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['FLOW_AREA_RASTER'])
+        image = features.rasterize([(mapping(geom_reach_polygons), 1)], out_shape=slope_src.shape, transform=slope_src.transform, fill=0)
+        with rasterio.open(channel_buffer_raster, 'w', **chl_meta) as dest_chbuffer:
+            dest_chbuffer.write(image, indexes=1)
+            project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['CHANNEL_BUFFER_RASTER'])
+
+    # Compute Proximity for channel rasters
+    def proximity_raster(source, outfile):
+        src_ds = gdal.Open(source)
+        srcband = src_ds.GetRasterBand(1)
+
+        drv = gdal.GetDriverByName('GTiff')
+        dst_ds = drv.Create(outfile,
+                            src_ds.RasterXSize, src_ds.RasterYSize, 1,
+                            gdal.GetDataTypeByName('Float32'))
+
+        dst_ds.SetGeoTransform(src_ds.GetGeoTransform())
+        dst_ds.SetProjection(src_ds.GetProjectionRef())
+
+        dstband = dst_ds.GetRasterBand(1)
+
+        gdal.ComputeProximity(srcband, dstband, ["VALUES=1", "DISTUNITS=GEO"])
+        srcband = None
+        dstband = None
+        src_ds = None
+        dst_ds = None
+
+    channel_dist_raster = os.path.join(project_folder, LayerTypes['CHANNEL_DISTANCE'].rel_path)
+    fa_dist_raster = os.path.join(project_folder, LayerTypes['FLOW_AREA_DISTANCE'].rel_path)
+    proximity_raster(channel_buffer_raster, channel_dist_raster)
+    proximity_raster(flow_area_raster, fa_dist_raster)
 
     # Create a VRT that combines all the evidence rasters
     log.info('Creating combined evidence VRT')
@@ -156,11 +213,16 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, max_slope, orig_hand, 
     translateoptions = gdal.TranslateOptions(gdal.ParseCommandLine("-of Gtiff -b 3 -co COMPRESS=DEFLATE"))
     gdal.Translate(channel_msk, vrtpath, options=translateoptions)
 
-    evidence_raster = os.path.join(project_folder, LayerTypes['EVIDENCE'].rel_path)
+    slope_transform_raster = os.path.join(project_folder, LayerTypes['SLOPE_TRANSFORM'].rel_path)
+    hand_transform_raster = os.path.join(project_folder, LayerTypes['HAND_TRANSFORM'].rel_path)
+    chan_dist_transform_raster = os.path.join(project_folder, LayerTypes['CHANNEL_DISTANCE_TRANSFORM'].rel_path)
+    fa_dist_transform_raster = os.path.join(project_folder, LayerTypes['FLOWAREA_DISTANCE_TRANSFORM'].rel_path)
+    topo_evidence_raster = os.path.join(project_folder, LayerTypes['TOPOGRAPHIC_EVIDENCE'].rel_path)
+    channel_evidence_raster = os.path.join(project_folder, LayerTypes['CHANNEL_EVIDENCE'].rel_path)
 
     # Open evidence rasters concurrently. We're looping over windows so this shouldn't affect
     # memory consumption too much
-    with rasterio.open(slope_ev) as slp_src, rasterio.open(hand_ev) as hand_src:
+    with rasterio.open(slope_ev) as slp_src, rasterio.open(hand_ev) as hand_src, rasterio.open(channel_dist_raster) as cdist_src, rasterio.open(fa_dist_raster) as fadist_src:
         # All 3 rasters should have the same extent and properties. They differ only in dtype
         out_meta = slp_src.meta
         # Rasterio can't write back to a VRT so rest the driver and number of bands for the output
@@ -170,6 +232,12 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, max_slope, orig_hand, 
         chl_meta['dtype'] = rasterio.uint8
         # We use this to buffer the output
         cell_size = abs(slp_src.get_transform()[1])
+
+        # Transform Functions
+        f_slope = interpolate.interp1d(tcurve_slope['values'], tcurve_slope['output'], bounds_error=False, fill_value=np.nan)
+        f_hand = interpolate.interp1d(tcurve_hand['values'], tcurve_hand['output'], bounds_error=False, fill_value=np.nan)
+        f_chan_dist = interpolate.interp1d(tcurve_ch_dist['values'], tcurve_ch_dist['output'], bounds_error=False, fill_value=np.nan)
+        f_fa_dist = interpolate.interp1d(tcurve_fa_dist['values'], tcurve_fa_dist['output'], bounds_error=False, fill_value=np.nan)
 
         # Evidence raster logic
         def ffunc(x, y):
@@ -184,7 +252,7 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, max_slope, orig_hand, 
             z3 = z1 * z2
             return z3
 
-        with rasterio.open(evidence_raster, "w", **out_meta) as dest:
+        with rasterio.open(topo_evidence_raster, "w", **out_meta) as dest, rasterio.open(channel_evidence_raster, 'w', **out_meta) as dest_channel, rasterio.open(slope_transform_raster, "w", **out_meta) as slope_ev_out, rasterio.open(hand_transform_raster, 'w', **out_meta) as hand_ev_out, rasterio.open(chan_dist_transform_raster, 'w', **out_meta) as chan_dist_ev_out, rasterio.open(fa_dist_transform_raster, 'w', **out_meta) as fa_dist_ev_out:
             progbar = ProgressBar(len(list(slp_src.block_windows(1))), 50, "Calculating evidence layer")
             counter = 0
             # Again, these rasters should be orthogonal so their windows should also line up
@@ -193,11 +261,26 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, max_slope, orig_hand, 
                 counter += 1
                 slope_data = slp_src.read(1, window=window, masked=True)
                 hand_data = hand_src.read(1, window=window, masked=True)
+                cdist_data = cdist_src.read(1, window=window, masked=True)
+                fadist_data = fadist_src.read(1, window=window, masked=True)
 
+                slope_transform = np.ma.MaskedArray(f_slope(slope_data.data), mask=slope_data.mask)
+                hand_transform = np.ma.MaskedArray(f_hand(hand_data.data), mask=hand_data.mask)
+                channel_dist_transform = np.ma.MaskedArray(f_chan_dist(cdist_data.data), mask=cdist_data.mask)
+                fa_dist_transform = np.ma.MaskedArray(f_fa_dist(fadist_data.data), mask=fadist_data.mask)
+
+                fvals = slope_transform * hand_transform
+                fvals_channel = np.maximum(channel_dist_transform, fa_dist_transform)
                 # Fill the masked values with the appropriate nodata vals
-                fvals = ffunc(slope_data, hand_data)
+                # fvals = ffunc(slope_data, hand_data)
                 # Unthresholded in the base band (mostly for debugging)
                 dest.write(np.ma.filled(np.float32(fvals), out_meta['nodata']), window=window, indexes=1)
+                slope_ev_out.write(slope_transform.astype('float32'), window=window, indexes=1)
+                hand_ev_out.write(hand_transform.astype('float32'), window=window, indexes=1)
+                chan_dist_ev_out.write(channel_dist_transform.astype('float32'), window=window, indexes=1)
+                fa_dist_ev_out.write(fa_dist_transform.astype('float32'), window=window, indexes=1)
+                dest_channel.write(np.ma.filled(np.float32(fvals_channel), out_meta['nodata']), window=window, indexes=1)
+                # slope_ev_out.write(slope_transform.data, window=window, indexes=1)
 
             progbar.finish()
 
@@ -205,7 +288,10 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, max_slope, orig_hand, 
         # rasterio.shutil.delete(slope_ev)
         # rasterio.shutil.delete(hand_ev)
         # The remaining rasters get added to the project
-        project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['EVIDENCE'])
+        project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['TOPOGRAPHIC_EVIDENCE'])
+
+    # Composite Evidence Raster
+    evidence_raster = topo_evidence_raster
 
     # Get the length of a meter (roughly)
     degree_factor = GeopackageLayer.rough_convert_metres_to_raster_units(proj_slope, 1)
@@ -266,7 +352,7 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, max_slope, orig_hand, 
         log.info('Sanitizing')
         sanitize(
             '{}/{}'.format(intermed_gpkg_path, plgnize_lyr.rel_path),
-            channel_polygon,
+            geom_channel_polygon,
             '{}/{}'.format(vbet_path, vbet_lyr.rel_path),
             min_hole_degrees,
             buff_dist
@@ -287,7 +373,7 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, max_slope, orig_hand, 
     project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['VBET'])
 
     # Channel mask is duplicated from inputs so we delete it.
-    rasterio.shutil.delete(channel_msk)
+    # rasterio.shutil.delete(channel_msk)
 
     report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
     project.add_report(proj_nodes['Outputs'], LayerTypes['REPORT'], replace=True)
