@@ -23,16 +23,15 @@ from osgeo import ogr, gdal, osr
 import numpy as np
 from rscommons.database import dict_factory
 
-from rscommons.util import safe_makedirs, safe_remove_file
+from rscommons.util import safe_makedirs
 from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALOGRErrors, ProgressBar
 from rscommons import GeopackageLayer, VectorBase, get_shp_or_gpkg
 from rscommons.build_network import build_network
 from rscommons.database import create_database
-from rscommons.reach_attributes import write_attributes, write_reach_attributes
+from rscommons.reach_attributes import write_reach_attributes
 from rscommons.vector_ops import get_geometry_unary_union, copy_feature_class
 from rscommons.thiessen.vor import NARVoronoi
 from rscommons.thiessen.shapes import centerline_points, clip_polygons
-from rscommons.vector_ops import write_attributes
 
 from rvd.rvd_report import RVDReport
 from rvd.lib.load_vegetation import load_vegetation_raster

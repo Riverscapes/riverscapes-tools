@@ -1,7 +1,8 @@
-import rasterio
 import os
 import xml.etree.ElementTree as ET
+import rasterio
 import numpy as np
+from rscommons.util import safe_makedirs
 
 
 def load_vegetation_raster(rasterpath: str, existing=False, output_folder=None):
@@ -138,6 +139,7 @@ def load_vegetation_raster(rasterpath: str, existing=False, output_folder=None):
         if output_folder:
             for raster_name, raster_array in output.items():
                 if raster_array is not None:
+                    safe_makedirs(output_folder)
                     with rasterio.open(os.path.join(output_folder, f"{'EXISTING' if existing else 'HISTORIC'}_{raster_name}.tiff"),
                                        'w',
                                        driver='GTiff',
