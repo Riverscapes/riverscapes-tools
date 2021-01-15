@@ -7,7 +7,6 @@ __pycache__/
 PUBLIC
 # Ruby gems installed using bundler
 .vendor
-
 # C extensions
 *.so
 _site
@@ -107,6 +106,7 @@ celerybeat.pid
 
 # Environments
 .env
+.env.*
 .venv
 env/
 venv/
