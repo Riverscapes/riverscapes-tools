@@ -6,7 +6,8 @@
 """
 import os
 from osgeo import gdal
-from shapely.geometry import Point
+import rasterio
+from shapely.geometry import Point, box
 from rscommons import Logger, VectorBase
 from rscommons.raster_buffer_stats import raster_buffer_stats2
 from rscommons.classes.vector_classes import get_shp_or_gpkg
@@ -32,6 +33,10 @@ def reach_geometry(flow_lines: Path, dem_path: Path, buffer_distance: float):
     geo_transform = dataset.GetGeoTransform()
     xcentre = geo_transform[0] + (dataset.RasterXSize * geo_transform[1]) / 2.0
     epsg = get_utm_zone_epsg(xcentre)
+
+    with rasterio.open(dem_path) as raster:
+        bounds = raster.bounds
+        extent = box(*bounds)
 
     # Buffer the start and end point of each reach
     line_start_polygons = {}
@@ -61,8 +66,11 @@ def reach_geometry(flow_lines: Path, dem_path: Path, buffer_distance: float):
                 geom_clone.Transform(transform_to_raster)
 
             # Buffer the ends of the reach polyline in the raster spatial reference
-            line_start_polygons[reach_id] = Point(VectorBase.ogr2shapely(geom_clone, transform_to_raster).coords[0]).buffer(vector_buffer)
-            line_end_polygons[reach_id] = Point(VectorBase.ogr2shapely(geom_clone, transform_to_raster).coords[-1]).buffer(vector_buffer)
+            pt_start = Point(VectorBase.ogr2shapely(geom_clone, transform_to_raster).coords[0])
+            pt_end = Point(VectorBase.ogr2shapely(geom_clone, transform_to_raster).coords[-1])
+            if extent.contains(pt_start) and extent.contains(pt_end):
+                line_start_polygons[reach_id] = pt_start.buffer(vector_buffer)
+                line_end_polygons[reach_id] = pt_end.buffer(vector_buffer)
 
     # Retrieve the mean elevation of start and end of point
     line_start_elevations = raster_buffer_stats2(line_start_polygons, dem_path)
@@ -79,7 +87,7 @@ def reach_geometry(flow_lines: Path, dem_path: Path, buffer_distance: float):
             if sta_data['Mean'] is not None and end_data['Mean'] is not None and sta_data['Mean'] != end_data['Mean']:
                 data['iGeo_Slope'] = abs(sta_data['Mean'] - end_data['Mean']) / data['iGeo_Len']
         else:
-            log.warning('{:,} features skipped because one or both ends of polyline not on DEM raster'.format(dem_path))
+            log.warning('{:,} features skipped because one or both ends of polyline not on DEM raster'.format(reach_id))
 
     write_db_attributes(os.path.dirname(flow_lines), reaches, ['iGeo_Len', 'iGeo_ElMax', 'iGeo_ElMin', 'iGeo_Slope'])
 
