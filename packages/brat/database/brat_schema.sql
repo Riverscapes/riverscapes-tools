@@ -136,5 +136,29 @@ CREATE VIEW vwReachVegetationTypes AS SELECT E.EpochID,
           Buffer,
           W.EcoregionID
  ORDER BY E.Name,
-          TotalArea DESC
+          TotalArea DESC;
 /* vwReachVegetationTypes(EpochID,Epoch,VegetationID,Name,Buffer,TotalArea) */
+
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Ecoregions', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('DamLimitations', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('DamOpportunities', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('DamRisks', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('DamCapacities', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Epochs', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachCodes', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachVegetation', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('MetaData', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('LandUses', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Agencies', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('LandUseIntensities', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('VegetationOverrides', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('WatershedHydroParams', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Watersheds', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('VegetationTypes', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachAttibutes', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('HydroParams', 'attributes');
+
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('vwReachAttributes', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('vwHydroParams', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('vwVegetationSuitability', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('vwReachVegetationTypes', 'attributes');
