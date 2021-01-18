@@ -220,8 +220,8 @@ def rvd(huc: int, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_or
     # Load Vegetation Rasters
     log.info(f"Loading Existing and Historic Vegetation Rasters")
     vegetation = {}
-    vegetation["EXISTING"] = load_vegetation_raster(prj_existing_path, True, output_folder=os.path.join(output_folder, 'Intermediates'))
-    vegetation["HISTORIC"] = load_vegetation_raster(prj_historic_path, False, output_folder=os.path.join(output_folder, 'Intermediates'))
+    vegetation["EXISTING"] = load_vegetation_raster(prj_existing_path, outputs_gpkg_path, True, output_folder=os.path.join(output_folder, 'Intermediates'))
+    vegetation["HISTORIC"] = load_vegetation_raster(prj_historic_path, outputs_gpkg_path, False, output_folder=os.path.join(output_folder, 'Intermediates'))
 
     if vegetation["EXISTING"]["RAW"].shape != vegetation["HISTORIC"]["RAW"].shape:
         raise Exception('Vegetation raster shapes are not equal Existing={} Historic={}. Cannot continue'.format(vegetation["EXISTING"]["RAW"].shape, vegetation["HISTORIC"]["RAW"].shape))
@@ -319,7 +319,7 @@ def rvd(huc: int, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_or
     log.info('Insert values to GPKG tables')
 
     # TODO move this to write_attirubtes method
-    with get_shp_or_gpkg(flowlines_orig, write=True) as in_layer:
+    with get_shp_or_gpkg(outputs_gpkg_path, layer_name='Reaches', write=True) as in_layer:
         # Create each field and store the name and index in a list of tuples
         field_indices = [(field, in_layer.create_field(field, field_type)) for field, field_type in {
             "FromConifer": ogr.OFTReal,
