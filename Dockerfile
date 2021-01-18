@@ -118,8 +118,9 @@ USER root:$GroupName
 # Pull in the python libraries. We build it in a different stage to keep the id_rsa private
 # =======================================================================================
 COPY . /usr/local/riverscapes-tools
+WORKDIR /usr/local/riverscapes-tools
+RUN ./scripts/bootstrap.sh
 
-WORKDIR /opt/builder
+WORKDIR /shared
 
-WORKDIR /usr/local
 ENTRYPOINT [ "sh", "/usr/local/riverscapes-tools/bin/run.sh"]
