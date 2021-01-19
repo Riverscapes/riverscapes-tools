@@ -29,6 +29,10 @@ class SQLiteCon():
         """
 
         self.conn = sqlite3.connect(self.filepath)
+
+        # turn on foreign key constraints. Does not happen by default
+        self.conn.execute('PRAGMA foreign_keys = ON;')
+
         self.conn.row_factory = dict_factory
         self.curs = self.conn.cursor()
         return self
@@ -78,6 +82,7 @@ def create_database(huc: str, db_path: str, metadata: Dict[str, str], epsg: int,
     qry = open(schema_path, 'r').read()
     sqlite3.complete_statement(qry)
     conn = sqlite3.connect(db_path)
+    conn.execute('PRAGMA foreign_keys = ON;')
     curs = conn.cursor()
     curs.executescript(qry)
 
@@ -125,6 +130,7 @@ def update_database(db_path, csv_path):
     log.info('Updating SQLite database at {0}'.format(db_path))
 
     conn = sqlite3.connect(db_path)
+    conn.execute('PRAGMA foreign_keys = ON;')
     conn.row_factory = dict_factory
     curs = conn.cursor()
 
@@ -273,6 +279,7 @@ def set_reach_fields_null(database, fields):
     log = Logger('Database')
     log.info('Setting {} reach fields to NULL'.format(len(fields)))
     conn = sqlite3.connect(database)
+    con.execute('PRAGMA foreign_keys = ON')
     conn.execute('UPDATE ReachAttributes SET {}'.format(','.join(['{} = NULL'.format(field) for field in fields])))
     conn.commit()
     conn.close()
