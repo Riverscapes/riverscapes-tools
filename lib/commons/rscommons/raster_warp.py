@@ -79,7 +79,7 @@ def raster_vrt_stitch(inrasters, outraster, epsg, clip=None, clean=False):
     #     os.remove(path_vrt)
 
 
-def raster_warp(inraster, outraster, epsg, clip=None, cutlineBlend=None):
+def raster_warp(inraster: str, outraster: str, epsg, clip=None, warp_options: dict = None):
     """
     Reproject a raster to a different coordinate system.
     :param inraster: Input dataset
@@ -87,7 +87,10 @@ def raster_warp(inraster, outraster, epsg, clip=None, cutlineBlend=None):
     :param epsg: Output spatial reference EPSG identifier
     :param log: Log file object
     :param clip: Optional Polygon dataset to clip the output.
+    :param warp_options: Extra GDALWarpOptions.
     :return: None
+
+    https://gdal.org/python/osgeo.gdal-module.html#WarpOptions
     """
 
     log = Logger('Raster Warp')
@@ -106,10 +109,12 @@ def raster_warp(inraster, outraster, epsg, clip=None, cutlineBlend=None):
     warpvrt = os.path.join(os.path.dirname(outraster), 'temp_gdal_warp_output.vrt')
 
     log.info('Performing GDAL warp to temporary VRT file.')
-    warp_options = gdal.WarpOptions(dstSRS='EPSG:{}'.format(epsg), format='vrt')
+
     if clip:
         log.info('Clipping to polygons using {}'.format(clip))
-        warp_options = gdal.WarpOptions(dstSRS='EPSG:{}'.format(epsg), format='vrt', cutlineDSName=clip, cropToCutline=True, cutlineBlend=cutlineBlend)
+        warp_options = gdal.WarpOptions(dstSRS='EPSG:{}'.format(epsg), format='vrt', cutlineDSName=clip, cropToCutline=True, **warp_options)
+    else:
+        warp_options = gdal.WarpOptions(dstSRS='EPSG:{}'.format(epsg), format='vrt', **warp_options)
 
     ds = gdal.Warp(warpvrt, inraster, options=warp_options)
 

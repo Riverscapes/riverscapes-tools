@@ -36,6 +36,7 @@ from rscontext.flow_accumulation import flow_accumulation, flow_accum_to_drainag
 from rscontext.clip_ownership import clip_ownership
 from rscontext.filter_ecoregions import filter_ecoregions
 from rscontext.rs_context_report import RSContextReport
+from rscontext.vegetation import clip_vegetation
 from rscontext.__version__ import __version__
 
 initGDALOGRErrors()
@@ -158,7 +159,7 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
         except StopIteration:
             raise Exception('Could not find .bil file corresponding to "{}"'.format(ptype))
         _node, project_raster_path = project.add_project_raster(realization, LayerTypes[ptype])
-        raster_warp(source_raster_path, project_raster_path, cfg.OUTPUT_EPSG, nhd[boundary], 2)
+        raster_warp(source_raster_path, project_raster_path, cfg.OUTPUT_EPSG, nhd[boundary], {"cutlineBlend": 2})
 
         # Use the mean annual precipitation to calculate bankfull width
         if ptype.lower() == 'ppt':
@@ -274,11 +275,10 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
 
     # Clip and re-project the existing and historic vegetation
     log.info('Processing existing and historic vegetation rasters.')
-    raster_warp(existing_veg, existing_clip, cfg.OUTPUT_EPSG, nhd[boundary], 2)
-    raster_warp(historic_veg, historic_clip, cfg.OUTPUT_EPSG, nhd[boundary], 2)
+    clip_vegetation(nhd[boundary], existing_veg, existing_clip, historic_veg, historic_clip, cfg.OUTPUT_EPSG)
 
     log.info('Process the Fair Market Value Raster.')
-    raster_warp(fair_market, fair_market_clip, cfg.OUTPUT_EPSG, nhd[boundary], 3)
+    raster_warp(fair_market, fair_market_clip, cfg.OUTPUT_EPSG, nhd[boundary], {"cutlineBlend": 3})
 
     # Clip the landownership Shapefile to a 10km buffer around the watershed boundary
     own_path = os.path.join(output_folder, LayerTypes['OWNERSHIP'].rel_path)

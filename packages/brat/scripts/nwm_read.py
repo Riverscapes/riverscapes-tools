@@ -19,7 +19,6 @@ from sqlbrat.lib.flow_accumulation import flow_accumulation
 from sqlbrat.lib.flow_accumulation import flow_accum_to_drainage_area
 
 from rscommons import Logger
-from rscommons.raster_warp import raster_warp
 from rscommons.download_dem import download_dem
 from rscommons.science_base import download_shapefile_collection
 from rscommons.science_base import get_nhd_url
