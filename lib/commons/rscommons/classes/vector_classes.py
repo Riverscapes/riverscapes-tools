@@ -30,7 +30,7 @@ class ShapefileLayer(VectorBase):
         # layer name isn't important so we hardcode 'layer'
         super(ShapefileLayer, self).__init__(filepath, VectorBase.Drivers.Shapefile, 'layer', replace_ds_on_open=delete, allow_write=write)
         if delete is True:
-            self.delete()
+            self.delete(filepath)
 
     def create(self, geom_type: int, epsg: int = None, spatial_ref: osr.SpatialReference = None, fields: dict = None):
         """Create a shapefile and associated layer
