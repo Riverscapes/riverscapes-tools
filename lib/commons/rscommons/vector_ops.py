@@ -203,7 +203,7 @@ def copy_feature_class(in_layer_path: str, out_layer_path: str,
                 progbar.erase()  # get around the progressbar
                 log.warning('Feature with FID={} has no geometry. Skipping'.format(feature.GetFID()))
                 continue
-            if geom.GetGeometryType() == 2:
+            if geom.GetGeometryType() in VectorBase.LINE_TYPES:
                 if geom.Length() == 0.0:
                     progbar.erase()  # get around the progressbar
                     log.warning('Feature with FID={} has no Length. Skipping'.format(feature.GetFID()))
