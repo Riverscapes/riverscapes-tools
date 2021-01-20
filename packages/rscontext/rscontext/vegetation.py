@@ -1,11 +1,5 @@
-import os
-import json
-import argparse
-from osgeo import ogr
-from osgeo import osr
-from shapely.geometry import shape, mapping
-from rscommons import Logger, dotenv, get_shp_or_gpkg, ShapefileLayer
 import rasterio
+from rscommons import Logger
 from rscommons.raster_warp import raster_warp
 
 
@@ -22,43 +16,20 @@ def clip_vegetation(boundary_path: str, existing_veg_path: str, existing_clip_pa
     """
     log = Logger('Vegetation Clip')
 
-    with rasterio.open(existing_veg_path) as src:
-        meta_existing = src.meta
-        log.info('Got existing veg meta: {}'.format(meta_existing['transform']))
+    with rasterio.open(existing_veg_path) as exist, rasterio.open(historic_veg_path) as hist:
+        meta_existing = exist.meta
+        meta_hist = hist.meta
 
-    with rasterio.open(historic_veg_path) as src:
-        meta_hist = src.meta
-        log.info('Got historic veg meta: {}'.format(meta_hist['transform']))
-
-    # 0.01% cell size difference
-    # If it's smaller than this we can force it pretty comfortably
-    tolerance = 0.0001
-
-    if (meta_existing['transform'][0] != meta_hist['transform'][0]):
-        # Sometimes the national rasters have minor projection problems. We tolerate up to a single pixel mismatch
-        msg = 'Vegetation raster cell widths do not match: existing {}, historic {}'.format(meta_existing['transform'][0], meta_hist['transform'][0])
-        if abs((meta_existing['transform'][0] - meta_hist['transform'][0]) / meta_hist['transform'][0]) > tolerance:
+        if meta_existing['transform'][0] != meta_hist['transform'][0]:
+            msg = 'Vegetation raster cell widths do not match: existing {}, historic {}'.format(meta_existing['transform'][0], meta_hist['transform'][0])
             raise Exception(msg)
-        else:
-            log.warning(msg)
 
-    if (meta_existing['transform'][4] != meta_hist['transform'][4]):
-        # Sometimes the national rasters have minor projection problems. We tolerate up to a single pixel mismatch
-        msg = 'Vegetation raster cell heights do not match: existing {}, historic {}'.format(meta_existing['transform'][4], meta_hist['transform'][4])
-        if abs((meta_existing['transform'][4] - meta_hist['transform'][4]) / meta_hist['transform'][4]) > tolerance:
+        if meta_existing['transform'][4] != meta_hist['transform'][4]:
+            msg = 'Vegetation raster cell heights do not match: existing {}, historic {}'.format(meta_existing['transform'][4], meta_hist['transform'][4])
             raise Exception(msg)
-        else:
-            log.warning(msg)
 
-    # The Rasters should generally line up but just in case they don't we force the outputs
-    # to both match the existing raster cell sizes
     # https://gdal.org/python/osgeo.gdal-module.html#WarpOptions
-    warp_options = {
-        "xRes": meta_existing['transform'][0],
-        "yRes": meta_existing['transform'][4],
-        "targetAlignedPixels": True,
-        "cutlineBlend": 2
-    }
+    warp_options = {"cutlineBlend": 2}
     # Now do the raster warp
     raster_warp(existing_veg_path, existing_clip_path, output_epsg, clip=boundary_path, warp_options=warp_options)
     raster_warp(historic_veg_path, historic_clip_path, output_epsg, clip=boundary_path, warp_options=warp_options)
