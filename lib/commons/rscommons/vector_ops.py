@@ -167,7 +167,8 @@ def copy_feature_class(in_layer_path: str, out_layer_path: str,
                        epsg: int = None,
                        attribute_filter: str = None,
                        clip_shape: BaseGeometry = None,
-                       clip_rect: List[float] = None
+                       clip_rect: List[float] = None,
+                       buffer: float = 0,
                        ) -> None:
     """Copy a Shapefile from one location to another
 
@@ -182,6 +183,7 @@ def copy_feature_class(in_layer_path: str, out_layer_path: str,
         attribute_filter (str, optional): [description]. Defaults to None.
         clip_shape (BaseGeometry, optional): [description]. Defaults to None.
         clip_rect (List[double minx, double miny, double maxx, double maxy)]): Iterate over a subset by clipping to a Shapely-ish geometry. Defaults to None.
+        buffer (float): Buffer the output features (in meters).
     """
 
     log = Logger('copy_feature_class')
@@ -196,7 +198,7 @@ def copy_feature_class(in_layer_path: str, out_layer_path: str,
         transform = VectorBase.get_transform(in_layer.spatial_ref, out_layer.spatial_ref)
 
         # This is the callback method that will be run on each feature
-        for feature, _counter, progbar in in_layer.iterate_features("Copying features", write_layers=[out_layer], clip_shape=clip_shape, attribute_filter=attribute_filter):
+        for feature, _counter, progbar in in_layer.iterate_features("Copying features", write_layers=[out_layer], clip_shape=clip_shape, clip_rect=clip_rect, attribute_filter=attribute_filter):
             geom = feature.GetGeometryRef()
 
             if geom is None:
@@ -208,6 +210,12 @@ def copy_feature_class(in_layer_path: str, out_layer_path: str,
                     progbar.erase()  # get around the progressbar
                     log.warning('Feature with FID={} has no Length. Skipping'.format(feature.GetFID()))
                     continue
+
+            # Buffer the shape if we need to
+            if buffer != 0:
+                buffer = in_layer.rough_convert_metres_to_vector_units(buffer)
+                geom = geom.Buffer(buffer)
+
             geom.Transform(transform)
 
             # Create output Feature
