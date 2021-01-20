@@ -279,7 +279,7 @@ def set_reach_fields_null(database, fields):
     log = Logger('Database')
     log.info('Setting {} reach fields to NULL'.format(len(fields)))
     conn = sqlite3.connect(database)
-    con.execute('PRAGMA foreign_keys = ON')
+    conn.execute('PRAGMA foreign_keys = ON')
     conn.execute('UPDATE ReachAttributes SET {}'.format(','.join(['{} = NULL'.format(field) for field in fields])))
     conn.commit()
     conn.close()
