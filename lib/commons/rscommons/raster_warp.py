@@ -79,7 +79,7 @@ def raster_vrt_stitch(inrasters, outraster, epsg, clip=None, clean=False):
     #     os.remove(path_vrt)
 
 
-def raster_warp(inraster: str, outraster: str, epsg, clip=None, warp_options: dict = None):
+def raster_warp(inraster: str, outraster: str, epsg, clip=None, warp_options: dict = {}):
     """
     Reproject a raster to a different coordinate system.
     :param inraster: Input dataset
