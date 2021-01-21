@@ -115,8 +115,8 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, max_slope, orig_hand, 
     project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
 
     # Create a copy of the flow lines with just the perennial and also connectors inside flow areas
-
-    vbet_network(flowlines_path, flowareas_path, intermediates_gpkg_path, cfg.OUTPUT_EPSG)
+    fcodes = [33400, 46003, 46006, 46007, 55800]  # TODO expose included fcodes as a tool parameter?
+    vbet_network(flowlines_path, flowareas_path, intermediates_gpkg_path, cfg.OUTPUT_EPSG, fcodes)
 
     # Get raster resolution as min buffer and apply bankfull width buffer to reaches
     with rasterio.open(proj_slope) as raster:
