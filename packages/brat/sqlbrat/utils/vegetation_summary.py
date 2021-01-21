@@ -8,6 +8,7 @@ import os
 import numpy as np
 from osgeo import gdal
 import rasterio
+import sqlite3
 from rasterio.mask import mask
 from rscommons import GeopackageLayer, Logger
 from rscommons.database import SQLiteCon
@@ -40,38 +41,55 @@ def vegetation_summary(outputs_gpkg_path: str, label: str, veg_raster: str, buff
 
     # Open the raster and then loop over all polyline features
     veg_counts = []
-    with rasterio.open(veg_raster) as src:
+    with rasterio.open(veg_raster) as src, GeopackageLayer(os.path.join(outputs_gpkg_path, 'ReachGeometry')) as lyr:
+        _srs, transform = VectorBase.get_transform_from_raster(lyr.spatial_ref, veg_raster)
 
-        with GeopackageLayer(os.path.join(outputs_gpkg_path, 'ReachGeometry')) as lyr:
+        for feature, _counter, _progbar in lyr.iterate_features(label):
+            reach_id = feature.GetFID()
+            geom = feature.GetGeometryRef()
+            if transform:
+                geom.Transform(transform)
 
-            _srs, transform = VectorBase.get_transform_from_raster(lyr.spatial_ref, veg_raster)
+            polygon = VectorBase.ogr2shapely(geom).buffer(raster_buffer)
 
-            for feature, _counter, _progbar in lyr.iterate_features(label):
-                reach_id = feature.GetFID()
-                geom = feature.GetGeometryRef()
-                if transform:
-                    geom.Transform(transform)
+            try:
+                # retrieve an array for the cells under the polygon
+                raw_raster = mask(src, [polygon], crop=True)[0]
+                mask_raster = np.ma.masked_values(raw_raster, src.nodata)
+                # print(mask_raster)
 
-                polygon = VectorBase.ogr2shapely(geom).buffer(raster_buffer)
-
-                try:
-                    # retrieve an array for the cells under the polygon
-                    raw_raster = mask(src, [polygon], crop=True)[0]
-                    mask_raster = np.ma.masked_values(raw_raster, src.nodata)
-                    # print(mask_raster)
-
-                    # Reclass the raster to dam suitability. Loop over present values for performance
-                    for oldvalue in np.unique(mask_raster):
-                        if oldvalue is not np.ma.masked:
-                            cell_count = np.count_nonzero(mask_raster == oldvalue)
-                            veg_counts.append([reach_id, int(oldvalue), buffer, cell_count * cell_area, cell_count])
-                except Exception as ex:
-                    log.warning('Error obtaining vegetation raster values for ReachID {}'.format(reach_id))
-                    log.warning(ex)
+                # Reclass the raster to dam suitability. Loop over present values for performance
+                for oldvalue in np.unique(mask_raster):
+                    if oldvalue is not np.ma.masked:
+                        cell_count = np.count_nonzero(mask_raster == oldvalue)
+                        veg_counts.append([reach_id, int(oldvalue), buffer, cell_count * cell_area, cell_count])
+            except Exception as ex:
+                log.warning('Error obtaining vegetation raster values for ReachID {}'.format(reach_id))
+                log.warning(ex)
 
     # Write the reach vegetation values to the database
+    # Because sqlite3 doesn't give us any feedback we do this in batches so that we can figure out what values
+    # Are causing constraint errors
     with SQLiteCon(outputs_gpkg_path) as database:
-        database.conn.executemany('INSERT INTO ReachVegetation (ReachID, VegetationID, Buffer, Area, CellCount) VALUES (?, ?, ?, ?, ?)', veg_counts)
+        errs = 0
+        batch_count = 0
+        for veg_record in veg_counts:
+            batch_count += 1
+            try:
+                database.conn.execute('INSERT INTO ReachVegetation (ReachID, VegetationID, Buffer, Area, CellCount) VALUES (?, ?, ?, ?, ?)', veg_record)
+            # Sqlite can't report on SQL errors so we have to print good log messages to help intuit what the problem is
+            except sqlite3.IntegrityError as err:
+                # THis is likely a constraint error.
+                errstr = "Integrity Error when inserting records: ReachID: {} VegetationID: {}".format(veg_record[0], veg_record[1])
+                log.error(errstr)
+                errs += 1
+            except sqlite3.Error as err:
+                # This is any other kind of error
+                errstr = "SQL Error when inserting records: ReachID: {} VegetationID: {} ERROR: {}".format(veg_record[0], veg_record[1], str(err))
+                log.error(errstr)
+                errs += 1
+        if errs > 0:
+            raise Exception('Errors were found inserting records into the database. Cannot continue.')
         database.conn.commit()
 
     log.info('Vegetation summary complete')

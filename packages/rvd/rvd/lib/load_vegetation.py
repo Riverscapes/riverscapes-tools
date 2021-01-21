@@ -131,9 +131,9 @@ def load_vegetation_raster(rasterpath: str, gpkg: str, existing=False, output_fo
             lui_values[no_data] = 0.0
 
         valid_values.append(no_data)
-        raw_array = raster.read(1)
+        raw_array = raster.read(1, masked=True)
         for value in np.unique(raw_array):
-            if value not in valid_values:
+            if not isinstance(value, type(np.ma.masked)) and value not in valid_values:
                 raise Exception(f"Vegetation raster value {value} not found in current data dictionary")
 
         # Reclass array https://stackoverflow.com/questions/16992713/translate-every-element-in-numpy-array-according-to-key
