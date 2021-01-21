@@ -376,15 +376,30 @@ def rvd(huc: int, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_or
 
     with sqlite3.connect(outputs_gpkg_path) as conn:
         cursor = conn.cursor()
+        errs = 0
         for reachid, epochs in unique_vegetation_counts.items():
             for epoch in epochs.values():
                 insert_values = [[reachid, int(vegetationid), float(count * cell_area), int(count)] for vegetationid, count in zip(epoch[0], epoch[1]) if vegetationid != 0]
-                cursor.executemany('''INSERT INTO ReachVegetation (
-                    ReachID,
-                    VegetationID,
-                    Area,
-                    CellCount)
-                    VALUES (?,?,?,?)''', insert_values)
+                try:
+                    cursor.executemany('''INSERT INTO ReachVegetation (
+                        ReachID,
+                        VegetationID,
+                        Area,
+                        CellCount)
+                        VALUES (?,?,?,?)''', insert_values)
+                # Sqlite can't report on SQL errors so we have to print good log messages to help intuit what the problem is
+                except sqlite3.IntegrityError as err:
+                    # THis is likely a constraint error.
+                    errstr = "Integrity Error when inserting records: ReachID: {} VegetationIDs: {}".format(reachid, str(list(epoch[0])))
+                    log.error(errstr)
+                    errs += 1
+                except sqlite3.Error as err:
+                    # This is any other kind of error
+                    errstr = "SQL Error when inserting records: ReachID: {} VegetationIDs: {} ERROR: {}".format(reachid, str(list(epoch[0])), str(err))
+                    log.error(errstr)
+                    errs += 1
+        if errs > 0:
+            raise Exception('Errors were found inserting records into the database. Cannot continue.')
         conn.commit()
 
     # Add intermediates and the report to the XML
