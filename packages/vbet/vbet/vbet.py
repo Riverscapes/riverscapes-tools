@@ -46,10 +46,10 @@ tcurve_slope = {"values": np.array([0.0, 12.0]),
                 "output": np.array([1.0, 0.0])}
 tcurve_hand = {"values": np.array([0, 50]),
                "output": np.array([1.0, 0.0])}
-tcurve_fa_dist = {"values": np.array([0, 2]),
+tcurve_fa_dist = {"values": np.array([0, 2]),  # Cells
                   "output": np.array([1.0, 0.0])}
-tcurve_ch_dist = {"values": np.array([0, 2]),
-                  "output": np.array([1.0, 0.0])}
+tcurve_ch_dist = {"values": np.array([0, 2, 3]),
+                  "output": np.array([1.0, 0.5, 0.0])}
 
 LayerTypes = {
     'SLOPE_RASTER': RSLayer('Slope Raster', 'SLOPE_RASTER', 'Raster', 'inputs/slope.tif'),
@@ -163,7 +163,14 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, max_slope, orig_hand, 
             project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['CHANNEL_BUFFER_RASTER'])
 
     # Compute Proximity for channel rasters
-    def proximity_raster(source, outfile):
+    def proximity_raster(source, outfile, dist_units="PIXEL"):
+        """[summary]
+
+        Args:
+            source ([type]): [description]
+            outfile ([type]): [description]
+            dist_units (str, optional): set to "GEO" for distance in length . Defaults to "PIXEL".
+        """
         src_ds = gdal.Open(source)
         srcband = src_ds.GetRasterBand(1)
 
@@ -177,7 +184,7 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, max_slope, orig_hand, 
 
         dstband = dst_ds.GetRasterBand(1)
 
-        gdal.ComputeProximity(srcband, dstband, ["VALUES=1", "DISTUNITS=GEO"])
+        gdal.ComputeProximity(srcband, dstband, ["VALUES=1", f"DISTUNITS={dist_units}"])
         srcband = None
         dstband = None
         src_ds = None
@@ -219,6 +226,7 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, max_slope, orig_hand, 
     fa_dist_transform_raster = os.path.join(project_folder, LayerTypes['FLOWAREA_DISTANCE_TRANSFORM'].rel_path)
     topo_evidence_raster = os.path.join(project_folder, LayerTypes['TOPOGRAPHIC_EVIDENCE'].rel_path)
     channel_evidence_raster = os.path.join(project_folder, LayerTypes['CHANNEL_EVIDENCE'].rel_path)
+    evidence_raster = os.path.join(project_folder, LayerTypes['EVIDENCE'].rel_path)
 
     # Open evidence rasters concurrently. We're looping over windows so this shouldn't affect
     # memory consumption too much
@@ -234,25 +242,12 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, max_slope, orig_hand, 
         cell_size = abs(slp_src.get_transform()[1])
 
         # Transform Functions
-        f_slope = interpolate.interp1d(tcurve_slope['values'], tcurve_slope['output'], bounds_error=False, fill_value=np.nan)
-        f_hand = interpolate.interp1d(tcurve_hand['values'], tcurve_hand['output'], bounds_error=False, fill_value=np.nan)
-        f_chan_dist = interpolate.interp1d(tcurve_ch_dist['values'], tcurve_ch_dist['output'], bounds_error=False, fill_value=np.nan)
-        f_fa_dist = interpolate.interp1d(tcurve_fa_dist['values'], tcurve_fa_dist['output'], bounds_error=False, fill_value=np.nan)
+        f_slope = interpolate.interp1d(tcurve_slope['values'], tcurve_slope['output'], bounds_error=False, fill_value=0.0)
+        f_hand = interpolate.interp1d(tcurve_hand['values'], tcurve_hand['output'], bounds_error=False, fill_value=0.0)
+        f_chan_dist = interpolate.interp1d(tcurve_ch_dist['values'], tcurve_ch_dist['output'], bounds_error=False, fill_value=0.0)
+        f_fa_dist = interpolate.interp1d(tcurve_fa_dist['values'], tcurve_fa_dist['output'], bounds_error=False, fill_value=0.0)
 
-        # Evidence raster logic
-        def ffunc(x, y):
-
-            # Retain slope less than threshold. Invert and scale 0 (high slope) to 1 (low slope).
-            z1 = 1 + (x / (-1 * max_slope))
-            z1.mask = np.ma.mask_or(z1.mask, z1 < 0)
-
-            # Retain HAND under threshold. Invert and scale to 0 (high HAND) to 1 (low HAND).
-            z2 = 1 + (y / (-1 * max_hand))
-            z2.mask = np.ma.mask_or(z2.mask, z2 < 0)
-            z3 = z1 * z2
-            return z3
-
-        with rasterio.open(topo_evidence_raster, "w", **out_meta) as dest, rasterio.open(channel_evidence_raster, 'w', **out_meta) as dest_channel, rasterio.open(slope_transform_raster, "w", **out_meta) as slope_ev_out, rasterio.open(hand_transform_raster, 'w', **out_meta) as hand_ev_out, rasterio.open(chan_dist_transform_raster, 'w', **out_meta) as chan_dist_ev_out, rasterio.open(fa_dist_transform_raster, 'w', **out_meta) as fa_dist_ev_out:
+        with rasterio.open(evidence_raster, 'w', **out_meta) as dest_evidence, rasterio.open(topo_evidence_raster, "w", **out_meta) as dest, rasterio.open(channel_evidence_raster, 'w', **out_meta) as dest_channel, rasterio.open(slope_transform_raster, "w", **out_meta) as slope_ev_out, rasterio.open(hand_transform_raster, 'w', **out_meta) as hand_ev_out, rasterio.open(chan_dist_transform_raster, 'w', **out_meta) as chan_dist_ev_out, rasterio.open(fa_dist_transform_raster, 'w', **out_meta) as fa_dist_ev_out:
             progbar = ProgressBar(len(list(slp_src.block_windows(1))), 50, "Calculating evidence layer")
             counter = 0
             # Again, these rasters should be orthogonal so their windows should also line up
@@ -269,18 +264,18 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, max_slope, orig_hand, 
                 channel_dist_transform = np.ma.MaskedArray(f_chan_dist(cdist_data.data), mask=cdist_data.mask)
                 fa_dist_transform = np.ma.MaskedArray(f_fa_dist(fadist_data.data), mask=fadist_data.mask)
 
-                fvals = slope_transform * hand_transform
+                fvals_topo = slope_transform * hand_transform
                 fvals_channel = np.maximum(channel_dist_transform, fa_dist_transform)
+                fvals_evidence = np.maximum(fvals_topo, fvals_channel)
                 # Fill the masked values with the appropriate nodata vals
-                # fvals = ffunc(slope_data, hand_data)
                 # Unthresholded in the base band (mostly for debugging)
-                dest.write(np.ma.filled(np.float32(fvals), out_meta['nodata']), window=window, indexes=1)
+                dest.write(np.ma.filled(np.float32(fvals_topo), out_meta['nodata']), window=window, indexes=1)
                 slope_ev_out.write(slope_transform.astype('float32'), window=window, indexes=1)
                 hand_ev_out.write(hand_transform.astype('float32'), window=window, indexes=1)
                 chan_dist_ev_out.write(channel_dist_transform.astype('float32'), window=window, indexes=1)
                 fa_dist_ev_out.write(fa_dist_transform.astype('float32'), window=window, indexes=1)
                 dest_channel.write(np.ma.filled(np.float32(fvals_channel), out_meta['nodata']), window=window, indexes=1)
-                # slope_ev_out.write(slope_transform.data, window=window, indexes=1)
+                dest_evidence.write(np.ma.filled(np.float32(fvals_evidence), out_meta['nodata']), window=window, indexes=1)
 
             progbar.finish()
 
@@ -289,9 +284,7 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, max_slope, orig_hand, 
         # rasterio.shutil.delete(hand_ev)
         # The remaining rasters get added to the project
         project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['TOPOGRAPHIC_EVIDENCE'])
-
-    # Composite Evidence Raster
-    evidence_raster = topo_evidence_raster
+        project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['CHANNEL_EVIDENCE'])
 
     # Get the length of a meter (roughly)
     degree_factor = GeopackageLayer.rough_convert_metres_to_raster_units(proj_slope, 1)
@@ -324,13 +317,13 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, max_slope, orig_hand, 
                     progbar.update(counter)
                     counter += 1
                     fval_data = fval_src.read(1, window=window, masked=True)
-                    ch_data = ch_msk_src.read(1, window=window, masked=True)
+                    # ch_data = ch_msk_src.read(1, window=window, masked=True)
                     # Fill an array with "1" values to give us a nice mask for polygonize
                     fvals_mask = np.full(fval_data.shape, np.uint8(1))
 
                     # Create a raster with 1.0 as a value everywhere in the same shape as fvals
                     new_fval_mask = np.ma.mask_or(fval_data.mask, fval_data < thr_val)
-                    masked_arr = np.ma.array(fvals_mask, mask=[new_fval_mask & ch_data.mask])
+                    masked_arr = np.ma.array(fvals_mask, mask=[new_fval_mask])  # & ch_data.mask])
                     dest.write(np.ma.filled(masked_arr, out_meta['nodata']), window=window, indexes=1)
                 progbar.finish()
 
