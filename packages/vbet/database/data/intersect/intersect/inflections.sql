@@ -1,0 +1,10 @@
+INSERT INTO inflections (transform_id, input_value, output_value) VALUES (1, 0, 1);
+INSERT INTO inflections (transform_id, input_value, output_value) VALUES (1, 12, 0);
+INSERT INTO inflections (transform_id, input_value, output_value) VALUES (2, 0, 1);
+INSERT INTO inflections (transform_id, input_value, output_value) VALUES (2, 50, 0);
+INSERT INTO inflections (transform_id, input_value, output_value) VALUES (3, 0, 1);
+INSERT INTO inflections (transform_id, input_value, output_value) VALUES (3, 10, 0.5);
+INSERT INTO inflections (transform_id, input_value, output_value) VALUES (3, 30, 0);
+INSERT INTO inflections (transform_id, input_value, output_value) VALUES (4, 0, 1);
+INSERT INTO inflections (transform_id, input_value, output_value) VALUES (4, 50, 0.5);
+INSERT INTO inflections (transform_id, input_value, output_value) VALUES (4, 100, 0);
