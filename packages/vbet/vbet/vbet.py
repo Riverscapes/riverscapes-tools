@@ -345,6 +345,29 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
     log.info('VBET Completed Successfully')
 
 
+def load_transform_functions(json_transforms, database):
+
+    conn = sqlite3.connect(database)
+    conn.execute('pragma foreign_keys=ON')
+    curs = conn.cursor()
+
+    transform_functions = {}
+
+    # TODO how to handle missing transforms? use defaults?
+
+    for input_name, transform_id in json.loads(json_transforms).items():
+        transform_type = curs.execute("""SELECT transform_types.name from transforms INNER JOIN transform_types ON transform_types.type_id = transforms.type_id where transforms.transform_id = ?""", [transform_id]).fetchone()[0]
+        values = curs.execute("""SELECT input_value, output_value FROM inflections WHERE transform_id = ? ORDER BY input_value """, [transform_id]).fetchall()
+
+        transform_functions[input_name] = interpolate.interp1d(np.array([v[0] for v in values]), np.array([v[1] for v in values]), kind=transform_type, bounds_error=False, fill_value=0.0)
+
+        if transform_type == "Polynomial":
+            # add polynomial function
+            transform_functions[input_name] = None
+
+    return transform_functions
+
+
 def create_project(huc, output_dir):
     project_name = 'VBET for HUC {}'.format(huc)
     project = RSProject(cfg, output_dir)
