@@ -12,7 +12,7 @@
 # -------------------------------------------------------------------------------
 from osgeo import ogr
 from shapely.geometry.base import BaseGeometry
-from rscommons import Logger, VectorBase
+from rscommons import Logger, VectorBase, GeopackageLayer
 from rscommons.vector_ops import get_geometry_unary_union
 from rscommons import get_shp_or_gpkg
 
@@ -22,8 +22,8 @@ def vbet_network(flow_lines_path: str, flow_areas_path: str, out_path: str, epsg
     log = Logger('VBET Network')
     log.info('Generating perennial network')
 
-    with get_shp_or_gpkg(flow_lines_path) as flow_lines_lyr, \
-            get_shp_or_gpkg(out_path, layer_name='vbet_network', write=True) as vbet_net:
+    with get_shp_or_gpkg(out_path, write=True) as vbet_net, \
+            get_shp_or_gpkg(flow_lines_path) as flow_lines_lyr:
 
         # Add input Layer Fields to the output Layer if it is the one we want
         vbet_net.create_layer_from_ref(flow_lines_lyr, epsg=epsg)

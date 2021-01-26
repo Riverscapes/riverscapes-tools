@@ -1,12 +1,11 @@
+from __future__ import annotations
+from os import path
+import copy
+from affine import Affine
 from osgeo import ogr, osr, gdal
 import numpy as np
-import rasterio
 from shapely.geometry import Polygon
-from os import path
 from rscommons import Logger
-import copy
-import math
-from affine import Affine
 
 
 class Raster:
@@ -69,6 +68,16 @@ class Raster:
         except RuntimeError as e:
             print('Could not retrieve meta Data for %s' % self.filename, e)
             raise e
+
+    def __enter__(self) -> Raster:
+        """Behaviour on open when using the "with VectorBase():" Syntax
+        """
+        return self
+
+    def __exit__(self, _type, _value, _traceback):
+        """Behaviour on close when using the "with VectorBase():" Syntax
+        """
+        print('hi')
 
     def getBottom(self):
         return self.top + (self.cellHeight * self.rows)
