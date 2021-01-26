@@ -28,7 +28,7 @@ from rscommons import GeopackageLayer
 from rscommons.vector_ops import polygonize, buffer_by_field, copy_feature_class
 from vbet.vbet_network import vbet_network
 from vbet.vbet_report import VBETReport
-from vbet.vbet_raster_ops import rasterize, proximity_raster
+from vbet.vbet_raster_ops import rasterize, proximity_raster, translate
 from vbet.vbet_outputs import threshold, sanitize
 from vbet.__version__ import __version__
 
@@ -118,8 +118,26 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, max_slope, orig_hand, 
     network_path = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['VBET_NETWORK'].rel_path)
     vbet_network(flowlines_path, flowareas_path, network_path, cfg.OUTPUT_EPSG, fcodes)
 
+    # Create a VRT that combines all the evidence rasters
+    log.info('Creating combined evidence VRT')
+    vrtpath = os.path.join(project_folder, LayerTypes['COMBINED_VRT'].rel_path)
+    vrt_options = gdal.BuildVRTOptions(resampleAlg='nearest', separate=True, resolution='average')
+
+    gdal.BuildVRT(vrtpath, [
+        proj_slope,
+        proj_hand
+    ], options=vrt_options)
+
+    slope_ev = os.path.join(project_folder, LayerTypes['SLOPE_EV'].rel_path)
+    hand_ev = os.path.join(project_folder, LayerTypes['HAND_EV'].rel_path)
+
+    # Generate the evidence raster from the VRT. This is a little annoying but reading across
+    # different dtypes in one VRT is not supported in GDAL > 3.0 so we dump them into individual rasters
+    translate(vrtpath, slope_ev, 1)
+    translate(vrtpath, hand_ev, 2)
+
     # Get raster resolution as min buffer and apply bankfull width buffer to reaches
-    with rasterio.open(proj_slope) as raster:
+    with rasterio.open(slope_ev) as raster:
         t = raster.transform
         min_buffer = (t[0] + abs(t[4])) / 2
 
@@ -134,10 +152,10 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, max_slope, orig_hand, 
     channel_buffer_raster = os.path.join(project_folder, LayerTypes['CHANNEL_BUFFER_RASTER'].rel_path)
     channel_raster = os.path.join(project_folder, LayerTypes['CHANNEL_RASTER'].rel_path)
 
-    rasterize(network_path_buffered, channel_buffer_raster, proj_slope)
+    rasterize(network_path_buffered, channel_buffer_raster, slope_ev)
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['CHANNEL_BUFFER_RASTER'])
 
-    rasterize(flowareas_path, flow_area_raster, proj_slope)
+    rasterize(flowareas_path, flow_area_raster, slope_ev)
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['FLOW_AREA_RASTER'])
 
     # Open evidence rasters concurrently. We're looping over windows so this shouldn't affect
@@ -178,7 +196,10 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, max_slope, orig_hand, 
 
     # Open evidence rasters concurrently. We're looping over windows so this shouldn't affect
     # memory consumption too much
-    with rasterio.open(proj_slope) as slp_src, rasterio.open(proj_hand) as hand_src, rasterio.open(channel_dist_raster) as cdist_src, rasterio.open(fa_dist_raster) as fadist_src:
+    with rasterio.open(slope_ev) as slp_src, \
+            rasterio.open(hand_ev) as hand_src, \
+            rasterio.open(channel_dist_raster) as cdist_src, \
+            rasterio.open(fa_dist_raster) as fadist_src:
         # All 3 rasters should have the same extent and properties. They differ only in dtype
         out_meta = slp_src.meta
         # Rasterio can't write back to a VRT so rest the driver and number of bands for the output
@@ -195,7 +216,14 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, max_slope, orig_hand, 
         f_chan_dist = interpolate.interp1d(tcurve_ch_dist['values'], tcurve_ch_dist['output'], bounds_error=False, fill_value=0.0)
         f_fa_dist = interpolate.interp1d(tcurve_fa_dist['values'], tcurve_fa_dist['output'], bounds_error=False, fill_value=0.0)
 
-        with rasterio.open(evidence_raster, 'w', **out_meta) as dest_evidence, rasterio.open(topo_evidence_raster, "w", **out_meta) as dest, rasterio.open(channel_evidence_raster, 'w', **out_meta) as dest_channel, rasterio.open(slope_transform_raster, "w", **out_meta) as slope_ev_out, rasterio.open(hand_transform_raster, 'w', **out_meta) as hand_ev_out, rasterio.open(chan_dist_transform_raster, 'w', **out_meta) as chan_dist_ev_out, rasterio.open(fa_dist_transform_raster, 'w', **out_meta) as fa_dist_ev_out:
+        with rasterio.open(evidence_raster, 'w', **out_meta) as dest_evidence, \
+                rasterio.open(topo_evidence_raster, "w", **out_meta) as dest, \
+                rasterio.open(channel_evidence_raster, 'w', **out_meta) as dest_channel, \
+                rasterio.open(slope_transform_raster, "w", **out_meta) as slope_ev_out, \
+                rasterio.open(hand_transform_raster, 'w', **out_meta) as hand_ev_out, \
+                rasterio.open(chan_dist_transform_raster, 'w', **out_meta) as chan_dist_ev_out, \
+                rasterio.open(fa_dist_transform_raster, 'w', **out_meta) as fa_dist_ev_out:
+
             progbar = ProgressBar(len(list(slp_src.block_windows(1))), 50, "Calculating evidence layer")
             counter = 0
             # Again, these rasters should be orthogonal so their windows should also line up
@@ -234,7 +262,7 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, max_slope, orig_hand, 
         project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['CHANNEL_EVIDENCE'])
 
     # Get the length of a meter (roughly)
-    degree_factor = GeopackageLayer.rough_convert_metres_to_raster_units(proj_slope, 1)
+    degree_factor = GeopackageLayer.rough_convert_metres_to_raster_units(slope_ev, 1)
     buff_dist = cell_size
     min_hole_degrees = min_hole_area_m * (degree_factor ** 2)
 

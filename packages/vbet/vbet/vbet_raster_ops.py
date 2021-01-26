@@ -120,12 +120,13 @@ def proximity_raster(src_raster_path: str, out_raster_path: str, dist_units="PIX
         log.info('completed in {}'.format(tmr.toString()))
 
 
-def translate(vrtpath_in, raster_out_path):
+def translate(vrtpath_in: str, raster_out_path: str, band: int):
     """GDAL translate Operation from VRT 
 
     Args:
         vrtpath_in ([type]): [description]
         raster_out_path ([type]): [description]
+        band ([int]): raster band
     """
     log = Logger('translate')
     tmr = Timer()
@@ -134,7 +135,7 @@ def translate(vrtpath_in, raster_out_path):
     def translate_progress(progress, _msg, _data):
         progbar.update(int(progress * 100))
 
-    translateoptions = gdal.TranslateOptions(gdal.ParseCommandLine("-of Gtiff -b 1 -co COMPRESS=DEFLATE"))
+    translateoptions = gdal.TranslateOptions(gdal.ParseCommandLine("-of Gtiff -b {} -co COMPRESS=DEFLATE".format(band)))
     gdal.Translate(raster_out_path, vrtpath_in, options=translateoptions, callback=translate_progress)
 
     log.info('completed in {}'.format(tmr.toString()))
