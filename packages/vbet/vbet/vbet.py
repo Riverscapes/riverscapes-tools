@@ -17,22 +17,18 @@ import uuid
 import traceback
 import datetime
 import time
-import json
-import shutil
-from osgeo import gdal
-from osgeo import ogr
-from shapely.geometry import mapping, Polygon
-from shapely.ops import unary_union
+from tempfile import NamedTemporaryFile
 import rasterio
-from rasterio import features
 import numpy as np
 from scipy import interpolate
 from rscommons.util import safe_makedirs, parse_metadata
 from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, dotenv, initGDALOGRErrors
-from rscommons import GeopackageLayer, VectorBase
-from rscommons.vector_ops import polygonize, get_num_pts, get_num_rings, get_geometry_unary_union, remove_holes, buffer_by_field, copy_feature_class
+from rscommons import GeopackageLayer
+from rscommons.vector_ops import polygonize, buffer_by_field, copy_feature_class
 from vbet.vbet_network import vbet_network
 from vbet.vbet_report import VBETReport
+from vbet.vbet_raster_ops import rasterize, proximity_raster
+from vbet.vbet_outputs import threshold, sanitize
 from vbet.__version__ import __version__
 
 initGDALOGRErrors()
@@ -77,6 +73,7 @@ LayerTypes = {
     'COMBINED_VRT': RSLayer('Combined VRT', 'COMBINED_VRT', 'VRT', 'intermediates/slope-hand-channel.vrt'),
     'INTERMEDIATES': RSLayer('Intermediates', 'Intermediates', 'Geopackage', 'intermediates/vbet_intermediates.gpkg', {
         'VBET_NETWORK': RSLayer('VBET Network', 'VBET_NETWORK', 'Vector', 'vbet_network'),
+        'VBET_NETWORK_BUFFERED': RSLayer('VBET Network', 'VBET_NETWORK', 'Vector', 'vbet_network_buffered'),
         'CHANNEL_POLYGON': RSLayer('Combined VRT', 'CHANNEL_POLYGON', 'Vector', 'channel')
         # We also add all tht raw thresholded shapes here but they get added dynamically later
     }),
@@ -116,7 +113,9 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, max_slope, orig_hand, 
 
     # Create a copy of the flow lines with just the perennial and also connectors inside flow areas
     fcodes = [33400, 46003, 46006, 46007, 55800]  # TODO expose included fcodes as a tool parameter?
-    vbet_network(flowlines_path, flowareas_path, intermediates_gpkg_path, cfg.OUTPUT_EPSG, fcodes)
+
+    network_path = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['VBET_NETWORK'].rel_path)
+    vbet_network(flowlines_path, flowareas_path, network_path, cfg.OUTPUT_EPSG, fcodes)
 
     # Get raster resolution as min buffer and apply bankfull width buffer to reaches
     with rasterio.open(proj_slope) as raster:
@@ -124,101 +123,49 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, max_slope, orig_hand, 
         min_buffer = (t[0] + abs(t[4])) / 2
 
     log.info("Buffering Polyine by bankfull width buffers")
-    geom_reach_polygons = buffer_by_field('{}/vbet_network'.format(intermediates_gpkg_path), "BFwidth", cfg.OUTPUT_EPSG, min_buffer)
 
-    # Create channel polygon by combining the reach polygon with the flow area polygon
-    geom_flow_area_polygons = get_geometry_unary_union(flowareas_path, cfg.OUTPUT_EPSG)
-    log.info('Unioning reach and area polygons')
-
-    # Union the buffered reach and area polygons
-    if geom_flow_area_polygons is None or geom_flow_area_polygons.area == 0:
-        log.warning('Area of the area polygon is 0, we will disregard it')
-        geom_channel_polygon = geom_reach_polygons
-    else:
-        geom_channel_polygon = unary_union([geom_reach_polygons, geom_flow_area_polygons])
-        # reach_polygon = None  # free up some memory
-        # area_polygon = None
+    network_path_buffered = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['VBET_NETWORK_BUFFERED'].rel_path)
+    buffer_by_field(network_path, network_path_buffered, "BFwidth", cfg.OUTPUT_EPSG, min_buffer)
 
     # Rasterize the channel polygon and write to raster
     log.info('Writing channel raster using slope as a template')
-    channel_raster = os.path.join(project_folder, LayerTypes['CHANNEL_RASTER'].rel_path)
     flow_area_raster = os.path.join(project_folder, LayerTypes['FLOW_AREA_RASTER'].rel_path)
     channel_buffer_raster = os.path.join(project_folder, LayerTypes['CHANNEL_BUFFER_RASTER'].rel_path)
-    with rasterio.open(proj_slope) as slope_src:
-        chl_meta = slope_src.meta
-        chl_meta['dtype'] = rasterio.uint8
-        chl_meta['nodata'] = 0
-        chl_meta['compress'] = 'deflate'
-        image = features.rasterize([(mapping(geom_channel_polygon), 1)], out_shape=slope_src.shape, transform=slope_src.transform, fill=0)
-        with rasterio.open(channel_raster, 'w', **chl_meta) as dst:
-            dst.write(image, indexes=1)
-            project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['CHANNEL_RASTER'])
-        image = features.rasterize([(mapping(geom_flow_area_polygons), 1)], out_shape=slope_src.shape, transform=slope_src.transform, fill=0)
-        with rasterio.open(flow_area_raster, 'w', **chl_meta) as dest_fa_raster:
-            dest_fa_raster.write(image, indexes=1)
-            project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['FLOW_AREA_RASTER'])
-        image = features.rasterize([(mapping(geom_reach_polygons), 1)], out_shape=slope_src.shape, transform=slope_src.transform, fill=0)
-        with rasterio.open(channel_buffer_raster, 'w', **chl_meta) as dest_chbuffer:
-            dest_chbuffer.write(image, indexes=1)
-            project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['CHANNEL_BUFFER_RASTER'])
+    channel_raster = os.path.join(project_folder, LayerTypes['CHANNEL_RASTER'].rel_path)
 
-    # Compute Proximity for channel rasters
-    def proximity_raster(source, outfile, dist_units="PIXEL"):
-        """[summary]
+    rasterize(network_path_buffered, channel_buffer_raster, proj_slope)
+    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['CHANNEL_BUFFER_RASTER'])
 
-        Args:
-            source ([type]): [description]
-            outfile ([type]): [description]
-            dist_units (str, optional): set to "GEO" for distance in length . Defaults to "PIXEL".
-        """
-        src_ds = gdal.Open(source)
-        srcband = src_ds.GetRasterBand(1)
+    rasterize(flowareas_path, flow_area_raster, proj_slope)
+    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['FLOW_AREA_RASTER'])
 
-        drv = gdal.GetDriverByName('GTiff')
-        dst_ds = drv.Create(outfile,
-                            src_ds.RasterXSize, src_ds.RasterYSize, 1,
-                            gdal.GetDataTypeByName('Float32'))
+    # Open evidence rasters concurrently. We're looping over windows so this shouldn't affect
+    # memory consumption too much
+    with rasterio.open(channel_buffer_raster) as ch_buff, rasterio.open(flow_area_raster) as fl_arr:
+        # All 3 rasters should have the same extent and properties. They differ only in dtype
+        out_meta = ch_buff.meta
+        out_meta['compress'] = 'deflate'
 
-        dst_ds.SetGeoTransform(src_ds.GetGeoTransform())
-        dst_ds.SetProjection(src_ds.GetProjectionRef())
+        with rasterio.open(channel_raster, 'w', **out_meta) as out_raster:
+            progbar = ProgressBar(len(list(ch_buff.block_windows(1))), 50, "Combining flow area and buffered network rasters")
+            counter = 0
+            # Again, these rasters should be orthogonal so their windows should also line up
+            for ji, window in ch_buff.block_windows(1):
+                progbar.update(counter)
+                counter += 1
+                # These rasterizations don't begin life with a mask.
+                ch_buff_data = ch_buff.read(1, window=window, masked=True)
+                fl_arr_data = fl_arr.read(1, window=window, masked=True)
 
-        dstband = dst_ds.GetRasterBand(1)
+                out_raster.write(ch_buff_data | fl_arr_data, window=window, indexes=1)
 
-        gdal.ComputeProximity(srcband, dstband, ["VALUES=1", f"DISTUNITS={dist_units}"])
-        srcband = None
-        dstband = None
-        src_ds = None
-        dst_ds = None
+            progbar.finish()
+    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['CHANNEL_RASTER'])
 
     channel_dist_raster = os.path.join(project_folder, LayerTypes['CHANNEL_DISTANCE'].rel_path)
     fa_dist_raster = os.path.join(project_folder, LayerTypes['FLOW_AREA_DISTANCE'].rel_path)
     proximity_raster(channel_buffer_raster, channel_dist_raster)
     proximity_raster(flow_area_raster, fa_dist_raster)
-
-    # Create a VRT that combines all the evidence rasters
-    log.info('Creating combined evidence VRT')
-    vrtpath = os.path.join(project_folder, LayerTypes['COMBINED_VRT'].rel_path)
-    vrt_options = gdal.BuildVRTOptions(resampleAlg='nearest', separate=True, resolution='average')
-
-    gdal.BuildVRT(vrtpath, [
-        proj_slope,
-        proj_hand,
-        channel_raster
-    ], options=vrt_options)
-
-    # Generate the evidence raster from the VRT. This is a little annoying but reading across
-    # different dtypes in one VRT is not supported in GDAL > 3.0 so we dump them into individual rasters
-    slope_ev = os.path.join(project_folder, LayerTypes['SLOPE_EV'].rel_path)
-    translateoptions = gdal.TranslateOptions(gdal.ParseCommandLine("-of Gtiff -b 1 -co COMPRESS=DEFLATE"))
-    gdal.Translate(slope_ev, vrtpath, options=translateoptions)
-
-    hand_ev = os.path.join(project_folder, LayerTypes['HAND_EV'].rel_path)
-    translateoptions = gdal.TranslateOptions(gdal.ParseCommandLine("-of Gtiff -b 2 -co COMPRESS=DEFLATE"))
-    gdal.Translate(hand_ev, vrtpath, options=translateoptions)
-
-    channel_msk = os.path.join(project_folder, LayerTypes['CHANNEL_MASK'].rel_path)
-    translateoptions = gdal.TranslateOptions(gdal.ParseCommandLine("-of Gtiff -b 3 -co COMPRESS=DEFLATE"))
-    gdal.Translate(channel_msk, vrtpath, options=translateoptions)
 
     slope_transform_raster = os.path.join(project_folder, LayerTypes['SLOPE_TRANSFORM'].rel_path)
     hand_transform_raster = os.path.join(project_folder, LayerTypes['HAND_TRANSFORM'].rel_path)
@@ -230,14 +177,14 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, max_slope, orig_hand, 
 
     # Open evidence rasters concurrently. We're looping over windows so this shouldn't affect
     # memory consumption too much
-    with rasterio.open(slope_ev) as slp_src, rasterio.open(hand_ev) as hand_src, rasterio.open(channel_dist_raster) as cdist_src, rasterio.open(fa_dist_raster) as fadist_src:
+    with rasterio.open(proj_slope) as slp_src, rasterio.open(proj_hand) as hand_src, rasterio.open(channel_dist_raster) as cdist_src, rasterio.open(fa_dist_raster) as fadist_src:
         # All 3 rasters should have the same extent and properties. They differ only in dtype
         out_meta = slp_src.meta
         # Rasterio can't write back to a VRT so rest the driver and number of bands for the output
         out_meta['driver'] = 'GTiff'
         out_meta['count'] = 1
         out_meta['compress'] = 'deflate'
-        chl_meta['dtype'] = rasterio.uint8
+        # out_meta['dtype'] = rasterio.uint8
         # We use this to buffer the output
         cell_size = abs(slp_src.get_transform()[1])
 
@@ -267,21 +214,20 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, max_slope, orig_hand, 
                 fvals_topo = slope_transform * hand_transform
                 fvals_channel = np.maximum(channel_dist_transform, fa_dist_transform)
                 fvals_evidence = np.maximum(fvals_topo, fvals_channel)
+
                 # Fill the masked values with the appropriate nodata vals
                 # Unthresholded in the base band (mostly for debugging)
                 dest.write(np.ma.filled(np.float32(fvals_topo), out_meta['nodata']), window=window, indexes=1)
-                slope_ev_out.write(slope_transform.astype('float32'), window=window, indexes=1)
-                hand_ev_out.write(hand_transform.astype('float32'), window=window, indexes=1)
-                chan_dist_ev_out.write(channel_dist_transform.astype('float32'), window=window, indexes=1)
-                fa_dist_ev_out.write(fa_dist_transform.astype('float32'), window=window, indexes=1)
+
+                slope_ev_out.write(slope_transform.astype('float32').filled(out_meta['nodata']), window=window, indexes=1)
+                hand_ev_out.write(hand_transform.astype('float32').filled(out_meta['nodata']), window=window, indexes=1)
+                chan_dist_ev_out.write(channel_dist_transform.astype('float32').filled(out_meta['nodata']), window=window, indexes=1)
+                fa_dist_ev_out.write(fa_dist_transform.astype('float32').filled(out_meta['nodata']), window=window, indexes=1)
+
                 dest_channel.write(np.ma.filled(np.float32(fvals_channel), out_meta['nodata']), window=window, indexes=1)
                 dest_evidence.write(np.ma.filled(np.float32(fvals_evidence), out_meta['nodata']), window=window, indexes=1)
-
             progbar.finish()
 
-        # Hand and slope are duplicated so we can safely remove them
-        # rasterio.shutil.delete(slope_ev)
-        # rasterio.shutil.delete(hand_ev)
         # The remaining rasters get added to the project
         project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['TOPOGRAPHIC_EVIDENCE'])
         project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['CHANNEL_EVIDENCE'])
@@ -291,82 +237,42 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, max_slope, orig_hand, 
     buff_dist = cell_size
     min_hole_degrees = min_hole_area_m * (degree_factor ** 2)
 
-    # Create our threshold rasters in a temporary folder
-    # These files get immediately polygonized so they are of very little value afterwards
-    tmp_folder = os.path.join(project_folder, 'tmp')
-    safe_makedirs(tmp_folder)
-
     # Get the full paths to the geopackages
     intermed_gpkg_path = os.path.join(project_folder, LayerTypes['INTERMEDIATES'].rel_path)
     vbet_path = os.path.join(project_folder, LayerTypes['VBET'].rel_path)
 
     for str_val, thr_val in thresh_vals.items():
-        thresh_raster_path = os.path.join(tmp_folder, 'evidence_mask_{}.tif'.format(str_val))
-        with rasterio.open(evidence_raster) as fval_src, rasterio.open(channel_msk) as ch_msk_src:
-            out_meta = fval_src.meta
-            out_meta['count'] = 1
-            out_meta['compress'] = 'deflate'
-            out_meta['dtype'] = rasterio.uint8
-            out_meta['nodata'] = 0
+        with NamedTemporaryFile(suffix='.tif', mode="w+", delete=True) as tempfile:
+            log.debug('Temporary threshold raster: {}'.format(tempfile.name))
+            threshold(evidence_raster, thr_val, tempfile.name)
 
-            log.info('Thresholding at {}'.format(thr_val))
-            with rasterio.open(thresh_raster_path, "w", **out_meta) as dest:
-                progbar = ProgressBar(len(list(fval_src.block_windows(1))), 50, "Thresholding at {}".format(thr_val))
-                counter = 0
-                for ji, window in fval_src.block_windows(1):
-                    progbar.update(counter)
-                    counter += 1
-                    fval_data = fval_src.read(1, window=window, masked=True)
-                    # ch_data = ch_msk_src.read(1, window=window, masked=True)
-                    # Fill an array with "1" values to give us a nice mask for polygonize
-                    fvals_mask = np.full(fval_data.shape, np.uint8(1))
+            plgnize_id = 'THRESH_{}'.format(str_val)
+            plgnize_lyr = RSLayer('Raw Threshold at {}%'.format(str_val), plgnize_id, 'Vector', plgnize_id.lower())
+            # Add a project node for this thresholded vector
+            LayerTypes['INTERMEDIATES'].add_sub_layer(plgnize_id, plgnize_lyr)
 
-                    # Create a raster with 1.0 as a value everywhere in the same shape as fvals
-                    new_fval_mask = np.ma.mask_or(fval_data.mask, fval_data < thr_val)
-                    masked_arr = np.ma.array(fvals_mask, mask=[new_fval_mask])  # & ch_data.mask])
-                    dest.write(np.ma.filled(masked_arr, out_meta['nodata']), window=window, indexes=1)
-                progbar.finish()
-
-        plgnize_id = 'THRESH_{}'.format(str_val)
-        plgnize_lyr = RSLayer('Raw Threshold at {}%'.format(str_val), plgnize_id, 'Vector', plgnize_id.lower())
-        # Add a project node for this thresholded vector
-        LayerTypes['INTERMEDIATES'].add_sub_layer(plgnize_id, plgnize_lyr)
-
-        vbet_id = 'VBET_{}'.format(str_val)
-        vbet_lyr = RSLayer('Threshold at {}%'.format(str_val), vbet_id, 'Vector', vbet_id.lower())
-        # Add a project node for this thresholded vector
-        LayerTypes['VBET'].add_sub_layer(vbet_id, vbet_lyr)
-
-        # Now polygonize the raster
-        log.info('Polygonizing')
-        polygonize(thresh_raster_path, 1, '{}/{}'.format(intermed_gpkg_path, plgnize_lyr.rel_path), cfg.OUTPUT_EPSG)
+            vbet_id = 'VBET_{}'.format(str_val)
+            vbet_lyr = RSLayer('Threshold at {}%'.format(str_val), vbet_id, 'Vector', vbet_id.lower())
+            # Add a project node for this thresholded vector
+            LayerTypes['VBET'].add_sub_layer(vbet_id, vbet_lyr)
+            # Now polygonize the raster
+            log.info('Polygonizing')
+            polygonize(tempfile.name, 1, '{}/{}'.format(intermed_gpkg_path, plgnize_lyr.rel_path), cfg.OUTPUT_EPSG)
+            log.info('Done')
 
         # Now the final sanitization
         log.info('Sanitizing')
         sanitize(
             '{}/{}'.format(intermed_gpkg_path, plgnize_lyr.rel_path),
-            geom_channel_polygon,
             '{}/{}'.format(vbet_path, vbet_lyr.rel_path),
             min_hole_degrees,
             buff_dist
         )
         log.info('Completed thresholding at {}'.format(thr_val))
 
-        # ======================================================================
-        # TODO: Remove this when we don't need shapefiles anymore
-        #       This just copies the layer directly from the geopackage so it
-        #       should be quick.
-        # ======================================================================
-        legacy_shapefile_path = os.path.join(os.path.dirname(vbet_path), '{}.shp'.format(vbet_id.lower()))
-        log.info('Writing Legacy Shapefile: {}'.format(legacy_shapefile_path))
-        copy_feature_class('{}/{}'.format(vbet_path, vbet_lyr.rel_path), legacy_shapefile_path)
-
     # Now add our Geopackages to the project XML
     project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
     project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['VBET'])
-
-    # Channel mask is duplicated from inputs so we delete it.
-    # rasterio.shutil.delete(channel_msk)
 
     report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
     project.add_report(proj_nodes['Outputs'], LayerTypes['REPORT'], replace=True)
@@ -374,88 +280,10 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, max_slope, orig_hand, 
     report = VBETReport(report_path, project, project_folder)
     report.write()
 
-    # No need to keep the masks around
-    try:
-        shutil.rmtree(tmp_folder)
-
-    except OSError as e:
-        print("Error cleaning up tmp dir: {}".format(e.strerror))
-
     # Incorporate project metadata to the riverscapes project
     project.add_metadata(meta)
 
     log.info('VBET Completed Successfully')
-
-
-def sanitize(in_path: str, channel_poly: Polygon, out_path: str, min_hole_sq_deg: float, buff_dist: float):
-    """
-        It's important to make sure we have the right kinds of geometries. Here we:
-            1. Buffer out then back in by the same amount. TODO: THIS IS SUPER SLOW.
-            2. Simply: for some reason area isn't calculated on inner rings so we need to simplify them first
-            3. Remove small holes: Do we have donuts? Filter anythign smaller than a certain area
-
-    Args:
-        in_path (str): [description]
-        channel_poly (Polygon): [description]
-        out_path (str): [description]
-        min_hole_sq_deg (float): [description]
-        buff_dist (float): [description]
-    """
-    log = Logger('VBET Simplify')
-
-    with GeopackageLayer(in_path) as in_lyr, \
-            GeopackageLayer(out_path, write=True) as out_lyr:
-
-        out_lyr.create_layer(ogr.wkbPolygon, spatial_ref=in_lyr.spatial_ref)
-
-        geoms = []
-        pts = 0
-        square_buff = buff_dist * buff_dist
-
-        # NOTE: Order of operations really matters here.
-        for inFeature, _counter, _progbar in in_lyr.iterate_features("Sanitizing", clip_shape=channel_poly):
-            geom = VectorBase.ogr2shapely(inFeature)
-
-            # First check. Just make sure this is a valid shape we can work with
-            if geom.is_empty or geom.area < square_buff:
-                # debug_writer(geom, '{}_C_BROKEN.geojson'.format(counter))
-                continue
-
-            pts += len(geom.exterior.coords)
-            f_geom = geom
-
-            # 1. Buffer out then back in by the same amount. TODO: THIS IS SUPER SLOW.
-            f_geom = geom.buffer(buff_dist, resolution=1).buffer(-buff_dist, resolution=1)
-            # debug_writer(f_geom, '{}_B_AFTER_BUFFER.geojson'.format(counter))
-
-            # 2. Simply: for some reason area isn't calculated on inner rings so we need to simplify them first
-            f_geom = f_geom.simplify(buff_dist, preserve_topology=True)
-
-            # 3. Remove small holes: Do we have donuts? Filter anythign smaller than a certain area
-            f_geom = remove_holes(f_geom, min_hole_sq_deg)
-
-            # Second check here for validity after simplification
-            if not f_geom.is_empty and f_geom.is_valid and f_geom.area > 0:
-                geoms.append(f_geom)
-                # debug_writer(f_geom, '{}_Z_FINAL.geojson'.format(counter))
-                log.debug('simplified: pts: {} ==> {}, rings: {} ==> {}'.format(
-                    get_num_pts(geom), get_num_pts(f_geom), get_num_rings(geom), get_num_rings(f_geom))
-                )
-            else:
-                log.warning('Invalid GEOM')
-                # debug_writer(f_geom, '{}_Z_REJECTED.geojson'.format(counter))
-            # print('loop')
-
-        # 5. Now we can do unioning fairly cheaply
-        log.info('Unioning {} geometries'.format(len(geoms)))
-        new_geom = unary_union(geoms)
-
-        log.info('Writing to disk')
-        outFeature = ogr.Feature(out_lyr.ogr_layer_def)
-
-        outFeature.SetGeometry(ogr.CreateGeometryFromJson(json.dumps(mapping(new_geom))))
-        out_lyr.ogr_layer.CreateFeature(outFeature)
-        outFeature = None
 
 
 def create_project(huc, output_dir):

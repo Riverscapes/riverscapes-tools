@@ -9,8 +9,9 @@ import datetime
 from rscommons.util import safe_makedirs, safe_remove_dir, safe_remove_file, file_compare
 from rscommons import Logger, ProgressBar, Timer
 
-MAX_ATTEMPTS = 3 # Number of attempts for things like downloading and copying
-PENDING_TIMEOUT = 60 # number of seconds before pending files are deemed stale
+MAX_ATTEMPTS = 3  # Number of attempts for things like downloading and copying
+PENDING_TIMEOUT = 60  # number of seconds before pending files are deemed stale
+
 
 def download_unzip(url, download_folder, unzip_folder=None, force_download=False, retries=3):
     """
@@ -84,17 +85,17 @@ def pending_check(file_path_pending, timeout):
     """
     pending_exists = os.path.isfile(file_path_pending)
     if not pending_exists:
-         return False
+        return False
 
     pf_stats = os.stat(file_path_pending)
-    # If the pending file is older than the timeout 
+    # If the pending file is older than the timeout
     # then we need to delete the file and keep going
     if time.time() - pf_stats.st_mtime > timeout:
         safe_remove_file(file_path_pending)
         return False
     else:
         return True
-        
+
 
 def download_file(s3_url, download_folder, force_download=False):
     """
@@ -114,7 +115,7 @@ def download_file(s3_url, download_folder, force_download=False):
 
     # If file already exists and forcing download then ensure unique file name
     file_path = os.path.join(download_folder, os.path.basename(result.group(2)))
-    file_path_pending = os.path.join(download_folder, os.path.basename(result.group(2))+ '.pending')
+    file_path_pending = os.path.join(download_folder, os.path.basename(result.group(2)) + '.pending')
 
     if os.path.isfile(file_path) and force_download:
         safe_remove_file(file_path)
@@ -149,7 +150,7 @@ def download_file(s3_url, download_folder, force_download=False):
 
         # Actual file download
         for download_retries in range(MAX_ATTEMPTS):
-            if download_retries> 0:
+            if download_retries > 0:
                 log.warning('Download file retry: {}'.format(download_retries))
             try:
                 dl = 0
@@ -179,14 +180,14 @@ def download_file(s3_url, download_folder, force_download=False):
             except Exception as e:
                 log.debug('Error downloading file from s3 {}: \n{}'.format(s3_url, str(e)))
                 # if this is our last chance then the function must fail [0,1,2]
-                if download_retries == MAX_ATTEMPTS -1:
-                    download_cleanup() # Always clean up
+                if download_retries == MAX_ATTEMPTS - 1:
+                    download_cleanup()  # Always clean up
                     raise e
 
         # Now copy the temporary file (retry 3 times)
         for copy_retries in range(MAX_ATTEMPTS):
-            if copy_retries> 0:
-                log.warning('Copy file retry: {}'.format(copy_retries))            
+            if copy_retries > 0:
+                log.warning('Copy file retry: {}'.format(copy_retries))
             try:
                 shutil.copy(tmpfilepath, file_path)
                 # Make sure to clean up so the next process doesn't encounter a broken file
@@ -197,12 +198,12 @@ def download_file(s3_url, download_folder, force_download=False):
             except Exception as e:
                 log.debug('Error copying file from temporary location {}: \n{}'.format(tmpfilepath, str(e)))
                 # if this is our last chance then the function must fail [0,1,2]
-                if copy_retries == MAX_ATTEMPTS -1:
-                    download_cleanup() # Always clean up
+                if copy_retries == MAX_ATTEMPTS - 1:
+                    download_cleanup()  # Always clean up
                     raise e
 
-        download_cleanup() # Always clean up
-    
+        download_cleanup()  # Always clean up
+
     return file_path
 
 
@@ -269,11 +270,11 @@ def unzip(file_path, destination_folder, force_overwrite=False, retries=3):
 
     except zipfile.BadZipFile as e:
         # If the zip file is bad then we have to remove it.
-        log.error('BadZipFile. Cleaning up zip file and output folder')    
+        log.error('BadZipFile. Cleaning up zip file and output folder')
         safe_remove_file(file_path)
         safe_remove_dir(destination_folder)
         raise Exception('Unzip error: BadZipFile')
     except Exception as e:
-        log.error('Error unzipping. Cleaning up output folder')        
+        log.error('Error unzipping. Cleaning up output folder')
         safe_remove_dir(destination_folder)
         raise Exception('Unzip error: file could not be unzipped')

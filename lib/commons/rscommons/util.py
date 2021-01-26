@@ -1,12 +1,10 @@
 import sys
-import time
 import gc
-import sys
-import glob
 import shutil
 import hashlib
 import os
-from math import cos, sin, asin, sqrt, radians
+from datetime import datetime
+from math import floor
 from rscommons import Logger
 
 # Set if this environment variable is set don't show any UI
@@ -184,6 +182,71 @@ def get_obj_size(obj):
         marked.update(new_refr.keys())
 
     return sz
+
+
+def pretty_date(time=False):
+    """
+    Get a datetime object or a int() Epoch timestamp and return a
+    pretty string like 'an hour ago', 'Yesterday', '3 months ago',
+    'just now', etc
+    """
+    now = datetime.now()
+    if isinstance(time, int):
+        diff = now - datetime.fromtimestamp(time)
+    elif isinstance(time, datetime):
+        diff = now - time
+    elif not time:
+        diff = now - now
+    second_diff = diff.seconds
+    day_diff = diff.days
+
+    if day_diff < 0:
+        return ''
+
+    if day_diff == 0:
+        if second_diff < 10:
+            return "just now"
+        if second_diff < 60:
+            return str(second_diff) + " seconds ago"
+        if second_diff < 120:
+            return "a minute ago"
+        if second_diff < 3600:
+            return str(second_diff / 60) + " minutes ago"
+        if second_diff < 7200:
+            return "an hour ago"
+        if second_diff < 86400:
+            return str(second_diff / 3600) + " hours ago"
+    if day_diff == 1:
+        return "Yesterday"
+    if day_diff < 7:
+        return str(day_diff) + " days ago"
+    if day_diff < 31:
+        return str(day_diff / 7) + " weeks ago"
+    if day_diff < 365:
+        return str(day_diff / 30) + " months ago"
+    return str(day_diff / 365) + " years ago"
+
+
+def pretty_duration(time_s=False):
+    """
+    Get a datetime object or a int() Epoch timestamp and return a
+    pretty string like 'an hour ago', 'Yesterday', '3 months ago',
+    'just now', etc
+    """
+    if not time_s >= 0:
+        return '???'
+    seconds = time_s % 60
+    minutes = floor(time_s / 60)
+    hours = floor(time_s / 3600)
+    if time_s < 60:
+        return "{0:.1f} seconds".format(seconds)
+    elif time_s < 3600:
+        return "{}:{:02}".format(minutes, seconds)
+    elif time_s < 86400:
+        return "{}:{:02}:{:02}".format(hours, minutes, seconds)
+    else:
+        days = floor(time_s / 86400)
+        return "{} days, {}:{:02}:{:02}".format(days, hours, minutes, seconds)
 
 
 def parse_metadata(arg_string):
