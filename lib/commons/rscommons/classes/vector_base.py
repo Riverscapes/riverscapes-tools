@@ -361,7 +361,12 @@ class VectorBase():
         if fields is None or not isinstance(fields, dict):
             raise VectorBaseException('create_fields: Fields must be specified in the form: {\'MyInteger\': ogr.OFTInteger}')
         for fname, ftype in fields.items():
-            self.create_field(fname, ftype)
+            # If it's a simple integer that's fine
+            if isinstance(ftype, int):
+                self.create_field(fname, field_type=ftype)
+            # Otherwise it's an OGR field type object
+            else:
+                self.create_field(fname, field_def=ftype)
 
     def get_fields(self) -> dict:
         """ Get a layer's fields as a simple dictionary
