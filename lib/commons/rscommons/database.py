@@ -1,18 +1,68 @@
+'''
+Database Methods
+'''
+from __future__ import annotations
 import os
 import glob
 import csv
-from typing import List, Dict
+from typing import Dict
 import sqlite3
-import argparse
 from osgeo import ogr, osr
-from rscommons import ProgressBar, Logger, ModelConfig, dotenv, get_shp_or_gpkg, VectorBase
-from rscommons.shapefile import create_field
-from rscommons.build_network import FCodeValues
-
-perennial_reach_code = 46006
+from rscommons import Logger, VectorBase
 
 
-def create_database(huc, db_path, metadata, epsg, schema_path):
+class SQLiteCon():
+    """This is just a loose mapping class to allow us to use Python's 'with' keyword.
+
+    Raises:
+        VectorBaseException: Various
+    """
+    log = Logger('SQLite')
+
+    def __init__(self, filepath: str):
+        self.filepath = filepath
+        self.conn = None
+        self.curs = None
+
+    def __enter__(self) -> SQLiteCon:
+        """Behaviour on open when using the "with VectorBase():" Syntax
+        """
+
+        self.conn = sqlite3.connect(self.filepath)
+
+        # turn on foreign key constraints. Does not happen by default
+        self.conn.execute('PRAGMA foreign_keys = ON;')
+
+        self.conn.row_factory = dict_factory
+        self.curs = self.conn.cursor()
+        return self
+
+    def __exit__(self, _type, _value, _traceback):
+        """Behaviour on close when using the "with VectorBase():" Syntax
+        """
+        self.curs.close()
+        self.conn.close()
+        self.curs = None
+        self.conn = None
+
+
+def create_database(huc: str, db_path: str, metadata: Dict[str, str], epsg: int, schema_path: str, delete: bool = False):
+    """[summary]
+
+    Args:
+        huc (str): [description]
+        db_path (str): [description]
+        metadata (Dict[str, str]): [description]
+        epsg (int): [description]
+        schema_path (str): [description]
+        delete (bool, optional): [description]. Defaults to False.
+
+    Raises:
+        Exception: [description]
+
+    Returns:
+        [type]: [description]
+    """
 
     # We need to create a projection for this DB
     db_srs = osr.SpatialReference()
@@ -24,14 +74,15 @@ def create_database(huc, db_path, metadata, epsg, schema_path):
         raise Exception('Unable to find database schema file at {}'.format(schema_path))
 
     log = Logger('Database')
-    if os.path.isfile(db_path):
+    if os.path.isfile(db_path) and delete is True:
         log.info('Removing existing SQLite database at {0}'.format(db_path))
         os.remove(db_path)
 
-    log.info('Creating SQLite database at {0}'.format(db_path))
+    log.info('Creating database schema at {0}'.format(db_path))
     qry = open(schema_path, 'r').read()
     sqlite3.complete_statement(qry)
     conn = sqlite3.connect(db_path)
+    conn.execute('PRAGMA foreign_keys = ON;')
     curs = conn.cursor()
     curs.executescript(qry)
 
@@ -79,11 +130,12 @@ def update_database(db_path, csv_path):
     log.info('Updating SQLite database at {0}'.format(db_path))
 
     conn = sqlite3.connect(db_path)
+    conn.execute('PRAGMA foreign_keys = ON;')
     conn.row_factory = dict_factory
     curs = conn.cursor()
 
     try:
-        huc = conn.execute('SELECT WatershedID FROM Reaches GROUP BY WatershedID').fetchall()[0]['WatershedID']
+        huc = conn.execute('SELECT WatershedID FROM vwReaches GROUP BY WatershedID').fetchall()[0]['WatershedID']
     except Exception as e:
         log.error('Error retrieving HUC from DB')
         raise e
@@ -141,190 +193,6 @@ def get_db_srs(database):
     return dbRef
 
 
-def populate_database(database, network, huc):
-
-    driver = ogr.GetDriverByName('ESRI Shapefile')
-    dataset = driver.Open(network, 1)
-    layer = dataset.GetLayer()
-    in_spatial_ref = layer.GetSpatialRef()
-    db_spatial_ref = get_db_srs(database)
-    transform = osr.CoordinateTransformation(in_spatial_ref, db_spatial_ref)
-
-    log = Logger('Database')
-    log.info('Populating SQLite database with {0:,} features'.format(layer.GetFeatureCount()))
-
-    # Determine the transformation if user provides an EPSG
-    create_field(layer, 'ReachID', ogr.OFTInteger)
-
-    conn = sqlite3.connect(database)
-    curs = conn.cursor()
-
-    progbar = ProgressBar(layer.GetFeatureCount(), 50, "Populating features")
-    counter = 0
-    progbar.update(counter)
-    for feature in layer:
-        counter += 1
-        progbar.update(counter)
-
-        geom = feature.GetGeometryRef()
-        if transform:
-            geom.Transform(transform)
-        geojson = geom.ExportToJson()
-
-        reach_code = feature.GetField('FCode')
-        if not reach_code:
-            raise Exception('Missing reach code')
-
-        # perennial = 1 if reach_code == '46006' else 0
-        name = feature.GetField('GNIS_Name')
-
-        drainage_area = feature.GetField('TotDASqKm')
-
-        # Store the feature in the SQLite database
-        curs.execute('INSERT INTO Reaches (WatershedID, Geometry, ReachCode, StreamName, iGeo_DA, Orig_DA) VALUES (?, ?, ?, ?, ?, ?)', [huc, geojson, reach_code, name, drainage_area, drainage_area])
-
-        # Update the feature in the ShapeFile with the SQLite database ReachID
-        feature.SetField('ReachID', curs.lastrowid)
-        layer.SetFeature(feature)
-
-        # Commit geometry every hundred rows so the memory buffer doesn't fill
-        if counter % 10000 == 0:
-            conn.commit()
-
-    # Store whether each reach is Perennial or not
-    curs.execute('UPDATE Reaches SET IsPeren = 1 WHERE (ReachCode = ?)', [perennial_reach_code])
-    conn.commit()
-
-    # Update reaches with NULL zero drainage area to have zero drainage area
-    curs.execute('UPDATE Reaches SET iGeo_DA = 0 WHERE iGeo_DA IS NULL')
-    conn.commit()
-
-    progbar.finish()
-
-    curs.execute('SELECT Count(*) FROM Reaches')
-    reach_count = curs.fetchone()[0]
-    log.info('{:,} reaches inserted into database'.format(reach_count))
-    if reach_count < 1:
-        raise Exception('Zero reaches in watershed. Unable to continue. Aborting.')
-
-    for name, fcode in FCodeValues.items():
-        curs.execute('SELECT Count(*) FROM Reaches WHERE ReachCode = ?', [str(fcode)])
-        log.info('{:,} {} reaches (FCode {}) inserted into database'.format(curs.fetchone()[0], name, fcode))
-
-    log.info('Database creation complete')
-
-# TODO: CLEAN UP AFTER MIGRATING BRAT
-
-
-def create_database_NEW(huc: str, db_path: str, metadata: Dict[str, str], epsg: int, schema_path: str, delete: bool = False):
-
-    # We need to create a projection for this DB
-    db_srs = osr.SpatialReference()
-    db_srs.ImportFromEPSG(int(epsg))
-    metadata['gdal_srs_proj4'] = db_srs.ExportToProj4()
-    metadata['gdal_srs_axis_mapping_strategy'] = osr.OAMS_TRADITIONAL_GIS_ORDER
-
-    if not os.path.isfile(schema_path):
-        raise Exception('Unable to find database schema file at {}'.format(schema_path))
-
-    log = Logger('Database')
-    if os.path.isfile(db_path) and delete is True:
-        log.info('Removing existing SQLite database at {0}'.format(db_path))
-        os.remove(db_path)
-
-    log.info('Creating database schema at {0}'.format(db_path))
-    qry = open(schema_path, 'r').read()
-    sqlite3.complete_statement(qry)
-    conn = sqlite3.connect(db_path)
-    curs = conn.cursor()
-    curs.executescript(qry)
-
-    load_lookup_data(db_path, os.path.dirname(schema_path))
-
-    # Keep only the designated watershed
-    curs.execute('DELETE FROM Watersheds WHERE WatershedID <> ?', [huc])
-
-    # Retrieve the name of the watershed so it can be stored in riverscapes project
-    curs.execute('SELECT Name FROM Watersheds WHERE WatershedID = ?', [huc])
-    row = curs.fetchone()
-    watershed_name = row[0] if row else None
-
-    conn.commit()
-    conn.execute("VACUUM")
-
-    # Write the metadata to the database
-    if metadata:
-        [store_metadata(db_path, key, value) for key, value in metadata.items()]
-
-    return watershed_name
-
-
-def populate_database_NEW(database, network_path, huc):
-
-    conn = sqlite3.connect(database)
-    curs = conn.cursor()
-
-    with get_shp_or_gpkg(network_path, write=True) as net_lyr:
-        db_spatial_ref = get_db_srs(database)
-        feature_count = net_lyr.ogr_layer.GetFeatureCount()
-        transform = net_lyr.get_transform_from_srs(db_spatial_ref)
-
-        log = Logger('Database')
-        log.info('Populating SQLite database with {0:,} features'.format(feature_count))
-
-        # Determine the transformation if user provides an EPSG
-        net_lyr.create_field('ReachID', ogr.OFTInteger)
-
-        for feature, counter, _progbar in net_lyr.iterate_features('Populating features', write_layers=[net_lyr]):
-            geom = feature.GetGeometryRef()
-            if transform:
-                geom.Transform(transform)
-            geojson = geom.ExportToJson()
-
-            reach_code = feature.GetField('FCode')
-            if not reach_code:
-                raise Exception('Missing reach code')
-
-            # perennial = 1 if reach_code == '46006' else 0
-            name = feature.GetField('GNIS_Name')
-
-            drainage_area = feature.GetField('TotDASqKm')
-
-            # Store the feature in the SQLite database
-            curs.execute(
-                'INSERT INTO Reaches (WatershedID, Geometry, ReachCode, StreamName, iGeo_DA, Orig_DA) VALUES (?, ?, ?, ?, ?, ?)',
-                [huc, geojson, reach_code, name, drainage_area, drainage_area]
-            )
-
-            # Update the feature in the ShapeFile with the SQLite database ReachID
-            feature.SetField('ReachID', curs.lastrowid)
-            net_lyr.ogr_layer.SetFeature(feature)
-
-            # Commit geometry every hundred rows so the memory buffer doesn't fill
-            if counter % 10000 == 0:
-                conn.commit()
-
-    # Store whether each reach is Perennial or not
-    curs.execute('UPDATE Reaches SET IsPeren = 1 WHERE (ReachCode = ?)', [perennial_reach_code])
-    conn.commit()
-
-    # Update reaches with NULL zero drainage area to have zero drainage area
-    curs.execute('UPDATE Reaches SET iGeo_DA = 0 WHERE iGeo_DA IS NULL')
-    conn.commit()
-
-    curs.execute('SELECT Count(*) FROM Reaches')
-    reach_count = curs.fetchone()[0]
-    log.info('{:,} reaches inserted into database'.format(reach_count))
-    if reach_count < 1:
-        raise Exception('Zero reaches in watershed. Unable to continue. Aborting.')
-
-    for name, fcode in FCodeValues.items():
-        curs.execute('SELECT Count(*) FROM Reaches WHERE ReachCode = ?', [str(fcode)])
-        log.info('{:,} {} reaches (FCode {}) inserted into database'.format(curs.fetchone()[0], name, fcode))
-
-    log.info('Database creation complete')
-
-
 def load_geometries(database, target_srs=None, where_clause=None):
 
     transform = None
@@ -360,7 +228,7 @@ def load_attributes(database, fields, where_clause=None):
     return reaches
 
 
-def write_attributes(database, reaches, fields, set_null_first=True, summarize=True):
+def write_db_attributes(database, reaches, fields, set_null_first=True, summarize=True):
 
     if len(reaches) < 1:
         return
@@ -371,14 +239,14 @@ def write_attributes(database, reaches, fields, set_null_first=True, summarize=T
 
     # Optionally clear all the values in the fields first
     if set_null_first is True:
-        [curs.execute('UPDATE Reaches SET {} = NULL'.format(field)) for field in fields]
+        [curs.execute('UPDATE ReachAttributes SET {} = NULL'.format(field)) for field in fields]
 
     results = []
     for reachid, values in reaches.items():
         results.append([values[field] if field in values else None for field in fields])
         results[-1].append(reachid)
 
-    sql = 'UPDATE Reaches SET {} WHERE ReachID = ?'.format(','.join(['{}=?'.format(field) for field in fields]))
+    sql = 'UPDATE ReachAttributes SET {} WHERE ReachID = ?'.format(','.join(['{}=?'.format(field) for field in fields]))
     curs.executemany(sql, results)
     conn.commit()
 
@@ -392,14 +260,14 @@ def summarize_reaches(database, field):
     conn = sqlite3.connect(database)
     curs = conn.cursor()
 
-    curs.execute('SELECT Max({0}), Min({0}), Avg({0}), Count({0}) FROM Reaches WHERE ({0} IS NOT NULL)'.format(field))
+    curs.execute('SELECT Max({0}), Min({0}), Avg({0}), Count({0}) FROM ReachAttributes WHERE ({0} IS NOT NULL)'.format(field))
     row = curs.fetchone()
     if row and row[3] > 0:
         msg = '{}, max: {:.2f}, min: {:.2f}, avg: {:.2f}'.format(field, row[0], row[1], row[2])
     else:
         msg = "0 non null values"
 
-    curs.execute('SELECT Count(*) FROM Reaches WHERE {0} IS NULL'.format(field))
+    curs.execute('SELECT Count(*) FROM ReachAttributes WHERE {0} IS NULL'.format(field))
     row = curs.fetchone()
     msg += ', nulls: {:,}'.format(row[0])
 
@@ -411,7 +279,8 @@ def set_reach_fields_null(database, fields):
     log = Logger('Database')
     log.info('Setting {} reach fields to NULL'.format(len(fields)))
     conn = sqlite3.connect(database)
-    conn.execute('UPDATE Reaches SET {}'.format(','.join(['{} = NULL'.format(field) for field in fields])))
+    conn.execute('PRAGMA foreign_keys = ON')
+    conn.execute('UPDATE ReachAttributes SET {}'.format(','.join(['{} = NULL'.format(field) for field in fields])))
     conn.commit()
     conn.close()
 
@@ -462,20 +331,3 @@ def store_metadata(database, key, value):
     curs = conn.cursor()
     curs.execute('INSERT OR REPLACE INTO MetaData (KeyInfo, ValueInfo) VALUES (?, ?)', [key, formatted_value])
     conn.commit()
-
-
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('network', help='Input ShapeFile network', type=str)
-    parser.add_argument('huc', help='HUC identifier', type=str)
-    parser.add_argument('database', help='Path to the output SQLite database ', type=str)
-    parser.add_argument('--epsg', help='EPSG for storing geometries in the database', default=4326, type=float)
-    args = dotenv.parse_args_env(parser)
-
-    cfg = ModelConfig('', '0.0.1')
-    create_database(args.huc, args.database, {'MyMeta': 2000}, cfg.OUTPUT_EPSG)
-    populate_database(args.database, args.network, args.huc)
-
-
-if __name__ == '__main__':
-    main()

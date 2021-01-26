@@ -1,13 +1,13 @@
-# Name:   BRAT Build
-#
-#         Build a BRAT project by segmenting a river network to a specified
-#         length and then extract the input values required to run the
-#         BRAT model for each reach segment from various GIS layers.
-#
-# Author: Philip Bailey
-#
-# Date:   30 May 2019
-# -------------------------------------------------------------------------------
+""" Build a BRAT project by segmenting a river network to a specified
+    length and then extract the input values required to run the
+    BRAT model for each reach segment from various GIS layers.
+
+    Philip Bailey
+    30 May 2019
+
+    Returns:
+        [type]: [description]
+"""
 import argparse
 import os
 import sys
@@ -15,21 +15,19 @@ import uuid
 import traceback
 import datetime
 import time
-import shutil
+from typing import List
 from osgeo import ogr
-import rasterio.shutil
-from rscommons.shapefile import copy_feature_class
+from rscommons import GeopackageLayer
+from rscommons.vector_ops import copy_feature_class
 from rscommons import Logger, initGDALOGRErrors, RSLayer, RSProject, ModelConfig, dotenv
-from rscommons.util import safe_makedirs
-from rscommons.segment_network import segment_network
 from rscommons.build_network import build_network
-from rscommons.database import create_database
-from rscommons.database import populate_database
-from rscommons.reach_attributes import write_reach_attributes
+from rscommons.database import create_database, SQLiteCon
 from sqlbrat.utils.vegetation_summary import vegetation_summary
 from sqlbrat.utils.reach_geometry import reach_geometry
 from sqlbrat.utils.conflict_attributes import conflict_attributes
 from sqlbrat.__version__ import __version__
+
+Path = str
 
 initGDALOGRErrors()
 
@@ -37,50 +35,34 @@ cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/BRAT.xsd', __versi
 
 LayerTypes = {
     'DEM': RSLayer('NED 10m DEM', 'DEM', 'DEM', 'inputs/dem.tif'),
-    'FA': RSLayer('Flow Accumulation', 'FA', 'Raster', 'inputs/flow_accum.tif'),
-    'DA': RSLayer('Drainage Area in sqkm', 'DA', 'Raster', 'inputs/drainarea_sqkm.tif'),
     'SLOPE': RSLayer('Slope Raster', 'SLOPE', 'Raster', 'inputs/slope.tif'),
     'HILLSHADE': RSLayer('DEM Hillshade', 'HILLSHADE', 'Raster', 'inputs/dem_hillshade.tif'),
-    'VALLEY_BOTTOM': RSLayer('Valley Bottom', 'VALLEY_BOTTOM', 'Vector', 'inputs/valley_bottom.shp'),
-
     'EXVEG': RSLayer('Existing Vegetation', 'EXVEG', 'Raster', 'inputs/existing_veg.tif'),
     'HISTVEG': RSLayer('Historic Vegetation', 'HISTVEG', 'Raster', 'inputs/historic_veg.tif'),
-
-    'CLEANED': RSLayer('Cleaned Network', 'CLEANED', 'Vector', 'intermediates/intermediate_nhd_network.shp'),
-    'NETWORK': RSLayer('Network', 'NETWORK', 'Vector', 'intermediates/network.shp'),
-
-    'FLOWLINES': RSLayer('NHD Flowlines', 'FLOWLINES', 'Vector', 'inputs/NHDFlowline.shp'),
-    'FLOW_AREA': RSLayer('NHD Flow Area', 'FLOW_AREA', 'Vector', 'inputs/NHDArea.shp'),
-    'WATERBODIES': RSLayer('NHD Waterbody', 'WATERBODIES', 'Vector', 'inputs/NHDWaterbody.shp'),
-
-    'SEGMENTED': RSLayer('BRAT Network', 'SEGMENTED', 'Vector', 'outputs/brat.shp'),
-    'BRATDB': RSLayer('BRAT Database', 'BRATDB', 'SQLiteDB', 'outputs/brat.sqlite')
-}
-
-# Dictionary of fields that this process outputs, keyed by ShapeFile data type
-output_fields = {
-    ogr.OFTString: ['Agency', 'WatershedID'],
-    ogr.OFTInteger: ['AgencyID', 'ReachCode', 'IsPeren'],
-    ogr.OFTReal: [
-        'iGeo_Slope', 'iGeo_ElMax', 'iGeo_ElMin', 'iGeo_Len', 'iPC_Road', 'iPC_RoadX',
-        'iPC_RoadVB', 'iPC_Rail', 'iPC_RailVB', 'iPC_Canal', 'iPC_DivPts', 'oPC_Dist', 'iPC_Privat',
-        'Orig_DA'
-    ]
-}
-
-# This dictionary reassigns databae column names to 10 character limit for the ShapeFile
-shapefile_field_aliases = {
-    'WatershedID': 'HUC'
+    'INPUTS': RSLayer('Confinement', 'INPUTS', 'Geopackage', 'inputs/inputs.gpkg', {
+        'FLOWLINES': RSLayer('Segmented Flowlines', 'FLOWLINES', 'Vector', 'flowlines'),
+        'FLOW_AREA': RSLayer('NHD Flow Area', 'FLOW_AREA', 'Vector', 'flowareas'),
+        'WATERBODIES': RSLayer('NHD Waterbody', 'WATERBODIES', 'Vector', 'waterbodies'),
+        'VALLEY_BOTTOM': RSLayer('Valley Bottom', 'VALLEY_BOTTOM', 'Vector', 'valley_bottom'),
+        'ROADS': RSLayer('Roads', 'ROADS', 'Vector', 'roads'),
+        'RAIL': RSLayer('Rail', 'RAIL', 'Vector', 'rail'),
+        'CANALS': RSLayer('Canals', 'CANALS', 'Vector', 'canals')
+    }),
+    'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/intermediates.gpkg', {}),
+    'OUTPUTS': RSLayer('BRAT', 'OUTPUTS', 'Geopackage', 'outputs/brat.gpkg', {
+        'BRAT_GEOMETRY': RSLayer('BRAT Geometry', 'BRAT_GEOMETRY', 'Vector', 'ReachGeometry'),
+        'BRAT': RSLayer('BRAT', 'BRAT_RESULTS', 'Vector', 'vwReaches')
+    })
 }
 
 
-def brat_build(huc, flowlines, max_length, min_length,
-               dem, slope, hillshade, flow_accum, drainarea_sqkm, existing_veg, historical_veg, output_folder,
-               streamside_buffer, riparian_buffer, max_drainage_area,
-               reach_codes, canal_codes,
-               flow_areas, waterbodies, max_waterbody,
-               valley_bottom, roads, rail, canals, ownership,
-               elevation_buffer):
+def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Path,
+               existing_veg: Path, historical_veg: Path, output_folder: Path,
+               streamside_buffer: float, riparian_buffer: float,
+               reach_codes: List[str], canal_codes: List[str], peren_codes: List[str],
+               flow_areas: Path, waterbodies: Path, max_waterbody: float,
+               valley_bottom: Path, roads: Path, rail: Path, canals: Path, ownership: Path,
+               elevation_buffer: float):
     """Build a BRAT project by segmenting a reach network and copying
     all the necessary layers into the resultant BRAT project
 
@@ -94,14 +76,11 @@ def brat_build(huc, flowlines, max_length, min_length,
         dem {str} -- Path to the DEM raster for the watershed
         slope {str} -- Path to the slope raster
         hillshade {str} -- Path to the DEM hillshade raster
-        flow_accum {str} -- Path to the flow accumulation raster
-        drainarea_sqkm {str} -- Path to the drainage area raster
         existing_veg {str} -- Path to the excisting vegetation raster
         historical_veg {str} -- Path to the historical vegetation raster
         output_folder {str} -- Output folder where the BRAT project will get created
         streamside_buffer {float} -- Streamside vegetation buffer (meters)
         riparian_buffer {float} -- Riparian vegetation buffer (meters)
-        max_drainage_area {float} -- Maximum drainage area above which dam capacity will be zero
         intermittent {bool} -- True to keep intermittent streams. False discard them.
         ephemeral {bool} -- True to keep ephemeral streams. False to discard them.
         max_waterbody {float} -- Area (sqm) of largest waterbody to be retained.
@@ -117,37 +96,54 @@ def brat_build(huc, flowlines, max_length, min_length,
     log.info('HUC: {}'.format(huc))
     log.info('EPSG: {}'.format(cfg.OUTPUT_EPSG))
 
-    project, realization, proj_nodes = create_project(huc, output_folder)
+    project, _realization, proj_nodes = create_project(huc, output_folder)
 
     log.info('Adding input rasters to project')
     _dem_raster_path_node, dem_raster_path = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], dem)
     _existing_path_node, prj_existing_path = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['EXVEG'], existing_veg)
     _historic_path_node, prj_historic_path = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HISTVEG'], historical_veg)
-
-    # Copy in the rasters we need
     project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], hillshade)
-    project.add_project_raster(proj_nodes['Inputs'], LayerTypes['FA'], flow_accum)
-    project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DA'], drainarea_sqkm)
     project.add_project_raster(proj_nodes['Inputs'], LayerTypes['SLOPE'], slope)
+    project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
+    project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['OUTPUTS'])
 
-    # Copy in the vectors we need
-    _flowlines_node, prj_flowlines = project.add_project_vector(proj_nodes['Inputs'], LayerTypes['FLOWLINES'], flowlines, att_filter="\"ReachCode\" Like '{}%'".format(huc))
-    _flow_areas_node, prj_flow_areas = project.add_project_vector(proj_nodes['Inputs'], LayerTypes['FLOW_AREA'], flow_areas) if flow_areas else None
-    _waterbodies_node, prj_waterbodies = project.add_project_vector(proj_nodes['Inputs'], LayerTypes['WATERBODIES'], waterbodies) if waterbodies else None
-    _valley_bottom_node, prj_valley_bottom = project.add_project_vector(proj_nodes['Inputs'], LayerTypes['VALLEY_BOTTOM'], valley_bottom) if valley_bottom else None
+    inputs_gpkg_path = os.path.join(output_folder, LayerTypes['INPUTS'].rel_path)
+    intermediates_gpkg_path = os.path.join(output_folder, LayerTypes['INTERMEDIATES'].rel_path)
+    outputs_gpkg_path = os.path.join(output_folder, LayerTypes['OUTPUTS'].rel_path)
 
-    # Other layers we need
-    _cleaned_path_node, cleaned_path = project.add_project_vector(proj_nodes['Intermediates'], LayerTypes['CLEANED'], replace=True)
-    _segmented_path_node, segmented_path = project.add_project_vector(proj_nodes['Outputs'], LayerTypes['SEGMENTED'], replace=True)
+    # Make sure we're starting with empty/fresh geopackages
+    GeopackageLayer.delete(inputs_gpkg_path)
+    GeopackageLayer.delete(intermediates_gpkg_path)
+    GeopackageLayer.delete(outputs_gpkg_path)
 
-    # Filter the flow lines to just the required features and then segment to desired length
-    build_network(prj_flowlines, prj_flow_areas, prj_waterbodies, cleaned_path, cfg.OUTPUT_EPSG, reach_codes, max_waterbody)
-    segment_network(cleaned_path, segmented_path, max_length, min_length)
+    # Copy all the original vectors to the inputs geopackage. This will ensure on same spatial reference
+    source_layers = {
+        'FLOWLINES': flowlines,
+        'FLOW_AREA': flow_areas,
+        'WATERBODIES': waterbodies,
+        'VALLEY_BOTTOM': valley_bottom,
+        'ROADS': roads,
+        'RAIL': rail,
+        'CANALS': canals
+    }
+
+    input_layers = {}
+    for input_key, rslayer in LayerTypes['INPUTS'].sub_layers.items():
+        input_layers[input_key] = os.path.join(inputs_gpkg_path, rslayer.rel_path)
+        copy_feature_class(source_layers[input_key], input_layers[input_key], cfg.OUTPUT_EPSG)
+
+    # Create the output feature class fields. Only those listed here will get copied from the source
+    with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['BRAT_GEOMETRY'].rel_path, delete_dataset=True) as out_lyr:
+        out_lyr.create_layer(ogr.wkbMultiLineString, epsg=cfg.OUTPUT_EPSG, options=['FID=ReachID'], fields={
+            'WatershedID': ogr.OFTString,
+            'FCode': ogr.OFTInteger,
+            'TotDASqKm': ogr.OFTReal,
+            'GNIS_Name': ogr.OFTString,
+            'NHDPlusID': ogr.OFTReal
+        })
 
     metadata = {
         'BRAT_Build_DateTime': datetime.datetime.now().isoformat(),
-        'Max_Length': max_length,
-        'Min_Length': min_length,
         'Streamside_Buffer': streamside_buffer,
         'Riparian_Buffer': riparian_buffer,
         'Reach_Codes': reach_codes,
@@ -156,32 +152,55 @@ def brat_build(huc, flowlines, max_length, min_length,
         'Elevation_Buffer': elevation_buffer
     }
 
-    db_path = os.path.join(output_folder, LayerTypes['BRATDB'].rel_path)
-    watesrhed_name = create_database(huc, db_path, metadata, cfg.OUTPUT_EPSG, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'brat_schema.sql'))
-    populate_database(db_path, segmented_path, huc)
-    project.add_metadata({'Watershed': watesrhed_name})
+    # Execute the SQL to create the lookup tables in the output geopackage
+    watershed_name = create_database(huc, outputs_gpkg_path, metadata, cfg.OUTPUT_EPSG, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'brat_schema.sql'))
+    project.add_metadata({'Watershed': watershed_name})
 
-    # Add this to the project file
-    project.add_dataset(proj_nodes['Outputs'], db_path, LayerTypes['BRATDB'], 'SQLiteDB')
+    # Copy the reaches into the output feature class layer, filtering by reach codes
+    reach_geometry_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['BRAT_GEOMETRY'].rel_path)
+    build_network(input_layers['FLOWLINES'], input_layers['FLOW_AREA'], reach_geometry_path, waterbodies_path=input_layers['WATERBODIES'], epsg=cfg.OUTPUT_EPSG, reach_codes=reach_codes, create_layer=False)
+
+    with SQLiteCon(outputs_gpkg_path) as database:
+        # Data preparation SQL statements to handle any weird attributes
+        database.curs.execute('INSERT INTO ReachAttributes (ReachID, Orig_DA, iGeo_DA, ReachCode, WatershedID, StreamName) SELECT ReachID, TotDASqKm, TotDASqKm, FCode, WatershedID, GNIS_NAME FROM ReachGeometry')
+        database.curs.execute('UPDATE ReachAttributes SET IsPeren = 1 WHERE (ReachCode IN ({}))'.format(','.join(peren_codes)))
+        database.curs.execute('UPDATE ReachAttributes SET iGeo_DA = 0 WHERE iGeo_DA IS NULL')
+
+        # Register vwReaches as a feature layer as well as its geometry column
+        database.curs.execute("""INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id)
+            SELECT 'vwReaches', data_type, 'Reaches', min_x, min_y, max_x, max_y, srs_id FROM gpkg_contents WHERE table_name = 'ReachGeometry'""")
+
+        database.curs.execute("""INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m)
+            SELECT 'vwReaches', column_name, geometry_type_name, srs_id, z, m FROM gpkg_geometry_columns WHERE table_name = 'ReachGeometry'""")
+
+        database.conn.commit()
 
     # Calculate the geophysical properties slope, min and max elevations
-    reach_geometry(db_path, dem_raster_path, elevation_buffer, cfg.OUTPUT_EPSG)
+    reach_geometry(reach_geometry_path, dem_raster_path, elevation_buffer)
 
     # Calculate the conflict attributes ready for conservation
-    conflict_attributes(db_path, valley_bottom, roads, rail, canals, ownership, 30, 5, cfg.OUTPUT_EPSG)
+    conflict_attributes(outputs_gpkg_path, reach_geometry_path,
+                        input_layers['VALLEY_BOTTOM'], input_layers['ROADS'], input_layers['RAIL'], input_layers['CANALS'],
+                        ownership, 30, 5, cfg.OUTPUT_EPSG, canal_codes, intermediates_gpkg_path)
 
     # Calculate the vegetation cell counts for each epoch and buffer
-    for veg_raster in [prj_existing_path, prj_historic_path]:
-        [vegetation_summary(db_path, veg_raster, buffer) for buffer in [streamside_buffer, riparian_buffer]]
-
-    # Copy BRAT build output fields from SQLite to ShapeFile
-    log.info('Copying values from SQLite to output ShapeFile')
-    write_reach_attributes(segmented_path, db_path, output_fields, shapefile_field_aliases)
+    for label, veg_raster in [('Existing Veg', prj_existing_path), ('Historical Veg', prj_historic_path)]:
+        for buffer in [streamside_buffer, riparian_buffer]:
+            vegetation_summary(outputs_gpkg_path, '{} {}m'.format(label, buffer), veg_raster, buffer)
 
     log.info('BRAT build completed successfully.')
 
 
 def create_project(huc, output_dir):
+    """ Create riverscapes project XML
+
+    Args:
+        huc (str): Watershed HUC code
+        output_dir (str): Full absolute path to output folder
+
+    Returns:
+        tuple: (project XML object, realization node, dictionary of other nodes)
+    """
 
     project_name = 'BRAT for HUC {}'.format(huc)
     project = RSProject(cfg, output_dir)
@@ -214,19 +233,18 @@ def create_project(huc, output_dir):
 
 
 def main():
+    """ Main BRAT Build routine
+    """
+
     parser = argparse.ArgumentParser(
         description='Build the inputs for an eventual brat_run:',
         # epilog="This is an epilog"
     )
     parser.add_argument('huc', help='huc input', type=str)
-    parser.add_argument('max_length', help='Maximum length of features when segmenting. Zero causes no segmentation.', type=float)
-    parser.add_argument('min_length', help='min_length input', type=float)
 
     parser.add_argument('dem', help='dem input', type=str)
     parser.add_argument('slope', help='slope input', type=str)
     parser.add_argument('hillshade', help='hillshade input', type=str)
-    parser.add_argument('flow_accum', help='flow accumulation input', type=str)
-    parser.add_argument('drainarea_sqkm', help='drainage area input', type=str)
 
     parser.add_argument('flowlines', help='flowlines input', type=str)
     parser.add_argument('existing_veg', help='existing_veg input', type=str)
@@ -240,24 +258,25 @@ def main():
 
     parser.add_argument('streamside_buffer', help='streamside_buffer input', type=float)
     parser.add_argument('riparian_buffer', help='riparian_buffer input', type=float)
-    parser.add_argument('max_drainage_area', help='max_drainage_area input', type=float)
-
     parser.add_argument('elevation_buffer', help='elevation_buffer input', type=float)
+
     parser.add_argument('output_folder', help='output_folder input', type=str)
 
     parser.add_argument('--reach_codes', help='Comma delimited reach codes (FCode) to retain when filtering features. Omitting this option retains all features.', type=str)
     parser.add_argument('--canal_codes', help='Comma delimited reach codes (FCode) representing canals. Omitting this option retains all features.', type=str)
+    parser.add_argument('--peren_codes', help='Comma delimited reach codes (FCode) representing perennial features', type=str)
     parser.add_argument('--flow_areas', help='(optional) path to the flow area polygon feature class containing artificial paths', type=str)
     parser.add_argument('--waterbodies', help='(optional) waterbodies input', type=str)
     parser.add_argument('--max_waterbody', help='(optional) maximum size of small waterbody artificial flows to be retained', type=float)
 
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
 
-    # We can substitute patters for environment varaibles
+    # Substitute patterns for environment varaibles
     args = dotenv.parse_args_env(parser)
 
     reach_codes = args.reach_codes.split(',') if args.reach_codes else None
     canal_codes = args.canal_codes.split(',') if args.canal_codes else None
+    peren_codes = args.peren_codes.split(',') if args.peren_codes else None
 
     # Initiate the log file
     log = Logger("BRAT Build")
@@ -265,19 +284,17 @@ def main():
     log.title('BRAT Build Tool For HUC: {}'.format(args.huc))
     try:
         brat_build(
-            args.huc, args.flowlines, args.max_length, args.min_length, args.dem, args.slope,
-            args.hillshade, args.flow_accum, args.drainarea_sqkm, args.existing_veg, args.historical_veg, args.output_folder, args.streamside_buffer,
-            args.riparian_buffer,
-            args.max_drainage_area,
-            reach_codes,
-            canal_codes,
+            args.huc, args.flowlines, args.dem, args.slope, args.hillshade,
+            args.existing_veg, args.historical_veg, args.output_folder,
+            args.streamside_buffer, args.riparian_buffer,
+            reach_codes, canal_codes, peren_codes,
             args.flow_areas, args.waterbodies, args.max_waterbody,
             args.valley_bottom, args.roads, args.rail, args.canals, args.ownership,
             args.elevation_buffer
         )
 
-    except Exception as e:
-        log.error(e)
+    except Exception as ex:
+        log.error(ex)
         traceback.print_exc(file=sys.stdout)
         sys.exit(1)
 

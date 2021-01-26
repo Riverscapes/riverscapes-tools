@@ -4,7 +4,7 @@ from osgeo import ogr
 from rscommons.science_base import get_nhdhr_url
 from rscommons.download import download_unzip
 from rscommons.filegdb import export_feature_class, copy_attributes, export_table
-from rscommons.util import safe_makedirs, safe_remove_dir
+from rscommons.util import safe_makedirs
 from rscommons.shapefile import get_geometry_union
 
 # NHDPlus HR Value Added Attributes (VAA) to be copied to the NHDFlowline feature class
@@ -19,7 +19,7 @@ flowline_fields = [
 
 def clean_nhd_data(huc, download_folder, unzip_folder, out_dir, out_epsg, force_download):
 
-    filegdb, nhd_url = download_unzip_nhd(huc, download_folder, unzip_folder, out_epsg, force_download)
+    filegdb, nhd_url = download_unzip_nhd(huc, download_folder, unzip_folder, force_download)
 
     # This is the dictionary of cleaned feature classes produced by this processed
     featureclasses = {}
@@ -59,7 +59,7 @@ def clean_nhd_data(huc, download_folder, unzip_folder, out_dir, out_epsg, force_
     return featureclasses, db_path, huc_name, nhd_url
 
 
-def download_unzip_nhd(huc, download_folder, unzip_folder, out_epsg, force_download):
+def download_unzip_nhd(huc, download_folder, unzip_folder, force_download):
 
     try:
         nhd_url = get_nhdhr_url(huc[:4])

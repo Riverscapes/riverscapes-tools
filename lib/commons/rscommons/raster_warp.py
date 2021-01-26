@@ -21,10 +21,10 @@ import traceback
 from osgeo import gdal
 from rscommons.download import get_unique_file_path
 from rscommons.util import safe_remove_file
-from rscommons import Logger
+from rscommons import Logger, VectorBase
 
 
-def raster_vrt_stitch(inrasters, outraster, epsg, clip=None, clean=False):
+def raster_vrt_stitch(inrasters, outraster, epsg, clip=None, clean=False, warp_options: dict = {}):
     """[summary]
     https://gdal.org/python/osgeo.gdal-module.html#BuildVRT
     Keyword arguments are :
@@ -67,7 +67,7 @@ def raster_vrt_stitch(inrasters, outraster, epsg, clip=None, clean=False):
     vrt_options = gdal.BuildVRTOptions()
     gdal.BuildVRT(path_vrt, inrasters, options=vrt_options)
 
-    raster_warp(path_vrt, outraster, epsg, clip)
+    raster_warp(path_vrt, outraster, epsg, clip, warp_options)
 
     if clean:
         for rpath in inrasters:
@@ -79,7 +79,7 @@ def raster_vrt_stitch(inrasters, outraster, epsg, clip=None, clean=False):
     #     os.remove(path_vrt)
 
 
-def raster_warp(inraster, outraster, epsg, clip=None, cutlineBlend=None):
+def raster_warp(inraster: str, outraster: str, epsg, clip=None, warp_options: dict = {}):
     """
     Reproject a raster to a different coordinate system.
     :param inraster: Input dataset
@@ -87,7 +87,10 @@ def raster_warp(inraster, outraster, epsg, clip=None, cutlineBlend=None):
     :param epsg: Output spatial reference EPSG identifier
     :param log: Log file object
     :param clip: Optional Polygon dataset to clip the output.
+    :param warp_options: Extra GDALWarpOptions.
     :return: None
+
+    https://gdal.org/python/osgeo.gdal-module.html#WarpOptions
     """
 
     log = Logger('Raster Warp')
@@ -106,12 +109,20 @@ def raster_warp(inraster, outraster, epsg, clip=None, cutlineBlend=None):
     warpvrt = os.path.join(os.path.dirname(outraster), 'temp_gdal_warp_output.vrt')
 
     log.info('Performing GDAL warp to temporary VRT file.')
-    warp_options = gdal.WarpOptions(dstSRS='EPSG:{}'.format(epsg), format='vrt')
+
     if clip:
         log.info('Clipping to polygons using {}'.format(clip))
-        warp_options = gdal.WarpOptions(dstSRS='EPSG:{}'.format(epsg), format='vrt', cutlineDSName=clip, cropToCutline=True, cutlineBlend=cutlineBlend)
+        clip_ds, clip_layer = VectorBase.path_sorter(clip)
+        warp_options_obj = gdal.WarpOptions(
+            dstSRS='EPSG:{}'.format(epsg), format='vrt',
+            cutlineDSName=clip_ds,
+            cutlineLayer=clip_layer,
+            cropToCutline=True, **warp_options
+        )
+    else:
+        warp_options_obj = gdal.WarpOptions(dstSRS='EPSG:{}'.format(epsg), format='vrt', **warp_options)
 
-    ds = gdal.Warp(warpvrt, inraster, options=warp_options)
+    ds = gdal.Warp(warpvrt, inraster, options=warp_options_obj)
 
     log.info('Using GDAL translate to convert VRT to compressed raster format.')
     translateoptions = gdal.TranslateOptions(gdal.ParseCommandLine("-of Gtiff -co COMPRESS=DEFLATE"))

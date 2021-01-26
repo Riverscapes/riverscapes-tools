@@ -1,9 +1,5 @@
 import os
-import json
 import argparse
-from osgeo import ogr
-from osgeo import osr
-from shapely.geometry import shape, mapping
 from rscommons import Logger, dotenv
 from rscommons.shapefile import get_geometry_unary_union
 from rscommons.shapefile import _rough_convert_metres_to_shapefile_units

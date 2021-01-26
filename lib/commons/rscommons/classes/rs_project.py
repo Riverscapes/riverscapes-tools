@@ -18,7 +18,7 @@ from osgeo import ogr
 from rscommons import Logger
 from rscommons.classes.xml_builder import XMLBuilder
 from rscommons.util import safe_makedirs
-from rscommons.shapefile import copy_feature_class
+from rscommons.vector_ops import copy_feature_class
 
 
 _folder_inputs = '01_Inputs'
@@ -290,6 +290,19 @@ class RSProject:
         return nod_dataset
 
     def add_project_vector(self, parent_node, rs_lyr, copy_path=None, replace=False, att_filter=None):
+        """NOTE: this is for shapefiles only and we might be phasing it out. Ask yourself "Should I really
+                have shapefiles in my project?"
+
+        Args:
+            parent_node ([type]): The Eltree XML node to use as the parent
+            rs_lyr ([type]): The Layer object to use as an input
+            copy_path ([type], optional): Copy this layer to a shapefile. Defaults to None.
+            replace (bool, optional): [description]. Defaults to False.
+            att_filter ([type], optional): [description]. Defaults to None.
+
+        Returns:
+            [type]: [description]
+        """
         log = Logger('add_project_vector')
 
         file_path = os.path.join(os.path.dirname(self.xml_path), rs_lyr.rel_path)
@@ -306,12 +319,13 @@ class RSProject:
                 driver.DeleteDataSource(file_path)
 
         if copy_path is not None:
-            if not os.path.exists(copy_path):
-                log.error('Could not find mandatory input "{}" shapefile at path "{}"'.format(rs_lyr.name, copy_path))
+            # TODO: need a good "layer exists" that covers both ShapeFile and GeoPackages
+            # if not  os.path.exists(copy_path):
+            #     log.error('Could not find mandatory input "{}" shapefile at path "{}"'.format(rs_lyr.name, copy_path))
             log.info('Copying dataset: {}'.format(rs_lyr.name))
 
             # Rasterio copies datasets efficiently
-            copy_feature_class(copy_path, self.settings.OUTPUT_EPSG, file_path, attribute_filter=att_filter)
+            copy_feature_class(copy_path, file_path, self.settings.OUTPUT_EPSG, attribute_filter=att_filter)
             log.debug('Shapefile Copied {} to {}'.format(copy_path, file_path))
 
         nod_dataset = self.add_dataset(parent_node, file_path, rs_lyr, 'Vector', replace)

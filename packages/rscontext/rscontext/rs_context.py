@@ -18,7 +18,7 @@ import uuid
 import datetime
 from osgeo import ogr
 
-from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALOGRErrors, GeopackageLayer, Timer
+from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALOGRErrors, Timer
 from rscommons.util import safe_makedirs, safe_remove_dir
 from rscommons.clean_nhd_data import clean_nhd_data
 from rscommons.clean_ntd_data import clean_ntd_data
@@ -36,6 +36,7 @@ from rscontext.flow_accumulation import flow_accumulation, flow_accum_to_drainag
 from rscontext.clip_ownership import clip_ownership
 from rscontext.filter_ecoregions import filter_ecoregions
 from rscontext.rs_context_report import RSContextReport
+from rscontext.vegetation import clip_vegetation
 from rscontext.__version__ import __version__
 
 initGDALOGRErrors()
@@ -65,9 +66,11 @@ LayerTypes = {
     # NHD Geopackage Layers
     'HYDROLOGY': RSLayer('Hydrology', 'NHD', 'Geopackage', 'hydrology/hydrology.gpkg', {
         'NETWORK': RSLayer('NHD Flowlines', 'NETWORK', 'Vector', 'network'),
+        'BUFFEREDCLIP100': RSLayer('Buffered Clip Shape 100m', 'BUFFERED_CLIP100', 'Vector', 'buffered_clip100m'),
+        'BUFFEREDCLIP500': RSLayer('Buffered Clip Shape 500m', 'BUFFERED_CLIP500', 'Vector', 'buffered_clip500m'),
         'NETWORK300M': RSLayer('NHD Flowlines Segmented 300m', 'NETWORK300M', 'Vector', 'network_300m'),
-        'NETWORK300M': RSLayer('NHD Flowlines intersected with road, rail and ownership', 'NETWORK300M', 'Vector', 'network_intersected'),
-        'NETWORK300MCROSSINGS': RSLayer('NHD Flowlines intersected with road, rail and ownership, segmented to 300m', 'NETWORK300MCROSSINGS', 'Vector', 'network_intersected_300m')
+        'NETWORK300M_INTERSECTION': RSLayer('NHD Flowlines intersected with road, rail and ownership', 'NETWORK300M_INTERSECTION', 'Vector', 'network_intersected'),
+        'NETWORK300M_CROSSINGS': RSLayer('NHD Flowlines intersected with road, rail and ownership, segmented to 300m', 'NETWORK300MCROSSINGS', 'Vector', 'network_intersected_300m')
     }),
 
     # Prism Layers
@@ -122,6 +125,7 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
     safe_makedirs(scratch_dem_folder)
 
     project, realization = create_project(huc, output_folder)
+    hydrology_gpkg_path = os.path.join(output_folder, LayerTypes['HYDROLOGY'].rel_path)
 
     dem_node, dem_raster = project.add_project_raster(realization, LayerTypes['DEM'])
     _node, hill_raster = project.add_project_raster(realization, LayerTypes['HILLSHADE'])
@@ -140,11 +144,20 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
     nhd_unzip_folder = os.path.join(scratch_dir, 'nhd', huc[:4])
 
     nhd, db_path, huc_name, nhd_url = clean_nhd_data(huc, nhd_download_folder, nhd_unzip_folder, os.path.join(output_folder, 'hydrology'), cfg.OUTPUT_EPSG, False)
+
     # Clean up the unzipped files. We won't need them again
     if parallel:
         safe_remove_dir(nhd_unzip_folder)
     project.add_metadata({'Watershed': huc_name})
     boundary = 'WBDHU{}'.format(len(huc))
+
+    # For coarser rasters than the DEM we need to buffer our clip polygon to include enough pixels
+    # This shouldn't be too much more data because these are usually integer rasters that are much lower res.
+    buffered_clip_path100 = os.path.join(hydrology_gpkg_path, LayerTypes['HYDROLOGY'].sub_layers['BUFFEREDCLIP100'].rel_path)
+    copy_feature_class(nhd[boundary], buffered_clip_path100, epsg=cfg.OUTPUT_EPSG, buffer=100)
+
+    buffered_clip_path500 = os.path.join(hydrology_gpkg_path, LayerTypes['HYDROLOGY'].sub_layers['BUFFEREDCLIP500'].rel_path)
+    copy_feature_class(nhd[boundary], buffered_clip_path500, epsg=cfg.OUTPUT_EPSG, buffer=500)
 
     # PRISM climate rasters
     mean_annual_precip = None
@@ -158,7 +171,7 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
         except StopIteration:
             raise Exception('Could not find .bil file corresponding to "{}"'.format(ptype))
         _node, project_raster_path = project.add_project_raster(realization, LayerTypes[ptype])
-        raster_warp(source_raster_path, project_raster_path, cfg.OUTPUT_EPSG, nhd[boundary], 2)
+        raster_warp(source_raster_path, project_raster_path, cfg.OUTPUT_EPSG, buffered_clip_path500, {"cutlineBlend": 1})
 
         # Use the mean annual precipitation to calculate bankfull width
         if ptype.lower() == 'ppt':
@@ -212,7 +225,7 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
     # Download the HAND raster
     huc6 = huc[0:6]
     hand_download_folder = os.path.join(download_folder, 'hand')
-    _hpath, hand_url = download_hand(huc6, cfg.OUTPUT_EPSG, hand_download_folder, nhd[boundary], hand_raster)
+    _hpath, hand_url = download_hand(huc6, cfg.OUTPUT_EPSG, hand_download_folder, nhd[boundary], hand_raster, warp_options={"cutlineBlend": 1})
     project.add_metadata({'origin_url': hand_url}, hand_node)
 
     # download contributing DEM rasters, mosaic and reproject into compressed GeoTIF
@@ -222,7 +235,7 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
 
     need_dem_rebuild = force_download or not os.path.exists(dem_raster)
     if need_dem_rebuild:
-        raster_vrt_stitch(dem_rasters, dem_raster, cfg.OUTPUT_EPSG, nhd[boundary])
+        raster_vrt_stitch(dem_rasters, dem_raster, cfg.OUTPUT_EPSG, clip=nhd[boundary], warp_options={"cutlineBlend": 1})
         verify_areas(dem_raster, nhd[boundary])
 
     # Calculate slope rasters seperately and then stitch them
@@ -251,14 +264,14 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
             gdal_dem_geographic(dem_r, hs_part_path, 'hillshade')
             need_hs_build = True
 
-    if (need_slope_build):
-        raster_vrt_stitch(slope_parts, slope_raster, cfg.OUTPUT_EPSG, nhd[boundary], clean=parallel)
+    if need_slope_build:
+        raster_vrt_stitch(slope_parts, slope_raster, cfg.OUTPUT_EPSG, clip=nhd[boundary], clean=parallel, warp_options={"cutlineBlend": 1})
         verify_areas(slope_raster, nhd[boundary])
     else:
         log.info('Skipping slope build because nothing has changed.')
 
-    if (need_hs_build):
-        raster_vrt_stitch(hillshade_parts, hill_raster, cfg.OUTPUT_EPSG, nhd[boundary], clean=parallel)
+    if need_hs_build:
+        raster_vrt_stitch(hillshade_parts, hill_raster, cfg.OUTPUT_EPSG, clip=nhd[boundary], clean=parallel, warp_options={"cutlineBlend": 1})
         verify_areas(hill_raster, nhd[boundary])
     else:
         log.info('Skipping hillshade build because nothing has changed.')
@@ -274,11 +287,10 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
 
     # Clip and re-project the existing and historic vegetation
     log.info('Processing existing and historic vegetation rasters.')
-    raster_warp(existing_veg, existing_clip, cfg.OUTPUT_EPSG, nhd[boundary], 2)
-    raster_warp(historic_veg, historic_clip, cfg.OUTPUT_EPSG, nhd[boundary], 2)
+    clip_vegetation(buffered_clip_path100, existing_veg, existing_clip, historic_veg, historic_clip, cfg.OUTPUT_EPSG)
 
     log.info('Process the Fair Market Value Raster.')
-    raster_warp(fair_market, fair_market_clip, cfg.OUTPUT_EPSG, nhd[boundary], 3)
+    raster_warp(fair_market, fair_market_clip, cfg.OUTPUT_EPSG, clip=buffered_clip_path500, warp_options={"cutlineBlend": 1})
 
     # Clip the landownership Shapefile to a 10km buffer around the watershed boundary
     own_path = os.path.join(output_folder, LayerTypes['OWNERSHIP'].rel_path)
@@ -289,7 +301,6 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
     # Segmentation
     #######################################################
 
-    hydrology_gpkg_path = os.path.join(output_folder, LayerTypes['HYDROLOGY'].rel_path)
     # For now let's just make a copy of the NHD FLowlines
     tmr = Timer()
     rs_segmentation(

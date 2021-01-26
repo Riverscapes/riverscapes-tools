@@ -1,13 +1,9 @@
 import sys
 import time
-import gc
-import sys
-import glob
 import shutil
 import os
-from math import cos, sin, asin, sqrt, radians
 from rscommons import Logger
-from rscommons.util import sizeof_fmt
+from rscommons.util import sizeof_fmt, pretty_duration
 
 # Set if this environment variable is set don't show any UI
 NO_UI = os.environ.get('NO_UI') is not None
@@ -18,7 +14,6 @@ class ProgressBar:
     """
 
     def __init__(self, total, char_size=50, text=None, timer=500, byteFormat=False):
-        self.log = Logger('ProgressBar')
         self.char_size = char_size
         self.text = text
         self.byteFormat = byteFormat
@@ -42,13 +37,16 @@ class ProgressBar:
         self.visible = False
 
     def finish(self):
-        self.erase()
-        if self.byteFormat:
-            writestr = "Finished: {}    {}     \n".format(sizeof_fmt(self.total), self.text)
+        if (self.start_time is None):
+            duration = "0s"
         else:
-            writestr = "Finished: {:,}    {}     \n".format(self.total, self.text)
-        sys.stdout.write(writestr)
-        sys.stdout.flush()
+            duration = pretty_duration(int(time.time() - self.start_time))
+        if self.byteFormat:
+            writestr = "Completed: {}  Total Time: {}     \n".format(sizeof_fmt(self.total), duration)
+        else:
+            writestr = "Completed {:,} operations.  Total Time: {}     \n".format(self.total, duration)
+        log = Logger(self.text)
+        log.info(writestr)
 
     def output(self):
         first_time = False
@@ -56,17 +54,19 @@ class ProgressBar:
             first_time = True
             self.start_time = time.time()
         elapsed_time = 1000 * (time.time() - self.lastupdate)
+        dur_s = int(time.time() - self.start_time)
+        duration = pretty_duration(dur_s)
         # For NO_UI we still want a keepalive signal but we don't want the quick-update progress bars
         if NO_UI:
             if first_time or elapsed_time > self.timer:
                 self.lastupdate = time.time()
                 writestr = ""
-                time_since_begun = int(time.time() - self.start_time)
+
                 if self.byteFormat:
-                    writestr = "        PROGRESS: {} / {}    {}     Ellapsed: {:n}s\n".format(sizeof_fmt(self.progress), sizeof_fmt(self.total), self.text, time_since_begun)
+                    writestr = "        PROGRESS: {} / {}    {}     (Ellapsed: {})\n".format(sizeof_fmt(self.progress), sizeof_fmt(self.total), self.text, duration)
                 else:
                     pct_done = int(100 * (self.progress / self.total))
-                    writestr = "        PROGRESS: {:,} / {:,}  ({}%)  {}     Ellapsed: {:n}s\n".format(self.progress, self.total, pct_done, self.text, time_since_begun)
+                    writestr = "        PROGRESS: {:,} / {:,}  ({}%)  {}     (Ellapsed: {})\n".format(self.progress, self.total, pct_done, self.text, duration)
                 sys.stdout.write(writestr)
                 sys.stdout.flush()
             return
@@ -79,9 +79,9 @@ class ProgressBar:
             self.erase()
             writestr = ""
             if self.byteFormat:
-                writestr = "\r[{}{}]    {} / {}    {}     \n".format('=' * done, ' ' * (50 - done), sizeof_fmt(self.progress), sizeof_fmt(self.total), self.text)
+                writestr = "\r[{}{}]  {} / {}  {} (Ellapsed: {})     \n".format('=' * done, ' ' * (50 - done), sizeof_fmt(self.progress), sizeof_fmt(self.total), self.text, duration)
             else:
-                writestr = "\r[{}{}]    {:,} / {:,}    {}     \n".format('=' * done, ' ' * (50 - done), self.progress, self.total, self.text)
+                writestr = "\r[{}{}]  {:,} / {:,}  {} (Ellapsed: {})     \n".format('=' * done, ' ' * (50 - done), self.progress, self.total, self.text, duration)
 
             if len(writestr) > tSize.columns - 1:
                 writestr = writestr[0:tSize.columns - 4] + '   \n'

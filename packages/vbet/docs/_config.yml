@@ -27,6 +27,7 @@ defaults:
 
 # Files/Folders to exclude from publishing
 exclude:
+  - vendor
   - src
   - LICENSE
   - README.md

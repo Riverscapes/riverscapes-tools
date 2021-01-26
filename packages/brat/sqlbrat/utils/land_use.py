@@ -1,20 +1,15 @@
-# Name:     Land Use
-#
-# Purpose:  Calculate the land use intensity required by the conflict attributes
-#
-# Author:   Philip Bailey
-#
-# Date:     17 Oct 2019
-# -------------------------------------------------------------------------------
-import os
+""" Calculate the land use intensity required by the conflict attributes
+
+    Philip Bailey
+    17 Oct 2019
+"""
 import argparse
 import sqlite3
 from rscommons import Logger, dotenv
-from rscommons.database import write_attributes
-from rscommons.database import load_attributes
+from rscommons.database import write_db_attributes
 
 
-def land_use(database, buffer):
+def land_use(database: str, buffer: float):
     """Calculate land use intensity for each reach in BRAT database
 
     Arguments:
@@ -23,10 +18,19 @@ def land_use(database, buffer):
     """
 
     reaches = calculate_land_use(database, buffer)
-    write_attributes(database, reaches, ['iPC_LU', 'iPC_VLowLU', 'iPC_LowLU', 'iPC_ModLU', 'iPC_HighLU'])
+    write_db_attributes(database, reaches, ['iPC_LU', 'iPC_VLowLU', 'iPC_LowLU', 'iPC_ModLU', 'iPC_HighLU'])
 
 
-def calculate_land_use(database, buffer):
+def calculate_land_use(database: str, buffer: float):
+    """ Perform actual land use intensity calculation
+
+    Args:
+        database (str): [description]
+        buffer (float): [description]
+
+    Returns:
+        [type]: [description]
+    """
 
     log = Logger('Land Use')
     log.info('Calculating land use using a buffer distance of {:,}m'.format(buffer))
@@ -83,6 +87,8 @@ def calculate_land_use(database, buffer):
 
 
 def main():
+    """ Land use intensity
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument('database', help='BRAT SQLite database', type=argparse.FileType('r'))
     parser.add_argument('--buffer', help='Distance to buffer flow line fearures for sampling vegetation', default=100, type=int)

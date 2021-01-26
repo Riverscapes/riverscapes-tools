@@ -5,7 +5,7 @@ from osgeo import ogr
 from shapely.geometry import Point, MultiPoint, LineString
 from shapely.ops import split
 from rscommons import get_shp_or_gpkg, GeopackageLayer, Logger
-from rscommons.segment_network import segment_network_NEW
+from rscommons.segment_network import segment_network
 from rscommons.vector_ops import copy_feature_class
 from rscommons.vector_ops import collect_feature_class
 
@@ -37,7 +37,7 @@ def rs_segmentation(
 
     # Segment the raw network without doing any intersections
     log.info('Segmenting the raw network')
-    segment_network_NEW(network_copy_path, os.path.join(out_gpkg, 'network_300m'), interval, minimum, watershed_id, create_layer=True)
+    segment_network(network_copy_path, os.path.join(out_gpkg, 'network_300m'), interval, minimum, watershed_id, create_layer=True)
 
     # If a point needs to be split we store the split pieces here
     split_feats = {}
@@ -134,7 +134,7 @@ def rs_segmentation(
 
     # Finally, segment this new layer the same way we did the raw network above.
     log.info('Segmenting the intersected network')
-    segment_network_NEW(network_crossings_path, os.path.join(out_gpkg, 'network_intersected_300m'), interval, minimum, watershed_id, create_layer=True)
+    segment_network(network_crossings_path, os.path.join(out_gpkg, 'network_intersected_300m'), interval, minimum, watershed_id, create_layer=True)
 
     log.info('Segmentation Complete')
 

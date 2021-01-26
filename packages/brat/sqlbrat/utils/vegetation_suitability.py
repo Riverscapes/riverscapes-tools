@@ -1,86 +1,93 @@
-# Name:     Vegation Suitability
-#
-# Purpose:  Calculates the average vegetation suitability for each reach. It takes
-#           the raw areas of each vegetation type within a buffer and converts
-#           these values into suitabilities using the lookup in the BRAT database.
-#           The average suitability is then written to the appropriate column in
-#           the reaches table.
-#
-# Author:   Philip Bailey
-#
-# Date:     17 Jan 2019
-# -------------------------------------------------------------------------------
+""" Calculates the average vegetation suitability for each reach. It takes
+    the raw areas of each vegetation type within a buffer and converts
+    these values into suitabilities using the lookup in the BRAT database.
+    The average suitability is then written to the appropriate column in
+    the reaches table.
+
+    Philip Bailey
+    17 Jan 2019
+"""
 import argparse
-import csv
 import os
 import sys
 import traceback
-import sqlite3
 import rasterio
 import numpy as np
 from rscommons import Logger, ProgressBar, dotenv
-from rscommons.util import safe_makedirs
-from rscommons.database import write_attributes
+from rscommons.database import write_db_attributes, SQLiteCon
 
 
-def vegetation_suitability(database, buffer, epoch, prefix, ecoregion):
+def vegetation_suitability(gpkg_path: str, buffer: float, prefix: str, ecoregion: str):
     """Calculate vegetation suitability for each reach in a BRAT SQLite
     database
 
     Arguments:
         database {str} -- Path to BRAT SQLite database
         buffer {float} -- Distance to buffer reach polyline to obtain vegetation
-        epoch {str} -- Label identifying either 'existing' or 'historic'. Used for log messages only.
         prefix {str} -- Either 'EX' for existing or 'HPE' for historic.
         ecoregion {int} -- Database ID of the ecoregion associated with the watershed
     """
 
-    vegCol = 'iVeg{}{}{}'.format('_' if len(str(int(buffer))) < 3 else '', int(buffer), prefix)
+    veg_col = 'iVeg{}{}{}'.format('_' if len(str(int(buffer))) < 3 else '', int(buffer), prefix)
 
-    reaches = calculate_vegetation_suitability(database, buffer, prefix, vegCol, ecoregion)
-    write_attributes(database, reaches, [vegCol])
+    reaches = calculate_vegetation_suitability(gpkg_path, buffer, prefix, veg_col, ecoregion)
+    write_db_attributes(gpkg_path, reaches, [veg_col])
 
 
-def calculate_vegetation_suitability(database, buffer, epoch, vegCol, ecoregion):
+def calculate_vegetation_suitability(gpkg_path: str, buffer: float, epoch: str, veg_col: str, ecoregion: str) -> dict:
+    """ Calculation vegetation suitability
+
+    Args:
+        gpkg_path ([type]): [description]
+        buffer ([type]): [description]
+        epoch ([type]): [description]
+        veg_col ([type]): [description]
+        ecoregion ([type]): [description]
+
+    Raises:
+        Exception: [description]
+
+    Returns:
+        [type]: [description]
+    """
 
     log = Logger('Veg Suitability')
     log.info('Buffer: {}'.format(buffer))
     log.info('Epoch: {}'.format(epoch))
-    log.info('Veg Column: {}'.format(vegCol))
+    log.info('Veg Column: {}'.format(veg_col))
 
-    conn = sqlite3.connect(database)
-    curs = conn.cursor()
+    with SQLiteCon(gpkg_path) as database:
 
-    # Get the database epoch that has the prefix 'EX' or 'HPE' in the metadata
-    curs.execute('SELECT EpochID FROM Epochs WHERE Metadata = ?', [epoch])
-    epochid = curs.fetchone()[0]
-    if not epochid:
-        raise Exception('Missing epoch in database with metadata value of "{}"'.format(epoch))
+        # Get the database epoch that has the prefix 'EX' or 'HPE' in the metadata
+        database.curs.execute('SELECT EpochID FROM Epochs WHERE Metadata = ?', [epoch])
+        epochid = database.curs.fetchone()['EpochID']
+        if not epochid:
+            raise Exception('Missing epoch in database with metadata value of "{}"'.format(epoch))
 
-    curs.execute('SELECT R.ReachID, Round(SUM(CAST(IFNULL(OverrideSuitability, DefaultSuitability) AS REAL) * CAST(CellCount AS REAL) / CAST(TotalCells AS REAL)), 2) AS VegSuitability'
-                 ' FROM Reaches R'
-                 ' INNER JOIN Watersheds W ON R.WatershedID = W.WatershedID'
-                 ' INNER JOIN Ecoregions E ON W.EcoregionID = E.EcoregionID'
-                 ' INNER JOIN ReachVegetation RV ON R.ReachID = RV.ReachID'
-                 ' INNER JOIN VegetationTypes VT ON RV.VegetationID = VT.VegetationID'
-                 ' INNER JOIN Epochs EP ON VT.EpochID = EP.EpochID'
-                 ' INNER JOIN('
-                 ' SELECT ReachID, SUM(CellCount) AS TotalCells'
-                 ' FROM ReachVegetation RV'
-                 ' INNER JOIN VegetationTypes VT ON RV.VegetationID = VT.VegetationID'
-                 ' INNER JOIN Epochs E ON E.EpochID = VT.EpochID'
-                 ' WHERE Buffer = ? AND E.Metadata = ?'
-                 ' GROUP BY ReachID) AS RS ON R.ReachID = RS.ReachID'
-                 ' LEFT JOIN VegetationOverrides VO ON E.EcoregionID = VO.EcoregionID AND VT.VegetationID = VO.VegetationID'
-                 ' WHERE (Buffer = ?) AND (EP.Metadata = ?)  AND (E.EcoregionID = ? OR E.EcoregionID IS NULL)'
-                 ' GROUP BY R.ReachID', [buffer, epoch, buffer, epoch, ecoregion])
-    results = {row[0]: {vegCol: row[1]} for row in curs.fetchall()}
+        database.curs.execute('SELECT R.ReachID, Round(SUM(CAST(IFNULL(OverrideSuitability, DefaultSuitability) AS REAL) * CAST(CellCount AS REAL) / CAST(TotalCells AS REAL)), 2) AS VegSuitability'
+                              ' FROM vwReaches R'
+                              ' INNER JOIN Watersheds W ON R.WatershedID = W.WatershedID'
+                              ' INNER JOIN Ecoregions E ON W.EcoregionID = E.EcoregionID'
+                              ' INNER JOIN ReachVegetation RV ON R.ReachID = RV.ReachID'
+                              ' INNER JOIN VegetationTypes VT ON RV.VegetationID = VT.VegetationID'
+                              ' INNER JOIN Epochs EP ON VT.EpochID = EP.EpochID'
+                              ' INNER JOIN('
+                              ' SELECT ReachID, SUM(CellCount) AS TotalCells'
+                              ' FROM ReachVegetation RV'
+                              ' INNER JOIN VegetationTypes VT ON RV.VegetationID = VT.VegetationID'
+                              ' INNER JOIN Epochs E ON E.EpochID = VT.EpochID'
+                              ' WHERE Buffer = ? AND E.Metadata = ?'
+                              ' GROUP BY ReachID) AS RS ON R.ReachID = RS.ReachID'
+                              ' LEFT JOIN VegetationOverrides VO ON E.EcoregionID = VO.EcoregionID AND VT.VegetationID = VO.VegetationID'
+                              ' WHERE (Buffer = ?) AND (EP.Metadata = ?)  AND (E.EcoregionID = ? OR E.EcoregionID IS NULL)'
+                              ' GROUP BY R.ReachID', [buffer, epoch, buffer, epoch, ecoregion])
+        results = {row['ReachID']: {veg_col: row['VegSuitability']} for row in database.curs.fetchall()}
 
     log.info('Vegetation suitability complete')
     return results
 
 
-def output_vegetation_raster(database, raster_path, output_path, epoch, prefix, ecoregion):
+def output_vegetation_raster(gpkg_path, raster_path, output_path, epoch, prefix, ecoregion):
     """Output a vegetation suitability raster. This has no direct use in the process
     but it's useful as a reference layer and visual aid.
 
@@ -95,19 +102,18 @@ def output_vegetation_raster(database, raster_path, output_path, epoch, prefix, 
     log = Logger('Veg Suitability Rasters')
     log.info('Epoch: {}'.format(epoch))
 
-    conn = sqlite3.connect(database)
-    curs = conn.cursor()
+    with SQLiteCon(gpkg_path) as database:
 
-    # Get the database epoch that has the prefix 'EX' or 'HPE' in the metadata
-    curs.execute('SELECT EpochID FROM Epochs WHERE Metadata = ?', [prefix])
-    epochid = curs.fetchone()[0]
-    if not epochid:
-        raise Exception('Missing epoch in database with metadata value of "{}"'.format(epoch))
+        # Get the database epoch that has the prefix 'EX' or 'HPE' in the metadata
+        database.curs.execute('SELECT EpochID FROM Epochs WHERE Metadata = ?', [prefix])
+        epochid = database.curs.fetchone()['EpochID']
+        if not epochid:
+            raise Exception('Missing epoch in database with metadata value of "{}"'.format(epoch))
 
-    curs.execute('SELECT VegetationID, EffectiveSuitability '
-                 'FROM vwVegetationSuitability '
-                 'WHERE EpochID = ? AND EcoregionID = ?', [epochid, ecoregion])
-    results = {row[0]: row[1] for row in curs.fetchall()}
+        database.curs.execute('SELECT VegetationID, EffectiveSuitability '
+                              'FROM vwVegetationSuitability '
+                              'WHERE EpochID = ? AND EcoregionID = ?', [epochid, ecoregion])
+        results = {row['VegetationID']: row['EffectiveSuitability'] for row in database.curs.fetchall()}
 
     def translate_suit(in_val, in_nodata, out_nodata):
         if in_val == in_nodata:
@@ -117,7 +123,7 @@ def output_vegetation_raster(database, raster_path, output_path, epoch, prefix, 
         log.warning('Could not find {} VegetationID={}'.format(prefix, in_val))
         return -1
 
-    vf = np.vectorize(translate_suit)
+    vector = np.vectorize(translate_suit)
 
     with rasterio.open(raster_path) as source_ds:
         out_meta = source_ds.meta
@@ -135,13 +141,15 @@ def output_vegetation_raster(database, raster_path, output_path, epoch, prefix, 
 
                 # Fill the masked values with the appropriate nodata vals
                 # Unthresholded in the base band (mostly for debugging)
-                out_data = vf(in_data, source_ds.meta['nodata'], out_meta['nodata'])
+                out_data = vector(in_data, source_ds.meta['nodata'], out_meta['nodata'])
                 dest_ds.write(np.int16(out_data), window=window, indexes=1)
 
             progbar.finish()
 
 
 def main():
+    """ Vegetation Suitability
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument('database', help='BRAT database path', type=argparse.FileType('r'))
     parser.add_argument('buffer', help='buffer distance (metres)', type=float)
@@ -155,8 +163,7 @@ def main():
     logg.setup(logPath=logfile, verbose=args.verbose)
 
     try:
-        pass
-        # vegetation_suitability(args.database.name, args.raster.name, args.buffer, args.table)
+        vegetation_suitability(args.database.name, args.raster.name, args.buffer, args.table)
 
     except Exception as e:
         logg.error(e)

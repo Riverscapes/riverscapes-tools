@@ -1,13 +1,11 @@
-# Name:     Combined FIS
-#
-# Purpose:  Runs the combined FIS for the BRAT input table.
-#           Adapted from Jordan Gilbert's original BRAT script.
-#
-# Author:   Jordan Gilbert
-#           Philip Bailey
-#
-# Created:  30 May 2019
-# -------------------------------------------------------------------------------
+""" Runs the combined FIS for the BRAT input table.
+    Adapted from Jordan Gilbert's original BRAT script.
+
+    Jordan Gilbert
+    Philip Bailey
+
+    30 May 2019
+"""
 import os
 import sys
 import argparse
@@ -15,11 +13,11 @@ import traceback
 import numpy as np
 import skfuzzy as fuzz
 from skfuzzy import control as ctrl
-from rscommons.database import load_attributes, write_attributes
+from rscommons.database import load_attributes, write_db_attributes
 from rscommons import ProgressBar, Logger, dotenv
 
 
-def combined_fis(database, label, veg_type, max_drainage_area):
+def combined_fis(database: str, label: str, veg_type: str, max_drainage_area: float):
     """
     Combined beaver dam capacity FIS
     :param network: Shapefile path containing necessary FIS inputs
@@ -30,7 +28,7 @@ def combined_fis(database, label, veg_type, max_drainage_area):
     """
 
     log = Logger('Combined FIS')
-    log.info('Processing {} vegetation'.format(veg_type))
+    log.info('Processing {} vegetation'.format(label))
 
     veg_fis_field = 'oVC_{}'.format(veg_type)
     capacity_field = 'oCC_{}'.format(veg_type)
@@ -40,12 +38,12 @@ def combined_fis(database, label, veg_type, max_drainage_area):
     reaches = load_attributes(database, fields, ' AND '.join(['({} IS NOT NULL)'.format(f) for f in fields]))
 
     calculate_combined_fis(reaches, veg_fis_field, capacity_field, dam_count_field, max_drainage_area)
-    write_attributes(database, reaches, [capacity_field, dam_count_field], log)
+    write_db_attributes(database, reaches, [capacity_field, dam_count_field], log)
 
     log.info('Process completed successfully.')
 
 
-def calculate_combined_fis(feature_values, veg_fis_field, capacity_field, dam_count_field, max_drainage_area):
+def calculate_combined_fis(feature_values: dict, veg_fis_field: str, capacity_field: str, dam_count_field: str, max_drainage_area: float):
     """
     Calculate dam capacity and density using combined FIS
     :param feature_values: Dictionary of features keyed by ReachID and values are dictionaries of attributes
@@ -72,8 +70,8 @@ def calculate_combined_fis(feature_values, veg_fis_field, capacity_field, dam_co
     drain_array = np.zeros(feature_count, np.float64)
 
     counter = 0
-    for reachID, values in feature_values.items():
-        reachid_array[counter] = reachID
+    for reach_id, values in feature_values.items():
+        reachid_array[counter] = reach_id
         veg_array[counter] = values[veg_fis_field]
         hydlow_array[counter] = values['iHyd_SPLow']
         hydq2_array[counter] = values['iHyd_SP2']
@@ -82,9 +80,6 @@ def calculate_combined_fis(feature_values, veg_fis_field, capacity_field, dam_co
         counter += 1
 
     # Adjust inputs to be within FIS membership range
-
-    # TODO: to improve the math handling we set 'nan' values to their lowest possible
-    # I'm not sure this is valid. What should be done with 'nan' values
     veg_array[veg_array < 0] = 0
     veg_array[veg_array > 45] = 45
 
@@ -206,15 +201,15 @@ def calculate_combined_fis(feature_values, veg_fis_field, capacity_field, dam_co
     # calculate defuzzified centroid value for density 'none' MF group
     # this will be used to re-classify output values that fall in this group
     # important: will need to update the array (x) and MF values (mfx) if the
-    #            density 'none' values are changed in the model
-    x = np.arange(0, 45, 0.01)
-    mfx = fuzz.trimf(x, [0, 0, 0.1])
-    defuzz_centroid = round(fuzz.defuzz(x, mfx, 'centroid'), 6)
+    # density 'none' values are changed in the model
+    x_vals = np.arange(0, 45, 0.01)
+    mfx = fuzz.trimf(x_vals, [0, 0, 0.1])
+    defuzz_centroid = round(fuzz.defuzz(x_vals, mfx, 'centroid'), 6)
 
     progbar = ProgressBar(len(reachid_array), 50, "Combined FIS")
     counter = 0
 
-    for i, reachID in enumerate(reachid_array):
+    for i, reach_id in enumerate(reachid_array):
 
         capacity = 0.0
         # Only compute FIS if the reach has less than user-defined max drainage area.
@@ -235,11 +230,11 @@ def calculate_combined_fis(feature_values, veg_fis_field, capacity_field, dam_co
             if round(capacity, 6) == defuzz_centroid:
                 capacity = 0.0
 
-        count = capacity * (feature_values[reachID]['iGeo_Len'] / 1000.0)
+        count = capacity * (feature_values[reach_id]['iGeo_Len'] / 1000.0)
         count = 1.0 if 0 < count < 1 else count
 
-        feature_values[reachID][capacity_field] = round(capacity, 2)
-        feature_values[reachID][dam_count_field] = round(count, 2)
+        feature_values[reach_id][capacity_field] = round(capacity, 2)
+        feature_values[reach_id][dam_count_field] = round(count, 2)
 
         counter += 1
         progbar.update(counter)
@@ -249,6 +244,8 @@ def calculate_combined_fis(feature_values, veg_fis_field, capacity_field, dam_co
 
 
 def main():
+    """ Combined FIS
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument('database', help='BRAT SQLite database', type=argparse.FileType('r'))
     parser.add_argument('maxdrainage', help='Maximum drainage area', type=float)
@@ -264,8 +261,8 @@ def main():
         combined_fis(args.database.name, 'existing', 'EX', args.maxdrainage)
         # combined_fis(args.network.name, 'historic', 'HPE', args.maxdrainage)
 
-    except Exception as e:
-        logg.error(e)
+    except Exception as ex:
+        logg.error(ex)
         traceback.print_exc(file=sys.stdout)
         sys.exit(1)
 

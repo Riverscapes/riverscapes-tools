@@ -22,21 +22,35 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
 
-      # Runs a single command using the runners shell
-      - name: Run a one-line script
-        run: echo Hello, world!
-
-      # Runs a set of commands using the runners shell
-      - name: Run a multi-line script
-        run: |
-          echo Add other actions to build,
-          echo test, and deploy your project.
-
-
-      # Use GitHub Actions' cache to shorten build times and decrease load on servers
+        # Use GitHub Actions' cache to shorten build times and decrease load on servers
       - uses: actions/cache@v1
         with:
           path: vendor/bundle
           key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
           restore-keys: |
-            ${{ runner.os }}-gems-          
+            ${{ runner.os }}-gems-
+
+      - name: Set up Ruby 2.6
+        uses: actions/setup-ruby@v1
+        with:
+          ruby-version: 2.6
+
+        
+      # Build each site
+      - name: Bundle install dependencies
+        run: sh scripts/docs-bundler.sh
+
+      - name: Publish sites
+        run: sh scripts/docs-publish.sh
+
+        # Custom Jekyll
+      - name: Deploy to GitHub Pages
+        if: success()
+        uses: crazy-max/ghaction-github-pages@v2
+        with:
+          target_branch: gh-pages
+          build_dir: PUBLIC
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+

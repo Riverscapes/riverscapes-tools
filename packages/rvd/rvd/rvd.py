@@ -23,16 +23,14 @@ from osgeo import ogr, gdal, osr
 import numpy as np
 from rscommons.database import dict_factory
 
-from rscommons.util import safe_makedirs, safe_remove_file
+from rscommons.util import safe_makedirs
 from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALOGRErrors, ProgressBar
 from rscommons import GeopackageLayer, VectorBase, get_shp_or_gpkg
-from rscommons.build_network import build_network_NEW
-from rscommons.database import create_database_NEW
-from rscommons.reach_attributes import write_attributes, write_reach_attributes
+from rscommons.build_network import build_network
+from rscommons.database import create_database
 from rscommons.vector_ops import get_geometry_unary_union, copy_feature_class
 from rscommons.thiessen.vor import NARVoronoi
 from rscommons.thiessen.shapes import centerline_points, clip_polygons
-from rscommons.vector_ops import write_attributes
 
 from rvd.rvd_report import RVDReport
 from rvd.lib.load_vegetation import load_vegetation_raster
@@ -154,7 +152,7 @@ def rvd(huc: int, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_or
     }
 
     # Execute the SQL to create the lookup tables in the RVD geopackage SQLite database
-    watershed_name = create_database_NEW(huc, outputs_gpkg_path, metadata, cfg.OUTPUT_EPSG, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'rvd_schema.sql'))
+    watershed_name = create_database(huc, outputs_gpkg_path, metadata, cfg.OUTPUT_EPSG, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'rvd_schema.sql'))
     project.add_metadata({'Watershed': watershed_name})
 
     geom_vbottom = get_geometry_unary_union(vbottom_path, spatial_ref=raster_srs)
@@ -185,7 +183,7 @@ def rvd(huc: int, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_or
     # Filter the flow lines to just the required features and then segment to desired length
     # TODO: These are brat methods that need to be refactored to use VectorBase layers
     cleaned_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['RVD'].rel_path)
-    build_network_NEW(flowlines_path, flowareas_path, cleaned_path, waterbodies_path=waterbodies_path, epsg=cfg.OUTPUT_EPSG, reach_codes=reach_codes)
+    build_network(flowlines_path, flowareas_path, cleaned_path, waterbodies_path=waterbodies_path, epsg=cfg.OUTPUT_EPSG, reach_codes=reach_codes)
 
     # Generate Voroni polygons
     log.info("Calculating Voronoi Polygons...")
@@ -222,8 +220,8 @@ def rvd(huc: int, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_or
     # Load Vegetation Rasters
     log.info(f"Loading Existing and Historic Vegetation Rasters")
     vegetation = {}
-    vegetation["EXISTING"] = load_vegetation_raster(prj_existing_path, True, output_folder=os.path.join(output_folder, 'Intermediates'))
-    vegetation["HISTORIC"] = load_vegetation_raster(prj_historic_path, False, output_folder=os.path.join(output_folder, 'Intermediates'))
+    vegetation["EXISTING"] = load_vegetation_raster(prj_existing_path, outputs_gpkg_path, True, output_folder=os.path.join(output_folder, 'Intermediates'))
+    vegetation["HISTORIC"] = load_vegetation_raster(prj_historic_path, outputs_gpkg_path, False, output_folder=os.path.join(output_folder, 'Intermediates'))
 
     if vegetation["EXISTING"]["RAW"].shape != vegetation["HISTORIC"]["RAW"].shape:
         raise Exception('Vegetation raster shapes are not equal Existing={} Historic={}. Cannot continue'.format(vegetation["EXISTING"]["RAW"].shape, vegetation["HISTORIC"]["RAW"].shape))
@@ -321,7 +319,7 @@ def rvd(huc: int, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_or
     log.info('Insert values to GPKG tables')
 
     # TODO move this to write_attirubtes method
-    with get_shp_or_gpkg(flowlines_orig, write=True) as in_layer:
+    with get_shp_or_gpkg(outputs_gpkg_path, layer_name='Reaches', write=True) as in_layer:
         # Create each field and store the name and index in a list of tuples
         field_indices = [(field, in_layer.create_field(field, field_type)) for field, field_type in {
             "FromConifer": ogr.OFTReal,
@@ -378,15 +376,30 @@ def rvd(huc: int, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_or
 
     with sqlite3.connect(outputs_gpkg_path) as conn:
         cursor = conn.cursor()
+        errs = 0
         for reachid, epochs in unique_vegetation_counts.items():
             for epoch in epochs.values():
                 insert_values = [[reachid, int(vegetationid), float(count * cell_area), int(count)] for vegetationid, count in zip(epoch[0], epoch[1]) if vegetationid != 0]
-                cursor.executemany('''INSERT INTO ReachVegetation (
-                    ReachID,
-                    VegetationID,
-                    Area,
-                    CellCount)
-                    VALUES (?,?,?,?)''', insert_values)
+                try:
+                    cursor.executemany('''INSERT INTO ReachVegetation (
+                        ReachID,
+                        VegetationID,
+                        Area,
+                        CellCount)
+                        VALUES (?,?,?,?)''', insert_values)
+                # Sqlite can't report on SQL errors so we have to print good log messages to help intuit what the problem is
+                except sqlite3.IntegrityError as err:
+                    # THis is likely a constraint error.
+                    errstr = "Integrity Error when inserting records: ReachID: {} VegetationIDs: {}".format(reachid, str(list(epoch[0])))
+                    log.error(errstr)
+                    errs += 1
+                except sqlite3.Error as err:
+                    # This is any other kind of error
+                    errstr = "SQL Error when inserting records: ReachID: {} VegetationIDs: {} ERROR: {}".format(reachid, str(list(epoch[0])), str(err))
+                    log.error(errstr)
+                    errs += 1
+        if errs > 0:
+            raise Exception('Errors were found inserting records into the database. Cannot continue.')
         conn.commit()
 
     # Add intermediates and the report to the XML
@@ -395,7 +408,7 @@ def rvd(huc: int, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_or
 
     # Add the report to the XML
     report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
-    project.add_project_vector(proj_nodes['Outputs'], LayerTypes['REPORT'], replace=True)
+    project.add_report(proj_nodes['Outputs'], LayerTypes['REPORT'], replace=True)
 
     report = RVDReport(report_path, project, output_folder)
     report.write()
@@ -507,6 +520,7 @@ def create_project(huc, output_dir):
 
     project.add_metadata({
         'HUC{}'.format(len(huc)): str(huc),
+        'HUC': str(huc),
         'RVDVersion': cfg.version,
         'RVDTimestamp': str(int(time.time()))
     })

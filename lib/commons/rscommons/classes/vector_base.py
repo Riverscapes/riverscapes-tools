@@ -267,7 +267,7 @@ class VectorBase():
             self.spatial_ref = spatial_ref
 
         # Throw a warning if our axis mapping strategy is wrong
-        self.check_axis_mapping()
+        VectorBase.check_axis_mapping(self.spatial_ref)
 
         self.ogr_layer = self.ogr_ds.CreateLayer(self.ogr_layer_name, self.spatial_ref, geom_type=ogr_geom_type, options=options)
 
@@ -332,9 +332,10 @@ class VectorBase():
             self.ogr_geom_type = self.ogr_layer.GetGeomType()
             self.spatial_ref = self.ogr_layer.GetSpatialRef()
 
-            self.check_axis_mapping()
+            VectorBase.check_axis_mapping(self.spatial_ref)
 
-    def check_axis_mapping(self):
+    @staticmethod
+    def check_axis_mapping(spatial_ref: osr.SpatialReference):
         """Make sure our Axis Mapping strategy is correct (according to our arbitrary convention)
             We set this in opposition to what GDAL3 Thinks is the default because that's what 
             most of our old Geodatabases and Shapefiles seem to use.
@@ -342,11 +343,11 @@ class VectorBase():
         Raises:
             VectorBaseException: [description]
         """
-        if self.spatial_ref is None:
-            raise VectorBaseException('Layer not initialized. No spatial_ref found')
-        if self.spatial_ref.GetAxisMappingStrategy() != osr.OAMS_TRADITIONAL_GIS_ORDER:
-            _p4, axis_strat = self.get_srs_debug(self.spatial_ref)
-            self.log.warning('Axis mapping strategy is: "{}". This may cause axis flipping problems'.format(axis_strat))
+        if spatial_ref is None:
+            raise VectorBaseException('No spatial_ref found to verify')
+        if spatial_ref.GetAxisMappingStrategy() != osr.OAMS_TRADITIONAL_GIS_ORDER:
+            _p4, axis_strat = VectorBase.get_srs_debug(spatial_ref)
+            VectorBase.log.warning('Axis mapping strategy is: "{}". This may cause axis flipping problems'.format(axis_strat))
 
     def create_fields(self, fields: dict):
         """Add fields to a layer
@@ -360,7 +361,12 @@ class VectorBase():
         if fields is None or not isinstance(fields, dict):
             raise VectorBaseException('create_fields: Fields must be specified in the form: {\'MyInteger\': ogr.OFTInteger}')
         for fname, ftype in fields.items():
-            self.create_field(fname, ftype)
+            # If it's a simple integer that's fine
+            if isinstance(ftype, int):
+                self.create_field(fname, field_type=ftype)
+            # Otherwise it's an OGR field type object
+            else:
+                self.create_field(fname, field_def=ftype)
 
     def get_fields(self) -> dict:
         """ Get a layer's fields as a simple dictionary
@@ -610,20 +616,18 @@ class VectorBase():
         return VectorBase.get_transform(self.spatial_ref, out_srs)
 
     @staticmethod
-    def get_transform(in_srs, out_srs):
+    def get_transform(in_srs: osr.SpatialReference, out_srs: osr.SpatialReference) -> osr.CoordinateTransformation:
         """[summary]
 
         Args:
-            in_srs ([type]): [description]
-            out_srs ([type]): [description]
+            in_srs ([type]): input SRS
+            out_srs ([type]): output SRS
 
         Raises:
             VectorBaseException: [description]
-            VectorBaseException: [description]
-            VectorBaseException: [description]
 
         Returns:
-            [type]: [description]
+            [osr.CoordinateTransformation]: Transform
         """
         if in_srs is None:
             raise VectorBaseException('No input spatial ref found. Has this layer been created or loaded?')
@@ -643,34 +647,73 @@ class VectorBase():
 
         return transform
 
-    def get_transform_from_epsg(self, epsg: int) -> (osr.SpatialReference, osr.CoordinateTransformation):
+    @staticmethod
+    def get_transform_from_epsg(in_srs: osr.SpatialReference, epsg: int) -> (osr.SpatialReference, osr.CoordinateTransformation):
         """Transform a spatial ref using an epsg code provided
 
         This is done explicitly and includes a GetAxisMappingStrategy check to
         account for GDAL3's projection differences.
 
         Args:
-            in_spatial_ref ([type]): [description]
+            in_srs ([type]): input SRS
             epsg ([type]): [description]
 
         Returns:
             [type]: [description]
         """
-        if self.spatial_ref is None:
+        if in_srs is None:
             raise VectorBaseException('No input spatial ref found. Has this layer been created or loaded?')
 
         out_spatial_ref = VectorBase.get_srs_from_epsg(epsg)
 
         # https://github.com/OSGeo/gdal/issues/1546
-        out_spatial_ref.SetAxisMappingStrategy(self.spatial_ref.GetAxisMappingStrategy())
+        # Set the axis mapping to be the same as the input. This might prove problematic in cases where the input is
+        out_spatial_ref.SetAxisMappingStrategy(in_srs.GetAxisMappingStrategy())
 
-        in_proj4, in_ax_strategy = self.get_srs_debug(self.spatial_ref)
-        out_proj4, out_ax_strategy = self.get_srs_debug(out_spatial_ref)
+        in_proj4, in_ax_strategy = VectorBase.get_srs_debug(in_srs)
+        out_proj4, out_ax_strategy = VectorBase.get_srs_debug(out_spatial_ref)
 
-        self.log.debug('Input spatial reference is "{}"  Axis Strategy: "{}"'.format(in_proj4, in_ax_strategy))
-        self.log.debug('Output spatial reference is "{}"  Axis Strategy: "{}"'.format(out_proj4, out_ax_strategy))
+        VectorBase.log.debug('Input spatial reference is "{}"  Axis Strategy: "{}"'.format(in_proj4, in_ax_strategy))
+        VectorBase.log.debug('Output spatial reference is "{}"  Axis Strategy: "{}"'.format(out_proj4, out_ax_strategy))
 
-        transform = VectorBase.get_transform(self.spatial_ref, out_spatial_ref)
+        transform = VectorBase.get_transform(in_srs, out_spatial_ref)
+        return out_spatial_ref, transform
+
+    @staticmethod
+    def get_transform_from_raster(in_srs: osr.SpatialReference, raster_path: str) -> (osr.SpatialReference, osr.CoordinateTransformation):
+        """Get a transform between a given SRS and the SRS from a raster
+
+        Args:
+            in_srs ([type]): input SRS
+            osr ([type]): [description]
+
+        Raises:
+            VectorBaseException: [description]
+
+        Returns:
+            [type]: [description]
+        """
+
+        if in_srs is None:
+            raise VectorBaseException('No input spatial ref found. Has this layer been created or loaded?')
+
+        out_ds = gdal.Open(raster_path)
+        out_spatial_ref = osr.SpatialReference()
+        out_spatial_ref.ImportFromWkt(out_ds.GetProjectionRef())
+
+        in_proj4, in_ax_strategy = VectorBase.get_srs_debug(in_srs)
+        out_proj4, out_ax_strategy = VectorBase.get_srs_debug(out_spatial_ref)
+
+        # https://github.com/OSGeo/gdal/issues/1546
+        out_spatial_ref.SetAxisMappingStrategy(in_srs.GetAxisMappingStrategy())
+
+        VectorBase.log.debug('Input spatial reference is "{}"  Axis Strategy: "{}"'.format(in_proj4, in_ax_strategy))
+        VectorBase.log.debug('Output spatial reference is "{}"  Axis Strategy: "{}"'.format(out_proj4, out_ax_strategy))
+
+        # This check will throw a warning into the log if we've got anything but TRADITIONAL axis strategy
+        VectorBase.check_axis_mapping(in_srs)
+
+        transform = VectorBase.get_transform(in_srs, out_spatial_ref)
         return out_spatial_ref, transform
 
     @staticmethod

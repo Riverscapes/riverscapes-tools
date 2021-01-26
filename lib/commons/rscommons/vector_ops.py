@@ -14,9 +14,9 @@ from osgeo import ogr, gdal, osr
 from shapely.ops import unary_union
 from shapely.geometry.base import BaseGeometry
 from shapely.geometry import mapping, Point, MultiPoint, LineString, MultiLineString, GeometryCollection, Polygon, MultiPolygon
-from rscommons import Logger, ProgressBar, get_shp_or_gpkg, Timer
+from rscommons import Logger, ProgressBar, get_shp_or_gpkg, Timer, VectorBase
 from rscommons.util import sizeof_fmt, get_obj_size
-from rscommons.classes.vector_base import VectorBase, VectorBaseException
+from rscommons.classes.vector_base import VectorBaseException
 
 
 def print_geom_size(logger: Logger, geom_obj: BaseGeometry):
@@ -52,7 +52,7 @@ def get_geometry_union(in_layer_path: str, epsg: int = None,
 
         transform = None
         if epsg:
-            _outref, transform = in_layer.get_transform_from_epsg(epsg)
+            _outref, transform = VectorBase.get_transform_from_epsg(in_layer.spatial_ref, epsg)
 
         geom = None
 
@@ -101,7 +101,7 @@ def get_geometry_unary_union(in_layer_path: str, epsg: int = None, spatial_ref: 
     with get_shp_or_gpkg(in_layer_path) as in_layer:
         transform = None
         if epsg is not None:
-            _outref, transform = in_layer.get_transform_from_epsg(epsg)
+            _outref, transform = VectorBase.get_transform_from_epsg(in_layer.spatial_ref, epsg)
         elif spatial_ref is not None:
             transform = in_layer.get_transform(in_layer.spatial_ref, spatial_ref)
 
@@ -167,7 +167,8 @@ def copy_feature_class(in_layer_path: str, out_layer_path: str,
                        epsg: int = None,
                        attribute_filter: str = None,
                        clip_shape: BaseGeometry = None,
-                       clip_rect: List[float] = None
+                       clip_rect: List[float] = None,
+                       buffer: float = 0,
                        ) -> None:
     """Copy a Shapefile from one location to another
 
@@ -182,6 +183,7 @@ def copy_feature_class(in_layer_path: str, out_layer_path: str,
         attribute_filter (str, optional): [description]. Defaults to None.
         clip_shape (BaseGeometry, optional): [description]. Defaults to None.
         clip_rect (List[double minx, double miny, double maxx, double maxy)]): Iterate over a subset by clipping to a Shapely-ish geometry. Defaults to None.
+        buffer (float): Buffer the output features (in meters).
     """
 
     log = Logger('copy_feature_class')
@@ -195,14 +197,27 @@ def copy_feature_class(in_layer_path: str, out_layer_path: str,
 
         transform = VectorBase.get_transform(in_layer.spatial_ref, out_layer.spatial_ref)
 
+        buffer_convert = 0
+        if buffer != 0:
+            buffer_convert = in_layer.rough_convert_metres_to_vector_units(buffer)
+
         # This is the callback method that will be run on each feature
-        for feature, _counter, progbar in in_layer.iterate_features("Copying features", write_layers=[out_layer], clip_shape=clip_shape, attribute_filter=attribute_filter):
+        for feature, _counter, progbar in in_layer.iterate_features("Copying features", write_layers=[out_layer], clip_shape=clip_shape, clip_rect=clip_rect, attribute_filter=attribute_filter):
             geom = feature.GetGeometryRef()
 
             if geom is None:
                 progbar.erase()  # get around the progressbar
                 log.warning('Feature with FID={} has no geometry. Skipping'.format(feature.GetFID()))
                 continue
+            if geom.GetGeometryType() in VectorBase.LINE_TYPES:
+                if geom.Length() == 0.0:
+                    progbar.erase()  # get around the progressbar
+                    log.warning('Feature with FID={} has no Length. Skipping'.format(feature.GetFID()))
+                    continue
+
+            # Buffer the shape if we need to
+            if buffer_convert != 0:
+                geom = geom.Buffer(buffer_convert)
 
             geom.Transform(transform)
 
@@ -354,20 +369,42 @@ def load_attributes(in_layer_path: str, id_field: str, fields: list) -> dict:
     return feature_values
 
 
-def load_geometries(in_layer_path: str, id_field: str, epsg=None) -> dict:
+def load_geometries(in_layer_path: str, id_field: str = None, epsg: int = None, spatial_ref: osr.SpatialReference = None) -> dict:
+    """[summary]
+
+    Args:
+        in_layer_path (str): [description]
+        id_field (str, optional): [description]. Defaults to None.
+        epsg (int, optional): [description]. Defaults to None.
+        spatial_ref (osr.SpatialReference, optional): [description]. Defaults to None.
+
+    Raises:
+        VectorBaseException: [description]
+
+    Returns:
+        dict: [description]
+    """
     log = Logger('load_geometries')
+
+    if epsg is not None and spatial_ref is not None:
+        raise VectorBaseException('Specify either an EPSG or a spatial_ref. Not both')
 
     with get_shp_or_gpkg(in_layer_path) as in_layer:
         # Determine the transformation if user provides an EPSG
         transform = None
-        if epsg:
-            _outref, transform = in_layer.get_transform_from_epsg(epsg)
+        if epsg is not None:
+            _outref, transform = VectorBase.get_transform_from_epsg(in_layer.spatial_ref, epsg)
+        elif spatial_ref is not None:
+            transform = in_layer.get_transform(in_layer.spatial_ref, spatial_ref)
 
         features = {}
 
         for feature, _counter, progbar in in_layer.iterate_features("Loading features"):
 
-            reach = feature.GetField(id_field)
+            if id_field is None:
+                reach = feature.GetFID()
+            else:
+                reach = feature.GetField(id_field)
 
             geom = feature.GetGeometryRef()
             geo_type = geom.GetGeometryType()
@@ -585,7 +622,7 @@ def intersect_geometry_with_feature_class(geometry: BaseGeometry, in_layer_path:
     return geom_inter
 
 
-def buffer_by_field(in_layer_path: str, field: str, epsg: int = None, min_buffer=None) -> BaseGeometry:
+def buffer_by_field(in_layer_path: str, out_layer_path, field: str, epsg: int = None, min_buffer=None) -> None:
     """generate buffered polygons by value in field
 
     Args:
@@ -597,21 +634,38 @@ def buffer_by_field(in_layer_path: str, field: str, epsg: int = None, min_buffer
     Returns:
         geometry: unioned polygon geometry of buffered lines
     """
+    log = Logger('buffer_by_field')
 
-    outpolys = []
-    with get_shp_or_gpkg(in_layer_path) as in_layer:
-        _out_spatial_ref, transform = in_layer.get_transform_from_epsg(epsg)
+    with get_shp_or_gpkg(out_layer_path, write=True) as out_layer, get_shp_or_gpkg(in_layer_path) as in_layer:
         conversion = in_layer.rough_convert_metres_to_vector_units(1)
 
-        for feature, _counter, _progbar in in_layer.iterate_features('Buffering'):
-            geom = feature.GetGeometryRef()
-            buffer_dist = feature.GetField(field) * conversion
-            geom_buffer = geom.Buffer(buffer_dist if buffer_dist > min_buffer else min_buffer)
-            outpolys.append(VectorBase.ogr2shapely(geom_buffer))
+        # Add input Layer Fields to the output Layer if it is the one we want
+        out_layer.create_layer(ogr.wkbPolygon, epsg=epsg, fields=in_layer.get_fields())
 
-    # unary union
-    outpoly = unary_union(outpolys)
-    return outpoly
+        transform = VectorBase.get_transform(in_layer.spatial_ref, out_layer.spatial_ref)
+
+        for feature, _counter, progbar in in_layer.iterate_features('Buffering features', write_layers=[out_layer]):
+            geom = feature.GetGeometryRef()
+
+            if geom is None:
+                progbar.erase()  # get around the progressbar
+                log.warning('Feature with FID={} has no geometry. Skipping'.format(feature.GetFID()))
+                continue
+
+            buffer_dist = feature.GetField(field) * conversion
+            geom.Transform(transform)
+            geom_buffer = geom.Buffer(buffer_dist if buffer_dist > min_buffer else min_buffer)
+
+            # Create output Feature
+            out_feature = ogr.Feature(out_layer.ogr_layer_def)
+            out_feature.SetGeometry(geom_buffer)
+
+            # Add field values from input Layer
+            for i in range(0, out_layer.ogr_layer_def.GetFieldCount()):
+                out_feature.SetField(out_layer.ogr_layer_def.GetFieldDefn(i).GetNameRef(), feature.GetField(i))
+
+            out_layer.ogr_layer.CreateFeature(out_feature)
+            out_feature = None
 
 
 def polygonize(raster_path: str, band: int, out_layer_path: str, epsg: int = None):
@@ -639,7 +693,7 @@ def polygonize(raster_path: str, band: int, out_layer_path: str, epsg: int = Non
 
         progbar = ProgressBar(100, 50, "Polygonizing raster")
 
-        def poly_progress(progress, _msg, data_):
+        def poly_progress(progress, _msg, _data):
             # double dfProgress, char const * pszMessage=None, void * pData=None
             progbar.update(int(progress * 100))
 

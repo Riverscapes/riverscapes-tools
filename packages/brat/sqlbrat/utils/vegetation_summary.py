@@ -1,30 +1,24 @@
-# Name:     Vegation Summary
-#
-# Purpose:  Summarizes vegetation for each polyline feature within a buffer distance
-#           on a raster. Inserts the area of each vegetation type into the BRAT database
-#
-# Author:   Philip Bailey
-#
-# Date:     28 Aug 2019
-# -------------------------------------------------------------------------------
-import argparse
+""" Summarizes vegetation for each polyline feature within a buffer distance
+    on a raster. Inserts the area of each vegetation type into the BRAT database
+
+   Philip Bailey
+   28 Aug 2019
+"""
 import os
-import sys
-import traceback
-import sqlite3
-from osgeo import osr, gdal
-from rscommons import ProgressBar, Logger, dotenv
-from rscommons.shapefile import _rough_convert_metres_to_raster_units
-from rscommons.database import load_geometries
-import rasterio
-from rasterio.mask import mask
 import numpy as np
+from osgeo import gdal
+import rasterio
+import sqlite3
+from rasterio.mask import mask
+from rscommons import GeopackageLayer, Logger
+from rscommons.database import SQLiteCon
+from rscommons.classes.vector_base import VectorBase
 
 
-def vegetation_summary(database, veg_raster, buffer):
-    """ Loop through every reach in a BRAT database and 
+def vegetation_summary(outputs_gpkg_path: str, label: str, veg_raster: str, buffer: float):
+    """ Loop through every reach in a BRAT database and
     retrieve the values from a vegetation raster within
-    the specified buffer. Then store the tally of 
+    the specified buffer. Then store the tally of
     vegetation values in the BRAT database.
 
     Arguments:
@@ -38,31 +32,25 @@ def vegetation_summary(database, veg_raster, buffer):
 
     # Retrieve the raster spatial reference and geotransformation
     dataset = gdal.Open(veg_raster)
-    gt = dataset.GetGeoTransform()
-    gdalSRS = dataset.GetProjection()
-    raster_srs = osr.SpatialReference(wkt=gdalSRS)
-    raster_buffer = _rough_convert_metres_to_raster_units(veg_raster, buffer)
+    geo_transform = dataset.GetGeoTransform()
+    raster_buffer = VectorBase.rough_convert_metres_to_raster_units(veg_raster, buffer)
 
     # Calculate the area of each raster cell in square metres
-    conversion_factor = _rough_convert_metres_to_raster_units(veg_raster, 1.0)
-    cell_area = abs(gt[1] * gt[5]) / conversion_factor**2
-
-    # Load the reach geometries and ensure they are in the same projection as the vegetation raster
-    geometries = load_geometries(database, raster_srs)
+    conversion_factor = VectorBase.rough_convert_metres_to_raster_units(veg_raster, 1.0)
+    cell_area = abs(geo_transform[1] * geo_transform[5]) / conversion_factor**2
 
     # Open the raster and then loop over all polyline features
     veg_counts = []
-    with rasterio.open(veg_raster) as src:
+    with rasterio.open(veg_raster) as src, GeopackageLayer(os.path.join(outputs_gpkg_path, 'ReachGeometry')) as lyr:
+        _srs, transform = VectorBase.get_transform_from_raster(lyr.spatial_ref, veg_raster)
 
-        progbar = ProgressBar(len(geometries), 50, "Unioning features")
-        counter = 0
+        for feature, _counter, _progbar in lyr.iterate_features(label):
+            reach_id = feature.GetFID()
+            geom = feature.GetGeometryRef()
+            if transform:
+                geom.Transform(transform)
 
-        for reachID, polyline in geometries.items():
-
-            counter += 1
-            progbar.update(counter)
-
-            polygon = polyline.buffer(raster_buffer)
+            polygon = VectorBase.ogr2shapely(geom).buffer(raster_buffer)
 
             try:
                 # retrieve an array for the cells under the polygon
@@ -74,43 +62,34 @@ def vegetation_summary(database, veg_raster, buffer):
                 for oldvalue in np.unique(mask_raster):
                     if oldvalue is not np.ma.masked:
                         cell_count = np.count_nonzero(mask_raster == oldvalue)
-                        veg_counts.append([reachID, int(oldvalue), buffer, cell_count * cell_area, cell_count])
+                        veg_counts.append([reach_id, int(oldvalue), buffer, cell_count * cell_area, cell_count])
             except Exception as ex:
-                log.warning('Error obtaining vegetation raster values for ReachID {}'.format(reachID))
+                log.warning('Error obtaining vegetation raster values for ReachID {}'.format(reach_id))
                 log.warning(ex)
 
-        progbar.finish()
-
-    conn = sqlite3.connect(database)
-    conn.executemany('INSERT INTO ReachVegetation (ReachID, VegetationID, Buffer, Area, CellCount) VALUES (?, ?, ?, ?, ?)', veg_counts)
-    conn.commit()
+    # Write the reach vegetation values to the database
+    # Because sqlite3 doesn't give us any feedback we do this in batches so that we can figure out what values
+    # Are causing constraint errors
+    with SQLiteCon(outputs_gpkg_path) as database:
+        errs = 0
+        batch_count = 0
+        for veg_record in veg_counts:
+            batch_count += 1
+            try:
+                database.conn.execute('INSERT INTO ReachVegetation (ReachID, VegetationID, Buffer, Area, CellCount) VALUES (?, ?, ?, ?, ?)', veg_record)
+            # Sqlite can't report on SQL errors so we have to print good log messages to help intuit what the problem is
+            except sqlite3.IntegrityError as err:
+                # THis is likely a constraint error.
+                errstr = "Integrity Error when inserting records: ReachID: {} VegetationID: {}".format(veg_record[0], veg_record[1])
+                log.error(errstr)
+                errs += 1
+            except sqlite3.Error as err:
+                # This is any other kind of error
+                errstr = "SQL Error when inserting records: ReachID: {} VegetationID: {} ERROR: {}".format(veg_record[0], veg_record[1], str(err))
+                log.error(errstr)
+                errs += 1
+        if errs > 0:
+            raise Exception('Errors were found inserting records into the database. Cannot continue.')
+        database.conn.commit()
 
     log.info('Vegetation summary complete')
-
-
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('database', help='BRAT database path', type=argparse.FileType('r'))
-    parser.add_argument('raster', help='vegetation raster', type=argparse.FileType('r'))
-    parser.add_argument('buffer', help='buffer distance', type=float)
-    parser.add_argument('--verbose', help='(optional) verbose logging mode', action='store_true', default=False)
-    args = dotenv.parse_args_env(parser)
-
-    # Initiate the log file
-    logg = Logger('Veg Summary')
-    logfile = os.path.join(os.path.dirname(args.database.name), 'vegetation_summary.log')
-    logg.setup(logPath=logfile, verbose=args.verbose)
-
-    try:
-        vegetation_summary(args.database.name, args.raster.name, args.buffer)
-
-    except Exception as e:
-        logg.error(e)
-        traceback.print_exc(file=sys.stdout)
-        sys.exit(1)
-
-    sys.exit(0)
-
-
-if __name__ == '__main__':
-    main()

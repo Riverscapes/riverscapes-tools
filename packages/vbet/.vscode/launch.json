@@ -9,7 +9,8 @@
       "id": "HUC",
       "description": "What HUC?",
       // "default": "17070202" // North Fork John Day
-      "default": "17060304" // Really small HUC
+      "default": "17060304", // Really small HUC
+      // "default": "10190002" // VBET TAKING TOO LONG
       // "default": "17060103" // Asotin
     }
   ],  
@@ -28,6 +29,22 @@
         "{env:DATA_ROOT}/rs_context/${input:HUC}/topography/hand.tif",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/topography/dem_hillshade.tif",
         "{env:DATA_ROOT}/vbet/${input:HUC}",
+        "--verbose"
+      ]
+    },
+    {
+      "name": "Run Floodplain Connectivity (BETA)",
+      "type": "python",
+      "request": "launch",
+      "module": "vbet.floodplain_connectivity",
+      "console": "integratedTerminal",
+      "args": [
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/network_intersected_300m",
+        "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/vbet_50",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/transportation/roads.shp",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/transportation/railways.shp",
+        "{env:DATA_ROOT}/vbet/${input:HUC}/connectivity",
+        "--debug_gpkg", "{env:DATA_ROOT}/vbet/${input:HUC}/connectivity/debug.gpkg",
         "--verbose"
       ]
     },

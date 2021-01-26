@@ -21,7 +21,7 @@ from rscommons.download import download_file
 base_url = 'https://web.corral.tacc.utexas.edu/nfiedata/HAND'
 
 
-def download_hand(huc6, epsg, download_folder, boundary, raster_path, force_download=False):
+def download_hand(huc6, epsg, download_folder, boundary, raster_path, force_download=False, warp_options: dict = {}):
     """
     Identify rasters within HUC8, download them and mosaic into single GeoTIF
     :param vector_path: Path to bounding polygon ShapeFile
@@ -29,6 +29,7 @@ def download_hand(huc6, epsg, download_folder, boundary, raster_path, force_down
     :param buffer_dist: Distance in DEGREES to buffer the bounding polygon
     :param output_folder: Temporary folder where downloaded rasters will be saved
     :param force_download: The download will always be performed if this is true.
+    :param warp_options: Extra options to pass to raster warp
     :return:
     """
 
@@ -48,7 +49,7 @@ def download_hand(huc6, epsg, download_folder, boundary, raster_path, force_down
         temp_path = download_file(raster_url, download_folder)
 
     # Reproject to the desired SRS and clip to the watershed boundary
-    raster_warp(temp_path, raster_path, epsg, boundary)
+    raster_warp(temp_path, raster_path, epsg, clip=boundary, warp_options=warp_options)
 
     return raster_path, raster_url
 

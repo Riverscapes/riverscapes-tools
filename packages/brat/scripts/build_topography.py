@@ -1,11 +1,9 @@
 import os
 import shutil
 from rscommons import Logger
-from rscommons.raster_warp import raster_warp
 from rscommons.science_base import get_dem_urls
 from rscommons.download_dem import download_dem
 from rscommons.geographic_raster import gdal_dem_geographic
-
 from rscommons.raster_warp import raster_vrt_stitch
 
 
