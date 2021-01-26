@@ -18,6 +18,7 @@ import traceback
 import datetime
 import time
 from tempfile import NamedTemporaryFile
+from osgeo import gdal, ogr
 import rasterio
 import numpy as np
 from scipy import interpolate
