@@ -154,7 +154,7 @@ def load_vegetation_raster(rasterpath: str, gpkg: str, existing=False, output_fo
             for raster_name, raster_array in output.items():
                 if raster_array is not None:
                     safe_makedirs(output_folder)
-                    with rasterio.open(os.path.join(output_folder, f"{'EXISTING' if existing else 'HISTORIC'}_{raster_name}.tiff"),
+                    with rasterio.open(os.path.join(output_folder, f"{'EXISTING' if existing else 'HISTORIC'}_{raster_name}.tif"),
                                        'w',
                                        driver='GTiff',
                                        height=raster.height,

@@ -47,17 +47,33 @@ LayerTypes = {
     # key: (name, id, tag, relpath)
     'EXVEG': RSLayer('Existing Vegetation', 'EXVEG', 'Raster', 'inputs/existing_veg.tif'),
     'HISTVEG': RSLayer('Historic Vegetation', 'HISTVEG', 'Raster', 'inputs/historic_veg.tif'),
-    'INPUTS': RSLayer('Confinement', 'INPUTS', 'Geopackage', 'inputs/inputs.gpkg', {
+    'INPUTS': RSLayer('Inputs', 'INPUTS', 'Geopackage', 'inputs/inputs.gpkg', {
         'FLOWLINES': RSLayer('Segmented Flowlines', 'FLOWLINES', 'Vector', 'flowlines'),
         'FLOW_AREA': RSLayer('NHD Flow Area', 'FLOW_AREA', 'Vector', 'flowareas'),
         'WATERBODIES': RSLayer('NHD Waterbody', 'WATERBODIES', 'Vector', 'waterbodies'),
         'VALLEY_BOTTOM': RSLayer('Valley Bottom', 'VALLEY_BOTTOM', 'Vector', 'valley_bottom'),
     }),
     'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/intermediates.gpkg', {
-        'CLEANED': RSLayer('Cleaned Network', 'CLEANED', 'Vector', 'intermediate_nhd_network'),
-        'NETWORK': RSLayer('Network', 'NETWORK', 'Vector', 'network'),
-        'THIESSEN': RSLayer('Network', 'THIESSEN', 'Vector', 'thiessen'),
+        'THIESSEN': RSLayer('Thiessen Polygons', 'THIESSEN', 'Vector', 'Thiessen'),
+        'THIESSEN_POINTS': RSLayer('Thiessen Points', 'THIESSEN_POINTS', 'Vector', 'Thiessen_Points'),
+        'THIESSEN_DISSOLVED': RSLayer('Thiessen Dissolved', 'THIESSEN_DISSOLVED', 'Vector', 'ThiessenPolygonsDissolved'),
+        'THIESSEN_RAW': RSLayer('Thiessen Raw', 'THIESSEN_RAW', 'Vector', 'ThiessenPolygonsRaw')
     }),
+    'VEGETATION_CONVERSION': RSLayer('Vegetation Conversion', 'VEGETATION_CONVERSION', 'Raster', 'intermediates/Conversion_Raster.tif'),
+    'EXISTING_CONVERSION': RSLayer('Existing Vegetation Conversion', 'EXISTING_CONVERSION', 'Raster', 'intermediates/EXISTING_CONVERSION.tif'),
+    'EXISTING_LUI': RSLayer('Existing Land Use Intensity', 'EXISTING_LUI', 'Raster', 'intermediates/EXISTING_LUI.tif'),
+    'EXISTING_NATIVE_RIPARIAN': RSLayer('Exisitng Native Riparian', 'EXISTING_NATIVE_RIPARIAN', 'Raster', 'intermediates/EXISTING_NATIVE_RIPARIAN.tif'),
+    'EXISTING_RAW': RSLayer('Existing Vegetation (Raw)', 'EXISTING_RAW', 'Raster', 'intermediates/EXISTING_RAW.tif'),
+    'EXISTING_RIPARIAN': RSLayer('Existing Riparian', 'EXISTING_RIPARIAN', 'Raster', 'intermediates/EXISTING_RIPARIAN.tif'),
+    'EXISTING_VEGETATED': RSLayer('Exisitig Vegetation', 'EXISTING_VEGETATED', 'Raster', 'intermediates/EXISTING_VEGETATED.tif'),
+    'HISTORIC_CONVERSION': RSLayer('Historic Conversion', 'HISTORIC_CONVERSION', 'Raster', 'intermediates/HISTORIC_CONVERSION.tif'),
+    'HISTORIC_NATIVE_RIPARIAN': RSLayer('Historic Native Riparian', 'HISTORIC_NATIVE_RIPARIAN', 'Raster', 'intermediates/HISTORIC_NATIVE_RIPARIAN.tif'),
+    'HISTORIC_RAW': RSLayer('Historic Vegetation (Raw)', 'HISTORIC_RAW', 'Raster', 'intermediates/HISTORIC_RAW.tif'),
+    'HISTORIC_RIPARIAN': RSLayer('Historic Riparian', 'HISTORIC_RIPARIAN', 'Raster', 'intermediates/HISTORIC_RIPARIAN.tif'),
+    'HISTORIC_VEGETATED': RSLayer('Historic Vegetated', 'HISTORIC_VEGETATED', 'Raster', 'intermediates/HISTORIC_VEGETATED.tif'),
+    'NATIVE_RIPARIAN_ZONES': RSLayer('Native Riparian Zones', 'NATIVE_RIPARIAN_ZONES', 'Raster', 'intermediates/NATIVE_RIPARIAN_ZONES.tif'),
+    'RIPARIAN_ZONES': RSLayer('Riparian Zones', 'RIPARIAN_ZONES', 'Raster', 'intermediates/RIPARIAN_ZONES.tif'),
+    'VEGETATION_ZONES': RSLayer('Vegetated Zones', 'VEGETATION_ZONES', 'Raster', 'intermediates/VEGETATION_ZONES.tif'),
     'OUTPUTS': RSLayer('RVD', 'OUTPUTS', 'Geopackage', 'outputs/RVD.gpkg', {
         'RVD': RSLayer('RVD', 'SEGMENTED', 'Vector', 'Reaches')
     }),
@@ -212,6 +228,7 @@ def rvd(huc: int, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_or
     simple_save(clipped_thiessen.values(), ogr.wkbPolygon, raster_srs, "Thiessen", intermediates_gpkg_path)
     simple_save(dissolved_polys.values(), ogr.wkbPolygon, raster_srs, "ThiessenPolygonsDissolved", intermediates_gpkg_path)
     simple_save(myVorL.polys, ogr.wkbPolygon, raster_srs, "ThiessenPolygonsRaw", intermediates_gpkg_path)
+    _nd, _inter_gpkg_path, _sublayers = project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
 
     # OLD METHOD FOR AUDIT
     # dissolved_polys2 = dissolve_by_points(flowline_thiessen_points_groups, myVorL.polys)
@@ -222,6 +239,11 @@ def rvd(huc: int, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_or
     vegetation = {}
     vegetation["EXISTING"] = load_vegetation_raster(prj_existing_path, outputs_gpkg_path, True, output_folder=os.path.join(output_folder, 'Intermediates'))
     vegetation["HISTORIC"] = load_vegetation_raster(prj_historic_path, outputs_gpkg_path, False, output_folder=os.path.join(output_folder, 'Intermediates'))
+
+    for epoch in vegetation.keys():
+        for name in vegetation[epoch].keys():
+            if not f"{epoch}_{name}" == "HISTORIC_LUI":
+                project.add_project_raster(proj_nodes['Intermediates'], LayerTypes[f"{epoch}_{name}"])
 
     if vegetation["EXISTING"]["RAW"].shape != vegetation["HISTORIC"]["RAW"].shape:
         raise Exception('Vegetation raster shapes are not equal Existing={} Historic={}. Cannot continue'.format(vegetation["EXISTING"]["RAW"].shape, vegetation["HISTORIC"]["RAW"].shape))
@@ -235,6 +257,7 @@ def rvd(huc: int, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_or
     # Save Intermediate Rasters
     for name, raster in riparian_zone_arrays.items():
         save_intarr_to_geotiff(raster, os.path.join(output_folder, "Intermediates", f"{name}.tif"), prj_existing_path)
+        project.add_project_raster(proj_nodes['Intermediates'], LayerTypes[name])
 
     # Calculate Riparian Departure per Reach
     riparian_arrays = {f"{epoch}_{name}_MEAN": array for epoch, arrays in vegetation.items() for name, array in arrays.items() if name in ["RIPARIAN", "NATIVE_RIPARIAN"]}
@@ -245,6 +268,7 @@ def rvd(huc: int, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_or
     # Generate Vegetation Conversions
     vegetation_change = (vegetation["HISTORIC"]["CONVERSION"] - vegetation["EXISTING"]["CONVERSION"])
     save_intarr_to_geotiff(vegetation_change, os.path.join(output_folder, "Intermediates", "Conversion_Raster.tif"), prj_existing_path)
+    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['VEGETATION_CONVERSION'])
 
     # load conversion types dictionary from database
     conn = sqlite3.connect(outputs_gpkg_path)
@@ -403,7 +427,8 @@ def rvd(huc: int, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_or
         conn.commit()
 
     # Add intermediates and the report to the XML
-    project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
+    # project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES']) already
+    # added above
     project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['OUTPUTS'])
 
     # Add the report to the XML
