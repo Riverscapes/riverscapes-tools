@@ -28,7 +28,7 @@ from rscommons import GeopackageLayer
 from rscommons.vector_ops import polygonize, buffer_by_field, copy_feature_class
 from vbet.vbet_network import vbet_network
 from vbet.vbet_report import VBETReport
-from vbet.vbet_raster_ops import rasterize, proximity_raster, translate
+from vbet.vbet_raster_ops import rasterize, proximity_raster, translate, raster_clean
 from vbet.vbet_outputs import threshold, sanitize
 from vbet.__version__ import __version__
 
@@ -271,9 +271,13 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, max_slope, orig_hand, 
     vbet_path = os.path.join(project_folder, LayerTypes['VBET'].rel_path)
 
     for str_val, thr_val in thresh_vals.items():
-        with NamedTemporaryFile(suffix='.tif', mode="w+", delete=True) as tempfile:
-            log.debug('Temporary threshold raster: {}'.format(tempfile.name))
-            threshold(evidence_raster, thr_val, tempfile.name)
+        with NamedTemporaryFile(suffix='.tif', mode="w+", delete=True) as tmp_raw_thresh, \
+                NamedTemporaryFile(suffix='.tif', mode="w+", delete=True) as tmp_cleaned_thresh:
+
+            log.debug('Temporary threshold raster: {}'.format(tmp_raw_thresh.name))
+            threshold(evidence_raster, thr_val, tmp_raw_thresh.name)
+
+            raster_clean(tmp_raw_thresh.name, tmp_cleaned_thresh.name, buffer_pixels=1)
 
             plgnize_id = 'THRESH_{}'.format(str_val)
             plgnize_lyr = RSLayer('Raw Threshold at {}%'.format(str_val), plgnize_id, 'Vector', plgnize_id.lower())
@@ -286,7 +290,7 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, max_slope, orig_hand, 
             LayerTypes['VBET'].add_sub_layer(vbet_id, vbet_lyr)
             # Now polygonize the raster
             log.info('Polygonizing')
-            polygonize(tempfile.name, 1, '{}/{}'.format(intermed_gpkg_path, plgnize_lyr.rel_path), cfg.OUTPUT_EPSG)
+            polygonize(tmp_cleaned_thresh.name, 1, '{}/{}'.format(intermed_gpkg_path, plgnize_lyr.rel_path), cfg.OUTPUT_EPSG)
             log.info('Done')
 
         # Now the final sanitization
