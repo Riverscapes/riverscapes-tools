@@ -162,7 +162,7 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
     log.info('Writing channel raster using slope as a template')
     flow_area_raster = os.path.join(project_folder, LayerTypes['FLOW_AREA_RASTER'].rel_path)
     channel_buffer_raster = os.path.join(project_folder, LayerTypes['CHANNEL_BUFFER_RASTER'].rel_path)
-    #channel_raster = os.path.join(project_folder, LayerTypes['CHANNEL_RASTER'].rel_path)
+    # channel_raster = os.path.join(project_folder, LayerTypes['CHANNEL_RASTER'].rel_path)
 
     rasterize(network_path_buffered, channel_buffer_raster, slope_ev)
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['CHANNEL_BUFFER_RASTER'])
@@ -213,7 +213,7 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
             progbar = ProgressBar(len(list(slp_src.block_windows(1))), 50, "Calculating evidence layer")
             counter = 0
             # Again, these rasters should be orthogonal so their windows should also line up
-            for ji, window in slp_src.block_windows(1):
+            for _ji, window in slp_src.block_windows(1):
                 progbar.update(counter)
                 counter += 1
                 slope_data = slp_src.read(1, window=window, masked=True)
@@ -390,8 +390,9 @@ def main():
     parser.add_argument('--max_slope', help='Maximum slope to be considered', type=float, default=12)
     parser.add_argument('--max_hand', help='Maximum HAND to be considered', type=float, default=50)
     parser.add_argument('--min_hole_area', help='Minimum hole retained in valley bottom (sq m)', type=float, default=50000)
-    parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
     parser.add_argument('--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
+    parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
+    parser.add_argument('--debug', help='Add debug tools for tracing things like memory usage at a performance cost.', action='store_true', default=False)
 
     args = dotenv.parse_args_env(parser)
 
@@ -408,7 +409,12 @@ def main():
     json_transform = json.dumps({"Slope": 1, "HAND": 2, "Channel": 3, "Flow Areas": 4})
 
     try:
-        vbet(args.huc, args.flowlines, args.flowareas, args.slope, json_transform, args.hand, args.hillshade, args.max_hand, args.min_hole_area, args.output_dir, meta)
+        if args.debug is True:
+            from rscommons.debug import ThreadRun
+            memfile = os.path.join(args.output_dir, 'vbet_mem.log')
+            ThreadRun(vbet, memfile, args.huc, args.flowlines, args.flowareas, args.slope, json_transform, args.hand, args.hillshade, args.max_hand, args.min_hole_area, args.output_dir, meta)
+        else:
+            vbet(args.huc, args.flowlines, args.flowareas, args.slope, json_transform, args.hand, args.hillshade, args.max_hand, args.min_hole_area, args.output_dir, meta)
 
     except Exception as e:
         log.error(e)

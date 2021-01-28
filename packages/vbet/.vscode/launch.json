@@ -29,7 +29,8 @@
         "{env:DATA_ROOT}/rs_context/${input:HUC}/topography/hand.tif",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/topography/dem_hillshade.tif",
         "{env:DATA_ROOT}/vbet/${input:HUC}",
-        "--verbose"
+        "--verbose",
+        "--debug"
       ]
     },
     {
