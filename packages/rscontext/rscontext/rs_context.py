@@ -17,6 +17,7 @@ import traceback
 import uuid
 import datetime
 from osgeo import ogr
+from rscommons.debug import ThreadRun
 
 from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALOGRErrors, Timer
 from rscommons.util import safe_makedirs, safe_remove_dir
@@ -166,7 +167,7 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
         raise Exception('Could not find any .bil files in the prism folder')
     for ptype in PrismTypes:
         try:
-            # Next should always be guarded
+           # Next should always be guarded
             source_raster_path = next(x for x in bil_files if ptype.lower() in os.path.basename(x).lower())
         except StopIteration:
             raise Exception('Could not find .bil file corresponding to "{}"'.format(ptype))
@@ -409,6 +410,7 @@ def main():
     parser.add_argument('--parallel', help='(optional) for running multiple instances of this at the same time', action='store_true', default=False)
     parser.add_argument('--temp_folder', help='(optional) cache folder for downloading files ', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
+    parser.add_argument('--debug', help='(optional) more output about things like memory usage. There is a performance cost', action='store_true', default=False)
 
     args = dotenv.parse_args_env(parser)
 
@@ -434,7 +436,13 @@ def main():
     safe_makedirs(scratch_dir)
 
     try:
-        rs_context(args.huc, args.existing, args.historic, args.ownership, args.fairmarket, args.ecoregions, args.prism, args.output, args.download, scratch_dir, args.parallel, args.force)
+
+        if args.debug is True:
+            memfile = os.path.join(args.output, 'rs_context_memusage.log')
+            retcode, max_usage_self, max_usage_children = ThreadRun(rs_context, memfile, args.huc, args.existing, args.historic, args.ownership, args.fairmarket, args.ecoregions, args.prism, args.output, args.download, scratch_dir, args.parallel, args.force)
+            log.debug('Return code: {}, [Max memory usage] self: {} children: {}'.format(retcode, max_usage_self, max_usage_children))
+        else:
+            rs_context(args.huc, args.existing, args.historic, args.ownership, args.fairmarket, args.ecoregions, args.prism, args.output, args.download, scratch_dir, args.parallel, args.force)
 
     except Exception as e:
         log.error(e)
