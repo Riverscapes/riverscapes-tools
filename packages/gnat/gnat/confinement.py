@@ -36,15 +36,22 @@ cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/Confinement.xsd', 
 
 LayerTypes = {
     # key: (name, id, tag, relpath)]
-    'INPUTS': RSLayer('Confinement', 'INPUTS', 'Geopackage', 'inputs/inputs.gpkg', {
+    'INPUTS': RSLayer('Inputs', 'INPUTS', 'Geopackage', 'inputs/inputs.gpkg', {
         'FLOWLINES': RSLayer('Flowlines', 'FLOWLINES', 'Vector', 'Flowlines'),
         'CONFINING_POLYGON': RSLayer('Confining Polygon', 'CONFINING_POLYGON', 'Vector', 'ConfiningPolygon'),
+    }),
+    'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/confinement_intermediates.gpkg', {
+        'SPLIT_POINTS': RSLayer('Split Points', 'SPLIT_POINTS', 'Vector', 'Split_Points'),
+        'FLOWLINE_SEGMENTS': RSLayer('Flowline Segments', 'FLOWLINE_SEGMENTS', 'Vector', 'Flowline_Segments'),
+        'ERROR_POLYLINES': RSLayer('Error Polylines', 'ERROR_POLYLINES', 'Vector', 'Error_Polylines'),
+        'ERROR_POLYGONS': RSLayer('Error Polygons', 'ERROR_POLYGONS', 'Vector', 'Error_Polygons')
     }),
     'CONFINEMENT_RUN_REPORT': RSLayer('Confinement Report', 'CONFINEMENT_RUN_REPORT', 'HTMLFile', 'outputs/confinement.html'),
     'CONFINEMENT': RSLayer('Confinement', 'CONFINEMENT', 'Geopackage', 'outputs/confinement.gpkg', {
         'CONFINEMENT_RAW': RSLayer('Confinement Raw', 'CONFINEMENT_RAW', 'Vector', 'Confinement_Raw'),
         'CONFINEMENT_MARGINS': RSLayer('Confinement Margins', 'CONFINEMENT_MARGINS', 'Vector', 'Confining_Margins'),
-        'CONFINEMENT_RATIO': RSLayer('Confinement Ratio', 'CONFINEMENT_RATIO', 'Vector', 'Confinement_Ratio')
+        'CONFINEMENT_RATIO': RSLayer('Confinement Ratio', 'CONFINEMENT_RATIO', 'Vector', 'Confinement_Ratio'),
+        'CONFINEMENT_BUFFERS': RSLayer('Bankfull Channel Buffers', 'CONFINEMENT_BUFFERS', 'Vector', 'Confinement_Buffers')
     }),
 }
 
@@ -88,15 +95,17 @@ def confinement(huc, flowlines_orig, confining_polygon_orig, output_folder, buff
     _nd, _inputs_gpkg_path, inputs_gpkg_lyrs = project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
 
     output_gpkg = os.path.join(output_folder, LayerTypes['CONFINEMENT'].rel_path)
+    intermediates_gpkg = os.path.join(output_folder, LayerTypes['INTERMEDIATES'].rel_path)
 
     # Creates an empty geopackage and replaces the old one
     GeopackageLayer(output_gpkg, delete_dataset=True)
+    GeopackageLayer(intermediates_gpkg, delete_dataset=True)
 
     # Add the flowlines file with some metadata
-    project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
     project.add_metadata({'BufferField': buffer_field}, inputs_gpkg_lyrs['FLOWLINES'][0])
 
     # Add the confinement polygon
+    project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
     project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['CONFINEMENT'])
 
     # Generate confining margins
@@ -137,13 +146,13 @@ def confinement(huc, flowlines_orig, confining_polygon_orig, output_folder, buff
     # Opening these layers to instantiate them
 
     # Standard Outputs
-    with GeopackageLayer(output_gpkg, layer_name="Confining_Margins", write=True) as margins_lyr:
+    with GeopackageLayer(output_gpkg, layer_name=LayerTypes['CONFINEMENT'].sub_layers["CONFINEMENT_MARGINS"].rel_path, write=True) as margins_lyr:
         margins_lyr.create(ogr.wkbLineString, spatial_ref=srs)
         margins_lyr.ogr_layer.CreateField(field_lookup['side'])
         margins_lyr.ogr_layer.CreateField(field_lookup['flowlineID'])
         margins_lyr.ogr_layer.CreateField(field_lookup['length'])
 
-    with GeopackageLayer(output_gpkg, layer_name="Confinement_Raw", write=True) as raw_lyr:
+    with GeopackageLayer(output_gpkg, layer_name=LayerTypes['CONFINEMENT'].sub_layers["CONFINEMENT_RAW"].rel_path, write=True) as raw_lyr:
         raw_lyr.create(ogr.wkbLineString, spatial_ref=srs)
         raw_lyr.ogr_layer.CreateField(field_lookup['flowlineID'])
         raw_lyr.ogr_layer.CreateField(field_lookup['confinement_type'])
@@ -154,7 +163,7 @@ def confinement(huc, flowlines_orig, confining_polygon_orig, output_folder, buff
     #     floodplain_lyr.ogr_layer.CreateField(field_side)
     #     floodplain_lyr.ogr_layer.CreateField(field_flowlineID)
 
-    with GeopackageLayer(output_gpkg, layer_name="Confinement_Ratio", write=True) as ratio_lyr:
+    with GeopackageLayer(output_gpkg, layer_name=LayerTypes['CONFINEMENT'].sub_layers["CONFINEMENT_RATIO"].rel_path, write=True) as ratio_lyr:
         ratio_lyr.create(ogr.wkbLineString, spatial_ref=srs)
         ratio_lyr.ogr_layer.CreateField(field_lookup['flowlineID'])
         ratio_lyr.ogr_layer.CreateField(field_lookup['confinement_ratio'])
@@ -163,43 +172,43 @@ def confinement(huc, flowlines_orig, confining_polygon_orig, output_folder, buff
         ratio_lyr.ogr_layer.CreateField(field_lookup['confined_length'])
         ratio_lyr.ogr_layer.CreateField(field_lookup['constricted_length'])
 
+    with GeopackageLayer(output_gpkg, layer_name=LayerTypes['CONFINEMENT'].sub_layers["CONFINEMENT_BUFFERS"].rel_path, write=True) as lyr:
+        lyr.create(ogr.wkbPolygon, spatial_ref=srs)
+        lyr.ogr_layer.CreateField(field_lookup['side'])
+        lyr.ogr_layer.CreateField(field_lookup['flowlineID'])
+
     # Debug Outputs
     if debug:
-        with GeopackageLayer(output_gpkg, layer_name="DEBUG_Split_Points", write=True) as lyr:
+        with GeopackageLayer(intermediates_gpkg, layer_name=LayerTypes['INTERMEDIATES'].sub_layers["SPLIT_POINTS"].rel_path, write=True) as lyr:
             lyr.create(ogr.wkbPoint, spatial_ref=srs)
             lyr.ogr_layer.CreateField(field_lookup['side'])
             lyr.ogr_layer.CreateField(field_lookup['flowlineID'])
 
-        with GeopackageLayer(output_gpkg, layer_name="DEBUG_Flowline_Segments", write=True) as lyr:
+        with GeopackageLayer(intermediates_gpkg, layer_name=LayerTypes['INTERMEDIATES'].sub_layers["FLOWLINE_SEGMENTS"].rel_path, write=True) as lyr:
             lyr.create(ogr.wkbLineString, spatial_ref=srs)
             lyr.ogr_layer.CreateField(field_lookup['side'])
             lyr.ogr_layer.CreateField(field_lookup['flowlineID'])
 
-        with GeopackageLayer(output_gpkg, layer_name="DEBUG_buffers", write=True) as lyr:
-            lyr.create(ogr.wkbPolygon, spatial_ref=srs)
-            lyr.ogr_layer.CreateField(field_lookup['side'])
-            lyr.ogr_layer.CreateField(field_lookup['flowlineID'])
-
-        with GeopackageLayer(output_gpkg, layer_name="DEBUG_Error_Polylines", write=True) as lyr:
+        with GeopackageLayer(intermediates_gpkg, layer_name=LayerTypes['INTERMEDIATES'].sub_layers["ERROR_POLYLINES"].rel_path, write=True) as lyr:
             lyr.create(ogr.wkbLineString, spatial_ref=srs)
             lyr.ogr_layer.CreateField(field_lookup['process'])
             lyr.ogr_layer.CreateField(field_lookup['message'])
 
-        with GeopackageLayer(output_gpkg, layer_name="DEBUG_Error_Polygons", write=True) as lyr:
+        with GeopackageLayer(intermediates_gpkg, layer_name=LayerTypes['INTERMEDIATES'].sub_layers["ERROR_POLYGONS"].rel_path, write=True) as lyr:
             lyr.create(ogr.wkbPolygon, spatial_ref=srs)
             lyr.ogr_layer.CreateField(field_lookup['process'])
             lyr.ogr_layer.CreateField(field_lookup['message'])
 
     # Generate confinement per Flowline
     with GeopackageLayer(flowlines_path) as flw_lyr, \
-            GeopackageLayer(output_gpkg, layer_name="Confining_Margins", write=True) as margins_lyr, \
-            GeopackageLayer(output_gpkg, layer_name="Confinement_Raw", write=True) as raw_lyr, \
-            GeopackageLayer(output_gpkg, layer_name="Confinement_Ratio", write=True) as ratio_lyr, \
-            GeopackageLayer(output_gpkg, layer_name="DEBUG_Split_Points", write=True) as dbg_splitpts_lyr, \
-            GeopackageLayer(output_gpkg, layer_name="DEBUG_Flowline_Segments", write=True) as dbg_flwseg_lyr, \
-            GeopackageLayer(output_gpkg, layer_name="DEBUG_buffers", write=True) as dbg_buff_lyr, \
-            GeopackageLayer(output_gpkg, layer_name="DEBUG_Error_Polylines", write=True) as dbg_err_lines_lyr, \
-            GeopackageLayer(output_gpkg, layer_name="DEBUG_Error_Polygons", write=True) as dbg_err_polygons_lyr:
+            GeopackageLayer(output_gpkg, layer_name=LayerTypes['CONFINEMENT'].sub_layers["CONFINEMENT_MARGINS"].rel_path, write=True) as margins_lyr, \
+            GeopackageLayer(output_gpkg, layer_name=LayerTypes['CONFINEMENT'].sub_layers["CONFINEMENT_RAW"].rel_path, write=True) as raw_lyr, \
+            GeopackageLayer(output_gpkg, layer_name=LayerTypes['CONFINEMENT'].sub_layers["CONFINEMENT_RATIO"].rel_path, write=True) as ratio_lyr, \
+            GeopackageLayer(intermediates_gpkg, layer_name=LayerTypes['INTERMEDIATES'].sub_layers["SPLIT_POINTS"].rel_path, write=True) as dbg_splitpts_lyr, \
+            GeopackageLayer(intermediates_gpkg, layer_name=LayerTypes['INTERMEDIATES'].sub_layers["FLOWLINE_SEGMENTS"].rel_path, write=True) as dbg_flwseg_lyr, \
+            GeopackageLayer(output_gpkg, layer_name=LayerTypes['CONFINEMENT'].sub_layers["CONFINEMENT_BUFFERS"].rel_path, write=True) as dbg_buff_lyr, \
+            GeopackageLayer(intermediates_gpkg, layer_name=LayerTypes['INTERMEDIATES'].sub_layers["ERROR_POLYLINES"].rel_path, write=True) as dbg_err_lines_lyr, \
+            GeopackageLayer(intermediates_gpkg, layer_name=LayerTypes['INTERMEDIATES'].sub_layers["ERROR_POLYGONS"].rel_path, write=True) as dbg_err_polygons_lyr:
 
         for flowline, _counter, progbar in flw_lyr.iterate_features("Generating confinement for flowlines", write_layers=[
                 margins_lyr,
@@ -387,11 +396,13 @@ def create_project(huc, output_dir, realization_meta):
 
     proj_nodes = {
         'Inputs': project.XMLBuilder.add_sub_element(realization, 'Inputs'),
+        'Intermediates': project.XMLBuilder.add_sub_element(realization, 'Intermediates'),
         'Outputs': project.XMLBuilder.add_sub_element(realization, 'Outputs')
     }
 
     proj_dir = os.path.dirname(project.xml_path)
     safe_makedirs(os.path.join(proj_dir, 'inputs'))
+    safe_makedirs(os.path.join(proj_dir, 'intermediates'))
     safe_makedirs(os.path.join(proj_dir, 'outputs'))
 
     report_path = os.path.join(project.project_dir, LayerTypes['CONFINEMENT_RUN_REPORT'].rel_path)
