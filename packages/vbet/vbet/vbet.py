@@ -46,33 +46,33 @@ LayerTypes = {
     'SLOPE_RASTER': RSLayer('Slope Raster', 'SLOPE_RASTER', 'Raster', 'inputs/slope.tif'),
     'HAND_RASTER': RSLayer('Hand Raster', 'HAND_RASTER', 'Raster', 'inputs/hand.tif'),
     'HILLSHADE': RSLayer('DEM Hillshade', 'HILLSHADE', 'Raster', 'inputs/dem_hillshade.tif'),
-    'CHANNEL_RASTER': RSLayer('Channel Raster', 'CHANNEL_RASTER', 'Raster', 'inputs/channel.tif'),
-    'CHANNEL_BUFFER_RASTER': RSLayer('Channel Raster', 'CHANNEL_BUFFER_RASTER', 'Raster', 'inputs/channelbuffer.tif'),
-    'FLOW_AREA_RASTER': RSLayer('Flow Area Raster', 'FLOW_AREA_RASTER', 'Raster', 'inputs/flowarea.tif'),
+    # 'CHANNEL_RASTER': RSLayer('Channel Raster', 'CHANNEL_RASTER', 'Raster', 'inputs/channel.tif'),
     'INPUTS': RSLayer('Inputs', 'INPUTS', 'Geopackage', 'inputs/vbet_inputs.gpkg', {
         'FLOWLINES': RSLayer('NHD Flowlines', 'FLOWLINES', 'Vector', 'flowlines'),
         'FLOW_AREA': RSLayer('NHD Flow Areas', 'FLOW_AREA', 'Vector', 'flow_areas'),
     }),
-    'SLOPE_EV': RSLayer('Evidence Raster', 'SLOPE_EV_TMP', 'Raster', 'intermediates/nLoE_Slope.tif'),
-    'HAND_EV': RSLayer('Evidence Raster', 'HAND_EV_TMP', 'Raster', 'intermediates/nLoE_HAND.tif'),
-    'CHANNEL_MASK': RSLayer('Evidence Raster', 'CH_MASK', 'Raster', 'intermediates/nLOE_Channels.tif'),
-    'CHANNEL_DISTANCE': RSLayer('Evidence Raster', "CH_DIST", "Raster", "intermediates/nLOE_ChannelDist.tif"),
-    'FLOW_AREA_DISTANCE': RSLayer('Evidence Raster', "FA_DIST", "Raster", "intermediates/nLOE_FlowAreaDist.tif"),
-    'SLOPE_TRANSFORM': RSLayer('Evidence Raster', "SLOPE_TC", "Raster", "intermediates/T_Slope.tif"),
-    'HAND_TRANSFORM': RSLayer('Evidence Raster', "HAND_TC", "Raster", "intermediates/T_Hand.tif"),
-    'CHANNEL_DISTANCE_TRANSFORM': RSLayer('Evidence Raster', "CHAN_DIST_TC", "Raster", "intermediates/T_ChannelDist.tif"),
-    'FLOWAREA_DISTANCE_TRANSFORM': RSLayer('Evidence Raster', "FA_DIST_TC", "Raster", "intermediates/T_FlowAreaDist.tif"),
-    'TOPOGRAPHIC_EVIDENCE': RSLayer('Evidence Raster', 'TOPO_EVIDENCE', 'Raster', 'intermediates/TopographicEvidence.tif'),
-    'CHANNEL_EVIDENCE': RSLayer('Evidence Raster', 'CHANNEL_EVIDENCE', 'Raster', 'intermediates/ChannelEvidence.tif'),
-    'EVIDENCE': RSLayer('Evidence Raster', 'EVIDENCE', 'Raster', 'intermediates/Evidence.tif'),
+    'CHANNEL_BUFFER_RASTER': RSLayer('Channel Buffer Raster', 'CHANNEL_BUFFER_RASTER', 'Raster', 'intermediates/channelbuffer.tif'),
+    'FLOW_AREA_RASTER': RSLayer('Flow Area Raster', 'FLOW_AREA_RASTER', 'Raster', 'intermediates/flowarea.tif'),
+    'TEMP_SLOPE': RSLayer('Evidence Raster', 'TEMP_SLOPE', 'Raster', 'intermediates/TempSlope.tif'),
+    'TEMP_HAND': RSLayer('Evidence Raster', 'TEMP_HAND', 'Raster', 'intermediates/TempHAND.tif'),
+    # 'CHANNEL_MASK': RSLayer('Evidence Raster', 'CH_MASK', 'Raster', 'intermediates/nLOE_Channels.tif'),
+    'CHANNEL_DISTANCE': RSLayer('Channel Euclidean Distance', 'CHANNEL_DISTANCE', "Raster", "intermediates/ChannelEuclideanDist.tif"),
+    'FLOW_AREA_DISTANCE': RSLayer('Flow Area Euclidean Distance', 'FLOW_AREA_DISTANCE', "Raster", "intermediates/FlowAreaEuclideanDist.tif"),
+    'NORMALIZED_SLOPE': RSLayer('Normalized Slope', 'NORMALIZED_SLOPE', "Raster", "intermediates/nLoE_Slope.tif"),
+    'NORMALIZED_HAND': RSLayer('Normalized HAND', 'NORMALIZED_HAND', "Raster", "intermediates/nLoE_Hand.tif"),
+    'NORMALIZED_CHANNEL_DISTANCE': RSLayer('Normalized Channel Distance', 'NORMALIZED_CHANNEL_DISTANCE', "Raster", "intermediates/nLoE_ChannelDist.tif"),
+    'NORMALIZED_FLOWAREA_DISTANCE': RSLayer('Normalized Flow Area Distance', 'NORMALIZED_FLOWAREA_DISTANCE', "Raster", "intermediates/nLoE_FlowAreaDist.tif"),
+    'EVIDENCE_TOPO': RSLayer('Evidence Raster', 'EVIDENCE_TOPO', 'Raster', 'intermediates/Topographic_Evidence.tif'),
+    'EVIDENCE_CHANNEL': RSLayer('Evidence Raster', 'EVIDENCE_CHANNEL', 'Raster', 'intermediates/Channel_Evidence.tif'),
     'COMBINED_VRT': RSLayer('Combined VRT', 'COMBINED_VRT', 'VRT', 'intermediates/slope-hand-channel.vrt'),
     'INTERMEDIATES': RSLayer('Intermediates', 'Intermediates', 'Geopackage', 'intermediates/vbet_intermediates.gpkg', {
         'VBET_NETWORK': RSLayer('VBET Network', 'VBET_NETWORK', 'Vector', 'vbet_network'),
         'VBET_NETWORK_BUFFERED': RSLayer('VBET Network', 'VBET_NETWORK', 'Vector', 'vbet_network_buffered'),
-        'CHANNEL_POLYGON': RSLayer('Combined VRT', 'CHANNEL_POLYGON', 'Vector', 'channel')
+        # 'CHANNEL_POLYGON': RSLayer('Combined VRT', 'CHANNEL_POLYGON', 'Vector', 'channel')
         # We also add all tht raw thresholded shapes here but they get added dynamically later
     }),
     # Same here. Sub layers are added dynamically later.
+    'VBET_EVIDENCE': RSLayer('VBET Evidence Raster', 'VBET_EVIDENCE', 'Raster', 'outputs/VBET_Evidence.tif'),
     'VBET': RSLayer('VBET', 'VBET Outputs', 'Geopackage', 'outputs/vbet.gpkg'),
     'REPORT': RSLayer('RSContext Report', 'REPORT', 'HTMLFile', 'outputs/vbet.html')
 }
@@ -122,8 +122,8 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
         proj_hand
     ], options=vrt_options)
 
-    slope_ev = os.path.join(project_folder, LayerTypes['SLOPE_EV'].rel_path)
-    hand_ev = os.path.join(project_folder, LayerTypes['HAND_EV'].rel_path)
+    slope_ev = os.path.join(project_folder, LayerTypes['TEMP_SLOPE'].rel_path)
+    hand_ev = os.path.join(project_folder, LayerTypes['TEMP_HAND'].rel_path)
 
     # Generate the evidence raster from the VRT. This is a little annoying but reading across
     # different dtypes in one VRT is not supported in GDAL > 3.0 so we dump them into individual rasters
@@ -159,7 +159,7 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
     log.info('Writing channel raster using slope as a template')
     flow_area_raster = os.path.join(project_folder, LayerTypes['FLOW_AREA_RASTER'].rel_path)
     channel_buffer_raster = os.path.join(project_folder, LayerTypes['CHANNEL_BUFFER_RASTER'].rel_path)
-    channel_raster = os.path.join(project_folder, LayerTypes['CHANNEL_RASTER'].rel_path)
+    #channel_raster = os.path.join(project_folder, LayerTypes['CHANNEL_RASTER'].rel_path)
 
     rasterize(network_path_buffered, channel_buffer_raster, slope_ev)
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['CHANNEL_BUFFER_RASTER'])
@@ -169,39 +169,39 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
 
     # Open evidence rasters concurrently. We're looping over windows so this shouldn't affect
     # memory consumption too much
-    with rasterio.open(channel_buffer_raster) as ch_buff, rasterio.open(flow_area_raster) as fl_arr:
-        # All 3 rasters should have the same extent and properties. They differ only in dtype
-        out_meta = ch_buff.meta
-        out_meta['compress'] = 'deflate'
+    # with rasterio.open(channel_buffer_raster) as ch_buff, rasterio.open(flow_area_raster) as fl_arr:
+    #     # All 3 rasters should have the same extent and properties. They differ only in dtype
+    #     out_meta = ch_buff.meta
+    #     out_meta['compress'] = 'deflate'
 
-        with rasterio.open(channel_raster, 'w', **out_meta) as out_raster:
-            progbar = ProgressBar(len(list(ch_buff.block_windows(1))), 50, "Combining flow area and buffered network rasters")
-            counter = 0
-            # Again, these rasters should be orthogonal so their windows should also line up
-            for ji, window in ch_buff.block_windows(1):
-                progbar.update(counter)
-                counter += 1
-                # These rasterizations don't begin life with a mask.
-                ch_buff_data = ch_buff.read(1, window=window, masked=True)
-                fl_arr_data = fl_arr.read(1, window=window, masked=True)
+    #     with rasterio.open(channel_raster, 'w', **out_meta) as out_raster:
+    #         progbar = ProgressBar(len(list(ch_buff.block_windows(1))), 50, "Combining flow area and buffered network rasters")
+    #         counter = 0
+    #         # Again, these rasters should be orthogonal so their windows should also line up
+    #         for ji, window in ch_buff.block_windows(1):
+    #             progbar.update(counter)
+    #             counter += 1
+    #             # These rasterizations don't begin life with a mask.
+    #             ch_buff_data = ch_buff.read(1, window=window, masked=True)
+    #             fl_arr_data = fl_arr.read(1, window=window, masked=True)
 
-                out_raster.write(ch_buff_data | fl_arr_data, window=window, indexes=1)
+    #             out_raster.write(ch_buff_data | fl_arr_data, window=window, indexes=1)
 
-            progbar.finish()
-    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['CHANNEL_RASTER'])
+    #         progbar.finish()
+    # project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['CHANNEL_RASTER'])
 
     channel_dist_raster = os.path.join(project_folder, LayerTypes['CHANNEL_DISTANCE'].rel_path)
     fa_dist_raster = os.path.join(project_folder, LayerTypes['FLOW_AREA_DISTANCE'].rel_path)
     proximity_raster(channel_buffer_raster, channel_dist_raster)
     proximity_raster(flow_area_raster, fa_dist_raster)
 
-    slope_transform_raster = os.path.join(project_folder, LayerTypes['SLOPE_TRANSFORM'].rel_path)
-    hand_transform_raster = os.path.join(project_folder, LayerTypes['HAND_TRANSFORM'].rel_path)
-    chan_dist_transform_raster = os.path.join(project_folder, LayerTypes['CHANNEL_DISTANCE_TRANSFORM'].rel_path)
-    fa_dist_transform_raster = os.path.join(project_folder, LayerTypes['FLOWAREA_DISTANCE_TRANSFORM'].rel_path)
-    topo_evidence_raster = os.path.join(project_folder, LayerTypes['TOPOGRAPHIC_EVIDENCE'].rel_path)
-    channel_evidence_raster = os.path.join(project_folder, LayerTypes['CHANNEL_EVIDENCE'].rel_path)
-    evidence_raster = os.path.join(project_folder, LayerTypes['EVIDENCE'].rel_path)
+    slope_transform_raster = os.path.join(project_folder, LayerTypes['NORMALIZED_SLOPE'].rel_path)
+    hand_transform_raster = os.path.join(project_folder, LayerTypes['NORMALIZED_HAND'].rel_path)
+    chan_dist_transform_raster = os.path.join(project_folder, LayerTypes['NORMALIZED_CHANNEL_DISTANCE'].rel_path)
+    fa_dist_transform_raster = os.path.join(project_folder, LayerTypes['NORMALIZED_FLOWAREA_DISTANCE'].rel_path)
+    topo_evidence_raster = os.path.join(project_folder, LayerTypes['EVIDENCE_TOPO'].rel_path)
+    channel_evidence_raster = os.path.join(project_folder, LayerTypes['EVIDENCE_CHANNEL'].rel_path)
+    evidence_raster = os.path.join(project_folder, LayerTypes['VBET_EVIDENCE'].rel_path)
 
     # Open evidence rasters concurrently. We're looping over windows so this shouldn't affect
     # memory consumption too much
@@ -267,8 +267,8 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
             progbar.finish()
 
         # The remaining rasters get added to the project
-        project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['TOPOGRAPHIC_EVIDENCE'])
-        project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['CHANNEL_EVIDENCE'])
+        project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['EVIDENCE_TOPO'])
+        project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['EVIDENCE_CHANNEL'])
 
     # Get the length of a meter (roughly)
     degree_factor = GeopackageLayer.rough_convert_metres_to_raster_units(slope_ev, 1)
@@ -280,8 +280,8 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
     vbet_path = os.path.join(project_folder, LayerTypes['VBET'].rel_path)
 
     for str_val, thr_val in thresh_vals.items():
-        with NamedTemporaryFile(suffix='.tif', mode="w+", delete=True) as tmp_raw_thresh, \
-                NamedTemporaryFile(suffix='.tif', mode="w+", delete=True) as tmp_cleaned_thresh:
+        with NamedTemporaryFile(suffix='.tif', mode="w+", delete=False) as tmp_raw_thresh, \
+                NamedTemporaryFile(suffix='.tif', mode="w+", delete=False) as tmp_cleaned_thresh:
 
             log.debug('Temporary threshold raster: {}'.format(tmp_raw_thresh.name))
             threshold(evidence_raster, thr_val, tmp_raw_thresh.name)
@@ -301,6 +301,10 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
             log.info('Polygonizing')
             polygonize(tmp_cleaned_thresh.name, 1, '{}/{}'.format(intermed_gpkg_path, plgnize_lyr.rel_path), cfg.OUTPUT_EPSG)
             log.info('Done')
+
+            for f in [tmp_raw_thresh, tmp_cleaned_thresh]:
+                f.close()
+                os.unlink(f.name)
 
         # Now the final sanitization
         log.info('Sanitizing')
