@@ -240,7 +240,7 @@ class RSProject:
 
         brat_element = self.XMLBuilder.add_sub_element(real_element, id, attribs={
             'dateCreated': datetime.datetime.now().isoformat(),
-            'guid': str(uuid.uuid1()),
+            'guid': str(uuid.uuid4()),
             'id': realization_id
         })
 
@@ -257,7 +257,7 @@ class RSProject:
 
         output_id = self.getUniqueTypeID(real_element, id, 'Output')
         nodVector = self.XMLBuilder.add_sub_element(output_element, 'Vector', attribs={
-            'guid': str(uuid.uuid1()),
+            'guid': str(uuid.uuid4()),
             'id': output_id
         })
         self.XMLBuilder.add_sub_element(nodVector, 'Name', 'BRAT Network')
@@ -277,7 +277,7 @@ class RSProject:
             self.XMLBuilder.delete_sub_element(parent_node, xml_tag, id)
 
         attribs = {
-            'guid': str(uuid.uuid1()),
+            'guid': str(uuid.uuid4()),
             'id': id
         }
         nod_dataset = self.XMLBuilder.add_sub_element(parent_node, xml_tag, attribs=attribs)
