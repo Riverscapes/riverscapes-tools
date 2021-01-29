@@ -1,3 +1,4 @@
+import os
 from tempfile import NamedTemporaryFile
 import shutil
 from osgeo import gdal
@@ -30,7 +31,7 @@ def rasterize(in_lyr_path, out_raster_path, template_path):
     progbar.update(0)
 
     # Rasterize the polygon to a temporary file
-    with NamedTemporaryFile(suffix='.tif', mode="w+", delete=True) as tempfile:
+    with NamedTemporaryFile(suffix='.tif', mode="w+", delete=False) as tempfile:
         log.debug('Temporary file: {}'.format(tempfile.name))
         gdal.Rasterize(
             tempfile.name,
@@ -47,6 +48,8 @@ def rasterize(in_lyr_path, out_raster_path, template_path):
 
         # Now mask the output correctly
         mask_rasters_nodata(tempfile.name, template_path, out_raster_path)
+        tempfile.close()
+        os.unlink(tempfile.name)
 
 
 def mask_rasters_nodata(in_raster_path, nodata_raster_path, out_raster_path):
@@ -98,7 +101,7 @@ def proximity_raster(src_raster_path: str, out_raster_path: str, dist_units="PIX
     srcband = src_ds.GetRasterBand(1)
 
     drv = gdal.GetDriverByName('GTiff')
-    with NamedTemporaryFile(suffix=".tif", mode="w+", delete=True) as tempfile:
+    with NamedTemporaryFile(suffix=".tif", mode="w+", delete=False) as tempfile:
         dst_ds = drv.Create(tempfile.name,
                             src_ds.RasterXSize, src_ds.RasterYSize, 1,
                             gdal.GetDataTypeByName('Float32'))
@@ -123,6 +126,8 @@ def proximity_raster(src_raster_path: str, out_raster_path: str, dist_units="PIX
             shutil.copyfile(tempfile.name, out_raster_path)
 
         log.info('completed in {}'.format(tmr.toString()))
+        tempfile.close()
+        os.unlink(tempfile.name)
 
 
 def translate(vrtpath_in: str, raster_out_path: str, band: int):
@@ -192,10 +197,10 @@ def raster_clean(in_raster_path: str, out_raster_path: str, buffer_pixels=1):
 
     log = Logger('raster_clean')
 
-    with NamedTemporaryFile(suffix='.tif', mode="w+", delete=True) as tmp_prox_out, \
-            NamedTemporaryFile(suffix='.tif', mode="w+", delete=True) as tmp_buff_out, \
-            NamedTemporaryFile(suffix='.tif', mode="w+", delete=True) as tmp_prox_in, \
-            NamedTemporaryFile(suffix='.tif', mode="w+", delete=True) as inv_mask:
+    with NamedTemporaryFile(suffix='.tif', mode="w+", delete=False) as tmp_prox_out, \
+            NamedTemporaryFile(suffix='.tif', mode="w+", delete=False) as tmp_buff_out, \
+            NamedTemporaryFile(suffix='.tif', mode="w+", delete=False) as tmp_prox_in, \
+            NamedTemporaryFile(suffix='.tif', mode="w+", delete=False) as inv_mask:
 
         # 1. Find the proximity raster
         proximity_raster(in_raster_path, tmp_prox_out.name, preserve_nodata=False)
@@ -254,4 +259,9 @@ def raster_clean(in_raster_path: str, out_raster_path: str, buffer_pixels=1):
                     out_data_src.write(output.filled(out_meta['nodata']).astype(out_meta['dtype']), window=window, indexes=1)
 
                 progbar.finish()
+
+        for f in [tmp_prox_out, tmp_buff_out, tmp_prox_in, inv_mask]:
+            f.close()
+            os.unlink(f.name)
+
         log.info('Cleaning finished')
