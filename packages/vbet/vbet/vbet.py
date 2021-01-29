@@ -167,29 +167,6 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
     rasterize(flowareas_path, flow_area_raster, slope_ev)
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['FLOW_AREA_RASTER'])
 
-    # Open evidence rasters concurrently. We're looping over windows so this shouldn't affect
-    # memory consumption too much
-    # with rasterio.open(channel_buffer_raster) as ch_buff, rasterio.open(flow_area_raster) as fl_arr:
-    #     # All 3 rasters should have the same extent and properties. They differ only in dtype
-    #     out_meta = ch_buff.meta
-    #     out_meta['compress'] = 'deflate'
-
-    #     with rasterio.open(channel_raster, 'w', **out_meta) as out_raster:
-    #         progbar = ProgressBar(len(list(ch_buff.block_windows(1))), 50, "Combining flow area and buffered network rasters")
-    #         counter = 0
-    #         # Again, these rasters should be orthogonal so their windows should also line up
-    #         for ji, window in ch_buff.block_windows(1):
-    #             progbar.update(counter)
-    #             counter += 1
-    #             # These rasterizations don't begin life with a mask.
-    #             ch_buff_data = ch_buff.read(1, window=window, masked=True)
-    #             fl_arr_data = fl_arr.read(1, window=window, masked=True)
-
-    #             out_raster.write(ch_buff_data | fl_arr_data, window=window, indexes=1)
-
-    #         progbar.finish()
-    # project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['CHANNEL_RASTER'])
-
     channel_dist_raster = os.path.join(project_folder, LayerTypes['CHANNEL_DISTANCE'].rel_path)
     fa_dist_raster = os.path.join(project_folder, LayerTypes['FLOW_AREA_DISTANCE'].rel_path)
     proximity_raster(channel_buffer_raster, channel_dist_raster)
@@ -218,12 +195,6 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
         # out_meta['dtype'] = rasterio.uint8
         # We use this to buffer the output
         cell_size = abs(slp_src.get_transform()[1])
-
-        # Transform Functions
-        # f_slope = interpolate.interp1d(tcurve_slope['values'], tcurve_slope['output'], bounds_error=False, fill_value=0.0)
-        # f_hand = interpolate.interp1d(tcurve_hand['values'], tcurve_hand['output'], bounds_error=False, fill_value=0.0)
-        # f_chan_dist = interpolate.interp1d(tcurve_ch_dist['values'], tcurve_ch_dist['output'], bounds_error=False, fill_value=0.0)
-        # f_fa_dist = interpolate.interp1d(tcurve_fa_dist['values'], tcurve_fa_dist['output'], bounds_error=False, fill_value=0.0)
 
         with rasterio.open(evidence_raster, 'w', **out_meta) as dest_evidence, \
                 rasterio.open(topo_evidence_raster, "w", **out_meta) as dest, \
