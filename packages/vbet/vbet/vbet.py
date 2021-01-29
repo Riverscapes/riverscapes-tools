@@ -67,13 +67,13 @@ LayerTypes = {
     'COMBINED_VRT': RSLayer('Combined VRT', 'COMBINED_VRT', 'VRT', 'intermediates/slope-hand-channel.vrt'),
     'INTERMEDIATES': RSLayer('Intermediates', 'Intermediates', 'Geopackage', 'intermediates/vbet_intermediates.gpkg', {
         'VBET_NETWORK': RSLayer('VBET Network', 'VBET_NETWORK', 'Vector', 'vbet_network'),
-        'VBET_NETWORK_BUFFERED': RSLayer('VBET Network', 'VBET_NETWORK', 'Vector', 'vbet_network_buffered'),
+        'VBET_NETWORK_BUFFERED': RSLayer('VBET Network', 'VBET_NETWORK_BUFFERED', 'Vector', 'vbet_network_buffered'),
         # 'CHANNEL_POLYGON': RSLayer('Combined VRT', 'CHANNEL_POLYGON', 'Vector', 'channel')
         # We also add all tht raw thresholded shapes here but they get added dynamically later
     }),
     # Same here. Sub layers are added dynamically later.
     'VBET_EVIDENCE': RSLayer('VBET Evidence Raster', 'VBET_EVIDENCE', 'Raster', 'outputs/VBET_Evidence.tif'),
-    'VBET': RSLayer('VBET', 'VBET Outputs', 'Geopackage', 'outputs/vbet.gpkg'),
+    'VBET_OUTPUTS': RSLayer('VBET', 'VBET_OUTPUTS', 'Geopackage', 'outputs/vbet.gpkg'),
     'REPORT': RSLayer('RSContext Report', 'REPORT', 'HTMLFile', 'outputs/vbet.html')
 }
 
@@ -240,6 +240,7 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
         # The remaining rasters get added to the project
         project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['EVIDENCE_TOPO'])
         project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['EVIDENCE_CHANNEL'])
+        project.add_project_raster(proj_nodes['Outputs'], LayerTypes['VBET_EVIDENCE'])
 
     # Get the length of a meter (roughly)
     degree_factor = GeopackageLayer.rough_convert_metres_to_raster_units(slope_ev, 1)
@@ -248,7 +249,7 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
 
     # Get the full paths to the geopackages
     intermed_gpkg_path = os.path.join(project_folder, LayerTypes['INTERMEDIATES'].rel_path)
-    vbet_path = os.path.join(project_folder, LayerTypes['VBET'].rel_path)
+    vbet_path = os.path.join(project_folder, LayerTypes['VBET_OUTPUTS'].rel_path)
 
     for str_val, thr_val in thresh_vals.items():
         with NamedTemporaryFile(suffix='.tif', mode="w+", delete=False) as tmp_raw_thresh, \
@@ -267,7 +268,7 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
             vbet_id = 'VBET_{}'.format(str_val)
             vbet_lyr = RSLayer('Threshold at {}%'.format(str_val), vbet_id, 'Vector', vbet_id.lower())
             # Add a project node for this thresholded vector
-            LayerTypes['VBET'].add_sub_layer(vbet_id, vbet_lyr)
+            LayerTypes['VBET_OUTPUTS'].add_sub_layer(vbet_id, vbet_lyr)
             # Now polygonize the raster
             log.info('Polygonizing')
             polygonize(tmp_cleaned_thresh.name, 1, '{}/{}'.format(intermed_gpkg_path, plgnize_lyr.rel_path), cfg.OUTPUT_EPSG)
@@ -289,7 +290,7 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
 
     # Now add our Geopackages to the project XML
     project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
-    project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['VBET'])
+    project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['VBET_OUTPUTS'])
 
     report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
     project.add_report(proj_nodes['Outputs'], LayerTypes['REPORT'], replace=True)
