@@ -18,25 +18,18 @@ import traceback
 import datetime
 import time
 from tempfile import NamedTemporaryFile
-from osgeo import gdal, ogr
 import json
-import shutil
 import glob
 import sqlite3
 from osgeo import gdal
-from osgeo import ogr
-from shapely.geometry import mapping, Polygon
-from shapely.ops import unary_union
 import rasterio
 import numpy as np
 from scipy import interpolate
 from rscommons.util import safe_makedirs, parse_metadata
 from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, dotenv, initGDALOGRErrors
 from rscommons import GeopackageLayer
-from rscommons.vector_ops import polygonize, buffer_by_field, copy_feature_class
-from rscommons import GeopackageLayer, VectorBase
 from rscommons.database import execute_query
-from rscommons.vector_ops import polygonize, get_num_pts, get_num_rings, get_geometry_unary_union, remove_holes, buffer_by_field, copy_feature_class
+from rscommons.vector_ops import polygonize, buffer_by_field, copy_feature_class
 from vbet.vbet_network import vbet_network
 from vbet.vbet_report import VBETReport
 from vbet.vbet_raster_ops import rasterize, proximity_raster, translate, raster_clean
@@ -48,16 +41,6 @@ initGDALOGRErrors()
 cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/VBET.xsd', __version__)
 
 thresh_vals = {"50": 0.5, "60": 0.6, "70": 0.7, "80": 0.8, "90": 0.9, "100": 1}
-
-# Transformation Curve Inputs
-# tcurve_slope = {"values": np.array([0.0, 12.0]),
-#                 "output": np.array([1.0, 0.0])}
-# tcurve_hand = {"values": np.array([0, 50]),
-#                "output": np.array([1.0, 0.0])}
-# tcurve_fa_dist = {"values": np.array([0, 2]),  # Cells
-#                   "output": np.array([1.0, 0.0])}
-# tcurve_ch_dist = {"values": np.array([0, 2, 3]),
-#                   "output": np.array([1.0, 0.5, 0.0])}
 
 LayerTypes = {
     'SLOPE_RASTER': RSLayer('Slope Raster', 'SLOPE_RASTER', 'Raster', 'inputs/slope.tif'),
@@ -436,7 +419,7 @@ def main():
 
     meta = parse_metadata(args.meta)
 
-    json_transform = json.dumps({"Slope": 5, "HAND": 2, "Channel": 3, "Flow Areas": 4})  # json.dumps({"Slope": 1, "HAND": 2, "Channel": 3, "Flow Areas": 4})
+    json_transform = json.dumps({"Slope": 1, "HAND": 2, "Channel": 3, "Flow Areas": 4})
 
     try:
         vbet(args.huc, args.flowlines, args.flowareas, args.slope, json_transform, args.hand, args.hillshade, args.max_hand, args.min_hole_area, args.output_dir, meta)
