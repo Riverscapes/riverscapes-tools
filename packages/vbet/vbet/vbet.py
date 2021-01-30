@@ -130,6 +130,9 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
     translate(vrtpath, slope_ev, 1)
     translate(vrtpath, hand_ev, 2)
 
+    project.add_project_raster(proj_nodes["Intermediates"], LayerTypes["TEMP_SLOPE"])
+    project.add_project_raster(proj_nodes["Intermediates"], LayerTypes["TEMP_HAND"])
+
     # Build Transformation Tables
     with open(os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'vbet_schema.sql')) as sqlfile:
         for sql_command in sqlfile.read().split(';'):
@@ -171,6 +174,9 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
     fa_dist_raster = os.path.join(project_folder, LayerTypes['FLOW_AREA_DISTANCE'].rel_path)
     proximity_raster(channel_buffer_raster, channel_dist_raster)
     proximity_raster(flow_area_raster, fa_dist_raster)
+
+    project.add_project_raster(proj_nodes["Intermediates"], LayerTypes['CHANNEL_DISTANCE'])
+    project.add_project_raster(proj_nodes["Intermediates"], LayerTypes['FLOW_AREA_DISTANCE'])
 
     slope_transform_raster = os.path.join(project_folder, LayerTypes['NORMALIZED_SLOPE'].rel_path)
     hand_transform_raster = os.path.join(project_folder, LayerTypes['NORMALIZED_HAND'].rel_path)
@@ -238,6 +244,10 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
             progbar.finish()
 
         # The remaining rasters get added to the project
+        project.add_project_raster(proj_nodes["Intermediates"], LayerTypes['NORMALIZED_SLOPE'])
+        project.add_project_raster(proj_nodes["Intermediates"], LayerTypes['NORMALIZED_HAND'])
+        project.add_project_raster(proj_nodes["Intermediates"], LayerTypes['NORMALIZED_CHANNEL_DISTANCE'])
+        project.add_project_raster(proj_nodes["Intermediates"], LayerTypes['NORMALIZED_FLOWAREA_DISTANCE'])
         project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['EVIDENCE_TOPO'])
         project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['EVIDENCE_CHANNEL'])
         project.add_project_raster(proj_nodes['Outputs'], LayerTypes['VBET_EVIDENCE'])
