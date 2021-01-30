@@ -10,7 +10,7 @@ from osgeo import ogr, gdal, osr
 from shapely.wkb import loads as wkbload, dumps as wkbdumps
 from shapely.geometry.base import BaseGeometry
 from shapely.geometry import Point
-from rscommons import Logger, ProgressBar, Raster, Timer
+from rscommons import Logger, ProgressBar, Raster
 from rscommons.util import safe_makedirs
 from rscommons.classes.vector_datasource import DatasetRegistry
 
@@ -337,7 +337,7 @@ class VectorBase():
     @staticmethod
     def check_axis_mapping(spatial_ref: osr.SpatialReference):
         """Make sure our Axis Mapping strategy is correct (according to our arbitrary convention)
-            We set this in opposition to what GDAL3 Thinks is the default because that's what 
+            We set this in opposition to what GDAL3 Thinks is the default because that's what
             most of our old Geodatabases and Shapefiles seem to use.
 
         Raises:

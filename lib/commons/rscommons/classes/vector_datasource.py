@@ -108,7 +108,7 @@ class DatasetRegistry(object):
         else:
             self._registry[filepath] = Dataset(layer_name, driver.Open(filepath, permission), permission)
             existing_ds = self._registry[filepath]
-            self.log.debug('Dataset opened: {} for {}'.format(filepath, 'READING' if permission == 0 else 'WRITING'))
+            # self.log.debug('Dataset opened: {} for {}'.format(filepath, 'READING' if permission == 0 else 'WRITING'))
 
         # Otherwise open a new handle all the file existence checking is handled elsewhere
         return existing_ds.ds
@@ -134,7 +134,7 @@ class DatasetRegistry(object):
             if self._registry[filepath].ds is not None:
                 self._registry[filepath].ds.Destroy()
             del self._registry[filepath]
-            self.log.debug('Dataset closed: {}'.format(filepath))
+            # self.log.debug('Dataset closed: {}'.format(filepath))
 
     def delete_dataset(self, filepath: str, driver: ogr.Driver):
         """Delete a dataset and remove that entry from the registry
