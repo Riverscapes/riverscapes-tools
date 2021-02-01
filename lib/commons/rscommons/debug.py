@@ -75,11 +75,11 @@ class MemoryMonitor:
         plt.savefig(imgpath)
 
 
-if __name__ == '__main__':
-    logfile = '/Users/matt/Work/data/bratDockerShare/rs_context/17060304/rs_context_memusage.log'
-    imgpath = os.path.splitext(logfile)[0] + '.png'
-    mem = MemoryMonitor(logfile, 1)
-    mem.write_plot(imgpath)
+# if __name__ == '__main__':
+#     logfile = '/Users/matt/Work/data/bratDockerShare/rs_context/17060304/rs_context_memusage.log'
+#     imgpath = os.path.splitext(logfile)[0] + '.png'
+#     mem = MemoryMonitor(logfile, 1)
+#     mem.write_plot(imgpath)
 
 
 def ThreadRun(callback, logfile, *args):
@@ -92,5 +92,5 @@ def ThreadRun(callback, logfile, *args):
         finally:
             monitor.keep_measuring = False
             max_usage_self, max_usage_children = mem_thread.result()
-        monitor.write_plot(os.path.basename(logfile))
+        monitor.write_plot(os.path.splitext(logfile)[0] + '.png')
         return result, max_usage_self, max_usage_children
