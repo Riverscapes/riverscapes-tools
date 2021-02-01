@@ -289,11 +289,10 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
                 os.unlink(f.name)
 
         # Now the final sanitization
-        log.info('Sanitizing')
         sanitize(
+            str_val,
             '{}/{}'.format(intermed_gpkg_path, plgnize_lyr.rel_path),
             '{}/{}'.format(vbet_path, vbet_lyr.rel_path),
-            min_hole_degrees,
             buff_dist
         )
         log.info('Completed thresholding at {}'.format(thr_val))
