@@ -5,7 +5,6 @@ from datetime import datetime
 import csv
 import numpy as np
 import os
-import resource
 import matplotlib.pyplot as plt
 
 # https://medium.com/survata-engineering-blog/monitoring-memory-usage-of-a-running-python-program-49f027e3d1ba
@@ -13,6 +12,12 @@ import matplotlib.pyplot as plt
 
 class MemoryMonitor:
     def __init__(self, logfile: str, loop_delay=1):
+        try:
+            import resource
+            self.enabled = True
+        except ImportError:
+            self.enabled = False        
+
         self.keep_measuring = True
         self.filepath = logfile
         self.loop_delay = loop_delay
@@ -22,6 +27,8 @@ class MemoryMonitor:
             csvfile.write('datetime,r_usage_self,r_usage_children\n')
 
     def measure_usage(self):
+        if not self.enabled:
+            return
         self.init_file()
         max_usage_self = 0
         max_usage_children = 0
@@ -78,7 +85,8 @@ class MemoryMonitor:
 def ThreadRun(callback, logfile, *args):
     with ThreadPoolExecutor() as executor:
         monitor = MemoryMonitor(logfile, 1)
-        mem_thread = executor.submit(monitor.measure_usage)
+        if monitor.enabled:
+            mem_thread = executor.submit(monitor.measure_usage)
         try:
             fn_thread = executor.submit(callback, *args)
             result = fn_thread.result()
@@ -86,10 +94,5 @@ def ThreadRun(callback, logfile, *args):
             monitor.keep_measuring = False
             max_usage_self, max_usage_children = mem_thread.result()
 
-
-<< << << < HEAD
-monitor.write_plot(os.path.splitext(logfile)[0] + '.png')
-== == == =
-monitor.write_plot(os.path.basename(logfile))
->>>>>> > initial memusage profiling
-return result, max_usage_self, max_usage_children
+        monitor.write_plot(os.path.splitext(logfile)[0] + '.png')
+        return result, max_usage_self, max_usage_children
