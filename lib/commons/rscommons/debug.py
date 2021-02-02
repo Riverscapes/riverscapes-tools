@@ -16,7 +16,7 @@ class MemoryMonitor:
             import resource
             self.enabled = True
         except ImportError:
-            self.enabled = False        
+            self.enabled = False
 
         self.keep_measuring = True
         self.filepath = logfile
@@ -29,6 +29,7 @@ class MemoryMonitor:
     def measure_usage(self):
         if not self.enabled:
             return
+        import resource
         self.init_file()
         max_usage_self = 0
         max_usage_children = 0
@@ -93,6 +94,6 @@ def ThreadRun(callback, logfile, *args):
         finally:
             monitor.keep_measuring = False
             max_usage_self, max_usage_children = mem_thread.result()
+            monitor.write_plot(os.path.splitext(logfile)[0] + '.png')
 
-        monitor.write_plot(os.path.splitext(logfile)[0] + '.png')
         return result, max_usage_self, max_usage_children
