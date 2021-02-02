@@ -99,6 +99,7 @@ CREATE TABLE DepartureLevels
 (
     LevelID     INTEGER PRIMARY KEY,
     Name        TEXT UNIQUE NOT NULL,
+    MaxRVD      REAL,
     Description TEXT
 );
 
