@@ -290,6 +290,8 @@ def rvd(huc: int, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_or
     save_intarr_to_geotiff(vegetation_change, os.path.join(output_folder, "Intermediates", "Conversion_Raster.tif"), prj_existing_path)
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['VEGETATION_CONVERSION'])
 
+    # TODOL: Kelly load conversions from vwConversions for the following code.
+
     # load conversion types dictionary from database
     conn = sqlite3.connect(outputs_gpkg_path)
     conn.row_factory = dict_factory
@@ -383,8 +385,14 @@ def rvd(huc: int, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_or
             raise Exception('Errors were found inserting records into the database. Cannot continue.')
         gpkg.conn.commit()
 
+    # load RVD departure levels from DepartureLevels database table
+    with SQLiteCon(outputs_gpkg_path) as gpkg:
+        gpkg.curs.execute('SELECT LevelID, NAME FROM DepartureLevels ORDER BY MaxRVD ASC')
+        departure_levels = gpkg.curs.fetchall()
+
     # Calcuate Average Departure for Riparian and Native Riparian
     riparian_departure_values = riparian_departure(reach_average_riparian)
+    # TODO incorporate into the riparian_departure values dictionary the LevelID from the DepartureLevels table
     write_db_attributes(outputs_gpkg_path, riparian_departure_values, rvd_columns)
 
     # Add Conversion Code, Type to Vegetation Conversion
