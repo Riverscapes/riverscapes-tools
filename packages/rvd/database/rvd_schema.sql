@@ -84,17 +84,16 @@ CREATE TABLE ConversionLevels
 
 CREATE TABLE Conversions
 (
+    ConversionID INTEGER PRIMARY KEY,
     TypeID       INTEGER NOT NULL,
     LevelID      INTEGER NOT NULL,
-    ConversionID INTEGER NOT NULL,
+    DisplayCode  INTEGER NOT NULL,
     DisplayText  TEXT,
 
-    CONSTRAINT pk_conversions PRIMARY KEY (TypeID, LevelID),
     CONSTRAINT fk_ConversionsTypeID FOREIGN KEY (TypeID) REFERENCES ConversionTypes (TypeID),
     CONSTRAINT fk_ConversionsLevelID FOREIGN KEY (LevelID) REFERENCES ConversionLevels (LevelID)
 );
-CREATE INDEX fx_Conversions_LevelID ON Conversions (LevelID);
-CREATE INDEX fx_Conversions_ConversionID ON Conversions (ConversionID);
+CREATE UNIQUE INDEX ux_Conversions_TypeID_Level_ID ON Conversions(TypeID, LevelID);
 
 CREATE TABLE DepartureLevels
 (
@@ -137,6 +136,7 @@ CREATE INDEX fx_ReachAttributes_ConversionID ON ReachAttributes (ConversionID);
 
 CREATE VIEW vwConversions AS
 SELECT ConversionID,
+        DisplayCode,
        T.TypeID,
        T.TypeValue, 
        T.Name AS ConversionType,
@@ -148,12 +148,12 @@ FROM Conversions C
 ORDER BY ConversionID ASC;
 
 CREATE VIEW vwReaches AS
-SELECT G.ReachID, G.Geom, G.ReachCode, A.*, C.ConversionLevel || ' ' || C.ConversionType ConversionLabel
+SELECT G.ReachID, G.Geom, G.ReachCode, A.*, C.DisplayCode, C.ConversionLevel || ' ' || C.ConversionType ConversionLabel
 FROM ReachAttributes A
          INNER JOIN ReachGeometry G ON A.ReachID = G.ReachID
          LEFT JOIN DepartureLevels D ON A.RiparianDepartureID = D.LevelID
          LEFT JOIN
-     (SELECT ConversionID,
+     (SELECT DisplayCode,
              T.TypeID,
              T.Name AS ConversionType,
              L.LevelID,
