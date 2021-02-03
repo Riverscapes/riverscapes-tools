@@ -293,7 +293,8 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
             str_val,
             '{}/{}'.format(intermed_gpkg_path, plgnize_lyr.rel_path),
             '{}/{}'.format(vbet_path, vbet_lyr.rel_path),
-            buff_dist
+            buff_dist,
+            network_path
         )
         log.info('Completed thresholding at {}'.format(thr_val))
 

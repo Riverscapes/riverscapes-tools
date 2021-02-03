@@ -44,7 +44,7 @@ def threshold(evidence_raster_path: str, thr_val: float, thresh_raster_path: str
             progbar.finish()
 
 
-def sanitize(name: str, in_path: str, out_path: str, buff_dist: float):
+def sanitize(name: str, in_path: str, out_path: str, buff_dist: float, select_features=None):
     """
         It's important to make sure we have the right kinds of geometries.
 
@@ -59,17 +59,20 @@ def sanitize(name: str, in_path: str, out_path: str, buff_dist: float):
     with GeopackageLayer(out_path, write=True) as out_lyr, \
             NamedTemporaryFile(suffix='.gpkg', mode="w+", delete=True) as tempgpkg, \
             GeopackageLayer(in_path) as in_lyr:
-
+        # NamedTemporaryFile(suffix='.gpkg', mode="w+", delete=False) as tempgpkg, \
         out_lyr.create_layer(ogr.wkbPolygon, spatial_ref=in_lyr.spatial_ref)
 
         pts = 0
         square_buff = buff_dist * buff_dist
 
         # NOTE: Order of operations really matters here.
+
         in_pts = 0
         out_pts = 0
 
-        with GeopackageLayer(tempgpkg.name, str(uuid4()), write=True, delete_dataset=True) as tmp_lyr:
+        with GeopackageLayer(tempgpkg.name, str(uuid4()), write=True, delete_dataset=True) as tmp_lyr, \
+                GeopackageLayer(tempgpkg.name, str(uuid4()), write=True, delete_dataset=True) as tmp_filtered_lyr, \
+                GeopackageLayer(select_features) as lyr_select_features:
             tmp_lyr.create_layer_from_ref(in_lyr)
 
             def geom_validity_fix(geom_in):
@@ -83,19 +86,34 @@ def sanitize(name: str, in_path: str, out_path: str, buff_dist: float):
                 return f_geom
 
             # First loop finds the biggest area. We can use this to easily rule out other shapes
-            biggest_area = (0, None, None, None)
-            for in_feat, _counter, _progbar in in_lyr.iterate_features("Get largest shape for {}".format(name)):
-                fid = in_feat.GetFID()
-                geom = in_feat.GetGeometryRef()
-                area = geom.Area()
-                if area > biggest_area[0]:
-                    biggest_area = (area, fid, in_feat, geom)
+            # biggest_area = (0, None, None, None)
+            # for in_feat, _counter, _progbar in in_lyr.iterate_features("Get largest shape for {}".format(name)):
+            #     fid = in_feat.GetFID()
+            #     geom = in_feat.GetGeometryRef()
+            #     area = geom.Area()
+            #     if area > biggest_area[0]:
+            #         biggest_area = (area, fid, in_feat, geom)
 
-            if biggest_area[1] is None:
-                raise Exception('Biggest shape could not be identified for layer {}'.format(name))
+            # if biggest_area[1] is None:
+            #     raise Exception('Biggest shape could not be identified for layer {}'.format(name))
+
+            # Only keep features intersected with network
+            tmp_filtered_lyr.create_layer_from_ref(in_lyr)
+
+            for candidate_feat, _c2, _p1 in in_lyr.iterate_features("Finding interesected features"):
+                candidate_geom = candidate_feat.GetGeometryRef()
+
+                for select_feat, _counter, _progbar in lyr_select_features.iterate_features():
+                    select_geom = select_feat.GetGeometryRef()
+                    if select_geom.Intersects(candidate_geom):
+                        feat = ogr.Feature(tmp_filtered_lyr.ogr_layer_def)
+                        feat.SetGeometry(candidate_geom)
+                        tmp_filtered_lyr.ogr_layer.CreateFeature(feat)
+                        feat = None
+                        break
 
             # Second loop is about filtering bad areas and simplifying
-            for in_feat, _counter, _progbar in in_lyr.iterate_features("Filtering out non-relevant shapes for {}".format(name)):
+            for in_feat, _counter, _progbar in tmp_filtered_lyr.iterate_features("Filtering out non-relevant shapes for {}".format(name)):
                 fid = in_feat.GetFID()
                 geom = in_feat.GetGeometryRef()
 
@@ -106,38 +124,66 @@ def sanitize(name: str, in_path: str, out_path: str, buff_dist: float):
                 # Make sure we're not significantly disconnected from the main shape
                 # Make sure we intersect the main shape
                 if geom.IsEmpty() \
-                        or area < square_buff \
-                        or biggest_area[3].Distance(geom) > 2 * buff_dist:
+                        or area < square_buff:
+                    # or biggest_area[3].Distance(geom) > 2 * buff_dist:
                     continue
 
-                f_geom = geom.SimplifyPreserveTopology(buff_dist)
-                # # Only fix things that need fixing
-                # f_geom = geom_validity_fix(f_geom)
-
                 # Second check here for validity after simplification
-                # Then write to a temporary geopackage layer
-                if not f_geom.IsEmpty() and f_geom.Area() > 0:
-                    out_feature = ogr.Feature(tmp_lyr.ogr_layer_def)
-                    out_feature.SetGeometry(f_geom)
-                    out_feature.SetFID(fid)
-                    tmp_lyr.ogr_layer.CreateFeature(out_feature)
-
-                    in_pts += pts
-                    out_pts += f_geom.GetBoundary().GetPointCount()
+                if not f_geom.is_empty and f_geom.is_valid and f_geom.area > 0:
+                    # geoms.append(f_geom)
+                    in_rings += get_num_pts(geom)
+                    out_rings += get_num_pts(f_geom)
+                    in_pts += get_num_rings(geom)
+                    out_pts += get_num_rings(f_geom)
+                    # debug_writer(f_geom, '{}_Z_FINAL.geojson'.format(counter))
                 else:
-                    log.warning('Invalid GEOM with fid: {} for layer {}'.format(fid, name))
+                    log.warning('Invalid GEOM')
+                    # debug_writer(f_geom, '{}_Z_REJECTED.geojson'.format(counter))
+                # print('loop')
 
-            # Load our simplifed biggest shape
-            new_biggest_feat = tmp_lyr.ogr_layer.GetFeature(biggest_area[1])
-            new_big_geom = new_biggest_feat.GetGeometryRef()
-            new_big_geom = geom_validity_fix(new_big_geom)
+                    # Second check here for validity after simplification
+                    # Then write to a temporary geopackage layer
+                    if not f_geom.IsEmpty() and f_geom.Area() > 0:
+                        f_geom = geom_validity_fix(f_geom)
+                        if not f_geom.IsValid():
+                            raise Exception('Final shape cannot be invalid for layer {}'.format(name))
 
-            if not new_big_geom.IsValid():
-                raise Exception('Final shape cannot be invalid for layer {}'.format(name))
-            out_feat = ogr.Feature(out_lyr.ogr_layer_def)
-            out_feat.SetGeometry(new_big_geom)
+                        out_feature = ogr.Feature(out_lyr.ogr_layer_def)
+                        out_feature.SetGeometry(f_geom)
+                        # out_feature.SetFID(fid)
+                        out_lyr.ogr_layer.CreateFeature(out_feature)
+                        out_feature = None
 
-            out_lyr.ogr_layer.CreateFeature(out_feat)
-            out_feat = None
+        # 5. Now we can do unioning fairly cheaply
+        #log.info('Unioning {} geometries'.format(len(geoms)))
+        #new_geom = unary_union(geoms)
+
+        # Load our simplifed biggest shape
+        # new_biggest_feat = tmp_lyr.ogr_layer.GetFeature(biggest_area[1])
+        # new_big_geom = new_biggest_feat.GetGeometryRef()
+        # new_big_geom = geom_validity_fix(new_big_geom)
+
+        # if not new_big_geom.IsValid():
+        #     raise Exception('Final shape cannot be invalid for layer {}'.format(name))
+        # out_feat = ogr.Feature(out_lyr.ogr_layer_def)
+        # out_feat.SetGeometry(new_big_geom)
+
+        # out_lyr.ogr_layer.CreateFeature(out_feat)
+        # out_feat = None
+
+        # for out_feat, _counter, _progbar in tmp_filtered_lyr.iterate_features("saving outputs"):
+        #     secondary_geom = new_secondary_feat.GetGeometryRef()
+        #     secondary_geom = geom_validity_fix(secondary_geom)
+
+        #     if not secondary_geom.IsValid():
+        #         raise Exception('Final shape cannot be invalid for layer {}'.format(name))
+        #     out_feat = ogr.Feature(out_lyr.ogr_layer_def)
+        #     out_feat.SetGeometry(secondary_geom)
+
+        #     out_lyr.ogr_layer.CreateFeature(out_feat)
+        #     out_feat = None
+
+        # tempgpkg.close()
+        # os.unlink(tempgpkg.name)
 
         log.info('Writing to disk for layer {}'.format(name))
