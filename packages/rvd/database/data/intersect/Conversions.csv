@@ -1,4 +1,4 @@
-TypeID,LevelID,ConversionID,DisplayText
+TypeID,LevelID,DisplayCode,DisplayText
 5,2,1,
 5,3,1,
 5,4,1,
