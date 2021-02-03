@@ -70,6 +70,7 @@ CREATE INDEX FK_VegetationTypes_EpochID ON VegetationTypes (EpochID);
 CREATE TABLE ConversionTypes
 (
     TypeID      INTEGER PRIMARY KEY,
+    TypeValue   INTEGER NOT NULL,
     Name        TEXT UNIQUE NOT NULL,
     Description TEXT
 );
@@ -137,6 +138,7 @@ CREATE INDEX fx_ReachAttributes_ConversionID ON ReachAttributes (ConversionID);
 CREATE VIEW vwConversions AS
 SELECT ConversionID,
        T.TypeID,
+       T.TypeValue, 
        T.Name AS ConversionType,
        L.LevelID,
        L.Name AS ConversionLevel

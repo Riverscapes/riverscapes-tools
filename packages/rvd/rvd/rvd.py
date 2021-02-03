@@ -296,12 +296,12 @@ def rvd(huc: int, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_or
     conn = sqlite3.connect(outputs_gpkg_path)
     conn.row_factory = dict_factory
     curs = conn.cursor()
-    curs.execute('SELECT * FROM ConversionProportions')
+    curs.execute('SELECT * FROM ConversionTypes')
     conversion_classifications = curs.fetchall()
 
     # Split vegetation change classes into binary arrays
     vegetation_change_arrays = {
-        c["ConversionType"]: (vegetation_change == int(c["ConversionCode"])) * 1 if int(c["ConversionCode"]) in np.unique(vegetation_change) else None
+        c["TypeID"]: (vegetation_change == int(c["TypeValue"])) * 1 if int(c["TypeValue"]) in np.unique(vegetation_change) else None
         for c in conversion_classifications
     }
 
