@@ -31,13 +31,14 @@ class TempGISFile():
         """Behaviour on open when using the "with VectorBase():" Syntax
         """
         self.file, self.filepath = mkstemp(suffix=self.suffix, text=True)
+        # Immediately close it. This is so windows doesn't hold onto the handle
+        os.close(self.file)
         return self
 
     def __exit__(self, _type, _value, _traceback):
         """Behaviour on close when using the "with VectorBase():" Syntax
         """
         try:
-            os.close(self.file)
             os.remove(self.filepath)
         except Exception as e:
             self.log.warning('Error cleaning up file: {}'.format(self.filepath))
