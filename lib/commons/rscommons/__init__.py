@@ -13,6 +13,8 @@ from rscommons.classes.raster import Raster
 from rscommons.classes.vector_classes import GeopackageLayer, GeodatabaseLayer, ShapefileLayer, get_shp_or_gpkg
 from rscommons.classes.vector_base import VectorBase
 
+from rscommons.classes.tempfiles import TempRaster, TempGeopackage
+
 from rscommons.report.rs_report import RSReport
 from rscommons.classes.rs_project import RSLayer, RSProject
 # We don't make XMLBuilder convenient because people should be using RSProject

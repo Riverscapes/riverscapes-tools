@@ -17,7 +17,6 @@ import traceback
 import uuid
 import datetime
 from osgeo import ogr
-from rscommons.debug import ThreadRun
 
 from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALOGRErrors, Timer
 from rscommons.util import safe_makedirs, safe_remove_dir
@@ -106,7 +105,6 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
     :param prism_folder: folder containing PRISM rasters in *.bil format
     :return:
     """
-
     log = Logger("RS Context")
     log.info('Starting RSContext v.{}'.format(cfg.version))
 
@@ -167,7 +165,7 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
         raise Exception('Could not find any .bil files in the prism folder')
     for ptype in PrismTypes:
         try:
-           # Next should always be guarded
+            # Next should always be guarded
             source_raster_path = next(x for x in bil_files if ptype.lower() in os.path.basename(x).lower())
         except StopIteration:
             raise Exception('Could not find .bil file corresponding to "{}"'.format(ptype))
@@ -438,9 +436,10 @@ def main():
     try:
 
         if args.debug is True:
+            from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output, 'rs_context_memusage.log')
-            retcode, max_usage_self, max_usage_children = ThreadRun(rs_context, memfile, args.huc, args.existing, args.historic, args.ownership, args.fairmarket, args.ecoregions, args.prism, args.output, args.download, scratch_dir, args.parallel, args.force)
-            log.debug('Return code: {}, [Max memory usage] self: {} children: {}'.format(retcode, max_usage_self, max_usage_children))
+            retcode, max_obj = ThreadRun(rs_context, memfile, args.huc, args.existing, args.historic, args.ownership, args.fairmarket, args.ecoregions, args.prism, args.output, args.download, scratch_dir, args.parallel, args.force)
+            log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
         else:
             rs_context(args.huc, args.existing, args.historic, args.ownership, args.fairmarket, args.ecoregions, args.prism, args.output, args.download, scratch_dir, args.parallel, args.force)
 
