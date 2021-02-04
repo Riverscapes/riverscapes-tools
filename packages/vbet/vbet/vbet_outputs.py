@@ -1,12 +1,13 @@
-from operator import attrgetter
-from osgeo import ogr
-import rasterio
+"""VBET threshold and sanitize functions
+
+"""
+import os
 from uuid import uuid4
 from tempfile import NamedTemporaryFile
+from osgeo import ogr
+import rasterio
 import numpy as np
-from shapely.ops import unary_union
-from rscommons import ProgressBar, Logger, GeopackageLayer, VectorBase
-from rscommons.vector_ops import get_num_pts, get_num_rings, remove_holes
+from rscommons import ProgressBar, Logger, GeopackageLayer
 from vbet.__version__ import __version__
 
 
@@ -44,7 +45,7 @@ def threshold(evidence_raster_path: str, thr_val: float, thresh_raster_path: str
             progbar.finish()
 
 
-def sanitize(name: str, in_path: str, out_path: str, buff_dist: float):
+def sanitize(name: str, in_path: str, out_path: str, buff_dist: float, select_features=None):
     """
         It's important to make sure we have the right kinds of geometries.
 
@@ -69,7 +70,8 @@ def sanitize(name: str, in_path: str, out_path: str, buff_dist: float):
         in_pts = 0
         out_pts = 0
 
-        with GeopackageLayer(tempgpkg.name, str(uuid4()), write=True, delete_dataset=True) as tmp_lyr:
+        with GeopackageLayer(tempgpkg.name, str(uuid4()), write=True, delete_dataset=True) as tmp_lyr, \
+                GeopackageLayer(select_features) as lyr_select_features:
             tmp_lyr.create_layer_from_ref(in_lyr)
 
             def geom_validity_fix(geom_in):
@@ -82,20 +84,23 @@ def sanitize(name: str, in_path: str, out_path: str, buff_dist: float):
                         f_geom = f_geom.Buffer(-buff_dist)
                 return f_geom
 
-            # First loop finds the biggest area. We can use this to easily rule out other shapes
-            biggest_area = (0, None, None, None)
-            for in_feat, _counter, _progbar in in_lyr.iterate_features("Get largest shape for {}".format(name)):
-                fid = in_feat.GetFID()
-                geom = in_feat.GetGeometryRef()
-                area = geom.Area()
-                if area > biggest_area[0]:
-                    biggest_area = (area, fid, in_feat, geom)
+            # Only keep features intersected with network
+            tmp_lyr.create_layer_from_ref(in_lyr)
 
-            if biggest_area[1] is None:
-                raise Exception('Biggest shape could not be identified for layer {}'.format(name))
+            for candidate_feat, _c2, _p1 in in_lyr.iterate_features("Finding interesected features"):
+                candidate_geom = candidate_feat.GetGeometryRef()
+
+                for select_feat, _counter, _progbar in lyr_select_features.iterate_features():
+                    select_geom = select_feat.GetGeometryRef()
+                    if select_geom.Intersects(candidate_geom):
+                        feat = ogr.Feature(tmp_lyr.ogr_layer_def)
+                        feat.SetGeometry(candidate_geom)
+                        tmp_lyr.ogr_layer.CreateFeature(feat)
+                        feat = None
+                        break
 
             # Second loop is about filtering bad areas and simplifying
-            for in_feat, _counter, _progbar in in_lyr.iterate_features("Filtering out non-relevant shapes for {}".format(name)):
+            for in_feat, _counter, _progbar in tmp_lyr.iterate_features("Filtering out non-relevant shapes for {}".format(name)):
                 fid = in_feat.GetFID()
                 geom = in_feat.GetGeometryRef()
 
@@ -106,38 +111,28 @@ def sanitize(name: str, in_path: str, out_path: str, buff_dist: float):
                 # Make sure we're not significantly disconnected from the main shape
                 # Make sure we intersect the main shape
                 if geom.IsEmpty() \
-                        or area < square_buff \
-                        or biggest_area[3].Distance(geom) > 2 * buff_dist:
+                        or area < square_buff:
+                    # or biggest_area[3].Distance(geom) > 2 * buff_dist:
                     continue
 
                 f_geom = geom.SimplifyPreserveTopology(buff_dist)
                 # # Only fix things that need fixing
-                # f_geom = geom_validity_fix(f_geom)
+                f_geom = geom_validity_fix(f_geom)
 
                 # Second check here for validity after simplification
                 # Then write to a temporary geopackage layer
                 if not f_geom.IsEmpty() and f_geom.Area() > 0:
-                    out_feature = ogr.Feature(tmp_lyr.ogr_layer_def)
+                    out_feature = ogr.Feature(out_lyr.ogr_layer_def)
                     out_feature.SetGeometry(f_geom)
                     out_feature.SetFID(fid)
-                    tmp_lyr.ogr_layer.CreateFeature(out_feature)
+                    out_lyr.ogr_layer.CreateFeature(out_feature)
 
                     in_pts += pts
                     out_pts += f_geom.GetBoundary().GetPointCount()
                 else:
                     log.warning('Invalid GEOM with fid: {} for layer {}'.format(fid, name))
 
-            # Load our simplifed biggest shape
-            new_biggest_feat = tmp_lyr.ogr_layer.GetFeature(biggest_area[1])
-            new_big_geom = new_biggest_feat.GetGeometryRef()
-            new_big_geom = geom_validity_fix(new_big_geom)
-
-            if not new_big_geom.IsValid():
-                raise Exception('Final shape cannot be invalid for layer {}'.format(name))
-            out_feat = ogr.Feature(out_lyr.ogr_layer_def)
-            out_feat.SetGeometry(new_big_geom)
-
-            out_lyr.ogr_layer.CreateFeature(out_feat)
-            out_feat = None
+        tempgpkg.close()
+        os.unlink(tempgpkg.name)
 
         log.info('Writing to disk for layer {}'.format(name))
