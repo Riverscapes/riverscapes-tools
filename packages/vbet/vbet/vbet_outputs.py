@@ -1,13 +1,9 @@
-"""VBET threshold and sanitize functions
-
-"""
-import os
 from uuid import uuid4
-from tempfile import NamedTemporaryFile
 from osgeo import ogr
 import rasterio
 import numpy as np
-from rscommons import ProgressBar, Logger, GeopackageLayer
+from rscommons import ProgressBar, Logger, GeopackageLayer, VectorBase, TempRaster, TempGeopackage
+from rscommons.vector_ops import get_num_pts, get_num_rings, remove_holes
 from vbet.__version__ import __version__
 
 
@@ -58,20 +54,21 @@ def sanitize(name: str, in_path: str, out_path: str, buff_dist: float, select_fe
     log = Logger('VBET Simplify')
 
     with GeopackageLayer(out_path, write=True) as out_lyr, \
-            NamedTemporaryFile(suffix='.gpkg', mode="w+", delete=True) as tempgpkg, \
+            TempGeopackage('sanitize_temp') as tempgpkg, \
             GeopackageLayer(in_path) as in_lyr:
-
         out_lyr.create_layer(ogr.wkbPolygon, spatial_ref=in_lyr.spatial_ref)
 
         pts = 0
         square_buff = buff_dist * buff_dist
 
         # NOTE: Order of operations really matters here.
+
         in_pts = 0
         out_pts = 0
 
-        with GeopackageLayer(tempgpkg.name, str(uuid4()), write=True, delete_dataset=True) as tmp_lyr, \
+        with GeopackageLayer(tempgpkg.filepath, "sanitize_{}".format(str(uuid4())), write=True, delete_dataset=True) as tmp_lyr, \
                 GeopackageLayer(select_features) as lyr_select_features:
+
             tmp_lyr.create_layer_from_ref(in_lyr)
 
             def geom_validity_fix(geom_in):
@@ -131,8 +128,5 @@ def sanitize(name: str, in_path: str, out_path: str, buff_dist: float, select_fe
                     out_pts += f_geom.GetBoundary().GetPointCount()
                 else:
                     log.warning('Invalid GEOM with fid: {} for layer {}'.format(fid, name))
-
-        tempgpkg.close()
-        os.unlink(tempgpkg.name)
 
         log.info('Writing to disk for layer {}'.format(name))

@@ -1,11 +1,11 @@
 import os
+import tempfile
+import datetime
 import re
 import time
 import shutil
 import zipfile
 import requests
-import tempfile
-import datetime
 from rscommons.util import safe_makedirs, safe_remove_dir, safe_remove_file, file_compare
 from rscommons import Logger, ProgressBar, Timer
 
@@ -131,7 +131,7 @@ def download_file(s3_url, download_folder, force_download=False):
     if os.path.isfile(file_path) and os.path.getsize(file_path) > 0:
         log.info('Skipping download because file exists.')
     else:
-        tmpfilepath = tempfile.mktemp(".temp")
+        _file, tmpfilepath = tempfile.mkstemp(suffix=".temp", prefix="rstools_download")
 
         # Write our pending file. No matter what we must clean this file up!!!
         def refresh_pending(init=False):
@@ -140,6 +140,7 @@ def download_file(s3_url, download_folder, force_download=False):
 
         # Cleaning up the commone areas is really important
         def download_cleanup():
+            os.close(_file)
             safe_remove_file(tmpfilepath)
             safe_remove_file(file_path_pending)
 
@@ -154,7 +155,7 @@ def download_file(s3_url, download_folder, force_download=False):
                 log.warning('Download file retry: {}'.format(download_retries))
             try:
                 dl = 0
-                tmpfilepath = tempfile.mktemp(".temp")
+                _file, tmpfilepath = tempfile.mkstemp(suffix=".temp", prefix="rstools_download")
                 with requests.get(s3_url, stream=True) as r:
                     r.raise_for_status()
                     byte_total = int(r.headers.get('content-length'))

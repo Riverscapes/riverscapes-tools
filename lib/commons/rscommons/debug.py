@@ -1,52 +1,97 @@
 from __future__ import annotations
+import math
+import csv
+import os
+from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 from time import sleep
-from datetime import datetime
-import csv
-import numpy as np
-import os
+import psutil
 import matplotlib.pyplot as plt
+from rscommons import Logger
 
 # https://medium.com/survata-engineering-blog/monitoring-memory-usage-of-a-running-python-program-49f027e3d1ba
 
 
+class ProcStats():
+    headers = ['datetime', 'cpu_percent', 'resident_memory', 'virtual_memory', 'children', 'children_resident', 'children_virtual']
+
+    def __init__(self, cpu_percent, rss_raw: int, vms_raw: int, children: int, children_rss_raw: int, children_vms_raw: int):
+        self.datetime = datetime.now()
+        self.cpu_percent = cpu_percent
+        self.children = children
+        self.rss = rss_raw / float(2 ** 20)
+        self.vms = vms_raw / float(2 ** 20)
+        self.children_rss = children_rss_raw / float(2 ** 20)
+        self.children_vms = children_vms_raw / float(2 ** 20)
+
+    def row(self):
+        return [
+            self.datetime.strftime('%Y-%m-%d %H:%M:%S'),
+            math.ceil(self.cpu_percent),
+            "{:.2f}".format(self.rss),
+            "{:.2f}".format(self.vms),
+            "{}".format(self.children),
+            "{:.2f}".format(self.rss),
+            "{:.2f}".format(self.vms)
+        ]
+
+    def toString(self):
+        return "datetime: {}, cpu_percent: {}, mem_resident: {}Mb, mem_virtual: {}Mb, num_children: {}, mem_children_resident: {}Mb, mem_children_virtual: {}Mb".format(
+            self.datetime.strftime('%Y-%m-%d %H:%M:%S'),
+            math.ceil(self.cpu_percent),
+            "{:.2f}".format(self.rss),
+            "{:.2f}".format(self.vms),
+            "{}".format(self.children),
+            "{:.2f}".format(self.rss),
+            "{:.2f}".format(self.vms)
+        )
+
+    def max(self, tick: ProcStats):
+        self.cpu_percent = max(self.cpu_percent, tick.cpu_percent)
+        self.children = max(self.children, tick.children)
+        self.rss = max(self.rss, tick.rss)
+        self.vms = max(self.vms, tick.vms)
+        self.children_rss = max(self.children_rss, tick.children_rss)
+        self.children_vms = max(self.children_vms, tick.children_vms)
+
+
 class MemoryMonitor:
     def __init__(self, logfile: str, loop_delay=1):
-        try:
-            import resource
-            self.enabled = True
-        except ImportError:
-            self.enabled = False
-
         self.keep_measuring = True
         self.filepath = logfile
         self.loop_delay = loop_delay
+        self.process = psutil.Process(os.getpid())
+        self.headers_written = False
+        self.max_stats = ProcStats(0, 0, 0, 0, 0, 0)
 
-    def init_file(self):
-        with open(self.filepath, 'w') as csvfile:
-            csvfile.write('datetime,r_usage_self,r_usage_children\n')
+    def write_line(self, arr, mode='a'):
+        with open(self.filepath, mode, newline='', encoding='utf-8') as csvfile:
+            csvwriter = csv.writer(csvfile)
+            csvwriter.writerow(arr)
+
+    def getstats(self) -> ProcStats:
+        cpu_percent = self.process.cpu_percent()
+        mem_info = self.process.memory_info()
+        children = 0
+        children_rss = 0
+        children_vms = 0
+
+        for child in self.process.children():
+            child_mem = child.memory_info()
+            children_rss += child_mem.rss
+            children_vms += child_mem.vms
+            children += 1
+
+        stats = ProcStats(cpu_percent, mem_info.rss, mem_info.vms, children, children_rss, children_vms)
+        self.max_stats.max(stats)
+        return stats
 
     def measure_usage(self):
-        if not self.enabled:
-            return
-        import resource
-        self.init_file()
-        max_usage_self = 0
-        max_usage_children = 0
+        self.write_line(ProcStats.headers, 'w')
         while self.keep_measuring:
-            r_usage_self = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-            r_usage_children = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss
-            max_usage_self = max(max_usage_self, r_usage_self)
-            max_usage_children = max(max_usage_children, r_usage_children)
-            with open(self.filepath, 'a') as csvfile:
-                csvfile.write('{}, {}, {}\n'.format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), r_usage_self, r_usage_children))
-
+            self.write_line(self.getstats().row())
             sleep(self.loop_delay)
-
-        # with open(self.filepath, 'a') as csvfile:
-        #     csvfile.write('TOTAL, {}, {}\n'.format(max_usage_self, max_usage_children))
-
-        return max_usage_self, max_usage_children
+        return self.max_stats
 
     def write_plot(self, imgpath: str):
         x = []
@@ -57,43 +102,65 @@ class MemoryMonitor:
                 for key in row.keys():
                     if key == 'datetime':
                         x.append(row[key])
-                    elif key not in data:
-                        data[key] = [int(row[key]) / (1000000)]
                     else:
-                        data[key].append(int(row[key]) / (1000000))
+                        if key in ['children', 'cpu_percent']:
+                            val = int(row[key])
+                        else:
+                            val = float(row[key])
+                        if key not in data:
+                            data[key] = [val]
+                        else:
+                            data[key].append(val)
 
-        chart_title = 'Memory Usage'
+        chart_title = 'Process stats'
         xlabel = 'time'
         ylabel = 'Mb'
 
         plt.clf()
 
-        for key in data.keys():
-            plt.plot(x, data[key], label=key)
-        plt.title = chart_title
-        plt.xlabel(xlabel)
-        plt.ylabel(ylabel)
+        fig, ax = plt.subplots()
+        ax.title.set_text(chart_title)
+        ax2 = ax.twinx()
+        #  ['datetime', 'cpu_percent', 'resident_memory', 'virtual_memory', 'children', 'children_resident', 'children_virtual']
+        for key in ['children_resident', 'children_virtual', 'resident_memory', 'virtual_memory']:
+            if key in data:
+                ax.plot(x, data[key], label=key)
+            ax2._get_lines.get_next_color()
 
-        plt.xticks(rotation=45, ticks=np.arange(0, len(x) + 1, 25))
-        plt.grid(True)
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        ax.legend(loc='lower left')
 
-        plt.legend(loc='upper left')
+        for key in ['cpu_percent', 'children']:
+            if key in data:
+                ax2.plot(x, data[key], label=key)
+
+        ax2.legend(loc='lower right')
+
+        freq = math.floor(len(x) / 10)
+        if freq == 0:
+            freq = 1
+        ax.set_xticks(x[::freq])
+        ax.set_xticklabels(x[::freq], rotation=45)
+        ax.grid(True)
+
         # plt.tight_layout()
+        fig.set_size_inches(8, 6)
+        fig.savefig(imgpath, format='png', dpi=300)
 
-        plt.savefig(imgpath)
 
-
-def ThreadRun(callback, logfile, *args):
+def ThreadRun(callback, memlogfile: str, *args):
+    log = Logger('Debug')
     with ThreadPoolExecutor() as executor:
-        monitor = MemoryMonitor(logfile, 1)
-        if monitor.enabled:
-            mem_thread = executor.submit(monitor.measure_usage)
+        memmon = MemoryMonitor(memlogfile, 1)
+        mem_thread = executor.submit(memmon.measure_usage)
         try:
             fn_thread = executor.submit(callback, *args)
             result = fn_thread.result()
         finally:
-            monitor.keep_measuring = False
-            max_usage_self, max_usage_children = mem_thread.result()
-            monitor.write_plot(os.path.splitext(logfile)[0] + '.png')
+            memmon.keep_measuring = False
+            max_obj = mem_thread.result()
+            log.debug('MaxStats: {}'.format(max_obj))
+            memmon.write_plot(os.path.splitext(memlogfile)[0] + '.png')
 
-        return result, max_usage_self, max_usage_children
+        return result, max_obj.toString()

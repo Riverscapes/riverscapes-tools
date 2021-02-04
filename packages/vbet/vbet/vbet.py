@@ -16,17 +16,16 @@ import sys
 import uuid
 import traceback
 import datetime
-import time
-from tempfile import NamedTemporaryFile
 import json
 import glob
 import sqlite3
+import time
 from osgeo import gdal
 import rasterio
 import numpy as np
 from scipy import interpolate
 from rscommons.util import safe_makedirs, parse_metadata
-from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, dotenv, initGDALOGRErrors
+from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, dotenv, initGDALOGRErrors, TempRaster
 from rscommons import GeopackageLayer
 from rscommons.database import execute_query
 from rscommons.vector_ops import polygonize, buffer_by_field, copy_feature_class
@@ -262,15 +261,15 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
     vbet_path = os.path.join(project_folder, LayerTypes['VBET_OUTPUTS'].rel_path)
 
     for str_val, thr_val in thresh_vals.items():
-        with NamedTemporaryFile(suffix='.tif', mode="w+", delete=False) as tmp_raw_thresh, \
-                NamedTemporaryFile(suffix='.tif', mode="w+", delete=False) as tmp_cleaned_thresh:
+        plgnize_id = 'THRESH_{}'.format(str_val)        
+        with TempRaster('vbet_raw_thresh_{}'.format(plgnize_id)) as tmp_raw_thresh, \
+                TempRaster('vbet_cleaned_thresh_{}'.format(plgnize_id)) as tmp_cleaned_thresh:
 
-            log.debug('Temporary threshold raster: {}'.format(tmp_raw_thresh.name))
-            threshold(evidence_raster, thr_val, tmp_raw_thresh.name)
+            log.debug('Temporary threshold raster: {}'.format(tmp_raw_thresh.filepath))
+            threshold(evidence_raster, thr_val, tmp_raw_thresh.filepath)
 
-            raster_clean(tmp_raw_thresh.name, tmp_cleaned_thresh.name, buffer_pixels=1)
+            raster_clean(tmp_raw_thresh.filepath, tmp_cleaned_thresh.filepath, buffer_pixels=1)
 
-            plgnize_id = 'THRESH_{}'.format(str_val)
             plgnize_lyr = RSLayer('Raw Threshold at {}%'.format(str_val), plgnize_id, 'Vector', plgnize_id.lower())
             # Add a project node for this thresholded vector
             LayerTypes['INTERMEDIATES'].add_sub_layer(plgnize_id, plgnize_lyr)
@@ -281,12 +280,8 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
             LayerTypes['VBET_OUTPUTS'].add_sub_layer(vbet_id, vbet_lyr)
             # Now polygonize the raster
             log.info('Polygonizing')
-            polygonize(tmp_cleaned_thresh.name, 1, '{}/{}'.format(intermed_gpkg_path, plgnize_lyr.rel_path), cfg.OUTPUT_EPSG)
+            polygonize(tmp_cleaned_thresh.filepath, 1, '{}/{}'.format(intermed_gpkg_path, plgnize_lyr.rel_path), cfg.OUTPUT_EPSG)
             log.info('Done')
-
-            for f in [tmp_raw_thresh, tmp_cleaned_thresh]:
-                f.close()
-                os.unlink(f.name)
 
         # Now the final sanitization
         sanitize(
@@ -412,7 +407,9 @@ def main():
         if args.debug is True:
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output_dir, 'vbet_mem.log')
-            ThreadRun(vbet, memfile, args.huc, args.flowlines, args.flowareas, args.slope, json_transform, args.hand, args.hillshade, args.max_hand, args.min_hole_area, args.output_dir, meta)
+            retcode, max_obj = ThreadRun(vbet, memfile, args.huc, args.flowlines, args.flowareas, args.slope, json_transform, args.hand, args.hillshade, args.max_hand, args.min_hole_area, args.output_dir, meta)
+            log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
+
         else:
             vbet(args.huc, args.flowlines, args.flowareas, args.slope, json_transform, args.hand, args.hillshade, args.max_hand, args.min_hole_area, args.output_dir, meta)
 
