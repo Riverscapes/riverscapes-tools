@@ -261,7 +261,7 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
     vbet_path = os.path.join(project_folder, LayerTypes['VBET_OUTPUTS'].rel_path)
 
     for str_val, thr_val in thresh_vals.items():
-        plgnize_id = 'THRESH_{}'.format(str_val)        
+        plgnize_id = 'THRESH_{}'.format(str_val)
         with TempRaster('vbet_raw_thresh_{}'.format(plgnize_id)) as tmp_raw_thresh, \
                 TempRaster('vbet_cleaned_thresh_{}'.format(plgnize_id)) as tmp_cleaned_thresh:
 
@@ -300,7 +300,7 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
     report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
     project.add_report(proj_nodes['Outputs'], LayerTypes['REPORT'], replace=True)
 
-    report = VBETReport(report_path, project, project_folder)
+    report = VBETReport(report_path, project)
     report.write()
 
     # Incorporate project metadata to the riverscapes project

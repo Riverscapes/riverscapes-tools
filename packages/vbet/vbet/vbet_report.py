@@ -7,10 +7,10 @@ from vbet.__version__ import __version__
 
 class VBETReport(RSReport):
 
-    def __init__(self, report_path, rs_project, project_root):
+    def __init__(self, report_path, rs_project):
         super().__init__(rs_project, report_path)
         self.log = Logger('VBET Report')
-        self.project_root = project_root
+        self.project_root = rs_project.project_dir
         self.report_intro()
 
     def report_intro(self):
@@ -38,5 +38,5 @@ if __name__ == '__main__':
 
     cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/VBET.xsd', __version__)
     project = RSProject(cfg, args.projectxml)
-    report = VBETReport(args.report_path, project, os.path.dirname(args.projectxml))
+    report = VBETReport(args.report_path, project)
     report.write()

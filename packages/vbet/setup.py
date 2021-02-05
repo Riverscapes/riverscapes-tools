@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-from setuptools import setup
 import re
+from setuptools import setup
 
 # https://packaging.python.org/discussions/install-requires-vs-requirements/
 install_requires = [
