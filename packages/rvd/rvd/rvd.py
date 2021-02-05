@@ -91,6 +91,7 @@ rvd_columns = ['FromConifer',
                'Invasive',
                'Development',
                'Agriculture',
+               'RiparianTotal',
                'ConversionID']
 
 departure_type_columns = ['ExistingRiparianMean',
@@ -225,7 +226,7 @@ def rvd(huc: int, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_or
     log.info("Calculating Voronoi Polygons...")
 
     # Add all the points (including islands) to the list
-    flowline_thiessen_points_groups = centerline_points(flowlines_orig, distance_buffer, transform_shp_to_raster)
+    flowline_thiessen_points_groups = centerline_points(cleaned_path, distance_buffer, transform_shp_to_raster)
     flowline_thiessen_points = [pt for group in flowline_thiessen_points_groups.values() for pt in group]
     simple_save([pt.point for pt in flowline_thiessen_points], ogr.wkbPoint, raster_srs, "Thiessen_Points", intermediates_gpkg_path)
 
@@ -280,7 +281,7 @@ def rvd(huc: int, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_or
         project.add_project_raster(proj_nodes['Intermediates'], LayerTypes[name])
 
     # Calculate Riparian Departure per Reach
-    riparian_arrays = {f"{epoch}_{name}_MEAN": array for epoch, arrays in vegetation.items() for name, array in arrays.items() if name in ["RIPARIAN", "NATIVE_RIPARIAN"]}
+    riparian_arrays = {f"{epoch.capitalize()}{(name.capitalize()).replace('Native_riparian', 'NativeRiparian')}Mean": array for epoch, arrays in vegetation.items() for name, array in arrays.items() if name in ["RIPARIAN", "NATIVE_RIPARIAN"]}
 
     # Vegetation Cell Counts
     raw_arrays = {f"{epoch}": array for epoch, arrays in vegetation.items() for name, array in arrays.items() if name == "RAW"}
@@ -290,18 +291,18 @@ def rvd(huc: int, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_or
     save_intarr_to_geotiff(vegetation_change, os.path.join(output_folder, "Intermediates", "Conversion_Raster.tif"), prj_existing_path)
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['VEGETATION_CONVERSION'])
 
-    # TODOL: Kelly load conversions from vwConversions for the following code.
-
     # load conversion types dictionary from database
     conn = sqlite3.connect(outputs_gpkg_path)
     conn.row_factory = dict_factory
     curs = conn.cursor()
     curs.execute('SELECT * FROM ConversionTypes')
     conversion_classifications = curs.fetchall()
+    curs.execute('SELECT * FROM vwConversions')
+    conversion_ids = curs.fetchall()
 
     # Split vegetation change classes into binary arrays
     vegetation_change_arrays = {
-        c["TypeID"]: (vegetation_change == int(c["TypeValue"])) * 1 if int(c["TypeValue"]) in np.unique(vegetation_change) else None
+        c['FieldName']: (vegetation_change == int(c["TypeValue"])) * 1 if int(c["TypeValue"]) in np.unique(vegetation_change) else None
         for c in conversion_classifications
     }
 
@@ -387,17 +388,19 @@ def rvd(huc: int, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_or
 
     # load RVD departure levels from DepartureLevels database table
     with SQLiteCon(outputs_gpkg_path) as gpkg:
-        gpkg.curs.execute('SELECT LevelID, NAME FROM DepartureLevels ORDER BY MaxRVD ASC')
+        gpkg.curs.execute('SELECT LevelID, MaxRVD FROM DepartureLevels ORDER BY MaxRVD ASC')
         departure_levels = gpkg.curs.fetchall()
 
     # Calcuate Average Departure for Riparian and Native Riparian
-    riparian_departure_values = riparian_departure(reach_average_riparian)
-    # TODO incorporate into the riparian_departure values dictionary the LevelID from the DepartureLevels table
-    write_db_attributes(outputs_gpkg_path, riparian_departure_values, rvd_columns)
+    riparian_departure_values = riparian_departure(reach_average_riparian, departure_levels)
+    write_db_attributes(outputs_gpkg_path, riparian_departure_values, departure_type_columns)
 
     # Add Conversion Code, Type to Vegetation Conversion
-    reach_values_with_conversion_codes = classify_conversions(reach_average_change, conversion_classifications)
-    write_db_attributes(outputs_gpkg_path, reach_values_with_conversion_codes, departure_type_columns)
+    with SQLiteCon(outputs_gpkg_path) as gpkg:
+        gpkg.curs.execute('SELECT LevelID, MaxValue, NAME FROM ConversionLevels ORDER BY MaxValue ASC')
+        conversion_levels = gpkg.curs.fetchall()
+    reach_values_with_conversion_codes = classify_conversions(reach_average_change, conversion_ids, conversion_levels)
+    write_db_attributes(outputs_gpkg_path, reach_values_with_conversion_codes, rvd_columns)
 
     # # Write Output to GPKG table
     # log.info('Insert values to GPKG tables')
@@ -544,15 +547,20 @@ def extract_mean_values_by_polygon(polys, rasters, reference_raster):
     return output_mean, output_unique
 
 
-def riparian_departure(mean_riparian):
+def riparian_departure(mean_riparian, levels):
     output = {}
     for reachid, values in mean_riparian.items():
-        for ripariantype in ["RIPARIAN", "NATIVE_RIPARIAN"]:
-            hist = values[f"HISTORIC_{ripariantype}_MEAN"] if values[f"HISTORIC_{ripariantype}_MEAN"] != 0.0 else 0.0001
-            exist = values[f"EXISTING_{ripariantype}_MEAN"] if values[f"EXISTING_{ripariantype}_MEAN"] != 0.0 else 0.0001
+        for ripariantype in ["Riparian", "NativeRiparian"]:
+            hist = values[f"Historic{ripariantype}Mean"] if values[f"Historic{ripariantype}Mean"] != 0.0 else 0.0001
+            exist = values[f"Existing{ripariantype}Mean"] if values[f"Existing{ripariantype}Mean"] != 0.0 else 0.0001
             value = exist / hist
             value = 1.0 if value > 1.0 and hist == 0.0001 else value
-            values[f"{ripariantype}_DEPARTURE"] = value
+            values[f"{ripariantype}Departure"] = value
+            if ripariantype == 'Riparian':
+                for level in levels:
+                    if value <= level['MaxRVD']:
+                        values['RiparianDepartureID'] = level['LevelID']
+                        break
         output[reachid] = values
 
     return output

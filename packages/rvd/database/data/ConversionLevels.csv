@@ -1,8 +1,9 @@
-LevelID,Name,Description
+LevelID,Name,MaxValue,Description
 0,No Riparian Vegetation Data,
 1,Multiple Conversion Types,
 2,No Change (>90%),
-3,Very Minor Change (<10%),
-4,Minor Change (10-25%),
-5,Moderate (25-50%),
-6,Significant (>50%),
+3,Very Minor Change (<10%),0.1
+4,Minor Change (10-25%),0.25
+5,Moderate (25-50%),0.5
+6,Significant (>50%),1.0
+7,Unknown

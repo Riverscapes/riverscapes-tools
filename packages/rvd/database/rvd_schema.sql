@@ -72,6 +72,7 @@ CREATE TABLE ConversionTypes
     TypeID      INTEGER PRIMARY KEY,
     TypeValue   INTEGER NOT NULL,
     Name        TEXT UNIQUE NOT NULL,
+    FieldName   TEXT UNIQUE,
     Description TEXT
 );
 
@@ -79,7 +80,8 @@ CREATE TABLE ConversionLevels
 (
     LevelID     INTEGER PRIMARY KEY,
     Name        TEXT UNIQUE NOT NULL,
-    Description TEXT
+    Description TEXT,
+    MaxValue    REAL
 );
 
 CREATE TABLE Conversions
@@ -118,6 +120,7 @@ CREATE TABLE ReachAttributes
     Invasive                   REAL,
     Development                REAL,
     Agriculture                REAL,
+    RiparianTotal              REAL,
     ConversionID               INTEGER,
     ExistingRiparianMean       REAL,
     HistoricRiparianMean       REAL,
@@ -139,7 +142,8 @@ SELECT ConversionID,
         DisplayCode,
        T.TypeID,
        T.TypeValue, 
-       T.Name AS ConversionType,
+       T.Name AS ConversionTypeDisplay,
+       T.FieldName As ConversionType,
        L.LevelID,
        L.Name AS ConversionLevel
 FROM Conversions C
@@ -153,7 +157,8 @@ FROM ReachAttributes A
          INNER JOIN ReachGeometry G ON A.ReachID = G.ReachID
          LEFT JOIN DepartureLevels D ON A.RiparianDepartureID = D.LevelID
          LEFT JOIN
-     (SELECT DisplayCode,
+     (SELECT C.ConversionID,
+             DisplayCode,
              T.TypeID,
              T.Name AS ConversionType,
              L.LevelID,
