@@ -8,12 +8,14 @@
 # Created:     09/25/2015
 # -------------------------------------------------------------------------------
 from __future__ import annotations
+from typing import List, Dict
 import os
 import datetime
 import uuid
 
 import rasterio.shutil
 from osgeo import ogr
+from copy import copy
 
 from rscommons import Logger
 from rscommons.classes.xml_builder import XMLBuilder
@@ -425,3 +427,60 @@ class RSProject:
                 i += 1
 
         return '{}{}'.format(root_id, i if i > 1 else '')
+
+    @staticmethod
+    def prefix_keys(dict_in: Dict[str, str], prefix: str) -> Dict[str, str]:
+        """Helper method. Prefix a dictionary's keys
+
+        Args:
+            dict_in (Dict[str, str]): [description]
+            prefix (str): [description]
+
+        Returns:
+            Dict[str, str]: [description]
+        """
+        if dict_in is None:
+            return {}
+        return {'{}{}'.format(prefix, key): val for key, val in dict_in.items()}
+
+    def rs_meta_augment(self, in_proj_files: List[str], rs_id_map: Dict[str, str]) -> None:
+        """Augment the metadata of specific layers with the input's layers
+
+        Args:
+            out_proj_file (str): [description]
+            in_proj_files (List[str]): [description]
+        """
+        wh_prefix = '_rs_wh_'
+        proj_prefix = '_rs_prj_'
+        lyr_prefix = '_rs_lyr_'
+
+        working_id_list = copy(rs_id_map)
+
+        # Loop over input project.rs.xml files
+        found_keys = []
+        for in_prj_path in in_proj_files:
+            in_prj = RSProject(None, in_prj_path)
+
+            # Define our default, generic warehouse and project meta
+            whmeta = self.prefix_keys(in_prj.get_metadata_dict(tag='Warehouse'), wh_prefix)
+            projmeta = self.prefix_keys(in_prj.get_metadata_dict(), proj_prefix)
+
+            # look for any valid mappings and move metadata into them
+            for id_out, id_in in working_id_list.items():
+
+                lyrnod_in = in_prj.XMLBuilder.find('Realizations').find('.//*[@id="{}"]'.format(id_in))
+                lyrmeta = self.prefix_keys(in_prj.get_metadata_dict(lyrnod_in), lyr_prefix)
+                lyrnod_out = self.XMLBuilder.find('Realizations').find('.//*[@id="{}"]'.format(id_out))
+
+                if id_out not in found_keys and lyrnod_in is not None and lyrnod_out is not None:
+                    print('Found mapping for {}=>{}. Moving metadata'.format(id_in, id_out))
+                    found_keys.append(id_out)
+                    self.add_metadata({
+                        **whmeta,
+                        **projmeta,
+                        **lyrmeta,
+                        "{}projType".format(proj_prefix): in_prj.XMLBuilder.find('ProjectType').text,
+                        "{}id".format(lyr_prefix): lyrnod_in.attrib['id'],
+                        "{}guid".format(lyr_prefix): lyrnod_in.attrib['guid'],
+                        "{}path".format(lyr_prefix): lyrnod_in.find('Path').text,
+                    }, lyrnod_out)

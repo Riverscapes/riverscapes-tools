@@ -1,4 +1,5 @@
 import codecs
+from typing import List, Dict
 import re
 import os
 import argparse
@@ -50,18 +51,29 @@ def parse_args_env(parser: argparse.ArgumentParser, env_path=None):
 
     # Try and make substitutions for all the {env:ENVNAME} parameters we find
     for k, v in vars(args).items():
-        if type(v) is str:
-            m = re.match(pattern, v)
-            if m:
-                envname = m.group(1)
-                # There is a precedence here:
-                if envname in env:
-                    sub = env[envname]
-                elif envname in os.environ:
-                    sub = os.environ[envname]
-                else:
-                    raise Exception('COULD NOT FIND ENVIRONMENT VARIABLE: {}'.format(envname))
-                # Finally, make the substitution
-                setattr(args, k, str(Path(re.sub(pattern, sub.replace("\\", "/"), v))))
+        new_val = replace_env_varts(pattern, v, os.environ)
+        setattr(args, k, new_val)
 
     return args
+
+
+def replace_env_varts(pattern: str, value_str: str, env: Dict[str, str]):
+    if type(value_str) is str:
+        new_str = value_str
+
+        def replace(m):
+            envname = m.group(1)
+            if envname in env:
+                sub = env[envname]
+            elif envname in os.environ:
+                sub = os.environ[envname]
+            else:
+                raise Exception('COULD NOT FIND ENVIRONMENT VARIABLE: {}'.format(envname))
+            # Finally, make the substitution
+            return sub.replace("\\", "/")
+
+        new_str = str(Path(re.sub(pattern, replace, new_str)))
+
+        return new_str
+    else:
+        return value_str
