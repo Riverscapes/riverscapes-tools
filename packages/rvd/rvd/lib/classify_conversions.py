@@ -2,7 +2,7 @@ from collections import OrderedDict
 from typing import List, Dict
 
 
-def classify_conversions(arrays: Dict[int, Dict[str, float]], conversion_classifications: List[dict]):
+def classify_conversions(arrays: Dict[int, Dict[str, float]], conversion_classifications: List[dict], conversion_levels):
     """classify conversion by code and type using binned classes
 
     Args:
@@ -13,41 +13,45 @@ def classify_conversions(arrays: Dict[int, Dict[str, float]], conversion_classif
         Dict: reach dictionary of conversion types and codes
     """
 
-    bins = OrderedDict([("Very Minor", 0.1),
-                        ("Minor", 0.25),
-                        ("Moderate", 0.5),
-                        ("Significant", 1.0)])  # value <= bin
+    bins = [v for v in conversion_levels if v["MaxValue"]]
+    # OrderedDict([("Very Minor", 0.1),
+    # ("Minor", 0.25),
+    # ("Moderate", 0.5),
+    # ("Significant", 1.0)])  # value <= bin
+
+    unknown_code = next(item["ConversionID"] for item in conversion_classifications if item['ConversionType'] == 'NoChange' and item['ConversionLevel'] == 'Unknown')
+
     output = {}
 
-    pos_classes = {value["ConversionType"]: value for value in conversion_classifications if int(value["ConversionCode"]) > 0}
-    neg_classes = {value["ConversionType"]: value for value in conversion_classifications if int(value["ConversionCode"]) < 0}
+    pos_classes = {value["ConversionType"]: value for value in conversion_classifications if int(value["TypeValue"]) > 0}
+    neg_classes = {value["ConversionType"]: value for value in conversion_classifications if int(value["TypeValue"]) < 0}
     for reach_id, reach_values in arrays.items():
         pos_reach_values = {key: reach_values[key] for key in pos_classes.keys()}
         neg_reach_values = {key: reach_values[key] for key in neg_classes.keys()}
-        sum_neg_classes = sum(list(neg_reach_values.values()))
+        reach_values["RiparianTotal"] = sum(list(neg_reach_values.values()))
 
+        # Case 2 No Change
         if reach_values["NoChange"] >= 0.85:  # no change is over .85
-            reach_values["ConversionCode"] = 1
-            reach_values["ConversionType"] = "No Change"
+            reach_values["ConversionID"] = next((item["ConversionID"] for item in conversion_classifications if item["ConversionType"] == 'NoChange' and item["ConversionLevel"] == "NoChange (>90%)"), unknown_code)
             output[reach_id] = reach_values
-        elif all([value < sum_neg_classes for value in pos_reach_values.values()]):
-            for text, b, code in zip(bins.keys(), bins.values(), [70, 71, 72, 73]):
-                if sum_neg_classes <= b:
-                    reach_values["ConversionCode"] = int(code)
-                    reach_values["ConversionType"] = f"{text} {f'Change' if text in ['Very Minor', 'Minor'] else 'Riparian Expansion'}"
+        # Case 2 Conversion to Riparian
+        elif all([value < reach_values['RiparianTotal'] for value in pos_reach_values.values()]):
+            for b in bins:
+                if reach_values["RiparianTotal"] <= b["MaxValue"]:
+                    reach_values["ConversionID"] = next((item["ConversionID"] for item in conversion_classifications if item['LevelID'] == b["LevelID"] and item['ConversionType'] == 'Riparian'), unknown_code)
                     output[reach_id] = reach_values
                     break
+
+        # Case 3 Conversion from Riparian
         elif any([v > 0.0 for v in pos_reach_values.values()]):
-            key = max(pos_reach_values, key=pos_reach_values.get)
-            classification = pos_classes[key]
-            for text, b in bins.items():
-                if reach_values[key] <= b:  # check
-                    reach_values["ConversionCode"] = int(classification[text.replace(" ", "")])
-                    reach_values["ConversionType"] = f"{text} {f'Change' if text in ['Very Minor', 'Minor'] else f'Conversion to {key}'}"
+            largest_class = max(pos_reach_values, key=pos_reach_values.get)
+
+            for b in bins:
+                if reach_values[largest_class] <= b['MaxValue']:  # check
+                    reach_values["ConversionID"] = next((item["ConversionID"] for item in conversion_classifications if item['LevelID'] == b["LevelID"] and item['ConversionType'] == largest_class), unknown_code)
                     output[reach_id] = reach_values
                     break
         else:
-            reach_values["ConversionCode"] = 0
-            reach_values["ConversionType"] = f"Unknown"
+            reach_values["ConversionID"] = unknown_code
             output[reach_id] = reach_values
     return output

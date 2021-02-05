@@ -1,14 +1,15 @@
-TypeID,TypeValue,Name,Description
-1,-80,From Conifer,
-2,-60,From Devegetated,
-3,-50,From Grass Shrubland,
-4,-35,From Deciduous,
-5,0,No Change,
-6,35,Deciduous,
-7,50,Grass Shrubland,
-8,60,Devegetation,
-9,80,Conifer,
-10,97,Invasive,
-11,98,Development,
-12,99,Agriculture,
-13,100,Multiple,
+TypeID,TypeValue,Name,FieldName,Description
+1,-80,From Conifer,FromConifer
+2,-60,From Devegetated,FromDevegetated
+3,-50,From Grass Shrubland,FromGrassShrubland
+4,-35,From Deciduous,FromDeciduous
+5,0,No Change,NoChange
+6,35,Deciduous,Deciduous
+7,50,Grass Shrubland,GrassShrubland
+8,60,Devegetation,Devegetation
+9,80,Conifer,Conifer
+10,97,Invasive,Invasive
+11,98,Development,Development
+12,99,Agriculture,Agriculture
+13,100,Multiple,Multiple
+14,-100,Riparian,Riparian
