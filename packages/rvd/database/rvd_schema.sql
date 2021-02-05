@@ -190,7 +190,7 @@ SELECT G.ReachID,
                   INNER JOIN
                   ConversionLevels L ON C.LevelID = L.LevelID
        )
-       C ON A.ConversionID = C.ConversionID
+       C ON A.ConversionID = C.ConversionID;
 
 INSERT INTO gpkg_contents (table_name, data_type)
 VALUES ('Epochs', 'attributes');
