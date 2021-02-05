@@ -152,22 +152,45 @@ FROM Conversions C
 ORDER BY ConversionID ASC;
 
 CREATE VIEW vwReaches AS
-SELECT G.ReachID, G.Geom, G.ReachCode, A.*, C.DisplayCode, C.ConversionLevel || ' ' || C.ConversionType ConversionLabel
-FROM ReachAttributes A
-         INNER JOIN ReachGeometry G ON A.ReachID = G.ReachID
-         LEFT JOIN DepartureLevels D ON A.RiparianDepartureID = D.LevelID
-         LEFT JOIN
-     (SELECT C.ConversionID,
-             DisplayCode,
-             T.TypeID,
-             T.Name AS ConversionType,
-             L.LevelID,
-             L.Name AS ConversionLevel
-      FROM Conversions C
-               INNER JOIN ConversionTypes T ON C.TypeID = T.TypeID
-               INNER JOIN ConversionLevels L ON C.LevelID = L.LevelID
-     ) C
-     ON A.ConversionID = C.ConversionID;
+SELECT G.ReachID,
+       G.Geom,
+       G.ReachCode,
+       A.FromConifer,
+       A.FromDevegetated,
+       A.FromGrassShrubland,
+       A.FromDeciduous,
+       A.NoChange,
+       A.Deciduous,
+       A.GrassShrubland,
+       A.Devegetation,
+       A.Conifer,
+       A.Invasive,
+       A.Development,
+       A.Agriculture,
+       A.RiparianTotal,
+       C.DisplayText AS ConvType,
+       A.ExistingRiparianMean,
+       A.HistoricRiparianMean,
+       D.Name AS RVD,
+       ExistingNativeRiparianMean,
+       HistoricNativeRiparianMean,
+       NativeRiparianDeparture
+  FROM ReachAttributes A
+       INNER JOIN
+       ReachGeometry G ON A.ReachID = G.ReachID
+       LEFT JOIN
+       DepartureLevels D ON A.RiparianDepartureID = D.LevelID
+       LEFT JOIN
+       (
+           SELECT C.ConversionID,
+                  DisplayText
+             FROM Conversions C
+                  INNER JOIN
+                  ConversionTypes T ON C.TypeID = T.TypeID
+                  INNER JOIN
+                  ConversionLevels L ON C.LevelID = L.LevelID
+       )
+       C ON A.ConversionID = C.ConversionID
 
 INSERT INTO gpkg_contents (table_name, data_type)
 VALUES ('Epochs', 'attributes');
@@ -192,4 +215,4 @@ VALUES ('ReachAttributes', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type)
 VALUES ('DepartureLevels', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type)
-VALUES ('vwReaches', 'attributes');
+VALUES ('vwReaches', 'features');
