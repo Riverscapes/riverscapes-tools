@@ -27,12 +27,12 @@ from scipy import interpolate
 from rscommons.util import safe_makedirs, parse_metadata
 from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, dotenv, initGDALOGRErrors, TempRaster
 from rscommons import GeopackageLayer
-from rscommons.database import execute_query
 from rscommons.vector_ops import polygonize, buffer_by_field, copy_feature_class
 from vbet.vbet_network import vbet_network
 from vbet.vbet_report import VBETReport
 from vbet.vbet_raster_ops import rasterize, proximity_raster, translate, raster_clean
 from vbet.vbet_outputs import threshold, sanitize
+from scripts.hand import hand
 from vbet.__version__ import __version__
 
 initGDALOGRErrors()
@@ -42,32 +42,27 @@ cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/VBET.xsd', __versi
 thresh_vals = {"50": 0.5, "60": 0.6, "70": 0.7, "80": 0.8, "90": 0.9, "100": 1}
 
 LayerTypes = {
+    'DEM': RSLayer('DEM', 'DEM', 'Raster', 'inputs/dem.tif'),
     'SLOPE_RASTER': RSLayer('Slope Raster', 'SLOPE_RASTER', 'Raster', 'inputs/slope.tif'),
-    'HAND_RASTER': RSLayer('Hand Raster', 'HAND_RASTER', 'Raster', 'inputs/hand.tif'),
     'HILLSHADE': RSLayer('DEM Hillshade', 'HILLSHADE', 'Raster', 'inputs/dem_hillshade.tif'),
-    # 'CHANNEL_RASTER': RSLayer('Channel Raster', 'CHANNEL_RASTER', 'Raster', 'inputs/channel.tif'),
     'INPUTS': RSLayer('Inputs', 'INPUTS', 'Geopackage', 'inputs/vbet_inputs.gpkg', {
         'FLOWLINES': RSLayer('NHD Flowlines', 'FLOWLINES', 'Vector', 'flowlines'),
         'FLOW_AREA': RSLayer('NHD Flow Areas', 'FLOW_AREA', 'Vector', 'flow_areas'),
     }),
     'CHANNEL_BUFFER_RASTER': RSLayer('Channel Buffer Raster', 'CHANNEL_BUFFER_RASTER', 'Raster', 'intermediates/channelbuffer.tif'),
     'FLOW_AREA_RASTER': RSLayer('Flow Area Raster', 'FLOW_AREA_RASTER', 'Raster', 'intermediates/flowarea.tif'),
-    'TEMP_SLOPE': RSLayer('Evidence Raster', 'TEMP_SLOPE', 'Raster', 'intermediates/TempSlope.tif'),
-    'TEMP_HAND': RSLayer('Evidence Raster', 'TEMP_HAND', 'Raster', 'intermediates/TempHAND.tif'),
-    # 'CHANNEL_MASK': RSLayer('Evidence Raster', 'CH_MASK', 'Raster', 'intermediates/nLOE_Channels.tif'),
+    'HAND_RASTER': RSLayer('Hand Raster', 'HAND_RASTER', 'Raster', 'intermediates/HAND.tif'),
     'CHANNEL_DISTANCE': RSLayer('Channel Euclidean Distance', 'CHANNEL_DISTANCE', "Raster", "intermediates/ChannelEuclideanDist.tif"),
     'FLOW_AREA_DISTANCE': RSLayer('Flow Area Euclidean Distance', 'FLOW_AREA_DISTANCE', "Raster", "intermediates/FlowAreaEuclideanDist.tif"),
     'NORMALIZED_SLOPE': RSLayer('Normalized Slope', 'NORMALIZED_SLOPE', "Raster", "intermediates/nLoE_Slope.tif"),
     'NORMALIZED_HAND': RSLayer('Normalized HAND', 'NORMALIZED_HAND', "Raster", "intermediates/nLoE_Hand.tif"),
     'NORMALIZED_CHANNEL_DISTANCE': RSLayer('Normalized Channel Distance', 'NORMALIZED_CHANNEL_DISTANCE', "Raster", "intermediates/nLoE_ChannelDist.tif"),
     'NORMALIZED_FLOWAREA_DISTANCE': RSLayer('Normalized Flow Area Distance', 'NORMALIZED_FLOWAREA_DISTANCE', "Raster", "intermediates/nLoE_FlowAreaDist.tif"),
-    'EVIDENCE_TOPO': RSLayer('Evidence Raster', 'EVIDENCE_TOPO', 'Raster', 'intermediates/Topographic_Evidence.tif'),
-    'EVIDENCE_CHANNEL': RSLayer('Evidence Raster', 'EVIDENCE_CHANNEL', 'Raster', 'intermediates/Channel_Evidence.tif'),
-    'COMBINED_VRT': RSLayer('Combined VRT', 'COMBINED_VRT', 'VRT', 'intermediates/slope-hand-channel.vrt'),
+    'EVIDENCE_TOPO': RSLayer('Topo Evidence', 'EVIDENCE_TOPO', 'Raster', 'intermediates/Topographic_Evidence.tif'),
+    'EVIDENCE_CHANNEL': RSLayer('Channel Evidence', 'EVIDENCE_CHANNEL', 'Raster', 'intermediates/Channel_Evidence.tif'),
     'INTERMEDIATES': RSLayer('Intermediates', 'Intermediates', 'Geopackage', 'intermediates/vbet_intermediates.gpkg', {
         'VBET_NETWORK': RSLayer('VBET Network', 'VBET_NETWORK', 'Vector', 'vbet_network'),
-        'VBET_NETWORK_BUFFERED': RSLayer('VBET Network', 'VBET_NETWORK_BUFFERED', 'Vector', 'vbet_network_buffered'),
-        # 'CHANNEL_POLYGON': RSLayer('Combined VRT', 'CHANNEL_POLYGON', 'Vector', 'channel')
+        'VBET_NETWORK_BUFFERED': RSLayer('VBET Network Buffer', 'VBET_NETWORK_BUFFERED', 'Vector', 'vbet_network_buffered'),
         # We also add all tht raw thresholded shapes here but they get added dynamically later
     }),
     # Same here. Sub layers are added dynamically later.
@@ -77,7 +72,7 @@ LayerTypes = {
 }
 
 
-def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_hand, hillshade, max_hand, min_hole_area_m, project_folder, meta):
+def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_dem, hillshade, max_hand, min_hole_area_m, project_folder, meta):
 
     log = Logger('VBET')
     log.info('Starting VBET v.{}'.format(cfg.version))
@@ -86,7 +81,7 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
 
     # Copy the inp
     _proj_slope_node, proj_slope = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['SLOPE_RASTER'], orig_slope)
-    _proj_hand_node, proj_hand = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HAND_RASTER'], orig_hand)
+    _proj_dem_node, proj_dem = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], orig_dem)
     _hillshade_node, hillshade = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], hillshade)
 
     # Copy input shapes to a geopackage
@@ -111,44 +106,37 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
     network_path = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['VBET_NETWORK'].rel_path)
     vbet_network(flowlines_path, flowareas_path, network_path, cfg.OUTPUT_EPSG, fcodes)
 
-    # Create a VRT that combines all the evidence rasters
-    log.info('Creating combined evidence VRT')
-    vrtpath = os.path.join(project_folder, LayerTypes['COMBINED_VRT'].rel_path)
-    vrt_options = gdal.BuildVRTOptions(resampleAlg='nearest', separate=True, resolution='average')
+    # Generate HAND from dem and vbet_network
+    # TODO make a place for this temporary folder. it can be removed after hand is generated.
+    temp_hand_dir = os.path.join(project_folder, "intermediates", "hand_processing")
+    safe_makedirs(temp_hand_dir)
 
-    gdal.BuildVRT(vrtpath, [
-        proj_slope,
-        proj_hand
-    ], options=vrt_options)
+    hand_raster = os.path.join(project_folder, LayerTypes['HAND_RASTER'].rel_path)
+    hand(proj_dem, intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['VBET_NETWORK'].rel_path, temp_hand_dir, hand_raster)
 
-    slope_ev = os.path.join(project_folder, LayerTypes['TEMP_SLOPE'].rel_path)
-    hand_ev = os.path.join(project_folder, LayerTypes['TEMP_HAND'].rel_path)
-
-    # Generate the evidence raster from the VRT. This is a little annoying but reading across
-    # different dtypes in one VRT is not supported in GDAL > 3.0 so we dump them into individual rasters
-    translate(vrtpath, slope_ev, 1)
-    translate(vrtpath, hand_ev, 2)
-
-    project.add_project_raster(proj_nodes["Intermediates"], LayerTypes["TEMP_SLOPE"])
-    project.add_project_raster(proj_nodes["Intermediates"], LayerTypes["TEMP_HAND"])
+    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['HAND_RASTER'])
 
     # Build Transformation Tables
-    with open(os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'vbet_schema.sql')) as sqlfile:
-        for sql_command in sqlfile.read().split(';'):
-            execute_query(intermediates_gpkg_path, sql_command)
+    with sqlite3.connect(intermediates_gpkg_path) as conn:
+        cursor = conn.cursor()
+        # Build tables
+        with open(os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'vbet_schema.sql')) as sqlfile:
+            sql_commands = sqlfile.read()
+            cursor.executescript(sql_commands)
+            conn.commit()
 
-    # Load tables from sql or database
-    # TODO obviously we need to read data from external source here...
-    for sqldata in glob.glob(os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'data', '**', '*.sql'), recursive=True):
-        with open(sqldata) as sqlfile:
-            for sql_command in sqlfile.read().split(';'):
-                execute_query(intermediates_gpkg_path, sql_command, message=f"Excecuting SQL command for {sqldata}")
+        # Load tables
+        for sqldata in glob.glob(os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'data', '**', '*.sql'), recursive=True):
+            with open(sqldata) as sqlfile:
+                sql_commands = sqlfile.read()
+                cursor.executescript(sql_commands)
+                conn.commit()
 
     # Load transforms from table
     transforms = load_transform_functions(json_transforms, intermediates_gpkg_path)
 
     # Get raster resolution as min buffer and apply bankfull width buffer to reaches
-    with rasterio.open(slope_ev) as raster:
+    with rasterio.open(proj_slope) as raster:
         t = raster.transform
         min_buffer = (t[0] + abs(t[4])) / 2
 
@@ -161,12 +149,11 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
     log.info('Writing channel raster using slope as a template')
     flow_area_raster = os.path.join(project_folder, LayerTypes['FLOW_AREA_RASTER'].rel_path)
     channel_buffer_raster = os.path.join(project_folder, LayerTypes['CHANNEL_BUFFER_RASTER'].rel_path)
-    # channel_raster = os.path.join(project_folder, LayerTypes['CHANNEL_RASTER'].rel_path)
 
-    rasterize(network_path_buffered, channel_buffer_raster, slope_ev)
+    rasterize(network_path_buffered, channel_buffer_raster, proj_slope)
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['CHANNEL_BUFFER_RASTER'])
 
-    rasterize(flowareas_path, flow_area_raster, slope_ev)
+    rasterize(flowareas_path, flow_area_raster, proj_slope)
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['FLOW_AREA_RASTER'])
 
     channel_dist_raster = os.path.join(project_folder, LayerTypes['CHANNEL_DISTANCE'].rel_path)
@@ -187,8 +174,8 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
 
     # Open evidence rasters concurrently. We're looping over windows so this shouldn't affect
     # memory consumption too much
-    with rasterio.open(slope_ev) as slp_src, \
-            rasterio.open(hand_ev) as hand_src, \
+    with rasterio.open(proj_slope) as slp_src, \
+            rasterio.open(hand_raster) as hand_src, \
             rasterio.open(channel_dist_raster) as cdist_src, \
             rasterio.open(fa_dist_raster) as fadist_src:
         # All 3 rasters should have the same extent and properties. They differ only in dtype
@@ -252,7 +239,7 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
         project.add_project_raster(proj_nodes['Outputs'], LayerTypes['VBET_EVIDENCE'])
 
     # Get the length of a meter (roughly)
-    degree_factor = GeopackageLayer.rough_convert_metres_to_raster_units(slope_ev, 1)
+    degree_factor = GeopackageLayer.rough_convert_metres_to_raster_units(proj_slope, 1)
     buff_dist = cell_size
     min_hole_degrees = min_hole_area_m * (degree_factor ** 2)
 
@@ -379,7 +366,7 @@ def main():
     parser.add_argument('flowlines', help='NHD flow line ShapeFile path', type=str)
     parser.add_argument('flowareas', help='NHD flow areas ShapeFile path', type=str)
     parser.add_argument('slope', help='Slope raster path', type=str)
-    parser.add_argument('hand', help='HAND raster path', type=str)
+    parser.add_argument('dem', help='DEM raster path', type=str)
     parser.add_argument('hillshade', help='Hillshade raster path', type=str)
     parser.add_argument('output_dir', help='Folder where output VBET project will be created', type=str)
     parser.add_argument('--max_slope', help='Maximum slope to be considered', type=float, default=12)
@@ -407,11 +394,11 @@ def main():
         if args.debug is True:
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output_dir, 'vbet_mem.log')
-            retcode, max_obj = ThreadRun(vbet, memfile, args.huc, args.flowlines, args.flowareas, args.slope, json_transform, args.hand, args.hillshade, args.max_hand, args.min_hole_area, args.output_dir, meta)
+            retcode, max_obj = ThreadRun(vbet, memfile, args.huc, args.flowlines, args.flowareas, args.slope, json_transform, args.dem, args.hillshade, args.max_hand, args.min_hole_area, args.output_dir, meta)
             log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
 
         else:
-            vbet(args.huc, args.flowlines, args.flowareas, args.slope, json_transform, args.hand, args.hillshade, args.max_hand, args.min_hole_area, args.output_dir, meta)
+            vbet(args.huc, args.flowlines, args.flowareas, args.slope, json_transform, args.dem, args.hillshade, args.max_hand, args.min_hole_area, args.output_dir, meta)
 
     except Exception as e:
         log.error(e)
