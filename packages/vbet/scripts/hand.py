@@ -39,7 +39,7 @@ def hand(dem: str, flowlines_gpkg: str, flowlines_layer: str, working_dir: str, 
 
     # PitRemove
     log.info("Filling DEM pits")
-    run_subprocess(working_dir, ["mpiexec", "-n", "8", "PitRemove", "-z", dem, "-fel", path_pitfill])
+    run_subprocess(working_dir, ["mpiexec", "-n", "8", "pitremove", "-z", dem, "-fel", path_pitfill])
 
     # Flow Dir
     log.info("Finding flow direction")
