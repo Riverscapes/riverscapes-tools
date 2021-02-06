@@ -39,11 +39,15 @@ def hand(dem: str, flowlines_gpkg: str, flowlines_layer: str, working_dir: str, 
 
     # PitRemove
     log.info("Filling DEM pits")
-    run_subprocess(working_dir, ["mpiexec", "-n", "8", "pitremove", "-z", dem, "-fel", path_pitfill])
+    pitfill_status = run_subprocess(working_dir, ["mpiexec", "-n", "8", "pitremove", "-z", dem, "-fel", path_pitfill])
+    if pitfill_status != 0 or not os.path.isfile(path_pitfill):
+        raise Exception('TauDEM: pitfill failed')
 
     # Flow Dir
     log.info("Finding flow direction")
-    run_subprocess(working_dir, ["mpiexec", "-n", "8", "dinfflowdir", "-fel", path_pitfill, "-ang", path_ang, "-slp", path_slp])
+    dinfflowdir_status = run_subprocess(working_dir, ["mpiexec", "-n", "8", "dinfflowdir", "-fel", path_pitfill, "-ang", path_ang, "-slp", path_slp])
+    if dinfflowdir_status != 0 or not os.path.isfile(path_ang):
+        raise Exception('TauDEM: dinfflowdir failed')
 
     # rasterize flowlines
     log.info("Rasterizing flowlines")
@@ -55,13 +59,19 @@ def hand(dem: str, flowlines_gpkg: str, flowlines_layer: str, working_dir: str, 
     xmax = max(geoT[0], geoT[0] + width * geoT[1])
     ymin = min(geoT[3], geoT[3] + geoT[-1] * height)
     ymax = max(geoT[3], geoT[3] + geoT[-1] * height)
+    # Close our dataset
+    g = None
 
-    run_subprocess(working_dir, ["gdal_rasterize", "-te", str(xmin), str(ymin), str(xmax), str(ymax), "-ts", str(width), str(height), "-burn", "1", "-l", flowlines_layer, flowlines_gpkg, path_rasterized_flowline])
+    gdal_rasterize_status = run_subprocess(working_dir, ["gdal_rasterize", "-te", str(xmin), str(ymin), str(xmax), str(ymax), "-ts", str(width), str(height), "-burn", "1", "-l", flowlines_layer, flowlines_gpkg, path_rasterized_flowline])
     # Reminder: -te xmin ymin xmax ymax, -ts width height
+    if gdal_rasterize_status != 0 or not os.path.isfile(path_rasterized_flowline):
+        raise Exception('gdal_rasterize failed')
 
     # generate hand
     log.info("Generating HAND")
-    run_subprocess(working_dir, ["mpiexec", "-n", "8", "dinfdistdown", "-ang", path_ang, "-fel", path_pitfill, "-src", path_rasterized_flowline, "-dd", out_hand, "-m", "ave", "v"])
+    dinfdistdown_status = run_subprocess(working_dir, ["mpiexec", "-n", "8", "dinfdistdown", "-ang", path_ang, "-fel", path_pitfill, "-src", path_rasterized_flowline, "-dd", out_hand, "-m", "ave", "v"])
+    if dinfdistdown_status != 0 or not os.path.isfile(out_hand):
+        raise Exception('TauDEM: dinfdistdown failed')
 
     # Fin
     log.info(f"Generated HAND Raster {out_hand}")
