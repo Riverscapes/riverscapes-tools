@@ -63,6 +63,7 @@ def hand(dem: str, flowlines_gpkg: str, flowlines_layer: str, working_dir: str, 
     g = None
 
     gdal_rasterize_status = run_subprocess(working_dir, ["gdal_rasterize", "-te", str(xmin), str(ymin), str(xmax), str(ymax), "-ts", str(width), str(height), "-burn", "1", "-l", flowlines_layer, flowlines_gpkg, path_rasterized_flowline])
+    log.debug('gdal_rasterize_status: {}'.format(gdal_rasterize_status))
     # Reminder: -te xmin ymin xmax ymax, -ts width height
 
     # generate hand
