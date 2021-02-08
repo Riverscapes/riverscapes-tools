@@ -113,7 +113,7 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
     safe_makedirs(temp_hand_dir)
 
     hand_raster = os.path.join(project_folder, LayerTypes['HAND_RASTER'].rel_path)
-    create_hand_raster(proj_dem, intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['VBET_NETWORK'].rel_path, temp_hand_dir, hand_raster)
+    create_hand_raster(proj_dem, network_path, temp_hand_dir, hand_raster)
 
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['HAND_RASTER'])
 
