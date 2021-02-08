@@ -15,7 +15,7 @@ from osgeo import gdal
 from rscommons import Logger, ProgressBar, VectorBase
 
 
-def create_hand_raster(dem: str, flowlines_gpkg: str, flowlines_layer: str, working_dir: str, out_hand: str):
+def create_hand_raster(dem: str, flowlines: str, working_dir: str, out_hand: str):
     """Generate HAND raster for a watershed
 
     Args:
@@ -29,7 +29,7 @@ def create_hand_raster(dem: str, flowlines_gpkg: str, flowlines_layer: str, work
         [type]: [description]
     """
     log = Logger("HAND")
-    log.info(f"Generating HAND for {dem} and {os.path.join(flowlines_gpkg,flowlines_layer)} using {working_dir}")
+    log.info(f"Generating HAND for {dem} and {flowlines} using {working_dir}")
 
     # Format Paths
     path_pitfill = os.path.join(working_dir, "pitfill.tif")
@@ -50,25 +50,8 @@ def create_hand_raster(dem: str, flowlines_gpkg: str, flowlines_layer: str, work
         raise Exception('TauDEM: dinfflowdir failed')
 
     # rasterize flowlines
-    # ===================================================
-    # TODO: swap with hand_rasterize function below
-
     log.info("Rasterizing flowlines")
-
-    g = gdal.Open(dem)
-    geoT = g.GetGeoTransform()
-    width, height = g.RasterXSize, g.RasterYSize
-    xmin = min(geoT[0], geoT[0] + width * geoT[1])
-    xmax = max(geoT[0], geoT[0] + width * geoT[1])
-    ymin = min(geoT[3], geoT[3] + geoT[-1] * height)
-    ymax = max(geoT[3], geoT[3] + geoT[-1] * height)
-    # Close our dataset
-    g = None
-
-    gdal_rasterize_status = run_subprocess(working_dir, ["gdal_rasterize", "-te", str(xmin), str(ymin), str(xmax), str(ymax), "-ts", str(width), str(height), "-burn", "1", "-l", flowlines_layer, flowlines_gpkg, path_rasterized_flowline])
-    log.debug('gdal_rasterize_status: {}'.format(gdal_rasterize_status))
-    # Reminder: -te xmin ymin xmax ymax, -ts width height
-    # ===================================================
+    hand_rasterize(flowlines, dem, path_rasterized_flowline)
 
     # generate hand
     log.info("Generating HAND")
