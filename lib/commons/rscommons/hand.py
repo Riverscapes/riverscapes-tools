@@ -11,11 +11,11 @@ from __future__ import annotations
 import os
 from typing import List
 import subprocess
-from rscommons import Logger
-import gdal
+from osgeo import gdal
+from rscommons import Logger, ProgressBar, VectorBase
 
 
-def hand(dem: str, flowlines_gpkg: str, flowlines_layer: str, working_dir: str, out_hand: str):
+def create_hand_raster(dem: str, flowlines_gpkg: str, flowlines_layer: str, working_dir: str, out_hand: str):
     """Generate HAND raster for a watershed
 
     Args:
@@ -50,6 +50,9 @@ def hand(dem: str, flowlines_gpkg: str, flowlines_layer: str, working_dir: str, 
         raise Exception('TauDEM: dinfflowdir failed')
 
     # rasterize flowlines
+    # ===================================================
+    # TODO: swap with hand_rasterize function below
+
     log.info("Rasterizing flowlines")
 
     g = gdal.Open(dem)
@@ -65,6 +68,7 @@ def hand(dem: str, flowlines_gpkg: str, flowlines_layer: str, working_dir: str, 
     gdal_rasterize_status = run_subprocess(working_dir, ["gdal_rasterize", "-te", str(xmin), str(ymin), str(xmax), str(ymax), "-ts", str(width), str(height), "-burn", "1", "-l", flowlines_layer, flowlines_gpkg, path_rasterized_flowline])
     log.debug('gdal_rasterize_status: {}'.format(gdal_rasterize_status))
     # Reminder: -te xmin ymin xmax ymax, -ts width height
+    # ===================================================
 
     # generate hand
     log.info("Generating HAND")
@@ -77,6 +81,46 @@ def hand(dem: str, flowlines_gpkg: str, flowlines_layer: str, working_dir: str, 
     log.info("HAND process complete")
 
     return out_hand
+
+
+def hand_rasterize(in_lyr_path: str, template_dem_path: str, out_raster_path: str):
+    log = Logger('hand_rasterize')
+
+    ds_path, lyr_path = VectorBase.path_sorter(in_lyr_path)
+
+    g = gdal.Open(template_dem_path)
+    geo_t = g.GetGeoTransform()
+    width, height = g.RasterXSize, g.RasterYSize
+    xmin = min(geo_t[0], geo_t[0] + width * geo_t[1])
+    xmax = max(geo_t[0], geo_t[0] + width * geo_t[1])
+    ymin = min(geo_t[3], geo_t[3] + geo_t[-1] * height)
+    ymax = max(geo_t[3], geo_t[3] + geo_t[-1] * height)
+    # Close our dataset
+    g = None
+
+    progbar = ProgressBar(100, 50, "Rasterizing for HAND")
+
+    def poly_progress(progress, _msg, _data):
+        progbar.update(int(progress * 100))
+
+    # https://gdal.org/programs/gdal_rasterize.html
+    # https://gdal.org/python/osgeo.gdal-module.html#RasterizeOptions
+    gdal.Rasterize(
+        out_raster_path,
+        ds_path,
+        layers=[lyr_path],
+        height=height,
+        width=width,
+        burnValues=1, outputType=gdal.GDT_CFloat32,
+        creationOptions=['COMPRESS=LZW'],
+        # outputBounds --- assigned output bounds: [minx, miny, maxx, maxy]
+        outputBounds=[xmin, ymin, xmax, ymax],
+        callback=poly_progress
+    )
+    progbar.finish()
+
+    # Rasterize the features (roads, rail etc) and calculate a raster of Euclidean distance from these features
+    progbar.update(0)
 
 
 def run_subprocess(cwd: str, cmd: List[str]):

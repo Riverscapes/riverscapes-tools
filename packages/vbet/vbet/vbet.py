@@ -20,6 +20,7 @@ import json
 import glob
 import sqlite3
 import time
+# LEave OSGEO import alone. It is necessary even if it looks unused
 from osgeo import gdal
 import rasterio
 import numpy as np
@@ -28,11 +29,11 @@ from rscommons.util import safe_makedirs, parse_metadata
 from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, dotenv, initGDALOGRErrors, TempRaster
 from rscommons import GeopackageLayer
 from rscommons.vector_ops import polygonize, buffer_by_field, copy_feature_class
+from rscommons.hand import create_hand_raster
 from vbet.vbet_network import vbet_network
 from vbet.vbet_report import VBETReport
 from vbet.vbet_raster_ops import rasterize, proximity_raster, translate, raster_clean
 from vbet.vbet_outputs import threshold, sanitize
-from scripts.hand import hand
 from vbet.__version__ import __version__
 
 initGDALOGRErrors()
@@ -112,7 +113,7 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
     safe_makedirs(temp_hand_dir)
 
     hand_raster = os.path.join(project_folder, LayerTypes['HAND_RASTER'].rel_path)
-    hand(proj_dem, intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['VBET_NETWORK'].rel_path, temp_hand_dir, hand_raster)
+    create_hand_raster(proj_dem, intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['VBET_NETWORK'].rel_path, temp_hand_dir, hand_raster)
 
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['HAND_RASTER'])
 

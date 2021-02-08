@@ -129,12 +129,12 @@ class MemoryMonitor:
 
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
-        ax.legend(loc='lower left')
 
         for key in ['cpu_percent', 'children']:
             if key in data:
                 ax2.plot(x, data[key], label=key)
 
+        ax.legend(loc='lower left')
         ax2.legend(loc='lower right')
 
         freq = math.floor(len(x) / 10)
