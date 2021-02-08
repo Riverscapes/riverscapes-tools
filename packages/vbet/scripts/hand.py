@@ -100,7 +100,7 @@ def run_subprocess(cwd: str, cmd: List[str]):
                 log.error(line)
 
     retcode = process.poll()
-    if retcode > 0:
+    if retcode is not None and retcode > 0:
         log.error('Process returned with code {}'.format(retcode))
 
     return retcode
