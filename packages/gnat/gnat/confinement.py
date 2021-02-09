@@ -44,19 +44,21 @@ LayerTypes = {
         'SPLIT_POINTS': RSLayer('Split Points', 'SPLIT_POINTS', 'Vector', 'Split_Points'),
         'FLOWLINE_SEGMENTS': RSLayer('Flowline Segments', 'FLOWLINE_SEGMENTS', 'Vector', 'Flowline_Segments'),
         'ERROR_POLYLINES': RSLayer('Error Polylines', 'ERROR_POLYLINES', 'Vector', 'Error_Polylines'),
-        'ERROR_POLYGONS': RSLayer('Error Polygons', 'ERROR_POLYGONS', 'Vector', 'Error_Polygons')
+        'ERROR_POLYGONS': RSLayer('Error Polygons', 'ERROR_POLYGONS', 'Vector', 'Error_Polygons'),
+        'BANKFULL_BUFFERS': RSLayer('Bankfull Buffer', 'BANKFULL_BUFFER', 'Vector', 'Bankfull_Buffer'),
+        'CONFINEMENT_BUFFER_SPLIT': RSLayer('Active Channel Split Buffers', 'CONFINEMENT_BUFFER_SPLITS', 'Vector', 'Confinement_Buffers_Split')
     }),
     'CONFINEMENT_RUN_REPORT': RSLayer('Confinement Report', 'CONFINEMENT_RUN_REPORT', 'HTMLFile', 'outputs/confinement.html'),
     'CONFINEMENT': RSLayer('Confinement', 'CONFINEMENT', 'Geopackage', 'outputs/confinement.gpkg', {
         'CONFINEMENT_RAW': RSLayer('Confinement Raw', 'CONFINEMENT_RAW', 'Vector', 'Confinement_Raw'),
         'CONFINEMENT_MARGINS': RSLayer('Confinement Margins', 'CONFINEMENT_MARGINS', 'Vector', 'Confining_Margins'),
         'CONFINEMENT_RATIO': RSLayer('Confinement Ratio', 'CONFINEMENT_RATIO', 'Vector', 'Confinement_Ratio'),
-        'CONFINEMENT_BUFFERS': RSLayer('Bankfull Channel Buffers', 'CONFINEMENT_BUFFERS', 'Vector', 'Confinement_Buffers')
+        'CONFINEMENT_BUFFERS': RSLayer('Active Channel Buffer', 'CONFINEMENT_BUFFERS', 'Vector', 'Confinement_Buffers')
     }),
 }
 
 
-def confinement(huc, flowlines_orig, confining_polygon_orig, output_folder, buffer_field, confinement_type, debug=False):
+def confinement(huc, flowlines_orig, confining_polygon_orig, output_folder, buffer_field, confinement_type, min_buffer=0.0, bankfull_expansion_factor=1.0, debug=False):
     """Generate confinement attribute for a stream network
 
     Args:
@@ -65,6 +67,9 @@ def confinement(huc, flowlines_orig, confining_polygon_orig, output_folder, buff
         confining_polygon (path): valley bottom or other boundary defining confining margins
         output_folder (path): location to store confinement project and output geopackage
         buffer_field (string): name of float field with buffer values in meters (i.e. 'BFWidth')
+        confinement_type (string): name of type of confinement generated
+        min_buffer (float): minimum bankfull value to use in buffers e.g. raster cell resolution
+        bankfull_expansion_factor (float): factor to expand bankfull on each side of bank
         debug (bool): run tool in debug mode (save intermediate outputs). Default = False
 
     """
@@ -106,7 +111,10 @@ def confinement(huc, flowlines_orig, confining_polygon_orig, output_folder, buff
 
     # Add the confinement polygon
     project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
-    project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['CONFINEMENT'])
+    _nd, _inputs_gpkg_path, out_gpkg_lyrs = project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['CONFINEMENT'])
+
+    # Additional Metadata
+    project.add_metadata({'Min Buffer': str(min_buffer), "Expansion Factor": str(bankfull_expansion_factor)}, out_gpkg_lyrs['CONFINEMENT_BUFFERS'][0])
 
     # Generate confining margins
     log.info(f"Preparing output geopackage: {output_gpkg}")
@@ -134,11 +142,13 @@ def confinement(huc, flowlines_orig, confining_polygon_orig, output_folder, buff
         'length': ogr.FieldDefn("ApproxLeng", ogr.OFTReal),
         'confined_length': ogr.FieldDefn("ConfinLeng", ogr.OFTReal),
         'constricted_length': ogr.FieldDefn("ConstrLeng", ogr.OFTReal),
+        'bankfull_width': ogr.FieldDefn("Bankfull_Width", ogr.OFTReal),
+        'buffer_width': ogr.FieldDefn("Buffer_Width", ogr.OFTReal),
         # Couple of Debug fields too
         'process': ogr.FieldDefn("ErrorProcess", ogr.OFTString),
         'message': ogr.FieldDefn("ErrorMessage", ogr.OFTString)
-
     }
+
     field_lookup['side'].SetWidth(5)
     field_lookup['confinement_type'].SetWidth(5)
 
@@ -172,32 +182,44 @@ def confinement(huc, flowlines_orig, confining_polygon_orig, output_folder, buff
         ratio_lyr.ogr_layer.CreateField(field_lookup['confined_length'])
         ratio_lyr.ogr_layer.CreateField(field_lookup['constricted_length'])
 
-    with GeopackageLayer(output_gpkg, layer_name=LayerTypes['CONFINEMENT'].sub_layers["CONFINEMENT_BUFFERS"].rel_path, write=True) as lyr:
+    with GeopackageLayer(intermediates_gpkg, layer_name=LayerTypes['INTERMEDIATES'].sub_layers["BANKFULL_BUFFERS"].rel_path, write=True) as lyr:
+        lyr.create(ogr.wkbPolygon, spatial_ref=srs)
+        lyr.ogr_layer.CreateField(field_lookup['flowlineID'])
+        lyr.ogr_layer.CreateField(field_lookup['bankfull_width'])
+        lyr.ogr_layer.CreateField(field_lookup['buffer_width'])
+
+    with GeopackageLayer(intermediates_gpkg, layer_name=LayerTypes['INTERMEDIATES'].sub_layers["CONFINEMENT_BUFFER_SPLIT"].rel_path, write=True) as lyr:
         lyr.create(ogr.wkbPolygon, spatial_ref=srs)
         lyr.ogr_layer.CreateField(field_lookup['side'])
         lyr.ogr_layer.CreateField(field_lookup['flowlineID'])
+        lyr.ogr_layer.CreateField(field_lookup['bankfull_width'])
+        lyr.ogr_layer.CreateField(field_lookup['buffer_width'])
 
-    # Debug Outputs
-    if debug:
-        with GeopackageLayer(intermediates_gpkg, layer_name=LayerTypes['INTERMEDIATES'].sub_layers["SPLIT_POINTS"].rel_path, write=True) as lyr:
-            lyr.create(ogr.wkbPoint, spatial_ref=srs)
-            lyr.ogr_layer.CreateField(field_lookup['side'])
-            lyr.ogr_layer.CreateField(field_lookup['flowlineID'])
+    with GeopackageLayer(output_gpkg, layer_name=LayerTypes['CONFINEMENT'].sub_layers["CONFINEMENT_BUFFERS"].rel_path, write=True) as lyr:
+        lyr.create(ogr.wkbPolygon, spatial_ref=srs)
+        lyr.ogr_layer.CreateField(field_lookup['flowlineID'])
+        lyr.ogr_layer.CreateField(field_lookup['bankfull_width'])
+        lyr.ogr_layer.CreateField(field_lookup['buffer_width'])
 
-        with GeopackageLayer(intermediates_gpkg, layer_name=LayerTypes['INTERMEDIATES'].sub_layers["FLOWLINE_SEGMENTS"].rel_path, write=True) as lyr:
-            lyr.create(ogr.wkbLineString, spatial_ref=srs)
-            lyr.ogr_layer.CreateField(field_lookup['side'])
-            lyr.ogr_layer.CreateField(field_lookup['flowlineID'])
+    with GeopackageLayer(intermediates_gpkg, layer_name=LayerTypes['INTERMEDIATES'].sub_layers["SPLIT_POINTS"].rel_path, write=True) as lyr:
+        lyr.create(ogr.wkbPoint, spatial_ref=srs)
+        lyr.ogr_layer.CreateField(field_lookup['side'])
+        lyr.ogr_layer.CreateField(field_lookup['flowlineID'])
 
-        with GeopackageLayer(intermediates_gpkg, layer_name=LayerTypes['INTERMEDIATES'].sub_layers["ERROR_POLYLINES"].rel_path, write=True) as lyr:
-            lyr.create(ogr.wkbLineString, spatial_ref=srs)
-            lyr.ogr_layer.CreateField(field_lookup['process'])
-            lyr.ogr_layer.CreateField(field_lookup['message'])
+    with GeopackageLayer(intermediates_gpkg, layer_name=LayerTypes['INTERMEDIATES'].sub_layers["FLOWLINE_SEGMENTS"].rel_path, write=True) as lyr:
+        lyr.create(ogr.wkbLineString, spatial_ref=srs)
+        lyr.ogr_layer.CreateField(field_lookup['side'])
+        lyr.ogr_layer.CreateField(field_lookup['flowlineID'])
 
-        with GeopackageLayer(intermediates_gpkg, layer_name=LayerTypes['INTERMEDIATES'].sub_layers["ERROR_POLYGONS"].rel_path, write=True) as lyr:
-            lyr.create(ogr.wkbPolygon, spatial_ref=srs)
-            lyr.ogr_layer.CreateField(field_lookup['process'])
-            lyr.ogr_layer.CreateField(field_lookup['message'])
+    with GeopackageLayer(intermediates_gpkg, layer_name=LayerTypes['INTERMEDIATES'].sub_layers["ERROR_POLYLINES"].rel_path, write=True) as lyr:
+        lyr.create(ogr.wkbLineString, spatial_ref=srs)
+        lyr.ogr_layer.CreateField(field_lookup['process'])
+        lyr.ogr_layer.CreateField(field_lookup['message'])
+
+    with GeopackageLayer(intermediates_gpkg, layer_name=LayerTypes['INTERMEDIATES'].sub_layers["ERROR_POLYGONS"].rel_path, write=True) as lyr:
+        lyr.create(ogr.wkbPolygon, spatial_ref=srs)
+        lyr.ogr_layer.CreateField(field_lookup['process'])
+        lyr.ogr_layer.CreateField(field_lookup['message'])
 
     # Generate confinement per Flowline
     with GeopackageLayer(flowlines_path) as flw_lyr, \
@@ -206,7 +228,9 @@ def confinement(huc, flowlines_orig, confining_polygon_orig, output_folder, buff
             GeopackageLayer(output_gpkg, layer_name=LayerTypes['CONFINEMENT'].sub_layers["CONFINEMENT_RATIO"].rel_path, write=True) as ratio_lyr, \
             GeopackageLayer(intermediates_gpkg, layer_name=LayerTypes['INTERMEDIATES'].sub_layers["SPLIT_POINTS"].rel_path, write=True) as dbg_splitpts_lyr, \
             GeopackageLayer(intermediates_gpkg, layer_name=LayerTypes['INTERMEDIATES'].sub_layers["FLOWLINE_SEGMENTS"].rel_path, write=True) as dbg_flwseg_lyr, \
-            GeopackageLayer(output_gpkg, layer_name=LayerTypes['CONFINEMENT'].sub_layers["CONFINEMENT_BUFFERS"].rel_path, write=True) as dbg_buff_lyr, \
+            GeopackageLayer(intermediates_gpkg, layer_name=LayerTypes['INTERMEDIATES'].sub_layers["BANKFULL_BUFFERS"].rel_path, write=True) as bf_buff_lyr, \
+            GeopackageLayer(intermediates_gpkg, layer_name=LayerTypes['INTERMEDIATES'].sub_layers["CONFINEMENT_BUFFER_SPLIT"].rel_path, write=True) as conf_buff_split_lyr, \
+            GeopackageLayer(output_gpkg, layer_name=LayerTypes['CONFINEMENT'].sub_layers["CONFINEMENT_BUFFERS"].rel_path, write=True) as buff_lyr, \
             GeopackageLayer(intermediates_gpkg, layer_name=LayerTypes['INTERMEDIATES'].sub_layers["ERROR_POLYLINES"].rel_path, write=True) as dbg_err_lines_lyr, \
             GeopackageLayer(intermediates_gpkg, layer_name=LayerTypes['INTERMEDIATES'].sub_layers["ERROR_POLYGONS"].rel_path, write=True) as dbg_err_polygons_lyr:
 
@@ -216,25 +240,40 @@ def confinement(huc, flowlines_orig, confining_polygon_orig, output_folder, buff
                 ratio_lyr,
                 dbg_splitpts_lyr,
                 dbg_flwseg_lyr,
-                dbg_buff_lyr,
+                bf_buff_lyr,
+                buff_lyr,
+                conf_buff_split_lyr,
                 dbg_err_lines_lyr,
                 dbg_err_polygons_lyr
         ]):
             # Load Flowline
             flowlineID = int(flowline.GetFieldAsInteger64("NHDPlusID"))
-            buffer_value = flowline.GetField(buffer_field) * meter_conversion
+
+            bankfull_width = flowline.GetField(buffer_field)
+            buffer_value = max(bankfull_width, min_buffer)
 
             geom_flowline = GeopackageLayer.ogr2shapely(flowline)
             if not geom_flowline.is_valid or geom_flowline.is_empty or geom_flowline.length == 0:
                 progbar.erase()
                 log.warning("Invalid flowline with id: {}".format(flowlineID))
                 continue
+
+            # Generate Bankfull Buffer on flowlines
+            geom_bf_buffer = geom_flowline.buffer((bankfull_width * meter_conversion) / 2, cap_style=2)
+            if not geom_bf_buffer.is_valid or geom_bf_buffer.is_empty or geom_bf_buffer.area == 0:
+                progbar.erase()
+                log.warning("Invalid flowline (after buffering) id: {}".format(flowlineID))
+                continue
+            bf_buff_lyr.create_feature(geom_bf_buffer, {"NHDPlusID": flowlineID, "Bankfull_Width": bankfull_width})
+
             # Generate buffer on each side of the flowline
-            geom_buffer = geom_flowline.buffer(buffer_value, cap_style=2)
+            geom_buffer = geom_flowline.buffer(((buffer_value * meter_conversion) / 2) * bankfull_expansion_factor, cap_style=2)
             if not geom_buffer.is_valid or geom_buffer.is_empty or geom_buffer.area == 0:
                 progbar.erase()
                 log.warning("Invalid flowline (after buffering) id: {}".format(flowlineID))
                 continue
+
+            buff_lyr.create_feature(geom_buffer, {"NHDPlusID": flowlineID, "Buffer_Width": buffer_value, "Bankfull_Width": bankfull_width})
 
             geom_buffer_splits = split(geom_buffer, geom_flowline)  # snap(geom, geom_buffer)) <--shapely does not snap vertex to edge. need to make new function for this to ensure more buffers have 2 split polygons
 
@@ -285,7 +324,7 @@ def confinement(huc, flowlines_orig, confining_polygon_orig, output_folder, buff
                                 for point in [pt_start, pt_end]:
                                     dbg_splitpts_lyr.create_feature(point, {"Side": side, "NHDPlusID": flowlineID})
                     if debug:
-                        dbg_buff_lyr.create_feature(geom_side, {"Side": side, "NHDPlusID": flowlineID})
+                        conf_buff_split_lyr.create_feature(geom_side, {"Side": side, "NHDPlusID": flowlineID, "Buffer_Width": buffer_value, "Bankfull_Width": bankfull_width})
 
                     # TODO: genertate floodplain polygons, here, or at the end of processing
                     # geom_floodplain_polygons = geom_confining_polygon.difference(geom_side)
@@ -528,7 +567,7 @@ def main():
     log.title('Confinement For HUC: {}'.format(args.huc))
 
     try:
-        confinement(args.huc, args.flowlines, args.confining_polygon, args.output_folder, args.buffer_field, args.confinement_type, debug=args.debug)
+        confinement(args.huc, args.flowlines, args.confining_polygon, args.output_folder, args.buffer_field, args.confinement_type, min_buffer=10.0, bankfull_expansion_factor=2.0, debug=args.debug)
 
     except Exception as e:
         log.error(e)
