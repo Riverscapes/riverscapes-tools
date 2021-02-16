@@ -1,0 +1,1 @@
+These scripts are designed to run on specific docker boxes. They are not meant to be used for running tools locally.
