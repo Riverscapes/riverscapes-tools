@@ -28,7 +28,7 @@ from rscommons.science_base import download_shapefile_collection, get_ntd_urls, 
 from rscommons.geographic_raster import gdal_dem_geographic
 from rscommons.download_hand import download_hand
 from rscommons.raster_buffer_stats import raster_buffer_stats2
-from rscommons.vector_ops import get_geometry_unary_union, copy_feature_class
+from rscommons.vector_ops import get_geometry_unary_union, copy_feature_class, buffer_by_field
 from rscommons.prism import calculate_bankfull_width
 
 from rscontext.rs_segmentation import rs_segmentation
@@ -37,6 +37,7 @@ from rscontext.clip_ownership import clip_ownership
 from rscontext.filter_ecoregions import filter_ecoregions
 from rscontext.rs_context_report import RSContextReport
 from rscontext.vegetation import clip_vegetation
+from rscontext.bankfull import bankfull_buffer, bankfull_nhd_area
 from rscontext.__version__ import __version__
 
 initGDALOGRErrors()
@@ -70,7 +71,9 @@ LayerTypes = {
         'BUFFEREDCLIP500': RSLayer('Buffered Clip Shape 500m', 'BUFFERED_CLIP500', 'Vector', 'buffered_clip500m'),
         'NETWORK300M': RSLayer('NHD Flowlines Segmented 300m', 'NETWORK300M', 'Vector', 'network_300m'),
         'NETWORK300M_INTERSECTION': RSLayer('NHD Flowlines intersected with road, rail and ownership', 'NETWORK300M_INTERSECTION', 'Vector', 'network_intersected'),
-        'NETWORK300M_CROSSINGS': RSLayer('NHD Flowlines intersected with road, rail and ownership, segmented to 300m', 'NETWORK300MCROSSINGS', 'Vector', 'network_intersected_300m')
+        'NETWORK300M_CROSSINGS': RSLayer('NHD Flowlines intersected with road, rail and ownership, segmented to 300m', 'NETWORK300MCROSSINGS', 'Vector', 'network_intersected_300m'),
+        'BANKFULL_CHANNEL': RSLayer('Estimated Bankfull Channel', 'BANKFULL_CHANNEL', 'Vector', 'bankfull'),
+        # 'COMPOSITE_CHANNEL_AREA': RSLayer('Bankfull and NHD Area', 'COMPOSITE_CHANNEL_AREA', 'Vector', 'bankfull_nhd_area')
     }),
 
     # Prism Layers
@@ -314,6 +317,15 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
     )
     log.debug('Segmentation done in {:.1f} seconds'.format(tmr.ellapsed()))
     project.add_project_geopackage(realization, LayerTypes['HYDROLOGY'])
+
+    # Add Bankfull Buffer Polygons
+    bankfull_path = os.path.join(hydrology_gpkg_path, LayerTypes['HYDROLOGY'].sub_layers['BANKFULL_CHANNEL'].rel_path)
+    bankfull_buffer(os.path.join(hydrology_gpkg_path, LayerTypes['HYDROLOGY'].sub_layers['NETWORK'].rel_path), cfg.OUTPUT_EPSG, bankfull_path, )
+
+    # TODO Add nhd/bankfull union when merge feature classes in vector.ops works with Geopackage layers
+    # bankfull_nhd_path = os.path.join(hydrology_gpkg_path, LayerTypes['HYDROLOGY'].sub_layers['COMPOSITE_CHANNEL_AREA'].rel_path)
+    # clip_path = os.path.join(hydrology_gpkg_path, LayerTypes['HYDROLOGY'].sub_layers['BUFFEREDCLIP500'].rel_path)
+    # bankfull_nhd_area(bankfull_path, nhd['NHDArea'], clip_path, cfg.OUTPUT_EPSG, hydrology_gpkg_path, LayerTypes['HYDROLOGY'].sub_layers['COMPOSITE_CHANNEL_AREA'].rel_path)
 
     # Filter the ecoregions Shapefile to only include attributes that intersect with our HUC
     eco_path = os.path.join(output_folder, 'ecoregions', 'ecoregions.shp')
