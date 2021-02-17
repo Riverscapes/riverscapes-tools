@@ -358,7 +358,7 @@ class RSProject:
                 log.error('Could not find mandatory input "{}" raster at path "{}"'.format(rs_lyr.name, copy_path))
 
             # Rasterio copies datasets efficiently
-            rasterio.shutil.copy(copy_path, file_path)
+            rasterio.shutil.copy(copy_path, file_path, compress='LZW', predictor=2)
             log.info('Raster Copied {} to {}'.format(copy_path, file_path))
 
         nod_dataset = self.add_dataset(parent_node, file_path, rs_lyr, 'Raster', replace)
