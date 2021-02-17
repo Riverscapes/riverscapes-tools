@@ -65,8 +65,10 @@
         "{env:DATA_ROOT}/confinement/${input:HUC}", // output folder
         "BFwidth",
         "ValleyBottom",
-        "--debug",
-        "--verbose"
+        "--meta", "Runner=VSCode",
+        "--reach_codes", "33400,33600,33601,33603,46000,46003,46006,46007,55800",
+        "--verbose",
+        "--debug"
       ]
     },    
   ]

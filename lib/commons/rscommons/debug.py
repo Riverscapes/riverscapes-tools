@@ -149,13 +149,13 @@ class MemoryMonitor:
         fig.savefig(imgpath, format='png', dpi=300)
 
 
-def ThreadRun(callback, memlogfile: str, *args):
+def ThreadRun(callback, memlogfile: str, *args, **kwargs):
     log = Logger('Debug')
     with ThreadPoolExecutor() as executor:
         memmon = MemoryMonitor(memlogfile, 1)
         mem_thread = executor.submit(memmon.measure_usage)
         try:
-            fn_thread = executor.submit(callback, *args)
+            fn_thread = executor.submit(callback, *args, **kwargs)
             result = fn_thread.result()
         finally:
             memmon.keep_measuring = False
