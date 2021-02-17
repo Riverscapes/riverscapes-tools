@@ -95,6 +95,10 @@ def confinement(huc: int, flowlines_orig: Path, confining_polygon_orig: Path, ou
         'ConfinementType': confinement_type
     })
 
+    # Incorporate project metadata to the riverscapes project
+    if meta is not None:
+        project.add_metadata(meta)
+
     # Copy input shapes to a geopackage
     flowlines_path = os.path.join(output_folder, LayerTypes['INPUTS'].rel_path, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
     confining_path = os.path.join(output_folder, LayerTypes['INPUTS'].rel_path, LayerTypes['INPUTS'].sub_layers['CONFINING_POLYGON'].rel_path)
