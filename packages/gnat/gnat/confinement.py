@@ -609,17 +609,35 @@ def main():
     meta = parse_metadata(args.meta)
     reach_codes = args.reach_codes.split(',') if args.reach_codes else None
     try:
-        confinement(args.huc,
-                    args.flowlines,
-                    args.confining_polygon,
-                    args.output_folder,
-                    args.buffer_field,
-                    args.confinement_type,
-                    reach_codes,
-                    min_buffer=10.0,
-                    bankfull_expansion_factor=2.5,
-                    debug=args.debug,
-                    meta=meta)
+        if args.debug is True:
+            from rscommons.debug import ThreadRun
+            memfile = os.path.join(args.output_folder, 'confinement_mem.log')
+            retcode, max_obj = ThreadRun(confinement, memfile,
+                                         args.huc,
+                                         args.flowlines,
+                                         args.confining_polygon,
+                                         args.output_folder,
+                                         args.buffer_field,
+                                         args.confinement_type,
+                                         reach_codes,
+                                         min_buffer=10.0,
+                                         bankfull_expansion_factor=2.5,
+                                         debug=args.debug,
+                                         meta=meta)
+            log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
+
+        else:
+            confinement(args.huc,
+                        args.flowlines,
+                        args.confining_polygon,
+                        args.output_folder,
+                        args.buffer_field,
+                        args.confinement_type,
+                        reach_codes,
+                        min_buffer=10.0,
+                        bankfull_expansion_factor=2.5,
+                        debug=args.debug,
+                        meta=meta)
 
     except Exception as e:
         log.error(e)
