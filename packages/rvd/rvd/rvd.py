@@ -498,7 +498,7 @@ def rvd(huc: int, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_or
     report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
     project.add_report(proj_nodes['Outputs'], LayerTypes['REPORT'], replace=True)
 
-    report = RVDReport(report_path, project, output_folder)
+    report = RVDReport(report_path, project)
     report.write()
 
     log.info('RVD complete')

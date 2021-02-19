@@ -7,7 +7,6 @@ IFS=$'\n\t'
 (: "${PROGRAM?}")
 (: "${RS_CONFIG?}")
 (: "${TAGS?}")
-EXIT_CODE=0
 
 echo "$RS_CONFIG" > /root/.riverscapes
 
@@ -87,12 +86,19 @@ try() {
     $VBET_DIR \
     --verbose
   if [[ $? != 0 ]]; then return 1; fi
+
+  cd /usr/local/src/riverscapes-tools/packages/vbet
+  /usr/local/venv/bin/python -m vbet.vbet_rs \
+    $VBET_DIR/project.rs.xml \
+    $RS_CONTEXT_DIR/project.rs.xml
+
   echo "<<VBET COMPLETE>>"
 
   echo "======================  Final Disk space usage ======================="
   df -h
-
   echo "======================  Upload to the warehouse ======================="
+
+
 
   # Upload the HUC into the warehouse
   cd $VBET_DIR
@@ -144,6 +150,7 @@ try() {
     --verbose
   if [[ $? != 0 ]]; then return 1; fi
 
+
   # Upload the HUC into the warehouse. This is useful
   # Since BRAT RUn might fail
   cd $BRAT_DIR
@@ -155,6 +162,11 @@ try() {
   ##########################################################################################
   bratrun $BRAT_DIR --verbose
   if [[ $? != 0 ]]; then return 1; fi
+
+  cd /usr/local/src/riverscapes-tools/packages/brat
+  /usr/local/venv/bin/python -m sqlbrat.brat_rs \
+    $BRAT_DIR/project.rs.xml \
+    "$RS_CONTEXT_DIR/project.rs.xml,$VBET_DIR/project.rs.xml"
 
   echo "======================  Final Disk space usage ======================="
   df -h
@@ -190,6 +202,12 @@ try() {
     --verbose \
     --debug
   if [[ $? != 0 ]]; then return 1; fi
+
+
+  cd /usr/local/src/riverscapes-tools/packages/gnat
+  /usr/local/venv/bin/python -m gnat.confinement_rs \
+    $CONFINEMENT_DIR/project.rs.xml \
+    "$RS_CONTEXT_DIR/project.rs.xml,$VBET_DIR/project.rs.xml"
 
   echo "======================  Final Disk space usage ======================="
   df -h
@@ -228,6 +246,11 @@ try() {
       --verbose
   if [[ $? != 0 ]]; then return 1; fi
 
+
+  cd /usr/local/src/riverscapes-tools/packages/rvd
+  /usr/local/venv/bin/python -m rvd.rvd_rs \
+    $RVD_DIR/project.rs.xml \
+    "$RS_CONTEXT_DIR/project.rs.xml,$VBET_DIR/project.rs.xml"
 
   echo "======================  Final Disk space usage ======================="
   df -h
