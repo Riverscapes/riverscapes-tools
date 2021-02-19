@@ -42,7 +42,8 @@
         // "--temp_folder", "{env:DOWNLOAD_FOLDER}/tmp",
         // "--force",
         // "--parallel",
-        "--verbose"
+        "--verbose",
+        "--debug"
       ]
     },
     {

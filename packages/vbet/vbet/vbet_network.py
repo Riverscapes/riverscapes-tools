@@ -12,15 +12,16 @@
 # -------------------------------------------------------------------------------
 from osgeo import ogr
 from shapely.geometry.base import BaseGeometry
-from rscommons import Logger, VectorBase, GeopackageLayer
+from rscommons import Logger, VectorBase
 from rscommons.vector_ops import get_geometry_unary_union
 from rscommons import get_shp_or_gpkg
 
 
-def vbet_network(flow_lines_path: str, flow_areas_path: str, out_path: str, epsg: int = None, fcodes: list = [46006]):
+def vbet_network(flow_lines_path: str, flow_areas_path: str, out_path: str, epsg: int = None, fcodes: list = None):
 
     log = Logger('VBET Network')
     log.info('Generating perennial network')
+    fcodes = [46006] if fcodes is None else fcodes
 
     with get_shp_or_gpkg(out_path, write=True) as vbet_net, \
             get_shp_or_gpkg(flow_lines_path) as flow_lines_lyr:
@@ -44,10 +45,10 @@ def vbet_network(flow_lines_path: str, flow_areas_path: str, out_path: str, epsg
         log.info('VBET network generated with {} features'.format(fcount))
 
 
-def include_features(source_layer: VectorBase, out_layer: VectorBase, attribute_filter: str = None, clip_shape: BaseGeometry = None, excluded_fids: list = []):
+def include_features(source_layer: VectorBase, out_layer: VectorBase, attribute_filter: str = None, clip_shape: BaseGeometry = None, excluded_fids: list = None):
 
     included_fids = []
-
+    excluded_fids = [] if excluded_fids is None else excluded_fids
     for feature, _counter, _progbar in source_layer.iterate_features('Including Features', write_layers=[out_layer], attribute_filter=attribute_filter, clip_shape=clip_shape):
         out_feature = ogr.Feature(out_layer.ogr_layer_def)
 

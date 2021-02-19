@@ -1,10 +1,9 @@
 import os
-from tempfile import NamedTemporaryFile
 import shutil
 from osgeo import gdal
 import rasterio
 import numpy as np
-from rscommons import ProgressBar, Logger, VectorBase, Timer
+from rscommons import ProgressBar, Logger, VectorBase, Timer, TempRaster
 
 
 def rasterize(in_lyr_path, out_raster_path, template_path):
@@ -31,10 +30,10 @@ def rasterize(in_lyr_path, out_raster_path, template_path):
     progbar.update(0)
 
     # Rasterize the polygon to a temporary file
-    with NamedTemporaryFile(suffix='.tif', mode="w+", delete=False) as tempfile:
-        log.debug('Temporary file: {}'.format(tempfile.name))
+    with TempRaster('vbet_rasterize') as tempfile:
+        log.debug('Temporary file: {}'.format(tempfile.filepath))
         gdal.Rasterize(
-            tempfile.name,
+            tempfile.filepath,
             ds_path,
             layers=[lyr_path],
             xRes=t[0], yRes=t[4],
@@ -47,9 +46,7 @@ def rasterize(in_lyr_path, out_raster_path, template_path):
         progbar.finish()
 
         # Now mask the output correctly
-        mask_rasters_nodata(tempfile.name, template_path, out_raster_path)
-        tempfile.close()
-        os.unlink(tempfile.name)
+        mask_rasters_nodata(tempfile.filepath, template_path, out_raster_path)
 
 
 def mask_rasters_nodata(in_raster_path, nodata_raster_path, out_raster_path):
@@ -101,8 +98,8 @@ def proximity_raster(src_raster_path: str, out_raster_path: str, dist_units="PIX
     srcband = src_ds.GetRasterBand(1)
 
     drv = gdal.GetDriverByName('GTiff')
-    with NamedTemporaryFile(suffix=".tif", mode="w+", delete=False) as tempfile:
-        dst_ds = drv.Create(tempfile.name,
+    with TempRaster('vbet_proximity_raster') as tempfile:
+        dst_ds = drv.Create(tempfile.filepath,
                             src_ds.RasterXSize, src_ds.RasterYSize, 1,
                             gdal.GetDataTypeByName('Float32'))
 
@@ -121,13 +118,11 @@ def proximity_raster(src_raster_path: str, out_raster_path: str, dist_units="PIX
 
         # Preserve the nodata from the source
         if preserve_nodata:
-            mask_rasters_nodata(tempfile.name, src_raster_path, out_raster_path)
+            mask_rasters_nodata(tempfile.filepath, src_raster_path, out_raster_path)
         else:
-            shutil.copyfile(tempfile.name, out_raster_path)
+            shutil.copyfile(tempfile.filepath, out_raster_path)
 
         log.info('completed in {}'.format(tmr.toString()))
-        tempfile.close()
-        os.unlink(tempfile.name)
 
 
 def translate(vrtpath_in: str, raster_out_path: str, band: int):
@@ -197,16 +192,16 @@ def raster_clean(in_raster_path: str, out_raster_path: str, buffer_pixels=1):
 
     log = Logger('raster_clean')
 
-    with NamedTemporaryFile(suffix='.tif', mode="w+", delete=False) as tmp_prox_out, \
-            NamedTemporaryFile(suffix='.tif', mode="w+", delete=False) as tmp_buff_out, \
-            NamedTemporaryFile(suffix='.tif', mode="w+", delete=False) as tmp_prox_in, \
-            NamedTemporaryFile(suffix='.tif', mode="w+", delete=False) as inv_mask:
+    with TempRaster('vbet_clean_prox_out') as tmp_prox_out, \
+            TempRaster('vbet_clean_buff_out') as tmp_buff_out, \
+            TempRaster('vbet_clean_prox_in') as tmp_prox_in, \
+            TempRaster('vbet_clean_mask') as inv_mask:
 
         # 1. Find the proximity raster
-        proximity_raster(in_raster_path, tmp_prox_out.name, preserve_nodata=False)
+        proximity_raster(in_raster_path, tmp_prox_out.filepath, preserve_nodata=False)
 
         # 2. Logical and the prox > 1 with the mask for the input raster
-        with rasterio.open(tmp_prox_out.name) as prox_out_src, \
+        with rasterio.open(tmp_prox_out.filepath) as prox_out_src, \
                 rasterio.open(in_raster_path) as in_data_src:
 
             # All 3 rasters should have the same extent and properties. They differ only in dtype
@@ -216,7 +211,7 @@ def raster_clean(in_raster_path: str, out_raster_path: str, buffer_pixels=1):
             out_meta['count'] = 1
             out_meta['compress'] = 'deflate'
 
-            with rasterio.open(tmp_buff_out.name, 'w', **out_meta) as out_data:
+            with rasterio.open(tmp_buff_out.filepath, 'w', **out_meta) as out_data:
                 progbar = ProgressBar(len(list(out_data.block_windows(1))), 50, "Growing the raster by {} pixels".format(buffer_pixels))
                 counter = 0
                 # Again, these rasters should be orthogonal so their windows should also line up
@@ -236,11 +231,11 @@ def raster_clean(in_raster_path: str, out_raster_path: str, buffer_pixels=1):
                 progbar.finish()
 
         # 3. Invert the product of (2) and find the inwards proximity
-        inverse_mask(tmp_buff_out.name, inv_mask.name)
-        proximity_raster(inv_mask.name, tmp_prox_in.name, preserve_nodata=False)
+        inverse_mask(tmp_buff_out.filepath, inv_mask.filepath)
+        proximity_raster(inv_mask.filepath, tmp_prox_in.filepath, preserve_nodata=False)
 
         # 4. Now do the final logical and to shrink back a pixel
-        with rasterio.open(tmp_prox_in.name) as prox_in_src:
+        with rasterio.open(tmp_prox_in.filepath) as prox_in_src:
             # Note: we reuse outmeta from before
 
             with rasterio.open(out_raster_path, 'w', **out_meta) as out_data_src:
@@ -259,9 +254,5 @@ def raster_clean(in_raster_path: str, out_raster_path: str, buffer_pixels=1):
                     out_data_src.write(output.filled(out_meta['nodata']).astype(out_meta['dtype']), window=window, indexes=1)
 
                 progbar.finish()
-
-        for f in [tmp_prox_out, tmp_buff_out, tmp_prox_in, inv_mask]:
-            f.close()
-            os.unlink(f.name)
 
         log.info('Cleaning finished')

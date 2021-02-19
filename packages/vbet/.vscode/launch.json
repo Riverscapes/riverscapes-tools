@@ -29,7 +29,8 @@
         "{env:DATA_ROOT}/rs_context/${input:HUC}/topography/hand.tif",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/topography/dem_hillshade.tif",
         "{env:DATA_ROOT}/vbet/${input:HUC}",
-        "--verbose"
+        "--verbose",
+        "--debug"
       ]
     },
     {
@@ -48,6 +49,17 @@
         "--verbose"
       ]
     },
+    {
+      "name": "Augment XML",
+      "type": "python",
+      "request": "launch",
+      "module": "vbet.vbet_rs",
+      "console": "integratedTerminal",
+      "args": [
+        "{env:DATA_ROOT}/vbet/${input:HUC}/project.rs.xml",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/rs_context/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/rs_context/${input:HUC}/project.rs.xml"
+      ]
+    },    
     {
       "name": "Write report",
       "type": "python",
