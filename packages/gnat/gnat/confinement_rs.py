@@ -40,7 +40,7 @@ def main():
         )
 
         out_prj.XMLBuilder.write()
-        report_path = out_prj.XMLBuilder.find('.//HTMLFile[@id="REPORT"]/Path').text
+        report_path = out_prj.XMLBuilder.find('.//HTMLFile[@id="CONFINEMENT_RUN_REPORT"]/Path').text
         geopackage_path = out_prj.XMLBuilder.find('.//Geopackage[@id="CONFINEMENT"]/Path').text
         report = ConfinementReport(geopackage_path, os.path.join(out_prj.project_dir, report_path), out_prj)
         report.write()

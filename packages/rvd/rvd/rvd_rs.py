@@ -44,7 +44,7 @@ def main():
         )
 
         out_prj.XMLBuilder.write()
-        report_path = out_prj.XMLBuilder.find('.//HTMLFile[@id="REPORT"]/Path').text
+        report_path = out_prj.XMLBuilder.find('.//HTMLFile[@id="RVD_REPORT"]/Path').text
         report = RVDReport(os.path.join(out_prj.project_dir, report_path), out_prj)
         report.write()
 

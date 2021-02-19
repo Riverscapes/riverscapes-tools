@@ -51,7 +51,7 @@ def main():
         gpkg_path = os.path.join(out_prj.project_dir, out_prj.XMLBuilder.find('.//Outputs/Geopackage[@id="OUTPUTS"]/Path').text)
 
         out_prj.XMLBuilder.write()
-        report_path = out_prj.XMLBuilder.find('.//HTMLFile[@id="REPORT"]/Path').text
+        report_path = out_prj.XMLBuilder.find('.//HTMLFile[@id="BRAT_RUN_REPORT"]/Path').text
         report = BratReport(gpkg_path, os.path.join(out_prj.project_dir, report_path), out_prj)
         report.write()
 
