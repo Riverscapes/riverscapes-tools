@@ -62,7 +62,7 @@ LayerTypes = {
 }
 
 
-def confinement(huc: int, flowlines_orig: Path, confining_polygon_orig: Path, output_folder: Path, buffer_field: str, confinement_type: str, reach_codes: List[int], min_buffer: float = 0.0, bankfull_expansion_factor: float = 1.0, debug: bool = False, meta=None):
+def confinement(huc: int, flowlines_orig: Path, confining_polygon_orig: Path, output_folder: Path, buffer_field: str, confinement_type: str, reach_codes: List[str], min_buffer: float = 0.0, bankfull_expansion_factor: float = 1.0, debug: bool = False, meta=None):
     """Generate confinement attribute for a stream network
 
     Args:
@@ -76,7 +76,7 @@ def confinement(huc: int, flowlines_orig: Path, confining_polygon_orig: Path, ou
         min_buffer (float): minimum bankfull value to use in buffers e.g. raster cell resolution
         bankfull_expansion_factor (float): factor to expand bankfull on each side of bank
         debug (bool): run tool in debug mode (save intermediate outputs). Default = False
-
+        meta (Dict[str,str]): dictionary of riverscapes metadata key: value pairs
     """
 
     log = Logger("Confinement")

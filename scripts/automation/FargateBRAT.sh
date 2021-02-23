@@ -1,7 +1,12 @@
 #!/bin/bash
 set -eu
 IFS=$'\n\t'
-GIT_REF_USE="${GIT_REF:-master}"
+if [[ -v DEBUG ]];
+then
+    DEBUG_USE="--debug"
+else
+    DEBUG_USE=" "
+fi
 
 # These environment variables need to be present before the script starts
 (: "${HUC?}")
@@ -10,6 +15,7 @@ GIT_REF_USE="${GIT_REF:-master}"
 (: "${VBET_TAGS?}")
 (: "${RSCONTEXT_TAGS?}")
 (: "${BRAT_TAGS?}")
+(: "${DEBUG_USE?}")
 
 echo "$RS_CONFIG" > /root/.riverscapes
 
@@ -27,6 +33,7 @@ echo "PROGRAM: $PROGRAM"
 echo "VBET_TAGS: $VBET_TAGS"
 echo "RSCONTEXT_TAGS: $RSCONTEXT_TAGS"
 echo "BRAT_TAGS: $BRAT_TAGS"
+echo "DEBUG_USE: $DEBUG_USE"
 
 # Drop into our venv immediately
 source /usr/local/venv/bin/activate
@@ -76,7 +83,8 @@ try() {
     --flow_areas $RS_CONTEXT_DIR/hydrology/NHDArea.shp \
     --waterbodies $RS_CONTEXT_DIR/hydrology/NHDWaterbody.shp \
     --max_waterbody 0.001 \
-    --verbose
+    --meta Runner=Cybercastor \
+    --verbose $DEBUG_USE
   if [[ $? != 0 ]]; then return 1; fi
 
   # Upload the HUC into the warehouse. This is useful
@@ -88,8 +96,13 @@ try() {
   ##########################################################################################
   # Now Run BRAT Run
   ##########################################################################################
-  bratrun $BRAT_DIR --verbose
+  bratrun $BRAT_DIR --verbose $DEBUG_USE
   if [[ $? != 0 ]]; then return 1; fi
+
+  cd /usr/local/src/riverscapes-tools/packages/brat
+  /usr/local/venv/bin/python -m sqlbrat.brat_rs \
+    $BRAT_DIR/project.rs.xml \
+    "$RS_CONTEXT_DIR/project.rs.xml,$VBET_DIR/project.rs.xml"
 
   echo "======================  Final Disk space usage ======================="
   df -h

@@ -16,10 +16,11 @@ import json
 import traceback
 import uuid
 import datetime
+from typing import Dict
 from osgeo import ogr
 
 from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALOGRErrors, Timer
-from rscommons.util import safe_makedirs, safe_remove_dir
+from rscommons.util import safe_makedirs, safe_remove_dir, parse_metadata
 from rscommons.clean_nhd_data import clean_nhd_data
 from rscommons.clean_ntd_data import clean_ntd_data
 from rscommons.raster_warp import raster_warp, raster_vrt_stitch
@@ -93,7 +94,7 @@ SEGMENTATION = {
 }
 
 
-def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregions, prism_folder, output_folder, download_folder, scratch_dir, parallel, force_download):
+def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregions, prism_folder, output_folder, download_folder, scratch_dir, parallel, force_download, meta: Dict[str, str]):
     """
 
     Download riverscapes context layers for the specified HUC and organize them as a Riverscapes project
@@ -106,6 +107,7 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
     :param download_folder: Temporary folder where downloads are cached. This can be shared between rs_context processes
     :param force_download: If false then downloads can be skipped if the files already exist
     :param prism_folder: folder containing PRISM rasters in *.bil format
+    :param meta (Dict[str,str]): dictionary of riverscapes metadata key: value pairs
     :return:
     """
     log = Logger("RS Context")
@@ -141,6 +143,10 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
 
     # Download the four digit NHD archive containing the flow lines and watershed boundaries
     log.info('Processing NHD')
+
+    # Incorporate project metadata to the riverscapes project
+    if meta is not None:
+        project.add_metadata(meta)
 
     nhd_download_folder = os.path.join(download_folder, 'nhd', huc[:4])
     nhd_unzip_folder = os.path.join(scratch_dir, 'nhd', huc[:4])
@@ -419,6 +425,7 @@ def main():
     parser.add_argument('--force', help='(optional) download existing files ', action='store_true', default=False)
     parser.add_argument('--parallel', help='(optional) for running multiple instances of this at the same time', action='store_true', default=False)
     parser.add_argument('--temp_folder', help='(optional) cache folder for downloading files ', type=str)
+    parser.add_argument('--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
     parser.add_argument('--debug', help='(optional) more output about things like memory usage. There is a performance cost', action='store_true', default=False)
 
@@ -445,15 +452,17 @@ def main():
     scratch_dir = args.temp_folder if args.temp_folder else os.path.join(args.download, 'scratch', 'rs_context{}'.format(parallel_code))
     safe_makedirs(scratch_dir)
 
+    meta = parse_metadata(args.meta)
+
     try:
 
         if args.debug is True:
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output, 'rs_context_memusage.log')
-            retcode, max_obj = ThreadRun(rs_context, memfile, args.huc, args.existing, args.historic, args.ownership, args.fairmarket, args.ecoregions, args.prism, args.output, args.download, scratch_dir, args.parallel, args.force)
+            retcode, max_obj = ThreadRun(rs_context, memfile, args.huc, args.existing, args.historic, args.ownership, args.fairmarket, args.ecoregions, args.prism, args.output, args.download, scratch_dir, args.parallel, args.force, meta)
             log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
         else:
-            rs_context(args.huc, args.existing, args.historic, args.ownership, args.fairmarket, args.ecoregions, args.prism, args.output, args.download, scratch_dir, args.parallel, args.force)
+            rs_context(args.huc, args.existing, args.historic, args.ownership, args.fairmarket, args.ecoregions, args.prism, args.output, args.download, scratch_dir, args.parallel, args.force, meta)
 
     except Exception as e:
         log.error(e)

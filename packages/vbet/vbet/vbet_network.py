@@ -10,6 +10,7 @@
 #
 # https://nhd.usgs.gov/userGuide/Robohelpfiles/NHD_User_Guide/Feature_Catalog/Hydrography_Dataset/Complete_FCode_List.htm
 # -------------------------------------------------------------------------------
+from typing import List
 from osgeo import ogr
 from shapely.geometry.base import BaseGeometry
 from rscommons import Logger, VectorBase
@@ -17,11 +18,11 @@ from rscommons.vector_ops import get_geometry_unary_union
 from rscommons import get_shp_or_gpkg
 
 
-def vbet_network(flow_lines_path: str, flow_areas_path: str, out_path: str, epsg: int = None, fcodes: list = None):
+def vbet_network(flow_lines_path: str, flow_areas_path: str, out_path: str, epsg: int = None, fcodes: List[str] = None):
 
     log = Logger('VBET Network')
     log.info('Generating perennial network')
-    fcodes = [46006] if fcodes is None else fcodes
+    fcodes = ["46006"] if fcodes is None else fcodes
 
     with get_shp_or_gpkg(out_path, write=True) as vbet_net, \
             get_shp_or_gpkg(flow_lines_path) as flow_lines_lyr:

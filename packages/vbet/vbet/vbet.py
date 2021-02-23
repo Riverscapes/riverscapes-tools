@@ -20,6 +20,7 @@ import json
 import glob
 import sqlite3
 import time
+from typing import List, Dict
 # LEave OSGEO import alone. It is necessary even if it looks unused
 from osgeo import gdal
 import rasterio
@@ -73,12 +74,31 @@ LayerTypes = {
 }
 
 
-def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_dem, hillshade, max_hand, min_hole_area_m, project_folder, meta):
+def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_dem, hillshade, max_hand, min_hole_area_m, project_folder, reach_codes: List[str], meta: Dict[str, str]):
+    """[summary]
 
+    Args:
+        huc ([type]): [description]
+        flowlines_orig ([type]): [description]
+        flowareas_orig ([type]): [description]
+        orig_slope ([type]): [description]
+        json_transforms ([type]): [description]
+        orig_dem ([type]): [description]
+        hillshade ([type]): [description]
+        max_hand ([type]): [description]
+        min_hole_area_m ([type]): [description]
+        project_folder ([type]): [description]
+        reach_codes (List[int]): NHD reach codes for features to include in outputs
+        meta (Dict[str,str]): dictionary of riverscapes metadata key: value pairs
+    """
     log = Logger('VBET')
     log.info('Starting VBET v.{}'.format(cfg.version))
 
     project, _realization, proj_nodes = create_project(huc, project_folder)
+
+    # Incorporate project metadata to the riverscapes project
+    if meta is not None:
+        project.add_metadata(meta)
 
     # Copy the inp
     _proj_slope_node, proj_slope = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['SLOPE_RASTER'], orig_slope)
@@ -102,10 +122,8 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
     project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
 
     # Create a copy of the flow lines with just the perennial and also connectors inside flow areas
-    fcodes = [33400, 46003, 46006, 46007, 55800]  # TODO expose included fcodes as a tool parameter?
-
     network_path = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['VBET_NETWORK'].rel_path)
-    vbet_network(flowlines_path, flowareas_path, network_path, cfg.OUTPUT_EPSG, fcodes)
+    vbet_network(flowlines_path, flowareas_path, network_path, cfg.OUTPUT_EPSG, reach_codes)
 
     # Generate HAND from dem and vbet_network
     # TODO make a place for this temporary folder. it can be removed after hand is generated.
@@ -291,9 +309,6 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
     report = VBETReport(report_path, project)
     report.write()
 
-    # Incorporate project metadata to the riverscapes project
-    project.add_metadata(meta)
-
     log.info('VBET Completed Successfully')
 
 
@@ -370,6 +385,7 @@ def main():
     parser.add_argument('dem', help='DEM raster path', type=str)
     parser.add_argument('hillshade', help='Hillshade raster path', type=str)
     parser.add_argument('output_dir', help='Folder where output VBET project will be created', type=str)
+    parser.add_argument('--reach_codes', help='Comma delimited reach codes (FCode) to retain when filtering features. Omitting this option retains all features.', type=str)
     parser.add_argument('--max_slope', help='Maximum slope to be considered', type=float, default=12)
     parser.add_argument('--max_hand', help='Maximum HAND to be considered', type=float, default=50)
     parser.add_argument('--min_hole_area', help='Minimum hole retained in valley bottom (sq m)', type=float, default=50000)
@@ -390,16 +406,17 @@ def main():
     meta = parse_metadata(args.meta)
 
     json_transform = json.dumps({"Slope": 1, "HAND": 2, "Channel": 3, "Flow Areas": 4})
+    reach_codes = args.reach_codes.split(',') if args.reach_codes else None
 
     try:
         if args.debug is True:
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output_dir, 'vbet_mem.log')
-            retcode, max_obj = ThreadRun(vbet, memfile, args.huc, args.flowlines, args.flowareas, args.slope, json_transform, args.dem, args.hillshade, args.max_hand, args.min_hole_area, args.output_dir, meta)
+            retcode, max_obj = ThreadRun(vbet, memfile, args.huc, args.flowlines, args.flowareas, args.slope, json_transform, args.dem, args.hillshade, args.max_hand, args.min_hole_area, args.output_dir, reach_codes, meta)
             log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
 
         else:
-            vbet(args.huc, args.flowlines, args.flowareas, args.slope, json_transform, args.dem, args.hillshade, args.max_hand, args.min_hole_area, args.output_dir, meta)
+            vbet(args.huc, args.flowlines, args.flowareas, args.slope, json_transform, args.dem, args.hillshade, args.max_hand, args.min_hole_area, args.output_dir, reach_codes, meta)
 
     except Exception as e:
         log.error(e)

@@ -1,6 +1,12 @@
 #!/bin/bash
 set -eu
 IFS=$'\n\t'
+if [[ -v DEBUG ]];
+then
+    DEBUG_USE="--debug"
+else
+    DEBUG_USE=" "
+fi
 
 # These environment variables need to be present before the script starts
 (: "${HUC?}")
@@ -9,6 +15,7 @@ IFS=$'\n\t'
 (: "${VBET_TAGS?}")
 (: "${RSCONTEXT_TAGS?}")
 (: "${RVD_TAGS?}")
+(: "${DEBUG_USE?}")
 
 echo "$RS_CONFIG" > /root/.riverscapes
 
@@ -27,7 +34,7 @@ echo "PROGRAM: $PROGRAM"
 echo "VBET_TAGS: $VBET_TAGS"
 echo "RSCONTEXT_TAGS: $RSCONTEXT_TAGS"
 echo "RVD_TAGS: $RVD_TAGS"
-echo "GIT_REF_USE: $GIT_REF_USE"
+echo "DEBUG_USE: $DEBUG_USE"
 # sleep 1h
 
 # Drop into our venv immediately
@@ -61,12 +68,18 @@ try() {
       $RS_CONTEXT_DIR/vegetation/historic_veg.tif \
       $VBET_DIR/outputs/vbet.gpkg/vbet_50 \
       $RVD_DIR \
-      --reach_codes 33400,33600,33601,33603,46000,46003,46006,46007,55800 \
+      --reach_codes 33400,46003,46006,46007,55800 \
       --flow_areas $RS_CONTEXT_DIR/hydrology/NHDArea.shp \
       --waterbodies $RS_CONTEXT_DIR/hydrology/NHDWaterbody.shp \
-      --verbose
+      --meta Runner=Cybercastor \
+      --verbose $DEBUG_USE
   if [[ $? != 0 ]]; then return 1; fi
 
+
+  cd /usr/local/src/riverscapes-tools/packages/rvd
+  /usr/local/venv/bin/python -m rvd.rvd_rs \
+    $RVD_DIR/project.rs.xml \
+    "$RS_CONTEXT_DIR/project.rs.xml,$VBET_DIR/project.rs.xml"
 
   echo "======================  Final Disk space usage ======================="
   df -h
