@@ -1,12 +1,19 @@
 #!/bin/bash
 set -eu
 IFS=$'\n\t'
+if [[ -v DEBUG ]];
+then
+    DEBUG_USE="--debug"
+else
+    DEBUG_USE=" "
+fi
 
 # These environment variables need to be present before the script starts
 (: "${HUC?}")
 (: "${PROGRAM?}")
 (: "${RS_CONFIG?}")
 (: "${TAGS?}")
+(: "${DEBUG_USE?}")
 
 echo "$RS_CONFIG" > /root/.riverscapes
 
@@ -36,7 +43,8 @@ EOF
 echo "HUC: $HUC"
 echo "PROGRAM: $PROGRAM"
 echo "TAGS: $TAGS"
-# sleep 1h
+echo "DEBUG_USE: $DEBUG_USE"
+
 
 # Drop into our venv immediately
 source /usr/local/venv/bin/activate
@@ -69,9 +77,10 @@ try() {
     /shared/download/prism \
     $RS_CONTEXT_DIR \
     /shared/download/ \
-    --verbose \
+    --meta Runner=Cybercastor \
     --parallel \
-    --temp_folder $RSC_TASK_SCRATCH
+    --temp_folder $RSC_TASK_SCRATCH \
+    --verbose $DEBUG_USE
   if [[ $? != 0 ]]; then return 1; fi
   echo "<<RS_CONTEXT COMPLETE>>"
 
@@ -92,7 +101,9 @@ try() {
     $RS_CONTEXT_DIR/topography/hand.tif \
     $RS_CONTEXT_DIR/topography/dem_hillshade.tif \
     $VBET_DIR \
-    --verbose
+    --meta Runner=Cybercastor \
+    --reach_codes 33400,46003,46006,46007,55800 \
+    --verbose $DEBUG_USE
   if [[ $? != 0 ]]; then return 1; fi
 
   cd /usr/local/src/riverscapes-tools/packages/vbet
@@ -155,7 +166,8 @@ try() {
     --flow_areas $RS_CONTEXT_DIR/hydrology/NHDArea.shp \
     --waterbodies $RS_CONTEXT_DIR/hydrology/NHDWaterbody.shp \
     --max_waterbody 0.001 \
-    --verbose
+    --meta Runner=Cybercastor \
+    --verbose $DEBUG_USE
   if [[ $? != 0 ]]; then return 1; fi
 
 
@@ -168,7 +180,7 @@ try() {
   ##########################################################################################
   # Now Run BRAT Run
   ##########################################################################################
-  bratrun $BRAT_DIR --verbose
+  bratrun $BRAT_DIR --verbose $DEBUG_USE
   if [[ $? != 0 ]]; then return 1; fi
 
   cd /usr/local/src/riverscapes-tools/packages/brat
@@ -207,8 +219,10 @@ try() {
     $CONFINEMENT_DIR \
     BFwidth \
     ValleyBottom \
-    --verbose \
-    --debug
+    --meta Runner=Cybercastor \
+    --reach_codes 33400,46003,46006,46007,55800 \
+    --verbose $DEBUG_USE
+
   if [[ $? != 0 ]]; then return 1; fi
 
 
@@ -248,10 +262,11 @@ try() {
       $RS_CONTEXT_DIR/vegetation/historic_veg.tif \
       $VBET_DIR/outputs/vbet.gpkg/vbet_50 \
       $RVD_DIR \
-      --reach_codes 33400,33600,33601,33603,46000,46003,46006,46007,55800 \
+      --reach_codes 33400,46003,46006,46007,55800 \
       --flow_areas $RS_CONTEXT_DIR/hydrology/NHDArea.shp \
       --waterbodies $RS_CONTEXT_DIR/hydrology/NHDWaterbody.shp \
-      --verbose
+      --meta Runner=Cybercastor \
+      --verbose $DEBUG_USE
   if [[ $? != 0 ]]; then return 1; fi
 
 

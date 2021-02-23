@@ -15,11 +15,12 @@ import uuid
 import traceback
 import datetime
 import time
-from typing import List
+from typing import List, Dict
 from osgeo import ogr
 from rscommons import GeopackageLayer
 from rscommons.vector_ops import copy_feature_class
 from rscommons import Logger, initGDALOGRErrors, RSLayer, RSProject, ModelConfig, dotenv
+from rscommons.util import parse_metadata
 from rscommons.build_network import build_network
 from rscommons.database import create_database, SQLiteCon
 from sqlbrat.utils.vegetation_summary import vegetation_summary
@@ -62,7 +63,7 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
                reach_codes: List[str], canal_codes: List[str], peren_codes: List[str],
                flow_areas: Path, waterbodies: Path, max_waterbody: float,
                valley_bottom: Path, roads: Path, rail: Path, canals: Path, ownership: Path,
-               elevation_buffer: float):
+               elevation_buffer: float, meta: Dict[str, str]):
     """Build a BRAT project by segmenting a reach network and copying
     all the necessary layers into the resultant BRAT project
 
@@ -90,6 +91,7 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
         canals {str} -- Path to polyline canals ShapeFile
         ownership {str} -- Path to land ownership polygon ShapeFile
         elevation_buffer {float} -- Distance to buffer DEM when sampling elevation
+        meta (Dict[str,str]): dictionary of riverscapes metadata key: value pairs
     """
 
     log = Logger("BRAT Build")
@@ -97,6 +99,10 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
     log.info('EPSG: {}'.format(cfg.OUTPUT_EPSG))
 
     project, _realization, proj_nodes = create_project(huc, output_folder)
+
+    # Incorporate project metadata to the riverscapes project
+    if meta is not None:
+        project.add_metadata(meta)
 
     log.info('Adding input rasters to project')
     _dem_raster_path_node, dem_raster_path = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], dem)
@@ -269,7 +275,9 @@ def main():
     parser.add_argument('--waterbodies', help='(optional) waterbodies input', type=str)
     parser.add_argument('--max_waterbody', help='(optional) maximum size of small waterbody artificial flows to be retained', type=float)
 
+    parser.add_argument('--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
+    parser.add_argument('--debug', help='(optional) more output about things like memory usage. There is a performance cost', action='store_true', default=False)
 
     # Substitute patterns for environment varaibles
     args = dotenv.parse_args_env(parser)
@@ -282,16 +290,35 @@ def main():
     log = Logger("BRAT Build")
     log.setup(logPath=os.path.join(args.output_folder, "brat_build.log"), verbose=args.verbose)
     log.title('BRAT Build Tool For HUC: {}'.format(args.huc))
+
+    meta = parse_metadata(args.meta)
+
     try:
-        brat_build(
-            args.huc, args.flowlines, args.dem, args.slope, args.hillshade,
-            args.existing_veg, args.historical_veg, args.output_folder,
-            args.streamside_buffer, args.riparian_buffer,
-            reach_codes, canal_codes, peren_codes,
-            args.flow_areas, args.waterbodies, args.max_waterbody,
-            args.valley_bottom, args.roads, args.rail, args.canals, args.ownership,
-            args.elevation_buffer
-        )
+        if args.debug is True:
+            from rscommons.debug import ThreadRun
+            memfile = os.path.join(args.output_folder, 'brat_build_memusage.log')
+            retcode, max_obj = ThreadRun(brat_build, memfile,
+                                         args.huc, args.flowlines, args.dem, args.slope, args.hillshade,
+                                         args.existing_veg, args.historical_veg, args.output_folder,
+                                         args.streamside_buffer, args.riparian_buffer,
+                                         reach_codes, canal_codes, peren_codes,
+                                         args.flow_areas, args.waterbodies, args.max_waterbody,
+                                         args.valley_bottom, args.roads, args.rail, args.canals, args.ownership,
+                                         args.elevation_buffer,
+                                         meta
+                                         )
+            log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
+        else:
+            brat_build(
+                args.huc, args.flowlines, args.dem, args.slope, args.hillshade,
+                args.existing_veg, args.historical_veg, args.output_folder,
+                args.streamside_buffer, args.riparian_buffer,
+                reach_codes, canal_codes, peren_codes,
+                args.flow_areas, args.waterbodies, args.max_waterbody,
+                args.valley_bottom, args.roads, args.rail, args.canals, args.ownership,
+                args.elevation_buffer,
+                meta
+            )
 
     except Exception as ex:
         log.error(ex)

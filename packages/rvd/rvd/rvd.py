@@ -22,7 +22,7 @@ from rasterio import features
 from osgeo import ogr, gdal, osr
 import numpy as np
 
-from rscommons.util import safe_makedirs
+from rscommons.util import safe_makedirs, parse_metadata
 from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALOGRErrors, ProgressBar
 from rscommons import GeopackageLayer, VectorBase, get_shp_or_gpkg
 from rscommons.build_network import build_network
@@ -104,7 +104,7 @@ departure_type_columns = ['ExistingRiparianMean',
 
 
 def rvd(huc: int, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_orig: Path,
-        valley_bottom_orig: Path, output_folder: Path, reach_codes: List[int], flow_areas_orig: Path, waterbodies_orig: Path):
+        valley_bottom_orig: Path, output_folder: Path, reach_codes: List[str], flow_areas_orig: Path, waterbodies_orig: Path, meta=None):
     """[Generate segmented reaches on flowline network and calculate RVD from historic and existing vegetation rasters
 
     Args:
@@ -117,6 +117,7 @@ def rvd(huc: int, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_or
         reach_codes (List[int]): NHD reach codes for features to include in outputs
         flow_areas_orig (Path): NHD flow area polygon feature layer
         waterbodies (Path): NHD waterbodies polygon feature layer
+        meta (Dict[str,str]): dictionary of riverscapes metadata key: value pairs
     """
 
     log = Logger("RVD")
@@ -133,6 +134,10 @@ def rvd(huc: int, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_or
     safe_makedirs(output_folder)
 
     project, _realization, proj_nodes = create_project(huc, output_folder)
+
+    # Incorporate project metadata to the riverscapes project
+    if meta is not None:
+        project.add_metadata(meta)
 
     log.info('Adding inputs to project')
     _prj_existing_path_node, prj_existing_path = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['EXVEG'], existing_veg_orig)
@@ -652,6 +657,7 @@ def main():
     parser.add_argument('--reach_codes', help='Comma delimited reach codes (FCode) to retain when filtering features. Omitting this option retains all features.', type=str)
     parser.add_argument('--flow_areas', help='(optional) path to the flow area polygon feature class containing artificial paths', type=str)
     parser.add_argument('--waterbodies', help='(optional) waterbodies input', type=str)
+    parser.add_argument('--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
     parser.add_argument('--debug', help="(optional) save intermediate outputs for debugging", action='store_true', default=False)
 
@@ -659,18 +665,34 @@ def main():
 
     reach_codes = args.reach_codes.split(',') if args.reach_codes else None
 
+    meta = parse_metadata(args.meta)
+
     # Initiate the log file
     log = Logger("RVD")
     log.setup(logPath=os.path.join(args.output_folder, "rvd.log"), verbose=args.verbose)
     log.title('RVD For HUC: {}'.format(args.huc))
 
     try:
-        rvd(args.huc,
-            args.flowlines,
-            args.existing, args.historic, args.valley_bottom,
-            args.output_folder,
-            reach_codes,
-            args.flow_areas, args.waterbodies)
+        if args.debug is True:
+            from rscommons.debug import ThreadRun
+            memfile = os.path.join(args.output_dir, 'rvd_mem.log')
+            retcode, max_obj = ThreadRun(rvd, memfile, args.huc,
+                                         args.flowlines,
+                                         args.existing, args.historic, args.valley_bottom,
+                                         args.output_folder,
+                                         reach_codes,
+                                         args.flow_areas, args.waterbodies,
+                                         meta=meta)
+            log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
+
+        else:
+            rvd(args.huc,
+                args.flowlines,
+                args.existing, args.historic, args.valley_bottom,
+                args.output_folder,
+                reach_codes,
+                args.flow_areas, args.waterbodies,
+                meta=meta)
 
     except Exception as e:
         log.error(e)

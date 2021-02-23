@@ -37,7 +37,7 @@ def build_network(flowlines_path: str,
                   flowareas_path: str,
                   out_path: str,
                   epsg: int = None,
-                  reach_codes: List[int] = None,
+                  reach_codes: List[str] = None,
                   waterbodies_path: str = None,
                   waterbody_max_size=None,
                   create_layer: bool = True):
@@ -48,7 +48,7 @@ def build_network(flowlines_path: str,
         flowareas_path (str): [description]
         out_path (str): [description]
         epsg (int, optional): [description]. Defaults to None.
-        reach_codes (List[int], optional): [description]. Defaults to None.
+        reach_codes (List[str], optional): [description]. Defaults to None.
         waterbodies_path (str, optional): [description]. Defaults to None.
         waterbody_max_size ([type], optional): [description]. Defaults to None.
         create_layer (bool, optional): [description]. Defaults to True.
@@ -75,7 +75,7 @@ def build_network(flowlines_path: str,
     # Process all perennial/intermittment/ephemeral reaches first
     attribute_filter = None
     if reach_codes and len(reach_codes) > 0:
-        [log.info("{0} {1} network features (FCode {2})".format('Retaining', FCodeValues[int(key)], key)) for key in reach_codes]
+        _result = [log.info("{0} {1} network features (FCode {2})".format('Retaining', FCodeValues[int(key)], key)) for key in reach_codes]
         attribute_filter = "FCode IN ({0})".format(','.join([key for key in reach_codes]))
 
     if create_layer is True:

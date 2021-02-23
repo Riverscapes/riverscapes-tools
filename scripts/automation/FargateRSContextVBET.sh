@@ -1,12 +1,19 @@
 #!/bin/bash
 set -eu
 IFS=$'\n\t'
+if [[ -v DEBUG ]];
+then
+    DEBUG_USE="--debug"
+else
+    DEBUG_USE=" "
+fi
 
 # These environment variables need to be present before the script starts
 (: "${HUC?}")
 (: "${PROGRAM?}")
 (: "${RS_CONFIG?}")
 (: "${TAGS?}")
+(: "${DEBUG_USE?}")
 
 echo "$RS_CONFIG" > /root/.riverscapes
 
@@ -30,6 +37,7 @@ EOF
 echo "HUC: $HUC"
 echo "PROGRAM: $PROGRAM"
 echo "TAGS: $TAGS"
+echo "DEBUG_USE: $DEBUG_USE"
 
 # Drop into our venv immediately
 source /usr/local/venv/bin/activate
@@ -60,9 +68,11 @@ rscontext $HUC \
   /shared/download/prism \
   $RSC_TASK_OUTPUT \
   /shared/download/ \
-  --verbose \
   --parallel \
-  --temp_folder $RSC_TASK_DOWNLOAD
+  --temp_folder $RSC_TASK_DOWNLOAD \
+  --meta Runner=Cybercastor \
+  --verbose $DEBUG_USE    
+
 if [[ $? != 0 ]]; then return 1; fi
 echo "<<RS_CONTEXT COMPLETE>>"
 
@@ -88,8 +98,17 @@ vbet $HUC \
   $RSC_TASK_OUTPUT/topography/hand.tif \
   $RSC_TASK_OUTPUT/topography/dem_hillshade.tif \
   $VBET_TASK_OUTPUT \
-  --verbose
+  --reach_codes 33400,46003,46006,46007,55800 \
+  --meta Runner=Cybercastor \
+  --verbose $DEBUG_USE
 if [[ $? != 0 ]]; then return 1; fi
+
+cd /usr/local/src/riverscapes-tools/packages/vbet
+/usr/local/venv/bin/python -m vbet.vbet_rs \
+  $VBET_TASK_OUTPUT/project.rs.xml \
+  $RSC_TASK_OUTPUT/project.rs.xml
+
+
 echo "<<VBET COMPLETE>>"
 
 echo "======================  Final Disk space usage ======================="

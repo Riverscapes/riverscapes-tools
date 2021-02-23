@@ -198,6 +198,7 @@ def main():
     parser.add_argument('project', help='Riverscapes project folder or project xml file', type=str, default=None)
     parser.add_argument('--csv_dir', help='(optional) directory where we can find updated lookup tables', action='store_true', default=False)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
+    parser.add_argument('--debug', help='(optional) more output about things like memory usage. There is a performance cost', action='store_true', default=False)
 
     args = dotenv.parse_args_env(parser)
 
@@ -213,7 +214,13 @@ def main():
     log.title('BRAT Run Tool')
 
     try:
-        brat_run(args.project, args.csv_dir)
+        if args.debug is True:
+            from rscommons.debug import ThreadRun
+            memfile = os.path.join(logpath, 'brat_run_memusage.log')
+            retcode, max_obj = ThreadRun(brat_run, memfile, args.project, args.csv_dir)
+            log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
+        else:
+            brat_run(args.project, args.csv_dir)
 
     except Exception as e:
         log.error(e)

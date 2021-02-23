@@ -39,6 +39,7 @@
         "{env:DATA_ROOT}/prism",
         "{env:DATA_ROOT}/rs_context/${input:HUC}",
         "{env:DOWNLOAD_FOLDER}",
+        "--meta", "Runner=VSCode",
         // "--temp_folder", "{env:DOWNLOAD_FOLDER}/tmp",
         // "--force",
         // "--parallel",

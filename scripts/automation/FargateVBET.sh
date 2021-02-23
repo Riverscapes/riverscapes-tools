@@ -72,8 +72,15 @@ vbet $HUC \
   $RS_CONTEXT_DIR/topography/dem.tif \
   $RS_CONTEXT_DIR/topography/dem_hillshade.tif \
   $TASK_OUTPUT \
+  --reach_codes 33400,46003,46006,46007,55800 \
+  --meta Runner=Cybercastor \
   --verbose $DEBUG_USE
 if [[ $? != 0 ]]; then return 1; fi
+
+cd /usr/local/src/riverscapes-tools/packages/vbet
+/usr/local/venv/bin/python -m vbet.vbet_rs \
+  $TASK_OUTPUT/project.rs.xml \
+  $RS_CONTEXT_DIR/project.rs.xml
 
 echo "======================  Final Disk space usage ======================="
 df -h
