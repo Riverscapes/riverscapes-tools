@@ -296,7 +296,7 @@ def main():
     try:
         if args.debug is True:
             from rscommons.debug import ThreadRun
-            memfile = os.path.join(args.output, 'brat_build_memusage.log')
+            memfile = os.path.join(args.output_folder, 'brat_build_memusage.log')
             retcode, max_obj = ThreadRun(brat_build, memfile,
                                          args.huc, args.flowlines, args.dem, args.slope, args.hillshade,
                                          args.existing_veg, args.historical_veg, args.output_folder,
