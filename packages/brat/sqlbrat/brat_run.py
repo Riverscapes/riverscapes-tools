@@ -216,7 +216,7 @@ def main():
     try:
         if args.debug is True:
             from rscommons.debug import ThreadRun
-            memfile = os.path.join(args.output, 'brat_run_memusage.log')
+            memfile = os.path.join(logpath, 'brat_run_memusage.log')
             retcode, max_obj = ThreadRun(brat_run, memfile, args.project, args.csv_dir)
             log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
         else:
