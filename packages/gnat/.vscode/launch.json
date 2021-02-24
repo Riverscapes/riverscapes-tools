@@ -70,6 +70,17 @@
         "--verbose",
         "--debug"
       ]
-    },    
+    },
+    {
+      "name": "Augment Confinement XML",
+      "type": "python",
+      "request": "launch",
+      "module": "gnat.confinement_rs",
+      "console": "integratedTerminal",
+      "args": [
+        "{env:DATA_ROOT}/confinement/${input:HUC}/project.rs.xml",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/vbet/${input:HUC}/project.rs.xml"
+      ]
+    },        
   ]
 }

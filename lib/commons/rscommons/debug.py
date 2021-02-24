@@ -151,8 +151,8 @@ class MemoryMonitor:
 
 def ThreadRun(callback, memlogfile: str, *args, **kwargs):
     log = Logger('Debug')
+    memmon = MemoryMonitor(memlogfile, 1)
     with ThreadPoolExecutor() as executor:
-        memmon = MemoryMonitor(memlogfile, 1)
         mem_thread = executor.submit(memmon.measure_usage)
         try:
             fn_thread = executor.submit(callback, *args, **kwargs)
@@ -161,6 +161,5 @@ def ThreadRun(callback, memlogfile: str, *args, **kwargs):
             memmon.keep_measuring = False
             max_obj = mem_thread.result()
             log.debug('MaxStats: {}'.format(max_obj))
-            memmon.write_plot(os.path.splitext(memlogfile)[0] + '.png')
-
-        return result, max_obj.toString()
+    memmon.write_plot(os.path.splitext(memlogfile)[0] + '.png')
+    return result, max_obj.toString()
