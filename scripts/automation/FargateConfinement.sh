@@ -62,6 +62,7 @@ try() {
     BFwidth \
     ValleyBottom \
     --meta Runner=Cybercastor \
+    --reach_codes 33400,46003,46006,46007,55800 \
     --verbose
   if [[ $? != 0 ]]; then return 1; fi
 
