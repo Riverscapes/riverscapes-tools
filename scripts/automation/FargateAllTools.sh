@@ -77,7 +77,7 @@ try() {
     /shared/download/prism \
     $RS_CONTEXT_DIR \
     /shared/download/ \
-    --meta Runner=Cybercastor \
+    --meta "Runner=Cybercastor" \
     --parallel \
     --temp_folder $RSC_TASK_SCRATCH \
     --verbose $DEBUG_USE
@@ -101,7 +101,7 @@ try() {
     $RS_CONTEXT_DIR/topography/hand.tif \
     $RS_CONTEXT_DIR/topography/dem_hillshade.tif \
     $VBET_DIR \
-    --meta Runner=Cybercastor \
+    --meta "Runner=Cybercastor" \
     --reach_codes 33400,46003,46006,46007,55800 \
     --verbose $DEBUG_USE
   if [[ $? != 0 ]]; then return 1; fi
@@ -166,7 +166,7 @@ try() {
     --flow_areas $RS_CONTEXT_DIR/hydrology/NHDArea.shp \
     --waterbodies $RS_CONTEXT_DIR/hydrology/NHDWaterbody.shp \
     --max_waterbody 0.001 \
-    --meta Runner=Cybercastor \
+    --meta "Runner=Cybercastor" \
     --verbose $DEBUG_USE
   if [[ $? != 0 ]]; then return 1; fi
 
@@ -219,7 +219,7 @@ try() {
     $CONFINEMENT_DIR \
     BFwidth \
     ValleyBottom \
-    --meta Runner=Cybercastor \
+    --meta "Runner=Cybercastor" \
     --reach_codes 33400,46003,46006,46007,55800 \
     --verbose $DEBUG_USE
 
@@ -265,7 +265,7 @@ try() {
       --reach_codes 33400,46003,46006,46007,55800 \
       --flow_areas $RS_CONTEXT_DIR/hydrology/NHDArea.shp \
       --waterbodies $RS_CONTEXT_DIR/hydrology/NHDWaterbody.shp \
-      --meta Runner=Cybercastor \
+      --meta "Runner=Cybercastor" \
       --verbose $DEBUG_USE
   if [[ $? != 0 ]]; then return 1; fi
 
