@@ -1,19 +1,12 @@
 #!/bin/bash
 set -eu
 IFS=$'\n\t'
-if [[ -v DEBUG ]];
-then
-    DEBUG_USE="--debug"
-else
-    DEBUG_USE=" "
-fi
 
 # These environment variables need to be present before the script starts
 (: "${HUC?}")
 (: "${PROGRAM?}")
 (: "${RS_CONFIG?}")
 (: "${TAGS?}")
-(: "${DEBUG_USE?}")
 
 echo "$RS_CONFIG" > /root/.riverscapes
 
@@ -43,7 +36,6 @@ EOF
 echo "HUC: $HUC"
 echo "PROGRAM: $PROGRAM"
 echo "TAGS: $TAGS"
-echo "DEBUG_USE: $DEBUG_USE"
 
 
 # Drop into our venv immediately
@@ -80,7 +72,7 @@ try() {
     --meta "Runner=Cybercastor" \
     --parallel \
     --temp_folder $RSC_TASK_SCRATCH \
-    --verbose $DEBUG_USE
+    --verbose
   if [[ $? != 0 ]]; then return 1; fi
   echo "<<RS_CONTEXT COMPLETE>>"
 
@@ -103,7 +95,7 @@ try() {
     $VBET_DIR \
     --meta "Runner=Cybercastor" \
     --reach_codes 33400,46003,46006,46007,55800 \
-    --verbose $DEBUG_USE
+    --verbose
   if [[ $? != 0 ]]; then return 1; fi
 
   cd /usr/local/src/riverscapes-tools/packages/vbet
@@ -167,7 +159,7 @@ try() {
     --waterbodies $RS_CONTEXT_DIR/hydrology/NHDWaterbody.shp \
     --max_waterbody 0.001 \
     --meta "Runner=Cybercastor" \
-    --verbose $DEBUG_USE
+    --verbose
   if [[ $? != 0 ]]; then return 1; fi
 
 
@@ -180,7 +172,7 @@ try() {
   ##########################################################################################
   # Now Run BRAT Run
   ##########################################################################################
-  bratrun $BRAT_DIR --verbose $DEBUG_USE
+  bratrun $BRAT_DIR --verbose
   if [[ $? != 0 ]]; then return 1; fi
 
   cd /usr/local/src/riverscapes-tools/packages/brat
@@ -221,7 +213,7 @@ try() {
     ValleyBottom \
     --meta "Runner=Cybercastor" \
     --reach_codes 33400,46003,46006,46007,55800 \
-    --verbose $DEBUG_USE
+    --verbose
 
   if [[ $? != 0 ]]; then return 1; fi
 
@@ -266,7 +258,7 @@ try() {
       --flow_areas $RS_CONTEXT_DIR/hydrology/NHDArea.shp \
       --waterbodies $RS_CONTEXT_DIR/hydrology/NHDWaterbody.shp \
       --meta "Runner=Cybercastor" \
-      --verbose $DEBUG_USE
+      --verbose
   if [[ $? != 0 ]]; then return 1; fi
 
 
