@@ -1639,7 +1639,7 @@ WatershedID,Name,EcoregionID,MaxDrainage,QLow,Q2,Notes,MetaData,AreaSqKm,States
 14050004,Muddy,18,,,,,,2607.44,WY
 14050005,Upper White,21,,,,,,3532.89,CO
 14050006,Piceance-Yellow,20,,,,,,2368.33,CO
-14050007,Lower White,20,,,,,,7056.9,CO_UT
+14050007,Lower White,20,12665.0,0.0000000047863*(DRNAREA^1.06)*(PRECIP^4.8),0.070794578*(DRNAREA^0.75)*(A7500^-0.41)*(PRECIP^2.15),,,7056.9,CO_UT
 14060003,Duchesne,20,,,,,,6938.95,UT
 14060004,Strawberry,20,,,,,,3016.14,UT
 14060005,Lower Green-Desolation Canyon,20,,,,,,5040.04,UT
