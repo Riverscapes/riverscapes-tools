@@ -1,3 +1,7 @@
+"""Script for exporting riverscapes parameters from Postgres on
+    Amazon AWS and writing them to CSV in this repository for use
+    in SQLite individual tool databaes.
+"""
 import csv
 import os
 import argparse
@@ -8,6 +12,18 @@ from rscommons import ProgressBar
 
 
 relative_path = '../database/data'
+
+tables = [
+    # primary tables
+    'hydro_params',
+    'vegetation_types',
+    'statistics',
+    'watershed_attributes',
+    # intersect tables
+    'vegetation_overrides',
+    'watershed_hydro_params',
+    'watershed_statistics'
+]
 
 
 def update_brat_parameters(host, port, database, user_name, password, csv_dir):
@@ -28,10 +44,12 @@ def update_brat_parameters(host, port, database, user_name, password, csv_dir):
     csv_dir = csv_dir if csv_dir else os.path.dirname(os.path.abspath(__file__))
 
     watershed_csv = os.path.join(csv_dir, relative_path, 'Watersheds.csv')
-    hydro_params_csv = os.path.join(csv_dir, relative_path, 'HydroParams.csv')
-    veg_type_csv = os.path.join(csv_dir, relative_path, 'VegetationTypes.csv')
-    override_csv = os.path.join(csv_dir, relative_path, 'intersect', 'VegetationOverrides.csv')
-    watershed_hydro_params_csv = os.path.join(csv_dir, relative_path, 'intersect', 'WatershedHydroParams.csv')
+    # hydro_params_csv = os.path.join(csv_dir, relative_path, 'HydroParams.csv')
+    # veg_type_csv = os.path.join(csv_dir, relative_path, 'VegetationTypes.csv')
+    # override_csv = os.path.join(csv_dir, relative_path, 'intersect', 'VegetationOverrides.csv')
+    # watershed_hydro_params_csv = os.path.join(csv_dir, relative_path, 'intersect', 'WatershedHydroParams.csv')
+    # statistics_csv = os.path.join(csv_dir, relative_path, 'Statistics.csv')
+    # watershed_attributes_csv = os.path.join(csv_dir, relative_path, WatershedAttributes.csv')
 
     conn = psycopg2.connect(host=host, port=port, database=database, user=user_name, password=password)
     curs = conn.cursor(cursor_factory=RealDictCursor)
@@ -39,37 +57,71 @@ def update_brat_parameters(host, port, database, user_name, password, csv_dir):
     # Update watersheds first, because it will attempt to verify the hydrologic equations
     # and abort with errors and before any CSV files are changed.
     update_watersheds(curs, watershed_csv)
-    update_vegetation_types(curs, veg_type_csv)
-    update_vegetation_overrides(curs, override_csv)
-    update_hydro_params(curs, hydro_params_csv)
-    update_watershed_hydro_params(curs, watershed_hydro_params_csv)
+
+    # Now process all the other tables
+    for pg_table in tables:
+        output_table = snake_to_pascal(pg_table)
+
+        # Get list of column names. Needed because can't determine columns names from empty tables
+        curs.execute("""SELECT column_name
+            FROM information_schema.columns
+            WHERE (table_name = %s)
+            AND column_name NOT IN ('created_on', 'updated_on')
+            ORDER BY ordinal_position""", [pg_table])
+        cols = [row['column_name'] for row in curs.fetchall()]
+
+        # Get a list of the primary key columns for ordering
+        curs.execute("""SELECT c.column_name
+            FROM information_schema.table_constraints tc
+            JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_name)
+            JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema
+            AND tc.table_name = c.table_name AND ccu.column_name = c.column_name
+            WHERE constraint_type = 'PRIMARY KEY' and tc.table_name = %s""", [pg_table])
+        keys = [row['column_name'] for row in curs.fetchall()]
+
+        # Load all the data from the table
+        curs.execute('SELECT * FROM {} ORDER BY {}'.format(pg_table, ','.join(keys)))
+        data = [{col: row[col] for col in row.keys()} for row in curs.fetchall()]
+
+        # write the data to the CSV
+        output_csv = os.path.join(csv_dir, relative_path, 'intersect' if len(keys) > 1 else '', '{}.csv'.format(output_table))
+        write_values_to_csv(output_csv, cols, data)
+
+
+def snake_to_pascal(snake_name):
+
+    # Remember to upper case ID fields ending with _id
+    temp = snake_name.replace("_", " ").title().replace(" ", "")
+    return temp[:-2] + 'ID' if snake_name.endswith('_id') is True else temp
 
 
 def update_watersheds(curs, watershed_csv):
 
     # Load all the watersheds from the database in a PREDICTABLE ORDER (so git diff is useful for previewing changes)
     curs.execute("""SELECT * FROM watersheds ORDER BY watershed_id""")
-    watersheds = {row['watershed_id']: {
-        'WatershedID': row['watershed_id'],
-        'Name': row['name'],
-        'EcoregionID': row['ecoregion_id'],
-        'MaxDrainage': row['max_drainage'],
-        'QLow': row['qlow'],
-        'Q2': row['q2'],
-        'Notes': row['notes'],
-        'MetaData': row['metadata'],
-        'AreaSqKm': row['area_sqkm'],
-        'States': row['states'].replace(',', '_') if row['states'] else None
-    } for row in curs.fetchall()}
+    watersheds = [row for row in curs.fetchall()]
+    # watersheds = [{
+    #     'WatershedID': row['watershed_id'],
+    #     'Name': row['name'],
+    #     'EcoregionID': row['ecoregion_id'],
+    #     'MaxDrainage': row['max_drainage'],
+    #     'QLow': row['qlow'],
+    #     'Q2': row['q2'],
+    #     'Notes': row['notes'],
+    #     'MetaData': row['metadata'],
+    #     'AreaSqKm': row['area_sqkm'],
+    #     'States': row['states'].replace(',', '_') if row['states'] else None
+    # } for row in curs.fetchall()]
 
     # Validate the hydrologic equations. The following dictionary will be keyed by python exception concatenated to produce
     # a unique string for each type of error for each equation. These will get printed to the screen for easy cut and paste
     # into a GitHub issue for USU to resolve.
     unique_errors = {}
-    for q in ['QLow', 'Q2']:
+    for q in ['qlow', 'q2']:
         progbar = ProgressBar(len(watersheds), 50, 'Verifying {} equations'.format(q))
         counter = 0
-        for watershed, values in watersheds.items():
+        for values in watersheds:
+            watershed = values['watershed_id']
             counter += 1
             progbar.update(counter)
 
@@ -112,90 +164,27 @@ def update_watersheds(curs, watershed_csv):
             print('```')
         raise Exception('Aborting due to {} hydrology equation errors'.format(len(unique_errors)))
 
-    write_values_to_csv(watershed_csv, watersheds)
+    cols = list(next(iter(watersheds)).keys())
+    write_values_to_csv(watershed_csv, cols, watersheds)
 
 
-def update_hydro_params(curs, hydro_params_csv):
+def write_values_to_csv(csv_file, cols, values):
 
-    # Load all the hydro parameters from the database in a PREDICTABLE ORDER (so git diff is useful for previewing changes)
-    curs.execute('SELECT param_id, name, description, aliases, data_units, equation_units, conversion, definition FROM hydro_params ORDER BY param_id')
-    values = {row['param_id']: {
-        'ParamID': row['param_id'],
-        'Name': row['name'],
-        'Description': row['description'],
-        'Aliases': row['aliases'],
-        'DataUnits': row['data_units'],
-        'EquationUnits': row['equation_units'],
-        'Conversion': row['conversion'],
-        'Definition': row['definition']
-    } for row in curs.fetchall()}
+    # cols = list(next(iter(values)).keys())
 
-    write_values_to_csv(hydro_params_csv, values)
+    # # Remove the date related columns
+    # for unwanted_col in ['updated_on', 'created_on']:
+    #     if unwanted_col in cols:
+    #         del cols[cols.index(unwanted_col)]
 
-
-def update_watershed_hydro_params(curs, watershed_hydro_params_csv):
-
-    # Load all the watershed hydro parameters from the database in a PREDICTABLE ORDER (so git diff is useful for previewing changes)
-    curs.execute('SELECT watershed_id, param_id, value FROM watershed_hydro_params ORDER BY watershed_id, param_id')
-    values = {(row['watershed_id'], row['param_id']): {
-        'WatershedID': row['watershed_id'],
-        'ParamID': row['param_id'],
-        'Value': row['value']
-    } for row in curs.fetchall()}
-
-    write_values_to_csv(watershed_hydro_params_csv, values)
-
-
-def update_vegetation_types(curs, veg_type_csv):
-
-    # Update the CSV values with those from the Google Sheet
-    updates = 0
-    curs.execute('SELECT * FROM vegetation_types ORDER BY vegetation_id')
-    values = {row['vegetation_id']: {
-        'VegetationID': row['vegetation_id'],
-        'EpochID': row['epoch_id'],
-        'Name': row['name'],
-        'DefaultSuitability': row['default_suitability'],
-        'LandUseID': row['land_use_id'],
-        'Physiognomy': row['physiognomy'],
-        'Notes': row['notes']
-    } for row in curs.fetchall()}
-
-    write_values_to_csv(veg_type_csv, values)
-
-
-def update_vegetation_overrides(curs, override_csv):
-
-    curs.execute('SELECT vegetation_id, ecoregion_id, override_suitability, notes FROM vegetation_overrides ORDER BY vegetation_id, ecoregion_id')
-    db_values = [{
-        'VegetationID': row['vegetation_id'],
-        'EcoregionID': row['ecoregion_id'],
-        'OverrideSuitability': row['override_suitability'],
-        'Notes': row['notes']
-    }for row in curs.fetchall()]
-
-    # Write to CSV
-    cols = ['EcoregionID', 'VegetationID', 'OverrideSuitability', 'Notes']
-    with open(override_csv, 'w') as file:
-        writer = csv.writer(file)
-        writer.writerow(cols)
-        for vals in db_values:
-            writer.writerow([vals[col] for col in cols])
-
-    print('{} vegetetation overrides CSV file written'.format(len(db_values)))
-    return 0
-
-
-def write_values_to_csv(csv_file, values):
-
-    cols = list(values[next(iter(values))].keys())
+    output_cols = [snake_to_pascal(col) for col in cols]
 
     progBar = ProgressBar(len(values), 50, 'Writing to {}'.format(os.path.basename(csv_file)))
     with open(csv_file, 'w') as file:
         writer = csv.writer(file)
-        writer.writerow(cols)
+        writer.writerow(output_cols)
         counter = 0
-        for vals in values.values():
+        for vals in values:
             counter += 1
             progBar.update(counter)
             writer.writerow([vals[col] for col in cols])
