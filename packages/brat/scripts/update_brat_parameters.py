@@ -100,18 +100,6 @@ def update_watersheds(curs, watershed_csv):
     # Load all the watersheds from the database in a PREDICTABLE ORDER (so git diff is useful for previewing changes)
     curs.execute("""SELECT * FROM watersheds ORDER BY watershed_id""")
     watersheds = [row for row in curs.fetchall()]
-    # watersheds = [{
-    #     'WatershedID': row['watershed_id'],
-    #     'Name': row['name'],
-    #     'EcoregionID': row['ecoregion_id'],
-    #     'MaxDrainage': row['max_drainage'],
-    #     'QLow': row['qlow'],
-    #     'Q2': row['q2'],
-    #     'Notes': row['notes'],
-    #     'MetaData': row['metadata'],
-    #     'AreaSqKm': row['area_sqkm'],
-    #     'States': row['states'].replace(',', '_') if row['states'] else None
-    # } for row in curs.fetchall()]
 
     # Validate the hydrologic equations. The following dictionary will be keyed by python exception concatenated to produce
     # a unique string for each type of error for each equation. These will get printed to the screen for easy cut and paste
@@ -165,6 +153,8 @@ def update_watersheds(curs, watershed_csv):
         raise Exception('Aborting due to {} hydrology equation errors'.format(len(unique_errors)))
 
     cols = list(next(iter(watersheds)).keys())
+    del cols[cols.index('updated_on')]
+    del cols[cols.index('created_on')]
     write_values_to_csv(watershed_csv, cols, watersheds)
 
 
