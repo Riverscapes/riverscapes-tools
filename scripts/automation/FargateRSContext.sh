@@ -1,19 +1,12 @@
 #!/bin/bash
 set -eu
 IFS=$'\n\t'
-if [[ -v DEBUG ]];
-then
-    DEBUG_USE="--debug"
-else
-    DEBUG_USE=" "
-fi
 
 # These environment variables need to be present before the script starts
 (: "${HUC?}")
 (: "${PROGRAM?}")
 (: "${RS_CONFIG?}")
 (: "${TAGS?}")
-(: "${DEBUG_USE?}")
 
 echo "$RS_CONFIG" > /root/.riverscapes
 
@@ -29,7 +22,6 @@ EOF
 echo "HUC: $HUC"
 echo "PROGRAM: $PROGRAM"
 echo "TAGS: $TAGS"
-echo "DEBUG_USE: $DEBUG_USE"
 
 # Drop into our venv immediately
 source /usr/local/venv/bin/activate
@@ -63,7 +55,7 @@ try() {
     --parallel \
     --temp_folder $TASK_DOWNLOAD \
     --meta Runner=Cybercastor \
-    --verbose $DEBUG_USE    
+    --verbose
   if [[ $? != 0 ]]; then return 1; fi
 
   echo "======================  Final Disk space usage ======================="

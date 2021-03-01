@@ -1,19 +1,12 @@
 #!/bin/bash
 set -eu
 IFS=$'\n\t'
-if [[ -v DEBUG ]];
-then
-    DEBUG_USE="--debug"
-else
-    DEBUG_USE=" "
-fi
 
 # These environment variables need to be present before the script starts
 (: "${HUC?}")
 (: "${PROGRAM?}")
 (: "${RS_CONFIG?}")
 (: "${TAGS?}")
-(: "${DEBUG_USE?}")
 
 echo "$RS_CONFIG" > /root/.riverscapes
 
@@ -37,7 +30,6 @@ EOF
 echo "HUC: $HUC"
 echo "PROGRAM: $PROGRAM"
 echo "TAGS: $TAGS"
-echo "DEBUG_USE: $DEBUG_USE"
 
 # Drop into our venv immediately
 source /usr/local/venv/bin/activate
@@ -71,7 +63,7 @@ rscontext $HUC \
   --parallel \
   --temp_folder $RSC_TASK_DOWNLOAD \
   --meta Runner=Cybercastor \
-  --verbose $DEBUG_USE    
+  --verbose
 
 if [[ $? != 0 ]]; then return 1; fi
 echo "<<RS_CONTEXT COMPLETE>>"
@@ -100,7 +92,7 @@ vbet $HUC \
   $VBET_TASK_OUTPUT \
   --reach_codes 33400,46003,46006,46007,55800 \
   --meta Runner=Cybercastor \
-  --verbose $DEBUG_USE
+  --verbose
 if [[ $? != 0 ]]; then return 1; fi
 
 cd /usr/local/src/riverscapes-tools/packages/vbet

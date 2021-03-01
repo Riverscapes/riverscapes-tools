@@ -1,12 +1,6 @@
 #!/bin/bash
 set -eu
 IFS=$'\n\t'
-if [[ -v DEBUG ]];
-then
-    DEBUG_USE="--debug"
-else
-    DEBUG_USE=" "
-fi
 
 # These environment variables need to be present before the script starts
 (: "${HUC?}")
@@ -15,7 +9,6 @@ fi
 (: "${VBET_TAGS?}")
 (: "${RSCONTEXT_TAGS?}")
 (: "${RVD_TAGS?}")
-(: "${DEBUG_USE?}")
 
 echo "$RS_CONFIG" > /root/.riverscapes
 
@@ -34,7 +27,6 @@ echo "PROGRAM: $PROGRAM"
 echo "VBET_TAGS: $VBET_TAGS"
 echo "RSCONTEXT_TAGS: $RSCONTEXT_TAGS"
 echo "RVD_TAGS: $RVD_TAGS"
-echo "DEBUG_USE: $DEBUG_USE"
 # sleep 1h
 
 # Drop into our venv immediately
@@ -72,7 +64,7 @@ try() {
       --flow_areas $RS_CONTEXT_DIR/hydrology/NHDArea.shp \
       --waterbodies $RS_CONTEXT_DIR/hydrology/NHDWaterbody.shp \
       --meta Runner=Cybercastor \
-      --verbose $DEBUG_USE
+      --verbose
   if [[ $? != 0 ]]; then return 1; fi
 
 
