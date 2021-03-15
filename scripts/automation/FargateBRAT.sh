@@ -75,7 +75,7 @@ try() {
     --flow_areas $RS_CONTEXT_DIR/hydrology/NHDArea.shp \
     --waterbodies $RS_CONTEXT_DIR/hydrology/NHDWaterbody.shp \
     --max_waterbody 0.001 \
-    --meta Runner=Cybercastor \
+    --meta "Runner=Cybercastor" \
     --verbose
   if [[ $? != 0 ]]; then return 1; fi
 

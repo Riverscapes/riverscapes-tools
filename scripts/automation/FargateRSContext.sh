@@ -54,7 +54,7 @@ try() {
     /shared/download/ \
     --parallel \
     --temp_folder $TASK_DOWNLOAD \
-    --meta Runner=Cybercastor \
+    --meta "Runner=Cybercastor" \
     --verbose
   if [[ $? != 0 ]]; then return 1; fi
 

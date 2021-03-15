@@ -65,7 +65,7 @@ vbet $HUC \
   $RS_CONTEXT_DIR/topography/dem_hillshade.tif \
   $TASK_OUTPUT \
   --reach_codes 33400,46003,46006,46007,55800 \
-  --meta Runner=Cybercastor \
+  --meta "Runner=Cybercastor" \
   --verbose
 if [[ $? != 0 ]]; then return 1; fi
 

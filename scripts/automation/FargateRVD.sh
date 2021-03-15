@@ -63,7 +63,7 @@ try() {
       --reach_codes 33400,46003,46006,46007,55800 \
       --flow_areas $RS_CONTEXT_DIR/hydrology/NHDArea.shp \
       --waterbodies $RS_CONTEXT_DIR/hydrology/NHDWaterbody.shp \
-      --meta Runner=Cybercastor \
+      --meta "Runner=Cybercastor" \
       --verbose
   if [[ $? != 0 ]]; then return 1; fi
 

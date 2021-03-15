@@ -62,7 +62,7 @@ rscontext $HUC \
   /shared/download/ \
   --parallel \
   --temp_folder $RSC_TASK_DOWNLOAD \
-  --meta Runner=Cybercastor \
+  --meta "Runner=Cybercastor" \
   --verbose
 
 if [[ $? != 0 ]]; then return 1; fi
@@ -91,7 +91,7 @@ vbet $HUC \
   $RSC_TASK_OUTPUT/topography/dem_hillshade.tif \
   $VBET_TASK_OUTPUT \
   --reach_codes 33400,46003,46006,46007,55800 \
-  --meta Runner=Cybercastor \
+  --meta "Runner=Cybercastor" \
   --verbose
 if [[ $? != 0 ]]; then return 1; fi
 
