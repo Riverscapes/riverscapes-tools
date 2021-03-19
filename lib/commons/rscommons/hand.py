@@ -39,13 +39,13 @@ def create_hand_raster(dem: str, flowlines: str, working_dir: str, out_hand: str
 
     # PitRemove
     log.info("Filling DEM pits")
-    pitfill_status = run_subprocess(working_dir, ["mpiexec", "-n", "8", "pitremove", "-z", dem, "-fel", path_pitfill])
+    pitfill_status = run_subprocess(working_dir, ["mpiexec", "-n", "2", "pitremove", "-z", dem, "-fel", path_pitfill])
     if pitfill_status != 0 or not os.path.isfile(path_pitfill):
         raise Exception('TauDEM: pitfill failed')
 
     # Flow Dir
     log.info("Finding flow direction")
-    dinfflowdir_status = run_subprocess(working_dir, ["mpiexec", "-n", "8", "dinfflowdir", "-fel", path_pitfill, "-ang", path_ang, "-slp", path_slp])
+    dinfflowdir_status = run_subprocess(working_dir, ["mpiexec", "-n", "2", "dinfflowdir", "-fel", path_pitfill, "-ang", path_ang, "-slp", path_slp])
     if dinfflowdir_status != 0 or not os.path.isfile(path_ang):
         raise Exception('TauDEM: dinfflowdir failed')
 
@@ -55,7 +55,7 @@ def create_hand_raster(dem: str, flowlines: str, working_dir: str, out_hand: str
 
     # generate hand
     log.info("Generating HAND")
-    dinfdistdown_status = run_subprocess(working_dir, ["mpiexec", "-n", "8", "dinfdistdown", "-ang", path_ang, "-fel", path_pitfill, "-src", path_rasterized_flowline, "-dd", out_hand, "-m", "ave", "v"])
+    dinfdistdown_status = run_subprocess(working_dir, ["mpiexec", "-n", "2", "dinfdistdown", "-ang", path_ang, "-fel", path_pitfill, "-src", path_rasterized_flowline, "-dd", out_hand, "-m", "ave", "v"])
     if dinfdistdown_status != 0 or not os.path.isfile(out_hand):
         raise Exception('TauDEM: dinfdistdown failed')
 
