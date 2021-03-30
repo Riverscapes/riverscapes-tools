@@ -10,10 +10,12 @@
 #
 # https://nhd.usgs.gov/userGuide/Robohelpfiles/NHD_User_Guide/Feature_Catalog/Hydrography_Dataset/Complete_FCode_List.htm
 # -------------------------------------------------------------------------------
+import os
+import sqlite3
 from typing import List
 from osgeo import ogr
 from shapely.geometry.base import BaseGeometry
-from rscommons import Logger, VectorBase
+from rscommons import Logger, VectorBase, GeopackageLayer
 from rscommons.vector_ops import get_geometry_unary_union
 from rscommons import get_shp_or_gpkg
 
@@ -66,3 +68,37 @@ def include_features(source_layer: VectorBase, out_layer: VectorBase, attribute_
             out_layer.ogr_layer.CreateFeature(out_feature)
 
     return included_fids
+
+
+def create_drainage_area_zones(catchment_layer, flowlines_layer, join_field, copy_field, zones):
+
+    # Load drainage area
+    with sqlite3.connect(os.path.dirname(flowlines_layer)) as conn:
+        cursor = conn.cursor()
+        join_data = cursor.execute(f"""SELECT {join_field}, {copy_field} FROM {os.path.basename(flowlines_layer)}""").fetchall()
+        data = {int(value[0]): value[1] for value in join_data}
+
+    with GeopackageLayer(os.path.dirname(catchment_layer), layer_name=os.path.basename(catchment_layer), write=True) as lyr_destination:
+
+        lyr_destination.create_field(copy_field, field_type=ogr.OFTReal)
+        for attribute_type in zones:
+            lyr_destination.create_field(f'{attribute_type}_Zone', field_type=ogr.OFTInteger)
+
+        for feat_dest, *_ in lyr_destination.iterate_features("Joining attributes"):
+            join_id = int(feat_dest.GetField(join_field))
+
+            if join_id in data:
+                feat_dest.SetField(copy_field, data[join_id])  # Set drainage area
+                if data[join_id]:  # if the drainage area is not null
+                    out_zones = {}
+                    for zone_type, zone_values in zones.items():
+                        for i, value in enumerate(zone_values):
+                            if data[join_id] < value:
+                                out_zones[zone_type] = i
+                            else:
+                                out_zones[zone_type] = i + 1
+
+                    for zone_field, zone_value in out_zones.items():
+                        feat_dest.SetField(f'{zone_field}_Zone', zone_value)
+
+                lyr_destination.ogr_layer.SetFeature(feat_dest)

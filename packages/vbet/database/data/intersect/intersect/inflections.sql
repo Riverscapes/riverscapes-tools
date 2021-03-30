@@ -9,6 +9,10 @@ INSERT INTO inflections (transform_id, input_value, output_value) VALUES (4, 0, 
 INSERT INTO inflections (transform_id, input_value, output_value) VALUES (4, 2, 0.5);
 INSERT INTO inflections (transform_id, input_value, output_value) VALUES (4, 3, 0);
 INSERT INTO inflections (transform_id, input_value, output_value) VALUES (5, 0, 1);
-INSERT INTO inflections (transform_id, input_value, output_value) VALUES (5, 10, .3);
-INSERT INTO inflections (transform_id, input_value, output_value) VALUES (5, 20, .5);
-INSERT INTO inflections (transform_id, input_value, output_value) VALUES (5, 25, 0);
+INSERT INTO inflections (transform_id, input_value, output_value) VALUES (5, 9, 0);
+INSERT INTO inflections (transform_id, input_value, output_value) VALUES (6, 0, 1);
+INSERT INTO inflections (transform_id, input_value, output_value) VALUES (6, 6, 0);
+INSERT INTO inflections (transform_id, input_value, output_value) VALUES (7, 0, 1);
+INSERT INTO inflections (transform_id, input_value, output_value) VALUES (7, 25, 0);
+INSERT INTO inflections (transform_id, input_value, output_value) VALUES (8, 0, 1);
+INSERT INTO inflections (transform_id, input_value, output_value) VALUES (8, 10, 0);
