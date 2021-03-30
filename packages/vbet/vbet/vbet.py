@@ -31,9 +31,10 @@ from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, dote
 from rscommons import GeopackageLayer
 from rscommons.vector_ops import polygonize, buffer_by_field, copy_feature_class
 from rscommons.hand import create_hand_raster
-from vbet.vbet_network import vbet_network
+
+from vbet.vbet_network import vbet_network, create_drainage_area_zones
 from vbet.vbet_report import VBETReport
-from vbet.vbet_raster_ops import rasterize, proximity_raster, translate, raster_clean
+from vbet.vbet_raster_ops import rasterize, proximity_raster, raster_clean, rasterize_attribute
 from vbet.vbet_outputs import threshold, sanitize
 from vbet.__version__ import __version__
 
@@ -74,7 +75,7 @@ LayerTypes = {
 }
 
 
-def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_dem, hillshade, max_hand, min_hole_area_m, project_folder, reach_codes: List[str], meta: Dict[str, str]):
+def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_dem, hillshade, catchments_orig, project_folder, reach_codes: List[str], meta: Dict[str, str]):
     """[summary]
 
     Args:
@@ -111,6 +112,7 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
 
     flowlines_path = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
     flowareas_path = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['FLOW_AREA'].rel_path)
+    catchments_path = os.path.join(intermediates_gpkg_path, 'Catchments')
 
     # Make sure we're starting with a fresh slate of new geopackages
     GeopackageLayer.delete(inputs_gpkg_path)
@@ -118,12 +120,18 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
 
     copy_feature_class(flowlines_orig, flowlines_path, epsg=cfg.OUTPUT_EPSG)
     copy_feature_class(flowareas_orig, flowareas_path, epsg=cfg.OUTPUT_EPSG)
+    copy_feature_class(catchments_orig, catchments_path, epsg=cfg.OUTPUT_EPSG)
 
     project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
 
     # Create a copy of the flow lines with just the perennial and also connectors inside flow areas
     network_path = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['VBET_NETWORK'].rel_path)
     vbet_network(flowlines_path, flowareas_path, network_path, cfg.OUTPUT_EPSG, reach_codes)
+
+    zones = {'SLOPE': (1.0, 10.0),  # max for each zone, with addional zone above last value
+             'HAND': (1.0, 10.0)}
+
+    create_drainage_area_zones(catchments_path, flowlines_path, 'NHDPlusID', 'TotDASqKm', zones)
 
     # Generate HAND from dem and vbet_network
     # TODO make a place for this temporary folder. it can be removed after hand is generated.
@@ -183,10 +191,17 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
     project.add_project_raster(proj_nodes["Intermediates"], LayerTypes['CHANNEL_DISTANCE'])
     project.add_project_raster(proj_nodes["Intermediates"], LayerTypes['FLOW_AREA_DISTANCE'])
 
+    # Generate da Zone raster
+    da_slope_zone_raster = os.path.join(project_folder, 'intermediates', 'da_slope_zones.tif')
+    rasterize_attribute(catchments_path, da_slope_zone_raster, proj_slope, 'SLOPE_Zone')
+    da_hand_zone_raster = os.path.join(project_folder, 'intermediates', 'da_hand_zones.tif')
+    rasterize_attribute(catchments_path, da_hand_zone_raster, proj_slope, 'HAND_Zone')
+
     slope_transform_raster = os.path.join(project_folder, LayerTypes['NORMALIZED_SLOPE'].rel_path)
     hand_transform_raster = os.path.join(project_folder, LayerTypes['NORMALIZED_HAND'].rel_path)
     chan_dist_transform_raster = os.path.join(project_folder, LayerTypes['NORMALIZED_CHANNEL_DISTANCE'].rel_path)
     fa_dist_transform_raster = os.path.join(project_folder, LayerTypes['NORMALIZED_FLOWAREA_DISTANCE'].rel_path)
+
     topo_evidence_raster = os.path.join(project_folder, LayerTypes['EVIDENCE_TOPO'].rel_path)
     channel_evidence_raster = os.path.join(project_folder, LayerTypes['EVIDENCE_CHANNEL'].rel_path)
     evidence_raster = os.path.join(project_folder, LayerTypes['VBET_EVIDENCE'].rel_path)
@@ -196,7 +211,9 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
     with rasterio.open(proj_slope) as slp_src, \
             rasterio.open(hand_raster) as hand_src, \
             rasterio.open(channel_dist_raster) as cdist_src, \
-            rasterio.open(fa_dist_raster) as fadist_src:
+            rasterio.open(fa_dist_raster) as fadist_src, \
+            rasterio.open(da_slope_zone_raster) as da_slope_zone_src,\
+            rasterio.open(da_hand_zone_raster) as da_hand_zone_src:
         # All 3 rasters should have the same extent and properties. They differ only in dtype
         out_meta = slp_src.meta
         # Rasterio can't write back to a VRT so rest the driver and number of bands for the output
@@ -225,9 +242,23 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
                 hand_data = hand_src.read(1, window=window, masked=True)
                 cdist_data = cdist_src.read(1, window=window, masked=True)
                 fadist_data = fadist_src.read(1, window=window, masked=True)
+                da_slope_zones_data = da_slope_zone_src.read(1, window=window, masked=True)
+                da_hand_zones_data = da_hand_zone_src.read(1, window=window, masked=True)
 
-                slope_transform = np.ma.MaskedArray(transforms["Slope"](slope_data.data), mask=slope_data.mask)
-                hand_transform = np.ma.MaskedArray(transforms["HAND"](hand_data.data), mask=hand_data.mask)
+                slope_transform_zones = [np.ma.MaskedArray(transforms["Slope"](slope_data.data), mask=slope_data.mask),
+                                         np.ma.MaskedArray(transforms["Slope MID"](slope_data.data), mask=slope_data.mask),
+                                         np.ma.MaskedArray(transforms["Slope LARGE"](slope_data.data), mask=slope_data.mask)]
+
+                hand_transform_zones = [np.ma.MaskedArray(transforms["HAND"](hand_data.data), mask=hand_data.mask),
+                                        np.ma.MaskedArray(transforms["HAND MID"](hand_data.data), mask=hand_data.mask),
+                                        np.ma.MaskedArray(transforms["HAND LARGE"](hand_data.data), mask=hand_data.mask)]
+
+                slope_transform = np.ma.MaskedArray(np.choose(da_slope_zones_data.data, slope_transform_zones, mode='clip'), mask=slope_data.mask)
+
+                hand_transform = np.ma.MaskedArray(np.choose(da_hand_zones_data.data, hand_transform_zones, mode='clip'), mask=hand_data.mask)
+
+                # slope_transform = np.ma.MaskedArray(transforms["Slope"](slope_data.data), mask=slope_data.mask)
+                # hand_transform = np.ma.MaskedArray(transforms["HAND"](hand_data.data), mask=hand_data.mask)
                 channel_dist_transform = np.ma.MaskedArray(transforms["Channel"](cdist_data.data), mask=cdist_data.mask)
                 fa_dist_transform = np.ma.MaskedArray(transforms["Flow Areas"](fadist_data.data), mask=fadist_data.mask)
 
@@ -260,13 +291,13 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
     # Get the length of a meter (roughly)
     degree_factor = GeopackageLayer.rough_convert_metres_to_raster_units(proj_slope, 1)
     buff_dist = cell_size
-    min_hole_degrees = min_hole_area_m * (degree_factor ** 2)
+    # min_hole_degrees = min_hole_area_m * (degree_factor ** 2)
 
     # Get the full paths to the geopackages
     intermed_gpkg_path = os.path.join(project_folder, LayerTypes['INTERMEDIATES'].rel_path)
     vbet_path = os.path.join(project_folder, LayerTypes['VBET_OUTPUTS'].rel_path)
 
-    for str_val, thr_val in thresh_vals.items():
+    for str_val, thr_val in {"50": 0.5}.items():  # thresh_vals.items():
         plgnize_id = 'THRESH_{}'.format(str_val)
         with TempRaster('vbet_raw_thresh_{}'.format(plgnize_id)) as tmp_raw_thresh, \
                 TempRaster('vbet_cleaned_thresh_{}'.format(plgnize_id)) as tmp_cleaned_thresh:
@@ -384,11 +415,12 @@ def main():
     parser.add_argument('slope', help='Slope raster path', type=str)
     parser.add_argument('dem', help='DEM raster path', type=str)
     parser.add_argument('hillshade', help='Hillshade raster path', type=str)
+    parser.add_argument('catchments', help='NHD Catchment polygons path', type=str)
     parser.add_argument('output_dir', help='Folder where output VBET project will be created', type=str)
     parser.add_argument('--reach_codes', help='Comma delimited reach codes (FCode) to retain when filtering features. Omitting this option retains all features.', type=str)
-    parser.add_argument('--max_slope', help='Maximum slope to be considered', type=float, default=12)
-    parser.add_argument('--max_hand', help='Maximum HAND to be considered', type=float, default=50)
-    parser.add_argument('--min_hole_area', help='Minimum hole retained in valley bottom (sq m)', type=float, default=50000)
+    # parser.add_argument('--max_slope', help='Maximum slope to be considered', type=float, default=12)
+    # parser.add_argument('--max_hand', help='Maximum HAND to be considered', type=float, default=50)
+    # parser.add_argument('--min_hole_area', help='Minimum hole retained in valley bottom (sq m)', type=float, default=50000)
     parser.add_argument('--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
     parser.add_argument('--debug', help='Add debug tools for tracing things like memory usage at a performance cost.', action='store_true', default=False)
@@ -405,18 +437,18 @@ def main():
 
     meta = parse_metadata(args.meta)
 
-    json_transform = json.dumps({"Slope": 1, "HAND": 2, "Channel": 3, "Flow Areas": 4})
+    json_transform = json.dumps({"Slope": 1, "HAND": 2, "Channel": 3, "Flow Areas": 4, 'Slope MID': 5, "Slope LARGE": 6, "HAND MID": 7, "HAND LARGE": 8})
     reach_codes = args.reach_codes.split(',') if args.reach_codes else None
 
     try:
         if args.debug is True:
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output_dir, 'vbet_mem.log')
-            retcode, max_obj = ThreadRun(vbet, memfile, args.huc, args.flowlines, args.flowareas, args.slope, json_transform, args.dem, args.hillshade, args.max_hand, args.min_hole_area, args.output_dir, reach_codes, meta)
+            retcode, max_obj = ThreadRun(vbet, memfile, args.huc, args.flowlines, args.flowareas, args.slope, json_transform, args.dem, args.hillshade, args.catchments, args.output_dir, reach_codes, meta)
             log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
 
         else:
-            vbet(args.huc, args.flowlines, args.flowareas, args.slope, json_transform, args.dem, args.hillshade, args.max_hand, args.min_hole_area, args.output_dir, reach_codes, meta)
+            vbet(args.huc, args.flowlines, args.flowareas, args.slope, json_transform, args.dem, args.hillshade, args.catchments, args.output_dir, reach_codes, meta)
 
     except Exception as e:
         log.error(e)
