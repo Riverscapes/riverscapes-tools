@@ -90,13 +90,16 @@ def create_drainage_area_zones(catchment_layer, flowlines_layer, join_field, cop
             if join_id in data:
                 feat_dest.SetField(copy_field, data[join_id])  # Set drainage area
                 if data[join_id]:  # if the drainage area is not null
+
                     out_zones = {}
                     for zone_type, zone_values in zones.items():
-                        for i, value in enumerate(zone_values):
-                            if data[join_id] < value:
-                                out_zones[zone_type] = i
+                        for i, value in zone_values.items():
+                            if value:
+                                if data[join_id] < value:
+                                    out_zones[zone_type] = i
+                                    break
                             else:
-                                out_zones[zone_type] = i + 1
+                                out_zones[zone_type] = i
 
                     for zone_field, zone_value in out_zones.items():
                         feat_dest.SetField(f'{zone_field}_Zone', zone_value)
