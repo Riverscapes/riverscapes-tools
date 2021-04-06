@@ -17,7 +17,6 @@ import uuid
 import traceback
 import datetime
 import json
-import glob
 import sqlite3
 import time
 from typing import List, Dict
@@ -31,6 +30,7 @@ from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, dote
 from rscommons import GeopackageLayer
 from rscommons.vector_ops import polygonize, buffer_by_field, copy_feature_class
 from rscommons.hand import create_hand_raster
+from rscommons.database import load_lookup_data
 
 from vbet.vbet_network import vbet_network, create_drainage_area_zones
 from vbet.vbet_report import VBETReport
@@ -128,74 +128,85 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
     network_path = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['VBET_NETWORK'].rel_path)
     vbet_network(flowlines_path, flowareas_path, network_path, cfg.OUTPUT_EPSG, reach_codes)
 
-    zones = {'SLOPE': (1.0, 10.0),  # max for each zone, with addional zone above last value
-             'HAND': (1.0, 10.0)}
-
-    create_drainage_area_zones(catchments_path, flowlines_path, 'NHDPlusID', 'TotDASqKm', zones)
-
-    # Generate HAND from dem and vbet_network
-    # TODO make a place for this temporary folder. it can be removed after hand is generated.
-    temp_hand_dir = os.path.join(project_folder, "intermediates", "hand_processing")
-    safe_makedirs(temp_hand_dir)
-
-    hand_raster = os.path.join(project_folder, LayerTypes['HAND_RASTER'].rel_path)
-    create_hand_raster(proj_dem, network_path, temp_hand_dir, hand_raster)
-
-    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['HAND_RASTER'])
-
     # Build Transformation Tables
+    database_folder = os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database')
     with sqlite3.connect(intermediates_gpkg_path) as conn:
         cursor = conn.cursor()
-        # Build tables
-        with open(os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'vbet_schema.sql')) as sqlfile:
+        with open(os.path.join(database_folder, 'vbet_schema.sql')) as sqlfile:
             sql_commands = sqlfile.read()
             cursor.executescript(sql_commands)
             conn.commit()
 
-        # Load tables
-        for sqldata in glob.glob(os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'data', '**', '*.sql'), recursive=True):
-            with open(sqldata) as sqlfile:
-                sql_commands = sqlfile.read()
-                cursor.executescript(sql_commands)
-                conn.commit()
+    # Load tables
+    load_lookup_data(intermediates_gpkg_path, database_folder)
 
     # Load transforms from table
-    transforms = load_transform_functions(json_transforms, intermediates_gpkg_path)
+    # Load configuration from table
+    scenario_code = "KW_TESTING"
+    vbet_run = load_configuration(scenario_code, intermediates_gpkg_path)
 
-    # Get raster resolution as min buffer and apply bankfull width buffer to reaches
-    with rasterio.open(proj_slope) as raster:
-        t = raster.transform
-        min_buffer = (t[0] + abs(t[4])) / 2
+    create_drainage_area_zones(catchments_path, flowlines_path, 'NHDPlusID', 'TotDASqKm', vbet_run['Zones'])
 
-    log.info("Buffering Polyine by bankfull width buffers")
+    in_rasters = {}
+    if 'Slope' in vbet_run['Inputs']:
+        in_rasters['Slope'] = proj_slope
 
-    network_path_buffered = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['VBET_NETWORK_BUFFERED'].rel_path)
-    buffer_by_field(network_path, network_path_buffered, "BFwidth", cfg.OUTPUT_EPSG, min_buffer)
+    # Generate HAND from dem and vbet_network
+    if 'HAND' in vbet_run['Inputs']:
+        temp_hand_dir = os.path.join(project_folder, "intermediates", "hand_processing")
+        safe_makedirs(temp_hand_dir)
+        hand_raster = os.path.join(project_folder, LayerTypes['HAND_RASTER'].rel_path)
+        create_hand_raster(proj_dem, network_path, temp_hand_dir, hand_raster)
+        project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['HAND_RASTER'])
+
+        in_rasters['HAND'] = hand_raster
 
     # Rasterize the channel polygon and write to raster
-    log.info('Writing channel raster using slope as a template')
-    flow_area_raster = os.path.join(project_folder, LayerTypes['FLOW_AREA_RASTER'].rel_path)
-    channel_buffer_raster = os.path.join(project_folder, LayerTypes['CHANNEL_BUFFER_RASTER'].rel_path)
+    if 'Channel' in vbet_run['Inputs']:
+        # Get raster resolution as min buffer and apply bankfull width buffer to reaches
+        with rasterio.open(proj_slope) as raster:
+            t = raster.transform
+            min_buffer = (t[0] + abs(t[4])) / 2
 
-    rasterize(network_path_buffered, channel_buffer_raster, proj_slope)
-    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['CHANNEL_BUFFER_RASTER'])
+        log.info("Buffering Polyine by bankfull width buffers")
+        network_path_buffered = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['VBET_NETWORK_BUFFERED'].rel_path)
+        buffer_by_field(network_path, network_path_buffered, "BFwidth", cfg.OUTPUT_EPSG, min_buffer)
 
-    rasterize(flowareas_path, flow_area_raster, proj_slope)
-    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['FLOW_AREA_RASTER'])
+        log.info('Writing channel raster using slope as a template')
+        channel_buffer_raster = os.path.join(project_folder, LayerTypes['CHANNEL_BUFFER_RASTER'].rel_path)
+        rasterize(network_path_buffered, channel_buffer_raster, proj_slope)
+        project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['CHANNEL_BUFFER_RASTER'])
 
-    channel_dist_raster = os.path.join(project_folder, LayerTypes['CHANNEL_DISTANCE'].rel_path)
-    fa_dist_raster = os.path.join(project_folder, LayerTypes['FLOW_AREA_DISTANCE'].rel_path)
-    proximity_raster(channel_buffer_raster, channel_dist_raster)
-    proximity_raster(flow_area_raster, fa_dist_raster)
+        log.info('Generating Channel Proximity raster')
+        channel_dist_raster = os.path.join(project_folder, LayerTypes['CHANNEL_DISTANCE'].rel_path)
+        proximity_raster(channel_buffer_raster, channel_dist_raster)
+        project.add_project_raster(proj_nodes["Intermediates"], LayerTypes['CHANNEL_DISTANCE'])
 
-    project.add_project_raster(proj_nodes["Intermediates"], LayerTypes['CHANNEL_DISTANCE'])
-    project.add_project_raster(proj_nodes["Intermediates"], LayerTypes['FLOW_AREA_DISTANCE'])
+        in_rasters['Channel'] = channel_dist_raster
 
-    # Generate da Zone raster
-    da_slope_zone_raster = os.path.join(project_folder, 'intermediates', 'da_slope_zones.tif')
-    rasterize_attribute(catchments_path, da_slope_zone_raster, proj_slope, 'SLOPE_Zone')
-    da_hand_zone_raster = os.path.join(project_folder, 'intermediates', 'da_hand_zones.tif')
-    rasterize_attribute(catchments_path, da_hand_zone_raster, proj_slope, 'HAND_Zone')
+    if 'Flow Areas' in vbet_run['Inputs']:
+        flow_area_raster = os.path.join(project_folder, LayerTypes['FLOW_AREA_RASTER'].rel_path)
+        rasterize(flowareas_path, flow_area_raster, proj_slope)
+        project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['FLOW_AREA_RASTER'])
+        fa_dist_raster = os.path.join(project_folder, LayerTypes['FLOW_AREA_DISTANCE'].rel_path)
+        proximity_raster(flow_area_raster, fa_dist_raster)
+        project.add_project_raster(proj_nodes["Intermediates"], LayerTypes['FLOW_AREA_DISTANCE'])
+
+        in_rasters['Flow Areas'] = fa_dist_raster
+
+    for vbet_input in vbet_run['Inputs'] if vbet_input not in ['Slope', 'HAND', 'Channel', 'Flow Areas']:
+        'process'
+
+    # Generate da Zone rasters
+    for zone in vbet_run['Zones']:
+        raster_name = os.path.join(project_folder, 'intermediates', f'da_{zone}_zones.tif')
+        rasterize_attribute(catchments_path, raster_name, proj_slope, f'{zone}_Zone')
+        in_rasters[f'{zone}_Zone'] = raster_name
+
+    # da_slope_zone_raster = os.path.join(project_folder, 'intermediates', 'da_slope_zones.tif')
+    # rasterize_attribute(catchments_path, da_slope_zone_raster, proj_slope, 'SLOPE_Zone')
+    # da_hand_zone_raster = os.path.join(project_folder, 'intermediates', 'da_hand_zones.tif')
+    # rasterize_attribute(catchments_path, da_hand_zone_raster, proj_slope, 'HAND_Zone')
 
     slope_transform_raster = os.path.join(project_folder, LayerTypes['NORMALIZED_SLOPE'].rel_path)
     hand_transform_raster = os.path.join(project_folder, LayerTypes['NORMALIZED_HAND'].rel_path)
@@ -208,21 +219,24 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
 
     # Open evidence rasters concurrently. We're looping over windows so this shouldn't affect
     # memory consumption too much
-    with rasterio.open(proj_slope) as slp_src, \
-            rasterio.open(hand_raster) as hand_src, \
-            rasterio.open(channel_dist_raster) as cdist_src, \
-            rasterio.open(fa_dist_raster) as fadist_src, \
-            rasterio.open(da_slope_zone_raster) as da_slope_zone_src,\
-            rasterio.open(da_hand_zone_raster) as da_hand_zone_src:
+    if in_rasters:
+        open_rasters = {name: rasterio.open(raster) for name, raster in in_rasters.items()}
+
+        # with rasterio.open(proj_slope) if proj_slope else None as slp_src, \
+        #         rasterio.open(hand_raster) if hand_raster else None as hand_src, \
+        #         rasterio.open(channel_dist_raster) as cdist_src, \
+        #         rasterio.open(fa_dist_raster) as fadist_src, \
+        #         rasterio.open(da_slope_zone_raster) as da_slope_zone_src,\
+        #         rasterio.open(da_hand_zone_raster) as da_hand_zone_src:
         # All 3 rasters should have the same extent and properties. They differ only in dtype
-        out_meta = slp_src.meta
+        out_meta = open_rasters['Slope'].meta
         # Rasterio can't write back to a VRT so rest the driver and number of bands for the output
         out_meta['driver'] = 'GTiff'
         out_meta['count'] = 1
         out_meta['compress'] = 'deflate'
         # out_meta['dtype'] = rasterio.uint8
         # We use this to buffer the output
-        cell_size = abs(slp_src.get_transform()[1])
+        cell_size = abs(open_rasters['Slope'].get_transform()[1])
 
         with rasterio.open(evidence_raster, 'w', **out_meta) as dest_evidence, \
                 rasterio.open(topo_evidence_raster, "w", **out_meta) as dest, \
@@ -232,26 +246,27 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
                 rasterio.open(chan_dist_transform_raster, 'w', **out_meta) as chan_dist_ev_out, \
                 rasterio.open(fa_dist_transform_raster, 'w', **out_meta) as fa_dist_ev_out:
 
-            progbar = ProgressBar(len(list(slp_src.block_windows(1))), 50, "Calculating evidence layer")
+            progbar = ProgressBar(len(list(open_rasters['Slope'].block_windows(1))), 50, "Calculating evidence layer")
             counter = 0
             # Again, these rasters should be orthogonal so their windows should also line up
-            for _ji, window in slp_src.block_windows(1):
+            for _ji, window in open_rasters['Slope'].block_windows(1):
                 progbar.update(counter)
                 counter += 1
-                slope_data = slp_src.read(1, window=window, masked=True)
-                hand_data = hand_src.read(1, window=window, masked=True)
-                cdist_data = cdist_src.read(1, window=window, masked=True)
-                fadist_data = fadist_src.read(1, window=window, masked=True)
-                da_slope_zones_data = da_slope_zone_src.read(1, window=window, masked=True)
-                da_hand_zones_data = da_hand_zone_src.read(1, window=window, masked=True)
+                slope_data = open_rasters['Slope'].read(1, window=window, masked=True)
+                hand_data = open_rasters['HAND'].read(1, window=window, masked=True)
+                cdist_data = open_rasters['Channel'].read(1, window=window, masked=True)
+                fadist_data = open_rasters['Flow Areas'].read(1, window=window, masked=True)
+                da_slope_zones_data = open_rasters['Slope_Zone'].read(1, window=window, masked=True)
+                da_hand_zones_data = open_rasters['HAND_Zone'].read(1, window=window, masked=True)
 
-                slope_transform_zones = [np.ma.MaskedArray(transforms["Slope"](slope_data.data), mask=slope_data.mask),
-                                         np.ma.MaskedArray(transforms["Slope MID"](slope_data.data), mask=slope_data.mask),
-                                         np.ma.MaskedArray(transforms["Slope LARGE"](slope_data.data), mask=slope_data.mask)]
+                slope_transform_zones = [np.ma.MaskedArray(transform(slope_data.data), mask=slope_data.mask) for transform in vbet_run['Transforms']['Slope']]
+                #  np.ma.MaskedArray(transforms["Slope MID"](slope_data.data), mask=slope_data.mask),
+                #  np.ma.MaskedArray(transforms["Slope LARGE"](slope_data.data), mask=slope_data.mask)]
 
-                hand_transform_zones = [np.ma.MaskedArray(transforms["HAND"](hand_data.data), mask=hand_data.mask),
-                                        np.ma.MaskedArray(transforms["HAND MID"](hand_data.data), mask=hand_data.mask),
-                                        np.ma.MaskedArray(transforms["HAND LARGE"](hand_data.data), mask=hand_data.mask)]
+                hand_transform_zones = [np.ma.MaskedArray(transform(hand_data.data), mask=hand_data.mask) for transform in vbet_run['Transforms']['HAND']]
+                # [np.ma.MaskedArray(transforms["HAND"](hand_data.data), mask=hand_data.mask),
+                # np.ma.MaskedArray(transforms["HAND MID"](hand_data.data), mask=hand_data.mask),
+                # np.ma.MaskedArray(transforms["HAND LARGE"](hand_data.data), mask=hand_data.mask)]
 
                 slope_transform = np.ma.MaskedArray(np.choose(da_slope_zones_data.data, slope_transform_zones, mode='clip'), mask=slope_data.mask)
 
@@ -259,8 +274,8 @@ def vbet(huc, flowlines_orig, flowareas_orig, orig_slope, json_transforms, orig_
 
                 # slope_transform = np.ma.MaskedArray(transforms["Slope"](slope_data.data), mask=slope_data.mask)
                 # hand_transform = np.ma.MaskedArray(transforms["HAND"](hand_data.data), mask=hand_data.mask)
-                channel_dist_transform = np.ma.MaskedArray(transforms["Channel"](cdist_data.data), mask=cdist_data.mask)
-                fa_dist_transform = np.ma.MaskedArray(transforms["Flow Areas"](fadist_data.data), mask=fadist_data.mask)
+                channel_dist_transform = np.ma.MaskedArray(vbet_run['Transforms']["Channel"][0](cdist_data.data), mask=cdist_data.mask)
+                fa_dist_transform = np.ma.MaskedArray(vbet_run['Transforms']["Flow Areas"][0](fadist_data.data), mask=fadist_data.mask)
 
                 fvals_topo = slope_transform * hand_transform
                 fvals_channel = np.maximum(channel_dist_transform, fa_dist_transform)
@@ -364,6 +379,63 @@ def load_transform_functions(json_transforms, database):
             transform_functions[input_name] = None
 
     return transform_functions
+
+
+def load_configuration(machine_code, database):
+
+    conn = sqlite3.connect(database)
+    conn.execute('pragma foreign_keys=ON')
+    curs = conn.cursor()
+
+    configuration = {}
+
+    # 1 Get inputs
+    inputs = curs.execute(""" SELECT inputs.name, inputs.input_id, scenario_input_id FROM scenarios
+                               INNER JOIN scenario_inputs ON scenarios.scenario_id = scenario_inputs.scenario_id
+                               INNER JOIN inputs ON scenario_inputs.input_id = inputs.input_id
+                               WHERE machine_code = ?;""", [machine_code]).fetchall()
+
+    inputs_dict = {}
+    for input_value in inputs:
+
+        zones = curs.execute("""SELECT transform_id, min_da, max_da FROM input_zones WHERE scenario_input_id = ?""", [input_value[2]]).fetchall()
+
+        transform_zones = {}
+        for zone in zones:
+            transform_zones[zone[0]] = {'min': zone[1], 'max': zone[2]}
+
+        inputs_dict[input_value[0]] = {'input_id': input_value[1], 'transform_zones': transform_zones}
+
+    configuration['Inputs'] = inputs_dict
+
+    transforms_dict = {}
+    for input_name, val in configuration['Inputs'].items():
+        input_transforms = []
+        for i, transform_id in enumerate(val['transform_zones']):
+            transform_type = curs.execute("""SELECT transform_types.name from transforms INNER JOIN transform_types ON transform_types.type_id = transforms.type_id where transforms.transform_id = ?""", [transform_id]).fetchone()[0]
+            values = curs.execute("""SELECT input_value, output_value FROM inflections WHERE transform_id = ? ORDER BY input_value """, [transform_id]).fetchall()
+
+            if transform_type == "Polynomial":
+                # add polynomial function
+                transforms_dict[transform_id] = None
+
+            input_transforms.append(interpolate.interp1d(np.array([v[0] for v in values]), np.array([v[1] for v in values]), kind=transform_type, bounds_error=False, fill_value=0.0))
+        transforms_dict[input_name] = input_transforms
+
+    configuration['Transforms'] = transforms_dict
+
+    zones_dict = {}
+    for input_name, input_zones in configuration["Inputs"].items():
+
+        if len(input_zones['transform_zones']) > 1:
+            zone = {}
+            for i, zone_values in enumerate(input_zones['transform_zones'].values()):
+                zone[i] = zone_values['max']
+            zones_dict[input_name] = zone
+
+    configuration['Zones'] = zones_dict
+
+    return configuration
 
 
 def create_project(huc, output_dir):
