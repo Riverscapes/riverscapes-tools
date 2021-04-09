@@ -70,7 +70,7 @@ def include_features(source_layer: VectorBase, out_layer: VectorBase, attribute_
     return included_fids
 
 
-def create_drainage_area_zones(catchment_layer, flowlines_layer, join_field, copy_field, zones):
+def create_drainage_area_zones(catchment_layer, flowlines_layer, join_field, copy_field, zones, out_layer):
 
     # Load drainage area
     with sqlite3.connect(os.path.dirname(flowlines_layer)) as conn:
@@ -78,16 +78,29 @@ def create_drainage_area_zones(catchment_layer, flowlines_layer, join_field, cop
         join_data = cursor.execute(f"""SELECT {join_field}, {copy_field} FROM {os.path.basename(flowlines_layer)}""").fetchall()
         data = {int(value[0]): value[1] for value in join_data}
 
-    with GeopackageLayer(os.path.dirname(catchment_layer), layer_name=os.path.basename(catchment_layer), write=True) as lyr_destination:
+    with GeopackageLayer(os.path.dirname(catchment_layer), layer_name=os.path.basename(catchment_layer)) as lyr_source, \
+            GeopackageLayer(os.path.dirname(out_layer), layer_name=os.path.basename(out_layer), write=True) as lyr_destination:
 
+        # Create Output
+        srs = lyr_source.spatial_ref
+        lyr_destination.create_layer(ogr.wkbPolygon, spatial_ref=srs)
         lyr_destination.create_field(copy_field, field_type=ogr.OFTReal)
         for attribute_type in zones:
             lyr_destination.create_field(f'{attribute_type}_Zone', field_type=ogr.OFTInteger)
 
-        for feat_dest, *_ in lyr_destination.iterate_features("Joining attributes"):
-            join_id = int(feat_dest.GetField(join_field))
+        out_layer_defn = lyr_destination.ogr_layer.GetLayerDefn()
+        lyr_destination.ogr_layer.StartTransaction()
+        # Build Zones
+        for feat_source, *_ in lyr_source.iterate_features("Joining attributes"):
+            join_id = int(feat_source.GetField(join_field))
 
             if join_id in data:
+
+                geom = feat_source.GetGeometryRef()
+                feat_dest = ogr.Feature(out_layer_defn)
+                feat_dest.SetFID(join_id)
+                feat_dest.SetGeometry(geom)
+
                 feat_dest.SetField(copy_field, data[join_id])  # Set drainage area
                 if data[join_id]:  # if the drainage area is not null
 
@@ -104,4 +117,5 @@ def create_drainage_area_zones(catchment_layer, flowlines_layer, join_field, cop
                     for zone_field, zone_value in out_zones.items():
                         feat_dest.SetField(f'{zone_field}_Zone', zone_value)
 
-                lyr_destination.ogr_layer.SetFeature(feat_dest)
+                lyr_destination.ogr_layer.CreateFeature(feat_dest)
+        lyr_destination.ogr_layer.CommitTransaction()
