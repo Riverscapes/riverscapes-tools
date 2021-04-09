@@ -318,7 +318,7 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
     report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
     project.add_report(proj_nodes['Outputs'], LayerTypes['REPORT'], replace=True)
 
-    report = VBETReport(report_path, project)
+    report = VBETReport(scenario_code, inputs_gpkg_path, vbet_path, report_path, project)
     report.write()
 
     log.info('VBET Completed Successfully')
