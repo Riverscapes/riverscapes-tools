@@ -230,32 +230,37 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
         counter += 1
         block = {block_name: raster.read(1, window=window, masked=True) for block_name, raster in read_rasters.items()}
 
-        slope_transform_zones = [np.ma.MaskedArray(transform(block['Slope'].data), mask=block['Slope'].mask) for transform in vbet_run['Transforms']['Slope']]
+        normalized = {}
+        for name in vbet_run['Inputs']:
+            if name in vbet_run['Zones']:
+                transforms = [np.ma.MaskedArray(transform(block[name].data), mask=block[name].mask) for transform in vbet_run['Transforms'][name]]
+                normalized[name] = np.ma.MaskedArray(np.choose(block[f'DA_ZONE_{name}'].data, transforms, mode='clip'), mask=block[name].mask)
+            else:
+                normalized[name] = np.ma.MaskedArray(vbet_run['Transforms'][name][0](block[name].data), mask=block[name].mask)
 
-        hand_transform_zones = [np.ma.MaskedArray(transform(block['HAND'].data), mask=block['HAND'].mask) for transform in vbet_run['Transforms']['HAND']]
+        # slope_transform_zones = [np.ma.MaskedArray(transform(block['Slope'].data), mask=block['Slope'].mask) for transform in vbet_run['Transforms']['Slope']]
+        # hand_transform_zones = [np.ma.MaskedArray(transform(block['HAND'].data), mask=block['HAND'].mask) for transform in vbet_run['Transforms']['HAND']]
+        # slope_transform = np.ma.MaskedArray(np.choose(block['DA_ZONE_Slope'].data, slope_transform_zones, mode='clip'), mask=block['Slope'].mask)
+        # hand_transform = np.ma.MaskedArray(np.choose(block['DA_ZONE_HAND'].data, hand_transform_zones, mode='clip'), mask=block['HAND'].mask)
 
-        slope_transform = np.ma.MaskedArray(np.choose(block['DA_ZONE_Slope'].data, slope_transform_zones, mode='clip'), mask=block['Slope'].mask)
+        # channel_dist_transform = np.ma.MaskedArray(vbet_run['Transforms']["Channel"][0](block['Channel'].data), mask=block['Channel'].mask)
+        # fa_dist_transform = np.ma.MaskedArray(vbet_run['Transforms']["Flow Areas"][0](block['Flow Areas'].data), mask=block['Flow Areas'].mask)
 
-        hand_transform = np.ma.MaskedArray(np.choose(block['DA_ZONE_HAND'].data, hand_transform_zones, mode='clip'), mask=block['Slope'].mask)
-
-        channel_dist_transform = np.ma.MaskedArray(vbet_run['Transforms']["Channel"][0](block['Channel'].data), mask=block['Channel'].mask)
-        fa_dist_transform = np.ma.MaskedArray(vbet_run['Transforms']["Flow Areas"][0](block['Flow Areas'].data), mask=block['Flow Areas'].mask)
-
-        fvals_topo = slope_transform * hand_transform
-        fvals_channel = np.maximum(channel_dist_transform, fa_dist_transform)
+        fvals_topo = normalized['Slope'] * normalized['HAND']
+        fvals_channel = np.maximum(normalized['Channel'], normalized['Flow Areas'])
         fvals_evidence = np.maximum(fvals_topo, fvals_channel)
 
         # Fill the masked values with the appropriate nodata vals
         # Unthresholded in the base band (mostly for debugging)
-        write_rasters['VBET_EVIDENCE'].write(np.ma.filled(np.float32(fvals_topo), out_meta['nodata']), window=window, indexes=1)
+        write_rasters['VBET_EVIDENCE'].write(np.ma.filled(np.float32(fvals_evidence), out_meta['nodata']), window=window, indexes=1)
 
-        write_rasters['NORMALIZED_SLOPE'].write(slope_transform.astype('float32').filled(out_meta['nodata']), window=window, indexes=1)
-        write_rasters['NORMALIZED_HAND'].write(hand_transform.astype('float32').filled(out_meta['nodata']), window=window, indexes=1)
-        write_rasters['NORMALIZED_CHANNEL_DISTANCE'].write(channel_dist_transform.astype('float32').filled(out_meta['nodata']), window=window, indexes=1)
-        write_rasters['NORMALIZED_FLOWAREA_DISTANCE'].write(fa_dist_transform.astype('float32').filled(out_meta['nodata']), window=window, indexes=1)
+        write_rasters['NORMALIZED_SLOPE'].write(normalized['Slope'].astype('float32').filled(out_meta['nodata']), window=window, indexes=1)
+        write_rasters['NORMALIZED_HAND'].write(normalized['HAND'].astype('float32').filled(out_meta['nodata']), window=window, indexes=1)
+        write_rasters['NORMALIZED_CHANNEL_DISTANCE'].write(normalized['Channel'].astype('float32').filled(out_meta['nodata']), window=window, indexes=1)
+        write_rasters['NORMALIZED_FLOWAREA_DISTANCE'].write(normalized['Flow Areas'].astype('float32').filled(out_meta['nodata']), window=window, indexes=1)
 
         write_rasters['EVIDENCE_CHANNEL'].write(np.ma.filled(np.float32(fvals_channel), out_meta['nodata']), window=window, indexes=1)
-        write_rasters['EVIDENCE_TOPO'].write(np.ma.filled(np.float32(fvals_evidence), out_meta['nodata']), window=window, indexes=1)
+        write_rasters['EVIDENCE_TOPO'].write(np.ma.filled(np.float32(fvals_topo), out_meta['nodata']), window=window, indexes=1)
     progbar.finish()
 
     # Close all rasters here
@@ -274,7 +279,7 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
 
     # Get the full paths to the geopackages
     vbet_path = os.path.join(project_folder, LayerTypes['VBET_OUTPUTS'].rel_path)
-    threshold_outputs = False
+    threshold_outputs = True
 
     if threshold_outputs:
         for str_val, thr_val in thresh_vals.items():  # {"50": 0.5}.items():  #
