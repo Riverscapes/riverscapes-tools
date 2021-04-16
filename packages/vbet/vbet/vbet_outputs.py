@@ -69,7 +69,7 @@ def sanitize(name: str, in_path: str, out_path: str, buff_dist: float, select_fe
         with GeopackageLayer(tempgpkg.filepath, "sanitize_{}".format(str(uuid4())), write=True, delete_dataset=True) as tmp_lyr, \
                 GeopackageLayer(select_features) as lyr_select_features:
 
-            tmp_lyr.create_layer_from_ref(in_lyr)
+            # tmp_lyr.create_layer_from_ref(in_lyr)
 
             def geom_validity_fix(geom_in):
                 f_geom = geom_in
@@ -84,6 +84,8 @@ def sanitize(name: str, in_path: str, out_path: str, buff_dist: float, select_fe
             # Only keep features intersected with network
             tmp_lyr.create_layer_from_ref(in_lyr)
 
+            tmp_lyr.ogr_layer.StartTransaction()
+
             for candidate_feat, _c2, _p1 in in_lyr.iterate_features("Finding interesected features"):
                 candidate_geom = candidate_feat.GetGeometryRef()
 
@@ -96,6 +98,8 @@ def sanitize(name: str, in_path: str, out_path: str, buff_dist: float, select_fe
                         feat = None
                         break
 
+            tmp_lyr.ogr_layer.CommitTransaction()
+            out_lyr.ogr_layer.StartTransaction()
             # Second loop is about filtering bad areas and simplifying
             for in_feat, _counter, _progbar in tmp_lyr.iterate_features("Filtering out non-relevant shapes for {}".format(name)):
                 fid = in_feat.GetFID()
@@ -128,5 +132,5 @@ def sanitize(name: str, in_path: str, out_path: str, buff_dist: float, select_fe
                     out_pts += f_geom.GetBoundary().GetPointCount()
                 else:
                     log.warning('Invalid GEOM with fid: {} for layer {}'.format(fid, name))
-
+            out_lyr.ogr_layer.CommitTransaction()
         log.info('Writing to disk for layer {}'.format(name))

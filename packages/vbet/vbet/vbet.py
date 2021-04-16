@@ -21,15 +21,19 @@ import sqlite3
 import time
 from typing import List, Dict
 # LEave OSGEO import alone. It is necessary even if it looks unused
-from osgeo import gdal
+from osgeo import gdal, ogr
 import rasterio
+from rasterio.features import shapes
+import rasterio.mask
 import numpy as np
-from scipy import interpolate
+
 from rscommons.util import safe_makedirs, parse_metadata
-from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, dotenv, initGDALOGRErrors, TempRaster
+from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, dotenv, initGDALOGRErrors, TempRaster, VectorBase
 from rscommons import GeopackageLayer
 from rscommons.vector_ops import polygonize, buffer_by_field, copy_feature_class
 from rscommons.hand import create_hand_raster
+from rscommons.thiessen.vor import NARVoronoi
+from rscommons.thiessen.shapes import centerline_points
 
 from vbet.vbet_database import load_configuration, build_vbet_database
 from vbet.vbet_network import vbet_network, create_drainage_area_zones
@@ -238,14 +242,6 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
             else:
                 normalized[name] = np.ma.MaskedArray(vbet_run['Transforms'][name][0](block[name].data), mask=block[name].mask)
 
-        # slope_transform_zones = [np.ma.MaskedArray(transform(block['Slope'].data), mask=block['Slope'].mask) for transform in vbet_run['Transforms']['Slope']]
-        # hand_transform_zones = [np.ma.MaskedArray(transform(block['HAND'].data), mask=block['HAND'].mask) for transform in vbet_run['Transforms']['HAND']]
-        # slope_transform = np.ma.MaskedArray(np.choose(block['DA_ZONE_Slope'].data, slope_transform_zones, mode='clip'), mask=block['Slope'].mask)
-        # hand_transform = np.ma.MaskedArray(np.choose(block['DA_ZONE_HAND'].data, hand_transform_zones, mode='clip'), mask=block['HAND'].mask)
-
-        # channel_dist_transform = np.ma.MaskedArray(vbet_run['Transforms']["Channel"][0](block['Channel'].data), mask=block['Channel'].mask)
-        # fa_dist_transform = np.ma.MaskedArray(vbet_run['Transforms']["Flow Areas"][0](block['Flow Areas'].data), mask=block['Flow Areas'].mask)
-
         fvals_topo = normalized['Slope'] * normalized['HAND']
         fvals_channel = np.maximum(normalized['Channel'], normalized['Flow Areas'])
         fvals_evidence = np.maximum(fvals_topo, fvals_channel)
@@ -273,7 +269,7 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
     project.add_project_raster(proj_nodes['Outputs'], LayerTypes['VBET_EVIDENCE'])
 
     # Get the length of a meter (roughly)
-    #degree_factor = GeopackageLayer.rough_convert_metres_to_raster_units(project_inputs['SLOPE_RASTER'], 1)
+    degree_factor = GeopackageLayer.rough_convert_metres_to_raster_units(project_inputs['SLOPE_RASTER'], 1)
     buff_dist = cell_size
     # min_hole_degrees = min_hole_area_m * (degree_factor ** 2)
 
@@ -282,6 +278,27 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
     threshold_outputs = True
 
     if threshold_outputs:
+
+        flowline_thiessen_points_groups = centerline_points(network_path, degree_factor, fields=['NHDPlusID'])
+        flowline_thiessen_points = [pt for group in flowline_thiessen_points_groups.values() for pt in group]
+
+        # Exterior is the shell and there is only ever 1
+        myVorL = NARVoronoi(flowline_thiessen_points)
+
+        # Generate Thiessen Polys
+        myVorL.createshapes()
+
+        with GeopackageLayer(project_inputs['FLOWLINES']) as flow_lyr:
+            # Set the output spatial ref as this for the whole project
+            out_srs = flow_lyr.spatial_ref
+
+        # Dissolve by flowlines
+        log.info("Dissolving Thiessen Polygons")
+        dissolved_polys = myVorL.dissolve_by_property('NHDPlusID')
+        simple_save(dissolved_polys.values(), ogr.wkbPolygon, out_srs, "ThiessenPolygonsDissolved", intermediates_gpkg_path)
+
+        thiessen_fc = os.path.join(intermediates_gpkg_path, "ThiessenPolygonsDissolved")
+
         for str_val, thr_val in thresh_vals.items():  # {"50": 0.5}.items():  #
             plgnize_id = 'THRESH_{}'.format(str_val)
             with TempRaster('vbet_raw_thresh_{}'.format(plgnize_id)) as tmp_raw_thresh, \
@@ -300,12 +317,51 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
                 vbet_lyr = RSLayer('Threshold at {}%'.format(str_val), vbet_id, 'Vector', vbet_id.lower())
                 # Add a project node for this thresholded vector
                 LayerTypes['VBET_OUTPUTS'].add_sub_layer(vbet_id, vbet_lyr)
-                # Now polygonize the raster
-                log.info('Polygonizing')
-                polygonize(tmp_cleaned_thresh.filepath, 1, '{}/{}'.format(intermediates_gpkg_path, plgnize_lyr.rel_path), cfg.OUTPUT_EPSG)
-                log.info('Done')
 
-            # Now the final sanitization
+                with rasterio.open(tmp_cleaned_thresh.filepath, 'r') as raster:
+                    with GeopackageLayer(thiessen_fc, write=True) as lyr_reaches, \
+                            GeopackageLayer(os.path.join(intermediates_gpkg_path, plgnize_lyr.rel_path), write=True) as lyr_output:
+
+                        srs = lyr_reaches.ogr_layer.GetSpatialRef()
+
+                        lyr_output.create_layer(ogr.wkbMultiPolygon, spatial_ref=srs)
+
+                        out_layer_defn = lyr_output.ogr_layer.GetLayerDefn()
+                        lyr_output.ogr_layer.StartTransaction()
+
+                        # out_feat = ogr.Feature(out_layer_defn)
+                        # out_union = ogr.Geometry(ogr.wkbMultiPolygon)
+
+                        for reach_feat, *_ in lyr_reaches.iterate_features("Processing Reaches"):
+                            # buff_value = reach_feat.GetField('BFwidth')
+                            geom = reach_feat.GetGeometryRef()
+                            buff = geom.Buffer(cell_size)
+                            # buff = geom.Buffer(buff_value * degree_factor * cell_size)
+                            # extent_l, extent_r, extent_b, extent_t = geom.GetEnvelope()
+                            # win = raster.window(extent_l - buff_dist, extent_b - buff_dist, extent_r + buff_dist, extent_t + buff_dist)
+                            # win_transform = raster.window_transform(win)
+
+                            geom_json = buff.ExportToJson()
+                            poly = json.loads(geom_json)
+                            data, mask_transform = rasterio.mask.mask(raster, [poly], crop=True)
+
+                            if all(x > 0 for x in data.shape):
+                                out_shapes = list(g for g, v in shapes(data, transform=mask_transform) if v == 1)
+                                for out_shape in out_shapes:
+                                    out_feat = ogr.Feature(out_layer_defn)
+                                    out_geom = ogr.CreateGeometryFromJson(json.dumps(out_shape))
+
+                                    out_feat.SetGeometry(out_geom)
+                                    lyr_output.ogr_layer.CreateFeature(out_feat)
+
+                        lyr_output.ogr_layer.CommitTransaction()
+
+                # Now polygonize the raster
+            #     log.info('Polygonizing')
+            #     polygonize(tmp_cleaned_thresh.filepath, 1, '{}/{}'.format(intermediates_gpkg_path, plgnize_lyr.rel_path), cfg.OUTPUT_EPSG)
+            #     log.info('Done')
+
+            # # Now the final sanitization
             sanitize(
                 str_val,
                 '{}/{}'.format(intermediates_gpkg_path, plgnize_lyr.rel_path),
@@ -329,25 +385,29 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
     log.info('VBET Completed Successfully')
 
 
-def load_transform_functions(json_transforms, database):
+def simple_save(list_geoms, ogr_type, srs, layer_name, gpkg_path):
+    with GeopackageLayer(gpkg_path, layer_name, write=True) as lyr:
+        lyr.create_layer(ogr_type, spatial_ref=srs)
 
-    conn = sqlite3.connect(database)
-    conn.execute('pragma foreign_keys=ON')
-    curs = conn.cursor()
+        progbar = ProgressBar(len(list_geoms), 50, f"Saving {gpkg_path}/{layer_name}")
+        counter = 0
+        progbar.update(counter)
+        lyr.ogr_layer.StartTransaction()
+        for geom in list_geoms:
+            counter += 1
+            progbar.update(counter)
 
-    transform_functions = {}
+            feature = ogr.Feature(lyr.ogr_layer_def)
+            geom_ogr = VectorBase.shapely2ogr(geom)
+            feature.SetGeometry(geom_ogr)
+            # if attributes:
+            #     for field, value in attributes.items():
+            #         feature.SetField(field, value)
+            lyr.ogr_layer.CreateFeature(feature)
+            feature = None
 
-    for input_name, transform_id in json.loads(json_transforms).items():
-        transform_type = curs.execute("""SELECT transform_types.name from transforms INNER JOIN transform_types ON transform_types.type_id = transforms.type_id where transforms.transform_id = ?""", [transform_id]).fetchone()[0]
-        values = curs.execute("""SELECT input_value, output_value FROM inflections WHERE transform_id = ? ORDER BY input_value """, [transform_id]).fetchall()
-
-        transform_functions[input_name] = interpolate.interp1d(np.array([v[0] for v in values]), np.array([v[1] for v in values]), kind=transform_type, bounds_error=False, fill_value=0.0)
-
-        if transform_type == "Polynomial":
-            # add polynomial function
-            transform_functions[input_name] = None
-
-    return transform_functions
+        progbar.finish()
+        lyr.ogr_layer.CommitTransaction()
 
 
 def create_project(huc, output_dir):

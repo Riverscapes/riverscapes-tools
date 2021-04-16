@@ -80,7 +80,7 @@ def midpoints(in_lines):
     return out_points
 
 
-def centerline_points(in_lines: Path, distance: float = 0.0, transform: Transform = None) -> Dict[int, List[RiverPoint]]:
+def centerline_points(in_lines: Path, distance: float = 0.0, transform: Transform = None, fields = None) -> Dict[int, List[RiverPoint]]:
     """Generates points along each line feature at specified distances from the end as well as quarter and halfway
 
     Args:
@@ -105,6 +105,11 @@ def centerline_points(in_lines: Path, distance: float = 0.0, transform: Transfor
             out_points = []
             # Attach the FID in case we need it later
             props = {'fid': fid}
+
+            if fields:
+                for field in fields:
+                    value = feat.GetField(field)
+                    props[field] = value
 
             pts = [
                 line.interpolate(distance),
