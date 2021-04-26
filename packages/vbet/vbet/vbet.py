@@ -36,7 +36,7 @@ from rscommons.thiessen.vor import NARVoronoi
 from rscommons.thiessen.shapes import centerline_points
 
 from vbet.vbet_database import load_configuration, build_vbet_database
-from vbet.vbet_network import vbet_network, create_drainage_area_zones
+from vbet.vbet_network import vbet_network, create_drainage_area_zones, copy_vaa_attributes, join_attributes
 from vbet.vbet_report import VBETReport
 from vbet.vbet_raster_ops import rasterize, proximity_raster, raster_clean, rasterize_attribute
 from vbet.vbet_outputs import threshold, sanitize
@@ -84,7 +84,7 @@ LayerTypes = {
 }
 
 
-def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: Path, reach_codes: List[str], meta: Dict[str, str]):
+def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: Path, vaa_table: Path, reach_codes: List[str], meta: Dict[str, str]):
     """generate vbet evidence raster and threshold polygons for a watershed
 
     Args:
@@ -123,16 +123,20 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
             project_inputs[input_name] = project_path
     project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
 
+    vaa_table_name = copy_vaa_attributes(project_inputs['FLOWLINES'], vaa_table)
+
     # Build Transformation Tables
     build_vbet_database(inputs_gpkg_path)
 
     # Load configuration from table
     vbet_run = load_configuration(scenario_code, inputs_gpkg_path)
 
+    flowlines_vaa_path = join_attributes(inputs_gpkg_path, "Flowlines_VAA", os.path.basename(project_inputs['FLOWLINES']), vaa_table_name, 'NHDPlusID', ['LevelPathI', 'Divergence', 'DnLevelPat'], cfg.OUTPUT_EPSG)
+
     # Create a copy of the flow lines with just the perennial and also connectors inside flow areas
     log.info('Building vbet network')
     network_path = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['VBET_NETWORK'].rel_path)
-    vbet_network(project_inputs['FLOWLINES'], project_inputs['FLOW_AREA'], network_path, cfg.OUTPUT_EPSG, reach_codes)
+    vbet_network(flowlines_vaa_path, project_inputs['FLOW_AREA'], network_path, cfg.OUTPUT_EPSG, reach_codes)
 
     # Create Zones
     log.info('Building drainage area zones')
@@ -279,7 +283,7 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
 
     if threshold_outputs:
 
-        flowline_thiessen_points_groups = centerline_points(network_path, degree_factor, fields=['NHDPlusID'])
+        flowline_thiessen_points_groups = centerline_points(network_path, distance=degree_factor * 10, fields=['LevelPathI'])
         flowline_thiessen_points = [pt for group in flowline_thiessen_points_groups.values() for pt in group]
 
         # Exterior is the shell and there is only ever 1
@@ -294,8 +298,12 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
 
         # Dissolve by flowlines
         log.info("Dissolving Thiessen Polygons")
-        dissolved_polys = myVorL.dissolve_by_property('NHDPlusID')
-        simple_save(dissolved_polys.values(), ogr.wkbPolygon, out_srs, "ThiessenPolygonsDissolved", intermediates_gpkg_path)
+        dissolved_polys = myVorL.dissolve_by_property('LevelPathI')
+
+        dissolved_attributes = {'LevelPathI': ogr.OFTString}
+
+        simple_save([{'geom': pt.point} for pt in flowline_thiessen_points], ogr.wkbPoint, out_srs, "ThiessenPoints", intermediates_gpkg_path)
+        simple_save([{'geom': g, 'attributes': {'LevelPathI': k}} for k, g in dissolved_polys.items()], ogr.wkbPolygon, out_srs, "ThiessenPolygonsDissolved", intermediates_gpkg_path, dissolved_attributes)
 
         thiessen_fc = os.path.join(intermediates_gpkg_path, "ThiessenPolygonsDissolved")
 
@@ -322,25 +330,24 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
                     with GeopackageLayer(thiessen_fc, write=True) as lyr_reaches, \
                             GeopackageLayer(os.path.join(intermediates_gpkg_path, plgnize_lyr.rel_path), write=True) as lyr_output:
 
-                        srs = lyr_reaches.ogr_layer.GetSpatialRef()
+                        #srs = lyr_reaches.ogr_layer.GetSpatialRef()
 
-                        lyr_output.create_layer(ogr.wkbMultiPolygon, spatial_ref=srs)
+                        #lyr_output.create_layer(ogr.wkbMultiPolygon, spatial_ref=srs)
+                        lyr_output.create_layer_from_ref(lyr_reaches)
 
                         out_layer_defn = lyr_output.ogr_layer.GetLayerDefn()
+                        field_count = out_layer_defn.GetFieldCount()
                         lyr_output.ogr_layer.StartTransaction()
 
-                        # out_feat = ogr.Feature(out_layer_defn)
-                        # out_union = ogr.Geometry(ogr.wkbMultiPolygon)
-
                         for reach_feat, *_ in lyr_reaches.iterate_features("Processing Reaches"):
-                            # buff_value = reach_feat.GetField('BFwidth')
+                            reach_attributes = {}
+                            for n in range(field_count):
+                                field = out_layer_defn.GetFieldDefn(n)
+                                value = reach_feat.GetField(field.name)
+                                reach_attributes[field.name] = value
+
                             geom = reach_feat.GetGeometryRef()
                             buff = geom.Buffer(cell_size)
-                            # buff = geom.Buffer(buff_value * degree_factor * cell_size)
-                            # extent_l, extent_r, extent_b, extent_t = geom.GetEnvelope()
-                            # win = raster.window(extent_l - buff_dist, extent_b - buff_dist, extent_r + buff_dist, extent_t + buff_dist)
-                            # win_transform = raster.window_transform(win)
-
                             geom_json = buff.ExportToJson()
                             poly = json.loads(geom_json)
                             data, mask_transform = rasterio.mask.mask(raster, [poly], crop=True)
@@ -352,6 +359,8 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
                                     out_geom = ogr.CreateGeometryFromJson(json.dumps(out_shape))
 
                                     out_feat.SetGeometry(out_geom)
+                                    for field, value in reach_attributes.items():
+                                        out_feat.SetField(field, value)
                                     lyr_output.ogr_layer.CreateFeature(out_feat)
 
                         lyr_output.ogr_layer.CommitTransaction()
@@ -385,24 +394,30 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
     log.info('VBET Completed Successfully')
 
 
-def simple_save(list_geoms, ogr_type, srs, layer_name, gpkg_path):
+def simple_save(list_geoms, ogr_type, srs, layer_name, gpkg_path, attributes={}):
+
     with GeopackageLayer(gpkg_path, layer_name, write=True) as lyr:
         lyr.create_layer(ogr_type, spatial_ref=srs)
+        for fname, ftype in attributes.items():
+            lyr.create_field(fname, ftype)
 
         progbar = ProgressBar(len(list_geoms), 50, f"Saving {gpkg_path}/{layer_name}")
         counter = 0
         progbar.update(counter)
+
         lyr.ogr_layer.StartTransaction()
-        for geom in list_geoms:
+        for feat in list_geoms:
             counter += 1
             progbar.update(counter)
+
+            geom = feat['geom']
 
             feature = ogr.Feature(lyr.ogr_layer_def)
             geom_ogr = VectorBase.shapely2ogr(geom)
             feature.SetGeometry(geom_ogr)
-            # if attributes:
-            #     for field, value in attributes.items():
-            #         feature.SetField(field, value)
+            if attributes:
+                for field, value in feat['attributes'].items():
+                    feature.SetField(field, value)
             lyr.ogr_layer.CreateFeature(feature)
             feature = None
 
@@ -463,6 +478,7 @@ def main():
     # parser.add_argument('hillshade', help='Hillshade raster path', type=str)
     # parser.add_argument('catchments', help='NHD Catchment polygons path', type=str)
     parser.add_argument('output_dir', help='Folder where output VBET project will be created', type=str)
+    parser.add_argument('vaa_table', type=str)
     parser.add_argument('--reach_codes', help='Comma delimited reach codes (FCode) to retain when filtering features. Omitting this option retains all features.', type=str)
     parser.add_argument('--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
@@ -492,7 +508,7 @@ def main():
             log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
 
         else:
-            vbet(args.huc, args.scenario_code, inputs, args.output_dir, reach_codes, meta)
+            vbet(args.huc, args.scenario_code, inputs, args.output_dir, args.vaa_table, reach_codes, meta)
 
     except Exception as e:
         log.error(e)

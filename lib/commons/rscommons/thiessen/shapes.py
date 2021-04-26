@@ -108,14 +108,30 @@ def centerline_points(in_lines: Path, distance: float = 0.0, transform: Transfor
 
             if fields:
                 for field in fields:
-                    value = feat.GetField(field)
-                    props[field] = value
+                    divergence = feat.GetField('Divergence')
+                    if divergence == 2:
+                        value = feat.GetField('DnLevelPat')
+                    else:
+                        value = feat.GetField(field)
+                    props[field] = str(int(value)) if value else None
 
             pts = [
                 line.interpolate(distance),
                 line.interpolate(0.5, True),
-                line.interpolate(-distance)
-            ]
+                line.interpolate(-distance)]
+
+            total = line.length
+            interval = distance/total
+            current = interval
+            while current < 1.0:
+                pts.append(line.interpolate(interval, True))
+                current = current + interval
+
+            # pts = [
+            #     line.interpolate(distance),
+            #     line.interpolate(0.5, True),
+            #     line.interpolate(-distance)
+            # ]
 
             if line.project(line.interpolate(0.25, True)) > distance:
                 pts.append(line.interpolate(0.25, True))
