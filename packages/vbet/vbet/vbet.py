@@ -56,6 +56,7 @@ LayerTypes = {
     'HILLSHADE': RSLayer('DEM Hillshade', 'HILLSHADE', 'Raster', 'inputs/dem_hillshade.tif'),
     'INPUTS': RSLayer('Inputs', 'INPUTS', 'Geopackage', 'inputs/vbet_inputs.gpkg', {
         'FLOWLINES': RSLayer('NHD Flowlines', 'FLOWLINES', 'Vector', 'flowlines'),
+        'FLOWLINES_VAA': RSLayer('NHD Flowlines with Attributes', 'FLOWLINES_VAA', 'Vector', 'Flowlines_VAA'),
         'FLOW_AREA': RSLayer('NHD Flow Areas', 'FLOW_AREA', 'Vector', 'flow_areas'),
         'CATCHMENTS': RSLayer('NHD Catchments', 'CATCHMENTS', 'Vector', 'catchments')
     }),
@@ -74,7 +75,9 @@ LayerTypes = {
     'INTERMEDIATES': RSLayer('Intermediates', 'Intermediates', 'Geopackage', 'intermediates/vbet_intermediates.gpkg', {
         'VBET_NETWORK': RSLayer('VBET Network', 'VBET_NETWORK', 'Vector', 'vbet_network'),
         'VBET_NETWORK_BUFFERED': RSLayer('VBET Network Buffer', 'VBET_NETWORK_BUFFERED', 'Vector', 'vbet_network_buffered'),
-        'DA_ZONES': RSLayer('Drainage Area Zones', 'DA_ZONES', 'Vector', 'da_zones')
+        'DA_ZONES': RSLayer('Drainage Area Zones', 'DA_ZONES', 'Vector', 'da_zones'),
+        'THIESSEN_POINTS': RSLayer('Thiessen Reach Points', 'THIESSEN_POINTS', 'Vector', 'ThiessenPoints'),
+        'THIESSEN_AREAS': RSLayer('Thiessen Reach Areas', 'THIESSEN_AREAS', 'Vector', 'ThiessenPolygonsDissolved')
         # We also add all tht raw thresholded shapes here but they get added dynamically later
     }),
     # Same here. Sub layers are added dynamically later.
@@ -330,9 +333,6 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
                     with GeopackageLayer(thiessen_fc, write=True) as lyr_reaches, \
                             GeopackageLayer(os.path.join(intermediates_gpkg_path, plgnize_lyr.rel_path), write=True) as lyr_output:
 
-                        #srs = lyr_reaches.ogr_layer.GetSpatialRef()
-
-                        #lyr_output.create_layer(ogr.wkbMultiPolygon, spatial_ref=srs)
                         lyr_output.create_layer_from_ref(lyr_reaches)
 
                         out_layer_defn = lyr_output.ogr_layer.GetLayerDefn()
