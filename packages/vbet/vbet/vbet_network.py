@@ -119,3 +119,38 @@ def create_drainage_area_zones(catchment_layer, flowlines_layer, join_field, cop
 
                 lyr_destination.ogr_layer.CreateFeature(feat_dest)
         lyr_destination.ogr_layer.CommitTransaction()
+
+
+def copy_vaa_attributes(destination_layer, vaa_table):
+
+    with sqlite3.connect(os.path.dirname(vaa_table)) as conn_vaa, \
+            sqlite3.connect(os.path.dirname(destination_layer)) as conn_dest:
+        curs = conn_dest.cursor()
+
+        for line in conn_vaa.iterdump():
+
+            curs.execute(line)
+
+        curs.execute(f"INSERT INTO gpkg_contents (table_name, data_type) VALUES ('{os.path.basename(vaa_table)}', 'attributes');")
+        conn_dest.commit()
+
+    return os.path.basename(vaa_table)
+
+
+def join_attributes(gpkg, name, geom_layer, attribute_layer, join_field, fields, epsg):
+
+    sql = f"CREATE VIEW {name} AS SELECT G.*, {','.join(['A.' + item for item in fields])} FROM {geom_layer} G INNER JOIN {attribute_layer} A ON G.{join_field} = A.{join_field};"
+
+    with sqlite3.connect(gpkg) as conn:
+
+        curs = conn.cursor()
+        curs.execute(sql)
+        conn.commit()
+
+        curs.execute(f"INSERT INTO gpkg_contents (table_name, identifier, data_type, srs_id) VALUES ('{name}', '{name}', 'features', {epsg});")
+        conn.commit()
+
+        curs.execute(f"INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) values ('{name}', 'geom', 'LINESTRING', {epsg}, 0, 0);")
+        conn.commit()
+
+    return os.path.join(gpkg, name)
