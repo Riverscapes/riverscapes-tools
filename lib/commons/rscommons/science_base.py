@@ -166,7 +166,7 @@ def get_dem_urls(vector_path, buffer_dist):
             'ancestors': ned_parent,
             'filter1': 'tags=GeoTIFF',
             'conjunction': 'tags=OR',
-            'filter3': spatial_query
+            'filter2': spatial_query
         }
         urls = _get_url(sbquery)
 
