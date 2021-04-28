@@ -18,7 +18,7 @@ import os
 import traceback
 from osgeo import gdal, ogr, osr
 import rasterio
-from rscommons.download import download_unzip
+from rscommons.download import download_unzip, download_file
 from rscommons.science_base import get_dem_urls
 from rscommons import Logger, Geotransform, ProgressBar
 
@@ -54,8 +54,11 @@ def download_dem(vector_path, _epsg, buffer_dist, download_folder, unzip_folder,
     for url in urls:
         base_path = os.path.basename(os.path.splitext(url)[0])
         final_unzip_path = os.path.join(unzip_folder, base_path)
-        file_path = download_unzip(url, download_folder, final_unzip_path, force_download)
-        raster_path = find_rasters(file_path)
+        if url.lower().endswith('.zip'):
+            file_path = download_unzip(url, download_folder, final_unzip_path, force_download)
+            raster_path = find_rasters(file_path)
+        else:
+            raster_path = download_file(url, download_folder, force_download)
 
         # Sanity check that all rasters going into the VRT share the same cell resolution.
         dataset = gdal.Open(raster_path)

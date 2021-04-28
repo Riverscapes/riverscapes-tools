@@ -153,10 +153,22 @@ def get_dem_urls(vector_path, buffer_dist):
         'ancestors': ned_parent,
         'filter1': 'tags=IMG',
         'conjunction': 'tags=OR',
-        'filter2': spatial_query
+        'filter3': spatial_query
     }
 
     urls = _get_url(sbquery)
+
+    # IMGs might not be available. Fall back to Geotiff
+    # NOTE: We can't just do an OR here in case both IMG and GeoTIFF are present because then
+    # We'll have overlapping rasters and download too much stuff
+    if len(urls) < 1:
+        sbquery = {
+            'ancestors': ned_parent,
+            'filter1': 'tags=GeoTIFF',
+            'conjunction': 'tags=OR',
+            'filter3': spatial_query
+        }
+        urls = _get_url(sbquery)
 
     if len(urls) < 1:
         log = Logger('Science Base')
