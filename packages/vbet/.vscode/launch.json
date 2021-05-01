@@ -105,17 +105,26 @@
       "module": "vbet.vbet_outputs",
       "console": "integratedTerminal"
     },
-    { "name": "HAND Testing",
+    { 
+      "name": "HAND Testing",
       "type": "python",
       "request": "launch",
       "module": "scripts.hand",
-      "console": "integratedTerminal"},
-      { 
-        "name": "Newtork",
-        "type": "python",
-        "request": "launch",
-        "module": "vbet.vbet_network",
-        "console": "integratedTerminal"
-      }
+      "console": "integratedTerminal"
+    },
+    { 
+      "name": "Newtork",
+      "type": "python",
+      "request": "launch",
+      "module": "vbet.vbet_network",
+      "console": "integratedTerminal"
+    },
+    { 
+      "name": "Vbet centerline",
+      "type": "python",
+      "request": "launch",
+      "module": "vbet.vbet_centerline",
+      "console": "integratedTerminal"
+    },
   ]
 }
