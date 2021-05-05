@@ -40,6 +40,7 @@ from vbet.vbet_network import vbet_network, create_drainage_area_zones, copy_vaa
 from vbet.vbet_report import VBETReport
 from vbet.vbet_raster_ops import rasterize, proximity_raster, raster_clean, rasterize_attribute
 from vbet.vbet_outputs import threshold, sanitize
+from vbet.vbet_centerline import vbet_centerline
 from vbet.__version__ import __version__
 
 Path = str
@@ -133,8 +134,8 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
 
     # Load configuration from table
     vbet_run = load_configuration(scenario_code, inputs_gpkg_path)
-
-    flowlines_vaa_path = join_attributes(inputs_gpkg_path, "Flowlines_VAA", os.path.basename(project_inputs['FLOWLINES']), vaa_table_name, 'NHDPlusID', ['LevelPathI', 'Divergence', 'DnLevelPat'], cfg.OUTPUT_EPSG)
+    vaa_fields = ['LevelPathI', 'Divergence', 'DnLevelPat'] + ['HydroSeq', 'DnHydroSeq', 'UpHydroSeq']
+    flowlines_vaa_path = join_attributes(inputs_gpkg_path, "Flowlines_VAA", os.path.basename(project_inputs['FLOWLINES']), vaa_table_name, 'NHDPlusID', vaa_fields, cfg.OUTPUT_EPSG)
 
     # Create a copy of the flow lines with just the perennial and also connectors inside flow areas
     log.info('Building vbet network')
@@ -282,112 +283,114 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
 
     # Get the full paths to the geopackages
     vbet_path = os.path.join(project_folder, LayerTypes['VBET_OUTPUTS'].rel_path)
-    threshold_outputs = True
 
-    if threshold_outputs:
+    flowline_thiessen_points_groups = centerline_points(network_path, distance=degree_factor * 10, fields=['LevelPathI'])
+    flowline_thiessen_points = [pt for group in flowline_thiessen_points_groups.values() for pt in group]
 
-        flowline_thiessen_points_groups = centerline_points(network_path, distance=degree_factor * 10, fields=['LevelPathI'])
-        flowline_thiessen_points = [pt for group in flowline_thiessen_points_groups.values() for pt in group]
+    # Exterior is the shell and there is only ever 1
+    myVorL = NARVoronoi(flowline_thiessen_points)
 
-        # Exterior is the shell and there is only ever 1
-        myVorL = NARVoronoi(flowline_thiessen_points)
+    # Generate Thiessen Polys
+    myVorL.createshapes()
 
-        # Generate Thiessen Polys
-        myVorL.createshapes()
+    with GeopackageLayer(project_inputs['FLOWLINES']) as flow_lyr:
+        # Set the output spatial ref as this for the whole project
+        out_srs = flow_lyr.spatial_ref
 
-        with GeopackageLayer(project_inputs['FLOWLINES']) as flow_lyr:
-            # Set the output spatial ref as this for the whole project
-            out_srs = flow_lyr.spatial_ref
+    # Dissolve by flowlines
+    log.info("Dissolving Thiessen Polygons")
+    dissolved_polys = myVorL.dissolve_by_property('LevelPathI')
 
-        # Dissolve by flowlines
-        log.info("Dissolving Thiessen Polygons")
-        dissolved_polys = myVorL.dissolve_by_property('LevelPathI')
+    dissolved_attributes = {'LevelPathI': ogr.OFTString}
 
-        dissolved_attributes = {'LevelPathI': ogr.OFTString}
+    simple_save([{'geom': pt.point} for pt in flowline_thiessen_points], ogr.wkbPoint, out_srs, "ThiessenPoints", intermediates_gpkg_path)
+    simple_save([{'geom': g, 'attributes': {'LevelPathI': k}} for k, g in dissolved_polys.items()], ogr.wkbPolygon, out_srs, "ThiessenPolygonsDissolved", intermediates_gpkg_path, dissolved_attributes)
 
-        simple_save([{'geom': pt.point} for pt in flowline_thiessen_points], ogr.wkbPoint, out_srs, "ThiessenPoints", intermediates_gpkg_path)
-        simple_save([{'geom': g, 'attributes': {'LevelPathI': k}} for k, g in dissolved_polys.items()], ogr.wkbPolygon, out_srs, "ThiessenPolygonsDissolved", intermediates_gpkg_path, dissolved_attributes)
+    thiessen_fc = os.path.join(intermediates_gpkg_path, "ThiessenPolygonsDissolved")
 
-        thiessen_fc = os.path.join(intermediates_gpkg_path, "ThiessenPolygonsDissolved")
+    for str_val, thr_val in thresh_vals.items():
+        plgnize_id = 'THRESH_{}'.format(str_val)
+        with TempRaster('vbet_raw_thresh_{}'.format(plgnize_id)) as tmp_raw_thresh, \
+                TempRaster('vbet_cleaned_thresh_{}'.format(plgnize_id)) as tmp_cleaned_thresh:
 
-        for str_val, thr_val in thresh_vals.items():  # {"50": 0.5}.items():  #
-            plgnize_id = 'THRESH_{}'.format(str_val)
-            with TempRaster('vbet_raw_thresh_{}'.format(plgnize_id)) as tmp_raw_thresh, \
-                    TempRaster('vbet_cleaned_thresh_{}'.format(plgnize_id)) as tmp_cleaned_thresh:
+            log.debug('Temporary threshold raster: {}'.format(tmp_raw_thresh.filepath))
+            threshold(evidence_raster, thr_val, tmp_raw_thresh.filepath)
 
-                log.debug('Temporary threshold raster: {}'.format(tmp_raw_thresh.filepath))
-                threshold(evidence_raster, thr_val, tmp_raw_thresh.filepath)
+            raster_clean(tmp_raw_thresh.filepath, tmp_cleaned_thresh.filepath, buffer_pixels=1)
 
-                raster_clean(tmp_raw_thresh.filepath, tmp_cleaned_thresh.filepath, buffer_pixels=1)
+            plgnize_lyr = RSLayer('Raw Threshold at {}%'.format(str_val), plgnize_id, 'Vector', plgnize_id.lower())
+            # Add a project node for this thresholded vector
+            LayerTypes['INTERMEDIATES'].add_sub_layer(plgnize_id, plgnize_lyr)
 
-                plgnize_lyr = RSLayer('Raw Threshold at {}%'.format(str_val), plgnize_id, 'Vector', plgnize_id.lower())
-                # Add a project node for this thresholded vector
-                LayerTypes['INTERMEDIATES'].add_sub_layer(plgnize_id, plgnize_lyr)
+            vbet_id = 'VBET_{}'.format(str_val)
+            vbet_lyr = RSLayer('Threshold at {}%'.format(str_val), vbet_id, 'Vector', vbet_id.lower())
+            # Add a project node for this thresholded vector
+            LayerTypes['VBET_OUTPUTS'].add_sub_layer(vbet_id, vbet_lyr)
 
-                vbet_id = 'VBET_{}'.format(str_val)
-                vbet_lyr = RSLayer('Threshold at {}%'.format(str_val), vbet_id, 'Vector', vbet_id.lower())
-                # Add a project node for this thresholded vector
-                LayerTypes['VBET_OUTPUTS'].add_sub_layer(vbet_id, vbet_lyr)
+            with rasterio.open(tmp_cleaned_thresh.filepath, 'r') as raster:
+                with GeopackageLayer(thiessen_fc, write=True) as lyr_reaches, \
+                        GeopackageLayer(os.path.join(intermediates_gpkg_path, plgnize_lyr.rel_path), write=True) as lyr_output:
 
-                with rasterio.open(tmp_cleaned_thresh.filepath, 'r') as raster:
-                    with GeopackageLayer(thiessen_fc, write=True) as lyr_reaches, \
-                            GeopackageLayer(os.path.join(intermediates_gpkg_path, plgnize_lyr.rel_path), write=True) as lyr_output:
+                    lyr_output.create_layer_from_ref(lyr_reaches)
 
-                        lyr_output.create_layer_from_ref(lyr_reaches)
+                    out_layer_defn = lyr_output.ogr_layer.GetLayerDefn()
+                    field_count = out_layer_defn.GetFieldCount()
+                    lyr_output.ogr_layer.StartTransaction()
 
-                        out_layer_defn = lyr_output.ogr_layer.GetLayerDefn()
-                        field_count = out_layer_defn.GetFieldCount()
-                        lyr_output.ogr_layer.StartTransaction()
+                    for reach_feat, *_ in lyr_reaches.iterate_features("Processing Reaches"):
+                        reach_attributes = {}
+                        for n in range(field_count):
+                            field = out_layer_defn.GetFieldDefn(n)
+                            value = reach_feat.GetField(field.name)
+                            reach_attributes[field.name] = value
 
-                        for reach_feat, *_ in lyr_reaches.iterate_features("Processing Reaches"):
-                            reach_attributes = {}
-                            for n in range(field_count):
-                                field = out_layer_defn.GetFieldDefn(n)
-                                value = reach_feat.GetField(field.name)
-                                reach_attributes[field.name] = value
+                        geom = reach_feat.GetGeometryRef()
+                        buff = geom.Buffer(cell_size)
+                        geom_json = buff.ExportToJson()
+                        poly = json.loads(geom_json)
+                        data, mask_transform = rasterio.mask.mask(raster, [poly], crop=True)
 
-                            geom = reach_feat.GetGeometryRef()
-                            buff = geom.Buffer(cell_size)
-                            geom_json = buff.ExportToJson()
-                            poly = json.loads(geom_json)
-                            data, mask_transform = rasterio.mask.mask(raster, [poly], crop=True)
+                        if all(x > 0 for x in data.shape):
+                            out_shapes = list(g for g, v in shapes(data, transform=mask_transform) if v == 1)
+                            for out_shape in out_shapes:
+                                out_feat = ogr.Feature(out_layer_defn)
+                                out_geom = ogr.CreateGeometryFromJson(json.dumps(out_shape))
 
-                            if all(x > 0 for x in data.shape):
-                                out_shapes = list(g for g, v in shapes(data, transform=mask_transform) if v == 1)
-                                for out_shape in out_shapes:
-                                    out_feat = ogr.Feature(out_layer_defn)
-                                    out_geom = ogr.CreateGeometryFromJson(json.dumps(out_shape))
+                                out_feat.SetGeometry(out_geom)
+                                for field, value in reach_attributes.items():
+                                    out_feat.SetField(field, value)
+                                lyr_output.ogr_layer.CreateFeature(out_feat)
 
-                                    out_feat.SetGeometry(out_geom)
-                                    for field, value in reach_attributes.items():
-                                        out_feat.SetField(field, value)
-                                    lyr_output.ogr_layer.CreateFeature(out_feat)
+                    lyr_output.ogr_layer.CommitTransaction()
 
-                        lyr_output.ogr_layer.CommitTransaction()
+            # Now polygonize the raster
+        #     log.info('Polygonizing')
+        #     polygonize(tmp_cleaned_thresh.filepath, 1, '{}/{}'.format(intermediates_gpkg_path, plgnize_lyr.rel_path), cfg.OUTPUT_EPSG)
+        #     log.info('Done')
 
-                # Now polygonize the raster
-            #     log.info('Polygonizing')
-            #     polygonize(tmp_cleaned_thresh.filepath, 1, '{}/{}'.format(intermediates_gpkg_path, plgnize_lyr.rel_path), cfg.OUTPUT_EPSG)
-            #     log.info('Done')
+        # # Now the final sanitization
+        sanitize(
+            str_val,
+            '{}/{}'.format(intermediates_gpkg_path, plgnize_lyr.rel_path),
+            '{}/{}'.format(vbet_path, vbet_lyr.rel_path),
+            buff_dist,
+            network_path
+        )
+        log.info('Completed thresholding at {}'.format(thr_val))
 
-            # # Now the final sanitization
-            sanitize(
-                str_val,
-                '{}/{}'.format(intermediates_gpkg_path, plgnize_lyr.rel_path),
-                '{}/{}'.format(vbet_path, vbet_lyr.rel_path),
-                buff_dist,
-                network_path
-            )
-            log.info('Completed thresholding at {}'.format(thr_val))
+    # Generate Centerline at 50%
+    centerline_lyr = RSLayer('VBET Centerlines (50% Threshold)', 'VBET_CENTERLINES_50', 'Vector', 'vbet_centerlines_50')
+    LayerTypes['VBET_OUTPUTS'].add_sub_layer('VBET_CENTERLINES_50', centerline_lyr)
+    centerline = os.path.join(vbet_path, centerline_lyr.rel_path)
+    vbet_centerline(flowlines_vaa_path, os.path.join(vbet_path, 'vbet_50'), centerline)
 
     # Now add our Geopackages to the project XML
     project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
-    if threshold_outputs:
-        project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['VBET_OUTPUTS'])
+    project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['VBET_OUTPUTS'])
 
+    # Report
     report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
     project.add_report(proj_nodes['Outputs'], LayerTypes['REPORT'], replace=True)
-
     report = VBETReport(scenario_code, inputs_gpkg_path, vbet_path, report_path, project)
     report.write()
 
