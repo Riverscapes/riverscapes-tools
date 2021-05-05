@@ -26,13 +26,14 @@
         "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/network_intersected_300m",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/NHDArea.shp",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/topography/slope.tif",
-        "{env:DATA_ROOT}/rs_context/${input:HUC}/topography/hand.tif",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/topography/dem.tif",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/topography/dem_hillshade.tif",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/NHDPlusCatchment",
         "{env:DATA_ROOT}/vbet/${input:HUC}",
         "--reach_codes", "33400,46003,46006,46007,55800",
         "--meta", "Runner=VSCode",
         "--verbose",
-        "--debug"
+        // "--debug"
       ]
     },
     {
@@ -82,6 +83,39 @@
       ],
       "request": "launch",
       "console": "integratedTerminal"
-    }    
+    },
+    {
+      "name": "Floodplain Connectivity",
+      "type": "python",
+      "request": "launch",
+      "module": "vbet.floodplain_connectivity",
+      "console": "integratedTerminal",
+    },
+    {
+      "name": "Transformation Curve",
+      "type": "python",
+      "request": "launch",
+      "module": "vbet.scripts.transformation_curves",
+      "console": "integratedTerminal",
+    },
+    {
+      "name": "Sanitize Testing",
+      "type": "python",
+      "request": "launch",
+      "module": "vbet.vbet_outputs",
+      "console": "integratedTerminal"
+    },
+    { "name": "HAND Testing",
+      "type": "python",
+      "request": "launch",
+      "module": "scripts.hand",
+      "console": "integratedTerminal"},
+      { 
+        "name": "Newtork",
+        "type": "python",
+        "request": "launch",
+        "module": "vbet.vbet_network",
+        "console": "integratedTerminal"
+      }
   ]
 }
