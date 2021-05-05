@@ -1,0 +1,35 @@
+{
+  "python.pythonPath": "${workspaceFolder}/../../.venv/bin/python",
+  "[python]": {
+    "editor.tabSize": 4,
+    "editor.formatOnSave": true,
+  },
+  "python.linting.pylintArgs": [
+    "--extension-pkg-whitelist=scipy",
+    "--ignore=E501",
+    "--max-line-length=240"
+  ],
+  "python.linting.enabled": true,
+  "python.linting.lintOnSave": true,
+  "python.linting.pycodestyleEnabled": true,
+  "python.linting.pylintEnabled": true,
+  "python.linting.pycodestyleArgs": [
+    "--ignore=E501",
+    "--max-line-length=240"
+  ],
+  "python.formatting.autopep8Args": [
+    "--ignore=E501",
+    "--max-line-length=240"
+  ],
+  "python.terminal.activateEnvironment": true,
+  "python.autoComplete.showAdvancedMembers": false,
+  "files.exclude": {
+    "**/*.egg-info": true
+  },
+  "files.watcherExclude": {
+    "**/*.egg-info/**": true
+  },
+  "search.exclude": {
+    "**/*.egg-info": true
+  }
+}
