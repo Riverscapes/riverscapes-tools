@@ -37,13 +37,20 @@
         "100", // riparian_buffer
         "100", // elevation_buffer
         "{env:DATA_ROOT}/brat/${input:HUC}", // output folder
-        "--meta", "Runner=VSCode",
-        "--reach_codes", "33400,33600,33601,33603,46000,46003,46006,46007,55800",
-        "--canal_codes", "33600,33601,33603",
-        "--peren_codes", "46006",
-        "--flow_areas", "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/NHDArea.shp",
-        "--waterbodies", "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/NHDWaterbody.shp",
-        "--max_waterbody", "100", // max_waterbody
+        "--meta",
+        "Runner=VSCode",
+        "--reach_codes",
+        "33400,33600,33601,33603,46000,46003,46006,46007,55800",
+        "--canal_codes",
+        "33600,33601,33603",
+        "--peren_codes",
+        "46006",
+        "--flow_areas",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/NHDArea.shp",
+        "--waterbodies",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/NHDWaterbody.shp",
+        "--max_waterbody",
+        "100", // max_waterbody
         "--verbose"
       ]
     },
@@ -83,7 +90,18 @@
         "{env:DATA_ROOT}/brat/${input:HUC}/project.rs.xml",
         "{env:DATA_ROOT}/brat/${input:HUC}/outputs/brat_report.html"
       ]
-    },    
+    },
+    {
+      "name": "Watershed Parameters",
+      "type": "python",
+      "request": "launch",
+      "module": "scripts.national_streamflow.watershed_parameters",
+      "console": "integratedTerminal",
+      "args": [
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/network",
+        "${input:HUC}"
+      ]
+    },
     {
       "name": "Version Bump",
       "type": "python",
