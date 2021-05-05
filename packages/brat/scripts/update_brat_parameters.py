@@ -128,6 +128,7 @@ def update_watersheds(curs, watershed_csv):
                 value = eval(equation, {'__builtins__': None}, params)
                 _float_val = float(value)
             except Exception as ex:
+                # NoneType is not subscriptable means a watershed parameter is missing.
                 exception_id = repr(ex) + values[q]
                 if exception_id in unique_errors:
                     unique_errors[exception_id]['watersheds'][watershed] = params
@@ -155,6 +156,7 @@ def update_watersheds(curs, watershed_csv):
     cols = list(next(iter(watersheds)).keys())
     del cols[cols.index('updated_on')]
     del cols[cols.index('created_on')]
+    del cols[cols.index('geom')]
     write_values_to_csv(watershed_csv, cols, watersheds)
 
 
