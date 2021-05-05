@@ -3,7 +3,7 @@ title: My Homepage
 weight: 1
 ---
 
-This is your homepage Elit occaecat veniam nulla commodo aliqua ut sunt. Cupidatat occaecat sunt do do eiusmod id nostrud tempor quis dolor elit anim deserunt. Incididunt magna magna nostrud nulla in duis.
+This will be Shelby's Commericial Grade VBET Page... Elit occaecat veniam nulla commodo aliqua ut sunt. Cupidatat occaecat sunt do do eiusmod id nostrud tempor quis dolor elit anim deserunt. Incididunt magna magna nostrud nulla in duis.
 
 Enim mollit culpa eu sint velit occaecat ullamco reprehenderit dolor eu esse do officia reprehenderit. Nisi quis Lorem ex commodo officia ipsum. Et pariatur mollit sit cupidatat incididunt incididunt commodo excepteur esse Lorem labore nostrud non.
 
