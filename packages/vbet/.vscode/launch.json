@@ -24,7 +24,7 @@
       "args": [
         "${input:HUC}",
         "KW_TESTING",
-        "FLOWLINES={env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/network,FLOW_AREA={env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/NHDArea.shp,SLOPE_RASTER={env:DATA_ROOT}/rs_context/${input:HUC}/topography/slope.tif,DEM={env:DATA_ROOT}/rs_context/${input:HUC}/topography/dem.tif,HILLSHADE={env:DATA_ROOT}/rs_context/${input:HUC}/topography/dem_hillshade.tif,CATCHMENTS={env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/NHDPlusCatchment",
+        "FLOWLINES={env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/network,FLOW_AREA={env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/NHDArea.shp,SLOPE_RASTER={env:DATA_ROOT}/rs_context/${input:HUC}/topography/slope.tif,DEM={env:DATA_ROOT}/rs_context/${input:HUC}/topography/dem.tif,HILLSHADE={env:DATA_ROOT}/rs_context/${input:HUC}/topography/dem_hillshade.tif,CATCHMENTS={env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/NHDPlusCatchment.shp",
         "{env:DATA_ROOT}/vbet/${input:HUC}",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhd_data.sqlite/NHDPlusFlowlineVAA",
         "--reach_codes", "33400,46003,46006,46007,55800",
