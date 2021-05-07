@@ -92,6 +92,7 @@ def sanitize(name: str, in_path: str, out_path: str, buff_dist: float, select_fe
 
             for candidate_feat, _c2, _p1 in in_lyr.iterate_features("Finding interesected features"):
                 candidate_geom = candidate_feat.GetGeometryRef()
+                candidate_geom = geom_validity_fix(candidate_geom)
 
                 reach_attributes = {}
                 for n in range(field_count):
@@ -101,6 +102,7 @@ def sanitize(name: str, in_path: str, out_path: str, buff_dist: float, select_fe
 
                 for select_feat, _counter, _progbar in lyr_select_features.iterate_features():
                     select_geom = select_feat.GetGeometryRef()
+                    select_geom = geom_validity_fix(select_geom)
                     if select_geom.Intersects(candidate_geom):
                         feat = ogr.Feature(tmp_lyr.ogr_layer_def)
                         feat.SetGeometry(candidate_geom)
@@ -123,6 +125,7 @@ def sanitize(name: str, in_path: str, out_path: str, buff_dist: float, select_fe
 
                 fid = in_feat.GetFID()
                 geom = in_feat.GetGeometryRef()
+                geom = geom_validity_fix(geom)
 
                 area = geom.Area()
                 pts += geom.GetBoundary().GetPointCount()

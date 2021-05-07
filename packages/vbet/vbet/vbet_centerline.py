@@ -90,16 +90,16 @@ def vbet_centerline(flowlines, vbet_polygons, out_layer):
                     polys.AddGeometry(poly)
 
             poly_union = polys.UnionCascaded()
+            if poly_union:
+                centerlines, merged_centerline = build_centerline(line, poly_union, 20, dist_factor=degree_factor, existing_centerlines=merged_centerline, up_reach=reaches[HydroSeq]['geom'])
 
-            centerlines, merged_centerline = build_centerline(line, poly_union, 20, dist_factor=degree_factor, existing_centerlines=merged_centerline, up_reach=reaches[HydroSeq]['geom'])
-
-            if centerlines:
-                for centerline in centerlines:
-                    feat_out = ogr.Feature(lyr_output_defn)
-                    feat_out.SetGeometry(centerline)
-                    feat_out.SetField('HydroSeq', HydroSeq)
-                    lyr_output.ogr_layer.CreateFeature(feat_out)
-                    feat_out = None
+                if centerlines:
+                    for centerline in centerlines:
+                        feat_out = ogr.Feature(lyr_output_defn)
+                        feat_out.SetGeometry(centerline)
+                        feat_out.SetField('HydroSeq', HydroSeq)
+                        lyr_output.ogr_layer.CreateFeature(feat_out)
+                        feat_out = None
 
     return
 
@@ -133,6 +133,8 @@ def build_centerline(thalweg, bounding_polygon, spacing=None, dist_factor=1, exi
     for coord in g_thalweg_init.coords:
         if Point(coord).within(rivershape):
             coords.append(coord)
+    if len(coords) < 2:
+        return None, existing_centerlines
     g_thalweg = LineString(coords)
 
     # Prepare geoms
