@@ -23,3 +23,4 @@ ParamID,Name,Description,Aliases,DataUnits,EquationUnits,Conversion,Definition
 22,DRAINDENS,Drainage Density,DRAINDENS,km per sq. km,km per sq. km,1.0,"Basin drainage density; defined as total (perennial?) stream length divided by drainage area, in kilometers per square kilomete"
 23,I6H100Y,6hr 100 Year Precipitation,I6H100Y,inches,inches,1.0,Maximum 6-hour precipitation that occurs on average once in 100 years
 24,LAT,Latitude (Degrees),LAT,Degrees,Degrees,1.0,
+25,BSLDEM10M,Mean Basin Slope from 10m DEM,,percent,percent,1.0,
