@@ -89,6 +89,7 @@ vbet $HUC \
   $VBET_TASK_OUTPUT \
   $RSC_TASK_OUTPUT/hydrology/nhd_data.sqlite/NHDPlusFlowlineVAA \
   --reach_codes 33400,46003,46006,46007,55800 \
+  --create_centerline \
   --meta "Runner=Cybercastor" \
   --verbose
 if [[ $? != 0 ]]; then return 1; fi

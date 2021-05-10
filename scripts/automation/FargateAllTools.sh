@@ -92,6 +92,7 @@ try() {
     $VBET_DIR \
     $RS_CONTEXT_DIR/hydrology/nhd_data.sqlite/NHDPlusFlowlineVAA \
     --reach_codes 33400,46003,46006,46007,55800 \
+    --create_centerline \
     --meta "Runner=Cybercastor" \
     --verbose
   if [[ $? != 0 ]]; then return 1; fi
