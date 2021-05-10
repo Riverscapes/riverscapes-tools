@@ -8,25 +8,23 @@
 #
 # -------------------------------------------------------------------------------
 
-import os
-
 import ogr
 from shapely.geometry import LineString, Polygon, Point
 from shapely.ops import linemerge, split
 from shapely.wkb import loads
 
-from rscommons import GeopackageLayer, ProgressBar
+from rscommons import GeopackageLayer, ProgressBar, Logger
 from rscommons.thiessen.shapes import RiverPoint, densifyShape, GetBufferedBounds, projToShape, splitClockwise
 from rscommons.thiessen.vor import NARVoronoi
 
-from vbet.vbet_network import join_attributes
+# from vbet.vbet_network import join_attributes
 
 
 def vbet_centerline(flowlines, vbet_polygons, out_layer):
-
-    #fields = ['HydroSeq', 'DnHydroSeq', 'UpHydroSeq']
-    #flowlines = os.path.join(os.path.dirname(flowlines), "VAA_Centerlines")
-    #flowlines = join_attributes(os.path.dirname(flowlines), "VAA_Centerlines", os.path.basename(flowlines), "NHDPlusFlowlineVAA", 'NHDPlusID', fields, 4326)
+    log = Logger('vbet_centerline')
+    # fields = ['HydroSeq', 'DnHydroSeq', 'UpHydroSeq']
+    # flowlines = os.path.join(os.path.dirname(flowlines), "VAA_Centerlines")
+    # flowlines = join_attributes(os.path.dirname(flowlines), "VAA_Centerlines", os.path.basename(flowlines), "NHDPlusFlowlineVAA", 'NHDPlusID', fields, 4326)
 
     reaches = {}
 
@@ -70,16 +68,14 @@ def vbet_centerline(flowlines, vbet_polygons, out_layer):
 
             unioned_reaches[HydroSeq] = unioned_geom
 
-        progbar = ProgressBar(len(unioned_reaches), 50, f"Processing reaches...")
         counter = 0
-        progbar.update(counter)
 
         merged_centerline = None
 
         for HydroSeq, line in unioned_reaches.items():
 
             counter += 1
-            progbar.update(counter)
+            log.info('Processing reach: ({}/{})'.format(counter, len(unioned_reaches)))
 
             polys = ogr.Geometry(ogr.wkbMultiPolygon)
 
@@ -89,7 +85,10 @@ def vbet_centerline(flowlines, vbet_polygons, out_layer):
                 if poly.Intersects(line):
                     polys.AddGeometry(poly)
 
+            log.debug('Unioning...')
             poly_union = polys.UnionCascaded()
+            log.debug('Unioning complete')
+
             if poly_union:
                 centerlines, merged_centerline = build_centerline(line, poly_union, 20, dist_factor=degree_factor, existing_centerlines=merged_centerline, up_reach=reaches[HydroSeq]['geom'])
 
@@ -106,6 +105,8 @@ def vbet_centerline(flowlines, vbet_polygons, out_layer):
 
 def build_centerline(thalweg, bounding_polygon, spacing=None, dist_factor=1, existing_centerlines=None, up_reach=None):
 
+    log = Logger('build_centerline')
+    log.info('Building centerline')
     # Remove Z values
     thalweg.FlattenTo2D()
     bounding_polygon.FlattenTo2D()
@@ -175,8 +176,9 @@ def build_centerline(thalweg, bounding_polygon, spacing=None, dist_factor=1, exi
             if processing_extent.contains(g_pt):
                 points.append(RiverPoint(g_pt, interior=True, side=side, island=idx))
 
-    # log.info("Calculating Voronoi Polygons...")
+    log.info("Calculating Voronoi Polygons for {} points...".format(len(points)))
     myVorL = NARVoronoi(points)
+    log.info("Calculating nearest neighbour for Voronoi polygons ...")
     myVorL.calculate_neighbours()
     centerlines_raw = myVorL.collectCenterLines(Polygon(rivershape.exterior))
 

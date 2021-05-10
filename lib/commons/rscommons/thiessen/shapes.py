@@ -6,7 +6,7 @@ from shapely.geometry import Point, Polygon, MultiPolygon, LineString, LinearRin
 from shapely.ops import unary_union
 from rscommons import Logger, ProgressBar, get_shp_or_gpkg, VectorBase
 from rscommons.shapefile import get_transform_from_epsg
-from rscommons.vector_ops import export_geojson
+# from rscommons.vector_ops import export_geojson
 
 Path = str
 Transform = ogr.osr.CoordinateTransformation
@@ -82,7 +82,7 @@ def midpoints(in_lines):
     return out_points
 
 
-def centerline_points(in_lines: Path, distance: float = 0.0, transform: Transform = None, fields = None) -> Dict[int, List[RiverPoint]]:
+def centerline_points(in_lines: Path, distance: float = 0.0, transform: Transform = None, fields=None) -> Dict[int, List[RiverPoint]]:
     """Generates points along each line feature at specified distances from the end as well as quarter and halfway
 
     Args:
@@ -123,7 +123,7 @@ def centerline_points(in_lines: Path, distance: float = 0.0, transform: Transfor
                 line.interpolate(-distance)]
 
             total = line.length
-            interval = distance/total
+            interval = distance / total
             current = interval
             while current < 1.0:
                 pts.append(line.interpolate(interval, True))
@@ -243,6 +243,7 @@ def dissolve_by_points(groups, polys):
 
     progbar.finish()
     return dissolved_polys
+
 
 def densifyShape(shape, spacing):
     """
@@ -425,14 +426,14 @@ def splitClockwise(rect, thalweg):
 
 def chopCenterlineEnds(line, shape):
 
-    #log = Logger("chopCenterlineEnds")
+    # log = Logger("chopCenterlineEnds")
 
     # Trim to be inside the river shape.
     centerlineChopped = line
     centerlineIntersection = line.intersection(shape)
     # It it's a multiline string that means it crosses over the channel at some point
     if centerlineIntersection.type == "MultiLineString":
-        #log.error("Centerline Crosses Channel Boundary. Continuing...")
+        # log.error("Centerline Crosses Channel Boundary. Continuing...")
 
         # We need to pick out the start and end points so collect them from all
         # the intersections and then sort them by distance from the start of
@@ -448,8 +449,8 @@ def chopCenterlineEnds(line, shape):
         enddist = line.project(endpts[-1])
 
         pts = []
-        l = [line] if line.type == 'LineString' else line
-        for geom in l:
+        lnstr = [line] if line.type == 'LineString' else line
+        for geom in lnstr:
             for pt in geom.coords:
                 projectpt = geom.project(Point(pt))
                 if startdist < projectpt < enddist:

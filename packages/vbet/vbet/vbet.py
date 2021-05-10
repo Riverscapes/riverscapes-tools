@@ -27,7 +27,7 @@ from rasterio.features import shapes
 import rasterio.mask
 import numpy as np
 
-from rscommons.util import safe_makedirs, parse_metadata
+from rscommons.util import safe_makedirs, parse_metadata, pretty_duration
 from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, dotenv, initGDALOGRErrors, TempRaster, VectorBase
 from rscommons import GeopackageLayer
 from rscommons.vector_ops import polygonize, buffer_by_field, copy_feature_class
@@ -49,7 +49,8 @@ initGDALOGRErrors()
 
 cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/VBET.xsd', __version__)
 
-thresh_vals = {"50": 0.5, "60": 0.6, "70": 0.7, "80": 0.8, "90": 0.9, "100": 1}
+# thresh_vals = {"50": 0.5, "60": 0.6, "70": 0.7, "80": 0.8, "90": 0.9, "100": 1}
+thresh_vals = {"50": 0.5}
 
 LayerTypes = {
     'DEM': RSLayer('DEM', 'DEM', 'Raster', 'inputs/dem.tif'),
@@ -88,7 +89,7 @@ LayerTypes = {
 }
 
 
-def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: Path, vaa_table: Path, reach_codes: List[str], meta: Dict[str, str]):
+def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: Path, vaa_table: Path, reach_codes: List[str], create_centerline: bool, meta: Dict[str, str]):
     """generate vbet evidence raster and threshold polygons for a watershed
 
     Args:
@@ -99,7 +100,7 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
         reach_codes (List[int]): NHD reach codes for features to include in outputs
         meta (Dict[str,str]): dictionary of riverscapes metadata key: value pairs
     """
-
+    vbet_timer = time.time()
     log = Logger('VBET')
     log.info('Starting VBET v.{}'.format(cfg.version))
 
@@ -284,10 +285,12 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
     # Get the full paths to the geopackages
     vbet_path = os.path.join(project_folder, LayerTypes['VBET_OUTPUTS'].rel_path)
 
+    log.info('Subdividing the network along regular intervals')
     flowline_thiessen_points_groups = centerline_points(network_path, distance=degree_factor * 10, fields=['LevelPathI'])
     flowline_thiessen_points = [pt for group in flowline_thiessen_points_groups.values() for pt in group]
 
     # Exterior is the shell and there is only ever 1
+    log.info("Creating Thiessen Polygons")
     myVorL = NARVoronoi(flowline_thiessen_points)
 
     # Generate Thiessen Polys
@@ -363,12 +366,12 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
 
                     lyr_output.ogr_layer.CommitTransaction()
 
-            # Now polygonize the raster
+        # Now polygonize the raster
         #     log.info('Polygonizing')
         #     polygonize(tmp_cleaned_thresh.filepath, 1, '{}/{}'.format(intermediates_gpkg_path, plgnize_lyr.rel_path), cfg.OUTPUT_EPSG)
         #     log.info('Done')
 
-        # # Now the final sanitization
+        # Now the final sanitization
         sanitize(
             str_val,
             '{}/{}'.format(intermediates_gpkg_path, plgnize_lyr.rel_path),
@@ -379,14 +382,21 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
         log.info('Completed thresholding at {}'.format(thr_val))
 
     # Generate Centerline at 50%
-    centerline_lyr = RSLayer('VBET Centerlines (50% Threshold)', 'VBET_CENTERLINES_50', 'Vector', 'vbet_centerlines_50')
-    LayerTypes['VBET_OUTPUTS'].add_sub_layer('VBET_CENTERLINES_50', centerline_lyr)
-    centerline = os.path.join(vbet_path, centerline_lyr.rel_path)
-    vbet_centerline(flowlines_vaa_path, os.path.join(vbet_path, 'vbet_50'), centerline)
+    if create_centerline is True:
+        centerline_lyr = RSLayer('VBET Centerlines (50% Threshold)', 'VBET_CENTERLINES_50', 'Vector', 'vbet_centerlines_50')
+        log.info('Creating a centerline at the 50% threshold')
+        LayerTypes['VBET_OUTPUTS'].add_sub_layer('VBET_CENTERLINES_50', centerline_lyr)
+        centerline = os.path.join(vbet_path, centerline_lyr.rel_path)
+        vbet_centerline(flowlines_vaa_path, os.path.join(vbet_path, 'vbet_50'), centerline)
 
     # Now add our Geopackages to the project XML
     project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
     project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['VBET_OUTPUTS'])
+
+    # Processing time in hours
+    ellapsed_time = time.time() - vbet_timer
+    project.add_metadata({"ProcTimeS": "{:.2f}".format(ellapsed_time)})
+    project.add_metadata({"ProcTimeHuman": pretty_duration(ellapsed_time)})
 
     # Report
     report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
@@ -479,6 +489,7 @@ def main():
     parser.add_argument('--reach_codes', help='Comma delimited reach codes (FCode) to retain when filtering features. Omitting this option retains all features.', type=str)
     parser.add_argument('--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
+    parser.add_argument('--create_centerline', help='(optional) generate a centerline for tge 50% threshold ', action='store_true', default=False)
     parser.add_argument('--debug', help='Add debug tools for tracing things like memory usage at a performance cost.', action='store_true', default=False)
 
     args = dotenv.parse_args_env(parser)
@@ -501,11 +512,11 @@ def main():
         if args.debug is True:
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output_dir, 'vbet_mem.log')
-            retcode, max_obj = ThreadRun(vbet, memfile, args.huc, args.scenario_code, inputs, args.output_dir, args.vaa_table, reach_codes, meta)
+            retcode, max_obj = ThreadRun(vbet, memfile, args.huc, args.scenario_code, inputs, args.output_dir, args.vaa_table, reach_codes, args.create_centerline, meta)
             log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
 
         else:
-            vbet(args.huc, args.scenario_code, inputs, args.output_dir, args.vaa_table, reach_codes, meta)
+            vbet(args.huc, args.scenario_code, inputs, args.output_dir, args.vaa_table, reach_codes, args.create_centerline, meta)
 
     except Exception as e:
         log.error(e)
