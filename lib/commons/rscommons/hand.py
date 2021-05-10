@@ -9,9 +9,11 @@
 
 from __future__ import annotations
 import os
+import time
 from typing import List
 import subprocess
 from osgeo import gdal
+from rscommons.util import pretty_duration
 from rscommons import Logger, ProgressBar, VectorBase
 
 
@@ -29,6 +31,7 @@ def create_hand_raster(dem: str, flowlines: str, working_dir: str, out_hand: str
         [type]: [description]
     """
     log = Logger("HAND")
+    start_time = time.time()
     log.info(f"Generating HAND for {dem} and {flowlines} using {working_dir}")
 
     # Format Paths
@@ -61,14 +64,15 @@ def create_hand_raster(dem: str, flowlines: str, working_dir: str, out_hand: str
 
     # Fin
     log.info(f"Generated HAND Raster {out_hand}")
-    log.info("HAND process complete")
+
+    ellapsed_time = time.time() - start_time
+    log.info("HAND process complete in {}".format(ellapsed_time))
 
     return out_hand
 
 
 def hand_rasterize(in_lyr_path: str, template_dem_path: str, out_raster_path: str):
-    log = Logger('hand_rasterize')
-
+    # log = Logger('hand_rasterize')
     ds_path, lyr_path = VectorBase.path_sorter(in_lyr_path)
 
     g = gdal.Open(template_dem_path)
@@ -110,7 +114,7 @@ def run_subprocess(cwd: str, cmd: List[str]):
 
     log = Logger("Subprocess")
     log.info('Running command: {}'.format(' '.join(cmd)))
-
+    start_time = time.time()
     # Realtime logging from subprocess
     process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd)
     # Here we print the lines in real time but we will also log them afterwords
@@ -128,5 +132,8 @@ def run_subprocess(cwd: str, cmd: List[str]):
     retcode = process.poll()
     if retcode is not None and retcode > 0:
         log.error('Process returned with code {}'.format(retcode))
+
+    ellapsed_time = time.time() - start_time
+    log.info('Command completed in {}'.format(pretty_duration(ellapsed_time)))
 
     return retcode
