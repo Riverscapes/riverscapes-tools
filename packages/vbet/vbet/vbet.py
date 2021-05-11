@@ -49,8 +49,8 @@ initGDALOGRErrors()
 
 cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/VBET.xsd', __version__)
 
-# thresh_vals = {"50": 0.5, "60": 0.6, "70": 0.7, "80": 0.8, "90": 0.9, "100": 1}
-thresh_vals = {"50": 0.5}
+thresh_vals = {"50": 0.5, "60": 0.6, "70": 0.7, "80": 0.8, "90": 0.9, "100": 1}
+# thresh_vals = {"50": 0.5}
 
 LayerTypes = {
     'DEM': RSLayer('DEM', 'DEM', 'Raster', 'inputs/dem.tif'),
