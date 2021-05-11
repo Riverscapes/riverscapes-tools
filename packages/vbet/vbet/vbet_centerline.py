@@ -9,6 +9,7 @@
 # -------------------------------------------------------------------------------
 
 import ogr
+import os
 from shapely.geometry import LineString, Polygon, Point
 from shapely.ops import linemerge, split
 from shapely.wkb import loads
@@ -86,6 +87,12 @@ def vbet_centerline(flowlines, vbet_polygons, out_layer):
                     polys.AddGeometry(poly)
 
             log.debug('Unioning...')
+            if not polys.IsValid() or polys.Area() == 0:
+                log.warning('Invalid geometry')
+                continue
+
+            # with open(os.path.join(os.path.dirname(os.path.dirname(out_layer)), 'layer_{}.json'.format(counter)), 'w') as fs:
+            #     fs.write(polys.ExportToJson())
             poly_union = polys.UnionCascaded()
             log.debug('Unioning complete')
 
