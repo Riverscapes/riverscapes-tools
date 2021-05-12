@@ -236,17 +236,17 @@ def pretty_duration(time_s=False):
     if not time_s >= 0:
         return '???'
     seconds = time_s % 60
-    minutes = floor(time_s / 60)
-    hours = floor(time_s / 3600)
+    minutes = floor(time_s / 60) % 60
+    hours = floor(time_s / 3600) % 24
     if time_s < 60:
         return "{0:.1f} seconds".format(seconds)
     elif time_s < 3600:
-        return "{}:{:02}".format(minutes, seconds)
+        return "{}:{:02} minutes".format(minutes, seconds)
     elif time_s < 86400:
-        return "{}:{:02}:{:02}".format(hours, minutes, seconds)
+        return "{}:{:02} hours".format(hours, minutes)
     else:
         days = floor(time_s / 86400)
-        return "{} days, {}:{:02}:{:02}".format(days, hours, minutes, seconds)
+        return "{} days, {}:{:02} hours".format(days, hours, minutes)
 
 
 def parse_metadata(arg_string):
