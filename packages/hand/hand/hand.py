@@ -19,7 +19,7 @@ from typing import List, Dict
 # LEave OSGEO import alone. It is necessary even if it looks unused
 from osgeo import gdal
 
-from rscommons.util import safe_makedirs, parse_metadata
+from rscommons.util import safe_makedirs, parse_metadata, safe_remove_dir
 from rscommons import RSProject, RSLayer, ModelConfig, Logger, dotenv, initGDALOGRErrors
 from rscommons import GeopackageLayer
 from rscommons.vector_ops import copy_feature_class
@@ -43,13 +43,20 @@ LayerTypes = {
         'FLOW_AREA': RSLayer('NHD Flow Areas', 'FLOW_AREA', 'Vector', 'flow_areas'),
         'HAND_NETWORK': RSLayer('HAND Network', 'HAND_NETWORK', 'Vector', 'hand_network'),
     }),
+
+    # Intermediate Products
     'DEM_MASKED': RSLayer('DEM Masked', 'DEM_MASKED', 'Raster', 'intermediates/dem_masked.tif'),
+    'PITFILL': RSLayer('TauDEM Pitfill', 'PITFILL', 'Raster', 'intermediates/hand_processing/pitfill.tif'),
+    'DINFFLOWDIR_SLP': RSLayer('TauDEM D-Inf Flow Directions Slope', 'DINFFLOWDIR_SLP', 'Raster', 'intermediates/hand_processing/dinfflowdir_slp.tif'),
+    'DINFFLOWDIR_ANG': RSLayer('TauDEM D-Inf Flow Directions', 'DINFFLOWDIR_ANG', 'Raster', 'intermediates/hand_processing/dinfflowdir_ang.tif'),
+    'RASTERIZED_FLOWLINES': RSLayer('Rasterized Flowlines', 'RASTERIZED_FLOWLINES', 'Raster', 'intermediates/hand_processing/rasterized_flowline.tif'),
+
     'HAND_RASTER': RSLayer('Hand Raster', 'HAND_RASTER', 'Raster', 'outputs/HAND.tif'),
     'REPORT': RSLayer('RSContext Report', 'REPORT', 'HTMLFile', 'outputs/hand.html')
 }
 
 
-def hand(huc, flowlines_orig, flowareas_orig, orig_dem, hillshade, project_folder, mask_lyr_path: str, reach_codes: List[str], meta: Dict[str, str]):
+def hand(huc, flowlines_orig, flowareas_orig, orig_dem, hillshade, project_folder, mask_lyr_path: str, keep_intermediates: bool, reach_codes: List[str], meta: Dict[str, str]):
     """[summary]
 
     Args:
@@ -102,7 +109,7 @@ def hand(huc, flowlines_orig, flowareas_orig, orig_dem, hillshade, project_folde
     vbet_network(flowlines_path, flowareas_path, network_path, cfg.OUTPUT_EPSG, reach_codes)
 
     ##########################################################################
-    # The main event:
+    # The main event:ce
     ##########################################################################
 
     # Generate HAND from dem and vbet_network
@@ -117,11 +124,20 @@ def hand(huc, flowlines_orig, flowareas_orig, orig_dem, hillshade, project_folde
 
     # We might need to mask the incoming DEM
     if mask_lyr_path is not None:
-        _np_dem_node, new_proj_dem = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DEM_MASKED'])
+        new_proj_dem = os.path.join(project_folder, LayerTypes['DEM_MASKED'].rel_path)
         raster_warp(proj_dem, new_proj_dem, epsg=cfg.OUTPUT_EPSG, clip=dem_mask_path)
         hand_dem = new_proj_dem
 
     create_hand_raster(hand_dem, network_path, temp_hand_dir, hand_raster)
+
+    if keep_intermediates is True:
+        project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DEM_MASKED'])
+        project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['PITFILL'])
+        project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_SLP'])
+        project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_ANG'])
+        project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['RASTERIZED_FLOWLINES'])
+    else:
+        safe_remove_dir(temp_hand_dir)
 
     project.add_project_raster(proj_nodes['Outputs'], LayerTypes['HAND_RASTER'])
 
@@ -188,6 +204,7 @@ def main():
     parser.add_argument('--reach_codes', help='Comma delimited reach codes (FCode) to retain when filtering features. Omitting this option retains all features.', type=str)
     parser.add_argument('--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
+    parser.add_argument('--intermediates', help='(optional) keep the intermediate products', action='store_true', default=False)
     parser.add_argument('--debug', help='Add debug tools for tracing things like memory usage at a performance cost.', action='store_true', default=False)
 
     args = dotenv.parse_args_env(parser)
@@ -208,11 +225,11 @@ def main():
         if args.debug is True:
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output_dir, 'hand_mem.log')
-            retcode, max_obj = ThreadRun(hand, memfile, args.huc, args.flowlines, args.flowareas, args.dem, args.hillshade, args.output_dir, args.mask, reach_codes, meta)
+            retcode, max_obj = ThreadRun(hand, memfile, args.huc, args.flowlines, args.flowareas, args.dem, args.hillshade, args.output_dir, args.mask, args.intermediates, reach_codes, meta)
             log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
 
         else:
-            hand(args.huc, args.flowlines, args.flowareas, args.dem, args.hillshade, args.output_dir, args.mask, reach_codes, meta)
+            hand(args.huc, args.flowlines, args.flowareas, args.dem, args.hillshade, args.output_dir, args.mask, args.intermediates, reach_codes, meta)
 
     except Exception as e:
         log.error(e)

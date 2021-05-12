@@ -3,11 +3,12 @@
         {
             "path": "../packages/hand"
         },
-        // {
-        //     "path": "../packages/vbet"
-        // },
         {
             "path": "../lib/commons"
+        },
+        {
+            "name": "Automation",
+            "path": "../scripts/automation"
         },
         {
             "name": "Workspaces",
