@@ -83,17 +83,27 @@ def vbet_centerline(flowlines, vbet_polygons, out_layer):
             for poly_feat, *_ in lyr_polygons.iterate_features():
                 poly = poly_feat.GetGeometryRef()
 
+                if poly.IsEmpty():
+                    continue
+
                 if poly.Intersects(line):
                     polys.AddGeometry(poly)
 
             log.debug('Unioning...')
             if not polys.IsValid() or polys.Area() == 0:
-                log.warning('Invalid geometry')
-                continue
+                poly_test = polys.Buffer(0)
+                if poly_test.IsValid():
+                    polys = poly_test
+                else:
+                    log.warning('Invalid geometry')
+                    continue
 
             # with open(os.path.join(os.path.dirname(os.path.dirname(out_layer)), 'layer_{}.json'.format(counter)), 'w') as fs:
             #     fs.write(polys.ExportToJson())
-            poly_union = polys.UnionCascaded()
+            if polys.GetGeometryType() == ogr.wkbMultiPolygon:
+                poly_union = polys.UnionCascaded()
+            else:
+                poly_union = polys
             log.debug('Unioning complete')
 
             if poly_union:
