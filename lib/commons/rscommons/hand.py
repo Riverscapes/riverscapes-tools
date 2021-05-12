@@ -100,8 +100,9 @@ def hand_rasterize(in_lyr_path: str, template_dem_path: str, out_raster_path: st
         layers=[lyr_path],
         height=height,
         width=width,
-        burnValues=1, outputType=gdal.GDT_CFloat32,
+        burnValues=1, outputType=gdal.GDT_Int16,
         creationOptions=['COMPRESS=LZW'],
+        allTouched=True,
         # outputBounds --- assigned output bounds: [minx, miny, maxx, maxy]
         outputBounds=[xmin, ymin, xmax, ymax],
         callback=poly_progress
