@@ -1,0 +1,18 @@
+{
+    "folders": [
+        {
+            "path": "../packages/hand"
+        },
+        {
+            "path": "../packages/vbet"
+        },
+        {
+            "path": "../lib/commons"
+        },
+        {
+            "name": "Workspaces",
+            "path": "."
+        }
+    ],
+    "settings": {}
+}

@@ -38,10 +38,11 @@ def vbet_network(flow_lines_path: str, flow_areas_path: str, out_path: str, epsg
         fids = include_features(flow_lines_lyr, vbet_net, fcode_filter)
 
         # Flow area features
-        polygon = get_geometry_unary_union(flow_areas_path, epsg=epsg)
-        if polygon is not None:
-            log.info('Incorporating flow areas.')
-            include_features(flow_lines_lyr, vbet_net, "FCode <> '46006'", polygon, excluded_fids=fids)
+        if flow_areas_path is not None:
+            polygon = get_geometry_unary_union(flow_areas_path, epsg=epsg)
+            if polygon is not None:
+                log.info('Incorporating flow areas.')
+                include_features(flow_lines_lyr, vbet_net, "FCode <> '46006'", polygon, excluded_fids=fids)
 
         fcount = flow_lines_lyr.ogr_layer.GetFeatureCount()
 

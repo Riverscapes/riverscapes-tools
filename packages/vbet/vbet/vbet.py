@@ -34,9 +34,9 @@ from rscommons.vector_ops import polygonize, buffer_by_field, copy_feature_class
 from rscommons.hand import create_hand_raster
 from rscommons.thiessen.vor import NARVoronoi
 from rscommons.thiessen.shapes import centerline_points
+from rscommons.vbet_network import vbet_network, create_drainage_area_zones, copy_vaa_attributes, join_attributes
 
 from vbet.vbet_database import load_configuration, build_vbet_database
-from vbet.vbet_network import vbet_network, create_drainage_area_zones, copy_vaa_attributes, join_attributes
 from vbet.vbet_report import VBETReport
 from vbet.vbet_raster_ops import rasterize, proximity_raster, raster_clean, rasterize_attribute
 from vbet.vbet_outputs import threshold, sanitize
