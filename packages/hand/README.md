@@ -1,4 +1,4 @@
-# HAND
+# Height Above Nearest Drainage (HAND)
 
 Python 3 package to build the contextual layers used by our outher python riverscapes tools.
 

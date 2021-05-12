@@ -13,25 +13,19 @@ import sys
 import uuid
 import traceback
 import datetime
-import json
-import glob
-import sqlite3
 import time
 from typing import List, Dict
 
 # LEave OSGEO import alone. It is necessary even if it looks unused
 from osgeo import gdal
-import rasterio
-import numpy as np
-from scipy import interpolate
 
 from rscommons.util import safe_makedirs, parse_metadata
-from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, dotenv, initGDALOGRErrors, TempRaster
+from rscommons import RSProject, RSLayer, ModelConfig, Logger, dotenv, initGDALOGRErrors
 from rscommons import GeopackageLayer
-from rscommons.vector_ops import polygonize, buffer_by_field, copy_feature_class
+from rscommons.vector_ops import copy_feature_class
 from rscommons.hand import create_hand_raster
-
-from vbet.vbet_network import vbet_network
+from rscommons.raster_warp import raster_warp
+from rscommons.vbet_network import vbet_network
 
 from hand.hand_report import HANDReport
 from hand.__version__ import __version__
@@ -42,7 +36,7 @@ cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/HAND.xsd', __versi
 
 LayerTypes = {
     'DEM': RSLayer('DEM', 'DEM', 'Raster', 'inputs/dem.tif'),
-    'SLOPE_RASTER': RSLayer('Slope Raster', 'SLOPE_RASTER', 'Raster', 'inputs/slope.tif'),
+    'DEM_MASKED': RSLayer('DEM', 'DEM', 'Raster', 'intermediates/dem_masked.tif'),
     'HILLSHADE': RSLayer('DEM Hillshade', 'HILLSHADE', 'Raster', 'inputs/dem_hillshade.tif'),
     'INPUTS': RSLayer('Inputs', 'INPUTS', 'Geopackage', 'inputs/hand_inputs.gpkg', {
         'FLOWLINES': RSLayer('NHD Flowlines', 'FLOWLINES', 'Vector', 'flowlines'),
@@ -53,22 +47,22 @@ LayerTypes = {
     'HAND_RASTER': RSLayer('Hand Raster', 'HAND_RASTER', 'Raster', 'intermediates/HAND.tif'),
     'CHANNEL_DISTANCE': RSLayer('Channel Euclidean Distance', 'CHANNEL_DISTANCE', "Raster", "intermediates/ChannelEuclideanDist.tif"),
     'FLOW_AREA_DISTANCE': RSLayer('Flow Area Euclidean Distance', 'FLOW_AREA_DISTANCE', "Raster", "intermediates/FlowAreaEuclideanDist.tif"),
-    'NORMALIZED_SLOPE': RSLayer('Normalized Slope', 'NORMALIZED_SLOPE', "Raster", "intermediates/nLoE_Slope.tif"),
     'NORMALIZED_HAND': RSLayer('Normalized HAND', 'NORMALIZED_HAND', "Raster", "intermediates/nLoE_Hand.tif"),
     'REPORT': RSLayer('RSContext Report', 'REPORT', 'HTMLFile', 'outputs/hand.html')
 }
 
 
-def hand(huc, flowlines_orig, flowareas_orig, orig_dem, hillshade, project_folder, reach_codes: List[str], meta: Dict[str, str]):
+def hand(huc, flowlines_orig, flowareas_orig, orig_dem, hillshade, project_folder, mask_lyr_path: str, reach_codes: List[str], meta: Dict[str, str]):
     """[summary]
 
     Args:
-        huc ([type]): [description]
-        flowlines_orig ([type]): [description]
-        flowareas_orig ([type]): [description]
-        orig_dem ([type]): [description]
-        hillshade ([type]): [description]
-        project_folder ([type]): [description]
+        huc ([str]): [description]
+        flowlines_orig ([str]): [description]
+        flowareas_orig ([str]): [description]
+        orig_dem ([str]): [description]
+        hillshade ([str]): [description]
+        project_folder ([str]): [description]
+        mask_lyr_path ([str]): [description]
         reach_codes (List[int]): NHD reach codes for features to include in outputs
         meta (Dict[str,str]): dictionary of riverscapes metadata key: value pairs
     """
@@ -83,7 +77,8 @@ def hand(huc, flowlines_orig, flowareas_orig, orig_dem, hillshade, project_folde
 
     # Copy the inp
     _proj_dem_node, proj_dem = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], orig_dem)
-    _hillshade_node, hillshade = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], hillshade)
+    if hillshade:
+        _hillshade_node, hillshade = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], hillshade)
 
     # Copy input shapes to a geopackage
     inputs_gpkg_path = os.path.join(project_folder, LayerTypes['INPUTS'].rel_path)
@@ -97,7 +92,9 @@ def hand(huc, flowlines_orig, flowareas_orig, orig_dem, hillshade, project_folde
     GeopackageLayer.delete(intermediates_gpkg_path)
 
     copy_feature_class(flowlines_orig, flowlines_path, epsg=cfg.OUTPUT_EPSG)
-    copy_feature_class(flowareas_orig, flowareas_path, epsg=cfg.OUTPUT_EPSG)
+
+    if flowareas_orig is not None:
+        copy_feature_class(flowareas_orig, flowareas_path, epsg=cfg.OUTPUT_EPSG)
 
     project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
 
@@ -115,7 +112,15 @@ def hand(huc, flowlines_orig, flowareas_orig, orig_dem, hillshade, project_folde
     safe_makedirs(temp_hand_dir)
 
     hand_raster = os.path.join(project_folder, LayerTypes['HAND_RASTER'].rel_path)
-    create_hand_raster(proj_dem, network_path, temp_hand_dir, hand_raster)
+
+    hand_dem = proj_dem
+    # We might need to mask the incoming DEM
+    if mask_lyr_path is not None:
+        _np_dem_node, new_proj_dem = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM_MASKED'])
+        raster_warp(proj_dem, new_proj_dem, epsg=cfg.OUTPUT_EPSG, clip=mask_lyr_path)
+        hand_dem = new_proj_dem
+
+    create_hand_raster(hand_dem, network_path, temp_hand_dir, hand_raster)
 
     project.add_project_raster(proj_nodes['Outputs'], LayerTypes['HAND_RASTER'])
 
@@ -173,11 +178,12 @@ def main():
     )
     parser.add_argument('huc', help='NHD flow line ShapeFile path', type=str)
     parser.add_argument('flowlines', help='NHD flow line ShapeFile path', type=str)
-    parser.add_argument('flowareas', help='NHD flow areas ShapeFile path', type=str)
-    parser.add_argument('slope', help='Slope raster path', type=str)
     parser.add_argument('dem', help='DEM raster path', type=str)
-    parser.add_argument('hillshade', help='Hillshade raster path', type=str)
     parser.add_argument('output_dir', help='Folder where output HAND project will be created', type=str)
+
+    parser.add_argument('--hillshade', help='Hillshade raster path', type=str)
+    parser.add_argument('--mask', help='Optional shapefile to mask by', type=str)
+    parser.add_argument('--flowareas', help='NHD flow areas ShapeFile path', type=str)
     parser.add_argument('--reach_codes', help='Comma delimited reach codes (FCode) to retain when filtering features. Omitting this option retains all features.', type=str)
     parser.add_argument('--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
@@ -201,11 +207,11 @@ def main():
         if args.debug is True:
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output_dir, 'hand_mem.log')
-            retcode, max_obj = ThreadRun(hand, memfile, args.huc, args.flowlines, args.flowareas, args.dem, args.hillshade, args.output_dir, reach_codes, meta)
+            retcode, max_obj = ThreadRun(hand, memfile, args.huc, args.flowlines, args.flowareas, args.dem, args.hillshade, args.output_dir, args.mask, reach_codes, meta)
             log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
 
         else:
-            hand(args.huc, args.flowlines, args.flowareas, args.dem, args.hillshade, args.output_dir, reach_codes, meta)
+            hand(args.huc, args.flowlines, args.flowareas, args.dem, args.hillshade, args.output_dir, args.mask, reach_codes, meta)
 
     except Exception as e:
         log.error(e)

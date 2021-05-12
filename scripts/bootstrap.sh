@@ -28,4 +28,5 @@ python3 -m virtualenv .venv
 .venv/bin/pip install -e ./packages/vbet
 .venv/bin/pip install -e ./packages/brat
 .venv/bin/pip install -e ./packages/gnat
+.venv/bin/pip install -e ./packages/hand
 .venv/bin/pip install -e ./packages/rvd
