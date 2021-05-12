@@ -3,9 +3,9 @@
         {
             "path": "../packages/hand"
         },
-        {
-            "path": "../packages/vbet"
-        },
+        // {
+        //     "path": "../packages/vbet"
+        // },
         {
             "path": "../lib/commons"
         },
@@ -14,5 +14,7 @@
             "path": "."
         }
     ],
-    "settings": {}
+    "settings": {
+        "python.pythonPath": "${workspaceFolder}/../../.venv/bin/python",
+    }
 }

@@ -5,7 +5,7 @@ import os
 import math
 import re
 from enum import Enum
-from typing import Union, List
+from typing import Union, List, Tuple
 from osgeo import ogr, gdal, osr
 from shapely.wkb import loads as wkbload, dumps as wkbdumps
 from shapely.geometry.base import BaseGeometry
@@ -111,7 +111,7 @@ class VectorBase():
         self.close()
 
     @staticmethod
-    def path_sorter(filepath: str, layer_name: str = None) -> (str, str):
+    def path_sorter(filepath: str, layer_name: str = None) -> Tuple[str, str]:
         """Sometimes the path for the geopackage comes in as /path/to/layer.gpkg/schema.layer
 
         Args:
@@ -648,7 +648,7 @@ class VectorBase():
         return transform
 
     @staticmethod
-    def get_transform_from_epsg(in_srs: osr.SpatialReference, epsg: int) -> (osr.SpatialReference, osr.CoordinateTransformation):
+    def get_transform_from_epsg(in_srs: osr.SpatialReference, epsg: int) -> Tuple[osr.SpatialReference, osr.CoordinateTransformation]:
         """Transform a spatial ref using an epsg code provided
 
         This is done explicitly and includes a GetAxisMappingStrategy check to
@@ -680,7 +680,7 @@ class VectorBase():
         return out_spatial_ref, transform
 
     @staticmethod
-    def get_transform_from_raster(in_srs: osr.SpatialReference, raster_path: str) -> (osr.SpatialReference, osr.CoordinateTransformation):
+    def get_transform_from_raster(in_srs: osr.SpatialReference, raster_path: str) -> Tuple[osr.SpatialReference, osr.CoordinateTransformation]:
         """Get a transform between a given SRS and the SRS from a raster
 
         Args:
@@ -928,7 +928,7 @@ class VectorBase():
             raise ex
 
     @ staticmethod
-    def get_srs_debug(spatial_ref: osr.SpatialReference) -> [str, str]:
+    def get_srs_debug(spatial_ref: osr.SpatialReference) -> List[str, str]:
         """useful method for printing spatial ref information to the log
 
         Args:
