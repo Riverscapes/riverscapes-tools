@@ -25,6 +25,8 @@
         "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/network_intersected_300m",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/topography/dem.tif",
         "{env:DATA_ROOT}/hand/${input:HUC}",
+        // "--mask",
+        // "{env:DATA_ROOT}/rs_context/${input:HUC}/clip_test.shp",
         "--hillshade",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/topography/dem_hillshade.tif",
         "--flowareas",

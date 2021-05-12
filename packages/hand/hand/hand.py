@@ -36,18 +36,15 @@ cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/HAND.xsd', __versi
 
 LayerTypes = {
     'DEM': RSLayer('DEM', 'DEM', 'Raster', 'inputs/dem.tif'),
-    'DEM_MASKED': RSLayer('DEM', 'DEM', 'Raster', 'intermediates/dem_masked.tif'),
     'HILLSHADE': RSLayer('DEM Hillshade', 'HILLSHADE', 'Raster', 'inputs/dem_hillshade.tif'),
     'INPUTS': RSLayer('Inputs', 'INPUTS', 'Geopackage', 'inputs/hand_inputs.gpkg', {
         'FLOWLINES': RSLayer('NHD Flowlines', 'FLOWLINES', 'Vector', 'flowlines'),
+        'DEM_MASK_POLY': RSLayer('DEM Mask Polygon', 'DEM_MASK_POLY', 'Vector', 'dem_mask_poly'),
         'FLOW_AREA': RSLayer('NHD Flow Areas', 'FLOW_AREA', 'Vector', 'flow_areas'),
+        'HAND_NETWORK': RSLayer('HAND Network', 'HAND_NETWORK', 'Vector', 'hand_network'),
     }),
-    'CHANNEL_BUFFER_RASTER': RSLayer('Channel Buffer Raster', 'CHANNEL_BUFFER_RASTER', 'Raster', 'intermediates/channelbuffer.tif'),
-    'FLOW_AREA_RASTER': RSLayer('Flow Area Raster', 'FLOW_AREA_RASTER', 'Raster', 'intermediates/flowarea.tif'),
-    'HAND_RASTER': RSLayer('Hand Raster', 'HAND_RASTER', 'Raster', 'intermediates/HAND.tif'),
-    'CHANNEL_DISTANCE': RSLayer('Channel Euclidean Distance', 'CHANNEL_DISTANCE', "Raster", "intermediates/ChannelEuclideanDist.tif"),
-    'FLOW_AREA_DISTANCE': RSLayer('Flow Area Euclidean Distance', 'FLOW_AREA_DISTANCE', "Raster", "intermediates/FlowAreaEuclideanDist.tif"),
-    'NORMALIZED_HAND': RSLayer('Normalized HAND', 'NORMALIZED_HAND', "Raster", "intermediates/nLoE_Hand.tif"),
+    'DEM_MASKED': RSLayer('DEM Masked', 'DEM_MASKED', 'Raster', 'intermediates/dem_masked.tif'),
+    'HAND_RASTER': RSLayer('Hand Raster', 'HAND_RASTER', 'Raster', 'outputs/HAND.tif'),
     'REPORT': RSLayer('RSContext Report', 'REPORT', 'HTMLFile', 'outputs/hand.html')
 }
 
@@ -82,16 +79,18 @@ def hand(huc, flowlines_orig, flowareas_orig, orig_dem, hillshade, project_folde
 
     # Copy input shapes to a geopackage
     inputs_gpkg_path = os.path.join(project_folder, LayerTypes['INPUTS'].rel_path)
-    intermediates_gpkg_path = os.path.join(project_folder, LayerTypes['INTERMEDIATES'].rel_path)
 
     flowlines_path = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
     flowareas_path = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['FLOW_AREA'].rel_path)
+    dem_mask_path = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['DEM_MASK_POLY'].rel_path)
 
     # Make sure we're starting with a fresh slate of new geopackages
     GeopackageLayer.delete(inputs_gpkg_path)
-    GeopackageLayer.delete(intermediates_gpkg_path)
 
     copy_feature_class(flowlines_orig, flowlines_path, epsg=cfg.OUTPUT_EPSG)
+
+    if mask_lyr_path is not None:
+        copy_feature_class(mask_lyr_path, dem_mask_path, epsg=cfg.OUTPUT_EPSG)
 
     if flowareas_orig is not None:
         copy_feature_class(flowareas_orig, flowareas_path, epsg=cfg.OUTPUT_EPSG)
@@ -99,12 +98,12 @@ def hand(huc, flowlines_orig, flowareas_orig, orig_dem, hillshade, project_folde
     project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
 
     # Create a copy of the flow lines with just the perennial and also connectors inside flow areas
-    network_path = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['HAND_NETWORK'].rel_path)
+    network_path = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['HAND_NETWORK'].rel_path)
     vbet_network(flowlines_path, flowareas_path, network_path, cfg.OUTPUT_EPSG, reach_codes)
 
-    ############################
+    ##########################################################################
     # The main event:
-    ############################
+    ##########################################################################
 
     # Generate HAND from dem and vbet_network
     # TODO make a place for this temporary folder. it can be removed after hand is generated.
@@ -113,11 +112,13 @@ def hand(huc, flowlines_orig, flowareas_orig, orig_dem, hillshade, project_folde
 
     hand_raster = os.path.join(project_folder, LayerTypes['HAND_RASTER'].rel_path)
 
+    # If there's no mask we use the original DEM as-is
     hand_dem = proj_dem
+
     # We might need to mask the incoming DEM
     if mask_lyr_path is not None:
-        _np_dem_node, new_proj_dem = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM_MASKED'])
-        raster_warp(proj_dem, new_proj_dem, epsg=cfg.OUTPUT_EPSG, clip=mask_lyr_path)
+        _np_dem_node, new_proj_dem = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DEM_MASKED'])
+        raster_warp(proj_dem, new_proj_dem, epsg=cfg.OUTPUT_EPSG, clip=dem_mask_path)
         hand_dem = new_proj_dem
 
     create_hand_raster(hand_dem, network_path, temp_hand_dir, hand_raster)

@@ -14,3 +14,8 @@ Set up this env file to help VSCode's `launch.json` fill in the parameters for r
 ```
 DATA_ROOT=/SOMEPATH/somefolder
 ```
+
+
+questions:
+
+1. all our riverscapes-tools so far have been EPSG:4326. How do we handle projections?
