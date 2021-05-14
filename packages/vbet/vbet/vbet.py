@@ -49,8 +49,8 @@ initGDALOGRErrors()
 
 cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/VBET.xsd', __version__)
 
-thresh_vals = {"50": 0.5, "60": 0.6, "70": 0.7, "80": 0.8, "90": 0.9, "100": 1}
-# thresh_vals = {"50": 0.5}
+# thresh_vals = {"50": 0.5, "60": 0.6, "70": 0.7, "80": 0.8, "90": 0.9, "100": 1}
+thresh_vals = {"50": 0.5}
 
 LayerTypes = {
     'DEM': RSLayer('DEM', 'DEM', 'Raster', 'inputs/dem.tif'),
@@ -89,7 +89,7 @@ LayerTypes = {
 }
 
 
-def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: Path, vaa_table: Path, reach_codes: List[str], create_centerline: bool, meta: Dict[str, str]):
+def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: Path, vaa_table: Path, reach_codes: List[str], create_centerline: bool, meta: Dict[str, str], hand: Path = None):
     """generate vbet evidence raster and threshold polygons for a watershed
 
     Args:
@@ -158,12 +158,16 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
 
     # Generate HAND from dem and vbet_network
     if 'HAND' in vbet_run['Inputs']:
-        log.info("Adding HAND Input")
-        temp_hand_dir = os.path.join(project_folder, "intermediates", "hand_processing")
-        safe_makedirs(temp_hand_dir)
         hand_raster = os.path.join(project_folder, LayerTypes['HAND_RASTER'].rel_path)
-        create_hand_raster(project_inputs['DEM'], network_path, temp_hand_dir, hand_raster)
-        project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['HAND_RASTER'])
+        if hand:
+            log.info("Copying exisiting HAND Input")
+            _node, project_inputs['HAND'] = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['HAND_RASTER'], hand)
+        else:
+            log.info("Adding HAND Input")
+            temp_hand_dir = os.path.join(project_folder, "intermediates", "hand_processing")
+            safe_makedirs(temp_hand_dir)
+            create_hand_raster(project_inputs['DEM'], network_path, temp_hand_dir, hand_raster)
+            project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['HAND_RASTER'])
         in_rasters['HAND'] = hand_raster
         out_rasters['NORMALIZED_HAND'] = os.path.join(project_folder, LayerTypes['NORMALIZED_HAND'].rel_path)
 
@@ -486,6 +490,7 @@ def main():
     parser.add_argument('inputs', help='key-value pairs of input name and path', type=str)
     parser.add_argument('output_dir', help='Folder where output VBET project will be created', type=str)
     parser.add_argument('vaa_table', type=str)
+    parser.add_argument('--hand', help='path to existing hand', type=str)
     parser.add_argument('--reach_codes', help='Comma delimited reach codes (FCode) to retain when filtering features. Omitting this option retains all features.', type=str)
     parser.add_argument('--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
@@ -512,11 +517,11 @@ def main():
         if args.debug is True:
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output_dir, 'vbet_mem.log')
-            retcode, max_obj = ThreadRun(vbet, memfile, args.huc, args.scenario_code, inputs, args.output_dir, args.vaa_table, reach_codes, args.create_centerline, meta)
+            retcode, max_obj = ThreadRun(vbet, memfile, args.huc, args.scenario_code, inputs, args.output_dir, args.vaa_table, reach_codes, args.create_centerline, meta, hand=args.hand)
             log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
 
         else:
-            vbet(args.huc, args.scenario_code, inputs, args.output_dir, args.vaa_table, reach_codes, args.create_centerline, meta)
+            vbet(args.huc, args.scenario_code, inputs, args.output_dir, args.vaa_table, reach_codes, args.create_centerline, meta, hand=args.hand)
 
     except Exception as e:
         log.error(e)
