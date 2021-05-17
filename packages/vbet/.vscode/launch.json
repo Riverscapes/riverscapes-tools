@@ -32,6 +32,7 @@
         "--reach_codes",
         "33400,46003,46006,46007,55800",
         "--create_centerline",
+        "--quick_mode",
         "--meta",
         "Runner=VSCode",
         "--verbose",

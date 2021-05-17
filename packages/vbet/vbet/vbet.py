@@ -89,7 +89,7 @@ LayerTypes = {
 }
 
 
-def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: Path, vaa_table: Path, reach_codes: List[str], create_centerline: bool, meta: Dict[str, str], hand: Path = None):
+def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: Path, vaa_table: Path, reach_codes: List[str], create_centerline: bool, meta: Dict[str, str], hand: Path = None, skip_sanitize=False, quick_mode=False):
     """generate vbet evidence raster and threshold polygons for a watershed
 
     Args:
@@ -132,6 +132,14 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
 
     # Build Transformation Tables
     build_vbet_database(inputs_gpkg_path)
+
+    # Report
+    report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
+    project.add_report(proj_nodes['Outputs'], LayerTypes['REPORT'], replace=True)
+    report = VBETReport(scenario_code, inputs_gpkg_path, os.path.join(project_folder, LayerTypes['VBET_OUTPUTS'].rel_path), report_path, project)
+    report.write()
+    if quick_mode:
+        return
 
     # Load configuration from table
     vbet_run = load_configuration(scenario_code, inputs_gpkg_path)
@@ -376,17 +384,18 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
         #     log.info('Done')
 
         # Now the final sanitization
-        sanitize(
-            str_val,
-            '{}/{}'.format(intermediates_gpkg_path, plgnize_lyr.rel_path),
-            '{}/{}'.format(vbet_path, vbet_lyr.rel_path),
-            buff_dist,
-            network_path
-        )
+        if not skip_sanitize:
+            sanitize(
+                str_val,
+                '{}/{}'.format(intermediates_gpkg_path, plgnize_lyr.rel_path),
+                '{}/{}'.format(vbet_path, vbet_lyr.rel_path),
+                buff_dist,
+                network_path
+            )
         log.info('Completed thresholding at {}'.format(thr_val))
 
     # Generate Centerline at 50%
-    if create_centerline is True:
+    if create_centerline is True and not skip_sanitize:
         centerline_lyr = RSLayer('VBET Centerlines (50% Threshold)', 'VBET_CENTERLINES_50', 'Vector', 'vbet_centerlines_50')
         log.info('Creating a centerline at the 50% threshold')
         LayerTypes['VBET_OUTPUTS'].add_sub_layer('VBET_CENTERLINES_50', centerline_lyr)
@@ -494,7 +503,9 @@ def main():
     parser.add_argument('--reach_codes', help='Comma delimited reach codes (FCode) to retain when filtering features. Omitting this option retains all features.', type=str)
     parser.add_argument('--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
-    parser.add_argument('--create_centerline', help='(optional) generate a centerline for tge 50% threshold ', action='store_true', default=False)
+    parser.add_argument('--create_centerline', help='(optional) generate a centerline for the 50% threshold ', action='store_true', default=False)
+    parser.add_argument('--skip_sanitize', help='(optional) do not clean up final vbet Polygons', action='store_true', default=False)
+    parser.add_argument('--quick_mode', help='(optional) report only', action='store_true', default=False)
     parser.add_argument('--debug', help='Add debug tools for tracing things like memory usage at a performance cost.', action='store_true', default=False)
 
     args = dotenv.parse_args_env(parser)
@@ -517,7 +528,7 @@ def main():
         if args.debug is True:
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output_dir, 'vbet_mem.log')
-            retcode, max_obj = ThreadRun(vbet, memfile, args.huc, args.scenario_code, inputs, args.output_dir, args.vaa_table, reach_codes, args.create_centerline, meta, hand=args.hand)
+            retcode, max_obj = ThreadRun(vbet, memfile, args.huc, args.scenario_code, inputs, args.output_dir, args.vaa_table, reach_codes, args.create_centerline, meta, hand=args.hand, skip_sanitize=args.skip_sanitize, quick_mode=args.quick_mode)
             log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
 
         else:
