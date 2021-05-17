@@ -1008,7 +1008,7 @@ WatershedID,Name,AreaSqkm,States,Qlow,Q2,MaxDrainage,EcoregionID,Notes,Metadata
 10080015,Lower Bighorn,5080.2,MT,,,,43,,
 10080016,Little Bighorn,3360.97,MT_WY,,,,43,,
 10090101,Upper Tongue,6566.17,MT_WY,,,,43,,
-10090102,Lower Tongue,7440.84,MT,,,,43,,
+10090102,Lower Tongue,7440.84,MT,3.75 * (10**-11) * (DRNAREA**0.962) * (ELEV1K**2.06) * (FORESTP1**3.28) * (PRECIP**1.43),29.0 * (DRNAREA**0.60)* ((FORESTP1) ** -0.424),6282.0,43,,
 10090201,Middle Fork Powder,2541.86,WY,,,,18,,
 10090202,Upper Powder,6495.02,WY,,,,43,,
 10090203,South Fork Powder,3151.21,WY,,,,18,,
