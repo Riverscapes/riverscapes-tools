@@ -79,7 +79,7 @@ def raster_vrt_stitch(inrasters, outraster, epsg, clip=None, clean=False, warp_o
     #     os.remove(path_vrt)
 
 
-def raster_warp(inraster: str, outraster: str, epsg, clip=None, warp_options: dict = {}):
+def raster_warp(inraster: str, outraster: str, epsg, clip=None, warp_options: dict = {}, raster_compression: str = " -co COMPRESS=DEFLATE"):
     """
     Reproject a raster to a different coordinate system.
     :param inraster: Input dataset
@@ -125,7 +125,7 @@ def raster_warp(inraster: str, outraster: str, epsg, clip=None, warp_options: di
     ds = gdal.Warp(warpvrt, inraster, options=warp_options_obj)
 
     log.info('Using GDAL translate to convert VRT to compressed raster format.')
-    translateoptions = gdal.TranslateOptions(gdal.ParseCommandLine("-of Gtiff -co COMPRESS=DEFLATE"))
+    translateoptions = gdal.TranslateOptions(gdal.ParseCommandLine(f"-of Gtiff {raster_compression}"))
     gdal.Translate(outraster, ds, options=translateoptions)
 
     # Cleanup the temporary VRT file
