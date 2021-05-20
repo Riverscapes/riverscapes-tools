@@ -88,8 +88,8 @@ def hand(huc, flowlines_orig, flowareas_orig, orig_dem, hillshade, project_folde
     inputs_gpkg_path = os.path.join(project_folder, LayerTypes['INPUTS'].rel_path)
 
     flowlines_path = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
-    flowareas_path = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['FLOW_AREA'].rel_path)
-    dem_mask_path = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['DEM_MASK_POLY'].rel_path)
+    flowareas_path = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['FLOW_AREA'].rel_path) if flowareas_orig else None
+    dem_mask_path = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['DEM_MASK_POLY'].rel_path) if mask_lyr_path else None
 
     # Make sure we're starting with a fresh slate of new geopackages
     GeopackageLayer.delete(inputs_gpkg_path)
@@ -125,7 +125,7 @@ def hand(huc, flowlines_orig, flowareas_orig, orig_dem, hillshade, project_folde
     # We might need to mask the incoming DEM
     if mask_lyr_path is not None:
         new_proj_dem = os.path.join(project_folder, LayerTypes['DEM_MASKED'].rel_path)
-        raster_warp(proj_dem, new_proj_dem, epsg=cfg.OUTPUT_EPSG, clip=dem_mask_path)
+        raster_warp(proj_dem, new_proj_dem, epsg=cfg.OUTPUT_EPSG, clip=dem_mask_path, raster_compression=" -co COMPRESS=LZW -co PREDICTOR=3")
         hand_dem = new_proj_dem
 
     create_hand_raster(hand_dem, network_path, temp_hand_dir, hand_raster)
