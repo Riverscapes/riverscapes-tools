@@ -50,7 +50,7 @@ class VBETReport(RSReport):
             section_input = self.section(None, name, level=2)
 
             for zone_id, zone_values in enumerate(values['transform_zones'].values()):
-                section_zone = self.section("Transforms", f'Drainage Area Zone: {zone_id}', level=3)
+                section_zone = self.section("Transforms", f'Transform Zone: {zone_id}', level=3)
 
                 transform_wrapper = ET.Element('div', attrib={'class': 'transformWrapper'})
 

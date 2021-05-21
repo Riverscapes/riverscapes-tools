@@ -37,7 +37,7 @@ def load_configuration(machine_code, database):
     inputs_dict = {}
     for input_value in inputs:
 
-        zones = curs.execute("""SELECT transform_id, min_da, max_da FROM input_zones WHERE scenario_input_id = ?""", [input_value[2]]).fetchall()
+        zones = curs.execute("""SELECT transform_id, min_value, max_value FROM input_zones WHERE scenario_input_id = ?""", [input_value[2]]).fetchall()
 
         transform_zones = {}
         for zone in zones:

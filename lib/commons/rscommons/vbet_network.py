@@ -71,7 +71,7 @@ def include_features(source_layer: VectorBase, out_layer: VectorBase, attribute_
     return included_fids
 
 
-def create_drainage_area_zones(catchment_layer, flowlines_layer, join_field, copy_field, zones, out_layer):
+def create_stream_size_zones(catchment_layer, flowlines_layer, join_field, copy_field, zones, out_layer):
 
     # Load drainage area
     with sqlite3.connect(os.path.dirname(flowlines_layer)) as conn:
