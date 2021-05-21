@@ -55,8 +55,9 @@ CREATE TABLE input_zones (
     zone_id             INTEGER PRIMARY KEY UNIQUE NOT NULL,
     scenario_input_id   INTEGER NOT NULL,
     transform_id        INTEGER NOT NULL,
-    min_da              REAL,
-    max_da              REAL,
+    min_value           REAL,
+    max_value           REAL,
+    zone_type           TEXT,
 
     CONSTRAINT fk_scenario_input_id FOREIGN KEY (scenario_input_id) REFERENCES scenario_inputs(scenario_input_id) ON DELETE CASCADE,
     CONSTRAINT fk_transform_id FOREIGN KEY (transform_id) REFERENCES transforms(transform_id) ON DELETE CASCADE

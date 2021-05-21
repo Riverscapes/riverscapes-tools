@@ -37,6 +37,7 @@ from rscommons.thiessen.shapes import centerline_points
 from rscommons.vbet_network import vbet_network, create_drainage_area_zones, copy_vaa_attributes, join_attributes
 
 from vbet.vbet_database import load_configuration, build_vbet_database
+from vbet.vbet_network import vbet_network, create_stream_size_zones, copy_vaa_attributes, join_attributes
 from vbet.vbet_report import VBETReport
 from vbet.vbet_raster_ops import rasterize, proximity_raster, raster_clean, rasterize_attribute
 from vbet.vbet_outputs import threshold, sanitize
@@ -49,8 +50,8 @@ initGDALOGRErrors()
 
 cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/VBET.xsd', __version__)
 
-# thresh_vals = {"50": 0.5, "60": 0.6, "70": 0.7, "80": 0.8, "90": 0.9, "100": 1}
-thresh_vals = {"50": 0.5}
+thresh_vals = {"50": 0.5, "60": 0.6, "70": 0.7, "80": 0.8, "90": 0.9, "100": 1}
+#thresh_vals = {"50": 0.5}
 
 LayerTypes = {
     'DEM': RSLayer('DEM', 'DEM', 'Raster', 'inputs/dem.tif'),
@@ -77,7 +78,7 @@ LayerTypes = {
     'INTERMEDIATES': RSLayer('Intermediates', 'Intermediates', 'Geopackage', 'intermediates/vbet_intermediates.gpkg', {
         'VBET_NETWORK': RSLayer('VBET Network', 'VBET_NETWORK', 'Vector', 'vbet_network'),
         'VBET_NETWORK_BUFFERED': RSLayer('VBET Network Buffer', 'VBET_NETWORK_BUFFERED', 'Vector', 'vbet_network_buffered'),
-        'DA_ZONES': RSLayer('Drainage Area Zones', 'DA_ZONES', 'Vector', 'da_zones'),
+        'TRANSFORM_ZONES': RSLayer('Transform Zones', 'TRANSFORM_ZONES', 'Vector', 'transform_zones'),
         'THIESSEN_POINTS': RSLayer('Thiessen Reach Points', 'THIESSEN_POINTS', 'Vector', 'ThiessenPoints'),
         'THIESSEN_AREAS': RSLayer('Thiessen Reach Areas', 'THIESSEN_AREAS', 'Vector', 'ThiessenPolygonsDissolved')
         # We also add all tht raw thresholded shapes here but they get added dynamically later
@@ -143,7 +144,7 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
 
     # Load configuration from table
     vbet_run = load_configuration(scenario_code, inputs_gpkg_path)
-    vaa_fields = ['LevelPathI', 'Divergence', 'DnLevelPat'] + ['HydroSeq', 'DnHydroSeq', 'UpHydroSeq']
+    vaa_fields = ['LevelPathI', 'Divergence', 'DnLevelPat'] + ['HydroSeq', 'DnHydroSeq', 'UpHydroSeq'] + ["StreamOrde"]
     flowlines_vaa_path = join_attributes(inputs_gpkg_path, "Flowlines_VAA", os.path.basename(project_inputs['FLOWLINES']), vaa_table_name, 'NHDPlusID', vaa_fields, cfg.OUTPUT_EPSG)
 
     # Create a copy of the flow lines with just the perennial and also connectors inside flow areas
@@ -153,8 +154,9 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
 
     # Create Zones
     log.info('Building drainage area zones')
-    catchments_path = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['DA_ZONES'].rel_path)
-    create_drainage_area_zones(project_inputs['CATCHMENTS'], project_inputs['FLOWLINES'], 'NHDPlusID', 'TotDASqKm', vbet_run['Zones'], catchments_path)
+    catchments_path = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['TRANSFORM_ZONES'].rel_path)
+    #create_stream_size_zones(project_inputs['CATCHMENTS'], project_inputs['FLOWLINES'], 'NHDPlusID', 'TotDASqKm', vbet_run['Zones'], catchments_path)
+    create_stream_size_zones(project_inputs['CATCHMENTS'], flowlines_vaa_path, 'NHDPlusID', 'StreamOrde', vbet_run['Zones'], catchments_path)
 
     # Create Scenario Input Rasters
     in_rasters = {}
@@ -222,12 +224,12 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
 
     # Generate da Zone rasters
     for zone in vbet_run['Zones']:
-        log.info(f'Rasterizing drainage area zones for {zone}')
-        raster_name = os.path.join(project_folder, 'intermediates', f'da_{zone}_zones.tif')
+        log.info(f'Rasterizing stream transform zones for {zone}')
+        raster_name = os.path.join(project_folder, 'intermediates', f'{zone.lower()}_transform_zones.tif')
         rasterize_attribute(catchments_path, raster_name, project_inputs['SLOPE_RASTER'], f'{zone}_Zone')
-        in_rasters[f'DA_ZONE_{zone}'] = raster_name
-        da_zone_rs = RSLayer(f'Drainage Area Zones for {zone}', f'DA_ZONE_{zone.upper()}', 'Raster', raster_name)
-        project.add_project_raster(proj_nodes['Intermediates'], da_zone_rs)
+        in_rasters[f'TRANSFORM_ZONE_{zone}'] = raster_name
+        transform_zone_rs = RSLayer(f'Transform Zones for {zone}', f'TRANSFORM_ZONE_{zone.upper()}', 'Raster', raster_name)
+        project.add_project_raster(proj_nodes['Intermediates'], transform_zone_rs)
 
     for raster_name in ['EVIDENCE_TOPO', 'EVIDENCE_CHANNEL']:
         out_rasters[raster_name] = os.path.join(project_folder, LayerTypes[raster_name].rel_path)
@@ -259,7 +261,7 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
         for name in vbet_run['Inputs']:
             if name in vbet_run['Zones']:
                 transforms = [np.ma.MaskedArray(transform(block[name].data), mask=block[name].mask) for transform in vbet_run['Transforms'][name]]
-                normalized[name] = np.ma.MaskedArray(np.choose(block[f'DA_ZONE_{name}'].data, transforms, mode='clip'), mask=block[name].mask)
+                normalized[name] = np.ma.MaskedArray(np.choose(block[f'TRANSFORM_ZONE_{name}'].data, transforms, mode='clip'), mask=block[name].mask)
             else:
                 normalized[name] = np.ma.MaskedArray(vbet_run['Transforms'][name][0](block[name].data), mask=block[name].mask)
 
