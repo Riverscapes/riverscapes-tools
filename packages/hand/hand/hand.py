@@ -9,6 +9,7 @@
 # -------------------------------------------------------------------------------
 import argparse
 import os
+from subprocess import run
 import sys
 import uuid
 import traceback
@@ -22,8 +23,8 @@ from osgeo import gdal
 from rscommons.util import safe_makedirs, parse_metadata, safe_remove_dir
 from rscommons import RSProject, RSLayer, ModelConfig, Logger, dotenv, initGDALOGRErrors
 from rscommons import GeopackageLayer
-from rscommons.vector_ops import copy_feature_class
-from rscommons.hand import create_hand_raster
+from rscommons.vector_ops import buffer_by_field, copy_feature_class, merge_feature_classes
+from rscommons.hand import create_hand_raster, hand_rasterize, run_subprocess
 from rscommons.raster_warp import raster_warp
 from rscommons.vbet_network import vbet_network
 
@@ -49,14 +50,22 @@ LayerTypes = {
     'PITFILL': RSLayer('TauDEM Pitfill', 'PITFILL', 'Raster', 'intermediates/hand_processing/pitfill.tif'),
     'DINFFLOWDIR_SLP': RSLayer('TauDEM D-Inf Flow Directions Slope', 'DINFFLOWDIR_SLP', 'Raster', 'intermediates/hand_processing/dinfflowdir_slp.tif'),
     'DINFFLOWDIR_ANG': RSLayer('TauDEM D-Inf Flow Directions', 'DINFFLOWDIR_ANG', 'Raster', 'intermediates/hand_processing/dinfflowdir_ang.tif'),
-    'RASTERIZED_FLOWLINES': RSLayer('Rasterized Flowlines', 'RASTERIZED_FLOWLINES', 'Raster', 'intermediates/hand_processing/rasterized_flowline.tif'),
+    'RASTERIZED_FLOWLINES': RSLayer('Rasterized Flowlines', 'RASTERIZED_FLOWLINES', 'Raster', 'intermediates/rasterized_flowline.tif'),
+    'RASTERIZED_FLOWAREAS': RSLayer('Rasterized Flowareas', 'RASTERIZED_FLOWAREAS', 'Raster', 'intermediates/rasterized_flowareas.tif'),
+    'RASTERIZED_DRAINAGE': RSLayer('Rasterized Drainage', 'RASTERIZED_DRAINAGE', 'Raster', 'intermediates/rasterized_drainage.tif'),
 
+    'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEIDATES', 'Geopackage', 'intermediates/hand_intermediates.gpkg', {
+        'BUFFERED_FLOWLINES': RSLayer('Buffered Flowlines', 'BUFFERED_FLOWLINES', 'Vector', 'buffered_flowlines'),
+        'DRAINAGE_POLYGONS': RSLayer('Drainage Polygons', 'DRAINAGE_POLYGONS', 'Vector', 'drainage_polygons'),
+    }),
+
+    # Outputs:
     'HAND_RASTER': RSLayer('Hand Raster', 'HAND_RASTER', 'Raster', 'outputs/HAND.tif'),
     'REPORT': RSLayer('RSContext Report', 'REPORT', 'HTMLFile', 'outputs/hand.html')
 }
 
 
-def hand(huc, flowlines_orig, flowareas_orig, orig_dem, hillshade, project_folder, mask_lyr_path: str, keep_intermediates: bool, reach_codes: List[str], meta: Dict[str, str]):
+def hand(huc, flowlines_orig, orig_dem, hillshade, project_folder, flowareas_orig=None, mask_lyr_path: str = None, keep_intermediates: bool = True, reach_codes: List[str] = None, meta: Dict[str, str] = None, buffer_field: str = None):
     """[summary]
 
     Args:
@@ -86,6 +95,7 @@ def hand(huc, flowlines_orig, flowareas_orig, orig_dem, hillshade, project_folde
 
     # Copy input shapes to a geopackage
     inputs_gpkg_path = os.path.join(project_folder, LayerTypes['INPUTS'].rel_path)
+    intermeidates_gpkg_path = os.path.join(project_folder, LayerTypes['INTERMEDIATES'].rel_path)
 
     flowlines_path = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
     flowareas_path = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['FLOW_AREA'].rel_path) if flowareas_orig else None
@@ -93,6 +103,7 @@ def hand(huc, flowlines_orig, flowareas_orig, orig_dem, hillshade, project_folde
 
     # Make sure we're starting with a fresh slate of new geopackages
     GeopackageLayer.delete(inputs_gpkg_path)
+    GeopackageLayer.delete(intermeidates_gpkg_path)
 
     copy_feature_class(flowlines_orig, flowlines_path, epsg=cfg.OUTPUT_EPSG)
 
@@ -128,7 +139,27 @@ def hand(huc, flowlines_orig, flowareas_orig, orig_dem, hillshade, project_folde
         raster_warp(proj_dem, new_proj_dem, epsg=cfg.OUTPUT_EPSG, clip=dem_mask_path, raster_compression=" -co COMPRESS=LZW -co PREDICTOR=3")
         hand_dem = new_proj_dem
 
-    create_hand_raster(hand_dem, network_path, temp_hand_dir, hand_raster)
+    if buffer_field is not None:
+        buffered_flowlines = os.path.join(intermeidates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['BUFFERED_FLOWLINES'].rel_path)
+        buffer_by_field(network_path, buffered_flowlines, buffer_field, epsg=4326, centered=True)
+    else:
+        buffered_flowlines = network_path
+
+    path_rasterized_flowline = os.path.join(project_folder, LayerTypes['RASTERIZED_FLOWLINES'].rel_path)
+    hand_rasterize(buffered_flowlines, hand_dem, path_rasterized_flowline)
+
+    if flowareas_path:
+        path_rasterized_flowarea = os.path.join(project_folder, LayerTypes['RASTERIZED_FLOWAREAS'].rel_path)
+        hand_rasterize(flowareas_path, hand_dem, path_rasterized_flowarea)
+
+        drainage_raster = os.path.join(project_folder, LayerTypes['RASTERIZED_DRAINAGE'].rel_path)
+        scrips_dir = next(p for p in sys.path if p.endswith('.venv'))
+        script = os.path.join(scrips_dir, 'Scripts', 'gdal_calc.py')
+        run_subprocess(os.path.join(project_folder, "Intermediates"), ['python', script, '-A', path_rasterized_flowline, '-B', path_rasterized_flowarea, f'--outfile={drainage_raster}', '--calc=(A+B)>0', '--co=COMPRESS=LZW'])
+    else:
+        drainage_raster = path_rasterized_flowline
+
+    create_hand_raster(hand_dem, drainage_raster, temp_hand_dir, hand_raster)
 
     if keep_intermediates is True:
         project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DEM_MASKED'])
@@ -136,6 +167,7 @@ def hand(huc, flowlines_orig, flowareas_orig, orig_dem, hillshade, project_folde
         project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_SLP'])
         project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_ANG'])
         project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['RASTERIZED_FLOWLINES'])
+        project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
     else:
         safe_remove_dir(temp_hand_dir)
 
@@ -199,9 +231,10 @@ def main():
     parser.add_argument('output_dir', help='Folder where output HAND project will be created', type=str)
 
     parser.add_argument('--hillshade', help='Hillshade raster path', type=str)
-    parser.add_argument('--mask', help='Optional shapefile to mask by', type=str)
-    parser.add_argument('--flowareas', help='NHD flow areas ShapeFile path', type=str)
+    parser.add_argument('--mask', help='Optional shapefile to mask by', type=str, default=None)
+    parser.add_argument('--flowareas', help='NHD flow areas ShapeFile path', type=str, default=None)
     parser.add_argument('--reach_codes', help='Comma delimited reach codes (FCode) to retain when filtering features. Omitting this option retains all features.', type=str)
+    parser.add_argument('--buffer_field', help='buffer field.', type=str)
     parser.add_argument('--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
     parser.add_argument('--intermediates', help='(optional) keep the intermediate products', action='store_true', default=False)
@@ -225,11 +258,11 @@ def main():
         if args.debug is True:
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output_dir, 'hand_mem.log')
-            retcode, max_obj = ThreadRun(hand, memfile, args.huc, args.flowlines, args.flowareas, args.dem, args.hillshade, args.output_dir, args.mask, args.intermediates, reach_codes, meta)
+            retcode, max_obj = ThreadRun(hand, memfile, args.huc, args.flowlines, args.dem, args.hillshade, args.output_dir, args.flowareas, args.mask, args.intermediates, reach_codes, meta)
             log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
 
         else:
-            hand(args.huc, args.flowlines, args.flowareas, args.dem, args.hillshade, args.output_dir, args.mask, args.intermediates, reach_codes, meta)
+            hand(args.huc, args.flowlines, args.dem, args.hillshade, args.output_dir, args.flowareas, args.mask, args.intermediates, reach_codes, meta, buffer_field=args.buffer_field)
 
     except Exception as e:
         log.error(e)
