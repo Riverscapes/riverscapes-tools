@@ -28,6 +28,8 @@
         "--mask",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/mask",
         "--intermediates",
+        "--buffer_field",
+        "BFwidth",
         "--hillshade",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/topography/dem_hillshade.tif",
         "--flowareas",

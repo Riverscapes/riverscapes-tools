@@ -19,13 +19,12 @@ from rscommons import Logger, ProgressBar, VectorBase
 NCORES = os.environ['TAUDEM_CORES'] if 'TAUDEM_CORES' in os.environ else '2'
 
 
-def create_hand_raster(dem: str, flowlines: str, working_dir: str, out_hand: str):
+def create_hand_raster(dem: str, rasterized_drainage: str, working_dir: str, out_hand: str):
     """Generate HAND raster for a watershed
 
     Args:
         dem (Path): geotiff of dem raster
-        flowlines_gpkg (GPKG): geopackage where flowline network is saved
-        flowlines_layer (str): layer name in geopackage for flowline network (e.g. vbet_network)
+        rasterized_drainage (str): rasterized channel areas
         working_dir (Path): temporary directory to store intermedite files
         out_hand (file): path and name of geotiff hand output
 
@@ -34,13 +33,13 @@ def create_hand_raster(dem: str, flowlines: str, working_dir: str, out_hand: str
     """
     log = Logger("HAND")
     start_time = time.time()
-    log.info(f"Generating HAND for {dem} and {flowlines} using {working_dir}")
+    log.info(f"Generating HAND for {dem} and {rasterized_drainage} using {working_dir}")
 
     # Format Paths
     path_pitfill = os.path.join(working_dir, "pitfill.tif")
     path_ang = os.path.join(working_dir, "dinfflowdir_ang.tif")
     path_slp = os.path.join(working_dir, "dinfflowdir_slp.tif")
-    path_rasterized_flowline = os.path.join(working_dir, "rasterized_flowline.tif")
+    #path_rasterized_flowline = os.path.join(working_dir, "rasterized_flowline.tif")
 
     # PitRemove
     log.info("Filling DEM pits")
@@ -55,12 +54,12 @@ def create_hand_raster(dem: str, flowlines: str, working_dir: str, out_hand: str
         raise Exception('TauDEM: dinfflowdir failed')
 
     # rasterize flowlines
-    log.info("Rasterizing flowlines")
-    hand_rasterize(flowlines, dem, path_rasterized_flowline)
+    # log.info("Rasterizing flowlines")
+    # hand_rasterize(flowlines, dem, path_rasterized_flowline)
 
     # generate hand
     log.info("Generating HAND")
-    dinfdistdown_status = run_subprocess(working_dir, ["mpiexec", "-n", NCORES, "dinfdistdown", "-ang", path_ang, "-fel", path_pitfill, "-src", path_rasterized_flowline, "-dd", out_hand, "-m", "ave", "v"])
+    dinfdistdown_status = run_subprocess(working_dir, ["mpiexec", "-n", NCORES, "dinfdistdown", "-ang", path_ang, "-fel", path_pitfill, "-src", rasterized_drainage, "-dd", out_hand, "-m", "ave", "v"])
     if dinfdistdown_status != 0 or not os.path.isfile(out_hand):
         raise Exception('TauDEM: dinfdistdown failed')
 
