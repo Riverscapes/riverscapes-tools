@@ -645,6 +645,7 @@ def buffer_by_field(in_layer_path: str, out_layer_path, field: str, epsg: int = 
         transform = VectorBase.get_transform(in_layer.spatial_ref, out_layer.spatial_ref)
 
         factor = 0.5 if centered else 1.0
+        min_buffer_converted = min_buffer * conversion * factor if min_buffer else 0.0
 
         for feature, _counter, progbar in in_layer.iterate_features('Buffering features', write_layers=[out_layer]):
             geom = feature.GetGeometryRef()
@@ -654,9 +655,9 @@ def buffer_by_field(in_layer_path: str, out_layer_path, field: str, epsg: int = 
                 log.warning('Feature with FID={} has no geometry. Skipping'.format(feature.GetFID()))
                 continue
 
-            buffer_dist = feature.GetField(field) * conversion * factor
+            buffer_dist = feature.GetField(field) * conversion * factor if field is not None else 0.0
             geom.Transform(transform)
-            geom_buffer = geom.Buffer(buffer_dist if buffer_dist > min_buffer else min_buffer)
+            geom_buffer = geom.Buffer(buffer_dist if buffer_dist > min_buffer_converted else min_buffer_converted)
 
             # Create output Feature
             out_feature = ogr.Feature(out_layer.ogr_layer_def)
