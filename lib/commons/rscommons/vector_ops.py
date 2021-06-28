@@ -233,7 +233,7 @@ def copy_feature_class(in_layer_path: str, out_layer_path: str,
             out_feature = None
 
 
-def merge_feature_classes(feature_class_paths: List[str], boundary: BaseGeometry, out_layer_path: str):
+def merge_feature_classes(feature_class_paths: List[str], out_layer_path: str, boundary: BaseGeometry=None):
     """[summary]
 
     Args:
@@ -251,10 +251,13 @@ def merge_feature_classes(feature_class_paths: List[str], boundary: BaseGeometry
             log.info("Merging feature class {}/{}".format(fccount, len(feature_class_paths)))
 
             with get_shp_or_gpkg(in_layer_path) as in_layer:
-                in_layer.SetSpatialFilter(VectorBase.shapely2ogr(boundary))
+                if boundary is not None:
+                    in_layer.SetSpatialFilter(VectorBase.shapely2ogr(boundary))
 
                 # First input spatial ref sets the SRS for the output file
-                transform = in_layer.get_transform(out_layer)
+                if fccount == 1:
+                    #transform = in_layer.get_transform(out_layer)
+                    out_layer.create_layer_from_ref(in_layer)
 
                 for i in range(in_layer.ogr_layer_def.GetFieldCount()):
                     in_field_def = in_layer.ogr_layer_def.GetFieldDefn(i)
@@ -273,7 +276,7 @@ def merge_feature_classes(feature_class_paths: List[str], boundary: BaseGeometry
                         log.warning('Feature with FID={} has no geometry. Skipping'.format(feature.GetFID()))
                         continue
 
-                    geom.Transform(transform)
+                    #geom.Transform(transform)
                     out_feature = ogr.Feature(out_layer.ogr_layer_def)
 
                     for i in range(in_layer.ogr_layer_def.GetFieldCount()):
@@ -579,7 +582,7 @@ def intersect_geometry_with_feature_class(geometry: BaseGeometry, in_layer_path:
         BaseGeometry: [description]
     """
     log = Logger('intersect_geometry_with_feature_class')
-    if output_geom_type not in [ogr.wkbMultiPoint, ogr.wkbMultiLineString]:
+    if output_geom_type not in [ogr.wkbMultiPoint, ogr.wkbMultiLineString, ogr.wkbMultiPolygon]:
         raise VectorBaseException('Unsupported ogr type for geometry intersection: "{}"'.format(output_geom_type))
 
     log.debug('Intersection with feature class: Performing unary union on input: {}'.format(in_layer_path))
@@ -622,7 +625,7 @@ def intersect_geometry_with_feature_class(geometry: BaseGeometry, in_layer_path:
     return geom_inter
 
 
-def buffer_by_field(in_layer_path: str, out_layer_path, field: str, epsg: int = None, min_buffer=None, centered=False) -> None:
+def buffer_by_field(in_layer_path: str, out_layer_path, field: str, epsg: int = None, min_buffer=0.0, centered=False) -> None:
     """generate buffered polygons by value in field
 
     Args:
@@ -792,3 +795,40 @@ def export_geojson(geom: BaseGeometry, props=None):
         })
 
     return the_dict
+
+def dissolve_feature_class(in_layer_path, out_layer_path, epsg):
+
+    out_geom = get_geometry_unary_union(in_layer_path)
+
+    with get_shp_or_gpkg(out_layer_path, write=True) as out_layer, \
+            get_shp_or_gpkg(in_layer_path) as in_layer:
+
+        # Add input Layer Fields to the output Layer if it is the one we want
+        out_layer.create_layer_from_ref(in_layer, epsg=epsg)
+        out_layer.create_feature(out_geom)
+
+def intersection(layer_path1, layer_path2, out_layer_path, epsg):
+
+    with get_shp_or_gpkg(out_layer_path, write=True) as out_layer, \
+        get_shp_or_gpkg(layer_path1) as layer1, \
+        get_shp_or_gpkg(layer_path2) as layer2:
+
+        out_layer.create_layer_from_ref(layer1, epsg=epsg)
+        out_layer_defn = out_layer.ogr_layer.GetLayerDefn()
+    
+        #layer1.ogr_layer.GetGeomType()
+        # create an empty geometry of the same type
+        union1=ogr.Geometry(3)
+        # union all the geometrical features of layer 1
+        for feat, _counter, progbar in layer1.iterate_features():
+            geom = feat.GetGeometryRef()
+            union1 = union1.Union(geom)
+        for feat, _counter, progbar in layer2.iterate_features():
+            geom = feat.GetGeometryRef()  
+            intersection = union1.Intersection(geom)
+            if intersection.IsValid():
+                #out_layer.create_feature(intersection) 
+                out_feat = ogr.Feature(out_layer_defn)
+                out_feat.SetGeometry(intersection)
+                out_layer.ogr_layer.CreateFeature(out_feat)
+
