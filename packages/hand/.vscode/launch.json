@@ -25,8 +25,8 @@
         "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/network_intersected_300m",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/topography/dem.tif",
         "{env:DATA_ROOT}/hand/${input:HUC}",
-        "--mask",
-        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/mask",
+        //"--mask",
+        //"{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/mask",
         "--intermediates",
         "--buffer_field",
         "BFwidth",
@@ -39,7 +39,7 @@
         "--meta",
         "Runner=VSCode",
         "--verbose",
-        "--debug"
+        //"--debug"
       ]
     },
     {
@@ -51,6 +51,34 @@
       ],
       "request": "launch",
       "console": "integratedTerminal"
-    }
+    },
+    {
+      "name": "Run HAND Custom",
+      "type": "python",
+      "request": "launch",
+      "module": "hand.hand",
+      "console": "integratedTerminal",
+      "args": [
+        "${input:HUC}",
+        "{env:DATA_ROOT}/hand_inputs/${input:HUC}/AC_RouteKm_Project.shp",
+        "{env:DATA_ROOT}/hand_inputs/${input:HUC}/dem.tif",
+        "{env:DATA_ROOT}/hand/${input:HUC}",
+        //"--mask",
+        //"{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/mask",
+        "--intermediates",
+        //"--buffer_field",
+        //"BFwidth",
+        //"--hillshade",
+        //"{env:DATA_ROOT}/rs_context/${input:HUC}/topography/dem_hillshade.tif",
+        //"--flowareas",
+        //"{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/NHDArea.shp",
+        //"--reach_codes",
+        //"33400,46003,46006,46007,55800",
+        "--meta",
+        "Runner=VSCode",
+        "--verbose",
+        //"--debug"
+      ]
+    },
   ]
 }
