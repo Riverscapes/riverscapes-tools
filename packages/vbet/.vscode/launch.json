@@ -24,19 +24,19 @@
       "args": [
         "${input:HUC}",
         "STREAM_ORDER_TESTING",
-        "FLOWLINES={env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/network,FLOW_AREA={env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/NHDArea.shp,SLOPE_RASTER={env:DATA_ROOT}/rs_context/${input:HUC}/topography/slope.tif,DEM={env:DATA_ROOT}/rs_context/${input:HUC}/topography/dem.tif,HILLSHADE={env:DATA_ROOT}/rs_context/${input:HUC}/topography/dem_hillshade.tif,CATCHMENTS={env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/NHDPlusCatchment.shp",
+        "FLOWLINES={env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/network,FLOW_AREA={env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/NHDArea.shp,SLOPE_RASTER={env:DATA_ROOT}/rs_context/${input:HUC}/topography/slope.tif,DEM={env:DATA_ROOT}/rs_context/${input:HUC}/topography/dem.tif,HILLSHADE={env:DATA_ROOT}/rs_context/${input:HUC}/topography/dem_hillshade.tif,CATCHMENTS={env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/NHDPlusCatchment.shp,WATERBODY={env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/NHDWaterbody.shp",
         "{env:DATA_ROOT}/vbet/${input:HUC}",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhd_data.sqlite/NHDPlusFlowlineVAA",
         "--hand",
-        "{env:DATA_ROOT}/rs_context/${input:HUC}/HAND/HAND.tif",
+        "{env:DATA_ROOT}/hand/${input:HUC}/outputs/hand.tif",
         "--reach_codes",
         "33400,46003,46006,46007,55800",
-        "--create_centerline",
+        //"--create_centerline",
         //"--quick_mode",
         "--meta",
         "Runner=VSCode",
         "--verbose",
-        "--debug"
+        //"--debug"
       ]
     },
     {

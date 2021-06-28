@@ -7,7 +7,7 @@ import numpy as np
 from rscommons import ProgressBar, Logger, VectorBase, Timer, TempRaster
 
 
-def rasterize(in_lyr_path, out_raster_path, template_path):
+def rasterize(in_lyr_path, out_raster_path, template_path, all_touched=False):
     """Rasterizing an input 
 
     Args:
@@ -38,6 +38,7 @@ def rasterize(in_lyr_path, out_raster_path, template_path):
             ds_path,
             layers=[lyr_path],
             xRes=t[0], yRes=t[4],
+            allTouched=all_touched,
             burnValues=1, outputType=gdal.GDT_Int16,
             creationOptions=['COMPRESS=LZW'],
             # outputBounds --- assigned output bounds: [minx, miny, maxx, maxy]
