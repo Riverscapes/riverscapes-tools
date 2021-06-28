@@ -117,8 +117,10 @@ def hand(huc, flowlines_orig, orig_dem, hillshade, project_folder, flowareas_ori
 
     # Create a copy of the flow lines with just the perennial and also connectors inside flow areas
     network_path = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['HAND_NETWORK'].rel_path)
-    vbet_network(flowlines_path, flowareas_path, network_path, cfg.OUTPUT_EPSG, reach_codes)
-
+    if reach_codes is not None:
+        vbet_network(flowlines_path, flowareas_path, network_path, cfg.OUTPUT_EPSG, reach_codes)
+    else:
+        copy_feature_class(flowlines_path, network_path, epsg=cfg.OUTPUT_EPSG)
     ##########################################################################
     # The main event:ce
     ##########################################################################
@@ -141,7 +143,7 @@ def hand(huc, flowlines_orig, orig_dem, hillshade, project_folder, flowareas_ori
 
     if buffer_field is not None:
         buffered_flowlines = os.path.join(intermeidates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['BUFFERED_FLOWLINES'].rel_path)
-        buffer_by_field(network_path, buffered_flowlines, buffer_field, epsg=4326, centered=True)
+        buffer_by_field(network_path, buffered_flowlines, buffer_field, epsg=cfg.OUTPUT_EPSG, centered=True)
     else:
         buffered_flowlines = network_path
 
