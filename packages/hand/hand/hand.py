@@ -61,6 +61,7 @@ LayerTypes = {
 
     # Outputs:
     'HAND_RASTER': RSLayer('Hand Raster', 'HAND_RASTER', 'Raster', 'outputs/HAND.tif'),
+    'TWI_RASTER': RSLayer('TWI Raster', 'TWI_RASTER', 'Raster', 'outputs/twi.tif'),
     'REPORT': RSLayer('RSContext Report', 'REPORT', 'HTMLFile', 'outputs/hand.html')
 }
 
@@ -131,6 +132,7 @@ def hand(huc, flowlines_orig, orig_dem, hillshade, project_folder, flowareas_ori
     safe_makedirs(temp_hand_dir)
 
     hand_raster = os.path.join(project_folder, LayerTypes['HAND_RASTER'].rel_path)
+    twi_raster = os.path.join(project_folder, LayerTypes['TWI_RASTER'].rel_path)
 
     # If there's no mask we use the original DEM as-is
     hand_dem = proj_dem
@@ -161,7 +163,7 @@ def hand(huc, flowlines_orig, orig_dem, hillshade, project_folder, flowareas_ori
     else:
         drainage_raster = path_rasterized_flowline
 
-    create_hand_raster(hand_dem, drainage_raster, temp_hand_dir, hand_raster)
+    create_hand_raster(hand_dem, drainage_raster, temp_hand_dir, hand_raster, out_twi=twi_raster)
 
     if keep_intermediates is True:
         project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DEM_MASKED'])
@@ -174,6 +176,7 @@ def hand(huc, flowlines_orig, orig_dem, hillshade, project_folder, flowareas_ori
         safe_remove_dir(temp_hand_dir)
 
     project.add_project_raster(proj_nodes['Outputs'], LayerTypes['HAND_RASTER'])
+    project.add_project_raster(proj_nodes['Outputs'], LayerTypes['TWI_RASTER'])
 
     report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
     project.add_report(proj_nodes['Outputs'], LayerTypes['REPORT'], replace=True)
