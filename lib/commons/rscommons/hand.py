@@ -19,7 +19,7 @@ from rscommons import Logger, ProgressBar, VectorBase
 NCORES = os.environ['TAUDEM_CORES'] if 'TAUDEM_CORES' in os.environ else '2'
 
 
-def create_hand_raster(dem: str, rasterized_drainage: str, working_dir: str, out_hand: str):
+def create_hand_raster(dem: str, rasterized_drainage: str, working_dir: str, out_hand: str, out_twi: str=None):
     """Generate HAND raster for a watershed
 
     Args:
@@ -39,7 +39,7 @@ def create_hand_raster(dem: str, rasterized_drainage: str, working_dir: str, out
     path_pitfill = os.path.join(working_dir, "pitfill.tif")
     path_ang = os.path.join(working_dir, "dinfflowdir_ang.tif")
     path_slp = os.path.join(working_dir, "dinfflowdir_slp.tif")
-    #path_rasterized_flowline = os.path.join(working_dir, "rasterized_flowline.tif")
+    path_sca = os.path.join(working_dir, "areadinf_sca.tif")
 
     # PitRemove
     log.info("Filling DEM pits")
@@ -53,10 +53,6 @@ def create_hand_raster(dem: str, rasterized_drainage: str, working_dir: str, out
     if dinfflowdir_status != 0 or not os.path.isfile(path_ang):
         raise Exception('TauDEM: dinfflowdir failed')
 
-    # rasterize flowlines
-    # log.info("Rasterizing flowlines")
-    # hand_rasterize(flowlines, dem, path_rasterized_flowline)
-
     # generate hand
     log.info("Generating HAND")
     dinfdistdown_status = run_subprocess(working_dir, ["mpiexec", "-n", NCORES, "dinfdistdown", "-ang", path_ang, "-fel", path_pitfill, "-src", rasterized_drainage, "-dd", out_hand, "-m", "ave", "v"])
@@ -68,6 +64,19 @@ def create_hand_raster(dem: str, rasterized_drainage: str, working_dir: str, out
 
     ellapsed_time = time.time() - start_time
     log.info("HAND process complete in {}".format(ellapsed_time))
+
+    if out_twi is not None:
+        log.info(f"Generating optional TWI for {dem} using {working_dir}")
+        
+        log.info("Finding flow area")
+        dinfflowarea_status = run_subprocess(working_dir, ["mpiexec", "-n", NCORES, "AreaDinf", "-ang", path_ang, "-sca", path_sca])
+        if dinfflowarea_status != 0 or not os.path.isfile(path_sca):
+            raise Exception('TauDEM: AreaDinf failed')
+
+        log.info("Generating Topographic Wetness Index (TWI)")
+        twi_status = run_subprocess(working_dir, ["mpiexec", "-n", NCORES, "TWI", "-slp", path_slp, "-sca", path_sca, '-twi', out_twi])
+        if twi_status != 0 or not os.path.isfile(out_twi):
+            raise Exception('TauDEM: TWI failed')
 
     return out_hand
 
