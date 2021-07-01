@@ -37,10 +37,9 @@ from rscommons.vector_ops import get_geometry_unary_union, polygonize, buffer_by
 from rscommons.hand import create_hand_raster
 from rscommons.thiessen.vor import NARVoronoi
 from rscommons.thiessen.shapes import centerline_points
-from rscommons.vbet_network import vbet_network, create_drainage_area_zones, copy_vaa_attributes, join_attributes
+from rscommons.vbet_network import vbet_network, create_stream_size_zones, copy_vaa_attributes, join_attributes
 
 from vbet.vbet_database import load_configuration, build_vbet_database
-from vbet.vbet_network import vbet_network, create_stream_size_zones, copy_vaa_attributes, join_attributes
 from vbet.vbet_report import VBETReport
 from vbet.vbet_raster_ops import rasterize, proximity_raster, raster_clean, rasterize_attribute
 from vbet.vbet_outputs import threshold, sanitize
@@ -233,16 +232,14 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
             temp_hand_dir = os.path.join(project_folder, "intermediates", "hand_processing")
             safe_makedirs(temp_hand_dir)
 
-            # TODO: rasterize and combine drainage rasters
-
-            create_hand_raster(project_inputs['DEM'], network_path, temp_hand_dir, hand_raster)
+            create_hand_raster(project_inputs['DEM'], channel_area_raster, temp_hand_dir, hand_raster)
             project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['HAND_RASTER'])
         in_rasters['HAND'] = hand_raster
         out_rasters['NORMALIZED_HAND'] = os.path.join(project_folder, LayerTypes['NORMALIZED_HAND'].rel_path)
 
-    for vbet_input in vbet_run['Inputs']:
-        if vbet_input not in ['Slope', 'HAND', 'Channel', 'Flow Areas']:
-            log.info(f'Adding generic {vbet_input} input')
+    # for vbet_input in vbet_run['Inputs']:
+    #     if vbet_input not in ['Slope', 'HAND', 'Channel', 'Flow Areas']:
+    #         log.info(f'Adding generic {vbet_input} input')
 
     # Generate da Zone rasters
     for zone in vbet_run['Zones']:
@@ -288,7 +285,7 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
                 normalized[name] = np.ma.MaskedArray(vbet_run['Transforms'][name][0](block[name].data), mask=block[name].mask)
 
         fvals_topo = normalized['Slope'] * normalized['HAND']
-        fvals_channel = np.maximum(normalized['Channel'], normalized['Flow Areas'])
+        fvals_channel = normalized['Channel']  # , normalized['Flow Areas'])
         fvals_evidence = np.maximum(fvals_topo, fvals_channel)
 
         # Fill the masked values with the appropriate nodata vals
@@ -298,7 +295,7 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
         write_rasters['NORMALIZED_SLOPE'].write(normalized['Slope'].astype('float32').filled(out_meta['nodata']), window=window, indexes=1)
         write_rasters['NORMALIZED_HAND'].write(normalized['HAND'].astype('float32').filled(out_meta['nodata']), window=window, indexes=1)
         write_rasters['NORMALIZED_CHANNEL_DISTANCE'].write(normalized['Channel'].astype('float32').filled(out_meta['nodata']), window=window, indexes=1)
-        write_rasters['NORMALIZED_FLOWAREA_DISTANCE'].write(normalized['Flow Areas'].astype('float32').filled(out_meta['nodata']), window=window, indexes=1)
+        #write_rasters['NORMALIZED_FLOWAREA_DISTANCE'].write(normalized['Flow Areas'].astype('float32').filled(out_meta['nodata']), window=window, indexes=1)
 
         write_rasters['EVIDENCE_CHANNEL'].write(np.ma.filled(np.float32(fvals_channel), out_meta['nodata']), window=window, indexes=1)
         write_rasters['EVIDENCE_TOPO'].write(np.ma.filled(np.float32(fvals_topo), out_meta['nodata']), window=window, indexes=1)
