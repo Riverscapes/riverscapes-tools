@@ -642,8 +642,10 @@ def buffer_by_field(in_layer_path: str, out_layer_path, field: str, epsg: int = 
     with get_shp_or_gpkg(out_layer_path, write=True) as out_layer, get_shp_or_gpkg(in_layer_path) as in_layer:
         conversion = in_layer.rough_convert_metres_to_vector_units(1)
 
+
         # Add input Layer Fields to the output Layer if it is the one we want
         out_layer.create_layer(ogr.wkbPolygon, epsg=epsg, fields=in_layer.get_fields())
+        #out_layer.create_field(f'{field}_actual_buffer', ogr.OFTReal)
 
         transform = VectorBase.get_transform(in_layer.spatial_ref, out_layer.spatial_ref)
 
@@ -660,11 +662,13 @@ def buffer_by_field(in_layer_path: str, out_layer_path, field: str, epsg: int = 
 
             buffer_dist = feature.GetField(field) * conversion * factor if field is not None else 0.0
             geom.Transform(transform)
-            geom_buffer = geom.Buffer(buffer_dist if buffer_dist > min_buffer_converted else min_buffer_converted)
+            buffer_value = buffer_dist if buffer_dist > min_buffer_converted else min_buffer_converted
+            geom_buffer = geom.Buffer(buffer_value)
 
             # Create output Feature
             out_feature = ogr.Feature(out_layer.ogr_layer_def)
             out_feature.SetGeometry(geom_buffer)
+            #out_feature.SetField(f'{field}_actual_buffer', buffer_value)
 
             # Add field values from input Layer
             for i in range(0, out_layer.ogr_layer_def.GetFieldCount()):
@@ -813,7 +817,7 @@ def intersection(layer_path1, layer_path2, out_layer_path, epsg):
         get_shp_or_gpkg(layer_path1) as layer1, \
         get_shp_or_gpkg(layer_path2) as layer2:
 
-        out_layer.create_layer_from_ref(layer1, epsg=epsg)
+        out_layer.create_layer_from_ref(layer2, epsg=epsg)
         out_layer_defn = out_layer.ogr_layer.GetLayerDefn()
     
         #layer1.ogr_layer.GetGeomType()
@@ -830,5 +834,8 @@ def intersection(layer_path1, layer_path2, out_layer_path, epsg):
                 #out_layer.create_feature(intersection) 
                 out_feat = ogr.Feature(out_layer_defn)
                 out_feat.SetGeometry(intersection)
+                for i in range(0, out_layer.ogr_layer_def.GetFieldCount()):
+                    out_feat.SetField(out_layer.ogr_layer_def.GetFieldDefn(i).GetNameRef(), feat.GetField(i))
+
                 out_layer.ogr_layer.CreateFeature(out_feat)
 
