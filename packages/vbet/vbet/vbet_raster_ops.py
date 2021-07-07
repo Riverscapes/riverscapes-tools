@@ -1,10 +1,13 @@
 import os
+import sys
 import shutil
+from subprocess import run
 import ogr
 from osgeo import gdal
 import rasterio
 import numpy as np
 from rscommons import ProgressBar, Logger, VectorBase, Timer, TempRaster
+from rscommons.hand import run_subprocess
 
 
 def rasterize(in_lyr_path, out_raster_path, template_path, all_touched=False):
@@ -86,7 +89,7 @@ def mask_rasters_nodata(in_raster_path, nodata_raster_path, out_raster_path):
 
 
 # Compute Proximity for channel rasters
-def proximity_raster(src_raster_path: str, out_raster_path: str, dist_units="PIXEL", preserve_nodata=True):
+def proximity_raster(src_raster_path: str, out_raster_path: str, dist_units="PIXEL", preserve_nodata=True, dist_factor=None):
     """Create a proximity raster
 
     Args:
@@ -100,8 +103,11 @@ def proximity_raster(src_raster_path: str, out_raster_path: str, dist_units="PIX
     srcband = src_ds.GetRasterBand(1)
 
     drv = gdal.GetDriverByName('GTiff')
-    with TempRaster('vbet_proximity_raster') as tempfile:
-        dst_ds = drv.Create(tempfile.filepath,
+    with TempRaster('vbet_proximity_raster') as tempfile:  # , \
+        # TempRaster('vbet_proximity_raster_distance') as tempfile_dist:
+
+        temp_path = tempfile.filepath
+        dst_ds = drv.Create(temp_path,
                             src_ds.RasterXSize, src_ds.RasterYSize, 1,
                             gdal.GetDataTypeByName('Float32'))
 
@@ -118,11 +124,21 @@ def proximity_raster(src_raster_path: str, out_raster_path: str, dist_units="PIX
         src_ds = None
         dst_ds = None
 
+        if dist_factor is not None:
+            scrips_dir = next(p for p in sys.path if p.endswith('.venv'))
+            script = os.path.join(scrips_dir, 'Scripts', 'gdal_calc.py')
+            dist_file = os.path.join(os.path.dirname(tempfile.filepath), "raster.tif")
+            run_subprocess(os.path.dirname(tempfile.filepath), ['python', script, '-A', temp_path, f'--outfile={dist_file}', f'--calc=A/{dist_factor}', '--co=COMPRESS=LZW'])
+            temp_path = dist_file
+
         # Preserve the nodata from the source
         if preserve_nodata:
-            mask_rasters_nodata(tempfile.filepath, src_raster_path, out_raster_path)
+            mask_rasters_nodata(temp_path, src_raster_path, out_raster_path)
         else:
-            shutil.copyfile(tempfile.filepath, out_raster_path)
+            shutil.copyfile(temp_path, out_raster_path)
+
+        if os.path.exists(dist_file):
+            os.remove(dist_file)
 
         log.info('completed in {}'.format(tmr.toString()))
 

@@ -33,7 +33,7 @@ import numpy as np
 from rscommons.util import safe_makedirs, parse_metadata, pretty_duration
 from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, dotenv, initGDALOGRErrors, TempRaster, VectorBase
 from rscommons import GeopackageLayer
-from rscommons.vector_ops import get_geometry_unary_union, polygonize, buffer_by_field, copy_feature_class, merge_feature_classes, dissolve_feature_class, intersection
+from rscommons.vector_ops import get_geometry_unary_union, polygonize, buffer_by_field, copy_feature_class, merge_feature_classes, dissolve_feature_class, intersection, remove_holes_feature_class
 from rscommons.hand import create_hand_raster
 from rscommons.thiessen.vor import NARVoronoi
 from rscommons.thiessen.shapes import centerline_points
@@ -69,6 +69,7 @@ LayerTypes = {
     'CHANNEL_AREA_RASTER': RSLayer('Channel Area Raster', 'CHANNEL_AREA_RASTER', 'Raster', 'intermediates/channelarea.tif'),
     # 'FLOW_AREA_RASTER': RSLayer('Flow Area Raster', 'FLOW_AREA_RASTER', 'Raster', 'intermediates/flowarea.tif'),
     'HAND_RASTER': RSLayer('Hand Raster', 'HAND_RASTER', 'Raster', 'intermediates/HAND.tif'),
+    'TWI_RASTER': RSLayer('TWI Raster', 'TWI_RASTER', 'Raster', 'intermediates/twi.tif'),
     'CHANNEL_DISTANCE': RSLayer('Channel Euclidean Distance', 'CHANNEL_DISTANCE', "Raster", "intermediates/ChannelEuclideanDist.tif"),
     # 'FLOW_AREA_DISTANCE': RSLayer('Flow Area Euclidean Distance', 'FLOW_AREA_DISTANCE', "Raster", "intermediates/FlowAreaEuclideanDist.tif"),
     # DYNAMIC: 'DA_ZONE_<RASTER>': RSLayer('Drainage Area Zone Raster', 'DA_ZONE_RASTER', "Raster", "intermediates/.tif"),
@@ -87,10 +88,11 @@ LayerTypes = {
         # We also add all tht raw thresholded shapes here but they get added dynamically later
     }),
     'CHANNEL_INTERMEDIATES': RSLayer('Channel Intermediates', 'Channel_Intermediates', 'Geopackage', 'intermediates/channel_intermediates.gpkg', {
+        'FLOW_AREA_NO_ISLANDS': RSLayer('Flow Areas No Islands', 'FLOW_AREA_NO_ISLANDS', 'Vector', 'flow_area_no_islands'),
         'BANKFULL_NETWORK': RSLayer('Bankfull Network', 'BANKFULL_NETWORK', 'Vector', 'bankfull_network'),
         'BANKFULL_POLYGONS': RSLayer('Bankfull Polygons', 'BANKFULL_POLYGONS', 'Vector', 'bankfull_polygons'),
         'COMBINED_POLYGONS': RSLayer('Combined Polygons', 'COMBINED_POLYGONS', 'Vector', 'combined_polygons'),
-        'DISSOLVED_POLYGON': RSLayer('Dissolved Polygon', 'DISSOLVED_POLYGON', 'Vector', 'dissolved_polygon')
+        # 'DISSOLVED_POLYGON': RSLayer('Dissolved Polygon', 'DISSOLVED_POLYGON', 'Vector', 'dissolved_polygon')
     }),
     # Same here. Sub layers are added dynamically later.
     'VBET_EVIDENCE': RSLayer('VBET Evidence Raster', 'VBET_EVIDENCE', 'Raster', 'outputs/VBET_Evidence.tif'),
@@ -147,13 +149,15 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
     # Build Transformation Tables
     build_vbet_database(inputs_gpkg_path)
 
+    degree_factor = GeopackageLayer.rough_convert_metres_to_raster_units(project_inputs['SLOPE_RASTER'], 1)
+
     # Report
     report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
     project.add_report(proj_nodes['Outputs'], LayerTypes['REPORT'], replace=True)
     report = VBETReport(scenario_code, inputs_gpkg_path, os.path.join(project_folder, LayerTypes['VBET_OUTPUTS'].rel_path), report_path, project)
     report.write()
-    if quick_mode:
-        return
+    # if quick_mode:
+    #     return
 
     # Load configuration from table
     vbet_run = load_configuration(scenario_code, inputs_gpkg_path)
@@ -197,16 +201,19 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
         bankfull_polygons = os.path.join(channel_gpkg_path, LayerTypes['CHANNEL_INTERMEDIATES'].sub_layers['BANKFULL_POLYGONS'].rel_path)
         buffer_by_field(bankfull_network, bankfull_polygons, "BFwidth", cfg.OUTPUT_EPSG, centered=True)
 
-        merged_channel_polygons = os.path.join(channel_gpkg_path, LayerTypes['CHANNEL_INTERMEDIATES'].sub_layers['COMBINED_POLYGONS'].rel_path)
-        merge_feature_classes([bankfull_polygons, project_inputs['FLOW_AREA']], merged_channel_polygons)
+        flow_area_no_islands = os.path.join(channel_gpkg_path, LayerTypes['CHANNEL_INTERMEDIATES'].sub_layers['FLOW_AREA_NO_ISLANDS'].rel_path)
+        remove_holes_feature_class(project_inputs['FLOW_AREA'], flow_area_no_islands)
 
-        #dissolved_channel_polygon = os.path.join(channel_gpkg_path, LayerTypes['CHANNEL_INTERMEDIATES'].sub_layers['DISSOLVED_POLYGON'].rel_path)
-        #dissolve_feature_class(merged_channel_polygons, dissolved_channel_polygon, cfg.OUTPUT_EPSG)
-        #geom = get_geometry_unary_union(merged_channel_polygons)
+        merged_channel_polygons = os.path.join(channel_gpkg_path, LayerTypes['CHANNEL_INTERMEDIATES'].sub_layers['COMBINED_POLYGONS'].rel_path)
+        merge_feature_classes([bankfull_polygons, flow_area_no_islands], merged_channel_polygons)
+
+        # dissolved_channel_polygon = os.path.join(channel_gpkg_path, LayerTypes['CHANNEL_INTERMEDIATES'].sub_layers['DISSOLVED_POLYGON'].rel_path)
+        # dissolve_feature_class(merged_channel_polygons, dissolved_channel_polygon, cfg.OUTPUT_EPSG)
+        # geom = get_geometry_unary_union(merged_channel_polygons)
         channel_polygons = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['CHANNEL_POLYGONS'].rel_path)
 
         intersection(merged_channel_polygons, catchments_path, channel_polygons, cfg.OUTPUT_EPSG)
-        #copy_feature_class(catchments_path, channel_polygons, clip_shape=geom)
+        # copy_feature_class(catchments_path, channel_polygons, clip_shape=geom)
 
         log.info('Writing channel raster using slope as a template')
         channel_area_raster = os.path.join(project_folder, LayerTypes['CHANNEL_AREA_RASTER'].rel_path)
@@ -215,7 +222,7 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
 
         log.info('Generating Channel Proximity raster')
         channel_dist_raster = os.path.join(project_folder, LayerTypes['CHANNEL_DISTANCE'].rel_path)
-        proximity_raster(channel_area_raster, channel_dist_raster)
+        proximity_raster(channel_area_raster, channel_dist_raster, dist_units='GEO', dist_factor=degree_factor)
         project.add_project_raster(proj_nodes["Intermediates"], LayerTypes['CHANNEL_DISTANCE'])
 
         in_rasters['Channel'] = channel_dist_raster
@@ -224,6 +231,7 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
     # Generate HAND from dem and rasterized flow polygons
     if 'HAND' in vbet_run['Inputs']:
         hand_raster = os.path.join(project_folder, LayerTypes['HAND_RASTER'].rel_path)
+        twi_raster = os.path.join(project_folder, LayerTypes['TWI_RASTER'].rel_path)
         if hand:
             log.info("Copying exisiting HAND Input")
             _node, project_inputs['HAND'] = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['HAND_RASTER'], hand)
@@ -232,7 +240,7 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
             temp_hand_dir = os.path.join(project_folder, "intermediates", "hand_processing")
             safe_makedirs(temp_hand_dir)
 
-            create_hand_raster(project_inputs['DEM'], channel_area_raster, temp_hand_dir, hand_raster)
+            create_hand_raster(project_inputs['DEM'], channel_area_raster, temp_hand_dir, hand_raster, twi_raster)
             project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['HAND_RASTER'])
         in_rasters['HAND'] = hand_raster
         out_rasters['NORMALIZED_HAND'] = os.path.join(project_folder, LayerTypes['NORMALIZED_HAND'].rel_path)
@@ -240,6 +248,9 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
     # for vbet_input in vbet_run['Inputs']:
     #     if vbet_input not in ['Slope', 'HAND', 'Channel', 'Flow Areas']:
     #         log.info(f'Adding generic {vbet_input} input')
+
+    if quick_mode:
+        return
 
     # Generate da Zone rasters
     for zone in vbet_run['Zones']:
