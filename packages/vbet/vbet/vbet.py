@@ -210,14 +210,14 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
         # dissolved_channel_polygon = os.path.join(channel_gpkg_path, LayerTypes['CHANNEL_INTERMEDIATES'].sub_layers['DISSOLVED_POLYGON'].rel_path)
         # dissolve_feature_class(merged_channel_polygons, dissolved_channel_polygon, cfg.OUTPUT_EPSG)
         # geom = get_geometry_unary_union(merged_channel_polygons)
-        channel_polygons = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['CHANNEL_POLYGONS'].rel_path)
+        # channel_polygons = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['CHANNEL_POLYGONS'].rel_path)
 
-        intersection(merged_channel_polygons, catchments_path, channel_polygons, cfg.OUTPUT_EPSG)
+        # intersection(merged_channel_polygons, catchments_path, channel_polygons, cfg.OUTPUT_EPSG)
         # copy_feature_class(catchments_path, channel_polygons, clip_shape=geom)
 
         log.info('Writing channel raster using slope as a template')
         channel_area_raster = os.path.join(project_folder, LayerTypes['CHANNEL_AREA_RASTER'].rel_path)
-        rasterize(channel_polygons, channel_area_raster, project_inputs['SLOPE_RASTER'], all_touched=True)
+        rasterize(merged_channel_polygons, channel_area_raster, project_inputs['SLOPE_RASTER'], all_touched=True)
         project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['CHANNEL_AREA_RASTER'])
 
         log.info('Generating Channel Proximity raster')
