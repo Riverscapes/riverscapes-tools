@@ -69,12 +69,12 @@ def create_hand_raster(dem: str, rasterized_drainage: str, working_dir: str, out
         log.info(f"Generating optional TWI for {dem} using {working_dir}")
         
         log.info("Finding flow area")
-        dinfflowarea_status = run_subprocess(working_dir, ["mpiexec", "-n", NCORES, "AreaDinf", "-ang", path_ang, "-sca", path_sca])
+        dinfflowarea_status = run_subprocess(working_dir, ["mpiexec", "-n", NCORES, "areadinf", "-ang", path_ang, "-sca", path_sca])
         if dinfflowarea_status != 0 or not os.path.isfile(path_sca):
             raise Exception('TauDEM: AreaDinf failed')
 
         log.info("Generating Topographic Wetness Index (TWI)")
-        twi_status = run_subprocess(working_dir, ["mpiexec", "-n", NCORES, "TWI", "-slp", path_slp, "-sca", path_sca, '-twi', out_twi])
+        twi_status = run_subprocess(working_dir, ["mpiexec", "-n", NCORES, "twi", "-slp", path_slp, "-sca", path_sca, '-twi', out_twi])
         if twi_status != 0 or not os.path.isfile(out_twi):
             raise Exception('TauDEM: TWI failed')
 
