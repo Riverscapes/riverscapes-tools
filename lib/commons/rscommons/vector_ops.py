@@ -811,8 +811,28 @@ def dissolve_feature_class(in_layer_path, out_layer_path, epsg):
         out_layer.create_layer_from_ref(in_layer, epsg=epsg)
         out_layer.create_feature(out_geom)
 
+def remove_holes_feature_class(in_layer_path, out_layer_path, min_hole_area=None):
+
+    with get_shp_or_gpkg(out_layer_path, write=True) as out_layer, \
+            get_shp_or_gpkg(in_layer_path) as in_layer:
+        # Add input Layer Fields to the output Layer if it is the one we want
+        out_layer.create_layer_from_ref(in_layer)
+        out_layer_defn = out_layer.ogr_layer.GetLayerDefn()
+        for feat, _counter, progbar in in_layer.iterate_features():
+            geom = feat.GetGeometryRef()
+            s_geom = VectorBase.ogr2shapely(geom)
+            out_s_geom = remove_holes(s_geom, min_hole_area)
+            out_geom = VectorBase.shapely2ogr(out_s_geom)
+            out_feat = ogr.Feature(out_layer_defn)
+            out_feat.SetGeometry(out_geom)
+            for i in range(0, out_layer.ogr_layer_def.GetFieldCount()):
+                out_feat.SetField(out_layer.ogr_layer_def.GetFieldDefn(i).GetNameRef(), feat.GetField(i))
+            out_layer.ogr_layer.CreateFeature(out_feat)
+
 def intersection(layer_path1, layer_path2, out_layer_path, epsg):
 
+
+    log = Logger('feature_class_intersection')
     with get_shp_or_gpkg(out_layer_path, write=True) as out_layer, \
         get_shp_or_gpkg(layer_path1) as layer1, \
         get_shp_or_gpkg(layer_path2) as layer2:
