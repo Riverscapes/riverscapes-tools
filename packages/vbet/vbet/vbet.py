@@ -560,11 +560,11 @@ def main():
         if args.debug is True:
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output_dir, 'vbet_mem.log')
-            retcode, max_obj = ThreadRun(vbet, memfile, args.huc, args.scenario_code, inputs, args.output_dir, args.vaa_table, reach_codes, args.create_centerline, meta, hand=args.hand, skip_sanitize=args.skip_sanitize, quick_mode=args.quick_mode)
+            retcode, max_obj = ThreadRun(vbet, memfile, args.huc, args.scenario_code, inputs, args.output_dir, args.vaa_table, reach_codes, args.create_centerline, meta, hand=args.hand, skip_sanitize=False, quick_mode=True)
             log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
 
         else:
-            vbet(args.huc, args.scenario_code, inputs, args.output_dir, args.vaa_table, reach_codes, args.create_centerline, meta, hand=args.hand, skip_sanitize=args.skip_sanitize, quick_mode=args.quick_mode)
+            vbet(args.huc, args.scenario_code, inputs, args.output_dir, args.vaa_table, reach_codes, args.create_centerline, meta, hand=args.hand, skip_sanitize=False, quick_mode=True)
 
     except Exception as e:
         log.error(e)
