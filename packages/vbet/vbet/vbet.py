@@ -101,7 +101,7 @@ LayerTypes = {
 }
 
 
-def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: Path, vaa_table: Path, reach_codes: List[str], create_centerline: bool, meta: Dict[str, str], hand: Path = None, skip_sanitize=False, quick_mode=False):
+def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: Path, vaa_table: Path, reach_codes: List[str], create_centerline: bool, meta: Dict[str, str], hand: Path = None, skip_sanitize=False, quick_mode=True):
     """generate vbet evidence raster and threshold polygons for a watershed
 
     Args:
@@ -564,7 +564,7 @@ def main():
             log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
 
         else:
-            vbet(args.huc, args.scenario_code, inputs, args.output_dir, args.vaa_table, reach_codes, args.create_centerline, meta, hand=args.hand)
+            vbet(args.huc, args.scenario_code, inputs, args.output_dir, args.vaa_table, reach_codes, args.create_centerline, meta, hand=args.hand, skip_sanitize=args.skip_sanitize, quick_mode=args.quick_mode)
 
     except Exception as e:
         log.error(e)
