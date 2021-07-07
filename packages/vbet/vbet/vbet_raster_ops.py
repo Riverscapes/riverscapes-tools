@@ -3,7 +3,7 @@ import sys
 import shutil
 from subprocess import run
 import ogr
-from osgeo import gdal
+from osgeo import gdal, gdal_array
 import rasterio
 import numpy as np
 from rscommons import ProgressBar, Logger, VectorBase, Timer, TempRaster
@@ -125,10 +125,22 @@ def proximity_raster(src_raster_path: str, out_raster_path: str, dist_units="PIX
         dst_ds = None
 
         if dist_factor is not None:
-            scrips_dir = next(p for p in sys.path if p.endswith('.venv'))
-            script = os.path.join(scrips_dir, 'Scripts', 'gdal_calc.py')
             dist_file = os.path.join(os.path.dirname(tempfile.filepath), "raster.tif")
-            run_subprocess(os.path.dirname(tempfile.filepath), ['python', script, '-A', temp_path, f'--outfile={dist_file}', f'--calc=A/{dist_factor}', '--co=COMPRESS=LZW'])
+
+            ds = gdal.Open(temp_path)
+            b1 = ds.GetRasterBand(1)
+            arr = b1.ReadAsArray()
+
+            # apply equation
+            data = arr / dist_factor
+
+            # save array, using ds as a prototype
+            gdal_array.SaveArray(data.astype("float32"), dist_file, "GTIFF", ds)
+            ds = None
+
+            #scrips_dir = next(p for p in sys.path if p.endswith('.venv'))
+            #script = os.path.join(scrips_dir, 'Scripts', 'gdal_calc.py')
+            #run_subprocess(os.path.dirname(tempfile.filepath), ['python', script, '-A', temp_path, f'--outfile={dist_file}', f'--calc=A/{dist_factor}', '--co=COMPRESS=LZW'])
             temp_path = dist_file
 
         # Preserve the nodata from the source
