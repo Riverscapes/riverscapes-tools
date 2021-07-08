@@ -57,8 +57,9 @@ def include_features(source_layer: VectorBase, out_layer: VectorBase, attribute_
         out_feature = ogr.Feature(out_layer.ogr_layer_def)
 
         if feature.GetFID() not in excluded_fids:
-
-            included_fids.append(feature.GetFID())
+            fid = feature.GetFID()
+            included_fids.append(fid)
+            excluded_fids.append(fid)
             # Add field values from input Layer
             for i in range(0, out_layer.ogr_layer_def.GetFieldCount()):
                 out_feature.SetField(out_layer.ogr_layer_def.GetFieldDefn(i).GetNameRef(), feature.GetField(i))
