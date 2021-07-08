@@ -165,7 +165,7 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
     # Create a copy of the flow lines with just the perennial and also connectors inside flow areas
     log.info('Building vbet network')
     network_path = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['VBET_NETWORK'].rel_path)
-    vbet_network(flowlines_vaa_path, project_inputs['FLOW_AREA'], network_path, cfg.OUTPUT_EPSG, reach_codes)
+    vbet_network(project_inputs['FLOWLINES'], project_inputs['FLOW_AREA'], network_path, cfg.OUTPUT_EPSG, reach_codes)
 
     # Create Zones
     log.info('Building drainage area zones')
@@ -196,7 +196,7 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
         #     copy_feature_class(project_inputs['FLOW_AREA'], flow_polygons)
 
         bankfull_network = os.path.join(channel_gpkg_path, LayerTypes['CHANNEL_INTERMEDIATES'].sub_layers['BANKFULL_NETWORK'].rel_path)
-        vbet_network(flowlines_vaa_path, project_inputs['FLOW_AREA'], bankfull_network, cfg.OUTPUT_EPSG, ['46003', '46006', '46007'])
+        vbet_network(project_inputs['FLOWLINES'], project_inputs['FLOW_AREA'], bankfull_network, cfg.OUTPUT_EPSG, ['46003', '46006', '46007'])
 
         bankfull_polygons = os.path.join(channel_gpkg_path, LayerTypes['CHANNEL_INTERMEDIATES'].sub_layers['BANKFULL_POLYGONS'].rel_path)
         buffer_by_field(bankfull_network, bankfull_polygons, "BFwidth", cfg.OUTPUT_EPSG, centered=True)
