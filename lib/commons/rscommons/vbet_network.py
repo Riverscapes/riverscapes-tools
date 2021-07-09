@@ -93,32 +93,35 @@ def create_stream_size_zones(catchment_layer, flowlines_layer, join_field, copy_
         lyr_destination.ogr_layer.StartTransaction()
         # Build Zones
         for feat_source, *_ in lyr_source.iterate_features("Joining attributes"):
-            join_id = int(feat_source.GetField(join_field))
 
-            if join_id in data:
+            join_value = feat_source.GetField(join_field)
+            if join_value is not None:
+                join_id = int(join_value)
 
-                geom = feat_source.GetGeometryRef()
-                feat_dest = ogr.Feature(out_layer_defn)
-                feat_dest.SetFID(join_id)
-                feat_dest.SetGeometry(geom)
+                if join_id in data:
 
-                feat_dest.SetField(copy_field, data[join_id])  # Set drainage area
-                if data[join_id]:  # if the drainage area is not null
+                    geom = feat_source.GetGeometryRef()
+                    feat_dest = ogr.Feature(out_layer_defn)
+                    feat_dest.SetFID(join_id)
+                    feat_dest.SetGeometry(geom)
 
-                    out_zones = {}
-                    for zone_type, zone_values in zones.items():
-                        for i, value in zone_values.items():
-                            if value:
-                                if data[join_id] < value:
+                    feat_dest.SetField(copy_field, data[join_id])  # Set drainage area
+                    if data[join_id]:  # if the drainage area is not null
+
+                        out_zones = {}
+                        for zone_type, zone_values in zones.items():
+                            for i, value in zone_values.items():
+                                if value:
+                                    if data[join_id] < value:
+                                        out_zones[zone_type] = i
+                                        break
+                                else:
                                     out_zones[zone_type] = i
-                                    break
-                            else:
-                                out_zones[zone_type] = i
 
-                    for zone_field, zone_value in out_zones.items():
-                        feat_dest.SetField(f'{zone_field}_Zone', zone_value)
+                        for zone_field, zone_value in out_zones.items():
+                            feat_dest.SetField(f'{zone_field}_Zone', zone_value)
 
-                lyr_destination.ogr_layer.CreateFeature(feat_dest)
+                    lyr_destination.ogr_layer.CreateFeature(feat_dest)
         lyr_destination.ogr_layer.CommitTransaction()
 
 
