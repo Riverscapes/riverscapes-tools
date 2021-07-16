@@ -20,7 +20,7 @@ from rscommons.vector_ops import get_geometry_unary_union
 from rscommons import get_shp_or_gpkg
 
 
-def vbet_network(flow_lines_path: str, flow_areas_path: str, out_path: str, epsg: int = None, fcodes: List[str] = None):
+def vbet_network(flow_lines_path: str, flow_areas_path: str, out_path: str, epsg: int = None, fcodes: List[str] = None, reach_code_field='FCode'):
 
     log = Logger('VBET Network')
     log.info('Generating perennial network')
@@ -34,7 +34,7 @@ def vbet_network(flow_lines_path: str, flow_areas_path: str, out_path: str, epsg
 
         # Perennial features
         log.info('Incorporating perennial features')
-        fcode_filter = "FCode = " + " or FCode = ".join([f"'{fcode}'" for fcode in fcodes]) if len(fcodes) > 0 else ""  # e.g. "FCode = '46006' or FCode = '55800'"
+        fcode_filter = f"{reach_code_field} = " + f" or {reach_code_field} = ".join([f"'{fcode}'" for fcode in fcodes]) if len(fcodes) > 0 else ""  # e.g. "FCode = '46006' or FCode = '55800'"
         fids = include_features(flow_lines_lyr, vbet_net, fcode_filter)
 
         # Flow area features
@@ -42,7 +42,7 @@ def vbet_network(flow_lines_path: str, flow_areas_path: str, out_path: str, epsg
             polygon = get_geometry_unary_union(flow_areas_path, epsg=epsg)
             if polygon is not None:
                 log.info('Incorporating flow areas.')
-                include_features(flow_lines_lyr, vbet_net, "FCode <> '46006'", polygon, excluded_fids=fids)
+                include_features(flow_lines_lyr, vbet_net, f"{reach_code_field} <> '46006'", polygon, excluded_fids=fids)
 
         fcount = flow_lines_lyr.ogr_layer.GetFeatureCount()
 

@@ -660,7 +660,9 @@ def buffer_by_field(in_layer_path: str, out_layer_path, field: str, epsg: int = 
                 log.warning('Feature with FID={} has no geometry. Skipping'.format(feature.GetFID()))
                 continue
 
-            buffer_dist = feature.GetField(field) * conversion * factor if field is not None else 0.0
+            raw_buffer_value = feature.GetField(field)
+
+            buffer_dist = raw_buffer_value * conversion * factor if raw_buffer_value is not None else 0.0
             geom.Transform(transform)
             buffer_value = buffer_dist if buffer_dist > min_buffer_converted else min_buffer_converted
             geom_buffer = geom.Buffer(buffer_value)
@@ -859,3 +861,32 @@ def intersection(layer_path1, layer_path2, out_layer_path, epsg):
 
                 out_layer.ogr_layer.CreateFeature(out_feat)
 
+def difference(remove_layer, from_layer, out_layer_path, epsg):
+
+
+    log = Logger('feature_class_intersection')
+    with get_shp_or_gpkg(out_layer_path, write=True) as out_layer, \
+        get_shp_or_gpkg(remove_layer) as layer1, \
+        get_shp_or_gpkg(from_layer) as layer2:
+
+        out_layer.create_layer_from_ref(layer2, epsg=epsg)
+        out_layer_defn = out_layer.ogr_layer.GetLayerDefn()
+    
+        #layer1.ogr_layer.GetGeomType()
+        # create an empty geometry of the same type
+        union1=ogr.Geometry(3)
+        # union all the geometrical features of layer 1
+        for feat, _counter, progbar in layer1.iterate_features():
+            geom = feat.GetGeometryRef()
+            union1 = union1.Union(geom)
+        for feat, _counter, progbar in layer2.iterate_features():
+            geom = feat.GetGeometryRef()  
+            diff = geom.Difference(union1)
+            if diff.IsValid():
+                #out_layer.create_feature(intersection) 
+                out_feat = ogr.Feature(out_layer_defn)
+                out_feat.SetGeometry(diff)
+                for i in range(0, out_layer.ogr_layer_def.GetFieldCount()):
+                    out_feat.SetField(out_layer.ogr_layer_def.GetFieldDefn(i).GetNameRef(), feat.GetField(i))
+
+                out_layer.ogr_layer.CreateFeature(out_feat)
