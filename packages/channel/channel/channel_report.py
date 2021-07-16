@@ -2,7 +2,6 @@
 """
 import argparse
 # import sqlite3
-import os
 # from xml.etree import ElementTree as ET
 
 from rscommons import Logger, dotenv, ModelConfig, RSReport, RSProject
@@ -19,10 +18,10 @@ class ChannelReport(RSReport):
         RSReport ([type]): [description]
     """
 
-    def __init__(self, report_path, rs_project, project_root):
+    def __init__(self, report_path, rs_project: RSProject):
         super().__init__(rs_project, report_path)
         self.log = Logger('Channel Report')
-        self.project_root = project_root
+        self.project_root = rs_project.project_dir
         self.report_intro()
 
     def report_intro(self):
@@ -47,5 +46,5 @@ if __name__ == '__main__':
 
     cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/RSContext.xsd', __version__)
     project = RSProject(cfg, args.projectxml)
-    report = ChannelReport(args.report_path, project, os.path.dirname(args.projectxml))
+    report = ChannelReport(args.report_path, project)
     report.write()
