@@ -1,11 +1,11 @@
 import argparse
-import sqlite3
+# import sqlite3
 import os
-from xml.etree import ElementTree as ET
+# from xml.etree import ElementTree as ET
 
 from rscommons import Logger, dotenv, ModelConfig, RSReport, RSProject
-from rscommons.util import safe_makedirs, sizeof_fmt
-from rscommons.plotting import xyscatter, box_plot
+# from rscommons.util import safe_makedirs, sizeof_fmt
+# from rscommons.plotting import xyscatter, box_plot
 
 from rscontext.__version__ import __version__
 
@@ -20,10 +20,13 @@ class RSContextReport(RSReport):
 
     def report_intro(self):
         section = self.section('LayerSummary', 'Layer Summary')
-        layers = self.xml_project.XMLBuilder.find('Realizations').find('RSContext').getchildren()
+        layers = self.xml_project.XMLBuilder.find('Realizations').find('RSContext')
 
-        [self.layerprint(lyr, section, self.project_root) for lyr in layers if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']]
-        [self.layerprint(lyr, section, self.project_root) for lyr in layers if lyr.tag in ['SQLiteDB']]
+        for lyr in layers:
+            if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']:
+                self.layerprint(lyr, section, self.project_root)
+            if lyr.tag in ['SQLiteDB']:
+                self.layerprint(lyr, section, self.project_root)
 
 
 if __name__ == '__main__':

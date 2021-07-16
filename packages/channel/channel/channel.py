@@ -1,3 +1,5 @@
+"""[summary]
+"""
 # Name:     Channel Area Tool
 #
 # Purpose:  Generate bankfull and merge with flow areas to create channel polygons
@@ -11,30 +13,30 @@
 # -------------------------------------------------------------------------------
 import argparse
 import os
-from re import L
 import sys
 import uuid
 import traceback
 import datetime
 import time
 from typing import List, Dict
-from numpy.lib.function_base import copy
 
-from osgeo import gdal, ogr
-import numpy as np
+from osgeo import ogr
 
 from rscommons.util import safe_makedirs, parse_metadata, pretty_duration
-from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, dotenv, initGDALOGRErrors, VectorBase
+from rscommons import RSProject, RSLayer, ModelConfig, Logger, dotenv, initGDALOGRErrors
 from rscommons import GeopackageLayer
-from rscommons.prism import calculate_bankfull_width
+from rscommons.math import safe_eval
 from rscommons.raster_buffer_stats import raster_buffer_stats2
-from rscommons.vector_ops import get_geometry_unary_union, buffer_by_field, copy_feature_class, merge_feature_classes, dissolve_feature_class, intersection, remove_holes_feature_class, difference
-from rscommons.vbet_network import vbet_network, create_stream_size_zones
+from rscommons.vector_ops import get_geometry_unary_union, buffer_by_field, copy_feature_class, merge_feature_classes, remove_holes_feature_class, difference
+from rscommons.vbet_network import vbet_network
 
 from channel.channel_report import ChannelReport
 from channel.__version__ import __version__
 
 Path = str
+
+DEFAULT_FUNCTION = "0.177 * (a ** 0.397) * (p ** 0.453)"
+DEFAULT_FUNCTION_PARAMS = "a=TotDASqKm"
 
 initGDALOGRErrors()
 
@@ -88,6 +90,7 @@ def channel(huc: int,
     timer = time.time()
     log = Logger('ChannelAreaTool')
     log.info('Starting Channel Area Tool v.{}'.format(cfg.version))
+    log.info('Using Equation: "{}" and params: "{}"'.format(bankfull_function, bankfull_function_params))
 
     meta['Bankfull Equation'] = bankfull_function
     meta['Reach Codes'] = str(reach_codes)
@@ -163,28 +166,49 @@ def channel(huc: int,
     log.info('Channel Area Completed Successfully')
 
 
-def calculate_bankfull(network_layer, out_field, function, function_params):
+def calculate_bankfull(network_layer: str, out_field: str, eval_fn: str, function_params: dict):
+    """[summary]
 
+    Args:
+        network_layer (str): [description]
+        out_field (str): [description]
+        eval_fn (str): [description]
+        function_params (dict): [description]
+
+    Raises:
+        ne: [description]
+    """
     with GeopackageLayer(network_layer, write=True) as layer:
 
         layer.create_field(out_field, ogr.OFTReal)
 
-        for feat, *_ in layer.iterate_features():
+        for feat, *_ in layer.iterate_features("Calculating bankfull"):
 
-            params = {}
+            fn_params = {}
             for param, value in function_params.items():
                 if isinstance(value, str):
                     field_value = feat.GetField(value)
-                    params[param] = field_value if field_value is not None else 0
+                    fn_params[param] = field_value if field_value is not None else 0
                 else:
-                    params[param] = value
-            result = eval(function, params)
+                    fn_params[param] = value
+            # eval seems to mutate the fn_params object so we pass in a copy so that we can report on the errors if needed
+            result = safe_eval(eval_fn, fn_params)
             feat.SetField(out_field, result)
 
             layer.ogr_layer.SetFeature(feat)
 
 
 def create_project(huc, output_dir, meta=None):
+    """[summary]
+
+    Args:
+        huc ([type]): [description]
+        output_dir ([type]): [description]
+        meta ([type], optional): [description]. Defaults to None.
+
+    Returns:
+        [type]: [description]
+    """
     project_name = 'Channel Area for HUC {}'.format(huc)
     project = RSProject(cfg, output_dir)
     project.create(project_name, 'ChannelArea')
@@ -226,7 +250,11 @@ def create_project(huc, output_dir, meta=None):
 
 
 def main():
+    """[summary]
 
+    Raises:
+        ValueError: [description]
+    """
     parser = argparse.ArgumentParser(
         description='Riverscapes Channel Area Tool',
         # epilog="This is an epilog"
@@ -234,9 +262,21 @@ def main():
     parser.add_argument('huc', help='NHD flow line ShapeFile path', type=str)
     parser.add_argument('flowlines', help='flowlines feature class', type=str)
     parser.add_argument('flowareas', help='flowareas feature class', type=str)
-    parser.add_argument('bankfull_function', help='width field in flowlines feature class (e.g. BFWidth)', type=str)
-    parser.add_argument('bankfull_function_params')
     parser.add_argument('output_dir', help='Folder where output VBET project will be created', type=str)
+
+    parser.add_argument(
+        '--bankfull_function',
+        help='width field in flowlines feature class (e.g. BFWidth). Default: "{}"'.format(DEFAULT_FUNCTION),
+        type=str,
+        default=DEFAULT_FUNCTION
+    )
+    parser.add_argument(
+        '--bankfull_function_params',
+        help='Field that contains reach code (e.g. FCode). Omitting this option retains all features. Default: "{}"'.format(DEFAULT_FUNCTION_PARAMS),
+        type=str,
+        default=DEFAULT_FUNCTION_PARAMS
+    )
+
     parser.add_argument('--reach_code_field', help='Field that contains reach code (e.g. FCode). Omitting this option retains all features.', type=str)
     parser.add_argument('--reach_codes', help='Comma delimited reach codes (FCode) to retain when filtering features. Omitting this option retains all features.', type=str)
     parser.add_argument('--precip', help='mean annual precipiation in cm')
