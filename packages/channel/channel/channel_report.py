@@ -22,13 +22,16 @@ class ChannelReport(RSReport):
         super().__init__(rs_project, report_path)
         self.log = Logger('Channel Report')
         self.project_root = rs_project.project_dir
-        self.report_intro()
 
-    def report_intro(self):
+        self.layersummary("Inputs", "Inputs")
+        self.layersummary("Intermediates", "Intermediates")
+        self.layersummary("Outputs", "Outputs")
+
+    def layersummary(self, xml_id: str, name: str):
         """Intro section
         """
-        section = self.section('LayerSummary', 'Layer Summary')
-        layers = self.xml_project.XMLBuilder.find('Realizations').find('ChannelArea')
+        section = self.section('LayerSummary', 'Layer Summary: {}'.format(name))
+        layers = self.xml_project.XMLBuilder.find('Realizations').find('ChannelArea').find(xml_id)
 
         for lyr in layers:
             if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']:
