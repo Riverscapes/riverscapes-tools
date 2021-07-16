@@ -1,5 +1,6 @@
 import os
 import sys
+from csv import DictWriter
 from math import floor
 
 from osgeo import gdal, ogr
@@ -12,45 +13,68 @@ attributes = {'HAND': 'HAND.tif',
               'TWI': 'twi.tif',
               'Slope': 'slope.tif'}
 
-observation_fields = {'HUC8': ogr.OFTInteger,
-                      'observationid': ogr.OFTInteger,
+observation_fields = {'observationid': ogr.OFTInteger,
+                      'HUC8': ogr.OFTInteger,
                       'categoryid': ogr.OFTInteger,
                       'confidence': ogr.OFTReal,
-                      'notes': ogr.OFTString}
+                      'userid': ogr.OFTInteger,
+                      'notes': ogr.OFTString,
+                      'created_date': ogr.OFTString,
+                      'updated_date': ogr.OFTString}
+
+category_lookup = {1: 'Estimated Active Channel',
+                   2: 'Highly Likely Active Floodplain',
+                   3: 'Likely Active Floodplain',
+                   9: 'Likely Terrace (non-valley bottom)',
+                   6: 'Plausible Valley Bottom Extent',
+                   4: 'Possible Active Floodplain',
+                   5: 'Possible Inactive Floodplain',
+                   10: 'Upland (non-valley bottom)',
+                   8: 'Very Unlikely Valley Bottom Extent'}
 
 
 def extract_vbet_evidence(observation_points, vbet_data_root, out_points):
 
-    with GeopackageLayer(observation_points) as in_points, \
-            GeopackageLayer(out_points, write=True) as out_layer:
+    with open(out_points, 'w', newline='') as csvfile:
+        writer = DictWriter(csvfile, [n for n in observation_fields] + ['category_name'] + [n for n in attributes])
+        with GeopackageLayer(observation_points) as in_points:
+            # GeopackageLayer(out_points, write=True) as out_layer:
 
-        out_layer.create_layer_from_ref(in_points)
-        for field_name in attributes:
-            out_layer.create_field(field_name, ogr.OFTReal)
-        # for field, field_type in observation_fields.items():
-            # out_layer.create_field(field, field_type=field_type)
-        out_layer_defn = out_layer.ogr_layer.GetLayerDefn()
+            # out_layer.create_layer_from_ref(in_points)
+            # for field_name in attributes:
+            #     out_layer.create_field(field_name, ogr.OFTReal)
+            # out_layer_defn = out_layer.ogr_layer.GetLayerDefn()
 
-        for feat, *_ in in_points.iterate_features():
+            writer.writeheader()
 
-            feat_attributes = {name: feat.GetField(name) for name in observation_fields}
+            for feat, *_ in in_points.iterate_features():
+                print(feat.GetFID())
+                feat_attributes = {name: feat.GetField(name) for name in observation_fields}
 
-            geom = feat.GetGeometryRef()
-            new_feat = ogr.Feature(out_layer_defn)
+                feat_attributes['category_name'] = category_lookup[feat_attributes['categoryid']]
 
-            for attribute, path in attributes.items():
-                raster_path = os.path.join(vbet_data_root, feat_attributes['HUC8'], 'inputs' if attribute == 'Slope' else 'intermediates', path)
-                if os.path.exists(raster_path):
-                    value = extract_raster_by_point(geom, raster_path)
-                else:
-                    value = None
-                new_feat.SetField(attribute, value)
+                geom = feat.GetGeometryRef()
+                # new_feat = ogr.Feature(out_layer_defn)
 
-            for field, value in feat_attributes.items():
-                new_feat.SetField(field, value)
+                for attribute, path in attributes.items():
+                    raster_path = os.path.join(vbet_data_root, feat_attributes['HUC8'], 'inputs' if attribute == 'Slope' else 'intermediates', path)
+                    if os.path.exists(raster_path):
+                        value = extract_raster_by_point(geom, raster_path)
+                    else:
+                        value = None
+                    feat_attributes[attribute] = value
 
-            new_feat.SetGeometry(geom)
-            out_layer.ogr_layer.CreateFeature(new_feat)
+                # for field, value in feat_attributes.items():
+                #     new_feat.SetField(field, value)
+
+                # for field in observation_fields:
+                #     value = feat.GetField(field)
+                #     new_feat.SetField(field, value)
+
+                # new_feat.SetGeometry(geom)
+                # out_layer.ogr_layer.CreateFeature(new_feat)
+
+                writer.writerow(feat_attributes)
 
 
 def extract_raster_by_point(geom, raster_path):
