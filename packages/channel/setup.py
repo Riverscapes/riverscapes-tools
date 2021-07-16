@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-from setuptools import setup
 import re
+from setuptools import setup
 
 # https://packaging.python.org/discussions/install-requires-vs-requirements/
 install_requires = [
@@ -22,7 +22,7 @@ version = re.search(
 setup(name='channel',
       version=version,
       description='Channel',
-      author='Matt Reimer',
+      author='Kelly Whitehead',
       license='MIT',
       python_requires='>3.5.2',
       long_description=long_descr,
@@ -32,7 +32,7 @@ setup(name='channel',
           "console_scripts": ['channel = channel.channel:main']
       },
       zip_safe=False,
-      url='https://github.com/Riverscapes/gnat',
+      url='https://github.com/Riverscapes/channel',
       packages=[
           'channel'
       ]
