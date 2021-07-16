@@ -1,16 +1,23 @@
+"""Build a report for the channel area
+"""
 import argparse
-import sqlite3
+# import sqlite3
 import os
-from xml.etree import ElementTree as ET
+# from xml.etree import ElementTree as ET
 
 from rscommons import Logger, dotenv, ModelConfig, RSReport, RSProject
-from rscommons.util import safe_makedirs, sizeof_fmt
-from rscommons.plotting import xyscatter, box_plot
+# from rscommons.util import safe_makedirs, sizeof_fmt
+# from rscommons.plotting import xyscatter, box_plot
 
 from channel.__version__ import __version__
 
 
 class ChannelReport(RSReport):
+    """Channel report
+
+    Args:
+        RSReport ([type]): [description]
+    """
 
     def __init__(self, report_path, rs_project, project_root):
         super().__init__(rs_project, report_path)
@@ -19,11 +26,16 @@ class ChannelReport(RSReport):
         self.report_intro()
 
     def report_intro(self):
+        """Intro section
+        """
         section = self.section('LayerSummary', 'Layer Summary')
-        layers = self.xml_project.XMLBuilder.find('Realizations').find('ChannelArea').getchildren()
+        layers = self.xml_project.XMLBuilder.find('Realizations').find('ChannelArea')
 
-        [self.layerprint(lyr, section, self.project_root) for lyr in layers if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']]
-        [self.layerprint(lyr, section, self.project_root) for lyr in layers if lyr.tag in ['SQLiteDB']]
+        for lyr in layers:
+            if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']:
+                self.layerprint(lyr, section, self.project_root)
+            if lyr.tag in ['SQLiteDB']:
+                self.layerprint(lyr, section, self.project_root)
 
 
 if __name__ == '__main__':
