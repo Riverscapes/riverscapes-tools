@@ -46,6 +46,7 @@ semver==2.10.2
 Shapely==1.7.1
 six==1.15.0
 snuggs==1.4.7
+sympy==1.8
 termcolor==1.1.0
 toml==0.10.1
 urllib3==1.25.9
