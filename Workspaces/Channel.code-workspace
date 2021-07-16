@@ -1,7 +1,7 @@
 {
 	"folders": [
 		{
-			"path": "../packages/rscontext"
+			"path": "../packages/channel"
 		},
 		{
 			"path": "../lib/commons"
