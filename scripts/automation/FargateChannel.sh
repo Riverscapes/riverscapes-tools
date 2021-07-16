@@ -65,7 +65,7 @@ channel $HUC \
   --bankfull_function_params "a=TotDASqKm" \
   --reach_code_field FCode \
   --reach_codes "46003,46006,46007" \
-  --prism_data climate/precipitation.tif \
+  --prism_data $RS_CONTEXT_DIR/climate/precipitation.tif \
   --huc8boundary $RS_CONTEXT_DIR/hydrology/WBDHU8.shp \
   --meta "Runner=Cybercastor" \
   --verbose
