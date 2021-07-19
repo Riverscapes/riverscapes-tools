@@ -1,0 +1,21 @@
+{
+    "folders": [
+        {
+            "path": "../packages/taudem"
+        },
+        {
+            "path": "../lib/commons"
+        },
+        {
+            "name": "Automation",
+            "path": "../scripts/automation"
+        },
+        {
+            "name": "Workspaces",
+            "path": "."
+        }
+    ],
+    "settings": {
+        "python.pythonPath": "${workspaceFolder}\\..\\..\\.venv\\Scripts\\python.exe",
+    }
+}
