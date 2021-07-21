@@ -18,7 +18,6 @@ from typing import Dict
 
 # LEave OSGEO import alone. It is necessary even if it looks unused
 from osgeo import gdal
-from osgeo.ogr import Layer
 from rscommons.classes.vector_classes import get_shp_or_gpkg, VectorBase
 
 from rscommons.util import safe_makedirs, parse_metadata
@@ -54,8 +53,6 @@ LayerTypes = {
     'DINFFLOWDIR_ANG': RSLayer('TauDEM D-Inf Flow Directions', 'DINFFLOWDIR_ANG', 'Raster', 'intermediates/dinfflowdir_ang.tif'),
     'AREADINF_SCA': RSLayer('TauDEM D-Inf Contributing Area', 'AREADINF_SCA', 'Raster', 'intermediates/areadinf_sca.tif'),
     'RASTERIZED_CHANNEL': RSLayer('Rasterized Channel', 'RASTERIZED_CHANNEL', 'Raster', 'intermediates/rasterized_channel.tif'),
-    # 'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEIDATES', 'Geopackage', 'intermediates/hand_intermediates.gpkg', {
-    # }),
 
     # Outputs:
     'DINFFLOWDIR_SLP': RSLayer('TauDEM D-Inf Flow Directions Slope', 'DINFFLOWDIR_SLP', 'Raster', 'outputs/dinfflowdir_slp.tif'),

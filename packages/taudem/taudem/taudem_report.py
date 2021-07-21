@@ -1,5 +1,4 @@
 import argparse
-import os
 
 from rscommons import Logger, dotenv, ModelConfig, RSReport, RSProject
 from taudem.__version__ import __version__
