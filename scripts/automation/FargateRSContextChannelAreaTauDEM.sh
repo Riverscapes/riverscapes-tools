@@ -42,6 +42,9 @@ echo "TAGS: $TAGS"
 
 # Drop into our venv immediately
 source /usr/local/venv/bin/activate
+pip --timeout=120 install -r /usr/local/requirements.txt
+pip install -e /usr/local/src/riverscapes-tools/packages/taudem
+pip install -e /usr/local/src/riverscapes-tools/packages/channel
 
 echo "======================  GDAL Version ======================="
 gdal-config --version
@@ -152,26 +155,22 @@ echo "<<TauDEM COMPLETE>>"
 echo "======================  Final Disk space usage ======================="
 df -h
 
-echo "======================  Upload to the warehouse ======================="
-
-# Upload the HUC into the warehouse
-cd $VBET_TASK_OUTPUT
-rscli upload . --replace --tags "$TAGS" --no-input --verbose --program "$PROGRAM"
-if [[ $? != 0 ]]; then return 1; fi
-echo "<<VBET UPLOAD COMPLETE>>"
 
 # Cleanup
 cd /usr/local/
 rm -fr $RSC_TASK_DIR
-rm -fr $VBET_TASK_DIR
+rm -fr $CHANNEL_TASK_DIR
+rm -fr $TAUDEM_TASK_DIR
+
 echo "<<PROCESS COMPLETE>>"
 
 }
 try || {
   # Emergency Cleanup
   cd /usr/local/
-  rm -fr $RSC_TASK_DIR
-  rm -fr $VBET_TASK_DIR
-  echo "<<RS CONTEXT PROCESS ENDED WITH AN ERROR>>"
+rm -fr $RSC_TASK_DIR
+rm -fr $CHANNEL_TASK_DIR
+rm -fr $TAUDEM_TASK_DIR
+  echo "<<PROCESS ENDED WITH AN ERROR>>"
   exit 1
 }
