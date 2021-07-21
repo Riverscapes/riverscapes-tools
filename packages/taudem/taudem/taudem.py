@@ -102,7 +102,7 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, hillshade: Path
         LayerTypes['INPUTS'].add_sub_layer('CHANNEL_LINES', RSLayer('Channel Lines', 'CHANNEL_LINES', 'Vector', 'channel_lines'))
         channel_vector = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['CHANNEL_LINES'].rel_path)
     else:
-        LayerTypes['INPUTS'].add_sub_layer('CHANNEL_AREA', RSLayer('Channel Area Polygons', 'CHANNEL_AREA', 'Vector', 'channel_areas'))
+        LayerTypes['INPUTS'].add_sub_layer('CHANNEL_AREA', RSLayer('Channel Area Polygons', 'CHANNEL_AREA', 'Vector', 'channel_area'))
         channel_vector = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['CHANNEL_AREA'].rel_path)
     copy_feature_class(input_channel_vector, channel_vector, epsg=epsg)
 

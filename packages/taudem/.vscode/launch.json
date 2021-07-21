@@ -68,5 +68,16 @@
       "request": "launch",
       "console": "integratedTerminal"
     },
+    {
+      "name": "Augment XML",
+      "type": "python",
+      "request": "launch",
+      "module": "taudem.taudem_rs",
+      "console": "integratedTerminal",
+      "args": [
+        "{env:DATA_ROOT}/taudem/${input:HUC}/project.rs.xml",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/rs_context/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/channel_area/${input:HUC}/project.rs.xml"
+      ]
+    },
   ]
 }
