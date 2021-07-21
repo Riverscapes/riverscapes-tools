@@ -92,7 +92,6 @@ echo "<<RS_CONTEXT UPLOAD COMPLETE>>"
 # We need to conserver some space for the next run
 rm -fr $RSC_TASK_OUTPUT/vegetation
 rm -fr $RSC_TASK_OUTPUT/transportation
-rm -fr $RSC_TASK_OUTPUT/climate
 
 ##########################################################################################
 # Now Run Channel Area Tool
