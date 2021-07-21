@@ -11,8 +11,8 @@ from taudem.taudem_report import TauDEMReport
 lyrs_in_out = {
     # ID: INPUT_ID
     'HILLSHADE': 'HILLSHADE',
-    'FLOWLINES': 'NHDFlowline',
-    'FLOW_AREA': 'NHDArea'
+    'DEM': 'DEM',
+    'CHANNEL_AREA': 'CHANNEL_AREA'
 }
 
 
