@@ -36,6 +36,29 @@
       ]
     },
     {
+      "name": "Run TauDEM Custom",
+      "type": "python",
+      "request": "launch",
+      "module": "taudem.taudem",
+      "console": "integratedTerminal",
+      "args": [
+        "${input:HUC}",
+        "lines.shp",
+        "LiDAR.tif",
+        "{env:DATA_ROOT}/taudem/${input:HUC}",
+        //"--mask",
+        //"{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/mask",
+        //"--hillshade",
+        //"{env:DATA_ROOT}/rs_context/${input:HUC}/topography/dem_hillshade.tif",
+        "--epsg",
+        "2927",
+        "--meta",
+        "Runner=VSCode",
+        "--verbose",
+        //"--debug"
+      ]
+    },
+    {
       "name": "Version Bump",
       "type": "python",
       "module": "taudem.version",
