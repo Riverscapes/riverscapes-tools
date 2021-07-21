@@ -9,31 +9,31 @@
 # -------------------------------------------------------------------------------
 import argparse
 import os
-from subprocess import run
 import sys
 import uuid
 import traceback
 import datetime
 import time
-from typing import List, Dict
+from typing import Dict
 
 # LEave OSGEO import alone. It is necessary even if it looks unused
 from osgeo import gdal
 from osgeo.ogr import Layer
 from rscommons.classes.vector_classes import get_shp_or_gpkg, VectorBase
 
-from rscommons.util import safe_makedirs, parse_metadata, safe_remove_dir
+from rscommons.util import safe_makedirs, parse_metadata
 from rscommons import RSProject, RSLayer, ModelConfig, Logger, dotenv, initGDALOGRErrors
 from rscommons import GeopackageLayer
-from rscommons.vector_ops import buffer_by_field, copy_feature_class, merge_feature_classes
-from rscommons.hand import create_hand_raster, hand_rasterize, run_subprocess
+from rscommons.vector_ops import copy_feature_class
+from rscommons.hand import hand_rasterize, run_subprocess
 from rscommons.raster_warp import raster_warp
-from rscommons.vbet_network import vbet_network
 
 from taudem.taudem_report import TauDEMReport
 from taudem.__version__ import __version__
 
 initGDALOGRErrors()
+
+Path = str
 
 cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/TauDEM.xsd', __version__)
 
@@ -43,9 +43,9 @@ LayerTypes = {
     'DEM': RSLayer('DEM', 'DEM', 'Raster', 'inputs/dem.tif'),
     'HILLSHADE': RSLayer('DEM Hillshade', 'HILLSHADE', 'Raster', 'inputs/dem_hillshade.tif'),
     'INPUTS': RSLayer('Inputs', 'INPUTS', 'Geopackage', 'inputs/hand_inputs.gpkg', {
-        'CHANNEL_AREA': RSLayer('Channel Area Polygons', 'CHANNEL_AREA', 'Vector', 'channel_areas'),
-        'CHANNEL_LINES': RSLayer('Channel Lines', 'CHANNEL_LINES', 'Vector', 'channel_lines'),
-        'DEM_MASK_POLY': RSLayer('DEM Mask Polygon', 'DEM_MASK_POLY', 'Vector', 'dem_mask_poly'),
+        # 'CHANNEL_AREA': RSLayer('Channel Area Polygons', 'CHANNEL_AREA', 'Vector', 'channel_areas'),
+        # 'CHANNEL_LINES': RSLayer('Channel Lines', 'CHANNEL_LINES', 'Vector', 'channel_lines'),
+        # 'DEM_MASK_POLY': RSLayer('DEM Mask Polygon', 'DEM_MASK_POLY', 'Vector', 'dem_mask_poly'),
     }),
 
     # Intermediate Products
@@ -65,17 +65,17 @@ LayerTypes = {
 }
 
 
-def taudem(huc, input_channel_vector, orig_dem, hillshade, project_folder, mask_lyr_path: str = None, meta: Dict[str, str] = None):
-    """[summary]
+def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, hillshade: Path, project_folder: Path, mask_lyr_path: Path = None, epsg: int = cfg.OUTPUT_EPSG, meta: Dict[str, str] = None):
+    """Run TauDEM tools to generate a Riverscapes TauDEM project, including HAND, TWI, Dinf Slope and other intermediate raster products.
 
     Args:
-        huc ([type]): [description]
-        input_channel_vector ([type]): [description]
-        orig_dem ([type]): [description]
-        hillshade ([type]): [description]
-        project_folder ([type]): [description]
-        mask_lyr_path (str, optional): [description]. Defaults to None.
-        meta (Dict[str, str], optional): [description]. Defaults to None.
+        huc (int): Huc Watershed ID
+        input_channel_vector (Path): line or polygon feature layer that delineates drainage channel
+        orig_dem (Path): dem of watershed
+        hillshade (Path): hillshade of dem to include in project (optional, set to None if not included)
+        project_folder (Path): Output folder for TauDEM project
+        mask_lyr_path (Path, optional): polygon layer to mask DEM. Defaults to None.
+        meta (Dict[str, str], optional): metadata to include in project. Defaults to None.
     """
 
     log = Logger('TauDEM')
@@ -89,33 +89,36 @@ def taudem(huc, input_channel_vector, orig_dem, hillshade, project_folder, mask_
 
     # Copy the inp
     _proj_dem_node, proj_dem = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], orig_dem)
-    if hillshade:
+    if hillshade is not None:
         _hillshade_node, hillshade = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], hillshade)
 
     # Copy input shapes to a geopackage
     inputs_gpkg_path = os.path.join(project_folder, LayerTypes['INPUTS'].rel_path)
-    # intermeidates_gpkg_path = os.path.join(project_folder, LayerTypes['INTERMEDIATES'].rel_path)
-    intermediates_path = os.path.join(project_folder, 'intermediates')
+    GeopackageLayer.delete(inputs_gpkg_path)
 
     with get_shp_or_gpkg(input_channel_vector) as in_layer:
         channel_vector_type = in_layer.ogr_geom_type
-
-    channel_vector = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['CHANNEL_LINES'].rel_path) if channel_vector_type in VectorBase.LINE_TYPES else os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['CHANNEL_AREA'].rel_path)
-    dem_mask_path = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['DEM_MASK_POLY'].rel_path) if mask_lyr_path else None
-
-    # Make sure we're starting with a fresh slate of new geopackages
-    GeopackageLayer.delete(inputs_gpkg_path)
-    # GeopackageLayer.delete(intermeidates_gpkg_path)
-
-    copy_feature_class(input_channel_vector, channel_vector, epsg=cfg.OUTPUT_EPSG)
+    if channel_vector_type in VectorBase.LINE_TYPES:
+        LayerTypes['INPUTS'].add_sub_layer('CHANNEL_LINES', RSLayer('Channel Lines', 'CHANNEL_LINES', 'Vector', 'channel_lines'))
+        channel_vector = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['CHANNEL_LINES'].rel_path)
+    else:
+        LayerTypes['INPUTS'].add_sub_layer('CHANNEL_AREA', RSLayer('Channel Area Polygons', 'CHANNEL_AREA', 'Vector', 'channel_areas'))
+        channel_vector = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['CHANNEL_AREA'].rel_path)
+    copy_feature_class(input_channel_vector, channel_vector, epsg=epsg)
 
     if mask_lyr_path is not None:
-        copy_feature_class(mask_lyr_path, dem_mask_path, epsg=cfg.OUTPUT_EPSG)
+        LayerTypes['INPUTS'].add_sub_layer('DEM_MASK_POLY', RSLayer('DEM Mask Polygon', 'DEM_MASK_POLY', 'Vector', 'dem_mask_poly'))
+        dem_mask_path = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['DEM_MASK_POLY'].rel_path) if mask_lyr_path else None
+        copy_feature_class(mask_lyr_path, dem_mask_path, epsg=epsg)
 
     project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
     ##########################################################################
     # The main event:ce
     ##########################################################################
+
+    # intermeidates_gpkg_path = os.path.join(project_folder, LayerTypes['INTERMEDIATES'].rel_path)
+    # GeopackageLayer.delete(intermeidates_gpkg_path)
+    intermediates_path = os.path.join(project_folder, 'intermediates')
 
     # If there's no mask we use the original DEM as-is
     hand_dem = proj_dem
@@ -123,7 +126,7 @@ def taudem(huc, input_channel_vector, orig_dem, hillshade, project_folder, mask_
     # We might need to mask the incoming DEM
     if mask_lyr_path is not None:
         new_proj_dem = os.path.join(project_folder, LayerTypes['DEM_MASKED'].rel_path)
-        raster_warp(proj_dem, new_proj_dem, epsg=cfg.OUTPUT_EPSG, clip=dem_mask_path, raster_compression=" -co COMPRESS=LZW -co PREDICTOR=3")
+        raster_warp(proj_dem, new_proj_dem, epsg=epsg, clip=dem_mask_path, raster_compression=" -co COMPRESS=LZW -co PREDICTOR=3")
         hand_dem = new_proj_dem
 
     path_rasterized_drainage = os.path.join(project_folder, LayerTypes['RASTERIZED_CHANNEL'].rel_path)
@@ -241,6 +244,7 @@ def main():
 
     parser.add_argument('--hillshade', help='Hillshade raster path', type=str)
     parser.add_argument('--mask', help='Optional shapefile to mask by', type=str, default=None)
+    parser.add_argument('--epsg', help='Optional output epsg', type=int, default=None)
     parser.add_argument('--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
     parser.add_argument('--debug', help='Add debug tools for tracing things like memory usage at a performance cost.', action='store_true', default=False)
@@ -257,15 +261,17 @@ def main():
 
     meta = parse_metadata(args.meta)
 
+    epsg = args.epsg if args.epsg is not None else cfg.OUTPUT_EPSG
+
     try:
         if args.debug is True:
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output_dir, 'taudem_mem.log')
-            retcode, max_obj = ThreadRun(taudem, memfile, args.huc, args.channel, args.dem, args.hillshade, args.output_dir, args.mask, meta)
+            retcode, max_obj = ThreadRun(taudem, memfile, args.huc, args.channel, args.dem, args.hillshade, args.output_dir, args.mask, epsg, meta)
             log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
 
         else:
-            taudem(args.huc, args.channel, args.dem, args.hillshade, args.output_dir, args.mask, meta)
+            taudem(args.huc, args.channel, args.dem, args.hillshade, args.output_dir, args.mask, epsg, meta)
 
     except Exception as e:
         log.error(e)
