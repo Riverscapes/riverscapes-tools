@@ -70,7 +70,7 @@ rscli download $CHANNEL_DIR --type "ChannelArea" --meta "huc8=$HUC" \
 try() {
 
 taudem $HUC \
-  $CHANNEL_DIR/outputs/channel_area.gpkg \
+  $CHANNEL_DIR/outputs/channel_area.gpkg/channel_areas \
   $RS_CONTEXT_DIR/topography/dem.tif \
   $TASK_OUTPUT \
   --hillshade $RS_CONTEXT_DIR/topography/dem_hillshade.tif
