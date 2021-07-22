@@ -133,7 +133,7 @@ taudem $HUC \
   $CHANNEL_TASK_OUTPUT/outputs/channel_area.gpkg/channel_areas \
   $RSC_TASK_OUTPUT/topography/dem.tif \
   $TAUDEM_TASK_OUTPUT \
-  --hillshade $RSC_TASK_OUTPUT/topography/dem_hillshade.tif
+  --hillshade $RSC_TASK_OUTPUT/topography/dem_hillshade.tif \
   --meta "Runner=Cybercastor" \
   --verbose
 if [[ $? != 0 ]]; then return 1; fi
