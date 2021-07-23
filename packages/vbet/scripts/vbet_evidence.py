@@ -35,46 +35,46 @@ category_lookup = {1: 'Estimated Active Channel',
 
 def extract_vbet_evidence(observation_points, vbet_data_root, out_points):
 
-    with open(out_points, 'w', newline='') as csvfile:
-        writer = DictWriter(csvfile, [n for n in observation_fields] + ['category_name'] + [n for n in attributes])
-        with GeopackageLayer(observation_points) as in_points:
-            # GeopackageLayer(out_points, write=True) as out_layer:
+    with open(out_points, 'w', newline='') as csvfile, \
+            GeopackageLayer(observation_points) as in_points:
 
-            # out_layer.create_layer_from_ref(in_points)
-            # for field_name in attributes:
-            #     out_layer.create_field(field_name, ogr.OFTReal)
-            # out_layer_defn = out_layer.ogr_layer.GetLayerDefn()
+        writer = DictWriter(csvfile, [n for n in observation_fields] + ['category_name', 'StreamOrder', 'DrainageAreaSqkm', 'InputZone'] + [n for n in attributes])
+        writer.writeheader()
 
-            writer.writeheader()
+        for feat, *_ in in_points.iterate_features():
+            feat_attributes = {name: feat.GetField(name) for name in observation_fields}
+            feat_attributes['category_name'] = category_lookup[feat_attributes['categoryid']]
+            geom = feat.GetGeometryRef()
 
-            for feat, *_ in in_points.iterate_features():
-                print(feat.GetFID())
-                feat_attributes = {name: feat.GetField(name) for name in observation_fields}
+            for attribute, path in attributes.items():
+                raster_path = os.path.join(vbet_data_root, feat_attributes['HUC8'], 'inputs' if attribute == 'Slope' else 'intermediates', path)
+                if os.path.exists(raster_path):
+                    value = extract_raster_by_point(geom, raster_path)
+                else:
+                    value = None
+                feat_attributes[attribute] = value
 
-                feat_attributes['category_name'] = category_lookup[feat_attributes['categoryid']]
+            catchments_path = os.path.join(vbet_data_root, feat_attributes['HUC8'], 'inputs', 'vbet_inputs.gpkg', 'catchments')
+            flowlines_path = os.path.join(vbet_data_root, feat_attributes['HUC8'], 'inputs', 'vbet_inputs.gpkg', 'Flowlines_VAA')
 
-                geom = feat.GetGeometryRef()
-                # new_feat = ogr.Feature(out_layer_defn)
+            with GeopackageLayer(catchments_path) as catchments, \
+                    GeopackageLayer(flowlines_path) as flowlines:
 
-                for attribute, path in attributes.items():
-                    raster_path = os.path.join(vbet_data_root, feat_attributes['HUC8'], 'inputs' if attribute == 'Slope' else 'intermediates', path)
-                    if os.path.exists(raster_path):
-                        value = extract_raster_by_point(geom, raster_path)
-                    else:
-                        value = None
-                    feat_attributes[attribute] = value
+                for catchment_feat, *_ in catchments.iterate_features(clip_shape=geom):
+                    nhd_id = catchment_feat.GetField('NHDPlusID')
 
-                # for field, value in feat_attributes.items():
-                #     new_feat.SetField(field, value)
+                    for flowline_feat, *_ in flowlines.iterate_features(attribute_filter=f"NHDPlusID = {nhd_id}"):
+                        feat_attributes['StreamOrder'] = flowline_feat.GetField('StreamOrde')
+                        feat_attributes['DrainageAreaSqkm'] = flowline_feat.GetField('TotDASqKm')
 
-                # for field in observation_fields:
-                #     value = feat.GetField(field)
-                #     new_feat.SetField(field, value)
+                        if feat_attributes['StreamOrder'] < 2:
+                            feat_attributes['InputZone'] = 'Small'
+                        elif feat_attributes['StreamOrder'] < 4:
+                            feat_attributes['InputZone'] = "Medium"
+                        else:
+                            feat_attributes['InputZone'] = 'Large'
 
-                # new_feat.SetGeometry(geom)
-                # out_layer.ogr_layer.CreateFeature(new_feat)
-
-                writer.writerow(feat_attributes)
+            writer.writerow(feat_attributes)
 
 
 def extract_raster_by_point(geom, raster_path):
