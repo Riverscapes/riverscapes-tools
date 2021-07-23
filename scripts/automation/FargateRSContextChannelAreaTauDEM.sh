@@ -130,7 +130,7 @@ echo "<<TauChannel Area COMPLETE>>"
 ##########################################################################################
 
 taudem $HUC \
-  $CHANNEL_TASK_OUTPUT/outputs/channel_area.gpkg/channel_areas \
+  $CHANNEL_TASK_OUTPUT/outputs/channel_area.gpkg/channel_area \
   $RSC_TASK_OUTPUT/topography/dem.tif \
   $TAUDEM_TASK_OUTPUT \
   --hillshade $RSC_TASK_OUTPUT/topography/dem_hillshade.tif \
