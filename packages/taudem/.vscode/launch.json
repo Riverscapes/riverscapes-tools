@@ -22,7 +22,7 @@
       "console": "integratedTerminal",
       "args": [
         "${input:HUC}",
-        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/network_intersected_300m",
+        "{env:DATA_ROOT}/channel_area/${input:HUC}/outputs/channel_area.gpkg/channel_area",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/topography/dem.tif",
         "{env:DATA_ROOT}/taudem/${input:HUC}",
         //"--mask",
