@@ -107,15 +107,15 @@ def channel(huc: int,
 
     if flowlines is not None:
         proj_flowlines = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
-        copy_feature_class(flowlines, proj_flowlines, epsg=cfg.OUTPUT_EPSG)
+        copy_feature_class(flowlines, proj_flowlines, epsg=epsg)
 
     if flowareas is not None:
         proj_flowareas = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['FLOWAREAS'].rel_path)
-        copy_feature_class(flowareas, proj_flowareas, epsg=cfg.OUTPUT_EPSG)
+        copy_feature_class(flowareas, proj_flowareas, epsg=epsg)
 
     if waterbodies is not None:
         proj_waterbodies = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['WATERBODY'].rel_path)
-        copy_feature_class(flowareas, proj_flowareas, epsg=cfg.OUTPUT_EPSG)
+        copy_feature_class(waterbodies, proj_waterbodies, epsg=epsg)
 
     project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
 
