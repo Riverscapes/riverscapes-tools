@@ -140,9 +140,9 @@
       "module": "scripts.vbet_evidence",
       "console": "integratedTerminal",
       "args": [
-        "D:/NAR/Projects/VBET_Evidence/postgis_export.gpkg/vbet_observations_huc",
-        "D:/NAR_Data/Data/vbet",
-        "D:/NAR/Projects/VBET_Evidence/vbet_observations_testing.gpkg/vbet_observations_output",
+        "{env:GIS_PROJECTS_ROOT}/VBET_Evidence/postgis_export.gpkg/vbet_observations_huc",
+        "{env:DATA_ROOT}/vbet",
+        "{env:GIS_PROJECTS_ROOT}/VBET_Evidence/vbet_evidence.csv",
       ]
     }, 
 
