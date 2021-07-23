@@ -1,16 +1,11 @@
-"""[summary]
-"""
-# Name:     Channel Area Tool
-#
-# Purpose:  Generate bankfull and merge with flow areas to create channel polygons
-#
-# Author:   Kelly Whitehead
-#
-# Date:     July 14, 2021
-#
-# Vectorize polygons from raster
-# https://gis.stackexchange.com/questions/187877/how-to-polygonize-raster-to-shapely-polygons
-# -------------------------------------------------------------------------------
+"""Name:     Channel Area Tool
+
+   Purpose:  Create a new RS project that generates bankfull and merges with flowareas/waterbody to create channel polygons
+
+   Author:   Kelly Whitehead
+
+   Date:     July 14, 2021"""
+
 import argparse
 import os
 import sys
@@ -46,19 +41,19 @@ LayerTypes = {
     'INPUTS': RSLayer('Inputs', 'INPUTS', 'Geopackage', 'inputs/inputs.gpkg', {
         'FLOWLINES': RSLayer('NHD Flowlines', 'FLOWLINES', 'Vector', 'flowlines'),
         'FLOWAREAS': RSLayer('NHD Flow Areas', 'FLOWAREAS', 'Vector', 'flowareas'),
-        # 'WATERBODY': RSLayer('NHD Water Body Areas', 'WATER_BODIES', 'Vector', 'waterbody'),
-        # 'CATCHMENTS': RSLayer('NHD Catchments', 'CATCHMENTS', 'Vector', 'catchments'),
+        'WATERBODY': RSLayer('NHD Water Body Areas', 'WATER_BODIES', 'Vector', 'waterbody'),
     }),
     'INTERMEDIATES': RSLayer('Intermediates', 'Intermediates', 'Geopackage', 'intermediates/intermediates.gpkg', {
-        'FLOW_AREA_NO_ISLANDS': RSLayer('Flow Areas No Islands', 'FLOW_AREA_NO_ISLANDS', 'Vector', 'flow_area_no_islands'),
+        'FILTERED_WATERBODY': RSLayer('NHD Waterbodies (Filtered)', 'FILTERED_WATERBODY', 'Vector', 'waterbody_filtered'),
+        'FILTERED_FLOWAREAS': RSLayer('NHD Flow Areas (Filtered)', 'FILTERED_FLOWAREAS', 'Vector', 'flowarea_filtered'),
+        'FLOW_AREA_NO_ISLANDS': RSLayer('Flow Areas No Islands', 'FLOW_AREA_NO_ISLANDS', 'Vector', 'flowarea_no_islands'),
+        'COMBINED_FA_WB': RSLayer('Combined Flow Area and Waterbody', 'COMBINED_FA_WB', 'Vector', 'combined_fa_wb'),
         'BANKFULL_NETWORK': RSLayer('Bankfull Network', 'BANKFULL_NETWORK', 'Vector', 'bankfull_network'),
         'BANKFULL_POLYGONS': RSLayer('Bankfull Polygons', 'BANKFULL_POLYGONS', 'Vector', 'bankfull_polygons'),
         'DIFFERENCE_POLYGONS': RSLayer('Difference Polygons', 'DIFFERENCE_POLYGONS', 'Vector', 'difference_polygons'),
-        # 'DISSOLVED_POLYGON': RSLayer('Dissolved Polygon', 'DISSOLVED_POLYGON', 'Vector', 'dissolved_polygon')
     }),
     'OUTPUTS': RSLayer('VBET', 'OUTPUTS', 'Geopackage', 'outputs/channel_area.gpkg', {
-        'CHANNEL_AREA': RSLayer('Channel Area Polygons', 'CHANNEL_AREA', 'Vector', 'channel_areas'),
-
+        'CHANNEL_AREA': RSLayer('Channel Area Polygons', 'CHANNEL_AREA', 'Vector', 'channel_area'),
     }),
     'REPORT': RSLayer('RSContext Report', 'REPORT', 'HTMLFile', 'outputs/channel_area.html')
 }
@@ -67,24 +62,28 @@ LayerTypes = {
 def channel(huc: int,
             flowlines: Path,
             flowareas: Path,
+            waterbodies: Path,
             bankfull_function: str,
             bankfull_function_params: dict,
             project_folder: Path,
-            reach_code_field: str,
-            reach_codes: List[str] = None,
+            reach_code_field: str = None,
+            reach_codes: Dict[str, List[str]] = None,
+            epsg: int = cfg.OUTPUT_EPSG,
             meta: Dict[str, str] = None):
-    """[summary]
+    """Create a new RS project that generates bankfull and merges with flowareas/waterbody to create channel polygons
 
     Args:
-        huc (int): [description]
-        flowlines (Path): [description]
-        flowareas (Path): [description]
-        bankfull_function (str): [description]
-        bankfull_function_params (dict): [description]
-        project_folder (Path): [description]
-        reach_code_field (str): [description]
-        reach_codes (List[str], optional): [description]. Defaults to None.
-        meta (Dict[str, str], optional): [description]. Defaults to None.
+        huc (int): NHD huc id
+        flowlines (Path): NHD flowlines or other stream line network
+        flowareas (Path): NHD flowareas or other stream polygon areas
+        waterbodies (Path): NHD waterbodies or other water polygon areas
+        bankfull_function (str): equation to generate bankfull
+        bankfull_function_params (dict): dict with entry for each bankfull equation param as value or fieldname
+        project_folder (Path): location to save output project
+        reach_code_field (str, optional): field to read for reach code filter for flowlines, flowareas and waterbodies, Defaults to None.
+        reach_codes (Dict[str, List[str]], optional): dict entry for flowline, flowarea and waterbody and associated reach codes. Defaults to None.
+        epsg ([int], optional): epsg spatial reference value. Defaults to cfg.OUTPUT_EPSG.
+        meta (Dict[str, str], optional): metadata key-value pairs. Defaults to None.
     """
 
     timer = time.time()
@@ -93,12 +92,12 @@ def channel(huc: int,
     log.info('Using Equation: "{}" and params: "{}"'.format(bankfull_function, bankfull_function_params))
 
     meta['Bankfull Equation'] = bankfull_function
-    meta['Reach Codes'] = str(reach_codes)
+    for layer, codes in reach_codes.items():
+        meta[f'{layer} Reach Codes'] = str(codes)
 
     project, _realization, proj_nodes = create_project(huc, project_folder, meta)
 
     # Input Preparation
-    # Make sure we're starting with a fresh slate of new geopackages
     inputs_gpkg_path = os.path.join(project_folder, LayerTypes['INPUTS'].rel_path)
     intermediates_gpkg_path = os.path.join(project_folder, LayerTypes['INTERMEDIATES'].rel_path)
     output_gpkg_path = os.path.join(project_folder, LayerTypes['OUTPUTS'].rel_path)
@@ -106,47 +105,85 @@ def channel(huc: int,
     GeopackageLayer.delete(inputs_gpkg_path)
     GeopackageLayer.delete(intermediates_gpkg_path)
 
-    proj_flowlines = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
-    copy_feature_class(flowlines, proj_flowlines, epsg=cfg.OUTPUT_EPSG)
+    if flowlines is not None:
+        proj_flowlines = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
+        copy_feature_class(flowlines, proj_flowlines, epsg=cfg.OUTPUT_EPSG)
 
-    proj_flowareas = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['FLOWAREAS'].rel_path)
-    copy_feature_class(flowareas, proj_flowareas, epsg=cfg.OUTPUT_EPSG)
+    if flowareas is not None:
+        proj_flowareas = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['FLOWAREAS'].rel_path)
+        copy_feature_class(flowareas, proj_flowareas, epsg=cfg.OUTPUT_EPSG)
+
+    if waterbodies is not None:
+        proj_waterbodies = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['WATERBODY'].rel_path)
+        copy_feature_class(flowareas, proj_flowareas, epsg=cfg.OUTPUT_EPSG)
 
     project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
 
-    # TODO prepare waterbodies here...
-    # if "WATERBODY" in project_inputs:
-    #     log.info('Filter and merge waterbody polygons with Flow Areas')
-    #     filtered_waterbody = os.path.join(intermediates_gpkg_path, "waterbody_filtered")
-    #     wb_fcodes = [39000, 39001, 39004, 39005, 39006, 39009, 39010, 39011, 39012, 36100, 46600, 46601, 46602]
-    #     fcode_filter = "FCode = " + " or FCode = ".join([f"'{fcode}'" for fcode in wb_fcodes]) if len(wb_fcodes) > 0 else ""
-    #     copy_feature_class(project_inputs["WATERBODY"], filtered_waterbody, attribute_filter=fcode_filter)
-    #     merge_feature_classes([filtered_waterbody, project_inputs['FLOW_AREA']], flow_polygons)
-    # else:
-    #     copy_feature_class(project_inputs['FLOW_AREA'], flow_polygons)
+    # Generate Intermediates
+    if proj_flowareas is not None:
+        log.info('Filtering flowarea polygons')
+        filtered_flowareas = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['FILTERED_FLOWAREAS'].rel_path)
+        fcode_filter = ""
+        if reach_code_field is not None and reach_codes['flowarea'] is not None:
+            fcode_filter = f"{reach_code_field} = " + f" or {reach_code_field} = ".join([f"'{fcode}'" for fcode in reach_codes['flowarea']])
+        copy_feature_class(proj_flowareas, filtered_flowareas, attribute_filter=fcode_filter)
 
-    bankfull_network = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['BANKFULL_NETWORK'].rel_path)
-    vbet_network(proj_flowlines, None, bankfull_network, cfg.OUTPUT_EPSG, reach_codes, reach_code_field)
+        log.info('Removing flowarea islands')
+        filtered_flowarea_no_islands = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['FLOW_AREA_NO_ISLANDS'].rel_path)
+        remove_holes_feature_class(filtered_flowareas, filtered_flowarea_no_islands)
 
-    calculate_bankfull(bankfull_network, 'bankfull_m', bankfull_function, bankfull_function_params)
+    if proj_waterbodies is not None:
+        log.info('Filtering waterbody polygons')
+        filtered_waterbodies = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['FILTERED_WATERBODY'].rel_path)
+        fcode_filter = ""
+        if reach_code_field is not None and reach_codes['waterbody'] is not None:
+            fcode_filter = f"{reach_code_field} = " + f" or {reach_code_field} = ".join([f"'{fcode}'" for fcode in reach_codes['waterbody']])
 
-    bankfull_polygons = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['BANKFULL_POLYGONS'].rel_path)
-    buffer_by_field(bankfull_network, bankfull_polygons, "bankfull_m", cfg.OUTPUT_EPSG, centered=True)
+        copy_feature_class(waterbodies, filtered_waterbodies, attribute_filter=fcode_filter)
 
-    flow_area_no_islands = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['FLOW_AREA_NO_ISLANDS'].rel_path)
-    remove_holes_feature_class(proj_flowareas, flow_area_no_islands)
+    combined_flow_polygons = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['COMBINED_FA_WB'].rel_path)
+    if filtered_waterbodies is not None and filtered_flowarea_no_islands is not None:
+        log.info('Merging waterbodies and flowareas')
+        merge_feature_classes([filtered_waterbodies, filtered_flowarea_no_islands], combined_flow_polygons)
+    elif filtered_flowarea_no_islands is not None:
+        log.info('No waterbodies found, copying flowareas')
+        copy_feature_class(filtered_flowarea_no_islands, combined_flow_polygons)
+    elif filtered_waterbodies is not None:
+        log.info('No flowareas found, copying waterbodies')
+        copy_feature_class(filtered_waterbodies, combined_flow_polygons)
+    else:
+        log.info('No waterbodies or flowareas in project')
+        combined_flow_polygons = None
 
-    channel_polygons = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['DIFFERENCE_POLYGONS'].rel_path)
-    difference(flow_area_no_islands, bankfull_polygons, channel_polygons, cfg.OUTPUT_EPSG)
+    bankfull_polygons = None
+    if proj_flowlines is not None:
+        log.info('Filtering bankfull flowline network')
+        bankfull_network = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['BANKFULL_NETWORK'].rel_path)
+        if reach_code_field is not None and reach_codes['flowline'] is not None:
+            vbet_network(proj_flowlines, None, bankfull_network, epsg, reach_codes['flowline'], reach_code_field)
+        else:
+            copy_feature_class(proj_flowlines, bankfull_network)
 
-    merged_channel_polygons = os.path.join(output_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['CHANNEL_AREA'].rel_path)
-    merge_feature_classes([channel_polygons, flow_area_no_islands], merged_channel_polygons)
+        if bankfull_function is not None:
+            log.info("Calculing bankfull width")
+            calculate_bankfull(bankfull_network, 'bankfull_m', bankfull_function, bankfull_function_params)
+            bankfull_polygons = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['BANKFULL_POLYGONS'].rel_path)
+            buffer_by_field(bankfull_network, bankfull_polygons, "bankfull_m", cfg.OUTPUT_EPSG, centered=True)
 
-    # dissolved_channel_polygon = os.path.join(channel_gpkg_path, LayerTypes['CHANNEL_INTERMEDIATES'].sub_layers['DISSOLVED_POLYGON'].rel_path)
-    # dissolve_feature_class(merged_channel_polygons, dissolved_channel_polygon, cfg.OUTPUT_EPSG)
-    # geom = get_geometry_unary_union(merged_channel_polygons)
-
-    # copy_feature_class(catchments_path, channel_polygons, clip_shape=geom)
+    output_channel_area = os.path.join(output_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['CHANNEL_AREA'].rel_path)
+    if bankfull_polygons is not None and combined_flow_polygons is not None:
+        log.info('Combining Bankfull polygons with flowarea/waterbody polygons into final channel area output')
+        channel_polygons = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['DIFFERENCE_POLYGONS'].rel_path)
+        difference(combined_flow_polygons, bankfull_polygons, channel_polygons, cfg.OUTPUT_EPSG)
+        merge_feature_classes([channel_polygons, combined_flow_polygons], output_channel_area)
+    elif bankfull_polygons is not None:
+        log.info('Copying Bankfull polygons into final channel area output')
+        copy_feature_class(bankfull_polygons, output_channel_area)
+    elif combined_flow_polygons is not None:
+        log.info('Copying filtered flowarea/waterbody polygons into final channel area output')
+        copy_feature_class(combined_flow_polygons, output_channel_area)
+    else:
+        log.warning('No output channel polygons were produced')
 
     # Now add our Geopackages to the project XML
     project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
@@ -166,17 +203,14 @@ def channel(huc: int,
     log.info('Channel Area Completed Successfully')
 
 
-def calculate_bankfull(network_layer: str, out_field: str, eval_fn: str, function_params: dict):
-    """[summary]
+def calculate_bankfull(network_layer: Path, out_field: str, eval_fn: str, function_params: dict):
+    """caluclate bankfull value for each feature in network layer
 
     Args:
-        network_layer (str): [description]
-        out_field (str): [description]
-        eval_fn (str): [description]
-        function_params (dict): [description]
-
-    Raises:
-        ne: [description]
+        network_layer (Path): netowrk layer
+        out_field (str): field to store bankfull values
+        eval_fn (str): equation to use in eval function
+        function_params (dict): parameters to use in eval function
     """
     with GeopackageLayer(network_layer, write=True) as layer:
 
@@ -198,16 +232,16 @@ def calculate_bankfull(network_layer: str, out_field: str, eval_fn: str, functio
             layer.ogr_layer.SetFeature(feat)
 
 
-def create_project(huc, output_dir, meta=None):
-    """[summary]
+def create_project(huc: int, output_dir: Path, meta: dict = None):
+    """Create channel area project
 
     Args:
-        huc ([type]): [description]
-        output_dir ([type]): [description]
-        meta ([type], optional): [description]. Defaults to None.
+        huc (int): NHD huc id
+        output_dir (Path): output directory for new project
+        meta (dict, optional): key-value pair of project metadata. Defaults to None.
 
     Returns:
-        [type]: [description]
+        RSProject, realization, proj_nodes
     """
     project_name = 'Channel Area for HUC {}'.format(huc)
     project = RSProject(cfg, output_dir)
@@ -250,38 +284,27 @@ def create_project(huc, output_dir, meta=None):
 
 
 def main():
-    """[summary]
-
-    Raises:
-        ValueError: [description]
+    """Create a new RS project that generates bankfull and merges with flowareas/waterbody to create channel polygons
     """
     parser = argparse.ArgumentParser(
         description='Riverscapes Channel Area Tool',
         # epilog="This is an epilog"
     )
-    parser.add_argument('huc', help='NHD flow line ShapeFile path', type=str)
-    parser.add_argument('flowlines', help='flowlines feature class', type=str)
-    parser.add_argument('flowareas', help='flowareas feature class', type=str)
+    parser.add_argument('huc', help='NHD huc id', type=str)
+    parser.add_argument('flowlines', help='NHD flowlines feature class', type=str)
+    parser.add_argument('flowareas', help='NHD flowareas feature class', type=str)
+    parser.add_argument('waterbodies', help='NHD waterbodies', type=str)
     parser.add_argument('output_dir', help='Folder where output VBET project will be created', type=str)
-
-    parser.add_argument(
-        '--bankfull_function',
-        help='width field in flowlines feature class (e.g. BFWidth). Default: "{}"'.format(DEFAULT_FUNCTION),
-        type=str,
-        default=DEFAULT_FUNCTION
-    )
-    parser.add_argument(
-        '--bankfull_function_params',
-        help='Field that contains reach code (e.g. FCode). Omitting this option retains all features. Default: "{}"'.format(DEFAULT_FUNCTION_PARAMS),
-        type=str,
-        default=DEFAULT_FUNCTION_PARAMS
-    )
-
+    parser.add_argument('--bankfull_function', help='width field in flowlines feature class (e.g. BFWidth). Default: "{}"'.format(DEFAULT_FUNCTION), type=str, default=DEFAULT_FUNCTION)
+    parser.add_argument('--bankfull_function_params', help='Field that contains reach code (e.g. FCode). Omitting this option retains all features. Default: "{}"'.format(DEFAULT_FUNCTION_PARAMS), type=str, default=DEFAULT_FUNCTION_PARAMS)
     parser.add_argument('--reach_code_field', help='Field that contains reach code (e.g. FCode). Omitting this option retains all features.', type=str)
-    parser.add_argument('--reach_codes', help='Comma delimited reach codes (FCode) to retain when filtering features. Omitting this option retains all features.', type=str)
+    parser.add_argument('--flowline_reach_codes', help='Comma delimited reach codes (FCode) to retain when filtering features. Omitting this option retains all features.', type=str)
+    parser.add_argument('--flowarea_reach_codes', help='Comma delimited reach codes (FCode) to retain when filtering features. Omitting this option retains all features.', type=str)
+    parser.add_argument('--waterbody_reach_codes', help='Comma delimited reach codes (FCode) to retain when filtering features. Omitting this option retains all features.', type=str)
     parser.add_argument('--precip', help='mean annual precipiation in cm')
     parser.add_argument('--prism_data')
     parser.add_argument('--huc8boundary')
+    parser.add_argument('--epsg', help='output epsg', type=int)
     parser.add_argument('--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
     parser.add_argument('--debug', help='Add debug tools for tracing things like memory usage at a performance cost.', action='store_true', default=False)
@@ -299,7 +322,10 @@ def main():
     meta = parse_metadata(args.meta)
     bankfull_params = parse_metadata(args.bankfull_function_params)
 
-    reach_codes = args.reach_codes.split(',') if args.reach_codes else None
+    reach_codes = {}
+    reach_codes['flowline'] = args.flowline_reach_codes.split(',') if args.flowline_reach_codes else None
+    reach_codes['flowarea'] = args.flowarea_reach_codes.split(',') if args.flowarea_reach_codes else None
+    reach_codes['waterbody'] = args.waterbody_reach_codes.split(',') if args.waterbody_reach_codes else None
 
     if args.precip is not None:
         precip = args.precip
@@ -317,11 +343,11 @@ def main():
         if args.debug is True:
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output_dir, 'vbet_mem.log')
-            retcode, max_obj = ThreadRun(channel, memfile, args.huc, args.flowlines, args.flowareas, args.bankfull_function, bankfull_params, args.output_dir, args.reach_code_field, reach_codes, meta)
+            retcode, max_obj = ThreadRun(channel, memfile, args.huc, args.flowlines, args.flowareas, args.waterbodies, args.bankfull_function, bankfull_params, args.output_dir, args.reach_code_field, reach_codes, meta=meta)
             log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
 
         else:
-            channel(args.huc, args.flowlines, args.flowareas, args.bankfull_function, bankfull_params, args.output_dir, args.reach_code_field, reach_codes, meta)
+            channel(args.huc, args.flowlines, args.flowareas, args.waterbodies, args.bankfull_function, bankfull_params, args.output_dir, args.reach_code_field, reach_codes, meta=meta)
 
     except Exception as e:
         log.error(e)
