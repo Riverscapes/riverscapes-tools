@@ -65,9 +65,9 @@ channel $HUC \
   --bankfull_function "0.177 * (a ** 0.397) * (p ** 0.453)" \
   --bankfull_function_params "a=TotDASqKm" \
   --reach_code_field FCode \
-  --flowline_reach_codes "33400,46000,46003,46006,46007",
-  --flowarea_reach_codes "53700,31800,34300,34305,34306,43100,46000,46003,46006,46007,46100,48400",
-  --waterbody_reach_codes "49300,39000,39001,39004,43600,43617,46600,46601,46602",
+  --flowline_reach_codes "33400,46000,46003,46006,46007", \
+  --flowarea_reach_codes "53700,31800,34300,34305,34306,43100,46000,46003,46006,46007,46100,48400", \
+  --waterbody_reach_codes "49300,39000,39001,39004,43600,43617,46600,46601,46602", \
   --prism_data $RS_CONTEXT_DIR/climate/precipitation.tif \
   --huc8boundary $RS_CONTEXT_DIR/hydrology/WBDHU8.shp \
   --meta "Runner=Cybercastor" \
