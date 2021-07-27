@@ -98,9 +98,9 @@ rm -fr $RSC_TASK_OUTPUT/transportation
 ##########################################################################################
 
 channel $HUC \
-  $RS_CONTEXT_DIR/hydrology/NHDFlowline.shp \
-  $RS_CONTEXT_DIR/hydrology/NHDArea.shp \
-  $RS_CONTEXT_DIR/hydrology/NHDWaterbody.shp \
+  $RSC_TASK_OUTPUT/hydrology/NHDFlowline.shp \
+  $RSC_TASK_OUTPUT/hydrology/NHDArea.shp \
+  $RSC_TASK_OUTPUT/hydrology/NHDWaterbody.shp \
   $CHANNEL_TASK_OUTPUT \
   --bankfull_function "0.177 * (a ** 0.397) * (p ** 0.453)" \
   --bankfull_function_params "a=TotDASqKm" \
@@ -125,7 +125,7 @@ cd $CHANNEL_TASK_OUTPUT
 rscli upload . --replace --tags "$TAGS" --no-input --verbose --program "$PROGRAM"
 if [[ $? != 0 ]]; then return 1; fi
 
-echo "<<TauChannel Area COMPLETE>>"
+echo "<<Channel Area COMPLETE>>"
 
 
 ##########################################################################################
