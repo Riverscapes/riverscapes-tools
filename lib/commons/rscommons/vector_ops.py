@@ -258,6 +258,7 @@ def merge_feature_classes(feature_class_paths: List[str], out_layer_path: str, b
                 if fccount == 1:
                     # transform = in_layer.get_transform(out_layer)
                     out_layer.create_layer_from_ref(in_layer)
+                    out_layer.ogr_layer.StartTransaction()
 
                 for i in range(in_layer.ogr_layer_def.GetFieldCount()):
                     in_field_def = in_layer.ogr_layer_def.GetFieldDefn(i)
@@ -284,6 +285,7 @@ def merge_feature_classes(feature_class_paths: List[str], out_layer_path: str, b
 
                     out_feature.SetGeometry(geom)
                     out_layer.ogr_layer.CreateFeature(out_feature)
+        out_layer.ogr_layer.CommitTransaction()
 
     log.info('Merge complete.')
     return fccount
@@ -880,10 +882,12 @@ def difference(remove_layer, from_layer, out_layer_path, epsg):
         for feat, _counter, progbar in layer1.iterate_features():
             geom = feat.GetGeometryRef()
             union1 = union1.Union(geom)
+
+        layer2.ogr_layer.StartTransaction()
         for feat, _counter, progbar in layer2.iterate_features():
             geom = feat.GetGeometryRef()  
             diff = geom.Difference(union1)
-            if diff.IsValid():
+            if diff.IsValid() and diff.GetGeometryName != 'GEOMETRYCOLLECTION':
                 #out_layer.create_feature(intersection) 
                 out_feat = ogr.Feature(out_layer_defn)
                 out_feat.SetGeometry(diff)
@@ -891,3 +895,4 @@ def difference(remove_layer, from_layer, out_layer_path, epsg):
                     out_feat.SetField(out_layer.ogr_layer_def.GetFieldDefn(i).GetNameRef(), feat.GetField(i))
 
                 out_layer.ogr_layer.CreateFeature(out_feat)
+        layer2.ogr_layer.CommitTransaction()

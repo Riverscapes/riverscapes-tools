@@ -216,6 +216,7 @@ def calculate_bankfull(network_layer: Path, out_field: str, eval_fn: str, functi
 
         layer.create_field(out_field, ogr.OFTReal)
 
+        layer.ogr_layer.StartTransaction()
         for feat, *_ in layer.iterate_features("Calculating bankfull"):
 
             fn_params = {}
@@ -228,8 +229,9 @@ def calculate_bankfull(network_layer: Path, out_field: str, eval_fn: str, functi
             # eval seems to mutate the fn_params object so we pass in a copy so that we can report on the errors if needed
             result = safe_eval(eval_fn, fn_params)
             feat.SetField(out_field, result)
-
             layer.ogr_layer.SetFeature(feat)
+
+        layer.ogr_layer.CommitTransaction()
 
 
 def create_project(huc: int, output_dir: Path, meta: dict = None):
