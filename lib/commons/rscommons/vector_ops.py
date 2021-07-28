@@ -246,6 +246,7 @@ def merge_feature_classes(feature_class_paths: List[str], out_layer_path: str, b
 
     with get_shp_or_gpkg(out_layer_path, write=True) as out_layer:
         fccount = 0
+        
         for in_layer_path in feature_class_paths:
             fccount += 1
             log.info("Merging feature class {}/{}".format(fccount, len(feature_class_paths)))
@@ -281,7 +282,8 @@ def merge_feature_classes(feature_class_paths: List[str], out_layer_path: str, b
                     out_feature = ogr.Feature(out_layer.ogr_layer_def)
 
                     for i in range(in_layer.ogr_layer_def.GetFieldCount()):
-                        out_feature.SetField(out_layer.ogr_layer_def.GetFieldDefn(i).GetNameRef(), feature.GetField(i))
+                        field_name = in_layer.ogr_layer_def.GetFieldDefn(i).GetNameRef()
+                        out_feature.SetField(field_name, feature.GetField(i))
 
                     out_feature.SetGeometry(geom)
                     out_layer.ogr_layer.CreateFeature(out_feature)
