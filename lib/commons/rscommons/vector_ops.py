@@ -869,7 +869,7 @@ def intersection(layer_path1, layer_path2, out_layer_path, epsg):
 def difference(remove_layer, from_layer, out_layer_path, epsg):
 
 
-    log = Logger('feature_class_intersection')
+    log = Logger('feature_class_difference')
     with get_shp_or_gpkg(out_layer_path, write=True) as out_layer, \
         get_shp_or_gpkg(remove_layer) as layer1, \
         get_shp_or_gpkg(from_layer) as layer2:
@@ -877,24 +877,47 @@ def difference(remove_layer, from_layer, out_layer_path, epsg):
         out_layer.create_layer_from_ref(layer2, epsg=epsg)
         out_layer_defn = out_layer.ogr_layer.GetLayerDefn()
     
-        #layer1.ogr_layer.GetGeomType()
         # create an empty geometry of the same type
         union1=ogr.Geometry(3)
         # union all the geometrical features of layer 1
         for feat, _counter, progbar in layer1.iterate_features():
             geom = feat.GetGeometryRef()
+            if not geom.IsValid():
+                geom = geom_validity_fix(geom)
             union1 = union1.Union(geom)
+            if not union1.IsValid():
+                union1 = geom_validity_fix(union1)
 
         layer2.ogr_layer.StartTransaction()
         for feat, _counter, progbar in layer2.iterate_features():
-            geom = feat.GetGeometryRef()  
-            diff = geom.Difference(union1)
-            if diff.IsValid() and diff.GetGeometryName != 'GEOMETRYCOLLECTION':
-                #out_layer.create_feature(intersection) 
+
+            def write_polygon(out_geom):
                 out_feat = ogr.Feature(out_layer_defn)
-                out_feat.SetGeometry(diff)
+                out_feat.SetGeometry(out_geom)
                 for i in range(0, out_layer.ogr_layer_def.GetFieldCount()):
                     out_feat.SetField(out_layer.ogr_layer_def.GetFieldDefn(i).GetNameRef(), feat.GetField(i))
-
                 out_layer.ogr_layer.CreateFeature(out_feat)
+
+            geom = feat.GetGeometryRef()  
+            diff = geom.Difference(union1)
+            if diff.IsValid() and diff.GetGeometryName() != 'GEOMETRYCOLLECTION':
+                if diff.GetGeometryName() == 'MULTIPOLYGON':
+                    for geom in diff:
+                        write_polygon(geom)
+                else:
+                    write_polygon(diff)
+
         layer2.ogr_layer.CommitTransaction()
+
+
+def geom_validity_fix(geom_in):
+    # copied from vbet_outputs
+    buff_dist = 0.0000001
+    f_geom = geom_in
+    # Only clean if there's a problem:
+    if not f_geom.IsValid():
+        f_geom = f_geom.Buffer(0)
+        if not f_geom.IsValid():
+            f_geom = f_geom.Buffer(buff_dist)
+            f_geom = f_geom.Buffer(-buff_dist)
+    return f_geom
