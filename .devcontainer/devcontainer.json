@@ -1,0 +1,69 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the README at:
+// https://github.com/microsoft/vscode-dev-containers/tree/v0.187.0/containers/python-3
+{
+  "name": "RiverscapesTools Dev Container",
+  // Sets the run context to one level up instead of the .devcontainer folder.
+  "context": "..",
+  // Update the 'dockerFile' property if you aren't using the standard 'Dockerfile' filename.
+  "dockerFile": "./Dockerfile",
+  
+  // Set *default* container specific settings.json values on container create.
+  "settings": { 
+    "terminal.integrated.defaultProfile.linux": "zsh",
+    "python.pythonPath": "/usr/local/bin/venv/bin/python3",
+    "python.languageServer": "Pylance",
+    "python.linting.enabled": true,
+    "python.linting.pylintEnabled": true,
+    "[python]": {
+      "editor.tabSize": 4,
+      "editor.formatOnSave": true,
+    },
+    "python.linting.pylintArgs": [
+      "--extension-pkg-whitelist=scipy",
+      "--ignore=E501",
+      "--max-line-length=240"
+    ],  
+    "python.linting.lintOnSave": true,
+    "python.linting.pycodestyleEnabled": true,
+    "python.linting.pycodestyleArgs": [
+      "--ignore=E501",
+      "--max-line-length=240"    
+    ],
+    "python.formatting.autopep8Args": [
+      "--ignore=E501",
+      "--max-line-length=240"    
+    ],
+    "python.terminal.activateEnvironment": true,
+    "python.autoComplete.showAdvancedMembers": false,
+    "files.exclude": {
+      "**/*.egg-info": true
+    },
+    "files.watcherExclude": {
+      "**/*.egg-info/**": true
+    },
+    "search.exclude": {
+      "**/*.egg-info": true
+    },		
+  },
+  
+  // Add the IDs of extensions you want installed when the container is created.
+  "extensions": [
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+    "njpwerner.autodocstring",
+    "redhat.vscode-commons"
+  ],
+  
+  // Use 'forwardPorts' to make a list of ports inside the container available locally.
+  // "forwardPorts": [],
+  "mounts": [
+    // Make sure we have access to our configuration root in the container
+    "source=${localEnv:HOME}${localEnv:USERPROFILE},target=/homecopy,type=bind,consistency=cached",
+  ],
+  // Use 'postCreateCommand' to run commands after the container is created.
+  "postCreateCommand": "bash .devcontainer/postCreateCommand.sh",
+  // Note: workspaceFolder doesn't work for Dockerfiles yet. Only use for docker-compose.yml
+  "workspaceFolder": "/workspaces/riverscapes-tools",
+  // Comment out connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
+  "remoteUser": "vscode"
+}

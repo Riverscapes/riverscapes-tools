@@ -1,11 +1,10 @@
 {
-	"folders": [
-		{
-			"path": "../"
-		},
-		{
-			"path": "../lib/commons"
-		}
-	],
-	"settings": {}
+  "folders": [
+    {
+      "path": "../"
+    },
+    {
+      "path": "../lib/commons"
+    }
+  ]
 }
