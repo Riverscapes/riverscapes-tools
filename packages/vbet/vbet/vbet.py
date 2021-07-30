@@ -33,8 +33,7 @@ import numpy as np
 from rscommons.util import safe_makedirs, parse_metadata, pretty_duration
 from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, dotenv, initGDALOGRErrors, TempRaster, VectorBase
 from rscommons import GeopackageLayer
-from rscommons.vector_ops import get_geometry_unary_union, polygonize, buffer_by_field, copy_feature_class, merge_feature_classes, dissolve_feature_class, intersection, remove_holes_feature_class
-from rscommons.hand import create_hand_raster
+from rscommons.vector_ops import polygonize, copy_feature_class, remove_holes_feature_class
 from rscommons.thiessen.vor import NARVoronoi
 from rscommons.thiessen.shapes import centerline_points
 from rscommons.vbet_network import vbet_network, create_stream_size_zones, copy_vaa_attributes, join_attributes
@@ -53,46 +52,35 @@ initGDALOGRErrors()
 cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/VBET.xsd', __version__)
 
 thresh_vals = {"50": 0.5, "60": 0.6, "70": 0.7, "80": 0.8, "90": 0.9, "100": 1}
-# thresh_vals = {"50": 0.5, "100": 1}
 
 LayerTypes = {
     'DEM': RSLayer('DEM', 'DEM', 'Raster', 'inputs/dem.tif'),
     'SLOPE_RASTER': RSLayer('Slope Raster', 'SLOPE_RASTER', 'Raster', 'inputs/slope.tif'),
+    'HAND_RASTER': RSLayer('Hand Raster', 'HAND_RASTER', 'Raster', 'inputs/HAND.tif'),
+    'TWI_RASTER': RSLayer('Topographic Wetness Index (TWI) Raster', 'TWI_RASTER', 'Raster', 'inputs/twi.tif'),
     'HILLSHADE': RSLayer('DEM Hillshade', 'HILLSHADE', 'Raster', 'inputs/dem_hillshade.tif'),
     'INPUTS': RSLayer('Inputs', 'INPUTS', 'Geopackage', 'inputs/vbet_inputs.gpkg', {
         'FLOWLINES': RSLayer('NHD Flowlines', 'FLOWLINES', 'Vector', 'flowlines'),
+        'FLOW_AREAS': RSLayer('NHD Flow Areas', 'FLOW_AREAS', 'Vector', 'flowareas'),
         'FLOWLINES_VAA': RSLayer('NHD Flowlines with Attributes', 'FLOWLINES_VAA', 'Vector', 'Flowlines_VAA'),
-        'FLOW_AREA': RSLayer('NHD Flow Areas', 'FLOW_AREA', 'Vector', 'flow_areas'),
-        'WATERBODY': RSLayer('NHD Water Body Areas', 'WATER_BODIES', 'Vector', 'waterbody'),
+        'CHANNEL_AREA_POLYGONS': RSLayer('Channel Area Polygons', 'CHANNEL_AREA_POLYGONS', 'Vector', 'channel_area_polygons'),
         'CATCHMENTS': RSLayer('NHD Catchments', 'CATCHMENTS', 'Vector', 'catchments'),
     }),
     'CHANNEL_AREA_RASTER': RSLayer('Channel Area Raster', 'CHANNEL_AREA_RASTER', 'Raster', 'intermediates/channelarea.tif'),
-    # 'FLOW_AREA_RASTER': RSLayer('Flow Area Raster', 'FLOW_AREA_RASTER', 'Raster', 'intermediates/flowarea.tif'),
-    'HAND_RASTER': RSLayer('Hand Raster', 'HAND_RASTER', 'Raster', 'intermediates/HAND.tif'),
-    'TWI_RASTER': RSLayer('TWI Raster', 'TWI_RASTER', 'Raster', 'intermediates/twi.tif'),
     'CHANNEL_DISTANCE': RSLayer('Channel Euclidean Distance', 'CHANNEL_DISTANCE', "Raster", "intermediates/ChannelEuclideanDist.tif"),
-    # 'FLOW_AREA_DISTANCE': RSLayer('Flow Area Euclidean Distance', 'FLOW_AREA_DISTANCE', "Raster", "intermediates/FlowAreaEuclideanDist.tif"),
     # DYNAMIC: 'DA_ZONE_<RASTER>': RSLayer('Drainage Area Zone Raster', 'DA_ZONE_RASTER', "Raster", "intermediates/.tif"),
     'NORMALIZED_SLOPE': RSLayer('Normalized Slope', 'NORMALIZED_SLOPE', "Raster", "intermediates/nLoE_Slope.tif"),
     'NORMALIZED_HAND': RSLayer('Normalized HAND', 'NORMALIZED_HAND', "Raster", "intermediates/nLoE_Hand.tif"),
     'NORMALIZED_CHANNEL_DISTANCE': RSLayer('Normalized Channel Distance', 'NORMALIZED_CHANNEL_DISTANCE', "Raster", "intermediates/nLoE_ChannelDist.tif"),
-    # 'NORMALIZED_FLOWAREA_DISTANCE': RSLayer('Normalized Flow Area Distance', 'NORMALIZED_FLOWAREA_DISTANCE', "Raster", "intermediates/nLoE_FlowAreaDist.tif"),
+    'NORMALIZED_TWI': RSLayer('Normalized Topographic Wetness Index (TWI)', 'NORMALIZED_TWI', "Raster", "intermediates/nLoE_TWI.tif"),
     'EVIDENCE_TOPO': RSLayer('Topo Evidence', 'EVIDENCE_TOPO', 'Raster', 'intermediates/Topographic_Evidence.tif'),
     'EVIDENCE_CHANNEL': RSLayer('Channel Evidence', 'EVIDENCE_CHANNEL', 'Raster', 'intermediates/Channel_Evidence.tif'),
     'INTERMEDIATES': RSLayer('Intermediates', 'Intermediates', 'Geopackage', 'intermediates/vbet_intermediates.gpkg', {
         'VBET_NETWORK': RSLayer('VBET Network', 'VBET_NETWORK', 'Vector', 'vbet_network'),
-        'CHANNEL_POLYGONS': RSLayer('Channel Polygons', 'CHANNEL_POLYGONS', 'Vector', 'channel_polygons'),
         'TRANSFORM_ZONES': RSLayer('Transform Zones', 'TRANSFORM_ZONES', 'Vector', 'transform_zones'),
         'THIESSEN_POINTS': RSLayer('Thiessen Reach Points', 'THIESSEN_POINTS', 'Vector', 'ThiessenPoints'),
         'THIESSEN_AREAS': RSLayer('Thiessen Reach Areas', 'THIESSEN_AREAS', 'Vector', 'ThiessenPolygonsDissolved')
         # We also add all tht raw thresholded shapes here but they get added dynamically later
-    }),
-    'CHANNEL_INTERMEDIATES': RSLayer('Channel Intermediates', 'Channel_Intermediates', 'Geopackage', 'intermediates/channel_intermediates.gpkg', {
-        'FLOW_AREA_NO_ISLANDS': RSLayer('Flow Areas No Islands', 'FLOW_AREA_NO_ISLANDS', 'Vector', 'flow_area_no_islands'),
-        'BANKFULL_NETWORK': RSLayer('Bankfull Network', 'BANKFULL_NETWORK', 'Vector', 'bankfull_network'),
-        'BANKFULL_POLYGONS': RSLayer('Bankfull Polygons', 'BANKFULL_POLYGONS', 'Vector', 'bankfull_polygons'),
-        'COMBINED_POLYGONS': RSLayer('Combined Polygons', 'COMBINED_POLYGONS', 'Vector', 'combined_polygons'),
-        # 'DISSOLVED_POLYGON': RSLayer('Dissolved Polygon', 'DISSOLVED_POLYGON', 'Vector', 'dissolved_polygon')
     }),
     # Same here. Sub layers are added dynamically later.
     'VBET_EVIDENCE': RSLayer('VBET Evidence Raster', 'VBET_EVIDENCE', 'Raster', 'outputs/VBET_Evidence.tif'),
@@ -101,17 +89,19 @@ LayerTypes = {
 }
 
 
-def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: Path, vaa_table: Path, reach_codes: List[str], create_centerline: bool, meta: Dict[str, str], hand: Path = None, skip_sanitize=False, quick_mode=True):
+def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, project_folder: Path, reach_codes: List[str], meta: Dict[str, str]):
     """generate vbet evidence raster and threshold polygons for a watershed
 
     Args:
         huc (int): HUC code for watershed
         scenario_code (str): database machine code for scenario to run
         inputs (dict): input names and path
+        vaa_table (Path): NHD VAA table to join with flowlines
         project_folder (Path): path for project results
         reach_codes (List[int]): NHD reach codes for features to include in outputs
         meta (Dict[str,str]): dictionary of riverscapes metadata key: value pairs
     """
+
     vbet_timer = time.time()
     log = Logger('VBET')
     log.info('Starting VBET v.{}'.format(cfg.version))
@@ -127,10 +117,8 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
     # Make sure we're starting with a fresh slate of new geopackages
     inputs_gpkg_path = os.path.join(project_folder, LayerTypes['INPUTS'].rel_path)
     intermediates_gpkg_path = os.path.join(project_folder, LayerTypes['INTERMEDIATES'].rel_path)
-    channel_gpkg_path = os.path.join(project_folder, LayerTypes['CHANNEL_INTERMEDIATES'].rel_path)
     GeopackageLayer.delete(inputs_gpkg_path)
     GeopackageLayer.delete(intermediates_gpkg_path)
-    GeopackageLayer.delete(channel_gpkg_path)
 
     project_inputs = {}
     for input_name, input_path in inputs.items():
@@ -151,26 +139,17 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
 
     degree_factor = GeopackageLayer.rough_convert_metres_to_raster_units(project_inputs['SLOPE_RASTER'], 1)
 
-    # Report
-    report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
-    project.add_report(proj_nodes['Outputs'], LayerTypes['REPORT'], replace=True)
-    report = VBETReport(scenario_code, inputs_gpkg_path, os.path.join(project_folder, LayerTypes['VBET_OUTPUTS'].rel_path), report_path, project)
-    report.write()
-    # if quick_mode:
-    #     return
-
     # Load configuration from table
     vbet_run = load_configuration(scenario_code, inputs_gpkg_path)
 
     # Create a copy of the flow lines with just the perennial and also connectors inside flow areas
     log.info('Building vbet network')
     network_path = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['VBET_NETWORK'].rel_path)
-    vbet_network(project_inputs['FLOWLINES'], project_inputs['FLOW_AREA'], network_path, cfg.OUTPUT_EPSG, reach_codes)
+    vbet_network(flowlines_vaa_path, project_inputs['FLOW_AREAS'], network_path, cfg.OUTPUT_EPSG, reach_codes)
 
     # Create Zones
     log.info('Building drainage area zones')
     catchments_path = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['TRANSFORM_ZONES'].rel_path)
-    # create_stream_size_zones(project_inputs['CATCHMENTS'], project_inputs['FLOWLINES'], 'NHDPlusID', 'TotDASqKm', vbet_run['Zones'], catchments_path)
     create_stream_size_zones(project_inputs['CATCHMENTS'], flowlines_vaa_path, 'NHDPlusID', 'StreamOrde', vbet_run['Zones'], catchments_path)
 
     # Create Scenario Input Rasters
@@ -183,41 +162,9 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
 
     # Rasterize the channel polygon and write to raster
     if 'Channel' in vbet_run['Inputs']:
-
-        # TODO prepare waterbodies here...
-        # if "WATERBODY" in project_inputs:
-        #     log.info('Filter and merge waterbody polygons with Flow Areas')
-        #     filtered_waterbody = os.path.join(intermediates_gpkg_path, "waterbody_filtered")
-        #     wb_fcodes = [39000, 39001, 39004, 39005, 39006, 39009, 39010, 39011, 39012, 36100, 46600, 46601, 46602]
-        #     fcode_filter = "FCode = " + " or FCode = ".join([f"'{fcode}'" for fcode in wb_fcodes]) if len(wb_fcodes) > 0 else ""
-        #     copy_feature_class(project_inputs["WATERBODY"], filtered_waterbody, attribute_filter=fcode_filter)
-        #     merge_feature_classes([filtered_waterbody, project_inputs['FLOW_AREA']], flow_polygons)
-        # else:
-        #     copy_feature_class(project_inputs['FLOW_AREA'], flow_polygons)
-
-        bankfull_network = os.path.join(channel_gpkg_path, LayerTypes['CHANNEL_INTERMEDIATES'].sub_layers['BANKFULL_NETWORK'].rel_path)
-        vbet_network(project_inputs['FLOWLINES'], project_inputs['FLOW_AREA'], bankfull_network, cfg.OUTPUT_EPSG, ['46003', '46006', '46007'])
-
-        bankfull_polygons = os.path.join(channel_gpkg_path, LayerTypes['CHANNEL_INTERMEDIATES'].sub_layers['BANKFULL_POLYGONS'].rel_path)
-        buffer_by_field(bankfull_network, bankfull_polygons, "BFwidth", cfg.OUTPUT_EPSG, centered=True)
-
-        flow_area_no_islands = os.path.join(channel_gpkg_path, LayerTypes['CHANNEL_INTERMEDIATES'].sub_layers['FLOW_AREA_NO_ISLANDS'].rel_path)
-        remove_holes_feature_class(project_inputs['FLOW_AREA'], flow_area_no_islands)
-
-        merged_channel_polygons = os.path.join(channel_gpkg_path, LayerTypes['CHANNEL_INTERMEDIATES'].sub_layers['COMBINED_POLYGONS'].rel_path)
-        merge_feature_classes([bankfull_polygons, flow_area_no_islands], merged_channel_polygons)
-
-        # dissolved_channel_polygon = os.path.join(channel_gpkg_path, LayerTypes['CHANNEL_INTERMEDIATES'].sub_layers['DISSOLVED_POLYGON'].rel_path)
-        # dissolve_feature_class(merged_channel_polygons, dissolved_channel_polygon, cfg.OUTPUT_EPSG)
-        # geom = get_geometry_unary_union(merged_channel_polygons)
-        # channel_polygons = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['CHANNEL_POLYGONS'].rel_path)
-
-        # intersection(merged_channel_polygons, catchments_path, channel_polygons, cfg.OUTPUT_EPSG)
-        # copy_feature_class(catchments_path, channel_polygons, clip_shape=geom)
-
         log.info('Writing channel raster using slope as a template')
         channel_area_raster = os.path.join(project_folder, LayerTypes['CHANNEL_AREA_RASTER'].rel_path)
-        rasterize(merged_channel_polygons, channel_area_raster, project_inputs['SLOPE_RASTER'], all_touched=True)
+        rasterize(project_inputs['CHANNEL_AREA_POLYGONS'], channel_area_raster, project_inputs['SLOPE_RASTER'], all_touched=True)
         project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['CHANNEL_AREA_RASTER'])
 
         log.info('Generating Channel Proximity raster')
@@ -232,25 +179,21 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
     if 'HAND' in vbet_run['Inputs']:
         hand_raster = os.path.join(project_folder, LayerTypes['HAND_RASTER'].rel_path)
         twi_raster = os.path.join(project_folder, LayerTypes['TWI_RASTER'].rel_path)
-        if hand:
-            log.info("Copying exisiting HAND Input")
-            _node, project_inputs['HAND'] = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['HAND_RASTER'], hand)
-        else:
-            log.info("Adding HAND Input")
-            temp_hand_dir = os.path.join(project_folder, "intermediates", "hand_processing")
-            safe_makedirs(temp_hand_dir)
+        # if hand:
+        #     log.info("Copying exisiting HAND Input")
+        #     _node, project_inputs['HAND'] = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['HAND_RASTER'], hand)
+        # else:
+        #     log.info("Adding HAND Input")
+        #     temp_hand_dir = os.path.join(project_folder, "intermediates", "hand_processing")
+        #     safe_makedirs(temp_hand_dir)
 
-            create_hand_raster(project_inputs['DEM'], channel_area_raster, temp_hand_dir, hand_raster, twi_raster)
-            project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['HAND_RASTER'])
+        # create_hand_raster(project_inputs['DEM'], channel_area_raster, temp_hand_dir, hand_raster, twi_raster)
+        # project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['HAND_RASTER'])
         in_rasters['HAND'] = hand_raster
         out_rasters['NORMALIZED_HAND'] = os.path.join(project_folder, LayerTypes['NORMALIZED_HAND'].rel_path)
 
-    # for vbet_input in vbet_run['Inputs']:
-    #     if vbet_input not in ['Slope', 'HAND', 'Channel', 'Flow Areas']:
-    #         log.info(f'Adding generic {vbet_input} input')
-
-    if quick_mode:
-        return
+        in_rasters['TWI'] = twi_raster
+        out_rasters['NORMALIZED_TWI'] = os.path.join(project_folder, LayerTypes['NORMALIZED_TWI'].rel_path)
 
     # Generate da Zone rasters
     for zone in vbet_run['Zones']:
@@ -306,7 +249,7 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
         write_rasters['NORMALIZED_SLOPE'].write(normalized['Slope'].astype('float32').filled(out_meta['nodata']), window=window, indexes=1)
         write_rasters['NORMALIZED_HAND'].write(normalized['HAND'].astype('float32').filled(out_meta['nodata']), window=window, indexes=1)
         write_rasters['NORMALIZED_CHANNEL_DISTANCE'].write(normalized['Channel'].astype('float32').filled(out_meta['nodata']), window=window, indexes=1)
-        #write_rasters['NORMALIZED_FLOWAREA_DISTANCE'].write(normalized['Flow Areas'].astype('float32').filled(out_meta['nodata']), window=window, indexes=1)
+        write_rasters['NORMALIZED_TWI'].write(normalized['TWI'].astype('float32').filled(out_meta['nodata']), window=window, indexes=1)
 
         write_rasters['EVIDENCE_CHANNEL'].write(np.ma.filled(np.float32(fvals_channel), out_meta['nodata']), window=window, indexes=1)
         write_rasters['EVIDENCE_TOPO'].write(np.ma.filled(np.float32(fvals_topo), out_meta['nodata']), window=window, indexes=1)
@@ -321,8 +264,6 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
         project.add_project_raster(proj_nodes["Intermediates"], LayerTypes[raster_name])
     project.add_project_raster(proj_nodes['Outputs'], LayerTypes['VBET_EVIDENCE'])
 
-    # Get the length of a meter (roughly)
-    degree_factor = GeopackageLayer.rough_convert_metres_to_raster_units(project_inputs['SLOPE_RASTER'], 1)
     buff_dist = cell_size
     # min_hole_degrees = min_hole_area_m * (degree_factor ** 2)
 
@@ -340,7 +281,7 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
     # Generate Thiessen Polys
     myVorL.createshapes()
 
-    with GeopackageLayer(project_inputs['FLOWLINES']) as flow_lyr:
+    with GeopackageLayer(network_path) as flow_lyr:
         # Set the output spatial ref as this for the whole project
         out_srs = flow_lyr.spatial_ref
 
@@ -416,23 +357,21 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], project_folder: P
         #     log.info('Done')
 
         # Now the final sanitization
-        if not skip_sanitize:
-            sanitize(
-                str_val,
-                '{}/{}'.format(intermediates_gpkg_path, plgnize_lyr.rel_path),
-                '{}/{}'.format(vbet_path, vbet_lyr.rel_path),
-                buff_dist,
-                network_path
-            )
+        sanitize(
+            str_val,
+            '{}/{}'.format(intermediates_gpkg_path, plgnize_lyr.rel_path),
+            '{}/{}'.format(vbet_path, vbet_lyr.rel_path),
+            buff_dist,
+            network_path
+        )
         log.info('Completed thresholding at {}'.format(thr_val))
 
     # Generate Centerline at 50%
-    if create_centerline is True and not skip_sanitize:
-        centerline_lyr = RSLayer('VBET Centerlines (50% Threshold)', 'VBET_CENTERLINES_50', 'Vector', 'vbet_centerlines_50')
-        log.info('Creating a centerline at the 50% threshold')
-        LayerTypes['VBET_OUTPUTS'].add_sub_layer('VBET_CENTERLINES_50', centerline_lyr)
-        centerline = os.path.join(vbet_path, centerline_lyr.rel_path)
-        vbet_centerline(flowlines_vaa_path, os.path.join(vbet_path, 'vbet_50'), centerline)
+    centerline_lyr = RSLayer('VBET Centerlines (50% Threshold)', 'VBET_CENTERLINES_50', 'Vector', 'vbet_centerlines_50')
+    log.info('Creating a centerline at the 50% threshold')
+    LayerTypes['VBET_OUTPUTS'].add_sub_layer('VBET_CENTERLINES_50', centerline_lyr)
+    centerline = os.path.join(vbet_path, centerline_lyr.rel_path)
+    vbet_centerline(network_path, os.path.join(vbet_path, 'vbet_50'), centerline)
 
     # Now add our Geopackages to the project XML
     project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
@@ -526,18 +465,14 @@ def main():
         description='Riverscapes VBET Tool',
         # epilog="This is an epilog"
     )
-    parser.add_argument('huc', help='NHD flow line ShapeFile path', type=str)
+    parser.add_argument('huc', help='nhd watershed id', type=str)
     parser.add_argument('scenario_code', help='machine code for vbet scenario', type=str)
     parser.add_argument('inputs', help='key-value pairs of input name and path', type=str)
-    parser.add_argument('output_dir', help='Folder where output VBET project will be created', type=str)
     parser.add_argument('vaa_table', type=str)
-    parser.add_argument('--hand', help='path to existing hand', type=str)
+    parser.add_argument('output_dir', help='Folder where output VBET project will be created', type=str)
     parser.add_argument('--reach_codes', help='Comma delimited reach codes (FCode) to retain when filtering features. Omitting this option retains all features.', type=str)
     parser.add_argument('--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
-    parser.add_argument('--create_centerline', help='(optional) generate a centerline for the 50% threshold ', action='store_true', default=False)
-    parser.add_argument('--skip_sanitize', help='(optional) do not clean up final vbet Polygons', action='store_true', default=False)
-    parser.add_argument('--quick_mode', help='(optional) report only', action='store_true', default=False)
     parser.add_argument('--debug', help='Add debug tools for tracing things like memory usage at a performance cost.', action='store_true', default=False)
 
     args = dotenv.parse_args_env(parser)
@@ -553,18 +488,17 @@ def main():
     meta = parse_metadata(args.meta)
     inputs = parse_metadata(args.inputs)
 
-    # json_transform = json.dumps({"Slope": 1, "HAND": 2, "Channel": 3, "Flow Areas": 4, 'Slope MID': 5, "Slope LARGE": 6, "HAND MID": 7, "HAND LARGE": 8})
     reach_codes = args.reach_codes.split(',') if args.reach_codes else None
 
     try:
         if args.debug is True:
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output_dir, 'vbet_mem.log')
-            retcode, max_obj = ThreadRun(vbet, memfile, args.huc, args.scenario_code, inputs, args.output_dir, args.vaa_table, reach_codes, args.create_centerline, meta, hand=args.hand, skip_sanitize=False, quick_mode=True)
+            retcode, max_obj = ThreadRun(vbet, memfile, args.huc, args.scenario_code, inputs, args.vaa_table, args.output_dir, reach_codes, meta)
             log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
 
         else:
-            vbet(args.huc, args.scenario_code, inputs, args.output_dir, args.vaa_table, reach_codes, args.create_centerline, meta, hand=args.hand, skip_sanitize=False, quick_mode=True)
+            vbet(args.huc, args.scenario_code, inputs, args.vaa_table, args.output_dir, reach_codes, meta)
 
     except Exception as e:
         log.error(e)

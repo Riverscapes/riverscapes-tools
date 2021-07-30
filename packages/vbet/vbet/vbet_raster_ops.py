@@ -144,6 +144,10 @@ def proximity_raster(src_raster_path: str, out_raster_path: str, dist_units="PIX
             # scrips_dir = next(p for p in sys.path if p.endswith('.venv'))
             # script = os.path.join(scrips_dir, 'Scripts', 'gdal_calc.py')
             # run_subprocess(os.path.dirname(tempfile.filepath), ['python', script, '-A', temp_path, f'--outfile={dist_file}', f'--calc=A/{dist_factor}', '--co=COMPRESS=LZW'])
+
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+
             temp_path = dist_file
 
         # Preserve the nodata from the source
@@ -152,8 +156,8 @@ def proximity_raster(src_raster_path: str, out_raster_path: str, dist_units="PIX
         else:
             shutil.copyfile(temp_path, out_raster_path)
 
-        if os.path.exists(dist_file):
-            os.remove(dist_file)
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
 
         log.info('completed in {}'.format(tmr.toString()))
 
