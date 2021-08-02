@@ -28,7 +28,7 @@
         "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhd_data.sqlite/NHDPlusFlowlineVAA",
         "{env:DATA_ROOT}/vbet/${input:HUC}",
         "--reach_codes",
-        "33400,46003,46006,46007,55800",
+        "33400,46000,46003,46006,46007,55800",
         "--meta",
         "Runner=VSCode",
         "--verbose",
@@ -60,7 +60,7 @@
       "console": "integratedTerminal",
       "args": [
         "{env:DATA_ROOT}/vbet/${input:HUC}/project.rs.xml",
-        "{env:DATA_ROOT}/rs_context/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/rs_context/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/rs_context/${input:HUC}/project.rs.xml"
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/taudem/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/channel_area/${input:HUC}/project.rs.xml"
       ]
     },    
     {
@@ -70,9 +70,6 @@
       "module": "vbet.vbet_report",
       "console": "integratedTerminal",
       "args": [
-        "KW_TESTING",
-        "{env:DATA_ROOT}/vbet/${input:HUC}/inputs/vbet_inputs.gpkg",
-        "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg",
         "{env:DATA_ROOT}/vbet/${input:HUC}/project.rs.xml",
         "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet_report.html"
       ]
