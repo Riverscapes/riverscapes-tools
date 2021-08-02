@@ -12,14 +12,15 @@ from vbet.vbet_database import load_configuration
 
 class VBETReport(RSReport):
 
-    def __init__(self, scenario_id, inputs_database, results_database, report_path, rs_project):
+    def __init__(self, report_path, rs_project):
         super().__init__(rs_project, report_path)
         self.log = Logger('VBET Report')
-        self.inputs_database = inputs_database
-        self.results_database = results_database
 
         self.images_dir = os.path.join(os.path.dirname(report_path), 'images')
         safe_makedirs(self.images_dir)
+
+        inputs_database = os.path.join(rs_project.project_dir, rs_project.XMLBuilder.find('.//Geopackage[@id="INPUTS"]/Path').text)
+        scenario_id = rs_project.get_metadata_dict()['Scenario Name']
 
         self.vbet_run = load_configuration(scenario_id, inputs_database)
 
@@ -78,14 +79,11 @@ class VBETReport(RSReport):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('scenario_code')
-    parser.add_argument('input_database')
-    parser.add_argument('results_database')
     parser.add_argument('projectxml', help='Path to the VBET project.rs.xml', type=str)
     parser.add_argument('report_path', help='Output path where report will be generated', type=str)
     args = dotenv.parse_args_env(parser)
 
     cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/VBET.xsd', __version__)
     project = RSProject(cfg, args.projectxml)
-    report = VBETReport(args.scenario_code, args.input_database, args.results_database, args.report_path, project)
+    report = VBETReport(args.report_path, project)
     report.write()

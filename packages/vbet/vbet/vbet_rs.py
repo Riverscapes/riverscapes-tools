@@ -11,10 +11,12 @@ from vbet.vbet_report import VBETReport
 lyrs_in_out = {
     # VBET_ID: INPUT_ID
     'SLOPE_RASTER': 'SLOPE',
-    'HAND_RASTER': 'HAND',
     'HILLSHADE': 'HILLSHADE',
     'FLOWLINES': 'NHDFlowline',
-    'FLOW_AREA': 'NHDArea'
+    'FLOW_AREAS': 'NHDArea',
+    'HAND_RASTER': 'HAND_RASTER',
+    'TWI_RASTER': 'TWI_RASTER',
+    'CHANNEL_AREA_POLYGONS': 'CHANNEL_AREA'
 }
 
 
