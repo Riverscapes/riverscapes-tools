@@ -58,7 +58,7 @@ rscli download $CHANNEL_AREA_DIR --type "ChannelArea" --meta "huc8=$HUC" \
   --tags "$RSCONTEXT_TAGS" --no-input --verbose --program "$PROGRAM"
 
 rscli download $TAUDEM_DIR --type "TauDEM" --meta "huc8=$HUC" \
-  --file-filter "(hand|twi)" \
+  --file-filter "(outputs)" \
   --tags "$RSCONTEXT_TAGS" --no-input --verbose --program "$PROGRAM"
 
 ##########################################################################################
