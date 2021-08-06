@@ -11,7 +11,22 @@
       // "default": "17070202" // North Fork John Day
       "default": "17060304" // Really small HUC
       // "default": "17060103" // Asotin
-    }
+    },
+    {
+      "type": "promptString",
+      "id": "CHANNEL",
+      "description": "path to channel lines or polygon"
+    },
+    {
+      "type": "promptString",
+      "id": "DEM",
+      "description": "path to DEM"
+    },
+    {      
+      "type": "promptString",
+      "id": "EPSG",
+      "description": "EPSG code",
+      "default": "4326"}
   ],
   "configurations": [
     {
@@ -43,15 +58,15 @@
       "console": "integratedTerminal",
       "args": [
         "${input:HUC}",
-        "lines.shp",
-        "LiDAR.tif",
+        "${input:CHANNEL}",
+        "${input:DEM}",
         "{env:DATA_ROOT}/taudem/${input:HUC}",
         //"--mask",
         //"{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/mask",
         //"--hillshade",
         //"{env:DATA_ROOT}/rs_context/${input:HUC}/topography/dem_hillshade.tif",
         "--epsg",
-        "2927",
+        "${input:EPSG}",
         "--meta",
         "Runner=VSCode",
         "--verbose",
