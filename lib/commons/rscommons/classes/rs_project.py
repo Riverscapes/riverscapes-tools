@@ -18,6 +18,7 @@ from osgeo import ogr
 from copy import copy
 
 from rscommons import Logger
+from rscommons.rspaths import parse_posix_path
 from rscommons.classes.xml_builder import XMLBuilder
 from rscommons.util import safe_makedirs
 from rscommons.vector_ops import copy_feature_class
@@ -226,47 +227,6 @@ class RSProject:
 
         return file_path
 
-    def add_realization(self, id, name, meta=None):
-        """name: 'Realization'
-        Arguments:
-            id {[type]} -- [description]
-            name {[type]} -- [description]
-        Returns:
-            [type] -- [description]
-        """
-        real_element = self.XMLBuilder.find('Realizations')
-        if not real_element:
-            real_element = self.XMLBuilder.add_sub_element(self.XMLBuilder.root, "Realizations")
-
-        realization_id = self.getUniqueTypeID(real_element, id, 'RZ')
-
-        brat_element = self.XMLBuilder.add_sub_element(real_element, id, attribs={
-            'dateCreated': datetime.datetime.now().isoformat(),
-            'guid': str(uuid.uuid4()),
-            'id': realization_id
-        })
-
-        self.XMLBuilder.add_sub_element(brat_element, "Name", name)
-
-        inputs_element = self.XMLBuilder.add_sub_element(brat_element, 'Inputs')
-        analyses_element = self.XMLBuilder.add_sub_element(inputs_element, 'Analyses')
-        analysis_element = self.XMLBuilder.add_sub_element(analyses_element, 'Analysis')
-        self.XMLBuilder.add_sub_element(analyses_element, 'Name', 'BRAT Analysis')
-        output_element = self.XMLBuilder.add_sub_element(analysis_element, 'Outputs')
-
-        folder = os.path.join(os.path.dirname(self.xml_path), _folder_analyses)
-        abs_path = self.get_unique_path(folder, LayerTypes['RESULT']['FileName'], 'shp')
-
-        output_id = self.getUniqueTypeID(real_element, id, 'Output')
-        nodVector = self.XMLBuilder.add_sub_element(output_element, 'Vector', attribs={
-            'guid': str(uuid.uuid4()),
-            'id': output_id
-        })
-        self.XMLBuilder.add_sub_element(nodVector, 'Name', 'BRAT Network')
-        self.XMLBuilder.add_sub_element(nodVector, 'Path', os.path.relpath(abs_path, os.path.dirname(self.xml_path)))
-        self.XMLBuilder.write()
-        return abs_path
-
     def get_relative_path(self, abs_path):
         return abs_path[len() + 1:]
 
@@ -284,10 +244,13 @@ class RSProject:
         }
         nod_dataset = self.XMLBuilder.add_sub_element(parent_node, xml_tag, attribs=attribs)
         self.XMLBuilder.add_sub_element(nod_dataset, 'Name', rs_lyr.name)
+
+        # Sanitize our paths to always produce linux-style slashes
         if rel_path:
-            self.XMLBuilder.add_sub_element(nod_dataset, 'Path', path_val)
+            self.XMLBuilder.add_sub_element(nod_dataset, 'Path', parse_posix_path(path_val))
         else:
-            self.XMLBuilder.add_sub_element(nod_dataset, 'Path', os.path.relpath(path_val, os.path.dirname(self.xml_path)))
+            posix_path_val = parse_posix_path(os.path.relpath(path_val, os.path.dirname(self.xml_path)))
+            self.XMLBuilder.add_sub_element(nod_dataset, 'Path', posix_path_val)
         self.XMLBuilder.write()
         return nod_dataset
 
