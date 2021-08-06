@@ -51,7 +51,8 @@ initGDALOGRErrors()
 
 cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/VBET.xsd', __version__)
 
-thresh_vals = {"50": 0.5, "60": 0.6, "70": 0.7, "80": 0.8, "90": 0.9, "100": 1}
+#thresh_vals = {"50": 0.5, "60": 0.6, "70": 0.7, "80": 0.8, "90": 0.9, "100": 1}
+thresh_vals = {'80': 0.80, '68': 0.68}
 
 LayerTypes = {
     'DEM': RSLayer('DEM', 'DEM', 'Raster', 'inputs/dem.tif'),
@@ -204,8 +205,8 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
         transform_zone_rs = RSLayer(f'Transform Zones for {zone}', f'TRANSFORM_ZONE_{zone.upper()}', 'Raster', raster_name)
         project.add_project_raster(proj_nodes['Intermediates'], transform_zone_rs)
 
-    for raster_name in ['EVIDENCE_TOPO', 'EVIDENCE_CHANNEL']:
-        out_rasters[raster_name] = os.path.join(project_folder, LayerTypes[raster_name].rel_path)
+    # for raster_name in ['EVIDENCE_TOPO', 'EVIDENCE_CHANNEL']:
+    #     out_rasters[raster_name] = os.path.join(project_folder, LayerTypes[raster_name].rel_path)
     evidence_raster = os.path.join(project_folder, LayerTypes['VBET_EVIDENCE'].rel_path)
 
     # Open evidence rasters concurrently. We're looping over windows so this shouldn't affect
@@ -238,9 +239,9 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
             else:
                 normalized[name] = np.ma.MaskedArray(vbet_run['Transforms'][name][0](block[name].data), mask=block[name].mask)
 
-        fvals_topo = normalized['Slope'] * normalized['HAND']
-        fvals_channel = normalized['Channel']  # , normalized['Flow Areas'])
-        fvals_evidence = np.maximum(fvals_topo, fvals_channel)
+        fvals_evidence = np.ma.mean([normalized['Slope'], normalized['HAND'], normalized['Channel'], normalized['TWI']], axis=0)
+        # fvals_channel = normalized['Channel']  # , normalized['Flow Areas'])
+        # fvals_evidence = np.maximum(fvals_topo, fvals_channel)
 
         # Fill the masked values with the appropriate nodata vals
         # Unthresholded in the base band (mostly for debugging)
@@ -251,8 +252,8 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
         write_rasters['NORMALIZED_CHANNEL_DISTANCE'].write(normalized['Channel'].astype('float32').filled(out_meta['nodata']), window=window, indexes=1)
         write_rasters['NORMALIZED_TWI'].write(normalized['TWI'].astype('float32').filled(out_meta['nodata']), window=window, indexes=1)
 
-        write_rasters['EVIDENCE_CHANNEL'].write(np.ma.filled(np.float32(fvals_channel), out_meta['nodata']), window=window, indexes=1)
-        write_rasters['EVIDENCE_TOPO'].write(np.ma.filled(np.float32(fvals_topo), out_meta['nodata']), window=window, indexes=1)
+        # write_rasters['EVIDENCE_CHANNEL'].write(np.ma.filled(np.float32(fvals_channel), out_meta['nodata']), window=window, indexes=1)
+        # write_rasters['EVIDENCE_TOPO'].write(np.ma.filled(np.float32(fvals_topo), out_meta['nodata']), window=window, indexes=1)
     progbar.finish()
 
     # Close all rasters here
@@ -367,11 +368,11 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
         log.info('Completed thresholding at {}'.format(thr_val))
 
     # Generate Centerline at 50%
-    centerline_lyr = RSLayer('VBET Centerlines (50% Threshold)', 'VBET_CENTERLINES_50', 'Vector', 'vbet_centerlines_50')
-    log.info('Creating a centerline at the 50% threshold')
-    LayerTypes['VBET_OUTPUTS'].add_sub_layer('VBET_CENTERLINES_50', centerline_lyr)
-    centerline = os.path.join(vbet_path, centerline_lyr.rel_path)
-    vbet_centerline(network_path, os.path.join(vbet_path, 'vbet_50'), centerline)
+    # centerline_lyr = RSLayer('VBET Centerlines (50% Threshold)', 'VBET_CENTERLINES_50', 'Vector', 'vbet_centerlines_50')
+    # log.info('Creating a centerline at the 50% threshold')
+    # LayerTypes['VBET_OUTPUTS'].add_sub_layer('VBET_CENTERLINES_50', centerline_lyr)
+    # centerline = os.path.join(vbet_path, centerline_lyr.rel_path)
+    # vbet_centerline(network_path, os.path.join(vbet_path, 'vbet_50'), centerline)
 
     # Now add our Geopackages to the project XML
     project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
