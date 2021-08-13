@@ -15,16 +15,18 @@ import time
 from typing import Dict, List
 
 # LEave OSGEO import alone. It is necessary even if it looks unused
-from osgeo import gdal
-from rscommons.classes.rs_project import RSMeta, RSMetaTypes
+from osgeo import gdal, osr
+from osgeo.ogr import Layer
+from rscommons import hand
 from rscommons.classes.vector_classes import get_shp_or_gpkg, VectorBase
-
+from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.util import safe_makedirs, parse_metadata, pretty_duration
 from rscommons import RSProject, RSLayer, ModelConfig, Logger, dotenv, initGDALOGRErrors
 from rscommons import GeopackageLayer
 from rscommons.vector_ops import copy_feature_class
 from rscommons.hand import hand_rasterize, run_subprocess
 from rscommons.raster_warp import raster_warp
+from rscommons.geographic_raster import gdal_dem_geographic
 
 from taudem.taudem_report import TauDEMReport
 from taudem.__version__ import __version__
@@ -50,6 +52,7 @@ LayerTypes = {
     'DEM_MASKED': RSLayer('DEM Masked', 'DEM_MASKED', 'Raster', 'intermediates/dem_masked.tif'),
     'PITFILL': RSLayer('TauDEM Pitfill', 'PITFILL', 'Raster', 'intermediates/pitfill.tif'),
     'DINFFLOWDIR_ANG': RSLayer('TauDEM D-Inf Flow Directions', 'DINFFLOWDIR_ANG', 'Raster', 'intermediates/dinfflowdir_ang.tif'),
+    'D8FLOWDIR_P': RSLayer('TauDEM D8 Flow Directions', 'D8FLOWDIR_P', 'Raster', 'intermediates/d8flowdir_p.tif'),
     'AREADINF_SCA': RSLayer('TauDEM D-Inf Contributing Area', 'AREADINF_SCA', 'Raster', 'intermediates/areadinf_sca.tif'),
     'RASTERIZED_CHANNEL': RSLayer('Rasterized Channel', 'RASTERIZED_CHANNEL', 'Raster', 'intermediates/rasterized_channel.tif'),
     # 'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEIDATES', 'Geopackage', 'intermediates/hand_intermediates.gpkg', {
@@ -57,13 +60,15 @@ LayerTypes = {
 
     # Outputs:
     'DINFFLOWDIR_SLP': RSLayer('TauDEM D-Inf Flow Directions Slope', 'DINFFLOWDIR_SLP', 'Raster', 'outputs/dinfflowdir_slp.tif'),
+    'SLOPEAVEDOWN_SLPD': RSLayer('TauDEM Slope Average Down', 'SLOPEAVEDOWN_SLPD', 'Raster', 'outputs/slopeavedown_slpd.tif'),
     'HAND_RASTER': RSLayer('Hand Raster', 'HAND_RASTER', 'Raster', 'outputs/HAND.tif'),
     'TWI_RASTER': RSLayer('TWI Raster', 'TWI_RASTER', 'Raster', 'outputs/twi.tif'),
-    'REPORT': RSLayer('RSContext Report', 'REPORT', 'HTMLFile', 'outputs/taudem.html')
+    'GDAL_SLOPE': RSLayer('Slope raster (GDAL)', 'GDAL_SLOPE', 'Raster', 'outputs/gdal_slope.tif'),
+    'REPORT': RSLayer('RSContext Report', 'REPORT', 'HTMLFile', 'outputs/hand.html')
 }
 
 
-def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, hillshade: Path, project_folder: Path, mask_lyr_path: Path = None, epsg: int = cfg.OUTPUT_EPSG, meta: Dict[str, str] = None):
+def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, project_folder: Path, mask_lyr_path: Path = None, epsg: int = cfg.OUTPUT_EPSG, meta: Dict[str, str] = None):
     """Run TauDEM tools to generate a Riverscapes TauDEM project, including HAND, TWI, Dinf Slope and other intermediate raster products.
 
     Args:
@@ -92,8 +97,17 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, hillshade: Path
 
     # Copy the inp
     _proj_dem_node, proj_dem = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], orig_dem)
-    if hillshade is not None:
-        _hillshade_node, hillshade = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], hillshade)
+    # if hillshade is not None:
+    #    _hillshade_node, hillshade = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], hillshade)
+
+    # Find EPSG from dem
+    dem = os.path.join(project_folder, LayerTypes['DEM'].rel_path)
+    d = gdal.Open(dem)
+    proj = osr.SpatialReference(wkt=d.GetProjection())
+    epsg = int(proj.GetAttrValue('AUTHORITY', 1))
+    gt = d.GetGeoTransform()
+    cell_resolution = gt[1]
+    cell_meters = cell_resolution / GeopackageLayer.rough_convert_metres_to_raster_units(dem, 1) if epsg == 4326 else cell_resolution
 
     # Copy input shapes to a geopackage
     inputs_gpkg_path = os.path.join(project_folder, LayerTypes['INPUTS'].rel_path)
@@ -136,6 +150,24 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, hillshade: Path
     hand_rasterize(channel_vector, hand_dem, path_rasterized_drainage)
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['RASTERIZED_CHANNEL'])
 
+    # GDAL Products
+    # Hillshade
+    hillshade = os.path.join(project_folder, LayerTypes['HILLSHADE'].rel_path)
+    if epsg == 4326:
+        gdal_dem_geographic(hand_dem, hillshade, 'hillshade')
+    else:
+        gdal.DEMProcessing(hillshade, hand_dem, 'hillshade')
+    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['HILLSHADE'])
+
+    # Slope
+    gdal_slope = os.path.join(project_folder, LayerTypes['GDAL_SLOPE'].rel_path)
+    if epsg == 4326:
+        gdal_dem_geographic(hand_dem, gdal_slope, 'slope')
+    else:
+        gdal.DEMProcessing(gdal_slope, hand_dem, 'slope')
+    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['GDAL_SLOPE'])
+
+    start_time = time.time()
     log.info('Starting TauDEM processes')
 
     # PitRemove
@@ -147,7 +179,7 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, hillshade: Path
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['PITFILL'])
 
     # Flow Dir
-    log.info("Finding flow direction")
+    log.info("Finding dinf flow direction")
     path_ang = os.path.join(project_folder, LayerTypes['DINFFLOWDIR_ANG'].rel_path)
     path_slp = os.path.join(project_folder, LayerTypes['DINFFLOWDIR_SLP'].rel_path)
     dinfflowdir_status = run_subprocess(intermediates_path, ["mpiexec", "-n", NCORES, "dinfflowdir", "-fel", path_pitfill, "-ang", path_ang, "-slp", path_slp])
@@ -179,6 +211,22 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, hillshade: Path
     if twi_status != 0 or not os.path.isfile(twi_raster):
         raise Exception('TauDEM: TWI failed')
     project.add_project_raster(proj_nodes['Outputs'], LayerTypes['TWI_RASTER'])
+
+    # Generate SlopeAveDown
+    log.info("Finding d8 flow direction")
+    d8_raster = os.path.join(project_folder, LayerTypes['D8FLOWDIR_P'].rel_path)
+    d8_status = run_subprocess(intermediates_path, ["mpiexec", "-n", NCORES, "d8flowdir", "-p", d8_raster, '-fel', path_pitfill])
+    if d8_status != 0 or not os.path.isfile(d8_raster):
+        raise Exception('TauDEM: D8Flowdir')
+    project.add_project_raster(proj_nodes['Outputs'], LayerTypes['D8FLOWDIR_P'])
+
+    log.info("Generating SlopeAveDown")
+    slpd_raster = os.path.join(project_folder, LayerTypes['SLOPEAVEDOWN_SLPD'].rel_path)
+    dn = cell_meters
+    slpd_status = run_subprocess(intermediates_path, ["mpiexec", "-n", NCORES, "slopeavedown", "-p", d8_raster, "-fel", path_pitfill, '-slpd', slpd_raster, "-dn", str(dn)])
+    if slpd_status != 0 or not os.path.isfile(slpd_raster):
+        raise Exception('TauDEM: SlopeAveDown')
+    project.add_project_raster(proj_nodes['Outputs'], LayerTypes['SLOPEAVEDOWN_SLPD'])
 
     ellapsed_time = time.time() - start_time
     project.add_metadata([
@@ -259,7 +307,7 @@ def main():
             log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
 
         else:
-            taudem(args.huc, args.channel, args.dem, args.hillshade, args.output_dir, args.mask, epsg, meta)
+            taudem(args.huc, args.channel, args.dem, args.output_dir, args.mask, epsg, meta)
 
     except Exception as e:
         log.error(e)
