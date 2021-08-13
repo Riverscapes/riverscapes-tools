@@ -69,11 +69,11 @@ LayerTypes = {
         'CATCHMENTS': RSLayer('NHD Catchments', 'CATCHMENTS', 'Vector', 'catchments'),
     }),
     'CHANNEL_AREA_RASTER': RSLayer('Channel Area Raster', 'CHANNEL_AREA_RASTER', 'Raster', 'intermediates/channelarea.tif'),
-    'CHANNEL_DISTANCE': RSLayer('Channel Euclidean Distance', 'CHANNEL_DISTANCE', "Raster", "intermediates/ChannelEuclideanDist.tif"),
+    # 'CHANNEL_DISTANCE': RSLayer('Channel Euclidean Distance', 'CHANNEL_DISTANCE', "Raster", "intermediates/ChannelEuclideanDist.tif"),
     # DYNAMIC: 'DA_ZONE_<RASTER>': RSLayer('Drainage Area Zone Raster', 'DA_ZONE_RASTER', "Raster", "intermediates/.tif"),
     'NORMALIZED_SLOPE': RSLayer('Normalized Slope', 'NORMALIZED_SLOPE', "Raster", "intermediates/nLoE_Slope.tif"),
     'NORMALIZED_HAND': RSLayer('Normalized HAND', 'NORMALIZED_HAND', "Raster", "intermediates/nLoE_Hand.tif"),
-    'NORMALIZED_CHANNEL_DISTANCE': RSLayer('Normalized Channel Distance', 'NORMALIZED_CHANNEL_DISTANCE', "Raster", "intermediates/nLoE_ChannelDist.tif"),
+    # 'NORMALIZED_CHANNEL_DISTANCE': RSLayer('Normalized Channel Distance', 'NORMALIZED_CHANNEL_DISTANCE', "Raster", "intermediates/nLoE_ChannelDist.tif"),
     'NORMALIZED_TWI': RSLayer('Normalized Topographic Wetness Index (TWI)', 'NORMALIZED_TWI', "Raster", "intermediates/nLoE_TWI.tif"),
     'EVIDENCE_TOPO': RSLayer('Topo Evidence', 'EVIDENCE_TOPO', 'Raster', 'intermediates/Topographic_Evidence.tif'),
     'EVIDENCE_CHANNEL': RSLayer('Channel Evidence', 'EVIDENCE_CHANNEL', 'Raster', 'intermediates/Channel_Evidence.tif'),
@@ -164,19 +164,19 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
         out_rasters['NORMALIZED_SLOPE'] = os.path.join(project_folder, LayerTypes['NORMALIZED_SLOPE'].rel_path)
 
     # Rasterize the channel polygon and write to raster
-    if 'Channel' in vbet_run['Inputs']:
-        log.info('Writing channel raster using slope as a template')
-        channel_area_raster = os.path.join(project_folder, LayerTypes['CHANNEL_AREA_RASTER'].rel_path)
-        rasterize(project_inputs['CHANNEL_AREA_POLYGONS'], channel_area_raster, project_inputs['SLOPE_RASTER'], all_touched=True)
-        project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['CHANNEL_AREA_RASTER'])
+    # if 'Channel' in vbet_run['Inputs']:
+    log.info('Writing channel raster using slope as a template')
+    channel_area_raster = os.path.join(project_folder, LayerTypes['CHANNEL_AREA_RASTER'].rel_path)
+    rasterize(project_inputs['CHANNEL_AREA_POLYGONS'], channel_area_raster, project_inputs['SLOPE_RASTER'], all_touched=True)
+    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['CHANNEL_AREA_RASTER'])
 
-        log.info('Generating Channel Proximity raster')
-        channel_dist_raster = os.path.join(project_folder, LayerTypes['CHANNEL_DISTANCE'].rel_path)
-        proximity_raster(channel_area_raster, channel_dist_raster, dist_units='GEO', dist_factor=degree_factor)
-        project.add_project_raster(proj_nodes["Intermediates"], LayerTypes['CHANNEL_DISTANCE'])
+    # log.info('Generating Channel Proximity raster')
+    # channel_dist_raster = os.path.join(project_folder, LayerTypes['CHANNEL_DISTANCE'].rel_path)
+    # proximity_raster(channel_area_raster, channel_dist_raster, dist_units='GEO', dist_factor=degree_factor)
+    # project.add_project_raster(proj_nodes["Intermediates"], LayerTypes['CHANNEL_DISTANCE'])
 
-        in_rasters['Channel'] = channel_dist_raster
-        out_rasters['NORMALIZED_CHANNEL_DISTANCE'] = os.path.join(project_folder, LayerTypes['NORMALIZED_CHANNEL_DISTANCE'].rel_path)
+    in_rasters['Channel'] = channel_area_raster
+    # out_rasters['NORMALIZED_CHANNEL_DISTANCE'] = os.path.join(project_folder, LayerTypes['NORMALIZED_CHANNEL_DISTANCE'].rel_path)
 
     # Generate HAND from dem and rasterized flow polygons
     if 'HAND' in vbet_run['Inputs']:
@@ -207,8 +207,8 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
         transform_zone_rs = RSLayer(f'Transform Zones for {zone}', f'TRANSFORM_ZONE_{zone.upper()}', 'Raster', raster_name)
         project.add_project_raster(proj_nodes['Intermediates'], transform_zone_rs)
 
-    # for raster_name in ['EVIDENCE_TOPO', 'EVIDENCE_CHANNEL']:
-    #     out_rasters[raster_name] = os.path.join(project_folder, LayerTypes[raster_name].rel_path)
+    for raster_name in ['EVIDENCE_TOPO', 'EVIDENCE_CHANNEL']:
+        out_rasters[raster_name] = os.path.join(project_folder, LayerTypes[raster_name].rel_path)
     evidence_raster = os.path.join(project_folder, LayerTypes['VBET_EVIDENCE'].rel_path)
 
     # Open evidence rasters concurrently. We're looping over windows so this shouldn't affect
@@ -241,9 +241,9 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
             else:
                 normalized[name] = np.ma.MaskedArray(vbet_run['Transforms'][name][0](block[name].data), mask=block[name].mask)
 
-        fvals_evidence = np.ma.mean([normalized['Slope'], normalized['HAND'], normalized['Channel'], normalized['TWI']], axis=0)
-        # fvals_channel = normalized['Channel']  # , normalized['Flow Areas'])
-        # fvals_evidence = np.maximum(fvals_topo, fvals_channel)
+        fvals_topo = np.ma.mean([normalized['Slope'], normalized['HAND'], normalized['TWI']], axis=0)
+        fvals_channel = 0.995 * block['Channel']
+        fvals_evidence = np.maximum(fvals_topo, fvals_channel)
 
         # Fill the masked values with the appropriate nodata vals
         # Unthresholded in the base band (mostly for debugging)
@@ -251,11 +251,11 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
 
         write_rasters['NORMALIZED_SLOPE'].write(normalized['Slope'].astype('float32').filled(out_meta['nodata']), window=window, indexes=1)
         write_rasters['NORMALIZED_HAND'].write(normalized['HAND'].astype('float32').filled(out_meta['nodata']), window=window, indexes=1)
-        write_rasters['NORMALIZED_CHANNEL_DISTANCE'].write(normalized['Channel'].astype('float32').filled(out_meta['nodata']), window=window, indexes=1)
+        # write_rasters['NORMALIZED_CHANNEL_DISTANCE'].write(normalized['Channel'].astype('float32').filled(out_meta['nodata']), window=window, indexes=1)
         write_rasters['NORMALIZED_TWI'].write(normalized['TWI'].astype('float32').filled(out_meta['nodata']), window=window, indexes=1)
 
-        # write_rasters['EVIDENCE_CHANNEL'].write(np.ma.filled(np.float32(fvals_channel), out_meta['nodata']), window=window, indexes=1)
-        # write_rasters['EVIDENCE_TOPO'].write(np.ma.filled(np.float32(fvals_topo), out_meta['nodata']), window=window, indexes=1)
+        write_rasters['EVIDENCE_CHANNEL'].write(np.ma.filled(np.float32(fvals_channel), out_meta['nodata']), window=window, indexes=1)
+        write_rasters['EVIDENCE_TOPO'].write(np.ma.filled(np.float32(fvals_topo), out_meta['nodata']), window=window, indexes=1)
     progbar.finish()
 
     # Close all rasters here
