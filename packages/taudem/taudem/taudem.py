@@ -53,6 +53,7 @@ LayerTypes = {
     'PITFILL': RSLayer('TauDEM Pitfill', 'PITFILL', 'Raster', 'intermediates/pitfill.tif'),
     'DINFFLOWDIR_ANG': RSLayer('TauDEM D-Inf Flow Directions', 'DINFFLOWDIR_ANG', 'Raster', 'intermediates/dinfflowdir_ang.tif'),
     'D8FLOWDIR_P': RSLayer('TauDEM D8 Flow Directions', 'D8FLOWDIR_P', 'Raster', 'intermediates/d8flowdir_p.tif'),
+    'D8FLOWDIR_SD8': RSLayer('TauDEM D8 Flow Direction Slope', 'D8FLOWDIR_SD8', 'Raster', 'intermediates/d8flowdir_sd8.tif'),
     'AREADINF_SCA': RSLayer('TauDEM D-Inf Contributing Area', 'AREADINF_SCA', 'Raster', 'intermediates/areadinf_sca.tif'),
     'RASTERIZED_CHANNEL': RSLayer('Rasterized Channel', 'RASTERIZED_CHANNEL', 'Raster', 'intermediates/rasterized_channel.tif'),
     # 'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEIDATES', 'Geopackage', 'intermediates/hand_intermediates.gpkg', {
@@ -157,7 +158,7 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, project_folder:
         gdal_dem_geographic(hand_dem, hillshade, 'hillshade')
     else:
         gdal.DEMProcessing(hillshade, hand_dem, 'hillshade')
-    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['HILLSHADE'])
+    project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'])
 
     # Slope
     gdal_slope = os.path.join(project_folder, LayerTypes['GDAL_SLOPE'].rel_path)
@@ -165,11 +166,12 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, project_folder:
         gdal_dem_geographic(hand_dem, gdal_slope, 'slope')
     else:
         gdal.DEMProcessing(gdal_slope, hand_dem, 'slope')
-    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['GDAL_SLOPE'])
+    project.add_project_raster(proj_nodes['Outputs'], LayerTypes['GDAL_SLOPE'])
 
     start_time = time.time()
     log.info('Starting TauDEM processes')
 
+    # TauDEM Products
     # PitRemove
     log.info("Filling DEM pits")
     path_pitfill = os.path.join(project_folder, LayerTypes['PITFILL'].rel_path)
@@ -215,11 +217,14 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, project_folder:
     # Generate SlopeAveDown
     log.info("Finding d8 flow direction")
     d8_raster = os.path.join(project_folder, LayerTypes['D8FLOWDIR_P'].rel_path)
-    d8_status = run_subprocess(intermediates_path, ["mpiexec", "-n", NCORES, "d8flowdir", "-p", d8_raster, '-fel', path_pitfill])
+    d8_slope_raster = os.path.join(project_folder, LayerTypes['D8FLOWDIR_SD8'].rel_path)
+    d8_status = run_subprocess(intermediates_path, ["mpiexec", "-n", NCORES, "d8flowdir", "-p", d8_raster, '-fel', path_pitfill, '-sd8', d8_slope_raster])
     if d8_status != 0 or not os.path.isfile(d8_raster):
         raise Exception('TauDEM: D8Flowdir')
-    project.add_project_raster(proj_nodes['Outputs'], LayerTypes['D8FLOWDIR_P'])
+    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['D8FLOWDIR_P'])
+    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['D8FLOWDIR_SD8'])
 
+    # Average Slope Down Distance
     log.info("Generating SlopeAveDown")
     slpd_raster = os.path.join(project_folder, LayerTypes['SLOPEAVEDOWN_SLPD'].rel_path)
     dn = cell_meters
