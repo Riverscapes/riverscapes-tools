@@ -818,23 +818,28 @@ def dissolve_feature_class(in_layer_path, out_layer_path, epsg):
         out_layer.create_feature(out_geom)
 
 
-def remove_holes_feature_class(in_layer_path, out_layer_path, min_hole_area=None):
+def remove_holes_feature_class(in_layer_path, out_layer_path, min_hole_area=None, min_polygon_area=None):
 
     with get_shp_or_gpkg(out_layer_path, write=True) as out_layer, \
             get_shp_or_gpkg(in_layer_path) as in_layer:
         # Add input Layer Fields to the output Layer if it is the one we want
         out_layer.create_layer_from_ref(in_layer)
         out_layer_defn = out_layer.ogr_layer.GetLayerDefn()
-        for feat, _counter, progbar in in_layer.iterate_features():
+        out_layer.ogr_layer.StartTransaction()
+        for feat, _counter, progbar in in_layer.iterate_features('Removing features below minimum interior ring and area size'):
             geom = feat.GetGeometryRef()
             s_geom = VectorBase.ogr2shapely(geom)
             out_s_geom = remove_holes(s_geom, min_hole_area)
+            if min_polygon_area is not None:
+                if out_s_geom.area < min_polygon_area:
+                    continue
             out_geom = VectorBase.shapely2ogr(out_s_geom)
             out_feat = ogr.Feature(out_layer_defn)
             out_feat.SetGeometry(out_geom)
             for i in range(0, out_layer.ogr_layer_def.GetFieldCount()):
                 out_feat.SetField(out_layer.ogr_layer_def.GetFieldDefn(i).GetNameRef(), feat.GetField(i))
             out_layer.ogr_layer.CreateFeature(out_feat)
+        out_layer.ogr_layer.CommitTransaction()
 
 
 def intersection(layer_path1, layer_path2, out_layer_path, epsg):
@@ -867,47 +872,44 @@ def intersection(layer_path1, layer_path2, out_layer_path, epsg):
                 out_layer.ogr_layer.CreateFeature(out_feat)
 
 
-def difference(remove_layer, from_layer, out_layer_path, epsg):
+def difference(remove_layer, target_layer, out_layer_path, epsg=None):
 
     log = Logger('feature_class_difference')
-    with get_shp_or_gpkg(out_layer_path, write=True) as out_layer, \
-            get_shp_or_gpkg(remove_layer) as layer1, \
-            get_shp_or_gpkg(from_layer) as layer2:
+    with get_shp_or_gpkg(out_layer_path, write=True) as lyr_output, \
+            get_shp_or_gpkg(remove_layer) as lyr_diff, \
+            get_shp_or_gpkg(target_layer) as lyr_target:
 
-        out_layer.create_layer_from_ref(layer2, epsg=epsg)
-        out_layer_defn = out_layer.ogr_layer.GetLayerDefn()
-
-        # create an empty geometry of the same type
-        union1 = ogr.Geometry(3)
-        # union all the geometrical features of layer 1
-        for feat, _counter, progbar in layer1.iterate_features():
-            geom = feat.GetGeometryRef()
-            if not geom.IsValid():
-                geom = geom_validity_fix(geom)
-            union1 = union1.Union(geom)
-            if not union1.IsValid():
-                union1 = geom_validity_fix(union1)
-
-        layer2.ogr_layer.StartTransaction()
-        for feat, _counter, progbar in layer2.iterate_features():
+        lyr_output.create_layer_from_ref(lyr_target)
+        lyr_output_defn = lyr_output.ogr_layer.GetLayerDefn()
+        lyr_output.ogr_layer.StartTransaction()
+        for feat_target, _counter, _progbar in lyr_target.iterate_features("Differencing Target Features"):
 
             def write_polygon(out_geom):
-                out_feat = ogr.Feature(out_layer_defn)
+                out_feat = ogr.Feature(lyr_output_defn)
                 out_feat.SetGeometry(out_geom)
-                for i in range(0, out_layer.ogr_layer_def.GetFieldCount()):
-                    out_feat.SetField(out_layer.ogr_layer_def.GetFieldDefn(i).GetNameRef(), feat.GetField(i))
-                out_layer.ogr_layer.CreateFeature(out_feat)
+                for i in range(0, lyr_output.ogr_layer_def.GetFieldCount()):
+                    out_feat.SetField(lyr_output.ogr_layer_def.GetFieldDefn(i).GetNameRef(), feat_target.GetField(i))
+                lyr_output.ogr_layer.CreateFeature(out_feat)
 
-            geom = feat.GetGeometryRef()
-            diff = geom.Difference(union1)
-            if diff.IsValid() and diff.GetGeometryName() != 'GEOMETRYCOLLECTION':
-                if diff.GetGeometryName() == 'MULTIPOLYGON':
-                    for geom in diff:
-                        write_polygon(geom)
+            geom = feat_target.GetGeometryRef()
+
+            for feat_diff, _counter, progbar in lyr_diff.iterate_features(clip_shape=geom):
+                geom_diff = feat_diff.GetGeometryRef()
+                if not geom_diff.IsValid():
+                    geom_diff = geom_validity_fix(geom_diff)
+
+                geom = geom.Difference(geom_diff)
+                if not geom.IsValid():
+                    geom = geom_validity_fix(geom)
+
+            if geom.IsValid() and geom.GetGeometryName() != 'GEOMETRYCOLLECTION':
+                if geom.GetGeometryName() == 'MULTIPOLYGON':
+                    for g in geom:
+                        write_polygon(g)
                 else:
-                    write_polygon(diff)
+                    write_polygon(geom)
 
-        layer2.ogr_layer.CommitTransaction()
+        lyr_output.ogr_layer.CommitTransaction()
 
 
 def geom_validity_fix(geom_in):

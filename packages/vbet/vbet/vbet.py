@@ -34,14 +34,14 @@ from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.util import safe_makedirs, parse_metadata, pretty_duration
 from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, dotenv, initGDALOGRErrors, TempRaster, VectorBase
 from rscommons import GeopackageLayer
-from rscommons.vector_ops import polygonize, copy_feature_class, remove_holes_feature_class
+from rscommons.vector_ops import difference, copy_feature_class, remove_holes_feature_class
 from rscommons.thiessen.vor import NARVoronoi
 from rscommons.thiessen.shapes import centerline_points
 from rscommons.vbet_network import vbet_network, create_stream_size_zones, copy_vaa_attributes, join_attributes
 
 from vbet.vbet_database import load_configuration, build_vbet_database
 from vbet.vbet_report import VBETReport
-from vbet.vbet_raster_ops import rasterize, proximity_raster, raster_clean, rasterize_attribute
+from vbet.vbet_raster_ops import rasterize, raster_clean, rasterize_attribute
 from vbet.vbet_outputs import threshold, sanitize
 from vbet.vbet_centerline import vbet_centerline
 from vbet.__version__ import __version__
@@ -86,7 +86,11 @@ LayerTypes = {
     }),
     # Same here. Sub layers are added dynamically later.
     'VBET_EVIDENCE': RSLayer('VBET Evidence Raster', 'VBET_EVIDENCE', 'Raster', 'outputs/VBET_Evidence.tif'),
-    'VBET_OUTPUTS': RSLayer('VBET', 'VBET_OUTPUTS', 'Geopackage', 'outputs/vbet.gpkg'),
+    'VBET_OUTPUTS': RSLayer('VBET', 'VBET_OUTPUTS', 'Geopackage', 'outputs/vbet.gpkg', {
+        'VBET_CHANNEL_AREA': RSLayer('VBET Channel Area', 'VBET_CHANNEL_AREA', 'Vector', 'vbet_channel_area'),
+        'ACTIVE_FLOODPLAIN': RSLayer('Active Floodplain', 'ACTIVE_FLOODPLAIN', 'Vector', 'active_floodplain'),
+        'INACTIVE_FLOODPLAIN': RSLayer('Inactive Floodplain', 'INACTIVE_FLOODPLAIN', 'Vector', 'inactive_floodplain')
+    }),
     'REPORT': RSLayer('RSContext Report', 'REPORT', 'HTMLFile', 'outputs/vbet.html')
 }
 
@@ -115,6 +119,7 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
         RSMeta('VBETTimestamp', str(int(time.time())), RSMetaTypes.TIMESTAMP),
         RSMeta("Scenario Name", scenario_code)
     ], meta)
+    epsg = cfg.OUTPUT_EPSG  # TODO read this from dem
 
     # Input Preparation
     # Make sure we're starting with a fresh slate of new geopackages
@@ -129,13 +134,13 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
             _proj_slope_node, project_inputs[input_name] = project.add_project_raster(proj_nodes['Inputs'], LayerTypes[input_name], input_path)
         else:
             project_path = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers[input_name].rel_path)
-            copy_feature_class(input_path, project_path, epsg=cfg.OUTPUT_EPSG)
+            copy_feature_class(input_path, project_path, epsg=epsg)
             project_inputs[input_name] = project_path
     project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
 
     vaa_table_name = copy_vaa_attributes(project_inputs['FLOWLINES'], vaa_table)
     vaa_fields = ['LevelPathI', 'Divergence', 'DnLevelPat'] + ['HydroSeq', 'DnHydroSeq', 'UpHydroSeq'] + ["StreamOrde"]
-    flowlines_vaa_path = join_attributes(inputs_gpkg_path, "Flowlines_VAA", os.path.basename(project_inputs['FLOWLINES']), vaa_table_name, 'NHDPlusID', vaa_fields, cfg.OUTPUT_EPSG)
+    flowlines_vaa_path = join_attributes(inputs_gpkg_path, "Flowlines_VAA", os.path.basename(project_inputs['FLOWLINES']), vaa_table_name, 'NHDPlusID', vaa_fields, epsg)
 
     # Build Transformation Tables
     build_vbet_database(inputs_gpkg_path)
@@ -148,7 +153,7 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
     # Create a copy of the flow lines with just the perennial and also connectors inside flow areas
     log.info('Building vbet network')
     network_path = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['VBET_NETWORK'].rel_path)
-    vbet_network(flowlines_vaa_path, project_inputs['FLOW_AREAS'], network_path, cfg.OUTPUT_EPSG, reach_codes)
+    vbet_network(flowlines_vaa_path, project_inputs['FLOW_AREAS'], network_path, epsg, reach_codes)
 
     # Create Zones
     log.info('Building drainage area zones')
@@ -164,34 +169,16 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
         out_rasters['NORMALIZED_SLOPE'] = os.path.join(project_folder, LayerTypes['NORMALIZED_SLOPE'].rel_path)
 
     # Rasterize the channel polygon and write to raster
-    # if 'Channel' in vbet_run['Inputs']:
     log.info('Writing channel raster using slope as a template')
     channel_area_raster = os.path.join(project_folder, LayerTypes['CHANNEL_AREA_RASTER'].rel_path)
     rasterize(project_inputs['CHANNEL_AREA_POLYGONS'], channel_area_raster, project_inputs['SLOPE_RASTER'], all_touched=True)
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['CHANNEL_AREA_RASTER'])
-
-    # log.info('Generating Channel Proximity raster')
-    # channel_dist_raster = os.path.join(project_folder, LayerTypes['CHANNEL_DISTANCE'].rel_path)
-    # proximity_raster(channel_area_raster, channel_dist_raster, dist_units='GEO', dist_factor=degree_factor)
-    # project.add_project_raster(proj_nodes["Intermediates"], LayerTypes['CHANNEL_DISTANCE'])
-
     in_rasters['Channel'] = channel_area_raster
-    # out_rasters['NORMALIZED_CHANNEL_DISTANCE'] = os.path.join(project_folder, LayerTypes['NORMALIZED_CHANNEL_DISTANCE'].rel_path)
 
     # Generate HAND from dem and rasterized flow polygons
     if 'HAND' in vbet_run['Inputs']:
         hand_raster = os.path.join(project_folder, LayerTypes['HAND_RASTER'].rel_path)
         twi_raster = os.path.join(project_folder, LayerTypes['TWI_RASTER'].rel_path)
-        # if hand:
-        #     log.info("Copying exisiting HAND Input")
-        #     _node, project_inputs['HAND'] = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['HAND_RASTER'], hand)
-        # else:
-        #     log.info("Adding HAND Input")
-        #     temp_hand_dir = os.path.join(project_folder, "intermediates", "hand_processing")
-        #     safe_makedirs(temp_hand_dir)
-
-        # create_hand_raster(project_inputs['DEM'], channel_area_raster, temp_hand_dir, hand_raster, twi_raster)
-        # project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['HAND_RASTER'])
         in_rasters['HAND'] = hand_raster
         out_rasters['NORMALIZED_HAND'] = os.path.join(project_folder, LayerTypes['NORMALIZED_HAND'].rel_path)
 
@@ -251,7 +238,6 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
 
         write_rasters['NORMALIZED_SLOPE'].write(normalized['Slope'].astype('float32').filled(out_meta['nodata']), window=window, indexes=1)
         write_rasters['NORMALIZED_HAND'].write(normalized['HAND'].astype('float32').filled(out_meta['nodata']), window=window, indexes=1)
-        # write_rasters['NORMALIZED_CHANNEL_DISTANCE'].write(normalized['Channel'].astype('float32').filled(out_meta['nodata']), window=window, indexes=1)
         write_rasters['NORMALIZED_TWI'].write(normalized['TWI'].astype('float32').filled(out_meta['nodata']), window=window, indexes=1)
 
         write_rasters['EVIDENCE_CHANNEL'].write(np.ma.filled(np.float32(fvals_channel), out_meta['nodata']), window=window, indexes=1)
@@ -267,11 +253,13 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
         project.add_project_raster(proj_nodes["Intermediates"], LayerTypes[raster_name])
     project.add_project_raster(proj_nodes['Outputs'], LayerTypes['VBET_EVIDENCE'])
 
-    buff_dist = cell_size
-    # min_hole_degrees = min_hole_area_m * (degree_factor ** 2)
+    min_geom_size = 10 * (cell_size ** 2)
 
     # Get the full paths to the geopackages
     vbet_path = os.path.join(project_folder, LayerTypes['VBET_OUTPUTS'].rel_path)
+
+    vbet_channel_area = os.path.join(vbet_path, LayerTypes['VBET_OUTPUTS'].sub_layers['VBET_CHANNEL_AREA'].rel_path)
+    copy_feature_class(project_inputs['CHANNEL_AREA_POLYGONS'], vbet_channel_area)
 
     log.info('Subdividing the network along regular intervals')
     flowline_thiessen_points_groups = centerline_points(network_path, distance=degree_factor * 10, fields=['LevelPathI'])
@@ -299,6 +287,7 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
 
     thiessen_fc = os.path.join(intermediates_gpkg_path, "ThiessenPolygonsDissolved")
 
+    vbet_threshold = {}
     for str_val, thr_val in thresh_vals.items():
         plgnize_id = 'THRESH_{}'.format(str_val)
         with TempRaster('vbet_raw_thresh_{}'.format(plgnize_id)) as tmp_raw_thresh, \
@@ -344,9 +333,8 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
                         if all(x > 0 for x in data.shape):
                             out_shapes = list(g for g, v in shapes(data, transform=mask_transform) if v == 1)
                             for out_shape in out_shapes:
-                                out_feat = ogr.Feature(out_layer_defn)
                                 out_geom = ogr.CreateGeometryFromJson(json.dumps(out_shape))
-
+                                out_feat = ogr.Feature(out_layer_defn)
                                 out_feat.SetGeometry(out_geom)
                                 for field, value in reach_attributes.items():
                                     out_feat.SetField(field, value)
@@ -354,27 +342,32 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
 
                     lyr_output.ogr_layer.CommitTransaction()
 
-        # Now polygonize the raster
-        #     log.info('Polygonizing')
-        #     polygonize(tmp_cleaned_thresh.filepath, 1, '{}/{}'.format(intermediates_gpkg_path, plgnize_lyr.rel_path), cfg.OUTPUT_EPSG)
-        #     log.info('Done')
-
         # Now the final sanitization
-        sanitize(
-            str_val,
-            '{}/{}'.format(intermediates_gpkg_path, plgnize_lyr.rel_path),
-            '{}/{}'.format(vbet_path, vbet_lyr.rel_path),
-            buff_dist,
-            network_path
-        )
-        log.info('Completed thresholding at {}'.format(thr_val))
+        # sanitize(
+        #     str_val,
+        #     '{}/{}'.format(intermediates_gpkg_path, plgnize_lyr.rel_path),
+        #     '{}/{}'.format(vbet_path, vbet_lyr.rel_path),
+        #     buff_dist,
+        #     network_path
+        # )
+        # log.info('Completed thresholding at {}'.format(thr_val))
 
-    # Generate Centerline at 50%
-    # centerline_lyr = RSLayer('VBET Centerlines (50% Threshold)', 'VBET_CENTERLINES_50', 'Vector', 'vbet_centerlines_50')
-    # log.info('Creating a centerline at the 50% threshold')
-    # LayerTypes['VBET_OUTPUTS'].add_sub_layer('VBET_CENTERLINES_50', centerline_lyr)
+        remove_holes_feature_class('{}/{}'.format(intermediates_gpkg_path, plgnize_lyr.rel_path), '{}/{}'.format(vbet_path, vbet_lyr.rel_path), min_geom_size, min_geom_size)
+        vbet_threshold[str_val] = '{}/{}'.format(vbet_path, vbet_lyr.rel_path)
+
+    # Floodplain Layers
+    active_floodplain = os.path.join(vbet_path, LayerTypes['VBET_OUTPUTS'].sub_layers['ACTIVE_FLOODPLAIN'].rel_path)
+    difference(vbet_channel_area, vbet_threshold['80'], active_floodplain, epsg)
+
+    inactive_floodplain = os.path.join(vbet_path, LayerTypes['VBET_OUTPUTS'].sub_layers['INACTIVE_FLOODPLAIN'].rel_path)
+    difference(vbet_threshold['80'], vbet_threshold['68'], inactive_floodplain, epsg)
+
+    # Generate Centerline
+    # centerline_lyr = RSLayer('VBET Centerlines', 'VBET_CENTERLINES', 'Vector', 'vbet_centerlines')
+    # log.info('Creating a centerlines')
+    # LayerTypes['VBET_OUTPUTS'].add_sub_layer('VBET_CENTERLINES', centerline_lyr)
     # centerline = os.path.join(vbet_path, centerline_lyr.rel_path)
-    # vbet_centerline(network_path, os.path.join(vbet_path, 'vbet_50'), centerline)
+    # vbet_centerline(network_path, os.path.join(vbet_path, 'vbet_68'), centerline)
 
     # Now add our Geopackages to the project XML
     project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
