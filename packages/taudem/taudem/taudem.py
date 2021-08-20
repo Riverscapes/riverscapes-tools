@@ -308,7 +308,7 @@ def main():
         if args.debug is True:
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output_dir, 'taudem_mem.log')
-            retcode, max_obj = ThreadRun(taudem, memfile, args.huc, args.channel, args.dem, args.hillshade, args.output_dir, args.mask, epsg, meta)
+            retcode, max_obj = ThreadRun(taudem, memfile, args.huc, args.channel, args.dem, args.output_dir, args.mask, epsg, meta)
             log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
 
         else:
