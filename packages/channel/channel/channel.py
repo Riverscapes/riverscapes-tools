@@ -41,6 +41,7 @@ LayerTypes = {
         'FLOWLINES': RSLayer('NHD Flowlines', 'FLOWLINES', 'Vector', 'flowlines'),
         'FLOWAREAS': RSLayer('NHD Flow Areas', 'FLOWAREAS', 'Vector', 'flowareas'),
         'WATERBODY': RSLayer('NHD Water Body Areas', 'WATER_BODIES', 'Vector', 'waterbody'),
+        'OTHER_POLYGONS': RSLayer('Other Custom channel Polygons', "CUSTOM_POLYGONS", 'Vector', 'other_channels')
     }),
     'INTERMEDIATES': RSLayer('Intermediates', 'Intermediates', 'Geopackage', 'intermediates/intermediates.gpkg', {
         'FILTERED_WATERBODY': RSLayer('NHD Waterbodies (Filtered)', 'FILTERED_WATERBODY', 'Vector', 'waterbody_filtered'),
@@ -68,7 +69,9 @@ def channel(huc: int,
             reach_code_field: str = None,
             reach_codes: Dict[str, List[str]] = None,
             epsg: int = cfg.OUTPUT_EPSG,
-            meta: Dict[str, str] = None):
+            meta: Dict[str, str] = None,
+            other_polygons: Path = None,
+            bankfull_field: str = None):
     """Create a new RS project that generates bankfull and merges with flowareas/waterbody to create channel polygons
 
     Args:
@@ -121,6 +124,10 @@ def channel(huc: int,
         proj_waterbodies = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['WATERBODY'].rel_path)
         copy_feature_class(waterbodies, proj_waterbodies, epsg=epsg)
 
+    if other_polygons is not None:
+        proj_custom_polygons = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['OTHER_POLYGONS'].rel_path)
+        copy_feature_class(other_polygons, proj_custom_polygons, epsg=epsg)
+
     project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
 
     # Generate Intermediates
@@ -134,7 +141,7 @@ def channel(huc: int,
 
         log.info('Removing flowarea islands')
         filtered_flowarea_no_islands = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['FLOW_AREA_NO_ISLANDS'].rel_path)
-        remove_holes_feature_class(filtered_flowareas, filtered_flowarea_no_islands)
+        remove_holes_feature_class(filtered_flowareas, filtered_flowarea_no_islands, min_hole_area=500)
 
     if proj_waterbodies is not None:
         log.info('Filtering waterbody polygons')
@@ -143,7 +150,7 @@ def channel(huc: int,
         if reach_code_field is not None and reach_codes['waterbody'] is not None:
             fcode_filter = f"{reach_code_field} = " + f" or {reach_code_field} = ".join([f"'{fcode}'" for fcode in reach_codes['waterbody']])
 
-        copy_feature_class(waterbodies, filtered_waterbodies, attribute_filter=fcode_filter)
+        copy_feature_class(proj_waterbodies, filtered_waterbodies, attribute_filter=fcode_filter)
 
     combined_flow_polygons = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['COMBINED_FA_WB'].rel_path)
     if filtered_waterbodies is not None and filtered_flowarea_no_islands is not None:
@@ -159,26 +166,30 @@ def channel(huc: int,
         log.info('No waterbodies or flowareas in project')
         combined_flow_polygons = None
 
-    bankfull_polygons = None
+    bankfull_polygons = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['BANKFULL_POLYGONS'].rel_path)
     if proj_flowlines is not None:
         log.info('Filtering bankfull flowline network')
         bankfull_network = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['BANKFULL_NETWORK'].rel_path)
         if reach_code_field is not None and reach_codes['flowline'] is not None:
-            vbet_network(proj_flowlines, None, bankfull_network, epsg, reach_codes['flowline'], reach_code_field)
+            vbet_network(proj_flowlines, None, bankfull_network, epsg, reach_codes['flowline'], reach_code_field, flow_areas_path_exclude=None)
         else:
             copy_feature_class(proj_flowlines, bankfull_network)
 
-        if bankfull_function is not None:
+        if bankfull_field is not None:
+            buffer_by_field(bankfull_network, bankfull_polygons, bankfull_field, epsg=epsg, centered=True)
+        elif bankfull_function is not None:
             log.info("Calculing bankfull width")
             calculate_bankfull(bankfull_network, 'bankfull_m', bankfull_function, bankfull_function_params)
-            bankfull_polygons = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['BANKFULL_POLYGONS'].rel_path)
-            buffer_by_field(bankfull_network, bankfull_polygons, "bankfull_m", cfg.OUTPUT_EPSG, centered=True)
+            buffer_by_field(bankfull_network, bankfull_polygons, "bankfull_m", epsg=epsg, centered=True)
+        else:
+            log.info("No field or equation for bankfull width was provided")
+            bankfull_polygons = None
 
     output_channel_area = os.path.join(output_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['CHANNEL_AREA'].rel_path)
     if bankfull_polygons is not None and combined_flow_polygons is not None:
         log.info('Combining Bankfull polygons with flowarea/waterbody polygons into final channel area output')
         channel_polygons = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['DIFFERENCE_POLYGONS'].rel_path)
-        difference(combined_flow_polygons, bankfull_polygons, channel_polygons, cfg.OUTPUT_EPSG)
+        difference(combined_flow_polygons, bankfull_polygons, channel_polygons)
         merge_feature_classes([channel_polygons, combined_flow_polygons], output_channel_area)
     elif bankfull_polygons is not None:
         log.info('Copying Bankfull polygons into final channel area output')
@@ -186,6 +197,9 @@ def channel(huc: int,
     elif combined_flow_polygons is not None:
         log.info('Copying filtered flowarea/waterbody polygons into final channel area output')
         copy_feature_class(combined_flow_polygons, output_channel_area)
+    elif proj_custom_polygons is not None:
+        log.info('Copying custom polygons into final channel area output')
+        copy_feature_class(proj_custom_polygons, output_channel_area)
     else:
         log.warning('No output channel polygons were produced')
 
@@ -294,6 +308,8 @@ def main():
     parser.add_argument('--precip', help='mean annual precipiation in cm')
     parser.add_argument('--prism_data')
     parser.add_argument('--huc8boundary')
+    parser.add_argument('--other_polygons')
+    parser.add_argument('--bankfull_field')
     parser.add_argument('--epsg', help='output epsg', type=int)
     parser.add_argument('--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
@@ -320,7 +336,7 @@ def main():
     if args.precip is not None:
         precip = args.precip
     elif args.prism_data is not None and args.huc8boundary is not None:
-        polygon = get_geometry_unary_union(args.huc8boundary, epsg=cfg.OUTPUT_EPSG)
+        polygon = get_geometry_unary_union(args.huc8boundary)
         precip = raster_buffer_stats2({1: polygon}, args.prism_data)[1]['Mean'] / 10
         log.info('Mean annual precipitation for HUC {} is {} cm'.format(args.huc, precip))
 
@@ -328,16 +344,17 @@ def main():
         raise ValueError('precip or prism_data and huc8boundary not provided.')
 
     bankfull_params['p'] = precip
+    epsg = int(args.epsg) if args.epsg is not None else cfg.OUTPUT_EPSG
 
     try:
         if args.debug is True:
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output_dir, 'vbet_mem.log')
-            retcode, max_obj = ThreadRun(channel, memfile, args.huc, args.flowlines, args.flowareas, args.waterbodies, args.bankfull_function, bankfull_params, args.output_dir, args.reach_code_field, reach_codes, meta=meta)
+            retcode, max_obj = ThreadRun(channel, memfile, args.huc, args.flowlines, args.flowareas, args.waterbodies, args.bankfull_function, bankfull_params, args.output_dir, args.reach_code_field, reach_codes, epsg=epsg, meta=meta, other_polygons=args.other_polygons, bankfull_field=args.bankfull_field)
             log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
 
         else:
-            channel(args.huc, args.flowlines, args.flowareas, args.waterbodies, args.bankfull_function, bankfull_params, args.output_dir, args.reach_code_field, reach_codes, meta=meta)
+            channel(args.huc, args.flowlines, args.flowareas, args.waterbodies, args.bankfull_function, bankfull_params, args.output_dir, args.reach_code_field, reach_codes, epsg=epsg, meta=meta, other_polygons=args.other_polygons, bankfull_field=args.bankfull_field)
 
     except Exception as e:
         log.error(e)
