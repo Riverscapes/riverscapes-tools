@@ -20,7 +20,7 @@ from rscommons.vector_ops import get_geometry_unary_union
 from rscommons import get_shp_or_gpkg
 
 
-def vbet_network(flow_lines_path: str, flow_areas_path: str, out_path: str, epsg: int = None, fcodes: List[str] = None, reach_code_field='FCode'):
+def vbet_network(flow_lines_path: str, flow_areas_path: str, out_path: str, epsg: int = None, fcodes: List[str] = None, reach_code_field='FCode', flow_areas_path_exclude=None):
 
     log = Logger('VBET Network')
     log.info('Generating perennial network')
@@ -32,10 +32,21 @@ def vbet_network(flow_lines_path: str, flow_areas_path: str, out_path: str, epsg
         # Add input Layer Fields to the output Layer if it is the one we want
         vbet_net.create_layer_from_ref(flow_lines_lyr, epsg=epsg)
 
+        exclude_fids = []
+        if flow_areas_path_exclude is not None:
+            with get_shp_or_gpkg(flow_areas_path_exclude) as lyr_exclude:
+                for poly_feat, *_ in lyr_exclude.iterate_features("Filtering waterbodies"):
+                    poly_geom = poly_feat.GetGeometryRef()
+                    for line_feat, *_ in flow_lines_lyr.iterate_features(clip_shape=poly_geom):
+                        line_geom = line_feat.GetGeometryRef()
+                        if line_geom.Within(poly_geom):
+                            fid = line_feat.GetFID()
+                            exclude_fids.append(fid)
+
         # Perennial features
         log.info('Incorporating perennial features')
         fcode_filter = f"{reach_code_field} = " + f" or {reach_code_field} = ".join([f"'{fcode}'" for fcode in fcodes]) if len(fcodes) > 0 else ""  # e.g. "FCode = '46006' or FCode = '55800'"
-        fids = include_features(flow_lines_lyr, vbet_net, fcode_filter)
+        fids = include_features(flow_lines_lyr, vbet_net, fcode_filter, excluded_fids=exclude_fids)
 
         # Flow area features
         if flow_areas_path is not None:
