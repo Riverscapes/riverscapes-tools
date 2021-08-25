@@ -142,7 +142,7 @@ try() {
     $RS_CONTEXT_DIR/hydrology/hydrology.gpkg/network_intersected_300m \
     $RS_CONTEXT_DIR/vegetation/existing_veg.tif \
     $RS_CONTEXT_DIR/vegetation/historic_veg.tif \
-    $VBET_DIR/outputs/vbet.gpkg/vbet_50 \
+    $VBET_DIR/outputs/vbet.gpkg/vbet_68 \
     $RS_CONTEXT_DIR/transportation/roads.shp \
     $RS_CONTEXT_DIR/transportation/railways.shp \
     $RS_CONTEXT_DIR/transportation/canals.shp \
