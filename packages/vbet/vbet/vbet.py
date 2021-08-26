@@ -337,12 +337,16 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
 
             with rasterio.open(tmp_cleaned_thresh.filepath, 'r') as raster:
                 with GeopackageLayer(thiessen_fc, write=True) as lyr_reaches, \
+                        GeopackageLayer(project_inputs['CHANNEL_AREA_POLYGONS']) as lyr_channel_area_polygons, \
                         GeopackageLayer(os.path.join(intermediates_gpkg_path, plgnize_lyr.rel_path), write=True) as lyr_output:
 
                     lyr_output.create_layer_from_ref(lyr_reaches)
 
                     out_layer_defn = lyr_output.ogr_layer.GetLayerDefn()
                     field_count = out_layer_defn.GetFieldCount()
+
+                    rejected_geoms = []
+
                     lyr_output.ogr_layer.StartTransaction()
 
                     for reach_feat, *_ in lyr_reaches.iterate_features("Processing Reaches"):
@@ -361,13 +365,45 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
                         if all(x > 0 for x in data.shape):
                             out_shapes = list(g for g, v in shapes(data, transform=mask_transform) if v == 1)
                             for out_shape in out_shapes:
+                                shape_intersected = False
                                 out_geom = ogr.CreateGeometryFromJson(json.dumps(out_shape))
                                 out_feat = ogr.Feature(out_layer_defn)
                                 out_feat.SetGeometry(out_geom)
                                 for field, value in reach_attributes.items():
                                     out_feat.SetField(field, value)
-                                lyr_output.ogr_layer.CreateFeature(out_feat)
+                                for test_feat, *_ in lyr_channel_area_polygons.iterate_features(clip_shape=out_geom):
+                                    test_geom = test_feat.GetGeometryRef()
+                                    if test_geom.Intersects(out_geom):
+                                        shape_intersected = True
+                                        lyr_output.ogr_layer.CreateFeature(out_feat)
+                                        break
+                                if shape_intersected is False:
+                                    rejected_geoms.append(out_feat)
+                    lyr_output.ogr_layer.CommitTransaction()
 
+                    save_feats = []
+                    iterate = True
+                    while iterate is True:
+                        log.info(f"Checking {len(rejected_geoms)} features for inclusion by adjacency")
+                        iterate = False
+                        rejected_geoms2 = []
+                        for out_feat in rejected_geoms:
+                            shape_intersected = False
+                            out_geom = out_feat.GetGeometryRef()
+                            for test_feat, *_ in lyr_output.iterate_features(clip_shape=out_geom):
+                                test_geom = test_feat.GetGeometryRef()
+                                if test_geom.Intersects(out_geom):  # .Buffer(0.0001)
+                                    save_feats.append(out_feat)
+                                    iterate = True
+                                    shape_intersected = True
+                                    break
+                            if shape_intersected is False:
+                                rejected_geoms2.append(out_feat)
+                        rejected_geoms = rejected_geoms2
+
+                    lyr_output.ogr_layer.StartTransaction()
+                    for feat in save_feats:
+                        lyr_output.ogr_layer.CreateFeature(feat)
                     lyr_output.ogr_layer.CommitTransaction()
 
         # Now the final sanitization
