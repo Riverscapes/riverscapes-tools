@@ -94,8 +94,29 @@ LayerTypes = {
     'REPORT': RSLayer('RSContext Report', 'REPORT', 'HTMLFile', 'outputs/vbet.html')
 }
 
+flowline_fieldmap = {
+    'NHD': {
+        'ReachID': 'NHDPlusID',
+        'PathID': 'LevelPathI',
+        'DownPathID': 'DnLevelPat',
+        'Divergence': 'Divergence',
+        'StreamOrder': 'StreamOrde'},
+    'NetMap': {
+        'ReachID': 'ID',
+        'PathID': 'CHAN_ID',
+        'DownPathID': 'DOWN_ID',
+        'Divergence': '',
+        'StreamOrder': 'STRM_ORDER'},
+    'Custom': {
+        'ReachID': 'ReachID',
+        'PathID': 'PathID',
+        'DownPathID': 'DownPathID',
+        'Divergence': 'Divergence',
+        'StreamOrder': 'StreamOrder'
+    }}
 
-def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, project_folder: Path, reach_codes: List[str], meta: Dict[str, str]):
+
+def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, project_folder: Path, reach_codes: List[str], meta: Dict[str, str], flowline_type: str = 'NHD', epsg=cfg.OUTPUT_EPSG):
     """generate vbet evidence raster and threshold polygons for a watershed
 
     Args:
@@ -117,9 +138,12 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
         RSMeta('HUC', str(huc)),
         RSMeta('VBETVersion', cfg.version),
         RSMeta('VBETTimestamp', str(int(time.time())), RSMetaTypes.TIMESTAMP),
-        RSMeta("Scenario Name", scenario_code)
+        RSMeta("Scenario Name", scenario_code),
+        RSMeta("FlowlineType", flowline_type),
     ], meta)
     epsg = cfg.OUTPUT_EPSG  # TODO read this from dem
+
+    flowline_fields = flowline_fieldmap[flowline_type]
 
     # Input Preparation
     # Make sure we're starting with a fresh slate of new geopackages
@@ -139,8 +163,11 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
     project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
 
     vaa_table_name = copy_vaa_attributes(project_inputs['FLOWLINES'], vaa_table)
-    vaa_fields = ['LevelPathI', 'Divergence', 'DnLevelPat'] + ['HydroSeq', 'DnHydroSeq', 'UpHydroSeq'] + ["StreamOrde"]
-    flowlines_vaa_path = join_attributes(inputs_gpkg_path, "Flowlines_VAA", os.path.basename(project_inputs['FLOWLINES']), vaa_table_name, 'NHDPlusID', vaa_fields, epsg)
+    if flowline_type == 'NHD':
+        vaa_fields = ['LevelPathI', 'Divergence', 'DnLevelPat']  # + ["StreamOrde"]  # + ['HydroSeq', 'DnHydroSeq', 'UpHydroSeq']
+        flowlines_vaa_path = join_attributes(inputs_gpkg_path, "Flowlines_VAA", os.path.basename(project_inputs['FLOWLINES']), vaa_table_name, 'NHDPlusID', vaa_fields, epsg)
+    else:
+        flowlines_vaa_path = project_inputs['FLOWLINES']
 
     # Build Transformation Tables
     build_vbet_database(inputs_gpkg_path)
@@ -158,7 +185,8 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
     # Create Zones
     log.info('Building drainage area zones')
     catchments_path = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['TRANSFORM_ZONES'].rel_path)
-    create_stream_size_zones(project_inputs['CATCHMENTS'], flowlines_vaa_path, 'NHDPlusID', 'StreamOrde', vbet_run['Zones'], catchments_path)
+    vaa_table_path = os.path.join(inputs_gpkg_path, vaa_table_name)
+    create_stream_size_zones(project_inputs['CATCHMENTS'], vaa_table_path, 'NHDPlusID', 'StreamOrde', vbet_run['Zones'], catchments_path)  # TODO not fully generic here. Relies on NHD catchments and vaa attributes
 
     # Create Scenario Input Rasters
     in_rasters = {}
@@ -262,7 +290,7 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
     copy_feature_class(project_inputs['CHANNEL_AREA_POLYGONS'], vbet_channel_area)
 
     log.info('Subdividing the network along regular intervals')
-    flowline_thiessen_points_groups = centerline_points(network_path, distance=degree_factor * 10, fields=['LevelPathI'])
+    flowline_thiessen_points_groups = centerline_points(network_path, distance=degree_factor * 10, fields=[flowline_fields['PathID']], divergence_field=flowline_fields['Divergence'], downlevel_field=flowline_fields['DownPathID'])  # 'LevelPathI'
     flowline_thiessen_points = [pt for group in flowline_thiessen_points_groups.values() for pt in group]
 
     # Exterior is the shell and there is only ever 1
@@ -278,12 +306,12 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
 
     # Dissolve by flowlines
     log.info("Dissolving Thiessen Polygons")
-    dissolved_polys = myVorL.dissolve_by_property('LevelPathI')
+    dissolved_polys = myVorL.dissolve_by_property(flowline_fields['PathID'])  # 'LevelPathI'
 
-    dissolved_attributes = {'LevelPathI': ogr.OFTString}
+    dissolved_attributes = {flowline_fields['PathID']: ogr.OFTString}  # 'LevelPathI'
 
     simple_save([{'geom': pt.point} for pt in flowline_thiessen_points], ogr.wkbPoint, out_srs, "ThiessenPoints", intermediates_gpkg_path)
-    simple_save([{'geom': g, 'attributes': {'LevelPathI': k}} for k, g in dissolved_polys.items()], ogr.wkbPolygon, out_srs, "ThiessenPolygonsDissolved", intermediates_gpkg_path, dissolved_attributes)
+    simple_save([{'geom': g, 'attributes': {flowline_fields['PathID']: k}} for k, g in dissolved_polys.items()], ogr.wkbPolygon, out_srs, "ThiessenPolygonsDissolved", intermediates_gpkg_path, dissolved_attributes)
 
     thiessen_fc = os.path.join(intermediates_gpkg_path, "ThiessenPolygonsDissolved")
 
@@ -455,6 +483,7 @@ def main():
     parser.add_argument('vaa_table', type=str)
     parser.add_argument('output_dir', help='Folder where output VBET project will be created', type=str)
     parser.add_argument('--reach_codes', help='Comma delimited reach codes (FCode) to retain when filtering features. Omitting this option retains all features.', type=str)
+    parser.add_argument('--flowline_type', type=str, default='NHD')
     parser.add_argument('--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
     parser.add_argument('--debug', help='Add debug tools for tracing things like memory usage at a performance cost.', action='store_true', default=False)
@@ -482,7 +511,7 @@ def main():
             log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
 
         else:
-            vbet(args.huc, args.scenario_code, inputs, args.vaa_table, args.output_dir, reach_codes, meta)
+            vbet(args.huc, args.scenario_code, inputs, args.vaa_table, args.output_dir, reach_codes, meta, flowline_type=args.flowline_type)
 
     except Exception as e:
         log.error(e)
