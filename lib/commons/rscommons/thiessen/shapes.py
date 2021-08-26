@@ -82,7 +82,7 @@ def midpoints(in_lines):
     return out_points
 
 
-def centerline_points(in_lines: Path, distance: float = 0.0, transform: Transform = None, fields=None) -> Dict[int, List[RiverPoint]]:
+def centerline_points(in_lines: Path, distance: float = 0.0, transform: Transform = None, fields=None, divergence_field=None, downlevel_field=None) -> Dict[int, List[RiverPoint]]:
     """Generates points along each line feature at specified distances from the end as well as quarter and halfway
 
     Args:
@@ -110,9 +110,9 @@ def centerline_points(in_lines: Path, distance: float = 0.0, transform: Transfor
 
             if fields:
                 for field in fields:
-                    divergence = feat.GetField('Divergence')
+                    divergence = feat.GetField(divergence_field) # 'Divergence'
                     if divergence == 2:
-                        value = feat.GetField('DnLevelPat')
+                        value = feat.GetField(downlevel_field) # 'DnLevelPat'
                     else:
                         value = feat.GetField(field)
                     props[field] = str(int(value)) if value else None
