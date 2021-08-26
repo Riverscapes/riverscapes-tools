@@ -129,6 +129,7 @@ def process_reaches(in_path: str, out_path: str, attribute_filter=None, transfor
         clip_shape ([type], optional): [description]. Defaults to None.
     """
     with get_shp_or_gpkg(in_path) as in_lyr, get_shp_or_gpkg(out_path, write=True) as out_lyr:
+        out_lyr.ogr_layer.StartTransaction()
         for feature, _counter, _progbar in in_lyr.iterate_features("Processing reaches", attribute_filter=attribute_filter, clip_shape=clip_shape):
             # get the input geometry and reproject the coordinates
             geom = feature.GetGeometryRef()
@@ -148,3 +149,4 @@ def process_reaches(in_path: str, out_path: str, attribute_filter=None, transfor
             # Add new feature to output Layer
             out_feature.SetGeometry(geom)
             out_lyr.ogr_layer.CreateFeature(out_feature)
+        out_lyr.ogr_layer.CommitTransaction()
