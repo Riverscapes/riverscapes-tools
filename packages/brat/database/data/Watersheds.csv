@@ -1622,7 +1622,7 @@ WatershedID,Name,AreaSqkm,States,Qlow,Q2,MaxDrainage,EcoregionID,Notes,Metadata
 14030002,Upper Dolores,5587.79,CO_UT,,,,20,,
 14030003,San Miguel,4022.98,CO,,,,21,,
 14030004,Lower Dolores,2390.29,CO_UT,,,,20,,
-14030005,Upper Colorado-Kane Springs,5891.7,CO_UT,,,,20,,
+14030005,Upper Colorado-Kane Springs,5891.7,CO_UT,0.0000000047863*(DRNAREA^1.06)*(PRECIP^4.8),0.070794578*(DRNAREA^0.75)*(A7500^-0.41)*(PRECIP^2.15),59485.0,20,,
 14040101,Upper Green,7601.9,WY,,,,18,,
 14040102,New Fork,3264.76,WY,,,,18,,
 14040103,Upper Green-Slate,3963.5,WY,,,,18,,
