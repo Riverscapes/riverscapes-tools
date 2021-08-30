@@ -12,7 +12,6 @@ import pickle
 import inquirer
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from rscommons import dotenv
 
 # File name used to pickle the last used watershed ID
 WATERSHED_PICKLE_FILE = 'riverscapes_parameters.pickle'
@@ -221,13 +220,18 @@ def delete_hydro_parameter(cinfo):
 def main():
 
     # Don't use argparse because we want this to run from the command line without a bunch of annoying arguments.
-    env_vars = dotenv.parse_dotenv(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', '.env'))
+
+    env_vars = ['POSTGRES_HOST', 'POSTGRES_PORT', 'POSTGRES_USER', 'POSTGRES_PASSWORD', 'POSTGRES_DB']
+    for e_var in env_vars:
+        if e_var not in os.environ or len(os.environ[e_var]) == 0:
+            raise Exception('Could not find variable {} in env file. You need an .env file with this value. (Full list: {})'.format(e_var, env_vars))
+
     connection_info = {
-        'host': env_vars['POSTGRES_HOST'],
-        'port': env_vars['POSTGRES_PORT'],
-        'user': env_vars['POSTGRES_USER'],
-        'word': env_vars['POSTGRES_PASSWORD'],
-        'pgdb': env_vars['POSTGRES_DB']
+        'host': os.environ['POSTGRES_HOST'],
+        'port': os.environ['POSTGRES_PORT'],
+        'user': os.environ['POSTGRES_USER'],
+        'word': os.environ['POSTGRES_PASSWORD'],
+        'pgdb': os.environ['POSTGRES_DB']
     }
 
     choice = ''

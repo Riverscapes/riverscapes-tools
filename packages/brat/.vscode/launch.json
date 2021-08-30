@@ -84,6 +84,7 @@
       "type": "python",
       "request": "launch",
       "module": "scripts.riverscapes_parameter_cli",
+      "envFile": "${workspaceFolder}/.env",
       "console": "integratedTerminal"
     },
     {
