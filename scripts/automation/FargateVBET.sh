@@ -8,6 +8,8 @@ IFS=$'\n\t'
 (: "${RS_CONFIG?}")
 (: "${RSCONTEXT_TAGS?}")
 (: "${VBET_TAGS?}")
+(: "${CHANNEL_TAGS}")
+(: "${TAUDEM_TAGS}")
 
 echo "$RS_CONFIG" > /root/.riverscapes
 
@@ -27,6 +29,8 @@ echo "HUC: $HUC"
 echo "PROGRAM: $PROGRAM"
 echo "RSCONTEXT_TAGS: $RSCONTEXT_TAGS"
 echo "VBET_TAGS: $VBET_TAGS"
+echo "CHANNEL_TAGS: $CHANNEL_TAGS"
+echo "TAUDEM_TAGS: $TAUDEM_TAGS"
 
 # Drop into our venv immediately
 source /usr/local/venv/bin/activate
@@ -55,11 +59,11 @@ rscli download $RS_CONTEXT_DIR --type "RSContext" --meta "huc8=$HUC" \
   --tags "$RSCONTEXT_TAGS" --no-input --verbose --program "$PROGRAM"
 
 rscli download $CHANNEL_AREA_DIR --type "ChannelArea" --meta "huc8=$HUC" \
-  --tags "$RSCONTEXT_TAGS" --no-input --verbose --program "$PROGRAM"
+  --tags "$CHANNEL_TAGS" --no-input --verbose --program "$PROGRAM"
 
 rscli download $TAUDEM_DIR --type "TauDEM" --meta "huc8=$HUC" \
   --file-filter "(HAND.tif|twi.tif)" \
-  --tags "$RSCONTEXT_TAGS" --no-input --verbose --program "$PROGRAM"
+  --tags "$TAUDEM_TAGS" --no-input --verbose --program "$PROGRAM"
 
 ##########################################################################################
 # Now Run VBET
