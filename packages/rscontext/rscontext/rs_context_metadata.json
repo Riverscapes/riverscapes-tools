@@ -1,0 +1,197 @@
+{
+  "DEM": {
+    "docs": {
+      "value": "National Elevation Dataset (NED) Digital Elevation Models (DEM). These DEMs are downloaded from Science Base and mosaiced into a single 10m DEM that covers the riverscapes context project extent."
+    },
+    "source_url": "https://www.usgs.gov/core-science-systems/national-geospatial-program/national-map",
+    "type": "url"
+  },
+  "FA": {
+    "docs": {
+      "value": "Flow accumulation raster generated using pyGeoProcessing. Raster values are cell counts. The mosaiced DEM is used as the source raster for this process."
+    },
+    "tool_url": {
+      "value": "https://pypi.org/project/pygeoprocessing/",
+      "type": "url"
+    },
+    "DA": {
+      "docs": {
+        "value": "Drainage area raster generated from the flow accumulation raster. This raster is produced by multiplying the flow accumulation raster by the area of a single pixel and then converting to square kilometers."
+      }
+    },
+    "HILLSHADE": {
+      "docs": {
+        "value": "Hillshade raster generated using the gdal_dem tool specifying the hillshade option."
+      },
+      "tool_url": {
+        "value": "https://gdal.org/programs/gdaldem.html",
+        "type": "url"
+      }
+    },
+    "SLOPE": {
+      "docs": {
+        "value": "Slope raster generated using gdal_dem tool specifying the slope option. Units are in percent."
+      },
+      "tool_url": {
+        "value": "https://gdal.org/programs/gdaldem.html",
+        "type": "url"
+      }
+    },
+    "HAND": {
+      "docs": {
+        "value": "Height above nearest drainage (HAND) raster downloaded
+        from the University of Texas. These data were produced for the Continental United States at the HUC6 scale."
+      },
+      "tool_ur": {
+        "value": "https://hydrology.usu.edu/taudem/taudem5/",
+        "type": "url"
+      },
+      "EXVEG": {
+        "docs": {
+          "value": "LandFire LF REMAP 2019 Existing Vegetation Type (EVT) Raster.The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes project extent."
+        },
+        "source_url": {
+          "value": "https://landfire.gov",
+          "type": "url"
+        }
+      },
+      "HISTVEG": {
+        "docs": {
+          "value": "LandFire LF REMAP 2019 Historic Biophysical Settings (BPS) Raster. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes project extent."
+        },
+        "source_url": {
+          "value": "https://landfire.gov",
+          "type": "url"
+        }
+      },
+      "OWNERSHIP": {
+        "docs": {
+          "value": "Land ownership obtained from the Bureau of Management (BLM) Land Surface Agency. A single ShapeFile was downloaded and then pre-processed to remove invalid geometries and other irregularities."
+        },
+        "source_url": {
+          "value": "https://catalog.data.gov/dataset/blm-national-surface-management-agency-area-polygons-national-geospatial-data-asset-ngda",
+          "type": "url"
+        }
+      },
+      "FAIR_MARKET": {
+        "docs": {
+          "value": "Fair Market Value raster. This raster was downloaded and converted to US dollars per hectare."
+        },
+        "source_url": {
+          "value": "https://orcid.org/0000-0001-7827-689X",
+          "type": "url"
+        }
+      },
+      "ECOREGIONS": {
+        "docs": {
+          "value": "Level III ecoregions obtained from the Environmental Protection Agency (EPA)."
+        },
+        "source_url": {
+          "value": "https://www.epa.gov/eco-research/ecoregions",
+          "type": "url"
+        }
+      },
+      "PPT": {
+        "docs": {
+          "value": "PRISM 30 year normal precipitation raster. Normals are baseline datasets describing average monthly and annual conditions over the most recent three full decades."
+        },
+        "source_url": {
+          "value": "https://prism.oregonstate.edu/normals/",
+          "type": "url"
+        }
+      },
+      "TMEAN": {
+        "docs": {
+          "value": "PRISM 30 year normal mean temperature raster. Normals are baseline datasets describing average monthly and annual conditions over the most recent three full decades."
+        },
+        "source_url": {
+          "value": "https://prism.oregonstate.edu/normals/",
+          "type": "url"
+        }
+      },
+      "TMIN": {
+        "docs": {
+          "value": "PRISM 30 year normal minimum temperature raster. Normals are baseline datasets describing average monthly and annual conditions over the most recent three full decades."
+        },
+        "source_url": {
+          "value": "https://prism.oregonstate.edu/normals/",
+          "type": "url"
+        }
+      },
+      "TMAX": {
+        "docs": {
+          "value": "PRISM 30 year normal maximum temperature raster. Normals are baseline datasets describing average monthly and annual conditions over the most recent three full decades."
+        },
+        "source_url": {
+          "value": "https://prism.oregonstate.edu/normals/",
+          "type": "url"
+        }
+      },
+      "TDMEAN": {
+        "docs": {
+          "value": "PRISM 30 year normal mean dew point temperature  raster. Normals are baseline datasets describing average monthly and annual conditions over the most recent three full decades."
+        },
+        "source_url": {
+          "value": "https://prism.oregonstate.edu/normals/",
+          "type": "url"
+        }
+      },
+      "VPDMIN": {
+        "docs": {
+          "value": "PRISM 30 year normal minimum vapor pressure deficit raster. Normals are baseline datasets describing average monthly and annual conditions over the most recent three full decades."
+        },
+        "source_url": {
+          "value": "https://prism.oregonstate.edu/normals/",
+          "type": "url"
+        }
+      },
+      "VPDMAX": {
+        "docs": {
+          "value": "PRISM 30 year normal maximum vapor pressure deficit raster. Normals are baseline datasets describing average monthly and annual conditions over the most recent three full decades."
+        },
+        "source_url": {
+          "value": "https://prism.oregonstate.edu/normals/",
+          "type": "url"
+        }
+      },
+      "NETWORK": {
+        "docs": {
+          "value": "National Hydrologic Dataset (NHD) High Resolution. 1:24,000 stream network polyline feature class. This is the original data downloaded as an ESRI file geodatabase and then converted to an open source GeoPackage."
+        },
+        "source_url": {
+          "value": "https://www.usgs.gov/core-science-systems/ngp/national-hydrography/nhdplus-high-resolution",
+          "type": "url"
+        }
+      },
+      "BUFFEREDCLIP100": {
+        "docs": {
+          "value": "The riverscapes context project extent buffered by 100m."
+        }
+      },
+      "BUFFEREDCLIP500": {
+        "docs": {
+          "value": "The riverscapes context project extent buffered by 500m."
+        }
+      },
+      "NETWORK300M": {
+        "docs": {
+          "value": "This polyline feature class is the original NHDPlusHR flow line network segmented into 300m reach lengths. Segmentation that would produce a feature of less than 50m are left without segmentation."
+        }
+      },
+      "NETWORK300M_INTERSECTION": {
+        "docs": {
+          "value": "This polyline feeature class is the NETWORK300M featureclass intersected with road and rail crossings and ownership."
+        }
+      },
+      "BANKFULL_CHANNEL": {
+        "docs": {
+          "value": "Estimated bankfull channel polygon feature class. Polygons are generated by buffering the NHDPlus HR flow lines using the equation presented in Beechie and Imaki (2013). This equation uses drainage area (obtained from the NHDPlusHR Value Added Attribute (VAA) table with PRISM precipitation raster data."
+        },
+        "source_url": {
+          "value": "http://dx.doi.org/10.1002/2013WR013629",
+          "type": "url"
+        }
+      }
+    }
+  }
+}
