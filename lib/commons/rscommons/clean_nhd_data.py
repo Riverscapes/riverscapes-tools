@@ -46,7 +46,7 @@ def clean_nhd_data(huc, download_folder, unzip_folder, out_dir, out_epsg, force_
 
     # NHDFlowlines and incorporate the desired value added attributes from the VAA geodatabase table into the NHD flow lines
     featureclasses['NHDFlowline'] = export_feature_class(filegdb, 'NHDFlowline', out_dir, out_epsg, None, None, boundary)
-    copy_attributes(filegdb, 'NHDPlusFlowlineVAA', featureclasses['NHDFlowline'], 'NHDPlusID', flowline_fields, "ReachCode LIKE '{}%'".format(huc))
+    copy_attributes(filegdb, 'NHDPlusFlowlineVAA', featureclasses['NHDFlowline'], 'NHDPlusID', flowline_fields, "ReachCode LIKE '{}%'".format(huc[:8])) # Only up to huc 8 can be used for reach code filter 
 
     # Export the river area polyline feature class, filtering by boundary if required
     featureclasses['NHDArea'] = export_feature_class(filegdb, 'NHDArea', out_dir, out_epsg, None, None, boundary)
@@ -54,7 +54,7 @@ def clean_nhd_data(huc, download_folder, unzip_folder, out_dir, out_epsg, force_
     featureclasses['NHDPlusCatchment'] = export_feature_class(filegdb, 'NHDPlusCatchment', out_dir, out_epsg, None, None, boundary)
 
     db_path = os.path.join(out_dir, 'nhd_data.sqlite')
-    export_table(filegdb, 'NHDPlusFlowlineVAA', db_path, None, "ReachCode LIKE '{}%'".format(huc))
+    export_table(filegdb, 'NHDPlusFlowlineVAA', db_path, None, "ReachCode LIKE '{}%'".format(huc[:8]))
 
     return featureclasses, db_path, huc_name, nhd_url
 
