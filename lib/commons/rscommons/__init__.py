@@ -16,7 +16,7 @@ from rscommons.classes.vector_base import VectorBase
 from rscommons.classes.tempfiles import TempRaster, TempGeopackage
 
 from rscommons.report.rs_report import RSReport
-from rscommons.classes.rs_project import RSLayer, RSProject
+from rscommons.classes.rs_project import RSLayer, RSProject, RSMetaTypes, RSMeta
 # We don't make XMLBuilder convenient because people should be using RSProject
 # Whenever possible
 # from rscommons.classes.XMLBuilder import XMLBuilder

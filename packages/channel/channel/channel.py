@@ -9,13 +9,12 @@
 import argparse
 import os
 import sys
-import uuid
 import traceback
-import datetime
 import time
 from typing import List, Dict
 
 from osgeo import ogr
+from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 
 from rscommons.util import safe_makedirs, parse_metadata, pretty_duration
 from rscommons import RSProject, RSLayer, ModelConfig, Logger, dotenv, initGDALOGRErrors
@@ -95,7 +94,12 @@ def channel(huc: int,
     for layer, codes in reach_codes.items():
         meta[f'{layer} Reach Codes'] = str(codes)
 
-    project, _realization, proj_nodes = create_project(huc, project_folder, meta)
+    project, _realization, proj_nodes = create_project(huc, project_folder, [
+        RSMeta('HUC{}'.format(len(huc)), str(huc)),
+        RSMeta('HUC', str(huc)),
+        RSMeta('ChannelAreaVersion', cfg.version),
+        RSMeta('ChannelAreaTimestamp', str(int(time.time())), RSMetaTypes.TIMESTAMP)
+    ], meta)
 
     # Input Preparation
     inputs_gpkg_path = os.path.join(project_folder, LayerTypes['INPUTS'].rel_path)
@@ -191,8 +195,10 @@ def channel(huc: int,
 
     # Processing time in hours
     ellapsed_time = time.time() - timer
-    project.add_metadata({"ProcTimeS": "{:.2f}".format(ellapsed_time)})
-    project.add_metadata({"ProcTimeHuman": pretty_duration(ellapsed_time)})
+    project.add_metadata([
+        RSMeta("ProcTimeS", "{:.2f}".format(ellapsed_time), RSMetaTypes.INT),
+        RSMeta("ProcTimeHuman", pretty_duration(ellapsed_time))
+    ])
 
     # Report
     report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
@@ -234,7 +240,7 @@ def calculate_bankfull(network_layer: Path, out_field: str, eval_fn: str, functi
         layer.ogr_layer.CommitTransaction()
 
 
-def create_project(huc: int, output_dir: Path, meta: dict = None):
+def create_project(huc: int, output_dir: Path, meta: List[RSMeta], meta_dict: Dict[str, str]):
     """Create channel area project
 
     Args:
@@ -247,18 +253,7 @@ def create_project(huc: int, output_dir: Path, meta: dict = None):
     """
     project_name = 'Channel Area for HUC {}'.format(huc)
     project = RSProject(cfg, output_dir)
-    project.create(project_name, 'ChannelArea')
-
-    project.add_metadata({
-        'HUC{}'.format(len(huc)): str(huc),
-        'HUC': str(huc),
-        'ChannelAreaVersion': cfg.version,
-        'ChannelAreaTimestamp': str(int(time.time()))
-    })
-
-    # Incorporate project metadata to the riverscapes project
-    if meta is not None:
-        project.add_metadata(meta)
+    project.create(project_name, 'ChannelArea', meta, meta_dict)
 
     realization = project.add_realization(project_name, 'ChannelArea', cfg.version)
 

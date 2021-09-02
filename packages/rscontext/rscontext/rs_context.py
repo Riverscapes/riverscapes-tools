@@ -16,10 +16,11 @@ import json
 import traceback
 import uuid
 import time
-from typing import Dict
+from typing import Dict, List
 from osgeo import ogr
 
 from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALOGRErrors, Timer
+from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.util import safe_makedirs, safe_remove_dir, parse_metadata, pretty_duration
 from rscommons.clean_nhd_data import clean_nhd_data
 from rscommons.clean_ntd_data import clean_ntd_data
@@ -48,6 +49,7 @@ cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/RSContext.xsd', __
 # These are the Prism BIL types we expect
 PrismTypes = ['PPT', 'TMEAN', 'TMIN', 'TMAX', 'TDMEAN', 'VPDMIN', 'VPDMAX']
 
+LYR_DESCRIPTIONS_JSON = os.path.join(os.path.os.path.dirname(__file__), 'layer_descriptions.json')
 LayerTypes = {
     # key: (name, id, tag, relpath)
     'DEM': RSLayer('NED 10m DEM', 'DEM', 'DEM', 'topography/dem.tif'),
@@ -112,6 +114,10 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
     """
     rsc_timer = time.time()
     log = Logger("RS Context")
+
+    # Add the layer metadata immediately before we write anything
+    augment_layermeta()
+
     log.info('Starting RSContext v.{}'.format(cfg.version))
 
     try:
@@ -129,7 +135,11 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
     scratch_dem_folder = os.path.join(scratch_dir, 'rs_context', huc)
     safe_makedirs(scratch_dem_folder)
 
-    project, realization = create_project(huc, output_folder)
+    project, realization = create_project(huc, output_folder, [
+        RSMeta('HUC{}'.format(len(huc)), str(huc)),
+        RSMeta('HUC', str(huc))
+    ], meta)
+
     hydrology_gpkg_path = os.path.join(output_folder, LayerTypes['HYDROLOGY'].rel_path)
 
     dem_node, dem_raster = project.add_project_raster(realization, LayerTypes['DEM'])
@@ -145,10 +155,6 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
     # Download the four digit NHD archive containing the flow lines and watershed boundaries
     log.info('Processing NHD')
 
-    # Incorporate project metadata to the riverscapes project
-    if meta is not None:
-        project.add_metadata(meta)
-
     nhd_download_folder = os.path.join(download_folder, 'nhd', huc[:4])
     nhd_unzip_folder = os.path.join(scratch_dir, 'nhd', huc[:4])
 
@@ -157,7 +163,7 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
     # Clean up the unzipped files. We won't need them again
     if parallel:
         safe_remove_dir(nhd_unzip_folder)
-    project.add_metadata({'Watershed': huc_name})
+    project.add_metadata([RSMeta('Watershed', huc_name)])
     boundary = 'WBDHU{}'.format(len(huc))
 
     # For coarser rasters than the DEM we need to buffer our clip polygon to include enough pixels
@@ -187,20 +193,20 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
             polygon = get_geometry_unary_union(nhd[boundary], epsg=cfg.OUTPUT_EPSG)
             mean_annual_precip = raster_buffer_stats2({1: polygon}, project_raster_path)[1]['Mean']
             log.info('Mean annual precipitation for HUC {} is {} mm'.format(huc, mean_annual_precip))
-            project.add_metadata({'mean_annual_precipitation_mm': str(mean_annual_precip)})
+            project.add_metadata([RSMeta('mean_annual_precipitation_mm', str(mean_annual_precip), RSMetaTypes.FLOAT)])
 
             calculate_bankfull_width(nhd['NHDFlowline'], mean_annual_precip)
 
     # Add the DB record to the Project XML
     db_lyr = RSLayer('NHD Tables', 'NHDTABLES', 'SQLiteDB', os.path.relpath(db_path, output_folder))
     sqlite_el = project.add_dataset(realization, db_path, db_lyr, 'SQLiteDB')
-    project.add_metadata({'origin_url': nhd_url}, sqlite_el)
+    project.add_metadata([RSMeta('origin_url', nhd_url, RSMetaTypes.URL)], sqlite_el)
 
     # Add any results to project XML
     for name, file_path in nhd.items():
         lyr_obj = RSLayer(name, name, 'Vector', os.path.relpath(file_path, output_folder))
         vector_nod, _fpath = project.add_project_vector(realization, lyr_obj)
-        project.add_metadata({'origin_url': nhd_url}, vector_nod)
+        project.add_metadata([RSMeta('origin_url', nhd_url, RSMetaTypes.URL)], vector_nod)
 
     states = get_nhd_states(nhd[boundary])
 
@@ -229,13 +235,13 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
     for name, file_path in ntd_clean.items():
         lyr_obj = RSLayer(name, name, 'Vector', os.path.relpath(file_path, output_folder))
         ntd_node, _fpath = project.add_project_vector(realization, lyr_obj)
-        project.add_metadata({**ntd_urls}, ntd_node)
+        project.add_metadata([RSMeta(k, v, RSMetaTypes.URL) for k, v in ntd_urls.items()], ntd_node)
 
     # Download the HAND raster
     huc6 = huc[0:6]
     hand_download_folder = os.path.join(download_folder, 'hand')
     _hpath, hand_url = download_hand(huc6, cfg.OUTPUT_EPSG, hand_download_folder, nhd[boundary], hand_raster, warp_options={"cutlineBlend": 1})
-    project.add_metadata({'origin_url': hand_url}, hand_node)
+    project.add_metadata([RSMeta('origin_url', hand_url, RSMetaTypes.URL)], hand_node)
 
     # download contributing DEM rasters, mosaic and reproject into compressed GeoTIF
     ned_download_folder = os.path.join(download_folder, 'ned')
@@ -254,10 +260,10 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
     need_slope_build = need_dem_rebuild or not os.path.isfile(slope_raster)
     need_hs_build = need_dem_rebuild or not os.path.isfile(hill_raster)
 
-    project.add_metadata({
-        'num_rasters': str(len(urls)),
-        'origin_urls': json.dumps(urls)
-    }, dem_node)
+    project.add_metadata([
+        RSMeta('num_rasters', str(len(urls)), RSMetaTypes.INT),
+        RSMeta('origin_urls', json.dumps(urls), RSMetaTypes.JSON)
+    ], dem_node)
 
     for dem_r in dem_rasters:
         slope_part_path = os.path.join(scratch_dem_folder, 'SLOPE__' + os.path.basename(dem_r).split('.')[0] + '.tif')
@@ -343,8 +349,10 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
     project.add_report(realization, LayerTypes['REPORT'], replace=True)
 
     ellapsed_time = time.time() - rsc_timer
-    project.add_metadata({"ProcTimeS": "{:.2f}".format(ellapsed_time)})
-    project.add_metadata({"ProcTimeHuman": pretty_duration(ellapsed_time)})
+    project.add_metadata([
+        RSMeta("ProcTimeS", "{:.2f}".format(ellapsed_time), RSMetaTypes.INT),
+        RSMeta("ProcTimeHuman", pretty_duration(ellapsed_time))
+    ])
 
     report = RSContextReport(report_path, project, output_folder)
     report.write()
@@ -359,19 +367,28 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
     }
 
 
-def create_project(huc, output_dir):
+def create_project(huc, output_dir: str, meta: List[RSMeta], meta_dict: Dict[str, str]):
 
     project_name = 'Riverscapes Context for HUC {}'.format(huc)
     project = RSProject(cfg, output_dir)
-    project.create(project_name, 'RSContext')
+    project.create(project_name, 'RSContext', meta, meta_dict)
 
     realization = project.add_realization(project_name, 'RSContext', cfg.version)
 
-    project.add_metadata({'HUC{}'.format(len(huc)): str(huc)})
-    project.add_metadata({'HUC': str(huc)})
-
     project.XMLBuilder.write()
     return project, realization
+
+
+def augment_layermeta():
+    """
+    For RSContext we've written a JSON file with extra layer meta. We may use this pattern elsewhere but it's just here for now
+    """
+    with open(LYR_DESCRIPTIONS_JSON, 'r') as f:
+        json_data = json.load(f)
+
+    for k, lyr in LayerTypes.items():
+        if k in json_data and len(json_data[k]) > 0:
+            lyr.lyr_meta = RSMeta('Description', json_data[k])
 
 
 def get_nhd_states(inpath):
