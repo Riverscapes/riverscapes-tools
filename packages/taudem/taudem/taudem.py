@@ -10,17 +10,16 @@
 import argparse
 import os
 import sys
-import uuid
 import traceback
-import datetime
 import time
-from typing import Dict
+from typing import Dict, List
 
 # LEave OSGEO import alone. It is necessary even if it looks unused
 from osgeo import gdal
+from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.classes.vector_classes import get_shp_or_gpkg, VectorBase
 
-from rscommons.util import safe_makedirs, parse_metadata
+from rscommons.util import safe_makedirs, parse_metadata, pretty_duration
 from rscommons import RSProject, RSLayer, ModelConfig, Logger, dotenv, initGDALOGRErrors
 from rscommons import GeopackageLayer
 from rscommons.vector_ops import copy_feature_class
@@ -79,12 +78,17 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, hillshade: Path
 
     log = Logger('TauDEM')
     log.info('Starting TauDEM v.{}'.format(cfg.version))
-
-    project, _realization, proj_nodes = create_project(huc, project_folder)
-
-    # Incorporate project metadata to the riverscapes project
-    if meta is not None:
-        project.add_metadata(meta)
+    start_time = time.time()
+    project, _realization, proj_nodes = create_project(huc, project_folder, [
+        RSMeta('HUC{}'.format(len(huc)), str(huc)),
+        RSMeta('HUC', str(huc)),
+        RSMeta('TauDEMProjectVersion', cfg.version),
+        RSMeta('TauDEMTimestamp', str(int(time.time())), RSMetaTypes.TIMESTAMP),
+        RSMeta('TauDEM_SoftwareVersion', '5.3.7'),
+        RSMeta('TauDEM_Credits', 'Copyright (C) 2010-2015 David Tarboton, Utah State University'),
+        RSMeta('TauDEM_Licence', 'https://hydrology.usu.edu/taudem/taudem5/GPLv3license.txt', RSMetaTypes.URL),
+        RSMeta('TauDEM_URL', 'https://hydrology.usu.edu/taudem/taudem5/index.html', RSMetaTypes.URL)
+    ], meta)
 
     # Copy the inp
     _proj_dem_node, proj_dem = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], orig_dem)
@@ -132,7 +136,6 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, hillshade: Path
     hand_rasterize(channel_vector, hand_dem, path_rasterized_drainage)
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['RASTERIZED_CHANNEL'])
 
-    start_time = time.time()
     log.info('Starting TauDEM processes')
 
     # PitRemove
@@ -178,6 +181,10 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, hillshade: Path
     project.add_project_raster(proj_nodes['Outputs'], LayerTypes['TWI_RASTER'])
 
     ellapsed_time = time.time() - start_time
+    project.add_metadata([
+        RSMeta("ProcTimeS", "{:.2f}".format(ellapsed_time), RSMetaTypes.INT),
+        RSMeta("ProcTimeHuman", pretty_duration(ellapsed_time))
+    ])
     log.info("TauDEM process complete in {}".format(ellapsed_time))
 
     report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
@@ -189,21 +196,10 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, hillshade: Path
     log.info('TauDEM Completed Successfully')
 
 
-def create_project(huc, output_dir):
+def create_project(huc, output_dir: str, meta: List[RSMeta], meta_dict: Dict[str, str]):
     project_name = 'TauDEM project for HUC {}'.format(huc)
     project = RSProject(cfg, output_dir)
-    project.create(project_name, 'TauDEM')
-
-    project.add_metadata({
-        'HUC{}'.format(len(huc)): str(huc),
-        'HUC': str(huc),
-        'TauDEMProjectVersion': cfg.version,
-        'TauDEMTimestamp': str(int(time.time())),
-        'TauDEM_SoftwareVerseion': '5.3.7',
-        'TauDEM_Credits': 'Copyright (C) 2010-2015 David Tarboton, Utah State University',
-        'TauDEM_Licence': 'https://hydrology.usu.edu/taudem/taudem5/GPLv3license.txt',
-        'TauDEM_URL': 'https://hydrology.usu.edu/taudem/taudem5/index.html'
-    })
+    project.create(project_name, 'TauDEM', meta, meta_dict)
 
     realization = project.add_realization(project_name, 'TauDEM', cfg.version)
 

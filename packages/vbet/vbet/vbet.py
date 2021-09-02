@@ -29,6 +29,7 @@ import rasterio
 from rasterio.features import shapes
 import rasterio.mask
 import numpy as np
+from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 
 from rscommons.util import safe_makedirs, parse_metadata, pretty_duration
 from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, dotenv, initGDALOGRErrors, TempRaster, VectorBase
@@ -107,12 +108,13 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
     log = Logger('VBET')
     log.info('Starting VBET v.{}'.format(cfg.version))
 
-    project, _realization, proj_nodes = create_project(huc, project_folder)
-
-    # Incorporate project metadata to the riverscapes project
-    if meta is not None:
-        project.add_metadata(meta)
-    project.add_metadata({"Scenario Name": scenario_code})
+    project, _realization, proj_nodes = create_project(huc, project_folder, [
+        RSMeta('HUC{}'.format(len(huc)), str(huc)),
+        RSMeta('HUC', str(huc)),
+        RSMeta('VBETVersion', cfg.version),
+        RSMeta('VBETTimestamp', str(int(time.time())), RSMetaTypes.TIMESTAMP),
+        RSMeta("Scenario Name", scenario_code)
+    ], meta)
 
     # Input Preparation
     # Make sure we're starting with a fresh slate of new geopackages
@@ -380,8 +382,10 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
 
     # Processing time in hours
     ellapsed_time = time.time() - vbet_timer
-    project.add_metadata({"ProcTimeS": "{:.2f}".format(ellapsed_time)})
-    project.add_metadata({"ProcTimeHuman": pretty_duration(ellapsed_time)})
+    project.add_metadata([
+        RSMeta("ProcTimeS", "{:.2f}".format(ellapsed_time), RSMetaTypes.INT),
+        RSMeta("ProcTimeHuman", pretty_duration(ellapsed_time))
+    ])
 
     # Report
     report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
@@ -423,17 +427,10 @@ def simple_save(list_geoms, ogr_type, srs, layer_name, gpkg_path, attributes={})
         lyr.ogr_layer.CommitTransaction()
 
 
-def create_project(huc, output_dir):
+def create_project(huc, output_dir: str, meta: List[RSMeta], meta_dict: Dict[str, str]):
     project_name = 'VBET for HUC {}'.format(huc)
     project = RSProject(cfg, output_dir)
-    project.create(project_name, 'VBET')
-
-    project.add_metadata({
-        'HUC{}'.format(len(huc)): str(huc),
-        'HUC': str(huc),
-        'VBETVersion': cfg.version,
-        'VBETTimestamp': str(int(time.time()))
-    })
+    project.create(project_name, 'VBET', meta, meta_dict)
 
     realization = project.add_realization(project_name, 'VBET', cfg.version)
 

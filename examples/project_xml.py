@@ -1,11 +1,14 @@
-import os
-import sys
-import datetime
-import traceback
-import time
 import argparse
+import sys
+import os
+import traceback
 import uuid
-from rscommons import RSProject, RSLayer, ModelConfig, Logger, dotenv
+from typing import Dict
+from osgeo import ogr
+
+import datetime
+import uuid
+from rscommons import RSProject, RSLayer, ModelConfig, Logger, RSMeta, RSMetaTypes
 from rscommons.util import safe_makedirs
 # Import your own version. Don't just use RSCommons
 from rscommons.__version__ import __version__
@@ -42,37 +45,27 @@ def build_xml(projectpath):
     project.create(project_name, 'Inundation')
 
     # Add the root metadata
-    project.add_metadata({
-        'ModelVersion': cfg.version,
-        'date_created': str(int(time.time())),
-        'HUC8': '16010201',
-        'InundationVersion': cfg.version,
-        'watershed': 'Upper Bear',
-        'site_name': 'Mill Creek',
-    })
-
-    # Create the realizations container node
-    realizations = project.XMLBuilder.add_sub_element(project.XMLBuilder.root, 'Realizations')
+    project.add_metadata([
+        RSMeta('ModelVersion', cfg.version),
+        RSMeta('dateCreated', datetime.datetime.now().isoformat(), RSMetaTypes.ISODATE),
+        RSMeta('HUC8', '16010201'),
+        RSMeta('InundationVersion', cfg.version),
+        RSMeta('watershed', 'Upper Bear'),
+        RSMeta('site_name', 'Mill Creek'),
+    ])
 
     # Example InundationContext Realization
     # ================================================================================================
-    r1_node = project.XMLBuilder.add_sub_element(realizations, 'InundationContext', None, {
-        'id': 'INN_CTX01',
-        'dateCreated': datetime.datetime.now().isoformat(),
-        'guid': str(uuid.uuid1()),
-        'productVersion': cfg.version
-    })
-    #  add a <Name> node
-    project.XMLBuilder.add_sub_element(r1_node, 'Name', project_name)
+    r1_node = project.add_realization(project_name, 'INN_CTX01', cfg.version)
 
     # Realization <MetaData>
-    project.add_metadata({
-        'mapper': 'Karen Bartelt',
-        'date_mapped': '02042020',
-        'year1': 'estimated pre beaver',
-        'year2': '2019',
-        'RS_used': 'RS_01'
-    }, r1_node)
+    project.add_metadata([
+        RSMeta('mapper', 'Karen Bartelt'),
+        RSMeta('date_mapped', '02042020'),
+        RSMeta('year1', 'estimated pre beaver'),
+        RSMeta('year2', '2019'),
+        RSMeta('RS_used', 'RS_01')
+    ], r1_node)
 
     # Add an <Input> and <Output> nodes
     r1_inputs = project.XMLBuilder.add_sub_element(r1_node, 'Inputs')
@@ -87,7 +80,7 @@ def build_xml(projectpath):
 
     # Example DCE Realization
     # ================================================================================================
-    r2_node = project.XMLBuilder.add_sub_element(realizations, 'InundationDCE', None, {
+    r2_node = project.XMLBuilder.add_sub_element(project.realizations_node, 'InundationDCE', None, {
         'id': 'DCE_01',
         'dateCreated': datetime.datetime.now().isoformat(),
         'guid': str(uuid.uuid1()),
@@ -101,7 +94,7 @@ def build_xml(projectpath):
 
     # Example CD Realization
     # ================================================================================================
-    r3_node = project.XMLBuilder.add_sub_element(realizations, 'InundationCD', None, {
+    r3_node = project.XMLBuilder.add_sub_element(project.realizations_node, 'InundationCD', None, {
         'id': '',
         'dateCreated': datetime.datetime.now().isoformat(),
         'guid': str(uuid.uuid1()),

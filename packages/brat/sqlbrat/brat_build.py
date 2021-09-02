@@ -11,16 +11,16 @@
 import argparse
 import os
 import sys
-import uuid
 import traceback
 import datetime
 import time
 from typing import List, Dict
 from osgeo import ogr
 from rscommons import GeopackageLayer
+from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.vector_ops import copy_feature_class
 from rscommons import Logger, initGDALOGRErrors, RSLayer, RSProject, ModelConfig, dotenv
-from rscommons.util import parse_metadata
+from rscommons.util import parse_metadata, pretty_duration
 from rscommons.build_network import build_network
 from rscommons.database import create_database, SQLiteCon
 from sqlbrat.utils.vegetation_summary import vegetation_summary
@@ -98,11 +98,14 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
     log.info('HUC: {}'.format(huc))
     log.info('EPSG: {}'.format(cfg.OUTPUT_EPSG))
 
-    project, _realization, proj_nodes = create_project(huc, output_folder)
+    start_time = time.time()
 
-    # Incorporate project metadata to the riverscapes project
-    if meta is not None:
-        project.add_metadata(meta)
+    project, _realization, proj_nodes = create_project(huc, output_folder, [
+        RSMeta('HUC{}'.format(len(huc)), str(huc)),
+        RSMeta('HUC', str(huc)),
+        RSMeta('BRATBuildVersion', cfg.version),
+        RSMeta('BRATBuildTimestamp', str(int(time.time())))
+    ], meta)
 
     log.info('Adding input rasters to project')
     _dem_raster_path_node, dem_raster_path = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], dem)
@@ -111,7 +114,7 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
     project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], hillshade)
     project.add_project_raster(proj_nodes['Inputs'], LayerTypes['SLOPE'], slope)
     project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
-    project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['OUTPUTS'])
+    db_node, _db_path = project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['OUTPUTS'])
 
     inputs_gpkg_path = os.path.join(output_folder, LayerTypes['INPUTS'].rel_path)
     intermediates_gpkg_path = os.path.join(output_folder, LayerTypes['INTERMEDIATES'].rel_path)
@@ -148,7 +151,7 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
             'NHDPlusID': ogr.OFTReal
         })
 
-    metadata = {
+    db_metadata = {
         'BRAT_Build_DateTime': datetime.datetime.now().isoformat(),
         'Streamside_Buffer': streamside_buffer,
         'Riparian_Buffer': riparian_buffer,
@@ -159,8 +162,11 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
     }
 
     # Execute the SQL to create the lookup tables in the output geopackage
-    watershed_name = create_database(huc, outputs_gpkg_path, metadata, cfg.OUTPUT_EPSG, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'brat_schema.sql'))
-    project.add_metadata({'Watershed': watershed_name})
+    watershed_name = create_database(huc, outputs_gpkg_path, db_metadata, cfg.OUTPUT_EPSG, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'brat_schema.sql'))
+    # Just for fun add the db metadata back to the xml
+    project.add_metadata_simple(db_metadata, db_node)
+
+    project.add_metadata([RSMeta('Watershed', watershed_name)])
 
     # Copy the reaches into the output feature class layer, filtering by reach codes
     reach_geometry_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['BRAT_GEOMETRY'].rel_path)
@@ -194,10 +200,16 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
         for buffer in [streamside_buffer, riparian_buffer]:
             vegetation_summary(outputs_gpkg_path, '{} {}m'.format(label, buffer), veg_raster, buffer)
 
+    ellapsed_time = time.time() - start_time
+    project.add_metadata([
+        RSMeta("BratBuildProcTimeS", "{:.2f}".format(ellapsed_time), RSMetaTypes.INT),
+        RSMeta("BratBuildProcTimeHuman", pretty_duration(ellapsed_time))
+    ])
+
     log.info('BRAT build completed successfully.')
 
 
-def create_project(huc, output_dir):
+def create_project(huc, output_dir: str, meta: List[RSMeta], meta_dict: Dict[str, str]):
     """ Create riverscapes project XML
 
     Args:
@@ -210,25 +222,11 @@ def create_project(huc, output_dir):
 
     project_name = 'BRAT for HUC {}'.format(huc)
     project = RSProject(cfg, output_dir)
-    project.create(project_name, 'BRAT')
+    project.create(project_name, 'BRAT', meta, meta_dict)
 
-    project.add_metadata({
-        'HUC{}'.format(len(huc)): str(huc),
-        'HUC': str(huc),
-        'BRATBuildVersion': cfg.version,
-        'BRATBuildTimestamp': str(int(time.time()))
-    })
-
-    realizations = project.XMLBuilder.add_sub_element(project.XMLBuilder.root, 'Realizations')
-    realization = project.XMLBuilder.add_sub_element(realizations, 'BRAT', None, {
-        'id': 'BRAT1',
-        'dateCreated': datetime.datetime.now().isoformat(),
-        'guid': str(uuid.uuid1()),
-        'productVersion': cfg.version
-    })
+    realization = project.add_realization(project_name, 'BRAT', cfg.version)
 
     proj_nodes = {
-        'Name': project.XMLBuilder.add_sub_element(realization, 'Name', project_name),
         'Inputs': project.XMLBuilder.add_sub_element(realization, 'Inputs'),
         'Intermediates': project.XMLBuilder.add_sub_element(realization, 'Intermediates'),
         'Outputs': project.XMLBuilder.add_sub_element(realization, 'Outputs')

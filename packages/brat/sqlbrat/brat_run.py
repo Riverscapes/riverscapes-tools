@@ -16,6 +16,7 @@ import time
 import datetime
 from osgeo import ogr
 from rscommons import Logger, RSLayer, RSProject, ModelConfig, dotenv
+from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.database import update_database, store_metadata, set_reach_fields_null, SQLiteCon
 from sqlbrat.utils.vegetation_suitability import vegetation_suitability, output_vegetation_raster
 from sqlbrat.utils.vegetation_fis import vegetation_fis
@@ -23,6 +24,7 @@ from sqlbrat.utils.combined_fis import combined_fis
 from sqlbrat.utils.hydrology import hydrology
 from sqlbrat.utils.land_use import land_use
 from sqlbrat.utils.conservation import conservation
+from rscommons.util import pretty_duration
 from sqlbrat.brat_report import BratReport
 from sqlbrat.__version__ import __version__
 
@@ -63,13 +65,14 @@ def brat_run(project_root, csv_dir):
 
     log = Logger('BRAT Run')
     log.info('Starting BRAT run')
+    start_time = time.time()
 
     project = RSProject(cfg, project_root)
 
-    project.add_metadata({
-        'BRATRunVersion': cfg.version,
-        'BRATRunTimestamp': str(int(time.time()))
-    })
+    project.add_metadata([
+        RSMeta('BRATRunVersion', cfg.version),
+        RSMeta('BRATRunTimestamp', str(int(time.time())), RSMetaTypes.TIMESTAMP)
+    ])
 
     realizations = project.XMLBuilder.find('Realizations').findall('BRAT')
     if len(realizations) != 1:
@@ -129,6 +132,12 @@ def brat_run(project_root, csv_dir):
 
     report_path = os.path.join(project.project_dir, LayerTypes['BRAT_RUN_REPORT'].rel_path)
     project.add_report(outputs_node, LayerTypes['BRAT_RUN_REPORT'], replace=True)
+
+    ellapsed_time = time.time() - start_time
+    project.add_metadata([
+        RSMeta("BratRunProcTimeS", "{:.2f}".format(ellapsed_time), RSMetaTypes.INT),
+        RSMeta("BratRunProcTimeHuman", pretty_duration(ellapsed_time))
+    ])
 
     report = BratReport(gpkg_path, report_path, project)
     report.write()

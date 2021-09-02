@@ -50,8 +50,39 @@ LayerTypes = {
 }
 
 
+class RSMetaTypes:
+    """
+    This is a helper enumeration class to make sure we only use meta types that are valid. 
+    These should exactly mirror:
+        https://xml.riverscapes.xyz/Projects/XSD/V1/RiverscapesProject.xsd
+    """
+    GUID = "guid"
+    URL = "url"
+    FILEPATH = "filepath"
+    IMAGE = "image"
+    VIDEO = "video"
+    ISODATE = "isodate"
+    TIMESTAMP = "timestamp"
+    FLOAT = "float"
+    INT = "int"
+    RICHTEXT = "richtext"
+    MARKDOWN = "markdown"
+    JSON = "json"
+
+
+class RSMeta:
+    def __init__(self, key: str, value: str, meta_type: str = None):
+        self.key = key
+        self.value = value
+        # Do a quick check to make sure we're using correct meta types
+        if meta_type is not None and not hasattr(RSMetaTypes, meta_type.upper()):
+            raise Exception('Could not find <Meta> type {}'.format(meta_type))
+
+        self.type = meta_type
+
+
 class RSLayer:
-    def __init__(self, name: str, lyr_id: str, tag: str, rel_path: str, sub_layers: dict = None):
+    def __init__(self, name: str, lyr_id: str, tag: str, rel_path: str, sub_layers: dict = None, lyr_meta: List[RSMeta] = None):
         """[summary]
 
         Args:
@@ -89,6 +120,7 @@ class RSLayer:
         self.tag = tag
         self.name = name
         self.rel_path = rel_path
+        self.lyr_meta = lyr_meta
 
     def add_sub_layer(self, key: str, layer: RSLayer):
         """Add a geopackage sublayer
@@ -138,15 +170,18 @@ class RSProject:
         self.realizations_node = None
         self.project_dir = os.path.dirname(self.xml_path)
 
-    def create(self, name, project_type, replace=True):
-        """Create or overwrite an existing project xml file
+    def create(self, name, project_type, meta: List[RSMeta] = None, meta_dict: Dict[str, str] = None, replace=True):
+        """[summary]
 
-        Arguments:
-            name {[type]} -- [description]
-            project_type {[type]} -- [description]
-            modelVersion {[type]} -- [description]
-            xsd_url {[type]} -- [description]
-            output_dir {[type]} -- [description]
+        Args:
+            name ([type]): [description]
+            project_type ([type]): [description]
+            meta (List[RSMeta], optional): List of RSMEta types. Defaults to None.
+            meta_dict (Dict[str, str], optional): Simple key-value pairs from the command line. Defaults to None.
+            replace (bool, optional): [description]. Defaults to True.
+
+        Raises:
+            Exception: [description]
         """
 
         if os.path.isfile(self.xml_path):
@@ -164,10 +199,15 @@ class RSProject:
         self.XMLBuilder.add_sub_element(self.XMLBuilder.root, "Name", name)
         self.XMLBuilder.add_sub_element(self.XMLBuilder.root, "ProjectType", project_type)
 
-        self.add_metadata({
-            'ModelVersion': self.settings.version,
-            'dateCreated': datetime.datetime.now().isoformat()
-        })
+        self.add_metadata([
+            RSMeta('ModelVersion', self.settings.version),
+            RSMeta('dateCreated', datetime.datetime.now().isoformat(), RSMetaTypes.ISODATE)
+        ])
+        if meta is not None:
+            self.add_metadata(meta)
+        # Now add any simple metadata from the command line
+        if meta_dict is not None:
+            self.add_metadata_simple(meta_dict)
 
         # Add a realizations parent node
         self.project_type = project_type
@@ -176,7 +216,7 @@ class RSProject:
         self.XMLBuilder.write()
         self.exists = True
 
-    def add_realization(self, name, realization_id, product_version):
+    def add_realization(self, name: str, realization_id: str, product_version: str, meta: List[RSMeta] = None):
 
         realization = self.XMLBuilder.add_sub_element(self.realizations_node, self.project_type, None, {
             'id': realization_id,
@@ -185,6 +225,9 @@ class RSProject:
             'productVersion': product_version
         })
         self.XMLBuilder.add_sub_element(realization, 'Name', name)
+
+        if meta is not None:
+            self.add_metadata(meta, realization)
 
         try:
             log = Logger("add_realization")
@@ -195,17 +238,31 @@ class RSProject:
 
         return realization
 
-    def add_metadata(self, valdict, node=None):
-        # log = Logger('add_metadata')
+    def add_metadata_simple(self, metadict: Dict[str, str], node=None):
+        """For when you need simple Dict[str,str] key=value metadata with no types
+
+        Args:
+            metadict (Dict[str, str]): [description]
+        """
+        self.add_metadata([RSMeta(k, v) for k, v in metadict.items()], node)
+
+    def add_metadata(self, metavals: List[RSMeta], node=None):
+        """Adding metadata to nodes. Note that you need to pass in a list of RSMeta objects for this one
+        check out add_metadata_simple if all you have is key-value pairs
+
+        Args:
+            metavals (List[RSMeta]): [description]
+            node ([type], optional): [description]. Defaults to None.
+        """
         metadata_element = node.find('MetaData') if node is not None else self.XMLBuilder.find('MetaData')
-        for mkey, mval in valdict.items():
+        for rsmeta in metavals:
             if metadata_element is None:
                 if node is not None:
                     metadata_element = self.XMLBuilder.add_sub_element(node, "MetaData")
                 else:
                     metadata_element = self.XMLBuilder.add_sub_element(self.XMLBuilder.root, "MetaData")
 
-            found = metadata_element.findall('Meta[@name="{}"]'.format(mkey))
+            found = metadata_element.findall('Meta[@name="{}"]'.format(rsmeta.key))
             # Only one key-value pair are allowed with the same name. This cleans up any stragglers
             if len(found) > 0:
                 for f in found:
@@ -213,7 +270,11 @@ class RSProject:
 
             # Note: we don't do a replace=False here because that only verifies the id attribute and we're
             # using 'name' for uniqueness
-            self.XMLBuilder.add_sub_element(metadata_element, "Meta", mval, {"name": mkey})
+            attrs = {"name": rsmeta.key}
+            if rsmeta.type is not None:
+                attrs['type'] = rsmeta.type
+
+            self.XMLBuilder.add_sub_element(metadata_element, "Meta", rsmeta.value, attrs)
 
         self.XMLBuilder.write()
 
@@ -276,6 +337,10 @@ class RSProject:
         else:
             posix_path_val = parse_posix_path(os.path.relpath(abs_path_val, os.path.dirname(self.xml_path)))
             self.XMLBuilder.add_sub_element(nod_dataset, 'Path', posix_path_val)
+
+        if rs_lyr.lyr_meta is not None:
+            self.add_metadata([rs_lyr.lyr_meta], nod_dataset)
+
         self.XMLBuilder.write()
         return nod_dataset
 
@@ -463,7 +528,7 @@ class RSProject:
                 if id_out not in found_keys and lyrnod_in is not None and lyrnod_out is not None:
                     print('Found mapping for {}=>{}. Moving metadata'.format(id_in, id_out))
                     found_keys.append(id_out)
-                    self.add_metadata({
+                    self.add_metadata_simple({
                         **whmeta,
                         **projmeta,
                         **lyrmeta,

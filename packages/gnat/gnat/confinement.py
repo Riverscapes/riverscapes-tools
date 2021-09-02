@@ -11,15 +11,12 @@
 import argparse
 import sys
 import os
-import glob
 import traceback
-import uuid
-import datetime
-import json
-from typing import List
+from typing import List, Dict
 
 from osgeo import ogr
 from osgeo import gdal
+from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from shapely.geometry.base import BaseGeometry
 from shapely.ops import unary_union, split, nearest_points, linemerge, substring
 from shapely.geometry import Point, Polygon, MultiPolygon, LineString, MultiLineString, mapping
@@ -91,13 +88,11 @@ def confinement(huc: int, flowlines_orig: Path, confining_polygon_orig: Path, ou
         raise Exception('Invalid HUC identifier. Must be four digit integer')
 
     # Make the projectXML
-    project, _realization, proj_nodes, report_path = create_project(huc, output_folder, {
-        'ConfinementType': confinement_type
-    })
-
-    # Incorporate project metadata to the riverscapes project
-    if meta is not None:
-        project.add_metadata(meta)
+    project, _realization, proj_nodes, report_path = create_project(huc, output_folder, [
+        RSMeta('HUC{}'.format(len(huc)), str(huc)),
+        RSMeta('HUC', str(huc)),
+        RSMeta('ConfinementType', confinement_type)
+    ], meta)
 
     # Copy input shapes to a geopackage
     flowlines_path = os.path.join(output_folder, LayerTypes['INPUTS'].rel_path, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
@@ -116,14 +111,17 @@ def confinement(huc: int, flowlines_orig: Path, confining_polygon_orig: Path, ou
     GeopackageLayer(intermediates_gpkg, delete_dataset=True)
 
     # Add the flowlines file with some metadata
-    project.add_metadata({'BufferField': buffer_field}, inputs_gpkg_lyrs['FLOWLINES'][0])
+    project.add_metadata([RSMeta('BufferField', buffer_field)], inputs_gpkg_lyrs['FLOWLINES'][0])
 
     # Add the confinement polygon
     project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
     _nd, _inputs_gpkg_path, out_gpkg_lyrs = project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['CONFINEMENT'])
 
     # Additional Metadata
-    project.add_metadata({'Min Buffer': str(min_buffer), "Expansion Factor": str(bankfull_expansion_factor)}, out_gpkg_lyrs['CONFINEMENT_BUFFERS'][0])
+    project.add_metadata([
+        RSMeta('Min Buffer', str(min_buffer), RSMetaTypes.FLOAT),
+        RSMeta("Expansion Factor", str(bankfull_expansion_factor), RSMetaTypes.FLOAT)
+    ], out_gpkg_lyrs['CONFINEMENT_BUFFERS'][0])
 
     # Generate confining margins
     log.info(f"Preparing output geopackage: {output_gpkg}")
@@ -429,15 +427,11 @@ def confinement(huc: int, flowlines_orig: Path, confining_polygon_orig: Path, ou
     return
 
 
-def create_project(huc, output_dir, project_meta):
+def create_project(huc, output_dir: str, meta: List[RSMeta], meta_dict: Dict[str, str]):
 
     project_name = 'Confinement for HUC {}'.format(huc)
     project = RSProject(cfg, output_dir)
-    project.create(project_name, 'Confinement')
-
-    project.add_metadata({'HUC{}'.format(len(huc)): str(huc)})
-    project.add_metadata({'HUC': str(huc)})
-    project.add_metadata(project_meta)
+    project.create(project_name, 'Confinement', meta, meta_dict)
 
     realization = project.add_realization(project_name, 'Confinement', cfg.version)
 

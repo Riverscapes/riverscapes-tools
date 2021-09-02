@@ -170,7 +170,7 @@ def load_lookup_data(db_path, csv_dir):
     log = Logger('Database')
 
     # Load lookup table data into the database
-    dir_search = os.path.join(csv_dir, 'data', '**','*.csv')
+    dir_search = os.path.join(csv_dir, 'data', '**', '*.csv')
     for file_name in glob.glob(dir_search, recursive=True):
         table_name = os.path.splitext(os.path.basename(file_name))[0]
         with open(file_name, mode='r') as csvfile:

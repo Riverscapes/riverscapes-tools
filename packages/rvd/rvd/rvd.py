@@ -12,19 +12,19 @@ import argparse
 import sys
 import os
 import traceback
-import uuid
 import datetime
 import time
 import sqlite3
-from typing import List
+from typing import List, Dict
 import rasterio
 from rasterio import features
 from osgeo import ogr, gdal, osr
 import numpy as np
+from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 
-from rscommons.util import safe_makedirs, parse_metadata
+from rscommons.util import safe_makedirs, parse_metadata, pretty_duration
 from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALOGRErrors, ProgressBar
-from rscommons import GeopackageLayer, VectorBase, get_shp_or_gpkg
+from rscommons import GeopackageLayer, VectorBase
 from rscommons.build_network import build_network
 from rscommons.database import create_database, write_db_attributes, dict_factory, SQLiteCon
 from rscommons.vector_ops import get_geometry_unary_union, copy_feature_class
@@ -122,6 +122,7 @@ def rvd(huc: int, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_or
 
     log = Logger("RVD")
     log.info('RVD v.{}'.format(cfg.version))
+    start_time = time.time()
 
     try:
         int(huc)
@@ -133,11 +134,12 @@ def rvd(huc: int, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_or
 
     safe_makedirs(output_folder)
 
-    project, _realization, proj_nodes = create_project(huc, output_folder)
-
-    # Incorporate project metadata to the riverscapes project
-    if meta is not None:
-        project.add_metadata(meta)
+    project, _realization, proj_nodes = create_project(huc, output_folder, [
+        RSMeta('HUC{}'.format(len(huc)), str(huc)),
+        RSMeta('HUC', str(huc)),
+        RSMeta('RVDVersion', cfg.version),
+        RSMeta('RVDTimestamp', str(int(time.time())), RSMetaTypes.TIMESTAMP)
+    ], meta)
 
     log.info('Adding inputs to project')
     _prj_existing_path_node, prj_existing_path = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['EXVEG'], existing_veg_orig)
@@ -195,7 +197,7 @@ def rvd(huc: int, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_or
 
     # Execute the SQL to create the lookup tables in the RVD geopackage SQLite database
     watershed_name = create_database(huc, outputs_gpkg_path, metadata, cfg.OUTPUT_EPSG, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'rvd_schema.sql'))
-    project.add_metadata({'Watershed': watershed_name})
+    project.add_metadata([RSMeta('Watershed', watershed_name)])
 
     geom_vbottom = get_geometry_unary_union(vbottom_path, spatial_ref=raster_srs)
 
@@ -499,6 +501,12 @@ def rvd(huc: int, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_or
     # added above
     project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['OUTPUTS'])
 
+    ellapsed_time = time.time() - start_time
+    project.add_metadata([
+        RSMeta("ProcTimeS", "{:.2f}".format(ellapsed_time), RSMetaTypes.INT),
+        RSMeta("ProcTimeHuman", pretty_duration(ellapsed_time))
+    ])
+
     # Add the report to the XML
     report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
     project.add_report(proj_nodes['Outputs'], LayerTypes['REPORT'], replace=True)
@@ -610,23 +618,15 @@ def save_intarr_to_geotiff(array, out_file, reference_raster):
             new.write(array.astype(np.int16), 1)
 
 
-def create_project(huc, output_dir):
+def create_project(huc, output_dir, meta: List[RSMeta], meta_dict: Dict[str, str]):
 
     project_name = 'RVD for HUC {}'.format(huc)
     project = RSProject(cfg, output_dir)
-    project.create(project_name, 'RVD')
-
-    project.add_metadata({
-        'HUC{}'.format(len(huc)): str(huc),
-        'HUC': str(huc),
-        'RVDVersion': cfg.version,
-        'RVDTimestamp': str(int(time.time()))
-    })
+    project.create(project_name, 'RVD', meta, meta_dict)
 
     realization = project.add_realization(project_name, 'RVD', cfg.version)
 
     proj_nodes = {
-        'Name': project.XMLBuilder.add_sub_element(realization, 'Name', project_name),
         'Inputs': project.XMLBuilder.add_sub_element(realization, 'Inputs'),
         'Intermediates': project.XMLBuilder.add_sub_element(realization, 'Intermediates'),
         'Outputs': project.XMLBuilder.add_sub_element(realization, 'Outputs')

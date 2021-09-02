@@ -19,6 +19,7 @@ from typing import List, Dict
 
 # LEave OSGEO import alone. It is necessary even if it looks unused
 from osgeo import gdal
+from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 
 from rscommons.util import safe_makedirs, parse_metadata, safe_remove_dir
 from rscommons import RSProject, RSLayer, ModelConfig, Logger, dotenv, initGDALOGRErrors
@@ -83,13 +84,14 @@ def hand(huc, flowlines_orig, orig_dem, hillshade, project_folder, flowareas_ori
     log = Logger('HAND')
     log.info('Starting HAND v.{}'.format(cfg.version))
 
-    project, _realization, proj_nodes = create_project(huc, project_folder)
+    project, _realization, proj_nodes = create_project(huc, project_folder, [
+        RSMeta('HUC{}'.format(len(huc)), str(huc)),
+        RSMeta('HUC', str(huc)),
+        RSMeta('HANDVersion', cfg.version),
+        RSMeta('HANDTimestamp', str(int(time.time())), RSMetaTypes.TIMESTAMP)
+    ], meta)
 
-    # Incorporate project metadata to the riverscapes project
-    if meta is not None:
-        project.add_metadata(meta)
-
-    # Copy the inp
+    # Copy the input layers
     _proj_dem_node, proj_dem = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], orig_dem)
     if hillshade:
         _hillshade_node, hillshade = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], hillshade)
@@ -187,17 +189,10 @@ def hand(huc, flowlines_orig, orig_dem, hillshade, project_folder, flowareas_ori
     log.info('HAND Completed Successfully')
 
 
-def create_project(huc, output_dir):
+def create_project(huc, output_dir: str, project_meta: List[RSMeta], meta_dict: Dict[str, str]):
     project_name = 'HAND for HUC {}'.format(huc)
     project = RSProject(cfg, output_dir)
-    project.create(project_name, 'HAND')
-
-    project.add_metadata({
-        'HUC{}'.format(len(huc)): str(huc),
-        'HUC': str(huc),
-        'HANDVersion': cfg.version,
-        'HANDTimestamp': str(int(time.time()))
-    })
+    project.create(project_name, 'HAND', project_meta, meta_dict)
 
     realization = project.add_realization(project_name, 'HAND', cfg.version)
 

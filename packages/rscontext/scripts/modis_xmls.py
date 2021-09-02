@@ -1,11 +1,13 @@
 import os
 import argparse
 import json
+from posixpath import ismount
 import sys
 import traceback
 import uuid
 import datetime
 from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALOGRErrors
+from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.util import safe_makedirs, safe_remove_file
 
 cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/LST.xsd', '0.0.1')
@@ -31,23 +33,14 @@ def process_lst(lst_xml_folder):
 
         project_name = f'Land Surface Temperature for HUC {huc}'
         project = RSProject(cfg, xml_file)
-        project.create(project_name, 'LST')
+        project.create(project_name, 'LST', [
+            RSMeta('ModelVersion', cfg.version),
+            RSMeta('HUC', huc),
+            RSMeta('dateCreated', datetime.datetime.now().isoformat(), RSMetaTypes.ISODATE),
+            RSMeta('HUC{}'.format(len(huc)), huc)
+        ])
 
-        project.add_metadata({
-            'ModelVersion': cfg.version,
-            'HUC': huc,
-            'dateCreated': datetime.datetime.now().isoformat(),
-            'HUC{}'.format(len(huc)): huc
-        })
-
-        realizations = project.XMLBuilder.add_sub_element(project.XMLBuilder.root, 'Realizations')
-        realization = project.XMLBuilder.add_sub_element(realizations, 'LST', None, {
-            'id': 'LST1',
-            'dateCreated': datetime.datetime.now().isoformat(),
-            'guid': str(uuid.uuid4()),
-            'productVersion': cfg.version
-        })
-        project.XMLBuilder.add_sub_element(realization, 'Name', project_name)
+        realization = project.add_realization(project_name, 'LST1', cfg.version)
 
         output_node = project.XMLBuilder.add_sub_element(realization, 'Outputs')
         zipfile_node = project.add_dataset(output_node, f'{huc}.zip', RSLayer(f'LST Result for {huc}', 'LST_ZIP', 'ZipFile', '1706.zip'), 'ZipFile', replace=True, rel_path=True)

@@ -6,6 +6,7 @@ import os
 import datetime
 import uuid
 from rscommons import Logger, ModelConfig, RSProject, RSLayer, dotenv
+from rscommons.classes.rs_project import RSMeta
 from rscommons.shapefile import create_field
 from rscommons.util import safe_makedirs
 from osgeo import gdal, ogr, osr
@@ -297,16 +298,9 @@ def create_project(project_csv, output_dir):
     project = RSProject(cfg, output_dir)
     project.create(project_name, 'fmLTPBR')
 
-    project.add_metadata(project_csv)
+    project.add_metadata([RSMeta(k, v) for k, v in project_csv.items()])
 
-    realizations = project.XMLBuilder.add_sub_element(project.XMLBuilder.root, 'Realizations')
-    realization = project.XMLBuilder.add_sub_element(realizations, 'FMLTPBR', None, {
-        'id': 'fmLTPBR1',
-        'dateCreated': datetime.datetime.now().isoformat(),
-        'guid': str(uuid.uuid1()),
-        'productVersion': cfg.version
-    })
-    project.XMLBuilder.add_sub_element(realization, 'Name', project_name)
+    realization = project.add_realization(project_name, 'fmLTPBR1', cfg.version)
 
     project.XMLBuilder.write()
     return project, realization
