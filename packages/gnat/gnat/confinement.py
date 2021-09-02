@@ -429,7 +429,7 @@ def confinement(huc: int, flowlines_orig: Path, confining_polygon_orig: Path, ou
     return
 
 
-def create_project(huc, output_dir, realization_meta):
+def create_project(huc, output_dir, project_meta):
 
     project_name = 'Confinement for HUC {}'.format(huc)
     project = RSProject(cfg, output_dir)
@@ -437,17 +437,9 @@ def create_project(huc, output_dir, realization_meta):
 
     project.add_metadata({'HUC{}'.format(len(huc)): str(huc)})
     project.add_metadata({'HUC': str(huc)})
+    project.add_metadata(project_meta)
 
-    realizations = project.XMLBuilder.add_sub_element(project.XMLBuilder.root, 'Realizations')
-    realization = project.XMLBuilder.add_sub_element(realizations, 'Confinement', None, {
-        'id': 'Confinement1',
-        'dateCreated': datetime.datetime.now().isoformat(),
-        'guid': str(uuid.uuid4()),
-        'productVersion': cfg.version
-    })
-    project.XMLBuilder.add_sub_element(realization, 'Name', project_name)
-
-    project.add_metadata(realization_meta)
+    realization = project.add_realization(project_name, 'Confinement', cfg.version)
 
     proj_nodes = {
         'Inputs': project.XMLBuilder.add_sub_element(realization, 'Inputs'),

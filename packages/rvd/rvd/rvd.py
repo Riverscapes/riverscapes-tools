@@ -623,13 +623,7 @@ def create_project(huc, output_dir):
         'RVDTimestamp': str(int(time.time()))
     })
 
-    realizations = project.XMLBuilder.add_sub_element(project.XMLBuilder.root, 'Realizations')
-    realization = project.XMLBuilder.add_sub_element(realizations, 'RVD', None, {
-        'id': 'RVD1',
-        'dateCreated': datetime.datetime.now().isoformat(),
-        'guid': str(uuid.uuid1()),
-        'productVersion': cfg.version
-    })
+    realization = project.add_realization(project_name, 'RVD', cfg.version)
 
     proj_nodes = {
         'Name': project.XMLBuilder.add_sub_element(realization, 'Name', project_name),

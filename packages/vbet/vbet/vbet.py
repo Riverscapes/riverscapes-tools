@@ -437,7 +437,6 @@ def create_project(huc, output_dir):
 
     realization = project.add_realization(project_name, 'VBET', cfg.version)
 
-    project.XMLBuilder.add_sub_element(realization, 'Name', project_name)
     proj_nodes = {
         'Inputs': project.XMLBuilder.add_sub_element(realization, 'Inputs'),
         'Intermediates': project.XMLBuilder.add_sub_element(realization, 'Intermediates'),

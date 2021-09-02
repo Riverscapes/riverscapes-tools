@@ -260,15 +260,8 @@ def create_project(huc: int, output_dir: Path, meta: dict = None):
     if meta is not None:
         project.add_metadata(meta)
 
-    realizations = project.XMLBuilder.add_sub_element(project.XMLBuilder.root, 'Realizations')
-    realization = project.XMLBuilder.add_sub_element(realizations, 'ChannelArea', None, {
-        'id': 'ChannelArea',
-        'dateCreated': datetime.datetime.now().isoformat(),
-        'guid': str(uuid.uuid1()),
-        'productVersion': cfg.version
-    })
+    realization = project.add_realization(project_name, 'ChannelArea', cfg.version)
 
-    project.XMLBuilder.add_sub_element(realization, 'Name', project_name)
     proj_nodes = {
         'Inputs': project.XMLBuilder.add_sub_element(realization, 'Inputs'),
         'Intermediates': project.XMLBuilder.add_sub_element(realization, 'Intermediates'),
