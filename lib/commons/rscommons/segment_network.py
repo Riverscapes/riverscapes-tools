@@ -142,6 +142,7 @@ def segment_network(inpath: str, outpath: str, interval: float, minimum: float, 
         progbar = ProgressBar(len(all_features), 50, "Segmenting")
         counter = 0
 
+        out_lyr.ogr_layer.StartTransaction()
         for orig_feat in all_features:
             counter += 1
             progbar.update(counter)
@@ -194,7 +195,7 @@ def segment_network(inpath: str, outpath: str, interval: float, minimum: float, 
                     new_ogr_feat.SetGeometry(geo)
                     out_lyr.ogr_layer.CreateFeature(new_ogr_feat)
                     # rid += 1
-
+        out_lyr.ogr_layer.CommitTransaction()
         progbar.finish()
 
         log.info(('{:,} features written to {:}'.format(out_lyr.ogr_layer.GetFeatureCount(), outpath)))

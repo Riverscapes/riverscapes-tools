@@ -59,6 +59,7 @@ def rs_segmentation(
     with GeopackageLayer(ownership_lines_path, write=True) as out_layer, get_shp_or_gpkg(ownership_path) as own_lyr:
         out_layer.create_layer(ogr.wkbLineString, spatial_ref=own_lyr.spatial_ref)
         network_owener_collect = collect_feature_class(network_copy_path)
+        out_layer.ogr_layer.StartTransaction()
         for feat, _counter, _progbar in own_lyr.iterate_features('Converting ownership polygons to polylines', clip_shape=network_owener_collect):
             geom = feat.GetGeometryRef()
 
@@ -88,6 +89,7 @@ def rs_segmentation(
                     out_feature = ogr.Feature(out_layer.ogr_layer_def)
                     out_feature.SetGeometry(b_line)
                     out_layer.ogr_layer.CreateFeature(out_feature)
+        out_layer.ogr_layer.CommitTransaction()
 
     # Now, finally, we're ready to do the actual intersection and splitting
     intersect_pts['ownership'] = split_geoms(network_copy_path, ownership_lines_path, split_feats)
@@ -96,6 +98,7 @@ def rs_segmentation(
     with GeopackageLayer(out_gpkg, layer_name='network_crossings', write=True) as out_lyr, \
             GeopackageLayer(network_copy_path) as in_lyr:
         out_lyr.create_layer(ogr.wkbPoint, spatial_ref=in_lyr.spatial_ref, fields={'type': ogr.OFTString})
+        out_lyr.ogr_layer.StartTransaction()
         for geom_type_name, ogr_geom in intersect_pts.items():
             for pt in list(ogr_geom):
                 out_feature = ogr.Feature(out_lyr.ogr_layer_def)
@@ -103,6 +106,7 @@ def rs_segmentation(
                 out_feature.SetField('type', geom_type_name)
                 out_lyr.ogr_layer.CreateFeature(out_feature)
 
+        out_lyr.ogr_layer.CommitTransaction()
     # We're done with the original. Let that memory go.
     intersect_pts = None
 
@@ -111,6 +115,7 @@ def rs_segmentation(
     with GeopackageLayer(network_crossings_path, write=True) as out_lyr, \
             GeopackageLayer(network_copy_path) as net_lyr:
         out_lyr.create_layer_from_ref(net_lyr)
+        out_lyr.ogr_layer.StartTransaction()
         fcounter = 0
         for feat, _counter, _progbar in net_lyr.iterate_features('Writing split features'):
 
@@ -131,6 +136,7 @@ def rs_segmentation(
                 new_feat.SetFID(fcounter)
                 out_lyr.ogr_layer.CreateFeature(new_feat)
                 fcounter += 1
+        out_lyr.ogr_layer.CommitTransaction()
 
     # Finally, segment this new layer the same way we did the raw network above.
     log.info('Segmenting the intersected network')
