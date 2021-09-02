@@ -46,7 +46,7 @@ def xyscatter(values, xlabel, ylabel, chart_title, file_path, one2one=False):
         if len(x) < 3:
             raise Exception('Attempting linear regression with less than three data points.')
 
-        m, c, r_value, p_value, std_err = stats.linregress(x, y)
+        m, c, r_value, _p_value, _std_err = stats.linregress(x, y)
 
         min_value = min(x)  # min(min(x), min(y))
         max_value = max(x)  # max(max(x), max(y))
@@ -64,7 +64,7 @@ def xyscatter(values, xlabel, ylabel, chart_title, file_path, one2one=False):
 
 def box_plot(values, ylabel, chart_title, file_path):
 
-    fig1, ax1 = plt.subplots()
+    _fig1, ax1 = plt.subplots()
     ax1.set_title(chart_title)
     ax1.boxplot(values)
 
@@ -84,11 +84,12 @@ def histogram(values, bins, file_path):
 
     plt.savefig(file_path)
 
+
 def line(x_values, y_values, xlabel, ylabel, chart_title, file_path):
 
     plt.clf()
     plt.plot(x_values, y_values)
-    
+
     plt.title = chart_title
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)

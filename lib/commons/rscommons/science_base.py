@@ -103,7 +103,7 @@ def download_shapefile_collection(url, download_folder, unzip_folder, force_down
     # Build a dictionary of all the ShapeFiles within the archive.
     # Keys will be the name of the ShapeFile without extension (e.g. WBDHU8)
     shapefiles = {}
-    for root, subFolder, files in os.walk(final_unzip_folder):
+    for root, _subFolder, files in os.walk(final_unzip_folder):
         for item in files:
             if item.endswith('.shp'):
                 shapefiles[os.path.splitext(os.path.basename(item))[0]] = os.path.join(root, item)

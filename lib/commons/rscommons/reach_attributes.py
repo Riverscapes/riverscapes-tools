@@ -11,7 +11,7 @@ def write_reach_attributes(feature_class, database, original_fields, field_alias
         feature_class {str} -- Path to output ShapeFile
         output_values {dict} -- dictionary. Key is ReachID and values is dictionary of values keyed by database field name
         original_fields {dict} -- OGR datatype keyed to list of database field names
-        field_aliases {dict} -- Field names used in out_values dictionary (i.e. databaes field names) keyed 
+        field_aliases {dict} -- Field names used in out_values dictionary (i.e. databaes field names) keyed
             to ShapeFile field names that will be written to ShapeFile
         null_value {var} -- ShapeFiles can't store NULL values, so this value is substituted for any NULLs
             in database

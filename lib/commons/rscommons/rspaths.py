@@ -5,7 +5,7 @@ from pathlib import Path, PurePosixPath
 
 def parse_rel_path(path: str) -> str:
     """ Path handling across platforms is gnarly. 
-    This method returns the correct path for your operating system regardless of 
+    This method returns the correct path for your operating system regardless of
     whether the input is a windows path or a linux path
 
     Args:

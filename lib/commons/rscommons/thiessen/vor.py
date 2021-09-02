@@ -77,7 +77,7 @@ class NARVoronoi:
     def collectCenterLines(self, rivershape, flipIsland=None):
         """
 
-        :param flipIsland: The id of the island to reassign to a different side. 
+        :param flipIsland: The id of the island to reassign to a different side.
                             Useful when calculating alternate
                             centerlines around islands.
         :return: LineString (Valid) or MultiLineString (invalid)

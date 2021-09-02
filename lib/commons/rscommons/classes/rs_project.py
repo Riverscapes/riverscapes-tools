@@ -52,7 +52,7 @@ LayerTypes = {
 
 class RSMetaTypes:
     """
-    This is a helper enumeration class to make sure we only use meta types that are valid. 
+    This is a helper enumeration class to make sure we only use meta types that are valid.
     These should exactly mirror:
         https://xml.riverscapes.xyz/Projects/XSD/V1/RiverscapesProject.xsd
     """
@@ -234,6 +234,7 @@ class RSProject:
             log_lyr = RSLayer('Log', 'LOGFILE', 'LogFile', '')
             self.add_dataset(realization, log.instance.logpath, log_lyr, 'LogFile')
         except Exception as e:
+            print(e)
             pass
 
         return realization
@@ -288,13 +289,30 @@ class RSProject:
         Returns:
             [type]: [description]
         """
+        meta = self.get_metadata(node, tag)
+        if meta is None:
+            return None
+        return {k: v.value for k, v in meta.items()}
+
+    def get_metadata(self, node=None, tag='MetaData'):
+        """Reverse lookup to pull Metadata out of the raw XML report
+
+        Args:
+            node ([type], optional): [description]. Defaults to None.
+            tag (str, optional): [description]. Defaults to 'MetaData'.
+
+        Returns:
+            [type]: [description]
+        """
         metadata_element = node.find(tag) if node is not None else self.XMLBuilder.find(tag)
         if metadata_element is None:
             return None
         children = list(metadata_element)
         valdict = {}
         for child in children:
-            valdict[child.attrib['name']] = child.text
+            child_name = child.attrib['name']
+            child_type = child.attrib['type'] if 'type' in child.attrib else None
+            valdict[child_name] = RSMeta(child_name, child.text, child_type)
 
         return valdict
 
@@ -482,7 +500,7 @@ class RSProject:
         return '{}{}'.format(root_id, i if i > 1 else '')
 
     @staticmethod
-    def prefix_keys(dict_in: Dict[str, str], prefix: str) -> Dict[str, str]:
+    def prefix_meta_keys(dict_in: Dict[str, str], prefix: str) -> Dict[str, str]:
         """Helper method. Prefix a dictionary's keys
 
         Args:
@@ -494,7 +512,11 @@ class RSProject:
         """
         if dict_in is None:
             return {}
-        return {'{}{}'.format(prefix, key): val for key, val in dict_in.items()}
+        new_dict = {}
+        for key, val in dict_in.items():
+            new_key = '{}{}'.format(prefix, key)
+            new_dict[new_key] = RSMeta(new_key, val.value, val.type)
+        return new_dict
 
     def rs_meta_augment(self, in_proj_files: List[str], rs_id_map: Dict[str, str]) -> None:
         """Augment the metadata of specific layers with the input's layers
@@ -515,25 +537,26 @@ class RSProject:
             in_prj = RSProject(None, in_prj_path)
 
             # Define our default, generic warehouse and project meta
-            whmeta = self.prefix_keys(in_prj.get_metadata_dict(tag='Warehouse'), wh_prefix)
-            projmeta = self.prefix_keys(in_prj.get_metadata_dict(), proj_prefix)
+            whmeta = self.prefix_meta_keys(in_prj.get_metadata(tag='Warehouse'), wh_prefix)
+            projmeta = self.prefix_meta_keys(in_prj.get_metadata(), proj_prefix)
 
             # look for any valid mappings and move metadata into them
             for id_out, id_in in working_id_list.items():
 
                 lyrnod_in = in_prj.XMLBuilder.find('Realizations').find('.//*[@id="{}"]'.format(id_in))
-                lyrmeta = self.prefix_keys(in_prj.get_metadata_dict(lyrnod_in), lyr_prefix)
+                lyrmeta = self.prefix_meta_keys(in_prj.get_metadata(lyrnod_in), lyr_prefix)
+
                 lyrnod_out = self.XMLBuilder.find('Realizations').find('.//*[@id="{}"]'.format(id_out))
 
                 if id_out not in found_keys and lyrnod_in is not None and lyrnod_out is not None:
                     print('Found mapping for {}=>{}. Moving metadata'.format(id_in, id_out))
                     found_keys.append(id_out)
-                    self.add_metadata_simple({
-                        **whmeta,
-                        **projmeta,
-                        **lyrmeta,
-                        "{}projType".format(proj_prefix): in_prj.XMLBuilder.find('ProjectType').text,
-                        "{}id".format(lyr_prefix): lyrnod_in.attrib['id'],
-                        "{}guid".format(lyr_prefix): lyrnod_in.attrib['guid'],
-                        "{}path".format(lyr_prefix): lyrnod_in.find('Path').text,
-                    }, lyrnod_out)
+                    self.add_metadata([
+                        *whmeta.values(),
+                        *projmeta.values(),
+                        *lyrmeta.values(),
+                        RSMeta("{}projType".format(proj_prefix), in_prj.XMLBuilder.find('ProjectType').text),
+                        RSMeta("{}id".format(lyr_prefix), lyrnod_in.attrib['id']),
+                        RSMeta("{}guid".format(lyr_prefix), lyrnod_in.attrib['guid'], RSMetaTypes.GUID),
+                        RSMeta("{}path".format(lyr_prefix), lyrnod_in.find('Path').text, RSMetaTypes.FILEPATH),
+                    ], lyrnod_out)

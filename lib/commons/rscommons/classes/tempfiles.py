@@ -41,7 +41,7 @@ class TempGISFile():
         try:
             os.remove(self.filepath)
         except Exception as e:
-            self.log.warning('Error cleaning up file: {}'.format(self.filepath))
+            self.log.warning('Error cleaning up file: {} {}'.format(self.filepath, e))
 
 
 class TempRaster(TempGISFile):

@@ -297,7 +297,7 @@ class RSReport():
         tagname = 'ul' if ordered is False else 'ol'
         outer = ET.Element(tagname, attrib=attrib)
 
-        for key, val in values.items():
+        for _key, val in values.items():
             li = ET.Element('li')
             li.text = val
             outer.append(val)

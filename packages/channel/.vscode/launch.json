@@ -49,6 +49,17 @@
         "--verbose",
         //"--debug"
       ]
+    },
+    {
+      "name": "Augment XML",
+      "type": "python",
+      "request": "launch",
+      "module": "channel.channel_rs",
+      "console": "integratedTerminal",
+      "args": [
+        "{env:DATA_ROOT}/channel_area/${input:HUC}/project.rs.xml",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/project.rs.xml"
+      ]
     },       
   ]
 }
