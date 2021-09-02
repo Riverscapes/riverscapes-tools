@@ -51,12 +51,12 @@ LayerTypes = {
 
 
 class RSLayer:
-    def __init__(self, name: str, id: str, tag: str, rel_path: str, sub_layers: dict = None):
+    def __init__(self, name: str, lyr_id: str, tag: str, rel_path: str, sub_layers: dict = None):
         """[summary]
 
         Args:
-            name (str): The <Name> to be used 
-            id (str): The <Name id=""> id to be used
+            name (str): The <Name> to be used
+            lyr_id (str): The <Name id=""> id to be used
             tag (str): The tag to be used for the vector layer
             rel_path (str): The path relative to the project file
             sub_layers (dict, optional): If this is a geopackage you can . Defaults to None.
@@ -69,8 +69,8 @@ class RSLayer:
             Exception: sub_layers must but a list of RSLayer(s)
         """
         if name is None:
-            raise Exception('Name is required')
-        if id is None:
+            raise Exception('Realization Name is required')
+        if lyr_id is None:
             raise Exception('id is required')
         if rel_path is None:
             raise Exception('rel_path is required')
@@ -85,9 +85,9 @@ class RSLayer:
         else:
             self.sub_layers = None
 
-        self.name = name
-        self.id = id
+        self.id = lyr_id
         self.tag = tag
+        self.name = name
         self.rel_path = rel_path
 
     def add_sub_layer(self, key: str, layer: RSLayer):
@@ -134,6 +134,8 @@ class RSProject:
         else:
             self.xml_path = project_path
 
+        self.project_type = ''
+        self.realizations_node = None
         self.project_dir = os.path.dirname(self.xml_path)
 
     def create(self, name, project_type, replace=True):
@@ -167,8 +169,31 @@ class RSProject:
             'dateCreated': datetime.datetime.now().isoformat()
         })
 
+        # Add a realizations parent node
+        self.project_type = project_type
+        self.realizations_node = self.XMLBuilder.add_sub_element(self.XMLBuilder.root, 'Realizations')
+
         self.XMLBuilder.write()
         self.exists = True
+
+    def add_realization(self, name, realization_id, product_version):
+
+        realization = self.XMLBuilder.add_sub_element(self.realizations_node, self.project_type, None, {
+            'id': realization_id,
+            'dateCreated': datetime.datetime.now().isoformat(),
+            'guid': str(uuid.uuid4()),
+            'productVersion': product_version
+        })
+        self.XMLBuilder.add_sub_element(realization, 'Name', name)
+
+        try:
+            log = Logger("add_realization")
+            log_lyr = RSLayer('Log', 'LOGFILE', 'LogFile', '')
+            self.add_dataset(realization, log.instance.logpath, log_lyr, 'LogFile')
+        except Exception as e:
+            pass
+
+        return realization
 
     def add_metadata(self, valdict, node=None):
         # log = Logger('add_metadata')
@@ -230,26 +255,26 @@ class RSProject:
     def get_relative_path(self, abs_path):
         return abs_path[len() + 1:]
 
-    def add_dataset(self, parent_node, path_val, rs_lyr, default_tag, replace=False, rel_path=False):
+    def add_dataset(self, parent_node, abs_path_val: str, rs_lyr: RSLayer, default_tag: str, replace=False, rel_path=False):
 
         xml_tag = rs_lyr.tag if rs_lyr.tag is not None else default_tag
-        id = rs_lyr.id if replace else RSProject.unique_type_id(parent_node, xml_tag, rs_lyr.id)
+        ds_id = rs_lyr.id if replace else RSProject.unique_type_id(parent_node, xml_tag, rs_lyr.id)
 
         if replace:
             self.XMLBuilder.delete_sub_element(parent_node, xml_tag, id)
 
         attribs = {
             'guid': str(uuid.uuid4()),
-            'id': id
+            'id': ds_id
         }
         nod_dataset = self.XMLBuilder.add_sub_element(parent_node, xml_tag, attribs=attribs)
         self.XMLBuilder.add_sub_element(nod_dataset, 'Name', rs_lyr.name)
 
         # Sanitize our paths to always produce linux-style slashes
         if rel_path:
-            self.XMLBuilder.add_sub_element(nod_dataset, 'Path', parse_posix_path(path_val))
+            self.XMLBuilder.add_sub_element(nod_dataset, 'Path', parse_posix_path(abs_path_val))
         else:
-            posix_path_val = parse_posix_path(os.path.relpath(path_val, os.path.dirname(self.xml_path)))
+            posix_path_val = parse_posix_path(os.path.relpath(abs_path_val, os.path.dirname(self.xml_path)))
             self.XMLBuilder.add_sub_element(nod_dataset, 'Path', posix_path_val)
         self.XMLBuilder.write()
         return nod_dataset

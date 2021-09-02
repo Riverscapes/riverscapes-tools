@@ -29,6 +29,7 @@ class _LoggerSingleton:
         def __init__(self):
             self.initialized = False
             self.verbose = False
+            self.logpath = None
 
         def setup(self, logPath=None, verbose=False):
             self.initialized = True
@@ -44,7 +45,7 @@ class _LoggerSingleton:
             osgeoLogger.setLevel(logging.WARNING)
 
             if logPath:
-
+                self.logpath = logPath
                 if not os.path.exists(os.path.dirname(logPath)):
                     os.makedirs(os.path.dirname(logPath))
                 if not os.path.isdir(os.path.dirname(logPath)):
