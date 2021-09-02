@@ -115,18 +115,28 @@ def channel(huc: int,
     if flowlines is not None:
         proj_flowlines = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
         copy_feature_class(flowlines, proj_flowlines, epsg=epsg)
+    else:
+        proj_flowlines = None
 
     if flowareas is not None:
         proj_flowareas = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['FLOWAREAS'].rel_path)
         copy_feature_class(flowareas, proj_flowareas, epsg=epsg)
+    else:
+        proj_flowareas = None
+        filtered_flowarea_no_islands = None
 
     if waterbodies is not None:
         proj_waterbodies = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['WATERBODY'].rel_path)
         copy_feature_class(waterbodies, proj_waterbodies, epsg=epsg)
+    else:
+        proj_waterbodies = None
+        filtered_waterbodies = None
 
     if other_polygons is not None:
         proj_custom_polygons = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['OTHER_POLYGONS'].rel_path)
         copy_feature_class(other_polygons, proj_custom_polygons, epsg=epsg)
+    else:
+        proj_custom_polygons = None
 
     project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
 
@@ -184,6 +194,8 @@ def channel(huc: int,
         else:
             log.info("No field or equation for bankfull width was provided")
             bankfull_polygons = None
+    else:
+        bankfull_polygons = None
 
     output_channel_area = os.path.join(output_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['CHANNEL_AREA'].rel_path)
     if bankfull_polygons is not None and combined_flow_polygons is not None:
@@ -296,8 +308,8 @@ def main():
     )
     parser.add_argument('huc', help='NHD huc id', type=str)
     parser.add_argument('flowlines', help='NHD flowlines feature class', type=str)
-    parser.add_argument('flowareas', help='NHD flowareas feature class', type=str)
-    parser.add_argument('waterbodies', help='NHD waterbodies', type=str)
+    parser.add_argument('--flowareas', help='NHD flowareas feature class', type=str)
+    parser.add_argument('--waterbodies', help='NHD waterbodies', type=str)
     parser.add_argument('output_dir', help='Folder where output VBET project will be created', type=str)
     parser.add_argument('--bankfull_function', help='width field in flowlines feature class (e.g. BFWidth). Default: "{}"'.format(DEFAULT_FUNCTION), type=str, default=DEFAULT_FUNCTION)
     parser.add_argument('--bankfull_function_params', help='Field that contains reach code (e.g. FCode). Omitting this option retains all features. Default: "{}"'.format(DEFAULT_FUNCTION_PARAMS), type=str, default=DEFAULT_FUNCTION_PARAMS)
