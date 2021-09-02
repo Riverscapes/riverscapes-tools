@@ -15,7 +15,6 @@ import glob
 import json
 import traceback
 import uuid
-import datetime
 import time
 from typing import Dict
 from osgeo import ogr
@@ -30,7 +29,7 @@ from rscommons.science_base import download_shapefile_collection, get_ntd_urls, 
 from rscommons.geographic_raster import gdal_dem_geographic
 from rscommons.download_hand import download_hand
 from rscommons.raster_buffer_stats import raster_buffer_stats2
-from rscommons.vector_ops import get_geometry_unary_union, copy_feature_class, buffer_by_field
+from rscommons.vector_ops import get_geometry_unary_union, copy_feature_class
 from rscommons.prism import calculate_bankfull_width
 
 from rscontext.rs_segmentation import rs_segmentation
@@ -39,7 +38,7 @@ from rscontext.clip_ownership import clip_ownership
 from rscontext.filter_ecoregions import filter_ecoregions
 from rscontext.rs_context_report import RSContextReport
 from rscontext.vegetation import clip_vegetation
-from rscontext.bankfull import bankfull_buffer, bankfull_nhd_area
+from rscontext.bankfull import bankfull_buffer
 from rscontext.__version__ import __version__
 
 initGDALOGRErrors()
@@ -366,17 +365,10 @@ def create_project(huc, output_dir):
     project = RSProject(cfg, output_dir)
     project.create(project_name, 'RSContext')
 
+    realization = project.add_realization(project_name, 'RSContext', cfg.version)
+
     project.add_metadata({'HUC{}'.format(len(huc)): str(huc)})
     project.add_metadata({'HUC': str(huc)})
-
-    realizations = project.XMLBuilder.add_sub_element(project.XMLBuilder.root, 'Realizations')
-    realization = project.XMLBuilder.add_sub_element(realizations, 'RSContext', None, {
-        'id': 'RSContext1',
-        'dateCreated': datetime.datetime.now().isoformat(),
-        'guid': str(uuid.uuid4()),
-        'productVersion': cfg.version
-    })
-    project.XMLBuilder.add_sub_element(realization, 'Name', project_name)
 
     project.XMLBuilder.write()
     return project, realization

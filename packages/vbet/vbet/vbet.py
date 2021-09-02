@@ -51,7 +51,7 @@ initGDALOGRErrors()
 
 cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/VBET.xsd', __version__)
 
-#thresh_vals = {"50": 0.5, "60": 0.6, "70": 0.7, "80": 0.8, "90": 0.9, "100": 1}
+# thresh_vals = {"50": 0.5, "60": 0.6, "70": 0.7, "80": 0.8, "90": 0.9, "100": 1}
 thresh_vals = {'80': 0.80, '68': 0.68}
 
 LayerTypes = {
@@ -435,13 +435,7 @@ def create_project(huc, output_dir):
         'VBETTimestamp': str(int(time.time()))
     })
 
-    realizations = project.XMLBuilder.add_sub_element(project.XMLBuilder.root, 'Realizations')
-    realization = project.XMLBuilder.add_sub_element(realizations, 'VBET', None, {
-        'id': 'VBET',
-        'dateCreated': datetime.datetime.now().isoformat(),
-        'guid': str(uuid.uuid1()),
-        'productVersion': cfg.version
-    })
+    realization = project.add_realization(project_name, 'VBET', cfg.version)
 
     project.XMLBuilder.add_sub_element(realization, 'Name', project_name)
     proj_nodes = {
