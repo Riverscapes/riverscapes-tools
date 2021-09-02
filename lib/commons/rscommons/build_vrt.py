@@ -16,7 +16,7 @@ import os
 import sys
 import traceback
 from osgeo import gdal
-from rscommons import Logger, ModelConfig
+from rscommons import Logger
 
 
 def build_vrt(search_dir, vrt):
@@ -33,7 +33,7 @@ def build_vrt(search_dir, vrt):
         raise Exception('Directory specified does not exist: {}'.format(search_dir))
 
     rasters = []
-    for root, sub_folder, files in os.walk(search_dir):
+    for root, _sub_folder, files in os.walk(search_dir):
         for item in files:
             if item.endswith('.img') or item.endswith('.tif'):
                 rasters.append(os.path.join(root, item))

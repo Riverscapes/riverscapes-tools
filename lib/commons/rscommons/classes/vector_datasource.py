@@ -5,6 +5,7 @@ from osgeo import ogr
 from rscommons.classes.logger import Logger
 from rscommons.util import safe_remove_file
 
+
 class DatasetRegistryException(Exception):
     """Special exceptions
 
@@ -152,9 +153,8 @@ class DatasetRegistry(object):
 
         # Delete the Dataset
         err = driver.DeleteDataSource(filepath)
-        
-        # If this is a tempfile there's a possibility of failure. 
+
+        # If this is a tempfile there's a possibility of failure.
         # In that case just remove the file normally (or try anyway)
         if err == ogr.OGRERR_FAILURE:
             safe_remove_file(filepath)
-

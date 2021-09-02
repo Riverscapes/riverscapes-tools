@@ -8,7 +8,7 @@ from osgeo import ogr
 
 import datetime
 import uuid
-from rscommons import RSProject, RSLayer, ModelConfig, Logger, RSMeta, RSMetaTypes
+from rscommons import RSProject, RSLayer, ModelConfig, Logger, RSMeta, RSMetaTypes, dotenv
 from rscommons.util import safe_makedirs
 # Import your own version. Don't just use RSCommons
 from rscommons.__version__ import __version__

@@ -45,7 +45,7 @@ def parse_args_env(parser: argparse.ArgumentParser, env_path=None):
         args {dict} -- key: value pairs of environment variables
         args {argparse.parser} -- [description]
     """
-    env = parse_dotenv(env_path) if env_path is not None else {}
+    _env = parse_dotenv(env_path) if env_path is not None else {}
     args = parser.parse_args()
     pattern = r'{env:([^}]+)}'
 

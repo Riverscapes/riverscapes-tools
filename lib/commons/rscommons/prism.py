@@ -140,7 +140,7 @@ def bankfull_width_buffer(flowlines, precip):
         precip (float): mean annual precipitation (mm) for the HUC
 
     Returns:
-        geometry: unioned polygon geometry of buffered lines 
+        geometry: unioned polygon geometry of buffered lines
     """
 
     p = precip / 10.0  # prism data in mm, need cm

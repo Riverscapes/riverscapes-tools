@@ -160,43 +160,43 @@ def join_attributes(gpkg, name, geom_layer, attribute_layer, join_field, fields,
     return os.path.join(gpkg, name)
 
 
-def generate_channel_areas(flowline_network, flow_areas, buffer_field, catchments, out_channel_area, waterbodies=None):
+# def generate_channel_areas(flowline_network, flow_areas, buffer_field, catchments, out_channel_area, waterbodies=None):
 
-    network_path_buffered = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['VBET_NETWORK_BUFFERED'].rel_path)
-    buffer_by_field(flowline_network, network_path_buffered, "BFwidth", cfg.OUTPUT_EPSG, centered=True)
+#     network_path_buffered = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['VBET_NETWORK_BUFFERED'].rel_path)
+#     buffer_by_field(flowline_network, network_path_buffered, "BFwidth", cfg.OUTPUT_EPSG, centered=True)
 
-    merge_feature_classes([filtered_waterbody, project_inputs['FLOW_AREA']], flow_polygons)
+#     merge_feature_classes([filtered_waterbody, project_inputs['FLOW_AREA']], flow_polygons)
 
-    flow_polygons = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['FLOW_POLYGONS'].rel_path)
-    if "WATERBODY" in project_inputs:
-        log.info('Filter and merge waterbody polygons with Flow Areas')
-        filtered_waterbody = os.path.join(intermediates_gpkg_path, "waterbody_filtered")
-        wb_fcodes = [39000, 39001, 39004, 39005, 39006, 39009, 39010, 39011, 39012, 36100, 46600, 46601, 46602]
-        fcode_filter = "FCode = " + " or FCode = ".join([f"'{fcode}'" for fcode in wb_fcodes]) if len(wb_fcodes) > 0 else ""
-        copy_feature_class(project_inputs["WATERBODY"], filtered_waterbody, attribute_filter=fcode_filter)
-        merge_feature_classes([filtered_waterbody, project_inputs['FLOW_AREA']], flow_polygons)
-    else:
-        copy_feature_class(project_inputs['FLOW_AREA'], flow_polygons)
+#     flow_polygons = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['FLOW_POLYGONS'].rel_path)
+#     if "WATERBODY" in project_inputs:
+#         log.info('Filter and merge waterbody polygons with Flow Areas')
+#         filtered_waterbody = os.path.join(intermediates_gpkg_path, "waterbody_filtered")
+#         wb_fcodes = [39000, 39001, 39004, 39005, 39006, 39009, 39010, 39011, 39012, 36100, 46600, 46601, 46602]
+#         fcode_filter = "FCode = " + " or FCode = ".join([f"'{fcode}'" for fcode in wb_fcodes]) if len(wb_fcodes) > 0 else ""
+#         copy_feature_class(project_inputs["WATERBODY"], filtered_waterbody, attribute_filter=fcode_filter)
+#         merge_feature_classes([filtered_waterbody, project_inputs['FLOW_AREA']], flow_polygons)
+#     else:
+#         copy_feature_class(project_inputs['FLOW_AREA'], flow_polygons)
 
-    flow_area_raster = os.path.join(project_folder, LayerTypes['FLOW_AREA_RASTER'].rel_path)
-    rasterize(flow_polygons, flow_area_raster, project_inputs['SLOPE_RASTER'])
-    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['FLOW_AREA_RASTER'])
-    fa_dist_raster = os.path.join(project_folder, LayerTypes['FLOW_AREA_DISTANCE'].rel_path)
-    proximity_raster(flow_area_raster, fa_dist_raster)
-    project.add_project_raster(proj_nodes["Intermediates"], LayerTypes['FLOW_AREA_DISTANCE'])
+#     flow_area_raster = os.path.join(project_folder, LayerTypes['FLOW_AREA_RASTER'].rel_path)
+#     rasterize(flow_polygons, flow_area_raster, project_inputs['SLOPE_RASTER'])
+#     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['FLOW_AREA_RASTER'])
+#     fa_dist_raster = os.path.join(project_folder, LayerTypes['FLOW_AREA_DISTANCE'].rel_path)
+#     proximity_raster(flow_area_raster, fa_dist_raster)
+#     project.add_project_raster(proj_nodes["Intermediates"], LayerTypes['FLOW_AREA_DISTANCE'])
 
-    log.info('Writing channel raster using slope as a template')
-    channel_buffer_raster = os.path.join(project_folder, LayerTypes['CHANNEL_BUFFER_RASTER'].rel_path)
-    rasterize(network_path_buffered, channel_buffer_raster, project_inputs['SLOPE_RASTER'])
-    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['CHANNEL_BUFFER_RASTER'])
+#     log.info('Writing channel raster using slope as a template')
+#     channel_buffer_raster = os.path.join(project_folder, LayerTypes['CHANNEL_BUFFER_RASTER'].rel_path)
+#     rasterize(network_path_buffered, channel_buffer_raster, project_inputs['SLOPE_RASTER'])
+#     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['CHANNEL_BUFFER_RASTER'])
 
-    log.info('Generating Channel Proximity raster')
-    channel_dist_raster = os.path.join(project_folder, LayerTypes['CHANNEL_DISTANCE'].rel_path)
-    proximity_raster(channel_buffer_raster, channel_dist_raster)
-    project.add_project_raster(proj_nodes["Intermediates"], LayerTypes['CHANNEL_DISTANCE'])
+#     log.info('Generating Channel Proximity raster')
+#     channel_dist_raster = os.path.join(project_folder, LayerTypes['CHANNEL_DISTANCE'].rel_path)
+#     proximity_raster(channel_buffer_raster, channel_dist_raster)
+#     project.add_project_raster(proj_nodes["Intermediates"], LayerTypes['CHANNEL_DISTANCE'])
 
-    in_rasters['Channel'] = channel_dist_raster
-    out_rasters['NORMALIZED_CHANNEL_DISTANCE'] = os.path.join(project_folder, LayerTypes['NORMALIZED_CHANNEL_DISTANCE'].rel_path)
+#     in_rasters['Channel'] = channel_dist_raster
+#     out_rasters['NORMALIZED_CHANNEL_DISTANCE'] = os.path.join(project_folder, LayerTypes['NORMALIZED_CHANNEL_DISTANCE'].rel_path)
 
-    in_rasters['Flow Areas'] = fa_dist_raster
-    out_rasters['NORMALIZED_FLOWAREA_DISTANCE'] = os.path.join(project_folder, LayerTypes['NORMALIZED_FLOWAREA_DISTANCE'].rel_path)
+#     in_rasters['Flow Areas'] = fa_dist_raster
+#     out_rasters['NORMALIZED_FLOWAREA_DISTANCE'] = os.path.join(project_folder, LayerTypes['NORMALIZED_FLOWAREA_DISTANCE'].rel_path)

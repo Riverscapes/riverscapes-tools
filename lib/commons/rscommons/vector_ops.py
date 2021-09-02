@@ -246,7 +246,7 @@ def merge_feature_classes(feature_class_paths: List[str], out_layer_path: str, b
 
     with get_shp_or_gpkg(out_layer_path, write=True) as out_layer:
         fccount = 0
-        
+
         for in_layer_path in feature_class_paths:
             fccount += 1
             log.info("Merging feature class {}/{}".format(fccount, len(feature_class_paths)))
@@ -839,7 +839,7 @@ def remove_holes_feature_class(in_layer_path, out_layer_path, min_hole_area=None
 
 def intersection(layer_path1, layer_path2, out_layer_path, epsg):
 
-    log = Logger('feature_class_intersection')
+    # log = Logger('feature_class_intersection')
     with get_shp_or_gpkg(out_layer_path, write=True) as out_layer, \
             get_shp_or_gpkg(layer_path1) as layer1, \
             get_shp_or_gpkg(layer_path2) as layer2:
@@ -866,19 +866,19 @@ def intersection(layer_path1, layer_path2, out_layer_path, epsg):
 
                 out_layer.ogr_layer.CreateFeature(out_feat)
 
-def difference(remove_layer, from_layer, out_layer_path, epsg):
 
+def difference(remove_layer, from_layer, out_layer_path, epsg):
 
     log = Logger('feature_class_difference')
     with get_shp_or_gpkg(out_layer_path, write=True) as out_layer, \
-        get_shp_or_gpkg(remove_layer) as layer1, \
-        get_shp_or_gpkg(from_layer) as layer2:
+            get_shp_or_gpkg(remove_layer) as layer1, \
+            get_shp_or_gpkg(from_layer) as layer2:
 
         out_layer.create_layer_from_ref(layer2, epsg=epsg)
         out_layer_defn = out_layer.ogr_layer.GetLayerDefn()
-    
+
         # create an empty geometry of the same type
-        union1=ogr.Geometry(3)
+        union1 = ogr.Geometry(3)
         # union all the geometrical features of layer 1
         for feat, _counter, progbar in layer1.iterate_features():
             geom = feat.GetGeometryRef()
@@ -898,7 +898,7 @@ def difference(remove_layer, from_layer, out_layer_path, epsg):
                     out_feat.SetField(out_layer.ogr_layer_def.GetFieldDefn(i).GetNameRef(), feat.GetField(i))
                 out_layer.ogr_layer.CreateFeature(out_feat)
 
-            geom = feat.GetGeometryRef()  
+            geom = feat.GetGeometryRef()
             diff = geom.Difference(union1)
             if diff.IsValid() and diff.GetGeometryName() != 'GEOMETRYCOLLECTION':
                 if diff.GetGeometryName() == 'MULTIPOLYGON':

@@ -19,7 +19,7 @@ from rscommons import Logger, ProgressBar, VectorBase
 NCORES = os.environ['TAUDEM_CORES'] if 'TAUDEM_CORES' in os.environ else '2'
 
 
-def create_hand_raster(dem: str, rasterized_drainage: str, working_dir: str, out_hand: str, out_twi: str=None):
+def create_hand_raster(dem: str, rasterized_drainage: str, working_dir: str, out_hand: str, out_twi: str = None):
     """Generate HAND raster for a watershed
 
     Args:
@@ -67,7 +67,7 @@ def create_hand_raster(dem: str, rasterized_drainage: str, working_dir: str, out
 
     if out_twi is not None:
         log.info(f"Generating optional TWI for {dem} using {working_dir}")
-        
+
         log.info("Finding flow area")
         dinfflowarea_status = run_subprocess(working_dir, ["mpiexec", "-n", NCORES, "areadinf", "-ang", path_ang, "-sca", path_sca])
         if dinfflowarea_status != 0 or not os.path.isfile(path_sca):

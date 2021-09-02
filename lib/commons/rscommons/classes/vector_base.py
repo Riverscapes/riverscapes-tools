@@ -353,7 +353,7 @@ class VectorBase():
         """Add fields to a layer
 
         Args:
-            fields (dict): dictionary in the form:  {'field name': ogr.FieldDefn } OR {'field name': 4 } where the integer is the ogr.OFTType 
+            fields (dict): dictionary in the form:  {'field name': ogr.FieldDefn } OR {'field name': 4 } where the integer is the ogr.OFTType
 
         Raises:
             VectorBaseException: [description]
