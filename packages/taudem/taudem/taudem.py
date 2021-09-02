@@ -205,15 +205,8 @@ def create_project(huc, output_dir):
         'TauDEM_URL': 'https://hydrology.usu.edu/taudem/taudem5/index.html'
     })
 
-    realizations = project.XMLBuilder.add_sub_element(project.XMLBuilder.root, 'Realizations')
-    realization = project.XMLBuilder.add_sub_element(realizations, 'TauDEM', None, {
-        'id': 'TauDEM',
-        'dateCreated': datetime.datetime.now().isoformat(),
-        'guid': str(uuid.uuid1()),
-        'productVersion': cfg.version
-    })
+    realization = project.add_realization(project_name, 'TauDEM', cfg.version)
 
-    project.XMLBuilder.add_sub_element(realization, 'Name', project_name)
     proj_nodes = {
         'Inputs': project.XMLBuilder.add_sub_element(realization, 'Inputs'),
         'Intermediates': project.XMLBuilder.add_sub_element(realization, 'Intermediates'),
