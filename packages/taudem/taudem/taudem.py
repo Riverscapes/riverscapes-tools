@@ -60,7 +60,7 @@ LayerTypes = {
     'DINFFLOWDIR_SLP': RSLayer('TauDEM D-Inf Flow Directions Slope', 'DINFFLOWDIR_SLP', 'Raster', 'outputs/dinfflowdir_slp.tif'),
     'HAND_RASTER': RSLayer('Hand Raster', 'HAND_RASTER', 'Raster', 'outputs/HAND.tif'),
     'TWI_RASTER': RSLayer('TWI Raster', 'TWI_RASTER', 'Raster', 'outputs/twi.tif'),
-    'REPORT': RSLayer('RSContext Report', 'REPORT', 'HTMLFile', 'outputs/hand.html')
+    'REPORT': RSLayer('RSContext Report', 'REPORT', 'HTMLFile', 'outputs/taudem.html')
 }
 
 
