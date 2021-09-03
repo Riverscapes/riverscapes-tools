@@ -15,16 +15,6 @@
   ],  
   "configurations": [
     {
-      "name": "Version Bump",
-      "type": "python",
-      "module": "rscommons.version",
-      "args": [
-        "${workspaceFolder}/channel/__version__.py"
-      ],
-      "request": "launch",
-      "console": "integratedTerminal"
-    },
-    {
       "name": "Channel Area Tool",
       "type": "python",
       "request": "launch",
@@ -34,9 +24,9 @@
       "args": [
         "${input:HUC}",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/NHDFlowline.shp",
-        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/NHDArea.shp",
-        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/NHDWaterbody.shp",
         "{env:DATA_ROOT}/channel_area/${input:HUC}", // output folder
+        "--flowareas", "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/NHDArea.shp",
+        "--waterbodies", "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/NHDWaterbody.shp",
         "--bankfull_function", "0.177 * (a ** 0.397) * (p ** 0.453)",
         "--bankfull_function_params", "a=TotDASqKm",
         //"--bankfull_field", "buffer_w",
@@ -52,6 +42,16 @@
         "--verbose",
         //"--debug"
       ]
+    },    
+    {
+      "name": "Version Bump",
+      "type": "python",
+      "module": "rscommons.version",
+      "args": [
+        "${workspaceFolder}/channel/__version__.py"
+      ],
+      "request": "launch",
+      "console": "integratedTerminal"
     },
     {
       "name": "Augment XML",

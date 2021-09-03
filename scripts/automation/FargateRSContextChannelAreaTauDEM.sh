@@ -99,9 +99,9 @@ rm -fr $RSC_TASK_OUTPUT/transportation
 
 channel $HUC \
   $RSC_TASK_OUTPUT/hydrology/NHDFlowline.shp \
-  $RSC_TASK_OUTPUT/hydrology/NHDArea.shp \
-  $RSC_TASK_OUTPUT/hydrology/NHDWaterbody.shp \
   $CHANNEL_TASK_OUTPUT \
+  --flowareas $RSC_TASK_OUTPUT/hydrology/NHDArea.shp \
+  --waterbodies $RSC_TASK_OUTPUT/hydrology/NHDWaterbody.shp \
   --bankfull_function "0.177 * (a ** 0.397) * (p ** 0.453)" \
   --bankfull_function_params "a=TotDASqKm" \
   --reach_code_field FCode \
