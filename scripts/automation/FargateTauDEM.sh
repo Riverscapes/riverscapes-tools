@@ -50,7 +50,7 @@ TASK_OUTPUT=$TASK_DIR/output
 ##########################################################################################
 
 # Get the RSCli project we need to make this happe-9
-rscli download $RS_CONTEXT_DIR --type "RSContext" --meta "huc8=$HUC" \
+rscli download $RS_CONTEXT_DIR --type "RSContext" --meta "huc=$HUC" \
   --file-filter "(hillshade|slope|dem|hand|hydrology)" \
   --tags "$RSCONTEXT_TAGS" --no-input --verbose --program "$PROGRAM"
 
@@ -59,7 +59,7 @@ rscli download $RS_CONTEXT_DIR --type "RSContext" --meta "huc8=$HUC" \
 ##########################################################################################
 
 # Get the RSCli project we need to make this happe-9
-rscli download $CHANNEL_DIR --type "ChannelArea" --meta "huc8=$HUC" \
+rscli download $CHANNEL_DIR --type "ChannelArea" --meta "huc=$HUC" \
   --file-filter "channel_area\.gpkg" \
   --tags "$CHANNEL_TAGS" --no-input --verbose --program "$PROGRAM"
 

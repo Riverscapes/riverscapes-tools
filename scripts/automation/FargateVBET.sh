@@ -54,14 +54,14 @@ TASK_OUTPUT=$TASK_DIR/output
 ##########################################################################################
 
 # Get the RSCli project we need to make this happe-9
-rscli download $RS_CONTEXT_DIR --type "RSContext" --meta "huc8=$HUC" \
+rscli download $RS_CONTEXT_DIR --type "RSContext" --meta "huc=$HUC" \
   --file-filter "(hillshade|slope|dem|hand|hydrology)" \
   --tags "$RSCONTEXT_TAGS" --no-input --verbose --program "$PROGRAM"
 
-rscli download $CHANNEL_AREA_DIR --type "ChannelArea" --meta "huc8=$HUC" \
+rscli download $CHANNEL_AREA_DIR --type "ChannelArea" --meta "huc=$HUC" \
   --tags "$CHANNEL_TAGS" --no-input --verbose --program "$PROGRAM"
 
-rscli download $TAUDEM_DIR --type "TauDEM" --meta "huc8=$HUC" \
+rscli download $TAUDEM_DIR --type "TauDEM" --meta "huc=$HUC" \
   --file-filter "(HAND.tif|twi.tif)" \
   --tags "$TAUDEM_TAGS" --no-input --verbose --program "$PROGRAM"
 

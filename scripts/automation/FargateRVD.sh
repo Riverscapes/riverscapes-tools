@@ -40,12 +40,12 @@ VBET_DIR=$TASK_DIR/vbet
 RVD_DIR=$TASK_DIR/rvd
 
 # Get the RSCli project we need to make this happen
-rscli download $RS_CONTEXT_DIR --type "RSContext" --meta "huc8=$HUC" --tags "$RSCONTEXT_TAGS" \
+rscli download $RS_CONTEXT_DIR --type "RSContext" --meta "huc=$HUC" --tags "$RSCONTEXT_TAGS" \
   --file-filter "(hydrology|vegetation)" \
   --no-input --verbose --program "$PROGRAM"
 
 # Go get vbet result for this to work
-rscli download $VBET_DIR --type "VBET" --meta "huc8=$HUC" --tags "$VBET_TAGS" \
+rscli download $VBET_DIR --type "VBET" --meta "huc=$HUC" --tags "$VBET_TAGS" \
   --file-filter "vbet.gpkg" \
   --no-input --verbose --program "$PROGRAM"
 

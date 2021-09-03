@@ -1,6 +1,6 @@
 # Name:     Download DEM
 #
-# Purpose:  Identify all the NED 10m DEM rasters that intersect with a HUC8
+# Purpose:  Identify all the NED 10m DEM rasters that intersect with a HUC
 #           boundary polygon. Download and unzip all the rasters then mosaic
 #           them into a single compressed GeoTIF raster possessing a specific
 #           spatial reference.
@@ -34,7 +34,7 @@ CELL_SIZE_MAX_STDDEV = 1e-8
 
 def download_dem(vector_path, _epsg, buffer_dist, download_folder, unzip_folder, force_download=False):
     """
-    Identify rasters within HUC8, download them and mosaic into single GeoTIF
+    Identify rasters within HUC, download them and mosaic into single GeoTIF
     :param vector_path: Path to bounding polygon ShapeFile
     :param epsg: Output spatial reference
     :param buffer_dist: Distance in DEGREES to buffer the bounding polygon
