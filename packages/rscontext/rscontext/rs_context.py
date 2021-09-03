@@ -388,7 +388,10 @@ def augment_layermeta():
 
     for k, lyr in LayerTypes.items():
         if k in json_data and len(json_data[k]) > 0:
-            lyr.lyr_meta = RSMeta('Description', json_data[k])
+            lyr.lyr_meta = [
+                RSMeta('Description', json_data[k]),
+                RSMeta('DocsUrl', 'https://tools.riverscapes.xyz/rscontext/data.html#{}'.format(lyr.id), RSMetaTypes.URL)
+            ]
 
 
 def get_nhd_states(inpath):

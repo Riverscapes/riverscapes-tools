@@ -357,7 +357,7 @@ class RSProject:
             self.XMLBuilder.add_sub_element(nod_dataset, 'Path', posix_path_val)
 
         if rs_lyr.lyr_meta is not None:
-            self.add_metadata([rs_lyr.lyr_meta], nod_dataset)
+            self.add_metadata(rs_lyr.lyr_meta, nod_dataset)
 
         self.XMLBuilder.write()
         return nod_dataset
