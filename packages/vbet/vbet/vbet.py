@@ -12,17 +12,11 @@
 # -------------------------------------------------------------------------------
 import argparse
 import os
-from re import L
 import sys
-import uuid
 import traceback
-import datetime
 import json
-import sqlite3
 import time
 from typing import List, Dict
-from attr import attrib
-from numpy.lib.function_base import copy
 # LEave OSGEO import alone. It is necessary even if it looks unused
 from osgeo import gdal, ogr
 import rasterio
