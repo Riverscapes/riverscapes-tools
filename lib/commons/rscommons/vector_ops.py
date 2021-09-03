@@ -892,8 +892,10 @@ def difference(remove_layer, target_layer, out_layer_path, epsg=None):
                 lyr_output.ogr_layer.CreateFeature(out_feat)
 
             geom = feat_target.GetGeometryRef()
+            if not geom.IsValid():
+                geom = geom_validity_fix(geom)
 
-            for feat_diff, _counter, progbar in lyr_diff.iterate_features(clip_shape=geom):
+            for feat_diff, _counter, _progbar in lyr_diff.iterate_features(clip_shape=geom):
                 geom_diff = feat_diff.GetGeometryRef()
                 if not geom_diff.IsValid():
                     geom_diff = geom_validity_fix(geom_diff)
