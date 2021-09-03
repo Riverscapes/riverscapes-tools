@@ -59,9 +59,9 @@ try() {
 
 channel $HUC \
   $RS_CONTEXT_DIR/hydrology/NHDFlowline.shp \
-  $RS_CONTEXT_DIR/hydrology/NHDArea.shp \
-  $RS_CONTEXT_DIR/hydrology/NHDWaterbody.shp \
   $TASK_OUTPUT \
+  --flowareas $RS_CONTEXT_DIR/hydrology/NHDArea.shp \
+  --waterbodies $RS_CONTEXT_DIR/hydrology/NHDWaterbody.shp \
   --bankfull_function "0.177 * (a ** 0.397) * (p ** 0.453)" \
   --bankfull_function_params "a=TotDASqKm" \
   --reach_code_field FCode \
