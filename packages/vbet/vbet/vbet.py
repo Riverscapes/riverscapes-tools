@@ -28,7 +28,7 @@ from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.util import safe_makedirs, parse_metadata, pretty_duration
 from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, dotenv, initGDALOGRErrors, TempRaster, VectorBase
 from rscommons import GeopackageLayer
-from rscommons.vector_ops import difference, copy_feature_class, remove_holes_feature_class
+from rscommons.vector_ops import difference, copy_feature_class, remove_holes_feature_class, geom_validity_fix
 from rscommons.thiessen.vor import NARVoronoi
 from rscommons.thiessen.shapes import centerline_points
 from rscommons.vbet_network import vbet_network, create_stream_size_zones, copy_vaa_attributes, join_attributes
@@ -361,6 +361,8 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
                             for out_shape in out_shapes:
                                 shape_intersected = False
                                 out_geom = ogr.CreateGeometryFromJson(json.dumps(out_shape))
+                                if not out_geom.IsValid():
+                                    out_geom = geom_validity_fix(out_geom)
                                 out_feat = ogr.Feature(out_layer_defn)
                                 out_feat.SetGeometry(out_geom)
                                 for field, value in reach_attributes.items():
