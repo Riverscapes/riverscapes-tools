@@ -114,7 +114,7 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
     project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], hillshade)
     project.add_project_raster(proj_nodes['Inputs'], LayerTypes['SLOPE'], slope)
     project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
-    db_node, _db_path = project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['OUTPUTS'])
+    db_node, _db_path, *_ = project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['OUTPUTS'])
 
     inputs_gpkg_path = os.path.join(output_folder, LayerTypes['INPUTS'].rel_path)
     intermediates_gpkg_path = os.path.join(output_folder, LayerTypes['INTERMEDIATES'].rel_path)
@@ -153,12 +153,12 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
 
     db_metadata = {
         'BRAT_Build_DateTime': datetime.datetime.now().isoformat(),
-        'Streamside_Buffer': streamside_buffer,
-        'Riparian_Buffer': riparian_buffer,
-        'Reach_Codes': reach_codes,
-        'Canal_Codes': canal_codes,
-        'Max_Waterbody': max_waterbody,
-        'Elevation_Buffer': elevation_buffer
+        'Streamside_Buffer': str(streamside_buffer),
+        'Riparian_Buffer': str(riparian_buffer),
+        'Reach_Codes': ','.join(reach_codes),
+        'Canal_Codes': ','.join(canal_codes),
+        'Max_Waterbody': str(max_waterbody),
+        'Elevation_Buffer': str(elevation_buffer)
     }
 
     # Execute the SQL to create the lookup tables in the output geopackage

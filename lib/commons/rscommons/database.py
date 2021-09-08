@@ -67,8 +67,8 @@ def create_database(huc: str, db_path: str, metadata: Dict[str, str], epsg: int,
     # We need to create a projection for this DB
     db_srs = osr.SpatialReference()
     db_srs.ImportFromEPSG(int(epsg))
-    metadata['gdal_srs_proj4'] = db_srs.ExportToProj4()
-    metadata['gdal_srs_axis_mapping_strategy'] = osr.OAMS_TRADITIONAL_GIS_ORDER
+    metadata['gdal_srs_proj4'] = str(db_srs.ExportToProj4())
+    metadata['gdal_srs_axis_mapping_strategy'] = str(osr.OAMS_TRADITIONAL_GIS_ORDER)
 
     if not os.path.isfile(schema_path):
         raise Exception('Unable to find database schema file at {}'.format(schema_path))
