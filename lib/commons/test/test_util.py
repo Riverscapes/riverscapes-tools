@@ -25,6 +25,9 @@ class UtilTest(unittest.TestCase):
         test1 = util.pretty_duration(100)
         self.assertEqual(test1, '1:40 minutes')
 
+        test1 = util.pretty_duration(103.234234)
+        self.assertEqual(test1, '1:43 minutes')
+
         test1 = util.pretty_duration(1000)
         self.assertEqual(test1, '16:40 minutes')
 

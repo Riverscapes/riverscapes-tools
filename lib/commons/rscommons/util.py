@@ -235,7 +235,7 @@ def pretty_duration(time_s=False):
     """
     if not time_s >= 0:
         return '???'
-    seconds = time_s % 60
+    seconds = floor(time_s % 60)
     minutes = floor(time_s / 60) % 60
     hours = floor(time_s / 3600) % 24
     if time_s < 60:
