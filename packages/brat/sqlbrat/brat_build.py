@@ -164,7 +164,7 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
     # Execute the SQL to create the lookup tables in the output geopackage
     watershed_name = create_database(huc, outputs_gpkg_path, db_metadata, cfg.OUTPUT_EPSG, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'brat_schema.sql'))
     # Just for fun add the db metadata back to the xml
-    project.add_metadata_simple(db_metadata, db_node)
+    project.add_metadata_simple(db_metadata)
 
     project.add_metadata([RSMeta('Watershed', watershed_name)])
 
