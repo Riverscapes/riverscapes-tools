@@ -46,6 +46,8 @@ gdal-config --version
 
 # Define some folders that we can easily clean up later
 RS_CONTEXT_DIR=/usr/local/data/$HUC/rs_context
+CHANNEL_DIR=/usr/local/data/$HUC/channel
+TAUDEM_DIR=/usr/local/data/$HUC/taudem
 RSC_TASK_SCRATCH=/usr/local/data/$HUC/rs_context_scratch
 
 VBET_DIR=/usr/local/data/$HUC/vbet
@@ -83,16 +85,70 @@ try() {
   echo "<<RS_CONTEXT UPLOAD COMPLETE>>"
 
   ##########################################################################################
+  # Now Run Channel Area Tool
+  ##########################################################################################
+
+  channel $HUC \
+    $RS_CONTEXT_DIR/hydrology/NHDFlowline.shp \
+    $CHANNEL_DIR \
+    --flowareas $RS_CONTEXT_DIR/hydrology/NHDArea.shp \
+    --waterbodies $RS_CONTEXT_DIR/hydrology/NHDWaterbody.shp \
+    --bankfull_function "0.177 * (a ** 0.397) * (p ** 0.453)" \
+    --bankfull_function_params "a=TotDASqKm" \
+    --reach_code_field FCode \
+    --flowline_reach_codes "33400,46000,46003,46006,46007", \
+    --flowarea_reach_codes "53700,46100,48400,31800,34300,34305,34306,4600,46003,46006,46007", \
+    --waterbody_reach_codes "49300,3900,39001,39004,39005,39006,39009,39010,39011,39012,43600,43601,43603,43604,43605,43606,43607,43608,43609,43610,43611,43612,43613,43614,43615,43618,43619,43621,43623,43624,43625,43626,46600,46601,46602", \
+    --prism_data $RS_CONTEXT_DIR/climate/precipitation.tif \
+    --huc8boundary $RS_CONTEXT_DIR/hydrology/WBDHU8.shp \
+    --meta "Runner=Cybercastor" \
+    --verbose
+
+  if [[ $? != 0 ]]; then return 1; fi
+
+  cd /usr/local/src/riverscapes-tools/packages/channel
+  /usr/local/venv/bin/python -m channel.channel_rs \
+    $CHANNEL_DIR/project.rs.xml \
+    $RS_CONTEXT_DIR/project.rs.xml
+
+  # Upload the HUC into the warehouse
+  cd $CHANNEL_DIR
+  rscli upload . --replace --tags "$TAGS" --no-input --verbose --program "$PROGRAM"
+  if [[ $? != 0 ]]; then return 1; fi
+
+  ##########################################################################################
+  # Now Run TauDEM
+  ##########################################################################################
+
+  taudem $HUC \
+    $CHANNEL_DIR/outputs/channel_area.gpkg/channel_area \
+    $RS_CONTEXT_DIR/topography/dem.tif \
+    $TAUDEM_DIR \
+    --hillshade $RS_CONTEXT_DIR/topography/dem_hillshade.tif \
+    --meta "Runner=Cybercastor" \
+    --verbose
+  if [[ $? != 0 ]]; then return 1; fi
+
+  cd /usr/local/src/riverscapes-tools/packages/taudem
+  /usr/local/venv/bin/python -m taudem.taudem_rs \
+    $TAUDEM_DIR/project.rs.xml \
+    $RS_CONTEXT_DIR/project.rs.xml,$CHANNEL_DIR/project.rs.xml
+
+  # Upload the HUC into the warehouse
+  cd $TAUDEM_DIR
+  rscli upload . --replace --tags "$TAGS" --no-input --verbose --program "$PROGRAM"
+  if [[ $? != 0 ]]; then return 1; fi
+
+  ##########################################################################################
   # Now Run VBET
   ##########################################################################################
 
   vbet $HUC \
-    "KW_TESTING" \
-    FLOWLINES=$RS_CONTEXT_DIR/hydrology/hydrology.gpkg/network,FLOW_AREA=$RS_CONTEXT_DIR/hydrology/NHDArea.shp,SLOPE_RASTER=$RS_CONTEXT_DIR/topography/slope.tif,DEM=$RS_CONTEXT_DIR/topography/dem.tif,HILLSHADE=$RS_CONTEXT_DIR/topography/dem_hillshade.tif,CATCHMENTS=$RS_CONTEXT_DIR/hydrology/NHDPlusCatchment.shp \
-    $VBET_DIR \
+    "UPDATED_TESTING" \
+    FLOWLINES=$RS_CONTEXT_DIR/hydrology/hydrology.gpkg/network,FLOW_AREAS=$RS_CONTEXT_DIR/hydrology/NHDArea.shp,SLOPE_RASTER=$RS_CONTEXT_DIR/topography/slope.tif,HAND_RASTER=$TAUDEM_DIR/outputs/HAND.tif,TWI_RASTER=$TAUDEM_DIR/outputs/twi.tif,CATCHMENTS=$RS_CONTEXT_DIR/hydrology/NHDPlusCatchment.shp,CHANNEL_AREA_POLYGONS=$CHANNEL_DIR/outputs/channel_area.gpkg/channel_area,HILLSHADE=$RS_CONTEXT_DIR/topography/dem_hillshade.tif,DEM=$RS_CONTEXT_DIR/topography/dem.tif \
     $RS_CONTEXT_DIR/hydrology/nhd_data.sqlite/NHDPlusFlowlineVAA \
-    --reach_codes 33400,46003,46006,46007,55800 \
-    --create_centerline \
+    $VBET_DIR \
+    --reach_codes 33400,46000,46003,46006,46007,55800 \
     --meta "Runner=Cybercastor" \
     --verbose
   if [[ $? != 0 ]]; then return 1; fi
@@ -100,24 +156,15 @@ try() {
   cd /usr/local/src/riverscapes-tools/packages/vbet
   /usr/local/venv/bin/python -m vbet.vbet_rs \
     $VBET_DIR/project.rs.xml \
-    $RS_CONTEXT_DIR/project.rs.xml
-
-  echo "<<VBET COMPLETE>>"
-
-  echo "======================  Final Disk space usage ======================="
-  df -h
-  echo "======================  Upload to the warehouse ======================="
-
-
+    $RS_CONTEXT_DIR/project.rs.xml,$TAUDEM_DIR/project.rs.xml,$CHANNEL_DIR/project.rs.xml
 
   # Upload the HUC into the warehouse
   cd $VBET_DIR
   rscli upload . --replace --tags "$TAGS" --no-input --verbose --program "$PROGRAM"
   if [[ $? != 0 ]]; then return 1; fi
-  echo "<<VBET UPLOAD COMPLETE>>"
 
   # Cleanup
-  echo "<<RSC and VBET PROCESS COMPLETE>>"
+  echo "<<RSC, CHANNEL AREA AND TAUDEM and VBET PROCESS COMPLETE>>"
 
 }
 try || {

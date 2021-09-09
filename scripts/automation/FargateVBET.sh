@@ -50,10 +50,10 @@ TAUDEM_DIR=$TASK_DIR/taudem
 TASK_OUTPUT=$TASK_DIR/output
 
 ##########################################################################################
-# First Get RS_Context inputs
+# First Get RS_Context, ChannelArea and Taudem inputs
 ##########################################################################################
 
-# Get the RSCli project we need to make this happe-9
+# Get the RSCli project we need to make this happen
 rscli download $RS_CONTEXT_DIR --type "RSContext" --meta "huc=$HUC" \
   --file-filter "(hillshade|slope|dem|hand|hydrology)" \
   --tags "$RSCONTEXT_TAGS" --no-input --verbose --program "$PROGRAM"
