@@ -56,6 +56,9 @@ BRAT_DIR=$DATA_DIR/brat/$HUC
 CONFINEMENT_DIR=$DATA_DIR/confinement/$HUC
 RVD_DIR=$DATA_DIR/rvd/$HUC
 
+pip --timeout=120 install -r /usr/local/requirements.txt
+pip install -e /usr/local/src/riverscapes-tools/packages/channel
+pip install -e /usr/local/src/riverscapes-tools/packages/taudem
 
 ##########################################################################################
 # First Run RS_Context
