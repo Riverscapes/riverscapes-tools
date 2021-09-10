@@ -43,11 +43,11 @@ echo "======================  GDAL Version ======================="
 gdal-config --version
 
 # Define some folders that we can easily clean up later
-TASK_DIR=/usr/local/data/vbet/$HUC
-RS_CONTEXT_DIR=$TASK_DIR/rs_context
-CHANNEL_AREA_DIR=$TASK_DIR/channel_area
-TAUDEM_DIR=$TASK_DIR/taudem
-TASK_OUTPUT=$TASK_DIR/output
+DATA_DIR=/usr/local/data
+RS_CONTEXT_DIR=$DATA_DIR/rs_context/$HUC
+CHANNEL_AREA_DIR=$DATA_DIR/channel_area/$HUC
+TAUDEM_DIR=$DATA_DIR/taudem/$HUC
+VBET_DIR=$DATA_DIR/output
 
 ##########################################################################################
 # First Get RS_Context, ChannelArea and Taudem inputs
@@ -74,7 +74,7 @@ vbet $HUC \
   "UPDATED_TESTING" \
   FLOWLINES=$RS_CONTEXT_DIR/hydrology/hydrology.gpkg/network,FLOW_AREAS=$RS_CONTEXT_DIR/hydrology/NHDArea.shp,SLOPE_RASTER=$RS_CONTEXT_DIR/topography/slope.tif,HAND_RASTER=$TAUDEM_DIR/outputs/HAND.tif,TWI_RASTER=$TAUDEM_DIR/outputs/twi.tif,CATCHMENTS=$RS_CONTEXT_DIR/hydrology/NHDPlusCatchment.shp,CHANNEL_AREA_POLYGONS=$CHANNEL_AREA_DIR/outputs/channel_area.gpkg/channel_area,HILLSHADE=$RS_CONTEXT_DIR/topography/dem_hillshade.tif,DEM=$RS_CONTEXT_DIR/topography/dem.tif \
   $RS_CONTEXT_DIR/hydrology/nhd_data.sqlite/NHDPlusFlowlineVAA \
-  $TASK_OUTPUT \
+  $VBET_DIR \
   --reach_codes 33400,46000,46003,46006,46007,55800 \
   --meta "Runner=Cybercastor" \
   --verbose
@@ -82,7 +82,7 @@ if [[ $? != 0 ]]; then return 1; fi
 
 cd /usr/local/src/riverscapes-tools/packages/vbet
 /usr/local/venv/bin/python -m vbet.vbet_rs \
-  $TASK_OUTPUT/project.rs.xml \
+  $VBET_DIR/project.rs.xml \
   $RS_CONTEXT_DIR/project.rs.xml,$TAUDEM_DIR/project.rs.xml,$CHANNEL_AREA_DIR/project.rs.xml
 
 echo "======================  Final Disk space usage ======================="
@@ -91,13 +91,10 @@ df -h
 echo "======================  Upload to the warehouse ======================="
 
 # Upload the HUC into the warehouse
-cd $TASK_OUTPUT
+cd $VBET_DIR
 rscli upload . --replace --tags "$VBET_TAGS" --no-input --verbose --program "$PROGRAM"
 if [[ $? != 0 ]]; then return 1; fi
 
-# Cleanup
-cd /usr/local/
-rm -fr $TASK_DIR
 
 echo "<<PROCESS COMPLETE>>"
 
@@ -105,8 +102,6 @@ echo "<<PROCESS COMPLETE>>"
 }
 try || {
   # Emergency Cleanup
-  cd /usr/local/
-  rm -fr $TASK_DIR
   echo "<<RS CONTEXT PROCESS ENDED WITH AN ERROR>>"
   exit 1
 }

@@ -35,10 +35,10 @@ echo "CONFINEMENT_TAGS: $CONFINEMENT_TAGS"
 # Drop into our venv immediately
 source /usr/local/venv/bin/activate
 
-TASK_DIR=/usr/local/data/confinement/$HUC
-RS_CONTEXT_DIR=$TASK_DIR/rs_context
-VBET_DIR=$TASK_DIR/vbet
-CONFINEMENT_DIR=$TASK_DIR/confinement
+DATA_DIR=/usr/local/data
+RS_CONTEXT_DIR=$DATA_DIR/rs_context/$HUC
+VBET_DIR=$DATA_DIR/vbet/$HUC
+CONFINEMENT_DIR=$DATA_DIR/confinement/$HUC
 
 # Get the RSCli project we need to make this happen
 rscli download $RS_CONTEXT_DIR --type "RSContext" --meta "huc=$HUC" --tags "$RSCONTEXT_TAGS" \
@@ -80,17 +80,12 @@ try() {
   cd $CONFINEMENT_DIR
   rscli upload . --tags "$CONFINEMENT_TAGS" --replace --no-input --verbose --program "$PROGRAM"
   if [[ $? != 0 ]]; then return 1; fi
-  # Cleanup
-  cd /usr/local/
-  rm -fr $TASK_DIR
+
 
   echo "<<PROCESS COMPLETE>>"
 
 }
 try || {
-  # Emergency Cleanup
-  cd /usr/local/
-  rm -fr $TASK_DIR
   echo "<<CONFINEMENT PROCESS ENDED WITH AN ERROR>>"
   exit 1
 }

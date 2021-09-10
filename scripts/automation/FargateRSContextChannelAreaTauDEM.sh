@@ -50,15 +50,12 @@ echo "======================  GDAL Version ======================="
 gdal-config --version
 
 # Define some folders that we can easily clean up later
-RSC_TASK_DIR=/usr/local/data/rs_context/$HUC
-RSC_TASK_OUTPUT=$RSC_TASK_DIR/output
-RSC_TASK_DOWNLOAD=$RSC_TASK_DIR/scratch
+DATA_DIR=/usr/local/data
 
-CHANNEL_TASK_DIR=/usr/local/data/channel/$HUC
-CHANNEL_TASK_OUTPUT=$CHANNEL_TASK_DIR/output
-
-TAUDEM_TASK_DIR=/usr/local/data/taudem/$HUC
-TAUDEM_TASK_OUTPUT=$TAUDEM_TASK_DIR/output
+RSCONTEXT_DIR=$DATA_DIR/rs_context/$HUC
+RSCONTEXT_SCRATCH=$DATA_DIR/rs_context_scratch/$HUC
+CHANNEL_DIR=$DATA_DIR/channel/$HUC
+TAUDEM_DIR=$DATA_DIR/taudem/$HUC
 
 ##########################################################################################
 # First Run RS_Context
@@ -73,10 +70,10 @@ rscontext $HUC \
   /shared/NationalDatasets/ownership/FairMarketValue.tif \
   /shared/NationalDatasets/ecoregions/us_eco_l3_state_boundaries.shp \
   /shared/download/prism \
-  $RSC_TASK_OUTPUT \
+  $RSCONTEXT_DIR \
   /shared/download/ \
   --parallel \
-  --temp_folder $RSC_TASK_DOWNLOAD \
+  --temp_folder $RSCONTEXT_SCRATCH \
   --meta "Runner=Cybercastor" \
   --verbose
 
@@ -84,32 +81,33 @@ if [[ $? != 0 ]]; then return 1; fi
 echo "<<RS_CONTEXT COMPLETE>>"
 
 # Upload the HUC into the warehouse
-cd $RSC_TASK_OUTPUT
+cd $RSCONTEXT_DIR
 rscli upload . --replace --tags "$TAGS"  --no-input --verbose --program "$PROGRAM"
 if [[ $? != 0 ]]; then return 1; fi
 echo "<<RS_CONTEXT UPLOAD COMPLETE>>"
 
-# We need to conserver some space for the next run
-rm -fr $RSC_TASK_OUTPUT/vegetation
-rm -fr $RSC_TASK_OUTPUT/transportation
+# We need to conserve some space for the next run
+rm -fr $RSCONTEXT_DIR/vegetation
+rm -fr $RSCONTEXT_DIR/transportation
+rm -fr $RSCONTEXT_SCRATCH
 
 ##########################################################################################
 # Now Run Channel Area Tool
 ##########################################################################################
 
 channel $HUC \
-  $RSC_TASK_OUTPUT/hydrology/NHDFlowline.shp \
-  $CHANNEL_TASK_OUTPUT \
-  --flowareas $RSC_TASK_OUTPUT/hydrology/NHDArea.shp \
-  --waterbodies $RSC_TASK_OUTPUT/hydrology/NHDWaterbody.shp \
+  $RSCONTEXT_DIR/hydrology/NHDFlowline.shp \
+  $CHANNEL_DIR \
+  --flowareas $RSCONTEXT_DIR/hydrology/NHDArea.shp \
+  --waterbodies $RSCONTEXT_DIR/hydrology/NHDWaterbody.shp \
   --bankfull_function "0.177 * (a ** 0.397) * (p ** 0.453)" \
   --bankfull_function_params "a=TotDASqKm" \
   --reach_code_field FCode \
   --flowline_reach_codes "33400,46000,46003,46006,46007", \
   --flowarea_reach_codes "53700,46100,48400,31800,34300,34305,34306,4600,46003,46006,46007", \
   --waterbody_reach_codes "49300,3900,39001,39004,39005,39006,39009,39010,39011,39012,43600,43601,43603,43604,43605,43606,43607,43608,43609,43610,43611,43612,43613,43614,43615,43618,43619,43621,43623,43624,43625,43626,46600,46601,46602", \
-  --prism_data $RSC_TASK_OUTPUT/climate/precipitation.tif \
-  --huc8boundary $RSC_TASK_OUTPUT/hydrology/WBDHU8.shp \
+  --prism_data $RSCONTEXT_DIR/climate/precipitation.tif \
+  --huc8boundary $RSCONTEXT_DIR/hydrology/WBDHU8.shp \
   --meta "Runner=Cybercastor" \
   --verbose
 
@@ -117,11 +115,11 @@ if [[ $? != 0 ]]; then return 1; fi
 
 cd /usr/local/src/riverscapes-tools/packages/channel
 /usr/local/venv/bin/python -m channel.channel_rs \
-  $CHANNEL_TASK_OUTPUT/project.rs.xml \
-  $RSC_TASK_OUTPUT/project.rs.xml
+  $CHANNEL_DIR/project.rs.xml \
+  $RSCONTEXT_DIR/project.rs.xml
 
 # Upload the HUC into the warehouse
-cd $CHANNEL_TASK_OUTPUT
+cd $CHANNEL_DIR
 rscli upload . --replace --tags "$TAGS" --no-input --verbose --program "$PROGRAM"
 if [[ $? != 0 ]]; then return 1; fi
 
@@ -133,20 +131,20 @@ echo "<<Channel Area COMPLETE>>"
 ##########################################################################################
 
 taudem $HUC \
-  $CHANNEL_TASK_OUTPUT/outputs/channel_area.gpkg/channel_area \
-  $RSC_TASK_OUTPUT/topography/dem.tif \
-  $TAUDEM_TASK_OUTPUT \
+  $CHANNEL_DIR/outputs/channel_area.gpkg/channel_area \
+  $RSCONTEXT_DIR/topography/dem.tif \
+  $TAUDEM_DIR \
   --meta "Runner=Cybercastor" \
   --verbose
 if [[ $? != 0 ]]; then return 1; fi
 
 cd /usr/local/src/riverscapes-tools/packages/taudem
 /usr/local/venv/bin/python -m taudem.taudem_rs \
-  $TAUDEM_TASK_OUTPUT/project.rs.xml \
-  $RSC_TASK_OUTPUT/project.rs.xml,$CHANNEL_TASK_OUTPUT/project.rs.xml
+  $TAUDEM_DIR/project.rs.xml \
+  $RSCONTEXT_DIR/project.rs.xml,$CHANNEL_DIR/project.rs.xml
 
 # Upload the HUC into the warehouse
-cd $TAUDEM_TASK_OUTPUT
+cd $TAUDEM_DIR
 rscli upload . --replace --tags "$TAGS" --no-input --verbose --program "$PROGRAM"
 if [[ $? != 0 ]]; then return 1; fi
 
@@ -156,22 +154,10 @@ echo "<<TauDEM COMPLETE>>"
 echo "======================  Final Disk space usage ======================="
 df -h
 
-
-# Cleanup
-cd /usr/local/
-rm -fr $RSC_TASK_DIR
-rm -fr $CHANNEL_TASK_DIR
-rm -fr $TAUDEM_TASK_DIR
-
 echo "<<PROCESS COMPLETE>>"
 
 }
 try || {
-  # Emergency Cleanup
-  cd /usr/local/
-rm -fr $RSC_TASK_DIR
-rm -fr $CHANNEL_TASK_DIR
-rm -fr $TAUDEM_TASK_DIR
   echo "<<PROCESS ENDED WITH AN ERROR>>"
   exit 1
 }

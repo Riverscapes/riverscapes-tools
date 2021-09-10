@@ -31,9 +31,9 @@ echo "======================  GDAL Version ======================="
 gdal-config --version
 
 # Define some folders that we can easily clean up later
-TASK_DIR=/usr/local/data/rs_context/$HUC
-TASK_OUTPUT=$TASK_DIR/output
-TASK_DOWNLOAD=$TASK_DIR/scratch
+DATA_DIR=/usr/local/data
+RS_CONTEXT_DIR=$DATA_DIR/rs_context/$HUC
+RSCONTEXT_SCRATCH=$DATA_DIR/rs_context_scratch/$HUC
 
 echo "======================  Disk space usage ======================="
 df -h
@@ -50,10 +50,10 @@ try() {
     /shared/NationalDatasets/ownership/FairMarketValue.tif \
     /shared/NationalDatasets/ecoregions/us_eco_l3_state_boundaries.shp \
     /shared/download/prism \
-    $TASK_OUTPUT \
+    $RS_CONTEXT_DIR \
     /shared/download/ \
     --parallel \
-    --temp_folder $TASK_DOWNLOAD \
+    --temp_folder $RSCONTEXT_SCRATCH \
     --meta "Runner=Cybercastor" \
     --verbose
   if [[ $? != 0 ]]; then return 1; fi
@@ -63,19 +63,12 @@ try() {
 
   echo "======================  Upload to the warehouse ======================="
   # Upload the HUC into the warehouse
-  cd $TASK_OUTPUT
+  cd $RS_CONTEXT_DIR
   rscli upload . --replace --tags "$TAGS"  --no-input --verbose --program "$PROGRAM"
   if [[ $? != 0 ]]; then return 1; fi
-  
-  # Cleanup
-  cd /usr/local/
-  rm -fr $TASK_DIR
 
 }
 try || {
-  # Emerfency Cleanup
-  cd /usr/local/
-  rm -fr $TASK_DIR
   echo "<<PROCESS COMPLETE WITH ERROR>>"
   exit 1
 }

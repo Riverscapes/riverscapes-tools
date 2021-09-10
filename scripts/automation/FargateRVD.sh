@@ -34,13 +34,13 @@ source /usr/local/venv/bin/activate
 # Link it up
 pip install -e /usr/local/src/riverscapes-tools/packages/rvd
 
-TASK_DIR=/usr/local/data/rvd/$HUC
-RS_CONTEXT_DIR=$TASK_DIR/rs_context
-VBET_DIR=$TASK_DIR/vbet
-RVD_DIR=$TASK_DIR/rvd
+DATA_DIR=/usr/local/data
+RSCONTEXT_DIR=$DATA_DIR/rs_context/$HUC
+VBET_DIR=$DATA_DIR/vbet/$HUC
+RVD_DIR=$DATA_DIR/rvd/$HUC
 
 # Get the RSCli project we need to make this happen
-rscli download $RS_CONTEXT_DIR --type "RSContext" --meta "huc=$HUC" --tags "$RSCONTEXT_TAGS" \
+rscli download $RSCONTEXT_DIR --type "RSContext" --meta "huc=$HUC" --tags "$RSCONTEXT_TAGS" \
   --file-filter "(hydrology|vegetation)" \
   --no-input --verbose --program "$PROGRAM"
 
@@ -55,14 +55,14 @@ df -h
 try() {
 
   rvd $HUC \
-      $RS_CONTEXT_DIR/hydrology/hydrology.gpkg/network_intersected_300m \
-      $RS_CONTEXT_DIR/vegetation/existing_veg.tif \
-      $RS_CONTEXT_DIR/vegetation/historic_veg.tif \
+      $RSCONTEXT_DIR/hydrology/hydrology.gpkg/network_intersected_300m \
+      $RSCONTEXT_DIR/vegetation/existing_veg.tif \
+      $RSCONTEXT_DIR/vegetation/historic_veg.tif \
       $VBET_DIR/outputs/vbet.gpkg/vbet_50 \
       $RVD_DIR \
       --reach_codes 33400,46003,46006,46007,55800 \
-      --flow_areas $RS_CONTEXT_DIR/hydrology/NHDArea.shp \
-      --waterbodies $RS_CONTEXT_DIR/hydrology/NHDWaterbody.shp \
+      --flow_areas $RSCONTEXT_DIR/hydrology/NHDArea.shp \
+      --waterbodies $RSCONTEXT_DIR/hydrology/NHDWaterbody.shp \
       --meta "Runner=Cybercastor" \
       --verbose
   if [[ $? != 0 ]]; then return 1; fi
@@ -71,7 +71,7 @@ try() {
   cd /usr/local/src/riverscapes-tools/packages/rvd
   /usr/local/venv/bin/python -m rvd.rvd_rs \
     $RVD_DIR/project.rs.xml \
-    "$RS_CONTEXT_DIR/project.rs.xml,$VBET_DIR/project.rs.xml"
+    "$RSCONTEXT_DIR/project.rs.xml,$VBET_DIR/project.rs.xml"
 
   echo "======================  Final Disk space usage ======================="
   df -h
@@ -82,17 +82,11 @@ try() {
   cd $RVD_DIR
   rscli upload . --tags "$RVD_TAGS" --replace --no-input --verbose --program "$PROGRAM"
   if [[ $? != 0 ]]; then return 1; fi
-  # Cleanup
-  cd /usr/local/
-  rm -fr $TASK_DIR
 
   echo "<<PROCESS COMPLETE>>"
 
 }
 try || {
-  # Emergency Cleanup
-  cd /usr/local/
-  rm -fr $TASK_DIR
   echo "<<RVD PROCESS ENDED WITH AN ERROR>>"
   exit 1
 }

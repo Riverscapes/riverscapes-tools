@@ -39,9 +39,9 @@ echo "======================  GDAL Version ======================="
 gdal-config --version
 
 # Define some folders that we can easily clean up later
-TASK_DIR=/usr/local/data/channel/$HUC
-RS_CONTEXT_DIR=$TASK_DIR/rs_context
-TASK_OUTPUT=$TASK_DIR/output
+DATA_DIR=/usr/local/data
+RS_CONTEXT_DIR=$DATA_DIR/rs_context/$HUC
+CHANNEL_DIR=$DATA_DIR/channel/$HUC
 
 ##########################################################################################
 # First Get RS_Context inputs
@@ -59,7 +59,7 @@ try() {
 
 channel $HUC \
   $RS_CONTEXT_DIR/hydrology/NHDFlowline.shp \
-  $TASK_OUTPUT \
+  $CHANNEL_DIR \
   --flowareas $RS_CONTEXT_DIR/hydrology/NHDArea.shp \
   --waterbodies $RS_CONTEXT_DIR/hydrology/NHDWaterbody.shp \
   --bankfull_function "0.177 * (a ** 0.397) * (p ** 0.453)" \
@@ -77,7 +77,7 @@ if [[ $? != 0 ]]; then return 1; fi
 
 cd /usr/local/src/riverscapes-tools/packages/channel
 /usr/local/venv/bin/python -m channel.channel_rs \
-  $TASK_OUTPUT/project.rs.xml \
+  $CHANNEL_DIR/project.rs.xml \
   $RS_CONTEXT_DIR/project.rs.xml
 
 echo "======================  Final Disk space usage ======================="
@@ -86,13 +86,9 @@ df -h
 echo "======================  Upload to the warehouse ======================="
 
 # Upload the HUC into the warehouse
-cd $TASK_OUTPUT
+cd $CHANNEL_DIR
 rscli upload . --replace --tags "$CHANNEL_TAGS" --no-input --verbose --program "$PROGRAM"
 if [[ $? != 0 ]]; then return 1; fi
-
-# Cleanup
-cd /usr/local/
-rm -fr $TASK_DIR
 
 echo "<<PROCESS COMPLETE>>"
 
@@ -100,8 +96,6 @@ echo "<<PROCESS COMPLETE>>"
 }
 try || {
   # Emergency Cleanup
-  cd /usr/local/
-  rm -fr $TASK_DIR
   echo "<<RS CONTEXT PROCESS ENDED WITH AN ERROR>>"
   exit 1
 }
