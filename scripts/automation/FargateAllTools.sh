@@ -257,7 +257,7 @@ try() {
 
   confinement $HUC \
     $RSCONTEXT_DIR/hydrology/hydrology.gpkg/network_intersected_300m \
-    $VBET_DIR/outputs/vbet.gpkg/vbet_50 \
+    $VBET_DIR/outputs/vbet.gpkg/vbet_68 \
     $CONFINEMENT_DIR \
     BFwidth \
     ValleyBottom \
@@ -302,7 +302,7 @@ try() {
       $RSCONTEXT_DIR/hydrology/hydrology.gpkg/network_intersected_300m \
       $RSCONTEXT_DIR/vegetation/existing_veg.tif \
       $RSCONTEXT_DIR/vegetation/historic_veg.tif \
-      $VBET_DIR/outputs/vbet.gpkg/vbet_50 \
+      $VBET_DIR/outputs/vbet.gpkg/vbet_68 \
       $RVD_DIR \
       --reach_codes 33400,46003,46006,46007,55800 \
       --flow_areas $RSCONTEXT_DIR/hydrology/NHDArea.shp \
