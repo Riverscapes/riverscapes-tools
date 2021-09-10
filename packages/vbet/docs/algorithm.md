@@ -74,7 +74,7 @@ Here's a description of the final VBET project folder structure:
 |intermediates/Evidence.tif|Multiband evidence raster. Band 1 is slope evidence multiplied by HAND evidence. Band 2 is channel evidence.|
 |intermediates/thresh_50 to _100.shp|Combined evidence raster thresholded at increments of 0.1 converted to vector. No sanitization.|
 |intermediates/vbet_network.shp|filtered flow line network. Currently just perennial.|
-|outputs/vbet_50 to _100.shp|Final sanitized VBET polygons in increments of 0.1 probability of being valley bottom.|
+|outputs/vbet_68 to _100.shp|Final sanitized VBET polygons in increments of 0.1 probability of being valley bottom.|
 |project.rs.xml|Riverscapes project file|
 |vbet.log|Processing log|
 

@@ -11,7 +11,7 @@ from gnat.utils.confinement_report import ConfinementReport
 lyrs_in_out = {
     # CONFINEMENT_ID: INPUT_ID
     'FLOWLINES': 'NHDFlowline',
-    'CONFINING_POLYGON': 'VBET_50',
+    'CONFINING_POLYGON': 'VBET_68',
 }
 
 

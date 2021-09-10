@@ -15,7 +15,7 @@ lyrs_in_out = {
     'FLOWLINES': 'NHDFlowline',
     'FLOW_AREA': 'NHDArea',
     'WATERBODIES': 'NHDWaterbody',
-    'VALLEY_BOTTOM': 'VBET_50'
+    'VALLEY_BOTTOM': 'VBET_68'
 }
 
 
