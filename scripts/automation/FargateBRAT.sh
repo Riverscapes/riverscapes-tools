@@ -30,10 +30,10 @@ echo "BRAT_TAGS: $BRAT_TAGS"
 # Drop into our venv immediately
 source /usr/local/venv/bin/activate
 
-TASK_DIR=/usr/local/data/brat/$HUC
-RS_CONTEXT_DIR=$TASK_DIR/rs_context
-VBET_DIR=$TASK_DIR/vbet
-BRAT_DIR=$TASK_DIR/brat
+DATA_DIR=/usr/local/data
+RS_CONTEXT_DIR=$DATA_DIR/rs_context/$HUC
+VBET_DIR=$DATA_DIR/vbet/$HUC
+BRAT_DIR=$DATA_DIR/brat/$HUC
 
 
 # Get the RSCli project we need to make this happen
@@ -107,9 +107,6 @@ try() {
   if [[ $? != 0 ]]; then return 1; fi
 
   # Cleanup
-  cd /usr/local/
-  rm -fr $TASK_DIR
-
   echo "<<PROCESS COMPLETE>>\n\n"
 
 
@@ -117,8 +114,6 @@ try() {
 }
 try || {
   # Emergency Cleanup
-  cd /usr/local/
-  rm -fr $TASK_DIR
   echo "<<BRAT PROCESS ENDED WITH AN ERROR>>\n\n"
   exit 1
 }
