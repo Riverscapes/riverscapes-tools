@@ -249,24 +249,29 @@ def merge_feature_classes(feature_class_paths: List[str], out_layer_path: str, b
 
         for in_layer_path in feature_class_paths:
             fccount += 1
-            log.info("Merging feature class {}/{}".format(fccount, len(feature_class_paths)))
-
+            log.info("Loading fields for feature class {}/{}".format(fccount, len(feature_class_paths)))
             with get_shp_or_gpkg(in_layer_path) as in_layer:
-                if boundary is not None:
-                    in_layer.SetSpatialFilter(VectorBase.shapely2ogr(boundary))
-
                 # First input spatial ref sets the SRS for the output file
                 if fccount == 1:
                     # transform = in_layer.get_transform(out_layer)
                     out_layer.create_layer_from_ref(in_layer)
-                    out_layer.ogr_layer.StartTransaction()
-
+                    
                 for i in range(in_layer.ogr_layer_def.GetFieldCount()):
                     in_field_def = in_layer.ogr_layer_def.GetFieldDefn(i)
                     # Only create fields if we really don't have them
                     # NOTE: THIS ASSUMES ALL FIELDS OF THE SAME NAME HAVE THE SAME TYPE
                     if out_layer.ogr_layer_def.GetFieldIndex(in_field_def.GetName()) == -1:
                         out_layer.ogr_layer.CreateField(in_field_def)
+
+        for in_layer_path in feature_class_paths:
+            fccount += 1
+            log.info("Merging feature class {}/{}".format(fccount, len(feature_class_paths)))
+
+            out_layer.ogr_layer.StartTransaction()
+
+            with get_shp_or_gpkg(in_layer_path) as in_layer:
+                if boundary is not None:
+                    in_layer.SetSpatialFilter(VectorBase.shapely2ogr(boundary))
 
                 log.info('Processing feature: {}/{}'.format(fccount, len(feature_class_paths)))
 
@@ -287,7 +292,7 @@ def merge_feature_classes(feature_class_paths: List[str], out_layer_path: str, b
 
                     out_feature.SetGeometry(geom)
                     out_layer.ogr_layer.CreateFeature(out_feature)
-        out_layer.ogr_layer.CommitTransaction()
+            out_layer.ogr_layer.CommitTransaction()
 
     log.info('Merge complete.')
     return fccount
