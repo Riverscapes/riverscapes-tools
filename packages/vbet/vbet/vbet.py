@@ -422,6 +422,11 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
     inactive_floodplain = os.path.join(vbet_path, LayerTypes['VBET_OUTPUTS'].sub_layers['INACTIVE_FLOODPLAIN'].rel_path)
     difference(vbet_threshold['80'], vbet_threshold['68'], inactive_floodplain, epsg)
 
+    # Area Calculations
+    for layer in [active_floodplain, vbet_channel_area, inactive_floodplain, vbet_threshold['80'], vbet_threshold['68']]:
+        log.info(f'Calcuating area for {layer}')
+        calculate_area(layer, "area_ha")
+
     # Generate Centerline
     # centerline_lyr = RSLayer('VBET Centerlines', 'VBET_CENTERLINES', 'Vector', 'vbet_centerlines')
     # log.info('Creating a centerlines')
@@ -477,6 +482,31 @@ def simple_save(list_geoms, ogr_type, srs, layer_name, gpkg_path, attributes={})
             feature = None
 
         progbar.finish()
+        lyr.ogr_layer.CommitTransaction()
+
+
+def calculate_area(layer: Path, field_name: str, transform_epsg: int = 5070):
+    """Calcuate and store area (as hectares) for all features.
+
+    Args:
+        layer (Path): path of layer to add area calculations
+        field_name (str): output field name. will overwrite data if field exists
+        transform_epsg (int, optional): epsg id of spatial reference (must be in meters!). Defaults to 5070 (Albers North America).
+    """
+
+    with GeopackageLayer(layer, write=True) as lyr:
+        if lyr.ogr_layer.GetLayerDefn().GetFieldIndex(field_name) < 0:
+            lyr.create_field(field_name, ogr.OFTReal)
+        srs = lyr.get_srs_from_epsg(cfg.OUTPUT_EPSG)
+        _sr, transform = lyr.get_transform_from_epsg(srs, transform_epsg)
+        lyr.ogr_layer.StartTransaction()
+        for feat, *_ in lyr.iterate_features(f'Calculating area for features in {layer}'):
+            geom = feat.GetGeometryRef().Clone()
+            geom.Transform(transform)
+            area = geom.GetArea()
+            hectares = area / 10000.0
+            feat.SetField(field_name, hectares)
+            lyr.ogr_layer.SetFeature(feat)
         lyr.ogr_layer.CommitTransaction()
 
 
