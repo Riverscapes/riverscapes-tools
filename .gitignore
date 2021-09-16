@@ -2,9 +2,10 @@
 __pycache__/
 *.py[cod]
 *$py.class
-
+.DS_Store
 .riverscapes
 data/
+=*
 # PUBLIC is where the GH pages branch gets built
 PUBLIC
 # Ruby gems installed using bundler

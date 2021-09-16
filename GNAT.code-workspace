@@ -1,0 +1,23 @@
+{
+  "folders": [
+    {
+      "path": "packages/gnat"
+    },
+		{
+			"path": "lib/commons"
+		},
+    {
+      "name": "Automation",
+      "path": "scripts/automation"
+    },
+		{
+			"name": "Root",
+			"path": "."
+		}
+	],
+	"settings": {
+		"python.pythonPath": "${workspaceFolder}/../../.venv/bin/python3",
+		"python.testing.pytestEnabled": true,
+		"python.testing.unittestEnabled": true,
+	}
+}

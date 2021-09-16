@@ -1,13 +1,17 @@
 {
 	"folders": [
 		{
-			"path": "../packages/rscontext"
+			"path": "packages/rscontext"
 		},
 		{
-			"path": "../lib/commons"
+			"path": "lib/commons"
 		},
+    {
+      "name": "Automation",
+      "path": "scripts/automation"
+    },
 		{
-			"name": "Workspaces",
+			"name": "Root",
 			"path": "."
 		}
 	],

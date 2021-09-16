@@ -1,0 +1,19 @@
+{
+  "folders": [
+    {
+      "path": "packages/vbet"
+    },
+    {
+      "path": "lib/commons"
+    },
+		{
+			"name": "Root",
+			"path": "."
+		}
+  ],
+	"settings": {
+		"python.pythonPath": "${workspaceFolder}/../../.venv/bin/python3",
+		"python.testing.pytestEnabled": true,
+		"python.testing.unittestEnabled": true,
+	}
+}
