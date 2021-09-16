@@ -17,7 +17,7 @@ import traceback
 import json
 import time
 from typing import List, Dict
-# LEave OSGEO import alone. It is necessary even if it looks unused
+# Leave OSGEO import alone. It is necessary even if it looks unused
 from osgeo import gdal, ogr
 import rasterio
 from rasterio.features import shapes
@@ -45,9 +45,6 @@ Path = str
 initGDALOGRErrors()
 
 cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/VBET.xsd', __version__)
-
-# thresh_vals = {"50": 0.5, "60": 0.6, "70": 0.7, "80": 0.8, "90": 0.9, "100": 1}
-thresh_vals = {'80': 0.80, '68': 0.68}
 
 LayerTypes = {
     'DEM': RSLayer('DEM', 'DEM', 'Raster', 'inputs/dem.tif'),
@@ -81,6 +78,8 @@ LayerTypes = {
     # Same here. Sub layers are added dynamically later.
     'VBET_EVIDENCE': RSLayer('VBET Evidence Raster', 'VBET_EVIDENCE', 'Raster', 'outputs/VBET_Evidence.tif'),
     'VBET_OUTPUTS': RSLayer('VBET', 'VBET_OUTPUTS', 'Geopackage', 'outputs/vbet.gpkg', {
+        'VBET_FULL': RSLayer('VBET Full Extent', 'VBET_FULL', 'Vector', 'vbet_full'),
+        'VBET_IA': RSLayer('VBET Inactive/Active Boundary', 'VBET_IA', 'Vector', 'vbet_ia'),
         'VBET_CHANNEL_AREA': RSLayer('VBET Channel Area', 'VBET_CHANNEL_AREA', 'Vector', 'vbet_channel_area'),
         'ACTIVE_FLOODPLAIN': RSLayer('Active Floodplain', 'ACTIVE_FLOODPLAIN', 'Vector', 'active_floodplain'),
         'INACTIVE_FLOODPLAIN': RSLayer('Inactive Floodplain', 'INACTIVE_FLOODPLAIN', 'Vector', 'inactive_floodplain')
@@ -110,7 +109,7 @@ flowline_fieldmap = {
     }}
 
 
-def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, project_folder: Path, reach_codes: List[str], meta: Dict[str, str], flowline_type: str = 'NHD', epsg=cfg.OUTPUT_EPSG):
+def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, project_folder: Path, reach_codes: List[str], meta: Dict[str, str], flowline_type: str = 'NHD', epsg=cfg.OUTPUT_EPSG, thresh_vals={'VBET_IA': 0.90, 'VBET_FULL': 0.68}):
     """generate vbet evidence raster and threshold polygons for a watershed
 
     Args:
@@ -134,8 +133,9 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
         RSMeta('VBETTimestamp', str(int(time.time())), RSMetaTypes.TIMESTAMP),
         RSMeta("Scenario Name", scenario_code),
         RSMeta("FlowlineType", flowline_type),
+        RSMeta("VBET_Active_Floodplain_Threshold", f"{int(thresh_vals['VBET_IA'] * 100)}", RSMetaTypes.INT),
+        RSMeta("VBET_Inactive_Floodplain_Threshold", f"{int(thresh_vals['VBET_FULL'] * 100)}", RSMetaTypes.INT)
     ], meta)
-    epsg = cfg.OUTPUT_EPSG  # TODO read this from dem
 
     flowline_fields = flowline_fieldmap[flowline_type]
 
@@ -311,23 +311,19 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
 
     vbet_threshold = {}
     for str_val, thr_val in thresh_vals.items():
-        plgnize_id = 'THRESH_{}'.format(str_val)
-        with TempRaster('vbet_raw_thresh_{}'.format(plgnize_id)) as tmp_raw_thresh, \
-                TempRaster('vbet_cleaned_thresh_{}'.format(plgnize_id)) as tmp_cleaned_thresh:
+
+        plgnize_id = f'THRESH_{int(thr_val * 100)}'
+        with TempRaster(f'vbet_raw_thresh_{int(thr_val * 100)}') as tmp_raw_thresh, \
+                TempRaster(f'vbet_cleaned_thresh_{int(thr_val * 100)}') as tmp_cleaned_thresh:
 
             log.debug('Temporary threshold raster: {}'.format(tmp_raw_thresh.filepath))
             threshold(evidence_raster, thr_val, tmp_raw_thresh.filepath)
-
             raster_clean(tmp_raw_thresh.filepath, tmp_cleaned_thresh.filepath, buffer_pixels=1)
 
-            plgnize_lyr = RSLayer('Raw Threshold at {}%'.format(str_val), plgnize_id, 'Vector', plgnize_id.lower())
-            # Add a project node for this thresholded vector
+            # Threshold and VBET output layers
+            plgnize_lyr = RSLayer(f'Raw Threshold at {int(thr_val * 100)}%', plgnize_id, 'Vector', plgnize_id.lower())
             LayerTypes['INTERMEDIATES'].add_sub_layer(plgnize_id, plgnize_lyr)
-
-            vbet_id = 'VBET_{}'.format(str_val)
-            vbet_lyr = RSLayer('Threshold at {}%'.format(str_val), vbet_id, 'Vector', vbet_id.lower())
-            # Add a project node for this thresholded vector
-            LayerTypes['VBET_OUTPUTS'].add_sub_layer(vbet_id, vbet_lyr)
+            vbet_lyr = LayerTypes['VBET_OUTPUTS'].sub_layers[str_val]
 
             with rasterio.open(tmp_cleaned_thresh.filepath, 'r') as raster:
                 with GeopackageLayer(thiessen_fc, write=True) as lyr_reaches, \
@@ -412,18 +408,18 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
         # )
         # log.info('Completed thresholding at {}'.format(thr_val))
 
-        remove_holes_feature_class('{}/{}'.format(intermediates_gpkg_path, plgnize_lyr.rel_path), '{}/{}'.format(vbet_path, vbet_lyr.rel_path), min_geom_size, min_geom_size)
-        vbet_threshold[str_val] = '{}/{}'.format(vbet_path, vbet_lyr.rel_path)
+        remove_holes_feature_class(os.path.join(intermediates_gpkg_path, plgnize_lyr.rel_path), os.path.join(vbet_path, vbet_lyr.rel_path), min_geom_size, min_geom_size)
+        vbet_threshold[str_val] = os.path.join(vbet_path, vbet_lyr.rel_path)
 
     # Floodplain Layers
     active_floodplain = os.path.join(vbet_path, LayerTypes['VBET_OUTPUTS'].sub_layers['ACTIVE_FLOODPLAIN'].rel_path)
-    difference(vbet_channel_area, vbet_threshold['80'], active_floodplain, epsg)
+    difference(vbet_channel_area, vbet_threshold['VBET_IA'], active_floodplain, epsg)
 
     inactive_floodplain = os.path.join(vbet_path, LayerTypes['VBET_OUTPUTS'].sub_layers['INACTIVE_FLOODPLAIN'].rel_path)
-    difference(vbet_threshold['80'], vbet_threshold['68'], inactive_floodplain, epsg)
+    difference(vbet_threshold['VBET_IA'], vbet_threshold['VBET_FULL'], inactive_floodplain, epsg)
 
     # Area Calculations
-    for layer in [active_floodplain, vbet_channel_area, inactive_floodplain, vbet_threshold['80'], vbet_threshold['68']]:
+    for layer in [active_floodplain, vbet_channel_area, inactive_floodplain, vbet_threshold['VBET_IA'], vbet_threshold['VBET_FULL']]:
         log.info(f'Calcuating area for {layer}')
         calculate_area(layer, "area_ha")
 
