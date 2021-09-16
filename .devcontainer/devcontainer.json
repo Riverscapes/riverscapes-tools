@@ -59,6 +59,7 @@
   "mounts": [
     // Make sure we have access to our configuration root in the container
     "source=${localEnv:HOME}${localEnv:USERPROFILE},target=/homecopy,type=bind,consistency=cached",
+    "source=${localEnv:RSTOOLS_DATA},target=/shared,type=bind,consistency=delegated",
   ],
   // Use 'postCreateCommand' to run commands after the container is created.
   "postCreateCommand": "bash .devcontainer/postCreateCommand.sh",
