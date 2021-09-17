@@ -51,7 +51,7 @@ settings:
   # Arbitrary multi-level topbar menu
   # IF you don't need this just comment out everything below
   # ----------------------------------
-topmenu:
+  topmenu:
     - title: "USU Watershed Sciences Department"
       url: https://qcnr.usu.edu/wats/
     - title: "LTPBR"
