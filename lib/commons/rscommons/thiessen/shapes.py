@@ -126,7 +126,7 @@ def centerline_points(in_lines: Path, distance: float = 0.0, transform: Transfor
             interval = distance / total
             current = interval
             while current < 1.0:
-                pts.append(line.interpolate(interval, True))
+                pts.append(line.interpolate(current, True))
                 current = current + interval
 
             # pts = [
