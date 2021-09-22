@@ -123,7 +123,8 @@ def channel(huc: int,
         copy_feature_class(flowareas, proj_flowareas, epsg=epsg)
     else:
         proj_flowareas = None
-        filtered_flowarea_no_islands = None
+        filtered_flowareas = None
+        #filtered_flowarea_no_islands = None
 
     if waterbodies is not None:
         proj_waterbodies = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['WATERBODY'].rel_path)
@@ -149,9 +150,9 @@ def channel(huc: int,
             fcode_filter = f"{reach_code_field} = " + f" or {reach_code_field} = ".join([f"'{fcode}'" for fcode in reach_codes['flowarea']])
         copy_feature_class(proj_flowareas, filtered_flowareas, attribute_filter=fcode_filter)
 
-        log.info('Removing flowarea islands')
-        filtered_flowarea_no_islands = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['FLOW_AREA_NO_ISLANDS'].rel_path)
-        remove_holes_feature_class(filtered_flowareas, filtered_flowarea_no_islands, min_hole_area=500)
+        #log.info('Removing flowarea islands')
+        #filtered_flowarea_no_islands = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['FLOW_AREA_NO_ISLANDS'].rel_path)
+        #remove_holes_feature_class(filtered_flowareas, filtered_flowarea_no_islands, min_hole_area=500)
 
     if proj_waterbodies is not None:
         log.info('Filtering waterbody polygons')
@@ -163,12 +164,12 @@ def channel(huc: int,
         copy_feature_class(proj_waterbodies, filtered_waterbodies, attribute_filter=fcode_filter)
 
     combined_flow_polygons = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['COMBINED_FA_WB'].rel_path)
-    if filtered_waterbodies is not None and filtered_flowarea_no_islands is not None:
+    if filtered_waterbodies is not None and filtered_flowareas is not None:
         log.info('Merging waterbodies and flowareas')
-        merge_feature_classes([filtered_waterbodies, filtered_flowarea_no_islands], combined_flow_polygons)
-    elif filtered_flowarea_no_islands is not None:
+        merge_feature_classes([filtered_waterbodies, filtered_flowareas], combined_flow_polygons)
+    elif filtered_flowareas is not None:
         log.info('No waterbodies found, copying flowareas')
-        copy_feature_class(filtered_flowarea_no_islands, combined_flow_polygons)
+        copy_feature_class(filtered_flowareas, combined_flow_polygons)
     elif filtered_waterbodies is not None:
         log.info('No flowareas found, copying waterbodies')
         copy_feature_class(filtered_waterbodies, combined_flow_polygons)
