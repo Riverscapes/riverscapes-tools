@@ -34,6 +34,7 @@ from rscommons.thiessen.shapes import centerline_points
 from rscommons.vbet_network import vbet_network, create_stream_size_zones, copy_vaa_attributes, join_attributes
 
 from vbet.vbet_database import load_configuration, build_vbet_database
+from vbet.vbet_metrics import floodplain_metrics, vbet_area_metrics, build_vbet_metric_tables
 from vbet.vbet_report import VBETReport
 from vbet.vbet_raster_ops import rasterize, raster_clean, rasterize_attribute
 from vbet.vbet_outputs import threshold, sanitize
@@ -72,7 +73,8 @@ LayerTypes = {
         'VBET_NETWORK': RSLayer('VBET Network', 'VBET_NETWORK', 'Vector', 'vbet_network'),
         'TRANSFORM_ZONES': RSLayer('Transform Zones', 'TRANSFORM_ZONES', 'Vector', 'transform_zones'),
         'THIESSEN_POINTS': RSLayer('Thiessen Reach Points', 'THIESSEN_POINTS', 'Vector', 'ThiessenPoints'),
-        'THIESSEN_AREAS': RSLayer('Thiessen Reach Areas', 'THIESSEN_AREAS', 'Vector', 'ThiessenPolygonsDissolved')
+        'THIESSEN_AREAS': RSLayer('Thiessen Reach Areas', 'THIESSEN_AREAS', 'Vector', 'ThiessenPolygonsDissolved'),
+        # 'CHANNEL_AREA_INTERSECTION': RSLayer('Channel Area Intetrsected by VBET', 'CHANNEL_AREA_INTERSECTION', 'Vector', 'channel_area_intersection')
         # We also add all tht raw thresholded shapes here but they get added dynamically later
     }),
     # Same here. Sub layers are added dynamically later.
@@ -143,8 +145,10 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
     # Make sure we're starting with a fresh slate of new geopackages
     inputs_gpkg_path = os.path.join(project_folder, LayerTypes['INPUTS'].rel_path)
     intermediates_gpkg_path = os.path.join(project_folder, LayerTypes['INTERMEDIATES'].rel_path)
+    vbet_path = os.path.join(project_folder, LayerTypes['VBET_OUTPUTS'].rel_path)
     GeopackageLayer.delete(inputs_gpkg_path)
     GeopackageLayer.delete(intermediates_gpkg_path)
+    GeopackageLayer.delete(vbet_path)
 
     project_inputs = {}
     for input_name, input_path in inputs.items():
@@ -165,8 +169,8 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
 
     # Build Transformation Tables
     build_vbet_database(inputs_gpkg_path)
-
-    degree_factor = GeopackageLayer.rough_convert_metres_to_raster_units(project_inputs['SLOPE_RASTER'], 1)
+    with GeopackageLayer(project_inputs['FLOWLINES']) as lyr:
+        degree_factor = lyr.rough_convert_metres_to_vector_units(1)
 
     # Load configuration from table
     vbet_run = load_configuration(scenario_code, inputs_gpkg_path)
@@ -276,9 +280,6 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
     project.add_project_raster(proj_nodes['Outputs'], LayerTypes['VBET_EVIDENCE'])
 
     min_geom_size = 10 * (cell_size ** 2)
-
-    # Get the full paths to the geopackages
-    vbet_path = os.path.join(project_folder, LayerTypes['VBET_OUTPUTS'].rel_path)
 
     vbet_channel_area = os.path.join(vbet_path, LayerTypes['VBET_OUTPUTS'].sub_layers['VBET_CHANNEL_AREA'].rel_path)
     copy_feature_class(project_inputs['CHANNEL_AREA_POLYGONS'], vbet_channel_area)
@@ -423,14 +424,43 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
         log.info(f'Calcuating area for {layer}')
         calculate_area(layer, "area_ha")
 
-    # Generate Centerline
-    # centerline_lyr = RSLayer('VBET Centerlines', 'VBET_CENTERLINES', 'Vector', 'vbet_centerlines')
-    # log.info('Creating a centerlines')
-    # LayerTypes['VBET_OUTPUTS'].add_sub_layer('VBET_CENTERLINES', centerline_lyr)
-    # centerline = os.path.join(vbet_path, centerline_lyr.rel_path)
-    # vbet_centerline(network_path, os.path.join(vbet_path, 'vbet_68'), centerline)
+    with GeopackageLayer(vbet_threshold['VBET_FULL'], write=True) as lyr_vbet, \
+            GeopackageLayer(vbet_channel_area) as lyr_channel:
 
-    # Now add our Geopackages to the project XML
+        if lyr_vbet.ogr_layer.GetLayerDefn().GetFieldIndex('active_channel_ha') < 0:
+            lyr_vbet.create_field('active_channel_ha', ogr.OFTReal)
+        srs = lyr_vbet.get_srs_from_epsg(cfg.OUTPUT_EPSG)
+        _sr, transform = lyr_vbet.get_transform_from_epsg(srs, 5070)
+        lyr_vbet.ogr_layer.StartTransaction()
+        for feat, *_ in lyr_vbet.iterate_features("Intersecting vbet features with channel area"):
+            vbet_geom = feat.GetGeometryRef().Clone()
+            sum_area = 0.0
+            for channel_feat, *_ in lyr_channel.iterate_features(clip_shape=vbet_geom):
+                channel_geom = channel_feat.GetGeometryRef().Clone()
+                clip_geom = vbet_geom.Intersection(channel_geom)
+                clip_geom.Transform(transform)
+                area = clip_geom.GetArea()
+                hectares = area / 10000.0
+                sum_area = sum_area + hectares
+            feat.SetField('active_channel_ha', hectares)
+            lyr_vbet.ogr_layer.SetFeature(feat)
+        lyr_vbet.ogr_layer.CommitTransaction()
+
+    build_vbet_metric_tables(vbet_path)
+
+    vbet_area_metrics(vbet_threshold['VBET_FULL'], vbet_path)
+
+    for layer in ['active_floodplain', 'inactive_floodplain']:
+        floodplain_metrics(layer, vbet_path)
+
+        # Generate Centerline
+        # centerline_lyr = RSLayer('VBET Centerlines', 'VBET_CENTERLINES', 'Vector', 'vbet_centerlines')
+        # log.info('Creating a centerlines')
+        # LayerTypes['VBET_OUTPUTS'].add_sub_layer('VBET_CENTERLINES', centerline_lyr)
+        # centerline = os.path.join(vbet_path, centerline_lyr.rel_path)
+        # vbet_centerline(network_path, os.path.join(vbet_path, 'vbet_68'), centerline)
+
+        # Now add our Geopackages to the project XML
     project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
     project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['VBET_OUTPUTS'])
 
