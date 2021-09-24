@@ -152,9 +152,10 @@ def copy_vaa_attributes(destination_layer, vaa_table):
     return os.path.basename(vaa_table)
 
 
-def join_attributes(gpkg, name, geom_layer, attribute_layer, join_field, fields, epsg):
+def join_attributes(gpkg, name, geom_layer, attribute_layer, join_field, fields, epsg, geom_type='LINESTRING'):
 
-    sql = f"CREATE VIEW {name} AS SELECT G.*, {','.join(['A.' + item for item in fields])} FROM {geom_layer} G INNER JOIN {attribute_layer} A ON G.{join_field} = A.{join_field};"
+    sql_path = 'CASE A.Divergence WHEN 2 THEN A.DnLevelPat ELSE A.LevelPathI END AS vbet_level_path'
+    sql = f"CREATE VIEW {name} AS SELECT G.*, {', '.join(['A.' + item for item in fields])}, {sql_path} FROM {geom_layer} G INNER JOIN {attribute_layer} A ON G.{join_field} = A.{join_field};"
 
     with sqlite3.connect(gpkg) as conn:
 
@@ -165,7 +166,7 @@ def join_attributes(gpkg, name, geom_layer, attribute_layer, join_field, fields,
         curs.execute(f"INSERT INTO gpkg_contents (table_name, identifier, data_type, srs_id) VALUES ('{name}', '{name}', 'features', {epsg});")
         conn.commit()
 
-        curs.execute(f"INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) values ('{name}', 'geom', 'LINESTRING', {epsg}, 0, 0);")
+        curs.execute(f"INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) values ('{name}', 'geom', '{geom_type}', {epsg}, 0, 0);")
         conn.commit()
 
     return os.path.join(gpkg, name)

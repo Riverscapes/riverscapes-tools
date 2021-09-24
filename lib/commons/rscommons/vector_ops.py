@@ -7,6 +7,8 @@
 #
 # Date:     Nov 16, 2020
 # -------------------------------------------------------------------------------
+import os
+import sqlite3
 from copy import copy
 from typing import List
 from functools import reduce
@@ -811,16 +813,39 @@ def export_geojson(geom: BaseGeometry, props=None):
     return the_dict
 
 
-def dissolve_feature_class(in_layer_path, out_layer_path, epsg):
+def dissolve_feature_class(in_layer_path, out_layer_path, epsg, field=None):
 
-    out_geom = get_geometry_unary_union(in_layer_path)
+    out_geoms = {}
+
+    if field is not None:
+        with sqlite3.connect(os.path.dirname(in_layer_path)) as conn:
+            cursor = conn.cursor()
+            dissolve_values = [value[0] for value in cursor.execute(f"""SELECT DISTINCT {field} FROM {os.path.basename(in_layer_path)}""").fetchall()] 
+        for value in dissolve_values:
+            out_geoms[value] = get_geometry_unary_union(in_layer_path, attribute_filter=f"{field} = {value}")
+    else:
+        out_geom = get_geometry_unary_union(in_layer_path)
 
     with get_shp_or_gpkg(out_layer_path, write=True) as out_layer, \
             get_shp_or_gpkg(in_layer_path) as in_layer:
 
-        # Add input Layer Fields to the output Layer if it is the one we want
-        out_layer.create_layer_from_ref(in_layer, epsg=epsg)
-        out_layer.create_feature(out_geom)
+        if field is not None:
+            out_layer.create_layer(in_layer.ogr_geom_type, spatial_ref=in_layer.spatial_ref)
+            in_lyr_defn = in_layer.ogr_layer_def
+            for i in range(in_lyr_defn.GetFieldCount()):
+                field_defn = in_lyr_defn.GetFieldDefn(i)
+                if field_defn.GetName() == field: 
+                    out_layer.ogr_layer.CreateField(field_defn)
+                    break
+        else:
+            # Add input Layer Fields to the output Layer if it is the one we want
+            out_layer.create_layer_from_ref(in_layer, epsg=epsg)
+        
+        if field is not None:
+            for value, out_geom in out_geoms.items():
+                out_layer.create_feature(out_geom, {field: value})
+        else:
+            out_layer.create_feature(out_geom)
 
 
 def remove_holes_feature_class(in_layer_path, out_layer_path, min_hole_area=None, min_polygon_area=None):
