@@ -172,18 +172,23 @@ class RSReport():
         tbody = ET.Element('tbody')
         table.append(tbody)
 
+        data = []
         for row in curs.fetchall():
             tr = ET.Element('tr')
             tbody.append(tr)
 
+            data_row = []
             for col, val in row.items():
-                val, class_name = RSReport.format_value(val) if id_cols and col not in id_cols else [str(val), 'idVal']
+                str_val, class_name = RSReport.format_value(val) if id_cols and col not in id_cols else [str(val), 'idVal']
                 td = ET.Element('td', attrib={'class': class_name})
 
-                td.text = val
+                td.text = str_val
                 tr.append(td)
+                data_row.append(val)
+            data.append(data_row)
 
         el_parent.append(table)
+        return data
 
     @staticmethod
     def create_table_from_tuple_list(col_names, data, el_parent, attrib=None):

@@ -5,7 +5,7 @@ from xml.etree import ElementTree as ET
 
 from rscommons import Logger, dotenv, ModelConfig, RSReport, RSProject
 from rscommons.util import safe_makedirs
-from rscommons.plotting import xyscatter, box_plot, pie
+from rscommons.plotting import xyscatter, box_plot, pie, horizontal_bar
 
 from sqlbrat.__version__ import __version__
 
@@ -269,7 +269,20 @@ class BratReport(RSReport):
         img_wrap = ET.Element('div', attrib={'class': 'imgWrap'})
         img = ET.Element('img', attrib={
             'src': '{}/{}'.format(os.path.basename(self.images_dir), os.path.basename(image_path)),
-            'alt': 'boxplot'
+            'alt': 'piechart'
+        })
+        img_wrap.append(img)
+        plot_wrapper.append(img_wrap)
+        elParent.append(plot_wrapper)
+
+        bar_path = os.path.join(self.images_dir, '{}_bar.png'.format(label.lower()))
+        horizontal_bar([x[2] for x in data], [x[0] for x in data], 'Reach Length (km)', label, bar_path)
+
+        plot_wrapper = ET.Element('div', attrib={'class': 'plots'})
+        img_wrap = ET.Element('div', attrib={'class': 'imgWrap'})
+        img = ET.Element('img', attrib={
+            'src': '{}/{}'.format(os.path.basename(self.images_dir), os.path.basename(bar_path)),
+            'alt': 'bar_chart'
         })
         img_wrap.append(img)
         plot_wrapper.append(img_wrap)
@@ -301,6 +314,74 @@ class BratReport(RSReport):
             {'label': 'Within Plausable Forage Range (100 - 300 m)', 'lower': 100, 'upper': 300},
             {'label': 'Within Normal Forage Range (30 - 100 m)', 'lower': 30, 'upper': 100},
             {'label': 'Immediately Adjacent (0 - 30 m)', 'upper': 300}
+        ], section)
+
+        # Existing Capacity
+        self.attribute_table_and_pie('oCC_EX', [
+            {'label': 'Occassional:  1 - 5 dams/km (2-8 dams/mi)', 'lower': 5},
+            {'label': 'Frequent:  5-15 dams/km (8-24 dams/mi)', 'lower': 5, 'upper': 15},
+            {'label': 'Pervasive:  15-40 dams/km (24-64 dams/mi)', 'upper': 15}
+        ], section)
+
+        # Distance
+        self.attribute_table_and_pie('mCC_EX_CT', [
+            {'label': 'No Dams', 'upper': 0},
+            {'label': 'Single Dams', 'lower': 1, 'upper': 1},
+            {'label': 'Small Complex (1-3 Dams)', 'lower': 1, 'upper': 3},
+            {'label': 'Medium Complex (3 - 5 dams)', 'lower': 3, 'upper': 5},
+            {'label': 'Large Complex (> 5 dams)', 'upper': 5}
+        ], section)
+
+        # Historical Dam Capacity
+        self.attribute_table_and_pie('oCC_HPE', [
+            {'label': 'None: 0 dams', 'upper': 0},
+            {'label': 'Rare:  0 - 1 dams/km (0-2 dams/mi)', 'lower': 0, 'upper': 1},
+            {'label': 'Occassional:  1 - 5 dams/km (2-8 dams/mi)', 'lower': 1, 'upper': 5},
+            {'label': 'Frequent:  5-15 dams/km (8-24 dams/mi)', 'lower': 5, 'upper': 15},
+            {'label': 'Pervasive:  15-40 dams/km (24-64 dams/mi)', 'upper': 15}
+        ], section)
+
+        # Historical Dam
+        self.attribute_table_and_pie('mCC_HPE_CT', [
+            {'label': 'No Dams', 'upper': 0},
+            {'label': 'Single Dams', 'lower': 1, 'upper': 1},
+            {'label': 'Small Complex (1-3 Dams)', 'lower': 1, 'upper': 3},
+            {'label': 'Medium Complex (3 - 5 dams)', 'lower': 3, 'upper': 5},
+            {'label': 'Large Complex (> 5 dams)', 'upper': 5}
+        ], section)
+
+        # Existing Vegetation Dam Building Capacity
+        self.attribute_table_and_pie('oVC_EX', [
+            {'label': 'None:  0 dams', 'upper': 0},
+            {'label': 'Rare:  0 - 1 dams/km (0-2 dams/mi)', 'lower': 0, 'upper': 1},
+            {'label': 'Occassional:  1 - 5 dams/km (2-8 dams/mi)', 'lower': 1, 'upper': 5},
+            {'label': 'Frequent:  5-15 dams/km (8-24 dams/mi)', 'lower': 5, 'upper': 15},
+            {'label': 'Pervasive:  15-40 dams/km (24-64 dams/mi)', 'upper': 15}
+        ], section)
+
+        # Historical Vegetation Dam Building Capacity
+        self.attribute_table_and_pie('oVC_HPE', [
+            {'label': 'None:  0 dams', 'upper': 0},
+            {'label': 'Rare:  0 - 1 dams/km (0-2 dams/mi)', 'lower': 0, 'upper': 1},
+            {'label': 'Occassional:  1 - 5 dams/km (2-8 dams/mi)', 'lower': 1, 'upper': 5},
+            {'label': 'Frequent:  5-15 dams/km (8-24 dams/mi)', 'lower': 5, 'upper': 15},
+            {'label': 'Pervasive:  15-40 dams/km (24-64 dams/mi)', 'upper': 15}
+        ], section)
+
+        # LandUse Intensity
+        self.attribute_table_and_pie('iPC_LU', [
+            {'label': 'Very Low:  0 dams', 'upper': 0},
+            {'label': 'Low', 'lower': 0, 'upper': 0.3333},
+            {'label': 'Moderate', 'lower': 0.3333, 'upper': 0.6666},
+            {'label': 'High', 'upper': 0.6666}
+        ], section)
+
+        # Conservation Opportunity
+        self.attribute_table_and_pie('iPC_LU', [
+            {'label': 'Very Low:  0 dams', 'upper': 0},
+            {'label': 'Low', 'lower': 0, 'upper': 0.3333},
+            {'label': 'Moderate', 'lower': 0.3333, 'upper': 0.6666},
+            {'label': 'High', 'upper': 0.6666}
         ], section)
 
     def reach_attribute_summary(self):
@@ -398,13 +479,39 @@ class BratReport(RSReport):
 
         for label, table, idfield in fields:
             RSReport.header(3, label, section)
-            RSReport.create_table_from_sql(
+            table_data = RSReport.create_table_from_sql(
                 [label, 'Total Length (km)', 'Reach Count', '%'],
                 'SELECT DR.Name, Sum(iGeo_Len) / 1000, Count(R.{1}), 100 * Sum(iGeo_Len) / TotalLength'
                 ' FROM {0} DR LEFT JOIN vwReaches R ON DR.{1} = R.{1}'
                 ' JOIN (SELECT Sum(iGeo_Len) AS TotalLength FROM vwReaches)'
                 ' GROUP BY DR.{1}'.format(table, idfield),
                 self.database, section)
+
+            pie_path = os.path.join(self.images_dir, '{}_pie.png'.format(label.lower()))
+            pie([x[3] for x in table_data], [x[0] for x in table_data], label, pie_path)
+
+            plot_wrapper = ET.Element('div', attrib={'class': 'plots'})
+            img_wrap = ET.Element('div', attrib={'class': 'imgWrap'})
+            img = ET.Element('img', attrib={
+                'src': '{}/{}'.format(os.path.basename(self.images_dir), os.path.basename(pie_path)),
+                'alt': 'pie_chart'
+            })
+            img_wrap.append(img)
+            plot_wrapper.append(img_wrap)
+            section.append(plot_wrapper)
+
+            bar_path = os.path.join(self.images_dir, '{}_bar.png'.format(label.lower()))
+            horizontal_bar([x[1] for x in table_data], [x[0] for x in table_data], 'Reach Length (km)', label, bar_path)
+
+            plot_wrapper = ET.Element('div', attrib={'class': 'plots'})
+            img_wrap = ET.Element('div', attrib={'class': 'imgWrap'})
+            img = ET.Element('img', attrib={
+                'src': '{}/{}'.format(os.path.basename(self.images_dir), os.path.basename(bar_path)),
+                'alt': 'bar_chart'
+            })
+            img_wrap.append(img)
+            plot_wrapper.append(img_wrap)
+            section.append(plot_wrapper)
 
         RSReport.header(3, 'Conflict Attributes', section)
 
