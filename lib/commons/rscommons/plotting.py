@@ -98,3 +98,15 @@ def line(x_values, y_values, xlabel, ylabel, chart_title, file_path):
         os.makedirs(os.path.dirname(file_path))
 
     plt.savefig(file_path)
+
+
+def pie(x_values, labels, chart_title, file_path):
+
+    plt.clf()
+    plt.title = chart_title
+    plt.pie(x_values, labels=labels)
+
+    if not os.path.isdir(os.path.dirname(file_path)):
+        os.makedirs(os.path.dirname(file_path))
+
+    plt.savefig(file_path)
