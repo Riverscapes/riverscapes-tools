@@ -5,7 +5,7 @@ from xml.etree import ElementTree as ET
 
 from rscommons import Logger, dotenv, ModelConfig, RSReport, RSProject
 from rscommons.util import safe_makedirs
-from rscommons.plotting import xyscatter, box_plot
+from rscommons.plotting import xyscatter, box_plot, pie
 
 from sqlbrat.__version__ import __version__
 
@@ -43,6 +43,7 @@ class BratReport(RSReport):
         self.ownership()
         self.vegetation()
         self.conservation()
+        self.reach_attribute_summaries()
 
     def report_intro(self):
         # Create a section node to start adding things to. Section nodes are added to the table of contents if
@@ -219,6 +220,89 @@ class BratReport(RSReport):
             img_wrap.append(img)
             plot_wrapper.append(img_wrap)
 
+        for variable, ylabel in [('Base Flow', 'Baseflow (CFS)')]:
+            image_path = os.path.join(self.images_dir, 'drainage_area_{}.png'.format(variable.lower()))
+
+    def attribute_table_and_pie(self, attribute_field, bins, elParent):
+        """
+        Expect the bins as list of dictionaries with keys "label", "lower", "upper"
+        """
+
+        RSReport.header(3, '{} Summary'.format(attribute_field), elParent)
+
+        conn = sqlite3.connect(self.database)
+        conn.row_factory = _dict_factory
+        curs = conn.cursor()
+
+        data = []
+        for abin in bins:
+            label = abin['label']
+            lower = abin['lower'] if 'lower' in abin else None
+            upper = abin['upper'] if 'upper' in abin else None
+            where_clause = ''
+            sql_args = []
+
+            if lower is not None:
+                where_clause = ' ({} > ?)'.format(attribute_field)
+                sql_args.append(lower)
+
+            if upper is not None:
+                if len(where_clause) > 0:
+                    where_clause += ' AND '
+                sql_args.append(upper)
+
+                where_clause += ' ({} <= ?) '.format(attribute_field)
+
+            curs.execute("""SELECT count(*) ReachCount, (sum(iGeo_Len) / 1000) LengthKM, (sum(igeo_len) * 0.000621371) LengthMiles, (0.1 * sum(iGeo_Len) / t.total_length) Percent
+                        FROM ReachAttributes r,
+                        (select sum(igeo_len) / 1000 total_length from ReachAttributes) t
+                         WHERE {}""".format(where_clause), sql_args)
+            row = curs.fetchone()
+            data.append((label, row['ReachCount'], row['LengthKM'], row['LengthMiles'], row['Percent']))
+
+        RSReport.create_table_from_tuple_list(['Category', 'Reach Count', 'Length (km)', 'Length (miles)', 'Percent (%)'], data, elParent)
+
+        image_path = os.path.join(self.images_dir, '{}_pie.png'.format(attribute_field.lower()))
+        pie([x[4] for x in data], [x[0] for x in data], '{} Reach Summary'.format(attribute_field), image_path)
+
+        plot_wrapper = ET.Element('div', attrib={'class': 'plots'})
+        img_wrap = ET.Element('div', attrib={'class': 'imgWrap'})
+        img = ET.Element('img', attrib={
+            'src': '{}/{}'.format(os.path.basename(self.images_dir), os.path.basename(image_path)),
+            'alt': 'boxplot'
+        })
+        img_wrap.append(img)
+        plot_wrapper.append(img_wrap)
+        elParent.append(plot_wrapper)
+
+    def reach_attribute_summaries(self):
+
+        section = self.section('ReachAttSum', 'Reach Attribute Summaries')
+
+        # Low Stream Power
+        self.attribute_table_and_pie('iHyd_SPLow', [
+            {'label': '0 - 16 (Can Build Dam)', 'upper': 16},
+            {'label': '16 - 185 (Probably Can Build Dam)', 'lower': 16, 'upper': 185},
+            {'label': '> 185 (Cannot Build Dam)', 'lower': 185}
+        ], section)
+
+        # High Stream Power
+        self.attribute_table_and_pie('iHyd_SP2', [
+            {'label': '0 - 1100 Dam Persists', 'upper': 1100},
+            {'label': '1100 - 1400 Potential Dam Breach', 'lower': 1100, 'upper': 1400},
+            {'label': '1400 - 2200 Potential Dam Blowout', 'lower': 1400, 'upper': 2200},
+            {'label': '> 2200 Dam Blowout', 'lower': 2200}
+        ], section)
+
+        # Distance
+        self.attribute_table_and_pie('oPC_Dist', [
+            {'label': 'Not Close (> 1 km)', 'lower': 1000},
+            {'label': 'Outside Range of Concern (300m - 1 km)', 'lower': 300, 'upper': 1000},
+            {'label': 'Within Plausable Forage Range (100 - 300 m)', 'lower': 100, 'upper': 300},
+            {'label': 'Within Normal Forage Range (30 - 100 m)', 'lower': 30, 'upper': 100},
+            {'label': 'Immediately Adjacent (0 - 30 m)', 'upper': 300}
+        ], section)
+
     def reach_attribute_summary(self):
         section = self.section('ReachAttributeSummary', 'Geophysical Attributes')
 
@@ -232,8 +316,7 @@ class BratReport(RSReport):
         plot_wrapper = ET.Element('div', attrib={'class': 'plots'})
         [self.reach_attribute(attribute, units, plot_wrapper) for attribute, name, units in attribs]
 
-        section.append(plot_wrapper)\
-
+        section.append(plot_wrapper)
 
     def ownership(self):
         section = self.section('Ownership', 'Ownership')
@@ -294,7 +377,7 @@ class BratReport(RSReport):
                         WHERE EpochID = {0} AND Buffer = 100 GROUP BY EffectiveSuitability
                     )
                     JOIN
-                    (   
+                    (
                         SELECT CAST(Sum(TotalArea) AS REAL) / 1000000 SumTotalArea
                         FROM vwReachVegetationTypes
                         WHERE EpochID = {0} AND Buffer = 100
