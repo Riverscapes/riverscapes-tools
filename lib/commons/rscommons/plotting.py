@@ -102,9 +102,26 @@ def line(x_values, y_values, xlabel, ylabel, chart_title, file_path):
 
 def pie(x_values, labels, chart_title, file_path):
 
+    clean_values = [0 if x is None else x for x in x_values]
+
     plt.clf()
     plt.title = chart_title
-    plt.pie(x_values, labels=labels)
+    plt.pie(clean_values, labels=labels)
+
+    if not os.path.isdir(os.path.dirname(file_path)):
+        os.makedirs(os.path.dirname(file_path))
+
+    plt.savefig(file_path)
+
+
+def horizontal_bar(x_values, labels, x_axis_label, chart_title, file_path):
+
+    clean_values = [0 if x is None else x for x in x_values]
+
+    plt.clf()
+    plt.title = chart_title
+    plt.barh(labels, clean_values, height=0.25)
+    plt.xlabel(x_axis_label)
 
     if not os.path.isdir(os.path.dirname(file_path)):
         os.makedirs(os.path.dirname(file_path))
