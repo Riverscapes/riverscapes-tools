@@ -28,7 +28,7 @@ from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.util import safe_makedirs, parse_metadata, pretty_duration
 from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, dotenv, initGDALOGRErrors, TempRaster, VectorBase
 from rscommons import GeopackageLayer
-from rscommons.vector_ops import difference, copy_feature_class, remove_holes_feature_class, geom_validity_fix
+from rscommons.vector_ops import difference, copy_feature_class, dissolve_feature_class, intersect_feature_classes, remove_holes_feature_class, geom_validity_fix
 from rscommons.thiessen.vor import NARVoronoi
 from rscommons.thiessen.shapes import centerline_points
 from rscommons.vbet_network import vbet_network, create_stream_size_zones, copy_vaa_attributes, join_attributes
@@ -141,6 +141,8 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
 
     flowline_fields = flowline_fieldmap[flowline_type]
 
+    vbet_summary_field = 'vbet_level_path'  # This value is in vbet_metrics.sql, modify with care...
+
     # Input Preparation
     # Make sure we're starting with a fresh slate of new geopackages
     inputs_gpkg_path = os.path.join(project_folder, LayerTypes['INPUTS'].rel_path)
@@ -164,13 +166,14 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
     if flowline_type == 'NHD':
         vaa_fields = ['LevelPathI', 'Divergence', 'DnLevelPat']  # + ["StreamOrde"]  # + ['HydroSeq', 'DnHydroSeq', 'UpHydroSeq']
         flowlines_vaa_path = join_attributes(inputs_gpkg_path, "Flowlines_VAA", os.path.basename(project_inputs['FLOWLINES']), vaa_table_name, 'NHDPlusID', vaa_fields, epsg)
+        catchments_vaa_path = join_attributes(inputs_gpkg_path, "Catchments_VAA", os.path.basename(project_inputs['CATCHMENTS']), vaa_table_name, 'NHDPlusID', vaa_fields, epsg, geom_type='POLYGON')
     else:
         flowlines_vaa_path = project_inputs['FLOWLINES']
 
     # Build Transformation Tables
     build_vbet_database(inputs_gpkg_path)
-    with GeopackageLayer(project_inputs['FLOWLINES']) as lyr:
-        degree_factor = lyr.rough_convert_metres_to_vector_units(1)
+    # with GeopackageLayer(project_inputs['FLOWLINES']) as lyr:
+    #     degree_factor = lyr.rough_convert_metres_to_vector_units(1)
 
     # Load configuration from table
     vbet_run = load_configuration(scenario_code, inputs_gpkg_path)
@@ -281,34 +284,44 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
 
     min_geom_size = 10 * (cell_size ** 2)
 
-    vbet_channel_area = os.path.join(vbet_path, LayerTypes['VBET_OUTPUTS'].sub_layers['VBET_CHANNEL_AREA'].rel_path)
-    copy_feature_class(project_inputs['CHANNEL_AREA_POLYGONS'], vbet_channel_area)
-
-    log.info('Subdividing the network along regular intervals')
-    flowline_thiessen_points_groups = centerline_points(network_path, distance=degree_factor * 10, fields=[flowline_fields['PathID']], divergence_field=flowline_fields['Divergence'], downlevel_field=flowline_fields['DownPathID'])  # 'LevelPathI'
-    flowline_thiessen_points = [pt for group in flowline_thiessen_points_groups.values() for pt in group]
+    # log.info('Subdividing the network along regular intervals')
+    # flowline_thiessen_points_groups = centerline_points(network_path, distance=degree_factor * 10, fields=[flowline_fields['PathID']], divergence_field=flowline_fields['Divergence'], downlevel_field=flowline_fields['DownPathID'])  # 'LevelPathI'
+    # flowline_thiessen_points = [pt for group in flowline_thiessen_points_groups.values() for pt in group]
 
     # Exterior is the shell and there is only ever 1
-    log.info("Creating Thiessen Polygons")
-    myVorL = NARVoronoi(flowline_thiessen_points)
+    # log.info("Creating Thiessen Polygons")
+    # myVorL = NARVoronoi(flowline_thiessen_points)
 
     # Generate Thiessen Polys
-    myVorL.createshapes()
+    # myVorL.createshapes()
 
-    with GeopackageLayer(network_path) as flow_lyr:
-        # Set the output spatial ref as this for the whole project
-        out_srs = flow_lyr.spatial_ref
+    # with GeopackageLayer(network_path) as flow_lyr:
+    #     # Set the output spatial ref as this for the whole project
+    #     out_srs = flow_lyr.spatial_ref
 
     # Dissolve by flowlines
-    log.info("Dissolving Thiessen Polygons")
-    dissolved_polys = myVorL.dissolve_by_property(flowline_fields['PathID'])  # 'LevelPathI'
+    # log.info("Dissolving Thiessen Polygons")
+    # dissolved_polys = myVorL.dissolve_by_property(flowline_fields['PathID'])  # 'LevelPathI'
 
-    dissolved_attributes = {flowline_fields['PathID']: ogr.OFTString}  # 'LevelPathI'
+    # dissolved_attributes = {flowline_fields['PathID']: ogr.OFTString}  # 'LevelPathI'
 
-    simple_save([{'geom': pt.point} for pt in flowline_thiessen_points], ogr.wkbPoint, out_srs, "ThiessenPoints", intermediates_gpkg_path)
-    simple_save([{'geom': g, 'attributes': {flowline_fields['PathID']: k}} for k, g in dissolved_polys.items()], ogr.wkbPolygon, out_srs, "ThiessenPolygonsDissolved", intermediates_gpkg_path, dissolved_attributes)
+    # simple_save([{'geom': pt.point} for pt in flowline_thiessen_points], ogr.wkbPoint, out_srs, "ThiessenPoints", intermediates_gpkg_path)
+    # simple_save([{'geom': g, 'attributes': {flowline_fields['PathID']: k}} for k, g in dissolved_polys.items()], ogr.wkbPolygon, out_srs, "ThiessenPolygonsDissolved", intermediates_gpkg_path, dissolved_attributes)
 
-    thiessen_fc = os.path.join(intermediates_gpkg_path, "ThiessenPolygonsDissolved")
+    # thiessen_fc = os.path.join(intermediates_gpkg_path, "ThiessenPolygonsDissolved")
+    # modified_catchments_vaa_path = os.path.join(intermediates_gpkg_path, 'catchments_vaa_modified_path')
+    # copy_feature_class(catchments_vaa_path, modified_catchments_vaa_path)
+
+    # with GeopackageLayer(modified_catchments_vaa_path, write=True) as lyr:
+    #     for feat, *_ in lyr.iterate_features("Updating divergent reach paths..."):
+    #         if feat.GetField("Divergence") == 2:
+    #             new_feat = feat.Clone()
+    #             output = feat.GetField("DnLevelPat")
+    #             new_feat.SetField("LevelPathI", output)
+    #             lyr.ogr_layer.SetFeature(new_feat)
+
+    catchments_dissolved_path = os.path.join(intermediates_gpkg_path, "catchments_dissolved")
+    dissolve_feature_class(catchments_vaa_path, catchments_dissolved_path, epsg, vbet_summary_field)
 
     vbet_threshold = {}
     for str_val, thr_val in thresh_vals.items():
@@ -327,7 +340,7 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
             vbet_lyr = LayerTypes['VBET_OUTPUTS'].sub_layers[str_val]
 
             with rasterio.open(tmp_cleaned_thresh.filepath, 'r') as raster:
-                with GeopackageLayer(thiessen_fc, write=True) as lyr_reaches, \
+                with GeopackageLayer(catchments_dissolved_path, write=True) as lyr_reaches, \
                         GeopackageLayer(project_inputs['CHANNEL_AREA_POLYGONS']) as lyr_channel_area_polygons, \
                         GeopackageLayer(os.path.join(intermediates_gpkg_path, plgnize_lyr.rel_path), write=True) as lyr_output:
 
@@ -412,7 +425,33 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
         remove_holes_feature_class(os.path.join(intermediates_gpkg_path, plgnize_lyr.rel_path), os.path.join(vbet_path, vbet_lyr.rel_path), min_geom_size, min_geom_size)
         vbet_threshold[str_val] = os.path.join(vbet_path, vbet_lyr.rel_path)
 
-    # Floodplain Layers
+    # Geomorphic Layers
+    vbet_channel_area = os.path.join(vbet_path, LayerTypes['VBET_OUTPUTS'].sub_layers['VBET_CHANNEL_AREA'].rel_path)
+    with GeopackageLayer(vbet_channel_area, write=True) as output_lyr, \
+        GeopackageLayer(vbet_threshold['VBET_FULL']) as clipping_lyr, \
+            GeopackageLayer(project_inputs['CHANNEL_AREA_POLYGONS']) as target_layer:  # use catchments? likely has slightly different edges
+
+        output_lyr.create_layer(target_layer.ogr_geom_type, spatial_ref=target_layer.spatial_ref)
+        clipping_lyr_defn = clipping_lyr.ogr_layer_def
+
+        for i in range(clipping_lyr_defn.GetFieldCount()):
+            field_defn = clipping_lyr_defn.GetFieldDefn(i)
+            if field_defn.GetName() == field:
+                output_lyr.ogr_layer.CreateField(field_defn)
+        output_lyr.ogr_layer.StartTransaction()
+        for clipping_feat, *_ in clipping_lyr.iterate_features('Finding features'):
+            clipping_geom = clipping_feat.GetGeometryRef().Clone()
+            clip_value = clipping_feat.GetField(vbet_summary_field)
+
+            for target_feat, *_ in target_layer.iterate_features(clip_shape=clipping_geom):
+                target_geom = target_feat.GetGeometryRef().Clone()
+                out_geom = clipping_geom.Intersection(target_geom)
+                out_feat = ogr.Feature(output_lyr.ogr_layer_def)
+                out_feat.SetGeometry(out_geom)
+                out_feat.SetField(vbet_summary_field, clip_value)
+                output_lyr.ogr_layer.CreateFeature(out_feat)
+        output_lyr.ogr_layer.CommitTransaction()
+
     active_floodplain = os.path.join(vbet_path, LayerTypes['VBET_OUTPUTS'].sub_layers['ACTIVE_FLOODPLAIN'].rel_path)
     difference(vbet_channel_area, vbet_threshold['VBET_IA'], active_floodplain, epsg)
 
@@ -424,6 +463,7 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
         log.info(f'Calcuating area for {layer}')
         calculate_area(layer, "area_ha")
 
+    # TODO is this redundant now that we clip channel area to vbet? can we join those features like we join the floodplain layers?
     with GeopackageLayer(vbet_threshold['VBET_FULL'], write=True) as lyr_vbet, \
             GeopackageLayer(vbet_channel_area) as lyr_channel:
 
@@ -445,22 +485,23 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
             feat.SetField('active_channel_ha', hectares)
             lyr_vbet.ogr_layer.SetFeature(feat)
         lyr_vbet.ogr_layer.CommitTransaction()
+    # End of redundant section...
 
     build_vbet_metric_tables(vbet_path)
 
-    vbet_area_metrics(vbet_threshold['VBET_FULL'], vbet_path)
+    vbet_area_metrics(vbet_threshold['VBET_FULL'], vbet_path, vbet_summary_field)
 
-    for layer in ['active_floodplain', 'inactive_floodplain']:
+    for layer in ['active_floodplain', 'inactive_floodplain', 'vbet_channel_area']:
         floodplain_metrics(layer, vbet_path)
 
-        # Generate Centerline
-        # centerline_lyr = RSLayer('VBET Centerlines', 'VBET_CENTERLINES', 'Vector', 'vbet_centerlines')
-        # log.info('Creating a centerlines')
-        # LayerTypes['VBET_OUTPUTS'].add_sub_layer('VBET_CENTERLINES', centerline_lyr)
-        # centerline = os.path.join(vbet_path, centerline_lyr.rel_path)
-        # vbet_centerline(network_path, os.path.join(vbet_path, 'vbet_68'), centerline)
+    # Generate Centerline
+    # centerline_lyr = RSLayer('VBET Centerlines', 'VBET_CENTERLINES', 'Vector', 'vbet_centerlines')
+    # log.info('Creating a centerlines')
+    # LayerTypes['VBET_OUTPUTS'].add_sub_layer('VBET_CENTERLINES', centerline_lyr)
+    # centerline = os.path.join(vbet_path, centerline_lyr.rel_path)
+    # vbet_centerline(network_path, os.path.join(vbet_path, 'vbet_68'), centerline)
 
-        # Now add our Geopackages to the project XML
+    # Now add our Geopackages to the project XML
     project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
     project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['VBET_OUTPUTS'])
 

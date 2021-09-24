@@ -17,15 +17,15 @@ def build_vbet_metric_tables(database):
             conn.commit()
 
 
-def vbet_area_metrics(layer, db_path):
+def vbet_area_metrics(layer, db_path, summary_field):
     rows = {}
     with GeopackageLayer(layer) as vbet_lyr, \
             sqlite3.connect(db_path) as conn:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         for feat, *_ in vbet_lyr.iterate_features(f"Reading metrics for {layer}"):
-            level_path = feat.GetField('LevelPathI')
-            sql = """SELECT * FROM vbet_full_metrics WHERE LevelPathI = (?)"""
+            level_path = feat.GetField(summary_field)
+            sql = f"""SELECT * FROM vbet_full_metrics WHERE {summary_field} = (?)"""
             cursor.execute(sql, (level_path,))
             values = cursor.fetchone()
             rows[level_path] = {key: value for key, value in zip(values.keys(), values)}
@@ -45,7 +45,7 @@ def vbet_area_metrics(layer, db_path):
         vbet_lyr.create_fields(fields)
         vbet_lyr.ogr_layer.StartTransaction()
         for feat, *_ in vbet_lyr.iterate_features(f"Writing metrics for {layer}"):
-            level_path = feat.GetField('LevelPathI')
+            level_path = feat.GetField(summary_field)
             values = rows[level_path]
             for key in fields:
                 feat.SetField(key, values[key])
@@ -70,7 +70,7 @@ def floodplain_metrics(layer_name, db_path):
 
     with GeopackageLayer(os.path.join(db_path, layer_name), write=True) as vbet_lyr:
         fields = {'prop_valley_bottom_pc': ogr.OFTReal,
-                  f'prop_{layer_name.rstrip("_floodplain")}_pc': ogr.OFTReal}
+                  f'prop_{layer_name.replace("_floodplain","").replace("_area","").replace("vbet_","")}_pc': ogr.OFTReal}
         vbet_lyr.create_fields(fields)
         vbet_lyr.ogr_layer.StartTransaction()
         for feat, *_ in vbet_lyr.iterate_features(f"Writing metrics for {os.path.join(db_path, layer_name)}"):
