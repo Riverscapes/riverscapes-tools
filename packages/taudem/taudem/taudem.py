@@ -65,7 +65,7 @@ LayerTypes = {
     'HAND_RASTER': RSLayer('Hand Raster', 'HAND_RASTER', 'Raster', 'outputs/HAND.tif'),
     'TWI_RASTER': RSLayer('TWI Raster', 'TWI_RASTER', 'Raster', 'outputs/twi.tif'),
     'GDAL_SLOPE': RSLayer('Slope raster (GDAL)', 'GDAL_SLOPE', 'Raster', 'outputs/gdal_slope.tif'),
-    'REPORT': RSLayer('RSContext Report', 'REPORT', 'HTMLFile', 'outputs/hand.html')
+    'REPORT': RSLayer('RSContext Report', 'REPORT', 'HTMLFile', 'outputs/taudem.html')
 }
 
 
