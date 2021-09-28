@@ -445,7 +445,11 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
 
             for target_feat, *_ in target_layer.iterate_features(clip_shape=clipping_geom):
                 target_geom = target_feat.GetGeometryRef().Clone()
+                if not target_geom.IsValid():
+                    target_geom = geom_validity_fix(target_geom)
                 out_geom = clipping_geom.Intersection(target_geom)
+                if not out_geom.IsValid():
+                    out_geom = geom_validity_fix(out_geom)
                 out_feat = ogr.Feature(output_lyr.ogr_layer_def)
                 out_feat.SetGeometry(out_geom)
                 out_feat.SetField(vbet_summary_field, clip_value)
