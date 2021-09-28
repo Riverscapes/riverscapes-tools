@@ -34,7 +34,7 @@ from rscommons.thiessen.shapes import centerline_points
 from rscommons.vbet_network import vbet_network, create_stream_size_zones, copy_vaa_attributes, join_attributes
 
 from vbet.vbet_database import load_configuration, build_vbet_database
-from vbet.vbet_metrics import floodplain_metrics, vbet_area_metrics, build_vbet_metric_tables
+from vbet.vbet_metrics import build_vbet_metric_tables
 from vbet.vbet_report import VBETReport
 from vbet.vbet_raster_ops import rasterize, raster_clean, rasterize_attribute
 from vbet.vbet_outputs import threshold, sanitize
@@ -492,11 +492,6 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
     # End of redundant section...
 
     build_vbet_metric_tables(vbet_path)
-
-    vbet_area_metrics(vbet_threshold['VBET_FULL'], vbet_path, vbet_summary_field)
-
-    for layer in ['active_floodplain', 'inactive_floodplain', 'vbet_channel_area']:
-        floodplain_metrics(layer, vbet_path)
 
     # Generate Centerline
     # centerline_lyr = RSLayer('VBET Centerlines', 'VBET_CENTERLINES', 'Vector', 'vbet_centerlines')

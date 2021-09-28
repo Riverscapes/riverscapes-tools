@@ -46,4 +46,9 @@ CREATE VIEW vbet_channel_area_metrics AS
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('vbet_full_metrics', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('active_floodplain_metrics', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('inactive_floodplain_metrics', 'attributes');
-INSERT INTO gpkg_contents (table_name, data_type) VALUES ('vbet_channel_area_metrics', 'attributes')
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('vbet_channel_area_metrics', 'attributes');
+
+CREATE index fx_vbet_full_vbet_level_path on vbet_full(vbet_level_path);
+CREATE index fx_vbet_active_floodplain_fid on active_floodplain(fid);
+CREATE index fx_vbet_inactive_floodplain_fid on inactive_floodplain(fid);
+CREATE index fx_vbet_channel_area_fid on vbet_channel_area(fid);
