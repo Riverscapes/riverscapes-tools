@@ -12,7 +12,7 @@ lyrs_in_out = {
     # CHANNEL_ID: INPUT_ID
     'FLOWLINES': 'NHDFlowline',
     'FLOWAREAS': 'NHDArea',
-    # 'WATER_BODIES': 'NHDWaterbody',
+    'WATER_BODIES': 'NHDWaterbody',
     # 'CATCHMENTS': 'NHDPlusCatchment',
 }
 
