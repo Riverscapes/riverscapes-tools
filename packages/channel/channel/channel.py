@@ -39,9 +39,9 @@ cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/ChannelArea.xsd', 
 LayerTypes = {
     'INPUTS': RSLayer('Inputs', 'INPUTS', 'Geopackage', 'inputs/inputs.gpkg', {
         'FLOWLINES': RSLayer('NHD Flowlines', 'FLOWLINES', 'Vector', 'flowlines'),
-        'FLOWAREAS': RSLayer('NHD Flow Areas', 'FLOWAREAS', 'Vector', 'flowareas'),
-        'WATERBODY': RSLayer('NHD Water Body Areas', 'WATER_BODIES', 'Vector', 'waterbody'),
-        'OTHER_POLYGONS': RSLayer('Other Custom channel Polygons', "CUSTOM_POLYGONS", 'Vector', 'other_channels')
+        # 'FLOWAREAS': RSLayer('NHD Flow Areas', 'FLOWAREAS', 'Vector', 'flowareas'),
+        # 'WATERBODY': RSLayer('NHD Water Body Areas', 'WATER_BODIES', 'Vector', 'waterbody'),
+        # 'OTHER_POLYGONS': RSLayer('Other Custom channel Polygons', "CUSTOM_POLYGONS", 'Vector', 'other_channels')
     }),
     'INTERMEDIATES': RSLayer('Intermediates', 'Intermediates', 'Geopackage', 'intermediates/intermediates.gpkg', {
         'FILTERED_WATERBODY': RSLayer('NHD Waterbodies (Filtered)', 'FILTERED_WATERBODY', 'Vector', 'waterbody_filtered'),
@@ -94,6 +94,8 @@ def channel(huc: int,
     log.info('Using Equation: "{}" and params: "{}"'.format(bankfull_function, bankfull_function_params))
 
     meta['Bankfull Equation'] = bankfull_function
+    for param, value in bankfull_function_params.items():
+        meta[f'Bankfull Parameter: {param}'] = str(value)
     for layer, codes in reach_codes.items():
         meta[f'{layer} Reach Codes'] = str(codes)
 
@@ -119,14 +121,16 @@ def channel(huc: int,
         proj_flowlines = None
 
     if flowareas is not None:
+        LayerTypes['INPUTS'].add_sub_layer('FLOWAREAS', RSLayer('NHD Flow Areas', 'FLOWAREAS', 'Vector', 'flowareas'))
         proj_flowareas = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['FLOWAREAS'].rel_path)
         copy_feature_class(flowareas, proj_flowareas, epsg=epsg)
     else:
         proj_flowareas = None
         filtered_flowareas = None
-        #filtered_flowarea_no_islands = None
+        # filtered_flowarea_no_islands = None
 
     if waterbodies is not None:
+        LayerTypes['INPUTS'].add_sub_layer('WATERBODY', RSLayer('NHD Water Body Areas', 'WATER_BODIES', 'Vector', 'waterbody'))
         proj_waterbodies = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['WATERBODY'].rel_path)
         copy_feature_class(waterbodies, proj_waterbodies, epsg=epsg)
     else:
@@ -134,6 +138,7 @@ def channel(huc: int,
         filtered_waterbodies = None
 
     if other_polygons is not None:
+        LayerTypes['INPUTS'].add_sub_layer('OTHER_POLYGONS', RSLayer('Other Custom channel Polygons', "CUSTOM_POLYGONS", 'Vector', 'other_channels'))
         proj_custom_polygons = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['OTHER_POLYGONS'].rel_path)
         copy_feature_class(other_polygons, proj_custom_polygons, epsg=epsg)
     else:
@@ -150,9 +155,9 @@ def channel(huc: int,
             fcode_filter = f"{reach_code_field} = " + f" or {reach_code_field} = ".join([f"'{fcode}'" for fcode in reach_codes['flowarea']])
         copy_feature_class(proj_flowareas, filtered_flowareas, attribute_filter=fcode_filter)
 
-        #log.info('Removing flowarea islands')
-        #filtered_flowarea_no_islands = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['FLOW_AREA_NO_ISLANDS'].rel_path)
-        #remove_holes_feature_class(filtered_flowareas, filtered_flowarea_no_islands, min_hole_area=500)
+        # log.info('Removing flowarea islands')
+        # filtered_flowarea_no_islands = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['FLOW_AREA_NO_ISLANDS'].rel_path)
+        # remove_holes_feature_class(filtered_flowareas, filtered_flowarea_no_islands, min_hole_area=500)
 
     if proj_waterbodies is not None:
         log.info('Filtering waterbody polygons')
