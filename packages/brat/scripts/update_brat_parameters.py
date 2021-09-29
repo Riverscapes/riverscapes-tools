@@ -98,7 +98,7 @@ def snake_to_pascal(snake_name):
 def update_watersheds(curs, watershed_csv):
 
     # Load all the watersheds from the database in a PREDICTABLE ORDER (so git diff is useful for previewing changes)
-    curs.execute("""SELECT * FROM watersheds ORDER BY watershed_id""")
+    curs.execute("""SELECT watershed_id, name, area_sqkm, states, qlow, q2, max_drainage, ecoregion_id, notes, metadata FROM watersheds ORDER BY watershed_id""")
     watersheds = [row for row in curs.fetchall()]
 
     # Validate the hydrologic equations. The following dictionary will be keyed by python exception concatenated to produce
@@ -154,9 +154,6 @@ def update_watersheds(curs, watershed_csv):
         raise Exception('Aborting due to {} hydrology equation errors'.format(len(unique_errors)))
 
     cols = list(next(iter(watersheds)).keys())
-    del cols[cols.index('updated_on')]
-    del cols[cols.index('created_on')]
-    del cols[cols.index('geom')]
     write_values_to_csv(watershed_csv, cols, watersheds)
 
 
