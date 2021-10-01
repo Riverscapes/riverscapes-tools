@@ -40,6 +40,7 @@ LayerTypes = {
     # key: (name, id, tag, relpath)]
     'INPUTS': RSLayer('Inputs', 'INPUTS', 'Geopackage', 'inputs/inputs.gpkg', {
         'FLOWLINES': RSLayer('Flowlines', 'FLOWLINES', 'Vector', 'Flowlines'),
+        'CHANNEL_AREA': RSLayer('Channel_Area', 'CHANNEL_AREA', 'Vector', 'channel_area'),
         'CONFINING_POLYGON': RSLayer('Confining Polygon', 'CONFINING_POLYGON', 'Vector', 'ConfiningPolygon'),
     }),
     'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/confinement_intermediates.gpkg', {
@@ -59,7 +60,7 @@ LayerTypes = {
 }
 
 
-def confinement(huc: int, flowlines_orig: Path, confining_polygon_orig: Path, output_folder: Path, buffer_field: str, confinement_type: str, reach_codes: List[str], min_buffer: float = 0.0, bankfull_expansion_factor: float = 1.0, debug: bool = False, meta=None):
+def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confining_polygon_orig: Path, output_folder: Path, buffer_field: str, confinement_type: str, reach_codes: List[str], min_buffer: float = 0.0, bankfull_expansion_factor: float = 1.0, debug: bool = False, meta=None):
     """Generate confinement attribute for a stream network
 
     Args:
@@ -97,8 +98,10 @@ def confinement(huc: int, flowlines_orig: Path, confining_polygon_orig: Path, ou
     # Copy input shapes to a geopackage
     flowlines_path = os.path.join(output_folder, LayerTypes['INPUTS'].rel_path, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
     confining_path = os.path.join(output_folder, LayerTypes['INPUTS'].rel_path, LayerTypes['INPUTS'].sub_layers['CONFINING_POLYGON'].rel_path)
+    channel_area = os.path.join(output_folder, LayerTypes['INPUTS'].rel_path, LayerTypes['INPUTS'].sub_layers['CHANNEL_AREA'].rel_path)
 
     copy_feature_class(flowlines_orig, flowlines_path, epsg=cfg.OUTPUT_EPSG)
+    copy_feature_class(channel_area_orig, channel_area)
     copy_feature_class(confining_polygon_orig, confining_path, epsg=cfg.OUTPUT_EPSG)
 
     _nd, _inputs_gpkg_path, inputs_gpkg_lyrs = project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
@@ -132,7 +135,7 @@ def confinement(huc: int, flowlines_orig: Path, confining_polygon_orig: Path, ou
         srs = flw_lyr.spatial_ref
         meter_conversion = flw_lyr.rough_convert_metres_to_vector_units(1)
 
-    geom_confining_polygon = get_geometry_unary_union(confining_path, cfg.OUTPUT_EPSG)
+    #geom_confining_polygon = get_geometry_unary_union(confining_path, cfg.OUTPUT_EPSG)
 
     # Calculate Spatial Constants
     # Get a very rough conversion factor for 1m to whatever units the shapefile uses
@@ -231,6 +234,8 @@ def confinement(huc: int, flowlines_orig: Path, confining_polygon_orig: Path, ou
 
         err_count = 0
 
+        ratio_lyr.ogr_layer.StartTransaction()
+        buff_lyr.ogr_layer.StartTransaction()
         for flowline, _counter, progbar in flw_lyr.iterate_features("Generating confinement for flowlines",
                                                                     attribute_filter="FCode IN ({0})".format(','.join([key for key in reach_codes])),
                                                                     write_layers=[
@@ -247,8 +252,8 @@ def confinement(huc: int, flowlines_orig: Path, confining_polygon_orig: Path, ou
             # Load Flowline
             flowlineID = int(flowline.GetFieldAsInteger64("NHDPlusID"))
 
-            bankfull_width = flowline.GetField(buffer_field)
-            buffer_value = max(bankfull_width, min_buffer)
+            #bankfull_width = flowline.GetField(buffer_field)
+            #buffer_value = max(bankfull_width, min_buffer)
 
             geom_flowline = GeopackageLayer.ogr2shapely(flowline)
             if not geom_flowline.is_valid or geom_flowline.is_empty or geom_flowline.length == 0:
@@ -257,7 +262,7 @@ def confinement(huc: int, flowlines_orig: Path, confining_polygon_orig: Path, ou
                 continue
 
             # Generate buffer on each side of the flowline
-            geom_buffer = geom_flowline.buffer(((buffer_value * meter_conversion) / 2) * bankfull_expansion_factor, cap_style=2)
+            #geom_buffer = geom_flowline.buffer(((buffer_value * meter_conversion) / 2) * bankfull_expansion_factor, cap_style=2)
 
             # inital cleanup if geom is multipolygon
             if geom_buffer.geom_type == "MultiPolygon":
@@ -415,7 +420,8 @@ def confinement(huc: int, flowlines_orig: Path, confining_polygon_orig: Path, ou
                           "ConstrLeng": geom_constricted.length / meter_conversion if geom_constricted else 0.0}
 
             ratio_lyr.create_feature(geom_flowline, attributes)
-
+        ratio_lyr.ogr_layer.CommitTransaction()
+        buff_lyr.ogr_layer.CommitTransaction()
     # Write a report
 
     report = ConfinementReport(output_gpkg, report_path, project)
@@ -554,6 +560,7 @@ def main():
 
     parser.add_argument('huc', help='HUC identifier', type=str)
     parser.add_argument('flowlines', help="NHD Flowlines (.shp, .gpkg/layer_name)", type=str)
+    parser.add_argument('channel_polygon')
     parser.add_argument('confining_polygon', help='valley bottom or other polygon representing confining boundary (.shp, .gpkg/layer_name)', type=str)
     parser.add_argument('output_folder', help='Output folder', type=str)
     parser.add_argument('buffer_field', help='(optional) float field in flowlines with buffer values', default=None)
@@ -579,6 +586,7 @@ def main():
             retcode, max_obj = ThreadRun(confinement, memfile,
                                          args.huc,
                                          args.flowlines,
+                                         args.channel_area,
                                          args.confining_polygon,
                                          args.output_folder,
                                          args.buffer_field,
@@ -593,6 +601,7 @@ def main():
         else:
             confinement(args.huc,
                         args.flowlines,
+                        args.channel_area,
                         args.confining_polygon,
                         args.output_folder,
                         args.buffer_field,
