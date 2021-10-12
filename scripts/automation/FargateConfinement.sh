@@ -57,10 +57,13 @@ try() {
 
   confinement $HUC \
     $RS_CONTEXT_DIR/hydrology/hydrology.gpkg/network_intersected_300m \
+    $VBET_DIR/inputs/vbet_inputs.gpkg/channel_area_polygons \
     $VBET_DIR/outputs/vbet.gpkg/vbet_full \
     $CONFINEMENT_DIR \
-    BFwidth \
+    vbet_level_path \
     ValleyBottom \
+    --buffer 15.0 \
+    --segmented_network $RS_CONTEXT_DIR/hydrology/hydrology.gpkg/network_intersected_300m \
     --meta "Runner=Cybercastor" \
     --reach_codes 33400,46003,46006,46007,55800 \
     --verbose
