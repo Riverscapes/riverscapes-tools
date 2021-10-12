@@ -65,7 +65,6 @@ try() {
     --buffer 15.0 \
     --segmented_network $RS_CONTEXT_DIR/hydrology/hydrology.gpkg/network_intersected_300m \
     --meta "Runner=Cybercastor" \
-    --reach_codes 33400,46003,46006,46007,55800 \
     --verbose
   if [[ $? != 0 ]]; then return 1; fi
 
