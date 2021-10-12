@@ -7,6 +7,7 @@
 # Author:   Kelly Whitehead
 #
 # Date:     27 Oct 2020
+# Latest:   11 Oct 2021
 # -------------------------------------------------------------------------------
 import argparse
 import sys
@@ -17,15 +18,14 @@ from typing import List, Dict
 from osgeo import ogr
 from osgeo import gdal
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
-from shapely.geometry.base import BaseGeometry
-from shapely.ops import unary_union, split, nearest_points, linemerge, substring
-from shapely.geometry import Point, Polygon, MultiPolygon, LineString, MultiLineString, mapping
-from shapely.affinity import scale
+from shapely.ops import split, nearest_points, linemerge, substring
+from shapely.geometry import Point, MultiPoint, LineString, MultiLineString
 
 from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALOGRErrors, ProgressBar
-from rscommons import GeopackageLayer, ShapefileLayer, VectorBase, get_shp_or_gpkg
-from rscommons.vector_ops import get_geometry_unary_union, copy_feature_class
-from rscommons.util import safe_makedirs, safe_remove_dir, safe_remove_file, parse_metadata
+from rscommons import GeopackageLayer
+from rscommons.vector_ops import collect_feature_class, get_geometry_unary_union, copy_feature_class
+from rscommons.util import safe_makedirs, parse_metadata
+from gnat.shapley_ops import line_segments, select_geoms_by_intersection, cut
 from gnat.utils.confinement_report import ConfinementReport
 from gnat.__version__ import __version__
 
@@ -48,7 +48,10 @@ LayerTypes = {
         'FLOWLINE_SEGMENTS': RSLayer('Flowline Segments', 'FLOWLINE_SEGMENTS', 'Vector', 'Flowline_Segments'),
         'ERROR_POLYLINES': RSLayer('Error Polylines', 'ERROR_POLYLINES', 'Vector', 'Error_Polylines'),
         'ERROR_POLYGONS': RSLayer('Error Polygons', 'ERROR_POLYGONS', 'Vector', 'Error_Polygons'),
-        'CONFINEMENT_BUFFER_SPLIT': RSLayer('Active Channel Split Buffers', 'CONFINEMENT_BUFFER_SPLITS', 'Vector', 'Confinement_Buffers_Split')
+        'CHANNEL_AREA_BUFFERED': RSLayer('Channel Area Buffered', 'CHANNEL_AREA_BUFFERED', 'Vector', 'channel_area_buffered'),
+        'CONFINEMENT_BUFFER_SPLIT': RSLayer('Active Channel Split Buffers', 'CONFINEMENT_BUFFER_SPLITS', 'Vector', 'Confinement_Buffers_Split'),
+        'CONFINEMENT_ZONES': RSLayer('Zones of Confinement', 'CONFINEMENT_ZONES', 'Vector', 'confinement_zones'),
+        'CONFINING_POLYGONS_UNION': RSLayer('Confinement Polygons (unioned)', 'CONFINING_POLYGONS_UNION', 'Vector', 'confining_polygons_union')
     }),
     'CONFINEMENT_RUN_REPORT': RSLayer('Confinement Report', 'CONFINEMENT_RUN_REPORT', 'HTMLFile', 'outputs/confinement.html'),
     'CONFINEMENT': RSLayer('Confinement', 'CONFINEMENT', 'Geopackage', 'outputs/confinement.gpkg', {
@@ -60,7 +63,7 @@ LayerTypes = {
 }
 
 
-def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confining_polygon_orig: Path, output_folder: Path, buffer_field: str, confinement_type: str, reach_codes: List[str], min_buffer: float = 0.0, bankfull_expansion_factor: float = 1.0, debug: bool = False, meta=None):
+def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confining_polygon_orig: Path, output_folder: Path, vbet_summary_field: str, confinement_type: str, buffer: float = 0.0, segmented_network=None, meta=None):
     """Generate confinement attribute for a stream network
 
     Args:
@@ -104,6 +107,11 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
     copy_feature_class(channel_area_orig, channel_area)
     copy_feature_class(confining_polygon_orig, confining_path, epsg=cfg.OUTPUT_EPSG)
 
+    if segmented_network:
+        LayerTypes['INPUTS'].add_sub_layer("SEGMENTED_NETWORK", RSLayer('Segmented Network', "SEGMENTED_NETWORK", 'Vector', 'segmented_network'))
+        segmented_network_proj = os.path.join(output_folder, LayerTypes['INPUTS'].rel_path, LayerTypes['INPUTS'].sub_layers['SEGMENTED_NETWORK'].rel_path)
+        copy_feature_class(segmented_network, segmented_network_proj)
+
     _nd, _inputs_gpkg_path, inputs_gpkg_lyrs = project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
 
     output_gpkg = os.path.join(output_folder, LayerTypes['CONFINEMENT'].rel_path)
@@ -114,7 +122,7 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
     GeopackageLayer(intermediates_gpkg, delete_dataset=True)
 
     # Add the flowlines file with some metadata
-    project.add_metadata([RSMeta('BufferField', buffer_field)], inputs_gpkg_lyrs['FLOWLINES'][0])
+    project.add_metadata([RSMeta('VBET_Summary_Field', vbet_summary_field)], inputs_gpkg_lyrs['FLOWLINES'][0])
 
     # Add the confinement polygon
     project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
@@ -122,38 +130,36 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
 
     # Additional Metadata
     project.add_metadata([
-        RSMeta('Min Buffer', str(min_buffer), RSMetaTypes.FLOAT),
-        RSMeta("Expansion Factor", str(bankfull_expansion_factor), RSMetaTypes.FLOAT)
+        RSMeta('Buffer', str(buffer), RSMetaTypes.FLOAT)
     ], out_gpkg_lyrs['CONFINEMENT_BUFFERS'][0])
 
     # Generate confining margins
     log.info(f"Preparing output geopackage: {output_gpkg}")
-    log.info(f"Generating Confinement from buffer field: {buffer_field}")
+    log.info(f"Generating Confinement from vbet summary field: {vbet_summary_field}")
 
     # Load input datasets and set the global srs and a meter conversion factor
     with GeopackageLayer(flowlines_path) as flw_lyr:
         srs = flw_lyr.spatial_ref
         meter_conversion = flw_lyr.rough_convert_metres_to_vector_units(1)
-
-    #geom_confining_polygon = get_geometry_unary_union(confining_path, cfg.OUTPUT_EPSG)
+        offset = flw_lyr.rough_convert_metres_to_vector_units(0.1)
+        selection_buffer = flw_lyr.rough_convert_metres_to_vector_units(0.1)
 
     # Calculate Spatial Constants
     # Get a very rough conversion factor for 1m to whatever units the shapefile uses
-    offset = 0.1 * meter_conversion
-    selection_buffer = 0.1 * meter_conversion
+    #offset = 0.01 * meter_conversion
+    #selection_buffer = 0.01 * meter_conversion
 
     # Standard Outputs
     field_lookup = {
         'side': ogr.FieldDefn("Side", ogr.OFTString),
         'flowlineID': ogr.FieldDefn("NHDPlusID", ogr.OFTString),  # ArcGIS cannot read Int64 and will show up as 0, however data is stored correctly in GPKG
+        'vbet_level_path': ogr.FieldDefn("vbet_level_path", ogr.OFTString),
         'confinement_type': ogr.FieldDefn("Confinement_Type", ogr.OFTString),
         'confinement_ratio': ogr.FieldDefn("Confinement_Ratio", ogr.OFTReal),
         'constriction_ratio': ogr.FieldDefn("Constriction_Ratio", ogr.OFTReal),
         'length': ogr.FieldDefn("ApproxLeng", ogr.OFTReal),
         'confined_length': ogr.FieldDefn("ConfinLeng", ogr.OFTReal),
         'constricted_length': ogr.FieldDefn("ConstrLeng", ogr.OFTReal),
-        'bankfull_width': ogr.FieldDefn("Bankfull_Width", ogr.OFTReal),
-        'buffer_width': ogr.FieldDefn("Buffer_Width", ogr.OFTReal),
         # Couple of Debug fields too
         'process': ogr.FieldDefn("ErrorProcess", ogr.OFTString),
         'message': ogr.FieldDefn("ErrorMessage", ogr.OFTString)
@@ -166,21 +172,23 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
     # Opening these layers to instantiate them
 
     # Standard Outputs
-    with GeopackageLayer(output_gpkg, layer_name=LayerTypes['CONFINEMENT'].sub_layers["CONFINEMENT_MARGINS"].rel_path, write=True) as margins_lyr:
+    confining_margins_path = os.path.join(output_gpkg, LayerTypes['CONFINEMENT'].sub_layers["CONFINEMENT_MARGINS"].rel_path)
+    with GeopackageLayer(confining_margins_path, write=True) as margins_lyr:
         margins_lyr.create(ogr.wkbLineString, spatial_ref=srs)
         margins_lyr.ogr_layer.CreateField(field_lookup['side'])
-        margins_lyr.ogr_layer.CreateField(field_lookup['flowlineID'])
+        margins_lyr.ogr_layer.CreateField(field_lookup['vbet_level_path'])
         margins_lyr.ogr_layer.CreateField(field_lookup['length'])
 
-    with GeopackageLayer(output_gpkg, layer_name=LayerTypes['CONFINEMENT'].sub_layers["CONFINEMENT_RAW"].rel_path, write=True) as raw_lyr:
+    confinement_raw_path = os.path.join(output_gpkg, LayerTypes['CONFINEMENT'].sub_layers["CONFINEMENT_RAW"].rel_path)
+    with GeopackageLayer(confinement_raw_path, write=True) as raw_lyr:
         raw_lyr.create(ogr.wkbLineString, spatial_ref=srs)
-        raw_lyr.ogr_layer.CreateField(field_lookup['flowlineID'])
+        raw_lyr.ogr_layer.CreateField(field_lookup['vbet_level_path'])
         raw_lyr.ogr_layer.CreateField(field_lookup['confinement_type'])
         raw_lyr.ogr_layer.CreateField(field_lookup['length'])
 
     with GeopackageLayer(output_gpkg, layer_name=LayerTypes['CONFINEMENT'].sub_layers["CONFINEMENT_RATIO"].rel_path, write=True) as ratio_lyr:
         ratio_lyr.create(ogr.wkbLineString, spatial_ref=srs)
-        ratio_lyr.ogr_layer.CreateField(field_lookup['flowlineID'])
+        ratio_lyr.ogr_layer.CreateField(field_lookup['vbet_level_path'])
         ratio_lyr.ogr_layer.CreateField(field_lookup['confinement_ratio'])
         ratio_lyr.ogr_layer.CreateField(field_lookup['constriction_ratio'])
         ratio_lyr.ogr_layer.CreateField(field_lookup['length'])
@@ -190,39 +198,54 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
     with GeopackageLayer(intermediates_gpkg, layer_name=LayerTypes['INTERMEDIATES'].sub_layers["CONFINEMENT_BUFFER_SPLIT"].rel_path, write=True) as lyr:
         lyr.create(ogr.wkbPolygon, spatial_ref=srs)
         lyr.ogr_layer.CreateField(field_lookup['side'])
-        lyr.ogr_layer.CreateField(field_lookup['flowlineID'])
-        lyr.ogr_layer.CreateField(field_lookup['bankfull_width'])
-        lyr.ogr_layer.CreateField(field_lookup['buffer_width'])
+        lyr.ogr_layer.CreateField(field_lookup['vbet_level_path'])
 
     with GeopackageLayer(output_gpkg, layer_name=LayerTypes['CONFINEMENT'].sub_layers["CONFINEMENT_BUFFERS"].rel_path, write=True) as lyr:
         lyr.create(ogr.wkbPolygon, spatial_ref=srs)
-        lyr.ogr_layer.CreateField(field_lookup['flowlineID'])
-        lyr.ogr_layer.CreateField(field_lookup['bankfull_width'])
-        lyr.ogr_layer.CreateField(field_lookup['buffer_width'])
+        lyr.ogr_layer.CreateField(field_lookup['vbet_level_path'])
 
     with GeopackageLayer(intermediates_gpkg, layer_name=LayerTypes['INTERMEDIATES'].sub_layers["SPLIT_POINTS"].rel_path, write=True) as lyr:
         lyr.create(ogr.wkbPoint, spatial_ref=srs)
         lyr.ogr_layer.CreateField(field_lookup['side'])
-        lyr.ogr_layer.CreateField(field_lookup['flowlineID'])
+        lyr.ogr_layer.CreateField(field_lookup['vbet_level_path'])
 
     with GeopackageLayer(intermediates_gpkg, layer_name=LayerTypes['INTERMEDIATES'].sub_layers["FLOWLINE_SEGMENTS"].rel_path, write=True) as lyr:
         lyr.create(ogr.wkbLineString, spatial_ref=srs)
         lyr.ogr_layer.CreateField(field_lookup['side'])
-        lyr.ogr_layer.CreateField(field_lookup['flowlineID'])
+        lyr.ogr_layer.CreateField(field_lookup['vbet_level_path'])
 
     with GeopackageLayer(intermediates_gpkg, layer_name=LayerTypes['INTERMEDIATES'].sub_layers["ERROR_POLYLINES"].rel_path, write=True) as lyr:
         lyr.create(ogr.wkbLineString, spatial_ref=srs)
+        lyr.ogr_layer.CreateField(field_lookup['vbet_level_path'])
         lyr.ogr_layer.CreateField(field_lookup['process'])
         lyr.ogr_layer.CreateField(field_lookup['message'])
 
     with GeopackageLayer(intermediates_gpkg, layer_name=LayerTypes['INTERMEDIATES'].sub_layers["ERROR_POLYGONS"].rel_path, write=True) as lyr:
         lyr.create(ogr.wkbPolygon, spatial_ref=srs)
+        lyr.ogr_layer.CreateField(field_lookup['vbet_level_path'])
         lyr.ogr_layer.CreateField(field_lookup['process'])
         lyr.ogr_layer.CreateField(field_lookup['message'])
 
-    # Generate confinement per Flowline
-    with GeopackageLayer(flowlines_path) as flw_lyr, \
-            GeopackageLayer(output_gpkg, layer_name=LayerTypes['CONFINEMENT'].sub_layers["CONFINEMENT_MARGINS"].rel_path, write=True) as margins_lyr, \
+    difference_path = os.path.join(intermediates_gpkg, LayerTypes['INTERMEDIATES'].sub_layers['CONFINEMENT_ZONES'].rel_path)
+    with GeopackageLayer(difference_path, write=True) as lyr:
+        lyr.create(ogr.wkbMultiPolygon, spatial_ref=srs)
+        lyr.ogr_layer.CreateField(field_lookup['vbet_level_path'])
+        lyr.ogr_layer.CreateField(field_lookup['side'])
+
+    union_confining_path = os.path.join(intermediates_gpkg, LayerTypes['INTERMEDIATES'].sub_layers['CONFINING_POLYGONS_UNION'].rel_path)
+    with GeopackageLayer(union_confining_path, write=True) as lyr:
+        lyr.create(ogr.wkbPolygon, spatial_ref=srs)
+        lyr.ogr_layer.CreateField(field_lookup['vbet_level_path'])
+
+    level_paths = []
+    with GeopackageLayer(confining_path) as confining_lyr:
+        for confining_feat, _counter, progbar in confining_lyr.iterate_features("Generating list of level paths"):
+            level_path = confining_feat.GetField('vbet_level_path')
+            if level_path not in level_paths:
+                level_paths.append(level_path)
+
+    # Generate confinement per level_path
+    with GeopackageLayer(confining_margins_path, write=True) as margins_lyr, \
             GeopackageLayer(output_gpkg, layer_name=LayerTypes['CONFINEMENT'].sub_layers["CONFINEMENT_RAW"].rel_path, write=True) as raw_lyr, \
             GeopackageLayer(output_gpkg, layer_name=LayerTypes['CONFINEMENT'].sub_layers["CONFINEMENT_RATIO"].rel_path, write=True) as ratio_lyr, \
             GeopackageLayer(intermediates_gpkg, layer_name=LayerTypes['INTERMEDIATES'].sub_layers["SPLIT_POINTS"].rel_path, write=True) as dbg_splitpts_lyr, \
@@ -230,86 +253,89 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
             GeopackageLayer(intermediates_gpkg, layer_name=LayerTypes['INTERMEDIATES'].sub_layers["CONFINEMENT_BUFFER_SPLIT"].rel_path, write=True) as conf_buff_split_lyr, \
             GeopackageLayer(output_gpkg, layer_name=LayerTypes['CONFINEMENT'].sub_layers["CONFINEMENT_BUFFERS"].rel_path, write=True) as buff_lyr, \
             GeopackageLayer(intermediates_gpkg, layer_name=LayerTypes['INTERMEDIATES'].sub_layers["ERROR_POLYLINES"].rel_path, write=True) as dbg_err_lines_lyr, \
-            GeopackageLayer(intermediates_gpkg, layer_name=LayerTypes['INTERMEDIATES'].sub_layers["ERROR_POLYGONS"].rel_path, write=True) as dbg_err_polygons_lyr:
+            GeopackageLayer(intermediates_gpkg, layer_name=LayerTypes['INTERMEDIATES'].sub_layers["ERROR_POLYGONS"].rel_path, write=True) as dbg_err_polygons_lyr, \
+            GeopackageLayer(difference_path, write=True) as difference_lyr, \
+            GeopackageLayer(union_confining_path, write=True) as confining_polygon_lyr:
 
         err_count = 0
+        raw_lyr.ogr_layer.StartTransaction()
+        dbg_splitpts_lyr.ogr_layer.StartTransaction()
+        progbar = ProgressBar(len(level_paths), 50, "Calculating confinement by Level Path")
+        counter = 0
+        for level_path in level_paths:
+            progbar.update(counter)
+            counter += 1
 
-        ratio_lyr.ogr_layer.StartTransaction()
-        buff_lyr.ogr_layer.StartTransaction()
-        for flowline, _counter, progbar in flw_lyr.iterate_features("Generating confinement for flowlines",
-                                                                    attribute_filter="FCode IN ({0})".format(','.join([key for key in reach_codes])),
-                                                                    write_layers=[
-                                                                        margins_lyr,
-                                                                        raw_lyr,
-                                                                        ratio_lyr,
-                                                                        dbg_splitpts_lyr,
-                                                                        dbg_flwseg_lyr,
-                                                                        buff_lyr,
-                                                                        conf_buff_split_lyr,
-                                                                        dbg_err_lines_lyr,
-                                                                        dbg_err_polygons_lyr
-                                                                    ]):
-            # Load Flowline
-            flowlineID = int(flowline.GetFieldAsInteger64("NHDPlusID"))
+            flowlines = collect_feature_class(flowlines_path, attribute_filter=f"vbet_level_path = {level_path}.0 AND Divergence < 2")
+            geom_flowlines = GeopackageLayer.ogr2shapely(flowlines)
+            geom_flowlines_midpoints = MultiPoint([line.interpolate(0.5, normalized=True) for line in geom_flowlines])
 
-            #bankfull_width = flowline.GetField(buffer_field)
-            #buffer_value = max(bankfull_width, min_buffer)
+            geom_flowline = get_geometry_unary_union(flowlines_path, attribute_filter=f"vbet_level_path = {level_path}.0 AND Divergence < 2")
+            if geom_flowline.geom_type == 'MultiLineString':
+                log.warning("Attempting to merge MultiLineString flowline for level path: {}".format(level_path))
+                geom_flowline = linemerge(geom_flowline)
 
-            geom_flowline = GeopackageLayer.ogr2shapely(flowline)
-            if not geom_flowline.is_valid or geom_flowline.is_empty or geom_flowline.length == 0:
+            if not geom_flowline.is_valid or geom_flowline.is_empty or geom_flowline.length == 0 or geom_flowline.geom_type == 'MultiLineString':
                 progbar.erase()
-                log.warning("Invalid flowline with id: {}".format(flowlineID))
+                log.warning("Invalid flowline with level path: {}".format(level_path))
+                dbg_err_lines_lyr.create_feature(geom_flowline, {"ErrorProcess": "Unary Union", 'vbet_level_path': level_path, "ErrorMessage": f"Invalid flowline level_path: {level_path}"})
                 continue
 
-            # Generate buffer on each side of the flowline
-            #geom_buffer = geom_flowline.buffer(((buffer_value * meter_conversion) / 2) * bankfull_expansion_factor, cap_style=2)
-
-            # inital cleanup if geom is multipolygon
-            if geom_buffer.geom_type == "MultiPolygon":
-                log.warning(f"Cleaning multipolygon for id{flowlineID}")
-                polys = [g for g in geom_buffer if g.intersects(geom_flowline)]
-                if len(polys) == 1:
-                    geom_buffer = polys[0]
-
-            if not geom_buffer.is_valid or geom_buffer.is_empty or geom_buffer.area == 0 or geom_buffer.geom_type not in ["Polygon"]:
+            geom_confining_polygon = get_geometry_unary_union(confining_path, clip_shape=geom_flowlines)
+            if geom_confining_polygon is None:
                 progbar.erase()
-                log.warning("Invalid flowline (after buffering) id: {}".format(flowlineID))
-                dbg_err_lines_lyr.create_feature(geom_flowline, {"ErrorProcess": "Generate Buffer", "ErrorMessage": "Invalid Buffer"})
-                err_count += 1
+                log.warning("Invalid confining polygon with level path: {}".format(level_path))
                 continue
+            confining_polygon_lyr.create_feature(geom_confining_polygon, {'vbet_level_path': level_path})
 
-            buff_lyr.create_feature(geom_buffer, {"NHDPlusID": flowlineID, "Buffer_Width": buffer_value, "Bankfull_Width": bankfull_width})
+            geom_channel = get_geometry_unary_union(channel_area, clip_shape=geom_flowlines_midpoints)
+            geom_intersected = geom_channel.intersection(geom_confining_polygon)
+            geom_channel_buffer = geom_intersected.buffer(buffer * meter_conversion)
+
+            if geom_channel_buffer is None or geom_channel_buffer.geom_type == "MultiPolygon":
+                progbar.erase()
+                log.warning("Invalid buffer polygon with level path: {}".format(level_path))
+                continue
+            buff_lyr.create_feature(geom_channel_buffer)
 
             # Split the Buffer by the flowline
-            geom_buffer_splits = split(geom_buffer, geom_flowline)  # snap(geom, geom_buffer)) <--shapely does not snap vertex to edge. need to make new function for this to ensure more buffers have 2 split polygons
+            start = nearest_points(Point(geom_flowline.coords[0]), geom_channel_buffer.exterior)[1]
+            end = nearest_points(Point(geom_flowline.coords[-1]), geom_channel_buffer.exterior)[1]
+            geom_flowline_extended = LineString([start] + [pt for pt in geom_flowline.coords] + [end])
+            geom_buffer_splits = split(geom_channel_buffer, geom_flowline_extended)
+
             # Process only if 2 buffers exist
             if len(geom_buffer_splits) != 2:
-
-                # Lets try to split this again by slightly extending the line
-                geom_newline = scale(geom_flowline, 1.1, 1.1, origin='center')
-                geom_buffer_splits = split(geom_buffer, geom_newline)
+                log.warning("Buffer geom not split into exactly 2 parts with level path: {}".format(level_path))
+                # Force the line extensions to a common coordinate
+                geom_coords = MultiPoint([coord for coord in geom_channel_buffer.exterior.coords])
+                start = nearest_points(Point(geom_flowline.coords[0]), geom_coords)[1]
+                end = nearest_points(Point(geom_flowline.coords[-1]), geom_coords)[1]
+                geom_newline = LineString([start] + [pt for pt in geom_flowline.coords] + [end])
+                geom_buffer_splits = split(geom_channel_buffer, geom_newline)
 
                 if len(geom_buffer_splits) != 2:
                     # triage the polygon if still cannot split it
-                    error_message = f"WARNING: Flowline FID {flowline.GetFID()} | Incorrect number of split buffer polygons: {len(geom_buffer_splits)}"
+                    error_message = f"WARNING: Flowline level_path {level_path} | Incorrect number of split buffer polygons: {len(geom_buffer_splits)}"
                     progbar.erase()
                     log.warning(error_message)
-                    dbg_err_lines_lyr.create_feature(geom_flowline, {"ErrorProcess": "Buffer Split", "ErrorMessage": error_message})
+                    dbg_err_lines_lyr.create_feature(geom_newline, {"ErrorProcess": "Buffer Split", 'vbet_level_path': level_path, "ErrorMessage": error_message})
+                    dbg_err_lines_lyr.create_feature(geom_flowline_extended, {"ErrorProcess": "Buffer Split", 'vbet_level_path': level_path, "ErrorMessage": error_message})
                     err_count += 1
                     if len(geom_buffer_splits) > 1:
                         for geom in geom_buffer_splits:
-                            dbg_err_polygons_lyr.create_feature(geom, {"ErrorProcess": "Buffer Split", "ErrorMessage": error_message})
+                            dbg_err_polygons_lyr.create_feature(geom, {"ErrorProcess": "Buffer Split", 'vbet_level_path': level_path, "ErrorMessage": error_message})
                     else:
-                        dbg_err_polygons_lyr.create_feature(geom_buffer_splits, {"ErrorProcess": "Buffer Split", "ErrorMessage": error_message})
-                    continue
+                        dbg_err_polygons_lyr.create_feature(geom_buffer_splits, {"ErrorProcess": "Buffer Split", 'vbet_level_path': level_path, "ErrorMessage": error_message})
+                        continue
 
             # Generate point to test side of flowline
             geom_offset = geom_flowline.parallel_offset(offset, "left")
             if not geom_offset.is_valid or geom_offset.is_empty or geom_offset.length == 0:
                 progbar.erase()
-                log.warning("Invalid flowline (after offset) id: {}".format(flowlineID))
+                log.warning("Invalid flowline (after offset) id: {}".format(level_path))
                 err_count += 1
-                dbg_err_lines_lyr.create_feature(geom_flowline, {"ErrorProcess": "Offset Error", "ErrorMessage": "Invalid flowline (after offset) id: {}".format(flowlineID)})
+                dbg_err_lines_lyr.create_feature(geom_flowline, {"ErrorProcess": "Offset Error", 'vbet_level_path': level_path, "ErrorMessage": "Invalid flowline (after offset) id: {}".format(level_path)})
                 continue
 
             geom_side_point = geom_offset.interpolate(0.5, True)
@@ -324,24 +350,39 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
                 side = "LEFT" if geom_side.contains(geom_side_point) else "RIGHT"
 
                 # Save the polygon
-                conf_buff_split_lyr.create_feature(geom_side, {"Side": side, "NHDPlusID": flowlineID, "Buffer_Width": buffer_value, "Bankfull_Width": bankfull_width})
+                conf_buff_split_lyr.create_feature(geom_side, {"Side": side, "vbet_level_path": level_path})
+
+                geom_difference = geom_side.difference(geom_confining_polygon)
+                if not geom_difference.is_valid or geom_difference.is_empty or geom_difference.geom_type == 'GeometryCollection':
+                    log.warning("No differenced polygons for level path: {}".format(level_path))
+                    continue
+                difference_lyr.create_feature(geom_difference, {"vbet_level_path": level_path, 'Side': side})
 
                 # Generate Confining margins
-                geom_confined_margins = geom_confining_polygon.boundary.intersection(geom_side)  # make sure intersection splits lines
-                if geom_confined_margins.is_empty:
-                    continue
+                lines = []
+                geom_difference = [geom_difference] if geom_difference.geom_type == 'Polygon' else geom_difference
+                for geom in geom_difference:
+                    difference_segments = [g for g in line_segments(geom.exterior)]
+                    selected_lines = select_geoms_by_intersection(difference_segments, [geom_side.exterior], buffer=selection_buffer)
+                    line = linemerge(selected_lines)
+                    line = line if line.geom_type == 'MultiLineString' else [line]
+                    for g in line:
+                        lines.append(g)
 
                 # Multilinestring to individual linestrings
-                lines = [line for line in geom_confined_margins] if geom_confined_margins.geom_type == 'MultiLineString' else [geom_confined_margins]
                 for line in lines:
-                    margins_lyr.create_feature(line, {"Side": side, "NHDPlusID": flowlineID, "ApproxLeng": line.length / meter_conversion})
+                    if line.geom_type == 'GeometryCollection':
+                        log.warning("GeometryCollection instead of polygon with level path: {}".format(level_path))
+                        continue
+
+                    margins_lyr.create_feature(line, {"Side": side, "vbet_level_path": level_path, "ApproxLeng": line.length / meter_conversion})
 
                     # Split flowline by Near Geometry
                     pt_start = nearest_points(Point(line.coords[0]), geom_flowline)[1]
                     pt_end = nearest_points(Point(line.coords[-1]), geom_flowline)[1]
 
                     for point in [pt_start, pt_end]:
-                        dbg_splitpts_lyr.create_feature(point, {"Side": side, "NHDPlusID": flowlineID})
+                        dbg_splitpts_lyr.create_feature(point, {"Side": side, "vbet_level_path": level_path})
 
                     distance_sorted = sorted([geom_flowline.project(pt_start), geom_flowline.project(pt_end)])
                     segment = substring(geom_flowline, distance_sorted[0], distance_sorted[1])
@@ -353,7 +394,7 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
                         else:
                             lgeoms_right_confined_flowline_segments.append(segment)
 
-                        dbg_flwseg_lyr.create_feature(segment, {"Side": side, "NHDPlusID": flowlineID})
+                        dbg_flwseg_lyr.create_feature(segment, {"Side": side, "vbet_level_path": level_path})
 
             # Raw Confinement Output
             # Prepare flowline splits
@@ -381,8 +422,7 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
             lgeoms_confined_left = select_geoms_by_intersection(lgeoms_confined_left_split, lgeoms_confined_right_split, buffer=selection_buffer, inverse=True)
             lgeoms_confined_right = select_geoms_by_intersection(lgeoms_confined_right_split, lgeoms_confined_left_split, buffer=selection_buffer, inverse=True)
 
-            geom_confined = unary_union(lgeoms_confined_left_split + lgeoms_confined_right_split)
-
+            geom_confined = sum([geom.length for geom in lgeoms_confined_left_split + lgeoms_confined_right_split])
             # Constricted Segments
             lgeoms_constricted_l = select_geoms_by_intersection(lgeoms_confined_left_split, lgeoms_confined_right_split, buffer=selection_buffer)
             lgeoms_constrcited_r = select_geoms_by_intersection(lgeoms_confined_right_split, lgeoms_confined_left_split, buffer=selection_buffer)
@@ -399,37 +439,107 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
             for con_type, geoms in zip(["Left", "Right", "Both", "None"], [lgeoms_confined_left, lgeoms_confined_right, lgeoms_constricted, lgeoms_unconfined]):
                 for g in geoms:
                     if g.geom_type == "LineString":
-                        raw_lyr.create_feature(g, {"NHDPlusID": flowlineID, "Confinement_Type": con_type, "ApproxLeng": g.length / meter_conversion})
+                        raw_lyr.create_feature(g, {"vbet_level_path": level_path, "Confinement_Type": con_type, "ApproxLeng": g.length / meter_conversion})
                     elif geoms.geom_type in ["Point", "MultiPoint"]:
                         progbar.erase()
-                        log.warning(f"Flowline FID: {flowline.GetFID()} | Point geometry identified generating outputs for Raw Confinement.")
+                        log.warning(f"level path: {level_path} | Point geometry identified generating outputs for Raw Confinement.")
                     else:
                         progbar.erase()
-                        log.warning(f"Flowline FID: {flowline.GetFID()} | Unknown geometry identified generating outputs for Raw Confinement.")
+                        log.warning(f"leve path: {level_path} | Unknown geometry identified generating outputs for Raw Confinement.")
 
             # Calculated Confinement per Flowline
-            confinement_ratio = geom_confined.length / geom_flowline.length if geom_confined else 0.0
+            confinement_ratio = geom_confined / geom_flowline.length if geom_confined else 0.0  # .length
             constricted_ratio = geom_constricted.length / geom_flowline.length if geom_constricted else 0.0
 
             # Save Confinement Ratio
-            attributes = {"NHDPlusID": flowlineID,
+            attributes = {"vbet_level_path": level_path,
                           "Confinement_Ratio": confinement_ratio,
                           "Constriction_Ratio": constricted_ratio,
                           "ApproxLeng": geom_flowline.length / meter_conversion,
-                          "ConfinLeng": geom_confined.length / meter_conversion if geom_confined else 0.0,
+                          "ConfinLeng": geom_confined / meter_conversion if geom_confined else 0.0,  # .length
                           "ConstrLeng": geom_constricted.length / meter_conversion if geom_constricted else 0.0}
 
             ratio_lyr.create_feature(geom_flowline, attributes)
-        ratio_lyr.ogr_layer.CommitTransaction()
-        buff_lyr.ogr_layer.CommitTransaction()
-    # Write a report
 
+        raw_lyr.ogr_layer.CommitTransaction()
+        dbg_splitpts_lyr.ogr_layer.CommitTransaction()
+
+    if segmented_network is not None:
+        segmented_confinement = os.path.join(output_gpkg, 'Confinement_Ratio_Segmented')
+        calculate_confinement(confinement_raw_path, segmented_network_proj, segmented_confinement)
+
+    # Write a report
     report = ConfinementReport(output_gpkg, report_path, project)
     report.write()
 
     progbar.finish()
     log.info(f"Count of Flowline segments with errors: {err_count}")
     log.info('Confinement Finished')
+    return
+
+
+def calculate_confinement(confinement_type_network, segment_network, output_network):
+
+    with GeopackageLayer(segment_network, write=True) as segment_lyr, \
+            GeopackageLayer(confinement_type_network, write=True) as confinement_lyr, \
+            GeopackageLayer(output_network, write=True) as output_lyr:
+
+        meter_conversion = segment_lyr.rough_convert_metres_to_vector_units(1)
+        selection_buffer = 0.01 * meter_conversion
+
+        output_lyr.create_layer_from_ref(segment_lyr, create_fields=False)
+        output_lyr.create_fields({
+            'confinement_ratio': ogr.FieldDefn("Confinement_Ratio", ogr.OFTReal),
+            'constriction_ratio': ogr.FieldDefn("Constriction_Ratio", ogr.OFTReal),
+            'length': ogr.FieldDefn("ApproxLeng", ogr.OFTReal),
+            'confined_length': ogr.FieldDefn("ConfinLeng", ogr.OFTReal),
+            'constricted_length': ogr.FieldDefn("ConstrLeng", ogr.OFTReal)
+        })
+        output_lyr.ogr_layer.StartTransaction()
+        for segment_feat, *_ in segment_lyr.iterate_features("Calculating confinemnt per segment"):
+            segment_ogr = segment_feat.GetGeometryRef()
+            segment_geom = GeopackageLayer.ogr2shapely(segment_ogr)
+            segment_endpoints = [Point(segment_geom.coords[0]), Point(segment_geom.coords[-1])]
+            confinement_lengths = {c_type: 0.0 for c_type in ["Left", "Right", "Both", "None"]}
+            for confinement_feat, *_ in confinement_lyr.iterate_features(clip_shape=segment_ogr):
+                con_type = confinement_feat.GetField("Confinement_Type")
+                confinement_ogr = confinement_feat.GetGeometryRef()
+                confinement_geom = GeopackageLayer.ogr2shapely(confinement_ogr)
+                if any([confinement_geom.intersects(pt.buffer(selection_buffer))for pt in segment_endpoints]):
+                    for pt in segment_endpoints:
+                        if confinement_geom.intersects(pt.buffer(selection_buffer)):
+                            cut_distance = confinement_geom.project(pt)
+                            split_geoms = cut(confinement_geom, cut_distance)
+                            lgeom = select_geoms_by_intersection(split_geoms, [segment_geom], buffer=selection_buffer)
+                            if len(lgeom) > 0:
+                                geom = lgeom[0]
+                                confinement_lengths[con_type] = confinement_lengths[con_type] + geom.length / meter_conversion
+                else:
+                    confinement_lengths[con_type] = confinement_lengths[con_type] + confinement_geom.length / meter_conversion
+
+            # calcuate confimenet parts
+            confinement_length = 0.0
+            constricted_length = 0.0
+            unconfined_length = 0.0
+            for con_type, length in confinement_lengths.items():
+                if con_type in ['Left', 'Right']:
+                    confinement_length = confinement_length + length
+                elif con_type in ['Both']:
+                    constricted_length = constricted_length + length
+                else:
+                    unconfined_length = unconfined_length + length
+            segment_length = sum([confinement_length, constricted_length, unconfined_length])
+            confinement_ratio = confinement_length / segment_length if segment_length > 0.0 else 0.0
+            constricted_ratio = constricted_length / segment_length if segment_length > 0.0 else 0.0
+            attributes = {
+                "Confinement_Ratio": confinement_ratio,
+                "Constriction_Ratio": constricted_ratio,
+                "ApproxLeng": segment_length,
+                "ConfinLeng": confinement_length,
+                "ConstrLeng": constricted_length
+            }
+            output_lyr.create_feature(segment_geom, attributes=attributes)
+        output_lyr.ogr_layer.CommitTransaction()
     return
 
 
@@ -460,162 +570,71 @@ def create_project(huc, output_dir: str, meta: List[RSMeta], meta_dict: Dict[str
     return project, realization, proj_nodes, report_path
 
 
-def cut(line, distance):
-    """Cuts a line in two at a distance from its starting point
-
-    Args:
-        line (LineString): line to cut
-        distance (float): distance to make the cut
-
-    Returns:
-        tuple: two linestrings on either side of cut
-    """
-    if distance <= 0.0 or distance >= line.length:
-        return [LineString(line)]
-    coords = list(line.coords)
-    for i, p in enumerate(coords):
-        pd = line.project(Point(p))
-        if pd == distance:
-            return [
-                LineString(coords[:i + 1]),
-                LineString(coords[i:])]
-        if pd > distance:
-            cp = line.interpolate(distance)
-            return [
-                LineString(coords[:i] + [(cp.x, cp.y)]),
-                LineString([(cp.x, cp.y)] + coords[i:])]
-
-
-def cut_line_segment(line, distance_start, distance_stop):
-    """Cuts a line in two at a distance from its starting point
-
-    Args:
-        line (LineString): linestring to cut
-        distance_start (float): starting distance of segment
-        distance_stop (float): ending distance of segment
-
-    Returns:
-        LineString: linestring segment between distances
-    """
-    if distance_start > distance_stop:
-        raise ValueError(f"Cut Line Segment: Distance Start ({distance_start}) greater than Distance stop ({distance_stop})")
-    if distance_start < 0.0 or distance_stop > line.length:
-        return [LineString(line)]
-    if distance_start == distance_stop:
-        # raise ValueError(f"Cut Line Segment: Distance Start ({distance_start}) same as Distance stop ({distance_stop})")
-        distance_start = distance_start - 0.01
-        distance_stop = distance_stop + 0.01
-
-    coords = list(line.coords)
-    for i, p in enumerate(coords):
-        pd = line.project(Point(p))
-        if pd == distance_start:
-            segment = LineString(coords[i:])
-            break
-
-        if pd > distance_start:
-            cp = line.interpolate(distance_start)
-            segment = LineString([(cp.x, cp.y)] + coords[i:])
-            break
-
-    coords = list(segment.coords)
-    for i, p in enumerate(coords):
-        pd = line.project(Point(p))
-        if pd == distance_stop:
-            return LineString(coords[: i + 1])
-
-        if pd > distance_stop:
-            cp = line.interpolate(distance_stop)
-            return LineString(coords[: i] + [(cp.x, cp.y)])
-
-
-def select_geoms_by_intersection(in_geoms, select_geoms, buffer=None, inverse=False):
-    """select geometires based on intersection (or non-intersection) of midpoint
-
-    Args:
-        in_geoms (list): list of LineString geometires to select from
-        select_geoms ([type]): list of LineString geometries to make the selection
-        buffer ([type], optional): apply a buffer on the midpoint selectors. Defaults to None.
-        inverse (bool, optional): return list of LineStrings that Do Not intersect the selecion geometries. Defaults to False.
-
-    Returns:
-        list: List of LineString geometries that meet the selection criteria
-    """
-    out_geoms = []
-
-    for geom in in_geoms:
-        if inverse:
-            if all([geom_select.disjoint(geom.interpolate(0.5, True).buffer(buffer) if buffer else geom.interpolate(0.5, True)) for geom_select in select_geoms]):
-                out_geoms.append(geom)
-        else:
-            if any([geom_select.intersects(geom.interpolate(0.5, True).buffer(buffer) if buffer else geom.interpolate(0.5, True)) for geom_select in select_geoms]):
-                out_geoms.append(geom)
-
-    return out_geoms
-
-
 def main():
 
     parser = argparse.ArgumentParser(description='Confinement Tool')
 
     parser.add_argument('huc', help='HUC identifier', type=str)
     parser.add_argument('flowlines', help="NHD Flowlines (.shp, .gpkg/layer_name)", type=str)
-    parser.add_argument('channel_polygon')
+    parser.add_argument('channel_area')
     parser.add_argument('confining_polygon', help='valley bottom or other polygon representing confining boundary (.shp, .gpkg/layer_name)', type=str)
     parser.add_argument('output_folder', help='Output folder', type=str)
-    parser.add_argument('buffer_field', help='(optional) float field in flowlines with buffer values', default=None)
+    parser.add_argument('vbet_summary_field', help='(optional) float field in flowlines with vbet level_paths', default=None)
     parser.add_argument('confinement_type', help='type of confinement', default="Unspecified")
-    parser.add_argument('--reach_codes', help='Comma delimited reach codes (FCode) to retain when filtering features. Omitting this option retains all features.', type=str)
+    parser.add_argument('--buffer', help='buffer to apply to channel area polygons (m)', type=float)
+    parser.add_argument('--segmented_network', help='segmented network to calculate confinement on (optional)', type=str)
+    parser.add_argument('--calculate_existing', action='store_true', default=False)
     parser.add_argument('--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
     parser.add_argument('--debug', help="(optional) save intermediate outputs for debugging", action='store_true', default=False)
 
     args = dotenv.parse_args_env(parser)
 
-    # Initiate the log file
-    log = Logger("Confinement")
-    log.setup(logPath=os.path.join(args.output_folder, "confinement.log"), verbose=args.verbose)
-    log.title('Confinement For HUC: {}'.format(args.huc))
+    if args.calculate_existing:
+        raw = os.path.join(args.output_folder, 'outputs', 'confinement.gpkg', 'Confinement_Raw')
+        out = os.path.join(args.output_folder, 'outputs', 'confinement.gpkg', 'Confinement_Ratio_Segmented')
+        calculate_confinement(raw, args.segmented_network, out)
 
-    meta = parse_metadata(args.meta)
-    reach_codes = args.reach_codes.split(',') if args.reach_codes else None
-    try:
-        if args.debug is True:
-            from rscommons.debug import ThreadRun
-            memfile = os.path.join(args.output_folder, 'confinement_mem.log')
-            retcode, max_obj = ThreadRun(confinement, memfile,
-                                         args.huc,
-                                         args.flowlines,
-                                         args.channel_area,
-                                         args.confining_polygon,
-                                         args.output_folder,
-                                         args.buffer_field,
-                                         args.confinement_type,
-                                         reach_codes,
-                                         min_buffer=10.0,
-                                         bankfull_expansion_factor=2.5,
-                                         debug=args.debug,
-                                         meta=meta)
-            log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
+    else:
+        # Initiate the log file
+        log = Logger("Confinement")
+        log.setup(logPath=os.path.join(args.output_folder, "confinement.log"), verbose=args.verbose)
+        log.title('Confinement For HUC: {}'.format(args.huc))
 
-        else:
-            confinement(args.huc,
-                        args.flowlines,
-                        args.channel_area,
-                        args.confining_polygon,
-                        args.output_folder,
-                        args.buffer_field,
-                        args.confinement_type,
-                        reach_codes,
-                        min_buffer=10.0,
-                        bankfull_expansion_factor=2.5,
-                        debug=args.debug,
-                        meta=meta)
+        meta = parse_metadata(args.meta)
+        try:
+            if args.debug is True:
+                from rscommons.debug import ThreadRun
+                memfile = os.path.join(args.output_folder, 'confinement_mem.log')
+                retcode, max_obj = ThreadRun(confinement, memfile,
+                                             args.huc,
+                                             args.flowlines,
+                                             args.channel_area,
+                                             args.confining_polygon,
+                                             args.output_folder,
+                                             args.vbet_summary_field,
+                                             args.confinement_type,
+                                             buffer=args.buffer,
+                                             segmented_network=args.segmented_network,
+                                             meta=meta)
+                log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
 
-    except Exception as e:
-        log.error(e)
-        traceback.print_exc(file=sys.stdout)
-        sys.exit(1)
+            else:
+                confinement(args.huc,
+                            args.flowlines,
+                            args.channel_area,
+                            args.confining_polygon,
+                            args.output_folder,
+                            args.vbet_summary_field,
+                            args.confinement_type,
+                            buffer=args.buffer,
+                            segmented_network=args.segmented_network,
+                            meta=meta)
+
+        except Exception as e:
+            log.error(e)
+            traceback.print_exc(file=sys.stdout)
+            sys.exit(1)
 
     sys.exit(0)
 
