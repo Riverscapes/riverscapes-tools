@@ -289,6 +289,10 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
             confining_polygon_lyr.create_feature(geom_confining_polygon, {'vbet_level_path': level_path})
 
             geom_channel = get_geometry_unary_union(channel_area, clip_shape=geom_flowlines_midpoints)
+            if geom_channel is None:
+                log.warning("No channel polygons found with level path: {}".format(level_path))
+                continue
+
             geom_intersected = geom_channel.intersection(geom_confining_polygon)
             geom_channel_buffer = geom_intersected.buffer(buffer * meter_conversion)
 
