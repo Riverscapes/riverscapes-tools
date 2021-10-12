@@ -271,6 +271,10 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
             geom_flowlines_midpoints = MultiPoint([line.interpolate(0.5, normalized=True) for line in geom_flowlines])
 
             geom_flowline = get_geometry_unary_union(flowlines_path, attribute_filter=f"vbet_level_path = {level_path}.0 AND Divergence < 2")
+            if geom_flowline is None:
+                log.warning("No flowlines found for level path: {}".format(level_path))
+                continue
+
             if geom_flowline.geom_type == 'MultiLineString':
                 log.warning("Attempting to merge MultiLineString flowline for level path: {}".format(level_path))
                 geom_flowline = linemerge(geom_flowline)
