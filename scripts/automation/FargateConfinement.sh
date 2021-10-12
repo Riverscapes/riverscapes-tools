@@ -47,7 +47,7 @@ rscli download $RS_CONTEXT_DIR --type "RSContext" --meta "huc=$HUC" --tags "$RSC
 
 # Go get vbet result for this to work
 rscli download $VBET_DIR --type "VBET" --meta "huc=$HUC" --tags "$VBET_TAGS" \
-  --file-filter "vbet\.gpkg" \
+  --file-filter "(vbet\.gpkg|vbet_inputs\.gpkg)" \
   --no-input --verbose --program "$PROGRAM"
 
 echo "======================  Initial Disk space usage ======================="
