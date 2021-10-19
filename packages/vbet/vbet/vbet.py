@@ -436,7 +436,7 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
 
         for i in range(clipping_lyr_defn.GetFieldCount()):
             field_defn = clipping_lyr_defn.GetFieldDefn(i)
-            if field_defn.GetName() == field:
+            if field_defn.GetName() == vbet_summary_field:
                 output_lyr.ogr_layer.CreateField(field_defn)
         output_lyr.ogr_layer.StartTransaction()
         for clipping_feat, *_ in clipping_lyr.iterate_features('Finding features'):
