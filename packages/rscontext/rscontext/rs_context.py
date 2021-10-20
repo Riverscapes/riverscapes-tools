@@ -40,6 +40,7 @@ from rscontext.filter_ecoregions import filter_ecoregions
 from rscontext.rs_context_report import RSContextReport
 from rscontext.vegetation import clip_vegetation
 from rscontext.bankfull import bankfull_buffer
+from rscontext.boundary_management import raster_area_intersection
 from rscontext.__version__ import __version__
 
 initGDALOGRErrors()
@@ -248,9 +249,11 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
     ned_unzip_folder = os.path.join(scratch_dir, 'ned')
     dem_rasters, urls = download_dem(nhd[boundary], cfg.OUTPUT_EPSG, 0.01, ned_download_folder, ned_unzip_folder, force_download)
 
+    processing_boundary = os.path.join(hydrology_gpkg_path, 'Processing_Boundary')
+    raster_area_intersection(dem_rasters, nhd[boundary], processing_boundary)
     need_dem_rebuild = force_download or not os.path.exists(dem_raster)
     if need_dem_rebuild:
-        raster_vrt_stitch(dem_rasters, dem_raster, cfg.OUTPUT_EPSG, clip=nhd[boundary], warp_options={"cutlineBlend": 1})
+        raster_vrt_stitch(dem_rasters, dem_raster, cfg.OUTPUT_EPSG, clip=processing_boundary, warp_options={"cutlineBlend": 1})
         verify_areas(dem_raster, nhd[boundary])
 
     # Calculate slope rasters seperately and then stitch them
@@ -280,13 +283,13 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
             need_hs_build = True
 
     if need_slope_build:
-        raster_vrt_stitch(slope_parts, slope_raster, cfg.OUTPUT_EPSG, clip=nhd[boundary], clean=parallel, warp_options={"cutlineBlend": 1})
+        raster_vrt_stitch(slope_parts, slope_raster, cfg.OUTPUT_EPSG, clip=processing_boundary, clean=parallel, warp_options={"cutlineBlend": 1})
         verify_areas(slope_raster, nhd[boundary])
     else:
         log.info('Skipping slope build because nothing has changed.')
 
     if need_hs_build:
-        raster_vrt_stitch(hillshade_parts, hill_raster, cfg.OUTPUT_EPSG, clip=nhd[boundary], clean=parallel, warp_options={"cutlineBlend": 1})
+        raster_vrt_stitch(hillshade_parts, hill_raster, cfg.OUTPUT_EPSG, clip=processing_boundary, clean=parallel, warp_options={"cutlineBlend": 1})
         verify_areas(hill_raster, nhd[boundary])
     else:
         log.info('Skipping hillshade build because nothing has changed.')
