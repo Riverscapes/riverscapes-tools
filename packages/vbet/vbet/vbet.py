@@ -23,6 +23,7 @@ import rasterio
 from rasterio.features import shapes
 import rasterio.mask
 import numpy as np
+from shapely.geometry import MultiPolygon
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 
 from rscommons.util import safe_makedirs, parse_metadata, pretty_duration
@@ -32,6 +33,7 @@ from rscommons.vector_ops import difference, copy_feature_class, dissolve_featur
 from rscommons.thiessen.vor import NARVoronoi
 from rscommons.thiessen.shapes import centerline_points
 from rscommons.vbet_network import vbet_network, create_stream_size_zones, copy_vaa_attributes, join_attributes
+from rscommons.classes.raster import get_data_polygon
 
 from vbet.vbet_database import load_configuration, build_vbet_database
 from vbet.vbet_metrics import build_vbet_metric_tables
@@ -152,13 +154,16 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
     GeopackageLayer.delete(intermediates_gpkg_path)
     GeopackageLayer.delete(vbet_path)
 
+    raster_extent = MultiPolygon(get_data_polygon(inputs['DEM']))
+    raster_extent_geom = VectorBase.shapely2ogr(raster_extent)
+
     project_inputs = {}
     for input_name, input_path in inputs.items():
         if os.path.splitext(input_path)[1] in ['.tif', '.tiff', '.TIF', '.TIFF']:
             _proj_slope_node, project_inputs[input_name] = project.add_project_raster(proj_nodes['Inputs'], LayerTypes[input_name], input_path)
         else:
             project_path = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers[input_name].rel_path)
-            copy_feature_class(input_path, project_path, epsg=epsg)
+            copy_feature_class(input_path, project_path, epsg=epsg, clip_shape=raster_extent_geom)
             project_inputs[input_name] = project_path
     project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
 
