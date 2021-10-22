@@ -77,6 +77,7 @@ LayerTypes = {
         'NETWORK300M_INTERSECTION': RSLayer('NHD Flowlines intersected with road, rail and ownership', 'NETWORK300M_INTERSECTION', 'Vector', 'network_intersected'),
         'NETWORK300M_CROSSINGS': RSLayer('NHD Flowlines intersected with road, rail and ownership, segmented to 300m', 'NETWORK300MCROSSINGS', 'Vector', 'network_intersected_300m'),
         'BANKFULL_CHANNEL': RSLayer('Estimated Bankfull Channel', 'BANKFULL_CHANNEL', 'Vector', 'bankfull'),
+        'PROCESSING_EXTENT': RSLayer('Processing Extent of HUC-DEM Intersection', 'PROCESSING_EXTENT', 'Vector', 'processing_extent')
         # 'COMPOSITE_CHANNEL_AREA': RSLayer('Bankfull and NHD Area', 'COMPOSITE_CHANNEL_AREA', 'Vector', 'bankfull_nhd_area')
     }),
 
@@ -249,7 +250,7 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
     ned_unzip_folder = os.path.join(scratch_dir, 'ned')
     dem_rasters, urls = download_dem(nhd[boundary], cfg.OUTPUT_EPSG, 0.01, ned_download_folder, ned_unzip_folder, force_download)
 
-    processing_boundary = os.path.join(hydrology_gpkg_path, 'Processing_Boundary')
+    processing_boundary = os.path.join(hydrology_gpkg_path, LayerTypes['HYDROLOGY'].sub_layers['PROCESSING_EXTENT'].rel_path)
     raster_area_intersection(dem_rasters, nhd[boundary], processing_boundary)
     need_dem_rebuild = force_download or not os.path.exists(dem_raster)
     if need_dem_rebuild:
