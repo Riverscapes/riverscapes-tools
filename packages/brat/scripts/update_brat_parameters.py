@@ -2,6 +2,7 @@
     Amazon AWS and writing them to CSV in this repository for use
     in SQLite individual tool databaes.
 """
+import re
 import csv
 import os
 import argparse
@@ -125,6 +126,15 @@ def update_watersheds(curs, watershed_csv):
             try:
                 equation = values[q]
                 equation = equation.replace('^', '**')
+
+                # Verify that all characters are legal. Note initial carrat returns inverse matches
+                m = None
+                m = re.findall(r'[^0-9a-z+-/* _)(]', equation, re.IGNORECASE)
+                if m is not None and len(m) > 0:
+                    illegal = ''.join(m)
+                    illegal = illegal.replace('\n', 'NEWLINE')
+                    raise Exception('The equation contains illedgal characters (might include white space):{}'.format(illegal))
+
                 value = eval(equation, {'__builtins__': None}, params)
                 _float_val = float(value)
             except Exception as ex:
