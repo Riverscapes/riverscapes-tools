@@ -75,19 +75,20 @@ def vegetation_summary(outputs_gpkg_path: str, label: str, veg_raster: str, buff
         batch_count = 0
         for veg_record in veg_counts:
             batch_count += 1
-            try:
-                database.conn.execute('INSERT INTO ReachVegetation (ReachID, VegetationID, Buffer, Area, CellCount) VALUES (?, ?, ?, ?, ?)', veg_record)
-            # Sqlite can't report on SQL errors so we have to print good log messages to help intuit what the problem is
-            except sqlite3.IntegrityError as err:
-                # THis is likely a constraint error.
-                errstr = "Integrity Error when inserting records: ReachID: {} VegetationID: {}".format(veg_record[0], veg_record[1])
-                log.error(errstr)
-                errs += 1
-            except sqlite3.Error as err:
-                # This is any other kind of error
-                errstr = "SQL Error when inserting records: ReachID: {} VegetationID: {} ERROR: {}".format(veg_record[0], veg_record[1], str(err))
-                log.error(errstr)
-                errs += 1
+            if int(veg_record[1]) != -9999:
+                try:
+                    database.conn.execute('INSERT INTO ReachVegetation (ReachID, VegetationID, Buffer, Area, CellCount) VALUES (?, ?, ?, ?, ?)', veg_record)
+                # Sqlite can't report on SQL errors so we have to print good log messages to help intuit what the problem is
+                except sqlite3.IntegrityError as err:
+                    # THis is likely a constraint error.
+                    errstr = "Integrity Error when inserting records: ReachID: {} VegetationID: {}".format(veg_record[0], veg_record[1])
+                    log.error(errstr)
+                    errs += 1
+                except sqlite3.Error as err:
+                    # This is any other kind of error
+                    errstr = "SQL Error when inserting records: ReachID: {} VegetationID: {} ERROR: {}".format(veg_record[0], veg_record[1], str(err))
+                    log.error(errstr)
+                    errs += 1
         if errs > 0:
             raise Exception('Errors were found inserting records into the database. Cannot continue.')
         database.conn.commit()
