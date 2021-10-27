@@ -46,7 +46,7 @@ LayerTypes = {
     'INTERMEDIATES': RSLayer('Intermediates', 'Intermediates', 'Geopackage', 'intermediates/intermediates.gpkg', {
         'FILTERED_WATERBODY': RSLayer('NHD Waterbodies (Filtered)', 'FILTERED_WATERBODY', 'Vector', 'waterbody_filtered'),
         'FILTERED_FLOWAREAS': RSLayer('NHD Flow Areas (Filtered)', 'FILTERED_FLOWAREAS', 'Vector', 'flowarea_filtered'),
-        'FLOW_AREA_NO_ISLANDS': RSLayer('Flow Areas No Islands', 'FLOW_AREA_NO_ISLANDS', 'Vector', 'flowarea_no_islands'),
+        # 'FLOW_AREA_NO_ISLANDS': RSLayer('Flow Areas No Islands', 'FLOW_AREA_NO_ISLANDS', 'Vector', 'flowarea_no_islands'),
         'COMBINED_FA_WB': RSLayer('Combined Flow Area and Waterbody', 'COMBINED_FA_WB', 'Vector', 'combined_fa_wb'),
         'BANKFULL_NETWORK': RSLayer('Bankfull Network', 'BANKFULL_NETWORK', 'Vector', 'bankfull_network'),
         'BANKFULL_POLYGONS': RSLayer('Bankfull Polygons', 'BANKFULL_POLYGONS', 'Vector', 'bankfull_polygons'),
