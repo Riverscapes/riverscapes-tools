@@ -24,3 +24,16 @@ ParamID,Name,Description,Aliases,DataUnits,EquationUnits,Conversion,Definition
 23,I6H100Y,6hr 100 Year Precipitation,I6H100Y,inches,inches,1.0,Maximum 6-hour precipitation that occurs on average once in 100 years
 24,LAT,Latitude (Degrees),LAT,Degrees,Degrees,1.0,
 25,BSLDEM10M,Mean Basin Slope from 10m DEM,,percent,percent,1.0,
+26,ACWIDTH,Active Channel Width,ACWIDTH,,feet,1.0,
+27,A6000,"Percent of basin above 6,000ft",A6000,percent,percent,1.0,
+28,CSL1085LFP,Change in elevation ,CSL1085LFP,ft per mi. ,ft per mi. ,1.0,Change in elevation divided by length between points 10 and 85 percent of distance along the longest flow path to the basin divide
+29,SOM,Soil organic matter,SOM,percent,percent,1.0,Percentage of organic matter in soils from SSURGO
+30,RUGGED,Ruggedness number,RUGGED,meters per km. ,feet per mi. ,5.28,Ruggedness number computed as stream density (length of streams/HUC area) times basin relief
+31,COMPRAT,Measure of basin shape ,COMPRAT,dimentionless,dimensionless ,1.0,Measure of basin shape related to basin perimeter and drainage area
+32,SLOP50_30MP1,Percent slopes greater than 50 degrees +1%,SLOP50_30MP1,percent,percent,1.0,Percent slopes greater than 50 degrees +1% calculated from a 30m DEM
+33,LC01CRPHAY,Percent cultivated crops and hay,LC01CRPHAY,percent,percent,1.0,
+34,AREA,HUC Area,AREA,sq. km,sq. mi,0.386102,HUC area 
+35,ET_SPR,Mean spring evapotranspiration ,ET_SPR,inches/month,inches/month,1.0,
+36,ELEV5K,%HUC above 5000',ELEV5K,percent,percent,1.0,%HUC above 5000 feet elevation 
+37,ELEV6K,%HUC above 6000' ,ELEV6K,percent,percent,1.0,%HUC above 6000 feet elevation 
+38,PII,Precipitation Intensity Index ,PII,unkown,unkown,1.0,
