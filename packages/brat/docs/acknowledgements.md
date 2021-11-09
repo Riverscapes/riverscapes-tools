@@ -11,6 +11,10 @@ We have been fortunate to secure financial support for BRAT from a variety of st
 
 | Sponsor   | | Geography   | Year(s)   | Status      |
 | ---------------------------------------- | - | -------------------- | -------------- | ------------- |
+| **[BLM - Montana-Dakotas](https://www.blm.gov)** |[![Logo_blm]({{site.baseurl }}\assets\images\logos\blm.png)](https://www.blm.gov)| Montana, North Dakota & South Dakota | 2021-2022 | In Progress |
+| **[Luckiamute Watershed Council](https://www.luckiamutelwc.org/)** |[![Logo_luckiamute]({{site.baseurl }}\assets\images\logos\luckiamutewc.png)](https://www.luckiamutelwc.org/)| Mid Willamette Basin, Oregon | 2021 - 2022 | In Progress |
+| **[US Fish and Wildlife Service](https://www.fws.gov)** |[![Logo_fws]({{site.baseurl }}\assets\images\logos\fws.png)](https://www.fws.gov)| Upper Klamath Watershed, Oregon | 2021 | In Progress |
+| **[NOAA](https://www.noaa.gov/)** |[![Logo_noaa]({{ site.baseurl }}\assets\images\logos\noaa.png)](https://www.noaa.gov)| Columbia River Basin | 2020 | Provisional |
 | **[US Forest Service](https://www.fs.fed.us)** |[![USFSTransparentBG]({{ site.baseurl }}\assets\images\logos\USFSTransparentBG.png)](https://www.fs.fed.us)| [Greater Yellowstone Ecosystem](https://www.nps.gov/yell/learn/nature/greater-yellowstone-ecosystem.htm) (Idaho, Wyoming & Montana) | 2018-2019 | In progress     |
 | **[Idaho Department of Fish & Game](https://idfg.idaho.gov/)** | [![Logo_IdahoFG]({{ site.baseurl }}\assets\images\logos\Logo_IdahoFG.png)](https://idfg.idaho.gov/)| State of Idaho                           | 2018-2019 | [Complete]({{ site.baseurl }}/BRATData/USA/IDFG_Idaho/) |
 | **[The Nature Conservancy](https://www.nature.org/ourinitiatives/regions/northamerica/unitedstates/california/index.htm)** | [![nature_conservacy_logo]({{ site.baseurl }}\assets\images\logos\nature_conservacy_logo.png)](https://www.nature.org/ourinitiatives/regions/northamerica/unitedstates/california/index.htm)  | Sierra Nevada, Northern Coast Range, Desert Terminal Lakes Watersheds (California & Nevada) | 2018-2019 | [Complete]({{ site.baseurl }}/BRATData/USA/TNC_SierraNevada/) |
