@@ -929,8 +929,13 @@ def difference(remove_layer, target_layer, out_layer_path, epsg=None):
                 geom_diff = feat_diff.GetGeometryRef()
                 if not geom_diff.IsValid():
                     geom_diff = geom_validity_fix(geom_diff)
-
-                geom = geom.Difference(geom_diff)
+                try:
+                    geom_orig = geom.Clone()
+                    geom = geom.Difference(geom_diff)
+                except:
+                    log.error(str(IOError))
+                    geom = geom_orig
+                    continue
                 if not geom.IsValid():
                     geom = geom_validity_fix(geom)
 
@@ -950,8 +955,12 @@ def geom_validity_fix(geom_in):
     f_geom = geom_in
     # Only clean if there's a problem:
     if not f_geom.IsValid():
-        f_geom = f_geom.Buffer(0)
+        f_geom = f_geom.MakeValid()
         if not f_geom.IsValid():
-            f_geom = f_geom.Buffer(buff_dist)
-            f_geom = f_geom.Buffer(-buff_dist)
+            f_geom = f_geom.Buffer(0)
+            if not f_geom.IsValid():
+                f_geom = f_geom.Buffer(buff_dist)
+                f_geom = f_geom.Buffer(-buff_dist)
+                if not f_geom.IsValid():
+                    f_geom = f_geom.MakeValid()
     return f_geom

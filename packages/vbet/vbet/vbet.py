@@ -453,12 +453,13 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
                 if not target_geom.IsValid():
                     target_geom = geom_validity_fix(target_geom)
                 out_geom = clipping_geom.Intersection(target_geom)
-                if not out_geom.IsValid():
-                    out_geom = geom_validity_fix(out_geom)
-                out_feat = ogr.Feature(output_lyr.ogr_layer_def)
-                out_feat.SetGeometry(out_geom)
-                out_feat.SetField(vbet_summary_field, clip_value)
-                output_lyr.ogr_layer.CreateFeature(out_feat)
+                if out_geom.GetGeometryType() in VectorBase.POLY_TYPES:
+                    if not out_geom.IsValid():
+                        out_geom = geom_validity_fix(out_geom)
+                    out_feat = ogr.Feature(output_lyr.ogr_layer_def)
+                    out_feat.SetGeometry(out_geom)
+                    out_feat.SetField(vbet_summary_field, clip_value)
+                    output_lyr.ogr_layer.CreateFeature(out_feat)
         output_lyr.ogr_layer.CommitTransaction()
 
     active_floodplain = os.path.join(vbet_path, LayerTypes['VBET_OUTPUTS'].sub_layers['ACTIVE_FLOODPLAIN'].rel_path)
