@@ -8,7 +8,7 @@ VBET is one of several tools developed by the [Riverscapes Consortium](https://r
 # Report Card Summary
 
 | Tool | [VBET - Valley Bottom Extraction Tool](https://tools.riverscapes.xyz/vbet) |
-| Version | [0.5.1](https://github.com/Riverscapes/riverscapes-tools/tree/master/packages/brat) (experimental, not an official release) |
+| Version | [0.5.1](https://github.com/Riverscapes/riverscapes-tools/tree/master/packages/brat) |
 | Date | 2021-11-22 |
 | Assessment Team | Bailey, Wheaton & Gilbert |
 | Current Assessment | ![production](https://raw.githubusercontent.com/Riverscapes/riverscapes-website/master/assets/images/tools/grade/TRL_6_32p.png) [Production Grade](http://brat.riverscapes.xyz/Tools#tool-status) |

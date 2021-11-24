@@ -1,12 +1,15 @@
 ---
-title: My Homepage
-weight: 1
+title: Home
 ---
 
-This will be Shelby's Commericial Grade VBET Page... Elit occaecat veniam nulla commodo aliqua ut sunt. Cupidatat occaecat sunt do do eiusmod id nostrud tempor quis dolor elit anim deserunt. Incididunt magna magna nostrud nulla in duis.
+## About
+The **Valley Bottom Extraction Tool (VBET)** is a tool used to identify the valley bottom of a riverscape, and roughly separate it into geomorphic units (channel, active floodplain, and inactive floodplain). The tool takes a DEM and channel area polygon as inputs. Three different topographic analyses of the DEM are used as lines of evidence in determining what is valley bottom:
+- Slope
+- Topographic Wetness Index (TWI)
+- Height Above Nearest Drainage (HAND)
 
-Add a [link to somewhere](https://tools.riverscapes.xyz/vbet/)
+(These three inputs can be generated using the [TauDEM](https://tools.riverscapes.com/taudem) tool)
 
-Enim mollit culpa eu sint velit occaecat ullamco reprehenderit dolor eu esse do officia reprehenderit. Nisi quis Lorem ex commodo officia ipsum. Et pariatur mollit sit cupidatat incididunt incididunt commodo excepteur esse Lorem labore nostrud non.
+In addition to being used in generating the HAND raster, the channel area polygon is rasterized and used as an additional line of evidence.
 
-Labore dolor aute in eu labore ad. Ullamco velit sit veniam qui nulla cupidatat incididunt aliquip qui ea duis nisi ipsum sit. Do incididunt id veniam esse. Aute eiusmod do incididunt dolore elit aute veniam in et magna pariatur reprehenderit. Aliquip incididunt sit officia excepteur voluptate Lorem dolore cillum non nulla culpa sint non.
+For interpretation as lines of evidence, raster values in each of the rasters are converted to values between 0 (very low likelihood of being valley bottom) and 1 (very high likelihood of being valley bottom) using transform functions with parameters that vary based on stream order. The logic for this is that in low stream order settings, valley bottoms are likely to have higher slopes than in high stream order settings. Similarly, higher values of HAND (higher elevations above the drainage network) are less likely to be part of the valley bottom in low order streams. Finally, these transformed inputs are averaged, resulting in a raster with values between 0 and 1, essentially representing relative probability of being part of the valley bottom. This raster is one of the tool outputs. Additionally, threshold values can be chosen in order to extract a polygon representing the valley bottom from the raster. Different threshold values can be used to estimate the extent of the different geomorphic units.
