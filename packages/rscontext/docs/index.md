@@ -2,4 +2,35 @@
 title: Home
 ---
 
-RS COntext Dolor duis esse velit ullamco ea ut proident incididunt. Cillum velit laboris aute veniam. Ipsum mollit commodo amet consequat esse laboris eiusmod commodo aliqua sint. Ea elit eu commodo pariatur occaecat laborum elit magna enim.
+## About
+The **Riverscape Context Tool** is a tool that aggregates contextual layers for consumption in other Riverscapes projects. Many Riverscapes tools use nationally available datasets that have to be retrieved from various sources and prepared for an area of interest. This process can be time consuming, and often the data have to be further processed after retrieving them (for example, mosaic of DEM tiles, clipping to watershed boundaries, etc.), and these processes can introduce problems into the datasets. This tool resolves these potential issues by retrieving these datasets, processing them, and organizing them within a Riverscapes project automatically. These data can then be used on their own, or as inputs to other tools.
+
+The geospatial layers that the tool collects are:
+- **Topography** (Digital Elevation Models) from the [National Elevation Dataset (NED)](https://gdg.sc.egov.usda.gov/Catalog/ProductDescription/NED.html), from which additional layers are derived:
+  - Slope
+  - Flow Accumulation
+  - Drainage area
+  - Detrended DEM
+  - Hillshades for context
+- [**LANDFIRE**](https://landfire.gov/) vegetation:
+  - Existing vegetation (class, name) from which an existing riparian layer is derived
+  - Historic vegetation (name) from which a historic riparian layer is derived
+- **Land Management**:
+  - Land ownership/agency from [BLM Land Surace Management Agency Polygons](https://landscape.blm.gov/geoportal/catalog/search/resource/details.page?uuid=%7B2A8B8906-7711-4AF7-9510-C6C7FD991177%7D)
+  - Fair market value
+- **Ecoregions**:
+  - level 1, 2, and 3 Ecoregions from the [EPA](https://www.epa.gov/eco-research/ecoregions)
+- **Climate** [(PRISM)](https://prism.oregonstate.edu/):
+  - Mean Annual Precipitation
+  - Mean Annual Temperature
+  - Minimum Temperature
+  - Maximum Temperature
+  - Mean Dewpoint Temperature
+  - Minimum Vapor Pressure Deficit
+  - Maximum Vapor Pressure Deficit
+- **Hydrology**:
+  - Hydrography ([NHD HR+](https://www.usgs.gov/core-science-systems/ngp/national-hydrography/nhdplus-high-resolution))
+  - Watershed boundaries (also from NHD)
+- **Transportation**:
+  - Roads from [TIGER](https://data-usdot.opendata.arcgis.com/documents/usdot::census-tiger-line-roads/about)
+  - Railroads

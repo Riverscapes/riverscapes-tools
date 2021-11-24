@@ -3,18 +3,18 @@ title: Riverscapes Report Card
 weight: 1
 ---
 
-[TauDEM](https://hydrology.usu.edu/taudem/taudem5/index.html) is a package of tools developed by David Tarboton of Utah State University's Hydrology Research Group. This report card communicates TauDEM's compliance with the Riverscape Consortium's published [tool standards](https://riverscapes.xyz/Tools).
+[TauDEM](https://hydrology.usu.edu/taudem/taudem5/index.html) is a package of tools developed by David Tarboton of Utah State University's Hydrology Research Group. This report card communicates the Riverscape appliation that utilizes TauDEM's algorithms/scripts compliance with the Riverscape Consortium's published [tool standards](https://riverscapes.xyz/Tools).
 
 # Report Card Summary
 
 | Tool | [TauDEM - Terrain Analysis Using Digital Elevation Models](https://tools.riverscapes.xyz/taudem) |
-| Version | [1.0.2](https://github.com/Riverscapes/riverscapes-tools/tree/master/packages/taudem) |
+| Version | [1.0.2](https://github.com/Riverscapes/riverscapes-tools/tree/master/packages/taudem) Riverscapes application of TauDEM; version [5](https://hydrology.usu.edu/taudem/taudem5/index.html) of TauDEM itself |
 | Date | 2021-11-22 |
 | Assessment Team | Bailey, Wheaton & Gilbert |
 | Current Assessment | ![production](https://raw.githubusercontent.com/Riverscapes/riverscapes-website/master/assets/images/tools/grade/TRL_6_32p.png) [Production Grade](http://brat.riverscapes.xyz/Tools#tool-status) |
-| Target Status | ![production](https://raw.githubusercontent.com/Riverscapes/riverscapes-website/master/assets/images/tools/grade/TRL_6_32p.png) Commercial Grade |
+| Target Status | ![production](https://raw.githubusercontent.com/Riverscapes/riverscapes-website/master/assets/images/tools/grade/TRL_6_32p.png) Production Grade |
 | Riverscapes Compliance | ![Compliant](https://riverscapes.xyz/assets/images/rc/RiverscapesCompliant_24.png) Compliant|
-| Assessment Rationale | The TauDEM algorithms, as packaged here, can automatically perform terrain analyses at the HUC 8 scale, and produces riverscape projects containing the outputs that are compatible with RAVE, earning it Production Grade status. |
+| Assessment Rationale | The TauDEM algorithms, as packaged here, can automatically perform terrain analyses at the HUC 8 scale, and produce riverscape projects containing the outputs that are compatible with RAVE, earning it Production Grade status. |
 
 
 # Report Card Details
@@ -36,7 +36,7 @@ Fully Developed: <i class="fa fa-battery-full" aria-hidden="true"></i>
 | Vetted in Peer-Reviewed Literature | TauDEM is documented in various [publications](https://hydrology.usu.edu/dtarb/tarpubs.htm) | <i class="fa fa-battery-full" aria-hidden="true"></i> |  |
 | Source Code Documentation | Available at [Github repository](https://github.com/Riverscapes/riverscaps-tools/taudem)<i class="fa fa-github" aria-hidden="true"></i> | <i class="fa fa-battery-full" aria-hidden="true"></i> | Source code is clearly organized and documented |
 | Open Source | [open-source](https://github.com/Riverscapes/riverscaps-tools/rscontext) <i class="fa fa-github" aria-hidden="true"></i> with [GNU General Public License v 3.0](https://github.com/Riverscapes/riverscapes-tools/blob/master/LICENSE) | <i class="fa fa-battery-full" aria-hidden="true"></i> | |
-| User Documentation | [Documentation](http://tools.riverscapes.xyz/vbet/) is in progress | <i class="fa fa-battery-quarter" aria-hidden="true"></i> | Documentation has not been finished for the Riverscapes version of TauDEM, but the original version is well documented [here](https://hydrology.usu.edu/taudem/taudem5/documentation.html) |
+| User Documentation | [Documentation](http://tools.riverscapes.xyz/vbet/) is in progress | <i class="fa fa-battery-quarter" aria-hidden="true"></i> | Documentation has not been finished for the Riverscapes application of TauDEM, but the original version is well documented [here](https://hydrology.usu.edu/taudem/taudem5/documentation.html) |
 | Easy User Interface | Tool is accessed via command prompt | <i class="fa fa-battery-quarter" aria-hidden="true"></i> | The tool is primarily run by North Arrow Research analysts. For a user to run this version of the tool themselves would require advanced understanding (programming capability) and significant documentation on the process. |
 | Scalability | batch-processing | <i class="fa fa-battery-full" aria-hidden="true"></i> | Tool is typically batch processed at the HUC 8 level |
 | Produces Riverscapes Projects <img  src="https://riverscapes.xyz/assets/images/data/RiverscapesProject_24.png"> | Yes | <i class="fa fa-battery-full" aria-hidden="true"></i> | Produces Riverscapes Projects that are fully-compatible with [RAVE](https://rave.riverscapes.xyz) |

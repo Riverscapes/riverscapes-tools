@@ -2,7 +2,7 @@
 title: Algorithm
 ---
 
-This temporary page describes the current experimental VBET algorithm.
+This temporary page describes the current experimental VBET algorithm. (**THIS IS OUTDATED AND NEEDS TO BE UPDATED**)
 
 ### Step 1 - Slope Evidence
 
@@ -32,14 +32,14 @@ The goal is to invert the raster so that high HAND values have the lowest raster
 
 ### Step 3 - Channel Evidence
 
-A third evidence raster is generated that represents wet areas - essentially areas virtually guaranteed to be valley bottom. First the perennial polyline network is buffered by 25 metres ([code](https://github.com/Riverscapes/sqlBRAT/blob/master/vbet.py#L92)) and converted into a raster. Next the flow area polygons representing large channels are also rasterized and combined into the network raster. 
+A third evidence raster is generated that represents wet areas - essentially areas virtually guaranteed to be valley bottom. First the perennial polyline network is buffered by 25 metres ([code](https://github.com/Riverscapes/sqlBRAT/blob/master/vbet.py#L92)) and converted into a raster. Next the flow area polygons representing large channels are also rasterized and combined into the network raster.
 
 |Feature|Output Value|
 |Perennial network buffered by 25 m| 1|
 |Flow area polygons| 1|
 |All other areas|Null|
 
-### Step 4  - Combined Evidence 
+### Step 4  - Combined Evidence
 
 The slope evidence and HAND evidence rasters are multiplied together ([code](https://github.com/Riverscapes/sqlBRAT/blob/master/vbet.py#L150)). The channel evidence is then burned into the resultant raster. Essentially the result of the multiplication is updated to be 1 wherever the channel evidence raster is 1.
 
@@ -77,5 +77,3 @@ Here's a description of the final VBET project folder structure:
 |outputs/vbet_68 to _100.shp|Final sanitized VBET polygons in increments of 0.1 probability of being valley bottom.|
 |project.rs.xml|Riverscapes project file|
 |vbet.log|Processing log|
-
-
