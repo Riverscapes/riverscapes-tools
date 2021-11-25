@@ -87,7 +87,7 @@ def build_network(flowlines_path: str,
 
     # Process artifical paths through small waterbodies
     if waterbodies_path is not None and waterbody_max_size is not None:
-        small_waterbodies = get_geometry_unary_union(waterbodies_path, epsg, 'AreaSqKm <= ({0})'.format(waterbody_max_size))
+        small_waterbodies = get_geometry_unary_union(waterbodies_path, epsg, attribute_filter='AreaSqKm <= ({0})'.format(waterbody_max_size))
         log.info('Retaining artificial features within waterbody features smaller than {0}km2'.format(waterbody_max_size))
         process_reaches(flowlines_path,
                         out_path,

@@ -28,7 +28,7 @@
         "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/network_intersected_300m",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/vegetation/existing_veg.tif",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/vegetation/historic_veg.tif",
-        "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/vbet_68", // VBET!!!!!
+        "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/vbet_full", // VBET!!!!!
         "{env:DATA_ROOT}/rs_context/${input:HUC}/transportation/roads.shp",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/transportation/railways.shp",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/transportation/canals.shp",
@@ -50,7 +50,7 @@
         "--waterbodies",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/NHDWaterbody.shp",
         "--max_waterbody",
-        "100", // max_waterbody
+        "0.001", // max_waterbody
         "--verbose"
       ]
     },
