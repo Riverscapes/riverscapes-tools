@@ -47,7 +47,8 @@ LayerTypes = {
         'VALLEY_BOTTOM': RSLayer('Valley Bottom', 'VALLEY_BOTTOM', 'Vector', 'valley_bottom'),
         'ROADS': RSLayer('Roads', 'ROADS', 'Vector', 'roads'),
         'RAIL': RSLayer('Rail', 'RAIL', 'Vector', 'rail'),
-        'CANALS': RSLayer('Canals', 'CANALS', 'Vector', 'canals')
+        'CANALS': RSLayer('Canals', 'CANALS', 'Vector', 'canals'),
+        'OWNERSHIP': RSLayer('Land Ownership', 'OWNERSHIP', 'Vector', 'ownership')
     }),
     'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/intermediates.gpkg', {}),
     'OUTPUTS': RSLayer('BRAT', 'OUTPUTS', 'Geopackage', 'outputs/brat.gpkg', {
@@ -133,7 +134,8 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
         'VALLEY_BOTTOM': valley_bottom,
         'ROADS': roads,
         'RAIL': rail,
-        'CANALS': canals
+        'CANALS': canals,
+        'OWNERSHIP': ownership
     }
 
     input_layers = {}
@@ -193,7 +195,7 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
     # Calculate the conflict attributes ready for conservation
     conflict_attributes(outputs_gpkg_path, reach_geometry_path,
                         input_layers['VALLEY_BOTTOM'], input_layers['ROADS'], input_layers['RAIL'], input_layers['CANALS'],
-                        ownership, 30, 5, cfg.OUTPUT_EPSG, canal_codes, intermediates_gpkg_path)
+                        input_layers['OWNERSHIP'], 30, 5, cfg.OUTPUT_EPSG, canal_codes, intermediates_gpkg_path)
 
     # Calculate the vegetation cell counts for each epoch and buffer
     for label, veg_raster in [('Existing Veg', prj_existing_path), ('Historical Veg', prj_historic_path)]:
