@@ -198,11 +198,21 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
                         input_layers['OWNERSHIP'], 30, 5, cfg.OUTPUT_EPSG, canal_codes, intermediates_gpkg_path)
 
     # Calculate the vegetation cell counts for each epoch and buffer
+    buffer_paths = []
     for label, veg_raster in [('Existing Veg', prj_existing_path), ('Historical Veg', prj_historic_path)]:
         for buffer in [streamside_buffer, riparian_buffer]:
-            vegetation_summary(outputs_gpkg_path, '{} {}m'.format(label, buffer), veg_raster, buffer)
+            buffer_path = os.path.join(intermediates_gpkg_path, f'buffer_{int(buffer)}m')
+            polygon_path = buffer_path if buffer_path in buffer_paths else None
+            vegetation_summary(outputs_gpkg_path, '{} {}m'.format(label, buffer), veg_raster, buffer, polygon_path)
+            buffer_paths.append(buffer_path)
+
+    # add buffers to project
+    for buffer in [streamside_buffer, riparian_buffer]:
+        LayerTypes['INTERMEDIATES'].add_sub_layer(f'{int(buffer)}M_BUFFER', RSLayer(f'{int(buffer)}m Buffer', f'{int(buffer)}M_BUFFER', 'vector', f'buffer_{int(buffer)}m'))
 
     ellapsed_time = time.time() - start_time
+
+    project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
     project.add_metadata([
         RSMeta("BratBuildProcTimeS", "{:.2f}".format(ellapsed_time), RSMetaTypes.INT),
         RSMeta("BratBuildProcTimeHuman", pretty_duration(ellapsed_time))

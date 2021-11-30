@@ -7,15 +7,17 @@
 import os
 import numpy as np
 from osgeo import gdal
+import ogr
 import rasterio
 import sqlite3
 from rasterio.mask import mask
 from rscommons import GeopackageLayer, Logger
 from rscommons.database import SQLiteCon
 from rscommons.classes.vector_base import VectorBase
+from shapely.geometry.base import GEOMETRY_TYPES
 
 
-def vegetation_summary(outputs_gpkg_path: str, label: str, veg_raster: str, buffer: float):
+def vegetation_summary(outputs_gpkg_path: str, label: str, veg_raster: str, buffer: float, save_polygons_path: str):
     """ Loop through every reach in a BRAT database and
     retrieve the values from a vegetation raster within
     the specified buffer. Then store the tally of
@@ -41,8 +43,10 @@ def vegetation_summary(outputs_gpkg_path: str, label: str, veg_raster: str, buff
 
     # Open the raster and then loop over all polyline features
     veg_counts = []
+    polygons = {}
     with rasterio.open(veg_raster) as src, GeopackageLayer(os.path.join(outputs_gpkg_path, 'ReachGeometry')) as lyr:
         _srs, transform = VectorBase.get_transform_from_raster(lyr.spatial_ref, veg_raster)
+        spatial_ref = lyr.spatial_ref
 
         for feature, _counter, _progbar in lyr.iterate_features(label):
             reach_id = feature.GetFID()
@@ -51,6 +55,7 @@ def vegetation_summary(outputs_gpkg_path: str, label: str, veg_raster: str, buff
                 geom.Transform(transform)
 
             polygon = VectorBase.ogr2shapely(geom).buffer(raster_buffer)
+            polygons[reach_id] = polygon
 
             try:
                 # retrieve an array for the cells under the polygon
@@ -93,4 +98,13 @@ def vegetation_summary(outputs_gpkg_path: str, label: str, veg_raster: str, buff
             raise Exception('Errors were found inserting records into the database. Cannot continue.')
         database.conn.commit()
 
+    if save_polygons_path:
+        log.info(f'Saving Buffer Polygons to {save_polygons_path}')
+
+        with GeopackageLayer(save_polygons_path, write=True) as out_lyr:
+            out_lyr.create_layer(ogr.wkbPolygon, spatial_ref=spatial_ref, fields={'ReachID': ogr.OFTInteger})
+            out_lyr.ogr_layer.StartTransaction()
+            for rid, polygon in polygons.items():
+                out_lyr.create_feature(polygon, {'ReachID': rid})
+            out_lyr.ogr_layer.CommitTransaction()
     log.info('Vegetation summary complete')
