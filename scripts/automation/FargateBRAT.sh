@@ -71,7 +71,7 @@ try() {
     $BRAT_DIR \
     --reach_codes 33400,33600,33601,33603,46000,46003,46006,46007,55800 \
     --canal_codes 33600,33601,33603 \
-    --peren_codes 46006 \
+    --peren_codes 46006,55800,33400 \
     --flow_areas $RS_CONTEXT_DIR/hydrology/NHDArea.shp \
     --waterbodies $RS_CONTEXT_DIR/hydrology/NHDWaterbody.shp \
     --max_waterbody 0.001 \

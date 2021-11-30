@@ -44,7 +44,7 @@
         "--canal_codes",
         "33600,33601,33603",
         "--peren_codes",
-        "46006",
+        "46006,55800,33400",
         "--flow_areas",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/NHDArea.shp",
         "--waterbodies",
