@@ -208,7 +208,7 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
 
     # add buffers to project
     for buffer in [streamside_buffer, riparian_buffer]:
-        LayerTypes['INTERMEDIATES'].add_sub_layer(f'{int(buffer)}M_BUFFER', RSLayer(f'{int(buffer)}m Buffer', f'{int(buffer)}M_BUFFER', 'vector', f'buffer_{int(buffer)}m'))
+        LayerTypes['INTERMEDIATES'].add_sub_layer(f'{int(buffer)}M_BUFFER', RSLayer(f'{int(buffer)}m Buffer', f'{int(buffer)}M_BUFFER', 'Vector', f'buffer_{int(buffer)}m'))
 
     ellapsed_time = time.time() - start_time
 
