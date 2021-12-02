@@ -8,6 +8,7 @@
 # Date:     15 Jun 2019
 # -------------------------------------------------------------------------------
 import os
+import csv
 import re
 import sciencebasepy
 import zipfile
@@ -175,7 +176,25 @@ def get_dem_urls(vector_path, buffer_dist):
         log.error('Science Base Query: {}'.format(sbquery))
         raise Exception('No DEM rasters identified on Science Base')
 
-    return urls
+    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'ned_urls.csv'), 'rt') as f:
+        reader = csv.reader(f)
+        data = [item[0] for item in list(reader)]
+
+    clean_urls = []
+    for url in urls:
+        if url in data:
+            clean_urls.append(url)
+        else:
+            # Get the lat long from the url
+            key = url.split('/')[8]
+            candidate_urls = [val for val in data if key in val]
+            if len(candidate_urls) == 0:
+                log = Logger('Science Base')
+                log.error(f'Unable to find valid download url for: {url}')
+                raise Exception(f'Unable to find valid download url for: {url}')
+            # Append the newest dem
+            clean_urls.append(candidate_urls[-1])
+    return clean_urls
 
 
 def get_nhd_url(huc8):
