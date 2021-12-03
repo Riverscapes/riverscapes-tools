@@ -2,6 +2,23 @@
 title: Developing
 ---
 
+## Branches
+
+This repo may have lots of feature branches but there are 3 main branches that will persist and run parallel to each other:
+
+1. `master`: This is the deployed branch and will be the current state of the repo corresponding to the latest release.
+    - NEVER commit directly to master (we shouldn't be allowing it but best to not even try).
+2. `dev`: development branch. This is the integration branch that will collect feature branches in preparation for deployment. When `dev` is fully tested we draw a line under it and merge to master.
+    - You **should** use feature branches and pull requests to put new features into the repo.
+    - Any new features should be rebased on top of `dev`
+3. `docs`: this is what is deployed to GHPages. In general this will always stay ahead of `master` and should reflect the current version. We use this branch because documenting takes a lot of little commits that we may want to periodically squash.
+    - You _can_ user pull requests for the `docs` branchg but you don't have to.
+    - Anything pushed to `origin/docs` causes the website to rebuild immediately and goes live.
+    - We may periodically flatten docs and move it back on top of the `master` branch to keep things tidy. 
+
+
+## Getting set up
+
 This repo makes extensive use of a single `virtualenv` and `pip install -e`
 
 ## Linux / OSX
