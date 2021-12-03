@@ -16,7 +16,8 @@ def raster_area_intersection(rasters, bound_layer, out_layer):
     r_polys = []
     for raster in rasters:
         poly = get_data_polygon(raster)
-        r_polys.append(poly[0])
+        for p in poly:
+            r_polys.append(p)
 
     raster_bound = unary_union(r_polys)
     polygon_bound = get_geometry_unary_union(bound_layer)
