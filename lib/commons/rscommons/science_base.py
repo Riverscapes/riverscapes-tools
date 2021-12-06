@@ -182,19 +182,27 @@ def get_dem_urls(vector_path, buffer_dist):
         data = [item[0] for item in list(reader)]
 
     clean_urls = []
+    lat_long_used = []
     for url in urls:
+        # Find Lat Long sequence in url
+        lat_long = url.split('/')[8]
+        if lat_long in lat_long_used:
+            # Only one url per lat/long
+            continue
         if url in data:
+            # use url if its in the list
             clean_urls.append(url)
         else:
-            # Get the lat long from the url
-            key = url.split('/')[8]
-            candidate_urls = [val for val in data if key in val]
+            # Find corresponding urls for lat long
+            candidate_urls = [val for val in data if lat_long in val]
             if len(candidate_urls) == 0:
                 log = Logger('Science Base')
                 log.error(f'Unable to find valid download url for: {url}')
                 raise Exception(f'Unable to find valid download url for: {url}')
             # Append the newest dem
             clean_urls.append(candidate_urls[-1])
+        lat_long_used.append(lat_long)
+
     return clean_urls
 
 
