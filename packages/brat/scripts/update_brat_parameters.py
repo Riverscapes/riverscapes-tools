@@ -120,7 +120,7 @@ def update_watersheds(curs, watershed_csv):
 
             # Load the hydrologic parameters for this watershed and substitute a placeholder for drainage area
             curs.execute('SELECT * FROM vw_watershed_hydro_params WHERE watershed_id = %s', [watershed])
-            params = {row['name']: row['value'] for row in curs.fetchall()}
+            params = {row['name']: row['value'] * row['conversion'] for row in curs.fetchall()}
             params['DRNAREA'] = 1.0
 
             try:
