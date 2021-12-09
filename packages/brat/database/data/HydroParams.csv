@@ -14,7 +14,7 @@ ParamID,Name,Description,Aliases,DataUnits,EquationUnits,Conversion,Definition
 13,I24H2Y,24hr 2 Year Precipitation,I24H2Y,Inches * 100000,inches,1e-05,Maximum 24-hour precipitation that occurs on average once in 2 years - Equivalent to precitation intensity index. https://hdsc.nws.noaa.gov/pub/hdsc/data/
 14,LC11Forest,Percent Forest From NLCD2011,LC11Forest,percent,percent,1.0,Percentage of forest from NLCD 2011 classes 41-43
 15,ELEV1K,Mean Basin Elevation (thousands of feet),ELEV1K,metres,thousands of feet,0.00328084,Mean basin elevation in thousands of feet
-16,FORESTP1,Percent Forest Cover + 1%,FORESTP1,percent,percent,100.0,Percentage of area covered by forest + 1%
+16,FORESTP1,Percent Forest Cover + 1%,FORESTP1,percent,percent,1.0,Percentage of area covered by forest + 1%
 17,A7500,"Percent of drainage area above 7,500ft",A7500,percent,percent,1.0,"Percentage of the drainage area above 7,500ft elevation"
 18,JANMINT2K,Mean Min January Temp,JANMINT2K,degrees fahrenheit (Convert Manually from PRISM),degrees fahrenheit,1.0,Mean Minimum January Temperature from 2K resolution PRISM 1961-1990 data. NOTE: Data Must be converted to Fahrenheit manually before entering.
 19,SOILCAPACITY,Average Soil Capacity,SOILCAPACITY,milimeteres/150cm,inches/inch,0.000666667,Average Soil Capacity (From NRCS) https://www.arcgis.com/home/item.html?id=e66bffd8e4614cc9bf3c770fe6a4d4fc
@@ -35,5 +35,5 @@ ParamID,Name,Description,Aliases,DataUnits,EquationUnits,Conversion,Definition
 34,AREA,HUC Area,AREA,sq. km,sq. mi,0.386102,HUC area 
 35,ET_SPR,Mean spring evapotranspiration ,ET_SPR,inches/month,inches/month,1.0,
 36,ELEV5K,%HUC above 5000',ELEV5K,percent,percent,1.0,%HUC above 5000 feet elevation 
-37,ELEV6K,%HUC above 6000' ,ELEV6K,percent,percent,100.0,%HUC above 6000 feet elevation 
+37,ELEV6K,%HUC above 6000' ,ELEV6K,percent,percent,1.0,%HUC above 6000 feet elevation 
 38,PII,Precipitation Intensity Index ,PII,unkown,unkown,1.0,
