@@ -57,7 +57,7 @@ def update_brat_parameters(host, port, database, user_name, password, csv_dir):
 
     # Update watersheds first, because it will attempt to verify the hydrologic equations
     # and abort with errors and before any CSV files are changed.
-    update_watersheds(curs, watershed_csv)
+    cols1, watersheds1 = update_watersheds(curs, watershed_csv)
 
     # Now process all the other tables
     for pg_table in tables:
@@ -79,6 +79,7 @@ def update_brat_parameters(host, port, database, user_name, password, csv_dir):
             AND tc.table_name = c.table_name AND ccu.column_name = c.column_name
             WHERE constraint_type = 'PRIMARY KEY' and tc.table_name = %s""", [pg_table])
         keys = [row['column_name'] for row in curs.fetchall()]
+        print(keys)
 
         # Load all the data from the table
         curs.execute('SELECT * FROM {} ORDER BY {}'.format(pg_table, ','.join(keys)))
@@ -87,6 +88,7 @@ def update_brat_parameters(host, port, database, user_name, password, csv_dir):
         # write the data to the CSV
         output_csv = os.path.join(csv_dir, relative_path, 'intersect' if len(keys) > 1 else '', '{}.csv'.format(output_table))
         write_values_to_csv(output_csv, cols, data)
+        write_values_to_csv(watershed_csv, cols1, watersheds1)
 
 
 def snake_to_pascal(snake_name):
@@ -164,7 +166,9 @@ def update_watersheds(curs, watershed_csv):
         raise Exception('Aborting due to {} hydrology equation errors'.format(len(unique_errors)))
 
     cols = list(next(iter(watersheds)).keys())
-    write_values_to_csv(watershed_csv, cols, watersheds)
+
+    # write_values_to_csv(watershed_csv, cols, watersheds)
+    return cols, watersheds
 
 
 def write_values_to_csv(csv_file, cols, values):
