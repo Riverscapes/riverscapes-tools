@@ -122,10 +122,11 @@ def update_database(db_path, csv_path):
 
     log = Logger('DatabaseUpdate')
 
-    csv_path = csv_path if csv_path else os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', '..', 'database', 'data')
-
     if not os.path.isfile(db_path):
         raise Exception('No existing db found at path: {}'.format(db_path))
+
+    if not os.path.isdir(csv_path):
+        raise Exception('Csv path was not a valid directory: {}'.format(csv_path))
 
     log.info('Updating SQLite database at {0}'.format(db_path))
 

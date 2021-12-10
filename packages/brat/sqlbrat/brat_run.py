@@ -91,6 +91,7 @@ def brat_run(project_root, csv_dir):
         raise Exception('BRAT geopackage file missing at {}. You must run Brat Build first.'.format(gpkg_path))
 
     # Update any of the lookup tables we need
+    csv_dir = csv_dir if csv_dir else os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'data')
     update_database(gpkg_path, csv_dir)
 
     # Store the BRAT Run date time to the database (for reporting)

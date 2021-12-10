@@ -5,6 +5,7 @@
   },
   "python.linting.pylintArgs": [
     "--extension-pkg-whitelist=scipy,rasterio",
+    "--ignored-modules=sqlite3",
     "--ignore=E501",
     "--max-line-length=240"
   ],  
