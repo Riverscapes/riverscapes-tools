@@ -86,7 +86,8 @@ def create_database(huc: str, db_path: str, metadata: Dict[str, str], epsg: int,
     curs = conn.cursor()
     curs.executescript(qry)
 
-    load_lookup_data(db_path, os.path.dirname(schema_path))
+    csv_dir = os.path.join(os.path.dirname(schema_path), 'data')
+    load_lookup_data(db_path, csv_dir)
 
     # Keep only the designated watershed
     curs.execute('DELETE FROM Watersheds WHERE WatershedID <> ?', [huc])
@@ -124,9 +125,6 @@ def update_database(db_path, csv_path):
 
     if not os.path.isfile(db_path):
         raise Exception('No existing db found at path: {}'.format(db_path))
-
-    if not os.path.isdir(csv_path):
-        raise Exception('Csv path was not a valid directory: {}'.format(csv_path))
 
     log.info('Updating SQLite database at {0}'.format(db_path))
 
@@ -170,8 +168,11 @@ def load_lookup_data(db_path, csv_dir):
 
     log = Logger('Database')
 
+    if not os.path.isdir(csv_dir):
+        raise Exception('csv_dir path was not a valid directory: {}'.format(csv_dir))
+
     # Load lookup table data into the database
-    dir_search = os.path.join(csv_dir, 'data', '**', '*.csv')
+    dir_search = os.path.join(csv_dir, '**', '*.csv')
     for file_name in glob.glob(dir_search, recursive=True):
         table_name = os.path.splitext(os.path.basename(file_name))[0]
         with open(file_name, mode='r') as csvfile:

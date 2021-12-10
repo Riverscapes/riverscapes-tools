@@ -6,8 +6,7 @@
 """
 import os
 import numpy as np
-from osgeo import gdal
-import ogr
+from osgeo import gdal, ogr
 import rasterio
 import sqlite3
 from rasterio.mask import mask
