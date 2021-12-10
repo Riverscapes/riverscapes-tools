@@ -141,6 +141,8 @@ def raster_buffer_stats2(polygons, raster):
             mean = None
             maximum = None
             minimum = None
+            count = None
+            rsum = None
 
             if not mask_raster.mask.all():
                 mean = float(mask_raster.mean())
