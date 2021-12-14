@@ -1,5 +1,6 @@
 ---
-title: Algorithm
+title: The VBET Algorithm
+weight: 2
 ---
 
 This temporary page describes the current experimental VBET algorithm. (**THIS IS OUTDATED AND NEEDS TO BE UPDATED**)
