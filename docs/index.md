@@ -22,27 +22,27 @@ Users will need a [free account](https://riverscapes.xyz/Data_Warehouses/signup.
 
   <div class="column">
     <div class="card">
-      <a href="(https://tools.riverscapes.xyz/rscontext/)"><img align="center" src="{{ site.baseurl }}/assets/images/tools/RSC_Tile.png"></a>
+      <a href="https://tools.riverscapes.xyz/rscontext" target="blank"><img align="center" src="{{ site.baseurl }}/assets/images/tools/RSC_Tile.png"></a>
       <div class="card-section">
         <h4>Riverscapes Context</h4>
-        <p>The <a href="(https://tools.riverscapes.xyz/rscontext/)"><b>Riverscapes Context</b></a>  tool automatically aggregates a variety of nationally available spatial datasets into a riverscapes project for a given watershed (e.g. HUC8). These data can then be used for contextual purposes, mapping, or as input data in other tools. <img src="{{ site.baseurl }}/assets/images/rc/RiverscapesCompliant_24.png"></p>
+        <p>The <a href="https://tools.riverscapes.xyz/rscontext/"><b>Riverscapes Context</b></a>  tool automatically aggregates a variety of nationally available spatial datasets into a riverscapes project for a given watershed (e.g. HUC8). These data can then be used for contextual purposes, mapping, or as input data in other tools. <img src="{{ site.baseurl }}/assets/images/rc/RiverscapesCompliant_24.png"></p>
       </div>
     </div>
   </div>
 
   <div class="column">
     <div class="card">
-      <a href="https://tools.riverscapes.xyz/brat"><img align="center" src="{{ site.baseurl }}/assets/images/tools/ChannelArea_Tile.png"></a>
+      <a href="https://tools.riverscapes.xyz/channel" target="blank"><img align="center" src="{{ site.baseurl }}/assets/images/tools/ChannelArea_Tile.png"></a>
       <div class="card-section">
         <h4>Channel Area</h4>
-        <p>The <a href="https://tools.riverscapes.xyz/brat"><b>Beaver Restoration Assessment Tool</b></a>  tool generates polygons representing the active channel network within a watershed. <img src="{{ site.baseurl }}/assets/images/rc/RiverscapesCompliant_24.png"></p>
+        <p>The <a href="https://tools.riverscapes.xyz/channel" targetj="blank"><b>Channel Area</b></a>  tool generates polygons representing the active channel network within a watershed. <img src="{{ site.baseurl }}/assets/images/rc/RiverscapesCompliant_24.png"></p>
       </div>
     </div>
   </div>
 
   <div class="column">
     <div class="card">
-      <a href="https://tools.riverscapes.xyz/taudem"><img align="center" src="{{ site.baseurl }}/assets/images/tools/TauDEM_Tile.png"></a>
+      <a href="https://tools.riverscapes.xyz/taudem" target="blank"><img align="center" src="{{ site.baseurl }}/assets/images/tools/TauDEM_Tile.png"></a>
       <div class="card-section">
         <h4>TauDEM</h4>
         <p>The <a href="https://tools.riverscapes.xyz/taudem"><b>TauDEM</b></a> is a suite of tools for topographic analysis using DEMs. <img src="{{ site.baseurl }}/assets/images/rc/RiverscapesCompliant_24.png"></p>
@@ -66,7 +66,7 @@ Users will need a [free account](https://riverscapes.xyz/Data_Warehouses/signup.
 
   <div class="column">
     <div class="card">
-      <a href="https://tools.riverscapes.xyz/brat"><img align="center" src="{{ site.baseurl }}/assets/images/tools/BRAT_Tile.png"></a>
+      <a href="https://tools.riverscapes.xyz/brat" target="blank"><img align="center" src="{{ site.baseurl }}/assets/images/tools/BRAT_Tile.png"></a>
       <div class="card-section">
         <h4>BRAT</h4>
         <p>The <a href="https://tools.riverscapes.xyz/brat"><b>Beaver Restoration Assessment Tool</b></a> combines a model estimating the capacity of a riverscape to support dam building activity with analysis of potential anthropogenic conflicts to create a tool that can be used to inform where <a href ="http://lowtechpbr.restoration.usu.edu/">LTPBR</a>restoration using beaver can be targeted. <img src="{{ site.baseurl }}/assets/images/rc/RiverscapesCompliant_24.png"></p>
@@ -93,7 +93,7 @@ Users will need a [free account](https://riverscapes.xyz/Data_Warehouses/signup.
 These tools are undergoing refactoring to Production-Grade status.
 
 * [**RVD**](https://tools.riverscapes.xyz/rvd): **Riparian Vegetation Departure** uses nationally available vegetation classification datasets to estimate change in riparian vegetation cover from historic conditions within riverscapes. ![pending]({{ site.baseurl }}/assets/images/rc/RiverscapesCompliantPending_28.png)
-* [**Confinement**](https://tools.riverscapes.xyz/cofinement): The **Confinement Tool** calculates the valley confinement for each segment of a drainage network. ![pending]({{ site.baseurl }}/assets/images/rc/RiverscapesCompliantPending_28.png)
+<!--- * [**Confinement**](https://tools.riverscapes.xyz/cofinement): The **Confinement Tool** calculates the valley confinement for each segment of a drainage network. ![pending]({{ site.baseurl }}/assets/images/rc/RiverscapesCompliantPending_28.png) -->
 
 ## Support
 The RC is committed to supporting users and consumers of these tool outputs. We encourage questions regarding tools and their use through our online support forum [here](https://github.com/Riverscapes/riverscapes-tools/discussions):
