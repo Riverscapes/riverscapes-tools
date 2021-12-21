@@ -80,7 +80,8 @@ us_states = {
     'WV': 'West Virginia',
     'WI': 'Wisconsin',
     'WY': 'Wyoming',
-    'CN': 'Canada'
+    'CN': 'Canada',
+    'MX': 'Mexico'
 }
 
 
@@ -224,7 +225,7 @@ def get_ntd_urls(states):
     """
     urls = {}
     for state in states:
-        if state.lower() != 'canada':
+        if state.lower() not in ['canada', 'mexico']:
             urls[state] = _get_shapefile_urls(ntd_parent, 'Shapefile', state)
 
     return urls
