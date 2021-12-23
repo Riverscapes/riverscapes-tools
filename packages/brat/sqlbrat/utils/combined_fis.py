@@ -34,7 +34,7 @@ def combined_fis(database: str, label: str, veg_type: str, max_drainage_area: fl
     capacity_field = 'oCC_{}'.format(veg_type)
     dam_count_field = 'mCC_{}_CT'.format(veg_type)
 
-    fields = [veg_fis_field, 'iGeo_Slope', 'iGeo_DA', 'iHyd_SP2', 'iHyd_SPLow', 'iGeo_Len']
+    fields = [veg_fis_field, 'iGeo_Slope', 'iGeo_DA', 'iHyd_SP2', 'iHyd_SPLow', 'iGeo_Len', 'ReachCode']
     reaches = load_attributes(database, fields, ' AND '.join(['({} IS NOT NULL)'.format(f) for f in fields]))
 
     calculate_combined_fis(reaches, veg_fis_field, capacity_field, dam_count_field, max_drainage_area)
@@ -63,6 +63,7 @@ def calculate_combined_fis(feature_values: dict, veg_fis_field: str, capacity_fi
     # get arrays for fields of interest
     feature_count = len(feature_values)
     reachid_array = np.zeros(feature_count, np.int64)
+    reachcode_array = np.zeros(feature_count, np.int64)
     veg_array = np.zeros(feature_count, np.float64)
     hydq2_array = np.zeros(feature_count, np.float64)
     hydlow_array = np.zeros(feature_count, np.float64)
@@ -72,6 +73,7 @@ def calculate_combined_fis(feature_values: dict, veg_fis_field: str, capacity_fi
     counter = 0
     for reach_id, values in feature_values.items():
         reachid_array[counter] = reach_id
+        reachcode_array[counter] = values['ReachCode']
         veg_array[counter] = values[veg_fis_field]
         hydlow_array[counter] = values['iHyd_SPLow']
         hydq2_array[counter] = values['iHyd_SP2']
@@ -215,6 +217,22 @@ def calculate_combined_fis(feature_values: dict, veg_fis_field: str, capacity_fi
         # Only compute FIS if the reach has less than user-defined max drainage area.
         # this enforces a stream size threshold above which beaver dams won't persist and/or won't be built
         if not max_drainage_area or drain_array[i] < max_drainage_area:
+
+            comb_fis.input['input1'] = veg_array[i]
+            comb_fis.input['input2'] = hydq2_array[i]
+            comb_fis.input['input3'] = hydlow_array[i]
+            comb_fis.input['input4'] = slope_array[i]
+            comb_fis.compute()
+            capacity = comb_fis.output['result']
+
+            # Combined FIS result cannot be higher than limiting vegetation FIS result
+            if capacity > veg_array[i]:
+                capacity = veg_array[i]
+
+            if round(capacity, 6) == defuzz_centroid:
+                capacity = 0.0
+
+        elif drain_array[i] >= max_drainage_area and reachcode_array[i] == 33600:
 
             comb_fis.input['input1'] = veg_array[i]
             comb_fis.input['input2'] = hydq2_array[i]
