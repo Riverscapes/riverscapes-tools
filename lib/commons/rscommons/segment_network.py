@@ -227,6 +227,16 @@ def cut(line, distance):
                 LineString(line.coords[:i] + [cp]),
                 LineString([cp] + line.coords[i:])
             )
+        if line.is_ring and i + 2 == len(line.coords):
+            # Rare case when line is ring (pt[0] == pt[-1]) and
+            # distance lies between last and second to last coords
+            cut_distance = distance - pd
+            cp = LineString(line.coords[:-1]).interpolate(cut_distance)
+            return (
+                LineString(line.coords[:-1] + [cp]),
+                LineString([cp] + line.coords[-1:])
+            )
+    return None
 
 
 def copy_fields(in_feature, out_feature, in_layer_def, out_layer_def):
