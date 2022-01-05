@@ -28,4 +28,4 @@ When using **ArcRAVE** or **QRAVE**, import the project by clicking on the `Open
 <iframe width="560" height="315" src="https://www.youtube.com/embed/xUhHvajXQhw" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 </div>
 
-Once you have downloaded the data, you can begin [working with BRAT outputs](https://tools.riverscapes.xyz/brat/docs/Getting%20Started/WorkingWithOutputs.html)
+Once you have downloaded the data, you can begin [working with BRAT outputs](https://tools.riverscapes.xyz/brat/Getting%20Started/WorkingWithOutputs.html)

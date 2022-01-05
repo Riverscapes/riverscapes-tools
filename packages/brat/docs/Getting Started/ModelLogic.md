@@ -175,7 +175,7 @@ The risk for each segment is then assessed using the following logic:
 - Nearest infrastructure is within 30 meters or land use is urban, and existing dam capacity is at least 5 dams/km
 
 ## Restoration or Conservation
-Restoration and conservation opportunities is a management layer that combines the risk of undesirable dams management outputs and current land use with existing and historic dam capacity outputs. The model logic described below is used to separate each stream reach into one of four categories that provide guidance on the feasibility and level of effort that would be required to implement beaver restoration or conservation.
+Restoration and conservation opportunities is a management layer that combines the risk of undesirable dams outputs and current land use with existing and historic dam capacity outputs. The model logic described below is used to separate each stream reach into one of four categories that provide guidance on the feasibility and level of effort that would be required to implement beaver restoration or conservation.
 
 **Easiest - Low-Hanging Fruit:**
 - *Risk* of undesirable dams is "negligible" or "minor"
