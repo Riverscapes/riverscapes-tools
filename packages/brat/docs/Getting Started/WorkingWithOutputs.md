@@ -29,12 +29,12 @@ In addition, the capacity outputs and reach lengths were used to report estimate
 
 ### Management Outputs
 The **management** output layers include outputs that describe:
-- the limiting factors which contribute to unsuitable or limited beaver dam opportunites (`LimitationID` & `Limitation` fields)
-- risk categories which are based on land use and antrhopogenic proximity (`RiskID` & `Risk` fields)
+- the limiting factors which contribute to unsuitable or limited beaver dam opportunities (`LimitationID` & `Limitation` fields)
+- risk categories which are based on land use and anthropogenic proximity (`RiskID` & `Risk` fields)
 - a measure of the effort exhibited to perform restoration or conservation in the segment (`OpportunityID` & `Opportunity` fields)
 
 #### Unsuitable or Limited Beaver Dam Opportunities
-(`Limitation`) Identifies areas where beaver cannot build dams now, and also differentiates stream segments into antrhopogenically and naturally limited areas. The following color scheme is used to illustrate these distinctions:
+(`Limitation`) Identifies areas where beaver cannot build dams now, and also differentiates stream segments into anthropogenically and naturally limited areas. The following color scheme is used to illustrate these distinctions:
 
 (THIS LEGEND NEEDS TO BE UPDATED)
 ![Legend_BRAT_Management_Unsuitable_or_Limited_Beaver_Dam_Opportunities]({{ site.baseurl }}/assets/images/BRAT_Legends_Unsuitable.PNG){: width="350" height="350"}

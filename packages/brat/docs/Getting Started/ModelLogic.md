@@ -154,6 +154,8 @@ The capacity model is applied using the existing vegetation layer, as well as th
 ## Risk of Undesirable Dams
 Risk of undesirable dams for each stream segment is based on the segment's capacity to support dams, its proximity to human infrastructure, and land use of the riverscape surround the stream segment. The model calculates the distance to different types of infrastructure (roads and road crossings, railroads, and canals and diversion points), and this information is recorded in attributes of the stream segment. Similarly to assigning vegetation suitability to each pixel based on land cover classification, a lookup table is used to assign a land use intensity value from 0 (no land use) to 1 (high intensity land use). The value of the pixels surrounding each segment is averaged to calculate an overall land use intensity value associated with the segment, which is recorded in the segment attributes.
 
+![risk]({{site.baseurl}}/assets/images/risk.png)
+
 The risk for each segment is then assessed using the following logic:
 
 **Negligible Risk:**
@@ -173,3 +175,57 @@ The risk for each segment is then assessed using the following logic:
 - Nearest infrastructure is within 30 meters or land use is urban, and existing dam capacity is at least 5 dams/km
 
 ## Restoration or Conservation
+Restoration and conservation opportunities is a management layer that combines the risk of undesirable dams management outputs and current land use with existing and historic dam capacity outputs. The model logic described below is used to separate each stream reach into one of four categories that provide guidance on the feasibility and level of effort that would be required to implement beaver restoration or conservation.
+
+**Easiest - Low-Hanging Fruit:**
+- *Risk* of undesirable dams is "negligible" or "minor"
+- *Existing Capacity* estimates are at least "Occasional"  
+- *Existing Capacity* is three dams or fewer less than the *Historic Capacity*.  
+
+**Straight Forward - Quick Return:**
+- *Risk* of undesirable dams is "negligible" or "minor"
+- *Existing Capacity* estimate is greater than "None" and *Historic Capacity* estimate is "Frequent" or "Pervasive"
+- *Existing Capacity* is three dams or fewer less than the *Historic Capacity*
+- *Land Use* is suitably low for beavers to return (75% or greater "Very Low" land use, less than 10% "High Land Use")
+
+**Strategic - Long-term Investment:**
+- *Risk* of undesirable dams is "negligible" or "minor"
+- *Existing Capacity* estimate is "None" or "Rare" (0-1) and *Historic Capacity* estimate is "Occasional" or higher
+- *Land Use* is suitably low for beavers to return (75% or greater "Very Low" land use, less than 10% "High Land Use")
+
+**Other:**
+- streams that don't fit into the other categories. Such areas are primarily streams where *Risk* of undesirable dams is classified as "Some" or "Considerable".
+
+## Unsuitable or Limited Opportunities
+For areas where dam building potential is limited or impossible, this layer identifies the type of limitation.
+
+![unsuitable_or_limited]({{site.baseurl}}/assets/images/limited_opportunities.png)
+
+**Anthropogenically Limited:**
+- Capacity from the *vegetation FIS* based on *Historic Vegetation* is greater than 0
+- *Slope* is not a limiting factor (< 0.23)
+- Capacity from the *vegetation FIS* based on *Existing Vegetation* is 0, indicating high levels of anthropogenic land use ("Land Use" > 0.3)
+
+ **Stream Power Limited:**
+ - Capacity from the *vegetation FIS* based on *Historic Vegetation* **and** *Existing Vegetation* is greater than 0
+ - *Slope* is not a limiting factor (< 0.23)
+ - Capacity based on *combined FIS* is 0 because *stream power* at low flow is too high for dam building or because *stream power* at high flows is too high for dams to persist.
+
+ **Slope Limited:**
+ - Capacity from the *vegetation FIS* based on *Historic Vegetation* is greater than 0
+ - Slope is too steep for beaver to build dams (>= 0.23)
+
+ **Potential Reservoir or Land Use Change:**
+ - Capacity from the *vegetation FIS* based on *Historic Vegetation* is "None" (0)
+ - Capacity from the *vegetation FIS* based on *Existing Vegetation* is greater than 0
+
+ **Naturally Vegetation Limited:**
+ - Capacity from the *vegetation FIS* based on *Historic Vegetation* **and** *Existing Vegetation* is "None" (0)
+
+**Stream Size Limited:**
+- Capacity is 0 because the stream is too large for dam building (exceeds the maximum drainage area threshold)
+
+**Dam Building Possible:**
+- Capacity from the *vegetation FIS* based on *Historic Vegetation* is greater than 0
+- *Slope* is not a limiting factor (< 0.23)
+- Existing capacity based on *combined FIS* is greater than 0

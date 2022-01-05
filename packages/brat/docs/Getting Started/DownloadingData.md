@@ -12,6 +12,10 @@ BRAT data can be downloaded frome the [Riverscapes Data Warehouse](https://data.
 
 ![download_data]({{site.baseurl }}/assets/images/download_data.png)
 
+<div class="responsive-embed">
+<iframe width="560" height="315" src="https://www.youtube.com/embed/jd9AwbGFTTM" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+</div>
+
 ## Viewing/Exploring Data
 BRAT Riverscapes projects can be viewed using the [Riverscapes Analysis Visualilzation Explorer](https://rave.riverscapes.xyz) (RAVE). RAVE is available in three varieties:
 - [ArcRAVE](https://rave.riverscapes.xyz/Download/install_arcrave.html) for ArcGIS users.
@@ -19,5 +23,9 @@ BRAT Riverscapes projects can be viewed using the [Riverscapes Analysis Visualil
 - WebRAVE(https://rave.riverscapes.xyz/Download/install_webrave.html), a webgis that can be used to explor riverscapes projects in a web browser. To open projects in WebRAVE, simply click on the globe icon next to the project in the data warehouse ![view_in_webrave]({{site.baseurl }}/assets/images/view_in_webrave.png)
 
 When using **ArcRAVE** or **QRAVE**, import the project by clicking on the `Open Riverscapes Project` button in the plugin, navigating to the project folder, and selecting the project.rs.xml file. This will bring in the entire BRAT project, structured into a project tree, along with all of the default symbology to visualize outputs.
+
+<div class="responsive-embed">
+<iframe width="560" height="315" src="https://www.youtube.com/embed/xUhHvajXQhw" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+</div>
 
 Once you have downloaded the data, you can begin [working with BRAT outputs](https://tools.riverscapes.xyz/brat/docs/Getting%20Started/WorkingWithOutputs.html)
