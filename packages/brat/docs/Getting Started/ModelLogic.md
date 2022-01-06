@@ -3,7 +3,7 @@ title: BRAT Model Logic
 weight: 3
 ---
 
-This page describes the inputs and logic that go into producing each of the BRAT outputs described in the [Working with BRAT Outputs](https://tools.riverscapes.xyz/brat/Getting%20Started/WorkingWithOutputs.html) page. An understanding of the model logic will help users to query the data to....
+This page describes the inputs and logic that go into producing each of the BRAT outputs described in the [Working with BRAT Outputs](https://tools.riverscapes.xyz/brat/Getting%20Started/WorkingWithOutputs.html) page. An understanding of the model logic will help users to query the data to understand what the model outputs mean, and how their values are calculated. This also allows the user to refine model results for areas of interest based on the reliability of the input data for that area.
 
 ## Capacity Estimates
 To estimate the capacity of a riverscape to support dam building activity, BRAT attempts to addresses four primary questions:
@@ -50,7 +50,7 @@ Empirical observations were used to determine the low flow stream power at which
 In the case of both low and high flow, categorical ambiguity is dealt with using fuzzy logic, described in the following section on how the model works.
 
 ### Calculating Capacity
-Capacity estimates are driven primarily by the vegetation, with the hydrology used to adjust (reduce) estimates if flow is a limiting factor (i.e., if floods cause dams to breach or blow out). In cases where channel slope is very low, capacity as also adjusted downward, as a single dam can back water up for a longer distance, reducing capacity. The first part of the capacity model, therefore, is based on the two vegetation suitability values (streamside and further out). These two values are combined in a fuzzy inference system (FIS). To account for categorical ambiguity, a particular vegetation suitability value can have partial membership in more than one category (e.g., 70% moderately suitable and 30% suitable). A rule table is then applied to the input values, and membership in output categories calculated. Finally, a "defuzzification" algorithm converts that membership into a discrete value of dams/km.
+Capacity estimates are driven primarily by the vegetation, with the hydrology used to adjust (reduce) estimates if flow is a limiting factor (i.e., if floods cause dams to breach or blow out). In cases where channel slope is very low, capacity as also adjusted downward, as a single dam can back water up for a longer distance, reducing capacity. The first part of the capacity model, therefore, is based on the two vegetation suitability values (streamside and riparian/upland). These two values are combined in a fuzzy inference system (FIS). To account for categorical ambiguity, a particular vegetation suitability value can have partial membership in more than one category (e.g., 70% moderately suitable and 30% suitable). A rule table is then applied to the input values, and membership in output categories calculated. Finally, a "defuzzification" algorithm converts that membership into a discrete value of dams/km.
 
 **Vegetation Fuzzy Inference System**
 ![veg_fis]({{site.baseurl}}/assets/images/vegfis.jpg)
@@ -197,7 +197,7 @@ Restoration and conservation opportunities is a management layer that combines t
 - streams that don't fit into the other categories. Such areas are primarily streams where *Risk* of undesirable dams is classified as "Some" or "Considerable".
 
 ## Unsuitable or Limited Opportunities
-For areas where dam building potential is limited or impossible, this layer identifies the type of limitation.
+For areas where dam building potential is limited or impossible, this layer identifies the type of limitation based on the logic outlined below.
 
 ![unsuitable_or_limited]({{site.baseurl}}/assets/images/limited_opportunities.png)
 
