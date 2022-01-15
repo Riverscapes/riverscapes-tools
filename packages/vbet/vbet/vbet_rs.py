@@ -44,6 +44,9 @@ def main():
             lyrs_in_out
         )
 
+        in_xml = args.in_xmls.split(',')[0]
+        out_prj.rs_copy_project_extents(in_xml)
+
         out_prj.XMLBuilder.write()
         report_path = out_prj.XMLBuilder.find('.//HTMLFile[@id="REPORT"]/Path').text
         report = VBETReport(os.path.join(out_prj.project_dir, report_path), out_prj)

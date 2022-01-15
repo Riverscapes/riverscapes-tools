@@ -52,7 +52,7 @@ class XMLBuilder:
 
         base_element.remove(found[0])
 
-    def add_sub_element(self, base_element, name='', text='', attribs={}, replace=False):
+    def add_sub_element(self, base_element, name='', text='', attribs={}, replace=False, element_position=None):
         """
         Creates a new element below an existing element
         :param base_element: an XML Element that we will attach our new sub element to
@@ -67,7 +67,11 @@ class XMLBuilder:
         if replace:
             self.delete_sub_element(base_element, name, attribs['id'])
 
-        new_element = ET.SubElement(base_element, name)
+        if element_position:
+            new_element = ET.Element(name)
+            base_element.insert(element_position, new_element)
+        else:
+            new_element = ET.SubElement(base_element, name)
         new_element.text = text
 
         for k, att in attribs.items():

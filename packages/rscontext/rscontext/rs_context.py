@@ -32,6 +32,7 @@ from rscommons.download_hand import download_hand
 from rscommons.raster_buffer_stats import raster_buffer_stats2
 from rscommons.vector_ops import get_geometry_unary_union, copy_feature_class
 from rscommons.prism import calculate_bankfull_width
+from rscommons.project_bounds import generate_project_extents_from_layer
 
 from rscontext.rs_segmentation import rs_segmentation
 from rscontext.flow_accumulation import flow_accumulation, flow_accum_to_drainage_area
@@ -351,6 +352,11 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
 
     report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
     project.add_report(realization, LayerTypes['REPORT'], replace=True)
+
+    # Add Project Extents
+    extents_json_path = os.path.join(output_folder, 'project_bounds.geojson')
+    extents = generate_project_extents_from_layer(processing_boundary, extents_json_path)
+    project.add_project_extent(extents_json_path, extents['CENTROID'], extents['BBOX'])
 
     ellapsed_time = time.time() - rsc_timer
     project.add_metadata([
