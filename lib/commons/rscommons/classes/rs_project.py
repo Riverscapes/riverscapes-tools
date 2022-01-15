@@ -10,6 +10,7 @@
 from __future__ import annotations
 from typing import List, Dict
 import os
+import shutil
 import datetime
 import uuid
 
@@ -23,6 +24,7 @@ from rscommons.classes.xml_builder import XMLBuilder
 from rscommons.util import safe_makedirs
 from rscommons.vector_ops import copy_feature_class
 
+Path = str
 
 _folder_inputs = '01_Inputs'
 _folder_analyses = '02_Analyses'
@@ -168,6 +170,7 @@ class RSProject:
 
         self.project_type = ''
         self.realizations_node = None
+        self.project_extent_node = None
         self.project_dir = os.path.dirname(self.xml_path)
 
     def create(self, name, project_type, meta: List[RSMeta] = None, meta_dict: Dict[str, str] = None, replace=True):
@@ -479,6 +482,33 @@ class RSProject:
         log.info('Report node created: {}'.format(file_path))
         return nod_dataset, file_path
 
+    def add_project_extent(self, geojson_path: Path, centroid: tuple, bbox: tuple):
+        log = Logger('add_project_extents')
+
+        ix = list(self.XMLBuilder.root).index(self.realizations_node)
+
+        project_extent_node = self.XMLBuilder.add_sub_element(self.XMLBuilder.root, name='ProjectBounds', element_position=ix)
+        centroid_node = self.XMLBuilder.add_sub_element(project_extent_node, name='Centroid')
+        self.XMLBuilder.add_sub_element(centroid_node, name='Lat', text=str(centroid[1]))
+        self.XMLBuilder.add_sub_element(centroid_node, name='Lng', text=str(centroid[0]))
+
+        # (minX, maxX, minY, maxY)
+        bbox_node = self.XMLBuilder.add_sub_element(project_extent_node, name='BoundingBox')
+        self.XMLBuilder.add_sub_element(bbox_node, name='MinLat', text=str(bbox[2]))
+        self.XMLBuilder.add_sub_element(bbox_node, name='MinLng', text=str(bbox[0]))
+        self.XMLBuilder.add_sub_element(bbox_node, name='MaxLat', text=str(bbox[3]))
+        self.XMLBuilder.add_sub_element(bbox_node, name='MaxLng', text=str(bbox[1]))
+
+        geojson_rel_path = os.path.relpath(geojson_path, self.project_dir)
+        geojson_node = self.XMLBuilder.add_sub_element(project_extent_node, name='Path', text=geojson_rel_path)
+
+        # ix_ext = list(self.XMLBuilder.root).index(project_extent_node)
+        # self.XMLBuilder.root.insert(ix, self.XMLBuilder.root[ix_ext])
+
+        # self.XMLBuilder.set_parent_map()
+
+        log.info(f'ProjectBounds node added: {geojson_path}')
+
     @staticmethod
     def getUniqueTypeID(nodParent, xml_tag, IDRoot):
 
@@ -560,3 +590,19 @@ class RSProject:
                         RSMeta("{}guid".format(lyr_prefix), lyrnod_in.attrib['guid'], RSMetaTypes.GUID),
                         RSMeta("{}path".format(lyr_prefix), lyrnod_in.find('Path').text, RSMetaTypes.FILEPATH),
                     ], lyrnod_out)
+
+    def rs_copy_project_extents(self, in_prj_path):
+
+        if self.XMLBuilder.root.find('ProjectBounds') is None:
+            in_prj = RSProject(None, in_prj_path)
+
+            project_extent_node = in_prj.XMLBuilder.root.findall("ProjectBounds")[0]
+
+            ix = list(self.XMLBuilder.root).index(self.XMLBuilder.root.find("Realizations"))
+            self.XMLBuilder.root.insert(ix, project_extent_node)
+
+            geojson_filename = project_extent_node.find('Path').text
+            in_geojson_path = os.path.join(os.path.dirname(in_prj_path), geojson_filename)
+            out_geojson_path = os.path.join(os.path.dirname(self.xml_path), geojson_filename)
+
+            shutil.copy(in_geojson_path, out_geojson_path)
