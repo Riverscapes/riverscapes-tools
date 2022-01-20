@@ -42,7 +42,7 @@ CONFINEMENT_DIR=$DATA_DIR/confinement/$HUC
 
 # Get the RSCli project we need to make this happen
 rscli download $RS_CONTEXT_DIR --type "RSContext" --meta "huc=$HUC" --tags "$RSCONTEXT_TAGS" \
-  --file-filter "hydrology\.gpkg" \
+  --file-filter "(hydrology\.gpkg|project_bounds.geojson)" \
   --no-input --verbose --program "$PROGRAM"
 
 # Go get vbet result for this to work
