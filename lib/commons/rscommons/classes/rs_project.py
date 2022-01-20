@@ -485,7 +485,7 @@ class RSProject:
     def add_project_extent(self, geojson_path: Path, centroid: tuple, bbox: tuple):
         log = Logger('add_project_extents')
 
-        ix = list(self.XMLBuilder.root).index(self.realizations_node)
+        ix = list(self.XMLBuilder.root).index(self.XMLBuilder.root.find("Realizations"))
 
         project_extent_node = self.XMLBuilder.add_sub_element(self.XMLBuilder.root, name='ProjectBounds', element_position=ix)
         centroid_node = self.XMLBuilder.add_sub_element(project_extent_node, name='Centroid')
@@ -502,11 +502,7 @@ class RSProject:
         geojson_rel_path = os.path.relpath(geojson_path, self.project_dir)
         geojson_node = self.XMLBuilder.add_sub_element(project_extent_node, name='Path', text=geojson_rel_path)
 
-        # ix_ext = list(self.XMLBuilder.root).index(project_extent_node)
-        # self.XMLBuilder.root.insert(ix, self.XMLBuilder.root[ix_ext])
-
-        # self.XMLBuilder.set_parent_map()
-
+        self.XMLBuilder.write()
         log.info(f'ProjectBounds node added: {geojson_path}')
 
     @staticmethod
