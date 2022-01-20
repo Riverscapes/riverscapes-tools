@@ -55,7 +55,7 @@ VBET_DIR=$DATA_DIR/output
 
 # Get the RSCli project we need to make this happen
 rscli download $RS_CONTEXT_DIR --type "RSContext" --meta "huc=$HUC" \
-  --file-filter "(hillshade|slope|dem|hand|hydrology)" \
+  --file-filter "(hillshade|slope|dem|hand|hydrology|project_bounds.geojson)" \
   --tags "$RSCONTEXT_TAGS" --no-input --verbose --program "$PROGRAM"
 
 rscli download $CHANNEL_AREA_DIR --type "ChannelArea" --meta "huc=$HUC" \

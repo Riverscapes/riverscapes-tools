@@ -49,7 +49,7 @@ CHANNEL_DIR=$DATA_DIR/channel/$HUC
 
 # Get the RSCli project we need to make this happe-9
 rscli download $RS_CONTEXT_DIR --type "RSContext" --meta "huc=$HUC" \
-  --file-filter "(hillshade|slope|dem|climate|hydrology)" \
+  --file-filter "(hillshade|slope|dem|climate|hydrology|project_bounds.geojson)" \
   --tags "$RSCONTEXT_TAGS" --no-input --verbose --program "$PROGRAM"
 
 ##########################################################################################
