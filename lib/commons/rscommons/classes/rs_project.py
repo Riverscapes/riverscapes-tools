@@ -589,16 +589,16 @@ class RSProject:
 
     def rs_copy_project_extents(self, in_prj_path):
 
+        in_prj = RSProject(None, in_prj_path)
+        project_extent_node = in_prj.XMLBuilder.root.findall("ProjectBounds")[0]
+
         if self.XMLBuilder.root.find('ProjectBounds') is None:
-            in_prj = RSProject(None, in_prj_path)
-
-            project_extent_node = in_prj.XMLBuilder.root.findall("ProjectBounds")[0]
-
             ix = list(self.XMLBuilder.root).index(self.XMLBuilder.root.find("Realizations"))
             self.XMLBuilder.root.insert(ix, project_extent_node)
 
-            geojson_filename = project_extent_node.find('Path').text
-            in_geojson_path = os.path.join(os.path.dirname(in_prj_path), geojson_filename)
-            out_geojson_path = os.path.join(os.path.dirname(self.xml_path), geojson_filename)
-
+        geojson_filename = project_extent_node.find('Path').text
+        in_geojson_path = os.path.join(os.path.dirname(in_prj_path), geojson_filename)
+        out_geojson_path = os.path.join(os.path.dirname(self.xml_path), geojson_filename)
+        
+        if not os.path.exists(out_geojson_path):
             shutil.copy(in_geojson_path, out_geojson_path)
