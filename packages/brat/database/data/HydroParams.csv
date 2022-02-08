@@ -37,3 +37,5 @@ ParamID,Name,Description,Aliases,DataUnits,EquationUnits,Conversion,Definition
 36,ELEV5K,%HUC above 5000',ELEV5K,percent,percent,1.0,%HUC above 5000 feet elevation 
 37,ELEV6K,%HUC above 6000' ,ELEV6K,percent,percent,1.0,%HUC above 6000 feet elevation 
 38,PII,Precipitation Intensity Index ,PII,unkown,unkown,1.0,
+39,STATSCLAY,STATSGO Percentage of Clay Soils,,percent,percent,1.0,STATSGO Percentage of Clay Soils
+40,OUTLETELEV,Elevation of Gage,,metres,feet,3.28084,Elevation of basin outlet (NWIS)
