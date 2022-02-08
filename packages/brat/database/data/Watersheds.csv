@@ -1116,7 +1116,7 @@ WatershedID,Name,AreaSqkm,States,Qlow,Q2,MaxDrainage,EcoregionID,Notes,Metadata
 10190002,Upper South Platte,4790.8,CO,(10**-1.99)*(DRNAREA**0.82)*(PRECIP**2.08),(10**-2.05)*(DRNAREA**0.78)*(BSLDEM10M**0.17)*(PRECIP**2.1),7320.0,21,https://pubs.usgs.gov/sir/2009/5136/pdf/SIR09-5136.pdf,
 10190003,Middle South Platte-Cherry Creek,7439.9,CO,0.0085*DRNAREA,(10**9.952)*(DRNAREA**0.626)*(I6H100Y**1.401)*(STATSCLAY**0.836)*(OUTLETELEV**-2.774),10000.0,25,https://doi.org/10.3133/sir20165099,
 10190004,Clear,1477.21,CO,(10**-26.56)*(DRNAREA**1.13)*(PRECIP**1.26)*(ELEV**5.85),(10**-2.05)*(DRNAREA**0.78)*(BSLDEM10M**0.17)*(PRECIP**2.1),1736.0,21,https://pubs.usgs.gov/sir/2009/5136/pdf/SIR09-5136.pdf,
-10190005,St. Vrain,2538.8,CO,(10**-3.46)*(DRNAREA**1.10)*(PRECIP**1.59),(10**1.26)*(DRNAREA**0.52)*(I6H100Y**0.35),2344.0,21,https://pubs.usgs.gov/sir/2009/5136/pdf/SIR09-5136.pdf,
+10190005,St. Vrain,2538.8,CO,(10**-1.99)*(DRNAREA**0.82)*(PRECIP**2.08),(10**-2.05)*(DRNAREA**0.78)*(BSLDEM10M**0.17)*(PRECIP**2.1),2344.0,21,https://pubs.usgs.gov/sir/2009/5136/pdf/SIR09-5136.pdf,
 10190006,Big Thompson,2156.02,CO,,,,21,,
 10190007,Cache La Poudre,4896.46,CO_WY,,,,21,,
 10190008,Lone Tree-Owl,1496.9,CO_WY,,,,25,,
