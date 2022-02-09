@@ -5,7 +5,27 @@ weight: 3
 
 Basemaps can provide important contextual information for riverscapes projects in addition to what the layers in the Riverscapes Context projects provide. [QRAVE](https://rave.riverscapes.xyz/Download/install_qrave.html) and [ArcRAVE](https://rave.riverscapes.xyz/Download/install_arcrave.html) provide access to various basemaps that can be displayed with projects to provide this context. There is a `Basemaps` folder within the RAVE project tree, where all of the available basemaps can be found and added to maps. This page contains descriptions of each of the available basemaps, including their sources.
 
-## [Google](https://www.google.com/maps)
+## Basemaps available in ArcRAVE
+(links lead to descriptions on this page)
+- [USGS hydrography]({{site.baseurl}}/basemaps.html#usgs-hydrography)
+- [USGS Topography]({{site.baseurl}}/basemaps.html#usgs-topography)
+- [Cartographic Basics]({{site.baseurl}}/basemaps.html#cartographic-basics)
+- [NAIP imagery]({{site.baseurl}}/basemaps.html#naip)
+- [Geology]({{site.baseurl}}/basemaps.html#geology)
+
+## Basemaps available in QRAVE
+(links lead to descriptions on this page)
+- [Google basemaps]({{site.baseurl}}/basemaps.html#google)
+- [Bing Imagery]({{site.baseurl}}/basemaps.html#bing-maps)
+- [USGS hydrography]({{site.baseurl}}/basemaps.html#usgs-hydrography)
+- [USGS Topography]({{site.baseurl}}/basemaps.html#usgs-topography)
+- [Cartographic Basics]({{site.baseurl}}/basemaps.html#cartographic-basics)
+- [NAIP imagery]({{site.baseurl}}/basemaps.html#naip)
+- [Geology]({{site.baseurl}}/basemaps.html#geology)
+
+## Basemap Descriptions
+
+### [Google](https://www.google.com/maps)
 
 - **Google Imagery** - Google's mosaic of aerial imagery used in Google Earth and Google Maps. It is composed of satellite imagery collected by a variety of satellite companies, and is continuously updated as new imagery is collected.
 
@@ -19,13 +39,13 @@ Basemaps can provide important contextual information for riverscapes projects i
 
 <img src="{{site.baseurl}}/assets/images/google_maps.png" width="560" height="315">
 
-## [Bing Maps](https://www.bing.com/maps/)
+### [Bing Maps](https://www.bing.com/maps/)
 
 - **Bing Aerial Imagery** - Bing's mosaic of aerial imagery used for Bing Maps. Similarly to Google, Bing collects satellite images from various sources and mosaics them together into a seamless basemap, which is continuously updated as new imagery is acquired.
 
 <img src="{{site.baseurl}}/assets/images/bing_imagery.png" width="560" height="315">
 
-## [USGS Hydrography](https://www.usgs.gov/national-hydrography/access-national-hydrography-products)
+### [USGS Hydrography](https://www.usgs.gov/national-hydrography/access-national-hydrography-products)
 
 - **Watershed Boundary Dataset (WBD)** - From the USGS: The Watershed Boundary Dataset (WBD) is a seamless, national hydrologic unit dataset. Hydrologic units represent the area of the landscape that drains to a portion of the stream network. More specifically, a hydrologic unit defines the areal extent of surface water drainage to an outlet point on a dendritic stream network or to multiple outlet points where the stream network is not dendritic. A hydrologic unit may represent all or only part of the total drainage area to an outlet point so that multiple hydrologic units may be required to define the entire drainage area at a given outlet. Hydrologic unit boundaries in the WBD are determined based on topographic, hydrologic, and other relevant landscape characteristics without regard for administrative, political, or jurisdictional boundaries. The WBD seamlessly represents hydrologic units at six required and two optional hierarchical levels.
 
@@ -44,7 +64,7 @@ See the [**legend**](https://hydro.nationalmap.gov/arcgis/rest/services/nhd/MapS
 
 <img src="{{site.baseurl}}/assets/images/nhd_basemap.png" width="560" height="315">
 
-## [USGS Topography](https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer)
+### [USGS Topography](https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer)
 The USGS Topography and Cartographic Basics basemaps are sourced from data with the USGS [National Map](https://www.usgs.gov/programs/national-geospatial-program/national-map), and other public domain data.
 
 - **Topo Base Map** - This basemap is a digitized version of the USGS topographic quadrangle maps.
@@ -59,7 +79,7 @@ The USGS Topography and Cartographic Basics basemaps are sourced from data with 
 
 - **NED 3DEPE** (not working)
 
-## Cartographic Basics
+### Cartographic Basics
 
 - **Boundaries** - this basemap brings in automatically symbolized boundaries for various types of geographic areas including:
   - State or Territory
@@ -94,7 +114,7 @@ See the [**transportation legend**](https://cartowfs.nationalmap.gov/arcgis/rest
 
 <img src="{{site.baseurl}}/assets/images/transportation.png" width="560" height="315">
 
-## [NAIP](https://www.fsa.usda.gov/programs-and-services/aerial-photography/imagery-programs/naip-imagery/)
+### [NAIP](https://www.fsa.usda.gov/programs-and-services/aerial-photography/imagery-programs/naip-imagery/)
 
 - **USGS NAIP Imagery**
 
@@ -104,7 +124,7 @@ See the [**transportation legend**](https://cartowfs.nationalmap.gov/arcgis/rest
 
 - **ESA World Imagery** (not working)
 
-## [Geology](https://www.sciencebase.gov/catalog/item/5888bf4fe4b05ccb964bab9d#:~:text=The%20SGMC%20is%20a%20compilation,have%20been%20%5B...%5D)
+### [Geology](https://www.sciencebase.gov/catalog/item/5888bf4fe4b05ccb964bab9d#:~:text=The%20SGMC%20is%20a%20compilation,have%20been%20%5B...%5D)
 
 - **SGMC Geology** - From the USGS: The State Geologic Map Compilation (SGMC) geodatabase of the conterminous United States represents a seamless, spatial database of 48 State geologic maps that range from 1:50,000 to 1:1,000,000 scale. A national digital geologic map database is essential in interpreting other datasets that support numerous types of national-scale studies and assessments, such as those that provide geochemistry, remote sensing, or geophysical data. The SGMC is a compilation of the individual U.S. Geological Survey releases of the Preliminary Integrated Geologic Map Databases for the United States. The SGMC geodatabase also contains updated data for seven States and seven entirely new State geologic maps that have been added since the preliminary databases were published.
 
