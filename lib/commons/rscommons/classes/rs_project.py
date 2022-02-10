@@ -17,6 +17,7 @@ import uuid
 import rasterio.shutil
 from osgeo import ogr
 from copy import copy
+import json
 
 from rscommons import Logger
 from rscommons.rspaths import parse_posix_path
@@ -602,3 +603,42 @@ class RSProject:
         
         if not os.path.exists(out_geojson_path):
             shutil.copy(in_geojson_path, out_geojson_path)
+
+    def get_project_bounds(self):
+
+        results = {}
+
+        project_bounds = self.XMLBuilder.root.find('ProjectBounds')
+
+        centroid = project_bounds.find("Centroid")
+        x = float(centroid.find('Lng').text)
+        y = float(centroid.find('Lat').text)
+        centroid_geom = ogr.Geometry(ogr.wkbPoint)
+        centroid_geom.AddPoint(x, y)
+        centroid_geom.FlattenTo2D()
+        results['Centroid'] = centroid_geom.ExportToJson()
+
+        bbox = project_bounds.find("BoundingBox")
+        xMin = float(bbox.find('MinLng').text)
+        yMin = float(bbox.find('MinLat').text)
+        xMax = float(bbox.find('MaxLng').text)
+        yMax = float(bbox.find('MaxLat').text)
+
+        bbox_ring = ogr.Geometry(ogr.wkbLinearRing)
+        bbox_ring.AddPoint(xMin, yMin)
+        bbox_ring.AddPoint(xMax, yMin)
+        bbox_ring.AddPoint(xMax, yMax)
+        bbox_ring.AddPoint(xMin, yMax)
+        bbox_ring.AddPoint(xMin, yMin)
+        bbox_geom = ogr.Geometry(ogr.wkbPolygon)
+        bbox_geom.AddGeometry(bbox_ring)
+        bbox_geom.FlattenTo2D()
+        results['BoundingBox'] = bbox_geom.ExportToJson()
+
+        json_file = project_bounds.find("Path").text
+        with open(os.path.join(self.project_dir, json_file)) as f:
+            gj = json.load(f)
+
+        results['Polygon'] = None if gj['features'][0]['geometry']['type'] != 'Polygon' else str(gj['features'][0]['geometry'])
+
+        return results
