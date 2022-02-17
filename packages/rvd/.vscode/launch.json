@@ -25,7 +25,7 @@
             "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/network_intersected_300m",
             "{env:DATA_ROOT}/rs_context/${input:HUC}/vegetation/existing_veg.tif",
             "{env:DATA_ROOT}/rs_context/${input:HUC}/vegetation/historic_veg.tif",
-            "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/vbet_50",
+            "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/vbet_full",
             "{env:DATA_ROOT}/rvd/${input:HUC}", // output folder
             "--reach_codes", "33400,46003,46006,46007,55800",
             "--meta", "Runner=VSCode",

@@ -21,7 +21,7 @@ lyrs_in_out = {
     'ROADS': 'Roads',
     'RAIL': 'Rail',
     'CANALS': 'Canals',
-    'VALLEY_BOTTOM': 'VBET_68'
+    'VALLEY_BOTTOM': 'VBET_FULL'
 }
 
 
