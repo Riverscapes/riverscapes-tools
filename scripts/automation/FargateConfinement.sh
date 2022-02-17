@@ -57,7 +57,7 @@ try() {
 
   confinement $HUC \
     $RS_CONTEXT_DIR/hydrology/hydrology.gpkg/network_intersected_300m \
-    $VBET_DIR/outputs/vbet.gpkg/vbet_68 \
+    $VBET_DIR/outputs/vbet.gpkg/vbet_full \
     $CONFINEMENT_DIR \
     BFwidth \
     ValleyBottom \
