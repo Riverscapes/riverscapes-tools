@@ -35,6 +35,7 @@ class SegmentFeature:
         geotype = georef.GetGeometryType()
         self.FCode = feature.GetField('FCode')
         self.TotDASqKm = feature.GetField('TotDASqKm')
+        self.DivDASqKm = feature.GetField('DivDASqKm')
         self.NHDPlusID = feature.GetField('NHDPlusID')
 
         if geotype not in [ogr.wkbLineStringZM, ogr.wkbLineString, ogr.wkbLineString25D, ogr.wkbLineStringM]:
