@@ -149,6 +149,7 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
             'WatershedID': ogr.OFTString,
             'FCode': ogr.OFTInteger,
             'TotDASqKm': ogr.OFTReal,
+            'DivDASqKm': ogr.OFTReal,
             'GNIS_Name': ogr.OFTString,
             'NHDPlusID': ogr.OFTReal
         })
