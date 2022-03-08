@@ -45,7 +45,7 @@ from rscontext.__version__ import __version__
 
 initGDALOGRErrors()
 
-cfg = ModelConfig('http://xml.riverscapes.net/Projects/XSD/V1/RSContext.xsd', __version__)
+cfg = ModelConfig('https://xml.riverscapes.net/Projects/XSD/V2/RiverscapesProject.xsd', __version__)
 
 # These are the Prism BIL types we expect
 PrismTypes = ['PPT', 'TMEAN', 'TMIN', 'TMAX', 'TDMEAN', 'VPDMIN', 'VPDMAX']
@@ -53,9 +53,9 @@ PrismTypes = ['PPT', 'TMEAN', 'TMIN', 'TMAX', 'TDMEAN', 'VPDMIN', 'VPDMAX']
 LYR_DESCRIPTIONS_JSON = os.path.join(os.path.os.path.dirname(__file__), 'layer_descriptions.json')
 LayerTypes = {
     # key: (name, id, tag, relpath)
-    'DEM': RSLayer('NED 10m DEM', 'DEM', 'DEM', 'topography/dem.tif'),
-    'FA': RSLayer('Flow Accumulation', 'FA', 'Raster', 'topography/flow_accum.tif'),
-    'DA': RSLayer('Drainage Area', 'DA', 'Raster', 'topography/drainarea_sqkm.tif'),
+    'DEM': RSLayer('NED 10m DEM', 'DEM', 'Raster', 'topography/dem.tif'),
+    'FA': RSLayer('Flow Accumulation', 'FLOW_ACCUM', 'Raster', 'topography/flow_accum.tif'),
+    'DA': RSLayer('Drainage Area', 'DRAINAGE_SQKM', 'Raster', 'topography/drainarea_sqkm.tif'),
     'HILLSHADE': RSLayer('DEM Hillshade', 'HILLSHADE', 'Raster', 'topography/dem_hillshade.tif'),
     'SLOPE': RSLayer('Slope', 'SLOPE', 'Raster', 'topography/slope.tif'),
     # Veg Layers
@@ -136,21 +136,22 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
     scratch_dem_folder = os.path.join(scratch_dir, 'rs_context', huc)
     safe_makedirs(scratch_dem_folder)
 
-    project, realization = create_project(huc, output_folder, [
+    project, realization, datasets = create_project(huc, output_folder, [
         RSMeta('HUC{}'.format(len(huc)), str(huc)),
         RSMeta('HUC', str(huc))
     ], meta)
 
     hydrology_gpkg_path = os.path.join(output_folder, LayerTypes['HYDROLOGY'].rel_path)
 
-    dem_node, dem_raster = project.add_project_raster(realization, LayerTypes['DEM'])
-    _node, hill_raster = project.add_project_raster(realization, LayerTypes['HILLSHADE'])
-    _node, flow_accum = project.add_project_raster(realization, LayerTypes['FA'])
-    _node, drain_area = project.add_project_raster(realization, LayerTypes['DA'])
-    _node, slope_raster = project.add_project_raster(realization, LayerTypes['SLOPE'])
-    _node, existing_clip = project.add_project_raster(realization, LayerTypes['EXVEG'])
-    _node, historic_clip = project.add_project_raster(realization, LayerTypes['HISTVEG'])
-    _node, fair_market_clip = project.add_project_raster(realization, LayerTypes['FAIR_MARKET'])
+    dem_node, dem_raster = project.add_project_raster(datasets, LayerTypes['DEM'])
+    _node, hill_raster = project.add_project_raster(datasets, LayerTypes['HILLSHADE'])
+    _node, flow_accum = project.add_project_raster(datasets, LayerTypes['FA'])
+    _node, drain_area = project.add_project_raster(datasets, LayerTypes['DA'])
+    hand_node, hand_raster = project.add_project_raster(datasets, LayerTypes['HAND'])
+    _node, slope_raster = project.add_project_raster(datasets, LayerTypes['SLOPE'])
+    _node, existing_clip = project.add_project_raster(datasets, LayerTypes['EXVEG'])
+    _node, historic_clip = project.add_project_raster(datasets, LayerTypes['HISTVEG'])
+    _node, fair_market_clip = project.add_project_raster(datasets, LayerTypes['FAIR_MARKET'])
 
     # Download the four digit NHD archive containing the flow lines and watershed boundaries
     log.info('Processing NHD')
@@ -186,7 +187,7 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
             source_raster_path = next(x for x in bil_files if ptype.lower() in os.path.basename(x).lower())
         except StopIteration:
             raise Exception('Could not find .bil file corresponding to "{}"'.format(ptype))
-        _node, project_raster_path = project.add_project_raster(realization, LayerTypes[ptype])
+        _node, project_raster_path = project.add_project_raster(datasets, LayerTypes[ptype])
         raster_warp(source_raster_path, project_raster_path, cfg.OUTPUT_EPSG, buffered_clip_path500, {"cutlineBlend": 1})
 
         # Use the mean annual precipitation to calculate bankfull width
@@ -200,13 +201,13 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
 
     # Add the DB record to the Project XML
     db_lyr = RSLayer('NHD Tables', 'NHDTABLES', 'SQLiteDB', os.path.relpath(db_path, output_folder))
-    sqlite_el = project.add_dataset(realization, db_path, db_lyr, 'SQLiteDB')
+    sqlite_el = project.add_dataset(datasets, db_path, db_lyr, 'SQLiteDB')
     project.add_metadata([RSMeta('origin_url', nhd_url, RSMetaTypes.URL)], sqlite_el)
 
     # Add any results to project XML
     for name, file_path in nhd.items():
         lyr_obj = RSLayer(name, name, 'Vector', os.path.relpath(file_path, output_folder))
-        vector_nod, _fpath = project.add_project_vector(realization, lyr_obj)
+        vector_nod, _fpath = project.add_project_vector(datasets, lyr_obj)
         project.add_metadata([RSMeta('origin_url', nhd_url, RSMetaTypes.URL)], vector_nod)
 
     states = get_nhd_states(nhd[boundary])
@@ -235,7 +236,7 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
     # Add any results to project XML
     for name, file_path in ntd_clean.items():
         lyr_obj = RSLayer(name, name, 'Vector', os.path.relpath(file_path, output_folder))
-        ntd_node, _fpath = project.add_project_vector(realization, lyr_obj)
+        ntd_node, _fpath = project.add_project_vector(datasets, lyr_obj)
         project.add_metadata([RSMeta(k, v, RSMetaTypes.URL) for k, v in ntd_urls.items()], ntd_node)
 
     # download contributing DEM rasters, mosaic and reproject into compressed GeoTIF
@@ -309,7 +310,7 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
 
     # Clip the landownership Shapefile to a 10km buffer around the watershed boundary
     own_path = os.path.join(output_folder, LayerTypes['OWNERSHIP'].rel_path)
-    project.add_dataset(realization, own_path, LayerTypes['OWNERSHIP'], 'Vector')
+    project.add_dataset(datasets, own_path, LayerTypes['OWNERSHIP'], 'Vector')
     clip_ownership(nhd[boundary], ownership, own_path, cfg.OUTPUT_EPSG, 10000)
 
     #######################################################
@@ -329,7 +330,7 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
         huc
     )
     log.debug('Segmentation done in {:.1f} seconds'.format(tmr.ellapsed()))
-    project.add_project_geopackage(realization, LayerTypes['HYDROLOGY'])
+    project.add_project_geopackage(datasets, LayerTypes['HYDROLOGY'])
 
     # Add Bankfull Buffer Polygons
     bankfull_path = os.path.join(hydrology_gpkg_path, LayerTypes['HYDROLOGY'].sub_layers['BANKFULL_CHANNEL'].rel_path)
@@ -342,11 +343,11 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
 
     # Filter the ecoregions Shapefile to only include attributes that intersect with our HUC
     eco_path = os.path.join(output_folder, 'ecoregions', 'ecoregions.shp')
-    project.add_dataset(realization, eco_path, LayerTypes['ECOREGIONS'], 'Vector')
+    project.add_dataset(datasets, eco_path, LayerTypes['ECOREGIONS'], 'Vector')
     filter_ecoregions(nhd[boundary], ecoregions, eco_path, cfg.OUTPUT_EPSG, 10000)
 
     report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
-    project.add_report(realization, LayerTypes['REPORT'], replace=True)
+    project.add_report(datasets, LayerTypes['REPORT'], replace=True)
 
     # Add Project Extents
     extents_json_path = os.path.join(output_folder, 'project_bounds.geojson')
@@ -378,10 +379,11 @@ def create_project(huc, output_dir: str, meta: List[RSMeta], meta_dict: Dict[str
     project = RSProject(cfg, output_dir)
     project.create(project_name, 'RSContext', meta, meta_dict)
 
-    realization = project.add_realization(project_name, 'RSContext', cfg.version)
+    realization = project.add_realization(project_name, 'REALIZATION1', cfg.version)
+    dataset_node = project.XMLBuilder.add_sub_element(realization, 'Datasets')
 
     project.XMLBuilder.write()
-    return project, realization
+    return project, realization, dataset_node
 
 
 def augment_layermeta():

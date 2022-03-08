@@ -222,10 +222,10 @@ class RSProject:
 
     def add_realization(self, name: str, realization_id: str, product_version: str, meta: List[RSMeta] = None):
 
-        realization = self.XMLBuilder.add_sub_element(self.realizations_node, self.project_type, None, {
+        realization = self.XMLBuilder.add_sub_element(self.realizations_node, "Realization", None, {
             'id': realization_id,
             'dateCreated': datetime.datetime.now().isoformat(),
-            'guid': str(uuid.uuid4()),
+            # 'guid': str(uuid.uuid4()),
             'productVersion': product_version
         })
         self.XMLBuilder.add_sub_element(realization, 'Name', name)
@@ -338,27 +338,28 @@ class RSProject:
     def get_relative_path(self, abs_path):
         return abs_path[len() + 1:]
 
-    def add_dataset(self, parent_node, abs_path_val: str, rs_lyr: RSLayer, default_tag: str, replace=False, rel_path=False):
+    def add_dataset(self, parent_node, abs_path_val: str, rs_lyr: RSLayer, default_tag: str, replace=False, rel_path=False, sublayer=False):
 
         xml_tag = rs_lyr.tag if rs_lyr.tag is not None else default_tag
-        ds_id = rs_lyr.id if replace else RSProject.unique_type_id(parent_node, xml_tag, rs_lyr.id)
+        if not sublayer:
+            ds_id = rs_lyr.id if replace else RSProject.unique_type_id(parent_node, xml_tag, rs_lyr.id)
 
         if replace:
             self.XMLBuilder.delete_sub_element(parent_node, xml_tag, id)
 
-        attribs = {
-            'guid': str(uuid.uuid4()),
+        attribs = {'lyrName': abs_path_val} if sublayer else {
             'id': ds_id
         }
         nod_dataset = self.XMLBuilder.add_sub_element(parent_node, xml_tag, attribs=attribs)
         self.XMLBuilder.add_sub_element(nod_dataset, 'Name', rs_lyr.name)
 
         # Sanitize our paths to always produce linux-style slashes
-        if rel_path:
-            self.XMLBuilder.add_sub_element(nod_dataset, 'Path', parse_posix_path(abs_path_val))
-        else:
-            posix_path_val = parse_posix_path(os.path.relpath(abs_path_val, os.path.dirname(self.xml_path)))
-            self.XMLBuilder.add_sub_element(nod_dataset, 'Path', posix_path_val)
+        if not sublayer:
+            if rel_path:
+                self.XMLBuilder.add_sub_element(nod_dataset, 'Path', parse_posix_path(abs_path_val))
+            else:
+                posix_path_val = parse_posix_path(os.path.relpath(abs_path_val, os.path.dirname(self.xml_path)))
+                self.XMLBuilder.add_sub_element(nod_dataset, 'Path', posix_path_val)
 
         if rs_lyr.lyr_meta is not None:
             self.add_metadata(rs_lyr.lyr_meta, nod_dataset)
@@ -471,7 +472,7 @@ class RSProject:
             layers_node = self.XMLBuilder.add_sub_element(nod_dataset, 'Layers')
             for rssublyr_name, rssublyr in rs_lyr.sub_layers.items():
                 sub_abs_path = os.path.join(file_path, rssublyr.rel_path)
-                sub_nod = self.add_dataset(layers_node, rssublyr.rel_path, rssublyr, rssublyr.tag, rel_path=True)
+                sub_nod = self.add_dataset(layers_node, rssublyr.rel_path, rssublyr, rssublyr.tag, rel_path=True, sublayer=True)
                 sub_layers[rssublyr_name] = (sub_nod, sub_abs_path)
 
         return nod_dataset, file_path, sub_layers
