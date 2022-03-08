@@ -20,7 +20,7 @@ class RSContextReport(RSReport):
 
     def report_intro(self):
         section = self.section('LayerSummary', 'Layer Summary')
-        layers = self.xml_project.XMLBuilder.find('Realizations').find('RSContext')
+        layers = self.xml_project.XMLBuilder.find('Realizations').find('Realization')
 
         for lyr in layers:
             if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']:
@@ -36,7 +36,7 @@ if __name__ == '__main__':
     parser.add_argument('report_path', help='Output path where report will be generated', type=str)
     args = dotenv.parse_args_env(parser)
 
-    cfg = ModelConfig('http://xml.riverscapes.net/Projects/XSD/V1/RSContext.xsd', __version__)
+    cfg = ModelConfig('https://xml.riverscapes.net/Projects/XSD/V2/RiverscapesProject.xsd', __version__)
     project = RSProject(cfg, args.projectxml)
     report = RSContextReport(args.report_path, project, os.path.dirname(args.projectxml))
     report.write()
