@@ -254,7 +254,7 @@ def create_project(huc, output_dir: str, meta: List[RSMeta], meta_dict: Dict[str
     project = RSProject(cfg, output_dir)
     project.create(project_name, 'TauDEM', meta, meta_dict)
 
-    realization = project.add_realization(project_name, 'TauDEM', cfg.version)
+    realization = project.add_realization(project_name, 'REALIZATION1', cfg.version)
 
     proj_nodes = {
         'Inputs': project.XMLBuilder.add_sub_element(realization, 'Inputs'),
