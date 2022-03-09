@@ -34,7 +34,7 @@ DEFAULT_FUNCTION_PARAMS = "a=TotDASqKm"
 
 initGDALOGRErrors()
 
-cfg = ModelConfig('http://xml.riverscapes.net/Projects/XSD/V1/ChannelArea.xsd', __version__)
+cfg = ModelConfig('https://xml.riverscapes.net/Projects/XSD/V2/RiverscapesProject.xsd', __version__)
 
 LayerTypes = {
     'INPUTS': RSLayer('Inputs', 'INPUTS', 'Geopackage', 'inputs/inputs.gpkg', {
@@ -287,7 +287,7 @@ def create_project(huc: int, output_dir: Path, meta: List[RSMeta], meta_dict: Di
     project = RSProject(cfg, output_dir)
     project.create(project_name, 'ChannelArea', meta, meta_dict)
 
-    realization = project.add_realization(project_name, 'ChannelArea', cfg.version)
+    realization = project.add_realization(project_name, 'REALIZATION1', cfg.version)
 
     proj_nodes = {
         'Inputs': project.XMLBuilder.add_sub_element(realization, 'Inputs'),

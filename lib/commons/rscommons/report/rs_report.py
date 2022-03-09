@@ -344,7 +344,7 @@ class RSReport():
             self.create_table_from_dict(meta, section, attrib={'class': 'fullwidth'})
 
         path_el = ET.Element('pre', attrib={'class': 'path'})
-        pathstr = lyr_el.find('Path').text
+        pathstr = lyr_el.attrib['lyrName'] if 'lyrName' in lyr_el.attrib else lyr_el.find('Path').text
         size = 0
         fpath = os.path.join(project_root, pathstr)
         if os.path.isfile(fpath):
