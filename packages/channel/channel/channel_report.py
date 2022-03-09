@@ -31,7 +31,7 @@ class ChannelReport(RSReport):
         """Intro section
         """
         section = self.section('LayerSummary', 'Layer Summary: {}'.format(name))
-        layers = self.xml_project.XMLBuilder.find('Realizations').find('ChannelArea').find(xml_id)
+        layers = self.xml_project.XMLBuilder.find('Realizations').find('Realization').find(xml_id)
 
         for lyr in layers:
             if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']:
