@@ -553,11 +553,6 @@ def generate_centerline_surface(vbet_raster, out_cost_path, temp_folder):
 
 
 def create_project(huc, output_dir: str, meta: List[RSMeta], meta_dict: Dict[str, str]):
-    project_name = 'VBET for HUC {}'.format(huc)
-    project = RSProject(cfg, output_dir)
-    project.create(project_name, 'VBET', meta, meta_dict)
-
-    realization = project.add_realization(project_name, 'VBET', cfg.version)
 
     proj_nodes = {
         'Inputs': project.XMLBuilder.add_sub_element(realization, 'Inputs'),
