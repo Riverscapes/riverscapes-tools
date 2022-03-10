@@ -85,7 +85,9 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, project_folder:
     log = Logger('TauDEM')
     log.info('Starting TauDEM v.{}'.format(cfg.version))
     start_time = time.time()
-    project, _realization, proj_nodes = create_project(huc, project_folder, [
+    project_name = 'TauDEM project for HUC {}'.format(huc)
+    project = RSProject(cfg, project_folder)
+    project.create(project_name, 'TauDEM', [
         RSMeta('HUC{}'.format(len(huc)), str(huc)),
         RSMeta('HUC', str(huc)),
         RSMeta('TauDEMProjectVersion', cfg.version),
@@ -95,6 +97,8 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, project_folder:
         RSMeta('TauDEM_Licence', 'https://hydrology.usu.edu/taudem/taudem5/GPLv3license.txt', RSMetaTypes.URL),
         RSMeta('TauDEM_URL', 'https://hydrology.usu.edu/taudem/taudem5/index.html', RSMetaTypes.URL)
     ], meta)
+
+    _realization, proj_nodes = project.add_realization(project_name, 'REALIZATION1', cfg.version, data_nodes=["Inputs", "Intermediates", "Outputs"], create_folders=True)
 
     # Copy the inp
     _proj_dem_node, proj_dem = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], orig_dem)
@@ -247,29 +251,6 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, project_folder:
     report.write()
 
     log.info('TauDEM Completed Successfully')
-
-
-def create_project(huc, output_dir: str, meta: List[RSMeta], meta_dict: Dict[str, str]):
-    project_name = 'TauDEM project for HUC {}'.format(huc)
-    project = RSProject(cfg, output_dir)
-    project.create(project_name, 'TauDEM', meta, meta_dict)
-
-    realization = project.add_realization(project_name, 'REALIZATION1', cfg.version)
-
-    proj_nodes = {
-        'Inputs': project.XMLBuilder.add_sub_element(realization, 'Inputs'),
-        'Intermediates': project.XMLBuilder.add_sub_element(realization, 'Intermediates'),
-        'Outputs': project.XMLBuilder.add_sub_element(realization, 'Outputs')
-    }
-
-    # Make sure we have these folders
-    proj_dir = os.path.dirname(project.xml_path)
-    safe_makedirs(os.path.join(proj_dir, 'inputs'))
-    safe_makedirs(os.path.join(proj_dir, 'intermediates'))
-    safe_makedirs(os.path.join(proj_dir, 'outputs'))
-
-    project.XMLBuilder.write()
-    return project, realization, proj_nodes
 
 
 def main():

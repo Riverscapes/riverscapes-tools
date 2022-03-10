@@ -12,6 +12,7 @@ import sys
 import traceback
 import time
 from typing import List, Dict
+from venv import create
 
 from osgeo import ogr
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
@@ -99,12 +100,16 @@ def channel(huc: int,
     for layer, codes in reach_codes.items():
         meta[f'{layer} Reach Codes'] = str(codes)
 
-    project, _realization, proj_nodes = create_project(huc, project_folder, [
+    project_name = 'Channel Area for HUC {}'.format(huc)
+    project = RSProject(cfg, project_folder)
+    project.create(project_name, 'ChannelArea', [
         RSMeta('HUC{}'.format(len(huc)), str(huc)),
         RSMeta('HUC', str(huc)),
         RSMeta('ChannelAreaVersion', cfg.version),
         RSMeta('ChannelAreaTimestamp', str(int(time.time())), RSMetaTypes.TIMESTAMP)
     ], meta)
+
+    _realization, proj_nodes = project.add_realization(project_name, 'REALIZATION1', cfg.version, data_nodes=['Inputs', 'Intermediates', 'Outputs'], create_folders=True)
 
     # Input Preparation
     inputs_gpkg_path = os.path.join(project_folder, LayerTypes['INPUTS'].rel_path)
@@ -270,39 +275,6 @@ def calculate_bankfull(network_layer: Path, out_field: str, eval_fn: str, functi
             layer.ogr_layer.SetFeature(feat)
 
         layer.ogr_layer.CommitTransaction()
-
-
-def create_project(huc: int, output_dir: Path, meta: List[RSMeta], meta_dict: Dict[str, str]):
-    """Create channel area project
-
-    Args:
-        huc (int): NHD huc id
-        output_dir (Path): output directory for new project
-        meta (dict, optional): key-value pair of project metadata. Defaults to None.
-
-    Returns:
-        RSProject, realization, proj_nodes
-    """
-    project_name = 'Channel Area for HUC {}'.format(huc)
-    project = RSProject(cfg, output_dir)
-    project.create(project_name, 'ChannelArea', meta, meta_dict)
-
-    realization = project.add_realization(project_name, 'REALIZATION1', cfg.version)
-
-    proj_nodes = {
-        'Inputs': project.XMLBuilder.add_sub_element(realization, 'Inputs'),
-        'Intermediates': project.XMLBuilder.add_sub_element(realization, 'Intermediates'),
-        'Outputs': project.XMLBuilder.add_sub_element(realization, 'Outputs')
-    }
-
-    # Make sure we have these folders
-    proj_dir = os.path.dirname(project.xml_path)
-    safe_makedirs(os.path.join(proj_dir, 'inputs'))
-    safe_makedirs(os.path.join(proj_dir, 'intermediates'))
-    safe_makedirs(os.path.join(proj_dir, 'outputs'))
-
-    project.XMLBuilder.write()
-    return project, realization, proj_nodes
 
 
 def main():

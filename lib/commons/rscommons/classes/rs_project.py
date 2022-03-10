@@ -220,7 +220,7 @@ class RSProject:
         self.XMLBuilder.write()
         self.exists = True
 
-    def add_realization(self, name: str, realization_id: str, product_version: str, meta: List[RSMeta] = None):
+    def add_realization(self, name: str, realization_id: str, product_version: str, meta: List[RSMeta] = None, data_nodes: List[str] = None, create_folders=False):
 
         realization = self.XMLBuilder.add_sub_element(self.realizations_node, "Realization", None, {
             'id': realization_id,
@@ -241,7 +241,18 @@ class RSProject:
             print(e)
             pass
 
-        return realization
+        if data_nodes is not None:
+            out_nodes = {}
+            for node in data_nodes:
+                out_nodes[node] = self.XMLBuilder.add_sub_element(realization, node)
+                if create_folders is True:
+                    safe_makedirs(os.path.join(self.project_dir, node.lower()))
+
+        self.XMLBuilder.write()
+        if data_nodes is not None:
+            return realization, out_nodes
+        else:
+            return realization
 
     def add_metadata_simple(self, metadict: Dict[str, str], node=None):
         """For when you need simple Dict[str,str] key=value metadata with no types

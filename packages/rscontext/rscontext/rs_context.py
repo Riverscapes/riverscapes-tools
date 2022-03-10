@@ -136,10 +136,15 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
     scratch_dem_folder = os.path.join(scratch_dir, 'rs_context', huc)
     safe_makedirs(scratch_dem_folder)
 
-    project, realization, datasets = create_project(huc, output_folder, [
+    project_name = 'Riverscapes Context for HUC {}'.format(huc)
+    project = RSProject(cfg, output_folder)
+    project.create(project_name, 'RSContext', [
         RSMeta('HUC{}'.format(len(huc)), str(huc)),
         RSMeta('HUC', str(huc))
     ], meta)
+
+    realization = project.add_realization(project_name, 'REALIZATION1', cfg.version)
+    datasets = project.XMLBuilder.add_sub_element(realization, 'Datasets')
 
     hydrology_gpkg_path = os.path.join(output_folder, LayerTypes['HYDROLOGY'].rel_path)
 
@@ -371,19 +376,6 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
         'HistoricVeg': historic_veg,
         'NHD': nhd
     }
-
-
-def create_project(huc, output_dir: str, meta: List[RSMeta], meta_dict: Dict[str, str]):
-
-    project_name = 'Riverscapes Context for HUC {}'.format(huc)
-    project = RSProject(cfg, output_dir)
-    project.create(project_name, 'RSContext', meta, meta_dict)
-
-    realization = project.add_realization(project_name, 'REALIZATION1', cfg.version)
-    dataset_node = project.XMLBuilder.add_sub_element(realization, 'Datasets')
-
-    project.XMLBuilder.write()
-    return project, realization, dataset_node
 
 
 def augment_layermeta():
