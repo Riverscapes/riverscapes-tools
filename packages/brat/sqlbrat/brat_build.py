@@ -101,12 +101,16 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
 
     start_time = time.time()
 
-    project, _realization, proj_nodes = create_project(huc, output_folder, [
+    project_name = 'BRAT for HUC {}'.format(huc)
+    project = RSProject(cfg, output_folder)
+    project.create(project_name, 'REALIZATION1', [
         RSMeta('HUC{}'.format(len(huc)), str(huc)),
         RSMeta('HUC', str(huc)),
         RSMeta('BRATBuildVersion', cfg.version),
         RSMeta('BRATBuildTimestamp', str(int(time.time())))
     ], meta)
+
+    _realization, proj_nodes = project.add_realization(project_name, 'BRAT', cfg.version, data_nodes=['Inputs', 'Intermediates', 'Outputs'])
 
     log.info('Adding input rasters to project')
     _dem_raster_path_node, dem_raster_path = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], dem)
@@ -220,33 +224,6 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
     ])
 
     log.info('BRAT build completed successfully.')
-
-
-def create_project(huc, output_dir: str, meta: List[RSMeta], meta_dict: Dict[str, str]):
-    """ Create riverscapes project XML
-
-    Args:
-        huc (str): Watershed HUC code
-        output_dir (str): Full absolute path to output folder
-
-    Returns:
-        tuple: (project XML object, realization node, dictionary of other nodes)
-    """
-
-    project_name = 'BRAT for HUC {}'.format(huc)
-    project = RSProject(cfg, output_dir)
-    project.create(project_name, 'BRAT', meta, meta_dict)
-
-    realization = project.add_realization(project_name, 'BRAT', cfg.version)
-
-    proj_nodes = {
-        'Inputs': project.XMLBuilder.add_sub_element(realization, 'Inputs'),
-        'Intermediates': project.XMLBuilder.add_sub_element(realization, 'Intermediates'),
-        'Outputs': project.XMLBuilder.add_sub_element(realization, 'Outputs')
-    }
-
-    project.XMLBuilder.write()
-    return project, realization, proj_nodes
 
 
 def main():

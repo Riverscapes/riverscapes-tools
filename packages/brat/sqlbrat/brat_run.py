@@ -74,7 +74,7 @@ def brat_run(project_root, csv_dir):
         RSMeta('BRATRunTimestamp', str(int(time.time())), RSMetaTypes.TIMESTAMP)
     ])
 
-    realizations = project.XMLBuilder.find('Realizations').findall('BRAT')
+    realizations = project.XMLBuilder.find('Realizations').findall('Realization')
     if len(realizations) != 1:
         raise Exception('Could not find a valid realization inside the existing brat project')
 
