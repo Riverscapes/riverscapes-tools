@@ -28,6 +28,84 @@ class BratReport(RSReport):
         self.log = Logger('BratReport')
         self.database = database
 
+        # set up dict with references to all colors for plots
+        self.bratcolors = {
+            'Perennial': '#004da8',
+            'Intermittent': '#aaff00',
+            'Ephemeral': '#e69800',
+            'Canal': '#a3f2f2',
+            'Connector': '#ffaa00',
+            'Artificial Path': '#cf596a',
+            '0 - 160 (Can Build Dam)': '#38a800',
+            '160 - 185 (Probably Can Build Dam)': '#f5f500',
+            '> 185 (Cannot Build Dam)': '#f50000',
+            '0 - 1100 Dam Persists': '#38a800',
+            '1100 - 1400 Potential Dam Breach': '#b0e000',
+            '1400 - 2200 Potentail Dam Blowout': '#ffaa00',
+            '> 2200 Dam Blowout': '#ff0000',
+            'Very Low': '#267300',
+            'Low': '#a4c400',
+            'Moderate': '#ffbb00',
+            'High': '#ff2600',
+            'Immediately Adjacent (0 - 30 m)': '#ff2200',
+            'Within Normal Forage Range (30 - 100 m)': '#ff9900',
+            'Within Plausible Forage Range (100 - 300 m)': '#ffff00',
+            'Outside Range of Concern (300 m - 1 km)': '#7aab00',
+            'Not Close (> 1 km)': '#006100',
+            'None: 0 dams': '#f50000',
+            'Rare: 0-1 dams/km (0-2 dams/mi)': '#ffaa00',
+            'Occasional 1-5 dams/km (2-8 dams/mi)': '#f5f500',
+            'Frequent 5-15 dams/km (8-24 dams/mi)': '#4ce601',
+            'Pervasive 15-40 dams/km (24-64 dams/mi)': '#005ce6',
+            'No Dams': '#f50000',
+            'Single Dam': '#ffaa00',
+            'Small Complex (1-3 dams)': '#f5f500',
+            'Medium Complex (3-5 dams)': '#4ce601',
+            'Large Complex (> 5 dams)': '#005cd6',
+            'Anthropogenically Limited': '#e6c700',
+            'Stream Power Limited': '#00a9e6',
+            'Slope Limited': '#ff0000',
+            'Potential Reservoir or Landuse': '#ff73df',
+            'Naturally Vegetation Limited': '#267300',
+            'Stream Size Limited': '#00ad35',
+            'Dam Building Possible': '#a5a5a5',
+            'Considerable Risk': '#e60000',
+            'Some Risk': '#ffaa00',
+            'Minor Risk': '#00cf55',
+            'Negligible Risk': '#a5a5a5',
+            'Easiest - Low Hanging Fruit': '#00a800',
+            'Straight Forward - Quick Return': '#00cf55',
+            'Strategic - Long-Term Investment': '#e6cc00',
+            'Other': '#b9b9b9',
+            'Private': '#94345a',
+            'United States Forest Service': '#89f575',
+            'Bureau of Land Managment': '#57b2f2',
+            'National Park Service': '#d99652',
+            'None': '#b2b2b2',
+            'United States Army Corps of Engineers': '#e8e461',
+            'United States Bureau of Reclamation': '#3b518f',
+            'United States Department of Agriculture': '#a86f67',
+            'United States Department of Interior': '#f062f5',
+            'United States Department of Defense': '#5f8c31',
+            'United States Fish and Wildlife Service': '#f26374',
+            'State?': '#a9e092',
+            'Forest Service?': '#907cd6',
+            'Bonneville Power Administration': '#3ba35f',
+            'USCG': '#2e7385',
+            'BOP': '#e0bd96',
+            'IBWC': '#6b3380',
+            'FAA': '#745580',
+            'United States Department of Justice': '#db7f9f',
+            'United States Navy': '#cf5bb7',
+            'USMC': '#ad4242',
+            'FHA': '#745580',
+            'GSA': '#49d1a4',
+            'VA': '#95d9f0',
+            'United States Army': '#f569a8',
+            'United States Air Force': '#cf7557',
+            'Unknown': '#b2b2b2'
+        }
+
         # The report has a core CSS file but we can extend it with our own if we want:
         css_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'brat_report.css')
         self.add_css(css_path)
@@ -70,8 +148,8 @@ class BratReport(RSReport):
         ''').fetchone()
         values.update(row)
 
-        curs.execute('SELECT KeyInfo, ValueInfo FROM Metadata')
-        values.update({row['KeyInfo'].replace('_', ' '): row['ValueInfo'] for row in curs.fetchall()})
+        # curs.execute('SELECT KeyInfo, ValueInfo FROM Metadata')
+        # values.update({row['KeyInfo'].replace('_', ' '): row['ValueInfo'] for row in curs.fetchall()})
 
         # Here we're creating a new <div> to wrap around the table for stylign purposes
         table_wrapper = ET.Element('div', attrib={'class': 'tableWrapper'})
@@ -79,8 +157,8 @@ class BratReport(RSReport):
 
         RSReport.create_table_from_sql(
             ['Reach Type', 'Total Length (km)', '% of Total'],
-            'SELECT ReachType, Sum(iGeo_Len) / 1000 As Length, 100 * Sum(iGeo_Len) / TotalLength AS TotalLength '
-            'FROM vwReaches INNER JOIN (SELECT Sum(iGeo_Len) AS TotalLength FROM vwReaches) GROUP BY ReachType',
+            'SELECT ReachType, ROUND(Sum(iGeo_Len) / 1000, 1) As Length, ROUND(100 * Sum(iGeo_Len) / TotalLength, 1) AS TotalLength '
+            'FROM vwReaches INNER JOIN (SELECT ROUND(Sum(iGeo_Len), 1) AS TotalLength FROM vwReaches) GROUP BY ReachType',
             self.database, table_wrapper, attrib={'id': 'SummTable_sql'})
 
         # Append my table_wrapper div (which now contains both tables above) to the section
@@ -123,10 +201,8 @@ class BratReport(RSReport):
         conn.row_factory = _dict_factory
         curs = conn.cursor()
         fields = [
-            ('Existing complex size', 'Sum(mCC_EX_CT)'),
-            ('Historic complex size', 'Sum(mCC_HPE_CT)'),
-            ('Existing vegetation capacity', 'Sum((iGeo_len / 1000) * oVC_EX)'),
-            ('Historic vegetation capacity', 'Sum((iGeo_len / 1000) * oVC_HPE)'),
+            ('Existing capacity (vegetation only)', 'Sum((iGeo_len / 1000) * oVC_EX)'),
+            ('Historic capacity (vegetation only)', 'Sum((iGeo_len / 1000) * oVC_HPE)'),
             ('Existing capacity', 'Sum((iGeo_len / 1000) * oCC_EX)'),
             ('Historic capacity', 'Sum((iGeo_len / 1000) * oCC_HPE)')
         ]
@@ -134,7 +210,7 @@ class BratReport(RSReport):
         curs.execute('SELECT {} FROM vwReaches'.format(', '.join([field for label, field in fields])))
         row = curs.fetchone()
 
-        table_dict = {fields[i][0]: row[fields[i][1]] for i in range(len(fields))}
+        table_dict = {fields[i][0]: int(row[fields[i][1]]) for i in range(len(fields))}
         RSReport.create_table_from_dict(table_dict, section)
 
         self.dam_capacity_lengths('oCC_EX', section)
@@ -294,8 +370,8 @@ class BratReport(RSReport):
 
         # Low Stream Power
         self.attribute_table_and_pie('iHyd_SPLow', [
-            {'label': '0 - 16 (Can Build Dam)', 'upper': 16},
-            {'label': '16 - 185 (Probably Can Build Dam)', 'lower': 16, 'upper': 185},
+            {'label': '0 - 160 (Can Build Dam)', 'upper': 16},
+            {'label': '160 - 185 (Probably Can Build Dam)', 'lower': 16, 'upper': 185},
             {'label': '> 185 (Cannot Build Dam)', 'lower': 185}
         ], section)
 
