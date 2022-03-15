@@ -100,13 +100,13 @@ def line(x_values, y_values, xlabel, ylabel, chart_title, file_path):
     plt.savefig(file_path)
 
 
-def pie(x_values, labels, chart_title, file_path):
+def pie(x_values, labels, chart_title, file_path, color):
 
     clean_values = [0 if x is None else x for x in x_values]
 
     plt.clf()
     plt.title = chart_title
-    plt.pie(clean_values, labels=labels)
+    plt.pie(clean_values, labels=labels, colors=color)
 
     if not os.path.isdir(os.path.dirname(file_path)):
         os.makedirs(os.path.dirname(file_path))
