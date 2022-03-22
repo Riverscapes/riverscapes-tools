@@ -100,13 +100,15 @@ def line(x_values, y_values, xlabel, ylabel, chart_title, file_path):
     plt.savefig(file_path)
 
 
-def pie(x_values, labels, chart_title, file_path, color):
+def pie(x_values, labels, chart_title, color, file_path):
 
     clean_values = [0 if x is None else x for x in x_values]
 
     plt.clf()
-    plt.title = chart_title
-    plt.pie(clean_values, labels=labels, colors=color)
+    fig, ax = plt.subplots()
+    chart = ax.pie(clean_values, labels=labels, colors=color, autopct='%1.0f%%', shadow=True)
+
+    ax.set_title(chart_title)
 
     if not os.path.isdir(os.path.dirname(file_path)):
         os.makedirs(os.path.dirname(file_path))
@@ -114,14 +116,32 @@ def pie(x_values, labels, chart_title, file_path, color):
     plt.savefig(file_path)
 
 
-def horizontal_bar(x_values, labels, x_axis_label, chart_title, file_path):
+def horizontal_bar(x_values, labels, color, x_axis_label1, chart_title, file_path, x_axis_label2=None):
 
     clean_values = [0 if x is None else x for x in x_values]
+    bar_labels = [(i / sum(clean_values)) * 100 for i in clean_values]
 
     plt.clf()
-    plt.title = chart_title
-    plt.barh(labels, clean_values, height=0.25)
-    plt.xlabel(x_axis_label)
+    fig, ax = plt.subplots()
+
+    hbars = ax.barh(labels, clean_values, color=color)
+    ax.bar_label(hbars, labels=['%.0f %%' % i for i in bar_labels], padding=5)
+    ax.set_xlim((0, max(clean_values) + 0.15 * max(clean_values)))
+    ax.set_xlabel(x_axis_label1)
+
+    plt.grid(True, which='major', axis='x')
+
+    if x_axis_label2 is not None:
+        def km2mi(x):
+            return x * 0.621371
+
+        def mi2km(x):
+            return x * 1.60934
+
+        secax = ax.secondary_xaxis('top', functions=(km2mi, mi2km))
+        secax.set_xlabel(x_axis_label2)
+
+    ax.set_title(chart_title)
 
     if not os.path.isdir(os.path.dirname(file_path)):
         os.makedirs(os.path.dirname(file_path))

@@ -115,8 +115,8 @@ class BratReport(RSReport):
 
         # Now we just need to write the sections we want in the report in order
         self.report_intro()
-        self.reach_attribute_summary()
         self.dam_capacity()
+        self.reach_attribute_summary()
         self.hydrology_plots()
         self.ownership()
         self.vegetation()
