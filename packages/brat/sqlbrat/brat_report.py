@@ -33,35 +33,35 @@ class BratReport(RSReport):
             'Perennial': '#004da8',
             'Intermittent': '#aaff00',
             'Ephemeral': '#e69800',
-            'Canal': '#a3f2f2',
+            'Canal - Ditch': '#a3f2f2',
             'Connector': '#ffaa00',
             'Artificial Path': '#cf596a',
-            '0 - 160 (Can Build Dam)': '#38a800',
-            '160 - 185 (Probably Can Build Dam)': '#f5f500',
-            '> 185 (Cannot Build Dam)': '#f50000',
-            '0 - 1100 Dam Persists': '#38a800',
-            '1100 - 1400 Potential Dam Breach': '#b0e000',
-            '1400 - 2200 Potential Dam Blowout': '#ffaa00',
-            '> 2200 Dam Blowout': '#ff0000',
+            'Can Build Dam': '#38a800',
+            'Probably Can Build Dam': '#f5f500',
+            'Cannot Build Dam': '#f50000',
+            'Dam Persists': '#38a800',
+            'Potential Dam Breach': '#b0e000',
+            'Potential Dam Blowout': '#ffaa00',
+            'Dam Blowout': '#ff0000',
             'Very Low': '#267300',
             'Low': '#a4c400',
             'Moderate': '#ffbb00',
             'High': '#ff2600',
-            'Immediately Adjacent (0 - 30 m)': '#ff2200',
-            'Within Normal Forage Range (30 - 100 m)': '#ff9900',
-            'Within Plausable Forage Range (100 - 300 m)': '#ffff00',
-            'Outside Range of Concern (300 m - 1 km)': '#7aab00',
-            'Not Close (> 1 km)': '#006100',
-            'None: 0 dams': '#f50000',
-            'Rare: 0-1 dams/km (0-2 dams/mi)': '#ffaa00',
-            'Occasional: 1-5 dams/km (2-8 dams/mi)': '#f5f500',
-            'Frequent: 5-15 dams/km (8-24 dams/mi)': '#4ce601',
-            'Pervasive: 15-40 dams/km (24-64 dams/mi)': '#005ce6',
+            'Immediately Adjacent': '#ff2200',
+            'Within Normal Forage Range': '#ff9900',
+            'Within Plausable Forage Range': '#ffff00',
+            'Outside Range of Concern': '#7aab00',
+            'Not Close': '#006100',
+            'None': '#f50000',
+            'Rare': '#ffaa00',
+            'Occasional': '#f5f500',
+            'Frequent': '#4ce601',
+            'Pervasive': '#005ce6',
             'No Dams': '#f50000',
             'Single Dam': '#ffaa00',
-            'Small Complex (1-3 Dams)': '#f5f500',
-            'Medium Complex (3-5 dams)': '#4ce601',
-            'Large Complex (> 5 dams)': '#005cd6',
+            'Small Complex': '#f5f500',
+            'Medium Complex': '#4ce601',
+            'Large Complex': '#005cd6',
             'Anthropogenically Limited': '#e6c700',
             'Stream Power Limited': '#00a9e6',
             'Slope Limited': '#ff0000',
@@ -157,14 +157,28 @@ class BratReport(RSReport):
         table_wrapper = ET.Element('div', attrib={'class': 'tableWrapper'})
         RSReport.create_table_from_dict(values, table_wrapper, attrib={'id': 'SummTable'})
 
-        RSReport.create_table_from_sql(
+        table_data = RSReport.create_table_from_sql(
             ['Reach Type', 'Total Length (km)', '% of Total'],
             'SELECT ReachType, ROUND(Sum(iGeo_Len) / 1000, 1) As Length, ROUND(100 * Sum(iGeo_Len) / TotalLength, 1) AS TotalLength '
             'FROM vwReaches INNER JOIN (SELECT ROUND(Sum(iGeo_Len), 1) AS TotalLength FROM vwReaches) GROUP BY ReachType',
             self.database, table_wrapper, attrib={'id': 'SummTable_sql'})
 
+        pie_path = os.path.join(self.images_dir, 'Reach_type_pie.png')
+        col = [self.bratcolors[x[0]] for x in table_data]
+        pie([x[1] for x in table_data], [x[0] for x in table_data], 'Reach Types', col, pie_path)
+
+        plot_wrapper = ET.Element('div', attrib={'class': 'plots'})
+        img_wrap = ET.Element('div', attrib={'class': 'imgWrap'})
+        img = ET.Element('img', attrib={
+            'src': '{}/{}'.format(os.path.basename(self.images_dir), os.path.basename(pie_path)),
+            'alt': 'pie_chart'
+        })
+        img_wrap.append(img)
+        plot_wrapper.append(img_wrap)
+
         # Append my table_wrapper div (which now contains both tables above) to the section
         section.append(table_wrapper)
+        section.append(plot_wrapper)
 
     def reach_attribute(self, attribute, units, parent_el):
         # Use a class here because it repeats
@@ -373,80 +387,80 @@ class BratReport(RSReport):
 
         # Low Stream Power
         self.attribute_table_and_pie('iHyd_SPLow', [
-            {'label': '0 - 160 (Can Build Dam)', 'upper': 16},
-            {'label': '160 - 185 (Probably Can Build Dam)', 'lower': 16, 'upper': 185},
-            {'label': '> 185 (Cannot Build Dam)', 'lower': 185}
+            {'label': 'Can Build Dam', 'upper': 16},
+            {'label': 'Probably Can Build Dam', 'lower': 16, 'upper': 185},
+            {'label': 'Cannot Build Dam', 'lower': 185}
         ], section)
 
         # High Stream Power
         self.attribute_table_and_pie('iHyd_SP2', [
-            {'label': '0 - 1100 Dam Persists', 'upper': 1100},
-            {'label': '1100 - 1400 Potential Dam Breach', 'lower': 1100, 'upper': 1400},
-            {'label': '1400 - 2200 Potential Dam Blowout', 'lower': 1400, 'upper': 2200},
-            {'label': '> 2200 Dam Blowout', 'lower': 2200}
+            {'label': 'Dam Persists', 'upper': 1100},
+            {'label': 'Potential Dam Breach', 'lower': 1100, 'upper': 1400},
+            {'label': 'Potential Dam Blowout', 'lower': 1400, 'upper': 2200},
+            {'label': 'Dam Blowout', 'lower': 2200}
         ], section)
 
         # Distance
         self.attribute_table_and_pie('oPC_Dist', [
-            {'label': 'Not Close (> 1 km)', 'lower': 1000},
-            {'label': 'Outside Range of Concern (300 m - 1 km)', 'lower': 300, 'upper': 1000},
-            {'label': 'Within Plausable Forage Range (100 - 300 m)', 'lower': 100, 'upper': 300},
-            {'label': 'Within Normal Forage Range (30 - 100 m)', 'lower': 30, 'upper': 100},
-            {'label': 'Immediately Adjacent (0 - 30 m)', 'upper': 300}
+            {'label': 'Not Close', 'lower': 1000},
+            {'label': 'Outside Range of Concern', 'lower': 300, 'upper': 1000},
+            {'label': 'Within Plausable Forage Range', 'lower': 100, 'upper': 300},
+            {'label': 'Within Normal Forage Range', 'lower': 30, 'upper': 100},
+            {'label': 'Immediately Adjacent', 'upper': 300}
         ], section)
 
         # Existing Capacity
         self.attribute_table_and_pie('oCC_EX', [
-            {'label': 'None: 0 dams', 'upper': 0},
-            {'label': 'Rare: 0-1 dams/km (0-2 dams/mi)', 'lower': 0, 'upper': 1},
-            {'label': 'Occasional: 1-5 dams/km (2-8 dams/mi)', 'lower': 1, 'upper': 5},
-            {'label': 'Frequent: 5-15 dams/km (8-24 dams/mi)', 'lower': 5, 'upper': 15},
-            {'label': 'Pervasive: 15-40 dams/km (24-64 dams/mi)', 'lower': 15}
+            {'label': 'None', 'upper': 0},
+            {'label': 'Rare', 'lower': 0, 'upper': 1},
+            {'label': 'Occasional', 'lower': 1, 'upper': 5},
+            {'label': 'Frequent', 'lower': 5, 'upper': 15},
+            {'label': 'Pervasive', 'lower': 15}
         ], section)
 
         # Distance
         self.attribute_table_and_pie('mCC_EX_CT', [
             {'label': 'No Dams', 'upper': 0},
             {'label': 'Single Dam', 'lower': 1, 'upper': 1},
-            {'label': 'Small Complex (1-3 Dams)', 'lower': 1, 'upper': 3},
-            {'label': 'Medium Complex (3-5 dams)', 'lower': 3, 'upper': 5},
-            {'label': 'Large Complex (> 5 dams)', 'lower': 5}
+            {'label': 'Small Complex', 'lower': 1, 'upper': 3},
+            {'label': 'Medium Complex', 'lower': 3, 'upper': 5},
+            {'label': 'Large Complex', 'lower': 5}
         ], section)
 
         # Historical Dam Capacity
         self.attribute_table_and_pie('oCC_HPE', [
-            {'label': 'None: 0 dams', 'upper': 0},
-            {'label': 'Rare: 0-1 dams/km (0-2 dams/mi)', 'lower': 0, 'upper': 1},
-            {'label': 'Occasional: 1-5 dams/km (2-8 dams/mi)', 'lower': 1, 'upper': 5},
-            {'label': 'Frequent: 5-15 dams/km (8-24 dams/mi)', 'lower': 5, 'upper': 15},
-            {'label': 'Pervasive: 15-40 dams/km (24-64 dams/mi)', 'lower': 15}
+            {'label': 'None', 'upper': 0},
+            {'label': 'Rare', 'lower': 0, 'upper': 1},
+            {'label': 'Occasional', 'lower': 1, 'upper': 5},
+            {'label': 'Frequent', 'lower': 5, 'upper': 15},
+            {'label': 'Pervasive', 'lower': 15}
         ], section)
 
         # Historical Dam
         self.attribute_table_and_pie('mCC_HPE_CT', [
             {'label': 'No Dams', 'upper': 0},
             {'label': 'Single Dam', 'lower': 1, 'upper': 1},
-            {'label': 'Small Complex (1-3 Dams)', 'lower': 1, 'upper': 3},
-            {'label': 'Medium Complex (3-5 dams)', 'lower': 3, 'upper': 5},
-            {'label': 'Large Complex (> 5 dams)', 'lower': 5}
+            {'label': 'Small Complex', 'lower': 1, 'upper': 3},
+            {'label': 'Medium Complex', 'lower': 3, 'upper': 5},
+            {'label': 'Large Complex', 'lower': 5}
         ], section)
 
         # Existing Vegetation Dam Building Capacity
         self.attribute_table_and_pie('oVC_EX', [
-            {'label': 'None: 0 dams', 'upper': 0},
-            {'label': 'Rare: 0-1 dams/km (0-2 dams/mi)', 'lower': 0, 'upper': 1},
-            {'label': 'Occasional: 1-5 dams/km (2-8 dams/mi)', 'lower': 1, 'upper': 5},
-            {'label': 'Frequent: 5-15 dams/km (8-24 dams/mi)', 'lower': 5, 'upper': 15},
-            {'label': 'Pervasive: 15-40 dams/km (24-64 dams/mi)', 'lower': 15}
+            {'label': 'None', 'upper': 0},
+            {'label': 'Rare', 'lower': 0, 'upper': 1},
+            {'label': 'Occasional', 'lower': 1, 'upper': 5},
+            {'label': 'Frequent', 'lower': 5, 'upper': 15},
+            {'label': 'Pervasive', 'lower': 15}
         ], section)
 
         # Historical Vegetation Dam Building Capacity
         self.attribute_table_and_pie('oVC_HPE', [
-            {'label': 'None: 0 dams', 'upper': 0},
-            {'label': 'Rare: 0-1 dams/km (0-2 dams/mi)', 'lower': 0, 'upper': 1},
-            {'label': 'Occasional: 1-5 dams/km (2-8 dams/mi)', 'lower': 1, 'upper': 5},
-            {'label': 'Frequent: 5-15 dams/km (8-24 dams/mi)', 'lower': 5, 'upper': 15},
-            {'label': 'Pervasive: 15-40 dams/km (24-64 dams/mi)', 'lower': 15}
+            {'label': 'None', 'upper': 0},
+            {'label': 'Rare', 'lower': 0, 'upper': 1},
+            {'label': 'Occasional', 'lower': 1, 'upper': 5},
+            {'label': 'Frequent', 'lower': 5, 'upper': 15},
+            {'label': 'Pervasive', 'lower': 15}
         ], section)
 
         # LandUse Intensity
