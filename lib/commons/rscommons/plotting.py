@@ -113,7 +113,9 @@ def pie(x_values, labels, chart_title, color, file_path):
     if not os.path.isdir(os.path.dirname(file_path)):
         os.makedirs(os.path.dirname(file_path))
 
+    plt.tight_layout()
     plt.savefig(file_path)
+    plt.close()
 
 
 def horizontal_bar(x_values, labels, color, x_axis_label1, chart_title, file_path, x_axis_label2=None):
@@ -146,4 +148,6 @@ def horizontal_bar(x_values, labels, color, x_axis_label1, chart_title, file_pat
     if not os.path.isdir(os.path.dirname(file_path)):
         os.makedirs(os.path.dirname(file_path))
 
+    plt.tight_layout()
     plt.savefig(file_path)
+    plt.close()
