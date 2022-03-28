@@ -110,7 +110,7 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
         RSMeta('BRATBuildTimestamp', str(int(time.time())))
     ], meta)
 
-    _realization, proj_nodes = project.add_realization(project_name, 'BRAT', cfg.version, data_nodes=['Inputs', 'Intermediates', 'Outputs'])
+    _realization, proj_nodes = project.add_realization(project_name, 'REALIZATION1', cfg.version, data_nodes=['Inputs', 'Intermediates', 'Outputs'])
 
     log.info('Adding input rasters to project')
     _dem_raster_path_node, dem_raster_path = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], dem)

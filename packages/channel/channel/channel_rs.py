@@ -44,6 +44,12 @@ def main():
         in_xml = args.in_xmls.split(',')[0]
         out_prj.rs_copy_project_extents(in_xml)
 
+        # if watershed in meta, change the project name
+        watershed_node = out_prj.XMLBuilder.find('MetaData').find('Meta[@name="Watershed"]')
+        if watershed_node is not None:
+            name_node = out_prj.XMLBuilder.find('Name')
+            name_node.text = f"Channel Area for {watershed_node.text}"
+
         out_prj.XMLBuilder.write()
         report_path = out_prj.XMLBuilder.find('.//HTMLFile[@id="REPORT"]/Path').text
         report = ChannelReport(os.path.join(out_prj.project_dir, report_path), out_prj)
