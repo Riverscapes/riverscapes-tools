@@ -73,8 +73,17 @@ class RSMetaTypes:
     JSON = "json"
 
 
+class RSMetaExt:
+    """
+    This is a helper enumeration class to make sure we only use meta ext that are valid.
+    """
+    DATASET = 'dataset'
+    PROJECT = 'project'
+    WAREHOUSE = 'warehouse'
+
+
 class RSMeta:
-    def __init__(self, key: str, value: str, meta_type: str = None):
+    def __init__(self, key: str, value: str, meta_type: str = None, meta_ext=None):
         self.key = key
         self.value = value
         # Do a quick check to make sure we're using correct meta types
@@ -82,6 +91,12 @@ class RSMeta:
             raise Exception('Could not find <Meta> type {}'.format(meta_type))
 
         self.type = meta_type
+
+        if meta_ext is not None:
+            if not hasattr(RSMetaExt, meta_ext.upper()):
+                raise Exception('Could not find <Meta> ext {}'.format(meta_ext))
+
+        self.ext = meta_ext
 
 
 class RSLayer:
@@ -287,6 +302,8 @@ class RSProject:
             # Note: we don't do a replace=False here because that only verifies the id attribute and we're
             # using 'name' for uniqueness
             attrs = {"name": rsmeta.key}
+            if rsmeta.ext is not None:
+                attrs['ext'] = rsmeta.ext
             if rsmeta.type is not None:
                 attrs['type'] = rsmeta.type
 
@@ -557,6 +574,24 @@ class RSProject:
             new_dict[new_key] = RSMeta(new_key, val.value, val.type)
         return new_dict
 
+    @staticmethod
+    def meta_keys_ext(dict_in: Dict[str, str], ext: str) -> Dict[str, str]:
+        """Helper method. Prefix a dictionary's keys
+
+        Args:
+            dict_in (Dict[str, str]): [description]
+            prefix (str): [description]
+
+        Returns:
+            Dict[str, str]: [description]
+        """
+        if dict_in is None:
+            return {}
+        new_dict = {}
+        for key, val in dict_in.items():
+            new_dict[key] = RSMeta(key, val.value, val.type, meta_ext=ext)
+        return new_dict
+
     def rs_meta_augment(self, in_proj_files: List[str], rs_id_map: Dict[str, str]) -> None:
         """Augment the metadata of specific layers with the input's layers
 
@@ -575,29 +610,38 @@ class RSProject:
         for in_prj_path in in_proj_files:
             in_prj = RSProject(None, in_prj_path)
 
+            warehouse_id = in_prj.XMLBuilder.find('Warehouse').attrib['id']
+            # Find watershed name in metadata, add if it exists
+            watershed_node = in_prj.XMLBuilder.find('MetaData').find('Meta[@name="Watershed"]')
+            if watershed_node is not None:
+                proj_watershed_node = self.XMLBuilder.find('MetaData').find('Meta[@name="Watershed"]')
+                if proj_watershed_node is None:
+                    self.add_metadata([RSMeta('Watershed', watershed_node.text)])
+
             # Define our default, generic warehouse and project meta
-            whmeta = self.prefix_meta_keys(in_prj.get_metadata(tag='Warehouse'), wh_prefix)
-            projmeta = self.prefix_meta_keys(in_prj.get_metadata(), proj_prefix)
+            whmeta = self.meta_keys_ext(in_prj.get_metadata(tag='Warehouse'), RSMetaExt.WAREHOUSE)
+            projmeta = self.meta_keys_ext(in_prj.get_metadata(), RSMetaExt.PROJECT)
 
             # look for any valid mappings and move metadata into them
             for id_out, id_in in working_id_list.items():
 
-                lyrnod_in = in_prj.XMLBuilder.find('Realizations').find('.//*[@id="{}"]'.format(id_in))
-                lyrmeta = self.prefix_meta_keys(in_prj.get_metadata(lyrnod_in), lyr_prefix)
+                lyrnod_in = in_prj.XMLBuilder.find('Realizations').find('Realization').find('.//*[@id="{}"]'.format(id_in))
+                lyrmeta = self.meta_keys_ext(in_prj.get_metadata(lyrnod_in), RSMetaExt.DATASET)
 
-                lyrnod_out = self.XMLBuilder.find('Realizations').find('.//*[@id="{}"]'.format(id_out))
+                lyrnod_out = self.XMLBuilder.find('Realizations').find('Realization').find('.//*[@id="{}"]'.format(id_out))
 
                 if id_out not in found_keys and lyrnod_in is not None and lyrnod_out is not None:
+                    realization_id = in_prj.XMLBuilder.find('Realizations').find('Realization').attrib['id']
                     print('Found mapping for {}=>{}. Moving metadata'.format(id_in, id_out))
                     found_keys.append(id_out)
+                    lyrnod_out.attrib['extRef'] = os.path.join(warehouse_id, realization_id, lyrnod_in.attrib['id'])
                     self.add_metadata([
                         *whmeta.values(),
                         *projmeta.values(),
                         *lyrmeta.values(),
-                        RSMeta("{}projType".format(proj_prefix), in_prj.XMLBuilder.find('ProjectType').text),
-                        RSMeta("{}id".format(lyr_prefix), lyrnod_in.attrib['id']),
-                        RSMeta("{}guid".format(lyr_prefix), lyrnod_in.attrib['guid'], RSMetaTypes.GUID),
-                        RSMeta("{}path".format(lyr_prefix), lyrnod_in.find('Path').text, RSMetaTypes.FILEPATH),
+                        RSMeta("projType", in_prj.XMLBuilder.find('ProjectType').text, meta_ext=RSMetaExt.PROJECT),
+                        RSMeta("id", lyrnod_in.attrib['id'], meta_ext=RSMetaExt.DATASET),
+                        RSMeta("path", lyrnod_in.find('Path').text, RSMetaTypes.FILEPATH, meta_ext=RSMetaExt.DATASET),
                     ], lyrnod_out)
 
     def rs_copy_project_extents(self, in_prj_path):

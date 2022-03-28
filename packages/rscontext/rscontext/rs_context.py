@@ -20,7 +20,7 @@ from typing import Dict, List
 from osgeo import ogr
 
 from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALOGRErrors, Timer
-from rscommons.classes.rs_project import RSMeta, RSMetaTypes
+from rscommons.classes.rs_project import RSMeta, RSMetaTypes, RSMetaExt
 from rscommons.util import safe_makedirs, safe_remove_dir, parse_metadata, pretty_duration
 from rscommons.clean_nhd_data import clean_nhd_data
 from rscommons.clean_ntd_data import clean_ntd_data
@@ -207,13 +207,13 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
     # Add the DB record to the Project XML
     db_lyr = RSLayer('NHD Tables', 'NHDTABLES', 'SQLiteDB', os.path.relpath(db_path, output_folder))
     sqlite_el = project.add_dataset(datasets, db_path, db_lyr, 'SQLiteDB')
-    project.add_metadata([RSMeta('origin_url', nhd_url, RSMetaTypes.URL)], sqlite_el)
+    project.add_metadata([RSMeta('origin_url', nhd_url, RSMetaTypes.URL, RSMetaExt.DATASET)], sqlite_el)
 
     # Add any results to project XML
     for name, file_path in nhd.items():
         lyr_obj = RSLayer(name, name, 'Vector', os.path.relpath(file_path, output_folder))
         vector_nod, _fpath = project.add_project_vector(datasets, lyr_obj)
-        project.add_metadata([RSMeta('origin_url', nhd_url, RSMetaTypes.URL)], vector_nod)
+        project.add_metadata([RSMeta('origin_url', nhd_url, RSMetaTypes.URL, RSMetaExt.DATASET)], vector_nod)
 
     states = get_nhd_states(nhd[boundary])
 
@@ -242,7 +242,7 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
     for name, file_path in ntd_clean.items():
         lyr_obj = RSLayer(name, name, 'Vector', os.path.relpath(file_path, output_folder))
         ntd_node, _fpath = project.add_project_vector(datasets, lyr_obj)
-        project.add_metadata([RSMeta(k, v, RSMetaTypes.URL) for k, v in ntd_urls.items()], ntd_node)
+        project.add_metadata([RSMeta(k, v, RSMetaTypes.URL, RSMetaExt.DATASET) for k, v in ntd_urls.items()], ntd_node)
 
     # download contributing DEM rasters, mosaic and reproject into compressed GeoTIF
     ned_download_folder = os.path.join(download_folder, 'ned')
@@ -267,8 +267,8 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
     need_hs_build = need_dem_rebuild or not os.path.isfile(hill_raster)
 
     project.add_metadata([
-        RSMeta('num_rasters', str(len(urls)), RSMetaTypes.INT),
-        RSMeta('origin_urls', json.dumps(urls), RSMetaTypes.JSON)
+        RSMeta('num_rasters', str(len(urls)), RSMetaTypes.INT, RSMetaExt.DATASET),
+        RSMeta('origin_urls', json.dumps(urls), RSMetaTypes.JSON, RSMetaExt.DATASET)
     ], dem_node)
 
     for dem_r in dem_rasters:
