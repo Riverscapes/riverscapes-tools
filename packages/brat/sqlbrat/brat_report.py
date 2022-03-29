@@ -1,11 +1,13 @@
 import argparse
 import sqlite3
 import os
+from turtle import pen
 from xml.etree import ElementTree as ET
 
 from rscommons import Logger, dotenv, ModelConfig, RSReport, RSProject
 from rscommons.util import safe_makedirs
 from rscommons.plotting import xyscatter, box_plot, pie, horizontal_bar
+from sympy import sec
 
 from sqlbrat.__version__ import __version__
 
@@ -72,10 +74,10 @@ class BratReport(RSReport):
             '...TBD...': '#b9b9b9',
             'Considerable Risk': '#e60000',
             'Some Risk': '#ffaa00',
-            'Minor Risk': '#00cf55',
+            'Minor Risk': '#00c5ff',
             'Negligible Risk': '#a5a5a5',
             'Easiest - Low-Hanging Fruit': '#00a800',
-            'Straight Forward - Quick Return': '#00cf55',
+            'Straight Forward - Quick Return': '#00c5ff',
             'Strategic - Long-Term Investment': '#e6cc00',
             'NA': '#b9b9b9',
             'Other': '#b9b9b9',
@@ -83,7 +85,7 @@ class BratReport(RSReport):
             'United States Forest Service': '#89f575',
             'Bureau of Land Managment': '#57b2f2',
             'National Park Service': '#d99652',
-            'None': '#b2b2b2',
+            'None': '#f50000',
             'United States Army Corps of Engineers': '#e8e461',
             'United States Bureau of Reclamation': '#3b518f',
             'United States Department of Agriculture': '#a86f67',
@@ -213,6 +215,14 @@ class BratReport(RSReport):
 
     def dam_capacity(self):
         section = self.section('DamCapacity', 'BRAT Dam Capacity Results')
+
+        pEl = ET.Element('p')
+        pEl.text = 'The BRAT capacity model produces values for each stream segment that represents the density of dams (dams/km or dams/mi) that the segment can support. The output field `oCC_EX` represents the capacity based on existing vegetation cover, and `oCC_HPE` represents the capacity based on modeled historic vegetation cover. For display output values are categorized based on these bins:'
+        section.append(pEl)
+        pEl2 = ET.Element('p')
+        pEl2.text = 'None: 0 dams; Rare: 0-1 dams/km (0-2 dams/mi); Occasional: 1-5 dams/km (2-8 dams/mi); Frequent: 5-15 dams/km (8-24 dams/mi); pervasive: 15-40 dams/km (24-64 dams/mi).'
+        section.append(pEl2)
+
         conn = sqlite3.connect(self.database)
         conn.row_factory = _dict_factory
         curs = conn.cursor()
@@ -229,41 +239,91 @@ class BratReport(RSReport):
         table_dict = {fields[i][0]: int(row[fields[i][1]]) for i in range(len(fields))}
         RSReport.create_table_from_dict(table_dict, section)
 
-        self.dam_capacity_lengths('oCC_EX', section)
-        self.dam_capacity_lengths('oCC_HPE', section)
+        # self.dam_capacity_lengths()  # 'oCC_EX', section)
+        # self.dam_capacity_lengths()  # 'oCC_HPE', section)
 
-    def dam_capacity_lengths(self, capacity_field, elParent):
-        conn = sqlite3.connect(self.database)
-        curs = conn.cursor()
+        self.attribute_table_and_pie('oCC_EX', [
+            {'label': 'None', 'upper': 0},
+            {'label': 'Rare', 'lower': 0, 'upper': 1},
+            {'label': 'Occasional', 'lower': 1, 'upper': 5},
+            {'label': 'Frequent', 'lower': 5, 'upper': 15},
+            {'label': 'Pervasive', 'lower': 15}
+        ], section)
 
-        curs.execute('SELECT Name, MaxCapacity FROM DamCapacities ORDER BY MaxCapacity')
-        bins = [(row[0], row[1]) for row in curs.fetchall()]
+        self.attribute_table_and_pie('oCC_HPE', [
+            {'label': 'None', 'upper': 0},
+            {'label': 'Rare', 'lower': 0, 'upper': 1},
+            {'label': 'Occasional', 'lower': 1, 'upper': 5},
+            {'label': 'Frequent', 'lower': 5, 'upper': 15},
+            {'label': 'Pervasive', 'lower': 15}
+        ], section)
 
-        curs.execute('SELECT Sum(iGeo_Len) / 1000 FROM vwReaches')
-        total_length_km = curs.fetchone()[0]
+    def conservation(self):
+        section = self.section('Conservation', 'Conservation and Management')
 
-        data = []
-        last_bin = 0
-        cumulative_length_km = 0
-        for name, max_capacity in bins:
-            curs.execute('SELECT Sum(iGeo_len) / 1000 FROM vwReaches WHERE {} <= {}'.format(capacity_field, max_capacity))
-            rowi = curs.fetchone()
-            if not rowi or rowi[0] is None:
-                bin_km = 0
-            else:
-                bin_km = rowi[0] - cumulative_length_km
-                cumulative_length_km = rowi[0]
-            data.append((
-                '{}: {} - {}'.format(name, last_bin, max_capacity),
-                bin_km,
-                bin_km * 0.621371,
-                100 * bin_km / total_length_km
-            ))
+        pEl = ET.Element('p')
+        pEl.text = 'BRAT produces several conservation and management outputs that can be utilized to inform planning for restoration using beaver or conservation of riverscapes influenced by beaver dam building. These include outputs representing risk of conflict from dam building activity, opportunities for conservation of beaver or restoration using beaver, and factors limiting beaver building activity.'
+        section.append(pEl)
 
-            last_bin = max_capacity
+        fields = [
+            ('Risk', 'DamRisks', 'RiskID'),
+            ('Opportunity', 'DamOpportunities', 'OpportunityID'),
+            ('Limitation', 'DamLimitations', 'LimitationID')
+        ]
 
-        data.append(('Total', cumulative_length_km, cumulative_length_km * 0.621371, 100 * cumulative_length_km / total_length_km))
-        RSReport.create_table_from_tuple_list((capacity_field, 'Stream Length (km)', 'Stream Length (mi)', 'Percent'), data, elParent)
+        for label, table, idfield in fields:
+            RSReport.header(3, label, section)
+            pEl2 = ET.Element('p')
+            if label == 'Risk':
+                pEl2.text = 'Risk of conflict from dam building activity is based on the possibility of dam building, land use intensity, and proximity to infrastructure.'
+            elif label == 'Opportunity':
+                pEl2.text = 'Opportunities for restoration/conservation are based on the difference between historic and existing dam building capacity, land use intensity, and risk of undesireable dams.'
+            elif label == 'Limitation':
+                pEl2.text = 'Limitation categories characterize areas where dam building is not possible, either due to natural or anthropogenic factors.'
+            section.append(pEl2)
+            table_data = RSReport.create_table_from_sql(
+                [label, 'Total Length (km)', 'Reach Count', '%'],
+                'SELECT DR.Name, ROUND(Sum(iGeo_Len) / 1000, 1), Count(R.{1}), ROUND(100 * Sum(iGeo_Len) / TotalLength, 1)'
+                ' FROM {0} DR LEFT JOIN vwReaches R ON DR.{1} = R.{1}'
+                ' JOIN (SELECT Sum(iGeo_Len) AS TotalLength FROM vwReaches)'
+                ' GROUP BY DR.{1}'.format(table, idfield),
+                self.database, section)
+
+            pie_path = os.path.join(self.images_dir, '{}_pie.png'.format(label))
+            col = [self.bratcolors[x[0]] for x in table_data]
+            pie([x[3] for x in table_data], [x[0] for x in table_data], label, col, pie_path)
+
+            plot_wrapper = ET.Element('div', attrib={'class': 'plots'})
+            img_wrap = ET.Element('div', attrib={'class': 'imgWrap'})
+            img = ET.Element('img', attrib={
+                'src': '{}/{}'.format(os.path.basename(self.images_dir), os.path.basename(pie_path)),
+                'alt': 'pie_chart'
+            })
+            img_wrap.append(img)
+            plot_wrapper.append(img_wrap)
+            section.append(plot_wrapper)
+
+            bar_path = os.path.join(self.images_dir, '{}_bar.png'.format(label))
+            horizontal_bar([x[1] for x in table_data], [x[0] for x in table_data], col, 'Reach Length (km)', label, bar_path, 'Reach Length (mi)')
+
+            plot_wrapper = ET.Element('div', attrib={'class': 'plots'})
+            img_wrap = ET.Element('div', attrib={'class': 'imgWrap'})
+            img = ET.Element('img', attrib={
+                'src': '{}/{}'.format(os.path.basename(self.images_dir), os.path.basename(bar_path)),
+                'alt': 'bar_chart'
+            })
+            img_wrap.append(img)
+            plot_wrapper.append(img_wrap)
+            section.append(plot_wrapper)
+
+        RSReport.header(3, 'Conflict Attributes', section)
+
+        pEl3 = ET.Element('p')
+        pEl3.text = 'This charts and plots in this section illustrate the statistics for distance to infrastructure that goes into the risk model. `iPC_Canal` is the distance to the nearest canal for each reach, `iPC_DivPts` is the distance to the nearest stream diversions, and `iPC_Privat` is the distance to private land ownership.'
+        section.append(pEl3)
+
+        for attribute in ['iPC_Canal', 'iPC_DivPts', 'iPC_Privat']:
+            self.reach_attribute(attribute, 'meters', section)
 
     def hydrology_plots(self):
         section = self.section('HydrologyPlots', 'Hydrology')
@@ -274,23 +334,22 @@ class BratReport(RSReport):
         curs.execute('SELECT MaxDrainage, QLow, Q2 FROM Watersheds')
         row = curs.fetchone()
         RSReport.create_table_from_dict({
-            'Max Draiange (sqkm)': row[0],
-            'Baseflow': row[1],
-            'Peak Flow': row[2]
+            'Drainage area threshold (sqkm) above which dams are not built': row[0],
+            'Baseflow equation': row[1],
+            'Peak Flow equation': row[2]
         }, section, attrib={'class': 'fullwidth'})
+
+        allequns = row[1] + row[2]
 
         RSReport.header(3, 'Hydrological Parameters', section)
         RSReport.create_table_from_sql(
             ['Parameter', 'Data Value', 'Data Units', 'Conversion Factor', 'Equation Value', 'Equation Units'],
-            'SELECT Parameter, Value, DataUnits, Conversion, ConvertedValue, EquationUnits FROM vwHydroParams',
+            'SELECT Parameter, Value, DataUnits, Conversion, ConvertedValue, EquationUnits FROM vwHydroParams WHERE \'{0}\' LIKE \'{1}\'||Parameter||\'{1}\''.format(allequns, '%'),
             self.database, section, attrib={'class': 'fullwidth'})
 
         variables = [
             ('iHyd_QLow', 'Baseflow (CFS)'),
             ('iHyd_Q2', 'Peak Flow (CFS)'),
-            ('iHyd_SPLow', 'Baseflow Stream Power (Watts)'),
-            ('iHyd_SP2', 'Peak Flow Stream Power (Watts)'),
-            ('iGeo_Slope', 'Slope (degrees)')
         ]
 
         plot_wrapper = ET.Element('div', attrib={'class': 'hydroPlotWrapper'})
@@ -562,57 +621,6 @@ class BratReport(RSReport):
                     """.format(epochid), self.database, section, id_cols=id_cols)
             except Exception as ex:
                 self.log.warning('Error calculating vegetation report')
-
-    def conservation(self):
-        section = self.section('Conservation', 'Conservation')
-
-        fields = [
-            ('Risk', 'DamRisks', 'RiskID'),
-            ('Opportunity', 'DamOpportunities', 'OpportunityID'),
-            ('Limitation', 'DamLimitations', 'LimitationID')
-        ]
-
-        for label, table, idfield in fields:
-            RSReport.header(3, label, section)
-            table_data = RSReport.create_table_from_sql(
-                [label, 'Total Length (km)', 'Reach Count', '%'],
-                'SELECT DR.Name, Sum(iGeo_Len) / 1000, Count(R.{1}), 100 * Sum(iGeo_Len) / TotalLength'
-                ' FROM {0} DR LEFT JOIN vwReaches R ON DR.{1} = R.{1}'
-                ' JOIN (SELECT Sum(iGeo_Len) AS TotalLength FROM vwReaches)'
-                ' GROUP BY DR.{1}'.format(table, idfield),
-                self.database, section)
-
-            pie_path = os.path.join(self.images_dir, '{}_pie.png'.format(label))
-            col = [self.bratcolors[x[0]] for x in table_data]
-            pie([x[3] for x in table_data], [x[0] for x in table_data], label, col, pie_path)
-
-            plot_wrapper = ET.Element('div', attrib={'class': 'plots'})
-            img_wrap = ET.Element('div', attrib={'class': 'imgWrap'})
-            img = ET.Element('img', attrib={
-                'src': '{}/{}'.format(os.path.basename(self.images_dir), os.path.basename(pie_path)),
-                'alt': 'pie_chart'
-            })
-            img_wrap.append(img)
-            plot_wrapper.append(img_wrap)
-            section.append(plot_wrapper)
-
-            bar_path = os.path.join(self.images_dir, '{}_bar.png'.format(label))
-            horizontal_bar([x[1] for x in table_data], [x[0] for x in table_data], col, 'Reach Length (km)', label, bar_path, 'Reach Length (mi)')
-
-            plot_wrapper = ET.Element('div', attrib={'class': 'plots'})
-            img_wrap = ET.Element('div', attrib={'class': 'imgWrap'})
-            img = ET.Element('img', attrib={
-                'src': '{}/{}'.format(os.path.basename(self.images_dir), os.path.basename(bar_path)),
-                'alt': 'bar_chart'
-            })
-            img_wrap.append(img)
-            plot_wrapper.append(img_wrap)
-            section.append(plot_wrapper)
-
-        RSReport.header(3, 'Conflict Attributes', section)
-
-        for attribute in ['iPC_Canal', 'iPC_DivPts', 'iPC_Privat']:
-            self.reach_attribute(attribute, 'meters', section)
 
 
 def _dict_factory(cursor, row):
