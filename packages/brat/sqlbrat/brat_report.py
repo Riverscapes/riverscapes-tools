@@ -121,9 +121,9 @@ class BratReport(RSReport):
         self.report_intro()
         self.dam_capacity()
         self.conservation()
+        self.ownership()
         self.reach_attribute_summary()
         self.hydrology_plots()
-        self.ownership()
         self.vegetation()
         self.reach_attribute_summaries()
 
@@ -132,6 +132,10 @@ class BratReport(RSReport):
         # they have a title. If you don't specify a el_parent argument these sections will simply be added
         # to the report body in the order you call them.
         section = self.section('ReportIntro', 'Introduction')
+
+        pEl = ET.Element('p')
+        pEl.text = 'This section contains information on the drainage network used in this run of BRAT, as well as some information about the watershed.'
+        section.append(pEl)
 
         # This project has a db so we'll need a connection
         conn = sqlite3.connect(self.database)
@@ -219,8 +223,18 @@ class BratReport(RSReport):
         pEl = ET.Element('p')
         pEl.text = 'The BRAT capacity model produces values for each stream segment that represents the density of dams (dams/km or dams/mi) that the segment can support. The output field `oCC_EX` represents the capacity based on existing vegetation cover, and `oCC_HPE` represents the capacity based on modeled historic vegetation cover. For display output values are categorized based on these bins:'
         section.append(pEl)
+
+        cap_dict = {
+            'None': '0 dams',
+            'Rare': '0-1 dams/km (0-2 dams/mi)',
+            'Occasional': '1-5 dams/km (2-8 dams/mi)',
+            'Frequent': '5-15 dams/km (8-24 dams/mi)',
+            'Pervasive': '15-40 dams/km (24-64 dams/mi)'
+        }
+        RSReport.create_table_from_dict(cap_dict, section)
+
         pEl2 = ET.Element('p')
-        pEl2.text = 'None: 0 dams; Rare: 0-1 dams/km (0-2 dams/mi); Occasional: 1-5 dams/km (2-8 dams/mi); Frequent: 5-15 dams/km (8-24 dams/mi); pervasive: 15-40 dams/km (24-64 dams/mi).'
+        pEl2.text = 'The following table contains the total beaver dam capacity for the watershed based on existing and historic vegetation. The vegetation only entries are capacitites based on only the vegetation fuzzy inference system; the others are based on the combined fuzzy inferences system that acocunts for hydrology and slope.'
         section.append(pEl2)
 
         conn = sqlite3.connect(self.database)
@@ -241,6 +255,10 @@ class BratReport(RSReport):
 
         # self.dam_capacity_lengths()  # 'oCC_EX', section)
         # self.dam_capacity_lengths()  # 'oCC_HPE', section)
+
+        pEl3 = ET.Element('p')
+        pEl3.text = 'The following plots summarize the outputs for existing dam capacity `oCC_EX` and historic dam capacity `oCC_HPE`.'
+        section.append(pEl3)
 
         self.attribute_table_and_pie('oCC_EX', [
             {'label': 'None', 'upper': 0},
@@ -319,14 +337,40 @@ class BratReport(RSReport):
         RSReport.header(3, 'Conflict Attributes', section)
 
         pEl3 = ET.Element('p')
-        pEl3.text = 'This charts and plots in this section illustrate the statistics for distance to infrastructure that goes into the risk model. `iPC_Canal` is the distance to the nearest canal for each reach, `iPC_DivPts` is the distance to the nearest stream diversions, and `iPC_Privat` is the distance to private land ownership.'
+        pEl3.text = 'This charts and plots in this section illustrate the statistics for distance to infrastructure and land use intesntiy that go into the risk model. `iPC_Canal` is the distance to the nearest canal for each reach, `iPC_DivPts` is the distance to the nearest stream diversions, and `iPC_Privat` is the distance to private land ownership.'
         section.append(pEl3)
 
         for attribute in ['iPC_Canal', 'iPC_DivPts', 'iPC_Privat']:
             self.reach_attribute(attribute, 'meters', section)
 
+        pEl4 = ET.Element('p')
+        pEl4.text = 'Reach summary for distance to nearest infrastructure used for modeling risk of undesirable dam building.'
+        section.append(pEl4)
+
+        self.attribute_table_and_pie('oPC_Dist', [
+            {'label': 'Not Close', 'lower': 1000},
+            {'label': 'Outside Range of Concern', 'lower': 300, 'upper': 1000},
+            {'label': 'Within Plausable Forage Range', 'lower': 100, 'upper': 300},
+            {'label': 'Within Normal Forage Range', 'lower': 30, 'upper': 100},
+            {'label': 'Immediately Adjacent', 'upper': 30}
+        ], section)
+
+        pEl5 = ET.Element('p')
+        pEl5.text = 'Reach summary for average land use intensity of the land surrounding the stream reach.'
+        section.append(pEl5)
+
+        self.attribute_table_and_pie('iPC_LU', [
+            {'label': 'Very Low', 'upper': 0},
+            {'label': 'Low', 'lower': 0, 'upper': 33},
+            {'label': 'Moderate', 'lower': 33, 'upper': 66},
+            {'label': 'High', 'lower': 66}
+        ], section)
+
     def hydrology_plots(self):
         section = self.section('HydrologyPlots', 'Hydrology')
+
+        pEl = ET.Element('p')
+        pEl.text = 'This section contains the equations used to estimate baseflow and peak flow (~two-year recurrence interval), as well as the values used for the parameters in those equations.'
 
         conn = sqlite3.connect(self.database)
         curs = conn.cursor()
@@ -373,6 +417,21 @@ class BratReport(RSReport):
 
         for variable, ylabel in [('Base Flow', 'Baseflow (CFS)')]:
             image_path = os.path.join(self.images_dir, 'drainage_area_{}.png'.format(variable.lower()))
+
+        # Low Stream Power
+        self.attribute_table_and_pie('iHyd_SPLow', [
+            {'label': 'Can Build Dam', 'upper': 16},
+            {'label': 'Probably Can Build Dam', 'lower': 16, 'upper': 185},
+            {'label': 'Cannot Build Dam', 'lower': 185}
+        ], section)
+
+        # High Stream Power
+        self.attribute_table_and_pie('iHyd_SP2', [
+            {'label': 'Dam Persists', 'upper': 1100},
+            {'label': 'Potential Dam Breach', 'lower': 1100, 'upper': 1400},
+            {'label': 'Potential Dam Blowout', 'lower': 1400, 'upper': 2200},
+            {'label': 'Dam Blowout', 'lower': 2200}
+        ], section)
 
     def attribute_table_and_pie(self, attribute_field, bins, elParent):
         """
@@ -556,11 +615,35 @@ class BratReport(RSReport):
     def ownership(self):
         section = self.section('Ownership', 'Ownership')
 
-        RSReport.create_table_from_sql(
+        pEl = ET.Element('p')
+        pEl.text = 'This section summarizes the length of stream reaches that intersect different land ownership.'
+        section.append(pEl)
+
+        table_data = RSReport.create_table_from_sql(
             ['Ownership Agency', 'Number of Reach Segments', 'Length (km)', '% of Total Length'],
-            'SELECT IFNULL(Agency, "None"), Count(ReachID), Sum(iGeo_Len) / 1000, 100* Sum(iGeo_Len) / TotalLength FROM vwReaches'
+            'SELECT IFNULL(Agency, "None"), Count(ReachID), ROUND(Sum(iGeo_Len) / 1000, 2), ROUND(100* Sum(iGeo_Len) / TotalLength, 2) FROM vwReaches'
             ' INNER JOIN (SELECT Sum(iGeo_Len) AS TotalLength FROM vwReaches) GROUP BY Agency',
             self.database, section, attrib={'class': 'fullwidth'})
+
+        bar_path = os.path.join(self.images_dir, 'Ownership_bar.png')
+        col = []
+        for x in table_data:
+            if x[0] in self.bratcolors:
+                col.append(self.bratcolors[x[0]])
+            else:
+                col.append('#b2b2b2')
+        horizontal_bar([i[2] for i in table_data], [i[0] for i in table_data], col, 'Reach Length (km)', 'Ownership', bar_path, 'Reach_Length (mi)')
+
+        plot_wrapper = ET.Element('div', attrib={'class': 'plots'})
+        img_wrap = ET.Element('div', attrib={'class': 'imgWrap'})
+        img = ET.Element('img', attrib={
+            'src': '{}/{}'.format(os.path.basename(self.images_dir), os.path.basename(bar_path)),
+            'alt': 'bar_chart'
+        })
+        img_wrap.append(img)
+        plot_wrapper.append(img_wrap)
+
+        section.append(plot_wrapper)
 
     def vegetation(self):
         section = self.section('Vegetation', 'Vegetation')
