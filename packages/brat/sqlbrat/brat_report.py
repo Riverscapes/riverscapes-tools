@@ -122,10 +122,10 @@ class BratReport(RSReport):
         self.dam_capacity()
         self.conservation()
         self.ownership()
-        self.reach_attribute_summary()
-        self.hydrology_plots()
         self.vegetation()
-        self.reach_attribute_summaries()
+        self.hydrology_plots()
+        self.reach_attribute_summary()
+        # self.reach_attribute_summaries()
 
     def report_intro(self):
         # Create a section node to start adding things to. Section nodes are added to the table of contents if
@@ -356,8 +356,17 @@ class BratReport(RSReport):
         ], section)
 
         pEl5 = ET.Element('p')
-        pEl5.text = 'Reach summary for average land use intensity of the land surrounding the stream reach.'
+        pEl5.text = 'Reach summary for average land use intensity of the land surrounding the stream reach. The table below shows the distance values associated wtih each category:'
         section.append(pEl5)
+
+        dist_dict = {
+            'Not Close': '< 1 km',
+            'Outside Range of Concern': '300 m - 1 km',
+            'Within Plausible Forage Range': '100 m - 300 m',
+            'Within Normal Forage Range': '30 m - 100 m',
+            'Immediately Adjacent': '0 m - 30 m'
+        }
+        RSReport.create_table_from_dict(dist_dict, section)
 
         self.attribute_table_and_pie('iPC_LU', [
             {'label': 'Very Low', 'upper': 0},
@@ -600,12 +609,15 @@ class BratReport(RSReport):
     def reach_attribute_summary(self):
         section = self.section('ReachAttributeSummary', 'Geophysical Attributes')
 
+        pEl = ET.Element('p')
+        pEl.text = 'This section summarizes some of the geophysical attributes of the drainage network: slope, elevation, and network segment length.'
+        section.append(pEl)
+
         attribs = [
             ('iGeo_Slope', 'Slope', 'ratio'),
             ('iGeo_ElMax', 'Max Elevation', 'metres'),
             ('iGeo_ElMin', 'Min Elevation', 'metres'),
             ('iGeo_Len', 'Length', 'metres'),
-            ('iGeo_DA', 'Drainage Area', 'Sqkm')
         ]
         plot_wrapper = ET.Element('div', attrib={'class': 'plots'})
         [self.reach_attribute(attribute, units, plot_wrapper) for attribute, name, units in attribs]
