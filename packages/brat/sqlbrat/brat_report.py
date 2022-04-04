@@ -1,7 +1,7 @@
 import argparse
 import sqlite3
 import os
-from turtle import pen
+# from turtle import pen
 from xml.etree import ElementTree as ET
 
 from rscommons import Logger, dotenv, ModelConfig, RSReport, RSProject
@@ -83,7 +83,7 @@ class BratReport(RSReport):
             'Other': '#b9b9b9',
             'Private': '#94345a',
             'United States Forest Service': '#89f575',
-            'Bureau of Land Managment': '#57b2f2',
+            'Bureau of Land Management': '#57b2f2',
             'National Park Service': '#d99652',
             'None': '#f50000',
             'United States Army Corps of Engineers': '#e8e461',
@@ -131,7 +131,7 @@ class BratReport(RSReport):
         # Create a section node to start adding things to. Section nodes are added to the table of contents if
         # they have a title. If you don't specify a el_parent argument these sections will simply be added
         # to the report body in the order you call them.
-        section = self.section('ReportIntro', 'Introduction')
+        section = self.section('ReportIntro', 'Drainage Network Characteristics')
 
         pEl = ET.Element('p')
         pEl.text = 'This section contains information on the drainage network used in this run of BRAT, as well as some information about the watershed.'
@@ -186,9 +186,10 @@ class BratReport(RSReport):
         section.append(table_wrapper)
         section.append(plot_wrapper)
 
-    def reach_attribute(self, attribute, units, parent_el):
+    def reach_attribute(self, attribute, parent_el):
         # Use a class here because it repeats
-        section = self.section(None, attribute, parent_el, level=2)
+        # section = self.section(None, attribute, parent_el, level=2)
+        RSReport.header(3, attribute, parent_el)
         conn = sqlite3.connect(self.database)
         conn.row_factory = _dict_factory
         curs = conn.cursor()
@@ -198,7 +199,7 @@ class BratReport(RSReport):
         values = curs.fetchone()
 
         reach_wrapper_inner = ET.Element('div', attrib={'class': 'reachAtributeInner'})
-        section.append(reach_wrapper_inner)
+        parent_el.append(reach_wrapper_inner)
 
         # Add the number of NULL values
         curs.execute('SELECT Count({0}) "NULL Values" FROM vwReaches WHERE {0} IS NULL'.format(attribute))
@@ -260,13 +261,17 @@ class BratReport(RSReport):
         pEl3.text = 'The following plots summarize the outputs for existing dam capacity `oCC_EX` and historic dam capacity `oCC_HPE`.'
         section.append(pEl3)
 
+        subsection = self.section(None, 'Existing Dam Capacity', section, level=2)
+
         self.attribute_table_and_pie('oCC_EX', [
             {'label': 'None', 'upper': 0},
             {'label': 'Rare', 'lower': 0, 'upper': 1},
             {'label': 'Occasional', 'lower': 1, 'upper': 5},
             {'label': 'Frequent', 'lower': 5, 'upper': 15},
             {'label': 'Pervasive', 'lower': 15}
-        ], section)
+        ], subsection)
+
+        subsection2 = self.section(None, 'Historic Dam Capacity', section, level=2)
 
         self.attribute_table_and_pie('oCC_HPE', [
             {'label': 'None', 'upper': 0},
@@ -274,7 +279,7 @@ class BratReport(RSReport):
             {'label': 'Occasional', 'lower': 1, 'upper': 5},
             {'label': 'Frequent', 'lower': 5, 'upper': 15},
             {'label': 'Pervasive', 'lower': 15}
-        ], section)
+        ], subsection2)
 
     def conservation(self):
         section = self.section('Conservation', 'Conservation and Management')
@@ -290,7 +295,8 @@ class BratReport(RSReport):
         ]
 
         for label, table, idfield in fields:
-            RSReport.header(3, label, section)
+            # RSReport.header(3, label, section)
+            section = self.section(None, label, section, level=2)
             pEl2 = ET.Element('p')
             if label == 'Risk':
                 pEl2.text = 'Risk of conflict from dam building activity is based on the possibility of dam building, land use intensity, and proximity to infrastructure.'
@@ -334,18 +340,27 @@ class BratReport(RSReport):
             plot_wrapper.append(img_wrap)
             section.append(plot_wrapper)
 
-        RSReport.header(3, 'Conflict Attributes', section)
+        RSReport.header(2, 'Conflict Attributes', section)
 
         pEl3 = ET.Element('p')
         pEl3.text = 'This charts and plots in this section illustrate the statistics for distance to infrastructure and land use intesntiy that go into the risk model. `iPC_Canal` is the distance to the nearest canal for each reach, `iPC_DivPts` is the distance to the nearest stream diversions, and `iPC_Privat` is the distance to private land ownership.'
         section.append(pEl3)
 
         for attribute in ['iPC_Canal', 'iPC_DivPts', 'iPC_Privat']:
-            self.reach_attribute(attribute, 'meters', section)
+            self.reach_attribute(attribute, section)
 
         pEl4 = ET.Element('p')
         pEl4.text = 'Reach summary for distance to nearest infrastructure used for modeling risk of undesirable dam building.'
         section.append(pEl4)
+
+        dist_dict = {
+            'Not Close': '> 1 km',
+            'Outside Range of Concern': '300 m - 1 km',
+            'Within Plausible Forage Range': '100 m - 300 m',
+            'Within Normal Forage Range': '30 m - 100 m',
+            'Immediately Adjacent': '0 m - 30 m'
+        }
+        RSReport.create_table_from_dict(dist_dict, section)
 
         self.attribute_table_and_pie('oPC_Dist', [
             {'label': 'Not Close', 'lower': 1000},
@@ -358,15 +373,6 @@ class BratReport(RSReport):
         pEl5 = ET.Element('p')
         pEl5.text = 'Reach summary for average land use intensity of the land surrounding the stream reach. The table below shows the distance values associated wtih each category:'
         section.append(pEl5)
-
-        dist_dict = {
-            'Not Close': '< 1 km',
-            'Outside Range of Concern': '300 m - 1 km',
-            'Within Plausible Forage Range': '100 m - 300 m',
-            'Within Normal Forage Range': '30 m - 100 m',
-            'Immediately Adjacent': '0 m - 30 m'
-        }
-        RSReport.create_table_from_dict(dist_dict, section)
 
         self.attribute_table_and_pie('iPC_LU', [
             {'label': 'Very Low', 'upper': 0},
@@ -620,7 +626,7 @@ class BratReport(RSReport):
             ('iGeo_Len', 'Length', 'metres'),
         ]
         plot_wrapper = ET.Element('div', attrib={'class': 'plots'})
-        [self.reach_attribute(attribute, units, plot_wrapper) for attribute, name, units in attribs]
+        [self.reach_attribute(attribute, plot_wrapper) for attribute, name, units in attribs]
 
         section.append(plot_wrapper)
 
