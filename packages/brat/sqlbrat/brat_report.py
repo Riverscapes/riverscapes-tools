@@ -114,6 +114,7 @@ class BratReport(RSReport):
         css_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'brat_report.css')
         self.add_css(css_path)
 
+        # create a folder to store the plots in
         self.images_dir = os.path.join(os.path.dirname(report_path), 'images')
         safe_makedirs(self.images_dir)
 
@@ -124,13 +125,17 @@ class BratReport(RSReport):
         self.ownership()
         self.vegetation()
         self.hydrology_plots()
-        self.reach_attribute_summary()
+        self.geophysical_summary()
         # self.reach_attribute_summaries()
+
+        self.log.info('Finished writing report')
 
     def report_intro(self):
         # Create a section node to start adding things to. Section nodes are added to the table of contents if
         # they have a title. If you don't specify a el_parent argument these sections will simply be added
         # to the report body in the order you call them.
+
+        self.log.info('Summarizing watershed and drainage area information')
         section = self.section('ReportIntro', 'Drainage Network Characteristics')
 
         pEl = ET.Element('p')
@@ -169,15 +174,16 @@ class BratReport(RSReport):
             'FROM vwReaches INNER JOIN (SELECT ROUND(Sum(iGeo_Len), 1) AS TotalLength FROM vwReaches) GROUP BY ReachType',
             self.database, table_wrapper, attrib={'id': 'SummTable_sql'})
 
-        pie_path = os.path.join(self.images_dir, 'Reach_type_pie.png')
+        # create a list of colors from lables using the color dictionary
         col = [self.bratcolors[x[0]] for x in table_data]
-        pie([x[1] for x in table_data], [x[0] for x in table_data], 'Reach Types', col, pie_path)
+        bar_path = os.path.join(self.images_dir, 'Reach_type_bar.png')
+        horizontal_bar([x[1] for x in table_data], [x[0] for x in table_data], col, 'Reach Length (km)', 'Reach Types', bar_path, 'Reach Length (mi)')
 
         plot_wrapper = ET.Element('div', attrib={'class': 'plots'})
         img_wrap = ET.Element('div', attrib={'class': 'imgWrap'})
         img = ET.Element('img', attrib={
-            'src': '{}/{}'.format(os.path.basename(self.images_dir), os.path.basename(pie_path)),
-            'alt': 'pie_chart'
+            'src': '{}/{}'.format(os.path.basename(self.images_dir), os.path.basename(bar_path)),
+            'alt': 'bar_chart'
         })
         img_wrap.append(img)
         plot_wrapper.append(img_wrap)
@@ -219,6 +225,8 @@ class BratReport(RSReport):
         reach_wrapper_inner.append(img_wrap)
 
     def dam_capacity(self):
+
+        self.log.info('Summarizing dam capacity outputs')
         section = self.section('DamCapacity', 'BRAT Dam Capacity Results')
 
         pEl = ET.Element('p')
@@ -282,6 +290,8 @@ class BratReport(RSReport):
         ], subsection2)
 
     def conservation(self):
+
+        self.log.info('Summarizing management outputs')
         section = self.section('Conservation', 'Conservation and Management')
 
         pEl = ET.Element('p')
@@ -382,6 +392,7 @@ class BratReport(RSReport):
         ], section)
 
     def hydrology_plots(self):
+        self.log.info('Recording hydrology information')
         section = self.section('HydrologyPlots', 'Hydrology')
 
         pEl = ET.Element('p')
@@ -612,7 +623,8 @@ class BratReport(RSReport):
             {'label': 'High', 'lower': 0.6666}
         ], section)
 
-    def reach_attribute_summary(self):
+    def geophysical_summary(self):
+        self.log.info('Summarizing geophysical reach attributes')
         section = self.section('ReachAttributeSummary', 'Geophysical Attributes')
 
         pEl = ET.Element('p')
@@ -664,6 +676,7 @@ class BratReport(RSReport):
         section.append(plot_wrapper)
 
     def vegetation(self):
+        self.log.info('Recording vegetation information')
         section = self.section('Vegetation', 'Vegetation')
         conn = sqlite3.connect(self.database)
         # conn.row_factory = _dict_factory
