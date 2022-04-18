@@ -61,7 +61,7 @@
       "args": [
         "${input:HUC}",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/network_intersected_300m",
-        "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/vbet_68",
+        "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/vbet_full",
         "{env:DATA_ROOT}/confinement/${input:HUC}", // output folder
         "BFwidth",
         "ValleyBottom",
