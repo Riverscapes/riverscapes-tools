@@ -8,11 +8,46 @@
       "type": "promptString",
       "id": "HUC",
       "description": "What HUC?",
+      "default": "16010201"
       // "default": "17070202" // North Fork John Day
-      "default": "17060304", // Really small HUC
+      // "default": "17060304", // Really small HUC
       // "default": "10190002" // VBET TAKING TOO LONG
       // "default": "17060103" // Asotin
-    }
+    },
+    {
+      "type": "promptString",
+      "id": "cost_surface",
+      "description": "Cost Path raster",
+      "default": "/home/osprey/data/vbet/centerline_d/cost_path_.tif"
+    },
+    {
+      "type": "promptString",
+      "id": "start_coord",
+      "description": "start coord",
+    },
+    {
+      "type": "promptString",
+      "id": "end_coord",
+      "description": "end coord",
+    },
+    {
+      "type": "promptString",
+      "id": "output_dir",
+      "description": "output dir",
+      "default": "/home/osprey/data/vbet/centerline_d"
+    },
+    {
+      "type": "promptString",
+      "id": "outname",
+      "description": "out_name",
+      "default": "centerline_d_.tif"
+    },
+    {
+      "type": "promptString",
+      "id": "level_paths",
+      "description": "level_paths",
+      "default": "70000600007170,70000600010450,70000600035519,70000400011364"
+    },
   ],
   "configurations": [
     {
@@ -52,6 +87,41 @@
         "--debug_gpkg",
         "{env:DATA_ROOT}/vbet/${input:HUC}/connectivity/debug.gpkg",
         "--verbose"
+      ]
+    },
+    {
+      "name": "Least Cost Path",
+      "type": "python",
+      "request": "launch",
+      "module": "scripts.cost_path",
+      "console": "integratedTerminal",
+      "args": [
+        "${input:cost_surface}",
+        "${input:start_coord}",
+        "${input:end_coord}",
+        "${input:outname}",
+        "${input:output_dir}"
+      ]
+    },
+    {
+      "name": "VBET Centerlines",
+      "type": "python",
+      "request": "launch",
+      "module": "scripts.raster_centerline",
+      "console": "integratedTerminal",
+      "args": [
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/network",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/topography/dem.tif",
+        "{env:DATA_ROOT}/taudem/${input:HUC}/outputs/gdal_slope.tif",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/NHDPlusCatchment.shp",
+        "{env:DATA_ROOT}/channel_area/${input:HUC}/outputs/channel_area.gpkg/channel_area",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhd_data.sqlite/NHDPlusFlowlineVAA",
+        "{env:DATA_ROOT}/vbet/${input:HUC}/centerlines",
+        "${input:level_paths}",
+        "--pitfill","{env:DATA_ROOT}/taudem/${input:HUC}/intermediates/pitfill.tif",
+        "--dinfflowdir_ang","{env:DATA_ROOT}/taudem/${input:HUC}/intermediates/dinfflowdir_ang.tif",
+        "--dinfflowdir_slp","{env:DATA_ROOT}/taudem/${input:HUC}/outputs/dinfflowdir_slp.tif",
+        "--twi_raster","{env:DATA_ROOT}/taudem/${input:HUC}/outputs/twi.tif"
       ]
     },
     {
