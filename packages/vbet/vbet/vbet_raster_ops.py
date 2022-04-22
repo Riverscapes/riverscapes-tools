@@ -1,6 +1,6 @@
 import os
 import shutil
-from osgeo import ogr, gdal, gdal_array
+from osgeo import ogr, gdal, gdal_array, osr
 import rasterio
 import numpy as np
 from rscommons import ProgressBar, Logger, VectorBase, Timer, TempRaster
@@ -360,3 +360,51 @@ def rasterize_attribute(in_lyr_path, out_raster_path, template_path, attribute_f
 
         # Now mask the output correctly
         mask_rasters_nodata(tempfile.filepath, template_path, out_raster_path)
+
+
+def raster2array(rasterfn):
+    raster = gdal.Open(rasterfn)
+    band = raster.GetRasterBand(1)
+    array = band.ReadAsArray()
+    return array
+
+
+def array2raster(newRasterfn, rasterfn, array, data_type=gdal.GDT_Byte, no_data=None):
+    raster = gdal.Open(rasterfn)
+    geotransform = raster.GetGeoTransform()
+    originX = geotransform[0]
+    originY = geotransform[3]
+    pixelWidth = geotransform[1]
+    pixelHeight = geotransform[5]
+    cols = array.shape[1]
+    rows = array.shape[0]
+
+    driver = gdal.GetDriverByName('GTiff')
+    outRaster = driver.Create(newRasterfn, cols, rows, 1, data_type, options=["COMPRESS=DEFLATE"])
+    outRaster.SetGeoTransform((originX, pixelWidth, 0, originY, 0, pixelHeight))
+    outband = outRaster.GetRasterBand(1)
+    outband.WriteArray(array)
+    outRasterSRS = osr.SpatialReference()
+    outRasterSRS.ImportFromWkt(raster.GetProjectionRef())
+    outRaster.SetProjection(outRasterSRS.ExportToWkt())
+    if no_data:
+        outband.SetNoDataValue(no_data)
+    outband.FlushCache()
+
+
+def new_raster(newRasterfn, rasterfn, data_type=gdal.GDT_Byte):
+    raster = gdal.Open(rasterfn)
+    geotransform = raster.GetGeoTransform()
+    originX = geotransform[0]
+    originY = geotransform[3]
+    pixelWidth = geotransform[1]
+    pixelHeight = geotransform[5]
+    cols = raster.RasterXSize
+    rows = raster.RasterYSize
+
+    driver = gdal.GetDriverByName('GTiff')
+    outRaster = driver.Create(newRasterfn, cols, rows, 1, data_type, options=["COMPRESS=DEFLATE"])
+    outRaster.SetGeoTransform((originX, pixelWidth, 0, originY, 0, pixelHeight))
+    outband = outRaster.GetRasterBand(1)
+
+    return outRaster, outband
