@@ -18,7 +18,7 @@ The **capacity** output layers include outputs that describe:
 - historic potential complex size (`mCC_HPE_CT` field)
 
 ### Existing and Historic Capacity
-The [**capacity model**]({{site.baseurl}}/Getting_Started/ModelLogic.html#capacity-estimates) produces two values for each stream segment: the density of dams that the segment can support now, and the density of dams that it could support historically. For display, these values are binned and symbolized using the color scheme below (note, while the outputs are binned for display, each ~300 m reach has a specific continuous dam density output). Within the attribute table of the stream network output, the existing capacity value is found in the `oCC_EX` field and historic capacity is found in the `oCC_HPE` field. These values represent modeled beaver dam capacity as dams per kilometer or mile for the stream network segment.
+The [**capacity model**]({{site.baseurl}}/Support/ModelLogic.html#capacity-estimates) produces two values for each stream segment: the density of dams that the segment can support now, and the density of dams that it could support historically. For display, these values are binned and symbolized using the color scheme below (note, while the outputs are binned for display, each ~300 m reach has a specific continuous dam density output). Within the attribute table of the stream network output, the existing capacity value is found in the `oCC_EX` field and historic capacity is found in the `oCC_HPE` field. These values represent modeled beaver dam capacity as dams per kilometer or mile for the stream network segment.
 
    ![Legend_BRAT_DamDensity]({{ site.baseurl }}/assets/images/Capacity_BRAT.png){: width="300" height="300"}
 
@@ -38,7 +38,7 @@ The **management** output layers include outputs that describe:
 - a measure of the effort exhibited to perform restoration or conservation in the segment (`OpportunityID` & `Opportunity` fields)
 
 ### Unsuitable or Limited Beaver Dam Opportunities
-[(`Limitation`)]({{site.baseurl}}/Getting_Started/ModelLogic.html#unsuitable-or-limited-opportunities) Identifies areas where beaver cannot build dams now, and also differentiates stream segments into anthropogenically and naturally limited areas. The [logic for this output]({{site.baseurl}}/Getting_Started/ModelLogic.html#unsuitable-or-limited-opportunities) combines comparisons of existing and historic dam building capacity with slope and drainage area thresholds to determine potential limitations to dam building. The following color scheme is used to illustrate these distinctions:
+[(`Limitation`)]({{site.baseurl}}/Support/ModelLogic.html#unsuitable-or-limited-opportunities) Identifies areas where beaver cannot build dams now, and also differentiates stream segments into anthropogenically and naturally limited areas. The [logic for this output]({{site.baseurl}}/Support/ModelLogic.html#unsuitable-or-limited-opportunities) combines comparisons of existing and historic dam building capacity with slope and drainage area thresholds to determine potential limitations to dam building. The following color scheme is used to illustrate these distinctions:
 
 (THIS LEGEND NEEDS TO BE UPDATED)
 ![Legend_BRAT_Management_Unsuitable_or_Limited_Beaver_Dam_Opportunities]({{ site.baseurl }}/assets/images/BRAT_Legends_Unsuitable.PNG){: width="350" height="350"}
@@ -48,7 +48,7 @@ The **management** output layers include outputs that describe:
 </div>
 
 ### Risk of Undesirable Dams
-[(`Risk`)]({{site.baseurl}}/Getting_Started/ModelLogic.html#risk-of-undesirable-dams) provides a conservative estimate of risk of dam building activity to human infrastructure. The model calculates the distance from each stream segment to the nearest of various types of infrastructure (roads, railroads, canals, etc.), which are represented as geospatial inputs. This information on proximity to infrastructure is combined with dam building capacity outputs and land use in the riverscape surrounding each segment to estimate the potential risk that could result from dam building activity based on the [logic presented here]({{site.baseurl}}/Getting_Started/ModelLogic.html#risk-of-undesirable-dams).
+[(`Risk`)]({{site.baseurl}}/Support/ModelLogic.html#risk-of-undesirable-dams) provides a conservative estimate of risk of dam building activity to human infrastructure. The model calculates the distance from each stream segment to the nearest of various types of infrastructure (roads, railroads, canals, etc.), which are represented as geospatial inputs. This information on proximity to infrastructure is combined with dam building capacity outputs and land use in the riverscape surrounding each segment to estimate the potential risk that could result from dam building activity based on the [logic presented here]({{site.baseurl}}/Support/ModelLogic.html#risk-of-undesirable-dams).
 
 (THIS LEGEND NEEDS TO BE UPDATED)
  ![Legend_BRAT Management Areas Beavers Can Build Dams, but Could Be Undesirable]({{ site.baseurl }}/assets/images/BRAT_Legends_07_2019_Risk.PNG){: width="300" height="300"}
@@ -58,7 +58,7 @@ The **management** output layers include outputs that describe:
 </div>
 
 ### Restoration or Conservation Opportunities
-[(`Opportunity`)]({{site.baseurl}}/Getting_Started/ModelLogic.html#restoration-or-conservation) identifies levels of effort required for establishing beaver dams on the landscape. This output is based on comparison between historic and existing dam building capacity, the risk of undesirable dams, and the land use in the riverscape surrounding stream segments based on [this model logic]({{site.baseurl}}/Getting_Started/ModelLogic.html#restoration-or-conservation).
+[(`Opportunity`)]({{site.baseurl}}/Support/ModelLogic.html#restoration-or-conservation) identifies levels of effort required for establishing beaver dams on the landscape. This output is based on comparison between historic and existing dam building capacity, the risk of undesirable dams, and the land use in the riverscape surrounding stream segments based on [this model logic]({{site.baseurl}}/Support/ModelLogic.html#restoration-or-conservation).
 
 (THIS LEGEND NEEDS TO BE UPDATED)
 ![Legend_BRAT_Management_Restoration_or_Conservation_Opportunities]({{ site.baseurl }}/assets/images/BRAT_Legend_06_2019_ConsRest.PNG){: width="300" height="300"}

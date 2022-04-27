@@ -3,7 +3,7 @@ title: BRAT Model Logic
 weight: 4
 ---
 
-This page describes the inputs and logic that go into producing each of the BRAT outputs described in the [Working with BRAT Outputs](https://tools.riverscapes.xyz/brat/Getting_Started/WorkingWithOutputs.html) page. An understanding of the model logic will help users to query the data to understand what the model outputs mean, and how their values are calculated. This also allows the user to refine model results for areas of interest based on the reliability of the input data for that area.
+This page describes the inputs and logic that go into producing each of the BRAT outputs described in the [Working with BRAT Outputs](https://tools.riverscapes.xyz/brat/Support/WorkingWithOutputs.html) page. An understanding of the model logic will help users to query the data to understand what the model outputs mean, and how their values are calculated. This also allows the user to refine model results for areas of interest based on the reliability of the input data for that area.
 
 ## Capacity Estimates
 To estimate the capacity of a riverscape to support dam building activity, BRAT attempts to addresses four primary questions:

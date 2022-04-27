@@ -8,7 +8,7 @@ BRAT can be used at two different levels. Most users will want to access data fr
 ![BRAT Run Map]({{site.baseurl}}/assets/images/brat_run_map.png)
 
 ### Accessing Data
-To learn how to download BRAT data and begin working with the outputs, click [here]({{site.baseurl}}/Getting_Started/DownloadingData.html).
+To learn how to download BRAT data and begin working with the outputs, click [here]({{site.baseurl}}/Support/DownloadingData.html).
 
 ### Running the BRAT Model
-To learn how to run the BRAT model, click [here]({{site.baseurl}}/Getting_Started/Advanced_Users/architecture.html).
+To learn how to run the BRAT model, click [here]({{site.baseurl}}/Support/Advanced_Users/architecture.html).
