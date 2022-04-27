@@ -1,6 +1,6 @@
 ---
 title: Downloading BRAT Data
-weight: 1
+weight: 2
 ---
 
 ## Downloading Data
