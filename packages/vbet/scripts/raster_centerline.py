@@ -11,7 +11,7 @@
 import os
 import sys
 import argparse
-from typing import ParamSpec
+from attr import attr
 
 import gdal
 from osgeo import osr, ogr
@@ -20,14 +20,14 @@ import numpy as np
 from scipy.ndimage import label, generate_binary_structure, binary_dilation, binary_erosion, binary_closing
 
 from rscommons import VectorBase, ProgressBar, GeopackageLayer, dotenv
-from rscommons.vector_ops import copy_feature_class, polygonize
+from rscommons.vector_ops import copy_feature_class, polygonize, select_features_by_intersect
 from rscommons.util import safe_makedirs
 from rscommons.hand import run_subprocess
 from rscommons.vbet_network import copy_vaa_attributes, join_attributes, create_stream_size_zones
 from vbet.vbet_database import build_vbet_database, load_configuration
-from vbet.vbet_raster_ops import rasterize_attribute, raster_clean, raster2array, array2raster, new_raster
+from vbet.vbet_raster_ops import rasterize_attribute, raster_clean, raster2array, array2raster, new_raster, rasterize
 from .cost_path import least_cost_path
-from .raster2line import raster2line
+from .raster2line import raster2line_geom
 
 NCORES = "8"
 scenario_code = "UPDATED_TESTING"
@@ -88,14 +88,40 @@ def vbet_centerlines(in_line_network, dem, slope, in_catchments, in_channel_area
 
     # run for orphan waterbodies??
 
+    # Initialize Outputs
+    centerlines_layer = os.path.join(vbet_gpkg, "vbet_centerlines")
+    with GeopackageLayer(centerlines_layer, write=True) as lyr_cl_init, \
+            GeopackageLayer(line_network) as lyr_ref:
+        fields = {'LevelPathI': ogr.OFTString}
+        lyr_cl_init.create_layer(ogr.wkbLineString, spatial_ref=lyr_ref.spatial_ref, fields=fields)
+
+    # Generate the list of level paths to run, sorted by ascending order and optional user filter
+    level_paths_to_run = []
+    with GeopackageLayer(line_network) as line_lyr:
+        for feat, *_ in line_lyr.iterate_features():
+            level_path = feat.GetField('LevelPathI')
+            level_paths_to_run.append(str(int(level_path)))
+    level_paths_to_run = list(set(level_paths_to_run))
+    if level_paths:
+        level_paths_to_run = [level_path for level_path in level_paths_to_run if level_path in level_paths]
+    level_paths_to_run.sort(reverse=True)
+
     # iterate for each level path
-    for level_path in level_paths:
+    for level_path in level_paths_to_run:
+
+        temp_folder = os.path.join(out_folder, f'temp_{level_path}')
+        safe_makedirs(temp_folder)
+
+        sql = f"LevelPathI = {level_path}"
 
         # Select channel areas that intersect flow lines
+        level_path_polygons = os.path.join(out_folder, f'channel_polygons.gpkg', f'level_path_{level_path}')
+        select_features_by_intersect(in_channel_area, line_network, level_path_polygons, intersect_attribute_filter=sql)
 
         evidence_raster = os.path.join(out_folder, f'vbet_evidence_{level_path}.tif')
         rasterized_channel = os.path.join(out_folder, f'rasterized_channel_{level_path}.tif')
-        rasterize_level_path(line_network, dem, level_path, rasterized_channel)
+        rasterize(level_path_polygons, rasterized_channel, dem, all_touched=True)
+        #rasterize_level_path(level_path_polygons, dem, level_path, rasterized_channel)
         in_rasters['Channel'] = rasterized_channel
 
         # log.info("Generating HAND")
@@ -142,21 +168,24 @@ def vbet_centerlines(in_line_network, dem, slope, in_catchments, in_channel_area
         cost_path_raster = os.path.join(out_folder, f'cost_path_{level_path}.tif')
         valley_bottom = os.path.join(out_folder, f'valley_bottom_{level_path}.tif')
 
-        temp_folder = os.path.join(out_folder, f'temp_{level_path}')
-        safe_makedirs(temp_folder)
-
         # Generate Centerline from Cost Path
         generate_centerline_surface(evidence_raster, rasterized_channel, hand_raster, valley_bottom, cost_path_raster, temp_folder)
         vbet_polygon = os.path.join(out_folder, f'valley_bottom_{level_path}.shp')
         polygonize(valley_bottom, 1, vbet_polygon, epsg=4326)
-        centerline = os.path.join(out_folder, f'centerline_{level_path}.tif')
+        centerline_raster = os.path.join(out_folder, f'centerline_{level_path}.tif')
         coords = get_endpoints(line_network, 'LevelPathI', level_path)
-        least_cost_path(cost_path_raster, centerline, coords[0], coords[1])
-        centerline_shp = os.path.join(out_folder, f'centerline_{level_path}.shp')
-        raster2line(centerline, centerline_shp, 1)
+        least_cost_path(cost_path_raster, centerline_raster, coords[0], coords[1])
+        # centerline_shp = os.path.join(out_folder, f'centerline_{level_path}.shp')
+        centerline = raster2line_geom(centerline_raster, 1)
+        with GeopackageLayer(centerlines_layer, write=True) as lyr_cl:
+            out_feature = ogr.Feature(lyr_cl.ogr_layer_def)
+            out_feature.SetGeometry(centerline)
+            out_feature.SetField('LevelPathI', str(level_path))
+            lyr_cl.ogr_layer.CreateFeature(out_feature)
+            out_feature = None
 
 
-def rasterize_level_path(line_network, dem, level_path, out_raster):
+def rasterize_level_path(line_network, dem, level_path, out_raster, attribute_filter=None):
 
     ds_path, lyr_path = VectorBase.path_sorter(line_network)
 
@@ -172,7 +201,7 @@ def rasterize_level_path(line_network, dem, level_path, out_raster):
 
     progbar = ProgressBar(100, 50, f"Rasterizing for Level path {level_path}")
 
-    sql = f"LevelPathI = {level_path}"
+    #sql = f"LevelPathI = {level_path}"
 
     def poly_progress(progress, _msg, _data):
         progbar.update(int(progress * 100))
@@ -185,7 +214,6 @@ def rasterize_level_path(line_network, dem, level_path, out_raster):
         layers=[lyr_path],
         height=height,
         width=width,
-        where=sql,
         burnValues=1, outputType=gdal.GDT_Int16,
         creationOptions=['COMPRESS=LZW'],
         allTouched=True,
@@ -299,6 +327,8 @@ def main():
     safe_makedirs(args.output_dir)
 
     level_paths = args.level_paths.split(',')
+
+    level_paths = level_paths if level_paths != ['.'] else None
 
     vbet_centerlines(args.flowline_network, args.dem, args.slope, args.catchments, args.channel_area, args.vaa_table, args.output_dir, level_paths, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster)
 

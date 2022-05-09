@@ -28,6 +28,22 @@ def pixelOffset2coord(rasterfn, xOffset, yOffset):
 
 def array2shp(array, outSHPfn, rasterfn, pixelValue):
 
+    multiline = array2geom(array, rasterfn, pixelValue)
+
+    # wkbMultiLineString2shp
+    shpDriver = ogr.GetDriverByName("ESRI Shapefile")
+    if os.path.exists(outSHPfn):
+        shpDriver.DeleteDataSource(outSHPfn)
+    outDataSource = shpDriver.CreateDataSource(outSHPfn)
+    outLayer = outDataSource.CreateLayer(outSHPfn, geom_type=ogr.wkbMultiLineString)
+    featureDefn = outLayer.GetLayerDefn()
+    outFeature = ogr.Feature(featureDefn)
+    outFeature.SetGeometry(multiline)
+    outLayer.CreateFeature(outFeature)
+
+
+def array2geom(array, rasterfn, pixelValue):
+
     # max distance between points
     raster = gdal.Open(rasterfn)
     geotransform = raster.GetGeoTransform()
@@ -64,21 +80,18 @@ def array2shp(array, outSHPfn, rasterfn, pixelValue):
             line.AddPoint(i[1][0], i[1][1])
             multiline.AddGeometry(line)
 
-    # wkbMultiLineString2shp
-    shpDriver = ogr.GetDriverByName("ESRI Shapefile")
-    if os.path.exists(outSHPfn):
-        shpDriver.DeleteDataSource(outSHPfn)
-    outDataSource = shpDriver.CreateDataSource(outSHPfn)
-    outLayer = outDataSource.CreateLayer(outSHPfn, geom_type=ogr.wkbMultiLineString)
-    featureDefn = outLayer.GetLayerDefn()
-    outFeature = ogr.Feature(featureDefn)
-    outFeature.SetGeometry(multiline)
-    outLayer.CreateFeature(outFeature)
+    return multiline
 
 
 def raster2line(rasterfn, outSHPfn, pixelValue):
     array = raster2array(rasterfn)
     array2shp(array, outSHPfn, rasterfn, pixelValue)
+
+
+def raster2line_geom(rasterfn, pixelValue):
+    array = raster2array(rasterfn)
+    geom = array2geom(array, rasterfn, pixelValue)
+    return geom
 
 
 def main():
