@@ -257,7 +257,7 @@ def merge_feature_classes(feature_class_paths: List[str], out_layer_path: str, b
                 if fccount == 1:
                     # transform = in_layer.get_transform(out_layer)
                     out_layer.create_layer_from_ref(in_layer)
-                    
+
                 for i in range(in_layer.ogr_layer_def.GetFieldCount()):
                     in_field_def = in_layer.ogr_layer_def.GetFieldDefn(i)
                     # Only create fields if we really don't have them
@@ -820,7 +820,7 @@ def dissolve_feature_class(in_layer_path, out_layer_path, epsg, field=None):
     if field is not None:
         with sqlite3.connect(os.path.dirname(in_layer_path)) as conn:
             cursor = conn.cursor()
-            dissolve_values = [value[0] for value in cursor.execute(f"""SELECT DISTINCT {field} FROM {os.path.basename(in_layer_path)}""").fetchall()] 
+            dissolve_values = [value[0] for value in cursor.execute(f"""SELECT DISTINCT {field} FROM {os.path.basename(in_layer_path)}""").fetchall()]
         for value in dissolve_values:
             out_geoms[value] = get_geometry_unary_union(in_layer_path, attribute_filter=f"{field} = {value}")
     else:
@@ -834,13 +834,13 @@ def dissolve_feature_class(in_layer_path, out_layer_path, epsg, field=None):
             in_lyr_defn = in_layer.ogr_layer_def
             for i in range(in_lyr_defn.GetFieldCount()):
                 field_defn = in_lyr_defn.GetFieldDefn(i)
-                if field_defn.GetName() == field: 
+                if field_defn.GetName() == field:
                     out_layer.ogr_layer.CreateField(field_defn)
                     break
         else:
             # Add input Layer Fields to the output Layer if it is the one we want
             out_layer.create_layer_from_ref(in_layer, epsg=epsg)
-        
+
         if field is not None:
             for value, out_geom in out_geoms.items():
                 out_layer.create_feature(out_geom, {field: value})
@@ -872,7 +872,7 @@ def remove_holes_feature_class(in_layer_path, out_layer_path, min_hole_area=None
         out_layer.ogr_layer.CommitTransaction()
 
 
-def intersection(layer_path1, layer_path2, out_layer_path, epsg):
+def intersection(layer_path1, layer_path2, out_layer_path, epsg=None, attribute_filter=None):
 
     # log = Logger('feature_class_intersection')
     with get_shp_or_gpkg(out_layer_path, write=True) as out_layer, \
@@ -886,7 +886,7 @@ def intersection(layer_path1, layer_path2, out_layer_path, epsg):
         # create an empty geometry of the same type
         union1 = ogr.Geometry(3)
         # union all the geometrical features of layer 1
-        for feat, _counter, progbar in layer1.iterate_features():
+        for feat, _counter, progbar in layer1.iterate_features(attribute_filter=attribute_filter):
             geom = feat.GetGeometryRef()
             union1 = union1.Union(geom)
         for feat, _counter, progbar in layer2.iterate_features():
@@ -947,6 +947,37 @@ def difference(remove_layer, target_layer, out_layer_path, epsg=None):
                     write_polygon(geom)
 
         lyr_output.ogr_layer.CommitTransaction()
+
+
+def select_features_by_intersect(target_layer, intersect_layer, out_layer_path, epsg=None, intersect_attribute_filter=None):
+    """ Similar to select by location. does not modify target layer geomoetries
+
+    Args:
+        target_layer (_type_): _description_
+        intersect_layer (_type_): _description_
+        out_layer_path (_type_): _description_
+        epsg (_type_, optional): _description_. Defaults to None.
+        attribute_filter (_type_, optional): _description_. Defaults to None.
+    """
+
+    with get_shp_or_gpkg(out_layer_path, write=True) as out_layer, \
+            get_shp_or_gpkg(target_layer) as lyr_target, \
+            get_shp_or_gpkg(intersect_layer) as lyr_intersect:
+
+        out_layer.create_layer_from_ref(lyr_target, epsg=epsg)
+        out_layer_defn = out_layer.ogr_layer.GetLayerDefn()
+
+        for feat, _counter, progbar in lyr_target.iterate_features():
+            geom_candidate = feat.GetGeometryRef()
+            for feat, _counter, progbar in lyr_intersect.iterate_features(attribute_filter=intersect_attribute_filter):
+                geom = feat.GetGeometryRef()
+                if geom_candidate.Intersects(geom):
+                    out_feat = ogr.Feature(out_layer_defn)
+                    out_feat.SetGeometry(geom_candidate)
+                    for i in range(0, out_layer.ogr_layer_def.GetFieldCount()):
+                        out_feat.SetField(out_layer.ogr_layer_def.GetFieldDefn(i).GetNameRef(), feat.GetField(i))
+                    out_layer.ogr_layer.CreateFeature(out_feat)
+                    break
 
 
 def geom_validity_fix(geom_in):
