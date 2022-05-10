@@ -151,7 +151,7 @@ try() {
   ##########################################################################################
 
   vbet $HUC \
-    "UPDATED_TESTING" \
+    "APRIL_2022" \
     FLOWLINES=$RSCONTEXT_DIR/hydrology/hydrology.gpkg/network,FLOW_AREAS=$RSCONTEXT_DIR/hydrology/NHDArea.shp,SLOPE_RASTER=$RSCONTEXT_DIR/topography/slope.tif,HAND_RASTER=$TAUDEM_DIR/outputs/HAND.tif,TWI_RASTER=$TAUDEM_DIR/outputs/twi.tif,CATCHMENTS=$RSCONTEXT_DIR/hydrology/NHDPlusCatchment.shp,CHANNEL_AREA_POLYGONS=$CHANNEL_DIR/outputs/channel_area.gpkg/channel_area,HILLSHADE=$RSCONTEXT_DIR/topography/dem_hillshade.tif,DEM=$RSCONTEXT_DIR/topography/dem.tif \
     $RSCONTEXT_DIR/hydrology/nhd_data.sqlite/NHDPlusFlowlineVAA \
     $VBET_DIR \

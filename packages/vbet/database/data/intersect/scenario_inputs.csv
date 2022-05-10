@@ -13,3 +13,6 @@ scenario_input_id,scenario_id,input_id,weight
 12,4,1,
 13,4,2,
 15,4,5,
+16,5,1
+17,5,2
+18,5,5

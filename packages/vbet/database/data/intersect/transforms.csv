@@ -19,3 +19,9 @@ transform_id, type_id, input_id, name, description
 18,1,5,TWI Small Streams
 19,1,5,TWI Med Streams
 20,1,5,TWI Large Streams
+21,1,1,Slope Small Streams
+22,1,1,Slope Med Streams
+23,1,1,Slope Large Streams
+24,1,5,TWI Small Streams
+25,1,5,TWI Med Streams
+26,1,5,TWI Large Streams
