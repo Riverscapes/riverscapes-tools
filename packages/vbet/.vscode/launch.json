@@ -58,8 +58,8 @@
       "console": "integratedTerminal",
       "args": [
         "${input:HUC}",
-        "UPDATED_TESTING",
-        "FLOWLINES={env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/network,FLOW_AREAS={env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/NHDArea.shp,SLOPE_RASTER={env:DATA_ROOT}/taudem/${input:HUC}/outputs/gdal_slope.tif,HAND_RASTER={env:DATA_ROOT}/taudem/${input:HUC}/outputs/hand.tif,TWI_RASTER={env:DATA_ROOT}/taudem/${input:HUC}/outputs/twi.tif,CATCHMENTS={env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/NHDPlusCatchment.shp,CHANNEL_AREA_POLYGONS={env:DATA_ROOT}/channel_area/${input:HUC}/outputs/channel_area.gpkg/channel_area,HILLSHADE={env:DATA_ROOT}/rs_context/${input:HUC}/topography/dem_hillshade.tif,DEM={env:DATA_ROOT}/rs_context/${input:HUC}/topography/dem.tif",
+        "APRIL_2022",
+        "FLOWLINES={env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/network,FLOW_AREAS={env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/NHDArea.shp,SLOPE_RASTER={env:DATA_ROOT}/taudem/${input:HUC}/outputs/gdal_slope.tif,HAND_RASTER={env:DATA_ROOT}/taudem/${input:HUC}/outputs/HAND.tif,TWI_RASTER={env:DATA_ROOT}/taudem/${input:HUC}/outputs/twi.tif,CATCHMENTS={env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/NHDPlusCatchment.shp,CHANNEL_AREA_POLYGONS={env:DATA_ROOT}/channel_area/${input:HUC}/outputs/channel_area.gpkg/channel_area,HILLSHADE={env:DATA_ROOT}/rs_context/${input:HUC}/topography/dem_hillshade.tif,DEM={env:DATA_ROOT}/rs_context/${input:HUC}/topography/dem.tif",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhd_data.sqlite/NHDPlusFlowlineVAA",
         "{env:DATA_ROOT}/vbet/${input:HUC}",
         "--reach_codes",
