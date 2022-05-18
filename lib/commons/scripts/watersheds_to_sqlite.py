@@ -17,7 +17,7 @@ def dict_factory(cursor, row):
 
 
 watersheds = '/Users/philip/GISData/watershed_boundaries/watershed_boundaries_dataset.gpkg'
-output = '/Users/philip/GISData/watershed_boundaries/watersheds_for_riverscapes.gpkg'
+output = '/Users/philip/GISData/watershed_boundaries/watersheds_for_riverscapes.sqlite'
 
 
 create_table = os.path.isfile(output)
