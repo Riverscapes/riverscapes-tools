@@ -8,9 +8,9 @@ python3 -m venv .venv
 .venv/bin/python -m pip install --upgrade pip
 .venv/bin/pip --timeout=120 install \
   Cython==0.29.23 \
-  numpy>=1.21.0 \
-  scipy>=1.5.1
-
+  numpy==1.21.1 \
+  shapely==1.7.1 \
+  scipy==1.7.0
 # Need numpy before GDAL
 .venv/bin/pip install GDAL==$(gdal-config --version)
 

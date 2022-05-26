@@ -57,6 +57,8 @@ RSCONTEXT_SCRATCH=$DATA_DIR/rs_context_scratch/$HUC
 CHANNEL_DIR=$DATA_DIR/channel/$HUC
 TAUDEM_DIR=$DATA_DIR/taudem/$HUC
 
+DOWNLOAD_DIR=/data/download
+
 ##########################################################################################
 # First Run RS_Context
 ##########################################################################################
@@ -64,14 +66,14 @@ TAUDEM_DIR=$DATA_DIR/taudem/$HUC
 try() {
 
 rscontext $HUC \
-  /shared/NationalDatasets/landfire/200/us_200evt.tif \
-  /shared/NationalDatasets/landfire/200/us_200bps.tif \
-  /shared/NationalDatasets/ownership/surface_management_agency.shp \
-  /shared/NationalDatasets/ownership/FairMarketValue.tif \
-  /shared/NationalDatasets/ecoregions/us_eco_l3_state_boundaries.shp \
-  /shared/download/prism \
+  /shaefssharered/NationalDatasets/landfire/200/us_200evt.tif \
+  /efsshare/NationalDatasets/landfire/200/us_200bps.tif \
+  /efsshare/NationalDatasets/ownership/surface_management_agency.shp \
+  /efsshare/NationalDatasets/ownership/FairMarketValue.tif \
+  /efsshare/NationalDatasets/ecoregions/us_eco_l3_state_boundaries.shp \
+  /efsshare/download/prism \
   $RSCONTEXT_DIR \
-  /shared/download/ \
+  $DOWNLOAD_DIR \
   --parallel \
   --temp_folder $RSCONTEXT_SCRATCH \
   --meta "Runner=Cybercastor" \

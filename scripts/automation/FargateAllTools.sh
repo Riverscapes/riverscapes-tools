@@ -56,6 +56,8 @@ BRAT_DIR=$DATA_DIR/brat/$HUC
 CONFINEMENT_DIR=$DATA_DIR/confinement/$HUC
 RVD_DIR=$DATA_DIR/rvd/$HUC
 
+DOWNLOAD_DIR=/data/download
+
 pip --timeout=120 install -r /usr/local/requirements.txt
 pip install -e /usr/local/src/riverscapes-tools/packages/channel
 pip install -e /usr/local/src/riverscapes-tools/packages/taudem
@@ -67,14 +69,14 @@ pip install -e /usr/local/src/riverscapes-tools/packages/taudem
 try() {
 
   rscontext $HUC \
-    /shared/NationalDatasets/landfire/200/us_200evt.tif \
-    /shared/NationalDatasets/landfire/200/us_200bps.tif \
-    /shared/NationalDatasets/ownership/surface_management_agency.shp \
-    /shared/NationalDatasets/ownership/FairMarketValue.tif \
-    /shared/NationalDatasets/ecoregions/us_eco_l3_state_boundaries.shp \
-    /shared/download/prism \
+    /efsshare/NationalDatasets/landfire/200/us_200evt.tif \
+    /efsshare/NationalDatasets/landfire/200/us_200bps.tif \
+    /efsshare/NationalDatasets/ownership/surface_management_agency.shp \
+    /efsshare/NationalDatasets/ownership/FairMarketValue.tif \
+    /efsshare/NationalDatasets/ecoregions/us_eco_l3_state_boundaries.shp \
+    /efsshare/download/prism \
     $RSCONTEXT_DIR \
-    /shared/download/ \
+    $DOWNLOAD_DIR \
     --meta "Runner=Cybercastor" \
     --parallel \
     --temp_folder $RSCONTEXT_SCRATCH_DIR \
