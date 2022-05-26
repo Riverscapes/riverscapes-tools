@@ -56,7 +56,6 @@ BRAT_DIR=$DATA_DIR/brat/$HUC
 CONFINEMENT_DIR=$DATA_DIR/confinement/$HUC
 RVD_DIR=$DATA_DIR/rvd/$HUC
 
-DOWNLOAD_DIR=/data/download
 
 pip --timeout=120 install -r /usr/local/requirements.txt
 pip install -e /usr/local/src/riverscapes-tools/packages/channel
@@ -76,7 +75,7 @@ try() {
     /efsshare/NationalDatasets/ecoregions/us_eco_l3_state_boundaries.shp \
     /efsshare/download/prism \
     $RSCONTEXT_DIR \
-    $DOWNLOAD_DIR \
+    /efsshare/download \
     --meta "Runner=Cybercastor" \
     --parallel \
     --temp_folder $RSCONTEXT_SCRATCH_DIR \

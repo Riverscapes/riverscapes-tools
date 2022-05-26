@@ -57,7 +57,6 @@ RSCONTEXT_SCRATCH=$DATA_DIR/rs_context_scratch/$HUC
 CHANNEL_DIR=$DATA_DIR/channel/$HUC
 TAUDEM_DIR=$DATA_DIR/taudem/$HUC
 
-DOWNLOAD_DIR=/data/download
 
 ##########################################################################################
 # First Run RS_Context
@@ -73,7 +72,7 @@ rscontext $HUC \
   /efsshare/NationalDatasets/ecoregions/us_eco_l3_state_boundaries.shp \
   /efsshare/download/prism \
   $RSCONTEXT_DIR \
-  $DOWNLOAD_DIR \
+  /efsshare/download \
   --parallel \
   --temp_folder $RSCONTEXT_SCRATCH \
   --meta "Runner=Cybercastor" \

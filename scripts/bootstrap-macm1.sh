@@ -6,12 +6,10 @@ python3 --version
 python3 -m venv .venv
 # Make sure pip is at a good version
 .venv/bin/python -m pip install --upgrade pip
-.venv/bin/pip --timeout=120 install \
-  Cython==0.29.23
-  # numpy==1.21.1 \
-  # scipy==1.5.1
-  
 .venv/bin/pip install --pre -i https://pypi.anaconda.org/scipy-wheels-nightly/simple scipy
+.venv/bin/pip --timeout=120 install \
+  Cython==0.29.30
+  
 
 # Need numpy before GDAL
 .venv/bin/pip install GDAL==$(gdal-config --version)

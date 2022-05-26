@@ -12,7 +12,6 @@ source /usr/local/venv/bin/activate
 
 # Define some folders that we can easily clean up later
 RSC_TASK_DIR=/data/rs_context/$HUC
-DOWNLOAD_DIR=/data/download
 VBET_TASK_DIR=/data/vbet/$HUC
 
 ##########################################################################################
@@ -27,7 +26,7 @@ rscontext $HUC \
   /efsshare/NationalDatasets/ecoregions/us_eco_l3_state_boundaries.shp \
   /efsshare/download/prism \
   $RSC_TASK_DIR \
-  $DOWNLOAD_DIR \
+  /efsshare/download \
   --verbose
 
 echo "<<RS_CONTEXT COMPLETE>>"
