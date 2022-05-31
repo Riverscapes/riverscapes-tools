@@ -4,7 +4,6 @@
   "DA": "Drainage area raster generated from the flow accumulation raster. This raster is produced by multiplying the flow accumulation raster by the area of a single pixel and then converting to square kilometers.",
   "HILLSHADE": "Hillshade raster generated using the gdal_dem tool specifying the hillshade option.",
   "SLOPE": "Slope raster generated using gdal_dem tool specifying the slope option. Units are in percent.",
-  "HAND": "Height above nearest drainage (HAND) raster downloaded from the University of Texas. These data were produced for the Continental United States at the HUC6 scale.",
   "EXVEG": "LandFire LF REMAP 2019 Existing Vegetation Type (EVT) Raster.The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes project extent.",
   "HISTVEG": "LandFire LF REMAP 2019 Historic Biophysical Settings (BPS) Raster. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes project extent.",
   "OWNERSHIP": "Land ownership obtained from the Bureau of Management (BLM) Land Surface Agency. A single ShapeFile was downloaded and then pre-processed to remove invalid geometries and other irregularities.",

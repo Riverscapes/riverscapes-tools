@@ -28,7 +28,6 @@ from rscommons.raster_warp import raster_warp, raster_vrt_stitch
 from rscommons.download_dem import download_dem, verify_areas
 from rscommons.science_base import download_shapefile_collection, get_ntd_urls, us_states
 from rscommons.geographic_raster import gdal_dem_geographic
-from rscommons.download_hand import download_hand
 from rscommons.raster_buffer_stats import raster_buffer_stats2
 from rscommons.vector_ops import get_geometry_unary_union, copy_feature_class
 from rscommons.prism import calculate_bankfull_width
@@ -59,7 +58,6 @@ LayerTypes = {
     'DA': RSLayer('Drainage Area', 'DA', 'Raster', 'topography/drainarea_sqkm.tif'),
     'HILLSHADE': RSLayer('DEM Hillshade', 'HILLSHADE', 'Raster', 'topography/dem_hillshade.tif'),
     'SLOPE': RSLayer('Slope', 'SLOPE', 'Raster', 'topography/slope.tif'),
-    'HAND': RSLayer('Height above nearest drainage', 'HAND', 'Raster', 'topography/hand.tif'),
     # Veg Layers
     'EXVEG': RSLayer('Existing Vegetation', 'EXVEG', 'Raster', 'vegetation/existing_veg.tif'),
     'HISTVEG': RSLayer('Historic Vegetation', 'HISTVEG', 'Raster', 'vegetation/historic_veg.tif'),
@@ -149,7 +147,6 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
     _node, hill_raster = project.add_project_raster(realization, LayerTypes['HILLSHADE'])
     _node, flow_accum = project.add_project_raster(realization, LayerTypes['FA'])
     _node, drain_area = project.add_project_raster(realization, LayerTypes['DA'])
-    hand_node, hand_raster = project.add_project_raster(realization, LayerTypes['HAND'])
     _node, slope_raster = project.add_project_raster(realization, LayerTypes['SLOPE'])
     _node, existing_clip = project.add_project_raster(realization, LayerTypes['EXVEG'])
     _node, historic_clip = project.add_project_raster(realization, LayerTypes['HISTVEG'])
@@ -239,12 +236,6 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
         lyr_obj = RSLayer(name, name, 'Vector', os.path.relpath(file_path, output_folder))
         ntd_node, _fpath = project.add_project_vector(realization, lyr_obj)
         project.add_metadata([RSMeta(k, v, RSMetaTypes.URL) for k, v in ntd_urls.items()], ntd_node)
-
-    # Download the HAND raster
-    huc6 = huc[0:6]
-    hand_download_folder = os.path.join(download_folder, 'hand')
-    _hpath, hand_url = download_hand(huc6, cfg.OUTPUT_EPSG, hand_download_folder, nhd[boundary], hand_raster, warp_options={"cutlineBlend": 1})
-    project.add_metadata([RSMeta('origin_url', hand_url, RSMetaTypes.URL)], hand_node)
 
     # download contributing DEM rasters, mosaic and reproject into compressed GeoTIF
     ned_download_folder = os.path.join(download_folder, 'ned')
