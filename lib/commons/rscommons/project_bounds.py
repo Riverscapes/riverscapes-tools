@@ -10,7 +10,7 @@ Date:     13 Jan 2022
 """
 from typing import Dict
 
-import ogr
+from osgeo import ogr
 from osgeo.ogr import Geometry
 
 from rscommons.vector_ops import collect_feature_class
