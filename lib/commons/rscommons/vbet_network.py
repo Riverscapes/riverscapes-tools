@@ -152,10 +152,10 @@ def copy_vaa_attributes(destination_layer, vaa_table):
     return os.path.basename(vaa_table)
 
 
-def join_attributes(gpkg, name, geom_layer, attribute_layer, join_field, fields, epsg, geom_type='LINESTRING'):
+def join_attributes(gpkg, name, geom_layer, attribute_layer, join_field, fields, epsg, geom_type='LINESTRING', join_type="INNER"):
 
     sql_path = 'CASE A.Divergence WHEN 2 THEN A.DnLevelPat ELSE A.LevelPathI END AS vbet_level_path'
-    sql = f"CREATE VIEW {name} AS SELECT G.*, {', '.join(['A.' + item for item in fields])}, {sql_path} FROM {geom_layer} G INNER JOIN {attribute_layer} A ON G.{join_field} = A.{join_field};"
+    sql = f"CREATE VIEW {name} AS SELECT G.*, {', '.join(['A.' + item for item in fields])}, {sql_path} FROM {geom_layer} G {join_type} JOIN {attribute_layer} A ON G.{join_field} = A.{join_field};"
 
     with sqlite3.connect(gpkg) as conn:
 
@@ -170,6 +170,35 @@ def join_attributes(gpkg, name, geom_layer, attribute_layer, join_field, fields,
         conn.commit()
 
     return os.path.join(gpkg, name)
+
+
+def get_channel_level_path(channel_area, lines, vaa_table):
+
+    with GeopackageLayer(channel_area, write=True) as lyr_channel, \
+            GeopackageLayer(lines) as lyr_intersect, \
+            sqlite3.connect(os.path.dirname(vaa_table)) as conn:
+
+        lyr_channel.create_field("LevelPathI", ogr.OFTReal)
+        curs = conn.cursor()
+        for feat, _counter, progbar in lyr_channel.iterate_features():
+            level_path = None
+            nhd_id = feat.GetField('NHDPlusID')
+            value = curs.execute(f"SELECT LevelPathI FROM {os.path.basename(vaa_table)} WHERE NHDPlusID = ?", [int(nhd_id)]).fetchall()
+            if len(value) > 0:
+                level_path = value[0][0]
+            else:
+                geom_candidate = feat.GetGeometryRef()
+                lengths = {}
+                for l_feat, _counter, progbar in lyr_intersect.iterate_features(clip_shape=geom_candidate):
+                    line_geom = l_feat.GetGeometryRef()
+                    line_length = line_geom.Length()
+                    line_level_path = l_feat.GetField('LevelPathI')
+                    lengths[line_level_path] = lengths[line_level_path] + line_length if line_level_path in lengths else line_length
+                if len(lengths) > 0:
+                    level_path = max(lengths, key=lengths.get)
+
+            feat.SetField("LevelPathI", level_path)
+            lyr_channel.ogr_layer.SetFeature(feat)
 
 
 # def generate_channel_areas(flowline_network, flow_areas, buffer_field, catchments, out_channel_area, waterbodies=None):

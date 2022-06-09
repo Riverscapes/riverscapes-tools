@@ -20,12 +20,13 @@ import numpy as np
 from scipy.ndimage import label, generate_binary_structure, binary_dilation, binary_erosion, binary_closing
 
 from rscommons import VectorBase, ProgressBar, GeopackageLayer, dotenv
-from rscommons.vector_ops import copy_feature_class, polygonize, select_features_by_intersect
+from rscommons.vector_ops import copy_feature_class, polygonize, select_features_by_intersect, collect_feature_class
 from rscommons.util import safe_makedirs
 from rscommons.hand import run_subprocess
-from rscommons.vbet_network import copy_vaa_attributes, join_attributes, create_stream_size_zones
+from rscommons.vbet_network import copy_vaa_attributes, join_attributes, create_stream_size_zones, get_channel_level_path
 from vbet.vbet_database import build_vbet_database, load_configuration
 from vbet.vbet_raster_ops import rasterize_attribute, raster_clean, raster2array, array2raster, new_raster, rasterize
+from vbet.vbet_outputs import vbet_merge
 from .cost_path import least_cost_path
 from .raster2line import raster2line_geom
 
@@ -42,13 +43,17 @@ def vbet_centerlines(in_line_network, dem, slope, in_catchments, in_channel_area
     copy_feature_class(in_line_network, line_network_features)
     catchment_features = os.path.join(vbet_gpkg, 'catchments')
     copy_feature_class(in_catchments, catchment_features)
+    channel_area = os.path.join(vbet_gpkg, 'channel_area')
+    copy_feature_class(in_channel_area, channel_area)
 
     build_vbet_database(vbet_gpkg)
     vbet_run = load_configuration(scenario_code, vbet_gpkg)
 
     vaa_table_name = copy_vaa_attributes(line_network_features, vaa_table)
-    line_network = join_attributes(vbet_gpkg, "flowlines_vaa", os.path.basename(line_network_features), vaa_table_name, 'NHDPlusID', ['LevelPathI'], 4326)
-    catchments = join_attributes(vbet_gpkg, "catchments_vaa", os.path.basename(catchment_features), vaa_table_name, 'NHDPlusID', ['LevelPathI'], 4326, geom_type='POLYGON')
+    line_network = join_attributes(vbet_gpkg, "flowlines_vaa", os.path.basename(line_network_features), vaa_table_name, 'NHDPlusID', ['LevelPathI', 'DnLevelPat', 'UpLevelPat', 'Divergence'], 4326)
+    catchments = join_attributes(vbet_gpkg, "catchments_vaa", os.path.basename(catchment_features), vaa_table_name, 'NHDPlusID', ['LevelPathI', 'DnLevelPat', 'UpLevelPat', 'Divergence'], 4326, geom_type='POLYGON')
+
+    get_channel_level_path(channel_area, line_network, vaa_table)
 
     catchments_path = os.path.join(intermediate_gpkg, 'transform_zones')
     vaa_table_path = os.path.join(vbet_gpkg, vaa_table_name)
@@ -89,11 +94,17 @@ def vbet_centerlines(in_line_network, dem, slope, in_catchments, in_channel_area
     # run for orphan waterbodies??
 
     # Initialize Outputs
-    centerlines_layer = os.path.join(vbet_gpkg, "vbet_centerlines")
-    with GeopackageLayer(centerlines_layer, write=True) as lyr_cl_init, \
+    output_centerlines = os.path.join(vbet_gpkg, "vbet_centerlines")
+    output_vbet = os.path.join(vbet_gpkg, "vbet_polygons")
+    output_active_vbet = os.path.join(vbet_gpkg, "active_vbet_polygons")
+    with GeopackageLayer(output_centerlines, write=True) as lyr_cl_init, \
+        GeopackageLayer(output_vbet, write=True) as lyr_vbet_init, \
+        GeopackageLayer(output_active_vbet, write=True) as lyr_active_vbet_init, \
             GeopackageLayer(line_network) as lyr_ref:
         fields = {'LevelPathI': ogr.OFTString}
         lyr_cl_init.create_layer(ogr.wkbLineString, spatial_ref=lyr_ref.spatial_ref, fields=fields)
+        lyr_vbet_init.create_layer(ogr.wkbPolygon, spatial_ref=lyr_ref.spatial_ref, fields=fields)
+        lyr_active_vbet_init.create_layer(ogr.wkbPolygon, spatial_ref=lyr_ref.spatial_ref, fields=fields)
 
     # Generate the list of level paths to run, sorted by ascending order and optional user filter
     level_paths_to_run = []
@@ -104,24 +115,29 @@ def vbet_centerlines(in_line_network, dem, slope, in_catchments, in_channel_area
     level_paths_to_run = list(set(level_paths_to_run))
     if level_paths:
         level_paths_to_run = [level_path for level_path in level_paths_to_run if level_path in level_paths]
-    level_paths_to_run.sort(reverse=True)
+    level_paths_to_run.sort(reverse=False)
+    level_paths_to_run.append(None)
 
     # iterate for each level path
     for level_path in level_paths_to_run:
 
-        temp_folder = os.path.join(out_folder, f'temp_{level_path}')
+        temp_folder = os.path.join(out_folder, 'temp', f'levelpath_{level_path}')
         safe_makedirs(temp_folder)
 
-        sql = f"LevelPathI = {level_path}"
-
+        sql = f"LevelPathI = {level_path}" if level_path is not None else "LevelPathI is NULL"
         # Select channel areas that intersect flow lines
         level_path_polygons = os.path.join(out_folder, f'channel_polygons.gpkg', f'level_path_{level_path}')
-        select_features_by_intersect(in_channel_area, line_network, level_path_polygons, intersect_attribute_filter=sql)
+        copy_feature_class(channel_area, level_path_polygons, attribute_filter=sql)
+
+        # current_vbet = collect_feature_class(output_vbet)
+        # if current_vbet is not None:
+        #     channel_polygons = collect_feature_class(level_path_polygons)
+        #     if current_vbet.Contains(channel_polygons):
+        #         continue
 
         evidence_raster = os.path.join(out_folder, f'vbet_evidence_{level_path}.tif')
         rasterized_channel = os.path.join(out_folder, f'rasterized_channel_{level_path}.tif')
         rasterize(level_path_polygons, rasterized_channel, dem, all_touched=True)
-        #rasterize_level_path(level_path_polygons, dem, level_path, rasterized_channel)
         in_rasters['Channel'] = rasterized_channel
 
         # log.info("Generating HAND")
@@ -145,7 +161,7 @@ def vbet_centerlines(in_line_network, dem, slope, in_catchments, in_channel_area
         progbar = ProgressBar(len(list(read_rasters['Slope'].block_windows(1))), 50, "Calculating evidence layer")
         counter = 0
         # Again, these rasters should be orthogonal so their windows should also line up
-        for _ji, window in read_rasters['Slope'].block_windows(1):
+        for _ji, window in read_rasters['HAND'].block_windows(1):
             progbar.update(counter)
             counter += 1
             block = {block_name: raster.read(1, window=window, masked=True) for block_name, raster in read_rasters.items()}
@@ -165,67 +181,52 @@ def vbet_centerlines(in_line_network, dem, slope, in_catchments, in_channel_area
             write_rasters['VBET_EVIDENCE'].write(np.ma.filled(np.float32(fvals_evidence), out_meta['nodata']), window=window, indexes=1)
         write_rasters['VBET_EVIDENCE'].close()
 
-        cost_path_raster = os.path.join(out_folder, f'cost_path_{level_path}.tif')
-        valley_bottom = os.path.join(out_folder, f'valley_bottom_{level_path}.tif')
+        # Generate VBET Polygon
+        valley_bottom_raster = os.path.join(temp_folder, f'valley_bottom_{level_path}.tif')
+        generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, valley_bottom_raster, temp_folder)
+        vbet_polygon = os.path.join(temp_folder, f'valley_bottom_{level_path}.shp')
+        polygonize(valley_bottom_raster, 1, vbet_polygon, epsg=4326)
+        # Add to existing feature class
+        polygon = vbet_merge(vbet_polygon, output_vbet, level_path=level_path)
 
-        # Generate Centerline from Cost Path
-        generate_centerline_surface(evidence_raster, rasterized_channel, hand_raster, valley_bottom, cost_path_raster, temp_folder)
-        vbet_polygon = os.path.join(out_folder, f'valley_bottom_{level_path}.shp')
-        polygonize(valley_bottom, 1, vbet_polygon, epsg=4326)
-        centerline_raster = os.path.join(out_folder, f'centerline_{level_path}.tif')
-        coords = get_endpoints(line_network, 'LevelPathI', level_path)
-        least_cost_path(cost_path_raster, centerline_raster, coords[0], coords[1])
-        # centerline_shp = os.path.join(out_folder, f'centerline_{level_path}.shp')
-        centerline = raster2line_geom(centerline_raster, 1)
-        with GeopackageLayer(centerlines_layer, write=True) as lyr_cl:
-            out_feature = ogr.Feature(lyr_cl.ogr_layer_def)
-            out_feature.SetGeometry(centerline)
-            out_feature.SetField('LevelPathI', str(level_path))
-            lyr_cl.ogr_layer.CreateFeature(out_feature)
-            out_feature = None
+        active_valley_bottom_raster = os.path.join(temp_folder, f'active_valley_bottom_{level_path}.tif')
+        generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, active_valley_bottom_raster, temp_folder, threshold=0.90)
+        active_vbet_polygon = os.path.join(temp_folder, f'active_valley_bottom_{level_path}.shp')
+        polygonize(active_valley_bottom_raster, 1, active_vbet_polygon, epsg=4326)
+        # Add to existing feature class
+        active_polygon = vbet_merge(active_vbet_polygon, output_active_vbet, level_path=level_path)
 
+        # Generate centerline for level paths only
+        if level_path is not None:
+            # Generate Centerline from Cost Path
+            cost_path_raster = os.path.join(temp_folder, f'cost_path_{level_path}.tif')
+            generate_centerline_surface(valley_bottom_raster, cost_path_raster, temp_folder)
+            centerline_raster = os.path.join(temp_folder, f'centerline_{level_path}.tif')
+            coords = get_endpoints(line_network, 'LevelPathI', level_path)
+            least_cost_path(cost_path_raster, centerline_raster, coords[0], coords[1])
+            centerline_full = raster2line_geom(centerline_raster, 1)
 
-def rasterize_level_path(line_network, dem, level_path, out_raster, attribute_filter=None):
+            if polygon is not None:
+                centerline_intersected = polygon.Intersection(centerline_full)
+                if centerline_intersected.GetGeometryName() == 'GeometryCollection':
+                    for line in centerline_intersected:
+                        centerline = ogr.Geometry(ogr.wkbMultiLineString)
+                        if line.GetGeometryName() == 'LineString':
+                            centerline.AddGeometry(line)
+                else:
+                    centerline = centerline_intersected
+            else:
+                centerline = centerline_full
 
-    ds_path, lyr_path = VectorBase.path_sorter(line_network)
-
-    g = gdal.Open(dem)
-    geo_t = g.GetGeoTransform()
-    width, height = g.RasterXSize, g.RasterYSize
-    xmin = min(geo_t[0], geo_t[0] + width * geo_t[1])
-    xmax = max(geo_t[0], geo_t[0] + width * geo_t[1])
-    ymin = min(geo_t[3], geo_t[3] + geo_t[-1] * height)
-    ymax = max(geo_t[3], geo_t[3] + geo_t[-1] * height)
-    # Close our dataset
-    g = None
-
-    progbar = ProgressBar(100, 50, f"Rasterizing for Level path {level_path}")
-
-    #sql = f"LevelPathI = {level_path}"
-
-    def poly_progress(progress, _msg, _data):
-        progbar.update(int(progress * 100))
-
-    # https://gdal.org/programs/gdal_rasterize.html
-    # https://gdal.org/python/osgeo.gdal-module.html#RasterizeOptions
-    gdal.Rasterize(
-        out_raster,
-        ds_path,
-        layers=[lyr_path],
-        height=height,
-        width=width,
-        burnValues=1, outputType=gdal.GDT_Int16,
-        creationOptions=['COMPRESS=LZW'],
-        allTouched=True,
-        # outputBounds --- assigned output bounds: [minx, miny, maxx, maxy]
-        outputBounds=[xmin, ymin, xmax, ymax],
-        callback=poly_progress
-    )
-
-    progbar.finish()
+            with GeopackageLayer(output_centerlines, write=True) as lyr_cl:
+                out_feature = ogr.Feature(lyr_cl.ogr_layer_def)
+                out_feature.SetGeometry(centerline)
+                out_feature.SetField('LevelPathI', str(level_path))
+                lyr_cl.ogr_layer.CreateFeature(out_feature)
+                out_feature = None
 
 
-def generate_centerline_surface(vbet_evidence_raster, rasterized_channel, channel_hand, out_valley_bottom, out_cost_path, temp_folder):
+def generate_vbet_polygon(vbet_evidence_raster, rasterized_channel, channel_hand, out_valley_bottom, temp_folder, threshold=0.68):
 
     # Read initial rasters as arrays
     vbet = raster2array(vbet_evidence_raster)
@@ -233,7 +234,7 @@ def generate_centerline_surface(vbet_evidence_raster, rasterized_channel, channe
     hand = raster2array(channel_hand)
 
     # Generate Valley Bottom
-    valley_bottom = ((vbet + chan) >= 0.68) * ((hand + chan) > 0)  # ((A + B) < 0.68) * (C > 0)
+    valley_bottom = ((vbet + chan) >= threshold) * ((hand + chan) > 0)  # ((A + B) < 0.68) * (C > 0)
     valley_bottom_raw = os.path.join(temp_folder, "valley_bottom_raw.tif")
     array2raster(valley_bottom_raw, vbet_evidence_raster, valley_bottom, data_type=gdal.GDT_Int32)
 
@@ -259,16 +260,21 @@ def generate_centerline_surface(vbet_evidence_raster, rasterized_channel, channe
     valley_bottom_clean = binary_closing(valley_bottom_region.astype(int), iterations=2)
     array2raster(out_valley_bottom, vbet_evidence_raster, valley_bottom_clean, data_type=gdal.GDT_Int32)
 
+
+def generate_centerline_surface(vbet_raster, out_cost_path, temp_folder):
+
+    vbet = raster2array(vbet_raster)
+
     # Generate Inverse Raster for Proximity
-    valley_bottom_inverse = (valley_bottom_clean != 1)
+    valley_bottom_inverse = (vbet != 1)
     inverse_mask_raster = os.path.join(temp_folder, 'inverse_mask.tif')
-    array2raster(inverse_mask_raster, vbet_evidence_raster, valley_bottom_inverse)
+    array2raster(inverse_mask_raster, vbet_raster, valley_bottom_inverse)
 
     # Proximity Raster
     ds_valley_bottom_inverse = gdal.Open(inverse_mask_raster)
     band_valley_bottom_inverse = ds_valley_bottom_inverse.GetRasterBand(1)
     proximity_raster = os.path.join(temp_folder, 'proximity.tif')
-    _ds_proximity, band_proximity = new_raster(proximity_raster, vbet_evidence_raster, data_type=gdal.GDT_Int32)
+    _ds_proximity, band_proximity = new_raster(proximity_raster, vbet_raster, data_type=gdal.GDT_Int32)
     gdal.ComputeProximity(band_valley_bottom_inverse, band_proximity, ['VALUES=1', "DISTUNITS=PIXEL", "COMPRESS=DEFLATE"])
     band_proximity.SetNoDataValue(0)
     band_proximity.FlushCache()
@@ -277,11 +283,11 @@ def generate_centerline_surface(vbet_evidence_raster, rasterized_channel, channe
     # Rescale Raster
     rescaled = np.interp(proximity, (proximity.min(), proximity.max()), (0.0, 10.0))
     rescaled_raster = os.path.join(temp_folder, 'rescaled.tif')
-    array2raster(rescaled_raster, vbet_evidence_raster, rescaled, data_type=gdal.GDT_Float32)
+    array2raster(rescaled_raster, vbet_raster, rescaled, data_type=gdal.GDT_Float32)
 
     # Centerline Cost Path
     cost_path = 10**((rescaled * -1) + 10) + (rescaled <= 0) * 1000000000000  # 10** (((A) * -1) + 10) + (A <= 0) * 1000000000000
-    array2raster(out_cost_path, vbet_evidence_raster, cost_path, data_type=gdal.GDT_Float32)
+    array2raster(out_cost_path, vbet_raster, cost_path, data_type=gdal.GDT_Float32)
 
 
 def get_endpoints(line_network, field, attribute):

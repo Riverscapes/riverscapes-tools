@@ -2,8 +2,10 @@ from uuid import uuid4
 from osgeo import ogr
 import rasterio
 import numpy as np
-from rscommons import ProgressBar, Logger, GeopackageLayer, VectorBase, TempRaster, TempGeopackage
+
+from rscommons import ProgressBar, Logger, GeopackageLayer, VectorBase, TempRaster, TempGeopackage, get_shp_or_gpkg
 from rscommons.vector_ops import get_num_pts, get_num_rings, remove_holes
+from rscommons.classes.vector_base import get_utm_zone_epsg
 from vbet.__version__ import __version__
 
 
@@ -159,3 +161,29 @@ def sanitize(name: str, in_path: str, out_path: str, buff_dist: float, select_fe
                     log.warning('Invalid GEOM with fid: {} for layer {}'.format(fid, name))
             out_lyr.ogr_layer.CommitTransaction()
         log.info('Writing to disk for layer {}'.format(name))
+
+
+def vbet_merge(in_layer, out_layer, level_path=None):
+
+    geom = None
+
+    with get_shp_or_gpkg(in_layer) as lyr_polygon, \
+            GeopackageLayer(out_layer, write=True) as lyr_vbet:
+
+        for feat, *_ in lyr_polygon.iterate_features():
+            geom_ref = feat.GetGeometryRef()
+            geom = geom_ref.Clone()
+            for clip_feat, *_ in lyr_vbet.iterate_features(clip_shape=geom):
+                clip_geom = clip_feat.GetGeometryRef()
+                geom = geom.Difference(clip_geom)
+
+                if geom is None:
+                    break
+                if geom.GetGeometryName() == 'GeometryCollection':
+                    break
+            out_feature = ogr.Feature(lyr_vbet.ogr_layer_def)
+            out_feature.SetGeometry(geom)
+            out_feature.SetField("LevelPathI", level_path)
+            lyr_vbet.ogr_layer.CreateFeature(out_feature)
+
+        return geom
