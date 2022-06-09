@@ -125,6 +125,19 @@
       ]
     },
     {
+      "name": "VBET Segmentation",
+      "type": "python",
+      "request": "launch",
+      "module": "vbet.vbet_segmentation",
+      "console": "integratedTerminal",
+      "args": [
+        "{env:DATA_ROOT}/vbet/${input:HUC}/centerlines/vbet.gpkg/vbet_centerlines",
+        "{env:DATA_ROOT}/vbet/${input:HUC}/centerlines/vbet.gpkg/vbet_polygons",
+        "active_floodplain={env:DATA_ROOT}/vbet/${input:HUC}/centerlines/vbet.gpkg/active_vbet_polygons,active_channel={env:DATA_ROOT}/vbet/${input:HUC}/centerlines/vbet.gpkg/channel_area",
+        "{env:DATA_ROOT}/vbet/${input:HUC}/centerlines/segments.gpkg"
+      ]
+    },
+    {
       "name": "Augment XML",
       "type": "python",
       "request": "launch",

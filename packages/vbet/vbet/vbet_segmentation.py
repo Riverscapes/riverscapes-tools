@@ -1,0 +1,189 @@
+"""_summary_
+"""
+import os
+import sys
+import argparse
+
+from osgeo import ogr, osr
+from shapely.ops import linemerge, voronoi_diagram
+from shapely.geometry import LineString, MultiLineString, Point, MultiPoint
+
+from rscommons import GeopackageLayer, Logger, ProgressBar, VectorBase, dotenv, VectorBase
+from rscommons.util import parse_metadata
+from rscommons.classes.vector_base import get_utm_zone_epsg
+
+
+def generate_segmentation_points(line_network, out_points_layer, distance=200):
+    """heavily modified from: https://glenbambrick.com/2017/09/15/osgp-create-points-along-line/
+    """
+
+    with GeopackageLayer(out_points_layer, write=True, delete_dataset=True) as out_lyr, \
+            GeopackageLayer(line_network) as line_lyr:
+
+        out_lyr.create_layer(ogr.wkbPoint, spatial_ref=line_lyr.spatial_ref, fields={"LevelPathI": ogr.OFTReal, "SegDistance": ogr.OFTReal})
+
+        extent_poly = ogr.Geometry(ogr.wkbPolygon)
+        extent_centroid = extent_poly.Centroid()
+        utm_epsg = get_utm_zone_epsg(extent_centroid.GetX())
+        transform_ref, transform = VectorBase.get_transform_from_epsg(line_lyr.spatial_ref, utm_epsg)
+        # In order to get accurate lengths we are going to need to project into some coordinate system
+        transform_back = osr.CoordinateTransformation(transform_ref, line_lyr.spatial_ref)
+
+        for feat, *_ in line_lyr.iterate_features():
+            level_path = feat.GetField('LevelPathI')
+            geom_line = feat.GetGeometryRef()
+            geom_line.FlattenTo2D()
+            geom_line.Transform(transform)
+            shapely_multiline = VectorBase.ogr2shapely(geom_line)
+            if shapely_multiline.length == 0.0:
+                continue
+            cleaned_line = clean_linestring(shapely_multiline)
+
+            for shapely_line in cleaned_line.geoms:
+                # list to hold all the point coords
+                if shapely_line.geom_type is not "LineString":
+                    continue
+                list_points = []
+                # set the current distance to place the point
+                current_dist = distance
+                # get the geometry of the line as wkt
+                # ## get the total length of the line
+                line_length = shapely_line.length
+                # append the starting coordinate to the list
+                list_points.append(Point(list(shapely_line.coords)[0]))
+                # https://nathanw.net/2012/08/05/generating-chainage-distance-nodes-in-qgis/
+                # while the current cumulative distance is less than the total length of the line
+                while current_dist < line_length:
+                    # use interpolate and increase the current distance
+                    list_points.append(shapely_line.interpolate(current_dist))
+                    current_dist += distance
+                # append end coordinate to the list
+                list_points.append(Point(list(shapely_line.coords)[-1]))
+
+                # add points to the layer
+                # for each point in the list
+                for num, pt in enumerate(list_points, 1):
+                    # create a point object
+                    pnt = ogr.Geometry(ogr.wkbPoint)
+                    pnt.AddPoint_2D(pt.x, pt.y)
+                    pnt.Transform(transform_back)
+                    # populate the distance values for each point.
+                    # start point
+                    if num == 1:
+                        out_dist = 0
+                    elif num < len(list_points):
+                        out_dist = distance * (num - 1)
+                    # end point
+                    elif num == len(list_points):
+                        out_dist = int(line_length)
+                    # add the point feature to the output.
+                    out_lyr.create_feature(pnt, {"LevelPathI": level_path, "SegDistance": out_dist})
+
+
+def split_vbet_polygons(vbet_polygons, segmentation_points, out_split_polygons):
+
+    with GeopackageLayer(out_split_polygons, write=True) as out_lyr, \
+            GeopackageLayer(vbet_polygons) as vbet_lyr, \
+            GeopackageLayer(segmentation_points) as points_lyr:
+
+        out_lyr.create_layer(ogr.wkbPolygon, spatial_ref=vbet_lyr.spatial_ref, fields={"LevelPathI": ogr.OFTReal})
+
+        for vbet_feat, *_ in vbet_lyr.iterate_features():
+
+            level_path = vbet_feat.GetField('LevelPathI')
+            if level_path is None:
+                continue
+
+            vbet_geom = vbet_feat.GetGeometryRef()
+            vbet_sgeom = VectorBase.ogr2shapely(vbet_geom)
+            list_points = []
+
+            for point_feat, *_ in points_lyr.iterate_features(attribute_filter=f'LevelPathI = {level_path}'):
+                point_geom = point_feat.GetGeometryRef()
+                point_sgeom = VectorBase.ogr2shapely(point_geom)
+                list_points.append(point_sgeom)
+
+            seed_points_sgeom_mpt = MultiPoint(list_points)
+            voronoi = voronoi_diagram(seed_points_sgeom_mpt, envelope=vbet_sgeom)
+            for poly in voronoi.geoms:
+                poly_intersect = vbet_sgeom.intersection(poly)
+                out_lyr.create_feature(poly_intersect, {'LevelPathI': level_path})
+
+
+def segmentation_metrics(vbet_segment_polygons, dict_layers):
+
+    with GeopackageLayer(vbet_segment_polygons, write=True) as vbet_lyr:
+
+        for metric_layer_name in dict_layers.keys():
+            fields = {f'{metric_layer_name}_area': ogr.OFTReal,
+                      f'{metric_layer_name}_prop': ogr.OFTReal, }
+            vbet_lyr.create_fields(fields)
+
+        for metric_layer_name, metric_layer_path in dict_layers.items():
+            with GeopackageLayer(metric_layer_path) as metric_lyr:
+
+                for vbet_feat, *_ in vbet_lyr.iterate_features():
+                    vbet_geom = vbet_feat.GetGeometryRef()
+                    for metric_feat, *_ in metric_lyr.iterate_features(clip_shape=vbet_geom):
+                        metric_geom = metric_feat.GetGeometryRef()
+
+
+def clean_linestring(in_geom):
+
+    if in_geom.geom_type == 'GeometryCollection':
+        geoms = []
+        for geom in in_geom.geoms:
+            if geom.geom_type == 'LineString':
+                geoms.append(geom)
+        in_geom = MultiLineString(geoms)
+    merged_line = linemerge(in_geom) if in_geom.geom_type == 'MultiLineString' else in_geom
+    if merged_line.geom_type == 'LineString':
+        merged_line = MultiLineString([merged_line])
+
+    return merged_line
+
+
+def vbet_segmentation(in_centerlines: str, vbet_polygons: str, metric_layers: dict, out_gpkg: str, interval=200):
+    """
+    Chop the lines in a polyline feature class at the specified interval unless
+    this would create a line less than the minimum in which case the line is not segmented.
+    :param inpath: Original network feature class
+    :param outpath: Output segmented network feature class
+    :param interval: Distance at which to segment each line feature (map units)
+    :param minimum: Minimum length below which lines are not segmented (map units)
+    :param watershed_id: Give this watershed an id (str)
+    :param create_layer: This layer may be created earlier. We can choose to create it. Defaults to false (bool)
+    :return: None
+    """
+
+    log = Logger('Segment Vbet Network')
+
+    out_points = os.path.join(out_gpkg, 'segmentation_points')
+    split_polygons = os.path.join(out_gpkg, 'segmented_vbet_polygons')
+
+    generate_segmentation_points(in_centerlines, out_points)
+    split_vbet_polygons(vbet_polygons, out_points, split_polygons)
+    segmentation_metrics(split_polygons, metric_layers)
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='Riverscapes VBET Centerline Tool',
+        # epilog="This is an epilog"
+    )
+    parser.add_argument('centerlines', help='vbet_centerlines', type=str)
+    parser.add_argument('vbet_polygons', help='vbet polygons', type=str)
+    parser.add_argument('metric_polygons', help='key value metric polygons', type=str)
+    parser.add_argument('out_gpkg')
+
+    args = dotenv.parse_args_env(parser)
+
+    metrics = parse_metadata(args.metric_polygons)
+
+    vbet_segmentation(args.centerlines, args.vbet_polygons, metrics, args.out_gpkg)
+
+    sys.exit(0)
+
+
+if __name__ == '__main__':
+    main()

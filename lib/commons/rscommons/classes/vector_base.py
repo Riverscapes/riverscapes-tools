@@ -474,8 +474,7 @@ class VectorBase():
             raise VectorBaseException('Layer not initialized. No ogr_layer_def found')
 
         feature = ogr.Feature(self.ogr_layer_def)
-        geom_ogr = self.shapely2ogr(geom)
-
+        geom_ogr = geom if isinstance(geom, ogr.Geometry) else self.shapely2ogr(geom)
         feature.SetGeometry(geom_ogr)
 
         if attributes:

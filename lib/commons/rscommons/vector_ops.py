@@ -949,7 +949,7 @@ def difference(remove_layer, target_layer, out_layer_path, epsg=None):
         lyr_output.ogr_layer.CommitTransaction()
 
 
-def select_features_by_intersect(target_layer, intersect_layer, out_layer_path, epsg=None, intersect_attribute_filter=None):
+def select_features_by_intersect(target_layer, intersect_layer, out_layer_path, epsg=None, intersect_attribute_filter=None, inverse_filter=None):
     """ Similar to select by location. does not modify target layer geomoetries
 
     Args:
@@ -967,17 +967,13 @@ def select_features_by_intersect(target_layer, intersect_layer, out_layer_path, 
         out_layer.create_layer_from_ref(lyr_target, epsg=epsg)
         out_layer_defn = out_layer.ogr_layer.GetLayerDefn()
 
-        for feat, _counter, progbar in lyr_target.iterate_features():
-            geom_candidate = feat.GetGeometryRef()
-            for feat, _counter, progbar in lyr_intersect.iterate_features(attribute_filter=intersect_attribute_filter):
-                geom = feat.GetGeometryRef()
-                if geom_candidate.Intersects(geom):
-                    out_feat = ogr.Feature(out_layer_defn)
-                    out_feat.SetGeometry(geom_candidate)
-                    for i in range(0, out_layer.ogr_layer_def.GetFieldCount()):
-                        out_feat.SetField(out_layer.ogr_layer_def.GetFieldDefn(i).GetNameRef(), feat.GetField(i))
-                    out_layer.ogr_layer.CreateFeature(out_feat)
-                    break
+        for feat, _counter, progbar in lyr_target.iterate_features(attribute_filter=intersect_attribute_filter):
+            geom = feat.GetGeometryRef()
+            out_feat = ogr.Feature(out_layer_defn)
+            out_feat.SetGeometry(geom)
+            for i in range(0, out_layer.ogr_layer_def.GetFieldCount()):
+                out_feat.SetField(out_layer.ogr_layer_def.GetFieldDefn(i).GetNameRef(), feat.GetField(i))
+            out_layer.ogr_layer.CreateFeature(out_feat)
 
 
 def geom_validity_fix(geom_in):
