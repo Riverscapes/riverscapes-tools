@@ -11,21 +11,21 @@
 import os
 import sys
 import argparse
-from attr import attr
 
 import gdal
-from osgeo import osr, ogr
+from osgeo import ogr
 import rasterio
+from rasterio import shutil
 import numpy as np
-from scipy.ndimage import label, generate_binary_structure, binary_dilation, binary_erosion, binary_closing
+from scipy.ndimage import label, generate_binary_structure, binary_closing
 
-from rscommons import VectorBase, ProgressBar, GeopackageLayer, dotenv
-from rscommons.vector_ops import copy_feature_class, polygonize, select_features_by_intersect, collect_feature_class
+from rscommons import ProgressBar, GeopackageLayer, dotenv
+from rscommons.vector_ops import copy_feature_class, polygonize
 from rscommons.util import safe_makedirs
 from rscommons.hand import run_subprocess
 from rscommons.vbet_network import copy_vaa_attributes, join_attributes, create_stream_size_zones, get_channel_level_path
 from vbet.vbet_database import build_vbet_database, load_configuration
-from vbet.vbet_raster_ops import rasterize_attribute, raster_clean, raster2array, array2raster, new_raster, rasterize
+from vbet.vbet_raster_ops import rasterize_attribute, raster2array, array2raster, new_raster, rasterize
 from vbet.vbet_outputs import vbet_merge
 from .cost_path import least_cost_path
 from .raster2line import raster2line_geom
@@ -34,7 +34,7 @@ NCORES = "8"
 scenario_code = "UPDATED_TESTING"
 
 
-def vbet_centerlines(in_line_network, dem, slope, in_catchments, in_channel_area, vaa_table, out_folder, level_paths=[], pitfill_dem=None, dinfflowdir_ang=None, dinfflowdir_slp=None, twi_raster=None):
+def vbet_centerlines(in_line_network, dem, slope, in_catchments, in_channel_area, vaa_table, out_folder, level_paths=[], pitfill_dem=None, dinfflowdir_ang=None, dinfflowdir_slp=None, twi_raster=None, debug=True):
 
     vbet_gpkg = os.path.join(out_folder, 'vbet.gpkg')
     intermediate_gpkg = os.path.join(out_folder, 'intermediate.gpkg')
@@ -106,6 +106,9 @@ def vbet_centerlines(in_line_network, dem, slope, in_catchments, in_channel_area
         lyr_vbet_init.create_layer(ogr.wkbPolygon, spatial_ref=lyr_ref.spatial_ref, fields=fields)
         lyr_active_vbet_init.create_layer(ogr.wkbPolygon, spatial_ref=lyr_ref.spatial_ref, fields=fields)
 
+    out_hand = os.path.join(out_folder, "composite_hand.tif")
+    out_vbet_evidence = os.path.join(out_folder, 'composite_vbet_evidence.tif')
+
     # Generate the list of level paths to run, sorted by ascending order and optional user filter
     level_paths_to_run = []
     with GeopackageLayer(line_network) as line_lyr:
@@ -135,13 +138,13 @@ def vbet_centerlines(in_line_network, dem, slope, in_catchments, in_channel_area
         #     if current_vbet.Contains(channel_polygons):
         #         continue
 
-        evidence_raster = os.path.join(out_folder, f'vbet_evidence_{level_path}.tif')
-        rasterized_channel = os.path.join(out_folder, f'rasterized_channel_{level_path}.tif')
+        evidence_raster = os.path.join(temp_folder, f'vbet_evidence_{level_path}.tif')
+        rasterized_channel = os.path.join(temp_folder, f'rasterized_channel_{level_path}.tif')
         rasterize(level_path_polygons, rasterized_channel, dem, all_touched=True)
         in_rasters['Channel'] = rasterized_channel
 
         # log.info("Generating HAND")
-        hand_raster = os.path.join(out_folder, f'local_hand_{level_path}.tif')
+        hand_raster = os.path.join(temp_folder, f'local_hand_{level_path}.tif')
         dinfdistdown_status = run_subprocess(out_folder, ["mpiexec", "-n", NCORES, "dinfdistdown", "-ang", dinfflowdir_ang, "-fel", pitfill_dem, "-src", rasterized_channel, "-dd", hand_raster, "-m", "ave", "v"])
         if dinfdistdown_status != 0 or not os.path.isfile(hand_raster):
             raise Exception('TauDEM: dinfdistdown failed')
@@ -224,6 +227,48 @@ def vbet_centerlines(in_line_network, dem, slope, in_catchments, in_channel_area
                 out_feature.SetField('LevelPathI', str(level_path))
                 lyr_cl.ogr_layer.CreateFeature(out_feature)
                 out_feature = None
+
+        # clean up rasters
+        rio_vbet = rasterio.open(valley_bottom_raster)
+        for out_raster, in_raster in {out_hand: hand_raster, out_vbet_evidence: evidence_raster}.items():
+            if os.path.exists(out_raster):
+                out_temp = os.path.join(temp_folder, 'temp_raster')
+                rio_dest = rasterio.open(out_raster)
+                out_meta = rio_dest.meta
+                out_meta['driver'] = 'GTiff'
+                out_meta['count'] = 1
+                out_meta['compress'] = 'deflate'
+                rio_temp = rasterio.open(out_temp, 'w', **out_meta)
+                rio_source = rasterio.open(in_raster)
+                for _ji, window in rio_source.block_windows(1):
+                    # progbar.update(counter)
+                    # counter += 1
+                    array_vbet_mask = np.ma.MaskedArray(rio_vbet.read(1, window=window, masked=True).data)
+                    array_source = np.ma.MaskedArray(rio_source.read(1, window=window, masked=True).data, mask=array_vbet_mask.mask)
+                    array_dest = np.ma.MaskedArray(rio_dest.read(1, window=window, masked=True).data, mask=array_vbet_mask.mask)
+                    array_out = np.choose(array_vbet_mask, [array_dest, array_source])
+
+                    rio_temp.write(np.ma.filled(np.float32(array_out), out_meta['nodata']), window=window, indexes=1)
+                rio_temp.close()
+                rio_dest.close()
+                rio_source.close()
+                shutil.copyfiles(out_temp, out_raster)
+            else:
+                rio_source = rasterio.open(in_raster)
+                out_meta = rio_source.meta
+                out_meta['driver'] = 'GTiff'
+                out_meta['count'] = 1
+                out_meta['compress'] = 'deflate'
+                rio_dest = rasterio.open(out_raster, 'w', **out_meta)
+                for _ji, window in rio_source.block_windows(1):
+                    array_vbet_mask = np.ma.MaskedArray(rio_vbet.read(1, window=window, masked=True).data)
+                    array_source = np.ma.MaskedArray(rio_source.read(1, window=window, masked=True).data, mask=array_vbet_mask.mask)
+                    rio_dest.write(np.ma.filled(np.float32(array_source), out_meta['nodata']), window=window, indexes=1)
+                rio_dest.close()
+                rio_source.close()
+
+        if debug is False:
+            os.rmdir(temp_folder)
 
 
 def generate_vbet_polygon(vbet_evidence_raster, rasterized_channel, channel_hand, out_valley_bottom, temp_folder, threshold=0.68):

@@ -6,11 +6,12 @@ import argparse
 
 from osgeo import ogr, osr
 from shapely.ops import linemerge, voronoi_diagram
-from shapely.geometry import LineString, MultiLineString, Point, MultiPoint
+from shapely.geometry import MultiLineString, Point, MultiPoint
 
-from rscommons import GeopackageLayer, Logger, ProgressBar, VectorBase, dotenv, VectorBase
+from rscommons import GeopackageLayer, Logger, VectorBase, dotenv
 from rscommons.util import parse_metadata
 from rscommons.classes.vector_base import get_utm_zone_epsg
+from rscommons.vector_ops import geom_validity_fix
 
 
 def generate_segmentation_points(line_network, out_points_layer, distance=200):
@@ -41,7 +42,7 @@ def generate_segmentation_points(line_network, out_points_layer, distance=200):
 
             for shapely_line in cleaned_line.geoms:
                 # list to hold all the point coords
-                if shapely_line.geom_type is not "LineString":
+                if shapely_line.geom_type != "LineString":
                     continue
                 list_points = []
                 # set the current distance to place the point
@@ -107,25 +108,44 @@ def split_vbet_polygons(vbet_polygons, segmentation_points, out_split_polygons):
             voronoi = voronoi_diagram(seed_points_sgeom_mpt, envelope=vbet_sgeom)
             for poly in voronoi.geoms:
                 poly_intersect = vbet_sgeom.intersection(poly)
-                out_lyr.create_feature(poly_intersect, {'LevelPathI': level_path})
+                if poly_intersect.geom_type in ['GeometryCollection', 'LineString'] or poly_intersect.is_empty:
+                    continue
+                clean_geom = poly_intersect.buffer(0) if poly_intersect.is_valid is not True else poly_intersect
+                out_lyr.create_feature(clean_geom, {'LevelPathI': level_path})
 
 
 def segmentation_metrics(vbet_segment_polygons, dict_layers):
 
     with GeopackageLayer(vbet_segment_polygons, write=True) as vbet_lyr:
-
         for metric_layer_name in dict_layers.keys():
             fields = {f'{metric_layer_name}_area': ogr.OFTReal,
                       f'{metric_layer_name}_prop': ogr.OFTReal, }
             vbet_lyr.create_fields(fields)
-
         for metric_layer_name, metric_layer_path in dict_layers.items():
             with GeopackageLayer(metric_layer_path) as metric_lyr:
-
                 for vbet_feat, *_ in vbet_lyr.iterate_features():
                     vbet_geom = vbet_feat.GetGeometryRef()
+                    vbet_geom_transform = geom_validity_fix(vbet_geom)
+                    centroid = vbet_geom.Centroid()
+                    utm_epsg = get_utm_zone_epsg(centroid.GetX())
+                    _transform_ref, transform = VectorBase.get_transform_from_epsg(vbet_lyr.spatial_ref, utm_epsg)
+                    vbet_geom_transform.Transform(transform)
+
+                    vbet_area = vbet_geom_transform.GetArea()
+                    if vbet_area == 0.0:
+                        continue
                     for metric_feat, *_ in metric_lyr.iterate_features(clip_shape=vbet_geom):
-                        metric_geom = metric_feat.GetGeometryRef()
+                        in_metric_geom = metric_feat.GetGeometryRef()
+                        in_metric_geom.Transform(transform)
+                        metric_geom = geom_validity_fix(in_metric_geom)
+                        delta_geom = vbet_geom_transform.Difference(metric_geom)
+                        if delta_geom is None:
+                            continue
+                        metric_area = delta_geom.GetArea()
+                        metric_prop = metric_area / vbet_area
+                        vbet_feat.SetField(f'{metric_layer_name}_area', metric_area)
+                        vbet_feat.SetField(f'{metric_layer_name}_prop', metric_prop)
+                        vbet_lyr.ogr_layer.SetFeature(vbet_feat)
 
 
 def clean_linestring(in_geom):
@@ -161,8 +181,13 @@ def vbet_segmentation(in_centerlines: str, vbet_polygons: str, metric_layers: di
     out_points = os.path.join(out_gpkg, 'segmentation_points')
     split_polygons = os.path.join(out_gpkg, 'segmented_vbet_polygons')
 
-    generate_segmentation_points(in_centerlines, out_points)
+    log.info('Generating Segment Points')
+    generate_segmentation_points(in_centerlines, out_points, interval)
+
+    log.info('Splitting vbet Polygons')
     split_vbet_polygons(vbet_polygons, out_points, split_polygons)
+
+    log.info('Calcuating vbet metrics')
     segmentation_metrics(split_polygons, metric_layers)
 
 
@@ -174,13 +199,14 @@ def main():
     parser.add_argument('centerlines', help='vbet_centerlines', type=str)
     parser.add_argument('vbet_polygons', help='vbet polygons', type=str)
     parser.add_argument('metric_polygons', help='key value metric polygons', type=str)
+    parser.add_argument('--interval', default=200)
     parser.add_argument('out_gpkg')
 
     args = dotenv.parse_args_env(parser)
 
     metrics = parse_metadata(args.metric_polygons)
 
-    vbet_segmentation(args.centerlines, args.vbet_polygons, metrics, args.out_gpkg)
+    vbet_segmentation(args.centerlines, args.vbet_polygons, metrics, args.out_gpkg, args.interval)
 
     sys.exit(0)
 
