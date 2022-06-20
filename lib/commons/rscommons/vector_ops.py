@@ -979,7 +979,7 @@ def select_features_by_intersect(target_layer, intersect_layer, out_layer_path, 
 def geom_validity_fix(geom_in):
     # copied from vbet_outputs
     buff_dist = 0.0000001
-    f_geom = geom_in
+    f_geom = geom_in.Clone()
     # Only clean if there's a problem:
     if not f_geom.IsValid():
         f_geom = f_geom.MakeValid()
