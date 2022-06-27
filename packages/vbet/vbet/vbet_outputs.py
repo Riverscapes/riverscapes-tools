@@ -173,6 +173,7 @@ def vbet_merge(in_layer, out_layer, level_path=None):
         for feat, *_ in lyr_polygon.iterate_features():
             geom_ref = feat.GetGeometryRef()
             geom = geom_ref.Clone()
+            geom = geom.MakeValid()
             for clip_feat, *_ in lyr_vbet.iterate_features(clip_shape=geom):
                 clip_geom = clip_feat.GetGeometryRef()
                 geom = geom.Difference(clip_geom)

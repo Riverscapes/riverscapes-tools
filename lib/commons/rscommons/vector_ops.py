@@ -9,6 +9,7 @@
 # -------------------------------------------------------------------------------
 import os
 import sqlite3
+from collections import Counter
 from copy import copy
 from typing import List
 from functools import reduce
@@ -991,3 +992,20 @@ def geom_validity_fix(geom_in):
                 if not f_geom.IsValid():
                     f_geom = f_geom.MakeValid()
     return f_geom
+
+
+def get_endpoints(line_network, field, attribute):
+
+    with get_shp_or_gpkg(line_network) as lyr:
+        coords = []
+        for feat, *_ in lyr.iterate_features(attribute_filter=f'{field} = {attribute}'):
+            geom = feat.GetGeometryRef()
+            geom.FlattenTo2D()
+            for pt in [geom.GetPoint(0), geom.GetPoint(geom.GetPointCount() - 1)]:
+                coords.append(pt)
+
+        counts = Counter(coords)
+
+        output = [pt for pt, count in counts.items() if count == 1]
+
+        return output
