@@ -150,14 +150,23 @@ try() {
   # Now Run VBET
   ##########################################################################################
 
-  vbet $HUC \
-    "UPDATED_TESTING" \
-    FLOWLINES=$RSCONTEXT_DIR/hydrology/hydrology.gpkg/network,FLOW_AREAS=$RSCONTEXT_DIR/hydrology/NHDArea.shp,SLOPE_RASTER=$RSCONTEXT_DIR/topography/slope.tif,HAND_RASTER=$TAUDEM_DIR/outputs/HAND.tif,TWI_RASTER=$TAUDEM_DIR/outputs/twi.tif,CATCHMENTS=$RSCONTEXT_DIR/hydrology/NHDPlusCatchment.shp,CHANNEL_AREA_POLYGONS=$CHANNEL_DIR/outputs/channel_area.gpkg/channel_area,HILLSHADE=$RSCONTEXT_DIR/topography/dem_hillshade.tif,DEM=$RSCONTEXT_DIR/topography/dem.tif \
-    $RSCONTEXT_DIR/hydrology/nhd_data.sqlite/NHDPlusFlowlineVAA \
-    $VBET_DIR \
-    --reach_codes 33400,46000,46003,46006,46007,55800 \
-    --meta "Runner=Cybercastor" \
-    --verbose
+vbet $HUC \
+  "UPDATED_TESTING" \
+  $RS_CONTEXT_DIR/hydrology/hydrology.gpkg/network \
+  $RS_CONTEXT_DIR/topography/dem.tif \
+  $RS_CONTEXT_DIR/topography/slope.tif \
+  $RS_CONTEXT_DIR/topography/hillshade.tif \
+  $RS_CONTEXT_DIR/hydrology/NHDPlusCatchment.shp \
+  $CHANNEL_AREA_DIR/outputs/channel_area.gpkg/channel_area \
+  $RS_CONTEXT_DIR/hydrology/nhd_data.sqlite/NHDPlusFlowlineVAA \
+  $VBET_DIR \
+  --in_pitfill {env:DATA_ROOT}/taudem/${input:HUC}/intermediates/pitfill.tif \
+  --in_dinfflowdir_ang {env:DATA_ROOT}/taudem/${input:HUC}/intermediates/dinfflowdir_ang.tif \
+  --in_dinfflowdir_slp {env:DATA_ROOT}/taudem/${input:HUC}/outputs/dinfflowdir_slp.tif \
+  --in_twi_raster $TAUDEM_DIR/outputs/twi.tif \
+  --reach_codes 33400,46000,46003,46006,46007,55800 \
+  --meta "Runner=Cybercastor" \
+  --verbose
   if [[ $? != 0 ]]; then return 1; fi
 
   cd /usr/local/src/riverscapes-tools/packages/vbet
