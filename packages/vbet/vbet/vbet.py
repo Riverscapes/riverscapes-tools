@@ -39,7 +39,7 @@ from vbet.__version__ import __version__
 
 Path = str
 
-NCORES = "8"
+NCORES = os.environ['TAUDEM_CORES'] if 'TAUDEM_CORES' in os.environ else '2'  # "8"
 
 initGDALOGRErrors()
 
@@ -57,6 +57,10 @@ LayerTypes = {
         'CHANNEL_AREA_POLYGONS': RSLayer('Channel Area Polygons', 'CHANNEL_AREA_POLYGONS', 'Vector', 'channel_area_polygons'),
         'CATCHMENTS': RSLayer('NHD Catchments', 'CATCHMENTS', 'Vector', 'catchments'),
     }),
+    # Taudem intermediate rasters can be provided as inputs, or generated in vbet
+    'PITFILL': RSLayer('TauDEM Pitfill', 'PITFILL', 'Raster', 'intermediates/pitfill.tif'),
+    'DINFFLOWDIR_ANG': RSLayer('TauDEM D-Inf Flow Directions', 'DINFFLOWDIR_ANG', 'Raster', 'intermediates/dinfflowdir_ang.tif'),
+    'DINFFLOWDIR_SLP': RSLayer('TauDEM D-Inf Flow Directions Slope', 'DINFFLOWDIR_SLP', 'Raster', 'intermediates/dinfflowdir_slp.tif'),
     # 'CHANNEL_AREA_RASTER': RSLayer('Channel Area Raster', 'CHANNEL_AREA_RASTER', 'Raster', 'intermediates/channelarea.tif'),
     # DYNAMIC: 'DA_ZONE_<RASTER>': RSLayer('Drainage Area Zone Raster', 'DA_ZONE_RASTER', "Raster", "intermediates/.tif"),
     # 'NORMALIZED_SLOPE': RSLayer('Normalized Slope', 'NORMALIZED_SLOPE', "Raster", "intermediates/nLoE_Slope.tif"),
@@ -87,7 +91,7 @@ LayerTypes = {
 }
 
 
-def vbet_centerlines(in_line_network, dem, slope, in_catchments, in_channel_area, vaa_table, project_folder, scenario_code, huc, level_paths=None, pitfill_dem=None, dinfflowdir_ang=None, dinfflowdir_slp=None, twi_raster=None, meta=None, debug=True):
+def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchments, in_channel_area, vaa_table, project_folder, scenario_code, huc, level_paths=None, in_pitfill_dem=None, in_dinfflowdir_ang=None, in_dinfflowdir_slp=None, in_twi_raster=None, meta=None, debug=True):
 
     thresh_vals = {'VBET_IA': 0.90, 'VBET_FULL': 0.68}
 
@@ -136,29 +140,41 @@ def vbet_centerlines(in_line_network, dem, slope, in_catchments, in_channel_area
     create_stream_size_zones(catchments, vaa_table_path, 'NHDPlusID', 'StreamOrde', vbet_run['Zones'], catchments_path)
 
     in_rasters = {}
-    in_rasters['Slope'] = slope
+    _proj_hillshade_node, _hillshade = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], in_hillshade, replace=True)
+    _proj_dem_node, dem = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], in_dem, replace=True)
+    _proj_slope_node, in_rasters['Slope'] = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['SLOPE_RASTER'], in_slope, replace=True)
 
     # generate top level taudem products if they do not exist
-    if pitfill_dem is None:
-        pitfill_dem = os.path.join(project_folder, 'pitfill.tif')
+    if in_pitfill_dem is None:
+        pitfill_dem = os.path.join(project_folder, LayerTypes['PITFILL'].rel_path)
         pitfill_status = run_subprocess(project_folder, ["mpiexec", "-n", NCORES, "pitremove", "-z", dem, "-fel", pitfill_dem])
         if pitfill_status != 0 or not os.path.isfile(pitfill_dem):
             raise Exception('TauDEM: pitfill failed')
+        _proj_hillshade_node, pitfill_dem = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['PITFILL'])
+    else:
+        _proj_hillshade_node, pitfill_dem = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['PITFILL'], in_pitfill_dem, replace=True)
 
-    if not all([dinfflowdir_ang, dinfflowdir_slp]):
-        dinfflowdir_slp = os.path.join(project_folder, 'dinfflowdir_slp.tif')
-        dinfflowdir_ang = os.path.join(project_folder, 'dinfflowdir_ang.tif')
+    if not all([in_dinfflowdir_ang, in_dinfflowdir_slp]):
+        dinfflowdir_slp = os.path.join(project_folder, LayerTypes['DINFFLOWDIR_SLP'].rel_path)
+        dinfflowdir_ang = os.path.join(project_folder, LayerTypes['DINFFLOWDIR_ANG'].rel_path)
         dinfflowdir_status = run_subprocess(project_folder, ["mpiexec", "-n", NCORES, "dinfflowdir", "-fel", pitfill_dem, "-ang", dinfflowdir_ang, "-slp", dinfflowdir_slp])
         if dinfflowdir_status != 0 or not os.path.isfile(dinfflowdir_ang):
             raise Exception('TauDEM: dinfflowdir failed')
+        _proj_dinfflowdir_ang_node, dinfflowdir_ang = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_ANG'])
+        _proj_dinfflowdir_slp_node, dinfflowdir_slp = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_SLP'])
+    else:
+        _proj_dinfflowdir_ang_node, dinfflowdir_ang = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_ANG'], in_dinfflowdir_ang, replace=True)
+        _proj_dinfflowdir_slp_node, dinfflowdir_slp = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_SLP'], in_dinfflowdir_slp, replace=True)
 
-    if not twi_raster:
-        twi_raster = os.path.join(project_folder, 'local_twi')
-        sca = os.path.join(project_folder, 'sca.tif')
-        twi_status = run_subprocess(project_folder, ["mpiexec", "-n", NCORES, "twi", "-slp", dinfflowdir_slp, "-sca", sca, '-twi', twi_raster])
+    if not in_twi_raster:
+        twi_raster = os.path.join(project_folder, LayerTypes['TWI_RASTER'].rel_path)
+        #sca = os.path.join(project_folder, 'sca.tif')
+        twi_status = run_subprocess(project_folder, ["mpiexec", "-n", NCORES, "twi", "-slp", dinfflowdir_slp, '-twi', twi_raster])  # "-sca", sca,
         if twi_status != 0 or not os.path.isfile(twi_raster):
             raise Exception('TauDEM: TWI failed')
-    in_rasters['TWI'] = twi_raster
+        _node_twi, in_rasters['TWI'] = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['TWI_RASTER'])
+    else:
+        _node_twi, in_rasters['TWI'] = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['TWI_RASTER'], in_twi_raster, replace=True)
 
     for zone in vbet_run['Zones']:
         log.info(f'Rasterizing stream transform zones for {zone}')
@@ -171,9 +187,9 @@ def vbet_centerlines(in_line_network, dem, slope, in_catchments, in_channel_area
     # run for orphan waterbodies??
 
     # Initialize Outputs
-    output_centerlines = os.path.join(vbet_gpkg, "vbet_centerlines")
-    output_vbet = os.path.join(vbet_gpkg, LayerTypes["OUTPUTS"].sub_layers['VBET_FULL'])
-    output_vbet_ia = os.path.join(vbet_gpkg, LayerTypes['OUTPUTS'].sub_layers['VBET_IA'])
+    output_centerlines = os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['VBET_CENTERLINE'].rel_path)
+    output_vbet = os.path.join(vbet_gpkg, LayerTypes["VBET_OUTPUTS"].sub_layers['VBET_FULL'].rel_path)
+    output_vbet_ia = os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['VBET_IA'].rel_path)
     with GeopackageLayer(output_centerlines, write=True) as lyr_cl_init, \
         GeopackageLayer(output_vbet, write=True) as lyr_vbet_init, \
         GeopackageLayer(output_vbet_ia, write=True) as lyr_active_vbet_init, \
@@ -183,8 +199,8 @@ def vbet_centerlines(in_line_network, dem, slope, in_catchments, in_channel_area
         lyr_vbet_init.create_layer(ogr.wkbPolygon, spatial_ref=lyr_ref.spatial_ref, fields=fields)
         lyr_active_vbet_init.create_layer(ogr.wkbPolygon, spatial_ref=lyr_ref.spatial_ref, fields=fields)
 
-    out_hand = os.path.join(project_folder, 'outputs', "composite_hand.tif")
-    out_vbet_evidence = os.path.join(project_folder, 'outputs', 'composite_vbet_evidence.tif')
+    out_hand = os.path.join(project_folder, LayerTypes['COMPOSITE_HAND_RASTER'].rel_path)
+    out_vbet_evidence = os.path.join(project_folder, LayerTypes['COMPOSITE_VBET_EVIDENCE'].rel_path)
 
     # Generate the list of level paths to run, sorted by ascending order and optional user filter
     level_paths_to_run = []
@@ -208,7 +224,7 @@ def vbet_centerlines(in_line_network, dem, slope, in_catchments, in_channel_area
 
         sql = f"LevelPathI = {level_path}" if level_path is not None else "LevelPathI is NULL"
         # Select channel areas that intersect flow lines
-        level_path_polygons = os.path.join(project_folder, 'temp', 'channel_polygons.gpkg', f'level_path_{level_path}')
+        level_path_polygons = os.path.join(temp_folder, 'channel_polygons.gpkg', f'level_path_{level_path}')
         copy_feature_class(channel_area, level_path_polygons, attribute_filter=sql)
 
         # current_vbet = collect_feature_class(output_vbet)
@@ -276,7 +292,7 @@ def vbet_centerlines(in_line_network, dem, slope, in_catchments, in_channel_area
         active_vbet_polygon = os.path.join(temp_folder, f'active_valley_bottom_{level_path}.shp')
         polygonize(active_valley_bottom_raster, 1, active_vbet_polygon, epsg=4326)
         # Add to existing feature class
-        active_polygon = vbet_merge(active_vbet_polygon, output_vbet_ia, level_path=level_path)
+        _active_polygon = vbet_merge(active_vbet_polygon, output_vbet_ia, level_path=level_path)
 
         # Generate centerline for level paths only
         if level_path is not None:
@@ -470,9 +486,10 @@ def main():
     parser.add_argument('flowline_network', help='full nhd line network', type=str)
     parser.add_argument('dem', help='dem', type=str)
     parser.add_argument('slope', help='slope', type=str)
+    parser.add_argument('hillshade', type=str)
     parser.add_argument('catchments', type=str)
     parser.add_argument('channel_area', type=str)
-    parser.add_argument('vaa_table')
+    parser.add_argument('vaa_table', type=str)
     parser.add_argument('output_dir', help='Folder where output VBET project will be created', type=str)
     parser.add_argument('--level_paths', help='csv list of level paths', type=str, default="")
     parser.add_argument('--pitfill', help='riverscapes project metadata as comma separated key=value pairs', default=None)
@@ -503,12 +520,12 @@ def main():
     if args.debug is True:
         from rscommons.debug import ThreadRun
         memfile = os.path.join(args.output_dir, 'vbet_mem.log')
-        retcode, max_obj = ThreadRun(vbet_centerlines, memfile, args.flowline_network, args.dem, args.slope, args.catchments, args.channel_area, args.vaa_table, args.output_dir, args.scenario_code, args.huc, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster, level_paths=level_paths, meta=meta)
+        retcode, max_obj = ThreadRun(vbet_centerlines, memfile, args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir, args.scenario_code, args.huc, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster, level_paths=level_paths, meta=meta)
         log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
 
     else:
 
-        vbet_centerlines(args.flowline_network, args.dem, args.slope, args.catchments, args.channel_area, args.vaa_table, args.output_dir, args.scenario_code, args.huc, level_paths, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster)
+        vbet_centerlines(args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir, args.scenario_code, args.huc, level_paths, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster)
 
     # except Exception as e:
     #     log.error(e)

@@ -62,6 +62,7 @@
         "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/network",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/topography/dem.tif",
         "{env:DATA_ROOT}/taudem/${input:HUC}/outputs/gdal_slope.tif",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/topography/dem_hillshade.tif",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/NHDPlusCatchment.shp",
         "{env:DATA_ROOT}/channel_area/${input:HUC}/outputs/channel_area.gpkg/channel_area",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhd_data.sqlite/NHDPlusFlowlineVAA",
