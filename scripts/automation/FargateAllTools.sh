@@ -161,10 +161,10 @@ vbet $HUC \
   $CHANNEL_AREA_DIR/outputs/channel_area.gpkg/channel_area \
   $RS_CONTEXT_DIR/hydrology/nhd_data.sqlite/NHDPlusFlowlineVAA \
   $VBET_DIR \
-  --in_pitfill {env:DATA_ROOT}/taudem/${input:HUC}/intermediates/pitfill.tif \
-  --in_dinfflowdir_ang {env:DATA_ROOT}/taudem/${input:HUC}/intermediates/dinfflowdir_ang.tif \
-  --in_dinfflowdir_slp {env:DATA_ROOT}/taudem/${input:HUC}/outputs/dinfflowdir_slp.tif \
-  --in_twi_raster $TAUDEM_DIR/outputs/twi.tif \
+  --pitfill {env:DATA_ROOT}/taudem/${input:HUC}/intermediates/pitfill.tif \
+  --dinfflowdir_ang {env:DATA_ROOT}/taudem/${input:HUC}/intermediates/dinfflowdir_ang.tif \
+  --dinfflowdir_slp {env:DATA_ROOT}/taudem/${input:HUC}/outputs/dinfflowdir_slp.tif \
+  --twi_raster $TAUDEM_DIR/outputs/twi.tif \
   --reach_codes 33400,46000,46003,46006,46007,55800 \
   --meta "Runner=Cybercastor" \
   --verbose
