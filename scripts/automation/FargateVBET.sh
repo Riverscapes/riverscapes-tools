@@ -75,7 +75,7 @@ vbet $HUC \
   $RS_CONTEXT_DIR/hydrology/hydrology.gpkg/network \
   $RS_CONTEXT_DIR/topography/dem.tif \
   $RS_CONTEXT_DIR/topography/slope.tif \
-  $RS_CONTEXT_DIR/topography/hillshade.tif \
+  $RS_CONTEXT_DIR/topography/dem_hillshade.tif \
   $RS_CONTEXT_DIR/hydrology/NHDPlusCatchment.shp \
   $CHANNEL_AREA_DIR/outputs/channel_area.gpkg/channel_area \
   $RS_CONTEXT_DIR/hydrology/nhd_data.sqlite/NHDPlusFlowlineVAA \
