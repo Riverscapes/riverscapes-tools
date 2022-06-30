@@ -24,7 +24,7 @@ from scipy.ndimage import label, generate_binary_structure, binary_closing
 
 from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, GeopackageLayer, dotenv, initGDALOGRErrors
 from rscommons.vector_ops import copy_feature_class, polygonize, get_endpoints
-from rscommons.util import safe_makedirs, parse_metadata, pretty_duration
+from rscommons.util import safe_makedirs, parse_metadata, pretty_duration, safe_remove_dir
 from rscommons.hand import run_subprocess
 from rscommons.vbet_network import copy_vaa_attributes, join_attributes, create_stream_size_zones, get_channel_level_path
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
@@ -91,7 +91,7 @@ LayerTypes = {
 }
 
 
-def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchments, in_channel_area, vaa_table, project_folder, scenario_code, huc, level_paths=None, in_pitfill_dem=None, in_dinfflowdir_ang=None, in_dinfflowdir_slp=None, in_twi_raster=None, meta=None, debug=True):
+def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchments, in_channel_area, vaa_table, project_folder, scenario_code, huc, level_paths=None, in_pitfill_dem=None, in_dinfflowdir_ang=None, in_dinfflowdir_slp=None, in_twi_raster=None, meta=None, debug=False):
 
     thresh_vals = {'VBET_IA': 0.90, 'VBET_FULL': 0.68}
 
@@ -364,7 +364,10 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                 rio_source.close()
 
         if debug is False:
-            os.rmdir(temp_folder)
+            safe_remove_dir(temp_folder)
+
+    if debug is False:
+        safe_remove_dir(project_folder, 'temp')
 
     # Now add our Geopackages to the project XML
     project.add_project_raster(proj_nodes['Outputs'], LayerTypes['COMPOSITE_VBET_EVIDENCE'])
@@ -516,21 +519,18 @@ def main():
     level_paths = args.level_paths.split(',')
     level_paths = level_paths if level_paths != ['.'] else None
 
-    # try:
-    if args.debug is True:
-        from rscommons.debug import ThreadRun
-        memfile = os.path.join(args.output_dir, 'vbet_mem.log')
-        retcode, max_obj = ThreadRun(vbet_centerlines, memfile, args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir, args.scenario_code, args.huc, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster, level_paths=level_paths, meta=meta)
-        log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
-
-    else:
-
-        vbet_centerlines(args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir, args.scenario_code, args.huc, level_paths, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster)
-
-    # except Exception as e:
-    #     log.error(e)
-    #     traceback.print_exc(file=sys.stdout)
-    #     sys.exit(1)
+    try:
+        if args.debug is True:
+            from rscommons.debug import ThreadRun
+            memfile = os.path.join(args.output_dir, 'vbet_mem.log')
+            retcode, max_obj = ThreadRun(vbet_centerlines, memfile, args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir, args.scenario_code, args.huc, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster, level_paths=level_paths, meta=meta)
+            log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
+        else:
+            vbet_centerlines(args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir, args.scenario_code, args.huc, level_paths, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster)
+    except Exception as e:
+        log.error(e)
+        traceback.print_exc(file=sys.stdout)
+        sys.exit(1)
 
     sys.exit(0)
 
