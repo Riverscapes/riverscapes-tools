@@ -23,16 +23,17 @@ import numpy as np
 from scipy.ndimage import label, generate_binary_structure, binary_closing
 
 from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, GeopackageLayer, dotenv, initGDALOGRErrors
-from rscommons.vector_ops import copy_feature_class, polygonize, get_endpoints
+from rscommons.vector_ops import copy_feature_class, polygonize, get_endpoints, difference
 from rscommons.util import safe_makedirs, parse_metadata, pretty_duration, safe_remove_dir
 from rscommons.hand import run_subprocess
-from rscommons.vbet_network import copy_vaa_attributes, join_attributes, create_stream_size_zones, get_channel_level_path
+from rscommons.vbet_network import copy_vaa_attributes, join_attributes, create_stream_size_zones, get_channel_level_path, get_distance_lookup
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 
 from vbet.vbet_database import build_vbet_database, load_configuration
 from vbet.vbet_raster_ops import rasterize_attribute, raster2array, array2raster, new_raster, rasterize
 from vbet.vbet_outputs import vbet_merge
 from vbet.vbet_report import VBETReport
+from vbet.vbet_segmentation import calculate_segmentation_metrics, generate_segmentation_points, split_vbet_polygons, summerize_vbet_metrics
 from scripts.cost_path import least_cost_path
 from scripts.raster2line import raster2line_geom
 from vbet.__version__ import __version__
@@ -61,19 +62,12 @@ LayerTypes = {
     'PITFILL': RSLayer('TauDEM Pitfill', 'PITFILL', 'Raster', 'intermediates/pitfill.tif'),
     'DINFFLOWDIR_ANG': RSLayer('TauDEM D-Inf Flow Directions', 'DINFFLOWDIR_ANG', 'Raster', 'intermediates/dinfflowdir_ang.tif'),
     'DINFFLOWDIR_SLP': RSLayer('TauDEM D-Inf Flow Directions Slope', 'DINFFLOWDIR_SLP', 'Raster', 'intermediates/dinfflowdir_slp.tif'),
-    # 'CHANNEL_AREA_RASTER': RSLayer('Channel Area Raster', 'CHANNEL_AREA_RASTER', 'Raster', 'intermediates/channelarea.tif'),
     # DYNAMIC: 'DA_ZONE_<RASTER>': RSLayer('Drainage Area Zone Raster', 'DA_ZONE_RASTER', "Raster", "intermediates/.tif"),
-    # 'NORMALIZED_SLOPE': RSLayer('Normalized Slope', 'NORMALIZED_SLOPE', "Raster", "intermediates/nLoE_Slope.tif"),
-    # 'NORMALIZED_HAND': RSLayer('Normalized HAND', 'NORMALIZED_HAND', "Raster", "intermediates/nLoE_Hand.tif"),
-    # 'NORMALIZED_TWI': RSLayer('Normalized Topographic Wetness Index (TWI)', 'NORMALIZED_TWI', "Raster", "intermediates/nLoE_TWI.tif"),
-    # 'EVIDENCE_TOPO': RSLayer('Topo Evidence', 'EVIDENCE_TOPO', 'Raster', 'intermediates/Topographic_Evidence.tif'),
-    # 'EVIDENCE_CHANNEL': RSLayer('Channel Evidence', 'EVIDENCE_CHANNEL', 'Raster', 'intermediates/Channel_Evidence.tif'),
     'INTERMEDIATES': RSLayer('Intermediates', 'Intermediates', 'Geopackage', 'intermediates/vbet_intermediates.gpkg', {
         'VBET_NETWORK': RSLayer('VBET Network', 'VBET_NETWORK', 'Vector', 'vbet_network'),
         'TRANSFORM_ZONES': RSLayer('Transform Zones', 'TRANSFORM_ZONES', 'Vector', 'transform_zones'),
-        # 'THIESSEN_POINTS': RSLayer('Thiessen Reach Points', 'THIESSEN_POINTS', 'Vector', 'ThiessenPoints'),
-        # 'THIESSEN_AREAS': RSLayer('Thiessen Reach Areas', 'THIESSEN_AREAS', 'Vector', 'ThiessenPolygonsDissolved'),
-        # 'CHANNEL_AREA_INTERSECTION': RSLayer('Channel Area Intetrsected by VBET', 'CHANNEL_AREA_INTERSECTION', 'Vector', 'channel_area_intersection')
+        'SEGMENTED_VBET_POLYGONS': RSLayer('Segmented VBET Polygons', 'SEGMENTED_VBET_POLYGONS', 'Vector', 'segmented_vbet_polygons'),
+        'SEGMENTATION_POINTS': RSLayer('Segmentation Points', 'SEGMENTATION_POINTS', 'Vector', 'segmentation_points')
         # We also add all tht raw thresholded shapes here but they get added dynamically later
     }),
     # Same here. Sub layers are added dynamically later.
@@ -85,6 +79,7 @@ LayerTypes = {
         'VBET_CHANNEL_AREA': RSLayer('VBET Channel Area', 'VBET_CHANNEL_AREA', 'Vector', 'vbet_channel_area'),
         'ACTIVE_FLOODPLAIN': RSLayer('Active Floodplain', 'ACTIVE_FLOODPLAIN', 'Vector', 'active_floodplain'),
         'INACTIVE_FLOODPLAIN': RSLayer('Inactive Floodplain', 'INACTIVE_FLOODPLAIN', 'Vector', 'inactive_floodplain'),
+        'FLOODPLAIN': RSLayer('Floodplain', 'FLOODPLAIN', 'Vector', 'floodplain'),
         'VBET_CENTERLINE': RSLayer('VBET Centerline', 'VBET_CENTERLINE', 'Vector', 'vbet_centerline')
     }),
     'REPORT': RSLayer('RSContext Report', 'REPORT', 'HTMLFile', 'outputs/vbet.html')
@@ -168,7 +163,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
     if not in_twi_raster:
         twi_raster = os.path.join(project_folder, LayerTypes['TWI_RASTER'].rel_path)
-        #sca = os.path.join(project_folder, 'sca.tif')
+        # sca = os.path.join(project_folder, 'sca.tif')
         twi_status = run_subprocess(project_folder, ["mpiexec", "-n", NCORES, "twi", "-slp", dinfflowdir_slp, '-twi', twi_raster])  # "-sca", sca,
         if twi_status != 0 or not os.path.isfile(twi_raster):
             raise Exception('TauDEM: TWI failed')
@@ -196,7 +191,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             GeopackageLayer(line_network) as lyr_ref:
         fields = {'LevelPathI': ogr.OFTString}
         lyr_cl_init.create_layer(ogr.wkbMultiLineString, spatial_ref=lyr_ref.spatial_ref, fields=fields)
-        lyr_vbet_init.create_layer(ogr.wkbPolygon, spatial_ref=lyr_ref.spatial_ref, fields=fields)
+        lyr_vbet_init.create_layer(ogr.wkbMultiPolygon, spatial_ref=lyr_ref.spatial_ref, fields=fields)
         lyr_active_vbet_init.create_layer(ogr.wkbPolygon, spatial_ref=lyr_ref.spatial_ref, fields=fields)
 
     out_hand = os.path.join(project_folder, LayerTypes['COMPOSITE_HAND_RASTER'].rel_path)
@@ -325,7 +320,6 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
         # clean up rasters
         rio_vbet = rasterio.open(valley_bottom_raster)
-
         for out_raster, in_raster in {out_hand: hand_raster, out_vbet_evidence: evidence_raster}.items():
             if os.path.exists(out_raster):
                 out_temp = os.path.join(temp_folder, 'temp_raster')
@@ -366,8 +360,31 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         if debug is False:
             safe_remove_dir(temp_folder)
 
+        # Geomorphic
+    output_floodplain = os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['FLOODPLAIN'].rel_path)
+    output_active_fp = os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['ACTIVE_FLOODPLAIN'].rel_path)
+    output_inactive_fp = os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['INACTIVE_FLOODPLAIN'].rel_path)
+
+    difference(channel_area, output_vbet, output_floodplain)
+    difference(channel_area, output_vbet_ia, output_active_fp)
+    difference(output_vbet_ia, output_vbet, output_inactive_fp)
+
+    # Calculate VBET Metrics
+    segmentation_points = os.path.join(intermediates_gpkg, LayerTypes['INTERMEDIATES'].sub_layers['SEGMENTATION_POINTS'].rel_path)
+    generate_segmentation_points(output_centerlines, segmentation_points, distance=50)
+
+    segmentation_polygons = os.path.join(intermediates_gpkg, LayerTypes['INTERMEDIATES'].sub_layers['SEGMENTED_VBET_POLYGONS'].rel_path)
+    split_vbet_polygons(output_vbet, segmentation_points, segmentation_polygons)
+
+    metric_layers = {'active_floodplain': output_active_fp, 'active_channel': channel_area, 'inactive_floodplain': output_inactive_fp, 'floodplain': output_floodplain}
+    calculate_segmentation_metrics(segmentation_polygons, output_centerlines, metric_layers)
+
+    distance_lookup = get_distance_lookup(inputs_gpkg, intermediates_gpkg, level_paths_to_run, {0: 100.0, 1: 150.0, 2: 1000.0})
+    metric_fields = [f'{metric}_area' for metric in metric_layers]
+    summerize_vbet_metrics(segmentation_points, segmentation_polygons, level_paths_to_run, distance_lookup, metric_fields)
+
     if debug is False:
-        safe_remove_dir(project_folder, 'temp')
+        safe_remove_dir(os.path.join(project_folder, 'temp'))
 
     # Now add our Geopackages to the project XML
     project.add_project_raster(proj_nodes['Outputs'], LayerTypes['COMPOSITE_VBET_EVIDENCE'])

@@ -13,15 +13,24 @@ from rscommons.util import parse_metadata
 from rscommons.classes.vector_base import get_utm_zone_epsg
 from rscommons.vector_ops import geom_validity_fix
 
+Path = str
+
 
 def generate_segmentation_points(line_network, out_points_layer, distance=200):
     """heavily modified from: https://glenbambrick.com/2017/09/15/osgp-create-points-along-line/
     """
 
-    with GeopackageLayer(out_points_layer, write=True, delete_dataset=True) as out_lyr, \
+    log = Logger('Generate Segmentation Points')
+
+    init_distance = distance / 2
+
+    with GeopackageLayer(out_points_layer, write=True) as out_lyr, \
             GeopackageLayer(line_network) as line_lyr:
 
-        out_lyr.create_layer(ogr.wkbPoint, spatial_ref=line_lyr.spatial_ref, fields={"LevelPathI": ogr.OFTReal, "SegDistance": ogr.OFTReal})
+        out_fields = {"LevelPathI": ogr.OFTReal,
+                      "SegDistance": ogr.OFTReal,
+                      "SegLength": ogr.OFTReal}
+        out_lyr.create_layer(ogr.wkbPoint, spatial_ref=line_lyr.spatial_ref, fields=out_fields)
 
         extent_poly = ogr.Geometry(ogr.wkbPolygon)
         extent_centroid = extent_poly.Centroid()
@@ -46,42 +55,44 @@ def generate_segmentation_points(line_network, out_points_layer, distance=200):
                     continue
                 list_points = []
                 # set the current distance to place the point
-                current_dist = distance
+                current_dist = init_distance
                 # get the geometry of the line as wkt
                 # ## get the total length of the line
                 line_length = shapely_line.length
                 # append the starting coordinate to the list
-                list_points.append(Point(list(shapely_line.coords)[0]))
+                # list_points.append(Point(list(shapely_line.coords)[0]))
                 # https://nathanw.net/2012/08/05/generating-chainage-distance-nodes-in-qgis/
                 # while the current cumulative distance is less than the total length of the line
                 while current_dist < line_length:
                     # use interpolate and increase the current distance
-                    list_points.append(shapely_line.interpolate(current_dist))
+                    list_points.append((shapely_line.interpolate(current_dist), current_dist))
                     current_dist += distance
                 # append end coordinate to the list
-                list_points.append(Point(list(shapely_line.coords)[-1]))
+                # list_points.append(Point(list(shapely_line.coords)[-1]))
 
                 # add points to the layer
                 # for each point in the list
-                for num, pt in enumerate(list_points, 1):
+                for (pt, out_dist) in list_points:  # enumerate(list_points, 1):
                     # create a point object
                     pnt = ogr.Geometry(ogr.wkbPoint)
                     pnt.AddPoint_2D(pt.x, pt.y)
                     pnt.Transform(transform_back)
                     # populate the distance values for each point.
                     # start point
-                    if num == 1:
-                        out_dist = 0
-                    elif num < len(list_points):
-                        out_dist = distance * (num - 1)
-                    # end point
-                    elif num == len(list_points):
-                        out_dist = int(line_length)
+                    # if num == 1:
+                    #     out_dist = 0
+                    # elif num < len(list_points):
+                    #     out_dist = distance * (num - 1)
+                    # # end point
+                    # elif num == len(list_points):
+                    #     out_dist = int(line_length)
                     # add the point feature to the output.
                     out_lyr.create_feature(pnt, {"LevelPathI": level_path, "SegDistance": out_dist})
 
 
 def split_vbet_polygons(vbet_polygons, segmentation_points, out_split_polygons):
+
+    log = Logger('Split Polygons using Voronoi')
 
     with GeopackageLayer(out_split_polygons, write=True) as out_lyr, \
             GeopackageLayer(vbet_polygons) as vbet_lyr, \
@@ -113,35 +124,64 @@ def split_vbet_polygons(vbet_polygons, segmentation_points, out_split_polygons):
                 clean_geom = poly_intersect.buffer(0) if poly_intersect.is_valid is not True else poly_intersect
                 out_lyr.create_feature(clean_geom, {'LevelPathI': level_path})
 
+        out_lyr.create_field('SegDistance', ogr.OFTReal)
+        for segment_feat, *_ in out_lyr.iterate_features('Writing segment dist to polygons'):
+            polygon = segment_feat.GetGeometryRef()
+            for pt_feat, *_ in points_lyr.iterate_features(clip_shape=polygon):
+                seg_distance = pt_feat.GetField('SegDistance')
+                segment_feat.SetField('SegDistance', seg_distance)
+                out_lyr.ogr_layer.SetFeature(segment_feat)
 
-def segmentation_metrics(vbet_segment_polygons, dict_layers):
 
-    with GeopackageLayer(vbet_segment_polygons, write=True) as vbet_lyr:
+def calculate_segmentation_metrics(vbet_segment_polygons, vbet_centerline, dict_layers):
+
+    log = Logger('Segmentation Metrics')
+
+    with GeopackageLayer(vbet_segment_polygons, write=True) as vbet_lyr, \
+            GeopackageLayer(vbet_centerline) as centerline_lyr:
+
         for metric_layer_name in dict_layers.keys():
             fields = {f'{metric_layer_name}_area': ogr.OFTReal,
                       f'{metric_layer_name}_prop': ogr.OFTReal, }
             vbet_lyr.create_fields(fields)
-        for metric_layer_name, metric_layer_path in dict_layers.items():
-            with GeopackageLayer(metric_layer_path) as metric_lyr:
-                for vbet_feat, *_ in vbet_lyr.iterate_features():
-                    vbet_geom = vbet_feat.GetGeometryRef()
-                    vbet_geom_transform = geom_validity_fix(vbet_geom)
-                    centroid = vbet_geom.Centroid()
-                    utm_epsg = get_utm_zone_epsg(centroid.GetX())
-                    _transform_ref, transform = VectorBase.get_transform_from_epsg(vbet_lyr.spatial_ref, utm_epsg)
-                    vbet_geom_transform.Transform(transform)
+        vbet_lyr.create_fields({'centerline_length': ogr.OFTReal})
 
-                    vbet_area = vbet_geom_transform.GetArea()
-                    if vbet_area == 0.0:
-                        continue
+        for vbet_feat, *_ in vbet_lyr.iterate_features():
+            vbet_geom = vbet_feat.GetGeometryRef()
+            centroid = vbet_geom.Centroid()
+            utm_epsg = get_utm_zone_epsg(centroid.GetX())
+            _transform_ref, transform = VectorBase.get_transform_from_epsg(vbet_lyr.spatial_ref, utm_epsg)
+            vbet_geom_transform = vbet_geom.Clone()
+            vbet_geom_transform.Transform(transform)
+            vbet_geom_transform_clean = geom_validity_fix(vbet_geom_transform)
+            vbet_area = vbet_geom_transform_clean.GetArea()
+            if vbet_area == 0.0:
+                continue
+
+            length = 0.0
+            for centerline_feat, *_ in centerline_lyr.iterate_features(clip_shape=vbet_geom):
+                centerline_geom = centerline_feat.GetGeometryRef()
+                _transform_ref, transform = VectorBase.get_transform_from_epsg(centerline_lyr.spatial_ref, utm_epsg)
+                centerline_geom.Transform(transform)
+                intersect_geom = vbet_geom_transform_clean.Intersection(centerline_geom)
+                length = length + intersect_geom.Length()
+
+            vbet_feat.SetField('centerline_length', length)
+
+            for metric_layer_name, metric_layer_path in dict_layers.items():
+                with GeopackageLayer(metric_layer_path) as metric_lyr:
                     for metric_feat, *_ in metric_lyr.iterate_features(clip_shape=vbet_geom):
                         in_metric_geom = metric_feat.GetGeometryRef()
                         in_metric_geom.Transform(transform)
                         metric_geom = geom_validity_fix(in_metric_geom)
-                        delta_geom = vbet_geom_transform.Difference(metric_geom)
-                        if delta_geom is None:
+                        if not all([metric_geom.IsValid(), vbet_geom_transform_clean.IsValid()]):
                             continue
-                        metric_area = delta_geom.GetArea()
+                        try:
+                            delta_geom = vbet_geom_transform_clean.Difference(metric_geom)
+                        except IOError:
+                            log.error(str(IOError))
+                            delta_geom = None
+                        metric_area = 0.0 if delta_geom is None else delta_geom.GetArea()
                         metric_prop = metric_area / vbet_area
                         vbet_feat.SetField(f'{metric_layer_name}_area', metric_area)
                         vbet_feat.SetField(f'{metric_layer_name}_prop', metric_prop)
@@ -161,6 +201,37 @@ def clean_linestring(in_geom):
         merged_line = MultiLineString([merged_line])
 
     return merged_line
+
+
+def summerize_vbet_metrics(segment_points: Path, segmented_polygons: Path, level_paths: list, distance_lookup: dict, metric_names):
+
+    with GeopackageLayer(segment_points, write=True) as lyr_pts, \
+            GeopackageLayer(segmented_polygons) as lyr_polygons:
+
+        metric_fields = dict.fromkeys(metric_names, ogr.OFTReal)
+        lyr_pts.create_fields(metric_fields)
+
+        for level_path in level_paths:
+            if level_path is None:
+                continue
+            window_distance = distance_lookup[level_path]
+            for feat_seg_pt, *_ in lyr_pts.iterate_features(attribute_filter=f"LevelPathI = {level_path}"):
+                dist = feat_seg_pt.GetField('SegDistance')
+                min_dist = dist - 0.5 * window_distance
+                max_dist = dist + 0.5 * window_distance
+                sql_seg_poly = f"LevelPathI = {level_path} AND SegDistance >= {min_dist} AND SegDistance <= {max_dist}"
+                window_metrics = dict.fromkeys(metric_names, 0.0)
+                for feat_seg_poly, *_ in lyr_polygons.iterate_features(attribute_filter=sql_seg_poly):
+                    for metric in metric_names:
+                        metric_value = feat_seg_poly.GetField(metric)
+                        metric_value = metric_value if metric_value is not None else 0.0
+                        window_metrics[metric] = window_metrics[metric] + metric_value
+                for metric, value in window_metrics.items():
+                    value = value / window_distance
+
+                    feat_seg_pt.SetField(metric, value)
+
+                lyr_pts.ogr_layer.SetFeature(feat_seg_pt)
 
 
 def vbet_segmentation(in_centerlines: str, vbet_polygons: str, metric_layers: dict, out_gpkg: str, interval=200):
@@ -188,7 +259,7 @@ def vbet_segmentation(in_centerlines: str, vbet_polygons: str, metric_layers: di
     split_vbet_polygons(vbet_polygons, out_points, split_polygons)
 
     log.info('Calcuating vbet metrics')
-    segmentation_metrics(split_polygons, metric_layers)
+    calculate_segmentation_metrics(split_polygons, metric_layers)
 
 
 def main():
