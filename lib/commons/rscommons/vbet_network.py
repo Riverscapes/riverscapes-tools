@@ -201,6 +201,24 @@ def get_channel_level_path(channel_area, lines, vaa_table):
             lyr_channel.ogr_layer.SetFeature(feat)
 
 
+def get_distance_lookup(vaa_gpkg, transform_gpkg, level_paths, conversion):
+
+    output = {}
+    with sqlite3.connect(vaa_gpkg) as conn_vaa, \
+            sqlite3.connect(transform_gpkg) as conn_transform:
+        curs_vaa = conn_vaa.cursor()
+        curs_transform = conn_transform.cursor()
+        for level_path in level_paths:
+            if level_path is None:
+                continue
+            nhd_ids = curs_vaa.execute(f'SELECT NHDPlusID from flowlines_vaa where LevelPathI = {level_path}').fetchall()
+            nhd_id_values = tuple(int(x[0]) for x in nhd_ids) if len(nhd_ids) > 1 else f'({int(nhd_ids[0][0])})'
+            values = curs_transform.execute(f'SELECT Slope_Zone FROM transform_zones WHERE fid in {nhd_id_values}').fetchall()
+            output[level_path] = conversion[max(int(value[0]) for value in values)]
+
+    return output
+
+
 # def generate_channel_areas(flowline_network, flow_areas, buffer_field, catchments, out_channel_area, waterbodies=None):
 
 #     network_path_buffered = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['VBET_NETWORK_BUFFERED'].rel_path)
