@@ -380,7 +380,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     calculate_segmentation_metrics(segmentation_polygons, output_centerlines, metric_layers)
 
     distance_lookup = get_distance_lookup(inputs_gpkg, intermediates_gpkg, level_paths_to_run, {0: 100.0, 1: 150.0, 2: 1000.0})
-    metric_fields = [f'{metric}_area' for metric in metric_layers]
+    metric_fields = list(metric_layers.keys())
     summerize_vbet_metrics(segmentation_points, segmentation_polygons, level_paths_to_run, distance_lookup, metric_fields)
 
     if debug is False:
