@@ -144,7 +144,7 @@ def calculate_segmentation_metrics(vbet_segment_polygons, vbet_centerline, dict_
             fields = {f'{metric_layer_name}_area': ogr.OFTReal,
                       f'{metric_layer_name}_prop': ogr.OFTReal, }
             vbet_lyr.create_fields(fields)
-        vbet_lyr.create_fields({'centerline_length': ogr.OFTReal})
+        vbet_lyr.create_fields({'centerline_length': ogr.OFTReal, 'segment_area': ogr.OFTReal})
 
         for vbet_feat, *_ in vbet_lyr.iterate_features():
             vbet_geom = vbet_feat.GetGeometryRef()
@@ -167,6 +167,7 @@ def calculate_segmentation_metrics(vbet_segment_polygons, vbet_centerline, dict_
                 length = length + intersect_geom.Length()
 
             vbet_feat.SetField('centerline_length', length)
+            vbet_feat.SetField('segment_area', vbet_area)
 
             for metric_layer_name, metric_layer_path in dict_layers.items():
                 with GeopackageLayer(metric_layer_path) as metric_lyr:
@@ -185,7 +186,7 @@ def calculate_segmentation_metrics(vbet_segment_polygons, vbet_centerline, dict_
                         metric_prop = metric_area / vbet_area
                         vbet_feat.SetField(f'{metric_layer_name}_area', metric_area)
                         vbet_feat.SetField(f'{metric_layer_name}_prop', metric_prop)
-                        vbet_lyr.ogr_layer.SetFeature(vbet_feat)
+            vbet_lyr.ogr_layer.SetFeature(vbet_feat)
 
 
 def clean_linestring(in_geom):
@@ -208,11 +209,16 @@ def summerize_vbet_metrics(segment_points: Path, segmented_polygons: Path, level
     with GeopackageLayer(segment_points, write=True) as lyr_pts, \
             GeopackageLayer(segmented_polygons) as lyr_polygons:
 
-        metric_fields = dict.fromkeys(metric_names, ogr.OFTReal)
+        metric_fields = {}
+        for metric in metric_names:
+            metric_fields[f'{metric}_area'] = ogr.OFTReal
+            metric_fields[f'{metric}_area_prop'] = ogr.OFTReal
+            metric_fields[f'{metric}_area_length'] = ogr.OFTReal
+        metric_fields['integrated_width'] = ogr.OFTReal
         lyr_pts.create_fields(metric_fields)
 
         for level_path in level_paths:
-            if level_path is None:
+            if level_path is None or level_path not in distance_lookup.keys():
                 continue
             window_distance = distance_lookup[level_path]
             for feat_seg_pt, *_ in lyr_pts.iterate_features(attribute_filter=f"LevelPathI = {level_path}"):
@@ -221,15 +227,24 @@ def summerize_vbet_metrics(segment_points: Path, segmented_polygons: Path, level
                 max_dist = dist + 0.5 * window_distance
                 sql_seg_poly = f"LevelPathI = {level_path} AND SegDistance >= {min_dist} AND SegDistance <= {max_dist}"
                 window_metrics = dict.fromkeys(metric_names, 0.0)
+                window_length = 0.0
+                window_area = 0.0
                 for feat_seg_poly, *_ in lyr_polygons.iterate_features(attribute_filter=sql_seg_poly):
+                    window_length = window_length + feat_seg_poly.GetField('centerline_length')
+                    window_area = window_area + feat_seg_poly.GetField('segment_area')
                     for metric in metric_names:
-                        metric_value = feat_seg_poly.GetField(metric)
+                        metric_value = feat_seg_poly.GetField(f'{metric}_area')
                         metric_value = metric_value if metric_value is not None else 0.0
                         window_metrics[metric] = window_metrics[metric] + metric_value
                 for metric, value in window_metrics.items():
                     value = value / window_distance
-
-                    feat_seg_pt.SetField(metric, value)
+                    value_per_length = value / window_length if window_length != 0.0 else 0.0
+                    value_porportion = value / window_area if window_area != 0.0 else 0.0
+                    feat_seg_pt.SetField(f'{metric}_area', value)
+                    feat_seg_pt.SetField(f'{metric}_area_prop', value_porportion)
+                    feat_seg_pt.SetField(f'{metric}_area_length', value_per_length)
+                integrated_width = window_area / window_length if window_length != 0.0 else 0.0
+                feat_seg_pt.SetField(f'integrated_width', integrated_width)
 
                 lyr_pts.ogr_layer.SetFeature(feat_seg_pt)
 
@@ -259,7 +274,7 @@ def vbet_segmentation(in_centerlines: str, vbet_polygons: str, metric_layers: di
     split_vbet_polygons(vbet_polygons, out_points, split_polygons)
 
     log.info('Calcuating vbet metrics')
-    calculate_segmentation_metrics(split_polygons, metric_layers)
+    calculate_segmentation_metrics(split_polygons, in_centerlines, metric_layers)
 
 
 def main():

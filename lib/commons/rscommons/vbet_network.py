@@ -214,7 +214,8 @@ def get_distance_lookup(vaa_gpkg, transform_gpkg, level_paths, conversion):
             nhd_ids = curs_vaa.execute(f'SELECT NHDPlusID from flowlines_vaa where LevelPathI = {level_path}').fetchall()
             nhd_id_values = tuple(int(x[0]) for x in nhd_ids) if len(nhd_ids) > 1 else f'({int(nhd_ids[0][0])})'
             values = curs_transform.execute(f'SELECT Slope_Zone FROM transform_zones WHERE fid in {nhd_id_values}').fetchall()
-            output[level_path] = conversion[max(int(value[0]) for value in values)]
+            if len(values) > 0:
+                output[level_path] = conversion[max(int(value[0]) for value in values)]
 
     return output
 
