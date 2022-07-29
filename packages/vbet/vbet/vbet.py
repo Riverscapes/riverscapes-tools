@@ -26,7 +26,7 @@ from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, Geop
 from rscommons.vector_ops import copy_feature_class, polygonize, get_endpoints, difference
 from rscommons.util import safe_makedirs, parse_metadata, pretty_duration, safe_remove_dir
 from rscommons.hand import run_subprocess
-from rscommons.vbet_network import copy_vaa_attributes, join_attributes, create_stream_size_zones, get_channel_level_path, get_distance_lookup
+from rscommons.vbet_network import copy_vaa_attributes, join_attributes, create_stream_size_zones, get_channel_level_path, get_distance_lookup, get_levelpath_catchment
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 
 from vbet.vbet_database import build_vbet_database, load_configuration
@@ -213,14 +213,23 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
     # iterate for each level path
     for level_path in level_paths_to_run:
-
+        log.info(f'Processing Level Path: {level_path}')
         temp_folder = os.path.join(project_folder, 'temp', f'levelpath_{level_path}')
         safe_makedirs(temp_folder)
 
         sql = f"LevelPathI = {level_path}" if level_path is not None else "LevelPathI is NULL"
         # Select channel areas that intersect flow lines
+        # catchment_polygon = get_levelpath_catchment(level_path, catchments)
+
         level_path_polygons = os.path.join(temp_folder, 'channel_polygons.gpkg', f'level_path_{level_path}')
-        copy_feature_class(channel_area, level_path_polygons, attribute_filter=sql)
+        copy_feature_class(channel_area, level_path_polygons, attribute_filter=sql)  # clip_shape=catchment_polygon)  #
+
+        # with GeopackageLayer(level_path_polygons, write=True) as lyr:
+        #     for feat, *_ in lyr.iterate_features():
+        #         geom = feat.GetGeometryRef()
+        #         out_geom = catchment_polygon.Intersection(geom)
+        #         feat.SetGeometry(out_geom)
+        #         lyr.ogr_layer.SetFeature(feat)
 
         # current_vbet = collect_feature_class(output_vbet)
         # if current_vbet is not None:
@@ -295,7 +304,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             cost_path_raster = os.path.join(temp_folder, f'cost_path_{level_path}.tif')
             generate_centerline_surface(valley_bottom_raster, cost_path_raster, temp_folder)
             centerline_raster = os.path.join(temp_folder, f'centerline_{level_path}.tif')
-            coords = get_endpoints(line_network, 'LevelPathI', level_path)
+            coords = get_endpoints(line_network, 'LevelPathI', level_path, clip_shape=polygon)
             least_cost_path(cost_path_raster, centerline_raster, coords[0], coords[1])
             centerline_full = raster2line_geom(centerline_raster, 1)
 
@@ -418,7 +427,7 @@ def generate_vbet_polygon(vbet_evidence_raster, rasterized_channel, channel_hand
 
     # Generate Valley Bottom
     valley_bottom = ((vbet + chan) >= threshold) * ((hand + chan) > 0)  # ((A + B) < 0.68) * (C > 0)
-    valley_bottom_raw = os.path.join(temp_folder, "valley_bottom_raw.tif")
+    valley_bottom_raw = os.path.join(temp_folder, f"valley_bottom_raw_{threshold}.tif")
     array2raster(valley_bottom_raw, vbet_evidence_raster, valley_bottom, data_type=gdal.GDT_Int32)
 
     ds_valley_bottom = gdal.Open(valley_bottom_raw, gdal.GA_Update)
@@ -436,8 +445,8 @@ def generate_vbet_polygon(vbet_evidence_raster, rasterized_channel, channel_hand
     selection = regions * chan
     values = np.unique(selection)
     valley_bottom_region = np.isin(regions, values.nonzero())
-    array2raster(os.path.join(temp_folder, 'regions.tif'), vbet_evidence_raster, regions, data_type=gdal.GDT_Int32)
-    array2raster(os.path.join(temp_folder, 'valley_bottom_region.tif'), vbet_evidence_raster, valley_bottom_region.astype(int), data_type=gdal.GDT_Int32)
+    array2raster(os.path.join(temp_folder, f'regions_{threshold}.tif'), vbet_evidence_raster, regions, data_type=gdal.GDT_Int32)
+    array2raster(os.path.join(temp_folder, f'valley_bottom_region_{threshold}.tif'), vbet_evidence_raster, valley_bottom_region.astype(int), data_type=gdal.GDT_Int32)
 
     # Clean Raster Edges
     valley_bottom_clean = binary_closing(valley_bottom_region.astype(int), iterations=2)

@@ -19,6 +19,8 @@ from rscommons import Logger, VectorBase, GeopackageLayer
 from rscommons.vector_ops import get_geometry_unary_union
 from rscommons import get_shp_or_gpkg
 
+Path = str
+
 
 def vbet_network(flow_lines_path: str, flow_areas_path: str, out_path: str, epsg: int = None, fcodes: List[str] = None, reach_code_field='FCode', flow_areas_path_exclude=None):
 
@@ -199,6 +201,29 @@ def get_channel_level_path(channel_area, lines, vaa_table):
 
             feat.SetField("LevelPathI", level_path)
             lyr_channel.ogr_layer.SetFeature(feat)
+
+
+def get_levelpath_catchment(level_path_id: int, catchments_fc: Path) -> BaseGeometry:
+
+    with sqlite3.connect(os.path.dirname(catchments_fc)) as conn:
+        selected = 0
+        cursor = conn.cursor()
+        level_paths = tuple([level_path_id, '0'])
+        out_level_paths = tuple(set([level_path_id]))
+        while len(level_paths) != selected:
+            selected = len(level_paths)
+            down_level_paths = cursor.execute('SELECT LevelPathI from catchments_vaa where DnLevelPat in {}'.format(level_paths)).fetchall()
+            level_paths = tuple([str(int(down_path[0])) for down_path in down_level_paths if down_path not in level_paths])
+            out_level_paths = tuple(set(level_paths + out_level_paths))
+
+    out_geom = ogr.Geometry(ogr.wkbMultiPolygon)
+    with GeopackageLayer(catchments_fc) as lyr:
+        for feat, *_ in lyr.iterate_features(attribute_filter="LevelPathI in {}".format(out_level_paths)):
+            geom = feat.GetGeometryRef()
+            out_geom.AddGeometry(geom)
+
+    out_geom = out_geom.MakeValid()
+    return out_geom
 
 
 def get_distance_lookup(vaa_gpkg, transform_gpkg, level_paths, conversion):
