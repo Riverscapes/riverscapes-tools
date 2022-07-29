@@ -994,13 +994,16 @@ def geom_validity_fix(geom_in):
     return f_geom
 
 
-def get_endpoints(line_network, field, attribute):
+def get_endpoints(line_network, field, attribute, clip_shape=None):
 
     with get_shp_or_gpkg(line_network) as lyr:
         coords = []
         for feat, *_ in lyr.iterate_features(attribute_filter=f'{field} = {attribute}'):
             geom = feat.GetGeometryRef()
             geom.FlattenTo2D()
+            if clip_shape is not None:
+                geom = geom.Intersection(clip_shape)
+
             for pt in [geom.GetPoint(0), geom.GetPoint(geom.GetPointCount() - 1)]:
                 coords.append(pt)
 
