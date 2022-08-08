@@ -18,15 +18,20 @@
       "name": "Gnat",
       "type": "python",
       "request": "launch",
-      "module": "gnat.gnat_rs",
+      "module": "gnat.gnat",
       "console": "integratedTerminal",
       // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
       "args": [
         "${input:HUC}",
-        "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/vbet_50_sections",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/network",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhd_data.sqlite/NHDPlusFlowlineVAA",
+        "{env:DATA_ROOT}/vbet/${input:HUC}/intermediates/vbet_intermediates.gpkg/segmented_vbet_polygons",
+        "{env:DATA_ROOT}/vbet/${input:HUC}/intermediates/vbet_intermediates.gpkg/segmentation_points",
+        "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/vbet_centerlines",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/topography/dem.tif",
         "{env:DATA_ROOT}/gnat/${input:HUC}",
-        "flowlines={env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/network,segmented_flowlines={env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/network_intersected_300m",
-        "--epsg", "5070",
+        //"flowlines={env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/network,segmented_flowlines={env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/network_intersected_300m",
+        //"--epsg", "5070",
         //"--meta",
         "--verbose"
       ]

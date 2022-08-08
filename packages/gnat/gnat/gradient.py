@@ -14,9 +14,18 @@ from rscommons import GeopackageLayer, Logger
 
 
 def gradient(line_network, name, dem, gnat_database):
+    """_summary_
 
+    Args:
+        line_network (_type_): _description_
+        name (_type_): _description_
+        dem (_type_): _description_
+        gnat_database (_type_): _description_
+    """
     log = Logger("GNAT Gradient")
     log.info(f'Starting gradient')
+
+    
 
     with GeopackageLayer(line_network, write=True) as flowlines_lyr:
 
