@@ -42,7 +42,7 @@ def array2shp(array, outSHPfn, rasterfn, pixelValue):
     outLayer.CreateFeature(outFeature)
 
 
-def array2geom(array, rasterfn, pixelValue):
+def array2geom(array, rasterfn, pixelValue, precision=13):
 
     # max distance between points
     raster = gdal.Open(rasterfn)
@@ -61,7 +61,7 @@ def array2geom(array, rasterfn, pixelValue):
     for indexY in roadList[0]:
         indexX = roadList[1][count]
         Xcoord, Ycoord = pixelOffset2coord(rasterfn, indexX, indexY)
-        pointDict[count] = (Xcoord, Ycoord)
+        pointDict[count] = (round(Xcoord, precision), round(Ycoord, precision))
         count += 1
 
     # dict2wkbMultiLineString
