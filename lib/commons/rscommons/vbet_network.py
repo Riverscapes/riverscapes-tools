@@ -97,7 +97,7 @@ def create_stream_size_zones(catchment_layer, flowlines_layer, join_field, copy_
 
         # Create Output
         srs = lyr_source.spatial_ref
-        lyr_destination.create_layer(ogr.wkbPolygon, spatial_ref=srs)
+        lyr_destination.create_layer(ogr.wkbMultiPolygon, spatial_ref=srs)
         lyr_destination.create_field(copy_field, field_type=ogr.OFTReal)
         for attribute_type in zones:
             lyr_destination.create_field(f'{attribute_type}_Zone', field_type=ogr.OFTInteger)
@@ -116,6 +116,10 @@ def create_stream_size_zones(catchment_layer, flowlines_layer, join_field, copy_
                     geom = feat_source.GetGeometryRef()
                     feat_dest = ogr.Feature(out_layer_defn)
                     feat_dest.SetFID(join_id)
+                    if geom.GetGeometryName() == 'POLYGON':
+                        temp_geom = ogr.Geometry(ogr.wkbMultiPolygon)
+                        temp_geom.AddGeometry(geom)
+                        geom = temp_geom
                     feat_dest.SetGeometry(geom)
 
                     feat_dest.SetField(copy_field, data[join_id])  # Set drainage area
@@ -226,7 +230,7 @@ def get_levelpath_catchment(level_path_id: int, catchments_fc: Path) -> BaseGeom
     return out_geom
 
 
-def get_distance_lookup(vaa_gpkg, transform_gpkg, level_paths, conversion):
+def get_distance_lookup(vaa_gpkg, transform_gpkg, level_paths, conversion=None):
 
     output = {}
     with sqlite3.connect(vaa_gpkg) as conn_vaa, \
@@ -240,7 +244,10 @@ def get_distance_lookup(vaa_gpkg, transform_gpkg, level_paths, conversion):
             nhd_id_values = tuple(int(x[0]) for x in nhd_ids) if len(nhd_ids) > 1 else f'({int(nhd_ids[0][0])})'
             values = curs_transform.execute(f'SELECT Slope_Zone FROM transform_zones WHERE fid in {nhd_id_values}').fetchall()
             if len(values) > 0:
-                output[level_path] = conversion[max(int(value[0]) for value in values)]
+                if conversion is not None:
+                    output[level_path] = conversion[max(int(value[0]) for value in values)]
+                else:
+                    output[level_path] = max(int(value[0]) for value in values)
 
     return output
 

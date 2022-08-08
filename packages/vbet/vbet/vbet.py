@@ -23,7 +23,7 @@ import numpy as np
 from scipy.ndimage import label, generate_binary_structure, binary_closing
 
 from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, GeopackageLayer, dotenv, initGDALOGRErrors
-from rscommons.vector_ops import copy_feature_class, polygonize, get_endpoints, difference
+from rscommons.vector_ops import copy_feature_class, polygonize, get_endpoints, difference, collect_feature_class
 from rscommons.util import safe_makedirs, parse_metadata, pretty_duration, safe_remove_dir
 from rscommons.hand import run_subprocess
 from rscommons.vbet_network import copy_vaa_attributes, join_attributes, create_stream_size_zones, get_channel_level_path, get_distance_lookup, get_levelpath_catchment
@@ -80,7 +80,7 @@ LayerTypes = {
         'ACTIVE_FLOODPLAIN': RSLayer('Active Floodplain', 'ACTIVE_FLOODPLAIN', 'Vector', 'active_floodplain'),
         'INACTIVE_FLOODPLAIN': RSLayer('Inactive Floodplain', 'INACTIVE_FLOODPLAIN', 'Vector', 'inactive_floodplain'),
         'FLOODPLAIN': RSLayer('Floodplain', 'FLOODPLAIN', 'Vector', 'floodplain'),
-        'VBET_CENTERLINE': RSLayer('VBET Centerline', 'VBET_CENTERLINE', 'Vector', 'vbet_centerline')
+        'VBET_CENTERLINES': RSLayer('VBET Centerline', 'VBET_CENTERLINES', 'Vector', 'vbet_centerlines')
     }),
     'REPORT': RSLayer('RSContext Report', 'REPORT', 'HTMLFile', 'outputs/vbet.html')
 }
@@ -182,7 +182,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     # run for orphan waterbodies??
 
     # Initialize Outputs
-    output_centerlines = os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['VBET_CENTERLINE'].rel_path)
+    output_centerlines = os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['VBET_CENTERLINES'].rel_path)
     output_vbet = os.path.join(vbet_gpkg, LayerTypes["VBET_OUTPUTS"].sub_layers['VBET_FULL'].rel_path)
     output_vbet_ia = os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['VBET_IA'].rel_path)
     with GeopackageLayer(output_centerlines, write=True) as lyr_cl_init, \
@@ -192,7 +192,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         fields = {'LevelPathI': ogr.OFTString}
         lyr_cl_init.create_layer(ogr.wkbMultiLineString, spatial_ref=lyr_ref.spatial_ref, fields=fields)
         lyr_vbet_init.create_layer(ogr.wkbMultiPolygon, spatial_ref=lyr_ref.spatial_ref, fields=fields)
-        lyr_active_vbet_init.create_layer(ogr.wkbPolygon, spatial_ref=lyr_ref.spatial_ref, fields=fields)
+        lyr_active_vbet_init.create_layer(ogr.wkbMultiPolygon, spatial_ref=lyr_ref.spatial_ref, fields=fields)
 
     out_hand = os.path.join(project_folder, LayerTypes['COMPOSITE_HAND_RASTER'].rel_path)
     out_vbet_evidence = os.path.join(project_folder, LayerTypes['COMPOSITE_VBET_EVIDENCE'].rel_path)
@@ -211,6 +211,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
     project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
 
+    current_vbet = ogr.Geometry(ogr.wkbMultiPolygon)
     # iterate for each level path
     for level_path in level_paths_to_run:
         log.info(f'Processing Level Path: {level_path}')
@@ -231,11 +232,12 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         #         feat.SetGeometry(out_geom)
         #         lyr.ogr_layer.SetFeature(feat)
 
-        # current_vbet = collect_feature_class(output_vbet)
-        # if current_vbet is not None:
-        #     channel_polygons = collect_feature_class(level_path_polygons)
-        #     if current_vbet.Contains(channel_polygons):
-        #         continue
+        if current_vbet.IsEmpty() is False:
+            current_vbet = current_vbet.MakeValid()
+            channel_polygons = collect_feature_class(level_path_polygons)
+            channel_polygons = channel_polygons.MakeValid()
+            if current_vbet.Contains(channel_polygons):
+                continue
 
         evidence_raster = os.path.join(temp_folder, f'vbet_evidence_{level_path}.tif')
         rasterized_channel = os.path.join(temp_folder, f'rasterized_channel_{level_path}.tif')
@@ -290,6 +292,11 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         polygonize(valley_bottom_raster, 1, vbet_polygon, epsg=4326)
         # Add to existing feature class
         polygon = vbet_merge(vbet_polygon, output_vbet, level_path=level_path)
+        if polygon is not None:
+            for geom in polygon:
+                current_vbet.AddGeometry(geom)
+        else:
+            log.warning(f'vbet polygon for level path {level_path} may be empty')
 
         active_valley_bottom_raster = os.path.join(temp_folder, f'active_valley_bottom_{level_path}.tif')
         generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, active_valley_bottom_raster, temp_folder, threshold=0.90)
@@ -305,6 +312,9 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             generate_centerline_surface(valley_bottom_raster, cost_path_raster, temp_folder)
             centerline_raster = os.path.join(temp_folder, f'centerline_{level_path}.tif')
             coords = get_endpoints(line_network, 'LevelPathI', level_path, clip_shape=polygon)
+            if len(coords) != 2:
+                log.error(f'Unable to generate centerline for level path {level_path}: found {len(coords)} target coordinates instead of expected 2.')
+                continue
             least_cost_path(cost_path_raster, centerline_raster, coords[0], coords[1])
             centerline_full = raster2line_geom(centerline_raster, 1)
 
@@ -312,6 +322,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                 centerline_intersected = polygon.Intersection(centerline_full)
                 if centerline_intersected.GetGeometryName() == 'GeometryCollection':
                     for line in centerline_intersected:
+                        line.MakeValid()
                         centerline = ogr.Geometry(ogr.wkbMultiLineString)
                         if line.GetGeometryName() == 'LineString':
                             centerline.AddGeometry(line)
@@ -380,7 +391,8 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
     # Calculate VBET Metrics
     segmentation_points = os.path.join(intermediates_gpkg, LayerTypes['INTERMEDIATES'].sub_layers['SEGMENTATION_POINTS'].rel_path)
-    generate_segmentation_points(output_centerlines, segmentation_points, distance=50)
+    stream_size_lookup = get_distance_lookup(inputs_gpkg, intermediates_gpkg, level_paths_to_run)
+    generate_segmentation_points(output_centerlines, segmentation_points, stream_size_lookup, distance=50)
 
     segmentation_polygons = os.path.join(intermediates_gpkg, LayerTypes['INTERMEDIATES'].sub_layers['SEGMENTED_VBET_POLYGONS'].rel_path)
     split_vbet_polygons(output_vbet, segmentation_points, segmentation_polygons)
@@ -394,6 +406,8 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
     if debug is False:
         safe_remove_dir(os.path.join(project_folder, 'temp'))
+
+    # TODO: CREATE INDEX ix_segment_vbet_polygons ON segmented_vbet_polygons(SegDistance);
 
     # Now add our Geopackages to the project XML
     project.add_project_raster(proj_nodes['Outputs'], LayerTypes['COMPOSITE_VBET_EVIDENCE'])
@@ -545,18 +559,18 @@ def main():
     level_paths = args.level_paths.split(',')
     level_paths = level_paths if level_paths != ['.'] else None
 
-    try:
-        if args.debug is True:
-            from rscommons.debug import ThreadRun
-            memfile = os.path.join(args.output_dir, 'vbet_mem.log')
-            retcode, max_obj = ThreadRun(vbet_centerlines, memfile, args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir, args.scenario_code, args.huc, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster, level_paths=level_paths, meta=meta)
-            log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
-        else:
-            vbet_centerlines(args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir, args.scenario_code, args.huc, level_paths, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster)
-    except Exception as e:
-        log.error(e)
-        traceback.print_exc(file=sys.stdout)
-        sys.exit(1)
+    # try:
+    if args.debug is True:
+        from rscommons.debug import ThreadRun
+        memfile = os.path.join(args.output_dir, 'vbet_mem.log')
+        retcode, max_obj = ThreadRun(vbet_centerlines, memfile, args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir, args.scenario_code, args.huc, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster, level_paths=level_paths, meta=meta)
+        log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
+    else:
+        vbet_centerlines(args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir, args.scenario_code, args.huc, level_paths, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster)
+    # except Exception as e:
+    #     log.error(e)
+    #     traceback.print_exc(file=sys.stdout)
+    #     sys.exit(1)
 
     sys.exit(0)
 

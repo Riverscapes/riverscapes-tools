@@ -177,11 +177,16 @@ def vbet_merge(in_layer, out_layer, level_path=None):
             for clip_feat, *_ in lyr_vbet.iterate_features(clip_shape=geom):
                 clip_geom = clip_feat.GetGeometryRef()
                 geom = geom.Difference(clip_geom)
-
                 if geom is None:
                     break
-                if geom.GetGeometryName() == 'GeometryCollection':
-                    break
+            geom_type = geom.GetGeometryName()
+            if geom_type == 'GeometryCollection':
+                break
+            if geom_type == 'POLYGON':
+                temp_geom = ogr.Geometry(ogr.wkbMultiPolygon)
+                temp_geom.AddGeometry(geom)
+                geom = temp_geom
+
             out_feature = ogr.Feature(lyr_vbet.ogr_layer_def)
             out_feature.SetGeometry(geom)
             out_feature.SetField("LevelPathI", level_path)
