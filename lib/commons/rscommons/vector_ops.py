@@ -996,6 +996,7 @@ def geom_validity_fix(geom_in):
 
 def get_endpoints(line_network, field, attribute, clip_shape=None):
 
+    log = Logger('Vector Get Endpoints')
     with get_shp_or_gpkg(line_network) as lyr:
         coords = []
         geoms = ogr.Geometry(ogr.wkbMultiLineString)
@@ -1005,6 +1006,7 @@ def get_endpoints(line_network, field, attribute, clip_shape=None):
             if clip_shape is not None:
                 geom = geom.Intersection(clip_shape)
             if geom.IsEmpty() or geom.GetGeometryName() in ['MULTILINESTRING', 'GEOMETRYCOLLECTION']:
+                log.error(f'Unexpected geometry type for {field} {attribute} feature {feat.GetFID()}: {geom.GetGeometryName()} ')
                 continue
 
             for pt in [geom.GetPoint(0), geom.GetPoint(geom.GetPointCount() - 1)]:

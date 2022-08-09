@@ -19,18 +19,20 @@ import gdal
 from osgeo import ogr
 import rasterio
 from rasterio import shutil
+from shapely.geometry import box
 import numpy as np
 from scipy.ndimage import label, generate_binary_structure, binary_closing
 
-from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, GeopackageLayer, dotenv, initGDALOGRErrors
+from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, GeopackageLayer, dotenv, VectorBase, initGDALOGRErrors
 from rscommons.vector_ops import copy_feature_class, polygonize, get_endpoints, difference, collect_feature_class
 from rscommons.util import safe_makedirs, parse_metadata, pretty_duration, safe_remove_dir
 from rscommons.hand import run_subprocess
 from rscommons.vbet_network import copy_vaa_attributes, join_attributes, create_stream_size_zones, get_channel_level_path, get_distance_lookup, get_levelpath_catchment
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
+from rscommons.raster_warp import raster_warp
 
 from vbet.vbet_database import build_vbet_database, load_configuration
-from vbet.vbet_raster_ops import rasterize_attribute, raster2array, array2raster, new_raster, rasterize
+from vbet.vbet_raster_ops import mask_rasters_nodata, rasterize_attribute, raster2array, array2raster, new_raster, rasterize
 from vbet.vbet_outputs import vbet_merge
 from vbet.vbet_report import VBETReport
 from vbet.vbet_segmentation import calculate_segmentation_metrics, generate_segmentation_points, split_vbet_polygons, summerize_vbet_metrics
@@ -211,6 +213,13 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
     project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
 
+    with rasterio.open(dem) as raster:
+        t = raster.transform
+        raster_bounds = raster.bounds
+
+    bbox = box(*raster_bounds)
+    raster_envelope_geom = VectorBase.shapely2ogr(bbox)
+
     current_vbet = ogr.Geometry(ogr.wkbMultiPolygon)
     # iterate for each level path
     for level_path in level_paths_to_run:
@@ -225,28 +234,52 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         level_path_polygons = os.path.join(temp_folder, 'channel_polygons.gpkg', f'level_path_{level_path}')
         copy_feature_class(channel_area, level_path_polygons, attribute_filter=sql)  # clip_shape=catchment_polygon)  #
 
-        # with GeopackageLayer(level_path_polygons, write=True) as lyr:
-        #     for feat, *_ in lyr.iterate_features():
-        #         geom = feat.GetGeometryRef()
-        #         out_geom = catchment_polygon.Intersection(geom)
-        #         feat.SetGeometry(out_geom)
-        #         lyr.ogr_layer.SetFeature(feat)
+        channel_polygons = collect_feature_class(level_path_polygons)
+        channel_polygons = channel_polygons.MakeValid()
 
         if current_vbet.IsEmpty() is False:
             current_vbet = current_vbet.MakeValid()
-            channel_polygons = collect_feature_class(level_path_polygons)
-            channel_polygons = channel_polygons.MakeValid()
             if current_vbet.Contains(channel_polygons):
                 continue
 
+        buffer_size = VectorBase.rough_convert_metres_to_raster_units(dem, 200)
+        channel_polygons_buffer = channel_polygons.Buffer(buffer_size)
+        (minX, maxX, minY, maxY) = channel_polygons_buffer.GetEnvelope()
+        # Create ring
+        ring = ogr.Geometry(ogr.wkbLinearRing)
+        ring.AddPoint(minX, minY)
+        ring.AddPoint(maxX, minY)
+        ring.AddPoint(maxX, maxY)
+        ring.AddPoint(minX, maxY)
+        ring.AddPoint(minX, minY)
+        channel_envelope_geom = ogr.Geometry(ogr.wkbPolygon)
+        channel_envelope_geom.AddGeometry(ring)
+        envelope_geom = raster_envelope_geom.Intersection(channel_envelope_geom)
+        if envelope_geom.IsEmpty():
+            log.error(f'Empty processing envelope for level path {level_path}')
+            continue
+        envelope = os.path.join(temp_folder, 'envelope_polygon.gpkg', f'level_path_{level_path}')
+        with GeopackageLayer(envelope, write=True) as lyr_envelope:
+            lyr_envelope.create_layer(ogr.wkbPolygon, 4326)
+            lyr_envelope_dfn = lyr_envelope.ogr_layer_def
+            feat = ogr.Feature(lyr_envelope_dfn)
+            feat.SetGeometry(envelope_geom)
+            lyr_envelope.ogr_layer.CreateFeature(feat)
+
+        # use the channel extent to mask all hand input raster and channel area extents
+        local_dinfflowdir_ang = os.path.join(temp_folder, f'dinfflowdir_ang_{level_path}.tif')
+        local_pitfill_dem = os.path.join(temp_folder, f'pitfill_dem_{level_path}.tif')
+        raster_warp(dinfflowdir_ang, local_dinfflowdir_ang, 4326, clip=envelope)
+        raster_warp(pitfill_dem, local_pitfill_dem, 4326, clip=envelope)
+
         evidence_raster = os.path.join(temp_folder, f'vbet_evidence_{level_path}.tif')
         rasterized_channel = os.path.join(temp_folder, f'rasterized_channel_{level_path}.tif')
-        rasterize(level_path_polygons, rasterized_channel, dem, all_touched=True)
+        rasterize(level_path_polygons, rasterized_channel, local_pitfill_dem, all_touched=True)
         in_rasters['Channel'] = rasterized_channel
 
         # log.info("Generating HAND")
         hand_raster = os.path.join(temp_folder, f'local_hand_{level_path}.tif')
-        dinfdistdown_status = run_subprocess(project_folder, ["mpiexec", "-n", NCORES, "dinfdistdown", "-ang", dinfflowdir_ang, "-fel", pitfill_dem, "-src", rasterized_channel, "-dd", hand_raster, "-m", "ave", "v"])
+        dinfdistdown_status = run_subprocess(project_folder, ["mpiexec", "-n", NCORES, "dinfdistdown", "-ang", local_dinfflowdir_ang, "-fel", local_pitfill_dem, "-src", rasterized_channel, "-dd", hand_raster, "-m", "ave", "v"])
         if dinfdistdown_status != 0 or not os.path.isfile(hand_raster):
             raise Exception('TauDEM: dinfdistdown failed')
         in_rasters['HAND'] = hand_raster
@@ -254,7 +287,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         # Open evidence rasters concurrently. We're looping over windows so this shouldn't affect
         # memory consumption too much
         read_rasters = {name: rasterio.open(raster) for name, raster in in_rasters.items()}
-        out_meta = read_rasters['Slope'].meta
+        out_meta = read_rasters['HAND'].meta
         out_meta['driver'] = 'GTiff'
         out_meta['count'] = 1
         out_meta['compress'] = 'deflate'
@@ -307,6 +340,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
         # Generate centerline for level paths only
         if level_path is not None:
+            log.info('Generating Centerline from cost path')
             # Generate Centerline from Cost Path
             cost_path_raster = os.path.join(temp_folder, f'cost_path_{level_path}.tif')
             generate_centerline_surface(valley_bottom_raster, cost_path_raster, temp_folder)
@@ -376,11 +410,13 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                     rio_dest.write(np.ma.filled(np.float32(array_source), out_meta['nodata']), window=window, indexes=1)
                 rio_dest.close()
                 rio_source.close()
+        rio_vbet.close()
 
         if debug is False:
             safe_remove_dir(temp_folder)
 
-        # Geomorphic
+    # Geomorphic layers
+    log.info('Generating geomorphic layers')
     output_floodplain = os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['FLOODPLAIN'].rel_path)
     output_active_fp = os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['ACTIVE_FLOODPLAIN'].rel_path)
     output_inactive_fp = os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['INACTIVE_FLOODPLAIN'].rel_path)
@@ -390,6 +426,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     difference(output_vbet_ia, output_vbet, output_inactive_fp)
 
     # Calculate VBET Metrics
+    log.info('Generating VBET Segments')
     segmentation_points = os.path.join(intermediates_gpkg, LayerTypes['INTERMEDIATES'].sub_layers['SEGMENTATION_POINTS'].rel_path)
     stream_size_lookup = get_distance_lookup(inputs_gpkg, intermediates_gpkg, level_paths_to_run)
     generate_segmentation_points(output_centerlines, segmentation_points, stream_size_lookup, distance=50)
@@ -397,9 +434,11 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     segmentation_polygons = os.path.join(intermediates_gpkg, LayerTypes['INTERMEDIATES'].sub_layers['SEGMENTED_VBET_POLYGONS'].rel_path)
     split_vbet_polygons(output_vbet, segmentation_points, segmentation_polygons)
 
+    log.info('Calculating Segment Metrics')
     metric_layers = {'active_floodplain': output_active_fp, 'active_channel': channel_area, 'inactive_floodplain': output_inactive_fp, 'floodplain': output_floodplain}
     calculate_segmentation_metrics(segmentation_polygons, output_centerlines, metric_layers)
 
+    log.info('Summerizing VBET Metrics')
     distance_lookup = get_distance_lookup(inputs_gpkg, intermediates_gpkg, level_paths_to_run, {0: 100.0, 1: 150.0, 2: 1000.0})
     metric_fields = list(metric_layers.keys())
     summerize_vbet_metrics(segmentation_points, segmentation_polygons, level_paths_to_run, distance_lookup, metric_fields)
@@ -559,18 +598,18 @@ def main():
     level_paths = args.level_paths.split(',')
     level_paths = level_paths if level_paths != ['.'] else None
 
-    # try:
-    if args.debug is True:
-        from rscommons.debug import ThreadRun
-        memfile = os.path.join(args.output_dir, 'vbet_mem.log')
-        retcode, max_obj = ThreadRun(vbet_centerlines, memfile, args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir, args.scenario_code, args.huc, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster, level_paths=level_paths, meta=meta)
-        log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
-    else:
-        vbet_centerlines(args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir, args.scenario_code, args.huc, level_paths, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster)
-    # except Exception as e:
-    #     log.error(e)
-    #     traceback.print_exc(file=sys.stdout)
-    #     sys.exit(1)
+    try:
+        if args.debug is True:
+            from rscommons.debug import ThreadRun
+            memfile = os.path.join(args.output_dir, 'vbet_mem.log')
+            retcode, max_obj = ThreadRun(vbet_centerlines, memfile, args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir, args.scenario_code, args.huc, level_paths, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster, meta=meta)
+            log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
+        else:
+            vbet_centerlines(args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir, args.scenario_code, args.huc, level_paths, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster)
+    except Exception as e:
+        log.error(e)
+        traceback.print_exc(file=sys.stdout)
+        sys.exit(1)
 
     sys.exit(0)
 
