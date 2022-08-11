@@ -354,11 +354,11 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
             if polygon is not None:
                 centerline_intersected = polygon.Intersection(centerline_full)
-                if centerline_intersected.GetGeometryName() == 'GeometryCollection':
+                if centerline_intersected.GetGeometryName() == 'GEOMETRYCOLLECTION':
                     for line in centerline_intersected:
                         line.MakeValid()
                         centerline = ogr.Geometry(ogr.wkbMultiLineString)
-                        if line.GetGeometryName() == 'LineString':
+                        if line.GetGeometryName() == 'LINESTRING':
                             centerline.AddGeometry(line)
                 else:
                     centerline = centerline_intersected
@@ -384,7 +384,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                 out_meta['compress'] = 'deflate'
                 rio_temp = rasterio.open(out_temp, 'w', **out_meta)
                 rio_source = rasterio.open(in_raster)
-                for _ji, window in rio_source.block_windows(1):
+                for _ji, window in rio_dest.block_windows(1):
                     # progbar.update(counter)
                     # counter += 1
                     array_vbet_mask = np.ma.MaskedArray(rio_vbet.read(1, window=window, masked=True).data)
