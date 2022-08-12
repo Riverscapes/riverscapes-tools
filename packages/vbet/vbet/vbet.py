@@ -19,6 +19,7 @@ import gdal
 from osgeo import ogr
 import rasterio
 from rasterio import shutil
+from rasterio.windows import bounds, from_bounds
 from shapely.geometry import box
 import numpy as np
 from scipy.ndimage import label, generate_binary_structure, binary_closing
@@ -384,32 +385,38 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                 out_meta['compress'] = 'deflate'
                 rio_temp = rasterio.open(out_temp, 'w', **out_meta)
                 rio_source = rasterio.open(in_raster)
-                for _ji, window in rio_dest.block_windows(1):
-                    # progbar.update(counter)
-                    # counter += 1
+                for _ji, window in rio_source.block_windows(1):
+                    src_bounds = bounds(window, transform=rio_source.meta['transform'])
+                    dest_bounds = from_bounds(*src_bounds, width=window.width, height=window.height, transform=out_meta['transform']).round_offsets()
                     array_vbet_mask = np.ma.MaskedArray(rio_vbet.read(1, window=window, masked=True).data)
                     array_source = np.ma.MaskedArray(rio_source.read(1, window=window, masked=True).data, mask=array_vbet_mask.mask)
-                    array_dest = np.ma.MaskedArray(rio_dest.read(1, window=window, masked=True).data, mask=array_vbet_mask.mask)
+                    array_dest = np.ma.MaskedArray(rio_dest.read(1, window=dest_bounds, masked=True, boundless=True, ).data, mask=array_vbet_mask.mask)
+                    if array_source.shape != array_dest.shape:
+                        log.error('Different window shapes')
+                        continue
                     array_out = np.choose(array_vbet_mask, [array_dest, array_source])
-
-                    rio_temp.write(np.ma.filled(np.float32(array_out), out_meta['nodata']), window=window, indexes=1)
+                    rio_temp.write(np.ma.filled(np.float32(array_out), out_meta['nodata']), window=dest_bounds, indexes=1)
                 rio_temp.close()
                 rio_dest.close()
                 rio_source.close()
                 shutil.copyfiles(out_temp, out_raster)
             else:
+                rio_dem = rasterio.open(dem)
                 rio_source = rasterio.open(in_raster)
-                out_meta = rio_source.meta
+                out_meta = rio_dem.meta
                 out_meta['driver'] = 'GTiff'
                 out_meta['count'] = 1
                 out_meta['compress'] = 'deflate'
                 rio_dest = rasterio.open(out_raster, 'w', **out_meta)
                 for _ji, window in rio_source.block_windows(1):
+                    src_bounds = bounds(window, transform=rio_source.meta['transform'])
+                    dest_bounds = from_bounds(*src_bounds, transform=out_meta['transform']).round_offsets()
                     array_vbet_mask = np.ma.MaskedArray(rio_vbet.read(1, window=window, masked=True).data)
                     array_source = np.ma.MaskedArray(rio_source.read(1, window=window, masked=True).data, mask=array_vbet_mask.mask)
-                    rio_dest.write(np.ma.filled(np.float32(array_source), out_meta['nodata']), window=window, indexes=1)
+                    rio_dest.write(np.ma.filled(np.float32(array_source), out_meta['nodata']), window=dest_bounds, indexes=1)
                 rio_dest.close()
                 rio_source.close()
+                rio_dem.close()
         rio_vbet.close()
 
         if debug is False:
