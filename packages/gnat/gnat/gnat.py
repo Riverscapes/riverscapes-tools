@@ -9,6 +9,8 @@
 # Date:     29 Jul 2022
 # -------------------------------------------------------------------------------
 
+import itertools
+from operator import itemgetter
 import os
 import sys
 import sqlite3
@@ -16,6 +18,8 @@ import time
 import argparse
 import traceback
 from collections import Counter
+from itertools import groupby
+from operator import itemgetter
 from typing import Dict, List
 
 from osgeo import ogr
@@ -115,7 +119,7 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
     _dem_node, dem = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], in_dem)
 
     vaa_table_name = copy_vaa_attributes(flowlines, in_vaa_table)
-    line_network = join_attributes(inputs_gpkg, "vx_flowlines_vaa", os.path.basename(flowlines), vaa_table_name, 'NHDPlusID', ['LevelPathI', 'DnLevelPat', 'UpLevelPat', 'Divergence'], 4326)
+    line_network = join_attributes(inputs_gpkg, "vx_flowlines_vaa", os.path.basename(flowlines), vaa_table_name, 'NHDPlusID', ['LevelPathI', 'DnLevelPat', 'UpLevelPat', 'Divergence', 'StreamOrde'], 4326)
 
     database_folder = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'database')
     with sqlite3.connect(gnat_gpkg) as conn:
@@ -140,30 +144,40 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
 
     metrics = generate_metric_list(gnat_gpkg)
 
+    buffer_distance = {}
+    for stream_size, distance in gradient_buffer_lookup.items():
+        buffer = VectorBase.rough_convert_metres_to_raster_units(dem, distance)
+        buffer_distance[stream_size] = buffer
+
     with GeopackageLayer(points) as lyr_points, \
-            GeopackageLayer(line_network) as lyr_lines, \
             GeopackageLayer(segments) as lyr_segments,\
-            GeopackageLayer(centerlines) as lyr_centerlines,\
             sqlite3.connect(gnat_gpkg) as conn, \
             rasterio.open(dem) as src_dem:
+
+        buffer_size_clip = lyr_points.rough_convert_metres_to_vector_units(0.25)
 
         curs = conn.cursor()
 
         for level_path in level_paths_to_run:
-            geom_flowline = collect_linestring(lyr_lines, level_path)
-            if geom_flowline.GetGeometryName() != 'LINESTRING':
-                log.error(f'Flowline for level path {level_path} is of type {geom_flowline.GetGeometryName()}. Expecting LINESTRING')
+            geom_flowline = collect_linestring(line_network, level_path)
+            # if geom_flowline.GetGeometryName() != 'LINESTRING':
+            #     count_flowline_errors += 1
+            #     log.error(f'Flowline for level path {level_path} is of type {geom_flowline.GetGeometryName()}. Expecting LINESTRING')
+            #     continue
+            if geom_flowline.IsEmpty():
+                log.error(f'Flowline for level path {level_path} is empty geometry')
                 continue
-            geom_centerline = collect_linestring(lyr_centerlines, level_path)
-            if geom_flowline.GetGeometryName() != 'LINESTRING':
-                log.error(f'Centerline for level path {level_path} is of type {geom_flowline.GetGeometryName()}. Expecting LINESTRING')
-                continue
-            utm_epsg = get_utm_zone_epsg(geom_flowline.GetPoint(0)[0])
+            geom_centerline = collect_linestring(centerlines, level_path, precision=8)
+            # if geom_centerline.GetGeometryName() != 'LINESTRING':
+            #     count_centerline_errors += 1
+            #     log.error(f'Centerline for level path {level_path} is of type {geom_centerline.GetGeometryName()}. Expecting LINESTRING')
+            #     continue
+            if geom_flowline.GetGeometryName() == 'LINESTRING':
+                utm_epsg = get_utm_zone_epsg(geom_flowline.GetPoint(0)[0])
+            else:
+                utm_epsg = get_utm_zone_epsg(geom_flowline.GetGeometryRef(0).GetPoint(0)[0])
             _transform_ref, transform = VectorBase.get_transform_from_epsg(lyr_points.spatial_ref, utm_epsg)  # assuming the spatial ref here is the same for line networks
-            buffer_distance = {}
-            for stream_size, distance in gradient_buffer_lookup.items():
-                buffer = VectorBase.rough_convert_metres_to_raster_units(dem, distance)
-                buffer_distance[stream_size] = buffer
+
             for feat_seg_pt, *_ in lyr_points.iterate_features(attribute_filter=f'LevelPathI = {level_path}'):
                 # Gather common components for metric calcuations
 
@@ -179,22 +193,21 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
                     metric = metrics['STRMGRAD']
                     window = metric[stream_size]
                     if window not in window_geoms:
-                        window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance)
-                    coords = []
-                    geom_clipped = window_geoms[window].Intersection(geom_flowline)
-                    if geom_clipped.GetGeometryName() != 'LINESTRING':
-                        log.error(f'Skipping {metric["machine_code"]} for point {point_id} LevelPathI {level_path}: clipping result {geom_clipped.GetGeometryName()} instead of expected LineString')
-                        continue
-                    # if geom_clipped.GetGeometryName() in ['MULTILINESTRING', 'GEOMETRYCOLLECTION']:
-                    #     for i in range(0, geom_clipped.GetGeometryCount()):
-                    #         g = geom_clipped.GetGeometryRef(i)
-                    #         if g.GetGeometryName() == 'LINESTRING':
-                    #             geom_line.AddGeometry(g)
-                    # else:
-                    #     geom_line.AddGeometry(geom_clipped)
+                        window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance, buffer_size_clip)
 
-                    for pt in [geom_clipped.GetPoint(0), geom_clipped.GetPoint(geom_clipped.GetPointCount() - 1)]:
-                        coords.append(pt)
+                    geom_clipped = window_geoms[window].Intersection(geom_flowline)
+                    if geom_clipped.GetGeometryName() == "MULTILINESTRING":
+                        geom_clipped = reduce_precision(geom_clipped, 6)
+                        geom_clipped = ogr.ForceToLineString(geom_clipped)
+                    # if geom_clipped.GetGeometryName() != 'LINESTRING':
+                    #     count_clipping_errors += 1
+                    #     log.error(f'Skipping {metric["machine_code"]} for point {point_id} LevelPathI {level_path}: clipping result {geom_clipped.GetGeometryName()} instead of expected LineString')
+                    # else:
+                    coords = []
+                    geoms = ogr.ForceToMultiLineString(geom_clipped)
+                    for geom in geoms:
+                        for pt in [geom.GetPoint(0), geom.GetPoint(geom.GetPointCount() - 1)]:
+                            coords.append(pt)
                     counts = Counter(coords)
                     endpoints = [pt for pt, count in counts.items() if count == 1]
                     if len(endpoints) == 2:
@@ -217,16 +230,21 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
                     metric = metrics['VALGRAD']
                     window = metric[stream_size]
                     if window not in window_geoms:
-                        window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance)
+                        window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance, buffer_size_clip)
 
-                    coords = []
                     geom_clipped = window_geoms[window].Intersection(geom_centerline)
-                    if geom_clipped.GetGeometryName() != 'LINESTRING':
-                        log.error(f'Skipping {metric["machine_code"]} for point {point_id} LevelPathI {level_path}: clipping result {geom_clipped.GetGeometryName()} instead of expected LineString')
-                        continue
-
-                    for pt in [geom_clipped.GetPoint(0), geom_clipped.GetPoint(geom_clipped.GetPointCount() - 1)]:
-                        coords.append(pt)
+                    if geom_clipped.GetGeometryName() == "MULTILINESTRING":
+                        geom_clipped = reduce_precision(geom_clipped, 6)
+                        geom_clipped = ogr.ForceToLineString(geom_clipped)
+                    # if geom_clipped.GetGeometryName() != 'LINESTRING':
+                    #     count_clipping_errors += 1
+                    #     log.error(f'Skipping {metric["machine_code"]} for point {point_id} LevelPathI {level_path}: clipping result {geom_clipped.GetGeometryName()} instead of expected LineString')
+                    # else:
+                    coords = []
+                    geoms = ogr.ForceToMultiLineString(geom_clipped)
+                    for geom in geoms:
+                        for pt in [geom.GetPoint(0), geom.GetPoint(geom.GetPointCount() - 1)]:
+                            coords.append(pt)
                     counts = Counter(coords)
                     endpoints = [pt for pt, count in counts.items() if count == 1]
                     if len(endpoints) == 2:
@@ -244,6 +262,24 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
                         stream_length = geom_clipped.Length()
                         gradient = (elevations[1] - elevations[0]) / stream_length
                         metrics_output[metric['metric_id']] = gradient
+
+                if 'STRMORDR' in metrics:
+                    metric = metrics['STRMORDR']
+                    window = metric[stream_size]
+                    if window not in window_geoms:
+                        window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance, buffer_size_clip)
+
+                    results = []
+                    with GeopackageLayer(line_network) as lyr_lines:
+                        for feat, *_ in lyr_lines.iterate_features(clip_shape=window_geoms[window]):
+                            results.append(feat.GetField('StreamOrde'))
+                        lyr_lines.ogr_layer.SetSpatialFilter(None)
+                    if len(results) > 0:
+                        stream_order = max(results)
+                    else:
+                        stream_order = None
+                        log.warning(f'Unable to calculate Stream Order for pt {point_id} in level path {level_path}')
+                    metrics_output[metric['metric_id']] = stream_order
 
                 # Write to Metrics
                 if len(metrics_output) > 0:
@@ -272,7 +308,7 @@ def generate_metric_list(db):
     return metrics
 
 
-def generate_window(lyr, window, level_path, segment_dist):
+def generate_window(lyr, window, level_path, segment_dist, buffer=0):
     """_summary_
 
     Args:
@@ -294,7 +330,7 @@ def generate_window(lyr, window, level_path, segment_dist):
                     geom_window_sections.AddGeometry(g)
         else:
             geom_window_sections.AddGeometry(geom)
-    geom_window = geom_window_sections.Buffer(0)  # ogr.ForceToPolygon(geom_window_sections)
+    geom_window = geom_window_sections.Buffer(buffer)  # ogr.ForceToPolygon(geom_window_sections)
 
     return geom_window
 
@@ -326,7 +362,7 @@ def reduce_precision(geom_multiline, rounding_precision=13):
     return out_geom
 
 
-def collect_linestring(lyr, level_path, precision=14):
+def collect_linestring(in_lyr, level_path, precision=None):
     """_summary_
 
     Args:
@@ -334,21 +370,36 @@ def collect_linestring(lyr, level_path, precision=14):
         level_path (_type_): _description_
         precision (int, optional): _description_. Defaults to 14.
     """
-    geom_line = ogr.Geometry(ogr.wkbMultiLineString)
-    for feat, *_ in lyr.iterate_features(attribute_filter=f'LevelPathI = {level_path}'):
-        geom = feat.GetGeometryRef()
-        if geom.GetGeometryName() == 'LINESTRING':
-            geom_line.AddGeometry(geom)
-        else:
-            for i in range(0, geom.GetGeometryCount()):
-                g = geom.GetGeometryRef(i)
-                if g.GetGeometryName() == 'LINESTRING':
-                    geom_line.AddGeometry(g)
+    with GeopackageLayer(in_lyr) as lyr:
+        geom_line = ogr.Geometry(ogr.wkbMultiLineString)
+        for feat, *_ in lyr.iterate_features(attribute_filter=f'"LevelPathI" = {level_path}'):
+            geom = feat.GetGeometryRef()
+            if geom.GetGeometryName() == 'LINESTRING':
+                geom_line.AddGeometry(geom)
+            else:
+                for i in range(0, geom.GetGeometryCount()):
+                    g = geom.GetGeometryRef(i)
+                    if g.GetGeometryName() == 'LINESTRING':
+                        geom_line.AddGeometry(g)
+        if precision is not None:
+            geom_line = reduce_precision(geom_line, precision)
+        geom_single = ogr.ForceToLineString(geom_line)
 
-    geom_reduced = reduce_precision(geom_line, precision)
-    geom_single = ogr.ForceToLineString(geom_reduced)
+        # if geom_single.GetGeometryName() == "MULTILINESTRING":
+        #     coords = []
+        #     for geom in geom_single:
+        #         for pt in [geom.GetPoint(0), geom.GetPoint(geom.GetPointCount() - 1)]:
+        #             coords.append(pt)
+        #     counts = Counter(coords)
+        #     multi_points = [pt for pt, count in counts.items() if count == 3]
 
-    return geom_single
+        #     out_line = ogr.Geometry(ogr.wkbMultiLineString)
+        #     for geom in geom_single:
+        #         if not all([pt in multi_points for pt in [geom.GetPoint(0), geom.GetPoint(geom.GetPointCount() - 1)]]):
+        #             out_line.AddGeometry(geom)
+        #     geom_single = ogr.ForceToLineString(out_line)
+
+        return geom_single
 
 
 def create_project(huc, output_dir: str, meta: List[RSMeta], meta_dict: Dict[str, str]):
