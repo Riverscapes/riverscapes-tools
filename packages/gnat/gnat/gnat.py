@@ -9,8 +9,6 @@
 # Date:     29 Jul 2022
 # -------------------------------------------------------------------------------
 
-import itertools
-from operator import itemgetter
 import os
 import sys
 import sqlite3
@@ -18,8 +16,6 @@ import time
 import argparse
 import traceback
 from collections import Counter
-from itertools import groupby
-from operator import itemgetter
 from typing import Dict, List
 
 from osgeo import ogr
@@ -29,7 +25,7 @@ import rasterio
 from rasterio.mask import mask
 from shapely.geometry import Point
 
-from rscommons import GeopackageLayer, dotenv, Logger, initGDALOGRErrors, ModelConfig, RSLayer, RSMeta, RSMetaTypes, RSProject, VectorBase
+from rscommons import GeopackageLayer, dotenv, Logger, initGDALOGRErrors, ModelConfig, RSLayer, RSMeta, RSMetaTypes, RSProject, VectorBase, ProgressBar
 from rscommons.classes.vector_base import get_utm_zone_epsg
 from rscommons.util import safe_makedirs, safe_remove_dir, parse_metadata
 from rscommons.database import load_lookup_data
@@ -119,7 +115,7 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
     _dem_node, dem = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], in_dem)
 
     vaa_table_name = copy_vaa_attributes(flowlines, in_vaa_table)
-    line_network = join_attributes(inputs_gpkg, "vx_flowlines_vaa", os.path.basename(flowlines), vaa_table_name, 'NHDPlusID', ['LevelPathI', 'DnLevelPat', 'UpLevelPat', 'Divergence', 'StreamOrde'], 4326)
+    line_network = join_attributes(inputs_gpkg, "vx_flowlines_vaa", os.path.basename(flowlines), vaa_table_name, 'NHDPlusID', ['LevelPathI', 'DnLevelPat', 'UpLevelPat', 'Divergence', 'StreamOrde', 'STARTFLAG'], 4326)
 
     database_folder = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'database')
     with sqlite3.connect(gnat_gpkg) as conn:
@@ -158,7 +154,11 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
 
         curs = conn.cursor()
 
+        progbar = ProgressBar(len(level_paths_to_run), 50, "Calculating GNAT Metrics")
+        counter = 0
         for level_path in level_paths_to_run:
+            progbar.update(counter)
+            counter += 1
             geom_flowline = collect_linestring(line_network, level_path)
             # if geom_flowline.GetGeometryName() != 'LINESTRING':
             #     count_flowline_errors += 1
@@ -281,9 +281,50 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
                         log.warning(f'Unable to calculate Stream Order for pt {point_id} in level path {level_path}')
                     metrics_output[metric['metric_id']] = stream_order
 
+                if 'HEDWTR' in metrics:
+                    metric = metrics['HEDWTR']
+                    window = metric[stream_size]
+                    if window not in window_geoms:
+                        window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance)
+
+                    sum_attributes = {}
+                    with GeopackageLayer(line_network) as lyr_lines:
+                        for feat, *_ in lyr_lines.iterate_features(clip_shape=window_geoms[window]):
+                            line_geom = feat.GetGeometryRef()
+                            attribute = str(feat.GetField('STARTFLAG'))
+                            geom_section = window_geoms[window].Intersection(line_geom)
+                            length = geom_section.Length()
+                            sum_attributes[attribute] = sum_attributes.get(attribute, 0) + length
+                        lyr_lines.ogr_layer.SetSpatialFilter(None)
+                        lyr_lines = None
+
+                    is_headwater = 1 if sum_attributes.get('1', 0) / sum(sum_attributes.values()) > 0.5 else 0
+                    metrics_output[metric['metric_id']] = is_headwater
+
+                if 'STRMTYPE' in metrics:
+                    metric = metrics['STRMTYPE']
+                    window = metric[stream_size]
+                    if window not in window_geoms:
+                        window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance)
+
+                    attributes = {}
+                    with GeopackageLayer(line_network) as lyr_lines:
+                        for feat, *_ in lyr_lines.iterate_features(clip_shape=window_geoms[window]):
+                            line_geom = feat.GetGeometryRef()
+                            attribute = str(feat.GetField('FCode'))
+                            geom_section = window_geoms[window].Intersection(line_geom)
+                            length = geom_section.Length()
+                            attributes[attribute] = attributes.get(attribute, 0) + length
+                        lyr_lines.ogr_layer.SetSpatialFilter(None)
+                        lyr_lines = None
+
+                    majority_fcode = max(attributes, key=attributes.get)
+                    metrics_output[metric['metric_id']] = majority_fcode
+
                 # Write to Metrics
                 if len(metrics_output) > 0:
                     curs.executemany("INSERT INTO metric_values (point_id, metric_id, metric_value) VALUES (?,?,?)", [(point_id, name, value) for name, value in metrics_output.items()])
+            conn.commit()
 
     epsg = 4326
     with sqlite3.connect(gnat_gpkg) as conn:
