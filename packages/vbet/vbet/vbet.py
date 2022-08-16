@@ -220,6 +220,8 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
     bbox = box(*raster_bounds)
     raster_envelope_geom = VectorBase.shapely2ogr(bbox)
+    vbet_clip_buffer_size = VectorBase.rough_convert_metres_to_raster_units(dem, 0.25)
+    channel_buffer_size = VectorBase.rough_convert_metres_to_raster_units(dem, 200)
 
     current_vbet = ogr.Geometry(ogr.wkbMultiPolygon)
     # iterate for each level path
@@ -243,8 +245,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             if current_vbet.Contains(channel_polygons):
                 continue
 
-        buffer_size = VectorBase.rough_convert_metres_to_raster_units(dem, 200)
-        channel_polygons_buffer = channel_polygons.Buffer(buffer_size)
+        channel_polygons_buffer = channel_polygons.Buffer(channel_buffer_size)
         (minX, maxX, minY, maxY) = channel_polygons_buffer.GetEnvelope()
         # Create ring
         ring = ogr.Geometry(ogr.wkbLinearRing)
@@ -354,6 +355,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             centerline_full = raster2line_geom(centerline_raster, 1)
 
             if polygon is not None:
+                polygon = polygon.Buffer(vbet_clip_buffer_size)
                 centerline_intersected = polygon.Intersection(centerline_full)
                 if centerline_intersected.GetGeometryName() == 'GEOMETRYCOLLECTION':
                     for line in centerline_intersected:
