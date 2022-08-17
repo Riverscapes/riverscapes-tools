@@ -2,6 +2,7 @@ CREATE TABLE metrics (
     metric_id INTEGER PRIMARY KEY NOT NULL,
     name TEXT,
     machine_code TEXT,
+    data_type TEXT,
     description TEXT,
     method TEXT,
     small REAL,
@@ -24,18 +25,5 @@ CREATE TABLE metric_values (
     CONSTRAINT fk_metric_id FOREIGN KEY (metric_id) REFERENCES metrics (metric_id)
 );
 
-CREATE VIEW vw_point_metrics AS 
-    SELECT 
-        G.fid AS fid, 
-        G.geom AS geom,
-        G.LevelPathI as level_path,
-        G.seg_distance as seg_distance,
-        G.stream_size as stream_size,
-        CAST((CASE WHEN M.metric_id == 1 THEN M.metric_value END) AS REAL) AS stream_gradient,
-        CAST((CASE WHEN M.metric_id == 2 THEN M.metric_value END) AS REAL) AS valley_gradient
-    FROM metric_values M
-    INNER JOIN points G ON M.point_id = G.fid;
-
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('metric_values', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('metrics', 'attributes');
--- INSERT INTO gpkg_contents (table_name, data_type) VALUES ('vw_point_metrics', 'attributes');
