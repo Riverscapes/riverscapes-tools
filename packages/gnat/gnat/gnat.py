@@ -115,7 +115,7 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
     _dem_node, dem = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], in_dem)
 
     vaa_table_name = copy_vaa_attributes(flowlines, in_vaa_table)
-    line_network = join_attributes(inputs_gpkg, "vx_flowlines_vaa", os.path.basename(flowlines), vaa_table_name, 'NHDPlusID', ['LevelPathI', 'DnLevelPat', 'UpLevelPat', 'Divergence', 'StreamOrde', 'STARTFLAG'], 4326)
+    line_network = join_attributes(inputs_gpkg, "vw_flowlines_vaa", os.path.basename(flowlines), vaa_table_name, 'NHDPlusID', ['LevelPathI', 'DnLevelPat', 'UpLevelPat', 'Divergence', 'StreamOrde', 'STARTFLAG'], 4326)
 
     database_folder = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'database')
     with sqlite3.connect(gnat_gpkg) as conn:
@@ -321,6 +321,40 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
                     majority_fcode = max(attributes, key=attributes.get)
                     metrics_output[metric['metric_id']] = majority_fcode
 
+                if 'ACTFLDAREA' in metrics:
+                    metric = metrics['ACTFLDAREA']
+                    window = metric[stream_size]
+
+                    values = sum_window_attributes(lyr_segments, window, level_path, segment_distance, ['active_floodplain_area'])
+                    afp_area = values['active_floodplain_area']
+                    metrics_output[metric['metric_id']] = afp_area
+
+                if 'ACTCHANAREA' in metrics:
+                    metric = metrics['ACTCHANAREA']
+                    window = metric[stream_size]
+
+                    values = sum_window_attributes(lyr_segments, window, level_path, segment_distance, ['active_channel_area'])
+                    ac_area = values['active_channel_area']
+                    metrics_output[metric['metric_id']] = ac_area
+
+                if 'INTGWDTH' in metrics:
+                    metric = metrics['INTGWDTH']
+                    window = metric[stream_size]
+
+                    values = sum_window_attributes(lyr_segments, window, level_path, segment_distance, ['centerline_length', 'segment_area'])
+                    ig_width = values['segment_area'] / values['centerline_length']
+                    metrics_output[metric['metric_id']] = ig_width
+
+                if 'CHANVBRAT' in metrics:
+                    metric = metrics['CHANVBRAT']
+                    window = metric[stream_size]
+
+                    values = sum_window_attributes(lyr_segments, window, level_path, segment_distance, ['active_channel_area', 'active_floodplain_area'])
+                    ac_area = values['active_channel_area']
+                    fp_area = values['active_floodplain_area']
+                    ac_fp_ratio = ac_area / fp_area
+                    metrics_output[metric['metric_id']] = ac_fp_ratio
+
                 # Write to Metrics
                 if len(metrics_output) > 0:
                     curs.executemany("INSERT INTO metric_values (point_id, metric_id, metric_value) VALUES (?,?,?)", [(point_id, name, value) for name, value in metrics_output.items()])
@@ -328,10 +362,20 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
 
     epsg = 4326
     with sqlite3.connect(gnat_gpkg) as conn:
+
+        sql = 'CREATE VIEW vw_point_metrics AS SELECT G.fid fid, G.geom geom, G.LevelPathI level_path, G.seg_distance seg_distance, G.stream_size stream_size'
+        for name in metrics:
+            metric = metrics[name]
+            metric_sql = f'SUM(M.metric_value) FILTER (WHERE M.metric_id == {metric["metric_id"]})'
+            if metric['data_type'] != '':
+                metric_sql = f'CAST({metric_sql} AS {metric["data_type"]})'
+            sql = f'{sql}, {metric_sql} {metric["name"].lower().replace(" ", "_")}'
+        sql = f'{sql} FROM points G INNER JOIN metric_values M ON M.point_id = G.fid GROUP BY G.fid;'
+
         curs = conn.cursor()
-        curs.execute("INSERT INTO gpkg_contents (table_name, identifier, data_type, srs_id) VALUES ('vx_point_metrics', 'vx_point_metrics', 'features', ?);", (epsg,))
-        conn.commit()
-        curs.execute("INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) values ('vx_point_metrics', 'geom', 'POINT', ?, 0, 0);", (epsg,))
+        curs.execute(sql)
+        curs.execute("INSERT INTO gpkg_contents (table_name, identifier, data_type, srs_id) VALUES ('vw_point_metrics', 'vw_point_metrics', 'features', ?);", (epsg,))
+        curs.execute("INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) values ('vw_point_metrics', 'geom', 'POINT', ?, 0, 0);", (epsg,))
         conn.commit()
 
     return
@@ -344,7 +388,7 @@ def generate_metric_list(db):
     with sqlite3.connect(db) as conn:
         conn.row_factory = sqlite3.Row
         curs = conn.cursor()
-        metric_data = curs.execute("""SELECT metric_id, machine_code, small, medium, large from metrics""").fetchall()
+        metric_data = curs.execute("""SELECT * from metrics""").fetchall()
         metrics = {metric['machine_code']: metric for metric in metric_data}
     return metrics
 
@@ -374,6 +418,33 @@ def generate_window(lyr, window, level_path, segment_dist, buffer=0):
     geom_window = geom_window_sections.Buffer(buffer)  # ogr.ForceToPolygon(geom_window_sections)
 
     return geom_window
+
+
+def sum_window_attributes(lyr, window, level_path, segment_dist, fields):
+    """_summary_
+
+    Args:
+        lyr (_type_): _description_
+        window (_type_): _description_
+        level_path (_type_): _description_
+        segment_dist (_type_): _description_
+        fields (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
+
+    results = {}
+    min_dist = segment_dist - 0.5 * window
+    max_dist = segment_dist + 0.5 * window
+    sql = f'LevelPathI = {level_path} AND seg_distance >= {min_dist} AND seg_distance <={max_dist}'
+    for feat, *_ in lyr.iterate_features(attribute_filter=sql):
+        for field in fields:
+            result = feat.GetField(field)
+            result = result if result is not None else 0.0
+            results[field] = results.get(field, 0) + result
+
+    return results
 
 
 def reduce_precision(geom_multiline, rounding_precision=13):
