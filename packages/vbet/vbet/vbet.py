@@ -34,7 +34,7 @@ from rscommons.raster_warp import raster_warp
 
 from vbet.vbet_database import build_vbet_database, load_configuration
 from vbet.vbet_raster_ops import mask_rasters_nodata, rasterize_attribute, raster2array, array2raster, new_raster, rasterize
-from vbet.vbet_outputs import vbet_merge
+from vbet.vbet_outputs import vbet_merge, threshold
 from vbet.vbet_report import VBETReport
 from vbet.vbet_segmentation import calculate_segmentation_metrics, generate_segmentation_points, split_vbet_polygons, summerize_vbet_metrics
 from scripts.cost_path import least_cost_path
@@ -334,7 +334,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             log.warning(f'vbet polygon for level path {level_path} may be empty')
 
         active_valley_bottom_raster = os.path.join(temp_folder, f'active_valley_bottom_{level_path}.tif')
-        generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, active_valley_bottom_raster, temp_folder, threshold=0.90)
+        generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, active_valley_bottom_raster, temp_folder, thresh_value=0.90)
         active_vbet_polygon = os.path.join(temp_folder, f'active_valley_bottom_{level_path}.shp')
         polygonize(active_valley_bottom_raster, 1, active_vbet_polygon, epsg=4326)
         # Add to existing feature class
@@ -480,17 +480,15 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     log.info('VBET Completed Successfully')
 
 
-def generate_vbet_polygon(vbet_evidence_raster, rasterized_channel, channel_hand, out_valley_bottom, temp_folder, threshold=0.68):
+def generate_vbet_polygon(vbet_evidence_raster, rasterized_channel, channel_hand, out_valley_bottom, temp_folder, thresh_value=0.68):
 
-    # Read initial rasters as arrays
-    vbet = raster2array(vbet_evidence_raster)
-    chan = raster2array(rasterized_channel)
-    hand = raster2array(channel_hand)
+    # Mask to Hand area
+    vbet_evidence_masked = os.path.join(temp_folder, f"vbet_evidence_masked_{thresh_value}.tif")
+    mask_rasters_nodata(vbet_evidence_raster, channel_hand, vbet_evidence_masked)
 
-    # Generate Valley Bottom
-    valley_bottom = ((vbet + chan) >= threshold) * ((hand + chan) > 0)  # ((A + B) < 0.68) * (C > 0)
-    valley_bottom_raw = os.path.join(temp_folder, f"valley_bottom_raw_{threshold}.tif")
-    array2raster(valley_bottom_raw, vbet_evidence_raster, valley_bottom, data_type=gdal.GDT_Int32)
+    # Threshold Valley Bottom
+    valley_bottom_raw = os.path.join(temp_folder, f"valley_bottom_raw_{thresh_value}.tif")
+    threshold(vbet_evidence_masked, thresh_value, valley_bottom_raw)
 
     ds_valley_bottom = gdal.Open(valley_bottom_raw, gdal.GA_Update)
     band_valley_bottom = ds_valley_bottom.GetRasterBand(1)
@@ -504,11 +502,16 @@ def generate_vbet_polygon(vbet_evidence_raster, rasterized_channel, channel_hand
     # Region Tool to find only connected areas
     struct = generate_binary_structure(2, 2)
     regions, _num = label(valley_bottom_sieved, structure=struct)
+    valley_bottom_sieved = None
+
+    chan = raster2array(rasterized_channel)
     selection = regions * chan
+    chan = None
+
     values = np.unique(selection)
     valley_bottom_region = np.isin(regions, values.nonzero())
-    array2raster(os.path.join(temp_folder, f'regions_{threshold}.tif'), vbet_evidence_raster, regions, data_type=gdal.GDT_Int32)
-    array2raster(os.path.join(temp_folder, f'valley_bottom_region_{threshold}.tif'), vbet_evidence_raster, valley_bottom_region.astype(int), data_type=gdal.GDT_Int32)
+    array2raster(os.path.join(temp_folder, f'regions_{thresh_value}.tif'), vbet_evidence_raster, regions, data_type=gdal.GDT_Int32)
+    array2raster(os.path.join(temp_folder, f'valley_bottom_region_{thresh_value}.tif'), vbet_evidence_raster, valley_bottom_region.astype(int), data_type=gdal.GDT_Int32)
 
     # Clean Raster Edges
     valley_bottom_clean = binary_closing(valley_bottom_region.astype(int), iterations=2)
