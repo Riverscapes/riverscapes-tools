@@ -18,8 +18,6 @@ from typing import List, Dict
 import gdal
 from osgeo import ogr
 import rasterio
-from rasterio import shutil
-from rasterio.windows import bounds, from_bounds
 from shapely.geometry import box
 import numpy as np
 from scipy.ndimage import label, generate_binary_structure, binary_closing
@@ -33,7 +31,7 @@ from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.raster_warp import raster_warp
 
 from vbet.vbet_database import build_vbet_database, load_configuration
-from vbet.vbet_raster_ops import mask_rasters_nodata, rasterize_attribute, raster2array, array2raster, new_raster, rasterize
+from vbet.vbet_raster_ops import mask_rasters_nodata, rasterize_attribute, raster2array, array2raster, new_raster, rasterize, raster_merge
 from vbet.vbet_outputs import vbet_merge, threshold
 from vbet.vbet_report import VBETReport
 from vbet.vbet_segmentation import calculate_segmentation_metrics, generate_segmentation_points, split_vbet_polygons, summerize_vbet_metrics
@@ -223,7 +221,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     vbet_clip_buffer_size = VectorBase.rough_convert_metres_to_raster_units(dem, 0.25)
     channel_buffer_size = VectorBase.rough_convert_metres_to_raster_units(dem, 200)
 
-    current_vbet = ogr.Geometry(ogr.wkbMultiPolygon)
+    # current_vbet = ogr.Geometry(ogr.wkbMultiPolygon)
     # iterate for each level path
     for level_path in level_paths_to_run:
         log.info(f'Processing Level Path: {level_path}')
@@ -240,12 +238,14 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         channel_polygons = collect_feature_class(level_path_polygons)
         channel_polygons = channel_polygons.MakeValid()
 
-        if current_vbet.IsEmpty() is False:
-            current_vbet = current_vbet.MakeValid()
-            if current_vbet.Contains(channel_polygons):
-                continue
+        # if current_vbet.IsEmpty() is False:
+        #     current_vbet = current_vbet.MakeValid()
+        #     if current_vbet.Contains(channel_polygons):
+        #         continue
 
         channel_polygons_buffer = channel_polygons.Buffer(channel_buffer_size)
+        channel_polygons = None
+
         (minX, maxX, minY, maxY) = channel_polygons_buffer.GetEnvelope()
         # Create ring
         ring = ogr.Geometry(ogr.wkbLinearRing)
@@ -327,11 +327,11 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         polygonize(valley_bottom_raster, 1, vbet_polygon, epsg=4326)
         # Add to existing feature class
         polygon = vbet_merge(vbet_polygon, output_vbet, level_path=level_path)
-        if polygon is not None:
-            for geom in polygon:
-                current_vbet.AddGeometry(geom)
-        else:
-            log.warning(f'vbet polygon for level path {level_path} may be empty')
+        # if polygon is not None:
+        #     for geom in polygon:
+        #         current_vbet.AddGeometry(geom)
+        # else:
+        #     log.warning(f'vbet polygon for level path {level_path} may be empty')
 
         active_valley_bottom_raster = os.path.join(temp_folder, f'active_valley_bottom_{level_path}.tif')
         generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, active_valley_bottom_raster, temp_folder, thresh_value=0.90)
@@ -376,50 +376,8 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                 out_feature = None
 
         # clean up rasters
-        rio_vbet = rasterio.open(valley_bottom_raster)
         for out_raster, in_raster in {out_hand: hand_raster, out_vbet_evidence: evidence_raster}.items():
-            if os.path.exists(out_raster):
-                out_temp = os.path.join(temp_folder, 'temp_raster')
-                rio_dest = rasterio.open(out_raster)
-                out_meta = rio_dest.meta
-                out_meta['driver'] = 'GTiff'
-                out_meta['count'] = 1
-                out_meta['compress'] = 'deflate'
-                rio_temp = rasterio.open(out_temp, 'w', **out_meta)
-                rio_source = rasterio.open(in_raster)
-                for _ji, window in rio_source.block_windows(1):
-                    src_bounds = bounds(window, transform=rio_source.meta['transform'])
-                    dest_bounds = from_bounds(*src_bounds, width=window.width, height=window.height, transform=out_meta['transform']).round_offsets()
-                    array_vbet_mask = np.ma.MaskedArray(rio_vbet.read(1, window=window, masked=True).data)
-                    array_source = np.ma.MaskedArray(rio_source.read(1, window=window, masked=True).data, mask=array_vbet_mask.mask)
-                    array_dest = np.ma.MaskedArray(rio_dest.read(1, window=dest_bounds, masked=True, boundless=True, ).data, mask=array_vbet_mask.mask)
-                    if array_source.shape != array_dest.shape:
-                        log.error('Different window shapes')
-                        continue
-                    array_out = np.choose(array_vbet_mask, [array_dest, array_source])
-                    rio_temp.write(np.ma.filled(np.float32(array_out), out_meta['nodata']), window=dest_bounds, indexes=1)
-                rio_temp.close()
-                rio_dest.close()
-                rio_source.close()
-                shutil.copyfiles(out_temp, out_raster)
-            else:
-                rio_dem = rasterio.open(dem)
-                rio_source = rasterio.open(in_raster)
-                out_meta = rio_dem.meta
-                out_meta['driver'] = 'GTiff'
-                out_meta['count'] = 1
-                out_meta['compress'] = 'deflate'
-                rio_dest = rasterio.open(out_raster, 'w', **out_meta)
-                for _ji, window in rio_source.block_windows(1):
-                    src_bounds = bounds(window, transform=rio_source.meta['transform'])
-                    dest_bounds = from_bounds(*src_bounds, transform=out_meta['transform']).round_offsets()
-                    array_vbet_mask = np.ma.MaskedArray(rio_vbet.read(1, window=window, masked=True).data)
-                    array_source = np.ma.MaskedArray(rio_source.read(1, window=window, masked=True).data, mask=array_vbet_mask.mask)
-                    rio_dest.write(np.ma.filled(np.float32(array_source), out_meta['nodata']), window=dest_bounds, indexes=1)
-                rio_dest.close()
-                rio_source.close()
-                rio_dem.close()
-        rio_vbet.close()
+            raster_merge(in_raster, out_raster, dem, valley_bottom_raster, temp_folder)
 
         if debug is False:
             safe_remove_dir(temp_folder)
