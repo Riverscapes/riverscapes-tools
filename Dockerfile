@@ -121,6 +121,6 @@ COPY . /usr/local/riverscapes-tools
 WORKDIR /usr/local/riverscapes-tools
 RUN ./scripts/bootstrap.sh
 
-WORKDIR /shared
+WORKDIR /efsshare
 
 ENTRYPOINT [ "sh", "/usr/local/riverscapes-tools/bin/run.sh"]

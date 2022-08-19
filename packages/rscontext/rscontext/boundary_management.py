@@ -1,5 +1,5 @@
 
-import ogr
+from osgeo import ogr
 
 from rscommons.vector_ops import get_geometry_unary_union
 from shapely.ops import unary_union

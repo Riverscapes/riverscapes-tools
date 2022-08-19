@@ -65,7 +65,7 @@ TAUDEM_DIR=$DATA_DIR/taudem/$HUC
 try() {
 
 rscontext $HUC \
-  /shaefssharered/NationalDatasets/landfire/200/us_200evt.tif \
+  /efsshare/NationalDatasets/landfire/200/us_200evt.tif \
   /efsshare/NationalDatasets/landfire/200/us_200bps.tif \
   /efsshare/NationalDatasets/ownership/surface_management_agency.shp \
   /efsshare/NationalDatasets/ownership/FairMarketValue.tif \
