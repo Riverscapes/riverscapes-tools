@@ -426,6 +426,7 @@ def raster_merge(in_raster, out_raster, dem, valley_bottom_raster, temp_folder):
         out_meta['compress'] = 'deflate'
         rio_temp = rasterio.open(out_temp, 'w', **out_meta)
         rio_source = rasterio.open(in_raster)
+        window_error = False
         for _ji, window in rio_source.block_windows(1):
             src_bounds = bounds(window, transform=rio_source.meta['transform'])
             dest_bounds = from_bounds(*src_bounds, width=window.width, height=window.height, transform=out_meta['transform']).round_offsets()
@@ -433,7 +434,7 @@ def raster_merge(in_raster, out_raster, dem, valley_bottom_raster, temp_folder):
             array_source = np.ma.MaskedArray(rio_source.read(1, window=window, masked=True).data, mask=array_vbet_mask.mask)
             array_dest = np.ma.MaskedArray(rio_dest.read(1, window=dest_bounds, masked=True, boundless=True, ).data, mask=array_vbet_mask.mask)
             if array_source.shape != array_dest.shape:
-                log.error('Different window shapes')
+                window_error = True
                 continue
             array_out = np.choose(array_vbet_mask, [array_dest, array_source])
             rio_temp.write(np.ma.filled(np.float32(array_out), out_meta['nodata']), window=dest_bounds, indexes=1)
@@ -441,6 +442,9 @@ def raster_merge(in_raster, out_raster, dem, valley_bottom_raster, temp_folder):
         rio_dest.close()
         rio_source.close()
         shutil.copyfile(out_temp, out_raster)
+
+        if window_error:
+            log.error(f'Different window shapes encounterd when processing {out_raster}')
     else:
         rio_dem = rasterio.open(dem)
         rio_source = rasterio.open(in_raster)
