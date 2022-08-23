@@ -560,6 +560,9 @@ class VectorBase():
         if attribute_filter:
             self.ogr_layer.SetAttributeFilter('')
 
+        if clip_geom:
+            self.ogr_layer.SetSpatialFilter(None)
+
         # Finalize the progress bar
         if progbar is not None:
             progbar.finish()
@@ -639,8 +642,8 @@ class VectorBase():
         if in_ax_strategy != out_ax_strategy:
             raise VectorBaseException('ERROR: Axis mapping strategy mismatch from "{}" to "{}". This will cause strange x and y coordinates to be transposed.')
 
-        VectorBase.log.debug('Input spatial reference is "{}"  Axis Strategy: "{}"'.format(in_proj4, in_ax_strategy))
-        VectorBase.log.debug('Output spatial reference is "{}"  Axis Strategy: "{}"'.format(out_proj4, out_ax_strategy))
+        # VectorBase.log.debug('Input spatial reference is "{}"  Axis Strategy: "{}"'.format(in_proj4, in_ax_strategy))
+        # VectorBase.log.debug('Output spatial reference is "{}"  Axis Strategy: "{}"'.format(out_proj4, out_ax_strategy))
 
         transform = osr.CoordinateTransformation(in_srs, out_srs)
 
@@ -672,8 +675,8 @@ class VectorBase():
         in_proj4, in_ax_strategy = VectorBase.get_srs_debug(in_srs)
         out_proj4, out_ax_strategy = VectorBase.get_srs_debug(out_spatial_ref)
 
-        VectorBase.log.debug('Input spatial reference is "{}"  Axis Strategy: "{}"'.format(in_proj4, in_ax_strategy))
-        VectorBase.log.debug('Output spatial reference is "{}"  Axis Strategy: "{}"'.format(out_proj4, out_ax_strategy))
+        # VectorBase.log.debug('Input spatial reference is "{}"  Axis Strategy: "{}"'.format(in_proj4, in_ax_strategy))
+        # VectorBase.log.debug('Output spatial reference is "{}"  Axis Strategy: "{}"'.format(out_proj4, out_ax_strategy))
 
         transform = VectorBase.get_transform(in_srs, out_spatial_ref)
         return out_spatial_ref, transform
@@ -706,8 +709,8 @@ class VectorBase():
         # https://github.com/OSGeo/gdal/issues/1546
         out_spatial_ref.SetAxisMappingStrategy(in_srs.GetAxisMappingStrategy())
 
-        VectorBase.log.debug('Input spatial reference is "{}"  Axis Strategy: "{}"'.format(in_proj4, in_ax_strategy))
-        VectorBase.log.debug('Output spatial reference is "{}"  Axis Strategy: "{}"'.format(out_proj4, out_ax_strategy))
+        # VectorBase.log.debug('Input spatial reference is "{}"  Axis Strategy: "{}"'.format(in_proj4, in_ax_strategy))
+        # VectorBase.log.debug('Output spatial reference is "{}"  Axis Strategy: "{}"'.format(out_proj4, out_ax_strategy))
 
         # This check will throw a warning into the log if we've got anything but TRADITIONAL axis strategy
         VectorBase.check_axis_mapping(in_srs)
@@ -824,8 +827,8 @@ class VectorBase():
         out_spatial_ref.ImportFromEPSG(int(utm_epsg))
         out_spatial_ref.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
 
-        VectorBase.log.debug('Original spatial reference is : \n       {0} (AxisMappingStrategy:{1})'.format(*VectorBase.get_srs_debug(in_spatial_ref)))
-        VectorBase.log.debug('Transform spatial reference is : \n       {0} (AxisMappingStrategy:{1})'.format(*VectorBase.get_srs_debug(out_spatial_ref)))
+        # VectorBase.log.debug('Original spatial reference is : \n       {0} (AxisMappingStrategy:{1})'.format(*VectorBase.get_srs_debug(in_spatial_ref)))
+        # VectorBase.log.debug('Transform spatial reference is : \n       {0} (AxisMappingStrategy:{1})'.format(*VectorBase.get_srs_debug(out_spatial_ref)))
 
         transform_forward = osr.CoordinateTransformation(in_spatial_ref, out_spatial_ref)
 

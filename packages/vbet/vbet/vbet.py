@@ -219,7 +219,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     bbox = box(*raster_bounds)
     raster_envelope_geom = VectorBase.shapely2ogr(bbox)
     vbet_clip_buffer_size = VectorBase.rough_convert_metres_to_raster_units(dem, 0.25)
-    channel_buffer_size = VectorBase.rough_convert_metres_to_raster_units(dem, 200)
+    # channel_buffer_size = VectorBase.rough_convert_metres_to_vector_units(dem, 200)
 
     # current_vbet = ogr.Geometry(ogr.wkbMultiPolygon)
     # iterate for each level path
@@ -235,18 +235,24 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         level_path_polygons = os.path.join(temp_folder, 'channel_polygons.gpkg', f'level_path_{level_path}')
         copy_feature_class(channel_area, level_path_polygons, attribute_filter=sql)  # clip_shape=catchment_polygon)  #
 
-        channel_polygons = collect_feature_class(level_path_polygons)
-        channel_polygons = channel_polygons.MakeValid()
+        with GeopackageLayer(level_path_polygons) as lyr_polygons:
+            if lyr_polygons.ogr_layer.GetFeatureCount() == 0:
+                continue
+            channel_bbox = lyr_polygons.ogr_layer.GetExtent()
+            channel_buffer_size = lyr_polygons.rough_convert_metres_to_vector_units(400)
+
+        # channel_polygons = collect_feature_class(level_path_polygons)
+        # channel_polygons = channel_polygons.MakeValid()
 
         # if current_vbet.IsEmpty() is False:
         #     current_vbet = current_vbet.MakeValid()
         #     if current_vbet.Contains(channel_polygons):
         #         continue
 
-        channel_polygons_buffer = channel_polygons.Buffer(channel_buffer_size)
-        channel_polygons = None
+        # channel_polygons_buffer = channel_polygons.Buffer(channel_buffer_size)
+        # channel_polygons = None
 
-        (minX, maxX, minY, maxY) = channel_polygons_buffer.GetEnvelope()
+        (minX, maxX, minY, maxY) = channel_bbox  # channel_polygons_buffer.GetEnvelope()
         # Create ring
         ring = ogr.Geometry(ogr.wkbLinearRing)
         ring.AddPoint(minX, minY)
@@ -256,7 +262,8 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         ring.AddPoint(minX, minY)
         channel_envelope_geom = ogr.Geometry(ogr.wkbPolygon)
         channel_envelope_geom.AddGeometry(ring)
-        envelope_geom = raster_envelope_geom.Intersection(channel_envelope_geom)
+        geom_channel_buffer = channel_envelope_geom.Buffer(channel_buffer_size)
+        envelope_geom = raster_envelope_geom.Intersection(geom_channel_buffer)
         if envelope_geom.IsEmpty():
             log.error(f'Empty processing envelope for level path {level_path}')
             continue
@@ -324,8 +331,10 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         valley_bottom_raster = os.path.join(temp_folder, f'valley_bottom_{level_path}.tif')
         generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, valley_bottom_raster, temp_folder)
         vbet_polygon = os.path.join(temp_folder, f'valley_bottom_{level_path}.shp')
+        log.info('Polygonize VBET')
         polygonize(valley_bottom_raster, 1, vbet_polygon, epsg=4326)
         # Add to existing feature class
+        log.info('Add VBET polygon to output')
         polygon = vbet_merge(vbet_polygon, output_vbet, level_path=level_path)
         # if polygon is not None:
         #     for geom in polygon:
@@ -336,8 +345,10 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         active_valley_bottom_raster = os.path.join(temp_folder, f'active_valley_bottom_{level_path}.tif')
         generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, active_valley_bottom_raster, temp_folder, thresh_value=0.90)
         active_vbet_polygon = os.path.join(temp_folder, f'active_valley_bottom_{level_path}.shp')
+        log.info("Polygonize active floodplain polygon")
         polygonize(active_valley_bottom_raster, 1, active_vbet_polygon, epsg=4326)
         # Add to existing feature class
+        log.info("Add active floodplain polygon to output")
         _active_polygon = vbet_merge(active_vbet_polygon, output_vbet_ia, level_path=level_path)
 
         # Generate centerline for level paths only
@@ -351,7 +362,9 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             if len(coords) != 2:
                 log.error(f'Unable to generate centerline for level path {level_path}: found {len(coords)} target coordinates instead of expected 2.')
                 continue
+            log.info('Find least cost path for centerline')
             least_cost_path(cost_path_raster, centerline_raster, coords[0], coords[1])
+            log.info('Vectorize centerline from Raster')
             centerline_full = raster2line_geom(centerline_raster, 1)
 
             if polygon is not None:
@@ -393,11 +406,12 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     difference(output_vbet_ia, output_vbet, output_inactive_fp)
 
     # Calculate VBET Metrics
-    log.info('Generating VBET Segments')
+    log.info('Generating VBET Segmentation Points')
     segmentation_points = os.path.join(intermediates_gpkg, LayerTypes['INTERMEDIATES'].sub_layers['SEGMENTATION_POINTS'].rel_path)
     stream_size_lookup = get_distance_lookup(inputs_gpkg, intermediates_gpkg, level_paths_to_run)
     generate_segmentation_points(output_centerlines, segmentation_points, stream_size_lookup, distance=50)
 
+    log.info('Generating VBET Segment Polygons')
     segmentation_polygons = os.path.join(intermediates_gpkg, LayerTypes['INTERMEDIATES'].sub_layers['SEGMENTED_VBET_POLYGONS'].rel_path)
     split_vbet_polygons(output_vbet, segmentation_points, segmentation_polygons)
 
