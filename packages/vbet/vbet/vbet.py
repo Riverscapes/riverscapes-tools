@@ -26,7 +26,7 @@ from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, Geop
 from rscommons.vector_ops import copy_feature_class, polygonize, get_endpoints, difference, collect_feature_class
 from rscommons.util import safe_makedirs, parse_metadata, pretty_duration, safe_remove_dir
 from rscommons.hand import run_subprocess
-from rscommons.vbet_network import copy_vaa_attributes, join_attributes, create_stream_size_zones, get_channel_level_path, get_distance_lookup, get_levelpath_catchment
+from rscommons.vbet_network import copy_vaa_attributes, join_attributes, create_stream_size_zones, get_channel_level_path, get_distance_lookup, get_levelpath_catchment, vbet_network
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.raster_warp import raster_warp
 
@@ -87,7 +87,7 @@ LayerTypes = {
 }
 
 
-def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchments, in_channel_area, vaa_table, project_folder, scenario_code, huc, level_paths=None, in_pitfill_dem=None, in_dinfflowdir_ang=None, in_dinfflowdir_slp=None, in_twi_raster=None, meta=None, debug=False):
+def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchments, in_channel_area, vaa_table, project_folder, scenario_code, huc, level_paths=None, in_pitfill_dem=None, in_dinfflowdir_ang=None, in_dinfflowdir_slp=None, in_twi_raster=None, meta=None, debug=False, reach_codes=None):
 
     thresh_vals = {'VBET_IA': 0.90, 'VBET_FULL': 0.68}
 
@@ -116,7 +116,9 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     GeopackageLayer.delete(vbet_gpkg)
 
     line_network_features = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
-    copy_feature_class(in_line_network, line_network_features)
+
+    vbet_network(in_line_network, None, line_network_features, fcodes=reach_codes)
+    # copy_feature_class(in_line_network, line_network_features)
     catchment_features = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['CATCHMENTS'].rel_path)
     copy_feature_class(in_catchments, catchment_features)
     channel_area = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['CHANNEL_AREA_POLYGONS'].rel_path)
@@ -237,7 +239,18 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
         with GeopackageLayer(level_path_polygons) as lyr_polygons:
             if lyr_polygons.ogr_layer.GetFeatureCount() == 0:
+                log.warning(f"No channel area features found for Level Path {level_path}.")
                 continue
+            # Hack to check if any channel geoms are empty
+            check_empty = False
+            for feat, *_ in lyr_polygons.iterate_features():
+                geom_test = feat.GetGeometryRef()
+                if geom_test.IsEmpty():
+                    check_empty = True
+            if check_empty is True:
+                log.warning(f"Empty channel area geometry found for Level Path {level_path}.")
+                continue
+
             channel_bbox = lyr_polygons.ogr_layer.GetExtent()
             channel_buffer_size = lyr_polygons.rough_convert_metres_to_vector_units(400)
 
@@ -454,6 +467,8 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
 def generate_vbet_polygon(vbet_evidence_raster, rasterized_channel, channel_hand, out_valley_bottom, temp_folder, thresh_value=0.68):
 
+    log = Logger('VBET Generate Polygon')
+
     # Mask to Hand area
     vbet_evidence_masked = os.path.join(temp_folder, f"vbet_evidence_masked_{thresh_value}.tif")
     mask_rasters_nodata(vbet_evidence_raster, channel_hand, vbet_evidence_masked)
@@ -465,12 +480,14 @@ def generate_vbet_polygon(vbet_evidence_raster, rasterized_channel, channel_hand
     ds_valley_bottom = gdal.Open(valley_bottom_raw, gdal.GA_Update)
     band_valley_bottom = ds_valley_bottom.GetRasterBand(1)
 
+    log.info('Sieve Filter vbet')
     # Sieve and Clean Raster
     gdal.SieveFilter(srcBand=band_valley_bottom, maskBand=None, dstBand=band_valley_bottom, threshold=10, connectedness=8, callback=gdal.TermProgress_nocb)
     band_valley_bottom.SetNoDataValue(0)
     band_valley_bottom.FlushCache()
     valley_bottom_sieved = band_valley_bottom.ReadAsArray()
 
+    log.info('Generate regions')
     # Region Tool to find only connected areas
     struct = generate_binary_structure(2, 2)
     regions, _num = label(valley_bottom_sieved, structure=struct)
@@ -486,6 +503,7 @@ def generate_vbet_polygon(vbet_evidence_raster, rasterized_channel, channel_hand
     array2raster(os.path.join(temp_folder, f'valley_bottom_region_{thresh_value}.tif'), vbet_evidence_raster, valley_bottom_region.astype(int), data_type=gdal.GDT_Int32)
 
     # Clean Raster Edges
+    log.info('Cleaning Raster edges')
     valley_bottom_clean = binary_closing(valley_bottom_region.astype(int), iterations=2)
     array2raster(out_valley_bottom, vbet_evidence_raster, valley_bottom_clean, data_type=gdal.GDT_Int32)
 
@@ -586,10 +604,10 @@ def main():
         if args.debug is True:
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output_dir, 'vbet_mem.log')
-            retcode, max_obj = ThreadRun(vbet_centerlines, memfile, args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir, args.scenario_code, args.huc, level_paths, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster, meta=meta)
+            retcode, max_obj = ThreadRun(vbet_centerlines, memfile, args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir, args.scenario_code, args.huc, level_paths, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster, meta=meta, reach_codes=reach_codes)
             log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
         else:
-            vbet_centerlines(args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir, args.scenario_code, args.huc, level_paths, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster)
+            vbet_centerlines(args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir, args.scenario_code, args.huc, level_paths, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster, meta=meta, reach_codes=reach_codes)
     except Exception as e:
         log.error(e)
         traceback.print_exc(file=sys.stdout)
