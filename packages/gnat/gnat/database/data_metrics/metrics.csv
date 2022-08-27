@@ -10,3 +10,4 @@ metric_id,name,machine_code,data_type,description,small,medium,large,method,metr
 9,Active Channel Ratio,CHANVBRAT,,Active Channel Area to Inactive + active floodplain polygons + Channel area polygon Ratio,100,250,1000,Channel area /(active + inactive floodplains + channel area),,1,
 10,Relative Flow Length,RELFLWLNGTH,,,100,250,1000,sum of all blue line lenght/valley length,,1,
 11,Stream Size Metric,STRMSIZE,,,100,250,1000,,,1,
+12,Valley Azimuth,VALAZMTH,,,100,250,1000,,,1,
