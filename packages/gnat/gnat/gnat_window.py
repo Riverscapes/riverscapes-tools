@@ -16,8 +16,6 @@ class GNATWindow:
     """
 
     lyr_segments = None
-    transform = None
-    src_raster = None
     buffer_raster_clip = None
 
     def __init__(self, window_size, segment_distance, geom_flowline, geom_centerline, level_path, buffer_elevation):
@@ -37,7 +35,6 @@ class GNATWindow:
             window (_type_): _description_
             dem (_type_): _description_
         """
-
         min_dist = segment_dist - 0.5 * window
         max_dist = segment_dist + 0.5 * window
         sql = f'LevelPathI = {level_path} AND seg_distance >= {min_dist} AND seg_distance <={max_dist}'
@@ -51,11 +48,62 @@ class GNATWindow:
                         geom_window_sections.AddGeometry(g)
             else:
                 geom_window_sections.AddGeometry(geom)
-        geom_window = geom_window_sections.Buffer(self.buffer_raster_clip)  # ogr.ForceToPolygon(geom_window_sections)
-
+        geom_window = geom_window_sections.Buffer(buffer)  # ogr.ForceToPolygon(geom_window_sections)
         return geom_window
 
-    def clip_line(self, geom_line):
+    @cached_property
+    def gnat_flowline(self):
+        """_summary_
+        """
+        gnat_flowline = GNATLine(self.geom_flowline_level_path, self.geom_window, self.buffer_elevation)
+        return gnat_flowline
+
+    @cached_property
+    def gnat_centerline(self):
+        """_summary_
+        """
+        gnat_centerline = GNATLine(self.geom_centerline_level_path, self.geom_window, self.buffer_elevation)
+        return gnat_centerline
+
+    def stream_gradient(self):
+        """_summary_
+
+        Returns:
+            _type_: _description_
+        """
+        if self.gnat_flowline.max_elevation is None or self.gnat_flowline.min_elevation is None:
+            return None
+
+        gradient = (self.gnat_flowline.max_elevation - self.gnat_flowline.min_elevation) / self.gnat_flowline.length
+        return gradient
+
+    def valley_gradient(self):
+        """_summary_
+
+        Returns:
+            _type_: _description_
+        """
+        if self.gnat_flowline.max_elevation is None or self.gnat_flowline.min_elevation is None:
+            return None
+        gradient = (self.gnat_flowline.max_elevation - self.gnat_flowline.min_elevation) / self.gnat_centerline.length
+        return gradient
+
+
+class GNATLine():
+    """_summary_
+
+    Returns:
+        _type_: _description_
+    """
+    transform = None
+    src_raster = None
+
+    def __init__(self, geom_line, geom_window, buffer_elevation) -> None:
+
+        self.geom_line = self.clip_line(geom_line, geom_window)
+        self.buffer_elevation = buffer_elevation
+
+    def clip_line(self, geom_line, geom_window):
         """_summary_
 
         Args:
@@ -64,14 +112,15 @@ class GNATWindow:
         Returns:
             _type_: _description_
         """
-        geom_clipped = self.geom_window.Intersection(geom_line)
+        geom_clipped = geom_window.Intersection(geom_line)
         if geom_clipped.GetGeometryName() == "MULTILINESTRING":
             geom_clipped = reduce_precision(geom_clipped, 6)
             geom_clipped = ogr.ForceToLineString(geom_clipped)
 
         return geom_clipped
 
-    def calculate_length(self, geom):
+    @ cached_property
+    def length(self):
         """_summary_
 
         Args:
@@ -80,40 +129,10 @@ class GNATWindow:
         Returns:
             _type_: _description_
         """
-        geom = self.geom_flowline.Clone()
+        geom = self.geom_line.Clone()
         geom.Transform(self.transform)
         stream_length = geom.Length()
         return stream_length
-
-    @cached_property
-    def geom_flowline(self):
-        """_summary_
-        """
-        return self.clip_line(self.geom_flowline_level_path)
-
-    @cached_property
-    def geom_centerline(self):
-        """_summary_
-        """
-        return self.clip_line(self.geom_centerline_level_path)
-
-    @cached_property
-    def flowline_length(self):
-        """_summary_
-
-        Returns:
-            _type_: _description_
-        """
-        return self.calculate_length(self.geom_flowline)
-
-    @cached_property
-    def centerline_length(self):
-        """_summary_
-
-        Returns:
-            _type_: _description_
-        """
-        return self.calculate_length(self.geom_centerline)
 
     @ cached_property
     def elevations(self):
@@ -123,12 +142,13 @@ class GNATWindow:
             _type_: _description_
         """
         coords = []
-        geoms = ogr.ForceToMultiLineString(self.geom_flowline)
+        geoms = ogr.ForceToMultiLineString(self.geom_line)
         for geom in geoms:
             for pt in [geom.GetPoint(0), geom.GetPoint(geom.GetPointCount() - 1)]:
                 coords.append(pt)
         counts = Counter(coords)
         endpoints = [pt for pt, count in counts.items() if count == 1]
+        elevations = [None, None]
         if len(endpoints) == 2:
             elevations = []
             for pt in endpoints:
@@ -141,3 +161,21 @@ class GNATWindow:
             elevations.sort()
 
         return elevations[0], elevations[1]
+
+    @ cached_property
+    def min_elevation(self):
+        """_summary_
+
+        Returns:
+            _type_: _description_
+        """
+        return self.elevations[0]
+
+    @ cached_property
+    def max_elevation(self):
+        """_summary_
+
+        Returns:
+            _type_: _description_
+        """
+        return self.elevations[1]
