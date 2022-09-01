@@ -324,6 +324,18 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
                     relative_flow_length = stream_length_total / centerline_length
                     metrics_output[metric['metric_id']] = relative_flow_length
 
+                if 'STRMSIZE' in metrics:
+                    metric = metrics['STRMSIZE']
+                    window = metric[stream_size]
+                    if window not in window_geoms:
+                        window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance)
+
+                    values = sum_window_attributes(lyr_segments, window, level_path, segment_distance, ['active_channel_area', 'active_floodplain_area'])
+                    stream_length, *_ = get_segment_measurements(geom_flowline, src_dem, window_geoms[window], buffer_distance[stream_size], transform)
+                    ac_area = values['active_channel_area']
+                    stream_size = ac_area / stream_length if stream_length is not None else None
+                    metrics_output[metric['metric_id']] = stream_size
+
                 # Write to Metrics
                 if len(metrics_output) > 0:
                     curs.executemany("INSERT INTO metric_values (point_id, metric_id, metric_value) VALUES (?,?,?)", [(point_id, name, value) for name, value in metrics_output.items()])
