@@ -248,13 +248,17 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
                         for feat, *_ in lyr_lines.iterate_features(clip_shape=window_geoms[window]):
                             line_geom = feat.GetGeometryRef()
                             attribute = str(feat.GetField('STARTFLAG'))
+                            if attribute not in ['1', '0']:
+                                continue
                             geom_section = window_geoms[window].Intersection(line_geom)
                             length = geom_section.Length()
                             sum_attributes[attribute] = sum_attributes.get(attribute, 0) + length
                         lyr_lines.ogr_layer.SetSpatialFilter(None)
                         lyr_lines = None
-
-                    is_headwater = 1 if sum_attributes.get('1', 0) / sum(sum_attributes.values()) > 0.5 else 0
+                    if sum(sum_attributes.values()) == 0:
+                        is_headwater = None
+                    else:
+                        is_headwater = 1 if sum_attributes.get('1', 0) / sum(sum_attributes.values()) > 0.5 else 0
                     metrics_output[metric['metric_id']] = is_headwater
 
                 if 'STRMTYPE' in metrics:
@@ -273,8 +277,10 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
                             attributes[attribute] = attributes.get(attribute, 0) + length
                         lyr_lines.ogr_layer.SetSpatialFilter(None)
                         lyr_lines = None
-
-                    majority_fcode = max(attributes, key=attributes.get)
+                    if len(attributes) == 0:
+                        majority_fcode = None
+                    else:
+                        majority_fcode = max(attributes, key=attributes.get)
                     metrics_output[metric['metric_id']] = majority_fcode
 
                 if 'ACTFLDAREA' in metrics:
@@ -282,7 +288,7 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
                     window = metric[stream_size]
 
                     values = sum_window_attributes(lyr_segments, window, level_path, segment_distance, ['active_floodplain_area'])
-                    afp_area = values['active_floodplain_area']
+                    afp_area = values.get('active_floodplain_area', 0.0)
                     metrics_output[metric['metric_id']] = afp_area
 
                 if 'ACTCHANAREA' in metrics:
@@ -290,7 +296,7 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
                     window = metric[stream_size]
 
                     values = sum_window_attributes(lyr_segments, window, level_path, segment_distance, ['active_channel_area'])
-                    ac_area = values['active_channel_area']
+                    ac_area = values.get('active_channel_area', 0.0)
                     metrics_output[metric['metric_id']] = ac_area
 
                 if 'INTGWDTH' in metrics:
@@ -298,7 +304,7 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
                     window = metric[stream_size]
 
                     values = sum_window_attributes(lyr_segments, window, level_path, segment_distance, ['centerline_length', 'segment_area'])
-                    ig_width = values['segment_area'] / values['centerline_length']
+                    ig_width = values.get('segment_area', 0.0) / values['centerline_length'] if 'centerline_length' in values else None
                     metrics_output[metric['metric_id']] = ig_width
 
                 if 'CHANVBRAT' in metrics:
@@ -306,9 +312,9 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
                     window = metric[stream_size]
 
                     values = sum_window_attributes(lyr_segments, window, level_path, segment_distance, ['active_channel_area', 'active_floodplain_area'])
-                    ac_area = values['active_channel_area']
-                    fp_area = values['active_floodplain_area']
-                    ac_fp_ratio = ac_area / fp_area
+                    ac_area = values.get('active_channel_area', 0.0)
+                    fp_area = values.get('active_floodplain_area', 0.0)
+                    ac_fp_ratio = ac_area / fp_area if fp_area > 0.0 else None
                     metrics_output[metric['metric_id']] = ac_fp_ratio
 
                 if 'RELFLWLNGTH' in metrics:
@@ -321,7 +327,7 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
                     stream_length_total, *_ = get_segment_measurements(geom_flowline_full, src_dem, window_geoms[window], buffer_distance[stream_size], transform)
                     centerline_length, *_ = get_segment_measurements(geom_centerline, src_dem, window_geoms[window], buffer_distance[stream_size], transform)
 
-                    relative_flow_length = stream_length_total / centerline_length
+                    relative_flow_length = stream_length_total / centerline_length if centerline_length > 0.0 else None
                     metrics_output[metric['metric_id']] = relative_flow_length
 
                 if 'STRMSIZE' in metrics:
@@ -332,8 +338,9 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
 
                     values = sum_window_attributes(lyr_segments, window, level_path, segment_distance, ['active_channel_area', 'active_floodplain_area'])
                     stream_length, *_ = get_segment_measurements(geom_flowline, src_dem, window_geoms[window], buffer_distance[stream_size], transform)
-                    ac_area = values['active_channel_area']
-                    stream_size = ac_area / stream_length if stream_length is not None else None
+                    ac_area = values.get('active_channel_area', 0.0)
+
+                    stream_size = ac_area / stream_length if stream_length > 0.0 else None
                     metrics_output[metric['metric_id']] = stream_size
 
                 # Write to Metrics
@@ -422,6 +429,8 @@ def get_segment_measurements(geom_line, src_raster, geom_window, buffer, transfo
     coords = []
     geoms = ogr.ForceToMultiLineString(geom_clipped)
     for geom in geoms:
+        if geom.GetPointCount() == 0:
+            continue
         for pt in [geom.GetPoint(0), geom.GetPoint(geom.GetPointCount() - 1)]:
             coords.append(pt)
     counts = Counter(coords)
