@@ -117,6 +117,17 @@
       ]
     },
     {
+      "name": "Augment GNAT XML",
+      "type": "python",
+      "request": "launch",
+      "module": "gnat.gnat_rs",
+      "console": "integratedTerminal",
+      "args": [
+        "{env:DATA_ROOT}/gnat/${input:HUC}/project.rs.xml",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/vbet/${input:HUC}/project.rs.xml"
+      ]
+    },
+    {
       "name": "Sinuosity",
       "type": "python",
       "request": "launch",
