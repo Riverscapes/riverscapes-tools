@@ -35,14 +35,14 @@ from rscommons.vbet_network import copy_vaa_attributes, join_attributes
 # from gnat.gradient import gradient
 from gnat.__version__ import __version__
 from gnat.geometry_ops import reduce_precision
-from gnat.gnat_window import GNATWindow
+# from gnat.gnat_window import GNATWindow
 
 Path = str
 
 initGDALOGRErrors()
 gdal.UseExceptions()
 
-cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/Confinement.xsd', __version__)
+cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/GNAT.xsd', __version__)
 
 LayerTypes = {
     # key: (name, id, tag, relpath)]
@@ -53,21 +53,18 @@ LayerTypes = {
         'VBET_CENTERLINES': RSLayer('VBET Centerline', 'VBET_CENTERLINE', 'Vector', 'vbet_centerlines')
     }),
     'DEM': RSLayer('DEM', 'DEM', 'Raster', 'inputs/dem.tif'),
-    'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/confinement_intermediates.gpkg', {
-        'SPLIT_POINTS': RSLayer('Split Points', 'SPLIT_POINTS', 'Vector', 'Split_Points'),
-        'FLOWLINE_SEGMENTS': RSLayer('Flowline Segments', 'FLOWLINE_SEGMENTS', 'Vector', 'Flowline_Segments'),
-        'ERROR_POLYLINES': RSLayer('Error Polylines', 'ERROR_POLYLINES', 'Vector', 'Error_Polylines'),
-        'ERROR_POLYGONS': RSLayer('Error Polygons', 'ERROR_POLYGONS', 'Vector', 'Error_Polygons'),
-        'CHANNEL_AREA_BUFFERED': RSLayer('Channel Area Buffered', 'CHANNEL_AREA_BUFFERED', 'Vector', 'channel_area_buffered'),
-        'CONFINEMENT_BUFFER_SPLIT': RSLayer('Active Channel Split Buffers', 'CONFINEMENT_BUFFER_SPLITS', 'Vector', 'Confinement_Buffers_Split'),
-        'CONFINEMENT_ZONES': RSLayer('Zones of Confinement', 'CONFINEMENT_ZONES', 'Vector', 'confinement_zones'),
-        'CONFINING_POLYGONS_UNION': RSLayer('Confinement Polygons (unioned)', 'CONFINING_POLYGONS_UNION', 'Vector', 'confining_polygons_union')
-    }),
-    'GNAT_OUTPUTS': RSLayer('Gnat', 'GNAT_OUTPUTS', 'Geopackage', 'outputs/gnat.gpkg', {
-        'CONFINEMENT_RAW': RSLayer('Confinement Raw', 'CONFINEMENT_RAW', 'Vector', 'Confinement_Raw'),
-        'CONFINEMENT_MARGINS': RSLayer('Confinement Margins', 'CONFINEMENT_MARGINS', 'Vector', 'Confining_Margins'),
-        'CONFINEMENT_RATIO': RSLayer('Confinement Ratio', 'CONFINEMENT_RATIO', 'Vector', 'Confinement_Ratio'),
-        'CONFINEMENT_BUFFERS': RSLayer('Active Channel Buffer', 'CONFINEMENT_BUFFERS', 'Vector', 'Confinement_Buffers')
+    # 'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/confinement_intermediates.gpkg', {
+    #     #     'SPLIT_POINTS': RSLayer('Split Points', 'SPLIT_POINTS', 'Vector', 'Split_Points'),
+    #     #     'FLOWLINE_SEGMENTS': RSLayer('Flowline Segments', 'FLOWLINE_SEGMENTS', 'Vector', 'Flowline_Segments'),
+    #     #     'ERROR_POLYLINES': RSLayer('Error Polylines', 'ERROR_POLYLINES', 'Vector', 'Error_Polylines'),
+    #     #     'ERROR_POLYGONS': RSLayer('Error Polygons', 'ERROR_POLYGONS', 'Vector', 'Error_Polygons'),
+    #     #     'CHANNEL_AREA_BUFFERED': RSLayer('Channel Area Buffered', 'CHANNEL_AREA_BUFFERED', 'Vector', 'channel_area_buffered'),
+    #     #     'CONFINEMENT_BUFFER_SPLIT': RSLayer('Active Channel Split Buffers', 'CONFINEMENT_BUFFER_SPLITS', 'Vector', 'Confinement_Buffers_Split'),
+    #     #     'CONFINEMENT_ZONES': RSLayer('Zones of Confinement', 'CONFINEMENT_ZONES', 'Vector', 'confinement_zones'),
+    #     #     'CONFINING_POLYGONS_UNION': RSLayer('Confinement Polygons (unioned)', 'CONFINING_POLYGONS_UNION', 'Vector', 'confining_polygons_union')
+    # }),
+    'GNAT_OUTPUTS': RSLayer('GNAT', 'GNAT_OUTPUTS', 'Geopackage', 'outputs/gnat.gpkg', {
+        'POINT_METRICS': RSLayer('Point Metrics', 'POINT_METRICS', 'Vector', 'vw_point_metrics')
     }),
 }
 
@@ -99,10 +96,10 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
     ], meta)
 
     inputs_gpkg = os.path.join(project_folder, LayerTypes['INPUTS'].rel_path)
-    intermediates_gpkg = os.path.join(project_folder, LayerTypes['INTERMEDIATES'].rel_path)
+    # intermediates_gpkg = os.path.join(project_folder, LayerTypes['INTERMEDIATES'].rel_path)
     gnat_gpkg = os.path.join(project_folder, LayerTypes['GNAT_OUTPUTS'].rel_path)
     GeopackageLayer.delete(inputs_gpkg)
-    GeopackageLayer.delete(intermediates_gpkg)
+    # GeopackageLayer.delete(intermediates_gpkg)
     GeopackageLayer.delete(gnat_gpkg)
 
     flowlines = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
@@ -115,6 +112,8 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
     copy_feature_class(in_vbet_centerline, centerlines)
 
     _dem_node, dem = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], in_dem)
+    project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
+    # project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
 
     vaa_table_name = copy_vaa_attributes(flowlines, in_vaa_table)
     line_network = join_attributes(inputs_gpkg, "vw_flowlines_vaa", os.path.basename(flowlines), vaa_table_name, 'NHDPlusID', ['LevelPathI', 'DnLevelPat', 'UpLevelPat', 'Divergence', 'StreamOrde', 'STARTFLAG'], 4326)
@@ -368,6 +367,16 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
         curs.execute("INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) values ('vw_point_metrics', 'geom', 'POINT', ?, 0, 0);", (epsg,))
         conn.commit()
 
+    project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['GNAT_OUTPUTS'])
+
+    # Write a report
+    # report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
+    # project.add_report(proj_nodes['Outputs'], LayerTypes['REPORT'], replace=True)
+    # report = GNATReport(output_gpkg, report_path, project)
+    # report.write()
+
+    progbar.finish()
+    log.info('GNAT Finished')
     return
 
 
