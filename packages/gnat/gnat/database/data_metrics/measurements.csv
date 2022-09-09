@@ -1,6 +1,6 @@
-measurement_id,name,machine_code,description
-1,Min Stream Elevation,STRMMINELEV,
-2,Max Stream Elevation,STRMMAXELEV,
-3,Stream Length,STRMLENG, Stream Length of main flowline
-4,Centerline Length,VALLENG,
-5,Stream Total Length,STRMLENGTOT, Stream length of all flowlines (includes branches)
+measurement_id,name,machine_code,description,is_active
+1,Min Stream Elevation,STRMMINELEV,,1
+2,Max Stream Elevation,STRMMAXELEV,,1
+3,Stream Length,STRMLENG,Stream Length of main flowline,1
+4,Centerline Length,VALLENG,,1
+5,Stream Total Length,STRMLENGTOT,Stream length of all flowlines (includes branches),1

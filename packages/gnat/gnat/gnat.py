@@ -50,9 +50,13 @@ LayerTypes = {
         'FLOWLINES': RSLayer('Flowlines', 'FLOWLINES', 'Vector', 'flowlines'),
         'VBET_SEGMENTS': RSLayer('Vbet Segments', 'VBET_SEGMENTS', 'Vector', 'vbet_segments'),
         'VBET_SEGMENT_POINTS': RSLayer('Vbet Segment Points', 'VBET_SEGMENT_POINTS', 'Vector', 'points'),
-        'VBET_CENTERLINES': RSLayer('VBET Centerline', 'VBET_CENTERLINE', 'Vector', 'vbet_centerlines')
+        'VBET_CENTERLINES': RSLayer('VBET Centerline', 'VBET_CENTERLINE', 'Vector', 'vbet_centerlines'),
+        'ECO_REGIONS': RSLayer('Eco Regions', 'ECO_REGIONS', 'Vector', 'eco_regions'),
+        'ROADS': RSLayer('Roads', 'Roads', 'Vector', 'roads'),
+        'RAIL': RSLayer('Rail', 'Rail', 'Vector', 'rail')
     }),
     'DEM': RSLayer('DEM', 'DEM', 'Raster', 'inputs/dem.tif'),
+    'PPT': RSLayer('Precipitation', 'Precip', 'Raster', 'inputs/precipitation.tif'),
     # 'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/confinement_intermediates.gpkg', {
     #     #     'SPLIT_POINTS': RSLayer('Split Points', 'SPLIT_POINTS', 'Vector', 'Split_Points'),
     #     #     'FLOWLINE_SEGMENTS': RSLayer('Flowline Segments', 'FLOWLINE_SEGMENTS', 'Vector', 'Flowline_Segments'),
@@ -72,7 +76,7 @@ stream_size_lookup = {0: 'small', 1: 'medium', 2: 'large'}
 gradient_buffer_lookup = {'small': 25.0, 'medium': 50.0, 'large': 100.0}
 
 
-def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_points: Path, in_vbet_centerline: Path, in_dem: Path, project_folder: Path, level_paths: List = None, meta=None):
+def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_points: Path, in_vbet_centerline: Path, in_dem: Path, in_ppt: Path, in_roads: Path, in_rail: Path, in_ecoregions: Path, project_folder: Path, level_paths: List = None, meta=None):
     """_summary_
 
     Args:
@@ -110,8 +114,15 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
     copy_feature_class(in_points, points)
     centerlines = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['VBET_CENTERLINES'].rel_path)
     copy_feature_class(in_vbet_centerline, centerlines)
+    roads = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['ROADS'].rel_path)
+    copy_feature_class(in_roads, roads)
+    rail = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['RAIL'].rel_path)
+    copy_feature_class(in_rail, rail)
+    ecoregions = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['ECO_REGIONS'].rel_path)
+    copy_feature_class(in_ecoregions, ecoregions)
 
     _dem_node, dem = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], in_dem)
+    _ppt_node, ppt = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['PPT'], in_ppt)
     project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
     # project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
 
@@ -339,8 +350,30 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
                     stream_length, *_ = get_segment_measurements(geom_flowline, src_dem, window_geoms[window], buffer_distance[stream_size], transform)
                     ac_area = values.get('active_channel_area', 0.0)
 
-                    stream_size = ac_area / stream_length if stream_length > 0.0 else None
-                    metrics_output[metric['metric_id']] = stream_size
+                    stream_size_metric = ac_area / stream_length if stream_length > 0.0 else None
+                    metrics_output[metric['metric_id']] = stream_size_metric
+
+                if 'ECORGIII' in metrics:
+                    metric = metrics['ECORGIII']
+                    window = metric[stream_size]
+                    if window not in window_geoms:
+                        window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance)
+
+                    attributes = {}
+                    with GeopackageLayer(ecoregions) as lyr_ecoregions:
+                        for feat, *_ in lyr_ecoregions.iterate_features(clip_shape=window_geoms[window]):
+                            geom_ecoregion = feat.GetGeometryRef()
+                            attribute = str(feat.GetField('US_L3CODE'))
+                            geom_section = window_geoms[window].Intersection(geom_ecoregion)
+                            area = geom_section.GetArea()
+                            attributes[attribute] = attributes.get(attribute, 0) + area
+                        lyr_ecoregions = None
+                    if len(attributes) == 0:
+                        log.warning(f'Unable to find majority ecoregion III for pt {point_id} in level path {level_path}')
+                        majority_attribute = None
+                    else:
+                        majority_attribute = max(attributes, key=attributes.get)
+                    metrics_output[metric['metric_id']] = majority_attribute
 
                 # Write to Metrics
                 if len(metrics_output) > 0:
@@ -387,7 +420,7 @@ def generate_metric_list(db, source_table='metrics'):
     with sqlite3.connect(db) as conn:
         conn.row_factory = sqlite3.Row
         curs = conn.cursor()
-        metric_data = curs.execute(f"""SELECT * from {source_table}""").fetchall()
+        metric_data = curs.execute(f"""SELECT * from {source_table} WHERE is_active = 1""").fetchall()
         metrics = {metric['machine_code']: metric for metric in metric_data}
     return metrics
 
@@ -556,11 +589,15 @@ def main():
 
     parser.add_argument('huc', help='HUC identifier', type=str)
     parser.add_argument('flowlines', help="NHD Flowlines (.shp, .gpkg/layer_name)", type=str)
-    parser.add_argument('vaa_table')
-    parser.add_argument('vbet_segments')
+    parser.add_argument('vaa_table', help="NHD Plus vaa table")
+    parser.add_argument('vbet_segments', help='vbet segment polygons')
     parser.add_argument('vbet_points', help='valley bottom or other polygon representing confining boundary (.shp, .gpkg/layer_name)', type=str)
-    parser.add_argument('vbet_centerline')
-    parser.add_argument('dem')
+    parser.add_argument('vbet_centerline', help='vbet centerline feature class')
+    parser.add_argument('dem', help='dem')
+    parser.add_argument('ppt', help='Precipitation Raster')
+    parser.add_argument('roads', help='Roads shapefile')
+    parser.add_argument('rail', help='Rail shapefile')
+    parser.add_argument('ecoregions', help='Ecoregions shapefile')
     parser.add_argument('output_folder', help='Output folder', type=str)
     parser.add_argument('--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
@@ -586,6 +623,10 @@ def main():
                                          args.vbet_points,
                                          args.vbet_centerline,
                                          args.dem,
+                                         args.ppt,
+                                         args.roads,
+                                         args.rail,
+                                         args.ecoregions,
                                          args.output_folder,
                                          meta=meta)
             log.debug(f'Return code: {retcode}, [Max process usage] {max_obj}')
@@ -598,6 +639,10 @@ def main():
                  args.vbet_points,
                  args.vbet_centerline,
                  args.dem,
+                 args.ppt,
+                 args.roads,
+                 args.rail,
+                 args.ecoregions,
                  args.output_folder,
                  meta=meta)
 
