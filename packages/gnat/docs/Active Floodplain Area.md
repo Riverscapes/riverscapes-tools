@@ -1,4 +1,8 @@
-# Active Floodplain Area
+```
+---
+title: Stream Gradient
+---
+```
 
 Active Floodplain Area refers to 
 
@@ -6,11 +10,11 @@ Active Floodplain Area refers to
 
 *Figure from Rhoads, B. (2020). Magnitude-Frequency Concepts and the Dynamics of Channel-Forming Events. In River Dynamics: Geomorphology to Support Management (pp. 134-163). Cambridge: Cambridge University Press. doi:10.1017/9781108164108.006*
 
-### Why is this metric important?
+## Why is this metric important?
 
 * 
 
-### Metric info:
+## Metric info:
 
 **Machine Code:** ACTFLDAREA
 
@@ -35,7 +39,7 @@ Active Floodplain Area refers to
 
 
 
-### Example:
+## Example:
 
-### Citations:
+## Citations:
 

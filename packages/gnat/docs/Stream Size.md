@@ -1,4 +1,8 @@
-# Stream Size
+```
+---
+title: Stream Size
+---
+```
 
 Stream size refers to the width of the channel. It is also commonly referred to as "bankful."
 
@@ -6,11 +10,11 @@ Stream size refers to the width of the channel. It is also commonly referred to 
 
 *Created with BioRender.com*
 
-### Why is this metric important?
+## Why is this metric important?
 
 * 
 
-### Metric info:
+## Metric info:
 
 **Machine Code:** STRMSIZE
 

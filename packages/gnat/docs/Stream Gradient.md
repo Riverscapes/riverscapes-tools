@@ -1,4 +1,8 @@
-# Stream Gradient
+```
+---
+title: Stream Gradient
+---
+```
 
 Stream gradient describes an increase or decrease in the elevation of the stream channel over a longitudinal distance.
 
@@ -6,17 +10,19 @@ Stream gradient describes an increase or decrease in the elevation of the stream
 
 *From Earth Communications, Chapter 4: Earth Surfaces, Section 4: High Gradient Streams*
 
-### Why is this metric important?
+## Why is this metric important?
 
 * Helps predict debris flow transport and deposition (Fannin, R.J. and Rollerson, T.P., 1993),
 * Helps to estimate distribution of aquatic organisms (Hicks, Brendan, J., and Hall, J.D., 2003), 
 * Is a predictor of channel morphology
 
-### Metric info:
+
+
+## Metric info:
 
 **Machine Code:** STRMGRAD
 
-<u>**Analysis Window**</u>
+**Analysis Window**
 
 | Small | Medium | Large |
 | ----- | ------ | ----- |
@@ -39,9 +45,11 @@ In small riverscapes, we look upstream and downstream 50 meters, to build a 100 
 
 The process is the same for medium and large riverscapes, except that the analysis windows are 250 meters and 1,000 meters, respectively, and the elevation search buffers are 50 meters and 100 meters, respectively. 
 
-### Example:
+## Example:
 
-### Citations:
+
+
+## Citations:
 
 *Fannin, R. J., & Rollerson, T. P. (1993). Debris flows: some physical characteristics and behaviour. Canadian Geotechnical Journal, 30(1), 71–81. https://doi.org/10.1139/t93-007*
 

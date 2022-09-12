@@ -1,4 +1,8 @@
-# Valley Gradient
+```
+---
+title: Valley Gradient
+---
+```
 
 Valley gradient describes an increase or decrease in the elevation of the valley bottom over a longitudinal distance.
 
@@ -6,11 +10,11 @@ Valley gradient describes an increase or decrease in the elevation of the valley
 
 *Created with BioRender.com*
 
-### Why is this metric important?
+## Why is this metric important?
 
 * Is a predictor of channel morphology
 
-### Metric info:
+## Metric info:
 
 **Machine Code:** VALGRAD
 
@@ -37,9 +41,9 @@ In small riverscapes, we look upstream and downstream 50 meters, to build a 100 
 
 The process is the same for medium and large riverscapes, except that the analysis windows are 250 meters and 1,000 meters, respectively, and the elevation search buffers are 50 meters and 100 meters, respectively. 
 
-### Example:
+## Example:
 
-### Citations:
+## Citations:
 
 
 
