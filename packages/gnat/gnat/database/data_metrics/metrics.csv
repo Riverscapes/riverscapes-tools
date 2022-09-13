@@ -12,12 +12,14 @@ metric_id,name,machine_code,data_type,description,small,medium,large,method,metr
 11,Stream Size Metric,STRMSIZE,REAL,Stream Size (calculated as integrated channel width),100,250,1000,,1,1,
 12,Valley Azimuth,VALAZMTH,REAL,,100,250,1000,,,1,
 13,Ecoregion III,ECORGIII,,"which ecoregion contains the majority of the analysis window?",500,500,1000,,2,1,
-14,Confluence/Diffluence Count,CONDIFF,INTEGER,,100,250,1000,,2,
+14,Confluence Diffluence Count,CONDIFF,INTEGER,,100,250,1000,,2,1
 15,Channel Sinuosity,CHANSIN,REAL,,100,250,1000,(𝑛𝑒𝑡𝑤𝑜𝑟𝑘 𝑙𝑒𝑛𝑔𝑡ℎ)/(𝑠𝑡𝑟𝑎𝑖𝑔ℎ𝑡−𝑙𝑖𝑛𝑒 𝑑𝑖𝑠𝑡𝑎𝑛𝑐𝑒),2,
 16,Drainage Area,DRAINAREA,REAL,,100,250,1000,,2,
 17,Ecoregion IV,ECORGIV,,which ecoregion contains the majority of the analysis window?,100,250,1000,,2,
-18,Floodplain Count,CNTFLD,INTEGER,,100,250,1000,,2,
-19,Active Floodplain Valley Bottom Ratio,FLDVBRAT,REAL,,100,250,1000,,2,
+18,Floodplain Count River Left,CNTFLDL,INTEGER,,100,250,1000,,2,
+19,Active Floodplain Valley Bottom Ratio,FLDVBRAT,REAL,,100,250,1000,,2,1
 20,Confinement,CNFMT,REAL,,100,250,1000,(𝐶𝑜𝑛𝑓𝑖𝑛𝑖𝑛𝑔 𝑚𝑎𝑟𝑔𝑖𝑛 𝑙𝑒𝑛𝑔𝑡ℎ)/(𝑛𝑒𝑡𝑤𝑜𝑟𝑘 𝑙𝑒𝑛𝑔𝑡ℎ) 𝑥 100,3,
 21,Anthropogenic Confinement,ANTHCNFMT,REAL,,,,,(𝐶𝑜𝑛𝑓𝑖𝑛𝑖𝑛𝑔 𝑚𝑎𝑟𝑔𝑖𝑛 𝑙𝑒𝑛𝑔𝑡ℎ)/(𝑛𝑒𝑡𝑤𝑜𝑟𝑘 𝑙𝑒𝑛𝑔𝑡ℎ) 𝑥 100,3,
 22,Grainsize,GRNSIZE,REAL,,250,250,1000,,3,
+23,Tributary Junction Count,TRIBS,INTEGER,,250,250,1000,,2,1,
+24,Floodplain Count River Right,CNTFLDR,INTEGER,,100,250,1000,,2,,

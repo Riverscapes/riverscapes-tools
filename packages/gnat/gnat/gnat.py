@@ -34,7 +34,7 @@ from rscommons.vbet_network import copy_vaa_attributes, join_attributes
 
 # from gnat.gradient import gradient
 from gnat.__version__ import __version__
-from gnat.geometry_ops import reduce_precision
+from gnat.geometry_ops import reduce_precision, get_endpoints
 # from gnat.gnat_window import GNATWindow
 
 Path = str
@@ -57,16 +57,18 @@ LayerTypes = {
     }),
     'DEM': RSLayer('DEM', 'DEM', 'Raster', 'inputs/dem.tif'),
     'PPT': RSLayer('Precipitation', 'Precip', 'Raster', 'inputs/precipitation.tif'),
-    # 'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/confinement_intermediates.gpkg', {
-    #     #     'SPLIT_POINTS': RSLayer('Split Points', 'SPLIT_POINTS', 'Vector', 'Split_Points'),
-    #     #     'FLOWLINE_SEGMENTS': RSLayer('Flowline Segments', 'FLOWLINE_SEGMENTS', 'Vector', 'Flowline_Segments'),
-    #     #     'ERROR_POLYLINES': RSLayer('Error Polylines', 'ERROR_POLYLINES', 'Vector', 'Error_Polylines'),
-    #     #     'ERROR_POLYGONS': RSLayer('Error Polygons', 'ERROR_POLYGONS', 'Vector', 'Error_Polygons'),
-    #     #     'CHANNEL_AREA_BUFFERED': RSLayer('Channel Area Buffered', 'CHANNEL_AREA_BUFFERED', 'Vector', 'channel_area_buffered'),
-    #     #     'CONFINEMENT_BUFFER_SPLIT': RSLayer('Active Channel Split Buffers', 'CONFINEMENT_BUFFER_SPLITS', 'Vector', 'Confinement_Buffers_Split'),
-    #     #     'CONFINEMENT_ZONES': RSLayer('Zones of Confinement', 'CONFINEMENT_ZONES', 'Vector', 'confinement_zones'),
-    #     #     'CONFINING_POLYGONS_UNION': RSLayer('Confinement Polygons (unioned)', 'CONFINING_POLYGONS_UNION', 'Vector', 'confining_polygons_union')
-    # }),
+    'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/gnat_intermediates.gpkg', {
+        'JUNCTION_POINTS': RSLayer('Junction Points', 'JUNCTION_POINTS', 'Vector', 'junction_points'),
+        #
+        # 'SPLIT_POINTS': RSLayer('Split Points', 'SPLIT_POINTS', 'Vector', 'Split_Points'),
+        #     #     'FLOWLINE_SEGMENTS': RSLayer('Flowline Segments', 'FLOWLINE_SEGMENTS', 'Vector', 'Flowline_Segments'),
+        #     #     'ERROR_POLYLINES': RSLayer('Error Polylines', 'ERROR_POLYLINES', 'Vector', 'Error_Polylines'),
+        #     #     'ERROR_POLYGONS': RSLayer('Error Polygons', 'ERROR_POLYGONS', 'Vector', 'Error_Polygons'),
+        #     #     'CHANNEL_AREA_BUFFERED': RSLayer('Channel Area Buffered', 'CHANNEL_AREA_BUFFERED', 'Vector', 'channel_area_buffered'),
+        #     #     'CONFINEMENT_BUFFER_SPLIT': RSLayer('Active Channel Split Buffers', 'CONFINEMENT_BUFFER_SPLITS', 'Vector', 'Confinement_Buffers_Split'),
+        #     #     'CONFINEMENT_ZONES': RSLayer('Zones of Confinement', 'CONFINEMENT_ZONES', 'Vector', 'confinement_zones'),
+        #     #     'CONFINING_POLYGONS_UNION': RSLayer('Confinement Polygons (unioned)', 'CONFINING_POLYGONS_UNION', 'Vector', 'confining_polygons_union')
+    }),
     'GNAT_OUTPUTS': RSLayer('GNAT', 'GNAT_OUTPUTS', 'Geopackage', 'outputs/gnat.gpkg', {
         'POINT_METRICS': RSLayer('Point Metrics', 'POINT_METRICS', 'Vector', 'vw_point_metrics')
     }),
@@ -100,10 +102,10 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
     ], meta)
 
     inputs_gpkg = os.path.join(project_folder, LayerTypes['INPUTS'].rel_path)
-    # intermediates_gpkg = os.path.join(project_folder, LayerTypes['INTERMEDIATES'].rel_path)
+    intermediates_gpkg = os.path.join(project_folder, LayerTypes['INTERMEDIATES'].rel_path)
     gnat_gpkg = os.path.join(project_folder, LayerTypes['GNAT_OUTPUTS'].rel_path)
     GeopackageLayer.delete(inputs_gpkg)
-    # GeopackageLayer.delete(intermediates_gpkg)
+    GeopackageLayer.delete(intermediates_gpkg)
     GeopackageLayer.delete(gnat_gpkg)
 
     flowlines = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
@@ -124,10 +126,49 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
     _dem_node, dem = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], in_dem)
     _ppt_node, ppt = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['PPT'], in_ppt)
     project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
-    # project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
+    project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
 
     vaa_table_name = copy_vaa_attributes(flowlines, in_vaa_table)
-    line_network = join_attributes(inputs_gpkg, "vw_flowlines_vaa", os.path.basename(flowlines), vaa_table_name, 'NHDPlusID', ['LevelPathI', 'DnLevelPat', 'UpLevelPat', 'Divergence', 'StreamOrde', 'STARTFLAG'], 4326)
+    line_network = join_attributes(inputs_gpkg, "vw_flowlines_vaa", os.path.basename(flowlines), vaa_table_name, 'NHDPlusID', ['LevelPathI', 'DnLevelPat', 'UpLevelPat', 'Divergence', 'StreamOrde', 'STARTFLAG', 'DnDrainCou', 'RtnDiv'], 4326)
+
+    # Prepare Junctions
+    junctions = os.path.join(intermediates_gpkg, LayerTypes['INTERMEDIATES'].sub_layers['JUNCTION_POINTS'].rel_path)
+    with GeopackageLayer(junctions, write=True) as lyr_points, \
+            GeopackageLayer(line_network) as lyr_lines:
+        srs = lyr_lines.spatial_ref
+        lyr_points.create_layer(ogr.wkbPoint, spatial_ref=srs, fields={'JunctionType': ogr.OFTString})
+        lyr_points_defn = lyr_points.ogr_layer_def
+        # Generate diffluence/confluence nodes
+        for attribute, sql in [('Diffluence', '"DnDrainCou" > 1'), ('Confluence', '"RtnDiv" > 0')]:
+            for feat, *_ in lyr_lines.iterate_features(attribute_filter=sql):
+                geom = feat.GetGeometryRef()
+                pt = geom.GetPoint(0) if attribute == 'Confluence' else geom.GetPoint(geom.GetPointCount() - 1)
+                geom_out = ogr.Geometry(ogr.wkbPoint)
+                geom_out.AddPoint(*pt)
+                geom_out.FlattenTo2D()
+                feat_out = ogr.Feature(lyr_points_defn)
+                feat_out.SetGeometry(geom_out)
+                feat_out.SetField('JunctionType', attribute)
+                lyr_points.ogr_layer.CreateFeature(feat_out)
+        # generate list of nodes for all potential trib junctions
+
+        pts = []
+        sql = '"DnDrainCou" <= 1 or "RtnDiv" = 0'
+        for feat, *_ in lyr_lines.iterate_features(attribute_filter=sql):
+            geom = feat.GetGeometryRef()
+            pt = geom.GetPoint(geom.GetPointCount() - 1)
+            pts.append(pt)
+
+        counts = Counter(pts)
+        trib_junctions = [pt for pt, count in counts.items() if count > 1]
+        for pt in trib_junctions:
+            geom_out = ogr.Geometry(ogr.wkbPoint)
+            geom_out.AddPoint(*pt)
+            geom_out.FlattenTo2D()
+            feat_out = ogr.Feature(lyr_points_defn)
+            feat_out.SetGeometry(geom_out)
+            feat_out.SetField('JunctionType', 'Tributary')
+            lyr_points.ogr_layer.CreateFeature(feat_out)
 
     database_folder = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'database')
     with sqlite3.connect(gnat_gpkg) as conn:
@@ -321,11 +362,21 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
                     metric = metrics['CHANVBRAT']
                     window = metric[stream_size]
 
-                    values = sum_window_attributes(lyr_segments, window, level_path, segment_distance, ['active_channel_area', 'active_floodplain_area'])
+                    values = sum_window_attributes(lyr_segments, window, level_path, segment_distance, ['active_channel_area', 'segment_area'])
                     ac_area = values.get('active_channel_area', 0.0)
-                    fp_area = values.get('active_floodplain_area', 0.0)
-                    ac_fp_ratio = ac_area / fp_area if fp_area > 0.0 else None
-                    metrics_output[metric['metric_id']] = ac_fp_ratio
+                    vbet_area = values.get('segment_area', 0.0)
+                    ac_ratio = ac_area / vbet_area if vbet_area > 0.0 else None
+                    metrics_output[metric['metric_id']] = ac_ratio
+
+                if 'FLDVBRAT' in metrics:
+                    metric = metrics['FLDVBRAT']
+                    window = metric[stream_size]
+
+                    values = sum_window_attributes(lyr_segments, window, level_path, segment_distance, ['floodplain_area', 'segment_area'])
+                    fp_area = values.get('floodplain_area', 0.0)
+                    vbet_area = values.get('segment_area', 0.0)
+                    fp_ratio = fp_area / vbet_area if vbet_area > 0.0 else None
+                    metrics_output[metric['metric_id']] = fp_ratio
 
                 if 'RELFLWLNGTH' in metrics:
                     metric = metrics['RELFLWLNGTH']
@@ -374,6 +425,52 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
                     else:
                         majority_attribute = max(attributes, key=attributes.get)
                     metrics_output[metric['metric_id']] = majority_attribute
+
+                if 'ECORGIV' in metrics:
+                    metric = metrics['ECORGIV']
+                    window = metric[stream_size]
+                    if window not in window_geoms:
+                        window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance)
+
+                    attributes = {}
+                    with GeopackageLayer(ecoregions) as lyr_ecoregions:
+                        for feat, *_ in lyr_ecoregions.iterate_features(clip_shape=window_geoms[window]):
+                            geom_ecoregion = feat.GetGeometryRef()
+                            attribute = str(feat.GetField('US_L4CODE'))
+                            geom_section = window_geoms[window].Intersection(geom_ecoregion)
+                            area = geom_section.GetArea()
+                            attributes[attribute] = attributes.get(attribute, 0) + area
+                        lyr_ecoregions = None
+                    if len(attributes) == 0:
+                        log.warning(f'Unable to find majority ecoregion III for pt {point_id} in level path {level_path}')
+                        majority_attribute = None
+                    else:
+                        majority_attribute = max(attributes, key=attributes.get)
+                    metrics_output[metric['metric_id']] = majority_attribute
+
+                if 'CONDIFF' in metrics:
+                    metric = metrics['CONDIFF']
+                    window = metric[stream_size]
+                    if window not in window_geoms:
+                        window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance)
+
+                    with GeopackageLayer(junctions) as lyr_pts:
+                        count = 0
+                        for feat, *_ in lyr_pts.iterate_features(clip_shape=window_geoms[window], attribute_filter=""""JunctionType" <> 'Tributary'"""):
+                            count += 1
+                        metrics_output[metric['metric_id']] = count
+
+                if 'TRIBS' in metrics:
+                    metric = metrics['TRIBS']
+                    window = metric[stream_size]
+                    if window not in window_geoms:
+                        window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance)
+
+                    with GeopackageLayer(junctions) as lyr_pts:
+                        count = 0
+                        for feat, *_ in lyr_pts.iterate_features(clip_shape=window_geoms[window], attribute_filter=""""JunctionType" = 'Tributary'"""):
+                            count += 1
+                        metrics_output[metric['metric_id']] = count
 
                 # Write to Metrics
                 if len(metrics_output) > 0:
@@ -468,15 +565,7 @@ def get_segment_measurements(geom_line, src_raster, geom_window, buffer, transfo
     if geom_clipped.GetGeometryName() == "MULTILINESTRING":
         geom_clipped = reduce_precision(geom_clipped, 6)
         geom_clipped = ogr.ForceToLineString(geom_clipped)
-    coords = []
-    geoms = ogr.ForceToMultiLineString(geom_clipped)
-    for geom in geoms:
-        if geom.GetPointCount() == 0:
-            continue
-        for pt in [geom.GetPoint(0), geom.GetPoint(geom.GetPointCount() - 1)]:
-            coords.append(pt)
-    counts = Counter(coords)
-    endpoints = [pt for pt, count in counts.items() if count == 1]
+    endpoints = get_endpoints(geom_clipped)
     elevations = [None, None]
     if len(endpoints) == 2:
         elevations = []

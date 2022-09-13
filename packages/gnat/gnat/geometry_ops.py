@@ -6,6 +6,8 @@
 #
 # Date: August 26 2022
 
+from collections import Counter
+
 from osgeo import ogr
 
 
@@ -34,3 +36,26 @@ def reduce_precision(geom_multiline, rounding_precision=13):
     out_geom = geom.MakeValid()
 
     return out_geom
+
+
+def get_endpoints(geom):
+    """_summary_
+
+    Args:
+        geom (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
+
+    coords = []
+    geoms = ogr.ForceToMultiLineString(geom)
+    for geom in geoms:
+        if geom.GetPointCount() == 0:
+            continue
+        for pt in [geom.GetPoint(0), geom.GetPoint(geom.GetPointCount() - 1)]:
+            coords.append(pt)
+    counts = Counter(coords)
+    endpoints = [pt for pt, count in counts.items() if count == 1]
+
+    return endpoints
