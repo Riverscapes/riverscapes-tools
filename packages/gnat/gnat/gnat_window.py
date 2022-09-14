@@ -98,7 +98,7 @@ class GNATLine():
     transform = None
     src_raster = None
 
-    def __init__(self, geom_line, geom_window, buffer_elevation) -> None:
+    def __init__(self, geom_line, geom_window, buffer_elevation=None) -> None:
 
         self.geom_line = self.clip_line(geom_line, geom_window)
         self.buffer_elevation = buffer_elevation
@@ -179,3 +179,39 @@ class GNATLine():
             _type_: _description_
         """
         return self.elevations[1]
+
+    def gradient(self):
+        """_summary_
+
+        Returns:
+            _type_: _description_
+        """
+        if self.max_elevation is None or self.min_elevation is None:
+            return None
+        gradient = (self.max_elevation - self.min_elevation) / self.length
+        return gradient
+
+    def sinuosity(self):
+        """_summary_
+
+        Returns:
+            _type_: _description_
+        """
+        coords = []
+        geoms = ogr.ForceToMultiLineString(self.geom_line)
+        for geom in geoms:
+            for pt in [geom.GetPoint(0), geom.GetPoint(geom.GetPointCount() - 1)]:
+                coords.append(pt)
+        counts = Counter(coords)
+        endpoints = [pt for pt, count in counts.items() if count == 1]
+        # p1 = self.geom_line.GetPoint(0)
+        # p2 = self.geom_line.GetPoint(self.geom_line.GetPointCount() - 1)
+        geom_line = ogr.Geometry(ogr.wkbLineString)
+        geom_line.AddPoint(*endpoints[0])
+        geom_line.AddPoint(*endpoints[1])
+
+        geom_line.Transform(self.transform)
+        distance = geom_line.Length()
+
+        sinuosity = self.length / distance
+        return sinuosity

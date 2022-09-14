@@ -35,7 +35,7 @@ from rscommons.vbet_network import copy_vaa_attributes, join_attributes
 # from gnat.gradient import gradient
 from gnat.__version__ import __version__
 from gnat.geometry_ops import reduce_precision, get_endpoints
-# from gnat.gnat_window import GNATWindow
+from gnat.gnat_window import GNATLine
 
 Path = str
 
@@ -213,6 +213,7 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
             break
         utm_epsg = get_utm_zone_epsg(geom.GetPoint(0)[0])
         _transform_ref, transform = VectorBase.get_transform_from_epsg(lyr_points.spatial_ref, utm_epsg)
+        GNATLine.transform = transform
 
         progbar = ProgressBar(len(level_paths_to_run), 50, "Calculating GNAT Metrics")
         counter = 0
@@ -448,15 +449,27 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
                         majority_attribute = max(attributes, key=attributes.get)
                     metrics_output[metric['metric_id']] = majority_attribute
 
-                if 'CONDIFF' in metrics:
-                    metric = metrics['CONDIFF']
+                if 'CONF' in metrics:
+                    metric = metrics['CONF']
                     window = metric[stream_size]
                     if window not in window_geoms:
                         window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance)
 
                     with GeopackageLayer(junctions) as lyr_pts:
                         count = 0
-                        for feat, *_ in lyr_pts.iterate_features(clip_shape=window_geoms[window], attribute_filter=""""JunctionType" <> 'Tributary'"""):
+                        for feat, *_ in lyr_pts.iterate_features(clip_shape=window_geoms[window], attribute_filter=""""JunctionType" = 'Confluence'"""):
+                            count += 1
+                        metrics_output[metric['metric_id']] = count
+
+                if 'DIFF' in metrics:
+                    metric = metrics['DIFF']
+                    window = metric[stream_size]
+                    if window not in window_geoms:
+                        window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance)
+
+                    with GeopackageLayer(junctions) as lyr_pts:
+                        count = 0
+                        for feat, *_ in lyr_pts.iterate_features(clip_shape=window_geoms[window], attribute_filter=""""JunctionType" = 'Diffluence'"""):
                             count += 1
                         metrics_output[metric['metric_id']] = count
 
@@ -471,6 +484,16 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
                         for feat, *_ in lyr_pts.iterate_features(clip_shape=window_geoms[window], attribute_filter=""""JunctionType" = 'Tributary'"""):
                             count += 1
                         metrics_output[metric['metric_id']] = count
+
+                if 'CHANSIN' in metrics:
+                    metric = metrics['CHANSIN']
+                    window = metric[stream_size]
+                    if window not in window_geoms:
+                        window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance)
+
+                    line = GNATLine(geom_flowline, window_geoms[window])
+
+                    metrics_output[metric['metric_id']] = line.sinuosity()
 
                 # Write to Metrics
                 if len(metrics_output) > 0:
