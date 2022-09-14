@@ -1,8 +1,7 @@
-```
 ---
-title: Stream Gradient
+title: Moving Window Analysis
 ---
-```
+
 
 ## What is it?
 

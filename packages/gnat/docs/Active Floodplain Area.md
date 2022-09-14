@@ -1,8 +1,6 @@
-```
 ---
 title: Stream Gradient
 ---
-```
 
 Active Floodplain Area refers to 
 

@@ -1,8 +1,6 @@
-```
 ---
 title: Centerlines
 ---
-```
 
 ## What is it?
 

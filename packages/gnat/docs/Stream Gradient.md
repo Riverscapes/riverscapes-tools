@@ -1,8 +1,6 @@
-```
 ---
 title: Stream Gradient
 ---
-```
 
 Stream gradient describes an increase or decrease in the elevation of the stream channel over a longitudinal distance.
 

@@ -1,8 +1,6 @@
-```
 ---
 title: Stream Size
 ---
-```
 
 Stream size refers to the width of the channel. It is also commonly referred to as "bankful."
 

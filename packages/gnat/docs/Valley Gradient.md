@@ -1,8 +1,6 @@
-```
 ---
 title: Valley Gradient
 ---
-```
 
 Valley gradient describes an increase or decrease in the elevation of the valley bottom over a longitudinal distance.
 
