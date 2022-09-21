@@ -170,6 +170,7 @@ def vbet_merge(in_layer, out_layer, level_path=None):
     with get_shp_or_gpkg(in_layer) as lyr_polygon, \
             GeopackageLayer(out_layer, write=True) as lyr_vbet:
 
+        geoms_out = ogr.Geometry(ogr.wkbMultiPolygon)
         for feat, *_ in lyr_polygon.iterate_features():
             geom_ref = feat.GetGeometryRef()
             geom = geom_ref.Clone()
@@ -182,14 +183,14 @@ def vbet_merge(in_layer, out_layer, level_path=None):
             geom_type = geom.GetGeometryName()
             if geom_type == 'GeometryCollection':
                 break
-            if geom_type == 'POLYGON':
-                temp_geom = ogr.Geometry(ogr.wkbMultiPolygon)
-                temp_geom.AddGeometry(geom)
-                geom = temp_geom
+            geom = ogr.ForceToMultiPolygon(geom)
 
             out_feature = ogr.Feature(lyr_vbet.ogr_layer_def)
             out_feature.SetGeometry(geom)
             out_feature.SetField("LevelPathI", level_path)
             lyr_vbet.ogr_layer.CreateFeature(out_feature)
 
-        return geom
+            for g in geom:
+                geoms_out.AddGeometry(g)
+
+        return geoms_out

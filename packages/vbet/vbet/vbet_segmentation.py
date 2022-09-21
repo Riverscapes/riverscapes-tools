@@ -108,7 +108,7 @@ def split_vbet_polygons(vbet_polygons, segmentation_points, out_split_polygons):
 
         fields = {'LevelPathI': ogr.OFTReal,
                   'seg_distance': ogr.OFTReal}
-        out_lyr.create_layer(ogr.wkbPolygon, spatial_ref=vbet_lyr.spatial_ref, fields=fields)
+        out_lyr.create_layer(ogr.wkbMultiPolygon, spatial_ref=vbet_lyr.spatial_ref, fields=fields)
 
         for vbet_feat, *_ in vbet_lyr.iterate_features():
 
@@ -132,6 +132,8 @@ def split_vbet_polygons(vbet_polygons, segmentation_points, out_split_polygons):
                 if poly_intersect.geom_type in ['GeometryCollection', 'LineString'] or poly_intersect.is_empty:
                     continue
                 clean_geom = poly_intersect.buffer(0) if poly_intersect.is_valid is not True else poly_intersect
+                geom_out = VectorBase.shapely2ogr(clean_geom)
+                geom_out = ogr.ForceToMultiPolygon(geom_out)
                 out_lyr.create_feature(clean_geom, {'LevelPathI': level_path})
 
         for segment_feat, *_ in out_lyr.iterate_features('Writing segment dist to polygons'):
@@ -162,7 +164,8 @@ def calculate_segmentation_metrics(vbet_segment_polygons, vbet_centerline, dict_
             _transform_ref, transform = VectorBase.get_transform_from_epsg(vbet_lyr.spatial_ref, utm_epsg)
             vbet_geom_transform = vbet_geom.Clone()
             vbet_geom_transform.Transform(transform)
-            vbet_geom_transform_clean = geom_validity_fix(vbet_geom_transform)
+            vbet_geom_transform_clean = vbet_geom_transform.MakeValid()
+            # vbet_geom_transform_clean = geom_validity_fix(vbet_geom_transform)
             vbet_area = vbet_geom_transform_clean.GetArea()
             if vbet_area == 0.0:
                 continue
@@ -185,7 +188,8 @@ def calculate_segmentation_metrics(vbet_segment_polygons, vbet_centerline, dict_
                     for metric_feat, *_ in metric_lyr.iterate_features(clip_shape=vbet_geom):
                         in_metric_geom = metric_feat.GetGeometryRef()
                         in_metric_geom.Transform(transform)
-                        metric_geom = geom_validity_fix(in_metric_geom)
+                        metric_geom = in_metric_geom.MakeValid()
+                        # metric_geom = geom_validity_fix(in_metric_geom)
                         if not all([metric_geom.IsValid(), vbet_geom_transform_clean.IsValid()]):
                             continue
                         try:
@@ -248,7 +252,7 @@ def summerize_vbet_metrics(segment_points: Path, segmented_polygons: Path, level
                         metric_value = metric_value if metric_value is not None else 0.0
                         window_metrics[metric] = window_metrics[metric] + metric_value
                 for metric, value in window_metrics.items():
-                    value = value / window_distance
+                    # value = value / window_distance
                     value_per_length = value / window_length if window_length != 0.0 else 0.0
                     value_porportion = value / window_area if window_area != 0.0 else 0.0
                     feat_seg_pt.SetField(f'{metric}_area', value)

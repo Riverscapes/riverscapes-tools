@@ -17,8 +17,9 @@ from osgeo import ogr, gdal, osr
 from shapely.ops import unary_union
 from shapely.geometry.base import BaseGeometry
 from shapely.geometry import mapping, Point, MultiPoint, LineString, MultiLineString, GeometryCollection, Polygon, MultiPolygon
-from rscommons import Logger, ProgressBar, get_shp_or_gpkg, Timer, VectorBase
+from rscommons import Logger, ProgressBar, get_shp_or_gpkg, Timer, VectorBase, GeopackageLayer
 from rscommons.util import sizeof_fmt, get_obj_size
+from rscommons.geometry_ops import reduce_precision
 from rscommons.classes.vector_base import VectorBaseException
 
 
@@ -172,7 +173,7 @@ def copy_feature_class(in_layer_path: str, out_layer_path: str,
                        clip_shape: BaseGeometry = None,
                        clip_rect: List[float] = None,
                        buffer: float = 0,
-                       ) -> None:
+                       hard_clip=False) -> None:
     """Copy a Shapefile from one location to another
 
     This method is capable of reprojecting the geometries as they are copied.
@@ -217,6 +218,9 @@ def copy_feature_class(in_layer_path: str, out_layer_path: str,
                     progbar.erase()  # get around the progressbar
                     log.warning('Feature with FID={} has no Length. Skipping'.format(feature.GetFID()))
                     continue
+
+            if hard_clip is True and clip_shape is not None:
+                geom = clip_shape.Intersection(geom)
 
             # Buffer the shape if we need to
             if buffer_convert != 0:
@@ -916,6 +920,8 @@ def difference(remove_layer, target_layer, out_layer_path, epsg=None):
         for feat_target, _counter, _progbar in lyr_target.iterate_features("Differencing Target Features"):
 
             def write_polygon(out_geom):
+                out_geom = out_geom.MakeValid()
+                out_geom = ogr.ForceToMultiPolygon(out_geom)
                 out_feat = ogr.Feature(lyr_output_defn)
                 out_feat.SetGeometry(out_geom)
                 for i in range(0, lyr_output.ogr_layer_def.GetFieldCount()):
@@ -1005,7 +1011,8 @@ def get_endpoints(line_network, field, attribute, clip_shape=None):
             geoms.AddGeometry(geom)
             if clip_shape is not None:
                 geom = geom.Intersection(clip_shape)
-            if geom.IsEmpty() or geom.GetGeometryName() in ['MULTILINESTRING', 'GEOMETRYCOLLECTION']:
+            geom = ogr.ForceToMultiLineString(geom)
+            if geom.IsEmpty():
                 log.error(f'Unexpected geometry type for {field} {attribute} feature {feat.GetFID()}: {geom.GetGeometryName()} ')
                 continue
 
@@ -1017,3 +1024,23 @@ def get_endpoints(line_network, field, attribute, clip_shape=None):
         output = [pt for pt, count in counts.items() if count == 1]
 
         return output
+
+
+def collect_linestring(in_lyr, attribute_filter=None, precision=None):
+
+    with GeopackageLayer(in_lyr) as lyr:
+        geom_line = ogr.Geometry(ogr.wkbMultiLineString)
+        for feat, *_ in lyr.iterate_features(attribute_filter=attribute_filter):
+            geom = feat.GetGeometryRef()
+            if geom.GetGeometryName() == 'LINESTRING':
+                geom_line.AddGeometry(geom)
+            else:
+                for i in range(0, geom.GetGeometryCount()):
+                    g = geom.GetGeometryRef(i)
+                    if g.GetGeometryName() == 'LINESTRING':
+                        geom_line.AddGeometry(g)
+        if precision is not None:
+            geom_line = reduce_precision(geom_line, precision)
+        geom_single = ogr.ForceToLineString(geom_line)
+
+        return geom_single

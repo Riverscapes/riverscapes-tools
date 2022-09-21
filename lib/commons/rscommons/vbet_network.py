@@ -22,7 +22,7 @@ from rscommons import get_shp_or_gpkg
 Path = str
 
 
-def vbet_network(flow_lines_path: str, flow_areas_path: str, out_path: str, epsg: int = None, fcodes: List[str] = None, reach_code_field='FCode', flow_areas_path_exclude=None):
+def vbet_network(flow_lines_path: str, flow_areas_path: str, out_path: str, epsg: int = None, fcodes: List[str] = None, reach_code_field='FCode', flow_areas_path_exclude=None, hard_clip_shape=None):
 
     log = Logger('VBET Network')
     log.info('Generating perennial network')
@@ -48,21 +48,21 @@ def vbet_network(flow_lines_path: str, flow_areas_path: str, out_path: str, epsg
         # Perennial features
         log.info('Incorporating perennial features')
         fcode_filter = f"{reach_code_field} = " + f" or {reach_code_field} = ".join([f"'{fcode}'" for fcode in fcodes]) if len(fcodes) > 0 else ""  # e.g. "FCode = '46006' or FCode = '55800'"
-        fids = include_features(flow_lines_lyr, vbet_net, fcode_filter, excluded_fids=exclude_fids)
+        fids = include_features(flow_lines_lyr, vbet_net, fcode_filter, excluded_fids=exclude_fids, hard_clip_shape=hard_clip_shape)
 
         # Flow area features
         if flow_areas_path is not None:
             polygon = get_geometry_unary_union(flow_areas_path, epsg=epsg)
             if polygon is not None:
                 log.info('Incorporating flow areas.')
-                include_features(flow_lines_lyr, vbet_net, f"{reach_code_field} <> '46006'", polygon, excluded_fids=fids)
+                include_features(flow_lines_lyr, vbet_net, f"{reach_code_field} <> '46006'", polygon, excluded_fids=fids, hard_clip_shape=hard_clip_shape)
 
         fcount = flow_lines_lyr.ogr_layer.GetFeatureCount()
 
         log.info('VBET network generated with {} features'.format(fcount))
 
 
-def include_features(source_layer: VectorBase, out_layer: VectorBase, attribute_filter: str = None, clip_shape: BaseGeometry = None, excluded_fids: list = None):
+def include_features(source_layer: VectorBase, out_layer: VectorBase, attribute_filter: str = None, clip_shape: BaseGeometry = None, excluded_fids: list = None, hard_clip_shape=None):
 
     included_fids = []
     excluded_fids = [] if excluded_fids is None else excluded_fids
@@ -78,6 +78,8 @@ def include_features(source_layer: VectorBase, out_layer: VectorBase, attribute_
                 out_feature.SetField(out_layer.ogr_layer_def.GetFieldDefn(i).GetNameRef(), feature.GetField(i))
 
             geom = feature.GetGeometryRef()
+            if hard_clip_shape is not None:
+                geom = hard_clip_shape.Intersection(geom)
             out_feature.SetGeometry(geom.Clone())
             out_layer.ogr_layer.CreateFeature(out_feature)
 

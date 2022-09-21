@@ -39,13 +39,13 @@ def reduce_precision(geom_multiline, rounding_precision=13):
 
 
 def get_endpoints(geom):
-    """_summary_
+    """return a list of endpoints for a linestring or multilinestring
 
     Args:
-        geom (_type_): _description_
+        geom (ogr.Geometry): linestring or multilinestring geometry
 
     Returns:
-        _type_: _description_
+        list: coords of points
     """
 
     coords = []

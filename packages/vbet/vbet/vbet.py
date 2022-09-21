@@ -23,7 +23,8 @@ import numpy as np
 from scipy.ndimage import label, generate_binary_structure, binary_closing
 
 from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, GeopackageLayer, dotenv, VectorBase, initGDALOGRErrors
-from rscommons.vector_ops import copy_feature_class, polygonize, get_endpoints, difference, collect_feature_class
+from rscommons.vector_ops import copy_feature_class, polygonize, difference, collect_linestring, collect_feature_class
+from rscommons.geometry_ops import get_endpoints
 from rscommons.util import safe_makedirs, parse_metadata, pretty_duration, safe_remove_dir
 from rscommons.hand import run_subprocess
 from rscommons.vbet_network import copy_vaa_attributes, join_attributes, create_stream_size_zones, get_channel_level_path, get_distance_lookup, get_levelpath_catchment, vbet_network
@@ -87,7 +88,7 @@ LayerTypes = {
 }
 
 
-def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchments, in_channel_area, vaa_table, project_folder, scenario_code, huc, level_paths=None, in_pitfill_dem=None, in_dinfflowdir_ang=None, in_dinfflowdir_slp=None, in_twi_raster=None, meta=None, debug=False, reach_codes=None):
+def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchments, in_channel_area, vaa_table, project_folder, scenario_code, huc, level_paths=None, in_pitfill_dem=None, in_dinfflowdir_ang=None, in_dinfflowdir_slp=None, in_twi_raster=None, meta=None, debug=False, reach_codes=None, mask=None):
 
     thresh_vals = {'VBET_IA': 0.90, 'VBET_FULL': 0.68}
 
@@ -117,7 +118,12 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
     line_network_features = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
 
-    vbet_network(in_line_network, None, line_network_features, fcodes=reach_codes)
+    clip_mask = None
+    if mask is not None:
+        clip_mask = collect_feature_class(mask)
+        clip_mask = clip_mask.MakeValid()
+
+    vbet_network(in_line_network, None, line_network_features, fcodes=reach_codes, hard_clip_shape=clip_mask)
     # copy_feature_class(in_line_network, line_network_features)
     catchment_features = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['CATCHMENTS'].rel_path)
     copy_feature_class(in_catchments, catchment_features)
@@ -371,7 +377,11 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             cost_path_raster = os.path.join(temp_folder, f'cost_path_{level_path}.tif')
             generate_centerline_surface(valley_bottom_raster, cost_path_raster, temp_folder)
             centerline_raster = os.path.join(temp_folder, f'centerline_{level_path}.tif')
-            coords = get_endpoints(line_network, 'LevelPathI', level_path, clip_shape=polygon)
+            geom_flowline = collect_linestring(line_network, f'LevelPathI = {level_path}')
+            polygonize(valley_bottom_raster, 1, vbet_polygon, epsg=4326)
+            polygon_clip = collect_feature_class(vbet_polygon)
+            geom_flowline_clip = polygon_clip.Intersection(geom_flowline)
+            coords = get_endpoints(geom_flowline_clip)
             if len(coords) != 2:
                 log.error(f'Unable to generate centerline for level path {level_path}: found {len(coords)} target coordinates instead of expected 2.')
                 continue
@@ -393,7 +403,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                     centerline = centerline_intersected
             else:
                 centerline = centerline_full
-
+            centerline = ogr.ForceToMultiLineString(centerline)
             with GeopackageLayer(output_centerlines, write=True) as lyr_cl:
                 out_feature = ogr.Feature(lyr_cl.ogr_layer_def)
                 out_feature.SetGeometry(centerline)
@@ -582,6 +592,7 @@ def main():
     parser.add_argument('--twi_raster', help='Add debug tools for tracing things like memory usage at a performance cost.', default=None)
     parser.add_argument('--reach_codes', help='Comma delimited reach codes (FCode) to retain when filtering features. Omitting this option retains all features.', type=str)
     parser.add_argument('--flowline_type', type=str, default='NHD')
+    parser.add_argument('--mask', type=str, default=None)
     parser.add_argument('--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
     parser.add_argument('--debug', help='Add debug tools for tracing things like memory usage at a performance cost.', action='store_true', default=False)
@@ -604,10 +615,10 @@ def main():
         if args.debug is True:
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output_dir, 'vbet_mem.log')
-            retcode, max_obj = ThreadRun(vbet_centerlines, memfile, args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir, args.scenario_code, args.huc, level_paths, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster, meta=meta, reach_codes=reach_codes)
+            retcode, max_obj = ThreadRun(vbet_centerlines, memfile, args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir, args.scenario_code, args.huc, level_paths, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster, meta=meta, reach_codes=reach_codes, mask=args.mask)
             log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
         else:
-            vbet_centerlines(args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir, args.scenario_code, args.huc, level_paths, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster, meta=meta, reach_codes=reach_codes)
+            vbet_centerlines(args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir, args.scenario_code, args.huc, level_paths, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster, meta=meta, reach_codes=reach_codes, mask=args.mask)
     except Exception as e:
         log.error(e)
         traceback.print_exc(file=sys.stdout)

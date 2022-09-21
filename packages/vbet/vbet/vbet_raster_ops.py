@@ -4,6 +4,7 @@ import shutil
 from osgeo import ogr, gdal, gdal_array, osr
 import rasterio
 from rasterio.windows import bounds, from_bounds
+from rasterio.vrt import WarpedVRT
 import numpy as np
 
 from rscommons import ProgressBar, Logger, VectorBase, Timer, TempRaster
@@ -416,50 +417,52 @@ def new_raster(newRasterfn, rasterfn, data_type=gdal.GDT_Byte):
 def raster_merge(in_raster, out_raster, dem, valley_bottom_raster, temp_folder):
 
     log = Logger('Raster Merge')
-    rio_vbet = rasterio.open(valley_bottom_raster)
-    if os.path.exists(out_raster):
-        out_temp = os.path.join(temp_folder, 'temp_raster')
-        rio_dest = rasterio.open(out_raster)
-        out_meta = rio_dest.meta
+    with rasterio.open(dem) as rio_dem:
+        vrt_options = {
+            # 'resampling': Resampling.cubic,
+            'crs': rio_dem.crs,
+            'transform': rio_dem.transform,
+            'height': rio_dem.height,
+            'width': rio_dem.width,
+        }
+        out_meta = rio_dem.meta
         out_meta['driver'] = 'GTiff'
         out_meta['count'] = 1
         out_meta['compress'] = 'deflate'
-        rio_temp = rasterio.open(out_temp, 'w', **out_meta)
-        rio_source = rasterio.open(in_raster)
-        window_error = False
-        for _ji, window in rio_source.block_windows(1):
-            src_bounds = bounds(window, transform=rio_source.meta['transform'])
-            dest_bounds = from_bounds(*src_bounds, width=window.width, height=window.height, transform=out_meta['transform']).round_offsets()
-            array_vbet_mask = np.ma.MaskedArray(rio_vbet.read(1, window=window, masked=True).data)
-            array_source = np.ma.MaskedArray(rio_source.read(1, window=window, masked=True).data, mask=array_vbet_mask.mask)
-            array_dest = np.ma.MaskedArray(rio_dest.read(1, window=dest_bounds, masked=True, boundless=True, ).data, mask=array_vbet_mask.mask)
-            if array_source.shape != array_dest.shape:
-                window_error = True
-                continue
-            array_out = np.choose(array_vbet_mask, [array_dest, array_source])
-            rio_temp.write(np.ma.filled(np.float32(array_out), out_meta['nodata']), window=dest_bounds, indexes=1)
-        rio_temp.close()
-        rio_dest.close()
-        rio_source.close()
+
+    if os.path.exists(out_raster):
+        out_temp = os.path.join(temp_folder, 'temp_raster')
+
+        with rasterio.open(out_raster) as rio_dest, \
+                rasterio.open(in_raster) as rio_source, \
+                rasterio.open(out_temp, 'w', **out_meta) as rio_temp, \
+                rasterio.open(valley_bottom_raster) as rio_vbet:
+
+            window_error = False
+            with WarpedVRT(rio_source, **vrt_options) as vrt, \
+                    WarpedVRT(rio_vbet, **vrt_options) as vrt_vbet:
+                for _ji, window in rio_dest.block_windows(1):
+                    array_vbet_mask = np.ma.MaskedArray(vrt_vbet.read(1, window=window, masked=True).data)
+                    array_source = np.ma.MaskedArray(vrt.read(1, window=window, masked=True).data, mask=array_vbet_mask.mask)
+                    array_dest = np.ma.MaskedArray(rio_dest.read(1, window=window, masked=True).data, mask=array_vbet_mask.mask)
+                    if array_source.shape != array_dest.shape:
+                        window_error = True
+                        continue
+                    array_out = np.choose(array_vbet_mask, [array_dest, array_source])
+                    rio_temp.write(np.ma.filled(np.float32(array_out), out_meta['nodata']), window=window, indexes=1)
         shutil.copyfile(out_temp, out_raster)
 
         if window_error:
             log.error(f'Different window shapes encounterd when processing {out_raster}')
     else:
-        rio_dem = rasterio.open(dem)
-        rio_source = rasterio.open(in_raster)
-        out_meta = rio_dem.meta
-        out_meta['driver'] = 'GTiff'
-        out_meta['count'] = 1
-        out_meta['compress'] = 'deflate'
-        rio_dest = rasterio.open(out_raster, 'w', **out_meta)
-        for _ji, window in rio_source.block_windows(1):
-            src_bounds = bounds(window, transform=rio_source.meta['transform'])
-            dest_bounds = from_bounds(*src_bounds, transform=out_meta['transform']).round_offsets()
-            array_vbet_mask = np.ma.MaskedArray(rio_vbet.read(1, window=window, masked=True).data)
-            array_source = np.ma.MaskedArray(rio_source.read(1, window=window, masked=True).data, mask=array_vbet_mask.mask)
-            rio_dest.write(np.ma.filled(np.float32(array_source), out_meta['nodata']), window=dest_bounds, indexes=1)
-        rio_dest.close()
-        rio_source.close()
-        rio_dem.close()
-    rio_vbet.close()
+        with rasterio.open(in_raster) as rio_source, \
+                rasterio.open(out_raster, 'w', **out_meta) as rio_dest, \
+                rasterio.open(valley_bottom_raster) as rio_vbet:
+
+            with WarpedVRT(rio_source, **vrt_options) as vrt, \
+                    WarpedVRT(rio_vbet, **vrt_options) as vrt_vbet:
+                for _ji, window in vrt.block_windows(1):
+                    array_vbet_mask = np.ma.MaskedArray(vrt_vbet.read(1, window=window, masked=True).data)
+                    array_source = np.ma.MaskedArray(vrt.read(1, window=window, masked=True).data, mask=array_vbet_mask.mask)
+                    array_out = np.choose(array_vbet_mask, [out_meta['nodata'], array_source])
+                    rio_dest.write(np.ma.filled(np.float32(array_out), out_meta['nodata']), window=window, indexes=1)
