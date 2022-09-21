@@ -29,12 +29,12 @@ from rscommons import GeopackageLayer, dotenv, Logger, initGDALOGRErrors, ModelC
 from rscommons.classes.vector_base import get_utm_zone_epsg
 from rscommons.util import safe_makedirs, safe_remove_dir, parse_metadata
 from rscommons.database import load_lookup_data
-from rscommons.vector_ops import copy_feature_class
+from rscommons.geometry_ops import reduce_precision, get_endpoints
+from rscommons.vector_ops import copy_feature_class, collect_linestring
 from rscommons.vbet_network import copy_vaa_attributes, join_attributes
 
 # from gnat.gradient import gradient
 from gnat.__version__ import __version__
-from gnat.geometry_ops import reduce_precision, get_endpoints
 from gnat.gnat_window import GNATLine
 
 Path = str
@@ -220,12 +220,12 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
         for level_path in level_paths_to_run:
             progbar.update(counter)
             counter += 1
-            geom_flowline = collect_linestring(line_network, level_path)
+            geom_flowline = collect_linestring(line_network, f'LevelPathI = {level_path}')
             if geom_flowline.IsEmpty():
                 log.error(f'Flowline for level path {level_path} is empty geometry')
                 continue
 
-            geom_centerline = collect_linestring(centerlines, level_path, precision=8)
+            geom_centerline = collect_linestring(centerlines, f'LevelPathI = {level_path}', precision=8)
 
             for feat_seg_pt, *_ in lyr_points.iterate_features(attribute_filter=f'LevelPathI = {level_path}'):
                 # Gather common components for metric calcuations
@@ -385,7 +385,7 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
                     if window not in window_geoms:
                         window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance)
 
-                    geom_flowline_full = collect_linestring(line_network, level_path, field='vbet_level_path')
+                    geom_flowline_full = collect_linestring(line_network, f'vbet_level_path = {level_path}')
                     stream_length_total, *_ = get_segment_measurements(geom_flowline_full, src_dem, window_geoms[window], buffer_distance[stream_size], transform)
                     centerline_length, *_ = get_segment_measurements(geom_centerline, src_dem, window_geoms[window], buffer_distance[stream_size], transform)
 
@@ -492,8 +492,33 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
                         window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance)
 
                     line = GNATLine(geom_flowline, window_geoms[window])
-
                     metrics_output[metric['metric_id']] = line.sinuosity()
+
+                if 'DRAINAREA' in metrics:
+                    metric = metrics['DRAINAREA']
+                    window = metric[stream_size]
+                    if window not in window_geoms:
+                        window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance, buffer_size_clip)
+
+                    results = []
+                    with GeopackageLayer(line_network) as lyr_lines:
+                        for feat, *_ in lyr_lines.iterate_features(clip_shape=window_geoms[window]):
+                            results.append(feat.GetField('TotDASqKm'))
+                    if len(results) > 0:
+                        drainage_area = max(results)
+                    else:
+                        drainage_area = None
+                        log.warning(f'Unable to calculate drainage area for pt {point_id} in level path {level_path}')
+                    metrics_output[metric['metric_id']] = drainage_area
+
+                if 'VALAZMTH' in metrics:
+                    metric = metrics['VALAZMTH']
+                    window = metric[stream_size]
+                    if window not in window_geoms:
+                        window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance)
+
+                    cline = GNATLine(geom_centerline, window_geoms[window])
+                    metrics_output[metric['metric_id']] = cline.azimuth()
 
                 # Write to Metrics
                 if len(metrics_output) > 0:
@@ -504,18 +529,26 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
 
     epsg = 4326
     with sqlite3.connect(gnat_gpkg) as conn:
-
-        sql = 'CREATE VIEW vw_point_metrics AS SELECT G.fid fid, G.geom geom, G.LevelPathI level_path, G.seg_distance seg_distance, G.stream_size stream_size'
-        for name in metrics:
-            metric = metrics[name]
-            metric_sql = f'SUM(M.metric_value) FILTER (WHERE M.metric_id == {metric["metric_id"]})'
-            if metric['data_type'] != '':
-                metric_sql = f'CAST({metric_sql} AS {metric["data_type"]})'
-            sql = f'{sql}, {metric_sql} {metric["name"].lower().replace(" ", "_")}'
-        sql = f'{sql} FROM points G INNER JOIN metric_values M ON M.point_id = G.fid GROUP BY G.fid;'
-
+        # Generate Pivot Table
         curs = conn.cursor()
+        metrics_sql = ", ".join([f"{metric['name'].lower().replace(' ', '_')} {metric['data_type']}" for metric in metrics.values()])
+        sql = f'CREATE TABLE point_metrics_pivot (fid INTEGER PRIMARY KEY, {metrics_sql});'
         curs.execute(sql)
+        conn.commit()
+
+        # Insert Values into Pivot table
+        metric_names_sql = ', '.join([metric["name"].lower().replace(" ", "_") for metric in metrics.values()])
+        metric_values_sql = ', '.join([f'SUM(M.metric_value) FILTER (WHERE M.metric_id == {metric["metric_id"]}) {metric["name"].lower().replace(" ", "_")}' for metric in metrics.values()])
+        sql = f'INSERT INTO point_metrics_pivot (fid, {metric_names_sql}) SELECT M.point_id, {metric_values_sql} FROM metric_values M GROUP BY M.point_id;'
+        curs.execute(sql)
+        conn.commit()
+
+        # Create metric view
+        metric_names_sql = ", ".join([f"M.{metric['name'].lower().replace(' ', '_')} {metric['name'].lower().replace(' ', '_')}" for metric in metrics.values()])
+        sql = f'CREATE VIEW vw_point_metrics AS SELECT G.fid fid, G.geom geom, G.LevelPathI level_path, G.seg_distance seg_distance, G.stream_size stream_size, {metric_names_sql} FROM points G INNER JOIN point_metrics_pivot M ON M.fid = G.fid;'
+        curs.execute(sql)
+
+        # Add view to geopackage
         curs.execute("INSERT INTO gpkg_contents (table_name, identifier, data_type, srs_id) VALUES ('vw_point_metrics', 'vw_point_metrics', 'features', ?);", (epsg,))
         curs.execute("INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) values ('vw_point_metrics', 'geom', 'POINT', ?, 0, 0);", (epsg,))
         conn.commit()
@@ -631,32 +664,6 @@ def sum_window_attributes(lyr, window, level_path, segment_dist, fields):
             results[field] = results.get(field, 0) + result
 
     return results
-
-
-def collect_linestring(in_lyr, level_path, precision=None, field='LevelPathI'):
-    """_summary_
-
-    Args:
-        lyr (_type_): _description_
-        level_path (_type_): _description_
-        precision (int, optional): _description_. Defaults to 14.
-    """
-    with GeopackageLayer(in_lyr) as lyr:
-        geom_line = ogr.Geometry(ogr.wkbMultiLineString)
-        for feat, *_ in lyr.iterate_features(attribute_filter=f'"{field}" = {level_path}'):
-            geom = feat.GetGeometryRef()
-            if geom.GetGeometryName() == 'LINESTRING':
-                geom_line.AddGeometry(geom)
-            else:
-                for i in range(0, geom.GetGeometryCount()):
-                    g = geom.GetGeometryRef(i)
-                    if g.GetGeometryName() == 'LINESTRING':
-                        geom_line.AddGeometry(g)
-        if precision is not None:
-            geom_line = reduce_precision(geom_line, precision)
-        geom_single = ogr.ForceToLineString(geom_line)
-
-        return geom_single
 
 
 def create_project(huc, output_dir: str, meta: List[RSMeta], meta_dict: Dict[str, str]):

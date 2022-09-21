@@ -1,14 +1,14 @@
 
 
+import math
 from functools import cached_property
-from collections import Counter
 
 import numpy as np
 from shapely.geometry import Point
 from rasterio.mask import mask
 from osgeo import ogr
 
-from gnat.geometry_ops import reduce_precision
+from gnat.geometry_ops import reduce_precision, get_endpoints
 
 
 class GNATWindow:
@@ -141,13 +141,7 @@ class GNATLine():
         Returns:
             _type_: _description_
         """
-        coords = []
-        geoms = ogr.ForceToMultiLineString(self.geom_line)
-        for geom in geoms:
-            for pt in [geom.GetPoint(0), geom.GetPoint(geom.GetPointCount() - 1)]:
-                coords.append(pt)
-        counts = Counter(coords)
-        endpoints = [pt for pt, count in counts.items() if count == 1]
+        endpoints = self.endpoints
         elevations = [None, None]
         if len(endpoints) == 2:
             elevations = []
@@ -191,21 +185,23 @@ class GNATLine():
         gradient = (self.max_elevation - self.min_elevation) / self.length
         return gradient
 
+    @cached_property
+    def endpoints(self):
+        """_summary_
+
+        Returns:
+            _type_: _description_
+        """
+        return get_endpoints(self.geom_line)
+
     def sinuosity(self):
         """_summary_
 
         Returns:
             _type_: _description_
         """
-        coords = []
-        geoms = ogr.ForceToMultiLineString(self.geom_line)
-        for geom in geoms:
-            for pt in [geom.GetPoint(0), geom.GetPoint(geom.GetPointCount() - 1)]:
-                coords.append(pt)
-        counts = Counter(coords)
-        endpoints = [pt for pt, count in counts.items() if count == 1]
-        # p1 = self.geom_line.GetPoint(0)
-        # p2 = self.geom_line.GetPoint(self.geom_line.GetPointCount() - 1)
+        endpoints = self.endpoints
+
         geom_line = ogr.Geometry(ogr.wkbLineString)
         geom_line.AddPoint(*endpoints[0])
         geom_line.AddPoint(*endpoints[1])
@@ -215,3 +211,14 @@ class GNATLine():
 
         sinuosity = self.length / distance
         return sinuosity
+
+    def azimuth(self):
+        """return direction of straight line in degrees
+        """
+        endpoints = self.endpoints
+        if len(endpoints) != 2:
+            return None
+        p1, p2 = endpoints
+        azimuth = math.atan2(p2[1] - p1[1], p2[0] - p1[0])
+        degrees = (90 - math.degrees(azimuth)) % 360
+        return degrees
