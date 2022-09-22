@@ -38,7 +38,7 @@ GNAT_DIR=$DATA_DIR/gnat/$HUC
 
 # Get the RSCli project we need to make this happen
 rscli download $RS_CONTEXT_DIR --type "RSContext" --meta "huc=$HUC" --tags "$RSCONTEXT_TAGS" \
-  --file-filter "(hydrology\.gpkg|nhd_data.sqlite|dem.tif|project_bounds.geojson)" \
+  --file-filter "(hydrology\.gpkg|nhd_data.sqlite|dem.tif|precipitation.tif|ecoregions|transportation|project_bounds.geojson)" \
   --no-input --verbose --program "$PROGRAM"
 
 # Go get vbet result for this to work
@@ -58,6 +58,10 @@ try() {
     $VBET_DIR/intermediates/vbet_intermediates.gpkg/segmentation_points \
     $VBET_DIR/outputs/vbet.gpkg/vbet_centerlines \
     $RS_CONTEXT_DIR/topography/dem.tif \
+    $RS_CONTEXT_DIR/climate/precipitation.tif \
+    $RS_CONTEXT_DIR/transportation/roads.shp \
+    $RS_CONTEXT_DIR/transportation/railways.shp \
+    $RS_CONTEXT_DIR/ecoregions/ecoregions.shp \
     $GNAT_DIR \
     --meta "Runner=Cybercastor" \
     --verbose
