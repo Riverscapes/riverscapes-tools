@@ -8,7 +8,7 @@ from shapely.geometry import Point
 from rasterio.mask import mask
 from osgeo import ogr
 
-from gnat.geometry_ops import reduce_precision, get_endpoints
+from rscommons.geometry_ops import reduce_precision, get_endpoints
 
 
 class GNATWindow:
@@ -194,11 +194,9 @@ class GNATLine():
         """
         return get_endpoints(self.geom_line)
 
-    def sinuosity(self):
+    @cached_property
+    def endpoint_distance(self):
         """_summary_
-
-        Returns:
-            _type_: _description_
         """
         endpoints = self.endpoints
 
@@ -209,7 +207,16 @@ class GNATLine():
         geom_line.Transform(self.transform)
         distance = geom_line.Length()
 
-        sinuosity = self.length / distance
+        return distance
+
+    def sinuosity(self):
+        """_summary_
+
+        Returns:
+            _type_: _description_
+        """
+
+        sinuosity = self.length / self.endpoint_distance
         return sinuosity
 
     def azimuth(self):

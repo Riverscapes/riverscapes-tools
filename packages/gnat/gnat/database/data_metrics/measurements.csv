@@ -4,3 +4,4 @@ measurement_id,name,machine_code,description,is_active
 3,Stream Length,STRMLENG,Stream Length of main flowline,1
 4,Centerline Length,VALLENG,,1
 5,Stream Total Length,STRMLENGTOT,Stream length of all flowlines (includes branches),1
+6,Stream Segment Straight Length,STRMSTRLENG, straight line length of segment,1
