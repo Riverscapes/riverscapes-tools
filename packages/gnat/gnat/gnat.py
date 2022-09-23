@@ -545,7 +545,7 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
         conn.commit()
 
         # Create metric view
-        metric_names_sql = ", ".join([f"{'ROUND(' if metric['data_type' is 'REAL'] else ''}M.{metric['name'].lower().replace(' ', '_')}{', 2)' if metric['data_type' is 'REAL'] else ''} {metric['name'].lower().replace(' ', '_')}" for metric in metrics.values()])
+        metric_names_sql = ", ".join([f"{'ROUND(' if metric['data_type' == 'REAL'] else ''}M.{metric['name'].lower().replace(' ', '_')}{', 2)' if metric['data_type' == 'REAL'] else ''} {metric['name'].lower().replace(' ', '_')}" for metric in metrics.values()])
         sql = f'CREATE VIEW vw_point_metrics AS SELECT G.fid fid, G.geom geom, G.LevelPathI level_path, G.seg_distance seg_distance, G.stream_size stream_size, {metric_names_sql} FROM points G INNER JOIN point_metrics_pivot M ON M.fid = G.fid;'
         curs.execute(sql)
 

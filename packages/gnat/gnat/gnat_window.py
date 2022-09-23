@@ -2,6 +2,7 @@
 
 import math
 from functools import cached_property
+from unittest.mock import NonCallableMagicMock
 
 import numpy as np
 from shapely.geometry import Point
@@ -199,7 +200,8 @@ class GNATLine():
         """_summary_
         """
         endpoints = self.endpoints
-
+        if len(endpoints) != 2:
+            return None
         geom_line = ogr.Geometry(ogr.wkbLineString)
         geom_line.AddPoint(*endpoints[0])
         geom_line.AddPoint(*endpoints[1])
@@ -215,6 +217,9 @@ class GNATLine():
         Returns:
             _type_: _description_
         """
+
+        if self.endpoint_distance is None:
+            return None
 
         sinuosity = self.length / self.endpoint_distance
         return sinuosity
