@@ -539,20 +539,20 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments: Path, in
     with sqlite3.connect(gnat_gpkg) as conn:
         # Generate Pivot Table
         curs = conn.cursor()
-        metrics_sql = ", ".join([f"{metric['name'].lower().replace(' ', '_')} {metric['data_type']}" for metric in metrics.values()])
+        metrics_sql = ", ".join([f"{sql_name(metric['name'])} {metric['data_type']}" for metric in metrics.values()])
         sql = f'CREATE TABLE point_metrics_pivot (fid INTEGER PRIMARY KEY, {metrics_sql});'
         curs.execute(sql)
         conn.commit()
 
         # Insert Values into Pivot table
-        metric_names_sql = ', '.join([metric["name"].lower().replace(" ", "_") for metric in metrics.values()])
-        metric_values_sql = ', '.join([f'SUM(M.metric_value) FILTER (WHERE M.metric_id == {metric["metric_id"]}) {metric["name"].lower().replace(" ", "_")}' for metric in metrics.values()])
+        metric_names_sql = ', '.join([sql_name(metric["name"]) for metric in metrics.values()])
+        metric_values_sql = ", ".join([f"{sql_round(metric['data_type'], metric['metric_id'])} {sql_name(metric['name'])}" for metric in metrics.values()])
         sql = f'INSERT INTO point_metrics_pivot (fid, {metric_names_sql}) SELECT M.point_id, {metric_values_sql} FROM metric_values M GROUP BY M.point_id;'
         curs.execute(sql)
         conn.commit()
 
         # Create metric view
-        metric_names_sql = ", ".join([f"{'ROUND(' if metric['data_type' == 'REAL'] else ''}M.{metric['name'].lower().replace(' ', '_')}{', 2)' if metric['data_type' == 'REAL'] else ''} {metric['name'].lower().replace(' ', '_')}" for metric in metrics.values()])
+        metric_names_sql = ", ".join([f"M.{sql_name(metric['name'])} {sql_name(metric['name'])}" for metric in metrics.values()])
         sql = f'CREATE VIEW vw_point_metrics AS SELECT G.fid fid, G.geom geom, G.LevelPathI level_path, G.seg_distance seg_distance, G.stream_size stream_size, {metric_names_sql} FROM points G INNER JOIN point_metrics_pivot M ON M.fid = G.fid;'
         curs.execute(sql)
 
@@ -572,6 +572,16 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments: Path, in
     progbar.finish()
     log.info('GNAT Finished')
     return
+
+
+def sql_name(name: str) -> str:
+    """return cleaned metric column name"""
+    return name.lower().replace(' ', '_')
+
+
+def sql_round(datatype: str, metric_id) -> str:
+    """return round function"""
+    return f"{'ROUND(' if datatype == 'REAL' else ''}SUM(M.metric_value) FILTER (WHERE M.metric_id == {metric_id}){', 2)' if datatype == 'REAL' else ''}"
 
 
 def generate_metric_list(database: Path, source_table: str = 'metrics') -> dict:
