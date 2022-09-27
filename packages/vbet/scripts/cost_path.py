@@ -15,12 +15,12 @@ import os
 import argparse
 
 import gdal
-import osr
+# import osr
 from skimage.graph import route_through_array
 import numpy as np
 
 from rscommons import dotenv
-from rscommons.util import safe_makedirs, parse_metadata, pretty_duration
+from rscommons.util import safe_makedirs
 
 from vbet.vbet_raster_ops import raster2array, array2raster
 
@@ -49,7 +49,7 @@ def createPath(CostSurfacefn, costSurfaceArray, startCoord, stopCoord):
     stopIndexX, stopIndexY = coord2pixelOffset(CostSurfacefn, stopCoordX, stopCoordY)
 
     # create path
-    indices, weight = route_through_array(costSurfaceArray, (startIndexY, startIndexX), (stopIndexY, stopIndexX), geometric=True, fully_connected=True)
+    indices, _weight = route_through_array(costSurfaceArray, (startIndexY, startIndexX), (stopIndexY, stopIndexX), geometric=True, fully_connected=True)
     indices = np.array(indices).T
     path = np.zeros_like(costSurfaceArray)
     path[indices[0], indices[1]] = 1
@@ -86,31 +86,8 @@ def main():
     # make sure the output folder exists
     safe_makedirs(args.output_dir)
 
-    # # Initiate the log file
-    # log = Logger('VBET')
-    # log.setup(logPath=os.path.join(args.output_dir, 'vbet.log'), verbose=args.verbose)
-    # log.title('Riverscapes VBET For HUC: {}'.format(args.huc))
-
-    # meta = parse_metadata(args.meta)
-    # inputs = parse_metadata(args.inputs)
-
-    startCoord = (-111.3266943, 42.5173159)  # (-111.164193, 42.196725)  # B(-111.2451156, 42.5733553)  # D (-111.5690129, 42.4394230)  # E(-111.61025326, 42.53765660)  #   #   # tuple(args.start_coord.strip("").split(','))
-    endCoord = (-111.33529886, 42.49100646)  # (-111.6935797, 42.6441719)  # B(-111.3970893, 42.4684978)  # D (-111.5094779, 42.6012843)  # E(-111.57356738, 42.53703112)  #   #   # tuple(args.end_coord.strip("").split(','))
-    # try:
-    #     if args.debug is True:
-    #         from rscommons.debug import ThreadRun
-    #         memfile = os.path.join(args.output_dir, 'vbet_mem.log')
-    #         retcode, max_obj = ThreadRun(vbet, memfile, args.huc, args.scenario_code, inputs, args.vaa_table, args.output_dir, reach_codes, meta)
-    #         log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
-
-    #     else:
     out_path = os.path.join(args.output_dir, args.outname)
-    least_cost_path(args.cost_surface, out_path, startCoord, endCoord)
-
-    # except Exception as e:
-    #     log.error(e)
-    #     traceback.print_exc(file=sys.stdout)
-    #     sys.exit(1)
+    least_cost_path(args.cost_surface, out_path, args.startCoord, args.endCoord)
 
     sys.exit(0)
 

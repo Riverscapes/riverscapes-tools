@@ -1,44 +1,45 @@
-# Utilities to support OGR geometry operations.
-#
-# Usage:    Tools should only use geometry objects.
-#
-# Author:   Kelly Whitehead
-#
-# Date: August 26 2022
+""" Name:       Geometry Operations
+
+    Purpose:    Utilities to support OGR geometry operations.
+    Usage:      Tools should only use geometry objects.
+    Author:     Kelly Whitehead
+    Date:       August 26 2022
+"""
 
 from collections import Counter
 
 from osgeo import ogr
 
 
-def reduce_precision(geom_multiline, rounding_precision=13):
+def reduce_precision(geom_multiline: ogr.Geometry, rounding_precision: int = 13) -> ogr.Geometry:
     """ reduce the precision of vertex coordinates in line features
 
     Args:
-        geom_multiline (_type_): _description_
-        rounding_precision (int, optional): _description_. Defaults to 14.
+        geom_multiline (ogr.Geometry): linestring or multilinestring to reduce precision
+        rounding_precision (int, optional): number of decimals to round coodinates. Defaults to 14.
 
     Returns:
-        _type_: _description_
+        ogr.Geometry: geometry with reduced precision
     """
-    geom = ogr.Geometry(ogr.wkbMultiLineString)
+
+    geom_out = ogr.Geometry(ogr.wkbMultiLineString)
     for i in range(0, geom_multiline.GetGeometryCount()):
         out_line = ogr.Geometry(ogr.wkbLineString)
-        g = geom_multiline.GetGeometryRef(i)
-        for i2 in range(0, g.GetPointCount()):
-            pt = g.GetPoint(i2)
-            out_line.AddPoint(round(pt[0], rounding_precision), round(pt[1], rounding_precision))
+        geom_2 = geom_multiline.GetGeometryRef(i)
+        for i_2 in range(0, geom_2.GetPointCount()):
+            pnt = geom_2.GetPoint(i_2)
+            out_line.AddPoint(round(pnt[0], rounding_precision), round(pnt[1], rounding_precision))
         clean_line = out_line.MakeValid()
         if clean_line.GetGeometryName() == 'LINESTRING':
-            geom.AddGeometry(clean_line)
+            geom_out.AddGeometry(clean_line)
 
-    geom.FlattenTo2D()
-    out_geom = geom.MakeValid()
+    geom_out.FlattenTo2D()
+    geom_out = geom_out.MakeValid()
 
-    return out_geom
+    return geom_out
 
 
-def get_endpoints(geom):
+def get_endpoints(geom) -> list:
     """return a list of endpoints for a linestring or multilinestring
 
     Args:
@@ -53,8 +54,8 @@ def get_endpoints(geom):
     for geom in geoms:
         if geom.GetPointCount() == 0:
             continue
-        for pt in [geom.GetPoint(0), geom.GetPoint(geom.GetPointCount() - 1)]:
-            coords.append(pt)
+        for pnt in [geom.GetPoint(0), geom.GetPoint(geom.GetPointCount() - 1)]:
+            coords.append(pnt)
     counts = Counter(coords)
     endpoints = [pt for pt, count in counts.items() if count == 1]
 

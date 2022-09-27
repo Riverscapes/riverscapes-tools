@@ -1,16 +1,19 @@
-#
+""" Raster 2 Line
+
+    Purpose:  Generate a line geometry from raster
+    Author:   Kelly Whitehead
+    Date:     Mar 28, 2022
+    Source:   https://pcjericks.github.io/py-gdalogr-cookbook/raster_layers.html#raster-to-vector-line
+"""
+
 import os
-import sys
-import argparse
 import itertools
-from math import sqrt, ceil
+from math import sqrt
 
 import ogr
 import gdal
 import numpy as np
 
-from rscommons import dotenv
-from rscommons.util import safe_makedirs
 from vbet. vbet_raster_ops import raster2array
 
 
@@ -92,54 +95,3 @@ def raster2line_geom(rasterfn, pixelValue):
     array = raster2array(rasterfn)
     geom = array2geom(array, rasterfn, pixelValue)
     return geom
-
-
-def main():
-
-    parser = argparse.ArgumentParser(
-        description='Riverscapes VBET Tool',
-        # epilog="This is an epilog"
-    )
-    # CostSurfacefn = 'CostSurface.tif'
-    # startCoord = (345387.871, 1267855.277)
-    # stopCoord = (345479.425, 1267799.626)
-    # outputPathfn = 'Path.tif'
-
-    parser.add_argument('cost_surface', help='cost surface', type=str)
-    parser.add_argument('start_coord', help='from coordinate', type=str)
-    parser.add_argument('end_coord', help='to coordinate', type=str)
-    parser.add_argument('outname', type=str)
-    parser.add_argument('output_dir', help='Folder where output VBET project will be created', type=str)
-    parser.add_argument('--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
-    parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
-    parser.add_argument('--debug', help='Add debug tools for tracing things like memory usage at a performance cost.', action='store_true', default=False)
-
-    args = dotenv.parse_args_env(parser)
-
-    # make sure the output folder exists
-    safe_makedirs(args.output_dir)
-
-    # try:
-    #     if args.debug is True:
-    #         from rscommons.debug import ThreadRun
-    #         memfile = os.path.join(args.output_dir, 'vbet_mem.log')
-    #         retcode, max_obj = ThreadRun(vbet, memfile, args.huc, args.scenario_code, inputs, args.vaa_table, args.output_dir, reach_codes, meta)
-    #         log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
-
-    #     else:
-    out_path = os.path.join(args.output_dir, args.outname)
-    rasterfn = 'test.tif'
-    outSHPfn = 'test.shp'
-    pixelValue = 0
-    raster2line(rasterfn, outSHPfn, pixelValue)
-
-    # except Exception as e:
-    #     log.error(e)
-    #     traceback.print_exc(file=sys.stdout)
-    #     sys.exit(1)
-
-    sys.exit(0)
-
-
-if __name__ == "__main__":
-    main()

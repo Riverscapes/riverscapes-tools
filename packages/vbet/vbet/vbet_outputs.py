@@ -1,21 +1,28 @@
+""" VBET Output Functions
+
+    Purpose:  Tools to support VBET vbet outputs
+    Author:   North Arrow Research
+    Date:     August 2022
+"""
+
 from uuid import uuid4
 from osgeo import ogr
 import rasterio
 import numpy as np
 
-from rscommons import ProgressBar, Logger, GeopackageLayer, VectorBase, TempRaster, TempGeopackage, get_shp_or_gpkg
-from rscommons.vector_ops import get_num_pts, get_num_rings, remove_holes
-from rscommons.classes.vector_base import get_utm_zone_epsg
+from rscommons import ProgressBar, Logger, GeopackageLayer, TempGeopackage, get_shp_or_gpkg
 from vbet.__version__ import __version__
 
+Path = str
 
-def threshold(evidence_raster_path: str, thr_val: float, thresh_raster_path: str):
+
+def threshold(evidence_raster_path: Path, thr_val: float, thresh_raster_path: Path):
     """Threshold a raster to greater than or equal to a threshold value
 
     Args:
-        evidence_raster_path (str): [description]
-        thr_val (float): [description]
-        thresh_raster_path (str): [description]
+        evidence_raster_path (Path): input evidience raster
+        thr_val (float): value to threshold
+        thresh_raster_path (Path): output threshold raster
     """
     log = Logger('threshold')
     with rasterio.open(evidence_raster_path) as fval_src:
@@ -29,7 +36,7 @@ def threshold(evidence_raster_path: str, thr_val: float, thresh_raster_path: str
         with rasterio.open(thresh_raster_path, "w", **out_meta) as dest:
             progbar = ProgressBar(len(list(fval_src.block_windows(1))), 50, "Thresholding at {}".format(thr_val))
             counter = 0
-            for ji, window in fval_src.block_windows(1):
+            for _ji, window in fval_src.block_windows(1):
                 progbar.update(counter)
                 counter += 1
                 fval_data = fval_src.read(1, window=window, masked=True)
@@ -59,7 +66,7 @@ def sanitize(name: str, in_path: str, out_path: str, buff_dist: float, select_fe
             TempGeopackage('sanitize_temp') as tempgpkg, \
             GeopackageLayer(in_path) as in_lyr:
 
-        #out_lyr.create_layer(ogr.wkbPolygon, spatial_ref=in_lyr.spatial_ref)
+        # out_lyr.create_layer(ogr.wkbPolygon, spatial_ref=in_lyr.spatial_ref)
         out_lyr.create_layer_from_ref(in_lyr)
         out_layer_defn = out_lyr.ogr_layer.GetLayerDefn()
         field_count = out_layer_defn.GetFieldCount()
@@ -163,7 +170,11 @@ def sanitize(name: str, in_path: str, out_path: str, buff_dist: float, select_fe
         log.info('Writing to disk for layer {}'.format(name))
 
 
-def vbet_merge(in_layer, out_layer, level_path=None):
+def vbet_merge(in_layer: Path, out_layer: Path, level_path: str = None) -> ogr.Geometry:
+    """ clip and merge new vbet layer with exisiting output vbet layer
+
+        returns clipped geometry
+    """
 
     geom = None
 

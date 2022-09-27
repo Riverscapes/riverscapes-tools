@@ -1,23 +1,34 @@
+""" VBET Raster Operations
+
+    Purpose:  Tools to support VBET raster operations
+    Author:   North Arrow Research
+    Date:     August 2022
+"""
+
 import os
 import shutil
 
 from osgeo import ogr, gdal, gdal_array, osr
 import rasterio
-from rasterio.windows import bounds, from_bounds
+# from rasterio.windows import bounds, from_bounds
 from rasterio.vrt import WarpedVRT
 import numpy as np
 
 from rscommons import ProgressBar, Logger, VectorBase, Timer, TempRaster
 
+Path = str
 
-def rasterize(in_lyr_path, out_raster_path, template_path, all_touched=False):
-    """Rasterizing an input 
+
+def rasterize(in_lyr_path: Path, out_raster_path: Path, template_path: Path, all_touched: bool = False):
+    """Rasterize an input layer
 
     Args:
-        in_lyr_path ([type]): [description]
-        out_raster_ ([type]): [description]
-        template_path ([type]): [description]
+        in_lyr_path (Path): vector geometry path
+        out_raster_path (Path): output raster path
+        template_path (Path): path of existing raster for configuration and extent template
+        all_touched (bool, optional): geos parameter of all touched (pixel if any part of geom touches cell). Defaults to False.
     """
+
     log = Logger('VBETRasterize')
     ds_path, lyr_path = VectorBase.path_sorter(in_lyr_path)
 
@@ -54,13 +65,13 @@ def rasterize(in_lyr_path, out_raster_path, template_path, all_touched=False):
         mask_rasters_nodata(tempfile.filepath, template_path, out_raster_path)
 
 
-def mask_rasters_nodata(in_raster_path, nodata_raster_path, out_raster_path):
+def mask_rasters_nodata(in_raster_path: Path, nodata_raster_path: Path, out_raster_path: Path):
     """Apply the nodata values of one raster to another of identical size
 
     Args:
-        in_raster_path ([type]): [description]
-        nodata_raster_path ([type]): [description]
-        out_raster_path ([type]): [description]
+        in_raster_path (Path): input raster with values
+        nodata_raster_path (Path): raster with mask for no data values
+        out_raster_path (Path): output raster
     """
     log = Logger('mask_rasters_nodata')
 
@@ -74,7 +85,7 @@ def mask_rasters_nodata(in_raster_path, nodata_raster_path, out_raster_path):
             progbar = ProgressBar(len(list(data_src.block_windows(1))), 50, "Applying nodata mask")
             counter = 0
             # Again, these rasters should be orthogonal so their windows should also line up
-            for ji, window in data_src.block_windows(1):
+            for _ji, window in data_src.block_windows(1):
                 progbar.update(counter)
                 counter += 1
                 # These rasterizations don't begin life with a mask.
@@ -88,14 +99,15 @@ def mask_rasters_nodata(in_raster_path, nodata_raster_path, out_raster_path):
             log.info('Complete')
 
 
-# Compute Proximity for channel rasters
-def proximity_raster(src_raster_path: str, out_raster_path: str, dist_units="PIXEL", preserve_nodata=True, dist_factor=None):
+def proximity_raster(src_raster_path: Path, out_raster_path: Path, dist_units: str = "PIXEL", preserve_nodata: bool = True, dist_factor=None):
     """Create a proximity raster
 
     Args:
-        src_raster_path ([type]): [description]
-        out_raster_path ([type]): [description]
-        dist_units (str, optional): set to "GEO" for distance in length . Defaults to "PIXEL".
+        src_raster_path ([type]): path of raster with pixels to use as proximity basis
+        out_raster_path ([type]): path of output raster
+        dist_units (str, optional): set to "GEO" for distance in length . Defaults to "PIXEL"
+        preserve_nodata (bool, optional): Keep no data extent? Defaults to True
+        dist_factor (float, optional): divide proximity by factor. Defaults to None
     """
     log = Logger('proximity_raster')
     tmr = Timer()
@@ -166,13 +178,13 @@ def proximity_raster(src_raster_path: str, out_raster_path: str, dist_units="PIX
         log.info('completed in {}'.format(tmr.toString()))
 
 
-def translate(vrtpath_in: str, raster_out_path: str, band: int):
-    """GDAL translate Operation from VRT 
+def translate(vrtpath_in: Path, raster_out_path: Path, band: int):
+    """GDAL translate Operation from VRT
 
     Args:
-        vrtpath_in ([type]): [description]
-        raster_out_path ([type]): [description]
-        band ([int]): raster band
+        vrtpath_in (Path): input vrt path
+        raster_out_path (Path): output raster path
+        band (int): raster band
     """
     log = Logger('translate')
     tmr = Timer()
@@ -187,13 +199,12 @@ def translate(vrtpath_in: str, raster_out_path: str, band: int):
     log.info('completed in {}'.format(tmr.toString()))
 
 
-def inverse_mask(nodata_raster_path, out_raster_path):
-    """Apply the nodata values of one raster to another of identical size
+def inverse_mask(nodata_raster_path: Path, out_raster_path: Path):
+    """ apply np logical_not on a raster
 
     Args:
-        in_raster_path ([type]): [description]
-        nodata_raster_path ([type]): [description]
-        out_raster_path ([type]): [description]
+        nodata_raster_path (Path): input raster
+        out_raster_path (Path): output raster
     """
     log = Logger('mask_rasters_nodata')
 
@@ -208,7 +219,7 @@ def inverse_mask(nodata_raster_path, out_raster_path):
             progbar = ProgressBar(len(list(nd_src.block_windows(1))), 50, "Applying inverse nodata mask")
             counter = 0
             # Again, these rasters should be orthogonal so their windows should also line up
-            for ji, window in nd_src.block_windows(1):
+            for _ji, window in nd_src.block_windows(1):
                 progbar.update(counter)
                 counter += 1
                 # These rasterizations don't begin life with a mask.
@@ -222,13 +233,13 @@ def inverse_mask(nodata_raster_path, out_raster_path):
             log.info('Complete')
 
 
-def raster_clean(in_raster_path: str, out_raster_path: str, buffer_pixels=1):
+def raster_clean(in_raster_path: Path, out_raster_path: Path, buffer_pixels: int = 1):
     """This method grows and shrinks the raster by n pixels
 
     Args:
-        in_raster_path (str): [description]
-        out_raster_path (str): [description]
-        buffer_pixels (int, optional): [description]. Defaults to 1.
+        in_raster_path (Path): input raster
+        out_raster_path (Path): output raster
+        buffer_pixels (int, optional): how many pixels to grow and shrink. Defaults to 1.
     """
 
     log = Logger('raster_clean')
@@ -299,13 +310,14 @@ def raster_clean(in_raster_path: str, out_raster_path: str, buffer_pixels=1):
         log.info('Cleaning finished')
 
 
-def rasterize_attribute(in_lyr_path, out_raster_path, template_path, attribute_field):
-    """Rasterizing an input 
+def rasterize_attribute(in_lyr_path: Path, out_raster_path: Path, template_path: Path, attribute_field: str):
+    """Rasterize an vector by attribue field
 
     Args:
-        in_lyr_path ([type]): [description]
-        out_raster_ ([type]): [description]
-        template_path ([type]): [description]
+        in_lyr_path (Path): vector file path
+        out_raster_ (Path): output raster path
+        template_path (Path): template raster path
+        attribute_field(str): attribute field to rasterize
     """
     log = Logger('VBETRasterize')
     ds_path, lyr_path = VectorBase.path_sorter(in_lyr_path)
@@ -327,8 +339,8 @@ def rasterize_attribute(in_lyr_path, out_raster_path, template_path, attribute_f
     ext = raster_template.GetGeoTransform()
     raster_template = None
 
-    def poly_progress(progress, _msg, _data):
-        progbar.update(int(progress * 100))
+    # def poly_progress(progress, _msg, _data):
+    #     progbar.update(int(progress * 100))
 
     # Rasterize the features (roads, rail etc) and calculate a raster of Euclidean distance from these features
     progbar.update(0)
@@ -366,14 +378,18 @@ def rasterize_attribute(in_lyr_path, out_raster_path, template_path, attribute_f
         mask_rasters_nodata(tempfile.filepath, template_path, out_raster_path)
 
 
-def raster2array(rasterfn):
+def raster2array(rasterfn: Path) -> np.array:
+    """Open raster as np array"""
+
     raster = gdal.Open(rasterfn)
     band = raster.GetRasterBand(1)
     array = band.ReadAsArray()
     return array
 
 
-def array2raster(newRasterfn, rasterfn, array, data_type=gdal.GDT_Byte, no_data=None):
+def array2raster(newRasterfn: Path, rasterfn: Path, array: np.array, data_type: int = gdal.GDT_Byte, no_data=None):
+    """write array to new raster file"""
+
     raster = gdal.Open(rasterfn)
     geotransform = raster.GetGeoTransform()
     originX = geotransform[0]
@@ -396,7 +412,9 @@ def array2raster(newRasterfn, rasterfn, array, data_type=gdal.GDT_Byte, no_data=
     outband.FlushCache()
 
 
-def new_raster(newRasterfn, rasterfn, data_type=gdal.GDT_Byte):
+def new_raster(newRasterfn: Path, rasterfn: Path, data_type: int = gdal.GDT_Byte):
+    """create and return new empty raster dataset and raster band """
+
     raster = gdal.Open(rasterfn)
     geotransform = raster.GetGeoTransform()
     originX = geotransform[0]
@@ -414,18 +432,26 @@ def new_raster(newRasterfn, rasterfn, data_type=gdal.GDT_Byte):
     return outRaster, outband
 
 
-def raster_merge(in_raster, out_raster, dem, valley_bottom_raster, temp_folder):
+def raster_merge(in_raster: Path, out_raster: Path, template_raster: Path, logic_raster: Path, temp_folder: Path):
+    """insert pixels from one raster to new or existing raster based on binary raster
 
+    Args:
+        in_raster (Path): input raster with potential values to include
+        out_raster (Path): new or existing raster
+        template_raster (Path): existing template raster
+        logic_raster (Path): binary raster where true results in value of input raster written to output raster
+        temp_folder (Path): temporary folder for processing
+    """
     log = Logger('Raster Merge')
-    with rasterio.open(dem) as rio_dem:
+    with rasterio.open(template_raster) as rio_template:
         vrt_options = {
             # 'resampling': Resampling.cubic,
-            'crs': rio_dem.crs,
-            'transform': rio_dem.transform,
-            'height': rio_dem.height,
-            'width': rio_dem.width,
+            'crs': rio_template.crs,
+            'transform': rio_template.transform,
+            'height': rio_template.height,
+            'width': rio_template.width,
         }
-        out_meta = rio_dem.meta
+        out_meta = rio_template.meta
         out_meta['driver'] = 'GTiff'
         out_meta['count'] = 1
         out_meta['compress'] = 'deflate'
@@ -436,19 +462,19 @@ def raster_merge(in_raster, out_raster, dem, valley_bottom_raster, temp_folder):
         with rasterio.open(out_raster) as rio_dest, \
                 rasterio.open(in_raster) as rio_source, \
                 rasterio.open(out_temp, 'w', **out_meta) as rio_temp, \
-                rasterio.open(valley_bottom_raster) as rio_vbet:
+                rasterio.open(logic_raster) as rio_logic:
 
             window_error = False
             with WarpedVRT(rio_source, **vrt_options) as vrt, \
-                    WarpedVRT(rio_vbet, **vrt_options) as vrt_vbet:
+                    WarpedVRT(rio_logic, **vrt_options) as vrt_logic:
                 for _ji, window in rio_dest.block_windows(1):
-                    array_vbet_mask = np.ma.MaskedArray(vrt_vbet.read(1, window=window, masked=True).data)
-                    array_source = np.ma.MaskedArray(vrt.read(1, window=window, masked=True).data, mask=array_vbet_mask.mask)
-                    array_dest = np.ma.MaskedArray(rio_dest.read(1, window=window, masked=True).data, mask=array_vbet_mask.mask)
+                    array_logic_mask = np.ma.MaskedArray(vrt_logic.read(1, window=window, masked=True).data)
+                    array_source = np.ma.MaskedArray(vrt.read(1, window=window, masked=True).data, mask=array_logic_mask.mask)
+                    array_dest = np.ma.MaskedArray(rio_dest.read(1, window=window, masked=True).data, mask=array_logic_mask.mask)
                     if array_source.shape != array_dest.shape:
                         window_error = True
                         continue
-                    array_out = np.choose(array_vbet_mask, [array_dest, array_source])
+                    array_out = np.choose(array_logic_mask, [array_dest, array_source])
                     rio_temp.write(np.ma.filled(np.float32(array_out), out_meta['nodata']), window=window, indexes=1)
         shutil.copyfile(out_temp, out_raster)
 
@@ -457,12 +483,12 @@ def raster_merge(in_raster, out_raster, dem, valley_bottom_raster, temp_folder):
     else:
         with rasterio.open(in_raster) as rio_source, \
                 rasterio.open(out_raster, 'w', **out_meta) as rio_dest, \
-                rasterio.open(valley_bottom_raster) as rio_vbet:
+                rasterio.open(logic_raster) as rio_logic:
 
             with WarpedVRT(rio_source, **vrt_options) as vrt, \
-                    WarpedVRT(rio_vbet, **vrt_options) as vrt_vbet:
+                    WarpedVRT(rio_logic, **vrt_options) as vrt_logic:
                 for _ji, window in vrt.block_windows(1):
-                    array_vbet_mask = np.ma.MaskedArray(vrt_vbet.read(1, window=window, masked=True).data)
-                    array_source = np.ma.MaskedArray(vrt.read(1, window=window, masked=True).data, mask=array_vbet_mask.mask)
-                    array_out = np.choose(array_vbet_mask, [out_meta['nodata'], array_source])
+                    array_logic_mask = np.ma.MaskedArray(vrt_logic.read(1, window=window, masked=True).data)
+                    array_source = np.ma.MaskedArray(vrt.read(1, window=window, masked=True).data, mask=array_logic_mask.mask)
+                    array_out = np.choose(array_logic_mask, [out_meta['nodata'], array_source])
                     rio_dest.write(np.ma.filled(np.float32(array_out), out_meta['nodata']), window=window, indexes=1)

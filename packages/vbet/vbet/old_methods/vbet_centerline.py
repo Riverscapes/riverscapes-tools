@@ -1,6 +1,6 @@
 # Name:     Valley Bottom Centerlines
 #
-# Purpose:  Generate centerlines for valley bottoms
+# Purpose:  Generate centerlines for valley bottoms using vector/voronoi method
 #
 # Author:   Kelly Whitehead, modified from Matt Reimer
 #

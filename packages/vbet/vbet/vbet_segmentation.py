@@ -1,22 +1,26 @@
-"""_summary_
+""" VBET Segmentation
+
+    Purpose:    Functions to generate vbet segmentation points, polygons, and summarize attributes
+    Author:     Kelly Whitehead
+    Date:       August 2022
 """
+
 import os
 import sys
 import argparse
 
 from osgeo import ogr, osr
 from shapely.ops import linemerge, voronoi_diagram
-from shapely.geometry import MultiLineString, Point, MultiPoint
+from shapely.geometry import MultiLineString, MultiPoint
 
 from rscommons import GeopackageLayer, Logger, VectorBase, dotenv
 from rscommons.util import parse_metadata
 from rscommons.classes.vector_base import get_utm_zone_epsg
-from rscommons.vector_ops import geom_validity_fix
 
 Path = str
 
 
-def generate_segmentation_points(line_network, out_points_layer, stream_size_lookup, distance=200):
+def generate_segmentation_points(line_network: Path, out_points_layer: Path, stream_size_lookup: dict, distance: float = 200.0):
     """heavily modified from: https://glenbambrick.com/2017/09/15/osgp-create-points-along-line/
     """
 
@@ -77,11 +81,11 @@ def generate_segmentation_points(line_network, out_points_layer, stream_size_loo
 
                 # add points to the layer
                 # for each point in the list
-                for (pt, out_dist) in list_points:  # enumerate(list_points, 1):
+                for (pnt, out_dist) in list_points:  # enumerate(list_points, 1):
                     # create a point object
-                    pnt = ogr.Geometry(ogr.wkbPoint)
-                    pnt.AddPoint_2D(pt.x, pt.y)
-                    pnt.Transform(transform_back)
+                    geom_pnt = ogr.Geometry(ogr.wkbPoint)
+                    geom_pnt.AddPoint_2D(pnt.x, pnt.y)
+                    geom_pnt.Transform(transform_back)
                     # populate the distance values for each point.
                     # start point
                     # if num == 1:
@@ -95,11 +99,17 @@ def generate_segmentation_points(line_network, out_points_layer, stream_size_loo
                     attributes = {'LevelPathI': level_path,
                                   'seg_distance': out_dist,
                                   'stream_size': stream_size}
-                    out_lyr.create_feature(pnt, attributes=attributes)
+                    out_lyr.create_feature(geom_pnt, attributes=attributes)
 
 
 def split_vbet_polygons(vbet_polygons, segmentation_points, out_split_polygons):
+    """split vbet polygons into segments based on segmentation points
 
+    Args:
+        vbet_polygons (Path): geopackage feature class of vbet polygons to split
+        segmentation_points (Path): geopackage feature class of segmentation points used for splitting
+        out_split_polygons (Path): output geopackage feature class to create
+    """
     log = Logger('Split Polygons using Voronoi')
 
     with GeopackageLayer(out_split_polygons, write=True) as out_lyr, \
@@ -143,8 +153,17 @@ def split_vbet_polygons(vbet_polygons, segmentation_points, out_split_polygons):
                 segment_feat.SetField('seg_distance', seg_distance)
                 out_lyr.ogr_layer.SetFeature(segment_feat)
 
+    log.info('VBET polygon successfully segmented')
 
-def calculate_segmentation_metrics(vbet_segment_polygons, vbet_centerline, dict_layers):
+
+def calculate_segmentation_metrics(vbet_segment_polygons: Path, vbet_centerline: Path, dict_layers):
+    """_summary_
+
+    Args:
+        vbet_segment_polygons (_type_): _description_
+        vbet_centerline (_type_): _description_
+        dict_layers (_type_): _description_
+    """
 
     log = Logger('Segmentation Metrics')
 
@@ -204,7 +223,15 @@ def calculate_segmentation_metrics(vbet_segment_polygons, vbet_centerline, dict_
             vbet_lyr.ogr_layer.SetFeature(vbet_feat)
 
 
-def clean_linestring(in_geom):
+def clean_linestring(in_geom: ogr.Geometry) -> MultiLineString:
+    """return a merged multilinestring from a linestring, multilinestring or geometrycollection
+
+    Args:
+        in_geom (ogr.Geometry): linestring, multilinestring or geometrycollection
+
+    Returns:
+        MultiLineString: cleaned multilinestring
+    """
 
     if in_geom.geom_type == 'GeometryCollection':
         geoms = []
@@ -219,7 +246,16 @@ def clean_linestring(in_geom):
     return merged_line
 
 
-def summerize_vbet_metrics(segment_points: Path, segmented_polygons: Path, level_paths: list, distance_lookup: dict, metric_names):
+def summerize_vbet_metrics(segment_points: Path, segmented_polygons: Path, level_paths: list, distance_lookup: dict, metric_names: list):
+    """generate moving window summary of segmented vbet polygons
+
+    Args:
+        segment_points (Path): geopackage feature class of segmentation points to include attributes
+        segmented_polygons (Path): geopackage feature class of segmented vbet polygons
+        level_paths (list): list of NHD level paths
+        distance_lookup (dict): dictionary of distances per stream size
+        metric_names (list): list of metric names to generate summary attributes on
+    """
 
     with GeopackageLayer(segment_points, write=True) as lyr_pts, \
             GeopackageLayer(segmented_polygons) as lyr_polygons:
@@ -259,7 +295,7 @@ def summerize_vbet_metrics(segment_points: Path, segmented_polygons: Path, level
                     feat_seg_pt.SetField(f'{metric}_area_prop', value_porportion)
                     feat_seg_pt.SetField(f'{metric}_area_length', value_per_length)
                 integrated_width = window_area / window_length if window_length != 0.0 else 0.0
-                feat_seg_pt.SetField(f'integrated_width', integrated_width)
+                feat_seg_pt.SetField('integrated_width', integrated_width)
 
                 lyr_pts.ogr_layer.SetFeature(feat_seg_pt)
 
@@ -293,6 +329,8 @@ def vbet_segmentation(in_centerlines: str, vbet_polygons: str, metric_layers: di
 
 
 def main():
+    """Test vbet segmentation
+    """
     parser = argparse.ArgumentParser(
         description='Riverscapes VBET Centerline Tool',
         # epilog="This is an epilog"

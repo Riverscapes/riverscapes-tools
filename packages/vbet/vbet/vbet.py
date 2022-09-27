@@ -1,12 +1,13 @@
-# Name:     Vbet Centerlines (raster)
-#
-# Purpose:  Find the vbet centerlines per level path via rasters
-#
-#
-# Author:   Kelly Whitehead
-#
-# Date:     Apr 11, 2022
-# -------------------------------------------------------------------------------
+""" Name:     Valley Bottom Extraction Tool (VBET)
+
+    Purpose:  Generate Valley Bottom Polygons with centerline per level path. This
+              version uses a raster-based approach for centerlines. Segmented
+              polygons from points along the centerline are also generated.
+
+    Author:   Kelly Whitehead
+
+    Date:     Apr 11, 2022
+"""
 
 import os
 import sys
@@ -27,7 +28,7 @@ from rscommons.vector_ops import copy_feature_class, polygonize, difference, col
 from rscommons.geometry_ops import get_endpoints
 from rscommons.util import safe_makedirs, parse_metadata, pretty_duration, safe_remove_dir
 from rscommons.hand import run_subprocess
-from rscommons.vbet_network import copy_vaa_attributes, join_attributes, create_stream_size_zones, get_channel_level_path, get_distance_lookup, get_levelpath_catchment, vbet_network
+from rscommons.vbet_network import copy_vaa_attributes, join_attributes, create_stream_size_zones, get_channel_level_path, get_distance_lookup, vbet_network
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.raster_warp import raster_warp
 
@@ -124,7 +125,6 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         clip_mask = clip_mask.MakeValid()
 
     vbet_network(in_line_network, None, line_network_features, fcodes=reach_codes, hard_clip_shape=clip_mask)
-    # copy_feature_class(in_line_network, line_network_features)
     catchment_features = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['CATCHMENTS'].rel_path)
     copy_feature_class(in_catchments, catchment_features)
     channel_area = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['CHANNEL_AREA_POLYGONS'].rel_path)
@@ -188,8 +188,6 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         transform_zone_rs = RSLayer(f'Transform Zones for {zone}', f'TRANSFORM_ZONE_{zone.upper()}', 'Raster', raster_name)
         project.add_project_raster(proj_nodes['Intermediates'], transform_zone_rs)
 
-    # run for orphan waterbodies??
-
     # Initialize Outputs
     output_centerlines = os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['VBET_CENTERLINES'].rel_path)
     output_vbet = os.path.join(vbet_gpkg, LayerTypes["VBET_OUTPUTS"].sub_layers['VBET_FULL'].rel_path)
@@ -220,29 +218,25 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
     project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
 
+    # Generate max extent based on dem size
     with rasterio.open(dem) as raster:
-        t = raster.transform
         raster_bounds = raster.bounds
-
     bbox = box(*raster_bounds)
     raster_envelope_geom = VectorBase.shapely2ogr(bbox)
     vbet_clip_buffer_size = VectorBase.rough_convert_metres_to_raster_units(dem, 0.25)
-    # channel_buffer_size = VectorBase.rough_convert_metres_to_vector_units(dem, 200)
 
-    # current_vbet = ogr.Geometry(ogr.wkbMultiPolygon)
-    # iterate for each level path
+    # Iterate VBET generateion for each level path
     for level_path in level_paths_to_run:
         log.info(f'Processing Level Path: {level_path}')
         temp_folder = os.path.join(project_folder, 'temp', f'levelpath_{level_path}')
         safe_makedirs(temp_folder)
 
+        # Gather the channel area polygon for the level path
         sql = f"LevelPathI = {level_path}" if level_path is not None else "LevelPathI is NULL"
-        # Select channel areas that intersect flow lines
-        # catchment_polygon = get_levelpath_catchment(level_path, catchments)
-
         level_path_polygons = os.path.join(temp_folder, 'channel_polygons.gpkg', f'level_path_{level_path}')
-        copy_feature_class(channel_area, level_path_polygons, attribute_filter=sql)  # clip_shape=catchment_polygon)  #
+        copy_feature_class(channel_area, level_path_polygons, attribute_filter=sql)
 
+        # Generate the buffered channel area extent to minimize raster processing area
         with GeopackageLayer(level_path_polygons) as lyr_polygons:
             if lyr_polygons.ogr_layer.GetFeatureCount() == 0:
                 log.warning(f"No channel area features found for Level Path {level_path}.")
@@ -256,22 +250,10 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             if check_empty is True:
                 log.warning(f"Empty channel area geometry found for Level Path {level_path}.")
                 continue
-
             channel_bbox = lyr_polygons.ogr_layer.GetExtent()
             channel_buffer_size = lyr_polygons.rough_convert_metres_to_vector_units(400)
 
-        # channel_polygons = collect_feature_class(level_path_polygons)
-        # channel_polygons = channel_polygons.MakeValid()
-
-        # if current_vbet.IsEmpty() is False:
-        #     current_vbet = current_vbet.MakeValid()
-        #     if current_vbet.Contains(channel_polygons):
-        #         continue
-
-        # channel_polygons_buffer = channel_polygons.Buffer(channel_buffer_size)
-        # channel_polygons = None
-
-        (minX, maxX, minY, maxY) = channel_bbox  # channel_polygons_buffer.GetEnvelope()
+        (minX, maxX, minY, maxY) = channel_bbox
         # Create ring
         ring = ogr.Geometry(ogr.wkbLinearRing)
         ring.AddPoint(minX, minY)
@@ -305,7 +287,6 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         rasterize(level_path_polygons, rasterized_channel, local_pitfill_dem, all_touched=True)
         in_rasters['Channel'] = rasterized_channel
 
-        # log.info("Generating HAND")
         hand_raster = os.path.join(temp_folder, f'local_hand_{level_path}.tif')
         dinfdistdown_status = run_subprocess(project_folder, ["mpiexec", "-n", NCORES, "dinfdistdown", "-ang", local_dinfflowdir_ang, "-fel", local_pitfill_dem, "-src", rasterized_channel, "-dd", hand_raster, "-m", "ave", "v"])
         if dinfdistdown_status != 0 or not os.path.isfile(hand_raster):
@@ -355,12 +336,8 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         # Add to existing feature class
         log.info('Add VBET polygon to output')
         polygon = vbet_merge(vbet_polygon, output_vbet, level_path=level_path)
-        # if polygon is not None:
-        #     for geom in polygon:
-        #         current_vbet.AddGeometry(geom)
-        # else:
-        #     log.warning(f'vbet polygon for level path {level_path} may be empty')
 
+        # Generate the Active Floodplain Polygon
         active_valley_bottom_raster = os.path.join(temp_folder, f'active_valley_bottom_{level_path}.tif')
         generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, active_valley_bottom_raster, temp_folder, thresh_value=0.90)
         active_vbet_polygon = os.path.join(temp_folder, f'active_valley_bottom_{level_path}.shp')
@@ -423,7 +400,6 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     output_floodplain = os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['FLOODPLAIN'].rel_path)
     output_active_fp = os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['ACTIVE_FLOODPLAIN'].rel_path)
     output_inactive_fp = os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['INACTIVE_FLOODPLAIN'].rel_path)
-
     difference(channel_area, output_vbet, output_floodplain)
     difference(channel_area, output_vbet_ia, output_active_fp)
     difference(output_vbet_ia, output_vbet, output_inactive_fp)
@@ -449,8 +425,6 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
     if debug is False:
         safe_remove_dir(os.path.join(project_folder, 'temp'))
-
-    # TODO: CREATE INDEX ix_segment_vbet_polygons ON segmented_vbet_polygons(SegDistance);
 
     # Now add our Geopackages to the project XML
     project.add_project_raster(proj_nodes['Outputs'], LayerTypes['COMPOSITE_VBET_EVIDENCE'])

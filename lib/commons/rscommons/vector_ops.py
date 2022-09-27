@@ -13,14 +13,18 @@ from collections import Counter
 from copy import copy
 from typing import List
 from functools import reduce
+
 from osgeo import ogr, gdal, osr
 from shapely.ops import unary_union
 from shapely.geometry.base import BaseGeometry
 from shapely.geometry import mapping, Point, MultiPoint, LineString, MultiLineString, GeometryCollection, Polygon, MultiPolygon
+
 from rscommons import Logger, ProgressBar, get_shp_or_gpkg, Timer, VectorBase, GeopackageLayer
 from rscommons.util import sizeof_fmt, get_obj_size
 from rscommons.geometry_ops import reduce_precision
 from rscommons.classes.vector_base import VectorBaseException
+
+Path = str
 
 
 def print_geom_size(logger: Logger, geom_obj: BaseGeometry):
@@ -907,7 +911,15 @@ def intersection(layer_path1, layer_path2, out_layer_path, epsg=None, attribute_
                 out_layer.ogr_layer.CreateFeature(out_feat)
 
 
-def difference(remove_layer, target_layer, out_layer_path, epsg=None):
+def difference(remove_layer: Path, target_layer: Path, out_layer_path: Path, epsg: int = None):
+    """subract remove layer from target layer and save in output layer
+
+    Args:
+        remove_layer (Path): layer to subtract
+        target_layer (Path): layer to subract from
+        out_layer_path (Path): output layer
+        epsg (int, optional): epsg code for output. Defaults to None.
+    """
 
     log = Logger('feature_class_difference')
     with get_shp_or_gpkg(out_layer_path, write=True) as lyr_output, \
@@ -939,7 +951,7 @@ def difference(remove_layer, target_layer, out_layer_path, epsg=None):
                 try:
                     geom_orig = geom.Clone()
                     geom = geom.Difference(geom_diff)
-                except:
+                except Exception:
                     log.error(str(IOError))
                     geom = geom_orig
                     continue
@@ -983,7 +995,12 @@ def select_features_by_intersect(target_layer, intersect_layer, out_layer_path, 
             out_layer.ogr_layer.CreateFeature(out_feat)
 
 
-def geom_validity_fix(geom_in):
+def geom_validity_fix(geom_in: ogr.Geometry) -> ogr.Geometry:
+    """returns a repaired geometry
+
+    this can likely be replaced by using Geometry.MakeValid() instead
+    """
+
     # copied from vbet_outputs
     buff_dist = 0.0000001
     f_geom = geom_in.Clone()
@@ -1000,7 +1017,18 @@ def geom_validity_fix(geom_in):
     return f_geom
 
 
-def get_endpoints(line_network, field, attribute, clip_shape=None):
+def get_endpoints(line_network: str, field: str, attribute: str, clip_shape: ogr.Geometry = None) -> list:
+    """return the endpoints of a line as filtered by an attribute of a field
+
+    Args:
+        line_network (str): vector feature class path of line network
+        field (str): field to filter
+        attribute (str): attribute to filter
+        clip_shape (ogr.Geometry, optional): intersect line network with a clipping polygon. Defaults to None.
+
+    Returns:
+        list: list of endpoint coordinates, potentially more or less than 2
+    """
 
     log = Logger('Vector Get Endpoints')
     with get_shp_or_gpkg(line_network) as lyr:
@@ -1026,7 +1054,17 @@ def get_endpoints(line_network, field, attribute, clip_shape=None):
         return output
 
 
-def collect_linestring(in_lyr, attribute_filter=None, precision=None):
+def collect_linestring(in_lyr: Path, attribute_filter: str = None, precision: int = None) -> ogr.Geometry:
+    """gather and attempt to merge lines into a single linestring
+
+    Args:
+        in_lyr (Path): path to input line layer
+        attribute_filter (str, optional): attribute filter to apply. Defaults to None.
+        precision (int, optional): coordinate decimal precision. Defaults to None.
+
+    Returns:
+        ogr.Geometry: merged linestring or multilinestring
+    """
 
     with GeopackageLayer(in_lyr) as lyr:
         geom_line = ogr.Geometry(ogr.wkbMultiLineString)

@@ -36,11 +36,11 @@ from rscommons.vbet_network import vbet_network, create_stream_size_zones, copy_
 from rscommons.classes.raster import get_data_polygon
 
 from vbet.vbet_database import load_configuration, build_vbet_database
-from vbet.vbet_metrics import build_vbet_metric_tables
+from vbet_metrics import build_vbet_metric_tables
 from vbet.vbet_report import VBETReport
 from vbet.vbet_raster_ops import rasterize, raster_clean, rasterize_attribute
 from vbet.vbet_outputs import threshold, sanitize
-from vbet.vbet_centerline import vbet_centerline
+from vbet_centerline import vbet_centerline
 from vbet.__version__ import __version__
 
 Path = str
