@@ -581,7 +581,7 @@ def sql_name(name: str) -> str:
 
 def sql_round(datatype: str, metric_id) -> str:
     """return round function"""
-    return f"{'ROUND(' if datatype == 'REAL' else ''}SUM(M.metric_value) FILTER (WHERE M.metric_id == {metric_id}){', 2)' if datatype == 'REAL' else ''}"
+    return f"{'ROUND(' if datatype == 'REAL' else ''}SUM(M.metric_value) FILTER (WHERE M.metric_id == {metric_id}){', 4)' if datatype == 'REAL' else ''}"
 
 
 def generate_metric_list(database: Path, source_table: str = 'metrics') -> dict:
