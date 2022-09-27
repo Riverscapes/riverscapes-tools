@@ -28,7 +28,7 @@ from rscommons.database import load_lookup_data
 from gnat.gradient import gradient
 from gnat.sinuosity import segment_sinuosity
 from gnat.network_structure import build_network_structure
-from gnat.zonal_attributes import zonal_intersect, summerize_attributes
+from gnat.old_methods.zonal_attributes import zonal_intersect, summerize_attributes
 # from gnat.gnat import GNAT
 
 from gnat.__version__ import __version__

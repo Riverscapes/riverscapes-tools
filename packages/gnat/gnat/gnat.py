@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-# Name:     GNAT
-#
-# Purpose:  Build a GNAT project by downloading and preparing
-#           commonly used data layers for several riverscapes tools.
-#
-# Author:   Kelly Whitehead
-#
-# Date:     29 Jul 2022
-# -------------------------------------------------------------------------------
+"""
+Name:     GNAT
+
+Purpose:  Build a GNAT project by downloading and preparing
+          commonly used data layers for several riverscapes tools.
+
+Author:   Kelly Whitehead
+
+Date:     29 Jul 2022
+"""
 
 import os
 import sys
@@ -27,13 +28,12 @@ from shapely.geometry import Point
 
 from rscommons import GeopackageLayer, dotenv, Logger, initGDALOGRErrors, ModelConfig, RSLayer, RSMeta, RSMetaTypes, RSProject, VectorBase, ProgressBar
 from rscommons.classes.vector_base import get_utm_zone_epsg
-from rscommons.util import safe_makedirs, safe_remove_dir, parse_metadata
+from rscommons.util import safe_makedirs, parse_metadata
 from rscommons.database import load_lookup_data
 from rscommons.geometry_ops import reduce_precision, get_endpoints
 from rscommons.vector_ops import copy_feature_class, collect_linestring
 from rscommons.vbet_network import copy_vaa_attributes, join_attributes
 
-# from gnat.gradient import gradient
 from gnat.__version__ import __version__
 from gnat.gnat_window import GNATLine
 
@@ -78,17 +78,24 @@ stream_size_lookup = {0: 'small', 1: 'medium', 2: 'large'}
 gradient_buffer_lookup = {'small': 25.0, 'medium': 50.0, 'large': 100.0}
 
 
-def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_points: Path, in_vbet_centerline: Path, in_dem: Path, in_ppt: Path, in_roads: Path, in_rail: Path, in_ecoregions: Path, project_folder: Path, level_paths: List = None, meta=None):
-    """_summary_
+def gnat(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments: Path, in_points: Path, in_vbet_centerline: Path, in_dem: Path, in_ppt: Path, in_roads: Path, in_rail: Path, in_ecoregions: Path, project_folder: Path, level_paths: list = None, meta: dict = None):
+    """Generate GNAT project and calculate metrics
 
     Args:
-        huc (int): _description_
-        flowlines (Path): _description_
-        segments (Path): _description_
-        points (Path): _description_
-        dem (Path): _description_
-        out_folder (Path): _description_
-        meta (_type_, optional): _description_. Defaults to None.
+        huc (int): NHD huc
+        in_flowlines (Path): NHD flowlines
+        in_vaa_table (Path): NHD vaa table
+        in_segments (Path): vbet segmented polygons
+        in_points (Path): vbet segmentation points
+        in_vbet_centerline (Path): vbet centerlines
+        in_dem (Path): input dem raster
+        in_ppt (Path): input prism precpitation raster
+        in_roads (Path): NTD roads line network
+        in_rail (Path): NTD railroad line network
+        in_ecoregions (Path): epa ecoregions polygon layer
+        project_folder (Path): output folder for GNAT project
+        level_paths (list, optional): level paths to process. Defaults to None.
+        meta (dict, optional): key-value pairs of metadata. Defaults to None.
     """
 
     log = Logger('GNAT')
@@ -142,9 +149,9 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
         for attribute, sql in [('Diffluence', '"DnDrainCou" > 1'), ('Confluence', '"RtnDiv" > 0')]:
             for feat, *_ in lyr_lines.iterate_features(attribute_filter=sql):
                 geom = feat.GetGeometryRef()
-                pt = geom.GetPoint(0) if attribute == 'Confluence' else geom.GetPoint(geom.GetPointCount() - 1)
+                pnt = geom.GetPoint(0) if attribute == 'Confluence' else geom.GetPoint(geom.GetPointCount() - 1)
                 geom_out = ogr.Geometry(ogr.wkbPoint)
-                geom_out.AddPoint(*pt)
+                geom_out.AddPoint(*pnt)
                 geom_out.FlattenTo2D()
                 feat_out = ogr.Feature(lyr_points_defn)
                 feat_out.SetGeometry(geom_out)
@@ -156,14 +163,14 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
         sql = '"DnDrainCou" <= 1 or "RtnDiv" = 0'
         for feat, *_ in lyr_lines.iterate_features(attribute_filter=sql):
             geom = feat.GetGeometryRef()
-            pt = geom.GetPoint(geom.GetPointCount() - 1)
-            pts.append(pt)
+            pnt = geom.GetPoint(geom.GetPointCount() - 1)
+            pts.append(pnt)
 
         counts = Counter(pts)
         trib_junctions = [pt for pt, count in counts.items() if count > 1]
-        for pt in trib_junctions:
+        for pnt in trib_junctions:
             geom_out = ogr.Geometry(ogr.wkbPoint)
-            geom_out.AddPoint(*pt)
+            geom_out.AddPoint(*pnt)
             geom_out.FlattenTo2D()
             feat_out = ogr.Feature(lyr_points_defn)
             feat_out.SetGeometry(geom_out)
@@ -567,11 +574,18 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table, in_segments: Path, in_point
     return
 
 
-def generate_metric_list(db, source_table='metrics'):
-    """summary
-    db
+def generate_metric_list(database: Path, source_table: str = 'metrics') -> dict:
+    """_summary_
+
+    Args:
+        database (Path): path to gnat database
+        source_table (str, optional): name of table ('metrics' or 'measurements'). Defaults to 'metrics'.
+
+    Returns:
+        dict: metric name: {metric attribute:value}
     """
-    with sqlite3.connect(db) as conn:
+
+    with sqlite3.connect(database) as conn:
         conn.row_factory = sqlite3.Row
         curs = conn.cursor()
         metric_data = curs.execute(f"""SELECT * from {source_table} WHERE is_active = 1""").fetchall()
@@ -579,13 +593,18 @@ def generate_metric_list(db, source_table='metrics'):
     return metrics
 
 
-def generate_window(lyr, window, level_path, segment_dist, buffer=0):
-    """_summary_
+def generate_window(lyr: GeopackageLayer, window: float, level_path: str, segment_dist: float, buffer: float = 0) -> ogr.Geometry:
+    """generate the window polygon geometry
 
     Args:
-        lyr (_type_): _description_
-        window (_type_): _description_
-        dem (_type_): _description_
+        lyr (GeopackageLayer): vbet segments polygon layer
+        window (float): size of window
+        level_path (str): level path of window
+        segment_dist (float): vbet segment point of window (identifed by segment distance)
+        buffer (float, optional): buffer the window polygon. Defaults to 0.
+
+    Returns:
+        ogr.Geometry: polygon of window
     """
 
     min_dist = segment_dist - 0.5 * window
@@ -596,9 +615,9 @@ def generate_window(lyr, window, level_path, segment_dist, buffer=0):
         geom = feat.GetGeometryRef()
         if geom.GetGeometryName() in ['MULTIPOLYGON', 'GEOMETRYCOLLECTION']:
             for i in range(0, geom.GetGeometryCount()):
-                g = geom.GetGeometryRef(i)
-                if g.GetGeometryName() == 'POLYGON':
-                    geom_window_sections.AddGeometry(g)
+                geo = geom.GetGeometryRef(i)
+                if geo.GetGeometryName() == 'POLYGON':
+                    geom_window_sections.AddGeometry(geo)
         else:
             geom_window_sections.AddGeometry(geom)
     geom_window = geom_window_sections.Buffer(buffer)  # ogr.ForceToPolygon(geom_window_sections)
@@ -606,18 +625,21 @@ def generate_window(lyr, window, level_path, segment_dist, buffer=0):
     return geom_window
 
 
-def get_segment_measurements(geom_line, src_raster, geom_window, buffer, transform):
-    """_summary_
+def get_segment_measurements(geom_line: ogr.Geometry, src_raster: rasterio.DatasetReader, geom_window: ogr.Geometry, buffer: float, transform) -> tuple:
+    """ return length of segment and endpoint elevations of a line
 
     Args:
-        geom_line (_type_): _description_
-        raster (_type_): _description_
-        geom_window (_type_): _description_
-        buffer (_type_): _description_
-
+        geom_line (ogr.Geometry): unclipped line geometry
+        raster (rasterio.DatasetReader): open dataset reader of elevation raster
+        geom_window (ogr.Geometry): analysis window for clipping line
+        buffer (float): buffer of endpoints to find min elevation
+        transform(CoordinateTransform): transform used to obtain length
     Returns:
-        _type_: _description_
+        float: stream length
+        float: maximum elevation
+        float: minimum elevation
     """
+
     geom_clipped = geom_window.Intersection(geom_line)
     if geom_clipped.GetGeometryName() == "MULTILINESTRING":
         geom_clipped = reduce_precision(geom_clipped, 6)
@@ -626,8 +648,8 @@ def get_segment_measurements(geom_line, src_raster, geom_window, buffer, transfo
     elevations = [None, None]
     if len(endpoints) == 2:
         elevations = []
-        for pt in endpoints:
-            point = Point(pt)
+        for pnt in endpoints:
+            point = Point(pnt)
             polygon = point.buffer(buffer)  # BRAT uses 100m here for all stream sizes?
             raw_raster, _out_transform = mask(src_raster, [polygon], crop=True)
             mask_raster = np.ma.masked_values(raw_raster, src_raster.nodata)
@@ -640,18 +662,18 @@ def get_segment_measurements(geom_line, src_raster, geom_window, buffer, transfo
     return stream_length, elevations[0], elevations[1]
 
 
-def sum_window_attributes(lyr, window, level_path, segment_dist, fields):
-    """_summary_
+def sum_window_attributes(lyr: GeopackageLayer, window: float, level_path: str, segment_dist: float, fields: list) -> dict:
+    """summerize window attributes from a list
 
     Args:
-        lyr (_type_): _description_
-        window (_type_): _description_
-        level_path (_type_): _description_
-        segment_dist (_type_): _description_
-        fields (_type_): _description_
+        lyr (GeopackageLayer): vbet segmented polygons layer
+        window (float): size of window
+        level_path (str): level path to summeize
+        segment_dist (float): distance of segment
+        fields (list): attribute fields to summerize
 
     Returns:
-        _type_: _description_
+        dict: field name: attribute value
     """
 
     results = {}
@@ -668,17 +690,8 @@ def sum_window_attributes(lyr, window, level_path, segment_dist, fields):
 
 
 def create_project(huc, output_dir: str, meta: List[RSMeta], meta_dict: Dict[str, str]):
-    """_summary_
+    """returns the gnat project, realization and project nodes"""
 
-    Args:
-        huc (_type_): _description_
-        output_dir (str): _description_
-        meta (List[RSMeta]): _description_
-        meta_dict (Dict[str, str]): _description_
-
-    Returns:
-        _type_: _description_
-    """
     project_name = f'GNAT for HUC {huc}'
     project = RSProject(cfg, output_dir)
     project.create(project_name, 'GNAT', meta, meta_dict)
@@ -702,8 +715,7 @@ def create_project(huc, output_dir: str, meta: List[RSMeta], meta_dict: Dict[str
 
 
 def main():
-    """_summary_
-    """
+    """Run GNAT"""
 
     parser = argparse.ArgumentParser(description='GNAT Tool')
 
