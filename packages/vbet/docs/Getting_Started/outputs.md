@@ -1,7 +1,13 @@
 ---
 title: VBET Outputs
-weight: 2
+weight: 1
 ---
+
+Instructions on downloading projects from the [Riverscapes Warehouse](https://data.riverscapes.xyz/#/), including VBET projects can be found [**here**](https://tools.riverscapes.xyz/DownloadingData.html).
+
+Instructions on opening and viewing projects in [RAVE](https://rave.riverscapes.xyz/) can be found [**here**](https://tools.riverscapes.xyz/ViewingProjects.html)
+
+This page describes the outputs within VBET projects.
 
 ## Relative Likelihood of being Valley Bottom
 This output is a raster, where each cell is an average value of the three topographic evidence rasters (Slope, TWI, HAND). The higher the value, the greater the likelihood that the cell is part of the valley bottom. This raster can be thresholded to extract a valley bottom polygon.
