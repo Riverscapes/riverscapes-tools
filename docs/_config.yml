@@ -57,13 +57,13 @@ settings:
     - title: "LTPBR"
       url: http://lowtechpbr.restoration.usu.edu/
     - title: "Riverscapes Consortium"
-      url: https://riverscapes.xyz
+      url: https://riverscapes.net
     - title: "Tools"
-      url: https://riverscapes.xyz/Tools/
+      url: https://riverscapes.net/Tools/
     - title: "Data"
-      url: https://data.riverscapes.xyz
+      url: https://data.riverscapes.net
     - title: "Maps"
-      url: https://maps.riverscapes.xyz
+      url: https://maps.riverscapes.net
 
 
 # Redirecting from apps can be tricky so we use a key-value system

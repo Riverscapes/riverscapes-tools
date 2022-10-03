@@ -23,7 +23,7 @@ BRAT is a command line tool. It does not currently have a user interface. We str
 
 # 4. Desktop GIS
 
-BRAT is a spatially explicit model and you will want desktop GIS software to visualize the data. If you have have ArcGIS then you should also install the [RAVE AddIn](https://rave.riverscapes.xyz/) that will automate viewing BRAT projects and layers. However, you can also use the free and open source [QGIS](https://www.qgis.org/en/site/) and symbolize the map layers yourself.
+BRAT is a spatially explicit model and you will want desktop GIS software to visualize the data. If you have have ArcGIS then you should also install the [RAVE AddIn](https://rave.riverscapes.net/) that will automate viewing BRAT projects and layers. However, you can also use the free and open source [QGIS](https://www.qgis.org/en/site/) and symbolize the map layers yourself.
 
 # 5. Path Variables
 

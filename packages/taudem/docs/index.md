@@ -6,7 +6,7 @@ title: Home
 
 ![taudem5]({{site.baseurl}}/assets/images/logos/taudem5logo.gif)
 
-[Terrain Anlysis Using Digital Elevation Models (TauDEM)](https://hydrology.usu.edu/taudem/taudem5/) is a suite of tools developed by David Tarboton at Utah State University's Hydrology Research Group. The [Riverscapes compliant](https://riverscapes.xyz/Tools/#riverscapes-compliant), [Production Grade](https://riverscapes.xyz/Tools/#riverscapes-compliant) TauDEM, utilizes some of the useful TauDEM algorithms, packaging inputs and outputs into a Riverscapes project that can be accessed as a product of its own, or used as inputs to other Riverscapes tools.
+[Terrain Anlysis Using Digital Elevation Models (TauDEM)](https://hydrology.usu.edu/taudem/taudem5/) is a suite of tools developed by David Tarboton at Utah State University's Hydrology Research Group. The [Riverscapes compliant](https://riverscapes.net/Tools/#riverscapes-compliant), [Production Grade](https://riverscapes.net/Tools/#riverscapes-compliant) TauDEM, utilizes some of the useful TauDEM algorithms, packaging inputs and outputs into a Riverscapes project that can be accessed as a product of its own, or used as inputs to other Riverscapes tools.
 
 Riverscapes TauDEM projects take an input DEM and a channel and produce the following outputs using TauDEM algorithms:
 - Pit-filled DEM

@@ -3,9 +3,9 @@ title: VBET Outputs
 weight: 1
 ---
 
-Instructions on downloading projects from the [Riverscapes Warehouse](https://data.riverscapes.xyz/#/), including VBET projects can be found [**here**](https://tools.riverscapes.xyz/DownloadingData.html).
+Instructions on downloading projects from the [Riverscapes Warehouse](https://data.riverscapes.net/#/), including VBET projects can be found [**here**](https://tools.riverscapes.net/DownloadingData.html).
 
-Instructions on opening and viewing projects in [RAVE](https://rave.riverscapes.xyz/) can be found [**here**](https://tools.riverscapes.xyz/ViewingProjects.html)
+Instructions on opening and viewing projects in [RAVE](https://rave.riverscapes.net/) can be found [**here**](https://tools.riverscapes.net/ViewingProjects.html)
 
 This page describes the outputs within VBET projects.
 

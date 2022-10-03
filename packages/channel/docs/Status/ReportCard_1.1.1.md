@@ -3,23 +3,23 @@ title: Riverscapes Report Card - Channel Area 1.1.1
 weight: 1
 ---
 
-This report card communicates the Channel Area Tool's compliance with the Riverscape Consortium's published [tool standards](https://riverscapes.xyz/Tools).
+This report card communicates the Channel Area Tool's compliance with the Riverscape Consortium's published [tool standards](https://riverscapes.net/Tools).
 
 # Report Card Summary
 
-| Tool | [Channel Area Tool](https://tools.riverscapes.xyz/channel) |
+| Tool | [Channel Area Tool](https://tools.riverscapes.net/channel) |
 | Version | [1.1.1](https://github.com/Riverscapes/riverscapes-tools/tree/master/packages/channel) |
 | Date | 2021-11-22 |
 | Assessment Team | Bailey, Wheaton & Gilbert |
-| Current Assessment | ![production](https://raw.githubusercontent.com/Riverscapes/riverscapes-website/master/assets/images/tools/grade/TRL_5_32p.png) [Production Grade](https://riverscapes.xyz/Tools/#tool-grade) |
+| Current Assessment | ![production](https://raw.githubusercontent.com/Riverscapes/riverscapes-website/master/assets/images/tools/grade/TRL_5_32p.png) [Production Grade](https://riverscapes.net/Tools/#tool-grade) |
 | Target Status | ![production](https://raw.githubusercontent.com/Riverscapes/riverscapes-website/master/assets/images/tools/grade/TRL_6_32p.png) Production Grade |
-| Riverscapes Compliance | ![Compliant](https://riverscapes.xyz/assets/images/rc/RiverscapesCompliant_24.png) Compliant|
-| Assessment Rationale | The tool has been run for a wide geographic area, produces riverscapes projects that are compatible with [RAVE](https://rave.riverscapes.xyz), and outputs are available in the riverscapes warehouse. Documentation is still needed, but the tool qualifies for Production Grade. |
+| Riverscapes Compliance | ![Compliant](https://riverscapes.net/assets/images/rc/RiverscapesCompliant_24.png) Compliant|
+| Assessment Rationale | The tool has been run for a wide geographic area, produces riverscapes projects that are compatible with [RAVE](https://rave.riverscapes.net), and outputs are available in the riverscapes warehouse. Documentation is still needed, but the tool qualifies for Production Grade. |
 
 
 # Report Card Details
 
-This tool's [discrimination](https://riverscapes.xyz/Tools/#model-discrimination) evaluation by the [Riverscapes Consortium](https://riverscapes.xyz) is:
+This tool's [discrimination](https://riverscapes.net/Tools/#model-discrimination) evaluation by the [Riverscapes Consortium](https://riverscapes.net) is:
 
 **Evaluation Key:**
 None or Not Applicable: <i class="fa fa-battery-empty" aria-hidden="true"></i> •
@@ -36,31 +36,31 @@ Fully Developed: <i class="fa fa-battery-full" aria-hidden="true"></i>
 | Vetted in Peer-Reviewed Literature | The equation used to estimate channel width in areas without NHD polygons is from  [Beechie and Imaki (2013)](https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/2013WR013629) | <i class="fa fa-battery-half" aria-hidden="true"></i> | The width equation used in the tool has been reliable in a variety of landscapes, but was developed for the Columbia River Basin and may give poor results in different landscapes |
 | Source Code Documentation | Available at [Github repository](https://github.com/Riverscapes/riverscaps-tools/channel) <i class="fa fa-github" aria-hidden="true"></i> | <i class="fa fa-battery-full" aria-hidden="true"></i> | Source code is clearly organized and documented |
 | Open Source | [open-source](https://github.com/Riverscapes/riverscaps-tools/channel) <i class="fa fa-github" aria-hidden="true"></i> with [GNU General Public License v 3.0](https://github.com/Riverscapes/riverscapes-tools/blob/master/LICENSE) | <i class="fa fa-battery-full" aria-hidden="true"></i> | |
-| User Documentation | [Documentation](http://tools.riverscapes.xyz/channel/) is in progress | <i class="fa fa-battery-quarter" aria-hidden="true"></i> | Documentation is in progress but has not been published to the website |
+| User Documentation | [Documentation](http://tools.riverscapes.net/channel/) is in progress | <i class="fa fa-battery-quarter" aria-hidden="true"></i> | Documentation is in progress but has not been published to the website |
 | Easy User Interface | Tool is accessed via command prompt | <i class="fa fa-battery-quarter" aria-hidden="true"></i> | Most projects right now are performed by North Arrow Research analysts. For a user to run this version of the tool themselves would require advanced understanding (programming capability) and significant documentation on the process. |
 | Scalability | Batch-processing | <i class="fa fa-battery-full" aria-hidden="true"></i> | The tool can be batch processed at the HUC 8 level |
-| Produces Riverscapes Projects <img  src="https://riverscapes.xyz/assets/images/data/RiverscapesProject_24.png"> | Yes | <i class="fa fa-battery-full" aria-hidden="true"></i> | Produces Riverscapes Projects that are fully-compatible with [RAVE](https://rave.riverscapes.xyz) |
+| Produces Riverscapes Projects <img  src="https://riverscapes.net/assets/images/data/RiverscapesProject_24.png"> | Yes | <i class="fa fa-battery-full" aria-hidden="true"></i> | Produces Riverscapes Projects that are fully-compatible with [RAVE](https://rave.riverscapes.net) |
 
 ## Tool Output Utility
 
 | Criteria | Value | Evaluation | Comments |
 |----------|-------|------------|----------|
 | :------- | :---- | :--------- | :------- |
-| [RAVE](https://rave.riverscapes.xyz)- Compliant Riverscapes Projects <img  src="https://riverscapes.xyz/assets/images/data/RiverscapesProject_24.png"> | Yes | <i class="fa fa-battery-full" aria-hidden="true"></i> | |
-| [RAVE](https://rave.riverscapes.xyz) Business Logic Defined | Yes | <i class="fa fa-battery-full" aria-hidden="true"></i> |  |
-| Riverscapes Projects hosted in public-facing [Riverscapes Warehouse(s)](https://riverscapes.xyz/Data_Warehouses/#warehouse-explorer-concept) <img src="https://riverscapes.xyz/assets/images/data/RiverscapesWarehouseCloud_24.png"> | Yes. Current Channel Area projects are being housed in the [Riverscapes Warehouse](https://data.riverscapes.xyz). | <i class="fa fa-battery-half" aria-hidden="true"></i> | There is data in the warehouse, but is provisional and wider access to the warehouse is forthcoming |
-| Riverscapes Projects connected to [Web-Maps](https://riverscapes.xyz/Data_Warehouses#web-maps) <i class="fa fa-map-o" aria-hidden="true"></i> | Yes | <i class="fa fa-battery-full" aria-hidden="true"></i> | Current projects are viewable in [WebRAVE](https://rave.riverscapes.xyz/Download/install_webrave.html) through the Riverscapes Warehouse |
-| Riverscapes Projects connected to Field [Apps](https://riverscapes.xyz//Data_Warehouses#apps---pwas) <img src="http://riverscapes.xyz/assets/images/tools/PWA.png"> | No | <i class="fa fa-battery-empty" aria-hidden="true"></i> |  |
+| [RAVE](https://rave.riverscapes.net)- Compliant Riverscapes Projects <img  src="https://riverscapes.net/assets/images/data/RiverscapesProject_24.png"> | Yes | <i class="fa fa-battery-full" aria-hidden="true"></i> | |
+| [RAVE](https://rave.riverscapes.net) Business Logic Defined | Yes | <i class="fa fa-battery-full" aria-hidden="true"></i> |  |
+| Riverscapes Projects hosted in public-facing [Riverscapes Warehouse(s)](https://riverscapes.net/Data_Warehouses/#warehouse-explorer-concept) <img src="https://riverscapes.net/assets/images/data/RiverscapesWarehouseCloud_24.png"> | Yes. Current Channel Area projects are being housed in the [Riverscapes Warehouse](https://data.riverscapes.net). | <i class="fa fa-battery-half" aria-hidden="true"></i> | There is data in the warehouse, but is provisional and wider access to the warehouse is forthcoming |
+| Riverscapes Projects connected to [Web-Maps](https://riverscapes.net/Data_Warehouses#web-maps) <i class="fa fa-map-o" aria-hidden="true"></i> | Yes | <i class="fa fa-battery-full" aria-hidden="true"></i> | Current projects are viewable in [WebRAVE](https://rave.riverscapes.net/Download/install_webrave.html) through the Riverscapes Warehouse |
+| Riverscapes Projects connected to Field [Apps](https://riverscapes.net//Data_Warehouses#apps---pwas) <img src="http://riverscapes.net/assets/images/tools/PWA.png"> | No | <i class="fa fa-battery-empty" aria-hidden="true"></i> |  |
 
 ## Developer Intent
-The current **Production Grade** <img  src="https://riverscapes.xyz/assets/images/tools/grade/TRL_6_32p.png"> version of Channel Area improves on previous versions by:
-- Having an inviting [web-map interface](https://riverscapes.xyz/Data_Warehouses/#web-maps) so non GIS-users can discover tool runs and explore and interrogate them.
-- Making it easy for GIS users to download channel area [projects](https://riverscapes.xyz/Tools/Technical_Reference/Documentation_Standards/Riverscapes_Projects/) for use in [RAVE](https://rave.riverscapes.xyz) <img  src="https://riverscapes.xyz/assets/images/data/RiverscapesProject_24.png">
+The current **Production Grade** <img  src="https://riverscapes.net/assets/images/tools/grade/TRL_6_32p.png"> version of Channel Area improves on previous versions by:
+- Having an inviting [web-map interface](https://riverscapes.net/Data_Warehouses/#web-maps) so non GIS-users can discover tool runs and explore and interrogate them.
+- Making it easy for GIS users to download channel area [projects](https://riverscapes.net/Tools/Technical_Reference/Documentation_Standards/Riverscapes_Projects/) for use in [RAVE](https://rave.riverscapes.net) <img  src="https://riverscapes.net/assets/images/data/RiverscapesProject_24.png">
 - Allowing discovery of past Channel Area runs in Warehouse
 
-The development team envision a **Professional Grade** <img src="https://riverscapes.xyz/assets/images/tools/grade/TRL_5_32p.png"> version of Channel Area, which would additionally:
+The development team envision a **Professional Grade** <img src="https://riverscapes.net/assets/images/tools/grade/TRL_5_32p.png"> version of Channel Area, which would additionally:
 - Encourage more user-interaction with Channel Area outputs and crowd-sourcing of information to improve the accuracy of outputs
 - Allow users to upload their own Channel Area projects
 
-<a href="https://riverscapes.xyz"><img class="float-left" src="https://riverscapes.xyz/assets/images/rc/RiverscapesConsortium_Logo_Black_BHS_200w.png"></a>
-The [Riverscapes Consortium's](https://riverscapes.xyz) Technical Committee provides report cards for tools either deemed as "[riverscapes-compliant](https://riverscapes.xyz/Tools/#riverscapes-compliant)" <img  src="https://riverscapes.xyz/assets/images/rc/RiverscapesCompliant_24.png"> or "[pending riverscapes-compliance](https://riverscapes.xyz/Tools/#tools-pending-riverscapes-compliance)" <img  src="https://riverscapes.xyz/assets/images/rc/RiverscapesCompliantPending_28.png">.
+<a href="https://riverscapes.net"><img class="float-left" src="https://riverscapes.net/assets/images/rc/RiverscapesConsortium_Logo_Black_BHS_200w.png"></a>
+The [Riverscapes Consortium's](https://riverscapes.net) Technical Committee provides report cards for tools either deemed as "[riverscapes-compliant](https://riverscapes.net/Tools/#riverscapes-compliant)" <img  src="https://riverscapes.net/assets/images/rc/RiverscapesCompliant_24.png"> or "[pending riverscapes-compliance](https://riverscapes.net/Tools/#tools-pending-riverscapes-compliance)" <img  src="https://riverscapes.net/assets/images/rc/RiverscapesCompliantPending_28.png">.

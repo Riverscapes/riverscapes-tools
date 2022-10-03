@@ -60,7 +60,7 @@ Beaver dams are washed out by high flows and so BRAT needsd to know the places i
 
 1. Open your desktop GIS software.
 1. Load the stream network layer from your BRAT run:
-    1. Open the [RAVE toolbar](http://rave.riverscapes.xyz).
+    1. Open the [RAVE toolbar](http://rave.riverscapes.net).
     1. Open the BRAT run riverscapes project file called `project.rs.xml`. It should reside in the root of the BRAT project.
     1. Right click on the ***\*NHDFlowline\**** layer in the BRAT inputs section of the project tree and click "Add To Map".
     1. Load the best available base imagery. You can use satellite basemap in ArcGIS or add a similar [satellite layer in QGIS](https://planet.qgis.org/planet/tag/world%20imagery/).
