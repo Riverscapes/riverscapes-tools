@@ -68,7 +68,7 @@ body {
   line-height: 1.5;
   background: #fffffaff;
   color: #080705ff;
-  font-family: Arial,Helvetica Neue,Helvetica,sans-serif; 
+  font-family: "Arial Narrow", Arial, sans-serif; 
 }
 div {
   /* border: 1px dashed #0000FF33; */
@@ -81,31 +81,34 @@ h1,h2,h3,h4,h5 {
 }
 h1 {
   font-size: 2rem;
+  font-weight: bold;
 }
 h2 {
   margin: 0 0 2rem 0;
-  background: #073040;
+  /* background: #073040; */
   padding: 5px 0px;
-  color: #fffffaff;
+  /* color: #fffffaff; */
   font-size: 1.5rem;
+  font-weight: bold;
 }
 h3{
-  font-size: 1.1rem;
+  font-size: 1.5rem;
   font-weight: bold;
   padding: 5px 0px;
-  color: #40434eff;
+  /* color: #40434eff; */
 }
 h4{
-  font-size: 0.9rem;
+  font-size: 1.2rem;
   font-weight: bold;
   padding: 5px 0px;
-  color: rgb(116, 121, 138);
+  /* color: rgb(116, 121, 138); */
 }
 h5{
   font-size: 0.6rem;
+  font-weight: bold;
 }
 a {
-  color: #508396;
+  color: #d48415;
   text-decoration: none;
 }
 /**
@@ -202,13 +205,14 @@ table tbody tr:nth-child(even) th{
 }
 table th, table td {
   border: 2px solid transparent;
-  padding: 3px 5px 3px 5px;
+  /* padding: 2px 3px 2px 3px; */
 }
 table thead th {
   text-align: left;
-  padding: 5px 10px;
+  padding: 3px 5px;
   color: #fffffaff;
-  background-color: #508396;
+  background-color: #616161;
+  font-weight: bold;
 }
 table td {
   /* padding: 2px; */
@@ -223,7 +227,7 @@ table .num.float {
 }
 table .idVal {
   text-align: center;
-  font-family: Courier New,Courier,Lucida Sans Typewriter,Lucida Typewriter,monospace;
+  font-family: "Arial Narrow", Arial, sans-serif;
 }
 
 /* Link from the sections back to the TOC */

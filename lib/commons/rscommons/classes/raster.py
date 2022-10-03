@@ -329,3 +329,40 @@ def deleteRaster(sFullPath):
             raise e
     else:
         log.debug("No raster file to delete at {0}".format(sFullPath))
+
+
+def get_raster_cell_area(in_raster):
+
+    raster = gdal.Open(in_raster)
+    gt = raster.GetGeoTransform()
+
+    in_spatial_ref = osr.SpatialReference()
+    in_spatial_ref.ImportFromWkt(raster.GetProjectionRef())
+
+    if in_spatial_ref.IsProjected() == 1:
+        return abs(gt[1]) * abs(gt[5])
+
+    else:
+        degy = gt[3] - (gt[3] + (raster.RasterYSize * gt[5]))
+        resy = (degy * 111139) / raster.RasterYSize
+        degx = (gt[0] + (raster.RasterXSize * gt[1])) - gt[0]
+        resx = ((40075000 * np.cos(gt[3] * (np.pi / 180)) / 360) * degx) / raster.RasterXSize
+
+        area = resx * resy
+
+        return area
+
+
+def categorical_raster_count(in_raster):
+
+    count = {}
+
+    raster = gdal.Open(in_raster)
+    band = raster.GetRasterBand(1)
+    array = band.ReadAsArray()
+
+    for val in np.unique(array):
+        if val != band.GetNoDataValue():
+            count[str(val)] = np.count_nonzero(array == val)
+
+    return count

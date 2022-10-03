@@ -84,7 +84,19 @@
         "{env:DATA_ROOT}/rs_context/${input:HUC}/project.rs.xml",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/rsc_report.html"
       ]
-    },    
+    },
+    {
+      "name": "Calculate Metrics",
+      "type": "python",
+      "request": "launch",
+      "module": "rscommons.classes.project_metrics",
+      "console": "integratedTerminal",
+      "args": [
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/WBDHU8.shp",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/WBDHU12.shp",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/project.rs.xml"
+      ]
+    },
     {
       "name": "Version Bump",
       "type": "python",
