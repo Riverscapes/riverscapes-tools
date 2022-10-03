@@ -4,13 +4,13 @@ weight: 2
 ---
 
 ## Downloading Data
-Riverscapes projects can be downloaded from the [Riverscapes Data Warehouse](https://data.riverscapes.xyz).
+Riverscapes projects can be downloaded from the [Riverscapes Data Warehouse](https://data.riverscapes.net).
 
 <div align="center">
-<a class="hollow button" href="https://data.riverscapes.xyz"> <img  src="https://riverscapes.xyz/assets/images/data/RiverscapesWarehouseCloud_24.png">  <b>Get Riverscapes Projects Now!</b><br>from Riverscapes Warehouse </a>
+<a class="hollow button" href="https://data.riverscapes.net"> <img  src="https://riverscapes.net/assets/images/data/RiverscapesWarehouseCloud_24.png">  <b>Get Riverscapes Projects Now!</b><br>from Riverscapes Warehouse </a>
 </div>
 
-Users will need a [free account](https://riverscapes.xyz/Data_Warehouses/signup.html) to access data in the [warehouse](https://data.riverscapes.xyz).
+Users will need a [free account](https://riverscapes.net/Data_Warehouses/signup.html) to access data in the [warehouse](https://data.riverscapes.net).
 
 **To download projects:**
 - Select the program containing the project you wish to download.
@@ -28,6 +28,6 @@ Users will need a [free account](https://riverscapes.xyz/Data_Warehouses/signup.
       <iframe width="560" height="315" src="https://www.youtube.com/embed/jd9AwbGFTTM" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
     </div>
     <i class="fa fa-youtube-play" aria-hidden="true"></i>
-    <a href="https://www.youtube.com/embed/jd9AwbGFTTM" target="_blank">Downloading Projects from the Warehouse</a> An example of downloading a <a href="https://tools.riverscapes.xyz/brat" target="_blank">BRAT</a> project from the riverscapes warehouse.
+    <a href="https://www.youtube.com/embed/jd9AwbGFTTM" target="_blank">Downloading Projects from the Warehouse</a> An example of downloading a <a href="https://tools.riverscapes.net/brat" target="_blank">BRAT</a> project from the riverscapes warehouse.
   </div>
 </div>

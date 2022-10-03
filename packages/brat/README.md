@@ -1,6 +1,6 @@
 # Beaver Restoration Assessment Tool (BRAT)
 
-This repo contains a new, experimental version of the [Beaver Restoration Assessment Tool](http://brat.riverscapes.xyz) (BRAT). The official version of this software is still [pyBRAT 3](https://github.com/Riverscapes/pyBRAT) that relies on ArcGIS geoprocessing. This new version uses only open source technologies and does not require ArcGIS to run.
+This repo contains a new, experimental version of the [Beaver Restoration Assessment Tool](http://brat.riverscapes.net) (BRAT). The official version of this software is still [pyBRAT 3](https://github.com/Riverscapes/pyBRAT) that relies on ArcGIS geoprocessing. This new version uses only open source technologies and does not require ArcGIS to run.
 
 It is strongly advised that you continue to use pyBRAT 3 until this new version of BRAT is verified and published as an official version of the BRAT model.
 

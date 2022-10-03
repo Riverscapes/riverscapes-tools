@@ -3,7 +3,7 @@ title: Basemaps
 weight: 3
 ---
 
-Basemaps can provide important contextual information for riverscapes projects in addition to what the layers in the Riverscapes Context projects provide. [QRAVE](https://rave.riverscapes.xyz/Download/install_qrave.html) and [ArcRAVE](https://rave.riverscapes.xyz/Download/install_arcrave.html) provide access to various basemaps that can be displayed with projects to provide this context. There is a `Basemaps` folder within the RAVE project tree, where all of the available basemaps can be found and added to maps. This page contains descriptions of each of the available basemaps, including their sources.
+Basemaps can provide important contextual information for riverscapes projects in addition to what the layers in the Riverscapes Context projects provide. [QRAVE](https://rave.riverscapes.net/Download/install_qrave.html) and [ArcRAVE](https://rave.riverscapes.net/Download/install_arcrave.html) provide access to various basemaps that can be displayed with projects to provide this context. There is a `Basemaps` folder within the RAVE project tree, where all of the available basemaps can be found and added to maps. This page contains descriptions of each of the available basemaps, including their sources.
 
 ## Basemaps available in ArcRAVE
 (links lead to descriptions on this page)

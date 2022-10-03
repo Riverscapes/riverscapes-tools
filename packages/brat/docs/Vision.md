@@ -15,7 +15,7 @@ The BRAT model helps build realistic expectations about what beaver dam-building
 
 ### BRAT As A Restoration Planning Tool
 
-BRAT and its sister [R-CAT](http://rcat.riverscapes.xyz/), can be used to plan and prioritize restoration projects as explained in the video below:
+BRAT and its sister [R-CAT](http://rcat.riverscapes.net), can be used to plan and prioritize restoration projects as explained in the video below:
 
 <div class="responsive-embed">
 <iframe src="https://www.youtube.com/embed/e28Ix-08PdM" frameborder="0" allowfullscreen></iframe>
