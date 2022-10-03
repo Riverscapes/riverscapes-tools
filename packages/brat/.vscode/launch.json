@@ -28,7 +28,7 @@
         "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/network_intersected_300m",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/vegetation/existing_veg.tif",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/vegetation/historic_veg.tif",
-        "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/vbet_full", // VBET!!!!!
+        "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/vbet_68", // VBET!!!!!
         "{env:DATA_ROOT}/rs_context/${input:HUC}/transportation/roads.shp",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/transportation/railways.shp",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/transportation/canals.shp",
@@ -94,9 +94,21 @@
       "module": "sqlbrat.brat_report",
       "console": "integratedTerminal",
       "args": [
-        "{env:DATA_ROOT}/brat/${input:HUC}/outputs/brat.sqlite",
+        "{env:DATA_ROOT}/brat/${input:HUC}/outputs/brat.gpkg",
         "{env:DATA_ROOT}/brat/${input:HUC}/project.rs.xml",
         "{env:DATA_ROOT}/brat/${input:HUC}/outputs/brat_report.html"
+      ]
+    },
+    {
+      "name": "Calculate Metrics",
+      "type": "python",
+      "request": "launch",
+      "module": "rscommons.classes.project_metrics",
+      "console": "integratedTerminal",
+      "args": [
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/WBDHU8.shp",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/WBDHU12.shp",
+        "{env:DATA_ROOT}/brat/${input:HUC}/project.rs.xml"
       ]
     },
     {
