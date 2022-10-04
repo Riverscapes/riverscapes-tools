@@ -61,6 +61,9 @@ class VectorBase():
         ogr.wkbMultiPolygon: [ogr.wkbPolygon, ogr.wkbPolygon25D, ogr.wkbPolygonM, ogr.wkbPolygonZM],
         ogr.wkbMultiLineString: [ogr.wkbLineString, ogr.wkbLineString25D, ogr.wkbLineStringM, ogr.wkbLineStringZM]
     }
+    COLLECTION_TYPES = [
+        ogr.wkbGeometryCollection, ogr.wkbGeometryCollection25D, ogr.wkbGeometryCollectionM, ogr.wkbGeometryCollectionZM
+    ]
 
     def __init__(self, filepath: str, driver: VectorBase.Drivers, layer_name: str, replace_ds_on_open: bool = False, allow_write=False):
         """[summary]
