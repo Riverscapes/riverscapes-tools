@@ -35,7 +35,7 @@ zone_id,scenario_input_id,transform_id,min_value,max_value,zone_type
 34,16,23,4,,stream_order
 35,17,12,0,2,stream_order
 36,17,13,2,4,stream_order
-37,17,14,14,4,,stream_order
-38,18,24,24,0,2,stream_order
-39,18,25,25,2,4,stream_order
-40,18,26,26,4,,stream_order
+37,17,14,4,,stream_order
+38,18,24,0,2,stream_order
+39,18,25,2,4,stream_order
+40,18,26,4,,stream_order
