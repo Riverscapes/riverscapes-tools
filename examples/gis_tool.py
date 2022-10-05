@@ -24,7 +24,7 @@ initGDALOGRErrors()
 
 # Setting up our model with an XSD will let us refer to it later
 # The version should be your tool version. Usually this is stored in a __version__.py file
-cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/MYTOOLHERE.xsd', __version__)
+cfg = ModelConfig('http://xml.riverscapes.net/Projects/XSD/V1/MYTOOLHERE.xsd', __version__)
 
 
 def run(my_arg1: str, my_arg2: int):

@@ -144,7 +144,7 @@ section.report-section>.report-header{
 #HeaderBar .projectType{ float: left}
 #HeaderBar .projectType{ float: left}
 #RiverscapesLogo {
-  background-image: url(https://riverscapes.xyz/assets/images/RiverscapesLogo.png);
+  background-image: url(https://riverscapes.net/assets/images/RiverscapesLogo.png);
   background-size: contain;
   background-repeat: no-repeat;
   flex: 0 0 6%;
@@ -161,7 +161,7 @@ section.report-section>.report-header{
   text-shadow: 3px 3px 3px rgba(0,0,0,0.7);
   background-size: cover;
   background-color: #444444;
-  background-image: url(https://data.riverscapes.xyz/HeaderBackground.png);
+  background-image: url(https://data.riverscapes.net/HeaderBackground.png);
   background-repeat: no-repeat;
   background-position: 0% 50%;
 }
@@ -323,7 +323,7 @@ footer #FooterLeft {
 }
 footer #FooterRight {
   flex: 1 1 30%;
-  background-image: url(https://data.riverscapes.xyz/cc-watermarks-riverscapes_orig.png);
+  background-image: url(https://data.riverscapes.net/cc-watermarks-riverscapes_orig.png);
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center center;  

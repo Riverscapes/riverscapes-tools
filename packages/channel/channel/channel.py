@@ -34,7 +34,7 @@ DEFAULT_FUNCTION_PARAMS = "a=TotDASqKm"
 
 initGDALOGRErrors()
 
-cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/ChannelArea.xsd', __version__)
+cfg = ModelConfig('http://xml.riverscapes.net/Projects/XSD/V1/ChannelArea.xsd', __version__)
 
 LayerTypes = {
     'INPUTS': RSLayer('Inputs', 'INPUTS', 'Geopackage', 'inputs/inputs.gpkg', {

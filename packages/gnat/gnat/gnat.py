@@ -25,7 +25,7 @@ from gnat.__version__ import __version__
 
 initGDALOGRErrors()
 
-cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/GNAT.xsd', __version__)
+cfg = ModelConfig('http://xml.riverscapes.net/Projects/XSD/V1/GNAT.xsd', __version__)
 
 LayerTypes = {
     # key: (name, id, tag, relpath)

@@ -28,7 +28,7 @@ from rscommons.util import pretty_duration
 from sqlbrat.brat_report import BratReport
 from sqlbrat.__version__ import __version__
 
-cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/BRAT.xsd', __version__)
+cfg = ModelConfig('http://xml.riverscapes.net/Projects/XSD/V1/BRAT.xsd', __version__)
 
 # Dictionary of fields that this process outputs, keyed by ShapeFile data type
 output_fields = {

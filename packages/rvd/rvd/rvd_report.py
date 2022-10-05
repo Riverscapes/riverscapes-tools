@@ -36,7 +36,7 @@ if __name__ == '__main__':
     parser.add_argument('report_path', help='Output path where report will be generated', type=str)
     args = dotenv.parse_args_env(parser)
 
-    cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/RVD.xsd', __version__)
+    cfg = ModelConfig('http://xml.riverscapes.net/Projects/XSD/V1/RVD.xsd', __version__)
     project = RSProject(cfg, args.projectxml)
     report = RVDReport(args.report_path, project, os.path.dirname(args.projectxml))
     report.write()

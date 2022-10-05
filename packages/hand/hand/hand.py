@@ -34,7 +34,7 @@ from hand.__version__ import __version__
 
 initGDALOGRErrors()
 
-cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/HAND.xsd', __version__)
+cfg = ModelConfig('http://xml.riverscapes.net/Projects/XSD/V1/HAND.xsd', __version__)
 
 LayerTypes = {
     'DEM': RSLayer('DEM', 'DEM', 'Raster', 'inputs/dem.tif'),

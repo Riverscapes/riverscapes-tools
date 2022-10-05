@@ -13,7 +13,7 @@ from osgeo import gdal, ogr, osr
 import csv
 from sqlbrat.__version__ import __version__
 
-cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/fmLTPBR.xsd', __version__)
+cfg = ModelConfig('http://xml.riverscapes.net/Projects/XSD/V1/fmLTPBR.xsd', __version__)
 # Don't forgbet to pip install dbfread. I didn't add it to requirements.txt
 
 LayerTypes = {

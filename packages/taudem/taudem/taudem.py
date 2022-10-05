@@ -35,7 +35,7 @@ initGDALOGRErrors()
 
 Path = str
 
-cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/TauDEM.xsd', __version__)
+cfg = ModelConfig('http://xml.riverscapes.net/Projects/XSD/V1/TauDEM.xsd', __version__)
 
 NCORES = os.environ['TAUDEM_CORES'] if 'TAUDEM_CORES' in os.environ else '2'
 

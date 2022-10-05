@@ -20,7 +20,7 @@ Instructuions:
 """
 
 # Set up a class to track thigns like default EPSG, xsd validation and tool version
-cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/Inundation.xsd', __version__)
+cfg = ModelConfig('http://xml.riverscapes.net/Projects/XSD/V1/Inundation.xsd', __version__)
 
 # Define the types of layers we're going to use up top so we can re-use them later
 # We use our handy RSLayer() class here.
