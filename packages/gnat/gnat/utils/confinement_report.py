@@ -107,7 +107,7 @@ if __name__ == '__main__':
     parser.add_argument('report_path', help='Output path where report will be generated', type=str)
     args = dotenv.parse_args_env(parser)
 
-    cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/Confinement.xsd', __version__)
+    cfg = ModelConfig('http://xml.riverscapes.net/Projects/XSD/V1/Confinement.xsd', __version__)
     project = RSProject(cfg, args.projectxml)
     report = ConfinementReport(args.database, args.report_path, project)
     report.write()

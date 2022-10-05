@@ -150,7 +150,7 @@ class BratReport(RSReport):
         outputs_section = self.section('Outputs', 'Model Outputs')
         pEl = ET.Element('p')
         pEl.text = 'This report summarizes the model outputs for a particular run of BRAT, and provides some information on the input data used and intermediate data generated. For more detailed model documentation, visit the '
-        aEl = ET.SubElement(pEl, 'a', {'href': 'https://tools.riverscapes.xyz/brat'})
+        aEl = ET.SubElement(pEl, 'a', {'href': 'https://tools.riverscapes.net/brat'})
         aEl.text = 'BRAT Documentation'
         outputs_section.append(pEl)
         self.dam_capacity(outputs_section)
@@ -841,7 +841,7 @@ if __name__ == '__main__':
     parser.add_argument('report_path', help='Output path where report will be generated', type=str)
     args = dotenv.parse_args_env(parser)
 
-    cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/BRAT.xsd', __version__)
+    cfg = ModelConfig('http://xml.riverscapes.net/Projects/XSD/V1/BRAT.xsd', __version__)
     project = RSProject(cfg, args.projectxml)
     report = BratReport(args.database, args.report_path, project)
     report.write()

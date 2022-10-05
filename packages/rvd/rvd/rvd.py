@@ -40,7 +40,7 @@ Path = str
 
 initGDALOGRErrors()
 
-cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/RVD.xsd', __version__)
+cfg = ModelConfig('http://xml.riverscapes.net/Projects/XSD/V1/RVD.xsd', __version__)
 
 LayerTypes = {
     # key: (name, id, tag, relpath)

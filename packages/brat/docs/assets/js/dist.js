@@ -132,7 +132,7 @@ $(document).ready(function (){
 		$topbarContainer.append($mobilediv)
 
 		var $topbar = $('<div class="top-bar" id="responsive-menu"></div>');
-		var $topbarleft = $('<div class="top-bar-left"><ul class="dropdown menu" data-dropdown-menu><li class="show-for-medium"><a id="topbarLogo" href="http://riverscapes.xyz/">Riverscapes Consortium</a></li></ul></div>')
+		var $topbarleft = $('<div class="top-bar-left"><ul class="dropdown menu" data-dropdown-menu><li class="show-for-medium"><a id="topbarLogo" href="http://riverscapes.net/">Riverscapes Consortium</a></li></ul></div>')
 		var $topbarright = $('<div class="top-bar-right"></div>');
 		$topbar.append($topbarleft);
 		

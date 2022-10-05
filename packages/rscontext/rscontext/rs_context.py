@@ -45,7 +45,7 @@ from rscontext.__version__ import __version__
 
 initGDALOGRErrors()
 
-cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/RSContext.xsd', __version__)
+cfg = ModelConfig('http://xml.riverscapes.net/Projects/XSD/V1/RSContext.xsd', __version__)
 
 # These are the Prism BIL types we expect
 PrismTypes = ['PPT', 'TMEAN', 'TMIN', 'TMAX', 'TDMEAN', 'VPDMIN', 'VPDMAX']
@@ -395,7 +395,7 @@ def augment_layermeta():
         if k in json_data and len(json_data[k]) > 0:
             lyr.lyr_meta = [
                 RSMeta('Description', json_data[k]),
-                RSMeta('DocsUrl', 'https://tools.riverscapes.xyz/rscontext/data.html#{}'.format(lyr.id), RSMetaTypes.URL)
+                RSMeta('DocsUrl', 'https://tools.riverscapes.net/rscontext/data.html#{}'.format(lyr.id), RSMetaTypes.URL)
             ]
 
 

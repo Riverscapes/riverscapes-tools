@@ -10,7 +10,7 @@ from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALO
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.util import safe_makedirs, safe_remove_file
 
-cfg = ModelConfig('http://xml.riverscapes.xyz/Projects/XSD/V1/LST.xsd', '0.0.1')
+cfg = ModelConfig('http://xml.riverscapes.net/Projects/XSD/V1/LST.xsd', '0.0.1')
 
 
 def process_lst(lst_xml_folder):

@@ -57,7 +57,7 @@ class RSMetaTypes:
     """
     This is a helper enumeration class to make sure we only use meta types that are valid.
     These should exactly mirror:
-        https://xml.riverscapes.xyz/Projects/XSD/V1/RiverscapesProject.xsd
+        https://xml.riverscapes.net/Projects/XSD/V1/RiverscapesProject.xsd
     """
     GUID = "guid"
     URL = "url"
@@ -600,7 +600,7 @@ class RSProject:
         geojson_filename = project_extent_node.find('Path').text
         in_geojson_path = os.path.join(os.path.dirname(in_prj_path), geojson_filename)
         out_geojson_path = os.path.join(os.path.dirname(self.xml_path), geojson_filename)
-        
+
         if not os.path.exists(out_geojson_path):
             shutil.copy(in_geojson_path, out_geojson_path)
 
