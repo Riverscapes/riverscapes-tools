@@ -34,7 +34,6 @@ from rscommons.prism import calculate_bankfull_width
 from rscommons.project_bounds import generate_project_extents_from_layer
 
 from rscontext.rs_segmentation import rs_segmentation
-from rscontext.flow_accumulation import flow_accumulation, flow_accum_to_drainage_area
 from rscontext.clip_ownership import clip_ownership
 from rscontext.filter_ecoregions import filter_ecoregions
 from rscontext.rs_context_report import RSContextReport
@@ -54,8 +53,6 @@ LYR_DESCRIPTIONS_JSON = os.path.join(os.path.os.path.dirname(__file__), 'layer_d
 LayerTypes = {
     # key: (name, id, tag, relpath)
     'DEM': RSLayer('NED 10m DEM', 'DEM', 'Raster', 'topography/dem.tif'),
-    'FA': RSLayer('Flow Accumulation', 'FLOW_ACCUM', 'Raster', 'topography/flow_accum.tif'),
-    'DA': RSLayer('Drainage Area', 'DRAINAGE_SQKM', 'Raster', 'topography/drainarea_sqkm.tif'),
     'HILLSHADE': RSLayer('DEM Hillshade', 'HILLSHADE', 'Raster', 'topography/dem_hillshade.tif'),
     'SLOPE': RSLayer('Slope', 'SLOPE', 'Raster', 'topography/slope.tif'),
     # Veg Layers
@@ -150,8 +147,6 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
 
     dem_node, dem_raster = project.add_project_raster(datasets, LayerTypes['DEM'])
     _node, hill_raster = project.add_project_raster(datasets, LayerTypes['HILLSHADE'])
-    _node, flow_accum = project.add_project_raster(datasets, LayerTypes['FA'])
-    _node, drain_area = project.add_project_raster(datasets, LayerTypes['DA'])
     _node, slope_raster = project.add_project_raster(datasets, LayerTypes['SLOPE'])
     _node, existing_clip = project.add_project_raster(datasets, LayerTypes['EXVEG'])
     _node, historic_clip = project.add_project_raster(datasets, LayerTypes['HISTVEG'])
@@ -299,11 +294,6 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
     # Remove the unzipped rasters. We won't need them anymore
     if parallel:
         safe_remove_dir(ned_unzip_folder)
-
-    # Calculate flow accumulation raster based on the DEM
-    log.info('Running flow accumulation and converting to drainage area.')
-    flow_accumulation(dem_raster, flow_accum, dinfinity=False, pitfill=True)
-    flow_accum_to_drainage_area(flow_accum, drain_area)
 
     # Clip and re-project the existing and historic vegetation
     log.info('Processing existing and historic vegetation rasters.')

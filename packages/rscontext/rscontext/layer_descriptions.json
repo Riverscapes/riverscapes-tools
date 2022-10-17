@@ -1,7 +1,5 @@
 {
   "DEM": "National Elevation Dataset (NED) Digital Elevation Models (DEM). These DEMs are downloaded from Science Base and mosaiced into a single 10m DEM that covers the riverscapes context project extent.",
-  "FA": "Flow accumulation raster generated using pyGeoProcessing. Raster values are cell counts. The mosaiced DEM is used as the source raster for this process.",
-  "DA": "Drainage area raster generated from the flow accumulation raster. This raster is produced by multiplying the flow accumulation raster by the area of a single pixel and then converting to square kilometers.",
   "HILLSHADE": "Hillshade raster generated using the gdal_dem tool specifying the hillshade option.",
   "SLOPE": "Slope raster generated using gdal_dem tool specifying the slope option. Units are in percent.",
   "EXVEG": "LandFire LF REMAP 2019 Existing Vegetation Type (EVT) Raster.The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes project extent.",
