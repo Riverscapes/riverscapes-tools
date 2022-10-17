@@ -250,8 +250,9 @@ class RSProject:
 
         try:
             log = Logger("add_realization")
+            logs_node = self.XMLBuilder.add_sub_element(realization, name='Logs')
             log_lyr = RSLayer('Log', 'LOGFILE', 'LogFile', '')
-            self.add_dataset(realization, log.instance.logpath, log_lyr, 'LogFile')
+            self.add_dataset(logs_node, log.instance.logpath, log_lyr, 'LogFile')
         except Exception as e:
             print(e)
             pass

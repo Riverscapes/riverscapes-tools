@@ -152,7 +152,6 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
     _node, hill_raster = project.add_project_raster(datasets, LayerTypes['HILLSHADE'])
     _node, flow_accum = project.add_project_raster(datasets, LayerTypes['FA'])
     _node, drain_area = project.add_project_raster(datasets, LayerTypes['DA'])
-    hand_node, hand_raster = project.add_project_raster(datasets, LayerTypes['HAND'])
     _node, slope_raster = project.add_project_raster(datasets, LayerTypes['SLOPE'])
     _node, existing_clip = project.add_project_raster(datasets, LayerTypes['EXVEG'])
     _node, historic_clip = project.add_project_raster(datasets, LayerTypes['HISTVEG'])
