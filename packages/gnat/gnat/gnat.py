@@ -17,7 +17,6 @@ import time
 import argparse
 import traceback
 from collections import Counter
-from typing import Dict, List
 
 from osgeo import ogr
 from osgeo import gdal
@@ -42,7 +41,7 @@ Path = str
 initGDALOGRErrors()
 gdal.UseExceptions()
 
-cfg = ModelConfig('http://xml.riverscapes.net/Projects/XSD/V1/GNAT.xsd', __version__)
+cfg = ModelConfig('https://xml.riverscapes.net/Projects/XSD/V2/RiverscapesProject.xsd', __version__)
 
 LayerTypes = {
     # key: (name, id, tag, relpath)]
@@ -101,12 +100,16 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments: Path, in
     log = Logger('GNAT')
     log.info(f'Starting GNAT v.{cfg.version}')
 
-    project, _realization, proj_nodes = create_project(huc, project_folder, [
+    project_name = f'GNAT for HUC {huc}'
+    project = RSProject(cfg, project_folder)
+    project.create(project_name, 'GNAT', [
         RSMeta(f'HUC{len(huc)}', str(huc)),
         RSMeta('HUC', str(huc)),
         RSMeta('GNATVersion', cfg.version),
         RSMeta('GNATTimestamp', str(int(time.time())), RSMetaTypes.TIMESTAMP),
     ], meta)
+
+    _realization, proj_nodes = project.add_realization(project_name, 'REALIZATION1', cfg.version, data_nodes=['Inputs', 'Intermediates', 'Outputs'], create_folders=True)
 
     inputs_gpkg = os.path.join(project_folder, LayerTypes['INPUTS'].rel_path)
     intermediates_gpkg = os.path.join(project_folder, LayerTypes['INTERMEDIATES'].rel_path)
@@ -697,31 +700,6 @@ def sum_window_attributes(lyr: GeopackageLayer, window: float, level_path: str, 
             results[field] = results.get(field, 0) + result
 
     return results
-
-
-def create_project(huc, output_dir: str, meta: List[RSMeta], meta_dict: Dict[str, str]):
-    """returns the gnat project, realization and project nodes"""
-
-    project_name = f'GNAT for HUC {huc}'
-    project = RSProject(cfg, output_dir)
-    project.create(project_name, 'GNAT', meta, meta_dict)
-
-    realization = project.add_realization(project_name, 'GNAT', cfg.version)
-
-    proj_nodes = {
-        'Inputs': project.XMLBuilder.add_sub_element(realization, 'Inputs'),
-        'Intermediates': project.XMLBuilder.add_sub_element(realization, 'Intermediates'),
-        'Outputs': project.XMLBuilder.add_sub_element(realization, 'Outputs')
-    }
-
-    # Make sure we have these folders
-    proj_dir = os.path.dirname(project.xml_path)
-    safe_makedirs(os.path.join(proj_dir, 'inputs'))
-    safe_makedirs(os.path.join(proj_dir, 'intermediates'))
-    safe_makedirs(os.path.join(proj_dir, 'outputs'))
-
-    project.XMLBuilder.write()
-    return project, realization, proj_nodes
 
 
 def main():
