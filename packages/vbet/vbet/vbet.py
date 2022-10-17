@@ -47,7 +47,7 @@ NCORES = os.environ['TAUDEM_CORES'] if 'TAUDEM_CORES' in os.environ else '2'  # 
 
 initGDALOGRErrors()
 
-cfg = ModelConfig('http://xml.riverscapes.net/Projects/XSD/V1/VBET.xsd', __version__)
+cfg = ModelConfig('https://xml.riverscapes.net/Projects/XSD/V2/RiverscapesProject.xsd', __version__)
 
 LayerTypes = {
     'DEM': RSLayer('DEM', 'DEM', 'Raster', 'inputs/dem.tif'),
@@ -100,7 +100,9 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
     flowline_type = 'NHD'
 
-    project, _realization, proj_nodes = create_project(huc, project_folder, [
+    project_name = f'VBET for HUC  {huc}'
+    project = RSProject(cfg, project_folder)
+    project.create(project_name, 'VBET', [
         RSMeta('HUC{}'.format(len(huc)), str(huc)),
         RSMeta('HUC', str(huc)),
         RSMeta('VBETVersion', cfg.version),
@@ -110,6 +112,8 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         RSMeta("VBET_Active_Floodplain_Threshold", f"{int(thresh_vals['VBET_IA'] * 100)}", RSMetaTypes.INT),
         RSMeta("VBET_Inactive_Floodplain_Threshold", f"{int(thresh_vals['VBET_FULL'] * 100)}", RSMetaTypes.INT)
     ], meta)
+
+    _realization, proj_nodes = project.add_realization(project_name, 'REALIZATION1', cfg.version, data_nodes=['Inputs', 'Intermediates', 'Outputs'], create_folders=True)
 
     inputs_gpkg = os.path.join(project_folder, LayerTypes['INPUTS'].rel_path)
     intermediates_gpkg = os.path.join(project_folder, LayerTypes['INTERMEDIATES'].rel_path)
@@ -550,24 +554,6 @@ def generate_centerline_surface(vbet_raster, out_cost_path, temp_folder):
     # Centerline Cost Path
     cost_path = 10**((rescaled * -1) + 10) + (rescaled <= 0) * 1000000000000  # 10** (((A) * -1) + 10) + (A <= 0) * 1000000000000
     array2raster(out_cost_path, vbet_raster, cost_path, data_type=gdal.GDT_Float32)
-
-
-def create_project(huc, output_dir: str, meta: List[RSMeta], meta_dict: Dict[str, str]):
-
-    proj_nodes = {
-        'Inputs': project.XMLBuilder.add_sub_element(realization, 'Inputs'),
-        'Intermediates': project.XMLBuilder.add_sub_element(realization, 'Intermediates'),
-        'Outputs': project.XMLBuilder.add_sub_element(realization, 'Outputs')
-    }
-
-    # Make sure we have these folders
-    proj_dir = os.path.dirname(project.xml_path)
-    safe_makedirs(os.path.join(proj_dir, 'inputs'))
-    safe_makedirs(os.path.join(proj_dir, 'intermediates'))
-    safe_makedirs(os.path.join(proj_dir, 'outputs'))
-
-    project.XMLBuilder.write()
-    return project, realization, proj_nodes
 
 
 def main():
