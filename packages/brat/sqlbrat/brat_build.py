@@ -32,7 +32,7 @@ Path = str
 
 initGDALOGRErrors()
 
-cfg = ModelConfig('http://xml.riverscapes.net/Projects/XSD/V1/BRAT.xsd', __version__)
+cfg = ModelConfig('https://xml.riverscapes.net/Projects/XSD/V2/RiverscapesProject.xsd', __version__)
 
 LayerTypes = {
     'DEM': RSLayer('NED 10m DEM', 'DEM', 'DEM', 'inputs/dem.tif'),
@@ -103,7 +103,7 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
 
     project_name = 'BRAT for HUC {}'.format(huc)
     project = RSProject(cfg, output_folder)
-    project.create(project_name, 'REALIZATION1', [
+    project.create(project_name, 'BRAT', [
         RSMeta('HUC{}'.format(len(huc)), str(huc)),
         RSMeta('HUC', str(huc)),
         RSMeta('BRATBuildVersion', cfg.version),
