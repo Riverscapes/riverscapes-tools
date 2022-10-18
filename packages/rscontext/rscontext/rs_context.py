@@ -18,6 +18,7 @@ import uuid
 import time
 from typing import Dict, List
 from osgeo import ogr
+from regex import B
 
 from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALOGRErrors, Timer
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes, RSMetaExt
@@ -34,7 +35,7 @@ from rscommons.prism import calculate_bankfull_width
 from rscommons.project_bounds import generate_project_extents_from_layer
 
 from rscontext.rs_segmentation import rs_segmentation
-from rscontext.clip_ownership import clip_ownership
+from rscontext.clip_vector import clip_vector_layer
 from rscontext.filter_ecoregions import filter_ecoregions
 from rscontext.rs_context_report import RSContextReport
 from rscontext.vegetation import clip_vegetation
@@ -63,6 +64,8 @@ LayerTypes = {
     'OWNERSHIP': RSLayer('Ownership', 'Ownership', 'Vector', 'ownership/ownership.shp'),
     'FAIR_MARKET': RSLayer('Fair Market Value', 'FAIRMARKETVALUE', 'Raster', 'ownership/fair_market_value.tif'),
     'ECOREGIONS': RSLayer('Ecoregions', 'Ecoregions', 'Vector', 'inputs/ecoregions.shp'),
+    'STATES': RSLayer('States', 'States', 'Vector', 'political_boundaries/states.shp'),
+    'COUNTIES': RSLayer('Counties', 'Counties', 'Vector', 'political_boundaries/counties.shp'),
 
     # NHD Geopackage Layers
     'HYDROLOGY': RSLayer('Hydrology', 'NHD', 'Geopackage', 'hydrology/hydrology.gpkg', {
@@ -94,7 +97,7 @@ SEGMENTATION = {
 }
 
 
-def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregions, prism_folder, output_folder, download_folder, scratch_dir, parallel, force_download, meta: Dict[str, str]):
+def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregions, us_states, us_counties, prism_folder, output_folder, download_folder, scratch_dir, parallel, force_download, meta: Dict[str, str]):
     """
 
     Download riverscapes context layers for the specified HUC and organize them as a Riverscapes project
@@ -103,6 +106,8 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
     :param existing_veg: Path to the existing vegetation conditions raster
     :param historic_veg: Path to the historical vegetation conditions raster
     :param ownership: Path to the national land ownership Shapefile
+    :param us_states: Path to the national states shapefile
+    :param us_counties: Path to the national counties shapefile 
     :param output_folder: Output location for the riverscapes context project
     :param download_folder: Temporary folder where downloads are cached. This can be shared between rs_context processes
     :param force_download: If false then downloads can be skipped if the files already exist
@@ -176,9 +181,9 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
 
     # PRISM climate rasters
     mean_annual_precip = None
-    bil_files = glob.glob(os.path.join(prism_folder, '**', '*.bil'))
+    bil_files = glob.glob(os.path.join(prism_folder, '*.bil'))
     if (len(bil_files) == 0):
-        all_files = glob.glob(os.path.join(prism_folder, '**', '*'))
+        all_files = glob.glob(os.path.join(prism_folder, '*'))
         raise Exception('Could not find any .bil files in the prism folder: {}. Found: \n{}'.format(prism_folder, "\n".join(all_files)))
     for ptype in PrismTypes:
         try:
@@ -305,7 +310,17 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
     # Clip the landownership Shapefile to a 10km buffer around the watershed boundary
     own_path = os.path.join(output_folder, LayerTypes['OWNERSHIP'].rel_path)
     project.add_dataset(datasets, own_path, LayerTypes['OWNERSHIP'], 'Vector')
-    clip_ownership(nhd[boundary], ownership, own_path, cfg.OUTPUT_EPSG, 10000)
+    clip_vector_layer(nhd[boundary], ownership, own_path, cfg.OUTPUT_EPSG, 10000)
+
+    # Clip the states shapefile to a 10km buffer around the watershed boundary
+    states_path = os.path.join(output_folder, LayerTypes['STATES'].rel_path)
+    project.add_dataset(datasets, states_path, LayerTypes['STATES'], 'Vector')
+    clip_vector_layer(nhd[boundary], us_states, states_path, cfg.OUTPUT_EPSG, 10000)
+
+    # Clip the counties shapefile to a 10km buffer around the watershed boundary
+    counties_path = os.path.join(output_folder, LayerTypes['COUNTIES'].rel_path)
+    project.add_dataset(datasets, counties_path, LayerTypes['COUNTIES'], 'Vector')
+    clip_vector_layer(nhd[boundary], us_counties, counties_path, cfg.OUTPUT_EPSG, 10000)
 
     #######################################################
     # Segmentation
@@ -425,6 +440,8 @@ def main():
     parser.add_argument('ownership', help='National land ownership shapefile', type=str)
     parser.add_argument('fairmarket', help='National fair market value raster', type=str)
     parser.add_argument('ecoregions', help='National EcoRegions shapefile', type=str)
+    parser.add_argument('states', help='National states shapefile', type=str)
+    parser.add_argument('counties', help='National counties shapefile', type=str)
     parser.add_argument('prism', help='Folder containing PRISM rasters in BIL format', type=str)
     parser.add_argument('output', help='Path to the output folder', type=str)
     parser.add_argument('download', help='Temporary folder for downloading data. Different HUCs may share this', type=str)
@@ -465,10 +482,10 @@ def main():
         if args.debug is True:
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output, 'rs_context_memusage.log')
-            retcode, max_obj = ThreadRun(rs_context, memfile, args.huc, args.existing, args.historic, args.ownership, args.fairmarket, args.ecoregions, args.prism, args.output, args.download, scratch_dir, args.parallel, args.force, meta)
+            retcode, max_obj = ThreadRun(rs_context, memfile, args.huc, args.existing, args.historic, args.ownership, args.fairmarket, args.ecoregions, args.states, args.counties, args.prism, args.output, args.download, scratch_dir, args.parallel, args.force, meta)
             log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
         else:
-            rs_context(args.huc, args.existing, args.historic, args.ownership, args.fairmarket, args.ecoregions, args.prism, args.output, args.download, scratch_dir, args.parallel, args.force, meta)
+            rs_context(args.huc, args.existing, args.historic, args.ownership, args.fairmarket, args.ecoregions, args.states, args.counties, args.prism, args.output, args.download, scratch_dir, args.parallel, args.force, meta)
 
     except Exception as e:
         log.error(e)
