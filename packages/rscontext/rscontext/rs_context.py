@@ -250,8 +250,8 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
         raster_vrt_stitch(dem_rasters, dem_raster, cfg.OUTPUT_EPSG, clip=processing_boundary, warp_options={"cutlineBlend": 1})
         area_ratio = verify_areas(dem_raster, nhd[boundary])
         if area_ratio < 0.85:
-            log.error(f'DEM data less than 85%% of nhd extent ({area_ratio:%})')
-            raise Exception(f'DEM data less than 85%% of nhd extent ({area_ratio:%})')
+            log.warning(f'DEM data less than 85%% of nhd extent ({area_ratio:%})')
+            # raise Exception(f'DEM data less than 85%% of nhd extent ({area_ratio:%})')
 
     # Calculate slope rasters seperately and then stitch them
     slope_parts = []
