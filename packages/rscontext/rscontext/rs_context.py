@@ -59,6 +59,8 @@ LayerTypes = {
     # Veg Layers
     'EXVEG': RSLayer('Existing Vegetation', 'EXVEG', 'Raster', 'vegetation/existing_veg.tif'),
     'HISTVEG': RSLayer('Historic Vegetation', 'HISTVEG', 'Raster', 'vegetation/historic_veg.tif'),
+    'VEGCOVER': RSLayer('Vegetation Cover', 'VEGCOVER', 'Raster', 'vegetation/veg_cover.tif'),
+    'VEGHEIGHT': RSLayer('Vegetation Height', 'VEGHEIGHT', 'Raster', 'vegetation/veg_height.tif'),
     # Inputs
 
     'OWNERSHIP': RSLayer('Ownership', 'Ownership', 'Vector', 'ownership/ownership.shp'),
@@ -97,7 +99,7 @@ SEGMENTATION = {
 }
 
 
-def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregions, us_states, us_counties, prism_folder, output_folder, download_folder, scratch_dir, parallel, force_download, meta: Dict[str, str]):
+def rs_context(huc, existing_veg, historic_veg, veg_cover, veg_height, ownership, fair_market, ecoregions, us_states, us_counties, prism_folder, output_folder, download_folder, scratch_dir, parallel, force_download, meta: Dict[str, str]):
     """
 
     Download riverscapes context layers for the specified HUC and organize them as a Riverscapes project
@@ -155,6 +157,8 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
     _node, slope_raster = project.add_project_raster(datasets, LayerTypes['SLOPE'])
     _node, existing_clip = project.add_project_raster(datasets, LayerTypes['EXVEG'])
     _node, historic_clip = project.add_project_raster(datasets, LayerTypes['HISTVEG'])
+    _node, veg_cover_clip = project.add_project_raster(datasets, LayerTypes['VEGCOVER'])
+    _node, veg_height_clip = project.add_project_raster(datasets, LayerTypes['VEGHEIGHT'])
     _node, fair_market_clip = project.add_project_raster(datasets, LayerTypes['FAIR_MARKET'])
 
     # Download the four digit NHD archive containing the flow lines and watershed boundaries
@@ -302,7 +306,7 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
 
     # Clip and re-project the existing and historic vegetation
     log.info('Processing existing and historic vegetation rasters.')
-    clip_vegetation(buffered_clip_path100, existing_veg, existing_clip, historic_veg, historic_clip, cfg.OUTPUT_EPSG)
+    clip_vegetation(buffered_clip_path100, existing_veg, existing_clip, historic_veg, historic_clip, veg_cover, veg_cover_clip, veg_height, veg_height_clip, cfg.OUTPUT_EPSG)
 
     log.info('Process the Fair Market Value Raster.')
     raster_warp(fair_market, fair_market_clip, cfg.OUTPUT_EPSG, clip=buffered_clip_path500, warp_options={"cutlineBlend": 1})
@@ -437,6 +441,8 @@ def main():
     parser.add_argument('huc', help='HUC identifier', type=str)
     parser.add_argument('existing', help='National existing vegetation raster', type=str)
     parser.add_argument('historic', help='National historic vegetation raster', type=str)
+    parser.add_argument('cover', help='National vegetation cover raster', type=str)
+    parser.add_argument('height', help='National vegetation height raster', type=str)
     parser.add_argument('ownership', help='National land ownership shapefile', type=str)
     parser.add_argument('fairmarket', help='National fair market value raster', type=str)
     parser.add_argument('ecoregions', help='National EcoRegions shapefile', type=str)
@@ -463,6 +469,8 @@ def main():
     log.info('EPSG: {}'.format(cfg.OUTPUT_EPSG))
     log.info('Existing veg: {}'.format(args.existing))
     log.info('Historical veg: {}'.format(args.historic))
+    log.info('Veg cover: {}'.format(args.cover))
+    log.info('Veg height: {}'.format(args.height))
     log.info('Ownership: {}'.format(args.ownership))
     log.info('Fair Market Value Raster: {}'.format(args.fairmarket))
     log.info('Output folder: {}'.format(args.output))
@@ -482,10 +490,10 @@ def main():
         if args.debug is True:
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output, 'rs_context_memusage.log')
-            retcode, max_obj = ThreadRun(rs_context, memfile, args.huc, args.existing, args.historic, args.ownership, args.fairmarket, args.ecoregions, args.states, args.counties, args.prism, args.output, args.download, scratch_dir, args.parallel, args.force, meta)
+            retcode, max_obj = ThreadRun(rs_context, memfile, args.huc, args.existing, args.historic, args.cover, args.height, args.ownership, args.fairmarket, args.ecoregions, args.states, args.counties, args.prism, args.output, args.download, scratch_dir, args.parallel, args.force, meta)
             log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
         else:
-            rs_context(args.huc, args.existing, args.historic, args.ownership, args.fairmarket, args.ecoregions, args.states, args.counties, args.prism, args.output, args.download, scratch_dir, args.parallel, args.force, meta)
+            rs_context(args.huc, args.existing, args.historic, args.cover, args.height, args.ownership, args.fairmarket, args.ecoregions, args.states, args.counties, args.prism, args.output, args.download, scratch_dir, args.parallel, args.force, meta)
 
     except Exception as e:
         log.error(e)
