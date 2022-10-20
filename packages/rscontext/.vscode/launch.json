@@ -31,8 +31,8 @@
       // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
       "args": [
         "${input:HUC}",
-        "{env:NATIONAL_PROJECT}/landfire/200/us_200evt.tif",
-        "{env:NATIONAL_PROJECT}/landfire/200/us_200bps.tif",
+        "{env:NATIONAL_PROJECT}/landfire/220/LC20_EVT_220.tif",
+        "{env:NATIONAL_PROJECT}/landfire/220/LC20_BPS_220.tif",
         "{env:NATIONAL_PROJECT}/landfire/220/LC22_EVC_220.tif",
         "{env:NATIONAL_PROJECT}/landfire/220/LC22_EVH_220.tif",
         "{env:NATIONAL_PROJECT}/ownership/surface_management_agency.shp",
