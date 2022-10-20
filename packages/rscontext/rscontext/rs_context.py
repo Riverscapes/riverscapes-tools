@@ -41,6 +41,7 @@ from rscontext.rs_context_report import RSContextReport
 from rscontext.vegetation import clip_vegetation
 from rscontext.bankfull import bankfull_buffer
 from rscontext.boundary_management import raster_area_intersection
+from rscontext.global_surface_water import global_surface_water
 from rscontext.__version__ import __version__
 
 initGDALOGRErrors()
@@ -90,7 +91,15 @@ LayerTypes = {
     'TDMEAN': RSLayer('Mean Dew Point Temperature', 'MeanDew', 'Raster', 'climate/mean_dew_temp.tif'),
     'VPDMIN': RSLayer('Minimum Vapor Pressure Deficit', 'MinVap', 'Raster', 'climate/min_vapor_pressure.tif'),
     'VPDMAX': RSLayer('Maximum Vapor Pressure Deficit', 'MaxVap', 'Raster', 'climate/max_vapor_pressure.tif'),
-    'REPORT': RSLayer('RSContext Report', 'REPORT', 'HTMLFile', 'rs_context.html')
+    'REPORT': RSLayer('RSContext Report', 'REPORT', 'HTMLFile', 'rs_context.html'),
+
+    # Surface Water Layers
+    'SWOCCURRENCE': RSLayer('Surface Water Occurrence', 'Occurrence', 'Raster', 'surface_water/occurrence.tif'),
+    'SWCHANGE': RSLayer('Surface Water Change', 'Change', 'Raster', 'surface_water/change.tif'),
+    'SWSEASONALITY': RSLayer('Surface Water Seasonality', 'Seasonality', 'Raster', 'surface_water/seasonality.tif'),
+    'SWRECURRENCE': RSLayer('Surface Water Recurrence', 'Recurrence', 'Raster', 'surface_water/recurrence.tif'),
+    'SWTRANSITIONS': RSLayer('Surface Water Transitions', 'Transitions', 'Raster', 'surface_water/transitions.tif'),
+    'SWMAXIMUMEXTENT': RSLayer('Surface Water Maximum Extent', 'Extent', 'Raster', 'surface_water/extent.tif')
 }
 
 SEGMENTATION = {
@@ -160,6 +169,12 @@ def rs_context(huc, existing_veg, historic_veg, veg_cover, veg_height, ownership
     _node, veg_cover_clip = project.add_project_raster(datasets, LayerTypes['VEGCOVER'])
     _node, veg_height_clip = project.add_project_raster(datasets, LayerTypes['VEGHEIGHT'])
     _node, fair_market_clip = project.add_project_raster(datasets, LayerTypes['FAIR_MARKET'])
+    swoccurrence_node, swoccurrence = project.add_project_raster(datasets, LayerTypes['SWOCCURRENCE'])
+    swchange_node, swchange = project.add_project_raster(datasets, LayerTypes['SWCHANGE'])
+    swseasonality_node, swseasonality = project.add_project_raster(datasets, LayerTypes['SWSEASONALITY'])
+    swrecurrence_node, swrecurrence = project.add_project_raster(datasets, LayerTypes['SWRECURRENCE'])
+    swtransitions_node, swtransitions = project.add_project_raster(datasets, LayerTypes['SWTRANSITIONS'])
+    swextent_node, swextent = project.add_project_raster(datasets, LayerTypes['SWMAXIMUMEXTENT'])
 
     # Download the four digit NHD archive containing the flow lines and watershed boundaries
     log.info('Processing NHD')
@@ -303,6 +318,35 @@ def rs_context(huc, existing_veg, historic_veg, veg_cover, veg_height, ownership
     # Remove the unzipped rasters. We won't need them anymore
     if parallel:
         safe_remove_dir(ned_unzip_folder)
+
+    # Download and clip global surface water rasters
+    log.info('Processing global surface water rasters')
+    gsw_download_folder = os.path.join(download_folder, 'gsw')
+    gsw_urls = global_surface_water(nhd[boundary], gsw_download_folder)
+    gsw_types = {
+        'occurrence': [swoccurrence, swoccurrence_node],
+        'change': [swchange, swchange_node],
+        'seasonality': [swseasonality, swseasonality_node],
+        'recurrence': [swrecurrence, swrecurrence_node],
+        'transitions': [swtransitions, swtransitions_node],
+        'extent': [swextent, swextent_node]
+    }
+    for gsw_type in gsw_types.keys():
+        dirpath = os.path.join(download_folder, 'gsw', gsw_type)
+        type_urls = []
+        for i in gsw_urls:
+            if gsw_type in i:
+                type_urls.append(i)
+        if len([file for file in os.listdir(dirpath) if os.path.isfile(os.path.join(dirpath, file))]) > 1:
+            raster_vrt_stitch([file for file in os.listdir(dirpath) if os.path.isfile(os.path.join(dirpath, file))], gsw_types[gsw_type][0], cfg.OUTPUT_EPSG, clip=processing_boundary, clean=parallel, warp_options={"cutlineBlend": 1})
+            verify_areas(gsw_types[gsw_type][0], nhd[boundary])
+        else:
+            raster_warp(os.path.join(dirpath, [file for file in os.listdir(dirpath) if os.path.isfile(os.path.join(dirpath, file))][0]), gsw_types[gsw_type][0], cfg.OUTPUT_EPSG, clip=processing_boundary, warp_options={"cutlineBlend": 2})
+            verify_areas(gsw_types[gsw_type][0], nhd[boundary])
+        project.add_metadata([
+            RSMeta('num_rasters', str(len(type_urls)), RSMetaTypes.INT, RSMetaExt.DATASET),
+            RSMeta('origin_urls', str(type_urls), RSMetaTypes.URL, RSMetaExt.DATASET)
+        ], gsw_types[gsw_type][1])
 
     # Clip and re-project the existing and historic vegetation
     log.info('Processing existing and historic vegetation rasters.')
