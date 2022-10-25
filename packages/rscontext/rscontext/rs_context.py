@@ -17,6 +17,7 @@ import traceback
 import uuid
 import time
 from typing import Dict, List
+from matplotlib.pyplot import hist
 from osgeo import ogr
 from regex import B
 
@@ -62,6 +63,12 @@ LayerTypes = {
     'HISTVEG': RSLayer('Historic Vegetation', 'HISTVEG', 'Raster', 'vegetation/historic_veg.tif'),
     'VEGCOVER': RSLayer('Vegetation Cover', 'VEGCOVER', 'Raster', 'vegetation/veg_cover.tif'),
     'VEGHEIGHT': RSLayer('Vegetation Height', 'VEGHEIGHT', 'Raster', 'vegetation/veg_height.tif'),
+    'HDIST': RSLayer('Historic Disturbance', 'HDIST', 'Raster', 'vegetation/historic_disturbance.tif'),
+    'FDIST': RSLayer('Fuel Disturbance', 'FDIST', 'Raster', 'vegetation/fuel_disturbance.tif'),
+    'FCCS': RSLayer('Fuel Characteristic Classification System', 'FCCS', 'Raster', 'vegetation/fccs.tif'),
+    'VEGCONDITION': RSLayer('Vegetation Condition', 'VEGCONDITION', 'Raster', 'vegetation/vegetation_condition.tif'),
+    'VEGDEPARTURE': RSLayer('Vegetation Departure', 'VEGDEPARTURE', 'Raster', 'vegetation/vegetation_departure.tif'),
+    'SCLASS': RSLayer('Succession Classes', 'SCLASS', 'Raster', 'vegetation/succession_classes.tif'),
     # Inputs
 
     'OWNERSHIP': RSLayer('Ownership', 'Ownership', 'Vector', 'ownership/ownership.shp'),
@@ -69,6 +76,7 @@ LayerTypes = {
     'ECOREGIONS': RSLayer('Ecoregions', 'Ecoregions', 'Vector', 'inputs/ecoregions.shp'),
     'STATES': RSLayer('States', 'States', 'Vector', 'political_boundaries/states.shp'),
     'COUNTIES': RSLayer('Counties', 'Counties', 'Vector', 'political_boundaries/counties.shp'),
+    'GEOLOGY': RSLayer('Geology', 'GEOLOGY', 'Vector', 'geology/geology.shp'),
 
     # NHD Geopackage Layers
     'HYDROLOGY': RSLayer('Hydrology', 'NHD', 'Geopackage', 'hydrology/hydrology.gpkg', {
@@ -108,7 +116,7 @@ SEGMENTATION = {
 }
 
 
-def rs_context(huc, existing_veg, historic_veg, veg_cover, veg_height, ownership, fair_market, ecoregions, us_states, us_counties, prism_folder, output_folder, download_folder, scratch_dir, parallel, force_download, meta: Dict[str, str]):
+def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states, us_counties, geology, prism_folder, output_folder, download_folder, scratch_dir, parallel, force_download, meta: Dict[str, str]):
     """
 
     Download riverscapes context layers for the specified HUC and organize them as a Riverscapes project
@@ -168,6 +176,11 @@ def rs_context(huc, existing_veg, historic_veg, veg_cover, veg_height, ownership
     _node, historic_clip = project.add_project_raster(datasets, LayerTypes['HISTVEG'])
     _node, veg_cover_clip = project.add_project_raster(datasets, LayerTypes['VEGCOVER'])
     _node, veg_height_clip = project.add_project_raster(datasets, LayerTypes['VEGHEIGHT'])
+    _node, hdist_clip = project.add_project_raster(datasets, LayerTypes['HDIST'])
+    _node, fdist_clip = project.add_project_raster(datasets, LayerTypes['FDIST'])
+    _node, fccs_clip = project.add_project_raster(datasets, LayerTypes['FCCS'])
+    _node, veg_condition_clip = project.add_project_vector(datasets, LayerTypes['VEGCONDITION'])
+    _node, veg_departure_clip = project.add_project_raster(datasets, LayerTypes['VEGDEPARTURE'])
     _node, fair_market_clip = project.add_project_raster(datasets, LayerTypes['FAIR_MARKET'])
     swoccurrence_node, swoccurrence = project.add_project_raster(datasets, LayerTypes['SWOCCURRENCE'])
     swchange_node, swchange = project.add_project_raster(datasets, LayerTypes['SWCHANGE'])
@@ -350,7 +363,11 @@ def rs_context(huc, existing_veg, historic_veg, veg_cover, veg_height, ownership
 
     # Clip and re-project the existing and historic vegetation
     log.info('Processing existing and historic vegetation rasters.')
-    clip_vegetation(buffered_clip_path100, existing_veg, existing_clip, historic_veg, historic_clip, veg_cover, veg_cover_clip, veg_height, veg_height_clip, cfg.OUTPUT_EPSG)
+    in_veg_rasters = [os.path.join(landfire_dir, 'LC20_EVT_220.tif'), os.path.join(landfire_dir, 'LC20_BPS_220.tif'), os.path.join(landfire_dir, 'LC22_EVC_220.tif'),
+                      os.path.join(landfire_dir, 'LC22_EVH_220.tif'), os.path.join(landfire_dir, 'LC20_HDst_220.tif'), os.path.join(landfire_dir, 'LC22_FDst_220.tif'),
+                      os.path.join(landfire_dir, 'LC22_FCCS_220.tif'), os.path.join(landfire_dir, 'LC20_VCC_220.tif'), os.path.join(landfire_dir, 'LC20_VDep_220.tif')]
+    out_veg_rasters = [existing_clip, historic_clip, veg_cover_clip, veg_height_clip, hdist_clip, fdist_clip, fccs_clip, veg_condition_clip, veg_departure_clip]
+    clip_vegetation(buffered_clip_path100, in_veg_rasters, out_veg_rasters, cfg.OUTPUT_EPSG)
 
     log.info('Process the Fair Market Value Raster.')
     raster_warp(fair_market, fair_market_clip, cfg.OUTPUT_EPSG, clip=buffered_clip_path500, warp_options={"cutlineBlend": 1})
@@ -369,6 +386,12 @@ def rs_context(huc, existing_veg, historic_veg, veg_cover, veg_height, ownership
     counties_path = os.path.join(output_folder, LayerTypes['COUNTIES'].rel_path)
     project.add_dataset(datasets, counties_path, LayerTypes['COUNTIES'], 'Vector')
     clip_vector_layer(nhd[boundary], us_counties, counties_path, cfg.OUTPUT_EPSG, 10000)
+
+    # Clip the geology shapefile to a 10km buffer around the watershed boundary
+    # geology is in national project - can also be retrieved from science base
+    geo_path = os.path.join(output_folder, LayerTypes['GEOLOGY'].rel_path)
+    project.add_dataset(datasets, geo_path, LayerTypes['GEOLOGY'], 'Vector')
+    clip_vector_layer(nhd[boundary], geology, geo_path, cfg.OUTPUT_EPSG, 10000)
 
     #######################################################
     # Segmentation
@@ -424,8 +447,8 @@ def rs_context(huc, existing_veg, historic_veg, veg_cover, veg_height, ownership
     return {
         'DEM': dem_raster,
         'Slope': slope_raster,
-        'ExistingVeg': existing_veg,
-        'HistoricVeg': historic_veg,
+        'ExistingVeg': os.path.join(landfire_dir, 'LC20_EVT_220.tif'),
+        'HistoricVeg': os.path.join(landfire_dir, 'LC20_BPS_220.tif'),
         'NHD': nhd
     }
 
@@ -483,15 +506,13 @@ def main():
         # epilog="This is an epilog"
     )
     parser.add_argument('huc', help='HUC identifier', type=str)
-    parser.add_argument('existing', help='National existing vegetation raster', type=str)
-    parser.add_argument('historic', help='National historic vegetation raster', type=str)
-    parser.add_argument('cover', help='National vegetation cover raster', type=str)
-    parser.add_argument('height', help='National vegetation height raster', type=str)
+    parser.add_argument('landfire_dir', help='Folder containing national landfire raster tifs', type=str)
     parser.add_argument('ownership', help='National land ownership shapefile', type=str)
     parser.add_argument('fairmarket', help='National fair market value raster', type=str)
     parser.add_argument('ecoregions', help='National EcoRegions shapefile', type=str)
     parser.add_argument('states', help='National states shapefile', type=str)
     parser.add_argument('counties', help='National counties shapefile', type=str)
+    parser.add_argument('geology', help='National SGMC geology shapefile', type=str)
     parser.add_argument('prism', help='Folder containing PRISM rasters in BIL format', type=str)
     parser.add_argument('output', help='Path to the output folder', type=str)
     parser.add_argument('download', help='Temporary folder for downloading data. Different HUCs may share this', type=str)
@@ -511,10 +532,7 @@ def main():
 
     log.info('HUC: {}'.format(args.huc))
     log.info('EPSG: {}'.format(cfg.OUTPUT_EPSG))
-    log.info('Existing veg: {}'.format(args.existing))
-    log.info('Historical veg: {}'.format(args.historic))
-    log.info('Veg cover: {}'.format(args.cover))
-    log.info('Veg height: {}'.format(args.height))
+    log.info('LandFire: {}'.format(args.landfire_dir))
     log.info('Ownership: {}'.format(args.ownership))
     log.info('Fair Market Value Raster: {}'.format(args.fairmarket))
     log.info('Output folder: {}'.format(args.output))
@@ -534,10 +552,10 @@ def main():
         if args.debug is True:
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output, 'rs_context_memusage.log')
-            retcode, max_obj = ThreadRun(rs_context, memfile, args.huc, args.existing, args.historic, args.cover, args.height, args.ownership, args.fairmarket, args.ecoregions, args.states, args.counties, args.prism, args.output, args.download, scratch_dir, args.parallel, args.force, meta)
+            retcode, max_obj = ThreadRun(rs_context, memfile, args.huc, args.landfire_dir, args.ownership, args.fairmarket, args.ecoregions, args.states, args.counties, args.geology, args.prism, args.output, args.download, scratch_dir, args.parallel, args.force, meta)
             log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
         else:
-            rs_context(args.huc, args.existing, args.historic, args.cover, args.height, args.ownership, args.fairmarket, args.ecoregions, args.states, args.counties, args.prism, args.output, args.download, scratch_dir, args.parallel, args.force, meta)
+            rs_context(args.huc, args.landfire_dir, args.ownership, args.fairmarket, args.ecoregions, args.states, args.counties, args.geology, args.prism, args.output, args.download, scratch_dir, args.parallel, args.force, meta)
 
     except Exception as e:
         log.error(e)

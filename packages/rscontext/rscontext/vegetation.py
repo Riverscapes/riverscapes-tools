@@ -1,45 +1,49 @@
+from shutil import ExecError
 import rasterio
+import numpy as np
 from rscommons import Logger
 from rscommons.raster_warp import raster_warp
 
 
-def clip_vegetation(boundary_path: str, existing_veg_path: str, existing_clip_path: str, historic_veg_path: str, historic_clip_path: str, veg_cover_path: str, veg_cover_clip: str, veg_height_path: str, veg_height_clip: str, output_epsg: int):
+def clip_vegetation(boundary_path: str, veg_rasters: list, veg_raster_clips: list, output_epsg: int):
     """[summary]
 
     Args:
         boundary_path (str): Path to layer
-        existing_veg_path (str): Path to raster
-        existing_clip_path (str): Path to output raster
-        historic_veg_path (str): Path to raster
-        historic_clip_path (str): Path to output raster
-        veg_cover_path (str): Path to raster
-        veg_cover_clip (str): Path to output raster
-        veg_height_path (str): Path to raster
-        veg_height_clip (str): Path to output raster
+        veg_rasters (list): List of paths to all landfire rasters
+        veg_raster_clips (list): List of output paths for clipped vegetation rasters; these two lists must be in the same order
         output_epsg (int): EPSG
     """
     log = Logger('Vegetation Clip')
 
-    with rasterio.open(existing_veg_path) as exist, rasterio.open(historic_veg_path) as hist, rasterio.open(veg_cover_path) as cover, rasterio.open(veg_height_path) as height:
-        meta_existing = exist.meta
-        meta_hist = hist.meta
-        meta_cover = cover.meta
-        meta_height = height.meta
-
-        if meta_existing['transform'][0] != meta_hist['transform'][0] != meta_cover['transform'][0] != meta_height['transform'][0]:
-            msg = 'Vegetation raster cell widths do not match: existing {}, historic {}, cover {}, height {}'.format(meta_existing['transform'][0], meta_hist['transform'][0], meta_cover['transform'][0], meta_height['transform'][0])
-            raise Exception(msg)
-
-        if meta_existing['transform'][4] != meta_hist['transform'][4] != meta_cover['transform'][4] != meta_height['transform'][4]:
-            msg = 'Vegetation raster cell heights do not match: existing {}, historic {}, cover {}, height {}'.format(meta_existing['transform'][4], meta_hist['transform'][4], meta_cover['transform'][4], meta_height['transform'][4])
-            raise Exception(msg)
+    widths = []
+    heights = []
 
     # https://gdal.org/python/osgeo.gdal-module.html#WarpOptions
     warp_options = {"cutlineBlend": 2}
-    # Now do the raster warp
-    raster_warp(existing_veg_path, existing_clip_path, output_epsg, clip=boundary_path, warp_options=warp_options)
-    raster_warp(historic_veg_path, historic_clip_path, output_epsg, clip=boundary_path, warp_options=warp_options)
-    raster_warp(veg_cover_path, veg_cover_clip, output_epsg, clip=boundary_path, warp_options=warp_options)
-    raster_warp(veg_height_path, veg_height_clip, output_epsg, clip=boundary_path, warp_options=warp_options)
+
+    for i, rast in enumerate(veg_rasters):
+        with rasterio.open(rast) as vegraster:
+            meta = vegraster.meta
+            widths.append(meta['transform'][0])
+            heights.append(meta['transform'][4])
+
+        # if meta['transform'][0] != meta_hist['transform'][0] != meta_cover['transform'][0] != meta_height['transform'][0]:
+        #    msg = 'Vegetation raster cell widths do not match: existing {}, historic {}, cover {}, height {}'.format(meta_existing['transform'][0], meta_hist['transform'][0], meta_cover['transform'][0], meta_height['transform'][0])
+        #   raise Exception(msg)
+
+        # if meta_existing['transform'][4] != meta_hist['transform'][4] != meta_cover['transform'][4] != meta_height['transform'][4]:
+        #    msg = 'Vegetation raster cell heights do not match: existing {}, historic {}, cover {}, height {}'.format(meta_existing['transform'][4], meta_hist['transform'][4], meta_cover['transform'][4], meta_height['transform'][4])
+        #    raise Exception(msg)
+
+        # Now do the raster warp
+        raster_warp(rast, veg_raster_clips[i], output_epsg, clip=boundary_path, warp_options=warp_options)
+
+    if len(np.unique(widths)) > 1:
+        msg = 'One or more vegetation raster cell widths do not match'
+        raise Exception(msg)
+    if len(np.unique(heights)) > 1:
+        msg = 'One or more vegetation raster cell heights do not match'
+        raise Exception(msg)
 
     log.info('Complete')

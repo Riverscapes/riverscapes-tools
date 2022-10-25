@@ -31,15 +31,13 @@
       // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
       "args": [
         "${input:HUC}",
-        "{env:NATIONAL_PROJECT}/landfire/220/LC20_EVT_220.tif",
-        "{env:NATIONAL_PROJECT}/landfire/220/LC20_BPS_220.tif",
-        "{env:NATIONAL_PROJECT}/landfire/220/LC22_EVC_220.tif",
-        "{env:NATIONAL_PROJECT}/landfire/220/LC22_EVH_220.tif",
+        "{env:NATIONAL_PROJECT}/landfire/220",
         "{env:NATIONAL_PROJECT}/ownership/surface_management_agency.shp",
         "{env:NATIONAL_PROJECT}/ownership/FairMarketValue.tif",
         "{env:NATIONAL_PROJECT}/ecoregions/us_eco_l4_state_boundaries.shp",
         "{env:NATIONAL_PROJECT}/political_boundaries/cb_2021_us_state_500k.shp",
         "{env:NATIONAL_PROJECT}/political_boundaries/cb_2021_us_county_500k.shp",
+        "{env:NATIONAL_PROJECT}/geology/SGMC_geology.shp",
         "{env:NATIONAL_PROJECT}/prism",
         "{env:DATA_ROOT}/rs_context/${input:HUC}",
         "{env:DOWNLOAD_FOLDER}",
