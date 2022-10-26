@@ -181,6 +181,7 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
     _node, fccs_clip = project.add_project_raster(datasets, LayerTypes['FCCS'])
     _node, veg_condition_clip = project.add_project_vector(datasets, LayerTypes['VEGCONDITION'])
     _node, veg_departure_clip = project.add_project_raster(datasets, LayerTypes['VEGDEPARTURE'])
+    _node, sclass_clip = project.add_project_raster(datasets, LayerTypes['SCLASS'])
     _node, fair_market_clip = project.add_project_raster(datasets, LayerTypes['FAIR_MARKET'])
     swoccurrence_node, swoccurrence = project.add_project_raster(datasets, LayerTypes['SWOCCURRENCE'])
     swchange_node, swchange = project.add_project_raster(datasets, LayerTypes['SWCHANGE'])
@@ -273,7 +274,7 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
     for name, file_path in ntd_clean.items():
         lyr_obj = RSLayer(name, name, 'Vector', os.path.relpath(file_path, output_folder))
         ntd_node, _fpath = project.add_project_vector(datasets, lyr_obj)
-        project.add_metadata([RSMeta('Description', 'The USGS Transportation downloadable data from The National Map (TNM) is based on TIGER/Line data provided through U.S. Census Bureau and supplemented with HERE road data to create tile cache base maps. Some of the TIGER/Line data includes limited corrections done by USGS. Transportation data consists of roads, railroads, trails, airports, and other features associated with the transport of people or commerce. The data is downloaded from science base by state then clipped to the project extent'),
+        project.add_metadata([RSMeta('Description', 'The USGS Transportation downloadable data from The National Map (TNM) is based on TIGER/Line data provided through U.S. Census Bureau and supplemented with HERE road data to create tile cache base maps. Some of the TIGER/Line data includes limited corrections done by USGS. Transportation data consists of roads, railroads, trails, airports, and other features associated with the transport of people or commerce. The data is downloaded from science base by state then clipped to the project extent.'),
                               RSMeta('DocsUrl', f'https://tools.riverscapes.net/data/html#{name}', RSMetaTypes.URL)], ntd_node)
         project.add_metadata([RSMeta(k, v, RSMetaTypes.URL, RSMetaExt.DATASET) for k, v in ntd_urls.items()], ntd_node)
 
@@ -367,8 +368,9 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
     log.info('Processing existing and historic vegetation rasters.')
     in_veg_rasters = [os.path.join(landfire_dir, 'LC20_EVT_220.tif'), os.path.join(landfire_dir, 'LC20_BPS_220.tif'), os.path.join(landfire_dir, 'LC22_EVC_220.tif'),
                       os.path.join(landfire_dir, 'LC22_EVH_220.tif'), os.path.join(landfire_dir, 'LC20_HDst_220.tif'), os.path.join(landfire_dir, 'LC22_FDst_220.tif'),
-                      os.path.join(landfire_dir, 'LC22_FCCS_220.tif'), os.path.join(landfire_dir, 'LC20_VCC_220.tif'), os.path.join(landfire_dir, 'LC20_VDep_220.tif')]
-    out_veg_rasters = [existing_clip, historic_clip, veg_cover_clip, veg_height_clip, hdist_clip, fdist_clip, fccs_clip, veg_condition_clip, veg_departure_clip]
+                      os.path.join(landfire_dir, 'LC22_FCCS_220.tif'), os.path.join(landfire_dir, 'LC20_VCC_220.tif'), os.path.join(landfire_dir, 'LC20_VDep_220.tif'),
+                      os.path.join(landfire_dir, 'LC20_SCla_220.tif')]
+    out_veg_rasters = [existing_clip, historic_clip, veg_cover_clip, veg_height_clip, hdist_clip, fdist_clip, fccs_clip, veg_condition_clip, veg_departure_clip, sclass_clip]
     clip_vegetation(buffered_clip_path100, in_veg_rasters, out_veg_rasters, cfg.OUTPUT_EPSG)
 
     log.info('Process the Fair Market Value Raster.')
