@@ -28,14 +28,6 @@ def clip_vegetation(boundary_path: str, veg_rasters: list, veg_raster_clips: lis
             widths.append(meta['transform'][0])
             heights.append(meta['transform'][4])
 
-        # if meta['transform'][0] != meta_hist['transform'][0] != meta_cover['transform'][0] != meta_height['transform'][0]:
-        #    msg = 'Vegetation raster cell widths do not match: existing {}, historic {}, cover {}, height {}'.format(meta_existing['transform'][0], meta_hist['transform'][0], meta_cover['transform'][0], meta_height['transform'][0])
-        #   raise Exception(msg)
-
-        # if meta_existing['transform'][4] != meta_hist['transform'][4] != meta_cover['transform'][4] != meta_height['transform'][4]:
-        #    msg = 'Vegetation raster cell heights do not match: existing {}, historic {}, cover {}, height {}'.format(meta_existing['transform'][4], meta_hist['transform'][4], meta_cover['transform'][4], meta_height['transform'][4])
-        #    raise Exception(msg)
-
         # Now do the raster warp
         raster_warp(rast, veg_raster_clips[i], output_epsg, clip=boundary_path, warp_options=warp_options)
 
