@@ -75,6 +75,7 @@ LayerTypes = {
     # Same here. Sub layers are added dynamically later.
     'COMPOSITE_VBET_EVIDENCE': RSLayer('VBET Evidence Raster', 'VBET_EVIDENCE', 'Raster', 'outputs/vbet_evidence.tif'),
     'COMPOSITE_HAND_RASTER': RSLayer('Hand Raster', 'HAND_RASTER', 'Raster', 'intermediates/composite_hand.tif'),
+    'EVIDENCE_TOPO': RSLayer('Topo Evidence', 'EVIDENCE_TOPO', 'Raster', 'intermediates/topographic_evidence.tif'),
     'VBET_OUTPUTS': RSLayer('VBET', 'VBET_OUTPUTS', 'Geopackage', 'outputs/vbet.gpkg', {
         'VBET_FULL': RSLayer('VBET Full Extent', 'VBET_FULL', 'Vector', 'vbet_full'),
         'VBET_IA': RSLayer('VBET Inactive/Active Boundary', 'VBET_IA', 'Vector', 'active_valley_bottom'),
@@ -187,6 +188,31 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         in_rasters[f'TRANSFORM_ZONE_{zone}'] = raster_name
         transform_zone_rs = RSLayer(f'Transform Zones for {zone}', f'TRANSFORM_ZONE_{zone.upper()}', 'Raster', raster_name)
         project.add_project_raster(proj_nodes['Intermediates'], transform_zone_rs)
+
+    log.info('Writing Topo Evidence raster for project')
+    read_rasters = {name: rasterio.open(raster) for name, raster in in_rasters.items()}
+    out_meta = read_rasters['Slope'].meta
+    out_meta['driver'] = 'GTiff'
+    out_meta['count'] = 1
+    out_meta['compress'] = 'deflate'
+
+    topo_evidence_raster = os.path.join(project_folder, LayerTypes['EVIDENCE_TOPO'].rel_path)
+    write_rasters = {}
+    write_rasters['EVIDENCE_TOPO'] = rasterio.open(topo_evidence_raster, 'w', **out_meta)
+
+    # Generate full normaized slope and twi rasters
+    for _ji, window in read_rasters['Slope'].block_windows(1):
+        block = {block_name: raster.read(1, window=window, masked=True) for block_name, raster in read_rasters.items()}
+        normalized = {}
+        for name in ['Slope', 'TWI']:
+            if name in vbet_run['Zones']:
+                transforms = [np.ma.MaskedArray(transform(block[name].data), mask=block[name].mask) for transform in vbet_run['Transforms'][name]]
+                normalized[name] = np.ma.MaskedArray(np.choose(block[f'TRANSFORM_ZONE_{name}'].data, transforms, mode='clip'), mask=block[name].mask)
+            else:
+                normalized[name] = np.ma.MaskedArray(vbet_run['Transforms'][name][0](block[name].data), mask=block[name].mask)
+        fvals_topo = np.ma.mean([normalized['Slope'], normalized['TWI']], axis=0)
+        write_rasters['EVIDENCE_TOPO'].write(np.ma.filled(np.float32(fvals_topo), out_meta['nodata']), window=window, indexes=1)
+    write_rasters['EVIDENCE_TOPO'].close()
 
     # Initialize Outputs
     output_centerlines = os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['VBET_CENTERLINES'].rel_path)
