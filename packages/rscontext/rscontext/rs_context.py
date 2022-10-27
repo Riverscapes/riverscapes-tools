@@ -90,7 +90,7 @@ LayerTypes = {
     # NHD Shapefiles
     'NHDFlowline': RSLayer('NHD Flowlines', 'NHDFlowline', 'Vector', 'hydrology/NHDFlowline.shp'),
     'NHDArea': RSLayer('NHD Area', 'NHDArea', 'Vector', 'hydrology/NHDArea.shp'),
-    'NHDPlusCatchment': RSLayer('NHD Plus Catchment', 'NHDPlusCatchment', 'Vector', 'hydrolgy/NHDPlusCatchment.shp'),
+    'NHDPlusCatchment': RSLayer('NHD Plus Catchment', 'NHDPlusCatchment', 'Vector', 'hydrology/NHDPlusCatchment.shp'),
     'NHDWaterbody': RSLayer('NHD Waterbody', 'NHDWaterbody', 'Vector', 'hydrology/NHDWaterbody.shp'),
     'WBDHU2': RSLayer('HUC2', 'WBDHU2', 'Vector', 'hydrology/WBDHU2.shp'),
     'WBDHU4': RSLayer('HUC4', 'WBDHU4', 'Vector', 'hydrology/WBDHU4.shp'),
@@ -432,6 +432,15 @@ def augment_layermeta():
         json_data = json.load(f)
 
     for k, lyr in LayerTypes.items():
+        if lyr.sub_layers is not None:
+            for h, sublyr in lyr.sub_layers.items():
+                if h in json_data and len(json_data[h]) > 0:
+                    sublyr.lyr_meta = [
+                        RSMeta('Description', json_data[h][0]),
+                        RSMeta('SourceUrl', json_data[h][1], RSMetaTypes.URL),
+                        RSMeta('ProductVersion', json_data[h][2]),
+                        RSMeta('DocsUrl', 'https://tools.riverscapes.net/rscontext/data.html#{}'.format(sublyr.id), RSMetaTypes.URL)
+                    ]
         if k in json_data and len(json_data[k]) > 0:
             lyr.lyr_meta = [
                 RSMeta('Description', json_data[k][0]),

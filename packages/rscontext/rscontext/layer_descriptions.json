@@ -89,7 +89,7 @@
   "NETWORK300M": ["This polyline feature class is the original NHDPlusHR flow line network segmented into 300m reach lengths. Segmentation that would produce a feature of less than 50m is not performed. And features that are less than 50m are left untouched.",
   "Layer generated from NHDPlusHR flowlines",
   ""],
-  "NETWORK300M_INTERSECTION": ["This polyline feeature class is the NETWORK300M featureclass intersected with road and rail crossings and ownership.",
+  "NETWORK300M_CROSSINGS": ["This polyline feeature class is the NETWORK300M featureclass intersected with road and rail crossings and ownership.",
   "Layer generated from NHDPlusHR flowlines and transporation features",
   ""],
   "NHDFlowline": ["NHDFlowline is the fundamental flow network consisting predominantly of stream/river and artificial path vector features. It represents the spatial geometry, carries the attributes, and contains linear referencing measures for locating features or “events” on the network. Additional NHDFlowline features are canal/ditch, pipeline, connector, underground conduit, and coastline.",
