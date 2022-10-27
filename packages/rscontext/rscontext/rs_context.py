@@ -30,9 +30,9 @@ from rscommons.raster_warp import raster_warp, raster_vrt_stitch
 from rscommons.download_dem import download_dem, verify_areas
 from rscommons.science_base import download_shapefile_collection, get_ntd_urls, us_states
 from rscommons.geographic_raster import gdal_dem_geographic
-from rscommons.raster_buffer_stats import raster_buffer_stats2
+# from rscommons.raster_buffer_stats import raster_buffer_stats2
 from rscommons.vector_ops import get_geometry_unary_union, copy_feature_class
-from rscommons.prism import calculate_bankfull_width
+# from rscommons.prism import calculate_bankfull_width
 from rscommons.project_bounds import generate_project_extents_from_layer
 
 from rscontext.rs_segmentation import rs_segmentation
@@ -40,9 +40,7 @@ from rscontext.clip_vector import clip_vector_layer
 from rscontext.filter_ecoregions import filter_ecoregions
 from rscontext.rs_context_report import RSContextReport
 from rscontext.vegetation import clip_vegetation
-from rscontext.bankfull import bankfull_buffer
 from rscontext.boundary_management import raster_area_intersection
-from rscontext.global_surface_water import global_surface_water
 from rscontext.__version__ import __version__
 
 initGDALOGRErrors()
@@ -86,10 +84,20 @@ LayerTypes = {
         'NETWORK300M': RSLayer('NHD Flowlines Segmented 300m', 'NETWORK300M', 'Vector', 'network_300m'),
         'NETWORK300M_INTERSECTION': RSLayer('NHD Flowlines intersected with road, rail and ownership', 'NETWORK300M_INTERSECTION', 'Vector', 'network_intersected'),
         'NETWORK300M_CROSSINGS': RSLayer('NHD Flowlines intersected with road, rail and ownership, segmented to 300m', 'NETWORK300MCROSSINGS', 'Vector', 'network_intersected_300m'),
-        'BANKFULL_CHANNEL': RSLayer('Estimated Bankfull Channel', 'BANKFULL_CHANNEL', 'Vector', 'bankfull'),
         'PROCESSING_EXTENT': RSLayer('Processing Extent of HUC-DEM Intersection', 'PROCESSING_EXTENT', 'Vector', 'processing_extent')
         # 'COMPOSITE_CHANNEL_AREA': RSLayer('Bankfull and NHD Area', 'COMPOSITE_CHANNEL_AREA', 'Vector', 'bankfull_nhd_area')
     }),
+    # NHD Shapefiles
+    'NHDFlowline': RSLayer('NHD Flowlines', 'NHDFlowline', 'Vector', 'hydrology/NHDFlowline.shp'),
+    'NHDArea': RSLayer('NHD Area', 'NHDArea', 'Vector', 'hydrology/NHDArea.shp'),
+    'NHDPlusCatchment': RSLayer('NHD Plus Catchment', 'NHDPlusCatchment', 'Vector', 'hydrolgy/NHDPlusCatchment.shp'),
+    'NHDWaterbody': RSLayer('NHD Waterbody', 'NHDWaterbody', 'Vector', 'hydrology/NHDWaterbody.shp'),
+    'WBDHU2': RSLayer('HUC2', 'WBDHU2', 'Vector', 'hydrology/WBDHU2.shp'),
+    'WBDHU4': RSLayer('HUC4', 'WBDHU4', 'Vector', 'hydrology/WBDHU4.shp'),
+    'WBDHU6': RSLayer('HUC6', 'WBDHU6', 'Vector', 'hydrology/WBDHU6.shp'),
+    'WBDHU8': RSLayer('HUC8', 'WBDHU8', 'Vector', 'hydrology/WBDHU8.shp'),
+    'WBDHU10': RSLayer('HUC10', 'WBDHU10', 'Vector', 'hydrology/WBDHU10.shp'),
+    'WBDHU12': RSLayer('HUC12', 'WBDHU12', 'Vector', 'hydrology/WBDHU12.shp'),
 
     # Prism Layers
     'PPT': RSLayer('Precipitation', 'Precip', 'Raster', 'climate/precipitation.tif'),
@@ -100,14 +108,6 @@ LayerTypes = {
     'VPDMIN': RSLayer('Minimum Vapor Pressure Deficit', 'MinVap', 'Raster', 'climate/min_vapor_pressure.tif'),
     'VPDMAX': RSLayer('Maximum Vapor Pressure Deficit', 'MaxVap', 'Raster', 'climate/max_vapor_pressure.tif'),
     'REPORT': RSLayer('RSContext Report', 'REPORT', 'HTMLFile', 'rs_context.html'),
-
-    # Surface Water Layers
-    'SWOCCURRENCE': RSLayer('Surface Water Occurrence', 'Occurrence', 'Raster', 'surface_water/occurrence.tif'),
-    'SWCHANGE': RSLayer('Surface Water Change', 'Change', 'Raster', 'surface_water/change.tif'),
-    'SWSEASONALITY': RSLayer('Surface Water Seasonality', 'Seasonality', 'Raster', 'surface_water/seasonality.tif'),
-    'SWRECURRENCE': RSLayer('Surface Water Recurrence', 'Recurrence', 'Raster', 'surface_water/recurrence.tif'),
-    'SWTRANSITIONS': RSLayer('Surface Water Transitions', 'Transitions', 'Raster', 'surface_water/transitions.tif'),
-    'SWMAXIMUMEXTENT': RSLayer('Surface Water Maximum Extent', 'Extent', 'Raster', 'surface_water/extent.tif')
 }
 
 SEGMENTATION = {
@@ -183,12 +183,6 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
     _node, veg_departure_clip = project.add_project_raster(datasets, LayerTypes['VEGDEPARTURE'])
     _node, sclass_clip = project.add_project_raster(datasets, LayerTypes['SCLASS'])
     _node, fair_market_clip = project.add_project_raster(datasets, LayerTypes['FAIR_MARKET'])
-    swoccurrence_node, swoccurrence = project.add_project_raster(datasets, LayerTypes['SWOCCURRENCE'])
-    swchange_node, swchange = project.add_project_raster(datasets, LayerTypes['SWCHANGE'])
-    swseasonality_node, swseasonality = project.add_project_raster(datasets, LayerTypes['SWSEASONALITY'])
-    swrecurrence_node, swrecurrence = project.add_project_raster(datasets, LayerTypes['SWRECURRENCE'])
-    swtransitions_node, swtransitions = project.add_project_raster(datasets, LayerTypes['SWTRANSITIONS'])
-    swextent_node, swextent = project.add_project_raster(datasets, LayerTypes['SWMAXIMUMEXTENT'])
 
     # Download the four digit NHD archive containing the flow lines and watershed boundaries
     log.info('Processing NHD')
@@ -213,7 +207,7 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
     copy_feature_class(nhd[boundary], buffered_clip_path500, epsg=cfg.OUTPUT_EPSG, buffer=500)
 
     # PRISM climate rasters
-    mean_annual_precip = None
+    # mean_annual_precip = None
     bil_files = glob.glob(os.path.join(prism_folder, '*.bil'))
     if (len(bil_files) == 0):
         all_files = glob.glob(os.path.join(prism_folder, '*'))
@@ -228,13 +222,13 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
         raster_warp(source_raster_path, project_raster_path, cfg.OUTPUT_EPSG, buffered_clip_path500, {"cutlineBlend": 1})
 
         # Use the mean annual precipitation to calculate bankfull width
-        if ptype.lower() == 'ppt':
-            polygon = get_geometry_unary_union(nhd[boundary], epsg=cfg.OUTPUT_EPSG)
-            mean_annual_precip = raster_buffer_stats2({1: polygon}, project_raster_path)[1]['Mean']
-            log.info('Mean annual precipitation for HUC {} is {} mm'.format(huc, mean_annual_precip))
-            project.add_metadata([RSMeta('mean_annual_precipitation_mm', str(mean_annual_precip), RSMetaTypes.FLOAT)])
+        # if ptype.lower() == 'ppt':
+        #    polygon = get_geometry_unary_union(nhd[boundary], epsg=cfg.OUTPUT_EPSG)
+        #    mean_annual_precip = raster_buffer_stats2({1: polygon}, project_raster_path)[1]['Mean']
+        #    log.info('Mean annual precipitation for HUC {} is {} mm'.format(huc, mean_annual_precip))
+        #    project.add_metadata([RSMeta('mean_annual_precipitation_mm', str(mean_annual_precip), RSMetaTypes.FLOAT)])
 
-            calculate_bankfull_width(nhd['NHDFlowline'], mean_annual_precip)
+        #    calculate_bankfull_width(nhd['NHDFlowline'], mean_annual_precip)
 
     # Add the DB record to the Project XML
     db_lyr = RSLayer('NHD Tables', 'NHDTABLES', 'SQLiteDB', os.path.relpath(db_path, output_folder))
@@ -243,7 +237,7 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
 
     # Add any results to project XML
     for name, file_path in nhd.items():
-        lyr_obj = RSLayer(name, name, 'Vector', os.path.relpath(file_path, output_folder))
+        lyr_obj = LayerTypes[name]  # RSLayer(name, name, 'Vector', os.path.relpath(file_path, output_folder))
         vector_nod, _fpath = project.add_project_vector(datasets, lyr_obj)
         project.add_metadata([RSMeta('origin_url', nhd_url, RSMetaTypes.URL, RSMetaExt.DATASET)], vector_nod)
 
@@ -275,7 +269,9 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
         lyr_obj = RSLayer(name, name, 'Vector', os.path.relpath(file_path, output_folder))
         ntd_node, _fpath = project.add_project_vector(datasets, lyr_obj)
         project.add_metadata([RSMeta('Description', 'The USGS Transportation downloadable data from The National Map (TNM) is based on TIGER/Line data provided through U.S. Census Bureau and supplemented with HERE road data to create tile cache base maps. Some of the TIGER/Line data includes limited corrections done by USGS. Transportation data consists of roads, railroads, trails, airports, and other features associated with the transport of people or commerce. The data is downloaded from science base by state then clipped to the project extent.'),
-                              RSMeta('DocsUrl', f'https://tools.riverscapes.net/data/html#{name}', RSMetaTypes.URL)], ntd_node)
+                              RSMeta('DocsUrl', f'https://tools.riverscapes.net/data/html#{name}', RSMetaTypes.URL),
+                              RSMeta('SourceUrl', 'https://data.usgs.gov/datacatalog/data/USGS:ad3d631d-f51f-4b6a-91a3-e617d6a58b4e', RSMetaTypes.URL),
+                              RSMeta('ProductVersion', '2020')], ntd_node)
         project.add_metadata([RSMeta(k, v, RSMetaTypes.URL, RSMetaExt.DATASET) for k, v in ntd_urls.items()], ntd_node)
 
     # download contributing DEM rasters, mosaic and reproject into compressed GeoTIF
@@ -335,35 +331,6 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
     if parallel:
         safe_remove_dir(ned_unzip_folder)
 
-    # Download and clip global surface water rasters
-    log.info('Processing global surface water rasters')
-    gsw_download_folder = os.path.join(download_folder, 'gsw')
-    gsw_urls = global_surface_water(nhd[boundary], gsw_download_folder)
-    gsw_types = {
-        'occurrence': [swoccurrence, swoccurrence_node],
-        'change': [swchange, swchange_node],
-        'seasonality': [swseasonality, swseasonality_node],
-        'recurrence': [swrecurrence, swrecurrence_node],
-        'transitions': [swtransitions, swtransitions_node],
-        'extent': [swextent, swextent_node]
-    }
-    for gsw_type in gsw_types.keys():
-        dirpath = os.path.join(download_folder, 'gsw', gsw_type)
-        type_urls = []
-        for i in gsw_urls:
-            if gsw_type in i:
-                type_urls.append(i)
-        if len([file for file in os.listdir(dirpath) if os.path.isfile(os.path.join(dirpath, file))]) > 1:
-            raster_vrt_stitch([file for file in os.listdir(dirpath) if os.path.isfile(os.path.join(dirpath, file))], gsw_types[gsw_type][0], cfg.OUTPUT_EPSG, clip=processing_boundary, clean=parallel, warp_options={"cutlineBlend": 1})
-            verify_areas(gsw_types[gsw_type][0], nhd[boundary])
-        else:
-            raster_warp(os.path.join(dirpath, [file for file in os.listdir(dirpath) if os.path.isfile(os.path.join(dirpath, file))][0]), gsw_types[gsw_type][0], cfg.OUTPUT_EPSG, clip=processing_boundary, warp_options={"cutlineBlend": 2})
-            verify_areas(gsw_types[gsw_type][0], nhd[boundary])
-        project.add_metadata([
-            RSMeta('num_rasters', str(len(type_urls)), RSMetaTypes.INT, RSMetaExt.DATASET),
-            RSMeta('origin_urls', str(type_urls), RSMetaTypes.URL, RSMetaExt.DATASET)
-        ], gsw_types[gsw_type][1])
-
     # Clip and re-project the existing and historic vegetation
     log.info('Processing existing and historic vegetation rasters.')
     in_veg_rasters = [os.path.join(landfire_dir, 'LC20_EVT_220.tif'), os.path.join(landfire_dir, 'LC20_BPS_220.tif'), os.path.join(landfire_dir, 'LC22_EVC_220.tif'),
@@ -417,8 +384,8 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
     project.add_project_geopackage(datasets, LayerTypes['HYDROLOGY'])
 
     # Add Bankfull Buffer Polygons
-    bankfull_path = os.path.join(hydrology_gpkg_path, LayerTypes['HYDROLOGY'].sub_layers['BANKFULL_CHANNEL'].rel_path)
-    bankfull_buffer(os.path.join(hydrology_gpkg_path, LayerTypes['HYDROLOGY'].sub_layers['NETWORK'].rel_path), cfg.OUTPUT_EPSG, bankfull_path, )
+    # bankfull_path = os.path.join(hydrology_gpkg_path, LayerTypes['HYDROLOGY'].sub_layers['BANKFULL_CHANNEL'].rel_path)
+    # bankfull_buffer(os.path.join(hydrology_gpkg_path, LayerTypes['HYDROLOGY'].sub_layers['NETWORK'].rel_path), cfg.OUTPUT_EPSG, bankfull_path, )
 
     # TODO Add nhd/bankfull union when merge feature classes in vector.ops works with Geopackage layers
     # bankfull_nhd_path = os.path.join(hydrology_gpkg_path, LayerTypes['HYDROLOGY'].sub_layers['COMPOSITE_CHANNEL_AREA'].rel_path)
@@ -467,7 +434,9 @@ def augment_layermeta():
     for k, lyr in LayerTypes.items():
         if k in json_data and len(json_data[k]) > 0:
             lyr.lyr_meta = [
-                RSMeta('Description', json_data[k]),
+                RSMeta('Description', json_data[k][0]),
+                RSMeta('SourceUrl', json_data[k][1], RSMetaTypes.URL),
+                RSMeta('ProductVersion', json_data[k][2]),
                 RSMeta('DocsUrl', 'https://tools.riverscapes.net/rscontext/data.html#{}'.format(lyr.id), RSMetaTypes.URL)
             ]
 
