@@ -444,7 +444,10 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
     log.info('Calculating Segment Metrics')
     metric_layers = {'active_floodplain': output_active_fp, 'active_channel': channel_area, 'inactive_floodplain': output_inactive_fp, 'floodplain': output_floodplain}
-    calculate_segmentation_metrics(segmentation_polygons, output_centerlines, metric_layers)
+    for level_path in level_paths_to_run:
+        if level_path is None:
+            continue
+        calculate_segmentation_metrics(segmentation_polygons, output_centerlines, metric_layers, f"LevelPathI = {level_path}")
 
     log.info('Summerizing VBET Metrics')
     distance_lookup = get_distance_lookup(inputs_gpkg, intermediates_gpkg, level_paths_to_run, {0: 100.0, 1: 250.0, 2: 1000.0})

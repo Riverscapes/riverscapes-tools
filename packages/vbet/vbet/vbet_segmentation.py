@@ -156,7 +156,7 @@ def split_vbet_polygons(vbet_polygons, segmentation_points, out_split_polygons):
     log.info('VBET polygon successfully segmented')
 
 
-def calculate_segmentation_metrics(vbet_segment_polygons: Path, vbet_centerline: Path, dict_layers):
+def calculate_segmentation_metrics(vbet_segment_polygons: Path, vbet_centerline: Path, dict_layers, attrib_filter=None):
     """_summary_
 
     Args:
@@ -170,13 +170,17 @@ def calculate_segmentation_metrics(vbet_segment_polygons: Path, vbet_centerline:
     with GeopackageLayer(vbet_segment_polygons, write=True) as vbet_lyr, \
             GeopackageLayer(vbet_centerline) as centerline_lyr:
 
+        # Check fields and create if they don't exist
+        exist_fields = vbet_lyr.get_fields()
+        metric_field_names = []
         for metric_layer_name in dict_layers.keys():
-            fields = {f'{metric_layer_name}_area': ogr.OFTReal,
-                      f'{metric_layer_name}_prop': ogr.OFTReal, }
+            metric_field_names.extend([f"{metric_layer_name}_{metric_type}" for metric_type in ['area', 'prop']])
+        metric_field_names.extend(['centerline_length', 'segment_area'])
+        fields = {field_name: ogr.OFTReal for field_name in metric_field_names if field_name not in exist_fields}
+        if len(fields) > 0:
             vbet_lyr.create_fields(fields)
-        vbet_lyr.create_fields({'centerline_length': ogr.OFTReal, 'segment_area': ogr.OFTReal})
 
-        for vbet_feat, *_ in vbet_lyr.iterate_features('Calcuating metrics per vbet segment'):
+        for vbet_feat, *_ in vbet_lyr.iterate_features('Calcuating metrics per vbet segment', attribute_filter=attrib_filter):
             vbet_geom = vbet_feat.GetGeometryRef()
             centroid = vbet_geom.Centroid()
             utm_epsg = get_utm_zone_epsg(centroid.GetX())
@@ -229,6 +233,8 @@ def calculate_segmentation_metrics(vbet_segment_polygons: Path, vbet_centerline:
                     vbet_feat.SetField(f'{metric_layer_name}_area', metric_area)
                     vbet_feat.SetField(f'{metric_layer_name}_prop', metric_prop)
             vbet_lyr.ogr_layer.SetFeature(vbet_feat)
+            vbet_feat = None
+            vbet_geom = None
 
 
 def clean_linestring(in_geom: ogr.Geometry) -> MultiLineString:
@@ -312,6 +318,7 @@ def summerize_vbet_metrics(segment_points: Path, segmented_polygons: Path, level
                 feat_seg_pt.SetField('centerline_length', window_length)
 
                 lyr_pts.ogr_layer.SetFeature(feat_seg_pt)
+                feat_seg_pt = None
 
 
 def vbet_segmentation(in_centerlines: str, vbet_polygons: str, metric_layers: dict, out_gpkg: str, interval=200):
