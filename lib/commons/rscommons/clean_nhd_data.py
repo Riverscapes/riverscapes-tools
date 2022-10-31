@@ -54,10 +54,7 @@ def clean_nhd_data(huc, download_folder, unzip_folder, out_dir, out_epsg, force_
     featureclasses['NHDWaterbody'] = export_feature_class(filegdb, 'NHDWaterbody', out_dir, out_epsg, None, None, boundary)
     featureclasses['NHDPlusCatchment'] = export_feature_class(filegdb, 'NHDPlusCatchment', out_dir, out_epsg, None, None, boundary)
 
-    db_path = os.path.join(out_dir, 'nhd_data.sqlite')
-    export_table(filegdb, 'NHDPlusFlowlineVAA', db_path, None, "ReachCode LIKE '{}%'".format(huc[:8]))
-
-    return featureclasses, db_path, huc_name, nhd_url
+    return featureclasses, filegdb, huc_name, nhd_url
 
 
 def download_unzip_nhd(huc, download_folder, unzip_folder, force_download):

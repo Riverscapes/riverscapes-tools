@@ -34,6 +34,7 @@ from rscommons.geographic_raster import gdal_dem_geographic
 from rscommons.vector_ops import get_geometry_unary_union, copy_feature_class
 # from rscommons.prism import calculate_bankfull_width
 from rscommons.project_bounds import generate_project_extents_from_layer
+from rscommons.filegdb import export_table
 
 from rscontext.rs_segmentation import rs_segmentation
 from rscontext.clip_vector import clip_vector_layer
@@ -84,20 +85,20 @@ LayerTypes = {
         'NETWORK300M': RSLayer('NHD Flowlines Segmented 300m', 'NETWORK300M', 'Vector', 'network_300m'),
         'NETWORK300M_INTERSECTION': RSLayer('NHD Flowlines intersected with road, rail and ownership', 'NETWORK300M_INTERSECTION', 'Vector', 'network_intersected'),
         'NETWORK300M_CROSSINGS': RSLayer('NHD Flowlines intersected with road, rail and ownership, segmented to 300m', 'NETWORK300MCROSSINGS', 'Vector', 'network_intersected_300m'),
-        'PROCESSING_EXTENT': RSLayer('Processing Extent of HUC-DEM Intersection', 'PROCESSING_EXTENT', 'Vector', 'processing_extent')
+        'PROCESSING_EXTENT': RSLayer('Processing Extent of HUC-DEM Intersection', 'PROCESSING_EXTENT', 'Vector', 'processing_extent'),
         # 'COMPOSITE_CHANNEL_AREA': RSLayer('Bankfull and NHD Area', 'COMPOSITE_CHANNEL_AREA', 'Vector', 'bankfull_nhd_area')
+        # NHD Shapefiles
+        'NHDFlowline': RSLayer('NHD Flowlines', 'NHDFlowline', 'Vector', 'NHDFlowline.shp'),
+        'NHDArea': RSLayer('NHD Area', 'NHDArea', 'Vector', 'NHDArea.shp'),
+        'NHDPlusCatchment': RSLayer('NHD Plus Catchment', 'NHDPlusCatchment', 'Vector', 'NHDPlusCatchment.shp'),
+        'NHDWaterbody': RSLayer('NHD Waterbody', 'NHDWaterbody', 'Vector', 'NHDWaterbody.shp'),
+        'WBDHU2': RSLayer('HUC2', 'WBDHU2', 'Vector', 'WBDHU2.shp'),
+        'WBDHU4': RSLayer('HUC4', 'WBDHU4', 'Vector', 'WBDHU4.shp'),
+        'WBDHU6': RSLayer('HUC6', 'WBDHU6', 'Vector', 'WBDHU6.shp'),
+        'WBDHU8': RSLayer('HUC8', 'WBDHU8', 'Vector', 'WBDHU8.shp'),
+        'WBDHU10': RSLayer('HUC10', 'WBDHU10', 'Vector', 'WBDHU10.shp'),
+        'WBDHU12': RSLayer('HUC12', 'WBDHU12', 'Vector', 'WBDHU12.shp')
     }),
-    # NHD Shapefiles
-    'NHDFlowline': RSLayer('NHD Flowlines', 'NHDFlowline', 'Vector', 'hydrology/NHDFlowline.shp'),
-    'NHDArea': RSLayer('NHD Area', 'NHDArea', 'Vector', 'hydrology/NHDArea.shp'),
-    'NHDPlusCatchment': RSLayer('NHD Plus Catchment', 'NHDPlusCatchment', 'Vector', 'hydrology/NHDPlusCatchment.shp'),
-    'NHDWaterbody': RSLayer('NHD Waterbody', 'NHDWaterbody', 'Vector', 'hydrology/NHDWaterbody.shp'),
-    'WBDHU2': RSLayer('HUC2', 'WBDHU2', 'Vector', 'hydrology/WBDHU2.shp'),
-    'WBDHU4': RSLayer('HUC4', 'WBDHU4', 'Vector', 'hydrology/WBDHU4.shp'),
-    'WBDHU6': RSLayer('HUC6', 'WBDHU6', 'Vector', 'hydrology/WBDHU6.shp'),
-    'WBDHU8': RSLayer('HUC8', 'WBDHU8', 'Vector', 'hydrology/WBDHU8.shp'),
-    'WBDHU10': RSLayer('HUC10', 'WBDHU10', 'Vector', 'hydrology/WBDHU10.shp'),
-    'WBDHU12': RSLayer('HUC12', 'WBDHU12', 'Vector', 'hydrology/WBDHU12.shp'),
 
     # Prism Layers
     'PPT': RSLayer('Precipitation', 'Precip', 'Raster', 'climate/precipitation.tif'),
@@ -190,21 +191,26 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
     nhd_download_folder = os.path.join(download_folder, 'nhd', huc[:4])
     nhd_unzip_folder = os.path.join(scratch_dir, 'nhd', huc[:4])
 
-    nhd, db_path, huc_name, nhd_url = clean_nhd_data(huc, nhd_download_folder, nhd_unzip_folder, os.path.join(output_folder, 'hydrology'), cfg.OUTPUT_EPSG, False)
+    nhd, filegdb, huc_name, nhd_url = clean_nhd_data(huc, nhd_download_folder, nhd_unzip_folder, nhd_unzip_folder, cfg.OUTPUT_EPSG, False)
 
-    # Clean up the unzipped files. We won't need them again
-    if parallel:
-        safe_remove_dir(nhd_unzip_folder)
-    project.add_metadata([RSMeta('Watershed', huc_name)])
+    for key in nhd.keys():
+        out_path = os.path.join(hydrology_gpkg_path, key)
+        copy_feature_class(nhd[key], out_path, epsg=cfg.OUTPUT_EPSG)
+
     boundary = 'WBDHU{}'.format(len(huc))
 
-    # For coarser rasters than the DEM we need to buffer our clip polygon to include enough pixels
-    # This shouldn't be too much more data because these are usually integer rasters that are much lower res.
     buffered_clip_path100 = os.path.join(hydrology_gpkg_path, LayerTypes['HYDROLOGY'].sub_layers['BUFFEREDCLIP100'].rel_path)
     copy_feature_class(nhd[boundary], buffered_clip_path100, epsg=cfg.OUTPUT_EPSG, buffer=100)
 
     buffered_clip_path500 = os.path.join(hydrology_gpkg_path, LayerTypes['HYDROLOGY'].sub_layers['BUFFEREDCLIP500'].rel_path)
     copy_feature_class(nhd[boundary], buffered_clip_path500, epsg=cfg.OUTPUT_EPSG, buffer=500)
+
+    export_table(filegdb, 'NHDPlusFlowlineVAA', hydrology_gpkg_path, None, "ReachCode LIKE '{}%'".format(nhd['WBDHU8']))
+
+    # Clean up the unzipped files. We won't need them again
+    if parallel:
+        safe_remove_dir(nhd_unzip_folder)
+    project.add_metadata([RSMeta('Watershed', huc_name)])
 
     # PRISM climate rasters
     # mean_annual_precip = None
