@@ -6,6 +6,7 @@ python3 --version
 python3 -m venv .venv
 # Make sure pip is at a good version
 .venv/bin/python -m pip install --upgrade pip
+# Cython and numpy need to go in before an explicit GDAL install
 .venv/bin/pip --timeout=120 install \
   Cython==0.29.23 \
   numpy==1.23.4 \
