@@ -78,15 +78,7 @@ LayerTypes = {
     'GEOLOGY': RSLayer('Geology', 'GEOLOGY', 'Vector', 'geology/geology.shp'),
 
     # NHD Geopackage Layers
-    'HYDROLOGY': RSLayer('Hydrology', 'NHD', 'Geopackage', 'hydrology/hydrology.gpkg', {
-        'NETWORK': RSLayer('NHD Flowlines', 'NETWORK', 'Vector', 'network'),
-        'BUFFEREDCLIP100': RSLayer('Buffered Clip Shape 100m', 'BUFFERED_CLIP100', 'Vector', 'buffered_clip100m'),
-        'BUFFEREDCLIP500': RSLayer('Buffered Clip Shape 500m', 'BUFFERED_CLIP500', 'Vector', 'buffered_clip500m'),
-        'NETWORK300M': RSLayer('NHD Flowlines Segmented 300m', 'NETWORK300M', 'Vector', 'network_300m'),
-        'NETWORK300M_INTERSECTION': RSLayer('NHD Flowlines intersected with road, rail and ownership', 'NETWORK300M_INTERSECTION', 'Vector', 'network_intersected'),
-        'NETWORK300M_CROSSINGS': RSLayer('NHD Flowlines intersected with road, rail and ownership, segmented to 300m', 'NETWORK300MCROSSINGS', 'Vector', 'network_intersected_300m'),
-        'PROCESSING_EXTENT': RSLayer('Processing Extent of HUC-DEM Intersection', 'PROCESSING_EXTENT', 'Vector', 'processing_extent'),
-        # 'COMPOSITE_CHANNEL_AREA': RSLayer('Bankfull and NHD Area', 'COMPOSITE_CHANNEL_AREA', 'Vector', 'bankfull_nhd_area')
+    'NHDPLUSHR': RSLayer('NHD HR Plus', 'NHDPLUSHR', 'Geopackage', 'hydrology/nhdplushr.gpkg', {
         # NHD Shapefiles
         'NHDFlowline': RSLayer('NHD Flowlines', 'NHDFlowline', 'Vector', 'NHDFlowline'),
         'NHDArea': RSLayer('NHD Area', 'NHDArea', 'Vector', 'NHDArea'),
@@ -97,7 +89,17 @@ LayerTypes = {
         'WBDHU6': RSLayer('HUC6', 'WBDHU6', 'Vector', 'WBDHU6'),
         'WBDHU8': RSLayer('HUC8', 'WBDHU8', 'Vector', 'WBDHU8'),
         'WBDHU10': RSLayer('HUC10', 'WBDHU10', 'Vector', 'WBDHU10'),
-        'WBDHU12': RSLayer('HUC12', 'WBDHU12', 'Vector', 'WBDHU12')
+        'WBDHU12': RSLayer('HUC12', 'WBDHU12', 'Vector', 'WBDHU12'),
+        'VAATABLE': RSLayer('NHDPlusFlowlineVAA', 'VAA', 'DataTable', 'NHDPlusFlowlineVAA')
+    }),
+
+    'HYDRODERIVATIVES': RSLayer('Hydrology Derivatives', 'HYDRODERIVATIVES', 'Geopackage', 'hydrology/hydro_derivatives.gpkg', {
+        'BUFFEREDCLIP100': RSLayer('Buffered Clip Shape 100m', 'BUFFERED_CLIP100', 'Vector', 'buffered_clip100m'),
+        'BUFFEREDCLIP500': RSLayer('Buffered Clip Shape 500m', 'BUFFERED_CLIP500', 'Vector', 'buffered_clip500m'),
+        'NETWORK300M': RSLayer('NHD Flowlines Segmented 300m', 'NETWORK300M', 'Vector', 'network_300m'),
+        'NETWORK300M_INTERSECTION': RSLayer('NHD Flowlines intersected with road, rail and ownership', 'NETWORK300M_INTERSECTION', 'Vector', 'network_intersected'),
+        'NETWORK300M_CROSSINGS': RSLayer('NHD Flowlines intersected with road, rail and ownership, segmented to 300m', 'NETWORK300MCROSSINGS', 'Vector', 'network_intersected_300m'),
+        'PROCESSING_EXTENT': RSLayer('Processing Extent of HUC-DEM Intersection', 'PROCESSING_EXTENT', 'Vector', 'processing_extent'),
     }),
 
     # Prism Layers
@@ -168,7 +170,8 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
     realization = project.add_realization(project_name, 'REALIZATION1', cfg.version)
     datasets = project.XMLBuilder.add_sub_element(realization, 'Datasets')
 
-    hydrology_gpkg_path = os.path.join(output_folder, LayerTypes['HYDROLOGY'].rel_path)
+    nhd_gpkg_path = os.path.join(output_folder, LayerTypes['NHDPLUSHR'].rel_path)
+    hydro_deriv_gpkg_path = os.path.join(output_folder, LayerTypes['HYDRODERIVATIVES'].rel_path)
 
     dem_node, dem_raster = project.add_project_raster(datasets, LayerTypes['DEM'])
     _node, hill_raster = project.add_project_raster(datasets, LayerTypes['HILLSHADE'])
@@ -194,18 +197,18 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
     nhd, filegdb, huc_name, nhd_url = clean_nhd_data(huc, nhd_download_folder, nhd_unzip_folder, nhd_unzip_folder, cfg.OUTPUT_EPSG, False)
 
     for key in nhd.keys():
-        out_path = os.path.join(hydrology_gpkg_path, key)
+        out_path = os.path.join(nhd_gpkg_path, key)
         copy_feature_class(nhd[key], out_path, epsg=cfg.OUTPUT_EPSG)
 
     boundary = 'WBDHU{}'.format(len(huc))
 
-    buffered_clip_path100 = os.path.join(hydrology_gpkg_path, LayerTypes['HYDROLOGY'].sub_layers['BUFFEREDCLIP100'].rel_path)
+    buffered_clip_path100 = os.path.join(hydro_deriv_gpkg_path, LayerTypes['HYDRODERIVATIVES'].sub_layers['BUFFEREDCLIP100'].rel_path)
     copy_feature_class(nhd[boundary], buffered_clip_path100, epsg=cfg.OUTPUT_EPSG, buffer=100)
 
-    buffered_clip_path500 = os.path.join(hydrology_gpkg_path, LayerTypes['HYDROLOGY'].sub_layers['BUFFEREDCLIP500'].rel_path)
+    buffered_clip_path500 = os.path.join(hydro_deriv_gpkg_path, LayerTypes['HYDRODERIVATIVES'].sub_layers['BUFFEREDCLIP500'].rel_path)
     copy_feature_class(nhd[boundary], buffered_clip_path500, epsg=cfg.OUTPUT_EPSG, buffer=500)
 
-    export_table(filegdb, 'NHDPlusFlowlineVAA', hydrology_gpkg_path, None, "ReachCode LIKE '{}%'".format(nhd['WBDHU8']))
+    export_table(filegdb, 'NHDPlusFlowlineVAA', nhd_gpkg_path, None, "ReachCode LIKE '{}%'".format(nhd['WBDHU8']))
 
     # Clean up the unzipped files. We won't need them again
     if parallel:
@@ -274,7 +277,7 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
     ned_unzip_folder = os.path.join(scratch_dir, 'ned')
     dem_rasters, urls = download_dem(nhd[boundary], cfg.OUTPUT_EPSG, 0.01, ned_download_folder, ned_unzip_folder, force_download)
 
-    processing_boundary = os.path.join(hydrology_gpkg_path, LayerTypes['HYDROLOGY'].sub_layers['PROCESSING_EXTENT'].rel_path)
+    processing_boundary = os.path.join(hydro_deriv_gpkg_path, LayerTypes['HYDRODERIVATIVES'].sub_layers['PROCESSING_EXTENT'].rel_path)
     raster_area_intersection(dem_rasters, nhd[boundary], processing_boundary)
     need_dem_rebuild = force_download or not os.path.exists(dem_raster)
     if need_dem_rebuild:
@@ -292,8 +295,8 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
     need_hs_build = need_dem_rebuild or not os.path.isfile(hill_raster)
 
     project.add_metadata([
-        RSMeta('num_rasters', str(len(urls)), RSMetaTypes.INT, RSMetaExt.DATASET),
-        RSMeta('origin_urls', json.dumps(urls), RSMetaTypes.JSON, RSMetaExt.DATASET)
+        RSMeta('NumRasters', str(len(urls)), RSMetaTypes.INT, RSMetaExt.DATASET),
+        RSMeta('OriginUrls', json.dumps(urls), RSMetaTypes.JSON, RSMetaExt.DATASET)
     ], dem_node)
 
     for dem_r in dem_rasters:
@@ -366,22 +369,23 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
     # For now let's just make a copy of the NHD FLowlines
     tmr = Timer()
     rs_segmentation(
-        os.path.join(hydrology_gpkg_path, 'NHDFlowline'),
+        os.path.join(nhd_gpkg_path, 'NHDFlowline'),
         ntd_clean['Roads'],
         ntd_clean['Rail'],
         own_path,
-        hydrology_gpkg_path,
+        hydro_deriv_gpkg_path,
         SEGMENTATION['Max'],
         SEGMENTATION['Min'],
         huc
     )
     log.debug('Segmentation done in {:.1f} seconds'.format(tmr.ellapsed()))
-    gpkg_nod, _filepath, _sublayers = project.add_project_geopackage(datasets, LayerTypes['HYDROLOGY'])
+    project.add_project_geopackage(datasets, LayerTypes['NHDPLUSHR'])
+    project.add_project_geopackage(datasets, LayerTypes['HYDRODERIVATIVES'])
     # Add the DB record to the Project XML
-    db_lyr = RSLayer('NHD Tables', 'NHDTABLES', 'DataTable', 'NHDPlusFlowlineVAA')
-    db_path = os.path.join(output_folder, 'hydrology/hydrology.gpkg/NHDPlusFlowlineVAA')
-    db_el = project.add_dataset(gpkg_nod, db_path, db_lyr, 'DataTable')
-    project.add_metadata([RSMeta('origin_url', nhd_url, RSMetaTypes.URL, RSMetaExt.DATASET)], db_el)
+    # db_lyr = RSLayer('NHD Tables', 'NHDTABLES', 'DataTable', 'NHDPlusFlowlineVAA')
+    # db_path = os.path.join(output_folder, 'hydrology/hydrology.gpkg/NHDPlusFlowlineVAA')
+    # db_el = project.add_dataset(gpkg_nod, db_path, db_lyr, 'DataTable')
+    # project.add_metadata([RSMeta('origin_url', nhd_url, RSMetaTypes.URL, RSMetaExt.DATASET)], db_el)
 
     # Add Bankfull Buffer Polygons
     # bankfull_path = os.path.join(hydrology_gpkg_path, LayerTypes['HYDROLOGY'].sub_layers['BANKFULL_CHANNEL'].rel_path)

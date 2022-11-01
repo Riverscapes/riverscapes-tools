@@ -121,5 +121,8 @@
   "2014"],
   "WBDHU12": ["The Watershed Boundary Dataset (WBD) is a seamless, national hydrologic unit dataset. Hydrologic units represent the area of the landscape that drains to a portion of the stream network. WBD contains eight levels of progressive hydrologic units identified by unique 2- to 16-digit codes.",
   "https://www.usgs.gov/national-hydrography/watershed-boundary-dataset",
-  "2014"]
+  "2014"],
+  "VAATABLE": ["A set of NHDPlus HR attributes called the Value-Added Attributes (VAAs) boost nhd analytic power by pre-calculating a number of network characteristics to make network analysis easier and richer.",
+  "https://www.usgs.gov/national-hydrography/value-added-attributes-vaas", 
+  ""]
 }
