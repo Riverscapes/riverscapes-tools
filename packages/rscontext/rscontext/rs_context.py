@@ -88,16 +88,16 @@ LayerTypes = {
         'PROCESSING_EXTENT': RSLayer('Processing Extent of HUC-DEM Intersection', 'PROCESSING_EXTENT', 'Vector', 'processing_extent'),
         # 'COMPOSITE_CHANNEL_AREA': RSLayer('Bankfull and NHD Area', 'COMPOSITE_CHANNEL_AREA', 'Vector', 'bankfull_nhd_area')
         # NHD Shapefiles
-        'NHDFlowline': RSLayer('NHD Flowlines', 'NHDFlowline', 'Vector', 'NHDFlowline.shp'),
-        'NHDArea': RSLayer('NHD Area', 'NHDArea', 'Vector', 'NHDArea.shp'),
-        'NHDPlusCatchment': RSLayer('NHD Plus Catchment', 'NHDPlusCatchment', 'Vector', 'NHDPlusCatchment.shp'),
-        'NHDWaterbody': RSLayer('NHD Waterbody', 'NHDWaterbody', 'Vector', 'NHDWaterbody.shp'),
-        'WBDHU2': RSLayer('HUC2', 'WBDHU2', 'Vector', 'WBDHU2.shp'),
-        'WBDHU4': RSLayer('HUC4', 'WBDHU4', 'Vector', 'WBDHU4.shp'),
-        'WBDHU6': RSLayer('HUC6', 'WBDHU6', 'Vector', 'WBDHU6.shp'),
-        'WBDHU8': RSLayer('HUC8', 'WBDHU8', 'Vector', 'WBDHU8.shp'),
-        'WBDHU10': RSLayer('HUC10', 'WBDHU10', 'Vector', 'WBDHU10.shp'),
-        'WBDHU12': RSLayer('HUC12', 'WBDHU12', 'Vector', 'WBDHU12.shp')
+        'NHDFlowline': RSLayer('NHD Flowlines', 'NHDFlowline', 'Vector', 'NHDFlowline'),
+        'NHDArea': RSLayer('NHD Area', 'NHDArea', 'Vector', 'NHDArea'),
+        'NHDPlusCatchment': RSLayer('NHD Plus Catchment', 'NHDPlusCatchment', 'Vector', 'NHDPlusCatchment'),
+        'NHDWaterbody': RSLayer('NHD Waterbody', 'NHDWaterbody', 'Vector', 'NHDWaterbody'),
+        'WBDHU2': RSLayer('HUC2', 'WBDHU2', 'Vector', 'WBDHU2'),
+        'WBDHU4': RSLayer('HUC4', 'WBDHU4', 'Vector', 'WBDHU4'),
+        'WBDHU6': RSLayer('HUC6', 'WBDHU6', 'Vector', 'WBDHU6'),
+        'WBDHU8': RSLayer('HUC8', 'WBDHU8', 'Vector', 'WBDHU8'),
+        'WBDHU10': RSLayer('HUC10', 'WBDHU10', 'Vector', 'WBDHU10'),
+        'WBDHU12': RSLayer('HUC12', 'WBDHU12', 'Vector', 'WBDHU12')
     }),
 
     # Prism Layers
@@ -180,7 +180,7 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
     _node, hdist_clip = project.add_project_raster(datasets, LayerTypes['HDIST'])
     _node, fdist_clip = project.add_project_raster(datasets, LayerTypes['FDIST'])
     _node, fccs_clip = project.add_project_raster(datasets, LayerTypes['FCCS'])
-    _node, veg_condition_clip = project.add_project_vector(datasets, LayerTypes['VEGCONDITION'])
+    _node, veg_condition_clip = project.add_project_raster(datasets, LayerTypes['VEGCONDITION'])
     _node, veg_departure_clip = project.add_project_raster(datasets, LayerTypes['VEGDEPARTURE'])
     _node, sclass_clip = project.add_project_raster(datasets, LayerTypes['SCLASS'])
     _node, fair_market_clip = project.add_project_raster(datasets, LayerTypes['FAIR_MARKET'])
@@ -212,6 +212,21 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
         safe_remove_dir(nhd_unzip_folder)
     project.add_metadata([RSMeta('Watershed', huc_name)])
 
+    gpkg_nod, _fpath, _sublyrs = project.add_project_geopackage(datasets, LayerTypes['HYDROLOGY'])
+
+    # Add the DB record to the Project XML
+    db_lyr = RSLayer('NHD Tables', 'NHDTABLES', 'DataTable', 'hydrology/hydrology.gpkg/NHDPlusFlowlineVAA')
+    db_el = project.add_dataset(gpkg_nod, 'NHDPlusFlowlineVAA', db_lyr, 'DataTable')
+    project.add_metadata([RSMeta('origin_url', nhd_url, RSMetaTypes.URL, RSMetaExt.DATASET)], db_el)
+
+    # Add any results to project XML
+
+    for name, _file_path in nhd.items():
+        lyr_path = os.path.join(output_folder, LayerTypes['HYDROLOGY'].sub_layers[name].rel_path)
+        lyr_obj = LayerTypes['HYDROLOGY'].sub_layers[name]  # RSLayer(name, name, 'Vector', os.path.relpath(file_path, output_folder))
+        vector_nod = project.add_dataset(gpkg_nod, lyr_path, lyr_obj, 'Vector', sublayer=True)
+        project.add_metadata([RSMeta('origin_url', nhd_url, RSMetaTypes.URL, RSMetaExt.DATASET)], vector_nod)
+
     # PRISM climate rasters
     # mean_annual_precip = None
     bil_files = glob.glob(os.path.join(prism_folder, '*.bil'))
@@ -235,17 +250,6 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
         #    project.add_metadata([RSMeta('mean_annual_precipitation_mm', str(mean_annual_precip), RSMetaTypes.FLOAT)])
 
         #    calculate_bankfull_width(nhd['NHDFlowline'], mean_annual_precip)
-
-    # Add the DB record to the Project XML
-    db_lyr = RSLayer('NHD Tables', 'NHDTABLES', 'SQLiteDB', os.path.relpath(db_path, output_folder))
-    sqlite_el = project.add_dataset(datasets, db_path, db_lyr, 'SQLiteDB')
-    project.add_metadata([RSMeta('origin_url', nhd_url, RSMetaTypes.URL, RSMetaExt.DATASET)], sqlite_el)
-
-    # Add any results to project XML
-    for name, file_path in nhd.items():
-        lyr_obj = LayerTypes[name]  # RSLayer(name, name, 'Vector', os.path.relpath(file_path, output_folder))
-        vector_nod, _fpath = project.add_project_vector(datasets, lyr_obj)
-        project.add_metadata([RSMeta('origin_url', nhd_url, RSMetaTypes.URL, RSMetaExt.DATASET)], vector_nod)
 
     states = get_nhd_states(nhd[boundary])
 
@@ -387,7 +391,7 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
         huc
     )
     log.debug('Segmentation done in {:.1f} seconds'.format(tmr.ellapsed()))
-    project.add_project_geopackage(datasets, LayerTypes['HYDROLOGY'])
+    # project.add_project_geopackage(datasets, LayerTypes['HYDROLOGY'])
 
     # Add Bankfull Buffer Polygons
     # bankfull_path = os.path.join(hydrology_gpkg_path, LayerTypes['HYDROLOGY'].sub_layers['BANKFULL_CHANNEL'].rel_path)
