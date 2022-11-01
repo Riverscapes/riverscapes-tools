@@ -212,21 +212,6 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
         safe_remove_dir(nhd_unzip_folder)
     project.add_metadata([RSMeta('Watershed', huc_name)])
 
-    gpkg_nod, _fpath, _sublyrs = project.add_project_geopackage(datasets, LayerTypes['HYDROLOGY'])
-
-    # Add the DB record to the Project XML
-    db_lyr = RSLayer('NHD Tables', 'NHDTABLES', 'DataTable', 'hydrology/hydrology.gpkg/NHDPlusFlowlineVAA')
-    db_el = project.add_dataset(gpkg_nod, 'NHDPlusFlowlineVAA', db_lyr, 'DataTable')
-    project.add_metadata([RSMeta('origin_url', nhd_url, RSMetaTypes.URL, RSMetaExt.DATASET)], db_el)
-
-    # Add any results to project XML
-
-    for name, _file_path in nhd.items():
-        lyr_path = os.path.join(output_folder, LayerTypes['HYDROLOGY'].sub_layers[name].rel_path)
-        lyr_obj = LayerTypes['HYDROLOGY'].sub_layers[name]  # RSLayer(name, name, 'Vector', os.path.relpath(file_path, output_folder))
-        vector_nod = project.add_dataset(gpkg_nod, lyr_path, lyr_obj, 'Vector', sublayer=True)
-        project.add_metadata([RSMeta('origin_url', nhd_url, RSMetaTypes.URL, RSMetaExt.DATASET)], vector_nod)
-
     # PRISM climate rasters
     # mean_annual_precip = None
     bil_files = glob.glob(os.path.join(prism_folder, '*.bil'))
@@ -381,7 +366,7 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
     # For now let's just make a copy of the NHD FLowlines
     tmr = Timer()
     rs_segmentation(
-        nhd['NHDFlowline'],
+        os.path.join(hydrology_gpkg_path, 'NHDFlowline'),
         ntd_clean['Roads'],
         ntd_clean['Rail'],
         own_path,
@@ -391,7 +376,12 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
         huc
     )
     log.debug('Segmentation done in {:.1f} seconds'.format(tmr.ellapsed()))
-    # project.add_project_geopackage(datasets, LayerTypes['HYDROLOGY'])
+    gpkg_nod, _filepath, _sublayers = project.add_project_geopackage(datasets, LayerTypes['HYDROLOGY'])
+    # Add the DB record to the Project XML
+    db_lyr = RSLayer('NHD Tables', 'NHDTABLES', 'DataTable', 'NHDPlusFlowlineVAA')
+    db_path = os.path.join(output_folder, 'hydrology/hydrology.gpkg/NHDPlusFlowlineVAA')
+    db_el = project.add_dataset(gpkg_nod, db_path, db_lyr, 'DataTable')
+    project.add_metadata([RSMeta('origin_url', nhd_url, RSMetaTypes.URL, RSMetaExt.DATASET)], db_el)
 
     # Add Bankfull Buffer Polygons
     # bankfull_path = os.path.join(hydrology_gpkg_path, LayerTypes['HYDROLOGY'].sub_layers['BANKFULL_CHANNEL'].rel_path)

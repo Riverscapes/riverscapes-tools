@@ -31,13 +31,13 @@ def rs_segmentation(
 
     # First make a copy of the network.
     # TODO: When we migrate to geopackages we may need to revisit this.
-    log.info('Copying raw network')
-    network_copy_path = os.path.join(out_gpkg, 'network')
-    copy_feature_class(nhd_flowlines_path, network_copy_path)
+    # log.info('Copying raw network')
+    # network_copy_path = os.path.join(out_gpkg, 'network')
+    # copy_feature_class(nhd_flowlines_path, network_copy_path)
 
     # Segment the raw network without doing any intersections
     log.info('Segmenting the raw network')
-    segment_network(network_copy_path, os.path.join(out_gpkg, 'network_300m'), interval, minimum, watershed_id, create_layer=True)
+    segment_network(nhd_flowlines_path, os.path.join(out_gpkg, 'network_300m'), interval, minimum, watershed_id, create_layer=True)
 
     # If a point needs to be split we store the split pieces here
     split_feats = {}
@@ -46,10 +46,10 @@ def rs_segmentation(
     intersect_pts = {}
 
     log.info('Finding road intersections')
-    intersect_pts['roads'] = split_geoms(network_copy_path, roads_path, split_feats)
+    intersect_pts['roads'] = split_geoms(nhd_flowlines_path, roads_path, split_feats)
 
     log.info('Finding rail intersections')
-    intersect_pts['rail'] = split_geoms(network_copy_path, railways_path, split_feats)
+    intersect_pts['rail'] = split_geoms(nhd_flowlines_path, railways_path, split_feats)
 
     # With ownership we need to convert polygons to polylines (linestrings) to get the crossing points
     # We can't use intersect_geometry_with_feature_class for this so we need to do something a little more manual
@@ -58,7 +58,7 @@ def rs_segmentation(
     ownership_lines_path = os.path.join(out_gpkg, "ownership_lines")
     with GeopackageLayer(ownership_lines_path, write=True) as out_layer, get_shp_or_gpkg(ownership_path) as own_lyr:
         out_layer.create_layer(ogr.wkbLineString, spatial_ref=own_lyr.spatial_ref)
-        network_owener_collect = collect_feature_class(network_copy_path)
+        network_owener_collect = collect_feature_class(nhd_flowlines_path)
         out_layer.ogr_layer.StartTransaction()
         for feat, _counter, _progbar in own_lyr.iterate_features('Converting ownership polygons to polylines', clip_shape=network_owener_collect):
             geom = feat.GetGeometryRef()
@@ -92,11 +92,11 @@ def rs_segmentation(
         out_layer.ogr_layer.CommitTransaction()
 
     # Now, finally, we're ready to do the actual intersection and splitting
-    intersect_pts['ownership'] = split_geoms(network_copy_path, ownership_lines_path, split_feats)
+    intersect_pts['ownership'] = split_geoms(nhd_flowlines_path, ownership_lines_path, split_feats)
 
     # Let's write our crossings to layers for later use. This can be used in BRAT or our other tools
     with GeopackageLayer(out_gpkg, layer_name='network_crossings', write=True) as out_lyr, \
-            GeopackageLayer(network_copy_path) as in_lyr:
+            GeopackageLayer(nhd_flowlines_path) as in_lyr:
         out_lyr.create_layer(ogr.wkbPoint, spatial_ref=in_lyr.spatial_ref, fields={'type': ogr.OFTString})
         out_lyr.ogr_layer.StartTransaction()
         for geom_type_name, ogr_geom in intersect_pts.items():
@@ -113,7 +113,7 @@ def rs_segmentation(
     # Now, finally, write all the shapes, substituting splits where necessary
     network_crossings_path = os.path.join(out_gpkg, 'network_intersected')
     with GeopackageLayer(network_crossings_path, write=True) as out_lyr, \
-            GeopackageLayer(network_copy_path) as net_lyr:
+            GeopackageLayer(nhd_flowlines_path) as net_lyr:
         out_lyr.create_layer_from_ref(net_lyr)
         out_lyr.ogr_layer.StartTransaction()
         fcounter = 0
