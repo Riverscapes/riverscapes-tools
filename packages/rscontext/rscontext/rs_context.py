@@ -42,6 +42,7 @@ from rscontext.filter_ecoregions import filter_ecoregions
 from rscontext.rs_context_report import RSContextReport
 from rscontext.vegetation import clip_vegetation
 from rscontext.boundary_management import raster_area_intersection
+from rscontext.clean_catchments import clean_nhdplus_catchments
 from rscontext.__version__ import __version__
 
 initGDALOGRErrors()
@@ -209,6 +210,9 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
     copy_feature_class(nhd[boundary], buffered_clip_path500, epsg=cfg.OUTPUT_EPSG, buffer=500)
 
     export_table(filegdb, 'NHDPlusFlowlineVAA', nhd_gpkg_path, None, "ReachCode LIKE '{}%'".format(nhd['WBDHU8']))
+
+    # Clean up NHDPlusCatchment dataset
+    clean_nhdplus_catchments(nhd_gpkg_path, boundary, str(huc))
 
     # Clean up the unzipped files. We won't need them again
     if parallel:
