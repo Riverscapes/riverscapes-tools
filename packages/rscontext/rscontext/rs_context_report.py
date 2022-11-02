@@ -20,7 +20,7 @@ class RSContextReport(RSReport):
 
     def report_intro(self):
         section = self.section('LayerSummary', 'Layer Summary')
-        layers = self.xml_project.XMLBuilder.find('Realizations').find('Realization')
+        layers = self.xml_project.XMLBuilder.find('Realizations').find('Realization').find('Datasets')
 
         for lyr in layers:
             if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']:

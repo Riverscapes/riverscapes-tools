@@ -220,7 +220,7 @@ class RSProject:
 
         self.add_metadata([
             RSMeta('ModelVersion', self.settings.version),
-            RSMeta('dateCreated', datetime.datetime.now().isoformat(), RSMetaTypes.ISODATE)
+            RSMeta('DateCreated', datetime.datetime.now().isoformat(), RSMetaTypes.ISODATE)
         ])
         if meta is not None:
             self.add_metadata(meta)

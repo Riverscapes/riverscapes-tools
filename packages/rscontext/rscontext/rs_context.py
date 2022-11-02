@@ -267,9 +267,9 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
         lyr_obj = RSLayer(name, name, 'Vector', os.path.relpath(file_path, output_folder))
         ntd_node, _fpath = project.add_project_vector(datasets, lyr_obj)
         project.add_metadata([RSMeta('Description', 'The USGS Transportation downloadable data from The National Map (TNM) is based on TIGER/Line data provided through U.S. Census Bureau and supplemented with HERE road data to create tile cache base maps. Some of the TIGER/Line data includes limited corrections done by USGS. Transportation data consists of roads, railroads, trails, airports, and other features associated with the transport of people or commerce. The data is downloaded from science base by state then clipped to the project extent.'),
-                              RSMeta('DocsUrl', f'https://tools.riverscapes.net/data/html#{name}', RSMetaTypes.URL),
                               RSMeta('SourceUrl', 'https://data.usgs.gov/datacatalog/data/USGS:ad3d631d-f51f-4b6a-91a3-e617d6a58b4e', RSMetaTypes.URL),
-                              RSMeta('ProductVersion', '2020')], ntd_node)
+                              RSMeta('DataProductVersion', '2020'),
+                              RSMeta('DocsUrl', f'https://tools.riverscapes.net/data/html#{name}', RSMetaTypes.URL), ], ntd_node)
         project.add_metadata([RSMeta(k, v, RSMetaTypes.URL, RSMetaExt.DATASET) for k, v in ntd_urls.items()], ntd_node)
 
     # download contributing DEM rasters, mosaic and reproject into compressed GeoTIF
@@ -442,14 +442,14 @@ def augment_layermeta():
                     sublyr.lyr_meta = [
                         RSMeta('Description', json_data[h][0]),
                         RSMeta('SourceUrl', json_data[h][1], RSMetaTypes.URL),
-                        RSMeta('ProductVersion', json_data[h][2]),
+                        RSMeta('DataProductVersion', json_data[h][2]),
                         RSMeta('DocsUrl', 'https://tools.riverscapes.net/rscontext/data.html#{}'.format(sublyr.id), RSMetaTypes.URL)
                     ]
         if k in json_data and len(json_data[k]) > 0:
             lyr.lyr_meta = [
                 RSMeta('Description', json_data[k][0]),
                 RSMeta('SourceUrl', json_data[k][1], RSMetaTypes.URL),
-                RSMeta('ProductVersion', json_data[k][2]),
+                RSMeta('DataProductVersion', json_data[k][2]),
                 RSMeta('DocsUrl', 'https://tools.riverscapes.net/rscontext/data.html#{}'.format(lyr.id), RSMetaTypes.URL)
             ]
 
