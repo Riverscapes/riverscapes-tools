@@ -71,6 +71,7 @@ class RSMetaTypes:
     RICHTEXT = "richtext"
     MARKDOWN = "markdown"
     JSON = "json"
+    HIDDEN = 'hidden'
 
 
 class RSMetaExt:

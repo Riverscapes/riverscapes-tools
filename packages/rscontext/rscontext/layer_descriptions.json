@@ -29,7 +29,7 @@
   "FCCS": ["LandFire FCCS raster: Describes the phsical characteristics of a relatively uniform unit on a lanscape that represents a distinct fire environment; provides land managers, regulators, and scientists with a nationally consistent and durable procedure to characterize and classify fuelbed characteristics to predict fuel consumption and smoke production. For LF Remap, FCCS will be released as part of the final release for CONUS. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes project extent.",
   "https://landfire.gov/data_overviews.php",
   "2.2.0"],
-  "VEGCONDITION": ["LandFire VCC raster: A discrete metric that qunatifies the amount that current vegetation has departed from teh simulated historical vegetation reference conditions. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes project extent.",
+  "VEGCONDITION": ["LandFire VCC raster: A discrete metric that quantifies the amount that current vegetation has departed from the simulated historical vegetation reference conditions. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes project extent.",
   "https://landfire.gov/data_overviews.php",
   "2.2.0"],
   "VEGDEPARTURE": ["LandFire VDEP raster: Range from 0-100 depicting the amount that current vegetation has departed from simulated historical vegetation reference. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes project extent.",

@@ -234,15 +234,6 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
         _node, project_raster_path = project.add_project_raster(datasets, LayerTypes[ptype])
         raster_warp(source_raster_path, project_raster_path, cfg.OUTPUT_EPSG, buffered_clip_path500, {"cutlineBlend": 1})
 
-        # Use the mean annual precipitation to calculate bankfull width
-        # if ptype.lower() == 'ppt':
-        #    polygon = get_geometry_unary_union(nhd[boundary], epsg=cfg.OUTPUT_EPSG)
-        #    mean_annual_precip = raster_buffer_stats2({1: polygon}, project_raster_path)[1]['Mean']
-        #    log.info('Mean annual precipitation for HUC {} is {} mm'.format(huc, mean_annual_precip))
-        #    project.add_metadata([RSMeta('mean_annual_precipitation_mm', str(mean_annual_precip), RSMetaTypes.FLOAT)])
-
-        #    calculate_bankfull_width(nhd['NHDFlowline'], mean_annual_precip)
-
     states = get_nhd_states(nhd[boundary])
 
     # Download the NTD archive containing roads and rail
@@ -383,22 +374,10 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
         huc
     )
     log.debug('Segmentation done in {:.1f} seconds'.format(tmr.ellapsed()))
+
+    # add geopackages to project xml
     project.add_project_geopackage(datasets, LayerTypes['NHDPLUSHR'])
     project.add_project_geopackage(datasets, LayerTypes['HYDRODERIVATIVES'])
-    # Add the DB record to the Project XML
-    # db_lyr = RSLayer('NHD Tables', 'NHDTABLES', 'DataTable', 'NHDPlusFlowlineVAA')
-    # db_path = os.path.join(output_folder, 'hydrology/hydrology.gpkg/NHDPlusFlowlineVAA')
-    # db_el = project.add_dataset(gpkg_nod, db_path, db_lyr, 'DataTable')
-    # project.add_metadata([RSMeta('origin_url', nhd_url, RSMetaTypes.URL, RSMetaExt.DATASET)], db_el)
-
-    # Add Bankfull Buffer Polygons
-    # bankfull_path = os.path.join(hydrology_gpkg_path, LayerTypes['HYDROLOGY'].sub_layers['BANKFULL_CHANNEL'].rel_path)
-    # bankfull_buffer(os.path.join(hydrology_gpkg_path, LayerTypes['HYDROLOGY'].sub_layers['NETWORK'].rel_path), cfg.OUTPUT_EPSG, bankfull_path, )
-
-    # TODO Add nhd/bankfull union when merge feature classes in vector.ops works with Geopackage layers
-    # bankfull_nhd_path = os.path.join(hydrology_gpkg_path, LayerTypes['HYDROLOGY'].sub_layers['COMPOSITE_CHANNEL_AREA'].rel_path)
-    # clip_path = os.path.join(hydrology_gpkg_path, LayerTypes['HYDROLOGY'].sub_layers['BUFFEREDCLIP500'].rel_path)
-    # bankfull_nhd_area(bankfull_path, nhd['NHDArea'], clip_path, cfg.OUTPUT_EPSG, hydrology_gpkg_path, LayerTypes['HYDROLOGY'].sub_layers['COMPOSITE_CHANNEL_AREA'].rel_path)
 
     # Filter the ecoregions Shapefile to only include attributes that intersect with our HUC
     eco_path = os.path.join(output_folder, 'ecoregions', 'ecoregions.shp')
@@ -415,8 +394,8 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
 
     ellapsed_time = time.time() - rsc_timer
     project.add_metadata([
-        RSMeta("ProcTimeS", "{:.2f}".format(ellapsed_time), RSMetaTypes.INT),
-        RSMeta("ProcTimeHuman", pretty_duration(ellapsed_time))
+        RSMeta("ProcTimeS", "{:.2f}".format(ellapsed_time), RSMetaTypes.HIDDEN),
+        RSMeta("ProcessingTime", pretty_duration(ellapsed_time))
     ])
 
     report = RSContextReport(report_path, project, output_folder)
