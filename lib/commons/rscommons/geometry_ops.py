@@ -60,3 +60,25 @@ def get_endpoints(geom) -> list:
     endpoints = [pt for pt, count in counts.items() if count == 1]
 
     return endpoints
+
+
+def get_extent_as_geom(geom: ogr.Geometry()) -> ogr.Geometry():
+    """return the geometry extent as a rectangluar polygon
+
+    Args:
+        geom (ogr.Geometry): input geometry
+
+    Returns:
+        ogr.Geometry(): rectangluar extent polgon
+    """
+    (minX, maxX, minY, maxY) = geom.GetEnvelope()
+    # Create ring
+    ring = ogr.Geometry(ogr.wkbLinearRing)
+    ring.AddPoint(minX, minY)
+    ring.AddPoint(maxX, minY)
+    ring.AddPoint(maxX, maxY)
+    ring.AddPoint(minX, maxY)
+    ring.AddPoint(minX, minY)
+    geom_envelope = ogr.Geometry(ogr.wkbPolygon)
+    geom_envelope.AddGeometry(ring)
+    return geom_envelope

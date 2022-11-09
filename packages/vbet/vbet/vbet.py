@@ -25,7 +25,7 @@ from scipy.ndimage import label, generate_binary_structure, binary_closing
 
 from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, GeopackageLayer, dotenv, VectorBase, initGDALOGRErrors
 from rscommons.vector_ops import copy_feature_class, polygonize, difference, collect_linestring, collect_feature_class
-from rscommons.geometry_ops import get_endpoints
+from rscommons.geometry_ops import get_endpoints, get_extent_as_geom
 from rscommons.util import safe_makedirs, parse_metadata, pretty_duration, safe_remove_dir
 from rscommons.hand import run_subprocess
 from rscommons.vbet_network import copy_vaa_attributes, join_attributes, create_stream_size_zones, get_channel_level_path, get_distance_lookup, vbet_network
@@ -33,7 +33,7 @@ from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.raster_warp import raster_warp
 
 from vbet.vbet_database import build_vbet_database, load_configuration
-from vbet.vbet_raster_ops import mask_rasters_nodata, rasterize_attribute, raster2array, array2raster, new_raster, rasterize, raster_merge
+from vbet.vbet_raster_ops import mask_rasters_nodata, rasterize_attribute, raster2array, array2raster, new_raster, rasterize, raster_merge, raster_update
 from vbet.vbet_outputs import vbet_merge, threshold
 from vbet.vbet_report import VBETReport
 from vbet.vbet_segmentation import calculate_segmentation_metrics, generate_segmentation_points, split_vbet_polygons, summerize_vbet_metrics
@@ -75,6 +75,7 @@ LayerTypes = {
     # Same here. Sub layers are added dynamically later.
     'COMPOSITE_VBET_EVIDENCE': RSLayer('VBET Evidence Raster', 'VBET_EVIDENCE', 'Raster', 'outputs/vbet_evidence.tif'),
     'COMPOSITE_HAND_RASTER': RSLayer('Hand Raster', 'HAND_RASTER', 'Raster', 'intermediates/composite_hand.tif'),
+    'NORMALIZED_HAND': RSLayer('Normalized HAND Evidence', 'NORMALIZED_HAND', 'Raster', 'intermediates/normalized_hand.tif'),
     'EVIDENCE_TOPO': RSLayer('Topo Evidence', 'EVIDENCE_TOPO', 'Raster', 'intermediates/topographic_evidence.tif'),
     'VBET_OUTPUTS': RSLayer('VBET', 'VBET_OUTPUTS', 'Geopackage', 'outputs/vbet.gpkg', {
         'VBET_FULL': RSLayer('VBET Full Extent', 'VBET_FULL', 'Vector', 'vbet_full'),
@@ -229,6 +230,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
     out_hand = os.path.join(project_folder, LayerTypes['COMPOSITE_HAND_RASTER'].rel_path)
     out_vbet_evidence = os.path.join(project_folder, LayerTypes['COMPOSITE_VBET_EVIDENCE'].rel_path)
+    out_normalized_hand = os.path.join(project_folder, LayerTypes['NORMALIZED_HAND'].rel_path)
 
     # Generate the list of level paths to run, sorted by ascending order and optional user filter
     level_paths_to_run = []
@@ -250,6 +252,9 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     bbox = box(*raster_bounds)
     raster_envelope_geom = VectorBase.shapely2ogr(bbox)
     vbet_clip_buffer_size = VectorBase.rough_convert_metres_to_raster_units(dem, 0.25)
+
+    temp_rasters_folder = os.path.join(project_folder, 'temp', 'rasters')
+    safe_makedirs(temp_rasters_folder)
 
     # Iterate VBET generateion for each level path
     for level_path in level_paths_to_run:
@@ -289,7 +294,16 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         ring.AddPoint(minX, minY)
         channel_envelope_geom = ogr.Geometry(ogr.wkbPolygon)
         channel_envelope_geom.AddGeometry(ring)
-        geom_channel_buffer = channel_envelope_geom.Buffer(channel_buffer_size)
+
+        with GeopackageLayer(catchments) as lyr_catchments:
+            geom_envelope = channel_envelope_geom.Clone()
+            for feat_catchment, *_ in lyr_catchments.iterate_features(clip_shape=channel_envelope_geom):
+                geom_catchment = feat_catchment.GetGeometryRef()
+                geom_catchment_envelope = get_extent_as_geom(geom_catchment)
+                geom_envelope = geom_envelope.Union(geom_catchment_envelope)
+                geom_envelope = get_extent_as_geom(geom_envelope)
+
+        geom_channel_buffer = geom_envelope.Buffer(channel_buffer_size)
         envelope_geom = raster_envelope_geom.Intersection(geom_channel_buffer)
         if envelope_geom.IsEmpty():
             log.error(f'Empty processing envelope for level path {level_path}')
@@ -308,12 +322,11 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         raster_warp(dinfflowdir_ang, local_dinfflowdir_ang, 4326, clip=envelope)
         raster_warp(pitfill_dem, local_pitfill_dem, 4326, clip=envelope)
 
-        evidence_raster = os.path.join(temp_folder, f'vbet_evidence_{level_path}.tif')
         rasterized_channel = os.path.join(temp_folder, f'rasterized_channel_{level_path}.tif')
         rasterize(level_path_polygons, rasterized_channel, local_pitfill_dem, all_touched=True)
         in_rasters['Channel'] = rasterized_channel
 
-        hand_raster = os.path.join(temp_folder, f'local_hand_{level_path}.tif')
+        hand_raster = os.path.join(temp_rasters_folder, f'local_hand_{level_path}.tif')
         dinfdistdown_status = run_subprocess(project_folder, ["mpiexec", "-n", NCORES, "dinfdistdown", "-ang", local_dinfflowdir_ang, "-fel", local_pitfill_dem, "-src", rasterized_channel, "-dd", hand_raster, "-m", "ave", "v"])
         if dinfdistdown_status != 0 or not os.path.isfile(hand_raster):
             log.error(f'Error generating HAND for level path {level_path}')
@@ -329,8 +342,11 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         out_meta['count'] = 1
         out_meta['compress'] = 'deflate'
 
+        evidence_raster = os.path.join(temp_rasters_folder, f'vbet_evidence_{level_path}.tif')
+        normalized_local_hand = os.path.join(temp_rasters_folder, f'normalized_hand_{level_path}.tif')
         write_rasters = {}  # {name: rasterio.open(raster, 'w', **out_meta) for name, raster in out_rasters.items()}
         write_rasters['VBET_EVIDENCE'] = rasterio.open(evidence_raster, 'w', **out_meta)
+        write_rasters['NORMALIZED_HAND'] = rasterio.open(normalized_local_hand, 'w', **out_meta)
 
         progbar = ProgressBar(len(list(read_rasters['Slope'].block_windows(1))), 50, "Calculating evidence layer")
         counter = 0
@@ -353,7 +369,9 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             fvals_evidence = np.maximum(fvals_topo, fvals_channel)
 
             write_rasters['VBET_EVIDENCE'].write(np.ma.filled(np.float32(fvals_evidence), out_meta['nodata']), window=window, indexes=1)
+            write_rasters['NORMALIZED_HAND'].write(np.ma.filled(np.float32(normalized['HAND']), out_meta['nodata']), window=window, indexes=1)
         write_rasters['VBET_EVIDENCE'].close()
+        write_rasters['NORMALIZED_HAND'].close()
 
         # Generate VBET Polygon
         valley_bottom_raster = os.path.join(temp_folder, f'valley_bottom_{level_path}.tif')
@@ -417,7 +435,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                 out_feature = None
 
         # clean up rasters
-        for out_raster, in_raster in {out_hand: hand_raster, out_vbet_evidence: evidence_raster}.items():
+        for out_raster, in_raster in {out_hand: hand_raster, out_vbet_evidence: evidence_raster, out_normalized_hand: normalized_local_hand}.items():
             raster_merge(in_raster, out_raster, dem, valley_bottom_raster, temp_folder)
 
         if debug is False:
@@ -454,12 +472,27 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     metric_fields = list(metric_layers.keys())
     summerize_vbet_metrics(segmentation_points, segmentation_polygons, level_paths_to_run, distance_lookup, metric_fields)
 
+    log.info('Apply values to No Data areas of HAND and Evidence rasters')
+    level_paths_for_raster = [level_path for level_path in level_paths_to_run if level_path is not None]
+    level_paths_for_raster.sort(reverse=True)
+    for level_path in level_paths_for_raster:
+        level_path_evidence = os.path.join(temp_rasters_folder, f'vbet_evidence_{level_path}.tif')
+        if os.path.exists(level_path_evidence):
+            raster_update(out_vbet_evidence, level_path_evidence)
+        level_path_hand = os.path.join(temp_rasters_folder, f'local_hand_{level_path}.tif')
+        if os.path.exists(level_path_hand):
+            raster_update(out_hand, level_path_hand)
+        level_path_normalized_hand = os.path.join(temp_rasters_folder, f'normalized_hand_{level_path}.tif')
+        if os.path.exists(level_path_normalized_hand):
+            raster_update(out_normalized_hand, level_path_normalized_hand)
+
     if debug is False:
         safe_remove_dir(os.path.join(project_folder, 'temp'))
 
     # Now add our Geopackages to the project XML
     project.add_project_raster(proj_nodes['Outputs'], LayerTypes['COMPOSITE_VBET_EVIDENCE'])
     project.add_project_raster(proj_nodes['Outputs'], LayerTypes['COMPOSITE_HAND_RASTER'])
+    project.add_project_raster(proj_nodes['Outputs'], LayerTypes['NORMALIZED_HAND'])
 
     project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
     project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['VBET_OUTPUTS'])
@@ -513,7 +546,8 @@ def generate_vbet_polygon(vbet_evidence_raster, rasterized_channel, channel_hand
     chan = None
 
     values = np.unique(selection)
-    valley_bottom_region = np.isin(regions, values.nonzero())
+    non_zero_values = [v for v in values if v != 0]
+    valley_bottom_region = np.isin(regions, non_zero_values)
     array2raster(os.path.join(temp_folder, f'regions_{thresh_value}.tif'), vbet_evidence_raster, regions, data_type=gdal.GDT_Int32)
     array2raster(os.path.join(temp_folder, f'valley_bottom_region_{thresh_value}.tif'), vbet_evidence_raster, valley_bottom_region.astype(int), data_type=gdal.GDT_Int32)
 

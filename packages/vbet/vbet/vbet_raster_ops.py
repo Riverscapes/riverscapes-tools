@@ -492,3 +492,29 @@ def raster_merge(in_raster: Path, out_raster: Path, template_raster: Path, logic
                     array_source = np.ma.MaskedArray(vrt.read(1, window=window, masked=True).data, mask=array_logic_mask.mask)
                     array_out = np.choose(array_logic_mask, [out_meta['nodata'], array_source])
                     rio_dest.write(np.ma.filled(np.float32(array_out), out_meta['nodata']), window=window, indexes=1)
+
+
+def raster_update(raster, update_values_raster):
+    with rasterio.open(raster, 'r+') as rio_dest, \
+            rasterio.open(update_values_raster) as rio_updates:
+
+        vrt_options = {
+            # 'resampling': Resampling.cubic,
+            'crs': rio_dest.crs,
+            'transform': rio_dest.transform,
+            'height': rio_dest.height,
+            'width': rio_dest.width,
+        }
+        out_meta = rio_dest.meta
+        out_meta['driver'] = 'GTiff'
+        out_meta['count'] = 1
+        out_meta['compress'] = 'deflate'
+
+        with WarpedVRT(rio_dest, **vrt_options) as vrt_dest, \
+                WarpedVRT(rio_updates, **vrt_options) as vrt_updates:
+            for _ji, window in vrt_dest.block_windows(1):
+                array_logic_mask = np.array(vrt_dest.read_masks(1, window=window) == 0).astype('int')  # mask of existing data in destination raster
+                array_dest = np.ma.MaskedArray(vrt_dest.read(1, window=window).data)
+                array_update = np.ma.MaskedArray(vrt_updates.read(1, window=window).data)
+                array_out = np.choose(array_logic_mask, [array_dest, array_update])
+                rio_dest.write(np.ma.filled(np.float32(array_out), out_meta['nodata']), window=window, indexes=1)
