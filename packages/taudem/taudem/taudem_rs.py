@@ -12,7 +12,7 @@ lyrs_in_out = {
     # ID: INPUT_ID
     'HILLSHADE': ['HILLSHADE'],
     'DEM': ['DEM'],
-    'CHANNEL_AREA': ['channel_area']
+    'channel_area': ['channel_area']
 }
 
 
