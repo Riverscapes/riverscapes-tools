@@ -370,7 +370,7 @@ class RSProject:
         return file_path
 
     def get_relative_path(self, abs_path):
-        return abs_path[len() + 1:]
+        return abs_path[len(os.path.dirname(self.xml_path)) + 1:]
 
     def add_dataset(self, parent_node, abs_path_val: str, rs_lyr: RSLayer, default_tag: str, replace=False, rel_path=False, sublayer=False):
 
