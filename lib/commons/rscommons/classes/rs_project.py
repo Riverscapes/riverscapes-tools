@@ -700,3 +700,24 @@ class RSProject:
         results['Polygon'] = None if gj['features'][0]['geometry']['type'] != 'Polygon' else str(gj['features'][0]['geometry'])
 
         return results
+
+    def get_rsx_path(self, node):
+
+        parent_map = {c: p for p in self.XMLBuilder.tree.iter() for c in p}
+
+        path_l = []
+        while node is not self.XMLBuilder.tree.getroot():
+            # add node info to path
+            if 'id' in node.attrib.keys():
+                path_l.append(node.tag + '#' + node.attrib['id'])
+            elif 'lyrName' in node.attrib.keys():
+                path_l.append(node.tag + '#' + node.attrib['lyrName'])
+            else:
+                path_l.append(node.tag)
+            node = parent_map[node]
+
+        path_l.append('Project')
+        path_l.reverse()
+        path = '/'.join(path_l)
+
+        return path

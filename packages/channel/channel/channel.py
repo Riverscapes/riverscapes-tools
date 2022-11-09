@@ -53,7 +53,7 @@ LayerTypes = {
         'BANKFULL_POLYGONS': RSLayer('Bankfull Polygons', 'BANKFULL_POLYGONS', 'Vector', 'bankfull_polygons'),
         'DIFFERENCE_POLYGONS': RSLayer('Difference Polygons', 'DIFFERENCE_POLYGONS', 'Vector', 'difference_polygons'),
     }),
-    'OUTPUTS': RSLayer('VBET', 'OUTPUTS', 'Geopackage', 'outputs/channel_area.gpkg', {
+    'OUTPUTS': RSLayer('Outputs', 'OUTPUTS', 'Geopackage', 'outputs/channel_area.gpkg', {
         'CHANNEL_AREA': RSLayer('Channel Area Polygons', 'CHANNEL_AREA', 'Vector', 'channel_area'),
     }),
     'REPORT': RSLayer('RSContext Report', 'REPORT', 'HTMLFile', 'outputs/channel_area.html')

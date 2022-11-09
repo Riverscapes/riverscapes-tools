@@ -5,7 +5,7 @@ import argparse
 import traceback
 import sys
 import os
-from rscommons import RSProject, dotenv, Logger
+from rscommons import RSProject, RSMeta, dotenv, Logger
 from channel.channel_report import ChannelReport
 
 lyrs_in_out = {
@@ -36,12 +36,49 @@ def main():
 
     try:
         out_prj = RSProject(None, args.out_project_xml)
-        out_prj.rs_meta_augment(
-            args.in_xmls.split(','),
-            lyrs_in_out
-        )
+        # out_prj.rs_meta_augment(
+        #     args.in_xmls.split(','),
+        #     lyrs_in_out
+        # )
+        ref_lyrs = {
+            'flowlines': ['NHDFlowline'],  # dict of ids in chan_area inputs and corresponding ids in rs_context
+            'flowareas': ['NHDArea'],
+            'waterbody': ['NHDWaterbody']
+        }
 
         in_xml = args.in_xmls.split(',')[0]
+        inprj = RSProject(None, in_xml)
+
+        warehouse_guid = inprj.XMLBuilder.find('Warehouse').attrib['id']
+        watershed_node = inprj.XMLBuilder.find('MetaData').find('Meta[@name="Watershed"]')
+        if watershed_node is not None:
+            proj_watershed_node = out_prj.XMLBuilder.find('MetaData').find('Meta[@name="Watershed"]')
+            if proj_watershed_node is None:
+                out_prj.add_metadata([RSMeta('Watershed', watershed_node.text)])
+
+        for outid, inid in ref_lyrs.items():
+            # find the node and get is ref
+            for n in inprj.XMLBuilder.tree.iter():
+                if 'lyrName' in n.attrib.keys():
+                    if n.attrib['lyrName'] == inid[0]:
+                        innode = n
+                elif 'id' in n.attrib.keys():
+                    if n.attrib['id'] == inid[0]:
+                        innode = n
+                else:
+                    continue
+            path = inprj.get_rsx_path(innode)
+            ref_lyrs[outid].append(path)
+
+            # add the rsxpath to the output xml
+            for m in out_prj.XMLBuilder.tree.iter():
+                if 'lyrName' in m.attrib.keys():
+                    if m.attrib['lyrName'] == outid:
+                        m.attrib['extRef'] = warehouse_guid + ':' + ref_lyrs[outid][1]
+                elif 'id' in m.attrib.keys():
+                    if m.attrib['id'] == outid:
+                        m.attrib['extRef'] = warehouse_guid + ':' + ref_lyrs[outid][1]
+
         out_prj.rs_copy_project_extents(in_xml)
 
         # if watershed in meta, change the project name
