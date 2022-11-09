@@ -62,6 +62,7 @@ LayerTypes = {
     # Outputs:
     'DINFFLOWDIR_SLP': RSLayer('TauDEM D-Inf Flow Directions Slope', 'DINFFLOWDIR_SLP', 'Raster', 'outputs/dinfflowdir_slp.tif'),
     'SLOPEAVEDOWN_SLPD': RSLayer('TauDEM Slope Average Down', 'SLOPEAVEDOWN_SLPD', 'Raster', 'outputs/slopeavedown_slpd.tif'),
+    'D8AREA': RSLayer('TauDEM D8 Contributing Area', 'D8AREA', 'Raster', 'outputs/d8_area.tif'),
     'HAND_RASTER': RSLayer('Hand Raster', 'HAND_RASTER', 'Raster', 'outputs/HAND.tif'),
     'TWI_RASTER': RSLayer('TWI Raster', 'TWI_RASTER', 'Raster', 'outputs/twi.tif'),
     'GDAL_SLOPE': RSLayer('Slope raster (GDAL)', 'GDAL_SLOPE', 'Raster', 'outputs/gdal_slope.tif'),
@@ -102,6 +103,8 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, project_folder:
 
     # Copy the inp
     _proj_dem_node, proj_dem = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], orig_dem)
+    orig_hillshade = os.path.join(os.path.dirname(orig_dem), 'dem_hillshade.tif')
+    _proj_hs_node, proj_hs = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], orig_hillshade)
     # if hillshade is not None:
     #    _hillshade_node, hillshade = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], hillshade)
 
@@ -157,20 +160,20 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, project_folder:
 
     # GDAL Products
     # Hillshade
-    hillshade = os.path.join(project_folder, LayerTypes['HILLSHADE'].rel_path)
-    if epsg == 4326:
-        gdal_dem_geographic(hand_dem, hillshade, 'hillshade')
-    else:
-        gdal.DEMProcessing(hillshade, hand_dem, 'hillshade')
-    project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'])
+    # hillshade = os.path.join(project_folder, LayerTypes['HILLSHADE'].rel_path)
+    # if epsg == 4326:
+    #     gdal_dem_geographic(hand_dem, hillshade, 'hillshade')
+    # else:
+    #     gdal.DEMProcessing(hillshade, hand_dem, 'hillshade')
+    # project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'])
 
     # Slope
-    gdal_slope = os.path.join(project_folder, LayerTypes['GDAL_SLOPE'].rel_path)
-    if epsg == 4326:
-        gdal_dem_geographic(hand_dem, gdal_slope, 'slope')
-    else:
-        gdal.DEMProcessing(gdal_slope, hand_dem, 'slope')
-    project.add_project_raster(proj_nodes['Outputs'], LayerTypes['GDAL_SLOPE'])
+    # gdal_slope = os.path.join(project_folder, LayerTypes['GDAL_SLOPE'].rel_path)
+    # if epsg == 4326:
+    #     gdal_dem_geographic(hand_dem, gdal_slope, 'slope')
+    # else:
+    #     gdal.DEMProcessing(gdal_slope, hand_dem, 'slope')
+    # project.add_project_raster(proj_nodes['Outputs'], LayerTypes['GDAL_SLOPE'])
 
     start_time = time.time()
     log.info('Starting TauDEM processes')
@@ -228,14 +231,22 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, project_folder:
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['D8FLOWDIR_P'])
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['D8FLOWDIR_SD8'])
 
+    # Generate D8 Contributing Area
+    log.info('Finding contributing area')
+    d8_area_raster = os.path.join(project_folder, LayerTypes['D8AREA'].rel_path)
+    d8_area_status = run_subprocess(intermediates_path, ["mpiexec", "-n", NCORES, "aread8", "-p", d8_raster, "-ad8", d8_area_raster])
+    if d8_area_status != 0 or not os.path.isfile(d8_area_raster):
+        raise Exception('TauDEM: D8Area')
+    project.add_project_raster(proj_nodes['Outputs'], LayerTypes['D8AREA'])
+
     # Average Slope Down Distance
-    log.info("Generating SlopeAveDown")
-    slpd_raster = os.path.join(project_folder, LayerTypes['SLOPEAVEDOWN_SLPD'].rel_path)
-    dn = cell_meters
-    slpd_status = run_subprocess(intermediates_path, ["mpiexec", "-n", NCORES, "slopeavedown", "-p", d8_raster, "-fel", path_pitfill, '-slpd', slpd_raster, "-dn", str(dn)])
-    if slpd_status != 0 or not os.path.isfile(slpd_raster):
-        raise Exception('TauDEM: SlopeAveDown')
-    project.add_project_raster(proj_nodes['Outputs'], LayerTypes['SLOPEAVEDOWN_SLPD'])
+    # log.info("Generating SlopeAveDown")
+    # slpd_raster = os.path.join(project_folder, LayerTypes['SLOPEAVEDOWN_SLPD'].rel_path)
+    # dn = cell_meters
+    # slpd_status = run_subprocess(intermediates_path, ["mpiexec", "-n", NCORES, "slopeavedown", "-p", d8_raster, "-fel", path_pitfill, '-slpd', slpd_raster, "-dn", str(dn)])
+    # if slpd_status != 0 or not os.path.isfile(slpd_raster):
+    #     raise Exception('TauDEM: SlopeAveDown')
+    # project.add_project_raster(proj_nodes['Outputs'], LayerTypes['SLOPEAVEDOWN_SLPD'])
 
     ellapsed_time = time.time() - start_time
     project.add_metadata([
