@@ -180,7 +180,7 @@ def calculate_segmentation_metrics(vbet_segment_polygons: Path, vbet_centerline:
         if len(fields) > 0:
             vbet_lyr.create_fields(fields)
 
-        for vbet_feat, *_ in vbet_lyr.iterate_features('Calcuating metrics per vbet segment', attribute_filter=attrib_filter):
+        for vbet_feat, *_ in vbet_lyr.iterate_features('Calculating metrics per vbet segment', attribute_filter=attrib_filter):
             vbet_geom = vbet_feat.GetGeometryRef()
             centroid = vbet_geom.Centroid()
             utm_epsg = get_utm_zone_epsg(centroid.GetX())
@@ -202,8 +202,12 @@ def calculate_segmentation_metrics(vbet_segment_polygons: Path, vbet_centerline:
                 _transform_ref, transform = VectorBase.get_transform_from_epsg(centerline_lyr.spatial_ref, utm_epsg)
                 centerline_geom.Transform(transform)
                 if not centerline_geom.IsValid():
-                    continue
-                intersect_geom = vbet_geom_transform_clean.Intersection(centerline_geom)
+                    log.warning(f'Invalid centerline geometry found for vbet segment {vbet_feat.GetFID()}')
+                try:
+                    intersect_geom = vbet_geom_transform_clean.Intersection(centerline_geom)
+                except IOError:
+                    log.error(str(IOError))
+                    break
                 length = length + intersect_geom.Length()
 
             vbet_feat.SetField('centerline_length', length)
@@ -289,7 +293,7 @@ def summerize_vbet_metrics(segment_points: Path, segmented_polygons: Path, level
             if level_path is None or level_path not in distance_lookup.keys():
                 continue
             window_distance = distance_lookup[level_path]
-            for feat_seg_pt, *_ in lyr_pts.iterate_features(attribute_filter=f"LevelPathI = {level_path}"):
+            for feat_seg_pt, *_ in lyr_pts.iterate_features(f'Summerizing vbet metrics for {level_path}', attribute_filter=f"LevelPathI = {level_path}"):
                 dist = feat_seg_pt.GetField('seg_distance')
                 min_dist = dist - 0.5 * window_distance
                 max_dist = dist + 0.5 * window_distance
