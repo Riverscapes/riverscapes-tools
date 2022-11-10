@@ -12,6 +12,7 @@ import os
 import sys
 import traceback
 import time
+import json
 from typing import Dict, List
 
 # LEave OSGEO import alone. It is necessary even if it looks unused
@@ -39,6 +40,7 @@ cfg = ModelConfig('https://xml.riverscapes.net/Projects/XSD/V2/RiverscapesProjec
 
 NCORES = os.environ['TAUDEM_CORES'] if 'TAUDEM_CORES' in os.environ else '2'
 
+LYR_DESCRIPTIONS_JSON = os.path.join(os.path.dirname(__file__), 'layer_descriptions.json')
 LayerTypes = {
     'DEM': RSLayer('DEM', 'DEM', 'Raster', 'inputs/dem.tif'),
     'HILLSHADE': RSLayer('DEM Hillshade', 'HILLSHADE', 'Raster', 'inputs/dem_hillshade.tif'),
@@ -63,7 +65,7 @@ LayerTypes = {
     # 'SLOPEAVEDOWN_SLPD': RSLayer('TauDEM Slope Average Down', 'SLOPEAVEDOWN_SLPD', 'Raster', 'outputs/slopeavedown_slpd.tif'),
     'DINFFLOWDIR_SLP': RSLayer('TauDEM D-Inf Flow Directions Slope', 'DINFFLOWDIR_SLP', 'Raster', 'outputs/dinfflowdir_slp.tif'),
     'AREADINF_SCA': RSLayer('TauDEM D-Inf Contributing Area', 'AREADINF_SCA', 'Raster', 'outputs/areadinf_sca.tif'),
-    'HAND_RASTER': RSLayer('Hand Raster', 'HAND_RASTER', 'Raster', 'outputs/HAND.tif'),
+    'HAND_RASTER': RSLayer('Hand Raster', 'HAND_RASTER', 'Raster', 'outputs/hand.tif'),
     'TWI_RASTER': RSLayer('TWI Raster', 'TWI_RASTER', 'Raster', 'outputs/twi.tif'),
     'GDAL_SLOPE': RSLayer('Slope raster (GDAL)', 'GDAL_SLOPE', 'Raster', 'outputs/gdal_slope.tif'),
     'REPORT': RSLayer('RSContext Report', 'REPORT', 'HTMLFile', 'outputs/taudem.html')
@@ -99,12 +101,17 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, project_folder:
         RSMeta('TauDEMURL', 'https://hydrology.usu.edu/taudem/taudem5/index.html', RSMetaTypes.URL)
     ], meta)
 
+    # Add the layer metadata immediately before we write anything
+    augment_layermeta()
+
     _realization, proj_nodes = project.add_realization(project_name, 'REALIZATION1', cfg.version, data_nodes=["Inputs", "Intermediates", "Outputs"], create_folders=True)
 
     # Copy the inp
     _proj_dem_node, proj_dem = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], orig_dem)
     orig_hillshade = os.path.join(os.path.dirname(orig_dem), 'dem_hillshade.tif')
+    orig_slope = os.path.join(os.path.dirname(orig_dem), 'slope.tif')
     project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], orig_hillshade)
+    project.add_project_raster(proj_nodes['Outputs'], LayerTypes['GDAL_SLOPE'], orig_slope)
     # if hillshade is not None:
     #    _hillshade_node, hillshade = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], hillshade)
 
@@ -168,12 +175,12 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, project_folder:
     # project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'])
 
     # Slope
-    gdal_slope = os.path.join(project_folder, LayerTypes['GDAL_SLOPE'].rel_path)
-    if epsg == 4326:
-        gdal_dem_geographic(hand_dem, gdal_slope, 'slope')
-    else:
-        gdal.DEMProcessing(gdal_slope, hand_dem, 'slope')
-    project.add_project_raster(proj_nodes['Outputs'], LayerTypes['GDAL_SLOPE'])
+    # gdal_slope = os.path.join(project_folder, LayerTypes['GDAL_SLOPE'].rel_path)
+    # if epsg == 4326:
+    #     gdal_dem_geographic(hand_dem, gdal_slope, 'slope')
+    # else:
+    #     gdal.DEMProcessing(gdal_slope, hand_dem, 'slope')
+    # project.add_project_raster(proj_nodes['Outputs'], LayerTypes['GDAL_SLOPE'])
 
     start_time = time.time()
     log.info('Starting TauDEM processes')
@@ -262,6 +269,32 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, project_folder:
     report.write()
 
     log.info('TauDEM Completed Successfully')
+
+
+def augment_layermeta():
+    """
+    For RSContext we've written a JSON file with extra layer meta. We may use this pattern elsewhere but it's just here for now
+    """
+    with open(LYR_DESCRIPTIONS_JSON, 'r') as f:
+        json_data = json.load(f)
+
+    for k, lyr in LayerTypes.items():
+        if lyr.sub_layers is not None:
+            for h, sublyr in lyr.sub_layers.items():
+                if h in json_data and len(json_data[h]) > 0:
+                    sublyr.lyr_meta = [
+                        RSMeta('Description', json_data[h][0]),
+                        RSMeta('SourceUrl', json_data[h][1], RSMetaTypes.URL),
+                        RSMeta('DataProductVersion', json_data[h][2]),
+                        RSMeta('DocsUrl', 'https://tools.riverscapes.net/taudem/data.html#{}'.format(sublyr.id), RSMetaTypes.URL)
+                    ]
+        if k in json_data and len(json_data[k]) > 0:
+            lyr.lyr_meta = [
+                RSMeta('Description', json_data[k][0]),
+                RSMeta('SourceUrl', json_data[k][1], RSMetaTypes.URL),
+                RSMeta('DataProductVersion', json_data[k][2]),
+                RSMeta('DocsUrl', 'https://tools.riverscapes.net/taudem/data.html#{}'.format(lyr.id), RSMetaTypes.URL)
+            ]
 
 
 def main():
