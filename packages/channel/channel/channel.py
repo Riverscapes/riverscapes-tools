@@ -94,11 +94,11 @@ def channel(huc: int,
     log.info('Starting Channel Area Tool v.{}'.format(cfg.version))
     log.info('Using Equation: "{}" and params: "{}"'.format(bankfull_function, bankfull_function_params))
 
-    meta['Bankfull Equation'] = bankfull_function
+    meta['BankfullEquation'] = bankfull_function
     for param, value in bankfull_function_params.items():
-        meta[f'Bankfull Parameter: {param}'] = str(value)
+        meta[f'BankfullParameter:{param}'] = str(value)
     for layer, codes in reach_codes.items():
-        meta[f'{layer} Reach Codes'] = str(codes)
+        meta[f'{layer}ReachCodes'] = str(codes)
 
     project_name = 'Channel Area for HUC {}'.format(huc)
     project = RSProject(cfg, project_folder)
@@ -233,8 +233,8 @@ def channel(huc: int,
     # Processing time in hours
     ellapsed_time = time.time() - timer
     project.add_metadata([
-        RSMeta("ProcTimeS", "{:.2f}".format(ellapsed_time), RSMetaTypes.INT),
-        RSMeta("ProcTimeHuman", pretty_duration(ellapsed_time))
+        RSMeta("ProcTimeS", "{:.2f}".format(ellapsed_time), RSMetaTypes.HIDDEN),
+        RSMeta("ProcessingTime", pretty_duration(ellapsed_time))
     ])
 
     # Report
