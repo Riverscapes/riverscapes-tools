@@ -93,10 +93,10 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, project_folder:
         RSMeta('HUC', str(huc)),
         RSMeta('TauDEMProjectVersion', cfg.version),
         RSMeta('TauDEMTimestamp', str(int(time.time())), RSMetaTypes.TIMESTAMP),
-        RSMeta('TauDEM_SoftwareVersion', '5.3.7'),
-        RSMeta('TauDEM_Credits', 'Copyright (C) 2010-2015 David Tarboton, Utah State University'),
-        RSMeta('TauDEM_Licence', 'https://hydrology.usu.edu/taudem/taudem5/GPLv3license.txt', RSMetaTypes.URL),
-        RSMeta('TauDEM_URL', 'https://hydrology.usu.edu/taudem/taudem5/index.html', RSMetaTypes.URL)
+        RSMeta('TauDEMSoftwareVersion', '5.3.7'),
+        RSMeta('TauDEMCredits', 'Copyright (C) 2010-2015 David Tarboton, Utah State University'),
+        RSMeta('TauDEMLicence', 'https://hydrology.usu.edu/taudem/taudem5/GPLv3license.txt', RSMetaTypes.URL),
+        RSMeta('TauDEMURL', 'https://hydrology.usu.edu/taudem/taudem5/index.html', RSMetaTypes.URL)
     ], meta)
 
     _realization, proj_nodes = project.add_realization(project_name, 'REALIZATION1', cfg.version, data_nodes=["Inputs", "Intermediates", "Outputs"], create_folders=True)
@@ -195,7 +195,7 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, project_folder:
     if dinfflowdir_status != 0 or not os.path.isfile(path_ang):
         raise Exception('TauDEM: dinfflowdir failed')
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_ANG'])
-    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_SLP'])
+    project.add_project_raster(proj_nodes['Outputs'], LayerTypes['DINFFLOWDIR_SLP'])
 
     # generate hand
     log.info("Generating HAND")
@@ -250,8 +250,8 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, project_folder:
 
     ellapsed_time = time.time() - start_time
     project.add_metadata([
-        RSMeta("ProcTimeS", "{:.2f}".format(ellapsed_time), RSMetaTypes.INT),
-        RSMeta("ProcTimeHuman", pretty_duration(ellapsed_time))
+        RSMeta("ProcTimeS", "{:.2f}".format(ellapsed_time), RSMetaTypes.HIDDEN),
+        RSMeta("ProcessingTime", pretty_duration(ellapsed_time))
     ])
     log.info("TauDEM process complete in {}".format(ellapsed_time))
 
@@ -275,7 +275,6 @@ def main():
     parser.add_argument('dem', help='DEM raster path', type=str)
     parser.add_argument('output_dir', help='Folder where output TauDEM project will be created', type=str)
 
-    parser.add_argument('--hillshade', help='Hillshade raster path', type=str)
     parser.add_argument('--mask', help='Optional shapefile to mask by', type=str, default=None)
     parser.add_argument('--epsg', help='Optional output epsg', type=int, default=None)
     parser.add_argument('--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
