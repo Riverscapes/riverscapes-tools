@@ -33,7 +33,7 @@ from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.raster_warp import raster_warp
 
 from vbet.vbet_database import build_vbet_database, load_configuration
-from vbet.vbet_raster_ops import mask_rasters_nodata, rasterize_attribute, raster2array, array2raster, new_raster, rasterize, raster_merge, raster_update
+from vbet.vbet_raster_ops import mask_rasters_nodata, rasterize_attribute, raster2array, array2raster, new_raster, rasterize, raster_merge, raster_update, raster_update_2, raster_remove_zone
 from vbet.vbet_outputs import vbet_merge, threshold
 from vbet.vbet_report import VBETReport
 from vbet.vbet_segmentation import calculate_segmentation_metrics, generate_segmentation_points, split_vbet_polygons, summerize_vbet_metrics
@@ -196,6 +196,22 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     out_meta['driver'] = 'GTiff'
     out_meta['count'] = 1
     out_meta['compress'] = 'deflate'
+    size_x = read_rasters['Slope'].width
+    size_y = read_rasters['Slope'].height
+    srs = read_rasters['Slope'].crs
+    espg = srs.to_epsg()
+
+    # Initialize empty area rasters
+    output_vbet_area_raster = os.path.join(project_folder, 'outputs', 'vbet_area.tif')
+    output_active_vbet_area_raster = os.path.join(project_folder, 'outputs', 'active_vbet_area.tif')
+    output_inactive_vbet_area_raster = os.path.join(project_folder, 'outputs', 'inactive_vbet_area.tif')
+    empty_array = np.empty((size_x, size_y), dtype=np.int32)
+    empty_array.fill(out_meta['nodata'])
+    int_meta = out_meta
+    int_meta['dtype'] = 'int32'
+    for raster in [output_vbet_area_raster, output_active_vbet_area_raster]:
+        with rasterio.open(raster, 'w', **int_meta) as rio:
+            rio.write(empty_array, 1)
 
     topo_evidence_raster = os.path.join(project_folder, LayerTypes['EVIDENCE_TOPO'].rel_path)
     write_rasters = {}
@@ -256,8 +272,11 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     temp_rasters_folder = os.path.join(project_folder, 'temp', 'rasters')
     safe_makedirs(temp_rasters_folder)
 
+    level_path_keys = {}
     # Iterate VBET generateion for each level path
-    for level_path in level_paths_to_run:
+    for level_path_key, level_path in enumerate(level_paths_to_run, 1):
+        level_path_keys[level_path_key] = level_path
+
         log.info(f'Processing Level Path: {level_path}')
         temp_folder = os.path.join(project_folder, 'temp', f'levelpath_{level_path}')
         safe_makedirs(temp_folder)
@@ -376,22 +395,25 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         # Generate VBET Polygon
         valley_bottom_raster = os.path.join(temp_folder, f'valley_bottom_{level_path}.tif')
         generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, valley_bottom_raster, temp_folder)
-        vbet_polygon = os.path.join(temp_folder, f'valley_bottom_{level_path}.shp')
-        log.info('Polygonize VBET')
-        polygonize(valley_bottom_raster, 1, vbet_polygon, epsg=4326)
+        # vbet_polygon = os.path.join(temp_folder, f'valley_bottom_{level_path}.shp')
+        # log.info('Polygonize VBET')
+        # polygonize(valley_bottom_raster, 1, vbet_polygon, epsg=4326)
         # Add to existing feature class
-        log.info('Add VBET polygon to output')
-        polygon = vbet_merge(vbet_polygon, output_vbet, level_path=level_path)
+        # log.info('Add VBET polygon to output')
+        # polygon = vbet_merge(vbet_polygon, output_vbet, level_path=level_path)
+        log.info('Add VBET Raster to Output')
+        raster_update_2(output_vbet_area_raster, valley_bottom_raster, value=level_path_key)
 
         # Generate the Active Floodplain Polygon
         active_valley_bottom_raster = os.path.join(temp_folder, f'active_valley_bottom_{level_path}.tif')
         generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, active_valley_bottom_raster, temp_folder, thresh_value=0.90)
-        active_vbet_polygon = os.path.join(temp_folder, f'active_valley_bottom_{level_path}.shp')
-        log.info("Polygonize active floodplain polygon")
-        polygonize(active_valley_bottom_raster, 1, active_vbet_polygon, epsg=4326)
+        # active_vbet_polygon = os.path.join(temp_folder, f'active_valley_bottom_{level_path}.shp')
+        # log.info("Polygonize active floodplain polygon")
+        # polygonize(active_valley_bottom_raster, 1, active_vbet_polygon, epsg=4326)
         # Add to existing feature class
-        log.info("Add active floodplain polygon to output")
-        _active_polygon = vbet_merge(active_vbet_polygon, output_vbet_ia, level_path=level_path)
+        # log.info("Add active floodplain polygon to output")
+        # _active_polygon = vbet_merge(active_vbet_polygon, output_vbet_ia, level_path=level_path)
+        raster_update_2(output_active_vbet_area_raster, active_valley_bottom_raster, value=level_path_key)
 
         # Generate centerline for level paths only
         if level_path is not None:
@@ -401,18 +423,20 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             generate_centerline_surface(valley_bottom_raster, cost_path_raster, temp_folder)
             centerline_raster = os.path.join(temp_folder, f'centerline_{level_path}.tif')
             geom_flowline = collect_linestring(line_network, f'LevelPathI = {level_path}')
-            polygonize(valley_bottom_raster, 1, vbet_polygon, epsg=4326)
-            polygon_clip = collect_feature_class(vbet_polygon)
-            geom_flowline_clip = polygon_clip.Intersection(geom_flowline)
-            coords = get_endpoints(geom_flowline_clip)
+            geom_flowline = ogr.ForceToLineString(geom_flowline)
+            # polygonize(valley_bottom_raster, 1, vbet_polygon, epsg=4326)
+            # polygon_clip = collect_feature_class(vbet_polygon)
+            # geom_flowline_clip = polygon_clip.Intersection(geom_flowline)
+            coords = get_endpoints(geom_flowline)
             if len(coords) != 2:
                 log.error(f'Unable to generate centerline for level path {level_path}: found {len(coords)} target coordinates instead of expected 2.')
                 continue
+            
             log.info('Find least cost path for centerline')
             least_cost_path(cost_path_raster, centerline_raster, coords[0], coords[1])
             log.info('Vectorize centerline from Raster')
             centerline_full = raster2line_geom(centerline_raster, 1)
-
+            polygon = None
             if polygon is not None:
                 polygon = polygon.Buffer(vbet_clip_buffer_size)
                 centerline_intersected = polygon.Intersection(centerline_full)
@@ -441,14 +465,38 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         if debug is False:
             safe_remove_dir(temp_folder)
 
+    # Difference Raster
+    log.info("Differencing inactive floodplain raster")
+    raster_remove_zone(output_vbet_area_raster, output_active_vbet_area_raster, output_inactive_vbet_area_raster)
+
     # Geomorphic layers
-    log.info('Generating geomorphic layers')
     output_floodplain = os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['FLOODPLAIN'].rel_path)
     output_active_fp = os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['ACTIVE_FLOODPLAIN'].rel_path)
     output_inactive_fp = os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['INACTIVE_FLOODPLAIN'].rel_path)
+
+    # Polygonize Rasters
+    log.info("Polygonizing VBET area")
+    polygonize(output_vbet_area_raster, 1, output_vbet, espg)
+    log.info("Polygonizing Active VBET area")
+    polygonize(output_active_vbet_area_raster, 1, output_vbet_ia, espg)
+    log.info("Polygonizing Inactive VBET area")
+    polygonize(output_inactive_vbet_area_raster, 1, output_inactive_fp, espg)
+
+    log.info('Set Level Path ID for output polygons')
+    for layer in [output_vbet, output_vbet_ia, output_inactive_fp]:
+        with GeopackageLayer(layer, write=True) as lyr:
+            lyr.create_field('LevelPathI', ogr.OFTString)
+            for feat, *_ in lyr.iterate_features(write_layers=[lyr]):
+                key = feat.GetField('id')
+                if level_path_keys[key] is None:
+                    continue
+                feat.SetField('LevelPathI', level_path_keys[key])
+                lyr.ogr_layer.SetFeature(feat)
+
+    log.info('Generating geomorphic layers')
     difference(channel_area, output_vbet, output_floodplain)
     difference(channel_area, output_vbet_ia, output_active_fp)
-    difference(output_vbet_ia, output_vbet, output_inactive_fp)
+    # difference(output_vbet_ia, output_vbet, output_inactive_fp)
 
     # Calculate VBET Metrics
     log.info('Generating VBET Segmentation Points')
