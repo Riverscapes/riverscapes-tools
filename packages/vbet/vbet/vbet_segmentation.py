@@ -44,7 +44,7 @@ def generate_segmentation_points(line_network: Path, out_points_layer: Path, str
         # In order to get accurate lengths we are going to need to project into some coordinate system
         transform_back = osr.CoordinateTransformation(transform_ref, line_lyr.spatial_ref)
 
-        for feat, *_ in line_lyr.iterate_features():
+        for feat, *_ in line_lyr.iterate_features(write_layers=[out_lyr]):
             level_path = feat.GetField('LevelPathI')
             if level_path not in stream_size_lookup:
                 log.error(f'Stream Size not found for LevelPathI {level_path}. Skipping segmentation')
@@ -120,7 +120,7 @@ def split_vbet_polygons(vbet_polygons, segmentation_points, out_split_polygons):
                   'seg_distance': ogr.OFTReal}
         out_lyr.create_layer(ogr.wkbMultiPolygon, spatial_ref=vbet_lyr.spatial_ref, fields=fields)
 
-        for vbet_feat, *_ in vbet_lyr.iterate_features():
+        for vbet_feat, *_ in vbet_lyr.iterate_features(write_layers=[out_lyr]):
 
             level_path = vbet_feat.GetField('LevelPathI')
             if level_path is None:
@@ -180,7 +180,7 @@ def calculate_segmentation_metrics(vbet_segment_polygons: Path, vbet_centerline:
         if len(fields) > 0:
             vbet_lyr.create_fields(fields)
 
-        for vbet_feat, *_ in vbet_lyr.iterate_features('Calculating metrics per vbet segment', attribute_filter=attrib_filter):
+        for vbet_feat, *_ in vbet_lyr.iterate_features('Calculating metrics per vbet segment', attribute_filter=attrib_filter, write_layers=[vbet_lyr]):
             vbet_geom = vbet_feat.GetGeometryRef()
             centroid = vbet_geom.Centroid()
             utm_epsg = get_utm_zone_epsg(centroid.GetX())

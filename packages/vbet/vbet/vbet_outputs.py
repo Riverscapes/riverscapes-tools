@@ -10,7 +10,7 @@ from osgeo import ogr
 import rasterio
 import numpy as np
 
-from rscommons import ProgressBar, Logger, GeopackageLayer, TempGeopackage, get_shp_or_gpkg
+from rscommons import ProgressBar, Logger, GeopackageLayer, TempGeopackage, get_shp_or_gpkg, Timer
 from vbet.__version__ import __version__
 
 Path = str
@@ -25,6 +25,7 @@ def threshold(evidence_raster_path: Path, thr_val: float, thresh_raster_path: Pa
         thresh_raster_path (Path): output threshold raster
     """
     log = Logger('threshold')
+    _timer = Timer()
     with rasterio.open(evidence_raster_path) as fval_src:
         out_meta = fval_src.meta
         out_meta['count'] = 1
@@ -48,6 +49,7 @@ def threshold(evidence_raster_path: Path, thr_val: float, thresh_raster_path: Pa
                 masked_arr = np.ma.array(fvals_mask, mask=[new_fval_mask])  # & ch_data.mask])
                 dest.write(np.ma.filled(masked_arr, out_meta['nodata']), window=window, indexes=1)
             progbar.finish()
+    log.debug(f'Timer: {_timer.toString()}')
 
 
 def sanitize(name: str, in_path: str, out_path: str, buff_dist: float, select_features=None):
@@ -61,7 +63,7 @@ def sanitize(name: str, in_path: str, out_path: str, buff_dist: float, select_fe
         buff_dist (float): [description]
     """
     log = Logger('VBET Simplify')
-
+    _timer = Timer()
     with GeopackageLayer(out_path, write=True) as out_lyr, \
             TempGeopackage('sanitize_temp') as tempgpkg, \
             GeopackageLayer(in_path) as in_lyr:
@@ -97,9 +99,7 @@ def sanitize(name: str, in_path: str, out_path: str, buff_dist: float, select_fe
             # Only keep features intersected with network
             tmp_lyr.create_layer_from_ref(in_lyr)
 
-            tmp_lyr.ogr_layer.StartTransaction()
-
-            for candidate_feat, _c2, _p1 in in_lyr.iterate_features("Finding interesected features"):
+            for candidate_feat, _c2, _p1 in in_lyr.iterate_features("Finding interesected features", write_layers=[tmp_lyr]):
                 candidate_geom = candidate_feat.GetGeometryRef()
                 candidate_geom = geom_validity_fix(candidate_geom)
 
@@ -121,10 +121,8 @@ def sanitize(name: str, in_path: str, out_path: str, buff_dist: float, select_fe
                         feat = None
                         break
 
-            tmp_lyr.ogr_layer.CommitTransaction()
-            out_lyr.ogr_layer.StartTransaction()
             # Second loop is about filtering bad areas and simplifying
-            for in_feat, _counter, _progbar in tmp_lyr.iterate_features("Filtering out non-relevant shapes for {}".format(name)):
+            for in_feat, _counter, _progbar in tmp_lyr.iterate_features("Filtering out non-relevant shapes for {}".format(name), write_layers=[out_lyr]):
 
                 reach_attributes = {}
                 for n in range(field_count):
@@ -166,8 +164,10 @@ def sanitize(name: str, in_path: str, out_path: str, buff_dist: float, select_fe
                     out_pts += f_geom.GetBoundary().GetPointCount()
                 else:
                     log.warning('Invalid GEOM with fid: {} for layer {}'.format(fid, name))
-            out_lyr.ogr_layer.CommitTransaction()
+
         log.info('Writing to disk for layer {}'.format(name))
+
+    log.debug(f'Timer: {_timer.toString()}')
 
 
 def vbet_merge(in_layer: Path, out_layer: Path, level_path: str = None) -> ogr.Geometry:
@@ -175,18 +175,19 @@ def vbet_merge(in_layer: Path, out_layer: Path, level_path: str = None) -> ogr.G
 
         returns clipped geometry
     """
-
+    log = Logger('VBET Merge')
     geom = None
-
+    _timer = Timer()
     with get_shp_or_gpkg(in_layer) as lyr_polygon, \
             GeopackageLayer(out_layer, write=True) as lyr_vbet:
 
         geoms_out = ogr.Geometry(ogr.wkbMultiPolygon)
-        for feat, *_ in lyr_polygon.iterate_features():
+        # TODO: Not sure we can use write_layers=[lyr_vbet] here because the in
+        for feat, *_ in lyr_polygon.iterate_features("VBET Merge (outer)", write_layers=[lyr_vbet]):
             geom_ref = feat.GetGeometryRef()
             geom = geom_ref.Clone()
             geom = geom.MakeValid()
-            for clip_feat, *_ in lyr_vbet.iterate_features(clip_shape=geom):
+            for clip_feat, *_ in lyr_vbet.iterate_features("VBET Merge (inner)", clip_shape=geom):
                 clip_geom = clip_feat.GetGeometryRef()
                 geom = geom.Difference(clip_geom)
                 if geom is None:
@@ -204,4 +205,5 @@ def vbet_merge(in_layer: Path, out_layer: Path, level_path: str = None) -> ogr.G
             for g in geom:
                 geoms_out.AddGeometry(g)
 
+        log.debug(f'Timer: {_timer.toString()}')
         return geoms_out

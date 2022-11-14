@@ -16,8 +16,7 @@ import traceback
 import time
 from typing import List, Dict
 
-import gdal
-from osgeo import ogr
+from osgeo import ogr, gdal
 import rasterio
 from shapely.geometry import box
 import numpy as np
@@ -31,15 +30,17 @@ from rscommons.hand import run_subprocess
 from rscommons.vbet_network import copy_vaa_attributes, join_attributes, create_stream_size_zones, get_channel_level_path, get_distance_lookup, vbet_network
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.raster_warp import raster_warp
+from rscommons import TimerBuckets, Timer, LoopTimer
+from scripts.cost_path import least_cost_path
+from scripts.raster2line import raster2line_geom
 
 from vbet.vbet_database import build_vbet_database, load_configuration
 from vbet.vbet_raster_ops import mask_rasters_nodata, rasterize_attribute, raster2array, array2raster, new_raster, rasterize, raster_merge, raster_update, raster_update_2, raster_remove_zone
 from vbet.vbet_outputs import vbet_merge, threshold
 from vbet.vbet_report import VBETReport
 from vbet.vbet_segmentation import calculate_segmentation_metrics, generate_segmentation_points, split_vbet_polygons, summerize_vbet_metrics
-from scripts.cost_path import least_cost_path
-from scripts.raster2line import raster2line_geom
 from vbet.__version__ import __version__
+
 
 Path = str
 
@@ -112,6 +113,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         RSMeta("VBET_Inactive_Floodplain_Threshold", f"{int(thresh_vals['VBET_FULL'] * 100)}", RSMetaTypes.INT)
     ], meta)
 
+    log.info('Preparing inputs:')
     inputs_gpkg = os.path.join(project_folder, LayerTypes['INPUTS'].rel_path)
     intermediates_gpkg = os.path.join(project_folder, LayerTypes['INTERMEDIATES'].rel_path)
     vbet_gpkg = os.path.join(project_folder, LayerTypes['VBET_OUTPUTS'].rel_path)
@@ -123,15 +125,19 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
     clip_mask = None
     if mask is not None:
+        if not os.path.isfile(mask):
+            raise Exception(f'Mask file could not be found: {mask}')
         clip_mask = collect_feature_class(mask)
         clip_mask = clip_mask.MakeValid()
 
+    log.info('Preparing network:')
     vbet_network(in_line_network, None, line_network_features, fcodes=reach_codes, hard_clip_shape=clip_mask)
     catchment_features = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['CATCHMENTS'].rel_path)
     copy_feature_class(in_catchments, catchment_features)
     channel_area = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['CHANNEL_AREA_POLYGONS'].rel_path)
     copy_feature_class(in_channel_area, channel_area)
 
+    log.info('Building VBET Database:')
     build_vbet_database(inputs_gpkg)
     vbet_run = load_configuration(scenario_code, inputs_gpkg)
 
@@ -250,13 +256,33 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
     # Generate the list of level paths to run, sorted by ascending order and optional user filter
     level_paths_to_run = []
+    level_path_lengths = {}
     with GeopackageLayer(line_network) as line_lyr:
+        all_level_paths = []
         for feat, *_ in line_lyr.iterate_features():
             level_path = feat.GetField('LevelPathI')
-            level_paths_to_run.append(str(int(level_path)))
-    level_paths_to_run = list(set(level_paths_to_run))
-    if level_paths:
-        level_paths_to_run = [level_path for level_path in level_paths_to_run if level_path in level_paths]
+            level_path_str = str(int(level_path))
+            all_level_paths.append(level_path_str)
+            if level_path_str not in level_path_lengths:
+                level_path_lengths[level_path_str] = 0
+            # Accumulate level path lengths (in meters)
+            level_path_lengths[level_path_str] += feat.GetField('LengthKm') * 1000
+
+        # Dedupe level paths
+        all_level_paths = list(set(all_level_paths))
+        log.info(f'Found {len(all_level_paths)} potential level paths to run.')
+
+        # If the user specified a set of level paths then we filter to those, ignoring any that aren't found with a warning
+        if level_paths:
+            for level_path in level_paths:
+                if level_path in all_level_paths:
+                    level_paths_to_run.append(level_path)
+                else:
+                    log.warning('Specified level path {level_path} not found. Skipping.')
+        else:
+            level_paths_to_run = all_level_paths
+        all_level_paths = None
+
     level_paths_to_run.sort(reverse=False)
     level_paths_to_run.append(None)
 
@@ -274,8 +300,30 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
     level_path_keys = {}
     # Iterate VBET generateion for each level path
+
+    _loopTimer = LoopTimer("LevelPath")
     for level_path_key, level_path in enumerate(level_paths_to_run, 1):
         level_path_keys[level_path_key] = level_path
+    _tmtbuckets = TimerBuckets(csv_file=os.path.join(project_folder, 'level_path_debug.csv'))
+    # Convenience function for errors
+
+    def _tmterr(err_code: str, err_msg: str):
+        _tmtbuckets.meta['err_code'] = err_code
+        _tmtbuckets.meta['err_msg'] = err_msg
+        _tmtbuckets.meta['success'] = False
+
+    def _tmtfinish():
+        if _tmtbuckets.meta['success'] is not False:
+            _tmtbuckets.meta['success'] = True
+
+    for level_path in level_paths_to_run:
+        _tmtbuckets.tick({
+            "level_path": level_path,
+            "length": level_path_lengths[level_path] if level_path in level_path_lengths else 0,
+            "err_code": None,
+            "err_msg": None,
+            "success": None,
+        })
 
         log.info(f'Processing Level Path: {level_path}')
         temp_folder = os.path.join(project_folder, 'temp', f'levelpath_{level_path}')
@@ -284,113 +332,132 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         # Gather the channel area polygon for the level path
         sql = f"LevelPathI = {level_path}" if level_path is not None else "LevelPathI is NULL"
         level_path_polygons = os.path.join(temp_folder, 'channel_polygons.gpkg', f'level_path_{level_path}')
-        copy_feature_class(channel_area, level_path_polygons, attribute_filter=sql)
+        with TimerBuckets('ogr'):
+            copy_feature_class(channel_area, level_path_polygons, attribute_filter=sql)
 
         # Generate the buffered channel area extent to minimize raster processing area
-        with GeopackageLayer(level_path_polygons) as lyr_polygons:
-            if lyr_polygons.ogr_layer.GetFeatureCount() == 0:
-                log.warning(f"No channel area features found for Level Path {level_path}.")
+        with TimerBuckets('ogr_cheap'):
+            with GeopackageLayer(level_path_polygons) as lyr_polygons:
+                if lyr_polygons.ogr_layer.GetFeatureCount() == 0:
+                    err_msg = f"No channel area features found for Level Path {level_path}."
+                    log.warning(err_msg)
+                    _tmterr("NO_CHANNEL_AREA", err_msg)
+                    continue
+                # Hack to check if any channel geoms are empty
+                check_empty = False
+                for feat, *_ in lyr_polygons.iterate_features():
+                    geom_test = feat.GetGeometryRef()
+                    if geom_test.IsEmpty():
+                        check_empty = True
+                if check_empty is True:
+                    err_msg = f"Empty channel area geometry found for Level Path {level_path}."
+                    log.warning(err_msg)
+                    _tmterr("EMPTY_CHANNEL_AREA", err_msg)
+                    continue
+                channel_bbox = lyr_polygons.ogr_layer.GetExtent()
+                channel_buffer_size = lyr_polygons.rough_convert_metres_to_vector_units(400)
+
+            (minX, maxX, minY, maxY) = channel_bbox
+            # Create ring
+            ring = ogr.Geometry(ogr.wkbLinearRing)
+            ring.AddPoint(minX, minY)
+            ring.AddPoint(maxX, minY)
+            ring.AddPoint(maxX, maxY)
+            ring.AddPoint(minX, maxY)
+            ring.AddPoint(minX, minY)
+            channel_envelope_geom = ogr.Geometry(ogr.wkbPolygon)
+            channel_envelope_geom.AddGeometry(ring)
+
+            log.debug(f'channel_envelope_geom area: {channel_envelope_geom.Area}')
+
+            with GeopackageLayer(catchments) as lyr_catchments:
+                geom_envelope = channel_envelope_geom.Clone()
+                for feat_catchment, *_ in lyr_catchments.iterate_features(clip_shape=channel_envelope_geom):
+                    geom_catchment = feat_catchment.GetGeometryRef()
+                    geom_catchment_envelope = get_extent_as_geom(geom_catchment)
+                    geom_envelope = geom_envelope.Union(geom_catchment_envelope)
+                    geom_envelope = get_extent_as_geom(geom_envelope)
+
+        with TimerBuckets('ogr_exp'):
+            geom_channel_buffer = geom_envelope.Buffer(channel_buffer_size)
+            envelope_geom = raster_envelope_geom.Intersection(geom_channel_buffer)
+            if envelope_geom.IsEmpty():
+                err_msg = f'Empty processing envelope for level path {level_path}'
+                log.error(err_msg)
+                _tmterr("EMPTY_ENVELOPE", err_msg)
                 continue
-            # Hack to check if any channel geoms are empty
-            check_empty = False
-            for feat, *_ in lyr_polygons.iterate_features():
-                geom_test = feat.GetGeometryRef()
-                if geom_test.IsEmpty():
-                    check_empty = True
-            if check_empty is True:
-                log.warning(f"Empty channel area geometry found for Level Path {level_path}.")
-                continue
-            channel_bbox = lyr_polygons.ogr_layer.GetExtent()
-            channel_buffer_size = lyr_polygons.rough_convert_metres_to_vector_units(400)
-
-        (minX, maxX, minY, maxY) = channel_bbox
-        # Create ring
-        ring = ogr.Geometry(ogr.wkbLinearRing)
-        ring.AddPoint(minX, minY)
-        ring.AddPoint(maxX, minY)
-        ring.AddPoint(maxX, maxY)
-        ring.AddPoint(minX, maxY)
-        ring.AddPoint(minX, minY)
-        channel_envelope_geom = ogr.Geometry(ogr.wkbPolygon)
-        channel_envelope_geom.AddGeometry(ring)
-
-        with GeopackageLayer(catchments) as lyr_catchments:
-            geom_envelope = channel_envelope_geom.Clone()
-            for feat_catchment, *_ in lyr_catchments.iterate_features(clip_shape=channel_envelope_geom):
-                geom_catchment = feat_catchment.GetGeometryRef()
-                geom_catchment_envelope = get_extent_as_geom(geom_catchment)
-                geom_envelope = geom_envelope.Union(geom_catchment_envelope)
-                geom_envelope = get_extent_as_geom(geom_envelope)
-
-        geom_channel_buffer = geom_envelope.Buffer(channel_buffer_size)
-        envelope_geom = raster_envelope_geom.Intersection(geom_channel_buffer)
-        if envelope_geom.IsEmpty():
-            log.error(f'Empty processing envelope for level path {level_path}')
-            continue
         envelope = os.path.join(temp_folder, 'envelope_polygon.gpkg', f'level_path_{level_path}')
-        with GeopackageLayer(envelope, write=True) as lyr_envelope:
-            lyr_envelope.create_layer(ogr.wkbPolygon, 4326)
-            lyr_envelope_dfn = lyr_envelope.ogr_layer_def
-            feat = ogr.Feature(lyr_envelope_dfn)
-            feat.SetGeometry(envelope_geom)
-            lyr_envelope.ogr_layer.CreateFeature(feat)
+
+        with TimerBuckets('ogr_cheap'):
+            with GeopackageLayer(envelope, write=True) as lyr_envelope:
+                lyr_envelope.create_layer(ogr.wkbPolygon, 4326)
+                lyr_envelope_dfn = lyr_envelope.ogr_layer_def
+                feat = ogr.Feature(lyr_envelope_dfn)
+                feat.SetGeometry(envelope_geom)
+                lyr_envelope.ogr_layer.CreateFeature(feat)
 
         # use the channel extent to mask all hand input raster and channel area extents
         local_dinfflowdir_ang = os.path.join(temp_folder, f'dinfflowdir_ang_{level_path}.tif')
         local_pitfill_dem = os.path.join(temp_folder, f'pitfill_dem_{level_path}.tif')
-        raster_warp(dinfflowdir_ang, local_dinfflowdir_ang, 4326, clip=envelope)
-        raster_warp(pitfill_dem, local_pitfill_dem, 4326, clip=envelope)
+        with TimerBuckets('gdal'):
+            raster_warp(dinfflowdir_ang, local_dinfflowdir_ang, 4326, clip=envelope)
+            raster_warp(pitfill_dem, local_pitfill_dem, 4326, clip=envelope)
 
         rasterized_channel = os.path.join(temp_folder, f'rasterized_channel_{level_path}.tif')
-        rasterize(level_path_polygons, rasterized_channel, local_pitfill_dem, all_touched=True)
-        in_rasters['Channel'] = rasterized_channel
+        with TimerBuckets('rasterize'):
+            rasterize(level_path_polygons, rasterized_channel, local_pitfill_dem, all_touched=True)
+            in_rasters['Channel'] = rasterized_channel
 
-        hand_raster = os.path.join(temp_rasters_folder, f'local_hand_{level_path}.tif')
-        dinfdistdown_status = run_subprocess(project_folder, ["mpiexec", "-n", NCORES, "dinfdistdown", "-ang", local_dinfflowdir_ang, "-fel", local_pitfill_dem, "-src", rasterized_channel, "-dd", hand_raster, "-m", "ave", "v"])
-        if dinfdistdown_status != 0 or not os.path.isfile(hand_raster):
-            log.error(f'Error generating HAND for level path {level_path}')
-            continue
-            # raise Exception('TauDEM: dinfdistdown failed')
-        in_rasters['HAND'] = hand_raster
+        with TimerBuckets('taudem'):
+            hand_raster = os.path.join(temp_rasters_folder, f'local_hand_{level_path}.tif')
+            dinfdistdown_status = run_subprocess(project_folder, ["mpiexec", "-n", NCORES, "dinfdistdown", "-ang", local_dinfflowdir_ang, "-fel", local_pitfill_dem, "-src", rasterized_channel, "-dd", hand_raster, "-m", "ave", "v"])
+            if dinfdistdown_status != 0 or not os.path.isfile(hand_raster):
+                err_msg = f'Error generating HAND for level path {level_path}'
+                log.error(err_msg)
+                _tmterr("HAND_ERROR", err_msg)
+                continue
+                # raise Exception('TauDEM: dinfdistdown failed')
+            in_rasters['HAND'] = hand_raster
 
-        # Open evidence rasters concurrently. We're looping over windows so this shouldn't affect
-        # memory consumption too much
-        read_rasters = {name: rasterio.open(raster) for name, raster in in_rasters.items()}
-        out_meta = read_rasters['HAND'].meta
-        out_meta['driver'] = 'GTiff'
-        out_meta['count'] = 1
-        out_meta['compress'] = 'deflate'
+        with TimerBuckets('rasterio'):
+            # Open evidence rasters concurrently. We're looping over windows so this shouldn't affect
+            # memory consumption too much
+            read_rasters = {name: rasterio.open(raster) for name, raster in in_rasters.items()}
+            out_meta = read_rasters['HAND'].meta
+            out_meta['driver'] = 'GTiff'
+            out_meta['count'] = 1
+            out_meta['compress'] = 'deflate'
 
-        evidence_raster = os.path.join(temp_rasters_folder, f'vbet_evidence_{level_path}.tif')
-        normalized_local_hand = os.path.join(temp_rasters_folder, f'normalized_hand_{level_path}.tif')
-        write_rasters = {}  # {name: rasterio.open(raster, 'w', **out_meta) for name, raster in out_rasters.items()}
-        write_rasters['VBET_EVIDENCE'] = rasterio.open(evidence_raster, 'w', **out_meta)
-        write_rasters['NORMALIZED_HAND'] = rasterio.open(normalized_local_hand, 'w', **out_meta)
+            evidence_raster = os.path.join(temp_rasters_folder, f'vbet_evidence_{level_path}.tif')
+            normalized_local_hand = os.path.join(temp_rasters_folder, f'normalized_hand_{level_path}.tif')
+            write_rasters = {}  # {name: rasterio.open(raster, 'w', **out_meta) for name, raster in out_rasters.items()}
+            write_rasters['VBET_EVIDENCE'] = rasterio.open(evidence_raster, 'w', **out_meta)
+            write_rasters['NORMALIZED_HAND'] = rasterio.open(normalized_local_hand, 'w', **out_meta)
 
-        progbar = ProgressBar(len(list(read_rasters['Slope'].block_windows(1))), 50, "Calculating evidence layer")
-        counter = 0
-        # Again, these rasters should be orthogonal so their windows should also line up
-        for _ji, window in read_rasters['HAND'].block_windows(1):
-            progbar.update(counter)
-            counter += 1
-            block = {block_name: raster.read(1, window=window, masked=True) for block_name, raster in read_rasters.items()}
+            progbar = ProgressBar(len(list(read_rasters['Slope'].block_windows(1))), 50, "Calculating evidence layer")
+            counter = 0
+            # Again, these rasters should be orthogonal so their windows should also line up
+            for _ji, window in read_rasters['HAND'].block_windows(1):
+                progbar.update(counter)
+                counter += 1
+                block = {block_name: raster.read(1, window=window, masked=True) for block_name, raster in read_rasters.items()}
 
-            normalized = {}
-            for name in vbet_run['Inputs']:
-                if name in vbet_run['Zones']:
-                    transforms = [np.ma.MaskedArray(transform(block[name].data), mask=block[name].mask) for transform in vbet_run['Transforms'][name]]
-                    normalized[name] = np.ma.MaskedArray(np.choose(block[f'TRANSFORM_ZONE_{name}'].data, transforms, mode='clip'), mask=block[name].mask)
-                else:
-                    normalized[name] = np.ma.MaskedArray(vbet_run['Transforms'][name][0](block[name].data), mask=block[name].mask)
+                normalized = {}
+                for name in vbet_run['Inputs']:
+                    if name in vbet_run['Zones']:
+                        transforms = [np.ma.MaskedArray(transform(block[name].data), mask=block[name].mask) for transform in vbet_run['Transforms'][name]]
+                        normalized[name] = np.ma.MaskedArray(np.choose(block[f'TRANSFORM_ZONE_{name}'].data, transforms, mode='clip'), mask=block[name].mask)
+                    else:
+                        normalized[name] = np.ma.MaskedArray(vbet_run['Transforms'][name][0](block[name].data), mask=block[name].mask)
 
-            fvals_topo = np.ma.mean([normalized['Slope'], normalized['HAND'], normalized['TWI']], axis=0)
-            fvals_channel = 0.995 * block['Channel']
-            fvals_evidence = np.maximum(fvals_topo, fvals_channel)
+                fvals_topo = np.ma.mean([normalized['Slope'], normalized['HAND'], normalized['TWI']], axis=0)
+                fvals_channel = 0.995 * block['Channel']
+                fvals_evidence = np.maximum(fvals_topo, fvals_channel)
 
-            write_rasters['VBET_EVIDENCE'].write(np.ma.filled(np.float32(fvals_evidence), out_meta['nodata']), window=window, indexes=1)
-            write_rasters['NORMALIZED_HAND'].write(np.ma.filled(np.float32(normalized['HAND']), out_meta['nodata']), window=window, indexes=1)
-        write_rasters['VBET_EVIDENCE'].close()
-        write_rasters['NORMALIZED_HAND'].close()
+                write_rasters['VBET_EVIDENCE'].write(np.ma.filled(np.float32(fvals_evidence), out_meta['nodata']), window=window, indexes=1)
+                write_rasters['NORMALIZED_HAND'].write(np.ma.filled(np.float32(normalized['HAND']), out_meta['nodata']), window=window, indexes=1)
+            write_rasters['VBET_EVIDENCE'].close()
+            write_rasters['NORMALIZED_HAND'].close()
 
         # Generate VBET Polygon
         valley_bottom_raster = os.path.join(temp_folder, f'valley_bottom_{level_path}.tif')
@@ -431,7 +498,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             if len(coords) != 2:
                 log.error(f'Unable to generate centerline for level path {level_path}: found {len(coords)} target coordinates instead of expected 2.')
                 continue
-            
+
             log.info('Find least cost path for centerline')
             least_cost_path(cost_path_raster, centerline_raster, coords[0], coords[1])
             log.info('Vectorize centerline from Raster')
@@ -458,12 +525,18 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                 lyr_cl.ogr_layer.CreateFeature(out_feature)
                 out_feature = None
 
-        # clean up rasters
-        for out_raster, in_raster in {out_hand: hand_raster, out_vbet_evidence: evidence_raster, out_normalized_hand: normalized_local_hand}.items():
-            raster_merge(in_raster, out_raster, dem, valley_bottom_raster, temp_folder)
+                # clean up rasters
+        with TimerBuckets('raster_merge'):
+            for out_raster, in_raster in {out_hand: hand_raster, out_vbet_evidence: evidence_raster, out_normalized_hand: normalized_local_hand}.items():
+                raster_merge(in_raster, out_raster, dem, valley_bottom_raster, temp_folder)
 
         if debug is False:
             safe_remove_dir(temp_folder)
+
+        _tmtfinish()
+
+    # Final tick to trigger writing the last row
+    _tmtbuckets.tick()
 
     # Difference Raster
     log.info("Differencing inactive floodplain raster")
@@ -564,7 +637,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 def generate_vbet_polygon(vbet_evidence_raster, rasterized_channel, channel_hand, out_valley_bottom, temp_folder, thresh_value=0.68):
 
     log = Logger('VBET Generate Polygon')
-
+    _timer = Timer()
     # Mask to Hand area
     vbet_evidence_masked = os.path.join(temp_folder, f"vbet_evidence_masked_{thresh_value}.tif")
     mask_rasters_nodata(vbet_evidence_raster, channel_hand, vbet_evidence_masked)
@@ -604,10 +677,20 @@ def generate_vbet_polygon(vbet_evidence_raster, rasterized_channel, channel_hand
     valley_bottom_clean = binary_closing(valley_bottom_region.astype(int), iterations=2)
     array2raster(out_valley_bottom, vbet_evidence_raster, valley_bottom_clean, data_type=gdal.GDT_Int32)
 
+    log.debug(f'Timer: {_timer.toString()}')
+
 
 def generate_centerline_surface(vbet_raster, out_cost_path, temp_folder):
+    """_summary_
 
+    Args:
+        vbet_raster (_type_): _description_
+        out_cost_path (_type_): _description_
+        temp_folder (_type_): _description_
+    """
+    log = Logger('Generate Centerline Surface')
     vbet = raster2array(vbet_raster)
+    _timer = Timer()
 
     # Generate Inverse Raster for Proximity
     valley_bottom_inverse = (vbet != 1)
@@ -633,8 +716,21 @@ def generate_centerline_surface(vbet_raster, out_cost_path, temp_folder):
     cost_path = 10**((rescaled * -1) + 10) + (rescaled <= 0) * 1000000000000  # 10** (((A) * -1) + 10) + (A <= 0) * 1000000000000
     array2raster(out_cost_path, vbet_raster, cost_path, data_type=gdal.GDT_Float32)
 
+    log.debug(f'Timer: {_timer.toString()}')
+
 
 def create_project(huc, output_dir: str, meta: List[RSMeta], meta_dict: Dict[str, str]):
+    """ Make our VBET Project
+
+    Args:
+        huc (_type_): _description_
+        output_dir (str): _description_
+        meta (List[RSMeta]): _description_
+        meta_dict (Dict[str, str]): _description_
+
+    Returns:
+        _type_: _description_
+    """
     project_name = 'VBET for HUC {}'.format(huc)
     project = RSProject(cfg, output_dir)
     project.create(project_name, 'VBET', meta, meta_dict)
@@ -658,6 +754,8 @@ def create_project(huc, output_dir: str, meta: List[RSMeta], meta_dict: Dict[str
 
 
 def main():
+    """_summary_
+    """
     parser = argparse.ArgumentParser(
         description='Riverscapes VBET Tool',
         # epilog="This is an epilog"

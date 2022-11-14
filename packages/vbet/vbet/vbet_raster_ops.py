@@ -454,10 +454,15 @@ def raster_merge(in_raster: Path, out_raster: Path, template_raster: Path, logic
         out_meta = rio_template.meta
         out_meta['driver'] = 'GTiff'
         out_meta['count'] = 1
+        # out_meta['nodata'] = float('-inf')
         out_meta['compress'] = 'deflate'
 
-    if os.path.exists(out_raster):
-        out_temp = os.path.join(temp_folder, 'temp_raster')
+        # Empty rasters mess with rasterio so we remove them first
+        if os.path.isfile(out_raster) and os.stat(out_raster).st_size < 1:
+            os.remove(out_raster)
+
+    if os.path.isfile(out_raster):
+        out_temp = os.path.join(temp_folder, 'temp_raster.tif')
 
         with rasterio.open(out_raster) as rio_dest, \
                 rasterio.open(in_raster) as rio_source, \
@@ -476,6 +481,7 @@ def raster_merge(in_raster: Path, out_raster: Path, template_raster: Path, logic
                         continue
                     array_out = np.choose(array_logic_mask, [array_dest, array_source])
                     rio_temp.write(np.ma.filled(np.float32(array_out), out_meta['nodata']), window=window, indexes=1)
+
         shutil.copyfile(out_temp, out_raster)
 
         if window_error:

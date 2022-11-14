@@ -2,11 +2,18 @@ import os
 import sqlite3
 import numpy as np
 from scipy import interpolate
-
+from rscommons import Logger
 from rscommons.database import load_lookup_data
 
 
 def build_vbet_database(database):
+    """_summary_
+
+    Args:
+        database (_type_): _description_
+    """
+    log = Logger('Building VBET Database')
+    log.info('Preparing inputs')
 
     database_folder = os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database')
     with sqlite3.connect(database) as conn:

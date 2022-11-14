@@ -67,7 +67,7 @@
         "{env:DATA_ROOT}/channel_area/${input:HUC}/outputs/channel_area.gpkg/channel_area",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhd_data.sqlite/NHDPlusFlowlineVAA",
         "{env:DATA_ROOT}/vbet/${input:HUC}",
-        "--level_paths","${input:level_paths}",
+        // "--level_paths","${input:level_paths}",
         "--pitfill","{env:DATA_ROOT}/taudem/${input:HUC}/intermediates/pitfill.tif",
         "--dinfflowdir_ang","{env:DATA_ROOT}/taudem/${input:HUC}/intermediates/dinfflowdir_ang.tif",
         "--dinfflowdir_slp","{env:DATA_ROOT}/taudem/${input:HUC}/outputs/dinfflowdir_slp.tif",
@@ -80,7 +80,7 @@
         "--meta",
         "Runner=VSCode",
         "--verbose",
-        //"--debug"
+        // "--debug"
       ]
     },
     {
@@ -234,6 +234,12 @@
         "{env:GIS_PROJECTS_ROOT}/VBET_Evidence/vbet_evidence.csv",
       ]
     }, 
-
+    {
+      "name": "Python: Current File",
+      "type": "python",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal"
+    },
   ]
 }
