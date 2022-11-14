@@ -4,7 +4,6 @@
 import unittest
 import sqlite3
 import os
-import sys
 from time import sleep
 from rscommons import TimerBuckets
 from tempfile import mkstemp
@@ -51,11 +50,11 @@ class UtilTest(unittest.TestCase):
         self.assertEqual(len(my_buckets.timers.keys()), 0)
         self.assertAlmostEqual(my_buckets.total, 7, 1)
 
-        my_buckets.reset()
+        TimerBuckets(reset=True)
         self.assertEqual(len(my_buckets.ticks), 0)
         self.assertEqual(len(my_buckets.timers.keys()), 0)
         self.assertAlmostEqual(my_buckets.total, 0, 1)
-        self.assertEqual(my_buckets.table_name, "debug_table")
+        self.assertEqual(my_buckets.table_name, "DEBUG")
 
     def test_not_active(self):
         """Nothing should not happen when we set this as innactive

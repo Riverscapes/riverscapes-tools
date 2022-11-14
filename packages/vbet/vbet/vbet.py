@@ -30,7 +30,7 @@ from rscommons.hand import run_subprocess
 from rscommons.vbet_network import copy_vaa_attributes, join_attributes, create_stream_size_zones, get_channel_level_path, get_distance_lookup, vbet_network
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.raster_warp import raster_warp
-from rscommons import TimerBuckets, Timer, LoopTimer
+from rscommons import TimerBuckets, Timer, TimerWaypoints
 from scripts.cost_path import least_cost_path
 from scripts.raster2line import raster2line_geom
 
@@ -92,11 +92,13 @@ LayerTypes = {
 }
 
 
-def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchments, in_channel_area, vaa_table, project_folder, scenario_code, huc, level_paths=None, in_pitfill_dem=None, in_dinfflowdir_ang=None, in_dinfflowdir_slp=None, in_twi_raster=None, meta=None, debug=False, reach_codes=None, mask=None):
+def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchments, in_channel_area, vaa_table, project_folder, scenario_code, huc,
+                     level_paths=None, in_pitfill_dem=None, in_dinfflowdir_ang=None, in_dinfflowdir_slp=None, in_twi_raster=None, meta=None, debug=False,
+                     reach_codes=None, mask=None):
 
     thresh_vals = {'VBET_IA': 0.90, 'VBET_FULL': 0.68}
 
-    vbet_timer = time.time()
+    _tmr_waypt = TimerWaypoints()
     log = Logger('VBET')
     log.info('Starting VBET v.{}'.format(cfg.version))
 
@@ -300,29 +302,35 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     safe_makedirs(temp_rasters_folder)
 
     level_path_keys = {}
-    # Iterate VBET generateion for each level path
 
-    _loopTimer = LoopTimer("LevelPath")
-    for level_path_key, level_path in enumerate(level_paths_to_run, 1):
-        level_path_keys[level_path_key] = level_path
-    _tmtbuckets = TimerBuckets(csv_file=os.path.join(project_folder, 'level_path_debug.csv'))
-    # Convenience function for errors
+    _tmr_waypt.timer_break('InputPrep')  # this is where input prep ends
 
+    # Debug function for collecting information on level paths
+    _tmtbuckets = TimerBuckets(
+        table_name='level_path_debug',
+        csv_path=os.path.join(project_folder, 'level_path_debug.csv'),
+        active=debug
+    )
+
+    # Convenience function for errors and collecting metadata
     def _tmterr(err_code: str, err_msg: str):
-        _tmtbuckets.meta['err_code'] = err_code
-        _tmtbuckets.meta['err_msg'] = err_msg
+        _tmtbuckets.meta['code'] = err_code
+        _tmtbuckets.meta['msg'] = err_msg
         _tmtbuckets.meta['success'] = False
 
     def _tmtfinish():
-        if _tmtbuckets.meta['success'] is not False:
-            _tmtbuckets.meta['success'] = True
+        if _tmtbuckets.meta['has_centerline'] is not False:
+            _tmtbuckets.meta['has_centerline'] = True
 
-    for level_path in level_paths_to_run:
+    # Iterate VBET generateion for each level path
+    for level_path_key, level_path in enumerate(level_paths_to_run, 1):
+        level_path_keys[level_path_key] = level_path
+
         _tmtbuckets.tick({
             "level_path": level_path,
             "length": level_path_lengths[level_path] if level_path in level_path_lengths else 0,
-            "err_code": None,
-            "err_msg": None,
+            "code": None,
+            "msg": None,
             "success": None,
         })
 
@@ -568,6 +576,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
     # Final tick to trigger writing the last row
     _tmtbuckets.tick()
+    _tmr_waypt.timer_break('LevelPaths')  # this is where level path for loop ends
 
     # Difference Raster
     log.info("Differencing inactive floodplain raster")
@@ -585,6 +594,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     polygonize(output_active_vbet_area_raster, 1, output_vbet_ia, espg)
     log.info("Polygonizing Inactive VBET area")
     polygonize(output_inactive_vbet_area_raster, 1, output_inactive_fp, espg)
+    _tmr_waypt.timer_break('PolygonizeRasters')
 
     log.info('Set Level Path ID for output polygons')
     for layer in [output_vbet, output_vbet_ia, output_inactive_fp]:
@@ -601,16 +611,19 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     difference(channel_area, output_vbet, output_floodplain)
     difference(channel_area, output_vbet_ia, output_active_fp)
     # difference(output_vbet_ia, output_vbet, output_inactive_fp)
+    _tmr_waypt.timer_break('GenGeomorhicLyrs')
 
     # Calculate VBET Metrics
     log.info('Generating VBET Segmentation Points')
     segmentation_points = os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['SEGMENTATION_POINTS'].rel_path)
     stream_size_lookup = get_distance_lookup(inputs_gpkg, intermediates_gpkg, level_paths_to_run)
     generate_segmentation_points(output_centerlines, segmentation_points, stream_size_lookup, distance=50)
+    _tmr_waypt.timer_break('GenerateVBETSegmentPts')
 
     log.info('Generating VBET Segment Polygons')
     segmentation_polygons = os.path.join(intermediates_gpkg, LayerTypes['INTERMEDIATES'].sub_layers['VBET_DGO_POLYGONS'].rel_path)
     split_vbet_polygons(output_vbet, segmentation_points, segmentation_polygons)
+    _tmr_waypt.timer_break('GenerateVBETSegmentPolys')
 
     log.info('Calculating Segment Metrics')
     metric_layers = {'active_floodplain': output_active_fp, 'active_channel': channel_area, 'inactive_floodplain': output_inactive_fp, 'floodplain': output_floodplain}
@@ -618,11 +631,13 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         if level_path is None:
             continue
         calculate_segmentation_metrics(segmentation_polygons, output_centerlines, metric_layers, f"LevelPathI = {level_path}")
+    _tmr_waypt.timer_break('CalcSegmentMetrics')
 
     log.info('Summerizing VBET Metrics')
     distance_lookup = get_distance_lookup(inputs_gpkg, intermediates_gpkg, level_paths_to_run, {0: 100.0, 1: 250.0, 2: 1000.0})
     metric_fields = list(metric_layers.keys())
     summerize_vbet_metrics(segmentation_points, segmentation_polygons, level_paths_to_run, distance_lookup, metric_fields)
+    _tmr_waypt.timer_break('SummerizeMetrics')
 
     log.info('Apply values to No Data areas of HAND and Evidence rasters')
     level_paths_for_raster = [level_path for level_path in level_paths_to_run if level_path is not None]
@@ -638,6 +653,8 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         if os.path.exists(level_path_normalized_hand):
             raster_update(out_normalized_hand, level_path_normalized_hand)
 
+    _tmr_waypt.timer_break('ApplyValues')
+
     if debug is False:
         safe_remove_dir(os.path.join(project_folder, 'temp'))
 
@@ -650,7 +667,11 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['VBET_OUTPUTS'])
 
     # Processing time in hours
-    ellapsed_time = time.time() - vbet_timer
+    _tmr_waypt.timer_break('END')
+    ellapsed_time = _tmr_waypt.total_time
+
+    log.debug(_tmr_waypt.toString())
+
     project.add_metadata([
         RSMeta("ProcTimeS", "{:.2f}".format(ellapsed_time), RSMetaTypes.INT),
         RSMeta("ProcTimeHuman", pretty_duration(ellapsed_time))
@@ -659,6 +680,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     # Report
     report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
     project.add_report(proj_nodes['Outputs'], LayerTypes['REPORT'], replace=True)
+
     report = VBETReport(report_path, project)
     report.write()
 

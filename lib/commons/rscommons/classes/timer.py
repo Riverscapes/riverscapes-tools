@@ -24,6 +24,27 @@ class Timer:
         return self._stop_time - self._start_time
 
 
+class TimerWaypoints:
+
+    def __init__(self):
+        self.timer = Timer()
+        self.timers = []
+        self.total_time = 0
+
+    def timer_break(self, key: str):
+        ellapsed = self.timer.ellapsed()
+        self.timers.append((key, ellapsed))
+        self.total_time += ellapsed
+        self.timer.reset()
+
+    def toString(self) -> str:
+        return '-----------------------------------\n' \
+            + '\n'.join([f'{x}: {ell} seconds' for x, ell in self.timers]) \
+            + '\n-----------------------------------\n' \
+            + f'total: {self.total_time} seconds' \
+            '\n-----------------------------------\n'
+
+
 class Borg:
     _shared_state = {}
 
@@ -56,9 +77,19 @@ class TimerBuckets(Borg):
             self.total = total
             self.meta = meta
 
-    def __init__(self, key: str = None, table_name: str = None, meta: Dict = None, active: bool = True):
+    def __init__(self, key: str = None, table_name: str = None, csv_path: str = None, meta: Dict = None, active: bool = True, reset: bool = False):
+        """_summary_
+
+        Args:
+            key (str, optional): When using the "with TimerBuckets(key='MyKey')".
+            table_name (str, optional): If you want sqlite writes you need this set to a string.
+            csv_path (str, optional): Optional. Can be passed during write_csv as well.
+            meta (Dict, optional): Metadata key=value pairs dictionary.
+            active (bool, optional): if active=false this class won't do anything.
+            reset (bool, optional): resets the borg singleton so we can use this in another loop.
+        """
         Borg.__init__(self)
-        if "timers" not in self.__dict__:
+        if "timers" not in self.__dict__ or reset is True:
             # Pass in a debug flag to active to prevent anything from happening in this
             self.active = active
             self.table_name = table_name if table_name is not None else 'DEBUG'
@@ -73,15 +104,12 @@ class TimerBuckets(Borg):
         if self.active is False:
             return
 
+        if csv_path is not None:
+            self.csv_path = csv_path
+
         self.key = key
         if meta is not None:
             self.meta = meta
-
-    def reset(self):
-        self.timers = {}
-        self.total = 0
-        self.tick_total = 0
-        self.ticks = []
 
     def tick(self, meta: Dict = {}):
         """ For "for" loops you can call this to freeze these timers to a row
@@ -179,13 +207,18 @@ class TimerBuckets(Borg):
 
         return (columns, values)
 
-    def write_csv(self, csv_file_path: str):
+    def write_csv(self, csv_file_path: str = None):
         """Write all our Timer ticks to a CSV file
 
         Args:
             csv_path (str): _description_
         """
         if self.active is False:
+            return
+
+        final_path = csv_file_path if csv_file_path is not None else self.csv_path
+
+        if final_path is None:
             return
 
         columns, csv_arr = self.generate_table()
