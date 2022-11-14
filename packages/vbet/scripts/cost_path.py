@@ -14,7 +14,7 @@ import sys
 import os
 import argparse
 
-import gdal
+from osgeo import gdal
 # import osr
 from skimage.graph import route_through_array
 import numpy as np

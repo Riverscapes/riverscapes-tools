@@ -1,8 +1,7 @@
+"""_summary_
+"""
 import sys
 import time
-import gc
-import sys
-import glob
 import shutil
 import os
 from math import cos, sin, asin, sqrt, radians
@@ -32,11 +31,19 @@ class LoopTimer:
         self.start = time.time()
 
     def tick(self):
+        """Indicate that a tick has happened
+        """
         self.total += time.time() - self.start
         self.ticks += 1
         self.start = time.time()
 
     def print(self, midStr=None, useMs=False):
+        """Tick Print
+
+        Args:
+            midStr (_type_, optional): _description_. Defaults to None.
+            useMs (bool, optional): _description_. Defaults to False.
+        """
         if NO_UI:
             return
         if self.visible:

@@ -332,6 +332,8 @@ def collect_feature_class(feature_class_path: str,
     log.info('Collecting {} feature class.'.format(len(feature_class_path)))
 
     with get_shp_or_gpkg(feature_class_path) as in_lyr:
+        if not in_lyr.ogr_layer:
+            raise Exception(f'Dataset not found: {feature_class_path}')
         in_geom_type = in_lyr.ogr_layer.GetGeomType()
         output_geom_type = None
         for tp, varr in VectorBase.MULTI_TYPES.items():
@@ -898,7 +900,7 @@ def intersection(layer_path1, layer_path2, out_layer_path, epsg=None, attribute_
         for feat, _counter, progbar in layer1.iterate_features(attribute_filter=attribute_filter):
             geom = feat.GetGeometryRef()
             union1 = union1.Union(geom)
-        for feat, _counter, progbar in layer2.iterate_features():
+        for feat, _counter, progbar in layer2.iterate_features(write_layers=[out_layer]):
             geom = feat.GetGeometryRef()
             intersection = union1.Intersection(geom)
             if intersection.IsValid():
@@ -986,7 +988,7 @@ def select_features_by_intersect(target_layer, intersect_layer, out_layer_path, 
         out_layer.create_layer_from_ref(lyr_target, epsg=epsg)
         out_layer_defn = out_layer.ogr_layer.GetLayerDefn()
 
-        for feat, _counter, progbar in lyr_target.iterate_features(attribute_filter=intersect_attribute_filter):
+        for feat, _counter, progbar in lyr_target.iterate_features(attribute_filter=intersect_attribute_filter, write_layers=[out_layer]):
             geom = feat.GetGeometryRef()
             out_feat = ogr.Feature(out_layer_defn)
             out_feat.SetGeometry(geom)

@@ -4,7 +4,6 @@ import datetime
 from uuid import uuid4
 from xml.etree import ElementTree as ET
 from jinja2 import Template
-from html5print import HTMLBeautifier, CSSBeautifier
 from rscommons import Logger
 from rscommons.util import sizeof_fmt
 
@@ -45,7 +44,7 @@ class RSReport():
             template = Template(t.read())
 
         now = datetime.datetime.now()
-        final_render = HTMLBeautifier.beautify(template.render(report={
+        final_render = template.render(report={
             'title': self.xml_project.XMLBuilder.find('Name').text,
             'ProjectType': self.xml_project.XMLBuilder.find('ProjectType').text,
             'MetaData': self.xml_project.get_metadata_dict(),
@@ -55,7 +54,7 @@ class RSReport():
             'toc': toc,
             'body': html_inner,
             'footer': self.footer
-        }))
+        })
         with open(self.filepath, "w", encoding="utf-8") as f:
             f.write(final_render)
 
@@ -64,8 +63,7 @@ class RSReport():
     def add_css(self, filepath):
         with open(filepath) as css_file:
             css = css_file.read()
-        beautiful = CSSBeautifier.beautify(css)
-        self.css_files.append(beautiful)
+        self.css_files.append(css)
 
     def section(self, sectionid, title, el_parent=None, level=1, attrib=None):
         if attrib is None:

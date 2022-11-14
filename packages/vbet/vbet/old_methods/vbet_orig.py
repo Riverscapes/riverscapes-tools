@@ -356,9 +356,7 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
 
                     rejected_geoms = []
 
-                    lyr_output.ogr_layer.StartTransaction()
-
-                    for reach_feat, *_ in lyr_reaches.iterate_features("Processing Reaches"):
+                    for reach_feat, *_ in lyr_reaches.iterate_features("Processing Reaches", write_layers=[lyr_output]):
                         reach_attributes = {}
                         for n in range(field_count):
                             field = out_layer_defn.GetFieldDefn(n)
@@ -390,7 +388,6 @@ def vbet(huc: int, scenario_code: str, inputs: Dict[str, str], vaa_table: Path, 
                                         break
                                 if shape_intersected is False:
                                     rejected_geoms.append(out_feat)
-                    lyr_output.ogr_layer.CommitTransaction()
 
                     save_feats = []
                     iterate = True

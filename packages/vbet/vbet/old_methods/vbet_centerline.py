@@ -36,7 +36,7 @@ def vbet_centerline(flowlines, vbet_polygons, out_layer):
     reaches = {}
 
     with GeopackageLayer(flowlines) as lyr,\
-            GeopackageLayer(vbet_polygons, write=True) as lyr_polygons,\
+            GeopackageLayer(vbet_polygons) as lyr_polygons,\
             GeopackageLayer(out_layer, write=True) as lyr_output:
 
         srs = lyr.ogr_layer.GetSpatialRef()
@@ -79,6 +79,7 @@ def vbet_centerline(flowlines, vbet_polygons, out_layer):
 
         merged_centerline = None
 
+        lyr_output.ogr_layer.StartTransaction()
         for HydroSeq, line in unioned_reaches.items():
 
             counter += 1
@@ -122,7 +123,7 @@ def vbet_centerline(flowlines, vbet_polygons, out_layer):
                         feat_out.SetField('HydroSeq', HydroSeq)
                         lyr_output.ogr_layer.CreateFeature(feat_out)
                         feat_out = None
-
+        lyr_output.ogr_layer.CommitTransaction()
     return
 
 

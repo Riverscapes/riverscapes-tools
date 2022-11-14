@@ -62,14 +62,12 @@ def vbet_area_metrics(layer, db_path, summary_field):
                   'cnt_active_fp_units': ogr.OFTInteger,
                   'cnt_inactive_fp_units': ogr.OFTInteger}
         vbet_lyr.create_fields(fields)
-        vbet_lyr.ogr_layer.StartTransaction()
-        for feat, *_ in vbet_lyr.iterate_features(f"Writing metrics for {layer}"):
+        for feat, *_ in vbet_lyr.iterate_features(f"Writing metrics for {layer}", write_layers=[vbet_lyr]):
             level_path = feat.GetField(summary_field)
             values = rows[level_path]
             for key in fields:
                 feat.SetField(key, values[key])
             vbet_lyr.ogr_layer.SetFeature(feat)
-        vbet_lyr.ogr_layer.CommitTransaction()
     return
 
 
@@ -91,14 +89,12 @@ def floodplain_metrics(layer_name, db_path):
         fields = {'prop_valley_bottom_pc': ogr.OFTReal,
                   f'prop_{layer_name.replace("_floodplain","").replace("_area","").replace("vbet_","")}_pc': ogr.OFTReal}
         vbet_lyr.create_fields(fields)
-        vbet_lyr.ogr_layer.StartTransaction()
-        for feat, *_ in vbet_lyr.iterate_features(f"Writing metrics for {os.path.join(db_path, layer_name)}"):
+        for feat, *_ in vbet_lyr.iterate_features(f"Writing metrics for {os.path.join(db_path, layer_name)}", write_layers=[vbet_lyr]):
             fid = feat.GetFID()
             values = rows[fid]
             for key in fields:
                 feat.SetField(key, values[key])
             vbet_lyr.ogr_layer.SetFeature(feat)
-        vbet_lyr.ogr_layer.CommitTransaction()
 
 
 def copy_metric_tables(db_path, destination_table, source_table, fields: dict, join_field):
