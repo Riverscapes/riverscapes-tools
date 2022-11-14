@@ -316,7 +316,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     def _tmterr(err_code: str, err_msg: str):
         _tmtbuckets.meta['code'] = err_code
         _tmtbuckets.meta['msg'] = err_msg
-        _tmtbuckets.meta['success'] = False
+        _tmtbuckets.meta['has_centerline'] = False
 
     def _tmtfinish():
         if _tmtbuckets.meta['has_centerline'] is not False:
@@ -331,7 +331,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             "length": level_path_lengths[level_path] if level_path in level_path_lengths else 0,
             "code": None,
             "msg": None,
-            "success": None,
+            "has_centerline": None,
         })
 
         log.info(f'Processing Level Path: {level_path}')
