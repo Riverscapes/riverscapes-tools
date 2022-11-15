@@ -9,41 +9,45 @@
 # Date:     9 Sep 2019
 # -------------------------------------------------------------------------------
 import argparse
-import sys
-import os
 import glob
 import json
+import os
+import sys
+import time
 import traceback
 import uuid
-import time
 from typing import Dict, List
+
 from matplotlib.pyplot import hist
 from osgeo import ogr
 from regex import B
-
-from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALOGRErrors, Timer
-from rscommons.classes.rs_project import RSMeta, RSMetaTypes, RSMetaExt
-from rscommons.util import safe_makedirs, safe_remove_dir, parse_metadata, pretty_duration
+from rscommons import (Logger, ModelConfig, RSLayer, RSProject, Timer, dotenv,
+                       initGDALOGRErrors)
+from rscommons.classes.rs_project import RSMeta, RSMetaExt, RSMetaTypes
 from rscommons.clean_nhd_data import clean_nhd_data
 from rscommons.clean_ntd_data import clean_ntd_data
-from rscommons.raster_warp import raster_warp, raster_vrt_stitch
 from rscommons.download_dem import download_dem, verify_areas
-from rscommons.science_base import download_shapefile_collection, get_ntd_urls, us_states
+from rscommons.filegdb import export_table
 from rscommons.geographic_raster import gdal_dem_geographic
-# from rscommons.raster_buffer_stats import raster_buffer_stats2
-from rscommons.vector_ops import get_geometry_unary_union, copy_feature_class
 # from rscommons.prism import calculate_bankfull_width
 from rscommons.project_bounds import generate_project_extents_from_layer
-from rscommons.filegdb import export_table
+from rscommons.raster_warp import raster_vrt_stitch, raster_warp
+from rscommons.science_base import (download_shapefile_collection,
+                                    get_ntd_urls, us_states)
+from rscommons.util import (parse_metadata, pretty_duration, safe_makedirs,
+                            safe_remove_dir)
+# from rscommons.raster_buffer_stats import raster_buffer_stats2
+from rscommons.vector_ops import copy_feature_class, get_geometry_unary_union
 
-from rscontext.rs_segmentation import rs_segmentation
-from rscontext.clip_vector import clip_vector_layer
-from rscontext.filter_ecoregions import filter_ecoregions
-from rscontext.rs_context_report import RSContextReport
-from rscontext.vegetation import clip_vegetation
+from rscontext.__version__ import __version__
 from rscontext.boundary_management import raster_area_intersection
 from rscontext.clean_catchments import clean_nhdplus_catchments
-from rscontext.__version__ import __version__
+from rscontext.clip_vector import clip_vector_layer
+from rscontext.filter_ecoregions import filter_ecoregions
+from rscontext.nhdarea import split_nhd_area
+from rscontext.rs_context_report import RSContextReport
+from rscontext.rs_segmentation import rs_segmentation
+from rscontext.vegetation import clip_vegetation
 
 initGDALOGRErrors()
 
@@ -101,6 +105,7 @@ LayerTypes = {
         'NETWORK300M_INTERSECTION': RSLayer('NHD Flowlines intersected with road, rail and ownership', 'NETWORK300M_INTERSECTION', 'Vector', 'network_intersected'),
         'NETWORK300M_CROSSINGS': RSLayer('NHD Flowlines intersected with road, rail and ownership, segmented to 300m', 'NETWORK300MCROSSINGS', 'Vector', 'network_intersected_300m'),
         'PROCESSING_EXTENT': RSLayer('Processing Extent of HUC-DEM Intersection', 'PROCESSING_EXTENT', 'Vector', 'processing_extent'),
+        'NHDAREASPLIT': RSLayer('NDH Area layer split by NHDPlusCatchments', 'NHDAreaSplit', 'Vector', 'NHDAreaSplit')
     }),
 
     # Prism Layers
@@ -196,6 +201,7 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
     nhd_unzip_folder = os.path.join(scratch_dir, 'nhd', huc[:4])
 
     nhd, filegdb, huc_name, nhd_url = clean_nhd_data(huc, nhd_download_folder, nhd_unzip_folder, nhd_unzip_folder, cfg.OUTPUT_EPSG, False)
+    nhdarea_split = split_nhd_area(nhd['NHDArea'], nhd['NHDPlusCatchment'], os.path.join(nhd_unzip_folder, 'NHDAreaSplit.shp'))
 
     for key in nhd.keys():
         out_path = os.path.join(nhd_gpkg_path, key)
@@ -208,6 +214,9 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
 
     buffered_clip_path500 = os.path.join(hydro_deriv_gpkg_path, LayerTypes['HYDRODERIVATIVES'].sub_layers['BUFFEREDCLIP500'].rel_path)
     copy_feature_class(nhd[boundary], buffered_clip_path500, epsg=cfg.OUTPUT_EPSG, buffer=500)
+
+    area_split_out = os.path.join(hydro_deriv_gpkg_path, LayerTypes['HYDRODERIVATIVES'].sub_layers['NHDAREASPLIT'].rel_path)
+    copy_feature_class(nhdarea_split, area_split_out, epsg=cfg.OUTPUT_EPSG)
 
     export_table(filegdb, 'NHDPlusFlowlineVAA', nhd_gpkg_path, None, "ReachCode LIKE '{}%'".format(nhd['WBDHU8']))
 
