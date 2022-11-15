@@ -177,7 +177,8 @@ def copy_feature_class(in_layer_path: str, out_layer_path: str,
                        clip_shape: BaseGeometry = None,
                        clip_rect: List[float] = None,
                        buffer: float = 0,
-                       hard_clip=False) -> None:
+                       hard_clip=False,
+                       indexes: List[str] = None) -> None:
     """Copy a Shapefile from one location to another
 
     This method is capable of reprojecting the geometries as they are copied.
@@ -192,6 +193,7 @@ def copy_feature_class(in_layer_path: str, out_layer_path: str,
         clip_shape (BaseGeometry, optional): [description]. Defaults to None.
         clip_rect (List[double minx, double miny, double maxx, double maxy)]): Iterate over a subset by clipping to a Shapely-ish geometry. Defaults to None.
         buffer (float): Buffer the output features (in meters).
+        indexes: A list of fields to index IF copying the feature into a geopackage.
     """
 
     log = Logger('copy_feature_class')
@@ -242,6 +244,17 @@ def copy_feature_class(in_layer_path: str, out_layer_path: str,
 
             out_layer.ogr_layer.CreateFeature(out_feature)
             out_feature = None
+
+    if indexes and len(indexes) > 0:
+        conn = sqlite3.connect(os.path.dirname(out_layer_path))
+        curs = conn.cursor()
+        for idxfld in indexes:
+            idx_name = 'IX_{}_{}'.format(os.path.basename(out_layer_path), idxfld)
+            idx_schema = 'CREATE INDEX {} ON {}({});'.format(idx_name, os.path.basename(out_layer_path), idxfld)
+            curs.executescript(idx_schema)
+
+        conn.commit()
+        conn.execute("VACUUM")
 
 
 def merge_feature_classes(feature_class_paths: List[str], out_layer_path: str, boundary: BaseGeometry = None):

@@ -203,9 +203,20 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
     nhd, filegdb, huc_name, nhd_url = clean_nhd_data(huc, nhd_download_folder, nhd_unzip_folder, nhd_unzip_folder, cfg.OUTPUT_EPSG, False)
     nhdarea_split = split_nhd_area(nhd['NHDArea'], nhd['NHDPlusCatchment'], os.path.join(nhd_unzip_folder, 'NHDAreaSplit.shp'))
 
+    index_dict = {
+        'NHDArea': ['FCode', 'NHDPlusID'],
+        'NHDFlowline': ['ReachCode', 'FCode', 'NHDPlusID'],
+        'NHDPlusCatchment': ['NHDPlusID'],
+        'NHDPlusFlowlineVAA': ['NHDPlusID', 'LevelPathl', 'ReachCode'],
+        'NHDWaterbody': ['FCode', 'ReachCode']
+    }
     for key in nhd.keys():
+        if key in index_dict.keys():
+            idx = index_dict[key]
+        else:
+            idx = None
         out_path = os.path.join(nhd_gpkg_path, key)
-        copy_feature_class(nhd[key], out_path, epsg=cfg.OUTPUT_EPSG)
+        copy_feature_class(nhd[key], out_path, epsg=cfg.OUTPUT_EPSG, indexes=idx)
 
     boundary = 'WBDHU{}'.format(len(huc))
 
@@ -216,7 +227,7 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
     copy_feature_class(nhd[boundary], buffered_clip_path500, epsg=cfg.OUTPUT_EPSG, buffer=500)
 
     area_split_out = os.path.join(hydro_deriv_gpkg_path, LayerTypes['HYDRODERIVATIVES'].sub_layers['NHDAREASPLIT'].rel_path)
-    copy_feature_class(nhdarea_split, area_split_out, epsg=cfg.OUTPUT_EPSG)
+    copy_feature_class(nhdarea_split, area_split_out, epsg=cfg.OUTPUT_EPSG, indexes=['FCode', 'NHDPlusID'])
 
     export_table(filegdb, 'NHDPlusFlowlineVAA', nhd_gpkg_path, None, "ReachCode LIKE '{}%'".format(nhd['WBDHU8']))
 

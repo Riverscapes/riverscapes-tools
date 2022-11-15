@@ -1,6 +1,7 @@
 
 from typing import List, Dict
 import os
+import sqlite3
 from osgeo import ogr
 from shapely.geometry import Point, MultiPoint, LineString
 from shapely.ops import split
@@ -141,6 +142,16 @@ def rs_segmentation(
     # Finally, segment this new layer the same way we did the raw network above.
     log.info('Segmenting the intersected network')
     segment_network(network_crossings_path, os.path.join(out_gpkg, 'network_intersected_300m'), interval, minimum, watershed_id, create_layer=True)
+
+    # Index fields on the segmented networks
+    conn = sqlite3.connect(out_gpkg)
+    curs = conn.cursor()
+    curs.execute('CREATE INDEX ix_network_intersected_ReachCode on network_intersected(ReachCode)')
+    curs.execute('CREATE INDEX ix_network_intersected_NHDPlusID on network_intersected(NHDPlusID)')
+    curs.execute('CREATE INDEX ix_network_intersected_FCode on network_intersected(FCode)')
+    curs.execute('CREATE INDEX ix_network_intersected_300m_ReachCode on network_intersected_300m(ReachCode)')
+    curs.execute('CREATE INDEX ix_network_intersected_300m_NHDPlusID on network_intersected_300m(NHDPlusID)')
+    curs.execute('CREATE INDEX ix_network_intersected_300m_FCode on network_intersected_300m(FCode)')
 
     log.info('Segmentation Complete')
 
