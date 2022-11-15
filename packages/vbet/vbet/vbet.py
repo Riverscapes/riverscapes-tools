@@ -309,7 +309,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     _tmtbuckets = TimerBuckets(
         table_name='level_path_debug',
         csv_path=os.path.join(project_folder, 'level_path_debug.csv'),
-        active=debug
+        active=log.isverbose()
     )
 
     # Convenience function for errors and collecting metadata
@@ -642,6 +642,9 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     log.info('Apply values to No Data areas of HAND and Evidence rasters')
     level_paths_for_raster = [level_path for level_path in level_paths_to_run if level_path is not None]
     level_paths_for_raster.sort(reverse=True)
+
+    progbar = ProgressBar(len(level_paths_for_raster), 50, 'Apply  to HAND & Evidence Rasters')
+    counter = 0
     for level_path in level_paths_for_raster:
         level_path_evidence = os.path.join(temp_rasters_folder, f'vbet_evidence_{level_path}.tif')
         if os.path.exists(level_path_evidence):
@@ -652,7 +655,10 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         level_path_normalized_hand = os.path.join(temp_rasters_folder, f'normalized_hand_{level_path}.tif')
         if os.path.exists(level_path_normalized_hand):
             raster_update(out_normalized_hand, level_path_normalized_hand)
+        counter += 1
+        progbar.update(counter)
 
+    progbar.finish()
     _tmr_waypt.timer_break('ApplyValues')
 
     if debug is False:

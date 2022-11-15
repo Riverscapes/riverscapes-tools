@@ -152,7 +152,7 @@ class UtilTest(unittest.TestCase):
 
     def test_timer_sqlite(self):
         table_name = 'DEBUG_TABLE'
-        conn = sqlite3.connect('file:cachedb?mode=memory&cache=shared')
+        conn = sqlite3.connect(':memory:')
         meta1 = {'something': 2, 'somethingElse': "DUMB"}
 
         my_buckets = TimerBuckets(meta=meta1, table_name=table_name)

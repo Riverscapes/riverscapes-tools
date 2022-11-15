@@ -556,7 +556,7 @@ def raster_update_2(raster, update_values_raster, value=None):
         col_off_delta = round((in_transform[0] - out_transform[0]) / out_transform[1])
         row_off_delta = round((in_transform[3] - out_transform[3]) / out_transform[5])
 
-        for _ji, window in rio_dest.block_windows(1):
+        for _ji, window in rio_updates.block_windows(1):
             out_window = Window(window.col_off + col_off_delta, window.row_off + row_off_delta, window.width, window.height)
 
             array_logic_mask = np.array(rio_dest.read(1, window=out_window) > 0).astype('int')  # mask of existing data in destination raster

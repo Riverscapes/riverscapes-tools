@@ -39,9 +39,9 @@ class TimerWaypoints:
 
     def toString(self) -> str:
         return '-----------------------------------\n' \
-            + '\n'.join([f'{x}: {ell} seconds' for x, ell in self.timers]) \
+            + '\n'.join([f'{x}: {round(ell)} seconds' for x, ell in self.timers]) \
             + '\n-----------------------------------\n' \
-            + f'total: {self.total_time} seconds' \
+            + f'total: {round(self.total_time, 3)} seconds' \
             '\n-----------------------------------\n'
 
 

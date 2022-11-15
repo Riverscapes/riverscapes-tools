@@ -87,7 +87,6 @@ vbet $HUC \
   --reach_codes 33400,46000,46003,46006,46007,55800 \
   --mask $RS_CONTEXT_DIR/hydrology/WBDHU8.shp \
   --meta "Runner=Cybercastor" \
-  --debug \
   --verbose
 if [[ $? != 0 ]]; then return 1; fi
 
