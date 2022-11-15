@@ -10,11 +10,11 @@ import shutil
 
 from osgeo import ogr, gdal, gdal_array, osr
 import rasterio
+from rasterio.windows import Window
 # from rasterio.windows import bounds, from_bounds
-from rasterio.vrt import WarpedVRT
 import numpy as np
 
-from rscommons import ProgressBar, Logger, VectorBase, Timer, TempRaster
+from rscommons import ProgressBar, Logger, VectorBase, Timer, TempRaster, TimerWaypoints
 
 Path = str
 
@@ -387,6 +387,27 @@ def raster2array(rasterfn: Path) -> np.array:
     return array
 
 
+def create_empty_raster(raster_path: Path, template_raster: Path):
+    """Create a raster with a shape identical to a template raster and fill it with nodata values
+
+    Args:
+        raster_path (Path): _description_
+        template_raster (Path): _description_
+    """
+    log = Logger('create_empty_raster')
+    log.debug('Creating empty raster')
+
+    with rasterio.open(template_raster) as rio_template:
+        out_meta = rio_template.meta
+        out_meta['driver'] = 'GTiff'
+        out_meta['count'] = 1
+        out_meta['compress'] = 'deflate'
+
+    with rasterio.open(raster_path, 'w', **out_meta) as rio_dest:
+        for _ji, window in rio_dest.block_windows(1):
+            rio_dest.write(np.full((window.height, window.width), out_meta['nodata']), window=window, indexes=1)
+
+
 def array2raster(newRasterfn: Path, rasterfn: Path, array: np.array, data_type: int = gdal.GDT_Byte, no_data=None):
     """write array to new raster file"""
 
@@ -432,7 +453,7 @@ def new_raster(newRasterfn: Path, rasterfn: Path, data_type: int = gdal.GDT_Byte
     return outRaster, outband
 
 
-def raster_merge(in_raster: Path, out_raster: Path, template_raster: Path, logic_raster: Path, temp_folder: Path):
+def raster_merge(in_raster: Path, out_raster: Path, template_raster: Path, logic_raster: Path):
     """insert pixels from one raster to new or existing raster based on binary raster
 
     Args:
@@ -442,141 +463,125 @@ def raster_merge(in_raster: Path, out_raster: Path, template_raster: Path, logic
         logic_raster (Path): binary raster where true results in value of input raster written to output raster
         temp_folder (Path): temporary folder for processing
     """
-    log = Logger('Raster Merge')
-    with rasterio.open(template_raster) as rio_template:
-        vrt_options = {
-            # 'resampling': Resampling.cubic,
-            'crs': rio_template.crs,
-            'transform': rio_template.transform,
-            'height': rio_template.height,
-            'width': rio_template.width,
-        }
-        out_meta = rio_template.meta
-        out_meta['driver'] = 'GTiff'
-        out_meta['count'] = 1
-        # out_meta['nodata'] = float('-inf')
-        out_meta['compress'] = 'deflate'
+    log = Logger('raster_merge')
 
-        # Empty rasters mess with rasterio so we remove them first
-        if os.path.isfile(out_raster) and os.stat(out_raster).st_size < 1:
-            os.remove(out_raster)
+    if not os.path.isfile(out_raster):
+        create_empty_raster(out_raster, template_raster)
 
-    if os.path.isfile(out_raster):
-        out_temp = os.path.join(temp_folder, 'temp_raster.tif')
+    with rasterio.open(out_raster, 'r+') as rio_dest, \
+            rasterio.open(in_raster) as rio_source, \
+            rasterio.open(logic_raster) as rio_logic:
 
-        with rasterio.open(out_raster) as rio_dest, \
-                rasterio.open(in_raster) as rio_source, \
-                rasterio.open(out_temp, 'w', **out_meta) as rio_temp, \
-                rasterio.open(logic_raster) as rio_logic:
+        # GT(0) x-coordinate of the upper-left corner of the upper-left pixel.
+        # GT(1) w-e pixel resolution / pixel width.
+        # GT(2) row rotation (typically zero).
+        # GT(3) y-coordinate of the upper-left corner of the upper-left pixel.
+        # GT(4) column rotation (typically zero).
+        # GT(5) n-s pixel resolution / pixel height (negative value for a north-up image).
+        in_transform = rio_source.get_transform()
+        out_transform = rio_dest.get_transform()
+        col_off_delta = round((in_transform[0] - out_transform[0]) / out_transform[1])
+        row_off_delta = round((in_transform[3] - out_transform[3]) / out_transform[5])
 
-            window_error = False
-            with WarpedVRT(rio_source, **vrt_options) as vrt, \
-                    WarpedVRT(rio_logic, **vrt_options) as vrt_logic:
-                for _ji, window in rio_dest.block_windows(1):
-                    array_logic_mask = np.ma.MaskedArray(vrt_logic.read(1, window=window, masked=True).data)
-                    array_source = np.ma.MaskedArray(vrt.read(1, window=window, masked=True).data, mask=array_logic_mask.mask)
-                    array_dest = np.ma.MaskedArray(rio_dest.read(1, window=window, masked=True).data, mask=array_logic_mask.mask)
-                    if array_source.shape != array_dest.shape:
-                        window_error = True
-                        continue
-                    array_out = np.choose(array_logic_mask, [array_dest, array_source])
-                    rio_temp.write(np.ma.filled(np.float32(array_out), out_meta['nodata']), window=window, indexes=1)
+        window_error = False
+        for _ji, window in rio_source.block_windows(1):
+            out_window = Window(window.col_off + col_off_delta, window.row_off + row_off_delta, window.width, window.height)
+            array_logic_mask = np.ma.MaskedArray(rio_logic.read(1, window=window, masked=True).data)
+            array_source = np.ma.MaskedArray(rio_source.read(1, window=window, masked=True).data, mask=array_logic_mask.mask)
+            array_dest = np.ma.MaskedArray(rio_dest.read(1, window=out_window, masked=True).data, mask=array_logic_mask.mask)
+            if array_source.shape != array_dest.shape:
+                window_error = True
+                continue
+            array_out = np.choose(array_logic_mask, [array_dest, array_source])
+            rio_dest.write(np.ma.filled(np.float32(array_out), rio_dest.nodata), window=out_window, indexes=1)
 
-        shutil.copyfile(out_temp, out_raster)
-
-        if window_error:
-            log.error(f'Different window shapes encounterd when processing {out_raster}')
-    else:
-        with rasterio.open(in_raster) as rio_source, \
-                rasterio.open(out_raster, 'w', **out_meta) as rio_dest, \
-                rasterio.open(logic_raster) as rio_logic:
-
-            with WarpedVRT(rio_source, **vrt_options) as vrt, \
-                    WarpedVRT(rio_logic, **vrt_options) as vrt_logic:
-                for _ji, window in vrt.block_windows(1):
-                    array_logic_mask = np.ma.MaskedArray(vrt_logic.read(1, window=window, masked=True).data)
-                    array_source = np.ma.MaskedArray(vrt.read(1, window=window, masked=True).data, mask=array_logic_mask.mask)
-                    array_out = np.choose(array_logic_mask, [out_meta['nodata'], array_source])
-                    rio_dest.write(np.ma.filled(np.float32(array_out), out_meta['nodata']), window=window, indexes=1)
+    if window_error:
+        log.error(f'Different window shapes encounterd when processing {out_raster}')
 
 
 def raster_update(raster, update_values_raster):
+    """Update a bigger raster in-place with the contents of a smaller one
+
+    Args:
+        raster (_type_): _description_
+        update_values_raster (_type_): _description_
+    """
+    _tmr = Timer()
+    log = Logger('raster_update')
     with rasterio.open(raster, 'r+') as rio_dest, \
             rasterio.open(update_values_raster) as rio_updates:
-
-        vrt_options = {
-            # 'resampling': Resampling.cubic,
-            'crs': rio_dest.crs,
-            'transform': rio_dest.transform,
-            'height': rio_dest.height,
-            'width': rio_dest.width,
-        }
         out_meta = rio_dest.meta
         out_meta['driver'] = 'GTiff'
         out_meta['count'] = 1
         out_meta['compress'] = 'deflate'
 
-        with WarpedVRT(rio_dest, **vrt_options) as vrt_dest, \
-                WarpedVRT(rio_updates, **vrt_options) as vrt_updates:
-            for _ji, window in vrt_dest.block_windows(1):
-                array_logic_mask = np.array(vrt_dest.read_masks(1, window=window) == 0).astype('int')  # mask of existing data in destination raster
-                array_dest = np.ma.MaskedArray(vrt_dest.read(1, window=window).data)
-                array_update = np.ma.MaskedArray(vrt_updates.read(1, window=window).data)
-                array_out = np.choose(array_logic_mask, [array_dest, array_update])
-                rio_dest.write(np.ma.filled(np.float32(array_out), out_meta['nodata']), window=window, indexes=1)
+        # GT(0) x-coordinate of the upper-left corner of the upper-left pixel.
+        # GT(1) w-e pixel resolution / pixel width.
+        # GT(2) row rotation (typically zero).
+        # GT(3) y-coordinate of the upper-left corner of the upper-left pixel.
+        # GT(4) column rotation (typically zero).
+        # GT(5) n-s pixel resolution / pixel height (negative value for a north-up image).
+        in_transform = rio_updates.get_transform()
+        out_transform = rio_dest.get_transform()
+        col_off_delta = round((in_transform[0] - out_transform[0]) / out_transform[1])
+        row_off_delta = round((in_transform[3] - out_transform[3]) / out_transform[5])
+
+        for _ji, window in rio_updates.block_windows(1):
+            out_window = Window(window.col_off + col_off_delta, window.row_off + row_off_delta, window.width, window.height)
+            array_logic_mask = np.array(rio_dest.read_masks(1, window=out_window) == 0).astype('int')  # mask of existing data in destination raster
+            array_dest = np.ma.MaskedArray(rio_dest.read(1, window=out_window).data)
+            array_update = np.ma.MaskedArray(rio_updates.read(1, window=window).data)
+            array_out = np.choose(array_logic_mask, [array_dest, array_update])
+            rio_dest.write(np.ma.filled(np.float32(array_out), out_meta['nodata']), window=out_window, indexes=1)
+    log.debug(f'Timer: {_tmr.ellapsed()}')
 
 
 def raster_update_2(raster, update_values_raster, value=None):
     with rasterio.open(raster, 'r+') as rio_dest, \
             rasterio.open(update_values_raster) as rio_updates:
 
-        vrt_options = {
-            # 'resampling': Resampling.cubic,
-            'crs': rio_dest.crs,
-            'transform': rio_dest.transform,
-            'height': rio_dest.height,
-            'width': rio_dest.width,
-        }
         out_meta = rio_dest.meta
         out_meta['driver'] = 'GTiff'
         out_meta['count'] = 1
         out_meta['compress'] = 'deflate'
 
-        with WarpedVRT(rio_dest, **vrt_options) as vrt_dest, \
-                WarpedVRT(rio_updates, **vrt_options) as vrt_updates:
-            for _ji, window in vrt_dest.block_windows(1):
-                array_logic_mask = np.array(vrt_dest.read(1, window=window) > 0).astype('int')  # mask of existing data in destination raster
-                array_dest = np.ma.MaskedArray(vrt_dest.read(1, window=window).data)
-                array_update = np.ma.MaskedArray(vrt_updates.read(1, window=window).data)
-                if value is not None:
-                    array_update = np.multiply(array_update, value)
-                array_out = np.choose(array_logic_mask, [array_update, array_dest])
-                array_out_format = array_out if out_meta['dtype'] == 'int32' else np.float32(array_out)
-                rio_dest.write(np.ma.filled(array_out_format, out_meta['nodata']), window=window, indexes=1)
+        # GT(0) x-coordinate of the upper-left corner of the upper-left pixel.
+        # GT(1) w-e pixel resolution / pixel width.
+        # GT(2) row rotation (typically zero).
+        # GT(3) y-coordinate of the upper-left corner of the upper-left pixel.
+        # GT(4) column rotation (typically zero).
+        # GT(5) n-s pixel resolution / pixel height (negative value for a north-up image).
+        in_transform = rio_updates.get_transform()
+        out_transform = rio_dest.get_transform()
+        col_off_delta = round((in_transform[0] - out_transform[0]) / out_transform[1])
+        row_off_delta = round((in_transform[3] - out_transform[3]) / out_transform[5])
+
+        for _ji, window in rio_dest.block_windows(1):
+            out_window = Window(window.col_off + col_off_delta, window.row_off + row_off_delta, window.width, window.height)
+
+            array_logic_mask = np.array(rio_dest.read(1, window=out_window) > 0).astype('int')  # mask of existing data in destination raster
+            array_dest = np.ma.MaskedArray(rio_dest.read(1, window=out_window).data)
+            array_update = np.ma.MaskedArray(rio_updates.read(1, window=window).data)
+            if value is not None:
+                array_update = np.multiply(array_update, value)
+            array_out = np.choose(array_logic_mask, [array_update, array_dest])
+            array_out_format = array_out if out_meta['dtype'] == 'int32' else np.float32(array_out)
+            rio_dest.write(np.ma.filled(array_out_format, out_meta['nodata']), window=out_window, indexes=1)
 
 
-def raster_remove_zone(raster, remove_raster, output_raster, value=None):
+def raster_remove_zone(raster, remove_raster, output_raster):
     with rasterio.open(raster, 'r') as rio_dest, \
             rasterio.open(remove_raster) as rio_remove:
 
-        vrt_options = {
-            # 'resampling': Resampling.cubic,
-            'crs': rio_dest.crs,
-            'transform': rio_dest.transform,
-            'height': rio_dest.height,
-            'width': rio_dest.width,
-        }
         out_meta = rio_dest.meta
         out_meta['driver'] = 'GTiff'
         out_meta['count'] = 1
         out_meta['compress'] = 'deflate'
 
         with rasterio.open(output_raster, 'w', **out_meta) as rio_output:
-            with WarpedVRT(rio_dest, **vrt_options) as vrt_dest, \
-                    WarpedVRT(rio_remove, **vrt_options) as vrt_remove:
-                for _ji, window in vrt_dest.block_windows(1):
-                    array_logic_mask = np.array(vrt_remove.read(1, window=window) > 0).astype('int')  # mask of existing data in destination raster
-                    array_multiply = np.equal(array_logic_mask, 0).astype('int')
-                    array_dest = np.ma.MaskedArray(vrt_dest.read(1, window=window).data)
-                    array_out = np.multiply(array_multiply, array_dest)
-                    rio_output.write(np.ma.filled(array_out, out_meta['nodata']), window=window, indexes=1)
+            for _ji, window in rio_dest.block_windows(1):
+                array_logic_mask = np.array(rio_remove.read(1, window=window) > 0).astype('int')  # mask of existing data in destination raster
+                array_multiply = np.equal(array_logic_mask, 0).astype('int')
+                array_dest = np.ma.MaskedArray(rio_dest.read(1, window=window).data)
+                array_out = np.multiply(array_multiply, array_dest)
+                rio_output.write(np.ma.filled(array_out, out_meta['nodata']), window=window, indexes=1)

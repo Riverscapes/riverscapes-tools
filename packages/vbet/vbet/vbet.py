@@ -567,7 +567,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                 # clean up rasters
         with TimerBuckets('raster_merge'):
             for out_raster, in_raster in {out_hand: hand_raster, out_vbet_evidence: evidence_raster, out_normalized_hand: normalized_local_hand}.items():
-                raster_merge(in_raster, out_raster, dem, valley_bottom_raster, temp_folder)
+                raster_merge(in_raster, out_raster, dem, valley_bottom_raster)
 
         if debug is False:
             safe_remove_dir(temp_folder)
