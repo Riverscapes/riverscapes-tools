@@ -14,6 +14,7 @@ import sys
 import argparse
 import traceback
 import time
+import sqlite3
 from typing import List, Dict
 
 from osgeo import ogr, gdal
@@ -334,7 +335,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             "has_centerline": None,
         })
 
-        log.info(f'Processing Level Path: {level_path}')
+        log.info(f'Processing Level Path: {level_path} {level_path_key}/{len(level_paths_to_run)}')
         temp_folder = os.path.join(project_folder, 'temp', f'levelpath_{level_path}')
         safe_makedirs(temp_folder)
 
@@ -576,6 +577,9 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
     # Final tick to trigger writing the last row
     _tmtbuckets.tick()
+    _tmtbuckets.write_csv()
+    with sqlite3.connect(inputs_gpkg) as conn:
+        _tmtbuckets.write_sqlite(conn)
     _tmr_waypt.timer_break('LevelPaths')  # this is where level path for loop ends
 
     # Difference Raster

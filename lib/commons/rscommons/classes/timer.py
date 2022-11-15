@@ -223,7 +223,7 @@ class TimerBuckets(Borg):
 
         columns, csv_arr = self.generate_table()
 
-        with open(csv_file_path, 'w') as csvfile:
+        with open(final_path, 'w') as csvfile:
             writer = csv.writer(csvfile)
             writer.writerow([k for k, v in columns])  # header row
             for row in csv_arr:
