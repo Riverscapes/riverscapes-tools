@@ -523,8 +523,14 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                         log.error(f'Unable to generate centerline for part {cl_index} of level path {level_path}: found {len(coords)} target coordinates instead of expected 2.')
                         continue
                     log.info('Find least cost path for centerline')
-                    centerline_raster = os.path.join(temp_folder, f'centerline_{level_path}_part_{cl_index}.tif')
-                    least_cost_path(cost_path_raster, centerline_raster, coords[0], coords[1])
+                    try:
+                        centerline_raster = os.path.join(temp_folder, f'centerline_{level_path}_part_{cl_index}.tif')
+                        least_cost_path(cost_path_raster, centerline_raster, coords[0], coords[1])
+                    except:
+                        log.error(f'Unable to generate centerline for part {cl_index} of level path {level_path}: end points must all be within the costs array.')
+                        cl_index += 1
+                        continue
+
                     log.info('Vectorize centerline from Raster')
                     geom_centerline = raster2line_geom(centerline_raster, 1)
                     geom_centerline = ogr.ForceToLineString(geom_centerline)
