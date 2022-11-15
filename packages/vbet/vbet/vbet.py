@@ -247,6 +247,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             GeopackageLayer(line_network) as lyr_ref:
         fields = {'LevelPathI': ogr.OFTString}
         lyr_cl_init.create_layer(ogr.wkbMultiLineString, spatial_ref=lyr_ref.spatial_ref, fields=fields)
+        lyr_cl_init.create_field('CL_Part_Index', ogr.OFTInteger)
         lyr_vbet_init.create_layer(ogr.wkbMultiPolygon, spatial_ref=lyr_ref.spatial_ref, fields=fields)
         lyr_active_vbet_init.create_layer(ogr.wkbMultiPolygon, spatial_ref=lyr_ref.spatial_ref, fields=fields)
 
@@ -484,46 +485,70 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
         # Generate centerline for level paths only
         if level_path is not None:
-            log.info('Generating Centerline from cost path')
+            # Generate and add rasterized version of level path flowline to make sure endpoint coords are on the raster.
+            level_path_flowlines = os.path.join(temp_folder, 'flowlines.gpkg', f'level_path_{level_path}')
+            copy_feature_class(line_network, level_path_flowlines, attribute_filter=f'LevelPathI = {level_path}')
+            rasterized_level_path = os.path.join(temp_folder, f'rasterized_flowline_{level_path}.tif')
+            rasterize(level_path_flowlines, rasterized_level_path, rasterized_channel, all_touched=True)
+            valley_bottom_flowline_raster = os.path.join(temp_folder, f'valley_bottom_and_flowline_{level_path}.tif')
+            with rasterio.open(valley_bottom_raster, 'r') as rio_vbet, \
+                    rasterio.open(rasterized_level_path, 'r') as rio_flowline:
+                out_meta = rio_vbet.meta
+                out_meta['compress'] = 'deflate'
+                with rasterio.open(valley_bottom_flowline_raster, 'w', **out_meta) as rio_out:
+                    for _ji, window in rio_vbet.block_windows(1):
+                        array_vbet = np.ma.MaskedArray(rio_vbet.read(1, window=window).data)
+                        array_flowline = np.ma.MaskedArray(rio_flowline.read(1, window=window).data)
+                        array_logic = array_vbet + array_flowline
+                        array_out = np.greater_equal(array_logic, 1)
+                        array_out_format = array_out if out_meta['dtype'] == 'int32' else np.float32(array_out)
+                        rio_out.write(np.ma.filled(array_out_format, out_meta['nodata']), window=window, indexes=1)
+
             # Generate Centerline from Cost Path
+            log.info('Generating Centerline from cost path')
             cost_path_raster = os.path.join(temp_folder, f'cost_path_{level_path}.tif')
-            generate_centerline_surface(valley_bottom_raster, cost_path_raster, temp_folder)
-            centerline_raster = os.path.join(temp_folder, f'centerline_{level_path}.tif')
-            geom_flowline = collect_linestring(line_network, f'LevelPathI = {level_path}')
-            geom_flowline = ogr.ForceToLineString(geom_flowline)
+            generate_centerline_surface(valley_bottom_flowline_raster, cost_path_raster, temp_folder)
+            geom_flowline = collect_linestring(level_path_flowlines)
+            # geom_flowline = ogr.ForceToLineString(geom_flowline)
             # polygonize(valley_bottom_raster, 1, vbet_polygon, epsg=4326)
             # polygon_clip = collect_feature_class(vbet_polygon)
             # geom_flowline_clip = polygon_clip.Intersection(geom_flowline)
-            coords = get_endpoints(geom_flowline)
-            if len(coords) != 2:
-                log.error(f'Unable to generate centerline for level path {level_path}: found {len(coords)} target coordinates instead of expected 2.')
-                continue
 
-            log.info('Find least cost path for centerline')
-            least_cost_path(cost_path_raster, centerline_raster, coords[0], coords[1])
-            log.info('Vectorize centerline from Raster')
-            centerline_full = raster2line_geom(centerline_raster, 1)
-            polygon = None
-            if polygon is not None:
-                polygon = polygon.Buffer(vbet_clip_buffer_size)
-                centerline_intersected = polygon.Intersection(centerline_full)
-                if centerline_intersected.GetGeometryName() == 'GEOMETRYCOLLECTION':
-                    for line in centerline_intersected:
-                        line.MakeValid()
-                        centerline = ogr.Geometry(ogr.wkbMultiLineString)
-                        if line.GetGeometryName() == 'LINESTRING':
-                            centerline.AddGeometry(line)
-                else:
-                    centerline = centerline_intersected
-            else:
-                centerline = centerline_full
-            centerline = ogr.ForceToMultiLineString(centerline)
+            geom_flowline = ogr.ForceToMultiLineString(geom_flowline)
             with GeopackageLayer(output_centerlines, write=True) as lyr_cl:
-                out_feature = ogr.Feature(lyr_cl.ogr_layer_def)
-                out_feature.SetGeometry(centerline)
-                out_feature.SetField('LevelPathI', str(level_path))
-                lyr_cl.ogr_layer.CreateFeature(out_feature)
-                out_feature = None
+                cl_index = 0
+                for g_flowline in geom_flowline:
+                    coords = get_endpoints(g_flowline)
+                    if len(coords) != 2:
+                        log.error(f'Unable to generate centerline for part {cl_index} of level path {level_path}: found {len(coords)} target coordinates instead of expected 2.')
+                        continue
+                    log.info('Find least cost path for centerline')
+                    centerline_raster = os.path.join(temp_folder, f'centerline_{level_path}_part_{cl_index}.tif')
+                    least_cost_path(cost_path_raster, centerline_raster, coords[0], coords[1])
+                    log.info('Vectorize centerline from Raster')
+                    geom_centerline = raster2line_geom(centerline_raster, 1)
+                    geom_centerline = ogr.ForceToLineString(geom_centerline)
+                    # if polygon is not None:
+                    #     polygon = polygon.Buffer(vbet_clip_buffer_size)
+                    #     centerline_intersected = polygon.Intersection(centerline_full)
+                    #     if centerline_intersected.GetGeometryName() == 'GEOMETRYCOLLECTION':
+                    #         for line in centerline_intersected:
+                    #             line.MakeValid()
+                    #             centerline = ogr.Geometry(ogr.wkbMultiLineString)
+                    #             if line.GetGeometryName() == 'LINESTRING':
+                    #                 centerline.AddGeometry(line)
+                    #     else:
+                    #         centerline = centerline_intersected
+                    # else:
+                    #     centerline = centerline_full
+                    geom_centerline = ogr.ForceToMultiLineString(geom_centerline)
+                    out_feature = ogr.Feature(lyr_cl.ogr_layer_def)
+                    out_feature.SetGeometry(geom_centerline)
+                    out_feature.SetField('LevelPathI', str(level_path))
+                    out_feature.SetField('CL_Part_Index', cl_index)
+                    lyr_cl.ogr_layer.CreateFeature(out_feature)
+                    out_feature = None
+                    cl_index += 1
 
                 # clean up rasters
         with TimerBuckets('raster_merge'):
