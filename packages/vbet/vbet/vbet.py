@@ -15,6 +15,7 @@ import argparse
 import traceback
 import time
 import sqlite3
+import shutil
 from typing import List, Dict
 
 from osgeo import ogr, gdal
@@ -418,7 +419,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             rasterize(level_path_polygons, rasterized_channel, local_pitfill_dem, all_touched=True)
             in_rasters['Channel'] = rasterized_channel
 
-        with TimerBuckets('taudem'):
+        with TimerBuckets('HAND'):
             hand_raster = os.path.join(temp_rasters_folder, f'local_hand_{level_path}.tif')
             dinfdistdown_status = run_subprocess(project_folder, ["mpiexec", "-n", NCORES, "dinfdistdown", "-ang", local_dinfflowdir_ang, "-fel", local_pitfill_dem, "-src", rasterized_channel, "-dd", hand_raster, "-m", "ave", "v"])
             if dinfdistdown_status != 0 or not os.path.isfile(hand_raster):
@@ -426,7 +427,6 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                 log.error(err_msg)
                 _tmterr("HAND_ERROR", err_msg)
                 continue
-                # raise Exception('TauDEM: dinfdistdown failed')
             in_rasters['HAND'] = hand_raster
 
         with TimerBuckets('rasterio'):
@@ -550,7 +550,11 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
                 # clean up rasters
         with TimerBuckets('raster_merge'):
-            for out_raster, in_raster in {out_hand: hand_raster, out_vbet_evidence: evidence_raster, out_normalized_hand: normalized_local_hand}.items():
+            for out_raster, in_raster in {
+                out_hand: hand_raster,
+                out_vbet_evidence: evidence_raster,
+                out_normalized_hand: normalized_local_hand
+            }.items():
                 raster_merge(in_raster, out_raster, dem, valley_bottom_raster)
 
         if debug is False:
@@ -648,8 +652,17 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     progbar.finish()
     _tmr_waypt.timer_break('ApplyValues')
 
-    if debug is False:
-        safe_remove_dir(os.path.join(project_folder, 'temp'))
+    if debug is True:
+        # This takes a while but it's worth it for the visibility
+        log.debug('Zipping temp folder')
+        try:
+            shutil.make_archive(os.path.join(project_folder, 'temp'), "zip", os.path.join(project_folder, 'temp'))
+        except Exception as err:
+            log.error(err)
+        _tmr_waypt.timer_break('ZipTempFolder')
+
+    safe_remove_dir(os.path.join(project_folder, 'temp'))
+    _tmr_waypt.timer_break('CleanupTempFolder')
 
     # Now add our Geopackages to the project XML
     project.add_project_raster(proj_nodes['Outputs'], LayerTypes['COMPOSITE_VBET_EVIDENCE'])
