@@ -41,7 +41,7 @@ cfg = ModelConfig('https://xml.riverscapes.net/Projects/XSD/V2/RiverscapesProjec
 LYR_DESCRIPTIONS_JSON = os.path.join(os.path.dirname(__file__), 'layer_descriptions.json')
 LayerTypes = {
     'INPUTS': RSLayer('Inputs', 'INPUTS', 'Geopackage', 'inputs/inputs.gpkg', {
-        'FLOWLINES': RSLayer('NHD Flowlines', 'FLOWLINES', 'Vector', 'flowlines'),
+        'FLOWLINES': RSLayer('NHD Flowlines', 'NHDFlowline', 'Vector', 'flowlines'),
         # 'FLOWAREAS': RSLayer('NHD Flow Areas', 'FLOWAREAS', 'Vector', 'flowareas'),
         # 'WATERBODY': RSLayer('NHD Water Body Areas', 'WATER_BODIES', 'Vector', 'waterbody'),
         # 'OTHER_POLYGONS': RSLayer('Other Custom channel Polygons', "CUSTOM_POLYGONS", 'Vector', 'other_channels')
@@ -131,7 +131,7 @@ def channel(huc: int,
         proj_flowlines = None
 
     if flowareas is not None:
-        LayerTypes['INPUTS'].add_sub_layer('FLOWAREAS', RSLayer('NHD Flow Areas', 'FLOWAREAS', 'Vector', 'flowareas'))
+        LayerTypes['INPUTS'].add_sub_layer('FLOWAREAS', RSLayer('NHD Flow Areas', 'NHDArea', 'Vector', 'flowareas'))
         proj_flowareas = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['FLOWAREAS'].rel_path)
         copy_feature_class(flowareas, proj_flowareas, epsg=epsg)
     else:
@@ -140,7 +140,7 @@ def channel(huc: int,
         # filtered_flowarea_no_islands = None
 
     if waterbodies is not None:
-        LayerTypes['INPUTS'].add_sub_layer('WATERBODY', RSLayer('NHD Water Body Areas', 'WATER_BODIES', 'Vector', 'waterbody'))
+        LayerTypes['INPUTS'].add_sub_layer('WATERBODY', RSLayer('NHD Water Body Areas', 'NHDWaterbody', 'Vector', 'waterbody'))
         proj_waterbodies = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['WATERBODY'].rel_path)
         copy_feature_class(waterbodies, proj_waterbodies, epsg=epsg)
     else:

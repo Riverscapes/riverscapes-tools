@@ -14,6 +14,7 @@ import sys
 import traceback
 import datetime
 import time
+import json
 from typing import List, Dict
 from osgeo import ogr
 from rscommons import GeopackageLayer
@@ -34,6 +35,7 @@ initGDALOGRErrors()
 
 cfg = ModelConfig('https://xml.riverscapes.net/Projects/XSD/V2/RiverscapesProject.xsd', __version__)
 
+LYR_DESCRIPTIONS_JSON = os.path.join(os.path.dirname(__file__), 'layer_descriptions.json')
 LayerTypes = {
     'DEM': RSLayer('NED 10m DEM', 'DEM', 'DEM', 'inputs/dem.tif'),
     'SLOPE': RSLayer('Slope Raster', 'SLOPE', 'Raster', 'inputs/slope.tif'),
@@ -98,6 +100,8 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
     log = Logger("BRAT Build")
     log.info('HUC: {}'.format(huc))
     log.info('EPSG: {}'.format(cfg.OUTPUT_EPSG))
+
+    augment_layermeta()
 
     start_time = time.time()
 
@@ -214,6 +218,10 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
     # add buffers to project
     for buffer in [streamside_buffer, riparian_buffer]:
         LayerTypes['INTERMEDIATES'].add_sub_layer(f'{int(buffer)}M_BUFFER', RSLayer(f'{int(buffer)}m Buffer', f'{int(buffer)}M_BUFFER', 'Vector', f'buffer_{int(buffer)}m'))
+        LayerTypes['INTERMEDIATES'].sub_layers[f'{int(buffer)}M_BUFFER'].lyr_meta = [RSMeta('Description', f'A polygon of the input drainage network buffered by {int(buffer)} meters.'),
+                                                                                     RSMeta('SourceUrl', '', RSMetaTypes.URL),
+                                                                                     RSMeta('DataProductVersion', cfg.version),
+                                                                                     RSMeta('DocsUrl', f'https://tools.riverscapes.net/brat/data.html#{int(buffer)}M_BUFFER', RSMetaTypes.URL)]
 
     ellapsed_time = time.time() - start_time
 
@@ -224,6 +232,32 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
     ])
 
     log.info('BRAT build completed successfully.')
+
+
+def augment_layermeta():
+    """
+    For RSContext we've written a JSON file with extra layer meta. We may use this pattern elsewhere but it's just here for now
+    """
+    with open(LYR_DESCRIPTIONS_JSON, 'r') as f:
+        json_data = json.load(f)
+
+    for k, lyr in LayerTypes.items():
+        if lyr.sub_layers is not None:
+            for h, sublyr in lyr.sub_layers.items():
+                if h in json_data and len(json_data[h]) > 0:
+                    sublyr.lyr_meta = [
+                        RSMeta('Description', json_data[h][0]),
+                        RSMeta('SourceUrl', json_data[h][1], RSMetaTypes.URL),
+                        RSMeta('DataProductVersion', json_data[h][2]),
+                        RSMeta('DocsUrl', 'https://tools.riverscapes.net/brat/data.html#{}'.format(sublyr.id), RSMetaTypes.URL)
+                    ]
+        if k in json_data and len(json_data[k]) > 0:
+            lyr.lyr_meta = [
+                RSMeta('Description', json_data[k][0]),
+                RSMeta('SourceUrl', json_data[k][1], RSMetaTypes.URL),
+                RSMeta('DataProductVersion', json_data[k][2]),
+                RSMeta('DocsUrl', 'https://tools.riverscapes.net/brat/data.html#{}'.format(lyr.id), RSMetaTypes.URL)
+            ]
 
 
 def main():

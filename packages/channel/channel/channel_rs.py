@@ -9,11 +9,9 @@ from rscommons import RSProject, RSMeta, dotenv, Logger
 from channel.channel_report import ChannelReport
 
 lyrs_in_out = {
-    # CHANNEL_ID: INPUT_ID
-    'FLOWLINES': 'NHDFlowline',
-    'FLOWAREAS': 'NHDArea',
-    'WATER_BODIES': 'NHDWaterbody',
-    # 'CATCHMENTS': 'NHDPlusCatchment',
+    'flowlines': ['NHDFlowline'],
+    'flowareas': ['NHDArea'],
+    'waterbody': ['NHDWaterbody'],
 }
 
 
@@ -40,11 +38,6 @@ def main():
         #     args.in_xmls.split(','),
         #     lyrs_in_out
         # )
-        ref_lyrs = {
-            'flowlines': ['NHDFlowline'],  # dict of ids in chan_area inputs and corresponding ids in rs_context
-            'flowareas': ['NHDArea'],
-            'waterbody': ['NHDWaterbody']
-        }
 
         in_xml = args.in_xmls.split(',')[0]
         inprj = RSProject(None, in_xml)
@@ -56,7 +49,7 @@ def main():
             if proj_watershed_node is None:
                 out_prj.add_metadata([RSMeta('Watershed', watershed_node.text)])
 
-        for outid, inid in ref_lyrs.items():
+        for outid, inid in lyrs_in_out.items():
             # find the node and get is ref
             for n in inprj.XMLBuilder.tree.iter():
                 if 'lyrName' in n.attrib.keys():
@@ -68,16 +61,16 @@ def main():
                 else:
                     continue
             path = inprj.get_rsx_path(innode)
-            ref_lyrs[outid].append(path)
+            lyrs_in_out[outid].append(path)
 
             # add the rsxpath to the output xml
             for m in out_prj.XMLBuilder.tree.iter():
                 if 'lyrName' in m.attrib.keys():
                     if m.attrib['lyrName'] == outid:
-                        m.attrib['extRef'] = warehouse_guid + ':' + ref_lyrs[outid][1]
+                        m.attrib['extRef'] = warehouse_guid + ':' + lyrs_in_out[outid][1]
                 elif 'id' in m.attrib.keys():
                     if m.attrib['id'] == outid:
-                        m.attrib['extRef'] = warehouse_guid + ':' + ref_lyrs[outid][1]
+                        m.attrib['extRef'] = warehouse_guid + ':' + lyrs_in_out[outid][1]
 
         out_prj.rs_copy_project_extents(in_xml)
 

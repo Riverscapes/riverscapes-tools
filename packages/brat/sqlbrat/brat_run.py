@@ -14,6 +14,7 @@ import traceback
 import argparse
 import time
 import datetime
+import json
 from osgeo import ogr
 from rscommons import Logger, RSLayer, RSProject, ModelConfig, dotenv
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
@@ -39,6 +40,7 @@ output_fields = {
                   'mCC_HPE_CT', 'oCC_EX', 'mCC_EX_CT', 'mCC_HisDep']
 }
 
+LYR_DESCRIPTIONS_JSON = os.path.join(os.path.dirname(__file__), 'layer_descriptions.json')
 LayerTypes = {
     'EXVEG_SUIT': RSLayer('Existing Vegetation', 'EXVEG_SUIT', 'Raster', 'intermediates/existing_veg_suitability.tif'),
     'HISTVEG_SUIT': RSLayer('Historic Vegetation', 'HISTVEG_SUIT', 'Raster', 'intermediates/historic_veg_suitability.tif'),
@@ -66,6 +68,8 @@ def brat_run(project_root, csv_dir):
     log = Logger('BRAT Run')
     log.info('Starting BRAT run')
     start_time = time.time()
+
+    augment_layermeta()
 
     project = RSProject(cfg, project_root)
 
@@ -196,6 +200,32 @@ def get_stream_buffers(gpkg_path):
     with SQLiteCon(gpkg_path) as database:
         database.curs.execute('SELECT Buffer FROM ReachVegetation GROUP BY Buffer')
         return [row['Buffer'] for row in database.curs.fetchall()]
+
+
+def augment_layermeta():
+    """
+    For RSContext we've written a JSON file with extra layer meta. We may use this pattern elsewhere but it's just here for now
+    """
+    with open(LYR_DESCRIPTIONS_JSON, 'r') as f:
+        json_data = json.load(f)
+
+    for k, lyr in LayerTypes.items():
+        if lyr.sub_layers is not None:
+            for h, sublyr in lyr.sub_layers.items():
+                if h in json_data and len(json_data[h]) > 0:
+                    sublyr.lyr_meta = [
+                        RSMeta('Description', json_data[h][0]),
+                        RSMeta('SourceUrl', json_data[h][1], RSMetaTypes.URL),
+                        RSMeta('DataProductVersion', json_data[h][2]),
+                        RSMeta('DocsUrl', 'https://tools.riverscapes.net/brat/data.html#{}'.format(sublyr.id), RSMetaTypes.URL)
+                    ]
+        if k in json_data and len(json_data[k]) > 0:
+            lyr.lyr_meta = [
+                RSMeta('Description', json_data[k][0]),
+                RSMeta('SourceUrl', json_data[k][1], RSMetaTypes.URL),
+                RSMeta('DataProductVersion', json_data[k][2]),
+                RSMeta('DocsUrl', 'https://tools.riverscapes.net/brat/data.html#{}'.format(lyr.id), RSMetaTypes.URL)
+            ]
 
 
 def main():
