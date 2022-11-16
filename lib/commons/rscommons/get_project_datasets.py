@@ -16,30 +16,28 @@ def get_project_datasets(project_xml: str) -> list:
     tree = ET.parse(project_xml)
     root = tree.getroot()
 
-    project_type = root.find('ProjectType').text
-
     # separate categorical rasters from continous. Is there more than these two?
-    categorical = ['EXVEG', 'HISTVEG', 'EXVEG_SUIT', 'HISTVEG_SUIT']
+    categorical = ['EXVEG', 'HISTVEG', 'EXVEG_SUIT', 'HISTVEG_SUIT', 'FCCS', 'FDIST', 'HDIST', 'SCLASS', 'VEGCOVER', 'VEGHEIGHT', 'VEGCONDITION', 'VEGDEPARTURE']
 
-    realization = root.find('Realizations')  # this assumes 1 realization, will there be cases where there's more...?
-    projtype = realization.find(project_type)
+    realizations = root.find('Realizations')  # this assumes 1 realization, will there be cases where there's more...?
+    realization = realizations.find('Realization')
 
     # rasters
-    raster = projtype.findall('Raster')
+    raster = realization.find('Datasets').findall('Raster')
     float_datasets = [[raster[i].find('Path').text, raster[i].attrib['id']] for i in range(len(raster)) if raster[i].attrib['id'] not in categorical]
     cat_datasets = [[raster[i].find('Path').text, raster[i].attrib['id']] for i in range(len(raster)) if raster[i].attrib['id'] in categorical]
 
-    inputs = projtype.find('Inputs')
+    inputs = realization.find('Inputs')
     if inputs:
         inputraster = inputs.findall('Raster')
     else:
         inputraster = None
-    intermediates = projtype.find('Intermediates')
+    intermediates = realization.find('Intermediates')
     if intermediates:
         interraster = intermediates.findall('Raster')
     else:
         interraster = None
-    outputs = projtype.find('Outputs')
+    outputs = realization.find('Outputs')
     if outputs:
         outputraster = outputs.findall('Raster')
     else:
@@ -72,7 +70,7 @@ def get_project_datasets(project_xml: str) -> list:
                 if [rasterout.find('Path').text, rasterout.attrib['id']] not in float_datasets:
                     float_datasets.append([rasterout.find('Path').text, rasterout.attrib['id']])
 
-    # INPUT DEM
+    # INPUT DEM (should be depracated now with new projectxml)
     if inputs:
         if inputs.find('DEM'):
             if len(inputs.find('DEM')) > 0:
@@ -80,7 +78,7 @@ def get_project_datasets(project_xml: str) -> list:
                 float_datasets.append([dem.find('Path').text, dem.attrib['id']])
 
     # vectors
-    vector = projtype.findall('Vector')
+    vector = realization.find('Datasets').findall('Vector')
     vector_datasets = [[vector[i].find('Path').text, vector[i].attrib['id']] for i in range(len(vector)) if not re.search('WBD.+', vector[i].attrib['id'])]
 
     if inputs:
@@ -112,7 +110,7 @@ def get_project_datasets(project_xml: str) -> list:
                 vector_datasets.append([vectorout.find('Path').text, vectorout.attrib['id']])
 
     # append layers inside of geopackages to lists
-    geopackage = projtype.findall('Geopackage')
+    geopackage = realization.find('Datasets').findall('Geopackage')
     for g in geopackage:
         lyr = g.find('Layers')
         gpvec = lyr.findall('Vector')
