@@ -25,7 +25,7 @@
         "{env:DATA_ROOT}/rs_context/${input:HUC}/topography/dem.tif",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/topography/slope.tif",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/topography/dem_hillshade.tif",
-        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/network_intersected_300m",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydro_derivatives.gpkg/network_intersected_300m",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/vegetation/existing_veg.tif",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/vegetation/historic_veg.tif",
         "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/vbet_full", // VBET!!!!!
@@ -46,9 +46,9 @@
         "--peren_codes",
         "46006,55800,33400",
         "--flow_areas",
-        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/NHDArea.shp",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhdplushr.gpkg/NHDArea",
         "--waterbodies",
-        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/NHDWaterbody.shp",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhdplushr.gpkg/NHDWaterbody",
         "--max_waterbody",
         "0.001", // max_waterbody
         "--verbose"
