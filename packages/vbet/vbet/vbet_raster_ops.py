@@ -537,6 +537,11 @@ def raster_update(raster, update_values_raster):
             array_logic_mask = np.array(rio_dest.read_masks(1, window=out_window) == 0).astype('int')  # mask of existing data in destination raster
             array_dest = np.ma.MaskedArray(rio_dest.read(1, window=out_window).data)
             array_update = np.ma.MaskedArray(rio_updates.read(1, window=window).data)
+
+            # Filter out any weird pixels that Taudem sometimes gives us. The threshold of -10000 is pretty arbitrary but
+            # it's very unlikely that we would ever get valid values lower than this limit and -9999 is a common nodata value.
+            np.ma.masked_where(array_update < -10000, array_update)
+
             array_out = np.choose(array_logic_mask, [array_dest, array_update])
             rio_dest.write(np.ma.filled(np.float32(array_out), out_meta['nodata']), window=out_window, indexes=1)
     log.debug(f'Timer: {_tmr.ellapsed()}')
@@ -570,6 +575,11 @@ def raster_update_2(raster, update_values_raster, value=None):
             array_update = np.ma.MaskedArray(rio_updates.read(1, window=window).data)
             if value is not None:
                 array_update = np.multiply(array_update, value)
+
+            # Filter out any weird pixels that Taudem sometimes gives us. The threshold of -10000 is pretty arbitrary but
+            # it's very unlikely that we would ever get valid values lower than this limit and -9999 is a common nodata value.
+            np.ma.masked_where(array_update < -10000, array_update)
+
             array_out = np.choose(array_logic_mask, [array_update, array_dest])
             array_out_format = array_out if out_meta['dtype'] == 'int32' else np.float32(array_out)
             rio_dest.write(np.ma.filled(array_out_format, out_meta['nodata']), window=out_window, indexes=1)
