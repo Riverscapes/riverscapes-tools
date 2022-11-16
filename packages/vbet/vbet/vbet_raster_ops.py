@@ -488,11 +488,17 @@ def raster_merge(in_raster: Path, out_raster: Path, template_raster: Path, logic
             out_window = Window(window.col_off + col_off_delta, window.row_off + row_off_delta, window.width, window.height)
             array_logic_mask = np.ma.MaskedArray(rio_logic.read(1, window=window, masked=True).data)
             array_source = np.ma.MaskedArray(rio_source.read(1, window=window, masked=True).data, mask=array_logic_mask.mask)
+
+            # Filter out any weird pixels that Taudem sometimes gives us. The threshold of -10000 is pretty arbitrary but
+            # it's very unlikely that we would ever get valid values lower than this limit and -9999 is a common nodata value.
+            np.ma.masked_where(array_source < -10000, array_source)
+
             array_dest = np.ma.MaskedArray(rio_dest.read(1, window=out_window, masked=True).data, mask=array_logic_mask.mask)
             if array_source.shape != array_dest.shape:
                 window_error = True
                 continue
             array_out = np.choose(array_logic_mask, [array_dest, array_source])
+
             rio_dest.write(np.ma.filled(np.float32(array_out), rio_dest.nodata), window=out_window, indexes=1)
 
     if window_error:
