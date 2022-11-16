@@ -2,7 +2,7 @@
     "CHANNEL_LINES": ["Channel network (lines) feature class.", "", ""],
     "DEM_MASK_POLY": ["A polygon feature used to mask the input DEM.", "", ""],
     "DEM_MASKED": ["The input DEM masked using an input polygon feature.", "", ""],
-    "PITFILL": ["The input DEM with the TauDEM pitremove algorithm applied to it.",
+    "PITFILL": ["The input DEM with the TauDEM Pit Remove algorithm applied to it.",
     "https://hydrology.usu.edu/taudem/taudem5/help53/PitRemove.html",
     "5.3.7"],
     "DINFFLOWDIR_ANG": ["Flow direction raster produced by applying the TauDEM D-infity Flow Directions algorithm to the pit filled DEM.",
