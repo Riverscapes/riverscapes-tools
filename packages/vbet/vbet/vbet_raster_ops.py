@@ -14,7 +14,8 @@ from rasterio.windows import Window
 # from rasterio.windows import bounds, from_bounds
 import numpy as np
 
-from rscommons import ProgressBar, Logger, VectorBase, Timer, TempRaster, TimerWaypoints
+from rscommons import ProgressBar, Logger, VectorBase, Timer, TempRaster
+from rscommons.classes.raster import PrintArr
 
 Path = str
 
@@ -90,10 +91,10 @@ def mask_rasters_nodata(in_raster_path: Path, nodata_raster_path: Path, out_rast
                 counter += 1
                 # These rasterizations don't begin life with a mask.
                 mask = nd_src.read(1, window=window, masked=True).mask
-                data = data_src.read(1, window=window)
-                # Fill everywhere the mask reads true with a nodata value
-                output = np.ma.masked_array(data, mask)
-                out_src.write(output.filled(out_meta['nodata']), window=window, indexes=1)
+                data = data_src.read(1, window=window, masked=True)
+                # Combine the mask of the nd_src with that of the data. This is done in-place
+                np.ma.masked_where(mask, data)
+                out_src.write(data, window=window, indexes=1)
 
             progbar.finish()
             log.info('Complete')
@@ -223,11 +224,13 @@ def inverse_mask(nodata_raster_path: Path, out_raster_path: Path):
                 progbar.update(counter)
                 counter += 1
                 # These rasterizations don't begin life with a mask.
+                # TODO: Read mask is quicker?
                 mask = nd_src.read(1, window=window, masked=True).mask
+
                 # Fill everywhere the mask reads true with a nodata value
-                mask_vals = np.full(mask.shape, 1)
-                output = np.ma.masked_array(mask_vals, np.logical_not(mask))
-                out_src.write(output.filled(out_meta['nodata']).astype(out_meta['dtype']), window=window, indexes=1)
+                mask_vals = np.ma.array(np.full(mask.shape, 1), mask=np.logical_not(mask))
+
+                out_src.write(mask_vals.astype(out_meta['dtype']), window=window, indexes=1)
 
             progbar.finish()
             log.info('Complete')
@@ -278,7 +281,7 @@ def raster_clean(in_raster_path: Path, out_raster_path: Path, buffer_pixels: int
 
                     output = np.ma.masked_array(new_data, new_mask)
 
-                    out_data.write(output.filled(out_meta['nodata']).astype(out_meta['dtype']), window=window, indexes=1)
+                    out_data.write(output.astype(out_meta['dtype']), window=window, indexes=1)
 
                 progbar.finish()
 
@@ -303,7 +306,7 @@ def raster_clean(in_raster_path: Path, out_raster_path: Path, buffer_pixels: int
                     new_mask = np.logical_not(prox_in_block > buffer_pixels)
 
                     output = np.ma.masked_array(new_data, new_mask)
-                    out_data_src.write(output.filled(out_meta['nodata']).astype(out_meta['dtype']), window=window, indexes=1)
+                    out_data_src.write(output.astype(out_meta['dtype']), window=window, indexes=1)
 
                 progbar.finish()
 
@@ -380,10 +383,13 @@ def rasterize_attribute(in_lyr_path: Path, out_raster_path: Path, template_path:
 
 def raster2array(rasterfn: Path) -> np.array:
     """Open raster as np array"""
-
+    log = Logger('raster2array')
     raster = gdal.Open(rasterfn)
     band = raster.GetRasterBand(1)
     array = band.ReadAsArray()
+    if array.nbytes > 1e+8 * 200:
+        nMBytes = array.nbytes / 1e+8 * 200
+        log.warning(f'Reading large array: {nMBytes:,} Mb')
     return array
 
 
@@ -405,7 +411,10 @@ def create_empty_raster(raster_path: Path, template_raster: Path):
 
     with rasterio.open(raster_path, 'w', **out_meta) as rio_dest:
         for _ji, window in rio_dest.block_windows(1):
-            rio_dest.write(np.full((window.height, window.width), out_meta['nodata']), window=window, indexes=1)
+            # Writing a perfectly masked array should give us a raster where everything is nodata
+            out_arr = np.ma.array(np.full((window.height, window.width), 1), mask=True)
+            rio_dest.write(out_arr.astype(out_meta['dtype']), window=window, indexes=1)
+    return
 
 
 def array2raster(newRasterfn: Path, rasterfn: Path, array: np.array, data_type: int = gdal.GDT_Byte, no_data=None):
@@ -434,7 +443,16 @@ def array2raster(newRasterfn: Path, rasterfn: Path, array: np.array, data_type: 
 
 
 def new_raster(newRasterfn: Path, rasterfn: Path, data_type: int = gdal.GDT_Byte):
-    """create and return new empty raster dataset and raster band """
+    """Create a new, empty raster from the template of another raster
+
+    Args:
+        newRasterfn (Path): _description_
+        rasterfn (Path): _description_
+        data_type (int, optional): _description_. Defaults to gdal.GDT_Byte.
+
+    Returns:
+        _type_: _description_
+    """
 
     raster = gdal.Open(rasterfn)
     geotransform = raster.GetGeoTransform()
@@ -486,20 +504,16 @@ def raster_merge(in_raster: Path, out_raster: Path, template_raster: Path, logic
         window_error = False
         for _ji, window in rio_source.block_windows(1):
             out_window = Window(window.col_off + col_off_delta, window.row_off + row_off_delta, window.width, window.height)
-            array_logic_mask = np.ma.MaskedArray(rio_logic.read(1, window=window, masked=True).data)
-            array_source = np.ma.MaskedArray(rio_source.read(1, window=window, masked=True).data, mask=array_logic_mask.mask)
+            array_logic_mask = rio_logic.read(1, window=window)
+            array_source = rio_source.read(1, window=window, masked=True)
+            array_dest = rio_dest.read(1, window=out_window, masked=True)
 
-            # Filter out any weird pixels that Taudem sometimes gives us. The threshold of -10000 is pretty arbitrary but
-            # it's very unlikely that we would ever get valid values lower than this limit and -9999 is a common nodata value.
-            np.ma.masked_where(array_source < -10000, array_source)
-
-            array_dest = np.ma.MaskedArray(rio_dest.read(1, window=out_window, masked=True).data, mask=array_logic_mask.mask)
             if array_source.shape != array_dest.shape:
                 window_error = True
                 continue
-            array_out = np.choose(array_logic_mask, [array_dest, array_source])
+            array_out = np.ma.choose(array_logic_mask, [array_dest, array_source])
 
-            rio_dest.write(np.ma.filled(np.float32(array_out), rio_dest.nodata), window=out_window, indexes=1)
+            rio_dest.write(array_out, window=out_window, indexes=1)
 
     if window_error:
         log.error(f'Different window shapes encounterd when processing {out_raster}')
@@ -534,16 +548,12 @@ def raster_update(raster, update_values_raster):
 
         for _ji, window in rio_updates.block_windows(1):
             out_window = Window(window.col_off + col_off_delta, window.row_off + row_off_delta, window.width, window.height)
-            array_logic_mask = np.array(rio_dest.read_masks(1, window=out_window) == 0).astype('int')  # mask of existing data in destination raster
-            array_dest = np.ma.MaskedArray(rio_dest.read(1, window=out_window).data)
-            array_update = np.ma.MaskedArray(rio_updates.read(1, window=window).data)
+            # array_logic_mask = np.array(rio_dest.read_masks(1, window=out_window) == 0).astype('int')  # mask of existing data in destination raster
+            array_dest = rio_dest.read(1, window=out_window, masked=True)
+            array_update = rio_updates.read(1, window=window, masked=True)
 
-            # Filter out any weird pixels that Taudem sometimes gives us. The threshold of -10000 is pretty arbitrary but
-            # it's very unlikely that we would ever get valid values lower than this limit and -9999 is a common nodata value.
-            np.ma.masked_where(array_update < -10000, array_update)
-
-            array_out = np.choose(array_logic_mask, [array_dest, array_update])
-            rio_dest.write(np.ma.filled(np.float32(array_out), out_meta['nodata']), window=out_window, indexes=1)
+            array_out = np.choose(np.logical_not(array_dest.mask), [array_dest, array_update])
+            rio_dest.write(array_out, window=out_window, indexes=1)
     log.debug(f'Timer: {_tmr.ellapsed()}')
 
 
@@ -571,18 +581,16 @@ def raster_update_2(raster, update_values_raster, value=None):
             out_window = Window(window.col_off + col_off_delta, window.row_off + row_off_delta, window.width, window.height)
 
             array_logic_mask = np.array(rio_dest.read(1, window=out_window) > 0).astype('int')  # mask of existing data in destination raster
-            array_dest = np.ma.MaskedArray(rio_dest.read(1, window=out_window).data)
-            array_update = np.ma.MaskedArray(rio_updates.read(1, window=window).data)
+            array_dest = rio_dest.read(1, window=out_window, masked=True)
+            array_update = rio_updates.read(1, window=window, masked=True)
+
             if value is not None:
                 array_update = np.multiply(array_update, value)
 
-            # Filter out any weird pixels that Taudem sometimes gives us. The threshold of -10000 is pretty arbitrary but
-            # it's very unlikely that we would ever get valid values lower than this limit and -9999 is a common nodata value.
-            np.ma.masked_where(array_update < -10000, array_update)
-
             array_out = np.choose(array_logic_mask, [array_update, array_dest])
             array_out_format = array_out if out_meta['dtype'] == 'int32' else np.float32(array_out)
-            rio_dest.write(np.ma.filled(array_out_format, out_meta['nodata']), window=out_window, indexes=1)
+            rio_dest.write(array_out_format, window=out_window, indexes=1)
+    return
 
 
 def raster_remove_zone(raster, remove_raster, output_raster):
@@ -598,6 +606,7 @@ def raster_remove_zone(raster, remove_raster, output_raster):
             for _ji, window in rio_dest.block_windows(1):
                 array_logic_mask = np.array(rio_remove.read(1, window=window) > 0).astype('int')  # mask of existing data in destination raster
                 array_multiply = np.equal(array_logic_mask, 0).astype('int')
-                array_dest = np.ma.MaskedArray(rio_dest.read(1, window=window).data)
+                array_dest = rio_dest.read(1, window=window, masked=True)
                 array_out = np.multiply(array_multiply, array_dest)
-                rio_output.write(np.ma.filled(array_out, out_meta['nodata']), window=window, indexes=1)
+                rio_output.write(array_out, window=window, indexes=1)
+    return

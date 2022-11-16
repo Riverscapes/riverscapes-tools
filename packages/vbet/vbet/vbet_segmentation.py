@@ -162,7 +162,7 @@ def calculate_segmentation_metrics(vbet_segment_polygons: Path, vbet_centerline:
     Args:
         vbet_segment_polygons (_type_): _description_
         vbet_centerline (_type_): _description_
-        dict_layers (_type_): _description_
+        dict_layers (_type_): Dictionary[layer_name(str), feature_class(str)]
     """
 
     log = Logger('Segmentation Metrics')

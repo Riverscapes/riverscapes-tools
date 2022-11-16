@@ -289,6 +289,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         all_level_paths = None
 
     level_paths_to_run.sort(reverse=False)
+    # process all polygons that aren't assigned a level path: ponds, waterbodies etc.
     level_paths_to_run.append(None)
 
     project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
