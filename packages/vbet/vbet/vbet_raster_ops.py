@@ -413,7 +413,7 @@ def create_empty_raster(raster_path: Path, template_raster: Path):
     with rasterio.open(raster_path, 'w', **out_meta) as rio_dest:
         for _ji, window in rio_dest.block_windows(1):
             # Writing a perfectly masked array should give us a raster where everything is nodata
-            out_arr = np.ma.array(np.full((window.height, window.width), 1), mask=True)
+            out_arr = np.ma.array(np.full((window.height, window.width), out_meta['nodata']), mask=True)
             rio_dest.write(out_arr.astype(out_meta['dtype']), window=window, indexes=1)
     return
 
