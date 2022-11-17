@@ -37,7 +37,7 @@ from scripts.cost_path import least_cost_path
 from scripts.raster2line import raster2line_geom
 
 from vbet.vbet_database import build_vbet_database, load_configuration
-from vbet.vbet_raster_ops import mask_rasters_nodata, rasterize_attribute, raster2array, array2raster, new_raster, rasterize, raster_merge, raster_update, raster_update_2, raster_remove_zone
+from vbet.vbet_raster_ops import mask_rasters_nodata, rasterize_attribute, raster2array, array2raster, new_raster, rasterize, raster_merge, raster_update, raster_update_multiply, raster_remove_zone
 from vbet.vbet_outputs import vbet_merge, threshold
 from vbet.vbet_report import VBETReport
 from vbet.vbet_segmentation import calculate_segmentation_metrics, generate_segmentation_points, split_vbet_polygons, summerize_vbet_metrics
@@ -477,7 +477,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
         log.info('Add VBET Raster to Output')
         with TimerBuckets('rasterio'):
-            raster_update_2(output_vbet_area_raster, valley_bottom_raster, value=level_path_key)
+            raster_update_multiply(output_vbet_area_raster, valley_bottom_raster, value=level_path_key)
 
         # Generate the Active Floodplain Polygon
         with TimerBuckets('gdal'):
@@ -485,7 +485,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, active_valley_bottom_raster, temp_folder, thresh_value=0.90)
 
         with TimerBuckets('rasterio'):
-            raster_update_2(output_active_vbet_area_raster, active_valley_bottom_raster, value=level_path_key)
+            raster_update_multiply(output_active_vbet_area_raster, active_valley_bottom_raster, value=level_path_key)
 
         # Generate centerline for level paths only
         with TimerBuckets('centerline'):

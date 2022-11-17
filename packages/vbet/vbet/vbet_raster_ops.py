@@ -504,13 +504,16 @@ def raster_merge(in_raster: Path, out_raster: Path, template_raster: Path, logic
         window_error = False
         for _ji, window in rio_source.block_windows(1):
             out_window = Window(window.col_off + col_off_delta, window.row_off + row_off_delta, window.width, window.height)
+            array_dest = rio_dest.read(1, window=out_window, masked=True)
             array_logic_mask = rio_logic.read(1, window=window)
             array_source = rio_source.read(1, window=window, masked=True)
-            array_dest = rio_dest.read(1, window=out_window, masked=True)
 
             if array_source.shape != array_dest.shape:
                 window_error = True
                 continue
+            # make sure if the destination has a value already we don't touch it
+            array_logic_mask[np.logical_not(array_dest.mask)] = 0
+
             array_out = np.ma.choose(array_logic_mask, [array_dest, array_source])
 
             rio_dest.write(array_out, window=out_window, indexes=1)
@@ -552,12 +555,24 @@ def raster_update(raster, update_values_raster):
             array_dest = rio_dest.read(1, window=out_window, masked=True)
             array_update = rio_updates.read(1, window=window, masked=True)
 
-            array_out = np.choose(np.logical_not(array_dest.mask), [array_dest, array_update])
+            # we're choosing from two values in an array. 0 = array_dest 1 = array_update
+            chooser = array_dest.mask.astype(int)
+            # Make sure that any nodata values in the array_update default back to array_dest
+            chooser[array_update.mask] = 0
+
+            array_out = np.choose(chooser, [array_dest, array_update])
             rio_dest.write(array_out, window=out_window, indexes=1)
     log.debug(f'Timer: {_tmr.ellapsed()}')
 
 
-def raster_update_2(raster, update_values_raster, value=None):
+def raster_update_multiply(raster, update_values_raster, value=None):
+    """_summary_
+
+    Args:
+        raster (_type_): _description_
+        update_values_raster (_type_): _description_
+        value (_type_, optional): _description_. Defaults to None.
+    """
     with rasterio.open(raster, 'r+') as rio_dest, \
             rasterio.open(update_values_raster) as rio_updates:
 
@@ -580,14 +595,18 @@ def raster_update_2(raster, update_values_raster, value=None):
         for _ji, window in rio_updates.block_windows(1):
             out_window = Window(window.col_off + col_off_delta, window.row_off + row_off_delta, window.width, window.height)
 
-            array_logic_mask = np.array(rio_dest.read(1, window=out_window) > 0).astype('int')  # mask of existing data in destination raster
             array_dest = rio_dest.read(1, window=out_window, masked=True)
             array_update = rio_updates.read(1, window=window, masked=True)
 
             if value is not None:
                 array_update = np.multiply(array_update, value)
 
-            array_out = np.choose(array_logic_mask, [array_update, array_dest])
+            # we're choosing from two values in an array. 0 = array_dest 1 = array_update
+            chooser = array_dest.mask.astype(int)
+            # Make sure that any nodata values in the array_update default back to array_dest
+            chooser[array_update.mask] = 0
+
+            array_out = np.choose(chooser, [array_dest, array_update])
             array_out_format = array_out if out_meta['dtype'] == 'int32' else np.float32(array_out)
             rio_dest.write(array_out_format, window=out_window, indexes=1)
     return
