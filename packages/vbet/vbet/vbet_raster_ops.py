@@ -604,7 +604,7 @@ def raster_update_multiply(raster, update_values_raster, value=None):
             # we're choosing from two values in an array. 0 = array_dest 1 = array_update
             chooser = array_dest.mask.astype(int)
             # Make sure that any nodata values in the array_update default back to array_dest
-            chooser[array_update.mask] = 0
+            chooser[array_update.mask | array_update == 0] = 0
 
             array_out = np.choose(chooser, [array_dest, array_update])
             array_out_format = array_out if out_meta['dtype'] == 'int32' else np.float32(array_out)
