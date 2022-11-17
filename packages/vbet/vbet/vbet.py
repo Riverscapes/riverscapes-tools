@@ -422,7 +422,11 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
         with TimerBuckets('HAND'):
             hand_raster = os.path.join(temp_rasters_folder, f'local_hand_{level_path}.tif')
-            dinfdistdown_status = run_subprocess(project_folder, ["mpiexec", "-n", NCORES, "dinfdistdown", "-ang", local_dinfflowdir_ang, "-fel", local_pitfill_dem, "-src", rasterized_channel, "-dd", hand_raster, "-m", "ave", "v"])
+            dinfdistdown_status = run_subprocess(project_folder, ["mpiexec", "-n", NCORES, "dinfdistdown",
+                                                                  "-ang", local_dinfflowdir_ang,
+                                                                  "-fel", local_pitfill_dem,
+                                                                  "-src", rasterized_channel,
+                                                                  "-dd", hand_raster, "-m", "ave", "v"])
             if dinfdistdown_status != 0 or not os.path.isfile(hand_raster):
                 err_msg = f'Error generating HAND for level path {level_path}'
                 log.error(err_msg)

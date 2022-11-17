@@ -82,22 +82,22 @@ def mask_rasters_nodata(in_raster_path: Path, nodata_raster_path: Path, out_rast
         out_meta['nodata'] = -9999
         out_meta['compress'] = 'deflate'
 
+        progbar = ProgressBar(len(list(data_src.block_windows(1))), 50, "Applying nodata mask")
         with rasterio.open(out_raster_path, 'w', **out_meta) as out_src:
-            progbar = ProgressBar(len(list(data_src.block_windows(1))), 50, "Applying nodata mask")
             counter = 0
             # Again, these rasters should be orthogonal so their windows should also line up
             for _ji, window in data_src.block_windows(1):
                 progbar.update(counter)
                 counter += 1
                 # These rasterizations don't begin life with a mask.
-                mask = nd_src.read(1, window=window, masked=True).mask
+                nd_arr = nd_src.read(1, window=window, masked=True)
                 data = data_src.read(1, window=window, masked=True)
                 # Combine the mask of the nd_src with that of the data. This is done in-place
-                np.ma.masked_where(mask, data)
+                data.mask = np.logical_and(nd_arr.mask, data.mask)
+
                 out_src.write(data, window=window, indexes=1)
 
-            progbar.finish()
-            log.info('Complete')
+        progbar.finish()
 
 
 def proximity_raster(src_raster_path: Path, out_raster_path: Path, dist_units: str = "PIXEL", preserve_nodata: bool = True, dist_factor=None):
@@ -551,7 +551,6 @@ def raster_update(raster, update_values_raster):
 
         for _ji, window in rio_updates.block_windows(1):
             out_window = Window(window.col_off + col_off_delta, window.row_off + row_off_delta, window.width, window.height)
-            # array_logic_mask = np.array(rio_dest.read_masks(1, window=out_window) == 0).astype('int')  # mask of existing data in destination raster
             array_dest = rio_dest.read(1, window=out_window, masked=True)
             array_update = rio_updates.read(1, window=window, masked=True)
 
