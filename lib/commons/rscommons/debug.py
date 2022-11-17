@@ -174,4 +174,5 @@ def ThreadRun(callback, memlogfile: str, *args, **kwargs):
     except Exception as e:
         log.error('Error Writing memory plot: {}'.format(e))
 
-    return result, max_obj.toString()
+    ret_val = max_obj.toString() if max_obj is not None else "process no longer exists"
+    return result, ret_val
