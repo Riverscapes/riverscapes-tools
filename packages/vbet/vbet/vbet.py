@@ -17,6 +17,7 @@ import time
 import sqlite3
 import shutil
 from typing import List, Dict
+from copy import deepcopy
 
 from osgeo import ogr, gdal
 import rasterio
@@ -217,7 +218,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     output_inactive_vbet_area_raster = os.path.join(project_folder, 'outputs', 'inactive_vbet_area.tif')
     empty_array = np.empty((size_x, size_y), dtype=np.int32)
     empty_array.fill(out_meta['nodata'])
-    int_meta = out_meta
+    int_meta = deepcopy(out_meta)
     int_meta['dtype'] = 'int32'
     for raster in [output_vbet_area_raster, output_active_vbet_area_raster]:
         with rasterio.open(raster, 'w', **int_meta) as rio:
