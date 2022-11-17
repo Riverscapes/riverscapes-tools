@@ -103,6 +103,10 @@ echo "======================  Upload to the warehouse ======================="
 
 # Upload the HUC into the warehouse
 cd $VBET_DIR
+
+# Workaround: sometimes the temp folder doesn't clean up. We always want to remove it (moving is quicker than deleting)
+mv $VBET_DIR/temp $DATA_DIR
+
 rscli upload . --replace --tags "$VBET_TAGS" --no-input --verbose --program "$PROGRAM"
 if [[ $? != 0 ]]; then return 1; fi
 
