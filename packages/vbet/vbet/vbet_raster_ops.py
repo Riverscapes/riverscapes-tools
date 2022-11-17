@@ -76,7 +76,8 @@ def mask_rasters_nodata(in_raster_path: Path, nodata_raster_path: Path, out_rast
     """
     log = Logger('mask_rasters_nodata')
 
-    with rasterio.open(nodata_raster_path) as nd_src, rasterio.open(in_raster_path) as data_src:
+    with rasterio.open(nodata_raster_path) as nd_src, \
+            rasterio.open(in_raster_path) as data_src:
         # All 3 rasters should have the same extent and properties. They differ only in dtype
         out_meta = data_src.meta
         out_meta['nodata'] = -9999
@@ -93,7 +94,7 @@ def mask_rasters_nodata(in_raster_path: Path, nodata_raster_path: Path, out_rast
                 nd_arr = nd_src.read(1, window=window, masked=True)
                 data = data_src.read(1, window=window, masked=True)
                 # Combine the mask of the nd_src with that of the data. This is done in-place
-                data.mask = np.logical_and(nd_arr.mask, data.mask)
+                data.mask = np.logical_or(nd_arr.mask, data.mask)
 
                 out_src.write(data, window=window, indexes=1)
 
