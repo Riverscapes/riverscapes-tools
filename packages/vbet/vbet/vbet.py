@@ -237,13 +237,14 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     write_rasters = {}
 
     topo_evidence_raster = os.path.join(project_folder, LayerTypes['EVIDENCE_TOPO'].rel_path)
-    write_rasters['EVIDENCE_TOPO'] = rasterio.open(topo_evidence_raster, 'w', **out_meta)
-
     topo_evidence_raster = os.path.join(project_folder, LayerTypes['NORMALIZED_SLOPE'].rel_path)
-    write_rasters['NORMALIZED_SLOPE'] = rasterio.open(topo_evidence_raster, 'w', **out_meta)
-
     topo_evidence_raster = os.path.join(project_folder, LayerTypes['NORMALIZED_TWI'].rel_path)
+    write_rasters['NORMALIZED_SLOPE'] = rasterio.open(topo_evidence_raster, 'w', **out_meta)
     write_rasters['NORMALIZED_TWI'] = rasterio.open(topo_evidence_raster, 'w', **out_meta)
+    write_rasters['EVIDENCE_TOPO'] = rasterio.open(topo_evidence_raster, 'w', **out_meta)
+    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['EVIDENCE_TOPO'])
+    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['NORMALIZED_SLOPE'])
+    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['NORMALIZED_TWI'])
 
     # Generate full normaized slope and twi rasters
     for _ji, window in read_rasters['Slope'].block_windows(1):
