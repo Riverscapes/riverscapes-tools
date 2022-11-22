@@ -78,12 +78,12 @@ LayerTypes = {
     }),
     # Same here. Sub layers are added dynamically later.
     'COMPOSITE_VBET_EVIDENCE': RSLayer('VBET Evidence Raster', 'VBET_EVIDENCE', 'Raster', 'outputs/vbet_evidence.tif'),
-    'COMPOSITE_HAND_RASTER': RSLayer('Hand Raster', 'HAND_RASTER', 'Raster', 'intermediates/composite_hand.tif'),
-    'NORMALIZED_HAND': RSLayer('Normalized HAND Evidence', 'NORMALIZED_HAND', 'Raster', 'intermediates/normalized_hand.tif'),
+    'COMPOSITE_HAND_RASTER': RSLayer('Hand Raster', 'HAND_RASTER', 'Raster', 'intermediates/hand_composite.tif'),
+    'NORMALIZED_HAND': RSLayer('Normalized HAND Evidence', 'NORMALIZED_HAND', 'Raster', 'intermediates/hand_normalized.tif'),
     'EVIDENCE_TOPO': RSLayer('Topo Evidence', 'EVIDENCE_TOPO', 'Raster', 'intermediates/topographic_evidence.tif'),
 
-    'NORMALIZED_SLOPE': RSLayer('Normalized Slope', 'NORMALIZED_SLOPE', 'Raster', 'intermediates/normalized_slope.tif'),
-    'NORMALIZED_TWI': RSLayer('Normalized Hand', 'NORMALIZED_TWI', 'Raster', 'intermediates/normalized_twi.tif'),
+    'NORMALIZED_SLOPE': RSLayer('Normalized Slope', 'NORMALIZED_SLOPE', 'Raster', 'intermediates/slope_normalized.tif'),
+    'NORMALIZED_TWI': RSLayer('Normalized Hand', 'NORMALIZED_TWI', 'Raster', 'intermediates/twi_normalized.tif'),
 
     'VBET_OUTPUTS': RSLayer('VBET', 'VBET_OUTPUTS', 'Geopackage', 'outputs/vbet.gpkg', {
         'VBET_FULL': RSLayer('VBET Full Extent', 'VBET_FULL', 'Vector', 'vbet_full'),
