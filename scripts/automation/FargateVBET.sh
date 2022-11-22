@@ -48,6 +48,7 @@ RS_CONTEXT_DIR=$DATA_DIR/rs_context/$HUC
 CHANNEL_AREA_DIR=$DATA_DIR/channel_area/$HUC
 TAUDEM_DIR=$DATA_DIR/taudem/$HUC
 VBET_DIR=$DATA_DIR/output
+VBET_SCRATCH=$DATA_DIR/vbet_scratch/$HUC
 
 ##########################################################################################
 # First Get RS_Context, ChannelArea and Taudem inputs
@@ -86,6 +87,7 @@ vbet $HUC \
   --twi_raster $TAUDEM_DIR/outputs/twi.tif \
   --reach_codes 33400,46000,46003,46006,46007,55800 \
   --mask $RS_CONTEXT_DIR/hydrology/WBDHU8.shp \
+  --temp_folder $VBET_SCRATCH \
   --meta "Runner=Cybercastor" \
   --debug \
   --verbose

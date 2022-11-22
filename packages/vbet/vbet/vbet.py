@@ -97,7 +97,7 @@ LayerTypes = {
 
 def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchments, in_channel_area, vaa_table, project_folder, scenario_code, huc,
                      level_paths=None, in_pitfill_dem=None, in_dinfflowdir_ang=None, in_dinfflowdir_slp=None, in_twi_raster=None, meta=None, debug=False,
-                     reach_codes=None, mask=None):
+                     reach_codes=None, mask=None, temp_folder=None):
 
     thresh_vals = {'VBET_IA': 0.90, 'VBET_FULL': 0.68}
 
@@ -302,7 +302,10 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     raster_envelope_geom = VectorBase.shapely2ogr(bbox)
     vbet_clip_buffer_size = VectorBase.rough_convert_metres_to_raster_units(dem, 0.25)
 
-    temp_rasters_folder = os.path.join(project_folder, 'temp', 'rasters')
+    # Allow us to specify a temp folder outside our project folder
+    temp_dir = temp_folder if temp_folder else os.path.join(project_folder, 'temp')
+
+    temp_rasters_folder = os.path.join(temp_dir, 'rasters')
     safe_makedirs(temp_rasters_folder)
 
     level_path_keys = {}
@@ -326,7 +329,9 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         if _tmtbuckets.meta['has_centerline'] is not False:
             _tmtbuckets.meta['has_centerline'] = True
 
-    # Iterate VBET generateion for each level path
+    ####################################################################################
+    # Level path Loop
+    ####################################################################################
     for level_path_key, level_path in enumerate(level_paths_to_run, 1):
         level_path_keys[level_path_key] = level_path
 
@@ -339,7 +344,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         })
 
         log.info(f'Processing Level Path: {level_path} {level_path_key}/{len(level_paths_to_run)}')
-        temp_folder = os.path.join(project_folder, 'temp', f'levelpath_{level_path}')
+        temp_folder = os.path.join(temp_dir, f'levelpath_{level_path}')
         safe_makedirs(temp_folder)
 
         # Gather the channel area polygon for the level path
@@ -662,12 +667,12 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         # This takes a while but it's worth it for the visibility
         log.debug('Zipping temp folder')
         try:
-            shutil.make_archive(os.path.join(project_folder, 'temp'), "zip", os.path.join(project_folder, 'temp'))
+            shutil.make_archive(os.path.join(project_folder, 'temp'), "zip", temp_dir)
         except Exception as err:
             log.error(err)
         _tmr_waypt.timer_break('ZipTempFolder')
 
-    safe_remove_dir(os.path.join(project_folder, 'temp'))
+    safe_remove_dir(temp_dir)
     _tmr_waypt.timer_break('CleanupTempFolder')
 
     # Now add our Geopackages to the project XML
@@ -700,7 +705,16 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
 
 def generate_vbet_polygon(vbet_evidence_raster, rasterized_channel, channel_hand, out_valley_bottom, temp_folder, thresh_value=0.68):
+    """_summary_
 
+    Args:
+        vbet_evidence_raster (_type_): _description_
+        rasterized_channel (_type_): _description_
+        channel_hand (_type_): _description_
+        out_valley_bottom (_type_): _description_
+        temp_folder (_type_): _description_
+        thresh_value (float, optional): _description_. Defaults to 0.68.
+    """
     log = Logger('VBET Generate Polygon')
     _timer = Timer()
     # Mask to Hand area
@@ -842,6 +856,7 @@ def main():
     parser.add_argument('--twi_raster', help='Add debug tools for tracing things like memory usage at a performance cost.', default=None)
     parser.add_argument('--reach_codes', help='Comma delimited reach codes (FCode) to retain when filtering features. Omitting this option retains all features.', type=str)
     parser.add_argument('--flowline_type', type=str, default='NHD')
+    parser.add_argument('--temp_folder', help='(optional) cache folder for downloading files ', type=str)
     parser.add_argument('--mask', type=str, default=None)
     parser.add_argument('--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
@@ -865,10 +880,10 @@ def main():
         if args.debug is True:
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output_dir, 'vbet_mem.log')
-            retcode, max_obj = ThreadRun(vbet_centerlines, memfile, args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir, args.scenario_code, args.huc, level_paths, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster, meta=meta, reach_codes=reach_codes, mask=args.mask, debug=args.debug)
+            retcode, max_obj = ThreadRun(vbet_centerlines, memfile, args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir, args.scenario_code, args.huc, level_paths, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster, meta=meta, reach_codes=reach_codes, mask=args.mask, debug=args.debug, temp_folder=args.temp_folder)
             log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
         else:
-            vbet_centerlines(args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir, args.scenario_code, args.huc, level_paths, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster, meta=meta, reach_codes=reach_codes, mask=args.mask, debug=args.debug)
+            vbet_centerlines(args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir, args.scenario_code, args.huc, level_paths, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster, meta=meta, reach_codes=reach_codes, mask=args.mask, debug=args.debug, temp_folder=args.temp_folder)
     except Exception as e:
         log.error(e)
         traceback.print_exc(file=sys.stdout)
