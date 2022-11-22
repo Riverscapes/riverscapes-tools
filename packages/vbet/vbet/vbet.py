@@ -39,7 +39,7 @@ from scripts.raster2line import raster2line_geom
 
 from vbet.vbet_database import build_vbet_database, load_configuration
 from vbet.vbet_raster_ops import mask_rasters_nodata, rasterize_attribute, raster2array, array2raster, new_raster, rasterize, raster_merge, raster_update, raster_update_multiply, raster_remove_zone
-from vbet.vbet_outputs import vbet_merge, threshold
+from vbet.vbet_outputs import threshold
 from vbet.vbet_report import VBETReport
 from vbet.vbet_segmentation import calculate_segmentation_metrics, generate_segmentation_points, split_vbet_polygons, summerize_vbet_metrics
 from vbet.__version__ import __version__
@@ -161,6 +161,9 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     _proj_dem_node, dem = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], in_dem, replace=True)
     _proj_slope_node, in_rasters['Slope'] = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['SLOPE_RASTER'], in_slope, replace=True)
 
+    # Use the size of the DEM to guess if we need the bigTIFF flag for files at or near 4Gb
+    use_big_tiff = os.path.getsize(dem) > 3800000000
+
     # generate top level taudem products if they do not exist
     if in_pitfill_dem is None:
         pitfill_dem = os.path.join(project_folder, LayerTypes['PITFILL'].rel_path)
@@ -218,6 +221,9 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     output_inactive_vbet_area_raster = os.path.join(project_folder, 'outputs', 'inactive_vbet_area.tif')
     empty_array = np.empty((size_x, size_y), dtype=np.int32)
     empty_array.fill(out_meta['nodata'])
+    if use_big_tiff:
+        out_meta['BIGTIFF'] = 'YES'
+
     int_meta = deepcopy(out_meta)
     int_meta['dtype'] = 'int32'
     for raster in [output_vbet_area_raster, output_active_vbet_area_raster]:
@@ -449,6 +455,10 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             out_meta['count'] = 1
             out_meta['compress'] = 'deflate'
 
+            use_big_tiff_inner = os.path.getsize(evidence_raster)
+            if use_big_tiff_inner:
+                out_meta['BIGTIFF'] = 'YES'
+
             evidence_raster = os.path.join(temp_rasters_folder, f'vbet_evidence_{level_path}.tif')
             normalized_local_hand = os.path.join(temp_rasters_folder, f'normalized_hand_{level_path}.tif')
             write_rasters = {}  # {name: rasterio.open(raster, 'w', **out_meta) for name, raster in out_rasters.items()}
@@ -509,6 +519,11 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                 with rasterio.open(valley_bottom_raster, 'r') as rio_vbet, \
                         rasterio.open(rasterized_level_path, 'r') as rio_flowline:
                     out_meta = rio_vbet.meta
+
+                    use_big_tiff_cline = os.path.getsize(valley_bottom_raster)
+                    if use_big_tiff_cline:
+                        out_meta['BIGTIFF'] = 'YES'
+
                     out_meta['compress'] = 'deflate'
                     with rasterio.open(valley_bottom_flowline_raster, 'w', **out_meta) as rio_out:
                         for _ji, window in rio_vbet.block_windows(1):

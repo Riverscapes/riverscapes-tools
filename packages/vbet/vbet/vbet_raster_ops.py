@@ -410,6 +410,10 @@ def create_empty_raster(raster_path: Path, template_raster: Path):
         out_meta['count'] = 1
         out_meta['compress'] = 'deflate'
 
+    use_big_tiff = os.path.getsize(template_raster) > 3800000000
+    if use_big_tiff:
+        out_meta['BIGTIFF'] = 'YES'
+
     with rasterio.open(raster_path, 'w', **out_meta) as rio_dest:
         for _ji, window in rio_dest.block_windows(1):
             # Writing a perfectly masked array should give us a raster where everything is nodata
