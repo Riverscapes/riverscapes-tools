@@ -81,6 +81,10 @@ LayerTypes = {
     'COMPOSITE_HAND_RASTER': RSLayer('Hand Raster', 'HAND_RASTER', 'Raster', 'intermediates/composite_hand.tif'),
     'NORMALIZED_HAND': RSLayer('Normalized HAND Evidence', 'NORMALIZED_HAND', 'Raster', 'intermediates/normalized_hand.tif'),
     'EVIDENCE_TOPO': RSLayer('Topo Evidence', 'EVIDENCE_TOPO', 'Raster', 'intermediates/topographic_evidence.tif'),
+
+    'NORMALIZED_SLOPE': RSLayer('Normalized Slope', 'NORMALIZED_SLOPE', 'Raster', 'intermediates/normalized_slope.tif'),
+    'NORMALIZED_TWI': RSLayer('Normalized Hand', 'NORMALIZED_TWI', 'Raster', 'intermediates/normalized_twi.tif'),
+
     'VBET_OUTPUTS': RSLayer('VBET', 'VBET_OUTPUTS', 'Geopackage', 'outputs/vbet.gpkg', {
         'VBET_FULL': RSLayer('VBET Full Extent', 'VBET_FULL', 'Vector', 'vbet_full'),
         'VBET_IA': RSLayer('VBET Inactive/Active Boundary', 'VBET_IA', 'Vector', 'active_valley_bottom'),
@@ -230,9 +234,16 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         with rasterio.open(raster, 'w', **int_meta) as rio:
             rio.write(empty_array, 1)
 
-    topo_evidence_raster = os.path.join(project_folder, LayerTypes['EVIDENCE_TOPO'].rel_path)
     write_rasters = {}
+
+    topo_evidence_raster = os.path.join(project_folder, LayerTypes['EVIDENCE_TOPO'].rel_path)
     write_rasters['EVIDENCE_TOPO'] = rasterio.open(topo_evidence_raster, 'w', **out_meta)
+
+    topo_evidence_raster = os.path.join(project_folder, LayerTypes['NORMALIZED_SLOPE'].rel_path)
+    write_rasters['NORMALIZED_SLOPE'] = rasterio.open(topo_evidence_raster, 'w', **out_meta)
+
+    topo_evidence_raster = os.path.join(project_folder, LayerTypes['NORMALIZED_TWI'].rel_path)
+    write_rasters['NORMALIZED_TWI'] = rasterio.open(topo_evidence_raster, 'w', **out_meta)
 
     # Generate full normaized slope and twi rasters
     for _ji, window in read_rasters['Slope'].block_windows(1):
@@ -246,6 +257,8 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                 normalized[name] = np.ma.MaskedArray(vbet_run['Transforms'][name][0](block[name].data), mask=block[name].mask)
         fvals_topo = np.ma.mean([normalized['Slope'], normalized['TWI']], axis=0)
         write_rasters['EVIDENCE_TOPO'].write(np.ma.filled(np.float32(fvals_topo), out_meta['nodata']), window=window, indexes=1)
+        write_rasters['NORMALIZED_SLOPE'].write(np.ma.filled(np.float32(normalized['Slope']), out_meta['nodata']), window=window, indexes=1)
+        write_rasters['NORMALIZED_TWI'].write(np.ma.filled(np.float32(normalized['TWI']), out_meta['nodata']), window=window, indexes=1)
     write_rasters['EVIDENCE_TOPO'].close()
 
     # Initialize Outputs
