@@ -237,11 +237,11 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     write_rasters = {}
 
     topo_evidence_raster = os.path.join(project_folder, LayerTypes['EVIDENCE_TOPO'].rel_path)
-    topo_evidence_raster = os.path.join(project_folder, LayerTypes['NORMALIZED_SLOPE'].rel_path)
-    topo_evidence_raster = os.path.join(project_folder, LayerTypes['NORMALIZED_TWI'].rel_path)
-    write_rasters['NORMALIZED_SLOPE'] = rasterio.open(topo_evidence_raster, 'w', **out_meta)
-    write_rasters['NORMALIZED_TWI'] = rasterio.open(topo_evidence_raster, 'w', **out_meta)
+    normalized_slope = os.path.join(project_folder, LayerTypes['NORMALIZED_SLOPE'].rel_path)
+    normalized_twi = os.path.join(project_folder, LayerTypes['NORMALIZED_TWI'].rel_path)
     write_rasters['EVIDENCE_TOPO'] = rasterio.open(topo_evidence_raster, 'w', **out_meta)
+    write_rasters['NORMALIZED_SLOPE'] = rasterio.open(normalized_slope, 'w', **out_meta)
+    write_rasters['NORMALIZED_TWI'] = rasterio.open(normalized_twi, 'w', **out_meta)
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['EVIDENCE_TOPO'])
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['NORMALIZED_SLOPE'])
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['NORMALIZED_TWI'])
