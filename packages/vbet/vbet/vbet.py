@@ -48,7 +48,7 @@ from vbet.__version__ import __version__
 Path = str
 
 NCORES = os.environ['TAUDEM_CORES'] if 'TAUDEM_CORES' in os.environ else '2'  # "8"
-
+BIG_TIFF_THRESH = 3800000000
 initGDALOGRErrors()
 
 cfg = ModelConfig('http://xml.riverscapes.net/Projects/XSD/V1/VBET.xsd', __version__)
@@ -162,7 +162,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     _proj_slope_node, in_rasters['Slope'] = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['SLOPE_RASTER'], in_slope, replace=True)
 
     # Use the size of the DEM to guess if we need the bigTIFF flag for files at or near 4Gb
-    use_big_tiff = os.path.getsize(dem) > 3800000000
+    use_big_tiff = os.path.getsize(dem) > BIG_TIFF_THRESH
 
     # generate top level taudem products if they do not exist
     if in_pitfill_dem is None:
@@ -455,7 +455,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             out_meta['count'] = 1
             out_meta['compress'] = 'deflate'
 
-            use_big_tiff_inner = os.path.getsize(evidence_raster)
+            use_big_tiff_inner = os.path.getsize(in_rasters['HAND']) > BIG_TIFF_THRESH
             if use_big_tiff_inner:
                 out_meta['BIGTIFF'] = 'YES'
 
@@ -520,7 +520,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                         rasterio.open(rasterized_level_path, 'r') as rio_flowline:
                     out_meta = rio_vbet.meta
 
-                    use_big_tiff_cline = os.path.getsize(valley_bottom_raster)
+                    use_big_tiff_cline = os.path.getsize(valley_bottom_raster) > BIG_TIFF_THRESH
                     if use_big_tiff_cline:
                         out_meta['BIGTIFF'] = 'YES'
 
