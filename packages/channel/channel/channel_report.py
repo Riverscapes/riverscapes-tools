@@ -1,8 +1,9 @@
 """Build a report for the channel area
 """
+
 import argparse
-# import sqlite3
-# from xml.etree import ElementTree as ET
+import sqlite3
+from xml.etree import ElementTree as ET
 
 from rscommons import Logger, dotenv, ModelConfig, RSReport, RSProject
 # from rscommons.util import safe_makedirs, sizeof_fmt
@@ -23,6 +24,20 @@ class ChannelReport(RSReport):
         self.log = Logger('Channel Report')
         self.project_root = rs_project.project_dir
 
+        self.out_section = self.section('Outputs', 'Outputs')
+        p1 = ET.Element('p')
+        p1.text = 'The output of the Channel Area Tool is a polygon feature class representing the bankfull width of a channel network. See documentation for the tool '
+        aEl1 = ET.SubElement(p1, 'a', {'href': 'https://tools.riverscapes.net/channel/'})
+        aEl1.text = 'here.'
+        self.out_section.append(p1)
+        self.outputs_content()
+
+        in_section = self.section('Inputs', 'Inputs')
+        p1in = ET.Element('p')
+        p2in = ET.Element('p')
+        p1in.text = 'The inputs to the Channel Area tool are a drainage network (polyline) layer, and polygons representing river channels.'
+        p2in.text = 'The default inputs for the tool are the NHD Flowline, NHD Area, and NHD Waterbody feature classes.'
+
         self.layersummary("Inputs", "Inputs")
         self.layersummary("Intermediates", "Intermediates")
         self.layersummary("Outputs", "Outputs")
@@ -38,6 +53,10 @@ class ChannelReport(RSReport):
                 self.layerprint(lyr, section, self.project_root)
             if lyr.tag in ['SQLiteDB']:
                 self.layerprint(lyr, section, self.project_root)
+
+    def outputs_content(self):
+
+        self.section('AreaBreakdown', 'Data Source Breakdown', el_parent=self.out_section, level=2)
 
 
 if __name__ == '__main__':

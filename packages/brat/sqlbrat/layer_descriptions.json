@@ -1,6 +1,6 @@
 {
     "BRAT_GEOMETRY": ["The BRAT drainage network: NHD Flowlines that have been segmented to 300 m.","",""],
-    "BRAT": ["The output network of the BRAT tool, with various attributes added representing model outputs.","",""],
+    "BRAT": ["The output network of the BRAT tool, with various attributes added representing model intermediates and outputs.","",""],
     "EXVEG_SUIT": ["The existing vegetation raster classified into suitability for dam building material, where 0 is unsuitable and 4 is preferred.","",""],
     "HISTVEG_SUIT": ["The historice vegetation raster classified into suitability for dam building material, where 0 is unsuitable and 4 is preferred.","",""]
 }

@@ -42,7 +42,18 @@
         "--verbose",
         //"--debug"
       ]
-    },    
+    },
+    {
+      "name": "Calculate Metrics",
+      "type": "python",
+      "request": "launch",
+      "module": "rscommons.classes.project_metrics",
+      "console": "integratedTerminal",
+      "args": [
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhdplushr.gpkg",
+        "{env:DATA_ROOT}/channel_area/${input:HUC}/project.rs.xml"
+      ]
+    },
     {
       "name": "Version Bump",
       "type": "python",

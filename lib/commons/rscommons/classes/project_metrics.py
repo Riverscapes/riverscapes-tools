@@ -18,7 +18,7 @@ from sympy import arg
 
 class MetricsJson:
 
-    def __init__(self, HUC8: str, HUC12: str, project_xml: str):
+    def __init__(self, hydro_gpkg: str, project_xml: str):
         """This class creates a json file containing metrics summarized for model runs
 
         Args:
@@ -27,7 +27,7 @@ class MetricsJson:
             project_xml (str): path to the project.rs.xml file for the project to be summarized
         """
 
-        self.version = '0.0.1'
+        self.version = '0.0.2'
 
         self.log = Logger('Metrics')
 
@@ -35,37 +35,43 @@ class MetricsJson:
         self.config = {
             'vector': {
                 'NHDFlowline': [
-                    {
-                        'field': 'FCode'
-                    }
-                ],
-                'FLOWLINES': [
-                    {
-                        'field': 'FCode'
-                    }
+                    {'field': 'FCode'}
                 ],
                 'NHDArea': [
                     {'field': 'FCode'}
                 ],
                 'NHDWaterbody': [
-                    {
-                        'field': 'FCode'
-                    }
+                    {'field': 'FCode'}
+                ],
+                'flowlines': [
+                    {'field': 'FCode'}
+                ],
+                'flowareas': [
+                    {'field': 'FCode'}
+                ],
+                'waterbody': [
+                    {'field': 'FCode'}
+                ],
+                'waterbody_filtered': [
+                    {'field': 'FCode'}
+                ],
+                'flowarea_filtered': [
+                    {'field': 'FCode'}
+                ],
+                'difference_polygons': [
+                    {'field': 'FCode'}
+                ],
+                'channel_area': [
+                    {'field': 'FCode'}
                 ],
                 'Ownership': [
-                    {
-                        'field': 'ADMIN_AGEN'
-                    }
+                    {'field': 'ADMIN_AGEN'}
                 ],
                 'Ecoregions': [
-                    {
-                        'field': 'NA_L3NAME'
-                    }
+                    {'field': 'NA_L3NAME'}
                 ],
                 'Roads': [
-                    {
-                        'field': 'TNMFRC'
-                    }
+                    {'field': 'TNMFRC'}
                 ],
                 'BRAT_RESULTS': [
                     {
@@ -157,13 +163,13 @@ class MetricsJson:
         self.huc8_polygons = {}
         self.huc12_polygons = {}  # maybe combine into a single dict?
 
-        h8 = ogr.GetDriverByName('ESRI Shapefile').Open(HUC8)
-        h8lyr = h8.GetLayer()
+        src = ogr.GetDriverByName('GPKG').Open(hydro_gpkg)
+
+        h8lyr = src.GetLayer('WBDHU8')
         h8feature = list(h8lyr)
         self.huc8_polygons[h8feature[0].GetField('HUC8')] = VectorBase.ogr2shapely(h8feature[0].GetGeometryRef())
 
-        h12 = ogr.GetDriverByName('ESRI Shapefile').Open(HUC12)
-        h12lyr = h12.GetLayer()
+        h12lyr = src.GetLayer('WBDHU12')
         h12feature = list(h12lyr)
         for _, feature in enumerate(h12feature):
             self.huc12_polygons[feature.GetField('HUC12')] = VectorBase.ogr2shapely(feature.GetGeometryRef())
@@ -537,7 +543,7 @@ class MetricsJson:
         return stats
 
     def run_metrics(self):
-        """Combines the other methods in this class to calculate metrics for raster and vector layers 
+        """Combines the other methods in this class to calculate metrics for raster and vector layers
         within a riverscapes project
         """
 
@@ -546,9 +552,14 @@ class MetricsJson:
         if len(self.cat_datasets) > 0:
             for ds_path, ds_ref in self.cat_datasets:
                 self.log.info(f'analyzing categorical raster dataset: {ds_ref}')
-                if not os.path.exists(ds_path):
-                    self.log.warning(f'Layer {ds_ref} referenced in project xml but not present in project')
-                    continue
+                if 'gpkg' in ds_path:
+                    if not os.path.exists(os.path.dirname(ds_path)):
+                        self.log.warning(f'Layer {ds_ref} referenced in project xml but not present in project')
+                        continue
+                else:
+                    if not os.path.exists(ds_path):
+                        self.log.warning(f'Layer {ds_ref} referenced in project xml but not present in project')
+                        continue
                 self.categorical_raster_metrics(ds_ref, ds_path, self.huc8_polygons)
                 self.categorical_raster_metrics(ds_ref, ds_path, self.huc12_polygons)
 
@@ -557,9 +568,14 @@ class MetricsJson:
         if len(self.float_datasets) > 0:
             for ds_path, ds_ref in self.float_datasets:
                 self.log.info(f'analyzing continuous raster dataset: {ds_ref}')
-                if not os.path.exists(ds_path):
-                    self.log.warning(f'Layer {ds_ref} referenced in project xml but not present in project')
-                    continue
+                if 'gpkg' in ds_path:
+                    if not os.path.exists(os.path.dirname(ds_path)):
+                        self.log.warning(f'Layer {ds_ref} referenced in project xml but not present in project')
+                        continue
+                else:
+                    if not os.path.exists(ds_path):
+                        self.log.warning(f'Layer {ds_ref} referenced in project xml but not present in project')
+                        continue
                 h8stats = raster_buffer_stats2(self.huc8_polygons, ds_path)
                 h12stats = raster_buffer_stats2(self.huc12_polygons, ds_path)
                 self.rasters_stats_to_metrics(ds_path, h8stats, ds_ref)
@@ -586,9 +602,14 @@ class MetricsJson:
         if len(self.vector_datasets) > 0:
             for ds_path, ds_ref in self.vector_datasets:
                 self.log.info(f'Analyzing vector dataset: {ds_ref}')
-                if not os.path.exists(ds_path):
-                    self.log.warning(f'Layer {ds_ref} referenced in project xml but not present in project')
-                    continue
+                if 'gpkg' in ds_path:
+                    if not os.path.exists(os.path.dirname(ds_path)):
+                        self.log.warning(f'Layer {ds_ref} referenced in project xml but not present in project')
+                        continue
+                else:
+                    if not os.path.exists(ds_path):
+                        self.log.warning(f'Layer {ds_ref} referenced in project xml but not present in project')
+                        continue
                 h8vectorstats = self.vector_metrics(ds_path, ds_ref, self.huc8_polygons, self.epsg)
                 h12vectorstats = self.vector_metrics(ds_path, ds_ref, self.huc12_polygons, self.epsg)
 
@@ -628,11 +649,10 @@ class MetricsJson:
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('huc8', help='Path to the HUC8 watershed boundary shapefile', type=str)
-    parser.add_argument('huc12', help='Path to the HUC12 watershed boundary shapefile', type=str)
+    parser.add_argument('hydro_gpkg', help='Path to the NHDPlus HR geopackage that contains the WBD layers', type=str)
     parser.add_argument('projectxml', help='Path to the project.rs.xml', type=str)
     args = dotenv.parse_args_env(parser)
 
-    instance = MetricsJson(args.huc8, args.huc12, args.projectxml)
+    instance = MetricsJson(args.hydro_gpkg, args.projectxml)
     instance.run_metrics()
     instance.write_metrics()

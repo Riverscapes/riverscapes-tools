@@ -23,9 +23,19 @@ def get_project_datasets(project_xml: str) -> list:
     realization = realizations.find('Realization')
 
     # rasters
-    raster = realization.find('Datasets').findall('Raster')
-    float_datasets = [[raster[i].find('Path').text, raster[i].attrib['id']] for i in range(len(raster)) if raster[i].attrib['id'] not in categorical]
-    cat_datasets = [[raster[i].find('Path').text, raster[i].attrib['id']] for i in range(len(raster)) if raster[i].attrib['id'] in categorical]
+    ds = realization.find('Datasets')
+    if ds:
+        raster = ds.findall('Raster')
+        if raster:
+            float_datasets = [[raster[i].find('Path').text, raster[i].attrib['id']] for i in range(len(raster)) if raster[i].attrib['id'] not in categorical]
+            cat_datasets = [[raster[i].find('Path').text, raster[i].attrib['id']] for i in range(len(raster)) if raster[i].attrib['id'] in categorical]
+        vector = ds.findall('Vector')
+        if vector:
+            vector_datasets = [[vector[i].find('Path').text, vector[i].attrib['id']] for i in range(len(vector)) if not re.search('WBD.+', vector[i].attrib['id'])]
+    else:
+        float_datasets = []
+        cat_datasets = []
+        vector_datasets = []
 
     inputs = realization.find('Inputs')
     if inputs:
@@ -78,9 +88,6 @@ def get_project_datasets(project_xml: str) -> list:
                 float_datasets.append([dem.find('Path').text, dem.attrib['id']])
 
     # vectors
-    vector = realization.find('Datasets').findall('Vector')
-    vector_datasets = [[vector[i].find('Path').text, vector[i].attrib['id']] for i in range(len(vector)) if not re.search('WBD.+', vector[i].attrib['id'])]
-
     if inputs:
         inputvector = inputs.findall('Vector')
     else:
@@ -110,17 +117,19 @@ def get_project_datasets(project_xml: str) -> list:
                 vector_datasets.append([vectorout.find('Path').text, vectorout.attrib['id']])
 
     # append layers inside of geopackages to lists
-    geopackage = realization.find('Datasets').findall('Geopackage')
-    for g in geopackage:
-        lyr = g.find('Layers')
-        gpvec = lyr.findall('Vector')
-        gprast = lyr.findall('Raster')
-        if len(gpvec) > 0:
-            for vec in gpvec:
-                vector_datasets.append([g.find('Path').text + '/' + vec.find('Path').text, vec.attrib['id']])
-        if len(gprast) > 0:
-            for rast in gprast:
-                float_datasets.append([g.find('Path').text + '/' + rast.find('Path').text, rast.attrib['id']])  # check for categorical rasters in geopackages
+    if ds:
+        geopackage = ds.findall('Geopackage')
+        if geopackage:
+            for g in geopackage:
+                lyr = g.find('Layers')
+                gpvec = lyr.findall('Vector')
+                gprast = lyr.findall('Raster')
+                if len(gpvec) > 0:
+                    for vec in gpvec:
+                        vector_datasets.append([g.find('Path').text + '/' + vec.attrib['lyrName'], vec.attrib['lyrName']])
+                if len(gprast) > 0:
+                    for rast in gprast:
+                        float_datasets.append([g.find('Path').text + '/' + rast.attrib['lyrName'], rast.attrib['lyrName']])  # check for categorical rasters in geopackages
 
     if inputs:
         inputgeopackage = inputs.findall('Geopackage')
@@ -131,10 +140,10 @@ def get_project_datasets(project_xml: str) -> list:
                 gprast = lyr.findall('Raster')
                 if len(gpvec) > 0:
                     for vec in gpvec:
-                        vector_datasets.append([g.find('Path').text + '/' + vec.find('Path').text, vec.attrib['id']])
+                        vector_datasets.append([g.find('Path').text + '/' + vec.attrib['lyrName'], vec.attrib['lyrName']])
                 if len(gprast) > 0:
                     for rast in gprast:
-                        float_datasets.append([g.find('Path').text + '/' + rast.find('Path').text, rast.attrib['id']])
+                        float_datasets.append([g.find('Path').text + '/' + rast.attrib['lyrName'], rast.attrib['lyrName']])
 
     if intermediates:
         intergeopackage = intermediates.findall('Geopackage')
@@ -145,10 +154,10 @@ def get_project_datasets(project_xml: str) -> list:
                 gprast = lyr.findall('Raster')
                 if len(gpvec) > 0:
                     for vec in gpvec:
-                        vector_datasets.append([g.find('Path').text + '/' + vec.find('Path').text, vec.attrib['id']])
+                        vector_datasets.append([g.find('Path').text + '/' + vec.attrib['lyrName'], vec.attrib['lyrName']])
                 if len(gprast) > 0:
                     for rast in gprast:
-                        float_datasets.append([g.find('Path').text + '/' + rast.find('Path').text, rast.attrib['id']])
+                        float_datasets.append([g.find('Path').text + '/' + rast.attrib['lyrName'], rast.attrib['lyrName']])
 
     if outputs:
         outputgeopackage = outputs.findall('Geopackage')
@@ -159,9 +168,9 @@ def get_project_datasets(project_xml: str) -> list:
                 gprast = lyr.findall('Raster')
                 if len(gpvec) > 0:
                     for vec in gpvec:
-                        vector_datasets.append([g.find('Path').text + '/' + vec.find('Path').text, vec.attrib['id']])
+                        vector_datasets.append([g.find('Path').text + '/' + vec.attrib['lyrName'], vec.attrib['lyrName']])
                 if len(gprast) > 0:
                     for rast in gprast:
-                        float_datasets.append([g.find('Path').text + '/' + rast.find('Path').text, rast.attrib['id']])
+                        float_datasets.append([g.find('Path').text + '/' + rast.attrib['lyrName'], rast.attrib['lyrName']])
 
     return float_datasets, cat_datasets, vector_datasets
