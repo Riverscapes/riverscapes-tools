@@ -2,12 +2,14 @@
 """
 
 import argparse
+import os
 import sqlite3
 from xml.etree import ElementTree as ET
 
-from rscommons import Logger, dotenv, ModelConfig, RSReport, RSProject
+from rscommons import Logger, dotenv, ModelConfig, RSReport, RSProject, VectorBase, get_shp_or_gpkg
+from rscommons.classes.vector_base import get_utm_zone_epsg
 # from rscommons.util import safe_makedirs, sizeof_fmt
-# from rscommons.plotting import xyscatter, box_plot
+from rscommons.plotting import pie
 
 from channel.__version__ import __version__
 
@@ -23,10 +25,20 @@ class ChannelReport(RSReport):
         super().__init__(rs_project, report_path)
         self.log = Logger('Channel Report')
         self.project_root = rs_project.project_dir
+        self.images_dir = os.path.join(os.path.dirname(report_path), 'images')
+
+        # references to colors
+        self.colors = {
+            'NHDArea': '#20908d',
+            'NHDWaterbody': '#4fbfe7',
+            'BufferedFlowlines': '#f3a6b2',
+            'Polygons': '#8eb4f0'
+        }
 
         self.out_section = self.section('Outputs', 'Outputs')
         p1 = ET.Element('p')
-        p1.text = 'The output of the Channel Area Tool is a polygon feature class representing the bankfull width of a channel network. See documentation for the tool '
+        p1.text = 'The Channel Area Tool is a simple tool for aggregating polygons from different data sources into a single feature class. '
+        'The output of the Channel Area Tool is a polygon layer representing the bankfull width of a channel network. See documentation for the tool '
         aEl1 = ET.SubElement(p1, 'a', {'href': 'https://tools.riverscapes.net/channel/'})
         aEl1.text = 'here.'
         self.out_section.append(p1)
@@ -56,7 +68,57 @@ class ChannelReport(RSReport):
 
     def outputs_content(self):
 
-        self.section('AreaBreakdown', 'Data Source Breakdown', el_parent=self.out_section, level=2)
+        poly_areas = {}
+        lyr_label_dict = {'flowarea_filtered': 'NHD Flow Area', 'waterbody_filtered': 'NHD Waterbody', 'difference_polygons': 'Buffered NHD Flowlines', 'other_channels': 'Custom Polygons'}
+
+        intlayers = ['flowarea_filtered', 'waterbody_filtered', 'difference_polygons']
+        intpath = os.path.join(self.xml_project.project_dir, 'intermediates/intermediates.gpkg')
+        inlayers = ['other_channels']
+        inpath = os.path.join(self.xml_project.project_dir, 'inputs/inputs.gpkg')
+
+        for lyr_label in intlayers:
+            with get_shp_or_gpkg(intpath, layer_name=lyr_label) as lyr:
+                if lyr.ogr_layer:
+                    longitude = lyr.ogr_layer.GetExtent()[0]
+                    proj_epsg = get_utm_zone_epsg(longitude)
+                    sref, transform = VectorBase.get_transform_from_epsg(lyr.spatial_ref, proj_epsg)
+                    area = 0
+                    for feat, fid, _ in lyr.iterate_features():
+                        feature = VectorBase.ogr2shapely(feat, transform)
+                        if not feature.is_valid:
+                            feature = feature.buffer(0)
+                        area += feature.area
+
+                    poly_areas[lyr_label_dict[lyr_label]] = float('{:.2f}'.format(area))
+
+        for lyr_label in inlayers:
+            with get_shp_or_gpkg(inpath, layer_name=lyr_label) as lyr:
+                if lyr.ogr_layer:
+                    longitude = lyr.ogr_layer.GetExtent()[0]
+                    proj_epsg = get_utm_zone_epsg(longitude)
+                    sref, transform = VectorBase.get_transform_from_epsg(lyr.spatial_ref, proj_epsg)
+                    area = 0
+                    for feat, fid, _ in lyr.iterate_features():
+                        feature = VectorBase.ogr2shapely(feat, transform)
+                        if not feature.is_valid:
+                            feature = feature.buffer(0)
+                        area += feature.area
+
+                    poly_areas[lyr_label_dict[lyr_label]] = float('{:.2f}'.format(area))
+
+        section = self.section('AreaBreakdown', 'Data Source Breakdown', el_parent=self.out_section, level=2)
+        RSReport.create_table_from_dict(poly_areas, section)
+        pie_path = os.path.join(self.images_dir, 'area_breakdown.png')
+        pie([values for key, values in poly_areas.items()], [key for key in poly_areas.keys()], "title", [self.colors['NHDArea'], self.colors['NHDWaterbody'], self.colors['BufferedFlowlines']], pie_path)
+        plot_wrapper = ET.Element('div', attrib={'class': 'plots'})
+        img_wrap = ET.Element('div', attrib={'class': 'imgWrap'})
+        img = ET.Element('img', attrib={
+            'src': '{}/{}'.format(os.path.basename(self.images_dir), os.path.basename(pie_path)),
+            'alt': 'pie_chart'
+        })
+        img_wrap.append(img)
+        plot_wrapper.append(img_wrap)
+        section.append(plot_wrapper)
 
 
 if __name__ == '__main__':

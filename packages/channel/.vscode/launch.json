@@ -55,6 +55,17 @@
       ]
     },
     {
+      "name": "Write Channel Area Report",
+      "type": "python",
+      "request": "launch",
+      "module": "channel.channel_report",
+      "console": "integratedTerminal",
+      "args": [
+        "{env:DATA_ROOT}/channel_area/${input:HUC}/project.rs.xml",
+        "{env:DATA_ROOT}/channel_area/${input:HUC}/outputs/channel_area.html"
+      ]
+    },
+    {
       "name": "Version Bump",
       "type": "python",
       "module": "rscommons.version",
