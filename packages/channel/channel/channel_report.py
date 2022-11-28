@@ -29,10 +29,10 @@ class ChannelReport(RSReport):
 
         # references to colors
         self.colors = {
-            'NHDArea': '#20908d',
-            'NHDWaterbody': '#4fbfe7',
-            'BufferedFlowlines': '#f3a6b2',
-            'Polygons': '#8eb4f0'
+            'flowarea_filtered': '#20908d',
+            'waterbody_filtered': '#4fbfe7',
+            'difference_polygons': '#f3a6b2',
+            'other_channel': '#8eb4f0'
         }
 
         self.out_section = self.section('Outputs', 'Outputs')
@@ -89,7 +89,7 @@ class ChannelReport(RSReport):
                             feature = feature.buffer(0)
                         area += feature.area
 
-                    poly_areas[lyr_label_dict[lyr_label]] = float('{:.2f}'.format(area))
+                    poly_areas[lyr_label] = float('{:.2f}'.format(area))
 
         for lyr_label in inlayers:
             with get_shp_or_gpkg(inpath, layer_name=lyr_label) as lyr:
@@ -104,12 +104,13 @@ class ChannelReport(RSReport):
                             feature = feature.buffer(0)
                         area += feature.area
 
-                    poly_areas[lyr_label_dict[lyr_label]] = float('{:.2f}'.format(area))
+                    poly_areas[lyr_label] = float('{:.2f}'.format(area))
 
         section = self.section('AreaBreakdown', 'Data Source Breakdown', el_parent=self.out_section, level=2)
-        RSReport.create_table_from_dict(poly_areas, section)
+        table_dict = {lyr_label_dict[i]: v for i, v in poly_areas.items()}
+        RSReport.create_table_from_dict(table_dict, section)
         pie_path = os.path.join(self.images_dir, 'area_breakdown.png')
-        pie([values for key, values in poly_areas.items()], [key for key in poly_areas.keys()], "title", [self.colors['NHDArea'], self.colors['NHDWaterbody'], self.colors['BufferedFlowlines']], pie_path)
+        pie([values for key, values in poly_areas.items()], [lyr_label_dict[key] for key in poly_areas.keys()], "title", [self.colors[key] for key in poly_areas.keys()], pie_path)
         plot_wrapper = ET.Element('div', attrib={'class': 'plots'})
         img_wrap = ET.Element('div', attrib={'class': 'imgWrap'})
         img = ET.Element('img', attrib={
