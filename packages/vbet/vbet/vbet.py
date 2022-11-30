@@ -21,6 +21,7 @@ from copy import deepcopy
 
 from osgeo import ogr, gdal
 import rasterio
+from rasterio.windows import Window
 from shapely.geometry import box
 import numpy as np
 from scipy.ndimage import label, generate_binary_structure, binary_closing
@@ -482,10 +483,19 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             progbar = ProgressBar(len(list(read_rasters['Slope'].block_windows(1))), 50, "Calculating evidence layer")
             counter = 0
             # Again, these rasters should be orthogonal so their windows should also line up
+            in_transform = read_rasters['HAND'].get_transform()
+            out_transform = read_rasters['Slope'].get_transform()
+            col_off_delta = round((in_transform[0] - out_transform[0]) / out_transform[1])
+            row_off_delta = round((in_transform[3] - out_transform[3]) / out_transform[5])
+
             for _ji, window in read_rasters['HAND'].block_windows(1):
                 progbar.update(counter)
                 counter += 1
-                block = {block_name: raster.read(1, window=window, masked=True) for block_name, raster in read_rasters.items()}
+                modified_window = Window(window.col_off + col_off_delta, window.row_off + row_off_delta, window.width, window.height)
+                block = {}
+                for block_name, raster in read_rasters.items():
+                    out_window = window if block_name in ['HAND', 'Channel'] else modified_window
+                    block[block_name] = raster.read(1, window=out_window, masked=True)
 
                 normalized = {}
                 for name in vbet_run['Inputs']:
