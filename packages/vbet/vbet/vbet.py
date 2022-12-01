@@ -283,20 +283,14 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
     # Generate the list of level paths to run, sorted by ascending order and optional user filter
     level_paths_to_run = []
-    level_path_lengths = {}
-    with GeopackageLayer(line_network) as line_lyr:
-        all_level_paths = []
-        for feat, *_ in line_lyr.iterate_features():
-            level_path = feat.GetField('LevelPathI')
-            level_path_str = str(int(level_path))
-            all_level_paths.append(level_path_str)
-            if level_path_str not in level_path_lengths:
-                level_path_lengths[level_path_str] = 0
-            # Accumulate level path lengths (in meters)
-            level_path_lengths[level_path_str] += feat.GetField('LengthKm') * 1000
+    # level_path_da = {}
 
-        # Dedupe level paths
-        all_level_paths = list(set(all_level_paths))
+    with sqlite3.connect(inputs_gpkg) as conn:
+
+        curs = conn.cursor()
+        level_paths_raw = curs.execute("SELECT LevelPathI, SUM(TotDASqKm) AS drainage FROM flowlines_vaa GROUP BY LevelPathI ORDER BY drainage DESC").fetchall()
+        all_level_paths = list(str(int(lp[0])) for lp in level_paths_raw)
+        level_paths_drainage = {str(int(lp[0])): lp[1] for lp in level_paths_raw}
         log.info(f'Found {len(all_level_paths)} potential level paths to run.')
 
         # If the user specified a set of level paths then we filter to those, ignoring any that aren't found with a warning
@@ -310,7 +304,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             level_paths_to_run = all_level_paths
         all_level_paths = None
 
-    level_paths_to_run.sort(reverse=False)
+    # level_paths_to_run.sort(reverse=False)
     # process all polygons that aren't assigned a level path: ponds, waterbodies etc.
     level_paths_to_run.append(None)
 
@@ -321,7 +315,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         raster_bounds = raster.bounds
     bbox = box(*raster_bounds)
     raster_envelope_geom = VectorBase.shapely2ogr(bbox)
-    vbet_clip_buffer_size = VectorBase.rough_convert_metres_to_raster_units(dem, 0.25)
+    # vbet_clip_buffer_size = VectorBase.rough_convert_metres_to_raster_units(dem, 0.25)
 
     # Allow us to specify a temp folder outside our project folder
     temp_dir = temp_folder if temp_folder else os.path.join(project_folder, 'temp')
@@ -358,7 +352,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
         _tmtbuckets.tick({
             "level_path": level_path,
-            "length": level_path_lengths[level_path] if level_path in level_path_lengths else 0,
+            "drainage": level_paths_drainage[level_path] if level_path in level_paths_drainage else 0,
             "code": None,
             "msg": None,
             "has_centerline": None,
