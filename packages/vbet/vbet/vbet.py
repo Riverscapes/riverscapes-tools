@@ -40,7 +40,7 @@ from scripts.raster2line import raster2line_geom
 
 from vbet.vbet_database import build_vbet_database, load_configuration
 from vbet.vbet_raster_ops import mask_rasters_nodata, rasterize_attribute, raster2array, array2raster, new_raster, rasterize, raster_merge, raster_update, raster_update_multiply, raster_remove_zone
-from vbet.vbet_outputs import threshold
+from vbet.vbet_outputs import threshold, clean_up_centerlines
 from vbet.vbet_report import VBETReport
 from vbet.vbet_segmentation import calculate_segmentation_metrics, generate_segmentation_points, split_vbet_polygons, summerize_vbet_metrics
 from vbet.__version__ import __version__
@@ -263,17 +263,24 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         write_rasters['NORMALIZED_TWI'].write(np.ma.filled(np.float32(normalized['TWI']), out_meta['nodata']), window=window, indexes=1)
     write_rasters['EVIDENCE_TOPO'].close()
 
+    # Allow us to specify a temp folder outside our project folder
+    temp_dir = temp_folder if temp_folder else os.path.join(project_folder, 'temp')
+    temp_rasters_folder = os.path.join(temp_dir, 'rasters')
+    safe_makedirs(temp_rasters_folder)
+    level_path_keys = {}
+
     # Initialize Outputs
     output_centerlines = os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['VBET_CENTERLINES'].rel_path)
+    temp_centerlines = os.path.join(temp_dir, 'raw_centerlines.gpkg', 'centerlines')
     output_vbet = os.path.join(vbet_gpkg, LayerTypes["VBET_OUTPUTS"].sub_layers['VBET_FULL'].rel_path)
     output_vbet_ia = os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['VBET_IA'].rel_path)
-    with GeopackageLayer(output_centerlines, write=True) as lyr_cl_init, \
+    with GeopackageLayer(temp_centerlines, write=True) as lyr_temp_cl_init, \
         GeopackageLayer(output_vbet, write=True) as lyr_vbet_init, \
         GeopackageLayer(output_vbet_ia, write=True) as lyr_active_vbet_init, \
             GeopackageLayer(line_network) as lyr_ref:
         fields = {'LevelPathI': ogr.OFTString}
-        lyr_cl_init.create_layer(ogr.wkbMultiLineString, spatial_ref=lyr_ref.spatial_ref, fields=fields)
-        lyr_cl_init.create_field('CL_Part_Index', ogr.OFTInteger)
+        lyr_temp_cl_init.create_layer(ogr.wkbMultiLineString, spatial_ref=lyr_ref.spatial_ref, fields=fields)
+        lyr_temp_cl_init.create_field('CL_Part_Index', ogr.OFTInteger)
         lyr_vbet_init.create_layer(ogr.wkbMultiPolygon, spatial_ref=lyr_ref.spatial_ref, fields=fields)
         lyr_active_vbet_init.create_layer(ogr.wkbMultiPolygon, spatial_ref=lyr_ref.spatial_ref, fields=fields)
 
@@ -283,10 +290,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
     # Generate the list of level paths to run, sorted by ascending order and optional user filter
     level_paths_to_run = []
-    # level_path_da = {}
-
     with sqlite3.connect(inputs_gpkg) as conn:
-
         curs = conn.cursor()
         level_paths_raw = curs.execute("SELECT LevelPathI, SUM(TotDASqKm) AS drainage FROM flowlines_vaa GROUP BY LevelPathI ORDER BY drainage DESC").fetchall()
         all_level_paths = list(str(int(lp[0])) for lp in level_paths_raw)
@@ -303,8 +307,6 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         else:
             level_paths_to_run = all_level_paths
         all_level_paths = None
-
-    # level_paths_to_run.sort(reverse=False)
     # process all polygons that aren't assigned a level path: ponds, waterbodies etc.
     level_paths_to_run.append(None)
 
@@ -315,15 +317,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         raster_bounds = raster.bounds
     bbox = box(*raster_bounds)
     raster_envelope_geom = VectorBase.shapely2ogr(bbox)
-    # vbet_clip_buffer_size = VectorBase.rough_convert_metres_to_raster_units(dem, 0.25)
-
-    # Allow us to specify a temp folder outside our project folder
-    temp_dir = temp_folder if temp_folder else os.path.join(project_folder, 'temp')
-
-    temp_rasters_folder = os.path.join(temp_dir, 'rasters')
-    safe_makedirs(temp_rasters_folder)
-
-    level_path_keys = {}
+    vbet_clip_buffer_size = VectorBase.rough_convert_metres_to_raster_units(dem, 0.25)
 
     _tmr_waypt.timer_break('InputPrep')  # this is where input prep ends
 
@@ -488,16 +482,16 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                 modified_window = Window(window.col_off + col_off_delta, window.row_off + row_off_delta, window.width, window.height)
                 block = {}
                 for block_name, raster in read_rasters.items():
-                    out_window = window if block_name in ['HAND', 'Channel'] else modified_window
+                    out_window = window if block_name in ['HAND', 'Channel', 'TRANSFORM_ZONE_HAND'] else modified_window
                     block[block_name] = raster.read(1, window=out_window, masked=True)
 
                 normalized = {}
                 for name in vbet_run['Inputs']:
                     if name in vbet_run['Zones']:
-                        transforms = [np.ma.MaskedArray(transform(block[name].data), mask=block[name].mask) for transform in vbet_run['Transforms'][name]]
-                        normalized[name] = np.ma.MaskedArray(np.choose(block[f'TRANSFORM_ZONE_{name}'].data, transforms, mode='clip'), mask=block[name].mask)
+                        transforms = [np.ma.MaskedArray(transform(block[name].data), mask=block['HAND'].mask) for transform in vbet_run['Transforms'][name]]
+                        normalized[name] = np.ma.MaskedArray(np.choose(block[f'TRANSFORM_ZONE_{name}'].data, transforms, mode='clip'), mask=block['HAND'].mask)
                     else:
-                        normalized[name] = np.ma.MaskedArray(vbet_run['Transforms'][name][0](block[name].data), mask=block[name].mask)
+                        normalized[name] = np.ma.MaskedArray(vbet_run['Transforms'][name][0](block[name].data), mask=block['HAND'].mask)
 
                 fvals_topo = np.ma.mean([normalized['Slope'], normalized['HAND'], normalized['TWI']], axis=0)
                 fvals_channel = 0.995 * block['Channel']
@@ -559,7 +553,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                 geom_flowline = collect_linestring(level_path_flowlines)
 
                 geom_flowline = ogr.ForceToMultiLineString(geom_flowline)
-                with GeopackageLayer(output_centerlines, write=True) as lyr_cl:
+                with GeopackageLayer(temp_centerlines, write=True) as lyr_cl:
                     cl_index = 0
                     for g_flowline in geom_flowline:
                         coords = get_endpoints(g_flowline)
@@ -641,6 +635,10 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                     continue
                 feat.SetField('LevelPathI', level_path_keys[key])
                 lyr.ogr_layer.SetFeature(feat)
+                feat = None
+
+    # Clean Up Centerlines
+    clean_up_centerlines(temp_centerlines, output_vbet, output_centerlines, vbet_clip_buffer_size)
 
     log.info('Generating geomorphic layers')
     difference(channel_area, output_vbet, output_floodplain)
