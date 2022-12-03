@@ -12,6 +12,7 @@ import argparse
 from osgeo import ogr, osr
 from shapely.ops import linemerge, voronoi_diagram
 from shapely.geometry import MultiLineString, MultiPoint
+from shapely.topology import TopologicalError
 
 from rscommons import GeopackageLayer, Logger, VectorBase, dotenv
 from rscommons.util import parse_metadata
@@ -138,7 +139,12 @@ def split_vbet_polygons(vbet_polygons, segmentation_points, out_split_polygons):
             seed_points_sgeom_mpt = MultiPoint(list_points)
             voronoi = voronoi_diagram(seed_points_sgeom_mpt, envelope=vbet_sgeom)
             for poly in voronoi.geoms:
-                poly_intersect = vbet_sgeom.intersection(poly)
+                try:
+                    poly_intersect = vbet_sgeom.intersection(poly)
+                except TopologicalError as err:
+                    # The operation 'GEOSIntersection_r' could not be performed. Likely cause is invalidity of the geometry
+                    log.error(err)
+                    continue
                 if poly_intersect.geom_type in ['GeometryCollection', 'LineString'] or poly_intersect.is_empty:
                     continue
                 clean_geom = poly_intersect.buffer(0) if poly_intersect.is_valid is not True else poly_intersect
