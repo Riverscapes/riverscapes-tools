@@ -110,6 +110,21 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     log = Logger('VBET')
     log.info('Starting VBET v.{}'.format(cfg.version))
 
+    # Allow us to specify a temp folder outside our project folder
+    temp_dir = temp_folder if temp_folder else os.path.join(project_folder, 'temp')
+    # This could be a re-run and we need to clear out the tmp folders
+    if os.path.isdir(temp_dir):
+        safe_remove_dir(temp_dir)
+    intermediates_dir = os.path.dirname(os.path.join(project_folder, LayerTypes['INTERMEDIATES'].rel_path))
+    if os.path.isdir(intermediates_dir):
+        safe_remove_dir(intermediates_dir)
+    safe_makedirs(intermediates_dir)
+    # Wipe the outputs directory so we don't get any bleed over from the last run
+    outputs_dir = os.path.dirname(os.path.join(project_folder, LayerTypes['VBET_OUTPUTS'].rel_path))
+    if os.path.isdir(outputs_dir):
+        safe_remove_dir(outputs_dir)
+    safe_makedirs(outputs_dir)
+
     flowline_type = 'NHD'
 
     project, _realization, proj_nodes = create_project(huc, project_folder, [
