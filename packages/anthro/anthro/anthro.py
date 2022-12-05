@@ -6,6 +6,7 @@ Jordan Gilbert Dec 2022
 import argparse
 import os
 import time
+import datetime
 from typing import Dict
 from osgeo import ogr
 
@@ -14,7 +15,7 @@ from rscommons.classes.rs_project import RSMeta
 from rscommons.vector_ops import copy_feature_class
 from rscommons import Logger, initGDALOGRErrors, RSLayer, RSProject, ModelConfig, dotenv
 from rscommons.database import create_database, SQLiteCon
-from rscommons.copy_igos import copy_igos
+from rscommons.copy_features import copy_features_fields
 
 from anthro.__version__ import __version__
 
@@ -31,6 +32,7 @@ LayerTypes = {
     'INPUTS': RSLayer('Anthropologic Inputs', 'INPUTS', 'Geopackage', 'inputs/inputs.gpkg', {
         'IGO': RSLayer('Integrated Geographic Objects', 'IGO', 'Vector', 'igo'),
         'DGO': RSLayer('Discrete Geographic Object', 'DGO', 'Vector', 'dgo'),
+        'FLOWLINES': RSLayer('Segmented Flowlines', 'FLOWLINES', 'Vector', 'flowlines'),
         'VALLEYBOTTOM': RSLayer('Valley Bottom', 'VALLEY', 'Vector', 'valley_bottom'),
         'CANALS': RSLayer('Canals', 'CANAL', 'Vector', 'canals'),
         'ROADS': RSLayer('Roads', 'ROADS', 'Vector', 'roads'),
@@ -38,14 +40,15 @@ LayerTypes = {
         'LEVEES': RSLayer('Levees', 'LEVEE', 'Vector', 'levees')
     }),
     'OUTPUTS': RSLayer('Anthropologic Outputs', 'OUTPUTS', 'Geopackage', 'outputs/outputs.gpkg', {
-        'ANTHRO_GEOMETRY': RSLayer('Anthropogenic Output Geometry', 'ANTHRO_GEOMETRY', 'Vector', 'igo')
+        'ANTHRO_POINTS': RSLayer('Anthropogenic Output Points', 'ANTHRO_POINTS', 'Vector', 'anthro_igo'),
+        'ANTHRO_LINES': RSLayer('Anthropogenic Output Lines', 'ANTHRO_LINES', 'Vector', 'anthro_lines')
     })
 }
 
 
 def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo: Path,
-                   valley_bottom: Path, canals: Path, roads: Path, railroads: Path,
-                   levees: Path, output_folder: Path, meta: Dict[str, str]):
+                   flowlines: Path, valley_bottom: Path, canals: Path, roads: Path, railroads: Path,
+                   output_folder: Path, meta: Dict[str, str]):
     """
     """
 
@@ -84,6 +87,7 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
     src_layers = {
         'IGO': igo,
         'DGO': dgo,
+        'FLOWLINES': flowlines,
         'VALLEYBOTTOM': valley_bottom,
         'CANALS': canals,
         'ROADS': roads,
@@ -96,7 +100,7 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
         copy_feature_class(src_layers[input_key], input_layers[input_key], cfg.OUTPUT_EPSG)
 
     # Create the output feature class fields. Only those listed here will get copied from the source.
-    with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['ANTHRO_GEOMETRY'].rel_path, delete_dataset=True) as out_lyr:
+    with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['ANTHRO_POINTS'].rel_path, delete_dataset=True) as out_lyr:
         out_lyr.create_layer(ogr.wkbMultiPoint, epsg=cfg.OUTPUT_EPSG, options=[], fields={
             'LevelPathI': ogr.OFTReal,
             'seg_distance': ogr.OFTReal,
@@ -106,7 +110,17 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
             'centerline_length': ogr.OFTReal
         })
 
-    db_metadata = {}
+    with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['ANTHRO_LINES'].rel_path, delete_dataset=True) as out_lyr:
+        out_lyr.create_layer(ogr.wkbMultiLineString, epsg=cfg.OUTPUT_EPSG, options=['FID=ReachID'], fields={
+            'WatershedID': ogr.OFTString,
+            'FCode': ogr.OFTInteger,
+            'TotDASqKm': ogr.OFTReal,
+            'DivDASqKm': ogr.OFTReal,
+            'GNIS_Name': ogr.OFTString,
+            'NHDPlusID': ogr.OFTReal
+        })
+
+    db_metadata = {'AnthroDateTime': datetime.datetime.now().isoformat()}
 
     # Execute the SQL to create the lookup tables in the output geopackage
     watershed_name = create_database(huc, outputs_gpkg_path, db_metadata, cfg.OUTPUT_EPSG, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'anthro_schema.sql'))
@@ -114,5 +128,10 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
     project.add_metadata_simple(db_metadata)
     project.add_metadata([RSMeta('Watershed', watershed_name)])
 
-    igo_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['ANTHRO_GEOMETRY'].rel_path)
-    copy_igos(input_layers['IGO'], igo_geom_path, epsg=cfg.OUTPUT_EPSG)
+    igo_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['ANTHRO_POINTS'].rel_path)
+    line_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['ANTHRO_LINES'].rel_path)
+    copy_features_fields(input_layers['IGO'], igo_geom_path, epsg=cfg.OUTPUT_EPSG)
+    copy_features_fields(input_layers['FLOWLINES'], line_geom_path, epsg=cfg.OUTPUT_EPSG)
+
+    with SQLiteCon(outputs_gpkg_path) as database:
+        database.curs.execute('INSERT INTO IGOAttributes (LevelPathI, seg_distance)')

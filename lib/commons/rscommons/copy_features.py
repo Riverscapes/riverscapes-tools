@@ -1,11 +1,14 @@
+import os
 from osgeo import ogr
 from rscommons import Logger, get_shp_or_gpkg, VectorBase
 
 
-def copy_igos(in_path: str, out_path: str, attribute_filter=None, epsg=None, clip_shape=None):
+def copy_features_fields(in_path: str, out_path: str, attribute_filter=None, epsg=None, clip_shape=None):
+    """Used to copy features within a feature class with only fields specified in an output field definition
+    """
 
-    log = Logger('Copy IGOs')
-    log.info('Copyging IGOs with specified attributes into project')
+    log = Logger('Copy Features')
+    log.info(f'Copyging features from {os.path.basename(in_path)} with specified attributes into project')
 
     with get_shp_or_gpkg(in_path) as in_lyr, get_shp_or_gpkg(out_path, write=True) as out_lyr:
         if epsg is not None:
