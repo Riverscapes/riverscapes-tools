@@ -35,8 +35,8 @@ from rscommons.vbet_network import copy_vaa_attributes, join_attributes, create_
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.raster_warp import raster_warp
 from rscommons import TimerBuckets, Timer, TimerWaypoints
-from scripts.cost_path import least_cost_path
-from scripts.raster2line import raster2line_geom
+from .lib.cost_path import least_cost_path
+from .lib.raster2line import raster2line_geom
 
 from vbet.vbet_database import build_vbet_database, load_configuration
 from vbet.vbet_raster_ops import mask_rasters_nodata, rasterize_attribute, raster2array, array2raster, new_raster, rasterize, raster_merge, raster_update, raster_update_multiply, raster_remove_zone, raster_recompress

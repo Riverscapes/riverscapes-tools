@@ -1,5 +1,15 @@
 # VBET
 
+## [Unreleased]
+
+### Fixed
+- Bug with level paths outside dem extent (i.e. Canadian Hucs)
+- several small bug fixes around temp files and raster creation
+
+### Changed
+- moved supporting files from scripts to vbet/lib
+
+
 ## [0.8.1] - 2022-DEC-02
 
 ### Added
