@@ -412,6 +412,10 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
             log.debug(f'channel_envelope_geom area: {channel_envelope_geom.Area}')
 
+            if not raster_envelope_geom.Intersects(channel_envelope_geom):
+                log.warning(f'Channel Area Envelope does not intersect DEM Extent for level path {level_path}')
+                continue
+
             with GeopackageLayer(catchments) as lyr_catchments:
                 geom_envelope = channel_envelope_geom.Clone()
                 for feat_catchment, *_ in lyr_catchments.iterate_features(clip_shape=channel_envelope_geom):
