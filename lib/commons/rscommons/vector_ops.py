@@ -288,7 +288,7 @@ def merge_feature_classes(feature_class_paths: List[str], out_layer_path: str, b
 
             with get_shp_or_gpkg(in_layer_path) as in_layer:
                 if boundary is not None:
-                    in_layer.SetSpatialFilter(VectorBase.shapely2ogr(boundary))
+                    in_layer.ogr_layer.SetSpatialFilter(VectorBase.shapely2ogr(boundary))
 
                 log.info('Processing feature: {}/{}'.format(fccount, len(feature_class_paths)))
 
@@ -299,6 +299,16 @@ def merge_feature_classes(feature_class_paths: List[str], out_layer_path: str, b
                         progbar.erase()  # get around the progressbar
                         log.warning('Feature with FID={} has no geometry. Skipping'.format(feature.GetFID()))
                         continue
+                    if geom.GetGeometryType() in VectorBase.LINE_TYPES:
+                        if geom.Length() == 0.0:
+                            progbar.erase()  # get around the progressbar
+                            log.warning('Line Feature with FID={} has no Length. Skipping'.format(feature.GetFID()))
+                            continue
+                    if geom.GetGeometryType() in VectorBase.POLY_TYPES:
+                        if geom.Area() == 0.0:
+                            progbar.erase()  # get around the progressbar
+                            log.warning('Polygon Feature with FID={} has 0 Area. Skipping'.format(feature.GetFID()))
+                            continue
 
                     # geom.Transform(transform)
                     out_feature = ogr.Feature(out_layer.ogr_layer_def)
