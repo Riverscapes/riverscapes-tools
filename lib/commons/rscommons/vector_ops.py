@@ -220,7 +220,12 @@ def copy_feature_class(in_layer_path: str, out_layer_path: str,
             if geom.GetGeometryType() in VectorBase.LINE_TYPES:
                 if geom.Length() == 0.0:
                     progbar.erase()  # get around the progressbar
-                    log.warning('Feature with FID={} has no Length. Skipping'.format(feature.GetFID()))
+                    log.warning('Line Feature with FID={} has no Length. Skipping'.format(feature.GetFID()))
+                    continue
+            if geom.GetGeometryType() in VectorBase.POLY_TYPES:
+                if geom.Area() == 0.0:
+                    progbar.erase()  # get around the progressbar
+                    log.warning('Polygon Feature with FID={} has 0 Area. Skipping'.format(feature.GetFID()))
                     continue
 
             if hard_clip is True and clip_shape is not None:
@@ -242,6 +247,7 @@ def copy_feature_class(in_layer_path: str, out_layer_path: str,
 
             out_layer.ogr_layer.CreateFeature(out_feature)
             out_feature = None
+    return
 
 
 def merge_feature_classes(feature_class_paths: List[str], out_layer_path: str, boundary: BaseGeometry = None):
