@@ -486,6 +486,11 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             write_rasters = {}  # {name: rasterio.open(raster, 'w', **out_meta) for name, raster in out_rasters.items()}
             write_rasters['VBET_EVIDENCE'] = rasterio.open(evidence_raster, 'w', **out_meta)
             write_rasters['NORMALIZED_HAND'] = rasterio.open(normalized_local_hand, 'w', **out_meta)
+            write_rasters['topo_evidence_twi'] = rasterio.open(os.path.join(temp_folder, f'topo_evidence_twi_{level_path}.tif'), 'w', **out_meta)
+            write_rasters['topo_evidence_nontwi'] = rasterio.open(os.path.join(temp_folder, f'topo_evidence_nontwi_{level_path}.tif'), 'w', **out_meta)
+            write_rasters['topo_evidence'] = rasterio.open(os.path.join(temp_folder, f'topo_evidence_{level_path}.tif'), 'w', **out_meta)
+            write_rasters['twi_logic'] = rasterio.open(os.path.join(temp_folder, f'twi_logic_{level_path}.tif'), 'w', **out_meta)
+            write_rasters['twi_normalized'] = rasterio.open(os.path.join(temp_folder, f'twi_normalized_{level_path}.tif'), 'w', **out_meta)
 
             progbar = ProgressBar(len(list(read_rasters['Slope'].block_windows(1))), 50, "Calculating evidence layer")
             counter = 0
@@ -512,10 +517,18 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                     else:
                         normalized[name] = np.ma.MaskedArray(vbet_run['Transforms'][name][0](block[name].data), mask=block['HAND'].mask)
 
-                fvals_topo = np.ma.mean([normalized['Slope'], normalized['HAND'], normalized['TWI']], axis=0)
+                fvals_topo_twi = np.ma.mean([normalized['Slope'], normalized['HAND'], normalized['TWI']], axis=0)
+                fvals_topo_nontwi = np.ma.mean([normalized['Slope'], normalized['HAND']], axis=0)
+                logic_twi = np.equal(normalized['TWI'], 0).astype(int)
+                fvals_topo = np.choose(logic_twi, [fvals_topo_twi, fvals_topo_nontwi])
                 fvals_channel = 0.995 * block['Channel']
                 fvals_evidence = np.maximum(fvals_topo, fvals_channel)
 
+                write_rasters['twi_logic'].write(np.ma.filled(np.float32(logic_twi), out_meta['nodata']), window=window, indexes=1)
+                write_rasters['topo_evidence_twi'].write(np.ma.filled(np.float32(fvals_topo_twi), out_meta['nodata']), window=window, indexes=1)
+                write_rasters['topo_evidence_nontwi'].write(np.ma.filled(np.float32(fvals_topo_nontwi), out_meta['nodata']), window=window, indexes=1)
+                write_rasters['topo_evidence'].write(np.ma.filled(np.float32(fvals_topo), out_meta['nodata']), window=window, indexes=1)
+                write_rasters['twi_normalized'].write(np.ma.filled(np.float32(normalized['TWI']), out_meta['nodata']), window=window, indexes=1)
                 write_rasters['VBET_EVIDENCE'].write(np.ma.filled(np.float32(fvals_evidence), out_meta['nodata']), window=window, indexes=1)
                 write_rasters['NORMALIZED_HAND'].write(np.ma.filled(np.float32(normalized['HAND']), out_meta['nodata']), window=window, indexes=1)
             write_rasters['VBET_EVIDENCE'].close()
