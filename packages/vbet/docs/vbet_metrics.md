@@ -1,3 +1,4 @@
+Data Type|Decimal
 ---
 title: VBET Metrics
 ---
