@@ -25,7 +25,7 @@ Description|
 ## active_floodplain_area
 
 Data Type|Decimal
-Units|
+Units|Square meters
 Description|
 
 ## active_floodplain_prop
@@ -37,13 +37,13 @@ Description|
 ## active_floodplain_area_cl_len
 
 Data Type|Decimal
-Units|
+Units|Meters
 Description|
 
 ## active_channel_area
 
 Data Type|Decimal
-Units|
+Units|Square meters
 Description|
 
 ## active_channel_area_prop
@@ -55,13 +55,13 @@ Description|
 ## active_channel_area_cl_len
 
 Data Type|Decimal
-Units|
+Units|Meters
 Description
 
 ## inactive_floodplain_area
 
 Data Type|Decimal
-Units|
+Units|Square meters
 Description|
 
 ## inactive_floodplain_area_prop
@@ -73,13 +73,13 @@ Description|
 ## inactive_floodplain_area_cl_len
 
 Data Type|Decimal
-Units|
+Units|Meters
 Description|
 
 ## floodplain_area
 
 Data Type|Decimal
-Units|
+Units|Square meters
 Description|
 
 ## floodplain_area_prop
@@ -91,13 +91,13 @@ Description|
 ## floodplain_area_cl_len
 
 Data Type|Decimal
-Units|
+Units|Meters
 Description|
 
 ## integrated_width
 
 Data Type|Decimal
-Units|
+Units|Meters
 Description|
 
 ## window_size
@@ -109,11 +109,11 @@ Description|
 ## window_area
 
 Data Type|Decimal
-Units|
+Units|Square meters
 Description|
 
 ## centerline_length
 
 Data Type|Decimal
-Units|
+Units|Meters
 Description|
