@@ -39,7 +39,7 @@ from scripts.cost_path import least_cost_path
 from scripts.raster2line import raster2line_geom
 
 from vbet.vbet_database import build_vbet_database, load_configuration
-from vbet.vbet_raster_ops import mask_rasters_nodata, rasterize_attribute, raster2array, array2raster, new_raster, rasterize, raster_merge, raster_update, raster_update_multiply, raster_remove_zone
+from vbet.vbet_raster_ops import mask_rasters_nodata, rasterize_attribute, raster2array, array2raster, new_raster, rasterize, raster_merge, raster_update, raster_update_multiply, raster_remove_zone, raster_recompress
 from vbet.vbet_outputs import threshold, clean_up_centerlines
 from vbet.vbet_report import VBETReport
 from vbet.vbet_segmentation import calculate_segmentation_metrics, generate_segmentation_points, split_vbet_polygons, summerize_vbet_metrics
@@ -709,6 +709,12 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             raster_update(out_normalized_hand, level_path_normalized_hand)
         counter += 1
         progbar.update(counter)
+
+    # when we use raster_update and raster_merge we sacrifice compression for speed
+    # so we need to recompress these files in place without using the 'r+' mode
+    raster_recompress(out_vbet_evidence)
+    raster_recompress(out_hand)
+    raster_recompress(out_normalized_hand)
 
     progbar.finish()
     _tmr_waypt.timer_break('ApplyValues')

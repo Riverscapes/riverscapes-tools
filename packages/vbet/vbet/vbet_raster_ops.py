@@ -15,9 +15,32 @@ from rasterio.windows import Window
 import numpy as np
 
 from rscommons import ProgressBar, Logger, VectorBase, Timer, TempRaster
-from rscommons.classes.raster import PrintArr
 
 Path = str
+
+
+def get_raster_meta(template_raster: str):
+    """Extract the Rasterio meta we need to write a raster from a template raster
+
+    This is a pretty common pattern when we want to match an output to an input
+    We do explicitly set both the compression and the BIGTIFF property
+
+    Args:
+        template_raster (str): _description_
+
+    Returns:
+        _type_: _description_
+    """
+    with rasterio.open(template_raster) as rio_template:
+        out_meta = rio_template.meta
+        out_meta['driver'] = 'GTiff'
+        out_meta['count'] = 1
+        out_meta['compress'] = 'deflate'
+
+    use_big_tiff = os.path.getsize(template_raster) > 3800000000
+    if use_big_tiff:
+        out_meta['BIGTIFF'] = 'YES'
+    return out_meta
 
 
 def rasterize(in_lyr_path: Path, out_raster_path: Path, template_path: Path, all_touched: bool = False):
@@ -542,7 +565,7 @@ def raster_update(raster, update_values_raster):
         out_meta = rio_dest.meta
         out_meta['driver'] = 'GTiff'
         out_meta['count'] = 1
-        out_meta['compress'] = 'deflate'
+        out_meta['compress'] = 'DEFLATE'
 
         # GT(0) x-coordinate of the upper-left corner of the upper-left pixel.
         # GT(1) w-e pixel resolution / pixel width.
@@ -568,6 +591,25 @@ def raster_update(raster, update_values_raster):
             array_out = np.choose(chooser, [array_dest, array_update])
             rio_dest.write(array_out, window=out_window, indexes=1)
     log.debug(f'Timer: {_tmr.ellapsed()}')
+
+
+def raster_recompress(raster_path: Path):
+    """Working on a windowed raster can cause compression to fail
+
+    Args:
+        raster_path (Path): 
+    """
+    log = Logger('raster_recompress')
+    _tmr = Timer()
+    meta = get_raster_meta(raster_path)
+
+    with TempRaster(prefix='raster_recompress') as tempfile:
+        shutil.copy(raster_path, tempfile.filepath)
+        with rasterio.open(tempfile.filepath, 'r') as src, rasterio.open(raster_path, 'w', **meta) as dst:
+            for _ji, window in dst.block_windows(1):
+                array_dest = src.read(1, window=window, masked=True)
+                dst.write(array_dest, window=window, indexes=1)
+    log.debug(f'raster_recompress: {_tmr.toString()}')
 
 
 def raster_update_multiply(raster, update_values_raster, value=None):
