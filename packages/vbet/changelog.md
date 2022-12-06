@@ -8,7 +8,7 @@
 
 ### Changed
 - moved supporting files from scripts to vbet/lib
-
+- evidence layer uses hand and slope when TWI is no-data
 
 ## [0.8.1] - 2022-DEC-02
 
