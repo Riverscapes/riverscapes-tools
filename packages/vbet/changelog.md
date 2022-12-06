@@ -5,6 +5,9 @@
 ### Fixed
 - Bug with level paths outside dem extent (i.e. Canadian Hucs)
 - several small bug fixes around temp files and raster creation
+- normalized twi layer name
+- raster compression with 'r+' and window modes
+- do not copy channel polygons with empty geometries
 
 ### Changed
 - moved supporting files from scripts to vbet/lib

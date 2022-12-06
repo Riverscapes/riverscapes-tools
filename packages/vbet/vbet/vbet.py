@@ -84,7 +84,7 @@ LayerTypes = {
     'EVIDENCE_TOPO': RSLayer('Topo Evidence', 'EVIDENCE_TOPO', 'Raster', 'intermediates/topographic_evidence.tif'),
 
     'NORMALIZED_SLOPE': RSLayer('Normalized Slope', 'NORMALIZED_SLOPE', 'Raster', 'intermediates/slope_normalized.tif'),
-    'NORMALIZED_TWI': RSLayer('Normalized Hand', 'NORMALIZED_TWI', 'Raster', 'intermediates/twi_normalized.tif'),
+    'NORMALIZED_TWI': RSLayer('Normalized TWI', 'NORMALIZED_TWI', 'Raster', 'intermediates/twi_normalized.tif'),
 
     'VBET_OUTPUTS': RSLayer('VBET', 'VBET_OUTPUTS', 'Geopackage', 'outputs/vbet.gpkg', {
         'VBET_FULL': RSLayer('VBET Full Extent', 'VBET_FULL', 'Vector', 'vbet_full'),
