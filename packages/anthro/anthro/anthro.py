@@ -40,8 +40,10 @@ LayerTypes = {
         'LEVEES': RSLayer('Levees', 'LEVEE', 'Vector', 'levees')
     }),
     'OUTPUTS': RSLayer('Anthropologic Outputs', 'OUTPUTS', 'Geopackage', 'outputs/outputs.gpkg', {
-        'ANTHRO_POINTS': RSLayer('Anthropogenic Output Points', 'ANTHRO_POINTS', 'Vector', 'anthro_igo'),
-        'ANTHRO_LINES': RSLayer('Anthropogenic Output Lines', 'ANTHRO_LINES', 'Vector', 'anthro_lines')
+        'ANTHRO_GEOM_POINTS': RSLayer('Anthropogenic Points Geometry', 'ANTHRO_GEOM_POINTS', 'Vector', 'anthro_igo_geom'),
+        'ANTHRO_POINTS': RSLayer('Anthropogenic Output Points', 'ANTRHO_POINTS', 'Vector', 'vwIgos'),
+        'ANTHRO_GEOM_LINES': RSLayer('Anthropogenic Lines Geometry', 'ANTHRO_GEOM_LINES', 'Vector', 'anthro_lines_geom'),
+        'ANTHRO_LINES': RSLayer('Anthropogenic Output Lines', 'ANTHRO_LINES', 'Vector', 'vwReaches')
     })
 }
 
@@ -101,7 +103,7 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
 
     # Create the output feature class fields. Only those listed here will get copied from the source.
     with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['ANTHRO_POINTS'].rel_path, delete_dataset=True) as out_lyr:
-        out_lyr.create_layer(ogr.wkbMultiPoint, epsg=cfg.OUTPUT_EPSG, options=[], fields={
+        out_lyr.create_layer(ogr.wkbMultiPoint, epsg=cfg.OUTPUT_EPSG, options=['FID=IGOID'], fields={
             'LevelPathI': ogr.OFTReal,
             'seg_distance': ogr.OFTReal,
             'stream_size': ogr.OFTInteger,
@@ -134,4 +136,19 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
     copy_features_fields(input_layers['FLOWLINES'], line_geom_path, epsg=cfg.OUTPUT_EPSG)
 
     with SQLiteCon(outputs_gpkg_path) as database:
-        database.curs.execute('INSERT INTO IGOAttributes (LevelPathI, seg_distance)')
+        database.curs.execute('INSERT INTO ReachAttributes (ReachID, ReachCode, WatershedID, StreamName) SELECT ReachID, FCode, WatershedID, GNIS_NAME FROM ReachGeometry')
+
+        # Register vwReaches as a feature layer as well as its geometry column
+        database.curs.execute("""INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id)
+            SELECT 'vwReaches', data_type, 'Reaches', min_x, min_y, max_x, max_y, srs_id FROM gpkg_contents WHERE table_name = 'anthro_geom_lines'""")
+
+        database.curs.execute("""INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m)
+            SELECT 'vwReaches', column_name, geometry_type_name, srs_id, z, m FROM gpkg_geometry_columns WHERE table_name = 'anthro_geom_lines'""")
+
+        database.curs.execute("""INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id)
+            SELECT 'vwIgos', data_type, 'igos', min_x, min_y, max_x, max_y, srs_id FROM gpkg_contents WHERE table_name = 'anthro_geom_points'""")
+
+        database.curs.execute("""INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m)
+            SELECT 'vwIgos', column_name, geometry_type_name, srs_id, z, m FROM gpkg_geometry_columns WHERE table_name = 'anthro_geom_points'""")
+
+        database.conn.commit()
