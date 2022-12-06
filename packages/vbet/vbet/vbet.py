@@ -39,7 +39,7 @@ from .lib.cost_path import least_cost_path
 from .lib.raster2line import raster2line_geom
 
 from vbet.vbet_database import build_vbet_database, load_configuration
-from vbet.vbet_raster_ops import mask_rasters_nodata, rasterize_attribute, raster2array, array2raster, new_raster, rasterize, raster_merge, raster_update, raster_update_multiply, raster_remove_zone, raster_recompress
+from vbet.vbet_raster_ops import mask_rasters_nodata, rasterize_attribute, raster2array, array2raster, new_raster, rasterize, raster_merge, raster_update, raster_update_multiply, raster_remove_zone, raster_recompress, get_endpoints_on_raster
 from vbet.vbet_outputs import threshold, clean_up_centerlines
 from vbet.vbet_report import VBETReport
 from vbet.vbet_segmentation import calculate_segmentation_metrics, generate_segmentation_points, split_vbet_polygons, summerize_vbet_metrics
@@ -232,6 +232,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     out_meta['compress'] = 'deflate'
     size_x = read_rasters['Slope'].width
     size_y = read_rasters['Slope'].height
+    pixel_x, _pixel_y = read_rasters['Slope'].res
     srs = read_rasters['Slope'].crs
     espg = srs.to_epsg()
 
@@ -588,7 +589,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                 with GeopackageLayer(temp_centerlines, write=True) as lyr_cl:
                     cl_index = 0
                     for g_flowline in geom_flowline:
-                        coords = get_endpoints(g_flowline)
+                        coords = get_endpoints_on_raster(cost_path_raster, g_flowline, pixel_x)
                         if len(coords) != 2:
                             err_msg = f'Unable to generate centerline for part {cl_index} of level path {level_path}: found {len(coords)} target coordinates instead of expected 2.'
                             log.error(err_msg)

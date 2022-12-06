@@ -676,3 +676,41 @@ def raster_remove_zone(raster, remove_raster, output_raster):
                 array_out = np.multiply(array_multiply, array_dest)
                 rio_output.write(array_out, window=window, indexes=1)
     return
+
+
+def get_endpoints_on_raster(raster: Path, geom_line: ogr.Geometry(), dist):
+    """return a list of endpoints for a linestring or multilinestring
+
+    Args:
+        geom (ogr.Geometry): linestring or multilinestring geometry
+
+    Returns:
+        list: coords of points
+    """
+
+    line = VectorBase.ogr2shapely(geom_line)
+    iterations = [dist, dist * 2, dist * 3]
+
+    with rasterio.open(raster, 'r') as src:
+        coords = []
+        pnt_start = line.coords[0]
+        for iteration in iterations:
+            value = list(src.sample([(pnt_start[0], pnt_start[1])]))[0][0]
+            if value is not None and value != 0.0:
+                break
+            pnt = line.interpolate(iteration)
+            pnt_start = (pnt.x, pnt.y)
+
+        coords.append(pnt_start)
+
+        pnt_end = line.coords[-1]
+        for iteration in iterations:
+            value = list(src.sample([(pnt_end[0], pnt_end[1])]))[0][0]
+            if value is not None and value != 0.0:
+                break
+            pnt = line.interpolate(-1 * iteration)
+            pnt_end = (pnt.x, pnt.y)
+
+        coords.append(pnt_end)
+
+        return coords
