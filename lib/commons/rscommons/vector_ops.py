@@ -961,7 +961,6 @@ def difference(remove_layer: Path, target_layer: Path, out_layer_path: Path, eps
                     geom = geom.Difference(geom_diff)
                 except Exception:
                     log.error(str(IOError))
-                    geom = geom_orig
                     continue
                 if not geom.IsValid():
                     geom = geom_validity_fix(geom)
