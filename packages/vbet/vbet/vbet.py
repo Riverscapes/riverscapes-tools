@@ -216,13 +216,13 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     else:
         _node_twi, in_rasters['TWI'] = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['TWI_RASTER'], in_twi_raster, replace=True)
 
-    for zone in vbet_run['Zones']:
-        log.info(f'Rasterizing stream transform zones for {zone}')
-        raster_name = os.path.join(project_folder, 'intermediates', f'{zone.lower()}_transform_zones.tif')
-        rasterize_attribute(catchments_path, raster_name, dem, f'{zone}_Zone')
-        in_rasters[f'TRANSFORM_ZONE_{zone}'] = raster_name
-        transform_zone_rs = RSLayer(f'Transform Zones for {zone}', f'TRANSFORM_ZONE_{zone.upper()}', 'Raster', raster_name)
-        project.add_project_raster(proj_nodes['Intermediates'], transform_zone_rs)
+    # for zone in vbet_run['Zones']:
+    #     log.info(f'Rasterizing stream transform zones for {zone}')
+    #     raster_name = os.path.join(project_folder, 'intermediates', f'{zone.lower()}_transform_zones.tif')
+    #     rasterize_attribute(catchments_path, raster_name, dem, f'{zone}_Zone')
+    #     in_rasters[f'TRANSFORM_ZONE_{zone}'] = raster_name
+    #     transform_zone_rs = RSLayer(f'Transform Zones for {zone}', f'TRANSFORM_ZONE_{zone.upper()}', 'Raster', raster_name)
+    #     project.add_project_raster(proj_nodes['Intermediates'], transform_zone_rs)
 
     log.info('Writing Topo Evidence raster for project')
     read_rasters = {name: rasterio.open(raster) for name, raster in in_rasters.items()}
@@ -264,20 +264,20 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['NORMALIZED_TWI'])
 
     # Generate full normaized slope and twi rasters
-    for _ji, window in read_rasters['Slope'].block_windows(1):
-        block = {block_name: raster.read(1, window=window, masked=True) for block_name, raster in read_rasters.items()}
-        normalized = {}
-        for name in ['Slope', 'TWI']:
-            if name in vbet_run['Zones']:
-                transforms = [np.ma.MaskedArray(transform(block[name].data), mask=block[name].mask) for transform in vbet_run['Transforms'][name]]
-                normalized[name] = np.ma.MaskedArray(np.choose(block[f'TRANSFORM_ZONE_{name}'].data, transforms, mode='clip'), mask=block[name].mask)
-            else:
-                normalized[name] = np.ma.MaskedArray(vbet_run['Transforms'][name][0](block[name].data), mask=block[name].mask)
-        fvals_topo = np.ma.mean([normalized['Slope'], normalized['TWI']], axis=0)
-        write_rasters['EVIDENCE_TOPO'].write(np.ma.filled(np.float32(fvals_topo), out_meta['nodata']), window=window, indexes=1)
-        write_rasters['NORMALIZED_SLOPE'].write(np.ma.filled(np.float32(normalized['Slope']), out_meta['nodata']), window=window, indexes=1)
-        write_rasters['NORMALIZED_TWI'].write(np.ma.filled(np.float32(normalized['TWI']), out_meta['nodata']), window=window, indexes=1)
-    write_rasters['EVIDENCE_TOPO'].close()
+    # for _ji, window in read_rasters['Slope'].block_windows(1):
+    #     block = {block_name: raster.read(1, window=window, masked=True) for block_name, raster in read_rasters.items()}
+    #     normalized = {}
+    #     for name in ['Slope', 'TWI']:
+    #         if name in vbet_run['Zones']:
+    #             transforms = [np.ma.MaskedArray(transform(block[name].data), mask=block[name].mask) for transform in vbet_run['Transforms'][name]]
+    #             normalized[name] = np.ma.MaskedArray(np.choose(block[f'TRANSFORM_ZONE_{name}'].data, transforms, mode='clip'), mask=block[name].mask)
+    #         else:
+    #             normalized[name] = np.ma.MaskedArray(vbet_run['Transforms'][name][0](block[name].data), mask=block[name].mask)
+    #     fvals_topo = np.ma.mean([normalized['Slope'], normalized['TWI']], axis=0)
+    #     write_rasters['EVIDENCE_TOPO'].write(np.ma.filled(np.float32(fvals_topo), out_meta['nodata']), window=window, indexes=1)
+    #     write_rasters['NORMALIZED_SLOPE'].write(np.ma.filled(np.float32(normalized['Slope']), out_meta['nodata']), window=window, indexes=1)
+    #     write_rasters['NORMALIZED_TWI'].write(np.ma.filled(np.float32(normalized['TWI']), out_meta['nodata']), window=window, indexes=1)
+    # write_rasters['EVIDENCE_TOPO'].close()
 
     # Allow us to specify a temp folder outside our project folder
     temp_dir = temp_folder if temp_folder else os.path.join(project_folder, 'temp')
@@ -323,6 +323,10 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         else:
             level_paths_to_run = all_level_paths
         all_level_paths = None
+
+        level_path_stream_order = dict([(str(int(row[0])), row[1]) for row in curs.execute("SELECT LevelPathI, MAX(StreamOrde) FROM NHDPlusFlowlineVAA GROUP BY LevelPathI ").fetchall()])
+        level_path_stream_order[None] = 1
+
     # process all polygons that aren't assigned a level path: ponds, waterbodies etc.
     level_paths_to_run.append(None)
 
@@ -513,8 +517,11 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                 normalized = {}
                 for name in vbet_run['Inputs']:
                     if name in vbet_run['Zones']:
-                        transforms = [np.ma.MaskedArray(transform(block[name].data), mask=block['HAND'].mask) for transform in vbet_run['Transforms'][name]]
-                        normalized[name] = np.ma.MaskedArray(np.choose(block[f'TRANSFORM_ZONE_{name}'].data, transforms, mode='clip'), mask=block['HAND'].mask)
+                        zone = get_zone(vbet_run, name, level_path_stream_order[level_path])
+                        transform = vbet_run['Transforms'][name][zone]
+                        normalized[name] = np.ma.MaskedArray(transform(block[name].data), mask=block['HAND'].mask)
+                        # transforms = [np.ma.MaskedArray(transform(block[name].data), mask=block['HAND'].mask) for transform in vbet_run['Transforms'][name]]
+                        # normalized[name] = np.ma.MaskedArray(np.choose(block[f'TRANSFORM_ZONE_{name}'].data, transforms, mode='clip'), mask=block['HAND'].mask)
                     else:
                         normalized[name] = np.ma.MaskedArray(vbet_run['Transforms'][name][0](block[name].data), mask=block['HAND'].mask)
 
@@ -866,6 +873,17 @@ def generate_centerline_surface(vbet_raster, out_cost_path, temp_folder):
     array2raster(out_cost_path, vbet_raster, cost_path, data_type=gdal.GDT_Float32)
 
     log.debug(f'Timer: {_timer.toString()}')
+
+
+def get_zone(run, zone_type, stream_order):
+
+    for zone, max_value in run['Zones'][zone_type].items():
+
+        if max_value is None or max_value == '':
+            return zone
+
+        if stream_order < max_value:
+            return zone
 
 
 def create_project(huc, output_dir: str, meta: List[RSMeta], meta_dict: Dict[str, str]):
