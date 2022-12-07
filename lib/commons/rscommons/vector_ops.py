@@ -15,7 +15,7 @@ from typing import List
 from functools import reduce
 
 from osgeo import ogr, gdal, osr
-from shapely.ops import unary_union
+from shapely.ops import unary_union, linemerge
 from shapely.geometry.base import BaseGeometry
 from shapely.geometry import mapping, Point, MultiPoint, LineString, MultiLineString, GeometryCollection, Polygon, MultiPolygon
 
@@ -1096,6 +1096,9 @@ def collect_linestring(in_lyr: Path, attribute_filter: str = None, precision: in
                         geom_line.AddGeometry(g)
         if precision is not None:
             geom_line = reduce_precision(geom_line, precision)
-        geom_single = ogr.ForceToLineString(geom_line)
+        shape_mlines = VectorBase.ogr2shapely(geom_line)
+        shape_line = linemerge(shape_mlines)
+        geom_single = VectorBase.shapely2ogr(shape_line)
+        # geom_single = ogr.ForceToLineString(geom_line)
 
         return geom_single
