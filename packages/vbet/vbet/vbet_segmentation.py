@@ -32,7 +32,7 @@ def generate_segmentation_points(line_network: Path, out_points_layer: Path, str
     with GeopackageLayer(out_points_layer, write=True) as out_lyr, \
             GeopackageLayer(line_network) as line_lyr:
 
-        out_fields = {"LevelPathI": ogr.OFTReal,
+        out_fields = {"LevelPathI": ogr.OFTString,
                       "seg_distance": ogr.OFTReal,
                       # "seg_length": ogr.OFTReal,
                       "stream_size": ogr.OFTInteger}
@@ -97,7 +97,7 @@ def generate_segmentation_points(line_network: Path, out_points_layer: Path, str
                     # elif num == len(list_points):
                     #     out_dist = int(line_length)
                     # add the point feature to the output.
-                    attributes = {'LevelPathI': level_path,
+                    attributes = {'LevelPathI': str(int(level_path)),
                                   'seg_distance': out_dist,
                                   'stream_size': stream_size}
                     out_lyr.create_feature(geom_pnt, attributes=attributes)
@@ -117,7 +117,7 @@ def split_vbet_polygons(vbet_polygons, segmentation_points, out_split_polygons):
             GeopackageLayer(vbet_polygons) as vbet_lyr, \
             GeopackageLayer(segmentation_points) as points_lyr:
 
-        fields = {'LevelPathI': ogr.OFTReal,
+        fields = {'LevelPathI': ogr.OFTString,
                   'seg_distance': ogr.OFTReal}
         out_lyr.create_layer(ogr.wkbMultiPolygon, spatial_ref=vbet_lyr.spatial_ref, fields=fields)
 
@@ -150,7 +150,7 @@ def split_vbet_polygons(vbet_polygons, segmentation_points, out_split_polygons):
                 clean_geom = poly_intersect.buffer(0) if poly_intersect.is_valid is not True else poly_intersect
                 geom_out = VectorBase.shapely2ogr(clean_geom)
                 geom_out = ogr.ForceToMultiPolygon(geom_out)
-                out_lyr.create_feature(geom_out, {'LevelPathI': level_path})
+                out_lyr.create_feature(geom_out, {'LevelPathI': str(int(level_path))})
 
         for segment_feat, *_ in out_lyr.iterate_features('Writing segment dist to polygons'):
             polygon = segment_feat.GetGeometryRef()
