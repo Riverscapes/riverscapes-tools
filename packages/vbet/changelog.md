@@ -1,6 +1,6 @@
 # VBET
 
-## [Unreleased]
+## [0.8.2] - 2022-DEC-06
 
 ### Fixed
 - Bug with level paths outside dem extent (i.e. Canadian Hucs)
