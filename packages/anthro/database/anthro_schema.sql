@@ -4,23 +4,49 @@ CREATE TABLE Agencies (
     Abbreviation TEXT NOT NULL UNIQUE);
 
 CREATE TABLE VegetationTypes (
-    VegetationID INTEGER PRIMARY KEY NOT NULL, 
-    EpochID INTEGER REFERENCES Epochs (EpochID) NOT NULL, 
+    VegetationID INTEGER PRIMARY KEY NOT NULL,  
     Name TEXT NOT NULL, 
     LandUseID INTEGER REFERENCES LandUses (LandUseID), 
     Physiognomy TEXT, 
     Notes TEXT);
 
+CREATE TABLE ReachCodes (
+    ReachCode INTEGER PRIMARY KEY NOT NULL, 
+    Name TEXT NOT NULL, 
+    DisplayName TEXT, 
+    Description TEXT NOT NULL);
+
+CREATE TABLE ReachVegetation (
+    ReachID INTEGER REFERENCES ReachAttributes ON DELETE CASCADE NOT NULL, 
+    VegetationID INTEGER REFERENCES VegetationTypes (VegetationID) NOT NULL,  
+    Area REAL NOT NULL CONSTRAINT CHK_ReachVegetation_Area CHECK (Area > 0), 
+    CellCount REAL NOT NULL CONSTRAINT CHK_ReachVegetation_CellCount CHECK (CellCount > 0), 
+    PRIMARY KEY (ReachID, VegetationID));
+
+CREATE TABLE MetaData (KeyInfo TEXT PRIMARY KEY NOT NULL, ValueInfo TEXT);
+
 CREATE TABLE LandUses (
     LandUseID INTEGER PRIMARY KEY NOT NULL, 
     Name TEXT UNIQUE NOT NULL, 
-    Intensity REAL NOT NULL CONSTRAINT CHK_LandUses_Itensity CHECK (Intensity >= 0 AND Intensity <= 1) DEFAULT (0));
+    Intensity REAL NOT NULL CONSTRAINT CHK_LandUses_Intensity CHECK (Intensity >= 0 AND Intensity <= 1) DEFAULT (0));
 
 CREATE TABLE LandUseIntensities (
     IntensityID INTEGER PRIMARY KEY NOT NULL, 
     Name TEXT UNIQUE NOT NULL, 
     MaxIntensity REAL NOT NULL UNIQUE, 
     TargetCol TEXT UNIQUE NOT NULL);
+
+CREATE TABLE Watersheds (
+    WatershedID TEXT PRIMARY KEY NOT NULL UNIQUE, 
+    Name TEXT NOT NULL, 
+    AreaSqKm REAL CONSTRAINT CHK_HUCs_Area CHECK (AreaSqKm >= 0), 
+    States TEXT, 
+    Geometry STRING, 
+    QLow TEXT, 
+    Q2 TEXT, 
+    MaxDrainage REAL CHECK (MaxDrainage >= 0), 
+    Metadata TEXT, 
+    Notes TEXT);
 
 CREATE TABLE IGOAttributes (
     IGOID INTEGER PRIMARY KEY NOT NULL,
@@ -36,6 +62,9 @@ CREATE TABLE IGOAttributes (
 
 CREATE TABLE ReachAttributes (
     ReachID INTEGER PRIMARY KEY NOT NULL,
+    ReachCode INTEGER REFERENCES ReachCodes (ReachCode),
+    WatershedID TEXT REFERENCES Watersheds (WatershedID) ON DELETE CASCADE,
+    StreamName TEXT,
     iPC_Road REAL CONSTRAINT CHK_Reaches_RoadDist CHECK (iPC_Road >= 0),
     iPC_RoadX REAL CONSTRAINT CHK_Reaches_RoadCrossDists CHECK (iPC_RoadX >= 0),
     iPC_RoadVB REAL CONSTRAINT CHK_Reaches_RoadVBDist CHECK (iPC_RoadVB >= 0),
@@ -56,15 +85,27 @@ CREATE TABLE ReachAttributes (
 -- Non-spatial view of Anthro results with joins to the relevant tables
 CREATE VIEW vwReachAttributes AS
 SELECT R.*,
-       A.Name Agency,
+       A.Name Agency
 FROM ReachAttributes R
-        INNER JOIN Agencies A ON R.AgencyID = A.AgencyID;
+    INNER JOIN Agencies A ON R.AgencyID = A.AgencyID;
 
 -- The main views 
 CREATE VIEW vwReaches AS SELECT R.*, G.geom
 FROM vwReachAttributes R
-        INNER JOIN anthro_lines_geom G ON R.ReachID = G.ReachID;
+    INNER JOIN anthro_lines_geom G ON R.ReachID = G.ReachID;
 
 CREATE VIEW vwIgos AS SELECT I.*, G.geom
 FROM IGOAttributes I
-        INNER JOIN anthro_igo_geom G ON I.IGOID = G.IGOID
+    INNER JOIN anthro_igo_geom G ON I.IGOID = G.IGOID;
+
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Agencies', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('VegetationTypes', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachCodes', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachVegetation', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('MetaData', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('LandUses', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('LandUseIntensities', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Watersheds', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('IGOAttributes', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachAttributes', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('vwReachAttributes', 'attributes');

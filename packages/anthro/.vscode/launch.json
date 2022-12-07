@@ -28,12 +28,15 @@
                 "{env:DATA_ROOT}/vbet/${input:HUC}/intermediates/vbet_intermediates.gpkg/vbet_dgos",
                 "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydro_derivatives.gpkg/network_intersected_300m",
                 "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/vbet_full",
+                "{env:DATA_ROOT}/rs_context/${input:HUC}/ownership/ownership.shp",
                 "{env:DATA_ROOT}/rs_context/${input:HUC}/transportation/canals.shp",
                 "{env:DATA_ROOT}/rs_context/${input:HUC}/transportation/roads.shp",
-                "{env:DATA_ROOT}/rs_context/${input:HUC}/transportation/railroads.shp",
-                "{env:DATA_ROOT}/brat/${input:HUC}",
+                "{env:DATA_ROOT}/rs_context/${input:HUC}/transportation/railways.shp",
+                "{env:DATA_ROOT}/anthro/${input:HUC}",
                 "--meta",
-                "Runner=VSCode"
+                "Runner=VSCode",
+                "--canal_codes",
+                "33600,33601,33603"
             ]
         }
     ]
