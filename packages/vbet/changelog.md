@@ -1,5 +1,15 @@
 # VBET
 
+## [0.8.3] - 2022-DEC-07
+
+### Changed
+- single transform per level path (based on max stream order)
+- segmentation_points renamed to vbet_igos
+- output fields store level path id as string instead of float
+
+### Fixed
+- collect linestring uses shapely instead of ogr to improve merging of level path reaches when generating centerline
+
 ## [0.8.2] - 2022-DEC-06
 
 ### Fixed
