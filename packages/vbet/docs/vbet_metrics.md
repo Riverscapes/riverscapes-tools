@@ -6,114 +6,114 @@ title: VBET Metrics
 
 ## LevelPath
 
-Data Type| Decimal (Should be String)
+Data Type|String
 Units|NA
-Description|The tributary identification provided by NHD Plus HR. All features along the longest path in a watershed possess the same level path attribute. Similarly with the next longest path down to its confluence with the longest path.
+Description|The tributary identification provided by NHD Plus HR. All features along the longest path in a watershed possess the same level path attribute. Similarly with the next longest path down to its confluence with the longest path. see [NHD Value Added Attributes](https://www.usgs.gov/national-hydrography/value-added-attributes-vaas#LEVELPATHI)
 
 ## seg_distance
 
-Data Type| ???
+Data Type|Decimal
 Units|Meters
-Description| Distance from the outflow of the level path.
+Description|Distance from the outflow of the level path.
 
 ### stream_size
 
 Data Type|Integer
 Units|NA
-Description|
+Description|Stream Size Category for determining metric window size
 
 ## active_floodplain_area
 
 Data Type|Decimal
 Units|Square meters
-Description|
+Description|Total area of Active Floodplain within the analysis window
 
 ## active_floodplain_prop
 
 Data Type|Decimal
 Units|Ratio
-Description|
+Description|Proportion of Active Floodplain to analysis window area
 
 ## active_floodplain_area_cl_len
 
 Data Type|Decimal
 Units|Meters
-Description|
+Description|Active Floodplain Area per centerline length within the analysis window
 
 ## active_channel_area
 
 Data Type|Decimal
 Units|Square meters
-Description|
+Description|Total area of Active Channel within the analysis window
 
 ## active_channel_area_prop
 
 Data Type|Decimal
 Units|Ratio
-Description|
+Description|Proportion of Active Channel to analysis window area
 
 ## active_channel_area_cl_len
 
 Data Type|Decimal
 Units|Meters
-Description
+Description|Active Channel Area per centerline length within the analysis window
 
 ## inactive_floodplain_area
 
 Data Type|Decimal
 Units|Square meters
-Description|
+Description|Total area of Inactive Floodplain within the analysis window
 
 ## inactive_floodplain_area_prop
 
 Data Type|Decimal
 Units|Ratio
-Description|
+Description|Proportion of Inactive Floodplain to analysis window area
 
 ## inactive_floodplain_area_cl_len
 
 Data Type|Decimal
 Units|Meters
-Description|
+Description|Inactive Floodplain Area per centerline length within the analysis window
 
 ## floodplain_area
 
 Data Type|Decimal
 Units|Square meters
-Description|
+Description|Total area of Floodplain within the analysis window
 
 ## floodplain_area_prop
 
 Data Type|Decimal
 Units|Ratio
-Description|
+Description|Proportion of Floodplain to analysis window area
 
 ## floodplain_area_cl_len
 
 Data Type|Decimal
 Units|Meters
-Description|
+Description|Floodplain Area per centerline length within the analysis window
 
 ## integrated_width
 
 Data Type|Decimal
 Units|Meters
-Description|
+Description|Integerated Width calculated as window_area / centerline_length
 
 ## window_size
 
 Data Type|Decimal
-Units|
-Description|
+Units| Square Meters
+Description|Target Length of analysis window
 
 ## window_area
 
 Data Type|Decimal
 Units|Square meters
-Description|
+Description|Total area of window
 
 ## centerline_length
 
 Data Type|Decimal
 Units|Meters
-Description|
+Description|Total length of centerline clipped to window
