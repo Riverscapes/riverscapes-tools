@@ -150,8 +150,8 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
     clip_mask = None
     if mask is not None:
-        if not os.path.isfile(mask):
-            raise Exception(f'Mask file could not be found: {mask}')
+        # if not os.path.isfile(mask):
+        #     raise Exception(f'Mask file could not be found: {mask}')
         clip_mask = collect_feature_class(mask)
         clip_mask = clip_mask.MakeValid()
 

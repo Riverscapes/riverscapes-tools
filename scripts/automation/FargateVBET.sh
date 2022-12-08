@@ -86,7 +86,7 @@ vbet $HUC \
   --dinfflowdir_slp $TAUDEM_DIR/outputs/dinfflowdir_slp.tif \
   --twi_raster $TAUDEM_DIR/outputs/twi.tif \
   --reach_codes 33400,46000,46003,46006,46007,55800 \
-  --mask $RS_CONTEXT_DIR/hydrology/WBDHU8.shp \
+  --mask $RS_CONTEXT_DIR/hydrology/hydrology.gpkg/network/processing_extent \
   --temp_folder $VBET_SCRATCH \
   --meta "Runner=Cybercastor" \
   --debug \
