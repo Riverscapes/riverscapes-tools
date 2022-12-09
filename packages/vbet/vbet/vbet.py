@@ -24,11 +24,11 @@ import rasterio
 from rasterio.windows import Window
 from shapely.geometry import box
 import numpy as np
-from scipy.ndimage import label, generate_binary_structure, binary_closing
+
 
 from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, GeopackageLayer, dotenv, VectorBase, initGDALOGRErrors
 from rscommons.vector_ops import copy_feature_class, polygonize, difference, collect_linestring, collect_feature_class
-from rscommons.geometry_ops import get_endpoints, get_extent_as_geom
+from rscommons.geometry_ops import get_extent_as_geom
 from rscommons.util import safe_makedirs, parse_metadata, pretty_duration, safe_remove_dir
 from rscommons.hand import run_subprocess
 from rscommons.vbet_network import copy_vaa_attributes, join_attributes, create_stream_size_zones, get_channel_level_path, get_distance_lookup, vbet_network
@@ -39,8 +39,8 @@ from .lib.cost_path import least_cost_path
 from .lib.raster2line import raster2line_geom
 
 from vbet.vbet_database import build_vbet_database, load_configuration
-from vbet.vbet_raster_ops import mask_rasters_nodata, rasterize_attribute, raster2array, array2raster, new_raster, rasterize, raster_merge, raster_update, raster_update_multiply, raster_remove_zone, raster_recompress, get_endpoints_on_raster
-from vbet.vbet_outputs import threshold, clean_up_centerlines
+from vbet.vbet_raster_ops import rasterize, raster_merge, raster_update, raster_update_multiply, raster_remove_zone, raster_recompress, get_endpoints_on_raster, generate_vbet_polygon, generate_centerline_surface, clean_raster_regions
+from vbet.vbet_outputs import clean_up_centerlines
 from vbet.vbet_report import VBETReport
 from vbet.vbet_segmentation import calculate_segmentation_metrics, generate_segmentation_points, split_vbet_polygons, summerize_vbet_metrics
 from vbet.__version__ import __version__
@@ -551,6 +551,11 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         with TimerBuckets('rasterio'):
             raster_update_multiply(output_vbet_area_raster, valley_bottom_raster, value=level_path_key)
 
+        if level_path is not None:
+            with TimerBuckets('scipy'):
+                region_raster = os.path.join(temp_folder, f'region_cleaning_{level_path}.tif')
+                clean_raster_regions(output_vbet_area_raster, level_path_key, output_vbet_area_raster, region_raster)
+
         # Generate the Active Floodplain Polygon
         with TimerBuckets('gdal'):
             active_valley_bottom_raster = os.path.join(temp_folder, f'active_valley_bottom_{level_path}.tif')
@@ -779,100 +784,6 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     report.write()
 
     log.info('VBET Completed Successfully')
-
-
-def generate_vbet_polygon(vbet_evidence_raster, rasterized_channel, channel_hand, out_valley_bottom, temp_folder, thresh_value=0.68):
-    """_summary_
-
-    Args:
-        vbet_evidence_raster (_type_): _description_
-        rasterized_channel (_type_): _description_
-        channel_hand (_type_): _description_
-        out_valley_bottom (_type_): _description_
-        temp_folder (_type_): _description_
-        thresh_value (float, optional): _description_. Defaults to 0.68.
-    """
-    log = Logger('VBET Generate Polygon')
-    _timer = Timer()
-    # Mask to Hand area
-    vbet_evidence_masked = os.path.join(temp_folder, f"vbet_evidence_masked_{thresh_value}.tif")
-    mask_rasters_nodata(vbet_evidence_raster, channel_hand, vbet_evidence_masked)
-
-    # Threshold Valley Bottom
-    valley_bottom_raw = os.path.join(temp_folder, f"valley_bottom_raw_{thresh_value}.tif")
-    threshold(vbet_evidence_masked, thresh_value, valley_bottom_raw)
-
-    ds_valley_bottom = gdal.Open(valley_bottom_raw, gdal.GA_Update)
-    band_valley_bottom = ds_valley_bottom.GetRasterBand(1)
-
-    log.info('Sieve Filter vbet')
-    # Sieve and Clean Raster
-    gdal.SieveFilter(srcBand=band_valley_bottom, maskBand=None, dstBand=band_valley_bottom, threshold=10, connectedness=8, callback=gdal.TermProgress_nocb)
-    band_valley_bottom.SetNoDataValue(0)
-    band_valley_bottom.FlushCache()
-    valley_bottom_sieved = band_valley_bottom.ReadAsArray()
-
-    log.info('Generate regions')
-    # Region Tool to find only connected areas
-    struct = generate_binary_structure(2, 2)
-    regions, _num = label(valley_bottom_sieved, structure=struct)
-    valley_bottom_sieved = None
-
-    chan = raster2array(rasterized_channel)
-    selection = regions * chan
-    chan = None
-
-    values = np.unique(selection)
-    non_zero_values = [v for v in values if v != 0]
-    valley_bottom_region = np.isin(regions, non_zero_values)
-    array2raster(os.path.join(temp_folder, f'regions_{thresh_value}.tif'), vbet_evidence_raster, regions, data_type=gdal.GDT_Int32)
-    array2raster(os.path.join(temp_folder, f'valley_bottom_region_{thresh_value}.tif'), vbet_evidence_raster, valley_bottom_region.astype(int), data_type=gdal.GDT_Int32)
-
-    # Clean Raster Edges
-    log.info('Cleaning Raster edges')
-    valley_bottom_clean = binary_closing(valley_bottom_region.astype(int), iterations=2)
-    array2raster(out_valley_bottom, vbet_evidence_raster, valley_bottom_clean, data_type=gdal.GDT_Int32)
-
-    log.debug(f'Timer: {_timer.toString()}')
-
-
-def generate_centerline_surface(vbet_raster, out_cost_path, temp_folder):
-    """_summary_
-
-    Args:
-        vbet_raster (_type_): _description_
-        out_cost_path (_type_): _description_
-        temp_folder (_type_): _description_
-    """
-    log = Logger('Generate Centerline Surface')
-    vbet = raster2array(vbet_raster)
-    _timer = Timer()
-
-    # Generate Inverse Raster for Proximity
-    valley_bottom_inverse = (vbet != 1)
-    inverse_mask_raster = os.path.join(temp_folder, 'inverse_mask.tif')
-    array2raster(inverse_mask_raster, vbet_raster, valley_bottom_inverse)
-
-    # Proximity Raster
-    ds_valley_bottom_inverse = gdal.Open(inverse_mask_raster)
-    band_valley_bottom_inverse = ds_valley_bottom_inverse.GetRasterBand(1)
-    proximity_raster = os.path.join(temp_folder, 'proximity.tif')
-    _ds_proximity, band_proximity = new_raster(proximity_raster, vbet_raster, data_type=gdal.GDT_Int32)
-    gdal.ComputeProximity(band_valley_bottom_inverse, band_proximity, ['VALUES=1', "DISTUNITS=PIXEL", "COMPRESS=DEFLATE"])
-    band_proximity.SetNoDataValue(0)
-    band_proximity.FlushCache()
-    proximity = band_proximity.ReadAsArray()
-
-    # Rescale Raster
-    rescaled = np.interp(proximity, (proximity.min(), proximity.max()), (0.0, 10.0))
-    rescaled_raster = os.path.join(temp_folder, 'rescaled.tif')
-    array2raster(rescaled_raster, vbet_raster, rescaled, data_type=gdal.GDT_Float32)
-
-    # Centerline Cost Path
-    cost_path = 10**((rescaled * -1) + 10) + (rescaled <= 0) * 1000000000000  # 10** (((A) * -1) + 10) + (A <= 0) * 1000000000000
-    array2raster(out_cost_path, vbet_raster, cost_path, data_type=gdal.GDT_Float32)
-
-    log.debug(f'Timer: {_timer.toString()}')
 
 
 def get_zone(run, zone_type, stream_order):

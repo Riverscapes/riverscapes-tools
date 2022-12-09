@@ -7,49 +7,11 @@
 
 from uuid import uuid4
 from osgeo import ogr
-import rasterio
-import numpy as np
 
 from rscommons import ProgressBar, Logger, GeopackageLayer, TempGeopackage, get_shp_or_gpkg, Timer
 from vbet.__version__ import __version__
 
 Path = str
-
-
-def threshold(evidence_raster_path: Path, thr_val: float, thresh_raster_path: Path):
-    """Threshold a raster to greater than or equal to a threshold value
-
-    Args:
-        evidence_raster_path (Path): input evidience raster
-        thr_val (float): value to threshold
-        thresh_raster_path (Path): output threshold raster
-    """
-    log = Logger('threshold')
-    _timer = Timer()
-    with rasterio.open(evidence_raster_path) as fval_src:
-        out_meta = fval_src.meta
-        out_meta['count'] = 1
-        out_meta['compress'] = 'deflate'
-        out_meta['dtype'] = rasterio.uint8
-        out_meta['nodata'] = 0
-
-        log.info('Thresholding at {}'.format(thr_val))
-        with rasterio.open(thresh_raster_path, "w", **out_meta) as dest:
-            progbar = ProgressBar(len(list(fval_src.block_windows(1))), 50, "Thresholding at {}".format(thr_val))
-            counter = 0
-            for _ji, window in fval_src.block_windows(1):
-                progbar.update(counter)
-                counter += 1
-                fval_data = fval_src.read(1, window=window, masked=True)
-                # Fill an array with "1" values to give us a nice mask for polygonize
-                fvals_mask = np.full(fval_data.shape, np.uint8(1))
-
-                # Create a raster with 1.0 as a value everywhere in the same shape as fvals
-                new_fval_mask = np.ma.mask_or(fval_data.mask, fval_data < thr_val)
-                masked_arr = np.ma.array(fvals_mask, mask=[new_fval_mask])  # & ch_data.mask])
-                dest.write(np.ma.filled(masked_arr, out_meta['nodata']), window=window, indexes=1)
-            progbar.finish()
-    log.debug(f'Timer: {_timer.toString()}')
 
 
 def sanitize(name: str, in_path: str, out_path: str, buff_dist: float, select_features=None):

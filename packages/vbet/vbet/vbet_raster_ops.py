@@ -13,6 +13,8 @@ import rasterio
 from rasterio.windows import Window
 # from rasterio.windows import bounds, from_bounds
 import numpy as np
+from scipy.ndimage import label, generate_binary_structure, binary_closing, sum_labels
+from scipy import ndimage
 
 from rscommons import ProgressBar, Logger, VectorBase, Timer, TempRaster
 
@@ -714,3 +716,166 @@ def get_endpoints_on_raster(raster: Path, geom_line: ogr.Geometry(), dist):
         coords.append(pnt_end)
 
         return coords
+
+
+def generate_vbet_polygon(vbet_evidence_raster, rasterized_channel, channel_hand, out_valley_bottom, temp_folder, thresh_value=0.68):
+    """_summary_
+
+    Args:
+        vbet_evidence_raster (_type_): _description_
+        rasterized_channel (_type_): _description_
+        channel_hand (_type_): _description_
+        out_valley_bottom (_type_): _description_
+        temp_folder (_type_): _description_
+        thresh_value (float, optional): _description_. Defaults to 0.68.
+    """
+    log = Logger('VBET Generate Polygon')
+    _timer = Timer()
+    # Mask to Hand area
+    vbet_evidence_masked = os.path.join(temp_folder, f"vbet_evidence_masked_{thresh_value}.tif")
+    mask_rasters_nodata(vbet_evidence_raster, channel_hand, vbet_evidence_masked)
+
+    # Threshold Valley Bottom
+    valley_bottom_raw = os.path.join(temp_folder, f"valley_bottom_raw_{thresh_value}.tif")
+    threshold(vbet_evidence_masked, thresh_value, valley_bottom_raw)
+
+    ds_valley_bottom = gdal.Open(valley_bottom_raw, gdal.GA_Update)
+    band_valley_bottom = ds_valley_bottom.GetRasterBand(1)
+
+    log.info('Sieve Filter vbet')
+    # Sieve and Clean Raster
+    gdal.SieveFilter(srcBand=band_valley_bottom, maskBand=None, dstBand=band_valley_bottom, threshold=10, connectedness=8, callback=gdal.TermProgress_nocb)
+    band_valley_bottom.SetNoDataValue(0)
+    band_valley_bottom.FlushCache()
+    valley_bottom_sieved = band_valley_bottom.ReadAsArray()
+
+    log.info('Generate regions')
+    # Region Tool to find only connected areas
+    struct = generate_binary_structure(2, 2)
+    regions, _num = label(valley_bottom_sieved, structure=struct)
+    valley_bottom_sieved = None
+
+    chan = raster2array(rasterized_channel)
+    selection = regions * chan
+    chan = None
+
+    values = np.unique(selection)
+    non_zero_values = [v for v in values if v != 0]
+    valley_bottom_region = np.isin(regions, non_zero_values)
+    array2raster(os.path.join(temp_folder, f'regions_{thresh_value}.tif'), vbet_evidence_raster, regions, data_type=gdal.GDT_Int32)
+    array2raster(os.path.join(temp_folder, f'valley_bottom_region_{thresh_value}.tif'), vbet_evidence_raster, valley_bottom_region.astype(int), data_type=gdal.GDT_Int32)
+
+    # Clean Raster Edges
+    log.info('Cleaning Raster edges')
+    valley_bottom_clean = binary_closing(valley_bottom_region.astype(int), iterations=2)
+    array2raster(out_valley_bottom, vbet_evidence_raster, valley_bottom_clean, data_type=gdal.GDT_Int32)
+
+    log.debug(f'Timer: {_timer.toString()}')
+
+
+def generate_centerline_surface(vbet_raster, out_cost_path, temp_folder):
+    """_summary_
+
+    Args:
+        vbet_raster (_type_): _description_
+        out_cost_path (_type_): _description_
+        temp_folder (_type_): _description_
+    """
+    log = Logger('Generate Centerline Surface')
+    vbet = raster2array(vbet_raster)
+    _timer = Timer()
+
+    # Generate Inverse Raster for Proximity
+    valley_bottom_inverse = (vbet != 1)
+    inverse_mask_raster = os.path.join(temp_folder, 'inverse_mask.tif')
+    array2raster(inverse_mask_raster, vbet_raster, valley_bottom_inverse)
+
+    # Proximity Raster
+    ds_valley_bottom_inverse = gdal.Open(inverse_mask_raster)
+    band_valley_bottom_inverse = ds_valley_bottom_inverse.GetRasterBand(1)
+    proximity_raster = os.path.join(temp_folder, 'proximity.tif')
+    _ds_proximity, band_proximity = new_raster(proximity_raster, vbet_raster, data_type=gdal.GDT_Int32)
+    gdal.ComputeProximity(band_valley_bottom_inverse, band_proximity, ['VALUES=1', "DISTUNITS=PIXEL", "COMPRESS=DEFLATE"])
+    band_proximity.SetNoDataValue(0)
+    band_proximity.FlushCache()
+    proximity = band_proximity.ReadAsArray()
+
+    # Rescale Raster
+    rescaled = np.interp(proximity, (proximity.min(), proximity.max()), (0.0, 10.0))
+    rescaled_raster = os.path.join(temp_folder, 'rescaled.tif')
+    array2raster(rescaled_raster, vbet_raster, rescaled, data_type=gdal.GDT_Float32)
+
+    # Centerline Cost Path
+    cost_path = 10**((rescaled * -1) + 10) + (rescaled <= 0) * 1000000000000  # 10** (((A) * -1) + 10) + (A <= 0) * 1000000000000
+    array2raster(out_cost_path, vbet_raster, cost_path, data_type=gdal.GDT_Float32)
+
+    log.debug(f'Timer: {_timer.toString()}')
+
+
+def threshold(evidence_raster_path: Path, thr_val: float, thresh_raster_path: Path):
+    """Threshold a raster to greater than or equal to a threshold value
+
+    Args:
+        evidence_raster_path (Path): input evidience raster
+        thr_val (float): value to threshold
+        thresh_raster_path (Path): output threshold raster
+    """
+    log = Logger('threshold')
+    _timer = Timer()
+    with rasterio.open(evidence_raster_path) as fval_src:
+        out_meta = fval_src.meta
+        out_meta['count'] = 1
+        out_meta['compress'] = 'deflate'
+        out_meta['dtype'] = rasterio.uint8
+        out_meta['nodata'] = 0
+
+        log.info('Thresholding at {}'.format(thr_val))
+        with rasterio.open(thresh_raster_path, "w", **out_meta) as dest:
+            progbar = ProgressBar(len(list(fval_src.block_windows(1))), 50, "Thresholding at {}".format(thr_val))
+            counter = 0
+            for _ji, window in fval_src.block_windows(1):
+                progbar.update(counter)
+                counter += 1
+                fval_data = fval_src.read(1, window=window, masked=True)
+                # Fill an array with "1" values to give us a nice mask for polygonize
+                fvals_mask = np.full(fval_data.shape, np.uint8(1))
+
+                # Create a raster with 1.0 as a value everywhere in the same shape as fvals
+                new_fval_mask = np.ma.mask_or(fval_data.mask, fval_data < thr_val)
+                masked_arr = np.ma.array(fvals_mask, mask=[new_fval_mask])  # & ch_data.mask])
+                dest.write(np.ma.filled(masked_arr, out_meta['nodata']), window=window, indexes=1)
+            progbar.finish()
+    log.debug(f'Timer: {_timer.toString()}')
+
+
+def clean_raster_regions(raster, target_value, out_raster, out_regions=None):
+
+    log = Logger('Clean Raster Regions')
+
+    array = raster2array(raster)
+    if not np.any(array == target_value):
+        log.info(f'Raster {raster} does not contain target value of {target_value}. No raster cleaning required.')
+        return
+
+    array[array != target_value] = 0  # all values not part of the target value
+    array[array == target_value] = 1
+
+    log.info('Generate regions')
+    # Region Tool to find only connected areas
+    struct = generate_binary_structure(2, 2)
+    regions, _num_labels = label(array, structure=struct)
+    array = None
+
+    size = np.bincount(regions.ravel())
+    biggest_label = size[1:].argmax() + 1
+    regions[regions != biggest_label] = 0
+    regions[regions == biggest_label] = 1
+
+    array_non_target = raster2array(raster)
+    array_non_target[array_non_target == target_value] = -9999
+    out_array = np.choose(regions, [array_non_target, target_value])
+    array_non_target = None
+
+    array2raster(out_raster, raster, out_array, data_type=gdal.GDT_Int32, no_data=-9999)
+    if out_regions:
+        array2raster(out_regions, raster, regions, data_type=gdal.GDT_Int32)
