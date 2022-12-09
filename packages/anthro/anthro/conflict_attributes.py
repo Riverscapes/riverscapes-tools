@@ -23,6 +23,7 @@ from rscommons.vector_ops import intersect_feature_classes, get_geometry_unary_u
 from rscommons.classes.vector_classes import get_shp_or_gpkg, GeopackageLayer
 from rscommons.database import SQLiteCon
 from shapely.ops import unary_union
+import datetime
 
 
 def conflict_attributes(
@@ -85,12 +86,14 @@ def calc_conflict_attributes(flowlines_path, dgos_path, valley_bottom, roads, ra
     reaches = load_geometries(flowlines_path, epsg=epsg)
     dgo_geoms = load_geometries(dgos_path, epsg=epsg)
     with get_shp_or_gpkg(flowlines_path) as lyr:
-        # buffer_distance = lyr.rough_convert_metres_to_vector_units(buffer_distance_metres)
+        buffer_distance = lyr.rough_convert_metres_to_vector_units(30)
         cell_size = lyr.rough_convert_metres_to_vector_units(cell_size_meters)
         geopackage_path = lyr.filepath
 
+    st = datetime.datetime.now()
     polygons = {}
     for reach_id, polyline in reaches.items():
+        log.info(f'finding IGOs that intersect network segment {reach_id}')
         polys = []
         for dgo_id, polygon in dgo_geoms.items():
             if polygon.intersects(polyline):
@@ -100,10 +103,12 @@ def calc_conflict_attributes(flowlines_path, dgos_path, valley_bottom, roads, ra
         elif len(polys) == 1:
             poly = polys[0]
         else:  # if there are no polygons that intersect network?
-            print(f'no DGO polygons intersect stream reach {reach_id}')
+            poly = polyline.buffer(buffer_distance)
         polygons[reach_id] = poly
 
     # polygons = {reach_id: polyline.buffer(buffer_distance) for reach_id, polyline in reaches.items()}
+    end = datetime.datetime.now()
+    print(f'finding intersecting dgos took {end-st}')
 
     results = {}
     tmp_folder = os.path.join(os.path.dirname(intermediates_gpkg_path), 'tmp_conflict')

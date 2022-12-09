@@ -20,8 +20,9 @@ from rscommons import Logger, initGDALOGRErrors, RSLayer, RSProject, ModelConfig
 from rscommons.database import create_database, SQLiteCon
 from rscommons.copy_features import copy_features_fields
 
-from anthro.utils.conflict_attributes import conflict_attributes
+from anthro.conflict_attributes import conflict_attributes
 from anthro.__version__ import __version__
+
 
 Path = str
 
@@ -151,21 +152,21 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
 
         # Register vwReaches as a feature layer as well as its geometry column
         database.curs.execute("""INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id)
-            SELECT 'vwReaches', data_type, 'Reaches', min_x, min_y, max_x, max_y, srs_id FROM gpkg_contents WHERE table_name = 'anthro_geom_lines'""")
+            SELECT 'vwReaches', data_type, 'Reaches', min_x, min_y, max_x, max_y, srs_id FROM gpkg_contents WHERE table_name = 'anthro_lines_geom'""")
 
         database.curs.execute("""INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m)
-            SELECT 'vwReaches', column_name, geometry_type_name, srs_id, z, m FROM gpkg_geometry_columns WHERE table_name = 'anthro_geom_lines'""")
+            SELECT 'vwReaches', column_name, geometry_type_name, srs_id, z, m FROM gpkg_geometry_columns WHERE table_name = 'anthro_lines_geom'""")
 
         database.curs.execute("""INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id)
-            SELECT 'vwIgos', data_type, 'igos', min_x, min_y, max_x, max_y, srs_id FROM gpkg_contents WHERE table_name = 'anthro_geom_points'""")
+            SELECT 'vwIgos', data_type, 'igos', min_x, min_y, max_x, max_y, srs_id FROM gpkg_contents WHERE table_name = 'anthro_igo_geom'""")
 
         database.curs.execute("""INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m)
-            SELECT 'vwIgos', column_name, geometry_type_name, srs_id, z, m FROM gpkg_geometry_columns WHERE table_name = 'anthro_geom_points'""")
+            SELECT 'vwIgos', column_name, geometry_type_name, srs_id, z, m FROM gpkg_geometry_columns WHERE table_name = 'anthro_igo_geom'""")
 
         database.conn.commit()
 
-    conflict_attributes(outputs_gpkg_path, line_geom_path, input_layers['DGO'], input_layers['VALLEY_BOTTOM'], input_layers['ROADS'],
-                        input_layers['RAILS'], input_layers['CANALS'], input_layers['OWNERSHIP'], 5, cfg.OUTPUT_EPSG, canal_codes, intermediates_gpkg_path)
+    # conflict_attributes(outputs_gpkg_path, line_geom_path, input_layers['DGO'], input_layers['VALLEYBOTTOM'], input_layers['ROADS'],
+    #                     input_layers['RAILS'], input_layers['CANALS'], input_layers['OWNERSHIP'], 5, cfg.OUTPUT_EPSG, canal_codes, intermediates_gpkg_path)
 
     buffers = []
 

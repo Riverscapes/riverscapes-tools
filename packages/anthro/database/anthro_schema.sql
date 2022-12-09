@@ -57,8 +57,10 @@ CREATE TABLE IGOAttributes (
     Rail_dens REAL,
     Canal_len REAL,
     Canal_dens REAL,
-    Xing_ct INTEGER,
-    Xing_dens REAL);
+    RoadX_ct INTEGER,
+    RoadX_dens REAL,
+    DivPts_ct INTEGER,
+    DivPts_dens REAL);
 
 CREATE TABLE ReachAttributes (
     ReachID INTEGER PRIMARY KEY NOT NULL,
