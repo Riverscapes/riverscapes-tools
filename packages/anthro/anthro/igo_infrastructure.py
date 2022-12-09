@@ -6,9 +6,11 @@ Dec 2022
 """
 import os
 import sqlite3
+import json
 import numpy as np
 from rscommons import GeopackageLayer, get_shp_or_gpkg
 from rscommons.classes.vector_base import VectorBase, get_utm_zone_epsg
+from rscommons.vector_ops import get_geometry_unary_union
 from osgeo import ogr
 
 
@@ -34,28 +36,35 @@ def infrastructure_attributes(igo: str, dgo: str, road: str, rail: str, canal: s
     conn = sqlite3.connect(out_gpkg_path)
     # curs = conn.cursor()
 
+    with get_shp_or_gpkg(road) as reflyr:
+        sref, transform = reflyr.get_transform_from_epsg(reflyr.spatial_ref, epsg_proj)
+
     for dataset, label in in_data.items():
-        with get_shp_or_gpkg(dataset) as lyr:
-            sref, transform = lyr.get_transform_from_epsg(lyr.spatial_ref, epsg_proj)
+        ds = get_geometry_unary_union(dataset)
+        # sref, transform = ds.get_transform_from_epsg(ds.spatial_ref, epsg_proj)
 
-            for igoid, window in windows.items():
+        for igoid, window in windows.items():
 
-                lyr_cl = window[1].intersection(lyrshp)
-                lyr_clipped = lyr_cl.to_crs(epsg_proj)
+            lyr_cl = window[1].intersection(ds)
+            # project clipped layer to utm epsg
+            ogrlyr = VectorBase.shapely2ogr(lyr_cl)
+            lyr_clipped = VectorBase.ogr2shapely(ogrlyr, transform=transform)
 
-                window_area = window[0]
-                if lyr.ogr_geom_type in lyr.LINE_TYPES:
-                    lb1 = label + '_len'
-                    lb2 = label + '_dens'
-                    conn.execute(f'UPDATE IGOAttributes SET {lb1} = {lyr_clipped.length} WHERE IGOID = {igoid}')
-                    conn.execute(f'UPDATE IGOAttributes SET {lb2} {lyr_clipped.length/window_area} WHERE IGOID = {igoid}')
-                    conn.commit()
-                if lyr.ogr_geom_type in lyr.POINT_TYPES:
-                    lb1 = label + '_ct'
-                    lb2 = label + '_dens'
-                    conn.execute(f'UPDATE IGOAttributes SET {lb1} = {lyr_clipped.count} WHERE IGOID = {igoid}')
-                    conn.execute(f'UPDATE IGOAttributes SET {lb2} {lyr_clipped.count/window_area} WHERE IGOID = {igoid}')
-                    conn.commit()
+            window_ogr = VectorBase.shapely2ogr(window[1])
+            window_proj = VectorBase.ogr2shapely(window_ogr, transform)
+            window_area = window_proj.area
+            if ds.type in ['MultiLineString', 'LineString']:
+                lb1 = label + '_len'
+                lb2 = label + '_dens'
+                conn.execute(f'UPDATE IGOAttributes SET {lb1} = {lyr_clipped.length} WHERE IGOID = {igoid}')
+                conn.execute(f'UPDATE IGOAttributes SET {lb2} {lyr_clipped.length/window_area} WHERE IGOID = {igoid}')
+                conn.commit()
+            if ds.type in ['Point', 'MultiPoint']:
+                lb1 = label + '_ct'
+                lb2 = label + '_dens'
+                conn.execute(f'UPDATE IGOAttributes SET {lb1} = {len(lyr_clipped.coords.xy[0])} WHERE IGOID = {igoid}')
+                conn.execute(f'UPDATE IGOAttributes SET {lb2} {len(lyr_clipped.coords.xy[0])/window_area} WHERE IGOID = {igoid}')
+                conn.commit()
 
 
 def get_moving_windows(igo: str, dgo: str, level_paths: list, distance: dict):
@@ -102,17 +111,17 @@ out_gpkg_pathin = '/mnt/c/Users/jordang/Documents/Riverscapes/data/anthro/160102
 # with get_shp_or_gpkg(igo) as igo_lyr:
 #    level_ps = [igo_lyr.]
 #    level_ps_unique = np.unique(level_ps)
-driver = ogr.GetDriverByName('GPKG')
-src = driver.Open(os.path.dirname(igoin))
-lyr = src.GetLayerByName('anthro_igo_geom')
-level_ps = [ftr.GetField('LevelPathI') for ftr in lyr]
-levelpathsin = list(np.unique(level_ps))
+# driver = ogr.GetDriverByName('GPKG')
+# src = driver.Open(os.path.dirname(igoin))
+# lyr = src.GetLayerByName('anthro_igo_geom')
+# level_ps = [ftr.GetField('LevelPathI') for ftr in lyr]
+# levelpathsin = list(np.unique(level_ps))
 
 conn = sqlite3.connect(out_gpkg_pathin)
 curs = conn.cursor()
 curs.execute('SELECT DISTINCT LevelPathI FROM anthro_igo_geom')
 levelps = curs.fetchall()
-levelpaths = [levelps[i][0] for i in range(len(levelps))]
+levelpathsin = [levelps[i][0] for i in range(len(levelps))]
 # conn.execute('CREATE INDEX ix_igo_levelpath on anthro_igo_geom(LevelPathI)')
 # conn.execute('CREATE INDEX ix_igo_segdist on anthro_igo_geom(seg_distance)')
 # conn.execute('CREATE INDEX ix_igo_size on anthro_igo_geom(stream_size)')
