@@ -1,5 +1,11 @@
 # VBET
 
+## [0.8.4] - 2022-DEC-09
+
+### Changed
+- change input parameter to use processing_extent layer instead of huc8 to match actual watershed boundary
+- implement raster cleaning to remove "vbet ribbons"
+
 ## [0.8.3] - 2022-DEC-07
 
 ### Changed
