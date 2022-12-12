@@ -260,24 +260,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['NORMALIZED_SLOPE'])
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['NORMALIZED_TWI'])
 
-    # Generate full normaized slope and twi rasters
-    # for _ji, window in read_rasters['Slope'].block_windows(1):
-    #     block = {block_name: raster.read(1, window=window, masked=True) for block_name, raster in read_rasters.items()}
-    #     normalized = {}
-    #     for name in ['Slope', 'TWI']:
-    #         if name in vbet_run['Zones']:
-    #             transforms = [np.ma.MaskedArray(transform(block[name].data), mask=block[name].mask) for transform in vbet_run['Transforms'][name]]
-    #             normalized[name] = np.ma.MaskedArray(np.choose(block[f'TRANSFORM_ZONE_{name}'].data, transforms, mode='clip'), mask=block[name].mask)
-    #         else:
-    #             normalized[name] = np.ma.MaskedArray(vbet_run['Transforms'][name][0](block[name].data), mask=block[name].mask)
-    #     fvals_topo = np.ma.mean([normalized['Slope'], normalized['TWI']], axis=0)
-    #     write_rasters['EVIDENCE_TOPO'].write(np.ma.filled(np.float32(fvals_topo), out_meta['nodata']), window=window, indexes=1)
-    #     write_rasters['NORMALIZED_SLOPE'].write(np.ma.filled(np.float32(normalized['Slope']), out_meta['nodata']), window=window, indexes=1)
-    #     write_rasters['NORMALIZED_TWI'].write(np.ma.filled(np.float32(normalized['TWI']), out_meta['nodata']), window=window, indexes=1)
-    # write_rasters['EVIDENCE_TOPO'].close()
-
     # Allow us to specify a temp folder outside our project folder
-    temp_folder = temp_folder if temp_folder else os.path.join(project_folder, 'temp')
     temp_rasters_folder = os.path.join(temp_folder, 'rasters')
     safe_makedirs(temp_rasters_folder)
     level_path_keys = {}
@@ -370,12 +353,12 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         })
 
         log.info(f'Processing Level Path: {level_path} {level_path_key}/{len(level_paths_to_run)}')
-        temp_folder = os.path.join(temp_folder, f'levelpath_{level_path}')
-        safe_makedirs(temp_folder)
+        temp_folder_lpath = os.path.join(temp_folder, f'levelpath_{level_path}')
+        safe_makedirs(temp_folder_lpath)
 
         # Gather the channel area polygon for the level path
         sql = f"LevelPathI = {level_path}" if level_path is not None else "LevelPathI is NULL"
-        level_path_polygons = os.path.join(temp_folder, 'channel_polygons.gpkg', f'level_path_{level_path}')
+        level_path_polygons = os.path.join(temp_folder_lpath, 'channel_polygons.gpkg', f'level_path_{level_path}')
         with TimerBuckets('ogr'):
             copy_feature_class(channel_area, level_path_polygons, attribute_filter=sql)
 
@@ -434,7 +417,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                 log.error(err_msg)
                 _tmterr("EMPTY_ENVELOPE", err_msg)
                 continue
-        envelope = os.path.join(temp_folder, 'envelope_polygon.gpkg', f'level_path_{level_path}')
+        envelope = os.path.join(temp_folder_lpath, 'envelope_polygon.gpkg', f'level_path_{level_path}')
 
         with TimerBuckets('ogr'):
             with GeopackageLayer(envelope, write=True) as lyr_envelope:
@@ -445,13 +428,13 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                 lyr_envelope.ogr_layer.CreateFeature(feat)
 
         # use the channel extent to mask all hand input raster and channel area extents
-        local_dinfflowdir_ang = os.path.join(temp_folder, f'dinfflowdir_ang_{level_path}.tif')
-        local_pitfill_dem = os.path.join(temp_folder, f'pitfill_dem_{level_path}.tif')
+        local_dinfflowdir_ang = os.path.join(temp_folder_lpath, f'dinfflowdir_ang_{level_path}.tif')
+        local_pitfill_dem = os.path.join(temp_folder_lpath, f'pitfill_dem_{level_path}.tif')
         with TimerBuckets('gdal'):
             raster_warp(dinfflowdir_ang, local_dinfflowdir_ang, 4326, clip=envelope)
             raster_warp(pitfill_dem, local_pitfill_dem, 4326, clip=envelope)
 
-        rasterized_channel = os.path.join(temp_folder, f'rasterized_channel_{level_path}.tif')
+        rasterized_channel = os.path.join(temp_folder_lpath, f'rasterized_channel_{level_path}.tif')
         with TimerBuckets('rasterize'):
             rasterize(level_path_polygons, rasterized_channel, local_pitfill_dem, all_touched=True)
             in_rasters['Channel'] = rasterized_channel
@@ -488,11 +471,11 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             write_rasters = {}  # {name: rasterio.open(raster, 'w', **out_meta) for name, raster in out_rasters.items()}
             write_rasters['VBET_EVIDENCE'] = rasterio.open(evidence_raster, 'w', **out_meta)
             write_rasters['NORMALIZED_HAND'] = rasterio.open(normalized_local_hand, 'w', **out_meta)
-            write_rasters['topo_evidence_twi'] = rasterio.open(os.path.join(temp_folder, f'topo_evidence_twi_{level_path}.tif'), 'w', **out_meta)
-            write_rasters['topo_evidence_nontwi'] = rasterio.open(os.path.join(temp_folder, f'topo_evidence_nontwi_{level_path}.tif'), 'w', **out_meta)
-            write_rasters['topo_evidence'] = rasterio.open(os.path.join(temp_folder, f'topo_evidence_{level_path}.tif'), 'w', **out_meta)
-            write_rasters['twi_logic'] = rasterio.open(os.path.join(temp_folder, f'twi_logic_{level_path}.tif'), 'w', **out_meta)
-            write_rasters['twi_normalized'] = rasterio.open(os.path.join(temp_folder, f'twi_normalized_{level_path}.tif'), 'w', **out_meta)
+            write_rasters['topo_evidence_twi'] = rasterio.open(os.path.join(temp_folder_lpath, f'topo_evidence_twi_{level_path}.tif'), 'w', **out_meta)
+            write_rasters['topo_evidence_nontwi'] = rasterio.open(os.path.join(temp_folder_lpath, f'topo_evidence_nontwi_{level_path}.tif'), 'w', **out_meta)
+            write_rasters['topo_evidence'] = rasterio.open(os.path.join(temp_folder_lpath, f'topo_evidence_{level_path}.tif'), 'w', **out_meta)
+            write_rasters['twi_logic'] = rasterio.open(os.path.join(temp_folder_lpath, f'twi_logic_{level_path}.tif'), 'w', **out_meta)
+            write_rasters['twi_normalized'] = rasterio.open(os.path.join(temp_folder_lpath, f'twi_normalized_{level_path}.tif'), 'w', **out_meta)
 
             progbar = ProgressBar(len(list(read_rasters['Slope'].block_windows(1))), 50, "Calculating evidence layer")
             counter = 0
@@ -541,8 +524,8 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
         # Generate VBET Polygon
         with TimerBuckets('gdal'):
-            valley_bottom_raster = os.path.join(temp_folder, f'valley_bottom_{level_path}.tif')
-            generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, valley_bottom_raster, temp_folder)
+            valley_bottom_raster = os.path.join(temp_folder_lpath, f'valley_bottom_{level_path}.tif')
+            generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, valley_bottom_raster, temp_folder_lpath)
 
         log.info('Add VBET Raster to Output')
         with TimerBuckets('rasterio'):
@@ -550,13 +533,13 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
         if level_path is not None:
             with TimerBuckets('scipy'):
-                region_raster = os.path.join(temp_folder, f'region_cleaning_{level_path}.tif')
+                region_raster = os.path.join(temp_folder_lpath, f'region_cleaning_{level_path}.tif')
                 clean_raster_regions(output_vbet_area_raster, level_path_key, output_vbet_area_raster, region_raster)
 
         # Generate the Active Floodplain Polygon
         with TimerBuckets('gdal'):
-            active_valley_bottom_raster = os.path.join(temp_folder, f'active_valley_bottom_{level_path}.tif')
-            generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, active_valley_bottom_raster, temp_folder, thresh_value=0.90)
+            active_valley_bottom_raster = os.path.join(temp_folder_lpath, f'active_valley_bottom_{level_path}.tif')
+            generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, active_valley_bottom_raster, temp_folder_lpath, thresh_value=0.90)
 
         with TimerBuckets('rasterio'):
             raster_update_multiply(output_active_vbet_area_raster, active_valley_bottom_raster, value=level_path_key)
@@ -565,11 +548,11 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         with TimerBuckets('centerline'):
             if level_path is not None:
                 # Generate and add rasterized version of level path flowline to make sure endpoint coords are on the raster.
-                level_path_flowlines = os.path.join(temp_folder, 'flowlines.gpkg', f'level_path_{level_path}')
+                level_path_flowlines = os.path.join(temp_folder_lpath, 'flowlines.gpkg', f'level_path_{level_path}')
                 copy_feature_class(line_network, level_path_flowlines, attribute_filter=f'LevelPathI = {level_path}')
-                rasterized_level_path = os.path.join(temp_folder, f'rasterized_flowline_{level_path}.tif')
+                rasterized_level_path = os.path.join(temp_folder_lpath, f'rasterized_flowline_{level_path}.tif')
                 rasterize(level_path_flowlines, rasterized_level_path, rasterized_channel, all_touched=True)
-                valley_bottom_flowline_raster = os.path.join(temp_folder, f'valley_bottom_and_flowline_{level_path}.tif')
+                valley_bottom_flowline_raster = os.path.join(temp_folder_lpath, f'valley_bottom_and_flowline_{level_path}.tif')
                 with rasterio.open(valley_bottom_raster, 'r') as rio_vbet, \
                         rasterio.open(rasterized_level_path, 'r') as rio_flowline:
                     out_meta = rio_vbet.meta
@@ -590,8 +573,8 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
                 # Generate Centerline from Cost Path
                 log.info('Generating Centerline from cost path')
-                cost_path_raster = os.path.join(temp_folder, f'cost_path_{level_path}.tif')
-                generate_centerline_surface(valley_bottom_flowline_raster, cost_path_raster, temp_folder)
+                cost_path_raster = os.path.join(temp_folder_lpath, f'cost_path_{level_path}.tif')
+                generate_centerline_surface(valley_bottom_flowline_raster, cost_path_raster, temp_folder_lpath)
                 geom_flowline = collect_linestring(level_path_flowlines)
 
                 geom_flowline = ogr.ForceToMultiLineString(geom_flowline)
@@ -606,11 +589,13 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                             continue
                         log.info('Find least cost path for centerline')
                         try:
-                            centerline_raster = os.path.join(temp_folder, f'centerline_{level_path}_part_{cl_index}.tif')
+                            centerline_raster = os.path.join(temp_folder_lpath, f'centerline_{level_path}_part_{cl_index}.tif')
                             least_cost_path(cost_path_raster, centerline_raster, coords[0], coords[1])
                         except Exception as err:
+                            # print(err)
                             err_msg = f'Unable to generate centerline for part {cl_index} of level path {level_path}: end points must all be within the costs array.'
                             log.error(err_msg)
+                            log.debug(err)
                             _tmterr("CENTERLINE_COST_ERROR", err_msg)
                             cl_index += 1
                             continue
@@ -717,7 +702,6 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     log.info('Apply values to No Data areas of HAND and Evidence rasters')
     level_paths_for_raster = [level_path for level_path in level_paths_to_run if level_path is not None]
     level_paths_for_raster.sort(reverse=True)
-
 
     progbar = ProgressBar(len(level_paths_for_raster), 50, 'Apply  to HAND & Evidence Rasters')
     counter = 0
@@ -888,6 +872,7 @@ def main():
 
     sys.exit(0)
 
+
 def zip_temp_folder(temp_folder: str, base_name: str):
     """There are too many files in the temp folder to upload. We zip them up and delete the folder.
 
@@ -902,7 +887,7 @@ def zip_temp_folder(temp_folder: str, base_name: str):
         shutil.make_archive(base_name, "zip", temp_folder)
     except Exception as err:
         log.error(err)
-    log.debug('Zipping complete')    
+    log.debug('Zipping complete')
 
 
 if __name__ == '__main__':
