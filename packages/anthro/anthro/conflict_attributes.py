@@ -29,12 +29,12 @@ import datetime
 def conflict_attributes(
         output_gpkg: str,
         flowlines_path: str,
-        dgos_path: str,
         valley_bottom: str,
         roads: str,
         rail: str,
         canals: str,
         ownership: str,
+        buffer_distance_metres: float,
         cell_size_meters: float,
         epsg: int,
         canal_codes: List[int],
@@ -54,14 +54,14 @@ def conflict_attributes(
     """
 
     # Calculate conflict attributes
-    values = calc_conflict_attributes(flowlines_path, dgos_path, valley_bottom, roads, rail, canals, ownership, cell_size_meters, epsg, canal_codes, intermediates_gpkg_path)
+    values = calc_conflict_attributes(flowlines_path, valley_bottom, roads, rail, canals, ownership, buffer_distance_metres, cell_size_meters, epsg, canal_codes, intermediates_gpkg_path)
 
     # Write float and string fields separately with log summary enabled
     write_db_attributes(output_gpkg, values, ['iPC_Road', 'iPC_RoadVB', 'iPC_Rail', 'iPC_RailVB', 'iPC_Canal', 'iPC_DivPts', 'iPC_RoadX', 'iPC_Privat', 'oPC_Dist'])
     write_db_attributes(output_gpkg, values, ['AgencyID'], summarize=False)
 
 
-def calc_conflict_attributes(flowlines_path, dgos_path, valley_bottom, roads, rail, canals, ownership, cell_size_meters, epsg, canal_codes, intermediates_gpkg_path):
+def calc_conflict_attributes(flowlines_path, valley_bottom, roads, rail, canals, ownership, buffer_distance_metres, cell_size_meters, epsg, canal_codes, intermediates_gpkg_path):
 
     log = Logger('Conflict')
     log.info('Calculating conflict attributes')
@@ -84,31 +84,31 @@ def calc_conflict_attributes(flowlines_path, dgos_path, valley_bottom, roads, ra
 
     # Buffer all reaches (being careful to use the units of the Shapefile)
     reaches = load_geometries(flowlines_path, epsg=epsg)
-    dgo_geoms = load_geometries(dgos_path, epsg=epsg)
+    # dgo_geoms = load_geometries(dgos_path, epsg=epsg)
     with get_shp_or_gpkg(flowlines_path) as lyr:
-        buffer_distance = lyr.rough_convert_metres_to_vector_units(30)
+        buffer_distance = lyr.rough_convert_metres_to_vector_units(buffer_distance_metres)
         cell_size = lyr.rough_convert_metres_to_vector_units(cell_size_meters)
         geopackage_path = lyr.filepath
 
-    st = datetime.datetime.now()
+    # st = datetime.datetime.now()
     polygons = {}
-    for reach_id, polyline in reaches.items():
-        log.info(f'finding IGOs that intersect network segment {reach_id}')
-        polys = []
-        for dgo_id, polygon in dgo_geoms.items():
-            if polygon.intersects(polyline):
-                polys.append(polygon)
-        if len(polys) > 1:
-            poly = unary_union(polys)
-        elif len(polys) == 1:
-            poly = polys[0]
-        else:  # if there are no polygons that intersect network?
-            poly = polyline.buffer(buffer_distance)
-        polygons[reach_id] = poly
+    # for reach_id, polyline in reaches.items():
+    #     log.info(f'finding IGOs that intersect network segment {reach_id}')
+    #     polys = []
+    #     for dgo_id, polygon in dgo_geoms.items():
+    #         if polygon.intersects(polyline):
+    #             polys.append(polygon)
+    #     if len(polys) > 1:
+    #         poly = unary_union(polys)
+    #     elif len(polys) == 1:
+    #         poly = polys[0]
+    #     else:  # if there are no polygons that intersect network?
+    #         poly = polyline.buffer(buffer_distance)
+    #     polygons[reach_id] = poly
 
-    # polygons = {reach_id: polyline.buffer(buffer_distance) for reach_id, polyline in reaches.items()}
-    end = datetime.datetime.now()
-    print(f'finding intersecting dgos took {end-st}')
+    polygons = {reach_id: polyline.buffer(buffer_distance) for reach_id, polyline in reaches.items()}
+    # end = datetime.datetime.now()
+    # print(f'finding intersecting dgos took {end-st}')
 
     results = {}
     tmp_folder = os.path.join(os.path.dirname(intermediates_gpkg_path), 'tmp_conflict')

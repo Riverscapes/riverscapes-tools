@@ -23,6 +23,14 @@ CREATE TABLE ReachVegetation (
     CellCount REAL NOT NULL CONSTRAINT CHK_ReachVegetation_CellCount CHECK (CellCount > 0), 
     PRIMARY KEY (ReachID, VegetationID));
 
+CREATE TABLE IGOVegetation (
+    IGOID INTEGER REFERENCES IGOAttributes ON DELETE CASCADE NOT NULL,
+    VegetationID INTEGER REFERENCES VegetationTypes (VegetationID) NOT NULL,
+    Area REAL NOT NULL CONSTRAINT CHK_IGOVegetation_Area CHECK (Area > 0),
+    CellCount REAL NOT NULL CONSTRAINT CHK_IGOVegetation_CellCount CHECK (CellCount > 0),
+    PRIMARY KEY (IGOID, VegetationID)
+);
+
 CREATE TABLE MetaData (KeyInfo TEXT PRIMARY KEY NOT NULL, ValueInfo TEXT);
 
 CREATE TABLE LandUses (
@@ -50,6 +58,9 @@ CREATE TABLE Watersheds (
 
 CREATE TABLE IGOAttributes (
     IGOID INTEGER PRIMARY KEY NOT NULL,
+    LevelPathI, REAL,
+    seg_distance REAL,
+    stream_size INTEGER,
     LUI REAL,
     Road_len REAL,
     Road_dens REAL,
@@ -72,13 +83,15 @@ CREATE TABLE ReachAttributes (
     iPC_RoadVB REAL CONSTRAINT CHK_Reaches_RoadVBDist CHECK (iPC_RoadVB >= 0),
     iPC_Rail REAL CONSTRAINT CHK_Reaches_RailDist CHECK (iPC_Rail >= 0),
     iPC_RailVB REAL CONSTRAINT CHK_Reaches_RailVBDist CHECK (iPC_RailVB >= 0),
-    iPC_DivPts REAL CONSTRAINT CHK_Reaches_DivPtsDist CHECK (iPC_DivPts >= 0),
-    iPC_Privat REAL CONSTRAINT CHK_Reaches_PrivatDist CHECK (iPC_Privat >= 0),
+    iPC_DivPts REAL,
+    iPC_Privat REAL,
+    iPC_Canal REAL,
     iPC_LU REAL,
     iPC_VLowLU REAL,
     iPC_LowLU REAL,
     iPC_ModLU REAL,
     iPC_HighLU REAL,
+    oPC_Dist REAL,
     AgencyID INTEGER REFERENCES Agencies (AgencyID));
 
 -- indexes

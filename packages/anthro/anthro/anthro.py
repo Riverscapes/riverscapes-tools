@@ -9,6 +9,7 @@ import traceback
 import sys
 import time
 import datetime
+import sqlite3
 from typing import Dict, List
 from osgeo import ogr
 
@@ -21,6 +22,8 @@ from rscommons.database import create_database, SQLiteCon
 from rscommons.copy_features import copy_features_fields
 
 from anthro.conflict_attributes import conflict_attributes
+from anthro.moving_window import get_moving_windows
+from anthro.igo_infrastructure import infrastructure_attributes
 from anthro.__version__ import __version__
 
 
@@ -149,6 +152,7 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
 
     with SQLiteCon(outputs_gpkg_path) as database:
         database.curs.execute('INSERT INTO ReachAttributes (ReachID, ReachCode, WatershedID, StreamName) SELECT ReachID, FCode, WatershedID, GNIS_NAME FROM anthro_lines_geom')
+        database.curs.execute('INSERT INTO IGOAttributes (IGOID, LevelPathI, seg_distance, stream_size) SELECT IGOID, LevelPathI, seg_distance, stream_size FROM anthro_igo_geom')
 
         # Register vwReaches as a feature layer as well as its geometry column
         database.curs.execute("""INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id)
@@ -163,10 +167,42 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
         database.curs.execute("""INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m)
             SELECT 'vwIgos', column_name, geometry_type_name, srs_id, z, m FROM gpkg_geometry_columns WHERE table_name = 'anthro_igo_geom'""")
 
+        database.conn.execute('CREATE INDEX ix_igo_levelpath on anthro_igo_geom(LevelPathI)')
+        database.conn.execute('CREATE INDEX ix_igo_segdist on anthro_igo_geom(seg_distance)')
+        database.conn.execute('CREATE INDEX ix_igo_size on anthro_igo_geom(stream_size)')
+
         database.conn.commit()
 
-    # conflict_attributes(outputs_gpkg_path, line_geom_path, input_layers['DGO'], input_layers['VALLEYBOTTOM'], input_layers['ROADS'],
-    #                     input_layers['RAILS'], input_layers['CANALS'], input_layers['OWNERSHIP'], 5, cfg.OUTPUT_EPSG, canal_codes, intermediates_gpkg_path)
+        # get list of level paths
+        # conn = sqlite3.connect(outputs_gpkg_path)
+        # curs = conn.cursor()
+        database.curs.execute('SELECT DISTINCT LevelPathI FROM anthro_igo_geom')
+        levelps = database.curs.fetchall()
+        levelpathsin = [lp['LevelPathI'] for lp in levelps]
+
+    with SQLiteCon(inputs_gpkg_path) as db:
+        db.conn.execute('CREATE INDEX ix_dgo_levelpath on dgo(LevelPathI)')
+        db.conn.execute('CREATE INDEX ix_dgo_segdist on dgo(seg_distance)')
+        db.conn.commit()
+
+    # set window distances for different stream sizes
+    distancein = {
+        '0': 100,
+        '1': 250,
+        '2': 1000
+    }
+
+    windows = get_moving_windows(igo_geom_path, input_layers['DGO'], levelpathsin, distancein)
+
+    conflict_attributes(outputs_gpkg_path, line_geom_path, input_layers['VALLEYBOTTOM'], input_layers['ROADS'], input_layers['RAILS'],
+                        input_layers['CANALS'], input_layers['OWNERSHIP'], 30, 5, cfg.OUTPUT_EPSG, canal_codes, intermediates_gpkg_path)
+    crossings = os.path.join(intermediates_gpkg_path, 'road_crossings')
+    diversions = os.path.join(intermediates_gpkg_path, 'diversions')
+    st = datetime.datetime.now()
+    infrastructure_attributes(igo_geom_path, windows, input_layers['ROADS'], input_layers['RAILS'], input_layers['CANALS'],
+                              crossings, diversions, outputs_gpkg_path)
+    end = datetime.datetime.now()
+    print(f'igo infrastructure took {end - st}')
 
     buffers = []
 

@@ -24,7 +24,7 @@
                 "${input:HUC}",
                 "{env:DATA_ROOT}/rs_context/${input:HUC}/vegetation/existing_veg.tif",
                 "{env:DATA_ROOT}/rs_context/${input:HUC}/topography/dem_hillshade.tif",
-                "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/segmentation_points",
+                "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/vbet_igos",
                 "{env:DATA_ROOT}/vbet/${input:HUC}/intermediates/vbet_intermediates.gpkg/vbet_dgos",
                 "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydro_derivatives.gpkg/network_intersected_300m",
                 "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/vbet_full",
