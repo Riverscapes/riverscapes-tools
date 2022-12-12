@@ -35,8 +35,6 @@ from rscommons.vbet_network import copy_vaa_attributes, join_attributes, create_
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.raster_warp import raster_warp
 from rscommons import TimerBuckets, Timer, TimerWaypoints
-from .lib.cost_path import least_cost_path
-from .lib.raster2line import raster2line_geom
 
 from vbet.vbet_database import build_vbet_database, load_configuration
 from vbet.vbet_raster_ops import rasterize, raster_merge, raster_update, raster_update_multiply, raster_remove_zone, raster_recompress, get_endpoints_on_raster, generate_vbet_polygon, generate_centerline_surface, clean_raster_regions
@@ -45,6 +43,8 @@ from vbet.vbet_report import VBETReport
 from vbet.vbet_segmentation import calculate_segmentation_metrics, generate_segmentation_points, split_vbet_polygons, summerize_vbet_metrics
 from vbet.__version__ import __version__
 
+from .lib.cost_path import least_cost_path
+from .lib.raster2line import raster2line_geom
 
 Path = str
 
@@ -105,16 +105,13 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                      reach_codes=None, mask=None, temp_folder=None):
 
     thresh_vals = {'VBET_IA': 0.90, 'VBET_FULL': 0.68}
-
     _tmr_waypt = TimerWaypoints()
     log = Logger('VBET')
     log.info('Starting VBET v.{}'.format(cfg.version))
 
-    # Allow us to specify a temp folder outside our project folder
-    temp_dir = temp_folder if temp_folder else os.path.join(project_folder, 'temp')
     # This could be a re-run and we need to clear out the tmp folders
-    if os.path.isdir(temp_dir):
-        safe_remove_dir(temp_dir)
+    if os.path.isdir(temp_folder):
+        safe_remove_dir(temp_folder)
     intermediates_dir = os.path.dirname(os.path.join(project_folder, LayerTypes['INTERMEDIATES'].rel_path))
     if os.path.isdir(intermediates_dir):
         safe_remove_dir(intermediates_dir)
@@ -280,14 +277,14 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     # write_rasters['EVIDENCE_TOPO'].close()
 
     # Allow us to specify a temp folder outside our project folder
-    temp_dir = temp_folder if temp_folder else os.path.join(project_folder, 'temp')
-    temp_rasters_folder = os.path.join(temp_dir, 'rasters')
+    temp_folder = temp_folder if temp_folder else os.path.join(project_folder, 'temp')
+    temp_rasters_folder = os.path.join(temp_folder, 'rasters')
     safe_makedirs(temp_rasters_folder)
     level_path_keys = {}
 
     # Initialize Outputs
     output_centerlines = os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['VBET_CENTERLINES'].rel_path)
-    temp_centerlines = os.path.join(temp_dir, 'raw_centerlines.gpkg', 'centerlines')
+    temp_centerlines = os.path.join(temp_folder, 'raw_centerlines.gpkg', 'centerlines')
     output_vbet = os.path.join(vbet_gpkg, LayerTypes["VBET_OUTPUTS"].sub_layers['VBET_FULL'].rel_path)
     output_vbet_ia = os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['VBET_IA'].rel_path)
     with GeopackageLayer(temp_centerlines, write=True) as lyr_temp_cl_init, \
@@ -373,7 +370,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         })
 
         log.info(f'Processing Level Path: {level_path} {level_path_key}/{len(level_paths_to_run)}')
-        temp_folder = os.path.join(temp_dir, f'levelpath_{level_path}')
+        temp_folder = os.path.join(temp_folder, f'levelpath_{level_path}')
         safe_makedirs(temp_folder)
 
         # Gather the channel area polygon for the level path
@@ -721,20 +718,26 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     level_paths_for_raster = [level_path for level_path in level_paths_to_run if level_path is not None]
     level_paths_for_raster.sort(reverse=True)
 
+
     progbar = ProgressBar(len(level_paths_for_raster), 50, 'Apply  to HAND & Evidence Rasters')
     counter = 0
     for level_path in level_paths_for_raster:
-        level_path_evidence = os.path.join(temp_rasters_folder, f'vbet_evidence_{level_path}.tif')
-        if os.path.exists(level_path_evidence):
-            raster_update(out_vbet_evidence, level_path_evidence)
-        level_path_hand = os.path.join(temp_rasters_folder, f'local_hand_{level_path}.tif')
-        if os.path.exists(level_path_hand):
-            raster_update(out_hand, level_path_hand)
-        level_path_normalized_hand = os.path.join(temp_rasters_folder, f'normalized_hand_{level_path}.tif')
-        if os.path.exists(level_path_normalized_hand):
-            raster_update(out_normalized_hand, level_path_normalized_hand)
-        counter += 1
-        progbar.update(counter)
+        try:
+            level_path_evidence = os.path.join(temp_rasters_folder, f'vbet_evidence_{level_path}.tif')
+            if os.path.exists(level_path_evidence):
+                raster_update(out_vbet_evidence, level_path_evidence)
+            level_path_hand = os.path.join(temp_rasters_folder, f'local_hand_{level_path}.tif')
+            if os.path.exists(level_path_hand):
+                raster_update(out_hand, level_path_hand)
+            level_path_normalized_hand = os.path.join(temp_rasters_folder, f'normalized_hand_{level_path}.tif')
+            if os.path.exists(level_path_normalized_hand):
+                raster_update(out_normalized_hand, level_path_normalized_hand)
+            counter += 1
+            progbar.update(counter)
+        except Exception as err:
+            # We're trying to catch large, corrupted rasters here.
+            log.error(f'Error updating rasters for level path {level_path}. index {counter} of {len(level_paths_for_raster)}')
+            raise err
 
     # when we use raster_update and raster_merge we sacrifice compression for speed
     # so we need to recompress these files in place without using the 'r+' mode
@@ -745,16 +748,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     progbar.finish()
     _tmr_waypt.timer_break('ApplyValues')
 
-    if debug is True:
-        # This takes a while but it's worth it for the visibility
-        log.debug('Zipping temp folder')
-        try:
-            shutil.make_archive(os.path.join(project_folder, 'temp'), "zip", temp_dir)
-        except Exception as err:
-            log.error(err)
-        _tmr_waypt.timer_break('ZipTempFolder')
-
-    safe_remove_dir(temp_dir)
+    safe_remove_dir(temp_folder)
     _tmr_waypt.timer_break('CleanupTempFolder')
 
     # Now add our Geopackages to the project XML
@@ -875,12 +869,16 @@ def main():
     level_paths = args.level_paths.split(',')
     level_paths = level_paths if level_paths != ['.'] else None
 
+    # Allow us to specify a temp folder outside our project folder
+    temp_folder = args.temp_folder if args.temp_folder else os.path.join(args.output_dir, 'temp')
+
     try:
         if args.debug is True:
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output_dir, 'vbet_mem.log')
             retcode, max_obj = ThreadRun(vbet_centerlines, memfile, args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir, args.scenario_code, args.huc, level_paths, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster, meta=meta, reach_codes=reach_codes, mask=args.mask, debug=args.debug, temp_folder=args.temp_folder)
             log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
+            zip_temp_folder(temp_folder, os.path.join(args.output_dir, 'temp'))
         else:
             vbet_centerlines(args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir, args.scenario_code, args.huc, level_paths, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster, meta=meta, reach_codes=reach_codes, mask=args.mask, debug=args.debug, temp_folder=args.temp_folder)
     except Exception as e:
@@ -889,6 +887,22 @@ def main():
         sys.exit(1)
 
     sys.exit(0)
+
+def zip_temp_folder(temp_folder: str, base_name: str):
+    """There are too many files in the temp folder to upload. We zip them up and delete the folder.
+
+    Args:
+        temp_folder (str): _description_
+        base_name (str): _description_
+    """
+    log = Logger('Zip Temp Folder')
+    # This takes a while but it's worth it for the visibility when using the --debug flag
+    log.debug('Starting zip')
+    try:
+        shutil.make_archive(base_name, "zip", temp_folder)
+    except Exception as err:
+        log.error(err)
+    log.debug('Zipping complete')    
 
 
 if __name__ == '__main__':
