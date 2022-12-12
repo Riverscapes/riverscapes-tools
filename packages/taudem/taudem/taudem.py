@@ -56,6 +56,7 @@ LayerTypes = {
     'D8FLOWDIR_SD8': RSLayer('TauDEM D8 Flow Direction Slope', 'D8FLOWDIR_SD8', 'Raster', 'intermediates/d8flowdir_sd8.tif'),
     'AREADINF_SCA': RSLayer('TauDEM D-Inf Contributing Area', 'AREADINF_SCA', 'Raster', 'intermediates/areadinf_sca.tif'),
     'RASTERIZED_CHANNEL': RSLayer('Rasterized Channel', 'RASTERIZED_CHANNEL', 'Raster', 'intermediates/rasterized_channel.tif'),
+    'DINFFLOWDIR_SLP_RECLASS': RSLayer('TauDEM D-Inf Flow Directions Slope (Non_Zero Slopes)', 'DINFFLOWDIR_SLP_RECLASS', 'Raster', 'intermediates/dinfflowdir_slp_reclass.tif'),
     # 'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEIDATES', 'Geopackage', 'intermediates/hand_intermediates.gpkg', {
     # }),
 
@@ -201,15 +202,23 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, project_folder:
     # Generate Flow area
     log.info("Finding flow area")
     path_sca = os.path.join(project_folder, LayerTypes['AREADINF_SCA'].rel_path)
-    dinfflowarea_status = run_subprocess(intermediates_path, ["mpiexec", "-n", NCORES, "areadinf", "-ang", path_ang, "-sca", path_sca])
+    dinfflowarea_status = run_subprocess(intermediates_path, ["mpiexec", "-n", NCORES, "areadinf", "-ang", path_ang, "-sca", path_sca, '-nc'])
     if dinfflowarea_status != 0 or not os.path.isfile(path_sca):
         raise Exception('TauDEM: AreaDinf failed')
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['AREADINF_SCA'])
 
+    # Reclass slope to remove 0
+    log.info(f"Reclass zero slope for {path_slp}")
+    path_slp_reclass = os.path.join(project_folder, LayerTypes['DINFFLOWDIR_SLP_RECLASS'].rel_path)
+    reclass_status = run_subprocess(intermediates_path, ['gdal_calc.py', '-A', path_slp, '--outfile', path_slp_reclass, '--calc=(A == 0) * 0.0001 + (A > 0) * A', '--co=COMPRESS=LZW'])
+    if reclass_status != 0 or not os.path.isfile(path_slp_reclass):
+        raise Exception('TauDEM: reclass slope failed')
+    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_SLP_RECLASS'])
+
     # Generate TWI
     log.info("Generating Topographic Wetness Index (TWI)")
     twi_raster = os.path.join(project_folder, LayerTypes['TWI_RASTER'].rel_path)
-    twi_status = run_subprocess(intermediates_path, ["mpiexec", "-n", NCORES, "twi", "-slp", path_slp, "-sca", path_sca, '-twi', twi_raster])
+    twi_status = run_subprocess(intermediates_path, ["mpiexec", "-n", NCORES, "twi", "-slp", path_slp_reclass, "-sca", path_sca, '-twi', twi_raster])
     if twi_status != 0 or not os.path.isfile(twi_raster):
         raise Exception('TauDEM: TWI failed')
     project.add_project_raster(proj_nodes['Outputs'], LayerTypes['TWI_RASTER'])
