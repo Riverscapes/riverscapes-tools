@@ -210,7 +210,7 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, project_folder:
     # Reclass slope to remove 0
     log.info(f"Reclass zero slope for {path_slp}")
     path_slp_reclass = os.path.join(project_folder, LayerTypes['DINFFLOWDIR_SLP_RECLASS'].rel_path)
-    reclass_status = run_subprocess(intermediates_path, ['gdal_calc.py', '-A', path_slp, '--outfile', path_slp_reclass, '--calc=(A == 0) * 0.0001 + (A > 0) * A', '--co=COMPRESS=LZW'])
+    reclass_status = run_subprocess(intermediates_path, ['gdal_calc.py', '-A', path_slp, '--outfile', path_slp_reclass, '--calc=(A==0)*0.0001+(A>0)*A', '--co=COMPRESS=LZW'])
     if reclass_status != 0 or not os.path.isfile(path_slp_reclass):
         raise Exception('TauDEM: reclass slope failed')
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_SLP_RECLASS'])
