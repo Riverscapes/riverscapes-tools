@@ -93,6 +93,10 @@ LayerTypes = {
     'NORMALIZED_SLOPE': RSLayer('Normalized Slope', 'NORMALIZED_SLOPE', 'Raster', 'intermediates/slope_normalized.tif'),
     'NORMALIZED_TWI': RSLayer('Normalized TWI', 'NORMALIZED_TWI', 'Raster', 'intermediates/twi_normalized.tif'),
 
+    'VBET_ZONES': RSLayer('VBET LevelPath Zones', 'VBET_ZONES', 'Raster', 'intermediates/vbet_level_path_zones.tif'),
+    'ACTIVE_FP_ZONES': RSLayer('Active Floodplain LevelPath Zones', 'ACTIVE_FP_ZONES', 'Raster', 'intermediates/active_fp_level_path_zones.tif'),
+    'INACTIVE_FP_ZONES': RSLayer('Inactive Floodplain LevelPath Zones', 'INACTIVE_FP_ZONES', 'Raster', 'intermediates/inactive_fp_level_path_zones.tif'),
+
     'VBET_OUTPUTS': RSLayer('VBET', 'VBET_OUTPUTS', 'Geopackage', 'outputs/vbet.gpkg', {
         'VBET_FULL': RSLayer('VBET Full Extent', 'VBET_FULL', 'Vector', 'vbet_full'),
         'VBET_IA': RSLayer('VBET Inactive/Active Boundary', 'VBET_IA', 'Vector', 'active_valley_bottom'),
@@ -233,10 +237,6 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     srs = read_rasters['Slope'].crs
     espg = srs.to_epsg()
 
-    # Initialize empty area rasters
-    output_vbet_area_raster = os.path.join(project_folder, 'outputs', 'vbet_area.tif')
-    output_active_vbet_area_raster = os.path.join(project_folder, 'outputs', 'active_vbet_area.tif')
-    output_inactive_vbet_area_raster = os.path.join(project_folder, 'outputs', 'inactive_vbet_area.tif')
     empty_array = np.empty((size_x, size_y), dtype=np.int32)
     empty_array.fill(out_meta['nodata'])
     if use_big_tiff:
@@ -244,9 +244,17 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
     int_meta = deepcopy(out_meta)
     int_meta['dtype'] = 'int32'
-    for raster in [output_vbet_area_raster, output_active_vbet_area_raster]:
+
+    # Initialize empty zone rasters
+    vbet_zone_raster = os.path.join(project_folder, LayerTypes['VBET_ZONES'].rel_path)
+    active_zone_raster = os.path.join(project_folder, LayerTypes['ACTIVE_FP_ZONES'].rel_path)
+    inactive_zone_raster = os.path.join(project_folder, LayerTypes['INACTIVE_FP_ZONES'].rel_path)  # Difference raster created later on...
+    for raster in [vbet_zone_raster, active_zone_raster]:
         with rasterio.open(raster, 'w', **int_meta) as rio:
             rio.write(empty_array, 1)
+    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['VBET_ZONES'])
+    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['ACTIVE_FP_ZONES'])
+    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['INACTIVE_FP_ZONES'])
 
     write_rasters = {}
 
@@ -365,62 +373,65 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             copy_feature_class(channel_area, level_path_polygons, attribute_filter=sql)
 
         # Generate the buffered channel area extent to minimize raster processing area
-        with TimerBuckets('ogr'):
-            with GeopackageLayer(level_path_polygons) as lyr_polygons:
-                if lyr_polygons.ogr_layer.GetFeatureCount() == 0:
-                    err_msg = f"No channel area features found for Level Path {level_path}."
-                    log.warning(err_msg)
-                    _tmterr("NO_CHANNEL_AREA", err_msg)
+        if level_path is not None:
+            with TimerBuckets('ogr'):
+                with GeopackageLayer(level_path_polygons) as lyr_polygons:
+                    if lyr_polygons.ogr_layer.GetFeatureCount() == 0:
+                        err_msg = f"No channel area features found for Level Path {level_path}."
+                        log.warning(err_msg)
+                        _tmterr("NO_CHANNEL_AREA", err_msg)
+                        continue
+                    # Hack to check if any channel geoms are empty
+                    check_empty = False
+                    for feat, *_ in lyr_polygons.iterate_features():
+                        geom_test = feat.GetGeometryRef()
+                        if geom_test.IsEmpty():
+                            check_empty = True
+                    if check_empty is True:
+                        err_msg = f"Empty channel area geometry found for Level Path {level_path}."
+                        log.warning(err_msg)
+                        _tmterr("EMPTY_CHANNEL_AREA", err_msg)
+                        continue
+                    channel_bbox = lyr_polygons.ogr_layer.GetExtent()
+                    channel_buffer_size = lyr_polygons.rough_convert_metres_to_vector_units(400)
+
+                (min_x, max_x, min_y, max_y) = channel_bbox
+                # Create ring
+                ring = ogr.Geometry(ogr.wkbLinearRing)
+                ring.AddPoint(min_x, min_y)
+                ring.AddPoint(max_x, min_y)
+                ring.AddPoint(max_x, max_y)
+                ring.AddPoint(min_x, max_y)
+                ring.AddPoint(min_x, min_y)
+                channel_envelope_geom = ogr.Geometry(ogr.wkbPolygon)
+                channel_envelope_geom.AddGeometry(ring)
+
+                log.debug(f'channel_envelope_geom area: {channel_envelope_geom.Area}')
+
+                if not raster_envelope_geom.Intersects(channel_envelope_geom):
+                    log.warning(f'Channel Area Envelope does not intersect DEM Extent for level path {level_path}')
                     continue
-                # Hack to check if any channel geoms are empty
-                check_empty = False
-                for feat, *_ in lyr_polygons.iterate_features():
-                    geom_test = feat.GetGeometryRef()
-                    if geom_test.IsEmpty():
-                        check_empty = True
-                if check_empty is True:
-                    err_msg = f"Empty channel area geometry found for Level Path {level_path}."
-                    log.warning(err_msg)
-                    _tmterr("EMPTY_CHANNEL_AREA", err_msg)
+
+                with GeopackageLayer(catchments) as lyr_catchments:
+                    geom_envelope = channel_envelope_geom.Clone()
+                    for feat_catchment, *_ in lyr_catchments.iterate_features(clip_shape=channel_envelope_geom):
+                        geom_catchment = feat_catchment.GetGeometryRef()
+                        geom_catchment_envelope = get_extent_as_geom(geom_catchment)
+                        geom_envelope = geom_envelope.Union(geom_catchment_envelope)
+                        geom_envelope = get_extent_as_geom(geom_envelope)
+
+            with TimerBuckets('ogr'):
+                geom_channel_buffer = geom_envelope.Buffer(channel_buffer_size)
+                envelope_geom = raster_envelope_geom.Intersection(geom_channel_buffer)
+                if envelope_geom.IsEmpty():
+                    err_msg = f'Empty processing envelope for level path {level_path}'
+                    log.error(err_msg)
+                    _tmterr("EMPTY_ENVELOPE", err_msg)
                     continue
-                channel_bbox = lyr_polygons.ogr_layer.GetExtent()
-                channel_buffer_size = lyr_polygons.rough_convert_metres_to_vector_units(400)
+        else:
+            envelope_geom = raster_envelope_geom
 
-            (min_x, max_x, min_y, max_y) = channel_bbox
-            # Create ring
-            ring = ogr.Geometry(ogr.wkbLinearRing)
-            ring.AddPoint(min_x, min_y)
-            ring.AddPoint(max_x, min_y)
-            ring.AddPoint(max_x, max_y)
-            ring.AddPoint(min_x, max_y)
-            ring.AddPoint(min_x, min_y)
-            channel_envelope_geom = ogr.Geometry(ogr.wkbPolygon)
-            channel_envelope_geom.AddGeometry(ring)
-
-            log.debug(f'channel_envelope_geom area: {channel_envelope_geom.Area}')
-
-            if not raster_envelope_geom.Intersects(channel_envelope_geom):
-                log.warning(f'Channel Area Envelope does not intersect DEM Extent for level path {level_path}')
-                continue
-
-            with GeopackageLayer(catchments) as lyr_catchments:
-                geom_envelope = channel_envelope_geom.Clone()
-                for feat_catchment, *_ in lyr_catchments.iterate_features(clip_shape=channel_envelope_geom):
-                    geom_catchment = feat_catchment.GetGeometryRef()
-                    geom_catchment_envelope = get_extent_as_geom(geom_catchment)
-                    geom_envelope = geom_envelope.Union(geom_catchment_envelope)
-                    geom_envelope = get_extent_as_geom(geom_envelope)
-
-        with TimerBuckets('ogr'):
-            geom_channel_buffer = geom_envelope.Buffer(channel_buffer_size)
-            envelope_geom = raster_envelope_geom.Intersection(geom_channel_buffer)
-            if envelope_geom.IsEmpty():
-                err_msg = f'Empty processing envelope for level path {level_path}'
-                log.error(err_msg)
-                _tmterr("EMPTY_ENVELOPE", err_msg)
-                continue
         envelope = os.path.join(temp_folder_lpath, 'envelope_polygon.gpkg', f'level_path_{level_path}')
-
         with TimerBuckets('ogr'):
             with GeopackageLayer(envelope, write=True) as lyr_envelope:
                 lyr_envelope.create_layer(ogr.wkbPolygon, 4326)
@@ -531,12 +542,12 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
         log.info('Add VBET Raster to Output')
         with TimerBuckets('rasterio'):
-            raster_update_multiply(output_vbet_area_raster, valley_bottom_raster, value=level_path_key)
+            raster_update_multiply(vbet_zone_raster, valley_bottom_raster, value=level_path_key)
 
         if level_path is not None:
             with TimerBuckets('scipy'):
                 region_raster = os.path.join(temp_folder_lpath, f'region_cleaning_{level_path}.tif')
-                clean_raster_regions(output_vbet_area_raster, level_path_key, output_vbet_area_raster, region_raster)
+                clean_raster_regions(vbet_zone_raster, level_path_key, vbet_zone_raster, region_raster)
 
         # Generate the Active Floodplain Polygon
         with TimerBuckets('gdal'):
@@ -544,7 +555,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, active_valley_bottom_raster, temp_folder_lpath, thresh_value=0.90)
 
         with TimerBuckets('rasterio'):
-            raster_update_multiply(output_active_vbet_area_raster, active_valley_bottom_raster, value=level_path_key)
+            raster_update_multiply(active_zone_raster, active_valley_bottom_raster, value=level_path_key)
 
         # Generate centerline for level paths only
         with TimerBuckets('centerline'):
@@ -657,7 +668,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
     # Difference Raster
     log.info("Differencing inactive floodplain raster")
-    raster_remove_zone(output_vbet_area_raster, output_active_vbet_area_raster, output_inactive_vbet_area_raster)
+    raster_remove_zone(vbet_zone_raster, active_zone_raster, inactive_zone_raster)
 
     # Geomorphic layers
     output_floodplain = os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['FLOODPLAIN'].rel_path)
@@ -666,11 +677,11 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
     # Polygonize Rasters
     log.info("Polygonizing VBET area")
-    polygonize(output_vbet_area_raster, 1, output_vbet, espg)
+    polygonize(vbet_zone_raster, 1, output_vbet, espg)
     log.info("Polygonizing Active VBET area")
-    polygonize(output_active_vbet_area_raster, 1, output_vbet_ia, espg)
+    polygonize(active_zone_raster, 1, output_vbet_ia, espg)
     log.info("Polygonizing Inactive VBET area")
-    polygonize(output_inactive_vbet_area_raster, 1, output_inactive_fp, espg)
+    polygonize(inactive_zone_raster, 1, output_inactive_fp, espg)
     _tmr_waypt.timer_break('PolygonizeRasters')
 
     log.info('Set Level Path ID for output polygons')
@@ -700,7 +711,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     log.info('Generating VBET Segmentation Points')
     segmentation_points = os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['SEGMENTATION_POINTS'].rel_path)
     stream_size_lookup = get_distance_lookup(inputs_gpkg, intermediates_gpkg, level_paths_to_run)
-    generate_segmentation_points(output_centerlines, segmentation_points, stream_size_lookup, distance=50)
+    generate_segmentation_points(output_centerlines, segmentation_points, stream_size_lookup, distance=100)
     _tmr_waypt.timer_break('GenerateVBETSegmentPts')
 
     log.info('Generating VBET Segment Polygons')
@@ -717,7 +728,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     _tmr_waypt.timer_break('CalcSegmentMetrics')
 
     log.info('Summerizing VBET Metrics')
-    distance_lookup = get_distance_lookup(inputs_gpkg, intermediates_gpkg, level_paths_to_run, {0: 100.0, 1: 250.0, 2: 1000.0})
+    distance_lookup = get_distance_lookup(inputs_gpkg, intermediates_gpkg, level_paths_to_run, {0: 200.0, 1: 500.0, 2: 1000.0})
     metric_fields = list(metric_layers.keys())
     summerize_vbet_metrics(segmentation_points, segmentation_polygons, level_paths_to_run, distance_lookup, metric_fields)
     _tmr_waypt.timer_break('SummerizeMetrics')
@@ -876,7 +887,7 @@ def main():
     level_paths = level_paths if level_paths != ['.'] else None
 
     # Allow us to specify a temp folder outside our project folder
-    temp_folder = args.temp_folder if args.temp_folder else os.path.join(args.output_dir, 'temp')
+    temp_folder = args.temp_folder if args.temp_folder else os.path.join(args.output_dir, 'temp_vbet')
 
     try:
         if args.debug is True:
