@@ -343,10 +343,10 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             _tmtbuckets.meta['has_centerline'] = True
 
     # Define our Composite Rasters. Make sure to explicitly tell them not to clean up their inputs (because we reuse them)
-    lpath_hand = CompositeRaster(os.path.join(temp_folder, 'hand_pre.tif'), [], clean_inputs=False)
-    lpath_normalized_hand = CompositeRaster(os.path.join(temp_folder, 'normalized_hand.tif'), [], clean_inputs=False)
-    lpath_vbet_evidence = CompositeRaster(os.path.join(temp_folder, 'vbet_evidence.tif'), [], clean_inputs=False)
-    lpath_valley_bottom_logic = CompositeRaster(os.path.join(temp_folder, 'valley_bottom_logic.tif'), [], clean_inputs=False)
+    lpath_hand = CompositeRaster(os.path.join(temp_folder, 'lpath_hand.tif'), [], clean_inputs=False)
+    lpath_normalized_hand = CompositeRaster(os.path.join(temp_folder, 'lpath_normalized_hand.tif'), [], clean_inputs=False)
+    lpath_vbet_evidence = CompositeRaster(os.path.join(temp_folder, 'lpath_vbet_evidence.tif'), [], clean_inputs=False)
+    lpath_valley_bottom_logic = CompositeRaster(os.path.join(temp_folder, 'lpath_valley_bottom_logic.tif'), [], clean_inputs=False)
 
     ####################################################################################
     # Level path Loop
@@ -659,8 +659,8 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     _tmr_waypt.timer_break('LevelPaths VRTs')  # this is where level path for loop ends
 
     raster_logic_mask(lpath_hand.vrt_path, out_hand_interior, lpath_valley_bottom_logic.vrt_path)
-    raster_logic_mask(lpath_normalized_hand.vrt_path, out_vbet_evidence_interior, lpath_valley_bottom_logic.vrt_path)
-    raster_logic_mask(lpath_vbet_evidence.vrt_path, out_normalized_hand_interior, lpath_valley_bottom_logic.vrt_path)
+    raster_logic_mask(lpath_normalized_hand.vrt_path, out_normalized_hand_interior, lpath_valley_bottom_logic.vrt_path)
+    raster_logic_mask(lpath_vbet_evidence.vrt_path, out_vbet_evidence_interior, lpath_valley_bottom_logic.vrt_path)
     _tmr_waypt.timer_break('LevelPaths Raster Merge')  # this is where level path for loop ends
 
     with sqlite3.connect(inputs_gpkg) as conn:
@@ -740,9 +740,9 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     out_normalized_hand = os.path.join(project_folder, LayerTypes['NORMALIZED_HAND'].rel_path)
     out_vbet_evidence = os.path.join(project_folder, LayerTypes['COMPOSITE_VBET_EVIDENCE'].rel_path)
 
-    out_hand_composite = CompositeRaster(out_hand, raster_paths=[out_hand_interior, *lpath_hand.raster_paths], clean_inputs=(not debug))
-    out_normalized_hand_composite = CompositeRaster(out_normalized_hand, raster_paths=[out_normalized_hand_interior, *lpath_normalized_hand.raster_paths], clean_inputs=(not debug))
-    out_vbet_evidence_composite = CompositeRaster(out_vbet_evidence, raster_paths=[out_vbet_evidence_interior, *lpath_vbet_evidence.raster_paths], clean_inputs=(not debug))
+    out_hand_composite = CompositeRaster(out_hand, raster_paths=[out_hand_interior, *lpath_hand.raster_paths], clean_inputs=False)
+    out_normalized_hand_composite = CompositeRaster(out_normalized_hand, raster_paths=[out_normalized_hand_interior, *lpath_normalized_hand.raster_paths], clean_inputs=False)
+    out_vbet_evidence_composite = CompositeRaster(out_vbet_evidence, raster_paths=[out_vbet_evidence_interior, *lpath_vbet_evidence.raster_paths], clean_inputs=False)
 
     out_hand_composite.make_vrt()
     out_normalized_hand_composite.make_vrt()
@@ -754,9 +754,10 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     out_vbet_evidence_composite.make_composite()
     _tmr_waypt.timer_break('make_composites')
     # These VRTs are absolute paths so they need to be cleaned up.
-    os.remove(out_hand_composite.vrt_path)
-    os.remove(out_normalized_hand_composite.vrt_path)
-    os.remove(out_vbet_evidence_composite.vrt_path)
+    if debug is False:
+        os.remove(out_hand_composite.vrt_path)
+        os.remove(out_normalized_hand_composite.vrt_path)
+        os.remove(out_vbet_evidence_composite.vrt_path)
 
     # Now add our Geopackages to the project XML
     project.add_project_raster(proj_nodes['Outputs'], LayerTypes['COMPOSITE_VBET_EVIDENCE'])
