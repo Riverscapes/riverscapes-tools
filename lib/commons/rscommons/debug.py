@@ -3,6 +3,8 @@ import math
 import csv
 import os
 from datetime import datetime
+import sys
+import traceback
 from concurrent.futures import ThreadPoolExecutor
 from time import sleep
 import psutil
@@ -162,6 +164,7 @@ def ThreadRun(callback, memlogfile: str, *args, **kwargs):
                 result = fn_thread.result()
             except Exception as err_in:
                 log.error("Error executing code: {}".format(err_in))
+                traceback.print_exc(file=sys.stdout)
             finally:
                 memmon.keep_measuring = False
                 max_obj = mem_thread.result()

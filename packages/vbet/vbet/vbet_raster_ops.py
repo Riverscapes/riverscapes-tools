@@ -13,10 +13,10 @@ import rasterio
 from rasterio.windows import Window
 # from rasterio.windows import bounds, from_bounds
 import numpy as np
-from scipy.ndimage import label, generate_binary_structure, binary_closing, sum_labels
-from scipy import ndimage
+from scipy.ndimage import label, generate_binary_structure, binary_closing
 
 from rscommons import ProgressBar, Logger, VectorBase, Timer, TempRaster
+from rscommons.classes.raster import deleteRaster
 
 Path = str
 
@@ -189,7 +189,7 @@ def proximity_raster(src_raster_path: Path, out_raster_path: Path, dist_units: s
             # run_subprocess(os.path.dirname(tempfile.filepath), ['python', script, '-A', temp_path, f'--outfile={dist_file}', f'--calc=A/{dist_factor}', '--co=COMPRESS=LZW'])
 
             if os.path.exists(temp_path):
-                os.remove(temp_path)
+                deleteRaster(temp_path)
 
             temp_path = dist_file
 
@@ -200,7 +200,7 @@ def proximity_raster(src_raster_path: Path, out_raster_path: Path, dist_units: s
             shutil.copyfile(temp_path, out_raster_path)
 
         if os.path.exists(temp_path):
-            os.remove(temp_path)
+            deleteRaster(temp_path)
 
         log.info('completed in {}'.format(tmr.toString()))
 
@@ -489,115 +489,52 @@ def new_raster(newRasterfn: Path, rasterfn: Path, data_type: int = gdal.GDT_Byte
 
     raster = gdal.Open(rasterfn)
     geotransform = raster.GetGeoTransform()
-    originX = geotransform[0]
-    originY = geotransform[3]
-    pixelWidth = geotransform[1]
-    pixelHeight = geotransform[5]
+    origin_x = geotransform[0]
+    origin_y = geotransform[3]
+    pixel_width = geotransform[1]
+    pixel_height = geotransform[5]
     cols = raster.RasterXSize
     rows = raster.RasterYSize
 
     driver = gdal.GetDriverByName('GTiff')
-    outRaster = driver.Create(newRasterfn, cols, rows, 1, data_type, options=["COMPRESS=DEFLATE"])
-    outRaster.SetGeoTransform((originX, pixelWidth, 0, originY, 0, pixelHeight))
-    outband = outRaster.GetRasterBand(1)
+    out_raster = driver.Create(newRasterfn, cols, rows, 1, data_type, options=["COMPRESS=DEFLATE"])
+    out_raster.SetGeoTransform((origin_x, pixel_width, 0, origin_y, 0, pixel_height))
+    outband = out_raster.GetRasterBand(1)
 
-    return outRaster, outband
+    return out_raster, outband
 
 
-def raster_merge(in_raster: Path, out_raster: Path, template_raster: Path, logic_raster: Path):
+def raster_logic_mask(in_raster: Path, out_raster: Path, logic_raster: Path):
     """insert pixels from one raster to new or existing raster based on binary raster
 
     Args:
         in_raster (Path): input raster with potential values to include
-        out_raster (Path): new or existing raster
-        template_raster (Path): existing template raster
+        out_raster (Path): output raster
         logic_raster (Path): binary raster where true results in value of input raster written to output raster
-        temp_folder (Path): temporary folder for processing
     """
     log = Logger('raster_merge')
 
-    if not os.path.isfile(out_raster):
-        create_empty_raster(out_raster, template_raster, compress=False)
+    if os.path.exists(out_raster):
+        log.debug('Output raster already exists. removing')
+        deleteRaster(out_raster)
 
-    with rasterio.open(out_raster, 'r+') as rio_dest, \
-            rasterio.open(in_raster) as rio_source, \
-            rasterio.open(logic_raster) as rio_logic:
+    # This will add compresssion parameters and make sure our output matches our input raster metadata
+    meta = get_raster_meta(in_raster)
 
-        # GT(0) x-coordinate of the upper-left corner of the upper-left pixel.
-        # GT(1) w-e pixel resolution / pixel width.
-        # GT(2) row rotation (typically zero).
-        # GT(3) y-coordinate of the upper-left corner of the upper-left pixel.
-        # GT(4) column rotation (typically zero).
-        # GT(5) n-s pixel resolution / pixel height (negative value for a north-up image).
-        in_transform = rio_source.get_transform()
-        out_transform = rio_dest.get_transform()
-        col_off_delta = round((in_transform[0] - out_transform[0]) / out_transform[1])
-        row_off_delta = round((in_transform[3] - out_transform[3]) / out_transform[5])
+    with rasterio.open(out_raster, 'w', **meta) as rio_dest, \
+            rasterio.open(in_raster, 'r') as rio_source, \
+            rasterio.open(logic_raster, 'r') as rio_logic:
 
-        window_error = False
         for _ji, window in rio_source.block_windows(1):
-            out_window = Window(window.col_off + col_off_delta, window.row_off + row_off_delta, window.width, window.height)
-            array_dest = rio_dest.read(1, window=out_window, masked=True)
             array_logic_mask = rio_logic.read(1, window=window)
             array_source = rio_source.read(1, window=window, masked=True)
+            # Combine 0 values from the logic raster with the nodata values of the input raster
+            new_mask = np.logical_or(np.logical_not(array_logic_mask), array_source.mask)
 
-            if array_source.shape != array_dest.shape:
-                window_error = True
-                continue
-            # make sure if the destination has a value already we don't touch it
-            array_logic_mask[np.logical_not(array_dest.mask)] = 0
+            array_out = np.ma.masked_array(array_source, mask=new_mask)
+            rio_dest.write(array_out, window=window, indexes=1)
 
-            array_out = np.ma.choose(array_logic_mask, [array_dest, array_source])
-
-            rio_dest.write(array_out, window=out_window, indexes=1)
-
-    if window_error:
-        log.error(f'Different window shapes encounterd when processing {out_raster}')
-
-
-def raster_update(in_place_raster, update_values_raster):
-    """Update a bigger raster in-place with the contents of a smaller one
-
-    Args:
-        raster (_type_): _description_
-        update_values_raster (_type_): _description_
-    """
-    _tmr = Timer()
-    log = Logger('raster_update')
-    with rasterio.open(in_place_raster, 'r+') as rio_dest, \
-            rasterio.open(update_values_raster) as rio_updates:
-
-        # GT(0) x-coordinate of the upper-left corner of the upper-left pixel.
-        # GT(1) w-e pixel resolution / pixel width.
-        # GT(2) row rotation (typically zero).
-        # GT(3) y-coordinate of the upper-left corner of the upper-left pixel.
-        # GT(4) column rotation (typically zero).
-        # GT(5) n-s pixel resolution / pixel height (negative value for a north-up image).
-        in_transform = rio_updates.get_transform()
-        out_transform = rio_dest.get_transform()
-        col_off_delta = round((in_transform[0] - out_transform[0]) / out_transform[1])
-        row_off_delta = round((in_transform[3] - out_transform[3]) / out_transform[5])
-
-        window_error = False
-        for _ji, window in rio_updates.block_windows(1):
-            out_window = Window(window.col_off + col_off_delta, window.row_off + row_off_delta, window.width, window.height)
-            array_dest = rio_dest.read(1, window=out_window, masked=True)
-            array_update = rio_updates.read(1, window=window, masked=True)
-
-            if array_update.shape != array_dest.shape:
-                window_error = True
-                continue
-
-            # we're choosing from two values in an array. 0 = array_dest 1 = array_update
-            chooser = array_dest.mask.astype(int)
-            # Make sure that any nodata values in the array_update default back to array_dest
-            chooser[array_update.mask] = 0
-
-            array_out = np.choose(chooser, [array_dest, array_update])
-            rio_dest.write(array_out, window=out_window, indexes=1)
-
-    if window_error:
-        log.error(f'Different window shapes encounterd when processing {in_place_raster}')
+    return
 
 
 def raster_recompress(raster_path: Path):
@@ -617,23 +554,6 @@ def raster_recompress(raster_path: Path):
                 array_dest = src.read(1, window=window, masked=True)
                 dst.write(array_dest, window=window, indexes=1)
     log.debug(f'raster_recompress: {_tmr.toString()}')
-
-
-def vrt2raster(vrt_path: Path, raster_path: Path):
-    """Working on a windowed raster can cause compression to fail
-
-    Args:
-        raster_path (Path): 
-    """
-    log = Logger('raster_recompress')
-    _tmr = Timer()
-    meta = get_raster_meta(vrt_path)
-
-    with rasterio.open(vrt_path, 'r') as src, rasterio.open(raster_path, 'w', **meta) as dst:
-        for _ji, window in dst.block_windows(1):
-            array_dest = src.read(1, window=window, masked=True)
-            dst.write(array_dest, window=window, indexes=1)
-    log.debug(f'vrt2raster: {_tmr.toString()}')
 
 
 def raster_update_multiply(raster, update_values_raster, value=None):

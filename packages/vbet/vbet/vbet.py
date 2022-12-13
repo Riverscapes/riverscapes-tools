@@ -34,13 +34,14 @@ from rscommons.hand import run_subprocess
 from rscommons.vbet_network import copy_vaa_attributes, join_attributes, create_stream_size_zones, get_channel_level_path, get_distance_lookup, vbet_network
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.raster_warp import raster_warp
-from rscommons import TimerBuckets, Timer, TimerWaypoints
+from rscommons import TimerBuckets, TimerWaypoints
 
 from vbet.vbet_database import build_vbet_database, load_configuration
-from vbet.vbet_raster_ops import rasterize, vrt2raster, raster_merge, raster_update, raster_update_multiply, raster_remove_zone, raster_recompress, get_endpoints_on_raster, generate_vbet_polygon, generate_centerline_surface, clean_raster_regions
+from vbet.vbet_raster_ops import rasterize, raster_logic_mask, raster_update_multiply, raster_remove_zone, get_endpoints_on_raster, generate_vbet_polygon, generate_centerline_surface, clean_raster_regions
 from vbet.vbet_outputs import clean_up_centerlines
 from vbet.vbet_report import VBETReport
 from vbet.vbet_segmentation import calculate_segmentation_metrics, generate_segmentation_points, split_vbet_polygons, summerize_vbet_metrics
+from vbet.lib.CompositeRaster import CompositeRaster
 from vbet.__version__ import __version__
 
 from .lib.cost_path import least_cost_path
@@ -79,8 +80,14 @@ LayerTypes = {
     }),
     # Same here. Sub layers are added dynamically later.
     'COMPOSITE_VBET_EVIDENCE': RSLayer('VBET Evidence Raster', 'VBET_EVIDENCE', 'Raster', 'outputs/vbet_evidence.tif'),
-    'COMPOSITE_HAND_RASTER': RSLayer('Hand Raster', 'HAND_RASTER', 'Raster', 'intermediates/hand_composite.tif'),
+    'COMPOSITE_VBET_EVIDENCE_INTERIOR': RSLayer('Topo Evidence (Interior)', 'EVIDENCE_TOPO_INTERIOR', 'Raster', 'intermediates/topographic_evidence_intterior.tif'),
+
+    'COMPOSITE_HAND': RSLayer('Hand Raster', 'HAND_RASTER', 'Raster', 'intermediates/hand_composite.tif'),
+    'COMPOSITE_HAND_INTERIOR': RSLayer('Hand Raster (Interior)', 'HAND_RASTER_INTERIOR', 'Raster', 'intermediates/hand_composite_interior.tif'),
+
     'NORMALIZED_HAND': RSLayer('Normalized HAND Evidence', 'NORMALIZED_HAND', 'Raster', 'intermediates/hand_normalized.tif'),
+    'NORMALIZED_HAND_INTERIOR': RSLayer('Normalized HAND Evidence (Interior)', 'NORMALIZED_HAND_INTERIOR', 'Raster', 'intermediates/hand_normalized_interior.tif'),
+
     'EVIDENCE_TOPO': RSLayer('Topo Evidence', 'EVIDENCE_TOPO', 'Raster', 'intermediates/topographic_evidence.tif'),
 
     'NORMALIZED_SLOPE': RSLayer('Normalized Slope', 'NORMALIZED_SLOPE', 'Raster', 'intermediates/slope_normalized.tif'),
@@ -103,11 +110,12 @@ LayerTypes = {
 def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchments, in_channel_area, vaa_table, project_folder, scenario_code, huc,
                      level_paths=None, in_pitfill_dem=None, in_dinfflowdir_ang=None, in_dinfflowdir_slp=None, in_twi_raster=None, meta=None, debug=False,
                      reach_codes=None, mask=None, temp_folder=None):
+    """Run VBET"""
 
     thresh_vals = {'VBET_IA': 0.90, 'VBET_FULL': 0.68}
     _tmr_waypt = TimerWaypoints()
     log = Logger('VBET')
-    log.info('Starting VBET v.{}'.format(cfg.version))
+    log.info(f'Starting VBET v.{cfg.version}')
 
     # This could be a re-run and we need to clear out the tmp folders
     if os.path.isdir(temp_folder):
@@ -125,7 +133,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     flowline_type = 'NHD'
 
     project, _realization, proj_nodes = create_project(huc, project_folder, [
-        RSMeta('HUC{}'.format(len(huc)), str(huc)),
+        RSMeta(f'HUC{len(huc)}', str(huc)),
         RSMeta('HUC', str(huc)),
         RSMeta('VBETVersion', cfg.version),
         RSMeta('VBETTimestamp', str(int(time.time())), RSMetaTypes.TIMESTAMP),
@@ -213,14 +221,6 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     else:
         _node_twi, in_rasters['TWI'] = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['TWI_RASTER'], in_twi_raster, replace=True)
 
-    # for zone in vbet_run['Zones']:
-    #     log.info(f'Rasterizing stream transform zones for {zone}')
-    #     raster_name = os.path.join(project_folder, 'intermediates', f'{zone.lower()}_transform_zones.tif')
-    #     rasterize_attribute(catchments_path, raster_name, dem, f'{zone}_Zone')
-    #     in_rasters[f'TRANSFORM_ZONE_{zone}'] = raster_name
-    #     transform_zone_rs = RSLayer(f'Transform Zones for {zone}', f'TRANSFORM_ZONE_{zone.upper()}', 'Raster', raster_name)
-    #     project.add_project_raster(proj_nodes['Intermediates'], transform_zone_rs)
-
     log.info('Writing Topo Evidence raster for project')
     read_rasters = {name: rasterio.open(raster) for name, raster in in_rasters.items()}
     out_meta = read_rasters['Slope'].meta
@@ -280,10 +280,6 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         lyr_vbet_init.create_layer(ogr.wkbMultiPolygon, spatial_ref=lyr_ref.spatial_ref, fields=fields)
         lyr_active_vbet_init.create_layer(ogr.wkbMultiPolygon, spatial_ref=lyr_ref.spatial_ref, fields=fields)
 
-    out_hand = os.path.join(project_folder, LayerTypes['COMPOSITE_HAND_RASTER'].rel_path)
-    out_vbet_evidence = os.path.join(project_folder, LayerTypes['COMPOSITE_VBET_EVIDENCE'].rel_path)
-    out_normalized_hand = os.path.join(project_folder, LayerTypes['NORMALIZED_HAND'].rel_path)
-
     # Generate the list of level paths to run, sorted by ascending order and optional user filter
     level_paths_to_run = []
     with sqlite3.connect(inputs_gpkg) as conn:
@@ -338,13 +334,15 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         if _tmtbuckets.meta['has_centerline'] is not False:
             _tmtbuckets.meta['has_centerline'] = True
 
+    # Define our Composite Rasters. Make sure to explicitly tell them not to clean up their inputs (because we reuse them)
+    lpath_hand = CompositeRaster(os.path.join(temp_folder, 'hand_pre.tif'), [], clean_inputs=False)
+    lpath_normalized_hand = CompositeRaster(os.path.join(temp_folder, 'normalized_hand.tif'), [], clean_inputs=False)
+    lpath_vbet_evidence = CompositeRaster(os.path.join(temp_folder, 'vbet_evidence.tif'), [], clean_inputs=False)
+    lpath_valley_bottom_logic = CompositeRaster(os.path.join(temp_folder, 'valley_bottom_logic.tif'), [], clean_inputs=False)
+
     ####################################################################################
     # Level path Loop
     ####################################################################################
-    temp_hand = os.path.join(temp_folder, 'hand_pre.tif')
-    temp_normalized_hand = os.path.join(temp_folder, 'normalized_hand_pre.tif')
-    temp_evidence = os.path.join(temp_folder, 'vbet_evidence_pre.tif')
-
     for level_path_key, level_path in enumerate(level_paths_to_run, 1):
         level_path_keys[level_path_key] = level_path
 
@@ -356,7 +354,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             "has_centerline": None,
         })
 
-        log.info(f'Processing Level Path: {level_path} {level_path_key}/{len(level_paths_to_run)}')
+        log.title(f'Processing Level Path: {level_path} {level_path_key}/{len(level_paths_to_run)}')
         temp_folder_lpath = os.path.join(temp_folder, f'levelpath_{level_path}')
         safe_makedirs(temp_folder_lpath)
 
@@ -388,14 +386,14 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                 channel_bbox = lyr_polygons.ogr_layer.GetExtent()
                 channel_buffer_size = lyr_polygons.rough_convert_metres_to_vector_units(400)
 
-            (minX, maxX, minY, maxY) = channel_bbox
+            (min_x, max_x, min_y, max_y) = channel_bbox
             # Create ring
             ring = ogr.Geometry(ogr.wkbLinearRing)
-            ring.AddPoint(minX, minY)
-            ring.AddPoint(maxX, minY)
-            ring.AddPoint(maxX, maxY)
-            ring.AddPoint(minX, maxY)
-            ring.AddPoint(minX, minY)
+            ring.AddPoint(min_x, min_y)
+            ring.AddPoint(max_x, min_y)
+            ring.AddPoint(max_x, max_y)
+            ring.AddPoint(min_x, max_y)
+            ring.AddPoint(min_x, min_y)
             channel_envelope_geom = ogr.Geometry(ogr.wkbPolygon)
             channel_envelope_geom.AddGeometry(ring)
 
@@ -617,31 +615,42 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                         out_feature = None
                         cl_index += 1
 
-        # Merge the individual rasters into a single raster one by one using the valley bottom raster as as the logical mask
-        with TimerBuckets('raster_merge'):
-            for out_raster, in_raster in {
-                temp_hand: hand_raster,
-                temp_evidence: evidence_raster,
-                temp_normalized_hand: normalized_local_hand
-            }.items():
-                raster_merge(in_raster, out_raster, dem, valley_bottom_raster)
+        # Add the rasters to arrays so we can build a VRT (See the CompositeRaster helper class)
+        if os.path.isfile(hand_raster):
+            lpath_hand.raster_paths.append(hand_raster)
+        if os.path.isfile(normalized_local_hand):
+            lpath_normalized_hand.raster_paths.append(normalized_local_hand)
+        if os.path.isfile(evidence_raster):
+            lpath_vbet_evidence.raster_paths.append(evidence_raster)
+        if os.path.isfile(valley_bottom_raster):
+            lpath_valley_bottom_logic.raster_paths.append(valley_bottom_raster)
 
-        if debug is False:
-            safe_remove_dir(temp_folder)
+    if debug is False:
+        safe_remove_dir(temp_folder)
 
-        _tmtfinish()
-
+    _tmtfinish()
     # Final tick to trigger writing the last row
     _tmtbuckets.tick()
     _tmtbuckets.write_csv()
+
     _tmr_waypt.timer_break('LevelPaths for loop')  # this is where level path for loop ends
 
-    # Recompressing temporary rasters may seem like a waste of time but it saves us a tonne of
-    # hard drive space and that can be really important for automation costs
-    raster_recompress(temp_hand)
-    raster_recompress(temp_evidence)
-    raster_recompress(temp_normalized_hand)
-    _tmr_waypt.timer_break('Temp raster recompress')  # this is where level path for loop ends
+    # The interior rasters are a stitched-together composite of the local, levelpath rasters with the valley bottom logic applied
+    out_hand_interior = os.path.join(project_folder, LayerTypes['COMPOSITE_HAND_INTERIOR'].rel_path)
+    out_vbet_evidence_interior = os.path.join(project_folder, LayerTypes['COMPOSITE_VBET_EVIDENCE_INTERIOR'].rel_path)
+    out_normalized_hand_interior = os.path.join(project_folder, LayerTypes['NORMALIZED_HAND_INTERIOR'].rel_path)
+
+    # Make VRTs for our composite rasters
+    lpath_hand.make_vrt()
+    lpath_normalized_hand.make_vrt()
+    lpath_vbet_evidence.make_vrt()
+    lpath_valley_bottom_logic.make_vrt()
+    _tmr_waypt.timer_break('LevelPaths VRTs')  # this is where level path for loop ends
+
+    raster_logic_mask(lpath_hand.vrt_path, out_hand_interior, lpath_valley_bottom_logic.vrt_path)
+    raster_logic_mask(lpath_normalized_hand.vrt_path, out_vbet_evidence_interior, lpath_valley_bottom_logic.vrt_path)
+    raster_logic_mask(lpath_vbet_evidence.vrt_path, out_normalized_hand_interior, lpath_valley_bottom_logic.vrt_path)
+    _tmr_waypt.timer_break('LevelPaths Raster Merge')  # this is where level path for loop ends
 
     with sqlite3.connect(inputs_gpkg) as conn:
         _tmtbuckets.write_sqlite(conn)
@@ -714,56 +723,34 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     _tmr_waypt.timer_break('SummerizeMetrics')
 
     log.info('Apply values to No Data areas of HAND and Evidence rasters')
-    level_paths_for_raster = [level_path for level_path in level_paths_to_run if level_path is not None]
 
     # Now let's assemble the rasters using a VRT then bake that back to a real raster so we can clean up the temp folder later if we want.
-    assembled_rasters = [
-        # (
-        #    temp_raster: the output from the levelpath loop raster_merge above ,
-        #    out_raster: the final composite,
-        #    file_pref: the prefix to help us find the level path segment raster to merge
-        # ),
-        (temp_evidence, out_vbet_evidence, 'vbet_evidence'),
-        (temp_hand, out_hand, 'local_hand'),
-        (temp_normalized_hand, out_normalized_hand, 'normalized_hand'),
-    ]
-    for temp_raster, out_raster, file_pref in assembled_rasters:
-        progbar = ProgressBar(len(level_paths_for_raster), 50, f'Assembly of {file_pref}')
-        counter = 0
-        out_raster_arr = []
-        for level_path in level_paths_for_raster:
-            try:
-                level_path_raster = os.path.join(temp_rasters_folder, f'{file_pref}_{level_path}.tif')
-                if os.path.exists(level_path_raster):
-                    out_raster_arr.append(level_path_raster)
-                counter += 1
-                progbar.update(counter)
-            except Exception as err:
-                # We're trying to catch large, corrupted rasters here.
-                log.error(f'Error updating rasters for level path {level_path}. index {counter} of {len(level_paths_for_raster)}')
-                raise err
-        progbar.finish()
+    out_hand = os.path.join(project_folder, LayerTypes['COMPOSITE_HAND'].rel_path)
+    out_normalized_hand = os.path.join(project_folder, LayerTypes['NORMALIZED_HAND'].rel_path)
+    out_vbet_evidence = os.path.join(project_folder, LayerTypes['COMPOSITE_VBET_EVIDENCE'].rel_path)
 
-        # Since we are deleting the temp folder we need to transcribe the VRTs to the output rasters
-        vrt_path = os.path.join(temp_folder, f'{file_pref}.vrt')
-        # VRT is inverted (top layer is at the bottom of the file)
-        out_raster_arr.reverse()
-        # append the product from the level_path loop above so it sits on top of everything in the VRT
-        out_raster_arr.append(temp_raster)
-        # Build our VRT and convert to raster
-        gdal.BuildVRT(vrt_path, out_raster_arr)
-        vrt2raster(vrt_path, out_raster)
-        # Let's free up some space
-        if not debug:
-            os.remove(temp_raster)
+    out_hand_composite = CompositeRaster(out_hand, raster_paths=[out_hand_interior, *lpath_hand.raster_paths], clean_inputs=(not debug))
+    out_normalized_hand_composite = CompositeRaster(out_normalized_hand, raster_paths=[out_normalized_hand_interior, *lpath_normalized_hand.raster_paths], clean_inputs=(not debug))
+    out_vbet_evidence_composite = CompositeRaster(out_vbet_evidence, raster_paths=[out_vbet_evidence_interior, *lpath_vbet_evidence.raster_paths], clean_inputs=(not debug))
 
-    progbar.finish()
-    _tmr_waypt.timer_break('ApplyValues')
+    out_hand_composite.make_vrt()
+    out_normalized_hand_composite.make_vrt()
+    out_vbet_evidence_composite.make_vrt()
+    _tmr_waypt.timer_break('make_vrts')
+
+    out_hand_composite.make_composite()
+    out_normalized_hand_composite.make_composite()
+    out_vbet_evidence_composite.make_composite()
+    _tmr_waypt.timer_break('make_composites')
 
     # Now add our Geopackages to the project XML
     project.add_project_raster(proj_nodes['Outputs'], LayerTypes['COMPOSITE_VBET_EVIDENCE'])
-    project.add_project_raster(proj_nodes['Outputs'], LayerTypes['COMPOSITE_HAND_RASTER'])
+    project.add_project_raster(proj_nodes['Outputs'], LayerTypes['COMPOSITE_HAND'])
     project.add_project_raster(proj_nodes['Outputs'], LayerTypes['NORMALIZED_HAND'])
+
+    project.add_project_raster(proj_nodes['Outputs'], LayerTypes['COMPOSITE_VBET_EVIDENCE_INTERIOR'])
+    project.add_project_raster(proj_nodes['Outputs'], LayerTypes['COMPOSITE_HAND_INTERIOR'])
+    project.add_project_raster(proj_nodes['Outputs'], LayerTypes['NORMALIZED_HAND_INTERIOR'])
 
     project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
     project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['VBET_OUTPUTS'])
@@ -775,7 +762,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     log.debug(_tmr_waypt.toString())
 
     project.add_metadata([
-        RSMeta("ProcTimeS", "{:.2f}".format(ellapsed_time), RSMetaTypes.INT),
+        RSMeta("ProcTimeS", "{ellapsed_time:.2f}", RSMetaTypes.INT),
         RSMeta("ProcTimeHuman", pretty_duration(ellapsed_time))
     ])
 
@@ -790,6 +777,16 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
 
 def get_zone(run, zone_type, stream_order):
+    """_summary_
+
+    Args:
+        run (_type_): _description_
+        zone_type (_type_): _description_
+        stream_order (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
 
     for zone, max_value in run['Zones'][zone_type].items():
 
@@ -812,7 +809,7 @@ def create_project(huc, output_dir: str, meta: List[RSMeta], meta_dict: Dict[str
     Returns:
         _type_: _description_
     """
-    project_name = 'VBET for HUC {}'.format(huc)
+    project_name = f'VBET for HUC {huc}'
     project = RSProject(cfg, output_dir)
     project.create(project_name, 'VBET', meta, meta_dict)
 
@@ -883,13 +880,23 @@ def main():
 
     try:
         if args.debug is True:
+            # pylint: disable=import-outside-toplevel
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output_dir, 'vbet_mem.log')
-            retcode, max_obj = ThreadRun(vbet_centerlines, memfile, args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir, args.scenario_code, args.huc, level_paths, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster, meta=meta, reach_codes=reach_codes, mask=args.mask, debug=args.debug, temp_folder=temp_folder)
+            retcode, max_obj = ThreadRun(
+                vbet_centerlines, memfile,
+                args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir, args.scenario_code,
+                args.huc, level_paths, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster, meta=meta, reach_codes=reach_codes, mask=args.mask,
+                debug=args.debug, temp_folder=temp_folder
+            )
             log.debug(f'Return code: {retcode}, [Max process usage] {max_obj}')
             zip_temp_folder(temp_folder, os.path.join(args.output_dir, 'temp'))
         else:
-            vbet_centerlines(args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir, args.scenario_code, args.huc, level_paths, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster, meta=meta, reach_codes=reach_codes, mask=args.mask, debug=args.debug, temp_folder=args.temp_folder)
+            vbet_centerlines(
+                args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir, args.scenario_code,
+                args.huc, level_paths, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster, meta=meta, reach_codes=reach_codes, mask=args.mask,
+                debug=args.debug, temp_folder=args.temp_folder
+            )
 
         safe_remove_dir(temp_folder)
     except Exception as err:
@@ -912,6 +919,8 @@ def zip_temp_folder(temp_folder: str, base_name: str):
     log.debug('Starting zip')
     try:
         shutil.make_archive(base_name, "zip", temp_folder)
+    except FileNotFoundError as err:
+        log.warning(f'No temp folder found: {err}')
     except Exception as err:
         log.error(err)
     log.debug('Zipping complete')

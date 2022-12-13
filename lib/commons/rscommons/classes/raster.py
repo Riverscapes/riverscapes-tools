@@ -323,12 +323,12 @@ def deleteRaster(sFullPath):
             # Delete the raster properly
             driver = gdal.GetDriverByName('GTiff')
             gdal.Driver.Delete(driver, sFullPath)
-            log.debug("Raster Successfully Deleted: {0}".format(sFullPath))
-        except Exception as e:
-            log.error("Failed to remove existing clipped raster at {0}".format(sFullPath))
-            raise e
+            log.debug(f"Raster Successfully Deleted: {sFullPath}")
+        except Exception as err:
+            log.error(f"Failed to remove existing raster at {sFullPath}")
+            raise err
     else:
-        log.debug("No raster file to delete at {0}".format(sFullPath))
+        log.debug(f"No raster file to delete at {sFullPath}")
 
 
 def get_raster_cell_area(in_raster):
