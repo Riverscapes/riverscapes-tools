@@ -887,7 +887,7 @@ def main():
     level_paths = level_paths if level_paths != ['.'] else None
 
     # Allow us to specify a temp folder outside our project folder
-    temp_folder = args.temp_folder if args.temp_folder else os.path.join(args.output_dir, 'temp_vbet')
+    temp_folder = args.temp_folder if args.temp_folder else os.path.join(args.output_dir, 'temp')
 
     try:
         if args.debug is True:
@@ -901,6 +901,7 @@ def main():
                 debug=args.debug, temp_folder=temp_folder
             )
             log.debug(f'Return code: {retcode}, [Max process usage] {max_obj}')
+            # Zip up a copy of the temp folder for debugging purposes
             zip_temp_folder(temp_folder, os.path.join(args.output_dir, 'temp'))
         else:
             vbet_centerlines(
