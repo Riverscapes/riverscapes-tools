@@ -1,5 +1,10 @@
 # TAUDEM
 
+## [1.2.1] - 2022-DEC-12
+
+## Changed
+- Use numpy to reclass slope raster instead of gdal (unstable on cybercastor)
+
 ## [1.2.0] - 2022-DEC-12
 
 ### Added

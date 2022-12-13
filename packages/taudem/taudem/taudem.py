@@ -17,12 +17,12 @@ from typing import Dict, List
 # LEave OSGEO import alone. It is necessary even if it looks unused
 from osgeo import gdal, osr
 from osgeo.ogr import Layer
-from rscommons import hand
+import rasterio
 from rscommons.classes.vector_classes import get_shp_or_gpkg, VectorBase
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.util import safe_makedirs, parse_metadata, pretty_duration
 from rscommons import RSProject, RSLayer, ModelConfig, Logger, dotenv, initGDALOGRErrors
-from rscommons import GeopackageLayer
+from rscommons import GeopackageLayer, ProgressBar
 from rscommons.vector_ops import copy_feature_class
 from rscommons.hand import hand_rasterize, run_subprocess
 from rscommons.raster_warp import raster_warp
@@ -210,9 +210,24 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, project_folder:
     # Reclass slope to remove 0
     log.info(f"Reclass zero slope for {path_slp}")
     path_slp_reclass = os.path.join(project_folder, LayerTypes['DINFFLOWDIR_SLP_RECLASS'].rel_path)
-    reclass_status = run_subprocess(intermediates_path, ['gdal_calc.py', '-A', path_slp, '--outfile', path_slp_reclass, '--calc=(A==0)*0.0001+(A>0)*A', '--co=COMPRESS=LZW'])
-    if reclass_status != 0 or not os.path.isfile(path_slp_reclass):
-        raise Exception('TauDEM: reclass slope failed')
+
+    with rasterio.open(path_slp) as rio_slope:
+        out_meta = rio_slope.meta
+        out_meta['compress'] = 'lzw'
+        with rasterio.open(path_slp_reclass, 'w', **out_meta) as rio_out:
+            progbar = ProgressBar(len(list(rio_slope.block_windows(1))), 50, "Reclassifying zero-slope values ")
+            counter = 0
+            for _ji, window in rio_slope.block_windows(1):
+                progbar.update(counter)
+                counter += 1
+                data = rio_slope.read(1, window=window, masked=True)
+                data[data == 0] = 0.0001
+                rio_out.write(data, window=window, indexes=1)
+            progbar.finish()
+
+    # reclass_status = run_subprocess(intermediates_path, ['gdal_calc.py', '-A', path_slp, '--outfile', path_slp_reclass, '--calc=(A==0)*0.0001+(A>0)*A', '--co=COMPRESS=LZW'])
+    # if reclass_status != 0 or not os.path.isfile(path_slp_reclass):
+    #     raise Exception('TauDEM: reclass slope failed')
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_SLP_RECLASS'])
 
     # Generate TWI
