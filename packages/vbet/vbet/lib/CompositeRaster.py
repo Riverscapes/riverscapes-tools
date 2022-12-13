@@ -47,11 +47,11 @@ class CompositeRaster(object):
             os.remove(self.vrt_path)
 
         # VRT is inverted (top layer is at the bottom of the file)
-        if reverse is True:
-            self.raster_paths.reverse()
+        # Make sure not to do this in-place in case we want to re-use the raster later
+        raster_arr = list(reversed(self.raster_paths)) if reverse else self.raster_paths
 
         # Build our VRT and convert to raster
-        gdal.BuildVRT(self.vrt_path, self.raster_paths)
+        gdal.BuildVRT(self.vrt_path, raster_arr)
         self.log.info(f'VRT "{self.vrt_path}" built in {_tmr.toString()}')
 
     def make_composite(self):
