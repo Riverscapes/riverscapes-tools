@@ -419,7 +419,7 @@ def raster2array(rasterfn: Path) -> np.array:
     return array
 
 
-def create_empty_raster(raster_path: Path, template_raster: Path):
+def create_empty_raster(raster_path: Path, template_raster: Path, compress: bool = True):
     """Create a raster with a shape identical to a template raster and fill it with nodata values
 
     Args:
@@ -433,6 +433,8 @@ def create_empty_raster(raster_path: Path, template_raster: Path):
         out_meta = rio_template.meta
         out_meta['driver'] = 'GTiff'
         out_meta['count'] = 1
+
+    if compress is True:
         out_meta['compress'] = 'deflate'
 
     use_big_tiff = os.path.getsize(template_raster) > 3800000000
@@ -515,7 +517,7 @@ def raster_merge(in_raster: Path, out_raster: Path, template_raster: Path, logic
     log = Logger('raster_merge')
 
     if not os.path.isfile(out_raster):
-        create_empty_raster(out_raster, template_raster)
+        create_empty_raster(out_raster, template_raster, compress=False)
 
     with rasterio.open(out_raster, 'r+') as rio_dest, \
             rasterio.open(in_raster) as rio_source, \
@@ -553,7 +555,7 @@ def raster_merge(in_raster: Path, out_raster: Path, template_raster: Path, logic
         log.error(f'Different window shapes encounterd when processing {out_raster}')
 
 
-def raster_update(raster, update_values_raster):
+def raster_update(in_place_raster, update_values_raster):
     """Update a bigger raster in-place with the contents of a smaller one
 
     Args:
@@ -562,12 +564,8 @@ def raster_update(raster, update_values_raster):
     """
     _tmr = Timer()
     log = Logger('raster_update')
-    with rasterio.open(raster, 'r+') as rio_dest, \
+    with rasterio.open(in_place_raster, 'r+') as rio_dest, \
             rasterio.open(update_values_raster) as rio_updates:
-        out_meta = rio_dest.meta
-        out_meta['driver'] = 'GTiff'
-        out_meta['count'] = 1
-        out_meta['compress'] = 'DEFLATE'
 
         # GT(0) x-coordinate of the upper-left corner of the upper-left pixel.
         # GT(1) w-e pixel resolution / pixel width.
@@ -580,10 +578,15 @@ def raster_update(raster, update_values_raster):
         col_off_delta = round((in_transform[0] - out_transform[0]) / out_transform[1])
         row_off_delta = round((in_transform[3] - out_transform[3]) / out_transform[5])
 
+        window_error = False
         for _ji, window in rio_updates.block_windows(1):
             out_window = Window(window.col_off + col_off_delta, window.row_off + row_off_delta, window.width, window.height)
             array_dest = rio_dest.read(1, window=out_window, masked=True)
             array_update = rio_updates.read(1, window=window, masked=True)
+
+            if array_update.shape != array_dest.shape:
+                window_error = True
+                continue
 
             # we're choosing from two values in an array. 0 = array_dest 1 = array_update
             chooser = array_dest.mask.astype(int)
@@ -592,7 +595,9 @@ def raster_update(raster, update_values_raster):
 
             array_out = np.choose(chooser, [array_dest, array_update])
             rio_dest.write(array_out, window=out_window, indexes=1)
-    log.debug(f'Timer: {_tmr.ellapsed()}')
+
+    if window_error:
+        log.error(f'Different window shapes encounterd when processing {in_place_raster}')
 
 
 def raster_recompress(raster_path: Path):
@@ -612,6 +617,23 @@ def raster_recompress(raster_path: Path):
                 array_dest = src.read(1, window=window, masked=True)
                 dst.write(array_dest, window=window, indexes=1)
     log.debug(f'raster_recompress: {_tmr.toString()}')
+
+
+def vrt2raster(vrt_path: Path, raster_path: Path):
+    """Working on a windowed raster can cause compression to fail
+
+    Args:
+        raster_path (Path): 
+    """
+    log = Logger('raster_recompress')
+    _tmr = Timer()
+    meta = get_raster_meta(vrt_path)
+
+    with rasterio.open(vrt_path, 'r') as src, rasterio.open(raster_path, 'w', **meta) as dst:
+        for _ji, window in dst.block_windows(1):
+            array_dest = src.read(1, window=window, masked=True)
+            dst.write(array_dest, window=window, indexes=1)
+    log.debug(f'vrt2raster: {_tmr.toString()}')
 
 
 def raster_update_multiply(raster, update_values_raster, value=None):

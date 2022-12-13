@@ -37,7 +37,7 @@ from rscommons.raster_warp import raster_warp
 from rscommons import TimerBuckets, Timer, TimerWaypoints
 
 from vbet.vbet_database import build_vbet_database, load_configuration
-from vbet.vbet_raster_ops import rasterize, raster_merge, raster_update, raster_update_multiply, raster_remove_zone, raster_recompress, get_endpoints_on_raster, generate_vbet_polygon, generate_centerline_surface, clean_raster_regions
+from vbet.vbet_raster_ops import rasterize, vrt2raster, raster_merge, raster_update, raster_update_multiply, raster_remove_zone, raster_recompress, get_endpoints_on_raster, generate_vbet_polygon, generate_centerline_surface, clean_raster_regions
 from vbet.vbet_outputs import clean_up_centerlines
 from vbet.vbet_report import VBETReport
 from vbet.vbet_segmentation import calculate_segmentation_metrics, generate_segmentation_points, split_vbet_polygons, summerize_vbet_metrics
@@ -341,6 +341,10 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     ####################################################################################
     # Level path Loop
     ####################################################################################
+    temp_hand = os.path.join(temp_folder, 'hand_pre.tif')
+    temp_normalized_hand = os.path.join(temp_folder, 'normalized_hand_pre.tif')
+    temp_evidence = os.path.join(temp_folder, 'vbet_evidence_pre.tif')
+
     for level_path_key, level_path in enumerate(level_paths_to_run, 1):
         level_path_keys[level_path_key] = level_path
 
@@ -613,12 +617,12 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                         out_feature = None
                         cl_index += 1
 
-                # clean up rasters
+        # Merge the individual rasters into a single raster one by one using the valley bottom raster as as the logical mask
         with TimerBuckets('raster_merge'):
             for out_raster, in_raster in {
-                out_hand: hand_raster,
-                out_vbet_evidence: evidence_raster,
-                out_normalized_hand: normalized_local_hand
+                temp_hand: hand_raster,
+                temp_evidence: evidence_raster,
+                temp_normalized_hand: normalized_local_hand
             }.items():
                 raster_merge(in_raster, out_raster, dem, valley_bottom_raster)
 
@@ -630,9 +634,17 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     # Final tick to trigger writing the last row
     _tmtbuckets.tick()
     _tmtbuckets.write_csv()
+    _tmr_waypt.timer_break('LevelPaths for loop')  # this is where level path for loop ends
+
+    # Recompressing temporary rasters may seem like a waste of time but it saves us a tonne of
+    # hard drive space and that can be really important for automation costs
+    raster_recompress(temp_hand)
+    raster_recompress(temp_evidence)
+    raster_recompress(temp_normalized_hand)
+    _tmr_waypt.timer_break('Temp raster recompress')  # this is where level path for loop ends
+
     with sqlite3.connect(inputs_gpkg) as conn:
         _tmtbuckets.write_sqlite(conn)
-    _tmr_waypt.timer_break('LevelPaths')  # this is where level path for loop ends
 
     # Difference Raster
     log.info("Differencing inactive floodplain raster")
@@ -663,9 +675,11 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                 feat.SetField('LevelPathI', level_path_keys[key])
                 lyr.ogr_layer.SetFeature(feat)
                 feat = None
+    _tmr_waypt.timer_break('set_level_path_id')
 
     # Clean Up Centerlines
     clean_up_centerlines(temp_centerlines, output_vbet, output_centerlines, vbet_clip_buffer_size)
+    _tmr_waypt.timer_break('clean_up_centerlines')
 
     log.info('Generating geomorphic layers')
     difference(channel_area, output_vbet, output_floodplain)
@@ -701,39 +715,50 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
     log.info('Apply values to No Data areas of HAND and Evidence rasters')
     level_paths_for_raster = [level_path for level_path in level_paths_to_run if level_path is not None]
-    level_paths_for_raster.sort(reverse=True)
 
-    progbar = ProgressBar(len(level_paths_for_raster), 50, 'Apply  to HAND & Evidence Rasters')
-    counter = 0
-    for level_path in level_paths_for_raster:
-        try:
-            level_path_evidence = os.path.join(temp_rasters_folder, f'vbet_evidence_{level_path}.tif')
-            if os.path.exists(level_path_evidence):
-                raster_update(out_vbet_evidence, level_path_evidence)
-            level_path_hand = os.path.join(temp_rasters_folder, f'local_hand_{level_path}.tif')
-            if os.path.exists(level_path_hand):
-                raster_update(out_hand, level_path_hand)
-            level_path_normalized_hand = os.path.join(temp_rasters_folder, f'normalized_hand_{level_path}.tif')
-            if os.path.exists(level_path_normalized_hand):
-                raster_update(out_normalized_hand, level_path_normalized_hand)
-            counter += 1
-            progbar.update(counter)
-        except Exception as err:
-            # We're trying to catch large, corrupted rasters here.
-            log.error(f'Error updating rasters for level path {level_path}. index {counter} of {len(level_paths_for_raster)}')
-            raise err
+    # Now let's assemble the rasters using a VRT then bake that back to a real raster so we can clean up the temp folder later if we want.
+    assembled_rasters = [
+        # (
+        #    temp_raster: the output from the levelpath loop raster_merge above ,
+        #    out_raster: the final composite,
+        #    file_pref: the prefix to help us find the level path segment raster to merge
+        # ),
+        (temp_evidence, out_vbet_evidence, 'vbet_evidence'),
+        (temp_hand, out_hand, 'local_hand'),
+        (temp_normalized_hand, out_normalized_hand, 'normalized_hand'),
+    ]
+    for temp_raster, out_raster, file_pref in assembled_rasters:
+        progbar = ProgressBar(len(level_paths_for_raster), 50, f'Assembly of {file_pref}')
+        counter = 0
+        out_raster_arr = []
+        for level_path in level_paths_for_raster:
+            try:
+                level_path_raster = os.path.join(temp_rasters_folder, f'{file_pref}_{level_path}.tif')
+                if os.path.exists(level_path_raster):
+                    out_raster_arr.append(level_path_raster)
+                counter += 1
+                progbar.update(counter)
+            except Exception as err:
+                # We're trying to catch large, corrupted rasters here.
+                log.error(f'Error updating rasters for level path {level_path}. index {counter} of {len(level_paths_for_raster)}')
+                raise err
+        progbar.finish()
 
-    # when we use raster_update and raster_merge we sacrifice compression for speed
-    # so we need to recompress these files in place without using the 'r+' mode
-    raster_recompress(out_vbet_evidence)
-    raster_recompress(out_hand)
-    raster_recompress(out_normalized_hand)
+        # Since we are deleting the temp folder we need to transcribe the VRTs to the output rasters
+        vrt_path = os.path.join(temp_folder, f'{file_pref}.vrt')
+        # VRT is inverted (top layer is at the bottom of the file)
+        out_raster_arr.reverse()
+        # append the product from the level_path loop above so it sits on top of everything in the VRT
+        out_raster_arr.append(temp_raster)
+        # Build our VRT and convert to raster
+        gdal.BuildVRT(vrt_path, out_raster_arr)
+        vrt2raster(vrt_path, out_raster)
+        # Let's free up some space
+        if not debug:
+            os.remove(temp_raster)
 
     progbar.finish()
     _tmr_waypt.timer_break('ApplyValues')
-
-    safe_remove_dir(temp_folder)
-    _tmr_waypt.timer_break('CleanupTempFolder')
 
     # Now add our Geopackages to the project XML
     project.add_project_raster(proj_nodes['Outputs'], LayerTypes['COMPOSITE_VBET_EVIDENCE'])
@@ -846,7 +871,7 @@ def main():
     # Initiate the log file
     log = Logger('VBET')
     log.setup(logPath=os.path.join(args.output_dir, 'vbet.log'), verbose=args.verbose)
-    log.title('Riverscapes VBET For HUC: {}'.format(args.huc))
+    log.title(f'Riverscapes VBET For HUC: {args.huc}')
 
     meta = parse_metadata(args.meta)
     reach_codes = args.reach_codes.split(',') if args.reach_codes else None
@@ -860,13 +885,15 @@ def main():
         if args.debug is True:
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output_dir, 'vbet_mem.log')
-            retcode, max_obj = ThreadRun(vbet_centerlines, memfile, args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir, args.scenario_code, args.huc, level_paths, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster, meta=meta, reach_codes=reach_codes, mask=args.mask, debug=args.debug, temp_folder=args.temp_folder)
-            log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
+            retcode, max_obj = ThreadRun(vbet_centerlines, memfile, args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir, args.scenario_code, args.huc, level_paths, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster, meta=meta, reach_codes=reach_codes, mask=args.mask, debug=args.debug, temp_folder=temp_folder)
+            log.debug(f'Return code: {retcode}, [Max process usage] {max_obj}')
             zip_temp_folder(temp_folder, os.path.join(args.output_dir, 'temp'))
         else:
             vbet_centerlines(args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir, args.scenario_code, args.huc, level_paths, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster, meta=meta, reach_codes=reach_codes, mask=args.mask, debug=args.debug, temp_folder=args.temp_folder)
-    except Exception as e:
-        log.error(e)
+
+        safe_remove_dir(temp_folder)
+    except Exception as err:
+        log.error(err)
         traceback.print_exc(file=sys.stdout)
         sys.exit(1)
 
