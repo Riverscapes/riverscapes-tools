@@ -28,7 +28,7 @@ import numpy as np
 
 from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, GeopackageLayer, dotenv, VectorBase, initGDALOGRErrors
 from rscommons.vector_ops import copy_feature_class, polygonize, difference, collect_linestring, collect_feature_class
-from rscommons.geometry_ops import get_extent_as_geom
+from rscommons.geometry_ops import get_extent_as_geom, get_rectangle_as_geom
 from rscommons.util import safe_makedirs, parse_metadata, pretty_duration, safe_remove_dir
 from rscommons.hand import run_subprocess
 from rscommons.vbet_network import copy_vaa_attributes, join_attributes, create_stream_size_zones, get_channel_level_path, get_distance_lookup, vbet_network
@@ -398,17 +398,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                     channel_bbox = lyr_polygons.ogr_layer.GetExtent()
                     channel_buffer_size = lyr_polygons.rough_convert_metres_to_vector_units(400)
 
-                (min_x, max_x, min_y, max_y) = channel_bbox
-                # Create ring
-                ring = ogr.Geometry(ogr.wkbLinearRing)
-                ring.AddPoint(min_x, min_y)
-                ring.AddPoint(max_x, min_y)
-                ring.AddPoint(max_x, max_y)
-                ring.AddPoint(min_x, max_y)
-                ring.AddPoint(min_x, min_y)
-                channel_envelope_geom = ogr.Geometry(ogr.wkbPolygon)
-                channel_envelope_geom.AddGeometry(ring)
-
+                channel_envelope_geom = get_rectangle_as_geom(channel_bbox)
                 log.debug(f'channel_envelope_geom area: {channel_envelope_geom.Area}')
 
                 if not raster_envelope_geom.Intersects(channel_envelope_geom):
