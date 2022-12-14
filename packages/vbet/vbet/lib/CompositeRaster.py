@@ -20,7 +20,7 @@ class CompositeRaster(object):
         _description_
     """
 
-    def __init__(self, out_path: str, raster_paths: List[str], clean_inputs: bool = True):
+    def __init__(self, out_path: str, raster_paths: List[str], vrt_path: str = None):
         """_summary_
 
         Args:
@@ -30,8 +30,7 @@ class CompositeRaster(object):
         self.log = Logger('CompositeRaster')
         self.raster_paths = raster_paths
         self.out_path = out_path
-        self.vrt_path = self.out_path + '.vrt'
-        self.clean_inputs = clean_inputs
+        self.vrt_path = vrt_path if vrt_path else self.out_path + '.vrt'
 
     def make_vrt(self, reverse: bool = True):
         """_summary_
@@ -73,12 +72,4 @@ class CompositeRaster(object):
                 array_dest = src.read(1, window=window, masked=True)
                 dst.write(array_dest, window=window, indexes=1)
             _prg.finish()
-
-        # Let's free up some space
-        if self.clean_inputs is True:
-            self.log.info('Cleaning VRT')
-            os.remove(self.vrt_path)
-            self.log.info(f'Cleaning up {len(self.raster_paths)} intermediate files')
-            for raster_path in self.raster_paths:
-                os.remove(raster_path)
         self.log.info(f'Composite built for "{self.out_path}" in: {_tmr.toString()}')

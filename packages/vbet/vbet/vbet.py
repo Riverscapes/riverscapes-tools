@@ -342,11 +342,14 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         if _tmtbuckets.meta['has_centerline'] is not False:
             _tmtbuckets.meta['has_centerline'] = True
 
-    # Define our Composite Rasters. Make sure to explicitly tell them not to clean up their inputs (because we reuse them)
-    lpath_hand = CompositeRaster(os.path.join(temp_folder, 'lpath_hand.tif'), [], clean_inputs=False)
-    lpath_normalized_hand = CompositeRaster(os.path.join(temp_folder, 'lpath_normalized_hand.tif'), [], clean_inputs=False)
-    lpath_vbet_evidence = CompositeRaster(os.path.join(temp_folder, 'lpath_vbet_evidence.tif'), [], clean_inputs=False)
-    lpath_valley_bottom_logic = CompositeRaster(os.path.join(temp_folder, 'lpath_valley_bottom_logic.tif'), [], clean_inputs=False)
+    raster_lookup = {
+        'hand_raster': [],
+        'hand_raster_interior': [],
+        'normalized_hand': [],
+        'normalized_hand_interior': [],
+        'evidence_raster': [],
+        'evidence_raster_interior': []
+    }
 
     ####################################################################################
     # Level path Loop
@@ -454,6 +457,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
         with TimerBuckets('HAND'):
             hand_raster = os.path.join(temp_rasters_folder, f'local_hand_{level_path}.tif')
+            hand_raster_interior = os.path.join(temp_rasters_folder, f'local_hand_interior_{level_path}.tif')
             dinfdistdown_status = run_subprocess(project_folder, ["mpiexec", "-n", NCORES, "dinfdistdown",
                                                                   "-ang", local_dinfflowdir_ang,
                                                                   "-fel", local_pitfill_dem,
@@ -475,15 +479,17 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             out_meta['count'] = 1
             out_meta['compress'] = 'deflate'
 
-            use_big_tiff_inner = os.path.getsize(in_rasters['HAND']) > BIG_TIFF_THRESH
-            if use_big_tiff_inner:
+            use_big_tiff_interior = os.path.getsize(in_rasters['HAND']) > BIG_TIFF_THRESH
+            if use_big_tiff_interior:
                 out_meta['BIGTIFF'] = 'YES'
 
             evidence_raster = os.path.join(temp_rasters_folder, f'vbet_evidence_{level_path}.tif')
-            normalized_local_hand = os.path.join(temp_rasters_folder, f'normalized_hand_{level_path}.tif')
+            evidence_raster_interior = os.path.join(temp_rasters_folder, f'vbet_evidence__interior_{level_path}.tif')
+            normalized_hand = os.path.join(temp_rasters_folder, f'normalized_hand_{level_path}.tif')
+            normalized_hand_interior = os.path.join(temp_rasters_folder, f'normalized_hand_interior_{level_path}.tif')
             write_rasters = {}  # {name: rasterio.open(raster, 'w', **out_meta) for name, raster in out_rasters.items()}
             write_rasters['VBET_EVIDENCE'] = rasterio.open(evidence_raster, 'w', **out_meta)
-            write_rasters['NORMALIZED_HAND'] = rasterio.open(normalized_local_hand, 'w', **out_meta)
+            write_rasters['NORMALIZED_HAND'] = rasterio.open(normalized_hand, 'w', **out_meta)
             write_rasters['topo_evidence_twi'] = rasterio.open(os.path.join(temp_folder_lpath, f'topo_evidence_twi_{level_path}.tif'), 'w', **out_meta)
             write_rasters['topo_evidence_nontwi'] = rasterio.open(os.path.join(temp_folder_lpath, f'topo_evidence_nontwi_{level_path}.tif'), 'w', **out_meta)
             write_rasters['topo_evidence'] = rasterio.open(os.path.join(temp_folder_lpath, f'topo_evidence_{level_path}.tif'), 'w', **out_meta)
@@ -513,8 +519,6 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                         zone = get_zone(vbet_run, name, level_path_stream_order[level_path])
                         transform = vbet_run['Transforms'][name][zone]
                         normalized[name] = np.ma.MaskedArray(transform(block[name].data), mask=block['HAND'].mask)
-                        # transforms = [np.ma.MaskedArray(transform(block[name].data), mask=block['HAND'].mask) for transform in vbet_run['Transforms'][name]]
-                        # normalized[name] = np.ma.MaskedArray(np.choose(block[f'TRANSFORM_ZONE_{name}'].data, transforms, mode='clip'), mask=block['HAND'].mask)
                     else:
                         normalized[name] = np.ma.MaskedArray(vbet_run['Transforms'][name][0](block[name].data), mask=block['HAND'].mask)
 
@@ -626,15 +630,41 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                         out_feature = None
                         cl_index += 1
 
-        # Add the rasters to arrays so we can build a VRT (See the CompositeRaster helper class)
+        # Mask the raster and create the inner versions of itself
+        raster_logic_mask(hand_raster, hand_raster_interior, valley_bottom_raster)
+        raster_logic_mask(normalized_hand, normalized_hand_interior, valley_bottom_raster)
+        raster_logic_mask(evidence_raster, evidence_raster_interior, valley_bottom_raster)
+
+        # Add these to arrays so that we can use them later
         if os.path.isfile(hand_raster):
-            lpath_hand.raster_paths.append(hand_raster)
-        if os.path.isfile(normalized_local_hand):
-            lpath_normalized_hand.raster_paths.append(normalized_local_hand)
+            if level_path is None:
+                raster_lookup['hand_raster'] = [hand_raster] + raster_lookup['hand_raster']
+            else:
+                raster_lookup['hand_raster'].append(hand_raster)
+
         if os.path.isfile(evidence_raster):
-            lpath_vbet_evidence.raster_paths.append(evidence_raster)
-        if os.path.isfile(valley_bottom_raster):
-            lpath_valley_bottom_logic.raster_paths.append(valley_bottom_raster)
+            if level_path is None:
+                raster_lookup['evidence_raster'] = [evidence_raster] + raster_lookup['evidence_raster']
+            else:
+                raster_lookup['evidence_raster'].append(evidence_raster)
+
+        if os.path.isfile(normalized_hand):
+            if level_path is None:
+                raster_lookup['normalized_hand'] = [normalized_hand] + raster_lookup['normalized_hand']
+            else:
+                raster_lookup['normalized_hand'].append(normalized_hand)
+
+        # Add these to arrays so that we can use them later
+        if os.path.isfile(hand_raster_interior):
+            raster_lookup['hand_raster_interior'].append(hand_raster_interior)
+
+        if os.path.isfile(evidence_raster_interior):
+            raster_lookup['evidence_raster_interior'].append(evidence_raster_interior)
+
+        if os.path.isfile(normalized_hand_interior):
+            raster_lookup['normalized_hand_interior'].append(normalized_hand_interior)
+
+        # End of level path for loop
 
     if debug is False:
         safe_remove_dir(temp_folder)
@@ -648,20 +678,23 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
     # The interior rasters are a stitched-together composite of the local, levelpath rasters with the valley bottom logic applied
     out_hand_interior = os.path.join(project_folder, LayerTypes['COMPOSITE_HAND_INTERIOR'].rel_path)
-    out_vbet_evidence_interior = os.path.join(project_folder, LayerTypes['COMPOSITE_VBET_EVIDENCE_INTERIOR'].rel_path)
     out_normalized_hand_interior = os.path.join(project_folder, LayerTypes['NORMALIZED_HAND_INTERIOR'].rel_path)
+    out_vbet_evidence_interior = os.path.join(project_folder, LayerTypes['COMPOSITE_VBET_EVIDENCE_INTERIOR'].rel_path)
 
     # Make VRTs for our composite rasters
-    lpath_hand.make_vrt()
-    lpath_normalized_hand.make_vrt()
-    lpath_vbet_evidence.make_vrt()
-    lpath_valley_bottom_logic.make_vrt()
-    _tmr_waypt.timer_break('LevelPaths VRTs')  # this is where level path for loop ends
+    out_hand_interior_cmp = CompositeRaster(out_hand_interior, raster_lookup['hand_raster_interior'], vrt_path=os.path.join(temp_folder, 'hand_interior.vrt'))
+    out_hand_interior_cmp.make_vrt()
+    out_hand_interior_cmp.make_composite()
 
-    raster_logic_mask(lpath_hand.vrt_path, out_hand_interior, lpath_valley_bottom_logic.vrt_path)
-    raster_logic_mask(lpath_normalized_hand.vrt_path, out_normalized_hand_interior, lpath_valley_bottom_logic.vrt_path)
-    raster_logic_mask(lpath_vbet_evidence.vrt_path, out_vbet_evidence_interior, lpath_valley_bottom_logic.vrt_path)
-    _tmr_waypt.timer_break('LevelPaths Raster Merge')  # this is where level path for loop ends
+    out_normalized_hand_interior_cmp = CompositeRaster(out_normalized_hand_interior, raster_lookup['normalized_hand_interior'], vrt_path=os.path.join(temp_folder, 'normalized_hand_interior.vrt'))
+    out_normalized_hand_interior_cmp.make_vrt()
+    out_normalized_hand_interior_cmp.make_composite()
+
+    out_vbet_evidence_interior_cmp = CompositeRaster(out_vbet_evidence_interior, raster_lookup['evidence_raster_interior'], vrt_path=os.path.join(temp_folder, 'vbet_evidence_interior.vrt'))
+    out_vbet_evidence_interior_cmp.make_vrt()
+    out_vbet_evidence_interior_cmp.make_composite()
+
+    _tmr_waypt.timer_break('LevelPaths VRTs')  # this is where level path for loop ends
 
     with sqlite3.connect(inputs_gpkg) as conn:
         _tmtbuckets.write_sqlite(conn)
@@ -740,18 +773,27 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     out_normalized_hand = os.path.join(project_folder, LayerTypes['NORMALIZED_HAND'].rel_path)
     out_vbet_evidence = os.path.join(project_folder, LayerTypes['COMPOSITE_VBET_EVIDENCE'].rel_path)
 
-    out_hand_composite = CompositeRaster(out_hand, raster_paths=[out_hand_interior, *lpath_hand.raster_paths], clean_inputs=False)
-    out_normalized_hand_composite = CompositeRaster(out_normalized_hand, raster_paths=[out_normalized_hand_interior, *lpath_normalized_hand.raster_paths], clean_inputs=False)
-    out_vbet_evidence_composite = CompositeRaster(out_vbet_evidence, raster_paths=[out_vbet_evidence_interior, *lpath_vbet_evidence.raster_paths], clean_inputs=False)
-
+    out_hand_composite = CompositeRaster(out_hand, raster_paths=[
+        out_hand_interior,
+        *reversed(raster_lookup['hand_raster'])
+    ], vrt_path=os.path.join(temp_folder, 'hand_composite.vrt'))
     out_hand_composite.make_vrt()
-    out_normalized_hand_composite.make_vrt()
-    out_vbet_evidence_composite.make_vrt()
-    _tmr_waypt.timer_break('make_vrts')
-
     out_hand_composite.make_composite()
+
+    out_normalized_hand_composite = CompositeRaster(out_normalized_hand, raster_paths=[
+        out_normalized_hand_interior,
+        *reversed(raster_lookup['normalized_hand'])
+    ], vrt_path=os.path.join(temp_folder, 'normalized_hand_composite.vrt'))
+    out_normalized_hand_composite.make_vrt()
     out_normalized_hand_composite.make_composite()
+
+    out_vbet_evidence_composite = CompositeRaster(out_vbet_evidence, raster_paths=[
+        out_vbet_evidence_interior,
+        *reversed(raster_lookup['evidence_raster'])
+    ], vrt_path=os.path.join(temp_folder, 'vbet_evidence_composite.vrt'))
+    out_vbet_evidence_composite.make_vrt()
     out_vbet_evidence_composite.make_composite()
+
     _tmr_waypt.timer_break('make_composites')
     # These VRTs are absolute paths so they need to be cleaned up.
     if debug is False:
