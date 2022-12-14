@@ -48,7 +48,7 @@ def igo_vegetation(windows: dict, landuse_raster: str, out_gpkg_path: str):
             batch_count += 1
             if int(veg_record[1]) != -9999:
                 try:
-                    database.conn.execute('INSERT INTO IGOVegetation (IGOID, VegetationID, Area, CellCount VALUES (?, ?, ?, ?)', veg_record)
+                    database.conn.execute('INSERT INTO IGOVegetation (IGOID, VegetationID, Area, CellCount) VALUES (?, ?, ?, ?)', veg_record)
                 except sqlite3.IntegrityError as err:
                     # THis is likely a constraint error.
                     errstr = "Integrity Error when inserting records: IGOID: {} VegetationID: {}".format(veg_record[0], veg_record[1])

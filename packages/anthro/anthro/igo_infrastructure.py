@@ -45,26 +45,48 @@ def infrastructure_attributes(igo: str, windows: str, road: str, rail: str, cana
         for igoid, window in windows.items():
             print(f'summarizing on igo {counter} of {len(windows)} for dataset {label}')
 
-            lyr_cl = window[1].intersection(ds)
+            lyr_cl = window[0].intersection(ds)
             # project clipped layer to utm epsg
-            ogrlyr = VectorBase.shapely2ogr(lyr_cl)
-            lyr_clipped = VectorBase.ogr2shapely(ogrlyr, transform=transform)
 
-            window_ogr = VectorBase.shapely2ogr(window[1])
-            window_proj = VectorBase.ogr2shapely(window_ogr, transform)
-            window_area = window_proj.area
-            if ds.type in ['MultiLineString', 'LineString']:
-                lb1 = label + '_len'
-                lb2 = label + '_dens'
-                conn.execute(f'UPDATE IGOAttributes SET {lb1} = {lyr_clipped.length} WHERE IGOID = {igoid}')
-                conn.execute(f'UPDATE IGOAttributes SET {lb2} = {lyr_clipped.length / window_area} WHERE IGOID = {igoid}')
-                conn.commit()
-            if ds.type in ['Point', 'MultiPoint']:
-                lb1 = label + '_ct'
-                lb2 = label + '_dens'
-                conn.execute(f'UPDATE IGOAttributes SET {lb1} = {len(lyr_clipped.coords.xy[0])} WHERE IGOID = {igoid}')
-                conn.execute(f'UPDATE IGOAttributes SET {lb2} = {len(lyr_clipped.coords.xy[0]) / window_area} WHERE IGOID = {igoid}')
-                conn.commit()
+            # leave null if layer is empty?
+            if lyr_cl.is_empty is True:
+                continue
+            else:
+                if lyr_cl.type in ['MultiLineString', 'LineString']:
+                    ogrlyr = VectorBase.shapely2ogr(lyr_cl)
+                    lyr_clipped = VectorBase.ogr2shapely(ogrlyr, transform=transform)
+                    lb1 = label + '_len'
+                    lb2 = label + '_dens'
+                    conn.execute(f'UPDATE IGOAttributes SET {lb1} = {lyr_clipped.length} WHERE IGOID = {igoid}')
+                    if window[2] == 0.0:
+                        conn.commit()
+                        continue
+                    else:
+                        conn.execute(f'UPDATE IGOAttributes SET {lb2} = {lyr_clipped.length / window[2]} WHERE IGOID = {igoid}')
+                    conn.commit()
+                if lyr_cl.type in ['MultiPoint']:
+                    lb1 = label + '_ct'
+                    lb2 = label + '_dens'
+                    conn.execute(f'UPDATE IGOAttributes SET {lb1} = {len(lyr_cl.geoms)} WHERE IGOID = {igoid}')
+                    if window[2] == 0.0:
+                        conn.commit()
+                        continue
+                    else:
+                        conn.execute(f'UPDATE IGOAttributes SET {lb2} = {len(lyr_cl.geoms) / window[2]} WHERE IGOID = {igoid}')
+                    conn.commit()
+                if lyr_cl.type in ['Point']:
+                    lb1 = label + '_ct'
+                    lb2 = label + '_dens'
+                    if lyr_cl.is_empty is True:
+                        conn.execute(f'UPDATE IGOAttributes SET {lb1} = 0 WHERE IGOID = {igoid}')
+                        conn.execute(f'UPDATE IGOAttributes SET {lb2} = 0 WHERE IGOID = {igoid}')
+                    else:
+                        conn.execute(f'UPDATE IGOAttributes SET {lb1} = 1 WHERE IGOID = {igoid}')
+                        if window[2] == 0.0:
+                            conn.commit()
+                            continue
+                        else:
+                            conn.execute(f'UPDATE IGOAttributes SET {lb2} = {1 / window[2]} WHERE IGOID = {igoid}')
             counter += 1
 
 

@@ -18,11 +18,11 @@ def get_moving_windows(igo: str, dgo: str, level_paths: list, distance: dict):
                 dist = feat_seg_pt.GetField('seg_distance')
                 min_dist = dist - 0.5 * window_distance
                 max_dist = dist + 0.5 * window_distance
-                sql_seg_poly = f"LevelPathI = {level_path} AND seg_distance >= {min_dist} AND seg_distance <= {max_dist}"
+                # sql_seg_poly = f"LevelPathI = {level_path} and seg_distance >= {min_dist} and seg_distance <= {max_dist}"
                 geom_window_sections = ogr.Geometry(ogr.wkbMultiPolygon)
                 window_length = 0.0
                 window_area = 0.0
-                for feat_seg_poly, *_ in lyr_dgo.iterate_features(attribute_filter=sql_seg_poly):
+                for feat_seg_poly, *_ in lyr_dgo.iterate_features(attribute_filter=f"LevelPathI = {int(level_path)} and seg_distance >= {int(min_dist)} and seg_distance <= {int(max_dist)}"):
                     window_length = window_length + feat_seg_poly.GetField('centerline_length')
                     window_area = window_area + feat_seg_poly.GetField('segment_area')
                     geom = feat_seg_poly.GetGeometryRef()
@@ -34,6 +34,6 @@ def get_moving_windows(igo: str, dgo: str, level_paths: list, distance: dict):
                     else:
                         geom_window_sections.AddGeometry(geom)
 
-                windows[feat_seg_pt.GetFID()] = [window_distance, VectorBase.ogr2shapely(geom_window_sections)]
+                windows[feat_seg_pt.GetFID()] = [VectorBase.ogr2shapely(geom_window_sections), window_length, window_area]
 
     return windows
