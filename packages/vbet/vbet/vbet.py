@@ -40,7 +40,7 @@ from vbet.vbet_database import build_vbet_database, load_configuration
 from vbet.vbet_raster_ops import rasterize, raster_logic_mask, raster_update_multiply, raster_remove_zone, get_endpoints_on_raster, generate_vbet_polygon, generate_centerline_surface, clean_raster_regions
 from vbet.vbet_outputs import clean_up_centerlines
 from vbet.vbet_report import VBETReport
-from vbet.vbet_segmentation import calculate_segmentation_metrics, generate_segmentation_points, split_vbet_polygons, summerize_vbet_metrics
+from vbet.vbet_segmentation import calculate_dgo_metrics, generate_igo_points, split_vbet_polygons, calculate_vbet_window_metrics
 from vbet.lib.CompositeRaster import CompositeRaster
 from vbet.__version__ import __version__
 
@@ -744,7 +744,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     log.info('Generating VBET Segmentation Points')
     segmentation_points = os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['SEGMENTATION_POINTS'].rel_path)
     stream_size_lookup = get_distance_lookup(inputs_gpkg, intermediates_gpkg, level_paths_to_run)
-    generate_segmentation_points(output_centerlines, segmentation_points, stream_size_lookup, distance=100)
+    generate_igo_points(output_centerlines, segmentation_points, stream_size_lookup, distance=100)
     _tmr_waypt.timer_break('GenerateVBETSegmentPts')
 
     log.info('Generating VBET Segment Polygons')
@@ -757,13 +757,13 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     for level_path in level_paths_to_run:
         if level_path is None:
             continue
-        calculate_segmentation_metrics(segmentation_polygons, output_centerlines, metric_layers, f"LevelPathI = {level_path}")
+        calculate_dgo_metrics(segmentation_polygons, output_centerlines, metric_layers, f"LevelPathI = {level_path}")
     _tmr_waypt.timer_break('CalcSegmentMetrics')
 
     log.info('Summerizing VBET Metrics')
     distance_lookup = get_distance_lookup(inputs_gpkg, intermediates_gpkg, level_paths_to_run, {0: 200.0, 1: 500.0, 2: 1000.0})
     metric_fields = list(metric_layers.keys())
-    summerize_vbet_metrics(segmentation_points, segmentation_polygons, level_paths_to_run, distance_lookup, metric_fields)
+    calculate_vbet_window_metrics(segmentation_points, segmentation_polygons, level_paths_to_run, distance_lookup, metric_fields)
     _tmr_waypt.timer_break('SummerizeMetrics')
 
     log.info('Apply values to No Data areas of HAND and Evidence rasters')

@@ -71,7 +71,14 @@ def get_extent_as_geom(geom: ogr.Geometry()) -> ogr.Geometry():
     Returns:
         ogr.Geometry(): rectangluar extent polgon
     """
-    (minX, maxX, minY, maxY) = geom.GetEnvelope()
+    envelope = geom.GetEnvelope()
+    geom_envelope = get_rectangle_as_geom(envelope)
+    return geom_envelope
+
+
+def get_rectangle_as_geom(envelope: tuple) -> ogr.Geometry():
+
+    (minX, maxX, minY, maxY) = envelope
     # Create ring
     ring = ogr.Geometry(ogr.wkbLinearRing)
     ring.AddPoint(minX, minY)

@@ -17,11 +17,12 @@ from shapely.topology import TopologicalError
 from rscommons import GeopackageLayer, Logger, VectorBase, dotenv
 from rscommons.util import parse_metadata
 from rscommons.classes.vector_base import get_utm_zone_epsg
+from rscommons.geometry_ops import get_rectangle_as_geom
 
 Path = str
 
 
-def generate_segmentation_points(line_network: Path, out_points_layer: Path, stream_size_lookup: dict, distance: float = 200.0):
+def generate_igo_points(line_network: Path, out_points_layer: Path, stream_size_lookup: dict, distance: float = 200.0):
     """heavily modified from: https://glenbambrick.com/2017/09/15/osgp-create-points-along-line/
     """
 
@@ -34,11 +35,10 @@ def generate_segmentation_points(line_network: Path, out_points_layer: Path, str
 
         out_fields = {"LevelPathI": ogr.OFTString,
                       "seg_distance": ogr.OFTReal,
-                      # "seg_length": ogr.OFTReal,
                       "stream_size": ogr.OFTInteger}
         out_lyr.create_layer(ogr.wkbPoint, spatial_ref=line_lyr.spatial_ref, fields=out_fields)
 
-        extent_poly = ogr.Geometry(ogr.wkbPolygon)
+        extent_poly = get_rectangle_as_geom(out_lyr.ogr_layer.GetExtent())
         extent_centroid = extent_poly.Centroid()
         utm_epsg = get_utm_zone_epsg(extent_centroid.GetX())
         transform_ref, transform = VectorBase.get_transform_from_epsg(line_lyr.spatial_ref, utm_epsg)
@@ -162,7 +162,7 @@ def split_vbet_polygons(vbet_polygons, segmentation_points, out_split_polygons):
     log.info('VBET polygon successfully segmented')
 
 
-def calculate_segmentation_metrics(vbet_segment_polygons: Path, vbet_centerline: Path, dict_layers, attrib_filter=None):
+def calculate_dgo_metrics(vbet_dgos: Path, vbet_centerline: Path, dict_layers, attrib_filter=None):
     """_summary_
 
     Args:
@@ -173,61 +173,61 @@ def calculate_segmentation_metrics(vbet_segment_polygons: Path, vbet_centerline:
 
     log = Logger('Segmentation Metrics')
 
-    with GeopackageLayer(vbet_segment_polygons, write=True) as vbet_lyr, \
+    with GeopackageLayer(vbet_dgos, write=True) as lyr_dgos, \
             GeopackageLayer(vbet_centerline) as centerline_lyr:
 
         # Check fields and create if they don't exist
-        exist_fields = vbet_lyr.get_fields()
+        exist_fields = lyr_dgos.get_fields()
         metric_field_names = []
         for metric_layer_name in dict_layers.keys():
             metric_field_names.extend([f"{metric_layer_name}_{metric_type}" for metric_type in ['area', 'prop']])
         metric_field_names.extend(['centerline_length', 'segment_area'])
         fields = {field_name: ogr.OFTReal for field_name in metric_field_names if field_name not in exist_fields}
         if len(fields) > 0:
-            vbet_lyr.create_fields(fields)
+            lyr_dgos.create_fields(fields)
 
-        for vbet_feat, *_ in vbet_lyr.iterate_features('Calculating metrics per vbet segment', attribute_filter=attrib_filter, write_layers=[vbet_lyr]):
-            vbet_geom = vbet_feat.GetGeometryRef()
-            centroid = vbet_geom.Centroid()
+        for feat_dgo, *_ in lyr_dgos.iterate_features('Calculating dgo metrics', attribute_filter=attrib_filter, write_layers=[lyr_dgos]):
+            dgo_geom_unproj = feat_dgo.GetGeometryRef()
+            centroid = dgo_geom_unproj.Centroid()
             utm_epsg = get_utm_zone_epsg(centroid.GetX())
-            _transform_ref, transform = VectorBase.get_transform_from_epsg(vbet_lyr.spatial_ref, utm_epsg)
-            vbet_geom_transform = vbet_geom.Clone()
+            _transform_ref, transform = VectorBase.get_transform_from_epsg(lyr_dgos.spatial_ref, utm_epsg)
+            vbet_geom_transform = dgo_geom_unproj.Clone()
             vbet_geom_transform.Transform(transform)
             vbet_geom_transform_clean = vbet_geom_transform.MakeValid()
             if not vbet_geom_transform_clean.IsValid():
-                log.warning(f'Unable to generate metrics for vbet segment {vbet_feat.GetFID()}: Invalid VBET Segment Geometry')
+                log.warning(f'Unable to generate metrics for vbet segment {feat_dgo.GetFID()}: Invalid VBET Segment Geometry')
                 continue
             vbet_area = vbet_geom_transform_clean.GetArea()
             if vbet_area == 0.0:
-                log.warning(f'Unable to generate metrics for vbet segment {vbet_feat.GetFID()}: VBET Segment has no area')
+                log.warning(f'Unable to generate metrics for vbet segment {feat_dgo.GetFID()}: VBET Segment has no area')
                 continue
 
             length = 0.0
-            for centerline_feat, *_ in centerline_lyr.iterate_features(clip_shape=vbet_geom):
-                centerline_geom = centerline_feat.GetGeometryRef()
-                _transform_ref, transform = VectorBase.get_transform_from_epsg(centerline_lyr.spatial_ref, utm_epsg)
-                centerline_geom.Transform(transform)
-                if not centerline_geom.IsValid():
-                    log.warning(f'Invalid centerline geometry found for vbet segment {vbet_feat.GetFID()}')
+            for feat_cl, *_ in centerline_lyr.iterate_features(clip_shape=dgo_geom_unproj):
+                geom_cl = feat_cl.GetGeometryRef()
+                # _transform_ref, transform = VectorBase.get_transform_from_epsg(centerline_lyr.spatial_ref, utm_epsg)
+                geom_cl.Transform(transform)
+                if not geom_cl.IsValid():
+                    log.warning(f'Invalid centerline geometry found for vbet segment {feat_dgo.GetFID()}')
                 try:
-                    intersect_geom = vbet_geom_transform_clean.Intersection(centerline_geom)
+                    intersect_geom = vbet_geom_transform_clean.Intersection(geom_cl)
                 except IOError:
                     log.error(str(IOError))
                     break
-                length = length + intersect_geom.Length()
+                length += intersect_geom.Length()
 
-            vbet_feat.SetField('centerline_length', length)
-            vbet_feat.SetField('segment_area', vbet_area)
+            feat_dgo.SetField('centerline_length', length)
+            feat_dgo.SetField('segment_area', vbet_area)
 
             for metric_layer_name, metric_layer_path in dict_layers.items():
                 with GeopackageLayer(metric_layer_path) as metric_lyr:
                     metric_area = 0.0
-                    for metric_feat, *_ in metric_lyr.iterate_features(clip_shape=vbet_geom):
+                    for metric_feat, *_ in metric_lyr.iterate_features(clip_shape=dgo_geom_unproj):
                         in_metric_geom = metric_feat.GetGeometryRef()
                         in_metric_geom.Transform(transform)
                         metric_geom = in_metric_geom.MakeValid()
                         if not metric_geom.IsValid():
-                            log.warning(f'Unable to generate metric for {metric_layer_name} for vbet segment {vbet_feat.GetFID()}. Invalid metric Geometry')
+                            log.warning(f'Unable to generate metric for {metric_layer_name} for vbet segment {feat_dgo.GetFID()}. Invalid metric Geometry')
                             continue
                         try:
                             delta_geom = vbet_geom_transform_clean.Intersection(metric_geom)
@@ -240,11 +240,11 @@ def calculate_segmentation_metrics(vbet_segment_polygons: Path, vbet_centerline:
                             continue
                         metric_area = metric_area + delta_geom.GetArea()
                     metric_prop = metric_area / vbet_area
-                    vbet_feat.SetField(f'{metric_layer_name}_area', metric_area)
-                    vbet_feat.SetField(f'{metric_layer_name}_prop', metric_prop)
-            vbet_lyr.ogr_layer.SetFeature(vbet_feat)
-            vbet_feat = None
-            vbet_geom = None
+                    feat_dgo.SetField(f'{metric_layer_name}_area', metric_area)
+                    feat_dgo.SetField(f'{metric_layer_name}_prop', metric_prop)
+            lyr_dgos.ogr_layer.SetFeature(feat_dgo)
+            feat_dgo = None
+            dgo_geom_unproj = None
 
 
 def clean_linestring(in_geom: ogr.Geometry) -> MultiLineString:
@@ -270,7 +270,7 @@ def clean_linestring(in_geom: ogr.Geometry) -> MultiLineString:
     return merged_line
 
 
-def summerize_vbet_metrics(segment_points: Path, segmented_polygons: Path, level_paths: list, distance_lookup: dict, metric_names: list):
+def calculate_vbet_window_metrics(vbet_igos: Path, vbet_dgos: Path, level_paths: list, distance_lookup: dict, metric_names: list):
     """generate moving window summary of segmented vbet polygons
 
     Args:
@@ -281,54 +281,92 @@ def summerize_vbet_metrics(segment_points: Path, segmented_polygons: Path, level
         metric_names (list): list of metric names to generate summary attributes on
     """
 
-    with GeopackageLayer(segment_points, write=True) as lyr_pts, \
-            GeopackageLayer(segmented_polygons) as lyr_polygons:
+    with GeopackageLayer(vbet_igos, write=True) as lyr_igos, \
+            GeopackageLayer(vbet_dgos) as lyr_dgos:
 
+        # Initialize Metric Fields
         metric_fields = {}
+        metric_fields['window_size'] = ogr.OFTReal
+        metric_fields['centerline_length'] = ogr.OFTReal
+        metric_fields['window_area'] = ogr.OFTReal
+        metric_fields['integrated_width'] = ogr.OFTReal
         for metric in metric_names:
             metric_fields[f'{metric}_area'] = ogr.OFTReal
-            metric_fields[f'{metric}_area_prop'] = ogr.OFTReal
-            metric_fields[f'{metric}_area_cl_len'] = ogr.OFTReal
-        metric_fields['integrated_width'] = ogr.OFTReal
-        metric_fields['window_size'] = ogr.OFTReal
-        metric_fields['window_area'] = ogr.OFTReal
-        metric_fields['centerline_length'] = ogr.OFTReal
-        lyr_pts.create_fields(metric_fields)
+            metric_fields[f'{metric}_proportion'] = ogr.OFTReal
+            metric_fields[f'{metric}_itgr_width'] = ogr.OFTReal
+        metric_fields['vb_acreage_per_mile'] = ogr.OFTReal
+        metric_fields['vb_hectares_per_km'] = ogr.OFTReal
+        metric_fields['active_acreage_per_mile'] = ogr.OFTReal
+        metric_fields['active_hectares_per_km'] = ogr.OFTReal
+        metric_fields['inactive_acreage_per_mile'] = ogr.OFTReal
+        metric_fields['inactive_hectares_per_km'] = ogr.OFTReal
+
+        lyr_igos.create_fields(metric_fields)
 
         for level_path in level_paths:
             if level_path is None or level_path not in distance_lookup.keys():
                 continue
             window_distance = distance_lookup[level_path]
-            for feat_seg_pt, *_ in lyr_pts.iterate_features(f'Summerizing vbet metrics for {level_path}', attribute_filter=f"LevelPathI = {level_path}"):
-                dist = feat_seg_pt.GetField('seg_distance')
-                min_dist = dist - 0.5 * window_distance
-                max_dist = dist + 0.5 * window_distance
-                sql_seg_poly = f"LevelPathI = {level_path} AND seg_distance >= {min_dist} AND seg_distance <= {max_dist}"
-                window_metrics = dict.fromkeys(metric_names, 0.0)
-                window_length = 0.0
-                window_area = 0.0
-                for feat_seg_poly, *_ in lyr_polygons.iterate_features(attribute_filter=sql_seg_poly):
-                    window_length = window_length + feat_seg_poly.GetField('centerline_length')
-                    window_area = window_area + feat_seg_poly.GetField('segment_area')
-                    for metric in metric_names:
-                        metric_value = feat_seg_poly.GetField(f'{metric}_area')
-                        metric_value = metric_value if metric_value is not None else 0.0
-                        window_metrics[metric] = window_metrics[metric] + metric_value
-                for metric, value in window_metrics.items():
-                    # value = value / window_distance
-                    value_per_length = value / window_length if window_length != 0.0 else 0.0
-                    value_porportion = value / window_area if window_area != 0.0 else 0.0
-                    feat_seg_pt.SetField(f'{metric}_area', value)
-                    feat_seg_pt.SetField(f'{metric}_area_prop', value_porportion)
-                    feat_seg_pt.SetField(f'{metric}_area_cl_len', value_per_length)
-                integrated_width = window_area / window_length if window_length != 0.0 else 0.0
-                feat_seg_pt.SetField('integrated_width', integrated_width)
-                feat_seg_pt.SetField('window_size', window_distance)
-                feat_seg_pt.SetField('window_area', window_area)
-                feat_seg_pt.SetField('centerline_length', window_length)
+            for feat_igo, *_ in lyr_igos.iterate_features(f'Summerizing vbet metrics for {level_path}', attribute_filter=f"LevelPathI = {level_path}"):
+                # Construct the igo window selection logic
+                igo_distance = feat_igo.GetField('seg_distance')
+                min_dist = igo_distance - 0.5 * window_distance
+                max_dist = igo_distance + 0.5 * window_distance
+                sql_igo_window = f"LevelPathI = {level_path} AND seg_distance >= {min_dist} AND seg_distance <= {max_dist}"
 
-                lyr_pts.ogr_layer.SetFeature(feat_seg_pt)
-                feat_seg_pt = None
+                # Gather Window Measurements from the dgos
+                window_measurements = dict.fromkeys(metric_names, 0.0)
+                window_cl_length_m = 0.0
+                window_area_m2 = 0.0
+                for feat_dgo, *_ in lyr_dgos.iterate_features(attribute_filter=sql_igo_window):
+                    window_cl_length_m += feat_dgo.GetField('centerline_length')
+                    window_area_m2 += feat_dgo.GetField('segment_area')
+                    for metric in metric_names:
+                        metric_area = feat_dgo.GetField(f'{metric}_area')
+                        metric_area = metric_area if metric_area is not None else 0.0
+                        window_measurements[metric] += metric_area
+
+                # Calculate the floodplain metrics
+                for metric, area in window_measurements.items():
+                    area_per_length = area / window_cl_length_m if window_cl_length_m != 0.0 else 0.0
+                    area_porportion = area / window_area_m2 if window_area_m2 != 0.0 else 0.0
+                    feat_igo.SetField(f'{metric}_area', area)
+                    feat_igo.SetField(f'{metric}_proportion', area_porportion)
+                    feat_igo.SetField(f'{metric}_itgr_width', area_per_length)
+
+                # Measurement Conversions
+                window_cl_length_mi = window_cl_length_m / 1609.344
+                window_cl_length_km = window_cl_length_m / 1000
+                window_area_acres = window_area_m2 / 4046.86
+                window_area_hectares = window_area_m2 / 10000
+                active_acres = (window_measurements['active_floodplain'] + window_measurements['active_channel']) / 4046.86
+                active_hectares = (window_measurements['active_floodplain'] + window_measurements['active_channel']) / 1000
+                inactive_acres = window_measurements['inactive_floodplain'] / 4046.86
+                inactive_hectares = window_measurements['inactive_floodplain'] / 1000
+
+                # Metric Calculations
+                vb_acreage_per_mile = window_area_acres / window_cl_length_mi if window_cl_length_m != 0.0 else 0.0
+                vb_hectares_per_km = window_area_hectares / window_cl_length_km if window_cl_length_m != 0.0 else 0.0
+                active_acreage_per_mile = active_acres / window_cl_length_mi if window_cl_length_m != 0.0 else 0.0
+                active_hectares_per_km = active_hectares / window_cl_length_km if window_cl_length_m != 0.0 else 0.0
+                inactive_acreage_per_mile = inactive_acres / window_cl_length_mi if window_cl_length_m != 0.0 else 0.0
+                inactive_hectares_per_km = inactive_hectares / window_cl_length_km if window_cl_length_m != 0.0 else 0.0
+                integrated_width = window_area_m2 / window_cl_length_m if window_cl_length_m != 0.0 else 0.0
+
+                # Write to fields
+                feat_igo.SetField('integrated_width', integrated_width)
+                feat_igo.SetField('window_size', window_distance)
+                feat_igo.SetField('window_area', window_area_m2)
+                feat_igo.SetField('centerline_length', window_cl_length_m)
+                feat_igo.SetField('vb_acreage_per_mile', vb_acreage_per_mile)
+                feat_igo.SetField('vb_hectares_per_km', vb_hectares_per_km)
+                feat_igo.SetField('active_acreage_per_mile', active_acreage_per_mile)
+                feat_igo.SetField('active_hectares_per_km', active_hectares_per_km)
+                feat_igo.SetField('inactive_acreage_per_mile', inactive_acreage_per_mile)
+                feat_igo.SetField('inactive_hectares_per_km', inactive_hectares_per_km)
+
+                lyr_igos.ogr_layer.SetFeature(feat_igo)
+                feat_igo = None
 
 
 def vbet_segmentation(in_centerlines: str, vbet_polygons: str, metric_layers: dict, out_gpkg: str, interval=200):
@@ -350,13 +388,13 @@ def vbet_segmentation(in_centerlines: str, vbet_polygons: str, metric_layers: di
     split_polygons = os.path.join(out_gpkg, 'segmented_vbet_polygons')
 
     log.info('Generating Segment Points')
-    generate_segmentation_points(in_centerlines, out_points, interval)
+    generate_igo_points(in_centerlines, out_points, interval)
 
     log.info('Splitting vbet Polygons')
     split_vbet_polygons(vbet_polygons, out_points, split_polygons)
 
     log.info('Calcuating vbet metrics')
-    calculate_segmentation_metrics(split_polygons, in_centerlines, metric_layers)
+    calculate_dgo_metrics(split_polygons, in_centerlines, metric_layers)
 
 
 def main():
