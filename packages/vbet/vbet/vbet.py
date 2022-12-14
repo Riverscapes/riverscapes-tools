@@ -810,7 +810,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     log.debug(_tmr_waypt.toString())
 
     project.add_metadata([
-        RSMeta("ProcTimeS", "{ellapsed_time:.2f}", RSMetaTypes.INT),
+        RSMeta("ProcTimeS", f"{ellapsed_time:.2f}", RSMetaTypes.INT),
         RSMeta("ProcTimeHuman", pretty_duration(ellapsed_time))
     ])
 
