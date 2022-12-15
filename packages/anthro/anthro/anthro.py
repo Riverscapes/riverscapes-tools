@@ -20,14 +20,16 @@ from rscommons.vector_ops import copy_feature_class
 from rscommons import Logger, initGDALOGRErrors, RSLayer, RSProject, ModelConfig, dotenv
 from rscommons.database import create_database, SQLiteCon
 from rscommons.copy_features import copy_features_fields
+from rscommons.moving_window import get_moving_windows
 
-from anthro.conflict_attributes import conflict_attributes
-from anthro.moving_window import get_moving_windows
+from anthro.utils.conflict_attributes import conflict_attributes
 # from anthro.igo_infrastructure import infrastructure_attributes
-from anthro.igo_infrastructure2 import infrastructure_attributes
-from anthro.igo_vegetation import igo_vegetation
-from anthro.igo_land_use import calculate_land_use
-from anthro.lui_raster import lui_raster
+from anthro.utils.igo_infrastructure2 import infrastructure_attributes
+from anthro.utils.igo_vegetation import igo_vegetation
+from anthro.utils.igo_land_use import calculate_land_use
+from anthro.utils.lui_raster import lui_raster
+from anthro.utils.reach_vegetation import vegetation_summary
+from anthro.utils.reach_landuse import land_use
 from anthro.__version__ import __version__
 
 
@@ -196,24 +198,34 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
         '2': 1000
     }
 
+    # get moving window for each igo
     windows = get_moving_windows(igo_geom_path, input_layers['DGO'], levelpathsin, distancein)
 
+    # calculate conflict attributes for reaches
     conflict_attributes(outputs_gpkg_path, line_geom_path, input_layers['VALLEYBOTTOM'], input_layers['ROADS'], input_layers['RAILS'],
                         input_layers['CANALS'], input_layers['OWNERSHIP'], 30, 5, cfg.OUTPUT_EPSG, canal_codes, intermediates_gpkg_path)
     crossings = os.path.join(intermediates_gpkg_path, 'road_crossings')
     diversions = os.path.join(intermediates_gpkg_path, 'diversions')
+
+    # summarize infrastructure attributes onto igos
     st = datetime.datetime.now()
     infrastructure_attributes(windows, input_layers['ROADS'], input_layers['RAILS'], input_layers['CANALS'],
                               crossings, diversions, outputs_gpkg_path)
     end = datetime.datetime.now()
     print(f'igo infrastructure took {end - st}')
 
+    # get land use attributes for reaches
+    vegetation_summary(outputs_gpkg_path, input_layers['DGO'], existing_veg)
+    land_use(outputs_gpkg_path)
+    # get land use attributes for IGOs
     igo_vegetation(windows, existing_veg, outputs_gpkg_path)
     calculate_land_use(outputs_gpkg_path)
     lui_raster(existing_veg, outputs_gpkg_path, os.path.join(os.path.dirname(intermediates_gpkg_path), 'lui.tif'))
     # add lui raster to project
 
-    buffers = []
+    ellapsed_time = time.time() - start_time
+
+    log.info('Anthropogenic Context completed successfully')
 
 
 def main():

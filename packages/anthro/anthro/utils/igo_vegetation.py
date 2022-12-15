@@ -16,8 +16,8 @@ from rscommons.database import SQLiteCon
 
 def igo_vegetation(windows: dict, landuse_raster: str, out_gpkg_path: str):
 
-    log = Logger('Vegetation')
-    log.info('Summarizing vegetation classes for each IGO')
+    log = Logger('IGO Land Use')
+    log.info('Summarizing land cover classes for each IGO')
 
     dataset = gdal.Open(landuse_raster)
     geo_transform = dataset.GetGeoTransform()
@@ -63,4 +63,4 @@ def igo_vegetation(windows: dict, landuse_raster: str, out_gpkg_path: str):
             raise Exception('Errors were found inserting records into the database. Cannot continue.')
         database.conn.commit()
 
-    log.info('IGO vegetation summary complete')
+    log.info('IGO land use summary complete')

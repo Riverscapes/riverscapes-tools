@@ -7,13 +7,16 @@ import sqlite3
 import json
 import numpy as np
 from osgeo import ogr
-from rscommons import GeopackageLayer, get_shp_or_gpkg
+from rscommons import Logger, get_shp_or_gpkg
 from rscommons.classes.vector_base import VectorBase, get_utm_zone_epsg
 from rscommons.vector_ops import get_geometry_unary_union
 
 
 def infrastructure_attributes(windows: str, road: str, rail: str, canal: str, crossings: str, diversions: str,
                               out_gpkg_path: str):
+
+    log = Logger('IGO Infrastructure Attributes')
+    log.info('Adding attributes for infrastructure density to IGOs')
 
     in_data = {
         road: 'Road',
@@ -30,13 +33,12 @@ def infrastructure_attributes(windows: str, road: str, rail: str, canal: str, cr
         epsg_proj = get_utm_zone_epsg(long)
 
     conn = sqlite3.connect(out_gpkg_path)
-    # curs = conn.cursor()
 
     with get_shp_or_gpkg(road) as reflyr:
         sref, transform = reflyr.get_transform_from_epsg(reflyr.spatial_ref, epsg_proj)
 
     for dataset, label in in_data.items():
-        print(f'Summarizing metriscs for dataset: {dataset}')
+        log.info(f'Calculating metrics for dataset: {dataset}')
         ds = get_geometry_unary_union(dataset)
 
         counter = 1
