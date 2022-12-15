@@ -1,5 +1,27 @@
 # VBET
 
+## [0.8.6] - 2022-DEC-15
+
+### Changed
+- Clean up vbet raster donuts smaller than 20 pixels
+- Small refactor for rectangle extent to geom
+- Refactored parameter naming for igos/dgos
+
+### Added
+- Additional IGO metrics
+
+### Fixed
+- igo generation method uses better utm finding logic
+- tiny bug affecting elapsed time meta
+
+## [0.8.5] - 2022-DEC-13
+
+### Changed
+- vbet level path zone rasters renamed and added to projet file
+- igo spacing changed to 100m
+- igo metric windows changed to 200m, 500m and 1000m
+- waterbodies processing extent changed to full dem extent
+
 ## [0.8.4] - 2022-DEC-09
 
 ### Changed
