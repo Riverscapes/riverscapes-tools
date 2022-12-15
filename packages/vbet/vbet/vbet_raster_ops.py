@@ -14,6 +14,7 @@ from rasterio.windows import Window
 # from rasterio.windows import bounds, from_bounds
 import numpy as np
 from scipy.ndimage import label, generate_binary_structure, binary_closing
+from scipy import ndimage
 
 from rscommons import ProgressBar, Logger, VectorBase, Timer, TempRaster
 from rscommons.classes.raster import deleteRaster
@@ -710,7 +711,12 @@ def generate_vbet_polygon(vbet_evidence_raster, rasterized_channel, channel_hand
     # Clean Raster Edges
     log.info('Cleaning Raster edges')
     valley_bottom_clean = binary_closing(valley_bottom_region.astype(int), iterations=2)
-    array2raster(out_valley_bottom, vbet_evidence_raster, valley_bottom_clean, data_type=gdal.GDT_Int32)
+    donuts = np.invert(valley_bottom_clean)
+    donut_regions, num_donuts = label(donuts, struct)
+    sizes = ndimage.sum(donuts, donut_regions, range(num_donuts + 1))
+    donut_mask = sizes < 20
+    final_valley_array = donut_mask[donut_regions]
+    array2raster(out_valley_bottom, vbet_evidence_raster, final_valley_array, data_type=gdal.GDT_Int32)
 
     log.debug(f'Timer: {_timer.toString()}')
 
