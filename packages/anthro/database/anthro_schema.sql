@@ -117,6 +117,7 @@ INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Agencies', 'attribute
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('VegetationTypes', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachCodes', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachVegetation', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('IGOVegetation', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('MetaData', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('LandUses', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('LandUseIntensities', 'attributes');

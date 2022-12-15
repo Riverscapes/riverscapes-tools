@@ -23,7 +23,11 @@ from rscommons.copy_features import copy_features_fields
 
 from anthro.conflict_attributes import conflict_attributes
 from anthro.moving_window import get_moving_windows
-from anthro.igo_infrastructure import infrastructure_attributes
+# from anthro.igo_infrastructure import infrastructure_attributes
+from anthro.igo_infrastructure2 import infrastructure_attributes
+from anthro.igo_vegetation import igo_vegetation
+from anthro.igo_land_use import calculate_land_use
+from anthro.lui_raster import lui_raster
 from anthro.__version__ import __version__
 
 
@@ -199,10 +203,15 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
     crossings = os.path.join(intermediates_gpkg_path, 'road_crossings')
     diversions = os.path.join(intermediates_gpkg_path, 'diversions')
     st = datetime.datetime.now()
-    infrastructure_attributes(igo_geom_path, windows, input_layers['ROADS'], input_layers['RAILS'], input_layers['CANALS'],
+    infrastructure_attributes(windows, input_layers['ROADS'], input_layers['RAILS'], input_layers['CANALS'],
                               crossings, diversions, outputs_gpkg_path)
     end = datetime.datetime.now()
     print(f'igo infrastructure took {end - st}')
+
+    igo_vegetation(windows, existing_veg, outputs_gpkg_path)
+    calculate_land_use(outputs_gpkg_path)
+    lui_raster(existing_veg, outputs_gpkg_path, os.path.join(os.path.dirname(intermediates_gpkg_path), 'lui.tif'))
+    # add lui raster to project
 
     buffers = []
 

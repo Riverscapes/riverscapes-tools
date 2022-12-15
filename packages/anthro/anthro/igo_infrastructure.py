@@ -4,12 +4,8 @@ Jordan Gilbert
 
 Dec 2022
 """
-import os
 import sqlite3
-import json
-import numpy as np
-from osgeo import ogr
-from rscommons import GeopackageLayer, get_shp_or_gpkg
+from rscommons import get_shp_or_gpkg
 from rscommons.classes.vector_base import VectorBase, get_utm_zone_epsg
 from rscommons.vector_ops import get_geometry_unary_union
 
@@ -32,70 +28,60 @@ def infrastructure_attributes(igo: str, windows: str, road: str, rail: str, cana
         epsg_proj = get_utm_zone_epsg(long)
 
     conn = sqlite3.connect(out_gpkg_path)
-    # curs = conn.cursor()
-
-    with get_shp_or_gpkg(road) as reflyr:
-        sref, transform = reflyr.get_transform_from_epsg(reflyr.spatial_ref, epsg_proj)
 
     for dataset, label in in_data.items():
-        ds = get_geometry_unary_union(dataset)
+        # ds = get_geometry_unary_union(dataset)
         # sref, transform = ds.get_transform_from_epsg(ds.spatial_ref, epsg_proj)
+        print(f'Summarizing metrics for dataset: {dataset}')
 
         counter = 1
         for igoid, window in windows.items():
-            print(f'summarizing on igo {counter} of {len(windows)} for dataset {label}')
+            # print(f'summarizing on igo {counter} of {len(windows)} for dataset {label}')
 
-            lyr_cl = window[0].intersection(ds)
-            # project clipped layer to utm epsg
+            ftr_length = 0.0
+            ftr_count = 0
 
-            # leave null if layer is empty?
-            if lyr_cl.is_empty is True:
-                continue
-            else:
-                if lyr_cl.type in ['MultiLineString', 'LineString']:
-                    ogrlyr = VectorBase.shapely2ogr(lyr_cl)
-                    lyr_clipped = VectorBase.ogr2shapely(ogrlyr, transform=transform)
+            if igoid in [1110, 1442]:
+                print(igoid)
+
+            with get_shp_or_gpkg(dataset) as layer:
+                sref, transform = layer.get_transform_from_epsg(layer.spatial_ref, epsg_proj)
+                for geom in window[0].geoms:
+                    layer.ogr_layer.SetSpatialFilter(VectorBase.shapely2ogr(geom))
+                    if layer.ogr_layer.GetFeatureCount() == 0:
+                        continue
+                    else:
+                        for feature in layer.ogr_layer:
+                            lyr_cl = geom.intersection(VectorBase.ogr2shapely(feature))
+
+                            # leave null if layer is empty?
+                            if lyr_cl.is_empty is True:
+                                continue
+                            else:
+                                if lyr_cl.type in ['MultiLineString', 'LineString']:
+                                    ogrlyr = VectorBase.shapely2ogr(lyr_cl)
+                                    lyr_clipped = VectorBase.ogr2shapely(ogrlyr, transform=transform)
+                                    ftr_length += lyr_clipped.length
+                                if lyr_cl.type in ['MultiPoint']:
+                                    ftr_count += len(lyr_cl.geoms)
+                                if lyr_cl.type in ['Point']:
+                                    if lyr_cl.is_empty is False:
+                                        ftr_count += 1
+
+                if layer.ogr_geom_type in layer.LINE_TYPES:
                     lb1 = label + '_len'
                     lb2 = label + '_dens'
-                    conn.execute(f'UPDATE IGOAttributes SET {lb1} = {lyr_clipped.length} WHERE IGOID = {igoid}')
-                    if window[2] == 0.0:
-                        conn.commit()
-                        continue
-                    else:
-                        conn.execute(f'UPDATE IGOAttributes SET {lb2} = {lyr_clipped.length / window[2]} WHERE IGOID = {igoid}')
-                    conn.commit()
-                if lyr_cl.type in ['MultiPoint']:
+                    conn.execute(f'UPDATE IGOAttributes SET {lb1} = {ftr_length} WHERE IGOID = {igoid}')
+                    if window[2] != 0.0:
+                        conn.execute(f'UPDATE IGOAttributes SET {lb2} = {ftr_length / window[2]} WHERE IGOID = {igoid}')
+
+                if layer.ogr_geom_type in layer.POINT_TYPES:
                     lb1 = label + '_ct'
                     lb2 = label + '_dens'
-                    conn.execute(f'UPDATE IGOAttributes SET {lb1} = {len(lyr_cl.geoms)} WHERE IGOID = {igoid}')
-                    if window[2] == 0.0:
-                        conn.commit()
-                        continue
-                    else:
-                        conn.execute(f'UPDATE IGOAttributes SET {lb2} = {len(lyr_cl.geoms) / window[2]} WHERE IGOID = {igoid}')
-                    conn.commit()
-                if lyr_cl.type in ['Point']:
-                    lb1 = label + '_ct'
-                    lb2 = label + '_dens'
-                    if lyr_cl.is_empty is True:
-                        conn.execute(f'UPDATE IGOAttributes SET {lb1} = 0 WHERE IGOID = {igoid}')
-                        conn.execute(f'UPDATE IGOAttributes SET {lb2} = 0 WHERE IGOID = {igoid}')
-                    else:
-                        conn.execute(f'UPDATE IGOAttributes SET {lb1} = 1 WHERE IGOID = {igoid}')
-                        if window[2] == 0.0:
-                            conn.commit()
-                            continue
-                        else:
-                            conn.execute(f'UPDATE IGOAttributes SET {lb2} = {1 / window[2]} WHERE IGOID = {igoid}')
-            counter += 1
+                    conn.execute(f'UPDATE IGOAttributes SET {lb1} = {ftr_count} WHERE IGOID = {igoid}')
+                    if window[2] != 0.0:
+                        conn.execute(f'UPDATE IGOAttributes SET {lb2} = {ftr_count / window[2]} WHERE IGOID = {igoid}')
 
+                conn.commit()
 
-# conn.execute('CREATE INDEX ix_igo_levelpath on anthro_igo_geom(LevelPathI)')
-# conn.execute('CREATE INDEX ix_igo_segdist on anthro_igo_geom(seg_distance)')
-# conn.execute('CREATE INDEX ix_igo_size on anthro_igo_geom(stream_size)')
-# conn.commit()
-# conn = None
-# conn = sqlite3.connect(os.path.dirname(dgo))
-# conn.execute('CREATE INDEX ix_dgo_levelpath on dgo(LevelPathI)')
-# conn.execute('CREATE INDEX ix_dgo_segdist on dgo(seg_distance)')
-# conn.commit()
+                counter += 1

@@ -17,7 +17,7 @@ from rscommons.database import SQLiteCon
 def igo_vegetation(windows: dict, landuse_raster: str, out_gpkg_path: str):
 
     log = Logger('Vegetation')
-    log.info('')
+    log.info('Summarizing vegetation classes for each IGO')
 
     dataset = gdal.Open(landuse_raster)
     geo_transform = dataset.GetGeoTransform()
@@ -30,8 +30,8 @@ def igo_vegetation(windows: dict, landuse_raster: str, out_gpkg_path: str):
         veg_counts = []
         for igoid, window in windows.items():
             try:
-                raw_raster = mask(src, [window[1]], crop=True)[0]
-                mask_raster = np.ma.masked(raw_raster, src.nodata)
+                raw_raster = mask(src, window[0], crop=True)[0]
+                mask_raster = np.ma.masked_values(raw_raster, src.nodata)
 
                 for oldvalue in np.unique(mask_raster):
                     if oldvalue is not np.ma.masked:
