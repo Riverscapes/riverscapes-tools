@@ -55,7 +55,7 @@ try() {
     $RS_CONTEXT_DIR/hydrology/hydrology.gpkg/network \
     $RS_CONTEXT_DIR/hydrology/nhd_data.sqlite/NHDPlusFlowlineVAA \
     $VBET_DIR/intermediates/vbet_intermediates.gpkg/vbet_dgos \
-    $VBET_DIR/outputs/vbet.gpkg/segmentation_points \
+    $VBET_DIR/outputs/vbet.gpkg/vbet_igos \
     $VBET_DIR/outputs/vbet.gpkg/vbet_centerlines \
     $RS_CONTEXT_DIR/topography/dem.tif \
     $RS_CONTEXT_DIR/climate/precipitation.tif \
