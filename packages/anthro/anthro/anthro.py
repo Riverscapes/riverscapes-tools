@@ -9,13 +9,12 @@ import traceback
 import sys
 import time
 import datetime
-import sqlite3
 from typing import Dict, List
 from osgeo import ogr
 
 from rscommons import GeopackageLayer
-from rscommons.util import parse_metadata
-from rscommons.classes.rs_project import RSMeta
+from rscommons.util import parse_metadata, pretty_duration
+from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.vector_ops import copy_feature_class
 from rscommons import Logger, initGDALOGRErrors, RSLayer, RSProject, ModelConfig, dotenv
 from rscommons.database import create_database, SQLiteCon
@@ -43,6 +42,7 @@ LYR_DESCRIPTIONS_JSON = os.path.join(os.path.dirname(__file__), 'layer_descripti
 LayerTypes = {
     'EXVEG': RSLayer('Existing Land Cover', 'EXVEG', 'Raster', 'inputs/existing_veg.tif'),
     'HILLSHADE': RSLayer('DEM Hillshade', 'HILLSHADE', 'Raster', 'inputs/dem_hillshade.tif'),
+    'LUI': RSLayer('Land Use Intensity', 'LUI', 'Raster', 'intermediates/lui.tif'),
     'INPUTS': RSLayer('Anthropologic Inputs', 'INPUTS', 'Geopackage', 'inputs/inputs.gpkg', {
         'IGO': RSLayer('Integrated Geographic Objects', 'IGO', 'Vector', 'igo'),
         'DGO': RSLayer('Discrete Geographic Object', 'DGO', 'Vector', 'dgo'),
@@ -54,7 +54,7 @@ LayerTypes = {
         'RAILS': RSLayer('Railroads', 'RAIL', 'Vector', 'rails'),
         # 'LEVEES': RSLayer('Levees', 'LEVEE', 'Vector', 'levees')
     }),
-    'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/intermediates.gpkg', {}),
+    'INTERMEDIATES': RSLayer('Anthropogenic Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/intermediates.gpkg', {}),
     'OUTPUTS': RSLayer('Anthropologic Outputs', 'OUTPUTS', 'Geopackage', 'outputs/outputs.gpkg', {
         'ANTHRO_GEOM_POINTS': RSLayer('Anthropogenic Points Geometry', 'ANTHRO_GEOM_POINTS', 'Vector', 'anthro_igo_geom'),
         'ANTHRO_POINTS': RSLayer('Anthropogenic Output Points', 'ANTRHO_POINTS', 'Vector', 'vwIgos'),
@@ -85,7 +85,7 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
         RSMeta('AnthroTimeStamp', str(int(time.time())))
     ], meta)
 
-    _realization, proj_nodes = project.add_realization(project_name, 'REALIZATION1', cfg.version, data_nodes=['Inputs', 'Outputs'])
+    _realization, proj_nodes = project.add_realization(project_name, 'REALIZATION1', cfg.version, data_nodes=['Inputs', 'Intermediates', 'Outputs'])
 
     log.info('Adding input rasters to project')
     project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], hillshade)
@@ -179,9 +179,6 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
 
         database.conn.commit()
 
-        # get list of level paths
-        # conn = sqlite3.connect(outputs_gpkg_path)
-        # curs = conn.cursor()
         database.curs.execute('SELECT DISTINCT LevelPathI FROM anthro_igo_geom')
         levelps = database.curs.fetchall()
         levelpathsin = [lp['LevelPathI'] for lp in levelps]
@@ -208,11 +205,10 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
     diversions = os.path.join(intermediates_gpkg_path, 'diversions')
 
     # summarize infrastructure attributes onto igos
-    st = datetime.datetime.now()
     infrastructure_attributes(windows, input_layers['ROADS'], input_layers['RAILS'], input_layers['CANALS'],
                               crossings, diversions, outputs_gpkg_path)
-    end = datetime.datetime.now()
-    print(f'igo infrastructure took {end - st}')
+
+    # add layers to project
 
     # get land use attributes for reaches
     vegetation_summary(outputs_gpkg_path, input_layers['DGO'], existing_veg)
@@ -222,8 +218,25 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
     calculate_land_use(outputs_gpkg_path)
     lui_raster(existing_veg, outputs_gpkg_path, os.path.join(os.path.dirname(intermediates_gpkg_path), 'lui.tif'))
     # add lui raster to project
+    project.add_dataset(proj_nodes['Intermediates'], os.path.join(os.path.dirname(intermediates_gpkg_path), 'lui.tif'), LayerTypes['LUI'], 'Raster')
 
     ellapsed_time = time.time() - start_time
+
+    intermediate_layers = [
+        ['diversions', 'Stream Diversion Points'],
+        ['private_land', 'Private Land'],
+        ['rail_valleybottom', 'Railroads in Valley Bottom'],
+        ['road_crossings', 'Road Stream Crossings'],
+        ['road_valleybottom', 'Roads in Valley Bottom']
+    ]
+    for lyrname in intermediate_layers:
+        LayerTypes['INTERMEDIATES'].add_sub_layer(f'{str.upper(lyrname[0])}', RSLayer(f'{lyrname[1]}', f'{str.upper(lyrname[0])}', 'Vector', f'{lyrname[0]}'))
+
+    project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
+    project.add_metadata([
+        RSMeta("ProcTimeS", "{:.2f}".format(ellapsed_time), RSMetaTypes.INT),
+        RSMeta("ProcessingTime", pretty_duration(ellapsed_time))
+    ])
 
     log.info('Anthropogenic Context completed successfully')
 

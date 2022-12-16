@@ -38,7 +38,7 @@ def infrastructure_attributes(windows: str, road: str, rail: str, canal: str, cr
         sref, transform = reflyr.get_transform_from_epsg(reflyr.spatial_ref, epsg_proj)
 
     for dataset, label in in_data.items():
-        log.info(f'Calculating metrics for dataset: {dataset}')
+        log.info(f'Calculating metrics for dataset: {label}')
         ds = get_geometry_unary_union(dataset)
 
         counter = 1
@@ -89,3 +89,8 @@ def infrastructure_attributes(windows: str, road: str, rail: str, canal: str, cr
                         else:
                             conn.execute(f'UPDATE IGOAttributes SET {lb2} = {1 / window[2]} WHERE IGOID = {igoid}')
             counter += 1
+
+    fields = ['Road_len', 'Road_dens', 'Rail_len', 'Rail_dens', 'Canal_len', 'Canal_dens', 'RoadX_ct', 'RoadX_dens', 'DivPts_ct', 'DivPts_dens']
+    for field in fields:
+        conn.execute(f'UPDATE IGOAttributes SET {field} = 0 WHERE {field} = NULL')
+    conn.commit()
