@@ -1,0 +1,8 @@
+{
+    "ANTHRO_GEOM_POINTS": ["NHD Flowlines attributed with values for use in the BRAT conflict potential model, as well as the Riparian Condition Assessment Tool",
+                         "",""],
+    "ANTHRO_GEOM_LINES": ["Integrated Geographic Objects (points spaced at equal intervals along the riverscape centerlin) attributed with values related to anthropogenic impact",
+                       "",""],
+    "LUI": ["Existing vegetation raster classified into four land use intensity categories",
+           "",""]
+}

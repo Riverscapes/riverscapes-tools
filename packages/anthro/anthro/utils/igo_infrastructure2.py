@@ -92,5 +92,5 @@ def infrastructure_attributes(windows: str, road: str, rail: str, canal: str, cr
 
     fields = ['Road_len', 'Road_dens', 'Rail_len', 'Rail_dens', 'Canal_len', 'Canal_dens', 'RoadX_ct', 'RoadX_dens', 'DivPts_ct', 'DivPts_dens']
     for field in fields:
-        conn.execute(f'UPDATE IGOAttributes SET {field} = 0 WHERE {field} = NULL')
+        conn.execute(f'UPDATE IGOAttributes SET {field} = 0 WHERE {field} IS NULL')
     conn.commit()

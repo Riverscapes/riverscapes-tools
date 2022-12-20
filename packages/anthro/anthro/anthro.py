@@ -9,6 +9,7 @@ import traceback
 import sys
 import time
 import datetime
+import json
 from typing import Dict, List
 from osgeo import ogr
 
@@ -29,6 +30,7 @@ from anthro.utils.igo_land_use import calculate_land_use
 from anthro.utils.lui_raster import lui_raster
 from anthro.utils.reach_vegetation import vegetation_summary
 from anthro.utils.reach_landuse import land_use
+from anthro.anthro_report import AnthroReport
 from anthro.__version__ import __version__
 
 
@@ -56,11 +58,12 @@ LayerTypes = {
     }),
     'INTERMEDIATES': RSLayer('Anthropogenic Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/intermediates.gpkg', {}),
     'OUTPUTS': RSLayer('Anthropologic Outputs', 'OUTPUTS', 'Geopackage', 'outputs/outputs.gpkg', {
-        'ANTHRO_GEOM_POINTS': RSLayer('Anthropogenic Points Geometry', 'ANTHRO_GEOM_POINTS', 'Vector', 'anthro_igo_geom'),
+        'ANTHRO_GEOM_POINTS': RSLayer('Anthropogenic IGO Point Geometry', 'ANTHRO_GEOM_POINTS', 'Vector', 'IGOGeometry'),
         'ANTHRO_POINTS': RSLayer('Anthropogenic Output Points', 'ANTRHO_POINTS', 'Vector', 'vwIgos'),
-        'ANTHRO_GEOM_LINES': RSLayer('Anthropogenic Lines Geometry', 'ANTHRO_GEOM_LINES', 'Vector', 'anthro_lines_geom'),
+        'ANTHRO_GEOM_LINES': RSLayer('Anthropogenic Reach Geometry', 'ANTHRO_GEOM_LINES', 'Vector', 'ReachGeometry'),
         'ANTHRO_LINES': RSLayer('Anthropogenic Output Lines', 'ANTHRO_LINES', 'Vector', 'vwReaches')
-    })
+    }),
+    'REPORT': RSLayer('Anthropogenic Context Report', 'REPORT', 'HTMLFile', 'outputs/anthro.html')
 }
 
 
@@ -73,6 +76,8 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
     log = Logger("Anthropogenic Context")
     log.info(f'HUC: {huc}')
     log.info(f'EPSG: {cfg.OUTPUT_EPSG}')
+
+    augment_layermeta()
 
     start_time = time.time()
 
@@ -157,29 +162,29 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
     copy_features_fields(input_layers['FLOWLINES'], line_geom_path, epsg=cfg.OUTPUT_EPSG)
 
     with SQLiteCon(outputs_gpkg_path) as database:
-        database.curs.execute('INSERT INTO ReachAttributes (ReachID, ReachCode, WatershedID, StreamName) SELECT ReachID, FCode, WatershedID, GNIS_NAME FROM anthro_lines_geom')
-        database.curs.execute('INSERT INTO IGOAttributes (IGOID, LevelPathI, seg_distance, stream_size) SELECT IGOID, LevelPathI, seg_distance, stream_size FROM anthro_igo_geom')
+        database.curs.execute('INSERT INTO ReachAttributes (ReachID, ReachCode, WatershedID, StreamName) SELECT ReachID, FCode, WatershedID, GNIS_NAME FROM ReachGeometry')
+        database.curs.execute('INSERT INTO IGOAttributes (IGOID, LevelPathI, seg_distance, stream_size) SELECT IGOID, LevelPathI, seg_distance, stream_size FROM IGOGeometry')
 
         # Register vwReaches as a feature layer as well as its geometry column
         database.curs.execute("""INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id)
-            SELECT 'vwReaches', data_type, 'Reaches', min_x, min_y, max_x, max_y, srs_id FROM gpkg_contents WHERE table_name = 'anthro_lines_geom'""")
+            SELECT 'vwReaches', data_type, 'Reaches', min_x, min_y, max_x, max_y, srs_id FROM gpkg_contents WHERE table_name = 'ReachGeometry'""")
 
         database.curs.execute("""INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m)
-            SELECT 'vwReaches', column_name, geometry_type_name, srs_id, z, m FROM gpkg_geometry_columns WHERE table_name = 'anthro_lines_geom'""")
+            SELECT 'vwReaches', column_name, geometry_type_name, srs_id, z, m FROM gpkg_geometry_columns WHERE table_name = 'ReachGeometry'""")
 
         database.curs.execute("""INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id)
-            SELECT 'vwIgos', data_type, 'igos', min_x, min_y, max_x, max_y, srs_id FROM gpkg_contents WHERE table_name = 'anthro_igo_geom'""")
+            SELECT 'vwIgos', data_type, 'igos', min_x, min_y, max_x, max_y, srs_id FROM gpkg_contents WHERE table_name = 'IGOGeometry'""")
 
         database.curs.execute("""INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m)
-            SELECT 'vwIgos', column_name, geometry_type_name, srs_id, z, m FROM gpkg_geometry_columns WHERE table_name = 'anthro_igo_geom'""")
+            SELECT 'vwIgos', column_name, geometry_type_name, srs_id, z, m FROM gpkg_geometry_columns WHERE table_name = 'IGOGeometry'""")
 
-        database.conn.execute('CREATE INDEX ix_igo_levelpath on anthro_igo_geom(LevelPathI)')
-        database.conn.execute('CREATE INDEX ix_igo_segdist on anthro_igo_geom(seg_distance)')
-        database.conn.execute('CREATE INDEX ix_igo_size on anthro_igo_geom(stream_size)')
+        database.conn.execute('CREATE INDEX ix_igo_levelpath on IGOGeometry(LevelPathI)')
+        database.conn.execute('CREATE INDEX ix_igo_segdist on IGOGeometry(seg_distance)')
+        database.conn.execute('CREATE INDEX ix_igo_size on IGOGeometry(stream_size)')
 
         database.conn.commit()
 
-        database.curs.execute('SELECT DISTINCT LevelPathI FROM anthro_igo_geom')
+        database.curs.execute('SELECT DISTINCT LevelPathI FROM IGOGeometry')
         levelps = database.curs.fetchall()
         levelpathsin = [lp['LevelPathI'] for lp in levelps]
 
@@ -190,8 +195,8 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
 
     # set window distances for different stream sizes
     distancein = {
-        '0': 100,
-        '1': 250,
+        '0': 300,
+        '1': 500,
         '2': 1000
     }
 
@@ -238,7 +243,39 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
         RSMeta("ProcessingTime", pretty_duration(ellapsed_time))
     ])
 
+    report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
+    project.add_report(proj_nodes['Outputs'], LayerTypes['REPORT'], replace=True)
+
+    report = AnthroReport(report_path, project)
+    report.write()
+
     log.info('Anthropogenic Context completed successfully')
+
+
+def augment_layermeta():
+    """
+    For RSContext we've written a JSON file with extra layer meta. We may use this pattern elsewhere but it's just here for now
+    """
+    with open(LYR_DESCRIPTIONS_JSON, 'r') as f:
+        json_data = json.load(f)
+
+    for k, lyr in LayerTypes.items():
+        if lyr.sub_layers is not None:
+            for h, sublyr in lyr.sub_layers.items():
+                if h in json_data and len(json_data[h]) > 0:
+                    sublyr.lyr_meta = [
+                        RSMeta('Description', json_data[h][0]),
+                        RSMeta('SourceUrl', json_data[h][1], RSMetaTypes.URL),
+                        RSMeta('DataProductVersion', json_data[h][2]),
+                        RSMeta('DocsUrl', 'https://tools.riverscapes.net/anthro/data.html#{}'.format(sublyr.id), RSMetaTypes.URL)
+                    ]
+        if k in json_data and len(json_data[k]) > 0:
+            lyr.lyr_meta = [
+                RSMeta('Description', json_data[k][0]),
+                RSMeta('SourceUrl', json_data[k][1], RSMetaTypes.URL),
+                RSMeta('DataProductVersion', json_data[k][2]),
+                RSMeta('DocsUrl', 'https://tools.riverscapes.net/anthro/data.html#{}'.format(lyr.id), RSMetaTypes.URL)
+            ]
 
 
 def main():
