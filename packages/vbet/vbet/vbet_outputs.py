@@ -8,7 +8,7 @@
 from uuid import uuid4
 from osgeo import ogr
 
-from rscommons import ProgressBar, Logger, GeopackageLayer, TempGeopackage, get_shp_or_gpkg, Timer
+from rscommons import Logger, GeopackageLayer, TempGeopackage, get_shp_or_gpkg, Timer
 from vbet.__version__ import __version__
 
 Path = str

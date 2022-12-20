@@ -159,8 +159,6 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
     clip_mask = None
     if mask is not None:
-        # if not os.path.isfile(mask):
-        #     raise Exception(f'Mask file could not be found: {mask}')
         clip_mask = collect_feature_class(mask)
         clip_mask = clip_mask.MakeValid()
 
@@ -825,15 +823,15 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
 
 def get_zone(run, zone_type, stream_order):
-    """_summary_
+    """get the max zone of the stream order
 
     Args:
-        run (_type_): _description_
-        zone_type (_type_): _description_
-        stream_order (_type_): _description_
+        run (dict): vbet configuration dict
+        zone_type (str): name of zone to find
+        stream_order (int): stream order of zone to find
 
     Returns:
-        _type_: _description_
+        int: zone
     """
 
     for zone, max_value in run['Zones'][zone_type].items():

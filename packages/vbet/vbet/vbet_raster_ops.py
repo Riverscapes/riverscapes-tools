@@ -11,7 +11,7 @@ import shutil
 from osgeo import ogr, gdal, gdal_array, osr
 import rasterio
 from rasterio.windows import Window
-# from rasterio.windows import bounds, from_bounds
+
 import numpy as np
 from scipy.ndimage import label, generate_binary_structure, binary_closing
 from scipy import ndimage
@@ -480,9 +480,9 @@ def new_raster(newRasterfn: Path, rasterfn: Path, data_type: int = gdal.GDT_Byte
     """Create a new, empty raster from the template of another raster
 
     Args:
-        newRasterfn (Path): _description_
-        rasterfn (Path): _description_
-        data_type (int, optional): _description_. Defaults to gdal.GDT_Byte.
+        newRasterfn (Path): new raster file name
+        rasterfn (Path): template raster file name
+        data_type (int, optional): gdal data type. Defaults to gdal.GDT_Byte.
 
     Returns:
         _type_: _description_
@@ -542,7 +542,7 @@ def raster_recompress(raster_path: Path):
     """Working on a windowed raster can cause compression to fail
 
     Args:
-        raster_path (Path): 
+        raster_path (Path): raster to compress
     """
     log = Logger('raster_recompress')
     _tmr = Timer()
@@ -557,12 +557,12 @@ def raster_recompress(raster_path: Path):
     log.debug(f'raster_recompress: {_tmr.toString()}')
 
 
-def raster_update_multiply(raster, update_values_raster, value=None):
-    """_summary_
+def raster_update_multiply(raster: Path, update_values_raster: Path, value=None):
+    """use np.multiply to apply values from update_values_raster to raster
 
     Args:
-        raster (_type_): _description_
-        update_values_raster (_type_): _description_
+        raster (Path): raster to update no data pixels on
+        update_values_raster (Path): raster to update data pixels with
         value (_type_, optional): _description_. Defaults to None.
     """
     with rasterio.open(raster, 'r+') as rio_dest, \
@@ -604,7 +604,14 @@ def raster_update_multiply(raster, update_values_raster, value=None):
     return
 
 
-def raster_remove_zone(raster, remove_raster, output_raster):
+def raster_remove_zone(raster: Path, remove_raster: Path, output_raster: Path):
+    """logic to remove raster areas
+
+    Args:
+        raster (Path): input raster
+        remove_raster (Path): raster to remove areas
+        output_raster (Path): output raster
+    """
     with rasterio.open(raster, 'r') as rio_dest, \
             rasterio.open(remove_raster) as rio_remove:
 
@@ -661,16 +668,16 @@ def get_endpoints_on_raster(raster: Path, geom_line: ogr.Geometry(), dist):
         return coords
 
 
-def generate_vbet_polygon(vbet_evidence_raster, rasterized_channel, channel_hand, out_valley_bottom, temp_folder, thresh_value=0.68):
-    """_summary_
+def generate_vbet_polygon(vbet_evidence_raster: Path, rasterized_channel: Path, channel_hand: Path, out_valley_bottom: Path, temp_folder: Path, thresh_value: float = 0.68):
+    """generate the vbet raster for a thresholded value
 
     Args:
-        vbet_evidence_raster (_type_): _description_
-        rasterized_channel (_type_): _description_
-        channel_hand (_type_): _description_
-        out_valley_bottom (_type_): _description_
-        temp_folder (_type_): _description_
-        thresh_value (float, optional): _description_. Defaults to 0.68.
+        vbet_evidence_raster (Path): vbet evidience raster
+        rasterized_channel (Path): raster of channel area (for filtering vbet regions)
+        channel_hand (Path): hand for the local level path
+        out_valley_bottom (Path): output thresholded vbet area raster
+        temp_folder (Path): temporary folder for intermediate processing rasters
+        thresh_value (float, optional): vbet threshold value from 0.0 to 1.0. Defaults to 0.68.
     """
     log = Logger('VBET Generate Polygon')
     _timer = Timer()
@@ -721,14 +728,15 @@ def generate_vbet_polygon(vbet_evidence_raster, rasterized_channel, channel_hand
     log.debug(f'Timer: {_timer.toString()}')
 
 
-def generate_centerline_surface(vbet_raster, out_cost_path, temp_folder):
-    """_summary_
+def generate_centerline_surface(vbet_raster: Path, out_cost_path: Path, temp_folder: Path):
+    """generate the centerline cost path surface
 
     Args:
-        vbet_raster (_type_): _description_
-        out_cost_path (_type_): _description_
-        temp_folder (_type_): _description_
+        vbet_raster (Path): binary int raster of vbet area
+        out_cost_path (Path): output cost path raster
+        temp_folder (Path): path of temp folder for intermediate rasters
     """
+
     log = Logger('Generate Centerline Surface')
     vbet = raster2array(vbet_raster)
     _timer = Timer()
@@ -796,8 +804,15 @@ def threshold(evidence_raster_path: Path, thr_val: float, thresh_raster_path: Pa
     log.debug(f'Timer: {_timer.toString()}')
 
 
-def clean_raster_regions(raster, target_value, out_raster, out_regions=None):
+def clean_raster_regions(raster: Path, target_value: int, out_raster: Path, out_regions: Path = None):
+    """keep only the largest region of a raster by area
 
+    Args:
+        raster (Path): path of raster to clean
+        target_value (int): value to keep
+        out_raster (Path): output raster path 
+        out_regions (Path, optional): path of output regions raster. Defaults to None.
+    """
     log = Logger('Clean Raster Regions')
 
     array = raster2array(raster)

@@ -23,9 +23,16 @@ Path = str
 
 
 def generate_igo_points(line_network: Path, out_points_layer: Path, stream_size_lookup: dict, distance: float = 200.0):
-    """heavily modified from: https://glenbambrick.com/2017/09/15/osgp-create-points-along-line/
+    """generate the vbet segmentation center points/igos
+
+    Args:
+        line_network (Path): path to geopackage layer
+        out_points_layer (Path): output igo geopackage layer
+        stream_size_lookup (dict): level path id:stream size
+        distance (float, optional): distance between points. Defaults to 200.0.
     """
 
+    # process modified from: https://glenbambrick.com/2017/09/15/osgp-create-points-along-line/
     log = Logger('Generate Segmentation Points')
 
     init_distance = distance / 2
@@ -77,8 +84,6 @@ def generate_igo_points(line_network: Path, out_points_layer: Path, stream_size_
                     # use interpolate and increase the current distance
                     list_points.append((shapely_line.interpolate(current_dist), current_dist))
                     current_dist += distance
-                # append end coordinate to the list
-                # list_points.append(Point(list(shapely_line.coords)[-1]))
 
                 # add points to the layer
                 # for each point in the list
@@ -87,15 +92,6 @@ def generate_igo_points(line_network: Path, out_points_layer: Path, stream_size_
                     geom_pnt = ogr.Geometry(ogr.wkbPoint)
                     geom_pnt.AddPoint_2D(pnt.x, pnt.y)
                     geom_pnt.Transform(transform_back)
-                    # populate the distance values for each point.
-                    # start point
-                    # if num == 1:
-                    #     out_dist = 0
-                    # elif num < len(list_points):
-                    #     out_dist = distance * (num - 1)
-                    # # end point
-                    # elif num == len(list_points):
-                    #     out_dist = int(line_length)
                     # add the point feature to the output.
                     attributes = {'LevelPathI': str(int(level_path)),
                                   'seg_distance': out_dist,
@@ -103,7 +99,7 @@ def generate_igo_points(line_network: Path, out_points_layer: Path, stream_size_
                     out_lyr.create_feature(geom_pnt, attributes=attributes)
 
 
-def split_vbet_polygons(vbet_polygons, segmentation_points, out_split_polygons):
+def split_vbet_polygons(vbet_polygons: Path, segmentation_points: Path, out_split_polygons: Path):
     """split vbet polygons into segments based on segmentation points
 
     Args:
@@ -162,13 +158,14 @@ def split_vbet_polygons(vbet_polygons, segmentation_points, out_split_polygons):
     log.info('VBET polygon successfully segmented')
 
 
-def calculate_dgo_metrics(vbet_dgos: Path, vbet_centerline: Path, dict_layers, attrib_filter=None):
-    """_summary_
+def calculate_dgo_metrics(vbet_dgos: Path, vbet_centerline: Path, dict_layers: dict, attrib_filter: str = None):
+    """calculate the basic metrics on the dgos, later used with moving window for igos
 
     Args:
-        vbet_segment_polygons (_type_): _description_
-        vbet_centerline (_type_): _description_
-        dict_layers (_type_): Dictionary[layer_name(str), feature_class(str)]
+        vbet_dgo (Path): vbet dgo layer
+        vbet_centerline (Path): centerline layer
+        dict_layers (Path): Dictionary[layer_name(str), feature_class(str)]
+        attrib_filter (str, optional): sql filter for dgos. defaluts to None
     """
 
     log = Logger('Segmentation Metrics')

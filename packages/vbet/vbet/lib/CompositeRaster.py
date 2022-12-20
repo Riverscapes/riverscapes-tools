@@ -14,18 +14,16 @@ from vbet.vbet_raster_ops import get_raster_meta
 
 
 class CompositeRaster(object):
-    """_summary_
-
-    Args:
-        _description_
+    """class to generate a vrt composite of several rasters and save to single raster
     """
 
     def __init__(self, out_path: str, raster_paths: List[str], vrt_path: str = None):
-        """_summary_
+        """create a composte raster from a list of raster paths
 
         Args:
-            out_path (str): _description_
-            raster_paths (List[str]): _description_
+            out_path (str): directory where the vrt will be saved
+            raster_paths (List[str]): list of rasters to include in composite raster
+            vrt_path (str, optional): where to save the vrt
         """
         self.log = Logger('CompositeRaster')
         self.raster_paths = raster_paths
@@ -33,10 +31,10 @@ class CompositeRaster(object):
         self.vrt_path = vrt_path if vrt_path else self.out_path + '.vrt'
 
     def make_vrt(self, reverse: bool = True):
-        """_summary_
+        """create the composite raster vrt
 
         Args:
-            _description_
+            reverse (bool, optional): reverse the order of rasters in list. Defaults to True
         """
         _tmr = Timer()
         safe_makedirs(os.path.dirname(self.vrt_path))
@@ -54,10 +52,8 @@ class CompositeRaster(object):
         self.log.info(f'VRT "{self.vrt_path}" built in {_tmr.toString()}')
 
     def make_composite(self):
-        """_summary_
+        """output single raster fiile from composite raster
 
-        Args:
-            _description_
         """
         _tmr = Timer()
         # This will add compresssion parameters

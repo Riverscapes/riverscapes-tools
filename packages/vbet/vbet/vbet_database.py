@@ -1,16 +1,24 @@
+""" VBET Database Operations
+
+    Purpose:  Tools to support VBET database operations
+    Author:   North Arrow Research
+    Date:     August 2022
+"""
 import os
 import sqlite3
+
 import numpy as np
 from scipy import interpolate
+
 from rscommons import Logger
 from rscommons.database import load_lookup_data
 
 
-def build_vbet_database(database):
-    """_summary_
+def build_vbet_database(database: str):
+    """create a new vbet database
 
     Args:
-        database (_type_): _description_
+        database (Path): path of ne database
     """
     log = Logger('Building VBET Database')
     log.info('Preparing inputs')
@@ -27,7 +35,13 @@ def build_vbet_database(database):
     load_lookup_data(database, database_folder)
 
 
-def load_configuration(machine_code, database):
+def load_configuration(machine_code: str, database: str):
+    """load the vbet run configuration based on the machine code
+
+    Args:
+        machine_code (str): machine code id of the scenario to run
+        database (Path): path of ne database
+    """
 
     conn = sqlite3.connect(database)
     conn.execute('pragma foreign_keys=ON')
