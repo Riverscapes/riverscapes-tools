@@ -64,17 +64,17 @@ Unlike some of our  [_operational-grade_ ![pgt](https://riverscapes.net/assets/i
       </div>
     </div>
   </div>
-  <!--
+ 
   <div class="column">
     <div class="card">
-      <a href="https://tools.riverscapes.net/brat"><img align="center" src="{{ site.baseurl }}/assets/images/tools/BRAT_Tile.png"></a>
+      <a href="https://tools.riverscapes.net/anthro"><img align="center" src="{{ site.baseurl }}/assets/images/tools/anthro_tile.png"></a>
       <div class="card-section">
-        <h4>BRAT</h4>
-        <p>The <a href="https://tools.riverscapes.net/brat"><b>Beaver Restoration Assessment Tool</b></a> combines a model estimating the capacity of a riverscape to support dam building activity with analysis of potential anthropogenic conflicts to create a tool that can be used to inform where <a href ="http://lowtechpbr.restoration.usu.edu/">LTPBR</a>restoration using beaver can be targeted. <img src="{{ site.baseurl }}/assets/images/rc/RiverscapesCompliant_24.png"></p>
+        <h4>Anthropogenic Context</h4>
+        <p>The <a href="https://tools.riverscapes.net/anthro"><b>Anthropogenic Context Tool</b></a> adds attributes to stream network reaches and to points along the riverscape (valley bottom) center line that help to contextualize potential anthropogenic impacts to the riverscape. These attributes are used in portions of the <a href="">BRAT</a> and RCAT models <img src="{{ site.baseurl }}/assets/images/rc/RiverscapesCompliant_24.png"></p>
       </div>
     </div>
   </div>
-  --->
+
 </div>
 
 
