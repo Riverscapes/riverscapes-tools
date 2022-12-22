@@ -107,11 +107,11 @@ FROM ReachAttributes R
 -- The main views 
 CREATE VIEW vwReaches AS SELECT R.*, G.geom
 FROM vwReachAttributes R
-    INNER JOIN anthro_lines_geom G ON R.ReachID = G.ReachID;
+    INNER JOIN ReachGeometry G ON R.ReachID = G.ReachID;
 
 CREATE VIEW vwIgos AS SELECT I.*, G.geom
 FROM IGOAttributes I
-    INNER JOIN anthro_igo_geom G ON I.IGOID = G.IGOID;
+    INNER JOIN IGOGeometry G ON I.IGOID = G.IGOID;
 
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Agencies', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('VegetationTypes', 'attributes');

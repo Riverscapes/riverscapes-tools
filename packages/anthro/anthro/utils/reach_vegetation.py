@@ -43,13 +43,15 @@ def vegetation_summary(outputs_gpkg_path: str, dgo: str, veg_raster: str):
     # Open the raster and then loop over all polyline features
     polygons = {}
     veg_counts = []
-    with rasterio.open(veg_raster) as src, GeopackageLayer(os.path.join(outputs_gpkg_path, 'anthro_lines_geom')) as lyr:
+    with rasterio.open(veg_raster) as src, GeopackageLayer(os.path.join(outputs_gpkg_path, 'ReachGeometry')) as lyr:
         _srs, transform = VectorBase.get_transform_from_raster(lyr.spatial_ref, veg_raster)
-        spatial_ref = lyr.spatial_ref
+        # spatial_ref = lyr.spatial_ref
 
         for feature, _counter, _progbar in lyr.iterate_features():
             reach_id = feature.GetFID()
             geom = feature.GetGeometryRef()
+            if transform:
+                geom.Transform(transform)
 
             with get_shp_or_gpkg(dgo) as dgolyr:
                 dgolyr.ogr_layer.SetSpatialFilter(feature.GetGeometryRef())
