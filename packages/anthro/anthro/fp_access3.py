@@ -4,8 +4,9 @@ from rscommons import get_shp_or_gpkg
 from rscommons.vector_ops import get_geometry_unary_union, VectorBase
 from shapely.geometry import MultiLineString
 import numpy as np
+import datetime
 
-hand_path = '/mnt/c/Users/jordang/Documents/Riverscapes/data/anthro/test_data/hand.tif'
+hand_path = '/mnt/c/Users/jordang/Documents/Riverscapes/data/anthro/test_data/dem.tif'
 vb_path = '/mnt/c/Users/jordang/Documents/Riverscapes/data/anthro/test_data/valley_bottom.shp'
 flowlines_path = '/mnt/c/Users/jordang/Documents/Riverscapes/data/anthro/test_data/flowlines.shp'
 road_path = '/mnt/c/Users/jordang/Documents/Riverscapes/data/anthro/test_data/roads.shp'
@@ -78,6 +79,7 @@ movements = {0: -1, 1: 0, 2: 1}
 straight_dist = transform[0]  # these should actually be converted from degrees from transform
 diag_dist = (straight_dist**2 + straight_dist**2)**0.5
 
+st = datetime.datetime.now()
 for row in range(1, array.shape[0] - 1):
     for col in range(1, array.shape[1] - 1):
         if array[row, col] == src_nd:
@@ -87,41 +89,42 @@ for row in range(1, array.shape[0] - 1):
             subprocessed = [[row, col]]
 
             next_cell = array[row, col]
+            rowa, cola = row, col
             while next_cell is not None:
-                if [row, col] in processed:
+                if [rowa, cola] in processed:
                     for coord in subprocessed:
                         if coord not in processed:
-                            out_array[coord[0], coord[1]] = out_array[row, col]
+                            out_array[coord[0], coord[1]] = out_array[rowa, cola]
                             processed.append(coord)
                     next_cell = None
                     print(f'{len(processed)} cells processed')
-                if next_cell == 0:
+                # if next_cell == 0:
+                #    for coord in subprocessed:
+                #        if coord not in processed:
+                #            out_array[coord[0], coord[1]] = 1
+                #            processed.append(coord)
+                #    next_cell = None
+                #    print(f'{len(processed)} cells processed')
+                if fl_a[rowa, cola] != fl_nd:
                     for coord in subprocessed:
                         if coord not in processed:
                             out_array[coord[0], coord[1]] = 1
                             processed.append(coord)
                     next_cell = None
                     print(f'{len(processed)} cells processed')
-                if fl_a[row, col] != fl_nd:
-                    for coord in subprocessed:
-                        if coord not in processed:
-                            out_array[coord[0], coord[1]] = 1
-                            processed.append(coord)
-                    next_cell = None
-                    print(f'{len(processed)} cells processed')
-                if r_a[row, col] != road_nd:
+                if r_a[rowa, cola] != road_nd:
                     for coord in subprocessed:
                         if coord not in processed:
                             processed.append(coord)
                     next_cell = None
                     print(f'{len(processed)} cells processed')
-                if rr_a[row, col] != rail_nd:
+                if rr_a[rowa, cola] != rail_nd:
                     for coord in subprocessed:
                         if coord not in processed:
                             processed.append(coord)
                     next_cell = None
                     print(f'{len(processed)} cells processed')
-                if c_a[row, col] != canal_nd:
+                if c_a[rowa, cola] != canal_nd:
                     for coord in subprocessed:
                         if coord not in processed:
                             processed.append(coord)
@@ -130,26 +133,26 @@ for row in range(1, array.shape[0] - 1):
 
                 if next_cell is not None:
                     # need to fix so that when there's a no data value it defaults to a high gradient
-                    gradients = np.array([[(array[row - 1, col - 1] - array[row, col]) / diag_dist, (array[row - 1, col] - array[row, col]) / straight_dist, (array[row - 1, col + 1] - array[row, col]) / diag_dist],
-                                          [(array[row, col - 1] - array[row, col]) / straight_dist, 0, (array[row, col + 1] - array[row, col]) / straight_dist],
-                                          [(array[row + 1, col - 1] - array[row, col]) / diag_dist, (array[row + 1, col] - array[row, col]) / straight_dist, (array[row + 1, col + 1] - array[row, col]) / diag_dist]])
+                    gradients = np.array([[(array[rowa - 1, cola - 1] - array[rowa, cola]) / diag_dist, (array[rowa - 1, cola] - array[rowa, cola]) / straight_dist, (array[rowa - 1, cola + 1] - array[rowa, cola]) / diag_dist],
+                                          [(array[rowa, cola - 1] - array[rowa, cola]) / straight_dist, 0, (array[rowa, cola + 1] - array[rowa, cola]) / straight_dist],
+                                          [(array[rowa + 1, cola - 1] - array[rowa, cola]) / diag_dist, (array[rowa + 1, cola] - array[rowa, cola]) / straight_dist, (array[rowa + 1, cola + 1] - array[rowa, cola]) / diag_dist]])
 
                     # adjust gradient kernel for nodata
-                    if array[row - 1, col - 1] == src_nd:
+                    if array[rowa - 1, cola - 1] == src_nd:
                         gradients[0, 0] = 1000000
-                    if array[row - 1, col] == src_nd:
+                    if array[rowa - 1, cola] == src_nd:
                         gradients[0, 1] = 1000000
-                    if array[row - 1, col + 1] == src_nd:
+                    if array[rowa - 1, cola + 1] == src_nd:
                         gradients[0, 2] = 1000000
-                    if array[row, col - 1] == src_nd:
+                    if array[rowa, cola - 1] == src_nd:
                         gradients[1, 0] = 1000000
-                    if array[row, col + 1] == src_nd:
+                    if array[rowa, cola + 1] == src_nd:
                         gradients[1, 2] = 1000000
-                    if array[row + 1, col - 1] == src_nd:
+                    if array[rowa + 1, cola - 1] == src_nd:
                         gradients[2, 0] = 1000000
-                    if array[row + 1, col] == src_nd:
+                    if array[rowa + 1, cola] == src_nd:
                         gradients[2, 1] = 1000000
-                    if array[row + 1, col + 1] == src_nd:
+                    if array[rowa + 1, cola + 1] == src_nd:
                         gradients[2, 2] = 1000000
 
                     min = 1000000
@@ -160,31 +163,53 @@ for row in range(1, array.shape[0] - 1):
                                 if [r, c] != [1, 1]:
                                     min = gradients[r, c]
                                     move = [r, c]
-                    # row = row + movements[move[0]]
-                    # col = col + movements[move[1]]
-                    if move is None:  # this is a case where circular flow was never resolved, set to 2?
+                    if move is None:
+                        print('isolated cells')
                         for coord in subprocessed:
                             if coord not in processed:
-                                out_array[coord[0], coord[1]] = 2
                                 processed.append(coord)
                         next_cell = None
                     else:
-                        while [row + movements[move[0]], col + movements[move[1]]] in subprocessed:
-                            print('rerouting circular flow path')
-                            gradients[move[0], move[1]] = 1000000
-                            min = 1000000
-                            move = None
-                            for r in range(gradients.shape[0]):
-                                for c in range(gradients.shape[1]):
-                                    if gradients[r, c] < min:
-                                        if [r, c] != [1, 1]:
-                                            min = gradients[r, c]
-                                            move = [r, c]
-                        row = row + movements[move[0]]
-                        col = col + movements[move[1]]
-                        subprocessed.append([row, col])
-                        print(f'subprocessed {len(subprocessed)} cells')
-                        next_cell = array[row, col]
+                        rowa = rowa + movements[move[0]]
+                        cola = cola + movements[move[1]]
+                        if [rowa, cola] in subprocessed:
+                            print('circular flow path, could not resolve connectivity')
+                            for coord in subprocessed:
+                                if coord not in processed:
+                                    out_array[coord[0], coord[1]] = 2
+                                    processed.append(coord)
+                            next_cell = None
+                        else:
+                            subprocessed.append([rowa, cola])
+                            print(f'subprocessed {len(subprocessed)} cells')
+                            next_cell = array[rowa, cola]
+
+                    # if move is not None:
+                    #     while [row + movements[move[0]], col + movements[move[1]]] in subprocessed:
+                    #         print('rerouting circular flow path')
+                    #         gradients[move[0], move[1]] = 1000000
+                    #         min = 1000000
+                    #         move = None
+                    #         for r in range(gradients.shape[0]):
+                    #             for c in range(gradients.shape[1]):
+                    #                 if gradients[r, c] < min:
+                    #                     if [r, c] != [1, 1]:
+                    #                         min = gradients[r, c]
+                    #                         move = [r, c]
+                    #     row = row + movements[move[0]]
+                    #     col = col + movements[move[1]]
+                    #     subprocessed.append([row, col])
+                    #     print(f'subprocessed {len(subprocessed)} cells')
+                    #     next_cell = array[row, col]
+
+                    # else:  # this is a case where circular flow was never resolved, set to 2?
+                    #     for coord in subprocessed:
+                    #         if coord not in processed:
+                    #             out_array[coord[0], coord[1]] = 2
+                    #             processed.append(coord)
+                    #     next_cell = None
+end = datetime.datetime.now()
+print(f'ellapsed: {end-st}')
 
 with rasterio.open(out_raster, 'w', **meta) as outfile:
     outfile.write(out_array, 1)
