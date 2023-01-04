@@ -357,6 +357,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     for level_path_key, level_path in enumerate(level_paths_to_run, 1):
         level_path_keys[level_path_key] = level_path
 
+        # Intialize the timer buckets for this level path
         _tmtbuckets.tick({
             "level_path": level_path,
             "drainage": level_paths_drainage[level_path] if level_path in level_paths_drainage else 0,
