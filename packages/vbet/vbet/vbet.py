@@ -654,9 +654,6 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
         # End of level path for loop
 
-    if debug is False:
-        safe_remove_dir(temp_folder)
-
     _tmtfinish()
     # Final tick to trigger writing the last row
     _tmtbuckets.tick()
