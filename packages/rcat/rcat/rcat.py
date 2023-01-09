@@ -6,11 +6,17 @@ Jordan Gilbert Jan 2023
 import argparse
 import os
 import time
+import datetime
 
 from typing import Dict
+from osgeo import ogr
 
 from rscommons import initGDALOGRErrors, ModelConfig, RSLayer, RSProject, RSMeta, Logger, GeopackageLayer
 from rscommons.vector_ops import copy_feature_class
+from rscommons.database import create_database, SQLiteCon
+from rscommons.copy_features import copy_features_fields
+from rscommons.reach_vegetation import vegetation_summary
+from rscommons.igo_vegetation import igo_vegetation
 
 from rcat.__version__ import __version__
 
@@ -101,3 +107,35 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
     for input_key, rslayer in LayerTypes['INPUTS'].sub_layers.items():
         input_layers[input_key] = os.path.join(inputs_gpkg_path, rslayer.rel_path)
         copy_feature_class(src_layers[input_key], input_layers[input_key], cfg.OUTPUT_EPSG)
+
+    # Create the output feature class fields. Only those listed here will get copied from the source.
+    with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['GEOM_POINTS'].rel_path, delete_dataset=True) as out_lyr:
+        out_lyr.create_layer(ogr.wkbMultiPoint, epsg=cfg.OUTPUT_EPSG, options=['FID=IGOID'], fields={
+            'LevelPathI': ogr.OFTReal,
+            'seg_distance': ogr.OFTReal,
+            'stream_size': ogr.OFTInteger,
+            'LUI': ogr.OFTReal
+        })
+
+    with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['GEOM_LINES'].rel_path, write=True) as out_lyr:
+        out_lyr.create_layer(ogr.wkbMultiLineString, epsg=cfg.OUTPUT_EPSG, options=['FID=ReachID'], fields={
+            'WatershedID': ogr.OFTString,
+            'ReachCode': ogr.OFTInteger,
+            'StreamName': ogr.OFTString,
+            'NHDPlusID': ogr.OFTReal,
+            'iPC_LU': ogr.OFTReal
+        })
+
+    db_metadata = {
+        'RCATDateTime': datetime.datetime.now().isoformat(),
+    }
+
+    watershed_name = create_database(huc, outputs_gpkg_path, db_metadata, cfg.OUTPUT_EPSG, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'rcat_schema.sql'))
+
+    project.add_metadata_simple(db_metadata)
+    project.add_metadata([RSMeta('Watershed', watershed_name)])
+
+    igo_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['GEOM_POINTS'].rel_path)
+    reach_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['GEOM_LINES'].rel_path)
+    copy_features_fields(input_layers['ANTHROIGO'], igo_geom_path, epsg=cfg.OUTPUT_EPSG)
+    copy_features_fields(input_layers['ANTHROREACHES'], reach_geom_path, cfg.OUTPUT_EPSG)

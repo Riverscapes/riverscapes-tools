@@ -58,7 +58,7 @@ CREATE TABLE Watersheds (
 
 CREATE TABLE IGOAttributes (
     IGOID INTEGER PRIMARY KEY NOT NULL,
-    LevelPathI, REAL,
+    LevelPathI REAL,
     seg_distance REAL,
     stream_size INTEGER,
     LUI REAL,
@@ -78,6 +78,8 @@ CREATE TABLE ReachAttributes (
     ReachCode INTEGER REFERENCES ReachCodes (ReachCode),
     WatershedID TEXT REFERENCES Watersheds (WatershedID) ON DELETE CASCADE,
     StreamName TEXT,
+    Orig_DA REAL,
+    iGeo_DA REAL CONSTRAINT CK_Reaches_DrainageAreaSqKm CHECK (iGeo_DA >= 0),
     iPC_Road REAL CONSTRAINT CHK_Reaches_RoadDist CHECK (iPC_Road >= 0),
     iPC_RoadX REAL CONSTRAINT CHK_Reaches_RoadCrossDists CHECK (iPC_RoadX >= 0),
     iPC_RoadVB REAL CONSTRAINT CHK_Reaches_RoadVBDist CHECK (iPC_RoadVB >= 0),
@@ -92,7 +94,8 @@ CREATE TABLE ReachAttributes (
     iPC_ModLU REAL,
     iPC_HighLU REAL,
     oPC_Dist REAL,
-    AgencyID INTEGER REFERENCES Agencies (AgencyID));
+    AgencyID INTEGER REFERENCES Agencies (AgencyID),
+    NHDPlusID INTEGER);
 
 -- indexes
 

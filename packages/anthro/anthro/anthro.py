@@ -162,7 +162,7 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
     copy_features_fields(input_layers['FLOWLINES'], line_geom_path, epsg=cfg.OUTPUT_EPSG)
 
     with SQLiteCon(outputs_gpkg_path) as database:
-        database.curs.execute('INSERT INTO ReachAttributes (ReachID, ReachCode, WatershedID, StreamName) SELECT ReachID, FCode, WatershedID, GNIS_NAME FROM ReachGeometry')
+        database.curs.execute('INSERT INTO ReachAttributes (ReachID, Orig_DA, iGeo_DA, ReachCode, WatershedID, StreamName, NHDPlusID) SELECT ReachID, TotDASqKm, DivDASqKm, FCode, WatershedID, GNIS_NAME, NHDPlusID FROM ReachGeometry')
         database.curs.execute('INSERT INTO IGOAttributes (IGOID, LevelPathI, seg_distance, stream_size) SELECT IGOID, LevelPathI, seg_distance, stream_size FROM IGOGeometry')
 
         # Register vwReaches as a feature layer as well as its geometry column
