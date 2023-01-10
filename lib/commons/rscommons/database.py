@@ -90,10 +90,10 @@ def create_database(huc: str, db_path: str, metadata: Dict[str, str], epsg: int,
     load_lookup_data(db_path, csv_dir)
 
     # Keep only the designated watershed
-    curs.execute('DELETE FROM Watersheds WHERE WatershedID <> ?', [huc])
+    curs.execute('DELETE FROM Watersheds WHERE WatershedID <> ?', [huc[:8]])
 
     # Retrieve the name of the watershed so it can be stored in riverscapes project
-    curs.execute('SELECT Name FROM Watersheds WHERE WatershedID = ?', [huc])
+    curs.execute('SELECT Name FROM Watersheds WHERE WatershedID = ?', [huc[:8]])
     row = curs.fetchone()
     watershed_name = row[0] if row else None
 
