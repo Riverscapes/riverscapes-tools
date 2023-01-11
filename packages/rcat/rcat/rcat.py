@@ -9,14 +9,14 @@ import time
 import datetime
 
 from typing import Dict
-from osgeo import ogr
+from osgeo import ogr, gdal
 
 from rscommons import initGDALOGRErrors, ModelConfig, RSLayer, RSProject, RSMeta, Logger, GeopackageLayer
-from rscommons.vector_ops import copy_feature_class
+from rscommons.vector_ops import copy_feature_class, get_geometry_unary_union
 from rscommons.database import create_database, SQLiteCon
 from rscommons.copy_features import copy_features_fields
-from rscommons.reach_vegetation import vegetation_summary
-from rscommons.igo_vegetation import igo_vegetation
+# from rscommons.reach_vegetation import vegetation_summary
+# from rscommons.igo_vegetation import igo_vegetation
 
 from rcat.__version__ import __version__
 
@@ -43,7 +43,9 @@ LayerTypes = {
         'CANALS': RSLayer('Canals', 'CANAL', 'Vector', 'canals'),
         'ROADS': RSLayer('Roads', 'ROADS', 'Vector', 'roads'),
         'RAILS': RSLayer('Railroads', 'RAIL', 'Vector', 'rails'),
-        'VALLEYBOTTOM': RSLayer('Valley Bottom', 'VALLEY', 'Vector', 'valley_bottom')
+        'VALLEYBOTTOM': RSLayer('Valley Bottom', 'VALLEY', 'Vector', 'valley_bottom'),
+        'FLOW_AREA': RSLayer('NHD Flow Area', 'FLOW_AREA', 'Vector', 'flowareas'),
+        'WATERBODIES': RSLayer('NHD Waterbody', 'WATERBODIES', 'Vector', 'waterbodies')
     }),
     'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/intermediates.gpkg', {}),
     'OUTPUTS': RSLayer('RCAT Outputs', 'OUTPUTS', 'Geopackage', 'outputs/rcat.gpkg', {
@@ -55,10 +57,33 @@ LayerTypes = {
     'REPORT': RSLayer('RCAT Report', 'REPORT', 'HTMLFile', 'outputs/rcat.html')
 }
 
+rvd_columns = ['FromConifer',
+               'FromDevegetated',
+               'FromGrassShrubland',
+               'FromDeciduous',
+               'NoChange',
+               'Deciduous',
+               'GrassShrubland',
+               'Devegetation',
+               'Conifer',
+               'Invasive',
+               'Development',
+               'Agriculture',
+               'RiparianTotal',
+               'ConversionID']
+
+departure_type_columns = ['ExistingRiparianMean',
+                          'HistoricRiparianMean',
+                          'RiparianDeparture',
+                          'RiparianDepartureID',
+                          'ExistingNativeRiparianMean',
+                          'HistoricNativeRiparianMean',
+                          'NativeRiparianDeparture']
+
 
 def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo: Path, dgo: Path,
-         reaches: Path, roads: Path, rails: Path, canals: Path, valley: Path,
-         output_folder: Path, meta: Dict[str, str]):
+         reaches: Path, roads: Path, rails: Path, canals: Path, valley: Path, flow_areas: Path,
+         waterbodies: Path, output_folder: Path, meta: Dict[str, str]):
 
     log = Logger('RCAT')
     log.info(f'HUC: {huc}')
@@ -76,8 +101,8 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
     _realization, proj_nodes = project.add_realization(project_name, 'REALIZATION1', cfg.version, data_nodes=['Inputs', 'Intermediates', 'Ouptuts'])
 
     log.info('Adding input rasters to project')
-    project.add_project_raster(proj_nodes['Inputs'], LayerTypes['EXVEG'], existing_veg)
-    project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HISTVEG'], historic_veg)
+    _prj_existing_path_node, prj_existing_path = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['EXVEG'], existing_veg)
+    _prj_historic_path_node, prj_historic_path = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HISTVEG'], historic_veg)
     project.add_project_raster(proj_nodes['Inputs'], LayerTypes['PITFILL'], pitfilled)
 
     project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
@@ -130,7 +155,7 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
         'RCATDateTime': datetime.datetime.now().isoformat(),
     }
 
-    watershed_name = create_database(huc, outputs_gpkg_path, db_metadata, cfg.OUTPUT_EPSG, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'rcat_schema.sql'))
+    watershed_name = create_database(huc, outputs_gpkg_path, db_metadata, cfg.OUTPUT_EPSG, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'rvd_schema.sql'))
 
     project.add_metadata_simple(db_metadata)
     project.add_metadata([RSMeta('Watershed', watershed_name)])
@@ -139,3 +164,24 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
     reach_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['GEOM_LINES'].rel_path)
     copy_features_fields(input_layers['ANTHROIGO'], igo_geom_path, epsg=cfg.OUTPUT_EPSG)
     copy_features_fields(input_layers['ANTHROREACHES'], reach_geom_path, cfg.OUTPUT_EPSG)
+
+    # remove larger rivers and waterbodies from dgos
+    flowareas_path = None
+    if flow_areas:
+        flowareas_path = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['FLOW_AREA'].rel_path)
+        copy_feature_class(flow_areas, flowareas_path, epsg=cfg.OUTPUT_EPSG)
+        geom_flow_areas = get_geometry_unary_union(flowareas_path)
+        # Difference with existing vbottom
+        geom_vbottom = geom_vbottom.difference(geom_flow_areas)
+    else:
+        del LayerTypes['INPUTS'].sub_layers['FLOW_AREA']
+
+    waterbodies_path = None
+    if waterbodies:
+        waterbodies_path = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['WATERBODIES'].rel_path)
+        copy_feature_class(waterbodies, waterbodies_path, epsg=cfg.OUTPUT_EPSG)
+        geom_waterbodies = get_geometry_unary_union(waterbodies_path)
+        # Difference with existing vbottom
+        geom_vbottom = geom_vbottom.difference(geom_waterbodies)
+    else:
+        del LayerTypes['INPUTS'].sub_layers['WATERBODIES']
