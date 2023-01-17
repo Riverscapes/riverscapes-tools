@@ -7,17 +7,23 @@ import argparse
 import os
 import time
 import datetime
+import sys
+import traceback
 
 from typing import Dict
 from osgeo import ogr, gdal
 
 from rscommons import initGDALOGRErrors, ModelConfig, RSLayer, RSProject, RSMeta, Logger, GeopackageLayer
+from rscommons import dotenv
 from rscommons.vector_ops import copy_feature_class, get_geometry_unary_union
 from rscommons.database import create_database, SQLiteCon
 from rscommons.copy_features import copy_features_fields
-# from rscommons.reach_vegetation import vegetation_summary
-# from rscommons.igo_vegetation import igo_vegetation
+from rscommons.util import parse_metadata
+from rscommons.moving_window import get_moving_windows
 
+from rcat.lib.veg_rasters import rcat_rasters
+from rcat.lib.igo_vegetation import igo_vegetation
+from rcat.lib.large_rivers import river_intersections
 from rcat.__version__ import __version__
 
 Path = str
@@ -35,6 +41,7 @@ LayerTypes = {
     'HISTRIPARIAN': RSLayer('Historic Riparian', 'HISTRIPARIAN', 'Raster', 'intermediates/hist_riparian.tif'),
     'EXVEGETATED': RSLayer('Existing Vegetated', 'EXVEGETATED', 'Raster', 'intermediates/ex_vegetated.tif'),
     'HISTVEGETATED': RSLayer('Historic Vegetated', 'HISTVEGETATED', 'Raster', 'intermediates/hist_vegetated.tif'),
+    'CONVERSION': RSLayer('Conversion Raster', 'CONVERSTION', 'Raster', 'intermediates/conversion.tif'),
     'PITFILL': RSLayer('Pitfilled DEM', 'PITFILL', 'Raster', 'inputs/pitfill.tif'),
     'INPUTS': RSLayer('Inputs', 'INPUTS', 'Geopackage', 'inputs/inputs.gpkg', {
         'ANTHROIGO': RSLayer('Integrated Geographic Objects', 'IGO', 'Vector', 'igo'),
@@ -82,8 +89,8 @@ departure_type_columns = ['ExistingRiparianMean',
 
 
 def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo: Path, dgo: Path,
-         reaches: Path, roads: Path, rails: Path, canals: Path, valley: Path, flow_areas: Path,
-         waterbodies: Path, output_folder: Path, meta: Dict[str, str]):
+         reaches: Path, roads: Path, rails: Path, canals: Path, valley: Path, output_folder: Path,
+         flow_areas: Path, waterbodies: Path, meta: Dict[str, str]):
 
     log = Logger('RCAT')
     log.info(f'HUC: {huc}')
@@ -155,7 +162,7 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
         'RCATDateTime': datetime.datetime.now().isoformat(),
     }
 
-    watershed_name = create_database(huc, outputs_gpkg_path, db_metadata, cfg.OUTPUT_EPSG, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'rvd_schema.sql'))
+    watershed_name = create_database(huc, outputs_gpkg_path, db_metadata, cfg.OUTPUT_EPSG, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'rcat_schema.sql'))
 
     project.add_metadata_simple(db_metadata)
     project.add_metadata([RSMeta('Watershed', watershed_name)])
@@ -166,22 +173,120 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
     copy_features_fields(input_layers['ANTHROREACHES'], reach_geom_path, cfg.OUTPUT_EPSG)
 
     # remove larger rivers and waterbodies from dgos
-    flowareas_path = None
-    if flow_areas:
-        flowareas_path = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['FLOW_AREA'].rel_path)
-        copy_feature_class(flow_areas, flowareas_path, epsg=cfg.OUTPUT_EPSG)
-        geom_flow_areas = get_geometry_unary_union(flowareas_path)
-        # Difference with existing vbottom
-        geom_vbottom = geom_vbottom.difference(geom_flow_areas)
-    else:
-        del LayerTypes['INPUTS'].sub_layers['FLOW_AREA']
+    # best approach might be to just use dgos and when summarizing veg, check if dgo
+    # intersects with flowarea or waterbody; if so, set water = 0 else set water = 1
 
-    waterbodies_path = None
-    if waterbodies:
-        waterbodies_path = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['WATERBODIES'].rel_path)
-        copy_feature_class(waterbodies, waterbodies_path, epsg=cfg.OUTPUT_EPSG)
-        geom_waterbodies = get_geometry_unary_union(waterbodies_path)
-        # Difference with existing vbottom
-        geom_vbottom = geom_vbottom.difference(geom_waterbodies)
-    else:
-        del LayerTypes['INPUTS'].sub_layers['WATERBODIES']
+    with SQLiteCon as database:
+        database.curs.execute('INSERT INTO ReachAttributes (ReachID, ReachCode, WatershedID, StreamName, NHDPlusID, iPC_LU) SELECT ReachID, ReachCode, WatershedID, StreamName, NHDPlusID, iPC_LU FROM ReachGeometry')
+        database.curs.execute('INSERT INTO IGOAttributes (IGOID, LevelPathI, seg_distance, stream_size, LUI) SELECT IGOID, LevelPathI, seg_distance, stream_size, LUI FROM IGOGeometry')
+
+        # Register vwReaches as a feature layer as well as its geometry column
+        database.curs.execute("""INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id)
+            SELECT 'vwReaches', data_type, 'Reaches', min_x, min_y, max_x, max_y, srs_id FROM gpkg_contents WHERE table_name = 'ReachGeometry'""")
+
+        database.curs.execute("""INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m)
+            SELECT 'vwReaches', column_name, geometry_type_name, srs_id, z, m FROM gpkg_geometry_columns WHERE table_name = 'ReachGeometry'""")
+
+        database.curs.execute("""INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id)
+            SELECT 'vwIgos', data_type, 'igos', min_x, min_y, max_x, max_y, srs_id FROM gpkg_contents WHERE table_name = 'IGOGeometry'""")
+
+        database.curs.execute("""INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m)
+            SELECT 'vwIgos', column_name, geometry_type_name, srs_id, z, m FROM gpkg_geometry_columns WHERE table_name = 'IGOGeometry'""")
+
+        database.conn.execute('CREATE INDEX ix_igo_levelpath on IGOGeometry(LevelPathI)')
+        database.conn.execute('CREATE INDEX ix_igo_segdist on IGOGeometry(seg_distance)')
+        database.conn.execute('CREATE INDEX ix_igo_size on IGOGeometry(stream_size)')
+
+        database.conn.commit()
+
+        database.curs.execute('SELECT DISTINCT LevelPathI FROM IGOGeometry')
+        levelps = database.curs.fetchall()
+        levelpathsin = [lp['LevelPathI'] for lp in levelps]
+
+    with SQLiteCon(inputs_gpkg_path) as db:
+        db.conn.execute('CREATE INDEX ix_dgo_levelpath on dgo(LevelPathI)')
+        db.conn.execute('CREATE INDEX ix_dgo_segdist on dgo(seg_distance)')
+        db.conn.commit()
+
+    distance_in = {
+        '0': 300,
+        '1': 500,
+        '2': 1000
+    }
+
+    windows = get_moving_windows(igo_geom_path, input_layers['ANTHRODGO'], levelpathsin, distance_in)
+
+    # generate vegetation derivative rasters
+    intermediates = os.path.join(output_folder, 'intermediates')
+    rcat_rasters(existing_veg, historic_veg, outputs_gpkg_path, intermediates)
+
+    # sample vegetation and derivative rasters onto igos using moving windows
+    int_rasters = ['ex_riparian.tif', 'hist_riparian.tif', 'ex_vegetated.tif', 'hist_vegetated.tif', 'conversion.tif']
+    int_raster_paths = [os.path.join(intermediates, i) for i in int_rasters]
+    int_raster_paths.append(existing_veg)
+    int_raster_paths.append(historic_veg)
+    for rast in int_raster_paths:
+        igo_vegetation(windows, rast, outputs_gpkg_path)
+
+    # get dict of which windows intersect large rivers
+    large_rivers = river_intersections(windows, flow_areas, waterbodies)
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='RCAT'
+    )
+
+    parser.add_argument('huc', help='HUC identifier', type=str)
+    parser.add_argument('existing_veg', help='National existing vegetation raster', type=str)
+    parser.add_argument('historic_veg', help='National historic vegetation raster', type=str)
+    parser.add_argument('pitfilled', help='Pit filled DEM raster', type=str)
+    parser.add_argument('igo', help='Integrated geographic object with anthro attributes', type=str)
+    parser.add_argument('dgo', help='Discrete geographic objects', type=str)
+    parser.add_argument('reaches', help='Stream reaches with anthro attributes', type=str)
+    parser.add_argument('roads', help='Roads layer', type=str)
+    parser.add_argument('rails', help='Railroad layer', type=str)
+    parser.add_argument('canals', help='Canals layer', type=str)
+    parser.add_argument('valley', help='Valley bottom layer', type=str)
+    parser.add_argument('output_folder', help='Output folder', type=str)
+    parser.add_argument('--flow_areas', help='(optional) path to the flow area polygon feature class containing artificial paths', type=str)
+    parser.add_argument('--waterbodies', help='(optional) waterbodies input', type=str)
+    parser.add_argument('--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
+    parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
+    parser.add_argument('--debug', help="(optional) save intermediate outputs for debugging", action='store_true', default=False)
+
+    args = dotenv.parse_args_env(parser)
+
+    meta = parse_metadata(args.meta)
+
+    # Initiate the log file
+    log = Logger('RCAT')
+    log.setup(logPath=os.path.join(args.output_folder, "rcat.log"), verbose=args.verbose)
+    log.title(f'RCAT for HUC: {args.huc}')
+
+    try:
+        if args.debug is True:
+            from rscommons.debug import ThreadRun
+            memfile = os.path.join(args.output_dir, 'rcat_mem.log')
+            retcode, max_obj = ThreadRun(rcat, memfile, args.huc,
+                                         args.existing_veg, args.historic_veg, args.pitfilled, args.igo,
+                                         args.dgo, args.reaches, args.roads, args.rails, args.canals,
+                                         args.valley, args.output_folder, args.flow_areas, args.waterbodies,
+                                         meta=meta)
+            log.debug(f'Return code: {retcode}, [Max process usage] {max_obj}')
+
+        else:
+            rcat(args.huc, args.existing_veg, args.historic_veg, args.pitfilled, args.igo, args.dgo,
+                 args.reaches, args.roads, args.rails, args.canals, args.valley, args.output_folder, args.flow_areas,
+                 args.waterbodies, meta=meta)
+
+    except Exception as e:
+        log.error(e)
+        traceback.print_exc(file=sys.stdout)
+        sys.exit(1)
+
+    sys.exit(0)
+
+
+if __name__ == '__main__':
+    main()
