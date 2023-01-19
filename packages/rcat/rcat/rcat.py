@@ -251,6 +251,8 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
     for rast in int_raster_paths:
         igo_vegetation(newwindows, rast, outputs_gpkg_path)
 
+    print(datetime.datetime.now())
+
 
 def main():
     parser = argparse.ArgumentParser(
