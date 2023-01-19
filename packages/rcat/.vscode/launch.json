@@ -28,9 +28,9 @@
             "{env:DATA_ROOT}/anthro/${input:HUC}/outputs/outputs.gpkg/vwIgos",
             "{env:DATA_ROOT}/vbet/${input:HUC}/intermediates/vbet_intermediates.gpkg/vbet_dgos",
             "{env:DATA_ROOT}/anthro/${input:HUC}/outputs/outputs.gpkg/vwReaches",
-            "{env:DATA_ROOT}/anthro/${input:HUC}/inputs/roads.shp",
-            "{env:DATA_ROOT}/anthro/${input:HUC}/inputs/rails.shp",
-            "{env:DATA_ROOT}/anthro/${input:HUC}/inputs/canals.shp",
+            "{env:DATA_ROOT}/anthro/${input:HUC}/inputs/inputs.gpkg/roads",
+            "{env:DATA_ROOT}/anthro/${input:HUC}/inputs/inputs.gpkg/rails",
+            "{env:DATA_ROOT}/anthro/${input:HUC}/inputs/inputs.gpkg/canals",
             "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/vbet_full",
             "{env:DATA_ROOT}/rcat/${input:HUC}", // output folder
             "--meta", "Runner=VSCode",

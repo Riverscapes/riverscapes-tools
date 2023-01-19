@@ -15,7 +15,7 @@ from rscommons import Logger, VectorBase
 from rscommons.database import SQLiteCon
 
 
-def igo_vegetation(windows: dict, raster: str, out_gpkg_path: str, large_rivers: dict):
+def igo_vegetation(windows: dict, raster: str, out_gpkg_path: str):  # , large_rivers: dict):
 
     log = Logger('IGO Vegetation')
     log.info('Summarizing vegetation rasters for each IGO')
@@ -31,21 +31,21 @@ def igo_vegetation(windows: dict, raster: str, out_gpkg_path: str, large_rivers:
         veg_counts = []
         for igoid, window in windows.items():
             try:
-                raw_raster = mask(src, window[0], crop=True)[0]
+                raw_raster = mask(src, window, crop=True)[0]
                 mask_raster = np.ma.masked_values(raw_raster, src.nodata)
 
                 for oldvalue in np.unique(mask_raster):
                     if oldvalue is not np.ma.masked:
                         cell_count = np.count_nonzero(mask_raster == oldvalue)
                         # adjust cell count if necessary for large rivers
-                        if os.path.basename(raster) == 'ex_riparian.tif':
-                            if oldvalue == 1:
-                                if igoid in large_rivers['ex'].keys():
-                                    cell_count = cell_count - large_rivers['ex'][igoid]
-                        if os.path.basename(raster) == 'hist_riparian.tif':
-                            if oldvalue == 1:
-                                if igoid in large_rivers['hist'].keys():
-                                    cell_count = cell_count - large_rivers['hist'][igoid]
+                        # if os.path.basename(raster) == 'ex_riparian.tif':
+                        #     if oldvalue == 1:
+                        #         if igoid in large_rivers['ex'].keys():
+                        #            cell_count = cell_count - large_rivers['ex'][igoid]
+                        # if os.path.basename(raster) == 'hist_riparian.tif':
+                        #     if oldvalue == 1:
+                        #         if igoid in large_rivers['hist'].keys():
+                        #             cell_count = cell_count - large_rivers['hist'][igoid]
 
                         veg_counts.append([igoid, int(oldvalue), cell_count * cell_area, cell_count])
             except Exception as ex:

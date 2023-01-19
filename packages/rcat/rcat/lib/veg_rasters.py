@@ -59,7 +59,7 @@ def rcat_rasters(existing_veg, historic_veg, database, out_folder):
                     hist_riparian_arr[j, i] = int(hriparian_vals[histveg_arr[j, i]])
                     ex_vegetated_arr[j, i] = int(exvegetated_vals[exveg_arr[j, i]])
                     hist_vegetated_arr[j, i] = int(hvegetated_vals[histveg_arr[j, i]])
-                    conv_arr[j, i] = exconv_vals[exveg_arr[j, i]] - hconv_vals[histveg_arr[j, i]]
+                    conv_arr[j, i] = hconv_vals[histveg_arr[j, i]] - exconv_vals[exveg_arr[j, i]]
 
     out_arrays = [ex_riparian_arr, hist_riparian_arr, ex_vegetated_arr, hist_vegetated_arr, conv_arr]
     out_raster_paths = [os.path.join(out_folder, 'ex_riparian.tif'), os.path.join(out_folder, 'hist_riparian.tif'),

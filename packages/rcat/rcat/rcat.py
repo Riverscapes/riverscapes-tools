@@ -105,7 +105,7 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
         RSMeta('RCATTimeStamp', str(int(time.time())))
     ])
 
-    _realization, proj_nodes = project.add_realization(project_name, 'REALIZATION1', cfg.version, data_nodes=['Inputs', 'Intermediates', 'Ouptuts'])
+    _realization, proj_nodes = project.add_realization(project_name, 'REALIZATION1', cfg.version, data_nodes=['Inputs', 'Intermediates', 'Outputs'])
 
     log.info('Adding input rasters to project')
     _prj_existing_path_node, prj_existing_path = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['EXVEG'], existing_veg)
@@ -132,7 +132,9 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
         'VALLEYBOTTOM': valley,
         'CANALS': canals,
         'ROADS': roads,
-        'RAILS': rails
+        'RAILS': rails,
+        'FLOW_AREA': flow_areas,
+        'WATERBODIES': waterbodies
     }
 
     input_layers = {}
@@ -170,13 +172,13 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
     igo_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['GEOM_POINTS'].rel_path)
     reach_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['GEOM_LINES'].rel_path)
     copy_features_fields(input_layers['ANTHROIGO'], igo_geom_path, epsg=cfg.OUTPUT_EPSG)
-    copy_features_fields(input_layers['ANTHROREACHES'], reach_geom_path, cfg.OUTPUT_EPSG)
+    copy_features_fields(input_layers['ANTHROREACHES'], reach_geom_path, epsg=cfg.OUTPUT_EPSG)
 
     # remove larger rivers and waterbodies from dgos
     # best approach might be to just use dgos and when summarizing veg, check if dgo
     # intersects with flowarea or waterbody; if so, set water = 0 else set water = 1
 
-    with SQLiteCon as database:
+    with SQLiteCon(outputs_gpkg_path) as database:
         database.curs.execute('INSERT INTO ReachAttributes (ReachID, ReachCode, WatershedID, StreamName, NHDPlusID, iPC_LU) SELECT ReachID, ReachCode, WatershedID, StreamName, NHDPlusID, iPC_LU FROM ReachGeometry')
         database.curs.execute('INSERT INTO IGOAttributes (IGOID, LevelPathI, seg_distance, stream_size, LUI) SELECT IGOID, LevelPathI, seg_distance, stream_size, LUI FROM IGOGeometry')
 
@@ -215,9 +217,30 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
     }
 
     windows = get_moving_windows(igo_geom_path, input_layers['ANTHRODGO'], levelpathsin, distance_in)
+    # large_rivers = river_intersections(windows, existing_veg, historic_veg, flow_areas, waterbodies)
+    log.info('removing large rivers from moving window polygons')
+    newwindows = {}
+
+    if flow_areas:
+        geom_flow_areas = get_geometry_unary_union(flow_areas)
+    if waterbodies:
+        geom_waterbodies = get_geometry_unary_union(waterbodies)
+
+    for id, win in windows.items():
+        geom = win[0]
+        if geom_flow_areas:
+            if geom.intersects(geom_flow_areas):
+                geom = geom.difference(geom_flow_areas)
+        if geom_waterbodies:
+            if geom.intersects(geom_waterbodies):
+                geom = geom.difference(geom_waterbodies)
+
+        newwindows[id] = geom
 
     # generate vegetation derivative rasters
     intermediates = os.path.join(output_folder, 'intermediates')
+    if not os.path.isdir(intermediates):
+        os.mkdir(intermediates)
     rcat_rasters(existing_veg, historic_veg, outputs_gpkg_path, intermediates)
 
     # sample vegetation and derivative rasters onto igos using moving windows
@@ -226,10 +249,7 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
     int_raster_paths.append(existing_veg)
     int_raster_paths.append(historic_veg)
     for rast in int_raster_paths:
-        igo_vegetation(windows, rast, outputs_gpkg_path)
-
-    # get dict of which windows intersect large rivers
-    large_rivers = river_intersections(windows, flow_areas, waterbodies)
+        igo_vegetation(newwindows, rast, outputs_gpkg_path)
 
 
 def main():
