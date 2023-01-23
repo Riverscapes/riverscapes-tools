@@ -37,16 +37,6 @@ def igo_vegetation(windows: dict, raster: str, out_gpkg_path: str):  # , large_r
                 for oldvalue in np.unique(mask_raster):
                     if oldvalue is not np.ma.masked:
                         cell_count = np.count_nonzero(mask_raster == oldvalue)
-                        # adjust cell count if necessary for large rivers
-                        # if os.path.basename(raster) == 'ex_riparian.tif':
-                        #     if oldvalue == 1:
-                        #         if igoid in large_rivers['ex'].keys():
-                        #            cell_count = cell_count - large_rivers['ex'][igoid]
-                        # if os.path.basename(raster) == 'hist_riparian.tif':
-                        #     if oldvalue == 1:
-                        #         if igoid in large_rivers['hist'].keys():
-                        #             cell_count = cell_count - large_rivers['hist'][igoid]
-
                         veg_counts.append([igoid, int(oldvalue), cell_count * cell_area, cell_count])
             except Exception as ex:
                 log.warning(f'Error obtaining land cover raster values for igo ID {igoid}')
@@ -85,4 +75,4 @@ def igo_vegetation(windows: dict, raster: str, out_gpkg_path: str):  # , large_r
             raise Exception('Errors were found inserting records into the database. Cannot continue.')
         database.conn.commit()
 
-    log.info('IGO vegetation summaries complete')
+    log.info('IGO vegetation summary complete')

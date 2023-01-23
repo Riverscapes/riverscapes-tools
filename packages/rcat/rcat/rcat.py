@@ -23,6 +23,8 @@ from rscommons.moving_window import get_moving_windows
 
 from rcat.lib.veg_rasters import rcat_rasters
 from rcat.lib.igo_vegetation import igo_vegetation
+from rcat.lib.reach_vegetation import vegetation_summary
+from rcat.lib.rcat_attributes import igo_attributes, reach_attributes
 from rcat.lib.large_rivers import river_intersections
 from rcat.__version__ import __version__
 
@@ -223,15 +225,19 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
 
     if flow_areas:
         geom_flow_areas = get_geometry_unary_union(flow_areas)
+    else:
+        geom_flow_areas = None
     if waterbodies:
         geom_waterbodies = get_geometry_unary_union(waterbodies)
+    else:
+        geom_waterbodies = None
 
     for id, win in windows.items():
         geom = win[0]
-        if geom_flow_areas:
+        if geom_flow_areas is not None:
             if geom.intersects(geom_flow_areas):
                 geom = geom.difference(geom_flow_areas)
-        if geom_waterbodies:
+        if geom_waterbodies is not None:
             if geom.intersects(geom_waterbodies):
                 geom = geom.difference(geom_waterbodies)
 
@@ -250,6 +256,9 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
     int_raster_paths.append(historic_veg)
     for rast in int_raster_paths:
         igo_vegetation(newwindows, rast, outputs_gpkg_path)
+        vegetation_summary(outputs_gpkg_path, input_layers['ANTHRODGO'], rast, geom_flow_areas, geom_waterbodies)
+    igo_attributes(outputs_gpkg_path)
+    reach_attributes(outputs_gpkg_path)
 
     print(datetime.datetime.now())
 

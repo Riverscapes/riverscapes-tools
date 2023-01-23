@@ -88,22 +88,41 @@ CREATE TABLE ReachVegetation (
     VegetationID INTEGER REFERENCES VegetationTypes (VegetationID) NOT NULL,  
     Area REAL NOT NULL CONSTRAINT CHK_ReachVegetation_Area CHECK (Area > 0), 
     CellCount REAL NOT NULL CONSTRAINT CHK_ReachVegetation_CellCount CHECK (CellCount > 0),
+);
+
+CREATE TABLE ReachExRiparian (
+    ReachID INTEGER REFERENCES ReachAttributes ON DELETE CASCADE NOT NULL,
     ExRipVal INTEGER,
     ExRipArea REAL NOT NULL CONSTRAINT CHK_ExRip_Area CHECK (ExRipArea > 0),
-    ExRipCellCount REAL NOT NULL CONSTRAINT CHK_ExRip_CellCount CHECK (ExRipCellCount > 0),
+    ExRipCellCount REAL NOT NULL CONSTRAINT CHK_ExRip_CellCount CHECK (ExRipCellCount > 0)
+);
+
+CREATE TABLE ReachHRiparian (
+    ReachID INTEGER REFERENCES ReachAttributes ON DELETE CASCADE NOT NULL,
     HRipVal INTEGER,
     HRipArea REAL NOT NULL CONSTRAINT CHK_HRip_Area CHECK (HRipArea > 0),
-    HRipCellCount REAL NOT NULL CONSTRAINT CHK_HRip_CellCount CHECK (HRipCellCount > 0),
+    HRipCellCount REAL NOT NULL CONSTRAINT CHK_HRip_CellCount CHECK (HRipCellCount > 0)
+);
+
+CREATE TABLE ReachExVeg (
+    ReachID INTEGER REFERENCES ReachAttributes ON DELETE CASCADE NOT NULL,
     ExVegVal INTEGER,
     ExVegArea REAL NOT NULL CONSTRAINT CHK_ExVeg_Area CHECK (ExVegArea > 0),
-    ExVegCellCount REAL NOT NULL CONSTRAINT CHK_ExVeg_CellCount CHECK (ExVegCellCount > 0),
+    ExVegCellCount REAL NOT NULL CONSTRAINT CHK_ExVeg_CellCount CHECK (ExVegCellCount > 0)
+);
+
+CREATE TABLE ReachHVeg (
+    ReachID INTEGER REFERENCES ReachAttributes ON DELETE CASCADE NOT NULL,
     HVegVal INTEGER,
     HVegArea REAL NOT NULL CONSTRAINT CHK_HVeg_Area CHECK (HVegArea > 0),
-    HVegCellCount REAL NOT NULL CONSTRAINT CHK_HVeg_CellCount CHECK (HVegCellCount > 0),
+    HVegCellCount REAL NOT NULL CONSTRAINT CHK_HVeg_CellCount CHECK (HVegCellCount > 0)
+);
+
+CREATE TABLE ReachConv (
+    ReachID INTEGER REFERENCES ReachAttributes ON DELETE CASCADE NOT NULL,
     ConvVal INTEGER,
     ConvArea REAL NOT NULL CONSTRAINT CHK_Conv_Area CHECK (ConvArea > 0),
     ConvCellCount REAL NOT NULL CONSTRAINT CHK_Conv_CellCount CHECK (ConvCellCount > 0)
-    
 );
 
 CREATE TABLE IGOAttributes (
@@ -177,9 +196,9 @@ CREATE TABLE MetaData
 );
 
 
-CREATE VIEW vwClassifications AS SELECT V.*
-FROM VegetationTypes V
-    INNER JOIN VegClassification C ON V.Physiognomy = C.Physiognomy;
+--CREATE VIEW vwClassifications AS SELECT V.*
+--FROM VegetationTypes V
+--    INNER JOIN VegClassification C ON V.Physiognomy = C.Physiognomy;
 
 -- The main views 
 CREATE VIEW vwReaches AS SELECT R.*, G.geom
@@ -201,5 +220,10 @@ INSERT INTO gpkg_contents (table_name, data_type) VALUES ('IGOExVeg', 'attribute
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('IGOHVeg', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('IGOConv', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachVegetation', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachExRiparian', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachHRiparian', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachExVeg', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachHVeg', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachConv', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('IGOAttributes', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachAttributes', 'attributes')
