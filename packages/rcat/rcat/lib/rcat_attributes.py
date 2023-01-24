@@ -177,11 +177,15 @@ def igo_attributes(database: str):
     curs.execute('SELECT IGOAttributes.IGOID, ExistingRiparianMean - (ExInv / TotCells), HistoricRiparianMean FROM IGOAttributes'
                  ' INNER JOIN (SELECT IGOID, SUM(CellCount) AS TotCells FROM IGOVegetation GROUP BY IGOID) AS CC ON IGOAttributes.IGOID = CC.IGOID'
                  ' INNER JOIN (SELECT IGOID, CellCount AS ExInv FROM IGOVegetation WHERE VegetationID = 9327 OR VegetationID = 9827 OR VegetationID = 9318 OR VegetationID = 9320 OR VegetationID = 9324 OR VegetationID = 9329 OR VegetationID = 9332) AS EXV ON IGOAttributes.IGOID = EXV.IGOID')
-    invdep = {row[0]: [row[1], row[2], row[1] / row[2]] for row in curs.fetchall()}
+    invdep = {row[0]: [row[1], row[2]] for row in curs.fetchall()}
     for igo, vals in invdep.items():
+        if vals[0] is None:
+            vals[0] = 0
         conn.execute(f'UPDATE IGOAttributes SET ExistingNativeRiparianMean = {vals[0]} WHERE IGOID = {igo}')
+        if vals[1] is None:
+            vals[1] = 0
         conn.execute(f'UPDATE IGOAttributes SET HistoricNativeRiparianMean = {vals[1]} WHERE IGOID = {igo}')
-        conn.execute(f'UPDATE IGOAttributes SET NativeRiparianDeparture = {vals[2]} WHERE IGOID = {igo}')
+        conn.execute(f'UPDATE IGOAttributes SET NativeRiparianDeparture = {vals[0] / vals[1]} WHERE IGOID = {igo}')
 
     conn.commit()
     log.info('Completed riparian departure and conversion calculations for IGOs')
@@ -359,11 +363,15 @@ def reach_attributes(database: str):
     curs.execute('SELECT ReachAttributes.ReachID, ExistingRiparianMean - (ExInv / TotCells), HistoricRiparianMean FROM ReachAttributes'
                  ' INNER JOIN (SELECT ReachID, SUM(CellCount) AS TotCells FROM ReachVegetation GROUP BY ReachID) AS CC ON ReachAttributes.ReachID = CC.ReachID'
                  ' INNER JOIN (SELECT ReachID, CellCount AS ExInv FROM ReachVegetation WHERE VegetationID = 9327 OR VegetationID = 9827 OR VegetationID = 9318 OR VegetationID = 9320 OR VegetationID = 9324 OR VegetationID = 9329 OR VegetationID = 9332) AS EXV ON ReachAttributes.ReachID = EXV.ReachID')
-    invdep = {row[0]: [row[1], row[2], row[1] / row[2]] for row in curs.fetchall()}
+    invdep = {row[0]: [row[1], row[2]] for row in curs.fetchall()}
     for rid, vals in invdep.items():
+        if vals[0] is None:
+            vals[0] = 0
         conn.execute(f'UPDATE ReachAttributes SET ExistingNativeRiparianMean = {vals[0]} WHERE ReachID = {rid}')
+        if vals[1] is None:
+            vals[1] = 0
         conn.execute(f'UPDATE ReachAttributes SET HistoricNativeRiparianMean = {vals[1]} WHERE ReachID = {rid}')
-        conn.execute(f'UPDATE ReachAttributes SET NativeRiparianDeparture = {vals[2]} WHERE ReachID = {rid}')
+        conn.execute(f'UPDATE ReachAttributes SET NativeRiparianDeparture = {vals[0] / vals[1]} WHERE ReachID = {rid}')
 
     conn.commit()
     log.info('Completed riparian departure and conversion calculations for reaches')

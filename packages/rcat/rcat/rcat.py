@@ -25,6 +25,7 @@ from rcat.lib.veg_rasters import rcat_rasters
 from rcat.lib.igo_vegetation import igo_vegetation
 from rcat.lib.reach_vegetation import vegetation_summary
 from rcat.lib.rcat_attributes import igo_attributes, reach_attributes
+from rcat.lib.floodplain_accessibility import flooplain_access
 from rcat.lib.large_rivers import river_intersections
 from rcat.__version__ import __version__
 
@@ -45,6 +46,9 @@ LayerTypes = {
     'HISTVEGETATED': RSLayer('Historic Vegetated', 'HISTVEGETATED', 'Raster', 'intermediates/hist_vegetated.tif'),
     'CONVERSION': RSLayer('Conversion Raster', 'CONVERSTION', 'Raster', 'intermediates/conversion.tif'),
     'PITFILL': RSLayer('Pitfilled DEM', 'PITFILL', 'Raster', 'inputs/pitfill.tif'),
+    'D8FLOWDIR': RSLayer('D8 Flow Direction', 'D8FLOWDIR', 'Raster', 'intermediates/d8_flow_dir.tif'),
+    # rasterized infrastructure...
+    'FPACCESS': RSLayer('Floodplain Accessibility', 'FPACCESS', 'Raster', 'intermediates/fp_access.tif'),
     'INPUTS': RSLayer('Inputs', 'INPUTS', 'Geopackage', 'inputs/inputs.gpkg', {
         'ANTHROIGO': RSLayer('Integrated Geographic Objects', 'IGO', 'Vector', 'igo'),
         'ANTHRODGO': RSLayer('Discrete Geographic Objects', 'DGO', 'Vector', 'dgo'),
@@ -249,7 +253,12 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
         os.mkdir(intermediates)
     rcat_rasters(existing_veg, historic_veg, outputs_gpkg_path, intermediates)
 
-    # sample vegetation and derivative rasters onto igos using moving windows
+    # floodplain accessibility raster
+    fp_access = os.path.join(output_folder, LayerTypes['FPACCESS'].rel_path)
+    flooplain_access(pitfilled, input_layers['VALLEYBOTTOM'], input_layers['ANTHROREACHES'], input_layers['ROADS'], input_layers['RAILS'],
+                     input_layers['CANALS'], intermediates, fp_access)
+
+    # sample vegetation and derivative rasters onto igos and reaches using moving windows/dgos
     int_rasters = ['ex_riparian.tif', 'hist_riparian.tif', 'ex_vegetated.tif', 'hist_vegetated.tif', 'conversion.tif']
     int_raster_paths = [os.path.join(intermediates, i) for i in int_rasters]
     int_raster_paths.append(existing_veg)
