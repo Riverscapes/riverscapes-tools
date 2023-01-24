@@ -102,6 +102,8 @@ def vegetation_summary(outputs_gpkg_path: str, dgo: str, veg_raster: str, flowar
                         database.conn.execute('INSERT INTO ReachHVeg (ReachID, HVegVal, HVegArea, HVegCellCount) VALUES (?, ?, ?, ?)', veg_record)
                     elif os.path.basename(veg_raster) == 'conversion.tif':
                         database.conn.execute('INSERT INTO ReachConv (ReachID, ConvVal, ConvArea, ConvCellCount) VALUES (?, ?, ?, ?)', veg_record)
+                    elif os.path.basename(veg_raster) == 'fp_access.tif':
+                        database.conn.execute('INSERT INTO ReachFPAccess (ReachID, AccessVal, CellArea, CellCount) VALUES (?, ?, ?, ?)', veg_record)
                 except sqlite3.IntegrityError as err:
                     # THis is likely a constraint error.
                     errstr = "Integrity Error when inserting records: ReachID: {} VegetationID: {}".format(veg_record[0], veg_record[1])

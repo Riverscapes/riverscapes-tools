@@ -18,25 +18,26 @@ def flooplain_access(filled_dem: str, valley: str, reaches: str, road: str, rail
 
     # create temp folder to store vector layers
     safe_makedirs(os.path.join(intermediates_path, 'temp'))
+    temp_dir = os.path.join(intermediates_path, 'temp')
 
-    # buffer vector layers by dem resolution so that flowlines can't cross them
+    # buffer vector layers by dem resolution so that flow direction paths can't cross them diagonally
     dataset = gdal.Open(filled_dem)
     geo_transform = dataset.GetGeoTransform()
     cell_res = abs(geo_transform[1])
 
     vec_lyrs = [road, rail, canal]
     for vec in vec_lyrs:
-        copy_feature_class(vec, os.path.join(intermediates_path, os.path.basename(vec)), buffer=cell_res * 0.5)
+        copy_feature_class(vec, os.path.join(temp_dir, os.path.basename(vec)), buffer=cell_res * 0.5)
 
     # rasterize layers
     log.info('Rasterizing vector layers')
     chan_ds = gdal.OpenEx(reaches)
     chan_lyr = chan_ds.GetLayer()
-    road_ds = gdal.OpenEx(road)
+    road_ds = gdal.OpenEx(os.path.join(temp_dir, os.path.basename(road)))
     road_lyr = road_ds.GetLayer()
-    rail_ds = gdal.OpenEx(rail)
+    rail_ds = gdal.OpenEx(os.path.join(temp_dir, os.path.basename(rail)))
     rail_lyr = rail_ds.GetLayer()
-    canal_ds = gdal.OpenEx(canal)
+    canal_ds = gdal.OpenEx(os.path.join(temp_dir, os.path.basename(canal)))
     canal_lyr = canal_ds.GetLayer()
     vb_ds = gdal.OpenEx(valley)
     vb_lyr = vb_ds.GetLayer()
@@ -106,11 +107,6 @@ def flooplain_access(filled_dem: str, valley: str, reaches: str, road: str, rail
 
     # keep track to not repeat cells
     processed = []
-
-    movements = {0: -1, 1: 0, 2: 1}
-
-    straight_dist = transform[0]  # these should actually be converted from degrees from transform
-    diag_dist = (straight_dist**2 + straight_dist**2)**0.5
 
     st = datetime.datetime.now()
     for row in range(array.shape[0]):

@@ -61,6 +61,8 @@ def igo_vegetation(windows: dict, raster: str, out_gpkg_path: str):  # , large_r
                         database.conn.execute('INSERT INTO IGOHVeg (IGOID, HVegVal, HVegArea, HVegCellCount) VALUES (?, ?, ?, ?)', veg_record)
                     elif os.path.basename(raster) == 'conversion.tif':
                         database.conn.execute('INSERT INTO IGOConv (IGOID, ConvVal, ConvArea, ConvCellCount) VALUES (?, ?, ?, ?)', veg_record)
+                    elif os.path.basename(raster) == 'fp_access.tif':
+                        database.conn.execute('INSERT INTO IGOFPAccess (IGOID, AccessVal, CellArea, CellCount) VALUES (?, ?, ?, ?)', veg_record)
                 except sqlite3.IntegrityError as err:
                     # THis is likely a constraint error.
                     errstr = "Integrity Error when inserting records: IGOID: {} VegetationID: {}".format(veg_record[0], veg_record[1])

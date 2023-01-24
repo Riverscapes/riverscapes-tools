@@ -83,6 +83,13 @@ CREATE TABLE IGOConv (
     ConvCellCount REAL NOT NULL CONSTRAINT CHK_Conv_CellCount CHECK (ConvCellCount > 0)
 );
 
+CREATE TABLE IGOFPAccess(
+    IGOID INTEGER REFERENCES IGOAttributes ON DELETE CASCADE NOT NULL,
+    AccessVal INTEGER,
+    CellArea REAL,
+    CellCount INTEGER
+);
+
 CREATE TABLE ReachVegetation (
     ReachID INTEGER REFERENCES ReachAttributes ON DELETE CASCADE NOT NULL, 
     VegetationID INTEGER REFERENCES VegetationTypes (VegetationID) NOT NULL,  
@@ -123,6 +130,13 @@ CREATE TABLE ReachConv (
     ConvVal INTEGER,
     ConvArea REAL NOT NULL CONSTRAINT CHK_Conv_Area CHECK (ConvArea > 0),
     ConvCellCount REAL NOT NULL CONSTRAINT CHK_Conv_CellCount CHECK (ConvCellCount > 0)
+);
+
+CREATE TABLE ReachFPAccess (
+    ReachID INTEGER REFERENCES ReachAttributes ON DELETE CASCADE NOT NULL,
+    AccessVal INTEGER,
+    CellArea, REAL,
+    CellCount INTEGER
 );
 
 CREATE TABLE IGOAttributes (
@@ -219,11 +233,13 @@ INSERT INTO gpkg_contents (table_name, data_type) VALUES ('IGOHRiparian', 'attri
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('IGOExVeg', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('IGOHVeg', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('IGOConv', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('IGOFPAccess', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachVegetation', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachExRiparian', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachHRiparian', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachExVeg', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachHVeg', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachConv', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachFPAccess', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('IGOAttributes', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachAttributes', 'attributes')

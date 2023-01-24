@@ -258,8 +258,8 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
     flooplain_access(pitfilled, input_layers['VALLEYBOTTOM'], input_layers['ANTHROREACHES'], input_layers['ROADS'], input_layers['RAILS'],
                      input_layers['CANALS'], intermediates, fp_access)
 
-    # sample vegetation and derivative rasters onto igos and reaches using moving windows/dgos
-    int_rasters = ['ex_riparian.tif', 'hist_riparian.tif', 'ex_vegetated.tif', 'hist_vegetated.tif', 'conversion.tif']
+    # sample accessibility and vegetation and derivative rasters onto igos and reaches using moving windows/dgos
+    int_rasters = ['fp_access.tif', 'ex_riparian.tif', 'hist_riparian.tif', 'ex_vegetated.tif', 'hist_vegetated.tif', 'conversion.tif']
     int_raster_paths = [os.path.join(intermediates, i) for i in int_rasters]
     int_raster_paths.append(existing_veg)
     int_raster_paths.append(historic_veg)
