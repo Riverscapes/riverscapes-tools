@@ -1,13 +1,13 @@
 import os
 import rasterio
-from osgeo import gdal
-from rscommons import Logger, get_shp_or_gpkg
-from rscommons.vector_ops import get_geometry_unary_union, copy_feature_class, VectorBase
+import numpy as np
+from osgeo import gdal, ogr
+from rscommons import Logger
+from rscommons.vector_ops import get_shp_or_gpkg, copy_feature_class, VectorBase
 from rscommons.util import safe_makedirs, safe_remove_dir
 from rscommons.hand import run_subprocess
-from shapely.geometry import MultiLineString
-import numpy as np
 import datetime
+from accessibility.access import access_algorithm
 
 
 def flooplain_access(filled_dem: str, valley: str, reaches: str, road: str, rail: str, canal: str, intermediates_path: str, outraster: str):
@@ -27,7 +27,22 @@ def flooplain_access(filled_dem: str, valley: str, reaches: str, road: str, rail
 
     vec_lyrs = [road, rail, canal]
     for vec in vec_lyrs:
-        copy_feature_class(vec, os.path.join(temp_dir, os.path.basename(vec)), buffer=cell_res * 0.5)
+        vec_src = ogr.Open(vec)
+        inlyr = vec_src.GetLayer()
+
+        shpdriver = ogr.GetDriverByName('ESRI Shapefile')
+        if os.path.exists(os.path.join(temp_dir, os.path.basename(vec))):
+            shpdriver.DeleteDataSource(os.path.join(temp_dir, os.path.basename(vec)))
+        out_buffer_ds = shpdriver.CreateDataSource(os.path.join(temp_dir, os.path.basename(vec)))
+        bufferlyr = out_buffer_ds.CreateLayer(os.path.join(temp_dir, os.path.basename(vec)), geom_type=ogr.wkbPolygon)
+        ftr_defn = bufferlyr.GetLayerDefn()
+
+        for feature in inlyr:
+            ingeom = feature.GetGeometryRef()
+            geom_buffer = ingeom.Buffer(cell_res)
+            out_feature = ogr.Feature(ftr_defn)
+            out_feature.SetGeometry(geom_buffer)
+            bufferlyr.CreateFeature(out_feature)
 
     # rasterize layers
     log.info('Rasterizing vector layers')
@@ -89,121 +104,38 @@ def flooplain_access(filled_dem: str, valley: str, reaches: str, road: str, rail
     with rasterio.open(fd_path) as src, rasterio.open(channel_raster) as chan, rasterio.open(road_raster) as road, \
             rasterio.open(rail_raster) as rail, rasterio.open(canal_raster) as canal, rasterio.open(vb_raster) as vb:
         transform = src.transform
-        array = src.read()[0, :, :]
-        src_nd = src.nodata
+        array = np.asarray(src.read()[0, :, :], dtype=np.int32)
+        src_nd = np.int32(src.nodata)
         meta = src.profile
-        chan_a = chan.read()[0, :, :]
-        chan_nd = chan.nodata
-        r_a = road.read()[0, :, :]
-        road_nd = road.nodata
-        rr_a = rail.read()[0, :, :]
-        rail_nd = rail.nodata
-        c_a = canal.read()[0, :, :]
-        canal_nd = canal.nodata
-        vb_a = vb.read()[0, :, :]
-        vb_nd = vb.nodata
-
-    out_array = np.zeros(array.shape, dtype=np.int16)
-
-    # keep track to not repeat cells
-    processed = []
+        chan_a = np.asarray(chan.read()[0, :, :], dtype=np.int32)
+        chan_nd = np.int32(chan.nodata)
+        r_a = np.asarray(road.read()[0, :, :], dtype=np.int32)
+        road_nd = np.int32(road.nodata)
+        rr_a = np.asarray(rail.read()[0, :, :], dtype=np.int32)
+        rail_nd = np.int32(rail.nodata)
+        c_a = np.asarray(canal.read()[0, :, :], dtype=np.int32)
+        canal_nd = np.int32(canal.nodata)
+        vb_a = np.asarray(vb.read()[0, :, :], dtype=np.int32)
+        vb_nd = np.int32(vb.nodata)
 
     st = datetime.datetime.now()
-    for row in range(array.shape[0]):
-        for col in range(array.shape[1]):
-            if vb_a[row, col] == vb_nd:
-                continue
-            if [row, col] not in processed:
-
-                subprocessed = [[row, col]]
-
-                next_cell = array[row, col]
-                rowa, cola = row, col
-                while next_cell is not None:
-                    if next_cell == src_nd:
-                        for coord in subprocessed:
-                            if coord not in processed:
-                                processed.append(coord)
-                        next_cell = None
-                    if [rowa, cola] in processed:
-                        for coord in subprocessed:
-                            if coord not in processed:
-                                out_array[coord[0], coord[1]] = out_array[rowa, cola]
-                                processed.append(coord)
-                        next_cell = None
-                        print(f'{len(processed)} cells processed')
-                    # if next_cell == 0:
-                    #    for coord in subprocessed:
-                    #        if coord not in processed:
-                    #            out_array[coord[0], coord[1]] = 1
-                    #            processed.append(coord)
-                    #    next_cell = None
-                    #    print(f'{len(processed)} cells processed')
-                    if chan_a[rowa, cola] != chan_nd:
-                        for coord in subprocessed:
-                            if coord not in processed:
-                                out_array[coord[0], coord[1]] = 1
-                                processed.append(coord)
-                        next_cell = None
-                        print(f'{len(processed)} cells processed')
-                    if r_a[rowa, cola] != road_nd:
-                        for coord in subprocessed:
-                            if coord not in processed:
-                                processed.append(coord)
-                        next_cell = None
-                        print(f'{len(processed)} cells processed')
-                    if rr_a[rowa, cola] != rail_nd:
-                        for coord in subprocessed:
-                            if coord not in processed:
-                                processed.append(coord)
-                        next_cell = None
-                        print(f'{len(processed)} cells processed')
-                    if c_a[rowa, cola] != canal_nd:
-                        for coord in subprocessed:
-                            if coord not in processed:
-                                processed.append(coord)
-                        next_cell = None
-                        print(f'{len(processed)} cells processed')
-
-                    if next_cell is not None:
-                        if next_cell == 1:
-                            rowa = rowa
-                            cola = cola + 1
-                        elif next_cell == 2:
-                            rowa = rowa - 1
-                            cola = cola + 1
-                        elif next_cell == 3:
-                            rowa = rowa - 1
-                            cola = cola
-                        elif next_cell == 4:
-                            rowa = rowa - 1
-                            cola = cola - 1
-                        elif next_cell == 5:
-                            rowa = rowa
-                            cola = cola - 1
-                        elif next_cell == 6:
-                            rowa = rowa + 1
-                            cola = cola - 1
-                        elif next_cell == 7:
-                            rowa = rowa + 1
-                            cola = cola
-                        elif next_cell == 8:
-                            rowa = rowa + 1
-                            cola = cola + 1
-                        if [rowa, cola] in subprocessed:
-                            print('circular flow path, could not resolve connectivity')
-                            for coord in subprocessed:
-                                if coord not in processed:
-                                    out_array[coord[0], coord[1]] = 2
-                                    processed.append(coord)
-                            next_cell = None
-                        else:
-                            subprocessed.append([rowa, cola])
-                            print(f'subprocessed {len(subprocessed)} cells')
-                            next_cell = array[rowa, cola]
+    out = access_algorithm(array, src_nd, chan_a, chan_nd, r_a, road_nd, rr_a, rail_nd, c_a, canal_nd, vb_a, vb_nd)
 
     end = datetime.datetime.now()
     print(f'ellapsed: {end-st}')
 
     with rasterio.open(outraster, 'w', **meta) as outfile:
-        outfile.write(out_array, 1)
+        outfile.write(out, 1)
+
+    safe_remove_dir(temp_dir)
+
+
+filled = '/mnt/c/Users/jordang/Documents/Riverscapes/data/anthro/test_data/pitfill.tif'
+vb = '/mnt/c/Users/jordang/Documents/Riverscapes/data/anthro/test_data/valley_bottom.shp'
+stream = '/mnt/c/Users/jordang/Documents/Riverscapes/data/anthro/test_data/flowlines.shp'
+rd = '/mnt/c/Users/jordang/Documents/Riverscapes/data/anthro/test_data/roads.shp'
+rr = '/mnt/c/Users/jordang/Documents/Riverscapes/data/anthro/test_data/rails.shp'
+can = '/mnt/c/Users/jordang/Documents/Riverscapes/data/anthro/test_data/canals.shp'
+intspath = '/mnt/c/Users/jordang/Documents/Riverscapes/data/anthro/test_data/intermediates'
+outpath = '/mnt/c/Users/jordang/Documents/Riverscapes/data/anthro/test_data/fpaccess_cython.tif'
+flooplain_access(filled, vb, stream, rd, rr, can, intspath, outpath)
