@@ -81,40 +81,28 @@ with rasterio.open(fd_path) as src, rasterio.open(channel_raster) as chan, raste
     vb_a = vb.read()[0, :, :]
     vb_nd = vb.nodata
 
-out_array = np.zeros(array.shape, dtype=np.int16)
-
-# keep track to not repeat cells
-processed = []
-
-movements = {0: -1, 1: 0, 2: 1}
-
-straight_dist = transform[0]  # these should actually be converted from degrees from transform
-diag_dist = (straight_dist**2 + straight_dist**2)**0.5
+out_array = np.full(array.shape, src_nd, dtype=np.int16)
 
 st = datetime.datetime.now()
 for row in range(array.shape[0]):
     for col in range(array.shape[1]):
         if vb_a[row, col] == vb_nd:
             continue
-        if [row, col] not in processed:
-
+        if out_array[row, col] != src_nd:
+            continue
+        else:
             subprocessed = [[row, col]]
 
             next_cell = array[row, col]
             rowa, cola = row, col
             while next_cell is not None:
                 if next_cell == src_nd:
-                    for coord in subprocessed:
-                        if coord not in processed:
-                            processed.append(coord)
+
                     next_cell = None
-                if [rowa, cola] in processed:
+                if out_array[rowa, cola] != src_nd:
                     for coord in subprocessed:
-                        if coord not in processed:
-                            out_array[coord[0], coord[1]] = out_array[rowa, cola]
-                            processed.append(coord)
+                        out_array[coord[0], coord[1]] = out_array[rowa, cola]
                     next_cell = None
-                    print(f'{len(processed)} cells processed')
                 # if next_cell == 0:
                 #    for coord in subprocessed:
                 #        if coord not in processed:
@@ -124,29 +112,20 @@ for row in range(array.shape[0]):
                 #    print(f'{len(processed)} cells processed')
                 if chan_a[rowa, cola] != chan_nd:
                     for coord in subprocessed:
-                        if coord not in processed:
-                            out_array[coord[0], coord[1]] = 1
-                            processed.append(coord)
+                        out_array[coord[0], coord[1]] = 1
                     next_cell = None
-                    print(f'{len(processed)} cells processed')
                 if r_a[rowa, cola] != road_nd:
                     for coord in subprocessed:
-                        if coord not in processed:
-                            processed.append(coord)
+                        out_array[coord[0], coord[1]] = 0
                     next_cell = None
-                    print(f'{len(processed)} cells processed')
                 if rr_a[rowa, cola] != rail_nd:
                     for coord in subprocessed:
-                        if coord not in processed:
-                            processed.append(coord)
+                        out_array[coord[0], coord[1]] = 0
                     next_cell = None
-                    print(f'{len(processed)} cells processed')
                 if c_a[rowa, cola] != canal_nd:
                     for coord in subprocessed:
-                        if coord not in processed:
-                            processed.append(coord)
+                        out_array[coord[0], coord[1]] = 0
                     next_cell = None
-                    print(f'{len(processed)} cells processed')
 
                 if next_cell is not None:
                     if next_cell == 1:
@@ -176,9 +155,7 @@ for row in range(array.shape[0]):
                     if [rowa, cola] in subprocessed:
                         print('circular flow path, could not resolve connectivity')
                         for coord in subprocessed:
-                            if coord not in processed:
-                                out_array[coord[0], coord[1]] = 2
-                                processed.append(coord)
+                            out_array[coord[0], coord[1]] = 2
                         next_cell = None
                     else:
                         subprocessed.append([rowa, cola])
