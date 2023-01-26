@@ -1,13 +1,12 @@
-import os
-import rasterio
-import numpy as np
-from osgeo import gdal, ogr
-from rscommons import Logger
-from rscommons.vector_ops import get_shp_or_gpkg, copy_feature_class, VectorBase
-from rscommons.util import safe_makedirs, safe_remove_dir
-from rscommons.hand import run_subprocess
+from .accessibility import access
 import datetime
-from accessibility.access import access_algorithm
+from rscommons.hand import run_subprocess
+from rscommons.util import safe_makedirs, safe_remove_dir
+from rscommons import Logger
+from osgeo import gdal, ogr
+import numpy as np
+import rasterio
+import os
 
 
 def flooplain_access(filled_dem: str, valley: str, reaches: str, road: str, rail: str, canal: str, intermediates_path: str, outraster: str):
@@ -25,16 +24,16 @@ def flooplain_access(filled_dem: str, valley: str, reaches: str, road: str, rail
     geo_transform = dataset.GetGeoTransform()
     cell_res = abs(geo_transform[1])
 
-    vec_lyrs = [road, rail, canal]
+    vec_lyrs = [[road, 'road.shp'], [rail, 'rail.shp'], [canal, 'canal.shp']]
+    vec_src = ogr.Open(os.path.dirname(vec_lyrs[0][0]))
     for vec in vec_lyrs:
-        vec_src = ogr.Open(vec)
-        inlyr = vec_src.GetLayer()
+        inlyr = vec_src.GetLayer(os.path.basename(vec[0]))
 
         shpdriver = ogr.GetDriverByName('ESRI Shapefile')
-        if os.path.exists(os.path.join(temp_dir, os.path.basename(vec))):
-            shpdriver.DeleteDataSource(os.path.join(temp_dir, os.path.basename(vec)))
-        out_buffer_ds = shpdriver.CreateDataSource(os.path.join(temp_dir, os.path.basename(vec)))
-        bufferlyr = out_buffer_ds.CreateLayer(os.path.join(temp_dir, os.path.basename(vec)), geom_type=ogr.wkbPolygon)
+        if os.path.exists(os.path.join(temp_dir, vec[1])):
+            shpdriver.DeleteDataSource(os.path.join(temp_dir, vec[1]))
+        out_buffer_ds = shpdriver.CreateDataSource(os.path.join(temp_dir, vec[1]))
+        bufferlyr = out_buffer_ds.CreateLayer(os.path.basename(vec[0]), geom_type=ogr.wkbPolygon)
         ftr_defn = bufferlyr.GetLayerDefn()
 
         for feature in inlyr:
@@ -46,16 +45,16 @@ def flooplain_access(filled_dem: str, valley: str, reaches: str, road: str, rail
 
     # rasterize layers
     log.info('Rasterizing vector layers')
-    chan_ds = gdal.OpenEx(reaches)
-    chan_lyr = chan_ds.GetLayer()
-    road_ds = gdal.OpenEx(os.path.join(temp_dir, os.path.basename(road)))
+    inputs_ds = gdal.OpenEx(os.path.join(os.path.dirname(intermediates_path), 'inputs/inputs.gpkg'))
+    chan_lyr = inputs_ds.GetLayer(os.path.basename(reaches))
+    road_ds = gdal.OpenEx(os.path.join(temp_dir, 'road.shp'))
     road_lyr = road_ds.GetLayer()
-    rail_ds = gdal.OpenEx(os.path.join(temp_dir, os.path.basename(rail)))
+    rail_ds = gdal.OpenEx(os.path.join(temp_dir, 'rail.shp'))
     rail_lyr = rail_ds.GetLayer()
-    canal_ds = gdal.OpenEx(os.path.join(temp_dir, os.path.basename(canal)))
+    canal_ds = gdal.OpenEx(os.path.join(temp_dir, 'canal.shp'))
     canal_lyr = canal_ds.GetLayer()
-    vb_ds = gdal.OpenEx(valley)
-    vb_lyr = vb_ds.GetLayer()
+    # vb_ds = gdal.OpenEx(valley)
+    vb_lyr = inputs_ds.GetLayer(os.path.basename(valley))
 
     drv_tiff = gdal.GetDriverByName('GTiff')
 
@@ -119,7 +118,7 @@ def flooplain_access(filled_dem: str, valley: str, reaches: str, road: str, rail
         vb_nd = np.int32(vb.nodata)
 
     st = datetime.datetime.now()
-    out = access_algorithm(array, src_nd, chan_a, chan_nd, r_a, road_nd, rr_a, rail_nd, c_a, canal_nd, vb_a, vb_nd)
+    out = access.access_algorithm(array, src_nd, chan_a, chan_nd, r_a, road_nd, rr_a, rail_nd, c_a, canal_nd, vb_a, vb_nd)
 
     end = datetime.datetime.now()
     print(f'ellapsed: {end-st}')
@@ -130,12 +129,12 @@ def flooplain_access(filled_dem: str, valley: str, reaches: str, road: str, rail
     safe_remove_dir(temp_dir)
 
 
-filled = '/mnt/c/Users/jordang/Documents/Riverscapes/data/anthro/test_data/pitfill.tif'
-vb = '/mnt/c/Users/jordang/Documents/Riverscapes/data/anthro/test_data/valley_bottom.shp'
-stream = '/mnt/c/Users/jordang/Documents/Riverscapes/data/anthro/test_data/flowlines.shp'
-rd = '/mnt/c/Users/jordang/Documents/Riverscapes/data/anthro/test_data/roads.shp'
-rr = '/mnt/c/Users/jordang/Documents/Riverscapes/data/anthro/test_data/rails.shp'
-can = '/mnt/c/Users/jordang/Documents/Riverscapes/data/anthro/test_data/canals.shp'
-intspath = '/mnt/c/Users/jordang/Documents/Riverscapes/data/anthro/test_data/intermediates'
-outpath = '/mnt/c/Users/jordang/Documents/Riverscapes/data/anthro/test_data/fpaccess_cython.tif'
-flooplain_access(filled, vb, stream, rd, rr, can, intspath, outpath)
+# filled = '/mnt/c/Users/jordang/Documents/Riverscapes/data/rcat/16010202/inputs/pitfill.tif'
+# vb = '/mnt/c/Users/jordang/Documents/Riverscapes/data/rcat/16010202/inputs/inputs.gpkg/valley_bottom'
+# stream = '/mnt/c/Users/jordang/Documents/Riverscapes/data/rcat/16010202/inputs/inputs.gpkg/reaches'
+# rd = '/mnt/c/Users/jordang/Documents/Riverscapes/data/rcat/16010202/inputs/inputs.gpkg/roads'
+# rr = '/mnt/c/Users/jordang/Documents/Riverscapes/data/rcat/16010202/inputs/inputs.gpkg/rails'
+# can = '/mnt/c/Users/jordang/Documents/Riverscapes/data/rcat/16010202/inputs/inputs.gpkg/canals'
+# intspath = '/mnt/c/Users/jordang/Documents/Riverscapes/data/rcat/16010202/intermediates'
+# outpath = '/mnt/c/Users/jordang/Documents/Riverscapes/data/rcat/16010202/intermediates/fpaccess_cython.tif'
+# flooplain_access(filled, vb, stream, rd, rr, can, intspath, outpath)

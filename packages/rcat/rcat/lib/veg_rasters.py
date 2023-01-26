@@ -67,6 +67,6 @@ def rcat_rasters(existing_veg, historic_veg, database, out_folder):
                         os.path.join(out_folder, 'conversion.tif')]
 
     for i, array in enumerate(out_arrays):
-        log.info(f'writing {array} raster')
+        log.info(f'writing raster')
         with rasterio.open(out_raster_paths[i], 'w', **meta) as dst:
             dst.write(array, 1)

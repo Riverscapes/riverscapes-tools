@@ -1,19 +1,15 @@
 import os
 import numpy as np
-from osgeo import gdal, ogr
+from osgeo import gdal
 import rasterio
 import sqlite3
 from rasterio.mask import mask
-from rscommons import GeopackageLayer, Logger, get_shp_or_gpkg
+from rscommons import Logger
 from rscommons.database import SQLiteCon
 from rscommons.classes.vector_base import VectorBase
-from rscommons.vector_ops import get_geometry_unary_union
-from shapely.geometry.base import GEOMETRY_TYPES
-from shapely.geometry import MultiPolygon
-from shapely.ops import unary_union
 
 
-def vegetation_summary(outputs_gpkg_path: str, dgo: str, veg_raster: str, flowarea: str = None, waterbody: str = None):
+def vegetation_summary(outputs_gpkg_path: str, reach_dgos: str, veg_raster: str, flowarea: str = None, waterbody: str = None):
     """ Loop through every reach in a BRAT database and
     retrieve the values from a vegetation raster within
     the specified buffer. Then store the tally of
@@ -30,47 +26,20 @@ def vegetation_summary(outputs_gpkg_path: str, dgo: str, veg_raster: str, flowar
     # Retrieve the raster spatial reference and geotransformation
     dataset = gdal.Open(veg_raster)
     geo_transform = dataset.GetGeoTransform()
-    raster_buffer = VectorBase.rough_convert_metres_to_raster_units(veg_raster, 100)
+    # raster_buffer = VectorBase.rough_convert_metres_to_raster_units(veg_raster, 100)
 
     # Calculate the area of each raster cell in square metres
     conversion_factor = VectorBase.rough_convert_metres_to_raster_units(veg_raster, 1.0)
     cell_area = abs(geo_transform[1] * geo_transform[5]) / conversion_factor**2
 
     # Open the raster and then loop over all polyline features
-    polygons = {}
-    veg_counts = []
-    with rasterio.open(veg_raster) as src, GeopackageLayer(os.path.join(outputs_gpkg_path, 'ReachGeometry')) as lyr:
-        _srs, transform = VectorBase.get_transform_from_raster(lyr.spatial_ref, veg_raster)
-        # spatial_ref = lyr.spatial_ref
+    with rasterio.open(veg_raster) as src:
+        veg_counts = []
 
-        for feature, _counter, _progbar in lyr.iterate_features():
-            reach_id = feature.GetFID()
-            geom = feature.GetGeometryRef()
-            if transform:
-                geom.Transform(transform)
-
-            with get_shp_or_gpkg(dgo) as dgolyr:
-                dgolyr.ogr_layer.SetSpatialFilter(feature.GetGeometryRef())
-                if dgolyr.ogr_layer.GetFeatureCount() == 0:
-                    log.info(f'feature {reach_id} has no associated DGOs, using 100m buffer')
-                    polygon = VectorBase.ogr2shapely(geom).buffer(raster_buffer)
-                elif dgolyr.ogr_layer.GetFeatureCount() == 1:
-                    ftrs = [ftr for ftr in dgolyr.ogr_layer]
-                    polygon = VectorBase.ogr2shapely(ftrs[0].GetGeometryRef())
-                else:
-                    polys = [VectorBase.ogr2shapely(ftr.GetGeometryRef()) for ftr in dgolyr.ogr_layer]
-                    polygon = unary_union(polys)
-
-                if flowarea:
-                    polygon = polygon.difference(flowarea)
-                if waterbody:
-                    polygon = polygon.difference(waterbody)
-
-                polygons[reach_id] = polygon
-
+        for reach_id, poly in reach_dgos.items():
             try:
                 # retrieve an array for the cells under the polygon
-                raw_raster = mask(src, [polygon], crop=True)[0]
+                raw_raster = mask(src, [poly], crop=True)[0]
                 mask_raster = np.ma.masked_values(raw_raster, src.nodata)
                 # print(mask_raster)
 

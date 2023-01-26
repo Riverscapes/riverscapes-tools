@@ -13,9 +13,10 @@ import traceback
 from typing import Dict
 from osgeo import ogr, gdal
 
-from rscommons import initGDALOGRErrors, ModelConfig, RSLayer, RSProject, RSMeta, Logger, GeopackageLayer
+from rscommons import initGDALOGRErrors, ModelConfig, RSLayer, RSProject
+from rscommons import VectorBase, RSMeta, Logger, GeopackageLayer
 from rscommons import dotenv
-from rscommons.vector_ops import copy_feature_class, get_geometry_unary_union
+from rscommons.vector_ops import copy_feature_class, get_geometry_unary_union, get_shp_or_gpkg
 from rscommons.database import create_database, SQLiteCon
 from rscommons.copy_features import copy_features_fields
 from rscommons.util import parse_metadata
@@ -26,7 +27,7 @@ from rcat.lib.igo_vegetation import igo_vegetation
 from rcat.lib.reach_vegetation import vegetation_summary
 from rcat.lib.rcat_attributes import igo_attributes, reach_attributes
 from rcat.lib.floodplain_accessibility import flooplain_access
-from rcat.lib.large_rivers import river_intersections
+from rcat.lib.reach_dgos import reach_dgos
 from rcat.__version__ import __version__
 
 Path = str
@@ -247,6 +248,10 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
 
         newwindows[id] = geom
 
+    # store dgos associated with reaches with large rivers removed
+    rdgos = reach_dgos(os.path.join(outputs_gpkg_path, 'ReachGeometry'), input_layers['ANTHRODGO'],
+                       os.path.join(output_folder, LayerTypes['EXVEG'].rel_path), geom_flow_areas, geom_waterbodies)
+
     # generate vegetation derivative rasters
     intermediates = os.path.join(output_folder, 'intermediates')
     if not os.path.isdir(intermediates):
@@ -265,7 +270,7 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
     int_raster_paths.append(historic_veg)
     for rast in int_raster_paths:
         igo_vegetation(newwindows, rast, outputs_gpkg_path)
-        vegetation_summary(outputs_gpkg_path, input_layers['ANTHRODGO'], rast, geom_flow_areas, geom_waterbodies)
+        vegetation_summary(outputs_gpkg_path, rdgos, rast, geom_flow_areas, geom_waterbodies)
     igo_attributes(outputs_gpkg_path)
     reach_attributes(outputs_gpkg_path)
 

@@ -12,6 +12,14 @@ def igo_attributes(database: str):
     conn = sqlite3.connect(database)
     curs = conn.cursor()
 
+    # fp accessibility
+    curs.execute('SELECT IGOFPAccess.IGOID CellCount, TotCells FROM IGOFPAccess'
+                 ' INNER JOIN (SELECT IGOID, SUM(CellCount) AS TotCells FROM IGOFPAccess GROUP BY IGOID) AS CC ON IGOFPAccess.IGOID=CC.IGOID'
+                 ' WHERE AccessVal = 1')
+    igoaccess = {row[0]: row[1] / row[2] for row in curs.fetchall()}
+    for igoid, accessval in igoaccess.items():
+        conn.execute(f'UPDATE IGOAttributes SET FloodplainAccess = {accessval} WHERE IGOID = {igoid}')
+
     # from conifer
     curs.execute('SELECT IGOConv.IGOID, ConvCellCount, TotCells FROM IGOConv'
                  ' INNER JOIN (SELECT IGOID, SUM(ConvCellCount) AS TotCells FROM IGOConv GROUP BY IGOID) AS CC ON IGOConv.IGOID=CC.IGOID'
@@ -197,6 +205,14 @@ def reach_attributes(database: str):
 
     conn = sqlite3.connect(database)
     curs = conn.cursor()
+
+    # fp accessibility
+    curs.execute('SELECT ReachFPAccess.ReachID CellCount, TotCells FROM ReachFPAccess'
+                 ' INNER JOIN (SELECT ReachID, SUM(CellCount) AS TotCells FROM ReachFPAccess GROUP BY ReachID) AS CC ON ReachFPAccess.ReachID=CC.ReachID'
+                 ' WHERE AccessVal = 1')
+    igoaccess = {row[0]: row[1] / row[2] for row in curs.fetchall()}
+    for rid, accessval in igoaccess.items():
+        conn.execute(f'UPDATE ReachAttributes SET FloodplainAccess = {accessval} WHERE ReachID = {rid}')
 
     # from conifer
     curs.execute('SELECT ReachConv.ReachID, ConvCellCount, TotCells FROM ReachConv'
