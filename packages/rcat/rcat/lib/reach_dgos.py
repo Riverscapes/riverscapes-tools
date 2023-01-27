@@ -44,8 +44,8 @@ def reach_dgos(reaches: str, dgos: str, proj_raster: str, flowarea: str = None, 
     return polygons
 
 
-rs = '/mnt/c/Users/jordang/Documents/Riverscapes/data/rcat/16010202/outputs/rcat.gpkg/ReachGeometry'
-dgo = '/mnt/c/Users/jordang/Documents/Riverscapes/data/rcat/16010202/inputs/inputs.gpkg/dgo'
-projras = '/mnt/c/Users/jordang/Documents/Riverscapes/data/rcat/16010202/inputs/existing_veg.tif'
+# rs = '/mnt/c/Users/jordang/Documents/Riverscapes/data/rcat/16010202/outputs/rcat.gpkg/ReachGeometry'
+# dgo = '/mnt/c/Users/jordang/Documents/Riverscapes/data/rcat/16010202/inputs/inputs.gpkg/dgo'
+# projras = '/mnt/c/Users/jordang/Documents/Riverscapes/data/rcat/16010202/inputs/existing_veg.tif'
 
-reach_dgos(rs, dgo, projras)
+# reach_dgos(rs, dgo, projras)

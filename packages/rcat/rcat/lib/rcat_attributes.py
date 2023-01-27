@@ -13,7 +13,7 @@ def igo_attributes(database: str):
     curs = conn.cursor()
 
     # fp accessibility
-    curs.execute('SELECT IGOFPAccess.IGOID CellCount, TotCells FROM IGOFPAccess'
+    curs.execute('SELECT IGOFPAccess.IGOID, CellCount, TotCells FROM IGOFPAccess'
                  ' INNER JOIN (SELECT IGOID, SUM(CellCount) AS TotCells FROM IGOFPAccess GROUP BY IGOID) AS CC ON IGOFPAccess.IGOID=CC.IGOID'
                  ' WHERE AccessVal = 1')
     igoaccess = {row[0]: row[1] / row[2] for row in curs.fetchall()}
@@ -173,27 +173,31 @@ def igo_attributes(database: str):
 
     # departure
     log.info('Finding riparian departure')
-    curs.execute('SELECT IGOAttributes.IGOID, ExistingRiparianMean / HistoricRiparianMean FROM IGOAttributes')
+    curs.execute('SELECT IGOAttributes.IGOID, ExistingRiparianMean, HistoricRiparianMean FROM IGOAttributes')
 
-    dep = {row[0]: row[1] for row in curs.fetchall()}
+    dep = {row[0]: [row[1], row[2]] for row in curs.fetchall()}
     for igoid, val in dep.items():
-        if val is None:
-            val = 0
-        conn.execute(f'UPDATE IGOAttributes SET RiparianDeparture = {val} WHERE IGOID = {igoid}')
+        if val[0] is None:
+            val[0] = 0
+        if val[1] is None:
+            conn.execute(f'UPDATE IGOAttributes SET RiparianDeparture = 1 WHERE IGOID = {igoid}')
+        else:
+            conn.execute(f'UPDATE IGOAttributes SET RiparianDeparture = {val[0]/val[1]} WHERE IGOID = {igoid}')
 
     # native riparian
     curs.execute('SELECT IGOAttributes.IGOID, ExistingRiparianMean - (ExInv / TotCells), HistoricRiparianMean FROM IGOAttributes'
                  ' INNER JOIN (SELECT IGOID, SUM(CellCount) AS TotCells FROM IGOVegetation GROUP BY IGOID) AS CC ON IGOAttributes.IGOID = CC.IGOID'
                  ' INNER JOIN (SELECT IGOID, CellCount AS ExInv FROM IGOVegetation WHERE VegetationID = 9327 OR VegetationID = 9827 OR VegetationID = 9318 OR VegetationID = 9320 OR VegetationID = 9324 OR VegetationID = 9329 OR VegetationID = 9332) AS EXV ON IGOAttributes.IGOID = EXV.IGOID')
     invdep = {row[0]: [row[1], row[2]] for row in curs.fetchall()}
-    for igo, vals in invdep.items():
+    for igoid, vals in invdep.items():
         if vals[0] is None:
             vals[0] = 0
-        conn.execute(f'UPDATE IGOAttributes SET ExistingNativeRiparianMean = {vals[0]} WHERE IGOID = {igo}')
+        conn.execute(f'UPDATE IGOAttributes SET ExistingNativeRiparianMean = {vals[0]} WHERE IGOID = {igoid}')
         if vals[1] is None:
-            vals[1] = 0
-        conn.execute(f'UPDATE IGOAttributes SET HistoricNativeRiparianMean = {vals[1]} WHERE IGOID = {igo}')
-        conn.execute(f'UPDATE IGOAttributes SET NativeRiparianDeparture = {vals[0] / vals[1]} WHERE IGOID = {igo}')
+            conn.execute(f'UPDATE IGOAttributes SET NativeRiparianDeparture = 1 WHERE IGOID = {igoid}')
+        else:
+            conn.execute(f'UPDATE IGOAttributes SET HistoricNativeRiparianMean = {vals[1]} WHERE IGOID = {igoid}')
+            conn.execute(f'UPDATE IGOAttributes SET NativeRiparianDeparture = {vals[0] / vals[1]} WHERE IGOID = {igoid}')
 
     conn.commit()
     log.info('Completed riparian departure and conversion calculations for IGOs')
@@ -207,7 +211,7 @@ def reach_attributes(database: str):
     curs = conn.cursor()
 
     # fp accessibility
-    curs.execute('SELECT ReachFPAccess.ReachID CellCount, TotCells FROM ReachFPAccess'
+    curs.execute('SELECT ReachFPAccess.ReachID, CellCount, TotCells FROM ReachFPAccess'
                  ' INNER JOIN (SELECT ReachID, SUM(CellCount) AS TotCells FROM ReachFPAccess GROUP BY ReachID) AS CC ON ReachFPAccess.ReachID=CC.ReachID'
                  ' WHERE AccessVal = 1')
     igoaccess = {row[0]: row[1] / row[2] for row in curs.fetchall()}
@@ -367,13 +371,16 @@ def reach_attributes(database: str):
 
     # departure
     log.info('Finding riparian departure')
-    curs.execute('SELECT ReachAttributes.ReachID, ExistingRiparianMean / HistoricRiparianMean FROM ReachAttributes')
+    curs.execute('SELECT ReachAttributes.ReachID, ExistingRiparianMean, HistoricRiparianMean FROM ReachAttributes')
 
-    dep = {row[0]: row[1] for row in curs.fetchall()}
+    dep = {row[0]: [row[1], row[2]] for row in curs.fetchall()}
     for rid, val in dep.items():
-        if val is None:
-            val = 0
-        conn.execute(f'UPDATE ReachAttributes SET RiparianDeparture = {val} WHERE ReachID = {rid}')
+        if val[0] is None:
+            val[0] = 0
+        if val[1] is None:
+            conn.execute(f'UPDATE ReachAttributes SET RiparianDeparture = 1 WHERE ReachID = {rid}')
+        else:
+            conn.execute(f'UPDATE ReachAttributes SET RiparianDeparture = {val[0]/val[1]} WHERE ReachID = {rid}')
 
     # native riparian
     curs.execute('SELECT ReachAttributes.ReachID, ExistingRiparianMean - (ExInv / TotCells), HistoricRiparianMean FROM ReachAttributes'
@@ -385,9 +392,16 @@ def reach_attributes(database: str):
             vals[0] = 0
         conn.execute(f'UPDATE ReachAttributes SET ExistingNativeRiparianMean = {vals[0]} WHERE ReachID = {rid}')
         if vals[1] is None:
-            vals[1] = 0
-        conn.execute(f'UPDATE ReachAttributes SET HistoricNativeRiparianMean = {vals[1]} WHERE ReachID = {rid}')
-        conn.execute(f'UPDATE ReachAttributes SET NativeRiparianDeparture = {vals[0] / vals[1]} WHERE ReachID = {rid}')
+            conn.execute(f'UPDATE ReachAttributes SET NativeRiparianDeparture = 1 WHERE ReachID = {rid}')
+        else:
+            conn.execute(f'UPDATE ReachAttributes SET HistoricNativeRiparianMean = {vals[1]} WHERE ReachID = {rid}')
+            conn.execute(f'UPDATE ReachAttributes SET NativeRiparianDeparture = {vals[0] / vals[1]} WHERE ReachID = {rid}')
 
     conn.commit()
     log.info('Completed riparian departure and conversion calculations for reaches')
+
+
+db = '/mnt/c/Users/jordang/Documents/Riverscapes/data/rcat/16010202/outputs/rcat.gpkg'
+
+igo_attributes(db)
+reach_attributes(db)
