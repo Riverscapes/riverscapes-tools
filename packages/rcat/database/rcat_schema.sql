@@ -166,7 +166,8 @@ CREATE TABLE IGOAttributes (
     RiparianDepartureID INTEGER,
     ExistingNativeRiparianMean REAL,
     HistoricNativeRiparianMean REAL,
-    NativeRiparianDeparture REAL
+    NativeRiparianDeparture REAL,
+    Condition REAL
 
 );
 
@@ -199,6 +200,7 @@ CREATE TABLE ReachAttributes (
     ExistingNativeRiparianMean REAL,
     HistoricNativeRiparianMean REAL,
     NativeRiparianDeparture REAL,
+    Condition REAL
 
     CONSTRAINT fk_ReachAttributes_ReachID FOREIGN KEY (ReachID) REFERENCES ReachGeometry (ReachID) ON DELETE CASCADE
 );

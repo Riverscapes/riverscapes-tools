@@ -9,17 +9,19 @@ import time
 import datetime
 import sys
 import traceback
+import json
 
 from typing import Dict
 from osgeo import ogr, gdal
 
 from rscommons import initGDALOGRErrors, ModelConfig, RSLayer, RSProject
-from rscommons import VectorBase, RSMeta, Logger, GeopackageLayer
+from rscommons import VectorBase, Logger, GeopackageLayer
+from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons import dotenv
 from rscommons.vector_ops import copy_feature_class, get_geometry_unary_union, get_shp_or_gpkg
 from rscommons.database import create_database, SQLiteCon
 from rscommons.copy_features import copy_features_fields
-from rscommons.util import parse_metadata
+from rscommons.util import parse_metadata, pretty_duration
 from rscommons.moving_window import get_moving_windows
 
 from rcat.lib.veg_rasters import rcat_rasters
@@ -29,6 +31,7 @@ from rcat.lib.rcat_attributes import igo_attributes, reach_attributes
 from rcat.lib.floodplain_accessibility import flooplain_access
 from rcat.lib.reach_dgos import reach_dgos
 from rcat.lib.rcat_fis import rcat_fis
+from rcat.rcat_report import RcatReport
 from rcat.__version__ import __version__
 
 Path = str
@@ -41,7 +44,7 @@ cfg = ModelConfig('https://xml.riverscapes.net/Projects/XSD/V2/RiverscapesProjec
 LYR_DESCRIPTIONS_JSON = os.path.join(os.path.dirname(__file__), 'layer_descriptions.json')
 LayerTypes = {
     'EXVEG': RSLayer('Existing Vegetation', 'EXVEG', 'Raster', 'inputs/existing_veg.tif'),
-    'HISTVEG': RSLayer('Historic Vegetation', 'EXVEG', 'Raster', 'inputs/historic_veg.tif'),
+    'HISTVEG': RSLayer('Historic Vegetation', 'HISTVEG', 'Raster', 'inputs/historic_veg.tif'),
     'EXRIPARIAN': RSLayer('Existing Riparian', 'EXRIPARIAN', 'Raster', 'intermediates/ex_riparian.tif'),
     'HISTRIPARIAN': RSLayer('Historic Riparian', 'HISTRIPARIAN', 'Raster', 'intermediates/hist_riparian.tif'),
     'EXVEGETATED': RSLayer('Existing Vegetated', 'EXVEGETATED', 'Raster', 'intermediates/ex_vegetated.tif'),
@@ -62,7 +65,7 @@ LayerTypes = {
         'FLOW_AREA': RSLayer('NHD Flow Area', 'FLOW_AREA', 'Vector', 'flowareas'),
         'WATERBODIES': RSLayer('NHD Waterbody', 'WATERBODIES', 'Vector', 'waterbodies')
     }),
-    'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/intermediates.gpkg', {}),
+    # 'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/intermediates.gpkg', {}),
     'OUTPUTS': RSLayer('RCAT Outputs', 'OUTPUTS', 'Geopackage', 'outputs/rcat.gpkg', {
         'GEOM_POINTS': RSLayer('Anthropogenic IGO Point Geometry', 'ANTHRO_GEOM_POINTS', 'Vector', 'IGOGeometry'),
         'IGO': RSLayer('Anthropogenic Output Points', 'ANTRHO_POINTS', 'Vector', 'vwIgos'),
@@ -72,29 +75,6 @@ LayerTypes = {
     'REPORT': RSLayer('RCAT Report', 'REPORT', 'HTMLFile', 'outputs/rcat.html')
 }
 
-rvd_columns = ['FromConifer',
-               'FromDevegetated',
-               'FromGrassShrubland',
-               'FromDeciduous',
-               'NoChange',
-               'Deciduous',
-               'GrassShrubland',
-               'Devegetation',
-               'Conifer',
-               'Invasive',
-               'Development',
-               'Agriculture',
-               'RiparianTotal',
-               'ConversionID']
-
-departure_type_columns = ['ExistingRiparianMean',
-                          'HistoricRiparianMean',
-                          'RiparianDeparture',
-                          'RiparianDepartureID',
-                          'ExistingNativeRiparianMean',
-                          'HistoricNativeRiparianMean',
-                          'NativeRiparianDeparture']
-
 
 def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo: Path, dgo: Path,
          reaches: Path, roads: Path, rails: Path, canals: Path, valley: Path, output_folder: Path,
@@ -103,6 +83,10 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
     log = Logger('RCAT')
     log.info(f'HUC: {huc}')
     log.info(f'EPSG: {cfg.OUTPUT_EPSG}')
+
+    augment_layermeta()
+
+    start_time = time.time()
 
     project_name = f'RCAT for HUC {huc}'
     project = RSProject(cfg, output_folder)
@@ -124,12 +108,10 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
     project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['OUTPUTS'])
 
     inputs_gpkg_path = os.path.join(output_folder, LayerTypes['INPUTS'].rel_path)
-    intermediates_gpkg_path = os.path.join(output_folder, LayerTypes['INTERMEDIATES'].rel_path)
     outputs_gpkg_path = os.path.join(output_folder, LayerTypes['OUTPUTS'].rel_path)
 
     # Make sure we're starting with empty/fresh geopackages
     GeopackageLayer.delete(inputs_gpkg_path)
-    GeopackageLayer.delete(intermediates_gpkg_path)
     GeopackageLayer.delete(outputs_gpkg_path)
 
     # copy original vectors to inputs geopackage
@@ -224,8 +206,11 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
         '2': 1000
     }
 
+    project.add_metadata([RSMeta('SmallMovingWindow', distance_in['0'])])
+    project.add_metadata([RSMeta('MediumMovingWindow', distance_in['1'])])
+    project.add_metadata([RSMeta('LargeMovingWindow', distance_in['2'])])
+
     windows = get_moving_windows(igo_geom_path, input_layers['ANTHRODGO'], levelpathsin, distance_in)
-    # large_rivers = river_intersections(windows, existing_veg, historic_veg, flow_areas, waterbodies)
     log.info('removing large rivers from moving window polygons')
     newwindows = {}
 
@@ -264,6 +249,15 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
     flooplain_access(pitfilled, input_layers['VALLEYBOTTOM'], input_layers['ANTHROREACHES'], input_layers['ROADS'], input_layers['RAILS'],
                      input_layers['CANALS'], intermediates, fp_access)
 
+    # Add intermediate rasters to xml
+    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['EXRIPARIAN'])
+    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['HISTRIPARIAN'])
+    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['EXVEGETATED'])
+    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['HISTVEGETATED'])
+    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['CONVERSION'])
+    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['D8FLOWDIR'])
+    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['FPACCESS'])
+
     # sample accessibility and vegetation and derivative rasters onto igos and reaches using moving windows/dgos
     int_rasters = ['fp_access.tif', 'ex_riparian.tif', 'hist_riparian.tif', 'ex_vegetated.tif', 'hist_vegetated.tif', 'conversion.tif']
     int_raster_paths = [os.path.join(intermediates, i) for i in int_rasters]
@@ -280,7 +274,45 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
     # Calculate FIS for reaches
     rcat_fis(outputs_gpkg_path, igos=False)
 
-    print(datetime.datetime.now())
+    ellapsed = time.time() - start_time
+
+    project.add_metadata([
+        RSMeta("ProcTimeS", "{:.2f}".format(ellapsed), RSMetaTypes.INT),
+        RSMeta("ProcessingTime", pretty_duration(ellapsed))
+    ])
+
+    report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
+    project.add_report(proj_nodes['Outputs'], LayerTypes['REPORT'], replace=True)
+    report = RcatReport(report_path, project)
+    report.write()
+
+    log.info('RCAT completed successfully')
+
+
+def augment_layermeta():
+    """
+    For RSContext we've written a JSON file with extra layer meta. We may use this pattern elsewhere but it's just here for now
+    """
+    with open(LYR_DESCRIPTIONS_JSON, 'r') as f:
+        json_data = json.load(f)
+
+    for k, lyr in LayerTypes.items():
+        if lyr.sub_layers is not None:
+            for h, sublyr in lyr.sub_layers.items():
+                if h in json_data and len(json_data[h]) > 0:
+                    sublyr.lyr_meta = [
+                        RSMeta('Description', json_data[h][0]),
+                        RSMeta('SourceUrl', json_data[h][1], RSMetaTypes.URL),
+                        RSMeta('DataProductVersion', json_data[h][2]),
+                        RSMeta('DocsUrl', 'https://tools.riverscapes.net/rcat/data.html#{}'.format(sublyr.id), RSMetaTypes.URL)
+                    ]
+        if k in json_data and len(json_data[k]) > 0:
+            lyr.lyr_meta = [
+                RSMeta('Description', json_data[k][0]),
+                RSMeta('SourceUrl', json_data[k][1], RSMetaTypes.URL),
+                RSMeta('DataProductVersion', json_data[k][2]),
+                RSMeta('DocsUrl', 'https://tools.riverscapes.net/rcat/data.html#{}'.format(lyr.id), RSMetaTypes.URL)
+            ]
 
 
 def main():

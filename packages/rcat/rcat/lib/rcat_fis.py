@@ -14,12 +14,12 @@ def rcat_fis(database: str, igos: bool):
         fields = ['RiparianDeparture', 'LUI', 'FloodplainAccess']
         features = load_igo_attributes(database, fields, ' AND '.join(['({} IS NOT NULL)'.format(f) for f in fields]))
         calculate_fis(features, igos)
-        write_db_igo_attributes(database, features, ['condition'], summarize=False)
+        write_db_igo_attributes(database, features, ['Condition'], summarize=False)
     else:
         fields = ['RiparianDeparture', 'iPC_LU', 'FloodplainAccess']
         features = load_attributes(database, fields, ' AND '.join(['({} IS NOT NULL)'.format(f) for f in fields]))
         calculate_fis(features, igos)
-        write_db_attributes(database, features, ['condition'], log)
+        write_db_attributes(database, features, ['Condition'], log)
 
 
 def calculate_fis(feature_values: dict, igos: bool):
@@ -122,7 +122,7 @@ def calculate_fis(feature_values: dict, igos: bool):
         rcat_fis.compute()
         condition = rcat_fis.output['result']
 
-        feature_values[id]['condition'] = round(condition, 2)
+        feature_values[id]['Condition'] = round(condition, 2)
 
         counter += 1
         progbar.update(counter)
