@@ -28,6 +28,7 @@ from rcat.lib.reach_vegetation import vegetation_summary
 from rcat.lib.rcat_attributes import igo_attributes, reach_attributes
 from rcat.lib.floodplain_accessibility import flooplain_access
 from rcat.lib.reach_dgos import reach_dgos
+from rcat.lib.rcat_fis import rcat_fis
 from rcat.__version__ import __version__
 
 Path = str
@@ -273,6 +274,11 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
         vegetation_summary(outputs_gpkg_path, rdgos, rast, geom_flow_areas, geom_waterbodies)
     igo_attributes(outputs_gpkg_path)
     reach_attributes(outputs_gpkg_path)
+
+    # Calculate FIS for IGOs
+    rcat_fis(outputs_gpkg_path, igos=True)
+    # Calculate FIS for reaches
+    rcat_fis(outputs_gpkg_path, igos=False)
 
     print(datetime.datetime.now())
 
