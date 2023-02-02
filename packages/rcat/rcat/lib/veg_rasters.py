@@ -1,15 +1,28 @@
+"""Function to generate different vegetation rasters from landfire EVT and BPS
+
+Jordan Gilbert
+
+01/2023
 """
-"""
+
 import rasterio
+import argparse
 import sqlite3
 import numpy as np
-import json
 import os
 
-from rscommons import Logger
+from rscommons import Logger, dotenv
 
 
-def rcat_rasters(existing_veg, historic_veg, database, out_folder):
+def rcat_rasters(existing_veg: str, historic_veg: str, database: str, out_folder: str):
+    """Generate intermediate vegetation rasters for RCAT analyses
+
+    Arguments:
+        existing_veg (str): Path to landfire EVT raster
+        historic_veg (str): Path to landfire BpS raster
+        database (str): Path to rcat output geopackage
+        out_folder (str): Path to location to store output rasters
+    """
 
     log = Logger('RCAT Vegetation Rasters')
     log.info('Generating RCAT vegetation rasters')
@@ -70,3 +83,20 @@ def rcat_rasters(existing_veg, historic_veg, database, out_folder):
         log.info(f'writing raster')
         with rasterio.open(out_raster_paths[i], 'w', **meta) as dst:
             dst.write(array, 1)
+
+
+def main():
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('existing_veg', help='Path to landfire EVT raster', type=str)
+    parser.add_argument('historic_veg', help='Path to landfire BpS raster', type=str)
+    parser.add_argument('database', help='Path to rcat output geopackage', type=str)
+    parser.add_argument('out_folder', help='Path to location to store output rasters', type=str)
+
+    args = dotenv.parse_args_env(parser)
+
+    rcat_rasters(args.existing_veg, args.historic_veg, args.database, args.out_folder)
+
+
+if __name__ == '__main__':
+    main()

@@ -40,6 +40,17 @@
           ]
         },
         {
+          "name": "Augment XML",
+          "type": "python",
+          "request": "launch",
+          "module": "rcat.rcat_rs",
+          "console": "integratedTerminal",
+          "args": [
+            "{env:DATA_ROOT}/rcat/${input:HUC}/project.rs.xml",
+            "{env:DATA_ROOT}/rs_context/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/taudem/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/anthro/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/vbet/${input:HUC}/project.rs.xml"
+          ]
+        },
+        {
           "name": "Version Bump",
           "type": "python",
           "module": "rscommons.version",

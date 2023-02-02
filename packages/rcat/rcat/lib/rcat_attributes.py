@@ -401,7 +401,7 @@ def reach_attributes(database: str):
     log.info('Completed riparian departure and conversion calculations for reaches')
 
 
-db = '/mnt/c/Users/jordang/Documents/Riverscapes/data/rcat/16010202/outputs/rcat.gpkg'
+# db = '/mnt/c/Users/jordang/Documents/Riverscapes/data/rcat/16010202/outputs/rcat.gpkg'
 
-igo_attributes(db)
-reach_attributes(db)
+# igo_attributes(db)
+# reach_attributes(db)

@@ -4,6 +4,7 @@ Jordan Gilbert
 
 Dec 2022
 """
+import argparse
 import sqlite3
 import os
 import rasterio
@@ -11,11 +12,18 @@ import numpy as np
 from osgeo import gdal
 from rasterio.mask import mask
 
-from rscommons import Logger, VectorBase
+from rscommons import Logger, VectorBase, dotenv
 from rscommons.database import SQLiteCon
 
 
 def igo_vegetation(windows: dict, raster: str, out_gpkg_path: str):  # , large_rivers: dict):
+    """Summarizes vegetation raster datasets onto IGOs based on moving windows
+
+    Arguments:
+        windows (dict): dictionary with moving window features associated with each IGO
+        raster (str): Path to raster dataset to summarize
+        out_gpkg_path: Path to the geopackage containing the tables to fill out
+    """
 
     log = Logger('IGO Vegetation')
     log.info('Summarizing vegetation rasters for each IGO')
@@ -78,3 +86,20 @@ def igo_vegetation(windows: dict, raster: str, out_gpkg_path: str):  # , large_r
         database.conn.commit()
 
     log.info('IGO vegetation summary complete')
+
+
+def main():
+    """IGO Vegetation 
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument('windows', help='dictionary of moving windows for each IGO', type=dict)
+    parser.add_argument('raster', help='Raster dataset to summarize within windows', type=str)
+    parser.add_argument('out_gpkg_path', help='The database (geopackage) containing the tables to fill out', type=str)
+
+    args = dotenv.parse_args_env(parser)
+
+    igo_vegetation(args.windows, args.raster, args.out_gpgk_path)
+
+
+if __name__ == '__main__':
+    main()

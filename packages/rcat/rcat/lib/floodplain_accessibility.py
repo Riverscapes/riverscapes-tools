@@ -1,15 +1,35 @@
+"""Floodplain accessibility function
+
+Jordan Gilbert
+
+01/2023
+"""
+
 from .accessibility import access
 import datetime
+import argparse
 from rscommons.hand import run_subprocess
 from rscommons.util import safe_makedirs, safe_remove_dir
-from rscommons import Logger
+from rscommons import Logger, dotenv
 from osgeo import gdal, ogr
 import numpy as np
 import rasterio
 import os
 
 
-def flooplain_access(filled_dem: str, valley: str, reaches: str, road: str, rail: str, canal: str, intermediates_path: str, outraster: str):
+def flooplain_access(filled_dem: str, valley: str, reaches: str, intermediates_path: str, outraster: str, road: str = None, rail: str = None, canal: str = None):
+    """ Generate a foodplain accessiblity raster where 0 is inaccessible and 1 is accessible
+
+    Arguments:
+        filled_dem (str): Path to a pit-filled DEM
+        valley (str): Path to a valley bottom feature class
+        reaches (str): Path to a stream network feature class
+        intermediates_path (str): Path to RCAT project intermediates folder
+        outraster (str): Path to store the output raster
+        road (str): Path to a road feature class
+        rail (str): Path to a railroad feature class
+        canal (str): Path to a canal feature class
+    """
 
     log = Logger('Floodplain accessibility')
 
@@ -129,12 +149,23 @@ def flooplain_access(filled_dem: str, valley: str, reaches: str, road: str, rail
     safe_remove_dir(temp_dir)
 
 
-# filled = '/mnt/c/Users/jordang/Documents/Riverscapes/data/rcat/16010202/inputs/pitfill.tif'
-# vb = '/mnt/c/Users/jordang/Documents/Riverscapes/data/rcat/16010202/inputs/inputs.gpkg/valley_bottom'
-# stream = '/mnt/c/Users/jordang/Documents/Riverscapes/data/rcat/16010202/inputs/inputs.gpkg/reaches'
-# rd = '/mnt/c/Users/jordang/Documents/Riverscapes/data/rcat/16010202/inputs/inputs.gpkg/roads'
-# rr = '/mnt/c/Users/jordang/Documents/Riverscapes/data/rcat/16010202/inputs/inputs.gpkg/rails'
-# can = '/mnt/c/Users/jordang/Documents/Riverscapes/data/rcat/16010202/inputs/inputs.gpkg/canals'
-# intspath = '/mnt/c/Users/jordang/Documents/Riverscapes/data/rcat/16010202/intermediates'
-# outpath = '/mnt/c/Users/jordang/Documents/Riverscapes/data/rcat/16010202/intermediates/fpaccess_cython.tif'
-# flooplain_access(filled, vb, stream, rd, rr, can, intspath, outpath)
+def main():
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('pit_filled', help='', type=str)
+    parser.add_argument('valley', help='', type=str)
+    parser.add_argument('reaches', help='', type=str)
+    parser.add_argument('intermediates_path', help='', type=str)
+    parser.add_argument('out_raster', help='', type=str)
+    parser.add_argument('road', help='', type=str)
+    parser.add_argument('rail', help='', type=str)
+    parser.add_argument('canal', help='', type=str)
+
+    args = dotenv.parse_args_env(parser)
+
+    flooplain_access(args.pit_filled, args.valley, args.reaches, args.intermediates_path, args.out_raster,
+                     args.road, args.rail, args.canal)
+
+
+if __name__ == '__main__':
+    main()

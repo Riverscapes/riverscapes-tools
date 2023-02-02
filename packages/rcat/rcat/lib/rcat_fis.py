@@ -1,11 +1,25 @@
+"""RCAT Fuzzy Inference System
+
+Jordan Gilbert
+
+02/2023
+"""
+
+import argparse
 import numpy as np
 import skfuzzy as fuzz
 from skfuzzy import control as ctrl
 from rscommons.database import load_attributes, load_igo_attributes, write_db_attributes, write_db_igo_attributes
-from rscommons import Logger, ProgressBar
+from rscommons import Logger, ProgressBar, dotenv
 
 
 def rcat_fis(database: str, igos: bool):
+    """Run the RCAT FIS
+
+    Arguments:
+        database (str): Path to the RCAT database
+        igos (bool): True if the FIS is being run for the IGO output 
+    """
 
     log = Logger('RCAT FIS')
     log.info('Starting RCAT FIS')
@@ -23,6 +37,12 @@ def rcat_fis(database: str, igos: bool):
 
 
 def calculate_fis(feature_values: dict, igos: bool):
+    """The fuzzy inference system
+
+    Arguments:
+        feature_values (dict): FIS input values associated with each reach
+        igos (bool): True if the FIS is being run for the IGO output
+    """
 
     log = Logger('RCAT FIS')
 
@@ -131,7 +151,16 @@ def calculate_fis(feature_values: dict, igos: bool):
     log.info('Done')
 
 
-db = '/mnt/c/Users/jordang/Documents/Riverscapes/data/rcat/16010202/outputs/rcat.gpkg'
-igo = False
+def main():
 
-rcat_fis(db, igo)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('database', help='The RCAT database (output geopackage)', type=str)
+    parser.add_argument('igos', help='True if the FIS is being run for the IGO output', type=bool)
+
+    args = dotenv.parse_args_env(parser)
+
+    rcat_fis(args.database, args.igos)
+
+
+if __name__ == '__main__':
+    main()

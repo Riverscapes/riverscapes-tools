@@ -1,16 +1,19 @@
-import os
+import argparse
 from shapely.ops import unary_union
-from rscommons import VectorBase, GeopackageLayer, Logger
+from rscommons import VectorBase, GeopackageLayer, Logger, dotenv
 from rscommons.vector_ops import get_shp_or_gpkg
 
 
 def reach_dgos(reaches: str, dgos: str, proj_raster: str, flowarea: str = None, waterbody: str = None):
     """
-    reaches: path to polyline reaches (layer in geopackage)
-    dgos: path to DGOs
-    proj_raster: path to any project raster (just for finding buffer distance)
-    flowarea: flow area polygons to remove from output polygons
-    waterbody: waterbody polygons to remove from output polygons
+    Finds the DGOs that intersect each reach and removes large rivers/waterbodies
+
+    Arguments:
+        reaches (str): path to polyline reaches (layer in geopackage)
+        dgos (str): path to DGOs
+        proj_raster (str): path to any project raster (just for finding buffer distance)
+        flowarea (str): flow area polygons to remove from output polygons
+        waterbody (str): waterbody polygons to remove from output polygons
     """
     log = Logger('Reach DGOs')
 
@@ -44,8 +47,20 @@ def reach_dgos(reaches: str, dgos: str, proj_raster: str, flowarea: str = None, 
     return polygons
 
 
-# rs = '/mnt/c/Users/jordang/Documents/Riverscapes/data/rcat/16010202/outputs/rcat.gpkg/ReachGeometry'
-# dgo = '/mnt/c/Users/jordang/Documents/Riverscapes/data/rcat/16010202/inputs/inputs.gpkg/dgo'
-# projras = '/mnt/c/Users/jordang/Documents/Riverscapes/data/rcat/16010202/inputs/existing_veg.tif'
+def main():
+    """Find the DGOs that intersect each reach, removing large rivers
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument('reaches', help='Path to stream reaches feature class', type=str)
+    parser.add_argument('dgos', help='Path to DGO feature class', type=str)
+    parser.add_argument('proj_raster', help='Path to a project raster to get distance conversion', type=str)
+    parser.add_argument('--flowarea', help='Path to NHD flow area feature class representing larger rivers', type=str)
+    parser.add_argument('--waterbody', help='Path to NHD waterbody feature class', type=str)
 
-# reach_dgos(rs, dgo, projras)
+    args = dotenv.parse_args_env(parser)
+
+    reach_dgos(args.reaches, args.dgos, args.proj_raster, args.flowarea, args.waterbody)
+
+
+if __name__ == '_main__':
+    main()

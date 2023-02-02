@@ -12,13 +12,13 @@ import traceback
 import json
 
 from typing import Dict
-from osgeo import ogr, gdal
+from osgeo import ogr
 
 from rscommons import initGDALOGRErrors, ModelConfig, RSLayer, RSProject
-from rscommons import VectorBase, Logger, GeopackageLayer
+from rscommons import Logger, GeopackageLayer
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons import dotenv
-from rscommons.vector_ops import copy_feature_class, get_geometry_unary_union, get_shp_or_gpkg
+from rscommons.vector_ops import copy_feature_class, get_geometry_unary_union
 from rscommons.database import create_database, SQLiteCon
 from rscommons.copy_features import copy_features_fields
 from rscommons.util import parse_metadata, pretty_duration
@@ -49,7 +49,7 @@ LayerTypes = {
     'HISTRIPARIAN': RSLayer('Historic Riparian', 'HISTRIPARIAN', 'Raster', 'intermediates/hist_riparian.tif'),
     'EXVEGETATED': RSLayer('Existing Vegetated', 'EXVEGETATED', 'Raster', 'intermediates/ex_vegetated.tif'),
     'HISTVEGETATED': RSLayer('Historic Vegetated', 'HISTVEGETATED', 'Raster', 'intermediates/hist_vegetated.tif'),
-    'CONVERSION': RSLayer('Conversion Raster', 'CONVERSTION', 'Raster', 'intermediates/conversion.tif'),
+    'CONVERSION': RSLayer('Conversion Raster', 'CONVERSION', 'Raster', 'intermediates/conversion.tif'),
     'PITFILL': RSLayer('Pitfilled DEM', 'PITFILL', 'Raster', 'inputs/pitfill.tif'),
     'D8FLOWDIR': RSLayer('D8 Flow Direction', 'D8FLOWDIR', 'Raster', 'intermediates/d8_flow_dir.tif'),
     # rasterized infrastructure...
@@ -206,9 +206,10 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
         '2': 1000
     }
 
-    project.add_metadata([RSMeta('SmallMovingWindow', distance_in['0'])])
-    project.add_metadata([RSMeta('MediumMovingWindow', distance_in['1'])])
-    project.add_metadata([RSMeta('LargeMovingWindow', distance_in['2'])])
+    project.add_metadata(
+        [RSMeta('SmallMovingWindow', str(distance_in['0'])),
+         RSMeta('MediumMovingWindow', str(distance_in['1'])),
+         RSMeta('LargeMovingWindow', str(distance_in['2']))])
 
     windows = get_moving_windows(igo_geom_path, input_layers['ANTHRODGO'], levelpathsin, distance_in)
     log.info('removing large rivers from moving window polygons')
@@ -242,12 +243,12 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
     intermediates = os.path.join(output_folder, 'intermediates')
     if not os.path.isdir(intermediates):
         os.mkdir(intermediates)
-    rcat_rasters(existing_veg, historic_veg, outputs_gpkg_path, intermediates)
+    rcat_rasters(prj_existing_path, prj_historic_path, outputs_gpkg_path, intermediates)
 
     # floodplain accessibility raster
     fp_access = os.path.join(output_folder, LayerTypes['FPACCESS'].rel_path)
-    flooplain_access(pitfilled, input_layers['VALLEYBOTTOM'], input_layers['ANTHROREACHES'], input_layers['ROADS'], input_layers['RAILS'],
-                     input_layers['CANALS'], intermediates, fp_access)
+    flooplain_access(pitfilled, input_layers['VALLEYBOTTOM'], input_layers['ANTHROREACHES'], intermediates, fp_access,
+                     input_layers['ROADS'], input_layers['RAILS'], input_layers['CANALS'])
 
     # Add intermediate rasters to xml
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['EXRIPARIAN'])
@@ -261,8 +262,8 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
     # sample accessibility and vegetation and derivative rasters onto igos and reaches using moving windows/dgos
     int_rasters = ['fp_access.tif', 'ex_riparian.tif', 'hist_riparian.tif', 'ex_vegetated.tif', 'hist_vegetated.tif', 'conversion.tif']
     int_raster_paths = [os.path.join(intermediates, i) for i in int_rasters]
-    int_raster_paths.append(existing_veg)
-    int_raster_paths.append(historic_veg)
+    int_raster_paths.append(prj_existing_path)
+    int_raster_paths.append(prj_historic_path)
     for rast in int_raster_paths:
         igo_vegetation(newwindows, rast, outputs_gpkg_path)
         vegetation_summary(outputs_gpkg_path, rdgos, rast, geom_flow_areas, geom_waterbodies)

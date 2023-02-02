@@ -1,23 +1,31 @@
+"""Summarize vegetation rasters onto reach tables using the DGOs that intersect each reach
+
+Jordan Gilbert
+
+01/2023
+"""
+
+import argparse
 import os
 import numpy as np
 from osgeo import gdal
 import rasterio
 import sqlite3
 from rasterio.mask import mask
-from rscommons import Logger
+from rscommons import Logger, dotenv
 from rscommons.database import SQLiteCon
 from rscommons.classes.vector_base import VectorBase
 
 
-def vegetation_summary(outputs_gpkg_path: str, reach_dgos: str, veg_raster: str, flowarea: str = None, waterbody: str = None):
-    """ Loop through every reach in a BRAT database and
+def vegetation_summary(outputs_gpkg_path: str, reach_dgos: dict, veg_raster: str):
+    """ Loop through every reach in an RCAT database and
     retrieve the values from a vegetation raster within
     the specified buffer. Then store the tally of
-    vegetation values in the BRAT database.
+    vegetation values in the RCAT database.
     Arguments:
-        database {str} -- Path to BRAT database
-        veg_raster {str} -- Path to vegetation raster
-        buffer {float} -- Distance to buffer the reach polylines
+        outputs_gpkg_path (str): Path to RCAT database
+        reach_dgos (dict): Dictionary where the key is the reachid and the value is the dgo features that intersect the reach
+        veg_raster (str): Path to vegetation raster
     """
 
     log = Logger('Reach Vegetation')
@@ -88,3 +96,19 @@ def vegetation_summary(outputs_gpkg_path: str, reach_dgos: str, veg_raster: str,
         database.conn.commit()
 
     log.info('Reach vegetation summary complete')
+
+
+def main():
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('outputs_gpkg_path', help='Path to RCAT database', type=str)
+    parser.add_argument('reach_dgos', help='Dictionary where the key is the reachid and the value is the dgo features that intersect the reach', type=dict)
+    parser.add_argument('veg_raster', help='Path to vegetation raster', type='str')
+
+    args = dotenv.parse_args_env(parser)
+
+    vegetation_summary(args.outputs_gpkg_path, args.reach_dgos, args.veg_raster)
+
+
+if __name__ == '__main__':
+    main()

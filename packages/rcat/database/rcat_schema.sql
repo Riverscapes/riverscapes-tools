@@ -200,7 +200,7 @@ CREATE TABLE ReachAttributes (
     ExistingNativeRiparianMean REAL,
     HistoricNativeRiparianMean REAL,
     NativeRiparianDeparture REAL,
-    Condition REAL
+    Condition REAL,
 
     CONSTRAINT fk_ReachAttributes_ReachID FOREIGN KEY (ReachID) REFERENCES ReachGeometry (ReachID) ON DELETE CASCADE
 );
