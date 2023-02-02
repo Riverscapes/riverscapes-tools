@@ -266,7 +266,7 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
     int_raster_paths.append(prj_historic_path)
     for rast in int_raster_paths:
         igo_vegetation(newwindows, rast, outputs_gpkg_path)
-        vegetation_summary(outputs_gpkg_path, rdgos, rast, geom_flow_areas, geom_waterbodies)
+        vegetation_summary(outputs_gpkg_path, rdgos, rast)
     igo_attributes(outputs_gpkg_path)
     reach_attributes(outputs_gpkg_path)
 
