@@ -146,10 +146,20 @@ def igo_attributes(database: str):
                     val = row[i]
                 elif row[i] == val:
                     id = 14
-        conv_out[row[0]] = id
+        if val <= 0.01:
+            level = 0
+        elif 0.01 < val < 0.1:
+            level = 1
+        elif 0.1 <= val < 0.25:
+            level = 2
+        elif 0.25 <= val < 0.5:
+            level = 3
+        else:
+            level = 4
+        conv_out[row[0]] = [id, level]
 
     for igoid, convid in conv_out.items():
-        conn.execute(f'UPDATE IGOAttributes SET ConversionID = {convid} WHERE IGOID = {igoid}')
+        conn.execute(f'UPDATE IGOAttributes SET ConversionID = {convid[0]}, LevelID = {convid[1]} WHERE IGOID = {igoid}')
 
     # existing riparian mean
     curs.execute('SELECT IGOExRiparian.IGOID, ExRipCellCount, TotalCells FROM IGOExRiparian'
@@ -344,10 +354,20 @@ def reach_attributes(database: str):
                     val = row[i]
                 elif row[i] == val:
                     id = 14
-        conv_out[row[0]] = id
+        if val <= 0.01:
+            level = 0
+        elif 0.01 < val < 0.1:
+            level = 1
+        elif 0.1 <= val < 0.25:
+            level = 2
+        elif 0.25 <= val < 0.5:
+            level = 3
+        else:
+            level = 4
+        conv_out[row[0]] = [id, level]
 
     for rid, convid in conv_out.items():
-        conn.execute(f'UPDATE ReachAttributes SET ConversionID = {convid} WHERE ReachID = {rid}')
+        conn.execute(f'UPDATE ReachAttributes SET ConversionID = {convid[0]}, LevelID = {convid[1]} WHERE ReachID = {rid}')
 
     # existing riparian mean
     curs.execute('SELECT ReachExRiparian.ReachID, ExRipCellCount, TotalCells FROM ReachExRiparian'

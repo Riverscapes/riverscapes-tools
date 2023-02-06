@@ -10,6 +10,28 @@ CREATE TABLE Watersheds (
     Metadata TEXT, 
     Notes TEXT);
 
+CREATE TABLE ConversionVals (
+    ConversionID INTEGER PRIMARY KEY NOT NULL UNIQUE,
+    ConversionValue INTEGER,
+    ConversionName TEXT
+);
+
+CREATE TABLE ConversionLevels (
+    LevelID INTEGER PRIMARY KEY NOT NULL UNIQUE,
+    LevelValue INTEGER
+);
+
+CREATE TABLE Conversions (
+    ConversionID INTEGER,
+    LevelID INTEGER,
+    DisplayCode INTEGER,
+    DisplayText TEXT,
+
+    CONSTRAINT fk_conversions_convid FOREIGN KEY (ConversionID) REFERENCES ConversionVals (ConvserionID),
+    CONSTRAINT fk_conversions_levelid FOREIGN KEY (LevelID) REFERENCES ConversionLevels (LevelID),
+    PRIMARY KEY (ConversionID, LevelID)
+);
+
 CREATE TABLE Epochs
 (
     EpochID  INTEGER PRIMARY KEY NOT NULL,
@@ -160,6 +182,7 @@ CREATE TABLE IGOAttributes (
     Agriculture REAL,
     RiparianTotal REAL,
     ConversionID INTEGER,
+    LevelID INTEGER,
     ExistingRiparianMean REAL,
     HistoricRiparianMean REAL,
     RiparianDeparture REAL,
@@ -193,6 +216,7 @@ CREATE TABLE ReachAttributes (
     Agriculture REAL,
     RiparianTotal REAL,
     ConversionID INTEGER,
+    LevelID INTEGER,
     ExistingRiparianMean REAL,
     HistoricRiparianMean REAL,
     RiparianDeparture REAL,
@@ -212,21 +236,28 @@ CREATE TABLE MetaData
 );
 
 
---CREATE VIEW vwClassifications AS SELECT V.*
---FROM VegetationTypes V
---    INNER JOIN VegClassification C ON V.Physiognomy = C.Physiognomy;
+CREATE VIEW vwIGOAttributes AS SELECT A.*, C.DisplayCode, C.DisplayText
+FROM IGOAttributes A
+    INNER JOIN Conversions C ON A.ConversionID = C.ConversionID AND A.LevelID = C.LevelID;
+
+CREATE VIEW vwReachAttributes AS SELECT A.*, C.DisplayCode, C.DisplayText
+FROM ReachAttributes A
+    INNER JOIN Conversions C ON A.ConversionID = C.ConversionID AND A.LevelID = C.LevelID;
 
 -- The main views 
 CREATE VIEW vwReaches AS SELECT R.*, G.geom
-FROM ReachAttributes R
+FROM vwReachAttributes R
     INNER JOIN ReachGeometry G ON R.ReachID = G.ReachID;
 
 CREATE VIEW vwIgos AS SELECT I.*, G.geom
-FROM IGOAttributes I
+FROM vwIGOAttributes I
     INNER JOIN IGOGeometry G ON I.IGOID = G.IGOID;
 
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Watersheds', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Epochs', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ConversionVals', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ConversionLevels', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Conversions', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('VegetationTypes', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('VegClassification', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('IGOVegetation', 'attributes');

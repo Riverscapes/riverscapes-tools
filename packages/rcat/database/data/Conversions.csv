@@ -1,0 +1,66 @@
+ConversionID,LevelID,DisplayCode,DisplayText
+1,0,0,No Change
+1,1,1,From Conifer - Very Minor (<10%)
+1,2,2,From Conifer - Minor (10-25%)
+1,3,3,From Conifer - Moderate (25-50%)
+1,4,4,From Conifer - Significant (>50%)
+2,0,0,No Change
+2,1,5,From Devegetated - Very Minor (<10%)
+2,2,6,From Devegetated - Minor (10-25%)
+2,3,7,From Devegetated - Moderate (25-50%)
+2,4,8,From Devegetated - Significant (>50%)
+3,0,0,No Change
+3,1,9,From Grass/Shrubland - Very Minor (<10%)
+3,2,10,From Grass/Shrubland - Minor (10-25%)
+3,3,11,From Grass/Shrubland - Moderate (25-50%)
+3,4,12,From Grass/Shrubland - Significant (>50%)
+4,0,0,No Change
+4,1,13,From Deciduous - Very Minor (<10%)
+4,2,14,From Deciduous - Minor (10-25%)
+4,3,15,From Deciduous - Moderate (25-50%)
+4,4,16,From Deciduous - Significant (>50%)
+5,0,0,No Change
+5,1,0,No Change
+5,2,0,No Change
+5,3,0,No Change
+5,4,0,No Change
+6,0,0,No Change
+6,1,17,Deciduous - Very Minor (<10%)
+6,2,18,Deciduous - Minor (10-25%)
+6,3,19,Deciduous - Moderate (25-50%)
+6,4,20,Deciduous - Significant (>50%)
+7,0,0,No Change
+7,1,21,Grass/Shrubland - Very Minor (<10%)
+7,2,22,Grass/Shrubland - Minor (10-25%)
+7,3,23,Grass/Shrubland - Moderate (25-50%)
+7,4,24,Grass/Shrubland - Significant (>50%)
+8,0,0,No Change
+8,1,25,Devegetation - Very Minor (<10%)
+8,2,26,Devegetation - Minor (10-25%)
+8,3,27,Devegetation - Moderate (25-50%)
+8,4,28,Devegetation - Significant (>50%)
+9,0,0,No Change
+9,1,29,Conifer - Very Minor (<10%)
+9,2,30,Conifer - Minor (10-25%)
+9,3,31,Conifer - Moderate (25-50%)
+9,4,32,Conifer - Significant (>50%)
+10,0,0,No Change
+10,1,33,Invasive - Very Minor (<10%)
+10,2,34,Invasive - Minor (10-25%)
+10,3,35,Invasive - Moderate (25-50%)
+10,4,36,Invasive - Significant (>50%)
+11,0,0,No Change
+11,1,37,Development - Very Minor (<10%)
+11,2,38,Development - Minor (10-25%)
+11,3,39,Development - Moderate (25-50%)
+11,4,40,Development - Significant (>50%)
+12,0,0,No Change
+12,1,41,Agriculture - Very Minor (<10%)
+12,2,42,Agriculture - Minor (10-25%)
+12,3,43,Agriculture - Moderate (25-50%)
+12,4,44,Agriculture - Significant (>50%)
+14,0,0,No Change
+14,1,45,Multiple - Very Minor (<10%)
+14,2,46,Multiple - Minor (10-25%)
+14,3,47,Multiple - Moderate (25-50%)
+14,4,48,Multiple - Significant (>50%)

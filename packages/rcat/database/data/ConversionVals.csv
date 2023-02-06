@@ -1,0 +1,14 @@
+ConversionID,ConversionValue,ConversionName
+1,-80,From Conifer
+2,-60,From Devegetated
+3,-50,From Grass/Shrubland
+4,-35,From Deciduous
+5,0,No Change
+6,35,Deciduous
+7,50,Grass/Shrubland
+8,60,Devegetation
+9,80,Conifer
+10,97,Invasive
+11,98,Development
+12,99,Agriculture
+14,100,Multiple Conversions
