@@ -93,11 +93,11 @@ def calculate_fis(feature_values: dict, igos: bool):
     fpaccess["moderate"] = fuzz.trapmf(fpaccess.universe, [0.5, 0.7, 0.9, 0.95])
     fpaccess["high"] = fuzz.trapmf(fpaccess.universe, [0.9, 0.95, 1, 1])
 
-    condition["very poor"] = fuzz.trapmf(condition.universe, [0, 0, 0.1, 0.25])
-    condition["poor"] = fuzz.trapmf(condition.universe, [0.1, 0.25, 0.35, 0.5])
-    condition["moderate"] = fuzz.trimf(condition.universe, [0.35, 0.5, 0.8])
-    condition["good"] = fuzz.trimf(condition.universe, [0.5, 0.8, 0.95])
-    condition["intact"] = fuzz.trapmf(condition.universe, [0.8, 0.95, 1, 1])
+    condition["very poor"] = fuzz.trimf(condition.universe, [0, 0, 0.1])
+    condition["poor"] = fuzz.trapmf(condition.universe, [0, 0.1, 0.3, 0.5])
+    condition["moderate"] = fuzz.trapmf(condition.universe, [0.3, 0.5, 0.6, 0.8])
+    condition["good"] = fuzz.trapmf(condition.universe, [0.6, 0.8, 0.95, 1])
+    condition["intact"] = fuzz.trimf(condition.universe, [0.95, 1, 1])
 
     rcat_ctrl = ctrl.ControlSystem([
         ctrl.Rule(rvd['large'] & lui['low'] & fpaccess['low'], condition['poor']),

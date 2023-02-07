@@ -1,4 +1,4 @@
-ConversionID,LevelID,DisplayCode,DisplayText
+ConversionID,LevelID,ConversionCode,ConversionType
 1,0,0,No Change
 1,1,1,From Conifer - Very Minor (<10%)
 1,2,2,From Conifer - Minor (10-25%)

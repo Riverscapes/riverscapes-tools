@@ -1,0 +1,6 @@
+RiparianDepartureID,Departure
+0,None
+1,Negligible: < 10%
+2,Minor: 10% to 33%
+3,Significant: 33% to 66%
+4,Large: > 66%

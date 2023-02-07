@@ -24,12 +24,17 @@ CREATE TABLE ConversionLevels (
 CREATE TABLE Conversions (
     ConversionID INTEGER,
     LevelID INTEGER,
-    DisplayCode INTEGER,
-    DisplayText TEXT,
+    ConversionCode INTEGER,
+    ConversionType TEXT,
 
     CONSTRAINT fk_conversions_convid FOREIGN KEY (ConversionID) REFERENCES ConversionVals (ConvserionID),
     CONSTRAINT fk_conversions_levelid FOREIGN KEY (LevelID) REFERENCES ConversionLevels (LevelID),
     PRIMARY KEY (ConversionID, LevelID)
+);
+
+CREATE TABLE Departure (
+    RiparianDepartureID INTEGER,
+    Departure TEXT
 );
 
 CREATE TABLE Epochs
@@ -236,13 +241,15 @@ CREATE TABLE MetaData
 );
 
 
-CREATE VIEW vwIGOAttributes AS SELECT A.*, C.DisplayCode, C.DisplayText
+CREATE VIEW vwIGOAttributes AS SELECT A.*, C.ConversionCode, C.ConversionType, D.Departure
 FROM IGOAttributes A
-    INNER JOIN Conversions C ON A.ConversionID = C.ConversionID AND A.LevelID = C.LevelID;
+    INNER JOIN Conversions C ON A.ConversionID = C.ConversionID AND A.LevelID = C.LevelID
+    INNER JOIN Departure D ON A.RiparianDepartureID = D.RiparianDepartureID;
 
-CREATE VIEW vwReachAttributes AS SELECT A.*, C.DisplayCode, C.DisplayText
+CREATE VIEW vwReachAttributes AS SELECT A.*, C.ConversionCode, C.ConversionType, D.Departure
 FROM ReachAttributes A
-    INNER JOIN Conversions C ON A.ConversionID = C.ConversionID AND A.LevelID = C.LevelID;
+    INNER JOIN Conversions C ON A.ConversionID = C.ConversionID AND A.LevelID = C.LevelID
+    INNER JOIN Departure D ON A.RiparianDepartureID = D.RiparianDepartureID;
 
 -- The main views 
 CREATE VIEW vwReaches AS SELECT R.*, G.geom
@@ -258,6 +265,7 @@ INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Epochs', 'attributes'
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ConversionVals', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ConversionLevels', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Conversions', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Departure', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('VegetationTypes', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('VegClassification', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('IGOVegetation', 'attributes');
