@@ -1,0 +1,1 @@
+sqlite3 ./rcat_template.sqlite < ./dump_schema.sql

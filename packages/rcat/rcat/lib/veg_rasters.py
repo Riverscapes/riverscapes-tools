@@ -67,7 +67,7 @@ def rcat_rasters(existing_veg: str, historic_veg: str, database: str, out_folder
 
         for j in range(exveg_arr.shape[0]):
             for i in range(exveg_arr.shape[1]):
-                if exveg_arr[j, i] != ndval:
+                if exveg_arr[j, i] != ndval and exveg_arr[j, i] != -9999:
                     ex_riparian_arr[j, i] = int(exriparian_vals[exveg_arr[j, i]])
                     hist_riparian_arr[j, i] = int(hriparian_vals[histveg_arr[j, i]])
                     ex_vegetated_arr[j, i] = int(exvegetated_vals[exveg_arr[j, i]])

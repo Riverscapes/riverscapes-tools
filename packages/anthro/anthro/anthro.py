@@ -57,7 +57,7 @@ LayerTypes = {
         # 'LEVEES': RSLayer('Levees', 'LEVEE', 'Vector', 'levees')
     }),
     'INTERMEDIATES': RSLayer('Anthropogenic Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/intermediates.gpkg', {}),
-    'OUTPUTS': RSLayer('Anthropologic Outputs', 'OUTPUTS', 'Geopackage', 'outputs/outputs.gpkg', {
+    'OUTPUTS': RSLayer('Anthropologic Outputs', 'OUTPUTS', 'Geopackage', 'outputs/anthro.gpkg', {
         'ANTHRO_GEOM_POINTS': RSLayer('Anthropogenic IGO Point Geometry', 'ANTHRO_GEOM_POINTS', 'Vector', 'IGOGeometry'),
         'ANTHRO_POINTS': RSLayer('Anthropogenic Output Points', 'ANTRHO_POINTS', 'Vector', 'vwIgos'),
         'ANTHRO_GEOM_LINES': RSLayer('Anthropogenic Reach Geometry', 'ANTHRO_GEOM_LINES', 'Vector', 'ReachGeometry'),
@@ -199,6 +199,10 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
         '1': 500,
         '2': 1000
     }
+    project.add_metadata(
+        [RSMeta('SmallMovingWindow', str(distancein['0'])),
+         RSMeta('MediumMovingWindow', str(distancein['1'])),
+         RSMeta('LargeMovingWindow', str(distancein['2']))])
 
     # get moving window for each igo
     windows = get_moving_windows(igo_geom_path, input_layers['DGO'], levelpathsin, distancein)

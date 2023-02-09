@@ -1,0 +1,1 @@
+sqlite3 ./anthro_template.sqlite < ./dump_schema.sql

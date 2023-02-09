@@ -40,6 +40,9 @@ def infrastructure_attributes(windows: str, road: str, rail: str, canal: str, cr
     for dataset, label in in_data.items():
         log.info(f'Calculating metrics for dataset: {label}')
         ds = get_geometry_unary_union(dataset)
+        if ds is None:
+            log.info(f'Skipping dataset {label} because it contains no features')
+            continue
 
         counter = 1
         for igoid, window in windows.items():

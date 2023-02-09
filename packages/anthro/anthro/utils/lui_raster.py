@@ -35,7 +35,7 @@ def lui_raster(existing_veg_raster, database, out_raster_path):
 
         for j in range(veg_arr.shape[0]):
             for i in range(veg_arr.shape[1]):
-                if veg_arr[j, i] != ndval:
+                if veg_arr[j, i] != ndval and veg_arr[j, i] != -9999:
                     out_array[j, i] = int(results[veg_arr[j, i]] * 100)
 
     with rasterio.open(out_raster_path, 'w', **meta) as dst:

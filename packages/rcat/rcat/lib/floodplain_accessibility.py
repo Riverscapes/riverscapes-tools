@@ -11,7 +11,7 @@ import argparse
 from rscommons.hand import run_subprocess
 from rscommons.util import safe_makedirs, safe_remove_dir
 from rscommons import Logger, dotenv
-from osgeo import gdal, ogr
+from osgeo import gdal, ogr, osr
 import numpy as np
 import rasterio
 import os
@@ -43,30 +43,36 @@ def flooplain_access(filled_dem: str, valley: str, reaches: str, intermediates_p
     dataset = gdal.Open(filled_dem)
     geo_transform = dataset.GetGeoTransform()
     cell_res = abs(geo_transform[1])
+    srs = osr.SpatialReference()
+    srs.ImportFromWkt(dataset.GetProjectionRef())
 
     vec_lyrs = [[road, 'road.shp'], [rail, 'rail.shp'], [canal, 'canal.shp']]
-    vec_src = ogr.Open(os.path.dirname(vec_lyrs[0][0]))
+    vec_src = ogr.Open(os.path.join(os.path.dirname(intermediates_path), 'inputs/inputs.gpkg'))
     for vec in vec_lyrs:
         inlyr = vec_src.GetLayer(os.path.basename(vec[0]))
+        if inlyr is not None:
 
-        shpdriver = ogr.GetDriverByName('ESRI Shapefile')
-        if os.path.exists(os.path.join(temp_dir, vec[1])):
-            shpdriver.DeleteDataSource(os.path.join(temp_dir, vec[1]))
-        out_buffer_ds = shpdriver.CreateDataSource(os.path.join(temp_dir, vec[1]))
-        bufferlyr = out_buffer_ds.CreateLayer(os.path.basename(vec[0]), geom_type=ogr.wkbPolygon)
-        ftr_defn = bufferlyr.GetLayerDefn()
+            shpdriver = ogr.GetDriverByName('ESRI Shapefile')
+            if os.path.exists(os.path.join(temp_dir, vec[1])):
+                shpdriver.DeleteDataSource(os.path.join(temp_dir, vec[1]))
+            out_buffer_ds = shpdriver.CreateDataSource(os.path.join(temp_dir, vec[1]))
+            bufferlyr = out_buffer_ds.CreateLayer(os.path.basename(vec[0]), srs, geom_type=ogr.wkbPolygon)
+            ftr_defn = inlyr.GetLayerDefn()
 
-        for feature in inlyr:
-            ingeom = feature.GetGeometryRef()
-            geom_buffer = ingeom.Buffer(cell_res)
-            out_feature = ogr.Feature(ftr_defn)
-            out_feature.SetGeometry(geom_buffer)
-            bufferlyr.CreateFeature(out_feature)
+            for feature in inlyr:
+                ingeom = feature.GetGeometryRef()
+                geom_buffer = ingeom.Buffer(cell_res)
+                out_feature = ogr.Feature(ftr_defn)
+                out_feature.SetGeometry(geom_buffer)
+                bufferlyr.CreateFeature(out_feature)
+            out_buffer_ds = None
+            bufferlyr = None
 
     # rasterize layers
     log.info('Rasterizing vector layers')
     inputs_ds = gdal.OpenEx(os.path.join(os.path.dirname(intermediates_path), 'inputs/inputs.gpkg'))
     chan_lyr = inputs_ds.GetLayer(os.path.basename(reaches))
+    chan_lyr.SetAttributeFilter('ReachCode != 33600')
     road_ds = gdal.OpenEx(os.path.join(temp_dir, 'road.shp'))
     road_lyr = road_ds.GetLayer()
     rail_ds = gdal.OpenEx(os.path.join(temp_dir, 'rail.shp'))
@@ -80,18 +86,23 @@ def flooplain_access(filled_dem: str, valley: str, reaches: str, intermediates_p
 
     channel_raster = os.path.join(intermediates_path, 'channel.tif')
     chan_ras = drv_tiff.Create(channel_raster, dataset.RasterXSize, dataset.RasterYSize, 1, gdal.GDT_Int16)
+    chan_ras.SetProjection(srs.ExportToWkt())
     chan_ras.SetGeoTransform(geo_transform)
     road_raster = os.path.join(intermediates_path, 'road.tif')
     road_ras = drv_tiff.Create(road_raster, dataset.RasterXSize, dataset.RasterYSize, 1, gdal.GDT_Int16)
+    road_ras.SetProjection(srs.ExportToWkt())
     road_ras.SetGeoTransform(geo_transform)
     rail_raster = os.path.join(intermediates_path, 'rail.tif')
     rail_ras = drv_tiff.Create(rail_raster, dataset.RasterXSize, dataset.RasterYSize, 1, gdal.GDT_Int16)
+    rail_ras.SetProjection(srs.ExportToWkt())
     rail_ras.SetGeoTransform(geo_transform)
     canal_raster = os.path.join(intermediates_path, 'canal.tif')
     canal_ras = drv_tiff.Create(canal_raster, dataset.RasterXSize, dataset.RasterYSize, 1, gdal.GDT_Int16)
+    canal_ras.SetProjection(srs.ExportToWkt())
     canal_ras.SetGeoTransform(geo_transform)
     vb_raster = os.path.join(intermediates_path, 'valley.tif')
     vb_ras = drv_tiff.Create(vb_raster, dataset.RasterXSize, dataset.RasterYSize, 1, gdal.GDT_Int16)
+    vb_ras.SetProjection(srs.ExportToWkt())
     vb_ras.SetGeoTransform(geo_transform)
 
     gdal.RasterizeLayer(chan_ras, [1], chan_lyr)
