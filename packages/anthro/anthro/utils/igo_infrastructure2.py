@@ -37,8 +37,12 @@ def infrastructure_attributes(windows: str, road: str, rail: str, canal: str, cr
     with get_shp_or_gpkg(road) as reflyr:
         sref, transform = reflyr.get_transform_from_epsg(reflyr.spatial_ref, epsg_proj)
 
+    gpkg_driver = ogr.GetDriverByName('GPKG')
     for dataset, label in in_data.items():
         log.info(f'Calculating metrics for dataset: {label}')
+        dsrc = gpkg_driver.Open(os.path.dirname(dataset))
+        if dsrc.GetLayer(os.path.basename(dataset)) is None:
+            continue
         ds = get_geometry_unary_union(dataset)
         if ds is None:
             log.info(f'Skipping dataset {label} because it contains no features')
