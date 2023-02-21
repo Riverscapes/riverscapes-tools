@@ -37,7 +37,7 @@ from rscommons.raster_warp import raster_warp
 from rscommons import TimerBuckets, TimerWaypoints
 
 from vbet.vbet_database import build_vbet_database, load_configuration
-from vbet.vbet_raster_ops import rasterize, raster_logic_mask, raster_update_multiply, raster_remove_zone, get_endpoints_on_raster, generate_vbet_polygon, generate_centerline_surface, clean_raster_regions
+from vbet.vbet_raster_ops import rasterize, raster_logic_mask, raster_update_multiply, raster_remove_zone, get_endpoints_on_raster, generate_vbet_polygon, generate_centerline_surface, clean_raster_regions, proximity_raster
 from vbet.vbet_outputs import clean_up_centerlines
 from vbet.vbet_report import VBETReport
 from vbet.vbet_segmentation import calculate_dgo_metrics, generate_igo_points, split_vbet_polygons, calculate_vbet_window_metrics
@@ -439,9 +439,16 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             raster_warp(pitfill_dem, local_pitfill_dem, 4326, clip=envelope)
 
         rasterized_channel = os.path.join(temp_folder_lpath, f'rasterized_channel_{level_path}.tif')
+        prox_raster_path = os.path.join(temp_folder_lpath, f'chan_proximity_{level_path}.tif')
         with TimerBuckets('rasterize'):
             rasterize(level_path_polygons, rasterized_channel, local_pitfill_dem, all_touched=True)
             in_rasters['Channel'] = rasterized_channel
+            # distance weighting for Slope evidence
+            proximity_raster(rasterized_channel, prox_raster_path)
+            in_rasters['Proximity'] = prox_raster_path
+            with rasterio.open(prox_raster_path) as prox:
+                prox_arr = prox.read()[0, :, :]
+                max_prox = np.max(prox_arr)
 
         with TimerBuckets('HAND'):
             hand_raster = os.path.join(temp_rasters_folder, f'local_hand_{level_path}.tif')
@@ -478,10 +485,10 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             write_rasters = {}  # {name: rasterio.open(raster, 'w', **out_meta) for name, raster in out_rasters.items()}
             write_rasters['VBET_EVIDENCE'] = rasterio.open(evidence_raster, 'w', **out_meta)
             write_rasters['NORMALIZED_HAND'] = rasterio.open(normalized_hand, 'w', **out_meta)
-            write_rasters['topo_evidence_twi'] = rasterio.open(os.path.join(temp_folder_lpath, f'topo_evidence_twi_{level_path}.tif'), 'w', **out_meta)
-            write_rasters['topo_evidence_nontwi'] = rasterio.open(os.path.join(temp_folder_lpath, f'topo_evidence_nontwi_{level_path}.tif'), 'w', **out_meta)
+            # write_rasters['topo_evidence_twi'] = rasterio.open(os.path.join(temp_folder_lpath, f'topo_evidence_twi_{level_path}.tif'), 'w', **out_meta)
+            # write_rasters['topo_evidence_nontwi'] = rasterio.open(os.path.join(temp_folder_lpath, f'topo_evidence_nontwi_{level_path}.tif'), 'w', **out_meta)
             write_rasters['topo_evidence'] = rasterio.open(os.path.join(temp_folder_lpath, f'topo_evidence_{level_path}.tif'), 'w', **out_meta)
-            write_rasters['twi_logic'] = rasterio.open(os.path.join(temp_folder_lpath, f'twi_logic_{level_path}.tif'), 'w', **out_meta)
+            # write_rasters['twi_logic'] = rasterio.open(os.path.join(temp_folder_lpath, f'twi_logic_{level_path}.tif'), 'w', **out_meta)
             write_rasters['twi_normalized'] = rasterio.open(os.path.join(temp_folder_lpath, f'twi_normalized_{level_path}.tif'), 'w', **out_meta)
 
             progbar = ProgressBar(len(list(read_rasters['Slope'].block_windows(1))), 50, "Calculating evidence layer")
@@ -498,7 +505,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                 modified_window = Window(window.col_off + col_off_delta, window.row_off + row_off_delta, window.width, window.height)
                 block = {}
                 for block_name, raster in read_rasters.items():
-                    out_window = window if block_name in ['HAND', 'Channel', 'TRANSFORM_ZONE_HAND'] else modified_window
+                    out_window = window if block_name in ['HAND', 'Channel', 'TRANSFORM_ZONE_HAND', 'Proximity'] else modified_window
                     block[block_name] = raster.read(1, window=out_window, masked=True)
 
                 normalized = {}
@@ -510,16 +517,20 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                     else:
                         normalized[name] = np.ma.MaskedArray(vbet_run['Transforms'][name][0](block[name].data), mask=block['HAND'].mask)
 
-                fvals_topo_twi = np.ma.mean([normalized['Slope'], normalized['HAND'], normalized['TWI']], axis=0)
-                fvals_topo_nontwi = np.ma.mean([normalized['Slope'], normalized['HAND']], axis=0)
-                logic_twi = np.equal(normalized['TWI'], 0).astype(int)
-                fvals_topo = np.choose(logic_twi, [fvals_topo_twi, fvals_topo_nontwi])
+                    if name == 'Slope':
+                        normalized[name] = normalized[name] - (np.sqrt(block['Proximity']) / np.sqrt(max_prox))
+
+                # fvals_topo_twi = np.ma.mean([normalized['Slope'], normalized['HAND'], normalized['TWI']], axis=0)
+                # fvals_topo_nontwi = np.ma.mean([normalized['Slope'], normalized['HAND']], axis=0)
+                # logic_twi = np.equal(normalized['TWI'], 0).astype(int)
+                # fvals_topo = np.choose(logic_twi, [fvals_topo_twi, fvals_topo_nontwi])
+                fvals_topo = 0.7 * normalized['HAND'] + 0.3 * normalized['Slope']
                 fvals_channel = 0.995 * block['Channel']
                 fvals_evidence = np.maximum(fvals_topo, fvals_channel)
 
-                write_rasters['twi_logic'].write(np.ma.filled(np.float32(logic_twi), out_meta['nodata']), window=window, indexes=1)
-                write_rasters['topo_evidence_twi'].write(np.ma.filled(np.float32(fvals_topo_twi), out_meta['nodata']), window=window, indexes=1)
-                write_rasters['topo_evidence_nontwi'].write(np.ma.filled(np.float32(fvals_topo_nontwi), out_meta['nodata']), window=window, indexes=1)
+                # write_rasters['twi_logic'].write(np.ma.filled(np.float32(logic_twi), out_meta['nodata']), window=window, indexes=1)
+                # write_rasters['topo_evidence_twi'].write(np.ma.filled(np.float32(fvals_topo_twi), out_meta['nodata']), window=window, indexes=1)
+                # write_rasters['topo_evidence_nontwi'].write(np.ma.filled(np.float32(fvals_topo_nontwi), out_meta['nodata']), window=window, indexes=1)
                 write_rasters['topo_evidence'].write(np.ma.filled(np.float32(fvals_topo), out_meta['nodata']), window=window, indexes=1)
                 write_rasters['twi_normalized'].write(np.ma.filled(np.float32(normalized['TWI']), out_meta['nodata']), window=window, indexes=1)
                 write_rasters['VBET_EVIDENCE'].write(np.ma.filled(np.float32(fvals_evidence), out_meta['nodata']), window=window, indexes=1)
@@ -530,7 +541,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         # Generate VBET Polygon
         with TimerBuckets('gdal'):
             valley_bottom_raster = os.path.join(temp_folder_lpath, f'valley_bottom_{level_path}.tif')
-            generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, valley_bottom_raster, temp_folder_lpath)
+            generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, valley_bottom_raster, temp_folder_lpath, thresh_value=0.8)
 
         log.info('Add VBET Raster to Output')
         with TimerBuckets('rasterio'):
@@ -544,7 +555,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         # Generate the Active Floodplain Polygon
         with TimerBuckets('gdal'):
             active_valley_bottom_raster = os.path.join(temp_folder_lpath, f'active_valley_bottom_{level_path}.tif')
-            generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, active_valley_bottom_raster, temp_folder_lpath, thresh_value=0.90)
+            generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, active_valley_bottom_raster, temp_folder_lpath, thresh_value=0.95)
 
         with TimerBuckets('rasterio'):
             raster_update_multiply(active_zone_raster, active_valley_bottom_raster, value=level_path_key)
