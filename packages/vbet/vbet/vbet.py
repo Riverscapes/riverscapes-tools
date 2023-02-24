@@ -518,13 +518,13 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                         normalized[name] = np.ma.MaskedArray(vbet_run['Transforms'][name][0](block[name].data), mask=block['HAND'].mask)
 
                     if name == 'Slope':
-                        normalized[name] = normalized[name] - (np.sqrt(block['Proximity']) / np.sqrt(max_prox))
+                        normalized[name] = normalized[name] - ((np.log(block['Proximity'] + 0.1) + 2.303) / np.log(max_prox + 2.303))
 
                 # fvals_topo_twi = np.ma.mean([normalized['Slope'], normalized['HAND'], normalized['TWI']], axis=0)
                 # fvals_topo_nontwi = np.ma.mean([normalized['Slope'], normalized['HAND']], axis=0)
                 # logic_twi = np.equal(normalized['TWI'], 0).astype(int)
                 # fvals_topo = np.choose(logic_twi, [fvals_topo_twi, fvals_topo_nontwi])
-                fvals_topo = 0.7 * normalized['HAND'] + 0.3 * normalized['Slope']
+                fvals_topo = 0.75 * normalized['HAND'] + 0.25 * normalized['Slope']
                 fvals_channel = 0.995 * block['Channel']
                 fvals_evidence = np.maximum(fvals_topo, fvals_channel)
 
@@ -541,7 +541,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         # Generate VBET Polygon
         with TimerBuckets('gdal'):
             valley_bottom_raster = os.path.join(temp_folder_lpath, f'valley_bottom_{level_path}.tif')
-            generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, valley_bottom_raster, temp_folder_lpath, thresh_value=0.8)
+            generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, valley_bottom_raster, temp_folder_lpath, thresh_value=0.65)
 
         log.info('Add VBET Raster to Output')
         with TimerBuckets('rasterio'):
@@ -555,7 +555,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         # Generate the Active Floodplain Polygon
         with TimerBuckets('gdal'):
             active_valley_bottom_raster = os.path.join(temp_folder_lpath, f'active_valley_bottom_{level_path}.tif')
-            generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, active_valley_bottom_raster, temp_folder_lpath, thresh_value=0.95)
+            generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, active_valley_bottom_raster, temp_folder_lpath, thresh_value=0.81)
 
         with TimerBuckets('rasterio'):
             raster_update_multiply(active_zone_raster, active_valley_bottom_raster, value=level_path_key)
