@@ -44,4 +44,4 @@ zone_id,scenario_input_id,transform_id,min_value,max_value,zone_type
 43,19,29,4,,stream_order
 44,20,30,0,2,stream_order
 45,20,31,2,4,stream_order
-46,29,32,4,,stream_order
+46,20,32,4,,stream_order

@@ -513,7 +513,12 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                     if name in vbet_run['Zones']:
                         zone = get_zone(vbet_run, name, level_path_stream_order[level_path])
                         transform = vbet_run['Transforms'][name][zone]
-                        normalized[name] = np.ma.MaskedArray(transform(block[name].data), mask=block['HAND'].mask)
+                        if isinstance(transform, str):
+                            locs = {'a': block[name].data}
+                            normalized[name] = eval(transform, {'__builtins__': None}, locs)
+
+                        else:
+                            normalized[name] = np.ma.MaskedArray(transform(block[name].data), mask=block['HAND'].mask)
                     else:
                         normalized[name] = np.ma.MaskedArray(vbet_run['Transforms'][name][0](block[name].data), mask=block['HAND'].mask)
 
@@ -532,7 +537,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                 # write_rasters['topo_evidence_twi'].write(np.ma.filled(np.float32(fvals_topo_twi), out_meta['nodata']), window=window, indexes=1)
                 # write_rasters['topo_evidence_nontwi'].write(np.ma.filled(np.float32(fvals_topo_nontwi), out_meta['nodata']), window=window, indexes=1)
                 write_rasters['topo_evidence'].write(np.ma.filled(np.float32(fvals_topo), out_meta['nodata']), window=window, indexes=1)
-                write_rasters['twi_normalized'].write(np.ma.filled(np.float32(normalized['TWI']), out_meta['nodata']), window=window, indexes=1)
+                # write_rasters['twi_normalized'].write(np.ma.filled(np.float32(normalized['TWI']), out_meta['nodata']), window=window, indexes=1)
                 write_rasters['VBET_EVIDENCE'].write(np.ma.filled(np.float32(fvals_evidence), out_meta['nodata']), window=window, indexes=1)
                 write_rasters['NORMALIZED_HAND'].write(np.ma.filled(np.float32(normalized['HAND']), out_meta['nodata']), window=window, indexes=1)
             write_rasters['VBET_EVIDENCE'].close()
