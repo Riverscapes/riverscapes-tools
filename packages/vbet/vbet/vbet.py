@@ -116,7 +116,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                      reach_codes=None, mask=None, temp_folder=None):
     """Run VBET"""
 
-    thresh_vals = {'VBET_IA': 0.90, 'VBET_FULL': 0.68}
+    thresh_vals = {'VBET_IA': 0.81, 'VBET_FULL': 0.65}
     _tmr_waypt = TimerWaypoints()
     log = Logger('VBET')
     log.info(f'Starting VBET v.{cfg.version}')
@@ -258,13 +258,13 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
     topo_evidence_raster = os.path.join(project_folder, LayerTypes['EVIDENCE_TOPO'].rel_path)
     normalized_slope = os.path.join(project_folder, LayerTypes['NORMALIZED_SLOPE'].rel_path)
-    normalized_twi = os.path.join(project_folder, LayerTypes['NORMALIZED_TWI'].rel_path)
+    # normalized_twi = os.path.join(project_folder, LayerTypes['NORMALIZED_TWI'].rel_path)
     write_rasters['EVIDENCE_TOPO'] = rasterio.open(topo_evidence_raster, 'w', **out_meta)
     write_rasters['NORMALIZED_SLOPE'] = rasterio.open(normalized_slope, 'w', **out_meta)
-    write_rasters['NORMALIZED_TWI'] = rasterio.open(normalized_twi, 'w', **out_meta)
+    # write_rasters['NORMALIZED_TWI'] = rasterio.open(normalized_twi, 'w', **out_meta)
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['EVIDENCE_TOPO'])
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['NORMALIZED_SLOPE'])
-    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['NORMALIZED_TWI'])
+    # project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['NORMALIZED_TWI'])
 
     # Allow us to specify a temp folder outside our project folder
     temp_rasters_folder = os.path.join(temp_folder, 'rasters')
