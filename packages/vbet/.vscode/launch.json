@@ -58,7 +58,7 @@
       "console": "integratedTerminal",
       "args": [
         "${input:HUC}",
-        "APRIL_2022",
+        "LOG_LIKELIHOOD",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/network",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/topography/dem.tif",
         "{env:DATA_ROOT}/taudem/${input:HUC}/outputs/gdal_slope.tif",

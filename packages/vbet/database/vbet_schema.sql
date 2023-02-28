@@ -34,6 +34,14 @@ CREATE TABLE inflections (
     CONSTRAINT ck_inflections_output_value CHECK (output_value >= 0 AND output_value <= 1)
 );
 
+CREATE TABLE functions (
+    function_id INTEGER PRIMARY KEY UNIQUE NOT NULL,
+    transform_id INTEGER NOT NULL,
+    transform_function TEXT,
+
+    CONSTRAINT fk_functions_transform_id FOREIGN KEY (transform_id) REFERENCES transforms(transform_id) ON DELETE CASCADE 
+);
+
 CREATE TABLE scenarios (
     scenario_id     INTEGER PRIMARY KEY UNIQUE NOT NULL,
     scenario_name   TEXT,
@@ -67,6 +75,7 @@ INSERT INTO gpkg_contents (table_name, data_type) VALUES ('inputs', 'attributes'
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('transform_types', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('transforms', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('inflections', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('functions', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('scenarios', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('scenario_inputs', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('input_zones', 'attributes');

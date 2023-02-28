@@ -73,14 +73,18 @@ def load_configuration(machine_code: str, database: str):
         input_transforms = []
         for i, transform_id in enumerate(val['transform_zones']):
             transform_type = curs.execute("""SELECT transform_types.name from transforms INNER JOIN transform_types ON transform_types.type_id = transforms.type_id where transforms.transform_id = ?""", [transform_id]).fetchone()[0]
-            values = curs.execute("""SELECT input_value, output_value FROM inflections WHERE transform_id = ? ORDER BY input_value """, [transform_id]).fetchall()
+            if transform_type == 'function':
+                func = curs.execute("""SELECT transform_function FROM functions WHERE transform_id = ?""", [transform_id]).fetchone()[0]
+                input_transforms.append(func)
+            else:
+                values = curs.execute("""SELECT input_value, output_value FROM inflections WHERE transform_id = ? ORDER BY input_value """, [transform_id]).fetchall()
 
-            if transform_type == "Polynomial":
-                # add polynomial function
-                transforms_dict[transform_id] = None
+                if transform_type == "Polynomial":
+                    # add polynomial function
+                    transforms_dict[transform_id] = None
 
-            input_transforms.append(interpolate.interp1d(np.array([v[0] for v in values]), np.array([v[1] for v in values]), kind=transform_type, bounds_error=False, fill_value=0.0))
-        transforms_dict[input_name] = input_transforms
+                input_transforms.append(interpolate.interp1d(np.array([v[0] for v in values]), np.array([v[1] for v in values]), kind=transform_type, bounds_error=False, fill_value=0.0))
+            transforms_dict[input_name] = input_transforms
 
     configuration['Transforms'] = transforms_dict
 
