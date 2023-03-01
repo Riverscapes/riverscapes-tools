@@ -91,6 +91,7 @@ LayerTypes = {
     'EVIDENCE_TOPO': RSLayer('Topo Evidence', 'EVIDENCE_TOPO', 'Raster', 'intermediates/topographic_evidence.tif'),
 
     'TRANSFORMED_SLOPE': RSLayer('Transformed Slope', 'TRANSFORMED_SLOPE', 'Raster', 'intermediates/slope_transformed.tif'),
+    'TRANSFORMED_SLOPE_INTERIOR': RSLayer('Transformed Slope (Interior)', 'TRANSFORMED_SLOPE_INTERIOR', 'Raster', 'intermediates/slope_transformed_interior.tif'),
     # 'NORMALIZED_TWI': RSLayer('Normalized TWI', 'NORMALIZED_TWI', 'Raster', 'intermediates/twi_normalized.tif'),
 
     'VBET_ZONES': RSLayer('VBET LevelPath Zones', 'VBET_ZONES', 'Raster', 'intermediates/vbet_level_path_zones.tif'),
@@ -116,7 +117,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                      reach_codes=None, mask=None, temp_folder=None):
     """Run VBET"""
 
-    thresh_vals = {'VBET_IA': 0.95, 'VBET_FULL': 0.76}
+    thresh_vals = {'VBET_IA': 0.93, 'VBET_FULL': 0.7}
     _tmr_waypt = TimerWaypoints()
     log = Logger('VBET')
     log.info(f'Starting VBET v.{cfg.version}')
@@ -254,16 +255,16 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['ACTIVE_FP_ZONES'])
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['INACTIVE_FP_ZONES'])
 
-    write_rasters = {}
+    # write_rasters = {}
 
-    topo_evidence_raster = os.path.join(project_folder, LayerTypes['EVIDENCE_TOPO'].rel_path)
-    transformed_slope = os.path.join(project_folder, LayerTypes['TRANSFORMED_SLOPE'].rel_path)
+    # topo_evidence_raster = os.path.join(project_folder, LayerTypes['EVIDENCE_TOPO'].rel_path)
+    # transformed_slope = os.path.join(project_folder, LayerTypes['TRANSFORMED_SLOPE'].rel_path)
     # normalized_twi = os.path.join(project_folder, LayerTypes['NORMALIZED_TWI'].rel_path)
-    write_rasters['EVIDENCE_TOPO'] = rasterio.open(topo_evidence_raster, 'w', **out_meta)
-    write_rasters['TRANSFORMED_SLOPE'] = rasterio.open(transformed_slope, 'w', **out_meta)
+    # write_rasters['EVIDENCE_TOPO'] = rasterio.open(topo_evidence_raster, 'w', **out_meta)
+    # write_rasters['TRANSFORMED_SLOPE'] = rasterio.open(transformed_slope, 'w', **out_meta)
     # write_rasters['NORMALIZED_TWI'] = rasterio.open(normalized_twi, 'w', **out_meta)
-    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['EVIDENCE_TOPO'])
-    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['TRANSFORMED_SLOPE'])
+    # project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['EVIDENCE_TOPO'])
+    # project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['TRANSFORMED_SLOPE'])
     # project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['NORMALIZED_TWI'])
 
     # Allow us to specify a temp folder outside our project folder
@@ -345,6 +346,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         'hand_raster_interior': [],
         'transformed_hand': [],
         'transformed_hand_interior': [],
+        'transformed_slope': [],
         'evidence_raster': [],
         'evidence_raster_interior': []
     }
@@ -444,7 +446,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             rasterize(level_path_polygons, rasterized_channel, local_pitfill_dem, all_touched=True)
             in_rasters['Channel'] = rasterized_channel
             # distance weighting for Slope evidence
-            proximity_raster(rasterized_channel, prox_raster_path, dist_units='GEO')
+            proximity_raster(rasterized_channel, prox_raster_path)
             in_rasters['Proximity'] = prox_raster_path
             with rasterio.open(prox_raster_path) as prox:
                 prox_arr = prox.read()[0, :, :]
@@ -482,9 +484,12 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             evidence_raster_interior = os.path.join(temp_rasters_folder, f'vbet_evidence__interior_{level_path}.tif')
             transformed_hand = os.path.join(temp_rasters_folder, f'transformed_hand_{level_path}.tif')
             transformed_hand_interior = os.path.join(temp_rasters_folder, f'transformed_hand_interior_{level_path}.tif')
+            transformed_slope = os.path.join(temp_rasters_folder, f'transformed_slope_{level_path}.tif')
+            transformed_slope_interior = os.path.join(temp_rasters_folder, f'transformed_slope_interior_{level_path}.tif')
             write_rasters = {}  # {name: rasterio.open(raster, 'w', **out_meta) for name, raster in out_rasters.items()}
             write_rasters['VBET_EVIDENCE'] = rasterio.open(evidence_raster, 'w', **out_meta)
             write_rasters['TRANSFORMED_HAND'] = rasterio.open(transformed_hand, 'w', **out_meta)
+            write_rasters['TRANSFORMED_SLOPE'] = rasterio.open(transformed_slope, 'w', **out_meta)
             # write_rasters['topo_evidence_twi'] = rasterio.open(os.path.join(temp_folder_lpath, f'topo_evidence_twi_{level_path}.tif'), 'w', **out_meta)
             # write_rasters['topo_evidence_nontwi'] = rasterio.open(os.path.join(temp_folder_lpath, f'topo_evidence_nontwi_{level_path}.tif'), 'w', **out_meta)
             write_rasters['topo_evidence'] = rasterio.open(os.path.join(temp_folder_lpath, f'topo_evidence_{level_path}.tif'), 'w', **out_meta)
@@ -524,7 +529,8 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
                     if name == 'Slope':
                         masked_prox = np.ma.MaskedArray(block['Proximity'].data, mask=block['HAND'].mask)
-                        transformed[name] = transformed[name] - ((np.log(masked_prox + 0.1) + 2.303) / np.log(max_prox + 2.303))
+                        # transformed[name] = transformed[name] - ((np.log(masked_prox + 0.1) + 2.303) / np.log(max_prox + 2.303))
+                        transformed[name] = transformed[name] - (np.sqrt(masked_prox) / np.sqrt(max_prox))
 
                 # fvals_topo_twi = np.ma.mean([normalized['Slope'], normalized['HAND'], normalized['TWI']], axis=0)
                 # fvals_topo_nontwi = np.ma.mean([normalized['Slope'], normalized['HAND']], axis=0)
@@ -541,13 +547,16 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                 # write_rasters['twi_normalized'].write(np.ma.filled(np.float32(normalized['TWI']), out_meta['nodata']), window=window, indexes=1)
                 write_rasters['VBET_EVIDENCE'].write(np.ma.filled(np.float32(fvals_evidence), out_meta['nodata']), window=window, indexes=1)
                 write_rasters['TRANSFORMED_HAND'].write(np.ma.filled(np.float32(transformed['HAND']), out_meta['nodata']), window=window, indexes=1)
+                write_rasters['TRANSFORMED_SLOPE'].write(np.ma.filled(np.float32(transformed['Slope']), out_meta['nodata']), window=window, indexes=1)
             write_rasters['VBET_EVIDENCE'].close()
             write_rasters['TRANSFORMED_HAND'].close()
+            write_rasters['TRANSFORMED_SLOPE'].close()
+            write_rasters['topo_evidence'].close()
 
         # Generate VBET Polygon
         with TimerBuckets('gdal'):
             valley_bottom_raster = os.path.join(temp_folder_lpath, f'valley_bottom_{level_path}.tif')
-            generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, valley_bottom_raster, temp_folder_lpath, thresh_value=0.76)
+            generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, valley_bottom_raster, temp_folder_lpath, thresh_value=0.7)
 
         log.info('Add VBET Raster to Output')
         with TimerBuckets('rasterio'):
@@ -561,7 +570,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         # Generate the Active Floodplain Polygon
         with TimerBuckets('gdal'):
             active_valley_bottom_raster = os.path.join(temp_folder_lpath, f'active_valley_bottom_{level_path}.tif')
-            generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, active_valley_bottom_raster, temp_folder_lpath, thresh_value=0.95)
+            generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, active_valley_bottom_raster, temp_folder_lpath, thresh_value=0.93)
 
         with TimerBuckets('rasterio'):
             raster_update_multiply(active_zone_raster, active_valley_bottom_raster, value=level_path_key)
@@ -639,6 +648,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         raster_logic_mask(hand_raster, hand_raster_interior, valley_bottom_raster)
         raster_logic_mask(transformed_hand, transformed_hand_interior, valley_bottom_raster)
         raster_logic_mask(evidence_raster, evidence_raster_interior, valley_bottom_raster)
+        raster_logic_mask(transformed_slope, transformed_hand_interior, valley_bottom_raster)
 
         # Add these to arrays so that we can use them later
         if os.path.isfile(hand_raster):
@@ -659,6 +669,12 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             else:
                 raster_lookup['transformed_hand'].append(transformed_hand)
 
+        if os.path.isfile(transformed_slope):
+            if level_path is None:
+                raster_lookup['transformed_slope'] = [transformed_slope] + raster_lookup['transformed_slope']
+            else:
+                raster_lookup['transformed_slope'].append(transformed_slope)
+
         # Add these to arrays so that we can use them later
         if os.path.isfile(hand_raster_interior):
             raster_lookup['hand_raster_interior'].append(hand_raster_interior)
@@ -668,6 +684,9 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
         if os.path.isfile(transformed_hand_interior):
             raster_lookup['transformed_hand_interior'].append(transformed_hand_interior)
+
+        if os.path.isfile(transformed_slope_interior):
+            raster_lookup['transformed_slope_interior'].append(transformed_slope_interior)
 
         # End of level path for loop
 
@@ -682,6 +701,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     out_hand_interior = os.path.join(project_folder, LayerTypes['COMPOSITE_HAND_INTERIOR'].rel_path)
     out_transformed_hand_interior = os.path.join(project_folder, LayerTypes['TRANSFORMED_HAND_INTERIOR'].rel_path)
     out_vbet_evidence_interior = os.path.join(project_folder, LayerTypes['COMPOSITE_VBET_EVIDENCE_INTERIOR'].rel_path)
+    out_transformed_slope_interior = os.path.join(project_folder, LayerTypes['TRANSFORMED_SLOPE_INTERIOR'].rel_path)
 
     # Make VRTs for our composite rasters
     out_hand_interior_cmp = CompositeRaster(out_hand_interior, raster_lookup['hand_raster_interior'], vrt_path=os.path.join(temp_folder, 'hand_interior.vrt'))
@@ -691,6 +711,10 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     out_transformed_hand_interior_cmp = CompositeRaster(out_transformed_hand_interior, raster_lookup['transformed_hand_interior'], vrt_path=os.path.join(temp_folder, 'transformed_hand_interior.vrt'))
     out_transformed_hand_interior_cmp.make_vrt()
     out_transformed_hand_interior_cmp.make_composite()
+
+    out_transformed_slope_interior_cmp = CompositeRaster(out_transformed_slope_interior, raster_lookup['transformed_slope_interior'], vrt_path=os.path.join(temp_folder, 'transformed_slope_interior.vrt'))
+    out_transformed_slope_interior_cmp.make_vrt()
+    out_transformed_slope_interior_cmp.make_composite()
 
     out_vbet_evidence_interior_cmp = CompositeRaster(out_vbet_evidence_interior, raster_lookup['evidence_raster_interior'], vrt_path=os.path.join(temp_folder, 'vbet_evidence_interior.vrt'))
     out_vbet_evidence_interior_cmp.make_vrt()
@@ -773,6 +797,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     # Now let's assemble the rasters using a VRT then bake that back to a real raster so we can clean up the temp folder later if we want.
     out_hand = os.path.join(project_folder, LayerTypes['COMPOSITE_HAND'].rel_path)
     out_transformed_hand = os.path.join(project_folder, LayerTypes['TRANSFORMED_HAND'].rel_path)
+    out_transformed_slope = os.path.join(project_folder, LayerTypes['TRANSFORMED_SLOPE'].rel_path)
     out_vbet_evidence = os.path.join(project_folder, LayerTypes['COMPOSITE_VBET_EVIDENCE'].rel_path)
 
     out_hand_composite = CompositeRaster(out_hand, raster_paths=[
@@ -789,6 +814,13 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     out_transformed_hand_composite.make_vrt()
     out_transformed_hand_composite.make_composite()
 
+    out_transformed_slope_composite = CompositeRaster(out_transformed_slope, raster_paths=[
+        out_transformed_slope_interior,
+        *reversed(raster_lookup['transformed_slope'])
+    ], vrt_path=os.path.join(temp_folder, 'transformed_slope_composite.vrt'))
+    out_transformed_slope_composite.make_vrt()
+    out_transformed_slope_composite.make_composite()
+
     out_vbet_evidence_composite = CompositeRaster(out_vbet_evidence, raster_paths=[
         out_vbet_evidence_interior,
         *reversed(raster_lookup['evidence_raster'])
@@ -802,15 +834,18 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         os.remove(out_hand_composite.vrt_path)
         os.remove(out_transformed_hand_composite.vrt_path)
         os.remove(out_vbet_evidence_composite.vrt_path)
+        os.remove(out_transformed_slope_composite)
 
     # Now add our Geopackages to the project XML
     project.add_project_raster(proj_nodes['Outputs'], LayerTypes['COMPOSITE_VBET_EVIDENCE'])
-    project.add_project_raster(proj_nodes['Outputs'], LayerTypes['COMPOSITE_HAND'])
-    project.add_project_raster(proj_nodes['Outputs'], LayerTypes['TRANSFORMED_HAND'])
+    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['COMPOSITE_HAND'])
+    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['TRANSFORMED_HAND'])
+    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['TRANSFORMED_SLOPE'])
 
     project.add_project_raster(proj_nodes['Outputs'], LayerTypes['COMPOSITE_VBET_EVIDENCE_INTERIOR'])
-    project.add_project_raster(proj_nodes['Outputs'], LayerTypes['COMPOSITE_HAND_INTERIOR'])
-    project.add_project_raster(proj_nodes['Outputs'], LayerTypes['TRANSFORMED_HAND_INTERIOR'])
+    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['COMPOSITE_HAND_INTERIOR'])
+    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['TRANSFORMED_HAND_INTERIOR'])
+    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['TRANSFORMED_SLOPE_INTERIOR'])
 
     project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
     project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['VBET_OUTPUTS'])
