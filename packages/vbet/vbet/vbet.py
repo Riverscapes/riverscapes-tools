@@ -347,6 +347,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         'transformed_hand': [],
         'transformed_hand_interior': [],
         'transformed_slope': [],
+        'transformed_slope_interior': [],
         'evidence_raster': [],
         'evidence_raster_interior': []
     }
@@ -481,11 +482,12 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                 out_meta['BIGTIFF'] = 'YES'
 
             evidence_raster = os.path.join(temp_rasters_folder, f'vbet_evidence_{level_path}.tif')
-            evidence_raster_interior = os.path.join(temp_rasters_folder, f'vbet_evidence__interior_{level_path}.tif')
+            evidence_raster_interior = os.path.join(temp_rasters_folder, f'vbet_evidence_interior_{level_path}.tif')
             transformed_hand = os.path.join(temp_rasters_folder, f'transformed_hand_{level_path}.tif')
             transformed_hand_interior = os.path.join(temp_rasters_folder, f'transformed_hand_interior_{level_path}.tif')
             transformed_slope = os.path.join(temp_rasters_folder, f'transformed_slope_{level_path}.tif')
             transformed_slope_interior = os.path.join(temp_rasters_folder, f'transformed_slope_interior_{level_path}.tif')
+
             write_rasters = {}  # {name: rasterio.open(raster, 'w', **out_meta) for name, raster in out_rasters.items()}
             write_rasters['VBET_EVIDENCE'] = rasterio.open(evidence_raster, 'w', **out_meta)
             write_rasters['TRANSFORMED_HAND'] = rasterio.open(transformed_hand, 'w', **out_meta)
@@ -648,7 +650,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         raster_logic_mask(hand_raster, hand_raster_interior, valley_bottom_raster)
         raster_logic_mask(transformed_hand, transformed_hand_interior, valley_bottom_raster)
         raster_logic_mask(evidence_raster, evidence_raster_interior, valley_bottom_raster)
-        raster_logic_mask(transformed_slope, transformed_hand_interior, valley_bottom_raster)
+        raster_logic_mask(transformed_slope, transformed_slope_interior, valley_bottom_raster)
 
         # Add these to arrays so that we can use them later
         if os.path.isfile(hand_raster):
@@ -842,7 +844,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['TRANSFORMED_HAND'])
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['TRANSFORMED_SLOPE'])
 
-    project.add_project_raster(proj_nodes['Outputs'], LayerTypes['COMPOSITE_VBET_EVIDENCE_INTERIOR'])
+    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['COMPOSITE_VBET_EVIDENCE_INTERIOR'])
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['COMPOSITE_HAND_INTERIOR'])
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['TRANSFORMED_HAND_INTERIOR'])
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['TRANSFORMED_SLOPE_INTERIOR'])
