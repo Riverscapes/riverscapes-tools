@@ -116,7 +116,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                      reach_codes=None, mask=None, temp_folder=None):
     """Run VBET"""
 
-    thresh_vals = {'VBET_IA': 0.81, 'VBET_FULL': 0.65}
+    thresh_vals = {'VBET_IA': 0.95, 'VBET_FULL': 0.76}
     _tmr_waypt = TimerWaypoints()
     log = Logger('VBET')
     log.info(f'Starting VBET v.{cfg.version}')
@@ -444,7 +444,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             rasterize(level_path_polygons, rasterized_channel, local_pitfill_dem, all_touched=True)
             in_rasters['Channel'] = rasterized_channel
             # distance weighting for Slope evidence
-            proximity_raster(rasterized_channel, prox_raster_path)
+            proximity_raster(rasterized_channel, prox_raster_path, dist_units='GEO')
             in_rasters['Proximity'] = prox_raster_path
             with rasterio.open(prox_raster_path) as prox:
                 prox_arr = prox.read()[0, :, :]
@@ -523,7 +523,8 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                         transformed[name] = np.ma.MaskedArray(vbet_run['Transforms'][name][0](block[name].data), mask=block['HAND'].mask)
 
                     if name == 'Slope':
-                        transformed[name] = transformed[name] - ((np.log(block['Proximity'] + 0.1) + 2.303) / np.log(max_prox + 2.303))
+                        masked_prox = np.ma.MaskedArray(block['Proximity'].data, mask=block['HAND'].mask)
+                        transformed[name] = transformed[name] - ((np.log(masked_prox + 0.1) + 2.303) / np.log(max_prox + 2.303))
 
                 # fvals_topo_twi = np.ma.mean([normalized['Slope'], normalized['HAND'], normalized['TWI']], axis=0)
                 # fvals_topo_nontwi = np.ma.mean([normalized['Slope'], normalized['HAND']], axis=0)
@@ -546,7 +547,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         # Generate VBET Polygon
         with TimerBuckets('gdal'):
             valley_bottom_raster = os.path.join(temp_folder_lpath, f'valley_bottom_{level_path}.tif')
-            generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, valley_bottom_raster, temp_folder_lpath, thresh_value=0.65)
+            generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, valley_bottom_raster, temp_folder_lpath, thresh_value=0.76)
 
         log.info('Add VBET Raster to Output')
         with TimerBuckets('rasterio'):
@@ -560,7 +561,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         # Generate the Active Floodplain Polygon
         with TimerBuckets('gdal'):
             active_valley_bottom_raster = os.path.join(temp_folder_lpath, f'active_valley_bottom_{level_path}.tif')
-            generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, active_valley_bottom_raster, temp_folder_lpath, thresh_value=0.81)
+            generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, active_valley_bottom_raster, temp_folder_lpath, thresh_value=0.95)
 
         with TimerBuckets('rasterio'):
             raster_update_multiply(active_zone_raster, active_valley_bottom_raster, value=level_path_key)
