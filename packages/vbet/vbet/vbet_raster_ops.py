@@ -668,7 +668,7 @@ def get_endpoints_on_raster(raster: Path, geom_line: ogr.Geometry(), dist):
         return coords
 
 
-def generate_vbet_polygon(vbet_evidence_raster: Path, rasterized_channel: Path, channel_hand: Path, out_valley_bottom: Path, temp_folder: Path, thresh_value: float = 0.68):
+def generate_vbet_polygon(vbet_evidence_raster: Path, rasterized_flowline: Path, rasterized_channel: Path, channel_hand: Path, out_valley_bottom: Path, temp_folder: Path, thresh_value: float = 0.68):
     """generate the vbet raster for a thresholded value
 
     Args:
@@ -723,6 +723,10 @@ def generate_vbet_polygon(vbet_evidence_raster: Path, rasterized_channel: Path, 
     sizes = ndimage.sum(donuts, donut_regions, range(num_donuts + 1))
     donut_mask = sizes < 20
     final_valley_array = donut_mask[donut_regions]
+
+    network_array = raster2array(rasterized_flowline)
+    final_valley_array = np.maximum(final_valley_array, network_array)
+
     array2raster(out_valley_bottom, vbet_evidence_raster, final_valley_array, data_type=gdal.GDT_Int32)
 
     log.debug(f'Timer: {_timer.toString()}')
