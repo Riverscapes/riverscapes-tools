@@ -562,11 +562,13 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                 copy_feature_class(line_network, level_path_flowlines, attribute_filter=f'LevelPathI = {level_path}')
                 rasterized_level_path = os.path.join(temp_folder_lpath, f'rasterized_flowline_{level_path}.tif')
                 rasterize(level_path_flowlines, rasterized_level_path, rasterized_channel, all_touched=True)
+            else:
+                rasterized_level_path = None
 
         # Generate VBET Polygon
         with TimerBuckets('gdal'):
             valley_bottom_raster = os.path.join(temp_folder_lpath, f'valley_bottom_{level_path}.tif')
-            generate_vbet_polygon(evidence_raster, rasterized_level_path, rasterized_channel, hand_raster, valley_bottom_raster, temp_folder_lpath, thresh_value=0.7)
+            generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, valley_bottom_raster, temp_folder_lpath, rasterized_level_path, thresh_value=0.7)
 
         log.info('Add VBET Raster to Output')
         with TimerBuckets('rasterio'):
@@ -580,7 +582,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         # Generate the Active Floodplain Polygon
         with TimerBuckets('gdal'):
             active_valley_bottom_raster = os.path.join(temp_folder_lpath, f'active_valley_bottom_{level_path}.tif')
-            generate_vbet_polygon(evidence_raster, rasterized_level_path, rasterized_channel, hand_raster, active_valley_bottom_raster, temp_folder_lpath, thresh_value=0.93)
+            generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, active_valley_bottom_raster, temp_folder_lpath, rasterized_level_path, thresh_value=0.93)
 
         with TimerBuckets('rasterio'):
             raster_update_multiply(active_zone_raster, active_valley_bottom_raster, value=level_path_key)

@@ -74,9 +74,9 @@ def load_configuration(machine_code: str, database: str):
     for input_name, val in configuration['Inputs'].items():
         input_transforms = []
         for i, transform_id in enumerate(val['transform_zones']):
-            log.info(f'transform id: {transform_id}, is int: {isinstance(transform_id, int)}')
+            # log.info(f'transform id: {transform_id}, is int: {isinstance(transform_id, int)}')
             transform_type = curs.execute("""SELECT transform_types.name from transforms INNER JOIN transform_types ON transform_types.type_id = transforms.type_id where transforms.transform_id = ?""", [transform_id]).fetchone()[0]
-            log.info('We are beyond the error line')
+
             if transform_type == 'function':
                 func = curs.execute("""SELECT transform_function FROM functions WHERE transform_id = ?""", [transform_id]).fetchone()[0]
                 input_transforms.append(func)
