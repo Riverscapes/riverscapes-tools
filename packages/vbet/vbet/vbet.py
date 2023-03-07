@@ -758,11 +758,18 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
     log.info('Set Level Path ID for output polygons')
     for layer in [output_vbet, output_vbet_ia, output_inactive_fp]:
-        with GeopackageLayer(layer, write=True) as lyr:
+        with GeopackageLayer(layer, write=True) as lyr, GeopackageLayer(channel_area) as wblyr:
             lyr.create_field('LevelPathI', ogr.OFTString)
             for feat, *_ in lyr.iterate_features(write_layers=[lyr]):
                 key = feat.GetField('id')
                 if level_path_keys[key] is None:
+                    intcnt = 0
+                    for feat2, *_ in wblyr.iterate_features():
+                        if feat.GetGeometryRef().Intersects(feat2.GetGeometryRef()):
+                            intcnt += 1
+                    if intcnt == 0:
+                        lyr.ogr_layer.DeleteFeature(feat.GetFID())
+                    feat2 = None
                     continue
                 feat.SetField('LevelPathI', level_path_keys[key])
                 lyr.ogr_layer.SetFeature(feat)
