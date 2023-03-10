@@ -26,9 +26,10 @@ def split_nhd_area(in_nhd_area: str, in_nhd_catchments: str, out_area_split: str
         catch_geoms[ftr.GetField('NHDPlusID')] = ftr.GetGeometryRef()
 
     for id, geom in catch_geoms.items():
+        outids[id] = []
         for ftr in fa_ftrs:
             if geom.Intersects(ftr.GetGeometryRef()):
-                outids[id] = geom.Intersection(ftr.GetGeometryRef())
+                outids[id].append(geom.Intersection(ftr.GetGeometryRef()))
                 outdfns[id] = ftr
 
     outdatasrc = driver.CreateDataSource(out_area_split)
@@ -50,20 +51,21 @@ def split_nhd_area(in_nhd_area: str, in_nhd_catchments: str, out_area_split: str
     for id, feature in outids.items():
         counter += 1
         progbar.update(counter)
-        out_feature = ogr.Feature(outlyr_def)
-        geom = ogr.CreateGeometryFromWkt(feature.ExportToWkt())
+        for feat in feature:
+            out_feature = ogr.Feature(outlyr_def)
+            geom = ogr.CreateGeometryFromWkt(feat.ExportToWkt())
 
-        for i in range(0, outlyr_def.GetFieldCount()):
-            field_def = outlyr_def.GetFieldDefn(i)
-            field_name = field_def.GetName()
-            if field_name.lower() != 'nhdplusid':
-                out_feature.SetField(outlyr_def.GetFieldDefn(i).GetNameRef(), outdfns[id].GetField(i))
-            else:
-                out_feature.SetField(field_name, id)
+            for i in range(0, outlyr_def.GetFieldCount()):
+                field_def = outlyr_def.GetFieldDefn(i)
+                field_name = field_def.GetName()
+                if field_name.lower() != 'nhdplusid':
+                    out_feature.SetField(outlyr_def.GetFieldDefn(i).GetNameRef(), outdfns[id].GetField(i))
+                else:
+                    out_feature.SetField(field_name, id)
 
-        out_feature.SetGeometry(geom)
-        outlyr.CreateFeature(out_feature)
-        out_feature = None
+            out_feature.SetGeometry(geom)
+            outlyr.CreateFeature(out_feature)
+            out_feature = None
 
     progbar.finish()
 
