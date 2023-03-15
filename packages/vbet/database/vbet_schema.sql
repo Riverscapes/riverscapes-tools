@@ -51,11 +51,9 @@ CREATE TABLE scenarios (
 
 CREATE TABLE scenario_inputs (
     scenario_input_id   INTEGER PRIMARY KEY UNIQUE NOT NULL,
-    scenario_id         INTEGER NOT NULL,
     input_id            INTEGER NOT NULL,
     weight              REAL,
 
-    CONSTRAINT fk_scenario_id FOREIGN KEY (scenario_id) REFERENCES scenarios(scenario_id) ON DELETE CASCADE,
     CONSTRAINT fk_input_id FOREIGN KEY (input_id) REFERENCES inputs(input_id) ON DELETE CASCADE
 );
 

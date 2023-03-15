@@ -112,7 +112,7 @@ LayerTypes = {
 }
 
 
-def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchments, in_channel_area, vaa_table, project_folder, scenario_code, huc,
+def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchments, in_channel_area, vaa_table, project_folder, huc,
                      level_paths=None, in_pitfill_dem=None, in_dinfflowdir_ang=None, in_dinfflowdir_slp=None, in_twi_raster=None, meta=None, debug=False,
                      reach_codes=None, mask=None, temp_folder=None):
     """Run VBET"""
@@ -142,7 +142,6 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         RSMeta('HUC', str(huc)),
         RSMeta('VBETVersion', cfg.version),
         RSMeta('VBETTimestamp', str(int(time.time())), RSMetaTypes.TIMESTAMP),
-        RSMeta("Scenario Name", scenario_code),
         RSMeta("FlowlineType", flowline_type),
         RSMeta("VBET_Active_Floodplain_Threshold", f"{int(thresh_vals['VBET_IA'] * 100)}", RSMetaTypes.INT),
         RSMeta("VBET_Inactive_Floodplain_Threshold", f"{int(thresh_vals['VBET_FULL'] * 100)}", RSMetaTypes.INT)
@@ -172,7 +171,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
     log.info('Building VBET Database:')
     build_vbet_database(inputs_gpkg)
-    vbet_run = load_configuration(scenario_code, inputs_gpkg)
+    vbet_run = load_configuration(inputs_gpkg)
 
     vaa_table_name = copy_vaa_attributes(line_network_features, vaa_table)
     line_network = join_attributes(inputs_gpkg, "flowlines_vaa", os.path.basename(line_network_features), vaa_table_name, 'NHDPlusID', ['LevelPathI', 'DnLevelPat', 'UpLevelPat', 'Divergence'], 4326)
@@ -214,15 +213,15 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         _proj_dinfflowdir_ang_node, dinfflowdir_ang = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_ANG'], in_dinfflowdir_ang, replace=True)
         _proj_dinfflowdir_slp_node, dinfflowdir_slp = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_SLP'], in_dinfflowdir_slp, replace=True)
 
-    if not in_twi_raster:
-        twi_raster = os.path.join(project_folder, LayerTypes['TWI_RASTER'].rel_path)
-        # sca = os.path.join(project_folder, 'sca.tif')
-        twi_status = run_subprocess(project_folder, ["mpiexec", "-n", NCORES, "twi", "-slp", dinfflowdir_slp, '-twi', twi_raster])  # "-sca", sca,
-        if twi_status != 0 or not os.path.isfile(twi_raster):
-            raise Exception('TauDEM: TWI failed')
-        _node_twi, in_rasters['TWI'] = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['TWI_RASTER'])
-    else:
-        _node_twi, in_rasters['TWI'] = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['TWI_RASTER'], in_twi_raster, replace=True)
+    # if not in_twi_raster:
+    #     twi_raster = os.path.join(project_folder, LayerTypes['TWI_RASTER'].rel_path)
+    #     # sca = os.path.join(project_folder, 'sca.tif')
+    #     twi_status = run_subprocess(project_folder, ["mpiexec", "-n", NCORES, "twi", "-slp", dinfflowdir_slp, '-twi', twi_raster])  # "-sca", sca,
+    #     if twi_status != 0 or not os.path.isfile(twi_raster):
+    #         raise Exception('TauDEM: TWI failed')
+    #     _node_twi, in_rasters['TWI'] = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['TWI_RASTER'])
+    # else:
+    #     _node_twi, in_rasters['TWI'] = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['TWI_RASTER'], in_twi_raster, replace=True)
 
     log.info('Writing Topo Evidence raster for project')
     read_rasters = {name: rasterio.open(raster) for name, raster in in_rasters.items()}
@@ -291,7 +290,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     level_paths_to_run = []
     with sqlite3.connect(inputs_gpkg) as conn:
         curs = conn.cursor()
-        level_paths_raw = curs.execute("SELECT LevelPathI, SUM(TotDASqKm) AS drainage FROM flowlines_vaa GROUP BY LevelPathI ORDER BY drainage DESC").fetchall()
+        level_paths_raw = curs.execute("SELECT LevelPathI, MAX(TotDASqKm) AS drainage FROM flowlines_vaa GROUP BY LevelPathI ORDER BY drainage DESC").fetchall()
         all_level_paths = list(str(int(lp[0])) for lp in level_paths_raw)
         level_paths_drainage = {str(int(lp[0])): lp[1] for lp in level_paths_raw}
         log.info(f'Found {len(all_level_paths)} potential level paths to run.')
@@ -518,7 +517,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                 transformed = {}
                 for name in vbet_run['Inputs']:
                     if name in vbet_run['Zones']:
-                        zone = get_zone(vbet_run, name, level_path_stream_order[level_path])
+                        zone = get_zone(vbet_run, name, level_paths_drainage[level_path])
                         transform = vbet_run['Transforms'][name][zone]
                         if isinstance(transform, str):
                             locs = {'a': block[name].data}
@@ -891,7 +890,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     log.info('VBET Completed Successfully')
 
 
-def get_zone(run, zone_type, stream_order):
+def get_zone(run, zone_type, drain_area):
     """get the max zone of the stream order
 
     Args:
@@ -908,7 +907,7 @@ def get_zone(run, zone_type, stream_order):
         if max_value is None or max_value == '':
             return zone
 
-        if stream_order < max_value:
+        if drain_area < max_value:
             return zone
 
 
@@ -954,7 +953,6 @@ def main():
         # epilog="This is an epilog"
     )
     parser.add_argument('huc', help='nhd watershed id', type=str)
-    parser.add_argument('scenario_code', help='machine code for vbet scenario', type=str)
     parser.add_argument('flowline_network', help='full nhd line network', type=str)
     parser.add_argument('dem', help='dem', type=str)
     parser.add_argument('slope', help='slope', type=str)
@@ -1000,7 +998,7 @@ def main():
             memfile = os.path.join(args.output_dir, 'vbet_mem.log')
             retcode, max_obj = ThreadRun(
                 vbet_centerlines, memfile,
-                args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir, args.scenario_code,
+                args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir,
                 args.huc, level_paths, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster, meta=meta, reach_codes=reach_codes, mask=args.mask,
                 debug=args.debug, temp_folder=temp_folder
             )
@@ -1009,7 +1007,7 @@ def main():
             zip_temp_folder(temp_folder, os.path.join(args.output_dir, 'temp'))
         else:
             vbet_centerlines(
-                args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir, args.scenario_code,
+                args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir,
                 args.huc, level_paths, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster, meta=meta, reach_codes=reach_codes, mask=args.mask,
                 debug=args.debug, temp_folder=args.temp_folder
             )

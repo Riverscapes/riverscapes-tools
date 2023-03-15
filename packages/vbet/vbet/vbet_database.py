@@ -35,7 +35,7 @@ def build_vbet_database(database: str):
     load_lookup_data(database, database_folder)
 
 
-def load_configuration(machine_code: str, database: str):
+def load_configuration(database: str):
     """load the vbet run configuration based on the machine code
 
     Args:
@@ -52,10 +52,8 @@ def load_configuration(machine_code: str, database: str):
     configuration = {}
 
     # 1 Get inputs
-    inputs = curs.execute(""" SELECT inputs.name, inputs.input_id, scenario_input_id FROM scenarios
-                               INNER JOIN scenario_inputs ON scenarios.scenario_id = scenario_inputs.scenario_id
-                               INNER JOIN inputs ON scenario_inputs.input_id = inputs.input_id
-                               WHERE machine_code = ?;""", [machine_code]).fetchall()
+    inputs = curs.execute(""" SELECT inputs.name, inputs.input_id, scenario_input_id FROM scenario_inputs
+                               INNER JOIN inputs ON scenario_inputs.input_id = inputs.input_id""").fetchall()
 
     inputs_dict = {}
     for input_value in inputs:
