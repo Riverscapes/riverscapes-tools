@@ -293,6 +293,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         level_paths_raw = curs.execute("SELECT LevelPathI, MAX(TotDASqKm) AS drainage FROM flowlines_vaa GROUP BY LevelPathI ORDER BY drainage DESC").fetchall()
         all_level_paths = list(str(int(lp[0])) for lp in level_paths_raw)
         level_paths_drainage = {str(int(lp[0])): lp[1] for lp in level_paths_raw}
+        level_paths_drainage[None] = 10
         log.info(f'Found {len(all_level_paths)} potential level paths to run.')
 
         # If the user specified a set of level paths then we filter to those, ignoring any that aren't found with a warning
