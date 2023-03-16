@@ -47,6 +47,10 @@ DATA_DIR=/usr/local/data
 RS_CONTEXT_DIR=$DATA_DIR/rs_context/$HUC
 RSCONTEXT_SCRATCH=$DATA_DIR/rs_context_scratch/$HUC
 
+echo "DATA_DIR: $DATA_DIR"
+echo "RS_CONTEXT_DIR: $RS_CONTEXT_DIR"
+echo "RSCONTEXT_SCRATCH: $RSCONTEXT_SCRATCH"
+
 echo "======================  Disk space usage ======================="
 df -h
 
@@ -56,7 +60,7 @@ echo "======================  Starting RSContext ======================="
 ##########################################################################################
 try() {
   rscontext $HUC \
-    /efsshare/NationalDatasets/landfire/220/ \
+    /efsshare/NationalDatasets/landfire/200/ \
     /efsshare/NationalDatasets/ownership/surface_management_agency.shp \
     /efsshare/NationalDatasets/ownership/FairMarketValue.tif \
     /efsshare/NationalDatasets/ecoregions/us_eco_l4_state_boundaries.shp \
@@ -70,6 +74,7 @@ try() {
     --temp_folder $RSCONTEXT_SCRATCH \
     --meta "Runner=Cybercastor" \
     --verbose
+
   if [[ $? != 0 ]]; then return 1; fi
 
   echo "======================  Final Disk space usage ======================="

@@ -1,81 +1,192 @@
-from pathlib import Path
-# from graphql import query
-# from path import expanduser
+import os
+import webbrowser
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from typing import Dict
+from urllib.parse import urlencode, urlparse, urlunparse
+import requests
+import webbrowser
+from typing import Dict
 import os
 import json
-import boto3
-import requests
+import threading
+import hashlib
+import base64
+import os
 from rscommons import ProgressBar, Logger
-from lib.hashes import checkEtag
+from hashes import checkEtag
 
 
-class QueryMonster:
-    """[summary]
-    """
+LOCAL_PORT = 4721
+LOGIN_SCOPE = 'openid'
 
-    def __init__(self, api_url, username, password):
+
+class RiverscapesAPI:
+    def __init__(self, uri: str, machineAuth: Dict[str, str] = None, devHeaders: Dict[str, str] = None):
         self.log = Logger('API')
-        self.jwt = None
-        self.api_url = None
-        # 1). Load the .riverscapes file. This gets us the URL to the graphql endpoint
-        self.username = username
-        self.password = password
-        self.api_url = api_url
+        self.uri = uri
+        self.machineAuth = machineAuth
+        self.devHeaders = devHeaders
+        self.accessToken = None
+        self.tokenTimeout = None
 
-        self.gql_auth_obj = self.auth_query()
+    def _generate_challenge(self, code: str) -> str:
+        return self._base64URL(hashlib.sha256(code.encode('utf-8')).digest())
 
-        # 3) Get the JWT we will need to make queries
-        self.cognito_login()
+    def _generate_state(self, length: int) -> str:
+        result = ''
+        i = length
+        chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+        while i > 0:
+            result += chars[int(round(os.urandom(1)[0] * (len(chars) - 1)))]
+            i -= 1
+        return result
 
-    def load_config(self):
-        """load the .riverscapes config file
-        """
-        self.log.info('Loading Config file')
-        with open(os.path.join(Path.home(), '.riverscapes')) as json_file:
-            data = json.load(json_file)
-        return data['programs'][data['default']]
+    def _base64URL(self, string: bytes) -> str:
+        return base64.urlsafe_b64encode(string).decode('utf-8').replace('=', '').replace('+', '-').replace('/', '_')
 
-    def cognito_login(self):
-        """Log into cognito and retrieve the JWT token
+    def _generate_random(self, size: int) -> str:
+        CHARSET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~'
+        buffer = os.urandom(size)
+        state = []
+        for b in buffer:
+            index = b % len(CHARSET)
+            state.append(CHARSET[index])
+        return ''.join(state)
 
-        Returns:
-            [type] -- [description]
-        """
-        client = boto3.client('cognito-idp')
-        resp = client.admin_initiate_auth(
-            UserPoolId=self.gql_auth_obj['userPool'],
-            ClientId=self.gql_auth_obj['clientId'],
-            AuthFlow='ADMIN_USER_PASSWORD_AUTH',
-            AuthParameters={
-                "USERNAME": self.username,
-                "PASSWORD": self.password
+    def getAuth(self) -> Dict[str, str]:
+        return {
+            "domain": "dev-1redlpx2nwsh6a4j.us.auth0.com",
+            "clientId": "pH1ADlGVi69rMozJS1cixkuL5DMVLhKC"
+        }
+
+    def shutdown(self):
+        if self.tokenTimeout:
+            self.tokenTimeout.cancel()
+
+    def refresh_token(self) -> 'GQLApi':
+        self.log.info("Authenticating...")
+        if self.tokenTimeout:
+            self.tokenTimeout.cancel()
+
+        authDetails = self.getAuth()
+
+        # On development there's no reason to actually go get a token
+        if self.devHeaders and len(self.devHeaders) > 0:
+            return self
+
+        # Step 1: Determine if we're machine code or user auth
+        # If it's machine then we can fetch tokens much easier:
+        if self.machineAuth:
+            tokenUri = self.uri if self.uri.endswith('/') else self.uri + '/'
+            tokenUri += 'token'
+
+            options = {
+                'method': 'POST',
+                'url': tokenUri,
+                'headers': {'content-type': 'application/x-www-form-urlencoded'},
+                'data': {
+                    'audience': 'https://api.riverscapes.net',
+                    'grant_type': 'client_credentials',
+                    'scope': 'machine:admin',
+                    'client_id': self.machineAuth['clientId'],
+                    'client_secret': self.machineAuth['secretId'],
+                }
             }
-        )
-        self.jwt = resp['AuthenticationResult']['AccessToken']
+
+            try:
+                getTokenReturn = requests.request(**options).json()
+                # NOTE: RETRY IS NOT NECESSARY HERE because we do our refresh on the API side of things
+                # self.tokenTimeout = setTimeout(self.refreshToken, 1000 * getTokenReturn['expires_in'] - 20)
+                self.accessToken = getTokenReturn['access_token']
+                self.log.info("SUCCESSFUL Machine Authentication")
+            except Exception as error:
+                self.log.info(f"Access Token error {error}")
+                raise error
+
+        # If this is a user workflow then we need to pop open a web browser
+        else:
+            code_verifier = self._generate_random(128)
+            code_challenge = self._generate_challenge(code_verifier)
+            state = self._generate_random(32)
+
+            redirect_url = f"http://localhost:{LOCAL_PORT}/rscli/"
+            login_url = urlparse(f"https://{authDetails['domain']}/authorize")
+            query_params = {
+                "client_id": authDetails["clientId"],
+                "response_type": "code",
+                "scope": LOGIN_SCOPE,
+                "state": state,
+                "redirect_uri": redirect_url,
+                "code_challenge": code_challenge,
+                "code_challenge_method": "S256",
+            }
+            login_url = login_url._replace(query=urlencode(query_params))
+            webbrowser.open_new_tab(urlunparse(login_url))
+
+            auth_code = self._wait_for_auth_code()
+            authentication_url = f"https://{authDetails['domain']}/oauth/token"
+
+            data = {
+                "grant_type": "authorization_code",
+                "client_id": authDetails["clientId"],
+                "code_verifier": code_verifier,
+                "code": auth_code,
+                "redirect_uri": redirect_url,
+            }
+
+            response = requests.post(authentication_url, headers={
+                                     "content-type": "application/x-www-form-urlencoded"}, data=data)
+            response.raise_for_status()
+            res = response.json()
+            self.tokenTimeout = threading.Timer(
+                res["expires_in"] - 20, self.refresh_token)
+            self.tokenTimeout.start()
+            self.accessToken = res["access_token"]
+            self.log.info("SUCCESSFUL Browser Authentication")
+
+    def _wait_for_auth_code(self):
+        class AuthHandler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(200)
+                self.send_header("Content-type", "text/html")
+                self.end_headers()
+                self.wfile.write(
+                    b"<html><head><title>Authentication successful</title></head>")
+                self.wfile.write(
+                    b"<body><p>You can now close this window.</p></body></html>")
+                query = urlparse(self.path).query
+                self.server.auth_code = dict(x.split("=")
+                                             for x in query.split("&"))["code"]
+
+        server = HTTPServer(("localhost", LOCAL_PORT), AuthHandler)
+        server.handle_request()
+        auth_code = server.auth_code
+        server.server_close()
+        return auth_code
 
     def run_query(self, query, variables):  # A simple function to use requests.post to make the API call. Note the json= section.
-        headers = {"Authorization": "Bearer " + self.jwt} if self.jwt else {}
-        request = requests.post(self.api_url, json={
-            'query': query,
-            'variables': variables
-        }, headers=headers)
+      headers = {"Authorization": "Bearer " + self.jwt} if self.jwt else {}
+      request = requests.post(self.api_url, json={
+          'query': query,
+          'variables': variables
+      }, headers=headers)
 
-        if request.status_code == 200:
-            resp_json = request.json()
-            if 'errors' in resp_json and len(resp_json['errors']) > 0:
-                self.log.info(json.dumps(resp_json, indent=4, sort_keys=True))
-                # Authentication timeout: re-login and retry the query
-                if len(list(filter(lambda err: 'You must be authenticated' in err['message'], resp_json['errors']))) > 0:
-                    self.log.debug("Authentication timed out. Fetching new token...")
-                    self.cognito_login()
-                    self.log.debug("   done. Re-trying query...")
-                    return self.run_query(query, variables)
-            else:
-                # self.last_pass = True
-                # self.retry = 0
-                return request.json()
-        else:
-            raise Exception("Query failed to run by returning code of {}. {}".format(request.status_code, query))
+      if request.status_code == 200:
+          resp_json = request.json()
+          if 'errors' in resp_json and len(resp_json['errors']) > 0:
+              self.log.info(json.dumps(resp_json, indent=4, sort_keys=True))
+              # Authentication timeout: re-login and retry the query
+              if len(list(filter(lambda err: 'You must be authenticated' in err['message'], resp_json['errors']))) > 0:
+                  self.log.debug("Authentication timed out. Fetching new token...")
+                  self.cognito_login()
+                  self.log.debug("   done. Re-trying query...")
+                  return self.run_query(query, variables)
+          else:
+              # self.last_pass = True
+              # self.retry = 0
+              return request.json()
+      else:
+          raise Exception("Query failed to run by returning code of {}. {}".format(request.status_code, query))
 
     def download_file(self, api_file_obj, local_path, force=False):
         """[summary]
@@ -112,243 +223,19 @@ class QueryMonster:
             return True
         return False
 
-    def auth_query(self):
-        result = self.run_query(QueryMonster._GQL_Auth, {})  # Execute the query
-        return result['data']['auth']  # Drill down the dictionary
 
-    def add_job(self, params):
-        result = self.run_query(QueryMonster._GQL_AddJob, params)  # Execute the query
-        return result['data']['addJob']  # Drill down the dictionary
+if __name__ == '__main__':
+    log = Logger('API')
+    gql = RiverscapesAPI(os.environ['RS_API_URL'])
+    gql.refresh_token()
+    log.debug(gql.accessToken)
+    gql.shutdown() # remember to shutdown so the threaded timer doesn't keep the process alive
 
-    def get_jobs(self, jobStatus=None, taskStatus=None, limit=None, nextToken=None):
-        # jobStatus: JobStatusEnum, $taskStatus: TaskStatusEnum, $limit: Int, $nextToken: String
-        result = self.run_query(QueryMonster._GQL_GetJobs, {"jobStatus": jobStatus, "taskStatus": taskStatus, "limit": limit, "nextToken": nextToken})  # Execute the query
-        return result['data']['getJobs']  # Drill down the dictionary
+    gql2 = RiverscapesAPI(os.environ['RS_API_URL'], {
+      'clientId': os.environ['RS_CLIENT_ID'],
+      'secretId': os.environ['RS_CLIENT_SECRET']
+    })
+    gql2.refresh_token()
+    log.debug(gql2.accessToken)
+    gql2.shutdown()  # remember to shutdown so the threaded timer doesn't keep the process alive
 
-    def get_job(self, id):
-        result = self.run_query(QueryMonster._GQL_GetJob, {"id": id})  # Execute the query
-        return result['data']['getJob']  # Drill down the dictionary
-
-    def jobs_query(self):
-        result = self.run_query(QueryMonster._GQL_Jobs, {})  # Execute the query
-        return result['data']['programs']  # Drill down the dictionary
-
-    def start_task(self, id):
-        result = self.run_query(QueryMonster._GQL_StartTask, {"id": id})  # Execute the query
-        return result['data']['startTask']
-
-    def stop_task(self, id):
-        result = self.run_query(QueryMonster._GQL_StopTask, {"id": id})  # Execute the query
-        return result['data']['stopTask']
-
-    _GQL_Jobs = """
-        getJobs(jobStatus: JobStatusEnum, taskStatus: TaskStatusEnum, limit: Int, nextToken: String): {
-            jobs: {
-                id
-                createdBy
-                createdOn
-                updatedOn
-                status
-                meta
-                name
-                description
-                taskDefId
-                taskScriptId
-                env
-                tasks {
-                    id
-                    name
-                    status
-                    createdBy
-                    createdOn
-                    startedOn
-                    endedOn
-                    queriedOn
-                    logStream
-                    logUrl
-                    meta
-                    env
-                    cpu
-                    memory
-                    taskDefProps {
-                      cpu
-                      memoryLimitMiB
-                      ephemeralStorageGiB
-                    }
-                }
-            }
-            nextToken: String
-        }
-        """
-
-    _GQL_Auth = """
-        query Ping {
-            auth{
-                loggedIn
-                userPool
-                clientId
-                region
-                __typename
-            }
-        }
-        """
-
-    _GQL_GetJobs = """
-        query GetJobs($jobStatus: JobStatusEnum, $taskStatus: TaskStatusEnum, $limit: Int, $nextToken: String) {
-            getJobs(jobStatus: $jobStatus, taskStatus: $taskStatus, limit: $limit, nextToken: $nextToken){
-                jobs {
-                    id
-                    createdBy
-                    createdOn
-                    updatedOn
-                    status
-                    meta
-                    name
-                    description
-                    taskDefId
-                    taskScriptId
-                    env
-                    tasks {
-                        id
-                        name
-                        status
-                        createdBy
-                        createdOn
-                        startedOn
-                        endedOn
-                        queriedOn
-                        logStream
-                        logUrl
-                        meta
-                        env
-                        cpu
-                        memory
-                        taskDefProps {
-                          cpu
-                          memoryLimitMiB
-                          ephemeralStorageGiB
-                        }
-                    }
-                }
-                nextToken
-            }
-        }
-        """
-
-    _GQL_GetJob = """
-        query ($id: ID!) {
-            getJob(id: $id) {
-                id
-                createdBy
-                createdOn
-                updatedOn
-                status
-                meta
-                name
-                description
-                taskDefId
-                taskScriptId
-                env
-                tasks {
-                    id
-                    name
-                    status
-                    createdBy
-                    createdOn
-                    startedOn
-                    endedOn
-                    queriedOn
-                    logStream
-                    logUrl
-                    meta
-                    env
-                    cpu
-                    memory
-                    taskDefProps {
-                      cpu
-                      memoryLimitMiB
-                      ephemeralStorageGiB
-                    }
-                }
-            }
-        }
-    """
-
-    _GQL_AddJob = """
-        mutation ($job: JobInput!, $tasks: [TaskInput!]) {
-            addJob(job: $job, tasks: $tasks) {
-                id
-                createdBy
-                createdOn
-                updatedOn
-                status
-                meta
-                name
-                description
-                taskDefId
-                taskScriptId
-                env
-                tasks {
-                    id
-                    name
-                    createdBy
-                    createdOn
-                    logStream
-                    logUrl
-                    meta
-                    env
-                    cpu
-                    memory
-                    taskDefProps {
-                      cpu
-                      memoryLimitMiB
-                      ephemeralStorageGiB
-                    }
-                }
-            }
-        }
-    """
-
-    _GQL_StartTask = """
-        mutation ($id: ID!) {
-            startTask(id: $id)
-        }
-    """
-
-    _GQL_StopTask = """
-        mutation ($id: ID!) {
-            stopTask(id: $id)
-        }
-    """
-
-    _GQL_GetEngines = """
-        getEngines {
-            id
-            name
-            description
-            version
-            props
-            taskDefProps {
-              cpu
-              memoryLimitMiB
-              ephemeralStorageGiB
-            }
-            taskScripts {
-                id
-                name
-                filename
-                description
-                taskDefProps {
-                  cpu
-                  memoryLimitMiB
-                  ephemeralStorageGiB
-                }
-                taskVars {
-                    name
-                    description
-                    varType
-                    regex
-                }
-            }
-        }
-        """
