@@ -7,6 +7,12 @@ IFS=$'\n\t'
 (: "${PROGRAM?}")
 (: "${RS_CONFIG?}")
 (: "${TAGS?}")
+(: "${VISIBILITY?}")
+
+if [ -n "$USERID" ] && [ -n "$ORGID" ]; then
+  echo "Error: Both USERID and ORGID environment variables are set"
+  exit 1
+fi
 
 echo "$RS_CONFIG" > /root/.riverscapes
 
@@ -66,7 +72,14 @@ try() {
   echo "======================  Upload to the warehouse ======================="
   # Upload the HUC into the warehouse
   cd $RS_CONTEXT_DIR
-  rscli upload . --replace --tags "$TAGS"  --no-input --verbose --program "$PROGRAM"
+
+  if [ -n "$USER" ]; then
+    rscli upload . --org $ORGID --tags "$TAGS" --visibility $VISIBILITY --no-input --no-ui --verbose 
+  fi
+  if [ -n "$ORG" ]; then
+    rscli upload . --org $USERID --tags "$TAGS" --visibility $VISIBILITY --no-input --no-ui --verbose 
+  fi
+
   if [[ $? != 0 ]]; then return 1; fi
 
 }
