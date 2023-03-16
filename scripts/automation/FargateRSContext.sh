@@ -1,20 +1,30 @@
 #!/bin/bash
+# Set -e will cause the script to exit if any command fails
+# Set -u will cause the script to exit if any variable is not set
 set -eu
 IFS=$'\n\t'
+# Set -x will echo every command to the console
+set -x
 
 # These environment variables need to be present before the script starts
 (: "${HUC?}")
-(: "${PROGRAM?}")
-(: "${RS_CONFIG?}")
 (: "${TAGS?}")
 (: "${VISIBILITY?}")
+(: "${APIURL?}")
+# These are machine credentials for the API which will allow the CLI to delegate uploading to either a specific user or an org
+(: "${MACHINE_CLIENT?}")
+(: "${MACHINE_SECRET?}")
 
-if [ -n "$USERID" ] && [ -n "$ORGID" ]; then
-  echo "Error: Both USERID and ORGID environment variables are set"
+# Turn off the set -u option once we've checked all the mandatory variables
+set +u
+
+if [ -z "$USERID" ] && [ -z "$ORGID" ]; then
+  echo "Error: Neither USERID nor ORGID environment variables are set. You need one of them."
+  exit 1
+elif [ -n "$USERID" ] && [ -n "$ORGID" ]; then
+  echo "Error: Both USERID and ORGID environment variables are set. Not a valid case."
   exit 1
 fi
-
-echo "$RS_CONFIG" > /root/.riverscapes
 
 cat<<EOF
       ██████╗ ███████╗   ██████╗ ██████╗ ███╗   ██╗████████╗███████╗██╗  ██╗████████╗  
@@ -26,11 +36,7 @@ cat<<EOF
 EOF
 
 echo "HUC: $HUC"
-echo "PROGRAM: $PROGRAM"
 echo "TAGS: $TAGS"
-
-# Drop into our venv immediately
-source /usr/local/venv/bin/activate
 
 
 echo "======================  GDAL Version ======================="
@@ -73,11 +79,27 @@ try() {
   # Upload the HUC into the warehouse
   cd $RS_CONTEXT_DIR
 
-  if [ -n "$USER" ]; then
-    rscli upload . --org $ORGID --tags "$TAGS" --visibility $VISIBILITY --no-input --no-ui --verbose 
-  fi
-  if [ -n "$ORG" ]; then
-    rscli upload . --org $USERID --tags "$TAGS" --visibility $VISIBILITY --no-input --no-ui --verbose 
+  # If this is a user upload then we need to use the user's id
+  if [ -n "$USERID" ]; then
+    rscli upload . --user $USERID \
+        --tags "$TAGS" \
+        --visibility $VISIBILITY \
+        --no-input --no-ui --verbose \
+        --api-url $APIURL \
+        --client-id $MACHINE_CLIENT \
+        --client-secret $MACHINE_SECRET
+  # If this is an org upload, we need to specify the org ID
+  elif [ -n "$ORGID" ]; then
+    rscli upload . --org $ORGID \
+        --tags "$TAGS" \
+        --visibility $VISIBILITY \
+        --no-input --no-ui --verbose \
+        --api-url $APIURL \
+        --client-id $MACHINE_CLIENT \
+        --client-secret $MACHINE_SECRET
+  else
+    echo "Error: Neither USER nor ORG environment variables are set. You need one of them."
+    exit 1
   fi
 
   if [[ $? != 0 ]]; then return 1; fi

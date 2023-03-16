@@ -1,14 +1,16 @@
 {
 	"folders": [
 		{
+      "name": "🦫 Cybercastor",
 			"path": "../lib/cybercastor"
 		},
 		{
+      "name": "🤖 Automation",
 			"path": "../scripts/automation"
 		},
 		{
-			"name": "Workspaces",
-			"path": "."
+			"name": "🏠 Git Root",
+			"path": ".."
 		}
 	],
 	"settings": {
