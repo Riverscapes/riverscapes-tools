@@ -52,7 +52,7 @@ def load_configuration(database: str):
     configuration = {}
 
     # 1 Get inputs
-    inputs = curs.execute(""" SELECT inputs.name, inputs.input_id, scenario_input_id FROM scenario_inputs
+    inputs = curs.execute(""" SELECT inputs.name, inputs.input_id, scenario_input_id, weight FROM scenario_inputs
                                INNER JOIN inputs ON scenario_inputs.input_id = inputs.input_id""").fetchall()
 
     inputs_dict = {}
@@ -64,7 +64,7 @@ def load_configuration(database: str):
         for zone in zones:
             transform_zones[zone[0]] = {'min': zone[1], 'max': zone[2]}
 
-        inputs_dict[input_value[0]] = {'input_id': input_value[1], 'transform_zones': transform_zones}
+        inputs_dict[input_value[0]] = {'input_id': input_value[1], 'transform_zones': transform_zones, 'weight': input_value[3]}
 
     configuration['Inputs'] = inputs_dict
 

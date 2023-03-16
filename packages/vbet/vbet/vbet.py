@@ -433,6 +433,10 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                 feat = ogr.Feature(lyr_envelope_dfn)
                 feat.SetGeometry(envelope_geom)
                 lyr_envelope.ogr_layer.CreateFeature(feat)
+        # env_lyr = RSLayer('Envelope', 'ENVELOPE', 'Geopackage', os.path.join(os.path.basename(temp_folder_lpath), 'envelope_polygon.gpkg'), {
+        #     'ENV': RSLayer('Envelope Layer', 'ENVLAYER', 'Vector', os.path.basename(envelope))
+        # })
+        # project.add_project_geopackage(lpnode, env_lyr)
 
         # use the channel extent to mask all hand input raster and channel area extents
         local_dinfflowdir_ang = os.path.join(temp_folder_lpath, f'dinfflowdir_ang_{level_path}.tif')
@@ -539,7 +543,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                 # fvals_topo_nontwi = np.ma.mean([normalized['Slope'], normalized['HAND']], axis=0)
                 # logic_twi = np.equal(normalized['TWI'], 0).astype(int)
                 # fvals_topo = np.choose(logic_twi, [fvals_topo_twi, fvals_topo_nontwi])
-                fvals_topo = 0.75 * transformed['HAND'] + 0.25 * transformed['Slope']
+                fvals_topo = vbet_run['Inputs']['HAND']['weight'] * transformed['HAND'] + vbet_run['Inputs']['Slope']['weight'] * transformed['Slope']
                 fvals_channel = 0.995 * block['Channel']
                 fvals_evidence = np.maximum(fvals_topo, fvals_channel)
 
@@ -933,7 +937,7 @@ def create_project(huc, output_dir: str, meta: List[RSMeta], meta_dict: Dict[str
     proj_nodes = {
         'Inputs': project.XMLBuilder.add_sub_element(realization, 'Inputs'),
         'Intermediates': project.XMLBuilder.add_sub_element(realization, 'Intermediates'),
-        'Outputs': project.XMLBuilder.add_sub_element(realization, 'Outputs')
+        'Outputs': project.XMLBuilder.add_sub_element(realization, 'Outputs'),
     }
 
     # Make sure we have these folders
