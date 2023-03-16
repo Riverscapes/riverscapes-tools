@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "taskScriptId": {
+      "type": "string"
+    },
+    "meta": {
+      "type": "object"
+    },
+    "env": {
+      "type": "object",
+      "properties": {
+        "PROGRAM": {
+          "type": "string"
+        },
+        "TAGS": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "PROGRAM"
+      ]
+    },
+    "resources": {
+      "type":"object",
+      "properties": {
+        "cpu": { "type": "integer"},
+        "memory": { "type": "integer"},
+        "disk": { "type": "integer"}
+      },
+      "required": ["cpu", "memory", "disk"]
+    },
+    "hucs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "DOCS": {
+      "type": "array",
+      "items": [
+        {
+          "type": "string"
+        }
+      ]
+    }
+  },
+  "required": [
+    "$schema",
+    "name",
+    "taskScriptId",
+    "env",
+    "hucs"
+  ]
+}

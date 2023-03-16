@@ -1,0 +1,68 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    // {
+    //   "name": "Python: Current File (Integrated Terminal)",
+    //   "type": "python",
+    //   "request": "launch",
+    //   "program": "${file}",
+    //   "cwd": "${workspaceFolder}",
+    //   "env": {
+    //     "PYTHONPATH": "{env:PYTHONPATH}:${workspaceFolder}"
+    //   },      
+    //   "console": "integratedTerminal"
+    // },
+    {
+      "name": "dump_sqlite",
+      "type": "python",
+      "request": "launch",
+      "module": "scripts.dump_sqlite",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/.env.python",
+      // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
+      "args": [
+        "{env:DATA_ROOT}/warehouse_report",
+        "{env:API_URL}",
+        "{env:USERNAME}",
+        "{env:PASSWORD}",
+        "--verbose"
+      ]
+    },
+    {
+      "name": "Python: Add Job",
+      "type": "python",
+      "request": "launch",
+      "module": "scripts.rstools_add_job",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/.env.python",
+      "args": [
+        "${workspaceFolder}/scripts/jobs/",
+        "{env:API_URL}",
+        "{env:USERNAME}",
+        "{env:PASSWORD}",
+        "--verbose"
+      ]
+    },
+    {
+      "name": "Python: Monitor System",
+      "type": "python",
+      "request": "launch",
+      "module": "scripts.monitor",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/.env.python",
+      "args": [
+        "{env:API_URL}",
+        "{env:USERNAME}",
+        "{env:PASSWORD}",
+        // "--download_running",
+        "--verbose"
+      ]
+    }
+  ]
+}

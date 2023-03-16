@@ -1,0 +1,19 @@
+{
+	"folders": [
+		{
+			"path": "../lib/cybercastor"
+		},
+		{
+			"path": "../scripts/automation"
+		},
+		{
+			"name": "Workspaces",
+			"path": "."
+		}
+	],
+	"settings": {
+		"python.pythonPath": "${workspaceFolder}/../../.venv/bin/python3",
+		"python.testing.pytestEnabled": true,
+		"python.testing.unittestEnabled": true,
+	}
+}
