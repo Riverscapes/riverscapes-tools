@@ -1,17 +1,31 @@
 #!/bin/bash
+# Set -e will cause the script to exit if any command fails
+# Set -u will cause the script to exit if any variable is not set
 set -eu
 IFS=$'\n\t'
-
+# Set -x will echo every command to the console
+set -x
 
 # These environment variables need to be present before the script starts
-(: "${HUC?}")
-(: "${PROGRAM?}")
-(: "${RS_CONFIG?}")
-(: "${VBET_TAGS?}")
-(: "${RSCONTEXT_TAGS?}")
-(: "${GNAT_TAGS?}")
+(: "${TAGS?}")
+(: "${VBET_ID?}")
+(: "${RSCONTEXT_ID?}")
+(: "${VISIBILITY?}")
+(: "${APIURL?}")
+# These are machine credentials for the API which will allow the CLI to delegate uploading to either a specific user or an org
+(: "${MACHINE_CLIENT?}")
+(: "${MACHINE_SECRET?}")
 
-echo "$RS_CONFIG" > /root/.riverscapes
+# Turn off the set -u option once we've checked all the mandatory variables
+set +u
+
+if [ -z "$USERID" ] && [ -z "$ORGID" ]; then
+  echo "Error: Neither USERID nor ORGID environment variables are set. You need one of them."
+  exit 1
+elif [ -n "$USERID" ] && [ -n "$ORGID" ]; then
+  echo "Error: Both USERID and ORGID environment variables are set. Not a valid case."
+  exit 1
+fi
 
 cat<<EOF
 _____________   ________________
@@ -22,32 +36,38 @@ _  / __ __   |/ /__  /| |_  /
                                                                                                  
 EOF
 
-echo "HUC: $HUC"
-echo "PROGRAM: $PROGRAM"
-echo "VBET_TAGS: $VBET_TAGS"
-echo "RSCONTEXT_TAGS: $RSCONTEXT_TAGS"
-echo "GNAT_TAGS: $GNAT_TAGS"
+echo "TAGS: $TAGS"
+echo "VBET_ID: $VBET_ID"
+echo "RSCONTEXT_ID: $RSCONTEXT_ID"
 
-# Drop into our venv immediately
-source /usr/local/venv/bin/activate
+echo "======================  GDAL Version ======================="
+gdal-config --version
 
+# Define some folders that we can easily clean up later
 DATA_DIR=/usr/local/data
-RS_CONTEXT_DIR=$DATA_DIR/rs_context/$HUC
-VBET_DIR=$DATA_DIR/vbet/$HUC
-GNAT_DIR=$DATA_DIR/gnat/$HUC
+RS_CONTEXT_DIR=$DATA_DIR/rs_context/data
+VBET_DIR=$DATA_DIR/vbet/data
+GNAT_DIR=$DATA_DIR/output
+
+##########################################################################################
+# First Get RS_Context and VBET inputs
+##########################################################################################
 
 # Get the RSCli project we need to make this happen
-rscli download $RS_CONTEXT_DIR --type "RSContext" --meta "huc=$HUC" --tags "$RSCONTEXT_TAGS" \
+rscli download $RS_CONTEXT_DIR --id $RSCONTEXT_ID \
   --file-filter "(hydrology\.gpkg|nhd_data.sqlite|dem.tif|precipitation.tif|ecoregions|transportation|project_bounds.geojson)" \
-  --no-input --verbose --program "$PROGRAM"
+  --no-input --no-ui --verbose
 
-# Go get vbet result for this to work
-rscli download $VBET_DIR --type "VBET" --meta "huc=$HUC" --tags "$VBET_TAGS" \
+rscli download $VBET_DIR --id $VBET_ID \
   --file-filter "(vbet\.gpkg|intermediates\.gpkg)" \
-  --no-input --verbose --program "$PROGRAM"
+  --no-input --no-ui --verbose
 
 echo "======================  Initial Disk space usage ======================="
 df -h
+
+##########################################################################################
+# Now Run GNAT
+##########################################################################################
 
 try() {
 
@@ -79,9 +99,31 @@ try() {
 
   # Upload the HUC into the warehouse.
   cd $GNAT_DIR
-  rscli upload . --tags "$GNAT_TAGS" --replace --no-input --verbose --program "$PROGRAM"
-  if [[ $? != 0 ]]; then return 1; fi
+  
+  # If this is a user upload then we need to use the user's id
+  if [ -n "$USERID" ]; then
+    rscli upload . --user $USERID \
+        --tags "$TAGS" \
+        --visibility $VISIBILITY \
+        --no-input --no-ui --verbose \
+        --api-url $APIURL \
+        --client-id $MACHINE_CLIENT \
+        --client-secret $MACHINE_SECRET
+  # If this is an org upload, we need to specify the org ID
+  elif [ -n "$ORGID" ]; then
+    rscli upload . --org $ORGID \
+        --tags "$TAGS" \
+        --visibility $VISIBILITY \
+        --no-input --no-ui --verbose \
+        --api-url $APIURL \
+        --client-id $MACHINE_CLIENT \
+        --client-secret $MACHINE_SECRET
+  else
+    echo "Error: Neither USER nor ORG environment variables are set. You need one of them."
+    exit 1
+  fi
 
+  if [[ $? != 0 ]]; then return 1; fi
 
   echo "<<PROCESS COMPLETE>>"
 

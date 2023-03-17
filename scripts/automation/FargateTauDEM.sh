@@ -1,16 +1,32 @@
 #!/bin/bash
+# Set -e will cause the script to exit if any command fails
+# Set -u will cause the script to exit if any variable is not set
 set -eu
 IFS=$'\n\t'
+# Set -x will echo every command to the console
+set -x
+
 
 # These environment variables need to be present before the script starts
-(: "${HUC?}")
-(: "${PROGRAM?}")
-(: "${RS_CONFIG?}")
-(: "${RSCONTEXT_TAGS?}")
-(: "${CHANNEL_TAGS?}")
-(: "${TAUDEM_TAGS?}")
+(: "${TAGS?}")
+(: "${RSCONTEXT_ID?}")
+(: "${CHANNELAREA_ID?}")
+(: "${VISIBILITY?}")
+(: "${APIURL?}")
+# These are machine credentials for the API which will allow the CLI to delegate uploading to either a specific user or an org
+(: "${MACHINE_CLIENT?}")
+(: "${MACHINE_SECRET?}")
 
-echo "$RS_CONFIG" > /root/.riverscapes
+# Turn off the set -u option once we've checked all the mandatory variables
+set +u
+
+if [ -z "$USERID" ] && [ -z "$ORGID" ]; then
+  echo "Error: Neither USERID nor ORGID environment variables are set. You need one of them."
+  exit 1
+elif [ -n "$USERID" ] && [ -n "$ORGID" ]; then
+  echo "Error: Both USERID and ORGID environment variables are set. Not a valid case."
+  exit 1
+fi
 
 cat<<EOF
 
@@ -22,47 +38,31 @@ cat<<EOF
    ╚═╝   ╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ╚══════╝╚═╝     ╚═╝
 EOF
 
-echo "HUC: $HUC"
-echo "PROGRAM: $PROGRAM"
-echo "RSCONTEXT_TAGS: $RSCONTEXT_TAGS"
-echo "CHANNEL_TAGS: $CHANNEL_TAGS"
-echo "TAUDEM_TAGS: $TAUDEM_TAGS"
-
-# Drop into our venv immediately
-source /usr/local/venv/bin/activate
-
-# Install latest pip dependencies
-pip --timeout=120 install -r /usr/local/requirements.txt
-pip install -e /usr/local/src/riverscapes-tools/packages/taudem
-
+echo "TAGS: $TAGS"
+echo "RSCONTEXT_ID: $RSCONTEXT_ID"
+echo "CHANNELAREA_ID: $CHANNELAREA_ID"
 
 echo "======================  GDAL Version ======================="
 gdal-config --version
 
 # Define some folders that we can easily clean up later
 DATA_DIR=/usr/local/data
-RS_CONTEXT_DIR=$DATA_DIR/rs_context/$HUC
-CHANNEL_DIR=$DATA_DIR/channel/$HUC
-TAUDEM_DIR=$DATA_DIR/taudem/$HUC
+RS_CONTEXT_DIR=$DATA_DIR/rs_context/data
+CHANNELAREA_DIR=$DATA_DIR/channel_area/data
+TAUDEM_DIR=$DATA_DIR/output
 
 ##########################################################################################
-# First Get RS_Context inputs
+# First Get RS_Context and Channel Area inputs
 ##########################################################################################
 
-# Get the RSCli project we need to make this happe-9
-rscli download $RS_CONTEXT_DIR --type "RSContext" --meta "huc=$HUC" \
-  --file-filter "(hillshade|slope|dem|hand|hydrology|project_bounds.geojson)" \
-  --tags "$RSCONTEXT_TAGS" --no-input --verbose --program "$PROGRAM"
+# Get the RSCli project we need to make this happen
+rscli download $RS_CONTEXT_DIR --id $RSCONTEXT_ID \
+  --file-filter "(hillshade|dem|hydrology|project_bounds.geojson)" \
+  --no-input --no-ui --verbose
 
-##########################################################################################
-# Now get ChannelArea inputs
-##########################################################################################
-
-# Get the RSCli project we need to make this happe-9
-rscli download $CHANNEL_DIR --type "ChannelArea" --meta "huc=$HUC" \
+rscli download $CHANNELAREA_DIR --id $CHANNELAREA_ID \
   --file-filter "channel_area\.gpkg" \
-  --tags "$CHANNEL_TAGS" --no-input --verbose --program "$PROGRAM"
-
+  --no-input --no-ui --verbose
 
 ##########################################################################################
 # Now Run TauDEM
@@ -70,7 +70,7 @@ rscli download $CHANNEL_DIR --type "ChannelArea" --meta "huc=$HUC" \
 try() {
 
 taudem $HUC \
-  $CHANNEL_DIR/outputs/channel_area.gpkg/channel_area \
+  $CHANNELAREA_DIR/outputs/channel_area.gpkg/channel_area \
   $RS_CONTEXT_DIR/topography/dem.tif \
   $TAUDEM_DIR \
   --hillshade $RS_CONTEXT_DIR/topography/dem_hillshade.tif \
@@ -81,7 +81,7 @@ if [[ $? != 0 ]]; then return 1; fi
 cd /usr/local/src/riverscapes-tools/packages/taudem
 /usr/local/venv/bin/python -m taudem.taudem_rs \
   $TAUDEM_DIR/project.rs.xml \
-  $RS_CONTEXT_DIR/project.rs.xml,$CHANNEL_DIR/project.rs.xml
+  $RS_CONTEXT_DIR/project.rs.xml,$CHANNELAREA_DIR/project.rs.xml
 
 echo "======================  Final Disk space usage ======================="
 df -h
@@ -90,15 +90,37 @@ echo "======================  Upload to the warehouse ======================="
 
 # Upload the HUC into the warehouse
 cd $TAUDEM_DIR
-rscli upload . --replace --tags "$TAUDEM_TAGS" --no-input --verbose --program "$PROGRAM"
+
+  # If this is a user upload then we need to use the user's id
+  if [ -n "$USERID" ]; then
+    rscli upload . --user $USERID \
+        --tags "$TAGS" \
+        --visibility $VISIBILITY \
+        --no-input --no-ui --verbose \
+        --api-url $APIURL \
+        --client-id $MACHINE_CLIENT \
+        --client-secret $MACHINE_SECRET
+  # If this is an org upload, we need to specify the org ID
+  elif [ -n "$ORGID" ]; then
+    rscli upload . --org $ORGID \
+        --tags "$TAGS" \
+        --visibility $VISIBILITY \
+        --no-input --no-ui --verbose \
+        --api-url $APIURL \
+        --client-id $MACHINE_CLIENT \
+        --client-secret $MACHINE_SECRET
+  else
+    echo "Error: Neither USER nor ORG environment variables are set. You need one of them."
+    exit 1
+  fi
+
 if [[ $? != 0 ]]; then return 1; fi
 
 echo "<<PROCESS COMPLETE>>"
 
-
 }
 try || {
   # Emergency Cleanup
-  echo "<<RS CONTEXT PROCESS ENDED WITH AN ERROR>>"
+  echo "<<TAUDEM PROCESS ENDED WITH AN ERROR>>"
   exit 1
 }
