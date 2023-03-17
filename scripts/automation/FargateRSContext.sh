@@ -44,11 +44,13 @@ echo "======================  Starting RSContext ======================="
 ##########################################################################################
 try() {
   rscontext $HUC \
-    /efsshare/NationalDatasets/landfire/200/us_200evt.tif \
-    /efsshare/NationalDatasets/landfire/200/us_200bps.tif \
+    /efsshare/NationalDatasets/landfire/220/ \
     /efsshare/NationalDatasets/ownership/surface_management_agency.shp \
     /efsshare/NationalDatasets/ownership/FairMarketValue.tif \
-    /efsshare/NationalDatasets/ecoregions/us_eco_l3_state_boundaries.shp \
+    /efsshare/NationalDatasets/ecoregions/us_eco_l4_state_boundaries.shp \
+    /efsshare/NationalDatasets/political_boundaries/cb_2021_us_state_500k.shp \
+    /efsshare/NationalDatasets/political_boundaries/cb_2021_us_county_500k.shp \
+    /efsshare/NationalDatasets/geology/SGMC_geology.shp \
     /efsshare/download/prism \
     $RS_CONTEXT_DIR \
     /efsshare/download \
