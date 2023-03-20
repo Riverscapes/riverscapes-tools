@@ -26,9 +26,14 @@ def split_nhd_area(in_nhd_area: str, in_nhd_catchments: str, out_area_split: str
         catch_geoms[ftr.GetField('NHDPlusID')] = ftr.GetGeometryRef()
 
     for id, geom in catch_geoms.items():
+        if not geom.IsValid():
+            geom = geom.Buffer(0)
         outids[id] = []
         for ftr in fa_ftrs:
-            if geom.Intersects(ftr.GetGeometryRef()):
+            nhdgeom = ftr.GetGeometryRef()
+            if not nhdgeom.IsValid():
+                nhdgeom = nhdgeom.Buffer(0)
+            if geom.Intersects(nhdgeom):
                 outids[id].append(geom.Intersection(ftr.GetGeometryRef()))
                 outdfns[id] = ftr
 
