@@ -721,7 +721,7 @@ def generate_vbet_polygon(vbet_evidence_raster: Path, rasterized_channel: Path, 
     donuts = np.invert(valley_bottom_clean)
     donut_regions, num_donuts = label(donuts, struct)
     sizes = ndimage.sum(donuts, donut_regions, range(num_donuts + 1))
-    donut_mask = sizes < 200
+    donut_mask = sizes < 350
     final_valley_array = donut_mask[donut_regions]
 
     if rasterized_flowline:
