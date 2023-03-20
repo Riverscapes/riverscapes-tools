@@ -181,7 +181,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
     catchments_path = os.path.join(intermediates_gpkg, 'transform_zones')
     vaa_table_path = os.path.join(inputs_gpkg, vaa_table_name)
-    create_stream_size_zones(catchments, vaa_table_path, 'NHDPlusID', 'StreamOrde', vbet_run['Zones'], catchments_path)
+    create_stream_size_zones(catchments, vaa_table_path, 'NHDPlusID', 'TotDASqKm', vbet_run['Zones'], catchments_path)
 
     in_rasters = {}
     _proj_hillshade_node, _hillshade = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], in_hillshade, replace=True)
@@ -794,7 +794,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     log.info('Generating VBET Segmentation Points')
     segmentation_points = os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['SEGMENTATION_POINTS'].rel_path)
     stream_size_lookup = get_distance_lookup(inputs_gpkg, intermediates_gpkg, level_paths_to_run)
-    generate_igo_points(output_centerlines, segmentation_points, stream_size_lookup, distance=100)
+    generate_igo_points(output_centerlines, segmentation_points, stream_size_lookup, distance={0: 100, 1: 200, 2: 300})
     _tmr_waypt.timer_break('GenerateVBETSegmentPts')
 
     log.info('Generating VBET Segment Polygons')

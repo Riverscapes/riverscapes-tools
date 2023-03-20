@@ -22,7 +22,7 @@ from rscommons.geometry_ops import get_rectangle_as_geom
 Path = str
 
 
-def generate_igo_points(line_network: Path, out_points_layer: Path, stream_size_lookup: dict, distance: float = 200.0):
+def generate_igo_points(line_network: Path, out_points_layer: Path, stream_size_lookup: dict, distance: dict):
     """generate the vbet segmentation center points/igos
 
     Args:
@@ -35,7 +35,7 @@ def generate_igo_points(line_network: Path, out_points_layer: Path, stream_size_
     # process modified from: https://glenbambrick.com/2017/09/15/osgp-create-points-along-line/
     log = Logger('Generate Segmentation Points')
 
-    init_distance = distance / 2
+    # init_distance = distance / 2
 
     with GeopackageLayer(out_points_layer, write=True) as out_lyr, \
             GeopackageLayer(line_network) as line_lyr:
@@ -58,6 +58,7 @@ def generate_igo_points(line_network: Path, out_points_layer: Path, stream_size_
                 log.error(f'Stream Size not found for LevelPathI {level_path}. Skipping segmentation')
                 continue
             stream_size = stream_size_lookup[level_path]
+            init_distance = distance[stream_size] / 2
             geom_line = feat.GetGeometryRef()
             geom_line.FlattenTo2D()
             geom_line.Transform(transform)
@@ -83,7 +84,7 @@ def generate_igo_points(line_network: Path, out_points_layer: Path, stream_size_
                 while current_dist < line_length:
                     # use interpolate and increase the current distance
                     list_points.append((shapely_line.interpolate(current_dist), current_dist))
-                    current_dist += distance
+                    current_dist += distance[stream_size]
 
                 # add points to the layer
                 # for each point in the list
@@ -366,7 +367,7 @@ def calculate_vbet_window_metrics(vbet_igos: Path, vbet_dgos: Path, level_paths:
                 feat_igo = None
 
 
-def vbet_segmentation(in_centerlines: str, vbet_polygons: str, metric_layers: dict, out_gpkg: str, interval=200):
+def vbet_segmentation(in_centerlines: str, vbet_polygons: str, metric_layers: dict, out_gpkg: str, ss_lookup: dict):
     """
     Chop the lines in a polyline feature class at the specified interval unless
     this would create a line less than the minimum in which case the line is not segmented.
@@ -385,7 +386,7 @@ def vbet_segmentation(in_centerlines: str, vbet_polygons: str, metric_layers: di
     split_polygons = os.path.join(out_gpkg, 'segmented_vbet_polygons')
 
     log.info('Generating Segment Points')
-    generate_igo_points(in_centerlines, out_points, interval)
+    generate_igo_points(in_centerlines, out_points, ss_lookup, distance={0: 100, 1: 200, 2: 300})
 
     log.info('Splitting vbet Polygons')
     split_vbet_polygons(vbet_polygons, out_points, split_polygons)
