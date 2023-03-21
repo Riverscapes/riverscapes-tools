@@ -1,0 +1,58 @@
+{
+    "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+    "createdOn": "1668794825395",
+    "description": "Spinning up the prerequisits for VBET",
+    "env": {
+        "GIT_REF": "performance",
+        "NO_UI": "gnarly",
+        "PROGRAM": "AnabranchDEV",
+        "TAGS": "Cybercastor,Testing"
+    },
+    "id": "b533f177-dec2-4ff9-803e-4467b31bf998",
+    "meta": {},
+    "name": "RSCONTEXT for 2 Hucs",
+    "status": "ACTIVE",
+    "taskDefId": "rstools",
+    "taskScriptId": "rs_context_channel_taudem",
+    "tasks": [
+        {
+            "cpu": null,
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1668794825635",
+            "endedOn": null,
+            "env": {
+                "HUC": "10030201"
+            },
+            "id": "b4b6219e-54c0-4e60-9624-47424a0c2ab4",
+            "logStream": null,
+            "logUrl": null,
+            "memory": null,
+            "meta": {},
+            "name": "10030201",
+            "queriedOn": "1668794825997",
+            "startedOn": null,
+            "status": "QUEUED",
+            "taskDefProps": null
+        },
+        {
+            "cpu": null,
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1668794825634",
+            "endedOn": null,
+            "env": {
+                "HUC": "16010203"
+            },
+            "id": "1b3f52af-ee6a-42ae-a4f4-526c3b448550",
+            "logStream": null,
+            "logUrl": null,
+            "memory": null,
+            "meta": {},
+            "name": "16010203",
+            "queriedOn": "1668794825997",
+            "startedOn": null,
+            "status": "QUEUED",
+            "taskDefProps": null
+        }
+    ],
+    "updatedOn": "1668794825395"
+}

@@ -1,0 +1,18 @@
+{
+  "name": "May2 RSC #278 and #279",
+  "description": "this is a job to do the thing I want to do",
+  "taskScriptId": "rs_context",
+  "meta": {
+  },
+  "env": {
+    "PROGRAM": "Anabranch",
+    "TAGS": "Cybercastor"
+  },
+  "hucs": [
+    "14060004",
+    "18020001",
+    "17120007"
+  ],
+  "DOCS": [
+  ]
+}

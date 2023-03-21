@@ -1,0 +1,20 @@
+{
+  "name": "TEST: Sep10 rs_context",
+  "description": "Test job to run everything",
+  "taskScriptId": "rs_context",
+  "meta": {},
+  "env": {
+    "PROGRAM": "AnabranchDEV",
+    "TAGS": "TEST,SEP10,rs_context"
+  },
+  "hucs": [
+    "08080102",
+    "08010100",
+    "07080105"
+  ],
+  "DOCS": [
+    "- taskScriptId comes from: http://northarrowresearch.com/cybercastor/engines/manifest.json",
+    "- meta can be anything.",
+    "- Hucs are all the MHFD and all the klamath"
+  ]
+}

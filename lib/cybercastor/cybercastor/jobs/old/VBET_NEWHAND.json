@@ -1,0 +1,20 @@
+{
+  "name": "VBET New HAND Feb 10",
+  "description": "VBET for all hydro 17 HUCs",
+  "taskScriptId": "vbet",
+  "meta": {
+  },
+  "env": {
+    "PROGRAM": "AnabranchDEV",
+    "RSCONTEXT_TAGS": "TEST,FEB8,NEW_HAND",
+    "VBET_TAGS": "TEST,FEB10,NEW_HAND",
+    "GIT_REF": "dev",
+    "DEBUG" :"YES"
+  },
+  "hucs": [
+    "16010202"
+  ],
+  "DOCS": [
+
+  ]
+}

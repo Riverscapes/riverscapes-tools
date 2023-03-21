@@ -1,0 +1,22 @@
+{
+  "name": "PUBLIC_DATA Klamath Confinement",
+  "description": "FEB22 After february release",
+  "taskScriptId": "rs_context_channel_taudem",
+  "meta": {
+  },
+  "env": {
+    "PROGRAM": "PUBLIC_DATA",
+    "VBET_TAGS": "Klamath",
+    "RSCONTEXT_TAGS": "Klamath",
+    "CONFINEMENT_TAGS": "Klamath"
+  },
+  "hucs": [
+    "18010201",
+    "18010202",
+    "18010203"
+  ],
+  "DOCS": [
+    "- taskScriptId comes from: http://northarrowresearch.com/cybercastor/engines/manifest.json",
+    "- meta can be anything."
+  ]
+}

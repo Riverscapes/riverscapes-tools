@@ -1,0 +1,66 @@
+{
+    "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+    "createdOn": "1631314580924",
+    "description": "Test job to run everything",
+    "env": {
+        "CHANNEL_TAGS": "TEST,SEP10,channel",
+        "NO_UI": "gnarly",
+        "PROGRAM": "AnabranchDEV",
+        "RSCONTEXT_TAGS": "TEST,SEP10"
+    },
+    "id": "fb84a756-d5db-4eee-a0e0-ca0e4fab2ff7",
+    "meta": {},
+    "name": "TEST: Sep10 channel",
+    "status": "ACTIVE",
+    "tasks": [
+        {
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1631314581021",
+            "endedOn": null,
+            "env": {
+                "HUC": "08080102"
+            },
+            "id": "74e34f51-df97-4475-a60a-b9366445ba5f",
+            "logStream": null,
+            "logUrl": null,
+            "meta": {},
+            "name": "08080102",
+            "queriedOn": "1631314581249",
+            "startedOn": null,
+            "status": "QUEUED"
+        },
+        {
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1631314581023",
+            "endedOn": null,
+            "env": {
+                "HUC": "08010100"
+            },
+            "id": "c630b198-2bba-4a87-bcc7-ecca76137fae",
+            "logStream": null,
+            "logUrl": null,
+            "meta": {},
+            "name": "08010100",
+            "queriedOn": "1631314581250",
+            "startedOn": null,
+            "status": "QUEUED"
+        },
+        {
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1631314581027",
+            "endedOn": null,
+            "env": {
+                "HUC": "07080105"
+            },
+            "id": "0adbc16b-6161-46ad-806b-6dfbd003264d",
+            "logStream": null,
+            "logUrl": null,
+            "meta": {},
+            "name": "07080105",
+            "queriedOn": "1631314581250",
+            "startedOn": null,
+            "status": "QUEUED"
+        }
+    ],
+    "updatedOn": "1631314580924"
+}

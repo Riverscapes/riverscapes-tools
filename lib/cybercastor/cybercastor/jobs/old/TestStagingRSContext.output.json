@@ -1,0 +1,95 @@
+{
+    "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+    "createdOn": "1664821636774",
+    "description": "this is a job to do the thing I want to do",
+    "env": {
+        "NO_UI": "gnarly",
+        "PROGRAM": "AnabranchDEV",
+        "TAGS": "TEST,OCT3"
+    },
+    "id": "7ac8060a-6cb6-42fd-9a54-594da8d05610",
+    "meta": {},
+    "name": "Matt Testing Riverscapes-tools Oct 3, 2022",
+    "status": "COMPLETE",
+    "taskDefId": "rstools",
+    "taskScriptId": "rs_context_channel_taudem",
+    "tasks": [
+        {
+            "cpu": 2048,
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1664821637040",
+            "endedOn": "1664832695993",
+            "env": {
+                "HUC": "10190003"
+            },
+            "id": "8e845843-91bb-4ec2-aff4-bc9cda7bce98",
+            "logStream": "ecs/CybercastorEngine_rstools_prod/rstools/94822fdcdac14caf871f4c3f0d32d761",
+            "logUrl": "https://us-west-2.console.aws.amazon.com/cloudwatch/home?region=us-west-2#logsV2:log-groups/log-group/CybercastorLogs_prod/log-events/ecs$252FCybercastorEngine_rstools_prod$252Frstools$252F94822fdcdac14caf871f4c3f0d32d761",
+            "memory": 16384,
+            "meta": {},
+            "name": "10190003",
+            "queriedOn": "1664907683380",
+            "startedOn": "1664821756941",
+            "status": "SUCCEEDED",
+            "taskDefProps": null
+        },
+        {
+            "cpu": 2048,
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1664821637042",
+            "endedOn": "1664822912789",
+            "env": {
+                "HUC": "10190004"
+            },
+            "id": "75ceaa8e-1746-44bc-beb0-3f85b131fe7b",
+            "logStream": "ecs/CybercastorEngine_rstools_prod/rstools/a521787c8004416ea4728d76d00326ce",
+            "logUrl": "https://us-west-2.console.aws.amazon.com/cloudwatch/home?region=us-west-2#logsV2:log-groups/log-group/CybercastorLogs_prod/log-events/ecs$252FCybercastorEngine_rstools_prod$252Frstools$252Fa521787c8004416ea4728d76d00326ce",
+            "memory": 16384,
+            "meta": {},
+            "name": "10190004",
+            "queriedOn": "1664907683380",
+            "startedOn": "1664821754452",
+            "status": "SUCCEEDED",
+            "taskDefProps": null
+        },
+        {
+            "cpu": 2048,
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1664821637035",
+            "endedOn": "1664822307656",
+            "env": {
+                "HUC": "17060304"
+            },
+            "id": "535afb98-846f-4e0a-ba05-73d2ab72aa51",
+            "logStream": "ecs/CybercastorEngine_rstools_prod/rstools/51867b34ee0440338dc55557386ad86d",
+            "logUrl": "https://us-west-2.console.aws.amazon.com/cloudwatch/home?region=us-west-2#logsV2:log-groups/log-group/CybercastorLogs_prod/log-events/ecs$252FCybercastorEngine_rstools_prod$252Frstools$252F51867b34ee0440338dc55557386ad86d",
+            "memory": 16384,
+            "meta": {},
+            "name": "17060304",
+            "queriedOn": "1664907683380",
+            "startedOn": "1664821753904",
+            "status": "SUCCEEDED",
+            "taskDefProps": null
+        },
+        {
+            "cpu": 2048,
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1664821637038",
+            "endedOn": "1664827810667",
+            "env": {
+                "HUC": "10190002"
+            },
+            "id": "7c755c19-c8d3-40f0-8270-ea200be5e2a9",
+            "logStream": "ecs/CybercastorEngine_rstools_prod/rstools/d3c7de4728894109bba274e6b9c76c22",
+            "logUrl": "https://us-west-2.console.aws.amazon.com/cloudwatch/home?region=us-west-2#logsV2:log-groups/log-group/CybercastorLogs_prod/log-events/ecs$252FCybercastorEngine_rstools_prod$252Frstools$252Fd3c7de4728894109bba274e6b9c76c22",
+            "memory": 16384,
+            "meta": {},
+            "name": "10190002",
+            "queriedOn": "1664907683380",
+            "startedOn": "1664821763335",
+            "status": "SUCCEEDED",
+            "taskDefProps": null
+        }
+    ],
+    "updatedOn": "1664832706915"
+}

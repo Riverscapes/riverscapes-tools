@@ -1,0 +1,37 @@
+{
+  "name": "Anabranch cybercastor RSContext ONLY",
+  "description": "Jan29 After VBET project fix",
+  "taskScriptId": "rs_context",
+  "meta": {
+  },
+  "env": {
+    "PROGRAM": "Anabranch",
+    "TAGS": "cybercastor"
+  },
+  "hucs": [
+    "10180002", 
+    "16010101", 
+    "16010202", 
+    "16020102", 
+    "16020304", 
+    "16020308", 
+    "17020005", 
+    "17040218", 
+    "17040219", 
+    "17060201", 
+    "17060304", 
+    "17060306", 
+    "17070201", 
+    "17070203", 
+    "10020002", 
+    "17070204", 
+    "17120007", 
+    "14050001", 
+    "14050002", 
+    "14050003"
+  ],
+  "DOCS": [
+    "- taskScriptId comes from: http://northarrowresearch.com/cybercastor/engines/manifest.json",
+    "- meta can be anything."
+  ]
+}

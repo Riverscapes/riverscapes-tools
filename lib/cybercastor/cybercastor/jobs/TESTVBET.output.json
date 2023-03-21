@@ -1,0 +1,46 @@
+{
+    "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+    "createdOn": "1672939801845",
+    "description": "TEST",
+    "env": {
+        "CHANNEL_TAGS": "Cybercastor,Testing",
+        "GIT_REF": "VBET_GNAT",
+        "NO_UI": "gnarly",
+        "PROGRAM": "AnabranchDEV",
+        "RSCONTEXT_TAGS": "Cybercastor,Testing",
+        "TAUDEM_TAGS": "Cybercastor,Testing",
+        "VBET_TAGS": "JAN05"
+    },
+    "id": "ac13d774-9da7-404c-9d25-c32be03544b4",
+    "meta": {},
+    "name": "0514020112 huc 12 . IGNORE ME",
+    "status": "ACTIVE",
+    "taskDefId": "rstools",
+    "taskScriptId": "vbet",
+    "tasks": [
+        {
+            "cpu": 4096,
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1672939802092",
+            "endedOn": null,
+            "env": {
+                "HUC": "0514020112"
+            },
+            "id": "f615d0e3-e4a8-4c7f-ac71-ebdf10b1b3d4",
+            "logStream": "ecs/CybercastorEngine_rstools_prod/rstools/09c8e50787e447278bdf5be296ae39ed",
+            "logUrl": "https://us-west-2.console.aws.amazon.com/cloudwatch/home?region=us-west-2#logsV2:log-groups/log-group/CybercastorLogs_prod/log-events/ecs$252FCybercastorEngine_rstools_prod$252Frstools$252F09c8e50787e447278bdf5be296ae39ed",
+            "memory": 30720,
+            "meta": {},
+            "name": "0514020112",
+            "queriedOn": "1672942238932",
+            "startedOn": "1672939807666",
+            "status": "RUNNING",
+            "taskDefProps": {
+                "cpu": 4096,
+                "ephemeralStorageGiB": 80,
+                "memoryLimitMiB": 30720
+            }
+        }
+    ],
+    "updatedOn": "1672939801845"
+}

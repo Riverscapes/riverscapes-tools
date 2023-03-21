@@ -1,0 +1,97 @@
+{
+    "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+    "createdOn": "1611698515396",
+    "description": "The first part of the MHFD job",
+    "env": {
+        "NO_UI": "gnarly",
+        "PROGRAM": "AnabranchDEV",
+        "TAGS": "MHFD"
+    },
+    "id": "0ee22906-1e3d-42d7-beb2-cfdf6750c437",
+    "meta": {},
+    "name": "MHFD Job: RSContext + VBET 2021",
+    "status": "ACTIVE",
+    "tasks": [
+        {
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1611698515495",
+            "endedOn": null,
+            "env": {
+                "HUC": "10190002"
+            },
+            "id": "5c0f671a-7e02-4323-a760-80dacd8a9d1c",
+            "logStream": null,
+            "logUrl": null,
+            "meta": {},
+            "name": "10190002",
+            "queriedOn": "1611698515969",
+            "startedOn": null,
+            "status": "QUEUED"
+        },
+        {
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1611698515514",
+            "endedOn": null,
+            "env": {
+                "HUC": "10190010"
+            },
+            "id": "b53c88c7-55a0-4b46-8963-4851f9934153",
+            "logStream": null,
+            "logUrl": null,
+            "meta": {},
+            "name": "10190010",
+            "queriedOn": "1611698515969",
+            "startedOn": null,
+            "status": "QUEUED"
+        },
+        {
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1611698515499",
+            "endedOn": null,
+            "env": {
+                "HUC": "10190004"
+            },
+            "id": "fe4dea7d-2d4d-4a36-8e3a-c36a348922a4",
+            "logStream": null,
+            "logUrl": null,
+            "meta": {},
+            "name": "10190004",
+            "queriedOn": "1611698515969",
+            "startedOn": null,
+            "status": "QUEUED"
+        },
+        {
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1611698515500",
+            "endedOn": null,
+            "env": {
+                "HUC": "10190005"
+            },
+            "id": "82a89b6a-194c-468e-a3c5-e1a53cda51f1",
+            "logStream": null,
+            "logUrl": null,
+            "meta": {},
+            "name": "10190005",
+            "queriedOn": "1611698515969",
+            "startedOn": null,
+            "status": "QUEUED"
+        },
+        {
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1611698515497",
+            "endedOn": null,
+            "env": {
+                "HUC": "10190003"
+            },
+            "id": "0f32b94d-44bf-4c5b-a39e-2432137101e0",
+            "logStream": null,
+            "logUrl": null,
+            "meta": {},
+            "name": "10190003",
+            "queriedOn": "1611698515969",
+            "startedOn": null,
+            "status": "QUEUED"
+        }
+    ],
+    "updatedOn": "1611698515396"
+}

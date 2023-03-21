@@ -1,0 +1,20 @@
+{
+  "name": "BRAT PUBLIC_DATA",
+  "description": "this is a job to do the thing I want to do",
+  "taskScriptId": "brat",
+  "meta": {
+  },
+  "env": {
+    "PROGRAM": "PUBLIC_DATA",
+    "VBET_TAGS": "store,cybercastor",
+    "BRAT_TAGS": "store,cybercastor",
+    "RSCONTEXT_TAGS": "store,cybercastor"
+  },
+  "hucs": [
+    "18010206"
+  ],
+  "DOCS": [
+    "- taskScriptId comes from: http://northarrowresearch.com/cybercastor/engines/manifest.json",
+    "- meta can be anything."
+  ]
+}

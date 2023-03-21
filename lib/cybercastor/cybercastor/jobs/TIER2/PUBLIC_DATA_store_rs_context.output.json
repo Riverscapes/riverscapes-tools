@@ -1,0 +1,33 @@
+{
+    "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+    "createdOn": "1611965564132",
+    "description": "Jan29 After VBET project fix",
+    "env": {
+        "NO_UI": "gnarly",
+        "PROGRAM": "PUBLIC_DATA",
+        "TAGS": "store"
+    },
+    "id": "8bcb4fe9-7291-4173-a7fe-4578d3cac27a",
+    "meta": {},
+    "name": "PUBLIC_DATA store RSContext + VBET ",
+    "status": "COMPLETE",
+    "tasks": [
+        {
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1611965564356",
+            "endedOn": "1611966523557",
+            "env": {
+                "HUC": "16010203"
+            },
+            "id": "97211c70-b82c-4c80-bb00-8633f15ca21b",
+            "logStream": "ecs/CybercastorEngine_rstools_prod/rstools/bfa2274b1d09433595b52ece2cc59bb0",
+            "logUrl": "https://us-west-2.console.aws.amazon.com/cloudwatch/home?region=us-west-2#logsV2:log-groups/log-group/CybercastorLogs_prod/log-events/ecs$252FCybercastorEngine_rstools_prod$252Frstools$252Fbfa2274b1d09433595b52ece2cc59bb0",
+            "meta": {},
+            "name": "16010203",
+            "queriedOn": "1611968409665",
+            "startedOn": "1611968404461",
+            "status": "STARTING"
+        }
+    ],
+    "updatedOn": "1611966533598"
+}

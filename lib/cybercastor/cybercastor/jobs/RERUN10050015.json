@@ -1,0 +1,24 @@
+{
+  "name": "VBET 10050015x huc10 (rerun)",
+  "description": "TEST",
+  "taskScriptId": "vbet",
+  "meta": { },
+  "env": {
+    "PROGRAM": "AnabranchDEV",
+    "CHANNEL_TAGS": "Cybercastor,Testing",
+    "TAUDEM_TAGS": "Cybercastor,Testing",
+    "RSCONTEXT_TAGS": "Cybercastor,Testing",
+    "VBET_TAGS": "DEC09",
+    "GIT_REF": "VBET_GNAT"
+  },
+  "resources": {
+    "cpu": 4096,
+    "memory": 30720,
+    "disk": 80
+  },
+  "hucs": [
+    "1005001501",
+    "1005001506",
+    "1005001503"
+  ]
+}

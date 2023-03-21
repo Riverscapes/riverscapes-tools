@@ -61,7 +61,7 @@ def main(api_url, username, password, download_running):
 
     while True:
         # Make an API query for the job that is in the output json file
-        paginated_jobs = CybercastorAPI.get_jobs()
+        paginated_jobs = CybercastorAPI.get_jobs('ACTIVE')
         print(chr(27) + "[2J")
         print(datetime.utcnow())
 
@@ -107,8 +107,9 @@ if __name__ == '__main__':
     parser.add_argument('api_url', help='URL to the cybercastor API', type=str)
     parser.add_argument('username', help='API URL Username', type=str)
     parser.add_argument('password', help='API URL Password', type=str)
-    parser.add_argument('sqlite_folder', help='Path to existing database', type=str)
+    parser.add_argument('log', help='log', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
+    parser.add_argument('--download_running', help='(optional) download running logs. This is expensive so try to use sparingly', action='store_true', default=False)
 
     args = dotenv.parse_args_env(parser, os.path.join(os.path.dirname(__file__), '.env.python'))
 
@@ -121,7 +122,7 @@ if __name__ == '__main__':
     log.title('Cybercastor Monitor')
 
     try:
-        main(fixedurl, args.username, args.password, args.download_running, args.sqlite_folder)
+        main(fixedurl, args.username, args.password, args.download_running, args.log)
 
     except Exception as e:
         log.error(e)

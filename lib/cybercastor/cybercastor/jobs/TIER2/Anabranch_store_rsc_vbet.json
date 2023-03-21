@@ -1,0 +1,39 @@
+{
+  "name": "Anabranch store RSContext + VBET ",
+  "description": "Jan29 After VBET project fix",
+  "taskScriptId": "rs_context_vbet",
+  "meta": {
+  },
+  "env": {
+    "PROGRAM": "Anabranch",
+    "TAGS": "store"
+  },
+  "hucs": [
+    "16040101", 
+    "16040102", 
+    "16040103", 
+    "16040104", 
+    "16040106", 
+    "16040107", 
+    "16040109", 
+    "16040201", 
+    "16040202", 
+    "16050101", 
+    "16050102", 
+    "16050103", 
+    "16050201", 
+    "16050301", 
+    "16050302", 
+    "16050304", 
+    "17120009", 
+    "18030002", 
+    "020600030501", 
+    "051301020501", 
+    "18040009", 
+    "14010001"
+  ],
+  "DOCS": [
+    "- taskScriptId comes from: http://northarrowresearch.com/cybercastor/engines/manifest.json",
+    "- meta can be anything."
+  ]
+}

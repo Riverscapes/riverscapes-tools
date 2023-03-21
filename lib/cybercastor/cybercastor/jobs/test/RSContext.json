@@ -1,0 +1,26 @@
+{
+  "name": "RSContext Test Job JAN13",
+  "description": "this is a job to do the thing I want to do",
+  "taskScriptId": "rs_context",
+  "meta": {
+    "InvoiceId": 1232342343,
+    "Customer": "Gary O'Neil and his merry band of misfits"
+  },
+  "env": {
+    "PROGRAM": "AnabranchDEV",
+    "TAGS": "TEST,JAN20",
+    "GIT_REF": "dev"
+  },
+  "hucs": [
+    "17060304",
+    "10190002",
+    "10190003",
+    "10190004",
+    "10190005",
+    "10190010"
+  ],
+  "DOCS": [
+    "- taskScriptId comes from: http://northarrowresearch.com/cybercastor/engines/manifest.json",
+    "- meta can be anything."
+  ]
+}

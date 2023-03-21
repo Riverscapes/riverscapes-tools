@@ -1,0 +1,19 @@
+{
+  "name": "PUBLIC_DATA Klamath RVD Feb8",
+  "description": "FEB8 After RVD Db refactor",
+  "taskScriptId": "rvd",
+  "meta": {
+  },
+  "env": {
+    "PROGRAM": "AnabranchDEV",
+    "RSCONTEXT_TAGS": "FEB5",
+    "VBET_TAGS": "FEB5",
+    "RVD_TAGS": "FEB8",
+    "GIT_REF": "dev"
+  },
+  "hucs": [
+    "18010201", "18010202", "18010203"
+  ],
+  "DOCS": [
+  ]
+}

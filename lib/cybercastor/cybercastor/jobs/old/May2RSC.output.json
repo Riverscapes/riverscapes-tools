@@ -1,0 +1,65 @@
+{
+    "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+    "createdOn": "1620100510606",
+    "description": "this is a job to do the thing I want to do",
+    "env": {
+        "NO_UI": "gnarly",
+        "PROGRAM": "Anabranch",
+        "TAGS": "Cybercastor"
+    },
+    "id": "082b1d1b-4e4a-4fee-8671-e1591db67360",
+    "meta": {},
+    "name": "May2 RSC #278 and #279",
+    "status": "COMPLETE",
+    "tasks": [
+        {
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1620100510830",
+            "endedOn": "1620104121677",
+            "env": {
+                "HUC": "18020001"
+            },
+            "id": "01be8056-39da-4d1c-add9-36edd89168bb",
+            "logStream": "ecs/CybercastorEngine_rstools_prod/rstools/de5e88bcb8664c279219243c12d3a922",
+            "logUrl": "https://us-west-2.console.aws.amazon.com/cloudwatch/home?region=us-west-2#logsV2:log-groups/log-group/CybercastorLogs_prod/log-events/ecs$252FCybercastorEngine_rstools_prod$252Frstools$252Fde5e88bcb8664c279219243c12d3a922",
+            "meta": {},
+            "name": "18020001",
+            "queriedOn": "1620137010733",
+            "startedOn": "1620100520006",
+            "status": "SUCCEEDED"
+        },
+        {
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1620100510842",
+            "endedOn": "1620102590981",
+            "env": {
+                "HUC": "17120007"
+            },
+            "id": "b638bb0f-ac0d-4c48-af88-80db67833550",
+            "logStream": "ecs/CybercastorEngine_rstools_prod/rstools/c26a200705b44e32907b982cc739242b",
+            "logUrl": "https://us-west-2.console.aws.amazon.com/cloudwatch/home?region=us-west-2#logsV2:log-groups/log-group/CybercastorLogs_prod/log-events/ecs$252FCybercastorEngine_rstools_prod$252Frstools$252Fc26a200705b44e32907b982cc739242b",
+            "meta": {},
+            "name": "17120007",
+            "queriedOn": "1620137010733",
+            "startedOn": "1620100520001",
+            "status": "SUCCEEDED"
+        },
+        {
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1620100510827",
+            "endedOn": "1620105532434",
+            "env": {
+                "HUC": "14060004"
+            },
+            "id": "adc2c7cc-5c33-460b-ad3b-ddb8db03091c",
+            "logStream": "ecs/CybercastorEngine_rstools_prod/rstools/f33017b2050347de8119ceb25a46157a",
+            "logUrl": "https://us-west-2.console.aws.amazon.com/cloudwatch/home?region=us-west-2#logsV2:log-groups/log-group/CybercastorLogs_prod/log-events/ecs$252FCybercastorEngine_rstools_prod$252Frstools$252Ff33017b2050347de8119ceb25a46157a",
+            "meta": {},
+            "name": "14060004",
+            "queriedOn": "1620137010733",
+            "startedOn": "1620100520009",
+            "status": "SUCCEEDED"
+        }
+    ],
+    "updatedOn": "1620105542449"
+}

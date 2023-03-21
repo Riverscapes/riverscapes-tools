@@ -1,0 +1,20 @@
+{
+  "name": "PROD--RSContext Test Job OCT5",
+  "description": "this is a job to do the thing I want to do",
+  "taskScriptId": "rs_context",
+  "meta": {
+    "InvoiceId": 1232342343,
+    "Customer": "Gary O'Neil and his merry band of misfits"
+  },
+  "env": {
+    "PROGRAM": "Anabranch",
+    "TAGS": "DELETEME,OCT5"
+  },
+  "hucs": [
+    "17060304"
+  ],
+  "DOCS": [
+    "- taskScriptId comes from: http://northarrowresearch.com/cybercastor/engines/manifest.json",
+    "- meta can be anything."
+  ]
+}

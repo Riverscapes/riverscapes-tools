@@ -1,0 +1,33 @@
+{
+    "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+    "createdOn": "1611698092008",
+    "description": "this is a job to do the thing I want to do",
+    "env": {
+        "NO_UI": "gnarly",
+        "PROGRAM": "AsotinIMW",
+        "TAGS": "cybercastor"
+    },
+    "id": "17624b8d-1209-40a6-aec0-4b928c897a6f",
+    "meta": {},
+    "name": "RSContext for AsotinIMW",
+    "status": "ACTIVE",
+    "tasks": [
+        {
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1611698092107",
+            "endedOn": null,
+            "env": {
+                "HUC": "17060103"
+            },
+            "id": "8ce517a4-5aef-42ec-a95f-770da7932fb1",
+            "logStream": null,
+            "logUrl": null,
+            "meta": {},
+            "name": "17060103",
+            "queriedOn": "1611698092328",
+            "startedOn": null,
+            "status": "QUEUED"
+        }
+    ],
+    "updatedOn": "1611698092008"
+}

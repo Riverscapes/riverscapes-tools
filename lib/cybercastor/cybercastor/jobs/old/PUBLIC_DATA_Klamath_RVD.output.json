@@ -1,0 +1,68 @@
+{
+    "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+    "createdOn": "1612810697465",
+    "description": "FEB8 After RVD Db refactor",
+    "env": {
+        "GIT_REF": "dev",
+        "NO_UI": "gnarly",
+        "PROGRAM": "PUBLIC_DATA_DEV",
+        "RSCONTEXT_TAGS": "FEB5",
+        "RVD_TAGS": "FEB8",
+        "VBET_TAGS": "FEB5"
+    },
+    "id": "7e218feb-21c3-4d46-b7e0-e3c0e21a2e3f",
+    "meta": {},
+    "name": "PUBLIC_DATA Klamath RVD Feb8",
+    "status": "ACTIVE",
+    "tasks": [
+        {
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1612810697753",
+            "endedOn": null,
+            "env": {
+                "HUC": "18010201"
+            },
+            "id": "e6cb51c2-7f3e-4fc6-b4f4-c36d4eed329b",
+            "logStream": null,
+            "logUrl": null,
+            "meta": {},
+            "name": "18010201",
+            "queriedOn": "1612810698091",
+            "startedOn": null,
+            "status": "QUEUED"
+        },
+        {
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1612810697755",
+            "endedOn": null,
+            "env": {
+                "HUC": "18010202"
+            },
+            "id": "30696b7c-8788-4a96-879a-352f45c4c375",
+            "logStream": null,
+            "logUrl": null,
+            "meta": {},
+            "name": "18010202",
+            "queriedOn": "1612810698091",
+            "startedOn": null,
+            "status": "QUEUED"
+        },
+        {
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1612810697757",
+            "endedOn": null,
+            "env": {
+                "HUC": "18010203"
+            },
+            "id": "07162edf-97fa-4108-a372-d59c98fa54eb",
+            "logStream": null,
+            "logUrl": null,
+            "meta": {},
+            "name": "18010203",
+            "queriedOn": "1612810698092",
+            "startedOn": null,
+            "status": "QUEUED"
+        }
+    ],
+    "updatedOn": "1612810697465"
+}

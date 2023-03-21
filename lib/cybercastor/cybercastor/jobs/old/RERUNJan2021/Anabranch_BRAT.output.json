@@ -1,0 +1,307 @@
+{
+    "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+    "createdOn": "1611766083014",
+    "description": "The first part of the anabranch store job",
+    "env": {
+        "BRAT_TAGS": "store",
+        "NO_UI": "gnarly",
+        "PROGRAM": "Anabranch",
+        "RSCONTEXT_TAGS": "store",
+        "VBET_TAGS": "store"
+    },
+    "id": "e9d5f084-f702-471f-8b8d-91a913044aaf",
+    "meta": {},
+    "name": "Anabranch BRAT 2021",
+    "status": "ACTIVE",
+    "tasks": [
+        {
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1611766083156",
+            "endedOn": null,
+            "env": {
+                "HUC": "16040107"
+            },
+            "id": "d67e5a2e-a341-4d15-a6c1-4022e517a207",
+            "logStream": null,
+            "logUrl": null,
+            "meta": {},
+            "name": "16040107",
+            "queriedOn": "1611766083914",
+            "startedOn": null,
+            "status": "QUEUED"
+        },
+        {
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1611766083215",
+            "endedOn": null,
+            "env": {
+                "HUC": "17120009"
+            },
+            "id": "929f23d6-86b1-4d91-9764-b4e7e808381c",
+            "logStream": null,
+            "logUrl": null,
+            "meta": {},
+            "name": "17120009",
+            "queriedOn": "1611766083914",
+            "startedOn": null,
+            "status": "QUEUED"
+        },
+        {
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1611766083198",
+            "endedOn": null,
+            "env": {
+                "HUC": "16050201"
+            },
+            "id": "a4e2a330-e6fc-45d0-b5c0-9eb128be6871",
+            "logStream": null,
+            "logUrl": null,
+            "meta": {},
+            "name": "16050201",
+            "queriedOn": "1611766083914",
+            "startedOn": null,
+            "status": "QUEUED"
+        },
+        {
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1611766083137",
+            "endedOn": null,
+            "env": {
+                "HUC": "16040104"
+            },
+            "id": "63a4dce5-428a-4b09-9be6-fe7d5e0fa37a",
+            "logStream": null,
+            "logUrl": null,
+            "meta": {},
+            "name": "16040104",
+            "queriedOn": "1611766083915",
+            "startedOn": null,
+            "status": "QUEUED"
+        },
+        {
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1611766083130",
+            "endedOn": null,
+            "env": {
+                "HUC": "16040101"
+            },
+            "id": "8f275543-04ef-4b62-b7db-88bf137d4db0",
+            "logStream": null,
+            "logUrl": null,
+            "meta": {},
+            "name": "16040101",
+            "queriedOn": "1611766083915",
+            "startedOn": null,
+            "status": "QUEUED"
+        },
+        {
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1611766083173",
+            "endedOn": null,
+            "env": {
+                "HUC": "16040109"
+            },
+            "id": "f6725ba5-3f94-4e63-bf1b-8ab3212a8f20",
+            "logStream": null,
+            "logUrl": null,
+            "meta": {},
+            "name": "16040109",
+            "queriedOn": "1611766083915",
+            "startedOn": null,
+            "status": "QUEUED"
+        },
+        {
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1611766083213",
+            "endedOn": null,
+            "env": {
+                "HUC": "16050304"
+            },
+            "id": "df84886f-a30c-45de-8184-ba395dae6e98",
+            "logStream": null,
+            "logUrl": null,
+            "meta": {},
+            "name": "16050304",
+            "queriedOn": "1611766083915",
+            "startedOn": null,
+            "status": "QUEUED"
+        },
+        {
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1611766083176",
+            "endedOn": null,
+            "env": {
+                "HUC": "16040202"
+            },
+            "id": "49706794-c190-4238-b9c2-1b5c4f9cc33a",
+            "logStream": null,
+            "logUrl": null,
+            "meta": {},
+            "name": "16040202",
+            "queriedOn": "1611766083915",
+            "startedOn": null,
+            "status": "QUEUED"
+        },
+        {
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1611766083196",
+            "endedOn": null,
+            "env": {
+                "HUC": "16050103"
+            },
+            "id": "0baa5081-39ed-481f-a94d-fcd1b3a70a00",
+            "logStream": null,
+            "logUrl": null,
+            "meta": {},
+            "name": "16050103",
+            "queriedOn": "1611766083915",
+            "startedOn": null,
+            "status": "QUEUED"
+        },
+        {
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1611766083195",
+            "endedOn": null,
+            "env": {
+                "HUC": "16050102"
+            },
+            "id": "3b4ffe4d-07fc-47f0-b5ce-3224299c4e22",
+            "logStream": null,
+            "logUrl": null,
+            "meta": {},
+            "name": "16050102",
+            "queriedOn": "1611766083915",
+            "startedOn": null,
+            "status": "QUEUED"
+        },
+        {
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1611766083135",
+            "endedOn": null,
+            "env": {
+                "HUC": "16040102"
+            },
+            "id": "ea276191-7beb-4842-a52c-3238ad353b82",
+            "logStream": null,
+            "logUrl": null,
+            "meta": {},
+            "name": "16040102",
+            "queriedOn": "1611766083915",
+            "startedOn": null,
+            "status": "QUEUED"
+        },
+        {
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1611766083234",
+            "endedOn": null,
+            "env": {
+                "HUC": "18030002"
+            },
+            "id": "db0d72fe-9f56-4afd-bccc-f99bdc919f46",
+            "logStream": null,
+            "logUrl": null,
+            "meta": {},
+            "name": "18030002",
+            "queriedOn": "1611766083915",
+            "startedOn": null,
+            "status": "QUEUED"
+        },
+        {
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1611766083199",
+            "endedOn": null,
+            "env": {
+                "HUC": "16050301"
+            },
+            "id": "6e4c114c-66cd-48e5-ba06-dcd506671697",
+            "logStream": null,
+            "logUrl": null,
+            "meta": {},
+            "name": "16050301",
+            "queriedOn": "1611766083915",
+            "startedOn": null,
+            "status": "QUEUED"
+        },
+        {
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1611766083136",
+            "endedOn": null,
+            "env": {
+                "HUC": "16040103"
+            },
+            "id": "19512a89-081a-45d8-94a0-c976a95c0178",
+            "logStream": null,
+            "logUrl": null,
+            "meta": {},
+            "name": "16040103",
+            "queriedOn": "1611766083915",
+            "startedOn": null,
+            "status": "QUEUED"
+        },
+        {
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1611766083154",
+            "endedOn": null,
+            "env": {
+                "HUC": "16040106"
+            },
+            "id": "2350ee7c-9e96-4b7d-bba2-f28d25fb7ffe",
+            "logStream": null,
+            "logUrl": null,
+            "meta": {},
+            "name": "16040106",
+            "queriedOn": "1611766083915",
+            "startedOn": null,
+            "status": "QUEUED"
+        },
+        {
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1611766083200",
+            "endedOn": null,
+            "env": {
+                "HUC": "16050302"
+            },
+            "id": "c155d4e3-43df-42ea-835b-071a17c4cc97",
+            "logStream": null,
+            "logUrl": null,
+            "meta": {},
+            "name": "16050302",
+            "queriedOn": "1611766083915",
+            "startedOn": null,
+            "status": "QUEUED"
+        },
+        {
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1611766083175",
+            "endedOn": null,
+            "env": {
+                "HUC": "16040201"
+            },
+            "id": "5b464770-7359-43eb-9c7f-b9122187b6b8",
+            "logStream": null,
+            "logUrl": null,
+            "meta": {},
+            "name": "16040201",
+            "queriedOn": "1611766083915",
+            "startedOn": null,
+            "status": "QUEUED"
+        },
+        {
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1611766083194",
+            "endedOn": null,
+            "env": {
+                "HUC": "16050101"
+            },
+            "id": "b2093978-18db-45f4-8832-54dd1ca201c2",
+            "logStream": null,
+            "logUrl": null,
+            "meta": {},
+            "name": "16050101",
+            "queriedOn": "1611766083915",
+            "startedOn": null,
+            "status": "QUEUED"
+        }
+    ],
+    "updatedOn": "1611766083014"
+}

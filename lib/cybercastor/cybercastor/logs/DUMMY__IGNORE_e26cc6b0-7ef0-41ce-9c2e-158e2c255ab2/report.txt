@@ -1,0 +1,14 @@
+
+DUMMY. IGNORE  (id:e26cc6b0-7ef0-41ce-9c2e-158e2c255ab2)
+=================================================================
+VBET run for manuscript on dams and megafires
+createdOn: Jan 04, 2023 17:04:53 (1672851893084)
+updatedOn: Jan 04, 2023 17:14:38 (1672852478573)
+
+STOPPED: (1)
+10180001
+
+Jobs:
+----------------
+jobname	taskname	status	cpu	memory	ellapsedS	startedOn	endedOn	logUrl	jobid	taskid
+DUMMY. IGNORE	10180001	STOPPED	4096	30720	579.9	1672851898494	1672852478394	https://us-west-2.console.aws.amazon.com/cloudwatch/home?region=us-west-2#logsV2:log-groups/log-group/CybercastorLogs_prod/log-events/ecs$252FCybercastorEngine_rstools_prod$252Frstools$252F60ee8225dc244341b469e9e1b245db4f	e26cc6b0-7ef0-41ce-9c2e-158e2c255ab2	e19f748b-8386-44f2-a1ca-602e49552369

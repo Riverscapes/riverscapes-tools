@@ -1,0 +1,22 @@
+
+VBET for megafire watersheds  (id:343a2b67-4431-4793-bbea-23a73a542854)
+=================================================================
+VBET run for manuscript on dams and megafires
+createdOn: Jan 04, 2023 17:11:40 (1672852300922)
+updatedOn: Jan 06, 2023 17:34:37 (1673026477409)
+
+STOPPED: (2)
+14010001, 10180002
+
+FAILED: (4)
+10180001, 10180010, 10190007, 10190006
+
+Jobs:
+----------------
+jobname	taskname	status	cpu	memory	ellapsedS	startedOn	endedOn	logUrl	jobid	taskid
+VBET for megafire watersheds	10180001	FAILED	4096	30720	31963.12	1672852408216	1672884371336	https://us-west-2.console.aws.amazon.com/cloudwatch/home?region=us-west-2#logsV2:log-groups/log-group/CybercastorLogs_prod/log-events/ecs$252FCybercastorEngine_rstools_prod$252Frstools$252F902c69ff148c420781ad877a47a1188d	343a2b67-4431-4793-bbea-23a73a542854	c2092467-f6b3-493e-aeae-9b74996c33e0
+VBET for megafire watersheds	10180010	FAILED	4096	30720	112351.051	1672852398151	1672964749202	https://us-west-2.console.aws.amazon.com/cloudwatch/home?region=us-west-2#logsV2:log-groups/log-group/CybercastorLogs_prod/log-events/ecs$252FCybercastorEngine_rstools_prod$252Frstools$252Ff3cb1e2e39584aeeac360da3cc65a7c5	343a2b67-4431-4793-bbea-23a73a542854	2b17a998-0651-4109-8989-5c90a569c400
+VBET for megafire watersheds	10190007	FAILED	4096	30720	129591.034	1672852399174	1672981990208	https://us-west-2.console.aws.amazon.com/cloudwatch/home?region=us-west-2#logsV2:log-groups/log-group/CybercastorLogs_prod/log-events/ecs$252FCybercastorEngine_rstools_prod$252Frstools$252Fea536601e76f4de6bcfb46698f08a106	343a2b67-4431-4793-bbea-23a73a542854	14e3ba91-204d-4709-9a6e-1677fba8f771
+VBET for megafire watersheds	10190006	FAILED	4096	30720	28277.84	1672852398855	1672880676695	https://us-west-2.console.aws.amazon.com/cloudwatch/home?region=us-west-2#logsV2:log-groups/log-group/CybercastorLogs_prod/log-events/ecs$252FCybercastorEngine_rstools_prod$252Frstools$252Fbd431be1a28245d1803b92594ad5eda3	343a2b67-4431-4793-bbea-23a73a542854	c250da6b-9081-43de-aa7f-a1495f9f8a7c
+VBET for megafire watersheds	14010001	STOPPED	4096	30720	174168.725	1672852308567	1673026477292	https://us-west-2.console.aws.amazon.com/cloudwatch/home?region=us-west-2#logsV2:log-groups/log-group/CybercastorLogs_prod/log-events/ecs$252FCybercastorEngine_rstools_prod$252Frstools$252Fb0184542a34647c799fc4a5564bcdce4	343a2b67-4431-4793-bbea-23a73a542854	739e0255-74d9-47b3-8808-aa3ff8cb231f
+VBET for megafire watersheds	10180002	STOPPED	4096	30720	174166.809	1672852308489	1673026475298	https://us-west-2.console.aws.amazon.com/cloudwatch/home?region=us-west-2#logsV2:log-groups/log-group/CybercastorLogs_prod/log-events/ecs$252FCybercastorEngine_rstools_prod$252Frstools$252F9419f8fad96a462092c1b89f74883a4d	343a2b67-4431-4793-bbea-23a73a542854	d7182711-db2a-4c65-94c8-2826f6ec72e8

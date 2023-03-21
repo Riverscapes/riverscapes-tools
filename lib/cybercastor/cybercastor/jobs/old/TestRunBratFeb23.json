@@ -1,0 +1,23 @@
+{
+  "name": "Small HUC brat Feb23",
+  "description": "FEB22 After february release",
+  "taskScriptId": "brat",
+  "meta": {
+  },
+  "env": {
+    "PROGRAM": "AnabranchDEV",
+    "DEBUG": "YES",
+    "GIT_REF": "dev",
+    "VBET_TAGS": "TEST,Feb23",
+    "BRAT_TAGS": "TEST,Feb23",
+    "RSCONTEXT_TAGS": "TEST,Feb23",
+    "TAGS": "TEST,Feb23"
+  },
+  "hucs": [
+    "17060304"
+  ],
+  "DOCS": [
+    "- taskScriptId comes from: http://northarrowresearch.com/cybercastor/engines/manifest.json",
+    "- meta can be anything."
+  ]
+}

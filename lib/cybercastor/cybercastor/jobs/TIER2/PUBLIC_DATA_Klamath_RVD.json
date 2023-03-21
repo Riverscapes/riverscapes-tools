@@ -1,0 +1,20 @@
+{
+  "name": "PUBLIC_DATA Klamath RVD",
+  "description": "Jan29 After VBET project fix",
+  "taskScriptId": "rvd",
+  "meta": {
+  },
+  "env": {
+    "PROGRAM": "PUBLIC_DATA",
+    "VBET_TAGS": "Klamath",
+    "RVD_TAGS": "Klamath",
+    "RSCONTEXT_TAGS": "Klamath"
+  },
+  "hucs": [
+    "18010201", "18010202", "18010203"
+  ],
+  "DOCS": [
+    "- taskScriptId comes from: http://northarrowresearch.com/cybercastor/engines/manifest.json",
+    "- meta can be anything."
+  ]
+}

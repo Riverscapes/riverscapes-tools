@@ -1,0 +1,35 @@
+{
+  "name": "RSC for Mississippi HUCs #247",
+  "description": "this is a job to do the thing I want to do",
+  "taskScriptId": "rs_context",
+  "meta": {
+  },
+  "env": {
+    "PROGRAM": "PUBLIC_DATA",
+    "TAGS": "Mississippi"
+  },
+  "hucs": [
+    "05020004",
+    "05140201",
+    "05010003",
+    "05040003",
+    "06010207",
+    "06010202",
+    "07020005",
+    "07050002",
+    "07080105",
+    "08080102",
+    "08010100",
+    "10080010",
+    "10140102",
+    "10030201",
+    "10270101",
+    "10190002",
+    "11040005",
+    "11110103"
+  ],
+  "DOCS": [
+    "- taskScriptId comes from: http://northarrowresearch.com/cybercastor/engines/manifest.json",
+    "- meta can be anything."
+  ]
+}

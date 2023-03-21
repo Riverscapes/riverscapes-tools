@@ -28,10 +28,10 @@
       "name": "dump_sqlite",
       "type": "python",
       "request": "launch",
-      "module": "scripts.dump_sqlite",
+      "module": "cybercastor.dump_sqlite",
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
-      "envFile": "${workspaceFolder}/.env.python",
+      "envFile": "${workspaceFolder}/.env",
       // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
       "args": [
         "{env:DATA_ROOT}/warehouse_report",
@@ -42,15 +42,15 @@
       ]
     },
     {
-      "name": "Python: Add Job",
+      "name": "Cybercastor: Add Job",
       "type": "python",
       "request": "launch",
-      "module": "scripts.rstools_add_job",
+      "module": "cybercastor.rstools_add_job",
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
-      "envFile": "${workspaceFolder}/.env.python",
+      "envFile": "${workspaceFolder}/.env",
       "args": [
-        "${workspaceFolder}/scripts/jobs/",
+        "${workspaceFolder}/cybercastor/jobs/",
         "{env:API_URL}",
         "{env:USERNAME}",
         "{env:PASSWORD}",
@@ -58,13 +58,13 @@
       ]
     },
     {
-      "name": "Python: Monitor System",
+      "name": "Cybercastor: Monitor System",
       "type": "python",
       "request": "launch",
-      "module": "scripts.monitor",
+      "module": "cybercastor.monitor",
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
-      "envFile": "${workspaceFolder}/.env.python",
+      "envFile": "${workspaceFolder}/.env",
       "args": [
         "{env:API_URL}",
         "{env:USERNAME}",

@@ -1,0 +1,17 @@
+{
+  "name": "RSC 10050015x huc10 (rerun)",
+  "description": "TEST",
+  "taskScriptId": "rs_context_channel_taudem",
+  "meta": { },
+  "env": {
+    "PROGRAM": "AnabranchDEV",
+    "TAGS": "Cybercastor,Testing",
+    "VBET_TAGS": "DEC09",
+    "GIT_REF": "VBET_GNAT"
+  },
+  "hucs": [
+    "1005001501",
+    "1005001506",
+    "1005001503"
+  ]
+}

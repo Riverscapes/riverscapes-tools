@@ -1,0 +1,27 @@
+{
+  "name": "Preparation for VBET Run",
+  "description": "this is a job to do the thing I want to do",
+  "taskScriptId": "rs_context_channel_taudem",
+  "meta": {
+    "InvoiceId": 1232342343,
+    "Customer": "Gary O'Neil and his merry band of misfits"
+  },
+  "env": {
+    "PROGRAM": "AnabranchDEV",
+    "TAGS": "PERFORMANCE,NOV11",
+    "GIT_REF": "performance"
+  },
+  "hucs": [
+    "17060304",
+    "10190002",
+    "10190003",
+    "10190004",
+    "10190005",
+    "10190010",
+    "05010003"
+  ],
+  "DOCS": [
+    "- taskScriptId comes from: https://cybercastor.northarrowresearch.com/engines/manifest.json",
+    "- meta can be anything."
+  ]
+}

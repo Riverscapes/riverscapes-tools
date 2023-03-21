@@ -1,0 +1,41 @@
+{
+    "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+    "createdOn": "1664998071345",
+    "description": "this is a job to do the thing I want to do",
+    "env": {
+        "NO_UI": "gnarly",
+        "PROGRAM": "AnabranchDEV",
+        "TAGS": "DELETEME,OCT5"
+    },
+    "id": "226c2508-50e8-42d9-9a97-29163b3fa5dd",
+    "meta": {
+        "Customer": "Gary O'Neil and his merry band of misfits",
+        "InvoiceId": 1232342343
+    },
+    "name": "RSContext Test Job OCT5",
+    "status": "ACTIVE",
+    "taskDefId": "rstools",
+    "taskScriptId": "rs_context",
+    "tasks": [
+        {
+            "cpu": null,
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1664998071610",
+            "endedOn": null,
+            "env": {
+                "HUC": "17060304"
+            },
+            "id": "50b7885f-040d-42bf-b71a-16e79bb1dde1",
+            "logStream": null,
+            "logUrl": null,
+            "memory": null,
+            "meta": {},
+            "name": "17060304",
+            "queriedOn": "1664998071922",
+            "startedOn": null,
+            "status": "QUEUED",
+            "taskDefProps": null
+        }
+    ],
+    "updatedOn": "1664998071345"
+}

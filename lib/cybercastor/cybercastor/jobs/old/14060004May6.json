@@ -1,0 +1,20 @@
+{
+  "name": "BRAT Run for 14060004 may6",
+  "description": "Test job to run everything",
+  "taskScriptId": "brat",
+  "meta": {},
+  "env": {
+    "PROGRAM": "Anabranch",
+    "BRAT_TAGS": "Cybercastor",
+    "VBET_TAGS": "Cybercastor",
+    "RSCONTEXT_TAGS": "Cybercastor"
+  },
+  "hucs": [
+    "14060004"
+  ],
+  "DOCS": [
+    "- taskScriptId comes from: http://northarrowresearch.com/cybercastor/engines/manifest.json",
+    "- meta can be anything.",
+    "- Hucs are all the MHFD and all the klamath"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "name": "PUBLIC_DATA store BRAT ",
+  "description": "Jan29 After VBET project fix",
+  "taskScriptId": "brat",
+  "meta": {
+  },
+  "env": {
+    "PROGRAM": "PUBLIC_DATA",
+    "VBET_TAGS": "store",
+    "BRAT_TAGS": "store",
+    "RSCONTEXT_TAGS": "store"
+  },
+  "hucs": [
+    "18010206"
+  ],
+  "DOCS": [
+    "- taskScriptId comes from: http://northarrowresearch.com/cybercastor/engines/manifest.json",
+    "- meta can be anything."
+  ]
+}

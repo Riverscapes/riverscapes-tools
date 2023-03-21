@@ -1,0 +1,36 @@
+{
+  "name": "Testing Corrupted TIF files #681",
+  "description": "TEST",
+  "taskScriptId": "vbet",
+  "meta": {},
+  "env": {
+    "PROGRAM": "AnabranchDEV",
+    "CHANNEL_TAGS": "Cybercastor,Testing",
+    "TAUDEM_TAGS": "Cybercastor,Testing",
+    "RSCONTEXT_TAGS": "Cybercastor,Testing",
+    "VBET_TAGS": "DEC14",
+    "GIT_REF": "VBET_GNAT"
+  },
+  "resources": {
+    "cpu": 4096,
+    "memory": 30720,
+    "disk": 80
+  },
+  "hucs": [
+    "05010003",
+    "0501000301",
+    "05020004",
+    "05040003",
+    "05140201",
+    "06010207",
+    "07020005",
+    "07050002",
+    "10030201",
+    "1005001501",
+    "1005001503",
+    "1005001506",
+    "16010201",
+    "1601020101",
+    "16010202"
+  ]
+}

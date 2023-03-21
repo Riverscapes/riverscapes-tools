@@ -1,0 +1,46 @@
+{
+    "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+    "createdOn": "1672851893084",
+    "description": "VBET run for manuscript on dams and megafires",
+    "env": {
+        "CHANNEL_TAGS": "MEGAFIRES, Cybercastor",
+        "GIT_REF": "VBET_GNAT",
+        "NO_UI": "gnarly",
+        "PROGRAM": "Anabranch",
+        "RSCONTEXT_TAGS": "MEGAFIRES, Cybercastor",
+        "TAUDEM_TAGS": "MEGAFIRES, Cybercastor",
+        "VBET_TAGS": "MEGAFIRES ,Cybercastor"
+    },
+    "id": "e26cc6b0-7ef0-41ce-9c2e-158e2c255ab2",
+    "meta": {},
+    "name": "DUMMY. IGNORE",
+    "status": "ACTIVE",
+    "taskDefId": "rstools",
+    "taskScriptId": "vbet",
+    "tasks": [
+        {
+            "cpu": 4096,
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1672851893377",
+            "endedOn": null,
+            "env": {
+                "HUC": "10180001"
+            },
+            "id": "e19f748b-8386-44f2-a1ca-602e49552369",
+            "logStream": "ecs/CybercastorEngine_rstools_prod/rstools/60ee8225dc244341b469e9e1b245db4f",
+            "logUrl": "https://us-west-2.console.aws.amazon.com/cloudwatch/home?region=us-west-2#logsV2:log-groups/log-group/CybercastorLogs_prod/log-events/ecs$252FCybercastorEngine_rstools_prod$252Frstools$252F60ee8225dc244341b469e9e1b245db4f",
+            "memory": 30720,
+            "meta": {},
+            "name": "10180001",
+            "queriedOn": "1672852466796",
+            "startedOn": "1672851898494",
+            "status": "RUNNING",
+            "taskDefProps": {
+                "cpu": 4096,
+                "ephemeralStorageGiB": 80,
+                "memoryLimitMiB": 30720
+            }
+        }
+    ],
+    "updatedOn": "1672851893084"
+}

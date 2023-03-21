@@ -1,0 +1,33 @@
+{
+    "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+    "createdOn": "1611965834895",
+    "description": "Jan29 After VBET project fix",
+    "env": {
+        "NO_UI": "gnarly",
+        "PROGRAM": "AsotinIMW",
+        "TAGS": "cybercastor"
+    },
+    "id": "754d2930-078c-48fc-a71c-c2d4a04db263",
+    "meta": {},
+    "name": "AsotinIMW MHFD RSContext + VBET ",
+    "status": "COMPLETE",
+    "tasks": [
+        {
+            "createdBy": "d6c0ff26-8550-4f80-b9ea-6cc1e70a1c4d",
+            "createdOn": "1611965834954",
+            "endedOn": "1611966583694",
+            "env": {
+                "HUC": "17060103"
+            },
+            "id": "4de5895c-406d-4416-bf2e-6e6249be5b7a",
+            "logStream": "ecs/CybercastorEngine_rstools_prod/rstools/454234ee3ab944b6be5a3943cf6fbfd6",
+            "logUrl": "https://us-west-2.console.aws.amazon.com/cloudwatch/home?region=us-west-2#logsV2:log-groups/log-group/CybercastorLogs_prod/log-events/ecs$252FCybercastorEngine_rstools_prod$252Frstools$252F454234ee3ab944b6be5a3943cf6fbfd6",
+            "meta": {},
+            "name": "17060103",
+            "queriedOn": "1611968577546",
+            "startedOn": "1611965843309",
+            "status": "FAILED"
+        }
+    ],
+    "updatedOn": "1611966584483"
+}

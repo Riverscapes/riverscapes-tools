@@ -1,0 +1,18 @@
+{
+  "name": "Sanity Test for Cybercastor",
+  "description": "Test job to run everything",
+  "taskScriptId": "rs_context",
+  "meta": {},
+  "env": {
+    "PROGRAM": "AnabranchDEV",
+    "TAGS": "TEST,MAR8,SANITYTEST"
+  },
+  "hucs": [
+    "17060304"
+  ],
+  "DOCS": [
+    "- taskScriptId comes from: http://northarrowresearch.com/cybercastor/engines/manifest.json",
+    "- meta can be anything.",
+    "- Hucs are all the MHFD and all the klamath"
+  ]
+}

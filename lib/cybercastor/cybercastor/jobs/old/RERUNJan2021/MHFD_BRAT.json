@@ -1,0 +1,24 @@
+{
+  "name": "MHFD Job: BRAT 2021",
+  "description": "The first part of the MHFD job",
+  "taskScriptId": "brat",
+  "meta": {
+  },
+  "env": {
+    "PROGRAM": "AnabranchDEV",
+    "VBET_TAGS": "MHFD",
+    "BRAT_TAGS": "MHFD",
+    "RSCONTEXT_TAGS": "MHFD"
+  },
+  "hucs": [
+    "10190002",
+    "10190003",
+    "10190004",
+    "10190005",
+    "10190010"
+  ],
+  "DOCS": [
+    "- taskScriptId comes from: http://northarrowresearch.com/cybercastor/engines/manifest.json",
+    "- meta can be anything."
+  ]
+}

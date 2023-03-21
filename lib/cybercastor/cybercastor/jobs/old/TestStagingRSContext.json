@@ -1,0 +1,16 @@
+{
+  "$schema": "../job.schema.json",
+  "name": "Matt Testing Riverscapes-tools Oct 3, 2022",
+  "description": "this is a job to do the thing I want to do",
+  "taskScriptId": "rs_context_channel_taudem",
+  "env": {
+    "PROGRAM": "AnabranchDEV",
+    "TAGS": "TEST,OCT3"
+  },
+  "hucs": [
+    "17060304",
+    "10190002",
+    "10190003",
+    "10190004"
+  ]
+}

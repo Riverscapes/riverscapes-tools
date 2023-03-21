@@ -1,0 +1,29 @@
+{
+  "name": "VBET Test Job FEB4",
+  "description": "this is a job to do the thing I want to do",
+  "taskScriptId": "vbet",
+  "meta": {
+  },
+  "env": {
+    "PROGRAM": "AnabranchDEV",
+    "VBET_TAGS": "TEST,FEB4",
+    "RSCONTEXT_TAGS": "TEST,FEB4",
+    "GIT_REF": "dev"
+  },
+  "hucs": [
+    "17060304",
+    "18010201",
+    "18010202",
+    "18010203",  
+    "10190002",
+    "10190003",
+    "10190004",
+    "10190005",
+    "10190010"
+  ],
+  "DOCS": [
+    "- taskScriptId comes from: http://northarrowresearch.com/cybercastor/engines/manifest.json",
+    "- For BRAT make sure you have a GOOGLE_SHEETS env var.",
+    "- meta can be anything."
+  ]
+}

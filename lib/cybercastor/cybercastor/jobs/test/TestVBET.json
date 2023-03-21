@@ -1,0 +1,21 @@
+{
+  "name": "BRAT TEST Staging JUL8",
+  "description": "Test job to run everything",
+  "taskScriptId": "vbet",
+  "meta": {
+  },
+  "env": {
+    "PROGRAM": "AnabranchDEV",
+    "VBET_TAGS": "TEST_ALL,JUL8",
+    "RSCONTEXT_TAGS": "TEST_ALL,JUL8",    
+    "GIT_REF": "vbet_param_testing"
+  },
+  "hucs": [
+    "17060304"
+  ],
+  "DOCS": [
+    "- taskScriptId comes from: http://northarrowresearch.com/cybercastor/engines/manifest.json",
+    "- meta can be anything.",
+    "- Hucs are all the MHFD and all the klamath"
+  ]
+}

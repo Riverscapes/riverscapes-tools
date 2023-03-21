@@ -1,0 +1,21 @@
+{
+  "name": "PUBLIC_DATA Klamath RVD",
+  "description": "Jan29 After VBET project fix",
+  "taskScriptId": "rvd",
+  "meta": {
+  },
+  "env": {
+    "PROGRAM": "AnabranchDEV",
+    "VBET_TAGS": "FEB5",
+    "RVD_TAGS": "FEB5",
+    "RSCONTEXT_TAGS": "FEB5",
+    "GIT_REF": "rvd_db_tweaks"
+  },
+  "hucs": [
+    "18010201", "18010202", "18010203"
+  ],
+  "DOCS": [
+    "- taskScriptId comes from: http://northarrowresearch.com/cybercastor/engines/manifest.json",
+    "- meta can be anything."
+  ]
+}
