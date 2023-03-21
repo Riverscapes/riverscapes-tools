@@ -3,9 +3,16 @@
 `.env.python` file
 
 ```
-API_URL=https://XXXXXXX.execute-api.XX-XXXXX-X.amazonaws.com/dev/
+# To connect to the Cybercastor API you'll need the following:
+API_URL=https://0qj6r9bs8i.execute-api.us-west-2.amazonaws.com/prod/api
+# To be perfectly clear, these are COGNITO credentials
 USERNAME=myemail@something.com
 PASSWORD=XXXMyRSPAssword
+
+# For the new Riverscapes API you'll need at least 
+RS_API_URL=https://api.warehouse.riverscapes.net/staging
+RS_CLIENT_ID=ASK_MATT_FOR_THIS
+RS_CLIENT_SECRET=ASK_MATT_FOR_THIS
 ```
 
 Job definition
