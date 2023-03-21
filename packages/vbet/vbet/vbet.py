@@ -811,7 +811,11 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     _tmr_waypt.timer_break('CalcSegmentMetrics')
 
     log.info('Summerizing VBET Metrics')
-    distance_lookup = get_distance_lookup(inputs_gpkg, intermediates_gpkg, level_paths_to_run, {0: 200.0, 1: 400.0, 2: 1200.0})
+    window_size = {0: 200.0, 1: 400.0, 2: 1200.0}
+    distance_lookup = get_distance_lookup(inputs_gpkg, intermediates_gpkg, level_paths_to_run, window_size)
+    project.add_metadata([RSMeta('SmallWindow', window_size[0], RSMetaTypes.INT),
+                          RSMeta('MediumWindow', window_size[1], RSMetaTypes.INT),
+                          RSMeta('LargeWindow', window_size[2], RSMetaTypes.INT)])
     metric_fields = list(metric_layers.keys())
     calculate_vbet_window_metrics(segmentation_points, segmentation_polygons, level_paths_to_run, distance_lookup, metric_fields)
     _tmr_waypt.timer_break('SummerizeMetrics')
@@ -896,12 +900,12 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
 
 def get_zone(run, zone_type, drain_area):
-    """get the max zone of the stream order
+    """get the max zone of the drainage area
 
     Args:
         run (dict): vbet configuration dict
         zone_type (str): name of zone to find
-        stream_order (int): stream order of zone to find
+        drain_area (int): drainage area of zone to find
 
     Returns:
         int: zone
