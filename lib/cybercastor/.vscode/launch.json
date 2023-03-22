@@ -9,6 +9,7 @@
       "type": "python",
       "request": "launch",
       "program": "${file}",
+      "cwd": "${workspaceFolder}",
       "envFile": "${workspaceFolder}/.env",
       "console": "integratedTerminal",
       "justMyCode": true
@@ -72,6 +73,15 @@
         // "--download_running",
         "--verbose"
       ]
-    }
+    },
+    {
+      "name": "Riverscapes API: Login demo",
+      "type": "python",
+      "request": "launch",
+      "module": "cybercastor.lib.api_new",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/.env",
+    },
   ]
 }

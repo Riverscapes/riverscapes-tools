@@ -13,7 +13,7 @@ import hashlib
 import base64
 import os
 from rscommons import ProgressBar, Logger
-from .hashes import checkEtag
+from cybercastor.lib.hashes import checkEtag
 
 
 LOCAL_PORT = 4721
@@ -21,6 +21,13 @@ LOGIN_SCOPE = 'openid'
 
 
 class RiverscapesAPI:
+    """This class is a wrapper around the Riverscapes API. It handles authentication and provides a 
+    simple interface for making queries.
+
+    If you specify a secretId and clientId then this class will use machine authentication. This is 
+    appropriate for development and administration tasks. Otherwise it will use a browser-based 
+    authentication workflow which is appropriate for end-users.
+    """
     def __init__(self, uri: str, machineAuth: Dict[str, str] = None, devHeaders: Dict[str, str] = None):
         self.log = Logger('API')
         self.uri = uri
