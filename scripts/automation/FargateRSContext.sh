@@ -66,7 +66,7 @@ try() {
     /efsshare/NationalDatasets/ecoregions/us_eco_l4_state_boundaries.shp \
     /efsshare/NationalDatasets/political_boundaries/cb_2021_us_state_500k.shp \
     /efsshare/NationalDatasets/political_boundaries/cb_2021_us_county_500k.shp \
-    /efsshare/NationalDatasets/geology/SGMC_geology.shp \
+    /efsshare/NationalDatasets/geology/SGMC_Geology.shp \
     /efsshare/download/prism \
     $RS_CONTEXT_DIR \
     /efsshare/download \

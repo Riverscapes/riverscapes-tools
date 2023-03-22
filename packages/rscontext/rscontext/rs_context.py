@@ -234,9 +234,6 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
     # Clean up NHDPlusCatchment dataset
     clean_nhdplus_catchments(nhd_gpkg_path, boundary, str(huc))
 
-    # Clean up the unzipped files. We won't need them again
-    if parallel:
-        safe_remove_dir(nhd_unzip_folder)
     project.add_metadata([RSMeta('Watershed', huc_name)])
 
     # PRISM climate rasters
@@ -417,6 +414,10 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
         RSMeta("ProcTimeS", "{:.2f}".format(ellapsed_time), RSMetaTypes.HIDDEN),
         RSMeta("ProcessingTime", pretty_duration(ellapsed_time))
     ])
+
+    # Clean up the unzipped nhd files
+    if parallel:
+        safe_remove_dir(nhd_unzip_folder)
 
     report = RSContextReport(report_path, project, output_folder)
     report.write()
