@@ -176,9 +176,9 @@ def rs_context(huc, existing_veg, historic_veg, ownership, fair_market, ecoregio
 
     # PRISM climate rasters
     mean_annual_precip = None
-    bil_files = glob.glob(os.path.join(prism_folder, '**', '*.bil'))
+    bil_files = glob.glob(os.path.join(prism_folder, '*.bil'))
     if (len(bil_files) == 0):
-        all_files = glob.glob(os.path.join(prism_folder, '**', '*'))
+        all_files = glob.glob(os.path.join(prism_folder, '*'))
         raise Exception('Could not find any .bil files in the prism folder: {}. Found: \n{}'.format(prism_folder, "\n".join(all_files)))
     for ptype in PrismTypes:
         try:

@@ -251,11 +251,13 @@ def _get_shapefile_urls(parent, file_format, tag):
     url = _get_url(sbquery)
     if len(url) == 0:
         raise Exception('Failed to identify Science Base item with tag "{}"'.format(tag))
-    # if len(url) > 1:
-    #     raise Exception('More than one Science Base item identified with tag "{}"'.format(tag))
-    url = [url[i] for i, val in enumerate(url) if tag in val]
+    if len(url) > 1:
+        #     raise Exception('More than one Science Base item identified with tag "{}"'.format(tag))
+        url = [url[i] for i, val in enumerate(url) if tag in val]
 
-    return url[0]
+        return url[0]
+    else:
+        return url[0]
 
 
 def _get_url(params: Dict[str, str]):
