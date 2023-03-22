@@ -9,10 +9,10 @@ set -x
 # These environment variables need to be present before the script starts
 (: "${TAGS?}")
 (: "${RSCONTEXT_ID?}")
-(: "${APIURL?}")
+(: "${RS_API_URL?}")
 # These are machine credentials for the API which will allow the CLI to delegate uploading to either a specific user or an org
-(: "${MACHINE_CLIENT?}")
-(: "${MACHINE_SECRET?}")
+(: "${RS_CLIENT_ID?}")
+(: "${RS_CLIENT_SECRET?}")
 
 # Turn off the set -u option once we've checked all the mandatory variables
 set +u
@@ -96,19 +96,13 @@ if [ -n "$USERID" ]; then
   rscli upload . --user $USERID \
       --tags "$TAGS" \
       --visibility $VISIBILITY \
-      --no-input --no-ui --verbose \
-      --api-url $APIURL \
-      --client-id $MACHINE_CLIENT \
-      --client-secret $MACHINE_SECRET
+      --no-input --no-ui --verbose
 # If this is an org upload, we need to specify the org ID
 elif [ -n "$ORGID" ]; then
   rscli upload . --org $ORGID \
       --tags "$TAGS" \
       --visibility $VISIBILITY \
-      --no-input --no-ui --verbose \
-      --api-url $APIURL \
-      --client-id $MACHINE_CLIENT \
-      --client-secret $MACHINE_SECRET
+      --no-input --no-ui --verbose
 else
   echo "Error: Neither USER nor ORG environment variables are set. You need one of them."
   exit 1
