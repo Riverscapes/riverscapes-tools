@@ -61,10 +61,10 @@ rscli download $RS_CONTEXT_DIR --id $RSCONTEXT_ID \
 try() {
 
 channel $HUC \
-  $RS_CONTEXT_DIR/hydrology/NHDFlowline.shp \
+  $RS_CONTEXT_DIR/hydrology/nhdplushr.gpkg/NHDFlowline \
   $CHANNEL_DIR \
-  --flowareas $RS_CONTEXT_DIR/hydrology/NHDArea.shp \
-  --waterbodies $RS_CONTEXT_DIR/hydrology/NHDWaterbody.shp \
+  --flowareas $RS_CONTEXT_DIR/hydrology/hydro_derivatives.gpkg/NHDAreaSplit \
+  --waterbodies $RS_CONTEXT_DIR/hydrology/nhdplushr.gpkg/NHDWaterbody \
   --bankfull_function "0.177 * (a ** 0.397) * (p ** 0.453)" \
   --bankfull_function_params "a=TotDASqKm" \
   --reach_code_field FCode \
@@ -72,7 +72,7 @@ channel $HUC \
   --flowarea_reach_codes "53700,46100,48400,31800,34300,34305,34306,4600,46003,46006,46007", \
   --waterbody_reach_codes "49300,3900,39001,39004,39005,39006,39009,39010,39011,39012,43600,43601,43603,43604,43605,43606,43607,43608,43609,43610,43611,43612,43613,43614,43615,43618,43619,43621,43623,43624,43625,43626,46600,46601,46602", \
   --prism_data $RS_CONTEXT_DIR/climate/precipitation.tif \
-  --huc8boundary $RS_CONTEXT_DIR/hydrology/WBDHU8.shp \
+  --huc8boundary $RS_CONTEXT_DIR/hydrology/nhdplushr.gpkg/WBDHU8 \
   --meta "Runner=Cybercastor" \
   --verbose
 
