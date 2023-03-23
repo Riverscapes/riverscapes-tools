@@ -66,7 +66,7 @@ def find_projects(api_url: str, data) -> bool:
           }
           """
 
-            results = riverscapes_api.run_query(query, {"searchParams": {"projectTypeOd": "rscontext"}})
+            results = riverscapes_api.run_query(query, {"searchParams": {"projectTypeId": "rscontext"}})
 
             available_projects = {
                  'My cool project (v1.1.0) on 12 Dec 2022': '6db44465-4bc2-46b5-9160-3a41d8178e45',

@@ -123,6 +123,7 @@ class RiverscapesAPI:
                 "response_type": "code",
                 "scope": LOGIN_SCOPE,
                 "state": state,
+                "audience": "https://api.riverscapes.net",
                 "redirect_uri": redirect_url,
                 "code_challenge": code_challenge,
                 "code_challenge_method": "S256",
