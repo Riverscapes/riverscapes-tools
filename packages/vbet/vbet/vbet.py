@@ -862,7 +862,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         os.remove(out_hand_composite.vrt_path)
         os.remove(out_transformed_hand_composite.vrt_path)
         os.remove(out_vbet_evidence_composite.vrt_path)
-        os.remove(out_transformed_slope_composite)
+        os.remove(out_transformed_slope_composite.vrt_path)
 
     # Now add our Geopackages to the project XML
     project.add_project_raster(proj_nodes['Outputs'], LayerTypes['COMPOSITE_VBET_EVIDENCE'])
