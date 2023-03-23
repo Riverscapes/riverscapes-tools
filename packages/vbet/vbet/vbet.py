@@ -813,9 +813,9 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     log.info('Summerizing VBET Metrics')
     window_size = {0: 200.0, 1: 400.0, 2: 1200.0}
     distance_lookup = get_distance_lookup(inputs_gpkg, intermediates_gpkg, level_paths_to_run, window_size)
-    project.add_metadata([RSMeta('SmallWindow', window_size[0], RSMetaTypes.INT),
-                          RSMeta('MediumWindow', window_size[1], RSMetaTypes.INT),
-                          RSMeta('LargeWindow', window_size[2], RSMetaTypes.INT)])
+    project.add_metadata([RSMeta('SmallWindow', int(window_size[0]), RSMetaTypes.INT),
+                          RSMeta('MediumWindow', int(window_size[1]), RSMetaTypes.INT),
+                          RSMeta('LargeWindow', int(window_size[2]), RSMetaTypes.INT)])
     metric_fields = list(metric_layers.keys())
     calculate_vbet_window_metrics(segmentation_points, segmentation_polygons, level_paths_to_run, distance_lookup, metric_fields)
     _tmr_waypt.timer_break('SummerizeMetrics')
