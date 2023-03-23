@@ -16,7 +16,7 @@ from datetime import datetime
 from cybercastor.lib import api
 from cybercastor.lib.monitor import print_job, possible_states
 from cybercastor.lib.cloudwatch import download_job_logs
-from cybercastor.lib.rs_project_finder import find_projects
+from cybercastor.lib.rs_project_finder import find_upstream_projects
 
 # All the master values for
 # taskDefId and taskScriptId comes from here:
@@ -141,7 +141,8 @@ def main(job_json_dir, api_url, username, password, rs_api_url: str) -> bool:
         job_obj = json.load(f)
 
     # Initialize a connection to the riverscapes API
-    data = find_projects(rs_api_url, job_obj)
+    if find_upstream_projects(rs_api_url, job_obj) == False:
+        return False
 
     # Initialize our API and log in
     CybercastorAPI = api.CybercastorAPI(api_url, username, password)
