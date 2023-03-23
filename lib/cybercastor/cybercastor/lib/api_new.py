@@ -172,8 +172,8 @@ class RiverscapesAPI:
         return auth_code
 
     def run_query(self, query, variables):  # A simple function to use requests.post to make the API call. Note the json= section.
-      headers = {"Authorization": "Bearer " + self.jwt} if self.jwt else {}
-      request = requests.post(self.api_url, json={
+      headers = {"authorization": "Bearer " + self.accessToken} if self.accessToken else {}
+      request = requests.post(self.uri, json={
           'query': query,
           'variables': variables
       }, headers=headers)

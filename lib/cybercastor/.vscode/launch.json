@@ -55,6 +55,7 @@
         "{env:API_URL}",
         "{env:USERNAME}",
         "{env:PASSWORD}",
+        "{env:RS_API_URL}",
         "--verbose"
       ]
     },

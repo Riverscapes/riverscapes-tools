@@ -16,6 +16,7 @@ from datetime import datetime
 from cybercastor.lib import api
 from cybercastor.lib.monitor import print_job, possible_states
 from cybercastor.lib.cloudwatch import download_job_logs
+from cybercastor.lib.rs_project_finder import find_projects
 
 # All the master values for
 # taskDefId and taskScriptId comes from here:
@@ -98,7 +99,7 @@ def get_params(job_obj):
     return params
 
 
-def main(job_json_dir, api_url, username, password) -> bool:
+def main(job_json_dir, api_url, username, password, rs_api_url: str) -> bool:
     job_choices = {}
     repeat = False
     monitor_logs_path = os.path.join(os.path.dirname(__file__), 'logs')
@@ -138,6 +139,9 @@ def main(job_json_dir, api_url, username, password) -> bool:
     # Load our JSON configuration file
     with open(job_json) as f:
         job_obj = json.load(f)
+
+    # Initialize a connection to the riverscapes API
+    data = find_projects(rs_api_url, job_obj)
 
     # Initialize our API and log in
     CybercastorAPI = api.CybercastorAPI(api_url, username, password)
@@ -363,6 +367,7 @@ if __name__ == '__main__':
     parser.add_argument('api_url', help='URL to the cybercastor API', type=str)
     parser.add_argument('username', help='API URL Username', type=str)
     parser.add_argument('password', help='API URL Password', type=str)
+    parser.add_argument('rs_api_url', help='URL to the Riverscapes API', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ',
                         action='store_true', default=False)
 
@@ -380,7 +385,7 @@ if __name__ == '__main__':
     try:
         RETRY = True
         while RETRY is True:
-            RETRY = main(args.job_json, fixedurl, args.username, args.password)
+            RETRY = main(args.job_json, fixedurl, args.username, args.password,args.rs_api_url)
 
     except Exception as e:
         log.error(e)
