@@ -63,30 +63,35 @@ def find_upstream_projects(api_url: str, job_data) -> bool:
     global upstream_project_types
     global fargate_env_keys
 
-    # Initialize the warehouse API that will be used to search for available projects
-    riverscapes_api = RiverscapesAPI('https://api.warehouse.riverscapes.net/staging')
-    riverscapes_api.refresh_token()
+    riverscapes_api = None
 
     # Verify that the task script is one that we know about
     task_script = job_data['taskScriptId']
     if task_script not in upstream_project_types:
         raise Exception(f'Unknown task script {task_script}')
 
+    job_data['upstream_projects'] = {}
+
     # Loop over all the HUCs in the job
     for huc in job_data['hucs']:
         
         # Initialize the list of upstream project GUIDs for this HUC
-        upstream_project_ids = {}
+        job_data['upstream_projects'][huc] = {}
 
         # Loop over all the project types that we need to find upstream projects for
         for project_type in upstream_project_types[task_script]:
             log.info(f'Searching warehouse for project type {project_type} for HUC {huc}')
+
+            # Initialize the warehouse API that will be used to search for available projects
+            if riverscapes_api is None:
+                riverscapes_api = RiverscapesAPI('https://api.warehouse.riverscapes.net/staging')
+                riverscapes_api.refresh_token()
             
             # Search for projects of the given type that match the HUC
             params = {
-                "projectTypeId": project_type,
+                "projectTypeId": 'rscontext',
                 "meta": [{
-                    "key": "huc",
+                    "key": "HUC",
                     "value": huc,
                 }]
             }
@@ -127,13 +132,14 @@ def find_upstream_projects(api_url: str, job_data) -> bool:
                 
                 selected_project = inquirer_projects[answers['Project']]
 
-            # Keep track of the project GUID for this HUC and project type
-            upstream_project_ids[fargate_env_keys[project_type]] = selected_project
-
-            if project is None:
+            if selected_project is None:
                 raise Exception(f'Could not find project for {huc} and {project_type}')
-            job_data['upstream_projects'] = upstream_project_ids
+
+            # Keep track of the project GUID for this HUC and project type
+            job_data['upstream_projects'][huc][fargate_env_keys[project_type]] = selected_project
 
     # If we got to here them we found a project for each HUC and project type
-    riverscapes_api.shutdown()
+    if riverscapes_api is not None:
+        riverscapes_api.shutdown()
+
     return True

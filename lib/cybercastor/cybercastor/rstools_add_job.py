@@ -24,27 +24,7 @@ from cybercastor.lib.rs_project_finder import find_upstream_projects
 
 
 def get_params(job_obj):
-    # We need to send in your .riverscapes file as a variable
-    with open(os.path.join(Path.home(), '.riverscapes')) as f:
-        rsconfig = json.load(f)
-    program = job_obj['env']['PROGRAM']
-
-    if program is None or len(program) == 0:
-        raise Exception(
-            'Could not find a valid PROGRAM environment variable in your job.')
-    # to keep the env var short and sweet dump anything that's not this program
-    rsconfig['default'] = program
-    rsconfig['programs'] = {k: v for k,
-                            v in rsconfig['programs'].items() if k == program}
-
-    # Checking for sanity here and common sense errors if needed
-    if len(rsconfig['programs']) == 0:
-        raise Exception(
-            'could not find program with key "{}" in your .riverscapes file.'.format(program))
-    elif len(rsconfig['programs']) > 1:
-        raise Exception('Found {} keys for program with key "{}" in your .riverscapes file. This can cause problems.'.format(
-            len(rsconfig['programs']), program))
-
+      
     # Job Environment variables are common to all tasks
     new_job_env = copy(job_obj['env']) if 'env' in job_obj else {}
     new_job_meta = copy(job_obj['meta']) if 'meta' in job_obj else {}
@@ -54,17 +34,23 @@ def get_params(job_obj):
         new_job_env['TAGS'] += ',{}'.format(
             datetime.now().strftime("%b%d").upper())
 
-    new_job_env['RS_CONFIG'] = json.dumps(rsconfig)
+    # new_job_env['RS_CONFIG'] = json.dumps(rsconfig)
     # NO_UI keeps the progress bars at bay value doesn't matter
     new_job_env['NO_UI'] = 'gnarly'
 
     # Our input JSON is huc-specific but the Cybercastor interface is generic
     def create_task(huc, resources=None):
+        
+        # Make a dictionary of the environment variables for this task and include the HUC
+        env_variables = job_obj['upstream_projects'][huc].copy()
+        env_variables['HUC'] = huc
+
         ret_obj = {
             "name": huc,  # Every Task needs a unique name so we can find it in the system
             # Task environment variables are unique to each task
-            "env": json.dumps({'HUC': huc})
+            "env": json.dumps(env_variables)
         }
+
         if resources is not None:
             ret_obj['taskDefProps'] = {
                 "cpu": resources["cpu"],
@@ -167,6 +153,9 @@ def main(job_json_dir, api_url, username, password, rs_api_url: str) -> bool:
         # Make our params what the cybercastor  API needs
         params = get_params(job_obj)
 
+        if CybercastorAPI is None:
+            CybercastorAPI= api.CybercastorAPI(api_url, username, password)
+
         with open(outputFile, 'w') as outfile:
             # Add the job to the API
             result = CybercastorAPI.add_job(params)
@@ -183,6 +172,10 @@ def main(job_json_dir, api_url, username, password, rs_api_url: str) -> bool:
 
     # Now start a job loop
     while True:
+        
+        if CybercastorAPI is None:
+            CybercastorAPI= api.CybercastorAPI(api_url, username, password)
+
         # Make an API query for the job that is in the output json file
         job_monitor = CybercastorAPI.get_job(job_monitor['id'])
         # Immediately write the new state to the file
