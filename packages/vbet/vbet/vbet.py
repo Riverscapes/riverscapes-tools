@@ -117,7 +117,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                      reach_codes=None, mask=None, temp_folder=None):
     """Run VBET"""
 
-    thresh_vals = {'VBET_IA': 0.93, 'VBET_FULL': 0.7}
+    thresh_vals = {'VBET_IA': 0.95, 'VBET_FULL': 0.7}
     _tmr_waypt = TimerWaypoints()
     log = Logger('VBET')
     log.info(f'Starting VBET v.{cfg.version}')
@@ -181,7 +181,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
     catchments_path = os.path.join(intermediates_gpkg, 'transform_zones')
     vaa_table_path = os.path.join(inputs_gpkg, vaa_table_name)
-    create_stream_size_zones(catchments, vaa_table_path, 'NHDPlusID', 'TotDASqKm', vbet_run['Zones'], catchments_path)
+    create_stream_size_zones(catchments, vaa_table_path, 'NHDPlusID', 'DivDASqKm', vbet_run['Zones'], catchments_path)
 
     in_rasters = {}
     _proj_hillshade_node, _hillshade = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], in_hillshade, replace=True)
@@ -290,7 +290,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     level_paths_to_run = []
     with sqlite3.connect(inputs_gpkg) as conn:
         curs = conn.cursor()
-        level_paths_raw = curs.execute("SELECT LevelPathI, MAX(TotDASqKm) AS drainage FROM flowlines_vaa GROUP BY LevelPathI ORDER BY drainage DESC").fetchall()
+        level_paths_raw = curs.execute("SELECT LevelPathI, MAX(DivDASqKm) AS drainage FROM flowlines_vaa GROUP BY LevelPathI ORDER BY drainage DESC").fetchall()
         all_level_paths = list(str(int(lp[0])) for lp in level_paths_raw)
         level_paths_drainage = {str(int(lp[0])): lp[1] for lp in level_paths_raw}
         level_paths_drainage[None] = 10
@@ -587,7 +587,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         # Generate the Active Floodplain Polygon
         with TimerBuckets('gdal'):
             active_valley_bottom_raster = os.path.join(temp_folder_lpath, f'active_valley_bottom_{level_path}.tif')
-            generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, active_valley_bottom_raster, temp_folder_lpath, rasterized_level_path, thresh_value=0.93)
+            generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, active_valley_bottom_raster, temp_folder_lpath, rasterized_level_path, thresh_value=0.95)
 
         with TimerBuckets('rasterio'):
             raster_update_multiply(active_zone_raster, active_valley_bottom_raster, value=level_path_key)
