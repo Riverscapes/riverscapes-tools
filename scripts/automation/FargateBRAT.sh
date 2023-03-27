@@ -17,11 +17,11 @@ IFS=$'\n\t'
 # Turn off the set -u option once we've checked all the mandatory variables
 set +u
 
-if [ -z "$USERID" ] && [ -z "$ORGID" ]; then
-  echo "Error: Neither USERID nor ORGID environment variables are set. You need one of them."
+if [ -z "$USER_ID" ] && [ -z "$ORG_ID" ]; then
+  echo "Error: Neither USER_ID nor ORG_ID environment variables are set. You need one of them."
   exit 1
-elif [ -n "$USERID" ] && [ -n "$ORGID" ]; then
-  echo "Error: Both USERID and ORGID environment variables are set. Not a valid case."
+elif [ -n "$USER_ID" ] && [ -n "$ORG_ID" ]; then
+  echo "Error: Both USER_ID and ORG_ID environment variables are set. Not a valid case."
   exit 1
 fi
 
@@ -38,10 +38,10 @@ echo "TAGS: $TAGS"
 echo "VBET_ID: $VBET_ID"
 echo "RSCONTEXT_ID: $RSCONTEXT_ID"
 echo "VISIBILITY: $VISIBILITY"
-if [-n "$USERID"]; then
-  echo "USERID: $USERID"
-elif [-n "$ORGID"]; then
-  echo "ORGID: $ORGID"
+if [-n "$USER_ID"]; then
+  echo "USER_ID: $USER_ID"
+elif [-n "$ORG_ID"]; then
+  echo "ORG_ID: $ORG_ID"
 fi
 
 echo "======================  GDAL Version ======================="
@@ -107,14 +107,14 @@ try() {
   cd $BRAT_DIR
 
   # If this is a user upload then we need to use the user's id
-  if [ -n "$USERID" ]; then
-    rscli upload . --user $USERID \
+  if [ -n "$USER_ID" ]; then
+    rscli upload . --user $USER_ID \
         --tags "$TAGS" \
         --visibility $VISIBILITY \
         --no-input --no-ui --verbose --replace
   # If this is an org upload, we need to specify the org ID
-  elif [ -n "$ORGID" ]; then
-    rscli upload . --org $ORGID \
+  elif [ -n "$ORG_ID" ]; then
+    rscli upload . --org $ORG_ID \
         --tags "$TAGS" \
         --visibility $VISIBILITY \
         --no-input --no-ui --verbose --replace
@@ -145,14 +145,14 @@ try() {
   cd $BRAT_DIR
 
   # If this is a user upload then we need to use the user's id
-  if [ -n "$USERID" ]; then
-    rscli upload . --user $USERID \
+  if [ -n "$USER_ID" ]; then
+    rscli upload . --user $USER_ID \
         --tags "$TAGS" \
         --visibility $VISIBILITY \
         --no-input --no-ui --verbose --replace
   # If this is an org upload, we need to specify the org ID
-  elif [ -n "$ORGID" ]; then
-    rscli upload . --org $ORGID \
+  elif [ -n "$ORG_ID" ]; then
+    rscli upload . --org $ORG_ID \
         --tags "$TAGS" \
         --visibility $VISIBILITY \
         --no-input --no-ui --verbose --replace
