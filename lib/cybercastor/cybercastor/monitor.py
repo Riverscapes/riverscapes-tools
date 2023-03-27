@@ -44,7 +44,7 @@ def get_job_diff(old, new):
 def main(api_url, username, password, download_running):
 
     # Initialize our API and log in
-    CybercastorAPI = CybercastorAPI.CybercastorAPI(api_url, username, password)
+    ccAPI = CybercastorAPI(api_url, username, password)
 
     ##############################
     # Monitoring
@@ -61,7 +61,7 @@ def main(api_url, username, password, download_running):
 
     while True:
         # Make an API query for the job that is in the output json file
-        paginated_jobs = CybercastorAPI.get_jobs('ACTIVE')
+        paginated_jobs = ccAPI.get_jobs('ACTIVE')
         print(chr(27) + "[2J")
         print(datetime.utcnow())
 
@@ -78,7 +78,7 @@ def main(api_url, username, password, download_running):
         # Go and get any jobs we know abotu that may not be active
         for jid in known_jobs:
             if jid not in active_jobs:
-                lost_job = CybercastorAPI.get_job(jid)
+                lost_job = ccAPI.get_job(jid)
                 monitor_json[lost_job['id']] = lost_job
 
         if len(monitor_json.keys()) == 0:
