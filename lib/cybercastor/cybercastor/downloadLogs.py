@@ -8,7 +8,7 @@ from datetime import datetime
 import json
 from rscommons import Logger, dotenv
 from cybercastor.lib.monitor import print_job
-from cybercastor.lib import api
+from cybercastor.lib import CybercastorAPI
 from cybercastor.lib.cloudwatch import download_job_logs
 
 
@@ -44,7 +44,7 @@ def get_job_diff(old, new):
 def main(api_url, username, password, download_running):
 
     # Initialize our API and log in
-    CybercastorAPI = api.CybercastorAPI(api_url, username, password)
+    CybercastorAPI = CybercastorAPI.CybercastorAPI(api_url, username, password)
 
     ##############################
     # Monitoring
@@ -52,8 +52,8 @@ def main(api_url, username, password, download_running):
 
     # Now start a job loop
     monitor_json = {}
-    monitor_json_path = os.path.join(os.path.dirname(__file__), 'monitor.output.json')
-    monitor_logs_path = os.path.join(os.path.dirname(__file__), 'logs')
+    monitor_json_path = os.path.join(os.path.dirname(__file__), '..', 'logs', 'monitor.output.json')
+    monitor_logs_path = os.path.join(os.path.dirname(__file__), '..', 'logs')
     if os.path.isfile(monitor_json_path):
         with open(monitor_json_path) as f:
             monitor_json = json.load(f)
@@ -111,7 +111,7 @@ if __name__ == '__main__':
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
     parser.add_argument('--download_running', help='(optional) download running logs. This is expensive so try to use sparingly', action='store_true', default=False)
 
-    args = dotenv.parse_args_env(parser, os.path.join(os.path.dirname(__file__), '.env.python'))
+    args = dotenv.parse_args_env(parser)
 
     # Stupid slash parsing
     fixedurl = args.api_url.replace(':/', '://')

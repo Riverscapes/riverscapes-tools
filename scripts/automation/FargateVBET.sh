@@ -3,15 +3,28 @@
 # Set -u will cause the script to exit if any variable is not set
 set -eu
 IFS=$'\n\t'
-# Set -x will echo every command to the console
-set -x
 
 # These environment variables need to be present before the script starts
 (: "${TAGS?}")
 (: "${RSCONTEXT_ID?}")
 (: "${CHANNELAREA_ID?}")
 (: "${TAUDEM_ID?}")
+(: "${RS_API_URL?}")
+(: "${VISIBILITY?}")
+# These are machine credentials for the API which will allow the CLI to delegate uploading to either a specific user or an org
+(: "${RS_CLIENT_ID?}")
+(: "${RS_CLIENT_SECRET?}")
 
+# Turn off the set -u option once we've checked all the mandatory variables
+set +u
+
+if [ -z "$USERID" ] && [ -z "$ORGID" ]; then
+  echo "Error: Neither USERID nor ORGID environment variables are set. You need one of them."
+  exit 1
+elif [ -n "$USERID" ] && [ -n "$ORGID" ]; then
+  echo "Error: Both USERID and ORGID environment variables are set. Not a valid case."
+  exit 1
+fi
 
 cat<<EOF
 
@@ -29,6 +42,13 @@ echo "TAGS: $TAGS"
 echo "RSCONTEXT_ID: $RSCONTEXT_ID"
 echo "CHANNELAREA_ID: $CHANNELAREA_ID"
 echo "TAUDEM_ID: $TAUDEM_ID"
+echo "RS_API_URL: $RS_API_URL"
+echo "VISIBILITY: $VISIBILITY"
+if [-n "$USERID"]; then
+  echo "USERID: $USERID"
+elif [-n "$ORGID"]; then
+  echo "ORGID: $ORGID"
+fi
 
 echo "======================  GDAL Version ======================="
 gdal-config --version

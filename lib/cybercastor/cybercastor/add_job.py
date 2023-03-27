@@ -13,7 +13,7 @@ from rscommons import Logger, dotenv
 # from rscommons.util import safe_remove_dir
 from datetime import datetime
 
-from cybercastor.lib import api
+from cybercastor.classes.CybercastorAPI import CybercastorAPI
 from cybercastor.lib.monitor import print_job, possible_states
 from cybercastor.lib.cloudwatch import download_job_logs
 from cybercastor.lib.rs_project_finder import find_upstream_projects
@@ -36,13 +36,15 @@ def get_params(job_obj):
 
     # new_job_env['RS_CONFIG'] = json.dumps(rsconfig)
     # NO_UI keeps the progress bars at bay value doesn't matter
-    new_job_env['NO_UI'] = 'gnarly'
+    # Note: This only applies to Riverscapes Tools. --no-ui is harcoded
+    # Into the automation jobs for rscli
+    new_job_env['NO_UI'] = 'true'
 
     # Our input JSON is huc-specific but the Cybercastor interface is generic
     def create_task(huc, resources=None):
         
         # Make a dictionary of the environment variables for this task and include the HUC
-        env_variables = job_obj['upstream_projects'][huc].copy()
+        env_variables = job_obj['lookups'][huc].copy()
         env_variables['HUC'] = huc
 
         ret_obj = {
@@ -88,7 +90,7 @@ def get_params(job_obj):
 def main(job_json_dir, api_url, username, password, rs_api_url: str) -> bool:
     job_choices = {}
     repeat = False
-    monitor_logs_path = os.path.join(os.path.dirname(__file__), 'logs')
+    monitor_logs_path = os.path.join(os.path.dirname(__file__), '..', 'logs')
     for f in glob.glob(os.path.join(job_json_dir, '*.json')):
         fsplit = os.path.basename(f).split('.')
         if fsplit[0] not in job_choices:
@@ -120,20 +122,33 @@ def main(job_json_dir, api_url, username, password, rs_api_url: str) -> bool:
 
     if answers['job'] == 'quit':
         return False
+    
+    job_path = os.path.join(job_json_dir, answers['job'])
 
-    job_json = os.path.join(job_json_dir, answers['job'])
     # Load our JSON configuration file
-    with open(job_json) as f:
+    with open(job_path) as f:
         job_obj = json.load(f)
 
+    if 'server' not in job_obj:
+        job_obj['server'] = 'PRODUCTION'
+    elif job_obj['server'] not in ['PRODUCTION', 'STAGING', 'DEVELOPMENT']:
+        raise Exception('server must be one of PRODUCTION, STAGING, DEVELOPMENT')
+
     # Initialize a connection to the riverscapes API
-    if find_upstream_projects(rs_api_url, job_obj) == False:
+    upstream_results = find_upstream_projects(rs_api_url, job_obj)
+    
+    # Write the lookups back to the input file so it's remembered for next time
+    with open(job_path, 'w') as f:
+        json.dump(job_obj, f, indent=2)
+
+    if upstream_results == False:
         return False
 
-    # Initialize our API and log in
-    CybercastorAPI = api.CybercastorAPI(api_url, username, password)
 
-    outputFile = os.path.splitext(job_json)[0] + '.output.json'
+    # Initialize our API and log in
+    cyberCastor = CybercastorAPI(api_url, username, password)
+
+    outputFile = os.path.splitext(job_path)[0] + '.output.json'
 
     # Check if we have an output file to read.
     # If we already have an output file then skip the job creation step and just continue through to monitoring
@@ -153,12 +168,12 @@ def main(job_json_dir, api_url, username, password, rs_api_url: str) -> bool:
         # Make our params what the cybercastor  API needs
         params = get_params(job_obj)
 
-        if CybercastorAPI is None:
-            CybercastorAPI= api.CybercastorAPI(api_url, username, password)
+        if cyberCastor is None:
+            cyberCastor= CybercastorAPI(api_url, username, password)
 
         with open(outputFile, 'w') as outfile:
             # Add the job to the API
-            result = CybercastorAPI.add_job(params)
+            result = cyberCastor.add_job(params)
             if result is None:
                 raise Exception('Error')
             json.dump(result, outfile, indent=4, sort_keys=True)
@@ -173,11 +188,11 @@ def main(job_json_dir, api_url, username, password, rs_api_url: str) -> bool:
     # Now start a job loop
     while True:
         
-        if CybercastorAPI is None:
-            CybercastorAPI= api.CybercastorAPI(api_url, username, password)
+        if cyberCastor is None:
+            cyberCastor= CybercastorAPI(api_url, username, password)
 
         # Make an API query for the job that is in the output json file
-        job_monitor = CybercastorAPI.get_job(job_monitor['id'])
+        job_monitor = cyberCastor.get_job(job_monitor['id'])
         # Immediately write the new state to the file
         with open(outputFile, 'w') as outfile:
             job_monitor['meta'] = json.loads(job_monitor['meta'])
@@ -220,7 +235,7 @@ def main(job_json_dir, api_url, username, password, rs_api_url: str) -> bool:
             time.sleep(3)
         elif menu_choice == 'task_manage':
             # Get a fresh copy to work with
-            manage_tasks(CybercastorAPI, job_monitor['id'])
+            manage_tasks(cyberCastor, job_monitor['id'])
 
     print('Goodbye!!')
     return repeat
@@ -355,18 +370,17 @@ def change_task_status(CybercastorAPI, tasks, op):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    # parser.add_argument('hucs_json', help='JSON with array of HUCS', type=str)
     parser.add_argument(
         'job_json', help='The job specification JSON file', type=str)
     parser.add_argument('api_url', help='URL to the cybercastor API', type=str)
+    # These are legacy Cognitop credentials. We need to update this to use the new API
     parser.add_argument('username', help='API URL Username', type=str)
     parser.add_argument('password', help='API URL Password', type=str)
     parser.add_argument('rs_api_url', help='URL to the Riverscapes API', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ',
                         action='store_true', default=False)
 
-    args = dotenv.parse_args_env(parser, os.path.join(
-        os.path.dirname(__file__), '..', '.env.python'))
+    args = dotenv.parse_args_env(parser)
 
     # Initiate the log file
     log = Logger("CCAddJob")
@@ -379,7 +393,7 @@ if __name__ == '__main__':
     try:
         RETRY = True
         while RETRY is True:
-            RETRY = main(args.job_json, fixedurl, args.username, args.password,args.rs_api_url)
+            RETRY = main(args.job_json, fixedurl, args.username, args.password, args.rs_api_url)
 
     except Exception as e:
         log.error(e)

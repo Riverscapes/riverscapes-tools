@@ -5,62 +5,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Python: Current File",
-      "type": "python",
-      "request": "launch",
-      "program": "${file}",
-      "cwd": "${workspaceFolder}",
-      "envFile": "${workspaceFolder}/.env",
-      "console": "integratedTerminal",
-      "justMyCode": true
-    },
-    // {
-    //   "name": "Python: Current File (Integrated Terminal)",
-    //   "type": "python",
-    //   "request": "launch",
-    //   "program": "${file}",
-    //   "cwd": "${workspaceFolder}",
-    //   "env": {
-    //     "PYTHONPATH": "{env:PYTHONPATH}:${workspaceFolder}"
-    //   },      
-    //   "console": "integratedTerminal"
-    // },
-    {
-      "name": "dump_sqlite",
-      "type": "python",
-      "request": "launch",
-      "module": "cybercastor.dump_sqlite",
-      "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal",
-      "envFile": "${workspaceFolder}/.env",
-      // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
-      "args": [
-        "{env:DATA_ROOT}/warehouse_report",
-        "{env:API_URL}",
-        "{env:USERNAME}",
-        "{env:PASSWORD}",
-        "--verbose"
-      ]
-    },
-    {
-      "name": "Cybercastor: Add Job",
-      "type": "python",
-      "request": "launch",
-      "module": "cybercastor.rstools_add_job",
-      "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal",
-      "envFile": "${workspaceFolder}/.env",
-      "args": [
-        "${workspaceFolder}/cybercastor/jobs/",
-        "{env:API_URL}",
-        "{env:USERNAME}",
-        "{env:PASSWORD}",
-        "{env:RS_API_URL}",
-        "--verbose"
-      ]
-    },
-    {
-      "name": "Cybercastor: Monitor System",
+      "name": "🦫 Monitor",
       "type": "python",
       "request": "launch",
       "module": "cybercastor.monitor",
@@ -76,13 +21,57 @@
       ]
     },
     {
-      "name": "Riverscapes API: Login demo",
+      "name": "🦫 AddJob",
       "type": "python",
       "request": "launch",
-      "module": "cybercastor.lib.api_new",
+      "module": "cybercastor.add_job",
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "envFile": "${workspaceFolder}/.env",
+      "args": [
+        "${workspaceFolder}/jobs/",
+        "{env:API_URL}",
+        "{env:USERNAME}",
+        "{env:PASSWORD}",
+        "{env:RS_API_URL}",
+        "--verbose"
+      ]
     },
+    {
+      "name": "🦫 dump_sqlite",
+      "type": "python",
+      "request": "launch",
+      "module": "cybercastor.dump_sqlite",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/.env",
+      // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
+      "args": [
+        "{env:DATA_ROOT}/warehouse_report",
+        "{env:API_URL}",
+        "{env:USERNAME}",
+        "{env:PASSWORD}",
+        "--verbose"
+      ]
+    },
+    // {
+    //   "name": "Riverscapes API: Login demo",
+    //   "type": "python",
+    //   "request": "launch",
+    //   "module": "cybercastor.lib.api_new",
+    //   "cwd": "${workspaceFolder}",
+    //   "console": "integratedTerminal",
+    //   "envFile": "${workspaceFolder}/.env",
+    // },
+    // {
+    //   "name": "Python: Current File",
+    //   "type": "python",
+    //   "request": "launch",
+    //   "program": "${file}",
+    //   "cwd": "${workspaceFolder}",
+    //   "envFile": "${workspaceFolder}/.env",
+    //   "console": "integratedTerminal",
+    //   "justMyCode": true
+    // },
   ]
 }

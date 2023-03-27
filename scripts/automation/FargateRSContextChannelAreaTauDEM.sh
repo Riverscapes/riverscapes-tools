@@ -3,8 +3,6 @@
 # Set -u will cause the script to exit if any variable is not set
 set -eu
 IFS=$'\n\t'
-# Set -x will echo every command to the console
-set -x
 
 # These environment variables need to be present before the script starts
 (: "${HUC?}")
@@ -54,6 +52,13 @@ EOF
 
 echo "HUC: $HUC"
 echo "TAGS: $TAGS"
+echo "RS_API_URL: $RS_API_URL"
+echo "VISIBILITY: $VISIBILITY"
+if [-n "$USERID"]; then
+  echo "USERID: $USERID"
+elif [-n "$ORGID"]; then
+  echo "ORGID: $ORGID"
+fi
 
 echo "======================  GDAL Version ======================="
 gdal-config --version

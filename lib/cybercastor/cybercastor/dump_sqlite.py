@@ -8,7 +8,7 @@ import sqlite3
 import requests
 import json
 from datetime import date
-from cybercastor.lib import api
+from cybercastor.lib import CybercastorAPI
 from rscommons import Logger, dotenv, ProgressBar
 from rscommons.util import safe_remove_file, safe_makedirs
 
@@ -35,7 +35,7 @@ def huc_report(sqlite_db_dir, api_url, username, password):
     curs = conn.cursor()
 
     # Initialize our API and log in
-    CybercastorAPI = api.CybercastorAPI(api_url, username, password)
+    CybercastorAPI = CybercastorAPI.CybercastorAPI(api_url, username, password)
     curs.execute("DROP TABLE IF EXISTS cybercastor_tasks;")
     curs.execute("DROP TABLE IF EXISTS cybercastor_jobs;")
     curs.execute("DROP TABLE IF EXISTS engine_scripts;")

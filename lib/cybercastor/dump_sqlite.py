@@ -8,7 +8,7 @@ from datetime import datetime
 import json
 from rscommons import Logger, dotenv
 from cybercastor.lib.monitor import print_job
-from cybercastor.lib import api
+from cybercastor.lib import CybercastorAPI
 from cybercastor.lib.cloudwatch import download_job_logs
 
 
@@ -44,7 +44,7 @@ def get_job_diff(old, new):
 def main(api_url, username, password, download_running):
 
     # Initialize our API and log in
-    CybercastorAPI = api.CybercastorAPI(api_url, username, password)
+    CybercastorAPI = CybercastorAPI.CybercastorAPI(api_url, username, password)
 
     ##############################
     # Monitoring

@@ -17,19 +17,19 @@
     "meta": {
       "type": "object"
     },
+    "server": {
+      "type": "string",
+      "enum": [
+        "DEVELOPMENT",
+        "STAGING",
+        "PRODUCTION"
+      ]
+    },
     "env": {
       "type": "object",
-      "properties": {
-        "PROGRAM": {
-          "type": "string"
-        },
-        "TAGS": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "PROGRAM"
-      ]
+      "additionalProperties": {
+        "type": "string"
+      }
     },
     "resources": {
       "type":"object",
@@ -46,6 +46,18 @@
         "type": "string"
       }
     },
+    "lookups": {
+      "type": "object",
+      "patternProperties": {
+        "^[0-9]+$": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
     "DOCS": {
       "type": "array",
       "items": [
@@ -61,5 +73,6 @@
     "taskScriptId",
     "env",
     "hucs"
-  ]
+  ],
+  "additionalProperties": false
 }

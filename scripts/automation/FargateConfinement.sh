@@ -3,15 +3,13 @@
 # Set -u will cause the script to exit if any variable is not set
 set -eu
 IFS=$'\n\t'
-# Set -x will echo every command to the console
-set -x
 
 # These environment variables need to be present before the script starts
 (: "${VBET_ID?}")
 (: "${RSCONTEXT_ID?}")
 (: "${TAGS?}")
-(: "${VISIBILITY?}")
 (: "${RS_API_URL?}")
+(: "${VISIBILITY?}")
 # These are machine credentials for the API which will allow the CLI to delegate uploading to either a specific user or an org
 (: "${RS_CLIENT_ID?}")
 (: "${RS_CLIENT_SECRET?}")
@@ -42,6 +40,13 @@ EOF
 
 echo "VBET_ID: $VBET_ID"
 echo "RSCONTEXT_ID: $RSCONTEXT_ID"
+echo "TAGS: $TAGS"
+echo "VISIBILITY: $VISIBILITY"
+if [-n "$USERID"]; then
+  echo "USERID: $USERID"
+elif [-n "$ORGID"]; then
+  echo "ORGID: $ORGID"
+fi
 
 echo "======================  GDAL Version ======================="
 gdal-config --version

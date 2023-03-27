@@ -100,13 +100,15 @@ class _LoggerSingleton:
                     msg = colored(msg, 'yellow')
                 if (severity == 'error'):
                     msg = colored(msg, 'red')
+                if (severity == 'success'):
+                    msg = colored(msg, 'green')
                 if (severity == 'title'):
                     msg = colored(msg, 'magenta')
 
             print(msg)
 
             # If we haven't set up a logger then we're done here. Don't write to any files
-            if not self.initialized:
+            if not self.initialized or self.logpath is None:
                 return
 
             # Write to log file
@@ -116,6 +118,8 @@ class _LoggerSingleton:
                 self.logger.warning(txtmsg, extra={'curmethod': method})
             elif severity == 'error':
                 self.logger.error(txtmsg, extra={'curmethod': method})
+            elif severity == 'success':
+                self.logger.info(txtmsg, extra={'curmethod': method})
             elif severity == 'critical':
                 self.logger.critical(txtmsg, extra={'curmethod': method})
             elif severity == 'debug':
@@ -174,6 +178,9 @@ class Logger():
 
     def error(self, message, exception=None):
         self.instance.logprint(message, self.method, "error", exception)
+
+    def success(self, message, exception=None):
+        self.instance.logprint(message, self.method, "success", exception)
 
     def warning(self, message, exception=None):
         self.instance.logprint(message, self.method, "warning", exception)

@@ -12,9 +12,13 @@ import threading
 import hashlib
 import base64
 import os
+import logging
 from rscommons import ProgressBar, Logger
 from cybercastor.lib.hashes import checkEtag
 
+# Disable all the weird terminal noise from urllib3
+logging.getLogger("urllib3").setLevel(logging.WARNING)
+logging.getLogger("urllib3").propagate = False
 
 LOCAL_PORT = 4721
 LOGIN_SCOPE = 'openid'
@@ -28,13 +32,20 @@ class RiverscapesAPI:
     appropriate for development and administration tasks. Otherwise it will use a browser-based 
     authentication workflow which is appropriate for end-users.
     """
-    def __init__(self, uri: str, machineAuth: Dict[str, str] = None, devHeaders: Dict[str, str] = None):
+    def __init__(self, stage: str, machineAuth: Dict[str, str] = None, devHeaders: Dict[str, str] = None):
         self.log = Logger('API')
-        self.uri = uri
         self.machineAuth = machineAuth
         self.devHeaders = devHeaders
         self.accessToken = None
         self.tokenTimeout = None
+
+        if not stage or stage == 'PRODUCTION':
+          self.uri = 'https://api.warehouse.riverscapes.net'
+        elif stage == 'STAGING':
+          self.uri = 'https://api.warehouse.riverscapes.net/staging'
+        # TODO: might need to add a DEVELOPMENT stage here for testing. TBD
+        else:
+            raise Exception(f'Unknown stage: {stage}')
 
     def _generate_challenge(self, code: str) -> str:
         return self._base64URL(hashlib.sha256(code.encode('utf-8')).digest())
@@ -71,7 +82,7 @@ class RiverscapesAPI:
             self.tokenTimeout.cancel()
 
     def refresh_token(self) -> 'GQLApi':
-        self.log.info("Authenticating...")
+        self.log.info(f"Authenticating on Riverscapes API: {self.uri}")
         if self.tokenTimeout:
             self.tokenTimeout.cancel()
 
@@ -150,7 +161,7 @@ class RiverscapesAPI:
                 res["expires_in"] - 20, self.refresh_token)
             self.tokenTimeout.start()
             self.accessToken = res["access_token"]
-            self.log.info("SUCCESSFUL Browser Authentication")
+            self.log.success("SUCCESSFUL Browser Authentication")
 
     def _wait_for_auth_code(self):
         class AuthHandler(BaseHTTPRequestHandler):
