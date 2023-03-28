@@ -42,6 +42,7 @@ from vbet.vbet_outputs import clean_up_centerlines
 from vbet.vbet_report import VBETReport
 from vbet.vbet_segmentation import calculate_dgo_metrics, generate_igo_points, split_vbet_polygons, calculate_vbet_window_metrics
 from vbet.lib.CompositeRaster import CompositeRaster
+from vbet.lib.dem_hand import hand
 from vbet.__version__ import __version__
 
 from .lib.cost_path import least_cost_path
@@ -460,16 +461,17 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         with TimerBuckets('HAND'):
             hand_raster = os.path.join(temp_rasters_folder, f'local_hand_{level_path}.tif')
             hand_raster_interior = os.path.join(temp_rasters_folder, f'local_hand_interior_{level_path}.tif')
-            dinfdistdown_status = run_subprocess(project_folder, ["mpiexec", "-n", NCORES, "dinfdistdown",
-                                                                  "-ang", local_dinfflowdir_ang,
-                                                                  "-fel", local_pitfill_dem,
-                                                                  "-src", rasterized_channel,
-                                                                  "-dd", hand_raster, "-m", "ave", "v"])
-            if dinfdistdown_status != 0 or not os.path.isfile(hand_raster):
-                err_msg = f'Error generating HAND for level path {level_path}'
-                log.error(err_msg)
-                _tmterr("HAND_ERROR", err_msg)
-                continue
+            # dinfdistdown_status = run_subprocess(project_folder, ["mpiexec", "-n", NCORES, "dinfdistdown",
+            #                                                       "-ang", local_dinfflowdir_ang,
+            #                                                       "-fel", local_pitfill_dem,
+            #                                                       "-src", rasterized_channel,
+            #                                                       "-dd", hand_raster, "-m", "ave", "v"])
+            # if dinfdistdown_status != 0 or not os.path.isfile(hand_raster):
+            #     err_msg = f'Error generating HAND for level path {level_path}'
+            #     log.error(err_msg)
+            #     _tmterr("HAND_ERROR", err_msg)
+            #     continue
+            hand(local_pitfill_dem, rasterized_channel, hand_raster)
             in_rasters['HAND'] = hand_raster
 
         with TimerBuckets('rasterio'):
