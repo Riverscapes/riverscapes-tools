@@ -34,7 +34,6 @@ def get_params(job_obj):
         new_job_env['TAGS'] += ',{}'.format(
             datetime.now().strftime("%b%d").upper())
 
-    # new_job_env['RS_CONFIG'] = json.dumps(rsconfig)
     # NO_UI keeps the progress bars at bay value doesn't matter
     # Note: This only applies to Riverscapes Tools. --no-ui is harcoded
     # Into the automation jobs for rscli
@@ -87,7 +86,7 @@ def get_params(job_obj):
     return params
 
 
-def main(job_json_dir, api_url, username, password, rs_api_url: str) -> bool:
+def main(job_json_dir, api_url, username, password) -> bool:
     job_choices = {}
     repeat = False
     monitor_logs_path = os.path.join(os.path.dirname(__file__), '..', 'logs')
@@ -135,7 +134,7 @@ def main(job_json_dir, api_url, username, password, rs_api_url: str) -> bool:
         raise Exception('server must be one of PRODUCTION, STAGING, DEVELOPMENT')
 
     # Initialize a connection to the riverscapes API
-    upstream_results = find_upstream_projects(rs_api_url, job_obj)
+    upstream_results = find_upstream_projects(job_obj)
     
     # Write the lookups back to the input file so it's remembered for next time
     with open(job_path, 'w') as f:
@@ -204,9 +203,7 @@ def main(job_json_dir, api_url, username, password, rs_api_url: str) -> bool:
         with open(outputFile, 'w') as outfile:
             job_monitor['meta'] = json.loads(job_monitor['meta'])
             job_monitor['env'] = json.loads(job_monitor['env'])
-            if 'RS_CONFIG' in job_monitor['env']:
-                # don't show login info in the file
-                del job_monitor['env']['RS_CONFIG']
+
             for t in job_monitor['tasks']:
                 t['env'] = json.loads(t['env'])
                 t['meta'] = json.loads(t['meta'])
@@ -379,11 +376,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(
         'job_json', help='The job specification JSON file', type=str)
-    parser.add_argument('api_url', help='URL to the cybercastor API', type=str)
+    parser.add_argument('cc_api_url', help='URL to the cybercastor API', type=str)
     # These are legacy Cognitop credentials. We need to update this to use the new API
     parser.add_argument('username', help='API URL Username', type=str)
     parser.add_argument('password', help='API URL Password', type=str)
-    parser.add_argument('rs_api_url', help='URL to the Riverscapes API', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ',
                         action='store_true', default=False)
 
@@ -395,12 +391,12 @@ if __name__ == '__main__':
     log.title('Cybercastor Add JOB')
 
     # Stupid slash parsing
-    fixedurl = args.api_url.replace(':/', '://')
+    fixedurl = args.cc_api_url.replace(':/', '://')
 
     try:
         RETRY = True
         while RETRY is True:
-            RETRY = main(args.job_json, fixedurl, args.username, args.password, args.rs_api_url)
+            RETRY = main(args.job_json, fixedurl, args.username, args.password)
 
     except Exception as e:
         log.error(e)

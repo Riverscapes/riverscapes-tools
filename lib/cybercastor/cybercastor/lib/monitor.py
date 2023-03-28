@@ -3,7 +3,7 @@ from datetime import datetime
 import json
 
 possible_states = {'QUEUED': 'cyan', 'STARTING': 'cyan', 'RUNNING': 'yellow', 'STOPPED': 'red', 'SUCCEEDED': 'green', 'FAILED': 'red', 'DELETE_REQUESTED': 'red', 'STOP_REQUESTED': 'red'}
-env_no_print = ['NO_UI', 'RS_CONFIG']
+env_no_print = ['NO_UI']
 
 
 def print_job(job):

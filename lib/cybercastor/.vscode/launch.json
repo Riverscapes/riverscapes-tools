@@ -13,7 +13,7 @@
       "console": "integratedTerminal",
       "envFile": "${workspaceFolder}/.env",
       "args": [
-        "{env:API_URL}",
+        "{env:CC_API_URL}",
         "{env:USERNAME}",
         "{env:PASSWORD}",
         // "--download_running",
@@ -30,10 +30,9 @@
       "envFile": "${workspaceFolder}/.env",
       "args": [
         "${workspaceFolder}/jobs/",
-        "{env:API_URL}",
+        "{env:CC_API_URL}",
         "{env:USERNAME}",
         "{env:PASSWORD}",
-        "{env:RS_API_URL}",
         "--verbose"
       ]
     },
@@ -48,7 +47,7 @@
       // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
       "args": [
         "{env:DATA_ROOT}/warehouse_report",
-        "{env:API_URL}",
+        "{env:CC_API_URL}",
         "{env:USERNAME}",
         "{env:PASSWORD}",
         "--verbose"

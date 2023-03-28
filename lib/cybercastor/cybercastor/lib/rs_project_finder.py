@@ -56,7 +56,7 @@ query = """
 }
 """
 
-def find_upstream_projects(api_url: str, job_data) -> bool:
+def find_upstream_projects(job_data) -> bool:
     
     log = Logger('Upstream Project Finder')
     

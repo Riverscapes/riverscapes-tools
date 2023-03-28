@@ -10,7 +10,6 @@ IMGNAME=cybercastor/rstools
 docker run \
   --env-file .env.docker \
   --env SHELL_SCRIPT="$(<$2)" \
-  --env RS_CONFIG="$(<~/.riverscapes)" \
   --mount type=bind,source=$1,target=/efsshare \
   --mount type=bind,source=$1,target=/task \
   --mount type=bind,source=$1,target=/usr/local/data \

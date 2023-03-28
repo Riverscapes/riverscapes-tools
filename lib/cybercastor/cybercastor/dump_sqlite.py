@@ -8,12 +8,12 @@ import sqlite3
 import requests
 import json
 from datetime import date
-from cybercastor.lib import CybercastorAPI
-from rscommons import Logger, dotenv, ProgressBar
-from rscommons.util import safe_remove_file, safe_makedirs
+from cybercastor.classes.CybercastorAPI import CybercastorAPI
+from rscommons import Logger, dotenv
+from rscommons.util import safe_makedirs
 
 
-def huc_report(sqlite_db_dir, api_url, username, password):
+def huc_report(sqlite_db_dir, cc_api_url, username, password):
     """ DUmp all projects to a DB
 
     Args:
@@ -35,7 +35,7 @@ def huc_report(sqlite_db_dir, api_url, username, password):
     curs = conn.cursor()
 
     # Initialize our API and log in
-    CybercastorAPI = CybercastorAPI.CybercastorAPI(api_url, username, password)
+    ccAPI = CybercastorAPI(cc_api_url, username, password)
     curs.execute("DROP TABLE IF EXISTS cybercastor_tasks;")
     curs.execute("DROP TABLE IF EXISTS cybercastor_jobs;")
     curs.execute("DROP TABLE IF EXISTS engine_scripts;")
@@ -110,7 +110,7 @@ def huc_report(sqlite_db_dir, api_url, username, password):
     while nexttoken or page == 0:
         page += 1
         # Get all project
-        result = CybercastorAPI.get_jobs(None, None, 50, nexttoken)
+        result = ccAPI.get_jobs(None, None, 50, nexttoken)
         if 'nextToken' in result:
             nexttoken = result['nextToken']
         else:

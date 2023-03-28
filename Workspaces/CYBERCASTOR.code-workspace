@@ -17,5 +17,18 @@
 		"python.pythonPath": "${workspaceFolder}/../../.venv/bin/python3",
 		"python.testing.pytestEnabled": true,
 		"python.testing.unittestEnabled": true,
+    "files.watcherExclude": {
+      "**/*.egg-info/**": true,
+      "**/.venv/**": true,
+      "**/docs/**": true
+    },
+    "search.exclude": {
+      "**/*.egg-info/**": true,
+      "**/python/**": true,
+      "**/.venv/**": true
+    },
+    "files.exclude": {
+      "**/*.egg-info": true,
+    },
 	}
 }
