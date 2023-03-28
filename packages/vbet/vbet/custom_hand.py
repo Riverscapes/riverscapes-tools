@@ -1,4 +1,4 @@
-"""Custom HAND algorithm 
+"""Custom HAND algorithm
 
 Jordan Gilbert
 
@@ -6,7 +6,7 @@ Jordan Gilbert
 """
 
 import argparse
-from .hand import dem_hand
+from vbet.lib.hand import dem_hand
 import rasterio
 import numpy as np
 from rscommons import dotenv

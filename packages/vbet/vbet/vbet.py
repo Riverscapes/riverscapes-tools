@@ -42,7 +42,7 @@ from vbet.vbet_outputs import clean_up_centerlines
 from vbet.vbet_report import VBETReport
 from vbet.vbet_segmentation import calculate_dgo_metrics, generate_igo_points, split_vbet_polygons, calculate_vbet_window_metrics
 from vbet.lib.CompositeRaster import CompositeRaster
-from vbet.lib.dem_hand import hand
+from vbet.custom_hand import hand
 from vbet.__version__ import __version__
 
 from .lib.cost_path import least_cost_path
