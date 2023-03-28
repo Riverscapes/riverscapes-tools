@@ -25,11 +25,10 @@ Job definition
   "meta": {},
   "server": "STAGING",
   "env": {
-    "CHANNEL_TAGS": "Cybercastor,Testing",
-    "TAUDEM_TAGS": "Cybercastor,Testing",
-    "RSCONTEXT_TAGS": "Cybercastor,Testing",
-    "VBET_TAGS": "JAN05",
-    "GIT_REF": "VBET_GNAT"
+    "TAGS": "SANITYTEST",
+    "VISIBILITY": "PUBLIC",
+    "ORG_ID": "acad4e40-827e-46ff-b7c6-f76e72b76d86",
+    "GIT_REF": "new_project_xml"
   },
   "resources": {
     "cpu": 4096,
@@ -39,15 +38,7 @@ Job definition
   "hucs": [
     "1601020204",
     "1706030402"
-  ],
-  "lookups": {
-    "1601020204": {
-      "RSCONTEXT_ID": "d16a225e-55b0-41b2-9519-507db79cb7f9"
-    },
-    "1706030402": {
-      "RSCONTEXT_ID": "796ca192-1f9f-4f6d-84b2-c0ec665dfad3"
-    }
-  }
+  ]
 }
 ```
 
