@@ -458,6 +458,16 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                 prox_arr = prox.read()[0, :, :]
                 max_prox = np.max(prox_arr)
 
+        with TimerBuckets('flowline'):
+            if level_path is not None:
+                # Generate and add rasterized version of level path flowline to make sure endpoint coords are on the raster.
+                level_path_flowlines = os.path.join(temp_folder_lpath, 'flowlines.gpkg', f'level_path_{level_path}')
+                copy_feature_class(line_network, level_path_flowlines, attribute_filter=f'LevelPathI = {level_path}')
+                rasterized_level_path = os.path.join(temp_folder_lpath, f'rasterized_flowline_{level_path}.tif')
+                rasterize(level_path_flowlines, rasterized_level_path, rasterized_channel, all_touched=True)
+            else:
+                rasterized_level_path = None
+
         with TimerBuckets('HAND'):
             hand_raster = os.path.join(temp_rasters_folder, f'local_hand_{level_path}.tif')
             hand_raster_interior = os.path.join(temp_rasters_folder, f'local_hand_interior_{level_path}.tif')
@@ -472,7 +482,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             #     _tmterr("HAND_ERROR", err_msg)
             #     continue
             log.info(f'Calculating HAND for level path: {level_path}')
-            hand(local_pitfill_dem, rasterized_channel, hand_raster)
+            hand(local_pitfill_dem, rasterized_level_path, hand_raster)
             in_rasters['HAND'] = hand_raster
 
         with TimerBuckets('rasterio'):
@@ -562,16 +572,6 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             write_rasters['TRANSFORMED_HAND'].close()
             write_rasters['TRANSFORMED_SLOPE'].close()
             write_rasters['topo_evidence'].close()
-
-        with TimerBuckets('flowline'):
-            if level_path is not None:
-                # Generate and add rasterized version of level path flowline to make sure endpoint coords are on the raster.
-                level_path_flowlines = os.path.join(temp_folder_lpath, 'flowlines.gpkg', f'level_path_{level_path}')
-                copy_feature_class(line_network, level_path_flowlines, attribute_filter=f'LevelPathI = {level_path}')
-                rasterized_level_path = os.path.join(temp_folder_lpath, f'rasterized_flowline_{level_path}.tif')
-                rasterize(level_path_flowlines, rasterized_level_path, rasterized_channel, all_touched=True)
-            else:
-                rasterized_level_path = None
 
         # Generate VBET Polygon
         with TimerBuckets('gdal'):
