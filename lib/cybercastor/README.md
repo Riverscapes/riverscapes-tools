@@ -87,3 +87,10 @@ Here are some resources examples:
 You can go bigger too but beware of price increases!
 
   * `lookups`: After you run your job you may see lookups. This is populated automatically and consists of IDs from the warehouse to use as inputs when downloading projects. You can delete this field if you want to re-run the lookup process or change the ids to something else.
+
+
+## Running cybercastor Dockerbox locally
+
+1. Make sure you have the Cyberastor repo cloned to `master` and current
+2. in the cybercastor repo cd to `Docker/riverscapesTools` and run `./scripts/dockerBuild.sh`
+3. Come back to this repo and run `./scripts/dockerRun.sh`

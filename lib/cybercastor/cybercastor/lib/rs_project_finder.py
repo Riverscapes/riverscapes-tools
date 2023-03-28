@@ -3,13 +3,14 @@ from rscommons import Logger
 import dateutil.parser
 import inquirer
 
-# Key is JSON task script ID. Value is list of warehouse project types  
+# Key is JSON task script ID. Value is list of warehouse project types
+# https://cybercastor.northarrowresearch.com/engines/manifest.json
 upstream_project_types = {
     'rs_context': [],
     'rs_context_channel_taudem': [],
     'vbet': ['rscontext', 'channelarea', 'taudem'],
     'brat': ['rscontext', 'vbet',],
-    'channelarea': ['rscontext'],
+    'channel': ['rscontext'],
     'confinement': ['rscontext', 'vbet'],
 }
 
