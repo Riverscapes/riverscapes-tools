@@ -471,6 +471,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             #     log.error(err_msg)
             #     _tmterr("HAND_ERROR", err_msg)
             #     continue
+            log.info(f'Calculating HAND for level path: {level_path}')
             hand(local_pitfill_dem, rasterized_channel, hand_raster)
             in_rasters['HAND'] = hand_raster
 

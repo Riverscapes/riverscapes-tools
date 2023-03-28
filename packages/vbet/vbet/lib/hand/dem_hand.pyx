@@ -21,6 +21,7 @@ def calc_hand(cnp.ndarray[double, ndim=2] dem_array, cnp.ndarray[double, ndim=2]
     for row in range(j_max):
         for col in range(i_max):
             if chan_array[row, col] == 1:
+                hand_array_view[row, col] = 0.
                 row_vals.append(row)
                 col_vals.append(col)
     row_vals = np.asarray(row_vals)
@@ -33,6 +34,8 @@ def calc_hand(cnp.ndarray[double, ndim=2] dem_array, cnp.ndarray[double, ndim=2]
     for j in range(j_max):
         for i in range(i_max):
             if dem_array[j, i] == nodata:
+                continue
+            if hand_array_view[j, i] == 0.:
                 continue
             dist_arr = np.sqrt((j - row_vals)**2 + (i - col_vals)**2)
             min_ind = np.argmin(dist_arr)
