@@ -42,9 +42,9 @@ echo "VBET_ID: $VBET_ID"
 echo "RSCONTEXT_ID: $RSCONTEXT_ID"
 echo "TAGS: $TAGS"
 echo "VISIBILITY: $VISIBILITY"
-if [-n "$USER_ID"]; then
+if [ -n "$USER_ID" ]; then
   echo "USER_ID: $USER_ID"
-elif [-n "$ORG_ID"]; then
+elif [ -n "$ORG_ID" ]; then
   echo "ORG_ID: $ORG_ID"
 fi
 

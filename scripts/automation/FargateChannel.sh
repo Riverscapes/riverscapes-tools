@@ -38,9 +38,9 @@ echo "TAGS: $TAGS"
 echo "RSCONTEXT_ID: $RSCONTEXT_ID"
 echo "RS_API_URL: $RS_API_URL"
 echo "VISIBILITY: $VISIBILITY"
-if [-n "$USER_ID"]; then
+if [ -n "$USER_ID" ]; then
   echo "USER_ID: $USER_ID"
-elif [-n "$ORG_ID"]; then
+elif [ -n "$ORG_ID" ]; then
   echo "ORG_ID: $ORG_ID"
 fi
 

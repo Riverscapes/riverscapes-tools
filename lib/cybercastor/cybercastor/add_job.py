@@ -76,7 +76,7 @@ def get_params(job_obj):
         "job": {
             "name": job_obj['name'],
             "description": job_obj['description'],
-            "taskDefId": "rstools",  # we're hardcoding the Docker machine to this
+            "taskDefId": "riverscapesTools",  # we're hardcoding the Docker machine to this
             "taskScriptId": job_obj['taskScriptId'],
             # Turn meta and env into stringified JSON which is what the API requires
             "meta": json.dumps(new_job_meta),
@@ -144,7 +144,14 @@ def main(job_json_dir, api_url, username, password, rs_api_url: str) -> bool:
     if upstream_results == False:
         return False
 
-
+    if job_obj['server'] == 'PRODUCTION':
+      job_obj['env']['RS_API_URL'] = 'https://api.warehouse.riverscapes.net'
+    elif job_obj['server']  == 'STAGING':
+      job_obj['env']['RS_API_URL'] = 'https://api.warehouse.riverscapes.net/staging'
+    # TODO: might need to add a DEVELOPMENT stage here for testing. TBD
+    else:
+      server = job_obj['server']
+      raise Exception(f'Unknown server: {server}')
     # Initialize our API and log in
     cyberCastor = CybercastorAPI(api_url, username, password)
 
