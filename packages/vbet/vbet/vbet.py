@@ -42,7 +42,7 @@ from vbet.vbet_outputs import clean_up_centerlines
 from vbet.vbet_report import VBETReport
 from vbet.vbet_segmentation import calculate_dgo_metrics, generate_igo_points, split_vbet_polygons, calculate_vbet_window_metrics
 from vbet.lib.CompositeRaster import CompositeRaster
-from vbet.custom_hand import hand
+from vbet.rem import relative_elevation
 from vbet.__version__ import __version__
 
 from .lib.cost_path import least_cost_path
@@ -118,7 +118,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                      reach_codes=None, mask=None, temp_folder=None):
     """Run VBET"""
 
-    thresh_vals = {'VBET_IA': 0.92, 'VBET_FULL': 0.6}
+    thresh_vals = {'VBET_IA': 0.9, 'VBET_FULL': 0.68}
     _tmr_waypt = TimerWaypoints()
     log = Logger('VBET')
     log.info(f'Starting VBET v.{cfg.version}')
@@ -471,18 +471,20 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         with TimerBuckets('HAND'):
             hand_raster = os.path.join(temp_rasters_folder, f'local_hand_{level_path}.tif')
             hand_raster_interior = os.path.join(temp_rasters_folder, f'local_hand_interior_{level_path}.tif')
-            # dinfdistdown_status = run_subprocess(project_folder, ["mpiexec", "-n", NCORES, "dinfdistdown",
-            #                                                       "-ang", local_dinfflowdir_ang,
-            #                                                       "-fel", local_pitfill_dem,
-            #                                                       "-src", rasterized_channel,
-            #                                                       "-dd", hand_raster, "-m", "ave", "v"])
-            # if dinfdistdown_status != 0 or not os.path.isfile(hand_raster):
-            #     err_msg = f'Error generating HAND for level path {level_path}'
-            #     log.error(err_msg)
-            #     _tmterr("HAND_ERROR", err_msg)
-            #     continue
-            log.info(f'Calculating HAND for level path: {level_path}')
-            hand(local_pitfill_dem, rasterized_level_path, hand_raster)
+            if level_path is None:
+                dinfdistdown_status = run_subprocess(project_folder, ["mpiexec", "-n", NCORES, "dinfdistdown",
+                                                                      "-ang", local_dinfflowdir_ang,
+                                                                      "-fel", local_pitfill_dem,
+                                                                      "-src", rasterized_channel,
+                                                                      "-dd", hand_raster, "-m", "ave", "v"])
+                if dinfdistdown_status != 0 or not os.path.isfile(hand_raster):
+                    err_msg = f'Error generating HAND for level path {level_path}'
+                    log.error(err_msg)
+                    _tmterr("HAND_ERROR", err_msg)
+                    continue
+            else:
+                log.info(f'Calculating HAND for level path: {level_path}')
+                relative_elevation(local_pitfill_dem, rasterized_level_path, hand_raster)
             in_rasters['HAND'] = hand_raster
 
         with TimerBuckets('rasterio'):
@@ -576,7 +578,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         # Generate VBET Polygon
         with TimerBuckets('gdal'):
             valley_bottom_raster = os.path.join(temp_folder_lpath, f'valley_bottom_{level_path}.tif')
-            generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, valley_bottom_raster, temp_folder_lpath, rasterized_level_path, thresh_value=0.6)
+            generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, valley_bottom_raster, temp_folder_lpath, rasterized_level_path, thresh_value=0.68)
 
         log.info('Add VBET Raster to Output')
         with TimerBuckets('rasterio'):
@@ -590,7 +592,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         # Generate the Active Floodplain Polygon
         with TimerBuckets('gdal'):
             active_valley_bottom_raster = os.path.join(temp_folder_lpath, f'active_valley_bottom_{level_path}.tif')
-            generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, active_valley_bottom_raster, temp_folder_lpath, rasterized_level_path, thresh_value=0.92)
+            generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, active_valley_bottom_raster, temp_folder_lpath, rasterized_level_path, thresh_value=0.9)
 
         with TimerBuckets('rasterio'):
             raster_update_multiply(active_zone_raster, active_valley_bottom_raster, value=level_path_key)
