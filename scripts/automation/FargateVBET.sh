@@ -88,7 +88,8 @@ vbet $HUC \
   --mask $RS_CONTEXT_DIR/hydrology/hydrology.gpkg/processing_extent \
   --temp_folder $VBET_SCRATCH \
   --meta "Runner=Cybercastor" \
-  --verbose
+  --verbose \
+  --debug
 
 if [[ $? != 0 ]]; then return 1; fi
 

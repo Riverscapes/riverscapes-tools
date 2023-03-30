@@ -549,10 +549,12 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                     else:
                         transformed[name] = np.ma.MaskedArray(vbet_run['Transforms'][name][0](block[name].data), mask=block['HAND'].mask)
 
+                    masked_prox = np.ma.MaskedArray(block['Proximity'].data, mask=block['HAND'].mask)
                     if name == 'Slope':
-                        masked_prox = np.ma.MaskedArray(block['Proximity'].data, mask=block['HAND'].mask)
                         # transformed[name] = transformed[name] - ((np.log(masked_prox + 0.1) + 2.303) / np.log(max_prox + 2.303))
                         transformed[name] = transformed[name] - (np.sqrt(masked_prox) / np.sqrt(max_prox))
+                    if name == 'HAND':
+                        transformed[name] = transformed[name] - (masked_prox / max_prox)
 
                 # fvals_topo_twi = np.ma.mean([normalized['Slope'], normalized['HAND'], normalized['TWI']], axis=0)
                 # fvals_topo_nontwi = np.ma.mean([normalized['Slope'], normalized['HAND']], axis=0)

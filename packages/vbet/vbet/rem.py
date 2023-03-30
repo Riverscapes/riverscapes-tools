@@ -10,7 +10,7 @@ def relative_elevation(dem: str, channel: str, out_raster: str):
         dem_arr = src_dem.read()[0, :, :]
         meta = src_dem.meta
 
-    subtr_array = np.full((dem_arr.shape[0], dem_arr.shape[1]), src_dem.nodata)
+    hand_array = np.full((dem_arr.shape[0], dem_arr.shape[1]), src_dem.nodata)
 
     chan_vals = {}
 
@@ -25,31 +25,25 @@ def relative_elevation(dem: str, channel: str, out_raster: str):
 
     progbar = ProgressBar(dem_arr.shape[0])
 
-    z_cts = 0
     for j in range(dem_arr.shape[0]):
         progbar.update(j)
         for i in range(dem_arr.shape[1]):
             if dem_arr[j, i] == src_dem.nodata:
-                subtr_array[j, i] = None
+                hand_array[j, i] = src_dem.nodata
                 continue
             if chan_arr[j, i] == 1:
-                subtr_array[j, i] = dem_arr[j, i]
+                hand_array[j, i] = 0.
                 continue
 
             dist_arr = np.sqrt((j - rowvals)**2 + (i - colvals)**2)
-            if 0 in dist_arr:
-                z_cts += 1
-                continue
-            weight = 1 / dist_arr**2
+            dist_sort = np.argpartition(dist_arr, int(0.05 * len(dist_arr)))
+            dist_use = dist_arr[dist_sort[:int(0.05 * len(dist_arr))]]
+            weight = 1 / dist_use**2
             adj_weight = weight / np.sum(weight)
-            elev_fracs = adj_weight * elevs
+            elev_fracs = adj_weight * elevs[dist_sort[:int(0.05 * len(dist_arr))]]
             # elev = sum(elev_fracs)
 
-            subtr_array[j, i] = np.sum(elev_fracs)
-
-    hand_array = dem_arr - subtr_array
-    hand_array[np.where(hand_array < 0)] = 0.
-    hand_array = np.nan_to_num(hand_array, nan=src_dem.nodata)
+            hand_array[j, i] = dem_arr[j, i] - np.sum(elev_fracs)
 
     with rasterio.open(out_raster, 'w', **meta) as dst:
         dst.write(hand_array, 1)
