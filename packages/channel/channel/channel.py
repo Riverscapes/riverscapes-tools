@@ -246,8 +246,8 @@ def channel(huc: int,
     # Report
     report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
     project.add_report(proj_nodes['Outputs'], LayerTypes['REPORT'], replace=True)
-    # report = ChannelReport(report_path, project)
-    # report.write()
+    report = ChannelReport(report_path, project)
+    report.write()
 
     log.info('Channel Area Completed Successfully')
 
