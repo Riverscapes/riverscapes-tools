@@ -50,7 +50,7 @@ gdal-config --version
 
 # Define some folders that we can easily clean up later
 DATA_DIR=/usr/local/data
-RS_CONTEXT_DIR=$DATA_DIR/rs_context/data
+RS_CONTEXT_DIR=$DATA_DIR/rs_context/rs_context_$RSCONTEXT_ID
 CHANNELAREA_DIR=$DATA_DIR/output
 
 ##########################################################################################
