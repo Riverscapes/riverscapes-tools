@@ -79,11 +79,13 @@ TAUDEM_DIR=$DATA_DIR/taudem/$HUC
 try() {
 
 rscontext $HUC \
-  /efsshare/NationalDatasets/landfire/200/us_200evt.tif \
-  /efsshare/NationalDatasets/landfire/200/us_200bps.tif \
+  /efsshare/NationalDatasets/landfire/220/ \
   /efsshare/NationalDatasets/ownership/surface_management_agency.shp \
   /efsshare/NationalDatasets/ownership/FairMarketValue.tif \
-  /efsshare/NationalDatasets/ecoregions/us_eco_l3_state_boundaries.shp \
+  /efsshare/NationalDatasets/ecoregions/us_eco_l4_state_boundaries.shp \
+  /efsshare/NationalDatasets/political_boundaries/cb_2021_us_state_500k.shp \
+  /efsshare/NationalDatasets/political_boundaries/cb_2021_us_county_500k.shp \
+  /efsshare/NationalDatasets/geology/SGMC_Geology.shp \
   /efsshare/download/prism \
   $RSCONTEXT_DIR \
   /efsshare/download \
@@ -126,25 +128,25 @@ rm -fr $RSCONTEXT_SCRATCH
 ##########################################################################################
 
 channel $HUC \
-  $RSCONTEXT_DIR/hydrology/NHDFlowline.shp \
+  $RSCONTEXT_DIR/hydrology/nhdplushr.gpkg/NHDFlowline \
   $CHANNELAREA_DIR \
-  --flowareas $RSCONTEXT_DIR/hydrology/NHDArea.shp \
-  --waterbodies $RSCONTEXT_DIR/hydrology/NHDWaterbody.shp \
+  --flowareas $RSCONTEXT_DIR/hydrology/hydro_derivatives.gpkg/NHDAreaSplit \
+  --waterbodies $RSCONTEXT_DIR/hydrology/nhdplushr.gpkg/NHDWaterbody \
   --bankfull_function "0.177 * (a ** 0.397) * (p ** 0.453)" \
   --bankfull_function_params "a=TotDASqKm" \
   --reach_code_field FCode \
   --flowline_reach_codes "33400,46000,46003,46006,46007", \
-  --flowarea_reach_codes "53700,46100,48400,31800,34300,34305,34306,4600,46003,46006,46007", \
+  --flowarea_reach_codes "53700,46100,48400,31800,34300,34305,34306,4600,46003,46006,46007","43100" \
   --waterbody_reach_codes "49300,3900,39001,39004,39005,39006,39009,39010,39011,39012,43600,43601,43603,43604,43605,43606,43607,43608,43609,43610,43611,43612,43613,43614,43615,43618,43619,43621,43623,43624,43625,43626,46600,46601,46602", \
   --prism_data $RSCONTEXT_DIR/climate/precipitation.tif \
-  --huc8boundary $RSCONTEXT_DIR/hydrology/WBDHU8.shp \
+  --huc8boundary $RSCONTEXT_DIR/hydrology/nhdplushr.gpkg/WBDHU8 \
   --meta "Runner=Cybercastor" \
   --verbose
 
 if [[ $? != 0 ]]; then return 1; fi
 
 cd /usr/local/src/riverscapes-tools/packages/channel
-/usr/local/venv/bin/python -m channel.channel_rs \
+python3 -m channel.channel_rs \
   $CHANNELAREA_DIR/project.rs.xml \
   $RSCONTEXT_DIR/project.rs.xml
 
@@ -185,9 +187,9 @@ taudem $HUC \
 if [[ $? != 0 ]]; then return 1; fi
 
 cd /usr/local/src/riverscapes-tools/packages/taudem
-/usr/local/venv/bin/python -m taudem.taudem_rs \
+python3 -m taudem.taudem_rs \
   $TAUDEM_DIR/project.rs.xml \
-  $RSCONTEXT_DIR/project.rs.xml,$CHANNEL_DIR/project.rs.xml
+  $RSCONTEXT_DIR/project.rs.xml,$CHANNELAREA_DIR/project.rs.xml
 
 # Upload the HUC into the warehouse
 cd $TAUDEM_DIR

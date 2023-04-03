@@ -52,17 +52,21 @@ gdal-config --version
 
 # Define some folders that we can easily clean up later
 DATA_DIR=/usr/local/data
-RS_CONTEXT_DIR=$DATA_DIR/rs_context/data
-CHANNELAREA_DIR=$DATA_DIR/channel_area/data
+RS_CONTEXT_DIR=$DATA_DIR/rs_context/rs_context_$RSCONTEXT_ID
+CHANNELAREA_DIR=$DATA_DIR/channel_area/channel_area_$CHANNELAREA_ID
 TAUDEM_DIR=$DATA_DIR/output
 
 ##########################################################################################
 # First Get RS_Context and Channel Area inputs
 ##########################################################################################
 
+# TODO: Remove once RSCLI download is fixed
+[[ -d $RS_CONTEXT_DIR ]] && rm -r $RS_CONTEXT_DIR
+[[ -d $CHANNELAREA_DIR ]] && rm -r $CHANNELAREA_DIR
+
 # Get the RSCli project we need to make this happen
 rscli download $RS_CONTEXT_DIR --id $RSCONTEXT_ID \
-  --file-filter "(hillshade|dem|hydrology|project_bounds.geojson)" \
+  --file-filter "(slope|hillshade|dem|hydrology|project_bounds.geojson)" \
   --no-input --no-ui --verbose
 
 rscli download $CHANNELAREA_DIR --id $CHANNELAREA_ID \
@@ -78,13 +82,12 @@ taudem $HUC \
   $CHANNELAREA_DIR/outputs/channel_area.gpkg/channel_area \
   $RS_CONTEXT_DIR/topography/dem.tif \
   $TAUDEM_DIR \
-  --hillshade $RS_CONTEXT_DIR/topography/dem_hillshade.tif \
   --meta "Runner=Cybercastor" \
   --verbose
 if [[ $? != 0 ]]; then return 1; fi
 
 cd /usr/local/src/riverscapes-tools/packages/taudem
-/usr/local/venv/bin/python -m taudem.taudem_rs \
+python3 -m taudem.taudem_rs \
   $TAUDEM_DIR/project.rs.xml \
   $RS_CONTEXT_DIR/project.rs.xml,$CHANNELAREA_DIR/project.rs.xml
 
