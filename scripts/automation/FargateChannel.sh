@@ -90,8 +90,7 @@ if [[ $? != 0 ]]; then return 1; fi
 
 cd /usr/local/src/riverscapes-tools/packages/channel
 /usr/local/venv/bin/python -m channel.channel_rs \
-  $CHANNELAREA_DIR/project.rs.xml \
-  $RS_CONTEXT_DIR/project.rs.xml
+  $CHANNELAREA_DIR/project.rs.xml, $RS_CONTEXT_DIR/project.rs.xml
 
 echo "======================  Final Disk space usage ======================="
 df -h
