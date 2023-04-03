@@ -9,7 +9,7 @@ IMGNAME=cybercastor/riverscapestools
 
 # --env SHELL_SCRIPT="$(<./scripts/testscript.sh)" \
 docker run \
-  --env-file ./dockerScripts/.env.test \
+  --env-file ./scripts/.env.test \
   --mount type=bind,source=$1,target=/efsshare \
   --mount type=bind,source=$1,target=/task \
   --mount type=bind,source=$1,target=/usr/local/data \

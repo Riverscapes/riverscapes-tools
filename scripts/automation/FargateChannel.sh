@@ -3,6 +3,7 @@
 # Set -u will cause the script to exit if any variable is not set
 set -eu
 IFS=$'\n\t'
+# set -x
 
 # These environment variables need to be present before the script starts
 (: "${TAGS?}")
@@ -56,6 +57,9 @@ CHANNELAREA_DIR=$DATA_DIR/output
 # First Get RS_Context inputs
 ##########################################################################################
 
+# TODO: Remove once RSCLI download is fixed
+[[ -d $RS_CONTEXT_DIR ]] && rm -r $RS_CONTEXT_DIR
+
 # Get the RSCli project we need to make this happen
 rscli download $RS_CONTEXT_DIR --id $RSCONTEXT_ID \
   --file-filter "(hillshade|slope|dem|climate|hydrology|project_bounds.geojson)" \
@@ -68,7 +72,7 @@ try() {
 
 channel $HUC \
   $RS_CONTEXT_DIR/hydrology/nhdplushr.gpkg/NHDFlowline \
-  $CHANNEL_DIR \
+  $CHANNELAREA_DIR \
   --flowareas $RS_CONTEXT_DIR/hydrology/hydro_derivatives.gpkg/NHDAreaSplit \
   --waterbodies $RS_CONTEXT_DIR/hydrology/nhdplushr.gpkg/NHDWaterbody \
   --bankfull_function "0.177 * (a ** 0.397) * (p ** 0.453)" \

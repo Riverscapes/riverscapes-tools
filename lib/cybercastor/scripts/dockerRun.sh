@@ -10,7 +10,7 @@ IMGNAME=cybercastor/riverscapestools
 cd ../../
 
 docker run \
-  --env-file ./lib/cybercastor/dockerScripts/.env.test \
+  --env-file ./lib/cybercastor/scripts/.env.test \
   --mount type=bind,source=$1,target=/efsshare \
   --mount type=bind,source=$1,target=/task \
   --mount type=bind,source=$1,target=/usr/local/data \
