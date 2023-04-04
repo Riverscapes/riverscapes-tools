@@ -32,12 +32,13 @@ def clean_nhdplus_catchments(gpkg_path: str, huc_boundary_lyr: str, hucid: str):
     del_ids = []
 
     for feature in catchlyr:
-        nhdid = int(feature.GetField('NHDPlusID'))
-        if join_data_dict[nhdid] is None:
-            del_ids.append(nhdid)
-        else:
-            if hucid not in join_data_dict[nhdid]:
+        if feature.GetField('NHDPlusID') is not None:
+            nhdid = int(feature.GetField('NHDPlusID'))
+            if join_data_dict[nhdid] is None:
                 del_ids.append(nhdid)
+            else:
+                if hucid not in join_data_dict[nhdid]:
+                    del_ids.append(nhdid)
 
     [curs.execute('DELETE FROM NHDPlusCatchment WHERE NHDPlusCatchment.NHDPlusID = ?', [id]) for id in del_ids]
     conn.commit()
