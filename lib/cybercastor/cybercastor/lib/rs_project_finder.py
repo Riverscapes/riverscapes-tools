@@ -74,9 +74,6 @@ def find_upstream_projects(job_data) -> bool:
 
     # Initialize the warehouse API that will be used to search for available projects
     riverscapes_api = RiverscapesAPI(stage=job_data['server'])
-    # Note: We might have to re-run this if the token expires but it shouldn't happen
-    # within the context of a single call so for now leave this alone.
-    riverscapes_api.refresh_token()
 
     errors = []
 
@@ -105,6 +102,14 @@ def find_upstream_projects(job_data) -> bool:
                     "value": huc,
                 }]
             }
+
+            # Only refresh the token if we need to
+            if riverscapes_api.accessToken is None:
+              # Note: We might have to re-run this if the token expires but it shouldn't happen
+              # within the context of a single call so for now leave this alone.
+              riverscapes_api.refresh_token()
+
+
             results = riverscapes_api.run_query(query, {"searchParams": params})
             available_projects = results['data']['searchProjects']['results']
 

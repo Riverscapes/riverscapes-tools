@@ -10,7 +10,7 @@ import json
 import inquirer
 from termcolor import colored
 from rscommons import Logger, dotenv
-# from rscommons.util import safe_remove_dir
+from rscommons.util import safe_makedirs
 from datetime import datetime
 
 from cybercastor.classes.CybercastorAPI import CybercastorAPI
@@ -123,6 +123,9 @@ def main(job_json_dir, api_url, username, password) -> bool:
         return False
     
     job_path = os.path.join(job_json_dir, answers['job'])
+    # Clean the directory to put logs into
+    safe_makedirs(monitor_logs_path)
+    safe_makedirs(job_json_dir)
 
     # Load our JSON configuration file
     with open(job_path) as f:

@@ -9,6 +9,7 @@ import json
 from cybercastor.lib.monitor import print_job
 from cybercastor.classes.CybercastorAPI import CybercastorAPI
 from cybercastor.lib.cloudwatch import download_job_logs
+from rscommons.util import safe_makedirs
 from rscommons import Logger, dotenv
 
 
@@ -54,6 +55,9 @@ def main(api_url, username, password, download_running):
     monitor_json = {}
     monitor_json_path = os.path.join(os.path.dirname(__file__), '..', 'logs', 'monitor.output.json')
     monitor_logs_path = os.path.join(os.path.dirname(__file__), '..', 'logs')
+    # Clean the directory to put logs into
+    safe_makedirs(monitor_logs_path)
+
     if os.path.isfile(monitor_json_path):
         with open(monitor_json_path) as f:
             monitor_json = json.load(f)
