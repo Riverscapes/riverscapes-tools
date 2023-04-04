@@ -42,7 +42,7 @@ Job definition
 }
 ```
 
-All jobs should go in the `python/scripts/jobs` folder
+All jobs should go in the `jobs` folder
 
 * `$schema`: should always be "../job.schema.json" because VSCode will then tell you if there are problems with the file.
 * `name`: Job name. Make it a good one. 
