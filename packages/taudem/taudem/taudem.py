@@ -91,15 +91,14 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, project_folder:
     project_name = 'TauDEM project for HUC {}'.format(huc)
     project = RSProject(cfg, project_folder)
     project.create(project_name, 'TauDEM', [
-        RSMeta('HUC{}'.format(len(huc)), str(huc)),
-        RSMeta('HUC', str(huc)),
-        RSMeta('TauDEMProjectVersion', cfg.version),
-        RSMeta('TauDEMTimestamp', str(int(time.time())), RSMetaTypes.TIMESTAMP),
-        RSMeta('TauDEMSoftwareVersion', '5.3.7'),
-        RSMeta('TauDEMCredits', 'Copyright (C) 2010-2015 David Tarboton, Utah State University'),
-        RSMeta('TauDEMLicence', 'https://hydrology.usu.edu/taudem/taudem5/GPLv3license.txt', RSMetaTypes.URL),
-        RSMeta('TauDEMURL', 'https://hydrology.usu.edu/taudem/taudem5/index.html', RSMetaTypes.URL)
-    ], meta)
+        RSMeta('HUC', str(huc), RSMetaTypes.HIDDEN, locked=True),
+        RSMeta('Hydrologic Unit Code', str(huc), locked=True),
+        RSMeta('TauDEM Software Version', '5.3.7', locked=True),
+        RSMeta('TauDEM Credits', 'Copyright (C) 2010-2015 David Tarboton, Utah State University', locked=True),
+        RSMeta('TauDEM Licence', 'https://hydrology.usu.edu/taudem/taudem5/GPLv3license.txt', RSMetaTypes.URL, locked=True),
+        RSMeta('TauDEM URL', 'https://hydrology.usu.edu/taudem/taudem5/index.html', RSMetaTypes.URL, locked=True)
+    ])
+    project.add_metadata([RSMeta(key, val, RSMetaTypes.HIDDEN, locked=True) for key, val in meta.items()])
 
     # Add the layer metadata immediately before we write anything
     augment_layermeta()
@@ -257,8 +256,8 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, project_folder:
 
     ellapsed_time = time.time() - start_time
     project.add_metadata([
-        RSMeta("ProcTimeS", "{:.2f}".format(ellapsed_time), RSMetaTypes.HIDDEN),
-        RSMeta("ProcessingTime", pretty_duration(ellapsed_time))
+        RSMeta("ProcTimeS", "{:.2f}".format(ellapsed_time), RSMetaTypes.HIDDEN, locked=True),
+        RSMeta("Processing Time", pretty_duration(ellapsed_time), locked=True)
     ])
     log.info("TauDEM process complete in {}".format(ellapsed_time))
 

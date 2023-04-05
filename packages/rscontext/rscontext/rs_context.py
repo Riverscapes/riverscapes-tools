@@ -169,9 +169,10 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
     project_name = 'Riverscapes Context for HUC {}'.format(huc)
     project = RSProject(cfg, output_folder)
     project.create(project_name, 'RSContext', [
-        RSMeta('HUC{}'.format(len(huc)), str(huc)),
-        RSMeta('HUC', str(huc))
-    ], meta)
+        RSMeta('HUC', str(huc), RSMetaTypes.HIDDEN, locked=True),
+        RSMeta('Hydrologic Unit Code', str(huc), locked=True)
+    ])
+    project.add_metadata([RSMeta(key, val, RSMetaTypes.HIDDEN, locked=True) for key, val in meta.items()])
 
     realization = project.add_realization(project_name, 'REALIZATION1', cfg.version)
     datasets = project.XMLBuilder.add_sub_element(realization, 'Datasets')
@@ -281,8 +282,8 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
         project.add_metadata([RSMeta('Description', 'The USGS Transportation downloadable data from The National Map (TNM) is based on TIGER/Line data provided through U.S. Census Bureau and supplemented with HERE road data to create tile cache base maps. Some of the TIGER/Line data includes limited corrections done by USGS. Transportation data consists of roads, railroads, trails, airports, and other features associated with the transport of people or commerce. The data is downloaded from science base by state then clipped to the project extent.'),
                               RSMeta('SourceUrl', 'https://data.usgs.gov/datacatalog/data/USGS:ad3d631d-f51f-4b6a-91a3-e617d6a58b4e', RSMetaTypes.URL),
                               RSMeta('DataProductVersion', '2020'),
-                              RSMeta('DocsUrl', f'https://tools.riverscapes.net/data/html#{name}', RSMetaTypes.URL), ], ntd_node)
-        project.add_metadata([RSMeta(k, v, RSMetaTypes.URL, RSMetaExt.DATASET) for k, v in ntd_urls.items()], ntd_node)
+                              RSMeta('DocsUrl', f'https://tools.riverscapes.net/data/html#{name}', RSMetaTypes.URL)], ntd_node)
+        project.add_metadata([RSMeta(k, v, RSMetaTypes.URL) for k, v in ntd_urls.items()], ntd_node)
 
     # download contributing DEM rasters, mosaic and reproject into compressed GeoTIF
     ned_download_folder = os.path.join(download_folder, 'ned')
@@ -307,8 +308,8 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
     need_hs_build = need_dem_rebuild or not os.path.isfile(hill_raster)
 
     project.add_metadata([
-        RSMeta('NumRasters', str(len(urls)), RSMetaTypes.INT, RSMetaExt.DATASET),
-        RSMeta('OriginUrls', json.dumps(urls), RSMetaTypes.JSON, RSMetaExt.DATASET)
+        RSMeta('NumRasters', str(len(urls)), RSMetaTypes.INT),
+        RSMeta('OriginUrls', json.dumps(urls), RSMetaTypes.JSON)
     ], dem_node)
 
     for dem_r in dem_rasters:
@@ -411,8 +412,8 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
 
     ellapsed_time = time.time() - rsc_timer
     project.add_metadata([
-        RSMeta("ProcTimeS", "{:.2f}".format(ellapsed_time), RSMetaTypes.HIDDEN),
-        RSMeta("ProcessingTime", pretty_duration(ellapsed_time))
+        RSMeta("ProcTimeS", "{:.2f}".format(ellapsed_time), RSMetaTypes.HIDDEN, locked=True),
+        RSMeta("Processing Time", pretty_duration(ellapsed_time), locked=True)
     ])
 
     # Clean up the unzipped nhd files

@@ -84,7 +84,7 @@ class RSMetaExt:
 
 
 class RSMeta:
-    def __init__(self, key: str, value: str, meta_type: str = None, meta_ext=None):
+    def __init__(self, key: str, value: str, meta_type: str = None, meta_ext=None, locked=False):
         self.key = key
         self.value = value
         # Do a quick check to make sure we're using correct meta types
@@ -98,6 +98,8 @@ class RSMeta:
                 raise Exception('Could not find <Meta> ext {}'.format(meta_ext))
 
         self.ext = meta_ext
+
+        self.locked = locked
 
 
 class RSLayer:
@@ -220,8 +222,8 @@ class RSProject:
         self.XMLBuilder.add_sub_element(self.XMLBuilder.root, "ProjectType", project_type)
 
         self.add_metadata([
-            RSMeta('ModelVersion', self.settings.version),
-            RSMeta('DateCreated', datetime.datetime.now().isoformat(), RSMetaTypes.ISODATE)
+            RSMeta('Model Version', self.settings.version, locked=True),
+            RSMeta('Date Created', datetime.datetime.now().isoformat(), RSMetaTypes.ISODATE, locked=True)
         ])
         if meta is not None:
             self.add_metadata(meta)
@@ -308,6 +310,8 @@ class RSProject:
                 attrs['ext'] = rsmeta.ext
             if rsmeta.type is not None:
                 attrs['type'] = rsmeta.type
+            if rsmeta.locked is True:
+                attrs['locked'] = "true"
 
             self.XMLBuilder.add_sub_element(metadata_element, "Meta", rsmeta.value, attrs)
 
@@ -622,26 +626,54 @@ class RSProject:
 
             # look for any valid mappings and move metadata into them
             for id_out, id_in in working_id_list.items():
-                lyrnod_in = in_prj.XMLBuilder.find('Realizations').find('Realization').find('.//*[@id="{}"]'.format(id_in))
+                for n in in_prj.XMLBuilder.tree.iter():
+                    if 'lyrName' in n.attrib.keys():
+                        if n.attrib['lyrName'] == id_in:
+                            lyrnod_in = n
+                    elif 'id' in n.attrib.keys():
+                        if n.attrib['id'] == id_in:
+                            lyrnod_in = n
+
+                if lyrnod_in is None:
+                    continue
+                # lyrnod_in = in_prj.XMLBuilder.find('Realizations').find('Realization').find('.//*[@id="{}"]'.format(id_in))
                 lyrmeta: List[RSMeta] = self.meta_keys_ext(in_prj.get_metadata(lyrnod_in), RSMetaExt.DATASET)
 
-                lyrnod_out = self.XMLBuilder.find('Realizations').find('Realization').find('.//*[@id="{}"]'.format(id_out))
+                for m in self.XMLBuilder.tree.iter():
+                    if 'lyrName' in m.attrib.keys():
+                        if m.attrib['lyrName'] == id_out:
+                            lyrnod_out = m
+                    elif 'id' in m.attrib.keys():
+                        if m.attrib['id'] == id_out:
+                            lyrnod_out = m
+
+                # lyrnod_out = self.XMLBuilder.find('Realizations').find('Realization').find('.//*[@id="{}"]'.format(id_out))
 
                 if id_out not in found_keys and lyrnod_in is not None and lyrnod_out is not None:
                     found_keys.append(id_out)
                     lyrnod_out.attrib['extRef'] = f"{warehouse_id}:{self.get_rsxpath(in_prj.XMLBuilder, lyrnod_in)}"
-                    self.add_metadata([
-                        # Copy all the project metadata into the layer we're importing
-                        *projmeta.values(),
-                        # Copy Add all the layer metadata
-                        *lyrmeta.values(),
-                        # Add a few useful extra metadata
-                        RSMeta("projType", in_prj.XMLBuilder.find('ProjectType').text, meta_ext=RSMetaExt.PROJECT),
-                        # The original id of the layer in the original project. Useful for debugging and tracking it later
-                        RSMeta("id", lyrnod_in.attrib['id'], meta_ext=RSMetaExt.DATASET),
-                        # This is the local path from the original project (Might not match the path in this one so it's useful)
-                        RSMeta("path", lyrnod_in.find('Path').text, RSMetaTypes.FILEPATH, meta_ext=RSMetaExt.DATASET),
-                    ], lyrnod_out)
+                    if 'id' in lyrnod_in.attrib.keys():
+                        self.add_metadata([
+                            # Copy all the project metadata into the layer we're importing
+                            *projmeta.values(),
+                            # Copy Add all the layer metadata
+                            *lyrmeta.values(),
+                            # Add a few useful extra metadata
+                            RSMeta("projType", in_prj.XMLBuilder.find('ProjectType').text, meta_ext=RSMetaExt.PROJECT),
+                            # The original id of the layer in the original project. Useful for debugging and tracking it later
+                            RSMeta("id", lyrnod_in.attrib['id'], meta_ext=RSMetaExt.DATASET),
+                            # This is the local path from the original project (Might not match the path in this one so it's useful)
+                            RSMeta("path", lyrnod_in.find('Path').text, RSMetaTypes.FILEPATH, meta_ext=RSMetaExt.DATASET)
+                        ], lyrnod_out)
+                    else:
+                        self.add_metadata([
+                            *projmeta.values(),
+                            *lyrmeta.values(),
+                            RSMeta("projType", in_prj.XMLBuilder.find('ProjectType').text, meta_ext=RSMetaExt.PROJECT),
+                            RSMeta("lyrName", lyrnod_in.attrib['lyrName'], meta_ext=RSMetaExt.DATASET)
+                        ], lyrnod_out)
+
+                lyrnod_in = None
 
     def get_rsxpath(self, xml_builder, lyrnod_in):
         """

@@ -16,7 +16,7 @@ from typing import List, Dict
 from venv import create
 
 from osgeo import ogr
-from rscommons.classes.rs_project import RSMeta, RSMetaTypes
+from rscommons.classes.rs_project import RSMeta, RSMetaTypes, RSMetaExt
 from rscommons.classes.vector_base import get_utm_zone_epsg
 
 from rscommons.util import safe_makedirs, parse_metadata, pretty_duration
@@ -100,20 +100,19 @@ def channel(huc: int,
     # Add the layer metadata immediately before we write anything
     augment_layermeta()
 
-    meta['BankfullEquation'] = bankfull_function
+    meta['Bankfull Equation'] = bankfull_function
     for param, value in bankfull_function_params.items():
-        meta[f'BankfullParameter:{param}'] = str(value)
+        meta[f'Bankfull Parameter: {param}'] = str(value)
     for layer, codes in reach_codes.items():
-        meta[f'{layer}ReachCodes'] = str(codes)
+        meta[f'{layer} Reach Codes'] = str(codes)
 
     project_name = 'Channel Area for HUC {}'.format(huc)
     project = RSProject(cfg, project_folder)
     project.create(project_name, 'ChannelArea', [
-        RSMeta('HUC{}'.format(len(huc)), str(huc)),
-        RSMeta('HUC', str(huc)),
-        RSMeta('ChannelAreaVersion', cfg.version),
-        RSMeta('ChannelAreaTimestamp', str(int(time.time())), RSMetaTypes.TIMESTAMP)
-    ], meta)
+        RSMeta('HUC', str(huc), RSMetaTypes.HIDDEN, locked=True),
+        RSMeta('Hydrologic Unit Code', str(huc))
+    ])
+    project.add_metadata([RSMeta(key, val, locked=True) for key, val in meta.items()])
 
     _realization, proj_nodes = project.add_realization(project_name, 'REALIZATION1', cfg.version, data_nodes=['Inputs', 'Intermediates', 'Outputs'], create_folders=True)
 
@@ -239,8 +238,8 @@ def channel(huc: int,
     # Processing time in hours
     ellapsed_time = time.time() - timer
     project.add_metadata([
-        RSMeta("ProcTimeS", "{:.2f}".format(ellapsed_time), RSMetaTypes.HIDDEN),
-        RSMeta("ProcessingTime", pretty_duration(ellapsed_time))
+        RSMeta("ProcTimeS", "{:.2f}".format(ellapsed_time), RSMetaTypes.HIDDEN, locked=True),
+        RSMeta("Processing Time", pretty_duration(ellapsed_time), locked=True)
     ])
 
     # Report
