@@ -229,7 +229,7 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
     area_split_out = os.path.join(hydro_deriv_gpkg_path, LayerTypes['HYDRODERIVATIVES'].sub_layers['NHDAREASPLIT'].rel_path)
     copy_feature_class(nhdarea_split, area_split_out, epsg=cfg.OUTPUT_EPSG, indexes=['FCode', 'NHDPlusID'])
 
-    export_table(filegdb, 'NHDPlusFlowlineVAA', nhd_gpkg_path, None, "ReachCode LIKE '{}%'".format(nhd['WBDHU8']))
+    export_table(filegdb, 'NHDPlusFlowlineVAA', nhd_gpkg_path, None, "ReachCode LIKE '{}%'".format(huc[:8]))
 
     # Clean up NHDPlusCatchment dataset
     clean_nhdplus_catchments(nhd_gpkg_path, boundary, str(huc))

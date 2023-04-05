@@ -24,6 +24,7 @@ def clean_nhdplus_catchments(gpkg_path: str, huc_boundary_lyr: str, hucid: str):
     huclyr = nhdsrc.GetLayerByName(huc_boundary_lyr)
     hucftrs = [feature for feature in huclyr]
     geom = VectorBase.ogr2shapely(hucftrs[0])
+
     bound = geom.boundary
 
     catchlyr = nhdsrc.GetLayerByName("NHDPlusCatchment")
@@ -37,7 +38,7 @@ def clean_nhdplus_catchments(gpkg_path: str, huc_boundary_lyr: str, hucid: str):
             if join_data_dict[nhdid] is None:
                 del_ids.append(nhdid)
             else:
-                if hucid not in join_data_dict[nhdid]:
+                if hucid[:8] not in join_data_dict[nhdid]:
                     del_ids.append(nhdid)
 
     [curs.execute('DELETE FROM NHDPlusCatchment WHERE NHDPlusCatchment.NHDPlusID = ?', [id]) for id in del_ids]
