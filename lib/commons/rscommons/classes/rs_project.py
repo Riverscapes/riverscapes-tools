@@ -601,14 +601,11 @@ class RSProject:
             out_proj_file (str): [description]
             in_proj_files (List[str]): [description]
         """
-        wh_prefix = '_rs_wh_'
-        proj_prefix = '_rs_prj_'
-        lyr_prefix = '_rs_lyr_'
 
         working_id_list = copy(rs_id_map)
 
         # Loop over input project.rs.xml files
-        found_keys = []
+        found_keys = []  # list of found nodes so that they don't get repeated if they exist in two projects
         for in_prj_path in in_proj_files:
             in_prj = RSProject(None, in_prj_path)
 
@@ -621,32 +618,66 @@ class RSProject:
                     self.add_metadata([RSMeta('Watershed', watershed_node.text)])
 
             # Define our default, generic warehouse and project meta
-            whmeta = self.meta_keys_ext(in_prj.get_metadata(tag='Warehouse'), RSMetaExt.WAREHOUSE)
-            projmeta = self.meta_keys_ext(in_prj.get_metadata(), RSMetaExt.PROJECT)
+            projmeta: List[RSMeta] = self.meta_keys_ext(in_prj.get_metadata(), RSMetaExt.PROJECT)
 
             # look for any valid mappings and move metadata into them
             for id_out, id_in in working_id_list.items():
-
                 lyrnod_in = in_prj.XMLBuilder.find('Realizations').find('Realization').find('.//*[@id="{}"]'.format(id_in))
-                lyrmeta = self.meta_keys_ext(in_prj.get_metadata(lyrnod_in), RSMetaExt.DATASET)
+                lyrmeta: List[RSMeta] = self.meta_keys_ext(in_prj.get_metadata(lyrnod_in), RSMetaExt.DATASET)
 
                 lyrnod_out = self.XMLBuilder.find('Realizations').find('Realization').find('.//*[@id="{}"]'.format(id_out))
 
                 if id_out not in found_keys and lyrnod_in is not None and lyrnod_out is not None:
-                    realization_id = in_prj.XMLBuilder.find('Realizations').find('Realization').attrib['id']
-                    print('Found mapping for {}=>{}. Moving metadata'.format(id_in, id_out))
                     found_keys.append(id_out)
-                    lyrnod_out.attrib['extRef'] = os.path.join(warehouse_id, realization_id, lyrnod_in.attrib['id'])
+                    lyrnod_out.attrib['extRef'] = f"{warehouse_id}:{self.get_rsxpath(in_prj.XMLBuilder, lyrnod_in)}"
                     self.add_metadata([
-                        *whmeta.values(),
+                        # Copy all the project metadata into the layer we're importing
                         *projmeta.values(),
+                        # Copy Add all the layer metadata
                         *lyrmeta.values(),
+                        # Add a few useful extra metadata
                         RSMeta("projType", in_prj.XMLBuilder.find('ProjectType').text, meta_ext=RSMetaExt.PROJECT),
+                        # The original id of the layer in the original project. Useful for debugging and tracking it later
                         RSMeta("id", lyrnod_in.attrib['id'], meta_ext=RSMetaExt.DATASET),
+                        # This is the local path from the original project (Might not match the path in this one so it's useful)
                         RSMeta("path", lyrnod_in.find('Path').text, RSMetaTypes.FILEPATH, meta_ext=RSMetaExt.DATASET),
                     ], lyrnod_out)
 
+    def get_rsxpath(self, xml_builder, lyrnod_in):
+        """
+        Get the rsxpath for a given node
+
+        RSXPaths are an idea unique to Riverscapes and represent a perfectly unique path to a node in an XML document.
+        There are similarities to XPath but they are not the same. The idea is that you can use this path to find the
+        same node in another XML document. This is useful for things like linking to external data sources.
+        """
+        path_arr = [(lyrnod_in.tag, lyrnod_in.attrib['id'] if 'id' in lyrnod_in.attrib else None)]
+        curr_node = lyrnod_in
+        try:
+            while xml_builder.find_element_parent(curr_node) is not None:
+                curr_node = xml_builder.find_element_parent(curr_node)
+                if 'id' in curr_node.attrib:
+                    item2 = curr_node.attrib['id']
+                elif 'lyrName' in curr_node.attrib:
+                    item2 = curr_node.attrib['lyrName']
+                else:
+                    item2 = None
+                path_arr.append((curr_node.tag, item2))
+        except Exception:
+            # find_element_parent will throw an exception if it can't find a parent.
+            pass
+        path_arr.reverse()
+
+        new_path_arr = [x[0] if x[1] is None else f"{x[0]}#{x[1]}" for x in path_arr]
+
+        return os.path.join(*new_path_arr)
+
     def rs_copy_project_extents(self, in_prj_path):
+        """ Copy the project extents from the input project to the output project
+
+        Args:
+            in_prj_path (_type_): _description_
+        """
 
         in_prj = RSProject(None, in_prj_path)
         project_extent_node = in_prj.XMLBuilder.root.findall("ProjectBounds")[0]
@@ -700,24 +731,3 @@ class RSProject:
         results['Polygon'] = None if gj['features'][0]['geometry']['type'] != 'Polygon' else str(gj['features'][0]['geometry'])
 
         return results
-
-    def get_rsx_path(self, node):
-
-        parent_map = {c: p for p in self.XMLBuilder.tree.iter() for c in p}
-
-        path_l = []
-        while node is not self.XMLBuilder.tree.getroot():
-            # add node info to path
-            if 'id' in node.attrib.keys():
-                path_l.append(node.tag + '#' + node.attrib['id'])
-            elif 'lyrName' in node.attrib.keys():
-                path_l.append(node.tag + '#' + node.attrib['lyrName'])
-            else:
-                path_l.append(node.tag)
-            node = parent_map[node]
-
-        path_l.append('Project')
-        path_l.reverse()
-        path = '/'.join(path_l)
-
-        return path

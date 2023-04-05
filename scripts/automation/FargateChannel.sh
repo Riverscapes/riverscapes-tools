@@ -51,14 +51,11 @@ gdal-config --version
 # Define some folders that we can easily clean up later
 DATA_DIR=/usr/local/data
 RS_CONTEXT_DIR=$DATA_DIR/rs_context/rs_context_$RSCONTEXT_ID
-CHANNELAREA_DIR=$DATA_DIR/output
+CHANNELAREA_DIR=$DATA_DIR/output/channelarea
 
 ##########################################################################################
 # First Get RS_Context inputs
 ##########################################################################################
-
-# TODO: Remove once RSCLI download is fixed
-[[ -d $RS_CONTEXT_DIR ]] && rm -r $RS_CONTEXT_DIR
 
 # Get the RSCli project we need to make this happen
 rscli download $RS_CONTEXT_DIR --id $RSCONTEXT_ID \

@@ -33,44 +33,21 @@ def main():
     log.title('XML Augmenter: {}'.format(args.out_project_xml))
 
     try:
+        log.info('args: {}'.format(args))
         out_prj = RSProject(None, args.out_project_xml)
-        # out_prj.rs_meta_augment(
-        #     args.in_xmls.split(','),
-        #     lyrs_in_out
-        # )
+        out_prj.rs_meta_augment(
+            args.in_xmls.split(','),
+            lyrs_in_out
+        )
 
         in_xml = args.in_xmls.split(',')[0]
         inprj = RSProject(None, in_xml)
 
-        warehouse_guid = inprj.XMLBuilder.find('Warehouse').attrib['id']
         watershed_node = inprj.XMLBuilder.find('MetaData').find('Meta[@name="Watershed"]')
         if watershed_node is not None:
             proj_watershed_node = out_prj.XMLBuilder.find('MetaData').find('Meta[@name="Watershed"]')
             if proj_watershed_node is None:
                 out_prj.add_metadata([RSMeta('Watershed', watershed_node.text)])
-
-        for outid, inid in lyrs_in_out.items():
-            # find the node and get is ref
-            for n in inprj.XMLBuilder.tree.iter():
-                if 'lyrName' in n.attrib.keys():
-                    if n.attrib['lyrName'] == inid[0]:
-                        innode = n
-                elif 'id' in n.attrib.keys():
-                    if n.attrib['id'] == inid[0]:
-                        innode = n
-                else:
-                    continue
-            path = inprj.get_rsx_path(innode)
-            lyrs_in_out[outid].append(path)
-
-            # add the rsxpath to the output xml
-            for m in out_prj.XMLBuilder.tree.iter():
-                if 'lyrName' in m.attrib.keys():
-                    if m.attrib['lyrName'] == outid:
-                        m.attrib['extRef'] = warehouse_guid + ':' + lyrs_in_out[outid][1]
-                elif 'id' in m.attrib.keys():
-                    if m.attrib['id'] == outid:
-                        m.attrib['extRef'] = warehouse_guid + ':' + lyrs_in_out[outid][1]
 
         out_prj.rs_copy_project_extents(in_xml)
 

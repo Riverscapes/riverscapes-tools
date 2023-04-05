@@ -45,10 +45,10 @@ def main():
 
     try:
         out_prj = RSProject(None, args.out_project_xml)
-        # out_prj.rs_meta_augment(
-        #     args.in_xmls.split(','),
-        #     lyrs_in_out
-        # )
+        out_prj.rs_meta_augment(
+            args.in_xmls.split(','),
+            lyrs_in_out
+        )
         gpkg_path = os.path.join(out_prj.project_dir, out_prj.XMLBuilder.find('.//Outputs/Geopackage[@id="OUTPUTS"]/Path').text)
 
         in_xmls = args.in_xmls.split(',')
@@ -64,50 +64,6 @@ def main():
             proj_watershed_node = out_prj.XMLBuilder.find('MetaData').find('Meta[@name="Watershed"]')
             if proj_watershed_node is None:
                 out_prj.add_metadata([RSMeta('Watershed', watershed_node.text)])
-
-        # add rsx paths to output xml
-        done = []  # list of found nodes so that they don't get repeated if they exist in two projects
-        for outid, inid in lyrs_in_out.items():
-            for n in rscproj.XMLBuilder.tree.iter():
-                if 'lyrName' in n.attrib.keys():
-                    if n.attrib['lyrName'] == inid[0]:
-                        if inid[0] not in done:
-                            innode = n
-                            proj = rscproj
-                            done.append(inid[0])
-                if 'id' in n.attrib.keys():
-                    if n.attrib['id'] == inid[0]:
-                        if inid[0] not in done:
-                            innode = n
-                            proj = rscproj
-                            done.append(inid[0])
-            for m in vbetproj.XMLBuilder.tree.iter():
-                if 'lyrName' in m.attrib.keys():
-                    if m.attrib['lyrName'] == inid[0]:
-                        if inid[0] not in done:
-                            innode = m
-                            proj = vbetproj
-                            done.append(inid[0])
-                if 'id' in m.attrib.keys():
-                    if m.attrib['id'] == inid[0]:
-                        if inid[0] not in done:
-                            innode = m
-                            proj = vbetproj
-                            done.append(inid[0])
-            if not innode:
-                raise Exception(f'dataset with id {inid[0]} not found in any input project xmls')
-
-            path = proj.get_rsx_path(innode)
-            lyrs_in_out[outid].append(path)
-            lyrs_in_out[outid].append(proj.XMLBuilder.find('Warehouse').attrib['id'])
-
-            for o in out_prj.XMLBuilder.tree.iter():
-                if 'lyrName' in o.attrib.keys():
-                    if o.attrib['lyrName'] == outid:
-                        o.attrib['extRef'] = lyrs_in_out[outid][2] + ':' + lyrs_in_out[outid][1]
-                if 'id' in o.attrib.keys():
-                    if o.attrib['id'] == outid:
-                        o.attrib['extRef'] = lyrs_in_out[outid][2] + ':' + lyrs_in_out[outid][1]
 
         # if watershed in meta, change the project name
         watershed_node = out_prj.XMLBuilder.find('MetaData').find('Meta[@name="Watershed"]')

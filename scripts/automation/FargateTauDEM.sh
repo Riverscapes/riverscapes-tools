@@ -54,15 +54,11 @@ gdal-config --version
 DATA_DIR=/usr/local/data
 RS_CONTEXT_DIR=$DATA_DIR/rs_context/rs_context_$RSCONTEXT_ID
 CHANNELAREA_DIR=$DATA_DIR/channel_area/channel_area_$CHANNELAREA_ID
-TAUDEM_DIR=$DATA_DIR/output
+TAUDEM_DIR=$DATA_DIR/output/taudem
 
 ##########################################################################################
 # First Get RS_Context and Channel Area inputs
 ##########################################################################################
-
-# TODO: Remove once RSCLI download is fixed
-[[ -d $RS_CONTEXT_DIR ]] && rm -r $RS_CONTEXT_DIR
-[[ -d $CHANNELAREA_DIR ]] && rm -r $CHANNELAREA_DIR
 
 # Get the RSCli project we need to make this happen
 rscli download $RS_CONTEXT_DIR --id $RSCONTEXT_ID \
