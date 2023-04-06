@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 
 # PUBLIC is where the GH pages branch gets built
+.DS_Store
 PUBLIC
 # Ruby gems installed using bundler
 .vendor

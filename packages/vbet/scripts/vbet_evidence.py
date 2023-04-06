@@ -1,3 +1,6 @@
+""" Script to grab vbet evidience for observation points
+"""
+
 import os
 import sqlite3
 import sys

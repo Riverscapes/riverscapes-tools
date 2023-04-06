@@ -8,3 +8,4 @@ type_id, name, description
 7,cubic,spline interpolation of thrid order.
 8,previous,return the previous of the point.
 9,next,return the next value of the point.
+10,function,a continuous function for transforming evidence.

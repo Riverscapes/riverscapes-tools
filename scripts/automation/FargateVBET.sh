@@ -59,6 +59,7 @@ RS_CONTEXT_DIR=$DATA_DIR/rs_context/data
 CHANNEL_AREA_DIR=$DATA_DIR/channel_area/data
 TAUDEM_DIR=$DATA_DIR/taudem/data
 VBET_DIR=$DATA_DIR/output
+VBET_SCRATCH=$DATA_DIR/vbet_scratch/$HUC
 
 ##########################################################################################
 # First Get RS_Context, ChannelArea and Taudem inputs

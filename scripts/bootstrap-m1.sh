@@ -6,24 +6,31 @@ python3 --version
 python3 -m venv .venv
 # Make sure pip is at a good version
 .venv/bin/python -m pip install --upgrade pip
-.venv/bin/pip --timeout=120 install \
-  Cython==0.29.23 \
-  numpy==1.21.0
 
-# For MAC M1 processors we need to get scipy from a different place
-.venv/bin/pip install --pre -i https://pypi.anaconda.org/scipy-wheels-nightly/simple scipy
+# Make sure these versions match what you have in `brew info numpy` etc
+.venv/bin/pip --timeout=120 install \
+  Cython==0.29.32 \
+  numpy==1.23.5
 
 # Need numpy before GDAL
 .venv/bin/pip install GDAL==$(gdal-config --version)
 
 # Now install everything else
-.venv/bin/pip --timeout=120 install -r requirements.txt
+.venv/bin/pip --timeout=120 install -r requirements.m1.txt
 
-# Install our packages as being editable
+# On M1 shapely dies for no reason. This can be removed when it is fixed
+# https://github.com/Riverscapes/riverscapes-tools/issues/628
+.venv/bin/pip install --force-reinstall git+https://github.com/shapely/shapely@maint-1.8
+
+# Link up rscommons so we can find it in other places on our machine
 .venv/bin/pip install -e ./lib/commons
-.venv/bin/pip install -e ./packages/rscontext
-.venv/bin/pip install -e ./packages/vbet
-.venv/bin/pip install -e ./packages/brat
-.venv/bin/pip install -e ./packages/gnat
-.venv/bin/pip install -e ./packages/hand
-.venv/bin/pip install -e ./packages/rvd
+
+# Iterate the string array using for loop
+ORIGPWD=`pwd`
+for tooldir in packages/* ; do 
+  # Install our packages as being editable
+  .venv/bin/pip install -e $tooldir
+  cd $tooldir
+  ln -sf ../../.venv
+  cd $ORIGPWD
+done

@@ -18,12 +18,12 @@ from typing import Dict, List
 # LEave OSGEO import alone. It is necessary even if it looks unused
 from osgeo import gdal, osr
 from osgeo.ogr import Layer
-from rscommons import hand
+import rasterio
 from rscommons.classes.vector_classes import get_shp_or_gpkg, VectorBase
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.util import safe_makedirs, parse_metadata, pretty_duration
 from rscommons import RSProject, RSLayer, ModelConfig, Logger, dotenv, initGDALOGRErrors
-from rscommons import GeopackageLayer
+from rscommons import GeopackageLayer, ProgressBar
 from rscommons.vector_ops import copy_feature_class
 from rscommons.hand import hand_rasterize, run_subprocess
 from rscommons.raster_warp import raster_warp
@@ -57,7 +57,6 @@ LayerTypes = {
     # 'D8FLOWDIR_P': RSLayer('TauDEM D8 Flow Directions', 'D8FLOWDIR_P', 'Raster', 'intermediates/d8flowdir_p.tif'),
     # 'D8FLOWDIR_SD8': RSLayer('TauDEM D8 Flow Direction Slope', 'D8FLOWDIR_SD8', 'Raster', 'intermediates/d8flowdir_sd8.tif'),
     'RASTERIZED_CHANNEL': RSLayer('Rasterized Channel', 'RASTERIZED_CHANNEL', 'Raster', 'intermediates/rasterized_channel.tif'),
-
     # 'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEIDATES', 'Geopackage', 'intermediates/hand_intermediates.gpkg', {
     # }),
 
@@ -220,10 +219,33 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, project_folder:
         raise Exception('TauDEM: AreaDinf failed')
     project.add_project_raster(proj_nodes['Outputs'], LayerTypes['AREADINF_SCA'])
 
+    # Reclass slope to remove 0
+    log.info(f"Reclass zero slope for {path_slp}")
+    path_slp_reclass = os.path.join(project_folder, LayerTypes['DINFFLOWDIR_SLP_RECLASS'].rel_path)
+
+    with rasterio.open(path_slp) as rio_slope:
+        out_meta = rio_slope.meta
+        out_meta['compress'] = 'lzw'
+        with rasterio.open(path_slp_reclass, 'w', **out_meta) as rio_out:
+            progbar = ProgressBar(len(list(rio_slope.block_windows(1))), 50, "Reclassifying zero-slope values ")
+            counter = 0
+            for _ji, window in rio_slope.block_windows(1):
+                progbar.update(counter)
+                counter += 1
+                data = rio_slope.read(1, window=window, masked=True)
+                data[data == 0] = 0.0001
+                rio_out.write(data, window=window, indexes=1)
+            progbar.finish()
+
+    # reclass_status = run_subprocess(intermediates_path, ['gdal_calc.py', '-A', path_slp, '--outfile', path_slp_reclass, '--calc=(A==0)*0.0001+(A>0)*A', '--co=COMPRESS=LZW'])
+    # if reclass_status != 0 or not os.path.isfile(path_slp_reclass):
+    #     raise Exception('TauDEM: reclass slope failed')
+    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_SLP_RECLASS'])
+
     # Generate TWI
     log.info("Generating Topographic Wetness Index (TWI)")
     twi_raster = os.path.join(project_folder, LayerTypes['TWI_RASTER'].rel_path)
-    twi_status = run_subprocess(intermediates_path, ["mpiexec", "-n", NCORES, "twi", "-slp", path_slp, "-sca", path_sca, '-twi', twi_raster])
+    twi_status = run_subprocess(intermediates_path, ["mpiexec", "-n", NCORES, "twi", "-slp", path_slp_reclass, "-sca", path_sca, '-twi', twi_raster])
     if twi_status != 0 or not os.path.isfile(twi_raster):
         raise Exception('TauDEM: TWI failed')
     project.add_project_raster(proj_nodes['Outputs'], LayerTypes['TWI_RASTER'])

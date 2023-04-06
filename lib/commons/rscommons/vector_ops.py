@@ -15,7 +15,7 @@ from typing import List
 from functools import reduce
 
 from osgeo import ogr, gdal, osr
-from shapely.ops import unary_union
+from shapely.ops import unary_union, linemerge
 from shapely.geometry.base import BaseGeometry
 from shapely.geometry import mapping, Point, MultiPoint, LineString, MultiLineString, GeometryCollection, Polygon, MultiPolygon
 
@@ -222,7 +222,12 @@ def copy_feature_class(in_layer_path: str, out_layer_path: str,
             if geom.GetGeometryType() in VectorBase.LINE_TYPES:
                 if geom.Length() == 0.0:
                     progbar.erase()  # get around the progressbar
-                    log.warning('Feature with FID={} has no Length. Skipping'.format(feature.GetFID()))
+                    log.warning('Line Feature with FID={} has no Length. Skipping'.format(feature.GetFID()))
+                    continue
+            if geom.GetGeometryType() in VectorBase.POLY_TYPES:
+                if geom.Area() == 0.0:
+                    progbar.erase()  # get around the progressbar
+                    log.warning('Polygon Feature with FID={} has 0 Area. Skipping'.format(feature.GetFID()))
                     continue
 
             if hard_clip is True and clip_shape is not None:
@@ -244,6 +249,7 @@ def copy_feature_class(in_layer_path: str, out_layer_path: str,
 
             out_layer.ogr_layer.CreateFeature(out_feature)
             out_feature = None
+    return
 
     if indexes and len(indexes) > 0:
         conn = sqlite3.connect(os.path.dirname(out_layer_path))
@@ -295,7 +301,7 @@ def merge_feature_classes(feature_class_paths: List[str], out_layer_path: str, b
 
             with get_shp_or_gpkg(in_layer_path) as in_layer:
                 if boundary is not None:
-                    in_layer.SetSpatialFilter(VectorBase.shapely2ogr(boundary))
+                    in_layer.ogr_layer.SetSpatialFilter(VectorBase.shapely2ogr(boundary))
 
                 log.info('Processing feature: {}/{}'.format(fccount, len(feature_class_paths)))
 
@@ -306,6 +312,16 @@ def merge_feature_classes(feature_class_paths: List[str], out_layer_path: str, b
                         progbar.erase()  # get around the progressbar
                         log.warning('Feature with FID={} has no geometry. Skipping'.format(feature.GetFID()))
                         continue
+                    if geom.GetGeometryType() in VectorBase.LINE_TYPES:
+                        if geom.Length() == 0.0:
+                            progbar.erase()  # get around the progressbar
+                            log.warning('Line Feature with FID={} has no Length. Skipping'.format(feature.GetFID()))
+                            continue
+                    if geom.GetGeometryType() in VectorBase.POLY_TYPES:
+                        if geom.Area() == 0.0:
+                            progbar.erase()  # get around the progressbar
+                            log.warning('Polygon Feature with FID={} has 0 Area. Skipping'.format(feature.GetFID()))
+                            continue
 
                     # geom.Transform(transform)
                     out_feature = ogr.Feature(out_layer.ogr_layer_def)
@@ -345,6 +361,8 @@ def collect_feature_class(feature_class_path: str,
     log.info('Collecting {} feature class.'.format(len(feature_class_path)))
 
     with get_shp_or_gpkg(feature_class_path) as in_lyr:
+        if not in_lyr.ogr_layer:
+            raise Exception(f'Dataset not found: {feature_class_path}')
         in_geom_type = in_lyr.ogr_layer.GetGeomType()
         output_geom_type = None
         for tp, varr in VectorBase.MULTI_TYPES.items():
@@ -911,7 +929,7 @@ def intersection(layer_path1, layer_path2, out_layer_path, epsg=None, attribute_
         for feat, _counter, progbar in layer1.iterate_features(attribute_filter=attribute_filter):
             geom = feat.GetGeometryRef()
             union1 = union1.Union(geom)
-        for feat, _counter, progbar in layer2.iterate_features():
+        for feat, _counter, progbar in layer2.iterate_features(write_layers=[out_layer]):
             geom = feat.GetGeometryRef()
             intersection = union1.Intersection(geom)
             if intersection.IsValid():
@@ -966,7 +984,6 @@ def difference(remove_layer: Path, target_layer: Path, out_layer_path: Path, eps
                     geom = geom.Difference(geom_diff)
                 except Exception:
                     log.error(str(IOError))
-                    geom = geom_orig
                     continue
                 if not geom.IsValid():
                     geom = geom_validity_fix(geom)
@@ -999,7 +1016,7 @@ def select_features_by_intersect(target_layer, intersect_layer, out_layer_path, 
         out_layer.create_layer_from_ref(lyr_target, epsg=epsg)
         out_layer_defn = out_layer.ogr_layer.GetLayerDefn()
 
-        for feat, _counter, progbar in lyr_target.iterate_features(attribute_filter=intersect_attribute_filter):
+        for feat, _counter, progbar in lyr_target.iterate_features(attribute_filter=intersect_attribute_filter, write_layers=[out_layer]):
             geom = feat.GetGeometryRef()
             out_feat = ogr.Feature(out_layer_defn)
             out_feat.SetGeometry(geom)
@@ -1092,6 +1109,9 @@ def collect_linestring(in_lyr: Path, attribute_filter: str = None, precision: in
                         geom_line.AddGeometry(g)
         if precision is not None:
             geom_line = reduce_precision(geom_line, precision)
-        geom_single = ogr.ForceToLineString(geom_line)
+        shape_mlines = VectorBase.ogr2shapely(geom_line)
+        shape_line = linemerge(shape_mlines)
+        geom_single = VectorBase.shapely2ogr(shape_line)
+        # geom_single = ogr.ForceToLineString(geom_line)
 
         return geom_single

@@ -35,7 +35,7 @@ def main():
     # Initiate the log file
     log = Logger('XML Augmenter')
     log.setup(verbose=args.verbose)
-    log.title('XML Augmenter: {}'.format(args.out_project_xml))
+    log.title(f'XML Augmenter: {args.out_project_xml}')
 
     try:
         out_prj = RSProject(None, args.out_project_xml)
@@ -58,8 +58,8 @@ def main():
         report = VBETReport(os.path.join(out_prj.project_dir, report_path), out_prj)
         report.write()
 
-    except Exception as e:
-        log.error(e)
+    except Exception as err:
+        log.error(err)
         traceback.print_exc(file=sys.stdout)
         sys.exit(1)
 

@@ -10,8 +10,7 @@ import os
 import itertools
 from math import sqrt
 
-import ogr
-import gdal
+from osgeo import gdal, ogr
 import numpy as np
 
 from vbet. vbet_raster_ops import raster2array
@@ -54,7 +53,7 @@ def array2geom(array, rasterfn, pixelValue, precision=13):
     pixelHeight = geotransform[5]
     maxDistance = sqrt((pixelHeight ** 2 + pixelWidth ** 2))  # sqrt(2 * pixelWidth * pixelWidth)  # ceil() # pixelwidth * sqrt(2)
     maxDistance = maxDistance + maxDistance * 0.01
-    print(maxDistance)
+    # print(maxDistance)
 
     # array2dict
     count = 0

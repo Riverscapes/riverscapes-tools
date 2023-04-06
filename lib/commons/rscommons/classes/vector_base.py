@@ -496,7 +496,7 @@ class VectorBase():
 
         Args:
             name (str): Name for use on the progress bar. If ommitted you won't get a progress bar
-            write_layers (list, optional): [description]. Defaults to None.
+            write_layers (list, optional): [description]. Defaults to None. Specify layers you write to. If this list is empty then transactions will not be used.
             commit_thresh (int, optional): Change how often CommitTransaction gets called. Defaults to 1000.
             attribute_filter (str, optional): Attribute Query like "HUC = 17060104". Defaults to None.
             clip_shape (BaseGeometry, optional): Iterate over a subset by clipping to a Shapely-ish geometry. Defaults to None.
@@ -925,7 +925,7 @@ class VectorBase():
         if not self.spatial_ref.IsSame():
             ex = Exception('ShapeFile and raster spatial references do not match.')
             VectorBase.log.debug('Original spatial reference is : \n       {0} (AxisMappingStrategy:{1})'.format(*VectorBase.get_srs_debug(self.spatial_ref)))
-            VectorBase.log.debug('Transform spatial reference is : \n       {0} (AxisMappingStrategy:{1})'.format(*VectorBase.get_srs_debug(raster_ref)))
+            VectorBase.log.debug('Transform spatial reference is : \n      {0} (AxisMappingStrategy:{1})'.format(*VectorBase.get_srs_debug(raster_ref)))
 
         raster = None
 

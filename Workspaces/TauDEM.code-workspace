@@ -1,21 +1,24 @@
 {
   "folders": [
-      {
-          "path": "../packages/taudem"
-      },
-      {
-          "path": "../lib/commons"
-      },
-      {
-          "name": "Automation",
-          "path": "../scripts/automation"
-      },
-      {
-          "name": "Workspaces",
-          "path": "."
-      }
+    {
+      "name": "🚀 TauDEM",
+      "path": "../packages/taudem"
+    },
+    {
+      "name": "📦 RSCommons",
+      "path": "../lib/commons"
+    },
+    {
+      "name": "🤖 Automation Scripts",
+      "path": "../scripts/automation"
+    },
+    {
+      "name": "🧰 Workspaces",
+      "path": "."
+    }
   ],
   "settings": {
-		"python.pythonPath": "${workspaceFolder}/../../.venv/bin/python",
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": true,
   }
 }

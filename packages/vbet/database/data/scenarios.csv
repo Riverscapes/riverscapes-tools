@@ -4,3 +4,4 @@ scenario_id,scenario_name,machine_code,scenario_description
 3,Stream Order,STREAM_ORDER_TESTING,testing for stream size by stream order
 4,Updated Input Testing,UPDATED_TESTING,channel area polygon, hand, twi and slope by stream order
 5,April 2022,APRIL_2022,revised transforms
+6,Log likelihood transforms,LOG_LIKELIHOOD,converting linear interpolations into log-likelihood functions

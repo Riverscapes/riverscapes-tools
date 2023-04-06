@@ -1,21 +1,24 @@
 {
-    "folders": [
-        {
-            "path": "../packages/hand"
-        },
-        {
-            "path": "../lib/commons"
-        },
-        {
-            "name": "Automation",
-            "path": "../scripts/automation"
-        },
-        {
-            "name": "Workspaces",
-            "path": "."
-        }
-    ],
-    "settings": {
-        "python.pythonPath": "${workspaceFolder}/../../.venv/bin/python",
+  "folders": [
+    {
+      "name": "🚀 HAND",
+      "path": "../packages/hand"
+    },
+    {
+      "name": "📦 RSCommons",
+      "path": "../lib/commons"
+    },
+    {
+      "name": "🤖 Automation Scripts",
+      "path": "../scripts/automation"
+    },
+    {
+      "name": "🧰 Workspaces",
+      "path": "."
     }
+  ],
+  "settings": {
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": true,
+  }
 }

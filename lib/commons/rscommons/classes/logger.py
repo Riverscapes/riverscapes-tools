@@ -154,6 +154,9 @@ class Logger():
     def print_(self, message, **kwargs):
         self.instance.logprint(message, **kwargs)
 
+    def isverbose(self):
+        return self.instance.verbose
+
     def debug(self, *args):
         """
         This works a little differently. You can basically throw anything you want into it.

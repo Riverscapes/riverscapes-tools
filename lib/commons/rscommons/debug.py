@@ -3,6 +3,8 @@ import math
 import csv
 import os
 from datetime import datetime
+import sys
+import traceback
 from concurrent.futures import ThreadPoolExecutor
 from time import sleep
 import psutil
@@ -154,20 +156,26 @@ def ThreadRun(callback, memlogfile: str, *args, **kwargs):
     memmon = MemoryMonitor(memlogfile, 1)
     result = None
     max_obj = None
-    with ThreadPoolExecutor() as executor:
-        mem_thread = executor.submit(memmon.measure_usage)
-        try:
-            fn_thread = executor.submit(callback, *args, **kwargs)
-            result = fn_thread.result()
-        except Exception as e:
-            log.error("Error executing code: {}".format(e))
-        finally:
-            memmon.keep_measuring = False
-            max_obj = mem_thread.result()
-            log.debug('MaxStats: {}'.format(max_obj))
+    try:
+        with ThreadPoolExecutor() as executor:
+            mem_thread = executor.submit(memmon.measure_usage)
+            try:
+                fn_thread = executor.submit(callback, *args, **kwargs)
+                result = fn_thread.result()
+            except Exception as err_in:
+                log.error("Error executing code: {}".format(err_in))
+                traceback.print_exc(file=sys.stdout)
+            finally:
+                memmon.keep_measuring = False
+                max_obj = mem_thread.result()
+                log.debug('MaxStats: {}'.format(max_obj))
+    except Exception as err_out:
+        # Make sure we always return so that we don't have to debug our debugger
+        log.error(err_out)
     try:
         memmon.write_plot(os.path.splitext(memlogfile)[0] + '.png')
     except Exception as e:
         log.error('Error Writing memory plot: {}'.format(e))
 
-    return result, max_obj.toString()
+    ret_val = max_obj.toString() if max_obj is not None else "process no longer exists"
+    return result, ret_val

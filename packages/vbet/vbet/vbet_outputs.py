@@ -7,47 +7,11 @@
 
 from uuid import uuid4
 from osgeo import ogr
-import rasterio
-import numpy as np
 
-from rscommons import ProgressBar, Logger, GeopackageLayer, TempGeopackage, get_shp_or_gpkg
+from rscommons import Logger, GeopackageLayer, TempGeopackage, get_shp_or_gpkg, Timer
 from vbet.__version__ import __version__
 
 Path = str
-
-
-def threshold(evidence_raster_path: Path, thr_val: float, thresh_raster_path: Path):
-    """Threshold a raster to greater than or equal to a threshold value
-
-    Args:
-        evidence_raster_path (Path): input evidience raster
-        thr_val (float): value to threshold
-        thresh_raster_path (Path): output threshold raster
-    """
-    log = Logger('threshold')
-    with rasterio.open(evidence_raster_path) as fval_src:
-        out_meta = fval_src.meta
-        out_meta['count'] = 1
-        out_meta['compress'] = 'deflate'
-        out_meta['dtype'] = rasterio.uint8
-        out_meta['nodata'] = 0
-
-        log.info('Thresholding at {}'.format(thr_val))
-        with rasterio.open(thresh_raster_path, "w", **out_meta) as dest:
-            progbar = ProgressBar(len(list(fval_src.block_windows(1))), 50, "Thresholding at {}".format(thr_val))
-            counter = 0
-            for _ji, window in fval_src.block_windows(1):
-                progbar.update(counter)
-                counter += 1
-                fval_data = fval_src.read(1, window=window, masked=True)
-                # Fill an array with "1" values to give us a nice mask for polygonize
-                fvals_mask = np.full(fval_data.shape, np.uint8(1))
-
-                # Create a raster with 1.0 as a value everywhere in the same shape as fvals
-                new_fval_mask = np.ma.mask_or(fval_data.mask, fval_data < thr_val)
-                masked_arr = np.ma.array(fvals_mask, mask=[new_fval_mask])  # & ch_data.mask])
-                dest.write(np.ma.filled(masked_arr, out_meta['nodata']), window=window, indexes=1)
-            progbar.finish()
 
 
 def sanitize(name: str, in_path: str, out_path: str, buff_dist: float, select_features=None):
@@ -61,7 +25,7 @@ def sanitize(name: str, in_path: str, out_path: str, buff_dist: float, select_fe
         buff_dist (float): [description]
     """
     log = Logger('VBET Simplify')
-
+    _timer = Timer()
     with GeopackageLayer(out_path, write=True) as out_lyr, \
             TempGeopackage('sanitize_temp') as tempgpkg, \
             GeopackageLayer(in_path) as in_lyr:
@@ -97,9 +61,7 @@ def sanitize(name: str, in_path: str, out_path: str, buff_dist: float, select_fe
             # Only keep features intersected with network
             tmp_lyr.create_layer_from_ref(in_lyr)
 
-            tmp_lyr.ogr_layer.StartTransaction()
-
-            for candidate_feat, _c2, _p1 in in_lyr.iterate_features("Finding interesected features"):
+            for candidate_feat, _c2, _p1 in in_lyr.iterate_features("Finding interesected features", write_layers=[tmp_lyr]):
                 candidate_geom = candidate_feat.GetGeometryRef()
                 candidate_geom = geom_validity_fix(candidate_geom)
 
@@ -121,10 +83,8 @@ def sanitize(name: str, in_path: str, out_path: str, buff_dist: float, select_fe
                         feat = None
                         break
 
-            tmp_lyr.ogr_layer.CommitTransaction()
-            out_lyr.ogr_layer.StartTransaction()
             # Second loop is about filtering bad areas and simplifying
-            for in_feat, _counter, _progbar in tmp_lyr.iterate_features("Filtering out non-relevant shapes for {}".format(name)):
+            for in_feat, _counter, _progbar in tmp_lyr.iterate_features("Filtering out non-relevant shapes for {}".format(name), write_layers=[out_lyr]):
 
                 reach_attributes = {}
                 for n in range(field_count):
@@ -166,8 +126,10 @@ def sanitize(name: str, in_path: str, out_path: str, buff_dist: float, select_fe
                     out_pts += f_geom.GetBoundary().GetPointCount()
                 else:
                     log.warning('Invalid GEOM with fid: {} for layer {}'.format(fid, name))
-            out_lyr.ogr_layer.CommitTransaction()
+
         log.info('Writing to disk for layer {}'.format(name))
+
+    log.debug(f'Timer: {_timer.toString()}')
 
 
 def vbet_merge(in_layer: Path, out_layer: Path, level_path: str = None) -> ogr.Geometry:
@@ -175,18 +137,19 @@ def vbet_merge(in_layer: Path, out_layer: Path, level_path: str = None) -> ogr.G
 
         returns clipped geometry
     """
-
+    log = Logger('VBET Merge')
     geom = None
-
+    _timer = Timer()
     with get_shp_or_gpkg(in_layer) as lyr_polygon, \
             GeopackageLayer(out_layer, write=True) as lyr_vbet:
 
         geoms_out = ogr.Geometry(ogr.wkbMultiPolygon)
-        for feat, *_ in lyr_polygon.iterate_features():
+        # TODO: Not sure we can use write_layers=[lyr_vbet] here because the in
+        for feat, *_ in lyr_polygon.iterate_features("VBET Merge (outer)", write_layers=[lyr_vbet]):
             geom_ref = feat.GetGeometryRef()
             geom = geom_ref.Clone()
             geom = geom.MakeValid()
-            for clip_feat, *_ in lyr_vbet.iterate_features(clip_shape=geom):
+            for clip_feat, *_ in lyr_vbet.iterate_features("VBET Merge (inner)", clip_shape=geom):
                 clip_geom = clip_feat.GetGeometryRef()
                 geom = geom.Difference(clip_geom)
                 if geom is None:
@@ -204,4 +167,27 @@ def vbet_merge(in_layer: Path, out_layer: Path, level_path: str = None) -> ogr.G
             for g in geom:
                 geoms_out.AddGeometry(g)
 
+        log.debug(f'Timer: {_timer.toString()}')
         return geoms_out
+
+
+def clean_up_centerlines(in_centerlines, vbet_polygons, out_centerlines, clip_buffer_value):
+
+    with GeopackageLayer(out_centerlines, write=True) as lyr_centerlines, \
+        GeopackageLayer(in_centerlines) as lyr_in_centerlines, \
+            GeopackageLayer(vbet_polygons) as lyr_vbet:
+
+        lyr_centerlines.create_layer_from_ref(lyr_in_centerlines)
+
+        for feat_vbet, *_ in lyr_vbet.iterate_features():
+            level_path = feat_vbet.GetField('LevelPathI')
+            if level_path is None or level_path == 'None':
+                continue
+            geom_vbet = feat_vbet.GetGeometryRef()
+            geom_clip = geom_vbet.Buffer(clip_buffer_value)
+            for feat_centerline, *_ in lyr_in_centerlines.iterate_features(write_layers=[lyr_centerlines], attribute_filter=f"LevelPathI = {level_path}", clip_shape=geom_vbet):
+                geom_centerline = feat_centerline.GetGeometryRef().Clone()
+                geom_centerline_clipped = geom_clip.Intersection(geom_centerline)
+                cl_part_index = feat_centerline.GetField('CL_Part_Index')
+                attributes = {'LevelPathI': level_path, 'CL_Part_Index': cl_part_index}
+                lyr_centerlines.create_feature(geom_centerline_clipped, attributes)

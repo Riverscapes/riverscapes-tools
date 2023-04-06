@@ -6,7 +6,7 @@ import re
 # https://packaging.python.org/discussions/install-requires-vs-requirements/
 install_requires = [
     'geojson', 'sciencebasepy', 'requests', 'semver>=2.10.2',
-    'termcolor', 'Cython==0.29.23', 'numpy>=1.21.0', 'scipy>=1.5.1',
+    'termcolor', 'Cython>=0.29.23', 'numpy>=1.21.0', 'scipy>=1.8.1',
     'argparse', 'GDAL>=3.0', 'rasterio>=1.1.5', 'Shapely==1.8.2',
     'jinja2>=2.11.3', 'psutil==5.8.0'
 ]

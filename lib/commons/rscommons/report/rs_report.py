@@ -64,7 +64,6 @@ class RSReport():
     def add_css(self, filepath):
         with open(filepath) as css_file:
             css = css_file.read()
-        # beautiful = CSSBeautifier.beautify(css)
         self.css_files.append(css)
 
     def section(self, sectionid, title, el_parent=None, level=1, attrib=None):

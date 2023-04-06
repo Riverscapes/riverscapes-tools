@@ -39,6 +39,7 @@ class BratReport(RSReport):
             'Canal - Ditch': '#a3f2f2',
             'Connector': '#ffaa00',
             'Artificial Path': '#cf596a',
+            'Stream': '#20add4',
             'Can Build Dam': '#38a800',
             'Probably Can Build Dam': '#f5f500',
             'Cannot Build Dam': '#f50000',

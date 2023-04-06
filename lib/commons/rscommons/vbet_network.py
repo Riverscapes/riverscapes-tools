@@ -181,32 +181,54 @@ def join_attributes(gpkg, name, geom_layer, attribute_layer, join_field, fields,
 
 
 def get_channel_level_path(channel_area, lines, vaa_table):
+    """_summary_
 
-    with GeopackageLayer(channel_area, write=True) as lyr_channel, \
-            GeopackageLayer(lines) as lyr_intersect, \
-            sqlite3.connect(os.path.dirname(vaa_table)) as conn:
-
-        lyr_channel.create_field("LevelPathI", ogr.OFTReal)
+    Args:
+        channel_area (_type_): _description_
+        lines (_type_): _description_
+        vaa_table (_type_): _description_
+    """
+    log = Logger('Get Channel Level Path')
+    # It's faster if we just pull the whole dictionary as a python dict first
+    nhidid_lpath_lookup = {}
+    with sqlite3.connect(os.path.dirname(vaa_table)) as conn:
         curs = conn.cursor()
-        for feat, _counter, progbar in lyr_channel.iterate_features():
-            level_path = None
+        values = curs.execute(f"SELECT LevelPathI, NHDPLusId FROM {os.path.basename(vaa_table)}").fetchall()
+        for lpath, nhd_id in values:
+            nhidid_lpath_lookup[nhd_id] = lpath
+
+    log.debug(f'Found {len(nhidid_lpath_lookup.keys())} level path lookups in VAA Table')
+
+    with GeopackageLayer(channel_area) as lyr_channel, \
+            GeopackageLayer(lines) as lyr_intersect:
+
+        for feat, _counter, _progbar in lyr_channel.iterate_features("Get unreferenced paths"):
             nhd_id = feat.GetField('NHDPlusID')
-            value = curs.execute(f"SELECT LevelPathI FROM {os.path.basename(vaa_table)} WHERE NHDPlusID = ?", [int(nhd_id)]).fetchall()
-            if len(value) > 0:
-                level_path = value[0][0]
-            else:
+            if nhd_id not in nhidid_lpath_lookup:
                 geom_candidate = feat.GetGeometryRef()
                 lengths = {}
-                for l_feat, _counter, progbar in lyr_intersect.iterate_features(clip_shape=geom_candidate):
+                for l_feat, _innercount, _innerprg in lyr_intersect.iterate_features(clip_shape=geom_candidate):
                     line_geom = l_feat.GetGeometryRef()
                     line_length = line_geom.Length()
                     line_level_path = l_feat.GetField('LevelPathI')
                     lengths[line_level_path] = lengths[line_level_path] + line_length if line_level_path in lengths else line_length
                 if len(lengths) > 0:
-                    level_path = max(lengths, key=lengths.get)
+                    nhidid_lpath_lookup[nhd_id] = max(lengths, key=lengths.get)
 
-            feat.SetField("LevelPathI", level_path)
-            lyr_channel.ogr_layer.SetFeature(feat)
+    log.debug(f'Found {len(nhidid_lpath_lookup.keys())} total level path lookups')
+    skipped = 0
+    wrote = 0
+    with GeopackageLayer(channel_area, write=True) as lyr_channel:
+        lyr_channel.create_field("LevelPathI", ogr.OFTString)
+        for feat, _counter, _progbar in lyr_channel.iterate_features("Writing Level Paths", write_layers=[lyr_channel]):
+            nhd_id = feat.GetField('NHDPlusID')
+            if nhd_id in nhidid_lpath_lookup:
+                feat.SetField("LevelPathI", nhidid_lpath_lookup[nhd_id])
+                lyr_channel.ogr_layer.SetFeature(feat)
+                wrote += 1
+            else:
+                skipped += 1
+    log.debug(f'Finished writing level paths: {skipped}/{skipped + wrote} not found')
 
 
 def get_levelpath_catchment(level_path_id: int, catchments_fc: Path) -> BaseGeometry:

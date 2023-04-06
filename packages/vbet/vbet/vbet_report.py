@@ -20,14 +20,14 @@ class VBETReport(RSReport):
         safe_makedirs(self.images_dir)
 
         inputs_database = os.path.join(rs_project.project_dir, rs_project.XMLBuilder.find('.//Geopackage[@id="INPUTS"]/Path').text)
-        scenario_id = rs_project.get_metadata_dict()['Scenario Name']
+        # scenario_id = rs_project.get_metadata_dict()['Scenario Name']
 
-        self.vbet_run = load_configuration(scenario_id, inputs_database)
+        self.vbet_run = load_configuration(inputs_database)
 
         self.project_root = rs_project.project_dir
-        # self.report_intro()
+        self.report_intro()
 
-        self.transforms()
+        # self.transforms()
 
     def report_intro(self):
         realization = self.xml_project.XMLBuilder.find('Realizations').find('VBET')

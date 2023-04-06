@@ -11,9 +11,9 @@ set -eu
 # source ./.venv/Scripts/activate
 
 # pip --timeout=120 install \
-#   Cython==0.29.21 \
+#   Cython==0.29.23 \
 #   numpy==1.16.3 \
-#   scipy==1.5.1
+#   scipy>=1.8.1
 
 # # Now install everything else
 # .venv/Scripts/pip --timeout=120 install -r requirements.txt
