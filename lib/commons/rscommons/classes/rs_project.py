@@ -609,11 +609,20 @@ class RSProject:
         working_id_list = copy(rs_id_map)
 
         # Loop over input project.rs.xml files
+        input_path_meta = []
         found_keys = []  # list of found nodes so that they don't get repeated if they exist in two projects
         for in_prj_path in in_proj_files:
             in_prj = RSProject(None, in_prj_path)
 
+            proj_type = in_prj.XMLBuilder.find('ProjectType').text
             warehouse_id = in_prj.XMLBuilder.find('Warehouse').attrib['id']
+            apiurl = in_prj.XMLBuilder.find('Warehouse').attrib['apiUrl']
+            if 'staging' in apiurl:
+                apipath = 'https://staging.warehouse.riverscapes.net/p/'
+            else:
+                apipath = 'https://warehouse.riverscapes.net/p/'
+            input_path_meta.append(RSMeta(f'{proj_type} Input', apipath + warehouse_id, RSMetaTypes.URL, locked=True))
+
             # Find watershed name in metadata, add if it exists
             watershed_node = in_prj.XMLBuilder.find('MetaData').find('Meta[@name="Watershed"]')
             if watershed_node is not None:
@@ -674,6 +683,8 @@ class RSProject:
                         ], lyrnod_out)
 
                 lyrnod_in = None
+
+        self.add_metadata(input_path_meta)
 
     def get_rsxpath(self, xml_builder, lyrnod_in):
         """

@@ -109,6 +109,7 @@ def channel(huc: int,
     project_name = 'Channel Area for HUC {}'.format(huc)
     project = RSProject(cfg, project_folder)
     project.create(project_name, 'ChannelArea', [
+        RSMeta('Tool Documentation', 'https://tools.riverscapes.net/channel', RSMetaTypes.URL, locked=True),
         RSMeta('HUC', str(huc), RSMetaTypes.HIDDEN, locked=True),
         RSMeta('Hydrologic Unit Code', str(huc))
     ])
