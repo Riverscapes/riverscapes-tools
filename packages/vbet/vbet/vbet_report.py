@@ -30,7 +30,7 @@ class VBETReport(RSReport):
         # self.transforms()
 
     def report_intro(self):
-        realization = self.xml_project.XMLBuilder.find('Realizations').find('VBET')
+        realization = self.xml_project.XMLBuilder.find('Realizations').find('Realization')
 
         section_in = self.section('Inputs', 'Inputs')
         inputs = list(realization.find('Inputs'))

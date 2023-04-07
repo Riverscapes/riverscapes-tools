@@ -475,20 +475,16 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         with TimerBuckets('HAND'):
             hand_raster = os.path.join(temp_rasters_folder, f'local_hand_{level_path}.tif')
             hand_raster_interior = os.path.join(temp_rasters_folder, f'local_hand_interior_{level_path}.tif')
-            if level_path is None:
-                dinfdistdown_status = run_subprocess(project_folder, ["mpiexec", "-n", NCORES, "dinfdistdown",
-                                                                      "-ang", local_dinfflowdir_ang,
-                                                                      "-fel", local_pitfill_dem,
-                                                                      "-src", rasterized_channel,
-                                                                      "-dd", hand_raster, "-m", "ave", "v"])
-                if dinfdistdown_status != 0 or not os.path.isfile(hand_raster):
-                    err_msg = f'Error generating HAND for level path {level_path}'
-                    log.error(err_msg)
-                    _tmterr("HAND_ERROR", err_msg)
-                    continue
-            else:
-                log.info(f'Calculating HAND for level path: {level_path}')
-                relative_elevation(local_pitfill_dem, rasterized_level_path, hand_raster)
+            dinfdistdown_status = run_subprocess(project_folder, ["mpiexec", "-n", NCORES, "dinfdistdown",
+                                                                  "-ang", local_dinfflowdir_ang,
+                                                                  "-fel", local_pitfill_dem,
+                                                                  "-src", rasterized_channel,
+                                                                  "-dd", hand_raster, "-m", "ave", "v"])
+            if dinfdistdown_status != 0 or not os.path.isfile(hand_raster):
+                err_msg = f'Error generating HAND for level path {level_path}'
+                log.error(err_msg)
+                _tmterr("HAND_ERROR", err_msg)
+                continue
             in_rasters['HAND'] = hand_raster
 
         with TimerBuckets('rasterio'):
@@ -557,8 +553,6 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                     if name == 'Slope':
                         # transformed[name] = transformed[name] - ((np.log(masked_prox + 0.1) + 2.303) / np.log(max_prox + 2.303))
                         transformed[name] = transformed[name] - (np.sqrt(masked_prox) / np.sqrt(max_prox))
-                    if name == 'HAND':
-                        transformed[name] = transformed[name] - (masked_prox / max_prox)
 
                 # fvals_topo_twi = np.ma.mean([normalized['Slope'], normalized['HAND'], normalized['TWI']], axis=0)
                 # fvals_topo_nontwi = np.ma.mean([normalized['Slope'], normalized['HAND']], axis=0)

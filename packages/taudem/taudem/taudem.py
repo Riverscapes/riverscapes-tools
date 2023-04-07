@@ -57,6 +57,7 @@ LayerTypes = {
     # 'D8FLOWDIR_P': RSLayer('TauDEM D8 Flow Directions', 'D8FLOWDIR_P', 'Raster', 'intermediates/d8flowdir_p.tif'),
     # 'D8FLOWDIR_SD8': RSLayer('TauDEM D8 Flow Direction Slope', 'D8FLOWDIR_SD8', 'Raster', 'intermediates/d8flowdir_sd8.tif'),
     'RASTERIZED_CHANNEL': RSLayer('Rasterized Channel', 'RASTERIZED_CHANNEL', 'Raster', 'intermediates/rasterized_channel.tif'),
+    'DINFFLOWDIR_SLP_RECLASS': RSLayer('Reclassified D-Inf Slope', 'DINFFLOWDIR_SLP_RECLASS', 'Raster', 'intermediates/dinfflowdir_slp_reclass.tif'),
     # 'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEIDATES', 'Geopackage', 'intermediates/hand_intermediates.gpkg', {
     # }),
 
@@ -93,7 +94,7 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, project_folder:
         RSMeta('Tool Documentation', 'https://tools.riverscapes.net/taudem', RSMetaTypes.URL, locked=True),
         RSMeta('HUC', str(huc), RSMetaTypes.HIDDEN, locked=True),
         RSMeta('Hydrologic Unit Code', str(huc), locked=True),
-        RSMeta('TauDEM Software Version', '5.3.7', locked=True),
+        RSMeta('TauDEM Software Version', '5.3.8', locked=True),
         RSMeta('TauDEM Credits', 'Copyright (C) 2010-2015 David Tarboton, Utah State University', locked=True),
         RSMeta('TauDEM Licence', 'https://hydrology.usu.edu/taudem/taudem5/GPLv3license.txt', RSMetaTypes.URL, locked=True),
         RSMeta('TauDEM URL', 'https://hydrology.usu.edu/taudem/taudem5/index.html', RSMetaTypes.URL, locked=True)

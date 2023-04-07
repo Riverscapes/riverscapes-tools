@@ -12,13 +12,11 @@ from osgeo import gdal, ogr
 from rscommons import GeopackageLayer, get_shp_or_gpkg
 
 
-attributes = {'HAND': {'project': 'taudem', 'folder': 'outputs', 'name': 'HAND.tif'},
-              # 'ChannelDist': 'ChannelEuclideanDist.tif',
-              'TWI': {'project': 'taudem', 'folder': 'outputs', 'name': 'twi.tif'},
-              'Slope': {'project': 'rs_context', 'folder': 'topography', 'name': 'slope.tif'}}
+attributes = {'HAND': 'intermediates/hand_composite.tif',
+              'Slope': 'inputs/slope.tif'}
 
 observation_fields = {'observationid': ogr.OFTInteger,
-                      'HUC8': ogr.OFTInteger,
+                      # 'HUC8': ogr.OFTInteger,
                       'categoryid': ogr.OFTInteger,
                       'confidence': ogr.OFTReal,
                       'userid': ogr.OFTInteger,
