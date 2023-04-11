@@ -72,7 +72,7 @@
     {
       "name": "Version Bump",
       "type": "python",
-      "module": "taudem.version",
+      "module": "rscommons.version",
       "args": [
         "${workspaceFolder}/taudem/__version__.py"
       ],

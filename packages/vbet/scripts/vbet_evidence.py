@@ -4,6 +4,7 @@
 import os
 import sqlite3
 import sys
+import csv
 from csv import DictWriter
 from math import floor
 
@@ -12,8 +13,8 @@ from osgeo import gdal, ogr
 from rscommons import GeopackageLayer, get_shp_or_gpkg
 
 
-attributes = {'HAND': 'intermediates/hand_composite.tif',
-              'Slope': 'inputs/slope.tif'}
+attributes = {'HAND': 'outputs/HAND.tif',
+              'Slope': 'outputs/gdal_slope.tif'}
 
 observation_fields = {'observationid': ogr.OFTInteger,
                       # 'HUC8': ogr.OFTInteger,
@@ -45,15 +46,12 @@ category_lookup = {11: 'Active Channel Area',
                    19: 'Fan - Inactive Floodplain'}
 
 
-def extract_vbet_evidence(observation_points, vbet_data_root, out_points):
+def extract_vbet_evidence(observation_points, vbet_data_root, out_points, hucid):
 
-    csv_mode = 'w'
-    # existing_ids = []
-    # if os.path.exists(out_points):
-
-    #     with open(out_points, 'r'):
-
-    #     csv_mode = 'a'
+    if os.path.exists(out_points):
+        csv_mode = 'a'
+    else:
+        csv_mode = 'w'
 
     with open(out_points, csv_mode, newline='') as csvfile, \
             GeopackageLayer(observation_points) as in_points:
@@ -67,65 +65,64 @@ def extract_vbet_evidence(observation_points, vbet_data_root, out_points):
             feat_attributes['category_name'] = category_lookup[feat_attributes['categoryid']]
             geom = feat.GetGeometryRef()
 
-            huc = str(feat_attributes['HUC8']).zfill(8)
-
             for attribute, path in attributes.items():
-                raster_path = os.path.join(vbet_data_root, path['project'], huc, path['folder'], path['name'])
+                raster_path = os.path.join(vbet_data_root, 'taudem', hucid, path)
                 if os.path.exists(raster_path):
-                    value = extract_raster_by_point(geom, raster_path)
-                else:
-                    value = None
-                feat_attributes[attribute] = value
+                    src_ds = gdal.Open(raster_path)
+                    gt = src_ds.GetGeoTransform()
+                    rb = src_ds.GetRasterBand(1)
 
-            # catchments_path = os.path.join(vbet_data_root, feat_attributes['HUC8'], 'inputs', 'vbet_inputs.gpkg', 'catchments')
-            # flowlines_path = os.path.join(vbet_data_root, feat_attributes['HUC8'], 'inputs', 'vbet_inputs.gpkg', 'Flowlines_VAA')
-            catchments_path = os.path.join(vbet_data_root, 'rs_context', huc, 'hydrology', 'NHDPlusCatchment.shp')
-            flowlines_path = os.path.join(vbet_data_root, 'rs_context', huc, 'hydrology', 'nhd_data.sqlite')
+                    mx, my = geom.GetX(), geom.GetY()  # coord in map units
+                    if gt[0] <= mx <= (gt[0] + gt[1] * rb.XSize) and gt[3] >= my >= (gt[3] + gt[5] * rb.YSize):
 
-            with get_shp_or_gpkg(catchments_path) as catchments:
+                        # Convert from map to pixel coordinates.
+                        # Only works for geotransforms with no rotation.
+                        px = floor((mx - gt[0]) / gt[1])  # x pixel
+                        py = floor((my - gt[3]) / gt[5])  # y pixel
 
-                for catchment_feat, *_ in catchments.iterate_features(clip_shape=geom):
-                    nhd_id = catchment_feat.GetField('NHDPlusID')
+                        intval = rb.ReadAsArray(px, py, 1, 1)
+                        if intval is not None:
+                            value = float(intval[0][0])
+                            feat_attributes[attribute] = value
+                    else:
+                        continue
 
-                    with sqlite3.connect(flowlines_path) as conn:
+            if 'HAND' and 'Slope' in feat_attributes.keys():
+                catchments_path = os.path.join(vbet_data_root, 'rs_context', hucid, 'hydrology', 'NHDPlusCatchment.shp')
+                flowlines_path = os.path.join(vbet_data_root, 'rs_context', hucid, 'hydrology', 'nhd_data.sqlite')
 
-                        curs = conn.cursor()
-                        if len(curs.execute('select * from NHDPlusFlowlineVAA where NHDPlusID = ?', (nhd_id,)).fetchall()) > 0:
-                            feat_attributes['StreamOrder'] = curs.execute('select StreamOrde from NHDPlusFlowlineVAA where NHDPlusID = ?', (nhd_id,)).fetchall()[0][0]
-                            feat_attributes['DrainageAreaSqkm'] = curs.execute('select TotDASqKm from NHDPlusFlowlineVAA where NHDPlusID = ?', (nhd_id,)).fetchall()[0][0]
+                with get_shp_or_gpkg(catchments_path) as catchments:
 
-                            if feat_attributes['StreamOrder'] < 2:
-                                feat_attributes['InputZone'] = 'Small'
-                            elif feat_attributes['StreamOrder'] < 4:
-                                feat_attributes['InputZone'] = "Medium"
-                            else:
-                                feat_attributes['InputZone'] = 'Large'
+                    for catchment_feat, *_ in catchments.iterate_features(clip_shape=geom):
+                        nhd_id = catchment_feat.GetField('NHDPlusID')
 
-            writer.writerow(feat_attributes)
+                        with sqlite3.connect(flowlines_path) as conn:
 
+                            curs = conn.cursor()
+                            if len(curs.execute('select * from NHDPlusFlowlineVAA where NHDPlusID = ?', (nhd_id,)).fetchall()) > 0:
+                                feat_attributes['StreamOrder'] = curs.execute('select StreamOrde from NHDPlusFlowlineVAA where NHDPlusID = ?', (nhd_id,)).fetchall()[0][0]
+                                feat_attributes['DrainageAreaSqkm'] = curs.execute('select TotDASqKm from NHDPlusFlowlineVAA where NHDPlusID = ?', (nhd_id,)).fetchall()[0][0]
 
-def extract_raster_by_point(geom, raster_path):
+                                if feat_attributes['StreamOrder'] < 2:
+                                    feat_attributes['InputZone'] = 'Small'
+                                elif feat_attributes['StreamOrder'] < 4:
+                                    feat_attributes['InputZone'] = "Medium"
+                                else:
+                                    feat_attributes['InputZone'] = 'Large'
 
-    src_ds = gdal.Open(raster_path)
-    gt = src_ds.GetGeoTransform()
-    rb = src_ds.GetRasterBand(1)
-
-    mx, my = geom.GetX(), geom.GetY()  # coord in map units
-
-    # Convert from map to pixel coordinates.
-    # Only works for geotransforms with no rotation.
-    px = floor((mx - gt[0]) / gt[1])  # x pixel
-    py = floor((my - gt[3]) / gt[5])  # y pixel
-
-    intval = rb.ReadAsArray(px, py, 1, 1)
-
-    return float(intval[0][0])
+                writer.writerow(feat_attributes)
 
 
 def main():
 
-    extract_vbet_evidence(sys.argv[1], sys.argv[2], sys.argv[3])
+    extract_vbet_evidence(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])
 
 
-if __name__ == '__main__':
-    main()
+# if __name__ == '__main__':
+#     main()
+
+obs_pts = '/mnt/c/Users/jordang/Documents/Riverscapes/data/vbet/calibration_pts.gpkg/calibration_pts'
+data_root = '/mnt/c/Users/jordang/Documents/Riverscapes/data/'
+out_pts = '/mnt/c/Users/jordang/Documents/Riverscapes/data/vbet/points.csv'
+
+extract_vbet_evidence(obs_pts, data_root, out_pts, '1601020205')

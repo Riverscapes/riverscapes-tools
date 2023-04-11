@@ -169,7 +169,7 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
     project_name = 'Riverscapes Context for HUC {}'.format(huc)
     project = RSProject(cfg, output_folder)
     project.create(project_name, 'RSContext', [
-        RSMeta('Tool Documentation', 'https://tools.riverscapes.net/rscontext', RSMetaTypes.URL, locked=True),
+        RSMeta('Model Documentation', 'https://tools.riverscapes.net/rscontext', RSMetaTypes.URL, locked=True),
         RSMeta('HUC', str(huc), RSMetaTypes.HIDDEN, locked=True),
         RSMeta('Hydrologic Unit Code', str(huc), locked=True)
     ])

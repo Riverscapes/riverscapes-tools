@@ -1,0 +1,18 @@
+{
+    "VBET_DGO_POLYGONS": ["", "", ""],
+    "COMPOSITE_VBET_EVIDENCE": ["", "", ""],
+    "COMPOSITE_HAND": ["", "", ""],
+    "TRANSFORMED_HAND": ["", "", ""],
+    "TRANSFORMED_SLOPE": ["", "", ""],
+    "VBET_ZONES": ["", "", ""],
+    "ACTIVE_FP_ZONES": ["", "", ""],
+    "INACTIVE_FP_ZONES": ["", "", ""],
+    "VBET_FULL": ["", "", ""],
+    "VBET_IA": ["", "", ""],
+    "VBET_CHANNEL_AREA": ["", "", ""],
+    "ACTIVE_FLOODPLAIN": ["", "", ""],
+    "INACTIVE_FLOODPLAIN": ["", "", ""],
+    "FLOODPLAIN": ["", "", ""],
+    "VBET_CENTERLINES": ["", "", ""],
+    "SEGMENTATION_POINTS": ["", "", ""]
+}

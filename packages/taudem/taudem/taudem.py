@@ -91,7 +91,7 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, project_folder:
     project_name = 'TauDEM project for HUC {}'.format(huc)
     project = RSProject(cfg, project_folder)
     project.create(project_name, 'TauDEM', [
-        RSMeta('Tool Documentation', 'https://tools.riverscapes.net/taudem', RSMetaTypes.URL, locked=True),
+        RSMeta('Model Documentation', 'https://tools.riverscapes.net/taudem', RSMetaTypes.URL, locked=True),
         RSMeta('HUC', str(huc), RSMetaTypes.HIDDEN, locked=True),
         RSMeta('Hydrologic Unit Code', str(huc), locked=True),
         RSMeta('TauDEM Software Version', '5.3.8', locked=True),
