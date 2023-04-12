@@ -29,9 +29,13 @@ def clean_nhd_data(huc, download_folder, unzip_folder, out_dir, out_epsg, force_
     for digits in [2, 4, 6, 8, 10, 12]:
         fclass = 'WBDHU{}'.format(digits)
 
-        operator = 'LIKE' if digits > len(huc) else '='
-        wildcard = '%' if digits > len(huc) else ''
-        attribute_filter = "HUC{} {} '{}{}'".format(digits, operator, huc[:digits], wildcard) if digits >= len(huc) else None
+        # operator = 'LIKE' if digits > len(huc) else '='
+        # wildcard = '%' if digits > len(huc) else ''
+        # attribute_filter = "HUC{} {} '{}{}'".format(digits, operator, huc[:digits], wildcard) if digits >= len(huc) else None
+        if digits <= len(huc):
+            attribute_filter = f"HUC{digits} = '{huc[:digits]}'"
+        else:
+            attribute_filter = f"HUC{digits} LIKE '{huc}%'"
 
         featureclasses[fclass] = export_feature_class(filegdb, fclass, out_dir, out_epsg, None, attribute_filter, None)
 

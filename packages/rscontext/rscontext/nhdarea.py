@@ -27,14 +27,14 @@ def split_nhd_area(in_nhd_area: str, in_nhd_catchments: str, out_area_split: str
 
     for id, geom in catch_geoms.items():
         if not geom.IsValid():
-            geom = geom.Buffer(0)
+            geom = geom.MakeValid()
         outids[id] = []
         for ftr in fa_ftrs:
             nhdgeom = ftr.GetGeometryRef()
             if not nhdgeom.IsValid():
-                nhdgeom = nhdgeom.Buffer(0)
+                nhdgeom = nhdgeom.MakeValid()
             if geom.Intersects(nhdgeom):
-                outids[id].append(geom.Intersection(ftr.GetGeometryRef()))
+                outids[id].append(geom.Intersection(nhdgeom))
                 outdfns[id] = ftr
 
     outdatasrc = driver.CreateDataSource(out_area_split)
