@@ -35,6 +35,7 @@ from rscommons.vbet_network import copy_vaa_attributes, join_attributes, create_
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.raster_warp import raster_warp
 from rscommons import TimerBuckets, TimerWaypoints
+from rscommons.augment_lyr_meta import augment_layermeta
 
 from vbet.vbet_database import build_vbet_database, load_configuration
 from vbet.vbet_raster_ops import rasterize, raster_logic_mask, raster_update_multiply, raster_remove_zone, get_endpoints_on_raster, generate_vbet_polygon, generate_centerline_surface, clean_raster_regions, proximity_raster
@@ -42,7 +43,6 @@ from vbet.vbet_outputs import clean_up_centerlines
 from vbet.vbet_report import VBETReport
 from vbet.vbet_segmentation import calculate_dgo_metrics, generate_igo_points, split_vbet_polygons, calculate_vbet_window_metrics
 from vbet.lib.CompositeRaster import CompositeRaster
-from vbet.rem import relative_elevation
 from vbet.__version__ import __version__
 
 from .lib.cost_path import least_cost_path
@@ -56,6 +56,7 @@ initGDALOGRErrors()
 
 cfg = ModelConfig('https://xml.riverscapes.net/Projects/XSD/V2/RiverscapesProject.xsd', __version__)
 
+LYR_DESCRIPTIONS_JSON = os.path.join(os.path.dirname(__file__), 'layer_descriptions.json')
 LayerTypes = {
     'DEM': RSLayer('DEM', 'DEM', 'Raster', 'inputs/dem.tif'),
     'SLOPE_RASTER': RSLayer('Slope Raster', 'SLOPE_RASTER', 'Raster', 'inputs/slope.tif'),
@@ -138,17 +139,18 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
     flowline_type = 'NHD'
 
-    project_name = f'VBET for HUC  {huc}'
+    project_name = f'VBET for HUC {huc}'
     project = RSProject(cfg, project_folder)
     project.create(project_name, 'VBET', [
-        RSMeta('HUC{}'.format(len(huc)), str(huc)),
-        RSMeta('HUC', str(huc)),
-        RSMeta('VBETVersion', cfg.version),
-        RSMeta('VBETTimestamp', str(int(time.time())), RSMetaTypes.TIMESTAMP),
-        RSMeta("FlowlineType", flowline_type),
-        RSMeta("VBET_Active_Floodplain_Threshold", f"{int(thresh_vals['VBET_IA'] * 100)}", RSMetaTypes.INT),
-        RSMeta("VBET_Inactive_Floodplain_Threshold", f"{int(thresh_vals['VBET_FULL'] * 100)}", RSMetaTypes.INT)
+        RSMeta('Model Documentation', 'https://tools.riverscapes.net/vbet', RSMetaTypes.URL, locked=True),
+        RSMeta('HUC', str(huc), RSMetaTypes.HIDDEN, locked=True),
+        RSMeta('Hydrologic Unit Code', str(huc), locked=True),
+        RSMeta("Flowline Type", flowline_type),
+        RSMeta("Low Lying Valley Threshold", f"{int(thresh_vals['VBET_IA'] * 100)}", RSMetaTypes.INT, locked=True),
+        RSMeta("Elevated Valley Threshold", f"{int(thresh_vals['VBET_FULL'] * 100)}", RSMetaTypes.INT, locked=True)
     ], meta)
+
+    augment_layermeta('vbet', LYR_DESCRIPTIONS_JSON, LayerTypes)
 
     _realization, proj_nodes = project.add_realization(project_name, 'REALIZATION1', cfg.version, data_nodes=['Inputs', 'Intermediates', 'Outputs'], create_folders=True)
 
@@ -818,9 +820,9 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     log.info('Summerizing VBET Metrics')
     window_size = {0: 200.0, 1: 400.0, 2: 1200.0}
     distance_lookup = get_distance_lookup(inputs_gpkg, intermediates_gpkg, level_paths_to_run, window_size)
-    project.add_metadata([RSMeta("SmallWindow", str(window_size[0]), RSMetaTypes.INT),
-                          RSMeta("MediumWindow", str(window_size[1]), RSMetaTypes.INT),
-                          RSMeta("LargeWindow", str(window_size[2]), RSMetaTypes.INT)])
+    project.add_metadata([RSMeta("Small Search Window", str(window_size[0]), RSMetaTypes.INT, locked=True),
+                          RSMeta("Medium Search Window", str(window_size[1]), RSMetaTypes.INT, locked=True),
+                          RSMeta("Large Search Window", str(window_size[2]), RSMetaTypes.INT, locked=True)])
     metric_fields = list(metric_layers.keys())
     calculate_vbet_window_metrics(segmentation_points, segmentation_polygons, level_paths_to_run, distance_lookup, metric_fields)
     _tmr_waypt.timer_break('SummerizeMetrics')
@@ -890,8 +892,8 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     log.debug(_tmr_waypt.toString())
 
     project.add_metadata([
-        RSMeta("ProcTimeS", f"{ellapsed_time:.2f}", RSMetaTypes.INT),
-        RSMeta("ProcTimeHuman", pretty_duration(ellapsed_time))
+        RSMeta("ProcTimeS", f"{ellapsed_time:.2f}", RSMetaTypes.HIDDEN, locked=True),
+        RSMeta("Processing Time", pretty_duration(ellapsed_time), locked=True)
     ])
 
     # Report

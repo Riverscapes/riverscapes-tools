@@ -26,6 +26,7 @@ from rscommons.math import safe_eval
 from rscommons.raster_buffer_stats import raster_buffer_stats2
 from rscommons.vector_ops import get_geometry_unary_union, buffer_by_field, copy_feature_class, merge_feature_classes, remove_holes_feature_class, difference
 from rscommons.vbet_network import vbet_network
+from rscommons.augment_lyr_meta import augment_layermeta
 
 from channel.channel_report import ChannelReport
 from channel.__version__ import __version__
@@ -98,7 +99,7 @@ def channel(huc: int,
     log.info('Using Equation: "{}" and params: "{}"'.format(bankfull_function, bankfull_function_params))
 
     # Add the layer metadata immediately before we write anything
-    augment_layermeta()
+    augment_layermeta('channel', LYR_DESCRIPTIONS_JSON, LayerTypes)
 
     meta['Bankfull Equation'] = bankfull_function
     for param, value in bankfull_function_params.items():
@@ -281,32 +282,6 @@ def calculate_bankfull(network_layer: Path, out_field: str, eval_fn: str, functi
             layer.ogr_layer.SetFeature(feat)
 
         layer.ogr_layer.CommitTransaction()
-
-
-def augment_layermeta():
-    """
-    For RSContext we've written a JSON file with extra layer meta. We may use this pattern elsewhere but it's just here for now
-    """
-    with open(LYR_DESCRIPTIONS_JSON, 'r') as f:
-        json_data = json.load(f)
-
-    for k, lyr in LayerTypes.items():
-        if lyr.sub_layers is not None:
-            for h, sublyr in lyr.sub_layers.items():
-                if h in json_data and len(json_data[h]) > 0:
-                    sublyr.lyr_meta = [
-                        RSMeta('Description', json_data[h][0]),
-                        RSMeta('SourceUrl', json_data[h][1], RSMetaTypes.URL),
-                        RSMeta('DataProductVersion', json_data[h][2]),
-                        RSMeta('DocsUrl', 'https://tools.riverscapes.net/channel/data.html#{}'.format(sublyr.id), RSMetaTypes.URL)
-                    ]
-        if k in json_data and len(json_data[k]) > 0:
-            lyr.lyr_meta = [
-                RSMeta('Description', json_data[k][0]),
-                RSMeta('SourceUrl', json_data[k][1], RSMetaTypes.URL),
-                RSMeta('DataProductVersion', json_data[k][2]),
-                RSMeta('DocsUrl', 'https://tools.riverscapes.net/channel/data.html#{}'.format(lyr.id), RSMetaTypes.URL)
-            ]
 
 
 def main():

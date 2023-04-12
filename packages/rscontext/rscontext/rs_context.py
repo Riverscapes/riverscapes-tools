@@ -38,6 +38,7 @@ from rscommons.util import (parse_metadata, pretty_duration, safe_makedirs,
                             safe_remove_dir)
 # from rscommons.raster_buffer_stats import raster_buffer_stats2
 from rscommons.vector_ops import copy_feature_class, get_geometry_unary_union
+from rscommons.augment_lyr_meta import augment_layermeta
 
 from rscontext.__version__ import __version__
 from rscontext.boundary_management import raster_area_intersection
@@ -147,7 +148,7 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
     log = Logger("RS Context")
 
     # Add the layer metadata immediately before we write anything
-    augment_layermeta()
+    augment_layermeta('rscontext', LYR_DESCRIPTIONS_JSON, LayerTypes)
 
     log.info('Starting RSContext v.{}'.format(cfg.version))
 
@@ -432,32 +433,6 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
         'HistoricVeg': os.path.join(landfire_dir, 'LC20_BPS_220.tif'),
         'NHD': nhd
     }
-
-
-def augment_layermeta():
-    """
-    For RSContext we've written a JSON file with extra layer meta. We may use this pattern elsewhere but it's just here for now
-    """
-    with open(LYR_DESCRIPTIONS_JSON, 'r') as f:
-        json_data = json.load(f)
-
-    for k, lyr in LayerTypes.items():
-        if lyr.sub_layers is not None:
-            for h, sublyr in lyr.sub_layers.items():
-                if h in json_data and len(json_data[h]) > 0:
-                    sublyr.lyr_meta = [
-                        RSMeta('Description', json_data[h][0]),
-                        RSMeta('SourceUrl', json_data[h][1], RSMetaTypes.URL),
-                        RSMeta('DataProductVersion', json_data[h][2]),
-                        RSMeta('DocsUrl', 'https://tools.riverscapes.net/rscontext/data.html#{}'.format(sublyr.id), RSMetaTypes.URL)
-                    ]
-        if k in json_data and len(json_data[k]) > 0:
-            lyr.lyr_meta = [
-                RSMeta('Description', json_data[k][0]),
-                RSMeta('SourceUrl', json_data[k][1], RSMetaTypes.URL),
-                RSMeta('DataProductVersion', json_data[k][2]),
-                RSMeta('DocsUrl', 'https://tools.riverscapes.net/rscontext/data.html#{}'.format(lyr.id), RSMetaTypes.URL)
-            ]
 
 
 def get_nhd_states(inpath):

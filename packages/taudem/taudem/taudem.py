@@ -28,6 +28,7 @@ from rscommons.vector_ops import copy_feature_class
 from rscommons.hand import hand_rasterize, run_subprocess
 from rscommons.raster_warp import raster_warp
 from rscommons.geographic_raster import gdal_dem_geographic
+from rscommons.augment_lyr_meta import augment_layermeta
 
 from taudem.taudem_report import TauDEMReport
 from taudem.__version__ import __version__
@@ -102,7 +103,7 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, project_folder:
     project.add_metadata([RSMeta(key, val, RSMetaTypes.HIDDEN, locked=True) for key, val in meta.items()])
 
     # Add the layer metadata immediately before we write anything
-    augment_layermeta()
+    augment_layermeta('taudem', LYR_DESCRIPTIONS_JSON, LayerTypes)
 
     _realization, proj_nodes = project.add_realization(project_name, 'REALIZATION1', cfg.version, data_nodes=["Inputs", "Intermediates", "Outputs"], create_folders=True)
 
@@ -292,32 +293,6 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, project_folder:
     report.write()
 
     log.info('TauDEM Completed Successfully')
-
-
-def augment_layermeta():
-    """
-    For RSContext we've written a JSON file with extra layer meta. We may use this pattern elsewhere but it's just here for now
-    """
-    with open(LYR_DESCRIPTIONS_JSON, 'r') as f:
-        json_data = json.load(f)
-
-    for k, lyr in LayerTypes.items():
-        if lyr.sub_layers is not None:
-            for h, sublyr in lyr.sub_layers.items():
-                if h in json_data and len(json_data[h]) > 0:
-                    sublyr.lyr_meta = [
-                        RSMeta('Description', json_data[h][0]),
-                        RSMeta('SourceUrl', json_data[h][1], RSMetaTypes.URL),
-                        RSMeta('DataProductVersion', json_data[h][2]),
-                        RSMeta('DocsUrl', 'https://tools.riverscapes.net/taudem/data.html#{}'.format(sublyr.id), RSMetaTypes.URL)
-                    ]
-        if k in json_data and len(json_data[k]) > 0:
-            lyr.lyr_meta = [
-                RSMeta('Description', json_data[k][0]),
-                RSMeta('SourceUrl', json_data[k][1], RSMetaTypes.URL),
-                RSMeta('DataProductVersion', json_data[k][2]),
-                RSMeta('DocsUrl', 'https://tools.riverscapes.net/taudem/data.html#{}'.format(lyr.id), RSMetaTypes.URL)
-            ]
 
 
 def main():
