@@ -23,7 +23,7 @@ from osgeo import ogr
 from regex import B
 from rscommons import (Logger, ModelConfig, RSLayer, RSProject, Timer, dotenv,
                        initGDALOGRErrors)
-from rscommons.classes.rs_project import RSMeta, RSMetaExt, RSMetaTypes
+from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.clean_nhd_data import clean_nhd_data
 from rscommons.clean_ntd_data import clean_ntd_data
 from rscommons.download_dem import download_dem, verify_areas
@@ -44,7 +44,6 @@ from rscontext.__version__ import __version__
 from rscontext.boundary_management import raster_area_intersection
 from rscontext.clean_catchments import clean_nhdplus_catchments
 from rscontext.clip_vector import clip_vector_layer
-from rscontext.filter_ecoregions import filter_ecoregions
 from rscontext.nhdarea import split_nhd_area
 from rscontext.rs_context_report import RSContextReport
 from rscontext.rs_segmentation import rs_segmentation
@@ -359,23 +358,23 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
     # Clip the landownership Shapefile to a 10km buffer around the watershed boundary
     own_path = os.path.join(output_folder, LayerTypes['OWNERSHIP'].rel_path)
     project.add_dataset(datasets, own_path, LayerTypes['OWNERSHIP'], 'Vector')
-    clip_vector_layer(nhd[boundary], ownership, own_path, cfg.OUTPUT_EPSG, 10000)
+    clip_vector_layer(nhd[boundary], ownership, own_path, cfg.OUTPUT_EPSG, 1000, clip=True)
 
     # Clip the states shapefile to a 10km buffer around the watershed boundary
     states_path = os.path.join(output_folder, LayerTypes['STATES'].rel_path)
     project.add_dataset(datasets, states_path, LayerTypes['STATES'], 'Vector')
-    clip_vector_layer(nhd[boundary], us_states, states_path, cfg.OUTPUT_EPSG, 10000)
+    clip_vector_layer(nhd[boundary], us_states, states_path, cfg.OUTPUT_EPSG, 1000)
 
     # Clip the counties shapefile to a 10km buffer around the watershed boundary
     counties_path = os.path.join(output_folder, LayerTypes['COUNTIES'].rel_path)
     project.add_dataset(datasets, counties_path, LayerTypes['COUNTIES'], 'Vector')
-    clip_vector_layer(nhd[boundary], us_counties, counties_path, cfg.OUTPUT_EPSG, 10000)
+    clip_vector_layer(nhd[boundary], us_counties, counties_path, cfg.OUTPUT_EPSG, 1000)
 
     # Clip the geology shapefile to a 10km buffer around the watershed boundary
     # geology is in national project - can also be retrieved from science base
     geo_path = os.path.join(output_folder, LayerTypes['GEOLOGY'].rel_path)
     project.add_dataset(datasets, geo_path, LayerTypes['GEOLOGY'], 'Vector')
-    clip_vector_layer(nhd[boundary], geology, geo_path, cfg.OUTPUT_EPSG, 10000)
+    clip_vector_layer(nhd[boundary], geology, geo_path, cfg.OUTPUT_EPSG, 1000, clip=True)
 
     #######################################################
     # Segmentation
@@ -402,7 +401,7 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
     # Filter the ecoregions Shapefile to only include attributes that intersect with our HUC
     eco_path = os.path.join(output_folder, 'ecoregions', 'ecoregions.shp')
     project.add_dataset(datasets, eco_path, LayerTypes['ECOREGIONS'], 'Vector')
-    filter_ecoregions(nhd[boundary], ecoregions, eco_path, cfg.OUTPUT_EPSG, 10000)
+    clip_vector_layer(nhd[boundary], ecoregions, eco_path, cfg.OUTPUT_EPSG, 1000)
 
     report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
     project.add_report(datasets, LayerTypes['REPORT'], replace=True)

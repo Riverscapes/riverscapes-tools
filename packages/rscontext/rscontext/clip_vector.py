@@ -7,18 +7,21 @@ from rscommons.shapefile import copy_feature_class
 from rscommons.shapefile import delete_shapefile
 
 
-def clip_vector_layer(boundary, vector, out_path, output_epsg, buffer_meters):
+def clip_vector_layer(boundary, vector, out_path, output_epsg, buffer_meters, clip=False):
 
     log = Logger('Vector Layer')
-
-    log.info('Clipping {} feature class to {}m buffer around HUC boundary.'.format(os.path.basename(out_path), buffer_meters))
 
     # if dataset is not projected convert m to geo distance, else just use the meters
     # Rough
     buff_dist = _rough_convert_metres_to_shapefile_units(boundary, buffer_meters)
     huc_boundary = get_geometry_unary_union(boundary, output_epsg)
     buffered = huc_boundary.buffer(buff_dist)
-    copy_feature_class(vector, output_epsg, out_path, buffered)
+    if clip:
+        log.info('Clipping {} feature class to {}m buffer around HUC boundary.'.format(os.path.basename(out_path), buffer_meters))
+        copy_feature_class(vector, output_epsg, out_path, clip_shape=buffered)
+    else:
+        log.info('Selecting features from {} feature class that intersect HUC boundary.'.format(os.path.basename(out_path)))
+        copy_feature_class(vector, output_epsg, out_path, intersect_shape=buffered)
     log.info(f'{os.path.basename(vector)} clip complete.')
 
 

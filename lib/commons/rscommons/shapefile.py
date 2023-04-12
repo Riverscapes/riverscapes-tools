@@ -473,7 +473,7 @@ def clip(features, clip, output):
     stdout, stderr = proc.communicate()
 
 
-def copy_feature_class(inpath, epsg, outpath, clip_shape=None, attribute_filter=None):
+def copy_feature_class(inpath, epsg, outpath, intersect_shape=None, clip_shape=None, attribute_filter=None):
     """Copy a Shapefile from one location to another
 
     This method is capable of reprojecting the geometries as they are copied.
@@ -486,7 +486,8 @@ def copy_feature_class(inpath, epsg, outpath, clip_shape=None, attribute_filter=
         outpath {str} -- File path where the output Shapefile will be generated.
 
     Keyword Arguments:
-        clip_shape {shape} -- Shapely polygon geometry in the output EPSG used to clip the input geometries (default: {None})
+        intersect_shape {shape} -- Shapely polygon geometry in the output EPSG used to clip the input geometries (default: {None})
+        clip_shape {shape} -- Shapely polygon geometry in the output EPSG used to select the input geometries (default: {None})
         attribute_filter {str} -- Attribute filter used to limit the input features that will be copied. (default: {None})
     """
 
@@ -512,6 +513,11 @@ def copy_feature_class(inpath, epsg, outpath, clip_shape=None, attribute_filter=
     # Note that this makes the subsequent intersection process a lot more
     # performant because the SetSaptialFilter() uses the ShapeFile's spatial
     # index which is much faster than manually checking if all pairs of features intersect.
+    intersect_geom = None
+    if intersect_shape:
+        intersect_geom = ogr.CreateGeometryFromWkb(intersect_shape.wkb)
+        inLayer.SetSpatialFilter(intersect_geom)
+
     clip_geom = None
     if clip_shape:
         clip_geom = ogr.CreateGeometryFromWkb(clip_shape.wkb)
@@ -561,7 +567,10 @@ def copy_feature_class(inpath, epsg, outpath, clip_shape=None, attribute_filter=
 
         # Create output Feature
         outFeature = ogr.Feature(outLayerDefn)
-        outFeature.SetGeometry(geom)
+        if clip_geom:
+            outFeature.SetGeometry(geom.Intersection(clip_geom))
+        else:
+            outFeature.SetGeometry(geom)
 
         # Add field values from input Layer
         for i in range(0, outLayerDefn.GetFieldCount()):
