@@ -79,7 +79,8 @@
         "--meta",
         "Runner=VSCode",
         "--verbose",
-        "--debug"
+        "--debug",
+        "--temp_folder={env:DATA_ROOT}/vbet/${input:HUC}/temp"
       ]
     },
     {

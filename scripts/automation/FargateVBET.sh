@@ -59,7 +59,7 @@ RS_CONTEXT_DIR=$DATA_DIR/rs_context/rs_context_$RSCONTEXT_ID
 CHANNELAREA_DIR=$DATA_DIR/channel_area/channel_area_$CHANNELAREA_ID
 TAUDEM_DIR=$DATA_DIR/taudem/taudem_$TAUDEM_ID
 VBET_DIR=$DATA_DIR/output/vbet
-VBET_SCRATCH=$DATA_DIR/vbet_scratch/$HUC
+VBET_SCRATCH=$VBET_DIR/temp
 
 ##########################################################################################
 # First Get RS_Context, ChannelArea and Taudem inputs
@@ -98,7 +98,8 @@ try() {
     --reach_codes 33400,46000,46003,46006,46007,55800 \
     --mask $RS_CONTEXT_DIR/hydrology/hydro_derivatives.gpkg/processing_extent \
     --meta "Runner=Cybercastor" \
-    --verbose
+    --verbose \
+    --temp_folder $VBET_SCRATCH
   if [[ $? != 0 ]]; then return 1; fi
 
   cd /usr/local/src/riverscapes-tools/packages/vbet
