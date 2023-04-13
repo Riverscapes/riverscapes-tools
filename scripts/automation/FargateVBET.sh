@@ -55,10 +55,10 @@ gdal-config --version
 
 # Define some folders that we can easily clean up later
 DATA_DIR=/usr/local/data
-RS_CONTEXT_DIR=$DATA_DIR/rs_context/data
-CHANNEL_AREA_DIR=$DATA_DIR/channel_area/data
-TAUDEM_DIR=$DATA_DIR/taudem/data
-VBET_DIR=$DATA_DIR/output
+RS_CONTEXT_DIR=$DATA_DIR/rs_context/rs_context_$RSCONTEXT_ID
+CHANNELAREA_DIR=$DATA_DIR/channel_area/channel_area_$CHANNELAREA_ID
+TAUDEM_DIR=$DATA_DIR/taudem/taudem_$TAUDEM_ID
+VBET_DIR=$DATA_DIR/output/vbet
 VBET_SCRATCH=$DATA_DIR/vbet_scratch/$HUC
 
 ##########################################################################################
@@ -70,7 +70,7 @@ rscli download $RS_CONTEXT_DIR --id $RSCONTEXT_ID \
   --file-filter "(hillshade|slope|dem|hydrology|project_bounds.geojson)" \
   --no-input --no-ui --verbose
   
-rscli download $CHANNEL_AREA_DIR --id $CHANNELAREA_ID \
+rscli download $CHANNELAREA_DIR --id $CHANNELAREA_ID \
   --no-input --no-ui --verbose
 
 rscli download $TAUDEM_DIR --id $TAUDEM_ID \
@@ -89,7 +89,7 @@ try() {
     $RS_CONTEXT_DIR/topography/slope.tif \
     $RS_CONTEXT_DIR/topography/dem_hillshade.tif \
     $RS_CONTEXT_DIR/hydrology/NHDPlusCatchment.shp \
-    $CHANNEL_AREA_DIR/outputs/channel_area.gpkg/channel_area \
+    $CHANNELAREA_DIR/outputs/channel_area.gpkg/channel_area \
     $RS_CONTEXT_DIR/hydrology/nhd_data.sqlite/NHDPlusFlowlineVAA \
     $VBET_DIR \
     --pitfill $TAUDEM_DIR/intermediates/pitfill.tif \
@@ -105,7 +105,7 @@ try() {
   cd /usr/local/src/riverscapes-tools/packages/vbet
   /usr/local/venv/bin/python -m vbet.vbet_rs \
     $VBET_DIR/project.rs.xml \
-    $RS_CONTEXT_DIR/project.rs.xml,$TAUDEM_DIR/project.rs.xml,$CHANNEL_AREA_DIR/project.rs.xml
+    $RS_CONTEXT_DIR/project.rs.xml,$TAUDEM_DIR/project.rs.xml,$CHANNELAREA_DIR/project.rs.xml
 
   echo "======================  Final Disk space usage ======================="
   df -h

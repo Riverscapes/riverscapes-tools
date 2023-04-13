@@ -17,7 +17,7 @@ upstream_project_types = {
 # Key is warehouse project type. Value is Fargate environment variable
 fargate_env_keys = {
     'rscontext': 'RSCONTEXT_ID' ,
-    'channelarea': 'CHANNEL_AREA_ID',
+    'channelarea': 'CHANNELAREA_ID',
     'taudem': 'TAUDEM_ID',
     'vbet': 'VBET_ID',
     'brat': 'BRAT_ID'
@@ -96,7 +96,7 @@ def find_upstream_projects(job_data) -> bool:
             
             # Search for projects of the given type that match the HUC
             params = {
-                "projectTypeId": 'rscontext',
+                "projectTypeId": project_type,
                 "meta": [{
                     "key": "HUC",
                     "value": huc,
