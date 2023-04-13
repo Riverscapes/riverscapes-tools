@@ -955,6 +955,7 @@ def main():
     parser.add_argument('--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
     parser.add_argument('--debug', help='Add debug tools for tracing things like memory usage at a performance cost.', action='store_true', default=False)
+    parser.add_argument('--temp_folder', help='Temp folder to store level path outputs', type=str)
     args = dotenv.parse_args_env(parser)
 
     # make sure the output folder exists
