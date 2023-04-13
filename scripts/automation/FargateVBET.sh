@@ -83,21 +83,20 @@ rscli download $TAUDEM_DIR --id $TAUDEM_ID \
 try() {
 
   vbet $HUC \
-    "APRIL_2022" \
-    $RS_CONTEXT_DIR/hydrology/hydrology.gpkg/network \
+    $RS_CONTEXT_DIR/hydrology/nhdplushr.gpkg/NHDFlowline \
     $RS_CONTEXT_DIR/topography/dem.tif \
     $RS_CONTEXT_DIR/topography/slope.tif \
     $RS_CONTEXT_DIR/topography/dem_hillshade.tif \
-    $RS_CONTEXT_DIR/hydrology/NHDPlusCatchment.shp \
+    $RS_CONTEXT_DIR/hydrology/nhdplushr.gpkg/NHDPlusCatchment \
     $CHANNELAREA_DIR/outputs/channel_area.gpkg/channel_area \
-    $RS_CONTEXT_DIR/hydrology/nhd_data.sqlite/NHDPlusFlowlineVAA \
+    $RS_CONTEXT_DIR/hydrology/nhdplushr.gpkg/NHDPlusFlowlineVAA \
     $VBET_DIR \
     --pitfill $TAUDEM_DIR/intermediates/pitfill.tif \
     --dinfflowdir_ang $TAUDEM_DIR/intermediates/dinfflowdir_ang.tif \
     --dinfflowdir_slp $TAUDEM_DIR/outputs/dinfflowdir_slp.tif \
     --twi_raster $TAUDEM_DIR/outputs/twi.tif \
     --reach_codes 33400,46000,46003,46006,46007,55800 \
-    --mask $RS_CONTEXT_DIR/hydrology/WBDHU8.shp \
+    --mask $RS_CONTEXT_DIR/hydrology/hydro_derivatives.gpkg/processing_extent \
     --meta "Runner=Cybercastor" \
     --verbose
   if [[ $? != 0 ]]; then return 1; fi
