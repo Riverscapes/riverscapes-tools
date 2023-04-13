@@ -38,7 +38,7 @@ from rscommons.util import (parse_metadata, pretty_duration, safe_makedirs,
                             safe_remove_dir)
 # from rscommons.raster_buffer_stats import raster_buffer_stats2
 from rscommons.vector_ops import copy_feature_class, get_geometry_unary_union
-from rscommons.augment_lyr_meta import augment_layermeta
+from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions
 
 from rscontext.__version__ import __version__
 from rscontext.boundary_management import raster_area_intersection
@@ -280,8 +280,8 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
     for name, file_path in ntd_clean.items():
         lyr_obj = RSLayer(name, name, 'Vector', os.path.relpath(file_path, output_folder))
         ntd_node, _fpath = project.add_project_vector(datasets, lyr_obj)
-        project.add_metadata([RSMeta('Description', 'The USGS Transportation downloadable data from The National Map (TNM) is based on TIGER/Line data provided through U.S. Census Bureau and supplemented with HERE road data to create tile cache base maps. Some of the TIGER/Line data includes limited corrections done by USGS. Transportation data consists of roads, railroads, trails, airports, and other features associated with the transport of people or commerce. The data is downloaded from science base by state then clipped to the project extent.'),
-                              RSMeta('SourceUrl', 'https://data.usgs.gov/datacatalog/data/USGS:ad3d631d-f51f-4b6a-91a3-e617d6a58b4e', RSMetaTypes.URL),
+        project.XMLBuilder.add_sub_element(ntd_node, 'Description', 'The USGS Transportation downloadable data from The National Map (TNM) is based on TIGER/Line data provided through U.S. Census Bureau and supplemented with HERE road data to create tile cache base maps. Some of the TIGER/Line data includes limited corrections done by USGS. Transportation data consists of roads, railroads, trails, airports, and other features associated with the transport of people or commerce. The data is downloaded from science base by state then clipped to the project extent.')
+        project.add_metadata([RSMeta('SourceUrl', 'https://data.usgs.gov/datacatalog/data/USGS:ad3d631d-f51f-4b6a-91a3-e617d6a58b4e', RSMetaTypes.URL),
                               RSMeta('DataProductVersion', '2020'),
                               RSMeta('DocsUrl', f'https://tools.riverscapes.net/data/html#{name}', RSMetaTypes.URL)], ntd_node)
         project.add_metadata([RSMeta(k, v, RSMetaTypes.URL) for k, v in ntd_urls.items()], ntd_node)
@@ -416,6 +416,8 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
         RSMeta("ProcTimeS", "{:.2f}".format(ellapsed_time), RSMetaTypes.HIDDEN, locked=True),
         RSMeta("Processing Time", pretty_duration(ellapsed_time), locked=True)
     ])
+
+    add_layer_descriptions(project, LYR_DESCRIPTIONS_JSON, LayerTypes)
 
     # Clean up the unzipped nhd files
     if parallel:

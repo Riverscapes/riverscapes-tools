@@ -21,15 +21,39 @@ def augment_layermeta(proj_type: str, lyr_descriptions: str, lyr_types: dict):
             for h, sublyr in lyr.sub_layers.items():
                 if h in json_data and len(json_data[h]) > 0:
                     sublyr.lyr_meta = [
-                        RSMeta('Description', json_data[h][0]),
+                        # RSMeta('Description', json_data[h][0]),
                         RSMeta('SourceUrl', json_data[h][1], RSMetaTypes.URL),
                         RSMeta('DataProductVersion', json_data[h][2]),
                         RSMeta('DocsUrl', f'https://tools.riverscapes.net/{proj_type}/data.html#{sublyr.id}', RSMetaTypes.URL)
                     ]
+
         if k in json_data and len(json_data[k]) > 0:
             lyr.lyr_meta = [
-                RSMeta('Description', json_data[k][0]),
+                # RSMeta('Description', json_data[k][0]),
                 RSMeta('SourceUrl', json_data[k][1], RSMetaTypes.URL),
                 RSMeta('DataProductVersion', json_data[k][2]),
                 RSMeta('DocsUrl', f'https://tools.riverscapes.net/{proj_type}/data.html#{lyr.id}', RSMetaTypes.URL)
             ]
+
+
+def add_layer_descriptions(rsproject, lyr_descriptions: str, lyr_types: dict):
+
+    with open(lyr_descriptions, 'r') as f:
+        json_data = json.load(f)
+
+    for id, lyr in lyr_types.items():
+        if lyr.sub_layers is not None:
+            for subid, sublyr in lyr.sub_layers.items():
+                if subid in json_data and len(json_data[subid][0]) > 1:
+                    for i in rsproject.XMLBuilder.tree.iter():
+                        if 'lyrName' in i.attrib.keys():
+                            if i.attrib['lyrName'] == sublyr.id:
+                                rsproject.XMLBuilder.add_sub_element(i, 'Description', json_data[subid][0])
+
+        if id in json_data and len(json_data[id][0]) > 1:
+            for j in rsproject.XMLBuilder.tree.iter():
+                if 'id' in j.attrib.keys():
+                    if j.attrib['id'] == lyr.id:
+                        rsproject.XMLBuilder.add_sub_element(j, 'Description', json_data[id][0])
+
+    rsproject.XMLBuilder.write()
