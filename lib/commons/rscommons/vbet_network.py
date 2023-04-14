@@ -151,6 +151,8 @@ def copy_vaa_attributes(destination_layer, vaa_table):
         curs = conn_dest.cursor()
 
         for line in conn_vaa.iterdump():
+            if 'FlowlineVAA' not in line:
+                continue
 
             curs.execute(line)
 
