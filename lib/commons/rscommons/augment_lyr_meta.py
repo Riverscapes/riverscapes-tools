@@ -47,13 +47,13 @@ def add_layer_descriptions(rsproject, lyr_descriptions: str, lyr_types: dict):
                 if subid in json_data and len(json_data[subid][0]) > 1:
                     for i in rsproject.XMLBuilder.tree.iter():
                         if 'lyrName' in i.attrib.keys():
-                            if i.attrib['lyrName'] == sublyr.id:
+                            if i.attrib['lyrName'] == sublyr.rel_path:
                                 rsproject.XMLBuilder.add_sub_element(i, 'Description', json_data[subid][0])
 
         if id in json_data and len(json_data[id][0]) > 1:
             for j in rsproject.XMLBuilder.tree.iter():
-                if 'id' in j.attrib.keys():
-                    if j.attrib['id'] == lyr.id:
+                if 'id' in j.attrib.keys() and j.find('Path') is not None:
+                    if j.find('Path').text == lyr.rel_path:
                         rsproject.XMLBuilder.add_sub_element(j, 'Description', json_data[id][0])
 
     rsproject.XMLBuilder.write()

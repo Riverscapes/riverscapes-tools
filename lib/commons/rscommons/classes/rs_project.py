@@ -647,6 +647,7 @@ class RSProject:
                     continue
                 # lyrnod_in = in_prj.XMLBuilder.find('Realizations').find('Realization').find('.//*[@id="{}"]'.format(id_in))
                 lyrmeta: List[RSMeta] = self.meta_keys_ext(in_prj.get_metadata(lyrnod_in), RSMetaExt.DATASET)
+                lyrdesc = lyrnod_in.find('Description')
 
                 for m in self.XMLBuilder.tree.iter():
                     if 'lyrName' in m.attrib.keys():
@@ -661,6 +662,8 @@ class RSProject:
                 if id_out not in found_keys and lyrnod_in is not None and lyrnod_out is not None:
                     found_keys.append(id_out)
                     lyrnod_out.attrib['extRef'] = f"{warehouse_id}:{self.get_rsxpath(in_prj.XMLBuilder, lyrnod_in)}"
+                    if lyrdesc is not None:
+                        self.XMLBuilder.add_sub_element(lyrnod_out, "Description", lyrdesc.text)
                     if 'id' in lyrnod_in.attrib.keys():
                         self.add_metadata([
                             # Copy all the project metadata into the layer we're importing

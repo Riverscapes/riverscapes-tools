@@ -26,7 +26,7 @@ from rscommons.math import safe_eval
 from rscommons.raster_buffer_stats import raster_buffer_stats2
 from rscommons.vector_ops import get_geometry_unary_union, buffer_by_field, copy_feature_class, merge_feature_classes, remove_holes_feature_class, difference
 from rscommons.vbet_network import vbet_network
-from rscommons.augment_lyr_meta import augment_layermeta
+from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions
 
 from channel.channel_report import ChannelReport
 from channel.__version__ import __version__
@@ -243,6 +243,8 @@ def channel(huc: int,
         RSMeta("ProcTimeS", "{:.2f}".format(ellapsed_time), RSMetaTypes.HIDDEN, locked=True),
         RSMeta("Processing Time", pretty_duration(ellapsed_time), locked=True)
     ])
+
+    add_layer_descriptions(project, LYR_DESCRIPTIONS_JSON, LayerTypes)
 
     # Report
     report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)

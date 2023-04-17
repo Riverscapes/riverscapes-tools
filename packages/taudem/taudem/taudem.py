@@ -28,7 +28,7 @@ from rscommons.vector_ops import copy_feature_class
 from rscommons.hand import hand_rasterize, run_subprocess
 from rscommons.raster_warp import raster_warp
 from rscommons.geographic_raster import gdal_dem_geographic
-from rscommons.augment_lyr_meta import augment_layermeta
+from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions
 
 from taudem.taudem_report import TauDEMReport
 from taudem.__version__ import __version__
@@ -285,6 +285,8 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, project_folder:
         RSMeta("Processing Time", pretty_duration(ellapsed_time), locked=True)
     ])
     log.info("TauDEM process complete in {}".format(ellapsed_time))
+
+    add_layer_descriptions(project, LYR_DESCRIPTIONS_JSON, LayerTypes)
 
     report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
     project.add_report(proj_nodes['Outputs'], LayerTypes['REPORT'], replace=True)
