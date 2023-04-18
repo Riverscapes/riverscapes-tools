@@ -3,10 +3,8 @@
 
 import json
 
-from osgeo import gdal
-
 from rscommons import RSMeta, RSMetaTypes
-from rscommons.classes.raster import Raster
+from rscommons.classes.raster import get_raster_cell_size
 
 
 def augment_layermeta(proj_type: str, lyr_descriptions: str, lyr_types: dict):
@@ -64,6 +62,7 @@ def add_layer_descriptions(rsproject, lyr_descriptions: str, lyr_types: dict):
 
 def raster_resolution_meta(rsproject, raster_path: str, raster_node):
 
-    with Raster(raster_path) as raster_ds:
-        rsproject.add_metadata([RSMeta('ResolutionX', f'{raster_ds.cellWidth}'),
-                                RSMeta('ResolutionY', f'{raster_ds.cellHeight}')], raster_node)
+    resx, resy = get_raster_cell_size(raster_path)
+
+    rsproject.add_metadata([RSMeta('CellSizeX', str(resx)),
+                            RSMeta('CellSizeY', str(resy))], raster_node)

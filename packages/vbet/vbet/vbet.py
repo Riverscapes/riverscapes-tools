@@ -35,7 +35,7 @@ from rscommons.vbet_network import copy_vaa_attributes, join_attributes, create_
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.raster_warp import raster_warp
 from rscommons import TimerBuckets, TimerWaypoints
-from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions
+from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions, raster_resolution_meta
 
 from vbet.vbet_database import build_vbet_database, load_configuration
 from vbet.vbet_raster_ops import rasterize, raster_logic_mask, raster_update_multiply, raster_remove_zone, get_endpoints_on_raster, generate_vbet_polygon, generate_centerline_surface, clean_raster_regions, proximity_raster
@@ -64,7 +64,7 @@ LayerTypes = {
     'HILLSHADE': RSLayer('DEM Hillshade', 'HILLSHADE', 'Raster', 'inputs/dem_hillshade.tif'),
     'INPUTS': RSLayer('Inputs', 'INPUTS', 'Geopackage', 'inputs/vbet_inputs.gpkg', {
         'FLOWLINES': RSLayer('NHD Flowlines', 'FLOWLINES', 'Vector', 'flowlines'),
-        'FLOW_AREAS': RSLayer('NHD Flow Areas', 'FLOW_AREAS', 'Vector', 'flowareas'),
+        # 'FLOW_AREAS': RSLayer('NHD Flow Areas', 'FLOW_AREAS', 'Vector', 'flowareas'),
         'FLOWLINES_VAA': RSLayer('NHD Flowlines with Attributes', 'FLOWLINES_VAA', 'Vector', 'Flowlines_VAA'),
         'CHANNEL_AREA_POLYGONS': RSLayer('Channel Area Polygons', 'CHANNEL_AREA_POLYGONS', 'Vector', 'channel_area_polygons'),
         'CATCHMENTS': RSLayer('NHD Catchments', 'CATCHMENTS', 'Vector', 'catchments'),
@@ -152,6 +152,9 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
 
     augment_layermeta('vbet', LYR_DESCRIPTIONS_JSON, LayerTypes)
 
+    # save raster nodes and paths for adding resolution metadata later
+    proj_rasters = []
+
     _realization, proj_nodes = project.add_realization(project_name, 'REALIZATION1', cfg.version, data_nodes=['Inputs', 'Intermediates', 'Outputs'], create_folders=True)
 
     log.info('Preparing inputs:')
@@ -204,9 +207,10 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         pitfill_status = run_subprocess(project_folder, ["mpiexec", "-n", NCORES, "pitremove", "-z", dem, "-fel", pitfill_dem])
         if pitfill_status != 0 or not os.path.isfile(pitfill_dem):
             raise Exception('TauDEM: pitfill failed')
-        _proj_hillshade_node, pitfill_dem = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['PITFILL'])
+        _proj_pitfill_node, pitfill_dem = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['PITFILL'])
+        proj_rasters.append([_proj_pitfill_node, pitfill_dem])
     else:
-        _proj_hillshade_node, pitfill_dem = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['PITFILL'], in_pitfill_dem, replace=True)
+        _proj_pitfill_node, pitfill_dem = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['PITFILL'], in_pitfill_dem, replace=True)
 
     if not all([in_dinfflowdir_ang, in_dinfflowdir_slp]):
         dinfflowdir_slp = os.path.join(project_folder, LayerTypes['DINFFLOWDIR_SLP'].rel_path)
@@ -216,6 +220,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             raise Exception('TauDEM: dinfflowdir failed')
         _proj_dinfflowdir_ang_node, dinfflowdir_ang = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_ANG'])
         _proj_dinfflowdir_slp_node, dinfflowdir_slp = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_SLP'])
+        proj_rasters.extend([[_proj_dinfflowdir_ang_node, dinfflowdir_ang], [_proj_dinfflowdir_slp_node, dinfflowdir_slp]])
     else:
         _proj_dinfflowdir_ang_node, dinfflowdir_ang = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_ANG'], in_dinfflowdir_ang, replace=True)
         _proj_dinfflowdir_slp_node, dinfflowdir_slp = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_SLP'], in_dinfflowdir_slp, replace=True)
@@ -257,9 +262,10 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     for raster in [vbet_zone_raster, active_zone_raster]:
         with rasterio.open(raster, 'w', **int_meta) as rio:
             rio.write(empty_array, 1)
-    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['VBET_ZONES'])
-    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['ACTIVE_FP_ZONES'])
-    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['INACTIVE_FP_ZONES'])
+    _vbet_zones_node, vbet_zone_ras = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['VBET_ZONES'])
+    _active_zones_node, active_zones_ras = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['ACTIVE_FP_ZONES'])
+    _inactive_zones_node, inactive_zones_ras = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['INACTIVE_FP_ZONES'])
+    proj_rasters.extend([[_vbet_zones_node, vbet_zone_ras], [_active_zones_node, active_zones_ras], [_inactive_zones_node, inactive_zones_ras]])
 
     # write_rasters = {}
 
@@ -872,15 +878,19 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         os.remove(out_transformed_slope_composite.vrt_path)
 
     # Now add our Geopackages to the project XML
-    project.add_project_raster(proj_nodes['Outputs'], LayerTypes['COMPOSITE_VBET_EVIDENCE'])
-    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['COMPOSITE_HAND'])
-    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['TRANSFORMED_HAND'])
-    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['TRANSFORMED_SLOPE'])
+    _composite_evidence_node, composit_evidence_ras = project.add_project_raster(proj_nodes['Outputs'], LayerTypes['COMPOSITE_VBET_EVIDENCE'])
+    _composite_hand_node, composite_hand_ras = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['COMPOSITE_HAND'])
+    _transformed_hand_node, transformed_hand_ras = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['TRANSFORMED_HAND'])
+    _transformed_slope_node, transformed_slope_ras = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['TRANSFORMED_SLOPE'])
 
-    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['COMPOSITE_VBET_EVIDENCE_INTERIOR'])
-    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['COMPOSITE_HAND_INTERIOR'])
-    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['TRANSFORMED_HAND_INTERIOR'])
-    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['TRANSFORMED_SLOPE_INTERIOR'])
+    _evidence_interior_node, evidence_interior_ras = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['COMPOSITE_VBET_EVIDENCE_INTERIOR'])
+    _hand_interior_node, hand_interior_ras = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['COMPOSITE_HAND_INTERIOR'])
+    _trans_hand_interior_node, trans_hand_interior_ras = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['TRANSFORMED_HAND_INTERIOR'])
+    _trans_slp_interior_node, trans_slp_interior_ras = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['TRANSFORMED_SLOPE_INTERIOR'])
+    proj_rasters.extend([[_composite_evidence_node, composit_evidence_ras], [_composite_hand_node, composite_hand_ras],
+                         [_transformed_hand_node, transformed_hand_ras], [_transformed_slope_node, transformed_slope_ras],
+                         [_evidence_interior_node, evidence_interior_ras], [_hand_interior_node, hand_interior_ras], [_trans_hand_interior_node, trans_hand_interior_ras],
+                         [_trans_slp_interior_node, trans_slp_interior_ras]])
 
     project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
     project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['VBET_OUTPUTS'])
@@ -895,6 +905,9 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         RSMeta("ProcTimeS", f"{ellapsed_time:.2f}", RSMetaTypes.HIDDEN, locked=True),
         RSMeta("Processing Time", pretty_duration(ellapsed_time), locked=True)
     ])
+
+    for ras in proj_rasters:
+        raster_resolution_meta(project, ras[1], ras[0])
 
     add_layer_descriptions(project, LYR_DESCRIPTIONS_JSON, LayerTypes)
 

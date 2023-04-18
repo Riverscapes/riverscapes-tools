@@ -28,7 +28,7 @@ from rscommons.vector_ops import copy_feature_class
 from rscommons.hand import hand_rasterize, run_subprocess
 from rscommons.raster_warp import raster_warp
 from rscommons.geographic_raster import gdal_dem_geographic
-from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions
+from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions, raster_resolution_meta
 
 from taudem.taudem_report import TauDEMReport
 from taudem.__version__ import __version__
@@ -108,7 +108,7 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, project_folder:
     _realization, proj_nodes = project.add_realization(project_name, 'REALIZATION1', cfg.version, data_nodes=["Inputs", "Intermediates", "Outputs"], create_folders=True)
 
     # Copy the inp
-    _proj_dem_node, proj_dem = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], orig_dem)
+    _dem_node, proj_dem = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], orig_dem)
     orig_hillshade = os.path.join(os.path.dirname(orig_dem), 'dem_hillshade.tif')
     orig_slope = os.path.join(os.path.dirname(orig_dem), 'slope.tif')
     project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], orig_hillshade)
@@ -164,7 +164,7 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, project_folder:
 
     path_rasterized_drainage = os.path.join(project_folder, LayerTypes['RASTERIZED_CHANNEL'].rel_path)
     hand_rasterize(channel_vector, hand_dem, path_rasterized_drainage)
-    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['RASTERIZED_CHANNEL'])
+    _raster_channel_node, raster_channel = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['RASTERIZED_CHANNEL'])
 
     # GDAL Products
     # Hillshade
@@ -193,7 +193,7 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, project_folder:
     pitfill_status = run_subprocess(intermediates_path, ["mpiexec", "-n", NCORES, "pitremove", "-z", hand_dem, "-fel", path_pitfill])
     if pitfill_status != 0 or not os.path.isfile(path_pitfill):
         raise Exception('TauDEM: pitfill failed')
-    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['PITFILL'])
+    _pitfill_node, pitfill_raster = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['PITFILL'])
 
     # Flow Dir
     log.info("Finding dinf flow direction")
@@ -202,8 +202,8 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, project_folder:
     dinfflowdir_status = run_subprocess(intermediates_path, ["mpiexec", "-n", NCORES, "dinfflowdir", "-fel", path_pitfill, "-ang", path_ang, "-slp", path_slp])
     if dinfflowdir_status != 0 or not os.path.isfile(path_ang):
         raise Exception('TauDEM: dinfflowdir failed')
-    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_ANG'])
-    project.add_project_raster(proj_nodes['Outputs'], LayerTypes['DINFFLOWDIR_SLP'])
+    _dinfd_ang_node, dinf_ang_raster = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_ANG'])
+    _dinfd_slp_node, dinf_slp_raster = project.add_project_raster(proj_nodes['Outputs'], LayerTypes['DINFFLOWDIR_SLP'])
 
     # generate hand
     log.info("Generating HAND")
@@ -211,7 +211,7 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, project_folder:
     dinfdistdown_status = run_subprocess(intermediates_path, ["mpiexec", "-n", NCORES, "dinfdistdown", "-ang", path_ang, "-fel", path_pitfill, "-src", path_rasterized_drainage, "-dd", hand_raster, "-m", "ave", "v"])
     if dinfdistdown_status != 0 or not os.path.isfile(hand_raster):
         raise Exception('TauDEM: dinfdistdown failed')
-    project.add_project_raster(proj_nodes['Outputs'], LayerTypes['HAND_RASTER'])
+    _hand_node, hand_ras = project.add_project_raster(proj_nodes['Outputs'], LayerTypes['HAND_RASTER'])
 
     # Generate Flow area
     log.info("Finding flow area")
@@ -219,7 +219,7 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, project_folder:
     dinfflowarea_status = run_subprocess(intermediates_path, ["mpiexec", "-n", NCORES, "areadinf", "-ang", path_ang, "-sca", path_sca, "-nc"])
     if dinfflowarea_status != 0 or not os.path.isfile(path_sca):
         raise Exception('TauDEM: AreaDinf failed')
-    project.add_project_raster(proj_nodes['Outputs'], LayerTypes['AREADINF_SCA'])
+    _area_dinf_node, area_dinf_raster = project.add_project_raster(proj_nodes['Outputs'], LayerTypes['AREADINF_SCA'])
 
     # Reclass slope to remove 0
     log.info(f"Reclass zero slope for {path_slp}")
@@ -242,7 +242,7 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, project_folder:
     # reclass_status = run_subprocess(intermediates_path, ['gdal_calc.py', '-A', path_slp, '--outfile', path_slp_reclass, '--calc=(A==0)*0.0001+(A>0)*A', '--co=COMPRESS=LZW'])
     # if reclass_status != 0 or not os.path.isfile(path_slp_reclass):
     #     raise Exception('TauDEM: reclass slope failed')
-    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_SLP_RECLASS'])
+    _flowdir_node, flow_dir_raster = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_SLP_RECLASS'])
 
     # Generate TWI
     log.info("Generating Topographic Wetness Index (TWI)")
@@ -250,7 +250,7 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, project_folder:
     twi_status = run_subprocess(intermediates_path, ["mpiexec", "-n", NCORES, "twi", "-slp", path_slp_reclass, "-sca", path_sca, '-twi', twi_raster])
     if twi_status != 0 or not os.path.isfile(twi_raster):
         raise Exception('TauDEM: TWI failed')
-    project.add_project_raster(proj_nodes['Outputs'], LayerTypes['TWI_RASTER'])
+    _twi_node, twi_ras = project.add_project_raster(proj_nodes['Outputs'], LayerTypes['TWI_RASTER'])
 
     # Generate SlopeAveDown
     # log.info("Finding d8 flow direction")
@@ -285,6 +285,12 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, project_folder:
         RSMeta("Processing Time", pretty_duration(ellapsed_time), locked=True)
     ])
     log.info("TauDEM process complete in {}".format(ellapsed_time))
+
+    new_rasters = [[_raster_channel_node, raster_channel], [_pitfill_node, pitfill_raster], [_dinfd_ang_node, dinf_ang_raster],
+                   [_dinfd_slp_node, dinf_slp_raster], [_hand_node, hand_ras], [_area_dinf_node, area_dinf_raster],
+                   [_flowdir_node, flow_dir_raster], [_twi_node, twi_ras]]
+    for raster in new_rasters:
+        raster_resolution_meta(project, raster[1], raster[0])
 
     add_layer_descriptions(project, LYR_DESCRIPTIONS_JSON, LayerTypes)
 

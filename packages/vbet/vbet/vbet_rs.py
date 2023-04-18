@@ -10,13 +10,19 @@ from vbet.vbet_report import VBETReport
 
 lyrs_in_out = {
     # VBET_ID: INPUT_ID
-    'SLOPE_RASTER': 'SLOPE',
+    'DEM': 'DEM',
     'HILLSHADE': 'HILLSHADE',
-    'FLOWLINES': 'NHDFlowline',
-    'FLOW_AREAS': 'NHDArea',
-    'HAND_RASTER': 'HAND_RASTER',
-    'TWI_RASTER': 'TWI_RASTER',
-    'CHANNEL_AREA_POLYGONS': 'CHANNEL_AREA'
+    'flowlines': 'NHDFlowline',
+    'Flowlines_VAA': 'NHDPlusFlowlineVAA',
+    'catchments': 'NHDPlusCatchment',
+    # 'FLOW_AREAS': 'NHDArea',
+    # 'HAND_RASTER': 'HAND_RASTER',
+    'SLOPE_RASTER': 'GDAL_SLOPE',
+    # 'TWI_RASTER': 'TWI_RASTER',
+    'PITFILL': 'PITFILL',
+    'DINFFLOWDIR_ANG': 'DINFFLOWDIR_ANG',
+    'DINFFLOWDIR_SLP': 'DINFFLOWDIR_SLP',
+    'channel_area_polygons': 'channel_area'
 }
 
 

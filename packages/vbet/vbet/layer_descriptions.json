@@ -46,5 +46,7 @@
     ""],
     "SEGMENTATION_POINTS": ["Points placed at a specified distance interval along the valley centerline.", 
     "", 
-    ""]
+    ""],
+    "VBET_NETWORK": ["The network of the valley bottom.","",""],
+    "TRANSFORM_ZONES": ["Transform zones for each catchment associated with a transform function for converting evidence rasters to 0-1 values.","",""]
 }

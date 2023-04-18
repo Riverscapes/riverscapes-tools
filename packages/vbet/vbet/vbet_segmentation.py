@@ -338,9 +338,9 @@ def calculate_vbet_window_metrics(vbet_igos: Path, vbet_dgos: Path, level_paths:
                 window_area_acres = window_area_m2 / 4046.86
                 window_area_hectares = window_area_m2 / 10000
                 active_acres = (window_measurements['active_floodplain'] + window_measurements['active_channel']) / 4046.86
-                active_hectares = (window_measurements['active_floodplain'] + window_measurements['active_channel']) / 1000
+                active_hectares = (window_measurements['active_floodplain'] + window_measurements['active_channel']) / 10000
                 inactive_acres = window_measurements['inactive_floodplain'] / 4046.86
-                inactive_hectares = window_measurements['inactive_floodplain'] / 1000
+                inactive_hectares = window_measurements['inactive_floodplain'] / 10000
 
                 # Metric Calculations
                 vb_acreage_per_mile = window_area_acres / window_cl_length_mi if window_cl_length_m != 0.0 else 0.0

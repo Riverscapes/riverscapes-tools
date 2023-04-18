@@ -353,6 +353,26 @@ def get_raster_cell_area(in_raster):
         return area
 
 
+def get_raster_cell_size(in_raster):
+
+    raster = gdal.Open(in_raster)
+    gt = raster.GetGeoTransform()
+
+    in_spatial_ref = osr.SpatialReference()
+    in_spatial_ref.ImportFromWkt(raster.GetProjectionRef())
+
+    if in_spatial_ref.IsProjected() == 1:
+        return gt[1], gt[5]
+
+    else:
+        degy = gt[3] - (gt[3] + (raster.RasterYSize * gt[5]))
+        resy = (degy * 111139) / raster.RasterYSize
+        degx = (gt[0] + (raster.RasterXSize * gt[1])) - gt[0]
+        resx = ((40075000 * np.cos(gt[3] * (np.pi / 180)) / 360) * degx) / raster.RasterXSize
+
+        return resx, resy
+
+
 def categorical_raster_count(in_raster):
 
     count = {}
