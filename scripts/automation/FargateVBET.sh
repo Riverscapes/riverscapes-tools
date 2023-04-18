@@ -7,7 +7,7 @@ IFS=$'\n\t'
 # These environment variables need to be present before the script starts
 (: "${TAGS?}")
 (: "${RSCONTEXT_ID?}")
-(: "${CHANNELAREA_ID?}")
+(: "${CHANNEL_AREA_ID?}")
 (: "${TAUDEM_ID?}")
 (: "${RS_API_URL?}")
 (: "${VISIBILITY?}")
@@ -40,7 +40,7 @@ EOF
 
 echo "TAGS: $TAGS"
 echo "RSCONTEXT_ID: $RSCONTEXT_ID"
-echo "CHANNELAREA_ID: $CHANNELAREA_ID"
+echo "CHANNEL_AREA_ID: $CHANNEL_AREA_ID"
 echo "TAUDEM_ID: $TAUDEM_ID"
 echo "RS_API_URL: $RS_API_URL"
 echo "VISIBILITY: $VISIBILITY"
@@ -56,7 +56,7 @@ gdal-config --version
 # Define some folders that we can easily clean up later
 DATA_DIR=/usr/local/data
 RS_CONTEXT_DIR=$DATA_DIR/rs_context/rs_context_$RSCONTEXT_ID
-CHANNELAREA_DIR=$DATA_DIR/channel_area/channel_area_$CHANNELAREA_ID
+CHANNELAREA_DIR=$DATA_DIR/channel_area/channel_area_$CHANNEL_AREA_ID
 TAUDEM_DIR=$DATA_DIR/taudem/taudem_$TAUDEM_ID
 VBET_DIR=$DATA_DIR/output/vbet
 VBET_TEMP=$DATA_DIR/vbet_temp
@@ -70,7 +70,7 @@ rscli download $RS_CONTEXT_DIR --id $RSCONTEXT_ID \
   --file-filter "(hillshade|slope|dem|hydrology|project_bounds.geojson)" \
   --no-input --no-ui --verbose
   
-rscli download $CHANNELAREA_DIR --id $CHANNELAREA_ID \
+rscli download $CHANNELAREA_DIR --id $CHANNEL_AREA_ID \
   --no-input --no-ui --verbose
 
 rscli download $TAUDEM_DIR --id $TAUDEM_ID \
