@@ -35,7 +35,7 @@ from rscommons.vbet_network import copy_vaa_attributes, join_attributes, create_
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.raster_warp import raster_warp
 from rscommons import TimerBuckets, TimerWaypoints
-from rscommons.augment_lyr_meta import augment_layermeta
+from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions
 
 from vbet.vbet_database import build_vbet_database, load_configuration
 from vbet.vbet_raster_ops import rasterize, raster_logic_mask, raster_update_multiply, raster_remove_zone, get_endpoints_on_raster, generate_vbet_polygon, generate_centerline_surface, clean_raster_regions, proximity_raster
@@ -895,6 +895,8 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         RSMeta("ProcTimeS", f"{ellapsed_time:.2f}", RSMetaTypes.HIDDEN, locked=True),
         RSMeta("Processing Time", pretty_duration(ellapsed_time), locked=True)
     ])
+
+    add_layer_descriptions(project, LYR_DESCRIPTIONS_JSON, LayerTypes)
 
     # Report
     report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)

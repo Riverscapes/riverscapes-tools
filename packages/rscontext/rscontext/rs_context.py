@@ -21,7 +21,7 @@ from typing import Dict, List
 from matplotlib.pyplot import hist
 from osgeo import ogr
 from regex import B
-from rscommons import (Logger, ModelConfig, RSLayer, RSProject, Timer, dotenv,
+from rscommons import (Logger, ModelConfig, RSLayer, RSProject, get_shp_or_gpkg, Timer, dotenv,
                        initGDALOGRErrors)
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.clean_nhd_data import clean_nhd_data
@@ -38,7 +38,8 @@ from rscommons.util import (parse_metadata, pretty_duration, safe_makedirs,
                             safe_remove_dir)
 # from rscommons.raster_buffer_stats import raster_buffer_stats2
 from rscommons.vector_ops import copy_feature_class, get_geometry_unary_union
-from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions
+from rscommons.geometry_ops import get_rectangle_as_geom
+from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions, raster_resolution_meta
 
 from rscontext.__version__ import __version__
 from rscontext.boundary_management import raster_area_intersection
@@ -77,7 +78,7 @@ LayerTypes = {
 
     'OWNERSHIP': RSLayer('Ownership', 'Ownership', 'Vector', 'ownership/ownership.shp'),
     'FAIR_MARKET': RSLayer('Fair Market Value', 'FAIRMARKETVALUE', 'Raster', 'ownership/fair_market_value.tif'),
-    'ECOREGIONS': RSLayer('Ecoregions', 'Ecoregions', 'Vector', 'inputs/ecoregions.shp'),
+    'ECOREGIONS': RSLayer('Ecoregions', 'Ecoregions', 'Vector', 'ecoregions/ecoregions.shp'),
     'STATES': RSLayer('States', 'States', 'Vector', 'political_boundaries/states.shp'),
     'COUNTIES': RSLayer('Counties', 'Counties', 'Vector', 'political_boundaries/counties.shp'),
     'GEOLOGY': RSLayer('Geology', 'GEOLOGY', 'Vector', 'geology/geology.shp'),
@@ -182,19 +183,23 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
     hydro_deriv_gpkg_path = os.path.join(output_folder, LayerTypes['HYDRODERIVATIVES'].rel_path)
 
     dem_node, dem_raster = project.add_project_raster(datasets, LayerTypes['DEM'])
-    _node, hill_raster = project.add_project_raster(datasets, LayerTypes['HILLSHADE'])
-    _node, slope_raster = project.add_project_raster(datasets, LayerTypes['SLOPE'])
-    _node, existing_clip = project.add_project_raster(datasets, LayerTypes['EXVEG'])
-    _node, historic_clip = project.add_project_raster(datasets, LayerTypes['HISTVEG'])
-    _node, veg_cover_clip = project.add_project_raster(datasets, LayerTypes['VEGCOVER'])
-    _node, veg_height_clip = project.add_project_raster(datasets, LayerTypes['VEGHEIGHT'])
-    _node, hdist_clip = project.add_project_raster(datasets, LayerTypes['HDIST'])
-    _node, fdist_clip = project.add_project_raster(datasets, LayerTypes['FDIST'])
-    _node, fccs_clip = project.add_project_raster(datasets, LayerTypes['FCCS'])
-    _node, veg_condition_clip = project.add_project_raster(datasets, LayerTypes['VEGCONDITION'])
-    _node, veg_departure_clip = project.add_project_raster(datasets, LayerTypes['VEGDEPARTURE'])
-    _node, sclass_clip = project.add_project_raster(datasets, LayerTypes['SCLASS'])
-    _node, fair_market_clip = project.add_project_raster(datasets, LayerTypes['FAIR_MARKET'])
+    hillshade_node, hill_raster = project.add_project_raster(datasets, LayerTypes['HILLSHADE'])
+    slope_node, slope_raster = project.add_project_raster(datasets, LayerTypes['SLOPE'])
+    existing_node, existing_clip = project.add_project_raster(datasets, LayerTypes['EXVEG'])
+    historic_node, historic_clip = project.add_project_raster(datasets, LayerTypes['HISTVEG'])
+    vegcover_node, veg_cover_clip = project.add_project_raster(datasets, LayerTypes['VEGCOVER'])
+    vegheight_node, veg_height_clip = project.add_project_raster(datasets, LayerTypes['VEGHEIGHT'])
+    hdist_node, hdist_clip = project.add_project_raster(datasets, LayerTypes['HDIST'])
+    fdist_node, fdist_clip = project.add_project_raster(datasets, LayerTypes['FDIST'])
+    fccs_node, fccs_clip = project.add_project_raster(datasets, LayerTypes['FCCS'])
+    vegcond_node, veg_condition_clip = project.add_project_raster(datasets, LayerTypes['VEGCONDITION'])
+    vegdep_node, veg_departure_clip = project.add_project_raster(datasets, LayerTypes['VEGDEPARTURE'])
+    sclass_node, sclass_clip = project.add_project_raster(datasets, LayerTypes['SCLASS'])
+    fairmarket_node, fair_market_clip = project.add_project_raster(datasets, LayerTypes['FAIR_MARKET'])
+    input_rasters = [[dem_node, dem_raster], [hillshade_node, hill_raster], [slope_node, slope_raster], [existing_node, existing_clip],
+                     [historic_node, historic_clip], [vegcover_node, veg_cover_clip], [vegheight_node, veg_height_clip],
+                     [hdist_node, hdist_clip], [fdist_node, fdist_clip], [fccs_node, fccs_clip], [vegcond_node, veg_condition_clip],
+                     [vegdep_node, veg_departure_clip], [sclass_node, sclass_clip], [fairmarket_node, fair_market_clip]]
 
     # Download the four digit NHD archive containing the flow lines and watershed boundaries
     log.info('Processing NHD')
@@ -236,6 +241,18 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
     # Clean up NHDPlusCatchment dataset
     clean_nhdplus_catchments(nhd_gpkg_path, boundary, str(huc))
 
+    # HUC 8 extent polygon
+    nhd['HUC8Extent'] = os.path.join(os.path.dirname(nhd['WBDHU8']), 'max_extent.shp')
+    with get_shp_or_gpkg(nhd['WBDHU8']) as huc8lyr, get_shp_or_gpkg(nhd['HUC8Extent'], write=True) as outlyr:
+        bbox = huc8lyr.ogr_layer.GetExtent()
+        extent_box = get_rectangle_as_geom(bbox)
+
+        outlyr.create_layer(ogr.wkbPolygon, 4326)
+        outlyr_def = outlyr.ogr_layer_def
+        feat = ogr.Feature(outlyr_def)
+        feat.SetGeometry(extent_box)
+        outlyr.ogr_layer.CreateFeature(feat)
+
     project.add_metadata([RSMeta('Watershed', huc_name)])
 
     # PRISM climate rasters
@@ -250,8 +267,9 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
             source_raster_path = next(x for x in bil_files if ptype.lower() in os.path.basename(x).lower())
         except StopIteration:
             raise Exception('Could not find .bil file corresponding to "{}"'.format(ptype))
-        _node, project_raster_path = project.add_project_raster(datasets, LayerTypes[ptype])
+        prism_node, project_raster_path = project.add_project_raster(datasets, LayerTypes[ptype])
         raster_warp(source_raster_path, project_raster_path, cfg.OUTPUT_EPSG, buffered_clip_path500, {"cutlineBlend": 1})
+        raster_resolution_meta(project, project_raster_path, prism_node)
 
     states = get_nhd_states(nhd[boundary])
 
@@ -358,23 +376,23 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
     # Clip the landownership Shapefile to a 10km buffer around the watershed boundary
     own_path = os.path.join(output_folder, LayerTypes['OWNERSHIP'].rel_path)
     project.add_dataset(datasets, own_path, LayerTypes['OWNERSHIP'], 'Vector')
-    clip_vector_layer(nhd[boundary], ownership, own_path, cfg.OUTPUT_EPSG, 1000, clip=True)
+    clip_vector_layer(nhd['HUC8Extent'], ownership, own_path, cfg.OUTPUT_EPSG, 10000, clip=True)
 
     # Clip the states shapefile to a 10km buffer around the watershed boundary
     states_path = os.path.join(output_folder, LayerTypes['STATES'].rel_path)
     project.add_dataset(datasets, states_path, LayerTypes['STATES'], 'Vector')
-    clip_vector_layer(nhd[boundary], us_states, states_path, cfg.OUTPUT_EPSG, 1000)
+    clip_vector_layer(nhd['HUC8Extent'], us_states, states_path, cfg.OUTPUT_EPSG, 1000)
 
     # Clip the counties shapefile to a 10km buffer around the watershed boundary
     counties_path = os.path.join(output_folder, LayerTypes['COUNTIES'].rel_path)
     project.add_dataset(datasets, counties_path, LayerTypes['COUNTIES'], 'Vector')
-    clip_vector_layer(nhd[boundary], us_counties, counties_path, cfg.OUTPUT_EPSG, 1000)
+    clip_vector_layer(nhd['HUC8Extent'], us_counties, counties_path, cfg.OUTPUT_EPSG, 1000)
 
     # Clip the geology shapefile to a 10km buffer around the watershed boundary
     # geology is in national project - can also be retrieved from science base
     geo_path = os.path.join(output_folder, LayerTypes['GEOLOGY'].rel_path)
     project.add_dataset(datasets, geo_path, LayerTypes['GEOLOGY'], 'Vector')
-    clip_vector_layer(nhd[boundary], geology, geo_path, cfg.OUTPUT_EPSG, 1000, clip=True)
+    clip_vector_layer(nhd['HUC8Extent'], geology, geo_path, cfg.OUTPUT_EPSG, 10000, clip=True)
 
     #######################################################
     # Segmentation
@@ -401,7 +419,7 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
     # Filter the ecoregions Shapefile to only include attributes that intersect with our HUC
     eco_path = os.path.join(output_folder, 'ecoregions', 'ecoregions.shp')
     project.add_dataset(datasets, eco_path, LayerTypes['ECOREGIONS'], 'Vector')
-    clip_vector_layer(nhd[boundary], ecoregions, eco_path, cfg.OUTPUT_EPSG, 1000)
+    clip_vector_layer(nhd['HUC8Extent'], ecoregions, eco_path, cfg.OUTPUT_EPSG, 1000)
 
     report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
     project.add_report(datasets, LayerTypes['REPORT'], replace=True)
@@ -417,6 +435,8 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
         RSMeta("Processing Time", pretty_duration(ellapsed_time), locked=True)
     ])
 
+    for raster in input_rasters:
+        raster_resolution_meta(project, raster[1], raster[0])
     add_layer_descriptions(project, LYR_DESCRIPTIONS_JSON, LayerTypes)
 
     # Clean up the unzipped nhd files
