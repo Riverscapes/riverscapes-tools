@@ -104,7 +104,7 @@ try() {
   if [[ $? != 0 ]]; then return 1; fi
 
   cd /usr/local/src/riverscapes-tools/packages/vbet
-  /usr/local/venv/bin/python -m vbet.vbet_rs \
+  python3 -m vbet.vbet_rs \
     $VBET_DIR/project.rs.xml \
     $RS_CONTEXT_DIR/project.rs.xml,$TAUDEM_DIR/project.rs.xml,$CHANNELAREA_DIR/project.rs.xml
 
