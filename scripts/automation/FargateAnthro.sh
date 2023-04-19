@@ -65,7 +65,7 @@ ANTHRO_DIR=$DATA_DIR/output
 
 # Get the RSCli project we need to make this happen
 rscli download $RS_CONTEXT_DIR --id $RSCONTEXT_ID \
-  --file-filter "(dem_hillshade.tif|existing_veg.tif|hydro_derivatives.gpkg|ownership.shp|transportation|project_bounds.geojson)" \
+  --file-filter "(dem_hillshade|existing_veg|hydro_derivatives.gpkg|ownership|transportation|project_bounds.geojson)" \
   --no-input --no-ui --verbose
   
 rscli download $VBET_DIR --id $VBET_ID \
