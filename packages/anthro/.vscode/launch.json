@@ -60,6 +60,16 @@
             "{env:DATA_ROOT}/anthro/${input:HUC}/project.rs.xml",
             "{env:DATA_ROOT}/anthro/${input:HUC}/outputs/anthro.html"
           ]
+        },
+        {
+          "name": "Version Bump",
+          "type": "python",
+          "module": "rscommons.version",
+          "args": [
+            "${workspaceFolder}/anthro/__version__.py"
+          ],
+          "request": "launch",
+          "console": "integratedTerminal"
         }
     ]
 }

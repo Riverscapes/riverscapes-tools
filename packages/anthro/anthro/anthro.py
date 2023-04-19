@@ -21,6 +21,7 @@ from rscommons import Logger, initGDALOGRErrors, RSLayer, RSProject, ModelConfig
 from rscommons.database import create_database, SQLiteCon
 from rscommons.copy_features import copy_features_fields
 from rscommons.moving_window import get_moving_windows
+from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions, raster_resolution_meta
 
 from anthro.utils.conflict_attributes import conflict_attributes
 # from anthro.igo_infrastructure import infrastructure_attributes
@@ -56,7 +57,13 @@ LayerTypes = {
         'RAILS': RSLayer('Railroads', 'RAIL', 'Vector', 'rails'),
         # 'LEVEES': RSLayer('Levees', 'LEVEE', 'Vector', 'levees')
     }),
-    'INTERMEDIATES': RSLayer('Anthropogenic Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/intermediates.gpkg', {}),
+    'INTERMEDIATES': RSLayer('Anthropogenic Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/intermediates.gpkg', {
+        'DIVERSIONS': RSLayer('Diversion Points', 'DIVERSIONS', 'Vector', 'diversions'),
+        'PRIVATE_LAND': RSLayer('Private Land', 'PRIVATE', 'Vector', 'private_land'),
+        'RAIL_VB': RSLayer('Railroad Within Valley Bottom', 'RAIL_VB', 'Vector', 'rail_valleybottom'),
+        'ROAD_CROSSINGS': RSLayer('Road Stream Crossings', 'ROAD_CROSSINGS', 'Vector', 'road_crossings'),
+        'ROAD_VB': RSLayer('Roads Within Valley Bottom', 'ROAD_VB', 'Vector', 'road_valleybottom')
+    }),
     'OUTPUTS': RSLayer('Anthropologic Outputs', 'OUTPUTS', 'Geopackage', 'outputs/anthro.gpkg', {
         'ANTHRO_GEOM_POINTS': RSLayer('Anthropogenic IGO Point Geometry', 'ANTHRO_GEOM_POINTS', 'Vector', 'IGOGeometry'),
         'ANTHRO_POINTS': RSLayer('Anthropogenic Output Points', 'ANTRHO_POINTS', 'Vector', 'vwIgos'),
@@ -77,17 +84,16 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
     log.info(f'HUC: {huc}')
     log.info(f'EPSG: {cfg.OUTPUT_EPSG}')
 
-    augment_layermeta()
+    augment_layermeta('anthro', LYR_DESCRIPTIONS_JSON, LayerTypes)
 
     start_time = time.time()
 
     project_name = f'Anthropogenic Context for HUC {huc}'
     project = RSProject(cfg, output_folder)
     project.create(project_name, 'Anthro', [
-        RSMeta(f'HUC{len(huc)}', str(huc)),
-        RSMeta('HUC', str(huc)),
-        RSMeta('AnthroVersion', cfg.version),
-        RSMeta('AnthroTimeStamp', str(int(time.time())))
+        RSMeta('Model Documentation', 'https://tools.riverscapes.net/anthro', RSMetaTypes.URL, locked=True),
+        RSMeta('HUC', str(huc), RSMetaTypes.HIDDEN, locked=True),
+        RSMeta('Hydrologic Unit Code', str(huc), locked=True)
     ], meta)
 
     _realization, proj_nodes = project.add_realization(project_name, 'REALIZATION1', cfg.version, data_nodes=['Inputs', 'Intermediates', 'Outputs'])
@@ -147,14 +153,13 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
         })
 
     db_metadata = {
-        'AnthroDateTime': datetime.datetime.now().isoformat(),
-        'CanalCodes': ','.join(canal_codes)}
+        'Anthro DateTime': datetime.datetime.now().isoformat(),
+        'Canal Codes': ','.join(canal_codes)}
 
     # Execute the SQL to create the lookup tables in the output geopackage
-    watershed_name = create_database(huc, outputs_gpkg_path, db_metadata, cfg.OUTPUT_EPSG, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'anthro_schema.sql'))
+    create_database(huc, outputs_gpkg_path, db_metadata, cfg.OUTPUT_EPSG, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'anthro_schema.sql'))
 
     project.add_metadata_simple(db_metadata)
-    project.add_metadata([RSMeta('Watershed', watershed_name)])
 
     igo_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['ANTHRO_GEOM_POINTS'].rel_path)
     line_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['ANTHRO_GEOM_LINES'].rel_path)
@@ -195,14 +200,14 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
 
     # set window distances for different stream sizes
     distancein = {
-        '0': 300,
-        '1': 500,
-        '2': 1000
+        '0': 200,
+        '1': 400,
+        '2': 1200
     }
     project.add_metadata(
-        [RSMeta('SmallMovingWindow', str(distancein['0'])),
-         RSMeta('MediumMovingWindow', str(distancein['1'])),
-         RSMeta('LargeMovingWindow', str(distancein['2']))])
+        [RSMeta('Small Search Window', str(distancein['0'])),
+         RSMeta('Medium Search Window', str(distancein['1'])),
+         RSMeta('Large Search Window', str(distancein['2']))])
 
     # get moving window for each igo
     windows = get_moving_windows(igo_geom_path, input_layers['DGO'], levelpathsin, distancein)
@@ -227,25 +232,29 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
     calculate_land_use(outputs_gpkg_path)
     lui_raster(existing_veg, outputs_gpkg_path, os.path.join(os.path.dirname(intermediates_gpkg_path), 'lui.tif'))
     # add lui raster to project
-    project.add_dataset(proj_nodes['Intermediates'], os.path.join(os.path.dirname(intermediates_gpkg_path), 'lui.tif'), LayerTypes['LUI'], 'Raster')
+    # project.add_dataset(proj_nodes['Intermediates'], os.path.join(os.path.dirname(intermediates_gpkg_path), 'lui.tif'), LayerTypes['LUI'], 'Raster')
+    lui_node, lui_ras = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['LUI'])
+    raster_resolution_meta(project, lui_ras, lui_node)
 
     ellapsed_time = time.time() - start_time
 
-    intermediate_layers = [
-        ['diversions', 'Stream Diversion Points'],
-        ['private_land', 'Private Land'],
-        ['rail_valleybottom', 'Railroads in Valley Bottom'],
-        ['road_crossings', 'Road Stream Crossings'],
-        ['road_valleybottom', 'Roads in Valley Bottom']
-    ]
-    for lyrname in intermediate_layers:
-        LayerTypes['INTERMEDIATES'].add_sub_layer(f'{str.upper(lyrname[0])}', RSLayer(f'{lyrname[1]}', f'{str.upper(lyrname[0])}', 'Vector', f'{lyrname[0]}'))
+    # intermediate_layers = [
+    #     ['diversions', 'Stream Diversion Points'],
+    #     ['private_land', 'Private Land'],
+    #     ['rail_valleybottom', 'Railroads in Valley Bottom'],
+    #     ['road_crossings', 'Road Stream Crossings'],
+    #     ['road_valleybottom', 'Roads in Valley Bottom']
+    # ]
+    # for lyrname in intermediate_layers:
+    #     LayerTypes['INTERMEDIATES'].add_sub_layer(f'{str.upper(lyrname[0])}', RSLayer(f'{lyrname[1]}', f'{str.upper(lyrname[0])}', 'Vector', f'{lyrname[0]}'))
 
     project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
     project.add_metadata([
-        RSMeta("ProcTimeS", "{:.2f}".format(ellapsed_time), RSMetaTypes.INT),
-        RSMeta("ProcessingTime", pretty_duration(ellapsed_time))
+        RSMeta("ProcTimeS", "{:.2f}".format(ellapsed_time), RSMetaTypes.HIDDEN, locked=True),
+        RSMeta("Processing Time", pretty_duration(ellapsed_time), locked=True)
     ])
+
+    add_layer_descriptions(project, LYR_DESCRIPTIONS_JSON, LayerTypes)
 
     report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
     project.add_report(proj_nodes['Outputs'], LayerTypes['REPORT'], replace=True)
@@ -254,32 +263,6 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
     report.write()
 
     log.info('Anthropogenic Context completed successfully')
-
-
-def augment_layermeta():
-    """
-    For RSContext we've written a JSON file with extra layer meta. We may use this pattern elsewhere but it's just here for now
-    """
-    with open(LYR_DESCRIPTIONS_JSON, 'r') as f:
-        json_data = json.load(f)
-
-    for k, lyr in LayerTypes.items():
-        if lyr.sub_layers is not None:
-            for h, sublyr in lyr.sub_layers.items():
-                if h in json_data and len(json_data[h]) > 0:
-                    sublyr.lyr_meta = [
-                        RSMeta('Description', json_data[h][0]),
-                        RSMeta('SourceUrl', json_data[h][1], RSMetaTypes.URL),
-                        RSMeta('DataProductVersion', json_data[h][2]),
-                        RSMeta('DocsUrl', 'https://tools.riverscapes.net/anthro/data.html#{}'.format(sublyr.id), RSMetaTypes.URL)
-                    ]
-        if k in json_data and len(json_data[k]) > 0:
-            lyr.lyr_meta = [
-                RSMeta('Description', json_data[k][0]),
-                RSMeta('SourceUrl', json_data[k][1], RSMetaTypes.URL),
-                RSMeta('DataProductVersion', json_data[k][2]),
-                RSMeta('DocsUrl', 'https://tools.riverscapes.net/anthro/data.html#{}'.format(lyr.id), RSMetaTypes.URL)
-            ]
 
 
 def main():

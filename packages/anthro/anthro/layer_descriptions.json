@@ -1,8 +1,15 @@
 {
-    "ANTHRO_GEOM_POINTS": ["NHD Flowlines attributed with values for use in the BRAT conflict potential model, as well as the Riparian Condition Assessment Tool",
+    "ANTHRO_GEOM_LINES": ["NHD Flowlines attributed with values for use in the BRAT conflict potential model, as well as the Riparian Condition Assessment Tool",
                          "",""],
-    "ANTHRO_GEOM_LINES": ["Integrated Geographic Objects (points spaced at equal intervals along the riverscape centerlin) attributed with values related to anthropogenic impact",
+    "ANTHRO_LINES": ["Anthropogenic Context model outputs attributed to flowline features.","",""],
+    "ANTHRO_GEOM_POINTS": ["Integrated Geographic Objects (points spaced at equal intervals along the riverscape centerlin) attributed with values related to anthropogenic impact",
                        "",""],
+    "ANTHRO_POINTS": ["Anthropogenic Context model outputs attributed to IGO point features.","",""],
     "LUI": ["Existing vegetation raster classified into four land use intensity categories",
-           "",""]
+           "",""],
+    "DIVERSIONS": ["Points of diversion from streams.","",""],
+    "PRIVATE_LAND": ["Areas from the ownership input classified as private ownership.","",""],
+    "RAIL_VB": ["Railroad features within the valley bottom.","",""],
+    "ROAD_CROSSINGS": ["Intersection of the road and flowline features (where roads cross streams).","",""],
+    "ROAD_VB": ["Roads with the valley bottom.","",""]
 }

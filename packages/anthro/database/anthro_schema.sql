@@ -76,10 +76,10 @@ CREATE TABLE IGOAttributes (
 CREATE TABLE ReachAttributes (
     ReachID INTEGER PRIMARY KEY NOT NULL,
     ReachCode INTEGER REFERENCES ReachCodes (ReachCode),
-    WatershedID TEXT REFERENCES Watersheds (WatershedID) ON DELETE CASCADE,
+    WatershedID TEXT, --REFERENCES Watersheds (WatershedID) ON DELETE CASCADE,
     StreamName TEXT,
     Orig_DA REAL,
-    iGeo_DA REAL CONSTRAINT CK_Reaches_DrainageAreaSqKm CHECK (iGeo_DA >= 0),
+    iGeo_DA REAL, --CONSTRAINT CK_Reaches_DrainageAreaSqKm CHECK (iGeo_DA >= 0),
     iPC_Road REAL CONSTRAINT CHK_Reaches_RoadDist CHECK (iPC_Road >= 0),
     iPC_RoadX REAL CONSTRAINT CHK_Reaches_RoadCrossDists CHECK (iPC_RoadX >= 0),
     iPC_RoadVB REAL CONSTRAINT CHK_Reaches_RoadVBDist CHECK (iPC_RoadVB >= 0),
