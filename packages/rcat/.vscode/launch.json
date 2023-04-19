@@ -15,19 +15,24 @@
     ],
     "configurations": [
         {
-          "name": "RVD Run",
+          "name": "RCAT Run",
           "type": "python",
           "request": "launch",
-          "module": "rvd.rvd",
+          "module": "rcat.rcat",
           "console": "integratedTerminal",
           "args": [
             "${input:HUC}",
-            "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydro_derivatives.gpkg/network_intersected_300m",
             "{env:DATA_ROOT}/rs_context/${input:HUC}/vegetation/existing_veg.tif",
             "{env:DATA_ROOT}/rs_context/${input:HUC}/vegetation/historic_veg.tif",
+            "{env:DATA_ROOT}/taudem/${input:HUC}/intermediates/pitfill.tif",
+            "{env:DATA_ROOT}/anthro/${input:HUC}/outputs/anthro.gpkg/vwIgos",
+            "{env:DATA_ROOT}/vbet/${input:HUC}/intermediates/vbet_intermediates.gpkg/vbet_dgos",
+            "{env:DATA_ROOT}/anthro/${input:HUC}/outputs/anthro.gpkg/vwReaches",
+            "{env:DATA_ROOT}/anthro/${input:HUC}/inputs/inputs.gpkg/roads",
+            "{env:DATA_ROOT}/anthro/${input:HUC}/inputs/inputs.gpkg/rails",
+            "{env:DATA_ROOT}/anthro/${input:HUC}/inputs/inputs.gpkg/canals",
             "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/vbet_full",
-            "{env:DATA_ROOT}/rvd/${input:HUC}", // output folder
-            "--reach_codes", "33400,46003,46006,46007,55800",
+            "{env:DATA_ROOT}/rcat/${input:HUC}", // output folder
             "--meta", "Runner=VSCode",
             "--flow_areas", "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhdplushr.gpkg/NHDArea",
             "--waterbodies", "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhdplushr.gpkg/NHDWaterbody",
@@ -35,11 +40,22 @@
           ]
         },
         {
+          "name": "Augment XML",
+          "type": "python",
+          "request": "launch",
+          "module": "rcat.rcat_rs",
+          "console": "integratedTerminal",
+          "args": [
+            "{env:DATA_ROOT}/rcat/${input:HUC}/project.rs.xml",
+            "{env:DATA_ROOT}/rs_context/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/taudem/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/anthro/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/vbet/${input:HUC}/project.rs.xml"
+          ]
+        },
+        {
           "name": "Version Bump",
           "type": "python",
           "module": "rscommons.version",
           "args": [
-            "${workspaceFolder}/rvd/__version__.py"
+            "${workspaceFolder}/rcat/__version__.py"
           ],
           "request": "launch",
           "console": "integratedTerminal"

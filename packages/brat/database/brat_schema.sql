@@ -155,7 +155,7 @@ INSERT INTO gpkg_contents (table_name, data_type) VALUES ('VegetationOverrides',
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('WatershedHydroParams', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Watersheds', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('VegetationTypes', 'attributes');
-INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachAttibutes', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachAttributes', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('HydroParams', 'attributes');
 
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('vwReachAttributes', 'attributes');

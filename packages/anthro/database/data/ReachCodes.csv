@@ -1,0 +1,32 @@
+ReachCode,Name,DisplayName,Description
+33400,CONNECTOR,Connector,feature type only: no attributes
+33600,CANAL/DITCH,Canal - Ditch,feature type only: no attributes
+33601,CANAL/DITCH,Canal - Ditch,Canal/Ditch Type|aqueduct
+33603,CANAL/DITCH,Canal - Ditch,Canal/Ditch Type|stormwater
+42000,UNDERGROUND CONDUIT,Conduit,feature type only: no attributes
+42001,UNDERGROUND CONDUIT,Conduit,Positional Accuracy|definite
+42002,UNDERGROUND CONDUIT,Conduit,Positional Accuracy|indefinite
+42003,UNDERGROUND CONDUIT,Conduit,Positional Accuracy|appoximate
+42800,PIPELINE,Pipeline,feature type only: no attributes
+42801,PIPELINE,Pipeline,Product|water; Pipeline Type|aqueduct; Relationship to Surface|at or near
+42802,PIPELINE,Pipeline,Product|water; Pipeline Type|aqueduct; Relationship to Surface|elevated
+42803,PIPELINE,Pipeline,Product|water; Pipeline Type|aqueduct; Relationship to Surface|underground
+42804,PIPELINE,Pipeline,Product|water; Pipeline Type|aqueduct; Relationship to Surface|underwater
+42805,PIPELINE,Pipeline,Product|water; Pipeline Type|general case; Relationship to Surface|at or near
+42806,PIPELINE,Pipeline,Product|water; Pipeline Type|general case; Relationship to Surface|elevated
+42807,PIPELINE,Pipeline,Product|water; Pipeline Type|general case; Relationship to Surface|underground
+42808,PIPELINE,Pipeline,Product|water; Pipeline Type|general case; Relationship to Surface|underwater
+42809,PIPELINE,Pipeline,Product|water; Pipeline Type|penstock; Relationship to Surface|at or near
+42810,PIPELINE,Pipeline,Product|water; Pipeline Type|penstock; Relationship to Surface|elevated
+42811,PIPELINE,Pipeline,Product|water; Pipeline Type|penstock; Relationship to Surface|underground
+42812,PIPELINE,Pipeline,Product|water; Pipeline Type|penstock; Relationship to Surface|underwater
+42813,PIPELINE,Pipeline,Product|water; Pipeline Type|siphon; Relationship to Surface|unspecified
+42814,PIPELINE,Pipeline,Product|water; Pipeline Type|general case
+42815,PIPELINE,Pipeline,Product|water; Pipeline Type|penstock
+42816,PIPELINE,Pipeline,Product|water; Pipeline Type|aqueduct
+46000,STREAM/RIVER,Stream,feature type only: no attributes
+46003,STREAM/RIVER,Intermittent,Hydrographic Category|intermittent
+46006,STREAM/RIVER,Perennial,Hydrographic Category|perennial
+46007,STREAM/RIVER,Ephemeral,Hydrographic Category|ephemeral
+55800,ARTIFICIAL PATH,Artificial Path,feature type only: no attributes
+56600,COASTLINE,Coastline,feature type only: no attributes

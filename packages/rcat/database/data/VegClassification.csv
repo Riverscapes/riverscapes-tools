@@ -1,0 +1,34 @@
+Physiognomy,EpochID,ConversionVal,Riparian,Vegetated
+Open Water,1,500,1,0
+Riparian,1,100,1,1
+Hardwood,1,100,1,1
+Grassland,1,50,0,1
+Shrubland,1,50,0,1
+Non-vegetated,1,40,0,0
+Snow-Ice,1,40,0,0
+Sparsely Vegetated,1,40,0,1
+Barren,1,40,0,0
+Hardwood-Conifer,1,20,0,1
+Conifer-Hardwood,1,20,0,1
+Conifer,1,20,0,1
+Developed,1,2,0,0
+Developed-Low Intensity,1,2,0,0
+Developed-Medium Intensity,1,2,0,0
+Developed-High Intensity,1,2,0,0
+Developed-Roads,1,2,0,0
+Quarries-Strip Mines-Gravel Pits-Well and Wind Pads,1,2,0,0
+Exotic Tree-Shrub,1,3,0,1
+Exotic Herbaceous,1,3,0,1
+Ruderal Wet Meadow and Marsh,1,3,0,1
+Agricultural,1,1,0,1
+Open Water,2,500,1,0
+Riparian,2,100,1,1
+Hardwood,2,100,1,1
+Shrubland,2,50,0,1
+Grassland,2,50,0,1
+Perennial Ice/Snow,2,40,0,0
+Barren-Rock/Sand/Clay,2,40,0,0
+Sparse,2,40,0,0
+Conifer,2,20,0,1
+Hardwood-Conifer,2,20,0,1
+Conifer-Hardwood,2,20,0,1
