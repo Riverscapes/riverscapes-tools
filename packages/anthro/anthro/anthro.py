@@ -9,7 +9,6 @@ import traceback
 import sys
 import time
 import datetime
-import json
 from typing import Dict, List
 from osgeo import ogr
 
@@ -159,7 +158,7 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
     # Execute the SQL to create the lookup tables in the output geopackage
     create_database(huc, outputs_gpkg_path, db_metadata, cfg.OUTPUT_EPSG, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'anthro_schema.sql'))
 
-    project.add_metadata_simple(db_metadata)
+    # project.add_metadata_simple(db_metadata)
 
     igo_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['ANTHRO_GEOM_POINTS'].rel_path)
     line_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['ANTHRO_GEOM_LINES'].rel_path)
