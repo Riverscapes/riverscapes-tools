@@ -10,18 +10,18 @@ from rcat.rcat_report import RcatReport
 
 lyrs_in_out = {
     # RCAT_ID: INPUT_ID
-    'EXVEG': ['EXVEG'],
-    'HISTVEG': ['HISTVEG'],
-    'flowareas': ['NHDArea'],
-    'waterbodies': ['NHDWaterbody'],
-    'PITFILL': ['PITFILL'],
-    'igo': ['IGOGeometry'],
-    'reaches': ['ReachGeometry'],
-    'roads': ['roads'],
-    'rails': ['rails'],
-    'canals': ['canals'],
-    'valley_bottom': ['vbet_full'],
-    'dgo': ['vbet_dgos']
+    'EXVEG': 'EXVEG',
+    'HISTVEG': 'HISTVEG',
+    'flowareas': 'NHDArea',
+    'waterbodies': 'NHDWaterbody',
+    'PITFILL': 'PITFILL',
+    'igo': 'IGOGeometry',
+    'reaches': 'ReachGeometry',
+    'roads': 'roads',
+    'rails': 'rails',
+    'canals': 'canals',
+    'valley_bottom': 'vbet_full',
+    'dgo': 'vbet_dgos'
 }
 
 
@@ -44,11 +44,10 @@ def main():
 
     try:
         out_prj = RSProject(None, args.out_project_xml)
-        # out_prj.rs_meta_augment(
-        #     args.in_xmls.split(','),
-        #     lyrs_in_out
-        # )
-        gpkg_path = os.path.join(out_prj.project_dir, out_prj.XMLBuilder.find('.//Outputs/Geopackage[@id="OUTPUTS"]/Path').text)
+        out_prj.rs_meta_augment(
+            args.in_xmls.split(','),
+            lyrs_in_out
+        )
 
         in_xmls = args.in_xmls.split(',')
         rscontext_xml = in_xmls[0]
@@ -68,81 +67,11 @@ def main():
             if proj_watershed_node is None:
                 out_prj.add_metadata([RSMeta('Watershed', watershed_node.text)])
 
-        # add rsx paths to output xml
-        done = []  # list of found nodes so that they don't get repeated if they exist in two projects
-        for outid, inid in lyrs_in_out.items():
-            for l in rscproj.XMLBuilder.tree.iter():
-                if 'lyrName' in l.attrib.keys():
-                    if l.attrib['lyrName'] == inid[0]:
-                        if inid[0] not in done:
-                            innode = l
-                            proj = rscproj
-                            done.append(inid[0])
-                if 'id' in l.attrib.keys():
-                    if l.attrib['id'] == inid[0]:
-                        if inid[0] not in done:
-                            innode = l
-                            proj = rscproj
-                            done.append(inid[0])
-            for m in taudemproj.XMLBuilder.tree.iter():
-                if 'lyrName' in m.attrib.keys():
-                    if m.attrib['lyrName'] == inid[0]:
-                        if inid[0] not in done:
-                            innode = m
-                            proj = taudemproj
-                            done.append(inid[0])
-                if 'id' in m.attrib.keys():
-                    if m.attrib['id'] == inid[0]:
-                        if inid[0] not in done:
-                            innode = m
-                            proj = taudemproj
-                            done.append(inid[0])
-            for n in anthroproj.XMLBuilder.tree.iter():
-                if 'lyrName' in n.attrib.keys():
-                    if n.attrib['lyrName'] == inid[0]:
-                        if inid[0] not in done:
-                            innode = n
-                            proj = anthroproj
-                            done.append(inid[0])
-                if 'id' in n.attrib.keys():
-                    if n.attrib['id'] == inid[0]:
-                        if inid[0] not in done:
-                            innode = n
-                            proj = anthroproj
-                            done.append(inid[0])
-            for o in vbetproj.XMLBuilder.tree.iter():
-                if 'lyrName' in o.attrib.keys():
-                    if o.attrib['lyrName'] == inid[0]:
-                        if inid[0] not in done:
-                            innode = o
-                            proj = vbetproj
-                            done.append(inid[0])
-                if 'id' in o.attrib.keys():
-                    if o.attrib['id'] == inid[0]:
-                        if inid[0] not in done:
-                            innode = o
-                            proj = vbetproj
-                            done.append(inid[0])
-            if not innode:
-                raise Exception(f'dataset with id {inid[0]} not found in any input project xmls')
-
-            path = proj.get_rsx_path(innode)
-            lyrs_in_out[outid].append(path)
-            lyrs_in_out[outid].append(proj.XMLBuilder.find('Warehouse').attrib['id'])
-
-            for p in out_prj.XMLBuilder.tree.iter():
-                if 'lyrName' in p.attrib.keys():
-                    if p.attrib['lyrName'] == outid:
-                        p.attrib['extRef'] = lyrs_in_out[outid][2] + ':' + lyrs_in_out[outid][1]
-                if 'id' in p.attrib.keys():
-                    if p.attrib['id'] == outid:
-                        p.attrib['extRef'] = lyrs_in_out[outid][2] + ':' + lyrs_in_out[outid][1]
-
         # if watershed in meta, change the project name
         watershed_node = out_prj.XMLBuilder.find('MetaData').find('Meta[@name="Watershed"]')
         if watershed_node is not None:
             name_node = out_prj.XMLBuilder.find('Name')
-            name_node.text = f"BRAT for {watershed_node.text}"
+            name_node.text = f"RCAT for {watershed_node.text}"
 
         out_prj.XMLBuilder.write()
         report_path = out_prj.XMLBuilder.find('.//HTMLFile[@id="REPORT"]/Path').text

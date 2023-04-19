@@ -29,7 +29,7 @@ def vegetation_summary(outputs_gpkg_path: str, reach_dgos: dict, veg_raster: str
     """
 
     log = Logger('Reach Vegetation')
-    log.info('Summarizing vegetation rasters for each reach')
+    log.info(f'Summarizing vegetation raster {os.path.basename(veg_raster)} for each reach')
 
     # Retrieve the raster spatial reference and geotransformation
     dataset = gdal.Open(veg_raster)

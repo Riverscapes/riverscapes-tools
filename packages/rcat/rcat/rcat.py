@@ -9,7 +9,6 @@ import time
 import datetime
 import sys
 import traceback
-import json
 
 from typing import Dict
 from osgeo import ogr
@@ -23,6 +22,7 @@ from rscommons.database import create_database, SQLiteCon
 from rscommons.copy_features import copy_features_fields
 from rscommons.util import parse_metadata, pretty_duration
 from rscommons.moving_window import get_moving_windows
+from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions, raster_resolution_meta
 
 from rcat.lib.veg_rasters import rcat_rasters
 from rcat.lib.igo_vegetation import igo_vegetation
@@ -84,18 +84,17 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
     log.info(f'HUC: {huc}')
     log.info(f'EPSG: {cfg.OUTPUT_EPSG}')
 
-    augment_layermeta()
+    augment_layermeta('rcat', LYR_DESCRIPTIONS_JSON, LayerTypes)
 
     start_time = time.time()
 
     project_name = f'RCAT for HUC {huc}'
     project = RSProject(cfg, output_folder)
     project.create(project_name, 'RCAT', [
-        RSMeta(f'HUC{len(huc)}', str(huc)),
-        RSMeta('HUC', str(huc)),
-        RSMeta('RCATVersion', cfg.version),
-        RSMeta('RCATTimeStamp', str(int(time.time())))
-    ])
+        RSMeta('Model Documentation', 'https://tools.riverscapes.net/rcat', RSMetaTypes.URL, locked=True),
+        RSMeta(f'HUC', str(huc), RSMetaTypes.HIDDEN, locked=True),
+        RSMeta('Hydrologic Unit Code', str(huc), locked=True),
+    ], meta)
 
     _realization, proj_nodes = project.add_realization(project_name, 'REALIZATION1', cfg.version, data_nodes=['Inputs', 'Intermediates', 'Outputs'])
 
@@ -154,19 +153,15 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
         'RCATDateTime': datetime.datetime.now().isoformat(),
     }
 
-    watershed_name = create_database(huc, outputs_gpkg_path, db_metadata, cfg.OUTPUT_EPSG, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'rcat_schema.sql'))
+    create_database(huc, outputs_gpkg_path, db_metadata, cfg.OUTPUT_EPSG, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'rcat_schema.sql'))
 
-    project.add_metadata_simple(db_metadata)
-    project.add_metadata([RSMeta('Watershed', watershed_name)])
+    # project.add_metadata_simple(db_metadata)
+    # project.add_metadata([RSMeta('Watershed', watershed_name)])
 
     igo_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['GEOM_POINTS'].rel_path)
     reach_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['GEOM_LINES'].rel_path)
     copy_features_fields(input_layers['ANTHROIGO'], igo_geom_path, epsg=cfg.OUTPUT_EPSG)
     copy_features_fields(input_layers['ANTHROREACHES'], reach_geom_path, epsg=cfg.OUTPUT_EPSG)
-
-    # remove larger rivers and waterbodies from dgos
-    # best approach might be to just use dgos and when summarizing veg, check if dgo
-    # intersects with flowarea or waterbody; if so, set water = 0 else set water = 1
 
     with SQLiteCon(outputs_gpkg_path) as database:
         database.curs.execute('INSERT INTO ReachAttributes (ReachID, ReachCode, WatershedID, StreamName, NHDPlusID, iPC_LU) SELECT ReachID, ReachCode, WatershedID, StreamName, NHDPlusID, iPC_LU FROM ReachGeometry')
@@ -201,15 +196,15 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
         db.conn.commit()
 
     distance_in = {
-        '0': 300,
-        '1': 500,
-        '2': 1000
+        '0': 200,
+        '1': 400,
+        '2': 1200
     }
 
     project.add_metadata(
-        [RSMeta('SmallMovingWindow', str(distance_in['0'])),
-         RSMeta('MediumMovingWindow', str(distance_in['1'])),
-         RSMeta('LargeMovingWindow', str(distance_in['2']))])
+        [RSMeta('Small Search Window', str(distance_in['0']), RSMetaTypes.INT, locked=True),
+         RSMeta('Medium Search Window', str(distance_in['1']), RSMetaTypes.INT, locked=True),
+         RSMeta('Large Search Window', str(distance_in['2']), RSMetaTypes.INT, locked=True)])
 
     windows = get_moving_windows(igo_geom_path, input_layers['ANTHRODGO'], levelpathsin, distance_in)
     log.info('removing large rivers from moving window polygons')
@@ -217,16 +212,24 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
 
     if flow_areas:
         geom_flow_areas = get_geometry_unary_union(flow_areas)
-        for g in geom_flow_areas.geoms:
-            if not g.is_valid:
-                g.make_valid()
+        if geom_flow_areas.type == 'MultiPolygon':
+            for g in geom_flow_areas.geoms:
+                if not g.is_valid:
+                    g.make_valid()
+        elif geom_flow_areas.type == 'Polygon':
+            if not geom_flow_areas.is_valid:
+                geom_flow_areas.make_valid()
     else:
         geom_flow_areas = None
     if waterbodies:
         geom_waterbodies = get_geometry_unary_union(waterbodies)
-        for g in geom_waterbodies.geoms:
-            if not g.is_valid:
-                g.make_valid()
+        if geom_waterbodies.type == 'MultiPolygon':
+            for g in geom_waterbodies.geoms:
+                if not g.is_valid:
+                    g.make_valid()
+        elif geom_waterbodies.type == 'Polygon':
+            if not geom_waterbodies.is_valid:
+                geom_waterbodies.make_valid()
     else:
         geom_waterbodies = None
 
@@ -257,13 +260,15 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
                      input_layers['ROADS'], input_layers['RAILS'], input_layers['CANALS'])
 
     # Add intermediate rasters to xml
-    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['EXRIPARIAN'])
-    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['HISTRIPARIAN'])
-    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['EXVEGETATED'])
-    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['HISTVEGETATED'])
-    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['CONVERSION'])
-    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['D8FLOWDIR'])
-    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['FPACCESS'])
+    exrip_node, exrip_ras = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['EXRIPARIAN'])
+    histrip_node, histrip_ras = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['HISTRIPARIAN'])
+    exveg_node, exveg_ras = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['EXVEGETATED'])
+    histveg_node, histveg_ras = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['HISTVEGETATED'])
+    conv_node, conv_ras = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['CONVERSION'])
+    flowdir_node, flowdir_ras = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['D8FLOWDIR'])
+    fpaccess_node, fpacess_ras = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['FPACCESS'])
+    proj_rasters = [[exrip_node, exrip_ras], [histrip_node, histrip_ras], [exveg_node, exveg_ras], [histveg_node, histveg_ras],
+                    [conv_node, conv_ras], [flowdir_node, flowdir_ras], [fpaccess_node, fpacess_ras]]
 
     # sample accessibility and vegetation and derivative rasters onto igos and reaches using moving windows/dgos
     int_rasters = ['fp_access.tif', 'ex_riparian.tif', 'hist_riparian.tif', 'ex_vegetated.tif', 'hist_vegetated.tif', 'conversion.tif']
@@ -284,9 +289,15 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
     ellapsed = time.time() - start_time
 
     project.add_metadata([
-        RSMeta("ProcTimeS", "{:.2f}".format(ellapsed), RSMetaTypes.INT),
-        RSMeta("ProcessingTime", pretty_duration(ellapsed))
+        RSMeta("ProcTimeS", "{:.2f}".format(ellapsed), RSMetaTypes.HIDDEN, locked=True),
+        RSMeta("ProcessingTime", pretty_duration(ellapsed), locked=True)
     ])
+
+    # add raster resolution metadata
+    for ras in proj_rasters:
+        raster_resolution_meta(project, ras[1], ras[0])
+
+    add_layer_descriptions(project, LYR_DESCRIPTIONS_JSON, LayerTypes)
 
     report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
     project.add_report(proj_nodes['Outputs'], LayerTypes['REPORT'], replace=True)
@@ -294,32 +305,6 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
     report.write()
 
     log.info('RCAT completed successfully')
-
-
-def augment_layermeta():
-    """
-    For RSContext we've written a JSON file with extra layer meta. We may use this pattern elsewhere but it's just here for now
-    """
-    with open(LYR_DESCRIPTIONS_JSON, 'r') as f:
-        json_data = json.load(f)
-
-    for k, lyr in LayerTypes.items():
-        if lyr.sub_layers is not None:
-            for h, sublyr in lyr.sub_layers.items():
-                if h in json_data and len(json_data[h]) > 0:
-                    sublyr.lyr_meta = [
-                        RSMeta('Description', json_data[h][0]),
-                        RSMeta('SourceUrl', json_data[h][1], RSMetaTypes.URL),
-                        RSMeta('DataProductVersion', json_data[h][2]),
-                        RSMeta('DocsUrl', 'https://tools.riverscapes.net/rcat/data.html#{}'.format(sublyr.id), RSMetaTypes.URL)
-                    ]
-        if k in json_data and len(json_data[k]) > 0:
-            lyr.lyr_meta = [
-                RSMeta('Description', json_data[k][0]),
-                RSMeta('SourceUrl', json_data[k][1], RSMetaTypes.URL),
-                RSMeta('DataProductVersion', json_data[k][2]),
-                RSMeta('DocsUrl', 'https://tools.riverscapes.net/rcat/data.html#{}'.format(lyr.id), RSMetaTypes.URL)
-            ]
 
 
 def main():

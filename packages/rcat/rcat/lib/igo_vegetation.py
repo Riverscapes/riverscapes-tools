@@ -26,7 +26,7 @@ def igo_vegetation(windows: dict, raster: str, out_gpkg_path: str):  # , large_r
     """
 
     log = Logger('IGO Vegetation')
-    log.info('Summarizing vegetation rasters for each IGO')
+    log.info(f'Summarizing vegetation raster {os.path.basename(raster)} for each IGO')
 
     dataset = gdal.Open(raster)
     geo_transform = dataset.GetGeoTransform()
