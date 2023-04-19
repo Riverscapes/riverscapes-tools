@@ -34,6 +34,8 @@ def get_moving_windows(igo: str, dgo: str, level_paths: list, distance: dict):
                     else:
                         geom_window_sections.AddGeometry(geom)
 
+                if not geom_window_sections.IsValid():
+                    geom_window_sections = geom_window_sections.MakeValid()
                 windows[feat_seg_pt.GetFID()] = [VectorBase.ogr2shapely(geom_window_sections), window_length, window_area]
 
     return windows

@@ -217,10 +217,16 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
 
     if flow_areas:
         geom_flow_areas = get_geometry_unary_union(flow_areas)
+        for g in geom_flow_areas.geoms:
+            if not g.is_valid:
+                g.make_valid()
     else:
         geom_flow_areas = None
     if waterbodies:
         geom_waterbodies = get_geometry_unary_union(waterbodies)
+        for g in geom_waterbodies.geoms:
+            if not g.is_valid:
+                g.make_valid()
     else:
         geom_waterbodies = None
 
