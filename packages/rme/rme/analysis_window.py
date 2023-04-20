@@ -1,6 +1,6 @@
-""" GNAT Classes
+""" RME Classes
 
-    Purpose:    Classes to work with GNAT geometires to generate metrics and measurements
+    Purpose:    Classes to work with analysis windows to generate metrics and measurements
     Author:     Kelly Whitehead
     Date:       August 2022
 """
@@ -16,8 +16,8 @@ from osgeo import ogr
 from rscommons.geometry_ops import reduce_precision, get_endpoints
 
 
-class GNATWindow:
-    """ class to support GNAT metric calculations using polygon windows"""
+class AnalysisWindow:
+    """ class to support Riverscapes Metric calculations using polygon windows"""
 
     lyr_segments = None
     buffer_raster_clip = None
@@ -52,38 +52,38 @@ class GNATWindow:
         return geom_window
 
     @cached_property
-    def gnat_flowline(self):
-        """create a cached flowline instance of GNATLine"""
-        return GNATLine(self.geom_flowline_level_path, self.geom_window, self.buffer_elevation)
+    def window_flowline(self):
+        """create a cached flowline instance of WindowedLine"""
+        return AnalysisLine(self.geom_flowline_level_path, self.geom_window, self.buffer_elevation)
 
     @cached_property
-    def gnat_centerline(self):
-        """create a cached centerline instance of GNATLine"""
-        return GNATLine(self.geom_centerline_level_path, self.geom_window, self.buffer_elevation)
+    def window_centerline(self):
+        """create a cached centerline instance of WindowedLine"""
+        return AnalysisLine(self.geom_centerline_level_path, self.geom_window, self.buffer_elevation)
 
     def stream_gradient(self) -> float:
         """return gradient metric for flowline"""
-        if self.gnat_flowline.max_elevation is None or self.gnat_flowline.min_elevation is None:
+        if self.window_flowline.max_elevation is None or self.window_flowline.min_elevation is None:
             return None
-        gradient = (self.gnat_flowline.max_elevation - self.gnat_flowline.min_elevation) / self.gnat_flowline.length
+        gradient = (self.window_flowline.max_elevation - self.window_flowline.min_elevation) / self.window_flowline.length
         return gradient
 
     def valley_gradient(self):
         """return gradient metric for valley centerline"""
-        if self.gnat_flowline.max_elevation is None or self.gnat_flowline.min_elevation is None:
+        if self.window_flowline.max_elevation is None or self.window_flowline.min_elevation is None:
             return None
-        gradient = (self.gnat_flowline.max_elevation - self.gnat_flowline.min_elevation) / self.gnat_centerline.length
+        gradient = (self.window_flowline.max_elevation - self.window_flowline.min_elevation) / self.window_centerline.length
         return gradient
 
 
-class GNATLine():
-    """ generates GNAT metrics for lines"""
+class AnalysisLine():
+    """ generates Riverscapes Metrics for lines"""
 
     transform = None
     src_raster = None
 
     def __init__(self, geom_line: ogr.Geometry, geom_window, buffer_elevation=None) -> None:
-        """ clip geometry and create new instance of GNATLine
+        """ clip geometry and create new instance of AnalysisLine
 
         Args:
             geom_line (ogr.Geometry): unclipped line

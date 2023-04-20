@@ -7,7 +7,7 @@ from collections import OrderedDict
 from rscommons import Logger, dotenv, ModelConfig, RSReport, RSProject
 from rscommons.util import safe_makedirs
 from rscommons.plotting import xyscatter, box_plot, histogram
-from gnat.__version__ import __version__
+from rme.__version__ import __version__
 
 
 class ConfinementReport(RSReport):

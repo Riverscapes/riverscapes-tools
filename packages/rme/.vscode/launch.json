@@ -15,10 +15,10 @@
   ],
   "configurations": [
     {
-      "name": "Gnat",
+      "name": "🚀 Riverscapes Metric Engine",
       "type": "python",
       "request": "launch",
-      "module": "gnat.gnat",
+      "module": "rme.metric_engine",
       "console": "integratedTerminal",
       // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
       "args": [
@@ -33,7 +33,7 @@
         "{env:DATA_ROOT}/rs_context/${input:HUC}/transportation/roads.shp",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/transportation/railways.shp",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/ecoregions/ecoregions.shp",
-        "{env:DATA_ROOT}/gnat/${input:HUC}",
+        "{env:DATA_ROOT}/rme/${input:HUC}",
         //"--epsg", "5070",
         //"--meta",
         "--verbose"
@@ -56,7 +56,7 @@
       "type": "python",
       "module": "rscommons.version",
       "args": [
-        "${workspaceFolder}/gnat/__version__.py"
+        "${workspaceFolder}/rme/__version__.py"
       ],
       "request": "launch",
       "console": "integratedTerminal"
@@ -65,7 +65,7 @@
       "name": "Confinement",
       "type": "python",
       "request": "launch",
-      "module": "gnat.confinement",
+      "module": "rme.confinement",
       "console": "integratedTerminal",
       // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
       "args": [
@@ -88,7 +88,7 @@
       "name": "Calculate Confinement",
       "type": "python",
       "request": "launch",
-      "module": "gnat.confinement",
+      "module": "rme.confinement",
       "console": "integratedTerminal",
       // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
       "args": [
@@ -112,7 +112,7 @@
       "name": "Augment Confinement XML",
       "type": "python",
       "request": "launch",
-      "module": "gnat.confinement_rs",
+      "module": "rme.confinement_rs",
       "console": "integratedTerminal",
       "args": [
         "{env:DATA_ROOT}/confinement/${input:HUC}/project.rs.xml",
@@ -120,117 +120,15 @@
       ]
     },
     {
-      "name": "Augment GNAT XML",
+      "name": "Augment RME XML",
       "type": "python",
       "request": "launch",
-      "module": "gnat.gnat_rs",
+      "module": "rme.rme_rs",
       "console": "integratedTerminal",
       "args": [
-        "{env:DATA_ROOT}/gnat/${input:HUC}/project.rs.xml",
+        "{env:DATA_ROOT}/rme/${input:HUC}/project.rs.xml",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/vbet/${input:HUC}/project.rs.xml"
       ]
-    },
-    {
-      "name": "Sinuosity",
-      "type": "python",
-      "request": "launch",
-      "module": "gnat.sinuosity",
-      "console": "integratedTerminal",
-      "args": [
-        "${input:HUC}",
-        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/network_intersected_300m",
-        "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/vbet_50",
-        "{env:DATA_ROOT}/gnat/${input:HUC}", // output folder
-        "--meta",
-        "Runner=VSCode",
-        "--reach_codes",
-        "33400,33600,33601,33603,46000,46003,46006,46007,55800",
-        "--verbose"
-      ]
-    },
-    {
-      "name": "Gradient",
-      "type": "python",
-      "request": "launch",
-      "module": "gnat.gradient",
-      "console": "integratedTerminal",
-      "args": [
-        "${input:HUC}",
-        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/network_intersected_300m",
-        "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/vbet_50",
-        "{env:DATA_ROOT}/gnat/${input:HUC}", // output folder
-        "--meta",
-        "Runner=VSCode",
-        "--reach_codes",
-        "33400,33600,33601,33603,46000,46003,46006,46007,55800",
-        "--verbose"
-      ]
-    },
-    {
-      "name": "Network Structure",
-      "type": "python",
-      "request": "launch",
-      "module": "gnat.network_structure",
-      "console": "integratedTerminal",
-      "args": [
-        "${input:HUC}",
-        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/network_intersected_300m",
-        "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/vbet_50",
-        "{env:DATA_ROOT}/gnat/${input:HUC}", // output folder
-        "--meta",
-        "Runner=VSCode",
-        "--reach_codes",
-        "33400,33600,33601,33603,46000,46003,46006,46007,55800",
-        "--verbose"
-      ]
-    },
-    {
-      "name": "Zonal Attributes - Polygons",
-      "type": "python",
-      "request": "launch",
-      "module": "gnat.zonal_attributes",
-      "console": "integratedTerminal",
-      "args": [
-        "${input:HUC}",
-        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/NHDPlusCatchments",
-        "{env:DATA_ROOT}/rs_context/${input:HUC}/ownership/ownership.gpkg/ownership",
-        "ADMIN_AGEN",
-        "{env:DATA_ROOT}/gnat/${input:HUC}/gnat_output.gpkg",
-        "--epsg",
-        "5070"
-      ]
-    },
-    {
-      "name": "Zonal Attributes - Lines",
-      "type": "python",
-      "request": "launch",
-      "module": "gnat.zonal_attributes",
-      "console": "integratedTerminal",
-      "args": [
-        "${input:HUC}",
-        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/NHDPlusCatchments",
-        "{env:DATA_ROOT}/gnat/hydrology.gpkg/network",
-        "FCode",
-        "{env:DATA_ROOT}/gnat/${input:HUC}/gnat_output.gpkg",
-        "--epsg",
-        "5070"
-      ]
-    },
-    {
-      "name": "Zonal Attributes - Network Nodes",
-      "type": "python",
-      "request": "launch",
-      "module": "gnat.zonal_attributes",
-      "console": "integratedTerminal",
-      "args": [
-        "${input:HUC}",
-        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/NHDPlusCatchments",
-        "{env:DATA_ROOT}/gnat/hydrology.gpkg/nodes",
-        "none",
-        "{env:DATA_ROOT}/gnat/${input:HUC}/gnat_output.gpkg",
-        "--epsg",
-        "5070"
-      ]
-    },
+    }
   ]
 }

@@ -7,14 +7,14 @@ from collections import OrderedDict
 from rscommons import Logger, dotenv, ModelConfig, RSReport, RSProject
 from rscommons.util import safe_makedirs
 from rscommons.plotting import xyscatter, box_plot, histogram
-from gnat.__version__ import __version__
+from rme.__version__ import __version__
 
 
-class GNATReport(RSReport):
+class RMEReport(RSReport):
 
     def __init__(self, database, report_path, rs_project):
         super().__init__(rs_project, report_path)
-        self.log = Logger('GNAT Report')
+        self.log = Logger('Riverscapes Metrics Report')
         self.database = database
 
         self.images_dir = os.path.join(os.path.dirname(report_path), 'images')
@@ -29,7 +29,7 @@ if __name__ == '__main__':
     parser.add_argument('report_path', help='Output path where report will be generated', type=str)
     args = dotenv.parse_args_env(parser)
 
-    cfg = ModelConfig('http://xml.riverscapes.net/Projects/XSD/V1/GNAT.xsd', __version__)
+    cfg = ModelConfig('http://xml.riverscapes.net/Projects/XSD/V1/RME.xsd', __version__)
     project = RSProject(cfg, args.projectxml)
-    report = GNATReport(args.database, args.report_path, project)
+    report = RMEReport(args.database, args.report_path, project)
     report.write()

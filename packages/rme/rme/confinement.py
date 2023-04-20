@@ -25,9 +25,9 @@ from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALO
 from rscommons import GeopackageLayer
 from rscommons.vector_ops import collect_feature_class, get_geometry_unary_union, copy_feature_class
 from rscommons.util import safe_makedirs, parse_metadata
-from gnat.shapley_ops import line_segments, select_geoms_by_intersection, cut
-from gnat.utils.confinement_report import ConfinementReport
-from gnat.__version__ import __version__
+from rme.shapley_ops import line_segments, select_geoms_by_intersection, cut
+from rme.utils.confinement_report import ConfinementReport
+from rme.__version__ import __version__
 
 Path = str
 

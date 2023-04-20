@@ -1,8 +1,8 @@
 {
   "folders": [
     {
-      "name": "🚀 GNAT",
-      "path": "../packages/gnat"
+      "name": "🚀 Riverscapes Metric Engine",
+      "path": "../packages/rme"
     },
     {
       "name": "📦 RSCommons",

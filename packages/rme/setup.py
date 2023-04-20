@@ -15,13 +15,13 @@ with open("README.md", "rb") as f:
 
 version = re.search(
     '^__version__\\s*=\\s*"(.*)"',
-    open('gnat/__version__.py').read(),
+    open('rme/__version__.py').read(),
     re.M
 ).group(1)
 
-setup(name='gnat',
+setup(name='rme',
       version=version,
-      description='GNAT',
+      description='Riverscapes Metric Engine',
       author='Matt Reimer',
       license='MIT',
       python_requires='>3.5.2',
@@ -29,12 +29,12 @@ setup(name='gnat',
       author_email='info@northarrowresearch.com',
       install_requires=install_requires,
       entry_points={
-          "console_scripts": ['gnat = gnat.gnat:main',
-                              'confinement = gnat.confinement:main']
+          "console_scripts": ['rme = rme.metric_engine:main',
+                              'confinement = rme.confinement:main']
       },
       zip_safe=False,
-      url='https://github.com/Riverscapes/gnat',
+      url='https://github.com/Riverscapes/riverscapes-tools',
       packages=[
-          'gnat'
+          'rme'
       ]
       )

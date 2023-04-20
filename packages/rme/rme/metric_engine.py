@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Name:     GNAT
+Name:     Riverscapes Metric Engine
 
-Purpose:  Build a GNAT project by downloading and preparing
+Purpose:  Build a Riverscapes Metric Engine project by downloading and preparing
           commonly used data layers for several riverscapes tools.
 
 Author:   Kelly Whitehead
@@ -33,8 +33,8 @@ from rscommons.geometry_ops import reduce_precision, get_endpoints
 from rscommons.vector_ops import copy_feature_class, collect_linestring
 from rscommons.vbet_network import copy_vaa_attributes, join_attributes
 
-from gnat.__version__ import __version__
-from gnat.gnat_window import GNATLine
+from rme.__version__ import __version__
+from rme.analysis_window import AnalysisLine
 
 Path = str
 
@@ -56,10 +56,10 @@ LayerTypes = {
     }),
     'DEM': RSLayer('DEM', 'DEM', 'Raster', 'inputs/dem.tif'),
     'PPT': RSLayer('Precipitation', 'Precip', 'Raster', 'inputs/precipitation.tif'),
-    'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/gnat_intermediates.gpkg', {
+    'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/rme_intermediates.gpkg', {
         'JUNCTION_POINTS': RSLayer('Junction Points', 'JUNCTION_POINTS', 'Vector', 'junction_points'),
     }),
-    'GNAT_OUTPUTS': RSLayer('GNAT', 'GNAT_OUTPUTS', 'Geopackage', 'outputs/gnat.gpkg', {
+    'RME_OUTPUTS': RSLayer('Riverscapes Metrics', 'RME_OUTPUTS', 'Geopackage', 'outputs/riverscapes_metrics.gpkg', {
         'POINT_METRICS': RSLayer('Point Metrics', 'POINT_METRICS', 'Vector', 'vw_point_metrics')
     }),
 }
@@ -68,8 +68,8 @@ stream_size_lookup = {0: 'small', 1: 'medium', 2: 'large'}
 gradient_buffer_lookup = {'small': 25.0, 'medium': 50.0, 'large': 100.0}
 
 
-def gnat(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments: Path, in_points: Path, in_vbet_centerline: Path, in_dem: Path, in_ppt: Path, in_roads: Path, in_rail: Path, in_ecoregions: Path, project_folder: Path, level_paths: list = None, meta: dict = None):
-    """Generate GNAT project and calculate metrics
+def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments: Path, in_points: Path, in_vbet_centerline: Path, in_dem: Path, in_ppt: Path, in_roads: Path, in_rail: Path, in_ecoregions: Path, project_folder: Path, level_paths: list = None, meta: dict = None):
+    """Generate Riverscapes Metric Engine project and calculate metrics
 
     Args:
         huc (int): NHD huc
@@ -83,37 +83,37 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments: Path, in
         in_roads (Path): NTD roads line network
         in_rail (Path): NTD railroad line network
         in_ecoregions (Path): epa ecoregions polygon layer
-        project_folder (Path): output folder for GNAT project
+        project_folder (Path): output folder for RME project
         level_paths (list, optional): level paths to process. Defaults to None.
         meta (dict, optional): key-value pairs of metadata. Defaults to None.
     """
 
-    log = Logger('GNAT')
-    log.info(f'Starting GNAT v.{cfg.version}')
+    log = Logger('Riverscapes Metric Engine')
+    log.info(f'Starting RME v.{cfg.version}')
 
-    project_name = f'GNAT for HUC {huc}'
+    project_name = f'Riverscapes Metrics for HUC {huc}'
     project = RSProject(cfg, project_folder)
-    project.create(project_name, 'GNAT', [
+    project.create(project_name, 'RME', [
         RSMeta(f'HUC{len(huc)}', str(huc)),
         RSMeta('HUC', str(huc)),
-        RSMeta('GNATVersion', cfg.version),
-        RSMeta('GNATTimestamp', str(int(time.time())), RSMetaTypes.TIMESTAMP),
+        RSMeta('RMEVersion', cfg.version),
+        RSMeta('RMETimestamp', str(int(time.time())), RSMetaTypes.TIMESTAMP),
     ], meta)
 
     _realization, proj_nodes = project.add_realization(project_name, 'REALIZATION1', cfg.version, data_nodes=['Inputs', 'Intermediates', 'Outputs'], create_folders=True)
 
     inputs_gpkg = os.path.join(project_folder, LayerTypes['INPUTS'].rel_path)
     intermediates_gpkg = os.path.join(project_folder, LayerTypes['INTERMEDIATES'].rel_path)
-    gnat_gpkg = os.path.join(project_folder, LayerTypes['GNAT_OUTPUTS'].rel_path)
+    outputs_gpkg = os.path.join(project_folder, LayerTypes['RME_OUTPUTS'].rel_path)
     GeopackageLayer.delete(inputs_gpkg)
     GeopackageLayer.delete(intermediates_gpkg)
-    GeopackageLayer.delete(gnat_gpkg)
+    GeopackageLayer.delete(outputs_gpkg)
 
     flowlines = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
     copy_feature_class(in_flowlines, flowlines)
     segments = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['VBET_SEGMENTS'].rel_path)
     copy_feature_class(in_segments, segments)
-    points = os.path.join(gnat_gpkg, LayerTypes['INPUTS'].sub_layers['VBET_SEGMENT_POINTS'].rel_path)
+    points = os.path.join(outputs_gpkg, LayerTypes['INPUTS'].sub_layers['VBET_SEGMENT_POINTS'].rel_path)
     copy_feature_class(in_points, points)
     centerlines = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['VBET_CENTERLINES'].rel_path)
     copy_feature_class(in_vbet_centerline, centerlines)
@@ -172,14 +172,14 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments: Path, in
             lyr_points.ogr_layer.CreateFeature(feat_out)
 
     database_folder = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'database')
-    with sqlite3.connect(gnat_gpkg) as conn:
+    with sqlite3.connect(outputs_gpkg) as conn:
         cursor = conn.cursor()
-        with open(os.path.join(database_folder, 'gnat_metrics.sql'), encoding='utf-8') as sqlfile:
+        with open(os.path.join(database_folder, 'metrics_schema.sql'), encoding='utf-8') as sqlfile:
             sql_commands = sqlfile.read()
             cursor.executescript(sql_commands)
             conn.commit()
     # Load tables
-    load_lookup_data(gnat_gpkg, os.path.join(database_folder, 'data_metrics'))
+    load_lookup_data(outputs_gpkg, os.path.join(database_folder, 'data_metrics'))
 
     # Generate the list of level paths to run, sorted by ascending order and optional user filter
     level_paths_to_run = []
@@ -192,8 +192,8 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments: Path, in
         level_paths_to_run = [level_path for level_path in level_paths_to_run if level_path in level_paths]
     level_paths_to_run.sort(reverse=False)
 
-    metrics = generate_metric_list(gnat_gpkg)
-    measurements = generate_metric_list(gnat_gpkg, 'measurements')
+    metrics = generate_metric_list(outputs_gpkg)
+    measurements = generate_metric_list(outputs_gpkg, 'measurements')
 
     buffer_distance = {}
     for stream_size, distance in gradient_buffer_lookup.items():
@@ -202,7 +202,7 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments: Path, in
 
     with GeopackageLayer(points) as lyr_points, \
             GeopackageLayer(segments) as lyr_segments,\
-            sqlite3.connect(gnat_gpkg) as conn, \
+            sqlite3.connect(outputs_gpkg) as conn, \
             rasterio.open(dem) as src_dem:
 
         curs = conn.cursor()
@@ -214,9 +214,9 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments: Path, in
             break
         utm_epsg = get_utm_zone_epsg(geom.GetPoint(0)[0])
         _transform_ref, transform = VectorBase.get_transform_from_epsg(lyr_points.spatial_ref, utm_epsg)
-        GNATLine.transform = transform
+        AnalysisLine.transform = transform
 
-        progbar = ProgressBar(len(level_paths_to_run), 50, "Calculating GNAT Metrics")
+        progbar = ProgressBar(len(level_paths_to_run), 50, "Calculating Riverscapes Metrics")
         counter = 0
         for level_path in level_paths_to_run:
             progbar.update(counter)
@@ -492,7 +492,7 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments: Path, in
                     if window not in window_geoms:
                         window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance)
 
-                    line = GNATLine(geom_flowline, window_geoms[window])
+                    line = AnalysisLine(geom_flowline, window_geoms[window])
                     measurements_output[measurements['STRMSTRLENG']['measurement_id']] = line.endpoint_distance
                     metrics_output[metric['metric_id']] = line.sinuosity()
 
@@ -519,7 +519,7 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments: Path, in
                     if window not in window_geoms:
                         window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance)
 
-                    cline = GNATLine(geom_centerline, window_geoms[window])
+                    cline = AnalysisLine(geom_centerline, window_geoms[window])
                     metrics_output[metric['metric_id']] = cline.azimuth()
 
                 # Write to Metrics
@@ -530,7 +530,7 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments: Path, in
             conn.commit()
 
     epsg = 4326
-    with sqlite3.connect(gnat_gpkg) as conn:
+    with sqlite3.connect(outputs_gpkg) as conn:
         # Generate Pivot Table
         curs = conn.cursor()
         metrics_sql = ", ".join([f"{sql_name(metric['name'])} {metric['data_type']}" for metric in metrics.values()])
@@ -555,16 +555,16 @@ def gnat(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments: Path, in
         curs.execute("INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) values ('vw_point_metrics', 'geom', 'POINT', ?, 0, 0);", (epsg,))
         conn.commit()
 
-    project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['GNAT_OUTPUTS'])
+    project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['RME_OUTPUTS'])
 
     # Write a report
     # report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
     # project.add_report(proj_nodes['Outputs'], LayerTypes['REPORT'], replace=True)
-    # report = GNATReport(output_gpkg, report_path, project)
+    # report = RMEReport(output_gpkg, report_path, project)
     # report.write()
 
     progbar.finish()
-    log.info('GNAT Finished')
+    log.info('Riverscapes Metric Engine Finished')
     return
 
 
@@ -582,7 +582,7 @@ def generate_metric_list(database: Path, source_table: str = 'metrics') -> dict:
     """_summary_
 
     Args:
-        database (Path): path to gnat database
+        database (Path): path to output rme database
         source_table (str, optional): name of table ('metrics' or 'measurements'). Defaults to 'metrics'.
 
     Returns:
@@ -694,9 +694,9 @@ def sum_window_attributes(lyr: GeopackageLayer, window: float, level_path: str, 
 
 
 def main():
-    """Run GNAT"""
+    """Run Riverscapes Metric Engine"""
 
-    parser = argparse.ArgumentParser(description='GNAT Tool')
+    parser = argparse.ArgumentParser(description='Riverscapes Metric Engine')
 
     parser.add_argument('huc', help='HUC identifier', type=str)
     parser.add_argument('flowlines', help="NHD Flowlines (.shp, .gpkg/layer_name)", type=str)
@@ -717,16 +717,16 @@ def main():
     args = dotenv.parse_args_env(parser)
 
     # Initiate the log file
-    log = Logger("GNAT")
-    log.setup(logPath=os.path.join(args.output_folder, "gnat.log"), verbose=args.verbose)
-    log.title(f'GNAT For HUC: {args.huc}')
+    log = Logger("Riverscapes Metric Engine")
+    log.setup(logPath=os.path.join(args.output_folder, "rme.log"), verbose=args.verbose)
+    log.title(f'Riverscapes Metrics For HUC: {args.huc}')
 
     meta = parse_metadata(args.meta)
     try:
         if args.debug is True:
             from rscommons.debug import ThreadRun
-            memfile = os.path.join(args.output_folder, 'confinement_mem.log')
-            retcode, max_obj = ThreadRun(gnat, memfile,
+            memfile = os.path.join(args.output_folder, 'rme_mem.log')
+            retcode, max_obj = ThreadRun(metric_engine, memfile,
                                          args.huc,
                                          args.flowlines,
                                          args.vaa_table,
@@ -743,19 +743,19 @@ def main():
             log.debug(f'Return code: {retcode}, [Max process usage] {max_obj}')
 
         else:
-            gnat(args.huc,
-                 args.flowlines,
-                 args.vaa_table,
-                 args.vbet_segments,
-                 args.vbet_points,
-                 args.vbet_centerline,
-                 args.dem,
-                 args.ppt,
-                 args.roads,
-                 args.rail,
-                 args.ecoregions,
-                 args.output_folder,
-                 meta=meta)
+            metric_engine(args.huc,
+                          args.flowlines,
+                          args.vaa_table,
+                          args.vbet_segments,
+                          args.vbet_points,
+                          args.vbet_centerline,
+                          args.dem,
+                          args.ppt,
+                          args.roads,
+                          args.rail,
+                          args.ecoregions,
+                          args.output_folder,
+                          meta=meta)
 
     except Exception as e:
         log.error(e)
