@@ -29,6 +29,7 @@ CREATE TABLE measurements (
     measurement_id INTEGER PRIMARY KEY NOT NULL,
     name TEXT,
     machine_code TEXT,
+    data_type TEXT,
     description TEXT,
     is_active INTEGER
 );

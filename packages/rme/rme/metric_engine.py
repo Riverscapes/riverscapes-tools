@@ -60,7 +60,8 @@ LayerTypes = {
         'JUNCTION_POINTS': RSLayer('Junction Points', 'JUNCTION_POINTS', 'Vector', 'junction_points'),
     }),
     'RME_OUTPUTS': RSLayer('Riverscapes Metrics', 'RME_OUTPUTS', 'Geopackage', 'outputs/riverscapes_metrics.gpkg', {
-        'POINT_METRICS': RSLayer('Point Metrics', 'POINT_METRICS', 'Vector', 'vw_point_metrics')
+        'POINT_METRICS': RSLayer('Point Metrics', 'POINT_METRICS', 'Vector', 'vw_point_metrics'),
+        'POINT_MEAUSREMENTS': RSLayer('Point Measurements', 'POINT_MEASUREMENTS', 'Vector', 'vw_point_measurements'),
     }),
 }
 
@@ -550,9 +551,27 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments:
         sql = f'CREATE VIEW vw_point_metrics AS SELECT G.fid fid, G.geom geom, G.LevelPathI level_path, G.seg_distance seg_distance, G.stream_size stream_size, {metric_names_sql} FROM points G INNER JOIN point_metrics_pivot M ON M.fid = G.fid;'
         curs.execute(sql)
 
+        measure_sql = ", ".join([f"{sql_name(measurement['name'])} {measurement['name']}" for measurement in measurements.values()])
+        sql = f'CREATE TABLE point_measurements_pivot (fid INTEGER PRIMARY KEY, {measure_sql});'
+        curs.execute(sql)
+        conn.commit()
+
+        measure_names_sql = ', '.join([sql_name(measurement["name"]) for measurement in measurements.values()])
+        measure_values_sql = ", ".join([f"{sql_round(measurement['data_type'], measurement['measurement_id'],'measurement')} {sql_name(measurement['name'])}" for measurement in measurements.values()])
+        sql = f'INSERT INTO point_measurements_pivot (fid, {measure_names_sql}) SELECT M.point_id, {measure_values_sql} FROM measurement_values M GROUP BY M.point_id;'
+        curs.execute(sql)
+        conn.commit()
+
+        # Create measure view
+        measure_names_sql = ", ".join([f"M.{sql_name(measurement['name'])} {sql_name(measurement['name'])}" for measurement in measurements.values()])
+        sql = f'CREATE VIEW vw_point_measurements AS SELECT G.fid fid, G.geom geom, G.LevelPathI level_path, G.seg_distance seg_distance, G.stream_size stream_size, {measure_names_sql} FROM points G INNER JOIN point_measurements_pivot M ON M.fid = G.fid;'
+        curs.execute(sql)
+
         # Add view to geopackage
         curs.execute("INSERT INTO gpkg_contents (table_name, identifier, data_type, srs_id) VALUES ('vw_point_metrics', 'vw_point_metrics', 'features', ?);", (epsg,))
         curs.execute("INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) values ('vw_point_metrics', 'geom', 'POINT', ?, 0, 0);", (epsg,))
+        curs.execute("INSERT INTO gpkg_contents (table_name, identifier, data_type, srs_id) VALUES ('vw_point_measurements', 'vw_point_measurements', 'features', ?);", (epsg,))
+        curs.execute("INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) values ('vw_point_measurements', 'geom', 'POINT', ?, 0, 0);", (epsg,))
         conn.commit()
 
     project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['RME_OUTPUTS'])
@@ -573,9 +592,9 @@ def sql_name(name: str) -> str:
     return name.lower().replace(' ', '_')
 
 
-def sql_round(datatype: str, metric_id) -> str:
+def sql_round(datatype: str, metric_id, table='metric') -> str:
     """return round function"""
-    return f"{'ROUND(' if datatype == 'REAL' else ''}SUM(M.metric_value) FILTER (WHERE M.metric_id == {metric_id}){', 4)' if datatype == 'REAL' else ''}"
+    return f"{'ROUND(' if datatype == 'REAL' else ''}SUM(M.{table}_value) FILTER (WHERE M.{table}_id == {metric_id}){', 4)' if datatype == 'REAL' else ''}"
 
 
 def generate_metric_list(database: Path, source_table: str = 'metrics') -> dict:

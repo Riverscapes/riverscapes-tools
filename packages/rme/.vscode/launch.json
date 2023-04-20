@@ -15,7 +15,7 @@
   ],
   "configurations": [
     {
-      "name": "🚀 Riverscapes Metric Engine",
+      "name": "🚀 Run RME",
       "type": "python",
       "request": "launch",
       "module": "rme.metric_engine",
