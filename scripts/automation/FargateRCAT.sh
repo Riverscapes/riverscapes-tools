@@ -10,7 +10,7 @@ IFS=$'\n\t'
 (: "${RSCONTEXT_ID?}")
 (: "${TAUDEM_ID?}")
 (: "${VBET_ID?}")
-(: "${ANTRHO_ID?}")
+(: "${ANTHRO_ID?}")
 (: "${RS_API_URL?}")
 (: "${VISIBILITY?}")
 # These are machine credentials for the API which will allow the CLI to delegate uploading to either a specific user or an org
@@ -45,6 +45,8 @@ EOF
 echo "TAGS: $TAGS"
 echo "VBET_ID: $VBET_ID"
 echo "RSCONTEXT_ID: $RSCONTEXT_ID"
+echo "TAUDEM_ID: $TAUDEM_ID"
+echo "ANTHRO_ID: $ANTHRO_ID"
 echo "RS_API_URL: $RS_API_URL"
 echo "VISIBILITY: $VISIBILITY"
 if [ -n "$USER_ID" ]; then
@@ -61,7 +63,7 @@ gdal-config --version
 DATA_DIR=/usr/local/data
 RSCONTEXT_DIR=$DATA_DIR/rs_context/data
 TAUDEM_DIR=$DATA_DIR/taudem/data
-ANTRHO_DIR=$DATA_DIR/anthro/data
+ANTHRO_DIR=$DATA_DIR/anthro/data
 VBET_DIR=$DATA_DIR/vbet/data
 RCAT_DIR=$DATA_DIR/output
 
@@ -85,7 +87,7 @@ rscli download $TAUDEM_DIR --id $TAUDEM_ID \
   --no-input --no-ui --verbose
 
 # Go get antrho result for this to work
-rscli download $ANTRHO_DIR --id $ANTRHO_ID \
+rscli download $ANTHRO_DIR --id $ANTHRO_ID \
   --file-filter "(anthro.gpkg|inputs.gpkg)" \
   --no-input --no-ui --verbose
 
@@ -102,12 +104,12 @@ try() {
     $RSCONTEXT_DIR/vegetation/existing_veg.tif \
     $RSCONTEXT_DIR/vegetation/historic_veg.tif \
     $TAUDEM_DIR/intermediates/pitfill.tif \
-    $ANTRHO_DIR/outputs/anthro.gpkg/vwIgos \
+    $ANTHRO_DIR/outputs/anthro.gpkg/vwIgos \
     $VBET_DIR/intermediates/vbet_intermediates.gpkg/vbet_dgos \
-    $ANTRHO_DIR/outputs/anthro.gpkg/vwReaches \
-    $ANTRHO_DIR/inputs/inputs.gpkg/roads \
-    $ANTRHO_DIR/inputs/inputs.gpkg/rails \
-    $ANTRHO_DIR/inputs/inputs.gpkg/canals \
+    $ANTHRO_DIR/outputs/anthro.gpkg/vwReaches \
+    $ANTHRO_DIR/inputs/inputs.gpkg/roads \
+    $ANTHRO_DIR/inputs/inputs.gpkg/rails \
+    $ANTHRO_DIR/inputs/inputs.gpkg/canals \
     $VBET_DIR/outputs/vbet.gpkg/vbet_full \
     $RCAT_DIR \
     --meta "Runner=Cybercastor" \
@@ -120,7 +122,7 @@ try() {
   cd /usr/local/src/riverscapes-tools/packages/rcat
   python3 -m rcat.rcat_rs \
     $RCAT_DIR/project.rs.xml \
-    "$RSCONTEXT_DIR/project.rs.xml,$VBET_DIR/project.rs.xml,$TAUDEM_DIR/project.rs.xml,$ANTRHO_DIR/project.rs.xml" \
+    "$RSCONTEXT_DIR/project.rs.xml,$VBET_DIR/project.rs.xml,$TAUDEM_DIR/project.rs.xml,$ANTHRO_DIR/project.rs.xml" \
 
   echo "======================  Final Disk space usage ======================="
   df -h
