@@ -67,6 +67,13 @@ ANTHRO_DIR=$DATA_DIR/anthro/data
 VBET_DIR=$DATA_DIR/vbet/data
 RCAT_DIR=$DATA_DIR/output
 
+# build cython module and reinstall rcat
+cd /usr/local/src/riverscapes-tools/packages/rcat/rcat/lib/accessibility
+python3 setup.py build_ext --inplace
+cd /usr/local/src/riverscapes-tools
+pip install -e packages/rcat
+cd $DATA_DIR
+
 ##########################################################################################
 # First Get RS_Context, taudem, antrho and vbet inputs
 ##########################################################################################
