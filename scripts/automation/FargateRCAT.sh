@@ -61,11 +61,11 @@ gdal-config --version
 
 # Define some folders that we can easily clean up later
 DATA_DIR=/usr/local/data
-RSCONTEXT_DIR=$DATA_DIR/rs_context/data
-TAUDEM_DIR=$DATA_DIR/taudem/data
-ANTHRO_DIR=$DATA_DIR/anthro/data
-VBET_DIR=$DATA_DIR/vbet/data
-RCAT_DIR=$DATA_DIR/output
+RSCONTEXT_DIR=$DATA_DIR/rs_context/rs_context_$RSCONTEXT_ID
+TAUDEM_DIR=$DATA_DIR/taudem/tau_$TAUDEM_ID
+ANTHRO_DIR=$DATA_DIR/anthro/anthro_$ANTHRO_ID
+VBET_DIR=$DATA_DIR/vbet/vbet_$VBET_ID
+RCAT_DIR=$DATA_DIR/output/rcat
 
 # build cython module and reinstall rcat
 cd /usr/local/src/riverscapes-tools/packages/rcat/rcat/lib/accessibility
