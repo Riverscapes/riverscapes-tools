@@ -72,7 +72,7 @@ cd /usr/local/src/riverscapes-tools/packages/rcat/rcat/lib/accessibility
 python3 setup.py build_ext --inplace
 cd /usr/local/src/riverscapes-tools
 pip install -e packages/rcat
-cd $DATA_DIR
+cd /usr/local/src
 
 ##########################################################################################
 # First Get RS_Context, taudem, antrho and vbet inputs
