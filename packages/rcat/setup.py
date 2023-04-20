@@ -15,13 +15,13 @@ with open("README.md", "rb") as f:
 
 version = re.search(
     '^__version__\\s*=\\s*"(.*)"',
-    open('anthro/__version__.py').read(),
+    open('rcat/__version__.py').read(),
     re.M
 ).group(1)
 
-setup(name='anthro',
+setup(name='rcat',
       version=version,
-      description='Riverscapes Open Source Python Anthropogenic Context',
+      description='Riverscapes Open Source Python RCAT',
       author='Jordan Gilbert',
       license='MIT',
       python_requires='>3.5.2',
@@ -29,11 +29,11 @@ setup(name='anthro',
       author_email='info@northarrowresearch.com',
       install_requires=install_requires,
       entry_points={
-          "console_scripts": ['anthro = anthro.anthro:main']
+          "console_scripts": ['rcat = rcat.rcat:main']
       },
       zip_safe=False,
-      url='https://github.com/Riverscapes/riverscapes-tools/tree/master/packages/anthro',
+      url='https://github.com/Riverscapes/riverscapes-tools/tree/master/packages/rcat',
       packages=[
-          'anthro'
+          'rcat'
       ]
       )
