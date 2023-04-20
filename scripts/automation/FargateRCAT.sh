@@ -73,7 +73,7 @@ RCAT_DIR=$DATA_DIR/output
 
 # Get the RSCli project we need to make this happen
 rscli download $RSCONTEXT_DIR --id $RSCONTEXT_ID \
-  --file-filter "(vegetation|nhdplushr.gpkg)" \
+  --file-filter "(vegetation|nhdplushr.gpkg|project_bounds.geojson)" \
   --no-input --no-ui --verbose
 
 # Go get vbet result for this to work

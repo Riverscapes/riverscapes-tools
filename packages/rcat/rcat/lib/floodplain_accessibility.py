@@ -5,7 +5,7 @@ Jordan Gilbert
 01/2023
 """
 
-from .accessibility import access
+from rcat.lib.accessibility import access
 import datetime
 import argparse
 from rscommons.hand import run_subprocess

@@ -13,7 +13,7 @@ import traceback
 from typing import Dict
 from osgeo import ogr
 
-from rscommons import initGDALOGRErrors, ModelConfig, RSLayer, RSProject
+from rscommons import initGDALOGRErrors, ModelConfig, RSLayer, RSProject, get_shp_or_gpkg
 from rscommons import Logger, GeopackageLayer
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons import dotenv
@@ -211,25 +211,36 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
     newwindows = {}
 
     if flow_areas:
-        geom_flow_areas = get_geometry_unary_union(flow_areas)
-        if geom_flow_areas.type == 'MultiPolygon':
-            for g in geom_flow_areas.geoms:
-                if not g.is_valid:
-                    g.make_valid()
-        elif geom_flow_areas.type == 'Polygon':
-            if not geom_flow_areas.is_valid:
-                geom_flow_areas.make_valid()
+        with get_shp_or_gpkg(flow_areas) as flow_areas_lyr:
+            flow_area_ftr_ct = flow_areas_lyr.ogr_layer.GetFeatureCount()
+        if flow_area_ftr_ct > 0:
+            geom_flow_areas = get_geometry_unary_union(flow_areas)
+            if geom_flow_areas.type == 'MultiPolygon':
+                for g in geom_flow_areas.geoms:
+                    if not g.is_valid:
+                        g.make_valid()
+            elif geom_flow_areas.type == 'Polygon':
+                if not geom_flow_areas.is_valid:
+                    geom_flow_areas.make_valid()
+        else:
+            geom_flow_areas = None
     else:
         geom_flow_areas = None
+
     if waterbodies:
-        geom_waterbodies = get_geometry_unary_union(waterbodies)
-        if geom_waterbodies.type == 'MultiPolygon':
-            for g in geom_waterbodies.geoms:
-                if not g.is_valid:
-                    g.make_valid()
-        elif geom_waterbodies.type == 'Polygon':
-            if not geom_waterbodies.is_valid:
-                geom_waterbodies.make_valid()
+        with get_shp_or_gpkg(waterbodies) as waterbodies_lyr:
+            waterbody_ftr_ct = waterbodies_lyr.ogr_layer.GetFeatureCount()
+        if waterbody_ftr_ct > 0:
+            geom_waterbodies = get_geometry_unary_union(waterbodies)
+            if geom_waterbodies.type == 'MultiPolygon':
+                for g in geom_waterbodies.geoms:
+                    if not g.is_valid:
+                        g.make_valid()
+            elif geom_waterbodies.type == 'Polygon':
+                if not geom_waterbodies.is_valid:
+                    geom_waterbodies.make_valid()
+        else:
+            geom_waterbodies = None
     else:
         geom_waterbodies = None
 
