@@ -13,6 +13,7 @@ upstream_project_types = {
     'channel': ['rscontext'],
     'confinement': ['rscontext', 'vbet'],
     'anthro': ['rscontext', 'vbet'],
+    'rcat': ['rscontext', 'vbet', 'taudem', 'anthro'],
 }
 
 # Key is warehouse project type. Value is Fargate environment variable
@@ -23,6 +24,7 @@ fargate_env_keys = {
     'vbet': 'VBET_ID',
     'brat': 'BRAT_ID',
     'anthro': 'ANTHRO_ID',
+    'rcat': 'RCAT_ID',
 }
 
 query = """
