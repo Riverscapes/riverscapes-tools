@@ -1,7 +1,7 @@
 # Site title will be used everywhere
 title:  Channel Area Tool
 description: > # this means to ignore newlines until "baseurl:"
-  Online help and documentation site for GNAT
+  Online help and documentation site for Channel Area
 destination: ../../../PUBLIC/channel
 # Final root url of the site. No ending slash. No subdirectory
 url:

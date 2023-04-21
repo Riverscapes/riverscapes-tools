@@ -56,8 +56,8 @@ gdal-config --version
 
 # Define some folders that we can easily clean up later
 DATA_DIR=/usr/local/data
-RS_CONTEXT_DIR=$DATA_DIR/rs_context/data
-VBET_DIR=$DATA_DIR/vbet/data
+RS_CONTEXT_DIR=$DATA_DIR/rs_context/rs_context_$RSCONTEXT_ID
+VBET_DIR=$DATA_DIR/vbet/vbet_$VBET_ID
 RME_DIR=$DATA_DIR/output
 
 ##########################################################################################
@@ -82,7 +82,7 @@ df -h
 
 try() {
 
-  gnat $HUC \
+  rme $HUC \
     $RS_CONTEXT_DIR/hydrology/hydrology.gpkg/network \
     $RS_CONTEXT_DIR/hydrology/nhd_data.sqlite/NHDPlusFlowlineVAA \
     $VBET_DIR/intermediates/vbet_intermediates.gpkg/vbet_dgos \

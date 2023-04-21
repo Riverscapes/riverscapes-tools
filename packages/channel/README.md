@@ -1,4 +1,4 @@
-# GNAT
+# Channel Area
 
 Python 3 package to build the contextual layers used by our outher python riverscapes tools.
 
