@@ -9,7 +9,7 @@ upstream_project_types = {
     'rs_context': [],
     'rs_context_channel_taudem': [],
     'vbet': ['rscontext', 'channelarea', 'taudem'],
-    'brat': ['rscontext', 'vbet',],
+    'brat': ['rscontext', 'vbet'],
     'channel': ['rscontext'],
     'confinement': ['rscontext', 'vbet'],
     'anthro': ['rscontext', 'vbet'],
@@ -19,7 +19,7 @@ upstream_project_types = {
 
 # Key is warehouse project type. Value is Fargate environment variable
 fargate_env_keys = {
-    'rscontext': 'RSCONTEXT_ID' ,
+    'rscontext': 'RSCONTEXT_ID',
     'channelarea': 'CHANNELAREA_ID',
     'taudem': 'TAUDEM_ID',
     'vbet': 'VBET_ID',
@@ -63,10 +63,11 @@ query = """
 }
 """
 
+
 def find_upstream_projects(job_data) -> bool:
-    
+
     log = Logger('Upstream Project Finder')
-    
+
     global upstream_project_types
     global fargate_env_keys
 
@@ -76,7 +77,7 @@ def find_upstream_projects(job_data) -> bool:
         raise Exception(f'Unknown task script {task_script}')
 
     if 'lookups' not in job_data:
-      job_data['lookups'] = {}
+        job_data['lookups'] = {}
 
     # Initialize the warehouse API that will be used to search for available projects
     riverscapes_api = RiverscapesAPI(stage=job_data['server'])
@@ -85,21 +86,21 @@ def find_upstream_projects(job_data) -> bool:
 
     # Loop over all the HUCs in the job
     for huc in job_data['hucs']:
-        
+
         # Initialize the list of upstream project GUIDs for this HUC
         if huc not in job_data['lookups']:
-          job_data['lookups'][huc] = {}
+            job_data['lookups'][huc] = {}
 
         # Loop over all the project types that we need to find upstream projects for
         for project_type in upstream_project_types[task_script]:
-            # if 
+            # if
             if fargate_env_keys[project_type] in job_data['lookups'][huc]:
-              lookup_val = job_data['lookups'][huc][fargate_env_keys[project_type]]
-              log.info(f'Already found project for {huc} of type {project_type}: {lookup_val}. Skipping.')
-              continue
+                lookup_val = job_data['lookups'][huc][fargate_env_keys[project_type]]
+                log.info(f'Already found project for {huc} of type {project_type}: {lookup_val}. Skipping.')
+                continue
             selected_project = None
             log.info(f'Searching warehouse for project type {project_type} for HUC {huc}')
-            
+
             # Search for projects of the given type that match the HUC
             params = {
                 "projectTypeId": project_type,
@@ -111,10 +112,9 @@ def find_upstream_projects(job_data) -> bool:
 
             # Only refresh the token if we need to
             if riverscapes_api.accessToken is None:
-              # Note: We might have to re-run this if the token expires but it shouldn't happen
-              # within the context of a single call so for now leave this alone.
-              riverscapes_api.refresh_token()
-
+                # Note: We might have to re-run this if the token expires but it shouldn't happen
+                # within the context of a single call so for now leave this alone.
+                riverscapes_api.refresh_token()
 
             results = riverscapes_api.run_query(query, {"searchParams": params})
             available_projects = results['data']['searchProjects']['results']
@@ -126,7 +126,7 @@ def find_upstream_projects(job_data) -> bool:
             elif len(available_projects) == 1:
                 log.success(f'Found project for {huc} of type {project_type}: {available_projects[0]["item"]["id"]}')
                 selected_project = available_projects[0]['item']['id']
-            else:  
+            else:
                 # Build a list of the projects that were found. Key is user-friendly string for CLI. Value is project GUID
                 inquirer_projects = []
                 # sort available projects by created date
@@ -134,7 +134,7 @@ def find_upstream_projects(job_data) -> bool:
 
                 for available_project in available_projects:
                     project = available_project['item']
-                    
+
                     created_date = project.get('createdOn', None)
                     created_on_str = dateutil.parser.isoparse(project['createdOn']).strftime('%Y-%m-%d %H:%M') if created_date is not None else 'UNKNOWN'
 
@@ -143,7 +143,7 @@ def find_upstream_projects(job_data) -> bool:
                         if meta['key'].lower() == 'modelversion':
                             version = f" (v{meta['value']})"
                             break
-                    
+
                     # User fiendly string for CLI
                     # Example: RSCONTEXT (v1.0) on 2020-01-01 owned by Cybercastor
                     # add to list of projects as a tuple with the form: (label, value)
@@ -174,7 +174,7 @@ def find_upstream_projects(job_data) -> bool:
 
             # Keep track of the project GUID for this HUC and project type
             if selected_project is not None:
-              job_data['lookups'][huc][fargate_env_keys[project_type]] = selected_project
+                job_data['lookups'][huc][fargate_env_keys[project_type]] = selected_project
 
     # If we got to here them we found a project for each HUC and project type
     if riverscapes_api is not None:
