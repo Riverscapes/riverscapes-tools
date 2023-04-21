@@ -94,7 +94,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments:
 
     project_name = f'Riverscapes Metrics for HUC {huc}'
     project = RSProject(cfg, project_folder)
-    project.create(project_name, 'RME', [
+    project.create(project_name, 'rs_metric_engine', [
         RSMeta(f'HUC{len(huc)}', str(huc)),
         RSMeta('HUC', str(huc)),
         RSMeta('RMEVersion', cfg.version),
