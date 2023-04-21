@@ -70,7 +70,7 @@ RME_DIR=$DATA_DIR/output
 
 # Get the RSCli project we need to make this happen
 rscli download $RS_CONTEXT_DIR --id $RSCONTEXT_ID \
-  --file-filter "(hydrology\.gpkg|nhd_data.sqlite|dem.tif|precipitation.tif|ecoregions|transportation|project_bounds.geojson)" \
+  --file-filter "(nhdplushr.gpkg|dem.tif|precipitation.tif|ecoregions|transportation|project_bounds.geojson)" \
   --no-input --no-ui --verbose
 
 rscli download $VBET_DIR --id $VBET_ID \
@@ -87,8 +87,8 @@ df -h
 try() {
 
   rme $HUC \
-    $RS_CONTEXT_DIR/hydrology/hydrology.gpkg/network \
-    $RS_CONTEXT_DIR/hydrology/nhd_data.sqlite/NHDPlusFlowlineVAA \
+    $RS_CONTEXT_DIR/hydrology/nhdplushr.gpkg/NHDFlowline \
+    $RS_CONTEXT_DIR/hydrology/nhdplushr.gpkg/NHDPlusFlowlineVAA \
     $VBET_DIR/intermediates/vbet_intermediates.gpkg/vbet_dgos \
     $VBET_DIR/outputs/vbet.gpkg/vbet_igos \
     $VBET_DIR/outputs/vbet.gpkg/vbet_centerlines \

@@ -23,8 +23,8 @@
       // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
       "args": [
         "${input:HUC}",
-        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/network",
-        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhd_data.sqlite/NHDPlusFlowlineVAA",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhdplushr.gpkg/NHDFlowline",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhdplushr.gpkg/NHDPlusFlowlineVAA",
         "{env:DATA_ROOT}/vbet/${input:HUC}/intermediates/vbet_intermediates.gpkg/vbet_dgos",
         "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/vbet_igos",
         "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/vbet_centerlines",
