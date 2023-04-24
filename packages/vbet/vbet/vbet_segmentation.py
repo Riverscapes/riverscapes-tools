@@ -125,6 +125,8 @@ def split_vbet_polygons(vbet_polygons: Path, segmentation_points: Path, out_spli
                 continue
 
             vbet_geom = vbet_feat.GetGeometryRef()
+            if not vbet_geom.IsValid():
+                vbet_geom = vbet_geom.MakeValid()
             vbet_sgeom = VectorBase.ogr2shapely(vbet_geom)
             list_points = []
 
