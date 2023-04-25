@@ -38,7 +38,7 @@ def calculate_land_use(database: str):
     curs.execute('SELECT RV.ReachID, 100.0 * SUM(Intensity * CAST(CellCount AS REAL)) / CAST(TotalCells AS REAL) AS Intensity'
                  ' FROM ReachVegetation RV'
                  ' INNER JOIN VegetationTypes VT ON RV.VegetationID = VT.VegetationID'
-                 ' INNER JOIN LandUses L ON VT.LandUseID = L.LandUseID'
+                 ' INNER JOIN LandUses L ON VT.Physiognomy = L.Name'
                  ' INNER JOIN (SELECT ReachID, SUM(CellCount) AS TotalCells FROM ReachVegetation GROUP BY ReachID) AS RS ON RV.ReachID = RS.ReachID'
                  ' GROUP BY RV.ReachID')
 
@@ -59,7 +59,7 @@ def calculate_land_use(database: str):
         curs.execute("""SELECT RV.ReachID, 100.0 * SUM(CAST(CellCount AS REAL) / CAST(TotalCells AS REAL)) AS Proportion
                       FROM ReachVegetation RV
                       INNER JOIN VegetationTypes VT ON RV.VegetationID = VT.VegetationID
-                      INNER JOIN LandUses L ON VT.LandUseID = L.LandUseID
+                      INNER JOIN LandUses L ON VT.Physiognomy = L.Name
                       INNER JOIN (
                          SELECT ReachID, SUM(CellCount) AS TotalCells
                          FROM ReachVegetation RV

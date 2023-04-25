@@ -20,7 +20,7 @@ def calculate_land_use(database: str):
     curs.execute('SELECT IGOV.IGOID, 100.0 * SUM(Intensity * CAST(CellCount AS REAL)) / CAST(TotalCells AS REAL) AS Intensity'
                  ' FROM IGOVegetation IGOV'
                  ' INNER JOIN VegetationTypes VT ON IGOV.VegetationID = VT.VegetationID'
-                 ' INNER JOIN LandUses L ON VT.LandUseID = L.LandUseID'
+                 ' INNER JOIN LandUses L ON VT.Physiognomy = L.Name'
                  ' INNER JOIN (SELECT IGOID, SUM(CellCount) AS TotalCells FROM IGOVegetation GROUP BY IGOID) AS RS ON IGOV.IGOID = RS.IGOID'
                  ' GROUP BY IGOV.IGOID')
 
