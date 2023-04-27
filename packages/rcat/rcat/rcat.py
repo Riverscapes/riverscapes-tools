@@ -9,6 +9,7 @@ import time
 import datetime
 import sys
 import traceback
+import rasterio
 
 from typing import Dict
 from osgeo import ogr
@@ -208,6 +209,10 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
 
     windows = get_moving_windows(igo_geom_path, input_layers['ANTHRODGO'], levelpathsin, distance_in)
     log.info('removing large rivers from moving window polygons')
+    with rasterio.open(prj_existing_path) as veg_raster:
+        gt = veg_raster.transform
+        x_res = gt[0]
+
     newwindows = {}
 
     if flow_areas:
@@ -245,7 +250,7 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
         geom_waterbodies = None
 
     for id, win in windows.items():
-        geom = win[0]
+        geom = win[0].buffer(x_res)  # buffer by landfire resolution to make sure cells are captured in small streams
         if geom_flow_areas is not None:
             if geom.intersects(geom_flow_areas):
                 geom = geom.difference(geom_flow_areas)
@@ -257,7 +262,7 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
 
     # store dgos associated with reaches with large rivers removed
     rdgos = reach_dgos(os.path.join(outputs_gpkg_path, 'ReachGeometry'), input_layers['ANTHRODGO'],
-                       os.path.join(output_folder, LayerTypes['EXVEG'].rel_path), geom_flow_areas, geom_waterbodies)
+                       os.path.join(output_folder, LayerTypes['EXVEG'].rel_path), geom_flow_areas, geom_waterbodies, x_res)
 
     # generate vegetation derivative rasters
     intermediates = os.path.join(output_folder, 'intermediates')

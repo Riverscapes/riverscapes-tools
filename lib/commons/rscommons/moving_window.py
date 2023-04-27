@@ -23,8 +23,8 @@ def get_moving_windows(igo: str, dgo: str, level_paths: list, distance: dict):
                 window_length = 0.0
                 window_area = 0.0
                 for feat_seg_poly, *_ in lyr_dgo.iterate_features(attribute_filter=f"LevelPathI = {int(level_path)} and seg_distance >= {int(min_dist)} and seg_distance <= {int(max_dist)}"):
-                    window_length = window_length + feat_seg_poly.GetField('centerline_length')
-                    window_area = window_area + feat_seg_poly.GetField('segment_area')
+                    window_length += feat_seg_poly.GetField('centerline_length')
+                    window_area += feat_seg_poly.GetField('segment_area')
                     geom = feat_seg_poly.GetGeometryRef()
                     if geom.GetGeometryName() in ['MULTIPOLYGON', 'GEOMETRYCOLLECTION']:
                         for i in range(0, geom.GetGeometryCount()):

@@ -4,7 +4,7 @@ from rscommons import VectorBase, GeopackageLayer, Logger, dotenv
 from rscommons.vector_ops import get_shp_or_gpkg
 
 
-def reach_dgos(reaches: str, dgos: str, proj_raster: str, flowarea: str = None, waterbody: str = None):
+def reach_dgos(reaches: str, dgos: str, proj_raster: str, flowarea: str = None, waterbody: str = None, window_buffer=None):
     """
     Finds the DGOs that intersect each reach and removes large rivers/waterbodies
 
@@ -33,8 +33,12 @@ def reach_dgos(reaches: str, dgos: str, proj_raster: str, flowarea: str = None, 
                 elif dgolyr.ogr_layer.GetFeatureCount == 1:
                     ftrs = [ftr for ftr in dgolyr.ogr_layer]
                     polygon = VectorBase.ogr2shapely(ftrs[0].GetGeometryRef())
+                    if window_buffer:
+                        polygon = polygon.buffer(window_buffer)
                 else:
                     polys = [VectorBase.ogr2shapely(ftr.GetGeometryRef()) for ftr in dgolyr.ogr_layer]
+                    if window_buffer:
+                        polys = [poly.buffer(window_buffer) for poly in polys]
                     polygon = unary_union(polys)
 
                 if flowarea:

@@ -60,7 +60,12 @@ ConversionID,LevelID,ConversionCode,ConversionType
 12,3,43,Agriculture - Moderate (25-50%)
 12,4,44,Agriculture - Significant (>50%)
 14,0,0,No Change
-14,1,45,Multiple - Very Minor (<10%)
-14,2,46,Multiple - Minor (10-25%)
-14,3,47,Multiple - Moderate (25-50%)
-14,4,48,Multiple - Significant (>50%)
+14,1,45,Non-Riparian Conversions - Very Minor (<10%)
+14,2,46,Non-Riparian Conversions - Minor (10-25%)
+14,3,47,Non-Riparian Conversions - Moderate (25-50%)
+14,4,48,Non-Riparian Conversions - Significant (>50%)
+15,0,0,No Change
+15,1,49,Non-Riparian Conversions - Very Minor (<10%)
+15,2,50,Non-Riparian Conversions - Minor (10-25%)
+15,3,51,Non-Riparian Conversions - Moderate (25-50%)
+15,4,52,Non-Riparian Conversions - Significant (>50%)

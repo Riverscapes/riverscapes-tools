@@ -185,16 +185,13 @@ CREATE TABLE IGOAttributes (
     Invasive REAL,
     Development REAL,
     Agriculture REAL,
-    RiparianTotal REAL,
+    NonRiparian REAL,
     ConversionID INTEGER,
     LevelID INTEGER,
     ExistingRiparianMean REAL,
     HistoricRiparianMean REAL,
     RiparianDeparture REAL,
     RiparianDepartureID INTEGER,
-    ExistingNativeRiparianMean REAL,
-    HistoricNativeRiparianMean REAL,
-    NativeRiparianDeparture REAL,
     Condition REAL
 
 );
@@ -219,16 +216,13 @@ CREATE TABLE ReachAttributes (
     Invasive REAL,
     Development REAL,
     Agriculture REAL,
-    RiparianTotal REAL,
+    NonRiparian REAL,
     ConversionID INTEGER,
     LevelID INTEGER,
     ExistingRiparianMean REAL,
     HistoricRiparianMean REAL,
     RiparianDeparture REAL,
     RiparianDepartureID INTEGER,
-    ExistingNativeRiparianMean REAL,
-    HistoricNativeRiparianMean REAL,
-    NativeRiparianDeparture REAL,
     Condition REAL,
 
     CONSTRAINT fk_ReachAttributes_ReachID FOREIGN KEY (ReachID) REFERENCES ReachGeometry (ReachID) ON DELETE CASCADE

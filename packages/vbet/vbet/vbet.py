@@ -467,7 +467,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             proximity_raster(rasterized_channel, prox_raster_path)
             in_rasters['Proximity'] = prox_raster_path
             with rasterio.open(prox_raster_path) as prox:
-                prox_arr = prox.read()[0, :, :]
+                prox_arr = prox.read(1)
                 max_prox = np.max(prox_arr)
 
         with TimerBuckets('flowline'):
