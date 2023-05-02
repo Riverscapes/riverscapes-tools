@@ -13,7 +13,7 @@ from rscommons import Logger, dotenv
 from rscommons.util import safe_makedirs
 
 
-def huc_report(sqlite_db_dir, cc_api_url, username, password):
+def dump_cybercastor(sqlite_db_dir, cc_api_url, username, password):
     """ DUmp all projects to a DB
 
     Args:
@@ -25,7 +25,7 @@ def huc_report(sqlite_db_dir, cc_api_url, username, password):
     today_date = date.today().strftime("%d-%m-%Y")
 
     # No way to separate out production from staging in cybercastor.
-    sqlite_db_path = os.path.join(sqlite_db_dir, f'production_{today_date}.sqlite')
+    sqlite_db_path = os.path.join(sqlite_db_dir, f'production_{today_date}.gpkg')
 
     # Remove file if exists
     if os.path.exists(sqlite_db_dir):
@@ -39,9 +39,14 @@ def huc_report(sqlite_db_dir, cc_api_url, username, password):
     curs.execute("DROP TABLE IF EXISTS cybercastor_tasks;")
     curs.execute("DROP TABLE IF EXISTS cybercastor_jobs;")
     curs.execute("DROP TABLE IF EXISTS engine_scripts;")
+
+    curs.execute("DROP TABLE IF EXISTS cybercastor_job_metadata;")
+    curs.execute("DROP TABLE IF EXISTS cybercastor_jobenv;")
+    curs.execute("DROP TABLE IF EXISTS cybercastor_taskenv;")
+
     curs.execute("""
         CREATE TABLE IF NOT EXISTS engine_scripts (
-            tid integer PRIMARY KEY,
+            sid integer PRIMARY KEY,
             id TEXT,
             name TEXT,
             description TEXT,
@@ -50,17 +55,22 @@ def huc_report(sqlite_db_dir, cc_api_url, username, password):
         );""")
     curs.execute("""
         CREATE TABLE IF NOT EXISTS cybercastor_jobs (
-            tid integer PRIMARY KEY,
+            jid integer PRIMARY KEY,
             id TEXT,
             createdBy TEXT,
             createdOn INTEGER,
             description TEXT,
-            env TEXT,
-            meta TEXT,
             name TEXT,
             status TEXT,
             taskDefId TEXT,
             taskScriptId TEXT
+        );""")
+    curs.execute("""
+        CREATE TABLE IF NOT EXISTS cybercastor_job_metadata (
+            mdid integer PRIMARY KEY,
+            jid INTEGER,
+            key TEXT,
+            value TEXT
         );""")
     curs.execute("""
         CREATE TABLE IF NOT EXISTS cybercastor_tasks (
@@ -82,6 +92,20 @@ def huc_report(sqlite_db_dir, cc_api_url, username, password):
             startedOn INTEGER,
             status TEXT,
             taskDefProps TEXT
+        );""")
+    curs.execute("""
+        CREATE TABLE IF NOT EXISTS cybercastor_jobenv (
+            eid integer PRIMARY KEY,
+            jid INTEGER,
+            key TEXT,
+            value TEXT
+        );""")
+    curs.execute("""
+        CREATE TABLE IF NOT EXISTS cybercastor_taskenv (
+            mdid integer PRIMARY KEY,
+            tid INTEGER,
+            key TEXT,
+            value TEXT
         );""")
 
     conn.commit()
@@ -118,26 +142,47 @@ def huc_report(sqlite_db_dir, cc_api_url, username, password):
 
         for job in result['jobs']:
             insert_sql = """
-                INSERT INTO cybercastor_jobs(id, createdBy, createdOn, description, env, meta, name, status, taskDefId, taskScriptId)
-                VALUES(?,?,?,?,?,?,?,?,?,?)
+                INSERT INTO cybercastor_jobs(id, createdBy, createdOn, description, name, status, taskDefId, taskScriptId)
+                VALUES(?,?,?,?,?,?,?,?)
             """
             curs.execute(insert_sql, (
                 job['id'],
                 job['createdBy'],
                 int(job['createdOn']),
                 job['description'],
-                job['env'],
-                job['meta'],
                 job['name'],
                 job['status'],
                 job['taskDefId'],
                 job['taskScriptId'],
             ))
             jid = curs.lastrowid
+            insert_jobmeta_sql = """
+                INSERT INTO cybercastor_job_metadata(jid, key, value)
+                VALUES(?,?,?)
+            """
+            job_meta = json.loads(job['meta'])
+            for key, value in job_meta.items():
+                curs.execute(insert_jobmeta_sql, (
+                    jid,
+                    key,
+                    value,
+                ))
+            insert_jobenv_sql = """
+                INSERT INTO cybercastor_jobenv(jid, key, value)
+                VALUES(?,?,?)
+            """
+            job_env = json.loads(job['env'])
+            for key, value in job_env.items():
+                curs.execute(insert_jobenv_sql, (
+                    jid,
+                    key,
+                    value,
+                ))
+
             for task in job['tasks']:
                 insert_sql = """
-                    INSERT INTO cybercastor_tasks(id, jid, jobid, createdBy, createdOn, endedOn, env, logStream, logUrl, cpu, memory, meta, name, queriedOn, startedOn, status, taskDefProps)
-                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    INSERT INTO cybercastor_tasks(id, jid, jobid, createdBy, createdOn, endedOn, logStream, logUrl, cpu, memory, meta, name, queriedOn, startedOn, status, taskDefProps)
+                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 """
                 curs.execute(insert_sql, (
                     task['id'],
@@ -146,7 +191,6 @@ def huc_report(sqlite_db_dir, cc_api_url, username, password):
                     task['createdBy'],
                     int(task['createdOn']) if task['createdOn'] is not None else None,
                     int(task['endedOn']) if task['endedOn'] is not None else None,
-                    task['env'],
                     task['logStream'],
                     task['logUrl'],
                     task['cpu'],
@@ -158,6 +202,18 @@ def huc_report(sqlite_db_dir, cc_api_url, username, password):
                     task['status'],
                     json.dumps(task['taskDefProps']),
                 ))
+                tid = curs.lastrowid
+                insert_taskenv_sql = """
+                    INSERT INTO cybercastor_taskenv(tid, key, value)
+                    VALUES(?,?,?)
+                """
+                task_env = json.loads(task['env'])
+                for key, value in task_env.items():
+                    curs.execute(insert_taskenv_sql, (
+                        tid,
+                        key,
+                        value,
+                    ))                
             conn.commit()
     log.info("Finished Writing: {}".format(sqlite_db_path))
 
@@ -180,7 +236,7 @@ if __name__ == '__main__':
     log.setup(logPath=os.path.join(args.output_db_path, "dump_sqlite.log"), verbose=args.verbose)
 
     try:
-        huc_report(args.output_db_path, fixedurl, args.username, args.password)
+        dump_cybercastor(args.output_db_path, fixedurl, args.username, args.password)
 
     except Exception as e:
         log.error(e)

@@ -39,9 +39,9 @@ class RiverscapesAPI:
         self.accessToken = None
         self.tokenTimeout = None
 
-        if not stage or stage == 'PRODUCTION':
+        if not stage or stage.upper() == 'PRODUCTION':
           self.uri = 'https://api.warehouse.riverscapes.net'
-        elif stage == 'STAGING':
+        elif stage.upper() == 'STAGING':
           self.uri = 'https://api.warehouse.riverscapes.net/staging'
         # TODO: might need to add a DEVELOPMENT stage here for testing. TBD
         else:
