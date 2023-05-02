@@ -1,0 +1,11 @@
+mutation deleteProject(
+  $projectId: ID!
+  $options: EntityDeletionOptions
+) {
+  deleteProject(projectId: $projectId, options: $options) {
+    error
+    ids
+    message
+    success
+  }
+}
