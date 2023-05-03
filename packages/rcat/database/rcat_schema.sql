@@ -234,24 +234,13 @@ CREATE TABLE MetaData
     ValueInfo TEXT
 );
 
-
-CREATE VIEW vwIGOAttributes AS SELECT A.*, C.ConversionCode, C.ConversionType, D.Departure
-FROM IGOAttributes A
-    INNER JOIN Conversions C ON A.ConversionID = C.ConversionID AND A.LevelID = C.LevelID
-    INNER JOIN Departure D ON A.RiparianDepartureID = D.RiparianDepartureID;
-
-CREATE VIEW vwReachAttributes AS SELECT A.*, C.ConversionCode, C.ConversionType, D.Departure
-FROM ReachAttributes A
-    INNER JOIN Conversions C ON A.ConversionID = C.ConversionID AND A.LevelID = C.LevelID
-    INNER JOIN Departure D ON A.RiparianDepartureID = D.RiparianDepartureID;
-
 -- The main views 
 CREATE VIEW vwReaches AS SELECT R.*, G.geom
-FROM vwReachAttributes R
+FROM ReachAttributes R
     INNER JOIN ReachGeometry G ON R.ReachID = G.ReachID;
 
 CREATE VIEW vwIgos AS SELECT I.*, G.geom
-FROM vwIGOAttributes I
+FROM IGOAttributes I
     INNER JOIN IGOGeometry G ON I.IGOID = G.IGOID;
 
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Watersheds', 'attributes');

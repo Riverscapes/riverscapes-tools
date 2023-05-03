@@ -29,7 +29,8 @@ def reach_dgos(reaches: str, dgos: str, proj_raster: str, flowarea: str = None, 
                 dgolyr.ogr_layer.SetSpatialFilter(feature.GetGeometryRef())
                 if dgolyr.ogr_layer.GetFeatureCount() == 0:
                     log.info(f'feature {reach_id} has no associated DGOs, using 100m buffer')
-                    polygon = VectorBase.ogr2shapely(geom).buffer(raster_buffer)
+                    p = VectorBase.ogr2shapely(geom)
+                    polygon = p.buffer(raster_buffer)
                 elif dgolyr.ogr_layer.GetFeatureCount == 1:
                     ftrs = [ftr for ftr in dgolyr.ogr_layer]
                     polygon = VectorBase.ogr2shapely(ftrs[0].GetGeometryRef())
