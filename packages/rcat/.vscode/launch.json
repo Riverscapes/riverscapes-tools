@@ -26,7 +26,7 @@
             "{env:DATA_ROOT}/rs_context/${input:HUC}/vegetation/historic_veg.tif",
             "{env:DATA_ROOT}/taudem/${input:HUC}/intermediates/pitfill.tif",
             "{env:DATA_ROOT}/anthro/${input:HUC}/outputs/anthro.gpkg/vwIgos",
-            "{env:DATA_ROOT}/vbet/${input:HUC}/intermediates/vbet_intermediates.gpkg/vbet_dgos",
+            "{env:DATA_ROOT}/anthro/${input:HUC}/inputs/inputs.gpkg/dgo",
             "{env:DATA_ROOT}/anthro/${input:HUC}/outputs/anthro.gpkg/vwReaches",
             "{env:DATA_ROOT}/anthro/${input:HUC}/inputs/inputs.gpkg/roads",
             "{env:DATA_ROOT}/anthro/${input:HUC}/inputs/inputs.gpkg/rails",

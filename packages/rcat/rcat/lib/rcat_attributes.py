@@ -19,6 +19,7 @@ def igo_attributes(database: str):
     igoaccess = {row[0]: row[1] / row[2] for row in curs.fetchall()}
     for igoid, accessval in igoaccess.items():
         curs.execute(f'UPDATE IGOAttributes SET FloodplainAccess = {accessval} WHERE IGOID = {igoid}')
+    curs.execute('UPDATE IGOAttributes SET FloodplainAccess = 0 WHERE FloodplainAccess IS NULL')
 
     # from conifer
     curs.execute('SELECT IGOConv.IGOID, ConvCellCount, TotCells FROM IGOConv'
@@ -253,6 +254,7 @@ def reach_attributes(database: str):
     igoaccess = {row[0]: row[1] / row[2] for row in curs.fetchall()}
     for rid, accessval in igoaccess.items():
         curs.execute(f'UPDATE ReachAttributes SET FloodplainAccess = {accessval} WHERE ReachID = {rid}')
+    curs.execute('UPDATE ReachAttributes SET FloodplainAccess = 0 WHERE FloodplainAccess IS NULL')
 
     # from conifer
     curs.execute('SELECT ReachConv.ReachID, ConvCellCount, TotCells FROM ReachConv'

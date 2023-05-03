@@ -39,7 +39,7 @@ def igo_vegetation(windows: dict, raster: str, out_gpkg_path: str):  # , large_r
         veg_counts = []
         for igoid, window in windows.items():
             try:
-                raw_raster = mask(src, window, crop=True)[0]
+                raw_raster = mask(src, [window], crop=True)[0]
                 mask_raster = np.ma.masked_values(raw_raster, src.nodata)
 
                 for oldvalue in np.unique(mask_raster):

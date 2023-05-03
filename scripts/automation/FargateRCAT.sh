@@ -85,7 +85,7 @@ rscli download $RSCONTEXT_DIR --id $RSCONTEXT_ID \
 
 # Go get vbet result for this to work
 rscli download $VBET_DIR --id $VBET_ID \
-  --file-filter "(vbet.gpkg|vbet_intermediates.gpkg)" \
+  --file-filter "vbet.gpkg" \
   --no-input --no-ui --verbose
 
 # Go get taudem result for this to work
@@ -112,7 +112,7 @@ try() {
     $RSCONTEXT_DIR/vegetation/historic_veg.tif \
     $TAUDEM_DIR/intermediates/pitfill.tif \
     $ANTHRO_DIR/outputs/anthro.gpkg/vwIgos \
-    $VBET_DIR/intermediates/vbet_intermediates.gpkg/vbet_dgos \
+    $ANTHRO_DIR/inputs/inputs.gpkg/dgo \
     $ANTHRO_DIR/outputs/anthro.gpkg/vwReaches \
     $ANTHRO_DIR/inputs/inputs.gpkg/roads \
     $ANTHRO_DIR/inputs/inputs.gpkg/rails \
