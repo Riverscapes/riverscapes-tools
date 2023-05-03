@@ -250,7 +250,7 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
         geom_waterbodies = None
 
     for id, win in windows.items():
-        geom = win[0].buffer(x_res)  # buffer by landfire resolution to make sure cells are captured in small streams
+        geom = win[0].buffer(x_res / 2)  # buffer by landfire resolution to make sure cells are captured in small streams
         if geom_flow_areas is not None:
             if geom.intersects(geom_flow_areas):
                 geom = geom.difference(geom_flow_areas)

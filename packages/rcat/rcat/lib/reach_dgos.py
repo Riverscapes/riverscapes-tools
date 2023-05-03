@@ -1,4 +1,5 @@
 import argparse
+import rasterio
 from shapely.ops import unary_union
 from rscommons import VectorBase, GeopackageLayer, Logger, dotenv
 from rscommons.vector_ops import get_shp_or_gpkg
@@ -19,6 +20,9 @@ def reach_dgos(reaches: str, dgos: str, proj_raster: str, flowarea: str = None, 
 
     log.info('Finding DGOs associated with each input reach')
     raster_buffer = VectorBase.rough_convert_metres_to_raster_units(proj_raster, 100)
+    with rasterio.open(proj_raster) as raster:
+        gt = raster.transform
+        x_res = gt[0]
     polygons = {}
     with GeopackageLayer(reaches) as lyr:
         for feature, _counter, _progbar in lyr.iterate_features():
@@ -46,6 +50,9 @@ def reach_dgos(reaches: str, dgos: str, proj_raster: str, flowarea: str = None, 
                     polygon = polygon.difference(flowarea)
                 if waterbody:
                     polygon = polygon.difference(waterbody)
+
+                # buffer by raster resolution to ensure sampling of at least one pixel
+                polygon = polygon.buffer(x_res / 2)
 
                 polygons[reach_id] = polygon
 
