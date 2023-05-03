@@ -149,7 +149,7 @@ def igo_attributes(database: str):
     # dict for order in table: conversion type ID
     log.info('Finding riparian conversion types')
     conv_out = {}
-    curs.execute('SELECT IGOID, FromConifer, FromDevegetated, FromGrassShrubland, FromDeciduous, NoChange, Deciduous, GrassShrubland, Devegetation, Conifer, Invasive, Development, Agriculture, NonRiparian FROM IGOAttributes')
+    curs.execute('SELECT IGOID, FromConifer, FromDevegetated, FromGrassShrubland, NoChange, GrassShrubland, Devegetation, Conifer, Invasive, Development, Agriculture, NonRiparian FROM IGOAttributes')
     for row in curs.fetchall():
         id = 0
         val = 0
@@ -159,7 +159,7 @@ def igo_attributes(database: str):
                     id = i
                     val = row[i]
                 elif row[i] == val:
-                    id = 15
+                    id = 12
         if val <= 0.01:
             level = 0
         elif 0.01 < val < 0.1:
@@ -284,13 +284,13 @@ def reach_attributes(database: str):
     curs.execute('UPDATE ReachAttributes SET FromGrassShrubland = 0 WHERE FromGrassShrubland IS NULL')
 
     # from deciduous
-    curs.execute('SELECT ReachConv.ReachID, ConvCellCount, TotCells FROM ReachConv'
-                 ' INNER JOIN (SELECT ReachID, SUM(ConvCellCount) AS TotCells FROM ReachConv GROUP BY ReachID) AS CC ON ReachConv.ReachID=CC.ReachID'
-                 ' WHERE ConvVal = -35')
-    from_decid = {row[0]: row[1] / row[2] for row in curs.fetchall()}
-    for rid, decid in from_decid.items():
-        curs.execute(f'UPDATE ReachAttributes SET FromDeciduous = {decid} WHERE ReachID = {rid}')
-    curs.execute('UPDATE ReachAttributes SET FromDeciduous = 0 WHERE FromDeciduous IS NULL')
+    # curs.execute('SELECT ReachConv.ReachID, ConvCellCount, TotCells FROM ReachConv'
+    #              ' INNER JOIN (SELECT ReachID, SUM(ConvCellCount) AS TotCells FROM ReachConv GROUP BY ReachID) AS CC ON ReachConv.ReachID=CC.ReachID'
+    #              ' WHERE ConvVal = -35')
+    # from_decid = {row[0]: row[1] / row[2] for row in curs.fetchall()}
+    # for rid, decid in from_decid.items():
+    #     curs.execute(f'UPDATE ReachAttributes SET FromDeciduous = {decid} WHERE ReachID = {rid}')
+    # curs.execute('UPDATE ReachAttributes SET FromDeciduous = 0 WHERE FromDeciduous IS NULL')
 
     # no change
     curs.execute('SELECT ReachConv.ReachID, ConvCellCount, TotCells FROM ReachConv'
@@ -302,13 +302,13 @@ def reach_attributes(database: str):
     curs.execute('UPDATE ReachAttributes SET NoChange = 0 WHERE NoChange IS NULL')
 
     # deciduous
-    curs.execute('SELECT ReachConv.ReachID, ConvCellCount, TotCells FROM ReachConv'
-                 ' INNER JOIN (SELECT ReachID, SUM(ConvCellCount) AS TotCells FROM ReachConv GROUP BY ReachID) AS CC ON ReachConv.ReachID=CC.ReachID'
-                 ' WHERE ConvVal = 35')
-    deciduous = {row[0]: row[1] / row[2] for row in curs.fetchall()}
-    for rid, decid in deciduous.items():
-        curs.execute(f'UPDATE ReachAttributes SET Deciduous = {decid} WHERE ReachID = {rid}')
-    curs.execute('UPDATE ReachAttributes SET Deciduous = 0 WHERE Deciduous IS NULL')
+    # curs.execute('SELECT ReachConv.ReachID, ConvCellCount, TotCells FROM ReachConv'
+    #              ' INNER JOIN (SELECT ReachID, SUM(ConvCellCount) AS TotCells FROM ReachConv GROUP BY ReachID) AS CC ON ReachConv.ReachID=CC.ReachID'
+    #              ' WHERE ConvVal = 35')
+    # deciduous = {row[0]: row[1] / row[2] for row in curs.fetchall()}
+    # for rid, decid in deciduous.items():
+    #     curs.execute(f'UPDATE ReachAttributes SET Deciduous = {decid} WHERE ReachID = {rid}')
+    # curs.execute('UPDATE ReachAttributes SET Deciduous = 0 WHERE Deciduous IS NULL')
 
     # grass shrubland
     curs.execute('SELECT ReachConv.ReachID, ConvCellCount, TotCells FROM ReachConv'
@@ -384,7 +384,7 @@ def reach_attributes(database: str):
     # dict for order in table: conversion type ID
     log.info('Finding riparian conversion types')
     conv_out = {}
-    curs.execute('SELECT ReachID, FromConifer, FromDevegetated, FromGrassShrubland, FromDeciduous, NoChange, Deciduous, GrassShrubland, Devegetation, Conifer, Invasive, Development, Agriculture, NonRiparian FROM ReachAttributes')
+    curs.execute('SELECT ReachID, FromConifer, FromDevegetated, FromGrassShrubland, NoChange, GrassShrubland, Devegetation, Conifer, Invasive, Development, Agriculture, NonRiparian FROM ReachAttributes')
     for row in curs.fetchall():
         id = 0
         val = 0
@@ -394,7 +394,7 @@ def reach_attributes(database: str):
                     id = i
                     val = row[i]
                 elif row[i] == val:
-                    id = 15
+                    id = 12
         if val <= 0.01:
             level = 0
         elif 0.01 < val < 0.1:

@@ -176,9 +176,7 @@ CREATE TABLE IGOAttributes (
     FromConifer REAL,
     FromDevegetated REAL,
     FromGrassShrubland REAL,
-    FromDeciduous REAL,
     NoChange REAL,
-    Deciduous REAL,
     GrassShrubland REAL,
     Devegetation REAL,
     Conifer REAL,
@@ -207,9 +205,7 @@ CREATE TABLE ReachAttributes (
     FromConifer REAL,
     FromDevegetated REAL,
     FromGrassShrubland REAL,
-    FromDeciduous REAL,
     NoChange REAL,
-    Deciduous REAL,
     GrassShrubland REAL,
     Devegetation REAL,
     Conifer REAL,
@@ -235,13 +231,18 @@ CREATE TABLE MetaData
 );
 
 -- The main views 
-CREATE VIEW vwReaches AS SELECT R.*, G.geom
+CREATE VIEW vwReaches AS SELECT R.*, G.geom, C.ConversionCode, C.ConversionType, D.Departure
 FROM ReachAttributes R
-    INNER JOIN ReachGeometry G ON R.ReachID = G.ReachID;
+    INNER JOIN ReachGeometry G ON R.ReachID = G.ReachID
+    INNER JOIN Conversions C ON R.ConversionID = C.ConversionID AND R.LevelID = C.LevelID
+    INNER JOIN Departure D ON R.RiparianDepartureID = D.RiparianDepartureID;
 
-CREATE VIEW vwIgos AS SELECT I.*, G.geom
+CREATE VIEW vwIgos AS SELECT I.*, G.geom, C.ConversionCode, C.ConversionType, D.Departure
 FROM IGOAttributes I
-    INNER JOIN IGOGeometry G ON I.IGOID = G.IGOID;
+    INNER JOIN IGOGeometry G ON I.IGOID = G.IGOID
+    INNER JOIN Conversions C ON I.ConversionID = C.ConversionID AND I.LevelID = C.LevelID
+    INNER JOIN Departure D ON I.RiparianDepartureID = D.RiparianDepartureID;
+
 
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Watersheds', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Epochs', 'attributes');
