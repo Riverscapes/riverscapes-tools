@@ -13,23 +13,14 @@ from rscommons import Logger, dotenv
 from rscommons.util import safe_makedirs
 
 
-def dump_geom(sqlite_db_dir, geom_template_db):
+def dump_geom(sqlite_db_path, geom_template_db):
     """ DUmp all projects to a DB
 
     Args:
         output_folder ([type]): [description]
     """
-    log = Logger('DUMP Cybercastor to SQlite')
-    log.title('Dump Projects to SQLITE')
-
-    today_date = date.today().strftime("%d-%m-%Y")
-
-    # No way to separate out production from staging in cybercastor.
-    sqlite_db_path = os.path.join(sqlite_db_dir, f'production_{today_date}.gpkg')
-
-    # Remove file if exists
-    if os.path.exists(sqlite_db_dir):
-        safe_makedirs(sqlite_db_dir)
+    log = Logger('DUMP Geometry to SQlite')
+    log.title('Dump Geometry to SQLITE')
 
     conn = sqlite3.connect(sqlite_db_path)
     curs = conn.cursor()
@@ -97,10 +88,15 @@ if __name__ == '__main__':
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
     args = dotenv.parse_args_env(parser)
 
+    today_date = date.today().strftime("%d-%m-%Y")
+
+    # No way to separate out production from staging in cybercastor.
+    sqlite_db_path = os.path.join(args.output_db_path, f'production_{today_date}.gpkg')
+
 
     # Initiate the log file
     log = Logger("SQLite DB GEOMETRY Dump")
-    log.setup(logPath=os.path.join(args.output_db_path, "dump_geometry.log"), verbose=args.verbose)
+    log.setup(logPath=os.path.join(sqlite_db_path, "dump_geometry.log"), verbose=args.verbose)
 
     try:
         dump_geom(args.output_db_path, args.template_db_path)

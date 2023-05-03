@@ -49,10 +49,10 @@
       ]
     },
     {
-      "name": "🦫 dump_cybercastor",
+      "name": "🧰⬇️ DUMP to SQLITE",
       "type": "python",
       "request": "launch",
-      "module": "cybercastor.dump_cybercastor",
+      "module": "cybercastor.dump_all",
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "envFile": "${workspaceFolder}/.env",
@@ -62,50 +62,69 @@
         "{env:CC_API_URL}",
         "{env:USERNAME}",
         "{env:PASSWORD}",
-        "--verbose"
-      ]
-    },
-    {
-      "name": "🦫 dump_geom",
-      "type": "python",
-      "request": "launch",
-      "module": "cybercastor.dump_geom",
-      "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal",
-      "envFile": "${workspaceFolder}/.env",
-      "args": [
-        "{env:DATA_ROOT}/warehouse_report",
         "{env:DATA_ROOT}/huc10.gpkg",
-        "--verbose"
-      ]
-    },
-    {
-      "name": "🦫 dump_riverscapes",
-      "type": "python",
-      "request": "launch",
-      "module": "cybercastor.dump_riverscapes",
-      "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal",
-      "envFile": "${workspaceFolder}/.env",
-      "args": [
-        "{env:DATA_ROOT}/warehouse_report",
         "${input:environment}",
         "--verbose"
       ]
     },
-    {
-      "name": "🦫 dump_views",
-      "type": "python",
-      "request": "launch",
-      "module": "cybercastor.dump_views",
-      "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal",
-      "envFile": "${workspaceFolder}/.env",
-      "args": [
-        "{env:DATA_ROOT}/warehouse_report",
-        "--verbose"
-      ]
-    },
+    // {
+    //   "name": "🦫 dump_cybercastor",
+    //   "type": "python",
+    //   "request": "launch",
+    //   "module": "cybercastor.dump_cybercastor",
+    //   "cwd": "${workspaceFolder}",
+    //   "console": "integratedTerminal",
+    //   "envFile": "${workspaceFolder}/.env",
+    //   // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
+    //   "args": [
+    //     "{env:DATA_ROOT}/warehouse_report",
+    //     "{env:CC_API_URL}",
+    //     "{env:USERNAME}",
+    //     "{env:PASSWORD}",
+    //     "--verbose"
+    //   ]
+    // },
+    // {
+    //   "name": "🦫 dump_geom",
+    //   "type": "python",
+    //   "request": "launch",
+    //   "module": "cybercastor.dump_geom",
+    //   "cwd": "${workspaceFolder}",
+    //   "console": "integratedTerminal",
+    //   "envFile": "${workspaceFolder}/.env",
+    //   "args": [
+    //     "{env:DATA_ROOT}/warehouse_report",
+    //     "{env:DATA_ROOT}/huc10.gpkg",
+    //     "--verbose"
+    //   ]
+    // },
+    // {
+    //   "name": "🦫 dump_riverscapes",
+    //   "type": "python",
+    //   "request": "launch",
+    //   "module": "cybercastor.dump_riverscapes",
+    //   "cwd": "${workspaceFolder}",
+    //   "console": "integratedTerminal",
+    //   "envFile": "${workspaceFolder}/.env",
+    //   "args": [
+    //     "{env:DATA_ROOT}/warehouse_report",
+    //     "${input:environment}",
+    //     "--verbose"
+    //   ]
+    // },
+    // {
+    //   "name": "🦫 dump_views",
+    //   "type": "python",
+    //   "request": "launch",
+    //   "module": "cybercastor.dump_views",
+    //   "cwd": "${workspaceFolder}",
+    //   "console": "integratedTerminal",
+    //   "envFile": "${workspaceFolder}/.env",
+    //   "args": [
+    //     "{env:DATA_ROOT}/warehouse_report",
+    //     "--verbose"
+    //   ]
+    // },
     // {
     //   "name": "Riverscapes API: Login demo",
     //   "type": "python",

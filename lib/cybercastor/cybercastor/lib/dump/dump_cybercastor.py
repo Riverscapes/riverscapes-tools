@@ -10,26 +10,16 @@ import json
 from datetime import date
 from cybercastor.classes.CybercastorAPI import CybercastorAPI
 from rscommons import Logger, dotenv
-from rscommons.util import safe_makedirs
 
 
-def dump_cybercastor(sqlite_db_dir, cc_api_url, username, password):
+def dump_cybercastor(sqlite_db_path, cc_api_url, username, password):
     """ DUmp all projects to a DB
 
     Args:
         output_folder ([type]): [description]
     """
     log = Logger('DUMP Cybercastor to SQlite')
-    log.title('Dump Projects to SQLITE')
-
-    today_date = date.today().strftime("%d-%m-%Y")
-
-    # No way to separate out production from staging in cybercastor.
-    sqlite_db_path = os.path.join(sqlite_db_dir, f'production_{today_date}.gpkg')
-
-    # Remove file if exists
-    if os.path.exists(sqlite_db_dir):
-        safe_makedirs(sqlite_db_dir)
+    log.title('Dump Cybercastor to SQLITE')
 
     conn = sqlite3.connect(sqlite_db_path)
     curs = conn.cursor()
@@ -132,6 +122,7 @@ def dump_cybercastor(sqlite_db_dir, cc_api_url, username, password):
     page = 0
     num_projs = 0
     while nexttoken or page == 0:
+        log.info(f"Getting page {page} of projects")
         page += 1
         # Get all project
         result = ccAPI.get_jobs(None, None, 50, nexttoken)
@@ -235,8 +226,15 @@ if __name__ == '__main__':
     log = Logger("SQLite DB Dump")
     log.setup(logPath=os.path.join(args.output_db_path, "dump_sqlite.log"), verbose=args.verbose)
 
+
+    today_date = date.today().strftime("%d-%m-%Y")
+
+    # No way to separate out production from staging in cybercastor.
+    sqlite_db_path = os.path.join(args.output_db_path, f'production_{today_date}.gpkg')
+
+
     try:
-        dump_cybercastor(args.output_db_path, fixedurl, args.username, args.password)
+        dump_cybercastor(sqlite_db_path, fixedurl, args.username, args.password)
 
     except Exception as e:
         log.error(e)

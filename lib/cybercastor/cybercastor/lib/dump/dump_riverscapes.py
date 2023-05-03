@@ -5,8 +5,6 @@ import os
 import traceback
 import argparse
 import sqlite3
-import requests
-import json
 from datetime import datetime
 from datetime import date
 from cybercastor.classes.RiverscapesAPI import RiverscapesAPI
@@ -54,23 +52,14 @@ query = """
 """
 
 
-def dump_riverscapes(sqlite_db_dir, stage):
+def dump_riverscapes(sqlite_db_path, stage):
     """ DUmp all projects to a DB
 
     Args:
         output_folder ([type]): [description]
     """
-    log = Logger('DUMP Cybercastor to SQlite')
-    log.title('Dump Projects to SQLITE')
-
-    today_date = date.today().strftime("%d-%m-%Y")
-
-    # No way to separate out production from staging in cybercastor.
-    sqlite_db_path = os.path.join(
-        sqlite_db_dir, f'production_{today_date}.gpkg')
-
-    if os.path.exists(sqlite_db_dir):
-        safe_makedirs(sqlite_db_dir)
+    log = Logger('DUMP Riverscapes to SQlite')
+    log.title('Dump Riverscapes to SQLITE')
 
     conn = sqlite3.connect(sqlite_db_path)
     curs = conn.cursor()
@@ -190,6 +179,12 @@ if __name__ == '__main__':
     parser.add_argument('--verbose', help='(optional) a little extra logging ',
                         action='store_true', default=False)
     args = dotenv.parse_args_env(parser)
+
+
+    today_date = date.today().strftime("%d-%m-%Y")
+
+    # No way to separate out production from staging in cybercastor.
+    sqlite_db_path = os.path.join(args.output_db_path, f'production_{today_date}.gpkg')
 
     # Initiate the log file
     log = Logger("SQLite Riverscapes Dump")
