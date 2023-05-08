@@ -835,6 +835,7 @@ def clean_raster_regions(raster: Path, target_value: int, out_raster: Path, out_
     array = None
 
     size = np.bincount(regions.ravel())
+    print(len(size))
     biggest_label = size[1:].argmax() + 1
     regions[regions != biggest_label] = 0
     regions[regions == biggest_label] = 1

@@ -211,6 +211,7 @@ def get_channel_level_path(channel_area, lines, vaa_table):
                 lengths = {}
                 for l_feat, _innercount, _innerprg in lyr_intersect.iterate_features(clip_shape=geom_candidate):
                     line_geom = l_feat.GetGeometryRef()
+                    line_geom = line_geom.Intersection(geom_candidate)
                     line_length = line_geom.Length()
                     line_level_path = l_feat.GetField('LevelPathI')
                     lengths[line_level_path] = lengths[line_level_path] + line_length if line_level_path in lengths else line_length
