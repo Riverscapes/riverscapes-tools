@@ -23,6 +23,6 @@ python3 -m venv .venv
 .venv/bin/pip install -e ./packages/rscontext
 .venv/bin/pip install -e ./packages/vbet
 .venv/bin/pip install -e ./packages/brat
-.venv/bin/pip install -e ./packages/gnat
+.venv/bin/pip install -e ./packages/rme
 .venv/bin/pip install -e ./packages/hand
-.venv/bin/pip install -e ./packages/rvd
+.venv/bin/pip install -e ./packages/rcat
