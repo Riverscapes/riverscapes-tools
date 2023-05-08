@@ -8,7 +8,7 @@ def copy_features_fields(in_path: str, out_path: str, attribute_filter=None, eps
     """
 
     log = Logger('Copy Features')
-    log.info(f'Copyging features from {os.path.basename(in_path)} with specified attributes into project')
+    log.info(f'Copying features from {os.path.basename(in_path)} with specified attributes into project')
 
     with get_shp_or_gpkg(in_path) as in_lyr, get_shp_or_gpkg(out_path, write=True) as out_lyr:
         if epsg is not None:
