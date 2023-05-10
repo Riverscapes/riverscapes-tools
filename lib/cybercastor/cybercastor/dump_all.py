@@ -27,19 +27,14 @@ def dump_all(sqlite_db_dir, cybercastor_api_url, username, password, template_ge
     log = Logger('Dump all Riverscapes and Cybercastor data to sqlite')
     today_date = date.today().strftime("%d-%m-%Y")
 
-    # No way to separate out production from staging in cybercastor.
-    sqlite_db_path = os.path.join(sqlite_db_dir, f'production_{today_date}.gpkg')
-
-    if os.path.exists(sqlite_db_dir):
-        safe_makedirs(sqlite_db_dir)
-    # Delete the file if it exists
-    if os.path.exists(sqlite_db_path):
-        os.remove(sqlite_db_path)
+    if not os.path.exists(template_geom):
+        log.error(f'The GeoPackge with HUC geoemtry does not exist: {template_geom}')
+        raise Exception(f'The GeoPackge with HUC geoemtry does not exist: {template_geom}')
 
     # First copy the geometry in
-    dump_geom(sqlite_db_path, template_geom)
+    # dump_geom(sqlite_db_path, template_geom)
     # Then add the cybercastor data
-    dump_cybercastor(sqlite_db_path, cybercastor_api_url, username, password)
+    dump_cybercastor(template_geom, cybercastor_api_url, username, password)
     # Then add the riverscapes data (authentication will be a browser popup)
     dump_riverscapes(sqlite_db_path, stage)
     # Then write any additional views

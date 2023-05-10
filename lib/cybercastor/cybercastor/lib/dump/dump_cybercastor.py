@@ -26,98 +26,31 @@ def dump_cybercastor(sqlite_db_path, cc_api_url, username, password):
 
     # Initialize our API and log in
     ccAPI = CybercastorAPI(cc_api_url, username, password)
-    curs.execute("DROP TABLE IF EXISTS cybercastor_tasks;")
-    curs.execute("DROP TABLE IF EXISTS cybercastor_jobs;")
-    curs.execute("DROP TABLE IF EXISTS engine_scripts;")
-
-    curs.execute("DROP TABLE IF EXISTS cybercastor_job_metadata;")
-    curs.execute("DROP TABLE IF EXISTS cybercastor_jobenv;")
-    curs.execute("DROP TABLE IF EXISTS cybercastor_taskenv;")
-
-    curs.execute("""
-        CREATE TABLE IF NOT EXISTS engine_scripts (
-            sid integer PRIMARY KEY,
-            id TEXT,
-            name TEXT,
-            description TEXT,
-            localScriptPath TEXT,
-            taskVars TEXT
-        );""")
-    curs.execute("""
-        CREATE TABLE IF NOT EXISTS cybercastor_jobs (
-            jid integer PRIMARY KEY,
-            id TEXT,
-            createdBy TEXT,
-            createdOn INTEGER,
-            description TEXT,
-            name TEXT,
-            status TEXT,
-            taskDefId TEXT,
-            taskScriptId TEXT
-        );""")
-    curs.execute("""
-        CREATE TABLE IF NOT EXISTS cybercastor_job_metadata (
-            mdid integer PRIMARY KEY,
-            jid INTEGER,
-            key TEXT,
-            value TEXT
-        );""")
-    curs.execute("""
-        CREATE TABLE IF NOT EXISTS cybercastor_tasks (
-            tid integer PRIMARY KEY,
-            id TEXT,
-            jid INTEGER,
-            jobid TEXT,
-            createdBy TEXT,
-            createdOn INTEGER,
-            endedOn INTEGER,
-            env TEXT,
-            logStream TEXT,
-            logUrl TEXT,
-            cpu INTEGER,
-            memory INTEGER,
-            meta TEXT,
-            name TEXT,
-            queriedOn INTEGER,
-            startedOn INTEGER,
-            status TEXT,
-            taskDefProps TEXT
-        );""")
-    curs.execute("""
-        CREATE TABLE IF NOT EXISTS cybercastor_jobenv (
-            eid integer PRIMARY KEY,
-            jid INTEGER,
-            key TEXT,
-            value TEXT
-        );""")
-    curs.execute("""
-        CREATE TABLE IF NOT EXISTS cybercastor_taskenv (
-            mdid integer PRIMARY KEY,
-            tid INTEGER,
-            key TEXT,
-            value TEXT
-        );""")
-
-    conn.commit()
+   
 
     resp = requests.get(url="https://cybercastor.northarrowresearch.com/engines/manifest.json")
     data = resp.json()  # Check the JSON Response Content documentation below
 
-    # a little hard coded but oh well
-    for ts in data[0]['taskScripts']:
-        insert_sql = """
-            INSERT INTO engine_scripts(id, name, description, localScriptPath, taskVars)
-            VALUES(?,?,?,?,?)
-        """
-        curs.execute(insert_sql, (
-            ts['id'],
+    engine_data = [(ts['id'],
             ts['name'],
             ts['description'],
             ts['localScriptPath'],
-            json.dumps(ts['taskVars']),
-        ))
+            json.dumps(ts['taskVars'])) for ts in data[0]['taskScripts']]
+    curs.executemany("""INSERT INTO engine_scripts
+        (guid, name, description, local_script_path, task_vars)
+        VALUES (?,?,?,?,?)
+        ON CONFLICT (guid) DO UPDATE SET
+          name = excluded.name,
+          description = excluded.description,
+          local_script_path = excluded.local_script_path,
+          task_vars = excluded.task_vars""", engine_data)
     conn.commit()
 
+    curs.execute('DELETE FROM cc_jobs')
+
+    for table_name in ['cc_jobs', 'cc_job_metadata', 'cc_tasks', 'cc_task_metadata', 'cc_jobenv', 'cc_taskenv']:    
+        curs.execute(f"UPDATE SQLITE_SEQUENCE SET SEQ=0 WHERE NAME='{table_name}'")
+    
     nexttoken = None
     page = 0
     num_projs = 0
@@ -133,7 +66,7 @@ def dump_cybercastor(sqlite_db_path, cc_api_url, username, password):
 
         for job in result['jobs']:
             insert_sql = """
-                INSERT INTO cybercastor_jobs(id, createdBy, createdOn, description, name, status, taskDefId, taskScriptId)
+                INSERT INTO cc_jobs (guid, created_by, created_on, description, name, status, task_def_id, task_script_id)
                 VALUES(?,?,?,?,?,?,?,?)
             """
             curs.execute(insert_sql, (
@@ -146,39 +79,22 @@ def dump_cybercastor(sqlite_db_path, cc_api_url, username, password):
                 job['taskDefId'],
                 job['taskScriptId'],
             ))
-            jid = curs.lastrowid
-            insert_jobmeta_sql = """
-                INSERT INTO cybercastor_job_metadata(jid, key, value)
-                VALUES(?,?,?)
-            """
-            job_meta = json.loads(job['meta'])
-            for key, value in job_meta.items():
-                curs.execute(insert_jobmeta_sql, (
-                    jid,
-                    key,
-                    value,
-                ))
-            insert_jobenv_sql = """
-                INSERT INTO cybercastor_jobenv(jid, key, value)
-                VALUES(?,?,?)
-            """
-            job_env = json.loads(job['env'])
-            for key, value in job_env.items():
-                curs.execute(insert_jobenv_sql, (
-                    jid,
-                    key,
-                    value,
-                ))
+            job_id = curs.lastrowid
+
+            curs.executemany('INSERT INTO cc_job_metadata (job_id, key, value) VALUES (?,?,?)', [
+                (job_id, key, value) for key, value in json.loads(job['meta']).items()])
+            
+            curs.executemany('INSERT INTO cc_jobenv (job_id, key, value) VALUES (?,?,?)', [
+                (job_id, key, value) for key, value in json.loads(job['env']).items()])
 
             for task in job['tasks']:
                 insert_sql = """
-                    INSERT INTO cybercastor_tasks(id, jid, jobid, createdBy, createdOn, endedOn, logStream, logUrl, cpu, memory, meta, name, queriedOn, startedOn, status, taskDefProps)
-                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    INSERT INTO cc_tasks (job_id, guid, created_by, created_on, ended_on, log_stream, log_url, cpu, memory, meta, name, queried_on, started_on, status, task_def_props)
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 """
                 curs.execute(insert_sql, (
+                    job_id,
                     task['id'],
-                    jid,
-                    job['id'],
                     task['createdBy'],
                     int(task['createdOn']) if task['createdOn'] is not None else None,
                     int(task['endedOn']) if task['endedOn'] is not None else None,
@@ -193,19 +109,13 @@ def dump_cybercastor(sqlite_db_path, cc_api_url, username, password):
                     task['status'],
                     json.dumps(task['taskDefProps']),
                 ))
-                tid = curs.lastrowid
-                insert_taskenv_sql = """
-                    INSERT INTO cybercastor_taskenv(tid, key, value)
-                    VALUES(?,?,?)
-                """
-                task_env = json.loads(task['env'])
-                for key, value in task_env.items():
-                    curs.execute(insert_taskenv_sql, (
-                        tid,
-                        key,
-                        value,
-                    ))                
+                task_id = curs.lastrowid
+
+                curs.executemany('INSERT INTO cc_taskenv (task_id, key, value) VALUES (?,?,?)', [
+                (task_id, key, value) for key, value in json.loads(task['env']).items()])
+              
             conn.commit()
+
     log.info("Finished Writing: {}".format(sqlite_db_path))
 
 
