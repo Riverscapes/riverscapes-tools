@@ -5,7 +5,7 @@ import os
 import traceback
 import argparse
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 from datetime import date
 from cybercastor.classes.RiverscapesAPI import RiverscapesAPI
 from rscommons import Logger, dotenv
@@ -64,7 +64,6 @@ def dump_riverscapes(sqlite_db_path, stage):
     conn = sqlite3.connect(sqlite_db_path)
     curs = conn.cursor()
 
-
     # Initialize our API and log in
     curs.execute("DROP TABLE IF EXISTS riverscapes_projects;")
     curs.execute("DROP TABLE IF EXISTS riverscapes_project_meta;")
@@ -89,9 +88,12 @@ def dump_riverscapes(sqlite_db_path, stage):
                 project_id INTEGER,
                 key TEXT,
                 value TEXT);''')
-    curs.execute('CREATE INDEX idx_riverscapes_project_meta_key_value ON riverscapes_project_meta (key, value);')
-    curs.execute('CREATE INDEX idx_riverscapes_project_meta_project_id ON riverscapes_project_meta (project_id);')
-    curs.execute('CREATE INDEX idx_riverscapes_projects_pid ON riverscapes_projects (pid);')
+    curs.execute(
+        'CREATE INDEX idx_riverscapes_project_meta_key_value ON riverscapes_project_meta (key, value);')
+    curs.execute(
+        'CREATE INDEX idx_riverscapes_project_meta_project_id ON riverscapes_project_meta (project_id);')
+    curs.execute(
+        'CREATE INDEX idx_riverscapes_projects_pid ON riverscapes_projects (pid);')
 
     conn.commit()
 
@@ -106,52 +108,82 @@ def dump_riverscapes(sqlite_db_path, stage):
             "value": "Cybercastor",
         }]
     }
-    limit = 100
-    offset = 0
-    total = 0
-    while offset == 0 or offset < total:
-        log.info(f"Fetching projects {offset} to {offset + limit}")
-        results = riverscapes_api.run_query(
-            query, {"searchParams": searchParams, "limit": limit, "offset": offset})
-        total = results['data']['searchProjects']['total']
-        offset += limit
 
-        projects = results['data']['searchProjects']['results']
-        for search_result in projects:
+    # The warehouse came online in April 2023
+    start_date = datetime(2023, 4, 11)
+    one_day = timedelta(days=1)
+    end_date = start_date + one_day
+    # Get the current timestamp
+    current_date = datetime.now()
+    grand_total = 0
 
-          project = search_result['item']
-          meta = project.pop('meta', None)
+    # Create a timedelta object with a difference of 1 day
+    while start_date <= current_date:
+        searchParams['createdOn'] = {
+            # Format the datetime as ISO8601 with second precision
+            "from": start_date.strftime('%Y-%m-%dT%H:%M:%S'),
+            "to": end_date.strftime('%Y-%m-%dT%H:%M:%S')
+        }
+        log.info(
+            f"{start_date.strftime('%B %-d, %Y')}")
 
-          # Convert the string to datetime object
-          createdOnDate = datetime.strptime(project['createdOn'], '%Y-%m-%dT%H:%M:%S.%fZ')
-          # Convert datetime object to Unix timestamp in milliseconds
-          createOnTs = int(createdOnDate.timestamp() * 1000)
+        limit = 500
+        offset = 0
+        total = 0
+        day_progress = 0
 
-          # Insert project data
-          curs.execute('''
-            INSERT INTO riverscapes_projects(id, name, tags, project_type_id, created_on, owned_by_id, owner_by_name, owner_by_type)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-          ''',
-              (
-              project['id'],
-              project['name'],
-              ','.join(project['tags']),
-              project['projectType']['id'],
-              createOnTs,
-              project['ownedBy']['id'],
-              project['ownedBy']['name'],
-              project['ownedBy']['__typename']
-              )
-          )
-          pid = curs.lastrowid
-          # Insert project meta data
-          if meta:
-              for meta_item in meta:
-                  curs.execute('''
-                  INSERT INTO riverscapes_project_meta(project_id, key, value) 
-                  VALUES (?, ?, ?)
-                  ''',
-                              (pid, meta_item['key'], meta_item['value']))        
+        while offset == 0 or offset < total:
+            # log.info(f"   Fetching projects {offset} to {offset + limit}")
+            results = riverscapes_api.run_query(
+                query, {"searchParams": searchParams, "limit": limit, "offset": offset})
+            total = results['data']['searchProjects']['total']
+            offset += limit
+
+            projects = results['data']['searchProjects']['results']
+            log.info(
+                f"        Found {len(projects)} projects. Day Progress: {day_progress +len(projects) }/{total} Grand total: {grand_total}")
+            for search_result in projects:
+
+                project = search_result['item']
+                meta = project.pop('meta', None)
+
+                # Convert the string to datetime object
+                createdOnDate = datetime.strptime(
+                    project['createdOn'], '%Y-%m-%dT%H:%M:%S.%fZ')
+                # Convert datetime object to Unix timestamp in milliseconds
+                createOnTs = int(createdOnDate.timestamp() * 1000)
+
+                # Insert project data
+                curs.execute('''
+                INSERT INTO riverscapes_projects(id, name, tags, project_type_id, created_on, owned_by_id, owner_by_name, owner_by_type)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ''',
+                             (
+                                 project['id'],
+                                 project['name'],
+                                 ','.join(project['tags']),
+                                 project['projectType']['id'],
+                                 createOnTs,
+                                 project['ownedBy']['id'],
+                                 project['ownedBy']['name'],
+                                 project['ownedBy']['__typename']
+                             )
+                             )
+                grand_total += 1
+                day_progress += 1
+                pid = curs.lastrowid
+                # Insert project meta data
+                if meta:
+                    for meta_item in meta:
+                        curs.execute('''
+                        INSERT INTO riverscapes_project_meta(project_id, key, value) 
+                        VALUES (?, ?, ?)
+                        ''',
+                                     (pid, meta_item['key'], meta_item['value']))
+
+        # Increment the start date by one day
+        start_date += one_day
+        end_date = start_date + one_day
 
     conn.commit()
     # Shut down the API since we don;t need it anymore
@@ -169,6 +201,7 @@ def create_views(sqlite_db_dir):
     conn = sqlite3.connect(sqlite_db_path)
     curs = conn.cursor()
 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # parser.add_argument('hucs_json', help='JSON with array of HUCS', type=str)
@@ -180,11 +213,11 @@ if __name__ == '__main__':
                         action='store_true', default=False)
     args = dotenv.parse_args_env(parser)
 
-
     today_date = date.today().strftime("%d-%m-%Y")
 
     # No way to separate out production from staging in cybercastor.
-    sqlite_db_path = os.path.join(args.output_db_path, f'production_{today_date}.gpkg')
+    sqlite_db_path = os.path.join(
+        args.output_db_path, f'production_{today_date}.gpkg')
 
     # Initiate the log file
     log = Logger("SQLite Riverscapes Dump")
