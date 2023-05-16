@@ -46,11 +46,11 @@ def dump_all(sqlite_db_dir, cybercastor_api_url, username, password, template_ge
     # Then add the cybercastor data
     dump_cybercastor(sqlite_db_path, cybercastor_api_url, username, password, stage)
     # Then add the riverscapes data (authentication will be a browser popup)
-    dump_riverscapes(sqlite_db_path, stage)
-    # Then write any additional views
-    dump_views(sqlite_db_path)
+    # dump_riverscapes(template_geom, stage)
+    # # Then write any additional views
+    # dump_views(sqlite_db_path)
 
-    log.info("Finished Writing: {}".format(sqlite_db_path))
+    log.info("Finished Writing: {}".format(template_geom))
 
 
 def create_database(schema_file_path: str, db_path: str):

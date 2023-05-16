@@ -22,7 +22,12 @@ def dump_riverscapes(sqlite_db_path, stage):
     log.title('Dump Riverscapes to SQLITE')
 
     conn = sqlite3.connect(sqlite_db_path)
+    conn.execute('PRAGMA foreign_keys = ON')
     curs = conn.cursor()
+
+    curs.execute('DELETE FROM rs_projects')
+    conn.commit()
+    conn.execute('VACUUM')
 
     riverscapes_api = RiverscapesAPI(stage=stage)
     search_query = riverscapes_api.load_query('searchProjects')
@@ -102,15 +107,11 @@ def dump_riverscapes(sqlite_db_path, stage):
                              )
                 grand_total += 1
                 day_progress += 1
-                pid = curs.lastrowid
+                project_id = curs.lastrowid
+
                 # Insert project meta data
-                if meta:
-                    for meta_item in meta:
-                        curs.execute('''
-                        INSERT INTO rs_project_meta(project_id, key, value) 
-                        VALUES (?, ?, ?)
-                        ''',
-                                     (pid, meta_item['key'], meta_item['value']))
+                curs.executemany('INSERT INTO rs_project_meta(project_id, key, value) VALUES (?, ?, ?)', [
+                    (project_id, meta_item['key'], meta_item['value']) for meta_item in meta])
 
         # Increment the start date by one day
         start_date += one_day

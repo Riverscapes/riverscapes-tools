@@ -1,34 +1,5 @@
-
 ------------------------------------------------------------------
--- RIVERSCAPES EXCHANGE: Projects Table
-------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS rs_projects
-                (
-                pid INTEGER PRIMARY KEY,
-                id TEXT,
-                name TEXT,
-                project_type_id TEXT,
-                tags TEXT,
-                created_on INTEGER,
-                owned_by_id TEXT,
-                owner_by_name TEXT,
-                owner_by_type TEXT);
-
-------------------------------------------------------------------
--- RIVERSCAPES EXCHANGE: Metadata Table
-------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS rs_project_meta
-                (id INTEGER PRIMARY KEY,
-                project_id INTEGER,
-                key TEXT,
-                value TEXT);
-
-CREATE INDEX idx_rs_project_meta_key_value ON rs_project_meta (key, value);
-CREATE INDEX idx_rs_project_meta_project_id ON rs_project_meta (project_id);
-CREATE INDEX idx_rs_projects_pid ON rs_projects (pid);
-
-------------------------------------------------------------------
--- CYBERCASTOR Engine Table
+-- CYBERCASTOR Tables
 ------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS engine_scripts
 (
@@ -120,17 +91,48 @@ CREATE TABLE IF NOT EXISTS cc_taskenv
 );
 CREATE UNIQUE INDEX ux_cc_taskenv ON cc_taskenv (task_id, key);
 
+------------------------------------------------------------------
+-- WAREHOUSE Projects Table
+------------------------------------------------------------------
+CREATE TABLE rs_projects
+(
+    id              INTEGER PRIMARY KEY,
+    project_id      TEXT NOT NULL UNIQUE,
+    name            TEXT,
+    project_type_id TEXT,
+    tags            TEXT,
+    created_on      INTEGER,
+    owned_by_id     TEXT,
+    owner_by_name   TEXT,
+    owner_by_type   TEXT
+);
+CREATE INDEX ix_rs_projects_project_type_id ON rs_projects (project_type_id);
+CREATE INDEX is_rs_projects_created_on ON rs_projects (created_on);
+
+CREATE TABLE rs_project_meta
+(
+    id         INTEGER PRIMARY KEY,
+    project_id INTEGER REFERENCES rs_projects (id) ON DELETE CASCADE,
+    key        TEXT,
+    value      TEXT
+);
+CREATE INDEX ix_rs_project_meta ON rs_project_meta(project_id, key);
+CREATE INDEX ix_rs_project_meta_key ON rs_project_meta(key, value);
 
 ------------------------------------------------------------------
--- Custom view
+-- VIEWS
 ------------------------------------------------------------------
-CREATE VIEW vw_cc_huc_status as
+CREATE VIEW vw_cc_huc_status
+    as
 SELECT DISTINCT huc.fid, huc.geom, t.status
-from Huc10_conus huc
-         left join cc_taskenv te ON huc.HUC10 = te.value
-         INNER JOIN cc_tasks t ON te.task_id = t.id
-WHERE key = 'HUC'
-  AND te.value <> 'FAILED';
+      from Huc10_conus huc
+               INNER join cc_taskenv te ON huc.HUC10 = te.value
+               INNER JOIN cc_tasks t ON te.task_id = t.id
+               INNER JOIN wbdhu10_attributes w10a on huc.huc10 = w10a.HUC10
+      WHERE key = 'HUC'
+        AND te.value <> 'FAILED'
+        and w10a.STATES != 'CN'
+        and w10a.STATES != 'MX';
 
 INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y,
                            srs_id)

@@ -21,10 +21,12 @@ def dump_cybercastor(sqlite_db_path, cc_api_url, username, password, stage):
     log = Logger('DUMP Cybercastor to SQlite')
     log.title('Dump Cybercastor to SQLITE')
 
-    # Initialize our API and log in
+    # Initialize CC API and log in
     ccAPI = CybercastorAPI(cc_api_url, username, password)
 
+    # Connect to the DB and ensure foreign keys are enabled so that cascading deletes work
     conn = sqlite3.connect(sqlite_db_path)
+    conn.execute('PRAGMA foreign_keys = ON')
     curs = conn.cursor()
 
     resp = requests.get(
@@ -48,14 +50,21 @@ def dump_cybercastor(sqlite_db_path, cc_api_url, username, password, stage):
     curs.executemany("""
         INSERT INTO engine_scripts
         (guid, name, description, local_script_path, task_vars)
-        VALUES (?,?,?,?,?)          
-        """, engine_data)
-    conn.commit()
+        VALUES (?,?,?,?,?)
+        ON CONFLICT (guid) DO UPDATE SET
+          name = excluded.name,
+          description = excluded.description,
+          local_script_path = excluded.local_script_path,
+          task_vars = excluded.task_vars""", engine_data)
 
-    # TODO: This was failing and I'm not sure why so I commented it out
-    # for table_name in ['cc_jobs', 'cc_job_metadata', 'cc_tasks', 'cc_task_metadata', 'cc_jobenv', 'cc_taskenv']:
-    #     curs.execute(
-    #         f"UPDATE SQLITE_SEQUENCE SET SEQ=0 WHERE NAME='{table_name}'")
+    # Cascade delete all CC data and then vacuum the DB to reclaim space
+    curs.execute('DELETE FROM cc_jobs')
+    conn.commit()
+    conn.execute('VACUUM')
+
+    # Reset the autoincrement counters for all tables to keep the IDs in reasonable ranges
+    for table_name in ['cc_jobs', 'cc_job_metadata', 'cc_tasks', 'cc_task_metadata', 'cc_jobenv', 'cc_taskenv']:
+        curs.execute(f"UPDATE SQLITE_SEQUENCE SET SEQ=0 WHERE NAME='{table_name}'")
 
     nexttoken = None
     page = 0
