@@ -208,9 +208,13 @@ def get_channel_level_path(channel_area, lines, vaa_table):
             nhd_id = feat.GetField('NHDPlusID')
             if nhd_id not in nhidid_lpath_lookup:
                 geom_candidate = feat.GetGeometryRef()
+                if not geom_candidate.IsValid():
+                    geom_candidate = geom_candidate.MakeValid()
                 lengths = {}
                 for l_feat, _innercount, _innerprg in lyr_intersect.iterate_features(clip_shape=geom_candidate):
                     line_geom = l_feat.GetGeometryRef()
+                    if not line_geom.IsValid():
+                        line_geom = line_geom.MakeValid()
                     line_geom = line_geom.Intersection(geom_candidate)
                     line_length = line_geom.Length()
                     line_level_path = l_feat.GetField('LevelPathI')
