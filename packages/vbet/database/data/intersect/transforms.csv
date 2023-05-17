@@ -2,6 +2,10 @@ transform_id, type_id, input_id, name, description
 1,10,1,Slope Small Streams,
 2,10,1,Slope Medium Streams,
 3,10,1,Slope Large Streams,
-4,10,2,HAND Small Streams,
-5,10,2,HAND Medium Streams,
-6,10,2,HAND Large Streams,
+4,10,1,Slope Larger Streams,
+5,10,1,Slope Largest Streams
+6,10,2,HAND Small Streams,
+7,10,2,HAND Medium Streams,
+8,10,2,HAND Large Streams,
+9,10,2,HAND Larger Streams,
+10,10,2,HAND Largest Streams,
