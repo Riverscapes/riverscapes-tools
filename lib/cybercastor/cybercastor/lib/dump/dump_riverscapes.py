@@ -112,7 +112,6 @@ def dump_riverscapes(sqlite_db_path, stage):
     # The warehouse came online in April 2023
     start_date = datetime(2023, 4, 11)
     one_day = timedelta(days=1)
-    end_date = start_date + one_day
     # Get the current timestamp
     current_date = datetime.now()
     grand_total = 0
@@ -120,9 +119,10 @@ def dump_riverscapes(sqlite_db_path, stage):
     # Create a timedelta object with a difference of 1 day
     while start_date <= current_date:
         searchParams['createdOn'] = {
-            # Format the datetime as ISO8601 with second precision
-            "from": start_date.strftime('%Y-%m-%dT%H:%M:%S'),
-            "to": end_date.strftime('%Y-%m-%dT%H:%M:%S')
+            # Format the datetime and use the same date for from and to
+            # This will mean "anything that day" and should avoid duplicates
+            "from": start_date.strftime('%Y-%m-%d'),
+            "to": start_date.strftime('%Y-%m-%d')
         }
         log.info(
             f"{start_date.strftime('%B %-d, %Y')}")
@@ -183,7 +183,6 @@ def dump_riverscapes(sqlite_db_path, stage):
 
         # Increment the start date by one day
         start_date += one_day
-        end_date = start_date + one_day
 
     conn.commit()
     # Shut down the API since we don;t need it anymore
