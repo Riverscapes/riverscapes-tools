@@ -307,6 +307,7 @@ def calculate_vbet_window_metrics(vbet_igos: Path, vbet_dgos: Path, level_paths:
             if level_path is None or level_path not in distance_lookup.keys():
                 continue
             window_distance = distance_lookup[level_path]
+            window_addon = {200: 100, 400: 200, 1200: 300, 2000: 500, 8000: 2000}
             for feat_igo, *_ in lyr_igos.iterate_features(f'Summerizing vbet metrics for {level_path}', attribute_filter=f"LevelPathI = {level_path}"):
                 # Construct the igo window selection logic
                 igo_distance = feat_igo.GetField('seg_distance')
@@ -355,7 +356,7 @@ def calculate_vbet_window_metrics(vbet_igos: Path, vbet_dgos: Path, level_paths:
 
                 # Write to fields
                 feat_igo.SetField('integrated_width', integrated_width)
-                feat_igo.SetField('window_size', window_distance)
+                feat_igo.SetField('window_size', window_distance + window_addon[int(window_distance)])
                 feat_igo.SetField('window_area', window_area_m2)
                 feat_igo.SetField('centerline_length', window_cl_length_m)
                 feat_igo.SetField('vb_acreage_per_mile', vb_acreage_per_mile)

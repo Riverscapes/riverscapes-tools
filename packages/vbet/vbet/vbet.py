@@ -807,7 +807,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     log.info('Generating VBET Segmentation Points')
     segmentation_points = os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['SEGMENTATION_POINTS'].rel_path)
     stream_size_lookup = get_distance_lookup(inputs_gpkg, intermediates_gpkg, level_paths_to_run)
-    generate_igo_points(output_centerlines, segmentation_points, stream_size_lookup, distance={0: 100, 1: 200, 2: 300, 3: 500, 4: 1000})
+    generate_igo_points(output_centerlines, segmentation_points, stream_size_lookup, distance={0: 100, 1: 200, 2: 300, 3: 500, 4: 2000})
     _tmr_waypt.timer_break('GenerateVBETSegmentPts')
 
     log.info('Generating VBET Segment Polygons')
@@ -824,11 +824,13 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     _tmr_waypt.timer_break('CalcSegmentMetrics')
 
     log.info('Summerizing VBET Metrics')
-    window_size = {0: 200.0, 1: 400.0, 2: 1200.0, 3: 2000.0, 4: 4000.0}
+    window_size = {0: 200.0, 1: 400.0, 2: 1200.0, 3: 2000.0, 4: 8000.0}
     distance_lookup = get_distance_lookup(inputs_gpkg, intermediates_gpkg, level_paths_to_run, window_size)
     project.add_metadata([RSMeta("Small Search Window", str(window_size[0]), RSMetaTypes.INT, locked=True),
                           RSMeta("Medium Search Window", str(window_size[1]), RSMetaTypes.INT, locked=True),
-                          RSMeta("Large Search Window", str(window_size[2]), RSMetaTypes.INT, locked=True)])
+                          RSMeta("Large Search Window", str(window_size[2]), RSMetaTypes.INT, locked=True),
+                          RSMeta("Very Large Search Window", str(window_size[3]), RSMetaTypes.INT, locked=True),
+                          RSMeta("Huge Search Window", str(window_size[4]), RSMetaTypes.INT, locked=True)])
     metric_fields = list(metric_layers.keys())
     calculate_vbet_window_metrics(segmentation_points, segmentation_polygons, level_paths_to_run, distance_lookup, metric_fields)
     _tmr_waypt.timer_break('SummerizeMetrics')
