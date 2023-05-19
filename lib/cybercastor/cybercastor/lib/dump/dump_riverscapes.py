@@ -64,39 +64,6 @@ def dump_riverscapes(sqlite_db_path, stage):
     conn = sqlite3.connect(sqlite_db_path)
     curs = conn.cursor()
 
-    # Initialize our API and log in
-    curs.execute("DROP TABLE IF EXISTS riverscapes_projects;")
-    curs.execute("DROP TABLE IF EXISTS riverscapes_project_meta;")
-    conn.commit()
-
-    # Create project table
-    curs.execute('''CREATE TABLE riverscapes_projects
-                (
-                pid INTEGER PRIMARY KEY,
-                id TEXT,
-                name TEXT,
-                project_type_id TEXT,
-                tags TEXT,
-                created_on INTEGER,
-                owned_by_id TEXT,
-                owner_by_name TEXT,
-                owner_by_type TEXT);
-            ''')
-    # Create project meta table
-    curs.execute('''CREATE TABLE riverscapes_project_meta
-                (id INTEGER PRIMARY KEY,
-                project_id INTEGER,
-                key TEXT,
-                value TEXT);''')
-    curs.execute(
-        'CREATE INDEX idx_riverscapes_project_meta_key_value ON riverscapes_project_meta (key, value);')
-    curs.execute(
-        'CREATE INDEX idx_riverscapes_project_meta_project_id ON riverscapes_project_meta (project_id);')
-    curs.execute(
-        'CREATE INDEX idx_riverscapes_projects_pid ON riverscapes_projects (pid);')
-
-    conn.commit()
-
     riverscapes_api = RiverscapesAPI(stage=stage)
     # Only refresh the token if we need to
     if riverscapes_api.accessToken is None:

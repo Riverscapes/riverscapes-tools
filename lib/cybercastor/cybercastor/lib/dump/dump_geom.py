@@ -40,34 +40,33 @@ def dump_geom(sqlite_db_path, geom_template_db):
 
     # Iterate over table names and copy each table to destination database
     for table_name in table_names:
-      if table_name == 'sqlite_master' or table_name == 'sqlite_sequence':
-        continue
+        if table_name == 'sqlite_master' or table_name == 'sqlite_sequence':
+            continue
 
-      # Get the schema of the source table
-      source_cursor.execute(f"PRAGMA table_info({table_name})")
-      schema = source_cursor.fetchall()
+        # Get the schema of the source table
+        source_cursor.execute(f"PRAGMA table_info({table_name})")
+        schema = source_cursor.fetchall()
 
-      # Set up the SQL query to create the destination table
-      dest_columns = []
-      for column in schema:
-          name = column[1]
-          datatype = column[2]
-          dest_columns.append(f"{name} {datatype}")
-      dest_columns_str = ','.join(dest_columns)
+        # Set up the SQL query to create the destination table
+        dest_columns = []
+        for column in schema:
+            name = column[1]
+            datatype = column[2]
+            dest_columns.append(f"{name} {datatype}")
+        dest_columns_str = ','.join(dest_columns)
 
-      dest_drop_query = f"DROP TABLE IF EXISTS {table_name}"
-      dest_cursor.execute(dest_drop_query)
+        dest_drop_query = f"DROP TABLE IF EXISTS {table_name}"
+        dest_cursor.execute(dest_drop_query)
 
-      dest_create_query = f"CREATE TABLE {table_name} ({dest_columns_str})"
+        dest_create_query = f"CREATE TABLE {table_name} ({dest_columns_str})"
 
-      # Execute the create query
-      dest_cursor.execute(dest_create_query)
+        # Execute the create query
+        dest_cursor.execute(dest_create_query)
 
-      # Select data from source table and insert into destination table
-      data = source_cursor.execute(f"SELECT * FROM {table_name}").fetchall()
-      if len(data) > 0:
-        dest_cursor.executemany(f"INSERT INTO {table_name} VALUES ({','.join(['?' for i in range(len(data[0]))])})", data)
-
+        # Select data from source table and insert into destination table
+        data = source_cursor.execute(f"SELECT * FROM {table_name}").fetchall()
+        if len(data) > 0:
+            dest_cursor.executemany(f"INSERT INTO {table_name} VALUES ({','.join(['?' for i in range(len(data[0]))])})", data)
 
     # Commit changes to the destination database
     dest_conn.commit()
@@ -75,7 +74,6 @@ def dump_geom(sqlite_db_path, geom_template_db):
     # Close database connections
     source_conn.close()
     dest_conn.close()
-
 
     log.info("Finished Writing: {}".format(sqlite_db_path))
 
@@ -92,7 +90,6 @@ if __name__ == '__main__':
 
     # No way to separate out production from staging in cybercastor.
     sqlite_db_path = os.path.join(args.output_db_path, f'production_{today_date}.gpkg')
-
 
     # Initiate the log file
     log = Logger("SQLite DB GEOMETRY Dump")

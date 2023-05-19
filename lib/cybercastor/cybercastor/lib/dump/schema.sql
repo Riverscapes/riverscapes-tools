@@ -1,3 +1,35 @@
+
+------------------------------------------------------------------
+-- RIVERSCAPES EXCHANGE: Projects Table
+------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS rs_projects
+                (
+                pid INTEGER PRIMARY KEY,
+                id TEXT,
+                name TEXT,
+                project_type_id TEXT,
+                tags TEXT,
+                created_on INTEGER,
+                owned_by_id TEXT,
+                owner_by_name TEXT,
+                owner_by_type TEXT);
+
+------------------------------------------------------------------
+-- RIVERSCAPES EXCHANGE: Metadata Table
+------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS rs_project_meta
+                (id INTEGER PRIMARY KEY,
+                project_id INTEGER,
+                key TEXT,
+                value TEXT);
+
+CREATE INDEX idx_rs_project_meta_key_value ON rs_project_meta (key, value);
+CREATE INDEX idx_rs_project_meta_project_id ON rs_project_meta (project_id);
+CREATE INDEX idx_rs_projects_pid ON rs_projects (pid);
+
+------------------------------------------------------------------
+-- CYBERCASTOR Engine Table
+------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS engine_scripts
 (
     id                INTEGER PRIMARY KEY,
@@ -8,6 +40,9 @@ CREATE TABLE IF NOT EXISTS engine_scripts
     task_vars         TEXT
 );
 
+------------------------------------------------------------------
+-- CYBERCASTOR Jobs Table
+------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS cc_jobs
 (
     id             integer PRIMARY KEY,
@@ -22,6 +57,9 @@ CREATE TABLE IF NOT EXISTS cc_jobs
 );
 CREATE INDEX ix_cc_jobs ON cc_jobs (created_on);
 
+------------------------------------------------------------------
+-- CYBERCASTOR Metadata Table
+------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS cc_job_metadata
 (
     id     integer PRIMARY KEY,
@@ -32,6 +70,10 @@ CREATE TABLE IF NOT EXISTS cc_job_metadata
 CREATE UNIQUE INDEX ux_cc_job_metadata ON cc_job_metadata (job_id, key);
 CREATE INDEX ix_cc_job_metadata_key ON cc_job_metadata (key);
 
+
+------------------------------------------------------------------
+-- CYBERCASTOR Tasks Table
+------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS cc_tasks
 (
     id             integer PRIMARY KEY,
@@ -40,12 +82,10 @@ CREATE TABLE IF NOT EXISTS cc_tasks
     created_by     TEXT,
     created_on     INTEGER,
     ended_on       INTEGER,
-    env            TEXT,
     log_stream     TEXT,
     log_url        TEXT,
     cpu            INTEGER,
     memory         INTEGER,
-    meta           TEXT,
     name           TEXT,
     queried_on     INTEGER,
     started_on     INTEGER,
@@ -55,7 +95,9 @@ CREATE TABLE IF NOT EXISTS cc_tasks
 CREATE UNIQUE INDEX ux_cc_tasks ON cc_tasks (job_id, guid);
 CREATE INDEX ix_cc_tasks ON cc_tasks (created_on);
 
-
+------------------------------------------------------------------
+-- CYBERCASTOR Job Environment Table
+------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS cc_jobenv
 (
     id     integer PRIMARY KEY,
@@ -65,6 +107,10 @@ CREATE TABLE IF NOT EXISTS cc_jobenv
 );
 CREATE UNIQUE INDEX ux_cc_jobenv ON cc_jobenv (job_id, key);
 
+
+------------------------------------------------------------------
+-- CYBERCASTOR Task Environment Table
+------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS cc_taskenv
 (
     id      integer PRIMARY KEY,
@@ -74,6 +120,10 @@ CREATE TABLE IF NOT EXISTS cc_taskenv
 );
 CREATE UNIQUE INDEX ux_cc_taskenv ON cc_taskenv (task_id, key);
 
+
+------------------------------------------------------------------
+-- Custom view
+------------------------------------------------------------------
 CREATE VIEW vw_cc_huc_status as
 SELECT DISTINCT huc.fid, huc.geom, t.status
 from Huc10_conus huc

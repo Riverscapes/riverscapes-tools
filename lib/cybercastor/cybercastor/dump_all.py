@@ -4,9 +4,8 @@ import sys
 import os
 import traceback
 import argparse
-from datetime import date
+import sqlite3
 from rscommons import Logger, dotenv
-from rscommons.util import safe_makedirs
 from cybercastor.lib.dump.dump_cybercastor import dump_cybercastor
 from cybercastor.lib.dump.dump_geom import dump_geom
 from cybercastor.lib.dump.dump_riverscapes import dump_riverscapes
@@ -25,7 +24,6 @@ def dump_all(sqlite_db_dir, cybercastor_api_url, username, password, template_ge
         stage (_type_): _description_
     """
     log = Logger('Dump all Riverscapes and Cybercastor data to sqlite')
-    today_date = date.today().strftime("%d-%m-%Y")
 
     if not os.path.exists(template_geom):
         log.error(
@@ -36,8 +34,18 @@ def dump_all(sqlite_db_dir, cybercastor_api_url, username, password, template_ge
     sqlite_db_path = os.path.join(
         sqlite_db_dir, f'DataExchange_{stage}.gpkg')
 
-    # First copy the geometry in
-    # dump_geom(sqlite_db_path, template_geom)
+    # TODO: TEMPORARY
+    # if os.path.exists(sqlite_db_path):
+    #     os.remove(sqlite_db_path)
+
+    # If there is no DB there then create a fresh one
+    if not os.path.exists(sqlite_db_path):
+        log.info(f'Creating new sqlite db: {sqlite_db_path}')
+        # First copy the geometry in. This will give us the gpkg tables the schema depends on
+        dump_geom(sqlite_db_path, template_geom)
+        # Now create our schema
+        create_database('cybercastor/lib/dump/schema.sql', sqlite_db_path)
+
     # Then add the cybercastor data
     dump_cybercastor(sqlite_db_path, cybercastor_api_url, username, password, stage)
     # Then add the riverscapes data (authentication will be a browser popup)
@@ -46,6 +54,34 @@ def dump_all(sqlite_db_dir, cybercastor_api_url, username, password, template_ge
     dump_views(sqlite_db_path)
 
     log.info("Finished Writing: {}".format(sqlite_db_path))
+
+
+def create_database(schema_file_path: str, db_path: str):
+    """ Create a new database from the schema file
+
+    Args:
+        schema_file (_type_): _description_
+        db_name (_type_): _description_
+
+    Raises:
+        Exception: _description_
+    """
+    if not os.path.exists(schema_file_path):
+        raise Exception(f'The schema file does not exist: {schema_file_path}')
+    # Read the schema from the file
+    with open(schema_file_path, 'r') as file:
+        schema = file.read()
+
+    # Connect to a new database
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    # Execute the schema to create tables
+    cursor.executescript(schema)
+
+    # Commit the changes and close the connection
+    conn.commit()
+    conn.close()
 
 
 if __name__ == '__main__':
