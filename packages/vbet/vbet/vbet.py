@@ -267,18 +267,6 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     _inactive_zones_node, inactive_zones_ras = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['INACTIVE_FP_ZONES'])
     proj_rasters.extend([[_vbet_zones_node, vbet_zone_ras], [_active_zones_node, active_zones_ras], [_inactive_zones_node, inactive_zones_ras]])
 
-    # write_rasters = {}
-
-    # topo_evidence_raster = os.path.join(project_folder, LayerTypes['EVIDENCE_TOPO'].rel_path)
-    # transformed_slope = os.path.join(project_folder, LayerTypes['TRANSFORMED_SLOPE'].rel_path)
-    # normalized_twi = os.path.join(project_folder, LayerTypes['NORMALIZED_TWI'].rel_path)
-    # write_rasters['EVIDENCE_TOPO'] = rasterio.open(topo_evidence_raster, 'w', **out_meta)
-    # write_rasters['TRANSFORMED_SLOPE'] = rasterio.open(transformed_slope, 'w', **out_meta)
-    # write_rasters['NORMALIZED_TWI'] = rasterio.open(normalized_twi, 'w', **out_meta)
-    # project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['EVIDENCE_TOPO'])
-    # project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['TRANSFORMED_SLOPE'])
-    # project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['NORMALIZED_TWI'])
-
     # Allow us to specify a temp folder outside our project folder
     temp_rasters_folder = os.path.join(temp_folder, 'rasters')
     safe_makedirs(temp_rasters_folder)
@@ -446,10 +434,6 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                 feat = ogr.Feature(lyr_envelope_dfn)
                 feat.SetGeometry(envelope_geom)
                 lyr_envelope.ogr_layer.CreateFeature(feat)
-        # env_lyr = RSLayer('Envelope', 'ENVELOPE', 'Geopackage', os.path.join(os.path.basename(temp_folder_lpath), 'envelope_polygon.gpkg'), {
-        #     'ENV': RSLayer('Envelope Layer', 'ENVLAYER', 'Vector', os.path.basename(envelope))
-        # })
-        # project.add_project_geopackage(lpnode, env_lyr)
 
         # use the channel extent to mask all hand input raster and channel area extents
         local_dinfflowdir_ang = os.path.join(temp_folder_lpath, f'dinfflowdir_ang_{level_path}.tif')
@@ -519,11 +503,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             write_rasters['VBET_EVIDENCE'] = rasterio.open(evidence_raster, 'w', **out_meta)
             write_rasters['TRANSFORMED_HAND'] = rasterio.open(transformed_hand, 'w', **out_meta)
             write_rasters['TRANSFORMED_SLOPE'] = rasterio.open(transformed_slope, 'w', **out_meta)
-            # write_rasters['topo_evidence_twi'] = rasterio.open(os.path.join(temp_folder_lpath, f'topo_evidence_twi_{level_path}.tif'), 'w', **out_meta)
-            # write_rasters['topo_evidence_nontwi'] = rasterio.open(os.path.join(temp_folder_lpath, f'topo_evidence_nontwi_{level_path}.tif'), 'w', **out_meta)
             write_rasters['topo_evidence'] = rasterio.open(os.path.join(temp_folder_lpath, f'topo_evidence_{level_path}.tif'), 'w', **out_meta)
-            # write_rasters['twi_logic'] = rasterio.open(os.path.join(temp_folder_lpath, f'twi_logic_{level_path}.tif'), 'w', **out_meta)
-            # write_rasters['twi_normalized'] = rasterio.open(os.path.join(temp_folder_lpath, f'twi_normalized_{level_path}.tif'), 'w', **out_meta)
 
             progbar = ProgressBar(len(list(read_rasters['Slope'].block_windows(1))), 50, "Calculating evidence layer")
             counter = 0
@@ -562,19 +542,11 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                         # transformed[name] = transformed[name] - ((np.log(masked_prox + 0.1) + 2.303) / np.log(max_prox + 2.303))
                         transformed[name] = transformed[name] - (np.sqrt(masked_prox) / np.sqrt(max_prox))
 
-                # fvals_topo_twi = np.ma.mean([normalized['Slope'], normalized['HAND'], normalized['TWI']], axis=0)
-                # fvals_topo_nontwi = np.ma.mean([normalized['Slope'], normalized['HAND']], axis=0)
-                # logic_twi = np.equal(normalized['TWI'], 0).astype(int)
-                # fvals_topo = np.choose(logic_twi, [fvals_topo_twi, fvals_topo_nontwi])
                 fvals_topo = vbet_run['Inputs']['HAND']['weight'] * transformed['HAND'] + vbet_run['Inputs']['Slope']['weight'] * transformed['Slope']
                 fvals_channel = 0.995 * block['Channel']
                 fvals_evidence = np.maximum(fvals_topo, fvals_channel)
 
-                # write_rasters['twi_logic'].write(np.ma.filled(np.float32(logic_twi), out_meta['nodata']), window=window, indexes=1)
-                # write_rasters['topo_evidence_twi'].write(np.ma.filled(np.float32(fvals_topo_twi), out_meta['nodata']), window=window, indexes=1)
-                # write_rasters['topo_evidence_nontwi'].write(np.ma.filled(np.float32(fvals_topo_nontwi), out_meta['nodata']), window=window, indexes=1)
                 write_rasters['topo_evidence'].write(np.ma.filled(np.float32(fvals_topo), out_meta['nodata']), window=window, indexes=1)
-                # write_rasters['twi_normalized'].write(np.ma.filled(np.float32(normalized['TWI']), out_meta['nodata']), window=window, indexes=1)
                 write_rasters['VBET_EVIDENCE'].write(np.ma.filled(np.float32(fvals_evidence), out_meta['nodata']), window=window, indexes=1)
                 write_rasters['TRANSFORMED_HAND'].write(np.ma.filled(np.float32(transformed['HAND']), out_meta['nodata']), window=window, indexes=1)
                 write_rasters['TRANSFORMED_SLOPE'].write(np.ma.filled(np.float32(transformed['Slope']), out_meta['nodata']), window=window, indexes=1)
@@ -609,10 +581,6 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         with TimerBuckets('centerline'):
             if level_path is not None:
                 # Generate and add rasterized version of level path flowline to make sure endpoint coords are on the raster.
-                # level_path_flowlines = os.path.join(temp_folder_lpath, 'flowlines.gpkg', f'level_path_{level_path}')
-                # copy_feature_class(line_network, level_path_flowlines, attribute_filter=f'LevelPathI = {level_path}')
-                # rasterized_level_path = os.path.join(temp_folder_lpath, f'rasterized_flowline_{level_path}.tif')
-                # rasterize(level_path_flowlines, rasterized_level_path, rasterized_channel, all_touched=True)
                 valley_bottom_flowline_raster = os.path.join(temp_folder_lpath, f'valley_bottom_and_flowline_{level_path}.tif')
                 with rasterio.open(valley_bottom_raster, 'r') as rio_vbet, \
                         rasterio.open(rasterized_level_path, 'r') as rio_flowline:
