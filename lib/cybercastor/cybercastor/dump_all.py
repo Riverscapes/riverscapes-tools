@@ -19,7 +19,7 @@ def dump_all(sqlite_db_dir, cybercastor_api_url, username, password, template_ge
     Args:
         sqlite_db_dir (_type_): _description_
         cybercastor_api_url (_type_): _description_
-        username (_type_): _description_
+        username (_type_sqlite_db_path): _description_
         password (_type_): _description_
         template_geom (_type_): _description_
         stage (_type_): _description_
@@ -28,13 +28,18 @@ def dump_all(sqlite_db_dir, cybercastor_api_url, username, password, template_ge
     today_date = date.today().strftime("%d-%m-%Y")
 
     if not os.path.exists(template_geom):
-        log.error(f'The GeoPackge with HUC geoemtry does not exist: {template_geom}')
-        raise Exception(f'The GeoPackge with HUC geoemtry does not exist: {template_geom}')
+        log.error(
+            f'The GeoPackge with HUC geoemtry does not exist: {template_geom}')
+        raise Exception(
+            f'The GeoPackge with HUC geoemtry does not exist: {template_geom}')
+
+    sqlite_db_path = os.path.join(
+        sqlite_db_dir, f'DataExchange_{stage}.gpkg')
 
     # First copy the geometry in
     # dump_geom(sqlite_db_path, template_geom)
     # Then add the cybercastor data
-    dump_cybercastor(template_geom, cybercastor_api_url, username, password)
+    dump_cybercastor(sqlite_db_path, cybercastor_api_url, username, password, stage)
     # Then add the riverscapes data (authentication will be a browser popup)
     dump_riverscapes(sqlite_db_path, stage)
     # Then write any additional views
@@ -42,14 +47,19 @@ def dump_all(sqlite_db_dir, cybercastor_api_url, username, password, template_ge
 
     log.info("Finished Writing: {}".format(sqlite_db_path))
 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(
         'output_db_path', help='The final resting place of the SQLITE DB', type=str)
-    parser.add_argument('cybercastor_api_url', help='URL to the cybercastor API', type=str)
-    parser.add_argument('username', help='Cybercastor API URL Username', type=str)
-    parser.add_argument('password', help='Cybercastor API URL Password', type=str)
-    parser.add_argument('template_geom', help='the template gpkg of huc10 geometry', type=str)
+    parser.add_argument('cybercastor_api_url',
+                        help='URL to the cybercastor API', type=str)
+    parser.add_argument(
+        'username', help='Cybercastor API URL Username', type=str)
+    parser.add_argument(
+        'password', help='Cybercastor API URL Password', type=str)
+    parser.add_argument(
+        'template_geom', help='the template gpkg of huc10 geometry', type=str)
     parser.add_argument(
         'stage', help='Riverscapes stage', type=str, default='production')
     parser.add_argument('--verbose', help='(optional) a little extra logging ',
@@ -64,7 +74,8 @@ if __name__ == '__main__':
     fixedurl = args.cybercastor_api_url.replace(':/', '://')
 
     try:
-        dump_all(args.output_db_path, fixedurl, args.username, args.password, args.template_geom, args.stage)
+        dump_all(args.output_db_path, fixedurl, args.username,
+                 args.password, args.template_geom, args.stage)
 
     except Exception as e:
         log.error(e)
