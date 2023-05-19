@@ -21,6 +21,9 @@ def dump_cybercastor(sqlite_db_path, cc_api_url, username, password, stage):
     log = Logger('DUMP Cybercastor to SQlite')
     log.title('Dump Cybercastor to SQLITE')
 
+    # Initialize our API and log in
+    ccAPI = CybercastorAPI(cc_api_url, username, password)
+
     conn = sqlite3.connect(sqlite_db_path)
     curs = conn.cursor()
 
@@ -33,23 +36,26 @@ def dump_cybercastor(sqlite_db_path, cc_api_url, username, password, stage):
                     ts['description'],
                     ts['localScriptPath'],
                     json.dumps(ts['taskVars'])) for ts in data[0]['taskScripts']]
+
+    # We reload everything every time
+    curs.execute("DELETE FROM engine_scripts;")
+    curs.execute("DELETE FROM cc_jobs;")
+    curs.execute("DELETE FROM cc_tasks;")
+    curs.execute("DELETE FROM cc_jobenv;")
+    curs.execute("DELETE FROM cc_taskenv;")
+    curs.execute("DELETE FROM cc_job_metadata;")
+
     curs.executemany("""
-        
         INSERT INTO engine_scripts
         (guid, name, description, local_script_path, task_vars)
-        VALUES (?,?,?,?,?)
-        ON CONFLICT (guid) DO UPDATE SET
-          name = excluded.name,
-          description = excluded.description,
-          local_script_path = excluded.local_script_path,
-          task_vars = excluded.task_vars
-          
+        VALUES (?,?,?,?,?)          
         """, engine_data)
     conn.commit()
 
-    for table_name in ['cc_jobs', 'cc_job_metadata', 'cc_tasks', 'cc_task_metadata', 'cc_jobenv', 'cc_taskenv']:
-        curs.execute(
-            f"UPDATE SQLITE_SEQUENCE SET SEQ=0 WHERE NAME='{table_name}'")
+    # TODO: This was failing and I'm not sure why so I commented it out
+    # for table_name in ['cc_jobs', 'cc_job_metadata', 'cc_tasks', 'cc_task_metadata', 'cc_jobenv', 'cc_taskenv']:
+    #     curs.execute(
+    #         f"UPDATE SQLITE_SEQUENCE SET SEQ=0 WHERE NAME='{table_name}'")
 
     nexttoken = None
     page = 0
@@ -106,7 +112,7 @@ def dump_cybercastor(sqlite_db_path, cc_api_url, username, password, stage):
                         job_id, guid, created_by, created_on, ended_on, log_stream, log_url, cpu, memory, name,
                         queried_on, started_on, status, task_def_props
                     )
-                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 """
                 task_guid = task['id']
                 curs.execute(insert_sql, (

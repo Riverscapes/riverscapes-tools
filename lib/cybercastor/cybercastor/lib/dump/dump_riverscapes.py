@@ -83,6 +83,9 @@ def dump_riverscapes(sqlite_db_path, stage):
     current_date = datetime.now()
     grand_total = 0
 
+    curs.execute("DELETE FROM rs_projects;")
+    curs.execute("DELETE FROM rs_project_meta;")
+
     # Create a timedelta object with a difference of 1 day
     while start_date <= current_date:
         searchParams['createdOn'] = {
@@ -122,7 +125,7 @@ def dump_riverscapes(sqlite_db_path, stage):
 
                 # Insert project data
                 curs.execute('''
-                INSERT INTO riverscapes_projects(id, name, tags, project_type_id, created_on, owned_by_id, owner_by_name, owner_by_type)
+                INSERT INTO rs_projects(id, name, tags, project_type_id, created_on, owned_by_id, owner_by_name, owner_by_type)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ''',
                              (
@@ -143,7 +146,7 @@ def dump_riverscapes(sqlite_db_path, stage):
                 if meta:
                     for meta_item in meta:
                         curs.execute('''
-                        INSERT INTO riverscapes_project_meta(project_id, key, value) 
+                        INSERT INTO rs_project_meta(project_id, key, value) 
                         VALUES (?, ?, ?)
                         ''',
                                      (pid, meta_item['key'], meta_item['value']))

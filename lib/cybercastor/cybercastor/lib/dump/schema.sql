@@ -145,7 +145,7 @@ SELECT 'vw_cc_huc_status',
        max_y,
        srs_id
 FROM gpkg_contents
-WHERE table_name = 'Huc10_conus'
+WHERE table_name = 'Huc10_conus';
 
 INSERT INTO gpkg_geometry_columns
 SELECT 'vw_cc_huc_status', column_name, geometry_type_name, srs_id, z, m

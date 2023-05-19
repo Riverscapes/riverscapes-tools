@@ -26,15 +26,12 @@ def dump_all(sqlite_db_dir, cybercastor_api_url, username, password, template_ge
     log = Logger('Dump all Riverscapes and Cybercastor data to sqlite')
 
     if not os.path.exists(template_geom):
-        log.error(
-            f'The GeoPackge with HUC geoemtry does not exist: {template_geom}')
-        raise Exception(
-            f'The GeoPackge with HUC geoemtry does not exist: {template_geom}')
+        log.error(f'The GeoPackge with HUC geoemtry does not exist: {template_geom}')
+        raise Exception(f'The GeoPackge with HUC geoemtry does not exist: {template_geom}')
 
-    sqlite_db_path = os.path.join(
-        sqlite_db_dir, f'DataExchange_{stage}.gpkg')
+    sqlite_db_path = os.path.join(sqlite_db_dir, f'DataExchange_{stage}.gpkg')
 
-    # TODO: TEMPORARY
+    # TODO: TEMPORARY Cleanup DB File
     # if os.path.exists(sqlite_db_path):
     #     os.remove(sqlite_db_path)
 
