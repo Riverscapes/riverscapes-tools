@@ -206,9 +206,15 @@ def channel(huc: int,
         if bankfull_field is not None:
             buffer_by_field(bankfull_network, bankfull_polygons, bankfull_field, epsg=epsg, centered=True)
         elif bankfull_function is not None:
-            log.info("Calculing bankfull width")
-            calculate_bankfull(bankfull_network, 'bankfull_m', bankfull_function, bankfull_function_params)
-            buffer_by_field(bankfull_network, bankfull_polygons, "bankfull_m", epsg=epsg, centered=True)
+            with get_shp_or_gpkg(bankfull_network) as lyr_bankfull_network:
+                feat_count = lyr_bankfull_network.ogr_layer.GetFeatureCount()
+            if feat_count > 0:
+                log.info("Calculing bankfull width")
+                calculate_bankfull(bankfull_network, 'bankfull_m', bankfull_function, bankfull_function_params)
+                buffer_by_field(bankfull_network, bankfull_polygons, "bankfull_m", epsg=epsg, centered=True)
+            else:
+                log.warning("No features in bankfull network, skipping bankfull width calculation")
+                bankfull_polygons = None
         else:
             log.info("No field or equation for bankfull width was provided")
             bankfull_polygons = None
