@@ -72,3 +72,20 @@ JOIN rs_project_meta m ON p.pid = m.project_id AND m.key = 'HUC'  -- Joining the
 JOIN rs_project_meta m2 ON p.pid = m2.project_id AND m2.key = 'Model Version'  -- Joining the 'rs_projects' table with the 'rs_project_meta' table on 'pid' and 'Model Version' key
 ORDER BY HUC, project_type_id, created_on DESC;  -- Sorting the result by 'HUC' in ascending order, then by 'project_type_id' in ascending order, and finally by 'created_on' in descending order
 ```
+
+
+### Find HUC10 Geoms with corresponding Projects
+
+
+This one is a work in progress... Better, faster query coming soon!
+
+```sql
+SELECT H.HUC10, M.key, m.value, P.project_type_id, P.id, P.owner_by_name,
+       CASE WHEN M.value IS NOT NULL THEN 1 ELSE 0 END AS has_corresponding_row
+FROM Huc10_conus H
+LEFT JOIN rs_project_meta M on M.value = H.HUC10
+LEFT JOIN rs_projects P on M.project_id = P.pid
+WHERE has_corresponding_row = 1
+  AND M.key = 'HUC'
+  AND P.project_type_id = 'rscontext'
+```
