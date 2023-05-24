@@ -1,0 +1,9 @@
+mutation updateProject(
+  $projectId: ID!
+  $project: ProjectInput!
+) {
+  updateProject(project: $project, projectId: $projectId) {
+    id
+    name
+  }
+}
