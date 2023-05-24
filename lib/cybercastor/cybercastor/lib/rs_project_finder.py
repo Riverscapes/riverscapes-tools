@@ -29,40 +29,6 @@ fargate_env_keys = {
     'rs_metric_engine': 'RME_ID',
 }
 
-query = """
-  query searchProjects_query(
-    $searchParams: ProjectSearchParamsInput!
-    $sort: [SearchSortEnum!]
-    ) {
-      searchProjects(limit: 50, offset: 0, params: $searchParams, sort: $sort) {
-    results {
-      item {
-        id
-        name
-        meta {
-          key
-          value
-        }
-        projectType {
-          id
-        }
-        createdOn
-        ownedBy {
-          ... on Organization {
-            name
-          }
-          ... on User {
-            name
-          }
-          __typename
-        }
-        #
-      }
-    }
-  }
-}
-"""
-
 
 def find_upstream_projects(job_data) -> bool:
 
@@ -81,6 +47,7 @@ def find_upstream_projects(job_data) -> bool:
 
     # Initialize the warehouse API that will be used to search for available projects
     riverscapes_api = RiverscapesAPI(stage=job_data['server'])
+    search_query = riverscapes_api.load_query('searchProjects')
 
     errors = []
 
@@ -102,7 +69,7 @@ def find_upstream_projects(job_data) -> bool:
             log.info(f'Searching warehouse for project type {project_type} for HUC {huc}')
 
             # Search for projects of the given type that match the HUC
-            params = {
+            searchParams = {
                 "projectTypeId": project_type,
                 "meta": [{
                     "key": "HUC",
@@ -116,7 +83,7 @@ def find_upstream_projects(job_data) -> bool:
                 # within the context of a single call so for now leave this alone.
                 riverscapes_api.refresh_token()
 
-            results = riverscapes_api.run_query(query, {"searchParams": params})
+            results = riverscapes_api.run_query(search_query, {"searchParams": searchParams, "limit": 50, "offset": 0})
             available_projects = results['data']['searchProjects']['results']
 
             if len(available_projects) < 1:

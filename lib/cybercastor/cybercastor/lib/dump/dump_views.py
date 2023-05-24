@@ -37,11 +37,12 @@ def dump_views(sqlite_db_path):
     INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) 
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
     ''',
-    ('vw_exchange_projects', gpkg_contents_row[1], gpkg_contents_row[2], gpkg_contents_row[3], gpkg_contents_row[4], gpkg_contents_row[5], gpkg_contents_row[6], gpkg_contents_row[7], gpkg_contents_row[8], gpkg_contents_row[9]))
+                 ('vw_exchange_projects', gpkg_contents_row[1], gpkg_contents_row[2], gpkg_contents_row[3], gpkg_contents_row[4], gpkg_contents_row[5], gpkg_contents_row[6], gpkg_contents_row[7], gpkg_contents_row[8], gpkg_contents_row[9]))
 
     conn.commit()
 
     log.info("Finished Writing: {}".format(sqlite_db_path))
+
 
 def make_gpkgrows(conn, table_name: str):
     """This adds in the rows for the new view into the gpkg_contents, gpkg_extensions, and gpkg_geometry_columns tables.
@@ -56,22 +57,22 @@ def make_gpkgrows(conn, table_name: str):
     cnt_row = curs.fetchone()
     cnt_row[0] = table_name
     # Now insert a new row into gpkg_contents with a new name corresponding to the view above
-    curs.execute('''INSERT INTO gpkg_contents VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);''',cnt_row)
+    curs.execute('''INSERT INTO gpkg_contents VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);''', cnt_row)
 
     curs.execute("SELECT * FROM gpkg_extensions WHERE table_name = 'Huc10_conus';")
     ext_row = curs.fetchone()
     ext_row[0] = table_name
     # Now insert a new row into gpkg_contents with a new name corresponding to the view above
-    curs.execute('''INSERT INTO gpkg_extensions VALUES (?, ?, ?, ?, ?);''',ext_row)
+    curs.execute('''INSERT INTO gpkg_extensions VALUES (?, ?, ?, ?, ?);''', ext_row)
 
     curs.execute("SELECT * FROM gpkg_geometry_columns WHERE table_name = 'Huc10_conus';")
     geom_row = curs.fetchone()
     geom_row[0] = table_name
     # Now insert a new row into gpkg_contents with a new name corresponding to the view above
-    curs.execute('''INSERT INTO gpkg_geometry_columns VALUES (?, ?, ?, ?, ?, ?);''',geom_row)
-
+    curs.execute('''INSERT INTO gpkg_geometry_columns VALUES (?, ?, ?, ?, ?, ?);''', geom_row)
 
     conn.commit()
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

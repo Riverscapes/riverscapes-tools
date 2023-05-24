@@ -12,46 +12,6 @@ from rscommons import Logger, dotenv
 from rscommons.util import safe_makedirs
 
 
-query = """
-  query searchProjects_query(
-    $searchParams: ProjectSearchParamsInput!
-    $sort: [SearchSortEnum!]
-    $limit: Int!
-    $offset: Int!
-    ) {
-      searchProjects(limit: $limit, offset: $offset, params: $searchParams, sort: $sort) {
-    results {
-      item {
-        id
-        name
-        tags
-        meta {
-          key
-          value
-        }
-        projectType {
-          id
-        }
-        createdOn
-        ownedBy {
-          ... on Organization {
-            id
-            name
-          }
-          ... on User {
-            id
-            name
-          }
-          __typename
-        }
-      }
-    }
-    total
-  }
-}
-"""
-
-
 def dump_riverscapes(sqlite_db_path, stage):
     """ DUmp all projects to a DB
 
@@ -65,6 +25,7 @@ def dump_riverscapes(sqlite_db_path, stage):
     curs = conn.cursor()
 
     riverscapes_api = RiverscapesAPI(stage=stage)
+    search_query = riverscapes_api.load_query('searchProjects')
     # Only refresh the token if we need to
     if riverscapes_api.accessToken is None:
         riverscapes_api.refresh_token()
@@ -105,7 +66,7 @@ def dump_riverscapes(sqlite_db_path, stage):
         while offset == 0 or offset < total:
             # log.info(f"   Fetching projects {offset} to {offset + limit}")
             results = riverscapes_api.run_query(
-                query, {"searchParams": searchParams, "limit": limit, "offset": offset})
+                search_query, {"searchParams": searchParams, "limit": limit, "offset": offset})
             total = results['data']['searchProjects']['total']
             offset += limit
 

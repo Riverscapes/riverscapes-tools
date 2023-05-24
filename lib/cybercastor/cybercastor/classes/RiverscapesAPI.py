@@ -32,6 +32,7 @@ class RiverscapesAPI:
     appropriate for development and administration tasks. Otherwise it will use a browser-based 
     authentication workflow which is appropriate for end-users.
     """
+
     def __init__(self, stage: str, machineAuth: Dict[str, str] = None, devHeaders: Dict[str, str] = None):
         self.log = Logger('API')
         self.machineAuth = machineAuth
@@ -40,9 +41,9 @@ class RiverscapesAPI:
         self.tokenTimeout = None
 
         if not stage or stage.upper() == 'PRODUCTION':
-          self.uri = 'https://api.warehouse.riverscapes.net'
+            self.uri = 'https://api.warehouse.riverscapes.net'
         elif stage.upper() == 'STAGING':
-          self.uri = 'https://api.warehouse.riverscapes.net/staging'
+            self.uri = 'https://api.warehouse.riverscapes.net/staging'
         # TODO: might need to add a DEVELOPMENT stage here for testing. TBD
         else:
             raise Exception(f'Unknown stage: {stage}')
@@ -183,29 +184,37 @@ class RiverscapesAPI:
         server.server_close()
         return auth_code
 
-    def run_query(self, query, variables):  # A simple function to use requests.post to make the API call. Note the json= section.
-      headers = {"authorization": "Bearer " + self.accessToken} if self.accessToken else {}
-      request = requests.post(self.uri, json={
-          'query': query,
-          'variables': variables
-      }, headers=headers)
+    def load_query(self, queryName: str) -> str:
+        with open(os.path.join(os.path.dirname(__file__), '..', 'graphql', 'riverscapes', 'query', f'{queryName}.graphql'), 'r') as queryFile:
+            return queryFile.read()
 
-      if request.status_code == 200:
-          resp_json = request.json()
-          if 'errors' in resp_json and len(resp_json['errors']) > 0:
-              self.log.info(json.dumps(resp_json, indent=4, sort_keys=True))
-              # Authentication timeout: re-login and retry the query
-              if len(list(filter(lambda err: 'You must be authenticated' in err['message'], resp_json['errors']))) > 0:
-                  self.log.debug("Authentication timed out. Fetching new token...")
-                  self.cognito_login()
-                  self.log.debug("   done. Re-trying query...")
-                  return self.run_query(query, variables)
-          else:
-              # self.last_pass = True
-              # self.retry = 0
-              return request.json()
-      else:
-          raise Exception("Query failed to run by returning code of {}. {}".format(request.status_code, query))
+    def load_mutation(self, mutationName: str) -> str:
+        with open(os.path.join(os.path.dirname(__file__), '..', 'graphql', 'riverscapes', 'mutation', f'{mutationName}.graphql'), 'r') as queryFile:
+            return queryFile.read()
+
+    def run_query(self, query, variables):  # A simple function to use requests.post to make the API call. Note the json= section.
+        headers = {"authorization": "Bearer " + self.accessToken} if self.accessToken else {}
+        request = requests.post(self.uri, json={
+            'query': query,
+            'variables': variables
+        }, headers=headers)
+
+        if request.status_code == 200:
+            resp_json = request.json()
+            if 'errors' in resp_json and len(resp_json['errors']) > 0:
+                self.log.info(json.dumps(resp_json, indent=4, sort_keys=True))
+                # Authentication timeout: re-login and retry the query
+                if len(list(filter(lambda err: 'You must be authenticated' in err['message'], resp_json['errors']))) > 0:
+                    self.log.debug("Authentication timed out. Fetching new token...")
+                    self.cognito_login()
+                    self.log.debug("   done. Re-trying query...")
+                    return self.run_query(query, variables)
+            else:
+                # self.last_pass = True
+                # self.retry = 0
+                return request.json()
+        else:
+            raise Exception("Query failed to run by returning code of {}. {}".format(request.status_code, query))
 
     def download_file(self, api_file_obj, local_path, force=False):
         """[summary]
@@ -248,13 +257,12 @@ if __name__ == '__main__':
     gql = RiverscapesAPI(os.environ['RS_API_URL'])
     gql.refresh_token()
     log.debug(gql.accessToken)
-    gql.shutdown() # remember to shutdown so the threaded timer doesn't keep the process alive
+    gql.shutdown()  # remember to shutdown so the threaded timer doesn't keep the process alive
 
     gql2 = RiverscapesAPI(os.environ['RS_API_URL'], {
-      'clientId': os.environ['RS_CLIENT_ID'],
-      'secretId': os.environ['RS_CLIENT_SECRET']
+        'clientId': os.environ['RS_CLIENT_ID'],
+        'secretId': os.environ['RS_CLIENT_SECRET']
     })
     gql2.refresh_token()
     log.debug(gql2.accessToken)
     gql2.shutdown()  # remember to shutdown so the threaded timer doesn't keep the process alive
-

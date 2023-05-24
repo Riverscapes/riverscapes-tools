@@ -41,16 +41,22 @@
 		"python.testing.unittestEnabled": true,
     "files.watcherExclude": {
       "**/*.egg-info/**": true,
+      "**/docs/**": true,
+      "**/*.pytest_cache/**": true,
       "**/.venv/**": true,
-      "**/docs/**": true
+      "**/__pycache__/**": true
     },
     "search.exclude": {
       "**/*.egg-info/**": true,
-      "**/python/**": true,
-      "**/.venv/**": true
+      "**/*.pytest_cache/**": true,
+      "**/.venv/**": true,
+      "**/__pycache__/**": true
     },
     "files.exclude": {
-      "**/*.egg-info": true,
+      "**/*.egg-info/**": true,
+      "**/*.pytest_cache/**": true,
+      "**/.venv/**": true,
+      "**/__pycache__/**": true
     },
 	}
 }

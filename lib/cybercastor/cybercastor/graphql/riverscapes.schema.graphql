@@ -1,0 +1,2354 @@
+scalar BigInt
+
+type Collection implements DBObj & HasOwner & HasStar & HasTags {
+  """Citation string"""
+  citation: String
+
+  """(Optional) Who to contact (might be different from owner)"""
+  contact: User
+  createdBy: User!
+  createdOn: DateTime!
+  description: String!
+
+  """Banner image (optional)"""
+  heroImage: HeroImage
+  id: ID!
+  meta: [MetaData!]!
+  name: String!
+  ownedBy: Owner!
+  permissions: ObjectPermissions!
+
+  """Paginated, ordered list of projects this collection contains"""
+  projects(limit: Int!, offset: Int!, sort: [SearchSortEnum!]): PaginatedProjects!
+  starred: Boolean!
+  starredCount: Int!
+  summary: String!
+  tags: [String!]!
+  updatedBy: User!
+  updatedOn: DateTime!
+  visibility: ProjectGroupVisibilityEnum!
+}
+
+input CollectionInput {
+  """Citation string"""
+  citation: String
+
+  """Remove the contact for this collection"""
+  clearContact: Boolean
+
+  """Resets/deletes the user's avatar back to the default"""
+  clearHeroImage: Boolean
+
+  """User ID of the contact for this collection (Optional)"""
+  contact: OwnerInput
+
+  """Verbose description of the object (< SOME_LIMIT kb of text)"""
+  description: String
+
+  """The Code you were given from the checkUploadImage endpoint"""
+  heroImageToken: String
+
+  """Metadata for this object"""
+  meta: [MetaDataInput!]
+
+  """Name of the object"""
+  name: String
+
+  """Brief tagline or intro sentence for the item (<500 characters)"""
+  summary: String
+
+  """Tags for this collection"""
+  tags: [String!]
+
+  """Collection visibility settings: Either PUBLIC or SECRET"""
+  visibility: ProjectGroupVisibilityEnum
+}
+
+interface DBObj {
+  """User who created object"""
+  createdBy: User!
+
+  """Identifies the date and time when the object was created."""
+  createdOn: DateTime!
+
+  """Verbose description of the object (< SOME_LIMIT kb of text)"""
+  description: String!
+
+  """Db GUID"""
+  id: ID!
+
+  """Key-value pairs for attaching metadata to objects"""
+  meta: [MetaData!]!
+
+  """Name of the object"""
+  name: String!
+
+  """Brief tagline or intro sentence for the item (<500 characters)"""
+  summary: String!
+
+  """User who last updated object"""
+  updatedBy: User!
+
+  """Identifies the date and time when the object was updated."""
+  updatedOn: DateTime!
+}
+
+"""Notifications get a stripped-down version of the DBObj"""
+interface DBObjNotifications {
+  createdBy: User!
+
+  """
+  User who created object
+  NOTE: We need to account for users that are no longer there, 
+  That's why we have the duplicated fields
+  """
+  createdById: ID!
+  createdByName: String!
+
+  """Identifies the date and time when the object was created."""
+  createdOn: DateTime!
+
+  """Db GUID"""
+  id: ID!
+
+  """Name of the object"""
+  name: String!
+
+  """Brief tagline or intro sentence for the item (<500 characters)"""
+  summary: String!
+  updatedBy: User!
+
+  """
+  User who last updated object
+  NOTE: We need to account for users that are no longer there, 
+  That's why we have the duplicated fields  
+  """
+  updatedById: ID!
+  updatedByName: String!
+
+  """Identifies the date and time when the object was updated."""
+  updatedOn: DateTime!
+}
+
+input DBObjNotificationsInput {
+  """User who created object"""
+  createdById: ID!
+  createdByName: String!
+
+  """Identifies the date and time when the object was created."""
+  createdOn: DateTime!
+
+  """Db GUID"""
+  id: ID!
+
+  """Name of the object"""
+  name: String!
+
+  """Brief tagline or intro sentence for the item (<500 characters)"""
+  summary: String!
+
+  """User who last updated object"""
+  updatedById: ID!
+  updatedByName: String!
+
+  """Identifies the date and time when the object was updated."""
+  updatedOn: DateTime!
+}
+
+interface DBSimpleObj {
+  """User who created object"""
+  createdBy: User!
+
+  """Identifies the date and time when the object was created."""
+  createdOn: DateTime!
+
+  """Db GUID"""
+  id: ID!
+
+  """User who last updated object"""
+  updatedBy: User!
+
+  """Identifies the date and time when the object was updated."""
+  updatedOn: DateTime!
+}
+
+type Dataset implements DBObj {
+  analysisId: String
+
+  """These are the projects that use this layer"""
+  attachedDatasets(limit: Int!, offset: Int!, sort: [SearchSortEnum!]): PaginatedDatasets!
+  citation: String
+  createdBy: User!
+  createdOn: DateTime!
+  datasetContainer: DatasetContainerTypesEnum!
+
+  """
+  All of these fields are actually derivatives of the rsXPath
+  
+  The type of dataset helps us understand how to work with it
+  These types are derived directly from the XML enumeration
+  """
+  datasetType: DatasetTypeEnum!
+  datasetXMLId: String!
+  description: String!
+
+  """
+  For Direct S3 File listings. This is a query that depends on the type
+  of dataset. Sometimes we also need sidecars to come back
+  """
+  files: [FileDownloadMeta!]!
+
+  """
+  The ID for datasets takes the form 'PROJ_ORIGIN_GUID/REALIZATION_ID/DATASET_ID'
+  and corresponds to the S3 path we store things
+  
+  NOTE: ID is different from the dsId (which is the id attribute on the XML node) 
+  """
+  id: ID!
+
+  """Some datasets can have sublayers (mainly just Geopackages)"""
+  layers: [DatasetLayer]
+  localPath: String!
+  meta: [MetaData!]!
+  name: String!
+
+  """
+  The original dataset (if there is one). THis is null if this is the origin
+  """
+  origin: Dataset
+
+  """Backwards lookup of the project this dataset belongs to"""
+  project: Project!
+  realizationXMLId: String
+
+  """Backwards lookup to the project referenced b"""
+  refProject: Project
+  rsXPath: String!
+  summary: String!
+  updatedBy: User!
+  updatedOn: DateTime!
+}
+
+"""These are the XML tag containers where you can find datasets"""
+enum DatasetContainerTypesEnum {
+  CommonDatasets
+  Configuration
+  Datasets
+  Inputs
+  Intermediates
+  Logs
+  Outputs
+  Products
+}
+
+input DatasetInput {
+  citation: String
+  description: String
+
+  """
+  Optional. If this is a linked dataset then its extRef should be present. this is an attribute on the dataset node in the XML
+  and it takes the form:
+    badfe8c1-0342-4876-8fac-b2eb5493a90f:Project/REALIZATION/SLOPE
+    PROJECT_UUID:rsXPath
+  """
+  extRef: ID
+
+  """Geopackages can have sublayers"""
+  layers: [DatasetLayerInput!]
+
+  """
+  local path on the user's system. This comes directly from the <Path> node in the project xml
+  """
+  localPath: String!
+  meta: [MetaDataInput!]
+  name: String!
+
+  """
+  This is the rsXPath to the node in the project (not the origin project)
+  It is a proprietary path system to uniquely identify datasets in our XML files
+  This rsXPath takes the form: 'Project/Realizations/Realization#REAL1/Intermediates/Geopackage#GEO1'
+  where the hashes are shorthand for IDS
+  """
+  rsXPath: String!
+  summary: String
+}
+
+"""Geopackages can have sublayers"""
+type DatasetLayer {
+  citation: String
+  description: String
+  lyrName: String!
+  meta: [MetaData!]
+  name: String!
+  summary: String
+}
+
+"""Geopackages can have sublayers"""
+input DatasetLayerInput {
+  citation: String
+  description: String
+  lyrName: String!
+  meta: [MetaDataInput!]
+  name: String
+  summary: String
+}
+
+input DatasetLayerUpdate {
+  citation: String
+  description: String
+  meta: [MetaDataInput!]
+  name: String
+  summary: String
+}
+
+"""
+This mirrors the RiverscapesXML XSD Schema
+Unfortunately we need to keep them in sync
+"""
+enum DatasetTypeEnum {
+  AuxInstrumentFile
+  CSV
+  ConfigFile
+  DEM
+  DataTable
+  Database
+  File
+  Geopackage
+  HTMLFile
+  HillShade
+  Image
+  InstrumentFile
+  LogFile
+  MSAccessDB
+  PDF
+  Raster
+  SQLiteDB
+  SurveyQualityDB
+  TIN
+  Vector
+  Video
+  ZipFile
+}
+
+input DatasetUpdate {
+  citation: String
+  description: String
+  dsId: String
+  meta: [MetaDataInput!]
+  name: String
+  summary: String
+}
+
+scalar DateTime
+
+scalar EmailAddress
+
+enum EntitiesWithImagesEnum {
+  COLLECTION
+  ORGANIZATION
+  PROJECT
+  PROJECT_TYPE
+  USER
+}
+
+enum EntityDeleteActionsEnum {
+  DELETE
+  DELETE_COMPLETE
+  MAKE_PUBLIC
+  REQUEST_TRANSFER
+}
+
+input EntityDeletionOptions {
+  """
+  TotalDelete means This item has been cleaned up completely including
+  shared dataset: this will break links for shared projects so it should
+  be the exception and not the rule.
+  """
+  totalDelete: Boolean
+
+  """
+  Optional: request transfer of all projects and collections to another Owner in the system
+  """
+  transfer: TransferEntityItemsInput
+}
+
+type FileDownloadMeta implements FileDownloadMetaInterface {
+  contentType: String
+  downloadUrl: String
+  etag: String
+  localPath: String
+  size: BigInt
+}
+
+input FileDownloadMetaInput {
+  contentType: String
+  localPath: String!
+  md5: String!
+  size: BigInt
+}
+
+interface FileDownloadMetaInterface {
+  contentType: String
+  etag: String
+  localPath: String
+  size: BigInt
+}
+
+type FileUploadMeta {
+  downloadUrl: String!
+  key: String!
+}
+
+interface HasOwner {
+  ownedBy: Owner!
+}
+
+interface HasStar {
+  starred: Boolean!
+  starredCount: Int!
+}
+
+interface HasTags {
+  tags: [String!]!
+}
+
+"""Small medium and large image sizes"""
+type HeroImage {
+  lg: URL
+  md: URL
+  sm: URL
+}
+
+enum ImageTypeEnum {
+  AVATAR
+  HERO
+  LOGO
+}
+
+scalar JSONObject
+
+enum JobStatusEnum {
+  FAILED
+  PROCESSING
+  SUCCESS
+  UNKNOWN
+}
+
+"""
+JobStatusObj: The shape of the JSON file that stores the state of the uploaded item.
+"""
+type JobStatusObj {
+  """
+  Jobs may store different settings. leave a data param as JSONObject so we can extend it
+  without needing to modify the schema
+  """
+  data: JSONObject
+  errors: [String!]
+  metaData: JSONObject
+  percentComplete: Int
+  projectId: String
+  status: JobStatusEnum!
+}
+
+type Link {
+  """alt text"""
+  alt: String
+
+  """Link to the object"""
+  href: URL!
+
+  """Link text"""
+  text: String
+}
+
+input LinkInput {
+  """alt text"""
+  alt: String
+
+  """Link to the object"""
+  href: URL!
+
+  """Link text"""
+  text: String
+}
+
+type MapCluster {
+  """[longitude, latitude]"""
+  coords: [Float!]!
+  count: Int!
+
+  """check out npm's 'ngeogrid' for how to turn this back into coordinates """
+  hash: String!
+}
+
+type MetaData {
+  ext: MetaDataExtEnum
+  key: String!
+  locked: Boolean
+  type: MetaDataTypeEnum
+  value: String!
+}
+
+enum MetaDataExtEnum {
+  DATASET
+  PROJECT
+  WAREHOUSE
+}
+
+"""When submitting metadata use this object"""
+input MetaDataInput {
+  """
+  If this metadata was impored from an external project then list what kind of MetaData it is.
+    Options: PROJECT, DATASET, WAREHOUSE
+  """
+  ext: MetaDataExtEnum
+
+  """Metadata key string"""
+  key: String!
+
+  """
+  Optional locked flag. Defaults to false. If true then this metadata value cannot be edited by the UI
+  """
+  locked: Boolean
+
+  """Optional meta type value. Defaults to String"""
+  type: MetaDataTypeEnum
+
+  """Strignified metadata value"""
+  value: String!
+}
+
+"""
+This mirrors the RiverscapesXML XSD Schema
+Unfortunately we need to keep them in sync
+find it here: RiverscapesXML/Projects/XSD/V2/RiverscapesProject.xsd
+"""
+enum MetaDataTypeEnum {
+  BOOLEAN
+  FILEPATH
+  FLOAT
+  GUID
+  HIDDEN
+  IMAGE
+  INT
+  ISODATE
+  JSON
+  MARKDOWN
+  RICHTEXT
+  STRING
+  TIMESTAMP
+  URL
+  VIDEO
+}
+
+type Mutation {
+  """
+  Accept or reject an org invite. State afterward will be ACCEPTED or REJECTED
+  """
+  actionOrganizationInvite(accept: Boolean, id: ID!): OrganizationInvite
+  addCollectionProjects(collectionId: ID!, projectIds: [ID!]!): Collection
+
+  """
+  ADMIN: Scan over the dynamoDB and create appropriate OpenSearch entries
+  """
+  adminReIndexOpenSearch(paginationToken: String): String
+
+  """
+  ADMIN: Recreate/empty opensearch indeces (you will need to run adminRebuildOpenSearch after this)
+  """
+  adminRecreateOpenSearch: Boolean
+
+  """ADMIN: Wipe DynamoDB except for users"""
+  adminWipeDynamo: Int
+
+  """Create a collection of projects"""
+  createCollection(collection: CollectionInput!, orgId: ID): Collection
+  createNotification(notification: NotificationInput): Notification
+  createOrganization(organization: OrganizationInput!): Organization
+
+  """
+  Organization admins/owners can invite others. the invite will have the state: INVITED
+  One of userId or email must be provided.
+  """
+  createOrganizationInvite(email: String, organizationId: ID!, role: OrganizationInviteRoleEnum, userId: ID): OrganizationInvite
+
+  """For user when logging in for the first time"""
+  createProfile(id: ID, profile: ProfileInput!): Profile
+
+  """
+  Create a new project. This is the main mutation for creating a new project
+  @param projectId: (optional) The ID of the project. If not given then a new one is generated. If it exists in the system then an error is thrown.
+  @param project: The project object
+  @param projectTypeId: The ID of the project type
+  @param orgId: The ID of the organization
+  @param userId: The ID of the user
+  """
+  createProject(orgId: ID, project: ProjectInput!, projectId: ID, projectTypeId: String, userId: ID): Project
+
+  """
+  For most users "createProject" is actually "sugest a project type" and will be created
+  with state "SUGGESTED". Only admins can create a ProjectType that starts with state "ACTIVE"
+  """
+  createProjectType(id: String!, projectType: ProjectTypeInput!, state: ProjectTypeStateEnum): ProjectType
+  createSavedSearch(orgId: ID, savedSearch: SavedSearchInput!): SavedSearch
+  createTransfer(transfer: TransferInput!): Transfer
+  deleteCollection(id: ID!): MutationResult
+
+  """
+  This is the equivalent of dismissing notifications. It is permanent
+    - if ids is specified then specific notifications will be deleted
+    - if all: True then all notifications for this user will be deleted
+  """
+  deleteNotifications(all: Boolean, ids: [ID!]): MutationResult
+  deleteOrganization(id: ID!, options: EntityDeletionOptions): MutationResult
+
+  """Organization admins/owners can dis-invite others."""
+  deleteOrganizationInvite(id: ID!): MutationResult
+
+  """Delete your user profile from the system"""
+  deleteProfile(options: EntityDeletionOptions): MutationResult
+
+  """
+  Delete a project. This will mark a project for deletion so it stops showing in search results. The actual deletion
+  will happen in the background and only complete once the purgeProject() call has been fired.
+  """
+  deleteProject(options: EntityDeletionOptions, projectId: ID!): MutationResult
+
+  """
+  Delete is a super-rare, super high-privilege command that will only work for admins
+  because it means deleting a project type and all projects with that type
+  """
+  deleteProjectType(id: String!): MutationResult
+  deleteSavedSearch(id: ID!): MutationResult
+  deleteTransfer(transferId: ID!): MutationResult
+
+  """
+  When all files have been uploaded you can call this to start processing the project
+  """
+  finalizeProjectUpload(token: String!): JobStatusObj
+
+  """
+  Purge a project. This will delete a project from the system. This is a machine-only call used by the janitor
+  """
+  purgeProject(projectId: ID!): MutationResult
+  reIndexProjectXML(projectId: ID!): WatcherOutput
+  rebuildWebTiles(force: Boolean, projectId: ID!, rsXPaths: [String!]): RebuildWebTilesResponse!
+  removeCollectionProjects(collectionId: ID!, projectIds: [ID!]!): Collection
+
+  """
+  Kick a user (or yourself) from the org (Owners cannot be removed until they are downgraded)
+  """
+  removeOrganizationMember(organizationId: ID!, userId: ID!): MutationResult
+
+  """
+  Users can request access to an organization with initial role of VIEWER. the invite will have the state: REQUESTED
+  """
+  requestOrganizationInvite(organizationId: ID!): OrganizationInvite
+
+  """Organization admins/owners can resend expired invitiations."""
+  resendOrganizationInvite(id: ID!): OrganizationInvite
+
+  """updateCollection: Note that with projectIds, order matters"""
+  updateCollection(collection: CollectionInput, id: ID!): Collection
+
+  """ids: Notification ids (large interger timestamp)"""
+  updateNotifications(ids: [ID!]!, markAs: NotificationOperationEnum!): MutationResult
+  updateOrganization(id: ID!, organization: OrganizationInput!): Organization
+  updateOrganizationMember(organizationId: ID!, role: OrganizationRoleEnum, userId: ID!): OrganizationUser
+
+  """Updating your user proile"""
+  updateProfile(profile: ProfileInput!): Profile
+  updateProject(project: ProjectInput!, projectId: ID!): Project
+  updateProjectDataset(dataset: DatasetUpdate!, projectId: ID!, rsXPath: String!): Dataset
+  updateProjectDatasetLayer(datasetLayer: DatasetLayerUpdate!, lyrName: String!, projectId: ID!, rsXPath: String!): DatasetLayer
+  updateProjectQAQC(projectId: ID!, qaqc: QAQCEventInput!, qaqcId: ID!): QAQCEvent
+
+  """
+  This call allows you to alter the project type object (including the ID)
+  If the ID is changed then we'll need to go through all projects of that type
+  and rename them. This should be a super rare operation but it's here for completeness
+  """
+  updateProjectType(id: String!, projectType: ProjectTypeInput!, state: ProjectTypeStateEnum): ProjectType
+  updateSavedSearch(id: ID!, savedSearch: SavedSearchInput!): SavedSearch
+  updateStar(id: ID!, starred: Boolean!, type: StarrableTypesEnum!): MutationResult
+
+  """
+  Transfers are fairly immutable. You can only change the note and the state
+  """
+  updateTransfer(note: String, state: TransferStateEnum, transferId: ID!): Transfer
+  zipRebuild(force: Boolean, projectId: ID!): Project
+}
+
+"""Generic Mutation results"""
+type MutationResult {
+  """The error (if there is one)"""
+  error: String
+
+  """the ID of the object being mutated"""
+  ids: [ID!]
+
+  """Any non-error message returned by the mutation for use in the UI"""
+  message: String
+
+  """did this mutation succeed?"""
+  success: Boolean!
+}
+
+type MyStars {
+  collections(limit: Int!, offset: Int!, sort: [SearchSortEnum!]): PaginatedCollections!
+  organizations(limit: Int!, offset: Int!, sort: [SearchSortEnum!]): PaginatedOrganizations!
+  projects(limit: Int!, offset: Int!, sort: [SearchSortEnum!]): PaginatedProjects!
+  savedSearches(limit: Int!, offset: Int!, sort: [SearchSortEnum!]): PaginatedSavedSearches!
+  users(limit: Int!, offset: Int!, sort: [SearchSortEnum!]): PaginatedUsers!
+}
+
+type Notification {
+  id: ID!
+  object: DBObjNotifications!
+  seen: Boolean!
+
+  """Same as Obj. this is a stripped-down user object"""
+  subject: DBObjNotifications!
+  time: DateTime!
+  type: NotificationTypesEnum!
+  verb: NotificationActionsEnum!
+}
+
+enum NotificationActionsEnum {
+  CREATED
+  DELETED
+  RENAMED
+  TRANSFERRED
+  UPDATED
+}
+
+input NotificationInput {
+  object: DBObjNotificationsInput!
+  subject: DBObjNotificationsInput!
+  type: NotificationTypesEnum!
+  verb: NotificationActionsEnum!
+}
+
+enum NotificationOperationEnum {
+  DELETE
+  MARK_READ
+  MARK_UNREAD
+}
+
+enum NotificationTypesEnum {
+  COLLECTION
+  ORGANIZATION
+  PROJECT
+  SAVED_SEARCH
+  USER
+}
+
+"""On a per-object basis, tell me what I can and can't do"""
+type ObjectPermissions {
+  delete: Boolean
+  update: Boolean
+  view: Boolean
+}
+
+type Organization implements DBObj & HasStar {
+  collections(limit: Int!, offset: Int!, sort: [SearchSortEnum!]): PaginatedCollections!
+  createdBy: User!
+  createdOn: DateTime!
+  description: String!
+  id: ID!
+  logo: URL
+  meta: [MetaData!]!
+
+  """
+  This is the role of the user making the query (or the role of the requested user)
+  """
+  myRole: OrganizationRoleEnum!
+  name: String!
+
+  """List of invites to manage"""
+  organizationInvites(limit: Int!, offset: Int!, sort: [SearchSortEnum!]): PaginatedOrganizationInvites!
+
+  """
+  List of this organization's approved user (Does not include pending invites)
+  """
+  organizationUsers(limit: Int!, offset: Int!, role: OrganizationRoleEnum, sort: [SearchSortEnum!]): PaginatedOrganizationUsers!
+
+  """
+  This is my relation to this project. This is relatively easy to calculate if I own this object.
+  """
+  permissions: ObjectPermissions!
+  preferences: JSONObject
+  projects(limit: Int!, offset: Int!, sort: [SearchSortEnum!]): PaginatedProjects!
+  savedSearches(limit: Int!, offset: Int!, sort: [SearchSortEnum!]): PaginatedSavedSearches!
+  social: SocialLinks
+  starred: Boolean!
+  starredCount: Int!
+  summary: String!
+  updatedBy: User!
+  updatedOn: DateTime!
+}
+
+input OrganizationInput {
+  """Resets/deletes the organization logo back to the default"""
+  clearLogo: Boolean
+
+  """Long text (may include markdown)"""
+  description: String
+
+  """The Code you were given from the checkUploadImage endpoint"""
+  logoToken: String
+
+  """Organization Metadata"""
+  meta: [MetaDataInput!]
+
+  """Name of the organization"""
+  name: String
+
+  """Organization Preferences Object"""
+  preferences: JSONObject
+
+  """Social Links"""
+  social: SocialLinksInput
+
+  """Summary or tagline"""
+  summary: String
+}
+
+type OrganizationInvite implements DBSimpleObj {
+  createdBy: User!
+  createdOn: DateTime!
+  email: String
+  id: ID!
+
+  """
+  The user being invited. Null if they don't have an account in the system yet
+  """
+  invitee: User
+  inviter: User!
+  organization: Organization!
+  retries: Int!
+  role: OrganizationInviteRoleEnum!
+  state: OrganizationInviteStateEnum!
+  updatedBy: User!
+  updatedOn: DateTime!
+}
+
+enum OrganizationInviteRoleEnum {
+  ADMIN
+  CONTRIBUTOR
+  VIEWER
+}
+
+enum OrganizationInviteStateEnum {
+  ACCEPTED
+  EXPIRED
+  INVITED
+  REJECTED
+  REQUESTED
+}
+
+enum OrganizationRoleEnum {
+  ADMIN
+  CONTRIBUTOR
+  NONE
+  OWNER
+  VIEWER
+}
+
+type OrganizationUser {
+  organization: Organization!
+  role: OrganizationRoleEnum!
+  user: User!
+}
+
+union Owner = Organization | User
+
+input OwnerInput {
+  id: String!
+  type: OwnerInputTypesEnum!
+}
+
+enum OwnerInputTypesEnum {
+  ORGANIZATION
+  USER
+}
+
+union Owners = PaginatedUsers
+
+type PaginatedCollections implements Pagination {
+  items: [Collection!]!
+  limit: Int!
+  offset: Int!
+  total: Int!
+}
+
+type PaginatedDatasets implements Pagination {
+  items: [Dataset!]!
+  limit: Int!
+  offset: Int!
+  total: Int!
+}
+
+type PaginatedFileDownloadMeta implements Pagination {
+  items: [FileDownloadMeta!]!
+  limit: Int!
+  offset: Int!
+  total: Int!
+}
+
+type PaginatedNotifications implements Pagination {
+  items: [Notification!]!
+  limit: Int!
+  offset: Int!
+  total: Int!
+}
+
+type PaginatedOrganizationInvites implements Pagination {
+  items: [OrganizationInvite!]!
+  limit: Int!
+  offset: Int!
+  total: Int!
+}
+
+type PaginatedOrganizationUsers implements Pagination {
+  items: [OrganizationUser!]!
+  limit: Int!
+  offset: Int!
+  total: Int!
+}
+
+type PaginatedOrganizations implements Pagination {
+  items: [Organization!]!
+  limit: Int!
+  offset: Int!
+  total: Int!
+}
+
+type PaginatedProjectTypes implements Pagination {
+  items: [ProjectType!]!
+  limit: Int!
+  offset: Int!
+  total: Int!
+}
+
+type PaginatedProjects implements Pagination {
+  items: [Project!]!
+  limit: Int!
+  offset: Int!
+  total: Int!
+}
+
+type PaginatedQAQCEvents implements Pagination {
+  items: [QAQCEvent!]!
+  limit: Int!
+  offset: Int!
+  total: Int!
+}
+
+type PaginatedSavedSearches implements Pagination {
+  items: [SavedSearch!]!
+  limit: Int!
+  offset: Int!
+  total: Int!
+}
+
+type PaginatedUsers implements Pagination {
+  items: [User!]!
+  limit: Int!
+  offset: Int!
+  total: Int!
+}
+
+"""Generic Pagination Interface"""
+interface Pagination {
+  limit: Int!
+  offset: Int!
+  total: Int!
+}
+
+"""A Profile is MY User object and there are extra fields I can look at"""
+type Profile implements DBObj & UserInterface {
+  affiliations: [UserAffiliation]!
+  avatar: URL
+
+  """
+  Collections this user owns. Filtered if the querying user is someone else
+  """
+  collections(limit: Int!, offset: Int!, sort: [SearchSortEnum!]): PaginatedCollections!
+  createdBy: User!
+  createdOn: DateTime!
+  description: String!
+  id: ID!
+
+  """If the user has never logged in here this is uninitialized"""
+  initialized: Boolean
+  isAdmin: Boolean!
+  jobTitle: String!
+  lastLogin: DateTime!
+  location: String!
+  meta: [MetaData!]!
+  name: String!
+  notifications(limit: Int!, offset: Int!, op: NotificationOperationEnum): PaginatedNotifications!
+  organizationInvites(limit: Int!, offset: Int!, sort: [SearchSortEnum!]): PaginatedOrganizationInvites!
+
+  """Organizations this user is a member of."""
+  organizations(limit: Int!, offset: Int!, sort: [SearchSortEnum!]): PaginatedOrganizations!
+  preferences: JSONObject!
+
+  """Projects this user owns. Filtered if the querying user is someone else"""
+  projects(limit: Int!, offset: Int!, sort: [SearchSortEnum!]): PaginatedProjects!
+
+  """
+  Saved Searches this user owns. Filtered if the querying user is someone else
+  """
+  savedSearches(limit: Int!, offset: Int!, sort: [SearchSortEnum!]): PaginatedSavedSearches!
+  social: SocialLinks!
+  starred: Boolean!
+  starredCount: Int!
+  stars: MyStars!
+  summary: String!
+  updatedBy: User!
+  updatedOn: DateTime!
+}
+
+input ProfileInput {
+  """Any organizational affiliation(s) the user specifies"""
+  affiliations: [UserAffiliationInput!]
+
+  """The Code you were given from the checkUploadImage endpoint"""
+  avatarToken: String
+
+  """Resets/deletes the user's avatar back to the default"""
+  clearAvatar: Boolean
+
+  """Long text (may include markdown)"""
+  description: String
+
+  """Simple job title string field"""
+  jobTitle: String
+
+  """
+  Simple location string (Optional) eg: "Vancouver, Canada"
+  """
+  location: String
+
+  """Organization Metadata"""
+  meta: [MetaDataInput!]
+
+  """Name of the organization"""
+  name: String
+
+  """Organization Preferences Object"""
+  preferences: JSONObject
+
+  """Specify a set of connection strings for Social media"""
+  socialLinks: SocialLinksInput
+
+  """Summary or tagline"""
+  summary: String
+}
+
+type Project implements DBObj & HasOwner & HasStar {
+  """Banner image (optional)"""
+  bounds: ProjectBounds
+  citation: String
+  collections(limit: Int!, offset: Int!, sort: [SearchSortEnum!]): PaginatedCollections!
+  createdBy: User!
+  createdOn: DateTime!
+  datasets(limit: Int!, offset: Int!, sort: [SearchSortEnum!]): PaginatedDatasets!
+  deleted: Boolean!
+  description: String!
+  files: [FileDownloadMeta!]!
+
+  """Banner image (optional)"""
+  heroImage: HeroImage
+  id: ID!
+
+  """
+  This meta derives from the XML. When we change it we need to write back tot he XML
+  The user should be warned that if the XML changes it will overwrite these values
+  """
+  meta: [MetaData!]!
+  name: String!
+  ownedBy: Owner!
+
+  """
+  This is my relation to this project. This is relatively easy to calculate if I own this object.
+  """
+  permissions: ObjectPermissions!
+  projectType: ProjectType!
+  qaqc(limit: Int!, offset: Int!, sort: [SearchSortEnum!]): PaginatedQAQCEvents!
+  ref: String!
+  sponsor: Owner
+  starred: Boolean!
+  starredCount: Int!
+  summary: String!
+  tags: [String!]!
+
+  """Bytesize of the unzipped project"""
+  totalSize: BigInt
+  tree: ProjectTree!
+  updatedBy: User!
+  updatedOn: DateTime!
+  visibility: ProjectVisibilityEnum!
+}
+
+type ProjectBounds implements DBSimpleObj {
+  """Calculated area of """
+  area: Float
+
+  """bbox: [minLng, minLat, maxLng, maxLat]"""
+  bbox: [Float!]!
+
+  """centroid: [longitude, latitude]"""
+  centroid: [Float!]!
+  createdBy: User!
+  createdOn: DateTime!
+
+  """
+  Geohash is how we do clustering in ElasticSearch
+  https://github.com/sunng87/node-geohash
+  https://www.npmjs.com/package/ngeohash
+  https://www.npmjs.com/package/@mapbox/geojson-area
+  https://www.npmjs.com/package/@mapbox/geojson-extent
+  https://www.npmjs.com/package/@mapbox/geojson-normalize
+  https://github.com/hackergrrl/geojson-polygons-equal/blob/master/index.js
+  https://github.com/jczaplew/geojson-precision/blob/master/index.js
+  https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-bucket-geohashgrid-aggregation.html
+  """
+  geoHash: String
+
+  """
+  This id is unique to specific shapes in the DB
+  Useful for grouping multiple projects with the same bounding polygon
+  It is a GUID
+  """
+  id: ID!
+
+  """polygon: Simplified GeoJSON of project outputs."""
+  polygonUrl: URL!
+  updatedBy: User!
+  updatedOn: DateTime!
+}
+
+enum ProjectDeleteChoicesEnum {
+  DELETE
+  DELETE_COMPLETE
+}
+
+enum ProjectGroupVisibilityEnum {
+  PUBLIC
+  SECRET
+}
+
+input ProjectInput {
+  """
+  Project bounds object code you were given from the checkUploadBounds endpoint
+  """
+  boundsToken: String
+
+  """Scientitfic or accademic citation (string)"""
+  citation: String
+
+  """Resets/deletes the project's bounds"""
+  clearBounds: Boolean
+
+  """Resets/deletes the user's avatar back to the default"""
+  clearHeroImage: Boolean
+
+  """remove the sponsor for the proejct"""
+  clearSponsor: Boolean
+
+  """Attach new datasets or add/remove linked datasets"""
+  datasets: [DatasetInput!]
+
+  """
+  ONLY FOR UPDATING: Specify dataset ids (and by that I mean rsXPaths) to be deleted
+  """
+  deleteDatasets: [ID!]
+
+  """Long text (may include markdown)"""
+  description: String
+
+  """The Code you were given from the checkUploadImage endpoint"""
+  heroImageToken: String
+
+  """Organization Metadata"""
+  meta: [MetaDataInput!]
+
+  """Name of the project."""
+  name: String
+
+  """Attache any QAQC tasks in order"""
+  qaqc: [QAQCEventInput!]
+
+  """Optional: Sponsor ID"""
+  sponsor: OwnerInput
+
+  """Summary or tagline"""
+  summary: String
+
+  """Tags for this collection"""
+  tags: [String!]
+
+  """Byte size of entire project uncompressed"""
+  totalSize: BigInt
+
+  """Project visibility settings: Either PUBLIC, PRIVATE or SECRET"""
+  visibility: ProjectVisibilityEnum
+}
+
+type ProjectSearchMeta {
+  """
+  The area covered by all projects returned 
+  (all overlaps are included)
+  """
+  area: Float
+
+  """
+  bbox: [minLng, minLat, maxLng, maxLat]
+  The geo bounds of all possible results
+  (Applies to projects only)
+  """
+  bbox: [Float!]
+
+  """
+  Histogram of distances
+  (Applies to projects only)
+  """
+  geoBuckets: JSONObject
+  maxScore: Float
+  metaDataBuckets: JSONObject!
+
+  """
+  ProjectTypes: Key-balue pairs of project types and counts
+  (Applies to projects only)
+  """
+  projectTypes: JSONObject
+
+  """OpenSearch time to retrieve results (ms)"""
+  searchTime: Float
+}
+
+"""
+For searching projects we use this for both the searchProjects query AND
+the SavedSearchInput type
+"""
+type ProjectSearchParams {
+  """bbox: [minLng, minLat, maxLng, maxLat]"""
+  bbox: [Float!]
+
+  """Filter to projects inside a collection"""
+  collection: ID
+
+  """
+  Filter to projects between two dates {from, to}
+  You can specify one of 'from' OR 'to' to find projects before 'to' date or after 'from' date
+  or you can specify both 'from' AND 'to' to specify projects BETWEEN two dates
+  """
+  createdOn: SearchDate
+
+  """Only projects that I can edit as a user """
+  editableOnly: Boolean
+  keywords: String
+  meta: [MetaData!]
+  name: String
+  ownedBy: SearchOwner
+
+  """The id (machineName) of the project type. Case insensitive."""
+  projectTypeId: String
+  tags: [String!]
+
+  """
+  Filter to projects between two dates {from, to}
+  You can specify one of 'from' OR 'to' to find projects before 'to' date or after 'from' date
+  or you can specify both 'from' AND 'to' to specify projects BETWEEN two dates
+  """
+  updatedOn: SearchDate
+}
+
+"""
+For searching projects we use this for both the searchProjects query AND
+the SavedSearchInput type
+"""
+input ProjectSearchParamsInput {
+  """bbox: [minLng, minLat, maxLng, maxLat]"""
+  bbox: [Float!]
+
+  """
+  Filter to projects that have this particular Bound polygon assoicated with them by id
+  """
+  boundsId: ID
+
+  """Filter to projects inside a collection"""
+  collection: ID
+
+  """
+  Filter to projects between two dates {from, to}
+  You can specify one of 'from' OR 'to' to find projects before 'to' date or after 'from' date
+  or you can specify both 'from' AND 'to' to specify projects BETWEEN two dates
+  """
+  createdOn: SearchDateInput
+
+  """Only projects that I can edit as a user """
+  editableOnly: Boolean
+  keywords: String
+  meta: [MetaDataInput!]
+  name: String
+
+  """Filter to projects owned by a user or organization"""
+  ownedBy: OwnerInput
+
+  """The id (machineName) of the project type. Case insensitive."""
+  projectTypeId: String
+  tags: [String!]
+
+  """
+  Filter to projects between two dates {from, to}
+  You can specify one of 'from' OR 'to' to find projects before 'to' date or after 'from' date
+  or you can specify both 'from' AND 'to' to specify projects BETWEEN two dates
+  """
+  updatedOn: SearchDateInput
+}
+
+type ProjectTree {
+  branches: [ProjectTreeBranch!]!
+  defaultView: ID
+  description: String
+  leaves: [ProjectTreeLeaf!]!
+  name: String
+  views: [ProjectTreeView!]!
+}
+
+type ProjectTreeBranch {
+  """Branch ID (generated at parse time)"""
+  bid: Int!
+  collapsed: Boolean
+  label: String!
+
+  """Parent ID (generated at parse time)"""
+  pid: Int!
+}
+
+"""
+ProjectTreeLayerTypes is an enumeration to help us display layers with the
+correct icon and assign them to the right slot
+"""
+enum ProjectTreeLayerTypeEnum {
+  FILE
+  LINE
+  POINT
+  POLYGON
+  RASTER
+  REPORT
+  TIN
+}
+
+type ProjectTreeLeaf {
+  """
+  blLayerId: The id on the Node element from the business logic that we use in Views to 
+  reference leaves in the tree
+  """
+  blLayerId: String
+
+  """
+  This is going to let us find the actual file we need to download (if applicable)
+  """
+  filePath: String
+
+  """Tree id of this leaf. This is generated at parse-time"""
+  id: Int!
+  label: String!
+
+  """from the BL (Optional)"""
+  labelxpath: String
+
+  """from BL. Renderable WebRave Types (Not DS Types)"""
+  layerType: ProjectTreeLayerTypeEnum!
+
+  """This is going to let us find the DasetLayer (if applicaple)"""
+  lyrName: String
+
+  """Business Logic id="" attribute"""
+  nodeId: ID
+
+  """
+  parent ID (relates to bid from ProjectTreeBranch) 
+  generated at parse-time
+  """
+  pid: Int!
+
+  """
+  This is going to let us find the Dataset
+  corresponding to the leaf we're trying to render
+  """
+  rsXPath: String!
+  symbology: String
+  transparency: Int
+}
+
+type ProjectTreeView {
+  description: String
+  id: ID!
+  layers: [ProjectTreeViewLayer!]!
+  name: String!
+}
+
+type ProjectTreeViewLayer {
+  id: ID!
+  visible: Boolean
+}
+
+type ProjectType implements DBObj {
+  createdBy: User!
+  createdOn: DateTime!
+  description: String!
+  id: ID!
+  logo: URL
+  machineName: String!
+
+  """
+  This meta derives from the XML. When we change it we need to write back tot he XML
+  The user should be warned that if the XML changes it will overwrite these values
+  """
+  meta: [MetaData!]!
+  name: String!
+  state: ProjectTypeStateEnum!
+  summary: String!
+  updatedBy: User!
+  updatedOn: DateTime!
+  url: URL
+}
+
+input ProjectTypeInput {
+  """Resets/deletes the organization logo back to the default"""
+  clearLogo: Boolean
+  description: String
+
+  """The Code you were given from the checkUploadImage endpoint"""
+  logoToken: String
+
+  """
+  This meta derives from the XML. When we change it we need to write back tot he XML
+  The user should be warned that if the XML changes it will overwrite these values
+  """
+  meta: [MetaDataInput!]
+  name: String
+  summary: String
+  url: URL
+}
+
+enum ProjectTypeStateEnum {
+  ACTIVE
+  DELETED
+  SUGGESTED
+}
+
+type ProjectUploadUrl {
+  fields: JSONObject
+  origPath: String
+  url: String!
+}
+
+type ProjectValidation {
+  errors: [ProjectValidationError]
+  valid: Boolean
+}
+
+type ProjectValidationError {
+  code: String
+  message: String!
+  severity: SeverityEnum
+}
+
+enum ProjectVisibilityEnum {
+  PRIVATE
+  PUBLIC
+  SECRET
+}
+
+type QAQCEvent implements DBObj {
+  createdBy: User!
+  createdOn: DateTime!
+
+  """
+  The date this task was performed. This will help us sort out a timeline
+  for the QA/QC workflow
+  """
+  datePerformed: DateTime!
+  description: String!
+  id: ID!
+
+  """QA/QC Nodes may have extra metadata but it is not mandatory"""
+  meta: [MetaData!]!
+
+  """The QAQC Task Name"""
+  name: String!
+
+  """
+  performed by: Some string indicating who is responsible for this task
+  does NOT link to Riverscapes User accounts
+  """
+  performedBy: String!
+
+  """The state of this QAQC Task """
+  state: QAQCStateEnum!
+  summary: String!
+
+  """Any supporting links to Github issues or anything else"""
+  supportingLinks: [Link!]
+  updatedBy: User!
+  updatedOn: DateTime!
+}
+
+input QAQCEventInput {
+  datePerformed: DateTime!
+
+  """Long text (may include markdown)"""
+  description: String
+
+  """Organization Metadata"""
+  meta: [MetaDataInput!]
+  name: String
+
+  """
+  performed by: Some string indicating who is responsible for this task
+  does NOT link to Riverscapes User accounts  
+  """
+  performedBy: String!
+
+  """The state of this QA/QC Task"""
+  state: QAQCStateEnum!
+
+  """Summary or tagline"""
+  summary: String
+
+  """Any supporting links to Github issues or anything else"""
+  supportingLinks: [LinkInput!]
+}
+
+enum QAQCStateEnum {
+  FAILED
+  PASSED
+  PROVISIONAL
+}
+
+type Query {
+  """
+  Works for images, bounds and projects. Checks if they have been processed and are ready for use
+  """
+  checkUpload(token: String!): JobStatusObj
+  collection(id: ID!): Collection
+  downloadFile(filePath: String!, projectId: ID!): FileDownloadMeta
+  downloadZip(projectId: ID!): ZipFileDownloadMeta
+  getLayerTiles(projectId: ID!, projectTypeId: String, rsXPath: String!): TileService
+
+  """
+  getWebSymbology for a given project type. These types will be retrived from the curated WebRave Symbology repo
+  """
+  getWebSymbology(isRaster: Boolean, name: String!, projectTypeId: String): Symbology
+
+  """
+  There are some useful properties that are useful for the CLI and other apps
+  """
+  info: WarehouseInfo
+  organization(id: ID!): Organization
+
+  """
+  Profile includes the User object but also specific fields to the person logged in
+  """
+  profile: Profile
+  project(id: ID!): Project
+  projectType(id: String!): ProjectType
+
+  """projectTypes list. Default state is ACTIVE"""
+  projectTypes(limit: Int!, offset: Int!, state: ProjectTypeStateEnum): PaginatedProjectTypes
+  requestUploadBounds: UploadUrl
+  requestUploadImage(entityId: ID!, entityType: EntitiesWithImagesEnum!): UploadUrl
+
+  """
+  Request an upload start. Writes a manifest file on the upload bucket
+  and creates upload urls for all the files we want to add. 
+  This is also wher ethe referenved/unreferenced sorting happens
+  
+  Notes:
+  
+    - If projectId is given then this projet is uploaded as an UPDATE operation
+    - If token is given then we just return a previously calculated download object
+    - If neither token nor projectId is given then this is processed as a new project
+  
+  Arguments:
+  
+    - owner: (optional) The intended owner of the new project. If left blank then UPDATE is assumed and the original owner is used.
+    - files: a string list of filepaths to local files
+    - etags: a string list of etags (S3 analog to MD5) for each file. List size must match "files: [String!]!"
+    - sizes: a string list of file sizes (S3 analog to MD5) for each file. List size must match "files: [String!]!"
+    - noDelete: indicates that we do NOT want to touch remote files that are not also present on the local server
+    - tags: a list of tags to add to the project (these are the data exchange tags)
+    - visibility: the visibility of the project. Defaults to PUBLIC
+  """
+  requestUploadProject(etags: [String!]!, files: [String!]!, noDelete: Boolean, owner: OwnerInput, projectId: String, sizes: [BigInt!]!, tags: [String!], token: String, visibility: ProjectVisibilityEnum): UploadProjectRequest
+
+  """
+  Using requestUploadProject() you can get a valid upload token. From there you can ask for presigned urls for any file you
+  have specified above
+  """
+  requestUploadProjectFilesUrl(files: [String!]!, token: String!): [UploadProjectFileUrls]
+  savedSearch(id: ID!): SavedSearch
+  searchCollections(limit: Int!, minScore: Float, offset: Int!, params: SearchParamsInput!, sort: [SearchSortEnum!]): SearchCollectionPagination!
+
+  """
+  This is a complementary search to "searchProjects". It can be run with essentially the same
+  parameters
+  
+  Note: params.bbox MUST be included for the searchProjectsMap
+  clusters: the number of clusters we should aim for
+  """
+  searchMapBounds(limit: Int!, minScore: Float, params: ProjectSearchParamsInput!): SearchMapBoundsResult!
+
+  """
+  Discussion here https://github.com/Riverscapes/rs-web-monorepo/discussions/251
+  limit: the maximum number of clusters to get back. After this number the list is truncated and any remaining projects are simply represented by the "remaining" property
+  precision: The size of the grid to place the clusters on. We use npm's ngeohash for gridding
+  """
+  searchMapClusters(limit: Int!, minScore: Float, params: ProjectSearchParamsInput!, precision: Int!): SearchMapClusterResult!
+  searchOrganizations(limit: Int!, minScore: Float, offset: Int!, params: SearchParamsInput!, sort: [SearchSortEnum!]): SearchOrganizationPagination!
+  searchProjects(limit: Int!, minScore: Float, offset: Int!, params: ProjectSearchParamsInput!, sort: [SearchSortEnum!]): SearchProjectPagination!
+  searchSavedSearches(limit: Int!, minScore: Float, offset: Int!, params: SearchParamsInput!, sort: [SearchSortEnum!]): SearchSavedSearchPagination!
+
+  """
+  As-you-type suggestions:
+  TODO: this needs to be typed but for now it's just pure JSON
+  """
+  searchSuggest(minScore: Float, text: String!, type: StarrableTypesEnum): SearchSuggestionResults
+  searchUsers(limit: Int!, minScore: Float, offset: Int!, params: SearchParamsInput!, sort: [SearchSortEnum!]): SearchUserPagination!
+
+  """A User is any user in the system"""
+  user(id: ID!): User
+
+  """
+  Validate a raw project.rs.xml file to check if it is a valida candidate for uploading
+  It is highly recommended that you call this before requestUploadProjectFileUrls or uploading
+  files to prevent a lengthy process with a preventable error at the end
+  
+  - xml: String contents of the project.rs.xml file
+  - owner: (optional) The intended owner of the new project. If left blank then UPDATE is assumed and the original owner is used.
+  - files: a string list of filepaths to local files
+  """
+  validateProject(files: [String!]!, owner: OwnerInput, xml: String!): ProjectValidation
+}
+
+enum RampTypeEnum {
+  DISCRETE
+  EXACT
+  INTERPOLATED
+}
+
+type RebuildWebTilesResponse {
+  queued: [String!]
+  skipped: [String!]
+}
+
+type SavedSearch implements DBObj & HasOwner & HasStar & HasTags {
+  createdBy: User!
+  createdOn: DateTime!
+
+  """
+  The default sort to use. The UI may offer a way to change this on the fly
+  """
+  defaultSort: [SearchSortEnum!]
+  description: String!
+  id: ID!
+  meta: [MetaData!]!
+  name: String!
+  ownedBy: Owner!
+  permissions: ObjectPermissions!
+  projects(limit: Int!, offset: Int!, sort: [SearchSortEnum!]): SearchProjectPagination!
+
+  """The project search fields this saved search uses """
+  searchParams: ProjectSearchParams!
+  starred: Boolean!
+  starredCount: Int!
+  summary: String!
+  tags: [String!]!
+  updatedBy: User!
+  updatedOn: DateTime!
+  visibility: ProjectGroupVisibilityEnum!
+}
+
+input SavedSearchInput {
+  """
+  The default sort to use. The UI may offer a way to change this on the fly
+  """
+  defaultSort: [SearchSortEnum!]
+
+  """Verbose description of the object (< SOME_LIMIT kb of text)"""
+  description: String
+
+  """Metadata for this object"""
+  meta: [MetaDataInput!]
+
+  """Name of the object"""
+  name: String
+
+  """The project search fields this saved search uses """
+  searchParams: ProjectSearchParamsInput
+
+  """Brief tagline or intro sentence for the item (<500 characters)"""
+  summary: String
+
+  """Tags for this object"""
+  tags: [String!]
+
+  """Saved Search visibility settings: Either PUBLIC or SECRET"""
+  visibility: ProjectGroupVisibilityEnum
+}
+
+type SearchCollection implements SearchResult {
+  highlights: JSONObject
+  item: Collection!
+  score: Float
+}
+
+type SearchCollectionPagination implements Pagination & SearchPagination {
+  limit: Int!
+  offset: Int!
+  results: [SearchCollection!]!
+  stats: SearchStats
+  total: Int!
+}
+
+type SearchDataset implements SearchResult {
+  highlights: JSONObject
+  item: Dataset!
+  score: Float
+}
+
+type SearchDatasetPagination implements Pagination & SearchPagination {
+  limit: Int!
+  offset: Int!
+  results: [SearchDataset!]!
+  stats: SearchStats
+  total: Int!
+}
+
+type SearchDate {
+  """(Optional) , only use for BETWEEN operator"""
+  from: DateTime
+
+  """(Optional), only use for BETWEEN operator"""
+  to: DateTime
+}
+
+input SearchDateInput {
+  """(Optional) , only use for BETWEEN operator"""
+  from: DateTime
+
+  """(Optional), only use for BETWEEN operator"""
+  to: DateTime
+}
+
+type SearchMapBoundsItem {
+  bounds: ProjectBounds!
+  clusters: [MapCluster!]!
+  projectCount: Int!
+}
+
+type SearchMapBoundsResult {
+  bounds: [SearchMapBoundsItem!]!
+
+  """The number of valid search results outstanding"""
+  remaining: Int!
+}
+
+type SearchMapClusterResult {
+  clusters: [MapCluster!]!
+
+  """The number of valid search results outstanding"""
+  remaining: Int!
+}
+
+type SearchMeta {
+  maxScore: Float
+  metaDataBuckets: JSONObject!
+
+  """OpenSearch time to retrieve results (ms)"""
+  searchTime: Float
+}
+
+"""Search Meta that are common to all types"""
+interface SearchMetaInterface {
+  """The maximum relevance score"""
+  maxScore: Float
+
+  """Collection of stats about the Metadata key value pairs for this object"""
+  metaDataBuckets: JSONObject!
+
+  """OpenSearch time to retrieve results (ms)"""
+  searchTime: Float
+}
+
+type SearchNotification implements SearchResult {
+  highlights: JSONObject
+  item: Notification!
+  score: Float
+}
+
+type SearchNotificationPagination implements Pagination & SearchPagination {
+  limit: Int!
+  offset: Int!
+  results: [SearchNotification!]!
+  stats: SearchStats
+  total: Int!
+}
+
+type SearchOrganization implements SearchResult {
+  highlights: JSONObject
+  item: Organization!
+  score: Float
+}
+
+type SearchOrganizationInvite implements SearchResult {
+  highlights: JSONObject
+  item: OrganizationInvite!
+  score: Float
+}
+
+type SearchOrganizationInvitePagination implements Pagination & SearchPagination {
+  limit: Int!
+  offset: Int!
+  results: [SearchOrganizationInvite!]!
+  stats: SearchStats
+  total: Int!
+}
+
+type SearchOrganizationPagination implements Pagination & SearchPagination {
+  limit: Int!
+  offset: Int!
+  results: [SearchOrganization!]!
+  stats: SearchStats
+  total: Int!
+}
+
+type SearchOwner {
+  id: String!
+  type: OwnerInputTypesEnum!
+}
+
+interface SearchPagination implements Pagination {
+  """The limit used for this query."""
+  limit: Int!
+
+  """The record offset for this query."""
+  offset: Int!
+
+  """The maximum score if this is a search result. Null otherwise"""
+  stats: SearchStats
+
+  """
+  The total objects in the system. OpenSearch can return this easily so it's useful for building pagination UI.
+  """
+  total: Int!
+}
+
+"""SearchParams is used for search queries for everything except projects"""
+input SearchParamsInput {
+  """
+  Filter to items between two dates {from, to}
+  You can specify one of 'from' OR 'to' to find items before 'to' date or after 'from' date
+  or you can specify both 'from' AND 'to' to specify items BETWEEN two dates
+  """
+  createdOn: SearchDateInput
+
+  """Only items that I can edit as a user """
+  editableOnly: Boolean
+  keywords: String
+  meta: [MetaDataInput!]
+  name: String
+
+  """Filter to items owned by a user or organization"""
+  ownedBy: OwnerInput
+  tags: [String!]
+
+  """
+  Filter to items between two dates {from, to}
+  You can specify one of 'from' OR 'to' to find items before 'to' date or after 'from' date
+  or you can specify both 'from' AND 'to' to specify items BETWEEN two dates
+  """
+  updatedOn: SearchDateInput
+}
+
+type SearchProject implements SearchResult {
+  highlights: JSONObject
+  item: Project!
+  score: Float
+}
+
+type SearchProjectPagination implements Pagination & SearchPagination {
+  limit: Int!
+  offset: Int!
+  results: [SearchProject!]!
+  stats: SearchStats
+  total: Int!
+}
+
+type SearchProjectType implements SearchResult {
+  highlights: JSONObject
+  item: ProjectType!
+  score: Float
+}
+
+type SearchProjectTypePagination implements Pagination & SearchPagination {
+  limit: Int!
+  offset: Int!
+  results: [SearchProjectType!]!
+  stats: SearchStats
+  total: Int!
+}
+
+type SearchQAQCEvent implements SearchResult {
+  highlights: JSONObject
+  item: QAQCEvent!
+  score: Float
+}
+
+type SearchQAQCEventPagination implements Pagination & SearchPagination {
+  limit: Int!
+  offset: Int!
+  results: [SearchQAQCEvent!]!
+  stats: SearchStats
+  total: Int!
+}
+
+interface SearchResult {
+  """
+  Takes the form:
+        "highlights" : {
+          "name" : [
+            "Riverscapes <span>Context</span> for HUC 16040102"
+          ],
+          "fieldName" : [
+            "match1 <span>with</span> highlight",
+            "match2 <span>with</span> highlight"
+          ]
+        }  
+  """
+  highlights: JSONObject
+  score: Float
+}
+
+"""Search Meta that appears on individual items"""
+interface SearchResultMeta {
+  highlights: JSONObject
+  score: Float!
+}
+
+type SearchSavedSearch implements SearchResult {
+  highlights: JSONObject
+  item: SavedSearch!
+  score: Float
+}
+
+type SearchSavedSearchPagination implements Pagination & SearchPagination {
+  limit: Int!
+  offset: Int!
+  results: [SearchSavedSearch!]!
+  stats: SearchStats
+  total: Int!
+}
+
+"""
+These are the ways you can sort search results
+
+Ranked sorting of return results. If NULL then the score will be the only factor
+If specified then score is implicitly the last sort criteria
+"""
+enum SearchSortEnum {
+  AREA_DESC
+  DATE_CREATED_ASC
+  DATE_CREATED_DESC
+  DATE_UPDATED_ASC
+  DATE_UPDATED_DESC
+  MINE
+  NAME_ASC
+  NAME_DESC
+}
+
+union SearchStats = ProjectSearchMeta | SearchMeta
+
+type SearchSuggestionResult implements SearchResult {
+  highlights: JSONObject
+  item: DBObj
+  score: Float
+}
+
+type SearchSuggestionResults {
+  metaKey: [SearchSuggestions!]!
+  metaValues: [SearchSuggestions!]!
+  results: [SearchSuggestionResult!]!
+  tags: [SearchSuggestions!]!
+}
+
+type SearchSuggestions {
+  freq: Int
+  score: Float!
+  text: String!
+}
+
+type SearchUser implements SearchResult {
+  highlights: JSONObject
+  item: User!
+  score: Float
+}
+
+type SearchUserPagination implements Pagination & SearchPagination {
+  limit: Int!
+  offset: Int!
+  results: [SearchUser!]!
+  stats: SearchStats
+  total: Int!
+}
+
+enum SearchableTypesEnum {
+  COLLECTION
+  ORGANIZATION
+  PROJECT
+  SAVED_SEARCH
+  USER
+}
+
+enum SeverityEnum {
+  CRITICAL
+  DEBUG
+  ERROR
+  INFO
+  WARNING
+}
+
+"""Links to various social networks"""
+type SocialLinks {
+  facebook: URL
+  instagram: URL
+  linkedIn: URL
+  tiktok: URL
+  twitter: URL
+  website: URL
+}
+
+input SocialLinksInput {
+  facebook: String
+  instagram: String
+  linkedIn: String
+  tiktok: String
+  twitter: String
+  website: URL
+}
+
+enum StarrableTypesEnum {
+  COLLECTION
+  ORGANIZATION
+  PROJECT
+  SAVED_SEARCH
+  USER
+}
+
+type Symbology {
+  error: String
+  legend: [[String!]!]
+  mapboxJson: JSONObject
+  name: String!
+  rampType: RampTypeEnum
+  state: SymbologyStateEnum!
+  url: String
+}
+
+"""SymbologyStateEnum"""
+enum SymbologyStateEnum {
+  ERROR
+  FETCHING
+  FOUND
+  MISSING
+  NOT_APPLICABLE
+  UNKNOWN
+}
+
+type TileIndexOriginFile implements FileDownloadMetaInterface {
+  contentType: String
+  etag: String
+  localPath: String
+  size: BigInt
+}
+
+type TileService {
+  bounds: [Float]
+  duration: Float
+  errorMsg: String
+  format: String
+  indexUrl: String
+  lastState: DateTime
+  layers: [String!]
+  localPath: String
+  maxZoom: Int
+  minZoom: Int
+  numFiles: Int
+  originFile: TileIndexOriginFile
+  projectId: String
+  rasterStats: JSONObject
+  rsXPath: String!
+  started: DateTime
+  state: TilingStateEnum!
+  symbologies: [String!]
+  tileType: TileTypesEnum
+  url: String
+}
+
+enum TileTypesEnum {
+  HTML
+  RASTER
+  VECTOR_GPKG
+  VECTOR_SHP
+}
+
+enum TilingStateEnum {
+  CREATING
+  FETCHING
+  FETCH_ERROR
+  INDEX_NOT_FOUND
+  LAYER_NOT_FOUND
+  NOT_APPLICABLE
+  NO_GEOMETRIES
+  QUEUED
+  SUCCESS
+  TILING_ERROR
+  TIMEOUT
+  UNKNOWN
+}
+
+type Transfer implements DBSimpleObj {
+  createdBy: User!
+  createdOn: DateTime!
+  id: ID!
+  includeProjects: Boolean
+
+  """Allows the request to have an attached note"""
+  note: String!
+  state: TransferStateEnum!
+
+  """Sorting and pagination are not available for these items"""
+  transferObjects: [TransferObject!]!
+  transferTo: Owner!
+  transferType: TransferrableTypesEnum!
+  updatedBy: User!
+  updatedOn: DateTime!
+}
+
+input TransferEntityItemsInput {
+  """Attach a note to the transfer"""
+  note: String!
+
+  """Organization or user to transfer this to"""
+  transferTo: OwnerInput!
+}
+
+input TransferInput {
+  """
+  (Optional) When transferring a collection you can choose to transfer any projects in that collection (that you own) as well
+  """
+  includeProjects: Boolean
+
+  """Attach a note to the transfer"""
+  note: String!
+
+  """DBIds of the items to transfer"""
+  objectIds: [ID!]!
+
+  """Organization or user to transfer this to"""
+  transferTo: OwnerInput!
+
+  """
+  What type of transfer is this:
+    - project(s): one or more projects
+    - collection: Transfer the colletion with an option for any owned projects
+    - organization: this is different from simply making someone else the owner
+                    this means move all projects / collections to another user or org.
+    - user: Transfer all my projects/collections to another org/user
+  """
+  transferType: TransferrableTypesEnum!
+}
+
+union TransferObject = Collection | Organization | Project | User
+
+enum TransferStateEnum {
+  ACCEPTED
+  EXPIRED
+  IN_PROGRESS
+  PROPOSED
+  REJECTED
+}
+
+enum TransferrableTypesEnum {
+  COLLECTION
+  ORGANIZATION
+  PROJECT
+  USER
+}
+
+scalar URL
+
+type UploadProjectFileUrls {
+  relPath: String!
+  urls: [String]
+}
+
+type UploadProjectRequest {
+  create: [String!]!
+  delete: [String!]!
+  newId: String
+  token: String!
+  update: [String!]!
+}
+
+type UploadUrl {
+  fields: JSONObject!
+  token: String!
+  url: String!
+}
+
+"""A User object is any user in the system"""
+type User implements DBObj & UserInterface {
+  """User affiliations (usually external to the data exchange)"""
+  affiliations: [UserAffiliation]!
+  avatar: URL
+
+  """
+  Collections this user owns. Filtered if the querying user is someone else
+  """
+  collections(limit: Int!, offset: Int!, sort: [SearchSortEnum!]): PaginatedCollections!
+  createdBy: User!
+  createdOn: DateTime!
+  description: String!
+  id: ID!
+  jobTitle: String!
+  lastLogin: DateTime!
+  location: String!
+  meta: [MetaData!]!
+  name: String!
+
+  """Organizations this user is a member of."""
+  organizations(limit: Int!, offset: Int!, sort: [SearchSortEnum!]): PaginatedOrganizations!
+
+  """Projects this user owns. Filtered if the querying user is someone else"""
+  projects(limit: Int!, offset: Int!, sort: [SearchSortEnum!]): PaginatedProjects!
+
+  """
+  Saved Searches this user owns. Filtered if the querying user is someone else
+  """
+  savedSearches(limit: Int!, offset: Int!, sort: [SearchSortEnum!]): PaginatedSavedSearches!
+  social: SocialLinks!
+  starred: Boolean!
+  starredCount: Int!
+  summary: String!
+  updatedBy: User!
+  updatedOn: DateTime!
+}
+
+"""
+Affiliation can be anything as long as it fits as a list of
+strings with URLs
+"""
+type UserAffiliation {
+  """Who am I to this affiliation (Optional)"""
+  affiliationRole: String
+
+  """
+  Name of the affiliated entity or organization. Can be external to the data exchange
+  """
+  name: String!
+
+  """(Optional) this affiliation may have a link"""
+  url: URL
+}
+
+input UserAffiliationInput {
+  """Who am I to this affiliation (Optional)"""
+  affiliationRole: String
+
+  """
+  Name of the affiliated entity or organization. Can be external to the data exchange
+  """
+  name: String!
+
+  """(Optional) this affiliation may have a link"""
+  url: URL
+}
+
+interface UserInterface {
+  """Any organizational affiliation(s) the user specifies"""
+  affiliations: [UserAffiliation]!
+
+  """URL To Avatar image"""
+  avatar: URL
+
+  """
+  Collections this user owns. Filtered if the querying user is someone else
+  """
+  collections(limit: Int!, offset: Int!, sort: [SearchSortEnum!]): PaginatedCollections!
+  createdBy: User!
+  createdOn: DateTime!
+  description: String!
+  id: ID!
+
+  """Simple job title string field"""
+  jobTitle: String!
+
+  """When did we last see the user?"""
+  lastLogin: DateTime!
+
+  """
+  Simple location string (Optional) eg: "Vancouver, Canada"
+  """
+  location: String!
+  meta: [MetaData!]!
+  name: String!
+
+  """Projects this user owns. Filtered if the querying user is someone else"""
+  projects(limit: Int!, offset: Int!, sort: [SearchSortEnum!]): PaginatedProjects!
+
+  """
+  Saved Searches this user owns. Filtered if the querying user is someone else
+  """
+  savedSearches(limit: Int!, offset: Int!, sort: [SearchSortEnum!]): PaginatedSavedSearches!
+
+  """Object containing URLS to social media sites"""
+  social: SocialLinks!
+  starred: Boolean!
+  starredCount: Int!
+  summary: String!
+  updatedBy: User!
+  updatedOn: DateTime!
+}
+
+type WarehouseInfo {
+  api: String
+  businessLogic: String
+  projectFile: String
+  warehouse: String
+  xml: String
+  xsd: String
+}
+
+type WatcherOutput {
+  errors: [String]
+  message: String
+  results: [String]
+}
+
+type ZipFileDownloadMeta implements FileDownloadMetaInterface {
+  contentType: String
+  downloadUrl: String
+  etag: String
+  localPath: String
+  pendingSince: DateTime
+  progress: Int
+  size: BigInt
+}
