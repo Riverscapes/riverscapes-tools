@@ -57,7 +57,6 @@ def create_job_file(job_name, job_type, hucs, tags, org_id, visibility='PUBLIC',
     with open(job_file, "w", encoding="utf-8") as f:
         json.dump(job_json, f, indent=2)
 
-
 if __name__ == "__main__":
 
     # argparse
