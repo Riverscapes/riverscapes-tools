@@ -17,13 +17,18 @@
     {
       "type": "promptString",
       "id": "JOB_NAME",
-      "description": "Job Name?",
+      "description": "Huc Group?",
       "default": "Riverscapes" // Really small HUC
     },
     {
-      "type": "promptString",
+      "type": "pickString",
       "id": "JOB_TYPE",
       "description": "Type of Job?",
+      "options": [
+        "vbet",
+        "rs_context_channel_taudem",
+        "rme"
+      ],
       "default": "vbet"
     },
     {

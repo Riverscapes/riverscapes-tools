@@ -52,7 +52,7 @@ if __name__ == "__main__":
 
     # argparse
     parser = argparse.ArgumentParser(description='Create a job file for the cybercastor job scheduler')
-    parser.add_argument('job_name', type=str, help='name of the job')
+    parser.add_argument('huc_group', type=str, help='name of the job')
     parser.add_argument('job_type', type=str, help='type of job')
     parser.add_argument('hucs', type=str, help='hucs to run the job on')
     parser.add_argument('tags', type=str, help='tags for the job')
@@ -64,8 +64,11 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    meta = {"PROCESSING_GROUP": "1005-1008", "INITIATIVE": "NRCS,CEAP"}
-    description = "VBET run for production using all huc10s in 1003 and 1004"
+    # some string manipulation for the big run
+    job_name = f'{args.job_type.upper()} {args.server.capitalize()} {args.huc_group}'
+    meta = {"PROCESSING_GROUP": str(args.huc_group), "INITIATIVE": "NRCS,CEAP"}
+    description = f"{args.job_type.upper()} run for {args.server.lower()} using all huc10s in {args.huc_group}"
 
-    create_job_file(args.job_name, args.job_type, args.hucs, args.tags, args.org_id, args.visibility, args.server, args.description, args.meta)
+    # create the job file
+    create_job_file(job_name, args.job_type, args.hucs, args.tags, args.org_id, args.visibility, args.server, description, meta)
 
