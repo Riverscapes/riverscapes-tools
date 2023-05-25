@@ -91,7 +91,7 @@ def dump_riverscapes(sqlite_db_path, stage):
 
                 # Insert project data
                 curs.execute('''
-                INSERT INTO rs_projects(id, name, tags, project_type_id, created_on, owned_by_id, owner_by_name, owner_by_type)
+                INSERT INTO rs_projects(project_id, name, tags, project_type_id, created_on, owned_by_id, owner_by_name, owner_by_type)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ''',
                              (
