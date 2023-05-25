@@ -40,13 +40,14 @@ def dump_all(sqlite_db_dir, cybercastor_api_url, username, password, template_ge
         log.info(f'Creating new sqlite db: {sqlite_db_path}')
         # First copy the geometry in. This will give us the gpkg tables the schema depends on
         dump_geom(sqlite_db_path, template_geom)
-        # Now create our schema
-        create_database('cybercastor/lib/dump/schema.sql', sqlite_db_path)
+    
+    # Ensure the schema is up to date
+    create_database('cybercastor/lib/dump/schema.sql', sqlite_db_path)
 
     # Then add the cybercastor data
     dump_cybercastor(sqlite_db_path, cybercastor_api_url, username, password, stage)
     # Then add the riverscapes data (authentication will be a browser popup)
-    # dump_riverscapes(template_geom, stage)
+    dump_riverscapes(template_geom, stage)
     # # Then write any additional views
     # dump_views(sqlite_db_path)
 
