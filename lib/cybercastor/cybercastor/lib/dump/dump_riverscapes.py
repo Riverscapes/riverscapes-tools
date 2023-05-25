@@ -25,10 +25,6 @@ def dump_riverscapes(sqlite_db_path, stage):
     conn.execute('PRAGMA foreign_keys = ON')
     curs = conn.cursor()
 
-    curs.execute('DELETE FROM rs_projects')
-    conn.commit()
-    conn.execute('VACUUM')
-
     riverscapes_api = RiverscapesAPI(stage=stage)
     search_query = riverscapes_api.load_query('searchProjects')
     # Only refresh the token if we need to
@@ -49,8 +45,25 @@ def dump_riverscapes(sqlite_db_path, stage):
     current_date = datetime.now()
     grand_total = 0
 
-    curs.execute("DELETE FROM rs_projects;")
-    curs.execute("DELETE FROM rs_project_meta;")
+    # Determine last created date projects in the database. 
+    # Delete all projects that were in that same day and then start the download
+    # for that day over again. This will ensure we don't have duplicates.
+    curs.execute("SELECT MAX(created_on) FROM rs_projects")
+    last_inserted_row = curs.fetchone()
+    if last_inserted_row is not None:
+        # Convert milliseconds to seconds and create a datetime object
+        last_inserted = datetime.fromtimestamp(last_inserted_row[0]/1000)
+
+        # Subtract one day from the datetime object and set the time to midnight
+        one_day = timedelta(days=1)
+        last_full_day = last_inserted - one_day
+        start_date = last_full_day.replace(hour=0, minute=0, second=0, microsecond=0)
+
+        # Delete all projects created after the last full day at midnight
+        curs.execute("DELETE FROM rs_projects WHERE created_on >= ?", [int(start_date.timestamp() * 1000)])
+
+    conn.commit()
+    conn.execute('VACUUM')
 
     # Create a timedelta object with a difference of 1 day
     while start_date <= current_date:
