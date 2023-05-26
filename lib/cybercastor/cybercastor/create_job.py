@@ -30,7 +30,10 @@ def create_job_file(job_name, job_type, hucs, tags, org_id, visibility='PUBLIC',
     job_file = os.path.join(os.getcwd(), "jobs", job_name_clean + ".json")
 
     if isinstance(hucs, str):
-        hucs = hucs.split(",")
+        if "," in hucs:
+            hucs = hucs.split(",")
+        else:
+            hucs = hucs.split(" ")
         hucs = [str(int(huc)) for huc in hucs]
 
     env = {"TAGS": tags,
