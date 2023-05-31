@@ -63,8 +63,8 @@ def dump_cybercastor(sqlite_db_path, cc_api_url, username, password, stage):
     conn.execute('VACUUM')
 
     # Reset the autoincrement counters for all tables to keep the IDs in reasonable ranges
-    for table_name in ['cc_jobs', 'cc_job_metadata', 'cc_tasks', 'cc_task_metadata', 'cc_jobenv', 'cc_taskenv']:
-        curs.execute(f"UPDATE SQLITE_SEQUENCE SET SEQ=0 WHERE NAME='{table_name}'")
+    # for table_name in ['cc_jobs', 'cc_job_metadata', 'cc_tasks', 'cc_task_metadata', 'cc_jobenv', 'cc_taskenv']:
+    #     curs.execute(f"DELETE FROM sqlite_sequence WHERE name = '{table_name}'")
 
     nexttoken = None
     page = 0
