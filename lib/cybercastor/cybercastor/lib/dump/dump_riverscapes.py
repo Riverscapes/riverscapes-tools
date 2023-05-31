@@ -31,12 +31,12 @@ def dump_riverscapes(sqlite_db_path, stage):
     if riverscapes_api.accessToken is None:
         riverscapes_api.refresh_token()
 
-    searchParams = {
-        "meta": [{
-            "key": "Runner",
-            "value": "Cybercastor",
-        }]
-    }
+    searchParams = {}
+    #     "meta": [{
+    #         "key": "Runner",
+    #         "value": "Cybercastor",
+    #     }]
+    # }
 
     # The warehouse came online in April 2023
     start_date = datetime(2023, 4, 11)
@@ -50,14 +50,12 @@ def dump_riverscapes(sqlite_db_path, stage):
     # for that day over again. This will ensure we don't have duplicates.
     curs.execute("SELECT MAX(created_on) FROM rs_projects")
     last_inserted_row = curs.fetchone()
-    if last_inserted_row is not None:
+    if last_inserted_row[0] is not None:
         # Convert milliseconds to seconds and create a datetime object
-        last_inserted = datetime.fromtimestamp(last_inserted_row[0]/1000)
+        last_inserted = datetime.fromtimestamp(last_inserted_row[0] / 1000)
 
-        # Subtract one day from the datetime object and set the time to midnight
-        one_day = timedelta(days=1)
-        last_full_day = last_inserted - one_day
-        start_date = last_full_day.replace(hour=0, minute=0, second=0, microsecond=0)
+        # Roll back to midnight to ensure that we get all projects on this day.
+        start_date = last_inserted.replace(hour=0, minute=0, second=0, microsecond=0)
 
         # Delete all projects created after the last full day at midnight
         curs.execute("DELETE FROM rs_projects WHERE created_on >= ?", [int(start_date.timestamp() * 1000)])
