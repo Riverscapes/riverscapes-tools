@@ -49,7 +49,7 @@ def __get_zfactor(dem: str):
     lry = uly + (src.RasterYSize * yres)
     src = None
 
-    length_km = haversine(uly, ulx, lry, ulx)
+    length_km = haversine(uly, ulx, lry, lrx)
     length_deg = uly - lry
     zfactor = (length_km * 1000) / length_deg
     src = None
