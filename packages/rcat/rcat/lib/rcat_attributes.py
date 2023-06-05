@@ -209,9 +209,7 @@ def igo_attributes(database: str):
         if val[1] == 0:
             curs.execute(f'UPDATE IGOAttributes SET RiparianDeparture = 1, RiparianDepartureID = 0 WHERE IGOID = {igoid}')
         else:
-            if val[0] / val[1] >= 1:
-                depid = 0
-            elif 1 > val[0] / val[1] > 0.9:
+            if 1 > val[0] / val[1] >= 0.9:
                 depid = 1
             elif 0.9 >= val[0] / val[1] > 0.66:
                 depid = 2
@@ -444,9 +442,7 @@ def reach_attributes(database: str):
         if val[1] == 0:
             curs.execute(f'UPDATE ReachAttributes SET RiparianDeparture = 1, RiparianDepartureID = 0 WHERE ReachID = {rid}')
         else:
-            if val[0] / val[1] >= 1:
-                depid = 0
-            elif 1 > val[0] / val[1] > 0.9:
+            if 1 > val[0] / val[1] >= 0.9:
                 depid = 1
             elif 0.9 >= val[0] / val[1] > 0.66:
                 depid = 2
