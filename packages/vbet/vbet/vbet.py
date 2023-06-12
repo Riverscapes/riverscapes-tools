@@ -530,7 +530,10 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                         if isinstance(transform, str):
                             locs = {'a': block[name].data}
                             trans_ds = eval(transform, {'__builtins__': None}, locs)
-                            transformed[name] = np.ma.MaskedArray(trans_ds, mask=block['HAND'].mask)
+                            if trans_ds.shape == block['HAND'].shape:
+                                transformed[name] = np.ma.MaskedArray(trans_ds, mask=block['HAND'].mask)
+                            else:
+                                transformed[name] = np.ma.MaskedArray(*np.broadcast(trans_ds, block['HAND'].mask))
 
                         else:
                             transformed[name] = np.ma.MaskedArray(transform(block[name].data), mask=block['HAND'].mask)
