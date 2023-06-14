@@ -2,11 +2,10 @@
 """
 
 import os
-import enum
 import json
 import argparse
 
-job_types = enum.Enum('rs_context', 'vbet')
+job_types = ['rs_context', 'channel', 'taudem', 'rs_context_channel_taudem', 'vbet', 'rcat', 'rme', 'anthro']
 
 
 # create a job file
@@ -70,7 +69,9 @@ if __name__ == "__main__":
     # some string manipulation for the big run
     job_name = f'{args.job_type.upper()} {args.server.capitalize()} {args.huc_group}'
     meta = {"PROCESSING_GROUP": str(args.huc_group), "INITIATIVE": "NRCS,CEAP"}
+    # meta = None
     description = f"{args.job_type.upper()} run for {args.server.lower()} using all huc10s in {args.huc_group}"
+    # description = args.description
 
     # create the job file
     create_job_file(job_name, args.job_type, args.hucs, args.tags, args.org_id, args.visibility, args.server, description, meta)

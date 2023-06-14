@@ -25,9 +25,14 @@
       "id": "JOB_TYPE",
       "description": "Type of Job?",
       "options": [
-        "vbet",
+        "rs_context",
+        "channel",
+        "taudem",
         "rs_context_channel_taudem",
-        "rme"
+        "vbet",
+        "rcat",
+        "rme",
+        "anthro"
       ],
       "default": "vbet"
     },
