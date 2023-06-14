@@ -1,0 +1,81 @@
+mutation changeProjectOwner($projectId: ID!, $owner: OwnerInput!) {
+  changeProjectOwner(projectId: $projectId, owner: $owner) {
+    ...dbobj
+    projectType {
+      id
+      name
+    }
+    visibility
+    citation
+    bounds {
+      ... dbObjSimple
+      area
+      centroid
+      bbox
+      geoHash
+      polygonUrl
+    }
+    ownedBy {
+      ...owner
+    }
+    sponsor {
+      ...owner
+    }
+    starred
+    starredCount
+    tags
+    totalSize
+    permissions {
+      delete
+      update
+      view
+    }
+  }
+}
+
+fragment owner on Owner {
+  ... on Organization {
+    id
+    name
+  }
+  ... on User {
+    id
+    name
+  }
+}
+fragment dbObjSimple on DBSimpleObj {
+  id
+  createdBy {
+    id
+    name
+  }
+  updatedBy {
+    id
+    name
+  }
+  createdOn
+  updatedOn
+}
+
+fragment dbobj on DBObj {
+  id
+  createdBy {
+    id
+    name
+  }
+  updatedBy {
+    id
+    name
+  }
+  createdOn
+  updatedOn
+  name
+#   summary
+#   description
+
+  meta {
+    key
+    type
+    value
+  }
+}

@@ -560,6 +560,7 @@ type Mutation {
 
   """ADMIN: Wipe DynamoDB except for users"""
   adminWipeDynamo: Int
+  changeProjectOwner(owner: OwnerInput!, projectId: ID!): Project
 
   """Create a collection of projects"""
   createCollection(collection: CollectionInput!, orgId: ID): Collection

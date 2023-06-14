@@ -206,7 +206,7 @@ class RiverscapesAPI:
                 # Authentication timeout: re-login and retry the query
                 if len(list(filter(lambda err: 'You must be authenticated' in err['message'], resp_json['errors']))) > 0:
                     self.log.debug("Authentication timed out. Fetching new token...")
-                    self.cognito_login()
+                    self.refresh_token()
                     self.log.debug("   done. Re-trying query...")
                     return self.run_query(query, variables)
             else:

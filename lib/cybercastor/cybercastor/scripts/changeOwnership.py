@@ -6,14 +6,14 @@ from rscommons import Logger
 import inquirer
 
 
-def changeVis(stage, vis: str):
+def change_owner(stage, new_org_id: str):
     """ DUmp all projects to a DB
 
     Args:
         output_folder ([type]): [description]
     """
-    log = Logger('ChangeVisibility')
-    log.title('Change Visibility of Projects from the server')
+    log = Logger('ChangeOwner')
+    log.title('Change Owner of Projects from the server')
 
     riverscapes_api = RiverscapesAPI(stage=stage)
     search_query = riverscapes_api.load_query('searchProjects')
@@ -31,6 +31,7 @@ def changeVis(stage, vis: str):
     changeable_projects = []
     offset = 0
     total = 0
+
     # Create a timedelta object with a difference of 1 day
     while offset == 0 or offset < total:
 
@@ -44,29 +45,35 @@ def changeVis(stage, vis: str):
         for search_result in projects:
 
             project = search_result['item']
-            if project['visibility'] != vis:
+            if project['ownedBy']['id'] != new_org_id:
                 changeable_projects.append(project)
 
     # Now write all projects to a log file as json
-    with open('changevis_projects.txt', 'w') as f:
+    with open('change_owner_projects.txt', 'w') as f:
         f.write(json.dumps(changeable_projects))
 
     # Ask the user to confirm using inquirer
-    log.info(f"Found {len(changeable_projects)} out of {total} projects to change visibility")
+    log.info(f"Found {len(changeable_projects)} out of {total} projects to change ownership")
     questions = [
         inquirer.Confirm('confirm1',
-                         message="Are you sure you want to change all these projects?"),
+                         message="Are you sure you want to change ownership on all these projects?"),
     ]
     answers = inquirer.prompt(questions)
     if not answers['confirm1'] or not answers['confirm2']:
         log.info("Good choice. Aborting!")
         return
 
-    # Now ChangeVisibility all projects
-    mutation_script = riverscapes_api.load_mutation('updateProject')
+    # Now Change Owner of all projects
+    mutation_script = riverscapes_api.load_mutation('changeProjectOwner')
     for project in changeable_projects:
-        print(f"ChangeVisibility of project: {project['name']} with id: {project['id']}")
-        # riverscapes_api.run_query(mutation_script, {"projectId": project['id'], "project": {"visibility": vis}}})
+        print(f"Change Owner of project: {project['name']} with id: {project['id']}")
+        riverscapes_api.run_query(mutation_script, {
+            "projectId": project['id'],
+            "owner": {
+                "id": new_org_id,
+                "type": "ORGANIZATION"
+            }
+        })
 
     # Shut down the API since we don;t need it anymore
     riverscapes_api.shutdown()
@@ -75,4 +82,4 @@ def changeVis(stage, vis: str):
 
 
 if __name__ == '__main__':
-    changeVis('staging', 'PRIVATE')
+    change_owner('staging', 'org-guid-here')
