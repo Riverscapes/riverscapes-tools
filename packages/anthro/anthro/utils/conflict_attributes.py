@@ -124,7 +124,8 @@ def calc_conflict_attributes(flowlines_path, valley_bottom, roads, rail, canals,
     # Calculate minimum distance to conflict
     min_keys = ['iPC_Road', 'iPC_RoadX', 'iPC_RoadVB', 'iPC_Rail', 'iPC_RailVB']
     for values in results.values():
-        values['oPC_Dist'] = min([values[x] for x in min_keys if x in values])
+        proximities = [values[x] for x in min_keys if x in values]
+        values['oPC_Dist'] = min(proximities) if len(proximities) > 0 else -9999
 
     # Retrieve the agency responsible for administering the land at the midpoint of each reach
     admin_agency(geopackage_path, reaches, ownership, results)

@@ -29,8 +29,34 @@ def infrastructure_attributes(windows: str, road: str, rail: str, canal: str, cr
     # get epsg_proj
     with get_shp_or_gpkg(road) as inref:
         ftr = inref.ogr_layer.GetFeature(1)
-        long = ftr.GetGeometryRef().GetEnvelope()[0]
-        epsg_proj = get_utm_zone_epsg(long)
+        if ftr is not None:
+            long = ftr.GetGeometryRef().GetEnvelope()[0]
+            epsg_proj = get_utm_zone_epsg(long)
+        else:
+            epsg_proj = None
+
+    if not epsg_proj:
+        with get_shp_or_gpkg(road) as inref:
+            ftr = inref.ogr_layer.GetFeature(1)
+            if ftr is not None:
+                long = ftr.GetGeometryRef().GetEnvelope()[0]
+                epsg_proj = get_utm_zone_epsg(long)
+            else:
+                epsg_proj = None
+
+    if not epsg_proj:
+        with get_shp_or_gpkg(canal) as inref:
+            ftr = inref.ogr_layer.GetFeature(1)
+            if ftr is not None:
+                long = ftr.GetGeometryRef().GetEnvelope()[0]
+                epsg_proj = get_utm_zone_epsg(long)
+            else:
+                epsg_proj = None
+
+    if not epsg_proj:
+        log.info('No infrastructure datasets, skipping attributes')
+
+        return
 
     conn = sqlite3.connect(out_gpkg_path)
 
