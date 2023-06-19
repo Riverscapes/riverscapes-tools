@@ -201,12 +201,16 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
     distancein = {
         '0': 200,
         '1': 400,
-        '2': 1200
+        '2': 1200,
+        '3': 2000,
+        '4': 8000
     }
     project.add_metadata(
         [RSMeta('Small Search Window', str(distancein['0']), RSMetaTypes.INT, locked=True),
          RSMeta('Medium Search Window', str(distancein['1']), RSMetaTypes.INT, locked=True),
-         RSMeta('Large Search Window', str(distancein['2']), RSMetaTypes.INT, locked=True)])
+         RSMeta('Large Search Window', str(distancein['2']), RSMetaTypes.INT, locked=True),
+         RSMeta('Very Large Search Window', str(distancein['3']), RSMetaTypes.INT, locked=True),
+         RSMeta('Huge Search Window', str(distancein['4']), RSMetaTypes.INT, locked=True)])
 
     # get moving window for each igo
     windows = get_moving_windows(igo_geom_path, input_layers['DGO'], levelpathsin, distancein)
