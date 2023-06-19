@@ -1,4 +1,5 @@
-"""[summary]
+"""Query Script to Find and delete projects on the server
+    June 06, 2023
 """
 import json
 from cybercastor.classes.RiverscapesAPI import RiverscapesAPI
@@ -7,10 +8,10 @@ import inquirer
 
 
 def deleteProjects(stage):
-    """ DUmp all projects to a DB
+    """ Find and delete projects on the server
 
     Args:
-        output_folder ([type]): [description]
+        stage (str): The stage to run the script on
     """
     log = Logger('DeleteProjects')
     log.title('Delete Projects from the server')
@@ -30,6 +31,7 @@ def deleteProjects(stage):
 
     deletable_projects = []
     offset = 0
+    total = 0
     # Create a timedelta object with a difference of 1 day
     while offset == 0 or offset < total:
 
@@ -46,7 +48,7 @@ def deleteProjects(stage):
             deletable_projects.append(project)
 
     # Now write all projects to a log file as json
-    with open('deletable_projects.txt', 'w') as f:
+    with open('deletable_projects.json', 'w') as f:
         f.write(json.dumps(deletable_projects))
 
     # Ask the user to confirm using inquirer
@@ -60,6 +62,8 @@ def deleteProjects(stage):
     answers = inquirer.prompt(questions)
     if not answers['confirm1'] or not answers['confirm2']:
         log.info("Good choice. Aborting!")
+        # Shut down the API since we don;t need it anymore
+        riverscapes_api.shutdown()
         return
 
     # Now delete all projects

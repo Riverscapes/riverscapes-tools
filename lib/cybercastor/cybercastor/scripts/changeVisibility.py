@@ -1,5 +1,7 @@
-"""[summary]
+""" Query Script to Find and change visibility of projects on the server
+    June 05, 2023
 """
+
 import json
 from cybercastor.classes.RiverscapesAPI import RiverscapesAPI
 from rscommons import Logger
@@ -7,10 +9,11 @@ import inquirer
 
 
 def changeVis(stage, vis: str):
-    """ DUmp all projects to a DB
+    """ Find and change visibility of projects on the server
 
     Args:
-        output_folder ([type]): [description]
+        stage (str): The stage to run the script on
+        vis (str): The visibility to change to
     """
     log = Logger('ChangeVisibility')
     log.title('Change Visibility of Projects from the server')
@@ -44,29 +47,36 @@ def changeVis(stage, vis: str):
         for search_result in projects:
 
             project = search_result['item']
-            if project['visibility'] != vis:
+            if project['id'] == 'b7ca4ed4-9dea-4e78-9fcb-f7d15ee8614b':
                 changeable_projects.append(project)
+            if project['visibility'] != vis:
+                if project['id'] == 'b7ca4ed4-9dea-4e78-9fcb-f7d15ee8614b':
+                    changeable_projects.append(project)
 
     # Now write all projects to a log file as json
-    with open('changevis_projects.txt', 'w') as f:
+    with open('changeable_projects.json', 'w') as f:
         f.write(json.dumps(changeable_projects))
 
     # Ask the user to confirm using inquirer
     log.info(f"Found {len(changeable_projects)} out of {total} projects to change visibility")
     questions = [
+        inquirer.Confirm('confirm2',
+                         message=f"Do you want to change all {len(changeable_projects)} projects?"),
         inquirer.Confirm('confirm1',
-                         message="Are you sure you want to change all these projects?"),
+                         message="Are you sure?"),
     ]
     answers = inquirer.prompt(questions)
     if not answers['confirm1'] or not answers['confirm2']:
         log.info("Good choice. Aborting!")
+        # Shut down the API since we don;t need it anymore
+        riverscapes_api.shutdown()
         return
 
     # Now ChangeVisibility all projects
     mutation_script = riverscapes_api.load_mutation('updateProject')
     for project in changeable_projects:
-        print(f"ChangeVisibility of project: {project['name']} with id: {project['id']}")
-        # riverscapes_api.run_query(mutation_script, {"projectId": project['id'], "project": {"visibility": vis}}})
+        print(f"Changing project: {project['name']} with id: {project['id']}")
+        riverscapes_api.run_query(mutation_script, {"projectId": project['id'], "project": {"visibility": vis}})
 
     # Shut down the API since we don;t need it anymore
     riverscapes_api.shutdown()
