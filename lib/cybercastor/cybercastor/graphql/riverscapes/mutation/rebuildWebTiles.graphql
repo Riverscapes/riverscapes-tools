@@ -1,0 +1,10 @@
+mutation rebuildWebTiles(
+  $projectId: ID!
+  $rsXPaths: [String!]
+  $force: Boolean
+) {
+  rebuildWebTiles(projectId: $projectId, rsXPaths: $rsXPaths, force: $force) {
+    skipped
+    queued
+  }
+}
