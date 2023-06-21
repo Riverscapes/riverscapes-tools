@@ -33,7 +33,9 @@ def create_job_file(job_name, job_type, hucs, tags, org_id, visibility='PUBLIC',
             hucs = hucs.split(",")
         else:
             hucs = hucs.split(" ")
-        hucs = [str(int(huc)) for huc in hucs]
+            # keep leading zero
+
+        # hucs = [str(int(huc)) for huc in hucs]
 
     env = {"TAGS": tags,
            "VISIBILITY": visibility,
@@ -49,6 +51,7 @@ def create_job_file(job_name, job_type, hucs, tags, org_id, visibility='PUBLIC',
                 "hucs": hucs}
     with open(job_file, "w", encoding="utf-8") as f:
         json.dump(job_json, f, indent=2)
+
 
 if __name__ == "__main__":
 
@@ -75,4 +78,3 @@ if __name__ == "__main__":
 
     # create the job file
     create_job_file(job_name, args.job_type, args.hucs, args.tags, args.org_id, args.visibility, args.server, description, meta)
-
