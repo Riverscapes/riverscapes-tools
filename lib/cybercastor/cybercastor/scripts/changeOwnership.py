@@ -59,7 +59,7 @@ def change_owner(stage, new_org_id: str):
                          message="Are you sure you want to change ownership on all these projects?"),
     ]
     answers = inquirer.prompt(questions)
-    if not answers['confirm1'] or not answers['confirm2']:
+    if not answers['confirm1']:  # or not answers['confirm2']:
         log.info("Good choice. Aborting!")
         return
 

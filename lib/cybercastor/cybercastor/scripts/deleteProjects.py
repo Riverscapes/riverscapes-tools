@@ -70,7 +70,7 @@ def deleteProjects(stage):
     mutation_script = riverscapes_api.load_mutation('deleteProject')
     for project in deletable_projects:
         print(f"Deleting project: {project['name']} with id: {project['id']}")
-        # riverscapes_api.run_query(mutation_script, {"id": project['id']})
+        riverscapes_api.run_query(mutation_script, {"projectId": project['id'], 'options': {}})
 
     # Shut down the API since we don;t need it anymore
     riverscapes_api.shutdown()
