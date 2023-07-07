@@ -1,0 +1,40 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "inputs": [
+      {
+        "type": "promptString",
+        "id": "HUC",
+        "description": "What HUC?",
+        // "default": "17070202" // North Fork John Day
+        "default": "17060304" // Really small HUC
+        // "default": "17060103" // Asotin
+      }
+    ],
+    "configurations": [
+        {
+          "name": "Sticher Run",
+          "type": "python",
+          "request": "launch",
+          "module": "sticher.sticher",
+          "console": "integratedTerminal",
+          "args": [
+            "/Users/philip/GISData/riverscapes/SanLuisValley",
+            "/Users/philip/GISData/riverscapes/SanLuisValley/vbet_san_luis_valley.gpkg",
+            "--verbose"
+          ]
+        },
+        {
+          "name": "Version Bump",
+          "type": "python",
+          "module": "rscommons.version",
+          "args": [
+            "${workspaceFolder}/sticher/__version__.py"
+          ],
+          "request": "launch",
+          "console": "integratedTerminal"
+        }
+    ]
+}
