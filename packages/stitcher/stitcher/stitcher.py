@@ -33,7 +33,7 @@ feature_classes = {
 }
 
 
-def stich_projects(directory: str, output_gpkg: str) -> None:
+def stitch_projects(directory: str, output_gpkg: str) -> None:
     """
     Stich together multiple VBET projects into a single geopackage
     directory: str - path to directory containing VBET zips downloaded from Data Exchange
@@ -90,7 +90,7 @@ def main():
     log.title('Stitcher')
 
     try:
-        stich_projects(args.directory, args.output_gpkg)
+        stitch_projects(args.directory, args.output_gpkg)
 
     except Exception as e:
         log.error(e)

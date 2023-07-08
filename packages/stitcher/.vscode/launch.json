@@ -15,10 +15,10 @@
     ],
     "configurations": [
         {
-          "name": "Sticher Run",
+          "name": "stitcher Run",
           "type": "python",
           "request": "launch",
-          "module": "sticher.sticher",
+          "module": "stitcher.stitcher",
           "console": "integratedTerminal",
           "args": [
             "/Users/philip/GISData/riverscapes/SanLuisValley",
@@ -31,7 +31,7 @@
           "type": "python",
           "module": "rscommons.version",
           "args": [
-            "${workspaceFolder}/sticher/__version__.py"
+            "${workspaceFolder}/stitcher/__version__.py"
           ],
           "request": "launch",
           "console": "integratedTerminal"

@@ -1,7 +1,7 @@
 {
 	"folders": [
 		{
-			"path": "../packages/sticher"
+			"path": "../packages/stitcher"
 		},
 		{
 			"path": "../lib/commons"
