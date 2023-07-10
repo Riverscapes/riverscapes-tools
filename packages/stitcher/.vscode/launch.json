@@ -21,8 +21,8 @@
           "module": "stitcher.stitcher",
           "console": "integratedTerminal",
           "args": [
-            "/Users/philip/GISData/riverscapes/SanLuisValley",
-            "/Users/philip/GISData/riverscapes/SanLuisValley/vbet_san_luis_valley.gpkg",
+            "{env:DATA_ROOT}/SanLuisValley",
+            "{env:DATA_ROOT}/SanLuisValley/vbet_san_luis_valley.gpkg",
             "--verbose"
           ]
         },

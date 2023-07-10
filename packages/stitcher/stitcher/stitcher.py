@@ -47,8 +47,8 @@ def stitch_projects(directory: str, output_gpkg: str) -> None:
 
         # Skip the Alamosa River zip file, because it was used as the seed for the output.
         # All subsequent Geopackages will be append to this one.
-        if zip_file == 'VBET_Alamosa_River.zip':
-            continue
+        # if zip_file == 'VBET_Alamosa_River.zip':
+        #     continue
 
         # Create a temporary directory to unzip the file
         temp_dir = tempfile.mkdtemp()
@@ -63,9 +63,13 @@ def stitch_projects(directory: str, output_gpkg: str) -> None:
                     input_gpkg = os.path.join(temp_dir, 'outputs', 'vbet.gpkg')
                     cmd = f'ogr2ogr -f GPKG -append -nlt {geometry_type} -nln {feature_class} {output_gpkg} {input_gpkg} {feature_class}'
                     print(cmd)
-
-                    # Perform the shell command (replace 'your_command' with your desired command)
                     subprocess.run([cmd], shell=True, cwd=temp_dir)
+
+            # Now process the DGOs that are in the intermediates folder
+            inter_gpkg = os.path.join(temp_dir, 'intermediates', 'vbet_intermediates.gpkg')
+            cmd = f'ogr2ogr -f GPKG -append -nlt {geometry_type} -nln vbet_dgos {output_gpkg} {inter_gpkg} vbet_dgos'
+            print(cmd)
+            subprocess.run([cmd], shell=True, cwd=temp_dir)
 
         finally:
             # Delete the temporary directory and its contents
@@ -86,7 +90,7 @@ def main():
 
     # Initiate the log file
     log = Logger("Sticher")
-    log.setup(logPath=os.path.join(args.output, "sticher.log"), verbose=args.verbose)
+    log.setup(logPath=os.path.join(os.path.dirname(args.output_gpkg), "sticher.log"), verbose=args.verbose)
     log.title('Stitcher')
 
     try:
