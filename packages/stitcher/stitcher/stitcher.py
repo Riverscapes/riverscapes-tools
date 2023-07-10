@@ -67,7 +67,7 @@ def stitch_projects(directory: str, output_gpkg: str) -> None:
 
             # Now process the DGOs that are in the intermediates folder
             inter_gpkg = os.path.join(temp_dir, 'intermediates', 'vbet_intermediates.gpkg')
-            cmd = f'ogr2ogr -f GPKG -append -nlt {geometry_type} -nln vbet_dgos {output_gpkg} {inter_gpkg} vbet_dgos'
+            cmd = f'ogr2ogr -f GPKG -append -nlt POLYGON -nln vbet_dgos {output_gpkg} {inter_gpkg} vbet_dgos'
             print(cmd)
             subprocess.run([cmd], shell=True, cwd=temp_dir)
 
