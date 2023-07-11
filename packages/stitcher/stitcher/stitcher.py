@@ -17,23 +17,33 @@ from rscommons import (Logger, dotenv, initGDALOGRErrors)
 # Literal list of VBET feature classes to be stitched together. 
 # This should be enhanced to "self discover" the feature classes
 feature_classes = {
-    'POLYGON': [
-        'active_floodplain',
-        'active_valley_bottom',
-        'floodplain',
-        'inactive_floodplain',
-        'vbet_full',
-    ],
-    'LINESTRING': [
-        'vbet_centerlines',
-    ],
-    'POINT': [
-        'vbet_igos'
-    ]
+    'vbet': {
+        'POLYGON': [
+            'active_floodplain',
+            'active_valley_bottom',
+            'floodplain',
+            'inactive_floodplain',
+            'vbet_full',
+        ],
+        'LINESTRING': [
+            'vbet_centerlines',
+        ],
+        'POINT': [
+            'vbet_igos'
+        ]
+    },
+    'anthro': {
+        'POINT': [
+            'vwIgos'
+        ],
+        'LINESTRING': [
+            'vwReaches'
+        ]
+    }
 }
 
 
-def stitch_projects(directory: str, output_gpkg: str) -> None:
+def stitch_projects(directory: str, relative_input_gpkg, output_gpkg: str, layers) -> None:
     """
     Stich together multiple VBET projects into a single geopackage
     directory: str - path to directory containing VBET zips downloaded from Data Exchange
@@ -58,18 +68,18 @@ def stitch_projects(directory: str, output_gpkg: str) -> None:
             with zipfile.ZipFile(os.path.join(directory, zip_file), 'r') as zip_ref:
                 zip_ref.extractall(temp_dir)
 
-            for geometry_type, feature_class_list in feature_classes.items():
+            for geometry_type, feature_class_list in layers.items():
                 for feature_class in feature_class_list:
-                    input_gpkg = os.path.join(temp_dir, 'outputs', 'vbet.gpkg')
-                    cmd = f'ogr2ogr -f GPKG -append -nlt {geometry_type} -nln {feature_class} {output_gpkg} {input_gpkg} {feature_class}'
+                    input_gpkg = os.path.join(temp_dir, relative_input_gpkg)
+                    cmd = f'ogr2ogr -f GPKG -makevalid -append -nlt {geometry_type} -nln {feature_class} {output_gpkg} {input_gpkg} {feature_class}'
                     print(cmd)
                     subprocess.run([cmd], shell=True, cwd=temp_dir)
 
-            # Now process the DGOs that are in the intermediates folder
-            inter_gpkg = os.path.join(temp_dir, 'intermediates', 'vbet_intermediates.gpkg')
-            cmd = f'ogr2ogr -f GPKG -append -nlt POLYGON -nln vbet_dgos {output_gpkg} {inter_gpkg} vbet_dgos'
-            print(cmd)
-            subprocess.run([cmd], shell=True, cwd=temp_dir)
+            # # Now process the DGOs that are in the intermediates folder
+            # inter_gpkg = os.path.join(temp_dir, 'intermediates', 'vbet_intermediates.gpkg')
+            # cmd = f'ogr2ogr -f GPKG -append -makevalid -nlt POLYGON -nln vbet_dgos {output_gpkg} {inter_gpkg} vbet_dgos'
+            # print(cmd)
+            # subprocess.run([cmd], shell=True, cwd=temp_dir)
 
         finally:
             # Delete the temporary directory and its contents
@@ -82,7 +92,9 @@ def main():
         # epilog="This is an epilog"
     )
     parser.add_argument('directory', help='Folder path containing VBET zip files downloaded from data exchange', type=str)
+    parser.add_argument('input_gpkg', help='RELATIVE path within each project where the input feature classes exist', type=str)
     parser.add_argument('output_gpkg', help='Path to existing GeoPackage that possesses the template feature classes for the output', type=str)
+    parser.add_argument('layers', help='Top level key from dictionary at top of file picking which layers to import', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
     parser.add_argument('--debug', help='(optional) more output about things like memory usage. There is a performance cost', action='store_true', default=False)
 
@@ -93,8 +105,11 @@ def main():
     log.setup(logPath=os.path.join(os.path.dirname(args.output_gpkg), "sticher.log"), verbose=args.verbose)
     log.title('Stitcher')
 
+    if args.layers not in feature_classes:
+        raise f'Invalid layer name: {args.layers}'
+
     try:
-        stitch_projects(args.directory, args.output_gpkg)
+        stitch_projects(args.directory, args.input_gpkg, args.output_gpkg, feature_classes[args.layers])
 
     except Exception as e:
         log.error(e)
