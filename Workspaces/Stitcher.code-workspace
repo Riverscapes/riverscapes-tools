@@ -13,5 +13,9 @@
 	],
 	"settings": {
 		"python.pythonPath": "${workspaceFolder}\\..\\..\\.venv\\Scripts\\python.exe",
+		"[python]": {
+			"editor.defaultFormatter": "ms-python.autopep8"
+		},
+		"python.formatting.provider": "none",
 	}
 }

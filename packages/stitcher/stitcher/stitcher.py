@@ -39,7 +39,16 @@ feature_classes = {
         'LINESTRING': [
             'vwReaches'
         ]
-    }
+    },
+    'rcat': {
+        'POINT': [
+            'vwIgos'
+        ],
+        'LINESTRING': [
+            'vwReaches'
+        ]
+    },
+
 }
 
 

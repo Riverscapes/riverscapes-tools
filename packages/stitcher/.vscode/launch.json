@@ -21,10 +21,10 @@
           "module": "stitcher.stitcher",
           "console": "integratedTerminal",
           "args": [
-            "{env:DATA_ROOT}/SanLuisValley/Anthro",
-            "outputs/anthro.gpkg",
-            "{env:DATA_ROOT}/SanLuisValley/Anthro/anthro_san_luis_valley.gpkg",
-            "anthro",
+            "{env:DATA_ROOT}/SanLuisValley/rcat",
+            "outputs/rcat.gpkg",
+            "{env:DATA_ROOT}/SanLuisValley/RCAT/rcat_san_luis_valley.gpkg",
+            "rcat",
             "--verbose"
           ]
         },
