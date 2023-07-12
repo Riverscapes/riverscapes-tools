@@ -157,7 +157,7 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
     except ValueError:
         raise Exception('Invalid HUC identifier "{}". Must be an integer'.format(huc))
 
-    if not (len(huc) in [4, 8, 10, 12]):
+    if not (len(huc) in [4, 6, 8, 10, 12]):
         raise Exception('Invalid HUC identifier. Must be 4, 8, 10 or 12 digit integer')
 
     safe_makedirs(output_folder)
