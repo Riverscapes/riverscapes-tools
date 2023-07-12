@@ -84,3 +84,16 @@ def save_as_geojson(geom: Geometry, output: Path, gtype=ogr.wkbPolygon) -> None:
     outFeature = None
     # Save and close DataSources
     outDataSource = None
+
+
+if __name__ == '__main__':
+    # use argparse to run generate_project_extents_from_layer from the command line
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Generate project extents from a layer')
+    parser.add_argument('bounding_layer', type=str, help='Layer to generate extents from. All geometries are merged first.')
+    parser.add_argument('output', type=str, help='output path and filename for .geojson extent')
+    parser.add_argument('--simplify_tolerance', type=float, default=0.001, help='tolerance in decimal degrees. Defaults to 0.001.')
+    args = parser.parse_args()
+
+    generate_project_extents_from_layer(args.bounding_layer, args.output, args.simplify_tolerance)

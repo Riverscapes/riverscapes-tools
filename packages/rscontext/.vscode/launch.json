@@ -99,6 +99,17 @@
       ]
     },
     {
+      "name": "Generate Bounding GeoJSON",
+      "type": "python",
+      "request": "launch",
+      "module": "rscommons.project_bounds",
+      "console": "integratedTerminal",
+      "args":[
+        "${input:in_layer}",
+        "${input:out_layer}",
+      ]
+    },
+    {
       "name": "Version Bump",
       "type": "python",
       "module": "rscommons.version",
