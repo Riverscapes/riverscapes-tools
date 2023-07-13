@@ -111,13 +111,13 @@ try() {
     rscli upload . --user $USER_ID \
         --tags "$TAGS" \
         --visibility $VISIBILITY \
-        --no-input --no-ui --verbose --replace
+        --no-input --no-ui --verbose
   # If this is an org upload, we need to specify the org ID
   elif [ -n "$ORG_ID" ]; then
     rscli upload . --org $ORG_ID \
         --tags "$TAGS" \
         --visibility $VISIBILITY \
-        --no-input --no-ui --verbose --replace
+        --no-input --no-ui --verbose
   else
     echo "Error: Neither USER nor ORG environment variables are set. You need one of them."
     exit 1
@@ -149,13 +149,13 @@ try() {
     rscli upload . --user $USER_ID \
         --tags "$TAGS" \
         --visibility $VISIBILITY \
-        --no-input --no-ui --verbose --replace
+        --no-input --no-ui --verbose
   # If this is an org upload, we need to specify the org ID
   elif [ -n "$ORG_ID" ]; then
     rscli upload . --org $ORG_ID \
         --tags "$TAGS" \
         --visibility $VISIBILITY \
-        --no-input --no-ui --verbose --replace
+        --no-input --no-ui --verbose
 
     echo "Error: Neither USER nor ORG environment variables are set. You need one of them."
     exit 1
