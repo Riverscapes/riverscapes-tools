@@ -28,6 +28,10 @@ def create_job_file(job_name, job_type, hucs, tags, org_id, visibility='PUBLIC',
 
     job_file = os.path.join(os.getcwd(), "jobs", job_name_clean + ".json")
 
+    # remove all quotes from hucs
+    hucs = hucs.replace('"', '')
+    hucs = hucs.replace("'", "")
+
     if isinstance(hucs, str):
         if "," in hucs:
             hucs = hucs.split(",")
@@ -35,7 +39,8 @@ def create_job_file(job_name, job_type, hucs, tags, org_id, visibility='PUBLIC',
             hucs = hucs.split(" ")
             # keep leading zero
 
-        # hucs = [str(int(huc)) for huc in hucs]
+        hucs = [str(int(huc)) for huc in hucs]
+        hucs = [huc.zfill(10) for huc in hucs]
 
     env = {"TAGS": tags,
            "VISIBILITY": visibility,

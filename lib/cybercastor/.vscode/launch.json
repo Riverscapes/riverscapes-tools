@@ -32,7 +32,8 @@
         "vbet",
         "rcat",
         "rme",
-        "anthro"
+        "anthro",
+        "brat"
       ],
       "default": "vbet"
     },
