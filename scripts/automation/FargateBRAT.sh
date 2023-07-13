@@ -80,7 +80,7 @@ try() {
     $RS_CONTEXT_DIR/topography/dem.tif \
     $RS_CONTEXT_DIR/topography/slope.tif \
     $RS_CONTEXT_DIR/topography/dem_hillshade.tif \
-    $RS_CONTEXT_DIR/hydrology/hydrology.gpkg/network_intersected_300m \
+    $RS_CONTEXT_DIR/hydrology/hydro_derivatives.gpkg/network_intersected_300m \
     $RS_CONTEXT_DIR/vegetation/existing_veg.tif \
     $RS_CONTEXT_DIR/vegetation/historic_veg.tif \
     $VBET_DIR/outputs/vbet.gpkg/vbet_full \
@@ -95,8 +95,8 @@ try() {
     --reach_codes 33400,33600,33601,33603,46000,46003,46006,46007 \
     --canal_codes 33600,33601,33603 \
     --peren_codes 46006,55800,33400 \
-    --flow_areas $RS_CONTEXT_DIR/hydrology/NHDArea.shp \
-    --waterbodies $RS_CONTEXT_DIR/hydrology/NHDWaterbody.shp \
+    --flow_areas $RS_CONTEXT_DIR/hydrology/nhdplushr.gpkg/NHDArea \
+    --waterbodies $RS_CONTEXT_DIR/hydrology/nhdplushr.gpkg/NHDWaterbody \
     --max_waterbody 0.001 \
     --meta "Runner=Cybercastor" \
     --verbose
