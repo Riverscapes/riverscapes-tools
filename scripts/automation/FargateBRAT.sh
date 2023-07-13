@@ -132,9 +132,9 @@ try() {
   if [[ $? != 0 ]]; then return 1; fi
 
   cd /usr/local/src/riverscapes-tools/packages/brat
-  /usr/local/venv/bin/python -m sqlbrat.brat_rs \
+  python3 -m sqlbrat.brat_rs \
     $BRAT_DIR/project.rs.xml \
-    "$RS_CONTEXT_DIR/project.rs.xml,$VBET_DIR/project.rs.xml"
+    $RS_CONTEXT_DIR/project.rs.xml,$VBET_DIR/project.rs.xml
 
   echo "======================  Final Disk space usage ======================="
   df -h
