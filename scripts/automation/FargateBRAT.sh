@@ -156,7 +156,7 @@ try() {
         --tags "$TAGS" \
         --visibility $VISIBILITY \
         --no-input --no-ui --verbose
-
+  else
     echo "Error: Neither USER nor ORG environment variables are set. You need one of them."
     exit 1
   fi
