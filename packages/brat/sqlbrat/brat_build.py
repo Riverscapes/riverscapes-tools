@@ -177,7 +177,7 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
     # Just for fun add the db metadata back to the xml
     project.add_metadata_simple(db_metadata)
 
-    project.add_metadata([RSMeta('Watershed', watershed_name)])
+    project.add_metadata([RSMeta('HUC8_Watershed', watershed_name)])
 
     # Copy the reaches into the output feature class layer, filtering by reach codes
     reach_geometry_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['BRAT_GEOMETRY'].rel_path)
