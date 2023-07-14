@@ -635,6 +635,7 @@ class RSProject:
 
             # look for any valid mappings and move metadata into them
             for id_out, id_in in working_id_list.items():
+                lyrnod_in = None
                 for n in in_prj.XMLBuilder.tree.iter():
                     if 'lyrName' in n.attrib.keys():
                         if n.attrib['lyrName'] == id_in:
