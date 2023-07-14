@@ -102,28 +102,28 @@ try() {
     --verbose
   if [[ $? != 0 ]]; then return 1; fi
 
-  # Upload the HUC into the warehouse. This is useful
-  # Since BRAT RUn might fail
-  cd $BRAT_DIR
+  # # Upload the HUC into the warehouse. This is useful
+  # # Since BRAT RUn might fail
+  # cd $BRAT_DIR
 
-  # If this is a user upload then we need to use the user's id
-  if [ -n "$USER_ID" ]; then
-    rscli upload . --user $USER_ID \
-        --tags "$TAGS" \
-        --visibility $VISIBILITY \
-        --no-input --no-ui --verbose
-  # If this is an org upload, we need to specify the org ID
-  elif [ -n "$ORG_ID" ]; then
-    rscli upload . --org $ORG_ID \
-        --tags "$TAGS" \
-        --visibility $VISIBILITY \
-        --no-input --no-ui --verbose
-  else
-    echo "Error: Neither USER nor ORG environment variables are set. You need one of them."
-    exit 1
-  fi
+  # # If this is a user upload then we need to use the user's id
+  # if [ -n "$USER_ID" ]; then
+  #   rscli upload . --user $USER_ID \
+  #       --tags "$TAGS" \
+  #       --visibility $VISIBILITY \
+  #       --no-input --no-ui --verbose
+  # # If this is an org upload, we need to specify the org ID
+  # elif [ -n "$ORG_ID" ]; then
+  #   rscli upload . --org $ORG_ID \
+  #       --tags "$TAGS" \
+  #       --visibility $VISIBILITY \
+  #       --no-input --no-ui --verbose
+  # else
+  #   echo "Error: Neither USER nor ORG environment variables are set. You need one of them."
+  #   exit 1
+  # fi
 
-  if [[ $? != 0 ]]; then return 1; fi
+  # if [[ $? != 0 ]]; then return 1; fi
   
   ##########################################################################################
   # Now Run BRAT Run
