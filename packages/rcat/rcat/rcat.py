@@ -199,13 +199,17 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
     distance_in = {
         '0': 200,
         '1': 400,
-        '2': 1200
+        '2': 1200,
+        '3': 2000,
+        '4': 8000
     }
 
     project.add_metadata(
         [RSMeta('Small Search Window', str(distance_in['0']), RSMetaTypes.INT, locked=True),
          RSMeta('Medium Search Window', str(distance_in['1']), RSMetaTypes.INT, locked=True),
-         RSMeta('Large Search Window', str(distance_in['2']), RSMetaTypes.INT, locked=True)])
+         RSMeta('Large Search Window', str(distance_in['2']), RSMetaTypes.INT, locked=True),
+         RSMeta('Very Large Search Window', str(distance_in['3']), RSMetaTypes.INT, locked=True),
+         RSMeta('Huge Search Window', str(distance_in['4']), RSMetaTypes.INT, locked=True)])
 
     windows = get_moving_windows(igo_geom_path, input_layers['ANTHRODGO'], levelpathsin, distance_in)
     log.info('removing large rivers from moving window polygons')

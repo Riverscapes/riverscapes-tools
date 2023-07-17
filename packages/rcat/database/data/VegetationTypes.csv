@@ -1,4 +1,5 @@
 VegetationID,EpochID,Name,Physiognomy,LandUseGroup
+-1111,2,Fill-Not Mapped,Fill-Not Mapped,
 -9999,2,No Data,No Data,
 11,2,Open Water,Open Water,
 12,2,Perennial Ice/Snow,Perennial Ice/Snow,
@@ -1769,6 +1770,147 @@ VegetationID,EpochID,Name,Physiognomy,LandUseGroup
 2724,2,Laurentian-Acadian Northern Pine(-Oak) Forest - Pine Dominated,Hardwood-Conifer,
 2725,2,Laurentian-Acadian Northern Pine(-Oak) Forest,Hardwood-Conifer,
 2726,2,Laurentian-Acadian Northern Pine(-Oak) Forest - Pine Dominated,Hardwood-Conifer,
+-9999,1,Fill-NoData,NA,NA
+4401,1,Alaska Arctic Coastal Sedge-Dwarf-Shrubland,Shrubland,Dwarf Shrubland
+4402,1,Alaska Arctic Floodplain Forest,Riparian,Floodplain Forest and Shrubland
+4403,1,Alaska Arctic Large River Floodplain Forest,Riparian,Floodplain Forest and Shrubland
+4404,1,Alaska Arctic Mesic Alder Shrubland,Shrubland,Alder Shrubland
+4405,1,Alaska Arctic Permafrost Plateau Dwarf-Shrub Lichen Tundra,Shrubland,Shrub Tundra
+4406,1,Alaska Arctic Tidal Flat,Sparsely Vegetated,Tidal Flat
+4407,1,Alaska Sub-boreal and Maritime Alpine Mesic Herbaceous Meadow,Grassland,Herbaceous Meadow
+4408,1,Alaska Sub-boreal Mesic Subalpine Alder Shrubland,Shrubland,Avalanche Slope Shrubland
+4409,1,Alaska Sub-boreal Mountain Hemlock-White Spruce Forest,Conifer,White Spruce Forest and Woodland
+4410,1,Alaska Sub-boreal White-Lutz Spruce Forest and Woodland,Conifer,White Spruce Forest and Woodland
+4411,1,Alaskan Pacific Acidic Shrub Peatland,Riparian,Shrub and Herbaceous Peatlands
+4412,1,Alaskan Pacific Alpine-Subalpine Dwarf-shrubland & Heath,Shrubland,Dwarf Shrubland
+4413,1,Alaskan Pacific Floodplain Conifer Forest,Riparian,Floodplain Forest and Shrubland
+4414,1,Alaskan Pacific Maritime Alpine Floodplain Shrubland,Riparian,Alpine Floodplain
+4415,1,Alaskan Pacific Maritime Avalanche Slope Shrubland,Shrubland,Avalanche Slope Shrubland
+4416,1,Alaskan Pacific Maritime Coastal Meadow and Slough-Levee,Grassland,Beach Meadow
+4417,1,Alaskan Pacific Maritime Mesic Herbaceous Meadow,Grassland,Herbaceous Meadow
+4418,1,Alaskan Pacific Maritime Mountain Hemlock-Shore Pine Peatland,Conifer,Peatland Forests
+4419,1,Alaskan Pacific Maritime Western Hemlock Forest,Conifer,Western Hemlock-Yellow-cedar Forest
+4420,1,Alaskan Pacific Mesic Western Hemlock-Yellow-cedar Forest,Conifer,Western Hemlock-Yellow-cedar Forest
+4421,1,Alaskan Pacific Mountain Hemlock Forest and Subalpine Woodland ,Conifer,Mountain Hemlock Forest and Woodland
+4422,1,Alaskan Pacific Poorly Drained Conifer Woodland,Conifer,Peatland Forests
+4423,1,Alaskan Pacific Sitka Spruce Forest and Beach Ridge,Conifer,Sitka Spruce Forest
+4424,1,Alaskan Pacific Wet Low Shrubland & Floodplain Wetland,Riparian,Shrub and Herbaceous Floodplain Wetland
+4425,1,Alaskan Pacific-Aleutian Alder-Salmonberry-Copperbush Shrubland,Shrubland,Alder Shrubland
+4426,1,Alaskan Pacific-Aleutian Coastal Dune Beach and Beach Meadow,Grassland,Beach Meadow
+4427,1,Alaskan Pacific-Aleutian Fen and Wet Meadow,Riparian,Wet Meadow
+4428,1,Alaskan Pacific-Aleutian Rocky Coastline and Sea Cliff,Sparsely Vegetated,Sparse Vegetation
+4429,1,Aleutian Ericaceous Dwarf-shrubland Heath and Fell-field,Shrubland,Dwarf Shrubland
+4430,1,Aleutian Mesic Herbaceous Meadow,Grassland,Herbaceous Meadow
+4431,1,Aleutian Mesic-Wet Willow Shrubland,Shrubland,Willow Shrubland
+4432,1,Aleutian Volcanic Rock and Talus,Sparsely Vegetated,Sparse Vegetation
+4434,1,North American Arctic Bedrock and Talus,Sparsely Vegetated,Sparse Vegetation
+4435,1,North American Arctic Dryas Tundra,Shrubland,Shrub Tundra
+4436,1,North American Arctic Dwarf-Shrub Lichen Tundra,Shrubland,Dwarf Shrubland
+4437,1,North American Arctic Dwarf-shrub-Sphagnum Peatland,Riparian,Shrub and Herbaceous Peatlands
+4438,1,North American Arctic Freshwater Marsh,Riparian,Freshwater Marsh
+4439,1,North American Arctic Lichen Tundra,Grassland,Shrub Tundra
+4440,1,North American Arctic Mesic Herbaceous Meadow,Grassland,Herbaceous Meadow
+4441,1,North American Arctic Mesic Sedge-Willow Tundra,Shrubland,Shrub Tundra
+4442,1,North American Arctic Mesic-Wet Low Willow Shrubland,Shrubland,Willow Shrubland
+4443,1,North American Arctic Polygonal Ground Shrub-Tussock Tundra,Shrubland,Shrub Tundra
+4444,1,North American Arctic Scrub Birch-Ericaceous Shrubland,Shrubland,Dwarf Shrubland
+4445,1,North American Arctic Sparse Tundra,Shrubland,Sparse Tundra
+4446,1,North American Arctic Wet Sedge Tundra and Polygonal Ground ,Riparian,Wet Meadow
+4447,1,North American Arctic-Subarctic Coastal Dune & Beach Meadow,Grassland,Beach Meadow
+4448,1,North American Arctic-Subarctic Shrub-Tussock Tundra,Shrubland,Tussock Tundra
+4449,1,North American Arctic-Subarctic Tidal Salt and Brackish Marsh,Riparian,Tidal Marsh
+4450,1,North American Arctic-Subarctic Tussock Tundra,Grassland,Tussock Tundra
+4453,1,Western North American Boreal Alpine Dwarf-shrubland,Shrubland,Dwarf Shrubland
+4454,1,Western North American Boreal Alpine Mesic Herbaceous Meadow,Grassland,Herbaceous Meadow
+4455,1,Western North American Boreal Montane-Alpine Talus and Bedrock,Sparsely Vegetated,Sparse Vegetation
+4456,1,Western North American Boreal Black Spruce Bog and Dwarf-Tree Peatland,Conifer,Peatland Forests
+4457,1,Western North American Boreal Black Spruce-Tamarack Fen,Conifer,Black Spruce Forest and Woodland
+4458,1,Western North American Boreal Cliff Scree and Rock,Sparsely Vegetated,Sparse Vegetation
+4459,1,Western North American Boreal Dry Aspen-Steppe Bluff,Shrubland,Dry Aspen-Steppe Bluff
+4460,1,Western North American Boreal Dry Grassland,Grassland,Boreal Grassland
+4461,1,Western North American Boreal Freshwater Emergent Marsh,Riparian,Freshwater Marsh
+4462,1,Western North American Boreal Lowland Large River Floodplain Conifer Forest,Riparian,Floodplain Forest and Shrubland
+4463,1,Western North American Boreal Mesic Birch-Aspen Forest,Hardwood,Birch-Aspen Forest
+4464,1,Western North American Boreal Mesic Bluejoint-Forb Meadow,Riparian,Wet Meadow
+4465,1,Western North American Boreal Mesic Scrub Birch-Willow Shrubland,Shrubland,Willow Shrubland
+4466,1,Western North American Boreal Mesic White Spruce Forest,Conifer,White Spruce Forest and Woodland
+4467,1,Western North American Boreal Mesic-Wet Black Spruce Forest and Woodland,Conifer,Black Spruce Forest and Woodland
+4468,1,Western North American Boreal Montane Floodplain Conifer Forest,Riparian,Floodplain Forest and Shrubland
+4469,1,Western North American Boreal Riparian Stringer Conifer Forest,Riparian,Riparian Stringer Forest and Shrubland
+4470,1,Western North American Boreal Shrub Floodplain,Riparian,Shrub and Herbaceous Floodplain Wetland
+4471,1,Western North American Boreal Shrub Swamp,Shrubland,Shrub Swamp
+4472,1,Western North American Boreal Shrub-Sedge Bog & Acidic Fen,Shrubland,Dwarf Shrubland
+4473,1,Western North American Boreal Shrub-Sedge Rich and Alkaline Fen,Riparian,Wet Meadow
+4474,1,Western North American Boreal Spruce-Lichen Woodland,Conifer,Spruce-Lichen Woodland
+4475,1,Western North American Boreal Treeline White Spruce Woodland,Conifer,White Spruce Forest and Woodland
+4476,1,Western North American Boreal Wet Black Spruce-Tussock Woodland,Conifer,Black Spruce Forest and Woodland
+4477,1,Western North American Boreal Wet Meadow,Riparian,Wet Meadow
+4478,1,Western North American Boreal Treeline Hardwood-White Spruce Woodland,Hardwood,Balsam Poplar-Aspen Woodland
+4479,1,Western North American Boreal Treeline White Spruce-Hardwood Woodland,Conifer-Hardwood,White Spruce-Hardwood Forest and Woodland
+4480,1,Western North American Boreal Mesic Hardwood-White Spruce Forest,Conifer-Hardwood,White Spruce-Hardwood Forest and Woodland
+4481,1,Western North American Boreal Mesic White Spruce-Hardwood Forest,Conifer-Hardwood,White Spruce-Hardwood Forest and Woodland
+4482,1,Alaska Sub-boreal Hardwood-White-Lutz Spruce Forest and Woodland,Conifer-Hardwood,White Spruce-Hardwood Forest and Woodland
+4483,1,Alaska Sub-boreal White-Lutz Spruce-Hardwood Forest and Woodland,Conifer-Hardwood,White Spruce-Hardwood Forest and Woodland
+4484,1,Western North American Boreal Mesic-Wet Black Spruce-Hardwood Forest and Woodland,Conifer-Hardwood,Black Spruce Forest and Woodland
+4485,1,Alaskan Pacific Floodplain Deciduous Forest,Riparian,Floodplain Forest and Shrubland
+4486,1,Alaskan Pacific Floodplain Mixed Forest,Riparian,Floodplain Forest and Shrubland
+4487,1,Western North American Boreal Lowland Large River Floodplain Deciduous Forest,Riparian,Floodplain Forest and Shrubland
+4488,1,Western North American Boreal Lowland Large River Floodplain Mixed Forest,Riparian,Floodplain Forest and Shrubland
+4489,1,Western North American Boreal Montane Floodplain Deciduous Forest,Riparian,Floodplain Forest and Shrubland
+4490,1,Western North American Boreal Montane Floodplain Mixed Forest,Riparian,Floodplain Forest and Shrubland
+4491,1,Western North American Boreal Riparian Stringer Deciduous Forest,Riparian,Riparian Stringer Forest and Shrubland
+4492,1,Western North American Boreal Riparian Stringer Mixed Forest,Riparian,Riparian Stringer Forest and Shrubland
+4601,1,Micronesian Dry Cliff,Sparsely Vegetated,Sparse Vegetation
+4602,1,Micronesian Dry-Site Lava Flow,Sparsely Vegetated,Sparse Vegetation
+4603,1,Micronesian Dry Coastal Strand,Sparsely Vegetated,Sparse Vegetation
+4604,1,Micronesian Lowland Rain Forest,Hardwood,Pacific Islands Upland Forest
+4605,1,Micronesian Lowland Limestone Forest,Hardwood,Pacific Islands Limestone Forest
+4606,1,Central and Southern Polynesian Montane Rainforest,Hardwood,Pacific Islands Upland Forest
+4609,1,Micronesian Ravine and Riparian Forest,Hardwood,Pacific Islands Ravine Forest
+4610,1,Polynesian Freshwater Marsh,Riparian,Pacific Islands Swamp/Marsh
+4611,1,Micronesian Swamp Forest,Riparian,Pacific Islands Swamp/Marsh
+4612,1,Western Pacific Mangrove,Hardwood,Pacific Islands Mangrove Forest
+4614,1,Central and Southern Polynesian Coastal Wooded Strand,Hardwood,Pacific Islands Upland Forest
+4615,1,Central and Southern Polynesian Cliff,Sparsely Vegetated,Sparse Vegetation
+4616,1,Central and Southern Polynesian Lava Flow,Sparsely Vegetated,Sparse Vegetation
+4617,1,Central and Southern Polynesian Dry Coastal Strand,Sparsely Vegetated,Sparse Vegetation
+4618,1,Central and Southern Polynesian Lowland Rain Forest,Hardwood,Pacific Islands Lowland Forest
+4620,1,Central and Southern Polynesian Cloud Forest,Hardwood,Pacific Islands Scrub Forest/Shrub
+4621,1,Central and Southern Polynesian Littoral Forest,Hardwood,Pacific Islands Littoral/Strand Vegetation
+4622,1,Central and Southern Polynesian Ravine and Riparian Forest,Hardwood,Pacific Islands Ravine Forest
+4623,1,Central and Southern Polynesian Swamp Forest,Riparian,Pacific Islands Swamp/Marsh
+4624,1,Micronesian Ravine and Riparian Shrubland,Riparian,Pacific Islands Ravine Forest
+4627,1,Central and Southern Polynesian Dry Coastal Strand Shrubland,Shrubland,Pacific Islands Littoral/Strand Vegetation
+4628,1,Central and Southern Polynesian Dry Coastal Strand Herbaceous,Grassland,Pacific Islands Littoral/Strand Vegetation
+4629,1,Micronesian Dry Coastal Strand Shrubland,Shrubland,Pacific Islands Littoral/Strand Vegetation
+4630,1,Micronesian Dry Coastal Strand Herbaceous,Grassland,Pacific Islands Littoral/Strand Vegetation
+4902,1,Alaska Arctic Floodplain Shrubland,Riparian,Floodplain Forest and Shrubland
+4903,1,Alaska Arctic Large River Floodplain Shrubland,Riparian,Floodplain Forest and Shrubland
+4904,1,Alaska Arctic Floodplain Herbaceous,Riparian,Floodplain Forest and Shrubland
+4905,1,Alaska Arctic Large River Floodplain Herbaceous,Riparian,Floodplain Forest and Shrubland
+4911,1,Alaskan Pacific Acidic Sedge Peatland,Riparian,Shrub and Herbaceous Peatlands
+4913,1,Alaskan Pacific Floodplain Shrubland (Conifer Forest),Riparian,Floodplain Forest and Shrubland
+4914,1,Alaskan Pacific Maritime Alpine Floodplain Herbaceous,Riparian,Alpine Floodplain
+4937,1,North American Arctic Wet Sedge-Sphagnum Peatland,Riparian,Shrub and Herbaceous Peatlands
+4943,1,North American Arctic Polygonal Ground Tussock Tundra,Grassland,Tussock Tundra
+4947,1,North American Arctic-Subarctic Coastal Dune & Beach,Sparsely Vegetated,Sparse Vegetation
+4962,1,Western North American Boreal Lowland Large River Floodplain Shrubland (Conifer Forest),Riparian,Floodplain Forest and Shrubland
+4963,1,Western North American Boreal Lowland Large River Floodplain Sparse Vegetation,Sparsely Vegetated,Sparse Vegetation
+4964,1,Western North American Boreal Montane Floodplain Sparse Vegetation,Sparsely Vegetated,Sparse Vegetation
+4965,1,Alaskan Pacific Floodplain Sparse Vegetation,Sparsely Vegetated,Sparse Vegetation
+4966,1,Alaska Arctic Large River Floodplain Sparse Vegetation ,Sparsely Vegetated,Sparse Vegetation
+4968,1,Western North American Boreal Montane Floodplain Shrubland (Conifer Forest),Riparian,Floodplain Forest and Shrubland
+4969,1,Western North American Boreal Riparian Stringer Shrubland (Conifer Forest),Riparian,Riparian Stringer Forest and Shrubland
+4970,1,Western North American Boreal Herbaceous Floodplain,Riparian,Shrub and Herbaceous Floodplain Wetland
+4973,1,Western North American Boreal Herbaceous Rich and Alkaline Fen,Riparian,Wet Meadow
+4985,1,Alaskan Pacific Floodplain Shrubland (Deciduous Forest),Riparian,Floodplain Forest and Shrubland
+4986,1,Alaskan Pacific Floodplain Shrubland (Mixed Forest),Riparian,Floodplain Forest and Shrubland
+4987,1,Western North American Boreal Lowland Large River Floodplain Shrubland (Deciduous Forest),Riparian,Floodplain Forest and Shrubland
+4988,1,Western North American Boreal Lowland Large River Floodplain Shrubland (Mixed Forest),Riparian,Floodplain Forest and Shrubland
+4989,1,Western North American Boreal Montane Floodplain Shrubland (Deciduous Forest),Riparian,Floodplain Forest and Shrubland
+4990,1,Western North American Boreal Montane Floodplain Shrubland (Mixed Forest),Riparian,Floodplain Forest and Shrubland
+4991,1,Western North American Boreal Riparian Stringer Shrubland (Deciduous Forest),Riparian,Riparian Stringer Forest and Shrubland
+4992,1,Western North American Boreal Riparian Stringer Shrubland (Mixed Forest),Riparian,Riparian Stringer Forest and Shrubland
 7008,1,North Pacific Oak Woodland,Hardwood,Western Oak Woodland and Savanna
 7009,1,Northwestern Great Plains Aspen Forest and Parkland,Hardwood,"Aspen Forest, Woodland, and Parkland"
 7010,1,Northern Rocky Mountain Western Larch Savanna,Conifer,Western Larch Forest and Woodland
@@ -1930,13 +2072,13 @@ VegetationID,EpochID,Name,Physiognomy,LandUseGroup
 7177,1,California Coastal Closed-Cone Conifer Forest and Woodland,Conifer,Conifer-Oak Forest and Woodland
 7178,1,North Pacific Hypermaritime Western Red-cedar-Western Hemlock Forest,Conifer,Western Red-cedar-Western Hemlock Forest
 7179,1,Northwestern Great Plains-Black Hills Ponderosa Pine Woodland and Savanna,Conifer,"Ponderosa Pine Forest, Woodland and Savanna"
-7191,1,Recently Logged-Herb and Grass Cover,Grassland,Transitional Herbacous Vegetation
+7191,1,Recently Logged-Herb and Grass Cover,Grassland,Transitional Herbaceous Vegetation
 7192,1,Recently Logged-Shrub Cover,Shrubland,Transitional Shrub Vegetation
 7193,1,Recently Logged-Tree Cover,Conifer,Transitional Forest Vegetation
-7195,1,Recently Burned-Herb and Grass Cover,Grassland,Transitional Herbacous Vegetation
+7195,1,Recently Burned-Herb and Grass Cover,Grassland,Transitional Herbaceous Vegetation
 7196,1,Recently Burned-Shrub Cover,Shrubland,Transitional Shrub Vegetation
 7197,1,Recently Burned-Tree Cover,Conifer,Transitional Forest Vegetation
-7198,1,Recently Disturbed Other-Herb and Grass Cover,Grassland,Transitional Herbacous Vegetation
+7198,1,Recently Disturbed Other-Herb and Grass Cover,Grassland,Transitional Herbaceous Vegetation
 7199,1,Recently Disturbed Other-Shrub Cover,Shrubland,Transitional Shrub Vegetation
 7200,1,Recently Disturbed Other-Tree Cover,Conifer,Transitional Forest Vegetation
 7207,1,Central Mixedgrass Prairie Shrubland,Shrubland,Mixedgrass Prairie
@@ -1972,6 +2114,7 @@ VegetationID,EpochID,Name,Physiognomy,LandUseGroup
 7297,1,Developed-Medium Intensity,Developed-Medium Intensity,Developed-Medium Intensity
 7298,1,Developed-High Intensity,Developed-High Intensity,Developed-High Intensity
 7299,1,Developed-Roads,Developed-Roads,Developed-Roads
+7300,1,Developed-Open Space,Developed-Open Space,Developed-Open Space
 7301,1,Laurentian-Acadian Sub-boreal Aspen-Birch Forest,Hardwood,Aspen-Birch Forest
 7302,1,Laurentian-Acadian Northern Hardwoods Forest,Hardwood,Yellow Birch-Sugar Maple Forest
 7303,1,Northeastern Interior Dry-Mesic Oak Forest,Hardwood,White Oak-Red Oak-Hickory Forest and Woodland
@@ -2196,11 +2339,78 @@ VegetationID,EpochID,Name,Physiognomy,LandUseGroup
 7662,1,Temperate Pacific Freshwater Emergent Marsh,Riparian,Freshwater Marsh
 7663,1,North Pacific Shrub Swamp,Shrubland,Shrub Swamp
 7668,1,Temperate Pacific Tidal Salt and Brackish Marsh,Riparian,Tidal Marsh
+7669,1,Temperate Pacific Intertidal Flat,Sparsely Vegetated,Sparse Vegetation
 7733,1,North Pacific Montane Massive Bedrock-Cliff and Talus,Sparsely Vegetated,Sparse Vegetation
 7734,1,North Pacific Alpine and Subalpine Bedrock and Scree,Sparsely Vegetated,Sparse Vegetation
 7735,1,North American Glacier and Ice Field,Snow-Ice,Snow-Ice
+7736,1,Unconsolidated Shore,Sparsely Vegetated,Sparse Vegetation
+7737,1,North American Glacial Outwash,Sparsely Vegetated,Sparse Vegetation
+7754,1,Agriculture-Pasture and Hay,Agricultural,Agriculture-Pasture and Hay
+7755,1,Agriculture-Cultivated Crops and Irrigated Agriculture,Agricultural,Agriculture-Cultivated Crops and Irrigated Agriculture
+7800,1,Hawai'i Floodplain Forest,Riparian,Hawai'i Riparian Forest
+7802,1,Hawai'i Riparian Forest,Riparian,Hawai'i Riparian Forest
+7804,1,Hawai'i Freshwater Marsh,Riparian,Freshwater Marsh
+7806,1,Hawai'i Bog,Grassland,Inland Marshes and Prairies
+7807,1,Northern Polynesia Tidal Salt Marsh,Grassland,Pacific Islands Swamp/Marsh
+7808,1,Hawai'i Lowland Rainforest,Hardwood,Hawai'i Rainforest
+7809,1,Hawai'i Montane Cloud Forest,Hardwood,Hawai'i Rainforest
+7810,1,Hawai'i Montane Rainforest,Hardwood,Hawai'i Rainforest
+7811,1,Hawai'i Wet Cliff and Ridge Crest Shrubland,Shrubland,Hawai'i Mesic Shrubland
+7812,1,Hawai'i Mesic Coastal Forest,Hardwood,Hawai'i Mesic Forest
+7813,1,Hawai'i Lowland Dry Forest,Hardwood,Hawai'i Dry Forest
+7814,1,Hawai'i Lowland Mesic Forest,Hardwood,Hawai'i Mesic Forest
+7815,1,Hawai'i Montane-Subalpine Dry Forest and Woodland,Hardwood,Hawai'i Dry Forest
+7816,1,Hawai'i Montane-Subalpine Mesic Forest,Hardwood,Hawai'i Mesic Forest
+7817,1,Hawai'i Lowland Dry Shrubland,Shrubland,Hawai'i Dry Shrubland
+7818,1,Hawai'i Lowland Mesic Shrubland,Shrubland,Hawai'i Mesic Shrubland
+7819,1,Hawai'i Lowland Dry Grassland,Grassland,Hawai'i Dry Grassland
+7820,1,Hawai'i Lowland Mesic Grassland,Grassland,Hawai'i Mesic Grassland
+7821,1,Hawai'i Montane-Subalpine Dry Shrubland,Shrubland,Hawai'i Dry Shrubland
+7822,1,Hawai'i Montane-Subalpine Dry Grassland,Grassland,Hawai'i Dry Grassland
+7823,1,Hawai'i Montane-Subalpine Mesic Grassland,Grassland,Hawai'i Mesic Grassland
+7824,1,Hawai'i Alpine Dwarf-Shrubland,Shrubland,Hawai'i Mesic Shrubland
+7826,1,Hawai'i Dry Coastal Strand Shrubland,Shrubland,Hawai'i Mesic Shrubland
+7827,1,Hawai'i Wet-Mesic Coastal Strand,Shrubland,Hawai'i Mesic Shrubland
+7828,1,Hawai'i Subalpine Mesic Shrubland,Shrubland,Hawai'i Mesic Shrubland
+7829,1,Hawai'i Alpine Bedrock and Scree,Sparsely Vegetated,Sparse Vegetation
+7830,1,Hawai'i Dry Coastal Strand Sparse Vegetation,Sparsely Vegetated,Sparse Vegetation
+7831,1,Hawai'i Dry-Site Lava Flow,Sparsely Vegetated,Sparse Vegetation
+7832,1,Hawai'I Floodplain Shrubland,Riparian,Hawai'i Riparian Shrubland
+7833,1,Hawai'i Riparian Shrubland,Riparian,Hawai'i Riparian Shrubland
+7834,1,Tropical Pacific Orchard,Agricultural,Agricultural-Orchard
+7835,1,Tropical Pacific Bush fruit and Berries,Agricultural,Agricultural-Bush fruit and berries
+7836,1,Tropical Pacific Aquaculture,Agricultural,Agricultural-Aquaculture
+7837,1,Sugar Cane,Agricultural,Agricultural-Sugar cane
+7838,1,Caribbean Bush fruit and berries,Agricultural,Agricultural-Bush fruit and berries
+7860,1,Caribbean Coastal Dry Evergreen Forest,Hardwood,Caribbean Evergreen Forest
 7861,1,Caribbean Coastal Mangrove,Riparian,Mangrove
+7862,1,Caribbean Coastal Rocky Shore,Sparsely Vegetated,Sparse Vegetation
+7863,1,Caribbean Coastal Thornscrub,Shrubland,Caribbean Shrubland
+7864,1,Caribbean Dry Karst Shrubland,Shrubland,Caribbean Shrubland
+7865,1,"Caribbean Edapho-Xerophilous ""Mogote"" Complex",Hardwood,Caribbean Mixed Evergreen Deciduous Forest
+7866,1,Caribbean Emergent Herbaceous Estuary,Riparian,Caribbean Shrub/Herbaceous Wetland
 7867,1,Caribbean Estuary Mangrove,Riparian,Mangrove
+7868,1,Caribbean Floodplain Forest,Riparian,Caribbean Forested Wetland
+7869,1,Caribbean Freshwater Marsh,Riparian,Caribbean Shrub/Herbaceous Wetland
+7870,1,Caribbean Lowland Moist Serpentine Woodland,Hardwood,Caribbean Mixed Evergreen Deciduous Forest
+7871,1,Caribbean Montane Meadow,Grassland,Caribbean Herbaceous
+7872,1,Caribbean Montane Wet Elfin Forest,Hardwood,Caribbean Mixed Evergreen Deciduous Forest
+7873,1,Caribbean Montane Wet Serpentine Woodland,Hardwood,Caribbean Mixed Evergreen Deciduous Forest
+7874,1,Caribbean Montane Wet Short Shrubland,Riparian,Caribbean Shrub/Herbaceous Wetland
+7875,1,Caribbean Riparian Forest,Riparian,Caribbean Forested Wetland
+7876,1,Caribbean Salt Flat and Pond,Sparsely Vegetated,Sparse Vegetation
+7877,1,Caribbean Sand Beach Vegetation,Sparsely Vegetated,Sparse Vegetation
+7878,1,Caribbean Sand Savanna,Hardwood,Caribbean Deciduous Forest
+7879,1,Caribbean Seasonal Evergreen Lowland Forest,Hardwood,Caribbean Mixed Evergreen Deciduous Forest
+7880,1,Caribbean Seasonal Evergreen Submontane/Lowland Forest,Hardwood,Caribbean Mixed Evergreen Deciduous Forest
+7881,1,Caribbean Semi-deciduous Lowland Forest,Hardwood,Caribbean Mixed Evergreen Deciduous Forest
+7882,1,Caribbean Serpentine Dry Scrub,Shrubland,Caribbean Shrubland
+7883,1,Caribbean Submontane/Montane Karstic Forest,Hardwood,Caribbean Evergreen Forest
+7884,1,Caribbean Wet Montane Forest,Riparian,Caribbean Forested Wetland
+7885,1,Caribbean Wet Submontane/Lowland Forest,Riparian,Caribbean Forested Wetland
+7886,1,Stabilized Caribbean Dunes,Sparsely Vegetated,Sparse Vegetation
+7887,1,Caribbean Floodplain Shrubland,Riparian,Caribbean Forested Wetland
+7888,1,Caribbean Riparian Shrubland,Riparian,Caribbean Forested Wetland
 7900,1,Western Cool Temperate Urban Deciduous Forest,Developed,Developed-Upland Deciduous Forest
 7901,1,Western Cool Temperate Urban Evergreen Forest,Developed,Developed-Upland Evergreen Forest
 7902,1,Western Cool Temperate Urban Mixed Forest,Developed,Developed-Upland Mixed Forest
@@ -2221,46 +2431,26 @@ VegetationID,EpochID,Name,Physiognomy,LandUseGroup
 7917,1,Eastern Warm Temperate Urban Mixed Forest,Developed,Developed-Upland Mixed Forest
 7918,1,Eastern Warm Temperate Urban Herbaceous,Developed,Developed-Upland Herbaceous
 7919,1,Eastern Warm Temperate Urban Shrubland,Developed,Developed-Upland Shrubland
-7920,1,Western Cool Temperate Developed Ruderal Deciduous Forest,Developed,Developed-Upland Deciduous Forest
-7921,1,Western Cool Temperate Developed Ruderal Evergreen Forest,Developed,Developed-Upland Evergreen Forest
-7922,1,Western Cool Temperate Developed Ruderal Mixed Forest,Developed,Developed-Upland Mixed Forest
-7923,1,Western Cool Temperate Developed Ruderal Shrubland,Developed,Developed-Upland Shrubland
-7924,1,Western Cool Temperate Developed Ruderal Grassland,Developed,Developed-Upland Herbaceous
-7925,1,Western Warm Temperate Developed Ruderal Deciduous Forest,Developed,Developed-Upland Deciduous Forest
-7926,1,Western Warm Temperate Developed Ruderal Evergreen Forest,Developed,Developed-Upland Evergreen Forest
-7927,1,Western Warm Temperate Developed Ruderal Mixed Forest,Developed,Developed-Upland Mixed Forest
-7928,1,Western Warm Temperate Developed Ruderal Shrubland,Developed,Developed-Upland Shrubland
-7929,1,Western Warm Temperate Developed Ruderal Grassland,Developed,Developed-Upland Herbaceous
-7930,1,Eastern Cool Temperate Developed Ruderal Deciduous Forest,Developed,Developed-Upland Deciduous Forest
-7931,1,Eastern Cool Temperate Developed Ruderal Evergreen Forest,Developed,Developed-Upland Evergreen Forest
-7932,1,Eastern Cool Temperate Developed Ruderal Mixed Forest,Developed,Developed-Upland Mixed Forest
-7933,1,Eastern Cool Temperate Developed Ruderal Shrubland,Developed,Developed-Upland Shrubland
-7934,1,Eastern Cool Temperate Developed Ruderal Grassland,Developed,Developed-Upland Herbaceous
-7935,1,Eastern Warm Temperate Developed Ruderal Deciduous Forest,Developed,Developed-Upland Deciduous Forest
-7936,1,Eastern Warm Temperate Developed Ruderal Evergreen Forest,Developed,Developed-Upland Evergreen Forest
-7937,1,Eastern Warm Temperate Developed Ruderal Mixed Forest,Developed,Developed-Upland Mixed Forest
-7938,1,Eastern Warm Temperate Developed Ruderal Shrubland,Developed,Developed-Upland Shrubland
-7939,1,Eastern Warm Temperate Developed Ruderal Grassland,Developed,Developed-Upland Herbaceous
-7940,1,Western Cool Temperate Developed Ruderal Deciduous Forested Wetland,Developed,Developed-Wetland Mixed Forest
-7941,1,Western Cool Temperate Developed Ruderal Evergreen Forested Wetland,Developed,Developed-Wetland Mixed Forest
-7942,1,Western Cool Temperate Developed Ruderal Mixed Forested Wetland,Developed,Developed-Wetland Mixed Forest
-7943,1,Western Cool Temperate Developed Ruderal Shrub Wetland,Developed,Developed-Wetland Shrubland
-7944,1,Western Cool Temperate Developed Ruderal Herbaceous Wetland,Developed,Developed-Wetland Herbaceous
-7945,1,Western Warm Temperate Developed Ruderal Deciduous Forested Wetland,Developed,Developed-Wetland Mixed Forest
-7946,1,Western Warm Temperate Developed Ruderal Evergreen Forested Wetland,Developed,Developed-Wetland Mixed Forest
-7947,1,Western Warm Temperate Developed Ruderal Mixed Forested Wetland,Developed,Developed-Wetland Mixed Forest
-7948,1,Western Warm Temperate Developed Ruderal Shrub Wetland,Developed,Developed-Wetland Shrubland
-7949,1,Western Warm Temperate Developed Ruderal Herbaceous Wetland,Developed,Developed-Wetland Herbaceous
-7950,1,Eastern Cool Temperate Developed Ruderal Deciduous Forested Wetland,Developed,Developed-Wetland Mixed Forest
-7951,1,Eastern Cool Temperate Developed Ruderal Evergreen Forested Wetland,Developed,Developed-Wetland Mixed Forest
-7952,1,Eastern Cool Temperate Developed Ruderal Mixed Forested Wetland,Developed,Developed-Wetland Mixed Forest
-7953,1,Eastern Cool Temperate Developed Ruderal Shrub Wetland,Developed,Developed-Wetland Shrubland
-7954,1,Eastern Cool Temperate Developed Ruderal Herbaceous Wetland,Developed,Developed-Wetland Herbaceous
-7955,1,Eastern Warm Temperate Developed Ruderal Deciduous Forested Wetland,Developed,Developed-Wetland Mixed Forest
-7956,1,Eastern Warm Temperate Developed Ruderal Evergreen Forested Wetland,Developed,Developed-Wetland Mixed Forest
-7957,1,Eastern Warm Temperate Developed Ruderal Mixed Forested Wetland,Developed,Developed-Wetland Mixed Forest
-7958,1,Eastern Warm Temperate Developed Ruderal Shrub Wetland,Developed,Developed-Wetland Shrubland
-7959,1,Eastern Warm Temperate Developed Ruderal Herbaceous Wetland,Developed,Developed-Wetland Herbaceous
+7920,1,Western Cool Temperate Developed Deciduous Forest,Developed,Developed-Upland Deciduous Forest
+7921,1,Western Cool Temperate Developed Evergreen Forest,Developed,Developed-Upland Evergreen Forest
+7922,1,Western Cool Temperate Developed Mixed Forest,Developed,Developed-Upland Mixed Forest
+7923,1,Western Cool Temperate Developed Shrubland,Developed,Developed-Upland Shrubland
+7924,1,Western Cool Temperate Developed Herbaceous,Developed,Developed-Upland Herbaceous
+7925,1,Eastern Cool Temperate Developed Deciduous Forest,Developed,Developed-Upland Deciduous Forest
+7926,1,Eastern Cool Temperate Developed Evergreen Forest,Developed,Developed-Upland Evergreen Forest
+7927,1,Eastern Cool Temperate Developed Mixed Forest,Developed,Developed-Upland Mixed Forest
+7928,1,Eastern Cool Temperate Developed Shrubland,Developed,Developed-Upland Shrubland
+7929,1,Eastern Cool Temperate Developed Herbaceous,Developed,Developed-Upland Herbaceous
+7930,1,Western Warm Temperate Developed Deciduous Forest,Developed,Developed-Upland Deciduous Forest
+7931,1,Western Warm Temperate Developed Evergreen Forest,Developed,Developed-Upland Evergreen Forest
+7932,1,Western Warm Temperate Developed Mixed Forest,Developed,Developed-Upland Mixed Forest
+7933,1,Western Warm Temperate Developed Shrubland,Developed,Developed-Upland Shrubland
+7934,1,Western Warm Temperate Developed Herbaceous,Developed,Developed-Upland Herbaceous
+7935,1,Eastern Warm Temperate Developed Deciduous Forest,Developed,Developed-Upland Deciduous Forest
+7936,1,Eastern Warm Temperate Developed Evergreen Forest,Developed,Developed-Upland Evergreen Forest
+7937,1,Eastern Warm Temperate Developed Mixed Forest,Developed,Developed-Upland Mixed Forest
+7938,1,Eastern Warm Temperate Developed Shrubland,Developed,Developed-Upland Shrubland
+7939,1,Eastern Warm Temperate Developed Herbaceous,Developed,Developed-Upland Herbaceous
 7960,1,Western Cool Temperate Orchard,Agricultural,Agricultural-Orchard
 7961,1,Western Cool Temperate Vineyard,Agricultural,Agricultural-Vineyard
 7962,1,Western Cool Temperate Bush fruit and berries,Agricultural,Agricultural-Bush fruit and berries
@@ -2279,7 +2469,7 @@ VegetationID,EpochID,Name,Physiognomy,LandUseGroup
 7976,1,Eastern Cool Temperate Fallow/Idle Cropland,Agricultural,Agricultural-Fallow/Idle Cropland
 7977,1,Eastern Cool Temperate Pasture and Hayland,Agricultural,Agricultural-Pasture and Hayland
 7978,1,Eastern Cool Temperate Wheat,Agricultural,Agricultural-Wheat
-7979,1,Eastern Cool Temperate Aquaculture,Agricultural,Agricultual-Aquaculture
+7979,1,Eastern Cool Temperate Aquaculture,Agricultural,Agricultural-Aquaculture
 7980,1,Western Warm Temperate Orchard,Agricultural,Agricultural-Orchard
 7981,1,Western Warm Temperate Vineyard,Agricultural,Agricultural-Vineyard
 7982,1,Western Warm Temperate Bush fruit and berries,Agricultural,Agricultural-Bush fruit and berries
@@ -2289,7 +2479,7 @@ VegetationID,EpochID,Name,Physiognomy,LandUseGroup
 7986,1,Western Warm Temperate Fallow/Idle Cropland,Agricultural,Agricultural-Fallow/Idle Cropland
 7987,1,Western Warm Temperate Pasture and Hayland,Agricultural,Agricultural-Pasture and Hayland
 7988,1,Western Warm Temperate Wheat,Agricultural,Agricultural-Wheat
-7989,1,Western Warm Temperate Aquaculture,Agricultural,Agricultual-Aquaculture
+7989,1,Western Warm Temperate Aquaculture,Agricultural,Agricultural-Aquaculture
 7990,1,Eastern Warm Temperate Orchard,Agricultural,Agricultural-Orchard
 7991,1,Eastern Warm Temperate Vineyard,Agricultural,Agricultural-Vineyard
 7992,1,Eastern Warm Temperate Bush fruit and berries,Agricultural,Agricultural-Bush fruit and berries
@@ -2299,7 +2489,7 @@ VegetationID,EpochID,Name,Physiognomy,LandUseGroup
 7996,1,Eastern Warm Temperate Fallow/Idle Cropland,Agricultural,Agricultural-Fallow/Idle Cropland
 7997,1,Eastern Warm Temperate Pasture and Hayland,Agricultural,Agricultural-Pasture and Hayland
 7998,1,Eastern Warm Temperate Wheat,Agricultural,Agricultural-Wheat
-7999,1,Eastern Warm Temperate Aquaculture,Agricultural,Agricultual-Aquaculture
+7999,1,Eastern Warm Temperate Aquaculture,Agricultural,Agricultural-Aquaculture
 9001,1,Colorado Plateau Mixed Bedrock Canyon and Tableland,Sparsely Vegetated,Sparse Vegetation
 9002,1,Columbia Basin Foothill Riparian Woodland,Riparian,Western Riparian Woodland and Shrubland
 9003,1,Great Basin Foothill and Lower Montane Riparian Woodland,Riparian,Western Riparian Woodland and Shrubland
@@ -2508,6 +2698,9 @@ VegetationID,EpochID,Name,Physiognomy,LandUseGroup
 9295,1,Laurentian-Acadian Sub-boreal Dry-Mesic Pine-Black Spruce-Hardwood Forest,Conifer-Hardwood,Jack Pine Forest
 9301,1,California Ruderal Grassland and Meadow,Exotic Herbaceous,Introduced Annual and Biennial Forbland
 9302,1,Californian Ruderal Forest,Exotic Tree-Shrub,Introduced Upland Vegetation-Treed
+9303,1,Caribbean & Mesoamerican Lowland Ruderal Shrubland,Shrubland,Caribbean Shrubland
+9304,1,Caribbean Forest Plantation,Hardwood,Caribbean Mixed Evergreen Deciduous Forest
+9305,1,Caribbean Ruderal Dry Forest,Hardwood,Caribbean Mixed Evergreen Deciduous Forest
 9307,1,Great Basin & Intermountain Introduced Annual and Biennial Forbland,Exotic Herbaceous,Introduced Annual and Biennial Forbland
 9308,1,Great Basin & Intermountain Introduced Annual Grassland,Exotic Herbaceous,Introduced Annual Grassland
 9309,1,Great Basin & Intermountain Introduced Perennial Grassland and Forbland,Exotic Herbaceous,Introduced Perennial Grassland and Forbland
@@ -2518,21 +2711,36 @@ VegetationID,EpochID,Name,Physiognomy,LandUseGroup
 9315,1,Northern & Central Native Ruderal Forest,Conifer-Hardwood,Ruderal Forest
 9316,1,Northern & Central Plains Ruderal & Planted Shrubland,Exotic Tree-Shrub,Introduced Upland Vegetation-Shrub
 9317,1,Northern & Central Ruderal Shrubland,Exotic Tree-Shrub,Introduced Upland Vegetation-Shrub
-9318,1,Northern & Central Ruderal Wet Meadow & Marsh,Exotic Herbaceous,Introduced Herbaceous Wetland Vegetation
+9318,1,Northern & Central Ruderal Wet Meadow & Marsh,Riparian,Introduced Herbaceous Wetland Vegetation
 9319,1,Southeastern Exotic Ruderal Forest,Exotic Tree-Shrub,Introduced Upland Vegetation-Treed
 9320,1,Southeastern Native Ruderal Flooded & Swamp Forest,Riparian,Introduced Woody Wetland Vegetation
 9321,1,Southeastern Native Ruderal Forest,Conifer-Hardwood,Introduced Upland Vegetation-Treed
 9322,1,Southeastern North American Temperate Forest Plantation,Conifer,Managed Tree Plantation
 9323,1,Southeastern Ruderal Shrubland,Exotic Tree-Shrub,Introduced Upland Vegetation-Shrub
-9324,1,Southeastern Ruderal Wet Meadow & Marsh,Exotic Herbaceous,Introduced Herbaceous Wetland Vegetation
+9324,1,Southeastern Ruderal Wet Meadow & Marsh,Riparian,Introduced Herbaceous Wetland Vegetation
 9325,1,Great Plains Comanchian Ruderal Shrubland,Exotic Tree-Shrub,Introduced Upland Vegetation-Shrub
 9326,1,Southern Vancouverian Lowland Ruderal Shrubland,Exotic Tree-Shrub,Introduced Upland Vegetation-Shrub
-9327,1,Interior West Ruderal Riparian Forest,Exotic Tree-Shrub,Introduced Riparian Vegetation
+9327,1,Interior West Ruderal Riparian Forest,Riparian,Introduced Riparian Vegetation
 9328,1,Interior Western North American Temperate Ruderal Shrubland,Exotic Tree-Shrub,Introduced Upland Vegetation-Shrub
-9329,1,Western North American Ruderal Wet Shrubland,Exotic Tree-Shrub,Introduced Woody Wetland Vegetation
-9332,1,Southeastern Exotic Ruderal Flooded & Swamp Forest,Exotic Tree-Shrub,Introduced Woody Wetland Vegetation
+9329,1,Western North American Ruderal Wet Shrubland,Riparian,Introduced Woody Wetland Vegetation
+9332,1,Southeastern Exotic Ruderal Flooded & Swamp Forest,Riparian,Introduced Woody Wetland Vegetation
 9336,1,Great Basin & Intermountain Ruderal Shrubland,Exotic Tree-Shrub,Introduced Upland Vegetation-Shrub
 9337,1,California Ruderal Scrub,Exotic Tree-Shrub,Introduced Upland Vegetation-Shrub
+9340,1,Caribbean Lowland Ruderal Rainforest,Hardwood,Caribbean Mixed Evergreen Deciduous Forest
+9341,1,Caribbean Montane Ruderal Forest,Hardwood,Caribbean Mixed Evergreen Deciduous Forest
+9343,1,Hawaiian Montane Ruderal Forest & Woodland,Hardwood,Introduced Upland Vegetation-Treed
+9344,1,Hawaiian Ruderal Coastal Salt Marsh,Riparian,Introduced Herbaceous Wetland Vegetation
+9345,1,Hawaiian Ruderal Flooded & Swamp Forest,Riparian,Introduced Woody Wetland Vegetation
+9346,1,Hawaiian Ruderal Freshwater Wet Meadow & Marsh,Riparian,Introduced Herbaceous Wetland Vegetation
+9347,1,Hawaiian Ruderal Mangrove,Hardwood,Pacific Islands Mangrove Forest
+9348,1,Polynesian Ruderal Dry Woodland,Hardwood,Polynesian Ruderal Forest
+9349,1,Polynesian Ruderal Lowland Rainforest,Hardwood,Polynesian Ruderal Forest
+9350,1,Polynesian Ruderal Lowland Shrubland,Shrubland,Polynesian Ruderal Shrubland
+9351,1,Polynesian Ruderal Scrub Coastal Strand,Shrubland,Polynesian Ruderal Shrubland
+9352,1,Polynesian Ruderal Subalpine-Montane Shrubland,Shrubland,Polynesian Ruderal Shrubland
+9353,1,Tropical Pacific Forest Plantation,Hardwood,Managed Tree Plantation
+9354,1,Caribbean Ruderal Freshwater Wet Meadow & Marsh,Grassland,Caribbean Herbaceous
+9355,1,Tropical Agroforestry Plantation,Hardwood,Caribbean Mixed Evergreen Deciduous Forest
 9502,1,Columbia Basin Foothill Riparian Shrubland,Riparian,Western Riparian Woodland and Shrubland
 9503,1,Great Basin Foothill and Lower Montane Riparian Shrubland,Riparian,Western Riparian Woodland and Shrubland
 9504,1,Columbia Basin Foothill Riparian Herbaceous,Riparian,Western Riparian Woodland and Shrubland
@@ -2613,6 +2821,7 @@ VegetationID,EpochID,Name,Physiognomy,LandUseGroup
 9783,1,West Gulf Coastal Plain Large River Floodplain Herbaceous,Riparian,Eastern Floodplain Forests
 9784,1,West Gulf Coastal Plain Small Stream and River Shrubland,Riparian,Eastern Small Stream Riparian Forests
 9785,1,West Gulf Coastal Plain Small Stream and River Herbaceous,Riparian,Eastern Small Stream Riparian Forests
+9803,1,Caribbean & Mesoamerican Lowland Ruderal Grassland,Grassland,Caribbean Herbaceous
 9810,1,North American Warm Desert Ruderal & Planted Grassland,Exotic Herbaceous,Introduced Perennial Grassland and Forbland
 9811,1,North Pacific Maritime Coastal Sand Dune Ruderal Herb Vegetation,Exotic Herbaceous,Introduced Perennial Grassland and Forbland
 9816,1,Northern & Central Plains Ruderal & Planted Grassland,Exotic Herbaceous,Introduced Perennial Grassland and Forbland
@@ -2620,8 +2829,12 @@ VegetationID,EpochID,Name,Physiognomy,LandUseGroup
 9823,1,Southeastern Ruderal Grassland,Exotic Herbaceous,Introduced Perennial Grassland and Forbland
 9825,1,Great Plains Comanchian Ruderal Grassland,Exotic Herbaceous,Introduced Perennial Grassland and Forbland
 9826,1,Southern Vancouverian Lowland Ruderal Grassland,Exotic Herbaceous,Introduced Perennial Grassland and Forbland
-9827,1,Interior West Ruderal Riparian Scrub,Exotic Tree-Shrub,Introduced Riparian Vegetation
+9827,1,Interior West Ruderal Riparian Scrub,Riparian,Introduced Riparian Vegetation
 9828,1,Interior Western North American Temperate Ruderal Grassland,Exotic Herbaceous,Introduced Perennial Grassland and Forbland
-9829,1,Western North American Ruderal Wet Meadow & Marsh,Exotic Herbaceous,Introduced Herbaceous Wetland Vegetation
+9829,1,Western North American Ruderal Wet Meadow & Marsh,Riparian,Introduced Herbaceous Wetland Vegetation
+9848,1,Polynesian Ruderal Dry Scrub,Shrubland,Polynesian Ruderal Shrubland
+9850,1,Polynesian Ruderal Lowland Grassland,Grassland,Polynesian Ruderal Grassland
+9851,1,Polynesian Ruderal Herb Coastal Strand,Grassland,Polynesian Ruderal Grassland
+9852,1,Polynesian Ruderal Subalpine-Montane Grassland,Grassland,Polynesian Ruderal Grassland
 9993,1,West Gulf Coastal Plain Flatwoods Pond,Riparian,Inland Marshes and Prairies
 9994,1,West Gulf Coastal Plain Herbaceous Seep and Bog,Riparian,Inland Marshes and Prairies
