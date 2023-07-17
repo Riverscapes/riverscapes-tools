@@ -57,7 +57,7 @@ gdal-config --version
 DATA_DIR=/usr/local/data
 RS_CONTEXT_DIR=$DATA_DIR/rs_context/rs_context_$RSCONTEXT_ID
 VBET_DIR=$DATA_DIR/vbet/vbet_$VBET_ID
-ANTHRO_DIR=$DATA_DIR/output
+ANTHRO_DIR=$DATA_DIR/output/anthro
 
 ##########################################################################################
 # First Get RS_Context and VBET inputs
