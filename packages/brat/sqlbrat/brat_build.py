@@ -185,7 +185,7 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
 
     with SQLiteCon(outputs_gpkg_path) as database:
         # Data preparation SQL statements to handle any weird attributes
-        database.curs.execute('INSERT INTO ReachAttributes (ReachID, Orig_DA, iGeo_DA, ReachCode, WatershedID, StreamName) SELECT ReachID, TotDASqKm, DivDASqKm, FCode, substr(WatershedID, 1, 8), GNIS_NAME FROM ReachGeometry')
+        database.curs.execute('INSERT INTO ReachAttributes (ReachID, Orig_DA, iGeo_DA, ReachCode, WatershedID, StreamName) SELECT ReachID, TotDASqKm, DivDASqKm, FCode, SUBSTR(WatershedID, 1, 8), GNIS_NAME FROM ReachGeometry')
         database.curs.execute('UPDATE ReachAttributes SET IsPeren = 1 WHERE (ReachCode IN ({}))'.format(','.join(peren_codes)))
         database.curs.execute('UPDATE ReachAttributes SET iGeo_DA = 0 WHERE iGeo_DA IS NULL')
 
