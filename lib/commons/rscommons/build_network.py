@@ -128,11 +128,16 @@ def process_reaches(in_path: str, out_path: str, attribute_filter=None, transfor
         transform ([type], optional): [description]. Defaults to None.
         clip_shape ([type], optional): [description]. Defaults to None.
     """
+    log = Logger('process reaches')
+
     with get_shp_or_gpkg(in_path) as in_lyr, get_shp_or_gpkg(out_path, write=True) as out_lyr:
 
         for feature, _counter, _progbar in in_lyr.iterate_features("Processing reaches", attribute_filter=attribute_filter, clip_shape=clip_shape, write_layers=[out_lyr]):
             # get the input geometry and reproject the coordinates
             geom = feature.GetGeometryRef()
+            if geom.Length() < 1e-10:
+                log.info(f'Feature {feature.GetFID()} has essentally zero length ({geom.Length()}), not being copied')
+                continue
             if transform is not None:
                 geom.Transform(transform)
 

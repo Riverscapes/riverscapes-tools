@@ -72,7 +72,10 @@ def calc_conflict_attributes(flowlines_path, valley_bottom, roads, rail, canals,
         reach_union_no_canals = get_geometry_unary_union(flowlines_path, attribute_filter='FCode NOT IN ({})'.format(','.join(canal_codes)))
 
     crossin = intersect_geometry_to_layer(intermediates_gpkg_path, 'road_crossings', ogr.wkbMultiPoint, reach_union, roads, epsg)
-    diverts = intersect_geometry_to_layer(intermediates_gpkg_path, 'diversions', ogr.wkbMultiPoint, reach_union_no_canals, canals, epsg)
+    if reach_union_no_canals is not None:
+        diverts = intersect_geometry_to_layer(intermediates_gpkg_path, 'diversions', ogr.wkbMultiPoint, reach_union_no_canals, canals, epsg)
+    else:
+        diverts = None
 
     road_vb = intersect_to_layer(intermediates_gpkg_path, valley_bottom, roads, 'road_valleybottom', ogr.wkbMultiLineString, epsg)
     rail_vb = intersect_to_layer(intermediates_gpkg_path, valley_bottom, rail, 'rail_valleybottom', ogr.wkbMultiLineString, epsg)
@@ -93,7 +96,8 @@ def calc_conflict_attributes(flowlines_path, valley_bottom, roads, rail, canals,
     tmp_folder = os.path.join(os.path.dirname(intermediates_gpkg_path), 'tmp_conflict')
     distance_from_features(polygons, tmp_folder, reach_union.bounds, cell_size_meters, cell_size, results, road_vb, 'Mean', 'iPC_RoadVB')
     distance_from_features(polygons, tmp_folder, reach_union.bounds, cell_size_meters, cell_size, results, crossin, 'Mean', 'iPC_RoadX')
-    distance_from_features(polygons, tmp_folder, reach_union.bounds, cell_size_meters, cell_size, results, diverts, 'Mean', 'iPC_DivPts')
+    if diverts is not None:
+        distance_from_features(polygons, tmp_folder, reach_union.bounds, cell_size_meters, cell_size, results, diverts, 'Mean', 'iPC_DivPts')
     distance_from_features(polygons, tmp_folder, reach_union.bounds, cell_size_meters, cell_size, results, private, 'Mean', 'iPC_Privat')
     distance_from_features(polygons, tmp_folder, reach_union.bounds, cell_size_meters, cell_size, results, rail_vb, 'Mean', 'iPC_RailVB')
     distance_from_features(polygons, tmp_folder, reach_union.bounds, cell_size_meters, cell_size, results, canals, 'Mean', 'iPC_Canal')
