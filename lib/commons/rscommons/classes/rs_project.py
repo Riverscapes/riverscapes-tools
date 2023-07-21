@@ -618,9 +618,9 @@ class RSProject:
             warehouse_id = in_prj.XMLBuilder.find('Warehouse').attrib['id']
             apiurl = in_prj.XMLBuilder.find('Warehouse').attrib['apiUrl']
             if 'staging' in apiurl:
-                apipath = 'https://staging.warehouse.riverscapes.net/p/'
+                apipath = 'https://staging.data.riverscapes.net/p/'
             else:
-                apipath = 'https://warehouse.riverscapes.net/p/'
+                apipath = 'https://data.riverscapes.net/p/'
             input_path_meta.append(RSMeta(f'{proj_type} Input', apipath + warehouse_id, RSMetaTypes.URL, locked=True))
 
             # Find watershed name in metadata, add if it exists

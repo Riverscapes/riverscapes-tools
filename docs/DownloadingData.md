@@ -28,6 +28,6 @@ Users will need a [free account](https://riverscapes.net/Data_Warehouses/signup.
       <iframe width="560" height="315" src="https://www.youtube.com/embed/jd9AwbGFTTM" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
     </div>
     <i class="fa fa-youtube-play" aria-hidden="true"></i>
-    <a href="https://www.youtube.com/embed/jd9AwbGFTTM" target="_blank">Downloading Projects from the Warehouse</a> An example of downloading a <a href="https://tools.riverscapes.net/brat" target="_blank">BRAT</a> project from the riverscapes warehouse.
+    <a href="https://www.youtube.com/embed/jd9AwbGFTTM" target="_blank">Downloading Projects from the Warehouse</a> An example of downloading a <a href="https://tools.riverscapes.net/brat" target="_blank">BRAT</a> project from the riverscapes data exchange.
   </div>
 </div>

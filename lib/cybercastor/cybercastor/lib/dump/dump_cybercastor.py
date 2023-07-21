@@ -83,7 +83,7 @@ def dump_cybercastor(sqlite_db_path, cc_api_url, username, password, stage):
             job_guid = job['id']
             job_env = dict(json.loads(job['env']).items())
 
-            # "RS_API_URL": "https://api.warehouse.riverscapes.net/staging",
+            # "RS_API_URL": "https://api.data.riverscapes.net/staging",
             # A little hacky but anything without RS_API_URL is probably an old warehouse job
             if 'RS_API_URL' not in job_env:
                 continue

@@ -41,9 +41,9 @@ class RiverscapesAPI:
         self.tokenTimeout = None
 
         if not stage or stage.upper() == 'PRODUCTION':
-            self.uri = 'https://api.warehouse.riverscapes.net'
+            self.uri = 'https://api.data.riverscapes.net'
         elif stage.upper() == 'STAGING':
-            self.uri = 'https://api.warehouse.riverscapes.net/staging'
+            self.uri = 'https://api.data.riverscapes.net/staging'
         # TODO: might need to add a DEVELOPMENT stage here for testing. TBD
         else:
             raise Exception(f'Unknown stage: {stage}')
