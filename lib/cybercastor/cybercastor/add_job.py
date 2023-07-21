@@ -24,7 +24,7 @@ from cybercastor.lib.rs_project_finder import find_upstream_projects
 
 
 def get_params(job_obj):
-      
+
     # Job Environment variables are common to all tasks
     new_job_env = copy(job_obj['env']) if 'env' in job_obj else {}
     new_job_meta = copy(job_obj['meta']) if 'meta' in job_obj else {}
@@ -41,7 +41,7 @@ def get_params(job_obj):
 
     # Our input JSON is huc-specific but the Cybercastor interface is generic
     def create_task(huc, resources=None):
-        
+
         # Make a dictionary of the environment variables for this task and include the HUC
         env_variables = job_obj['lookups'][huc].copy()
         env_variables['HUC'] = huc
@@ -121,7 +121,7 @@ def main(job_json_dir, api_url, username, password) -> bool:
 
     if answers['job'] == 'quit':
         return False
-    
+
     job_path = os.path.join(job_json_dir, answers['job'])
     # Clean the directory to put logs into
     safe_makedirs(monitor_logs_path)
@@ -138,7 +138,7 @@ def main(job_json_dir, api_url, username, password) -> bool:
 
     # Initialize a connection to the riverscapes API
     upstream_results = find_upstream_projects(job_obj)
-    
+
     # Write the lookups back to the input file so it's remembered for next time
     with open(job_path, 'w') as f:
         json.dump(job_obj, f, indent=2)
@@ -147,13 +147,13 @@ def main(job_json_dir, api_url, username, password) -> bool:
         return False
 
     if job_obj['server'] == 'PRODUCTION':
-      job_obj['env']['RS_API_URL'] = 'https://api.warehouse.riverscapes.net'
-    elif job_obj['server']  == 'STAGING':
-      job_obj['env']['RS_API_URL'] = 'https://api.warehouse.riverscapes.net/staging'
+        job_obj['env']['RS_API_URL'] = 'https://api.data.riverscapes.net'
+    elif job_obj['server'] == 'STAGING':
+        job_obj['env']['RS_API_URL'] = 'https://api.data.riverscapes.net/staging'
     # TODO: might need to add a DEVELOPMENT stage here for testing. TBD
     else:
-      server = job_obj['server']
-      raise Exception(f'Unknown server: {server}')
+        server = job_obj['server']
+        raise Exception(f'Unknown server: {server}')
     # Initialize our API and log in
     cyberCastor = CybercastorAPI(api_url, username, password)
 
@@ -178,7 +178,7 @@ def main(job_json_dir, api_url, username, password) -> bool:
         params = get_params(job_obj)
 
         if cyberCastor is None:
-            cyberCastor= CybercastorAPI(api_url, username, password)
+            cyberCastor = CybercastorAPI(api_url, username, password)
 
         with open(outputFile, 'w') as outfile:
             # Add the job to the API
@@ -196,9 +196,9 @@ def main(job_json_dir, api_url, username, password) -> bool:
 
     # Now start a job loop
     while True:
-        
+
         if cyberCastor is None:
-            cyberCastor= CybercastorAPI(api_url, username, password)
+            cyberCastor = CybercastorAPI(api_url, username, password)
 
         # Make an API query for the job that is in the output json file
         job_monitor = cyberCastor.get_job(job_monitor['id'])
