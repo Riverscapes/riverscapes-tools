@@ -87,7 +87,6 @@ class BratReport(RSReport):
             'United States Forest Service': '#89f575',
             'Bureau of Land Management': '#57b2f2',
             'National Park Service': '#d99652',
-            'None': '#f50000',
             'United States Army Corps of Engineers': '#e8e461',
             'United States Bureau of Reclamation': '#3b518f',
             'United States Department of Agriculture': '#a86f67',
@@ -434,13 +433,23 @@ class BratReport(RSReport):
         }
         RSReport.create_table_from_dict(dist_dict, section)
 
-        self.attribute_table_and_pie('oPC_Dist', [
-            {'label': 'Not Close', 'lower': 1000},
-            {'label': 'Outside Range of Concern', 'lower': 300, 'upper': 1000},
-            {'label': 'Within Plausable Forage Range', 'lower': 100, 'upper': 300},
-            {'label': 'Within Normal Forage Range', 'lower': 30, 'upper': 100},
-            {'label': 'Immediately Adjacent', 'upper': 30}
-        ], section)
+        conn = sqlite3.connect(self.database)
+        conn.row_factory = _dict_factory
+        curs = conn.cursor()
+        curs.execute('SELECT oPC_Dist FROM vwReaches')
+        distances = [row for row in curs.fetchall() if row['oPC_Dist'] is not None]
+        if len(distances) > 0:
+            self.attribute_table_and_pie('oPC_Dist', [
+                {'label': 'Not Close', 'lower': 1000},
+                {'label': 'Outside Range of Concern', 'lower': 300, 'upper': 1000},
+                {'label': 'Within Plausable Forage Range', 'lower': 100, 'upper': 300},
+                {'label': 'Within Normal Forage Range', 'lower': 30, 'upper': 100},
+                {'label': 'Immediately Adjacent', 'upper': 30}
+            ], section)
+        else:
+            pEl2 = ET.Element('p')
+            pEl2.text = 'No infrastructure present in this watershed.'
+            section.append(pEl2)
 
         section2 = self.section('Land Use Intensity', title='Land Use Intensity', el_parent=parent_sec, level=2)
 

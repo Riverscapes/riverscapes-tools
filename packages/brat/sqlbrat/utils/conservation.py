@@ -86,25 +86,28 @@ def calc_risks(risks: dict, occ_ex: float, opc_dist: float, ipc_lu: float, ipc_c
         # if canals are within 20 meters (usually means canal is on the reach)
         return risks['Considerable Risk']
     else:
-        # if infrastructure within 30 m or land use is high
-        # if capacity is frequent or pervasive risk is considerable
-        # if capaicty is rare or ocassional risk is some
-        if opc_dist <= 30 or ipc_lu >= 0.66:
-            if occ_ex >= 5.0:
-                return risks['Considerable Risk']
-            else:
-                return risks['Some Risk']
-        # if infrastructure within 30 to 100 m
-        # if capacity is frequent or pervasive risk is some
-        # if capaicty is rare or ocassional risk is minor
-        elif opc_dist <= 100:
-            if occ_ex >= 5.0:
-                return risks['Some Risk']
-            else:
+        if opc_dist is not None:
+            # if infrastructure within 30 m or land use is high
+            # if capacity is frequent or pervasive risk is considerable
+            # if capaicty is rare or ocassional risk is some
+            if opc_dist <= 30 or ipc_lu >= 0.66:
+                if occ_ex >= 5.0:
+                    return risks['Considerable Risk']
+                else:
+                    return risks['Some Risk']
+            # if infrastructure within 30 to 100 m
+            # if capacity is frequent or pervasive risk is some
+            # if capaicty is rare or ocassional risk is minor
+            elif opc_dist <= 100:
+                if occ_ex >= 5.0:
+                    return risks['Some Risk']
+                else:
+                    return risks['Minor Risk']
+            # if infrastructure within 100 to 300 m or land use is 0.33 to 0.66 risk is minor
+            elif opc_dist <= 300 or ipc_lu >= 0.33:
                 return risks['Minor Risk']
-        # if infrastructure within 100 to 300 m or land use is 0.33 to 0.66 risk is minor
-        elif opc_dist <= 300 or ipc_lu >= 0.33:
-            return risks['Minor Risk']
+            else:
+                return risks['Negligible Risk']
         else:
             return risks['Negligible Risk']
 
