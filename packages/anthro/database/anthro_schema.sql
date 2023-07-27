@@ -61,6 +61,8 @@ CREATE TABLE IGOAttributes (
     LevelPathI REAL,
     seg_distance REAL,
     stream_size INTEGER,
+    window_area REAL,
+    window_length REAL,
     LUI REAL,
     Road_len REAL,
     Road_dens REAL,

@@ -171,6 +171,8 @@ CREATE TABLE IGOAttributes (
     LevelPathI REAL,
     seg_distance REAL,
     stream_size INTEGER,
+    window_area REAL,
+    window_length REAL,
     LUI REAL,
     FloodplainAccess REAL,
     FromConifer REAL,

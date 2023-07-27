@@ -212,6 +212,11 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
          RSMeta('Huge Search Window', str(distance_in['4']), RSMetaTypes.INT, locked=True)])
 
     windows = get_moving_windows(igo_geom_path, input_layers['ANTHRODGO'], levelpathsin, distance_in)
+    with SQLiteCon(outputs_gpkg_path) as database:
+        for fid, windowvals in windows.items():
+            database.curs.execute(f'UPDATE IGOAttributes SET window_area = {windowvals[2]} WHERE IGOID = {fid}')
+            database.curs.execute(f'UPDATE IGOAttributes SET window_length = {windowvals[1]} WHERE IGOID = {fid}')
+        database.conn.commit()
     log.info('removing large rivers from moving window polygons')
     with rasterio.open(prj_existing_path) as veg_raster:
         gt = veg_raster.transform

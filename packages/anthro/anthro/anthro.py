@@ -214,6 +214,11 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
 
     # get moving window for each igo
     windows = get_moving_windows(igo_geom_path, input_layers['DGO'], levelpathsin, distancein)
+    with SQLiteCon(outputs_gpkg_path) as database:
+        for fid, windowvals in windows.items():
+            database.curs.execute(f'UPDATE IGOAttributes SET window_area = {windowvals[2]} WHERE IGOID = {fid}')
+            database.curs.execute(f'UPDATE IGOAttributes SET window_length = {windowvals[1]} WHERE IGOID = {fid}')
+        database.conn.commit()
 
     # calculate conflict attributes for reaches
     conflict_attributes(outputs_gpkg_path, line_geom_path, input_layers['VALLEYBOTTOM'], input_layers['ROADS'], input_layers['RAILS'],
