@@ -19,6 +19,7 @@ from osgeo import ogr
 from rscommons import Logger, RSLayer, RSProject, ModelConfig, dotenv
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.database import update_database, store_metadata, set_reach_fields_null, SQLiteCon
+from rscommons import GeopackageLayer
 from sqlbrat.utils.vegetation_suitability import vegetation_suitability, output_vegetation_raster
 from sqlbrat.utils.vegetation_fis import vegetation_fis
 from sqlbrat.utils.combined_fis import combined_fis
@@ -90,6 +91,12 @@ def brat_run(project_root, csv_dir):
 
     # Get the filepaths for the DB and shapefile
     gpkg_path = os.path.join(project.project_dir, r_node.find('Outputs/Geopackage[@id="OUTPUTS"]/Path').text)
+
+    # Check that there are features to process
+    with GeopackageLayer(gpkg_path, 'ReachGeometry') as lyr:
+        if lyr.ogr_layer.GetFeatureCount() == 0:
+            log.info('No features to process; BRAT run complete')
+            return
 
     if not os.path.isfile(gpkg_path):
         raise Exception('BRAT geopackage file missing at {}. You must run Brat Build first.'.format(gpkg_path))
