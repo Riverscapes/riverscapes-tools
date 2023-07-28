@@ -73,7 +73,10 @@ def calc_conflict_attributes(flowlines_path, valley_bottom, roads, rail, canals,
     else:
         reach_union_no_canals = get_geometry_unary_union(flowlines_path, attribute_filter='FCode NOT IN ({})'.format(','.join(canal_codes)))
 
-    crossin = intersect_geometry_to_layer(intermediates_gpkg_path, 'road_crossings', ogr.wkbMultiPoint, reach_union, roads, epsg)
+    if reach_union is not None:
+        crossin = intersect_geometry_to_layer(intermediates_gpkg_path, 'road_crossings', ogr.wkbMultiPoint, reach_union, roads, epsg)
+    else:
+        crossin = None
     if reach_union_no_canals is not None:
         diverts = intersect_geometry_to_layer(intermediates_gpkg_path, 'diversions', ogr.wkbMultiPoint, reach_union_no_canals, canals, epsg)
     else:
@@ -88,7 +91,7 @@ def calc_conflict_attributes(flowlines_path, valley_bottom, roads, rail, canals,
     # Buffer all reaches (being careful to use the units of the Shapefile)
     reaches = load_geometries(flowlines_path, epsg=epsg)
     # dgo_geoms = load_geometries(dgos_path, epsg=epsg)
-    with get_shp_or_gpkg(flowlines_path) as lyr:
+    with get_shp_or_gpkg(ownership) as lyr:
         buffer_distance = lyr.rough_convert_metres_to_vector_units(buffer_distance_metres)
         cell_size = lyr.rough_convert_metres_to_vector_units(cell_size_meters)
         geopackage_path = lyr.filepath
@@ -115,15 +118,17 @@ def calc_conflict_attributes(flowlines_path, valley_bottom, roads, rail, canals,
 
     results = {}
     tmp_folder = os.path.join(os.path.dirname(intermediates_gpkg_path), 'tmp_conflict')
-    distance_from_features(polygons, tmp_folder, reach_union.bounds, cell_size_meters, cell_size, results, road_vb, 'Mean', 'iPC_RoadVB')
-    distance_from_features(polygons, tmp_folder, reach_union.bounds, cell_size_meters, cell_size, results, crossin, 'Mean', 'iPC_RoadX')
-    if diverts is not None:
-        distance_from_features(polygons, tmp_folder, reach_union.bounds, cell_size_meters, cell_size, results, diverts, 'Mean', 'iPC_DivPts')
-    distance_from_features(polygons, tmp_folder, reach_union.bounds, cell_size_meters, cell_size, results, private, 'Mean', 'iPC_Privat')
-    distance_from_features(polygons, tmp_folder, reach_union.bounds, cell_size_meters, cell_size, results, rail_vb, 'Mean', 'iPC_RailVB')
-    distance_from_features(polygons, tmp_folder, reach_union.bounds, cell_size_meters, cell_size, results, canals, 'Mean', 'iPC_Canal')
-    distance_from_features(polygons, tmp_folder, reach_union.bounds, cell_size_meters, cell_size, results, roads, 'Mean', 'iPC_Road')
-    distance_from_features(polygons, tmp_folder, reach_union.bounds, cell_size_meters, cell_size, results, rail, 'Mean', 'iPC_Rail')
+    if reach_union is not None:
+        distance_from_features(polygons, tmp_folder, reach_union.bounds, cell_size_meters, cell_size, results, road_vb, 'Mean', 'iPC_RoadVB')
+        if crossin is not None:
+            distance_from_features(polygons, tmp_folder, reach_union.bounds, cell_size_meters, cell_size, results, crossin, 'Mean', 'iPC_RoadX')
+        if diverts is not None:
+            distance_from_features(polygons, tmp_folder, reach_union.bounds, cell_size_meters, cell_size, results, diverts, 'Mean', 'iPC_DivPts')
+        distance_from_features(polygons, tmp_folder, reach_union.bounds, cell_size_meters, cell_size, results, private, 'Mean', 'iPC_Privat')
+        distance_from_features(polygons, tmp_folder, reach_union.bounds, cell_size_meters, cell_size, results, rail_vb, 'Mean', 'iPC_RailVB')
+        distance_from_features(polygons, tmp_folder, reach_union.bounds, cell_size_meters, cell_size, results, canals, 'Mean', 'iPC_Canal')
+        distance_from_features(polygons, tmp_folder, reach_union.bounds, cell_size_meters, cell_size, results, roads, 'Mean', 'iPC_Road')
+        distance_from_features(polygons, tmp_folder, reach_union.bounds, cell_size_meters, cell_size, results, rail, 'Mean', 'iPC_Rail')
 
     # Calculate minimum distance to conflict
     min_keys = ['iPC_Road', 'iPC_RoadX', 'iPC_RoadVB', 'iPC_Rail', 'iPC_RailVB']
@@ -132,7 +137,8 @@ def calc_conflict_attributes(flowlines_path, valley_bottom, roads, rail, canals,
         values['oPC_Dist'] = min(proximities) if len(proximities) > 0 else -9999
 
     # Retrieve the agency responsible for administering the land at the midpoint of each reach
-    admin_agency(geopackage_path, reaches, ownership, results)
+    if len(reaches) > 0:
+        admin_agency(geopackage_path, reaches, ownership, results)
 
     log.info('Conflict attribute calculation complete')
 
