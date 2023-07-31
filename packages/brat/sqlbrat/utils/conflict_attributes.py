@@ -87,11 +87,11 @@ def calc_conflict_attributes(flowlines_path, valley_bottom, roads, rail, canals,
     copy_feature_class(ownership, private, epsg, "ADMIN_AGEN = 'PVT' OR ADMIN_AGEN = 'UND'")
 
     # Buffer all reaches (being careful to use the units of the Shapefile)
+    geopackage_path = os.path.dirname(flowlines_path)
     reaches = load_geometries(flowlines_path, epsg=epsg)
     with get_shp_or_gpkg(ownership) as lyr:
         buffer_distance = lyr.rough_convert_metres_to_vector_units(buffer_distance_metres)
         cell_size = lyr.rough_convert_metres_to_vector_units(cell_size_meters)
-        geopackage_path = lyr.filepath
 
     polygons = {reach_id: polyline.buffer(buffer_distance) for reach_id, polyline in reaches.items()}
 
