@@ -88,7 +88,7 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
     except ValueError:
         raise Exception('Invalid HUC identifier "{}". Must be an integer'.format(huc))
 
-    if not (len(huc) == 4 or len(huc) == 8):
+    if not (len(huc) == 4 or len(huc) == 8 or len(huc) == 10):
         raise Exception('Invalid HUC identifier. Must be four digit integer')
 
     # Make the projectXML
@@ -240,9 +240,11 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
     level_paths = []
     with GeopackageLayer(confining_path) as confining_lyr:
         for confining_feat, _counter, progbar in confining_lyr.iterate_features("Generating list of level paths"):
-            level_path = confining_feat.GetField('vbet_level_path')
+            level_path = confining_feat.GetField('LevelPathI')
             if level_path not in level_paths:
                 level_paths.append(level_path)
+    if None in level_paths:
+        level_paths.remove(None)
 
     # Generate confinement per level_path
     with GeopackageLayer(confining_margins_path, write=True) as margins_lyr, \
@@ -266,7 +268,7 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
             progbar.update(counter)
             counter += 1
 
-            flowlines = collect_feature_class(flowlines_path, attribute_filter=f"vbet_level_path = {level_path}.0 AND Divergence < 2")
+            flowlines = collect_feature_class(flowlines_path, attribute_filter=f"LevelPathI = {level_path} AND Divergence < 2")
             geom_flowlines = GeopackageLayer.ogr2shapely(flowlines)
             geom_flowlines_midpoints = MultiPoint([line.interpolate(0.5, normalized=True) for line in geom_flowlines])
 

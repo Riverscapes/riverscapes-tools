@@ -32,6 +32,7 @@ from rscommons.database import load_lookup_data
 from rscommons.geometry_ops import reduce_precision, get_endpoints
 from rscommons.vector_ops import copy_feature_class, collect_linestring
 from rscommons.vbet_network import copy_vaa_attributes, join_attributes
+from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions
 
 from rme.__version__ import __version__
 from rme.analysis_window import AnalysisLine
@@ -43,6 +44,7 @@ gdal.UseExceptions()
 
 cfg = ModelConfig('https://xml.riverscapes.net/Projects/XSD/V2/RiverscapesProject.xsd', __version__)
 
+LYR_DESCRIPTIONS_JSON = os.path.join(os.path.dirname(__file__), 'layer_descriptions.json')
 LayerTypes = {
     # key: (name, id, tag, relpath)]
     'INPUTS': RSLayer('Inputs', 'INPUTS', 'Geopackage', 'inputs/inputs.gpkg', {
@@ -61,7 +63,7 @@ LayerTypes = {
     }),
     'RME_OUTPUTS': RSLayer('Riverscapes Metrics', 'RME_OUTPUTS', 'Geopackage', 'outputs/riverscapes_metrics.gpkg', {
         'POINT_METRICS': RSLayer('Point Metrics', 'POINT_METRICS', 'Vector', 'vw_point_metrics'),
-        'POINT_MEAUSREMENTS': RSLayer('Point Measurements', 'POINT_MEASUREMENTS', 'Vector', 'vw_point_measurements'),
+        'POINT_MEASUREMENTS': RSLayer('Point Measurements', 'POINT_MEASUREMENTS', 'Vector', 'vw_point_measurements'),
     }),
 }
 
@@ -92,13 +94,16 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments:
     log = Logger('Riverscapes Metric Engine')
     log.info(f'Starting RME v.{cfg.version}')
 
+    augment_layermeta('rs_metric_engine', LYR_DESCRIPTIONS_JSON, LayerTypes)
+
     project_name = f'Riverscapes Metrics for HUC {huc}'
     project = RSProject(cfg, project_folder)
     project.create(project_name, 'rs_metric_engine', [
-        RSMeta(f'HUC{len(huc)}', str(huc)),
-        RSMeta('HUC', str(huc)),
-        RSMeta('RMEVersion', cfg.version),
-        RSMeta('RMETimestamp', str(int(time.time())), RSMetaTypes.TIMESTAMP),
+        RSMeta('Model Documentation', 'https://tools.riverscapes.net/rme', RSMetaTypes.URL, locked=True),
+        RSMeta('HUC', str(huc), RSMetaTypes.HIDDEN, locked=True),
+        RSMeta('Hydrologic Unit Code', str(huc), locked=True),
+        RSMeta('RME Version', cfg.version, locked=True),
+        RSMeta('RME Timestamp', str(int(time.time())), RSMetaTypes.TIMESTAMP, locked=True)
     ], meta)
 
     _realization, proj_nodes = project.add_realization(project_name, 'REALIZATION1', cfg.version, data_nodes=['Inputs', 'Intermediates', 'Outputs'], create_folders=True)

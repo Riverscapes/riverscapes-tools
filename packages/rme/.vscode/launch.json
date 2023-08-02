@@ -70,14 +70,14 @@
       // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
       "args": [
         "${input:HUC}",
-        "{env:DATA_ROOT}/vbet/${input:HUC}/inputs/vbet_inputs.gpkg/Flowlines_VAA",
+        "{env:DATA_ROOT}/vbet/${input:HUC}/inputs/vbet_inputs.gpkg/flowlines_vaa",
         "{env:DATA_ROOT}/channel_area/${input:HUC}/outputs/channel_area.gpkg/channel_area",
         "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/vbet_full",
         "{env:DATA_ROOT}/confinement/${input:HUC}", // output folder
         "vbet_level_path",
         "ValleyBottom",
         "--buffer", "15.0",
-        "--segmented_network", "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/network_intersected_300m",
+        "--segmented_network", "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydro_derivatives.gpkg/network_intersected_300m",
         "--meta",
         "Runner=VSCode",
         "--verbose",
