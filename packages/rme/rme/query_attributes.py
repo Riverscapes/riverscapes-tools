@@ -38,20 +38,23 @@ def copy_attributes(dgo, flowline, ownership, states, counties, out_folder):
         ftr1 = dgo_lyr.ogr_layer.GetNextFeature()
         long = ftr1.GetGeometryRef().Centroid().GetX()
         epsg_proj = get_utm_zone_epsg(long)
-        _spatial_ref, transform = get_transform_from_epsg(dgo_lyr.spatial_ref, epsg_proj)
+        _spatial_ref, transform = get_transform_from_epsg(
+            dgo_lyr.spatial_ref, epsg_proj)
 
         # add desired fields to dgo output
         for i in range(flowline_lyr.ogr_layer_def.GetFieldCount()):
             if flowline_lyr.ogr_layer_def.GetFieldDefn(i).GetName() == 'FCode':
                 reachcode_defn = flowline_lyr.ogr_layer_def.GetFieldDefn(i)
         dgo_lyr.ogr_layer.CreateField(reachcode_defn)
-        dgo_lyr.ogr_layer.CreateField(ogr.FieldDefn('channel_length', ogr.OFTReal))
+        dgo_lyr.ogr_layer.CreateField(
+            ogr.FieldDefn('channel_length', ogr.OFTReal))
 
         for i in range(ownership_lyr.ogr_layer_def.GetFieldCount()):
             if ownership_lyr.ogr_layer_def.GetFieldDefn(i).GetName() == 'ADMIN_AGEN':
                 own_type_defn = ownership_lyr.ogr_layer_def.GetFieldDefn(i)
         dgo_lyr.ogr_layer.CreateField(own_type_defn)
-        dgo_lyr.ogr_layer.CreateField(ogr.FieldDefn('ownership_area', ogr.OFTReal))
+        dgo_lyr.ogr_layer.CreateField(
+            ogr.FieldDefn('ownership_area', ogr.OFTReal))
 
         dgo_lyr.ogr_layer.CreateField(ogr.FieldDefn('State', ogr.OFTString))
         dgo_lyr.ogr_layer.CreateField(ogr.FieldDefn('County', ogr.OFTString))
@@ -70,13 +73,16 @@ def copy_attributes(dgo, flowline, ownership, states, counties, out_folder):
                 flowline_g = VectorBase.ogr2shapely(flowline_ogr, transform)
                 flowline_geom = flowline_g.intersection(dgo_geom)
                 if flowline_ftr.GetField('FCode') in fcodes.keys():
-                    fcodes[flowline_ftr.GetField('FCode')] += flowline_geom.length
+                    fcodes[flowline_ftr.GetField(
+                        'FCode')] += flowline_geom.length
                 else:
-                    fcodes[flowline_ftr.GetField('FCode')] = flowline_geom.length
+                    fcodes[flowline_ftr.GetField(
+                        'FCode')] = flowline_geom.length
             for fcode, leng in fcodes.items():
                 if leng == max(fcodes.values()):
                     dgo_ftr.SetField('FCode', fcode)
-                    dgo_ftr.SetField('channel_length', sum(fcodes.values()))  # this process chooses dominant fcode and sets its length to length of all present fcodes...
+                    # this process chooses dominant fcode and sets its length to length of all present fcodes...
+                    dgo_ftr.SetField('channel_length', sum(fcodes.values()))
                     break
 
             agencies = {}
@@ -114,9 +120,11 @@ def copy_attributes(dgo, flowline, ownership, states, counties, out_folder):
                 county_g = GeopackageLayer.ogr2shapely(county_ogr, transform)
                 county_geom = county_g.intersection(dgo_geom)
                 if county_ftr.GetField('NAME') in counties_dict.keys():
-                    counties_dict[county_ftr.GetField('NAME')] += county_geom.area
+                    counties_dict[county_ftr.GetField(
+                        'NAME')] += county_geom.area
                 else:
-                    counties_dict[county_ftr.GetField('NAME')] = county_geom.area
+                    counties_dict[county_ftr.GetField(
+                        'NAME')] = county_geom.area
             for county, areas in counties_dict.items():
                 if areas == max(counties_dict.values()):
                     dgo_ftr.SetField('County', county)
@@ -126,12 +134,13 @@ def copy_attributes(dgo, flowline, ownership, states, counties, out_folder):
         dgo_lyr.ogr_layer.CommitTransaction()
 
 
-igo_in = '/mnt/c/Users/jordang/Documents/Riverscapes/data/vbet/1601020204/outputs/vbet.gpkg/vbet_igos'
-dgo_in = '/mnt/c/Users/jordang/Documents/Riverscapes/data/vbet/1601020204/intermediates/vbet_intermediates.gpkg/vbet_dgos'
-flowline_in = '/mnt/c/Users/jordang/Documents/Riverscapes/data/rs_context/1601020204/hydrology/nhdplushr.gpkg/NHDFlowline'
-ownership_in = '/mnt/c/Users/jordang/Documents/Riverscapes/data/rs_context/1601020204/ownership/ownership.shp'
-states_in = '/mnt/c/Users/jordang/Documents/Riverscapes/data/rs_context/1601020204/political_boundaries/states.shp'
-counties_in = '/mnt/c/Users/jordang/Documents/Riverscapes/data/rs_context/1601020204/political_boundaries/counties.shp'
-out_folder_path = '/mnt/c/Users/jordang/Documents/Riverscapes/data/igo_atts'
+igo_in = 'SOME/PATH/HERE/data/vbet/1601020204/outputs/vbet.gpkg/vbet_igos'
+dgo_in = 'SOME/PATH/HERE/data/vbet/1601020204/intermediates/vbet_intermediates.gpkg/vbet_dgos'
+flowline_in = 'SOME/PATH/HERE/data/rs_context/1601020204/hydrology/nhdplushr.gpkg/NHDFlowline'
+ownership_in = 'SOME/PATH/HERE/data/rs_context/1601020204/ownership/ownership.shp'
+states_in = 'SOME/PATH/HERE/data/rs_context/1601020204/political_boundaries/states.shp'
+counties_in = 'SOME/PATH/HERE/data/rs_context/1601020204/political_boundaries/counties.shp'
+out_folder_path = 'SOME/PATH/HERE/data/igo_atts'
 
-copy_attributes(dgo_in, flowline_in, ownership_in, states_in, counties_in, out_folder_path)
+copy_attributes(dgo_in, flowline_in, ownership_in,
+                states_in, counties_in, out_folder_path)
