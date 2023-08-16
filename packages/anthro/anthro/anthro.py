@@ -19,7 +19,7 @@ from rscommons.vector_ops import copy_feature_class
 from rscommons import Logger, initGDALOGRErrors, RSLayer, RSProject, ModelConfig, dotenv
 from rscommons.database import create_database, SQLiteCon
 from rscommons.copy_features import copy_features_fields
-from rscommons.moving_window import get_moving_windows
+from rscommons.moving_window import get_moving_windows, moving_window_dgo_ids
 from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions, raster_resolution_meta
 
 from anthro.utils.conflict_attributes import conflict_attributes
@@ -67,7 +67,9 @@ LayerTypes = {
         'ANTHRO_GEOM_POINTS': RSLayer('Anthropogenic IGO Point Geometry', 'ANTHRO_GEOM_POINTS', 'Vector', 'IGOGeometry'),
         'ANTHRO_POINTS': RSLayer('Anthropogenic Output Points', 'ANTRHO_POINTS', 'Vector', 'vwIgos'),
         'ANTHRO_GEOM_LINES': RSLayer('Anthropogenic Reach Geometry', 'ANTHRO_GEOM_LINES', 'Vector', 'ReachGeometry'),
-        'ANTHRO_LINES': RSLayer('Anthropogenic Output Lines', 'ANTHRO_LINES', 'Vector', 'vwReaches')
+        'ANTHRO_LINES': RSLayer('Anthropogenic Output Lines', 'ANTHRO_LINES', 'Vector', 'vwReaches'),
+        'ANTHRO_GEOM_DGOS': RSLayer('Anthropogenic Output DGOs Polygons', 'ANTHRO_GEOM_DGOS', 'Vector', 'DGOGeometry'),
+        'ANTHRO_DGOS': RSLayer('Anthropogenic Output DGOs', 'ANTHRO_DGOS', 'Vector', 'vwDgos')
     }),
     'REPORT': RSLayer('Anthropogenic Context Report', 'REPORT', 'HTMLFile', 'outputs/anthro.html')
 }
@@ -141,6 +143,14 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
             'centerline_length': ogr.OFTReal
         })
 
+    with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['ANTHRO_GEOM_DGOS'].rel_path, write=True) as out_lyr:
+        out_lyr.create_layer(ogr.wkbMultiPolygon, epsg=cfg.OUTPUT_EPSG, options=['FID=DGOID'], fields={
+            'LevelPathI': ogr.OFTReal,
+            'seg_distance': ogr.OFTReal,
+            'centerline_length': ogr.OFTReal,
+            'segment_area': ogr.OFTReal
+        })
+
     with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['ANTHRO_GEOM_LINES'].rel_path, write=True) as out_lyr:
         out_lyr.create_layer(ogr.wkbMultiLineString, epsg=cfg.OUTPUT_EPSG, options=['FID=ReachID'], fields={
             'WatershedID': ogr.OFTString,
@@ -162,12 +172,15 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
 
     igo_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['ANTHRO_GEOM_POINTS'].rel_path)
     line_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['ANTHRO_GEOM_LINES'].rel_path)
+    dgo_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['ANTHRO_GEOM_DGOS'].rel_path)
     copy_features_fields(input_layers['IGO'], igo_geom_path, epsg=cfg.OUTPUT_EPSG)
     copy_features_fields(input_layers['FLOWLINES'], line_geom_path, epsg=cfg.OUTPUT_EPSG)
+    copy_features_fields(input_layers['DGO'], dgo_geom_path, epsg=cfg.OUTPUT_EPSG)
 
     with SQLiteCon(outputs_gpkg_path) as database:
         database.curs.execute('INSERT INTO ReachAttributes (ReachID, Orig_DA, iGeo_DA, ReachCode, WatershedID, StreamName, NHDPlusID) SELECT ReachID, TotDASqKm, DivDASqKm, FCode, WatershedID, GNIS_NAME, NHDPlusID FROM ReachGeometry')
         database.curs.execute('INSERT INTO IGOAttributes (IGOID, LevelPathI, seg_distance, stream_size) SELECT IGOID, LevelPathI, seg_distance, stream_size FROM IGOGeometry')
+        database.curs.execute('INSERT INTO DGOAttributes (DGOID, LevelPathI, seg_distance, segment_area, centerline_length) SELECT DGOID, LevelPathI, seg_distance, segment_area, centerline_length FROM DGOGeometry')
 
         # Register vwReaches as a feature layer as well as its geometry column
         database.curs.execute("""INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id)
@@ -182,9 +195,17 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
         database.curs.execute("""INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m)
             SELECT 'vwIgos', column_name, geometry_type_name, srs_id, z, m FROM gpkg_geometry_columns WHERE table_name = 'IGOGeometry'""")
 
+        database.curs.execute("""INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id)
+            SELECT 'vwDgos', data_type, 'dgos', min_x, min_y, max_x, max_y, srs_id FROM gpkg_contents WHERE table_name = 'DGOGeometry'""")
+
+        database.curs.execute("""INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m)
+            SELECT 'vwDgos', column_name, geometry_type_name, srs_id, z, m FROM gpkg_geometry_columns WHERE table_name = 'DGOGeometry'""")
+
         database.conn.execute('CREATE INDEX ix_igo_levelpath on IGOGeometry(LevelPathI)')
         database.conn.execute('CREATE INDEX ix_igo_segdist on IGOGeometry(seg_distance)')
         database.conn.execute('CREATE INDEX ix_igo_size on IGOGeometry(stream_size)')
+        database.conn.execute('CREATE INDEX ix_dgo_levelpath on DGOGeometry(LevelPathI)')
+        database.conn.execute('CREATE INDEX ix_dgo_segdist on DGOGeometry(seg_distance)')
 
         database.conn.commit()
 
@@ -213,12 +234,13 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
          RSMeta('Huge Search Window', str(distancein['4']), RSMetaTypes.INT, locked=True)])
 
     # get moving window for each igo
-    windows = get_moving_windows(igo_geom_path, input_layers['DGO'], levelpathsin, distancein)
-    with SQLiteCon(outputs_gpkg_path) as database:
-        for fid, windowvals in windows.items():
-            database.curs.execute(f'UPDATE IGOAttributes SET window_area = {windowvals[2]} WHERE IGOID = {fid}')
-            database.curs.execute(f'UPDATE IGOAttributes SET window_length = {windowvals[1]} WHERE IGOID = {fid}')
-        database.conn.commit()
+    # windows = get_moving_windows(igo_geom_path, input_layers['DGO'], levelpathsin, distancein)
+    # with SQLiteCon(outputs_gpkg_path) as database:
+    #     for fid, windowvals in windows.items():
+    #         database.curs.execute(f'UPDATE IGOAttributes SET window_area = {windowvals[2]} WHERE IGOID = {fid}')
+    #         database.curs.execute(f'UPDATE IGOAttributes SET window_length = {windowvals[1]} WHERE IGOID = {fid}')
+    #     database.conn.commit()
+    windows = moving_window_dgo_ids(igo_geom_path, input_layers['DGO'], levelpathsin, distancein)
 
     # calculate conflict attributes for reaches
     conflict_attributes(outputs_gpkg_path, line_geom_path, input_layers['VALLEYBOTTOM'], input_layers['ROADS'], input_layers['RAILS'],
@@ -237,7 +259,7 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
     land_use(outputs_gpkg_path)
     # get land use attributes for IGOs
     igo_vegetation(windows, existing_veg, outputs_gpkg_path)
-    calculate_land_use(outputs_gpkg_path)
+    calculate_land_use(outputs_gpkg_path, windows)
     lui_raster(existing_veg, outputs_gpkg_path, os.path.join(os.path.dirname(intermediates_gpkg_path), 'lui.tif'))
     # add lui raster to project
     # project.add_dataset(proj_nodes['Intermediates'], os.path.join(os.path.dirname(intermediates_gpkg_path), 'lui.tif'), LayerTypes['LUI'], 'Raster')
