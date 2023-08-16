@@ -23,26 +23,33 @@ def calculate_land_use(database: str, windows: dict):
                  ' INNER JOIN (SELECT DGOID, SUM(CellCount) AS TotalCells FROM DGOVegetation GROUP BY DGOID) AS RS ON DGOV.DGOID = RS.DGOID'
                  ' GROUP BY DGOV.DGOID')
 
-    results = {row[0]: {'LUI': row[1], 'Cumulative': 0.0} for row in curs.fetchall()}
+    results = {row[0]: {'LUI': row[1], 'Cumulative': 0.0}
+               for row in curs.fetchall()}
 
     for dgoid, lui in results.items():
         luival = lui['LUI']
-        curs.execute(f'UPDATE DGOAttributes SET LUI = {luival} WHERE DGOID = {dgoid}')
+        curs.execute(
+            f'UPDATE DGOAttributes SET LUI = {luival} WHERE DGOID = {dgoid}')
 
     for igoid, dgoids in windows.items():
         lui_vals = []
         areas = []
         for dgoid in dgoids:
-            curs.execute(f"SELECT LUI, segment_area FROM DGOAttributes WHERE DGOID = {dgoid}")
+            curs.execute(
+                f"SELECT LUI, segment_area FROM DGOAttributes WHERE DGOID = {dgoid}")
             res = curs.fetchone()
             lui_vals.append(res[0])
             areas.append(res[1])
         if len(lui_vals) == len(areas) and None not in lui_vals and None not in areas:
-            igo_lui = sum([lui * (area / sum(areas)) for lui, area in zip(lui_vals, areas)])
+            igo_lui = sum([lui * (area / sum(areas))
+                          for lui, area in zip(lui_vals, areas)])
         else:
-            log.warning(f'Unable to calculate land use intensity for IGO ID {igoid}')  # vb too narrow to pick up veg cells
+            # vb too narrow to pick up veg cells
+            log.warning(
+                f'Unable to calculate land use intensity for IGO ID {igoid}')
             igo_lui = -9999
-        curs.execute(f'UPDATE IGOAttributes SET LUI = {igo_lui} WHERE IGOID = {igoid}')
+        curs.execute(
+            f'UPDATE IGOAttributes SET LUI = {igo_lui} WHERE IGOID = {igoid}')
 
     conn.commit()
     conn.close()
