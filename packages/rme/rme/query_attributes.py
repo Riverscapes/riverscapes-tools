@@ -14,7 +14,7 @@ from rscommons.vector_ops import copy_feature_class
 from rscommons.shapefile import get_transform_from_epsg, get_utm_zone_epsg
 
 
-def copy_attributes(igo, dgo, flowline, ownership, states, counties, out_folder):
+def copy_attributes(dgo, flowline, ownership, states, counties, out_folder):
 
     # copy inputs
     # input_gpkg = os.path.join(out_folder, 'inputs.gpkg')
@@ -25,9 +25,7 @@ def copy_attributes(igo, dgo, flowline, ownership, states, counties, out_folder)
 
     # copy IGOs / DGOs to output folder
     out_gpkg = os.path.join(out_folder, 'attributes.gpkg')
-    out_igo = os.path.join(out_gpkg, 'attributes_igo')
     out_dgo = os.path.join(out_gpkg, 'attributes_dgo')
-    copy_feature_class(igo, out_igo)
     copy_feature_class(dgo, out_dgo)
 
     # add fields to IGOs
@@ -61,8 +59,8 @@ def copy_attributes(igo, dgo, flowline, ownership, states, counties, out_folder)
         # obtain field values
         dgo_lyr.ogr_layer.StartTransaction()
         for dgo_ftr, *_ in dgo_lyr.iterate_features("Obtaining query attributes"):
-            levelpath = dgo_ftr.GetField('LevelPathI')
-            distance = dgo_ftr.GetField('seg_distance')
+            # levelpath = dgo_ftr.GetField('LevelPathI')
+            # distance = dgo_ftr.GetField('seg_distance')
             dgo_ogr = dgo_ftr.GetGeometryRef().Clone()
             dgo_geom = VectorBase.ogr2shapely(dgo_ogr, transform)
 
@@ -136,4 +134,4 @@ states_in = '/mnt/c/Users/jordang/Documents/Riverscapes/data/rs_context/16010202
 counties_in = '/mnt/c/Users/jordang/Documents/Riverscapes/data/rs_context/1601020204/political_boundaries/counties.shp'
 out_folder_path = '/mnt/c/Users/jordang/Documents/Riverscapes/data/igo_atts'
 
-copy_attributes(igo_in, dgo_in, flowline_in, ownership_in, states_in, counties_in, out_folder_path)
+copy_attributes(dgo_in, flowline_in, ownership_in, states_in, counties_in, out_folder_path)
