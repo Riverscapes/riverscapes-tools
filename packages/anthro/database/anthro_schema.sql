@@ -23,12 +23,12 @@ CREATE TABLE ReachVegetation (
     CellCount REAL NOT NULL CONSTRAINT CHK_ReachVegetation_CellCount CHECK (CellCount > 0), 
     PRIMARY KEY (ReachID, VegetationID));
 
-CREATE TABLE IGOVegetation (
-    IGOID INTEGER REFERENCES IGOAttributes ON DELETE CASCADE NOT NULL,
+CREATE TABLE DGOVegetation (
+    DGOID INTEGER REFERENCES DGOAttributes ON DELETE CASCADE NOT NULL,
     VegetationID INTEGER REFERENCES VegetationTypes (VegetationID) NOT NULL,
-    Area REAL NOT NULL CONSTRAINT CHK_IGOVegetation_Area CHECK (Area > 0),
-    CellCount REAL NOT NULL CONSTRAINT CHK_IGOVegetation_CellCount CHECK (CellCount > 0),
-    PRIMARY KEY (IGOID, VegetationID)
+    Area REAL NOT NULL CONSTRAINT CHK_DGOVegetation_Area CHECK (Area > 0),
+    CellCount REAL NOT NULL CONSTRAINT CHK_DGOVegetation_CellCount CHECK (CellCount > 0),
+    PRIMARY KEY (DGOID, VegetationID)
 );
 
 CREATE TABLE MetaData (KeyInfo TEXT PRIMARY KEY NOT NULL, ValueInfo TEXT);
@@ -63,6 +63,24 @@ CREATE TABLE IGOAttributes (
     stream_size INTEGER,
     window_area REAL,
     window_length REAL,
+    LUI REAL,
+    Road_len REAL,
+    Road_dens REAL,
+    Rail_len REAL,
+    Rail_dens REAL,
+    Canal_len REAL,
+    Canal_dens REAL,
+    RoadX_ct INTEGER,
+    RoadX_dens REAL,
+    DivPts_ct INTEGER,
+    DivPts_dens REAL);
+
+CREATE TABLE DGOAttributes (
+    DGOID INTEGER PRIMARY KEY NOT NULL,
+    LevelPathI REAL,
+    seg_distance REAL,
+    centerline_length REAL,
+    segment_area REAL,
     LUI REAL,
     Road_len REAL,
     Road_dens REAL,
@@ -118,6 +136,10 @@ CREATE VIEW vwIgos AS SELECT I.*, G.geom
 FROM IGOAttributes I
     INNER JOIN IGOGeometry G ON I.IGOID = G.IGOID;
 
+CREATE VIEW vwDgos AS SELECT D.*, G.geom
+FROM DGOAttributes D
+    INNER JOIN DGOGeometry G ON D.DGOID = G.DGOID;
+
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Agencies', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('VegetationTypes', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachCodes', 'attributes');
@@ -128,5 +150,6 @@ INSERT INTO gpkg_contents (table_name, data_type) VALUES ('LandUses', 'attribute
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('LandUseIntensities', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Watersheds', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('IGOAttributes', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('DGOAttributes', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachAttributes', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('vwReachAttributes', 'attributes');
