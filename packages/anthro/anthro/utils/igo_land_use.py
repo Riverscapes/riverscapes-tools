@@ -41,7 +41,7 @@ def calculate_land_use(database: str, windows: dict):
         if len(lui_vals) == len(areas) and None not in lui_vals and None not in areas:
             igo_lui = sum([lui * (area / sum(areas)) for lui, area in zip(lui_vals, areas)])
         else:
-            log.warning(f'Unable to calculate land use intensity for IGO ID {igoid}')
+            log.warning(f'Unable to calculate land use intensity for IGO ID {igoid}')  # vb too narrow to pick up veg cells
             igo_lui = -9999
         curs.execute(f'UPDATE IGOAttributes SET LUI = {igo_lui} WHERE IGOID = {igoid}')
 
