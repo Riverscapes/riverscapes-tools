@@ -22,7 +22,7 @@ from rscommons.vector_ops import copy_feature_class, get_geometry_unary_union
 from rscommons.database import create_database, SQLiteCon
 from rscommons.copy_features import copy_features_fields
 from rscommons.util import parse_metadata, pretty_duration
-from rscommons.moving_window import get_moving_windows
+from rscommons.moving_window import get_moving_windows, moving_window_dgo_ids
 from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions, raster_resolution_meta
 
 from rcat.lib.veg_rasters import rcat_rasters
@@ -68,10 +68,12 @@ LayerTypes = {
     }),
     # 'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/intermediates.gpkg', {}),
     'OUTPUTS': RSLayer('RCAT Outputs', 'OUTPUTS', 'Geopackage', 'outputs/rcat.gpkg', {
-        'GEOM_POINTS': RSLayer('Anthropogenic IGO Point Geometry', 'ANTHRO_GEOM_POINTS', 'Vector', 'IGOGeometry'),
-        'IGO': RSLayer('Anthropogenic Output Points', 'ANTRHO_POINTS', 'Vector', 'vwIgos'),
-        'GEOM_LINES': RSLayer('Anthropogenic Reach Geometry', 'ANTHRO_GEOM_LINES', 'Vector', 'ReachGeometry'),
-        'REACHES': RSLayer('Anthropogenic Output Lines', 'ANTHRO_LINES', 'Vector', 'vwReaches')
+        'GEOM_POINTS': RSLayer('RCAT IGO Point Geometry', 'RCAT_GEOM_POINTS', 'Vector', 'IGOGeometry'),
+        'IGO': RSLayer('RCAT Output Points', 'RCAT_POINTS', 'Vector', 'vwIgos'),
+        'GEOM_LINES': RSLayer('RCAT Reach Geometry', 'RCAT_GEOM_LINES', 'Vector', 'ReachGeometry'),
+        'REACHES': RSLayer('RCAT Output Lines', 'RCAT_LINES', 'Vector', 'vwReaches'),
+        'GEOM_DGOS': RSLayer('RCAT Output DGOs Polygons', 'RCAT_GEOM_DGOS', 'Vector', 'DGOGeometry'),
+        'DGOS': RSLayer('RCAT Output DGOs', 'RCAT_DGOS', 'Vector', 'vwDgos')
     }),
     'REPORT': RSLayer('RCAT Report', 'REPORT', 'HTMLFile', 'outputs/rcat.html')
 }
@@ -133,11 +135,20 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
         copy_feature_class(src_layers[input_key], input_layers[input_key], cfg.OUTPUT_EPSG)
 
     # Create the output feature class fields. Only those listed here will get copied from the source.
-    with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['GEOM_POINTS'].rel_path, delete_dataset=True) as out_lyr:
+    with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['GEOM_POINTS'].rel_path, write=True) as out_lyr:
         out_lyr.create_layer(ogr.wkbMultiPoint, epsg=cfg.OUTPUT_EPSG, options=['FID=IGOID'], fields={
             'LevelPathI': ogr.OFTReal,
             'seg_distance': ogr.OFTReal,
             'stream_size': ogr.OFTInteger,
+            'LUI': ogr.OFTReal
+        })
+
+    with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['GEOM_DGOS'].rel_path, write=True) as out_lyr:
+        out_lyr.create_layer(ogr.wkbMultiPolygon, epsg=cfg.OUTPUT_EPSG, options=['FID=DGOID'], fields={
+            'LevelPathI': ogr.OFTReal,
+            'seg_distance': ogr.OFTReal,
+            'centerline_length': ogr.OFTInteger,
+            'segment_area': ogr.OFTReal,
             'LUI': ogr.OFTReal
         })
 
@@ -161,12 +172,15 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
 
     igo_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['GEOM_POINTS'].rel_path)
     reach_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['GEOM_LINES'].rel_path)
+    dgo_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['GEOM_DGOS'].rel_path)
     copy_features_fields(input_layers['ANTHROIGO'], igo_geom_path, epsg=cfg.OUTPUT_EPSG)
     copy_features_fields(input_layers['ANTHROREACHES'], reach_geom_path, epsg=cfg.OUTPUT_EPSG)
+    copy_features_fields(input_layers['ANTHRODGO'], dgo_geom_path, epsg=cfg.OUTPUT_EPSG)
 
     with SQLiteCon(outputs_gpkg_path) as database:
         database.curs.execute('INSERT INTO ReachAttributes (ReachID, ReachCode, WatershedID, StreamName, NHDPlusID, iPC_LU) SELECT ReachID, ReachCode, WatershedID, StreamName, NHDPlusID, iPC_LU FROM ReachGeometry')
         database.curs.execute('INSERT INTO IGOAttributes (IGOID, LevelPathI, seg_distance, stream_size, LUI) SELECT IGOID, LevelPathI, seg_distance, stream_size, LUI FROM IGOGeometry')
+        database.curs.execute('INSERT INTO DGOAttributes (DGOID, LevelPathI, seg_distance, centerline_length, segment_area, LUI) SELECT DGOID, LevelPathI, seg_distance, centerline_length, segment_area, LUI FROM DGOGeometry')
 
         # Register vwReaches as a feature layer as well as its geometry column
         database.curs.execute("""INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id)
@@ -181,9 +195,17 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
         database.curs.execute("""INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m)
             SELECT 'vwIgos', column_name, geometry_type_name, srs_id, z, m FROM gpkg_geometry_columns WHERE table_name = 'IGOGeometry'""")
 
+        database.curs.execute("""INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id)
+            SELECT 'vwDgos', data_type, 'dgos', min_x, min_y, max_x, max_y, srs_id FROM gpkg_contents WHERE table_name = 'DGOGeometry'""")
+
+        database.curs.execute("""INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m)
+            SELECT 'vwDgos', column_name, geometry_type_name, srs_id, z, m FROM gpkg_geometry_columns WHERE table_name = 'DGOGeometry'""")
+
         database.conn.execute('CREATE INDEX ix_igo_levelpath on IGOGeometry(LevelPathI)')
         database.conn.execute('CREATE INDEX ix_igo_segdist on IGOGeometry(seg_distance)')
         database.conn.execute('CREATE INDEX ix_igo_size on IGOGeometry(stream_size)')
+        database.conn.execute('CREATE INDEX ix_dgo_levelpath on DGOGeometry(LevelPathI)')
+        database.conn.execute('CREATE INDEX ix_dgo_segdist on DGOGeometry(seg_distance)')
 
         database.conn.commit()
 
@@ -211,18 +233,19 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
          RSMeta('Very Large Search Window', str(distance_in['3']), RSMetaTypes.INT, locked=True),
          RSMeta('Huge Search Window', str(distance_in['4']), RSMetaTypes.INT, locked=True)])
 
-    windows = get_moving_windows(igo_geom_path, input_layers['ANTHRODGO'], levelpathsin, distance_in)
-    with SQLiteCon(outputs_gpkg_path) as database:
-        for fid, windowvals in windows.items():
-            database.curs.execute(f'UPDATE IGOAttributes SET window_area = {windowvals[2]} WHERE IGOID = {fid}')
-            database.curs.execute(f'UPDATE IGOAttributes SET window_length = {windowvals[1]} WHERE IGOID = {fid}')
-        database.conn.commit()
-    log.info('removing large rivers from moving window polygons')
+    # windows = get_moving_windows(igo_geom_path, input_layers['ANTHRODGO'], levelpathsin, distance_in)
+    # with SQLiteCon(outputs_gpkg_path) as database:
+    #     for fid, windowvals in windows.items():
+    #         database.curs.execute(f'UPDATE IGOAttributes SET window_area = {windowvals[2]} WHERE IGOID = {fid}')
+    #         database.curs.execute(f'UPDATE IGOAttributes SET window_length = {windowvals[1]} WHERE IGOID = {fid}')
+    #     database.conn.commit()
+
+    # log.info('removing large rivers from moving window polygons')
     with rasterio.open(prj_existing_path) as veg_raster:
         gt = veg_raster.transform
         x_res = gt[0]
 
-    newwindows = {}
+    # newwindows = {}
 
     if flow_areas:
         with get_shp_or_gpkg(flow_areas) as flow_areas_lyr:
@@ -258,16 +281,34 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
     else:
         geom_waterbodies = None
 
-    for id, win in windows.items():
-        geom = win[0].buffer(x_res / 2)  # buffer by landfire resolution to make sure cells are captured in small streams
-        if geom_flow_areas is not None:
-            if geom.intersects(geom_flow_areas):
-                geom = geom.difference(geom_flow_areas)
-        if geom_waterbodies is not None:
-            if geom.intersects(geom_waterbodies):
-                geom = geom.difference(geom_waterbodies)
+    # for id, win in windows.items():
+    #     geom = win[0].buffer(x_res / 2)  # buffer by landfire resolution to make sure cells are captured in small streams
+    #     if geom_flow_areas is not None:
+    #         if geom.intersects(geom_flow_areas):
+    #             geom = geom.difference(geom_flow_areas)
+    #     if geom_waterbodies is not None:
+    #         if geom.intersects(geom_waterbodies):
+    #             geom = geom.difference(geom_waterbodies)
 
-        newwindows[id] = geom
+    #     newwindows[id] = geom
+
+    updated_dgo_geoms = {}
+    with GeopackageLayer(outputs_gpkg_path, 'DGOGeometry') as dgo_lyr:
+        for dgo_ftr, *_ in dgo_lyr.iterate_features('Clipping large rivers from DGO polygons'):
+            dgoid = dgo_ftr.GetFID()
+            dgo_ogr = dgo_ftr.GetGeometryRef()
+            dgo_geom = GeopackageLayer.ogr2shapely(dgo_ogr)
+            geom = dgo_geom.buffer(x_res / 2)  # buffer by landfire resolution to make sure cells are captured in small streams
+            if geom_flow_areas is not None:
+                if geom.intersects(geom_flow_areas):
+                    geom = geom.difference(geom_flow_areas)
+            if geom_waterbodies is not None:
+                if geom.intersects(geom_waterbodies):
+                    geom = geom.difference(geom_waterbodies)
+
+            updated_dgo_geoms[dgoid] = geom
+
+    windows = moving_window_dgo_ids(igo_geom_path, input_layers['ANTHRODGO'], levelpathsin, distance_in)
 
     # store dgos associated with reaches with large rivers removed
     rdgos = reach_dgos(os.path.join(outputs_gpkg_path, 'ReachGeometry'), input_layers['ANTHRODGO'],
@@ -301,9 +342,9 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
     int_raster_paths.append(prj_existing_path)
     int_raster_paths.append(prj_historic_path)
     for rast in int_raster_paths:
-        igo_vegetation(newwindows, rast, outputs_gpkg_path)
+        igo_vegetation(rast, updated_dgo_geoms, outputs_gpkg_path)
         vegetation_summary(outputs_gpkg_path, rdgos, rast)
-    igo_attributes(outputs_gpkg_path)
+    igo_attributes(outputs_gpkg_path, windows)
     reach_attributes(outputs_gpkg_path)
 
     # Calculate FIS for IGOs

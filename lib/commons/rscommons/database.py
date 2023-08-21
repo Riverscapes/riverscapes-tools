@@ -243,6 +243,20 @@ def load_igo_attributes(database, fields, where_clause=None):
     return igos
 
 
+def load_dgo_attributes(database, fields, where_clause=None):
+
+    conn = sqlite3.connect(database)
+    conn.row_factory = dict_factory
+    curs = conn.execute('SELECT DGOID, {} FROM vwDgos {}'.format(','.join(fields), 'WHERE {}'.format(where_clause) if where_clause else ''))
+    dgos = {}
+    for row in curs.fetchall():
+        dgos[row['DGOID']] = {}
+        for field in fields:
+            dgos[row['DGOID']][field] = row[field]
+
+    return dgos
+
+
 def write_db_attributes(database, reaches, fields, set_null_first=True, summarize=True):
 
     if len(reaches) < 1:
@@ -288,6 +302,32 @@ def write_db_igo_attributes(database, features, fields, set_null_first=True, sum
         results[-1].append(reachid)
 
     sql = 'UPDATE IGOAttributes SET {} WHERE IGOID = ?'.format(','.join(['{}=?'.format(field) for field in fields]))
+    curs.executemany(sql, results)
+    conn.commit()
+
+    if summarize is True:
+        [summarize_reaches(database, field) for field in fields]
+
+
+def write_db_dgo_attributes(database, features, fields, set_null_first=True, summarize=True):
+
+    if len(features) < 1:
+        return
+
+    conn = sqlite3.connect(database)
+    conn.execute('pragma foreign_keys=ON')
+    curs = conn.cursor()
+
+    # Optionally clear all the values in the fields first
+    if set_null_first is True:
+        [curs.execute('UPDATE DGOAttributes SET {} = NULL'.format(field)) for field in fields]
+
+    results = []
+    for reachid, values in features.items():
+        results.append([values[field] if field in values else None for field in fields])
+        results[-1].append(reachid)
+
+    sql = 'UPDATE DGOAttributes SET {} WHERE DGOID = ?'.format(','.join(['{}=?'.format(field) for field in fields]))
     curs.executemany(sql, results)
     conn.commit()
 

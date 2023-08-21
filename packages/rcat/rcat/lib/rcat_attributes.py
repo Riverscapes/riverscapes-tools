@@ -5,136 +5,269 @@ import sqlite3
 from rscommons import Logger
 
 
-def igo_attributes(database: str):
+def igo_attributes(database: str, windows: dict):
 
     log = Logger('RCAT IGO Attributes')
 
     conn = sqlite3.connect(database)
     curs = conn.cursor()
 
+    curs.execute('SELECT DGOID, segment_area FROM DGOAttributes')
+    dgoareas = {row[0]: row[1] for row in curs.fetchall()}
+
     # fp accessibility
-    curs.execute('SELECT IGOFPAccess.IGOID, CellCount, TotCells FROM IGOFPAccess'
-                 ' INNER JOIN (SELECT IGOID, SUM(CellCount) AS TotCells FROM IGOFPAccess GROUP BY IGOID) AS CC ON IGOFPAccess.IGOID=CC.IGOID'
+    curs.execute('SELECT DGOFPAccess.DGOID, CellCount, TotCells FROM DGOFPAccess'
+                 ' INNER JOIN (SELECT DGOID, SUM(CellCount) AS TotCells FROM DGOFPAccess GROUP BY DGOID) AS CC ON DGOFPAccess.DGOID=CC.DGOID'
                  ' WHERE AccessVal = 1')
     igoaccess = {row[0]: row[1] / row[2] for row in curs.fetchall()}
-    for igoid, accessval in igoaccess.items():
+    for dgoid, val in igoaccess.items():
+        curs.execute(f'UPDATE DGOAttributes SET FloodplainAccess = {val} WHERE DGOID = {dgoid}')
+    curs.execute('UPDATE DGOAttributes SET FloodplainAccess = 0 WHERE FloodplainAccess IS NULL')
+    for igoid, dgoids in windows.items():
+        accessvals = []
+        area = []
+        for dgoid in dgoids:
+            try:
+                accessvals.append(igoaccess[dgoid])
+            except KeyError:
+                accessvals.append(0)
+            area.append(dgoareas[dgoid])
+        accessval = sum([accessvals[i] * (area[i] / sum(area)) for i in range(len(accessvals))])
         curs.execute(f'UPDATE IGOAttributes SET FloodplainAccess = {accessval} WHERE IGOID = {igoid}')
     curs.execute('UPDATE IGOAttributes SET FloodplainAccess = 0 WHERE FloodplainAccess IS NULL')
 
+    # for igoid, accessval in igoaccess.items():
+    #     curs.execute(f'UPDATE IGOAttributes SET FloodplainAccess = {accessval} WHERE IGOID = {igoid}')
+    # curs.execute('UPDATE IGOAttributes SET FloodplainAccess = 0 WHERE FloodplainAccess IS NULL')
+
     # from conifer
-    curs.execute('SELECT IGOConv.IGOID, ConvCellCount, TotCells FROM IGOConv'
-                 ' INNER JOIN (SELECT IGOID, SUM(ConvCellCount) AS TotCells FROM IGOConv GROUP BY IGOID) AS CC ON IGOConv.IGOID=CC.IGOID'
+    curs.execute('SELECT DGOConv.DGOID, ConvCellCount, TotCells FROM DGOConv'
+                 ' INNER JOIN (SELECT DGOID, SUM(ConvCellCount) AS TotCells FROM DGOConv GROUP BY DGOID) AS CC ON DGOConv.DGOID=CC.DGOID'
                  ' WHERE ConvVal = -80')
     from_conifer = {row[0]: row[1] / row[2] for row in curs.fetchall()}
-    for igoid, fc in from_conifer.items():
+    for dgoid, val in from_conifer.items():
+        curs.execute(f'UPDATE DGOAttributes SET FromConifer = {val} WHERE DGOID = {dgoid}')
+    curs.execute('UPDATE DGOAttributes SET FromConifer = 0 WHERE FromConifer IS NULL')
+    for igoid, dgoids in windows.items():
+        fcvals = []
+        area = []
+        for dgoid in dgoids:
+            try:
+                fcvals.append(from_conifer[dgoid])
+            except KeyError:
+                fcvals.append(0)
+            area.append(dgoareas[dgoid])
+        fc = sum([fcvals[i] * (area[i] / sum(area)) for i in range(len(fcvals))])
         curs.execute(f'UPDATE IGOAttributes SET FromConifer = {fc} WHERE IGOID = {igoid}')
     curs.execute('UPDATE IGOAttributes SET FromConifer = 0 WHERE FromConifer IS NULL')
 
     # from devegetated
-    curs.execute('SELECT IGOConv.IGOID, ConvCellCount, TotCells FROM IGOConv'
-                 ' INNER JOIN (SELECT IGOID, SUM(ConvCellCount) AS TotCells FROM IGOConv GROUP BY IGOID) AS CC ON IGOConv.IGOID=CC.IGOID'
+    curs.execute('SELECT DGOConv.DGOID, ConvCellCount, TotCells FROM DGOConv'
+                 ' INNER JOIN (SELECT DGOID, SUM(ConvCellCount) AS TotCells FROM DGOConv GROUP BY DGOID) AS CC ON DGOConv.DGOID=CC.DGOID'
                  ' WHERE ConvVal = -60')
     from_deveg = {row[0]: row[1] / row[2] for row in curs.fetchall()}
-    for igoid, deveg in from_deveg.items():
+    for dgoid, val in from_deveg.items():
+        curs.execute(f'UPDATE DGOAttributes SET FromDevegetated = {val} WHERE DGOID = {dgoid}')
+    curs.execute('UPDATE DGOAttributes SET FromDevegetated = 0 WHERE FromDevegetated IS NULL')
+    for igoid, dgoids in windows.items():
+        devegvals = []
+        area = []
+        for dgoid in dgoids:
+            try:
+                devegvals.append(from_deveg[dgoid])
+            except KeyError:
+                devegvals.append(0)
+            area.append(dgoareas[dgoid])
+        deveg = sum([devegvals[i] * (area[i] / sum(area)) for i in range(len(devegvals))])
         curs.execute(f'UPDATE IGOAttributes SET FromDevegetated = {deveg} WHERE IGOID = {igoid}')
     curs.execute('UPDATE IGOAttributes SET FromDevegetated = 0 WHERE FromDevegetated IS NULL')
 
     # from grass shrubland
-    curs.execute('SELECT IGOConv.IGOID, ConvCellCount, TotCells FROM IGOConv'
-                 ' INNER JOIN (SELECT IGOID, SUM(ConvCellCount) AS TotCells FROM IGOConv GROUP BY IGOID) AS CC ON IGOConv.IGOID=CC.IGOID'
+    curs.execute('SELECT DGOConv.DGOID, ConvCellCount, TotCells FROM DGOConv'
+                 ' INNER JOIN (SELECT DGOID, SUM(ConvCellCount) AS TotCells FROM DGOConv GROUP BY DGOID) AS CC ON DGOConv.DGOID=CC.DGOID'
                  ' WHERE ConvVal = -50')
     from_grassshrub = {row[0]: row[1] / row[2] for row in curs.fetchall()}
-    for igoid, gs in from_grassshrub.items():
+    for dgoid, val in from_grassshrub.items():
+        curs.execute(f'UPDATE DGOAttributes SET FromGrassShrubland = {val} WHERE DGOID = {dgoid}')
+    curs.execute('UPDATE DGOAttributes SET FromGrassShrubland = 0 WHERE FromGrassShrubland IS NULL')
+    for igoid, dgoids in windows.items():
+        gsvals = []
+        area = []
+        for dgoid in dgoids:
+            try:
+                gsvals.append(from_grassshrub[dgoid])
+            except KeyError:
+                gsvals.append(0)
+            area.append(dgoareas[dgoid])
+        gs = sum([gsvals[i] * (area[i] / sum(area)) for i in range(len(gsvals))])
         curs.execute(f'UPDATE IGOAttributes SET FromGrassShrubland = {gs} WHERE IGOID = {igoid}')
     curs.execute('UPDATE IGOAttributes SET FromGrassShrubland = 0 WHERE FromGrassShrubland IS NULL')
 
-    # from deciduous
-    # curs.execute('SELECT IGOConv.IGOID, ConvCellCount, TotCells FROM IGOConv'
-    #              ' INNER JOIN (SELECT IGOID, SUM(ConvCellCount) AS TotCells FROM IGOConv GROUP BY IGOID) AS CC ON IGOConv.IGOID=CC.IGOID'
-    #              ' WHERE ConvVal = -35')
-    # from_decid = {row[0]: row[1] / row[2] for row in curs.fetchall()}
-    # for igoid, decid in from_decid.items():
-    #     conn.execute(f'UPDATE IGOAttributes SET FromDeciduous = {decid} WHERE IGOID = {igoid}')
-    # curs.execute('UPDATE IGOAttributes SET FromDeciduous = 0 WHERE FromDeciduous IS NULL')
-
     # no change
-    curs.execute('SELECT IGOConv.IGOID, ConvCellCount, TotCells FROM IGOConv'
-                 ' INNER JOIN (SELECT IGOID, SUM(ConvCellCount) AS TotCells FROM IGOConv GROUP BY IGOID) AS CC ON IGOConv.IGOID=CC.IGOID'
+    curs.execute('SELECT DGOConv.DGOID, ConvCellCount, TotCells FROM DGOConv'
+                 ' INNER JOIN (SELECT DGOID, SUM(ConvCellCount) AS TotCells FROM DGOConv GROUP BY DGOID) AS CC ON DGOConv.DGOID=CC.DGOID'
                  ' WHERE ConvVal = 0')
     no_change = {row[0]: row[1] / row[2] for row in curs.fetchall()}
-    for igoid, nc in no_change.items():
+    for dgoid, val in no_change.items():
+        curs.execute(f'UPDATE DGOAttributes SET NoChange = {val} WHERE DGOID = {dgoid}')
+    curs.execute('UPDATE DGOAttributes SET NoChange = 0 WHERE NoChange IS NULL')
+    for igoid, dgoids in windows.items():
+        ncvals = []
+        area = []
+        for dgoid in dgoids:
+            try:
+                ncvals.append(no_change[dgoid])
+            except KeyError:
+                ncvals.append(0)
+            area.append(dgoareas[dgoid])
+        nc = sum([ncvals[i] * (area[i] / sum(area)) for i in range(len(ncvals))])
         curs.execute(f'UPDATE IGOAttributes SET NoChange = {nc} WHERE IGOID = {igoid}')
     curs.execute('UPDATE IGOAttributes SET NoChange = 0 WHERE NoChange IS NULL')
 
-    # deciduous
-    # curs.execute('SELECT IGOConv.IGOID, ConvCellCount, TotCells FROM IGOConv'
-    #              ' INNER JOIN (SELECT IGOID, SUM(ConvCellCount) AS TotCells FROM IGOConv GROUP BY IGOID) AS CC ON IGOConv.IGOID=CC.IGOID'
-    #              ' WHERE ConvVal = 35')
-    # deciduous = {row[0]: row[1] / row[2] for row in curs.fetchall()}
-    # for igoid, decid in deciduous.items():
-    #     conn.execute(f'UPDATE IGOAttributes SET Deciduous = {decid} WHERE IGOID = {igoid}')
-    # curs.execute('UPDATE IGOAttributes SET Deciduous = 0 WHERE Deciduous IS NULL')
-
     # grass shrubland
-    curs.execute('SELECT IGOConv.IGOID, ConvCellCount, TotCells FROM IGOConv'
-                 ' INNER JOIN (SELECT IGOID, SUM(ConvCellCount) AS TotCells FROM IGOConv GROUP BY IGOID) AS CC ON IGOConv.IGOID=CC.IGOID'
+    curs.execute('SELECT DGOConv.DGOID, ConvCellCount, TotCells FROM DGOConv'
+                 ' INNER JOIN (SELECT DGOID, SUM(ConvCellCount) AS TotCells FROM DGOConv GROUP BY DGOID) AS CC ON DGOConv.DGOID=CC.DGOID'
                  ' WHERE ConvVal = 50')
     grassshrub = {row[0]: row[1] / row[2] for row in curs.fetchall()}
-    for igoid, gs in grassshrub.items():
+    for dgoid, val in grassshrub.items():
+        curs.execute(f'UPDATE DGOAttributes SET GrassShrubland = {val} WHERE DGOID = {dgoid}')
+    curs.execute('UPDATE DGOAttributes SET GrassShrubland = 0 WHERE GrassShrubland IS NULL')
+    for igoid, dgoids in windows.items():
+        gsvals = []
+        area = []
+        for dgoid in dgoids:
+            try:
+                gsvals.append(grassshrub[dgoid])
+            except KeyError:
+                gsvals.append(0)
+            area.append(dgoareas[dgoid])
+        gs = sum([gsvals[i] * (area[i] / sum(area)) for i in range(len(gsvals))])
         curs.execute(f'UPDATE IGOAttributes SET GrassShrubland = {gs} WHERE IGOID = {igoid}')
     curs.execute('UPDATE IGOAttributes SET GrassShrubland = 0 WHERE GrassShrubland IS NULL')
 
     # devegetation
-    curs.execute('SELECT IGOConv.IGOID, ConvCellCount, TotCells FROM IGOConv'
-                 ' INNER JOIN (SELECT IGOID, SUM(ConvCellCount) AS TotCells FROM IGOConv GROUP BY IGOID) AS CC ON IGOConv.IGOID=CC.IGOID'
+    curs.execute('SELECT DGOConv.DGOID, ConvCellCount, TotCells FROM DGOConv'
+                 ' INNER JOIN (SELECT DGOID, SUM(ConvCellCount) AS TotCells FROM DGOConv GROUP BY DGOID) AS CC ON DGOConv.DGOID=CC.DGOID'
                  ' WHERE ConvVal = 60')
     devegetation = {row[0]: row[1] / row[2] for row in curs.fetchall()}
-    for igoid, deveg in devegetation.items():
+    for dgoid, val in devegetation.items():
+        curs.execute(f'UPDATE DGOAttributes SET Devegetation = {val} WHERE DGOID = {dgoid}')
+    curs.execute('UPDATE DGOAttributes SET Devegetation = 0 WHERE Devegetation IS NULL')
+    for igoid, dgoids in windows.items():
+        devegvals = []
+        area = []
+        for dgoid in dgoids:
+            try:
+                devegvals.append(devegetation[dgoid])
+            except KeyError:
+                devegvals.append(0)
+            area.append(dgoareas[dgoid])
+        deveg = sum([devegvals[i] * (area[i] / sum(area)) for i in range(len(devegvals))])
         curs.execute(f'UPDATE IGOAttributes SET Devegetation = {deveg} WHERE IGOID = {igoid}')
     curs.execute('UPDATE IGOAttributes SET Devegetation = 0 WHERE Devegetation IS NULL')
 
     # Conifer
-    curs.execute('SELECT IGOConv.IGOID, ConvCellCount, TotCells FROM IGOConv'
-                 ' INNER JOIN (SELECT IGOID, SUM(ConvCellCount) AS TotCells FROM IGOConv GROUP BY IGOID) AS CC ON IGOConv.IGOID=CC.IGOID'
+    curs.execute('SELECT DGOConv.DGOID, ConvCellCount, TotCells FROM DGOConv'
+                 ' INNER JOIN (SELECT DGOID, SUM(ConvCellCount) AS TotCells FROM DGOConv GROUP BY DGOID) AS CC ON DGOConv.DGOID=CC.DGOID'
                  ' WHERE ConvVal = 80')
     conifer = {row[0]: row[1] / row[2] for row in curs.fetchall()}
-    for igoid, con in conifer.items():
+    for dgoid, val in conifer.items():
+        curs.execute(f'UPDATE DGOAttributes SET Conifer = {val} WHERE DGOID = {dgoid}')
+    curs.execute('UPDATE DGOAttributes SET Conifer = 0 WHERE Conifer IS NULL')
+    for igoid, dgoids in windows.items():
+        convals = []
+        area = []
+        for dgoid in dgoids:
+            try:
+                convals.append(conifer[dgoid])
+            except KeyError:
+                convals.append(0)
+            area.append(dgoareas[dgoid])
+        con = sum([convals[i] * (area[i] / sum(area)) for i in range(len(convals))])
         curs.execute(f'UPDATE IGOAttributes SET Conifer = {con} WHERE IGOID = {igoid}')
     curs.execute('UPDATE IGOAttributes SET Conifer = 0 WHERE Conifer IS NULL')
 
     # Invasive
-    curs.execute('SELECT IGOConv.IGOID, ConvCellCount, TotCells FROM IGOConv'
-                 ' INNER JOIN (SELECT IGOID, SUM(ConvCellCount) AS TotCells FROM IGOConv GROUP BY IGOID) AS CC ON IGOConv.IGOID=CC.IGOID'
+    curs.execute('SELECT DGOConv.DGOID, ConvCellCount, TotCells FROM DGOConv'
+                 ' INNER JOIN (SELECT DGOID, SUM(ConvCellCount) AS TotCells FROM DGOConv GROUP BY DGOID) AS CC ON DGOConv.DGOID=CC.DGOID'
                  ' WHERE ConvVal = 97')
     invasive = {row[0]: row[1] / row[2] for row in curs.fetchall()}
-    for igoid, inv in invasive.items():
+    for dgoid, val in invasive.items():
+        curs.execute(f'UPDATE DGOAttributes SET Invasive = {val} WHERE DGOID = {dgoid}')
+    curs.execute('UPDATE DGOAttributes SET Invasive = 0 WHERE Invasive IS NULL')
+    for igoid, dgoids in windows.items():
+        invvals = []
+        area = []
+        for dgoid in dgoids:
+            try:
+                invvals.append(invasive[dgoid])
+            except KeyError:
+                invvals.append(0)
+            area.append(dgoareas[dgoid])
+        inv = sum([invvals[i] * (area[i] / sum(area)) for i in range(len(invvals))])
         curs.execute(f'UPDATE IGOAttributes SET Invasive = {inv} WHERE IGOID = {igoid}')
     curs.execute('UPDATE IGOAttributes SET Invasive = 0 WHERE Invasive IS NULL')
 
     # Development
-    curs.execute('SELECT IGOConv.IGOID, ConvCellCount, TotCells FROM IGOConv'
-                 ' INNER JOIN (SELECT IGOID, SUM(ConvCellCount) AS TotCells FROM IGOConv GROUP BY IGOID) AS CC ON IGOConv.IGOID=CC.IGOID'
+    curs.execute('SELECT DGOConv.DGOID, ConvCellCount, TotCells FROM DGOConv'
+                 ' INNER JOIN (SELECT DGOID, SUM(ConvCellCount) AS TotCells FROM DGOConv GROUP BY DGOID) AS CC ON DGOConv.DGOID=CC.DGOID'
                  ' WHERE ConvVal = 98')
     development = {row[0]: row[1] / row[2] for row in curs.fetchall()}
-    for igoid, dev in development.items():
+    for dgoid, val in development.items():
+        curs.execute(f'UPDATE DGOAttributes SET Development = {val} WHERE DGOID = {dgoid}')
+    curs.execute('UPDATE DGOAttributes SET Development = 0 WHERE Development IS NULL')
+    for igoid, dgoids in windows.items():
+        devvals = []
+        area = []
+        for dgoid in dgoids:
+            try:
+                devvals.append(development[dgoid])
+            except KeyError:
+                devvals.append(0)
+            area.append(dgoareas[dgoid])
+        dev = sum([devvals[i] * (area[i] / sum(area)) for i in range(len(devvals))])
         curs.execute(f'UPDATE IGOAttributes SET Development = {dev} WHERE IGOID = {igoid}')
     curs.execute('UPDATE IGOAttributes SET Development = 0 WHERE Development IS NULL')
 
     # Agriculture
-    curs.execute('SELECT IGOConv.IGOID, ConvCellCount, TotCells FROM IGOConv'
-                 ' INNER JOIN (SELECT IGOID, SUM(ConvCellCount) AS TotCells FROM IGOConv GROUP BY IGOID) AS CC ON IGOConv.IGOID=CC.IGOID'
+    curs.execute('SELECT DGOConv.DGOID, ConvCellCount, TotCells FROM DGOConv'
+                 ' INNER JOIN (SELECT DGOID, SUM(ConvCellCount) AS TotCells FROM DGOConv GROUP BY DGOID) AS CC ON DGOConv.DGOID=CC.DGOID'
                  ' WHERE ConvVal = 99')
     agriculture = {row[0]: row[1] / row[2] for row in curs.fetchall()}
-    for igoid, ag in agriculture.items():
+    for dgoid, val in agriculture.items():
+        curs.execute(f'UPDATE DGOAttributes SET Agriculture = {val} WHERE DGOID = {dgoid}')
+    curs.execute('UPDATE DGOAttributes SET Agriculture = 0 WHERE Agriculture IS NULL')
+    for igoid, dgoids in windows.items():
+        agvals = []
+        area = []
+        for dgoid in dgoids:
+            try:
+                agvals.append(agriculture[dgoid])
+            except KeyError:
+                agvals.append(0)
+            area.append(dgoareas[dgoid])
+        ag = sum([agvals[i] * (area[i] / sum(area)) for i in range(len(agvals))])
         curs.execute(f'UPDATE IGOAttributes SET Agriculture = {ag} WHERE IGOID = {igoid}')
     curs.execute('UPDATE IGOAttributes SET Agriculture = 0 WHERE Agriculture IS NULL')
 
     # Non Riparian
-    curs.execute('SELECT IGOConv.IGOID, NonRip, TotCells FROM IGOConv'
-                 ' INNER JOIN (SELECT IGOID, SUM(ConvCellCount) AS NonRip FROM IGOConv WHERE ConvVal NOT IN (-80, -60, -50, 0, 50, 60, 80, 97, 98, 99) GROUP BY IGOID) AS CC ON IGOConv.IGOID=CC.IGOID'
-                 ' INNER JOIN (SELECT IGOID, SUM(ConvCellCount) AS TotCells FROM IGOConv GROUP BY IGOID) AS CD ON IGOConv.IGOID=CD.IGOID')
+    curs.execute('SELECT DGOConv.DGOID, NonRip, TotCells FROM DGOConv'
+                 ' INNER JOIN (SELECT DGOID, SUM(ConvCellCount) AS NonRip FROM DGOConv WHERE ConvVal NOT IN (-80, -60, -50, 0, 50, 60, 80, 97, 98, 99) GROUP BY DGOID) AS CC ON DGOConv.DGOID=CC.DGOID'
+                 ' INNER JOIN (SELECT DGOID, SUM(ConvCellCount) AS TotCells FROM DGOConv GROUP BY DGOID) AS CD ON DGOConv.DGOID=CD.DGOID')
     nonrip = {row[0]: row[1] / row[2] for row in curs.fetchall()}
-    for igoid, nonr in nonrip.items():
+    for dgoid, val in nonrip.items():
+        curs.execute(f'UPDATE DGOAttributes SET NonRiparian = {val} WHERE DGOID = {dgoid}')
+    curs.execute('UPDATE DGOAttributes SET NonRiparian = 0 WHERE NonRiparian IS NULL')
+    for igoid, dgoids in windows.items():
+        nonrvals = []
+        area = []
+        for dgoid in dgoids:
+            try:
+                nonrvals.append(nonrip[dgoid])
+            except KeyError:
+                nonrvals.append(0)
+            area.append(dgoareas[dgoid])
+        nonr = sum([nonrvals[i] * (area[i] / sum(area)) for i in range(len(nonrvals))])
         curs.execute(f'UPDATE IGOAttributes SET NonRiparian = {nonr} WHERE IGOID = {igoid}')
     curs.execute('UPDATE IGOAttributes SET NonRiparian = 0 WHERE NonRiparian IS NULL')
 
@@ -176,22 +309,46 @@ def igo_attributes(database: str):
         curs.execute(f'UPDATE IGOAttributes SET ConversionID = {convid[0]}, LevelID = {convid[1]} WHERE IGOID = {igoid}')
 
     # existing riparian mean
-    curs.execute('SELECT IGOExRiparian.IGOID, ExRipCellCount, TotalCells FROM IGOExRiparian'
-                 ' INNER JOIN (SELECT IGOID, SUM(ExRipCellCount) AS TotalCells FROM IGOExRiparian GROUP BY IGOID) AS RS ON IGOExRiparian.IGOID = RS.IGOID'
+    curs.execute('SELECT DGOExRiparian.DGOID, ExRipCellCount, TotalCells FROM DGOExRiparian'
+                 ' INNER JOIN (SELECT DGOID, SUM(ExRipCellCount) AS TotalCells FROM DGOExRiparian GROUP BY DGOID) AS RS ON DGOExRiparian.DGOID = RS.DGOID'
                  ' WHERE ExRipVal = 1')
 
     ex_rip = {row[0]: row[1] / row[2] for row in curs.fetchall()}
-    for igoid, ex_rip_mean in ex_rip.items():
+    for dgoid, val in ex_rip.items():
+        curs.execute(f'UPDATE DGOAttributes SET ExistingRiparianMean = {val} WHERE DGOID = {dgoid}')
+    curs.execute('UPDATE DGOAttributes SET ExistingRiparianMean = 0 WHERE ExistingRiparianMean IS NULL')
+    for igoid, dgoids in windows.items():
+        ex_rip_vals = []
+        area = []
+        for dgoid in dgoids:
+            try:
+                ex_rip_vals.append(ex_rip[dgoid])
+            except KeyError:
+                ex_rip_vals.append(0)
+            area.append(dgoareas[dgoid])
+        ex_rip_mean = sum([ex_rip_vals[i] * (area[i] / sum(area)) for i in range(len(ex_rip_vals))])
         curs.execute(f'UPDATE IGOAttributes SET ExistingRiparianMean = {ex_rip_mean} WHERE IGOID = {igoid}')
     curs.execute('UPDATE IGOAttributes SET ExistingRiparianMean = 0 WHERE ExistingRiparianMean IS NULL')
 
     # historic riparian mean
-    curs.execute('SELECT IGOHRiparian.IGOID, HRipCellCount, TotalCells FROM IGOHRiparian'
-                 ' INNER JOIN (SELECT IGOID, SUM(HRipCellCount) AS TotalCells FROM IGOHRiparian GROUP BY IGOID) AS RS ON IGOHRiparian.IGOID = RS.IGOID'
+    curs.execute('SELECT DGOHRiparian.DGOID, HRipCellCount, TotalCells FROM DGOHRiparian'
+                 ' INNER JOIN (SELECT DGOID, SUM(HRipCellCount) AS TotalCells FROM DGOHRiparian GROUP BY DGOID) AS RS ON DGOHRiparian.DGOID = RS.DGOID'
                  ' WHERE HRipVal = 1')
 
     h_rip = {row[0]: row[1] / row[2] for row in curs.fetchall()}
-    for igoid, h_rip_mean in h_rip.items():
+    for dgoid, val in h_rip.items():
+        curs.execute(f'UPDATE DGOAttributes SET HistoricRiparianMean = {val} WHERE DGOID = {dgoid}')
+    curs.execute('UPDATE DGOAttributes SET HistoricRiparianMean = 0 WHERE HistoricRiparianMean IS NULL')
+    for igoid, dgoids in windows.items():
+        h_rip_vals = []
+        area = []
+        for dgoid in dgoids:
+            try:
+                h_rip_vals.append(h_rip[dgoid])
+            except KeyError:
+                h_rip_vals.append(0)
+            area.append(dgoareas[dgoid])
+        h_rip_mean = sum([h_rip_vals[i] * (area[i] / sum(area)) for i in range(len(h_rip_vals))])
         curs.execute(f'UPDATE IGOAttributes SET HistoricRiparianMean = {h_rip_mean} WHERE IGOID = {igoid}')
     curs.execute('UPDATE IGOAttributes SET HistoricRiparianMean = 0 WHERE HistoricRiparianMean IS NULL')
 
@@ -218,6 +375,14 @@ def igo_attributes(database: str):
             else:
                 depid = 4
             curs.execute(f'UPDATE IGOAttributes SET RiparianDeparture = {val[0]/val[1]}, RiparianDepartureID = {depid} WHERE IGOID = {igoid}')
+
+    curs.execute('SELECT DGOAttributes.DGOID, ExistingRiparianMean, HistoricRiparianMean FROM DGOAttributes')
+    dep_dgo = {row[0]: [row[1], row[2]] for row in curs.fetchall()}
+    for dgoid, val in dep_dgo.items():
+        if val[1] == 0:
+            curs.execute(f'UPDATE DGOAttributes SET RiparianDeparture = 1 WHERE DGOID = {dgoid}')
+        else:
+            curs.execute(f'UPDATE DGOAttributes SET RiparianDeparture = {val[0]/val[1]} WHERE DGOID = {dgoid}')
 
     # native riparian
     # curs.execute('SELECT IGOAttributes.IGOID, ExistingRiparianMean - (ExInv / TotCells), HistoricRiparianMean FROM IGOAttributes'
@@ -469,9 +634,3 @@ def reach_attributes(database: str):
 
     conn.commit()
     log.info('Completed riparian departure and conversion calculations for reaches')
-
-
-# db = '/mnt/c/Users/jordang/Documents/Riverscapes/data/rcat/16010202/outputs/rcat.gpkg'
-
-# igo_attributes(db)
-# reach_attributes(db)
