@@ -36,6 +36,10 @@ def igo_attributes(database: str, windows: dict):
         curs.execute(f'UPDATE IGOAttributes SET FloodplainAccess = {accessval} WHERE IGOID = {igoid}')
     curs.execute('UPDATE IGOAttributes SET FloodplainAccess = 0 WHERE FloodplainAccess IS NULL')
 
+    # for igoid, accessval in igoaccess.items():
+    #     curs.execute(f'UPDATE IGOAttributes SET FloodplainAccess = {accessval} WHERE IGOID = {igoid}')
+    # curs.execute('UPDATE IGOAttributes SET FloodplainAccess = 0 WHERE FloodplainAccess IS NULL')
+
     # from conifer
     curs.execute('SELECT DGOConv.DGOID, ConvCellCount, TotCells FROM DGOConv'
                  ' INNER JOIN (SELECT DGOID, SUM(ConvCellCount) AS TotCells FROM DGOConv GROUP BY DGOID) AS CC ON DGOConv.DGOID=CC.DGOID'
@@ -377,6 +381,14 @@ def igo_attributes(database: str, windows: dict):
             else:
                 depid = 1
                 curs.execute(f'UPDATE IGOAttributes SET RiparianDeparture = 1, RiparianDepartureID = {depid} WHERE IGOID = {igoid}')
+
+    curs.execute('SELECT DGOAttributes.DGOID, ExistingRiparianMean, HistoricRiparianMean FROM DGOAttributes')
+    dep_dgo = {row[0]: [row[1], row[2]] for row in curs.fetchall()}
+    for dgoid, val in dep_dgo.items():
+        if val[1] == 0:
+            curs.execute(f'UPDATE DGOAttributes SET RiparianDeparture = 1 WHERE DGOID = {dgoid}')
+        else:
+            curs.execute(f'UPDATE DGOAttributes SET RiparianDeparture = {val[0]/val[1]} WHERE DGOID = {dgoid}')
 
     curs.execute('SELECT DGOAttributes.DGOID, ExistingRiparianMean, HistoricRiparianMean FROM DGOAttributes')
     dep_dgo = {row[0]: [row[1], row[2]] for row in curs.fetchall()}
