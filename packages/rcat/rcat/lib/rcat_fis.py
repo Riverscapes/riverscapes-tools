@@ -9,7 +9,7 @@ import argparse
 import numpy as np
 import skfuzzy as fuzz
 from skfuzzy import control as ctrl
-from rscommons.database import load_attributes, load_igo_attributes, write_db_attributes, write_db_igo_attributes
+from rscommons.database import load_attributes, load_igo_attributes, load_dgo_attributes, write_db_attributes, write_db_igo_attributes, write_db_dgo_attributes
 from rscommons import Logger, ProgressBar, dotenv
 
 
@@ -29,6 +29,9 @@ def rcat_fis(database: str, igos: bool):
         features = load_igo_attributes(database, fields, ' AND '.join(['({} IS NOT NULL)'.format(f) for f in fields]))
         calculate_fis(features, igos)
         write_db_igo_attributes(database, features, ['Condition'], summarize=False)
+        dgo_features = load_dgo_attributes(database, fields, ' AND '.join(['({} IS NOT NULL)'.format(f) for f in fields]))
+        calculate_fis(dgo_features, igos)
+        write_db_dgo_attributes(database, dgo_features, ['Condition'], summarize=False)
     else:
         fields = ['RiparianDeparture', 'iPC_LU', 'FloodplainAccess']
         features = load_attributes(database, fields, ' AND '.join(['({} IS NOT NULL)'.format(f) for f in fields]))

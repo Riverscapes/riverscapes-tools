@@ -16,12 +16,13 @@ from rscommons import Logger, VectorBase, dotenv
 from rscommons.database import SQLiteCon
 
 
-def igo_vegetation(windows: dict, raster: str, out_gpkg_path: str):  # , large_rivers: dict):
+def igo_vegetation(raster: str, dgo: dict, out_gpkg_path: str):  # , large_rivers: dict):
     """Summarizes vegetation raster datasets onto IGOs based on moving windows
 
     Arguments:
         windows (dict): dictionary with moving window features associated with each IGO
         raster (str): Path to raster dataset to summarize
+        dgo (dict): A dictionary where key = DGOID and val = shapely geometry of dgo with large rivers cut out
         out_gpkg_path: Path to the geopackage containing the tables to fill out
     """
 
@@ -37,17 +38,17 @@ def igo_vegetation(windows: dict, raster: str, out_gpkg_path: str):  # , large_r
     with rasterio.open(raster) as src:
 
         veg_counts = []
-        for igoid, window in windows.items():
+        for dgoid, dgo_geom in dgo.items():
             try:
-                raw_raster = mask(src, [window], crop=True)[0]
+                raw_raster = mask(src, [dgo_geom], crop=True)[0]
                 mask_raster = np.ma.masked_values(raw_raster, src.nodata)
 
                 for oldvalue in np.unique(mask_raster):
                     if oldvalue is not np.ma.masked:
                         cell_count = np.count_nonzero(mask_raster == oldvalue)
-                        veg_counts.append([igoid, int(oldvalue), cell_count * cell_area, cell_count])
+                        veg_counts.append([dgoid, int(oldvalue), cell_count * cell_area, cell_count])
             except Exception as ex:
-                log.warning(f'Error obtaining land cover raster values for igo ID {igoid}')
+                log.warning(f'Error obtaining land cover raster values for dgo ID {dgoid}')
                 log.warning(ex)
 
     with SQLiteCon(out_gpkg_path) as database:
@@ -58,22 +59,22 @@ def igo_vegetation(windows: dict, raster: str, out_gpkg_path: str):  # , large_r
             if int(veg_record[1]) != -9999:
                 try:
                     if os.path.basename(raster) in ['existing_veg.tif', 'historic_veg.tif']:
-                        database.conn.execute('INSERT INTO IGOVegetation (IGOID, VegetationID, Area, CellCount) VALUES (?, ?, ?, ?)', veg_record)
+                        database.conn.execute('INSERT INTO DGOVegetation (DGOID, VegetationID, Area, CellCount) VALUES (?, ?, ?, ?)', veg_record)
                     elif os.path.basename(raster) == 'ex_riparian.tif':
-                        database.conn.execute('INSERT INTO IGOExRiparian (IGOID, ExRipVal, ExRipArea, ExRipCellCount) VALUES (?, ?, ?, ?)', veg_record)
+                        database.conn.execute('INSERT INTO DGOExRiparian (DGOID, ExRipVal, ExRipArea, ExRipCellCount) VALUES (?, ?, ?, ?)', veg_record)
                     elif os.path.basename(raster) == 'hist_riparian.tif':
-                        database.conn.execute('INSERT INTO IGOHRiparian (IGOID, HRipVal, HRipArea, HRipCellCount) VALUES (?, ?, ?, ?)', veg_record)
+                        database.conn.execute('INSERT INTO DGOHRiparian (DGOID, HRipVal, HRipArea, HRipCellCount) VALUES (?, ?, ?, ?)', veg_record)
                     elif os.path.basename(raster) == 'ex_vegetated.tif':
-                        database.conn.execute('INSERT INTO IGOExVeg (IGOID, ExVegVal, ExVegArea, ExVegCellCount) VALUES (?, ?, ?, ?)', veg_record)
+                        database.conn.execute('INSERT INTO DGOExVeg (DGOID, ExVegVal, ExVegArea, ExVegCellCount) VALUES (?, ?, ?, ?)', veg_record)
                     elif os.path.basename(raster) == 'hist_vegetated.tif':
-                        database.conn.execute('INSERT INTO IGOHVeg (IGOID, HVegVal, HVegArea, HVegCellCount) VALUES (?, ?, ?, ?)', veg_record)
+                        database.conn.execute('INSERT INTO DGOHVeg (DGOID, HVegVal, HVegArea, HVegCellCount) VALUES (?, ?, ?, ?)', veg_record)
                     elif os.path.basename(raster) == 'conversion.tif':
-                        database.conn.execute('INSERT INTO IGOConv (IGOID, ConvVal, ConvArea, ConvCellCount) VALUES (?, ?, ?, ?)', veg_record)
+                        database.conn.execute('INSERT INTO DGOConv (DGOID, ConvVal, ConvArea, ConvCellCount) VALUES (?, ?, ?, ?)', veg_record)
                     elif os.path.basename(raster) == 'fp_access.tif':
-                        database.conn.execute('INSERT INTO IGOFPAccess (IGOID, AccessVal, CellArea, CellCount) VALUES (?, ?, ?, ?)', veg_record)
+                        database.conn.execute('INSERT INTO DGOFPAccess (DGOID, AccessVal, CellArea, CellCount) VALUES (?, ?, ?, ?)', veg_record)
                 except sqlite3.IntegrityError as err:
                     # THis is likely a constraint error.
-                    errstr = "Integrity Error when inserting records: IGOID: {} VegetationID: {}".format(veg_record[0], veg_record[1])
+                    errstr = "Integrity Error when inserting records: DGOID: {} VegetationID: {}".format(veg_record[0], veg_record[1])
                     log.error(errstr)
                     errs += 1
                 except sqlite3.Error as err:

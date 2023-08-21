@@ -68,50 +68,50 @@ CREATE TABLE VegClassification (
     PRIMARY KEY (Physiognomy, EpochID)
 );
 
-CREATE TABLE IGOVegetation (
-    IGOID INTEGER REFERENCES IGOAttributes ON DELETE CASCADE NOT NULL,
+CREATE TABLE DGOVegetation (
+    DGOID INTEGER REFERENCES DGOAttributes ON DELETE CASCADE NOT NULL,
     VegetationID INTEGER REFERENCES VegetationTypes (VegetationID) NOT NULL,
     Area REAL NOT NULL CONSTRAINT CHK_Area CHECK (Area > 0),
     CellCount REAL NOT NULL CONSTRAINT CHK_CellCount CHECK (CellCount > 0)
 );
 
-CREATE TABLE IGOExRiparian (
-    IGOID INTEGER REFERENCES IGOAttributes ON DELETE CASCADE NOT NULL,
+CREATE TABLE DGOExRiparian (
+    DGOID INTEGER REFERENCES DGOAttributes ON DELETE CASCADE NOT NULL,
     ExRipVal INTEGER,
     ExRipArea REAL NOT NULL CONSTRAINT CHK_ExRip_Area CHECK (ExRipArea > 0),
     ExRipCellCount REAL NOT NULL CONSTRAINT CHK_ExRip_CellCount CHECK (ExRipCellCount > 0)
 );
 
-CREATE TABLE IGOHRiparian (
-    IGOID INTEGER REFERENCES IGOAttributes ON DELETE CASCADE NOT NULL,
+CREATE TABLE DGOHRiparian (
+    DGOID INTEGER REFERENCES DGOAttributes ON DELETE CASCADE NOT NULL,
     HRipVal INTEGER,
     HRipArea REAL NOT NULL CONSTRAINT CHK_HRip_Area CHECK (HRipArea > 0),
     HRipCellCount REAL NOT NULL CONSTRAINT CHK_HRip_CellCount CHECK (HRipCellCount > 0)
 );
 
-CREATE TABLE IGOExVeg (
-    IGOID INTEGER REFERENCES IGOAttributes ON DELETE CASCADE NOT NULL,
+CREATE TABLE DGOExVeg (
+    DGOID INTEGER REFERENCES DGOAttributes ON DELETE CASCADE NOT NULL,
     ExVegVal INTEGER,
     ExVegArea REAL NOT NULL CONSTRAINT CHK_ExVeg_Area CHECK (ExVegArea > 0),
     ExVegCellCount REAL NOT NULL CONSTRAINT CHK_ExVeg_CellCount CHECK (ExVegCellCount > 0)
 );
 
-CREATE TABLE IGOHVeg (
-    IGOID INTEGER REFERENCES IGOAttributes ON DELETE CASCADE NOT NULL,
+CREATE TABLE DGOHVeg (
+    DGOID INTEGER REFERENCES DGOAttributes ON DELETE CASCADE NOT NULL,
     HVegVal INTEGER,
     HVegArea REAL NOT NULL CONSTRAINT CHK_HVeg_Area CHECK (HVegArea > 0),
     HVegCellCount REAL NOT NULL CONSTRAINT CHK_HVeg_CellCount CHECK (HVegCellCount > 0)
 );
 
-CREATE TABLE IGOConv (
-    IGOID INTEGER REFERENCES IGOAttributes ON DELETE CASCADE NOT NULL,
+CREATE TABLE DGOConv (
+    DGOID INTEGER REFERENCES DGOAttributes ON DELETE CASCADE NOT NULL,
     ConvVal INTEGER,
     ConvArea REAL NOT NULL CONSTRAINT CHK_Conv_Area CHECK (ConvArea > 0),
     ConvCellCount REAL NOT NULL CONSTRAINT CHK_Conv_CellCount CHECK (ConvCellCount > 0)
 );
 
-CREATE TABLE IGOFPAccess(
-    IGOID INTEGER REFERENCES IGOAttributes ON DELETE CASCADE NOT NULL,
+CREATE TABLE DGOFPAccess(
+    DGOID INTEGER REFERENCES DGOAttributes ON DELETE CASCADE NOT NULL,
     AccessVal INTEGER,
     CellArea REAL,
     CellCount INTEGER
@@ -171,8 +171,6 @@ CREATE TABLE IGOAttributes (
     LevelPathI REAL,
     seg_distance REAL,
     stream_size INTEGER,
-    window_area REAL,
-    window_length REAL,
     LUI REAL,
     FloodplainAccess REAL,
     FromConifer REAL,
@@ -192,6 +190,32 @@ CREATE TABLE IGOAttributes (
     HistoricRiparianMean REAL,
     RiparianDeparture REAL,
     RiparianDepartureID INTEGER,
+    Condition REAL
+
+);
+
+CREATE TABLE DGOAttributes (
+    DGOID INTEGER PRIMARY KEY NOT NULL,
+    LevelPathI REAL,
+    seg_distance REAL,
+    centerline_length REAL,
+    segment_area REAL,
+    LUI REAL,
+    FloodplainAccess REAL,
+    FromConifer REAL,
+    FromDevegetated REAL,
+    FromGrassShrubland REAL,
+    NoChange REAL,
+    GrassShrubland REAL,
+    Devegetation REAL,
+    Conifer REAL,
+    Invasive REAL,
+    Development REAL,
+    Agriculture REAL,
+    NonRiparian REAL,
+    ExistingRiparianMean REAL,
+    HistoricRiparianMean REAL,
+    RiparianDeparture REAL,
     Condition REAL
 
 );
@@ -245,6 +269,10 @@ FROM IGOAttributes I
     INNER JOIN Conversions C ON I.ConversionID = C.ConversionID AND I.LevelID = C.LevelID
     INNER JOIN Departure D ON I.RiparianDepartureID = D.RiparianDepartureID;
 
+CREATE VIEW vwDgos AS SELECT DA.*, G.geom
+FROM DGOAttributes DA
+    INNER JOIN DGOGeometry G ON DA.DGOID = G.DGOID;
+
 
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Watersheds', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Epochs', 'attributes');
@@ -254,13 +282,13 @@ INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Conversions', 'attrib
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Departure', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('VegetationTypes', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('VegClassification', 'attributes');
-INSERT INTO gpkg_contents (table_name, data_type) VALUES ('IGOVegetation', 'attributes');
-INSERT INTO gpkg_contents (table_name, data_type) VALUES ('IGOExRiparian', 'attributes');
-INSERT INTO gpkg_contents (table_name, data_type) VALUES ('IGOHRiparian', 'attributes');
-INSERT INTO gpkg_contents (table_name, data_type) VALUES ('IGOExVeg', 'attributes');
-INSERT INTO gpkg_contents (table_name, data_type) VALUES ('IGOHVeg', 'attributes');
-INSERT INTO gpkg_contents (table_name, data_type) VALUES ('IGOConv', 'attributes');
-INSERT INTO gpkg_contents (table_name, data_type) VALUES ('IGOFPAccess', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('DGOVegetation', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('DGOExRiparian', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('DGOHRiparian', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('DGOExVeg', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('DGOHVeg', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('DGOConv', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('DGOFPAccess', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachVegetation', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachExRiparian', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachHRiparian', 'attributes');
@@ -269,4 +297,5 @@ INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachHVeg', 'attribut
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachConv', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachFPAccess', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('IGOAttributes', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('DGOAttributes', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachAttributes', 'attributes')
