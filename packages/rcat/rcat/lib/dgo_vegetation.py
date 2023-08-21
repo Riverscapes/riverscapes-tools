@@ -26,12 +26,14 @@ def dgo_vegetation(raster: str, dgo: dict, out_gpkg_path: str):
     """
 
     log = Logger('DGO Vegetation')
-    log.info(f'Summarizing vegetation raster {os.path.basename(raster)} within each DGO')
+    log.info(
+        f'Summarizing vegetation raster {os.path.basename(raster)} within each DGO')
 
     dataset = gdal.Open(raster)
     geo_transform = dataset.GetGeoTransform()
 
-    conversion_factor = VectorBase.rough_convert_metres_to_raster_units(raster, 1.0)
+    conversion_factor = VectorBase.rough_convert_metres_to_raster_units(
+        raster, 1.0)
     cell_area = abs(geo_transform[1] * geo_transform[5]) / conversion_factor**2
 
     with rasterio.open(raster) as src:
@@ -45,9 +47,11 @@ def dgo_vegetation(raster: str, dgo: dict, out_gpkg_path: str):
                 for oldvalue in np.unique(mask_raster):
                     if oldvalue is not np.ma.masked:
                         cell_count = np.count_nonzero(mask_raster == oldvalue)
-                        veg_counts.append([dgoid, int(oldvalue), cell_count * cell_area, cell_count])
+                        veg_counts.append(
+                            [dgoid, int(oldvalue), cell_count * cell_area, cell_count])
             except Exception as ex:
-                log.warning(f'Error obtaining land cover raster values for dgo ID {dgoid}')
+                log.warning(
+                    f'Error obtaining land cover raster values for dgo ID {dgoid}')
                 log.warning(ex)
 
     with SQLiteCon(out_gpkg_path) as database:
@@ -58,31 +62,41 @@ def dgo_vegetation(raster: str, dgo: dict, out_gpkg_path: str):
             if int(veg_record[1]) != -9999:
                 try:
                     if os.path.basename(raster) in ['existing_veg.tif', 'historic_veg.tif']:
-                        database.conn.execute('INSERT INTO DGOVegetation (DGOID, VegetationID, Area, CellCount) VALUES (?, ?, ?, ?)', veg_record)
+                        database.conn.execute(
+                            'INSERT INTO DGOVegetation (DGOID, VegetationID, Area, CellCount) VALUES (?, ?, ?, ?)', veg_record)
                     elif os.path.basename(raster) == 'ex_riparian.tif':
-                        database.conn.execute('INSERT INTO DGOExRiparian (DGOID, ExRipVal, ExRipArea, ExRipCellCount) VALUES (?, ?, ?, ?)', veg_record)
+                        database.conn.execute(
+                            'INSERT INTO DGOExRiparian (DGOID, ExRipVal, ExRipArea, ExRipCellCount) VALUES (?, ?, ?, ?)', veg_record)
                     elif os.path.basename(raster) == 'hist_riparian.tif':
-                        database.conn.execute('INSERT INTO DGOHRiparian (DGOID, HRipVal, HRipArea, HRipCellCount) VALUES (?, ?, ?, ?)', veg_record)
+                        database.conn.execute(
+                            'INSERT INTO DGOHRiparian (DGOID, HRipVal, HRipArea, HRipCellCount) VALUES (?, ?, ?, ?)', veg_record)
                     elif os.path.basename(raster) == 'ex_vegetated.tif':
-                        database.conn.execute('INSERT INTO DGOExVeg (DGOID, ExVegVal, ExVegArea, ExVegCellCount) VALUES (?, ?, ?, ?)', veg_record)
+                        database.conn.execute(
+                            'INSERT INTO DGOExVeg (DGOID, ExVegVal, ExVegArea, ExVegCellCount) VALUES (?, ?, ?, ?)', veg_record)
                     elif os.path.basename(raster) == 'hist_vegetated.tif':
-                        database.conn.execute('INSERT INTO DGOHVeg (DGOID, HVegVal, HVegArea, HVegCellCount) VALUES (?, ?, ?, ?)', veg_record)
+                        database.conn.execute(
+                            'INSERT INTO DGOHVeg (DGOID, HVegVal, HVegArea, HVegCellCount) VALUES (?, ?, ?, ?)', veg_record)
                     elif os.path.basename(raster) == 'conversion.tif':
-                        database.conn.execute('INSERT INTO DGOConv (DGOID, ConvVal, ConvArea, ConvCellCount) VALUES (?, ?, ?, ?)', veg_record)
+                        database.conn.execute(
+                            'INSERT INTO DGOConv (DGOID, ConvVal, ConvArea, ConvCellCount) VALUES (?, ?, ?, ?)', veg_record)
                     elif os.path.basename(raster) == 'fp_access.tif':
-                        database.conn.execute('INSERT INTO DGOFPAccess (DGOID, AccessVal, CellArea, CellCount) VALUES (?, ?, ?, ?)', veg_record)
+                        database.conn.execute(
+                            'INSERT INTO DGOFPAccess (DGOID, AccessVal, CellArea, CellCount) VALUES (?, ?, ?, ?)', veg_record)
                 except sqlite3.IntegrityError as err:
                     # THis is likely a constraint error.
-                    errstr = "Integrity Error when inserting records: DGOID: {} VegetationID: {}".format(veg_record[0], veg_record[1])
+                    errstr = "Integrity Error when inserting records: DGOID: {} VegetationID: {}".format(
+                        veg_record[0], veg_record[1])
                     log.error(errstr)
                     errs += 1
                 except sqlite3.Error as err:
                     # This is any other kind of error
-                    errstr = "SQL Error when inserting records: IGOID: {} VegetationID: {} ERROR: {}".format(veg_record[0], veg_record[1], str(err))
+                    errstr = "SQL Error when inserting records: IGOID: {} VegetationID: {} ERROR: {}".format(
+                        veg_record[0], veg_record[1], str(err))
                     log.error(errstr)
                     errs += 1
         if errs > 0:
-            raise Exception('Errors were found inserting records into the database. Cannot continue.')
+            raise Exception(
+                'Errors were found inserting records into the database. Cannot continue.')
         database.conn.commit()
 
     log.info('DGO vegetation summary complete')
@@ -92,9 +106,12 @@ def main():
     """DGO Vegetation 
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('raster', help='Raster dataset to summarize within windows', type=str)
-    parser.add_argument('dgo', help='A dictionary where key = DGOID and val = shapely geometry of dgo with large rivers cut out', type=dict)
-    parser.add_argument('out_gpkg_path', help='The database (geopackage) containing the tables to fill out', type=str)
+    parser.add_argument(
+        'raster', help='Raster dataset to summarize within windows', type=str)
+    parser.add_argument(
+        'dgo', help='A dictionary where key = DGOID and val = shapely geometry of dgo with large rivers cut out', type=dict)
+    parser.add_argument(
+        'out_gpkg_path', help='The database (geopackage) containing the tables to fill out', type=str)
 
     args = dotenv.parse_args_env(parser)
 
