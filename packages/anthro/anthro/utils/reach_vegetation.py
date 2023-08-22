@@ -5,15 +5,13 @@
 """
 import os
 import numpy as np
-from osgeo import gdal, ogr
+from osgeo import gdal
 import rasterio
 import sqlite3
 from rasterio.mask import mask
 from rscommons import GeopackageLayer, Logger, get_shp_or_gpkg
 from rscommons.database import SQLiteCon
 from rscommons.classes.vector_base import VectorBase
-from shapely.geometry.base import GEOMETRY_TYPES
-from shapely.geometry import MultiPolygon
 from shapely.ops import unary_union
 
 
@@ -28,7 +26,7 @@ def vegetation_summary(outputs_gpkg_path: str, dgo: str, veg_raster: str):
         buffer {float} -- Distance to buffer the reach polylines
     """
 
-    log = Logger('Vegetation')
+    log = Logger('Land Cover')
     log.info('Summarizing land cover classes for each reach')
 
     # Retrieve the raster spatial reference and geotransformation
@@ -108,10 +106,3 @@ def vegetation_summary(outputs_gpkg_path: str, dgo: str, veg_raster: str):
         database.conn.commit()
 
     log.info('Reach land use summary complete')
-
-
-# outgpkgpath = '/mnt/c/Users/jordang/Documents/Riverscapes/data/anthro/16010202/outputs/outputs.gpkg'
-# dgopath = '/mnt/c/Users/jordang/Documents/Riverscapes/data/anthro/16010202/inputs/inputs.gpkg/dgo'
-# vegrastpath = '/mnt/c/Users/jordang/Documents/Riverscapes/data/anthro/16010202/inputs/existing_veg.tif'
-
-# vegetation_summary(outgpkgpath, dgopath, vegrastpath)

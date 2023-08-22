@@ -17,7 +17,7 @@ from rscommons.database import SQLiteCon
 def igo_vegetation(windows: dict, landuse_raster: str, out_gpkg_path: str):
 
     log = Logger('IGO Land Use')
-    log.info('Summarizing land cover classes for each IGO')
+    log.info('Summarizing land cover classes within each DGO')
 
     dataset = gdal.Open(landuse_raster)
     geo_transform = dataset.GetGeoTransform()
@@ -29,18 +29,6 @@ def igo_vegetation(windows: dict, landuse_raster: str, out_gpkg_path: str):
             GeopackageLayer(out_gpkg_path, 'DGOGeometry') as dgo_lyr:
 
         veg_counts = []
-        # for igoid, window in windows.items():
-        #     try:
-        #         raw_raster = mask(src, window[0], crop=True)[0]
-        #         mask_raster = np.ma.masked_values(raw_raster, src.nodata)
-
-        #         for oldvalue in np.unique(mask_raster):
-        #             if oldvalue is not np.ma.masked:
-        #                 cell_count = np.count_nonzero(mask_raster == oldvalue)
-        #                 veg_counts.append([igoid, int(oldvalue), cell_count * cell_area, cell_count])
-        #     except Exception as ex:
-        #         log.warning(f'Error obtaining land cover raster values for igo ID {igoid}')
-        #         log.warning(ex)
         for dgo_ftr, *_ in dgo_lyr.iterate_features():
             dgoid = dgo_ftr.GetFID()
             dgo_ogr = dgo_ftr.GetGeometryRef()
