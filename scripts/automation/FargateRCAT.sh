@@ -80,7 +80,7 @@ cd /usr/local/src
 
 # Get the RSCli project we need to make this happen
 rscli download $RSCONTEXT_DIR --id $RSCONTEXT_ID \
-  --file-filter "(vegetation|nhdplushr.gpkg|project_bounds.geojson)" \
+  --file-filter "(vegetation|nhdplushr.gpkg|dem_hillshade.tif|project_bounds.geojson)" \
   --no-input --no-ui --verbose
 
 # Go get vbet result for this to work
@@ -110,6 +110,7 @@ try() {
   rcat $HUC \
     $RSCONTEXT_DIR/vegetation/existing_veg.tif \
     $RSCONTEXT_DIR/vegetation/historic_veg.tif \
+    $RSCONTEXT_DIR/topography/dem_hillshade.tif \
     $TAUDEM_DIR/intermediates/pitfill.tif \
     $ANTHRO_DIR/outputs/anthro.gpkg/vwIgos \
     $ANTHRO_DIR/inputs/inputs.gpkg/dgo \

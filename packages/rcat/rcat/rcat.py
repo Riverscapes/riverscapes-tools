@@ -44,6 +44,7 @@ cfg = ModelConfig('https://xml.riverscapes.net/Projects/XSD/V2/RiverscapesProjec
 
 LYR_DESCRIPTIONS_JSON = os.path.join(os.path.dirname(__file__), 'layer_descriptions.json')
 LayerTypes = {
+    'HILLSHADE': RSLayer('Hillshade', 'HILLSHADE', 'Raster', 'inputs/hillshade.tif'),
     'EXVEG': RSLayer('Existing Vegetation', 'EXVEG', 'Raster', 'inputs/existing_veg.tif'),
     'HISTVEG': RSLayer('Historic Vegetation', 'HISTVEG', 'Raster', 'inputs/historic_veg.tif'),
     'EXRIPARIAN': RSLayer('Existing Riparian', 'EXRIPARIAN', 'Raster', 'intermediates/ex_riparian.tif'),
@@ -79,7 +80,7 @@ LayerTypes = {
 }
 
 
-def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo: Path, dgo: Path,
+def rcat(huc: int, existing_veg: Path, historic_veg: Path, hillshade: Path, pitfilled: Path, igo: Path, dgo: Path,
          reaches: Path, roads: Path, rails: Path, canals: Path, valley: Path, output_folder: Path,
          flow_areas: Path, waterbodies: Path, meta: Dict[str, str]):
 
@@ -104,6 +105,7 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, pitfilled: Path, igo:
     log.info('Adding input rasters to project')
     _prj_existing_path_node, prj_existing_path = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['EXVEG'], existing_veg)
     _prj_historic_path_node, prj_historic_path = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HISTVEG'], historic_veg)
+    project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], hillshade)
     project.add_project_raster(proj_nodes['Inputs'], LayerTypes['PITFILL'], pitfilled)
 
     project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
@@ -381,6 +383,7 @@ def main():
     parser.add_argument('huc', help='HUC identifier', type=str)
     parser.add_argument('existing_veg', help='National existing vegetation raster', type=str)
     parser.add_argument('historic_veg', help='National historic vegetation raster', type=str)
+    parser.add_argument('hillshade', help='Hillshade raster', type=str)
     parser.add_argument('pitfilled', help='Pit filled DEM raster', type=str)
     parser.add_argument('igo', help='Integrated geographic object with anthro attributes', type=str)
     parser.add_argument('dgo', help='Discrete geographic objects', type=str)
@@ -410,14 +413,14 @@ def main():
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output_dir, 'rcat_mem.log')
             retcode, max_obj = ThreadRun(rcat, memfile, args.huc,
-                                         args.existing_veg, args.historic_veg, args.pitfilled, args.igo,
+                                         args.existing_veg, args.historic_veg, args.hillshade, args.pitfilled, args.igo,
                                          args.dgo, args.reaches, args.roads, args.rails, args.canals,
                                          args.valley, args.output_folder, args.flow_areas, args.waterbodies,
                                          meta=meta)
             log.debug(f'Return code: {retcode}, [Max process usage] {max_obj}')
 
         else:
-            rcat(args.huc, args.existing_veg, args.historic_veg, args.pitfilled, args.igo, args.dgo,
+            rcat(args.huc, args.existing_veg, args.historic_veg, args.hillshade, args.pitfilled, args.igo, args.dgo,
                  args.reaches, args.roads, args.rails, args.canals, args.valley, args.output_folder, args.flow_areas,
                  args.waterbodies, meta=meta)
 
