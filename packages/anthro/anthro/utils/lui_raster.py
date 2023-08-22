@@ -7,11 +7,14 @@ Dec 2022
 import rasterio
 import sqlite3
 import numpy as np
-import json
-import os
+
+from rscommons import Logger
 
 
 def lui_raster(existing_veg_raster, database, out_raster_path):
+
+    log = Logger('Land Use')
+    log.info('Generating Land Use Intensity raster')
 
     results = {}
     conn = sqlite3.connect(database)
@@ -21,10 +24,6 @@ def lui_raster(existing_veg_raster, database, out_raster_path):
                  ' INNER JOIN LandUses LU ON VT.Physiognomy = LU.Name')
     for row in curs.fetchall():
         results[row[0]] = row[1]
-
-    # print(results)
-    # with open(os.path.join(os.path.dirname(__file__), 'lui_dict.json'), 'w') as outfile:
-    #     json.dump(results, outfile)
 
     with rasterio.open(existing_veg_raster) as src:
         meta = src.profile

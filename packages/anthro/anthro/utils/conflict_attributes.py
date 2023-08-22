@@ -63,8 +63,8 @@ def conflict_attributes(
 
 def calc_conflict_attributes(flowlines_path, valley_bottom, roads, rail, canals, ownership, buffer_distance_metres, cell_size_meters, epsg, canal_codes, intermediates_gpkg_path):
 
-    log = Logger('Conflict')
-    log.info('Calculating conflict attributes')
+    log = Logger('Infrastructure')
+    log.info('Calculating distance from channel to infrastructure')
 
     # Create union of all reaches and another of the reaches without any canals
     reach_union = get_geometry_unary_union(flowlines_path)
@@ -90,31 +90,13 @@ def calc_conflict_attributes(flowlines_path, valley_bottom, roads, rail, canals,
 
     # Buffer all reaches (being careful to use the units of the Shapefile)
     reaches = load_geometries(flowlines_path, epsg=epsg)
-    # dgo_geoms = load_geometries(dgos_path, epsg=epsg)
+
     geopackage_path = os.path.dirname(flowlines_path)
     with get_shp_or_gpkg(ownership) as lyr:
         buffer_distance = lyr.rough_convert_metres_to_vector_units(buffer_distance_metres)
         cell_size = lyr.rough_convert_metres_to_vector_units(cell_size_meters)
 
-    # st = datetime.datetime.now()
-    polygons = {}
-    # for reach_id, polyline in reaches.items():
-    #     log.info(f'finding IGOs that intersect network segment {reach_id}')
-    #     polys = []
-    #     for dgo_id, polygon in dgo_geoms.items():
-    #         if polygon.intersects(polyline):
-    #             polys.append(polygon)
-    #     if len(polys) > 1:
-    #         poly = unary_union(polys)
-    #     elif len(polys) == 1:
-    #         poly = polys[0]
-    #     else:  # if there are no polygons that intersect network?
-    #         poly = polyline.buffer(buffer_distance)
-    #     polygons[reach_id] = poly
-
     polygons = {reach_id: polyline.buffer(buffer_distance) for reach_id, polyline in reaches.items()}
-    # end = datetime.datetime.now()
-    # print(f'finding intersecting dgos took {end-st}')
 
     results = {}
     tmp_folder = os.path.join(os.path.dirname(intermediates_gpkg_path), 'tmp_conflict')
@@ -140,7 +122,7 @@ def calc_conflict_attributes(flowlines_path, valley_bottom, roads, rail, canals,
     if len(reaches) > 0:
         admin_agency(geopackage_path, reaches, ownership, results)
 
-    log.info('Conflict attribute calculation complete')
+    log.info('Infrastructure attribute calculation complete')
 
     # Cleanup temporary feature classes
     safe_remove_dir(tmp_folder)

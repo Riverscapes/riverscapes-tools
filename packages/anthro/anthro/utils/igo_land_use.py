@@ -6,7 +6,6 @@
 """
 import sqlite3
 from rscommons import Logger
-from rscommons.database import write_db_attributes
 
 
 def calculate_land_use(database: str, windows: dict):

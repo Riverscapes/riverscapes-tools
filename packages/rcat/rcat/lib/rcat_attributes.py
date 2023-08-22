@@ -36,10 +36,6 @@ def igo_attributes(database: str, windows: dict):
         curs.execute(f'UPDATE IGOAttributes SET FloodplainAccess = {accessval} WHERE IGOID = {igoid}')
     curs.execute('UPDATE IGOAttributes SET FloodplainAccess = 0 WHERE FloodplainAccess IS NULL')
 
-    # for igoid, accessval in igoaccess.items():
-    #     curs.execute(f'UPDATE IGOAttributes SET FloodplainAccess = {accessval} WHERE IGOID = {igoid}')
-    # curs.execute('UPDATE IGOAttributes SET FloodplainAccess = 0 WHERE FloodplainAccess IS NULL')
-
     # from conifer
     curs.execute('SELECT DGOConv.DGOID, ConvCellCount, TotCells FROM DGOConv'
                  ' INNER JOIN (SELECT DGOID, SUM(ConvCellCount) AS TotCells FROM DGOConv GROUP BY DGOID) AS CC ON DGOConv.DGOID=CC.DGOID'

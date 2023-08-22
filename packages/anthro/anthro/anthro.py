@@ -23,8 +23,7 @@ from rscommons.moving_window import moving_window_dgo_ids
 from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions, raster_resolution_meta
 
 from anthro.utils.conflict_attributes import conflict_attributes
-# from anthro.igo_infrastructure import infrastructure_attributes
-from anthro.utils.igo_infrastructure2 import infrastructure_attributes
+from anthro.utils.igo_infrastructure import infrastructure_attributes
 from anthro.utils.igo_vegetation import igo_vegetation
 from anthro.utils.igo_land_use import calculate_land_use
 from anthro.utils.lui_raster import lui_raster
@@ -168,8 +167,6 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
     # Execute the SQL to create the lookup tables in the output geopackage
     create_database(huc, outputs_gpkg_path, db_metadata, cfg.OUTPUT_EPSG, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'anthro_schema.sql'))
 
-    # project.add_metadata_simple(db_metadata)
-
     igo_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['ANTHRO_GEOM_POINTS'].rel_path)
     line_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['ANTHRO_GEOM_LINES'].rel_path)
     dgo_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['ANTHRO_GEOM_DGOS'].rel_path)
@@ -233,13 +230,7 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
          RSMeta('Very Large Search Window', str(distancein['3']), RSMetaTypes.INT, locked=True),
          RSMeta('Huge Search Window', str(distancein['4']), RSMetaTypes.INT, locked=True)])
 
-    # get moving window for each igo
-    # windows = get_moving_windows(igo_geom_path, input_layers['DGO'], levelpathsin, distancein)
-    # with SQLiteCon(outputs_gpkg_path) as database:
-    #     for fid, windowvals in windows.items():
-    #         database.curs.execute(f'UPDATE IGOAttributes SET window_area = {windowvals[2]} WHERE IGOID = {fid}')
-    #         database.curs.execute(f'UPDATE IGOAttributes SET window_length = {windowvals[1]} WHERE IGOID = {fid}')
-    #     database.conn.commit()
+    # associate DGO IDs with IGO IDs for moving windows
     windows = moving_window_dgo_ids(igo_geom_path, input_layers['DGO'], levelpathsin, distancein)
 
     # calculate conflict attributes for reaches
@@ -252,8 +243,6 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
     infrastructure_attributes(windows, input_layers['ROADS'], input_layers['RAILS'], input_layers['CANALS'],
                               crossings, diversions, outputs_gpkg_path)
 
-    # add layers to project
-
     # get land use attributes for reaches
     vegetation_summary(outputs_gpkg_path, input_layers['DGO'], existing_veg)
     land_use(outputs_gpkg_path)
@@ -262,21 +251,10 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
     calculate_land_use(outputs_gpkg_path, windows)
     lui_raster(existing_veg, outputs_gpkg_path, os.path.join(os.path.dirname(intermediates_gpkg_path), 'lui.tif'))
     # add lui raster to project
-    # project.add_dataset(proj_nodes['Intermediates'], os.path.join(os.path.dirname(intermediates_gpkg_path), 'lui.tif'), LayerTypes['LUI'], 'Raster')
     lui_node, lui_ras = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['LUI'])
     raster_resolution_meta(project, lui_ras, lui_node)
 
     ellapsed_time = time.time() - start_time
-
-    # intermediate_layers = [
-    #     ['diversions', 'Stream Diversion Points'],
-    #     ['private_land', 'Private Land'],
-    #     ['rail_valleybottom', 'Railroads in Valley Bottom'],
-    #     ['road_crossings', 'Road Stream Crossings'],
-    #     ['road_valleybottom', 'Roads in Valley Bottom']
-    # ]
-    # for lyrname in intermediate_layers:
-    #     LayerTypes['INTERMEDIATES'].add_sub_layer(f'{str.upper(lyrname[0])}', RSLayer(f'{lyrname[1]}', f'{str.upper(lyrname[0])}', 'Vector', f'{lyrname[0]}'))
 
     project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
     project.add_metadata([

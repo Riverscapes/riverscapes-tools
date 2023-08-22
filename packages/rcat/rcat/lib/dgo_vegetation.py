@@ -1,4 +1,4 @@
-"""Functions to attribute IGO points with attributes related to land cover types and land use intensity within the riverscape.
+"""Functions to attribute DGO polygons with attributes related to land cover types and land use intensity within the riverscape.
 
 Jordan Gilbert
 
@@ -16,18 +16,17 @@ from rscommons import Logger, VectorBase, dotenv
 from rscommons.database import SQLiteCon
 
 
-def igo_vegetation(raster: str, dgo: dict, out_gpkg_path: str):  # , large_rivers: dict):
+def dgo_vegetation(raster: str, dgo: dict, out_gpkg_path: str):
     """Summarizes vegetation raster datasets onto IGOs based on moving windows
 
     Arguments:
-        windows (dict): dictionary with moving window features associated with each IGO
         raster (str): Path to raster dataset to summarize
         dgo (dict): A dictionary where key = DGOID and val = shapely geometry of dgo with large rivers cut out
         out_gpkg_path: Path to the geopackage containing the tables to fill out
     """
 
-    log = Logger('IGO Vegetation')
-    log.info(f'Summarizing vegetation raster {os.path.basename(raster)} for each IGO')
+    log = Logger('DGO Vegetation')
+    log.info(f'Summarizing vegetation raster {os.path.basename(raster)} within each DGO')
 
     dataset = gdal.Open(raster)
     geo_transform = dataset.GetGeoTransform()
@@ -86,20 +85,20 @@ def igo_vegetation(raster: str, dgo: dict, out_gpkg_path: str):  # , large_river
             raise Exception('Errors were found inserting records into the database. Cannot continue.')
         database.conn.commit()
 
-    log.info('IGO vegetation summary complete')
+    log.info('DGO vegetation summary complete')
 
 
 def main():
-    """IGO Vegetation 
+    """DGO Vegetation 
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('windows', help='dictionary of moving windows for each IGO', type=dict)
     parser.add_argument('raster', help='Raster dataset to summarize within windows', type=str)
+    parser.add_argument('dgo', help='A dictionary where key = DGOID and val = shapely geometry of dgo with large rivers cut out', type=dict)
     parser.add_argument('out_gpkg_path', help='The database (geopackage) containing the tables to fill out', type=str)
 
     args = dotenv.parse_args_env(parser)
 
-    igo_vegetation(args.windows, args.raster, args.out_gpgk_path)
+    dgo_vegetation(args.raster, args.dgo, args.out_gpgk_path)
 
 
 if __name__ == '__main__':
