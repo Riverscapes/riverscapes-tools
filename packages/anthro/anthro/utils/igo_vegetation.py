@@ -44,7 +44,8 @@ def igo_vegetation(windows: dict, landuse_raster: str, out_gpkg_path: str):
         for dgo_ftr, *_ in dgo_lyr.iterate_features():
             dgoid = dgo_ftr.GetFID()
             dgo_ogr = dgo_ftr.GetGeometryRef()
-            dgo_geom = VectorBase.ogr2shapely(dgo_ogr)
+            dgo_g = VectorBase.ogr2shapely(dgo_ogr)
+            dgo_geom = dgo_g.buffer(geo_transform[1] / 2)  # buffer by raster resolution to ensure we get all cells
             try:
                 raw_raster = mask(src, [dgo_geom], crop=True)[0]
                 mask_raster = np.ma.masked_values(raw_raster, src.nodata)

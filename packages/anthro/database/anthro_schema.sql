@@ -61,8 +61,6 @@ CREATE TABLE IGOAttributes (
     LevelPathI REAL,
     seg_distance REAL,
     stream_size INTEGER,
-    window_area REAL,
-    window_length REAL,
     LUI REAL,
     Road_len REAL,
     Road_dens REAL,
@@ -83,15 +81,10 @@ CREATE TABLE DGOAttributes (
     segment_area REAL,
     LUI REAL,
     Road_len REAL,
-    Road_dens REAL,
     Rail_len REAL,
-    Rail_dens REAL,
     Canal_len REAL,
-    Canal_dens REAL,
     RoadX_ct INTEGER,
-    RoadX_dens REAL,
-    DivPts_ct INTEGER,
-    DivPts_dens REAL);
+    DivPts_ct INTEGER);
 
 CREATE TABLE ReachAttributes (
     ReachID INTEGER PRIMARY KEY NOT NULL,
