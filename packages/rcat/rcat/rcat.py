@@ -96,7 +96,7 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, hillshade: Path, pitf
     project = RSProject(cfg, output_folder)
     project.create(project_name, 'RCAT', [
         RSMeta('Model Documentation', 'https://tools.riverscapes.net/rcat', RSMetaTypes.URL, locked=True),
-        RSMeta(f'HUC', str(huc), RSMetaTypes.HIDDEN, locked=True),
+        RSMeta('HUC', str(huc), RSMetaTypes.HIDDEN, locked=True),
         RSMeta('Hydrologic Unit Code', str(huc), locked=True),
     ], meta)
 
