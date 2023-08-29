@@ -128,11 +128,18 @@ def infrastructure_attributes(windows: str, road: str, rail: str, canal: str, cr
             divpts_ct += curs.execute(f'SELECT DivPts_ct FROM DGOAttributes WHERE DGOID = {dgoid}').fetchone()[0]
             window_area += curs.execute(f'SELECT segment_area FROM DGOAttributes WHERE DGOID = {dgoid}').fetchone()[0]
 
-        road_dens = road_len / window_area
-        rail_dens = rail_len / window_area
-        canal_dens = canal_len / window_area
-        roadx_dens = roadx_ct / window_area
-        divpts_dens = divpts_ct / window_area
+        if window_area == 0:
+            road_dens = 0
+            rail_dens = 0
+            canal_dens = 0
+            roadx_dens = 0
+            divpts_dens = 0
+        else:
+            road_dens = road_len / window_area
+            rail_dens = rail_len / window_area
+            canal_dens = canal_len / window_area
+            roadx_dens = roadx_ct / window_area
+            divpts_dens = divpts_ct / window_area
 
         curs.execute(f'UPDATE IGOAttributes SET Road_len = {road_len} WHERE IGOID = {igoid}')
         curs.execute(f'UPDATE IGOAttributes SET Rail_len = {rail_len} WHERE IGOID = {igoid}')
