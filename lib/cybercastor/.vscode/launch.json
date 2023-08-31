@@ -124,6 +124,21 @@
         "--verbose"
       ]
     },
+    {
+      "name": "EXPERIMENTAL PROJECT FILES",
+      "type": "python",
+      "request": "launch",
+      "module": "cybercastor.downloadFiles",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/.env",
+      // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
+      "args": [
+        "${input:environment}",
+        "{env:DATA_ROOT}/data_exchange_files",
+        "--verbose"
+      ]
+    },
    {
       "name": "Python: Current File",
       "type": "python",
