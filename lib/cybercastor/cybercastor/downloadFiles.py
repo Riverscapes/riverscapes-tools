@@ -11,7 +11,7 @@ from rscommons import Logger, dotenv
 from rscommons.util import safe_makedirs
 
 
-def download_files(stage, local_folder):
+def download_files(stage, project_types, hucs, local_folder):
     """[summary]"""
 
     riverscapes_api = RiverscapesAPI(stage=stage)
@@ -22,13 +22,21 @@ def download_files(stage, local_folder):
 
     project_files_query = riverscapes_api.load_query('projectFiles')
 
+    for project_type in project_types:
+        for huc in hucs:
+            project_type_search(local_folder, riverscapes_api, search_query, project_files_query, project_type, huc)
+
+
+def project_type_search(local_folder, riverscapes_api, search_query, project_files_query, project_type: str, huc: str):
+    """[summary]"""
+
     # Add items to this dictionary to filter which projects are retrieved.
     # For example, to only get projects for a certain HUC, project type or model version etc.
     search_params = {
-        'projectTypeId': 'VBET',
+        'projectTypeId': project_type,
         'meta': [{
             'key': 'HUC',
-            'value': '1707030107'
+            'value': huc
         }]
     }
 
@@ -67,12 +75,17 @@ def download_files(stage, local_folder):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('stage', help='Riverscapes stage', type=str, default='production')
+    parser.add_argument('project_types', help='Comma separated list of case insensitive project type machine codes', type=str)
+    parser.add_argument('HUCs', help='Comma separated list of HUC codes', type=str)
     parser.add_argument('local_folder', help='Top level folder where to download files', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
     args = dotenv.parse_args_env(parser)
 
+    project_types = args.project_types.split(',')
+    hucs = args.HUCs.split(',')
+
     try:
-        download_files(args.stage, args.local_folder)
+        download_files(args.stage, project_types, hucs, args.local_folder)
 
     except Exception as e:
         traceback.print_exc(file=sys.stdout)

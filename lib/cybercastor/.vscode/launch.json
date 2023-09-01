@@ -135,6 +135,8 @@
       // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
       "args": [
         "${input:environment}",
+        "VBET,BRAT",
+        "1707030107,1707030107",
         "{env:DATA_ROOT}/data_exchange_files",
         "--verbose"
       ]
