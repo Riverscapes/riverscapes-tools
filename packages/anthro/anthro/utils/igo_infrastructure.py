@@ -58,9 +58,6 @@ def infrastructure_attributes(windows: str, road: str, rail: str, canal: str, cr
 
         return
 
-    # conn = sqlite3.connect(out_gpkg_path)
-    # curs = conn.cursor()
-
     with get_shp_or_gpkg(road) as reflyr:
         sref, transform = reflyr.get_transform_from_epsg(reflyr.spatial_ref, epsg_proj)
 
@@ -92,30 +89,24 @@ def infrastructure_attributes(windows: str, road: str, rail: str, canal: str, cr
                     lb1 = label + '_len'
                     if lyr_cl.is_empty is True:
                         attribs[dgoid][lb1] = 0
-                        # curs.execute(f'UPDATE DGOAttributes SET {lb1} = 0 WHERE DGOID = {dgoid}')
                     else:
                         ogrlyr = VectorBase.shapely2ogr(lyr_cl)
                         lyr_clipped = VectorBase.ogr2shapely(ogrlyr, transform=transform)
                         attribs[dgoid][lb1] = lyr_clipped.length
-                        # curs.execute(f'UPDATE DGOAttributes SET {lb1} = {lyr_clipped.length} WHERE DGOID = {dgoid}')
 
                 if lyr_cl.type in ['MultiPoint']:
                     lb1 = label + '_ct'
                     if lyr_cl.is_empty is True:
                         attribs[dgoid][lb1] = 0
-                        # curs.execute(f'UPDATE DGOAttributes SET {lb1} = 0 WHERE DGOID = {dgoid}')
                     else:
                         attribs[dgoid][lb1] = len(lyr_cl.geoms)
-                        # curs.execute(f'UPDATE DGOAttributes SET {lb1} = {len(lyr_cl.geoms)} WHERE DGOID = {dgoid}')
 
                 if lyr_cl.type in ['Point']:
                     lb1 = label + '_ct'
                     if lyr_cl.is_empty is True:
                         attribs[dgoid][lb1] = 0
-                        # curs.execute(f'UPDATE DGOAttributes SET {lb1} = 0 WHERE DGOID = {dgoid}')
                     else:
                         attribs[dgoid][lb1] = 1
-                        # curs.execute(f'UPDATE DGOAttributes SET {lb1} = 1 WHERE DGOID = {dgoid}')
 
     conn = sqlite3.connect(out_gpkg_path)
     curs = conn.cursor()
@@ -126,10 +117,6 @@ def infrastructure_attributes(windows: str, road: str, rail: str, canal: str, cr
         curs.execute(f'UPDATE DGOAttributes SET Canal_len = {vals["Canal_len"]} WHERE DGOID = {dgoid}')
         curs.execute(f'UPDATE DGOAttributes SET RoadX_ct = {vals["Roadx_ct"]} WHERE DGOID = {dgoid}')
         curs.execute(f'UPDATE DGOAttributes SET DivPts_ct = {vals["DivPts_ct"]} WHERE DGOID = {dgoid}')
-
-    # fields = ['Road_len', 'Rail_len', 'Canal_len', 'RoadX_ct', 'DivPts_ct']
-    # for field in fields:
-    #     curs.execute(f'UPDATE DGOAttributes SET {field} = 0 WHERE {field} IS NULL')
 
     # summarize metrics from DGOs to IGOs using moving windows
     for igoid, dgoids in windows.items():
