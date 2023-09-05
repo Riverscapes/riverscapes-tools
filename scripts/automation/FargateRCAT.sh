@@ -113,7 +113,7 @@ try() {
     $RSCONTEXT_DIR/topography/dem_hillshade.tif \
     $TAUDEM_DIR/intermediates/pitfill.tif \
     $ANTHRO_DIR/outputs/anthro.gpkg/vwIgos \
-    $ANTHRO_DIR/inputs/inputs.gpkg/dgo \
+    $ANTHRO_DIR/outputs/anthro.gpkg/vwDgos \
     $ANTHRO_DIR/outputs/anthro.gpkg/vwReaches \
     $ANTHRO_DIR/inputs/inputs.gpkg/roads \
     $ANTHRO_DIR/inputs/inputs.gpkg/rails \
