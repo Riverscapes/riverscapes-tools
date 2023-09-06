@@ -24,7 +24,8 @@ class ConfinementReport(RSReport):
         # reach_attribute_summary(database, images_dir, inner_div)
 
         self.raw_confinement()
-        [self.confinement_ratio(field, field) for field in ['Confinement_Ratio', 'Constriction_Ratio']]
+        [self.confinement_ratio(field, field) for field in [
+            'Confinement_Ratio', 'Constriction_Ratio']]
 
     def report_intro(self, tool_name):
         section = self.section('ReportIntro', 'Introduction')
@@ -32,7 +33,8 @@ class ConfinementReport(RSReport):
         conn.row_factory = _dict_factory
         curs = conn.cursor()
 
-        row = curs.execute('SELECT Sum(ApproxLeng) AS TotalLength, Count(*) AS TotalReaches FROM Confinement_Ratio').fetchone()
+        row = curs.execute(
+            'SELECT Sum(ApproxLeng) AS TotalLength, Count(*) AS TotalReaches FROM Confinement_Ratio').fetchone()
         values = {
             'Number of reaches': '{0:,d}'.format(row['TotalReaches']),
             'Total reach length (km)': '{0:,.0f}'.format(row['TotalLength'] / 1000),
@@ -50,7 +52,8 @@ class ConfinementReport(RSReport):
         curs.execute('SELECT {} FROM Confinement_Ratio'.format(db_field))
         data = [row[0] for row in curs.fetchall()]
 
-        image_path = os.path.join(self.images_dir, '{}.png'.format(db_field.lower()))
+        image_path = os.path.join(
+            self.images_dir, '{}.png'.format(db_field.lower()))
         histogram(data, 10, image_path)
 
         img_wrap = ET.Element('div', attrib={'class': 'imgWrap'})
@@ -65,10 +68,13 @@ class ConfinementReport(RSReport):
     def raw_confinement(self):
         section = self.section('RawConfinement', 'Raw Confinement')
         keys = OrderedDict()
-        keys['Left'] = {'label': 'Left Confined', 'length': 0.0, 'percent': 0.0}
-        keys['Right'] = {'label': 'Right Confinement', 'length': 0.0, 'percent': 0.0}
+        keys['Left'] = {'label': 'Left Confined',
+                        'length': 0.0, 'percent': 0.0}
+        keys['Right'] = {'label': 'Right Confinement',
+                         'length': 0.0, 'percent': 0.0}
         keys['None'] = {'label': 'Unconfined', 'length': 0.0, 'percent': 0.0}
-        keys['Both'] = {'label': 'Constricted - Both Left and Right Confined', 'length': 0.0, 'percent': 0.0}
+        keys['Both'] = {
+            'label': 'Constricted - Both Left and Right Confined', 'length': 0.0, 'percent': 0.0}
         keys['Total'] = {'label': 'Total', 'length': 0.0, 'percent': 100.0}
         conn = sqlite3.connect(self.database)
         conn.row_factory = _dict_factory
@@ -88,8 +94,10 @@ class ConfinementReport(RSReport):
 
             keys['Total']['length'] = row['TotalLength']
 
-        table_data = [(val['label'], val['length'], val['percent']) for val in keys.values()]
-        self.create_table_from_tuple_list(['Type of Confinement', 'Length (km)', 'Percent'], table_data, section)
+        table_data = [(val['label'], val['length'], val['percent'])
+                      for val in keys.values()]
+        self.create_table_from_tuple_list(
+            ['Type of Confinement', 'Length (km)', 'Percent'], table_data, section)
 
 
 def _dict_factory(cursor, row):
@@ -103,11 +111,14 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('database', help='Path to the database', type=str)
-    parser.add_argument('projectxml', help='Path to the project.rs.xml', type=str)
-    parser.add_argument('report_path', help='Output path where report will be generated', type=str)
+    parser.add_argument(
+        'projectxml', help='Path to the project.rs.xml', type=str)
+    parser.add_argument(
+        'report_path', help='Output path where report will be generated', type=str)
     args = dotenv.parse_args_env(parser)
 
-    cfg = ModelConfig('http://xml.riverscapes.net/Projects/XSD/V1/Confinement.xsd', __version__)
+    cfg = ModelConfig(
+        'http://xml.riverscapes.net/Projects/XSD/V1/Confinement.xsd', __version__)
     project = RSProject(cfg, args.projectxml)
     report = ConfinementReport(args.database, args.report_path, project)
     report.write()
