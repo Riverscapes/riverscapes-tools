@@ -1,18 +1,12 @@
-query projectFiles ($projectId: ID!, $limit: Int!, $offset: Int!) {
+query projectFiles ($projectId: ID!) {
     project(id: $projectId) {
-        id
-        datasets(limit: $limit, offset: $offset) {
-            total
-            items {
-            id
-            files {
-                size
-                contentType
-                downloadUrl
-            }
+        files {
+            size
+            contentType
+            downloadUrl
             localPath
-            name
-            }
+            etag
         }
+        id
     }
 }

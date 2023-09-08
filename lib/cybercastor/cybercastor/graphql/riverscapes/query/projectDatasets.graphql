@@ -1,0 +1,15 @@
+query projectFiles ($projectId: ID!, $limit: Int!, $offset: Int!) {
+    project(id: $projectId) {
+        id
+        datasets(limit: $limit, offset: $offset) {
+            total
+            items {
+                id
+                datasetXMLId
+                localPath
+                name
+                datasetType
+            }
+        }
+    }
+}
