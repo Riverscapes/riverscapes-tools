@@ -17,6 +17,7 @@
     "[python]": {
       "editor.tabSize": 4,
       "editor.formatOnSave": true,
+      "editor.defaultFormatter": "ms-python.autopep8",
     },
     "python.linting.pylintArgs": [
       "--extension-pkg-whitelist=pygeoprocessing",
@@ -58,5 +59,6 @@
       "**/.venv/**": true,
       "**/__pycache__/**": true
     },
+    "python.formatting.provider": "none",
 	}
 }
