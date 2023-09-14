@@ -1,0 +1,13 @@
+query requestUploadImage_queries(
+  $entityId: ID!
+  $entityType: EntitiesWithImagesEnum!
+) {
+  requestUploadImage(
+    entityId: $entityId
+    entityType: $entityType
+  ) {
+    fields
+    token
+    url
+  }
+}

@@ -1,0 +1,7 @@
+mutation createProjectType_mutation($id: String!, $projectType: ProjectTypeInput!, $state: ProjectTypeStateEnum) {
+  createProjectType(id: $id,  projectType: $projectType, state: $state) {
+    id
+    createdOn
+    updatedOn
+  }
+}

@@ -1,0 +1,362 @@
+[
+  {
+    "name": "Anthropogenic Context",
+    "summary": "Anthropogenic Context project",
+    "description": "",
+    "meta": [],
+    "url": null,
+    "machineName": "anthro",
+    "state": "ACTIVE",
+    "logo": null
+  },
+  {
+    "name": "Beaver Restoration Assessment Tool (BRAT)",
+    "summary": "Beaver Restoration Assessment Tool (BRAT)",
+    "description": "Beaver Restoration Assessment Tool (BRAT)",
+    "meta": [],
+    "url": null,
+    "machineName": "BRAT",
+    "state": "ACTIVE",
+    "logo": null
+  },
+  {
+    "name": "CAD Export",
+    "summary": null,
+    "description": "",
+    "meta": [],
+    "url": null,
+    "machineName": "CAD_Export",
+    "state": "ACTIVE",
+    "logo": null
+  },
+  {
+    "name": "CHaMP Metrics",
+    "summary": null,
+    "description": "",
+    "meta": [],
+    "url": null,
+    "machineName": "CHAMPMETRICS",
+    "state": "ACTIVE",
+    "logo": null
+  },
+  {
+    "name": "Channel Area",
+    "summary": "Channel Area",
+    "description": "Channel Area",
+    "meta": [],
+    "url": null,
+    "machineName": "ChannelArea",
+    "state": "ACTIVE",
+    "logo": null
+  },
+  {
+    "name": "Confinement",
+    "summary": null,
+    "description": "",
+    "meta": [],
+    "url": null,
+    "machineName": "Confinement",
+    "state": "ACTIVE",
+    "logo": null
+  },
+  {
+    "name": "Electric Conductivity",
+    "summary": null,
+    "description": "",
+    "meta": [],
+    "url": null,
+    "machineName": "EC",
+    "state": "ACTIVE",
+    "logo": null
+  },
+  {
+    "name": "FHM",
+    "summary": null,
+    "description": "",
+    "meta": [],
+    "url": null,
+    "machineName": "FHM",
+    "state": "ACTIVE",
+    "logo": null
+  },
+  {
+    "name": "FMLTPBR",
+    "summary": null,
+    "description": "",
+    "meta": [],
+    "url": null,
+    "machineName": "fmLTPBR",
+    "state": "ACTIVE",
+    "logo": null
+  },
+  {
+    "name": "GCD",
+    "summary": null,
+    "description": "",
+    "meta": [],
+    "url": null,
+    "machineName": "GCD",
+    "state": "ACTIVE",
+    "logo": null
+  },
+  {
+    "name": "GRTS",
+    "summary": null,
+    "description": "",
+    "meta": [],
+    "url": null,
+    "machineName": "GRTS",
+    "state": "ACTIVE",
+    "logo": null
+  },
+  {
+    "name": "GUT",
+    "summary": null,
+    "description": "",
+    "meta": [],
+    "url": null,
+    "machineName": "GUT",
+    "state": "ACTIVE",
+    "logo": null
+  },
+  {
+    "name": "HYDRO",
+    "summary": null,
+    "description": "",
+    "meta": [],
+    "url": null,
+    "machineName": "Hydro",
+    "state": "ACTIVE",
+    "logo": null
+  },
+  {
+    "name": "Inundation",
+    "summary": null,
+    "description": "",
+    "meta": [],
+    "url": null,
+    "machineName": "Inundation",
+    "state": "ACTIVE",
+    "logo": null
+  },
+  {
+    "name": "LST",
+    "summary": null,
+    "description": "",
+    "meta": [],
+    "url": null,
+    "machineName": "LST",
+    "state": "ACTIVE",
+    "logo": null
+  },
+  {
+    "name": "National Datasets",
+    "summary": null,
+    "description": "",
+    "meta": [],
+    "url": null,
+    "machineName": "NationalDatasets",
+    "state": "ACTIVE",
+    "logo": null
+  },
+  {
+    "name": "PBR",
+    "summary": null,
+    "description": "",
+    "meta": [],
+    "url": null,
+    "machineName": "PBR",
+    "state": "ACTIVE",
+    "logo": null
+  },
+  {
+    "name": "PyBRAT",
+    "summary": null,
+    "description": "",
+    "meta": [],
+    "url": null,
+    "machineName": "pyBRAT",
+    "state": "ACTIVE",
+    "logo": null
+  },
+  {
+    "name": "QRF",
+    "summary": null,
+    "description": "",
+    "meta": [],
+    "url": null,
+    "machineName": "QRF",
+    "state": "ACTIVE",
+    "logo": null
+  },
+  {
+    "name": "RCA",
+    "summary": null,
+    "description": "",
+    "meta": [],
+    "url": null,
+    "machineName": "RCA",
+    "state": "ACTIVE",
+    "logo": null
+  },
+  {
+    "name": "Riparian Condition Assessment Tool (RCAT)",
+    "summary": "Riparian Condition Assessment Tool (RCAT)",
+    "description": "Riparian Condition Assessment Tool (RCAT)",
+    "meta": [],
+    "url": null,
+    "machineName": "rcat",
+    "state": "ACTIVE",
+    "logo": null
+  },
+  {
+    "name": "Riparian Vegetation Departure (RVD)",
+    "summary": "Riparian Vegetation Departure (RVD)",
+    "description": "Riparian Vegetation Departure (RVD)",
+    "meta": [],
+    "url": null,
+    "machineName": "RVD",
+    "state": "ACTIVE",
+    "logo": null
+  },
+  {
+    "name": "Riverscapes Context",
+    "summary": "Riverscapes Context",
+    "description": "",
+    "meta": [],
+    "url": null,
+    "machineName": "RSContext",
+    "state": "ACTIVE",
+    "logo": null
+  },
+  {
+    "name": "Riverscapes Metric Engine",
+    "summary": "Riverscapes Metric Engine",
+    "description": "",
+    "meta": [],
+    "url": null,
+    "machineName": "rs_metric_engine",
+    "state": "ACTIVE",
+    "logo": null
+  },
+  {
+    "name": "SOLAR",
+    "summary": null,
+    "description": "",
+    "meta": [],
+    "url": null,
+    "machineName": "Solar",
+    "state": "ACTIVE",
+    "logo": null
+  },
+  {
+    "name": "STREAMTEMPMAX",
+    "summary": null,
+    "description": "",
+    "meta": [],
+    "url": null,
+    "machineName": "STREAMTEMPMAX",
+    "state": "ACTIVE",
+    "logo": null
+  },
+  {
+    "name": "STREAMTEMPMEAN",
+    "summary": null,
+    "description": "",
+    "meta": [],
+    "url": null,
+    "machineName": "STREAMTEMPMEAN",
+    "state": "ACTIVE",
+    "logo": null
+  },
+  {
+    "name": "STREAMTEMPMIN",
+    "summary": null,
+    "description": "",
+    "meta": [],
+    "url": null,
+    "machineName": "STREAMTEMPMIN",
+    "state": "ACTIVE",
+    "logo": null
+  },
+  {
+    "name": "STREAMTEMPPOTMAX",
+    "summary": null,
+    "description": "",
+    "meta": [],
+    "url": null,
+    "machineName": "STREAMTEMPPOTMAX",
+    "state": "ACTIVE",
+    "logo": null
+  },
+  {
+    "name": "STREAMTEMPPOTMEAN",
+    "summary": null,
+    "description": "",
+    "meta": [],
+    "url": null,
+    "machineName": "STREAMTEMPPOTMEAN",
+    "state": "ACTIVE",
+    "logo": null
+  },
+  {
+    "name": "SUBSTRATE",
+    "summary": null,
+    "description": "",
+    "meta": [],
+    "url": null,
+    "machineName": "Substrate",
+    "state": "ACTIVE",
+    "logo": null
+  },
+  {
+    "name": "Taudem",
+    "summary": "Taudem",
+    "description": "Taudem",
+    "meta": [],
+    "url": null,
+    "machineName": "TauDEM",
+    "state": "ACTIVE",
+    "logo": null
+  },
+  {
+    "name": "TOPO",
+    "summary": null,
+    "description": "",
+    "meta": [],
+    "url": null,
+    "machineName": "Topo",
+    "state": "ACTIVE",
+    "logo": null
+  },
+  {
+    "name": "Valley Bottom Extraction Tool (VBET)",
+    "summary": "Valley Bottom Extraction Tool (VBET)",
+    "description": "Valley Bottom Extraction Tool (VBET)",
+    "meta": [],
+    "url": null,
+    "machineName": "VBET",
+    "state": "ACTIVE",
+    "logo": null
+  },
+  {
+    "name": "LTPBR Design",
+    "summary": "Low-Tech Process Based Restoration Design",
+    "description": "Low-Tech Process Based Restoration Design exported from the QGIS Riverscapes Studio plug-in (QRiS). This project contains design structures (points, lines, complexes) and zones of influence.",
+    "meta": [],
+    "url": null,
+    "machineName": "LTPBRDesign",
+    "state": "ACTIVE",
+    "logo": null
+  },
+  {
+    "name": "VBET Synthesis",
+    "summary": "Combined IGO points for collections of VBET runs.",
+    "description": "Extracts IGOs from multiple VBET projects and combines them into a single GeoPackage for further analysis.",
+    "meta": [],
+    "url": null,
+    "machineName": "VBETSynthesis",
+    "state": "ACTIVE",
+    "logo": null
+  }
+]
