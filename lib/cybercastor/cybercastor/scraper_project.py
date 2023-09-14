@@ -8,7 +8,7 @@ from rscommons import dotenv
 from rsxml.project_xml import Project, ProjectBounds, Coords, BoundingBox, Realization, MetaData, Geopackage, GeopackageLayer, GeoPackageDatasetTypes
 
 
-def create_project_file(gpkg_path: str) -> None:
+def create_project_file(gpkg_path: str, author: str) -> None:
     """Creates a project XML file for the VBET synthesis GeoPackage.
     gpkg_path: Path to the VBET synthesis GeoPackage
     output_path: Output path to project XML
@@ -20,6 +20,7 @@ def create_project_file(gpkg_path: str) -> None:
         meta.add_meta('Number of IGOs', get_db_statistic(curs, 'SELECT count(*) FROM vbet_igos'))
         meta.add_meta('Number of HUCs', get_db_statistic(curs, 'SELECT count(*) FROM hucs'))
         meta.add_meta('Number of Projects', get_db_statistic(curs, 'SELECT count(*) FROM projects'))
+        meta.add_meta('Synthesis Performed by', get_db_statistic(curs, author))
 
         # Build a bounding box from the HUCs
         curs.execute('select min_x, min_y, max_x, max_y, srs_id from gpkg_contents WHERE table_name = ?', ['vbet_igos'])
@@ -105,6 +106,7 @@ def get_db_statistic(curs: sqlite3.Cursor, sql: str) -> int or float:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('gpkg_path', help='Path to the VBET synthesis GeoPackage', type=str)
+    parser.add_argument('author', help='Name of the person who ran the script', type=str)
     args = dotenv.parse_args_env(parser)
 
-    create_project_file(args.gpkg_path)
+    create_project_file(args.gpkg_path, args.author)
