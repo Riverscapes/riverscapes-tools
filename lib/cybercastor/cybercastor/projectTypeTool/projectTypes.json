@@ -6,8 +6,7 @@
     "meta": [],
     "url": null,
     "machineName": "anthro",
-    "state": "ACTIVE",
-    "logo": null
+    "state": "ACTIVE"
   },
   {
     "name": "Beaver Restoration Assessment Tool (BRAT)",
@@ -16,8 +15,7 @@
     "meta": [],
     "url": null,
     "machineName": "BRAT",
-    "state": "ACTIVE",
-    "logo": null
+    "state": "ACTIVE"
   },
   {
     "name": "CAD Export",
@@ -26,8 +24,7 @@
     "meta": [],
     "url": null,
     "machineName": "CAD_Export",
-    "state": "ACTIVE",
-    "logo": null
+    "state": "ACTIVE"
   },
   {
     "name": "CHaMP Metrics",
@@ -36,8 +33,7 @@
     "meta": [],
     "url": null,
     "machineName": "CHAMPMETRICS",
-    "state": "ACTIVE",
-    "logo": null
+    "state": "ACTIVE"
   },
   {
     "name": "Channel Area",
@@ -46,8 +42,7 @@
     "meta": [],
     "url": null,
     "machineName": "ChannelArea",
-    "state": "ACTIVE",
-    "logo": null
+    "state": "ACTIVE"
   },
   {
     "name": "Confinement",
@@ -56,8 +51,7 @@
     "meta": [],
     "url": null,
     "machineName": "Confinement",
-    "state": "ACTIVE",
-    "logo": null
+    "state": "ACTIVE"
   },
   {
     "name": "Electric Conductivity",
@@ -66,8 +60,7 @@
     "meta": [],
     "url": null,
     "machineName": "EC",
-    "state": "ACTIVE",
-    "logo": null
+    "state": "ACTIVE"
   },
   {
     "name": "FHM",
@@ -76,8 +69,7 @@
     "meta": [],
     "url": null,
     "machineName": "FHM",
-    "state": "ACTIVE",
-    "logo": null
+    "state": "ACTIVE"
   },
   {
     "name": "FMLTPBR",
@@ -86,8 +78,7 @@
     "meta": [],
     "url": null,
     "machineName": "fmLTPBR",
-    "state": "ACTIVE",
-    "logo": null
+    "state": "ACTIVE"
   },
   {
     "name": "GCD",
@@ -96,8 +87,7 @@
     "meta": [],
     "url": null,
     "machineName": "GCD",
-    "state": "ACTIVE",
-    "logo": null
+    "state": "ACTIVE"
   },
   {
     "name": "GRTS",
@@ -106,8 +96,7 @@
     "meta": [],
     "url": null,
     "machineName": "GRTS",
-    "state": "ACTIVE",
-    "logo": null
+    "state": "ACTIVE"
   },
   {
     "name": "GUT",
@@ -116,8 +105,7 @@
     "meta": [],
     "url": null,
     "machineName": "GUT",
-    "state": "ACTIVE",
-    "logo": null
+    "state": "ACTIVE"
   },
   {
     "name": "HYDRO",
@@ -126,8 +114,7 @@
     "meta": [],
     "url": null,
     "machineName": "Hydro",
-    "state": "ACTIVE",
-    "logo": null
+    "state": "ACTIVE"
   },
   {
     "name": "Inundation",
@@ -136,8 +123,7 @@
     "meta": [],
     "url": null,
     "machineName": "Inundation",
-    "state": "ACTIVE",
-    "logo": null
+    "state": "ACTIVE"
   },
   {
     "name": "LST",
@@ -146,8 +132,7 @@
     "meta": [],
     "url": null,
     "machineName": "LST",
-    "state": "ACTIVE",
-    "logo": null
+    "state": "ACTIVE"
   },
   {
     "name": "National Datasets",
@@ -156,8 +141,7 @@
     "meta": [],
     "url": null,
     "machineName": "NationalDatasets",
-    "state": "ACTIVE",
-    "logo": null
+    "state": "ACTIVE"
   },
   {
     "name": "PBR",
@@ -166,8 +150,7 @@
     "meta": [],
     "url": null,
     "machineName": "PBR",
-    "state": "ACTIVE",
-    "logo": null
+    "state": "ACTIVE"
   },
   {
     "name": "PyBRAT",
@@ -176,8 +159,7 @@
     "meta": [],
     "url": null,
     "machineName": "pyBRAT",
-    "state": "ACTIVE",
-    "logo": null
+    "state": "ACTIVE"
   },
   {
     "name": "QRF",
@@ -186,8 +168,7 @@
     "meta": [],
     "url": null,
     "machineName": "QRF",
-    "state": "ACTIVE",
-    "logo": null
+    "state": "ACTIVE"
   },
   {
     "name": "RCA",
@@ -196,8 +177,7 @@
     "meta": [],
     "url": null,
     "machineName": "RCA",
-    "state": "ACTIVE",
-    "logo": null
+    "state": "ACTIVE"
   },
   {
     "name": "Riparian Condition Assessment Tool (RCAT)",
@@ -206,8 +186,7 @@
     "meta": [],
     "url": null,
     "machineName": "rcat",
-    "state": "ACTIVE",
-    "logo": null
+    "state": "ACTIVE"
   },
   {
     "name": "Riparian Vegetation Departure (RVD)",
@@ -216,8 +195,7 @@
     "meta": [],
     "url": null,
     "machineName": "RVD",
-    "state": "ACTIVE",
-    "logo": null
+    "state": "ACTIVE"
   },
   {
     "name": "Riverscapes Context",
@@ -226,8 +204,7 @@
     "meta": [],
     "url": null,
     "machineName": "RSContext",
-    "state": "ACTIVE",
-    "logo": null
+    "state": "ACTIVE"
   },
   {
     "name": "Riverscapes Metric Engine",
@@ -236,8 +213,7 @@
     "meta": [],
     "url": null,
     "machineName": "rs_metric_engine",
-    "state": "ACTIVE",
-    "logo": null
+    "state": "ACTIVE"
   },
   {
     "name": "SOLAR",
@@ -246,8 +222,7 @@
     "meta": [],
     "url": null,
     "machineName": "Solar",
-    "state": "ACTIVE",
-    "logo": null
+    "state": "ACTIVE"
   },
   {
     "name": "STREAMTEMPMAX",
@@ -256,8 +231,7 @@
     "meta": [],
     "url": null,
     "machineName": "STREAMTEMPMAX",
-    "state": "ACTIVE",
-    "logo": null
+    "state": "ACTIVE"
   },
   {
     "name": "STREAMTEMPMEAN",
@@ -266,8 +240,7 @@
     "meta": [],
     "url": null,
     "machineName": "STREAMTEMPMEAN",
-    "state": "ACTIVE",
-    "logo": null
+    "state": "ACTIVE"
   },
   {
     "name": "STREAMTEMPMIN",
@@ -276,8 +249,7 @@
     "meta": [],
     "url": null,
     "machineName": "STREAMTEMPMIN",
-    "state": "ACTIVE",
-    "logo": null
+    "state": "ACTIVE"
   },
   {
     "name": "STREAMTEMPPOTMAX",
@@ -286,8 +258,7 @@
     "meta": [],
     "url": null,
     "machineName": "STREAMTEMPPOTMAX",
-    "state": "ACTIVE",
-    "logo": null
+    "state": "ACTIVE"
   },
   {
     "name": "STREAMTEMPPOTMEAN",
@@ -296,8 +267,7 @@
     "meta": [],
     "url": null,
     "machineName": "STREAMTEMPPOTMEAN",
-    "state": "ACTIVE",
-    "logo": null
+    "state": "ACTIVE"
   },
   {
     "name": "SUBSTRATE",
@@ -306,8 +276,7 @@
     "meta": [],
     "url": null,
     "machineName": "Substrate",
-    "state": "ACTIVE",
-    "logo": null
+    "state": "ACTIVE"
   },
   {
     "name": "Taudem",
@@ -316,8 +285,7 @@
     "meta": [],
     "url": null,
     "machineName": "TauDEM",
-    "state": "ACTIVE",
-    "logo": null
+    "state": "ACTIVE"
   },
   {
     "name": "TOPO",
@@ -326,8 +294,7 @@
     "meta": [],
     "url": null,
     "machineName": "Topo",
-    "state": "ACTIVE",
-    "logo": null
+    "state": "ACTIVE"
   },
   {
     "name": "Valley Bottom Extraction Tool (VBET)",
@@ -336,8 +303,7 @@
     "meta": [],
     "url": null,
     "machineName": "VBET",
-    "state": "ACTIVE",
-    "logo": null
+    "state": "ACTIVE"
   },
   {
     "name": "LTPBR Design",
@@ -346,8 +312,7 @@
     "meta": [],
     "url": null,
     "machineName": "LTPBRDesign",
-    "state": "ACTIVE",
-    "logo": null
+    "state": "ACTIVE"
   },
   {
     "name": "VBET Synthesis",
@@ -356,7 +321,6 @@
     "meta": [],
     "url": null,
     "machineName": "VBETSynthesis",
-    "state": "ACTIVE",
-    "logo": null
+    "state": "ACTIVE"
   }
 ]
