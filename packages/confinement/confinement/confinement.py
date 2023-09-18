@@ -25,7 +25,11 @@ from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALO
 from rscommons import GeopackageLayer
 from rscommons.vector_ops import collect_feature_class, get_geometry_unary_union, copy_feature_class
 from rscommons.util import safe_makedirs, parse_metadata
+from rscommons.copy_features import copy_features_fields
+from rscommons.moving_window import moving_window_dgo_ids
 from rme.shapley_ops import line_segments, select_geoms_by_intersection, cut
+from confinement.utils.calc_confinement import calculate_confinement, dgo_confinement
+from confinement.utils.confinement_moving_window import igo_confinement
 from confinement.confinement_report import ConfinementReport
 from confinement.__version__ import __version__
 
@@ -42,6 +46,8 @@ LayerTypes = {
         'FLOWLINES': RSLayer('Flowlines', 'FLOWLINES', 'Vector', 'Flowlines'),
         'CHANNEL_AREA': RSLayer('Channel_Area', 'CHANNEL_AREA', 'Vector', 'channel_area'),
         'CONFINING_POLYGON': RSLayer('Confining Polygon', 'CONFINING_POLYGON', 'Vector', 'ConfiningPolygon'),
+        'DGOS': RSLayer('DGOs', 'DGOS', 'Vector', 'dgos'),
+        'IGOS': RSLayer('IGOs', 'IGOS', 'Vector', 'igos')
     }),
     'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/confinement_intermediates.gpkg', {
         'SPLIT_POINTS': RSLayer('Split Points', 'SPLIT_POINTS', 'Vector', 'Split_Points'),
@@ -58,12 +64,15 @@ LayerTypes = {
         'CONFINEMENT_RAW': RSLayer('Confinement Raw', 'CONFINEMENT_RAW', 'Vector', 'Confinement_Raw'),
         'CONFINEMENT_MARGINS': RSLayer('Confinement Margins', 'CONFINEMENT_MARGINS', 'Vector', 'Confining_Margins'),
         'CONFINEMENT_RATIO': RSLayer('Confinement Ratio', 'CONFINEMENT_RATIO', 'Vector', 'Confinement_Ratio'),
-        'CONFINEMENT_BUFFERS': RSLayer('Active Channel Buffer', 'CONFINEMENT_BUFFERS', 'Vector', 'Confinement_Buffers')
+        'CONFINEMENT_BUFFERS': RSLayer('Active Channel Buffer', 'CONFINEMENT_BUFFERS', 'Vector', 'Confinement_Buffers'),
+        'CONFINEMENT_DGOS': RSLayer('Confinement DGOs', 'CONFINEMENT_DGOS', 'Vector', 'dgos'),
+        'CONFINEMENT_IGOS': RSLayer('Confinement IGOS', 'CONFINEMENT_IGOS', 'Vector', 'igos')
     }),
 }
 
 
-def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confining_polygon_orig: Path, output_folder: Path, vbet_summary_field: str, confinement_type: str, buffer: float = 0.0, segmented_network=None, meta=None):
+def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confining_polygon_orig: Path, output_folder: Path, vbet_summary_field: str,
+                confinement_type: str, dgos: str, igos: str, buffer: float = 0.0, segmented_network=None, meta=None):
     """Generate confinement attribute for a stream network
 
     Args:
@@ -91,21 +100,39 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
     if not (len(huc) == 4 or len(huc) == 8 or len(huc) == 10):
         raise Exception('Invalid HUC identifier. Must be four digit integer')
 
+    # search windows for moving window analysis
+    search_distance = {
+        '0': 200,
+        '1': 400,
+        '2': 1200,
+        '3': 2000,
+        '4': 8000,
+    }
+
     # Make the projectXML
     project, _realization, proj_nodes, report_path = create_project(huc, output_folder, [
         RSMeta('HUC{}'.format(len(huc)), str(huc)),
         RSMeta('HUC', str(huc)),
-        RSMeta('ConfinementType', confinement_type)
+        RSMeta('ConfinementType', confinement_type),
+        RSMeta('Small Search Window', str(search_distance['0']), RSMetaTypes.INT, locked=True),
+        RSMeta('Medium Search Window', str(search_distance['1']), RSMetaTypes.INT, locked=True),
+        RSMeta('Large Search Window', str(search_distance['2']), RSMetaTypes.INT, locked=True),
+        RSMeta('Very Large Search Window', str(search_distance['3']), RSMetaTypes.INT, locked=True),
+        RSMeta('Huge Search Window', str(search_distance['4']), RSMetaTypes.INT, locked=True)
     ], meta)
 
     # Copy input shapes to a geopackage
     flowlines_path = os.path.join(output_folder, LayerTypes['INPUTS'].rel_path, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
     confining_path = os.path.join(output_folder, LayerTypes['INPUTS'].rel_path, LayerTypes['INPUTS'].sub_layers['CONFINING_POLYGON'].rel_path)
     channel_area = os.path.join(output_folder, LayerTypes['INPUTS'].rel_path, LayerTypes['INPUTS'].sub_layers['CHANNEL_AREA'].rel_path)
+    dgo_path = os.path.join(output_folder, LayerTypes['INPUTS'].rel_path, LayerTypes['INPUTS'].sub_layers['DGOS'].rel_path)
+    igo_path = os.path.join(output_folder, LayerTypes['INPUTS'].rel_path, LayerTypes['INPUTS'].sub_layers['IGOS'].rel_path)
 
     copy_feature_class(flowlines_orig, flowlines_path, epsg=cfg.OUTPUT_EPSG)
     copy_feature_class(channel_area_orig, channel_area)
     copy_feature_class(confining_polygon_orig, confining_path, epsg=cfg.OUTPUT_EPSG)
+    copy_feature_class(dgos, dgo_path, epsg=cfg.OUTPUT_EPSG)
+    copy_feature_class(igos, igo_path, epsg=cfg.OUTPUT_EPSG)
 
     if segmented_network:
         LayerTypes['INPUTS'].add_sub_layer("SEGMENTED_NETWORK", RSLayer('Segmented Network', "SEGMENTED_NETWORK", 'Vector', 'segmented_network'))
@@ -146,8 +173,8 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
 
     # Calculate Spatial Constants
     # Get a very rough conversion factor for 1m to whatever units the shapefile uses
-    #offset = 0.01 * meter_conversion
-    #selection_buffer = 0.01 * meter_conversion
+    # offset = 0.01 * meter_conversion
+    # selection_buffer = 0.01 * meter_conversion
 
     # Standard Outputs
     field_lookup = {
@@ -194,6 +221,34 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
         ratio_lyr.ogr_layer.CreateField(field_lookup['length'])
         ratio_lyr.ogr_layer.CreateField(field_lookup['confined_length'])
         ratio_lyr.ogr_layer.CreateField(field_lookup['constricted_length'])
+
+    with GeopackageLayer(output_gpkg, layer_name=LayerTypes['CONFINEMENT'].sub_layers["CONFINEMENT_DGOS"].rel_path, write=True) as dgo_lyr:
+        dgo_lyr.create(ogr.wkbMultiPolygon, spatial_ref=srs)
+        dgo_lyr.ogr_layer.CreateField(ogr.FieldDefn('LevelPathI', ogr.OFTReal))
+        dgo_lyr.ogr_layer.CreateField(ogr.FieldDefn('seg_distance', ogr.OFTReal))
+        dgo_lyr.ogr_layer.CreateField(ogr.FieldDefn('centerline_length', ogr.OFTReal))
+        dgo_lyr.ogr_layer.CreateField(ogr.FieldDefn('segment_area', ogr.OFTReal))
+        dgo_lyr.ogr_layer.CreateField(field_lookup['confinement_ratio'])
+        dgo_lyr.ogr_layer.CreateField(field_lookup['constriction_ratio'])
+        dgo_lyr.ogr_layer.CreateField(field_lookup['length'])
+        dgo_lyr.ogr_layer.CreateField(field_lookup['confined_length'])
+        dgo_lyr.ogr_layer.CreateField(field_lookup['constricted_length'])
+
+    with GeopackageLayer(output_gpkg, layer_name=LayerTypes['CONFINEMENT'].sub_layers["CONFINEMENT_IGOS"].rel_path, write=True) as igo_lyr:
+        igo_lyr.create(ogr.wkbMultiPoint, spatial_ref=srs)
+        igo_lyr.ogr_layer.CreateField(ogr.FieldDefn('LevelPathI', ogr.OFTReal))
+        igo_lyr.ogr_layer.CreateField(ogr.FieldDefn('seg_distance', ogr.OFTReal))
+        igo_lyr.ogr_layer.CreateField(ogr.FieldDefn('stream_size', ogr.OFTInteger))
+        igo_lyr.ogr_layer.CreateField(field_lookup['confinement_ratio'])
+        igo_lyr.ogr_layer.CreateField(field_lookup['constriction_ratio'])
+        igo_lyr.ogr_layer.CreateField(field_lookup['length'])
+        igo_lyr.ogr_layer.CreateField(field_lookup['confined_length'])
+        igo_lyr.ogr_layer.CreateField(field_lookup['constricted_length'])
+
+    dgo_out_path = os.path.join(output_gpkg, LayerTypes['CONFINEMENT'].sub_layers["CONFINEMENT_DGOS"].rel_path)
+    igo_out_path = os.path.join(output_gpkg, LayerTypes['CONFINEMENT'].sub_layers["CONFINEMENT_IGOS"].rel_path)
+    copy_features_fields(inputs_gpkg_lyrs['DGOS'][1], dgo_out_path, epsg=cfg.OUTPUT_EPSG)
+    copy_features_fields(inputs_gpkg_lyrs['IGOS'][1], igo_out_path, epsg=cfg.OUTPUT_EPSG)
 
     with GeopackageLayer(intermediates_gpkg, layer_name=LayerTypes['INTERMEDIATES'].sub_layers["CONFINEMENT_BUFFER_SPLIT"].rel_path, write=True) as lyr:
         lyr.create(ogr.wkbPolygon, spatial_ref=srs)
@@ -478,6 +533,13 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
         segmented_confinement = os.path.join(output_gpkg, 'Confinement_Ratio_Segmented')
         calculate_confinement(confinement_raw_path, segmented_network_proj, segmented_confinement)
 
+    # summarize confinement at DGO level
+    dgo_confinement(confinement_raw_path, dgo_out_path)
+
+    # moving window analysis to attribute IGOs with confinement values
+    windows = moving_window_dgo_ids(igo_out_path, dgo_out_path, level_paths, search_distance)
+    igo_confinement(igo_out_path, dgo_out_path, windows)
+
     # Write a report
     report = ConfinementReport(output_gpkg, report_path, project)
     report.write()
@@ -485,77 +547,6 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
     progbar.finish()
     log.info(f"Count of Flowline segments with errors: {err_count}")
     log.info('Confinement Finished')
-    return
-
-
-def calculate_confinement(confinement_type_network, segment_network, output_network):
-
-    with GeopackageLayer(segment_network, write=True) as segment_lyr, \
-            GeopackageLayer(confinement_type_network, write=True) as confinement_lyr, \
-            GeopackageLayer(output_network, write=True) as output_lyr:
-
-        meter_conversion = segment_lyr.rough_convert_metres_to_vector_units(1)
-        selection_buffer = 0.01 * meter_conversion
-
-        output_lyr.create_layer_from_ref(segment_lyr, create_fields=False)
-        output_lyr.create_fields({
-            'confinement_ratio': ogr.FieldDefn("Confinement_Ratio", ogr.OFTReal),
-            'constriction_ratio': ogr.FieldDefn("Constriction_Ratio", ogr.OFTReal),
-            'length': ogr.FieldDefn("ApproxLeng", ogr.OFTReal),
-            'confined_length': ogr.FieldDefn("ConfinLeng", ogr.OFTReal),
-            'constricted_length': ogr.FieldDefn("ConstrLeng", ogr.OFTReal)
-        })
-        output_lyr.ogr_layer.StartTransaction()
-        for segment_feat, *_ in segment_lyr.iterate_features("Calculating confinemnt per segment"):
-            if segment_feat.GetFID() == 2429:
-                print('checking')
-            segment_ogr = segment_feat.GetGeometryRef()
-            segment_geom = GeopackageLayer.ogr2shapely(segment_ogr)
-            segment_poly = segment_geom.buffer(selection_buffer, cap_style=2)
-            segment_endpoints = [Point(segment_geom.coords[0]), Point(segment_geom.coords[-1])]
-            confinement_lengths = {c_type: 0.0 for c_type in ["Left", "Right", "Both", "None"]}
-            for confinement_feat, *_ in confinement_lyr.iterate_features(clip_shape=segment_poly):
-                con_type = confinement_feat.GetField("Confinement_Type")
-                confinement_ogr = confinement_feat.GetGeometryRef()
-                confinement_geom = GeopackageLayer.ogr2shapely(confinement_ogr)
-                confinement_clip = confinement_geom.intersection(segment_poly)
-                # if any([confinement_geom.intersects(pt.buffer(selection_buffer))for pt in segment_endpoints]):
-                #     for pt in segment_endpoints:
-                #         if confinement_geom.intersects(pt.buffer(selection_buffer)):
-                #             cut_distance = confinement_geom.project(pt)
-                #             split_geoms = cut(confinement_geom, cut_distance)
-                #             lgeom = select_geoms_by_intersection(split_geoms, [segment_geom], buffer=selection_buffer)
-                #             if len(lgeom) > 0:
-                #                 geom = lgeom[0]
-                #                 confinement_lengths[con_type] = confinement_lengths[con_type] + geom.length / meter_conversion
-                # else:
-                #     confinement_lengths[con_type] = confinement_lengths[con_type] + confinement_geom.length / meter_conversion
-                if not confinement_clip.is_empty:
-                    confinement_lengths[con_type] += confinement_clip.length / meter_conversion
-
-            # calcuate confimenet parts
-            confinement_length = 0.0
-            constricted_length = 0.0
-            unconfined_length = 0.0
-            for con_type, length in confinement_lengths.items():
-                if con_type in ['Left', 'Right']:
-                    confinement_length += length
-                elif con_type in ['Both']:
-                    constricted_length += length
-                else:
-                    unconfined_length += length
-            segment_length = sum([confinement_length, constricted_length, unconfined_length])
-            confinement_ratio = min((confinement_length + constricted_length) / segment_length, 1.0) if segment_length > 0.0 else 0.0
-            constricted_ratio = constricted_length / segment_length if segment_length > 0.0 else 0.0
-            attributes = {
-                "Confinement_Ratio": confinement_ratio,
-                "Constriction_Ratio": constricted_ratio,
-                "ApproxLeng": segment_length,
-                "ConfinLeng": confinement_length + constricted_length,
-                "ConstrLeng": constricted_length
-            }
-            output_lyr.create_feature(segment_geom, attributes=attributes)
-        output_lyr.ogr_layer.CommitTransaction()
     return
 
 
@@ -597,6 +588,8 @@ def main():
     parser.add_argument('output_folder', help='Output folder', type=str)
     parser.add_argument('vbet_summary_field', help='(optional) float field in flowlines with vbet level_paths', default=None)
     parser.add_argument('confinement_type', help='type of confinement', default="Unspecified")
+    parser.add_argument('dgos', help='vbet dgo polygons', type=str)
+    parser.add_argument('igos', help='vbet igo points', type=str)
     parser.add_argument('--buffer', help='buffer to apply to channel area polygons (m)', type=float)
     parser.add_argument('--segmented_network', help='segmented network to calculate confinement on (optional)', type=str)
     parser.add_argument('--calculate_existing', action='store_true', default=False)
@@ -630,6 +623,8 @@ def main():
                                              args.output_folder,
                                              args.vbet_summary_field,
                                              args.confinement_type,
+                                             args.dgos,
+                                             args.igos,
                                              buffer=args.buffer,
                                              segmented_network=args.segmented_network,
                                              meta=meta)
@@ -643,6 +638,8 @@ def main():
                             args.output_folder,
                             args.vbet_summary_field,
                             args.confinement_type,
+                            args.dgos,
+                            args.igos,
                             buffer=args.buffer,
                             segmented_network=args.segmented_network,
                             meta=meta)
