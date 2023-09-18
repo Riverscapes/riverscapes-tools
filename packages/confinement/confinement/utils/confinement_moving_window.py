@@ -29,10 +29,13 @@ def igo_confinement(igo: str, dgo: str, windows: dict):
                 constricted_length += dgo_ftr.GetField('ConstrLeng')
                 segment_length += dgo_ftr.GetField('ApproxLeng')
 
-            confinement_ratio = min((confinement_length + constricted_length) / segment_length, 1.0) if segment_length > 0.0 else 0.0
-            constricted_ratio = constricted_length / segment_length if segment_length > 0.0 else 0.0
+            confinement_ratio = min((confinement_length + constricted_length) /
+                                    segment_length, 1.0) if segment_length > 0.0 else 0.0
+            constricted_ratio = constricted_length / \
+                segment_length if segment_length > 0.0 else 0.0
 
-            igo_ftr.SetField('ConfinLeng', confinement_length + constricted_length)
+            igo_ftr.SetField(
+                'ConfinLeng', confinement_length + constricted_length)
             igo_ftr.SetField('ConstrLeng', constricted_length)
             igo_ftr.SetField('ApproxLeng', segment_length)
             igo_ftr.SetField('Confinement_Ratio', confinement_ratio)
