@@ -14,6 +14,7 @@ import sys
 import os
 import traceback
 from typing import List, Dict
+import sqlite3
 
 from osgeo import ogr
 from osgeo import gdal
@@ -249,6 +250,14 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
     igo_out_path = os.path.join(output_gpkg, LayerTypes['CONFINEMENT'].sub_layers["CONFINEMENT_IGOS"].rel_path)
     copy_features_fields(inputs_gpkg_lyrs['DGOS'][1], dgo_out_path, epsg=cfg.OUTPUT_EPSG)
     copy_features_fields(inputs_gpkg_lyrs['IGOS'][1], igo_out_path, epsg=cfg.OUTPUT_EPSG)
+
+    with sqlite3.connect(output_gpkg) as conn:
+        curs = conn.cursor()
+        curs.execute('CREATE INDEX IF NOT EXISTS dgo_levelpath ON dgos (LevelPathI)')
+        curs.execute('CREATE INDEX IF NOT EXISTS igo_levelpath ON igos (LevelPathI)')
+        curs.execute('CREATE INDEX IF NOT EXISTS dgo_seg_distance ON dgos (seg_distance)')
+        curs.execute('CREATE INDEX IF NOT EXISTS igo_seg_distance ON igos (seg_distance)')
+        conn.commit()
 
     with GeopackageLayer(intermediates_gpkg, layer_name=LayerTypes['INTERMEDIATES'].sub_layers["CONFINEMENT_BUFFER_SPLIT"].rel_path, write=True) as lyr:
         lyr.create(ogr.wkbPolygon, spatial_ref=srs)
@@ -531,13 +540,17 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
 
     if segmented_network is not None:
         segmented_confinement = os.path.join(output_gpkg, 'Confinement_Ratio_Segmented')
+        log.info("Calculating confinement on segmented network")
         calculate_confinement(confinement_raw_path, segmented_network_proj, segmented_confinement)
 
     # summarize confinement at DGO level
+    log.info('Summarizing confinement at DGO level')
     dgo_confinement(confinement_raw_path, dgo_out_path)
 
     # moving window analysis to attribute IGOs with confinement values
+    log.info('Getting moving windows')
     windows = moving_window_dgo_ids(igo_out_path, dgo_out_path, level_paths, search_distance)
+    log.info('Calculating confinement for IGOs using moving windows')
     igo_confinement(igo_out_path, dgo_out_path, windows)
 
     # Write a report

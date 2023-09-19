@@ -19,7 +19,12 @@ def igo_confinement(igo: str, dgo: str, windows: dict):
             constricted_length = 0.0
             segment_length = 0.0
 
-            for dgo_ftr, *_ in dgo_lyr.iterate_features(attribute_filter=f'DGOID IN {windows[igoid]}'):
+            if len(windows[igoid]) == 1:
+                attrib_filt = f'fid = {windows[igoid][0]}'
+            else:
+                attrib_filt = f'fid IN {tuple(windows[igoid])}'
+
+            for dgo_ftr, *_ in dgo_lyr.iterate_features(attribute_filter=attrib_filt):
                 confinement_length += dgo_ftr.GetField('ConfinLeng')
                 constricted_length += dgo_ftr.GetField('ConstrLeng')
                 segment_length += dgo_ftr.GetField('ApproxLeng')
@@ -27,7 +32,7 @@ def igo_confinement(igo: str, dgo: str, windows: dict):
             confinement_ratio = min((confinement_length + constricted_length) / segment_length, 1.0) if segment_length > 0.0 else 0.0
             constricted_ratio = constricted_length / segment_length if segment_length > 0.0 else 0.0
 
-            igo_ftr.SetField('ConfinLeng', confinement_length)
+            igo_ftr.SetField('ConfinLeng', confinement_length + constricted_length)
             igo_ftr.SetField('ConstrLeng', constricted_length)
             igo_ftr.SetField('ApproxLeng', segment_length)
             igo_ftr.SetField('Confinement_Ratio', confinement_ratio)
