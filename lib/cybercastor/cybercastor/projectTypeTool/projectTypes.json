@@ -1,27 +1,87 @@
 [
   {
-    "name": "Anthropogenic Context",
-    "summary": "Anthropogenic Context project",
-    "description": "",
-    "meta": [],
-    "url": null,
+    "name": "Anthro",
+    "summary": "Anthropogenic Context Project",
+    "description": "The Anthropogenic Context Project sumarizes anthropogenic impacts to riverscapes and channels. It uses roads, railroads, canals, land cover and land use as inputs from a [Riverscapes Context Project](https://tools.riverscapes.net/rscontext/) to look at infrastructre intersecting riverscape and channel networks, as well as landuses within and adjacent to the riverscape. The Anthropogenic Context Tool adds attributes to stream network reaches and to points along the riverscape (valley bottom) center line that help to contextualize potential anthropogenic impacts to the riverscape. These attributes are used in portions of the [BRAT](https://tools.riverscapes.net/brat) and [RCAT](https://tools.riverscapes.net/rcat) models./n Anthro is a [production-grade, hybrid channel network and riverscape network model](https://tools.riverscapes.net/).",
+    "meta": [
+        { 
+          "key": "Resolution",
+          "value": "Reach"
+        },
+        { 
+          "key": "Extent",
+          "value": "Network"
+        },
+        {
+          "key": "Model Status",
+          "value": "Production Grade"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "Model Output"
+        }
+       ],
+    "url": "https://tools.riverscapes.net/anthro",
     "machineName": "anthro",
     "state": "ACTIVE"
   },
   {
     "name": "Beaver Restoration Assessment Tool (BRAT)",
-    "summary": "Beaver Restoration Assessment Tool (BRAT)",
-    "description": "Beaver Restoration Assessment Tool (BRAT)",
-    "meta": [],
-    "url": null,
+    "summary": "The Beaver Restoration Assessment Tool (sqlBRAT)",
+    "description": "The [Beaver Restoration Assessment Tool](https://tools.riverscapes.net/brat) combines a model estimating the capacity of a riverscape to support dam building activity with analysis of potential anthropogenic conflicts to create a tool that can be used to inform where [LTPBR restoration](http://lowtechpbr.restoration.usu.edu/) using beaver can be targeted.",
+    "meta": [
+        { 
+          "key": "Resolution",
+          "value": "Reach"
+        },
+        { 
+          "key": "Extent",
+          "value": "Network"
+        },
+        {
+          "key": "Model Status",
+          "value": "Production Grade"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "Model Output"
+        }
+       ],
+    "url": "https://tools.riverscapes.net/brat",
     "machineName": "BRAT",
     "state": "ACTIVE"
   },
   {
-    "name": "CAD Export",
-    "summary": null,
-    "description": "",
-    "meta": [],
+    "name": "CAD Export - CHaMP",
+    "summary": "Raw Topographic Survey Data Export",
+    "description": "In the [CHAMP](https://champmonitoring.org) site visits, topographic survyes were collected with total stations. This is the raw topographic exports including points and breaklines in a DXF format. This was used as input into [CHaMP Topo Processing Toolbar](http://champtools.northarrowresearch.com/) to produce TINs and DEMs.",
+    "meta": [
+        {
+          "key": "Monitoring Program",
+          "value": "CHaMP"
+        },
+        {
+          "key": "Monitoring Program URL",
+          "type": "URL",
+          "value": "https://www.champmonitoring.org/"
+        },
+        { 
+          "key": "Resolution",
+          "value": "Point"
+        },
+        { 
+          "key": "Extent",
+          "value": "Reach"
+        },
+        {
+          "key": "Model Status",
+          "value": "Research Grade"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "Curated Dataset"
+        }
+       ],
     "url": null,
     "machineName": "CAD_Export",
     "state": "ACTIVE"
@@ -29,70 +89,216 @@
   {
     "name": "CHaMP Metrics",
     "summary": null,
-    "description": "",
-    "meta": [],
-    "url": null,
+    "description": "This script summarized all site level visits across all CHaMP sites.",
+    "meta": [
+        {
+          "key": "Monitoring Program",
+          "value": "CHaMP"
+        },
+        {
+          "key": "Monitoring Program URL",
+          "type": "URL",
+          "value": "https://www.champmonitoring.org/"
+        },
+        { 
+          "key": "Resolution",
+          "value": "Site"
+        },
+        { 
+          "key": "Extent",
+          "value": "Regional"
+        },
+        {
+          "key": "Model Status",
+          "value": "Production Grade"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "Model Output"
+        }
+       ],
+    "url": "https://github.com/Riverscapes/champ_metrics",
     "machineName": "CHAMPMETRICS",
     "state": "ACTIVE"
   },
   {
     "name": "Channel Area",
     "summary": "Channel Area",
-    "description": "Channel Area",
-    "meta": [],
-    "url": null,
+    "description": "The [Channel Area tool](https://tools.riverscapes.net/channel) generates polygons representing the active channel network within a watershed. It is used as an input into [TauDEM](https://tools.riverscapes.net/taudem) and [VBET](https://tools.riverscapes.net/vbet). The default CONUS implementation is based on the NHD+HR inputs from [Riverscapes Context](https://tools.riverscapes.net/rscontext/), whereby it uses a mix of flow area and waterbody polygons where they exist, and for the rest of the drainage network, uses a buffer based on an estimate of bankfull width from a regional curve.",
+    "meta": [
+        { 
+          "key": "Resolution",
+          "value": "Reach"
+        },
+        { 
+          "key": "Extent",
+          "value": "Network"
+        },
+        {
+          "key": "Model Status",
+          "value": "Production Grade"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "Model Output"
+        }
+       ],
+    "url": "https://tools.riverscapes.net/channel",
     "machineName": "ChannelArea",
     "state": "ACTIVE"
   },
   {
     "name": "Confinement",
-    "summary": null,
+    "summary": "Valley Bottom Confinement Tool",
     "description": "",
-    "meta": [],
+    "meta": [
+        { 
+          "key": "Resolution",
+          "value": "Reach"
+        },
+        { 
+          "key": "Extent",
+          "value": "Network"
+        },
+        {
+          "key": "Model Status",
+          "value": "Production Grade"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "Model Output"
+        }
+       ],
     "url": null,
     "machineName": "Confinement",
     "state": "ACTIVE"
   },
   {
-    "name": "Electric Conductivity",
+    "name": "Electric Conductivity - CHaMP",
     "summary": null,
-    "description": "",
-    "meta": [],
-    "url": null,
+    "description": "Electric Conductivity was used to aid in producing network-scale gross primary production models. ",
+    "meta": [
+        {
+            "key": "Monitoring Program",
+            "value": "CHaMP"
+          },
+          {
+            "key": "Monitoring Program URL",
+            "type": "URL",
+            "value": "https://www.champmonitoring.org/"
+          },
+        { 
+          "key": "Resolution",
+          "value": "Reach"
+        },
+        { 
+          "key": "Extent",
+          "value": "Network"
+        },
+        {
+          "key": "Model Status",
+          "value": "Research Grade"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "Model Output"
+        }
+       ],
+    "url": "https://riverscapes.github.io/Conductivity/",
     "machineName": "EC",
     "state": "ACTIVE"
   },
   {
-    "name": "FHM",
-    "summary": null,
-    "description": "",
-    "meta": [],
-    "url": null,
+    "name": "FHM - CHaMP",
+    "summary": "Fish Habitat Model",
+    "description": "For every [CHaMP](https://champmonitoring.org) site visit, FIS and HSC driven fish habitat models were automatically run for spawning and rearing lifestages of Chinook and Steelhead. A professional-grade version of the same models is [here](https://habitat.northarrowresearch.com/).",
+    "meta": [
+        {
+          "key": "Monitoring Program",
+          "value": "CHaMP"
+        },
+        {
+          "key": "Monitoring Program URL",
+          "type": "URL",
+          "value": "https://www.champmonitoring.org/"
+        },
+        { 
+          "key": "Resolution",
+          "value": "Cell"
+        },
+        { 
+          "key": "Extent",
+          "value": "Reach"
+        },
+        {
+          "key": "Model Status",
+          "value": "Production Grade"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "Model Output"
+        }
+       ],
+    "url": "https://habitat.northarrowresearch.com/",
     "machineName": "FHM",
     "state": "ACTIVE"
   },
   {
-    "name": "FMLTPBR",
-    "summary": null,
+    "name": "FM_LTPBR",
+    "summary": "FileMaker LTPBR Designs",
     "description": "",
-    "meta": [],
+    "meta": [
+        { 
+          "key": "Resolution",
+          "value": "Cell"
+        },
+        { 
+          "key": "Extent",
+          "value": "Reach"
+        },
+        {
+          "key": "Model Status",
+          "value": "Research Grade"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "User Tool Output"
+        }
+       ],
     "url": null,
     "machineName": "fmLTPBR",
     "state": "ACTIVE"
   },
   {
     "name": "GCD",
-    "summary": null,
-    "description": "",
-    "meta": [],
-    "url": null,
+    "summary": "Geomorphic Change Detection Software",
+    "description": "The [GCD software](https://gcd.riverscapes.net/) was developed primarily for topographic change detection in rivers, but will work for simple, raster-based change detection of any two surfaces. The volumetric change in storage is calculated from the difference in surface elevations from digital elevation models (DEMs) derived from repeat topographic surveys./n NOTE: GCD Projects are only viewable in the GCD Software and as Riverscape Projects they are simply discoverable in the [Data Exchange](https://data.riverscapes.net) and show the project extents.",
+    "meta": [
+        { 
+          "key": "Resolution",
+          "value": "Cell"
+        },
+        { 
+          "key": "Extent",
+          "value": "Reach"
+        },
+        {
+          "key": "Model Status",
+          "value": "Professional Grade"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "User Tool Output"
+        }
+       ],
+    "url": "https://gcd.riverscapes.net/",
     "machineName": "GCD",
     "state": "ACTIVE"
   },
   {
-    "name": "GRTS",
-    "summary": null,
-    "description": "",
+    "name": "GRTS - CHaMP",
+    "summary": "Generalized Random Tessellation Stratified Sample Frames - CHaMP",
+    "description": "Generalized Random Tessellation Stratified sample frames used for Study Designs in CHaMP Priority Watersheds.",
     "meta": [],
     "url": null,
     "machineName": "GRTS",
@@ -100,36 +306,122 @@
   },
   {
     "name": "GUT",
-    "summary": null,
-    "description": "",
-    "meta": [],
-    "url": null,
+    "summary": "Geomorphic Unit Toolkit",
+    "description": "The tool delineates instream geomorphic units (GUs) from topography using a 3-tiered hierarchical classification adapted from Wheaton et al., [2015](https://doi.org/10.1016/j.geomorph.2015.07.010)).",
+    "meta": [
+        {
+          "key": "Monitoring Program",
+          "value": "CHaMP"
+        },
+        {
+          "key": "Monitoring Program URL",
+          "type": "URL",
+          "value": "https://www.champmonitoring.org/"
+        },
+        { 
+          "key": "Resolution",
+          "value": "Cell"
+        },
+        { 
+          "key": "Extent",
+          "value": "Reach"
+        },
+        {
+          "key": "Model Status",
+          "value": "Research Grade"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "User Tool Output"
+        }
+       ],
+    "url": "https://gut.riverscapes.net/",
     "machineName": "GUT",
     "state": "ACTIVE"
   },
   {
-    "name": "HYDRO",
-    "summary": null,
-    "description": "",
-    "meta": [],
-    "url": null,
+    "name": "Hydraulics - CHaMP",
+    "summary": "Delft 3D Hydraulic Model",
+    "description": "These are hydraulic model results, using a depth averaged version of Delft 3D for every [CHaMP](https://champmonitoring.org) visit (Topo survey).",
+    "meta": [
+        {
+          "key": "Monitoring Program",
+          "value": "CHaMP"
+        },
+        {
+          "key": "Monitoring Program URL",
+          "type": "URL",
+          "value": "https://www.champmonitoring.org/"
+        },
+        { 
+          "key": "Resolution",
+          "value": "Cell"
+        },
+        { 
+          "key": "Extent",
+          "value": "Reach"
+        },
+        {
+          "key": "Model Status",
+          "value": "Production Grade"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "Model Output"
+        }
+       ],
+    "url": "https://github.com/SouthForkResearch/Hydraulic-Modeling/wiki",
     "machineName": "Hydro",
     "state": "ACTIVE"
   },
   {
-    "name": "Inundation",
-    "summary": null,
-    "description": "",
-    "meta": [],
-    "url": null,
+    "name": "RIM",
+    "summary": "Riverscape Inundation Mapper",
+    "description": "[RIM](https://rim.riverscapes.net/) is a protocol for the efficient mapping of structurally forced inundation patterns in beaver impacted riverscapes.The RIM protocol is accessebile from [Riverscapes Studio](https://qris.riverscapes.net), and these scripts package the tool outputs into RIM riverscapes projects.",
+    "meta": [
+        { 
+          "key": "Resolution",
+          "value": "Cell"
+        },
+        { 
+          "key": "Extent",
+          "value": "Reach"
+        },
+        {
+          "key": "Model Status",
+          "value": "Research Grade"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "User Tool Output"
+        }
+       ],
+    "url": "https://rim.riverscapes.net/",
     "machineName": "Inundation",
     "state": "ACTIVE"
   },
   {
     "name": "LST",
-    "summary": null,
-    "description": "",
-    "meta": [],
+    "summary": "Land Surface Temperature Model",
+    "description": "SQLite Database of landsurface temperature summaries for HUC 4s.",
+    "meta": [
+        { 
+          "key": "Resolution",
+          "value": "Catchment"
+        },
+        { 
+          "key": "Extent",
+          "value": "Catchment"
+        },
+        {
+          "key": "Model Status",
+          "value": "Research Grade"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "Curated Dataset"
+        }
+       ],
     "url": null,
     "machineName": "LST",
     "state": "ACTIVE"
@@ -137,33 +429,80 @@
   {
     "name": "National Datasets",
     "summary": null,
-    "description": "",
-    "meta": [],
+    "description": "National Datasets are containers for nationally available data to be accessed by the [Riverscapes Context model](https://tools.riverscapes.net/rscontext/), to package up for individual catchments. These datsets are not necessarily curated for all inputs to Riverscapes Context. Instead they are produced when national data is not available via a reliable API (e.g. when available only from a FTP server). These datasets are manually downloaded, curated and remain static (unlike datasets made available from a National Government and periodically updated and made availabe via their API.",
+    "meta": [
+        { 
+          "key": "Resolution",
+          "value": "Reach,Cell"
+        },
+        { 
+          "key": "Extent",
+          "value": "National"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "Curated Dataset"
+        }
+       ],
     "url": null,
     "machineName": "NationalDatasets",
     "state": "ACTIVE"
   },
   {
-    "name": "PBR",
-    "summary": null,
-    "description": "",
-    "meta": [],
+    "name": "PBR Planning Model - Bespoke",
+    "summary": "Process Based Restoration Planning Model",
+    "description": "A bespoke analysis for USFWS in the Klamath Basin to identify potential riverscape reaches with uplift potential from process based restoration.",
+    "meta": [
+        { 
+          "key": "Resolution",
+          "value": "Reach"
+        },
+        { 
+          "key": "Extent",
+          "value": "Network"
+        },
+        {
+          "key": "Model Status",
+          "value": "Research Grade"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "Custom Geospatial Analysis"
+        }
+       ],
     "url": null,
     "machineName": "PBR",
     "state": "ACTIVE"
   },
   {
     "name": "PyBRAT",
-    "summary": null,
-    "description": "",
-    "meta": [],
-    "url": null,
+    "summary": "Beaver Restoration Assessment Tool (pyBRAT - v <= 3.1, superseded by sqlBRAT)",
+    "description": "The original [BRAT](https://brat.riverscapes.net/) tool runs from the research-grade version of the tool.",
+    "meta": [
+        { 
+          "key": "Resolution",
+          "value": "Reach"
+        },
+        { 
+          "key": "Extent",
+          "value": "Network"
+        },
+        {
+          "key": "Model Status",
+          "value": "Research Grade"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "Model Output"
+        }
+       ],
+    "url": "https://brat.riverscapes.net/",
     "machineName": "pyBRAT",
     "state": "ACTIVE"
   },
   {
-    "name": "QRF",
-    "summary": null,
+    "name": "QRF  - CHaMP",
+    "summary": "Quantile Regression Forest of CHaMP Metrics",
     "description": "",
     "meta": [],
     "url": null,
@@ -171,9 +510,9 @@
     "state": "ACTIVE"
   },
   {
-    "name": "RCA",
+    "name": "RCA  - CHaMP",
     "summary": null,
-    "description": "",
+    "description": "Riparian Condition Assessment Tool runs for CHaMP Program.",
     "meta": [],
     "url": null,
     "machineName": "RCA",
@@ -189,7 +528,7 @@
     "state": "ACTIVE"
   },
   {
-    "name": "Riparian Vegetation Departure (RVD)",
+    "name": "RVD - CHaMP",
     "summary": "Riparian Vegetation Departure (RVD)",
     "description": "Riparian Vegetation Departure (RVD)",
     "meta": [],
@@ -199,109 +538,322 @@
   },
   {
     "name": "Riverscapes Context",
-    "summary": "Riverscapes Context",
-    "description": "",
-    "meta": [],
-    "url": null,
+    "summary": null,
+    "description": "The [Riverscapes Context tool](https://tools.riverscapes.net/rscontext/) automatically aggregates a variety of nationally available spatial datasets into a riverscapes project for a given watershed (e.g. HUC10 or 8). These data can then be used for contextual purposes, mapping, or as input data in other production-grade network tools.",
+    "meta": [
+        { 
+          "key": "Resolution",
+          "value": "Reach"
+        },
+        { 
+          "key": "Extent",
+          "value": "Network"
+        },
+        {
+          "key": "Model Status",
+          "value": "Production Grade"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "Model Output"
+        }
+       ],
+    "url": "https://tools.riverscapes.net/rscontext/",
     "machineName": "RSContext",
     "state": "ACTIVE"
   },
   {
-    "name": "Riverscapes Metric Engine",
+    "name": "Metric Engine",
     "summary": "Riverscapes Metric Engine",
     "description": "",
-    "meta": [],
+    "meta": [
+        { 
+          "key": "Resolution",
+          "value": "Reach"
+        },
+        { 
+          "key": "Extent",
+          "value": "Network"
+        },
+        {
+          "key": "Model Status",
+          "value": "Production Grade"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "Model Output"
+        }
+       ],
     "url": null,
     "machineName": "rs_metric_engine",
     "state": "ACTIVE"
   },
   {
-    "name": "SOLAR",
+    "name": "SOLAR - CHaMP",
     "summary": null,
     "description": "",
-    "meta": [],
-    "url": null,
+    "meta": [
+        { 
+          "key": "Resolution",
+          "value": "Reach"
+        },
+        { 
+          "key": "Extent",
+          "value": "Network"
+        },
+        {
+          "key": "Model Status",
+          "value": "Research Grade"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "Model Output"
+        }
+       ],
+    "url": "https://riverscapes.github.io/SolarStream/",
     "machineName": "Solar",
     "state": "ACTIVE"
   },
   {
-    "name": "STREAMTEMPMAX",
-    "summary": null,
+    "name": "Temp- Max - CHaMP",
+    "summary": "Maximum Stream Temperature",
     "description": "",
-    "meta": [],
+    "meta": [
+        { 
+          "key": "Resolution",
+          "value": "Reach"
+        },
+        { 
+          "key": "Extent",
+          "value": "Network"
+        },
+        {
+          "key": "Model Status",
+          "value": "Research Grade"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "Model Output"
+        }
+       ],
     "url": null,
     "machineName": "STREAMTEMPMAX",
     "state": "ACTIVE"
   },
   {
-    "name": "STREAMTEMPMEAN",
-    "summary": null,
+    "name": "Temp- Mean - CHaMP",
+    "summary": "Mean Stream Temperature",
     "description": "",
-    "meta": [],
+    "meta": [
+        { 
+          "key": "Resolution",
+          "value": "Reach"
+        },
+        { 
+          "key": "Extent",
+          "value": "Network"
+        },
+        {
+          "key": "Model Status",
+          "value": "Research Grade"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "Model Output"
+        }
+       ],
     "url": null,
     "machineName": "STREAMTEMPMEAN",
     "state": "ACTIVE"
   },
   {
-    "name": "STREAMTEMPMIN",
-    "summary": null,
+    "name": "Temp- Potential Min - CHaMP",
+    "summary": "Minimum Potential Stream Temperature",
     "description": "",
-    "meta": [],
+    "meta": [
+        { 
+          "key": "Resolution",
+          "value": "Reach"
+        },
+        { 
+          "key": "Extent",
+          "value": "Network"
+        },
+        {
+          "key": "Model Status",
+          "value": "Research Grade"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "Model Output"
+        }
+       ],
     "url": null,
     "machineName": "STREAMTEMPMIN",
     "state": "ACTIVE"
   },
   {
-    "name": "STREAMTEMPPOTMAX",
-    "summary": null,
+    "name": "Temp- Potential Max - CHaMP",
+    "summary": "Maximum Potential Stream Temperature",
     "description": "",
-    "meta": [],
+    "meta": [
+        { 
+          "key": "Resolution",
+          "value": "Reach"
+        },
+        { 
+          "key": "Extent",
+          "value": "Network"
+        },
+        {
+          "key": "Model Status",
+          "value": "Research Grade"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "Model Output"
+        }
+       ],
     "url": null,
     "machineName": "STREAMTEMPPOTMAX",
     "state": "ACTIVE"
   },
   {
-    "name": "STREAMTEMPPOTMEAN",
-    "summary": null,
+    "name": "Temp- Potential Mean - CHaMP",
+    "summary": "Mean Stream Temperature",
     "description": "",
-    "meta": [],
+    "meta": [
+        { 
+          "key": "Resolution",
+          "value": "Reach"
+        },
+        { 
+          "key": "Extent",
+          "value": "Network"
+        },
+        {
+          "key": "Model Status",
+          "value": "Research Grade"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "Model Output"
+        }
+       ],
     "url": null,
     "machineName": "STREAMTEMPPOTMEAN",
     "state": "ACTIVE"
   },
   {
-    "name": "SUBSTRATE",
+    "name": "Substrate - CHAMP",
     "summary": null,
     "description": "",
-    "meta": [],
+    "meta": [
+        { 
+          "key": "Resolution",
+          "value": "Reach"
+        },
+        { 
+          "key": "Extent",
+          "value": "Network"
+        },
+        {
+          "key": "Model Status",
+          "value": "Research Grade"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "Model Output"
+        }
+       ],
     "url": null,
     "machineName": "Substrate",
     "state": "ACTIVE"
   },
   {
-    "name": "Taudem",
-    "summary": "Taudem",
-    "description": "Taudem",
-    "meta": [],
-    "url": null,
+    "name": "TauDEM",
+    "summary": null,
+    "description": "The TauDEM is a suite of tools for topographic analysis using DEMs. ",
+    "meta": [
+        { 
+          "key": "Resolution",
+          "value": "Reach"
+        },
+        { 
+          "key": "Extent",
+          "value": "Network"
+        },
+        {
+          "key": "Model Status",
+          "value": "Production Grade"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "Model Output"
+        }
+       ],
+    "url": "https://tools.riverscapes.net/taudem",
     "machineName": "TauDEM",
     "state": "ACTIVE"
   },
   {
-    "name": "TOPO",
-    "summary": null,
+    "name": "TOPO - CHaMP",
+    "summary": "Topographic Surveys - CHaMP",
     "description": "",
-    "meta": [],
+    "meta": [
+      {
+        "key": "Monitoring Program",
+        "value": "CHaMP"
+      },
+      {
+        "key": "Monitoring Program URL",
+        "type": "URL",
+        "value": "https://www.champmonitoring.org/"
+      },
+      { 
+        "key": "Resolution",
+        "value": "Cell"
+      },
+      { 
+        "key": "Extent",
+        "value": "Reach"
+      },
+      {
+        "key": "Model Status",
+        "value": "Professional Grade"
+      },
+      {
+        "key": "Riverscapes Project Class",
+        "value": "User Tool Output"
+      }
+     ],
     "url": null,
     "machineName": "Topo",
     "state": "ACTIVE"
   },
   {
-    "name": "Valley Bottom Extraction Tool (VBET)",
-    "summary": "Valley Bottom Extraction Tool (VBET)",
-    "description": "Valley Bottom Extraction Tool (VBET)",
-    "meta": [],
-    "url": null,
+    "name": "VBET",
+    "summary": "Valley Bottom Extraction Tool",
+    "description": "The [Valley Bottom Extraction Tool](https://tools.riverscapes.net/vbet) uses a DEM and a channel area network to estimate the valley bottom extents (area that could plausibly flood in contemporary natural flow regime) thereby defining the riverscape network. ",
+    "meta": [
+        { 
+          "key": "Resolution",
+          "value": "Reach"
+        },
+        { 
+          "key": "Extent",
+          "value": "Network"
+        },
+        {
+          "key": "Model Status",
+          "value": "Production Grade"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "Model Output"
+        }
+       ],
+    "url": "https://tools.riverscapes.net/vbet",
     "machineName": "VBET",
     "state": "ACTIVE"
   },
@@ -318,9 +870,52 @@
     "name": "VBET Synthesis",
     "summary": "Combined IGO points for collections of VBET runs.",
     "description": "Extracts IGOs from multiple VBET projects and combines them into a single GeoPackage for further analysis.",
-    "meta": [],
+    "meta": [
+        { 
+          "key": "Resolution",
+          "value": "Reach"
+        },
+        { 
+          "key": "Extent",
+          "value": "Regional"
+        },
+        {
+          "key": "Model Status",
+          "value": "Production Grade"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "Database Scraper Output"
+        }
+       ],
     "url": null,
     "machineName": "VBETSynthesis",
+    "state": "ACTIVE"
+  },
+  {
+    "name": "Riverscapes Context (British Columbia)",
+    "summary": "Riverscapes Context for British Columbia Watersheds",
+    "description": "The [Riverscapes Context tool](https://tools.riverscapes.net/rscontext/) automatically aggregates a variety of nationally available spatial datasets into a riverscapes project for a given watershed (e.g. HUC10 or 8). These data can then be used for contextual purposes, mapping, or as input data in other production-grade network tools.",
+    "meta": [
+        { 
+          "key": "Resolution",
+          "value": "Reach"
+        },
+        { 
+          "key": "Extent",
+          "value": "Network"
+        },
+        {
+          "key": "Model Status",
+          "value": "Production Grade"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "Model Output"
+        }
+       ],
+    "url": null,
+    "machineName": "RSContextBC",
     "state": "ACTIVE"
   }
 ]

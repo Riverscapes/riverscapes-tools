@@ -269,5 +269,5 @@ def projectTypeSync(stage):
 
 
 if __name__ == '__main__':
-    # projectTypeSync('staging')
+    projectTypeSync('staging')
     projectTypeSync('production')
