@@ -5,13 +5,17 @@ import argparse
 import traceback
 import sys
 import os
-from rscommons import RSProject, dotenv, Logger
-from rme.utils.confinement_report import ConfinementReport
+from rscommons import RSProject, dotenv, Logger, RSMeta
+from confinement.utils.confinement_report import ConfinementReport
 
 lyrs_in_out = {
     # CONFINEMENT_ID: INPUT_ID
-    'FLOWLINES': 'NHDFlowline',
-    'CONFINING_POLYGON': 'VBET_FULL',
+    'SEGMENTED_NETWORK': 'network_intersected_300m',
+    'CHANNEL_AREA': 'channel_area',
+    'FLOWLINES': 'Flowlines_VAA',
+    'CONFINING_POLYGON': 'vbet_full',
+    'DGOS': 'vbet_dgos',
+    'IGOS': 'vbet_igos'
 }
 
 
@@ -39,8 +43,27 @@ def main():
             lyrs_in_out
         )
 
-        in_xml = args.in_xmls.split(',')[0]
-        out_prj.rs_copy_project_extents(in_xml)
+        in_xmls = args.in_xmls.split(',')
+        rscontext_xml = in_xmls[0]
+        channel_xml = in_xmls[1]
+        vbets_xml = in_xmls[2]
+        out_prj.rs_copy_project_extents(rscontext_xml)
+        rscproj = RSProject(None, rscontext_xml)
+        channelproj = RSProject(None, channel_xml)
+        vbetproj = RSProject(None, vbets_xml)
+
+        # get watershed
+        watershed_node = rscproj.XMLBuilder.find('MetaData').find('Meta[@name="Watershed"]')
+        if watershed_node is not None:
+            proj_watershed_node = out_prj.XMLBuilder.find('MetaData').find('Meta[@name="Watershed"]')
+            if proj_watershed_node is None:
+                out_prj.add_metadata([RSMeta('Watershed', watershed_node.text)])
+
+        # if watershed in meta, change the project name
+        watershed_node = out_prj.XMLBuilder.find('MetaData').find('Meta[@name="Watershed"]')
+        if watershed_node is not None:
+            name_node = out_prj.XMLBuilder.find('Name')
+            name_node.text = f"Confinement for {watershed_node.text}"
 
         out_prj.XMLBuilder.write()
         report_path = out_prj.XMLBuilder.find('.//HTMLFile[@id="CONFINEMENT_RUN_REPORT"]/Path').text
