@@ -28,10 +28,11 @@ from rscommons.vector_ops import collect_feature_class, get_geometry_unary_union
 from rscommons.util import safe_makedirs, parse_metadata
 from rscommons.copy_features import copy_features_fields
 from rscommons.moving_window import moving_window_dgo_ids
+from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions
 from rme.shapley_ops import line_segments, select_geoms_by_intersection, cut
 from confinement.utils.calc_confinement import calculate_confinement, dgo_confinement
 from confinement.utils.confinement_moving_window import igo_confinement
-from confinement.confinement_report import ConfinementReport
+from confinement.utils.confinement_report import ConfinementReport
 from confinement.__version__ import __version__
 
 Path = str
@@ -39,8 +40,9 @@ Path = str
 initGDALOGRErrors()
 gdal.UseExceptions()
 
-cfg = ModelConfig('http://xml.riverscapes.net/Projects/XSD/V1/Confinement.xsd', __version__)
+cfg = ModelConfig('http://xml.riverscapes.net/Projects/XSD/V2/RiverscapesProject.xsd', __version__)
 
+LYR_DESCRIPTIONS_JSON = os.path.join(os.path.dirname(__file__), 'layer_descriptions.json')
 LayerTypes = {
     # key: (name, id, tag, relpath)]
     'INPUTS': RSLayer('Inputs', 'INPUTS', 'Geopackage', 'inputs/inputs.gpkg', {
@@ -66,6 +68,7 @@ LayerTypes = {
         'CONFINEMENT_MARGINS': RSLayer('Confinement Margins', 'CONFINEMENT_MARGINS', 'Vector', 'Confining_Margins'),
         'CONFINEMENT_RATIO': RSLayer('Confinement Ratio', 'CONFINEMENT_RATIO', 'Vector', 'Confinement_Ratio'),
         'CONFINEMENT_BUFFERS': RSLayer('Active Channel Buffer', 'CONFINEMENT_BUFFERS', 'Vector', 'Confinement_Buffers'),
+        'CONFINEMENT_RATIO_SEGMENTED': RSLayer('Confinement Ratio Segmented', 'CONFINEMENT_RATIO_SEGMENTED', 'Vector', 'Confinement_Ratio_Segmented'),
         'CONFINEMENT_DGOS': RSLayer('Confinement DGOs', 'CONFINEMENT_DGOS', 'Vector', 'dgos'),
         'CONFINEMENT_IGOS': RSLayer('Confinement IGOS', 'CONFINEMENT_IGOS', 'Vector', 'igos')
     }),
@@ -109,6 +112,8 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
         '3': 2000,
         '4': 8000,
     }
+
+    augment_layermeta('confinement', LYR_DESCRIPTIONS_JSON, LayerTypes)
 
     # Make the projectXML
     project, _realization, proj_nodes, report_path = create_project(huc, output_folder, [
@@ -552,6 +557,8 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
     windows = moving_window_dgo_ids(igo_out_path, dgo_out_path, level_paths, search_distance)
     log.info('Calculating confinement for IGOs using moving windows')
     igo_confinement(igo_out_path, dgo_out_path, windows)
+
+    add_layer_descriptions(project, LYR_DESCRIPTIONS_JSON, LayerTypes)
 
     # Write a report
     report = ConfinementReport(output_gpkg, report_path, project)

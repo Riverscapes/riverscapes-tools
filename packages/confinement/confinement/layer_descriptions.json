@@ -1,5 +1,16 @@
 {
-    "JUNCTION_POINTS": ["","",""],
-    "POINT_METRICS": ["","",""],
-    "POINT_MEASUREMENTS": ["","",""]
+    "SPLIT_POINTS": ["points that indicate where confinement type changes along each input flowline","",""],
+    "FLOWLINE_SEGMENTS": ["segments of flowline that are confined with an attribute indicating whether they are confined on the right or left side","",""],
+    "ERROR_POLYLINES": ["A polyline feature class used to store stream segments with invalid geometries for which outputs were unable to be calculated","",""],
+    "ERROR_POLYGONS": ["A polygon feature class used to store channel polygons which were unable to be cleanly split","",""],
+    "CONFINEMENT_BUFFER_SPLIT": ["The buffered channel area split into two (left and right) parts","",""],
+    "CONFINEMENT_ZONES": ["The difference between the buffered channel area and the confining polygon (valley bottom)","",""],
+    "CONFINING_POLYGONS_UNION": ["A union of all of the parts of the confining polygon (valley bottom)","",""],
+    "CONFINEMENT_RAW": ["Input flowlines segmented at each point where confinement type (left, right, both, none) changes with lengths of those confinement types calculated","",""],
+    "CONFINEMENT_MARGINS": ["Lines that indicate where the confinement buffers (buffered channel area) intersect with the confining polygon (valley bottom)","",""],
+    "CONFINEMENT_RATIO": ["Input flowlines, aggregated by 'level path' with confinement attributes calculated","",""],
+    "CONFINEMENT_RATIO_SEGMENTED": ["Input segmented flowlines with confinement attributes calulated","",""],
+    "CONFINEMENT_BUFFERS": ["A buffer of the channel area polygon input used to account for positional innaccuracy in calculating CONFINEMENT_DGOS","",""],
+    "CONFINEMENT_DGOS": ["DGO polygons attributed with confinement attributes, where these attributes are summed for the flowlines within the polygon","",""],
+    "CONFINEMENT_IGOS": ["IGO points with confinement attributes calculated by performing a moving window analysis on the DGO polygons","",""]
 }
