@@ -46,7 +46,7 @@
       "args": [
         "${input:HUC}",
         "{env:DATA_ROOT}/vbet/${input:HUC}/inputs/vbet_inputs.gpkg/flowlines_vaa",
-        "{env:DATA_ROOT}/channel_area/${input:HUC}/outputs/channel_area.gpkg/channel_area",
+        "{env:DATA_ROOT}/vbet/${input:HUC}/inputs/vbet_inputs.gpkg/channel_area_polygons",
         "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/vbet_full",
         "{env:DATA_ROOT}/confinement/${input:HUC}", // output folder
         "vbet_level_path",

@@ -11,7 +11,7 @@ from confinement.utils.confinement_report import ConfinementReport
 lyrs_in_out = {
     # CONFINEMENT_ID: INPUT_ID
     'SEGMENTED_NETWORK': 'network_intersected_300m',
-    'CHANNEL_AREA': 'channel_area',
+    'CHANNEL_AREA': 'channel_area_polygons',
     'FLOWLINES': 'Flowlines_VAA',
     'CONFINING_POLYGON': 'vbet_full',
     'DGOS': 'vbet_dgos',
@@ -45,11 +45,9 @@ def main():
 
         in_xmls = args.in_xmls.split(',')
         rscontext_xml = in_xmls[0]
-        channel_xml = in_xmls[1]
-        vbets_xml = in_xmls[2]
+        vbets_xml = in_xmls[1]
         out_prj.rs_copy_project_extents(rscontext_xml)
         rscproj = RSProject(None, rscontext_xml)
-        channelproj = RSProject(None, channel_xml)
         vbetproj = RSProject(None, vbets_xml)
 
         # get watershed
