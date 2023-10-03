@@ -90,7 +90,7 @@ try() {
     $VBET_DIR/intermediates/vbet_intermediates.gpkg/vbet_dgos \
     $VBET_DIR/outputs/vbet.gpkg/vbet_igos \
     --buffer 15.0 \
-    --segmented_network $RS_CONTEXT_DIR/hydrology/hydrology.gpkg/network_intersected_300m \
+    --segmented_network $RS_CONTEXT_DIR/hydrology/hydro_derivatives.gpkg/network_intersected_300m \
     --meta "Runner=Cybercastor" \
     --verbose
   if [[ $? != 0 ]]; then return 1; fi
