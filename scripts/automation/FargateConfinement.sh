@@ -53,9 +53,9 @@ gdal-config --version
 
 # Define some folders that we can easily clean up later
 DATA_DIR=/usr/local/data
-RS_CONTEXT_DIR=$DATA_DIR/rs_context/data
-VBET_DIR=$DATA_DIR/vbet/data
-CONFINEMENT_DIR=$DATA_DIR/output
+RSCONTEXT_DIR=$DATA_DIR/rs_context/rs_context_$RSCONTEXT_ID
+VBET_DIR=$DATA_DIR/vbet/vbet_$VBET_ID
+CONFINEMENT_DIR=$DATA_DIR/output/confinement
 
 ##########################################################################################
 # First Get RS_Context and VBET inputs
@@ -81,20 +81,22 @@ df -h
 try() {
 
   confinement $HUC \
-    $RS_CONTEXT_DIR/hydrology/hydrology.gpkg/network_intersected_300m \
+    $VBET_DIR/inputs/vbet_inputs.gpkg/flowlines_vaa \
     $VBET_DIR/inputs/vbet_inputs.gpkg/channel_area_polygons \
     $VBET_DIR/outputs/vbet.gpkg/vbet_full \
     $CONFINEMENT_DIR \
     vbet_level_path \
     ValleyBottom \
+    $VBET_DIR/intermediates/vbet_intermediates.gpkg/vbet_dgos \
+    $VBET_DIR/outputs/vbet.gpkg/vbet_igos \
     --buffer 15.0 \
     --segmented_network $RS_CONTEXT_DIR/hydrology/hydrology.gpkg/network_intersected_300m \
     --meta "Runner=Cybercastor" \
     --verbose
   if [[ $? != 0 ]]; then return 1; fi
 
-  cd /usr/local/src/riverscapes-tools/packages/gnat
-  /usr/local/venv/bin/python -m gnat.confinement_rs \
+  cd /usr/local/src/riverscapes-tools/packages/confinement
+  python3 -m confinement.confinement_rs \
     $CONFINEMENT_DIR/project.rs.xml \
     "$RS_CONTEXT_DIR/project.rs.xml,$VBET_DIR/project.rs.xml"
 
