@@ -69,8 +69,8 @@ LayerTypes = {
         'CONFINEMENT_RATIO': RSLayer('Confinement Ratio', 'CONFINEMENT_RATIO', 'Vector', 'Confinement_Ratio'),
         'CONFINEMENT_BUFFERS': RSLayer('Active Channel Buffer', 'CONFINEMENT_BUFFERS', 'Vector', 'Confinement_Buffers'),
         'CONFINEMENT_RATIO_SEGMENTED': RSLayer('Confinement Ratio Segmented', 'CONFINEMENT_RATIO_SEGMENTED', 'Vector', 'Confinement_Ratio_Segmented'),
-        'CONFINEMENT_DGOS': RSLayer('Confinement DGOs', 'CONFINEMENT_DGOS', 'Vector', 'dgos'),
-        'CONFINEMENT_IGOS': RSLayer('Confinement IGOS', 'CONFINEMENT_IGOS', 'Vector', 'igos')
+        'CONFINEMENT_DGOS': RSLayer('Confinement DGOs', 'CONFINEMENT_DGOS', 'Vector', 'confinement_dgos'),
+        'CONFINEMENT_IGOS': RSLayer('Confinement IGOS', 'CONFINEMENT_IGOS', 'Vector', 'confinement_igos')
     }),
 }
 
