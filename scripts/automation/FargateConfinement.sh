@@ -68,7 +68,7 @@ rscli download $RS_CONTEXT_DIR --id $RSCONTEXT_ID \
 
 # Go get vbet result for this to work
 rscli download $VBET_DIR --id $VBET_ID \
-  --file-filter "(vbet\.gpkg|vbet_inputs\.gpkg)" \
+  --file-filter "(vbet\.gpkg|vbet_intermediates\.gpkg|vbet_inputs\.gpkg)" \
   --no-input --no-ui --verbose
 
 ##########################################################################################
