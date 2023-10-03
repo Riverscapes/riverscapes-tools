@@ -53,7 +53,7 @@ gdal-config --version
 
 # Define some folders that we can easily clean up later
 DATA_DIR=/usr/local/data
-RSCONTEXT_DIR=$DATA_DIR/rs_context/rs_context_$RSCONTEXT_ID
+RS_CONTEXT_DIR=$DATA_DIR/rs_context/rs_context_$RSCONTEXT_ID
 VBET_DIR=$DATA_DIR/vbet/vbet_$VBET_ID
 CONFINEMENT_DIR=$DATA_DIR/output/confinement
 
