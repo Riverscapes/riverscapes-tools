@@ -10,12 +10,12 @@ from confinement.utils.confinement_report import ConfinementReport
 
 lyrs_in_out = {
     # CONFINEMENT_ID: INPUT_ID
-    'SEGMENTED_NETWORK': 'network_intersected_300m',
-    'CHANNEL_AREA': 'channel_area_polygons',
-    'FLOWLINES': 'Flowlines_VAA',
-    'CONFINING_POLYGON': 'vbet_full',
-    'DGOS': 'vbet_dgos',
-    'IGOS': 'vbet_igos'
+    'segmented_network': 'network_intersected_300m',
+    'channel_area': 'channel_area_polygons',
+    'Flowlines': 'Flowlines_VAA',
+    'ConfiningPolygon': 'vbet_full',
+    'dgos': 'vbet_dgos',
+    'igos': 'vbet_igos'
 }
 
 
