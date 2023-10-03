@@ -258,10 +258,10 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
 
     with sqlite3.connect(output_gpkg) as conn:
         curs = conn.cursor()
-        curs.execute('CREATE INDEX IF NOT EXISTS dgo_levelpath ON dgos (LevelPathI)')
-        curs.execute('CREATE INDEX IF NOT EXISTS igo_levelpath ON igos (LevelPathI)')
-        curs.execute('CREATE INDEX IF NOT EXISTS dgo_seg_distance ON dgos (seg_distance)')
-        curs.execute('CREATE INDEX IF NOT EXISTS igo_seg_distance ON igos (seg_distance)')
+        curs.execute('CREATE INDEX IF NOT EXISTS dgo_levelpath ON confinement_dgos (LevelPathI)')
+        curs.execute('CREATE INDEX IF NOT EXISTS igo_levelpath ON confinement_igos (LevelPathI)')
+        curs.execute('CREATE INDEX IF NOT EXISTS dgo_seg_distance ON confinement_dgos (seg_distance)')
+        curs.execute('CREATE INDEX IF NOT EXISTS igo_seg_distance ON confinement_igos (seg_distance)')
         conn.commit()
 
     with GeopackageLayer(intermediates_gpkg, layer_name=LayerTypes['INTERMEDIATES'].sub_layers["CONFINEMENT_BUFFER_SPLIT"].rel_path, write=True) as lyr:
