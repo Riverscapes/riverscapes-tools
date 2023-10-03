@@ -61,30 +61,30 @@
         //"--debug"
       ]
     },
-    {
-      "name": "Calculate Confinement",
-      "type": "python",
-      "request": "launch",
-      "module": "confinement.confinement",
-      "console": "integratedTerminal",
-      // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
-      "args": [
-        "${input:HUC}",
-        "{env:DATA_ROOT}/vbet/${input:HUC}/inputs/vbet_inputs.gpkg/Flowlines_VAA",
-        "{env:DATA_ROOT}/vbet/${input:HUC}/inputs/vbet_inputs.gpkg/channel_area_polygons",
-        "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/vbet_full",
-        "{env:DATA_ROOT}/confinement/${input:HUC}", // output folder
-        "vbet_level_path",
-        "ValleyBottom",
-        "--buffer", "15.0",
-        "--segmented_network", "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/network_intersected_300m",
-        "--calculate_existing",
-        "--meta",
-        "Runner=VSCode",
-        "--verbose",
-        //"--debug"
-      ]
-    },
+    // {
+    //   "name": "Calculate Confinement",
+    //   "type": "python",
+    //   "request": "launch",
+    //   "module": "confinement.confinement",
+    //   "console": "integratedTerminal",
+    //   // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
+    //   "args": [
+    //     "${input:HUC}",
+    //     "{env:DATA_ROOT}/vbet/${input:HUC}/inputs/vbet_inputs.gpkg/Flowlines_VAA",
+    //     "{env:DATA_ROOT}/vbet/${input:HUC}/inputs/vbet_inputs.gpkg/channel_area_polygons",
+    //     "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/vbet_full",
+    //     "{env:DATA_ROOT}/confinement/${input:HUC}", // output folder
+    //     "vbet_level_path",
+    //     "ValleyBottom",
+    //     "--buffer", "15.0",
+    //     "--segmented_network", "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/network_intersected_300m",
+    //     "--calculate_existing",
+    //     "--meta",
+    //     "Runner=VSCode",
+    //     "--verbose",
+    //     //"--debug"
+    //   ]
+    // },
     {
       "name": "Augment Confinement XML",
       "type": "python",
