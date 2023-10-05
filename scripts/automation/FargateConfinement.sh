@@ -4,6 +4,9 @@
 set -eu
 IFS=$'\n\t'
 
+# download confinement package - delete later when we have a docker image
+pip3 install /usr/local/src/riverscapes-tools/packages/confinement
+
 # These environment variables need to be present before the script starts
 (: "${VBET_ID?}")
 (: "${RSCONTEXT_ID?}")
