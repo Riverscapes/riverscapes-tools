@@ -62,13 +62,14 @@ LayerTypes = {
         'JUNCTION_POINTS': RSLayer('Junction Points', 'JUNCTION_POINTS', 'Vector', 'junction_points'),
     }),
     'RME_OUTPUTS': RSLayer('Riverscapes Metrics', 'RME_OUTPUTS', 'Geopackage', 'outputs/riverscapes_metrics.gpkg', {
+        'DGO_METRICS': RSLayer('DGO Metrics', 'DGO_METRICS', 'Vector', 'vw_dgo_metrics'),
         'POINT_METRICS': RSLayer('Point Metrics', 'POINT_METRICS', 'Vector', 'vw_point_metrics'),
         'POINT_MEASUREMENTS': RSLayer('Point Measurements', 'POINT_MEASUREMENTS', 'Vector', 'vw_point_measurements'),
     }),
 }
 
-stream_size_lookup = {0: 'small', 1: 'medium', 2: 'large'}
-gradient_buffer_lookup = {'small': 25.0, 'medium': 50.0, 'large': 100.0}
+stream_size_lookup = {0: 'small', 1: 'medium', 2: 'large', 3: 'very large', 4: 'huge'}
+gradient_buffer_lookup = {'small': 25.0, 'medium': 50.0, 'large': 100.0, 'very large': 100.0, 'huge': 100.0}  # should this go as high as it does
 
 
 def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments: Path, in_points: Path, in_vbet_centerline: Path, in_dem: Path, in_ppt: Path, in_roads: Path, in_rail: Path, in_ecoregions: Path, project_folder: Path, level_paths: list = None, meta: dict = None):
@@ -234,13 +235,18 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments:
 
             geom_centerline = collect_linestring(centerlines, f'LevelPathI = {level_path}', precision=8)
 
-            for feat_seg_pt, *_ in lyr_points.iterate_features(attribute_filter=f'LevelPathI = {level_path}'):
+            for feat_seg_dgo, *_ in lyr_segments.iterate_features(attribute_filter=f'LevelPathI = {level_path}'):
                 # Gather common components for metric calcuations
-                point_id = feat_seg_pt.GetFID()
-                segment_distance = feat_seg_pt.GetField('seg_distance')
-                stream_size_id = feat_seg_pt.GetField('stream_size')
+                feat_geom = feat_seg_dgo.GetGeometryRef()
+                dgo_id = feat_seg_dgo.GetFID()
+                segment_distance = feat_seg_dgo.GetField('seg_distance')
+                if segment_distance is None:
+                    continue
+                # stream_size_id = feat_seg_pt.GetField('stream_size')
+                curs.execute("SELECT stream_size from points WHERE seg_distance = ? and LevelPathI = ?", (segment_distance, level_path))
+                stream_size_id = curs.fetchone()[0]
                 stream_size = stream_size_lookup[stream_size_id]
-                window_geoms = {}  # Different metrics may require different windows. Store generated windows here for reuse.
+                # window_geoms = {}  # Different metrics may require different windows. Store generated windows here for reuse.
                 metrics_output = {}
                 measurements_output = {}
                 min_elev = None
@@ -249,11 +255,11 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments:
                 # Calculate each metric if it is active
                 if 'STRMGRAD' in metrics:
                     metric = metrics['STRMGRAD']
-                    window = metric[stream_size]
-                    if window not in window_geoms:
-                        window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance, buffer_size_clip)
+                    # window = metric[stream_size]
+                    # if window not in window_geoms:
+                    #     window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance, buffer_size_clip)
 
-                    stream_length, min_elev, max_elev = get_segment_measurements(geom_flowline, src_dem, window_geoms[window], buffer_distance[stream_size], transform)
+                    stream_length, min_elev, max_elev = get_segment_measurements(geom_flowline, src_dem, feat_geom, buffer_distance[stream_size], transform)
                     measurements_output[measurements['STRMMINELEV']['measurement_id']] = min_elev
                     measurements_output[measurements['STRMMAXELEV']['measurement_id']] = max_elev
                     measurements_output[measurements['STRMLENG']['measurement_id']] = stream_length
@@ -263,15 +269,12 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments:
 
                 if 'VALGRAD' in metrics:
                     metric = metrics['VALGRAD']
-                    window = metric[stream_size]
-                    if window not in window_geoms:
-                        window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance, buffer_size_clip)
 
-                    centerline_length, *_ = get_segment_measurements(geom_centerline, src_dem, window_geoms[window], buffer_distance[stream_size], transform)
+                    centerline_length, *_ = get_segment_measurements(geom_centerline, src_dem, feat_geom, buffer_distance[stream_size], transform)
                     measurements_output[measurements['VALLENG']['measurement_id']] = centerline_length
 
                     if any(elev is None for elev in [min_elev, max_elev]):
-                        _, min_elev, max_elev = get_segment_measurements(geom_flowline, dem, window_geoms[window], buffer_distance[stream_size], transform)
+                        _, min_elev, max_elev = get_segment_measurements(geom_flowline, dem, feat_geom, buffer_distance[stream_size], transform)
                         measurements_output[measurements['STRMMINELEV']['measurement_id']] = min_elev
                         measurements_output[measurements['STRMMAXELEV']['measurement_id']] = max_elev
 
@@ -280,36 +283,30 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments:
 
                 if 'STRMORDR' in metrics:
                     metric = metrics['STRMORDR']
-                    window = metric[stream_size]
-                    if window not in window_geoms:
-                        window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance, buffer_size_clip)
 
                     results = []
                     with GeopackageLayer(line_network) as lyr_lines:
-                        for feat, *_ in lyr_lines.iterate_features(clip_shape=window_geoms[window]):
+                        for feat, *_ in lyr_lines.iterate_features(clip_shape=feat_geom):
                             results.append(feat.GetField('StreamOrde'))
                         lyr_lines.ogr_layer.SetSpatialFilter(None)
                     if len(results) > 0:
                         stream_order = max(results)
                     else:
                         stream_order = None
-                        log.warning(f'Unable to calculate Stream Order for pt {point_id} in level path {level_path}')
+                        log.warning(f'Unable to calculate Stream Order for dgo {dgo_id} in level path {level_path}')
                     metrics_output[metric['metric_id']] = stream_order
 
                 if 'HEDWTR' in metrics:
                     metric = metrics['HEDWTR']
-                    window = metric[stream_size]
-                    if window not in window_geoms:
-                        window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance)
 
                     sum_attributes = {}
                     with GeopackageLayer(line_network) as lyr_lines:
-                        for feat, *_ in lyr_lines.iterate_features(clip_shape=window_geoms[window]):
+                        for feat, *_ in lyr_lines.iterate_features(clip_shape=feat_geom):
                             line_geom = feat.GetGeometryRef()
                             attribute = str(feat.GetField('STARTFLAG'))
                             if attribute not in ['1', '0']:
                                 continue
-                            geom_section = window_geoms[window].Intersection(line_geom)
+                            geom_section = feat_geom.Intersection(line_geom)
                             length = geom_section.Length()
                             sum_attributes[attribute] = sum_attributes.get(attribute, 0) + length
                         lyr_lines.ogr_layer.SetSpatialFilter(None)
@@ -322,16 +319,13 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments:
 
                 if 'STRMTYPE' in metrics:
                     metric = metrics['STRMTYPE']
-                    window = metric[stream_size]
-                    if window not in window_geoms:
-                        window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance)
 
                     attributes = {}
                     with GeopackageLayer(line_network) as lyr_lines:
-                        for feat, *_ in lyr_lines.iterate_features(clip_shape=window_geoms[window]):
+                        for feat, *_ in lyr_lines.iterate_features(clip_shape=feat_geom):
                             line_geom = feat.GetGeometryRef()
                             attribute = str(feat.GetField('FCode'))
-                            geom_section = window_geoms[window].Intersection(line_geom)
+                            geom_section = feat_geom.Intersection(line_geom)
                             length = geom_section.Length()
                             attributes[attribute] = attributes.get(attribute, 0) + length
                         lyr_lines.ogr_layer.SetSpatialFilter(None)
@@ -344,91 +338,93 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments:
 
                 if 'ACTFLDAREA' in metrics:
                     metric = metrics['ACTFLDAREA']
-                    window = metric[stream_size]
+                    # window = metric[stream_size]
 
-                    values = sum_window_attributes(lyr_segments, window, level_path, segment_distance, ['active_floodplain_area'])
-                    afp_area = values.get('active_floodplain_area', 0.0)
+                    # values = sum_window_attributes(lyr_segments, window, level_path, segment_distance, ['active_floodplain_area'])
+                    # afp_area = values.get('active_floodplain_area', 0.0)
+                    afp_area = feat_seg_dgo.GetField('active_floodplain_area') if feat_seg_dgo.GetField('active_floodplain_area') is not None else 0.0
                     metrics_output[metric['metric_id']] = afp_area
 
                 if 'ACTCHANAREA' in metrics:
                     metric = metrics['ACTCHANAREA']
-                    window = metric[stream_size]
+                    # window = metric[stream_size]
 
-                    values = sum_window_attributes(lyr_segments, window, level_path, segment_distance, ['active_channel_area'])
-                    ac_area = values.get('active_channel_area', 0.0)
+                    # values = sum_window_attributes(lyr_segments, window, level_path, segment_distance, ['active_channel_area'])
+                    # ac_area = values.get('active_channel_area', 0.0)
+                    ac_area = feat_seg_dgo.GetField('active_channel_area') if feat_seg_dgo.GetField('active_channel_area') is not None else 0.0
                     metrics_output[metric['metric_id']] = ac_area
 
                 if 'INTGWDTH' in metrics:
                     metric = metrics['INTGWDTH']
-                    window = metric[stream_size]
+                    # window = metric[stream_size]
 
-                    values = sum_window_attributes(lyr_segments, window, level_path, segment_distance, ['centerline_length', 'segment_area'])
-                    ig_width = values.get('segment_area', 0.0) / values['centerline_length'] if 'centerline_length' in values else None
+                    # values = sum_window_attributes(lyr_segments, window, level_path, segment_distance, ['centerline_length', 'segment_area'])
+                    # ig_width = values.get('segment_area', 0.0) / values['centerline_length'] if 'centerline_length' in values else None
+                    ig_width = feat_seg_dgo.GetField('segment_area') / feat_seg_dgo.GetField('centerline_length') if feat_seg_dgo.GetField('centerline_length') is not None else None
                     metrics_output[metric['metric_id']] = ig_width
-
                 if 'CHANVBRAT' in metrics:
                     metric = metrics['CHANVBRAT']
-                    window = metric[stream_size]
+                    # window = metric[stream_size]
 
-                    values = sum_window_attributes(lyr_segments, window, level_path, segment_distance, ['active_channel_area', 'segment_area'])
-                    ac_area = values.get('active_channel_area', 0.0)
-                    vbet_area = values.get('segment_area', 0.0)
-                    ac_ratio = ac_area / vbet_area if vbet_area > 0.0 else None
+                    # values = sum_window_attributes(lyr_segments, window, level_path, segment_distance, ['active_channel_area', 'segment_area'])
+                    # ac_area = values.get('active_channel_area', 0.0)
+                    # vbet_area = values.get('segment_area', 0.0)
+                    # ac_ratio = ac_area / vbet_area if vbet_area > 0.0 else None
+                    ac_ratio = feat_seg_dgo.GetField('active_channel_area') / feat_seg_dgo.GetField('segment_area') if feat_seg_dgo.GetField('segment_area') > 0.0 else None
                     metrics_output[metric['metric_id']] = ac_ratio
 
                 if 'FLDVBRAT' in metrics:
                     metric = metrics['FLDVBRAT']
-                    window = metric[stream_size]
+                    # window = metric[stream_size]
 
-                    values = sum_window_attributes(lyr_segments, window, level_path, segment_distance, ['floodplain_area', 'segment_area'])
-                    fp_area = values.get('floodplain_area', 0.0)
-                    vbet_area = values.get('segment_area', 0.0)
-                    fp_ratio = fp_area / vbet_area if vbet_area > 0.0 else None
+                    # values = sum_window_attributes(lyr_segments, window, level_path, segment_distance, ['floodplain_area', 'segment_area'])
+                    # fp_area = values.get('floodplain_area', 0.0)
+                    # vbet_area = values.get('segment_area', 0.0)
+                    # fp_ratio = fp_area / vbet_area if vbet_area > 0.0 else None
+                    fp_ratio = feat_seg_dgo.GetField('floodplain_area') / feat_seg_dgo.GetField('segment_area') if feat_seg_dgo.GetField('segment_area') > 0.0 else None
                     metrics_output[metric['metric_id']] = fp_ratio
 
                 if 'RELFLWLNGTH' in metrics:
                     metric = metrics['RELFLWLNGTH']
-                    window = metric[stream_size]
-                    if window not in window_geoms:
-                        window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance)
+                    # window = metric[stream_size]
+                    # if window not in window_geoms:
+                    #     window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance)
 
                     geom_flowline_full = collect_linestring(line_network, f'vbet_level_path = {level_path}')
-                    stream_length_total, *_ = get_segment_measurements(geom_flowline_full, src_dem, window_geoms[window], buffer_distance[stream_size], transform)
-                    centerline_length, *_ = get_segment_measurements(geom_centerline, src_dem, window_geoms[window], buffer_distance[stream_size], transform)
+                    stream_length_total, *_ = get_segment_measurements(geom_flowline_full, src_dem, feat_geom, buffer_distance[stream_size], transform)
+                    centerline_length, *_ = get_segment_measurements(geom_centerline, src_dem, feat_geom, buffer_distance[stream_size], transform)
 
                     relative_flow_length = stream_length_total / centerline_length if centerline_length > 0.0 else None
                     metrics_output[metric['metric_id']] = relative_flow_length
 
                 if 'STRMSIZE' in metrics:
                     metric = metrics['STRMSIZE']
-                    window = metric[stream_size]
-                    if window not in window_geoms:
-                        window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance)
+                    # window = metric[stream_size]
+                    # if window not in window_geoms:
+                    #     window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance)
 
-                    values = sum_window_attributes(lyr_segments, window, level_path, segment_distance, ['active_channel_area', 'active_floodplain_area'])
-                    stream_length, *_ = get_segment_measurements(geom_flowline, src_dem, window_geoms[window], buffer_distance[stream_size], transform)
-                    ac_area = values.get('active_channel_area', 0.0)
+                    # values = sum_window_attributes(lyr_segments, window, level_path, segment_distance, ['active_channel_area', 'active_floodplain_area'])
+                    stream_length, *_ = get_segment_measurements(geom_flowline, src_dem, feat_geom, buffer_distance[stream_size], transform)
+                    # ac_area = values.get('active_channel_area', 0.0)
 
-                    stream_size_metric = ac_area / stream_length if stream_length > 0.0 else None
+                    # stream_size_metric = ac_area / stream_length if stream_length > 0.0 else None
+                    stream_size_metric = feat_seg_dgo.GetField('active_channel_area') / stream_length if stream_length > 0.0 else None
                     metrics_output[metric['metric_id']] = stream_size_metric
 
                 if 'ECORGIII' in metrics:
                     metric = metrics['ECORGIII']
-                    window = metric[stream_size]
-                    if window not in window_geoms:
-                        window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance)
 
                     attributes = {}
                     with GeopackageLayer(ecoregions) as lyr_ecoregions:
-                        for feat, *_ in lyr_ecoregions.iterate_features(clip_shape=window_geoms[window]):
+                        for feat, *_ in lyr_ecoregions.iterate_features(clip_shape=feat_geom):
                             geom_ecoregion = feat.GetGeometryRef()
                             attribute = str(feat.GetField('US_L3CODE'))
-                            geom_section = window_geoms[window].Intersection(geom_ecoregion)
+                            geom_section = feat_geom.Intersection(geom_ecoregion)
                             area = geom_section.GetArea()
                             attributes[attribute] = attributes.get(attribute, 0) + area
                         lyr_ecoregions = None
                     if len(attributes) == 0:
-                        log.warning(f'Unable to find majority ecoregion III for pt {point_id} in level path {level_path}')
+                        log.warning(f'Unable to find majority ecoregion III for pt {dgo_id} in level path {level_path}')
                         majority_attribute = None
                     else:
                         majority_attribute = max(attributes, key=attributes.get)
@@ -436,21 +432,18 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments:
 
                 if 'ECORGIV' in metrics:
                     metric = metrics['ECORGIV']
-                    window = metric[stream_size]
-                    if window not in window_geoms:
-                        window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance)
 
                     attributes = {}
                     with GeopackageLayer(ecoregions) as lyr_ecoregions:
-                        for feat, *_ in lyr_ecoregions.iterate_features(clip_shape=window_geoms[window]):
+                        for feat, *_ in lyr_ecoregions.iterate_features(clip_shape=feat_geom):
                             geom_ecoregion = feat.GetGeometryRef()
                             attribute = str(feat.GetField('US_L4CODE'))
-                            geom_section = window_geoms[window].Intersection(geom_ecoregion)
+                            geom_section = feat_geom.Intersection(geom_ecoregion)
                             area = geom_section.GetArea()
                             attributes[attribute] = attributes.get(attribute, 0) + area
                         lyr_ecoregions = None
                     if len(attributes) == 0:
-                        log.warning(f'Unable to find majority ecoregion III for pt {point_id} in level path {level_path}')
+                        log.warning(f'Unable to find majority ecoregion III for pt {dgo_id} in level path {level_path}')
                         majority_attribute = None
                     else:
                         majority_attribute = max(attributes, key=attributes.get)
@@ -458,81 +451,63 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments:
 
                 if 'CONF' in metrics:
                     metric = metrics['CONF']
-                    window = metric[stream_size]
-                    if window not in window_geoms:
-                        window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance)
 
                     with GeopackageLayer(junctions) as lyr_pts:
                         count = 0
-                        for feat, *_ in lyr_pts.iterate_features(clip_shape=window_geoms[window], attribute_filter=""""JunctionType" = 'Confluence'"""):
+                        for feat, *_ in lyr_pts.iterate_features(clip_shape=feat_geom, attribute_filter=""""JunctionType" = 'Confluence'"""):
                             count += 1
                         metrics_output[metric['metric_id']] = count
 
                 if 'DIFF' in metrics:
                     metric = metrics['DIFF']
-                    window = metric[stream_size]
-                    if window not in window_geoms:
-                        window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance)
 
                     with GeopackageLayer(junctions) as lyr_pts:
                         count = 0
-                        for feat, *_ in lyr_pts.iterate_features(clip_shape=window_geoms[window], attribute_filter=""""JunctionType" = 'Diffluence'"""):
+                        for feat, *_ in lyr_pts.iterate_features(clip_shape=feat_geom, attribute_filter=""""JunctionType" = 'Diffluence'"""):
                             count += 1
                         metrics_output[metric['metric_id']] = count
 
                 if 'TRIBS' in metrics:
                     metric = metrics['TRIBS']
-                    window = metric[stream_size]
-                    if window not in window_geoms:
-                        window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance)
 
                     with GeopackageLayer(junctions) as lyr_pts:
                         count = 0
-                        for feat, *_ in lyr_pts.iterate_features(clip_shape=window_geoms[window], attribute_filter=""""JunctionType" = 'Tributary'"""):
+                        for feat, *_ in lyr_pts.iterate_features(clip_shape=feat_geom, attribute_filter=""""JunctionType" = 'Tributary'"""):
                             count += 1
                         metrics_output[metric['metric_id']] = count
 
                 if 'CHANSIN' in metrics:
                     metric = metrics['CHANSIN']
-                    window = metric[stream_size]
-                    if window not in window_geoms:
-                        window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance)
 
-                    line = AnalysisLine(geom_flowline, window_geoms[window])
+                    line = AnalysisLine(geom_flowline, feat_geom)
                     measurements_output[measurements['STRMSTRLENG']['measurement_id']] = line.endpoint_distance
                     metrics_output[metric['metric_id']] = line.sinuosity()
 
                 if 'DRAINAREA' in metrics:
                     metric = metrics['DRAINAREA']
-                    window = metric[stream_size]
-                    if window not in window_geoms:
-                        window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance, buffer_size_clip)
 
                     results = []
                     with GeopackageLayer(line_network) as lyr_lines:
-                        for feat, *_ in lyr_lines.iterate_features(clip_shape=window_geoms[window]):
+                        for feat, *_ in lyr_lines.iterate_features(clip_shape=feat_geom):
                             results.append(feat.GetField('TotDASqKm'))
                     if len(results) > 0:
                         drainage_area = max(results)
                     else:
                         drainage_area = None
-                        log.warning(f'Unable to calculate drainage area for pt {point_id} in level path {level_path}')
+                        log.warning(f'Unable to calculate drainage area for pt {dgo_id} in level path {level_path}')
                     metrics_output[metric['metric_id']] = drainage_area
 
                 if 'VALAZMTH' in metrics:
                     metric = metrics['VALAZMTH']
-                    window = metric[stream_size]
-                    if window not in window_geoms:
-                        window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance)
 
-                    cline = AnalysisLine(geom_centerline, window_geoms[window])
+                    cline = AnalysisLine(geom_centerline, feat_geom)
                     metrics_output[metric['metric_id']] = cline.azimuth()
 
                 # Write to Metrics
                 if len(metrics_output) > 0:
-                    curs.executemany("INSERT INTO metric_values (point_id, metric_id, metric_value) VALUES (?,?,?)", [(point_id, name, value) for name, value in metrics_output.items()])
+                    curs.executemany("INSERT INTO metric_values (dgo_id, metric_id, metric_value) VALUES (?,?,?)", [(dgo_id, name, value) for name, value in metrics_output.items()])
                 if len(measurements_output) > 0:
-                    curs.executemany("INSERT INTO measurement_values (point_id, measurement_id, measurement_value) VALUES (?,?,?)", [(point_id, name, value) for name, value in measurements_output.items()])
+                    curs.executemany("INSERT INTO measurement_values (dgo_id, measurement_id, measurement_value) VALUES (?,?,?)", [(dgo_id, name, value) for name, value in measurements_output.items()])
             conn.commit()
 
     epsg = 4326

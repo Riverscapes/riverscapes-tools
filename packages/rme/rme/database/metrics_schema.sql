@@ -14,14 +14,26 @@ CREATE TABLE metrics (
 );
 
 CREATE TABLE metric_values (
-    point_id INTEGER NOT NULL,
+    dgo_id INTEGER NOT NULL,
     metric_id INTEGER NOT NULL,
     metric_value REAL,
     metadata TEXT,
     qaqc_date TEXT,
     PRIMARY KEY (point_id, metric_id)
 
-    CONSTRAINT fk_point_id FOREIGN KEY (point_id) REFERENCES points (fid),
+    CONSTRAINT fk_point_id FOREIGN KEY (point_id) REFERENCES vbet_segments (fid),
+    CONSTRAINT fk_metric_id FOREIGN KEY (metric_id) REFERENCES metrics (metric_id)
+);
+
+CREATE TABLE igo_metric_values (
+    igo_id INTEGER NOT NULL,
+    metric_id INTEGER NOT NULL,
+    metric_value REAL,
+    metadata TEXT,
+    qaqc_date TEXT,
+    PRIMARY KEY (igo_id, metric_id)
+
+    CONSTRAINT fk_igo_id FOREIGN KEY (igo_id) REFERENCES points (fid),
     CONSTRAINT fk_metric_id FOREIGN KEY (metric_id) REFERENCES metrics (metric_id)
 );
 
@@ -35,7 +47,7 @@ CREATE TABLE measurements (
 );
 
 CREATE TABLE measurement_values (
-    point_id INTEGER NOT NULL,
+    dgo_id INTEGER NOT NULL,
     measurement_id INTEGER NOT NULL,
     measurement_value REAL,
     metadata TEXT,
