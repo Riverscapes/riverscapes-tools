@@ -133,6 +133,12 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments:
     ecoregions = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['ECO_REGIONS'].rel_path)
     copy_feature_class(in_ecoregions, ecoregions)
 
+    # get utm
+    with GeopackageLayer(points) as lyr_pts:
+        feat = lyr_pts.ogr_layer.GetNextFeature()
+        geom = feat.GetGeometryRef()
+        utm_epsg = get_utm_zone_epsg(geom.GetPoint(0)[0])
+
     _dem_node, dem = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], in_dem)
     _ppt_node, ppt = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['PPT'], in_ppt)
     project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
@@ -191,13 +197,14 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments:
     load_lookup_data(outputs_gpkg, os.path.join(database_folder, 'data_metrics'))
 
     # index level path and seg distance
-    # with SQLiteCon(outputs_gpkg) as db:
-    #     db.curs.execute("CREATE INDEX idx_level_path_seg ON vbet_segments (LevelPathI)")
-    #     db.curs.execute("CREATE INDEX idx_seg_distance_seg ON vbet_segments (seg_distance)")
-    #     db.curs.execute("CREATE INDEX idx_size ON points (stream_size)")
-    #     db.curs.execute("CREATE INDEX idx_level_path_pts ON points (LevelPathI)")
-    #     db.curs.execute("CREATE INDEX idx_seg_distance_pts ON points (seg_distance)")
-    #     db.conn.commit()
+    with sqlite3.connect(outputs_gpkg) as conn:
+        curs = conn.cursor()
+        curs.execute("CREATE INDEX idx_level_path_seg ON vbet_segments (LevelPathI)")
+        curs.execute("CREATE INDEX idx_seg_distance_seg ON vbet_segments (seg_distance)")
+        curs.execute("CREATE INDEX idx_size ON points (stream_size)")
+        curs.execute("CREATE INDEX idx_level_path_pts ON points (LevelPathI)")
+        curs.execute("CREATE INDEX idx_seg_distance_pts ON points (seg_distance)")
+        conn.commit()
 
     # Generate the list of level paths to run, sorted by ascending order and optional user filter
     level_paths_to_run = []
@@ -211,7 +218,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments:
     level_paths_to_run.sort(reverse=False)
 
     # store moving windows of igos for later summarization
-    # windows = moving_window_dgo_ids(points, segments, level_paths_to_run, window_distance)
+    windows = moving_window_dgo_ids(points, segments, level_paths_to_run, window_distance)
 
     metrics = generate_metric_list(outputs_gpkg)
     measurements = generate_metric_list(outputs_gpkg, 'measurements')
@@ -221,27 +228,22 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments:
         buffer = VectorBase.rough_convert_metres_to_raster_units(dem, distance)
         buffer_distance[stream_size] = buffer
 
-    with GeopackageLayer(points) as lyr_points, \
-            GeopackageLayer(segments) as lyr_segments,\
-            sqlite3.connect(outputs_gpkg) as conn, \
-            rasterio.open(dem) as src_dem:
+    progbar = ProgressBar(len(level_paths_to_run), 50, "Calculating Riverscapes Metrics")
+    counter = 0
+    for level_path in level_paths_to_run:
+        lp_metrics = {}
+        lp_meas = {}
+        progbar.update(counter)
+        counter += 1
 
-        curs = conn.cursor()
+        with GeopackageLayer(segments) as lyr_segments, \
+                rasterio.open(dem) as src_dem:
 
-        buffer_size_clip = lyr_points.rough_convert_metres_to_vector_units(0.25)
+            start = time.time()
+            # buffer_size_clip = lyr_points.rough_convert_metres_to_vector_units(0.25)
+            _transform_ref, transform = VectorBase.get_transform_from_epsg(lyr_segments.spatial_ref, utm_epsg)
+            AnalysisLine.transform = transform
 
-        for feat, *_ in lyr_points.iterate_features():
-            geom = feat.GetGeometryRef()
-            break
-        utm_epsg = get_utm_zone_epsg(geom.GetPoint(0)[0])
-        _transform_ref, transform = VectorBase.get_transform_from_epsg(lyr_points.spatial_ref, utm_epsg)
-        AnalysisLine.transform = transform
-
-        progbar = ProgressBar(len(level_paths_to_run), 50, "Calculating Riverscapes Metrics")
-        counter = 0
-        for level_path in level_paths_to_run:
-            progbar.update(counter)
-            counter += 1
             geom_flowline = collect_linestring(line_network, f'LevelPathI = {level_path}')
             if geom_flowline.IsEmpty():
                 log.error(f'Flowline for level path {level_path} is empty geometry')
@@ -251,14 +253,19 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments:
 
             for feat_seg_dgo, *_ in lyr_segments.iterate_features(attribute_filter=f'LevelPathI = {level_path}'):
                 # Gather common components for metric calcuations
-                feat_geom = feat_seg_dgo.GetGeometryRef()
+                feat_geom = feat_seg_dgo.GetGeometryRef().Clone()
                 dgo_id = feat_seg_dgo.GetFID()
                 segment_distance = feat_seg_dgo.GetField('seg_distance')
                 if segment_distance is None:
                     continue
                 # stream_size_id = feat_seg_pt.GetField('stream_size')
-                curs.execute("SELECT stream_size from points WHERE seg_distance = ? and LevelPathI = ?", (segment_distance, level_path))
-                stream_size_id = curs.fetchone()[0]
+                # curs.execute("SELECT stream_size from points WHERE seg_distance = ? and LevelPathI = ?", (segment_distance, level_path))
+                # stream_size_id = curs.fetchone()[0]
+                with GeopackageLayer(points) as lyr_points:
+                    for pt_ftr, *_ in lyr_points.iterate_features(attribute_filter=f'LevelPathI = {level_path} and seg_distance = {segment_distance}'):
+                        stream_size_id = pt_ftr.GetField('stream_size')
+                        break
+
                 stream_size = stream_size_lookup[stream_size_id]
                 # window_geoms = {}  # Different metrics may require different windows. Store generated windows here for reuse.
                 metrics_output = {}
@@ -269,9 +276,6 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments:
                 # Calculate each metric if it is active
                 if 'STRMGRAD' in metrics:
                     metric = metrics['STRMGRAD']
-                    # window = metric[stream_size]
-                    # if window not in window_geoms:
-                    #     window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance, buffer_size_clip)
 
                     stream_length, min_elev, max_elev = get_segment_measurements(geom_flowline, src_dem, feat_geom, buffer_distance[stream_size], transform)
                     measurements_output[measurements['STRMMINELEV']['measurement_id']] = min_elev
@@ -352,57 +356,35 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments:
 
                 if 'ACTFLDAREA' in metrics:
                     metric = metrics['ACTFLDAREA']
-                    # window = metric[stream_size]
 
-                    # values = sum_window_attributes(lyr_segments, window, level_path, segment_distance, ['active_floodplain_area'])
-                    # afp_area = values.get('active_floodplain_area', 0.0)
                     afp_area = feat_seg_dgo.GetField('active_floodplain_area') if feat_seg_dgo.GetField('active_floodplain_area') is not None else 0.0
                     metrics_output[metric['metric_id']] = afp_area
 
                 if 'ACTCHANAREA' in metrics:
                     metric = metrics['ACTCHANAREA']
-                    # window = metric[stream_size]
 
-                    # values = sum_window_attributes(lyr_segments, window, level_path, segment_distance, ['active_channel_area'])
-                    # ac_area = values.get('active_channel_area', 0.0)
                     ac_area = feat_seg_dgo.GetField('active_channel_area') if feat_seg_dgo.GetField('active_channel_area') is not None else 0.0
                     metrics_output[metric['metric_id']] = ac_area
 
                 if 'INTGWDTH' in metrics:
                     metric = metrics['INTGWDTH']
-                    # window = metric[stream_size]
 
-                    # values = sum_window_attributes(lyr_segments, window, level_path, segment_distance, ['centerline_length', 'segment_area'])
-                    # ig_width = values.get('segment_area', 0.0) / values['centerline_length'] if 'centerline_length' in values else None
                     ig_width = feat_seg_dgo.GetField('segment_area') / feat_seg_dgo.GetField('centerline_length') if feat_seg_dgo.GetField('centerline_length') is not None else None
                     metrics_output[metric['metric_id']] = ig_width
                 if 'CHANVBRAT' in metrics:
                     metric = metrics['CHANVBRAT']
-                    # window = metric[stream_size]
 
-                    # values = sum_window_attributes(lyr_segments, window, level_path, segment_distance, ['active_channel_area', 'segment_area'])
-                    # ac_area = values.get('active_channel_area', 0.0)
-                    # vbet_area = values.get('segment_area', 0.0)
-                    # ac_ratio = ac_area / vbet_area if vbet_area > 0.0 else None
                     ac_ratio = feat_seg_dgo.GetField('active_channel_area') / feat_seg_dgo.GetField('segment_area') if feat_seg_dgo.GetField('segment_area') > 0.0 else None
                     metrics_output[metric['metric_id']] = ac_ratio
 
                 if 'FLDVBRAT' in metrics:
                     metric = metrics['FLDVBRAT']
-                    # window = metric[stream_size]
 
-                    # values = sum_window_attributes(lyr_segments, window, level_path, segment_distance, ['floodplain_area', 'segment_area'])
-                    # fp_area = values.get('floodplain_area', 0.0)
-                    # vbet_area = values.get('segment_area', 0.0)
-                    # fp_ratio = fp_area / vbet_area if vbet_area > 0.0 else None
                     fp_ratio = feat_seg_dgo.GetField('floodplain_area') / feat_seg_dgo.GetField('segment_area') if feat_seg_dgo.GetField('segment_area') > 0.0 else None
                     metrics_output[metric['metric_id']] = fp_ratio
 
                 if 'RELFLWLNGTH' in metrics:
                     metric = metrics['RELFLWLNGTH']
-                    # window = metric[stream_size]
-                    # if window not in window_geoms:
-                    #     window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance)
 
                     geom_flowline_full = collect_linestring(line_network, f'vbet_level_path = {level_path}')
                     stream_length_total, *_ = get_segment_measurements(geom_flowline_full, src_dem, feat_geom, buffer_distance[stream_size], transform)
@@ -413,15 +395,9 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments:
 
                 if 'STRMSIZE' in metrics:
                     metric = metrics['STRMSIZE']
-                    # window = metric[stream_size]
-                    # if window not in window_geoms:
-                    #     window_geoms[window] = generate_window(lyr_segments, window, level_path, segment_distance)
 
-                    # values = sum_window_attributes(lyr_segments, window, level_path, segment_distance, ['active_channel_area', 'active_floodplain_area'])
                     stream_length, *_ = get_segment_measurements(geom_flowline, src_dem, feat_geom, buffer_distance[stream_size], transform)
-                    # ac_area = values.get('active_channel_area', 0.0)
 
-                    # stream_size_metric = ac_area / stream_length if stream_length > 0.0 else None
                     stream_size_metric = feat_seg_dgo.GetField('active_channel_area') / stream_length if stream_length > 0.0 else None
                     metrics_output[metric['metric_id']] = stream_size_metric
 
@@ -519,9 +495,163 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments:
 
                 # Write to Metrics
                 if len(metrics_output) > 0:
-                    curs.executemany("INSERT INTO metric_values (dgo_id, metric_id, metric_value) VALUES (?,?,?)", [(dgo_id, name, value) for name, value in metrics_output.items()])
+                    lp_metrics[dgo_id] = metrics_output
+                    # curs.executemany("INSERT INTO metric_values (dgo_id, metric_id, metric_value) VALUES (?,?,?)", [(dgo_id, name, value) for name, value in metrics_output.items()])
                 if len(measurements_output) > 0:
-                    curs.executemany("INSERT INTO measurement_values (dgo_id, measurement_id, measurement_value) VALUES (?,?,?)", [(dgo_id, name, value) for name, value in measurements_output.items()])
+                    lp_meas[dgo_id] = measurements_output
+                    # curs.executemany("INSERT INTO measurement_values (dgo_id, measurement_id, measurement_value) VALUES (?,?,?)", [(dgo_id, name, value) for name, value in measurements_output.items()])
+        print(time.time() - start)
+        with sqlite3.connect(outputs_gpkg) as conn:
+            curs = conn.cursor()
+            for dgo_id, vals in lp_metrics.items():
+                curs.executemany("INSERT INTO metric_values (dgo_id, metric_id, metric_value) VALUES (?,?,?)", [(dgo_id, name, value) for name, value in vals.items()])
+            for dgo_id, vals in lp_meas.items():
+                curs.executemany("INSERT INTO measurement_values (dgo_id, measurement_id, measurement_value) VALUES (?,?,?)", [(dgo_id, name, value) for name, value in vals.items()])
+            conn.commit()
+
+    # fill out igo_metrics table using moving window analysis
+    for igo_id, dgo_ids in windows.items():
+        with sqlite3.connect(outputs_gpkg) as conn:
+            curs = conn.cursor()
+
+            if 'STRMGRAD' in metrics:
+                curs.execute(f"SELECT measurement_value FROM measurement_values WHERE measurement_id = {measurements['STRMMINELEV']['measurement_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                min_elev = min([row[0] for row in curs.fetchall()])
+                curs.execute(f"SELECT measurement_value FROM measurement_values WHERE measurement_id = {measurements['STRMMAXELEV']['measurement_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                max_elev = max([row[0] for row in curs.fetchall()])
+                curs.execute(f"SELECT measurment_value FROM measurement_values WHERE measurement_id = {measurements['STRMLENG']['measurement_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                stream_length = sum([row[0] for row in curs.fetchall()])
+                gradient = None if any(value is None for value in [max_elev, min_elev]) else (max_elev - min_elev) / stream_length
+                curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['STRMGRAD']['metric_id']}, {gradient})")
+
+            if 'VALGRAD' in metrics:
+                curs.execute(f"SELECT measurement_value FROM measurement_values WHERE measurement_id = {measurements['VALLENG']['measurement_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                centerline_length = sum([row[0] for row in curs.fetchall()])
+                if any(elev is None for elev in [min_elev, max_elev]):
+                    curs.execute(f"SELECT measurement_value FROM measurement_values WHERE measurement_id = {measurements['STRMMINELEV']['measurement_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                    min_elev = min([row[0] for row in curs.fetchall()])
+                    curs.execute(f"SELECT measurement_value FROM measurement_values WHERE measurement_id = {measurements['STRMMAXELEV']['measurement_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                    max_elev = max([row[0] for row in curs.fetchall()])
+                gradient = None if any(value is None for value in [max_elev, min_elev]) else (max_elev - min_elev) / centerline_length
+                curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['VALGRAD']['metric_id']}, {gradient})")
+
+            if 'STRMORDR' in metrics:
+                curs.execute(f"SELECT metric_value FROM metric_values WHERE metric_id = {metrics['STRMORDR']['metric_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                stream_order = max([row[0] for row in curs.fetchall()])
+                curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['STRMORDR']['metric_id']}, {stream_order})")
+
+            if 'HEDWTR' in metrics:
+                curs.execute(f"SELECT metric_value FROM metric_values WHERE metric_id = {metrics['HEDWTR']['metric_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                is_headwater = 1 if sum([row[0] for row in curs.fetchall()]) > 0 else 0
+                curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['HEDWTR']['metric_id']}, {is_headwater})")
+
+            if 'STRMTYPE' in metrics:
+                curs.execute(f"SELECT metric_value FROM metric_values WHERE metric_id = {metrics['STRMTYPE']['metric_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                majority_fcode = max(set([row[0] for row in curs.fetchall()]), key=[row[0] for row in curs.fetchall()].count)
+                curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['STRMTYPE']['metric_id']}, {majority_fcode})")
+
+            if 'ACTFLDAREA' in metrics:
+                curs.execute(f"SELECT metric_value FROM metric_values WHERE metric_id = {metrics['ACTFLDAREA']['metric_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                afp_area = sum([row[0] for row in curs.fetchall()])
+                curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['ACTFLDAREA']['metric_id']}, {afp_area})")
+
+            if 'ACTCHANAREA' in metrics:
+                curs.execute(f"SELECT metric_value FROM metric_values WHERE metric_id = {metrics['ACTCHANAREA']['metric_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                ac_area = sum([row[0] for row in curs.fetchall()])
+                curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['ACTCHANAREA']['metric_id']}, {ac_area})")
+
+            if 'INTGWDTH' in metrics:
+                if centerline_length is None:
+                    curs.execute(f"SELECT measurement_value FROM measurement_values WHERE measurement_id = {measurements['VALLENG']['measurement_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                    centerline_length = sum([row[0] for row in curs.fetchall()])
+                curs.execute(f"SELECT segment_area FROM vbet_segments WHERE dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                segment_area = sum([row[0] for row in curs.fetchall()])
+                ig_width = segment_area / centerline_length if centerline_length > 0.0 else None
+                curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['INTGWDTH']['metric_id']}, {ig_width})")
+
+            if 'CHANVBRAT' in metrics:
+                if ac_area is None:
+                    curs.execute(f"SELECT metric_value FROM metric_values WHERE metric_id = {metrics['ACTCHANAREA']['metric_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                    ac_area = sum([row[0] for row in curs.fetchall()])
+                if segment_area is None:
+                    curs.execute(f"SELECT segment_area FROM vbet_segments WHERE dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                    segment_area = sum([row[0] for row in curs.fetchall()])
+                ac_ratio = ac_area / segment_area if segment_area > 0.0 else None
+                curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['CHANVBRAT']['metric_id']}, {ac_ratio})")
+
+            if 'FLDVBRAT' in metrics:
+                curs.execute(f"SELECT floodplain_area FROM vbet_segments WHERE dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                fp_area = sum([row[0] for row in curs.fetchall()])
+                if segment_area is None:
+                    curs.execute(f"SELECT segment_area FROM vbet_segments WHERE dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                    segment_area = sum([row[0] for row in curs.fetchall()])
+                fp_ratio = fp_area / segment_area if segment_area > 0.0 else None
+                curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['FLDVBRAT']['metric_id']}, {fp_ratio})")
+
+            if 'RELFLWLNGTH' in metrics:
+                if centerline_length is None:
+                    curs.execute(f"SELECT measurement_value FROM measurement_values WHERE measurement_id = {measurements['VALLENG']['measurement_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                    centerline_length = sum([row[0] for row in curs.fetchall()])
+                if stream_length is None:
+                    curs.execute(f"SELECT measurement_value FROM measurement_values WHERE measurement_id = {measurements['STRMSTRLENG']['measurement_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                    stream_length = sum([row[0] for row in curs.fetchall()])
+                relative_flow_length = stream_length / centerline_length if centerline_length > 0.0 else None
+                curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['RELFLWLNGTH']['metric_id']}, {relative_flow_length})")
+
+            if 'STRMSIZE' in metrics:
+                if stream_length is None:
+                    curs.execute(f"SELECT measurement_value FROM measurement_values WHERE measurement_id = {measurements['STRMSTRLENG']['measurement_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                    stream_length = sum([row[0] for row in curs.fetchall()])
+                curs.execute(f"SELECT metric_value FROM metric_values WHERE metric_id = {metrics['ACTCHANAREA']['metric_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                ac_area = sum([row[0] for row in curs.fetchall()])
+                stream_size_metric = ac_area / stream_length if stream_length > 0.0 else None
+                curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['STRMSIZE']['metric_id']}, {stream_size_metric})")
+
+            if 'ECORGIII' in metrics:
+                curs.execute(f"SELECT metric_value FROM metric_values WHERE metric_id = {metrics['ECORGIII']['metric_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                majority_attribute = max(set([row[0] for row in curs.fetchall()]), key=[row[0] for row in curs.fetchall()].count)
+                curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['ECORGIII']['metric_id']}, {majority_attribute})")
+
+            if 'ECORGIV' in metrics:
+                curs.execute(f"SELECT metric_value FROM metric_values WHERE metric_id = {metrics['ECORGIV']['metric_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                majority_attribute = max(set([row[0] for row in curs.fetchall()]), key=[row[0] for row in curs.fetchall()].count)
+                curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['ECORGIV']['metric_id']}, {majority_attribute})")
+
+            if 'CONF' in metrics:
+                curs.execute(f"SELECT metric_value FROM metric_values WHERE metric_id = {metrics['CONF']['metric_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                count = sum([row[0] for row in curs.fetchall()])
+                curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['CONF']['metric_id']}, {count})")
+
+            if 'DIFF' in metrics:
+                curs.execute(f"SELECT metric_value FROM metric_values WHERE metric_id = {metrics['DIFF']['metric_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                count = sum([row[0] for row in curs.fetchall()])
+                curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['DIFF']['metric_id']}, {count})")
+
+            if 'TRIBS' in metrics:
+                curs.execute(f"SELECT metric_value FROM metric_values WHERE metric_id = {metrics['TRIBS']['metric_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                count = sum([row[0] for row in curs.fetchall()])
+                curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['TRIBS']['metric_id']}, {count})")
+
+            if 'CHANSIN' in metrics:
+                curs.execute(f"SELECT metric_value FROM metric_values WHERE metric_id = {metrics['CHANSIN']['metric_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                sinuos = [row[0] for row in curs.fetchall()]
+                curs.execute(f"SELECT measurement_value FROM measurement_values WHERE measurement_id = {measurements['STRMLENG']['measurement_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                lens = [row[0] for row in curs.fetchall()]
+                sinuosity = sum([sinuos[i] * lens[i] for i in range(len(sinuos))]) / sum(lens) if sum(lens) > 0.0 else None
+                curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['CHANSIN']['metric_id']}, {sinuosity})")
+
+            if 'DRAINAREA' in metrics:
+                curs.execute(f"SELECT metric_value FROM metric_values WHERE metric_id = {metrics['DRAINAREA']['metric_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                drainage_area = max([row[0] for row in curs.fetchall()])
+                curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['DRAINAREA']['metric_id']}, {drainage_area})")
+
+            if 'VALAZMTH' in metrics:
+                curs.execute(f"SELECT metric_value FROM metric_values WHERE metric_id = {metrics['VALAZMTH']['metric_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                azs = [row[0] for row in curs.fetchall()]
+                curs.execute(f"SELECT measurement_value FROM measurement_values WHERE measurement_id = {measurements['VALLENG']['measurement_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                lens = [row[0] for row in curs.fetchall()]
+                azimuth = sum([azs[i] * lens[i] for i in range(len(azs))]) / sum(lens) if sum(lens) > 0.0 else None
+                curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['VALAZMTH']['metric_id']}, {azimuth})")
 
             conn.commit()
 
