@@ -296,13 +296,17 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
         conn.commit()
 
     # index level path and seg distance
-    # with SQLiteCon(outputs_gpkg) as db:
-    #     db.curs.execute("CREATE INDEX idx_level_path_seg ON vbet_segments (LevelPathI)")
-    #     db.curs.execute("CREATE INDEX idx_seg_distance_seg ON vbet_segments (seg_distance)")
-    #     db.curs.execute("CREATE INDEX idx_size ON points (stream_size)")
-    #     db.curs.execute("CREATE INDEX idx_level_path_pts ON points (LevelPathI)")
-    #     db.curs.execute("CREATE INDEX idx_seg_distance_pts ON points (seg_distance)")
-    #     db.conn.commit()
+    with sqlite3.connect(outputs_gpkg) as conn:
+        curs = conn.cursor()
+        curs.execute(
+            "CREATE INDEX idx_level_path_seg ON vbet_segments (LevelPathI)")
+        curs.execute(
+            "CREATE INDEX idx_seg_distance_seg ON vbet_segments (seg_distance)")
+        curs.execute("CREATE INDEX idx_size ON points (stream_size)")
+        curs.execute("CREATE INDEX idx_level_path_pts ON points (LevelPathI)")
+        curs.execute(
+            "CREATE INDEX idx_seg_distance_pts ON points (seg_distance)")
+        conn.commit()
 
     # Generate the list of level paths to run, sorted by ascending order and optional user filter
     level_paths_to_run = []
