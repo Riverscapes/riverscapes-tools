@@ -28,11 +28,12 @@ from shapely.geometry import Point
 from rscommons import GeopackageLayer, dotenv, Logger, initGDALOGRErrors, ModelConfig, RSLayer, RSMeta, RSMetaTypes, RSProject, VectorBase, ProgressBar
 from rscommons.classes.vector_base import get_utm_zone_epsg
 from rscommons.util import safe_makedirs, parse_metadata
-from rscommons.database import load_lookup_data
+from rscommons.database import load_lookup_data, SQLiteCon
 from rscommons.geometry_ops import reduce_precision, get_endpoints
 from rscommons.vector_ops import copy_feature_class, collect_linestring
 from rscommons.vbet_network import copy_vaa_attributes, join_attributes
 from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions
+from rscommons.moving_window import moving_window_dgo_ids
 
 from rme.__version__ import __version__
 from rme.analysis_window import AnalysisLine
@@ -70,6 +71,7 @@ LayerTypes = {
 
 stream_size_lookup = {0: 'small', 1: 'medium', 2: 'large', 3: 'very large', 4: 'huge'}
 gradient_buffer_lookup = {'small': 25.0, 'medium': 50.0, 'large': 100.0, 'very large': 100.0, 'huge': 100.0}  # should this go as high as it does
+window_distance = {'0': 200.0, '1': 400.0, '2': 1200.0, '3': 2000.0, '4': 8000.0}
 
 
 def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments: Path, in_points: Path, in_vbet_centerline: Path, in_dem: Path, in_ppt: Path, in_roads: Path, in_rail: Path, in_ecoregions: Path, project_folder: Path, level_paths: list = None, meta: dict = None):
@@ -118,7 +120,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments:
 
     flowlines = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
     copy_feature_class(in_flowlines, flowlines)
-    segments = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['VBET_SEGMENTS'].rel_path)
+    segments = os.path.join(outputs_gpkg, LayerTypes['INPUTS'].sub_layers['VBET_SEGMENTS'].rel_path)
     copy_feature_class(in_segments, segments)
     points = os.path.join(outputs_gpkg, LayerTypes['INPUTS'].sub_layers['VBET_SEGMENT_POINTS'].rel_path)
     copy_feature_class(in_points, points)
@@ -188,6 +190,15 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments:
     # Load tables
     load_lookup_data(outputs_gpkg, os.path.join(database_folder, 'data_metrics'))
 
+    # index level path and seg distance
+    # with SQLiteCon(outputs_gpkg) as db:
+    #     db.curs.execute("CREATE INDEX idx_level_path_seg ON vbet_segments (LevelPathI)")
+    #     db.curs.execute("CREATE INDEX idx_seg_distance_seg ON vbet_segments (seg_distance)")
+    #     db.curs.execute("CREATE INDEX idx_size ON points (stream_size)")
+    #     db.curs.execute("CREATE INDEX idx_level_path_pts ON points (LevelPathI)")
+    #     db.curs.execute("CREATE INDEX idx_seg_distance_pts ON points (seg_distance)")
+    #     db.conn.commit()
+
     # Generate the list of level paths to run, sorted by ascending order and optional user filter
     level_paths_to_run = []
     with GeopackageLayer(line_network) as line_lyr:
@@ -198,6 +209,9 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments:
     if level_paths:
         level_paths_to_run = [level_path for level_path in level_paths_to_run if level_path in level_paths]
     level_paths_to_run.sort(reverse=False)
+
+    # store moving windows of igos for later summarization
+    # windows = moving_window_dgo_ids(points, segments, level_paths_to_run, window_distance)
 
     metrics = generate_metric_list(outputs_gpkg)
     measurements = generate_metric_list(outputs_gpkg, 'measurements')
@@ -508,6 +522,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments:
                     curs.executemany("INSERT INTO metric_values (dgo_id, metric_id, metric_value) VALUES (?,?,?)", [(dgo_id, name, value) for name, value in metrics_output.items()])
                 if len(measurements_output) > 0:
                     curs.executemany("INSERT INTO measurement_values (dgo_id, measurement_id, measurement_value) VALUES (?,?,?)", [(dgo_id, name, value) for name, value in measurements_output.items()])
+
             conn.commit()
 
     epsg = 4326
