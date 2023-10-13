@@ -3,6 +3,7 @@ CREATE TABLE metrics (
     name TEXT,
     machine_code TEXT,
     data_type TEXT,
+    field_name TEXT,
     description TEXT,
     method TEXT,
     small REAL,
