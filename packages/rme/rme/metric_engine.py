@@ -338,6 +338,20 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                 igo_dgo[igo_id] = feat_seg.GetFID()
                 break
 
+    # associate single DGOs with single IGOs for non moving window metrics
+    log.info('Associating DGOs with IGOs')
+    igo_dgo = {}
+    with GeopackageLayer(segments) as lyr_segments, \
+            GeopackageLayer(points) as lyr_points:
+        for feat, *_ in lyr_points.iterate_features():
+            igo_id = feat.GetFID()
+            level_path = feat.GetField('LevelPathI')
+            seg_distance = feat.GetField('seg_distance')
+            sql = f'LevelPathI = {level_path} and seg_distance = {seg_distance}'
+            for feat_seg, *_ in lyr_segments.iterate_features(attribute_filter=sql):
+                igo_dgo[igo_id] = feat_seg.GetFID()
+                break
+
     metrics = generate_metric_list(outputs_gpkg)
     measurements = generate_metric_list(outputs_gpkg, 'measurements')
 
@@ -833,6 +847,80 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                     else:
                         majority_county = str(max(counties, key=counties.get))
                     metrics_output[metric['metric_id']] = majority_county
+
+                if 'CNFMT' in metrics and confinement_dgos:
+                    metric = metrics['CNFMT']
+
+                    with sqlite3.connect(inputs_gpkg) as conn:
+                        curs = conn.cursor()
+                        curs.execute(
+                            f"SELECT Confinement_Ratio FROM confinement_dgo WHERE fid = {dgo_id}")
+                        conf_ratio = curs.fetchone()[0]
+                    metrics_output[metric['metric_id']] = conf_ratio
+
+                if 'CONST' in metrics and confinement_dgos:
+                    metric = metrics['CONST']
+
+                    with sqlite3.connect(inputs_gpkg) as conn:
+                        curs = conn.cursor()
+                        curs.execute(
+                            f"SELECT Constriction_Ratio FROM confinement_dgo WHERE fid = {dgo_id}")
+                        cons_ratio = curs.fetchone()[0]
+                    metrics_output[metric['metric_id']] = cons_ratio
+
+                if 'CONFMARG' in metrics and confinement_dgos:
+                    metric = metrics['CONFMARG']
+
+                    with sqlite3.connect(inputs_gpkg) as conn:
+                        curs = conn.cursor()
+                        curs.execute(
+                            f"SELECT ConfinLeng FROM confinement_dgo WHERE fid = {dgo_id}")
+                        conf_margin = curs.fetchone()[0]
+                    metrics_output[metric['metric_id']] = conf_margin
+
+                if 'ROADDENS' in metrics and anthro_dgos:
+                    metric = metrics['ROADDENS']
+
+                    with sqlite3.connect(inputs_gpkg) as conn:
+                        curs = conn.cursor()
+                        curs.execute(
+                            f"SELECT Road_len, centerline_length FROM anthro_dgo WHERE fid = {dgo_id}")
+                        roadd = curs.fetchone()
+                        road_density = roadd[0] / \
+                            roadd[1] if roadd[1] > 0.0 else None
+                    metrics_output[metric['metric_id']] = road_density
+
+                if 'RAILDENS' in metrics and anthro_dgos:
+                    metric = metrics['RAILDENS']
+
+                    with sqlite3.connect(inputs_gpkg) as conn:
+                        curs = conn.cursor()
+                        curs.execute(
+                            f"SELECT Rail_len, centerline_length FROM anthro_dgo WHERE fid = {dgo_id}")
+                        raild = curs.fetchone()
+                        rail_density = raild[0] / \
+                            raild[1] if raild[1] > 0.0 else None
+                    metrics_output[metric['metric_id']] = rail_density
+
+                if 'LUI' in metrics and anthro_dgos:
+                    metric = metrics['LUI']
+
+                    with sqlite3.connect(inputs_gpkg) as conn:
+                        curs = conn.cursor()
+                        curs.execute(
+                            f"SELECT LUI FROM anthro_dgo WHERE fid = {dgo_id}")
+                        lui = curs.fetchone()[0]
+                    metrics_output[metric['metric_id']] = lui
+
+                if 'FPACCESS' in metrics and rcat_dgos:
+                    metric = metrics['FPACCESS']
+
+                    with sqlite3.connect(inputs_gpkg) as conn:
+                        curs = conn.cursor()
+                        curs.execute(
+                            f"SELECT FloodplainAccess FROM rcat_dgo WHERE fid = {dgo_id}")
+                        fp_access = curs.fetchone()[0]
+                    metrics_output[metric['metric_id']] = fp_access
 
                 # Write to Metrics
                 if len(metrics_output) > 0:
