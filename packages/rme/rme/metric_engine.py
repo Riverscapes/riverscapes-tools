@@ -37,6 +37,8 @@ from rscommons.moving_window import moving_window_dgo_ids
 
 from rme.__version__ import __version__
 from rme.analysis_window import AnalysisLine
+from rme.utils.rme_report import RMEReport
+from rme.utils.check_vbet_inputs import vbet_inputs
 
 Path = str
 
@@ -68,8 +70,9 @@ LayerTypes = {
     'RME_OUTPUTS': RSLayer('Riverscapes Metrics', 'RME_OUTPUTS', 'Geopackage', 'outputs/riverscapes_metrics.gpkg', {
         'DGO_METRICS': RSLayer('DGO Metrics', 'DGO_METRICS', 'Vector', 'vw_dgo_metrics'),
         'POINT_METRICS': RSLayer('Point Metrics', 'POINT_METRICS', 'Vector', 'vw_point_metrics'),
-        'POINT_MEASUREMENTS': RSLayer('Point Measurements', 'POINT_MEASUREMENTS', 'Vector', 'vw_point_measurements'),
+        'POINT_MEASUREMENTS': RSLayer('Point Measurements', 'POINT_MEASUREMENTS', 'Vector', 'vw_point_measurements')
     }),
+    'REPORT': RSLayer('RME Report', 'REPORT', 'HTMLFile', 'outputs/rme.html')
 }
 
 stream_size_lookup = {0: 'small', 1: 'medium', 2: 'large', 3: 'very large', 4: 'huge'}
@@ -101,6 +104,26 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments:
 
     log = Logger('Riverscapes Metric Engine')
     log.info(f'Starting RME v.{cfg.version}')
+
+    # Check that all inputs have the same VBET input
+    project_dgos = []
+    for p in [in_confinement_dgos, in_anthro_dgos, in_rcat_dgos]:
+        if p is not None:
+            project_dgos.append(os.path.dirname(os.path.dirname(os.path.dirname(p))))
+    if len(project_dgos) > 0:
+        vbin = vbet_inputs(os.path.dirname(os.path.dirname(os.path.dirname(in_segments))), project_dgos)
+
+        if vbin is None or vbin is False:
+            # check that all dgos have same num features
+            ftr_count = []
+            for p in [in_confinement_dgos, in_anthro_dgos, in_rcat_dgos]:
+                if p is not None:
+                    with GeopackageLayer(p) as lyr:
+                        if lyr.ogr_layer.GetFeatureCount() not in ftr_count:
+                            ftr_count.append(lyr.ogr_layer.GetFeatureCount())
+            if len(ftr_count) > 1:
+                log.error('DGO inputs do not have the same number of features')
+                sys.exit(1)
 
     augment_layermeta('rs_metric_engine', LYR_DESCRIPTIONS_JSON, LayerTypes)
 
@@ -882,6 +905,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments:
         sql = f'INSERT INTO dgo_metrics_pivot (fid, {metric_names_sql}) SELECT M.dgo_id, {metric_values_sql} FROM metric_values M GROUP BY M.dgo_id;'
         curs.execute(sql)
         sql2 = f'INSERT INTO igo_metrics_pivot (fid, {metric_names_sql}) SELECT M.igo_id, {metric_values_sql} FROM igo_metric_values M GROUP BY M.igo_id;'
+        curs.execute(sql2)
         conn.commit()
 
         # Create metric view
@@ -890,6 +914,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments:
         curs.execute(sql)
         sql2 = f'CREATE VIEW vw_dgo_metrics AS SELECT G.fid fid, G.geom geom, G.LevelPathI level_path, G.seg_distance seg_distance, {metric_names_sql} FROM vbet_segments G INNER JOIN dgo_metrics_pivot M ON M.fid = G.fid;'
         curs.execute(sql2)
+        conn.commit()
 
         measure_sql = ", ".join([f"{sql_name(measurement['name'])} {measurement['name']}" for measurement in measurements.values()])
         sql = f'CREATE TABLE measurements_pivot (fid INTEGER PRIMARY KEY, {measure_sql});'
@@ -912,17 +937,17 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_segments:
         curs.execute("INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) values ('vw_point_metrics', 'geom', 'POINT', ?, 0, 0);", (epsg,))
         curs.execute("INSERT INTO gpkg_contents (table_name, identifier, data_type, srs_id) VALUES ('vw_dgo_metrics', 'vw_dgo_metrics', 'features', ?);", (epsg,))
         curs.execute("INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) values ('vw_dgo_metrics', 'geom', 'POLYGON', ?, 0, 0);", (epsg,))
-        curs.execute("INSERT INTO gpkg_contents (table_name, identifier, data_type, srs_id) VALUES ('vw_point_measurements', 'vw_point_measurements', 'features', ?);", (epsg,))
-        curs.execute("INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) values ('vw_point_measurements', 'geom', 'POINT', ?, 0, 0);", (epsg,))
+        curs.execute("INSERT INTO gpkg_contents (table_name, identifier, data_type, srs_id) VALUES ('vw_measurements', 'vw_measurements', 'features', ?);", (epsg,))
+        curs.execute("INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) values ('vw_measurements', 'geom', 'POLYGON', ?, 0, 0);", (epsg,))
         conn.commit()
 
     project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['RME_OUTPUTS'])
 
     # Write a report
-    # report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
-    # project.add_report(proj_nodes['Outputs'], LayerTypes['REPORT'], replace=True)
-    # report = RMEReport(output_gpkg, report_path, project)
-    # report.write()
+    report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
+    project.add_report(proj_nodes['Outputs'], LayerTypes['REPORT'], replace=True)
+    report = RMEReport(outputs_gpkg, report_path, project)
+    report.write()
 
     progbar.finish()
     log.info('Riverscapes Metric Engine Finished')
