@@ -25,7 +25,7 @@ import rasterio
 from rasterio.mask import mask
 from shapely.geometry import Point
 
-from rscommons import GeopackageLayer, dotenv, Logger, initGDALOGRErrors, ModelConfig, RSLayer, RSMeta, RSMetaTypes, RSProject, VectorBase, ProgressBar
+from rscommons import GeopackageLayer, dotenv, Logger, initGDALOGRErrors, ModelConfig, RSLayer, RSMeta, RSMetaTypes, RSProject, VectorBase, ProgressBar, get_shp_or_gpkg
 from rscommons.classes.vector_base import get_utm_zone_epsg
 from rscommons.util import parse_metadata, pretty_duration
 from rscommons.database import load_lookup_data
@@ -540,6 +540,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                     ig_width = str(feat_seg_dgo.GetField('segment_area') / feat_seg_dgo.GetField(
                         'centerline_length')) if feat_seg_dgo.GetField('centerline_length') is not None else None
                     metrics_output[metric['metric_id']] = ig_width
+
                 if 'CHANVBRAT' in metrics:
                     metric = metrics['CHANVBRAT']
 
@@ -856,7 +857,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                         curs.execute(
                             f"SELECT Confinement_Ratio FROM confinement_dgo WHERE fid = {dgo_id}")
                         conf_ratio = curs.fetchone()[0]
-                    metrics_output[metric['metric_id']] = conf_ratio
+                    metrics_output[metric['metric_id']] = str(conf_ratio)
 
                 if 'CONST' in metrics and confinement_dgos:
                     metric = metrics['CONST']
@@ -866,7 +867,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                         curs.execute(
                             f"SELECT Constriction_Ratio FROM confinement_dgo WHERE fid = {dgo_id}")
                         cons_ratio = curs.fetchone()[0]
-                    metrics_output[metric['metric_id']] = cons_ratio
+                    metrics_output[metric['metric_id']] = str(cons_ratio)
 
                 if 'CONFMARG' in metrics and confinement_dgos:
                     metric = metrics['CONFMARG']
@@ -876,7 +877,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                         curs.execute(
                             f"SELECT ConfinLeng FROM confinement_dgo WHERE fid = {dgo_id}")
                         conf_margin = curs.fetchone()[0]
-                    metrics_output[metric['metric_id']] = conf_margin
+                    metrics_output[metric['metric_id']] = str(conf_margin)
 
                 if 'ROADDENS' in metrics and anthro_dgos:
                     metric = metrics['ROADDENS']
@@ -910,7 +911,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                         curs.execute(
                             f"SELECT LUI FROM anthro_dgo WHERE fid = {dgo_id}")
                         lui = curs.fetchone()[0]
-                    metrics_output[metric['metric_id']] = lui
+                    metrics_output[metric['metric_id']] = str(lui)
 
                 if 'FPACCESS' in metrics and rcat_dgos:
                     metric = metrics['FPACCESS']
@@ -920,7 +921,69 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                         curs.execute(
                             f"SELECT FloodplainAccess FROM rcat_dgo WHERE fid = {dgo_id}")
                         fp_access = curs.fetchone()[0]
-                    metrics_output[metric['metric_id']] = fp_access
+                    metrics_output[metric['metric_id']] = str(fp_access)
+
+                if 'AGENCY' in metrics:
+                    metric = metrics['AGENCY']
+
+                    agencies = {}
+                    with get_shp_or_gpkg(in_ownership) as lyr:
+                        for feat, *_ in lyr.iterate_features(clip_shape=feat_geom):
+                            geom_agency = feat.GetGeometryRef()
+                            attribute = feat.GetField('ADMIN_AGEN')
+                            geom_section = feat_geom.Intersection(geom_agency)
+                            area = geom_section.GetArea()
+                            agencies[attribute] = agencies.get(
+                                attribute, 0) + area
+                        lyr = None
+                    if len(agencies) == 0:
+                        log.warning(
+                            f'Unable to find majority agency for pt {dgo_id} in level path {level_path}')
+                        majority_agency = None
+                    else:
+                        majority_agency = str(max(agencies, key=agencies.get))
+                    metrics_output[metric['metric_id']] = majority_agency
+
+                if 'STATE' in metrics:
+                    metric = metrics['STATE']
+
+                    states = {}
+                    with get_shp_or_gpkg(in_states) as lyr:
+                        for feat, *_ in lyr.iterate_features(clip_shape=feat_geom):
+                            geom_state = feat.GetGeometryRef()
+                            attribute = feat.GetField('NAME')
+                            geom_section = feat_geom.Intersection(geom_state)
+                            area = geom_section.GetArea()
+                            states[attribute] = states.get(attribute, 0) + area
+                        lyr = None
+                    if len(states) == 0:
+                        log.warning(
+                            f'Unable to find majority state for pt {dgo_id} in level path {level_path}')
+                        majority_state = None
+                    else:
+                        majority_state = str(max(states, key=states.get))
+                    metrics_output[metric['metric_id']] = majority_state
+
+                if 'COUNTY' in metrics:
+                    metric = metrics['COUNTY']
+
+                    counties = {}
+                    with get_shp_or_gpkg(in_counties) as lyr:
+                        for feat, *_ in lyr.iterate_features(clip_shape=feat_geom):
+                            geom_county = feat.GetGeometryRef()
+                            attribute = feat.GetField('NAME')
+                            geom_section = feat_geom.Intersection(geom_county)
+                            area = geom_section.GetArea()
+                            counties[attribute] = counties.get(
+                                attribute, 0) + area
+                        lyr = None
+                    if len(counties) == 0:
+                        log.warning(
+                            f'Unable to find majority county for pt {dgo_id} in level path {level_path}')
+                        majority_county = None
+                    else:
+                        majority_county = str(max(counties, key=counties.get))
+                    metrics_output[metric['metric_id']] = majority_county
 
                 # Write to Metrics
                 if len(metrics_output) > 0:
