@@ -17,7 +17,7 @@ CREATE TABLE metrics (
 CREATE TABLE metric_values (
     dgo_id INTEGER NOT NULL,
     metric_id INTEGER NOT NULL,
-    metric_value REAL,
+    metric_value TEXT,
     metadata TEXT,
     qaqc_date TEXT,
     PRIMARY KEY (dgo_id, metric_id)
@@ -29,7 +29,7 @@ CREATE TABLE metric_values (
 CREATE TABLE igo_metric_values (
     igo_id INTEGER NOT NULL,
     metric_id INTEGER NOT NULL,
-    metric_value REAL,
+    metric_value TEXT,
     metadata TEXT,
     qaqc_date TEXT,
     PRIMARY KEY (igo_id, metric_id)
