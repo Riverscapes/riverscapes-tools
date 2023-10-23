@@ -417,11 +417,23 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                     afp_area = feat_seg_dgo.GetField('active_floodplain_area') if feat_seg_dgo.GetField('active_floodplain_area') is not None else 0.0
                     metrics_output[metric['metric_id']] = str(afp_area)
 
+                if 'INACTFLDAREA' in metrics:
+                    metric = metrics['INACTFLDAREA']
+
+                    ifp_area = feat_seg_dgo.GetField('inactive_floodplain_area') if feat_seg_dgo.GetField('inactive_floodplain_area') is not None else 0.0
+                    metrics_output[metric['metric_id']] = str(ifp_area)
+
                 if 'ACTCHANAREA' in metrics:
                     metric = metrics['ACTCHANAREA']
 
                     ac_area = feat_seg_dgo.GetField('active_channel_area') if feat_seg_dgo.GetField('active_channel_area') is not None else 0.0
                     metrics_output[metric['metric_id']] = str(ac_area)
+
+                if 'FLDPLNAREA' in metrics:
+                    metric = metrics['FLDPLNAREA']
+
+                    fp_area = feat_seg_dgo.GetField('floodplain_area') if feat_seg_dgo.GetField('floodplain_area') is not None else 0.0
+                    metrics_output[metric['metric_id']] = str(fp_area)
 
                 if 'INTGWDTH' in metrics:
                     metric = metrics['INTGWDTH']
@@ -432,14 +444,38 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                 if 'CHANVBRAT' in metrics:
                     metric = metrics['CHANVBRAT']
 
-                    ac_ratio = str(feat_seg_dgo.GetField('active_channel_area') / feat_seg_dgo.GetField('segment_area')) if feat_seg_dgo.GetField('segment_area') > 0.0 else None
-                    metrics_output[metric['metric_id']] = ac_ratio
+                    ac_ratio = feat_seg_dgo.GetField('active_channel_prop') if feat_seg_dgo.GetField('active_floodplain_prop') is not None else 0.0
+                    metrics_output[metric['metric_id']] = str(ac_ratio)
+
+                if 'LOWLYVBRAT' in metrics:
+                    metric = metrics['LOWLYVBRAT']
+
+                    lowly_ratio = feat_seg_dgo.GetField('active_floodplain_prop') if feat_seg_dgo.GetField('segment_area') > 0.0 else None
+                    metrics_output[metric['metric_id']] = lowly_ratio
+
+                if 'ELEVATEDVBRAT' in metrics:
+                    metric = metrics['ELEVATEDVBRAT']
+
+                    elevated_ratio = feat_seg_dgo.GetField('inactive_floodplain_prop') if feat_seg_dgo.GetField('inactive_floodplain_prop') is not None else 0.0
+                    metrics_output[metric['metric_id']] = str(elevated_ratio)
 
                 if 'FLDVBRAT' in metrics:
                     metric = metrics['FLDVBRAT']
 
-                    fp_ratio = str(feat_seg_dgo.GetField('floodplain_area') / feat_seg_dgo.GetField('segment_area')) if feat_seg_dgo.GetField('segment_area') > 0.0 else None
-                    metrics_output[metric['metric_id']] = fp_ratio
+                    fp_ratio = feat_seg_dgo.GetField('floodplain_prop') if feat_seg_dgo.GetField('floodplain_prop') is not None else 0.0
+                    metrics_output[metric['metric_id']] = str(fp_ratio)
+
+                if 'ACRESVBPM' in metrics:
+                    metric = metrics['ACRESVBPM']
+
+                    ac_mi = str((feat_seg_dgo.GetField('segment_area') * 0.000247105) / (feat_seg_dgo.GetField('centerline_length') * 0.000621371)) if feat_seg_dgo.GetField('centerline_length') is not None else None
+                    metrics_output[metric['metric_id']] = ac_mi
+
+                if 'HECTVBPKM' in metrics:
+                    metric = metrics['HECTVBPKM']
+
+                    ac_km = str((feat_seg_dgo.GetField('segment_area') * 0.0001) / (feat_seg_dgo.GetField('centerline_length') * 0.001)) if feat_seg_dgo.GetField('centerline_length') is not None else None
+                    metrics_output[metric['metric_id']] = ac_km
 
                 if 'RELFLWLNGTH' in metrics:
                     metric = metrics['RELFLWLNGTH']
@@ -746,18 +782,28 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                     curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['STRMTYPE']['metric_id']}, {str(majority_fcode)})")
 
             if 'ACTFLDAREA' in metrics:
-                curs.execute(f"SELECT metric_value FROM metric_values WHERE metric_id = {metrics['ACTFLDAREA']['metric_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
-                afp = [float(row[0]) for row in curs.fetchall() if row[0] is not None]
-                afp_area = sum(afp) if len(afp) > 0 else None
+                curs.execute(f"SELECT metric_value FROM metric_values WHERE metric_id = {metrics['ACTFLDAREA']['metric_id']} AND dgo_id = {igo_dgo[igo_id]})")
+                afp_area = curs.fetchone()[0]
                 if afp_area is not None:
                     curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['ACTFLDAREA']['metric_id']}, {str(afp_area)})")
 
+            if 'INACTFLDAREA' in metrics:
+                curs.execute(f"SELECT metric_value FROM metric_values WHERE metric_id = {metrics['INACTFLDAREA']['metric_id']} AND dgo_id = {igo_dgo[igo_id]})")
+                ifp_area = curs.fetchone()[0]
+                if ifp_area is not None:
+                    curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['INACTFLDAREA']['metric_id']}, {str(ifp_area)})")
+
             if 'ACTCHANAREA' in metrics:
-                curs.execute(f"SELECT metric_value FROM metric_values WHERE metric_id = {metrics['ACTCHANAREA']['metric_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
-                ac = [float(row[0]) for row in curs.fetchall() if row[0] is not None]
-                ac_area = sum(ac) if len(ac) > 0 else None
+                curs.execute(f"SELECT metric_value FROM metric_values WHERE metric_id = {metrics['ACTCHANAREA']['metric_id']} AND dgo_id = {igo_dgo[igo_id]})")
+                ac_area = curs.fetchone()[0]
                 if ac_area is not None:
                     curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['ACTCHANAREA']['metric_id']}, {str(ac_area)})")
+
+            if 'FLDPLNAREA' in metrics:
+                curs.execute(f"SELECT metric_value FROM metric_values WHERE metric_id = {metrics['FLDPLNAREA']['metric_id']} AND dgo_id = {igo_dgo[igo_id]})")
+                fp_area = curs.fetchone()[0]
+                if fp_area is not None:
+                    curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['FLDPLNAREA']['metric_id']}, {str(fp_area)})")
 
             if 'INTGWDTH' in metrics:
                 if centerline_length is None:
@@ -772,10 +818,9 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                     curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['INTGWDTH']['metric_id']}, {str(ig_width)})")
 
             if 'CHANVBRAT' in metrics:
-                if ac_area is None:
-                    curs.execute(f"SELECT metric_value FROM metric_values WHERE metric_id = {metrics['ACTCHANAREA']['metric_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
-                    ac = [float(row[0]) for row in curs.fetchall() if row[0] is not None]
-                    ac_area = sum(ac) if len(ac) > 0 else None
+                curs.execute(f"SELECT metric_value FROM metric_values WHERE metric_id = {metrics['ACTCHANAREA']['metric_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                ac = [float(row[0]) for row in curs.fetchall() if row[0] is not None]
+                ac_area = sum(ac) if len(ac) > 0 else None
                 if segment_area is None:
                     curs.execute(f"SELECT segment_area FROM vbet_segments WHERE fid IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
                     sa = [float(row[0]) for row in curs.fetchall() if row[0] is not None]
@@ -783,6 +828,30 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                 ac_ratio = None if any(value is None for value in [ac_area, segment_area]) else ac_area / segment_area
                 if ac_ratio is not None:
                     curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['CHANVBRAT']['metric_id']}, {str(ac_ratio)})")
+
+            if 'LOWLYVBRAT' in metrics:
+                curs.execute(f"SELECT metric_value FROM metric_values WHERE metric_id = {metrics['ACTFLDAREA']['metric_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                afp = [float(row[0]) for row in curs.fetchall() if row[0] is not None]
+                afp_area = sum(afp) if len(afp) > 0 else None
+                if segment_area is None:
+                    curs.execute(f"SELECT segment_area FROM vbet_segments WHERE fid IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                    sa = [float(row[0]) for row in curs.fetchall() if row[0] is not None]
+                    segment_area = sum(sa) if len(sa) > 0 else None
+                afp_ratio = None if any(value is None for value in [afp_area, segment_area]) else afp_area / segment_area
+                if afp_ratio is not None:
+                    curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['LOWLYVBRAT']['metric_id']}, {str(afp_ratio)})")
+
+            if 'ELEVATEDVBRAT' in metrics:
+                curs.execute(f"SELECT metric_value FROM metric_values WHERE metric_id = {metrics['INACTFLDAREA']['metric_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                ifp = [float(row[0]) for row in curs.fetchall() if row[0] is not None]
+                ifp_area = sum(ifp) if len(ifp) > 0 else None
+                if segment_area is None:
+                    curs.execute(f"SELECT segment_area FROM vbet_segments WHERE fid IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                    sa = [float(row[0]) for row in curs.fetchall() if row[0] is not None]
+                    segment_area = sum(sa) if len(sa) > 0 else None
+                ifp_ratio = None if any(value is None for value in [ifp_area, segment_area]) else ifp_area / segment_area
+                if ifp_ratio is not None:
+                    curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['ELEVATEDVBRAT']['metric_id']}, {str(ifp_ratio)})")
 
             if 'FLDVBRAT' in metrics:
                 curs.execute(f"SELECT floodplain_area FROM vbet_segments WHERE fid IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
@@ -795,6 +864,36 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                 fp_ratio = None if any(value is None for value in [fp_area, segment_area]) else fp_area / segment_area
                 if fp_ratio is not None:
                     curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['FLDVBRAT']['metric_id']}, {str(fp_ratio)})")
+
+            if 'ACRESVBPM' in metrics:
+                if segment_area is None:
+                    curs.execute(f"SELECT segment_area FROM vbet_segments WHERE fid IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                    sa = [float(row[0]) for row in curs.fetchall() if row[0] is not None]
+                    segment_area = sum(sa) if len(sa) > 0 else None
+                seg_area = segment_area * 0.000247105 if segment_area is not None else None
+                if centerline_length is None:
+                    curs.execute(f"SELECT measurement_value FROM measurement_values WHERE measurement_id = {measurements['VALLENG']['measurement_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                    cl = [float(row[0]) for row in curs.fetchall() if row[0] is not None]
+                    centerline_length = sum(cl) if len(cl) > 0 else None
+                cl_length = centerline_length * 0.000621371 if centerline_length is not None else None
+                if seg_area is not None and cl_length is not None:
+                    acres_vbpm = seg_area / cl_length
+                    curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['ACRESVBPM']['metric_id']}, {str(acres_vbpm)})")
+
+            if 'HECTVBPKM' in metrics:
+                if segment_area is None:
+                    curs.execute(f"SELECT segment_area FROM vbet_segments WHERE fid IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                    sa = [float(row[0]) for row in curs.fetchall() if row[0] is not None]
+                    segment_area = sum(sa) if len(sa) > 0 else None
+                seg_area = segment_area * 0.0001 if segment_area is not None else None
+                if centerline_length is None:
+                    curs.execute(f"SELECT measurement_value FROM measurement_values WHERE measurement_id = {measurements['VALLENG']['measurement_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                    cl = [float(row[0]) for row in curs.fetchall() if row[0] is not None]
+                    centerline_length = sum(cl) if len(cl) > 0 else None
+                cl_length = centerline_length / 1000 if centerline_length is not None else None
+                if seg_area is not None and cl_length is not None:
+                    hectares_vbpkm = seg_area / cl_length
+                    curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['HECTVBPKM']['metric_id']}, {str(hectares_vbpkm)})")
 
             if 'RELFLWLNGTH' in metrics:
                 if centerline_length is None:
@@ -983,12 +1082,23 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
         conn.commit()
 
         # Insert Values into Pivot table
-        metric_names_sql = ', '.join([sql_name(metric["field_name"]) for metric in metrics.values()])
-        metric_values_sql = ", ".join([f"{sql_round(metric['data_type'], metric['metric_id'])} {sql_name(metric['field_name'])}" for metric in metrics.values()])
+        number_metrics = {metric: val for metric, val in metrics.items() if val['data_type'] == 'INTEGER' or val['data_type'] == 'REAL'}
+        text_metrics = {metric: val for metric, val in metrics.items() if val['data_type'] == 'TEXT'}
+        metric_names_sql = ", ".join([sql_name(metric["field_name"]) for metric in number_metrics.values()])
+        # text_metric_names_sql = ", ".join([sql_name(metric["field_name"]) for metric in text_metrics.values()])
+        # metric_names_sql = f"{num_metric_names_sql}, {text_metric_names_sql}"
+        metric_values_sql = ", ".join([f"{sql_round(metric['data_type'], metric['metric_id'])} {sql_name(metric['field_name'])}" for metric in number_metrics.values()])
+        # text_metric_values_sql = ", ".join([f"{sql_text(metric['metric_id'])} {sql_name(metric['field_name'])}" for metric in text_metrics.values()])
+        # metric_values_sql = f"{num_metric_values_sql}, {text_metric_values_sql}"
         sql = f'INSERT INTO dgo_metrics_pivot (fid, {metric_names_sql}) SELECT M.dgo_id, {metric_values_sql} FROM metric_values M GROUP BY M.dgo_id;'
         curs.execute(sql)
         sql2 = f'INSERT INTO igo_metrics_pivot (fid, {metric_names_sql}) SELECT M.igo_id, {metric_values_sql} FROM igo_metric_values M GROUP BY M.igo_id;'
         curs.execute(sql2)
+        for metric in text_metrics.values():
+            sql = f'UPDATE dgo_metrics_pivot SET {sql_name(metric["field_name"])} = (SELECT M.metric_value FROM metric_values M WHERE M.metric_id = {metric["metric_id"]} AND M.dgo_id = dgo_metrics_pivot.fid);'
+            curs.execute(sql)
+            sql2 = f'UPDATE igo_metrics_pivot SET {sql_name(metric["field_name"])} = (SELECT M.metric_value FROM igo_metric_values WHERE M.metric_id = {metric["metric_id"]} AND M.igo_id = igo_metrics_pivot.fid);'
+            curs.execute(sql2)
         conn.commit()
 
         # Create metric view
@@ -1016,6 +1126,8 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
         curs.execute(sql)
 
         # Add view to geopackage
+        curs.execute("INSERT INTO gpkg_contents (table_name, data_type) VALUES ('dgo_metrics_pivot', 'attributes')")
+        curs.execute("INSERT INTO gpkg_contents (table_name, data_type) VALUES ('igo_metrics_pivot', 'attributes')")
         curs.execute("INSERT INTO gpkg_contents (table_name, identifier, data_type, srs_id) VALUES ('vw_point_metrics', 'vw_point_metrics', 'features', ?);", (epsg,))
         curs.execute("INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) values ('vw_point_metrics', 'geom', 'POINT', ?, 0, 0);", (epsg,))
         curs.execute("INSERT INTO gpkg_contents (table_name, identifier, data_type, srs_id) VALUES ('vw_dgo_metrics', 'vw_dgo_metrics', 'features', ?);", (epsg,))
@@ -1045,6 +1157,11 @@ def sql_name(name: str) -> str:
 def sql_round(datatype: str, metric_id, table='metric') -> str:
     """return round function"""
     return f"{'ROUND(' if datatype == 'REAL' else ''}SUM(M.{table}_value) FILTER (WHERE M.{table}_id == {metric_id}){', 4)' if datatype == 'REAL' else ''}"
+
+
+def sql_text(metric_id, table='metric') -> str:
+    """return text function"""
+    return f"M.{table}_value FILTER (WHERE M.{table}_id == {metric_id})"
 
 
 def generate_metric_list(database: Path, source_table: str = 'metrics') -> dict:
