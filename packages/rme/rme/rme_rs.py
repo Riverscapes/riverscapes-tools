@@ -35,8 +35,10 @@ def main():
         # epilog="This is an epilog"
     )
     parser.add_argument('out_project_xml', help='Input XML file', type=str)
-    parser.add_argument('in_xmls', help='Comma-separated list of XMLs in decreasing priority', type=str)
-    parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
+    parser.add_argument(
+        'in_xmls', help='Comma-separated list of XMLs in decreasing priority', type=str)
+    parser.add_argument('--verbose', help='(optional) a little extra logging ',
+                        action='store_true', default=False)
 
     args = dotenv.parse_args_env(parser)
 
@@ -58,22 +60,29 @@ def main():
         rscproj = RSProject(None, rscontext_xml)
 
         # get watershed
-        watershed_node = rscproj.XMLBuilder.find('MetaData').find('Meta[@name="Watershed"]')
+        watershed_node = rscproj.XMLBuilder.find(
+            'MetaData').find('Meta[@name="Watershed"]')
         if watershed_node is not None:
-            proj_watershed_node = out_prj.XMLBuilder.find('MetaData').find('Meta[@name="Watershed"]')
+            proj_watershed_node = out_prj.XMLBuilder.find(
+                'MetaData').find('Meta[@name="Watershed"]')
             if proj_watershed_node is None:
-                out_prj.add_metadata([RSMeta('Watershed', watershed_node.text)])
+                out_prj.add_metadata(
+                    [RSMeta('Watershed', watershed_node.text)])
 
         # if watershed in meta, change the project name
-        watershed_node = out_prj.XMLBuilder.find('MetaData').find('Meta[@name="Watershed"]')
+        watershed_node = out_prj.XMLBuilder.find(
+            'MetaData').find('Meta[@name="Watershed"]')
         if watershed_node is not None:
             name_node = out_prj.XMLBuilder.find('Name')
             name_node.text = f"Metric Engine for {watershed_node.text}"
 
         out_prj.XMLBuilder.write()
-        report_path = out_prj.XMLBuilder.find('.//HTMLFile[@id="REPORT"]/Path').text
-        geopackage_path = out_prj.XMLBuilder.find('.//Geopackage[@id="RME_OUTPUTS"]/Path').text
-        report = RMEReport(os.path.join(out_prj.project_dir, geopackage_path), os.path.join(out_prj.project_dir, report_path), out_prj)
+        report_path = out_prj.XMLBuilder.find(
+            './/HTMLFile[@id="REPORT"]/Path').text
+        geopackage_path = out_prj.XMLBuilder.find(
+            './/Geopackage[@id="RME_OUTPUTS"]/Path').text
+        report = RMEReport(os.path.join(out_prj.project_dir, geopackage_path), os.path.join(
+            out_prj.project_dir, report_path), out_prj)
         report.write()
 
     except Exception as e:

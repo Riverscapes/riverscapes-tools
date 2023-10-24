@@ -927,7 +927,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                     metric = metrics['AGENCY']
 
                     agencies = {}
-                    with get_shp_or_gpkg(in_ownership) as lyr:
+                    with GeopackageLayer(ownership) as lyr:
                         for feat, *_ in lyr.iterate_features(clip_shape=feat_geom):
                             geom_agency = feat.GetGeometryRef()
                             attribute = feat.GetField('ADMIN_AGEN')
@@ -948,7 +948,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                     metric = metrics['STATE']
 
                     states = {}
-                    with get_shp_or_gpkg(in_states) as lyr:
+                    with GeopackageLayer(states_f) as lyr:
                         for feat, *_ in lyr.iterate_features(clip_shape=feat_geom):
                             geom_state = feat.GetGeometryRef()
                             attribute = feat.GetField('NAME')
@@ -968,7 +968,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                     metric = metrics['COUNTY']
 
                     counties = {}
-                    with get_shp_or_gpkg(in_counties) as lyr:
+                    with GeopackageLayer(counties_f) as lyr:
                         for feat, *_ in lyr.iterate_features(clip_shape=feat_geom):
                             geom_county = feat.GetGeometryRef()
                             attribute = feat.GetField('NAME')
