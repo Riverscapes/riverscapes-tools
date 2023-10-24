@@ -8,6 +8,9 @@ IFS=$'\n\t'
 (: "${TAGS?}")
 (: "${VBET_ID?}")
 (: "${RSCONTEXT_ID?}")
+(: "${CONFINEMENT_ID?}")
+(: "${ANTHRO_ID?}")
+(: "${RCAT_ID?}")
 (: "${RS_API_URL?}")
 (: "${VISIBILITY?}")
 # These are machine credentials for the API which will allow the CLI to delegate uploading to either a specific user or an org
@@ -26,17 +29,26 @@ elif [ -n "$USER_ID" ] && [ -n "$ORG_ID" ]; then
 fi
 
 cat<<EOF
-_____________   ________________
-__  ____/__  | / /__    |__  __/
-_  / __ __   |/ /__  /| |_  /   
-/ /_/ / _  /|  / _  ___ |  /    
-\____/  /_/ |_/  /_/  |_/_/     
+      ___           ___           ___     
+     /\  \         /\__\         /\  \    
+    /::\  \       /::|  |       /::\  \   
+   /:/\:\  \     /:|:|  |      /:/\:\  \  
+  /::\~\:\  \   /:/|:|__|__   /::\~\:\  \ 
+ /:/\:\ \:\__\ /:/ |::::\__\ /:/\:\ \:\__\
+ \/_|::\/:/  / \/__/~~/:/  / \:\~\:\ \/__/
+    |:|::/  /        /:/  /   \:\ \:\__\  
+    |:|\/__/        /:/  /     \:\ \/__/  
+    |:|  |         /:/  /       \:\__\    
+     \|__|         \/__/         \/__/     
                                                                                                  
 EOF
 
 echo "TAGS: $TAGS"
 echo "VBET_ID: $VBET_ID"
 echo "RSCONTEXT_ID: $RSCONTEXT_ID"
+echo "CONFINEMENT_ID: $CONFINEMENT_ID"
+echo "ANTHRO_ID: $ANTHRO_ID"
+echo "RCAT_ID: $RCAT_ID"
 echo "RS_API_URL: $RS_API_URL"
 echo "VISIBILITY: $VISIBILITY"
 if [ -n "$USER_ID" ]; then
@@ -50,9 +62,12 @@ gdal-config --version
 
 # Define some folders that we can easily clean up later
 DATA_DIR=/usr/local/data
-RS_CONTEXT_DIR=$DATA_DIR/rs_context/data
-VBET_DIR=$DATA_DIR/vbet/data
-GNAT_DIR=$DATA_DIR/output
+RS_CONTEXT_DIR=$DATA_DIR/rs_context/rs_context_$RSCONTEXT_ID
+VBET_DIR=$DATA_DIR/vbet/vbet_$VBET_ID
+CONFINEMENT_DIR=$DATA_DIR/confinement/confinement_$CONFINEMENT_ID
+ANTHRO_DIR=$DATA_DIR/anthro/anthro_$ANTHRO_ID
+RCAT_DIR=$DATA_DIR/rcat/rcat_$RCAT_ID
+RME_DIR=$DATA_DIR/output/rme
 
 ##########################################################################################
 # First Get RS_Context and VBET inputs
@@ -60,11 +75,23 @@ GNAT_DIR=$DATA_DIR/output
 
 # Get the RSCli project we need to make this happen
 rscli download $RS_CONTEXT_DIR --id $RSCONTEXT_ID \
-  --file-filter "(hydrology\.gpkg|nhd_data.sqlite|dem.tif|precipitation.tif|ecoregions|transportation|project_bounds.geojson)" \
+  --file-filter "(nhdhplushr\.gpkg|dem.tif|precipitation.tif|ecoregions|transportation|ownership|political_boundaries|project_bounds.geojson)" \
   --no-input --no-ui --verbose
 
 rscli download $VBET_DIR --id $VBET_ID \
   --file-filter "(vbet\.gpkg|intermediates\.gpkg)" \
+  --no-input --no-ui --verbose
+
+rscli download $CONFINEMENT_DIR --id $CONFINEMENT_ID \
+  --file-filter "(confinement\.gpkg)" \
+  --no-input --no-ui --verbose
+
+rscli download $ANTHRO_DIR --id $ANTHRO_ID \
+  --file-filter "(anthro\.gpkg)" \
+  --no-input --no-ui --verbose
+
+rscli download $RCAT_DIR --id $RCAT_ID \
+  --file-filter "(rcat\.gpkg)" \
   --no-input --no-ui --verbose
 
 echo "======================  Initial Disk space usage ======================="
@@ -76,9 +103,12 @@ df -h
 
 try() {
 
-  gnat $HUC \
-    $RS_CONTEXT_DIR/hydrology/hydrology.gpkg/network \
-    $RS_CONTEXT_DIR/hydrology/nhd_data.sqlite/NHDPlusFlowlineVAA \
+  metric_engine $HUC \
+    $RS_CONTEXT_DIR/hydrology/nhdplushr.gpkg/NHDFlowline \
+    $RS_CONTEXT_DIR/hydrology/nhdplushr.gpkg/NHDPlusFlowlineVAA \
+    $RS_CONTEXT_DIR/ownership/ownership.shp \
+    $RS_CONTEXT_DIR/political_boundaries/states.shp \
+    $RS_CONTEXT_DIR/political_boundaries/counties.shp \
     $VBET_DIR/intermediates/vbet_intermediates.gpkg/vbet_dgos \
     $VBET_DIR/outputs/vbet.gpkg/vbet_igos \
     $VBET_DIR/outputs/vbet.gpkg/vbet_centerlines \
@@ -87,15 +117,18 @@ try() {
     $RS_CONTEXT_DIR/transportation/roads.shp \
     $RS_CONTEXT_DIR/transportation/railways.shp \
     $RS_CONTEXT_DIR/ecoregions/ecoregions.shp \
-    $GNAT_DIR \
+    $RME_DIR \
+    --confinement_dgos $CONFINEMENT_DIR/outputs/confinement.gpkg/dgos \
+    --anthro_dgos $ANTHRO_DIR/outputs/anthro.gpkg/vwDgos \
+    --rcat_dgos $RCAT_DIR/outputs/rcat.gpkg/vwDgos \
     --meta "Runner=Cybercastor" \
     --verbose
   if [[ $? != 0 ]]; then return 1; fi
 
-  cd /usr/local/src/riverscapes-tools/packages/gnat
-  /usr/local/venv/bin/python -m gnat.gnat_rs \
-    $GNAT_DIR/project.rs.xml \
-    "$RS_CONTEXT_DIR/project.rs.xml,$VBET_DIR/project.rs.xml"
+  cd /usr/local/src/riverscapes-tools/packages/rme
+  python3 -m rme.rme_rs \
+    $RME_DIR/project.rs.xml \
+    "$RS_CONTEXT_DIR/project.rs.xml,$VBET_DIR/project.rs.xml",$CONFINEMENT_DIR/project.rs.xml,$ANTHRO_DIR/project.rs.xml,$RCAT_DIR/project.rs.xml \
 
   echo "======================  Final Disk space usage ======================="
   df -h
@@ -103,7 +136,7 @@ try() {
   echo "======================  Upload to the warehouse ======================="
 
   # Upload the HUC into the warehouse.
-  cd $GNAT_DIR
+  cd $RME_DIR
   
   # If this is a user upload then we need to use the user's id
   if [ -n "$USER_ID" ]; then
@@ -128,6 +161,6 @@ try() {
 
 }
 try || {
-  echo "<<GNAT PROCESS ENDED WITH AN ERROR>>"
+  echo "<<RME PROCESS ENDED WITH AN ERROR>>"
   exit 1
 }
