@@ -782,25 +782,25 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                     curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['STRMTYPE']['metric_id']}, {str(majority_fcode)})")
 
             if 'ACTFLDAREA' in metrics:
-                curs.execute(f"SELECT metric_value FROM metric_values WHERE metric_id = {metrics['ACTFLDAREA']['metric_id']} AND dgo_id = {igo_dgo[igo_id]})")
+                curs.execute(f"SELECT metric_value FROM metric_values WHERE metric_id = {metrics['ACTFLDAREA']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
                 afp_area = curs.fetchone()[0]
                 if afp_area is not None:
                     curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['ACTFLDAREA']['metric_id']}, {str(afp_area)})")
 
             if 'INACTFLDAREA' in metrics:
-                curs.execute(f"SELECT metric_value FROM metric_values WHERE metric_id = {metrics['INACTFLDAREA']['metric_id']} AND dgo_id = {igo_dgo[igo_id]})")
+                curs.execute(f"SELECT metric_value FROM metric_values WHERE metric_id = {metrics['INACTFLDAREA']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
                 ifp_area = curs.fetchone()[0]
                 if ifp_area is not None:
                     curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['INACTFLDAREA']['metric_id']}, {str(ifp_area)})")
 
             if 'ACTCHANAREA' in metrics:
-                curs.execute(f"SELECT metric_value FROM metric_values WHERE metric_id = {metrics['ACTCHANAREA']['metric_id']} AND dgo_id = {igo_dgo[igo_id]})")
+                curs.execute(f"SELECT metric_value FROM metric_values WHERE metric_id = {metrics['ACTCHANAREA']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
                 ac_area = curs.fetchone()[0]
                 if ac_area is not None:
                     curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['ACTCHANAREA']['metric_id']}, {str(ac_area)})")
 
             if 'FLDPLNAREA' in metrics:
-                curs.execute(f"SELECT metric_value FROM metric_values WHERE metric_id = {metrics['FLDPLNAREA']['metric_id']} AND dgo_id = {igo_dgo[igo_id]})")
+                curs.execute(f"SELECT metric_value FROM metric_values WHERE metric_id = {metrics['FLDPLNAREA']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
                 fp_area = curs.fetchone()[0]
                 if fp_area is not None:
                     curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['FLDPLNAREA']['metric_id']}, {str(fp_area)})")
@@ -1097,7 +1097,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
         for metric in text_metrics.values():
             sql = f'UPDATE dgo_metrics_pivot SET {sql_name(metric["field_name"])} = (SELECT M.metric_value FROM metric_values M WHERE M.metric_id = {metric["metric_id"]} AND M.dgo_id = dgo_metrics_pivot.fid);'
             curs.execute(sql)
-            sql2 = f'UPDATE igo_metrics_pivot SET {sql_name(metric["field_name"])} = (SELECT M.metric_value FROM igo_metric_values WHERE M.metric_id = {metric["metric_id"]} AND M.igo_id = igo_metrics_pivot.fid);'
+            sql2 = f'UPDATE igo_metrics_pivot SET {sql_name(metric["field_name"])} = (SELECT M.metric_value FROM igo_metric_values M WHERE M.metric_id = {metric["metric_id"]} AND M.igo_id = igo_metrics_pivot.fid);'
             curs.execute(sql2)
         conn.commit()
 
