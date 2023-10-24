@@ -20,7 +20,7 @@ lyrs_in_out = {
     'vbet_dgos': 'vbet_dgos',
     'vbet_igos': 'vbet_igos',
     'vbet_centerlines': 'vbet_centerlines',
-    'confinement_dgos': 'vwDgos',
+    'confinement_dgos': 'confinement_dgos',
     'anthro_dgos': 'vwDgos',
     'rcat_dogs': 'vwDgos'
 }
