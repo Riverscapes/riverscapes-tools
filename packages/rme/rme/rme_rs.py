@@ -5,13 +5,24 @@ import argparse
 import traceback
 import sys
 import os
-from rscommons import RSProject, dotenv, Logger
+from rscommons import RSProject, RSMeta, dotenv, Logger
+from rme.utils.rme_report import RMEReport
 
 lyrs_in_out = {
-    'FLOWLINES': 'NHDFlowline',
-    'VBET_SEGMENTS': 'VBET_SEGMENTS',
-    'VBET_SEGMENT_POINTS': 'VBET_SEGMENT_POINTS',
-    'VBET_CENTERLINES': 'VBET_CENTERLINES'
+    'flowlines': 'NHDFlowline',
+    'ownership': 'Ownership',
+    'states': 'States',
+    'counties': 'Counties',
+    'DEM': 'DEM',
+    'Precip': 'Precip',
+    'roads': 'Roads',
+    'rail': 'Rail',
+    'vbet_dgos': 'vbet_dgos',
+    'vbet_igos': 'vbet_igos',
+    'vbet_centerlines': 'vbet_centerlines',
+    'confinement_dgos': 'vwDgos',
+    'anthro_dgos': 'vwDgos',
+    'rcat_dogs': 'vwDgos'
 }
 
 
@@ -40,14 +51,29 @@ def main():
             lyrs_in_out
         )
 
-        in_xml = args.in_xmls.split(',')[0]
-        out_prj.rs_copy_project_extents(in_xml)
+        in_xmls = args.in_xmls.split(',')
+        rscontext_xml = in_xmls[0]
+        out_prj.rs_copy_project_extents(rscontext_xml)
+        rscproj = RSProject(None, rscontext_xml)
+
+        # get watershed
+        watershed_node = rscproj.XMLBuilder.find('MetaData').find('Meta[@name="Watershed"]')
+        if watershed_node is not None:
+            proj_watershed_node = out_prj.XMLBuilder.find('MetaData').find('Meta[@name="Watershed"]')
+            if proj_watershed_node is None:
+                out_prj.add_metadata([RSMeta('Watershed', watershed_node.text)])
+
+        # if watershed in meta, change the project name
+        watershed_node = out_prj.XMLBuilder.find('MetaData').find('Meta[@name="Watershed"]')
+        if watershed_node is not None:
+            name_node = out_prj.XMLBuilder.find('Name')
+            name_node.text = f"RCAT for {watershed_node.text}"
 
         out_prj.XMLBuilder.write()
-        # report_path = out_prj.XMLBuilder.find('.//HTMLFile[@id="CONFINEMENT_RUN_REPORT"]/Path').text
-        # geopackage_path = out_prj.XMLBuilder.find('.//Geopackage[@id="CONFINEMENT"]/Path').text
-        # report = ConfinementReport(os.path.join(out_prj.project_dir, geopackage_path), os.path.join(out_prj.project_dir, report_path), out_prj)
-        # report.write()
+        report_path = out_prj.XMLBuilder.find('.//HTMLFile[@id="REPORT"]/Path').text
+        geopackage_path = out_prj.XMLBuilder.find('.//Geopackage[@id="RME_OUTPUTS"]/Path').text
+        report = RMEReport(os.path.join(out_prj.project_dir, geopackage_path), os.path.join(out_prj.project_dir, report_path), out_prj)
+        report.write()
 
     except Exception as e:
         log.error(e)
