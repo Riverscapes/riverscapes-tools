@@ -1,7 +1,7 @@
 CREATE TABLE metrics (
     metric_id INTEGER PRIMARY KEY NOT NULL,
-    name TEXT,
-    machine_code TEXT,
+    name TEXT NOT NULL,
+    machine_code TEXT NOT NULL,
     data_type TEXT,
     field_name TEXT,
     description TEXT,
@@ -14,7 +14,7 @@ CREATE TABLE metrics (
     docs_url TEXT
 );
 
-CREATE TABLE metric_values (
+CREATE TABLE dgo_metric_values (
     dgo_id INTEGER NOT NULL,
     metric_id INTEGER NOT NULL,
     metric_value TEXT,
@@ -22,8 +22,8 @@ CREATE TABLE metric_values (
     qaqc_date TEXT,
     PRIMARY KEY (dgo_id, metric_id)
 
-    CONSTRAINT fk_point_id FOREIGN KEY (dgo_id) REFERENCES vbet_segments (fid),
-    CONSTRAINT fk_metric_id FOREIGN KEY (metric_id) REFERENCES metrics (metric_id)
+    CONSTRAINT fk_point_id FOREIGN KEY (dgo_id) REFERENCES vbet_segments (fid) ON DELETE CASCADE,
+    CONSTRAINT fk_metric_id FOREIGN KEY (metric_id) REFERENCES metrics (metric_id) ON DELETE CASCADE
 );
 
 CREATE TABLE igo_metric_values (
@@ -59,14 +59,15 @@ CREATE TABLE measurement_values (
     CONSTRAINT fk_measurement_id FOREIGN KEY (measurement_id) REFERENCES measurements (measurement_id)
 );
 
-CREATE INDEX ix_metric_values ON metric_values (dgo_id);
-CREATE INDEX ix_active_fp_area ON vbet_segments (active_floodplain_area);
-CREATE INDEX ix_active_chan_area ON vbet_segments (active_channel_area);
-CREATE INDEX ix_active_seg_area ON vbet_segments (segment_area);
-CREATE INDEX ix_active_center_length ON vbet_segments (centerline_length);
-CREATE INDEX ix_fp_area ON vbet_segments (floodplain_area);
+CREATE INDEX ix_dgo_metric_values_metric_id ON dgo_metric_values (metric_id);
+CREATE INDEX ix_igo_metric_values_metric_id ON igo_metric_values (metric_id);
+CREATE INDEX ix_active_fp_area ON vbet_dgos (active_floodplain_area);
+CREATE INDEX ix_active_chan_area ON vbet_dgos (active_channel_area);
+CREATE INDEX ix_active_seg_area ON vbet_dgos (segment_area);
+CREATE INDEX ix_active_center_length ON vbet_dgos (centerline_length);
+CREATE INDEX ix_fp_area ON vbet_dgos (floodplain_area);
 
-INSERT INTO gpkg_contents (table_name, data_type) VALUES ('metric_values', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('dgo_metric_values', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('metrics', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('igo_metric_values', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('measurement_values', 'attributes');
