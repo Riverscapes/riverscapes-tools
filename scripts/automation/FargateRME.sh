@@ -103,7 +103,7 @@ df -h
 
 try() {
 
-  metric_engine $HUC \
+  rme $HUC \
     $RS_CONTEXT_DIR/hydrology/nhdplushr.gpkg/NHDFlowline \
     $RS_CONTEXT_DIR/hydrology/nhdplushr.gpkg/NHDPlusFlowlineVAA \
     $RS_CONTEXT_DIR/ownership/ownership.shp \
