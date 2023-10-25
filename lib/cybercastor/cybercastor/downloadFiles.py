@@ -6,19 +6,23 @@ import os
 import json
 import argparse
 import sqlite3
-from shutil import rmtree
 import semantic_version
-from osgeo import ogr, osr
 from typing import Dict
-from rscommons import Logger, dotenv, GeopackageLayer, ShapefileLayer
+from shutil import rmtree
+from osgeo import ogr, osr
+from rscommons import dotenv, GeopackageLayer, ShapefileLayer
 from cybercastor.classes.RiverscapesAPI import RiverscapesAPI
 from rscommons.util import safe_makedirs
 
 igo_fields = {
     'HUC10': ogr.OFTString,
     'LevelPathI': ogr.OFTString,
+    'FCode': ogr.OFTString,
     'seg_distance': ogr.OFTReal,
     'stream_size': ogr.OFTReal,
+    'window_size': ogr.OFTReal,
+    'window_area': ogr.OFTReal,
+    'centerline_length': ogr.OFTReal,
     # 'window_size': ogr.OFTReal,
     # 'window_area': ogr.OFTReal,
 }
@@ -63,10 +67,7 @@ lookups = {
 }
 
 
-def download_files(stage, hucs, us_states: str,
-                   ownership: str,
-                   ecoregions: str,
-                   output_db, reset):
+def scrape_projects(stage, hucs, output_db, reset):
     """[summary]"""
 
     # Update the HUCs that are required
@@ -86,11 +87,6 @@ def download_files(stage, hucs, us_states: str,
     # project_files_query = riverscapes_api.load_query('projectFiles')
     # project_datasets_query = riverscapes_api.load_query('projectDatasets')
 
-    # Insert the path to each lookup shapefile
-    lookups['us_states']['shapefile'] = us_states
-    lookups['ownership']['shapefile'] = ownership
-    lookups['ecoregions']['shapefile'] = ecoregions
-
     count = 0
     queued_hucs = True
     while queued_hucs is True:
@@ -102,13 +98,13 @@ def download_files(stage, hucs, us_states: str,
 
         count += 1
         print(f'Processing HUC {huc} ({count} of {hucs_to_process})')
-        latest_project = get_projects(riverscapes_api, queries['projects'], 'VBET', huc)
+        latest_project = get_projects(riverscapes_api, queries['projects'], 'RME', huc)
         if latest_project is None:
             update_huc_status(output_db, huc, 'no project')
             continue
 
         project_guid = latest_project['id']
-        project_id = upsert_project(output_db, project_guid, 'VBET', huc, get_project_model_version(latest_project), 'queued')
+        project_id = upsert_project(output_db, project_guid, 'RME', huc, get_project_model_version(latest_project), 'queued')
 
         try:
             # Cleanup by removing the entire project folder
@@ -117,12 +113,10 @@ def download_files(stage, hucs, us_states: str,
                 rmtree(project_dir)
 
             # Get the inputs, intermediates and output VBET GeoPackages
-            vbet_input_gpkg = download_gpkg(riverscapes_api, queries, os.path.dirname(output_db), project_guid, 'INPUTS')
-            vbet_inter_gpkg = download_gpkg(riverscapes_api, queries, os.path.dirname(output_db), project_guid, 'Intermediates')
-            vbet_outpt_gpkg = download_gpkg(riverscapes_api, queries, os.path.dirname(output_db), project_guid, 'VBET_OUTPUTS')
+            rme_output_gpkg = download_gpkg(riverscapes_api, queries, os.path.dirname(output_db), project_guid, 'RME_OUTPUTS')
 
-            process_vbet_igos(vbet_outpt_gpkg, output_db, project_id, huc)
-            process_vbet_dgos(vbet_inter_gpkg, output_db, project_id, huc)
+            process_igos(rme_output_gpkg, output_db, project_id, huc)
+            process_dgos(vbet_inter_gpkg, output_db, project_id, huc)
 
             for __layer_name, layer_info in lookups.items():
                 process_polygon_layer_attribute(layer_info['shapefile'], layer_info['in_field_name'], layer_info['out_field_name'], vbet_inter_gpkg, output_db, huc)
@@ -341,7 +335,7 @@ def upsert_project(output_gpkg: str, project_guid: str, project_type: str, huc: 
     return project_id
 
 
-def process_vbet_igos(vbet_output_gpkg, scrape_output_gpkg, project_id: int, huc10: str) -> None:
+def process_igos(vbet_output_gpkg, scrape_output_gpkg, project_id: int, huc10: str) -> None:
     """Note project ID is the SQLite integer ID, not the GUID string"""
 
     with GeopackageLayer(vbet_output_gpkg, layer_name='vbet_igos') as input_lyr:
@@ -354,7 +348,7 @@ def process_vbet_igos(vbet_output_gpkg, scrape_output_gpkg, project_id: int, huc
                 output_lyr.create_feature(in_feature.GetGeometryRef(), field_values)
 
 
-def process_vbet_dgos(vbet_intermediate_gpkg: str, scrape_output_gpkg: str, project_id: int, huc10: str) -> None:
+def process_dgos(vbet_intermediate_gpkg: str, scrape_output_gpkg: str, project_id: int, huc10: str) -> None:
 
     with sqlite3.connect(scrape_output_gpkg) as conn:
         curs = conn.cursor()
@@ -503,19 +497,71 @@ def build_output(output_gpkg: str, huc10_path: str, hucs: list, huc_attributes: 
         # curs.execute('CREATE TABLE IF NOT EXISTS hucs (huc10 TEXT PRIMARY KEY, name TEXT, states TEXT, areasqkm REAL, status TEXT)')
 
         # DGO metrics table. No geometry, just the identifiers and metrics
-        field_list = []
+        dgo_field_list = []
         for name, ogr_type in dgo_fields.items():
             sql_type = 'TEXT' if ogr_type == ogr.OFTString else 'REAL'
-            field_list.append(f'{name} {sql_type}')
+            dgo_field_list.append(f'{name} {sql_type}')
 
-        conn.execute(f'CREATE TABLE vbet_dgos ({",".join(field_list)})')
+        conn.execute("""CREATE TABLE metrics (
+                metric_id       INTEGER not null primary key,
+                name            TEXT unique not null,
+                machine_code    TEXT unique not null,
+                data_type       TEXT,
+                field_name      TEXT,
+                description     TEXT,
+                method          TEXT,
+                small           REAL,
+                medium          REAL,
+                large           REAL,
+                metric_group_id INTEGER,
+                is_active       BOOLEAN,
+                docs_url        TEXT
+        )""")
+
+        conn.execute("""CREATE TABLE dgo_metric_values (
+            dgo_id       INTEGER not null references vbet_dgos (dgo_id) on delete cascade,
+            metric_id    INTEGER not null constraint fk_metric_id references metrics on delete cascade,
+            metric_value TEXT,
+            metadata     TEXT,
+            qaqc_date    TEXT,
+            primary key (dgo_id, metric_id)
+        )""")
+
+        conn.execute('CREATE INDEX ix_dgo_metric_values_metric_id on dgo_metric_values (metric_id)')
+
+        conn.execute("""create table igo_metric_values (
+            igo_id       INTEGER not null references igos (id),
+            metric_id    INTEGER not null constraint fk_metric_id references metrics ON DELETE CASCADE,
+            metric_value TEXT,
+            metadata     TEXT,
+            qaqc_date    TEXT,
+            primary key (igo_id, metric_id)
+        )""")
+
+        conn.execute('create index main.ix_igo_metric_values_metric_id on igo_metric_values (metric_id)')
+
+        conn.execute("""CREATE TABLE measurements (
+            measurement_id INTEGER not null primary key,
+            name           TEXT unique not null,
+            machine_code   TEXT unique not null,
+            data_type      TEXT,
+            description    TEXT,
+            is_active      INTEGER
+        )""")
+
+        conn.execute("""create table measurement_values (
+            dgo_id            INTEGER not null references dgos (id),
+            measurement_id    INTEGER not null constraint fk_measurement_id references measurements ON DELETE CASCADE,
+            measurement_value REAL,
+            metadata          TEXT,
+            qaqc_date         TEXT,
+            primary key (dgo_id, measurement_id)
+        )""")
+
+        conn.execute(f'CREATE TABLE vbet_dgos (dgo_id integer not null primary key, {",".join(dgo_field_list)})')
         conn.execute('ALTER TABLE vbet_dgos ADD COLUMN project_id INTEGER')
         conn.execute('CREATE INDEX pk_vbet_dgos ON vbet_dgos (HUC10, LevelPathI, seg_distance)')
         conn.execute('CREATE INDEX vbet_dgos_project_id_idx ON vbet_dgos (project_id)')
-
-        # Add the polygon lookup fields (US state, ecoregion, ownership) to the DGO table
-        for __lookup_name, lookup_info in lookups.items():
-            conn.execute(f'ALTER TABLE vbet_dgos ADD COLUMN {lookup_info["out_field_name"]} TEXT')
 
         conn.execute('ALTER TABLE vbet_dgos ADD COLUMN FCode TEXT')
 
@@ -533,7 +579,7 @@ def build_output(output_gpkg: str, huc10_path: str, hucs: list, huc_attributes: 
         conn.execute('CREATE INDEX ix_hucs_huc10 ON hucs (huc10)')
 
         # Enrich the HUCs with attributes from the JSON file
-        with open(huc_attributes) as fhuc:
+        with open(huc_attributes, encoding='utf8') as fhuc:
             huc_json = json.load(fhuc)
             for huc in huc_json:
                 conn.execute('UPDATE hucs SET name = ?, states = ?, areasqkm = ? WHERE huc10 = ?', [huc['NAME'], huc['STATES'], huc['AREASQKM'], huc['HUC10']])
@@ -543,7 +589,7 @@ def build_output(output_gpkg: str, huc10_path: str, hucs: list, huc_attributes: 
             conn.execute("UPDATE hucs SET status = 'queued'")
         else:
             conn.execute('UPDATE hucs SET status = NULL')
-            conn.execute("UPDATE hucs SET status = 'queued' WHERE huc10 IN ({})".format(','.join(['?'] * len(hucs))), hucs)
+            conn.execute(f"UPDATE hucs SET status = 'queued' WHERE huc10 IN ({','.join(['?'] * len(hucs))}")
 
         add_triggers(conn, triggers)
         conn.commit()
@@ -577,9 +623,6 @@ if __name__ == '__main__':
     parser.add_argument('local_folder', help='Top level folder where to download files', type=str)
     parser.add_argument('output_gpkg', help='Path where to existing output Geopackage or where it will be created', type=str)
     parser.add_argument('huc10', help='ShapeFile of HUC10 geometries', type=str)
-    parser.add_argument('states', help='ShapeFile US State geometries', type=str)
-    parser.add_argument('ownership', help='ShapeFile of ownership', type=str)
-    parser.add_argument('ecoregions', help='ShapeFile of ecoregions', type=str)
 
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
     parser.add_argument('--reset', help='(optional) delete all existing outputs before running and run from scratch', action='store_true', default=False)
@@ -590,10 +633,6 @@ if __name__ == '__main__':
     safe_makedirs(args.local_folder)
 
     build_output(args.output_gpkg, args.huc10, hucs, args.huc_attributes, args.reset)
-    download_files(args.environment, hucs,
-                   args.states,
-                   args.ownership,
-                   args.ecoregions,
-                   args.output_gpkg, args.reset)
+    scrape_projects(args.environment, hucs, args.output_gpkg, args.reset)
 
     sys.exit(0)
