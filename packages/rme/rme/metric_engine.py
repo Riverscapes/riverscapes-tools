@@ -1135,11 +1135,11 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
         # Add view to geopackage
         # curs.execute("INSERT INTO gpkg_contents (table_name, data_type) VALUES ('dgo_metrics_pivot', 'attributes')")
         # curs.execute("INSERT INTO gpkg_contents (table_name, data_type) VALUES ('igo_metrics_pivot', 'attributes')")
-        curs.execute("INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x_, max_y, srs_id) SELECT 'vw_igo_metrics', 'features', 'vw_igo_metrics', min_x, min_y, max_y, max_y, srs_id FROM gpkg_contents WHERE table_name = vbet_igos")
+        curs.execute("INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id) SELECT 'vw_igo_metrics', 'features', 'vw_igo_metrics', min_x, min_y, max_y, max_y, srs_id FROM gpkg_contents WHERE table_name = 'vbet_igos'")
         curs.execute("INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) values ('vw_igo_metrics', 'geom', 'POINT', ?, 0, 0);", (epsg,))
-        curs.execute("INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x_, max_y, srs_id) SELECT 'vw_dgo_metrics', 'features', 'vw_dgo_metrics', min_x, min_y, max_y, max_y, srs_id FROM gpkg_contents WHERE table_name = vbet_dgos")
+        curs.execute("INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id) SELECT 'vw_dgo_metrics', 'features', 'vw_dgo_metrics', min_x, min_y, max_y, max_y, srs_id FROM gpkg_contents WHERE table_name = 'vbet_dgos'")
         curs.execute("INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) values ('vw_dgo_metrics', 'geom', 'POLYGON', ?, 0, 0);", (epsg,))
-        curs.execute("INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x_, max_y, srs_id) SELECT 'vw_measurements', 'features', 'vw_measurements', min_x, min_y, max_y, max_y, srs_id FROM gpkg_contents WHERE table_name = vbet_dgos")
+        curs.execute("INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id) SELECT 'vw_measurements', 'features', 'vw_measurements', min_x, min_y, max_y, max_y, srs_id FROM gpkg_contents WHERE table_name = 'vbet_dgos'")
         curs.execute("INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) values ('vw_measurements', 'geom', 'POLYGON', ?, 0, 0);", (epsg,))
         conn.commit()
 
