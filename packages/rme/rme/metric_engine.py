@@ -25,10 +25,10 @@ import rasterio
 from rasterio.mask import mask
 from shapely.geometry import Point
 
-from rscommons import GeopackageLayer, dotenv, Logger, initGDALOGRErrors, ModelConfig, RSLayer, RSMeta, RSMetaTypes, RSProject, VectorBase, ProgressBar, get_shp_or_gpkg
+from rscommons import GeopackageLayer, dotenv, Logger, initGDALOGRErrors, ModelConfig, RSLayer, RSMeta, RSMetaTypes, RSProject, VectorBase, ProgressBar
 from rscommons.classes.vector_base import get_utm_zone_epsg
-from rscommons.util import safe_makedirs, parse_metadata
-from rscommons.database import load_lookup_data, SQLiteCon
+from rscommons.util import parse_metadata, pretty_duration
+from rscommons.database import load_lookup_data
 from rscommons.geometry_ops import reduce_precision, get_endpoints
 from rscommons.vector_ops import copy_feature_class, collect_linestring
 from rscommons.vbet_network import copy_vaa_attributes, join_attributes
@@ -55,10 +55,10 @@ LayerTypes = {
         'OWNERSHIP': RSLayer('Ownership', 'OWNERSHIP', 'Vector', 'ownership'),
         'STATES': RSLayer('States', 'STATES', 'Vector', 'states'),
         'COUNTIES': RSLayer('Counties', 'COUNTIES', 'Vector', 'counties'),
-        'VBET_DGOS': RSLayer('Vbet Segments', 'VBET_DGOS', 'Vector', 'vbet_dgos'),
-        'VBET_IGOS': RSLayer('Vbet Segment Points', 'VBET_IGOS', 'Vector', 'vbet_igos'),
+        'VBET_DGOS': RSLayer('Vbet DGOs', 'VBET_DGOS', 'Vector', 'vbet_dgos'),
+        'VBET_IGOS': RSLayer('Vbet IGOs', 'VBET_IGOS', 'Vector', 'vbet_igos'),
         'VBET_CENTERLINES': RSLayer('VBET Centerline', 'VBET_CENTERLINE', 'Vector', 'vbet_centerlines'),
-        'ECO_REGIONS': RSLayer('Eco Regions', 'ECO_REGIONS', 'Vector', 'eco_regions'),
+        'ECOREGIONS': RSLayer('Ecoregions', 'ECOREGIONS', 'Vector', 'ecoregions'),
         'ROADS': RSLayer('Roads', 'Roads', 'Vector', 'roads'),
         'RAIL': RSLayer('Rail', 'Rail', 'Vector', 'rail'),
         'CONFINEMENT_DGO': RSLayer('Confinement DGO', 'CONFINEMENT_DGO', 'Vector', 'confinement_dgo'),
@@ -72,8 +72,8 @@ LayerTypes = {
     }),
     'RME_OUTPUTS': RSLayer('Riverscapes Metrics', 'RME_OUTPUTS', 'Geopackage', 'outputs/riverscapes_metrics.gpkg', {
         'DGO_METRICS': RSLayer('DGO Metrics', 'DGO_METRICS', 'Vector', 'vw_dgo_metrics'),
-        'POINT_METRICS': RSLayer('Point Metrics', 'POINT_METRICS', 'Vector', 'vw_point_metrics'),
-        'POINT_MEASUREMENTS': RSLayer('Point Measurements', 'POINT_MEASUREMENTS', 'Vector', 'vw_point_measurements')
+        'IGO_METRICS': RSLayer('IGO Metrics', 'IGO_METRICS', 'Vector', 'vw_igo_metrics'),
+        'DGO_MEASUREMENTS': RSLayer('DGO Measurements', 'DGO_MEASUREMENTS', 'Vector', 'vw_measurements')
     }),
     'REPORT': RSLayer('RME Report', 'REPORT', 'HTMLFile', 'outputs/rme.html')
 }
@@ -131,6 +131,8 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
 
     augment_layermeta('rs_metric_engine', LYR_DESCRIPTIONS_JSON, LayerTypes)
 
+    start_time = time.time()
+
     project_name = f'Riverscapes Metrics for HUC {huc}'
     project = RSProject(cfg, project_folder)
     project.create(project_name, 'rs_metric_engine', [
@@ -168,7 +170,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
     copy_feature_class(in_roads, roads)
     rail = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['RAIL'].rel_path)
     copy_feature_class(in_rail, rail)
-    ecoregions = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['ECO_REGIONS'].rel_path)
+    ecoregions = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['ECOREGIONS'].rel_path)
     copy_feature_class(in_ecoregions, ecoregions)
     if in_confinement_dgos:
         confinement_dgos = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['CONFINEMENT_DGO'].rel_path)
@@ -955,7 +957,10 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                     stream_length = sum([float(row[0]) for row in curs.fetchall()])
                 curs.execute(f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['TRIBS']['metric_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
                 count3 = sum([float(row[0]) for row in curs.fetchall()])
-                trib_dens = None if any(value is None for value in [count3, stream_length]) else count3 / (stream_length / 1000.0)
+                if stream_length <= 0.0:
+                    trib_dens = None
+                else:
+                    trib_dens = None if any(value is None for value in [count3, stream_length]) else count3 / (stream_length / 1000.0)
                 if trib_dens is not None:
                     curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['TRIBS']['metric_id']}, {str(trib_dens)})")
 
@@ -1144,6 +1149,14 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
         conn.commit()
 
     project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['RME_OUTPUTS'])
+
+    ellapsed = time.time() - start_time
+    project.add_metadata([
+        RSMeta("ProcTimeS", "{:.2f}".format(ellapsed), RSMetaTypes.HIDDEN, locked=True),
+        RSMeta("Processing Time", pretty_duration(ellapsed), locked=True)
+    ])
+
+    add_layer_descriptions(project, LYR_DESCRIPTIONS_JSON, LayerTypes)
 
     # Write a report
     report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
