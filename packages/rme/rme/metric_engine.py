@@ -25,7 +25,7 @@ import rasterio
 from rasterio.mask import mask
 from shapely.geometry import Point
 
-from rscommons import GeopackageLayer, dotenv, Logger, initGDALOGRErrors, ModelConfig, RSLayer, RSMeta, RSMetaTypes, RSProject, VectorBase, ProgressBar, get_shp_or_gpkg
+from rscommons import GeopackageLayer, dotenv, Logger, initGDALOGRErrors, ModelConfig, RSLayer, RSMeta, RSMetaTypes, RSProject, VectorBase, ProgressBar
 from rscommons.classes.vector_base import get_utm_zone_epsg
 from rscommons.util import parse_metadata, pretty_duration
 from rscommons.database import load_lookup_data
@@ -1658,6 +1658,15 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
 
     project.add_project_geopackage(
         proj_nodes['Outputs'], LayerTypes['RME_OUTPUTS'])
+
+    ellapsed = time.time() - start_time
+    project.add_metadata([
+        RSMeta("ProcTimeS", "{:.2f}".format(ellapsed),
+               RSMetaTypes.HIDDEN, locked=True),
+        RSMeta("Processing Time", pretty_duration(ellapsed), locked=True)
+    ])
+
+    add_layer_descriptions(project, LYR_DESCRIPTIONS_JSON, LayerTypes)
 
     ellapsed = time.time() - start_time
     project.add_metadata([
