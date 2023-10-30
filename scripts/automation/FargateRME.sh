@@ -118,7 +118,7 @@ try() {
     $RS_CONTEXT_DIR/transportation/railways.shp \
     $RS_CONTEXT_DIR/ecoregions/ecoregions.shp \
     $RME_DIR \
-    --confinement_dgos $CONFINEMENT_DIR/outputs/confinement.gpkg/dgos \
+    --confinement_dgos $CONFINEMENT_DIR/outputs/confinement.gpkg/confinement_dgos \
     --anthro_dgos $ANTHRO_DIR/outputs/anthro.gpkg/vwDgos \
     --rcat_dgos $RCAT_DIR/outputs/rcat.gpkg/vwDgos \
     --meta "Runner=Cybercastor" \

@@ -15,14 +15,15 @@ lyrs_in_out = {
     'counties': 'Counties',
     'DEM': 'DEM',
     'Precip': 'Precip',
+    'ecoregions': 'Ecoregions',
     'roads': 'Roads',
     'rail': 'Rail',
     'vbet_dgos': 'vbet_dgos',
     'vbet_igos': 'vbet_igos',
     'vbet_centerlines': 'vbet_centerlines',
-    'confinement_dgos': 'confinement_dgos',
-    'anthro_dgos': 'vwDgos',
-    'rcat_dogs': 'vwDgos'
+    'confinement_dgo': 'confinement_dgos',
+    'anthro_dgo': 'vwDgos',
+    'rcat_dgo': 'vwDgos'
 }
 
 
@@ -67,7 +68,7 @@ def main():
         watershed_node = out_prj.XMLBuilder.find('MetaData').find('Meta[@name="Watershed"]')
         if watershed_node is not None:
             name_node = out_prj.XMLBuilder.find('Name')
-            name_node.text = f"RCAT for {watershed_node.text}"
+            name_node.text = f"Metric Engine for {watershed_node.text}"
 
         out_prj.XMLBuilder.write()
         report_path = out_prj.XMLBuilder.find('.//HTMLFile[@id="REPORT"]/Path').text
