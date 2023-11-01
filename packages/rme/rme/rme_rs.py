@@ -14,6 +14,7 @@ lyrs_in_out = {
     'states': 'States',
     'counties': 'Counties',
     'DEM': 'DEM',
+    'HILLSHADE': 'HILLSHADE',
     'Precip': 'Precip',
     'ecoregions': 'Ecoregions',
     'roads': 'Roads',

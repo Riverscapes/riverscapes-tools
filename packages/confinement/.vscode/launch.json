@@ -49,6 +49,7 @@
         "{env:DATA_ROOT}/vbet/${input:HUC}/inputs/vbet_inputs.gpkg/channel_area_polygons",
         "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/vbet_full",
         "{env:DATA_ROOT}/confinement/${input:HUC}", // output folder
+        "{env:DATA_ROOT}/vbet/${input:HUC}/inputs/dem_hillshade.tif",
         "vbet_level_path",
         "ValleyBottom",
         "{env:DATA_ROOT}/vbet/${input:HUC}/intermediates/vbet_intermediates.gpkg/vbet_dgos",
