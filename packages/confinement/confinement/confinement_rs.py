@@ -15,7 +15,8 @@ lyrs_in_out = {
     'Flowlines': 'Flowlines_VAA',
     'ConfiningPolygon': 'vbet_full',
     'dgos': 'vbet_dgos',
-    'igos': 'vbet_igos'
+    'igos': 'vbet_igos',
+    'HILLSHADE': 'HILLSHADE'
 }
 
 

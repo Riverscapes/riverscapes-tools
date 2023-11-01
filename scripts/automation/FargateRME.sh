@@ -75,7 +75,7 @@ RME_DIR=$DATA_DIR/output/rme
 
 # Get the RSCli project we need to make this happen
 rscli download $RS_CONTEXT_DIR --id $RSCONTEXT_ID \
-  --file-filter "(nhdplushr\.gpkg|dem.tif|precipitation.tif|ecoregions|transportation|ownership|political_boundaries|project_bounds.geojson)" \
+  --file-filter "(nhdplushr\.gpkg|dem.tif|dem_hillshade.tif|precipitation.tif|ecoregions|transportation|ownership|political_boundaries|project_bounds.geojson)" \
   --no-input --no-ui --verbose
 
 rscli download $VBET_DIR --id $VBET_ID \
@@ -113,6 +113,7 @@ try() {
     $VBET_DIR/outputs/vbet.gpkg/vbet_igos \
     $VBET_DIR/outputs/vbet.gpkg/vbet_centerlines \
     $RS_CONTEXT_DIR/topography/dem.tif \
+    $RS_CONTEXT_DIR/topography/dem_hillshade.tif \
     $RS_CONTEXT_DIR/climate/precipitation.tif \
     $RS_CONTEXT_DIR/transportation/roads.shp \
     $RS_CONTEXT_DIR/transportation/railways.shp \

@@ -54,6 +54,7 @@ LayerTypes = {
         'DGOS': RSLayer('DGOs', 'DGOS', 'Vector', 'dgos'),
         'IGOS': RSLayer('IGOs', 'IGOS', 'Vector', 'igos')
     }),
+    'HILLSHADE': RSLayer('Hillshade', 'HILLSHADE', 'Raster', 'inputs/dem_hillshade.tif'),
     'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/confinement_intermediates.gpkg', {
         'SPLIT_POINTS': RSLayer('Split Points', 'SPLIT_POINTS', 'Vector', 'Split_Points'),
         'FLOWLINE_SEGMENTS': RSLayer('Flowline Segments', 'FLOWLINE_SEGMENTS', 'Vector', 'Flowline_Segments'),
@@ -77,7 +78,7 @@ LayerTypes = {
 }
 
 
-def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confining_polygon_orig: Path, output_folder: Path, vbet_summary_field: str,
+def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confining_polygon_orig: Path, output_folder: Path, in_hillshade: str, vbet_summary_field: str,
                 confinement_type: str, dgos: str, igos: str, buffer: float = 0.0, segmented_network=None, meta=None):
     """Generate confinement attribute for a stream network
 
@@ -766,6 +767,7 @@ def main():
                                              args.channel_area,
                                              args.confining_polygon,
                                              args.output_folder,
+                                             args.hillshade,
                                              args.vbet_summary_field,
                                              args.confinement_type,
                                              args.dgos,
@@ -782,6 +784,7 @@ def main():
                             args.channel_area,
                             args.confining_polygon,
                             args.output_folder,
+                            args.hillshade,
                             args.vbet_summary_field,
                             args.confinement_type,
                             args.dgos,

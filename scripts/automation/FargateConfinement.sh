@@ -71,7 +71,7 @@ rscli download $RS_CONTEXT_DIR --id $RSCONTEXT_ID \
 
 # Go get vbet result for this to work
 rscli download $VBET_DIR --id $VBET_ID \
-  --file-filter "(vbet\.gpkg|vbet_intermediates\.gpkg|vbet_inputs\.gpkg)" \
+  --file-filter "(vbet\.gpkg|dem_hillshade.tif|vbet_intermediates\.gpkg|vbet_inputs\.gpkg)" \
   --no-input --no-ui --verbose
 
 ##########################################################################################
@@ -88,6 +88,7 @@ try() {
     $VBET_DIR/inputs/vbet_inputs.gpkg/channel_area_polygons \
     $VBET_DIR/outputs/vbet.gpkg/vbet_full \
     $CONFINEMENT_DIR \
+    $VBET_DIR/inputs/dem_hillshade.tif \
     vbet_level_path \
     ValleyBottom \
     $VBET_DIR/intermediates/vbet_intermediates.gpkg/vbet_dgos \
