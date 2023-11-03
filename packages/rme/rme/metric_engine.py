@@ -57,9 +57,9 @@ LayerTypes = {
         'OWNERSHIP': RSLayer('Ownership', 'OWNERSHIP', 'Vector', 'ownership'),
         'STATES': RSLayer('States', 'STATES', 'Vector', 'states'),
         'COUNTIES': RSLayer('Counties', 'COUNTIES', 'Vector', 'counties'),
-        'VBET_DGOS': RSLayer('Vbet DGOs', 'VBET_DGOS', 'Vector', 'vbet_dgos'),
-        'VBET_IGOS': RSLayer('Vbet IGOs', 'VBET_IGOS', 'Vector', 'vbet_igos'),
-        'VBET_CENTERLINES': RSLayer('VBET Centerline', 'VBET_CENTERLINE', 'Vector', 'vbet_centerlines'),
+        'VBET_DGOS': RSLayer('Vbet DGOs', 'VBET_DGOS', 'Vector', 'dgos'),
+        'VBET_IGOS': RSLayer('Vbet IGOs', 'VBET_IGOS', 'Vector', 'igos'),
+        'VBET_CENTERLINES': RSLayer('VBET Centerline', 'VBET_CENTERLINE', 'Vector', 'valley_centerlines'),
         'ECOREGIONS': RSLayer('Ecoregions', 'ECOREGIONS', 'Vector', 'ecoregions'),
         'ROADS': RSLayer('Roads', 'Roads', 'Vector', 'roads'),
         'RAIL': RSLayer('Rail', 'Rail', 'Vector', 'rail'),
@@ -1580,6 +1580,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                         igo_id, metrics['COUNTY']['metric_id'], str(county)))
 
             conn.commit()
+    progbar.finish()
 
     epsg = 4326
     with sqlite3.connect(outputs_gpkg) as conn:
@@ -1607,16 +1608,16 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
         # metric_values_sql = f"{num_metric_values_sql}, {text_metric_values_sql}"
         sql = f'INSERT INTO dgo_metrics_pivot (fid, {metric_names_sql}) SELECT M.dgo_id, {metric_values_sql} FROM dgo_metric_values M GROUP BY M.dgo_id;'
         curs.execute(sql)
-        sql2 = f'CREATE VIEW igo_num_metrics (fid, {num_metric_names_sql}) AS SELECT M.igo_id, {num_metric_values_sql} FROM igo_metric_values M GROUP BY M.igo_id;'
+        sql2 = f"""CREATE VIEW igo_num_metrics (fid, {num_metric_names_sql}) AS SELECT M.igo_id, {num_metric_values_sql} FROM igo_metric_values M GROUP BY M.igo_id;"""
         curs.execute(sql2)
 
-        curs.execute(f"""CREATE VIEW dgo_text_metrics(fid, {text_metric_names_sql}) AS SELECT dgo.fid, e.ecoregion, o.ownership, s.us_state, c.county FROM vbet_dgos dgo LEFT JOIN
+        curs.execute(f"""CREATE VIEW dgo_text_metrics(fid, {text_metric_names_sql}) AS SELECT dgo.fid, e.ecoregion, o.ownership, s.us_state, c.county FROM dgos dgo LEFT JOIN
                      (SELECT dgo_id, metric_value AS ownership FROM dgo_metric_values WHERE metric_id={metrics['AGENCY']['metric_id']}) o ON o.dgo_id=dgo.fid LEFT JOIN
                      (SELECT dgo_id, metric_value AS ecoregion FROM dgo_metric_values WHERE metric_id={metrics['ECORGIV']['metric_id']}) e ON e.dgo_id=dgo.fid LEFT JOIN
                      (SELECT dgo_id, metric_value AS us_state FROM dgo_metric_values WHERE metric_id={metrics['STATE']['metric_id']}) s ON s.dgo_id=dgo.fid LEFT JOIN
                      (SELECT dgo_id, metric_value AS county FROM dgo_metric_values WHERE metric_id={metrics['COUNTY']['metric_id']}) c ON c.dgo_id=dgo.fid
                      """)
-        curs.execute(f"""CREATE VIEW igo_text_metrics(fid, {text_metric_names_sql}) AS SELECT igo.fid, e.ecoregion, o.ownership, s.us_state, c.county FROM vbet_igos igo LEFT JOIN
+        curs.execute(f"""CREATE VIEW igo_text_metrics(fid, {text_metric_names_sql}) AS SELECT igo.fid, e.ecoregion, o.ownership, s.us_state, c.county FROM igos igo LEFT JOIN
                      (SELECT igo_id, metric_value AS ownership FROM igo_metric_values WHERE metric_id={metrics['AGENCY']['metric_id']}) o ON o.igo_id=igo.fid LEFT JOIN
                      (SELECT igo_id, metric_value AS ecoregion FROM igo_metric_values WHERE metric_id={metrics['ECORGIV']['metric_id']}) e ON e.igo_id=igo.fid LEFT JOIN
                      (SELECT igo_id, metric_value AS us_state FROM igo_metric_values WHERE metric_id={metrics['STATE']['metric_id']}) s ON s.igo_id=igo.fid LEFT JOIN
@@ -1633,7 +1634,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
             [f"M.{sql_name(metric['field_name'])} {sql_name(metric['field_name'])}" for metric in metrics.values()])
         sql = f'CREATE VIEW vw_igo_metrics AS SELECT G.fid fid, G.geom geom, G.LevelPathI level_path, G.seg_distance seg_distance, G.stream_size stream_size, {metric_names_sql} FROM vbet_igos G INNER JOIN igo_metrics_pivot M ON M.fid = G.fid;'
         curs.execute(sql)
-        sql2 = f'CREATE VIEW vw_dgo_metrics AS SELECT G.fid fid, G.geom geom, G.LevelPathI level_path, G.seg_distance seg_distance, {metric_names_sql} FROM vbet_dgos G INNER JOIN dgo_metrics_pivot M ON M.fid = G.fid;'
+        sql2 = f'CREATE VIEW vw_dgo_metrics AS SELECT G.fid fid, G.geom geom, G.LevelPathI level_path, G.seg_distance seg_distance, {metric_names_sql} FROM dgos G INNER JOIN dgo_metrics_pivot M ON M.fid = G.fid;'
         curs.execute(sql2)
         conn.commit()
 
@@ -1658,11 +1659,11 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
         curs.execute(sql)
 
         # Add view to geopackage
-        curs.execute("INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id) SELECT 'vw_igo_metrics', 'features', 'vw_igo_metrics', min_x, min_y, max_y, max_y, srs_id FROM gpkg_contents WHERE table_name = 'vbet_igos'")
+        curs.execute("INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id) SELECT 'vw_igo_metrics', 'features', 'vw_igo_metrics', min_x, min_y, max_x, max_y, srs_id FROM gpkg_contents WHERE table_name = 'igos'")
         curs.execute("INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) values ('vw_igo_metrics', 'geom', 'POINT', ?, 0, 0);", (epsg,))
-        curs.execute("INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id) SELECT 'vw_dgo_metrics', 'features', 'vw_dgo_metrics', min_x, min_y, max_y, max_y, srs_id FROM gpkg_contents WHERE table_name = 'vbet_dgos'")
+        curs.execute("INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id) SELECT 'vw_dgo_metrics', 'features', 'vw_dgo_metrics', min_x, min_y, max_x, max_y, srs_id FROM gpkg_contents WHERE table_name = 'dgos'")
         curs.execute("INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) values ('vw_dgo_metrics', 'geom', 'POLYGON', ?, 0, 0);", (epsg,))
-        curs.execute("INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id) SELECT 'vw_measurements', 'features', 'vw_measurements', min_x, min_y, max_y, max_y, srs_id FROM gpkg_contents WHERE table_name = 'vbet_dgos'")
+        curs.execute("INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id) SELECT 'vw_measurements', 'features', 'vw_measurements', min_x, min_y, max_x, max_y, srs_id FROM gpkg_contents WHERE table_name = 'dgos'")
         curs.execute("INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) values ('vw_measurements', 'geom', 'POLYGON', ?, 0, 0);", (epsg,))
         conn.commit()
 
@@ -1695,7 +1696,6 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
     report = RMEReport(outputs_gpkg, report_path, project)
     report.write()
 
-    progbar.finish()
     log.info('Riverscapes Metric Engine Finished')
     return
 
@@ -1708,11 +1708,6 @@ def sql_name(name: str) -> str:
 def sql_round(datatype: str, metric_id, table='metric') -> str:
     """return round function"""
     return f"{'ROUND(' if datatype == 'REAL' else ''}SUM(M.{table}_value) FILTER (WHERE M.{table}_id == {metric_id}){', 4)' if datatype == 'REAL' else ''}"
-
-
-def sql_text(metric_id, table='metric') -> str:
-    """return text function"""
-    return f"M.{table}_value FILTER (WHERE M.{table}_id == {metric_id})"
 
 
 def generate_metric_list(database: Path, source_table: str = 'metrics') -> dict:
@@ -1888,9 +1883,9 @@ def main():
                                          args.ownership,
                                          args.states,
                                          args.counties,
-                                         args.vbet_dgos,
+                                         args.dgos,
                                          args.vbet_points,
-                                         args.vbet_centerline,
+                                         args.valley_centerline,
                                          args.dem,
                                          args.hillshade,
                                          args.ppt,
@@ -1911,9 +1906,9 @@ def main():
                           args.ownership,
                           args.states,
                           args.counties,
-                          args.vbet_dgos,
+                          args.dgos,
                           args.vbet_points,
-                          args.vbet_centerline,
+                          args.valley_centerline,
                           args.dem,
                           args.hillshade,
                           args.ppt,
