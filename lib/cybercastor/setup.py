@@ -15,7 +15,7 @@ with open("README.md", "rb") as f:
 
 version = re.search(
     '^__version__\\s*=\\s*"(.*)"',
-    open('sqlbrat/__version__.py').read(),
+    open('cybercastor/__version__.py').read(),
     re.M
 ).group(1)
 
@@ -30,6 +30,6 @@ setup(name='cybercastor',
       install_requires=install_requires,
       zip_safe=False,
       packages=[
-          'cybercator'
+          'cybercastor'
       ]
       )
