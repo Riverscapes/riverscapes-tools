@@ -39,3 +39,5 @@ ParamID,Name,Description,Aliases,DataUnits,EquationUnits,Conversion,Definition
 38,PII,Precipitation Intensity Index ,PII,unkown,unkown,1.0,
 39,STATSCLAY,STATSGO Percentage of Clay Soils,,percent,percent,1.0,STATSGO Percentage of Clay Soils
 40,OUTLETELEV,Elevation of Gage,,meters,feet,3.28084,Elevation of basin outlet (NWIS)
+41,BSLDEM30ff,Mean Basin Slope from 30m DEM ft/ft,,foot/foot ,foot/foot,1.0,
+42,PRC10,Mean October precipitation ininches,,millimeters,feet,0.0393701,
