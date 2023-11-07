@@ -249,6 +249,9 @@ def _get_shapefile_urls(parent, file_format, tag):
 
     # Query Science Base for the one and only item
     url = _get_url(sbquery)
+    # filter the list to only include files ending in GDB.zip
+    if file_format == 'FileGDB':
+        url = [val for val in url if val.endswith('GDB.zip')]
     if len(url) == 0:
         raise Exception('Failed to identify Science Base item with tag "{}"'.format(tag))
     if len(url) > 1:
