@@ -1,6 +1,4 @@
 import sqlite3
-from rscommons import GeopackageLayer
-from rscommons.classes.vector_base import get_utm_zone_epsg
 
 def get_metrics(gpkg_path):
 
