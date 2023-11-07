@@ -15,7 +15,7 @@ Path = str
 
 
 def rs_segmentation(
-    nhd_flowlines_path: str, dict_lines: dict, areas: list, out_gpkg: str):
+        nhd_flowlines_path: str, dict_lines: dict, areas: list, out_gpkg: str):
     """Segment the network in a few different ways
 
     Args:
@@ -40,17 +40,20 @@ def rs_segmentation(
     # Split by features in the lines dict
     for name, path in dict_lines.items():
         log.info(f'Finding {name} intersections')
-        intersect_pts[name] = split_geoms(nhd_flowlines_path, path, split_feats)
+        intersect_pts[name] = split_geoms(
+            nhd_flowlines_path, path, split_feats)
 
     # Split by areas
     for area in areas:
         log.info(f'Finding {area["name"]} intersections')
-        intersect_pts[area["name"]] = split_geoms(nhd_flowlines_path, area['path'], split_feats)
+        intersect_pts[area["name"]] = split_geoms(
+            nhd_flowlines_path, area['path'], split_feats)
 
     # Let's write our crossings to layers for later use. This can be used in BRAT or our other tools
     with GeopackageLayer(out_gpkg, layer_name='network_crossings', write=True) as out_lyr, \
             GeopackageLayer(nhd_flowlines_path) as in_lyr:
-        out_lyr.create_layer(ogr.wkbPoint, spatial_ref=in_lyr.spatial_ref, fields={'type': ogr.OFTString})
+        out_lyr.create_layer(ogr.wkbPoint, spatial_ref=in_lyr.spatial_ref, fields={
+                             'type': ogr.OFTString})
         out_lyr.ogr_layer.StartTransaction()
         for geom_type_name, ogr_geom in intersect_pts.items():
             for pt in list(ogr_geom):
@@ -78,15 +81,18 @@ def rs_segmentation(
             if fid in split_feats:
                 for split_geom in split_feats[fid]:
                     new_feat = ogr.Feature(out_lyr.ogr_layer_def)
-                    copy_fields(feat, new_feat, net_lyr.ogr_layer_def, out_lyr.ogr_layer_def, skip_fid=True)
-                    new_feat.SetGeometry(GeopackageLayer.shapely2ogr(split_geom))
+                    copy_fields(feat, new_feat, net_lyr.ogr_layer_def,
+                                out_lyr.ogr_layer_def, skip_fid=True)
+                    new_feat.SetGeometry(
+                        GeopackageLayer.shapely2ogr(split_geom))
                     out_lyr.ogr_layer.CreateFeature(new_feat)
                     fcounter += 1
 
             # If no split was found, write the feature as-is
             else:
                 new_feat = ogr.Feature(out_lyr.ogr_layer_def)
-                copy_fields(feat, new_feat, net_lyr.ogr_layer_def, out_lyr.ogr_layer_def, skip_fid=True)
+                copy_fields(feat, new_feat, net_lyr.ogr_layer_def,
+                            out_lyr.ogr_layer_def, skip_fid=True)
                 out_lyr.ogr_layer.CreateFeature(new_feat)
                 fcounter += 1
         out_lyr.ogr_layer.CommitTransaction()
@@ -106,7 +112,8 @@ def rs_segmentation(
                         if net_centroid.Within(poly_geom):
                             for attribute in area['attributes']:
                                 attribute_name = attribute['out_field']
-                                attribute_value = poly_feat.GetField(attribute['in_field'])
+                                attribute_value = poly_feat.GetField(
+                                    attribute['in_field'])
                                 fid = net_feat.GetFID()
                                 if fid not in attr_dict:
                                     attr_dict[fid] = {}
@@ -130,13 +137,16 @@ def rs_segmentation(
     # Index fields on the segmented networks
     with sqlite3.connect(out_gpkg) as conn:
         curs = conn.cursor()
-        curs.execute('CREATE INDEX ix_network_intersected_ReachCode on network_intersected(ReachCode)')
-        curs.execute('CREATE INDEX ix_network_intersected_NHDPlusID on network_intersected(NHDPlusID)')
-        curs.execute('CREATE INDEX ix_network_intersected_FCode on network_intersected(FCode)')
+        curs.execute(
+            'CREATE INDEX ix_network_intersected_ReachCode on network_intersected(ReachCode)')
+        curs.execute(
+            'CREATE INDEX ix_network_intersected_NHDPlusID on network_intersected(NHDPlusID)')
+        curs.execute(
+            'CREATE INDEX ix_network_intersected_FCode on network_intersected(FCode)')
         conn.commit()
 
         curs.execute('VACUUM')
-    
+
     log.info('Segmentation Complete')
 
 
@@ -160,7 +170,8 @@ def split_geoms(base_feature_path: str, intersect_feature_path: str, split_feats
     base_collection = collect_feature_class(base_feature_path)
     # Then we use the same collection method to get a collection of intersected features that are likely to touch
     # our base_collection. This seems a bit redundantly redundant but it does speed things up.
-    intersect_collection = GeopackageLayer.ogr2shapely(collect_feature_class(intersect_feature_path, clip_shape=base_collection))
+    intersect_collection = GeopackageLayer.ogr2shapely(
+        collect_feature_class(intersect_feature_path, clip_shape=base_collection))
 
     # if intersect_collection is a polygon or multipolygon, we need to get the boundary
     if intersect_collection.type == 'Polygon':
@@ -201,7 +212,8 @@ def split_geoms(base_feature_path: str, intersect_feature_path: str, split_feats
                     elif isinstance(intersection, MultiPoint):
                         intersection_pts += list(intersection.geoms)
                     else:
-                        raise Exception('Unhandled type: {}'.format(intersection.type))
+                        raise Exception(
+                            'Unhandled type: {}'.format(intersection.type))
 
             split_feats[fid] = new_splits
     return intersection_pts
@@ -209,7 +221,8 @@ def split_geoms(base_feature_path: str, intersect_feature_path: str, split_feats
 
 def polygon_to_polyline(lines_path, polygon_path, network_path):
     with GeopackageLayer(lines_path, write=True) as out_layer, get_shp_or_gpkg(polygon_path) as polygon_lyr:
-        out_layer.create_layer(ogr.wkbLineString, spatial_ref=polygon_lyr.spatial_ref)
+        out_layer.create_layer(
+            ogr.wkbLineString, spatial_ref=polygon_lyr.spatial_ref)
         network_owener_collect = collect_feature_class(network_path)
         out_layer.ogr_layer.StartTransaction()
         for feat, _counter, _progbar in polygon_lyr.iterate_features('Converting ownership polygons to polylines', clip_shape=network_owener_collect):
@@ -234,7 +247,8 @@ def polygon_to_polyline(lines_path, polygon_path, network_path):
                 elif b_type == ogr.wkbLineString:
                     boundary = [boundary]
                 else:
-                    raise Exception('Unsupported type: {}'.format(ogr.GeometryTypeToName(b_type)))
+                    raise Exception('Unsupported type: {}'.format(
+                        ogr.GeometryTypeToName(b_type)))
 
                 # Now write each individual linestring back to our output layer
                 for b_line in boundary:

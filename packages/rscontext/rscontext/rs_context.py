@@ -47,17 +47,19 @@ from rscontext.hydro_derivatives import clean_nhdplus_vaa_table, create_spatial_
 from rscontext.clip_vector import clip_vector_layer
 from rscontext.nhdarea import split_nhd_area
 from rscontext.rs_context_report import RSContextReport
-from rscontext.rs_segmentation import rs_segmentation
+from rscontext.rs_segmentation import rs_segmentation, create_spatial_view
 from rscontext.vegetation import clip_vegetation
 
 initGDALOGRErrors()
 
-cfg = ModelConfig('https://xml.riverscapes.net/Projects/XSD/V2/RiverscapesProject.xsd', __version__)
+cfg = ModelConfig(
+    'https://xml.riverscapes.net/Projects/XSD/V2/RiverscapesProject.xsd', __version__)
 
 # These are the Prism BIL types we expect
 PrismTypes = ['PPT', 'TMEAN', 'TMIN', 'TMAX', 'TDMEAN', 'VPDMIN', 'VPDMAX']
 
-LYR_DESCRIPTIONS_JSON = os.path.join(os.path.os.path.dirname(__file__), 'layer_descriptions.json')
+LYR_DESCRIPTIONS_JSON = os.path.join(
+    os.path.os.path.dirname(__file__), 'layer_descriptions.json')
 LayerTypes = {
     # key: (name, id, tag, relpath)
     'DEM': RSLayer('NED 10m DEM', 'DEM', 'Raster', 'topography/dem.tif'),
@@ -157,10 +159,12 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states_
     try:
         int(huc)
     except ValueError:
-        raise Exception('Invalid HUC identifier "{}". Must be an integer'.format(huc))
+        raise Exception(
+            'Invalid HUC identifier "{}". Must be an integer'.format(huc))
 
     if not (len(huc) in [4, 6, 8, 10, 12]):
-        raise Exception('Invalid HUC identifier. Must be 4, 8, 10 or 12 digit integer')
+        raise Exception(
+            'Invalid HUC identifier. Must be 4, 8, 10 or 12 digit integer')
 
     safe_makedirs(output_folder)
     safe_makedirs(download_folder)
@@ -172,35 +176,56 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states_
     project_name = 'Riverscapes Context for HUC {}'.format(huc)
     project = RSProject(cfg, output_folder)
     project.create(project_name, 'RSContext', [
-        RSMeta('Model Documentation', 'https://tools.riverscapes.net/rscontext', RSMetaTypes.URL, locked=True),
+        RSMeta('Model Documentation', 'https://tools.riverscapes.net/rscontext',
+               RSMetaTypes.URL, locked=True),
         RSMeta('HUC', str(huc), RSMetaTypes.HIDDEN, locked=True),
         RSMeta('Hydrologic Unit Code', str(huc), locked=True)
     ])
-    project.add_metadata([RSMeta(key, val, RSMetaTypes.HIDDEN, locked=True) for key, val in meta.items()])
+    project.add_metadata(
+        [RSMeta(key, val, RSMetaTypes.HIDDEN, locked=True) for key, val in meta.items()])
 
-    realization = project.add_realization(project_name, 'REALIZATION1', cfg.version)
+    realization = project.add_realization(
+        project_name, 'REALIZATION1', cfg.version)
     datasets = project.XMLBuilder.add_sub_element(realization, 'Datasets')
 
-    nhd_gpkg_path = os.path.join(output_folder, LayerTypes['NHDPLUSHR'].rel_path)
-    hydro_deriv_gpkg_path = os.path.join(output_folder, LayerTypes['HYDRODERIVATIVES'].rel_path)
+    nhd_gpkg_path = os.path.join(
+        output_folder, LayerTypes['NHDPLUSHR'].rel_path)
+    hydro_deriv_gpkg_path = os.path.join(
+        output_folder, LayerTypes['HYDRODERIVATIVES'].rel_path)
 
-    dem_node, dem_raster = project.add_project_raster(datasets, LayerTypes['DEM'])
-    hillshade_node, hill_raster = project.add_project_raster(datasets, LayerTypes['HILLSHADE'])
-    slope_node, slope_raster = project.add_project_raster(datasets, LayerTypes['SLOPE'])
-    existing_node, existing_clip = project.add_project_raster(datasets, LayerTypes['EXVEG'])
-    historic_node, historic_clip = project.add_project_raster(datasets, LayerTypes['HISTVEG'])
-    vegcover_node, veg_cover_clip = project.add_project_raster(datasets, LayerTypes['VEGCOVER'])
-    vegheight_node, veg_height_clip = project.add_project_raster(datasets, LayerTypes['VEGHEIGHT'])
-    hdist_node, hdist_clip = project.add_project_raster(datasets, LayerTypes['HDIST'])
-    fdist_node, fdist_clip = project.add_project_raster(datasets, LayerTypes['FDIST'])
-    fccs_node, fccs_clip = project.add_project_raster(datasets, LayerTypes['FCCS'])
-    vegcond_node, veg_condition_clip = project.add_project_raster(datasets, LayerTypes['VEGCONDITION'])
-    vegdep_node, veg_departure_clip = project.add_project_raster(datasets, LayerTypes['VEGDEPARTURE'])
-    sclass_node, sclass_clip = project.add_project_raster(datasets, LayerTypes['SCLASS'])
-    fairmarket_node, fair_market_clip = project.add_project_raster(datasets, LayerTypes['FAIR_MARKET'])
+    dem_node, dem_raster = project.add_project_raster(
+        datasets, LayerTypes['DEM'])
+    hillshade_node, hill_raster = project.add_project_raster(
+        datasets, LayerTypes['HILLSHADE'])
+    slope_node, slope_raster = project.add_project_raster(
+        datasets, LayerTypes['SLOPE'])
+    existing_node, existing_clip = project.add_project_raster(
+        datasets, LayerTypes['EXVEG'])
+    historic_node, historic_clip = project.add_project_raster(
+        datasets, LayerTypes['HISTVEG'])
+    vegcover_node, veg_cover_clip = project.add_project_raster(
+        datasets, LayerTypes['VEGCOVER'])
+    vegheight_node, veg_height_clip = project.add_project_raster(
+        datasets, LayerTypes['VEGHEIGHT'])
+    hdist_node, hdist_clip = project.add_project_raster(
+        datasets, LayerTypes['HDIST'])
+    fdist_node, fdist_clip = project.add_project_raster(
+        datasets, LayerTypes['FDIST'])
+    fccs_node, fccs_clip = project.add_project_raster(
+        datasets, LayerTypes['FCCS'])
+    vegcond_node, veg_condition_clip = project.add_project_raster(
+        datasets, LayerTypes['VEGCONDITION'])
+    vegdep_node, veg_departure_clip = project.add_project_raster(
+        datasets, LayerTypes['VEGDEPARTURE'])
+    sclass_node, sclass_clip = project.add_project_raster(
+        datasets, LayerTypes['SCLASS'])
+    fairmarket_node, fair_market_clip = project.add_project_raster(
+        datasets, LayerTypes['FAIR_MARKET'])
     input_rasters = [[dem_node, dem_raster], [hillshade_node, hill_raster], [slope_node, slope_raster], [existing_node, existing_clip],
-                     [historic_node, historic_clip], [vegcover_node, veg_cover_clip], [vegheight_node, veg_height_clip],
-                     [hdist_node, hdist_clip], [fdist_node, fdist_clip], [fccs_node, fccs_clip], [vegcond_node, veg_condition_clip],
+                     [historic_node, historic_clip], [vegcover_node,
+                                                      veg_cover_clip], [vegheight_node, veg_height_clip],
+                     [hdist_node, hdist_clip], [fdist_node, fdist_clip], [
+                         fccs_node, fccs_clip], [vegcond_node, veg_condition_clip],
                      [vegdep_node, veg_departure_clip], [sclass_node, sclass_clip], [fairmarket_node, fair_market_clip]]
 
     # Download the four digit NHD archive containing the flow lines and watershed boundaries
@@ -209,8 +234,10 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states_
     nhd_download_folder = os.path.join(download_folder, 'nhd', huc[:4])
     nhd_unzip_folder = os.path.join(scratch_dir, 'nhd', huc[:4])
 
-    nhd, filegdb, huc_name, _nhd_url = clean_nhd_data(huc, nhd_download_folder, nhd_unzip_folder, nhd_unzip_folder, cfg.OUTPUT_EPSG, False)
-    nhdarea_split = split_nhd_area(nhd['NHDArea'], nhd['NHDPlusCatchment'], os.path.join(nhd_unzip_folder, 'NHDAreaSplit.shp'))
+    nhd, filegdb, huc_name, _nhd_url = clean_nhd_data(
+        huc, nhd_download_folder, nhd_unzip_folder, nhd_unzip_folder, cfg.OUTPUT_EPSG, False)
+    nhdarea_split = split_nhd_area(nhd['NHDArea'], nhd['NHDPlusCatchment'], os.path.join(
+        nhd_unzip_folder, 'NHDAreaSplit.shp'))
 
     index_dict = {
         'NHDArea': ['FCode', 'NHDPlusID'],
@@ -225,20 +252,28 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states_
         else:
             idx = None
         out_path = os.path.join(nhd_gpkg_path, key)
-        copy_feature_class(nhd[key], out_path, epsg=cfg.OUTPUT_EPSG, indexes=idx)
+        copy_feature_class(nhd[key], out_path,
+                           epsg=cfg.OUTPUT_EPSG, indexes=idx)
 
     boundary = 'WBDHU{}'.format(len(huc))
 
-    buffered_clip_path100 = os.path.join(hydro_deriv_gpkg_path, LayerTypes['HYDRODERIVATIVES'].sub_layers['BUFFEREDCLIP100'].rel_path)
-    copy_feature_class(nhd[boundary], buffered_clip_path100, epsg=cfg.OUTPUT_EPSG, buffer=100)
+    buffered_clip_path100 = os.path.join(
+        hydro_deriv_gpkg_path, LayerTypes['HYDRODERIVATIVES'].sub_layers['BUFFEREDCLIP100'].rel_path)
+    copy_feature_class(nhd[boundary], buffered_clip_path100,
+                       epsg=cfg.OUTPUT_EPSG, buffer=100)
 
-    buffered_clip_path500 = os.path.join(hydro_deriv_gpkg_path, LayerTypes['HYDRODERIVATIVES'].sub_layers['BUFFEREDCLIP500'].rel_path)
-    copy_feature_class(nhd[boundary], buffered_clip_path500, epsg=cfg.OUTPUT_EPSG, buffer=500)
+    buffered_clip_path500 = os.path.join(
+        hydro_deriv_gpkg_path, LayerTypes['HYDRODERIVATIVES'].sub_layers['BUFFEREDCLIP500'].rel_path)
+    copy_feature_class(nhd[boundary], buffered_clip_path500,
+                       epsg=cfg.OUTPUT_EPSG, buffer=500)
 
-    area_split_out = os.path.join(hydro_deriv_gpkg_path, LayerTypes['HYDRODERIVATIVES'].sub_layers['NHDAREASPLIT'].rel_path)
-    copy_feature_class(nhdarea_split, area_split_out, epsg=cfg.OUTPUT_EPSG, indexes=['FCode', 'NHDPlusID'])
+    area_split_out = os.path.join(
+        hydro_deriv_gpkg_path, LayerTypes['HYDRODERIVATIVES'].sub_layers['NHDAREASPLIT'].rel_path)
+    copy_feature_class(nhdarea_split, area_split_out,
+                       epsg=cfg.OUTPUT_EPSG, indexes=['FCode', 'NHDPlusID'])
 
-    export_table(filegdb, 'NHDPlusFlowlineVAA', nhd_gpkg_path, None, "ReachCode LIKE '{}%'".format(huc[:8]))
+    export_table(filegdb, 'NHDPlusFlowlineVAA', nhd_gpkg_path,
+                 None, "ReachCode LIKE '{}%'".format(huc[:8]))
 
     # drop rows in NHDPlusFlowlineVAA that do not have a flowline in the NHDFlowline table
     clean_nhdplus_vaa_table(nhd_gpkg_path)
@@ -247,7 +282,8 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states_
     clean_nhdplus_catchments(nhd_gpkg_path, boundary, str(huc))
 
     # HUC 8 extent polygon
-    nhd['HUC8Extent'] = os.path.join(os.path.dirname(nhd['WBDHU8']), 'max_extent.shp')
+    nhd['HUC8Extent'] = os.path.join(
+        os.path.dirname(nhd['WBDHU8']), 'max_extent.shp')
     with get_shp_or_gpkg(nhd['WBDHU8']) as huc8lyr, get_shp_or_gpkg(nhd['HUC8Extent'], write=True) as outlyr:
         bbox = huc8lyr.ogr_layer.GetExtent()
         extent_box = get_rectangle_as_geom(bbox)
@@ -265,15 +301,20 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states_
     bil_files = glob.glob(os.path.join(prism_folder, '*.bil'))
     if (len(bil_files) == 0):
         all_files = glob.glob(os.path.join(prism_folder, '*'))
-        raise Exception('Could not find any .bil files in the prism folder: {}. Found: \n{}'.format(prism_folder, "\n".join(all_files)))
+        raise Exception('Could not find any .bil files in the prism folder: {}. Found: \n{}'.format(
+            prism_folder, "\n".join(all_files)))
     for ptype in PrismTypes:
         try:
             # Next should always be guarded
-            source_raster_path = next(x for x in bil_files if ptype.lower() in os.path.basename(x).lower())
+            source_raster_path = next(
+                x for x in bil_files if ptype.lower() in os.path.basename(x).lower())
         except StopIteration:
-            raise Exception('Could not find .bil file corresponding to "{}"'.format(ptype))
-        prism_node, project_raster_path = project.add_project_raster(datasets, LayerTypes[ptype])
-        raster_warp(source_raster_path, project_raster_path, cfg.OUTPUT_EPSG, buffered_clip_path500, {"cutlineBlend": 1})
+            raise Exception(
+                'Could not find .bil file corresponding to "{}"'.format(ptype))
+        prism_node, project_raster_path = project.add_project_raster(
+            datasets, LayerTypes[ptype])
+        raster_warp(source_raster_path, project_raster_path,
+                    cfg.OUTPUT_EPSG, buffered_clip_path500, {"cutlineBlend": 1})
         raster_resolution_meta(project, project_raster_path, prism_node)
 
     states = get_nhd_states(nhd[boundary])
@@ -284,12 +325,17 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states_
     ntd_unzip_folders = []
     ntd_urls = get_ntd_urls(states)
     for state, ntd_url in ntd_urls.items():
-        ntd_download_folder = os.path.join(download_folder, 'ntd', state.lower())
-        ntd_unzip_folder = os.path.join(scratch_dir, 'ntd', state.lower(), 'unzipped')  # a little awkward but I need a folder for this and this was the best name I could find
-        ntd_raw[state] = download_shapefile_collection(ntd_url, ntd_download_folder, ntd_unzip_folder, force_download)
+        ntd_download_folder = os.path.join(
+            download_folder, 'ntd', state.lower())
+        # a little awkward but I need a folder for this and this was the best name I could find
+        ntd_unzip_folder = os.path.join(
+            scratch_dir, 'ntd', state.lower(), 'unzipped')
+        ntd_raw[state] = download_shapefile_collection(
+            ntd_url, ntd_download_folder, ntd_unzip_folder, force_download)
         ntd_unzip_folders.append(ntd_unzip_folder)
 
-    ntd_clean = clean_ntd_data(ntd_raw, nhd['NHDFlowline'], nhd[boundary], os.path.join(output_folder, 'transportation'), cfg.OUTPUT_EPSG)
+    ntd_clean = clean_ntd_data(ntd_raw, nhd['NHDFlowline'], nhd[boundary], os.path.join(
+        output_folder, 'transportation'), cfg.OUTPUT_EPSG)
 
     # clean up the NTD Unzip folder. We won't need it again
     if parallel:
@@ -301,27 +347,33 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states_
 
     # Add any results to project XML
     for name, file_path in ntd_clean.items():
-        lyr_obj = RSLayer(name, name, 'Vector', os.path.relpath(file_path, output_folder))
+        lyr_obj = RSLayer(name, name, 'Vector',
+                          os.path.relpath(file_path, output_folder))
         ntd_node, _fpath = project.add_project_vector(datasets, lyr_obj)
         project.XMLBuilder.add_sub_element(ntd_node, 'Description', 'The USGS Transportation downloadable data from The National Map (TNM) is based on TIGER/Line data provided through U.S. Census Bureau and supplemented with HERE road data to create tile cache base maps. Some of the TIGER/Line data includes limited corrections done by USGS. Transportation data consists of roads, railroads, trails, airports, and other features associated with the transport of people or commerce. The data is downloaded from science base by state then clipped to the project extent.')
         project.add_metadata([RSMeta('SourceUrl', 'https://data.usgs.gov/datacatalog/data/USGS:ad3d631d-f51f-4b6a-91a3-e617d6a58b4e', RSMetaTypes.URL),
                               RSMeta('DataProductVersion', '2020'),
                               RSMeta('DocsUrl', f'https://tools.riverscapes.net/data/html#{name}', RSMetaTypes.URL)], ntd_node)
-        project.add_metadata([RSMeta(k, v, RSMetaTypes.URL) for k, v in ntd_urls.items()], ntd_node)
+        project.add_metadata([RSMeta(k, v, RSMetaTypes.URL)
+                             for k, v in ntd_urls.items()], ntd_node)
 
     # download contributing DEM rasters, mosaic and reproject into compressed GeoTIF
     ned_download_folder = os.path.join(download_folder, 'ned')
     ned_unzip_folder = os.path.join(scratch_dir, 'ned')
-    dem_rasters, urls = download_dem(nhd[boundary], cfg.OUTPUT_EPSG, 0.01, ned_download_folder, ned_unzip_folder, force_download)
+    dem_rasters, urls = download_dem(
+        nhd[boundary], cfg.OUTPUT_EPSG, 0.01, ned_download_folder, ned_unzip_folder, force_download)
 
-    processing_boundary = os.path.join(hydro_deriv_gpkg_path, LayerTypes['HYDRODERIVATIVES'].sub_layers['PROCESSING_EXTENT'].rel_path)
+    processing_boundary = os.path.join(
+        hydro_deriv_gpkg_path, LayerTypes['HYDRODERIVATIVES'].sub_layers['PROCESSING_EXTENT'].rel_path)
     raster_area_intersection(dem_rasters, nhd[boundary], processing_boundary)
     need_dem_rebuild = force_download or not os.path.exists(dem_raster)
     if need_dem_rebuild:
-        raster_vrt_stitch(dem_rasters, dem_raster, cfg.OUTPUT_EPSG, clip=processing_boundary, warp_options={"cutlineBlend": 1})
+        raster_vrt_stitch(dem_rasters, dem_raster, cfg.OUTPUT_EPSG,
+                          clip=processing_boundary, warp_options={"cutlineBlend": 1})
         area_ratio = verify_areas(dem_raster, nhd[boundary])
         if area_ratio < 0.85:
-            log.warning(f'DEM data less than 85%% of nhd extent ({area_ratio:%})')
+            log.warning(
+                f'DEM data less than 85%% of nhd extent ({area_ratio:%})')
             # raise Exception(f'DEM data less than 85%% of nhd extent ({area_ratio:%})')
 
     # Calculate slope rasters seperately and then stitch them
@@ -337,8 +389,10 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states_
     ], dem_node)
 
     for dem_r in dem_rasters:
-        slope_part_path = os.path.join(scratch_dem_folder, 'SLOPE__' + os.path.basename(dem_r).split('.')[0] + '.tif')
-        hs_part_path = os.path.join(scratch_dem_folder, 'HS__' + os.path.basename(dem_r).split('.')[0] + '.tif')
+        slope_part_path = os.path.join(
+            scratch_dem_folder, 'SLOPE__' + os.path.basename(dem_r).split('.')[0] + '.tif')
+        hs_part_path = os.path.join(
+            scratch_dem_folder, 'HS__' + os.path.basename(dem_r).split('.')[0] + '.tif')
         slope_parts.append(slope_part_path)
         hillshade_parts.append(hs_part_path)
 
@@ -351,13 +405,15 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states_
             need_hs_build = True
 
     if need_slope_build:
-        raster_vrt_stitch(slope_parts, slope_raster, cfg.OUTPUT_EPSG, clip=processing_boundary, clean=parallel, warp_options={"cutlineBlend": 1})
+        raster_vrt_stitch(slope_parts, slope_raster, cfg.OUTPUT_EPSG,
+                          clip=processing_boundary, clean=parallel, warp_options={"cutlineBlend": 1})
         verify_areas(slope_raster, nhd[boundary])
     else:
         log.info('Skipping slope build because nothing has changed.')
 
     if need_hs_build:
-        raster_vrt_stitch(hillshade_parts, hill_raster, cfg.OUTPUT_EPSG, clip=processing_boundary, clean=parallel, warp_options={"cutlineBlend": 1})
+        raster_vrt_stitch(hillshade_parts, hill_raster, cfg.OUTPUT_EPSG,
+                          clip=processing_boundary, clean=parallel, warp_options={"cutlineBlend": 1})
         verify_areas(hill_raster, nhd[boundary])
     else:
         log.info('Skipping hillshade build because nothing has changed.')
@@ -369,83 +425,104 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states_
     # Clip and re-project the existing and historic vegetation
     log.info('Processing existing and historic vegetation rasters.')
     in_veg_rasters = [os.path.join(landfire_dir, 'LC20_EVT_220.tif'), os.path.join(landfire_dir, 'LC20_BPS_220.tif'), os.path.join(landfire_dir, 'LC22_EVC_220.tif'),
-                      os.path.join(landfire_dir, 'LC22_EVH_220.tif'), os.path.join(landfire_dir, 'LC20_HDst_220.tif'), os.path.join(landfire_dir, 'LC22_FDst_220.tif'),
-                      os.path.join(landfire_dir, 'LC22_FCCS_220.tif'), os.path.join(landfire_dir, 'LC20_VCC_220.tif'), os.path.join(landfire_dir, 'LC20_VDep_220.tif'),
+                      os.path.join(landfire_dir, 'LC22_EVH_220.tif'), os.path.join(
+                          landfire_dir, 'LC20_HDst_220.tif'), os.path.join(landfire_dir, 'LC22_FDst_220.tif'),
+                      os.path.join(landfire_dir, 'LC22_FCCS_220.tif'), os.path.join(
+                          landfire_dir, 'LC20_VCC_220.tif'), os.path.join(landfire_dir, 'LC20_VDep_220.tif'),
                       os.path.join(landfire_dir, 'LC20_SCla_220.tif')]
-    out_veg_rasters = [existing_clip, historic_clip, veg_cover_clip, veg_height_clip, hdist_clip, fdist_clip, fccs_clip, veg_condition_clip, veg_departure_clip, sclass_clip]
-    clip_vegetation(buffered_clip_path100, in_veg_rasters, out_veg_rasters, cfg.OUTPUT_EPSG)
+    out_veg_rasters = [existing_clip, historic_clip, veg_cover_clip, veg_height_clip,
+                       hdist_clip, fdist_clip, fccs_clip, veg_condition_clip, veg_departure_clip, sclass_clip]
+    clip_vegetation(buffered_clip_path100, in_veg_rasters,
+                    out_veg_rasters, cfg.OUTPUT_EPSG)
 
     log.info('Process the Fair Market Value Raster.')
-    raster_warp(fair_market, fair_market_clip, cfg.OUTPUT_EPSG, clip=buffered_clip_path500, warp_options={"cutlineBlend": 1})
+    raster_warp(fair_market, fair_market_clip, cfg.OUTPUT_EPSG,
+                clip=buffered_clip_path500, warp_options={"cutlineBlend": 1})
 
     # Clip the landownership Shapefile to a 10km buffer around the watershed boundary
     own_path = os.path.join(output_folder, LayerTypes['OWNERSHIP'].rel_path)
     project.add_dataset(datasets, own_path, LayerTypes['OWNERSHIP'], 'Vector')
-    clip_vector_layer(nhd['HUC8Extent'], ownership, own_path, cfg.OUTPUT_EPSG, 10000, clip=True)
+    clip_vector_layer(nhd['HUC8Extent'], ownership,
+                      own_path, cfg.OUTPUT_EPSG, 10000, clip=True)
 
     # Clip the states shapefile to a 10km buffer around the watershed boundary
     states_path = os.path.join(output_folder, LayerTypes['STATES'].rel_path)
     project.add_dataset(datasets, states_path, LayerTypes['STATES'], 'Vector')
-    clip_vector_layer(nhd['HUC8Extent'], us_states_shp, states_path, cfg.OUTPUT_EPSG, 1000)
+    clip_vector_layer(nhd['HUC8Extent'], us_states_shp,
+                      states_path, cfg.OUTPUT_EPSG, 1000)
 
     # Clip the counties shapefile to a 10km buffer around the watershed boundary
-    counties_path = os.path.join(output_folder, LayerTypes['COUNTIES'].rel_path)
-    project.add_dataset(datasets, counties_path, LayerTypes['COUNTIES'], 'Vector')
-    clip_vector_layer(nhd['HUC8Extent'], us_counties, counties_path, cfg.OUTPUT_EPSG, 1000)
+    counties_path = os.path.join(
+        output_folder, LayerTypes['COUNTIES'].rel_path)
+    project.add_dataset(datasets, counties_path,
+                        LayerTypes['COUNTIES'], 'Vector')
+    clip_vector_layer(nhd['HUC8Extent'], us_counties,
+                      counties_path, cfg.OUTPUT_EPSG, 1000)
 
     # Clip the geology shapefile to a 10km buffer around the watershed boundary
     # geology is in national project - can also be retrieved from science base
     geo_path = os.path.join(output_folder, LayerTypes['GEOLOGY'].rel_path)
     project.add_dataset(datasets, geo_path, LayerTypes['GEOLOGY'], 'Vector')
-    clip_vector_layer(nhd['HUC8Extent'], geology, geo_path, cfg.OUTPUT_EPSG, 10000, clip=True)
+    clip_vector_layer(nhd['HUC8Extent'], geology, geo_path,
+                      cfg.OUTPUT_EPSG, 10000, clip=True)
 
     # Filter the ecoregions Shapefile to only include attributes that intersect with our HUC
     eco_path = os.path.join(output_folder, 'ecoregions', 'ecoregions.shp')
     project.add_dataset(datasets, eco_path, LayerTypes['ECOREGIONS'], 'Vector')
-    clip_vector_layer(nhd['HUC8Extent'], ecoregions, eco_path, cfg.OUTPUT_EPSG, 1000)
+    clip_vector_layer(nhd['HUC8Extent'], ecoregions,
+                      eco_path, cfg.OUTPUT_EPSG, 1000)
 
     #######################################################
     # Segmentation
     #######################################################
 
     # create spatial view of NHD Flowlines and VAA table
-    vaa_fields = {"LevelPathI": "level_path", "DnLevelPat": "downstream_level_path", 'UpLevelPat': "upstream_level_path", 'Divergence': 'divergence', 'StreamOrde': 'stream_order'}
-    network_fields = {'fid': 'fid', 'geom': 'geom', 'GNIS_ID': 'GNIS_ID', 'GNIS_Name': 'GNIS_Name', 'ReachCode':'ReachCode', 'FType': 'FType', 'FCode': 'FCode', 'NHDPlusID': 'NHDPlusID', 'TotDASqKM': 'TotDASqKM'}
-    view_vaa_flowline = create_spatial_view(nhd_gpkg_path, 'NHDFlowline', 'NHDPlusFlowlineVAA', 'vw_NHDFlowlineVAA', network_fields, vaa_fields, 'NHDPlusID')
-    _node_flowline_vaa = project.add_dataset(datasets, view_vaa_flowline, LayerTypes['NHDPLUSHR'].sub_layers['NHDFlowlineVAA'], 'Vector')
-    
+    vaa_fields = {"LevelPathI": "level_path", "DnLevelPat": "downstream_level_path",
+                  'UpLevelPat': "upstream_level_path", 'Divergence': 'divergence', 'StreamOrde': 'stream_order'}
+    network_fields = {'fid': 'fid', 'geom': 'geom', 'GNIS_ID': 'GNIS_ID', 'GNIS_Name': 'GNIS_Name',
+                      'ReachCode': 'ReachCode', 'FType': 'FType', 'FCode': 'FCode', 'NHDPlusID': 'NHDPlusID', 'TotDASqKM': 'TotDASqKM'}
+    view_vaa_flowline = create_spatial_view(
+        nhd_gpkg_path, 'NHDFlowline', 'NHDPlusFlowlineVAA', 'vw_NHDFlowlineVAA', network_fields, vaa_fields, 'NHDPlusID')
+    _node_flowline_vaa = project.add_dataset(
+        datasets, view_vaa_flowline, LayerTypes['NHDPLUSHR'].sub_layers['NHDFlowlineVAA'], 'Vector')
+
     # create spatial view of NHD Catchments and VAA table
     vaa_fields['TotDASqKM'] = 'TotDASqKM'
     vaa_fields['DivDASqKM'] = 'DivDASqKM'
-    catchment_fields = {'fid': 'fid', 'geom':'geom', 'NHDPlusID': 'NHDPlusID', 'AreaSqKM': 'AreaSqKM'}
-    view_vaa_catchments = create_spatial_view(nhd_gpkg_path, 'NHDPlusCatchment', 'NHDPlusFlowlineVAA', 'vw_NHDPlusCatchmentVAA', catchment_fields, vaa_fields, 'NHDPlusID', 'POLYGON')
-    _node_catchment_vaa = project.add_dataset(datasets, view_vaa_catchments, LayerTypes['NHDPLUSHR'].sub_layers['NHDPlusCatchment'], 'Vector')
+    catchment_fields = {'fid': 'fid', 'geom': 'geom',
+                        'NHDPlusID': 'NHDPlusID', 'AreaSqKM': 'AreaSqKM'}
+    view_vaa_catchments = create_spatial_view(nhd_gpkg_path, 'NHDPlusCatchment', 'NHDPlusFlowlineVAA',
+                                              'vw_NHDPlusCatchmentVAA', catchment_fields, vaa_fields, 'NHDPlusID', 'POLYGON')
+    _node_catchment_vaa = project.add_dataset(
+        datasets, view_vaa_catchments, LayerTypes['NHDPLUSHR'].sub_layers['NHDPlusCatchment'], 'Vector')
 
     # copy the NHD Catchments to the hydro_derivatives geopackage
-    catchments = os.path.join(hydro_deriv_gpkg_path, LayerTypes['HYDRODERIVATIVES'].sub_layers['CATCHMENTS'].rel_path)
+    catchments = os.path.join(
+        hydro_deriv_gpkg_path, LayerTypes['HYDRODERIVATIVES'].sub_layers['CATCHMENTS'].rel_path)
     copy_feature_class(view_vaa_catchments, catchments, epsg=cfg.OUTPUT_EPSG)
-    _node_catchments = project.add_dataset(datasets, catchments, LayerTypes['HYDRODERIVATIVES'].sub_layers['CATCHMENTS'], 'Vector')
+    _node_catchments = project.add_dataset(
+        datasets, catchments, LayerTypes['HYDRODERIVATIVES'].sub_layers['CATCHMENTS'], 'Vector')
 
     # Segment the NHD Flowlines
     tmr = Timer()
     lines = {'roads': ntd_clean['Roads'], 'railways': ntd_clean['Rail']}
     areas = [{'name': 'ownership',
-              'path': own_path, 
-              'attributes':[{
-                'in_field': 'ADMIN_AGEN',
-                'out_field': 'ownership'}]},
+              'path': own_path,
+              'attributes': [{
+                  'in_field': 'ADMIN_AGEN',
+                  'out_field': 'ownership'}]},
              {'name': 'states',
               'path': states_path,
-              'attributes':[{
-                'in_field': 'STUSPS',
-                'out_field': 'us_state'}]},
+              'attributes': [{
+                  'in_field': 'STUSPS',
+                  'out_field': 'us_state'}]},
              {'name': 'ecoregions',
               'path': eco_path,
-              'attributes':[{
-                'in_field': 'US_L3NAME',
-                'out_field': 'ecoregion_iii'},{
-                'in_field': 'US_L4NAME',
-                'out_field': 'ecoregion_iv'}]}, ]
+              'attributes': [{
+                  'in_field': 'US_L3NAME',
+                  'out_field': 'ecoregion_iii'}, {
+                  'in_field': 'US_L4NAME',
+                  'out_field': 'ecoregion_iv'}]}, ]
 
     rs_segmentation(view_vaa_flowline, lines, areas, hydro_deriv_gpkg_path)
     log.debug('Segmentation done in {:.1f} seconds'.format(tmr.ellapsed()))
@@ -455,17 +532,21 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states_
     project.add_project_geopackage(datasets, LayerTypes['HYDRODERIVATIVES'])
 
     # Add the report
-    report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
+    report_path = os.path.join(
+        project.project_dir, LayerTypes['REPORT'].rel_path)
     project.add_report(datasets, LayerTypes['REPORT'], replace=True)
 
     # Add Project Extents
     extents_json_path = os.path.join(output_folder, 'project_bounds.geojson')
-    extents = generate_project_extents_from_layer(processing_boundary, extents_json_path)
-    project.add_project_extent(extents_json_path, extents['CENTROID'], extents['BBOX'])
+    extents = generate_project_extents_from_layer(
+        processing_boundary, extents_json_path)
+    project.add_project_extent(
+        extents_json_path, extents['CENTROID'], extents['BBOX'])
 
     ellapsed_time = time.time() - rsc_timer
     project.add_metadata([
-        RSMeta("ProcTimeS", "{:.2f}".format(ellapsed_time), RSMetaTypes.HIDDEN, locked=True),
+        RSMeta("ProcTimeS", "{:.2f}".format(
+            ellapsed_time), RSMetaTypes.HIDDEN, locked=True),
         RSMeta("Processing Time", pretty_duration(ellapsed_time), locked=True)
     ])
 
@@ -516,9 +597,11 @@ def get_nhd_states(inpath):
         if len(states) == 1:
             log.error('HUC is entirely within Canada. No DEMs will be available.')
         else:
-            log.warning('HUC is partially in Canada. Certain data will only be available for US portion.')
+            log.warning(
+                'HUC is partially in Canada. Certain data will only be available for US portion.')
 
-    log.info('HUC intersects {} state(s): {}'.format(len(states), ', '.join(states)))
+    log.info('HUC intersects {} state(s): {}'.format(
+        len(states), ', '.join(states)))
     return list(dict.fromkeys(states))
 
 
@@ -528,28 +611,43 @@ def main():
         # epilog="This is an epilog"
     )
     parser.add_argument('huc', help='HUC identifier', type=str)
-    parser.add_argument('landfire_dir', help='Folder containing national landfire raster tifs', type=str)
-    parser.add_argument('ownership', help='National land ownership shapefile', type=str)
-    parser.add_argument('fairmarket', help='National fair market value raster', type=str)
-    parser.add_argument('ecoregions', help='National EcoRegions shapefile', type=str)
+    parser.add_argument(
+        'landfire_dir', help='Folder containing national landfire raster tifs', type=str)
+    parser.add_argument(
+        'ownership', help='National land ownership shapefile', type=str)
+    parser.add_argument(
+        'fairmarket', help='National fair market value raster', type=str)
+    parser.add_argument(
+        'ecoregions', help='National EcoRegions shapefile', type=str)
     parser.add_argument('states', help='National states shapefile', type=str)
-    parser.add_argument('counties', help='National counties shapefile', type=str)
-    parser.add_argument('geology', help='National SGMC geology shapefile', type=str)
-    parser.add_argument('prism', help='Folder containing PRISM rasters in BIL format', type=str)
+    parser.add_argument(
+        'counties', help='National counties shapefile', type=str)
+    parser.add_argument(
+        'geology', help='National SGMC geology shapefile', type=str)
+    parser.add_argument(
+        'prism', help='Folder containing PRISM rasters in BIL format', type=str)
     parser.add_argument('output', help='Path to the output folder', type=str)
-    parser.add_argument('download', help='Temporary folder for downloading data. Different HUCs may share this', type=str)
-    parser.add_argument('--force', help='(optional) download existing files ', action='store_true', default=False)
-    parser.add_argument('--parallel', help='(optional) for running multiple instances of this at the same time', action='store_true', default=False)
-    parser.add_argument('--temp_folder', help='(optional) cache folder for downloading files ', type=str)
-    parser.add_argument('--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
-    parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
-    parser.add_argument('--debug', help='(optional) more output about things like memory usage. There is a performance cost', action='store_true', default=False)
+    parser.add_argument(
+        'download', help='Temporary folder for downloading data. Different HUCs may share this', type=str)
+    parser.add_argument('--force', help='(optional) download existing files ',
+                        action='store_true', default=False)
+    parser.add_argument('--parallel', help='(optional) for running multiple instances of this at the same time',
+                        action='store_true', default=False)
+    parser.add_argument(
+        '--temp_folder', help='(optional) cache folder for downloading files ', type=str)
+    parser.add_argument(
+        '--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
+    parser.add_argument('--verbose', help='(optional) a little extra logging ',
+                        action='store_true', default=False)
+    parser.add_argument('--debug', help='(optional) more output about things like memory usage. There is a performance cost',
+                        action='store_true', default=False)
 
     args = dotenv.parse_args_env(parser)
 
     # Initiate the log file
     log = Logger("RS Context")
-    log.setup(logPath=os.path.join(args.output, "rs_context.log"), verbose=args.verbose)
+    log.setup(logPath=os.path.join(
+        args.output, "rs_context.log"), verbose=args.verbose)
     log.title('Riverscapes Context For HUC: {}'.format(args.huc))
 
     log.info('HUC: {}'.format(args.huc))
@@ -564,7 +662,8 @@ def main():
     # This is a general place for unzipping downloaded files and other temporary work.
     # We use GUIDS to make it specific to a particular run of the tool to avoid unzip collisions
     parallel_code = "-" + str(uuid.uuid4()) if args.parallel is True else ""
-    scratch_dir = args.temp_folder if args.temp_folder else os.path.join(args.download, 'scratch', 'rs_context{}'.format(parallel_code))
+    scratch_dir = args.temp_folder if args.temp_folder else os.path.join(
+        args.download, 'scratch', 'rs_context{}'.format(parallel_code))
     safe_makedirs(scratch_dir)
 
     meta = parse_metadata(args.meta)
@@ -574,10 +673,13 @@ def main():
         if args.debug is True:
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output, 'rs_context_memusage.log')
-            retcode, max_obj = ThreadRun(rs_context, memfile, args.huc, args.landfire_dir, args.ownership, args.fairmarket, args.ecoregions, args.states, args.counties, args.geology, args.prism, args.output, args.download, scratch_dir, args.parallel, args.force, meta)
-            log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
+            retcode, max_obj = ThreadRun(rs_context, memfile, args.huc, args.landfire_dir, args.ownership, args.fairmarket, args.ecoregions,
+                                         args.states, args.counties, args.geology, args.prism, args.output, args.download, scratch_dir, args.parallel, args.force, meta)
+            log.debug('Return code: {}, [Max process usage] {}'.format(
+                retcode, max_obj))
         else:
-            rs_context(args.huc, args.landfire_dir, args.ownership, args.fairmarket, args.ecoregions, args.states, args.counties, args.geology, args.prism, args.output, args.download, scratch_dir, args.parallel, args.force, meta)
+            rs_context(args.huc, args.landfire_dir, args.ownership, args.fairmarket, args.ecoregions, args.states, args.counties,
+                       args.geology, args.prism, args.output, args.download, scratch_dir, args.parallel, args.force, meta)
 
     except Exception as e:
         log.error(e)
