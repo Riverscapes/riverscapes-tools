@@ -6,7 +6,7 @@ from cybercastor.lib.file_download import download_files
 from brat_proj_metrics import get_metrics
 
 # download_files('production', 'vbet', 1601020202, 'vbet.gpkg')
-priority_hucs = '/mnt/c/Users/jordang/Documents/LTPBR/BLM_Priority_Watersheds/BLMPriorityHUC8.json'
+priority_hucs = '/mnt/c/Users/jordang/Documents/LTPBR/BLM_Priority_Watersheds/BLMPriorityHUC8_sub.json'
 
 in_json = '/mnt/c/Users/jordang/Documents/Riverscapes/data/huc10_metrics.json'
 
@@ -24,11 +24,23 @@ with open(in_json, 'r') as f:
     huc10_metrics = json.load(f)
 
 for huc in huc_list:
-    download_files('production', 'brat', huc, 'brat.gpkg')
+    try:
+        download_files('production', 'brat', huc, 'brat.gpkg')
+    except Exception as e:
+        print(f'failed to download huc in {huc}')
+        print(e)
+        continue
     for direc in os.listdir(brat_dir):
         if str(huc) in direc:
             brat_gpkg = os.path.join(brat_dir, direc, 'brat.gpkg')
             brat_metrics = get_metrics(brat_gpkg)
+            if direc not in huc10_metrics.keys():
+                huc10_metrics[direc] = {
+                    'bratCapacity': None,
+                    'bratRisk': None,
+                    'bratLimitation': None,
+                    'bratOpportunity': None
+                }
             huc10_metrics[direc]['bratCapacity'] = brat_metrics['bratCapacity']
             huc10_metrics[direc]['bratRisk'] = brat_metrics['bratRisk']
             huc10_metrics[direc]['bratLimitation'] = brat_metrics['bratLimitation']
