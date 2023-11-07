@@ -38,3 +38,5 @@ for huc in huc_list:
 
 with open(in_json, 'w') as f:
     json.dump(huc10_metrics, f, indent=4)
+
+print('done summarizing huc10s')
