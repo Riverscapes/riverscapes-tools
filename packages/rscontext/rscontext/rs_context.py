@@ -47,7 +47,7 @@ from rscontext.clean_catchments import clean_nhdplus_catchments
 from rscontext.clip_vector import clip_vector_layer
 from rscontext.nhdarea import split_nhd_area
 from rscontext.rs_context_report import RSContextReport
-from rscontext.rs_segmentation import rs_segmentation
+from rscontext.rs_segmentation import rs_segmentation, create_spatial_view
 from rscontext.vegetation import clip_vegetation
 
 initGDALOGRErrors()
@@ -87,6 +87,7 @@ LayerTypes = {
     'NHDPLUSHR': RSLayer('NHD HR Plus', 'NHDPLUSHR', 'Geopackage', 'hydrology/nhdplushr.gpkg', {
         # NHD Shapefiles
         'NHDFlowline': RSLayer('NHD Flowlines', 'NHDFlowline', 'Vector', 'NHDFlowline'),
+        'NHDFlowlineVAA': RSLayer('NHD Flowlines VAA', 'NHDFlowlineVAA', 'Vector', 'NHDFlowlineVAA'),
         'NHDArea': RSLayer('NHD Area', 'NHDArea', 'Vector', 'NHDArea'),
         'NHDPlusCatchment': RSLayer('NHD Plus Catchment', 'NHDPlusCatchment', 'Vector', 'NHDPlusCatchment'),
         'NHDWaterbody': RSLayer('NHD Waterbody', 'NHDWaterbody', 'Vector', 'NHDWaterbody'),
@@ -394,33 +395,60 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
     project.add_dataset(datasets, geo_path, LayerTypes['GEOLOGY'], 'Vector')
     clip_vector_layer(nhd['HUC8Extent'], geology, geo_path, cfg.OUTPUT_EPSG, 10000, clip=True)
 
+    # Filter the ecoregions Shapefile to only include attributes that intersect with our HUC
+    eco_path = os.path.join(output_folder, 'ecoregions', 'ecoregions.shp')
+    project.add_dataset(datasets, eco_path, LayerTypes['ECOREGIONS'], 'Vector')
+    clip_vector_layer(nhd['HUC8Extent'], ecoregions, eco_path, cfg.OUTPUT_EPSG, 1000)
+
     #######################################################
     # Segmentation
     #######################################################
 
+    # create spatial view of NHD Flowlines and VAA table
+    fields = {"LevelPathI": "level_path", "DnLevelPat": "downstream_level_path", 'UpLevelPat': "upstream_level_path", 'Divergence': 'divergence'}
+    network_fields = {'fid': 'fid', 'geom': 'geom', 'GNIS_ID': 'GNIS_ID', 'GNIS_Name': 'GNIS_Name', 'ReachCode':'ReachCode', 'FType': 'FType', 'FCode': 'FCode', 'NHDPlusID': 'NHDPlusID', 'TotDASqKM': 'TotDASqKM'} #'WatershedID':'WatershedID'
+    view_vaa_flowline = create_spatial_view(nhd_gpkg_path, 'NHDFlowline', 'NHDPlusFlowlineVAA', 'vw_NHDFlowlineVAA', network_fields, fields, 'NHDPlusID')
+
+    # add to the project xml
+    # vaa_meta = []
+    # for field_name, field_alias in fields.items():
+    #     vaa_meta.append(RS)
+    # LayerTypes['NHDFlowlineVAA'].lyr_meta = [
+    #     RSMeta()
+    # ]
+    node_flowline_vaa = project.add_dataset(datasets, view_vaa_flowline, LayerTypes['NHDPLUSHR'].sub_layers['NHDFlowlineVAA'], 'Vector')
+    # add metadata to this
+    # node_flowline_vaa.addMetadata()
+
     # For now let's just make a copy of the NHD FLowlines
     tmr = Timer()
-    rs_segmentation(
-        os.path.join(nhd_gpkg_path, 'NHDFlowline'),
-        ntd_clean['Roads'],
-        ntd_clean['Rail'],
-        own_path,
-        hydro_deriv_gpkg_path,
-        SEGMENTATION['Max'],
-        SEGMENTATION['Min'],
-        huc
-    )
+    lines = {'roads': ntd_clean['Roads'], 'railways': ntd_clean['Rail']}
+    areas = [{'name': 'ownership',
+              'path': own_path, 
+              'attributes':[{
+                'in_field': 'ADMIN_AGEN',
+                'out_field': 'ownership'}]},
+             {'name': 'states',
+              'path': states_path,
+              'attributes':[{
+                'in_field': 'STUSPS',
+                'out_field': 'us_state'}]},
+             {'name': 'ecoregions',
+              'path': eco_path,
+              'attributes':[{
+                'in_field': 'US_L3NAME',
+                'out_field': 'ecoregion_iii'},{
+                'in_field': 'US_L4NAME',
+                'out_field': 'ecoregion_iv'}]}, ]
+
+    rs_segmentation(view_vaa_flowline, lines, areas, hydro_deriv_gpkg_path)
     log.debug('Segmentation done in {:.1f} seconds'.format(tmr.ellapsed()))
 
     # add geopackages to project xml
     project.add_project_geopackage(datasets, LayerTypes['NHDPLUSHR'])
     project.add_project_geopackage(datasets, LayerTypes['HYDRODERIVATIVES'])
 
-    # Filter the ecoregions Shapefile to only include attributes that intersect with our HUC
-    eco_path = os.path.join(output_folder, 'ecoregions', 'ecoregions.shp')
-    project.add_dataset(datasets, eco_path, LayerTypes['ECOREGIONS'], 'Vector')
-    clip_vector_layer(nhd['HUC8Extent'], ecoregions, eco_path, cfg.OUTPUT_EPSG, 1000)
-
+    # Add the report
     report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
     project.add_report(datasets, LayerTypes['REPORT'], replace=True)
 

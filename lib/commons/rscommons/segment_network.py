@@ -143,6 +143,8 @@ def segment_network(inpath: str, outpath: str, interval: float, minimum: float, 
         progbar = ProgressBar(len(all_features), 50, "Segmenting")
         counter = 0
 
+        # max_fid = out_lyr.ogr_layer.GetFeatureCount()
+
         out_lyr.ogr_layer.StartTransaction()
         for orig_feat in all_features:
             counter += 1
@@ -157,9 +159,10 @@ def segment_network(inpath: str, outpath: str, interval: float, minimum: float, 
                 # Set the attributes using the values from the delimited text file
                 new_ogr_feat.SetField("GNIS_NAME", orig_feat.name)
                 new_ogr_feat.SetField("WatershedID", watershed_id)
+                # new_ogr_feat.SetFID(max_fid)
                 new_ogr_feat.SetGeometry(old_geom)
                 out_lyr.ogr_layer.CreateFeature(new_ogr_feat)
-                # rid += 1
+                # max_fid += 1
             else:
                 # From here on out we use shapely and project to UTM. We'll transform back before writing to disk.
                 new_geom = old_geom.Clone()
@@ -175,12 +178,13 @@ def segment_network(inpath: str, outpath: str, interval: float, minimum: float, 
                     # Set the attributes using the values from the delimited text file
                     new_ogr_feat.SetField("GNIS_NAME", orig_feat.name)
                     new_ogr_feat.SetField("WatershedID", watershed_id)
+                    # new_ogr_feat.SetFID(max_fid)
 
                     geo = ogr.CreateGeometryFromWkt(part1shply.wkt)
                     geo.Transform(transform_back)
                     new_ogr_feat.SetGeometry(geo)
                     out_lyr.ogr_layer.CreateFeature(new_ogr_feat)
-                    # rid += 1
+                    # max_fid += 1
 
                 # Add any remaining line to outGeometries
                 if remaining:
@@ -190,12 +194,13 @@ def segment_network(inpath: str, outpath: str, interval: float, minimum: float, 
                     # Set the attributes using the values from the delimited text file
                     new_ogr_feat.SetField("GNIS_NAME", orig_feat.name)
                     new_ogr_feat.SetField("WatershedID", watershed_id)
+                    # new_ogr_feat.SetFID(max_fid)
 
                     geo = ogr.CreateGeometryFromWkt(remaining.wkt)
                     geo.Transform(transform_back)
                     new_ogr_feat.SetGeometry(geo)
                     out_lyr.ogr_layer.CreateFeature(new_ogr_feat)
-                    # rid += 1
+                    # max_fid += 1
         out_lyr.ogr_layer.CommitTransaction()
         progbar.finish()
 
@@ -240,9 +245,12 @@ def cut(line, distance):
     return None
 
 
-def copy_fields(in_feature, out_feature, in_layer_def, out_layer_def):
+def copy_fields(in_feature, out_feature, in_layer_def, out_layer_def, skip_fid=False):
     # Add field values from input Layer
     for i in range(0, in_layer_def.GetFieldCount()):
+        # skip if fid field
+        if skip_fid is True and in_layer_def.GetFieldDefn(i).GetNameRef().lower() == 'fid':
+            continue
         out_feature.SetField(out_layer_def.GetFieldDefn(i).GetNameRef(), in_feature.GetField(i))
 
 
