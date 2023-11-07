@@ -232,7 +232,7 @@ class VectorBase():
             VectorBaseException: [description]
             NotImplementedError: [description]
         """
-        self.ogr_layer = None
+        self.ogr_layer: ogr.Layer = None
         if self.ogr_layer_name is None:
             raise VectorBaseException('No layer name set')
         elif self.ogr_ds is None:
