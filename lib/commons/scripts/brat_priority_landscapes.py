@@ -1,86 +1,10 @@
 import os
 import json
 
-huc10_metrics_json = ''
-landscape_metrics_json = ''
-priority_landscape_json = ''
-
-brat_metrics = {
-    'bratCapacity': {
-            'perennial': {
-                'miles': {
-                    'pervasive': None,
-                    'frequent': None,
-                    'occasional': None,
-                    'rare': None,
-                    'none': None
-                    }
-                },
-            'intermittent': {
-                'miles': {
-                    'pervasive': None,
-                    'frequent': None,
-                    'occasional': None,
-                    'rare': None,
-                    'none': None
-                    }
-                }
-            },
-        'bratRisk': {
-            'BLM': {
-                'perennial': {
-                    'miles': None
-                },
-                'intermittent': {
-                    'miles': None
-                }
-            },
-            'All': {
-                'perennial': {
-                    'miles': None
-                },
-                'intermittent': {
-                    'miles': None
-                }
-            }
-        },
-        'bratLimitation': {
-            'BLM': {
-                'perennial': {
-                    'miles': None
-                },
-                'intermittent': {
-                    'miles': None
-                }
-            },
-            'All': {
-                'perennial': {
-                    'miles': None
-                },
-                'intermittent': {
-                    'miles': None
-                }
-            }
-        },
-        'bratOpportunity': {
-            'BLM': {
-                'perennial': {
-                    'miles': None
-                },
-                'intermittent': {
-                    'miles': None
-                }
-            },
-            'All': {
-                'perennial': {
-                    'miles': None
-                },
-                'intermittent': {
-                    'miles': None
-                }
-            }
-        }
-}
+huc10_metrics_json = '/mnt/c/Users/jordang/Documents/Riverscapes/data/huc10_metrics.json'
+landscape_metrics_json = '/mnt/c/Users/jordang/Documents/LTPBR/BLM_Priority_Watersheds/priority_landscape_metrics.json'
+priority_landscape_json = '/mnt/c/Users/jordang/Documents/LTPBR/BLM_Priority_Watersheds/BLMPriorityHUC8_sub.json'
+landscape_metrics_out = '/mnt/c/Users/jordang/Documents/LTPBR/BLM_Priority_Watersheds/priority_landscape_metrics_11723.json'
 
 with open(huc10_metrics_json, 'r') as f:
     huc10_metrics = json.load(f)
@@ -94,7 +18,84 @@ with open(priority_landscape_json, 'r') as f:
 huc_lookup = {}
 for key, val in priority_landscape.items():
     for huc in val:
-        huc_lookup[huc] = key
+        huc_lookup[str(huc)] = key
+
+brat_metrics = {landscape: {
+    'bratCapacity': {
+            'perennial': {
+                'miles': {
+                    'pervasive': {},
+                    'frequent': {},
+                    'occasional': {},
+                    'rare': {},
+                    'none': {}
+                    }
+                },
+            'intermittent': {
+                'miles': {
+                    'pervasive': {},
+                    'frequent': {},
+                    'occasional': {},
+                    'rare': {},
+                    'none': {}
+                    }
+                }
+            },
+        'bratRisk': {
+            'BLM': {
+                'perennial': {
+                    'miles': {}
+                },
+                'intermittent': {
+                    'miles': {}
+                }
+            },
+            'All': {
+                'perennial': {
+                    'miles': {}
+                },
+                'intermittent': {
+                    'miles': {}
+                }
+            }
+        },
+        'bratLimitation': {
+            'BLM': {
+                'perennial': {
+                    'miles': {}
+                },
+                'intermittent': {
+                    'miles': {}
+                }
+            },
+            'All': {
+                'perennial': {
+                    'miles': {}
+                },
+                'intermittent': {
+                    'miles': {}
+                }
+            }
+        },
+        'bratOpportunity': {
+            'BLM': {
+                'perennial': {
+                    'miles': {}
+                },
+                'intermittent': {
+                    'miles': {}
+                }
+            },
+            'All': {
+                'perennial': {
+                    'miles': {}
+                },
+                'intermittent': {
+                    'miles': {}
+                }
+            }
+        }
+} for landscape in priority_landscape.keys()}
 
 for huc, metrics in huc10_metrics.items():
     if huc_lookup[huc[:8]] in brat_metrics.keys():
@@ -250,3 +251,8 @@ for key in landscape_metrics.keys():
     if key in brat_metrics:
         for bkey, bval in brat_metrics[key].items():
             landscape_metrics[key][bkey] = bval
+
+with open(landscape_metrics_out, 'w') as f:
+    json.dump(landscape_metrics, f, indent=4)
+
+print('done summarizing landscapes')
