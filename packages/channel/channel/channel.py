@@ -125,6 +125,9 @@ def channel(huc: int,
 
     GeopackageLayer.delete(inputs_gpkg_path)
     GeopackageLayer.delete(intermediates_gpkg_path)
+    GeopackageLayer.delete(output_gpkg_path)
+
+    fields = ['fid', 'geom', 'GNIS_ID', 'GNIS_Name', 'ReachCode', 'FType', 'FCode', 'NHDPlusID']
 
     if flowlines is not None:
         proj_flowlines = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
@@ -165,7 +168,7 @@ def channel(huc: int,
         fcode_filter = ""
         if reach_code_field is not None and reach_codes['flowarea'] is not None:
             fcode_filter = f"{reach_code_field} = " + f" or {reach_code_field} = ".join([f"'{fcode}'" for fcode in reach_codes['flowarea']])
-        copy_feature_class(proj_flowareas, filtered_flowareas, attribute_filter=fcode_filter)
+        copy_feature_class(proj_flowareas, filtered_flowareas, attribute_filter=fcode_filter, fields=fields)
 
         # log.info('Removing flowarea islands')
         # filtered_flowarea_no_islands = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['FLOW_AREA_NO_ISLANDS'].rel_path)
@@ -178,7 +181,7 @@ def channel(huc: int,
         if reach_code_field is not None and reach_codes['waterbody'] is not None:
             fcode_filter = f"{reach_code_field} = " + f" or {reach_code_field} = ".join([f"'{fcode}'" for fcode in reach_codes['waterbody']])
 
-        copy_feature_class(proj_waterbodies, filtered_waterbodies, attribute_filter=fcode_filter)
+        copy_feature_class(proj_waterbodies, filtered_waterbodies, attribute_filter=fcode_filter, fields=fields)
 
     combined_flow_polygons = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['COMBINED_FA_WB'].rel_path)
     if filtered_waterbodies is not None and filtered_flowareas is not None:
@@ -275,6 +278,7 @@ def calculate_bankfull(network_layer: Path, out_field: str, eval_fn: str, functi
         layer.create_field(out_field, ogr.OFTReal)
 
         layer.ogr_layer.StartTransaction()
+        feat: ogr.Feature = None
         for feat, *_ in layer.iterate_features("Calculating bankfull"):
 
             fn_params = {}

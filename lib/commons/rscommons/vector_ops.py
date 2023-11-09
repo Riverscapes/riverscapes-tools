@@ -178,7 +178,8 @@ def copy_feature_class(in_layer_path: str, out_layer_path: str,
                        clip_rect: List[float] = None,
                        buffer: float = 0,
                        hard_clip=False,
-                       indexes: List[str] = None) -> None:
+                       indexes: List[str] = None,
+                       fields: List[str] = None) -> None:
     """Copy a Shapefile from one location to another
 
     This method is capable of reprojecting the geometries as they are copied.
@@ -204,6 +205,14 @@ def copy_feature_class(in_layer_path: str, out_layer_path: str,
 
         # Add input Layer Fields to the output Layer if it is the one we want
         out_layer.create_layer_from_ref(in_layer, epsg=epsg)
+        
+        # drop fields if they don't exist in the fields list
+        if fields is not None:
+            # iterate fields in ogr_layer
+            for i in reversed(range(out_layer.ogr_layer_def.GetFieldCount())):
+                field = out_layer.ogr_layer_def.GetFieldDefn(i).GetNameRef()
+                if field not in fields:
+                    out_layer.ogr_layer.DeleteField(i)
 
         transform = VectorBase.get_transform(in_layer.spatial_ref, out_layer.spatial_ref)
 
@@ -212,8 +221,10 @@ def copy_feature_class(in_layer_path: str, out_layer_path: str,
             buffer_convert = in_layer.rough_convert_metres_to_vector_units(buffer)
 
         # This is the callback method that will be run on each feature
+        feature: ogr.Feature = None
+        progbar: ProgressBar = None
         for feature, _counter, progbar in in_layer.iterate_features("Copying features", write_layers=[out_layer], clip_shape=clip_shape, clip_rect=clip_rect, attribute_filter=attribute_filter):
-            geom = feature.GetGeometryRef()
+            geom: ogr.Geometry = feature.GetGeometryRef()
 
             if geom is None:
                 progbar.erase()  # get around the progressbar
@@ -245,11 +256,12 @@ def copy_feature_class(in_layer_path: str, out_layer_path: str,
 
             # Add field values from input Layer
             for i in range(0, out_layer.ogr_layer_def.GetFieldCount()):
-                out_feature.SetField(out_layer.ogr_layer_def.GetFieldDefn(i).GetNameRef(), feature.GetField(i))
+                field = out_layer.ogr_layer_def.GetFieldDefn(i).GetNameRef()
+                if fields is None or field in fields:
+                    out_feature.SetField(field, feature.GetField(i))
 
             out_layer.ogr_layer.CreateFeature(out_feature)
             out_feature = None
-    return
 
     if indexes and len(indexes) > 0:
         conn = sqlite3.connect(os.path.dirname(out_layer_path))
@@ -261,7 +273,8 @@ def copy_feature_class(in_layer_path: str, out_layer_path: str,
 
         conn.commit()
         conn.execute("VACUUM")
-
+    
+    return
 
 def merge_feature_classes(feature_class_paths: List[str], out_layer_path: str, boundary: BaseGeometry = None):
     """[summary]
@@ -963,29 +976,31 @@ def difference(remove_layer: Path, target_layer: Path, out_layer_path: Path, eps
             get_shp_or_gpkg(target_layer) as lyr_target:
 
         lyr_output.create_layer_from_ref(lyr_target)
-        lyr_output_defn = lyr_output.ogr_layer.GetLayerDefn()
+        lyr_output_defn: ogr.FeatureDefn = lyr_output.ogr_layer.GetLayerDefn()
         lyr_output.ogr_layer.StartTransaction()
+        feat_target: ogr.Feature = None
         for feat_target, _counter, _progbar in lyr_target.iterate_features("Differencing Target Features"):
 
-            def write_polygon(out_geom):
+            def write_polygon(out_geom: ogr.Geometry):
                 out_geom = out_geom.MakeValid()
-                out_geom = ogr.ForceToMultiPolygon(out_geom)
                 out_feat = ogr.Feature(lyr_output_defn)
                 out_feat.SetGeometry(out_geom)
-                for i in range(0, lyr_output.ogr_layer_def.GetFieldCount()):
-                    out_feat.SetField(lyr_output.ogr_layer_def.GetFieldDefn(i).GetNameRef(), feat_target.GetField(i))
+                for i in range(0, lyr_output_defn.GetFieldCount()):
+                    field: ogr.FieldDefn = lyr_output_defn.GetFieldDefn(i)
+                    out_feat.SetField(field.GetNameRef(), feat_target.GetField(i))
                 lyr_output.ogr_layer.CreateFeature(out_feat)
 
-            geom = feat_target.GetGeometryRef()
+            geom: ogr.Geometry = feat_target.GetGeometryRef()
             if not geom.IsValid():
                 geom = geom_validity_fix(geom)
 
+            feat_diff: ogr.Feature = None
             for feat_diff, _counter, _progbar in lyr_diff.iterate_features(clip_shape=geom):
-                geom_diff = feat_diff.GetGeometryRef()
+                geom_diff: ogr.Geometry = feat_diff.GetGeometryRef()
                 if not geom_diff.IsValid():
                     geom_diff = geom_validity_fix(geom_diff)
                 try:
-                    geom_orig = geom.Clone()
+                    # geom_orig = geom.Clone()
                     geom = geom.Difference(geom_diff)
                 except Exception:
                     log.error(str(IOError))
@@ -994,11 +1009,16 @@ def difference(remove_layer: Path, target_layer: Path, out_layer_path: Path, eps
                     geom = geom_validity_fix(geom)
 
             if geom.IsValid() and geom.GetGeometryName() != 'GEOMETRYCOLLECTION':
-                if geom.GetGeometryName() == 'MULTIPOLYGON':
-                    for g in geom:
-                        write_polygon(g)
+                if ogr.GeometryTypeToName(lyr_target.ogr_layer.GetGeomType()) == 'MultiPolygon':
+                    out_geom = ogr.ForceToMultiPolygon(out_geom)
+                    write_polygon(out_geom)
                 else:
-                    write_polygon(geom)
+                    if geom.GetGeometryName() == 'MULTIPOLYGON':
+                        for g in geom:
+                            g = ogr.ForceToPolygon(g)
+                            write_polygon(g)
+                    else:
+                        write_polygon(geom)
 
         lyr_output.ogr_layer.CommitTransaction()
 
