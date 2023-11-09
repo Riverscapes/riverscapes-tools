@@ -4,18 +4,10 @@
     "editor.tabSize": 4,
     "editor.formatOnSave": true,
   },
-  "python.linting.enabled": true,
-  "python.linting.lintOnSave": true,
-  "python.linting.pycodestyleEnabled": true,
-  "python.linting.pylintEnabled": true,
-  "python.linting.pycodestyleArgs": [
-    "--ignore=E501"
-  ],
-  "python.formatting.autopep8Args": [
+  "pylint.args": [
     "--ignore=E501"
   ],
   "python.terminal.activateEnvironment": true,
-  "python.autoComplete.showAdvancedMembers": false,
   "files.exclude": {
     "**/*.egg-info": true
   },
