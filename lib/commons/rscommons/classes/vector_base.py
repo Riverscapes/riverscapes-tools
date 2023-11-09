@@ -90,10 +90,10 @@ class VectorBase():
         self.allow_write = allow_write
 
         # This shouldn't be used except to input a new layer
-        self.spatial_ref = None
-        self.ogr_layer = None
-        self.ogr_layer_def = None
-        self.ogr_ds = None
+        self.spatial_ref: osr.SpatialReference = None
+        self.ogr_layer: ogr.Layer = None
+        self.ogr_layer_def: ogr.FeatureDefn = None
+        self.ogr_ds: ogr.DataSource = None
         self.ogr_geom_type = None
 
         # This is just matching extensions
