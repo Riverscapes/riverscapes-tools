@@ -164,6 +164,8 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
 
     _nd, _inputs_gpkg_path, inputs_gpkg_lyrs = project.add_project_geopackage(
         proj_nodes['Inputs'], LayerTypes['INPUTS'])
+    
+    _hs_node, hillshade = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], in_hillshade)
 
     output_gpkg = os.path.join(
         output_folder, LayerTypes['CONFINEMENT'].rel_path)
@@ -720,6 +722,7 @@ def main():
     parser.add_argument(
         'confining_polygon', help='valley bottom or other polygon representing confining boundary (.shp, .gpkg/layer_name)', type=str)
     parser.add_argument('output_folder', help='Output folder', type=str)
+    parser.add_argument('hillshade', help='Hillshade raster', type=str)
     parser.add_argument(
         'vbet_summary_field', help='(optional) float field in flowlines with vbet level_paths', default=None)
     parser.add_argument('confinement_type',
