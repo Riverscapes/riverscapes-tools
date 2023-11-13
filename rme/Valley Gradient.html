@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+  <head>
+      <meta charset="utf-8">
+      <meta http-equiv="x-ua-compatible" content="ie=edge">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Riverscapes Metric Engine</title>
+
+      <meta name="viewport" content="width=device-width">
+      <link rel="stylesheet" href="/rme/assets/css/style.css">
+      <link rel="stylesheet" href="/rme/assets/css/custom.css">
+
+      <link rel="apple-touch-icon" sizes="57x57" href="/rme/assets/images/favicons/apple-icon-57x57.png">
+      <link rel="apple-touch-icon" sizes="60x60" href="/rme/assets/images/favicons/apple-icon-60x60.png">
+      <link rel="apple-touch-icon" sizes="72x72" href="/rme/assets/images/favicons/apple-icon-72x72.png">
+      <link rel="apple-touch-icon" sizes="76x76" href="/rme/assets/images/favicons/apple-icon-76x76.png">
+      <link rel="apple-touch-icon" sizes="114x114" href="/rme/assets/images/favicons/apple-icon-114x114.png">
+      <link rel="apple-touch-icon" sizes="120x120" href="/rme/assets/images/favicons/apple-icon-120x120.png">
+      <link rel="apple-touch-icon" sizes="144x144" href="/rme/assets/images/favicons/apple-icon-144x144.png">
+      <link rel="apple-touch-icon" sizes="152x152" href="/rme/assets/images/favicons/apple-icon-152x152.png">
+      <link rel="apple-touch-icon" sizes="180x180" href="/rme/assets/images/favicons/apple-icon-180x180.png">
+      <link rel="icon" type="image/png" sizes="192x192"  href="/rme/assets/images/favicons/android-icon-192x192.png">
+      <link rel="icon" type="image/png" sizes="32x32" href="/rme/assets/images/favicons/favicon-32x32.png">
+      <link rel="icon" type="image/png" sizes="96x96" href="/rme/assets/images/favicons/favicon-96x96.png">
+      <link rel="icon" type="image/png" sizes="16x16" href="/rme/assets/images/favicons/favicon-16x16.png">
+      <link rel="manifest" href="/rme/assets/images/favicons/manifest.json">
+      <meta name="msapplication-TileColor" content="#ffffff">
+      <meta name="msapplication-TileImage" content="/rme/assets/images/favicons/ms-icon-144x144.png">
+      <meta name="theme-color" content="#ffffff">
+      <link rel="shortcut icon" href="/rme/assets/images/favicons/favicon.ico" />
+
+      <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+      <![endif]-->
+  </head>
+
+  <body>
+
+  <header>
+    <div id="topbarnav"></div>
+    <div id="headcallout" class="text-center callout large">
+      
+
+
+<h4 class="subheader show-for-medium"><a href="/rme/">Riverscapes Metric Engine</a></h4>   
+<h1>Valley Gradient</h1>
+    
+
+    </div>
+  </header>
+
+  <div id="inner-wrapper">
+    <div id="inner" class="row">
+      <div id="main" class="large-8 columns large-push-4">
+        <section><p>Valley gradient describes an increase or decrease in the elevation of the valley bottom over a longitudinal distance.</p>
+
+<p><img src="https://user-images.githubusercontent.com/73319684/188728735-5dd5c7dd-cb1f-4ccf-8c81-07633bcdcc1e.png" alt="Untitled" /></p>
+
+<p><em>Created with BioRender.com</em></p>
+
+<h2 id="why-is-this-metric-important">Why is this metric important?</h2>
+
+<ul>
+  <li>Is a predictor of channel morphology</li>
+</ul>
+
+<h2 id="metric-info">Metric info:</h2>
+
+<p><strong>Machine Code:</strong> VALGRAD</p>
+
+<p><strong>Analysis Window</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Small</th>
+      <th>Medium</th>
+      <th>Large</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>100 m</td>
+      <td>250 m</td>
+      <td>1 km</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Lines of Evidence</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>LOE</th>
+      <th>Measurement</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>DEM</td>
+      <td>elevation start and end points in meters for each valley bottom segment length</td>
+    </tr>
+    <tr>
+      <td>Valley bottom segment</td>
+      <td>length in meters of each valley bottom segment</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Calculation</strong></p>
+
+<p><code class="language-plaintext highlighter-rouge">(𝑡𝑜𝑝 𝑜𝑓 𝑠𝑒𝑔𝑚𝑒𝑛𝑡 𝑒𝑙𝑒𝑣. −𝑏𝑜𝑡𝑡𝑜𝑚 𝑜𝑓 𝑠𝑒𝑔𝑚𝑒𝑛𝑡 𝑒𝑙𝑒𝑣.)/(𝑣𝑎𝑙𝑙𝑒𝑦 𝑏𝑜𝑡𝑡𝑜𝑚 𝑐𝑒𝑛𝑡𝑒𝑟𝑙𝑖𝑛𝑒)</code></p>
+
+<p><strong>Process</strong></p>
+
+<p>In small riverscapes, we look upstream and downstream 50 meters, to build a 100 meter analysis window. At the top and bottom of this window, we buffer the end point by 25 meters to find the lowest value cell in our input DEM. This ensures that we are actually looking at the channel elevation, instead of a potential floodplain or terrace elevation, which could happen if the stream network and DEM don’t align perfectly. We then measure the length of the stream network within the analysis window. From there it is a simple rise over run calculation: <code class="language-plaintext highlighter-rouge">(𝑡𝑜𝑝 𝑜𝑓 𝑠𝑒𝑔𝑚𝑒𝑛𝑡 𝑒𝑙𝑒𝑣. −𝑏𝑜𝑡𝑡𝑜𝑚 𝑜𝑓 𝑠𝑒𝑔𝑚𝑒𝑛𝑡 𝑒𝑙𝑒𝑣.)/(𝑣𝑎𝑙𝑙𝑒𝑦 𝑏𝑜𝑡𝑡𝑜𝑚 𝑐𝑒𝑛𝑡𝑒𝑟𝑙𝑖𝑛𝑒)</code>.</p>
+
+<p>The process is the same for medium and large riverscapes, except that the analysis windows are 250 meters and 1,000 meters, respectively, and the elevation search buffers are 50 meters and 100 meters, respectively.</p>
+
+<h2 id="example">Example:</h2>
+
+<h2 id="citations">Citations:</h2>
+
+</section>
+      </div>
+      <div id="sidebar" class="large-4 columns large-pull-8">
+          
+	
+	<div class="title-bar">
+		<div class="title-bar-title"><i class="fa fa-file-text"></i> Page Contents</div>		
+	</div>
+	<div id="toc"></div>
+	
+
+
+<div class="title-bar">
+	<div class="title-bar-title"><i class="fa fa-sitemap"></i> Site Contents
+		<div id="menuCtls" class="button-group tiny show-for-medium">
+				<span id="expand" class="button primary fa fa-plus has-tip top" data-tooltip title="Expand all items" aria-haspopup="true" data-disable-hover="false" ></span>
+				<span id="contract" class="button primary fa fa-minus has-tip top" data-tooltip title="Contract all items" aria-haspopup="true" data-disable-hover="false" ></span>
+			</div>	
+	</div>
+</div>
+ <div id="sidenav">
+			<ul id='HTMLOnlyNav'>							<li><a href='/rme/Active%20Floodplain%20Area.html'>Stream Gradient</a></li>							<li><a href='/rme/Centerlines.html'>Centerlines</a></li>							<li><a href='/rme/Moving%20Window%20Analysis.html'>Moving Window Analysis</a></li>							<li><a href='/rme/Stream%20Gradient.html'>Stream Gradient</a></li>							<li><a href='/rme/Stream%20Size.html'>Stream Size</a></li>							<li><a href='/rme/Valley%20Gradient.html'>Valley Gradient</a></li>							<li><a href='/rme/assets/images/favicons/manifest.json'></a></li>							<li><a href='/rme/assets/js/nav.js'>Test</a></li>							<li><a href='/rme/'>Home</a></li>		</ul>	
+</div>
+
+<!-- Sidebar is where the extended sidepanel stuff like mailchimp forms go -->
+
+<!-- This is where you put your extra sidebar info like a mailchimp form -->
+<a href="/">Back to riverscapes tools</a>
+        </div>
+    </div>
+  </div>
+
+
+    <footer id="footer" class="row">
+<div id="rightslogo">
+    <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank">
+        <img src="/rme/assets/images/cc-watermarks-riverscapes_orig.png" alt="Picture">
+    </a>
+</div>
+</footer>
+    
+
+    <script src="/rme/assets/js/jquery.min.js"></script>
+    <script src="/rme/assets/js/motion-ui.min.js"></script>
+    <script src="/rme/assets/js/foundation.min.js"></script>
+    <script src="/rme/assets/js/toc.js"></script>
+    <script src="/rme/assets/js/nav.js"></script>
+    <script src="/rme/assets/js/app.js"></script>
+
+  </body>
+
+</html>

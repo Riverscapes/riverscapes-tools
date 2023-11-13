@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html>
+  <head>
+      <meta charset="utf-8">
+      <meta http-equiv="x-ua-compatible" content="ie=edge">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>BRAT</title>
+
+      <meta name="viewport" content="width=device-width">
+      <link rel="stylesheet" href="/brat/assets/css/style.css">
+      <link rel="stylesheet" href="/brat/assets/css/custom.css">
+
+      <link rel="apple-touch-icon" sizes="57x57" href="/brat/assets/images/favicons/apple-icon-57x57.png">
+      <link rel="apple-touch-icon" sizes="60x60" href="/brat/assets/images/favicons/apple-icon-60x60.png">
+      <link rel="apple-touch-icon" sizes="72x72" href="/brat/assets/images/favicons/apple-icon-72x72.png">
+      <link rel="apple-touch-icon" sizes="76x76" href="/brat/assets/images/favicons/apple-icon-76x76.png">
+      <link rel="apple-touch-icon" sizes="114x114" href="/brat/assets/images/favicons/apple-icon-114x114.png">
+      <link rel="apple-touch-icon" sizes="120x120" href="/brat/assets/images/favicons/apple-icon-120x120.png">
+      <link rel="apple-touch-icon" sizes="144x144" href="/brat/assets/images/favicons/apple-icon-144x144.png">
+      <link rel="apple-touch-icon" sizes="152x152" href="/brat/assets/images/favicons/apple-icon-152x152.png">
+      <link rel="apple-touch-icon" sizes="180x180" href="/brat/assets/images/favicons/apple-icon-180x180.png">
+      <link rel="icon" type="image/png" sizes="192x192"  href="/brat/assets/images/favicons/android-icon-192x192.png">
+      <link rel="icon" type="image/png" sizes="32x32" href="/brat/assets/images/favicons/favicon-32x32.png">
+      <link rel="icon" type="image/png" sizes="96x96" href="/brat/assets/images/favicons/favicon-96x96.png">
+      <link rel="icon" type="image/png" sizes="16x16" href="/brat/assets/images/favicons/favicon-16x16.png">
+      <link rel="manifest" href="/brat/assets/images/favicons/manifest.json">
+      <meta name="msapplication-TileColor" content="#ffffff">
+      <meta name="msapplication-TileImage" content="/brat/assets/images/favicons/ms-icon-144x144.png">
+      <meta name="theme-color" content="#ffffff">
+      <link rel="shortcut icon" href="/brat/assets/images/favicons/favicon.ico" />
+
+      <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+      <![endif]-->
+  </head>
+
+  <body>
+
+  <header>
+    <div id="topbarnav"></div>
+    <div id="headcallout" class="text-center callout large">
+      
+<h4 class="subheader show-for-medium"><a href="/brat/">BRAT</a></h4>   
+<h1>BRAT Reach Attributes Table</h1>
+    
+
+
+    </div>
+  </header>
+
+  <div id="inner-wrapper">
+    <div id="inner" class="row">
+      <div id="main" class="large-8 columns large-push-4">
+        <section><p>BRAT stores input, intermediate and output data in a GeoPackage. The two main <a href="Advanced_users/database.html">database tables in this GeoPackage</a> are the <code class="language-plaintext highlighter-rouge">Reaches</code> and <code class="language-plaintext highlighter-rouge">ReachAttributes</code>. The polyline geometry for each reach is stored in the <code class="language-plaintext highlighter-rouge">Reaches</code> table. This “feature class” is then related to the <code class="language-plaintext highlighter-rouge">ReachAttributes</code> table that contains the numerous attributes for each feature needed to run BRAT.</p>
+
+<p>Each column in the <code class="language-plaintext highlighter-rouge">ReachAttributes</code> table is described below. Columns are grouped into two categories depending on which <a href="Advanced_Users/architecture.html">model phase</a> they are populated; input and intermediate attributes that are calculated once during the BRAT Build phase of running the tool, and output attributes that are calculated each time that the BRAT Run phase of the model is run.</p>
+
+<h2 id="input--intermediate-attributes">Input &amp; Intermediate Attributes</h2>
+
+<h3 id="reachid">ReachID</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Integer</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td>Auto-incrementing ID</td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td>Automatically asigned unique identifier of each reach. This is the primary key (FID, OID) for each feature.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="watershedid">WatershedID</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Text</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td>NA</td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td>Identifies which watershed the reach belongs to. This value references the <code class="language-plaintext highlighter-rouge">Watersheds</code> table. For North American BRAT runs this typically represents the HUC8 identifier.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="geometry">Geometry</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Binary</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td>NA</td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td>The Reach polyline Geometry.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="reachcode">ReachCode</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Integer</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td>NA</td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td>Identifies the type of reach. This column references the ReachCodes defined in the <code class="language-plaintext highlighter-rouge">ReachCodes</code> table. For North American runs this is typically the NHD <code class="language-plaintext highlighter-rouge">FCode</code>.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="isperen">IsPeren</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Integer</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td>Boolean</td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td>Depicts whether the reach is perennial or not. A value of zero means that the reach is NOT perennial. Any other value means that the reach is perennial. This column cannot be NULL.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="ismainch">IsMainCh</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Ingeger</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td>Boolean</td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td>Indicates whether the channel is the mainstem or not. Zero indicates that the reach is a side channel, diversion or other anabranch. Any other value indicates that the channel is the mainstem.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="ismultich">IsMultiCh</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Integer</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td>Boolean</td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td>Indicates whether the reach polyline represents a multi-threaded channel or not. Zero indicates that the reach is single threaded. Any other value indicates that the feature represents a multi-threaded channel.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="streamname">StreamName</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Text</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td>NA</td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td>Optional stream name. For North American BRAT runs this typically represents the GNIS feature name.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="igeo_slope">iGeo_Slope</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Float</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td>Percent</td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td>Slope of the reach flow line. When BRAT calculates this value is samples the DEM at both ends of the reach polyline using a 30m buffer. The average elevation in each circle is subtracted and the difference divided by the length of the reach polyline.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="igeo_elmax">iGeo_ElMax</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Float</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td>Meters</td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td>The higher elevation of either end of the reach polyline.  When BRAT calculates this value it samples the DEM at both ends of the reach polyline using a 30m buffer. The higher of the two averages is then used as the max elevation.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="igeo_elmin">iGeo_ElMin</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Float</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td>Meters</td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td>The lower elevation of either end of the reach polyline.  When BRAT calculates this value it samples the DEM at both ends of the reach polyline using a 30m buffer. The lower of the two averages is then used as the max elevation.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="igeo_len">iGeo_Len</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Float</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td>Meters</td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td>Length of the reach flow line polyline. When BRAT calculates this attribute is measures the actual, sinuous length along the polyline.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="orig_da">Orig_DA</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Float</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td>Square kilometers.</td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td>The total upstream drainage of the area that flows into the reach. This column differs from <code class="language-plaintext highlighter-rouge">iGeo_DA</code> because this value is never changed from the original data. It is provided as a means of comparing where users have overidden the original drainage area values. For North American BRAT runs this value is populated from the NHDPlus HR <code class="language-plaintext highlighter-rouge">totDASqKm</code> VAA attribute.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="igeo_da">iGeo_DA</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Float</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td>Square Kilometers</td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td>This is the actual upstream drainage area used by BRAT when calculating the hydrology for a reach. This is initiated as a copy of the <code class="language-plaintext highlighter-rouge">Orig_DA</code> attribute value, but can be overridden should that value be deemed inaccurate.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="agencyid">AgencyID</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Integer</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td>NA</td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td>Identifies the land ownership for the property underlying the reach. This is calculated by intersecting the feature polyline with the land ownership layer and determining the agency that possessess the greatest length of reach. The ID is a lookup on the <code class="language-plaintext highlighter-rouge">Agencies</code> database table.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="output-attributes">Output Attributes</h2>
+
+<h3 id="iveg100ex">iVeg100EX</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Real</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td>Beaver dams per kilometer</td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td>Existing beaver dam capacity based solely on vegetation located within 100m of the stream.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="iveg_30ex">iVeg_30EX</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Real</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td>Beaver dams per kilometer</td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td>Existing beaver dam capacity based solely on vegetation located within 30m of the stream.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="iveg100hpe">iVeg100HPE</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Real</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td>Beaver dams per kilometer</td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td>Historic beaver dam capacity based solely on vegetation located within 100m of the stream.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="iveg_30hpe">iVeg_30HPE</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Real</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td>Beaver dams per kilometer</td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td>Historic beaver dam capacity based solely on vegetation located within 100m of the stream.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="ipc_road">iPC_Road</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Real</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td> </td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="ipc_roadx">iPC_RoadX</h3>
+
+<h3 id="ipc_roadvb">iPC_RoadVB</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Real</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td> </td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="ipc_rail">iPC_Rail</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Real</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td> </td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="ipc_railvb">iPC_RailVB</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Real</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td> </td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="ipc_lu">iPC_LU</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Real</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td> </td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="ipc_vlowlu">iPC_VLowLU</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Real</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td> </td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="ipc_lowlu">iPC_LowLU</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Real</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td> </td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="ipc_modlu">iPC_ModLU</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Real</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td> </td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="ipc_highlu">iPC_HighLU</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Real</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td> </td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="ihyd_qlow">iHyd_QLow</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Real</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td>Cubic feet per second (CFS)</td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td>Base streamflow that is execeeded 90% of the time. Low flow conditions are used in BRAT to determine if there is emough streamflow to support ponding behind beaver dams.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h4 id="ihyd_q2">iHyd_Q2</h4>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Real</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td>Cubic feet per second (CFS)</td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td>High streamflow that reccurs every two years. This flood discharge is used to calculate when high flows will cause dam blowouts.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="ihyd_splow">iHyd_SPLow</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Real</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td>Base stream power is caculated by converting the base streamflow (<code class="language-plaintext highlighter-rouge">iHyd_QLow</code>) into stream power using the discharge by the slope and the gravitational constant.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="ihyd_sp2">iHyd_SP2</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Real</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td>High flow stream power is caculated by converting the base streamflow (<code class="language-plaintext highlighter-rouge">iHyd_Q2</code>) into stream power using the discharge by the slope and the gravitational constant.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="ovc_hpe">oVC_HPE</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Real</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td> </td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="ovc_ex">oVC_EX</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Real</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td> </td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="occ_hpe">oCC_HPE</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Real</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td> </td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="mcc_hpe_ct">mCC_HPE_CT</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Real</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td>Beaver Dam Count</td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td>The historic number of beaver dams that the reach could support. This is calculaterd by multiplying the historic beaver dam capacity (<code class="language-plaintext highlighter-rouge">oHPE_EX</code>) by the length of the channel (<code class="language-plaintext highlighter-rouge">iGeo_Len</code>).</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="occ_ex">oCC_EX</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Real</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td>Beaver Dams Per Kilometer</td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td>Existing Beaver Dam Capacity. This is the main output of the beaver dam fuzzy inference system.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="mcc_ex_ct">mCC_EX_CT</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Real</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td>Beaver Dam Count</td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td> </td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="limitationid">LimitationID</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Integer</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td>NA</td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td>The primary limitations to beaver dams occurring on the reach. This is a lookup to the <code class="language-plaintext highlighter-rouge">Limitations</code> table in the BRAT database.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="riskid">RiskID</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Integer</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td>NA</td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td>The primary risk to beaver dams occurring on the reach. This is a lookup to the <code class="language-plaintext highlighter-rouge">Risk</code> table in the BRAT database.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="opportunityid">OpportunityID</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Integer</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td>NA</td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td>The types of opportunities for beaver dams occurring on the reach. This is a lookup to the <code class="language-plaintext highlighter-rouge">Opportunities</code> table in the BRAT database.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="managementid">ManagementID</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Integer</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td> </td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="ipc_canal">iPC_Canal</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Real</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td> </td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="ipc_divpts">iPC_DivPts</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Real</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td> </td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="ipc_privat">iPC_Privat</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Real</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td> </td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="opc_dist">oPC_Dist</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Real</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td> </td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="mcc_hisdep">mCC_HisDep</h3>
+
+<table>
+  <tbody>
+    <tr>
+      <td>Data Type</td>
+      <td>Real</td>
+    </tr>
+    <tr>
+      <td>Units</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td> </td>
+    </tr>
+  </tbody>
+</table>
+</section>
+      </div>
+      <div id="sidebar" class="large-4 columns large-pull-8">
+          
+	
+	<div class="title-bar">
+		<div class="title-bar-title"><i class="fa fa-file-text"></i> Page Contents</div>		
+	</div>
+	<div id="toc"></div>
+	
+
+
+<div class="title-bar">
+	<div class="title-bar-title"><i class="fa fa-sitemap"></i> Site Contents
+		<div id="menuCtls" class="button-group tiny show-for-medium">
+				<span id="expand" class="button primary fa fa-plus has-tip top" data-tooltip title="Expand all items" aria-haspopup="true" data-disable-hover="false" ></span>
+				<span id="contract" class="button primary fa fa-minus has-tip top" data-tooltip title="Contract all items" aria-haspopup="true" data-disable-hover="false" ></span>
+			</div>	
+	</div>
+</div>
+ <div id="sidenav">
+			<ul id='HTMLOnlyNav'>							<li><a href='/brat/About/Status/ReportCard_4.3.2.html'>Riverscapes Report Card - BRAT 4.3.2</a></li>							<li><a href='/brat/About/acknowledgements.html'>Acknowledgements</a></li>							<li><a href='/brat/About/'>About</a></li>							<li><a href='/brat/About/references.html'>BRAT References</a></li>							<li><a href='/brat/Support/Advanced_Users/architecture.html'>Architecture</a></li>							<li><a href='/brat/Support/Advanced_Users/calibration.html'>CONUS BRAT Calibration</a></li>							<li><a href='/brat/Support/Advanced_Users/database.html'>Database</a></li>							<li><a href='/brat/Support/Advanced_Users/help.html'>Help</a></li>							<li><a href='/brat/Support/Advanced_Users/inputs.html'>Inputs</a></li>							<li><a href='/brat/Support/Advanced_Users/installation.html'>Installation</a></li>							<li><a href='/brat/Support/Advanced_Users/international.html'>Configuring BRAT outside the US</a></li>							<li><a href='/brat/Support/Advanced_Users/outputs.html'>Outputs</a></li>							<li><a href='/brat/Support/Advanced_Users/regional_regression.html'>Regional Regression Equations</a></li>							<li><a href='/brat/Support/Advanced_Users/running_brat.html'>Running BRAT</a></li>							<li><a href='/brat/Support/Advanced_Users/suitability.html'>Importing Suitability</a></li>							<li><a href='/brat/Support/DownloadingData.html'>Downloading BRAT Data</a></li>							<li><a href='/brat/Support/ModelLogic.html'>BRAT Model Logic</a></li>							<li><a href='/brat/Support/WorkingWithOutputs.html'>Working with BRAT Outputs</a></li>							<li><a href='/brat/Support/brat_table.html'>BRAT Reach Attributes Table</a></li>							<li><a href='/brat/Support/help.html'>Get Help</a></li>							<li><a href='/brat/Support/'>Support</a></li>							<li><a href='/brat/Validation/combined_fis.html'>Combined FIS Validation</a></li>							<li><a href='/brat/Validation/'>Validation</a></li>							<li><a href='/brat/Validation/reach_geometry.html'>Reach Geometry Validation</a></li>							<li><a href='/brat/Validation/slope_validation.html'>Slope</a></li>							<li><a href='/brat/Validation/vegetation_fix.html'>Vegetation FIS Validation</a></li>							<li><a href='/brat/Vision.html'>Vision</a></li>							<li><a href='/brat/assets/images/favicons/manifest.json'></a></li>							<li><a href='/brat/assets/js/nav.js'>Test</a></li>							<li><a href='/brat/'>Home</a></li>		</ul>	
+</div>
+
+<!-- Sidebar is where the extended sidepanel stuff like mailchimp forms go -->
+
+<!-- This is where you put your extra sidebar info like a mailchimp form -->
+<a href="/">Back to riverscapes tools</a>
+        </div>
+    </div>
+  </div>
+
+
+    <footer id="footer" class="row">
+<div id="rightslogo">
+    <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank">
+        <img src="/brat/assets/images/cc-watermarks-riverscapes_orig.png" alt="Picture">
+    </a>
+</div>
+</footer>
+    
+
+    <script src="/brat/assets/js/jquery.min.js"></script>
+    <script src="/brat/assets/js/motion-ui.min.js"></script>
+    <script src="/brat/assets/js/foundation.min.js"></script>
+    <script src="/brat/assets/js/toc.js"></script>
+    <script src="/brat/assets/js/nav.js"></script>
+    <script src="/brat/assets/js/app.js"></script>
+
+  </body>
+
+</html>

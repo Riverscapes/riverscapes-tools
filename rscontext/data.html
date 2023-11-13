@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html>
+  <head>
+      <meta charset="utf-8">
+      <meta http-equiv="x-ua-compatible" content="ie=edge">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>RSContext</title>
+
+      <meta name="viewport" content="width=device-width">
+      <link rel="stylesheet" href="/rscontext/assets/css/style.css">
+      <link rel="stylesheet" href="/rscontext/assets/css/custom.css">
+
+      <link rel="apple-touch-icon" sizes="57x57" href="/rscontext/assets/images/favicons/apple-icon-57x57.png">
+      <link rel="apple-touch-icon" sizes="60x60" href="/rscontext/assets/images/favicons/apple-icon-60x60.png">
+      <link rel="apple-touch-icon" sizes="72x72" href="/rscontext/assets/images/favicons/apple-icon-72x72.png">
+      <link rel="apple-touch-icon" sizes="76x76" href="/rscontext/assets/images/favicons/apple-icon-76x76.png">
+      <link rel="apple-touch-icon" sizes="114x114" href="/rscontext/assets/images/favicons/apple-icon-114x114.png">
+      <link rel="apple-touch-icon" sizes="120x120" href="/rscontext/assets/images/favicons/apple-icon-120x120.png">
+      <link rel="apple-touch-icon" sizes="144x144" href="/rscontext/assets/images/favicons/apple-icon-144x144.png">
+      <link rel="apple-touch-icon" sizes="152x152" href="/rscontext/assets/images/favicons/apple-icon-152x152.png">
+      <link rel="apple-touch-icon" sizes="180x180" href="/rscontext/assets/images/favicons/apple-icon-180x180.png">
+      <link rel="icon" type="image/png" sizes="192x192"  href="/rscontext/assets/images/favicons/android-icon-192x192.png">
+      <link rel="icon" type="image/png" sizes="32x32" href="/rscontext/assets/images/favicons/favicon-32x32.png">
+      <link rel="icon" type="image/png" sizes="96x96" href="/rscontext/assets/images/favicons/favicon-96x96.png">
+      <link rel="icon" type="image/png" sizes="16x16" href="/rscontext/assets/images/favicons/favicon-16x16.png">
+      <link rel="manifest" href="/rscontext/assets/images/favicons/manifest.json">
+      <meta name="msapplication-TileColor" content="#ffffff">
+      <meta name="msapplication-TileImage" content="/rscontext/assets/images/favicons/ms-icon-144x144.png">
+      <meta name="theme-color" content="#ffffff">
+      <link rel="shortcut icon" href="/rscontext/assets/images/favicons/favicon.ico" />
+
+      <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+      <![endif]-->
+  </head>
+
+  <body>
+
+  <header>
+    <div id="topbarnav"></div>
+    <div id="headcallout" class="text-center callout large">
+      
+
+
+<h4 class="subheader show-for-medium"><a href="/rscontext/">RSContext</a></h4>   
+<h1>Riverscapes Context Data</h1>
+    
+
+    </div>
+  </header>
+
+  <div id="inner-wrapper">
+    <div id="inner" class="row">
+      <div id="main" class="large-8 columns large-push-4">
+        <section><h2 id="topography">Topography</h2>
+
+<h2><a name="DEM">Digital Elevation Model</a></h2>
+
+<p><a href="https//www.usgs.gov/core-science-systems/national-geospatial-program/national-map">National Elevation Dataset</a> (NED) Digital Elevation Models (DEM). These DEMs are downloaded from Science Base and mosaiced into a single 10m DEM that covers the riverscapes context project extent.</p>
+
+<h2><a name="SLOPE">Slope Analysis</a></h2>
+
+<p>Slope raster generated using <a href="https//gdal.org/programs/gdaldem.html">gdal_dem</a> tool specifying the slope option. Units are in percent.</p>
+
+<h2><a name="HILLSHADE">Hillshade</a></h2>
+
+<p>Hillshade raster generated using the <a href="https//gdal.org/programs/gdaldem.html">gdal_dem</a> tool specifying the hillshade option.</p>
+
+<h2 id="vegetation">Vegetation</h2>
+
+<h2><a name="EXVEG">Existing Vegetation</a></h2>
+
+<p><a href="https//landfire.gov">LandFire</a> Existin Vegetation Type (EVT) raster: Complexes of plant communities representing NatureServe’s terrestrial Ecological Systems classification. Version 2.1.0 LF REMAP 2019: Reflects change and disturbance since completion of LF 2016 Remap, including the years of 2017, 2018, and 2019. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes project extent.</p>
+
+<h2><a name="HISTVEG">Historic Vegetation</a></h2>
+
+<p><a href="https//landfire.gov">LandFire</a> Biophysical Setting (BPS) raster: Vegetation system that may have been dominant on the landscape pre Euro-American settlement. Version 2.1.0 LF REMAP 2019: Reflects change and disturbance since completion of LF 2016 Remap, including the years of 2017, 2018, and 2019. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes project extent.</p>
+
+<h2><a name="VEGCOVER">Vegetation Cover</a></h2>
+
+<p><a href="https//landfire.gov">LandFire</a> Existing Vegetation Cover (EVC) raster: Vertically projected percent cover of the live canopy layer for a specific area. Version 2.2.0: Reflects adjustments to vegetation and fuels since LF 2016 Remap in disturbed areas for disturbances recorded in 2017-2020. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes project extent.</p>
+
+<h2><a name="VEGHEIGHT">Vegetation Height</a></h2>
+
+<p><a href="https//landfire.gov">LandFire</a> Existing Vegetation Height (EVH) raster: Average height of the dominant vegetation. Version 2.2.0: Reflects adjustments to vegetation and fuels since LF 2016 Remap in disturbed areas for disturbances recorded in 2017-2020. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes project extent.</p>
+
+<h2><a name="HDIST">Historic Disturbance</a></h2>
+
+<p><a href="https//landfire.gov">LandFire</a> Historic Disturbance (HDst) raster: The latest 10 years of Annual Disturbance products are used to identify disturbance year, type, and severity. Starting with LF Remap, HDist replaces VDist from previous LF versions incorporating pre-disturbance vegetation logic (based on disturbance year and vegetation type). The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes project extent.</p>
+
+<h2><a name="FDIST">Fuel Disturbance</a></h2>
+
+<p><a href="https//landfire.gov">LandFire</a> Fuel Disturbance (FDst) raster: The latest 10 years of Annual Disturbance products representing disturbance year and original disturbance code. FDist was a refinement of VDist in LF 1.x products and is a refinement of Historical Disturbance in LF Remap to more accurately represent disturbance scenarios within the fuels environment. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes project extent.</p>
+
+<h2><a name="FCCS">Fuel Characteristic Classification System</a></h2>
+
+<p><a href="https//landfire.gov">LandFire</a> Fuel Characteristic Classification System (FCCS) raster: Describes the phsical characteristics of a relatively uniform unit on a lanscape that represents a distinct fire environment; provides land managers, regulators, and scientists with a nationally consistent and durable procedure to characterize and classify fuelbed characteristics to predict fuel consumption and smoke production. For LF Remap, FCCS will be released as part of the final release for CONUS. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes project extent.</p>
+
+<h2><a name="VEGCONDITION">Vegetation Condition</a></h2>
+
+<p><a href="https//landfire.gov">LandFire</a> VCC raster: A discrete metric that quantifies the amount that current vegetation has departed from the simulated historical vegetation reference conditions. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes project extent.</p>
+
+<h2><a name="VEGDEPARTURE">Vegetation Departure</a></h2>
+
+<p><a href="https//landfire.gov">LandFire</a> VDEP raster: Range from 0-100 depicting the amount that current vegetation has departed from simulated historical vegetation reference. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes project extent.</p>
+
+<h2><a name="SCLASS">Succession Classes</a></h2>
+
+<p><a href="https//landfire.gov">LandFire</a> SCla raster: Current vegetation conditions with respect to vegetation species composition, cover, and height ranges of successional states occurring within each biophysical setting. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes project extent.</p>
+
+<h2 id="land-management">Land Management</h2>
+
+<h2><a name="Ownership">Land Ownership</a></h2>
+
+<p>Land ownership obtained from the <a href="https//catalog.data.gov/dataset/blm-national-surface-management-agency-area-polygons-national-geospatial-data-asset-ngda">Bureau of Management (BLM) Land Surface Agency</a>. A single ShapeFile was downloaded and then pre-processed to remove invalid geometries and other irregularities.</p>
+
+<h2><a name="FAIRMARKETVALUE">Fair Market Value</a></h2>
+
+<p><a href="https//orcid.org/0000-0001-7827-689X">Fair Market Value</a> raster. This raster was downloaded and converted to US dollars per hectare.</p>
+
+<h2 id="ecoregions">Ecoregions</h2>
+
+<h2><a name="Ecoregions">Ecoregions</a></h2>
+
+<p>Level IV ecoregions (also contains levels I-III) obtained from the <a href="https//www.epa.gov/eco-research/ecoregions">Environmental Protection Agency</a> (EPA).</p>
+
+<h2 id="climate">Climate</h2>
+
+<h2><a name="Precip">Precipitation</a></h2>
+
+<p><a href="https//prism.oregonstate.edu/normals">PRISM</a> 30 year normal precipitation raster. Normals are baseline datasets describing average monthly and annual conditions over the most recent three full decades.</p>
+
+<h2><a name="MeanTemp">Mean Temperature</a></h2>
+
+<p><a href="https//prism.oregonstate.edu/normals">PRISM</a> 30 year normal mean temperature raster. Normals are baseline datasets describing average monthly and annual conditions over the most recent three full decades.</p>
+
+<h2><a name="MinTemp">Minimum Temperature</a></h2>
+
+<p><a href="https//prism.oregonstate.edu/normals">PRISM</a> 30 year normal minimum temperature raster. Normals are baseline datasets describing average monthly and annual conditions over the most recent three full decades.</p>
+
+<h2><a name="MaxTemp">Maximum Temperature</a></h2>
+
+<p><a href="https//prism.oregonstate.edu/normals">PRISM</a> 30 year normal maximum temperature raster. Normals are baseline datasets describing average monthly and annual conditions over the most recent three full decades.</p>
+
+<h2><a name="MeanDew">Mean Dew Point Temperature</a></h2>
+
+<p><a href="https//prism.oregonstate.edu/normals">PRISM</a> 30 year normal mean dew point temperature raster. Normals are baseline datasets describing average monthly and annual conditions over the most recent three full decades.</p>
+
+<h2><a name="MinVap">Minimum Vapor Pressure Deficit</a></h2>
+
+<p><a href="https//prism.oregonstate.edu/normals">PRISM</a> 30 year normal minimum vapor pressure deficit raster. Normals are baseline datasets describing average monthly and annual conditions over the most recent three full decades.</p>
+
+<h2><a name="MaxVap">Maximum Vapor Pressure Deficit</a></h2>
+
+<p><a href="https//prism.oregonstate.edu/normals">PRISM</a> 30 year normal maximum vapor pressure deficit raster. Normals are baseline datasets describing average monthly and annual conditions over the most recent three full decades.</p>
+
+<h2 id="hydrology">Hydrology</h2>
+
+<h2><a name="NHDFlowline">Flow line Network</a></h2>
+
+<p><a href="https//www.usgs.gov/core-science-systems/ngp/national-hydrography/nhdplus-high-resolution">National Hydrologic Dataset (NHD) High Resolution</a>. 124,000 stream network polyline feature class. This is the original data downloaded as an ESRI file geodatabase and then converted to an open source GeoPackage.</p>
+
+<h2><a name="buffered_clip100">100m Buffered Extent</a></h2>
+
+<p>The riverscapes context project extent polygon buffered by 100m.</p>
+
+<h2><a name="buffered_clip500">500m Buffered Extent</a></h2>
+
+<p>The riverscapes context project extent polygon buffered by 500m.</p>
+
+<h2><a name="network_300m"></a></h2>
+
+<p>This polyline feature class is the original NHDPlusHR flow line network segmented into 300m reach lengths. Segmentation that would produce a feature of less than 50m is not performed. And features that are less than 50m are left untouched.</p>
+
+<h2><a name="network_intersected_300m">Segmented Flow line Network Intersected with Infrastructure</a></h2>
+
+<p>This polyline feeature class is the NETWORK300M featureclass intersected with road and rail crossings and ownership.</p>
+
+</section>
+      </div>
+      <div id="sidebar" class="large-4 columns large-pull-8">
+          
+	
+	<div class="title-bar">
+		<div class="title-bar-title"><i class="fa fa-file-text"></i> Page Contents</div>		
+	</div>
+	<div id="toc"></div>
+	
+
+
+<div class="title-bar">
+	<div class="title-bar-title"><i class="fa fa-sitemap"></i> Site Contents
+		<div id="menuCtls" class="button-group tiny show-for-medium">
+				<span id="expand" class="button primary fa fa-plus has-tip top" data-tooltip title="Expand all items" aria-haspopup="true" data-disable-hover="false" ></span>
+				<span id="contract" class="button primary fa fa-minus has-tip top" data-tooltip title="Contract all items" aria-haspopup="true" data-disable-hover="false" ></span>
+			</div>	
+	</div>
+</div>
+ <div id="sidenav">
+			<ul id='HTMLOnlyNav'>							<li><a href='/rscontext/Status/ReportCard_1.2.2.html'>Riverscapes Report Card - Riverscapes Context 1.2.2</a></li>							<li><a href='/rscontext/assets/images/favicons/manifest.json'></a></li>							<li><a href='/rscontext/assets/js/nav.js'>Test</a></li>							<li><a href='/rscontext/basemaps.html'>Basemaps</a></li>							<li><a href='/rscontext/data.html'>Riverscapes Context Data</a></li>							<li><a href='/rscontext/'>Home</a></li>		</ul>	
+</div>
+
+<!-- Sidebar is where the extended sidepanel stuff like mailchimp forms go -->
+
+<!-- This is where you put your extra sidebar info like a mailchimp form -->
+<a href="/">Back to riverscapes tools</a>
+        </div>
+    </div>
+  </div>
+
+
+    <footer id="footer" class="row">
+<div id="rightslogo">
+    <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank">
+        <img src="/rscontext/assets/images/cc-watermarks-riverscapes_orig.png" alt="Picture">
+    </a>
+</div>
+</footer>
+    
+
+    <script src="/rscontext/assets/js/jquery.min.js"></script>
+    <script src="/rscontext/assets/js/motion-ui.min.js"></script>
+    <script src="/rscontext/assets/js/foundation.min.js"></script>
+    <script src="/rscontext/assets/js/toc.js"></script>
+    <script src="/rscontext/assets/js/nav.js"></script>
+    <script src="/rscontext/assets/js/app.js"></script>
+
+  </body>
+
+</html>

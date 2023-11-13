@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+  <head>
+      <meta charset="utf-8">
+      <meta http-equiv="x-ua-compatible" content="ie=edge">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>BRAT</title>
+
+      <meta name="viewport" content="width=device-width">
+      <link rel="stylesheet" href="/brat/assets/css/style.css">
+      <link rel="stylesheet" href="/brat/assets/css/custom.css">
+
+      <link rel="apple-touch-icon" sizes="57x57" href="/brat/assets/images/favicons/apple-icon-57x57.png">
+      <link rel="apple-touch-icon" sizes="60x60" href="/brat/assets/images/favicons/apple-icon-60x60.png">
+      <link rel="apple-touch-icon" sizes="72x72" href="/brat/assets/images/favicons/apple-icon-72x72.png">
+      <link rel="apple-touch-icon" sizes="76x76" href="/brat/assets/images/favicons/apple-icon-76x76.png">
+      <link rel="apple-touch-icon" sizes="114x114" href="/brat/assets/images/favicons/apple-icon-114x114.png">
+      <link rel="apple-touch-icon" sizes="120x120" href="/brat/assets/images/favicons/apple-icon-120x120.png">
+      <link rel="apple-touch-icon" sizes="144x144" href="/brat/assets/images/favicons/apple-icon-144x144.png">
+      <link rel="apple-touch-icon" sizes="152x152" href="/brat/assets/images/favicons/apple-icon-152x152.png">
+      <link rel="apple-touch-icon" sizes="180x180" href="/brat/assets/images/favicons/apple-icon-180x180.png">
+      <link rel="icon" type="image/png" sizes="192x192"  href="/brat/assets/images/favicons/android-icon-192x192.png">
+      <link rel="icon" type="image/png" sizes="32x32" href="/brat/assets/images/favicons/favicon-32x32.png">
+      <link rel="icon" type="image/png" sizes="96x96" href="/brat/assets/images/favicons/favicon-96x96.png">
+      <link rel="icon" type="image/png" sizes="16x16" href="/brat/assets/images/favicons/favicon-16x16.png">
+      <link rel="manifest" href="/brat/assets/images/favicons/manifest.json">
+      <meta name="msapplication-TileColor" content="#ffffff">
+      <meta name="msapplication-TileImage" content="/brat/assets/images/favicons/ms-icon-144x144.png">
+      <meta name="theme-color" content="#ffffff">
+      <link rel="shortcut icon" href="/brat/assets/images/favicons/favicon.ico" />
+
+      <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+      <![endif]-->
+  </head>
+
+  <body>
+
+  <header>
+    <div id="topbarnav"></div>
+    <div id="headcallout" class="text-center callout large">
+      
+<h4 class="subheader show-for-medium"><a href="/brat/">BRAT</a></h4>   
+<h1>Working with BRAT Outputs</h1>
+    
+
+
+    </div>
+  </header>
+
+  <div id="inner-wrapper">
+    <div id="inner" class="row">
+      <div id="main" class="large-8 columns large-push-4">
+        <section><p>The majority of users of BRAT will not actually run BRAT themselves, but instead will download BRAT outputs and summary products for use in beaver-related stream conservation and restoration efforts. In the text and videos tutorials below, we walk through various ways to interact with the BRAT outputs. We cover each of the outputs that BRAT produces, provide lookup tables for investigative purposes, and provide illustrative videos to help access and interrogate the outputs.</p>
+
+<h2 id="the-brat-default-symbology">The BRAT Default Symbology</h2>
+<p>The sections below describe the curated BRAT outputs that are visualized by default using the legends shown. The field within the attribute table that is used to symbolize the particular output is shown in parentheses after the output description.</p>
+
+<p><img src="/brat/assets/images/capacity_example.png" alt="brat_capacity_output_example" /></p>
+
+<h2 id="capacity-outputs">Capacity Outputs</h2>
+<p>The <strong>capacity</strong> output layers include outputs that describe:</p>
+<ul>
+  <li>existing capacity for beaver dam density (<code class="language-plaintext highlighter-rouge">oCC_EX</code> field)</li>
+  <li>historic capacity for beaver dam density (<code class="language-plaintext highlighter-rouge">oCC_HPE</code> field)</li>
+  <li>existing potential complex size (<code class="language-plaintext highlighter-rouge">mCC_EX_CT</code> field)</li>
+  <li>historic potential complex size (<code class="language-plaintext highlighter-rouge">mCC_HPE_CT</code> field)</li>
+</ul>
+
+<h3 id="existing-and-historic-capacity">Existing and Historic Capacity</h3>
+<p>The <a href="/brat/Support/ModelLogic.html#capacity-estimates"><strong>capacity model</strong></a> produces two values for each stream segment: the density of dams that the segment can support now, and the density of dams that it could support historically. For display, these values are binned and symbolized using the color scheme below (note, while the outputs are binned for display, each ~300 m reach has a specific continuous dam density output). Within the attribute table of the stream network output, the existing capacity value is found in the <code class="language-plaintext highlighter-rouge">oCC_EX</code> field and historic capacity is found in the <code class="language-plaintext highlighter-rouge">oCC_HPE</code> field. These values represent modeled beaver dam capacity as dams per kilometer or mile for the stream network segment.</p>
+
+<p><img src="/brat/assets/images/Capacity_BRAT.png" alt="Legend_BRAT_DamDensity" width="300" height="300" /></p>
+
+<div class="responsive-embed">
+<iframe src="https://www.youtube.com/embed/odu5hHx2u9M" frameborder="0" allowfullscreen=""></iframe>
+</div>
+
+<h3 id="dam-complex-size">Dam Complex Size</h3>
+<p>In addition, the capacity outputs and reach lengths were used to report estimated <strong>dam complex size</strong> <code class="language-plaintext highlighter-rouge">mCC_EX_CT</code> (for existing) and <code class="language-plaintext highlighter-rouge">mCC_HPE_CT</code> (for historic) fields in the attribute table. This is a modeled maximum number of the dams on that particular segment of the stream network. The following color scheme is used to illustrate these outputs:</p>
+
+<p><img src="/brat/assets/images/Dam_Complex_Size_BRAT.png" alt="Legend_BRAT_DamComplex" width="300" height="300" /></p>
+
+<h2 id="management-outputs">Management Outputs</h2>
+<p>The <strong>management</strong> output layers include outputs that describe:</p>
+<ul>
+  <li>the limiting factors which contribute to unsuitable or limited beaver dam opportunities (<code class="language-plaintext highlighter-rouge">LimitationID</code> &amp; <code class="language-plaintext highlighter-rouge">Limitation</code> fields in the attribute table)</li>
+  <li>risk categories which are based on land use and anthropogenic proximity (<code class="language-plaintext highlighter-rouge">RiskID</code> &amp; <code class="language-plaintext highlighter-rouge">Risk</code> fields)</li>
+  <li>a measure of the effort exhibited to perform restoration or conservation in the segment (<code class="language-plaintext highlighter-rouge">OpportunityID</code> &amp; <code class="language-plaintext highlighter-rouge">Opportunity</code> fields)</li>
+</ul>
+
+<h3 id="unsuitable-or-limited-beaver-dam-opportunities">Unsuitable or Limited Beaver Dam Opportunities</h3>
+<p><a href="/brat/Support/ModelLogic.html#unsuitable-or-limited-opportunities">(<code class="language-plaintext highlighter-rouge">Limitation</code>)</a> Identifies areas where beaver cannot build dams now, and also differentiates stream segments into anthropogenically and naturally limited areas. The <a href="/brat/Support/ModelLogic.html#unsuitable-or-limited-opportunities">logic for this output</a> combines comparisons of existing and historic dam building capacity with slope and drainage area thresholds to determine potential limitations to dam building. The following color scheme is used to illustrate these distinctions:</p>
+
+<p>(THIS LEGEND NEEDS TO BE UPDATED)
+<img src="/brat/assets/images/BRAT_Legends_Unsuitable.PNG" alt="Legend_BRAT_Management_Unsuitable_or_Limited_Beaver_Dam_Opportunities" width="350" height="350" /></p>
+
+<div class="responsive-embed">
+<iframe src="https://www.youtube.com/embed/W8OCUairBT8" frameborder="0" allowfullscreen=""></iframe>
+</div>
+
+<h3 id="risk-of-undesirable-dams">Risk of Undesirable Dams</h3>
+<p><a href="/brat/Support/ModelLogic.html#risk-of-undesirable-dams">(<code class="language-plaintext highlighter-rouge">Risk</code>)</a> provides a conservative estimate of risk of dam building activity to human infrastructure. The model calculates the distance from each stream segment to the nearest of various types of infrastructure (roads, railroads, canals, etc.), which are represented as geospatial inputs. This information on proximity to infrastructure is combined with dam building capacity outputs and land use in the riverscape surrounding each segment to estimate the potential risk that could result from dam building activity based on the <a href="/brat/Support/ModelLogic.html#risk-of-undesirable-dams">logic presented here</a>.</p>
+
+<p>(THIS LEGEND NEEDS TO BE UPDATED)
+ <img src="/brat/assets/images/BRAT_Legends_07_2019_Risk.PNG" alt="Legend_BRAT Management Areas Beavers Can Build Dams, but Could Be Undesirable" width="300" height="300" /></p>
+
+<div class="responsive-embed">
+<iframe src="https://www.youtube.com/embed/8PyrTsm9Yf0" frameborder="0" allowfullscreen=""></iframe>
+</div>
+
+<h3 id="restoration-or-conservation-opportunities">Restoration or Conservation Opportunities</h3>
+<p><a href="/brat/Support/ModelLogic.html#restoration-or-conservation">(<code class="language-plaintext highlighter-rouge">Opportunity</code>)</a> identifies levels of effort required for establishing beaver dams on the landscape. This output is based on comparison between historic and existing dam building capacity, the risk of undesirable dams, and the land use in the riverscape surrounding stream segments based on <a href="/brat/Support/ModelLogic.html#restoration-or-conservation">this model logic</a>.</p>
+
+<p>(THIS LEGEND NEEDS TO BE UPDATED)
+<img src="/brat/assets/images/BRAT_Legend_06_2019_ConsRest.PNG" alt="Legend_BRAT_Management_Restoration_or_Conservation_Opportunities" width="300" height="300" /></p>
+
+<div class="responsive-embed">
+<iframe src="https://www.youtube.com/embed/kYJJDzoGBnE" frameborder="0" allowfullscreen=""></iframe>
+</div>
+
+<h2 id="the-brat-attribute-table">The BRAT Attribute Table</h2>
+<p>This section lists and describes all of the attributes associated with network segments after BRAT has been run.</p>
+</section>
+      </div>
+      <div id="sidebar" class="large-4 columns large-pull-8">
+          
+	
+	<div class="title-bar">
+		<div class="title-bar-title"><i class="fa fa-file-text"></i> Page Contents</div>		
+	</div>
+	<div id="toc"></div>
+	
+
+
+<div class="title-bar">
+	<div class="title-bar-title"><i class="fa fa-sitemap"></i> Site Contents
+		<div id="menuCtls" class="button-group tiny show-for-medium">
+				<span id="expand" class="button primary fa fa-plus has-tip top" data-tooltip title="Expand all items" aria-haspopup="true" data-disable-hover="false" ></span>
+				<span id="contract" class="button primary fa fa-minus has-tip top" data-tooltip title="Contract all items" aria-haspopup="true" data-disable-hover="false" ></span>
+			</div>	
+	</div>
+</div>
+ <div id="sidenav">
+			<ul id='HTMLOnlyNav'>							<li><a href='/brat/About/Status/ReportCard_4.3.2.html'>Riverscapes Report Card - BRAT 4.3.2</a></li>							<li><a href='/brat/About/acknowledgements.html'>Acknowledgements</a></li>							<li><a href='/brat/About/'>About</a></li>							<li><a href='/brat/About/references.html'>BRAT References</a></li>							<li><a href='/brat/Support/Advanced_Users/architecture.html'>Architecture</a></li>							<li><a href='/brat/Support/Advanced_Users/calibration.html'>CONUS BRAT Calibration</a></li>							<li><a href='/brat/Support/Advanced_Users/database.html'>Database</a></li>							<li><a href='/brat/Support/Advanced_Users/help.html'>Help</a></li>							<li><a href='/brat/Support/Advanced_Users/inputs.html'>Inputs</a></li>							<li><a href='/brat/Support/Advanced_Users/installation.html'>Installation</a></li>							<li><a href='/brat/Support/Advanced_Users/international.html'>Configuring BRAT outside the US</a></li>							<li><a href='/brat/Support/Advanced_Users/outputs.html'>Outputs</a></li>							<li><a href='/brat/Support/Advanced_Users/regional_regression.html'>Regional Regression Equations</a></li>							<li><a href='/brat/Support/Advanced_Users/running_brat.html'>Running BRAT</a></li>							<li><a href='/brat/Support/Advanced_Users/suitability.html'>Importing Suitability</a></li>							<li><a href='/brat/Support/DownloadingData.html'>Downloading BRAT Data</a></li>							<li><a href='/brat/Support/ModelLogic.html'>BRAT Model Logic</a></li>							<li><a href='/brat/Support/WorkingWithOutputs.html'>Working with BRAT Outputs</a></li>							<li><a href='/brat/Support/brat_table.html'>BRAT Reach Attributes Table</a></li>							<li><a href='/brat/Support/help.html'>Get Help</a></li>							<li><a href='/brat/Support/'>Support</a></li>							<li><a href='/brat/Validation/combined_fis.html'>Combined FIS Validation</a></li>							<li><a href='/brat/Validation/'>Validation</a></li>							<li><a href='/brat/Validation/reach_geometry.html'>Reach Geometry Validation</a></li>							<li><a href='/brat/Validation/slope_validation.html'>Slope</a></li>							<li><a href='/brat/Validation/vegetation_fix.html'>Vegetation FIS Validation</a></li>							<li><a href='/brat/Vision.html'>Vision</a></li>							<li><a href='/brat/assets/images/favicons/manifest.json'></a></li>							<li><a href='/brat/assets/js/nav.js'>Test</a></li>							<li><a href='/brat/'>Home</a></li>		</ul>	
+</div>
+
+<!-- Sidebar is where the extended sidepanel stuff like mailchimp forms go -->
+
+<!-- This is where you put your extra sidebar info like a mailchimp form -->
+<a href="/">Back to riverscapes tools</a>
+        </div>
+    </div>
+  </div>
+
+
+    <footer id="footer" class="row">
+<div id="rightslogo">
+    <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank">
+        <img src="/brat/assets/images/cc-watermarks-riverscapes_orig.png" alt="Picture">
+    </a>
+</div>
+</footer>
+    
+
+    <script src="/brat/assets/js/jquery.min.js"></script>
+    <script src="/brat/assets/js/motion-ui.min.js"></script>
+    <script src="/brat/assets/js/foundation.min.js"></script>
+    <script src="/brat/assets/js/toc.js"></script>
+    <script src="/brat/assets/js/nav.js"></script>
+    <script src="/brat/assets/js/app.js"></script>
+
+  </body>
+
+</html>

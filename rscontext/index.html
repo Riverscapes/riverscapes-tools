@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+  <head>
+      <meta charset="utf-8">
+      <meta http-equiv="x-ua-compatible" content="ie=edge">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>RSContext</title>
+
+      <meta name="viewport" content="width=device-width">
+      <link rel="stylesheet" href="/rscontext/assets/css/style.css">
+      <link rel="stylesheet" href="/rscontext/assets/css/custom.css">
+
+      <link rel="apple-touch-icon" sizes="57x57" href="/rscontext/assets/images/favicons/apple-icon-57x57.png">
+      <link rel="apple-touch-icon" sizes="60x60" href="/rscontext/assets/images/favicons/apple-icon-60x60.png">
+      <link rel="apple-touch-icon" sizes="72x72" href="/rscontext/assets/images/favicons/apple-icon-72x72.png">
+      <link rel="apple-touch-icon" sizes="76x76" href="/rscontext/assets/images/favicons/apple-icon-76x76.png">
+      <link rel="apple-touch-icon" sizes="114x114" href="/rscontext/assets/images/favicons/apple-icon-114x114.png">
+      <link rel="apple-touch-icon" sizes="120x120" href="/rscontext/assets/images/favicons/apple-icon-120x120.png">
+      <link rel="apple-touch-icon" sizes="144x144" href="/rscontext/assets/images/favicons/apple-icon-144x144.png">
+      <link rel="apple-touch-icon" sizes="152x152" href="/rscontext/assets/images/favicons/apple-icon-152x152.png">
+      <link rel="apple-touch-icon" sizes="180x180" href="/rscontext/assets/images/favicons/apple-icon-180x180.png">
+      <link rel="icon" type="image/png" sizes="192x192"  href="/rscontext/assets/images/favicons/android-icon-192x192.png">
+      <link rel="icon" type="image/png" sizes="32x32" href="/rscontext/assets/images/favicons/favicon-32x32.png">
+      <link rel="icon" type="image/png" sizes="96x96" href="/rscontext/assets/images/favicons/favicon-96x96.png">
+      <link rel="icon" type="image/png" sizes="16x16" href="/rscontext/assets/images/favicons/favicon-16x16.png">
+      <link rel="manifest" href="/rscontext/assets/images/favicons/manifest.json">
+      <meta name="msapplication-TileColor" content="#ffffff">
+      <meta name="msapplication-TileImage" content="/rscontext/assets/images/favicons/ms-icon-144x144.png">
+      <meta name="theme-color" content="#ffffff">
+      <link rel="shortcut icon" href="/rscontext/assets/images/favicons/favicon.ico" />
+
+      <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+      <![endif]-->
+  </head>
+
+  <body>
+
+  <header>
+    <div id="topbarnav"></div>
+    <div id="headcallout" class="text-center callout large">
+      
+<h1>RSContext</h1>
+
+
+    </div>
+  </header>
+
+  <div id="inner-wrapper">
+    <div id="inner" class="row">
+      <div id="main" class="large-8 columns large-push-4">
+        <section><h2 id="about">About</h2>
+<p>The <strong>Riverscape Context Tool</strong> is a tool that aggregates contextual layers for consumption in other Riverscapes projects. Many Riverscapes tools use nationally available datasets that have to be retrieved from various sources and prepared for an area of interest. This process can be time consuming, and often the data have to be further processed after retrieving them (for example, mosaic of DEM tiles, clipping to watershed boundaries, etc.), and these processes can introduce problems into the datasets. This tool resolves these potential issues by retrieving these datasets, processing them, and organizing them within a Riverscapes project automatically. These data can then be used on their own, or as inputs to other tools.</p>
+
+<p>The geospatial layers that the tool collects are:</p>
+<ul>
+  <li><strong>Topography</strong> (Digital Elevation Models) from the <a href="https://gdg.sc.egov.usda.gov/Catalog/ProductDescription/NED.html">National Elevation Dataset (NED)</a>, from which additional layers are derived:
+    <ul>
+      <li>Slope</li>
+      <li>Flow Accumulation</li>
+      <li>Drainage area</li>
+      <li>Detrended DEM</li>
+      <li>Hillshades for context</li>
+    </ul>
+  </li>
+  <li><a href="https://landfire.gov/"><strong>LANDFIRE</strong></a> vegetation:
+    <ul>
+      <li>Existing vegetation (class, name) from which an existing riparian layer is derived</li>
+      <li>Historic vegetation (name) from which a historic riparian layer is derived</li>
+    </ul>
+  </li>
+  <li><strong>Land Management</strong>:
+    <ul>
+      <li>Land ownership/agency from <a href="https://landscape.blm.gov/geoportal/catalog/search/resource/details.page?uuid=%7B2A8B8906-7711-4AF7-9510-C6C7FD991177%7D">BLM Land Surface Management Agency Polygons</a></li>
+      <li>Fair market value from <a href="https://placeslab.org/fmv_usa/">PLACES Lab</a>, Department of Earth &amp; Environment, Boston University</li>
+    </ul>
+  </li>
+  <li><strong>Ecoregions</strong>:
+    <ul>
+      <li>level 1, 2, and 3 Ecoregions from the <a href="https://www.epa.gov/eco-research/ecoregions">EPA</a></li>
+    </ul>
+  </li>
+  <li><strong>Climate</strong> <a href="https://prism.oregonstate.edu/">(PRISM)</a>:
+    <ul>
+      <li>Mean Annual Precipitation</li>
+      <li>Mean Annual Temperature</li>
+      <li>Minimum Temperature</li>
+      <li>Maximum Temperature</li>
+      <li>Mean Dewpoint Temperature</li>
+      <li>Minimum Vapor Pressure Deficit</li>
+      <li>Maximum Vapor Pressure Deficit</li>
+    </ul>
+  </li>
+  <li><strong>Hydrology</strong>:
+    <ul>
+      <li>Hydrography (<a href="https://www.usgs.gov/core-science-systems/ngp/national-hydrography/nhdplus-high-resolution">NHD HR+</a>)</li>
+      <li>Watershed boundaries (also from NHD)</li>
+    </ul>
+  </li>
+  <li><strong>Transportation</strong>:
+    <ul>
+      <li>Roads from <a href="https://data-usdot.opendata.arcgis.com/documents/usdot::census-tiger-line-roads/about">TIGER</a></li>
+      <li>Railroads</li>
+    </ul>
+  </li>
+</ul>
+
+<div class="responsive-embed">
+<iframe width="560" height="315" src="https://www.youtube.com/embed/1Qp8CpGmaAE" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen=""></iframe>
+</div>
+</section>
+      </div>
+      <div id="sidebar" class="large-4 columns large-pull-8">
+          
+	
+
+
+<div class="title-bar">
+	<div class="title-bar-title"><i class="fa fa-sitemap"></i> Site Contents
+		<div id="menuCtls" class="button-group tiny show-for-medium">
+				<span id="expand" class="button primary fa fa-plus has-tip top" data-tooltip title="Expand all items" aria-haspopup="true" data-disable-hover="false" ></span>
+				<span id="contract" class="button primary fa fa-minus has-tip top" data-tooltip title="Contract all items" aria-haspopup="true" data-disable-hover="false" ></span>
+			</div>	
+	</div>
+</div>
+ <div id="sidenav">
+			<ul id='HTMLOnlyNav'>							<li><a href='/rscontext/Status/ReportCard_1.2.2.html'>Riverscapes Report Card - Riverscapes Context 1.2.2</a></li>							<li><a href='/rscontext/assets/images/favicons/manifest.json'></a></li>							<li><a href='/rscontext/assets/js/nav.js'>Test</a></li>							<li><a href='/rscontext/basemaps.html'>Basemaps</a></li>							<li><a href='/rscontext/data.html'>Riverscapes Context Data</a></li>							<li><a href='/rscontext/'>Home</a></li>		</ul>	
+</div>
+
+<!-- Sidebar is where the extended sidepanel stuff like mailchimp forms go -->
+
+<!-- This is where you put your extra sidebar info like a mailchimp form -->
+<a href="/">Back to riverscapes tools</a>
+        </div>
+    </div>
+  </div>
+
+
+    <footer id="footer" class="row">
+<div id="rightslogo">
+    <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank">
+        <img src="/rscontext/assets/images/cc-watermarks-riverscapes_orig.png" alt="Picture">
+    </a>
+</div>
+</footer>
+    
+
+    <script src="/rscontext/assets/js/jquery.min.js"></script>
+    <script src="/rscontext/assets/js/motion-ui.min.js"></script>
+    <script src="/rscontext/assets/js/foundation.min.js"></script>
+    <script src="/rscontext/assets/js/toc.js"></script>
+    <script src="/rscontext/assets/js/nav.js"></script>
+    <script src="/rscontext/assets/js/app.js"></script>
+
+  </body>
+
+</html>

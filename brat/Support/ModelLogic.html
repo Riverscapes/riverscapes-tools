@@ -1,0 +1,1303 @@
+<!DOCTYPE html>
+<html>
+  <head>
+      <meta charset="utf-8">
+      <meta http-equiv="x-ua-compatible" content="ie=edge">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>BRAT</title>
+
+      <meta name="viewport" content="width=device-width">
+      <link rel="stylesheet" href="/brat/assets/css/style.css">
+      <link rel="stylesheet" href="/brat/assets/css/custom.css">
+
+      <link rel="apple-touch-icon" sizes="57x57" href="/brat/assets/images/favicons/apple-icon-57x57.png">
+      <link rel="apple-touch-icon" sizes="60x60" href="/brat/assets/images/favicons/apple-icon-60x60.png">
+      <link rel="apple-touch-icon" sizes="72x72" href="/brat/assets/images/favicons/apple-icon-72x72.png">
+      <link rel="apple-touch-icon" sizes="76x76" href="/brat/assets/images/favicons/apple-icon-76x76.png">
+      <link rel="apple-touch-icon" sizes="114x114" href="/brat/assets/images/favicons/apple-icon-114x114.png">
+      <link rel="apple-touch-icon" sizes="120x120" href="/brat/assets/images/favicons/apple-icon-120x120.png">
+      <link rel="apple-touch-icon" sizes="144x144" href="/brat/assets/images/favicons/apple-icon-144x144.png">
+      <link rel="apple-touch-icon" sizes="152x152" href="/brat/assets/images/favicons/apple-icon-152x152.png">
+      <link rel="apple-touch-icon" sizes="180x180" href="/brat/assets/images/favicons/apple-icon-180x180.png">
+      <link rel="icon" type="image/png" sizes="192x192"  href="/brat/assets/images/favicons/android-icon-192x192.png">
+      <link rel="icon" type="image/png" sizes="32x32" href="/brat/assets/images/favicons/favicon-32x32.png">
+      <link rel="icon" type="image/png" sizes="96x96" href="/brat/assets/images/favicons/favicon-96x96.png">
+      <link rel="icon" type="image/png" sizes="16x16" href="/brat/assets/images/favicons/favicon-16x16.png">
+      <link rel="manifest" href="/brat/assets/images/favicons/manifest.json">
+      <meta name="msapplication-TileColor" content="#ffffff">
+      <meta name="msapplication-TileImage" content="/brat/assets/images/favicons/ms-icon-144x144.png">
+      <meta name="theme-color" content="#ffffff">
+      <link rel="shortcut icon" href="/brat/assets/images/favicons/favicon.ico" />
+
+      <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+      <![endif]-->
+  </head>
+
+  <body>
+
+  <header>
+    <div id="topbarnav"></div>
+    <div id="headcallout" class="text-center callout large">
+      
+<h4 class="subheader show-for-medium"><a href="/brat/">BRAT</a></h4>   
+<h1>BRAT Model Logic</h1>
+    
+
+
+    </div>
+  </header>
+
+  <div id="inner-wrapper">
+    <div id="inner" class="row">
+      <div id="main" class="large-8 columns large-push-4">
+        <section><p>This page describes the inputs and logic that go into producing each of the BRAT outputs described in the <a href="https://tools.riverscapes.net/brat/Support/WorkingWithOutputs.html">Working with BRAT Outputs</a> page. An understanding of the model logic will help users to query the data to understand what the model outputs mean, and how their values are calculated. This also allows the user to refine model results for areas of interest based on the reliability of the input data for that area.</p>
+
+<h2 id="capacity-estimates">Capacity Estimates</h2>
+<p>To estimate the capacity of a riverscape to support dam building activity, BRAT attempts to addresses four primary questions:</p>
+<ul>
+  <li>Is there water to dam in order to create a pond?</li>
+  <li>Is there suitable dam building material (vegetation) near the stream?</li>
+  <li>Can dams be built at low flows?</li>
+  <li>Can dams persist during typical floods (e.g., a 2-year recurrence interval flood)?</li>
+</ul>
+
+<p><strong>Is there water to dam?</strong> To address this question, the model uses stream network attributes that indicate flow regime. For example, if flow is perennial, there is always water available, whereas if flow is ephemeral, its not likely that there is enough water to maintain a pond year round. In the BRAT runs performed with freely available national data, the Nation Hydrography Dataset (<a href="https://www.usgs.gov/core-science-systems/ngp/national-hydrography">NHD</a>) produced by the USGS is used. This dataset contains an attribute, <code class="language-plaintext highlighter-rouge">ReachCode</code> with a numeric value that indicates the type of flow. Using this attribute, the drainage network can be reduced down to reaches that are likely to have enough water to support beaver ponds.</p>
+
+<p><strong>Is there suitable dam building material?</strong> To address this question, BRAT assigns a suitability score to each vegetation type present in the input dataset. The model uses raster data, where each cell represents a type or class of vegetation. A lookup table is then created that is used to assign each cell a suitability value based on the vegetation.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Value</th>
+      <th>Suitability</th>
+      <th>Examples</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>0</td>
+      <td>Unsuitable</td>
+      <td>Ice, Bare Ground</td>
+    </tr>
+    <tr>
+      <td>1</td>
+      <td>Barely Suitable</td>
+      <td>Grasses, Sage Brush</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>Moderately Suitable</td>
+      <td>Conifer</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>Suitable</td>
+      <td>Deciduous Shrubs</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>Preferred</td>
+      <td>Aspen, Willow</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>These values are then summarized (averaged) within 30 m of each stream segment (streamside vegetation) and 100 m of each segment (this distance beaver are generally willing to travel outside of channels to find material), creating two overall vegetation suitability scores for each stream segment (one for streamside vegetation and one for riparian and upland vegetation). In the BRAT runs performed with freely available national data, we use <a href="https://landfire.gov/">LANDFIRE</a> as the vegetation input. LANDFIRE consist of various datasets generated by classifying LANDSAT imagery. For BRAT, we use an existing vegetation classification (EVT) and a historic/potential vegetation classification (BPS) to get at existing and historic vegetation suitability.</p>
+
+<p><strong>Can dams be built at low flows?</strong> This question is addressed using stream power, a measure of flow competence or strength. For the area where BRAT is being run, regional “hydrologic curves” are used to scale base or low flow values with the contributing drainage area of the stream segment. Stream power is then calculated as the product of flow (<em>Q</em>), channel slope (<em>S</em>), density of water (<img src="https://latex.codecogs.com/gif.latex?\inline&space;\rho" alt="\rho" />), and acceleration due to gravity (<em>g</em>).</p>
+
+<p><img src="https://latex.codecogs.com/gif.latex?\inline&space;\Omega&space;=\rho&space;gQS" alt="\Omega =\rho gQS" /></p>
+
+<p>Empirical observations were used to determine the low flow stream power at which dams CAN be built, the range of stream power where they can PROBABLY be built, and values above which they CANNOT be built.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Low Flow <img src="https://latex.codecogs.com/gif.latex?\inline&space;\Omega" alt="\Omega" /> (watts)</th>
+      <th> </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>0 - 160</td>
+      <td>Can Build Dam</td>
+    </tr>
+    <tr>
+      <td>160 - 185</td>
+      <td>Can Probably Build Dam</td>
+    </tr>
+    <tr>
+      <td>&gt;185</td>
+      <td>Cannot Build Dam</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Can dams persist during typical floods?</strong> Similar to low flow, BRAT uses regional hydrologic curves to calculate the 2-year recurrence interval flood flow (Q2), scaled based on contributing drainage area. Stream power is then calculated for these flood flows. Again, empirical observations were used to parameterize the range of stream power values at which dams persist, occasionally breach, occasionally blow out, or certainly blow out.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Q2 <img src="https://latex.codecogs.com/gif.latex?\inline&space;\Omega" alt="\Omega" /> (watts)</th>
+      <th> </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>0 - 1100</td>
+      <td>Dam Persists</td>
+    </tr>
+    <tr>
+      <td>1100 - 1400</td>
+      <td>Potential Dam Breach</td>
+    </tr>
+    <tr>
+      <td>1400 - 2200</td>
+      <td>Potential Dam Blowout</td>
+    </tr>
+    <tr>
+      <td>&gt;2200</td>
+      <td>Dam Blowout</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>In the case of both low and high flow, categorical ambiguity is dealt with using fuzzy logic, described in the following section on how the model works.</p>
+
+<h3 id="calculating-capacity">Calculating Capacity</h3>
+<p>Capacity estimates are driven primarily by the vegetation, with the hydrology used to adjust (reduce) estimates if flow is a limiting factor (i.e., if floods cause dams to breach or blow out). In cases where channel slope is very low, capacity as also adjusted downward, as a single dam can back water up for a longer distance, reducing capacity. The first part of the capacity model, therefore, is based on the two vegetation suitability values (streamside and riparian/upland). These two values are combined in a fuzzy inference system (FIS). To account for categorical ambiguity, a particular vegetation suitability value can have partial membership in more than one category (e.g., 70% moderately suitable and 30% suitable). A rule table is then applied to the input values, and membership in output categories calculated. Finally, a “defuzzification” algorithm converts that membership into a discrete value of dams/km.</p>
+
+<p><strong>Vegetation Fuzzy Inference System</strong>
+<img src="/brat/assets/images/vegfis.jpg" alt="veg_fis" /></p>
+
+<p><strong>Vegetation FIS Rule Table</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th>If</th>
+      <th>Inputs</th>
+      <th> </th>
+      <th> </th>
+      <th> </th>
+      <th>Output</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td> </td>
+      <td> </td>
+      <td><strong>Suitability of streamside vegetation</strong></td>
+      <td> </td>
+      <td><strong>Suitability of riparian/upland vegetation</strong></td>
+      <td> </td>
+      <td><strong>Dam density capacity</strong></td>
+    </tr>
+    <tr>
+      <td>Rules</td>
+      <td>1</td>
+      <td>Unsuitable</td>
+      <td>&amp;</td>
+      <td>Unsuitable</td>
+      <td>, then</td>
+      <td>None</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>2</td>
+      <td>Barely suitable</td>
+      <td>&amp;</td>
+      <td>Unsuitable</td>
+      <td>, then</td>
+      <td>Rare</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>3</td>
+      <td>Moderately suitable</td>
+      <td>&amp;</td>
+      <td>Unsuitable</td>
+      <td>, then</td>
+      <td>Occasional</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>4</td>
+      <td>Suitable</td>
+      <td>&amp;</td>
+      <td>Unsuitable</td>
+      <td>, then</td>
+      <td>Occasional</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>5</td>
+      <td>Preferred</td>
+      <td>&amp;</td>
+      <td>Unsuitable</td>
+      <td>, then</td>
+      <td>Occasional</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>6</td>
+      <td>Unsuitable</td>
+      <td>&amp;</td>
+      <td>Barely suitable</td>
+      <td>, then</td>
+      <td>Rare</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>7</td>
+      <td>Barely suitable</td>
+      <td>&amp;</td>
+      <td>Barely suitable</td>
+      <td>, then</td>
+      <td>Occasional</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>8</td>
+      <td>Moderately suitable</td>
+      <td>&amp;</td>
+      <td>Barely suitable</td>
+      <td>, then</td>
+      <td>Occasional</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>9</td>
+      <td>Suitable</td>
+      <td>&amp;</td>
+      <td>Barely suitable</td>
+      <td>, then</td>
+      <td>Frequent</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>10</td>
+      <td>Preferred</td>
+      <td>&amp;</td>
+      <td>Barely suitable</td>
+      <td>, then</td>
+      <td>Frequent</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>11</td>
+      <td>Unsuitable</td>
+      <td>&amp;</td>
+      <td>Moderately suitable</td>
+      <td>, then</td>
+      <td>Occasional</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>12</td>
+      <td>Barely suitable</td>
+      <td>&amp;</td>
+      <td>Moderately suitable</td>
+      <td>, then</td>
+      <td>Rare</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>13</td>
+      <td>Moderately suitable</td>
+      <td>&amp;</td>
+      <td>Moderately suitable</td>
+      <td>, then</td>
+      <td>Frequent</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>14</td>
+      <td>Suitable</td>
+      <td>&amp;</td>
+      <td>Moderately suitable</td>
+      <td>, then</td>
+      <td>Frequent</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>15</td>
+      <td>Preferred</td>
+      <td>&amp;</td>
+      <td>Moderately suitable</td>
+      <td>, then</td>
+      <td>Pervasive</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>16</td>
+      <td>Unsuitable</td>
+      <td>&amp;</td>
+      <td>Suitable</td>
+      <td>, then</td>
+      <td>Rare</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>17</td>
+      <td>Barely suitable</td>
+      <td>&amp;</td>
+      <td>Suitable</td>
+      <td>, then</td>
+      <td>Frequent</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>18</td>
+      <td>Moderately suitable</td>
+      <td>&amp;</td>
+      <td>Suitable</td>
+      <td>, then</td>
+      <td>Frequent</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>19</td>
+      <td>Suitable</td>
+      <td>&amp;</td>
+      <td>Suitable</td>
+      <td>, then</td>
+      <td>Frequent</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>20</td>
+      <td>Preferred</td>
+      <td>&amp;</td>
+      <td>Suitable</td>
+      <td>, then</td>
+      <td>Pervasive</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>21</td>
+      <td>Unsuitable</td>
+      <td>&amp;</td>
+      <td>Preferred</td>
+      <td>, then</td>
+      <td>Occasional</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>22</td>
+      <td>Barely suitable</td>
+      <td>&amp;</td>
+      <td>Preferred</td>
+      <td>, then</td>
+      <td>Frequent</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>23</td>
+      <td>Moderately suitable</td>
+      <td>&amp;</td>
+      <td>Preferred</td>
+      <td>, then</td>
+      <td>Frequent</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>24</td>
+      <td>Suitable</td>
+      <td>&amp;</td>
+      <td>Preferred</td>
+      <td>, then</td>
+      <td>Pervasive</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>25</td>
+      <td>Preferred</td>
+      <td>&amp;</td>
+      <td>Preferred</td>
+      <td>, then</td>
+      <td>Pervasive</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>After the vegetation FIS is run, the output of that FIS is combined with the other model inputs (low flow stream power, flood stream power, and reach slope) in another combined FIS, associated with another rule table. The output of the combined FIS is the final prediction for the capacity of the segment to support dams (dams/km). However, in some cases rivers get large enough that beaver no longer try to dam them because they can make a good living by building dens in the banks and using the natural depth of the river for caches. Therefore, a final filter is sometimes added, where above a specified drainage area it is assumed that rivers are large enough that beavers don’t need to build dams, and the capacity of all segments with that drainage area or larger is set to zero.</p>
+
+<p><strong>Combined Fuzzy Inference System</strong>
+<img src="/brat/assets/images/combfis.jpg" alt="comb_fis" /></p>
+
+<p><strong>Combined FIS Rule Table</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th>If</th>
+      <th>Inputs</th>
+      <th> </th>
+      <th> </th>
+      <th> </th>
+      <th> </th>
+      <th> </th>
+      <th> </th>
+      <th> </th>
+      <th>Output</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td> </td>
+      <td> </td>
+      <td><strong>Vegetative dam density capacity (FIS)</strong></td>
+      <td> </td>
+      <td><strong>Baseflow stream power</strong></td>
+      <td> </td>
+      <td><strong>2-year flood stream power</strong></td>
+      <td> </td>
+      <td><strong>Reach slope (%)</strong></td>
+      <td> </td>
+      <td><strong>Dam density capacity</strong></td>
+    </tr>
+    <tr>
+      <td>Rules</td>
+      <td>1</td>
+      <td>Unsuitable</td>
+      <td>&amp;</td>
+      <td>–</td>
+      <td>&amp;</td>
+      <td>–</td>
+      <td>&amp;</td>
+      <td>–</td>
+      <td>, then</td>
+      <td>None</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>2</td>
+      <td>–</td>
+      <td>&amp;</td>
+      <td>Cannot build dam</td>
+      <td>&amp;</td>
+      <td>–</td>
+      <td>&amp;</td>
+      <td>–</td>
+      <td>, then</td>
+      <td>None</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>3</td>
+      <td>–</td>
+      <td>&amp;</td>
+      <td>–</td>
+      <td>&amp;</td>
+      <td>–</td>
+      <td>&amp;</td>
+      <td>Cannot build dam</td>
+      <td>, then</td>
+      <td>None</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>4</td>
+      <td>Rare</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>&amp;</td>
+      <td>Dam persists</td>
+      <td>&amp;</td>
+      <td>–</td>
+      <td>, then</td>
+      <td>Rare</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>5</td>
+      <td>Occasional</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>&amp;</td>
+      <td>Dam persists</td>
+      <td>&amp;</td>
+      <td>–</td>
+      <td>, then</td>
+      <td>Occasional</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>6</td>
+      <td>Frequent</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>&amp;</td>
+      <td>Dam persists</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>, then</td>
+      <td>Frequent</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>7</td>
+      <td>Frequent</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>&amp;</td>
+      <td>Dam persists</td>
+      <td>&amp;</td>
+      <td>Probably can build dam</td>
+      <td>, then</td>
+      <td>Occasional</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>8</td>
+      <td>Pervasive</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>&amp;</td>
+      <td>Dam persists</td>
+      <td>&amp;</td>
+      <td>Really flat</td>
+      <td>, then</td>
+      <td>Pervasive</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>9</td>
+      <td>Pervasive</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>&amp;</td>
+      <td>Dam persists</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>, then</td>
+      <td>Pervasive</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>10</td>
+      <td>Pervasive</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>&amp;</td>
+      <td>Dam persists</td>
+      <td>&amp;</td>
+      <td>Probably can build dam</td>
+      <td>, then</td>
+      <td>Occasional</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>11</td>
+      <td>Rare</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>&amp;</td>
+      <td>Occasional breach</td>
+      <td>&amp;</td>
+      <td>–</td>
+      <td>, then</td>
+      <td>Rare</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>12</td>
+      <td>Occasional</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>&amp;</td>
+      <td>Occasional breach</td>
+      <td>&amp;</td>
+      <td>–</td>
+      <td>, then</td>
+      <td>Occasional</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>13</td>
+      <td>Frequent</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>&amp;</td>
+      <td>Occasional breach</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>, then</td>
+      <td>Frequent</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>14</td>
+      <td>Frequent</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>&amp;</td>
+      <td>Occasional breach</td>
+      <td>&amp;</td>
+      <td>Probably can build dam</td>
+      <td>, then</td>
+      <td>Occasional</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>15</td>
+      <td>Pervasive</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>&amp;</td>
+      <td>Occasional breach</td>
+      <td>&amp;</td>
+      <td>Really flat</td>
+      <td>, then</td>
+      <td>Occasional</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>16</td>
+      <td>Pervasive</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>&amp;</td>
+      <td>Occasional breach</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>, then</td>
+      <td>Frequent</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>17</td>
+      <td>Pervasive</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>&amp;</td>
+      <td>Occasional breach</td>
+      <td>&amp;</td>
+      <td>Probably can build dam</td>
+      <td>, then</td>
+      <td>Occasional</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>18</td>
+      <td>Rare</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>&amp;</td>
+      <td>Occasional blowout</td>
+      <td>&amp;</td>
+      <td>–</td>
+      <td>, then</td>
+      <td>Rare</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>19</td>
+      <td>Occasional</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>&amp;</td>
+      <td>Occasional blowout</td>
+      <td>&amp;</td>
+      <td>–</td>
+      <td>, then</td>
+      <td>Occasional</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>20</td>
+      <td>Frequent</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>&amp;</td>
+      <td>Occasional blowout</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>, then</td>
+      <td>Frequent</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>21</td>
+      <td>Frequent</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>&amp;</td>
+      <td>Occasional blowout</td>
+      <td>&amp;</td>
+      <td>Probably can build dam</td>
+      <td>, then</td>
+      <td>Occasional</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>22</td>
+      <td>Pervasive</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>&amp;</td>
+      <td>Occasional blowout</td>
+      <td>&amp;</td>
+      <td>Really flat</td>
+      <td>, then</td>
+      <td>Occasional</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>23</td>
+      <td>Pervasive</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>&amp;</td>
+      <td>Occasional blowout</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>, then</td>
+      <td>Frequent</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>24</td>
+      <td>Pervasive</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>&amp;</td>
+      <td>Occasional blowout</td>
+      <td>&amp;</td>
+      <td>Probably can build dam</td>
+      <td>, then</td>
+      <td>Occasional</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>25</td>
+      <td>Rare</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>&amp;</td>
+      <td>Blowout</td>
+      <td>&amp;</td>
+      <td>–</td>
+      <td>, then</td>
+      <td>None</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>26</td>
+      <td>Occasional</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>&amp;</td>
+      <td>Blowout</td>
+      <td>&amp;</td>
+      <td>–</td>
+      <td>, then</td>
+      <td>Rare</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>27</td>
+      <td>Frequent</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>&amp;</td>
+      <td>Blowout</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>, then</td>
+      <td>Rare</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>28</td>
+      <td>Frequent</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>&amp;</td>
+      <td>Blowout</td>
+      <td>&amp;</td>
+      <td>Probably can build dam</td>
+      <td>, then</td>
+      <td>None</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>29</td>
+      <td>Pervasive</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>&amp;</td>
+      <td>Blowout</td>
+      <td>&amp;</td>
+      <td>Really flat</td>
+      <td>, then</td>
+      <td>Rare</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>30</td>
+      <td>Pervasive</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>&amp;</td>
+      <td>Blowout</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>, then</td>
+      <td>Occasional</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>31</td>
+      <td>Pervasive</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>&amp;</td>
+      <td>Blowout</td>
+      <td>&amp;</td>
+      <td>Probably can build dam</td>
+      <td>, then</td>
+      <td>Rare</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>32</td>
+      <td>Rare</td>
+      <td>&amp;</td>
+      <td>Probably can build dam</td>
+      <td>&amp;</td>
+      <td>Occasional breach</td>
+      <td>&amp;</td>
+      <td>–</td>
+      <td>, then</td>
+      <td>Rare</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>33</td>
+      <td>Occasional</td>
+      <td>&amp;</td>
+      <td>Probably can build dam</td>
+      <td>&amp;</td>
+      <td>Occasional breach</td>
+      <td>&amp;</td>
+      <td>–</td>
+      <td>, then</td>
+      <td>Occasional</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>34</td>
+      <td>Frequent</td>
+      <td>&amp;</td>
+      <td>Probably can build dam</td>
+      <td>&amp;</td>
+      <td>Occasional breach</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>, then</td>
+      <td>Frequent</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>35</td>
+      <td>Frequent</td>
+      <td>&amp;</td>
+      <td>Probably can build dam</td>
+      <td>&amp;</td>
+      <td>Occasional breach</td>
+      <td>&amp;</td>
+      <td>Probably can build dam</td>
+      <td>, then</td>
+      <td>Occasional</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>36</td>
+      <td>Pervasive</td>
+      <td>&amp;</td>
+      <td>Probably can build dam</td>
+      <td>&amp;</td>
+      <td>Occasional breach</td>
+      <td>&amp;</td>
+      <td>Really flat</td>
+      <td>, then</td>
+      <td>Occasional</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>37</td>
+      <td>Pervasive</td>
+      <td>&amp;</td>
+      <td>Probably can build dam</td>
+      <td>&amp;</td>
+      <td>Occasional breach</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>, then</td>
+      <td>Frequent</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>38</td>
+      <td>Pervasive</td>
+      <td>&amp;</td>
+      <td>Probably can build dam</td>
+      <td>&amp;</td>
+      <td>Occasional breach</td>
+      <td>&amp;</td>
+      <td>Probably can build dam</td>
+      <td>, then</td>
+      <td>Occasional</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>39</td>
+      <td>Rare</td>
+      <td>&amp;</td>
+      <td>Probably can build dam</td>
+      <td>&amp;</td>
+      <td>Occasional blowout</td>
+      <td>&amp;</td>
+      <td>–</td>
+      <td>, then</td>
+      <td>Rare</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>40</td>
+      <td>Occasional</td>
+      <td>&amp;</td>
+      <td>Probably can build dam</td>
+      <td>&amp;</td>
+      <td>Occasional blowout</td>
+      <td>&amp;</td>
+      <td>–</td>
+      <td>, then</td>
+      <td>Occasional</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>41</td>
+      <td>Frequent</td>
+      <td>&amp;</td>
+      <td>Probably can build dam</td>
+      <td>&amp;</td>
+      <td>Occasional blowout</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>, then</td>
+      <td>Occasional</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>42</td>
+      <td>Frequent</td>
+      <td>&amp;</td>
+      <td>Probably can build dam</td>
+      <td>&amp;</td>
+      <td>Occasional blowout</td>
+      <td>&amp;</td>
+      <td>Probably can build dam</td>
+      <td>, then</td>
+      <td>Rare</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>43</td>
+      <td>Pervasive</td>
+      <td>&amp;</td>
+      <td>Probably can build dam</td>
+      <td>&amp;</td>
+      <td>Occasional blowout</td>
+      <td>&amp;</td>
+      <td>Really flat</td>
+      <td>, then</td>
+      <td>Occasional</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>44</td>
+      <td>Pervasive</td>
+      <td>&amp;</td>
+      <td>Probably can build dam</td>
+      <td>&amp;</td>
+      <td>Occasional blowout</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>, then</td>
+      <td>Frequent</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>45</td>
+      <td>Pervasive</td>
+      <td>&amp;</td>
+      <td>Probably can build dam</td>
+      <td>&amp;</td>
+      <td>Occasional blowout</td>
+      <td>&amp;</td>
+      <td>Probably can build dam</td>
+      <td>, then</td>
+      <td>Occasional</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>46</td>
+      <td>Rare</td>
+      <td>&amp;</td>
+      <td>Probably can build dam</td>
+      <td>&amp;</td>
+      <td>Blowout</td>
+      <td>&amp;</td>
+      <td>–</td>
+      <td>, then</td>
+      <td>None</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>47</td>
+      <td>Occasional</td>
+      <td>&amp;</td>
+      <td>Probably can build dam</td>
+      <td>&amp;</td>
+      <td>Blowout</td>
+      <td>&amp;</td>
+      <td>–</td>
+      <td>, then</td>
+      <td>Rare</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>48</td>
+      <td>Frequent</td>
+      <td>&amp;</td>
+      <td>Probably can build dam</td>
+      <td>&amp;</td>
+      <td>Blowout</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>, then</td>
+      <td>Rare</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>49</td>
+      <td>Frequent</td>
+      <td>&amp;</td>
+      <td>Probably can build dam</td>
+      <td>&amp;</td>
+      <td>Blowout</td>
+      <td>&amp;</td>
+      <td>Probably can build dam</td>
+      <td>, then</td>
+      <td>None</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>50</td>
+      <td>Pervasive</td>
+      <td>&amp;</td>
+      <td>Probably can build dam</td>
+      <td>&amp;</td>
+      <td>Blowout</td>
+      <td>&amp;</td>
+      <td>Really flat</td>
+      <td>, then</td>
+      <td>Rare</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>51</td>
+      <td>Pervasive</td>
+      <td>&amp;</td>
+      <td>Probably can build dam</td>
+      <td>&amp;</td>
+      <td>Blowout</td>
+      <td>&amp;</td>
+      <td>Can build dam</td>
+      <td>, then</td>
+      <td>Occasional</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>52</td>
+      <td>Pervasive</td>
+      <td>&amp;</td>
+      <td>Probably can build dam</td>
+      <td>&amp;</td>
+      <td>Blowout</td>
+      <td>&amp;</td>
+      <td>Probably can build dam</td>
+      <td>, then</td>
+      <td>Rare</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The capacity model is applied using the existing vegetation layer, as well as the historic/potential vegetation layer, giving an estimate for each stream segment for existing dam capacity as well as historic or potential dam capacity.</p>
+
+<h2 id="risk-of-undesirable-dams">Risk of Undesirable Dams</h2>
+<p>Risk of undesirable dams for each stream segment is based on the segment’s capacity to support dams, its proximity to human infrastructure, and land use of the riverscape surround the stream segment. The model calculates the distance to different types of infrastructure (roads and road crossings, railroads, and canals and diversion points), and this information is recorded in attributes of the stream segment. Similarly to assigning vegetation suitability to each pixel based on land cover classification, a lookup table is used to assign a land use intensity value from 0 (no land use) to 1 (high intensity land use). The value of the pixels surrounding each segment is averaged to calculate an overall land use intensity value associated with the segment, which is recorded in the segment attributes.</p>
+
+<p><img src="/brat/assets/images/risk.png" alt="risk" /></p>
+
+<p>The risk for each segment is then assessed using the following logic:</p>
+
+<p><strong>Negligible Risk:</strong></p>
+<ul>
+  <li>Nearest infrastructure is more than 300 meters away OR</li>
+  <li>Existing dam capacity is zero</li>
+</ul>
+
+<p><strong>Minor Risk:</strong></p>
+<ul>
+  <li>Nearest infrastructure is within 100 meters and existing dam capacity is more than 0 dams/km but less than 5 dams/km</li>
+  <li>Nearest infrastructure is 100 - 300 meters away or land use is agricultural, and existing dam capacity is greater than 0 dams/km</li>
+</ul>
+
+<p><strong>Some Risk:</strong></p>
+<ul>
+  <li>Nearest infrastructure is within 30 meters or land use is urban, and existing dam capacity is more than 0 dams/km but less than 5 dams/km</li>
+  <li>Nearest infrastructure is within 100 meters and existing dam capacity is at least 5 dams/km</li>
+</ul>
+
+<p><strong>Considerable Risk:</strong></p>
+<ul>
+  <li>The reach is on a canal</li>
+  <li>Nearest infrastructure is within 30 meters or land use is urban, and existing dam capacity is at least 5 dams/km</li>
+</ul>
+
+<h2 id="restoration-or-conservation">Restoration or Conservation</h2>
+<p>Restoration and conservation opportunities is a management layer that combines the risk of undesirable dams outputs and current land use with existing and historic dam capacity outputs. The model logic described below is used to separate each stream reach into one of four categories that provide guidance on the feasibility and level of effort that would be required to implement beaver restoration or conservation.</p>
+
+<p><strong>Easiest - Low-Hanging Fruit:</strong></p>
+<ul>
+  <li><em>Risk</em> of undesirable dams is “negligible” or “minor”</li>
+  <li><em>Existing Capacity</em> estimates are at least “Occasional”</li>
+  <li><em>Existing Capacity</em> is three dams or fewer less than the <em>Historic Capacity</em>.</li>
+</ul>
+
+<p><strong>Straight Forward - Quick Return:</strong></p>
+<ul>
+  <li><em>Risk</em> of undesirable dams is “negligible” or “minor”</li>
+  <li><em>Existing Capacity</em> estimate is greater than “None” and <em>Historic Capacity</em> estimate is “Frequent” or “Pervasive”</li>
+  <li><em>Existing Capacity</em> is three dams or fewer less than the <em>Historic Capacity</em></li>
+  <li><em>Land Use</em> is suitably low for beavers to return (75% or greater “Very Low” land use, less than 10% “High Land Use”)</li>
+</ul>
+
+<p><strong>Strategic - Long-term Investment:</strong></p>
+<ul>
+  <li><em>Risk</em> of undesirable dams is “negligible” or “minor”</li>
+  <li><em>Existing Capacity</em> estimate is “None” or “Rare” (0-1) and <em>Historic Capacity</em> estimate is “Occasional” or higher</li>
+  <li><em>Land Use</em> is suitably low for beavers to return (75% or greater “Very Low” land use, less than 10% “High Land Use”)</li>
+</ul>
+
+<p><strong>Other:</strong></p>
+<ul>
+  <li>streams that don’t fit into the other categories. Such areas are primarily streams where <em>Risk</em> of undesirable dams is classified as “Some” or “Considerable”.</li>
+</ul>
+
+<h2 id="unsuitable-or-limited-opportunities">Unsuitable or Limited Opportunities</h2>
+<p>For areas where dam building potential is limited or impossible, this layer identifies the type of limitation based on the logic outlined below.</p>
+
+<p><img src="/brat/assets/images/limited_opportunities.png" alt="unsuitable_or_limited" /></p>
+
+<p><strong>Anthropogenically Limited:</strong></p>
+<ul>
+  <li>Capacity from the <em>vegetation FIS</em> based on <em>Historic Vegetation</em> is greater than 0</li>
+  <li><em>Slope</em> is not a limiting factor (&lt; 0.23)</li>
+  <li>Capacity from the <em>vegetation FIS</em> based on <em>Existing Vegetation</em> is 0, indicating high levels of anthropogenic land use (“Land Use” &gt; 0.3)</li>
+</ul>
+
+<p><strong>Stream Power Limited:</strong></p>
+<ul>
+  <li>Capacity from the <em>vegetation FIS</em> based on <em>Historic Vegetation</em> <strong>and</strong> <em>Existing Vegetation</em> is greater than 0</li>
+  <li><em>Slope</em> is not a limiting factor (&lt; 0.23)</li>
+  <li>Capacity based on <em>combined FIS</em> is 0 because <em>stream power</em> at low flow is too high for dam building or because <em>stream power</em> at high flows is too high for dams to persist.</li>
+</ul>
+
+<p><strong>Slope Limited:</strong></p>
+<ul>
+  <li>Capacity from the <em>vegetation FIS</em> based on <em>Historic Vegetation</em> is greater than 0</li>
+  <li>Slope is too steep for beaver to build dams (&gt;= 0.23)</li>
+</ul>
+
+<p><strong>Potential Reservoir or Land Use Change:</strong></p>
+<ul>
+  <li>Capacity from the <em>vegetation FIS</em> based on <em>Historic Vegetation</em> is “None” (0)</li>
+  <li>Capacity from the <em>vegetation FIS</em> based on <em>Existing Vegetation</em> is greater than 0</li>
+</ul>
+
+<p><strong>Naturally Vegetation Limited:</strong></p>
+<ul>
+  <li>Capacity from the <em>vegetation FIS</em> based on <em>Historic Vegetation</em> <strong>and</strong> <em>Existing Vegetation</em> is “None” (0)</li>
+</ul>
+
+<p><strong>Stream Size Limited:</strong></p>
+<ul>
+  <li>Capacity is 0 because the stream is too large for dam building (exceeds the maximum drainage area threshold)</li>
+</ul>
+
+<p><strong>Dam Building Possible:</strong></p>
+<ul>
+  <li>Capacity from the <em>vegetation FIS</em> based on <em>Historic Vegetation</em> is greater than 0</li>
+  <li><em>Slope</em> is not a limiting factor (&lt; 0.23)</li>
+  <li>Existing capacity based on <em>combined FIS</em> is greater than 0</li>
+</ul>
+</section>
+      </div>
+      <div id="sidebar" class="large-4 columns large-pull-8">
+          
+	
+	<div class="title-bar">
+		<div class="title-bar-title"><i class="fa fa-file-text"></i> Page Contents</div>		
+	</div>
+	<div id="toc"></div>
+	
+
+
+<div class="title-bar">
+	<div class="title-bar-title"><i class="fa fa-sitemap"></i> Site Contents
+		<div id="menuCtls" class="button-group tiny show-for-medium">
+				<span id="expand" class="button primary fa fa-plus has-tip top" data-tooltip title="Expand all items" aria-haspopup="true" data-disable-hover="false" ></span>
+				<span id="contract" class="button primary fa fa-minus has-tip top" data-tooltip title="Contract all items" aria-haspopup="true" data-disable-hover="false" ></span>
+			</div>	
+	</div>
+</div>
+ <div id="sidenav">
+			<ul id='HTMLOnlyNav'>							<li><a href='/brat/About/Status/ReportCard_4.3.2.html'>Riverscapes Report Card - BRAT 4.3.2</a></li>							<li><a href='/brat/About/acknowledgements.html'>Acknowledgements</a></li>							<li><a href='/brat/About/'>About</a></li>							<li><a href='/brat/About/references.html'>BRAT References</a></li>							<li><a href='/brat/Support/Advanced_Users/architecture.html'>Architecture</a></li>							<li><a href='/brat/Support/Advanced_Users/calibration.html'>CONUS BRAT Calibration</a></li>							<li><a href='/brat/Support/Advanced_Users/database.html'>Database</a></li>							<li><a href='/brat/Support/Advanced_Users/help.html'>Help</a></li>							<li><a href='/brat/Support/Advanced_Users/inputs.html'>Inputs</a></li>							<li><a href='/brat/Support/Advanced_Users/installation.html'>Installation</a></li>							<li><a href='/brat/Support/Advanced_Users/international.html'>Configuring BRAT outside the US</a></li>							<li><a href='/brat/Support/Advanced_Users/outputs.html'>Outputs</a></li>							<li><a href='/brat/Support/Advanced_Users/regional_regression.html'>Regional Regression Equations</a></li>							<li><a href='/brat/Support/Advanced_Users/running_brat.html'>Running BRAT</a></li>							<li><a href='/brat/Support/Advanced_Users/suitability.html'>Importing Suitability</a></li>							<li><a href='/brat/Support/DownloadingData.html'>Downloading BRAT Data</a></li>							<li><a href='/brat/Support/ModelLogic.html'>BRAT Model Logic</a></li>							<li><a href='/brat/Support/WorkingWithOutputs.html'>Working with BRAT Outputs</a></li>							<li><a href='/brat/Support/brat_table.html'>BRAT Reach Attributes Table</a></li>							<li><a href='/brat/Support/help.html'>Get Help</a></li>							<li><a href='/brat/Support/'>Support</a></li>							<li><a href='/brat/Validation/combined_fis.html'>Combined FIS Validation</a></li>							<li><a href='/brat/Validation/'>Validation</a></li>							<li><a href='/brat/Validation/reach_geometry.html'>Reach Geometry Validation</a></li>							<li><a href='/brat/Validation/slope_validation.html'>Slope</a></li>							<li><a href='/brat/Validation/vegetation_fix.html'>Vegetation FIS Validation</a></li>							<li><a href='/brat/Vision.html'>Vision</a></li>							<li><a href='/brat/assets/images/favicons/manifest.json'></a></li>							<li><a href='/brat/assets/js/nav.js'>Test</a></li>							<li><a href='/brat/'>Home</a></li>		</ul>	
+</div>
+
+<!-- Sidebar is where the extended sidepanel stuff like mailchimp forms go -->
+
+<!-- This is where you put your extra sidebar info like a mailchimp form -->
+<a href="/">Back to riverscapes tools</a>
+        </div>
+    </div>
+  </div>
+
+
+    <footer id="footer" class="row">
+<div id="rightslogo">
+    <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank">
+        <img src="/brat/assets/images/cc-watermarks-riverscapes_orig.png" alt="Picture">
+    </a>
+</div>
+</footer>
+    
+
+    <script src="/brat/assets/js/jquery.min.js"></script>
+    <script src="/brat/assets/js/motion-ui.min.js"></script>
+    <script src="/brat/assets/js/foundation.min.js"></script>
+    <script src="/brat/assets/js/toc.js"></script>
+    <script src="/brat/assets/js/nav.js"></script>
+    <script src="/brat/assets/js/app.js"></script>
+
+  </body>
+
+</html>

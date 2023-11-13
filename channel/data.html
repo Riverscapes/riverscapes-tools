@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+  <head>
+      <meta charset="utf-8">
+      <meta http-equiv="x-ua-compatible" content="ie=edge">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Channel Area Tool</title>
+
+      <meta name="viewport" content="width=device-width">
+      <link rel="stylesheet" href="/channel/assets/css/style.css">
+      <link rel="stylesheet" href="/channel/assets/css/custom.css">
+
+      <link rel="apple-touch-icon" sizes="57x57" href="/channel/assets/images/favicons/apple-icon-57x57.png">
+      <link rel="apple-touch-icon" sizes="60x60" href="/channel/assets/images/favicons/apple-icon-60x60.png">
+      <link rel="apple-touch-icon" sizes="72x72" href="/channel/assets/images/favicons/apple-icon-72x72.png">
+      <link rel="apple-touch-icon" sizes="76x76" href="/channel/assets/images/favicons/apple-icon-76x76.png">
+      <link rel="apple-touch-icon" sizes="114x114" href="/channel/assets/images/favicons/apple-icon-114x114.png">
+      <link rel="apple-touch-icon" sizes="120x120" href="/channel/assets/images/favicons/apple-icon-120x120.png">
+      <link rel="apple-touch-icon" sizes="144x144" href="/channel/assets/images/favicons/apple-icon-144x144.png">
+      <link rel="apple-touch-icon" sizes="152x152" href="/channel/assets/images/favicons/apple-icon-152x152.png">
+      <link rel="apple-touch-icon" sizes="180x180" href="/channel/assets/images/favicons/apple-icon-180x180.png">
+      <link rel="icon" type="image/png" sizes="192x192"  href="/channel/assets/images/favicons/android-icon-192x192.png">
+      <link rel="icon" type="image/png" sizes="32x32" href="/channel/assets/images/favicons/favicon-32x32.png">
+      <link rel="icon" type="image/png" sizes="96x96" href="/channel/assets/images/favicons/favicon-96x96.png">
+      <link rel="icon" type="image/png" sizes="16x16" href="/channel/assets/images/favicons/favicon-16x16.png">
+      <link rel="manifest" href="/channel/assets/images/favicons/manifest.json">
+      <meta name="msapplication-TileColor" content="#ffffff">
+      <meta name="msapplication-TileImage" content="/channel/assets/images/favicons/ms-icon-144x144.png">
+      <meta name="theme-color" content="#ffffff">
+      <link rel="shortcut icon" href="/channel/assets/images/favicons/favicon.ico" />
+
+      <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+      <![endif]-->
+  </head>
+
+  <body>
+
+  <header>
+    <div id="topbarnav"></div>
+    <div id="headcallout" class="text-center callout large">
+      
+
+
+<h4 class="subheader show-for-medium"><a href="/channel/">Channel Area Tool</a></h4>   
+<h1>Channel Area Data</h1>
+    
+
+    </div>
+  </header>
+
+  <div id="inner-wrapper">
+    <div id="inner" class="row">
+      <div id="main" class="large-8 columns large-push-4">
+        <section><h2><a name="FILTERED_WATERBODY">Filtered NHD Waterbodies</a></h2>
+
+<p>A subset of the NHDWaterbody layer filtered using specified NHD FCodes.</p>
+
+<h2><a name="FILTERED_FLOWAREAS">Filtered NHD Areas</a></h2>
+
+<p>A subset of the NHDArea layer filtered using specified NHD FCodes.</p>
+
+<h2><a name="COMBINED_FA_WB">NHD Waterbodies and NHD Areas combined</a></h2>
+
+<p>The NHDArea and NHDWaterbody layers combined.</p>
+
+<h2><a name="BANKFULL_NETWORK">Bankfull Network</a></h2>
+
+<p>The NHDFlowlines layer with an attribute ‘bankfull_m’ added that is used to buffer the network. This layer is the network without the segments that fall within NHDWaterbody or NHDArea features.</p>
+
+<h2><a name="BANKFULL_POLYGONS">Bankfull Polygons</a></h2>
+
+<p>Polygons derived by buffering the bankfull_network feature using the ‘bankfull_m’ attribute. This value is calculated using region equations for bankfull width.</p>
+
+<h2><a name="DIFFERENCE_POLYGONS">Difference Polygons</a></h2>
+
+<p>The bankfull polygons with areas that overlap the NHDArea layer removed.</p>
+
+<h2><a name="CHANNEL_AREA">Channel Area Polygons</a></h2>
+
+<p>A polygon feature class representing the bankfull channel for the input network. The filtered NHDArea and NHDWaterbody features are combined with the buffered NHDFlowline features to create a single feature class.</p>
+</section>
+      </div>
+      <div id="sidebar" class="large-4 columns large-pull-8">
+          
+	
+	<div class="title-bar">
+		<div class="title-bar-title"><i class="fa fa-file-text"></i> Page Contents</div>		
+	</div>
+	<div id="toc"></div>
+	
+
+
+<div class="title-bar">
+	<div class="title-bar-title"><i class="fa fa-sitemap"></i> Site Contents
+		<div id="menuCtls" class="button-group tiny show-for-medium">
+				<span id="expand" class="button primary fa fa-plus has-tip top" data-tooltip title="Expand all items" aria-haspopup="true" data-disable-hover="false" ></span>
+				<span id="contract" class="button primary fa fa-minus has-tip top" data-tooltip title="Contract all items" aria-haspopup="true" data-disable-hover="false" ></span>
+			</div>	
+	</div>
+</div>
+ <div id="sidenav">
+			<ul id='HTMLOnlyNav'>							<li><a href='/channel/Status/ReportCard_1.1.1.html'>Riverscapes Report Card - Channel Area 1.1.1</a></li>							<li><a href='/channel/assets/images/favicons/manifest.json'></a></li>							<li><a href='/channel/assets/js/nav.js'>Test</a></li>							<li><a href='/channel/data.html'>Channel Area Data</a></li>							<li><a href='/channel/'>Home</a></li>							<li><a href='/channel/nhd.html'>Application with NHD</a></li>		</ul>	
+</div>
+
+<!-- Sidebar is where the extended sidepanel stuff like mailchimp forms go -->
+
+<!-- This is where you put your extra sidebar info like a mailchimp form -->
+<a href="/">Back to riverscapes tools</a>
+        </div>
+    </div>
+  </div>
+
+
+    <footer id="footer" class="row">
+<div id="rightslogo">
+    <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank">
+        <img src="/channel/assets/images/cc-watermarks-riverscapes_orig.png" alt="Picture">
+    </a>
+</div>
+</footer>
+    
+
+    <script src="/channel/assets/js/jquery.min.js"></script>
+    <script src="/channel/assets/js/motion-ui.min.js"></script>
+    <script src="/channel/assets/js/foundation.min.js"></script>
+    <script src="/channel/assets/js/toc.js"></script>
+    <script src="/channel/assets/js/nav.js"></script>
+    <script src="/channel/assets/js/app.js"></script>
+
+  </body>
+
+</html>
