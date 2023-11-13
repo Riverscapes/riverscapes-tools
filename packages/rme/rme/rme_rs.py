@@ -19,9 +19,9 @@ lyrs_in_out = {
     'ecoregions': 'Ecoregions',
     'roads': 'Roads',
     'rail': 'Rail',
-    'vbet_dgos': 'vbet_dgos',
-    'vbet_igos': 'vbet_igos',
-    'vbet_centerlines': 'vbet_centerlines',
+    'dgos': 'vbet_dgos',
+    'igos': 'vbet_igos',
+    'valley_centerlines': 'vbet_centerlines',
     'confinement_dgo': 'confinement_dgos',
     'anthro_dgo': 'vwDgos',
     'rcat_dgo': 'vwDgos'
