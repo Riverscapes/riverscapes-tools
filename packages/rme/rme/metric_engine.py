@@ -1345,29 +1345,20 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
     epsg = 4326
     with sqlite3.connect(outputs_gpkg) as conn:
         curs = conn.cursor()
-        # metrics_sql = ", ".join(
-        #     [f"{sql_name(metric['field_name'])} {metric['data_type']}" for metric in metrics.values()])
-        # sql = f'CREATE TABLE dgo_metrics_pivot (fid INTEGER PRIMARY KEY, {metrics_sql});'
-        # curs.execute(sql)
-        # sql2 = f'CREATE TABLE igo_metrics_pivot (fid INTEGER PRIMARY KEY, {metrics_sql});'
-        # curs.execute(sql2)
-        # conn.commit()
 
         # Insert Values into Pivot table
         number_metrics = {metric: val for metric, val in metrics.items(
         ) if val['data_type'] == 'INTEGER' or val['data_type'] == 'REAL'}
         text_metrics = {metric: val for metric,
                         val in metrics.items() if val['data_type'] == 'TEXT'}
-        # metric_names_sql = ", ".join(
-        #     [sql_name(metric["field_name"]) for metric in number_metrics.values()])
+
         num_metric_names_sql = ", ".join([sql_name(metric["field_name"]) for metric in number_metrics.values()])
         text_metric_names_sql = ", ".join([sql_name(metric["field_name"]) for metric in text_metrics.values()])
-        # metric_names_sql = f"{num_metric_names_sql}, {text_metric_names_sql}"
+
         metric_values_sql = ", ".join(
             [f"{sql_round(metric['data_type'], metric['metric_id'])} {sql_name(metric['field_name'])}" for metric in number_metrics.values()])
-        # text_metric_values_sql = ", ".join([f"{sql_text(metric['metric_id'])} {sql_name(metric['field_name'])}" for metric in text_metrics.values()])
-        # metric_values_sql = f"{num_metric_values_sql}, {text_metric_values_sql}"
-        sql = f'CREATE VIEW dgo_num_metrics (fid, {num_metric_names_sql}) SELECT M.dgo_id, {metric_values_sql} FROM dgo_metric_values M GROUP BY M.dgo_id;'
+
+        sql = f'CREATE VIEW dgo_num_metrics (fid, {num_metric_names_sql}) AS SELECT M.dgo_id, {metric_values_sql} FROM dgo_metric_values M GROUP BY M.dgo_id;'
         curs.execute(sql)
         sql2 = f"""CREATE VIEW igo_num_metrics (fid, {num_metric_names_sql}) AS SELECT M.igo_id, {metric_values_sql} FROM igo_metric_values M GROUP BY M.igo_id;"""
         curs.execute(sql2)
@@ -1430,15 +1421,6 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
 
     project.add_project_geopackage(
         proj_nodes['Outputs'], LayerTypes['RME_OUTPUTS'])
-
-    ellapsed = time.time() - start_time
-    project.add_metadata([
-        RSMeta("ProcTimeS", "{:.2f}".format(ellapsed),
-               RSMetaTypes.HIDDEN, locked=True),
-        RSMeta("Processing Time", pretty_duration(ellapsed), locked=True)
-    ])
-
-    add_layer_descriptions(project, LYR_DESCRIPTIONS_JSON, LayerTypes)
 
     ellapsed = time.time() - start_time
     project.add_metadata([
