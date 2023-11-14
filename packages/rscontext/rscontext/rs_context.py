@@ -47,7 +47,7 @@ from rscontext.hydro_derivatives import clean_nhdplus_vaa_table, create_spatial_
 from rscontext.clip_vector import clip_vector_layer
 from rscontext.nhdarea import split_nhd_area
 from rscontext.rs_context_report import RSContextReport
-from rscontext.rs_segmentation import rs_segmentation, create_spatial_view
+from rscontext.rs_segmentation import rs_segmentation
 from rscontext.vegetation import clip_vegetation
 
 initGDALOGRErrors()
@@ -274,6 +274,9 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states_
 
     export_table(filegdb, 'NHDPlusFlowlineVAA', nhd_gpkg_path,
                  None, "ReachCode LIKE '{}%'".format(huc[:8]))
+
+    # drop rows in NHDPlusFlowlineVAA that do not have a flowline in the NHDFlowline table
+    clean_nhdplus_vaa_table(nhd_gpkg_path)
 
     # drop rows in NHDPlusFlowlineVAA that do not have a flowline in the NHDFlowline table
     clean_nhdplus_vaa_table(nhd_gpkg_path)
