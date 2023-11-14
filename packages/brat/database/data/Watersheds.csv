@@ -1616,7 +1616,7 @@ WatershedID,Name,AreaSqkm,States,Qlow,Q2,MaxDrainage,EcoregionID,Notes,Metadata
 14020002,Upper Gunnison,6245.14,CO,,,,21,,
 14020003,Tomichi,2855.88,CO,,,,21,,
 14020004,North Fork Gunnison,2509.66,CO,,,,21,,
-14020005,Lower Gunnison,4306.26,CO,,,,20,,
+14020005,Lower Gunnison,4306.26,CO,(10**-34.73)*(DRNAREA**0.83)*(ELEV**8.56),(10**-1.15)*(DRNAREA**0.75)*(A7500**-0.41)*(PRECIP**2.15),685.0,20,https://pubs.usgs.gov/sir/2009/5136/pdf/SIR09-5136.pdf,
 14020006,Uncompahgre,2887.22,CO,,,,20,,
 14030001,Westwater Canyon,3769.18,CO_UT,,,,20,,
 14030002,Upper Dolores,5587.79,CO_UT,,,,20,,
