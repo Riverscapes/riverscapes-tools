@@ -2,9 +2,11 @@
 from typing import List, Dict
 import os
 import sqlite3
+
 from osgeo import ogr
 from shapely.geometry import Point, MultiPoint, LineString
 from shapely.ops import split
+
 from rscommons import get_shp_or_gpkg, GeopackageLayer, Logger
 from rscommons.segment_network import copy_fields
 from rscommons.vector_ops import collect_feature_class
@@ -240,28 +242,3 @@ def polygon_to_polyline(lines_path, polygon_path, network_path):
                     out_feature.SetGeometry(b_line)
                     out_layer.ogr_layer.CreateFeature(out_feature)
         out_layer.ogr_layer.CommitTransaction()
-
-
-def create_spatial_view(nhd_gpkg_path: str, network_layer: str, join_table: str, out_view: str, network_fields: dict, join_fields: dict, join_id) -> Path:
-
-    with sqlite3.connect(nhd_gpkg_path) as conn:
-        curs = conn.cursor()
-        curs.execute(f"DROP VIEW IF EXISTS {out_view}")
-        # create the view with specified of the fields from the flowline table and add the fields from the join table. the fields from the join table should have an ailas of the value in the dict.
-        curs.execute(f"CREATE VIEW {out_view} AS SELECT {', '.join([f'{network_layer}.{field} AS {alias}' for field, alias in network_fields.items()])}, {', '.join([f'{join_table}.{field} AS {alias}' for field, alias in join_fields.items()])} FROM {network_layer} LEFT JOIN {join_table} ON {network_layer}.{join_id} = {join_table}.{join_id}")
-
-        # do an insert select from the network layer to the gpkg_contents table
-        curs.execute(f"INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) SELECT '{out_view}', 'features', '{out_view}', '{out_view}', datetime('now'), min_x, min_y, max_x, max_y, srs_id FROM gpkg_contents WHERE table_name = '{network_layer}'")
-
-        # add to gpkg geometry columns
-        curs.execute(f"INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('{out_view}', 'geom', 'LINESTRING', 4326, 0, 0)")
-
-        # Create index
-        curs.execute(f"CREATE INDEX IF NOT EXISTS {join_table}_NHDPlusID ON {join_table}(NHDPlusID)")
-        curs.execute(f"CREATE INDEX IF NOT EXISTS NHDFlowline_fid ON NHDFlowline(fid)")
-
-        conn.commit()
-
-        curs.execute('VACUUM')
-
-    return os.path.join(nhd_gpkg_path, out_view)

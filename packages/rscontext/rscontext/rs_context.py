@@ -18,9 +18,8 @@ import traceback
 import uuid
 from typing import Dict, List
 
-from matplotlib.pyplot import hist
 from osgeo import ogr
-from regex import B
+
 from rscommons import (Logger, ModelConfig, RSLayer, RSProject, get_shp_or_gpkg, Timer, dotenv,
                        initGDALOGRErrors)
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
@@ -37,17 +36,18 @@ from rscommons.science_base import (download_shapefile_collection,
 from rscommons.util import (parse_metadata, pretty_duration, safe_makedirs,
                             safe_remove_dir)
 # from rscommons.raster_buffer_stats import raster_buffer_stats2
-from rscommons.vector_ops import copy_feature_class, get_geometry_unary_union
+from rscommons.vector_ops import copy_feature_class
 from rscommons.geometry_ops import get_rectangle_as_geom
 from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions, raster_resolution_meta
 
 from rscontext.__version__ import __version__
 from rscontext.boundary_management import raster_area_intersection
 from rscontext.clean_catchments import clean_nhdplus_catchments
+from rscontext.hydro_derivatives import clean_nhdplus_vaa_table, create_spatial_view
 from rscontext.clip_vector import clip_vector_layer
 from rscontext.nhdarea import split_nhd_area
 from rscontext.rs_context_report import RSContextReport
-from rscontext.rs_segmentation import rs_segmentation, create_spatial_view
+from rscontext.rs_segmentation import rs_segmentation
 from rscontext.vegetation import clip_vegetation
 
 initGDALOGRErrors()
@@ -87,7 +87,8 @@ LayerTypes = {
     'NHDPLUSHR': RSLayer('NHD HR Plus', 'NHDPLUSHR', 'Geopackage', 'hydrology/nhdplushr.gpkg', {
         # NHD Shapefiles
         'NHDFlowline': RSLayer('NHD Flowlines', 'NHDFlowline', 'Vector', 'NHDFlowline'),
-        'NHDFlowlineVAA': RSLayer('NHD Flowlines VAA', 'NHDFlowlineVAA', 'Vector', 'NHDFlowlineVAA'),
+        'NHDFlowlineVAA': RSLayer('NHD Flowlines VAA', 'NHDFlowlineVAA', 'Vector', 'vw_NHDFlowlineVAA'),
+        'NHDCatchmentVAA': RSLayer('NHD Catchments VAA', 'NHDCatchmentVAA', 'Vector', 'vw_NHDPlusCatchmentVAA'),
         'NHDArea': RSLayer('NHD Area', 'NHDArea', 'Vector', 'NHDArea'),
         'NHDPlusCatchment': RSLayer('NHD Plus Catchment', 'NHDPlusCatchment', 'Vector', 'NHDPlusCatchment'),
         'NHDWaterbody': RSLayer('NHD Waterbody', 'NHDWaterbody', 'Vector', 'NHDWaterbody'),
@@ -103,9 +104,9 @@ LayerTypes = {
     'HYDRODERIVATIVES': RSLayer('Hydrology Derivatives', 'HYDRODERIVATIVES', 'Geopackage', 'hydrology/hydro_derivatives.gpkg', {
         'BUFFEREDCLIP100': RSLayer('Buffered Clip Shape 100m', 'BUFFERED_CLIP100', 'Vector', 'buffered_clip100m'),
         'BUFFEREDCLIP500': RSLayer('Buffered Clip Shape 500m', 'BUFFERED_CLIP500', 'Vector', 'buffered_clip500m'),
-        'NETWORK300M': RSLayer('NHD Flowlines Segmented 300m', 'NETWORK300M', 'Vector', 'network_300m'),
-        'NETWORK300M_INTERSECTION': RSLayer('NHD Flowlines intersected with road, rail and ownership', 'NETWORK300M_INTERSECTION', 'Vector', 'network_intersected'),
-        'NETWORK300M_CROSSINGS': RSLayer('NHD Flowlines intersected with road, rail and ownership, segmented to 300m', 'NETWORK300MCROSSINGS', 'Vector', 'network_intersected_300m'),
+        'NETWORK_CROSSINGS': RSLayer('NHD Flowlines with road, rail and ownership crossings', 'NETWORK_CROSSINGS', 'Vector', 'network_crossings'),
+        'NETWORK_INTERSECTION': RSLayer('NHD Flowlines intersected with road, rail and ownership', 'NETWORK_INTERSECTION', 'Vector', 'network_intersected'),
+        'CATCHMENTS': RSLayer('NHD Catchments', 'CATCHMENTS', 'Vector', 'catchments'),
         'PROCESSING_EXTENT': RSLayer('Processing Extent of HUC-DEM Intersection', 'PROCESSING_EXTENT', 'Vector', 'processing_extent'),
         'NHDAREASPLIT': RSLayer('NDH Area layer split by NHDPlusCatchments', 'NHDAreaSplit', 'Vector', 'NHDAreaSplit')
     }),
@@ -127,7 +128,7 @@ SEGMENTATION = {
 }
 
 
-def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states, us_counties, geology, prism_folder, output_folder, download_folder, scratch_dir, parallel, force_download, meta: Dict[str, str]):
+def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states_shp, us_counties, geology, prism_folder, output_folder, download_folder, scratch_dir, parallel, force_download, meta: Dict[str, str]):
     """
 
     Download riverscapes context layers for the specified HUC and organize them as a Riverscapes project
@@ -136,7 +137,7 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
     :param existing_veg: Path to the existing vegetation conditions raster
     :param historic_veg: Path to the historical vegetation conditions raster
     :param ownership: Path to the national land ownership Shapefile
-    :param us_states: Path to the national states shapefile
+    :param us_states_shp: Path to the national states shapefile
     :param us_counties: Path to the national counties shapefile 
     :param output_folder: Output location for the riverscapes context project
     :param download_folder: Temporary folder where downloads are cached. This can be shared between rs_context processes
@@ -208,7 +209,7 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
     nhd_download_folder = os.path.join(download_folder, 'nhd', huc[:4])
     nhd_unzip_folder = os.path.join(scratch_dir, 'nhd', huc[:4])
 
-    nhd, filegdb, huc_name, nhd_url = clean_nhd_data(huc, nhd_download_folder, nhd_unzip_folder, nhd_unzip_folder, cfg.OUTPUT_EPSG, False)
+    nhd, filegdb, huc_name, _nhd_url = clean_nhd_data(huc, nhd_download_folder, nhd_unzip_folder, nhd_unzip_folder, cfg.OUTPUT_EPSG, False)
     nhdarea_split = split_nhd_area(nhd['NHDArea'], nhd['NHDPlusCatchment'], os.path.join(nhd_unzip_folder, 'NHDAreaSplit.shp'))
 
     index_dict = {
@@ -238,6 +239,9 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
     copy_feature_class(nhdarea_split, area_split_out, epsg=cfg.OUTPUT_EPSG, indexes=['FCode', 'NHDPlusID'])
 
     export_table(filegdb, 'NHDPlusFlowlineVAA', nhd_gpkg_path, None, "ReachCode LIKE '{}%'".format(huc[:8]))
+
+    # drop rows in NHDPlusFlowlineVAA that do not have a flowline in the NHDFlowline table
+    clean_nhdplus_vaa_table(nhd_gpkg_path)
 
     # Clean up NHDPlusCatchment dataset
     clean_nhdplus_catchments(nhd_gpkg_path, boundary, str(huc))
@@ -382,7 +386,7 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
     # Clip the states shapefile to a 10km buffer around the watershed boundary
     states_path = os.path.join(output_folder, LayerTypes['STATES'].rel_path)
     project.add_dataset(datasets, states_path, LayerTypes['STATES'], 'Vector')
-    clip_vector_layer(nhd['HUC8Extent'], us_states, states_path, cfg.OUTPUT_EPSG, 1000)
+    clip_vector_layer(nhd['HUC8Extent'], us_states_shp, states_path, cfg.OUTPUT_EPSG, 1000)
 
     # Clip the counties shapefile to a 10km buffer around the watershed boundary
     counties_path = os.path.join(output_folder, LayerTypes['COUNTIES'].rel_path)
@@ -405,22 +409,24 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states,
     #######################################################
 
     # create spatial view of NHD Flowlines and VAA table
-    fields = {"LevelPathI": "level_path", "DnLevelPat": "downstream_level_path", 'UpLevelPat': "upstream_level_path", 'Divergence': 'divergence'}
-    network_fields = {'fid': 'fid', 'geom': 'geom', 'GNIS_ID': 'GNIS_ID', 'GNIS_Name': 'GNIS_Name', 'ReachCode':'ReachCode', 'FType': 'FType', 'FCode': 'FCode', 'NHDPlusID': 'NHDPlusID', 'TotDASqKM': 'TotDASqKM'} #'WatershedID':'WatershedID'
-    view_vaa_flowline = create_spatial_view(nhd_gpkg_path, 'NHDFlowline', 'NHDPlusFlowlineVAA', 'vw_NHDFlowlineVAA', network_fields, fields, 'NHDPlusID')
+    vaa_fields = {"LevelPathI": "level_path", "DnLevelPat": "downstream_level_path", 'UpLevelPat': "upstream_level_path", 'Divergence': 'divergence', 'StreamOrde': 'stream_order'}
+    network_fields = {'fid': 'fid', 'geom': 'geom', 'GNIS_ID': 'GNIS_ID', 'GNIS_Name': 'GNIS_Name', 'ReachCode':'ReachCode', 'FType': 'FType', 'FCode': 'FCode', 'NHDPlusID': 'NHDPlusID', 'TotDASqKM': 'TotDASqKM'}
+    view_vaa_flowline = create_spatial_view(nhd_gpkg_path, 'NHDFlowline', 'NHDPlusFlowlineVAA', 'vw_NHDFlowlineVAA', network_fields, vaa_fields, 'NHDPlusID')
+    _node_flowline_vaa = project.add_dataset(datasets, view_vaa_flowline, LayerTypes['NHDPLUSHR'].sub_layers['NHDFlowlineVAA'], 'Vector')
+    
+    # create spatial view of NHD Catchments and VAA table
+    vaa_fields['TotDASqKM'] = 'TotDASqKM'
+    vaa_fields['DivDASqKM'] = 'DivDASqKM'
+    catchment_fields = {'fid': 'fid', 'geom':'geom', 'NHDPlusID': 'NHDPlusID', 'AreaSqKM': 'AreaSqKM'}
+    view_vaa_catchments = create_spatial_view(nhd_gpkg_path, 'NHDPlusCatchment', 'NHDPlusFlowlineVAA', 'vw_NHDPlusCatchmentVAA', catchment_fields, vaa_fields, 'NHDPlusID', 'POLYGON')
+    _node_catchment_vaa = project.add_dataset(datasets, view_vaa_catchments, LayerTypes['NHDPLUSHR'].sub_layers['NHDPlusCatchment'], 'Vector')
 
-    # add to the project xml
-    # vaa_meta = []
-    # for field_name, field_alias in fields.items():
-    #     vaa_meta.append(RS)
-    # LayerTypes['NHDFlowlineVAA'].lyr_meta = [
-    #     RSMeta()
-    # ]
-    node_flowline_vaa = project.add_dataset(datasets, view_vaa_flowline, LayerTypes['NHDPLUSHR'].sub_layers['NHDFlowlineVAA'], 'Vector')
-    # add metadata to this
-    # node_flowline_vaa.addMetadata()
+    # copy the NHD Catchments to the hydro_derivatives geopackage
+    catchments = os.path.join(hydro_deriv_gpkg_path, LayerTypes['HYDRODERIVATIVES'].sub_layers['CATCHMENTS'].rel_path)
+    copy_feature_class(view_vaa_catchments, catchments, epsg=cfg.OUTPUT_EPSG)
+    _node_catchments = project.add_dataset(datasets, catchments, LayerTypes['HYDRODERIVATIVES'].sub_layers['CATCHMENTS'], 'Vector')
 
-    # For now let's just make a copy of the NHD FLowlines
+    # Segment the NHD Flowlines
     tmr = Timer()
     lines = {'roads': ntd_clean['Roads'], 'railways': ntd_clean['Rail']}
     areas = [{'name': 'ownership',
