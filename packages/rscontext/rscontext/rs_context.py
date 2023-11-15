@@ -73,7 +73,7 @@ LayerTypes = {
     'HDIST': RSLayer('Historic Disturbance', 'HDIST', 'Raster', 'vegetation/historic_disturbance.tif'),
     'FDIST': RSLayer('Fuel Disturbance', 'FDIST', 'Raster', 'vegetation/fuel_disturbance.tif'),
     'FCCS': RSLayer('Fuel Characteristic Classification System', 'FCCS', 'Raster', 'vegetation/fccs.tif'),
-    'VEGCONDITION': RSLayer('Vegetation Condition', 'VEGCONDITION', 'Raster', 'vegetation/vegetation_condition.tif'),
+    'VEGCONDITION': RSLayer('Vegetation Condition Class', 'VEGCONDITION', 'Raster', 'vegetation/vegetation_condition.tif'),
     'VEGDEPARTURE': RSLayer('Vegetation Departure', 'VEGDEPARTURE', 'Raster', 'vegetation/vegetation_departure.tif'),
     'SCLASS': RSLayer('Succession Classes', 'SCLASS', 'Raster', 'vegetation/succession_classes.tif'),
     # Inputs
@@ -153,6 +153,7 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states_
 
     # Add the layer metadata immediately before we write anything
     augment_layermeta('rscontext', LYR_DESCRIPTIONS_JSON, LayerTypes)
+    LayerTypes['FAIR_MARKET'].lyr_meta.append(RSMeta('ORCID', 'https://orcid.org/0000-0001-7827-689X', RSMetaTypes.URL))
 
     log.info('Starting RSContext v.{}'.format(cfg.version))
 
