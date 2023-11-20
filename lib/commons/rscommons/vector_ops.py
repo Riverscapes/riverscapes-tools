@@ -386,7 +386,12 @@ def collect_feature_class(feature_class_path: str,
                 else:
                     sub_geoms = [geom]
                 for subg in sub_geoms:
-                    new_geom.AddGeometry(subg)
+                    try:
+                        new_geom.AddGeometry(subg)
+                    except Exception as e:
+                        log.warning('Exception raised during union of feature with FID={}'.format(feat.GetFID()))
+                        log.warning(e)
+                        continue
 
     log.info('Collect complete.')
     return new_geom
