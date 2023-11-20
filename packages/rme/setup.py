@@ -29,8 +29,7 @@ setup(name='rme',
       author_email='info@northarrowresearch.com',
       install_requires=install_requires,
       entry_points={
-          "console_scripts": ['rme = rme.metric_engine:main',
-                              'confinement = rme.confinement:main']
+          "console_scripts": ['rme = rme.metric_engine:main']
       },
       zip_safe=False,
       url='https://github.com/Riverscapes/riverscapes-tools',
