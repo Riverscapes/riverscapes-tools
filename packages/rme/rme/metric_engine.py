@@ -328,20 +328,6 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                 igo_dgo[igo_id] = feat_seg.GetFID()
                 break
 
-    # associate single DGOs with single IGOs for non moving window metrics
-    log.info('Associating DGOs with IGOs')
-    igo_dgo = {}
-    with GeopackageLayer(segments) as lyr_segments, \
-            GeopackageLayer(points) as lyr_points:
-        for feat, *_ in lyr_points.iterate_features():
-            igo_id = feat.GetFID()
-            level_path = feat.GetField('LevelPathI')
-            seg_distance = feat.GetField('seg_distance')
-            sql = f'LevelPathI = {level_path} and seg_distance = {seg_distance}'
-            for feat_seg, *_ in lyr_segments.iterate_features(attribute_filter=sql):
-                igo_dgo[igo_id] = feat_seg.GetFID()
-                break
-
     metrics = generate_metric_list(outputs_gpkg)
     measurements = generate_metric_list(outputs_gpkg, 'measurements')
 
@@ -867,6 +853,149 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
         with sqlite3.connect(outputs_gpkg) as conn:
             curs = conn.cursor()
 
+            if igo_id in igo_dgo.keys():
+                if 'STRMORDR' in metrics:
+                    curs.execute(
+                        f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['STRMORDR']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
+                    stream_order = curs.fetchone()[0]
+                    if stream_order is not None:
+                        curs.execute(
+                            f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['STRMORDR']['metric_id']}, {str(stream_order)})")
+
+                if 'HEDWTR' in metrics:
+                    curs.execute(
+                        f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['HEDWTR']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
+                    hw = curs.fetchone()[0]
+                    if hw is not None:
+                        curs.execute(
+                            f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['HEDWTR']['metric_id']}, {str(hw)})")
+
+                if 'STRMTYPE' in metrics:
+                    curs.execute(
+                        f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['STRMTYPE']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
+                    fcode = curs.fetchone()[0]
+                    if fcode is not None:
+                        curs.execute(
+                            f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['STRMTYPE']['metric_id']}, {str(fcode)})")
+
+                if 'ACTFLDAREA' in metrics:
+                    curs.execute(
+                        f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['ACTFLDAREA']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
+                    afp_area = curs.fetchone()[0]
+                    if afp_area is not None:
+                        curs.execute(
+                            f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['ACTFLDAREA']['metric_id']}, {str(afp_area)})")
+
+                if 'INACTFLDAREA' in metrics:
+                    curs.execute(
+                        f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['INACTFLDAREA']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
+                    ifp_area = curs.fetchone()[0]
+                    if ifp_area is not None:
+                        curs.execute(
+                            f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['INACTFLDAREA']['metric_id']}, {str(ifp_area)})")
+
+                if 'ACTCHANAREA' in metrics:
+                    curs.execute(
+                        f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['ACTCHANAREA']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
+                    ac_area = curs.fetchone()[0]
+                    if ac_area is not None:
+                        curs.execute(
+                            f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['ACTCHANAREA']['metric_id']}, {str(ac_area)})")
+
+                if 'FLDPLNAREA' in metrics:
+                    curs.execute(
+                        f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['FLDPLNAREA']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
+                    fp_area = curs.fetchone()[0]
+                    if fp_area is not None:
+                        curs.execute(
+                            f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['FLDPLNAREA']['metric_id']}, {str(fp_area)})")
+                        
+                if 'STRMSIZE' in metrics:
+                    curs.execute(
+                        f"SELECT measurement_value FROM measurement_values WHERE measurement_id = {measurements['STRMSTRLENG']['measurement_id']} AND dgo_id = {igo_dgo[igo_id]}")
+                    stream_length = curs.fetchone()[0]
+                    curs.execute(
+                        f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['ACTCHANAREA']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
+                    ac = curs.fetchone()[0]
+
+                    stream_size_metric = None if any(value is None for value in [
+                                                    ac, stream_length]) else float(ac) / float(stream_length)
+                    if stream_size_metric is not None:
+                        curs.execute(
+                            f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['STRMSIZE']['metric_id']}, {str(stream_size_metric)})")
+
+                if 'ECORGIII' in metrics:
+                    curs.execute(
+                        f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['ECORGIII']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
+                    ecor3 = curs.fetchone()[0]
+                    if ecor3 is not None:
+                        curs.execute(
+                            f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['ECORGIII']['metric_id']}, {str(ecor3)})")
+
+                if 'ECORGIV' in metrics:
+                    curs.execute(
+                        f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['ECORGIV']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
+                    ecor4 = curs.fetchone()[0]
+                    if ecor4 is not None:
+                        curs.execute("""INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES (?, ?, ?)""", (
+                            igo_id, metrics['ECORGIV']['metric_id'], str(ecor4)))
+
+                if 'CONF' in metrics:
+                    curs.execute(
+                        f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['CONF']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
+                    count = curs.fetchone()[0]
+                    if count is not None:
+                        curs.execute(
+                            f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['CONF']['metric_id']}, {str(count)})")
+
+                if 'DIFF' in metrics:
+                    curs.execute(
+                        f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['DIFF']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
+                    count2 = curs.fetchone()[0]
+                    if count2 is not None:
+                        curs.execute(
+                            f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['DIFF']['metric_id']}, {str(count2)})")
+
+                if 'DRAINAREA' in metrics:
+                    curs.execute(
+                        f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['DRAINAREA']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
+                    da = curs.fetchone()[0]
+                    if da is not None:
+                        curs.execute(
+                            f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['DRAINAREA']['metric_id']}, {str(da)})")
+            
+                if 'CONFMARG' in metrics and confinement_dgos:
+                    curs.execute(
+                        f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['CONFMARG']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
+                    conf_margin = curs.fetchone()[0]
+                    if conf_margin is not None:
+                        curs.execute(
+                            f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['CONFMARG']['metric_id']}, {str(conf_margin)})")
+            
+                if 'STATE' in metrics:
+                    curs.execute(
+                        f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['STATE']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
+                    state = curs.fetchone()[0]
+                    if state is not None:
+                        curs.execute("""INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES (?, ?, ?)""", (
+                            igo_id, metrics['STATE']['metric_id'], str(state)))
+
+                if 'COUNTY' in metrics:
+                    curs.execute(
+                        f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['COUNTY']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
+                    county = curs.fetchone()[0]
+                    if county is not None:
+                        curs.execute("""INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES (?, ?, ?)""", (
+                            igo_id, metrics['COUNTY']['metric_id'], str(county)))
+                        
+                if 'AGENCY' in metrics:
+                    curs.execute(
+                        f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['AGENCY']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
+                    agency = curs.fetchone()[0]
+                    if agency is not None:
+                        curs.execute("""INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES (?, ?, ?)""", (
+                            igo_id, metrics['AGENCY']['metric_id'], str(agency)))
+                        
             if 'STRMGRAD' in metrics:
                 curs.execute(
                     f"SELECT measurement_value FROM measurement_values WHERE measurement_id = {measurements['STRMMINELEV']['measurement_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
@@ -908,62 +1037,6 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                 if gradient is not None:
                     curs.execute(
                         f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['VALGRAD']['metric_id']}, {str(gradient)})")
-
-            if 'STRMORDR' in metrics:
-                curs.execute(
-                    f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['STRMORDR']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
-                stream_order = curs.fetchone()[0]
-                if stream_order is not None:
-                    curs.execute(
-                        f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['STRMORDR']['metric_id']}, {str(stream_order)})")
-
-            if 'HEDWTR' in metrics:
-                curs.execute(
-                    f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['HEDWTR']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
-                hw = curs.fetchone()[0]
-                if hw is not None:
-                    curs.execute(
-                        f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['HEDWTR']['metric_id']}, {str(hw)})")
-
-            if 'STRMTYPE' in metrics:
-                curs.execute(
-                    f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['STRMTYPE']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
-                fcode = curs.fetchone()[0]
-                if fcode is not None:
-                    curs.execute(
-                        f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['STRMTYPE']['metric_id']}, {str(fcode)})")
-
-            if 'ACTFLDAREA' in metrics:
-                curs.execute(
-                    f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['ACTFLDAREA']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
-                afp_area = curs.fetchone()[0]
-                if afp_area is not None:
-                    curs.execute(
-                        f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['ACTFLDAREA']['metric_id']}, {str(afp_area)})")
-
-            if 'INACTFLDAREA' in metrics:
-                curs.execute(
-                    f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['INACTFLDAREA']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
-                ifp_area = curs.fetchone()[0]
-                if ifp_area is not None:
-                    curs.execute(
-                        f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['INACTFLDAREA']['metric_id']}, {str(ifp_area)})")
-
-            if 'ACTCHANAREA' in metrics:
-                curs.execute(
-                    f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['ACTCHANAREA']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
-                ac_area = curs.fetchone()[0]
-                if ac_area is not None:
-                    curs.execute(
-                        f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['ACTCHANAREA']['metric_id']}, {str(ac_area)})")
-
-            if 'FLDPLNAREA' in metrics:
-                curs.execute(
-                    f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['FLDPLNAREA']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
-                fp_area = curs.fetchone()[0]
-                if fp_area is not None:
-                    curs.execute(
-                        f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['FLDPLNAREA']['metric_id']}, {str(fp_area)})")
 
             if 'INTGWDTH' in metrics:
                 if centerline_length is None:
@@ -1114,53 +1187,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                 if relative_flow_length is not None:
                     curs.execute(
                         f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['RELFLWLNGTH']['metric_id']}, {str(relative_flow_length)})")
-
-            if 'STRMSIZE' in metrics:
-                curs.execute(
-                    f"SELECT measurement_value FROM measurement_values WHERE measurement_id = {measurements['STRMSTRLENG']['measurement_id']} AND dgo_id = {igo_dgo[igo_id]}")
-                stream_length = curs.fetchone()[0]
-                curs.execute(
-                    f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['ACTCHANAREA']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
-                ac = curs.fetchone()[0]
-
-                stream_size_metric = None if any(value is None for value in [
-                                                 ac, stream_length]) else float(ac) / float(stream_length)
-                if stream_size_metric is not None:
-                    curs.execute(
-                        f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['STRMSIZE']['metric_id']}, {str(stream_size_metric)})")
-
-            if 'ECORGIII' in metrics:
-                curs.execute(
-                    f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['ECORGIII']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
-                ecor3 = curs.fetchone()[0]
-                if ecor3 is not None:
-                    curs.execute(
-                        f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['ECORGIII']['metric_id']}, {str(ecor3)})")
-
-            if 'ECORGIV' in metrics:
-                curs.execute(
-                    f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['ECORGIV']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
-                ecor4 = curs.fetchone()[0]
-                if ecor4 is not None:
-                    curs.execute("""INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES (?, ?, ?)""", (
-                        igo_id, metrics['ECORGIV']['metric_id'], str(ecor4)))
-
-            if 'CONF' in metrics:
-                curs.execute(
-                    f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['CONF']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
-                count = curs.fetchone()[0]
-                if count is not None:
-                    curs.execute(
-                        f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['CONF']['metric_id']}, {str(count)})")
-
-            if 'DIFF' in metrics:
-                curs.execute(
-                    f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['DIFF']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
-                count2 = curs.fetchone()[0]
-                if count2 is not None:
-                    curs.execute(
-                        f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['DIFF']['metric_id']}, {str(count2)})")
-
+                
             if 'TRIBS' in metrics:
                 if stream_length is None:
                     curs.execute(
@@ -1202,14 +1229,6 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                 if sinuosity is not None:
                     curs.execute(
                         f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['CHANSIN']['metric_id']}, {str(sinuosity)})")
-
-            if 'DRAINAREA' in metrics:
-                curs.execute(
-                    f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['DRAINAREA']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
-                da = curs.fetchone()[0]
-                if da is not None:
-                    curs.execute(
-                        f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['DRAINAREA']['metric_id']}, {str(da)})")
 
             if 'VALAZMTH' in metrics:
                 curs.execute(
@@ -1259,14 +1278,6 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                     curs.execute(
                         f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['CONST']['metric_id']}, {str(cons_ratio)})")
 
-            if 'CONFMARG' in metrics and confinement_dgos:
-                curs.execute(
-                    f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['CONFMARG']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
-                conf_margin = curs.fetchone()[0]
-                if conf_margin is not None:
-                    curs.execute(
-                        f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['CONFMARG']['metric_id']}, {str(conf_margin)})")
-
             if 'ROADDENS' in metrics and anthro_dgos:
                 with sqlite3.connect(inputs_gpkg) as conn:
                     curs2 = conn.cursor()
@@ -1314,30 +1325,6 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                 if fp_access is not None:
                     curs.execute(
                         f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['FPACCESS']['metric_id']}, {str(fp_access)})")
-
-            if 'AGENCY' in metrics:
-                curs.execute(
-                    f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['AGENCY']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
-                agency = curs.fetchone()[0]
-                if agency is not None:
-                    curs.execute("""INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES (?, ?, ?)""", (
-                        igo_id, metrics['AGENCY']['metric_id'], str(agency)))
-
-            if 'STATE' in metrics:
-                curs.execute(
-                    f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['STATE']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
-                state = curs.fetchone()[0]
-                if state is not None:
-                    curs.execute("""INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES (?, ?, ?)""", (
-                        igo_id, metrics['STATE']['metric_id'], str(state)))
-
-            if 'COUNTY' in metrics:
-                curs.execute(
-                    f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['COUNTY']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
-                county = curs.fetchone()[0]
-                if county is not None:
-                    curs.execute("""INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES (?, ?, ?)""", (
-                        igo_id, metrics['COUNTY']['metric_id'], str(county)))
 
             conn.commit()
     progbar.finish()
