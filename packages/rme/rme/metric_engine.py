@@ -377,6 +377,9 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                     for pt_ftr, *_ in lyr_points.iterate_features(attribute_filter=f'LevelPathI = {level_path} and seg_distance = {segment_distance}'):
                         stream_size_id = pt_ftr.GetField('stream_size')
                         break
+                if stream_size_id is None:
+                    log.warning(f'Unable to find stream size for dgo {dgo_id} in level path {level_path}')
+                    stream_size_id = 0
 
                 stream_size = stream_size_lookup[stream_size_id]
                 # window_geoms = {}  # Different metrics may require different windows. Store generated windows here for reuse.
@@ -727,9 +730,13 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                         curs.execute(
                             f"SELECT Road_len, centerline_length FROM anthro_dgo WHERE fid = {dgo_id}")
                         roadd = curs.fetchone()
-                        road_density = roadd[0] / \
-                            roadd[1] if roadd[1] > 0.0 else None
-                    metrics_output[metric['metric_id']] = str(road_density)
+                        if roadd[0] is not None and roadd[1] is not None:
+                            road_density = roadd[0] / \
+                                roadd[1] if roadd[1] > 0.0 else None
+                            metrics_output[metric['metric_id']] = str(road_density)
+                        else:
+                            road_density = None
+                        metrics_output[metric['metric_id']] = None
 
                 if 'RAILDENS' in metrics and anthro_dgos:
                     metric = metrics['RAILDENS']
@@ -739,9 +746,13 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                         curs.execute(
                             f"SELECT Rail_len, centerline_length FROM anthro_dgo WHERE fid = {dgo_id}")
                         raild = curs.fetchone()
-                        rail_density = raild[0] / \
-                            raild[1] if raild[1] > 0.0 else None
-                    metrics_output[metric['metric_id']] = str(rail_density)
+                        if raild[0] is not None and raild[1] is not None:
+                            rail_density = raild[0] / \
+                                raild[1] if raild[1] > 0.0 else None
+                            metrics_output[metric['metric_id']] = str(rail_density)
+                        else:
+                            rail_density = None
+                            metrics_output[metric['metric_id']] = None
 
                 if 'LUI' in metrics and anthro_dgos:
                     metric = metrics['LUI']
@@ -1019,8 +1030,9 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
             if 'VALGRAD' in metrics:
                 curs.execute(
                     f"SELECT measurement_value FROM measurement_values WHERE measurement_id = {measurements['VALLENG']['measurement_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
-                centerline_length = sum([float(row[0])
-                                        for row in curs.fetchall()])
+                cl = [float(row[0])
+                          for row in curs.fetchall() if row[0] is not None]
+                centerline_length = sum(cl) if len(cl) > 0 else None
                 if any(elev is None for elev in [min_elev, max_elev]):
                     curs.execute(
                         f"SELECT measurement_value FROM measurement_values WHERE measurement_id = {measurements['STRMMINELEV']['measurement_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
