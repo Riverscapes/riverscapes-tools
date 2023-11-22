@@ -377,7 +377,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                     for pt_ftr, *_ in lyr_points.iterate_features(attribute_filter=f'LevelPathI = {level_path} and seg_distance = {segment_distance}'):
                         stream_size_id = pt_ftr.GetField('stream_size')
                         break
-                if stream_size_id is None:
+                if not 'stream_size_id' in locals():
                     log.warning(f'Unable to find stream size for dgo {dgo_id} in level path {level_path}')
                     stream_size_id = 0
 
