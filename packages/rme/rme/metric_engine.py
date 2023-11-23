@@ -1296,6 +1296,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                     curs2.execute(
                         f"SELECT Road_len, centerline_length FROM anthro_dgo WHERE fid IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
                     roadd = curs2.fetchall()
+                    log.info(str(roadd))
                     for vals in roadd:
                         if vals[0] is None or vals[1] is None:
                             roadd.remove(vals)
