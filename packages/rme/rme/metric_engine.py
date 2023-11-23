@@ -1296,8 +1296,11 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                     curs2.execute(
                         f"SELECT Road_len, centerline_length FROM anthro_dgo WHERE fid IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
                     roadd = curs2.fetchall()
-                    road_density = sum([r[0] for r in roadd]) / sum([r[1]
-                                                                     for r in roadd]) if sum([r[1] for r in roadd]) > 0.0 else None
+                    if roadd[0] is not None and roadd[1] is not None:
+                        road_density = sum([r[0] for r in roadd]) / sum([r[1]
+                                                                        for r in roadd]) if sum([r[1] for r in roadd]) > 0.0 else None
+                    else:
+                        road_density = None
                 if road_density is not None:
                     curs.execute(
                         f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['ROADDENS']['metric_id']}, {str(road_density)})")
@@ -1308,8 +1311,11 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                     curs2.execute(
                         f"SELECT Rail_len, centerline_length FROM anthro_dgo WHERE fid IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
                     raild = curs2.fetchall()
-                    rail_density = sum([r[0] for r in raild]) / sum([r[1]
-                                                                     for r in raild]) if sum([r[1] for r in raild]) > 0.0 else None
+                    if raild[0] is not None and raild[1] is not None:
+                        rail_density = sum([r[0] for r in raild]) / sum([r[1]
+                                                                        for r in raild]) if sum([r[1] for r in raild]) > 0.0 else None
+                    else:
+                        rail_density = None
                 if rail_density is not None:
                     curs.execute(
                         f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['RAILDENS']['metric_id']}, {str(rail_density)})")
