@@ -125,7 +125,7 @@
       ]
     },
     {
-      "name": "EXPERIMENTAL PROJECT FILES",
+      "name": "EXPERIMENTAL - Scrape Projects",
       "type": "python",
       "request": "launch",
       "module": "cybercastor.downloadFiles",

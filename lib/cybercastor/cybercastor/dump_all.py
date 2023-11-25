@@ -26,8 +26,10 @@ def dump_all(sqlite_db_dir, cybercastor_api_url, username, password, template_ge
     log = Logger('Dump all Riverscapes and Cybercastor data to sqlite')
 
     if not os.path.exists(template_geom):
-        log.error(f'The GeoPackge with HUC geoemtry does not exist: {template_geom}')
-        raise Exception(f'The GeoPackge with HUC geoemtry does not exist: {template_geom}')
+        log.error(
+            f'The GeoPackge with HUC geoemtry does not exist: {template_geom}')
+        raise Exception(
+            f'The GeoPackge with HUC geoemtry does not exist: {template_geom}')
 
     sqlite_db_path = os.path.join(sqlite_db_dir, f'DataExchange_{stage}.gpkg')
 
@@ -40,12 +42,12 @@ def dump_all(sqlite_db_dir, cybercastor_api_url, username, password, template_ge
         log.info(f'Creating new sqlite db: {sqlite_db_path}')
         # First copy the geometry in. This will give us the gpkg tables the schema depends on
         dump_geom(sqlite_db_path, template_geom)
-    
+
     # Ensure the schema is up to date
     create_database('cybercastor/lib/dump/schema.sql', sqlite_db_path)
 
     # Then add the cybercastor data
-    dump_cybercastor(sqlite_db_path, cybercastor_api_url, username, password, stage)
+    # dump_cybercastor(sqlite_db_path, cybercastor_api_url, username, password, stage)
     # Then add the riverscapes data (authentication will be a browser popup)
     dump_riverscapes(template_geom, stage)
     # # Then write any additional views
