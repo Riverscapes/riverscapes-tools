@@ -86,61 +86,51 @@ def include_features(source_layer: VectorBase, out_layer: VectorBase, attribute_
     return included_fids
 
 
-def create_stream_size_zones(catchment_layer, flowlines_layer, join_field, copy_field, zones, out_layer):
+def create_stream_size_zones(catchment_layer: str, id_field:str, data_field:str, zones:dict, out_layer:str):
+    """Add stream size zones to catchment layer
 
-    # Load drainage area
-    with sqlite3.connect(os.path.dirname(flowlines_layer)) as conn:
-        cursor = conn.cursor()
-        join_data = cursor.execute(f"""SELECT {join_field}, {copy_field} FROM {os.path.basename(flowlines_layer)}""").fetchall()
-        data = {int(value[0]): value[1] for value in join_data}
+    Args:
+        catchment_layer (str): source catchment layer
+        id_field (str): NHDPlusID or other identifying field
+        data_field (str): field to use for zone calculation
+        zones (dict): dictionary of zone values
+        out_layer (str): output layer
+    """
 
     with GeopackageLayer(os.path.dirname(catchment_layer), layer_name=os.path.basename(catchment_layer)) as lyr_source, \
             GeopackageLayer(os.path.dirname(out_layer), layer_name=os.path.basename(out_layer), write=True) as lyr_destination:
 
         # Create Output
-        srs = lyr_source.spatial_ref
-        lyr_destination.create_layer(ogr.wkbMultiPolygon, spatial_ref=srs)
-        lyr_destination.create_field(copy_field, field_type=ogr.OFTReal)
+        lyr_destination.create_layer(ogr.wkbPolygon, spatial_ref=lyr_source.spatial_ref)
+        lyr_destination.create_field(data_field, field_type=ogr.OFTReal)
         for attribute_type in zones:
             lyr_destination.create_field(f'{attribute_type}_Zone', field_type=ogr.OFTInteger)
 
-        out_layer_defn = lyr_destination.ogr_layer.GetLayerDefn()
+        out_layer_defn: ogr.FeatureDefn = lyr_destination.ogr_layer.GetLayerDefn()
         lyr_destination.ogr_layer.StartTransaction()
         # Build Zones
-        for feat_source, *_ in lyr_source.iterate_features("Joining attributes"):
-
-            join_value = feat_source.GetField(join_field)
-            if join_value is not None:
-                join_id = int(join_value)
-
-                if join_id in data:
-
-                    geom = feat_source.GetGeometryRef()
-                    feat_dest = ogr.Feature(out_layer_defn)
-                    feat_dest.SetFID(join_id)
-                    if geom.GetGeometryName() == 'POLYGON':
-                        temp_geom = ogr.Geometry(ogr.wkbMultiPolygon)
-                        temp_geom.AddGeometry(geom)
-                        geom = temp_geom
-                    feat_dest.SetGeometry(geom)
-
-                    feat_dest.SetField(copy_field, data[join_id])  # Set drainage area
-                    if data[join_id]:  # if the drainage area is not null
-
-                        out_zones = {}
-                        for zone_type, zone_values in zones.items():
-                            for i, value in zone_values.items():
-                                if value:
-                                    if data[join_id] < value:
-                                        out_zones[zone_type] = i
-                                        break
-                                else:
-                                    out_zones[zone_type] = i
-
-                        for zone_field, zone_value in out_zones.items():
-                            feat_dest.SetField(f'{zone_field}_Zone', zone_value)
-
-                    lyr_destination.ogr_layer.CreateFeature(feat_dest)
+        feat_source: ogr.Feature = None
+        for feat_source, *_ in lyr_source.iterate_features("Building Transform Zones"):
+            feat_dest = ogr.Feature(out_layer_defn)
+            id_value = feat_source.GetField(id_field)
+            feat_dest.SetFID(int(id_value))
+            geom: ogr.Geometry = feat_source.GetGeometryRef()
+            feat_dest.SetGeometry(geom)
+            data_value = feat_source.GetField(data_field)
+            feat_dest.SetField(data_field, data_value)
+            if data_value is not None:
+                out_zones = {}
+                for zone_type, zone_values in zones.items():
+                    for i, value in zone_values.items():
+                        if value:
+                            if data_value < value:
+                                out_zones[zone_type] = i
+                                break
+                        else:
+                            out_zones[zone_type] = i
+                for zone_field, zone_value in out_zones.items():
+                    feat_dest.SetField(f'{zone_field}_Zone', zone_value)
+            lyr_destination.ogr_layer.CreateFeature(feat_dest)
         lyr_destination.ogr_layer.CommitTransaction()
 
 

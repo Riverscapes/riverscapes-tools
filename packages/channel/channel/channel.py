@@ -11,20 +11,17 @@ import os
 import sys
 import traceback
 import time
-import json
 from typing import List, Dict
-from venv import create
 
 from osgeo import ogr
-from rscommons.classes.rs_project import RSMeta, RSMetaTypes, RSMetaExt
-from rscommons.classes.vector_base import get_utm_zone_epsg
 
+from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.util import safe_makedirs, parse_metadata, pretty_duration
 from rscommons import RSProject, RSLayer, ModelConfig, Logger, dotenv, initGDALOGRErrors
-from rscommons import GeopackageLayer, VectorBase, get_shp_or_gpkg
+from rscommons import GeopackageLayer, get_shp_or_gpkg
 from rscommons.math import safe_eval
 from rscommons.raster_buffer_stats import raster_buffer_stats2
-from rscommons.vector_ops import get_geometry_unary_union, buffer_by_field, copy_feature_class, merge_feature_classes, remove_holes_feature_class, difference
+from rscommons.vector_ops import get_geometry_unary_union, buffer_by_field, copy_feature_class, merge_feature_classes, difference
 from rscommons.vbet_network import vbet_network
 from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions
 

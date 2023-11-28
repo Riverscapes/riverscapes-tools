@@ -13,11 +13,10 @@ import os
 import sys
 import argparse
 import traceback
-import time
 import sqlite3
 import shutil
-from typing import List, Dict
 from copy import deepcopy
+import warnings
 
 from osgeo import ogr, gdal
 import rasterio
@@ -25,13 +24,12 @@ from rasterio.windows import Window
 from shapely.geometry import box
 import numpy as np
 
-
 from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, GeopackageLayer, dotenv, VectorBase, initGDALOGRErrors
 from rscommons.vector_ops import copy_feature_class, polygonize, difference, collect_linestring, collect_feature_class
 from rscommons.geometry_ops import get_extent_as_geom, get_rectangle_as_geom
 from rscommons.util import safe_makedirs, parse_metadata, pretty_duration, safe_remove_dir
 from rscommons.hand import run_subprocess
-from rscommons.vbet_network import copy_vaa_attributes, join_attributes, create_stream_size_zones, get_channel_level_path, get_distance_lookup, vbet_network
+from rscommons.vbet_network import create_stream_size_zones, get_distance_lookup, vbet_network
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.raster_warp import raster_warp
 from rscommons import TimerBuckets, TimerWaypoints
@@ -60,12 +58,11 @@ LYR_DESCRIPTIONS_JSON = os.path.join(os.path.dirname(__file__), 'layer_descripti
 LayerTypes = {
     'DEM': RSLayer('DEM', 'DEM', 'Raster', 'inputs/dem.tif'),
     'SLOPE_RASTER': RSLayer('Slope Raster', 'SLOPE_RASTER', 'Raster', 'inputs/slope.tif'),
-    'TWI_RASTER': RSLayer('Topographic Wetness Index (TWI) Raster', 'TWI_RASTER', 'Raster', 'inputs/twi.tif'),
     'HILLSHADE': RSLayer('DEM Hillshade', 'HILLSHADE', 'Raster', 'inputs/dem_hillshade.tif'),
     'INPUTS': RSLayer('Inputs', 'INPUTS', 'Geopackage', 'inputs/vbet_inputs.gpkg', {
         'FLOWLINES': RSLayer('NHD Flowlines', 'FLOWLINES', 'Vector', 'flowlines'),
         # 'FLOW_AREAS': RSLayer('NHD Flow Areas', 'FLOW_AREAS', 'Vector', 'flowareas'),
-        'FLOWLINES_VAA': RSLayer('NHD Flowlines with Attributes', 'FLOWLINES_VAA', 'Vector', 'Flowlines_VAA'),
+        # 'FLOWLINES_VAA': RSLayer('NHD Flowlines with Attributes', 'FLOWLINES_VAA', 'Vector', 'Flowlines_VAA'),
         'CHANNEL_AREA_POLYGONS': RSLayer('Channel Area Polygons', 'CHANNEL_AREA_POLYGONS', 'Vector', 'channel_area_polygons'),
         'CATCHMENTS': RSLayer('NHD Catchments', 'CATCHMENTS', 'Vector', 'catchments'),
     }),
@@ -94,7 +91,6 @@ LayerTypes = {
 
     'TRANSFORMED_SLOPE': RSLayer('Transformed Slope', 'TRANSFORMED_SLOPE', 'Raster', 'intermediates/slope_transformed.tif'),
     'TRANSFORMED_SLOPE_INTERIOR': RSLayer('Transformed Slope (Interior)', 'TRANSFORMED_SLOPE_INTERIOR', 'Raster', 'intermediates/slope_transformed_interior.tif'),
-    # 'NORMALIZED_TWI': RSLayer('Normalized TWI', 'NORMALIZED_TWI', 'Raster', 'intermediates/twi_normalized.tif'),
 
     'VBET_ZONES': RSLayer('VBET LevelPath Zones', 'VBET_ZONES', 'Raster', 'intermediates/vbet_level_path_zones.tif'),
     'ACTIVE_FP_ZONES': RSLayer('Active Floodplain LevelPath Zones', 'ACTIVE_FP_ZONES', 'Raster', 'intermediates/active_fp_level_path_zones.tif'),
@@ -114,9 +110,9 @@ LayerTypes = {
 }
 
 
-def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchments, in_channel_area, vaa_table, project_folder, huc,
-                     level_paths=None, in_pitfill_dem=None, in_dinfflowdir_ang=None, in_dinfflowdir_slp=None, in_twi_raster=None, meta=None, debug=False,
-                     reach_codes=None, mask=None, temp_folder=None):
+def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_catchments, in_channel_area, project_folder, huc,
+         level_paths=None, in_pitfill_dem=None, in_dinfflowdir_ang=None, in_dinfflowdir_slp=None, meta=None, debug=False,
+         reach_codes=None, mask=None, temp_folder=None):
     """Run VBET"""
 
     thresh_vals = {'VBET_IA': 0.85, 'VBET_FULL': 0.65}
@@ -165,33 +161,31 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     GeopackageLayer.delete(intermediates_gpkg)
     GeopackageLayer.delete(vbet_gpkg)
 
-    line_network_features = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
-
     clip_mask = None
     if mask is not None:
         clip_mask = collect_feature_class(mask)
         clip_mask = clip_mask.MakeValid()
 
-    log.info('Preparing network:')
-    vbet_network(in_line_network, None, line_network_features, fcodes=reach_codes, hard_clip_shape=clip_mask)
-    catchment_features = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['CATCHMENTS'].rel_path)
-    copy_feature_class(in_catchments, catchment_features)
+    log.info('Preparing network')
+    # copy the flowlines and catchments to the inputs geopackage, filtered by reach codes if provided
+    raw_line_network = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
+    copy_feature_class(in_line_network, raw_line_network)
+    catchments = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['CATCHMENTS'].rel_path)
+    copy_feature_class(in_catchments, catchments)
     channel_area = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['CHANNEL_AREA_POLYGONS'].rel_path)
     copy_feature_class(in_channel_area, channel_area)
 
-    log.info('Building VBET Database:')
+    log.info('Building VBET Database')
     build_vbet_database(inputs_gpkg)
     vbet_run = load_configuration(inputs_gpkg)
 
-    vaa_table_name = copy_vaa_attributes(line_network_features, vaa_table)
-    line_network = join_attributes(inputs_gpkg, "flowlines_vaa", os.path.basename(line_network_features), vaa_table_name, 'NHDPlusID', ['LevelPathI', 'DnLevelPat', 'UpLevelPat', 'Divergence'], 4326)
-    catchments = join_attributes(inputs_gpkg, "catchments_vaa", os.path.basename(catchment_features), vaa_table_name, 'NHDPlusID', ['LevelPathI', 'DnLevelPat', 'UpLevelPat', 'Divergence'], 4326, geom_type='POLYGON')
+    log.info('Preparing vbet network')
+    line_network = os.path.join(inputs_gpkg, LayerTypes['INTERMEDIATES'].sub_layers['VBET_NETWORK'].rel_path)
+    vbet_network(raw_line_network, None, line_network, fcodes=reach_codes, hard_clip_shape=clip_mask)
 
-    get_channel_level_path(channel_area, line_network, vaa_table)
-
-    catchments_path = os.path.join(intermediates_gpkg, 'transform_zones')
-    vaa_table_path = os.path.join(inputs_gpkg, vaa_table_name)
-    create_stream_size_zones(catchments, vaa_table_path, 'NHDPlusID', 'DivDASqKm', vbet_run['Zones'], catchments_path)
+    log.info('Preparing the catchment transform zones')
+    catchments_transformed = os.path.join(intermediates_gpkg, 'transform_zones')
+    create_stream_size_zones(catchments, 'NHDPlusID', 'DivDASqKm', vbet_run['Zones'], catchments_transformed)
 
     in_rasters = {}
     _proj_hillshade_node, _hillshade = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], in_hillshade, replace=True)
@@ -224,16 +218,6 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     else:
         _proj_dinfflowdir_ang_node, dinfflowdir_ang = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_ANG'], in_dinfflowdir_ang, replace=True)
         _proj_dinfflowdir_slp_node, dinfflowdir_slp = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_SLP'], in_dinfflowdir_slp, replace=True)
-
-    # if not in_twi_raster:
-    #     twi_raster = os.path.join(project_folder, LayerTypes['TWI_RASTER'].rel_path)
-    #     # sca = os.path.join(project_folder, 'sca.tif')
-    #     twi_status = run_subprocess(project_folder, ["mpiexec", "-n", NCORES, "twi", "-slp", dinfflowdir_slp, '-twi', twi_raster])  # "-sca", sca,
-    #     if twi_status != 0 or not os.path.isfile(twi_raster):
-    #         raise Exception('TauDEM: TWI failed')
-    #     _node_twi, in_rasters['TWI'] = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['TWI_RASTER'])
-    # else:
-    #     _node_twi, in_rasters['TWI'] = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['TWI_RASTER'], in_twi_raster, replace=True)
 
     log.info('Writing Topo Evidence raster for project')
     read_rasters = {name: rasterio.open(raster) for name, raster in in_rasters.items()}
@@ -281,7 +265,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         GeopackageLayer(output_vbet, write=True) as lyr_vbet_init, \
         GeopackageLayer(output_vbet_ia, write=True) as lyr_active_vbet_init, \
             GeopackageLayer(line_network) as lyr_ref:
-        fields = {'LevelPathI': ogr.OFTString}
+        fields = {'level_path': ogr.OFTString}
         lyr_temp_cl_init.create_layer(ogr.wkbMultiLineString, spatial_ref=lyr_ref.spatial_ref, fields=fields)
         lyr_temp_cl_init.create_field('CL_Part_Index', ogr.OFTInteger)
         lyr_vbet_init.create_layer(ogr.wkbMultiPolygon, spatial_ref=lyr_ref.spatial_ref, fields=fields)
@@ -291,7 +275,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     level_paths_to_run = []
     with sqlite3.connect(inputs_gpkg) as conn:
         curs = conn.cursor()
-        level_paths_raw = curs.execute("SELECT LevelPathI, MAX(DivDASqKm) AS drainage FROM flowlines_vaa GROUP BY LevelPathI ORDER BY drainage DESC").fetchall()
+        level_paths_raw = curs.execute("SELECT level_path, MAX(DivDASqKM) AS drainage FROM catchments GROUP BY level_path ORDER BY drainage DESC").fetchall()
         all_level_paths = list(str(int(lp[0])) for lp in level_paths_raw)
         level_paths_drainage = {str(int(lp[0])): lp[1] for lp in level_paths_raw}
         level_paths_drainage[None] = 10
@@ -308,7 +292,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             level_paths_to_run = all_level_paths
         all_level_paths = None
 
-        level_path_stream_order = dict([(str(int(row[0])), row[1]) for row in curs.execute("SELECT LevelPathI, MAX(StreamOrde) FROM NHDPlusFlowlineVAA GROUP BY LevelPathI ").fetchall()])
+        level_path_stream_order = dict([(str(int(row[0])), row[1]) for row in curs.execute("SELECT level_path, MAX(stream_order) FROM vbet_network GROUP BY level_path").fetchall()])
         level_path_stream_order[None] = 1
 
     # process all polygons that aren't assigned a level path: ponds, waterbodies etc.
@@ -372,7 +356,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
         safe_makedirs(temp_folder_lpath)
 
         # Gather the channel area polygon for the level path
-        sql = f"LevelPathI = {level_path}" if level_path is not None else "LevelPathI is NULL"
+        sql = f"level_path = {level_path}" if level_path is not None else "level_path is NULL"
         level_path_polygons = os.path.join(temp_folder_lpath, 'channel_polygons.gpkg', f'level_path_{level_path}')
         with TimerBuckets('ogr'):
             copy_feature_class(channel_area, level_path_polygons, attribute_filter=sql)
@@ -388,8 +372,9 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                         continue
                     # Hack to check if any channel geoms are empty
                     check_empty = False
+                    feat: ogr.Feature = None
                     for feat, *_ in lyr_polygons.iterate_features():
-                        geom_test = feat.GetGeometryRef()
+                        geom_test: ogr.Geometry = feat.GetGeometryRef()
                         if geom_test.IsEmpty():
                             check_empty = True
                     if check_empty is True:
@@ -400,7 +385,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                     channel_bbox = lyr_polygons.ogr_layer.GetExtent()
                     channel_buffer_size = lyr_polygons.rough_convert_metres_to_vector_units(400)
 
-                channel_envelope_geom = get_rectangle_as_geom(channel_bbox)
+                channel_envelope_geom:ogr.Geometry = get_rectangle_as_geom(channel_bbox)
                 log.debug(f'channel_envelope_geom area: {channel_envelope_geom.Area}')
 
                 if not raster_envelope_geom.Intersects(channel_envelope_geom):
@@ -408,16 +393,17 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                     continue
 
                 with GeopackageLayer(catchments) as lyr_catchments:
-                    geom_envelope = channel_envelope_geom.Clone()
+                    geom_envelope: ogr.Geometry = channel_envelope_geom.Clone()
+                    feat_catchment: ogr.Feature = None
                     for feat_catchment, *_ in lyr_catchments.iterate_features(clip_shape=channel_envelope_geom):
-                        geom_catchment = feat_catchment.GetGeometryRef()
+                        geom_catchment: ogr.Geometry = feat_catchment.GetGeometryRef()
                         geom_catchment_envelope = get_extent_as_geom(geom_catchment)
                         geom_envelope = geom_envelope.Union(geom_catchment_envelope)
                         geom_envelope = get_extent_as_geom(geom_envelope)
 
             with TimerBuckets('ogr'):
                 geom_channel_buffer = geom_envelope.Buffer(channel_buffer_size)
-                envelope_geom = raster_envelope_geom.Intersection(geom_channel_buffer)
+                envelope_geom:ogr.Geometry = raster_envelope_geom.Intersection(geom_channel_buffer)
                 if envelope_geom.IsEmpty():
                     err_msg = f'Empty processing envelope for level path {level_path}'
                     log.error(err_msg)
@@ -458,7 +444,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
             if level_path is not None:
                 # Generate and add rasterized version of level path flowline to make sure endpoint coords are on the raster.
                 level_path_flowlines = os.path.join(temp_folder_lpath, 'flowlines.gpkg', f'level_path_{level_path}')
-                copy_feature_class(line_network, level_path_flowlines, attribute_filter=f'LevelPathI = {level_path}')
+                copy_feature_class(line_network, level_path_flowlines, attribute_filter=f'level_path = {level_path}')
                 rasterized_level_path = os.path.join(temp_folder_lpath, f'rasterized_flowline_{level_path}.tif')
                 rasterize(level_path_flowlines, rasterized_level_path, rasterized_channel, all_touched=True)
             else:
@@ -529,7 +515,11 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                         transform = vbet_run['Transforms'][name][zone]
                         if isinstance(transform, str):
                             locs = {'a': block[name].data}
-                            trans_ds = eval(transform, {'__builtins__': None}, locs)
+                            with warnings.catch_warnings(record=True) as w:
+                                warnings.simplefilter("always")
+                                trans_ds = eval(transform, {'__builtins__': None}, locs)
+                                if w and issubclass(w[-1].category, RuntimeWarning):
+                                    pass
                             transformed[name] = np.ma.MaskedArray(trans_ds, mask=block['HAND'].mask)
 
                         else:
@@ -636,7 +626,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                         geom_centerline = ogr.ForceToMultiLineString(geom_centerline)
                         out_feature = ogr.Feature(lyr_cl.ogr_layer_def)
                         out_feature.SetGeometry(geom_centerline)
-                        out_feature.SetField('LevelPathI', str(level_path))
+                        out_feature.SetField('level_path', str(level_path))
                         out_feature.SetField('CL_Part_Index', cl_index)
                         lyr_cl.ogr_layer.CreateFeature(out_feature)
                         out_feature = None
@@ -744,7 +734,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     log.info('Set Level Path ID for output polygons')
     for layer in [output_vbet, output_vbet_ia, output_inactive_fp]:
         with GeopackageLayer(layer, write=True) as lyr, GeopackageLayer(channel_area) as wblyr:
-            lyr.create_field('LevelPathI', ogr.OFTString)
+            lyr.create_field('level_path', ogr.OFTString)
             for feat, *_ in lyr.iterate_features(write_layers=[lyr]):
                 key = feat.GetField('id')
                 if level_path_keys[key] is None:
@@ -756,7 +746,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
                         lyr.ogr_layer.DeleteFeature(feat.GetFID())
                     feat2 = None
                     continue
-                feat.SetField('LevelPathI', level_path_keys[key])
+                feat.SetField('level_path', level_path_keys[key])
                 lyr.ogr_layer.SetFeature(feat)
                 feat = None
     _tmr_waypt.timer_break('set_level_path_id')
@@ -788,7 +778,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_catchme
     for level_path in level_paths_to_run:
         if level_path is None:
             continue
-        calculate_dgo_metrics(segmentation_polygons, output_centerlines, metric_layers, f"LevelPathI = {level_path}")
+        calculate_dgo_metrics(segmentation_polygons, output_centerlines, metric_layers, f"level_path = {level_path}")
     _tmr_waypt.timer_break('CalcSegmentMetrics')
 
     log.info('Summerizing VBET Metrics')
@@ -926,13 +916,11 @@ def main():
     parser.add_argument('hillshade', type=str)
     parser.add_argument('catchments', type=str)
     parser.add_argument('channel_area', type=str)
-    parser.add_argument('vaa_table', type=str)
     parser.add_argument('output_dir', help='Folder where output VBET project will be created', type=str)
     parser.add_argument('--level_paths', help='csv list of level paths', type=str, default="")
     parser.add_argument('--pitfill', help='riverscapes project metadata as comma separated key=value pairs', default=None)
     parser.add_argument('--dinfflowdir_ang', help='(optional) a little extra logging ', default=None)
     parser.add_argument('--dinfflowdir_slp', help='Add debug tools for tracing things like memory usage at a performance cost.', default=None)
-    parser.add_argument('--twi_raster', help='Add debug tools for tracing things like memory usage at a performance cost.', default=None)
     parser.add_argument('--reach_codes', help='Comma delimited reach codes (FCode) to retain when filtering features. Omitting this option retains all features.', type=str)
     parser.add_argument('--flowline_type', type=str, default='NHD')
     parser.add_argument('--temp_folder', help='(optional) cache folder for downloading files ', type=str)
@@ -964,18 +952,18 @@ def main():
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output_dir, 'vbet_mem.log')
             retcode, max_obj = ThreadRun(
-                vbet_centerlines, memfile,
-                args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir,
-                args.huc, level_paths, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster, meta=meta, reach_codes=reach_codes, mask=args.mask,
+                vbet, memfile,
+                args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.output_dir,
+                args.huc, level_paths, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, meta=meta, reach_codes=reach_codes, mask=args.mask,
                 debug=args.debug, temp_folder=temp_folder
             )
             log.debug(f'Return code: {retcode}, [Max process usage] {max_obj}')
             # Zip up a copy of the temp folder for debugging purposes
             zip_temp_folder(temp_folder, os.path.join(args.output_dir, 'temp'))
         else:
-            vbet_centerlines(
-                args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.vaa_table, args.output_dir,
-                args.huc, level_paths, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, args.twi_raster, meta=meta, reach_codes=reach_codes, mask=args.mask,
+            vbet(
+                args.flowline_network, args.dem, args.slope, args.hillshade, args.catchments, args.channel_area, args.output_dir,
+                args.huc, level_paths, args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, meta=meta, reach_codes=reach_codes, mask=args.mask,
                 debug=args.debug, temp_folder=args.temp_folder
             )
 
