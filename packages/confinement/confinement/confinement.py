@@ -16,7 +16,7 @@ import traceback
 from typing import List, Dict
 import sqlite3
 
-from osgeo import ogr
+from osgeo import ogr, osr
 from osgeo import gdal
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from shapely.ops import split, nearest_points, linemerge, substring
@@ -198,10 +198,20 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
 
     # Load input datasets and set the global srs and a meter conversion factor
     with GeopackageLayer(flowlines_path) as flw_lyr:
-        srs = flw_lyr.spatial_ref
-        meter_conversion = flw_lyr.rough_convert_metres_to_vector_units(1)
-        offset = flw_lyr.rough_convert_metres_to_vector_units(0.1)
-        selection_buffer = flw_lyr.rough_convert_metres_to_vector_units(0.1)
+        empty = False
+        # if there are no flowlines, skip the rest of the process
+        if flw_lyr.ogr_layer.GetFeatureCount() == 0:
+            log.warning("No flowlines found in input flowlines layer, creating empty outputs")
+            ds = gdal.Open(hillshade)
+            prj = ds.GetProjection()
+            srs = osr.SpatialReference(wkt=prj)
+            empty = True
+            
+        if not empty:
+            srs = flw_lyr.spatial_ref
+            meter_conversion = flw_lyr.rough_convert_metres_to_vector_units(1)
+            offset = flw_lyr.rough_convert_metres_to_vector_units(0.1)
+            selection_buffer = flw_lyr.rough_convert_metres_to_vector_units(0.1)
 
     # Calculate Spatial Constants
     # Get a very rough conversion factor for 1m to whatever units the shapefile uses
@@ -293,6 +303,9 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
         inputs_gpkg_lyrs['DGOS'][1], dgo_out_path, epsg=cfg.OUTPUT_EPSG)
     copy_features_fields(
         inputs_gpkg_lyrs['IGOS'][1], igo_out_path, epsg=cfg.OUTPUT_EPSG)
+    
+    if empty:
+        return
 
     with sqlite3.connect(output_gpkg) as conn:
         curs = conn.cursor()
