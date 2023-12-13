@@ -4,6 +4,7 @@ import os
 # from xml.etree import ElementTree as ET
 
 from rscommons import Logger, dotenv, ModelConfig, RSReport, RSProject
+from rscommons.report.get_colors import get_colors
 # from rscommons.util import safe_makedirs, sizeof_fmt
 # from rscommons.plotting import xyscatter, box_plot
 
@@ -16,6 +17,7 @@ class RSContextReport(RSReport):
         super().__init__(rs_project, report_path)
         self.log = Logger('RSContext Report')
         self.project_root = project_root
+        self.colors = get_colors('RSCONTEXT')
         self.report_intro()
 
     def report_intro(self):
