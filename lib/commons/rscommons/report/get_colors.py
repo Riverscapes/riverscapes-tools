@@ -4,13 +4,16 @@ import json
 
 # Project types and their associated json urls for RV web symbology from which to get colors
 PROJECT_TYPES = {
-    'RSCONTEXT': ['https://raw.githubusercontent.com/Riverscapes/RiverscapesXML/master/Symbology/web/Shared/flow_lines.json'],
+    'RSCONTEXT': ['https://raw.githubusercontent.com/Riverscapes/RiverscapesXML/master/Symbology/web/Shared/flow_lines.json',
+                  'https://raw.githubusercontent.com/Riverscapes/RiverscapesXML/master/Symbology/web/Shared/roads.json'],
     'BRAT': ['https://raw.githubusercontent.com/Riverscapes/RiverscapesXML/master/Symbology/web/BRAT/opportunity.json'],
 }
 
 
 def convert_colors(hsl_string):
     """Converts HSL string to RGB (0-1) values"""
+    if 'hsla' in hsl_string:
+        hsl_string = hsl_string.replace('hsla', 'hsl')
     hsl = hsl_string.replace('hsl(', '').replace(')', '').split(',')
     h = int(hsl[0])
     s = int(hsl[1].replace('%', '')) / 100
@@ -48,6 +51,8 @@ def color_dict(json_url):
 
     legend = data['legend']
     for key in legend:
+        if '(dashed)' in key[1]:
+            key[1] = key[1].replace('(dashed)', '').strip()
         colors_tmp[key[1]] = key[0]
         
     colors = {lab: convert_colors(hsl) for lab, hsl in colors_tmp.items()}
