@@ -2,6 +2,7 @@ import argparse
 import sqlite3
 import os
 from xml.etree import ElementTree as ET
+import json
 
 from rscommons import Logger, dotenv, ModelConfig, RSReport, RSProject
 from rscommons.report.get_colors import get_colors
@@ -40,6 +41,10 @@ class RSContextReport(RSReport):
 
         self.flowlines()
         self.layer_summary()
+
+        self.wats_area()
+
+        self.serialize_metrics(os.path.join(os.path.dirname(report_path), 'metrics.json'))
 
     def layer_summary(self):
         section = self.section('LayerSummary', 'Layer Summary')
@@ -102,6 +107,19 @@ class RSContextReport(RSReport):
         plot_wrapper.append(img_wrap)
         section.append(plot_wrapper)
 
+    def wats_area(self):
+        database = os.path.join(os.path.dirname(self.filepath), 'hydrology/nhdplushr.gpkg')
+        conn = sqlite3.connect(database)
+        curs = conn.cursor()
+
+        curs.execute("""SELECT SUM(AreaSqKm) FROM WBDHU10""")
+        area = curs.fetchone()[0]
+        self.metrics['watershedArea'] = area
+
+    def serialize_metrics(self, filepath):
+        with open(filepath, 'w') as f:
+            f.write(json.dumps(self.metrics, indent=4))
+        
 
 if __name__ == '__main__':
 
