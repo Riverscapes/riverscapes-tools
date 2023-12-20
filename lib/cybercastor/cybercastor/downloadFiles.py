@@ -537,8 +537,12 @@ def build_output(output_gpkg: str, huc10_path: str, hucs: list, huc_attributes: 
     with GeopackageLayer(output_gpkg, layer_name='hucs', write=True) as out_lyr:
         out_lyr.create_layer(ogr.wkbMultiPolygon, epsg=4326, fields=huc_fields)
         with ShapefileLayer(huc10_path) as huc_lyr:
+            transform = osr.CoordinateTransformation(
+                huc_lyr.spatial_ref, out_lyr.spatial_ref)
             for in_feature, _counter, _progbar in huc_lyr.iterate_features():
-                out_lyr.create_feature(in_feature.GetGeometryRef(), {
+                geom = in_feature.GetGeometryRef()
+                geom.Transform(transform)
+                out_lyr.create_feature(geom, {
                                        field: in_feature.GetField(field) for field in ['huc10']})
 
     # Create database tables
@@ -680,31 +684,21 @@ def add_triggers(conn: sqlite3.Connection, triggers: list) -> None:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('environment', help='Riverscapes stage',
-                        type=str, default='production')
-    parser.add_argument(
-        'HUCs', help='Comma separated list of HUC codes', type=str)
-    parser.add_argument(
-        'huc_attributes', help='JSON of HUC attributes', type=str)
-    parser.add_argument(
-        'local_folder', help='Top level folder where to download files', type=str)
-    parser.add_argument(
-        'output_gpkg', help='Path where to existing output Geopackage or where it will be created', type=str)
-    parser.add_argument(
-        'huc10', help='ShapeFile of HUC10 geometries', type=str)
-
-    parser.add_argument('--verbose', help='(optional) a little extra logging ',
-                        action='store_true', default=False)
-    parser.add_argument('--reset', help='(optional) delete all existing outputs before running and run from scratch',
-                        action='store_true', default=False)
+    parser.add_argument('environment', help='Riverscapes stage', type=str, default='production')
+    parser.add_argument('HUCs', help='Comma separated list of HUC codes', type=str)
+    parser.add_argument('huc_attributes', help='JSON of HUC attributes', type=str)
+    parser.add_argument('local_folder', help='Top level folder where to download files', type=str)
+    parser.add_argument('output_gpkg', help='Path where to existing output Geopackage or where it will be created', type=str)
+    parser.add_argument('huc10', help='ShapeFile of HUC10 geometries', type=str)
+    parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
+    parser.add_argument('--reset', help='(optional) delete all existing outputs before running and run from scratch', action='store_true', default=False)
     args = dotenv.parse_args_env(parser)
 
     hucs = list() if args.HUCs == '' else args.HUCs.split(',')
 
     safe_makedirs(args.local_folder)
 
-    build_output(args.output_gpkg, args.huc10, hucs,
-                 args.huc_attributes, args.reset)
+    build_output(args.output_gpkg, args.huc10, hucs, args.huc_attributes, args.reset)
     scrape_projects(args.environment, hucs, args.output_gpkg, args.reset)
 
     sys.exit(0)

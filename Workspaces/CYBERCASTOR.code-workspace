@@ -34,7 +34,7 @@
     ],
     "python.formatting.autopep8Args": [
       "--ignore=E501",
-      "--max-line-length=240"
+      "--max-line-length=500"
     ],
     "python.terminal.activateEnvironment": true,
 		"python.pythonPath": "${workspaceFolder}/../../.venv/bin/python3",
