@@ -157,6 +157,22 @@
         "Philip Bailey"
       ]
     },
+    {
+      "name": "EXPERIMENTAL Merge Projects",
+      "type": "python",
+      "request": "launch",
+      "module": "cybercastor.merge-projects",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/.env",
+      "args": [
+        "production",
+        "{env:DATA_ROOT}/merge-projects",
+        "VBET",
+        "Blackfoot-Clark Fork",
+        "Blackfoot River Merged VBET",
+      ]
+    },
 
 
    {
