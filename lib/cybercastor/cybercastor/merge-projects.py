@@ -118,8 +118,8 @@ def merge_projects(projects: List[str], merged_dir: str, name: str, project_type
         get_vector_datasets(project_xml, project_vectors)
         get_bounds_geojson_file(project_xml, bounds_geojson_files)
 
-    # process_rasters(project_rasters, merged_dir)
-    # process_vectors(project_vectors, merged_dir)
+    process_rasters(project_rasters, merged_dir)
+    process_vectors(project_vectors, merged_dir)
 
     # build union of project bounds
     output_bounds_path = os.path.join(merged_dir, 'project_bounds.geojson')
@@ -375,8 +375,8 @@ def main():
 
     projects = search_projects(riverscapes_api, args.project_type, args.project_tags.split(','))
 
-    if (len(projects) == 0):
-        log.error(f'No projects found with type {args.project_type} and tags {args.project_tags}')
+    if (len(projects) < 2):
+        log.error(f'Insufficient number of projects ({len(projects)}) found with type {args.project_type} and tags {args.project_tags}. 2 or more needed.')
         sys.exit(1)
 
     for project in projects:
