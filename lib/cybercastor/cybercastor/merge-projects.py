@@ -29,29 +29,31 @@ from rsxml.project_xml import (
 )
 
 
-def search_projects(riverscapes_api, project_type: str, project_tags: List[str]) -> List[str]:
+def search_projects(riverscapes_api, project_type: str, collection_id: str) -> List[str]:
 
-    search_params = {
-        'projectTypeId': project_type,
-        # 'meta': [{'key': 'ModelVersion', 'value': '1234'}],
-        'tags': project_tags
-    }
+    # search_params = {
+    #     'projectTypeId': project_type,
+    #     # 'meta': [{'key': 'ModelVersion', 'value': '1234'}],
+    #     'tags': project_tags
+    # }
 
     log = Logger('Search')
-    log.info(f'Searching for projects with type {project_type} and tags {project_tags}')
+    log.info(f'Searching for projects with type {project_type} in collection {collection_id}')
 
     project_limit = 500
     project_offset = 0
     total = 0
     projects = []
     while project_offset == 0 or project_offset < total:
-        results = riverscapes_api.run_query(riverscapes_api.load_query('searchProjects'), {'searchParams': search_params, 'limit': project_limit, 'offset': project_offset})
-        total = results['data']['searchProjects']['total']
+        results = riverscapes_api.run_query(riverscapes_api.load_query('collectionProjects'), {'collectionId': collection_id, 'limit': project_limit, 'offset': project_offset})
+        total = results['data']['collection']['projects']['total']
         project_offset += project_limit
 
-        projects += [project['item']for project in results['data']['searchProjects']['results']]
+        for project in results['data']['collection']['projects']['items']:
+            if project['projectType']['id'] == project_type:
+                projects.append(project)
 
-    log.info(f'Found {len(projects)} project(s)')
+    log.info(f'Found {len(projects)} {project_type} project(s) in collection {collection_id}')
     return projects
 
     # if len(projects) == 0:
@@ -99,7 +101,7 @@ def download_project(riverscapes_api, output_folder, project_id: str, force_down
     return project_file_path
 
 
-def merge_projects(projects: List[str], merged_dir: str, name: str, project_type: str, tags: str) -> None:
+def merge_projects(projects: List[str], merged_dir: str, name: str, project_type: str, collection_id: str) -> None:
 
     log = Logger('Merging')
     log.info(f'Merging {len(projects)} project(s)')
@@ -140,7 +142,7 @@ def merge_projects(projects: List[str], merged_dir: str, name: str, project_type
 
     merge_project.meta_data = MetaData([Meta(f'project {i+1}', f'https://data.riverscapes.net/p/{projects[i]["id"]}', 'url') for i in range(len(projects))])
     merge_project.meta_data.add_meta('Date Created', str(datetime.now().isoformat()), meta_type='isodate', ext=None)
-    merge_project.meta_data.add_meta('Search tags', str(tags))
+    merge_project.meta_data.add_meta('Collection ID', collection_id)
 
     merged_project_xml = os.path.join(merged_dir, 'project.rs.xml')
     merge_project.write(merged_project_xml)
@@ -359,7 +361,7 @@ def main():
     parser.add_argument('environment', help='Riverscapes stage', type=str, default='production')
     parser.add_argument('output_folder', help='top level output folder', type=str)
     parser.add_argument('project_type', help='project type', type=str)
-    parser.add_argument('project_tags', help='Comma separated list of Data Exchange tags', type=str)
+    parser.add_argument('collection_id', help='ID of the collection containing the projects', type=str)
     parser.add_argument('name', help='Output project name', type=str)
     args = dotenv.parse_args_env(parser)
 
@@ -373,7 +375,7 @@ def main():
     if riverscapes_api.accessToken is None:
         riverscapes_api.refresh_token()
 
-    projects = search_projects(riverscapes_api, args.project_type, args.project_tags.split(','))
+    projects = search_projects(riverscapes_api, args.project_type, args.collection_id)
 
     if (len(projects) < 2):
         log.error(f'Insufficient number of projects ({len(projects)}) found with type {args.project_type} and tags {args.project_tags}. 2 or more needed.')
@@ -384,7 +386,7 @@ def main():
         project_local = download_project(riverscapes_api, args.output_folder, project_id, False)
         project['localPath'] = project_local
 
-    merge_projects(projects, merged_folder, args.name, args.project_type, args.project_tags)
+    merge_projects(projects, merged_folder, args.name, args.project_type, args.collection_id)
 
     log.info('Process complete')
 

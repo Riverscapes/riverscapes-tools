@@ -1,0 +1,20 @@
+query collectionProjects(
+    $collectionId: ID!
+    $limit: Int!
+    $offset: Int!
+    ) {
+    collection(id: $collectionId) {
+        id
+        name
+        projects(limit: $limit, offset: $offset) {
+            total
+            items {
+                    id
+                    name
+                    projectType {
+                        id
+                    }
+                }
+        }
+    }
+}

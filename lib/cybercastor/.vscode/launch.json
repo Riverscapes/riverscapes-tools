@@ -168,9 +168,9 @@
       "args": [
         "production",
         "{env:DATA_ROOT}/merge-projects",
-        "VBET",
-        "Blackfoot-Clark Fork",
-        "Blackfoot River Merged VBET",
+        "anthro",
+        "223c7eb2-6c39-437f-8421-428e113126ae",
+        "Blackfoot River Merged Anthro",
       ]
     },
 
