@@ -120,8 +120,8 @@ def merge_projects(projects: List[str], merged_dir: str, name: str, project_type
         get_vector_datasets(project_xml, project_vectors)
         get_bounds_geojson_file(project_xml, bounds_geojson_files)
 
-    process_rasters(project_rasters, merged_dir)
-    process_vectors(project_vectors, merged_dir)
+    # process_rasters(project_rasters, merged_dir)
+    # process_vectors(project_vectors, merged_dir)
 
     # build union of project bounds
     output_bounds_path = os.path.join(merged_dir, 'project_bounds.geojson')
@@ -140,13 +140,44 @@ def merge_projects(projects: List[str], merged_dir: str, name: str, project_type
     bounding_box = BoundingBox(bounding_rect[0], bounding_rect[2], bounding_rect[1], bounding_rect[3])
     merge_project.bounds = ProjectBounds(coords, bounding_box, os.path.basename(output_bounds_path))
 
-    merge_project.meta_data = MetaData([Meta(f'project {i+1}', f'https://data.riverscapes.net/p/{projects[i]["id"]}', 'url') for i in range(len(projects))])
+    project_urls = [f'https://data.riverscapes.net/p/{project["id"]}' for project in projects]
+
+    merge_project.meta_data = MetaData([Meta('projects', json.dumps(project_urls), 'json', None)])
     merge_project.meta_data.add_meta('Date Created', str(datetime.now().isoformat()), meta_type='isodate', ext=None)
     merge_project.meta_data.add_meta('Collection ID', collection_id)
+    merge_project.warehouse = None
 
     merged_project_xml = os.path.join(merged_dir, 'project.rs.xml')
     merge_project.write(merged_project_xml)
     replace_log_file(merged_project_xml)
+    delete_unmerged_paths(merged_project_xml)
+
+
+def delete_unmerged_paths(merged_project_xml):
+    """
+    Reports, ShapeFiles and logs are not included in the merge.
+    Look for all elements called <Path> and remove their parents
+    """
+    log = Logger('Delete')
+
+    # Load the XML file and search for any tag called Path
+    tree = ET.parse(merged_project_xml)
+
+    # create a dictionary that maps from each element to its parent
+    root = tree.getroot()
+    parent_map = {c: p for p in root.iter() for c in p}
+
+    for path_element in tree.findall('.//Path'):
+        file_ext = ['gpkg', 'geojson', 'tif', 'tiff', 'log']
+        matches = [ext for ext in file_ext if path_element.text.lower().endswith(ext)]
+        if len(matches) == 0:
+            log.info(f'Removing non GeoPackage, raster or log with contents {path_element.text}')
+            # Get and remove the parent of the Path element
+            parent = parent_map[path_element]
+            grandparent = parent_map[parent]
+            grandparent.remove(parent)
+
+    tree.write(merged_project_xml)
 
 
 def replace_log_file(merged_project_xml) -> None:
@@ -359,14 +390,15 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('environment', help='Riverscapes stage', type=str, default='production')
-    parser.add_argument('output_folder', help='top level output folder', type=str)
+    parser.add_argument('working_folder', help='top level folder for downloads and output', type=str)
     parser.add_argument('project_type', help='project type', type=str)
     parser.add_argument('collection_id', help='ID of the collection containing the projects', type=str)
     parser.add_argument('name', help='Output project name', type=str)
+    parser.add_argument('merged_folder', help='Subfolder inside working folder where output will be stored', type=str)
     args = dotenv.parse_args_env(parser)
 
     # This is the folder where the merged project will be created
-    merged_folder = os.path.join(args.output_folder, 'merged')
+    merged_folder = os.path.join(args.working_folder, args.merged_folder)
 
     log = Logger('Setup')
     log.setup(logPath=os.path.join(merged_folder, 'merge-projects.log'))
@@ -383,7 +415,7 @@ def main():
 
     for project in projects:
         project_id = project['id']
-        project_local = download_project(riverscapes_api, args.output_folder, project_id, False)
+        project_local = download_project(riverscapes_api, args.working_folder, project_id, False)
         project['localPath'] = project_local
 
     merge_projects(projects, merged_folder, args.name, args.project_type, args.collection_id)
