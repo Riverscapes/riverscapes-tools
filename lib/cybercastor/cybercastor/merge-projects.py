@@ -14,6 +14,7 @@ from osgeo import ogr, osr
 from rscommons import dotenv, Logger
 from cybercastor.classes.RiverscapesAPI import RiverscapesAPI
 from rscommons.util import safe_makedirs
+from rscommons import Raster
 import xml.etree.ElementTree as ET
 from rsxml.project_xml import (
     Project,
@@ -120,8 +121,8 @@ def merge_projects(projects: List[str], merged_dir: str, name: str, project_type
         get_vector_datasets(project_xml, project_vectors)
         get_bounds_geojson_file(project_xml, bounds_geojson_files)
 
-    # process_rasters(project_rasters, merged_dir)
-    # process_vectors(project_vectors, merged_dir)
+    process_rasters(project_rasters, merged_dir)
+    process_vectors(project_vectors, merged_dir)
 
     # build union of project bounds
     output_bounds_path = os.path.join(merged_dir, 'project_bounds.geojson')
@@ -358,9 +359,11 @@ def process_rasters(master_project: Dict, output_dir: str) -> None:
         raster_path = os.path.join(output_dir, raster_info['path'])
         safe_makedirs(os.path.dirname(raster_path))
 
+        raster = Raster(raster_info['occurences'][0]['path'])
+
         input_rasters = [rp['path'] for rp in raster_info['occurences']]
         gdal_merge = os.path.join(os.path.dirname(__file__), '..', '..', '..', '.venv', 'bin', 'gdal_merge.py')
-        params = ['python', gdal_merge, '-o', raster_path, '-co', 'COMPRESS=LZW'] + input_rasters
+        params = ['python', gdal_merge, '-o', raster_path, '-co', 'COMPRESS=LZW', '-a_nodata', str(raster.nodata)] + input_rasters
         # print(params)
         subprocess.call(params, shell=False)
 

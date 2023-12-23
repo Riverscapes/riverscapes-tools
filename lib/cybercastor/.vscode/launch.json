@@ -168,10 +168,10 @@
       "args": [
         "production",
         "{env:DATA_ROOT}/merge-projects",
-        "anthro",
+        "vbet",
         "223c7eb2-6c39-437f-8421-428e113126ae",
-        "Blackfoot River Merged Anthro",
-        "merge_anthro"
+        "Blackfoot River Merged VBET",
+        "merge_vbet"
       ]
     },
 
