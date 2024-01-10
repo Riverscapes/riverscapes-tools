@@ -917,5 +917,31 @@
     "url": null,
     "machineName": "RSContextBC",
     "state": "ACTIVE"
+  },
+  {
+    "name": "Landscape Synthesis",
+    "summary": "Metrics summarized at watershed scales",
+    "description": "The Landscape Synthesis project attributes geometries of watersheds with metrics from riverscapes projects summarized at the watershed scale.",
+    "meta": [
+        { 
+          "key": "Resolution",
+          "value": "Watershed"
+        },
+        { 
+          "key": "Extent",
+          "value": "Multiple Watersheds"
+        },
+        {
+          "key": "Model Status",
+          "value": "Proof of Concept"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "Model Output"
+        }
+       ],
+    "url": null,
+    "machineName": "landscape_synthesis",
+    "state": "ACTIVE"
   }
 ]
