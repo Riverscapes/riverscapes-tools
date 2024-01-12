@@ -48,3 +48,28 @@ Then inside the package workspace you can do the following to point the workspac
 1. Visual Studio Code "should list" the sym link .venv folder as one of the options. If it doesn't then you can browse to it.
 
 This workflow needs to be repeated for each riverscapes tools package.
+
+
+## Working inside Github codespaces
+
+If you are working inside a Github codespace there is no need for any kind of bootstrapping or `.venv` or even `.env` files. 
+
+### Data and files
+
+The data dir cor codespaces is set to `/workspaces/.codespaces/shared/data`. This folder is shared between all users of this codespace.
+
+You can open a window to the data by typing `code /workspaces/.codespaces/shared/data/`.
+
+From there files can be dragged into the vscode window to upload them to the codespace. To download files or folders right click on them and select "Download".
+
+You may wish to use projects downloaded from the Riverscapes Warehouse. This codespace comes complete with `rscli` installed. 
+
+To download projects you must know: The project id from the warehouse, the HUC and the project type. 
+
+```bash
+rscli download --id XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX /workspaces/.codespaces/shared/data/rs_context/17060304
+```
+
+A browser window should pop open to allow you to authenticate your Riverscapes Warehouse account. Once authenticated the project will be downloaded to the data folder.
+
+Make sure you use the folder name that matches what this tool expects for the project type and huc number.
