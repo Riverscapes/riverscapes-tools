@@ -1,8 +1,8 @@
 {
   "folders": [
     {
-      "name": "🚀 HAND",
-      "path": "../packages/hand",
+      "name": "🚀 Channel Area",
+      "path": "../packages/channel",
       "settings": {
         "python.analysis.extraPaths": [
           "../../lib/commons"

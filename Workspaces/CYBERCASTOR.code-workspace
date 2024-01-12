@@ -1,45 +1,42 @@
 {
-	"folders": [
-		{
+  "folders": [
+    {
       "name": "🦫 Cybercastor",
-			"path": "../lib/cybercastor"
-		},
-		{
-      "name": "🤖 Automation",
-			"path": "../scripts/automation"
-		},
-		{
-			"name": "🏠 Git Root",
-			"path": ".."
-		}
-	],
-	"settings": {
+      "path": "../lib/cybercastor",
+      "settings": {
+        "python.analysis.extraPaths": [
+          "../../lib/commons"
+        ],
+      }
+    },
+    {
+      "name": "🤖 Cybercastor Autoamtion Scripts",
+      "path": "../scripts/automation"
+    },
+    {
+      "name": "🧰 Workspaces",
+      "path": "."
+    },
+    {
+      "name": "🏠 Git Root",
+      "path": ".."
+    },
+  ],
+  "settings": {
+    "terminal.integrated.defaultProfile.linux": "zsh",
     "[python]": {
       "editor.tabSize": 4,
       "editor.formatOnSave": true,
       "editor.defaultFormatter": "ms-python.autopep8",
     },
-    "python.linting.pylintArgs": [
+    "pylint.args": [
       "--extension-pkg-whitelist=pygeoprocessing",
-      "--ignore=E501",
-      "--max-line-length=240"    
-    ],  
-    "python.linting.enabled": true,
-    "python.linting.lintOnSave": true,
-    "python.linting.pycodestyleEnabled": true,
-    "python.linting.pylintEnabled": true,
-    "python.linting.pycodestyleArgs": [
       "--ignore=E501",
       "--max-line-length=240"
     ],
-    "python.formatting.autopep8Args": [
-      "--ignore=E501",
-      "--max-line-length=500"
-    ],
     "python.terminal.activateEnvironment": true,
-		"python.pythonPath": "${workspaceFolder}/../../.venv/bin/python3",
-		"python.testing.pytestEnabled": true,
-		"python.testing.unittestEnabled": true,
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": true,
     "files.watcherExclude": {
       "**/*.egg-info/**": true,
       "**/docs/**": true,
@@ -59,6 +56,5 @@
       "**/.venv/**": true,
       "**/__pycache__/**": true
     },
-    "python.formatting.provider": "none",
-	}
+  }
 }

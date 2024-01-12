@@ -2,27 +2,60 @@
   "folders": [
     {
       "name": "🚀 RSContext",
-      "path": "../packages/rscontext"
+      "path": "../packages/rscontext",
+      "settings": {
+        "python.analysis.extraPaths": ["../../lib/commons"],
+      }
     },
     {
       "name": "📦 RSCommons",
       "path": "../lib/commons"
     },
-    {
-      "name": "🤖 Automation Scripts",
-      "path": "../scripts/automation"
-    },
+		{
+      "name": "🤖 Cybercastor Autoamtion Scripts",
+			"path": "../scripts/automation"
+		},
     {
       "name": "🧰 Workspaces",
       "path": "."
     },
-    {
-      "name": "🏠 Home",
-      "path": ".."
-    }
+		{
+			"name": "🏠 Git Root",
+			"path": ".."
+		},
   ],
   "settings": {
+    "terminal.integrated.defaultProfile.linux": "zsh",
+    "[python]": {
+      "editor.tabSize": 4,
+      "editor.formatOnSave": true,
+    },
+    "pylint.args": [
+      "--extension-pkg-whitelist=pygeoprocessing",
+      "--ignore=E501",
+      "--max-line-length=240"
+    ],
+    "python.terminal.activateEnvironment": true,
     "python.testing.pytestEnabled": true,
     "python.testing.unittestEnabled": true,
+    "files.watcherExclude": {
+      "**/*.egg-info/**": true,
+      "**/docs/**": true,
+      "**/*.pytest_cache/**": true,
+      "**/.venv/**": true,
+      "**/__pycache__/**": true
+    },
+    "search.exclude": {
+      "**/*.egg-info/**": true,
+      "**/*.pytest_cache/**": true,
+      "**/.venv/**": true,
+      "**/__pycache__/**": true
+    },
+    "files.exclude": {
+      "**/*.egg-info/**": true,
+      "**/*.pytest_cache/**": true,
+      "**/.venv/**": true,
+      "**/__pycache__/**": true
+    },
   }
 }

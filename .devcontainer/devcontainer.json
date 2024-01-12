@@ -1,35 +1,83 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the
 // README at: https://github.com/devcontainers/templates/tree/main/src/python
 {
-	"name": "Python 3",
+  "name": "Riverscapes Tools Python",
   "build": {
     "dockerfile": "Dockerfile"
   },
-  // "image": "mcr.microsoft.com/devcontainers/python:3.11",
-	"customizations": {
-		"vscode": {
-			"extensions": [
-				"njpwerner.autodocstring"
-			]
-		}
-	},
-
-	// Features to add to the dev container. More info: https://containers.dev/features.
-	// "features": {},
-
-	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	// "forwardPorts": [],
-
-	// Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand": "bash .devcontainer/postBuild.sh",
-
-	// Configure tool-specific properties.
-	// "customizations": {},
-
-	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
-	// "remoteUser": "root"
-
-  // Mount a data directory. For whatever reason this needs to be set in `~/.zshenv`
-  // like: `export RSTOOLS_DATA=/my/path/to/external/data`
-  "mounts": [{ "source": "${localEnv:RSTOOLS_DATA}", "target": "/data", "type": "bind" }]
+  // Put any environment variables you need here (as long as they apply to everyone)
+  "containerEnv": {
+    "DATA_ROOT": "/workspaces/.codespaces/shared/data",
+    "NATIONAL_PROJECT": "/workspaces/.codespaces/shared/data/NationalDatasets",
+    "DOWNLOAD_FOLDER": "/workspaces/.codespaces/shared/data/download"
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "[python]": {
+          "editor.tabSize": 4,
+          "editor.formatOnSave": true
+        },
+        "python.analysis.extraPaths": ["../../lib/commons"],
+        "pylint.args": [
+          "--extension-pkg-whitelist=pygeoprocessing",
+          "--ignore=E501",
+          "--max-line-length=240"    
+        ],
+        "python.terminal.activateEnvironment": true,
+        "python.testing.pytestEnabled": true,
+        "python.testing.unittestEnabled": true,
+        "files.watcherExclude": {
+          "**/*.egg-info/**": true,
+          "**/docs/**": true,
+          "**/*.pytest_cache/**": true,
+          "**/.venv/**": true,
+          "**/__pycache__/**": true
+        },
+        "search.exclude": {
+          "**/*.egg-info/**": true,
+          "**/*.pytest_cache/**": true,
+          "**/.venv/**": true,
+          "**/__pycache__/**": true
+        },
+        "files.exclude": {
+          "**/*.egg-info/**": true,
+          "**/*.pytest_cache/**": true,
+          "**/.venv/**": true,
+          "**/__pycache__/**": true
+        }
+      },
+      // Suggested extensions that will be installed for everyone
+      "extensions": [
+        "GraphQL.vscode-graphql-syntax",
+        "GraphQL.vscode-graphql",
+        "mhutchie.git-graph",
+        "ms-python.autopep8",
+        "ms-python.pylint",
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "njpwerner.autodocstring",
+        "redhat.vscode-xml",
+        "unifiedjs.vscode-mdx",
+        "yzhang.markdown-all-in-one",
+        "GitHub.copilot-chat",
+        "GitHub.copilot"
+      ]
+    }
+  },
+  // Use 'postCreateCommand' to run commands after the container is created.
+  "postCreateCommand": "bash .devcontainer/postBuild.sh",
+  // Trigger actions on ports. More info: https://containers.dev/implementors/json_reference/#port-attributes
+  // This is for rscli to open the browser on the host machine so we can authenticate
+  "portsAttributes": {
+    "4721": {
+      "label": "Authentication",
+      "onAutoForward": "openBrowser"
+    }
+  },
+  // Use 'forwardPorts' to make a list of ports inside the container available locally.
+  "forwardPorts": [
+    4721
+  ]
 }
