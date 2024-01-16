@@ -50,6 +50,16 @@
       ]
     },
     {
+      "name": "RS Context Metrics",
+      "type": "python",
+      "request": "launch",
+      "module": "rscontext.rs_context_metrics",
+      "console": "integratedTerminal",
+      "args": [
+        "{env:DATA_ROOT}/rs_context/${input:HUC}"
+      ]
+    },
+    {
       "name": "Modis (LST)",
       "type": "python",
       "request": "launch",
