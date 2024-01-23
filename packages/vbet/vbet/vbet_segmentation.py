@@ -187,13 +187,20 @@ def calculate_dgo_metrics(vbet_dgos: Path, vbet_centerline: Path, dict_layers: d
             lyr_dgos.create_fields(fields)
 
         for feat_dgo, *_ in lyr_dgos.iterate_features('Calculating dgo metrics', attribute_filter=attrib_filter, write_layers=[lyr_dgos]):
-            dgo_geom_unproj = feat_dgo.GetGeometryRef()
-            centroid = dgo_geom_unproj.Centroid()
-            utm_epsg = get_utm_zone_epsg(centroid.GetX())
-            _transform_ref, transform = VectorBase.get_transform_from_epsg(lyr_dgos.spatial_ref, utm_epsg)
-            vbet_geom_transform = dgo_geom_unproj.Clone()
-            vbet_geom_transform.Transform(transform)
-            vbet_geom_transform_clean = vbet_geom_transform.MakeValid()
+            if not lyr_dgos.spatial_ref.IsProjected() == 1:
+                dgo_geom_unproj = feat_dgo.GetGeometryRef()
+                centroid = dgo_geom_unproj.Centroid()
+                utm_epsg = get_utm_zone_epsg(centroid.GetX())
+                _transform_ref, transform = VectorBase.get_transform_from_epsg(lyr_dgos.spatial_ref, utm_epsg)
+                vbet_geom_transform = dgo_geom_unproj.Clone()
+                vbet_geom_transform.Transform(transform)
+                vbet_geom_transform_clean = vbet_geom_transform.MakeValid()
+            else:
+                vbet_geom = feat_dgo.GetGeometryRef()
+                vbet_geom_transform_clean = vbet_geom.Clone()
+                if not vbet_geom_transform_clean.IsValid():
+                    vbet_geom_transform_clean.MakeValid()
+
             if not vbet_geom_transform_clean.IsValid():
                 log.warning(f'Unable to generate metrics for vbet segment {feat_dgo.GetFID()}: Invalid VBET Segment Geometry')
                 continue
@@ -203,10 +210,13 @@ def calculate_dgo_metrics(vbet_dgos: Path, vbet_centerline: Path, dict_layers: d
                 continue
 
             length = 0.0
-            for feat_cl, *_ in centerline_lyr.iterate_features(clip_shape=dgo_geom_unproj):
-                geom_cl = feat_cl.GetGeometryRef()
-                # _transform_ref, transform = VectorBase.get_transform_from_epsg(centerline_lyr.spatial_ref, utm_epsg)
-                geom_cl.Transform(transform)
+            for feat_cl, *_ in centerline_lyr.iterate_features(clip_shape=feat_dgo.GetGeometryRef()):
+                if not centerline_lyr.spatial_ref.IsProjected() == 1:
+                    geom_cl = feat_cl.GetGeometryRef()
+                    # _transform_ref, transform = VectorBase.get_transform_from_epsg(centerline_lyr.spatial_ref, utm_epsg)
+                    geom_cl.Transform(transform)
+                else:
+                    geom_cl = feat_cl.GetGeometryRef()
                 if not geom_cl.IsValid():
                     log.warning(f'Invalid centerline geometry found for vbet segment {feat_dgo.GetFID()}')
                 try:
@@ -222,10 +232,14 @@ def calculate_dgo_metrics(vbet_dgos: Path, vbet_centerline: Path, dict_layers: d
             for metric_layer_name, metric_layer_path in dict_layers.items():
                 with GeopackageLayer(metric_layer_path) as metric_lyr:
                     metric_area = 0.0
-                    for metric_feat, *_ in metric_lyr.iterate_features(clip_shape=dgo_geom_unproj):
-                        in_metric_geom = metric_feat.GetGeometryRef()
-                        in_metric_geom.Transform(transform)
-                        metric_geom = in_metric_geom.MakeValid()
+                    for metric_feat, *_ in metric_lyr.iterate_features(clip_shape=feat_dgo.GetGeometryRef()):
+                        if not metric_lyr.spatial_ref.IsProjected() == 1:
+                            in_metric_geom = metric_feat.GetGeometryRef()
+                            in_metric_geom.Transform(transform)
+                            metric_geom = in_metric_geom.MakeValid()
+                        else:
+                            metric_geom = metric_feat.GetGeometryRef()
+                            metric_geom.MakeValid()
                         if not metric_geom.IsValid():
                             log.warning(f'Unable to generate metric for {metric_layer_name} for vbet segment {feat_dgo.GetFID()}. Invalid metric Geometry')
                             continue
