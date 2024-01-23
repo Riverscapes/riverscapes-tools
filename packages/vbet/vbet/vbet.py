@@ -21,6 +21,7 @@ import warnings
 from osgeo import ogr, gdal
 import rasterio
 from rasterio.windows import Window
+from rasterio.warp import calculate_default_transform, reproject, Resampling
 from shapely.geometry import box
 import numpy as np
 
@@ -133,7 +134,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_catchments, in_chan
         safe_remove_dir(outputs_dir)
     safe_makedirs(outputs_dir)
 
-    flowline_type = 'NHD'
+    flowline_type = 'NHD' if vaa_table is not None else 'Custom'
 
     project_name = f'VBET for HUC {huc}'
     project = RSProject(cfg, project_folder)
@@ -166,12 +167,10 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_catchments, in_chan
         clip_mask = collect_feature_class(mask)
         clip_mask = clip_mask.MakeValid()
 
-    log.info('Preparing network')
-    # copy the flowlines and catchments to the inputs geopackage, filtered by reach codes if provided
-    raw_line_network = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
-    copy_feature_class(in_line_network, raw_line_network)
-    catchments = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['CATCHMENTS'].rel_path)
-    copy_feature_class(in_catchments, catchments)
+    log.info('Preparing network:')
+    vbet_network(in_line_network, None, line_network_features, fcodes=reach_codes, hard_clip_shape=clip_mask)
+    # catchment_features = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['CATCHMENTS'].rel_path)
+    # copy_feature_class(in_catchments, catchment_features)
     channel_area = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['CHANNEL_AREA_POLYGONS'].rel_path)
     copy_feature_class(in_channel_area, channel_area)
 
@@ -179,18 +178,73 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_catchments, in_chan
     build_vbet_database(inputs_gpkg)
     vbet_run = load_configuration(inputs_gpkg)
 
-    log.info('Preparing vbet network')
-    line_network = os.path.join(inputs_gpkg, LayerTypes['INTERMEDIATES'].sub_layers['VBET_NETWORK'].rel_path)
-    vbet_network(raw_line_network, None, line_network, fcodes=reach_codes, hard_clip_shape=clip_mask)
+    if vaa_table is not None:
+        vaa_table_name = copy_vaa_attributes(line_network_features, vaa_table)
+        line_network = join_attributes(inputs_gpkg, "flowlines_vaa", os.path.basename(line_network_features), vaa_table_name, 'NHDPlusID', ['LevelPathI', 'DnLevelPat', 'UpLevelPat', 'Divergence'], 4326)
+        get_channel_level_path(channel_area, line_network, vaa_table)
+    else:
+        line_network = line_network_features
+    # catchments = join_attributes(inputs_gpkg, "catchments_vaa", os.path.basename(catchment_features), vaa_table_name, 'NHDPlusID', ['LevelPathI', 'DnLevelPat', 'UpLevelPat', 'Divergence'], 4326, geom_type='POLYGON')
 
-    log.info('Preparing the catchment transform zones')
-    catchments_transformed = os.path.join(intermediates_gpkg, 'transform_zones')
-    create_stream_size_zones(catchments, 'NHDPlusID', 'DivDASqKm', vbet_run['Zones'], catchments_transformed)
+    # catchments_path = os.path.join(intermediates_gpkg, 'transform_zones')
+    # vaa_table_path = os.path.join(inputs_gpkg, vaa_table_name)
+    # create_stream_size_zones(catchments, vaa_table_path, 'NHDPlusID', 'DivDASqKm', vbet_run['Zones'], catchments_path)
 
     in_rasters = {}
-    _proj_hillshade_node, _hillshade = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], in_hillshade, replace=True)
-    _proj_dem_node, dem = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], in_dem, replace=True)
-    _proj_slope_node, in_rasters['Slope'] = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['SLOPE_RASTER'], in_slope, replace=True)
+    with rasterio.open(in_dem) as dem_src:
+        if dem_src.crs != cfg.OUTPUT_EPSG:
+            log.info('Reprojecting DEM, Slope and Hillshade to EPSG:{}'.format(cfg.OUTPUT_EPSG))
+            # transform, width, height = calculate_default_transform(dem_src.crs, cfg.OUTPUT_EPSG, dem_src.width, dem_src.height, *dem_src.bounds)
+            # kwargs = dem_src.meta.copy()
+            # kwargs.update({
+            #     'crs': cfg.OUTPUT_EPSG,
+            #     'transform': transform,
+            #     'width': width,
+            #     'height': height
+            # })
+            # with rasterio.open(os.path.join(project_folder, LayerTypes['DEM'].rel_path), 'w', **kwargs) as dst:
+            #     for i in range(1, dem_src.count + 1):
+            #         reproject(
+            #             source=rasterio.band(dem_src, i),
+            #             destination=rasterio.band(dst, i),
+            #             src_transform=dem_src.transform,
+            #             src_crs=dem_src.crs,
+            #             dst_transform=transform,
+            #             dst_crs=cfg.OUTPUT_EPSG,
+            #             resampling=Resampling.bilinear
+            #         )
+            # with rasterio.open(os.path.join(project_folder, LayerTypes['SLOPE_RASTER'].rel_path), 'w', **kwargs) as dst:
+            #     for i in range(1, slope_src.count + 1):
+            #         reproject(
+            #             source=rasterio.band(slope_src, i),
+            #             destination=rasterio.band(dst, i),
+            #             src_transform=slope_src.transform,
+            #             src_crs=slope_src.crs,
+            #             dst_transform=transform,
+            #             dst_crs=cfg.OUTPUT_EPSG,
+            #             resampling=Resampling.bilinear
+            #         )
+            # with rasterio.open(os.path.join(project_folder, LayerTypes['HILLSHADE'].rel_path), 'w', **kwargs) as dst:
+            #     for i in range(1, hs_src.count + 1):
+            #         reproject(
+            #             source=rasterio.band(hs_src, i),
+            #             destination=rasterio.band(dst, i),
+            #             src_transform=hs_src.transform,
+            #             src_crs=hs_src.crs,
+            #             dst_transform=transform,
+            #             dst_crs=cfg.OUTPUT_EPSG,
+            #             resampling=Resampling.bilinear
+            #         )
+            raster_warp(in_dem, os.path.join(project_folder, LayerTypes['DEM'].rel_path), cfg.OUTPUT_EPSG)
+            raster_warp(in_slope, os.path.join(project_folder, LayerTypes['SLOPE_RASTER'].rel_path), cfg.OUTPUT_EPSG)
+            raster_warp(in_hillshade, os.path.join(project_folder, LayerTypes['HILLSHADE'].rel_path), cfg.OUTPUT_EPSG)
+            _proj_hillshade_node, _hillshade = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'])
+            _proj_dem_node, dem = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'])
+            _proj_slope_node, in_rasters['Slope'] = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['SLOPE_RASTER'])
+        else:
+            _proj_hillshade_node, _hillshade = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], in_hillshade, replace=True)
+            _proj_dem_node, dem = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], in_dem, replace=True)
+            _proj_slope_node, in_rasters['Slope'] = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['SLOPE_RASTER'], in_slope, replace=True)
 
     # Use the size of the DEM to guess if we need the bigTIFF flag for files at or near 4Gb
     use_big_tiff = os.path.getsize(dem) > BIG_TIFF_THRESH
@@ -204,7 +258,12 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_catchments, in_chan
         _proj_pitfill_node, pitfill_dem = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['PITFILL'])
         proj_rasters.append([_proj_pitfill_node, pitfill_dem])
     else:
-        _proj_pitfill_node, pitfill_dem = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['PITFILL'], in_pitfill_dem, replace=True)
+        with rasterio.open(in_pitfill_dem) as pitfill_src:
+            if pitfill_src.crs != cfg.OUTPUT_EPSG:
+                raster_warp(in_pitfill_dem, os.path.join(project_folder, LayerTypes['PITFILL'].rel_path), cfg.OUTPUT_EPSG)
+                _proj_pitfill_node, pitfill_dem = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['PITFILL'])
+            else:
+                _proj_pitfill_node, pitfill_dem = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['PITFILL'], in_pitfill_dem, replace=True)
 
     if not all([in_dinfflowdir_ang, in_dinfflowdir_slp]):
         dinfflowdir_slp = os.path.join(project_folder, LayerTypes['DINFFLOWDIR_SLP'].rel_path)
@@ -216,8 +275,15 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_catchments, in_chan
         _proj_dinfflowdir_slp_node, dinfflowdir_slp = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_SLP'])
         proj_rasters.extend([[_proj_dinfflowdir_ang_node, dinfflowdir_ang], [_proj_dinfflowdir_slp_node, dinfflowdir_slp]])
     else:
-        _proj_dinfflowdir_ang_node, dinfflowdir_ang = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_ANG'], in_dinfflowdir_ang, replace=True)
-        _proj_dinfflowdir_slp_node, dinfflowdir_slp = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_SLP'], in_dinfflowdir_slp, replace=True)
+        with rasterio.open(in_dinfflowdir_ang) as fdir_src:
+            if fdir_src.crs != cfg.OUTPUT_EPSG:
+                raster_warp(in_dinfflowdir_ang, os.path.join(project_folder, LayerTypes['DINFFLOWDIR_ANG'].rel_path), cfg.OUTPUT_EPSG)
+                raster_warp(in_dinfflowdir_slp, os.path.join(project_folder, LayerTypes['DINFFLOWDIR_SLP'].rel_path), cfg.OUTPUT_EPSG)
+                _proj_dinfflowdir_ang_node, dinfflowdir_ang = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_ANG'])
+                _proj_dinfflowdir_slp_node, dinfflowdir_slp = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_SLP'])
+            else:
+                _proj_dinfflowdir_ang_node, dinfflowdir_ang = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_ANG'], in_dinfflowdir_ang, replace=True)
+                _proj_dinfflowdir_slp_node, dinfflowdir_slp = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_SLP'], in_dinfflowdir_slp, replace=True)
 
     log.info('Writing Topo Evidence raster for project')
     read_rasters = {name: rasterio.open(raster) for name, raster in in_rasters.items()}
@@ -275,7 +341,10 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_catchments, in_chan
     level_paths_to_run = []
     with sqlite3.connect(inputs_gpkg) as conn:
         curs = conn.cursor()
-        level_paths_raw = curs.execute("SELECT level_path, MAX(DivDASqKM) AS drainage FROM catchments GROUP BY level_path ORDER BY drainage DESC").fetchall()
+        if vaa_table is not None:
+            level_paths_raw = curs.execute("SELECT LevelPathI, MAX(DivDASqKm) AS drainage FROM flowlines_vaa GROUP BY LevelPathI ORDER BY drainage DESC").fetchall()
+        else:
+            level_paths_raw = curs.execute("SELECT LevelPathI, MAX(TotDASqKm) AS drainage FROM flowlines GROUP BY LevelPathI ORDER BY drainage DESC").fetchall()
         all_level_paths = list(str(int(lp[0])) for lp in level_paths_raw)
         level_paths_drainage = {str(int(lp[0])): lp[1] for lp in level_paths_raw}
         level_paths_drainage[None] = 10
@@ -292,11 +361,12 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_catchments, in_chan
             level_paths_to_run = all_level_paths
         all_level_paths = None
 
-        level_path_stream_order = dict([(str(int(row[0])), row[1]) for row in curs.execute("SELECT level_path, MAX(stream_order) FROM vbet_network GROUP BY level_path").fetchall()])
-        level_path_stream_order[None] = 1
+        # level_path_stream_order = dict([(str(int(row[0])), row[1]) for row in curs.execute("SELECT LevelPathI, MAX(StreamOrde) FROM NHDPlusFlowlineVAA GROUP BY LevelPathI ").fetchall()])
+        # level_path_stream_order[None] = 1
 
     # process all polygons that aren't assigned a level path: ponds, waterbodies etc.
-    level_paths_to_run.append(None)
+    if vaa_table is not None:
+        level_paths_to_run.append(None)
 
     project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
 
@@ -392,9 +462,8 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_catchments, in_chan
                     log.warning(f'Channel Area Envelope does not intersect DEM Extent for level path {level_path}')
                     continue
 
-                with GeopackageLayer(catchments) as lyr_catchments:
-                    geom_envelope: ogr.Geometry = channel_envelope_geom.Clone()
-                    feat_catchment: ogr.Feature = None
+                with GeopackageLayer(line_network) as lyr_catchments:
+                    geom_envelope = channel_envelope_geom.Clone()
                     for feat_catchment, *_ in lyr_catchments.iterate_features(clip_shape=channel_envelope_geom):
                         geom_catchment: ogr.Geometry = feat_catchment.GetGeometryRef()
                         geom_catchment_envelope = get_extent_as_geom(geom_catchment)
@@ -764,7 +833,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_catchments, in_chan
     # Calculate VBET Metrics
     log.info('Generating VBET Segmentation Points')
     segmentation_points = os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['SEGMENTATION_POINTS'].rel_path)
-    stream_size_lookup = get_distance_lookup(inputs_gpkg, intermediates_gpkg, level_paths_to_run)
+    stream_size_lookup = get_distance_lookup(inputs_gpkg, intermediates_gpkg, level_paths_to_run, flowline_type, vbet_run)
     generate_igo_points(output_centerlines, segmentation_points, stream_size_lookup, distance={0: 100, 1: 200, 2: 300, 3: 500, 4: 2000})
     _tmr_waypt.timer_break('GenerateVBETSegmentPts')
 
@@ -783,7 +852,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_catchments, in_chan
 
     log.info('Summerizing VBET Metrics')
     window_size = {0: 200.0, 1: 400.0, 2: 1200.0, 3: 2000.0, 4: 8000.0}
-    distance_lookup = get_distance_lookup(inputs_gpkg, intermediates_gpkg, level_paths_to_run, window_size)
+    distance_lookup = get_distance_lookup(inputs_gpkg, intermediates_gpkg, level_paths_to_run, flowline_type, vbet_run, window_size)
     project.add_metadata([RSMeta("Small Search Window", str(window_size[0]), RSMetaTypes.INT, locked=True),
                           RSMeta("Medium Search Window", str(window_size[1]), RSMetaTypes.INT, locked=True),
                           RSMeta("Large Search Window", str(window_size[2]), RSMetaTypes.INT, locked=True),
@@ -914,13 +983,15 @@ def main():
     parser.add_argument('dem', help='dem', type=str)
     parser.add_argument('slope', help='slope', type=str)
     parser.add_argument('hillshade', type=str)
-    parser.add_argument('catchments', type=str)
+    # parser.add_argument('catchments', type=str)
     parser.add_argument('channel_area', type=str)
     parser.add_argument('output_dir', help='Folder where output VBET project will be created', type=str)
+    parser.add_argument('--vaa_table', type=str)
     parser.add_argument('--level_paths', help='csv list of level paths', type=str, default="")
     parser.add_argument('--pitfill', help='riverscapes project metadata as comma separated key=value pairs', default=None)
     parser.add_argument('--dinfflowdir_ang', help='(optional) a little extra logging ', default=None)
     parser.add_argument('--dinfflowdir_slp', help='Add debug tools for tracing things like memory usage at a performance cost.', default=None)
+    # parser.add_argument('--twi_raster', help='Add debug tools for tracing things like memory usage at a performance cost.', default=None)
     parser.add_argument('--reach_codes', help='Comma delimited reach codes (FCode) to retain when filtering features. Omitting this option retains all features.', type=str)
     parser.add_argument('--flowline_type', type=str, default='NHD')
     parser.add_argument('--temp_folder', help='(optional) cache folder for downloading files ', type=str)
