@@ -251,24 +251,58 @@ def get_levelpath_catchment(level_path_id: int, catchments_fc: Path) -> BaseGeom
     return out_geom
 
 
-def get_distance_lookup(vaa_gpkg, transform_gpkg, level_paths, conversion=None):
+def get_distance_lookup(vaa_gpkg, transform_gpkg, level_paths, flowline_type, vbet_run, conversion=None):
 
     output = {}
-    with sqlite3.connect(vaa_gpkg) as conn_vaa, \
-            sqlite3.connect(transform_gpkg) as conn_transform:
-        curs_vaa = conn_vaa.cursor()
-        curs_transform = conn_transform.cursor()
-        for level_path in level_paths:
-            if level_path is None:
-                continue
-            nhd_ids = curs_vaa.execute(f'SELECT NHDPlusID from flowlines_vaa where LevelPathI = {level_path}').fetchall()
-            nhd_id_values = tuple(int(x[0]) for x in nhd_ids) if len(nhd_ids) > 1 else f'({int(nhd_ids[0][0])})'
-            values = curs_transform.execute(f'SELECT Slope_Zone FROM transform_zones WHERE fid in {nhd_id_values}').fetchall()
-            if len(values) > 0:
-                if conversion is not None:
-                    output[level_path] = conversion[max(int(value[0]) for value in values)]
-                else:
-                    output[level_path] = max(int(value[0]) for value in values)
+    if flowline_type == 'NHD':
+        with sqlite3.connect(vaa_gpkg) as conn_vaa, \
+                sqlite3.connect(transform_gpkg) as conn_transform:
+            curs_vaa = conn_vaa.cursor()
+            curs_transform = conn_transform.cursor()
+            for level_path in level_paths:
+                if level_path is None:
+                    continue
+                nhd_ids = curs_vaa.execute(f'SELECT NHDPlusID from flowlines_vaa where LevelPathI = {level_path}').fetchall()
+                nhd_id_values = tuple(int(x[0]) for x in nhd_ids) if len(nhd_ids) > 1 else f'({int(nhd_ids[0][0])})'
+                values = curs_transform.execute(f'SELECT Slope_Zone FROM transform_zones WHERE fid in {nhd_id_values}').fetchall()
+                if len(values) > 0:
+                    if conversion is not None:
+                        output[level_path] = conversion[max(int(value[0]) for value in values)]
+                    else:
+                        output[level_path] = max(int(value[0]) for value in values)
+    else:
+        with sqlite3.connect(vaa_gpkg) as conn:
+            curs = conn.cursor()
+            for level_path in level_paths:
+                if level_path is None:
+                    continue
+                das = curs.execute(f'SELECT TotDASqKm FROM flowlines WHERE LevelPathI = {level_path}').fetchall()
+                maxda = max(float(da[0]) for da in das)
+                if maxda < vbet_run['Zones']['Slope'][0]:
+                    if conversion is not None:
+                        output[level_path] = conversion[0]
+                    else:
+                        output[level_path] = 0
+                elif vbet_run['Zones']['Slope'][0] <= maxda < vbet_run['Zones']['Slope'][1]:
+                    if conversion is not None:
+                        output[level_path] = conversion[1]
+                    else:
+                        output[level_path] = 1
+                elif vbet_run['Zones']['Slope'][1] <= maxda < vbet_run['Zones']['Slope'][2]:
+                    if conversion is not None:
+                        output[level_path] = conversion[2]
+                    else:
+                        output[level_path] = 2
+                elif vbet_run['Zones']['Slope'][3] != '' and vbet_run['Zones']['Slope'][2] <= maxda < vbet_run['Zones']['Slope'][3]:
+                    if conversion is not None:
+                        output[level_path] = conversion[3]
+                    else:
+                        output[level_path] = 3
+                elif vbet_run['Zones']['Slope'][4] != '' and vbet_run['Zones']['Slope'][3] <= maxda < vbet_run['Zones']['Slope'][4]:
+                    if conversion is not None:
+                        output[level_path] = conversion[4]
+                    else:
+                        output[level_path] = 4
 
     return output
 
