@@ -22,7 +22,7 @@ from rscommons.geometry_ops import get_rectangle_as_geom
 Path = str
 
 
-def generate_igo_points(line_network: Path, out_points_layer: Path, stream_size_lookup: dict, distance: dict):
+def generate_igo_points(line_network: Path, out_points_layer: Path, unique_stream_field, stream_size_lookup: dict, distance: dict):
     """generate the vbet segmentation center points/igos
 
     Args:
@@ -40,7 +40,7 @@ def generate_igo_points(line_network: Path, out_points_layer: Path, stream_size_
     with GeopackageLayer(out_points_layer, write=True) as out_lyr, \
             GeopackageLayer(line_network) as line_lyr:
 
-        out_fields = {"LevelPathI": ogr.OFTString,
+        out_fields = {f"{unique_stream_field}": ogr.OFTString,
                       "seg_distance": ogr.OFTReal,
                       "stream_size": ogr.OFTInteger}
         out_lyr.create_layer(ogr.wkbPoint, spatial_ref=line_lyr.spatial_ref, fields=out_fields)
@@ -53,7 +53,7 @@ def generate_igo_points(line_network: Path, out_points_layer: Path, stream_size_
         transform_back = osr.CoordinateTransformation(transform_ref, line_lyr.spatial_ref)
 
         for feat, *_ in line_lyr.iterate_features(write_layers=[out_lyr]):
-            level_path = feat.GetField('LevelPathI')
+            level_path = feat.GetField(f'{unique_stream_field}')
             if level_path not in stream_size_lookup:
                 log.error(f'Stream Size not found for LevelPathI {level_path}. Skipping segmentation')
                 continue
@@ -94,13 +94,13 @@ def generate_igo_points(line_network: Path, out_points_layer: Path, stream_size_
                     geom_pnt.AddPoint_2D(pnt.x, pnt.y)
                     geom_pnt.Transform(transform_back)
                     # add the point feature to the output.
-                    attributes = {'LevelPathI': str(int(level_path)),
+                    attributes = {f'{unique_stream_field}': str(int(level_path)),
                                   'seg_distance': out_dist,
                                   'stream_size': stream_size}
                     out_lyr.create_feature(geom_pnt, attributes=attributes)
 
 
-def split_vbet_polygons(vbet_polygons: Path, segmentation_points: Path, out_split_polygons: Path):
+def split_vbet_polygons(vbet_polygons: Path, segmentation_points: Path, out_split_polygons: Path, unique_stream_field):
     """split vbet polygons into segments based on segmentation points
 
     Args:
@@ -114,13 +114,13 @@ def split_vbet_polygons(vbet_polygons: Path, segmentation_points: Path, out_spli
             GeopackageLayer(vbet_polygons) as vbet_lyr, \
             GeopackageLayer(segmentation_points) as points_lyr:
 
-        fields = {'LevelPathI': ogr.OFTString,
+        fields = {f'{unique_stream_field}': ogr.OFTString,
                   'seg_distance': ogr.OFTReal}
         out_lyr.create_layer(ogr.wkbMultiPolygon, spatial_ref=vbet_lyr.spatial_ref, fields=fields)
 
         for vbet_feat, *_ in vbet_lyr.iterate_features(write_layers=[out_lyr]):
 
-            level_path = vbet_feat.GetField('LevelPathI')
+            level_path = vbet_feat.GetField(f'{unique_stream_field}')
             if level_path is None:
                 continue
 
@@ -130,7 +130,7 @@ def split_vbet_polygons(vbet_polygons: Path, segmentation_points: Path, out_spli
             vbet_sgeom = VectorBase.ogr2shapely(vbet_geom)
             list_points = []
 
-            for point_feat, *_ in points_lyr.iterate_features(attribute_filter=f'LevelPathI = {level_path}'):
+            for point_feat, *_ in points_lyr.iterate_features(attribute_filter=f'{unique_stream_field} = {level_path}'):
                 point_geom = point_feat.GetGeometryRef()
                 point_sgeom = VectorBase.ogr2shapely(point_geom)
                 list_points.append(point_sgeom)
@@ -149,7 +149,7 @@ def split_vbet_polygons(vbet_polygons: Path, segmentation_points: Path, out_spli
                 clean_geom = poly_intersect.buffer(0) if poly_intersect.is_valid is not True else poly_intersect
                 geom_out = VectorBase.shapely2ogr(clean_geom)
                 geom_out = ogr.ForceToMultiPolygon(geom_out)
-                out_lyr.create_feature(geom_out, {'LevelPathI': str(int(level_path))})
+                out_lyr.create_feature(geom_out, {f'{unique_stream_field}': str(int(level_path))})
 
         for segment_feat, *_ in out_lyr.iterate_features('Writing segment dist to polygons'):
             polygon = segment_feat.GetGeometryRef()
@@ -284,7 +284,7 @@ def clean_linestring(in_geom: ogr.Geometry) -> MultiLineString:
     return merged_line
 
 
-def calculate_vbet_window_metrics(vbet_igos: Path, vbet_dgos: Path, level_paths: list, distance_lookup: dict, metric_names: list):
+def calculate_vbet_window_metrics(vbet_igos: Path, vbet_dgos: Path, level_paths: list, unique_stream_field: str, distance_lookup: dict, metric_names: list):
     """generate moving window summary of segmented vbet polygons
 
     Args:
@@ -322,12 +322,12 @@ def calculate_vbet_window_metrics(vbet_igos: Path, vbet_dgos: Path, level_paths:
                 continue
             window_distance = distance_lookup[level_path]
             window_addon = {200: 100, 400: 200, 1200: 300, 2000: 500, 8000: 2000}
-            for feat_igo, *_ in lyr_igos.iterate_features(f'Summerizing vbet metrics for {level_path}', attribute_filter=f"LevelPathI = {level_path}"):
+            for feat_igo, *_ in lyr_igos.iterate_features(f'Summerizing vbet metrics for {level_path}', attribute_filter=f"{unique_stream_field} = {level_path}"):
                 # Construct the igo window selection logic
                 igo_distance = feat_igo.GetField('seg_distance')
                 min_dist = igo_distance - 0.5 * window_distance
                 max_dist = igo_distance + 0.5 * window_distance
-                sql_igo_window = f"LevelPathI = {level_path} AND seg_distance >= {min_dist} AND seg_distance <= {max_dist}"
+                sql_igo_window = f"{unique_stream_field} = {level_path} AND seg_distance >= {min_dist} AND seg_distance <= {max_dist}"
 
                 # Gather Window Measurements from the dgos
                 window_measurements = dict.fromkeys(metric_names, 0.0)
@@ -384,7 +384,7 @@ def calculate_vbet_window_metrics(vbet_igos: Path, vbet_dgos: Path, level_paths:
                 feat_igo = None
 
 
-def vbet_segmentation(in_centerlines: str, vbet_polygons: str, metric_layers: dict, out_gpkg: str, ss_lookup: dict):
+def vbet_segmentation(in_centerlines: str, vbet_polygons: str, unique_stream_field: str, metric_layers: dict, out_gpkg: str, ss_lookup: dict):
     """
     Chop the lines in a polyline feature class at the specified interval unless
     this would create a line less than the minimum in which case the line is not segmented.
@@ -403,10 +403,10 @@ def vbet_segmentation(in_centerlines: str, vbet_polygons: str, metric_layers: di
     split_polygons = os.path.join(out_gpkg, 'segmented_vbet_polygons')
 
     log.info('Generating Segment Points')
-    generate_igo_points(in_centerlines, out_points, ss_lookup, distance={0: 100, 1: 200, 2: 300})
+    generate_igo_points(in_centerlines, out_points, unique_stream_field, ss_lookup, distance={0: 100, 1: 200, 2: 300})
 
     log.info('Splitting vbet Polygons')
-    split_vbet_polygons(vbet_polygons, out_points, split_polygons)
+    split_vbet_polygons(vbet_polygons, out_points, split_polygons, unique_stream_field)
 
     log.info('Calcuating vbet metrics')
     calculate_dgo_metrics(split_polygons, in_centerlines, metric_layers)

@@ -171,7 +171,7 @@ def vbet_merge(in_layer: Path, out_layer: Path, level_path: str = None) -> ogr.G
         return geoms_out
 
 
-def clean_up_centerlines(in_centerlines, vbet_polygons, out_centerlines, clip_buffer_value):
+def clean_up_centerlines(in_centerlines, vbet_polygons, out_centerlines, clip_buffer_value, unique_stream_field):
 
     with GeopackageLayer(out_centerlines, write=True) as lyr_centerlines, \
         GeopackageLayer(in_centerlines) as lyr_in_centerlines, \
@@ -180,14 +180,14 @@ def clean_up_centerlines(in_centerlines, vbet_polygons, out_centerlines, clip_bu
         lyr_centerlines.create_layer_from_ref(lyr_in_centerlines)
 
         for feat_vbet, *_ in lyr_vbet.iterate_features():
-            level_path = feat_vbet.GetField('LevelPathI')
+            level_path = feat_vbet.GetField(f'{unique_stream_field}')
             if level_path is None or level_path == 'None':
                 continue
             geom_vbet = feat_vbet.GetGeometryRef()
             geom_clip = geom_vbet.Buffer(clip_buffer_value)
-            for feat_centerline, *_ in lyr_in_centerlines.iterate_features(write_layers=[lyr_centerlines], attribute_filter=f"LevelPathI = {level_path}", clip_shape=geom_vbet):
+            for feat_centerline, *_ in lyr_in_centerlines.iterate_features(write_layers=[lyr_centerlines], attribute_filter=f"{unique_stream_field} = {level_path}", clip_shape=geom_vbet):
                 geom_centerline = feat_centerline.GetGeometryRef().Clone()
                 geom_centerline_clipped = geom_clip.Intersection(geom_centerline)
                 cl_part_index = feat_centerline.GetField('CL_Part_Index')
-                attributes = {'LevelPathI': level_path, 'CL_Part_Index': cl_part_index}
+                attributes = {f'{unique_stream_field}': level_path, 'CL_Part_Index': cl_part_index}
                 lyr_centerlines.create_feature(geom_centerline_clipped, attributes)

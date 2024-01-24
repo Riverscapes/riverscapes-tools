@@ -172,7 +172,7 @@ def join_attributes(gpkg, name, geom_layer, attribute_layer, join_field, fields,
     return os.path.join(gpkg, name)
 
 
-def get_channel_level_path(channel_area, lines, vaa_table):
+def get_channel_level_path(channel_area, lines):
     """_summary_
 
     Args:
@@ -183,13 +183,13 @@ def get_channel_level_path(channel_area, lines, vaa_table):
     log = Logger('Get Channel Level Path')
     # It's faster if we just pull the whole dictionary as a python dict first
     nhidid_lpath_lookup = {}
-    with sqlite3.connect(os.path.dirname(vaa_table)) as conn:
+    with sqlite3.connect(os.path.dirname(lines)) as conn:
         curs = conn.cursor()
-        values = curs.execute(f"SELECT LevelPathI, NHDPLusId FROM {os.path.basename(vaa_table)}").fetchall()
+        values = curs.execute(f"SELECT level_path, NHDPLusId FROM {os.path.basename(lines)}").fetchall()
         for lpath, nhd_id in values:
             nhidid_lpath_lookup[nhd_id] = lpath
 
-    log.debug(f'Found {len(nhidid_lpath_lookup.keys())} level path lookups in VAA Table')
+    log.debug(f'Found {len(nhidid_lpath_lookup.keys())} level path lookups in flowline network')
 
     with GeopackageLayer(channel_area) as lyr_channel, \
             GeopackageLayer(lines) as lyr_intersect:
@@ -207,7 +207,7 @@ def get_channel_level_path(channel_area, lines, vaa_table):
                         line_geom = line_geom.MakeValid()
                     line_geom = line_geom.Intersection(geom_candidate)
                     line_length = line_geom.Length()
-                    line_level_path = l_feat.GetField('LevelPathI')
+                    line_level_path = l_feat.GetField('level_path')
                     lengths[line_level_path] = lengths[line_level_path] + line_length if line_level_path in lengths else line_length
                 if len(lengths) > 0:
                     nhidid_lpath_lookup[nhd_id] = max(lengths, key=lengths.get)
@@ -216,11 +216,11 @@ def get_channel_level_path(channel_area, lines, vaa_table):
     skipped = 0
     wrote = 0
     with GeopackageLayer(channel_area, write=True) as lyr_channel:
-        lyr_channel.create_field("LevelPathI", ogr.OFTString)
+        lyr_channel.create_field("level_path", ogr.OFTString)
         for feat, _counter, _progbar in lyr_channel.iterate_features("Writing Level Paths", write_layers=[lyr_channel]):
             nhd_id = feat.GetField('NHDPlusID')
             if nhd_id in nhidid_lpath_lookup:
-                feat.SetField("LevelPathI", nhidid_lpath_lookup[nhd_id])
+                feat.SetField("level_path", nhidid_lpath_lookup[nhd_id])
                 lyr_channel.ogr_layer.SetFeature(feat)
                 wrote += 1
             else:
@@ -251,58 +251,41 @@ def get_levelpath_catchment(level_path_id: int, catchments_fc: Path) -> BaseGeom
     return out_geom
 
 
-def get_distance_lookup(vaa_gpkg, transform_gpkg, level_paths, flowline_type, vbet_run, conversion=None):
+def get_distance_lookup(inputs_gpkg, level_paths, vbet_run, unique_reach_field, drain_area_field, conversion=None):
 
     output = {}
-    if flowline_type == 'NHD':
-        with sqlite3.connect(vaa_gpkg) as conn_vaa, \
-                sqlite3.connect(transform_gpkg) as conn_transform:
-            curs_vaa = conn_vaa.cursor()
-            curs_transform = conn_transform.cursor()
-            for level_path in level_paths:
-                if level_path is None:
-                    continue
-                nhd_ids = curs_vaa.execute(f'SELECT NHDPlusID from flowlines_vaa where LevelPathI = {level_path}').fetchall()
-                nhd_id_values = tuple(int(x[0]) for x in nhd_ids) if len(nhd_ids) > 1 else f'({int(nhd_ids[0][0])})'
-                values = curs_transform.execute(f'SELECT Slope_Zone FROM transform_zones WHERE fid in {nhd_id_values}').fetchall()
-                if len(values) > 0:
-                    if conversion is not None:
-                        output[level_path] = conversion[max(int(value[0]) for value in values)]
-                    else:
-                        output[level_path] = max(int(value[0]) for value in values)
-    else:
-        with sqlite3.connect(vaa_gpkg) as conn:
-            curs = conn.cursor()
-            for level_path in level_paths:
-                if level_path is None:
-                    continue
-                das = curs.execute(f'SELECT TotDASqKm FROM flowlines WHERE LevelPathI = {level_path}').fetchall()
-                maxda = max(float(da[0]) for da in das)
-                if maxda < vbet_run['Zones']['Slope'][0]:
-                    if conversion is not None:
-                        output[level_path] = conversion[0]
-                    else:
-                        output[level_path] = 0
-                elif vbet_run['Zones']['Slope'][0] <= maxda < vbet_run['Zones']['Slope'][1]:
-                    if conversion is not None:
-                        output[level_path] = conversion[1]
-                    else:
-                        output[level_path] = 1
-                elif vbet_run['Zones']['Slope'][1] <= maxda < vbet_run['Zones']['Slope'][2]:
-                    if conversion is not None:
-                        output[level_path] = conversion[2]
-                    else:
-                        output[level_path] = 2
-                elif vbet_run['Zones']['Slope'][3] != '' and vbet_run['Zones']['Slope'][2] <= maxda < vbet_run['Zones']['Slope'][3]:
-                    if conversion is not None:
-                        output[level_path] = conversion[3]
-                    else:
-                        output[level_path] = 3
-                elif vbet_run['Zones']['Slope'][4] != '' and vbet_run['Zones']['Slope'][3] <= maxda < vbet_run['Zones']['Slope'][4]:
-                    if conversion is not None:
-                        output[level_path] = conversion[4]
-                    else:
-                        output[level_path] = 4
+    with sqlite3.connect(inputs_gpkg) as conn:
+        curs = conn.cursor()
+        for level_path in level_paths:
+            if level_path is None:
+                continue
+            das = curs.execute(f'SELECT {drain_area_field} FROM flowlines WHERE {unique_reach_field} = {level_path}').fetchall()
+            maxda = max(float(da[0]) for da in das)
+            if maxda < vbet_run['Zones']['Slope'][0]:
+                if conversion is not None:
+                    output[level_path] = conversion[0]
+                else:
+                    output[level_path] = 0
+            elif vbet_run['Zones']['Slope'][0] <= maxda < vbet_run['Zones']['Slope'][1]:
+                if conversion is not None:
+                    output[level_path] = conversion[1]
+                else:
+                    output[level_path] = 1
+            elif vbet_run['Zones']['Slope'][1] <= maxda < vbet_run['Zones']['Slope'][2]:
+                if conversion is not None:
+                    output[level_path] = conversion[2]
+                else:
+                    output[level_path] = 2
+            elif vbet_run['Zones']['Slope'][3] != '' and vbet_run['Zones']['Slope'][2] <= maxda < vbet_run['Zones']['Slope'][3]:
+                if conversion is not None:
+                    output[level_path] = conversion[3]
+                else:
+                    output[level_path] = 3
+            elif vbet_run['Zones']['Slope'][4] != '' and vbet_run['Zones']['Slope'][3] <= maxda < vbet_run['Zones']['Slope'][4]:
+                if conversion is not None:
+                    output[level_path] = conversion[4]
+                else:
+                    output[level_path] = 4
 
     return output
 
