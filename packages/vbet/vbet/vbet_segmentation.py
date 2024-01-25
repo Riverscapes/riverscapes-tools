@@ -421,6 +421,7 @@ def main():
     )
     parser.add_argument('centerlines', help='vbet_centerlines', type=str)
     parser.add_argument('vbet_polygons', help='vbet polygons', type=str)
+    parser.add_argument('unique_stream_field', help='unique stream field', type=str)
     parser.add_argument('metric_polygons', help='key value metric polygons', type=str)
     parser.add_argument('--interval', default=200)
     parser.add_argument('out_gpkg')
@@ -429,7 +430,7 @@ def main():
 
     metrics = parse_metadata(args.metric_polygons)
 
-    vbet_segmentation(args.centerlines, args.vbet_polygons, metrics, args.out_gpkg, args.interval)
+    vbet_segmentation(args.centerlines, args.vbet_polygons, args.unique_stream_field, metrics, args.out_gpkg, args.interval)
 
     sys.exit(0)
 
