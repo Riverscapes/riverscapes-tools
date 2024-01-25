@@ -91,7 +91,8 @@ def rebuildWebTiles():
                           message="What are the xpaths you want to rebuilt?",
                           ),
         ]
-        mutation_params['rsXPaths'] = inquirer.prompt(rebuilt_xpaths)['xpaths'].split(',')
+        mutation_params['rsXPaths'] = inquirer.prompt(rebuilt_xpaths)[
+            'xpaths'].split(',')
 
     if answer2['oneOrSearch'] == 'one':
         # Ask for the project id
@@ -112,11 +113,15 @@ def rebuildWebTiles():
 
     else:
         searchParams = {
-            "meta": [{
-                "key": "Runner",
-                "value": "Cybercastor",
-            }]
+            "projectTypeId": "rcat"
+            # "meta": [{
+            #     "key": "Runner",
+            #     "value": "Cybercastor",
+            # }]
         }
+        log.info(
+            f"Ready to search for projects using search params: \n {json.dumps(searchParams, indent=2)}. \n\n IF THIS IS NOT WHAT YOU WANT, HIT CTRL-C NOW!")
+        confirm(riverscapes_api)
 
         changeable_projects = []
         offset = 0
@@ -131,21 +136,22 @@ def rebuildWebTiles():
 
             projects = results['data']['searchProjects']['results']
             log.info(f"   Fetching projects {offset} to {offset + 500}")
-            changeable_projects.append(project)
+            for project in projects:
+                changeable_projects.append(project['item'])
 
         # Now write all projects to a log file as json
         with open('rebuild_tiles.txt', 'w') as f:
             f.write(json.dumps(changeable_projects))
 
         # Ask the user to confirm using inquirer
-        log.info(f"Found {len(changeable_projects)} out of {total} projects to change rebuilt web tiles")
+        log.info(
+            f"Found {len(changeable_projects)} out of {total} projects to change rebuilt web tiles")
         confirm(riverscapes_api)
 
         # Now rebuilt web tiles all projects
-        mutation_script = riverscapes_api.load_mutation('updateProject')
         for project in changeable_projects:
-            print(f"rebuilt web tiles of project: {project['name']} with id: {project['id']}")
-            mutation_script = riverscapes_api.load_mutation('updateProject')
+            print(
+                f"Rebuilding web tiles of project: {project['name']} with id: {project['id']}")
             mutation_params['projectId'] = project['id']
             riverscapes_api.run_query(mutation_script, mutation_params)
 

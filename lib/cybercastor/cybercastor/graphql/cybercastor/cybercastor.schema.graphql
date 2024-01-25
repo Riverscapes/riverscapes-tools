@@ -1,0 +1,278 @@
+schema {
+  query: Query
+  mutation: Mutation
+}
+
+enum APIErrorEnum {
+  AUTHENTICATION_ERROR
+  COLLISION
+  DELETED
+  NOT_ADMIN
+  NOT_FOUND
+  PARAM_ERROR
+  PERMISSION_DENIED
+  SERVER_ERROR
+}
+
+type AuthParams {
+  clientId: String
+  domain: String
+  loggedIn: Boolean
+  region: String
+  userPool: String
+}
+
+type CybercastorStatus {
+  capacity: Int!
+  queuedTasks: Int!
+  runningJobs: Int!
+  runningTasks: Int!
+}
+
+scalar DateTime
+
+scalar EnvVars
+
+scalar JSONObject
+
+type Job {
+  createdBy: User!
+  createdById: ID!
+  createdOn: DateTime!
+  description: String
+  env: EnvVars!
+  id: ID!
+  meta: JSONObject!
+  name: String!
+  status: JobStatusEnum!
+  taskDef: TaskDef!
+  taskDefId: ID!
+  taskScript: TaskScript!
+  taskScriptId: ID!
+  tasks(limit: Int, nextToken: String): PaginatedTasks
+  updatedBy: User!
+  updatedById: ID!
+  updatedOn: DateTime!
+}
+
+input JobInput {
+  description: String
+  """
+  This is the environment variables that will be passed to the task. It is stringified JSON
+  """
+  env: String
+  """
+  This is the environment variables that will be passed to the task. It is stringified JSON
+  """
+  meta: String
+  name: String!
+  taskDefId: String!
+  taskScriptId: String!
+}
+
+enum JobStatusEnum {
+  ACTIVE
+  COMPLETE
+  DELETE_REQUESTED
+  RESTART_REQUESTED
+  STOP_REQUESTED
+}
+
+input JobUpdate {
+  description: String
+  """
+  This is the environment variables that will be passed to the task. It is stringified JSON
+  """
+  env: String
+  """
+  This is the environment variables that will be passed to the task. It is stringified JSON
+  """
+  meta: String
+  name: String
+  status: JobStatusEnum
+}
+
+type Mutation {
+  addJob(job: JobInput!, tasks: [TaskInput!]!): Job!
+  addTasks(jobId: ID!, tasks: [TaskInput!]!): [Task!]!
+  blockUser(block: Boolean, userId: ID!): User
+  deleteJob(jobId: ID!): Job!
+  deleteTasks(jobId: ID!, taskIds: [ID!]!): [Task!]!
+  deleteUser(userId: ID!): ID!
+  restartJob(force: Boolean, jobId: ID!): Job!
+  startTasks(jobId: ID!, taskIds: [ID!]!): [Task!]!
+  stopJob(jobId: ID!): Job!
+  stopTasks(jobId: ID!, taskIds: [ID!]!): [Task!]!
+  updateUser(user: UserInput, userId: ID!): User
+}
+
+type PaginatedJobs {
+  items: [Job!]!
+  nextToken: String
+}
+
+type PaginatedTasks {
+  items: [Task!]!
+  nextToken: String
+}
+
+type Query {
+  getCybercastorStatus: CybercastorStatus
+  getEngines: [TaskDef!]!
+  getJob(adminView: Boolean, jobId: ID!): Job
+  getJobs(adminView: Boolean, jobStatus: JobStatusEnum, limit: Int, nextToken: String, taskStatus: TaskStatusEnum): PaginatedJobs
+  getProfile: User
+  getTask(adminView: Boolean, jobId: ID!, taskId: ID!): Task
+  getUser(userId: ID!): User!
+}
+
+type Task {
+  ECSTaskId: ID
+  cpu: Int
+  createdBy: User!
+  createdById: ID!
+  createdOn: DateTime!
+  endedOn: DateTime
+  env: EnvVars!
+  id: ID!
+  job: Job!
+  jobId: ID!
+  logStream: String
+  logUrl: URL
+  memory: Int
+  meta: JSONObject!
+  name: ID!
+  queriedOn: DateTime!
+  retries: Int!
+  startedOn: DateTime
+  status: TaskStatusEnum!
+  taskDefProps: TaskDefProps
+  updatedBy: User!
+  updatedById: ID!
+  updatedOn: DateTime!
+}
+
+type TaskDef {
+  description: String
+  id: String!
+  name: String!
+  taskDefProps: TaskDefProps
+  taskScripts: [TaskScript!]!
+  version: Int!
+}
+
+type TaskDefProps {
+  cpu: Int
+  ephemeralStorageGiB: Int
+  memoryLimitMiB: Int
+}
+
+input TaskDefPropsInput {
+  cpu: Int
+  ephemeralStorageGiB: Int
+  memoryLimitMiB: Int
+}
+
+input TaskInput {
+  """
+  This is the environment variables that will be passed to the task. It is stringified JSON
+  """
+  env: String
+  """
+  This is the environment variables that will be passed to the task. It is stringified JSON
+  """
+  meta: String
+  name: String!
+  taskDefProps: TaskDefPropsInput
+}
+
+type TaskScript {
+  description: String
+  filename: String
+  id: String!
+  localScriptPath: String
+  name: String!
+  path: String
+  remoteScriptPath: String
+  taskDefProps: TaskDefProps
+  taskVars: [TaskVar!]!
+}
+
+enum TaskStatusEnum {
+  DELETE_REQUESTED
+  FAILED
+  QUEUED
+  RUNNING
+  STARTING
+  STOPPED
+  STOP_REQUESTED
+  SUCCEEDED
+}
+
+input TaskUpdate {
+  ECSTaskId: String
+  cpu: Int
+  endedOn: DateTime
+  """
+  This is the environment variables that will be passed to the task. It is stringified JSON
+  """
+  env: String
+  exitCode: Int
+  logStream: String
+  logUrl: URL
+  memory: Int
+  """
+  This is the environment variables that will be passed to the task. It is stringified JSON
+  """
+  meta: String
+  name: String
+  retries: Int
+  startedOn: DateTime
+  status: TaskStatusEnum
+}
+
+type TaskVar {
+  description: String
+  name: String!
+  optional: Boolean
+  regex: String!
+  varType: VarTypeEnum
+}
+
+input TaskVarInput {
+  description: String
+  name: String!
+  regex: String!
+  varType: VarTypeEnum!
+}
+
+scalar URL
+
+type User {
+  createdOn: DateTime!
+  id: ID!
+  isAdmin: Boolean!
+  isBlocked: Boolean!
+  jobs(jobStatus: JobStatusEnum, limit: Int, nextToken: String, taskStatus: TaskStatusEnum): PaginatedJobs
+  maxConcurrentTasks: Int
+  name: String!
+  status: UserStatusEnum!
+  updatedOn: DateTime!
+}
+
+input UserInput {
+  isAdmin: Boolean
+  maxConcurrentTasks: Int
+  name: String
+  status: UserStatusEnum
+}
+
+enum UserStatusEnum {
+  ACTIVE
+  BLOCKED
+}
+
+enum VarTypeEnum {
+  BIGSTRING
+  STRING
+}

@@ -1,7 +1,0 @@
-{
-  "$schema": "https://unpkg.com/graphql-config@3.3.0/config-schema.json",
-  "schema": "./cybercastor/graphql/riverscapes.schema.graphql",
-  "documents": [
-    "./cybercastor/graphql/riverscapes/**/*.graphql"
-  ]
-}

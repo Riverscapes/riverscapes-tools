@@ -185,11 +185,11 @@ class RiverscapesAPI:
         return auth_code
 
     def load_query(self, queryName: str) -> str:
-        with open(os.path.join(os.path.dirname(__file__), '..', 'graphql', 'riverscapes', 'query', f'{queryName}.graphql'), 'r') as queryFile:
+        with open(os.path.join(os.path.dirname(__file__), '..', 'graphql', 'riverscapes', 'queries', f'{queryName}.graphql'), 'r') as queryFile:
             return queryFile.read()
 
     def load_mutation(self, mutationName: str) -> str:
-        with open(os.path.join(os.path.dirname(__file__), '..', 'graphql', 'riverscapes', 'mutation', f'{mutationName}.graphql'), 'r') as queryFile:
+        with open(os.path.join(os.path.dirname(__file__), '..', 'graphql', 'riverscapes', 'mutations', f'{mutationName}.graphql'), 'r') as queryFile:
             return queryFile.read()
 
     def run_query(self, query, variables):  # A simple function to use requests.post to make the API call. Note the json= section.

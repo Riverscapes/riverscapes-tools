@@ -1,6 +1,14 @@
 {
   "folders": [
     {
+      "name": "🚂 Cybercastor API",
+      "path": "../lib/cybercastor/cybercastor/graphql/cybercastor",
+    },
+    {
+      "name": "🚂 Riverscapes API",
+      "path": "../lib/cybercastor/cybercastor/graphql/riverscapes",
+    },
+    {
       "name": "🦫 Cybercastor",
       "path": "../lib/cybercastor",
       "settings": {

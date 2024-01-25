@@ -1,0 +1,30 @@
+query GetEngines {
+  getEngines {
+      id
+      name
+      description
+      version
+      taskDefProps {
+        cpu
+        memoryLimitMiB
+        ephemeralStorageGiB
+      }
+      taskScripts {
+          id
+          name
+          filename
+          description
+          taskDefProps {
+            cpu
+            memoryLimitMiB
+            ephemeralStorageGiB
+          }
+          taskVars {
+              name
+              description
+              varType
+              regex
+          }
+      }
+  }
+}

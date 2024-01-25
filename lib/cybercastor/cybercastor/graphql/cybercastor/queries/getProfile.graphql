@@ -1,0 +1,41 @@
+query GetProfile($jobNextToken: String, $taskNextToken: String){
+  getProfile {
+    id
+    name
+    status
+    createdOn
+    updatedOn
+    isAdmin
+    isBlocked
+    maxConcurrentTasks
+    jobs(limit: 10, nextToken: $jobNextToken) {
+      items {
+        id
+        name
+        status
+        createdBy {
+          id
+          name
+        }
+        taskDef {
+          id
+          name
+        }
+        taskScript {
+          id
+          name
+        }
+        tasks(limit: 500, nextToken: $taskNextToken) {
+          items {
+            id
+            name
+            createdOn
+            status
+          }
+          nextToken
+        }
+      }
+      nextToken
+    }
+  }
+}

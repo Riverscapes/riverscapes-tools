@@ -1,0 +1,8 @@
+{
+  "$schema": "https://unpkg.com/graphql-config@3.3.0/config-schema.json",
+  "schema": "./riverscapes.schema.graphql",
+  "documents": [
+    "./queries/**/*.graphql",
+    "./mutations/**/*.graphql"
+  ]
+}
