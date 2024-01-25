@@ -18,7 +18,7 @@ import shutil
 from copy import deepcopy
 import warnings
 
-from osgeo import ogr, gdal
+from osgeo import ogr
 import rasterio
 from rasterio.windows import Window
 from shapely.geometry import box
@@ -29,7 +29,7 @@ from rscommons.vector_ops import copy_feature_class, polygonize, difference, col
 from rscommons.geometry_ops import get_extent_as_geom, get_rectangle_as_geom
 from rscommons.util import safe_makedirs, parse_metadata, pretty_duration, safe_remove_dir
 from rscommons.hand import run_subprocess
-from rscommons.vbet_network import copy_vaa_attributes, join_attributes, get_channel_level_path, get_distance_lookup, vbet_network
+from rscommons.vbet_network import get_channel_level_path, get_distance_lookup, vbet_network
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.raster_warp import raster_warp
 from rscommons import TimerBuckets, TimerWaypoints
@@ -108,7 +108,7 @@ LayerTypes = {
 }
 
 
-def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, project_folder, huc, flowline_type='NHD',
+def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, project_folder, huc, flowline_type='NHD',
                      unique_stream_field='level_path', unique_reach_field='NHDPlusID', drain_area_field='DivDASqKm',
                      level_paths=None, in_pitfill_dem=None, in_dinfflowdir_ang=None, in_dinfflowdir_slp=None, meta=None, debug=False,
                      reach_codes=None, mask=None, temp_folder=None):
@@ -171,15 +171,15 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_channel
         clip_mask = clip_mask.MakeValid()
 
     log.info('Preparing network:')
-    copy_feature_class(in_line_network, tmp_line_network, epsg=cfg.OUTPUT_EPSG.to_epsg(), clip_shape=clip_mask)
+    copy_feature_class(in_line_network, tmp_line_network, epsg=cfg.OUTPUT_EPSG, clip_shape=clip_mask)
     # with get_shp_or_gpkg(in_line_network) as in_line_network:
     #     if int(in_line_network.spatial_ref.GetAttrValue("AUTHORITY", 1)) != cfg.OUTPUT_EPSG.to_epsg():
-    vbet_network(tmp_line_network, None, line_network, epsg=cfg.OUTPUT_EPSG.to_epsg(), fcodes=reach_codes, hard_clip_shape=clip_mask)
+    vbet_network(tmp_line_network, None, line_network, epsg=cfg.OUTPUT_EPSG, fcodes=reach_codes, hard_clip_shape=clip_mask)
         # else:
         #     vbet_network(in_line_network, None, line_network_features, fcodes=reach_codes, hard_clip_shape=clip_mask)
 
     channel_area = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['CHANNEL_AREA_POLYGONS'].rel_path)
-    copy_feature_class(in_channel_area, channel_area, epsg=cfg.OUTPUT_EPSG.to_epsg())
+    copy_feature_class(in_channel_area, channel_area, epsg=cfg.OUTPUT_EPSG)
 
     log.info('Building VBET Database')
     build_vbet_database(inputs_gpkg)
@@ -429,7 +429,7 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_channel
         envelope = os.path.join(temp_folder_lpath, 'envelope_polygon.gpkg', f'level_path_{level_path}')
         with TimerBuckets('ogr'):
             with GeopackageLayer(envelope, write=True) as lyr_envelope:
-                lyr_envelope.create_layer(ogr.wkbPolygon, cfg.OUTPUT_EPSG.to_epsg())
+                lyr_envelope.create_layer(ogr.wkbPolygon, cfg.OUTPUT_EPSG)
                 lyr_envelope_dfn = lyr_envelope.ogr_layer_def
                 feat = ogr.Feature(lyr_envelope_dfn)
                 feat.SetGeometry(envelope_geom)
@@ -439,8 +439,8 @@ def vbet_centerlines(in_line_network, in_dem, in_slope, in_hillshade, in_channel
         local_dinfflowdir_ang = os.path.join(temp_folder_lpath, f'dinfflowdir_ang_{level_path}.tif')
         local_pitfill_dem = os.path.join(temp_folder_lpath, f'pitfill_dem_{level_path}.tif')
         with TimerBuckets('gdal'):
-            raster_warp(dinfflowdir_ang, local_dinfflowdir_ang, cfg.OUTPUT_EPSG.to_epsg(), clip=envelope)
-            raster_warp(pitfill_dem, local_pitfill_dem, cfg.OUTPUT_EPSG.to_epsg(), clip=envelope)
+            raster_warp(dinfflowdir_ang, local_dinfflowdir_ang, cfg.OUTPUT_EPSG, clip=envelope)
+            raster_warp(pitfill_dem, local_pitfill_dem, cfg.OUTPUT_EPSG, clip=envelope)
 
         rasterized_channel = os.path.join(temp_folder_lpath, f'rasterized_channel_{level_path}.tif')
         prox_raster_path = os.path.join(temp_folder_lpath, f'chan_proximity_{level_path}.tif')
@@ -968,7 +968,7 @@ def main():
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output_dir, 'vbet_mem.log')
             retcode, max_obj = ThreadRun(
-                vbet_centerlines, memfile,
+                vbet, memfile,
                 args.flowline_network, args.dem, args.slope, args.hillshade, args.channel_area, args.output_dir,
                 args.huc, args.flowline_type, args.unique_stream_field, args.unique_reach_field, args.drain_area_field, level_paths, 
                 args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, meta=meta, reach_codes=reach_codes, mask=args.mask,
@@ -978,7 +978,7 @@ def main():
             # Zip up a copy of the temp folder for debugging purposes
             zip_temp_folder(temp_folder, os.path.join(args.output_dir, 'temp'))
         else:
-            vbet_centerlines(
+            vbet(
                 args.flowline_network, args.dem, args.slope, args.hillshade, args.channel_area, args.output_dir,
                 args.huc, args.flowline_type, args.unique_stream_field, args.unique_reach_field, args.drain_area_field, level_paths, 
                 args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, meta=meta, reach_codes=reach_codes, mask=args.mask,

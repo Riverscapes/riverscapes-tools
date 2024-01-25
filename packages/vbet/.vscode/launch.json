@@ -73,7 +73,7 @@
         "--dinfflowdir_ang","{env:DATA_ROOT}/taudem/${input:HUC}/intermediates/dinfflowdir_ang.tif",
         "--dinfflowdir_slp","{env:DATA_ROOT}/taudem/${input:HUC}/outputs/dinfflowdir_slp.tif",
         "--reach_codes", "33400,46000,46003,46006,46007,55800",
-        //"--mask", "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydro_derivatives.gpkg/processing_extent",
+        "--mask", "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydro_derivatives.gpkg/processing_extent",
         "--meta",
         "Runner=VSCode",
         "--verbose",
