@@ -10,6 +10,7 @@ from shapely.ops import split
 from rscommons import get_shp_or_gpkg, GeopackageLayer, Logger
 from rscommons.segment_network import copy_fields
 from rscommons.vector_ops import collect_feature_class
+from rscommons.classes.vector_base import VectorBase, get_utm_zone_epsg
 
 Path = str
 
@@ -134,6 +135,9 @@ def rs_segmentation(
             output_lyr.ogr_layer.SetFeature(feat)
         output_lyr.ogr_layer.CommitTransaction()
 
+    # Remove really short features from the NHDFlowline layer
+    remove_small_features(out_gpkg, 'network_intersected', 0.5)
+
     # Index fields on the segmented networks
     with sqlite3.connect(out_gpkg) as conn:
         curs = conn.cursor()
@@ -256,3 +260,38 @@ def polygon_to_polyline(lines_path, polygon_path, network_path):
                     out_feature.SetGeometry(b_line)
                     out_layer.ogr_layer.CreateFeature(out_feature)
         out_layer.ogr_layer.CommitTransaction()
+
+
+def remove_small_features(hydro_derivatives_gpkg: str, layer_name: str, threshold_length: float) -> int:
+    """Iterate over all the features in the specified GeoPackage layer and delete them
+    if their length (in metres) is less than the threshold.
+
+    Args:
+        hydro_derivatives_gpkg (str): Hydro Derivatives GeoPackage
+        layer_name (str): Name of the layer to iterate over
+        threshold_length (float): Length in metres below which features will be deleted
+
+    Returns:
+        int: Number of features deleted
+    """
+
+    log = Logger('Hydro Derivatives')
+
+    # delete_count = 0
+    fids = []
+    with GeopackageLayer(hydro_derivatives_gpkg, layer_name='network_intersected', write=True) as layer:
+        longitude = layer.ogr_layer.GetExtent()[0]
+        proj_epsg = get_utm_zone_epsg(longitude)
+        __sref, transform = VectorBase.get_transform_from_epsg(
+            layer.spatial_ref, proj_epsg)
+
+        for feat, fid, _ in layer.iterate_features():
+            feature = VectorBase.ogr2shapely(feat, transform)
+            if feature.length < threshold_length:
+                fids.append(fid)
+
+        [layer.ogr_layer.DeleteFeature(fid) for fid in fids]
+
+    log.info(
+        f'Deleted {len(fids)} features with length less than {threshold_length} from {layer_name} in {hydro_derivatives_gpkg}')
+    return len(fids)
