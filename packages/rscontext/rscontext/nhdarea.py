@@ -1,4 +1,5 @@
 import os
+import sqlite3
 from osgeo import ogr
 from rscommons import ProgressBar, Logger, GeopackageLayer, get_shp_or_gpkg
 
@@ -10,6 +11,7 @@ def split_nhd_area(in_nhd_area: str, in_nhd_catchments: str, out_area_split: str
 
     area_ids = {}
     area_feats = {}
+    nhdplusids = {}
 
     with get_shp_or_gpkg(in_nhd_area) as lyr_area, \
             get_shp_or_gpkg(in_nhd_catchments) as lyr_catch:
@@ -37,6 +39,8 @@ def split_nhd_area(in_nhd_area: str, in_nhd_catchments: str, out_area_split: str
                     # make valid
                     if not out_geom.IsValid():
                         out_geom = out_geom.MakeValid()
+                    if catch_id not in nhdplusids.keys():
+                        nhdplusids[catch_id] = catch_feat.GetField('NHDPlusID')
                     area_outputs[catch_id] = out_geom
             area_ids[area_id] = area_outputs
 
@@ -72,7 +76,7 @@ def split_nhd_area(in_nhd_area: str, in_nhd_catchments: str, out_area_split: str
                     if field_name.lower() != 'nhdplusid':
                         out_feature.SetField(outlyr_def.GetFieldDefn(j).GetNameRef(), area_feats[area_id].GetField(j))
                     else:
-                        out_feature.SetField(field_name, out_catch_id)
+                        out_feature.SetField(field_name, nhdplusids[out_catch_id])
 
                 out_feature.SetGeometry(geom)
                 outlyr.CreateFeature(out_feature)
@@ -83,3 +87,24 @@ def split_nhd_area(in_nhd_area: str, in_nhd_catchments: str, out_area_split: str
     outdatasrc = None
 
     return out_area_split
+
+
+def nhd_area_level_paths(in_nhdarea_split: str, in_nhd_vaa: str):
+
+    log = Logger('NHD Area Level Paths')
+    log.info('Finding NHD Area Level Paths')
+
+    with GeopackageLayer(in_nhdarea_split, write=True) as lyr_area, \
+            sqlite3.connect(in_nhd_vaa) as conn:
+        
+        curs = conn.cursor()
+        lp_field_def = ogr.FieldDefn('level_path', ogr.OFTReal)
+        lyr_area.ogr_layer.CreateField(lp_field_def)
+
+        for area_feat, *_ in lyr_area.iterate_features("NHD Flow Areas"):
+            nhdplusid = area_feat.GetField('NHDPlusID')
+            lp = curs.execute(f"SELECT LevelPathI FROM NHDPlusFlowlineVAA WHERE NHDPlusID = {nhdplusid}").fetchone()[0]
+            area_feat.SetField('level_path', lp)
+            lyr_area.ogr_layer.SetFeature(area_feat)
+
+    return 
