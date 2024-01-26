@@ -10,14 +10,14 @@ import os
 
 
 # export enum TaskStatusEnum {
+#     DELETE_REQUESTED = 'DELETE_REQUESTED',
+#     FAILED = 'FAILED',
 #     QUEUED = 'QUEUED',
 #     RUNNING = 'RUNNING',
 #     STARTING = 'STARTING',
 #     STOPPED = 'STOPPED',
-#     SUCCEEDED = 'SUCCEEDED',
-#     FAILED = 'FAILED',
-#     DELETE_REQUESTED = 'DELETE_REQUESTED',
 #     STOP_REQUESTED = 'STOP_REQUESTED'
+#     SUCCEEDED = 'SUCCEEDED',
 # }
 READY = ['STOPPED', 'SUCCEEDED', 'FAILED']
 READY_RUNNING = ['STOPPED', 'SUCCEEDED', 'FAILED', 'RUNNING']
@@ -44,16 +44,19 @@ def download_job_logs(job, outdir, download_running=False):
         f.write(report_job(job))
 
     valid_states = READY if not download_running else READY_RUNNING
-    tasks = [j for j in job['tasks'] if j['status'] in valid_states and j['logStream'] is not None]
+    tasks = [j for j in job['tasks'] if j['status']
+             in valid_states and j['logStream'] is not None]
     for t in tasks:
         # Running logs always download
-        task_log_path = os.path.join(job_dir, '{}-{}.log'.format(t['status'], t['name']))
+        task_log_path = os.path.join(
+            job_dir, '{}-{}.log'.format(t['status'], t['name']))
         task_log_glob = os.path.join(job_dir, '*-{}.log'.format(t['name']))
         if (t['status'] == 'RUNNING' and t['logStream']) or not os.path.isfile(task_log_path):
             # Clean out any other logs for this that may exist
             for filePath in glob(task_log_glob):
                 safe_remove_file(filePath)
-            download_logs(job, t, 'CybercastorLogs_prod', t['logStream'], task_log_path)
+            download_logs(job, t, 'CybercastorLogs_prod',
+                          t['logStream'], task_log_path)
 
 
 def download_logs(job, task, group_name, stream, file_path):
@@ -70,27 +73,35 @@ def download_logs(job, task, group_name, stream, file_path):
 
     with open(file_path, 'w') as out_to:
         # Every log gets a copy of the task object too
-        revised_job = {k: v for k, v in job.items() if k in ['id', 'name', 'decription', 'taskDefId', 'taskScriptId', 'meta']}
-        out_to.write('Cybercastor Job\n------------------------------------------------------------------------\n')
+        revised_job = {k: v for k, v in job.items(
+        ) if k in ['id', 'name', 'decription', 'taskDefId', 'taskScriptId', 'meta']}
+        out_to.write(
+            'Cybercastor Job\n------------------------------------------------------------------------\n')
         out_to.write(json.dumps(revised_job, indent=4, sort_keys=True) + '\n')
-        out_to.write('\nCybercastor Task\n------------------------------------------------------------------------\n')
+        out_to.write(
+            '\nCybercastor Task\n------------------------------------------------------------------------\n')
         out_to.write(json.dumps(task, indent=4, sort_keys=True) + '\n')
-        out_to.write('\nCybercastor Task Log\n------------------------------------------------------------------------\n')
+        out_to.write(
+            '\nCybercastor Task Log\n------------------------------------------------------------------------\n')
         try:
-            logs_batch = client.get_log_events(logGroupName=group_name, logStreamName=stream, startTime=0)
+            logs_batch = client.get_log_events(
+                logGroupName=group_name, logStreamName=stream, startTime=0)
             for event in logs_batch['events']:
                 event.update({'group': group_name, 'stream': stream})
-                date_string = datetime.utcfromtimestamp(event['timestamp'] / 1000).strftime('%Y-%m-%d %H:%M:%S')
+                date_string = datetime.utcfromtimestamp(
+                    event['timestamp'] / 1000).strftime('%Y-%m-%d %H:%M:%S')
                 message = "{}:: {}\n".format(date_string, event['message'])
                 out_to.write(message)
             print(file_path, ":", len(logs_batch['events']))
 
             while 'nextToken' in logs_batch:
-                logs_batch = client.get_log_events(logGroupName=group_name, logStreamName=stream, nextToken=logs_batch['nextToken'])
+                logs_batch = client.get_log_events(
+                    logGroupName=group_name, logStreamName=stream, nextToken=logs_batch['nextToken'])
                 for event in logs_batch['events']:
                     event.update({'group': group_name, 'stream': stream})
                     out_to.write(json.dumps(event) + '\n')
         except Exception as e:
             print(e)
-            out_to.write('ERROR RETRIEVING LOGS: Group: {} Stream: {}'.format(group_name, stream))
+            out_to.write('ERROR RETRIEVING LOGS: Group: {} Stream: {}'.format(
+                group_name, stream))
             out_to.write(e)

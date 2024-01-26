@@ -1,27 +1,6 @@
 mutation ($job: JobInput!, $tasks: [TaskInput!]!) {
     addJob(job: $job, tasks: $tasks) {
         id
-        createdBy {
-          id
-          name
-        }
-        createdOn
-        updatedOn
-        status
-        meta
         name
-        description
-        taskDefId
-        taskScriptId
-        env
-        # Keep this super lean so we don't need to paginate
-        # There is a slight risk that this will be too big
-        tasks {
-          items {
-            id
-            name
-          }
-          nextToken
-        }
     }
 }

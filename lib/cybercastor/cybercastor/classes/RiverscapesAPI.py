@@ -82,7 +82,7 @@ class RiverscapesAPI:
         if self.tokenTimeout:
             self.tokenTimeout.cancel()
 
-    def refresh_token(self) -> 'GQLApi':
+    def refresh_token(self):
         self.log.info(f"Authenticating on Riverscapes API: {self.uri}")
         if self.tokenTimeout:
             self.tokenTimeout.cancel()
@@ -254,12 +254,12 @@ class RiverscapesAPI:
 
 if __name__ == '__main__':
     log = Logger('API')
-    gql = RiverscapesAPI(os.environ['RS_API_URL'])
+    gql = RiverscapesAPI(os.environ.get('RS_API_URL'))
     gql.refresh_token()
     log.debug(gql.accessToken)
     gql.shutdown()  # remember to shutdown so the threaded timer doesn't keep the process alive
 
-    gql2 = RiverscapesAPI(os.environ['RS_API_URL'], {
+    gql2 = RiverscapesAPI(os.environ.get('RS_API_URL'), {
         'clientId': os.environ['RS_CLIENT_ID'],
         'secretId': os.environ['RS_CLIENT_SECRET']
     })

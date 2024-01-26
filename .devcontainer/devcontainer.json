@@ -74,10 +74,14 @@
     "4721": {
       "label": "Authentication",
       "onAutoForward": "openBrowser"
+    },
+    "4722": {
+      "label": "Authentication",
+      "onAutoForward": "openBrowser"
     }
   },
   // Use 'forwardPorts' to make a list of ports inside the container available locally.
   "forwardPorts": [
-    4721
+    4721, 4722
   ]
 }

@@ -20,8 +20,8 @@ from cybercastor.lib.hashes import checkEtag
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 logging.getLogger("urllib3").propagate = False
 
-LOCAL_PORT = 4721
-LOGIN_SCOPE = 'openid'
+LOCAL_PORT = 4722
+LOGIN_SCOPE = 'cybercastor:user'
 
 
 class CybercastorAPI:
@@ -75,14 +75,33 @@ class CybercastorAPI:
     def getAuth(self) -> Dict[str, str]:
         return {
             "domain": "dev-1redlpx2nwsh6a4j.us.auth0.com",
-            "clientId": "pH1ADlGVi69rMozJS1cixkuL5DMVLhKC"
+            "clientId": "mBDfaepUmaYGap9fM3ryEU2J0zltOlMY"
         }
 
     def shutdown(self):
         if self.tokenTimeout:
             self.tokenTimeout.cancel()
 
-    def refresh_token(self) -> 'GQLApi':
+    def get_job_paginated(self, job_id):
+        """Get the current job and all tasks associated with it (paginate through until you have them all)
+
+        Args:
+            job_id (_type_): _description_
+        """
+        get_job_query = self.load_mutation('getJob')
+        get_job_task_page_query = self.load_mutation('getJobTaskPage')
+        results = self.run_query(get_job_query, {"jobId": job_id})
+
+        # If there are more tasks then paginate through them
+        while (results['data']['getJob'] and results['data']['getJob']['tasks']['nextToken'] != None):
+            pageResults = self.run_query(get_job_task_page_query, {
+                                         "jobId": job_id, "nextToken": results['data']['getJob']['tasks']['nextToken']})
+            results['data']['getJob']['tasks']['items'] += pageResults['data']['getJob']['tasks']['items']
+            results['data']['getJob']['tasks']['nextToken'] = pageResults['data']['getJob']['tasks']['nextToken']
+
+        return results['data'] if results['data']['getJob'] else None
+
+    def refresh_token(self):
         self.log.info(f"Authenticating on Cybercastor API: {self.uri}")
         if self.tokenTimeout:
             self.tokenTimeout.cancel()
@@ -96,31 +115,34 @@ class CybercastorAPI:
         # Step 1: Determine if we're machine code or user auth
         # If it's machine then we can fetch tokens much easier:
         if self.machineAuth:
-            tokenUri = self.uri if self.uri.endswith('/') else self.uri + '/'
-            tokenUri += 'token'
+            raise Exception(
+                "Machine authentication is not yet supported on Cybercastor")
 
-            options = {
-                'method': 'POST',
-                'url': tokenUri,
-                'headers': {'content-type': 'application/x-www-form-urlencoded'},
-                'data': {
-                    'audience': 'https://api.riverscapes.net',
-                    'grant_type': 'client_credentials',
-                    'scope': 'cybercastor:user',
-                    'client_id': self.machineAuth['clientId'],
-                    'client_secret': self.machineAuth['secretId'],
-                }
-            }
+            # tokenUri = self.uri if self.uri.endswith('/') else self.uri + '/'
+            # tokenUri += 'token'
 
-            try:
-                getTokenReturn = requests.request(**options).json()
-                # NOTE: RETRY IS NOT NECESSARY HERE because we do our refresh on the API side of things
-                # self.tokenTimeout = setTimeout(self.refreshToken, 1000 * getTokenReturn['expires_in'] - 20)
-                self.accessToken = getTokenReturn['access_token']
-                self.log.info("SUCCESSFUL Machine Authentication")
-            except Exception as error:
-                self.log.info(f"Access Token error {error}")
-                raise error
+            # options = {
+            #     'method': 'POST',
+            #     'url': tokenUri,
+            #     'headers': {'content-type': 'application/x-www-form-urlencoded'},
+            #     'data': {
+            #         'audience': 'https://api.riverscapes.net',
+            #         'grant_type': 'client_credentials',
+            #         'scope': LOGIN_SCOPE,
+            #         'client_id': self.machineAuth['clientId'],
+            #         'client_secret': self.machineAuth['secretId'],
+            #     }
+            # }
+
+            # try:
+            #     getTokenReturn = requests.request(**options).json()
+            #     # NOTE: RETRY IS NOT NECESSARY HERE because we do our refresh on the API side of things
+            #     # self.tokenTimeout = setTimeout(self.refreshToken, 1000 * getTokenReturn['expires_in'] - 20)
+            #     self.accessToken = getTokenReturn['access_token']
+            #     self.log.info("SUCCESSFUL Machine Authentication")
+            # except Exception as error:
+            #     self.log.info(f"Access Token error {error}")
+            #     raise error
 
         # If this is a user workflow then we need to pop open a web browser
         else:
@@ -128,7 +150,7 @@ class CybercastorAPI:
             code_challenge = self._generate_challenge(code_verifier)
             state = self._generate_random(32)
 
-            redirect_url = f"http://localhost:{LOCAL_PORT}/rscli/"
+            redirect_url = f"http://localhost:{LOCAL_PORT}/cc_cli/"
             login_url = urlparse(f"https://{authDetails['domain']}/authorize")
             query_params = {
                 "client_id": authDetails["clientId"],
@@ -223,15 +245,17 @@ class CybercastorAPI:
 
 if __name__ == '__main__':
     log = Logger('API')
-    gql = CybercastorAPI(os.environ['CC_API_URL'])
+    gql = CybercastorAPI(os.environ.get('CC_API_URL'))
     gql.refresh_token()
     log.debug(gql.accessToken)
     gql.shutdown()  # remember to shutdown so the threaded timer doesn't keep the process alive
 
-    gql2 = CybercastorAPI(os.environ['CC_API_URL'], {
-        'clientId': os.environ['CC_CLIENT_ID'],
-        'secretId': os.environ['CC_CLIENT_SECRET']
-    })
-    gql2.refresh_token()
-    log.debug(gql2.accessToken)
-    gql2.shutdown()  # remember to shutdown so the threaded timer doesn't keep the process alive
+    # NOTE: There is no machine auth on CYbercastor yet
+
+    # gql2 = CybercastorAPI(os.environ.get('CC_API_URL'), {
+    #     'clientId': os.environ['CC_CLIENT_ID'],
+    #     'secretId': os.environ['CC_CLIENT_SECRET']
+    # })
+    # gql2.refresh_token()
+    # log.debug(gql2.accessToken)
+    # gql2.shutdown()  # remember to shutdown so the threaded timer doesn't keep the process alive

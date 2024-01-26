@@ -86,7 +86,13 @@ def get_params(job_obj):
     return params
 
 
-def main(job_json_dir, api_url, username, password) -> bool:
+def main(job_json_dir, stage) -> bool:
+
+    # Initialize our API and log in right away to get it out of the way
+    # This will pop open a browser window
+    cc_api = CybercastorAPI(stage=stage)
+    cc_api.refresh_token()    
+
     job_choices = {}
     repeat = False
     monitor_logs_path = os.path.join(os.path.dirname(__file__), '..', 'logs')
@@ -134,7 +140,8 @@ def main(job_json_dir, api_url, username, password) -> bool:
     if 'server' not in job_obj:
         job_obj['server'] = 'PRODUCTION'
     elif job_obj['server'] not in ['PRODUCTION', 'STAGING', 'DEVELOPMENT']:
-        raise Exception('server must be one of PRODUCTION, STAGING, DEVELOPMENT')
+        raise Exception(
+            'server must be one of PRODUCTION, STAGING, DEVELOPMENT')
 
     # Initialize a connection to the riverscapes API
     upstream_results = find_upstream_projects(job_obj)
@@ -154,8 +161,6 @@ def main(job_json_dir, api_url, username, password) -> bool:
     else:
         server = job_obj['server']
         raise Exception(f'Unknown server: {server}')
-    # Initialize our API and log in
-    cyberCastor = CybercastorAPI(api_url, username, password)
 
     outputFile = os.path.splitext(job_path)[0] + '.output.json'
 
@@ -177,15 +182,14 @@ def main(job_json_dir, api_url, username, password) -> bool:
         # Make our params what the cybercastor  API needs
         params = get_params(job_obj)
 
-        if cyberCastor is None:
-            cyberCastor = CybercastorAPI(api_url, username, password)
-
         with open(outputFile, 'w') as outfile:
             # Add the job to the API
-            result = cyberCastor.add_job(params)
+            add_job_mutation = cc_api.load_mutation('addJob')
+            result = cc_api.run_query(add_job_mutation, params)
             if result is None:
                 raise Exception('Error')
-            json.dump(result, outfile, indent=4, sort_keys=True)
+            job = cc_api.get_job_paginated(result['id'])
+            json.dump(job['data'], outfile, indent=4, sort_keys=True)
             job_monitor = result
 
     ##############################
@@ -196,12 +200,12 @@ def main(job_json_dir, api_url, username, password) -> bool:
 
     # Now start a job loop
     while True:
-
-        if cyberCastor is None:
-            cyberCastor = CybercastorAPI(api_url, username, password)
+        # Only refresh the token if we need to
+        if cc_api.accessToken is None:
+            cc_api.refresh_token()
 
         # Make an API query for the job that is in the output json file
-        job_monitor = cyberCastor.get_job(job_monitor['id'])
+        job_monitor = cc_api.get_job_paginated(job_monitor['id'])
         # Immediately write the new state to the file
         with open(outputFile, 'w') as outfile:
             job_monitor['meta'] = json.loads(job_monitor['meta'])
@@ -242,9 +246,11 @@ def main(job_json_dir, api_url, username, password) -> bool:
             time.sleep(3)
         elif menu_choice == 'task_manage':
             # Get a fresh copy to work with
-            manage_tasks(cyberCastor, job_monitor['id'])
+            manage_tasks(cc_api, job_monitor['id'])
 
     print('Goodbye!!')
+    # Remember to shut off the API when you're done with it
+    cc_api.shutdown()
     return repeat
 
 
@@ -379,12 +385,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(
         'job_json', help='The job specification JSON file', type=str)
-    parser.add_argument('cc_api_url', help='URL to the cybercastor API', type=str)
-    # These are legacy Cognitop credentials. We need to update this to use the new API
-    parser.add_argument('username', help='API URL Username', type=str)
-    parser.add_argument('password', help='API URL Password', type=str)
-    parser.add_argument('--verbose', help='(optional) a little extra logging ',
-                        action='store_true', default=False)
+    parser.add_argument(
+        'stage', help='Cybercastor API stage', type=str, default='production')
+    parser.add_argument(
+        '--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
 
     args = dotenv.parse_args_env(parser)
 
@@ -393,13 +397,10 @@ if __name__ == '__main__':
     log.setup(verbose=args.verbose)
     log.title('Cybercastor Add JOB')
 
-    # Stupid slash parsing
-    fixedurl = args.cc_api_url.replace(':/', '://')
-
     try:
         RETRY = True
         while RETRY is True:
-            RETRY = main(args.job_json, fixedurl, args.username, args.password)
+            RETRY = main(args.job_json, args.stage)
 
     except Exception as e:
         log.error(e)

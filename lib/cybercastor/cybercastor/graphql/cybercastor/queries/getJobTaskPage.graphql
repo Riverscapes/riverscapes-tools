@@ -1,0 +1,42 @@
+query GetJob($jobId: ID!, $taskNextToken: String) {
+  getJob(jobId: $jobId) {
+    id
+    # Note: Make sure the field list matches getJob.graphql
+    tasks(limit: 500, nextToken: $taskNextToken) {
+      items {
+        id
+        jobId
+        name
+        createdBy {
+          id
+          name
+        }
+        updatedBy {
+          id
+          name
+        }
+        createdById
+        updatedById
+        createdOn
+        updatedOn
+        startedOn
+        queriedOn
+        env
+        meta
+        logStream
+        logUrl
+        retries
+        memory
+        meta
+        ECSTaskId
+        cpu
+        ECSTaskId
+        taskDefProps {
+          cpu
+          ephemeralStorageGiB
+          memoryLimitMiB
+        }
+      }
+    }
+  }
+}

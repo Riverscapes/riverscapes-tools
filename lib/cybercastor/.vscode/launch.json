@@ -7,7 +7,17 @@
     {
       "id": "environment",
       "type": "pickString",
-      "description": "Select an environment",
+      "description": "Select a RIVERSCAPES API environment",
+      "options": [
+        "staging",
+        "production"
+      ],
+      "default": "production"
+    },
+    {
+      "id": "cc_environment",
+      "type": "pickString",
+      "description": "Select a CYBERCASTOR API environment",
       "options": [
         "staging",
         "production"
@@ -99,9 +109,7 @@
       "envFile": "${workspaceFolder}/.env",
       "args": [
         "${workspaceFolder}/jobs/",
-        "{env:CC_API_URL}",
-        "{env:USERNAME}",
-        "{env:PASSWORD}",
+        "${input:cc_environment}",
         "--verbose"
       ]
     },
