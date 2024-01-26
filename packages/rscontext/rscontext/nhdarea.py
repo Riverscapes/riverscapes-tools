@@ -103,8 +103,13 @@ def nhd_area_level_paths(in_nhdarea_split: str, in_nhd_vaa: str):
 
         for area_feat, *_ in lyr_area.iterate_features("NHD Flow Areas"):
             nhdplusid = area_feat.GetField('NHDPlusID')
-            lp = curs.execute(f"SELECT LevelPathI FROM NHDPlusFlowlineVAA WHERE NHDPlusID = {nhdplusid}").fetchone()[0]
-            area_feat.SetField('level_path', lp)
+            curs.execute(f"SELECT LevelPathI FROM NHDPlusFlowlineVAA WHERE NHDPlusID = {nhdplusid}")
+            lpath = curs.fetchone()
+            if lpath is not None:
+                levelpath = lpath[0]
+            else:
+                levelpath = None
+            area_feat.SetField('level_path', levelpath)
             lyr_area.ogr_layer.SetFeature(area_feat)
 
     return 
