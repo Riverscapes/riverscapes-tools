@@ -45,7 +45,7 @@ from rscontext.boundary_management import raster_area_intersection
 from rscontext.clean_catchments import clean_nhdplus_catchments
 from rscontext.hydro_derivatives import clean_nhdplus_vaa_table, create_spatial_view
 from rscontext.clip_vector import clip_vector_layer
-from rscontext.nhdarea import split_nhd_area
+from rscontext.nhdarea import split_nhd_area, nhd_area_level_paths
 from rscontext.rs_context_report import RSContextReport
 from rscontext.rs_segmentation import rs_segmentation
 from rscontext.vegetation import clip_vegetation
@@ -277,13 +277,15 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states_
                  None, "ReachCode LIKE '{}%'".format(huc[:8]))
 
     # drop rows in NHDPlusFlowlineVAA that do not have a flowline in the NHDFlowline table
-    clean_nhdplus_vaa_table(nhd_gpkg_path)
-
-    # drop rows in NHDPlusFlowlineVAA that do not have a flowline in the NHDFlowline table
+    log.info('Cleaning NHDPlusFlowlineVAA table')
     clean_nhdplus_vaa_table(nhd_gpkg_path)
 
     # Clean up NHDPlusCatchment dataset
+    log.info('Cleaning NHDPlusCatchment table')
     clean_nhdplus_catchments(nhd_gpkg_path, boundary, str(huc))
+
+    # Add level paths to NHDAreaSplit
+    nhd_area_level_paths(area_split_out, nhd_gpkg_path)
 
     # HUC 8 extent polygon
     nhd['HUC8Extent'] = os.path.join(
