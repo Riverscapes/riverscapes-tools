@@ -74,7 +74,7 @@ class CybercastorAPI:
 
     def getAuth(self) -> Dict[str, str]:
         return {
-            "domain": "dev-1redlpx2nwsh6a4j.us.auth0.com",
+            "domain": "auth.riverscapes.net",
             "clientId": "mBDfaepUmaYGap9fM3ryEU2J0zltOlMY"
         }
 

@@ -74,7 +74,7 @@ class RiverscapesAPI:
 
     def getAuth(self) -> Dict[str, str]:
         return {
-            "domain": "dev-1redlpx2nwsh6a4j.us.auth0.com",
+            "domain": "auth.riverscapes.net",
             "clientId": "pH1ADlGVi69rMozJS1cixkuL5DMVLhKC"
         }
 
@@ -192,8 +192,10 @@ class RiverscapesAPI:
         with open(os.path.join(os.path.dirname(__file__), '..', 'graphql', 'riverscapes', 'mutations', f'{mutationName}.graphql'), 'r') as queryFile:
             return queryFile.read()
 
-    def run_query(self, query, variables):  # A simple function to use requests.post to make the API call. Note the json= section.
-        headers = {"authorization": "Bearer " + self.accessToken} if self.accessToken else {}
+    # A simple function to use requests.post to make the API call. Note the json= section.
+    def run_query(self, query, variables):
+        headers = {"authorization": "Bearer " +
+                   self.accessToken} if self.accessToken else {}
         request = requests.post(self.uri, json={
             'query': query,
             'variables': variables
@@ -205,7 +207,8 @@ class RiverscapesAPI:
                 self.log.info(json.dumps(resp_json, indent=4, sort_keys=True))
                 # Authentication timeout: re-login and retry the query
                 if len(list(filter(lambda err: 'You must be authenticated' in err['message'], resp_json['errors']))) > 0:
-                    self.log.debug("Authentication timed out. Fetching new token...")
+                    self.log.debug(
+                        "Authentication timed out. Fetching new token...")
                     self.refresh_token()
                     self.log.debug("   done. Re-trying query...")
                     return self.run_query(query, variables)
@@ -214,7 +217,8 @@ class RiverscapesAPI:
                 # self.retry = 0
                 return request.json()
         else:
-            raise Exception("Query failed to run by returning code of {}. {}".format(request.status_code, query))
+            raise Exception("Query failed to run by returning code of {}. {}".format(
+                request.status_code, query))
 
     def download_file(self, api_file_obj, local_path, force=False):
         """[summary]
@@ -226,15 +230,19 @@ class RiverscapesAPI:
         Keyword Arguments:
             force {bool} -- if true we will download regardless
         """
-        file_is_there = os.path.exists(local_path) and os.path.isfile(local_path)
-        etagMatch = file_is_there and checkEtag(local_path, api_file_obj['md5'])
+        file_is_there = os.path.exists(
+            local_path) and os.path.isfile(local_path)
+        etagMatch = file_is_there and checkEtag(
+            local_path, api_file_obj['md5'])
 
         if force is True or not file_is_there or not etagMatch:
             if not etagMatch:
-                self.log.info('        File etag mismatch. Re-downloading: {}'.format(local_path))
+                self.log.info(
+                    '        File etag mismatch. Re-downloading: {}'.format(local_path))
             elif not file_is_there:
                 self.log.info('        Downloading: {}'.format(local_path))
-            r = requests.get(api_file_obj['downloadUrl'], allow_redirects=True, stream=True)
+            r = requests.get(
+                api_file_obj['downloadUrl'], allow_redirects=True, stream=True)
             total_length = r.headers.get('content-length')
 
             dl = 0
@@ -242,7 +250,8 @@ class RiverscapesAPI:
                 if total_length is None:  # no content length header
                     f.write(r.content)
                 else:
-                    progbar = ProgressBar(int(total_length), 50, local_path, byteFormat=True)
+                    progbar = ProgressBar(
+                        int(total_length), 50, local_path, byteFormat=True)
                     for data in r.iter_content(chunk_size=4096):
                         dl += len(data)
                         f.write(data)
