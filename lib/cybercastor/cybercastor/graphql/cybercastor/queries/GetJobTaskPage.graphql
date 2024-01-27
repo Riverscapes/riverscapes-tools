@@ -15,19 +15,20 @@ query GetJob($jobId: ID!, $taskNextToken: String) {
           id
           name
         }
+        status
         createdById
         updatedById
         createdOn
         updatedOn
         startedOn
         queriedOn
+        endedOn
         env
         meta
         logStream
         logUrl
         retries
         memory
-        meta
         ECSTaskId
         cpu
         ECSTaskId
@@ -37,6 +38,7 @@ query GetJob($jobId: ID!, $taskNextToken: String) {
           memoryLimitMiB
         }
       }
+      nextToken
     }
   }
 }

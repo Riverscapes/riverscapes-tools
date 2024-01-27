@@ -23,8 +23,8 @@ def get_job_diff(old, new):
     Returns:
         [type]: [description]
     """
-    old_tasks = {t['id']: t for t in old['tasks']}
-    new_tasks = {t['id']: t for t in new['tasks']}
+    old_tasks = {t['id']: t for t in old['tasks']['items']}
+    new_tasks = {t['id']: t for t in new['tasks']['items']}
     status_change = {}
     for id, task in old_tasks.items():
         if id in new_tasks:
@@ -42,10 +42,11 @@ def get_job_diff(old, new):
     return status_change
 
 
-def main(api_url, username, password, download_running):
+def main(stage, download_running):
 
     # Initialize our API and log in
-    ccAPI = CybercastorAPI(api_url, username, password)
+    cc_api = CybercastorAPI(stage=stage)
+    cc_api.refresh_token()
 
     ##############################
     # Monitoring
@@ -53,7 +54,8 @@ def main(api_url, username, password, download_running):
 
     # Now start a job loop
     monitor_json = {}
-    monitor_json_path = os.path.join(os.path.dirname(__file__), '..', 'logs', 'monitor.output.json')
+    monitor_json_path = os.path.join(os.path.dirname(
+        __file__), '..', 'logs', 'monitor.output.json')
     monitor_logs_path = os.path.join(os.path.dirname(__file__), '..', 'logs')
     # Clean the directory to put logs into
     safe_makedirs(monitor_logs_path)
@@ -65,15 +67,12 @@ def main(api_url, username, password, download_running):
 
     while True:
         # Make an API query for the job that is in the output json file
-        paginated_jobs = ccAPI.get_jobs('ACTIVE')
+        paginated_jobs = cc_api.get_active_jobs()
         print(chr(27) + "[2J")
         print(datetime.utcnow())
 
         active_jobs = []
-        for job in paginated_jobs['jobs']:
-            job['meta'] = json.loads(job['meta'])
-            job['env'] = json.loads(job['env'])
-
+        for job in paginated_jobs:
             active_jobs.append(job['id'])
             monitor_json[job['id']] = job
             if job['id'] not in known_jobs:
@@ -82,7 +81,7 @@ def main(api_url, username, password, download_running):
         # Go and get any jobs we know abotu that may not be active
         for jid in known_jobs:
             if jid not in active_jobs:
-                lost_job = ccAPI.get_job(jid)
+                lost_job = cc_api.get_job_paginated(jid)
                 monitor_json[lost_job['id']] = lost_job
 
         if len(monitor_json.keys()) == 0:
@@ -96,7 +95,8 @@ def main(api_url, username, password, download_running):
 
         # Now do some reporting
         for job in monitor_json.values():
-            download_job_logs(job, os.path.join(monitor_logs_path, monitor_logs_path), download_running)
+            download_job_logs(job, os.path.join(
+                monitor_logs_path, monitor_logs_path), download_running)
 
         if download_running:
             print("DOWNLOAD RUNNING DOESN'T LOOP")
@@ -108,16 +108,14 @@ def main(api_url, username, password, download_running):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('api_url', help='URL to the cybercastor API', type=str)
-    parser.add_argument('username', help='API URL Username', type=str)
-    parser.add_argument('password', help='API URL Password', type=str)
-    parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
-    parser.add_argument('--download_running', help='(optional) download running logs. This is expensive so try to use sparingly', action='store_true', default=False)
+    parser.add_argument('stage', help='Cybercastor API stage',
+                        type=str, default='production')
+    parser.add_argument('--verbose', help='(optional) a little extra logging ',
+                        action='store_true', default=False)
+    parser.add_argument('--download_running', help='(optional) download running logs. This is expensive so try to use sparingly',
+                        action='store_true', default=False)
 
     args = dotenv.parse_args_env(parser)
-
-    # Stupid slash parsing
-    fixedurl = args.api_url.replace(':/', '://')
 
     # Initiate the log file
     log = Logger("Cybercastor Monitor")
@@ -125,7 +123,7 @@ if __name__ == '__main__':
     log.title('Cybercastor Monitor')
 
     try:
-        main(fixedurl, args.username, args.password, args.download_running)
+        main(args.stage, args.download_running)
 
     except Exception as e:
         log.error(e)

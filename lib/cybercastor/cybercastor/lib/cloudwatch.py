@@ -23,7 +23,7 @@ READY = ['STOPPED', 'SUCCEEDED', 'FAILED']
 READY_RUNNING = ['STOPPED', 'SUCCEEDED', 'FAILED', 'RUNNING']
 
 
-def download_job_logs(job, outdir, download_running=False):
+def download_job_logs(job, outdir: str, stage: str, download_running=False):
     """Download all the Cloudwatch logs for a given job
 
     Args:
@@ -44,7 +44,7 @@ def download_job_logs(job, outdir, download_running=False):
         f.write(report_job(job))
 
     valid_states = READY if not download_running else READY_RUNNING
-    tasks = [j for j in job['tasks'] if j['status']
+    tasks = [j for j in job['tasks']['items'] if j['status']
              in valid_states and j['logStream'] is not None]
     for t in tasks:
         # Running logs always download
@@ -55,7 +55,9 @@ def download_job_logs(job, outdir, download_running=False):
             # Clean out any other logs for this that may exist
             for filePath in glob(task_log_glob):
                 safe_remove_file(filePath)
-            download_logs(job, t, 'CybercastorLogs_prod',
+            # TODO: I don't love this but for now it will need to do
+            log_group = 'CybercastorLogs_staging' if stage == 'staging' else 'CybercastorLogs_production'
+            download_logs(job, t, log_group,
                           t['logStream'], task_log_path)
 
 

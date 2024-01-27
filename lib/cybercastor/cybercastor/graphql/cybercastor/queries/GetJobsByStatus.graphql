@@ -1,0 +1,10 @@
+query GetJobsByStatus($jobStatus: JobStatusEnum!, $nextToken: String) {
+  getJobs(jobStatus: $jobStatus, nextToken: $nextToken) {
+    items {
+      id
+      name
+      status
+    }
+    nextToken
+  }
+}

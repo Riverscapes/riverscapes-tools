@@ -91,7 +91,7 @@ def main(job_json_dir, stage) -> bool:
     # Initialize our API and log in right away to get it out of the way
     # This will pop open a browser window
     cc_api = CybercastorAPI(stage=stage)
-    cc_api.refresh_token()    
+    cc_api.refresh_token()
 
     job_choices = {}
     repeat = False
@@ -188,9 +188,9 @@ def main(job_json_dir, stage) -> bool:
             result = cc_api.run_query(add_job_mutation, params)
             if result is None:
                 raise Exception('Error')
-            job = cc_api.get_job_paginated(result['id'])
-            json.dump(job['data'], outfile, indent=4, sort_keys=True)
-            job_monitor = result
+            job = cc_api.get_job_paginated(result['data']['addJob']['id'])
+            json.dump(job, outfile, indent=4, sort_keys=True)
+            job_monitor = job
 
     ##############################
     # Monitoring
@@ -208,12 +208,6 @@ def main(job_json_dir, stage) -> bool:
         job_monitor = cc_api.get_job_paginated(job_monitor['id'])
         # Immediately write the new state to the file
         with open(outputFile, 'w') as outfile:
-            job_monitor['meta'] = json.loads(job_monitor['meta'])
-            job_monitor['env'] = json.loads(job_monitor['env'])
-
-            for t in job_monitor['tasks']:
-                t['env'] = json.loads(t['env'])
-                t['meta'] = json.loads(t['meta'])
             json.dump(job_monitor, outfile, indent=4, sort_keys=True)
 
         # Clear the screen and start printing our report
@@ -241,7 +235,7 @@ def main(job_json_dir, stage) -> bool:
 
         elif menu_choice == 'download_logs':
             download_job_logs(job_monitor, monitor_logs_path,
-                              download_running=True)
+                              stage, download_running=True)
             log.info('DONE!')
             time.sleep(3)
         elif menu_choice == 'task_manage':
@@ -385,10 +379,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(
         'job_json', help='The job specification JSON file', type=str)
-    parser.add_argument(
-        'stage', help='Cybercastor API stage', type=str, default='production')
-    parser.add_argument(
-        '--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
+    parser.add_argument('stage', help='Cybercastor API stage',
+                        type=str, default='production')
+    parser.add_argument('--verbose', help='(optional) a little extra logging ',
+                        action='store_true', default=False)
 
     args = dotenv.parse_args_env(parser)
 

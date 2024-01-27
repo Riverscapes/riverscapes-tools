@@ -115,7 +115,7 @@ def dump_cybercastor(sqlite_db_path, cc_api_url, username, password, stage):
             curs.executemany('INSERT INTO cc_jobenv (job_id, key, value) VALUES (?,?,?)', [
                 (jid, key, value) for key, value in job_env.items()])
 
-            for task in job['tasks']:
+            for task in job['tasks']['items']:
                 insert_sql = """
                     INSERT INTO cc_tasks (
                         job_id, guid, created_by, created_on, ended_on, log_stream, log_url, cpu, memory, name,

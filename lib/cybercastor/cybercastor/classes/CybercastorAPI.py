@@ -75,7 +75,7 @@ class CybercastorAPI:
     def getAuth(self) -> Dict[str, str]:
         return {
             "domain": "auth.riverscapes.net",
-            "clientId": "mBDfaepUmaYGap9fM3ryEU2J0zltOlMY"
+            "clientId": "Q5EwJSZ9ocY9roT7GAwfBv47Tj57BTET"
         }
 
     def shutdown(self):
@@ -88,8 +88,8 @@ class CybercastorAPI:
         Args:
             job_id (_type_): _description_
         """
-        get_job_query = self.load_mutation('getJob')
-        get_job_task_page_query = self.load_mutation('getJobTaskPage')
+        get_job_query = self.load_query('GetJob')
+        get_job_task_page_query = self.load_query('GetJobTaskPage')
         results = self.run_query(get_job_query, {"jobId": job_id})
 
         # If there are more tasks then paginate through them
@@ -99,7 +99,31 @@ class CybercastorAPI:
             results['data']['getJob']['tasks']['items'] += pageResults['data']['getJob']['tasks']['items']
             results['data']['getJob']['tasks']['nextToken'] = pageResults['data']['getJob']['tasks']['nextToken']
 
-        return results['data'] if results['data']['getJob'] else None
+        return results['data']['getJob'] if results['data'] and results['data']['getJob'] else None
+
+    def get_active_jobs(self):
+        """ Get all the active jobs.
+
+        Returns:
+            _type_: _description_
+        """
+
+        get_jobs_query = self.load_query('GetJobsByStatus')
+        results = self.run_query(get_jobs_query, {"jobStatus": "ACTIVE"})
+
+        # If there are more tasks then paginate through them
+        while (results['data']['getJobs'] and results['data']['getJobs']['nextToken'] != None):
+            pageResults = self.run_query(get_jobs_query, {
+                                         "jobStatus": "ACTIVE", "nextToken": results['data']['getJobs']['nextToken']})
+
+            results['data']['getJobs']['items'] += pageResults['data']['getJobs']['items']
+            results['data']['getJobs']['nextToken'] = pageResults['data']['getJobs']['nextToken']
+
+        jobs = []
+        for job in results['data']['getJobs']['items']:
+            jobs.append(self.get_job_paginated(job['id']))
+
+        return jobs
 
     def refresh_token(self):
         self.log.info(f"Authenticating on Cybercastor API: {self.uri}")
@@ -157,7 +181,7 @@ class CybercastorAPI:
                 "response_type": "code",
                 "scope": LOGIN_SCOPE,
                 "state": state,
-                "audience": "https://api.riverscapes.net",
+                "audience": "https://api.cybercastor.riverscapes.net",
                 "redirect_uri": redirect_url,
                 "code_challenge": code_challenge,
                 "code_challenge_method": "S256",
@@ -227,6 +251,8 @@ class CybercastorAPI:
             resp_json = request.json()
             if 'errors' in resp_json and len(resp_json['errors']) > 0:
                 self.log.info(json.dumps(resp_json, indent=4, sort_keys=True))
+                self.log.debug(json.dumps(query, indent=4, sort_keys=True))
+                self.log.debug(json.dumps(variables, indent=4, sort_keys=True))
                 # Authentication timeout: re-login and retry the query
                 if len(list(filter(lambda err: 'You must be authenticated' in err['message'], resp_json['errors']))) > 0:
                     self.log.debug(

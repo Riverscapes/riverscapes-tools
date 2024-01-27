@@ -41,10 +41,10 @@ def get_job_diff(old, new):
     return status_change
 
 
-def main(api_url, username, password, download_running):
+def main(cc_stage, download_running):
 
     # Initialize our API and log in
-    CybercastorAPI = CybercastorAPI.CybercastorAPI(api_url, username, password)
+    CybercastorAPI = CybercastorAPI.CybercastorAPI(stage=cc_stage)
 
     ##############################
     # Monitoring
@@ -92,7 +92,7 @@ def main(api_url, username, password, download_running):
 
         # Now do some reporting
         for job in monitor_json.values():
-            download_job_logs(job, os.path.join(monitor_logs_path, monitor_logs_path), download_running)
+            download_job_logs(job, os.path.join(monitor_logs_path, monitor_logs_path), cc_stage, download_running)
 
         if download_running:
             print("DOWNLOAD RUNNING DOESN'T LOOP")
@@ -104,9 +104,7 @@ def main(api_url, username, password, download_running):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('api_url', help='URL to the cybercastor API', type=str)
-    parser.add_argument('username', help='API URL Username', type=str)
-    parser.add_argument('password', help='API URL Password', type=str)
+    parser.add_argument('stage', help='Cybercastor API stage', type=str, default='production')
     parser.add_argument('log', help='log', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
     parser.add_argument('--download_running', help='(optional) download running logs. This is expensive so try to use sparingly', action='store_true', default=False)

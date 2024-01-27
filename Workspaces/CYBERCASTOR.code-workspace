@@ -36,6 +36,7 @@
       "editor.tabSize": 4,
       "editor.formatOnSave": true,
       "editor.defaultFormatter": "ms-python.autopep8",
+      "editor.wordWrap": "off"
     },
     "pylint.args": [
       "--extension-pkg-whitelist=pygeoprocessing",

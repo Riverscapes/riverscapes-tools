@@ -32,19 +32,20 @@ query GetJob($jobId: ID!, $taskNextToken: String) {
           id
           name
         }
+        status
         createdById
         updatedById
         createdOn
         updatedOn
         startedOn
         queriedOn
+        endedOn
         env
         meta
         logStream
         logUrl
         retries
         memory
-        meta
         ECSTaskId
         cpu
         ECSTaskId
@@ -54,31 +55,15 @@ query GetJob($jobId: ID!, $taskNextToken: String) {
           memoryLimitMiB
         }
       }
+      nextToken
     }
     taskDef {
       id
       name
-      taskScripts {
-        id
-        filename
-        description
-        path
-        remoteScriptPath
-        taskDefProps {
-          cpu
-          ephemeralStorageGiB
-          memoryLimitMiB
-        }
-        taskVars {
-          name
-          description
-          varType
-          optional
-          regex
-        }
-        localScriptPath
-      }
-      description
+    }
+    taskScript {
+      id
+      name
     }
   }
 }

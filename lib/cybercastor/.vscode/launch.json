@@ -76,29 +76,27 @@
       "console": "integratedTerminal",
       "envFile": "${workspaceFolder}/.env",
       "args": [
-        "{env:CC_API_URL}",
-        "{env:USERNAME}",
-        "{env:PASSWORD}",
+        "${input:cc_environment}",
         // "--download_running",
         "--verbose"
       ]
     },
-    { 
-      "name": " CreateJob",
-      "type": "python",
-      "request": "launch",
-      "module": "cybercastor.create_job",
-      "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal",
-      "envFile": "${workspaceFolder}/.env",
-      "args": [
-        "${input:JOB_NAME}",
-        "${input:JOB_TYPE}",
-        "${input:HUCs}",
-        "${input:TAGS}",
-        "${input:ORGANIZATION}"
-      ]
-    },
+    // { 
+    //   "name": " CreateJob",
+    //   "type": "python",
+    //   "request": "launch",
+    //   "module": "cybercastor.create_job",
+    //   "cwd": "${workspaceFolder}",
+    //   "console": "integratedTerminal",
+    //   "envFile": "${workspaceFolder}/.env",
+    //   "args": [
+    //     "${input:JOB_NAME}",
+    //     "${input:JOB_TYPE}",
+    //     "${input:HUCs}",
+    //     "${input:TAGS}",
+    //     "${input:ORGANIZATION}"
+    //   ]
+    // },
     {
       "name": "🦫 AddJob",
       "type": "python",
