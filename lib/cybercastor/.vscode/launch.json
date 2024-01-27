@@ -76,7 +76,8 @@
       "console": "integratedTerminal",
       "envFile": "${workspaceFolder}/.env",
       "args": [
-        "${input:cc_environment}",
+        // "${input:cc_environment}",
+        "production",
         // "--download_running",
         "--verbose"
       ]
@@ -107,7 +108,8 @@
       "envFile": "${workspaceFolder}/.env",
       "args": [
         "${workspaceFolder}/jobs/",
-        "${input:cc_environment}",
+        // "${input:cc_environment}",
+        "production",
         "--verbose"
       ]
     },
@@ -122,9 +124,8 @@
       // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
       "args": [
         "{env:DATA_ROOT}/warehouse_report",
-        "{env:CC_API_URL}",
-        "{env:USERNAME}",
-        "{env:PASSWORD}",
+        // "${input:cc_environment}",
+        "production",
         "{env:DATA_ROOT}/huc10.gpkg",
         "${input:environment}",
         "--verbose"
