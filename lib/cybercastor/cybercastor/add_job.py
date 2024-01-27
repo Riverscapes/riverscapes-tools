@@ -248,7 +248,7 @@ def main(job_json_dir, stage) -> bool:
     return repeat
 
 
-def manage_tasks(CybercastorAPI, jid):
+def manage_tasks(cc_api: CybercastorAPI, job_id):
     """_summary_
 
     Args:
@@ -259,13 +259,13 @@ def manage_tasks(CybercastorAPI, jid):
         _type_: _description_
     """
     # Get a fresh version
-    job_monitor = CybercastorAPI.get_job(jid)
-    total_jobs = len(job_monitor['tasks'])
+    job_monitor = cc_api.get_job_paginated(job_id)
+    total_tasks = len(job_monitor['tasks']['items'])
     ts = {
-        'restartable': [t for t in job_monitor['tasks'] if t['status'] in ['STOPPED', 'SUCCEEDED', 'FAILED']],
-        'stoppable': [t for t in job_monitor['tasks'] if t['status'] in ['QUEUED', 'RUNNING']],
-        'failed': [t for t in job_monitor['tasks'] if t['status'] in ['FAILED']],
-        'stopped': [t for t in job_monitor['tasks'] if t['status'] in ['STOPPED']]
+        'restartable': [t for t in job_monitor['tasks']['items'] if t['status'] in ['STOPPED', 'SUCCEEDED', 'FAILED']],
+        'stoppable': [t for t in job_monitor['tasks']['items'] if t['status'] in ['QUEUED', 'RUNNING']],
+        'failed': [t for t in job_monitor['tasks']['items'] if t['status'] in ['FAILED']],
+        'stopped': [t for t in job_monitor['tasks']['items'] if t['status'] in ['STOPPED']]
     }
     change_state = {
         'restart_failed': 'failed',
@@ -278,15 +278,15 @@ def manage_tasks(CybercastorAPI, jid):
         message="Choose?",
         choices=[
             ('Restart tasks from list ({}/{} available)'.format(
-                len(ts['restartable']), total_jobs), 'restart_tasks'),
+                len(ts['restartable']), total_tasks), 'restart_tasks'),
             ('Restart FAILED tasks ({}/{} available)'.format(
-                len(ts['failed']), total_jobs), 'restart_failed'),
+                len(ts['failed']), total_tasks), 'restart_failed'),
             ('Restart STOPPED tasks ({}/{} available)'.format(
-                len(ts['stopped']), total_jobs), 'restart_stopped'),
+                len(ts['stopped']), total_tasks), 'restart_stopped'),
             ('Restart ALL {} Restartable tasks (Stopped, Succeeded and Failed)'.format(
                 len(ts['restartable'])), 'restart_all'),
             ('Stop tasks from list ({}/{} available)'.format(
-                len(ts['stoppable']), total_jobs), 'stop_tasks'),
+                len(ts['stoppable']), total_tasks), 'stop_tasks'),
             ('Stop ALL {} Running/Queued tasks'.format(
                 len(ts['stoppable'])), 'stop_all'),
             ('<== Menu Back', 'back')
@@ -318,7 +318,7 @@ def manage_tasks(CybercastorAPI, jid):
         answers = inquirer.prompt(questions)['tasks']
         if (len(answers) == 0) or not inquirer.confirm('This will restart {} tasks:'.format(len(answers))):
             return
-        return change_task_status(CybercastorAPI, answers, op)
+        return change_task_status(cc_api, job_id, answers, op)
 
     # Affected all tasks of a certain type
     elif menu_choice in change_state.keys():
@@ -336,7 +336,7 @@ def manage_tasks(CybercastorAPI, jid):
             return
 
         if inquirer.confirm('This will {} {} {} tasks:'.format(op_text, dict_key, num_available_tasks)):
-            return change_task_status(CybercastorAPI, ts[dict_key], op)
+            return change_task_status(cc_api, job_id, ts[dict_key], op)
         return
 
     print('DONE')
@@ -345,7 +345,7 @@ def manage_tasks(CybercastorAPI, jid):
 VALID_OPS = {'START': 'START', 'STOP': 'STOP'}
 
 
-def change_task_status(CybercastorAPI, tasks, op):
+def change_task_status(cc_api: CybercastorAPI, job_id, tasks, op):
     """ Change the status of a task
 
     Arguments:
@@ -362,9 +362,15 @@ def change_task_status(CybercastorAPI, tasks, op):
         counter += 1
         try:
             if op == VALID_OPS['START']:
-                CybercastorAPI.start_task(t['id'])
+                start_qry = cc_api.load_mutation('startTask')
+                cc_api.run_query(
+                    start_qry, {'jobId': job_id, 'taskIds': t['id']})
+
             elif op == VALID_OPS['STOP']:
-                CybercastorAPI.stop_task(t['id'])
+                stop_qry = cc_api.load_mutation('stopTask')
+                cc_api.run_query(
+                    stop_qry, {'jobId': job_id, 'taskIds': t['id']})
+
             log.info('   -Completed {} on task: {}  ({}/{})'.format(op,
                                                                     t['name'], counter, len(tasks)))
         except Exception as e:
