@@ -154,7 +154,8 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states_
 
     # Add the layer metadata immediately before we write anything
     augment_layermeta('rscontext', LYR_DESCRIPTIONS_JSON, LayerTypes)
-    LayerTypes['FAIR_MARKET'].lyr_meta.append(RSMeta('ORCID', 'https://orcid.org/0000-0001-7827-689X', RSMetaTypes.URL))
+    LayerTypes['FAIR_MARKET'].lyr_meta.append(
+        RSMeta('ORCID', 'https://orcid.org/0000-0001-7827-689X', RSMetaTypes.URL))
 
     log.info('Starting RSContext v.{}'.format(cfg.version))
 
@@ -275,7 +276,7 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states_
         hydro_deriv_gpkg_path, LayerTypes['HYDRODERIVATIVES'].sub_layers['NHDAREASPLIT'].rel_path)
     copy_feature_class(nhdarea_split, area_split_out,
                        epsg=cfg.OUTPUT_EPSG, indexes=['FCode', 'NHDPlusID'])
-    
+
     waterbody_split_out = os.path.join(
         hydro_deriv_gpkg_path, LayerTypes['HYDRODERIVATIVES'].sub_layers['NHDWATERBODYSPLIT'].rel_path)
     copy_feature_class(nhdwaterbody_split, waterbody_split_out,
@@ -498,8 +499,6 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states_
                       'ReachCode': 'ReachCode', 'FType': 'FType', 'FCode': 'FCode', 'NHDPlusID': 'NHDPlusID', 'TotDASqKM': 'TotDASqKM'}
     view_vaa_flowline = create_spatial_view(
         nhd_gpkg_path, 'NHDFlowline', 'NHDPlusFlowlineVAA', 'vw_NHDFlowlineVAA', network_fields, vaa_fields, 'NHDPlusID')
-    _node_flowline_vaa = project.add_dataset(
-        datasets, view_vaa_flowline, LayerTypes['NHDPLUSHR'].sub_layers['NHDFlowlineVAA'], 'Vector')
 
     # create spatial view of NHD Catchments and VAA table
     vaa_fields['TotDASqKM'] = 'TotDASqKM'
@@ -508,15 +507,11 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states_
                         'NHDPlusID': 'NHDPlusID', 'AreaSqKM': 'AreaSqKM'}
     view_vaa_catchments = create_spatial_view(nhd_gpkg_path, 'NHDPlusCatchment', 'NHDPlusFlowlineVAA',
                                               'vw_NHDPlusCatchmentVAA', catchment_fields, vaa_fields, 'NHDPlusID', 'POLYGON')
-    _node_catchment_vaa = project.add_dataset(
-        datasets, view_vaa_catchments, LayerTypes['NHDPLUSHR'].sub_layers['NHDPlusCatchment'], 'Vector')
 
     # copy the NHD Catchments to the hydro_derivatives geopackage
     catchments = os.path.join(
         hydro_deriv_gpkg_path, LayerTypes['HYDRODERIVATIVES'].sub_layers['CATCHMENTS'].rel_path)
     copy_feature_class(view_vaa_catchments, catchments, epsg=cfg.OUTPUT_EPSG)
-    _node_catchments = project.add_dataset(
-        datasets, catchments, LayerTypes['HYDRODERIVATIVES'].sub_layers['CATCHMENTS'], 'Vector')
 
     # Segment the NHD Flowlines
     tmr = Timer()
