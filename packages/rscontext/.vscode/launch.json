@@ -37,7 +37,7 @@
         "{env:NATIONAL_PROJECT}/ecoregions/us_eco_l4_state_boundaries.shp",
         "{env:NATIONAL_PROJECT}/political_boundaries/cb_2021_us_state_500k.shp",
         "{env:NATIONAL_PROJECT}/political_boundaries/cb_2021_us_county_500k.shp",
-        "{env:NATIONAL_PROJECT}/geology/SGMC_geology.shp",
+        "{env:NATIONAL_PROJECT}/geology/SGMC_Geology.shp",
         "{env:NATIONAL_PROJECT}/prism",
         "{env:DATA_ROOT}/rs_context/${input:HUC}",
         "{env:DOWNLOAD_FOLDER}",
