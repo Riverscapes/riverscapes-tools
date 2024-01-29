@@ -4,7 +4,14 @@ from osgeo import ogr
 from rscommons import ProgressBar, Logger, GeopackageLayer, get_shp_or_gpkg
 
 
-def split_nhd_area(in_nhd_area: str, in_nhd_catchments: str, out_area_split: str):
+def split_nhd_polygon(in_nhd_poly: str, in_nhd_catchments: str, out_area_split: str):
+    """Splits NHD Area or Waterbody features based on NHD Plus Catchments
+    and attributes the split features with the NHDPlusID of the catchment.
+    Args:
+        in_nhd_poly (str): Path to NHD Area or Waterbody features.
+        in_nhd_catchments (str): Path to NHD Plus Catchments.
+        out_area_split (str): Path to output split features.
+    """
 
     log = Logger('Split NHD Area')
     log.info('Splitting NHD Area by NHD Plus Catchments and attributing features with NHDPlusID')
@@ -13,7 +20,7 @@ def split_nhd_area(in_nhd_area: str, in_nhd_catchments: str, out_area_split: str
     area_feats = {}
     nhdplusids = {}
 
-    with get_shp_or_gpkg(in_nhd_area) as lyr_area, \
+    with get_shp_or_gpkg(in_nhd_poly) as lyr_area, \
             get_shp_or_gpkg(in_nhd_catchments) as lyr_catch:
 
         in_layer_def = lyr_area.ogr_layer_def
@@ -89,12 +96,18 @@ def split_nhd_area(in_nhd_area: str, in_nhd_catchments: str, out_area_split: str
     return out_area_split
 
 
-def nhd_area_level_paths(in_nhdarea_split: str, in_nhd_vaa: str):
+def nhd_poly_level_paths(in_nhdpoly_split: str, in_nhd_vaa: str):
+    """Adds the LevelPathI field from the NHDPlusFlowlineVAA table to the NHD Area 
+    or NHD Waterbody split features.
+    Args:
+        in_nhdpoly_split (str): Path to NHD Area or Waterbody split features.
+        in_nhd_vaa (str): Path to NHD Plus Flowline VAA table.
+    """
 
     log = Logger('NHD Area Level Paths')
     log.info('Finding NHD Area Level Paths')
 
-    with GeopackageLayer(in_nhdarea_split, write=True) as lyr_area, \
+    with GeopackageLayer(in_nhdpoly_split, write=True) as lyr_area, \
             sqlite3.connect(in_nhd_vaa) as conn:
         
         curs = conn.cursor()

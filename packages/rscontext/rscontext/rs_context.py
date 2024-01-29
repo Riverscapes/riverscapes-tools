@@ -45,7 +45,7 @@ from rscontext.boundary_management import raster_area_intersection
 from rscontext.clean_catchments import clean_nhdplus_catchments
 from rscontext.hydro_derivatives import clean_nhdplus_vaa_table, create_spatial_view
 from rscontext.clip_vector import clip_vector_layer
-from rscontext.nhdarea import split_nhd_area, nhd_area_level_paths
+from rscontext.nhdarea import split_nhd_polygon, nhd_poly_level_paths
 from rscontext.rs_context_report import RSContextReport
 from rscontext.rs_segmentation import rs_segmentation
 from rscontext.vegetation import clip_vegetation
@@ -110,7 +110,8 @@ LayerTypes = {
         'NETWORK_INTERSECTION': RSLayer('NHD Flowlines intersected with road, rail and ownership', 'NETWORK_INTERSECTION', 'Vector', 'network_intersected'),
         'CATCHMENTS': RSLayer('NHD Catchments', 'CATCHMENTS', 'Vector', 'catchments'),
         'PROCESSING_EXTENT': RSLayer('Processing Extent of HUC-DEM Intersection', 'PROCESSING_EXTENT', 'Vector', 'processing_extent'),
-        'NHDAREASPLIT': RSLayer('NDH Area layer split by NHDPlusCatchments', 'NHDAreaSplit', 'Vector', 'NHDAreaSplit')
+        'NHDAREASPLIT': RSLayer('NDH Area layer split by NHDPlusCatchments', 'NHDAreaSplit', 'Vector', 'NHDAreaSplit'),
+        'NHDWATERBODYSPLIT': RSLayer('NDH Waterbody layer split by NHDPlusCatchments', 'NHDWaterbodySplit', 'Vector', 'NHDWaterbodySplit')
     }),
 
     # Prism Layers
@@ -237,8 +238,10 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states_
 
     nhd, filegdb, huc_name, _nhd_url = clean_nhd_data(
         huc, nhd_download_folder, nhd_unzip_folder, nhd_unzip_folder, cfg.OUTPUT_EPSG, False)
-    nhdarea_split = split_nhd_area(nhd['NHDArea'], nhd['NHDPlusCatchment'], os.path.join(
+    nhdarea_split = split_nhd_polygon(nhd['NHDArea'], nhd['NHDPlusCatchment'], os.path.join(
         nhd_unzip_folder, 'NHDAreaSplit.shp'))
+    nhdwaterbody_split = split_nhd_polygon(nhd['NHDWaterbody'], nhd['NHDPlusCatchment'], os.path.join(
+        nhd_unzip_folder, 'NHDWaterbodySplit.shp'))
 
     index_dict = {
         'NHDArea': ['FCode', 'NHDPlusID'],
@@ -272,6 +275,11 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states_
         hydro_deriv_gpkg_path, LayerTypes['HYDRODERIVATIVES'].sub_layers['NHDAREASPLIT'].rel_path)
     copy_feature_class(nhdarea_split, area_split_out,
                        epsg=cfg.OUTPUT_EPSG, indexes=['FCode', 'NHDPlusID'])
+    
+    waterbody_split_out = os.path.join(
+        hydro_deriv_gpkg_path, LayerTypes['HYDRODERIVATIVES'].sub_layers['NHDWATERBODYSPLIT'].rel_path)
+    copy_feature_class(nhdwaterbody_split, waterbody_split_out,
+                       epsg=cfg.OUTPUT_EPSG, indexes=['FCode', 'NHDPlusID'])
 
     export_table(filegdb, 'NHDPlusFlowlineVAA', nhd_gpkg_path,
                  None, "ReachCode LIKE '{}%'".format(huc[:8]))
@@ -285,7 +293,8 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states_
     clean_nhdplus_catchments(nhd_gpkg_path, boundary, str(huc))
 
     # Add level paths to NHDAreaSplit
-    nhd_area_level_paths(area_split_out, nhd_gpkg_path)
+    nhd_poly_level_paths(area_split_out, nhd_gpkg_path)
+    nhd_poly_level_paths(waterbody_split_out, nhd_gpkg_path)
 
     # HUC 8 extent polygon
     nhd['HUC8Extent'] = os.path.join(
