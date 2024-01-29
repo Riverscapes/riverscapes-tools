@@ -67,7 +67,7 @@
   ],
   "configurations": [
     {
-      "name": "🦫 Monitor",
+      "name": "🦫 Monitor Cybercastor Jobs",
       "type": "python",
       "request": "launch",
       "module": "cybercastor.monitor",
@@ -81,8 +81,23 @@
         "--verbose"
       ]
     },
+    {
+      "name": "🦫 AddJob - RUN Cybercastor",
+      "type": "python",
+      "request": "launch",
+      "module": "cybercastor.add_job",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/.env",
+      "args": [
+        "${workspaceFolder}/jobs/",
+        // "${input:cc_environment}",
+        "production",
+        "--verbose"
+      ]
+    },    
     { 
-      "name": " CreateJob",
+      "name": "🧰 Create Job JSON file",
       "type": "python",
       "request": "launch",
       "module": "cybercastor.create_job",
@@ -95,21 +110,6 @@
         "${input:HUCs}",
         "${input:TAGS}",
         "${input:ORGANIZATION}"
-      ]
-    },
-    {
-      "name": "🦫 AddJob",
-      "type": "python",
-      "request": "launch",
-      "module": "cybercastor.add_job",
-      "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal",
-      "envFile": "${workspaceFolder}/.env",
-      "args": [
-        "${workspaceFolder}/jobs/",
-        // "${input:cc_environment}",
-        "production",
-        "--verbose"
       ]
     },
     {
