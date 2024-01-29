@@ -286,6 +286,9 @@ def remove_small_features(hydro_derivatives_gpkg: str, layer_name: str, threshol
             layer.spatial_ref, proj_epsg)
 
         for feat, fid, _ in layer.iterate_features():
+            if feat.GetGeometryRef() is None:
+                fids.append(fid)
+                continue
             feature = VectorBase.ogr2shapely(feat, transform)
             if feature.length < threshold_length:
                 fids.append(fid)
