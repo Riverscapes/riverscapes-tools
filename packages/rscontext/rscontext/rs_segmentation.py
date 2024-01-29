@@ -94,6 +94,7 @@ def rs_segmentation(
                 new_feat = ogr.Feature(out_lyr.ogr_layer_def)
                 copy_fields(feat, new_feat, net_lyr.ogr_layer_def,
                             out_lyr.ogr_layer_def, skip_fid=True)
+                new_feat.SetGeometry(feat.GetGeometryRef())
                 out_lyr.ogr_layer.CreateFeature(new_feat)
                 fcounter += 1
         out_lyr.ogr_layer.CommitTransaction()
