@@ -258,7 +258,7 @@ def copy_feature_class(in_layer_path: str, out_layer_path: str,
             for i in range(0, out_layer.ogr_layer_def.GetFieldCount()):
                 field = out_layer.ogr_layer_def.GetFieldDefn(i).GetNameRef()
                 if fields is None or field in fields:
-                    out_feature.SetField(field, feature.GetField(i))
+                    out_feature.SetField(field, feature.GetField(field))
 
             out_layer.ogr_layer.CreateFeature(out_feature)
             out_feature = None
