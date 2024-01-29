@@ -1,6 +1,6 @@
 import os
 import webbrowser
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Dict
 from urllib.parse import urlencode, urlparse, urlunparse
 import requests
@@ -212,6 +212,9 @@ class CybercastorAPI:
 
     def _wait_for_auth_code(self):
         class AuthHandler(BaseHTTPRequestHandler):
+            def stop(self):
+                self.server.shutdown()
+
             def do_GET(self):
                 self.send_response(200)
                 self.send_header("Content-type", "text/html")
@@ -221,13 +224,22 @@ class CybercastorAPI:
                 self.wfile.write(
                     b"<body><p>CYBERCASTOR API: Authentication successful. You can now close this window.</p></body></html>")
                 query = urlparse(self.path).query
-                self.server.auth_code = dict(x.split("=")
-                                             for x in query.split("&"))["code"]
+                if "=" in query and "code" in query:
+                    self.server.auth_code = dict(x.split("=")
+                                                 for x in query.split("&"))["code"]
+                    # Now shut down the server and return
+                    self.stop()
 
-        server = HTTPServer(("localhost", LOCAL_PORT), AuthHandler)
-        server.handle_request()
+        server = ThreadingHTTPServer(("localhost", LOCAL_PORT), AuthHandler)
+        # Keep the server running until it is manually stopped
+        try:
+            print("Starting server to wait for auth, use <Ctrl-C> to stop")
+            server.serve_forever()
+        except KeyboardInterrupt:
+            pass
+        if not hasattr(server, "auth_code"):
+            raise Exception("Authentication failed")
         auth_code = server.auth_code
-        server.server_close()
         return auth_code
 
     def load_query(self, queryName: str) -> str:
