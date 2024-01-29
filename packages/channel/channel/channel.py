@@ -124,7 +124,7 @@ def channel(huc: int,
     GeopackageLayer.delete(intermediates_gpkg_path)
     GeopackageLayer.delete(output_gpkg_path)
 
-    fields = ['fid', 'geom', 'GNIS_ID', 'GNIS_Name', 'ReachCode', 'FType', 'FCode', 'NHDPlusID']
+    fields = ['fid', 'geom', 'GNIS_ID', 'GNIS_Name', 'ReachCode', 'FType', 'FCode', 'NHDPlusID', 'level_path']
 
     if flowlines is not None:
         proj_flowlines = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
