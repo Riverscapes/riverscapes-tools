@@ -55,7 +55,7 @@ def generate_igo_points(line_network: Path, out_points_layer: Path, unique_strea
         for feat, *_ in line_lyr.iterate_features(write_layers=[out_lyr]):
             level_path = feat.GetField(f'{unique_stream_field}')
             if level_path not in stream_size_lookup:
-                log.error(f'Stream Size not found for LevelPathI {level_path}. Skipping segmentation')
+                log.error(f'Stream Size not found for Level Path {level_path}. Skipping segmentation')
                 continue
             stream_size = stream_size_lookup[level_path]
             init_distance = distance[stream_size] / 2
@@ -181,7 +181,7 @@ def calculate_dgo_metrics(vbet_dgos: Path, vbet_centerline: Path, dict_layers: d
         metric_field_names = []
         for metric_layer_name in dict_layers.keys():
             metric_field_names.extend([f"{metric_layer_name}_{metric_type}" for metric_type in ['area', 'prop']])
-        metric_field_names.extend(['centerline_length', 'segment_area'])
+        metric_field_names.extend(['centerline_length', 'segment_area', 'integrated_width'])
         fields = {field_name: ogr.OFTReal for field_name in metric_field_names if field_name not in exist_fields}
         if len(fields) > 0:
             lyr_dgos.create_fields(fields)
@@ -228,6 +228,7 @@ def calculate_dgo_metrics(vbet_dgos: Path, vbet_centerline: Path, dict_layers: d
 
             feat_dgo.SetField('centerline_length', length)
             feat_dgo.SetField('segment_area', vbet_area)
+            feat_dgo.SetField('integrated_width', vbet_area / length if length != 0.0 else 0.0)
 
             for metric_layer_name, metric_layer_path in dict_layers.items():
                 with GeopackageLayer(metric_layer_path) as metric_lyr:
@@ -310,10 +311,10 @@ def calculate_vbet_window_metrics(vbet_igos: Path, vbet_dgos: Path, level_paths:
             metric_fields[f'{metric}_itgr_width'] = ogr.OFTReal
         metric_fields['vb_acreage_per_mile'] = ogr.OFTReal
         metric_fields['vb_hectares_per_km'] = ogr.OFTReal
-        metric_fields['active_acreage_per_mile'] = ogr.OFTReal
-        metric_fields['active_hectares_per_km'] = ogr.OFTReal
-        metric_fields['inactive_acreage_per_mile'] = ogr.OFTReal
-        metric_fields['inactive_hectares_per_km'] = ogr.OFTReal
+        metric_fields['low_lying_acreage_per_mile'] = ogr.OFTReal
+        metric_fields['low_lying_hectares_per_km'] = ogr.OFTReal
+        metric_fields['elevated_acreage_per_mile'] = ogr.OFTReal
+        metric_fields['elevated_hectares_per_km'] = ogr.OFTReal
 
         lyr_igos.create_fields(metric_fields)
 
@@ -354,10 +355,10 @@ def calculate_vbet_window_metrics(vbet_igos: Path, vbet_dgos: Path, level_paths:
                 window_cl_length_km = window_cl_length_m / 1000
                 window_area_acres = window_area_m2 / 4046.86
                 window_area_hectares = window_area_m2 / 10000
-                active_acres = (window_measurements['active_floodplain'] + window_measurements['active_channel']) / 4046.86
-                active_hectares = (window_measurements['active_floodplain'] + window_measurements['active_channel']) / 10000
-                inactive_acres = window_measurements['inactive_floodplain'] / 4046.86
-                inactive_hectares = window_measurements['inactive_floodplain'] / 10000
+                active_acres = (window_measurements['low_lying_floodplain'] + window_measurements['active_channel']) / 4046.86
+                active_hectares = (window_measurements['low_lying_floodplain'] + window_measurements['active_channel']) / 10000
+                inactive_acres = window_measurements['elevated_floodplain'] / 4046.86
+                inactive_hectares = window_measurements['elevated_floodplain'] / 10000
 
                 # Metric Calculations
                 vb_acreage_per_mile = window_area_acres / window_cl_length_mi if window_cl_length_m != 0.0 else 0.0
@@ -375,14 +376,50 @@ def calculate_vbet_window_metrics(vbet_igos: Path, vbet_dgos: Path, level_paths:
                 feat_igo.SetField('centerline_length', window_cl_length_m)
                 feat_igo.SetField('vb_acreage_per_mile', vb_acreage_per_mile)
                 feat_igo.SetField('vb_hectares_per_km', vb_hectares_per_km)
-                feat_igo.SetField('active_acreage_per_mile', active_acreage_per_mile)
-                feat_igo.SetField('active_hectares_per_km', active_hectares_per_km)
-                feat_igo.SetField('inactive_acreage_per_mile', inactive_acreage_per_mile)
-                feat_igo.SetField('inactive_hectares_per_km', inactive_hectares_per_km)
+                feat_igo.SetField('low_lying_acreage_per_mile', active_acreage_per_mile)
+                feat_igo.SetField('low_lying_hectares_per_km', active_hectares_per_km)
+                feat_igo.SetField('elevated_acreage_per_mile', inactive_acreage_per_mile)
+                feat_igo.SetField('elevated_hectares_per_km', inactive_hectares_per_km)
 
                 lyr_igos.ogr_layer.SetFeature(feat_igo)
                 feat_igo = None
 
+
+def add_fcodes(in_dgos, in_igos, in_flowlines):
+
+    with GeopackageLayer(in_dgos, write=True) as dgo_lyr,\
+    GeopackageLayer(in_igos, write=True) as igo_lyr ,\
+    GeopackageLayer(in_flowlines) as lines_lyr:
+        dgo_lyr.create_field('FCode', ogr.OFTInteger)
+        igo_lyr.create_field('FCode', ogr.OFTInteger)
+
+        for dgo_feat, *_ in dgo_lyr.iterate_features("Getting FCodes For DGOs and IGOs"):
+            feat_geom = dgo_feat.GetGeometryRef().Clone()
+            levelpath = dgo_feat.GetField('level_path')
+            segdistance = dgo_feat.GetField('seg_distance')
+
+            attributes = {}
+            for line_feat, *_ in lines_lyr.iterate_features(clip_shape=feat_geom):
+                line_geom = line_feat.GetGeometryRef()
+                if line_geom.Intersects(feat_geom):
+                    geom_section = feat_geom.Intersection(line_geom)
+                    length = geom_section.Length()
+                    attributes[line_feat.GetField('FCode')] = attributes.get(line_feat.GetField('FCode'), 0) + length
+            lines_lyr.ogr_layer.SetSpatialFilter(None)
+            lines_lyr = None
+            if len(attributes) == 0:
+                maj_fode = None
+            else:
+                maj_fode = max(attributes, key=attributes.get)
+            dgo_feat.SetField('FCode', maj_fode)
+            dgo_lyr.ogr_layer.SetFeature(dgo_feat)
+            dgo_feat = None
+
+            for igo_feat, *_ in igo_lyr.iterate_features(attribute_filter=f"level_path = {levelpath} AND seg_distance = {segdistance}"):
+                igo_feat.SetField('FCode', maj_fode)
+                igo_lyr.ogr_layer.SetFeature(igo_feat)
+                igo_feat = None
+        
 
 def vbet_segmentation(in_centerlines: str, vbet_polygons: str, unique_stream_field: str, metric_layers: dict, out_gpkg: str, ss_lookup: dict):
     """

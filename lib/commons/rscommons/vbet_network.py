@@ -172,7 +172,7 @@ def join_attributes(gpkg, name, geom_layer, attribute_layer, join_field, fields,
     return os.path.join(gpkg, name)
 
 
-def get_channel_level_path(channel_area, lines):
+def get_channel_level_path(channel_area, lines, unique_stream_field, unique_reach_field):
     """_summary_
 
     Args:
@@ -181,11 +181,22 @@ def get_channel_level_path(channel_area, lines):
         vaa_table (_type_): _description_
     """
     log = Logger('Get Channel Level Path')
+    # if the values are already there skip this process
+    level_path_vals = []
+    with GeopackageLayer(channel_area) as lyr_channel:
+        if unique_stream_field in [lyr_channel.ogr_layer.GetNextFeature().GetFieldDefnRef(i).GetName() for i in range(lyr_channel.ogr_layer.GetLayerDefn().GetFieldCount())]:
+            for ftr, *_ in lyr_channel.iterate_features("Get Level Paths"):
+                if ftr.GetField(unique_stream_field) not in level_path_vals and ftr.GetField(unique_stream_field) != None:
+                    level_path_vals.append(ftr.GetField(unique_stream_field))
+        if len(level_path_vals) > 0:
+            log.info('Level Path already exists in channel area')
+            return
+
     # It's faster if we just pull the whole dictionary as a python dict first
     nhidid_lpath_lookup = {}
     with sqlite3.connect(os.path.dirname(lines)) as conn:
         curs = conn.cursor()
-        values = curs.execute(f"SELECT level_path, NHDPLusId FROM {os.path.basename(lines)}").fetchall()
+        values = curs.execute(f"SELECT {unique_stream_field}, {unique_reach_field} FROM {os.path.basename(lines)}").fetchall()
         for lpath, nhd_id in values:
             nhidid_lpath_lookup[nhd_id] = lpath
 
@@ -195,7 +206,7 @@ def get_channel_level_path(channel_area, lines):
             GeopackageLayer(lines) as lyr_intersect:
 
         for feat, _counter, _progbar in lyr_channel.iterate_features("Get unreferenced paths"):
-            nhd_id = feat.GetField('NHDPlusID')
+            nhd_id = feat.GetField(f'{unique_reach_field}')
             if nhd_id not in nhidid_lpath_lookup:
                 geom_candidate = feat.GetGeometryRef()
                 if not geom_candidate.IsValid():
@@ -207,7 +218,7 @@ def get_channel_level_path(channel_area, lines):
                         line_geom = line_geom.MakeValid()
                     line_geom = line_geom.Intersection(geom_candidate)
                     line_length = line_geom.Length()
-                    line_level_path = l_feat.GetField('level_path')
+                    line_level_path = l_feat.GetField(f'{unique_stream_field}')
                     lengths[line_level_path] = lengths[line_level_path] + line_length if line_level_path in lengths else line_length
                 if len(lengths) > 0:
                     nhidid_lpath_lookup[nhd_id] = max(lengths, key=lengths.get)
@@ -216,11 +227,11 @@ def get_channel_level_path(channel_area, lines):
     skipped = 0
     wrote = 0
     with GeopackageLayer(channel_area, write=True) as lyr_channel:
-        lyr_channel.create_field("level_path", ogr.OFTString)
+        lyr_channel.create_field(f"{unique_stream_field}", ogr.OFTString)
         for feat, _counter, _progbar in lyr_channel.iterate_features("Writing Level Paths", write_layers=[lyr_channel]):
-            nhd_id = feat.GetField('NHDPlusID')
+            nhd_id = feat.GetField(f'{unique_reach_field}')
             if nhd_id in nhidid_lpath_lookup:
-                feat.SetField("level_path", nhidid_lpath_lookup[nhd_id])
+                feat.SetField(f"{unique_stream_field}", nhidid_lpath_lookup[nhd_id])
                 lyr_channel.ogr_layer.SetFeature(feat)
                 wrote += 1
             else:

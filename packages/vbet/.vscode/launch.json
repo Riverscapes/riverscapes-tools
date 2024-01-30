@@ -64,7 +64,7 @@
         "{env:DATA_ROOT}/rs_context/${input:HUC}/topography/dem_hillshade.tif",
         "{env:DATA_ROOT}/channel_area/${input:HUC}/outputs/channel_area.gpkg/channel_area",
         "{env:DATA_ROOT}/vbet/${input:HUC}",
-        "Custom",
+        "NHD",
         "level_path",
         "NHDPlusID",
         "TotDASqKm",
