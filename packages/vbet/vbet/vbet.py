@@ -39,7 +39,7 @@ from vbet.vbet_database import build_vbet_database, load_configuration
 from vbet.vbet_raster_ops import rasterize, raster_logic_mask, raster_update_multiply, raster_remove_zone, get_endpoints_on_raster, generate_vbet_polygon, generate_centerline_surface, clean_raster_regions, proximity_raster
 from vbet.vbet_outputs import clean_up_centerlines
 from vbet.vbet_report import VBETReport
-from vbet.vbet_segmentation import calculate_dgo_metrics, generate_igo_points, split_vbet_polygons, calculate_vbet_window_metrics
+from vbet.vbet_segmentation import calculate_dgo_metrics, generate_igo_points, split_vbet_polygons, calculate_vbet_window_metrics, add_fcodes
 from vbet.lib.CompositeRaster import CompositeRaster
 from vbet.__version__ import __version__
 
@@ -96,10 +96,10 @@ LayerTypes = {
 
     'VBET_OUTPUTS': RSLayer('VBET', 'VBET_OUTPUTS', 'Geopackage', 'outputs/vbet.gpkg', {
         'VBET_FULL': RSLayer('VBET Full Extent', 'VBET_FULL', 'Vector', 'vbet_full'),
-        'VBET_IA': RSLayer('VBET Inactive/Active Boundary', 'VBET_IA', 'Vector', 'active_valley_bottom'),
+        'VBET_IA': RSLayer('VBET Low lying/Elevated Boundary', 'VBET_IA', 'Vector', 'low_lying_valley_bottom'),
         'VBET_CHANNEL_AREA': RSLayer('VBET Channel Area', 'VBET_CHANNEL_AREA', 'Vector', 'vbet_channel_area'),
-        'ACTIVE_FLOODPLAIN': RSLayer('Active Floodplain', 'ACTIVE_FLOODPLAIN', 'Vector', 'active_floodplain'),
-        'INACTIVE_FLOODPLAIN': RSLayer('Inactive Floodplain', 'INACTIVE_FLOODPLAIN', 'Vector', 'inactive_floodplain'),
+        'LOW_LYING_FLOODPLAIN': RSLayer('Low Lying Floodplain', 'LOW_LYING_FLOODPLAIN', 'Vector', 'low_lying_floodplain'),
+        'ELEVATED_FLOODPLAIN': RSLayer('Elevated Floodplain', 'ELEVATED_FLOODPLAIN', 'Vector', 'elevated_floodplain'),
         'FLOODPLAIN': RSLayer('Floodplain', 'FLOODPLAIN', 'Vector', 'floodplain'),
         'VBET_CENTERLINES': RSLayer('VBET Centerline', 'VBET_CENTERLINES', 'Vector', 'vbet_centerlines'),
         'SEGMENTATION_POINTS': RSLayer('Segmentation Points', 'SEGMENTATION_POINTS', 'Vector', 'vbet_igos')
@@ -177,6 +177,8 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
     vbet_network(tmp_line_network, None, line_network, epsg=cfg.OUTPUT_EPSG, fcodes=reach_codes, hard_clip_shape=clip_mask)
         # else:
         #     vbet_network(in_line_network, None, line_network_features, fcodes=reach_codes, hard_clip_shape=clip_mask)
+    with GeopackageLayer(tmp_line_network) as lyr:
+        lyr.driver.DeleteDataSource(tmp_line_network)
 
     channel_area = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['CHANNEL_AREA_POLYGONS'].rel_path)
     copy_feature_class(in_channel_area, channel_area, epsg=cfg.OUTPUT_EPSG)
@@ -185,8 +187,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
     build_vbet_database(inputs_gpkg)
     vbet_run = load_configuration(inputs_gpkg)
 
-    if flowline_type == 'NHD':  # may be unnecessary after new rscontext & channel area, also could be genericized and applied to all
-        get_channel_level_path(channel_area, line_network)
+    get_channel_level_path(channel_area, line_network, unique_stream_field, unique_reach_field)
 
     in_rasters = {}
 
@@ -575,11 +576,11 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
 
         # Generate the Active Floodplain Polygon
         with TimerBuckets('gdal'):
-            active_valley_bottom_raster = os.path.join(temp_folder_lpath, f'active_valley_bottom_{level_path}.tif')
-            generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, active_valley_bottom_raster, temp_folder_lpath, rasterized_level_path, thresh_value=0.85)
+            low_lying_valley_bottom_raster = os.path.join(temp_folder_lpath, f'low_lying_valley_bottom_{level_path}.tif')
+            generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, low_lying_valley_bottom_raster, temp_folder_lpath, rasterized_level_path, thresh_value=0.85)
 
         with TimerBuckets('rasterio'):
-            raster_update_multiply(active_zone_raster, active_valley_bottom_raster, value=level_path_key)
+            raster_update_multiply(active_zone_raster, low_lying_valley_bottom_raster, value=level_path_key)
 
         # Generate centerline for level paths only
         with TimerBuckets('centerline'):
@@ -733,8 +734,8 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
 
     # Geomorphic layers
     output_floodplain = os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['FLOODPLAIN'].rel_path)
-    output_active_fp = os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['ACTIVE_FLOODPLAIN'].rel_path)
-    output_inactive_fp = os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['INACTIVE_FLOODPLAIN'].rel_path)
+    output_active_fp = os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['LOW_LYING_FLOODPLAIN'].rel_path)
+    output_inactive_fp = os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['ELEVATED_FLOODPLAIN'].rel_path)
 
     # Polygonize Rasters
     log.info("Polygonizing VBET area")
@@ -748,8 +749,9 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
     log.info('Set Level Path ID for output polygons')
     for layer in [output_vbet, output_vbet_ia, output_inactive_fp]:
         with GeopackageLayer(layer, write=True) as lyr, GeopackageLayer(channel_area) as wblyr:
+            processed = []
             lyr.create_field(f'{unique_stream_field}', ogr.OFTString)
-            for feat, *_ in lyr.iterate_features(write_layers=[lyr]):
+            for feat, *_ in lyr.iterate_features(f'setting level path for {os.path.basename(layer)}', write_layers=[lyr]):
                 key = feat.GetField('id')
                 if level_path_keys[key] is None:
                     intcnt = 0
@@ -762,6 +764,10 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
                     continue
                 feat.SetField(f'{unique_stream_field}', level_path_keys[key])
                 lyr.ogr_layer.SetFeature(feat)
+                if feat.GetFID() not in processed:
+                    processed.append(feat.GetFID())
+                else:
+                    print (f'Feature {feat.GetFID()} already processed')
                 feat = None
     _tmr_waypt.timer_break('set_level_path_id')
 
@@ -786,9 +792,11 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
     segmentation_polygons = os.path.join(intermediates_gpkg, LayerTypes['INTERMEDIATES'].sub_layers['VBET_DGO_POLYGONS'].rel_path)
     split_vbet_polygons(output_vbet, segmentation_points, segmentation_polygons, unique_stream_field)
     _tmr_waypt.timer_break('GenerateVBETSegmentPolys')
+    if flowline_type == 'NHD':
+        add_fcodes(segmentation_polygons, segmentation_points, line_network)
 
     log.info('Calculating Segment Metrics')
-    metric_layers = {'active_floodplain': output_active_fp, 'active_channel': channel_area, 'inactive_floodplain': output_inactive_fp, 'floodplain': output_floodplain}
+    metric_layers = {'low_lying_floodplain': output_active_fp, 'active_channel': channel_area, 'elevated_floodplain': output_inactive_fp, 'floodplain': output_floodplain}
     for level_path in level_paths_to_run:
         if level_path is None:
             continue
