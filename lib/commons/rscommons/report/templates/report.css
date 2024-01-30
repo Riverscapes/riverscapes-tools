@@ -68,7 +68,7 @@ body {
   line-height: 1.5;
   background: #fffffaff;
   color: #080705ff;
-  font-family: "Arial Narrow", Arial, sans-serif; 
+  font-family: Arial, sans-serif; 
 }
 div {
   /* border: 1px dashed #0000FF33; */
@@ -108,7 +108,7 @@ h5{
   font-weight: bold;
 }
 a {
-  color: #d48415;
+  color: #003B80;
   text-decoration: none;
 }
 /**
@@ -160,7 +160,7 @@ section.report-section>.report-header{
   color: #fffffaff;
   text-shadow: 3px 3px 3px rgba(0,0,0,0.7);
   background-size: cover;
-  background-color: #444444;
+  background-color: #004793;
   background-image: url(https://data.riverscapes.net/HeaderBackground.png);
   background-repeat: no-repeat;
   background-position: 0% 50%;
@@ -227,7 +227,7 @@ table .num.float {
 }
 table .idVal {
   text-align: center;
-  font-family: "Arial Narrow", Arial, sans-serif;
+  font-family: Arial, sans-serif;
 }
 
 /* Link from the sections back to the TOC */
