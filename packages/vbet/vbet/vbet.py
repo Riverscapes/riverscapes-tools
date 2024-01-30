@@ -746,29 +746,29 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
     polygonize(inactive_zone_raster, 1, output_inactive_fp, espg)
     _tmr_waypt.timer_break('PolygonizeRasters')
 
+    noneid = [key for key, val in level_path_keys.items() if val is None]
     log.info('Set Level Path ID for output polygons')
     for layer in [output_vbet, output_vbet_ia, output_inactive_fp]:
         with GeopackageLayer(layer, write=True) as lyr, GeopackageLayer(channel_area) as wblyr:
-            processed = []
+            for feat, *_ in lyr.iterate_features(attribute_filter=f"id = {noneid}"):
+                intcnt = 0
+                for feat2, *_ in wblyr.iterate_features():
+                    if feat.GetGeometryRef().Intersects(feat2.GetGeometryRef()):
+                        intcnt += 1
+                if intcnt == 0:
+                    lyr.ogr_layer.DeleteFeature(feat.GetFID())
+                feat2 = None
+            feat = None
+
+        with GeopackageLayer(layer, write=True) as lyr:
             lyr.create_field(f'{unique_stream_field}', ogr.OFTString)
-            for feat, *_ in lyr.iterate_features(f'setting level path for {os.path.basename(layer)}', write_layers=[lyr]):
+            for feat, *_ in lyr.iterate_features(f'adding level path to layer {os.path.basename(layer)}', write_layers=[lyr]):
                 key = feat.GetField('id')
-                if level_path_keys[key] is None:
-                    intcnt = 0
-                    for feat2, *_ in wblyr.iterate_features():
-                        if feat.GetGeometryRef().Intersects(feat2.GetGeometryRef()):
-                            intcnt += 1
-                    if intcnt == 0:
-                        lyr.ogr_layer.DeleteFeature(feat.GetFID())
-                    feat2 = None
-                    continue
                 feat.SetField(f'{unique_stream_field}', level_path_keys[key])
                 lyr.ogr_layer.SetFeature(feat)
-                if feat.GetFID() not in processed:
-                    processed.append(feat.GetFID())
-                else:
-                    print (f'Feature {feat.GetFID()} already processed')
-                feat = None
+
+            feat = None
+            
     _tmr_waypt.timer_break('set_level_path_id')
 
     # Clean Up Centerlines
