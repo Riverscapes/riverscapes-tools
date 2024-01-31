@@ -74,7 +74,7 @@ rscli download $CHANNELAREA_DIR --id $CHANNELAREA_ID \
   --no-input --no-ui --verbose
 
 rscli download $TAUDEM_DIR --id $TAUDEM_ID \
-  --file-filter "(twi.tif|pitfill.tif|dinfflowdir_ang.tif|dinfflowdir_slp.tif)" \
+  --file-filter "(gdal_slope.tif|pitfill.tif|dinfflowdir_ang.tif|dinfflowdir_slp.tif)" \
   --no-input --no-ui --verbose
 
 ##########################################################################################
@@ -83,18 +83,20 @@ rscli download $TAUDEM_DIR --id $TAUDEM_ID \
 try() {
 
   vbet $HUC \
-    $RS_CONTEXT_DIR/hydrology/nhdplushr.gpkg/NHDFlowline \
+    $RS_CONTEXT_DIR/hydrology/hydro_derivatives.gpkg/network_intersected \
     $RS_CONTEXT_DIR/topography/dem.tif \
     $RS_CONTEXT_DIR/topography/slope.tif \
     $RS_CONTEXT_DIR/topography/dem_hillshade.tif \
-    $RS_CONTEXT_DIR/hydrology/nhdplushr.gpkg/NHDPlusCatchment \
     $CHANNELAREA_DIR/outputs/channel_area.gpkg/channel_area \
     $RS_CONTEXT_DIR/hydrology/nhdplushr.gpkg/NHDPlusFlowlineVAA \
     $VBET_DIR \
+    NHD \
+    level_path \
+    NHDPlusID \
+    TotDASqKm \
     --pitfill $TAUDEM_DIR/intermediates/pitfill.tif \
     --dinfflowdir_ang $TAUDEM_DIR/intermediates/dinfflowdir_ang.tif \
     --dinfflowdir_slp $TAUDEM_DIR/outputs/dinfflowdir_slp.tif \
-    --twi_raster $TAUDEM_DIR/outputs/twi.tif \
     --reach_codes 33400,46000,46003,46006,46007,55800 \
     --mask $RS_CONTEXT_DIR/hydrology/hydro_derivatives.gpkg/processing_extent \
     --meta "Runner=Cybercastor" \
