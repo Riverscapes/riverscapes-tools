@@ -11,11 +11,6 @@
     {
       "name": "🦫 Cybercastor",
       "path": "../lib/cybercastor",
-      "settings": {
-        "python.analysis.extraPaths": [
-          "../../lib/commons"
-        ],
-      }
     },
     {
       "name": "🤖 Cybercastor Automation Scripts",
@@ -35,14 +30,17 @@
     "[python]": {
       "editor.tabSize": 4,
       "editor.formatOnSave": true,
-      "editor.defaultFormatter": "ms-python.autopep8",
-      "editor.wordWrap": "off"
     },
+    "autopep8.args": [
+      "--max-line-length=240",
+      "--ignore=E501",
+    ],
     "pylint.args": [
       "--extension-pkg-whitelist=pygeoprocessing",
       "--ignore=E501",
       "--max-line-length=240"
     ],
+    "python.analysis.extraPaths": ["../../lib/commons"],
     "python.terminal.activateEnvironment": true,
     "python.testing.pytestEnabled": true,
     "python.testing.unittestEnabled": true,
