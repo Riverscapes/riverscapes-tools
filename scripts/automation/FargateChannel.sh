@@ -68,10 +68,10 @@ rscli download $RS_CONTEXT_DIR --id $RSCONTEXT_ID \
 try() {
 
 channel $HUC \
-  $RS_CONTEXT_DIR/hydrology/nhdplushr.gpkg/NHDFlowline \
+  $RS_CONTEXT_DIR/hydrology/hydro_derivatives.gpkg/network_intersected \
   $CHANNELAREA_DIR \
   --flowareas $RS_CONTEXT_DIR/hydrology/hydro_derivatives.gpkg/NHDAreaSplit \
-  --waterbodies $RS_CONTEXT_DIR/hydrology/nhdplushr.gpkg/NHDWaterbody \
+  --waterbodies $RS_CONTEXT_DIR/hydrology/hydro_derivatives.gpkg/NHDWaterbodySplit \
   --bankfull_function "0.177 * (a ** 0.397) * (p ** 0.453)" \
   --bankfull_function_params "a=TotDASqKm" \
   --reach_code_field FCode \

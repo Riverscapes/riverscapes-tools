@@ -128,10 +128,10 @@ rm -fr $RSCONTEXT_SCRATCH
 ##########################################################################################
 
 channel $HUC \
-  $RSCONTEXT_DIR/hydrology/nhdplushr.gpkg/NHDFlowline \
+  $RSCONTEXT_DIR/hydrology/hydro_derivatives.gpkg/network_intersected  \
   $CHANNELAREA_DIR \
   --flowareas $RSCONTEXT_DIR/hydrology/hydro_derivatives.gpkg/NHDAreaSplit \
-  --waterbodies $RSCONTEXT_DIR/hydrology/nhdplushr.gpkg/NHDWaterbody \
+  --waterbodies $RSCONTEXT_DIR/hydrology/hydro_derivatives.gpkg/NHDWaterbodySplit \
   --bankfull_function "0.177 * (a ** 0.397) * (p ** 0.453)" \
   --bankfull_function_params "a=TotDASqKm" \
   --reach_code_field FCode \
