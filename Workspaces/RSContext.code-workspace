@@ -40,6 +40,7 @@
     "python.terminal.activateEnvironment": true,
     "python.testing.pytestEnabled": true,
     "python.testing.unittestEnabled": true,
+    "python.analysis.extraPaths": ["../../lib/commons"],
     "files.watcherExclude": {
       "**/*.egg-info/**": true,
       "**/docs/**": true,
