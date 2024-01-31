@@ -12,7 +12,7 @@ from cybercastor.lib.dump.dump_riverscapes import dump_riverscapes
 from cybercastor.lib.dump.dump_views import dump_views
 
 
-def dump_all(sqlite_db_dir, cybercastor_api_url, username, password, template_geom, stage):
+def dump_all(sqlite_db_dir, cc_stage, template_geom, rs_stage):
     """_summary_
 
     Args:
@@ -26,12 +26,10 @@ def dump_all(sqlite_db_dir, cybercastor_api_url, username, password, template_ge
     log = Logger('Dump all Riverscapes and Cybercastor data to sqlite')
 
     if not os.path.exists(template_geom):
-        log.error(
-            f'The GeoPackge with HUC geoemtry does not exist: {template_geom}')
-        raise Exception(
-            f'The GeoPackge with HUC geoemtry does not exist: {template_geom}')
+        log.error(f'The GeoPackge with HUC geoemtry does not exist: {template_geom}')
+        raise Exception(f'The GeoPackge with HUC geoemtry does not exist: {template_geom}')
 
-    sqlite_db_path = os.path.join(sqlite_db_dir, f'DataExchange_{stage}.gpkg')
+    sqlite_db_path = os.path.join(sqlite_db_dir, f'DataExchange_{rs_stage}.gpkg')
 
     # TODO: TEMPORARY Cleanup DB File
     # if os.path.exists(sqlite_db_path):
@@ -47,9 +45,9 @@ def dump_all(sqlite_db_dir, cybercastor_api_url, username, password, template_ge
     create_database('cybercastor/lib/dump/schema.sql', sqlite_db_path)
 
     # Then add the cybercastor data
-    # dump_cybercastor(sqlite_db_path, cybercastor_api_url, username, password, stage)
+    # dump_cybercastor(sqlite_db_path, cc_stage, stage)
     # Then add the riverscapes data (authentication will be a browser popup)
-    dump_riverscapes(template_geom, stage)
+    dump_riverscapes(sqlite_db_path, rs_stage)
     # # Then write any additional views
     # dump_views(sqlite_db_path)
 
@@ -86,20 +84,11 @@ def create_database(schema_file_path: str, db_path: str):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        'output_db_path', help='The final resting place of the SQLITE DB', type=str)
-    parser.add_argument('cybercastor_api_url',
-                        help='URL to the cybercastor API', type=str)
-    parser.add_argument(
-        'username', help='Cybercastor API URL Username', type=str)
-    parser.add_argument(
-        'password', help='Cybercastor API URL Password', type=str)
-    parser.add_argument(
-        'template_geom', help='the template gpkg of huc10 geometry', type=str)
-    parser.add_argument(
-        'stage', help='Riverscapes stage', type=str, default='production')
-    parser.add_argument('--verbose', help='(optional) a little extra logging ',
-                        action='store_true', default=False)
+    parser.add_argument('output_db_path', help='The final resting place of the SQLITE DB', type=str)
+    parser.add_argument('cc_stage', help='Cybercastor API stage', type=str, default='production')
+    parser.add_argument('template_geom', help='the template gpkg of huc10 geometry', type=str)
+    parser.add_argument('rs_stage', help='Riverscapes stage', type=str, default='production')
+    parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
     args = dotenv.parse_args_env(parser)
 
     # Initiate the log file
@@ -107,11 +96,8 @@ if __name__ == '__main__':
     log.setup(logPath=os.path.join(args.output_db_path,
               "dump_sqlite.log"), verbose=args.verbose)
 
-    fixedurl = args.cybercastor_api_url.replace(':/', '://')
-
     try:
-        dump_all(args.output_db_path, fixedurl, args.username,
-                 args.password, args.template_geom, args.stage)
+        dump_all(args.output_db_path, args.cc_stage, args.template_geom, args.rs_stage)
 
     except Exception as e:
         log.error(e)

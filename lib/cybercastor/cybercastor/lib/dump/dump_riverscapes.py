@@ -45,7 +45,7 @@ def dump_riverscapes(sqlite_db_path, stage):
     current_date = datetime.now()
     grand_total = 0
 
-    # Determine last created date projects in the database. 
+    # Determine last created date projects in the database.
     # Delete all projects that were in that same day and then start the download
     # for that day over again. This will ensure we don't have duplicates.
     curs.execute("SELECT MAX(created_on) FROM rs_projects")

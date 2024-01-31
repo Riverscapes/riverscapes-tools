@@ -1,6 +1,6 @@
 import os
 import webbrowser
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Dict
 from urllib.parse import urlencode, urlparse, urlunparse
 import requests

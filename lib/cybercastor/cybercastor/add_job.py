@@ -383,12 +383,9 @@ def change_task_status(cc_api: CybercastorAPI, job_id, tasks, op):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        'job_json', help='The job specification JSON file', type=str)
-    parser.add_argument('stage', help='Cybercastor API stage',
-                        type=str, default='production')
-    parser.add_argument('--verbose', help='(optional) a little extra logging ',
-                        action='store_true', default=False)
+    parser.add_argument('job_json', help='The job specification JSON file', type=str)
+    parser.add_argument('stage', help='Cybercastor API stage', type=str, default='production')
+    parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
 
     args = dotenv.parse_args_env(parser)
 
