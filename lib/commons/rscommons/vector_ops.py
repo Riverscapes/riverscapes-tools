@@ -205,7 +205,7 @@ def copy_feature_class(in_layer_path: str, out_layer_path: str,
 
         # Add input Layer Fields to the output Layer if it is the one we want
         out_layer.create_layer_from_ref(in_layer, epsg=epsg)
-        
+
         # drop fields if they don't exist in the fields list
         if fields is not None:
             # iterate fields in ogr_layer
@@ -273,8 +273,9 @@ def copy_feature_class(in_layer_path: str, out_layer_path: str,
 
         conn.commit()
         conn.execute("VACUUM")
-    
+
     return
+
 
 def merge_feature_classes(feature_class_paths: List[str], out_layer_path: str, boundary: BaseGeometry = None):
     """[summary]
@@ -1019,6 +1020,14 @@ def difference(remove_layer: Path, target_layer: Path, out_layer_path: Path, eps
                             write_polygon(g)
                     else:
                         write_polygon(geom)
+            else:
+                log.warning(f'Invalid geometry for feature {feat_target.GetFID()}')
+                for g in geom:
+                    if g.GetGeometryName() == 'POLYGON':
+                        write_polygon(g)
+                    elif g.GetGeometryName() == 'MULTIPOLYGON':
+                        for g2 in g:
+                            write_polygon(g2)
 
         lyr_output.ogr_layer.CommitTransaction()
 
