@@ -649,23 +649,27 @@ def get_endpoints_on_raster(raster: Path, geom_line: list[ogr.Geometry()], dist)
     with rasterio.open(raster, 'r') as src:
         start_points = []
         end_points = []
-        for geom in geom_line:
-            line = VectorBase.ogr2shapely(geom)
-            start_points.append(line.coords[0])
-            end_points.append(line.coords[-1])
-        st_dists = {pnt: [] for pnt in start_points}
-        for s_pnt in start_points:
-            for e_pnt in end_points:
-                st_dists[s_pnt].append(Point(s_pnt).distance(Point(e_pnt)))
-        start_dists = {k: min(v) for k, v in st_dists.items()}
-        pnt_start = max(start_dists, key=start_dists.get)
-
-        end_dists = {pnt: [] for pnt in end_points}
-        for e_pnt in end_points:
+        if len(geom_line) > 1:
+            for geom in geom_line:
+                line = VectorBase.ogr2shapely(geom)
+                start_points.append(line.coords[0])
+                end_points.append(line.coords[-1])
+            st_dists = {pnt: [] for pnt in start_points}
             for s_pnt in start_points:
-                end_dists[e_pnt].append(Point(e_pnt).distance(Point(s_pnt)))
-        end_dists = {k: min(v) for k, v in end_dists.items()}
-        pnt_end = max(end_dists, key=end_dists.get)
+                for e_pnt in end_points:
+                    st_dists[s_pnt].append(Point(s_pnt).distance(Point(e_pnt)))
+            start_dists = {k: min(v) for k, v in st_dists.items()}
+            pnt_start = max(start_dists, key=start_dists.get)
+
+            end_dists = {pnt: [] for pnt in end_points}
+            for e_pnt in end_points:
+                for s_pnt in start_points:
+                    end_dists[e_pnt].append(Point(e_pnt).distance(Point(s_pnt)))
+            end_dists = {k: min(v) for k, v in end_dists.items()}
+            pnt_end = max(end_dists, key=end_dists.get)
+        else:
+            pnt_start = line.coords[0]
+            pnt_end = line.coords[-1]
 
         for iteration in iterations:
             st_value = list(src.sample([(pnt_start[0], pnt_start[1])]))[0][0]
