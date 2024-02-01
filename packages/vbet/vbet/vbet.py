@@ -324,7 +324,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
         fields = {f'{unique_stream_field}': ogr.OFTString}
         lyr_temp_cl_init.create_layer(
             ogr.wkbMultiLineString, spatial_ref=lyr_ref.spatial_ref, fields=fields)
-        lyr_temp_cl_init.create_field('CL_Part_Index', ogr.OFTInteger)
+
         lyr_vbet_init.create_layer(
             ogr.wkbMultiPolygon, spatial_ref=lyr_ref.spatial_ref, fields=fields)
         lyr_active_vbet_init.create_layer(
@@ -743,7 +743,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
                     log.info('Find least cost path for centerline')
                     try:
                         centerline_raster = os.path.join(
-                            temp_folder_lpath, f'centerline_{level_path}_part_{cl_index}.tif')
+                            temp_folder_lpath, f'centerline_{level_path}.tif')
                         least_cost_path(
                             cost_path_raster, centerline_raster, coords[0], coords[1])
                     except Exception as err:
@@ -765,10 +765,9 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
                     out_feature.SetGeometry(geom_centerline)
                     out_feature.SetField(
                         f'{unique_stream_field}', str(level_path))
-                    out_feature.SetField('CL_Part_Index', cl_index)
+
                     lyr_cl.ogr_layer.CreateFeature(out_feature)
                     out_feature = None
-                    cl_index += 1
 
         # Mask the raster and create the inner versions of itself
         raster_logic_mask(hand_raster, hand_raster_interior,
