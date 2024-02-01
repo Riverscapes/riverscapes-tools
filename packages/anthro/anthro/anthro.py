@@ -134,7 +134,8 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
     # Create the output feature class fields. Only those listed here will get copied from the source.
     with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['ANTHRO_GEOM_POINTS'].rel_path, delete_dataset=True) as out_lyr:
         out_lyr.create_layer(ogr.wkbMultiPoint, epsg=cfg.OUTPUT_EPSG, options=['FID=IGOID'], fields={
-            'LevelPathI': ogr.OFTReal,
+            'FCode': ogr.OFTInteger,
+            'level_path': ogr.OFTReal,
             'seg_distance': ogr.OFTReal,
             'stream_size': ogr.OFTInteger,
             'window_size': ogr.OFTReal,
@@ -144,7 +145,8 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
 
     with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['ANTHRO_GEOM_DGOS'].rel_path, write=True) as out_lyr:
         out_lyr.create_layer(ogr.wkbMultiPolygon, epsg=cfg.OUTPUT_EPSG, options=['FID=DGOID'], fields={
-            'LevelPathI': ogr.OFTReal,
+            'FCode': ogr.OFTInteger,
+            'level_path': ogr.OFTReal,
             'seg_distance': ogr.OFTReal,
             'centerline_length': ogr.OFTReal,
             'segment_area': ogr.OFTReal
@@ -176,8 +178,8 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
 
     with SQLiteCon(outputs_gpkg_path) as database:
         database.curs.execute('INSERT INTO ReachAttributes (ReachID, Orig_DA, iGeo_DA, ReachCode, WatershedID, StreamName, NHDPlusID) SELECT ReachID, TotDASqKm, DivDASqKm, FCode, WatershedID, GNIS_NAME, NHDPlusID FROM ReachGeometry')
-        database.curs.execute('INSERT INTO IGOAttributes (IGOID, LevelPathI, seg_distance, stream_size) SELECT IGOID, LevelPathI, seg_distance, stream_size FROM IGOGeometry')
-        database.curs.execute('INSERT INTO DGOAttributes (DGOID, LevelPathI, seg_distance, segment_area, centerline_length) SELECT DGOID, LevelPathI, seg_distance, segment_area, centerline_length FROM DGOGeometry')
+        database.curs.execute('INSERT INTO IGOAttributes (IGOID, FCode, level_path, seg_distance, stream_size) SELECT IGOID, FCode, level_path, seg_distance, stream_size FROM IGOGeometry')
+        database.curs.execute('INSERT INTO DGOAttributes (DGOID, FCode, level_path, seg_distance, segment_area, centerline_length) SELECT DGOID, FCode, level_path, seg_distance, segment_area, centerline_length FROM DGOGeometry')
 
         # Register vwReaches as a feature layer as well as its geometry column
         database.curs.execute("""INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id)
@@ -198,20 +200,20 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
         database.curs.execute("""INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m)
             SELECT 'vwDgos', column_name, geometry_type_name, srs_id, z, m FROM gpkg_geometry_columns WHERE table_name = 'DGOGeometry'""")
 
-        database.conn.execute('CREATE INDEX ix_igo_levelpath on IGOGeometry(LevelPathI)')
+        database.conn.execute('CREATE INDEX ix_igo_levelpath on IGOGeometry(level_path)')
         database.conn.execute('CREATE INDEX ix_igo_segdist on IGOGeometry(seg_distance)')
         database.conn.execute('CREATE INDEX ix_igo_size on IGOGeometry(stream_size)')
-        database.conn.execute('CREATE INDEX ix_dgo_levelpath on DGOGeometry(LevelPathI)')
+        database.conn.execute('CREATE INDEX ix_dgo_levelpath on DGOGeometry(level_path)')
         database.conn.execute('CREATE INDEX ix_dgo_segdist on DGOGeometry(seg_distance)')
 
         database.conn.commit()
 
-        database.curs.execute('SELECT DISTINCT LevelPathI FROM IGOGeometry')
+        database.curs.execute('SELECT DISTINCT level_path FROM IGOGeometry')
         levelps = database.curs.fetchall()
-        levelpathsin = [lp['LevelPathI'] for lp in levelps]
+        levelpathsin = [lp['level_path'] for lp in levelps]
 
     with SQLiteCon(inputs_gpkg_path) as db:
-        db.conn.execute('CREATE INDEX ix_dgo_levelpath on dgo(LevelPathI)')
+        db.conn.execute('CREATE INDEX ix_dgo_levelpath on dgo(level_path)')
         db.conn.execute('CREATE INDEX ix_dgo_segdist on dgo(seg_distance)')
         db.conn.commit()
 
