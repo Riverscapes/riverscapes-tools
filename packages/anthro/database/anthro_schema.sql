@@ -58,7 +58,8 @@ CREATE TABLE Watersheds (
 
 CREATE TABLE IGOAttributes (
     IGOID INTEGER PRIMARY KEY NOT NULL,
-    LevelPathI REAL,
+    FCode INTEGER,
+    level_path REAL,
     seg_distance REAL,
     stream_size INTEGER,
     LUI REAL,
@@ -75,7 +76,8 @@ CREATE TABLE IGOAttributes (
 
 CREATE TABLE DGOAttributes (
     DGOID INTEGER PRIMARY KEY NOT NULL,
-    LevelPathI REAL,
+    FCode INTEGER,
+    level_path REAL,
     seg_distance REAL,
     centerline_length REAL,
     segment_area REAL,

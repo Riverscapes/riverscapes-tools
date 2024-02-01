@@ -125,7 +125,7 @@ def infrastructure_attributes(windows: str, road: str, rail: str, canal: str, cr
         canal_len = 0
         roadx_ct = 0
         divpts_ct = 0
-        window_area = 0
+        window_len = 0
 
         for dgoid in dgoids:
             road_len += curs.execute(f'SELECT Road_len FROM DGOAttributes WHERE DGOID = {dgoid}').fetchone()[0]
@@ -133,20 +133,20 @@ def infrastructure_attributes(windows: str, road: str, rail: str, canal: str, cr
             canal_len += curs.execute(f'SELECT Canal_len FROM DGOAttributes WHERE DGOID = {dgoid}').fetchone()[0]
             roadx_ct += curs.execute(f'SELECT RoadX_ct FROM DGOAttributes WHERE DGOID = {dgoid}').fetchone()[0]
             divpts_ct += curs.execute(f'SELECT DivPts_ct FROM DGOAttributes WHERE DGOID = {dgoid}').fetchone()[0]
-            window_area += curs.execute(f'SELECT segment_area FROM DGOAttributes WHERE DGOID = {dgoid}').fetchone()[0]
+            window_len += curs.execute(f'SELECT centerline_length FROM DGOAttributes WHERE DGOID = {dgoid}').fetchone()[0]
 
-        if window_area == 0:
+        if window_len == 0:
             road_dens = 0
             rail_dens = 0
             canal_dens = 0
             roadx_dens = 0
             divpts_dens = 0
         else:
-            road_dens = road_len / window_area
-            rail_dens = rail_len / window_area
-            canal_dens = canal_len / window_area
-            roadx_dens = roadx_ct / window_area
-            divpts_dens = divpts_ct / window_area
+            road_dens = road_len / window_len
+            rail_dens = rail_len / window_len
+            canal_dens = canal_len / window_len
+            roadx_dens = roadx_ct / window_len
+            divpts_dens = divpts_ct / window_len
 
         curs.execute(f'UPDATE IGOAttributes SET Road_len = {road_len} WHERE IGOID = {igoid}')
         curs.execute(f'UPDATE IGOAttributes SET Rail_len = {rail_len} WHERE IGOID = {igoid}')

@@ -47,14 +47,14 @@ def moving_window_dgo_ids(igo: str, dgo: str, level_paths: list, distance: dict)
 
     with GeopackageLayer(igo) as lyr_igo, GeopackageLayer(dgo) as lyr_dgo:
         for level_path in level_paths:
-            for feat_seg_pt, *_, in lyr_igo.iterate_features(f'Finding windows on {level_path}', attribute_filter=f"LevelPathI = {level_path}"):
+            for feat_seg_pt, *_, in lyr_igo.iterate_features(f'Finding windows on {level_path}', attribute_filter=f"level_path = {level_path}"):
                 window_distance = distance[str(feat_seg_pt.GetField('stream_size'))]
                 dist = feat_seg_pt.GetField('seg_distance')
                 min_dist = dist - 0.5 * window_distance
                 max_dist = dist + 0.5 * window_distance
 
                 dgoids = []
-                for feat_seg_poly, *_ in lyr_dgo.iterate_features(attribute_filter=f"LevelPathI = {int(level_path)} and seg_distance >= {int(min_dist)} and seg_distance <= {int(max_dist)}"):
+                for feat_seg_poly, *_ in lyr_dgo.iterate_features(attribute_filter=f"level_path = {int(level_path)} and {int(min_dist)} <= seg_distance <= {int(max_dist)}"):
                     dgoids.append(feat_seg_poly.GetFID())
                 windows[feat_seg_pt.GetFID()] = dgoids
 
