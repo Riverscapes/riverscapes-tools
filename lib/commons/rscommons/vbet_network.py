@@ -86,7 +86,7 @@ def include_features(source_layer: VectorBase, out_layer: VectorBase, attribute_
     return included_fids
 
 
-def create_stream_size_zones(catchment_layer: str, id_field:str, data_field:str, zones:dict, out_layer:str):
+def create_stream_size_zones(catchment_layer: str, id_field: str, data_field: str, zones: dict, out_layer: str):
     """Add stream size zones to catchment layer
 
     Args:
@@ -262,7 +262,7 @@ def get_levelpath_catchment(level_path_id: int, catchments_fc: Path) -> BaseGeom
     return out_geom
 
 
-def get_distance_lookup(inputs_gpkg, level_paths, vbet_run, unique_reach_field, drain_area_field, conversion=None):
+def get_distance_lookup(inputs_gpkg, level_paths, level_paths_drainage, vbet_run, conversion=None):
 
     output = {}
     with sqlite3.connect(inputs_gpkg) as conn:
@@ -270,29 +270,28 @@ def get_distance_lookup(inputs_gpkg, level_paths, vbet_run, unique_reach_field, 
         for level_path in level_paths:
             if level_path is None:
                 continue
-            das = curs.execute(f'SELECT {drain_area_field} FROM flowlines WHERE {unique_reach_field} = {level_path}').fetchall()
-            maxda = max(float(da[0]) for da in das)
-            if maxda < vbet_run['Zones']['Slope'][0]:
+
+            if level_paths_drainage[level_path] < vbet_run['Zones']['Slope'][0]:
                 if conversion is not None:
                     output[level_path] = conversion[0]
                 else:
                     output[level_path] = 0
-            elif vbet_run['Zones']['Slope'][0] <= maxda < vbet_run['Zones']['Slope'][1]:
+            elif vbet_run['Zones']['Slope'][0] <= level_paths_drainage[level_path] < vbet_run['Zones']['Slope'][1]:
                 if conversion is not None:
                     output[level_path] = conversion[1]
                 else:
                     output[level_path] = 1
-            elif vbet_run['Zones']['Slope'][1] <= maxda < vbet_run['Zones']['Slope'][2]:
+            elif vbet_run['Zones']['Slope'][1] <= level_paths_drainage[level_path] < vbet_run['Zones']['Slope'][2]:
                 if conversion is not None:
                     output[level_path] = conversion[2]
                 else:
                     output[level_path] = 2
-            elif vbet_run['Zones']['Slope'][3] != '' and vbet_run['Zones']['Slope'][2] <= maxda < vbet_run['Zones']['Slope'][3]:
+            elif vbet_run['Zones']['Slope'][3] != '' and vbet_run['Zones']['Slope'][2] <= level_paths_drainage[level_path] < vbet_run['Zones']['Slope'][3]:
                 if conversion is not None:
                     output[level_path] = conversion[3]
                 else:
                     output[level_path] = 3
-            elif vbet_run['Zones']['Slope'][4] != '' and vbet_run['Zones']['Slope'][3] <= maxda < vbet_run['Zones']['Slope'][4]:
+            elif vbet_run['Zones']['Slope'][4] != '' and vbet_run['Zones']['Slope'][3] <= level_paths_drainage[level_path] < vbet_run['Zones']['Slope'][4]:
                 if conversion is not None:
                     output[level_path] = conversion[4]
                 else:
