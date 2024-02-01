@@ -904,9 +904,14 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
             for feat, *_ in lyr.iterate_features(write_layers=[lyr]):
                 key = feat.GetField('id')
                 if level_path_keys[key] is None:
-                    for feat2, *_ in wblyr.iterate_features(clip_shape=feat.GetGeometryRef()):
-                        if feat2 is None:
-                            lyr.ogr_layer.DeleteFeature(feat.GetFID())
+                    ft_env = feat.GetGeometryRef().GetEnvelope()
+                    intersects = False
+                    for feat2, *_ in wblyr.iterate_features(clip_rect=ft_env):
+                        if feat2.GetGeometryRef().Intersects(feat.GetGeometryRef()):
+                            intersects = True
+                            break
+                    if intersects is False:
+                        lyr.ogr_layer.DeleteFeature(feat.GetFID())
                     feat2 = None
                     continue
                 feat.SetField(f'{unique_stream_field}', level_path_keys[key])
