@@ -732,46 +732,43 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
 
                 geom_flowline = ogr.ForceToMultiLineString(geom_flowline)
                 with GeopackageLayer(temp_centerlines, write=True) as lyr_cl:
-                    cl_index = 0
-                    for g_flowline in geom_flowline:
-                        coords = get_endpoints_on_raster(
-                            cost_path_raster, g_flowline, pixel_x)
-                        if len(coords) != 2:
-                            err_msg = f'Unable to generate centerline for part {cl_index} of level path {level_path}: found {len(coords)} target coordinates instead of expected 2.'
-                            log.error(err_msg)
-                            _tmterr("CENTERLINE_ERROR", err_msg)
-                            continue
-                        log.info('Find least cost path for centerline')
-                        try:
-                            centerline_raster = os.path.join(
-                                temp_folder_lpath, f'centerline_{level_path}_part_{cl_index}.tif')
-                            least_cost_path(
-                                cost_path_raster, centerline_raster, coords[0], coords[1])
-                        except Exception as err:
-                            # print(err)
-                            err_msg = f'Unable to generate centerline for part {cl_index} of level path {level_path}: end points must all be within the costs array.'
-                            log.error(err_msg)
-                            log.debug(err)
-                            _tmterr("CENTERLINE_COST_ERROR", err_msg)
-                            cl_index += 1
-                            continue
+                    g_flowline = [g for g in geom_flowline]
+                    coords = get_endpoints_on_raster(
+                        cost_path_raster, g_flowline, pixel_x)
+                    if len(coords) != 2:
+                        err_msg = f'Unable to generate centerline for level path {level_path}: found {len(coords)} target coordinates instead of expected 2.'
+                        log.error(err_msg)
+                        _tmterr("CENTERLINE_ERROR", err_msg)
+                        continue
+                    log.info('Find least cost path for centerline')
+                    try:
+                        centerline_raster = os.path.join(
+                            temp_folder_lpath, f'centerline_{level_path}_part_{cl_index}.tif')
+                        least_cost_path(
+                            cost_path_raster, centerline_raster, coords[0], coords[1])
+                    except Exception as err:
+                        # print(err)
+                        err_msg = f'Unable to generate centerline for level path {level_path}: end points must all be within the costs array.'
+                        log.error(err_msg)
+                        log.debug(err)
+                        _tmterr("CENTERLINE_COST_ERROR", err_msg)
 
-                        log.info('Vectorize centerline from Raster')
-                        geom_centerline = raster2line_geom(
-                            centerline_raster, 1)
-                        geom_centerline = ogr.ForceToLineString(
-                            geom_centerline)
+                    log.info('Vectorize centerline from Raster')
+                    geom_centerline = raster2line_geom(
+                        centerline_raster, 1)
+                    geom_centerline = ogr.ForceToLineString(
+                        geom_centerline)
 
-                        geom_centerline = ogr.ForceToMultiLineString(
-                            geom_centerline)
-                        out_feature = ogr.Feature(lyr_cl.ogr_layer_def)
-                        out_feature.SetGeometry(geom_centerline)
-                        out_feature.SetField(
-                            f'{unique_stream_field}', str(level_path))
-                        out_feature.SetField('CL_Part_Index', cl_index)
-                        lyr_cl.ogr_layer.CreateFeature(out_feature)
-                        out_feature = None
-                        cl_index += 1
+                    geom_centerline = ogr.ForceToMultiLineString(
+                        geom_centerline)
+                    out_feature = ogr.Feature(lyr_cl.ogr_layer_def)
+                    out_feature.SetGeometry(geom_centerline)
+                    out_feature.SetField(
+                        f'{unique_stream_field}', str(level_path))
+                    out_feature.SetField('CL_Part_Index', cl_index)
+                    lyr_cl.ogr_layer.CreateFeature(out_feature)
+                    out_feature = None
+                    cl_index += 1
 
         # Mask the raster and create the inner versions of itself
         raster_logic_mask(hand_raster, hand_raster_interior,
@@ -935,7 +932,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
     segmentation_points = os.path.join(
         vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['SEGMENTATION_POINTS'].rel_path)
     stream_size_lookup = get_distance_lookup(
-        inputs_gpkg, level_paths_to_run, vbet_run, unique_stream_field, drain_area_field)
+        inputs_gpkg, level_paths_to_run, level_paths_drainage, vbet_run)
     generate_igo_points(output_centerlines, segmentation_points, unique_stream_field,
                         stream_size_lookup, distance={0: 100, 1: 200, 2: 300, 3: 500, 4: 2000})
     _tmr_waypt.timer_break('GenerateVBETSegmentPts')
@@ -962,7 +959,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
     log.info('Summerizing VBET Metrics')
     window_size = {0: 200.0, 1: 400.0, 2: 1200.0, 3: 2000.0, 4: 8000.0}
     distance_lookup = get_distance_lookup(
-        inputs_gpkg, level_paths_to_run, vbet_run, unique_stream_field, drain_area_field, window_size)
+        inputs_gpkg, level_paths_to_run, level_paths_drainage, vbet_run, window_size)
     project.add_metadata([RSMeta("Small Search Window", str(window_size[0]), RSMetaTypes.INT, locked=True),
                           RSMeta("Medium Search Window", str(
                               window_size[1]), RSMetaTypes.INT, locked=True),
