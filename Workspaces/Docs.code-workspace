@@ -3,7 +3,7 @@
     {
       "name": "📜 Docs",
       // Depending on where this workspace file ends up you may need to adjust this path "." is for when it is in the same folder as `gatsby-config.ts`
-      "path": "."
+      "path": "../docs"
     },
     {
       // The root folder is necessary so that this workspace can access git. The path will need to be adjuested depending on where this workspace file ends up.
