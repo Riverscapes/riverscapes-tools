@@ -229,7 +229,6 @@ vbet $HUC \
   $RS_CONTEXT_DIR/topography/dem_hillshade.tif \
   $RS_CONTEXT_DIR/hydrology/NHDPlusCatchment.shp \
   $CHANNELAREA_DIR/outputs/channel_area.gpkg/channel_area \
-  $RS_CONTEXT_DIR/hydrology/nhd_data.sqlite/NHDPlusFlowlineVAA \
   $VBET_DIR \
   --pitfill $TAUDEM_DIR/intermediates/pitfill.tif \
   --dinfflowdir_ang $TAUDEM_DIR/intermediates/dinfflowdir_ang.tif \
