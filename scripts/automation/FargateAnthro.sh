@@ -82,7 +82,7 @@ try() {
     $RS_CONTEXT_DIR/topography/dem_hillshade.tif \
     $VBET_DIR/outputs/vbet.gpkg/vbet_igos \
     $VBET_DIR/intermediates/vbet_intermediates.gpkg/vbet_dgos \
-    $RS_CONTEXT_DIR/hydrology/hydro_derivatives.gpkg/network_intersected_300m \
+    $RS_CONTEXT_DIR/hydrology/hydro_derivatives.gpkg/network_intersected \
     $VBET_DIR/outputs/vbet.gpkg/vbet_full \
     $RS_CONTEXT_DIR/ownership/ownership.shp \
     $RS_CONTEXT_DIR/transportation/canals.shp \
