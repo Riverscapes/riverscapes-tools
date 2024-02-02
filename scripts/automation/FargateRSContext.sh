@@ -82,6 +82,10 @@ try() {
 
   if [[ $? != 0 ]]; then return 1; fi
 
+  cd /usr/local/src/riverscapes-tools/packages/rscontext
+  python3 -m rscontext.rs_context_metrics \
+    $RS_CONTEXT_DIR
+
   echo "======================  Final Disk space usage ======================="
   df -h
 
