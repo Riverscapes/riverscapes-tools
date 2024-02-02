@@ -66,7 +66,7 @@ def infrastructure_attributes(windows: str, road: str, rail: str, canal: str, cr
     with GeopackageLayer(out_gpkg_path, 'DGOGeometry') as dgo_lyr:
         for dgo_ftr, *_ in dgo_lyr.iterate_features('initializing Attributes'):
             fid = dgo_ftr.GetFID()
-            attribs[fid] = {'Road_len': 0, 'Rail_len': 0, 'Canal_len': 0, 'Roadx_ct': 0, 'DivPts_ct': 0}
+            attribs[fid] = {'Road_len': 0, 'Rail_len': 0, 'Canal_len': 0, 'RoadX_ct': 0, 'DivPts_ct': 0}
         for dataset, label in in_data.items():
             log.info(f'Calculating metrics for dataset: {label}')
             dsrc = gpkg_driver.Open(os.path.dirname(dataset))
@@ -115,7 +115,7 @@ def infrastructure_attributes(windows: str, road: str, rail: str, canal: str, cr
         curs.execute(f'UPDATE DGOAttributes SET Road_len = {vals["Road_len"]} WHERE DGOID = {dgoid}')
         curs.execute(f'UPDATE DGOAttributes SET Rail_len = {vals["Rail_len"]} WHERE DGOID = {dgoid}')
         curs.execute(f'UPDATE DGOAttributes SET Canal_len = {vals["Canal_len"]} WHERE DGOID = {dgoid}')
-        curs.execute(f'UPDATE DGOAttributes SET RoadX_ct = {vals["Roadx_ct"]} WHERE DGOID = {dgoid}')
+        curs.execute(f'UPDATE DGOAttributes SET RoadX_ct = {vals["RoadX_ct"]} WHERE DGOID = {dgoid}')
         curs.execute(f'UPDATE DGOAttributes SET DivPts_ct = {vals["DivPts_ct"]} WHERE DGOID = {dgoid}')
 
     # summarize metrics from DGOs to IGOs using moving windows
@@ -151,12 +151,12 @@ def infrastructure_attributes(windows: str, road: str, rail: str, canal: str, cr
         curs.execute(f'UPDATE IGOAttributes SET Road_len = {road_len} WHERE IGOID = {igoid}')
         curs.execute(f'UPDATE IGOAttributes SET Rail_len = {rail_len} WHERE IGOID = {igoid}')
         curs.execute(f'UPDATE IGOAttributes SET Canal_len = {canal_len} WHERE IGOID = {igoid}')
-        curs.execute(f'UPDATE IGOAttributes SET Roadx_ct = {roadx_ct} WHERE IGOID = {igoid}')
+        curs.execute(f'UPDATE IGOAttributes SET RoadX_ct = {roadx_ct} WHERE IGOID = {igoid}')
         curs.execute(f'UPDATE IGOAttributes SET DivPts_ct = {divpts_ct} WHERE IGOID = {igoid}')
         curs.execute(f'UPDATE IGOAttributes SET Road_dens = {road_dens} WHERE IGOID = {igoid}')
         curs.execute(f'UPDATE IGOAttributes SET Rail_dens = {rail_dens} WHERE IGOID = {igoid}')
         curs.execute(f'UPDATE IGOAttributes SET Canal_dens = {canal_dens} WHERE IGOID = {igoid}')
-        curs.execute(f'UPDATE IGOAttributes SET Roadx_dens = {roadx_dens} WHERE IGOID = {igoid}')
+        curs.execute(f'UPDATE IGOAttributes SET RoadX_dens = {roadx_dens} WHERE IGOID = {igoid}')
         curs.execute(f'UPDATE IGOAttributes SET DivPts_dens = {divpts_dens} WHERE IGOID = {igoid}')
 
     conn.commit()
