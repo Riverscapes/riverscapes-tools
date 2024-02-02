@@ -496,7 +496,7 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states_
     vaa_fields = {"LevelPathI": "level_path", "DnLevelPat": "downstream_level_path",
                   'UpLevelPat': "upstream_level_path", 'Divergence': 'divergence', 'StreamOrde': 'stream_order'}
     network_fields = {'fid': 'fid', 'geom': 'geom', 'GNIS_ID': 'GNIS_ID', 'GNIS_Name': 'GNIS_Name',
-                      'ReachCode': 'ReachCode', 'FType': 'FType', 'FCode': 'FCode', 'NHDPlusID': 'NHDPlusID', 'TotDASqKM': 'TotDASqKM'}
+                      'ReachCode': 'ReachCode', 'FType': 'FType', 'FCode': 'FCode', 'NHDPlusID': 'NHDPlusID', 'TotDASqKM': 'TotDASqKM', 'DivDASqKM': 'DivDASqKM'}
     view_vaa_flowline = create_spatial_view(
         nhd_gpkg_path, 'NHDFlowline', 'NHDPlusFlowlineVAA', 'vw_NHDFlowlineVAA', network_fields, vaa_fields, 'NHDPlusID')
 
