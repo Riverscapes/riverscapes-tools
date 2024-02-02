@@ -97,6 +97,13 @@ rscontext $HUC \
 if [[ $? != 0 ]]; then return 1; fi
 echo "<<RS_CONTEXT COMPLETE>>"
 
+cd /usr/local/src/riverscapes-tools/packages/rscontext
+python3 -m rscontext.rs_context_metrics \
+  $RS_CONTEXT_DIR
+  
+if [[ $? != 0 ]]; then return 1; fi
+echo "<<RS_CONTEXT METRICS COMPLETE>>"
+
 # Upload the HUC into the warehouse
 cd $RSCONTEXT_DIR
 # If this is a user upload then we need to use the user's id
