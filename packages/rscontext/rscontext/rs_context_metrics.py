@@ -34,7 +34,6 @@ def rscontext_metrics(project_path):
         rad_dists = [Point(geom.centroid.coords).distance(Point(catchment_rect.exterior.coords[i])) for i in range(4)]
     
         catchment_length_km = max(dists) / 1000
-        #catchment_length_km = minimum_bounding_radius(geom) * 2 / 1000
         bounding_circle_area = pi * (min(rad_dists) / 1000) ** 2
         catchment_perim_km = geom.length / 1000
     
