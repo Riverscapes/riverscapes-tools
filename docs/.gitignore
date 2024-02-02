@@ -1,11 +1,30 @@
-*.gem
-.bundle
-.sass-cache
-_site
-.jekyll-cache
-Gemfile.lock
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
 node_modules
 
-.jekyll-metadata
+# gatsby files
+.cache/
+public
+
+# Mac files
 .DS_Store
-resources/pocket\.md
+
+# Yarn
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+# Yarn
+yarn-error.log
+.pnp/
+.pnp.js
+# Yarn Integrity file
+.yarn-integrity

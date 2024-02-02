@@ -1,0 +1,54 @@
+---
+title: Riparian Condition Assessment Tool Data
+layout: default
+banner: true
+---
+
+## RCAT Data
+
+This page documents and explains the new datasets created by the Anthropogenic Context tool.
+
+<h2><a name="EXRIPARIAN">Existing Riparian Vegetation Cover</a></h2>
+
+This dataset is a binary reclassification of the LandFire EVT raster. Cells in the EVT raster that are 
+classified as "Riparian" in the EVT Physiognomy `EVT_PHYS` field are assigned a value of 1, and all
+other cells are assigned a value of 0.
+
+<h2><a name="HISTRIPARIAN">Historic Riparain Vegetation Cover</a></h2>
+
+This dataset is a binary reclassification of the LandFire BPS raster. Cells in the BPS raster that are 
+classified as "Riparian" in the `GROUPVEG` field, a coarse categorization of vegetation types, are 
+assigned a value of 1, and all other cells are assigned a value of 0.
+
+<h2><a name="EXVEGETATED">Existing Vegetation Cover</a></h2>
+
+This dataset is a binary reclassification of the LandFire EVT raster. Cells in the EVT raster that are 
+classified as any sort of vegetation (grass, shrub, woody, etc.) are assigned a value of 1, and all
+other cells (e.g., developed, barren rock, ice, open water, etc.) are assigned a value of 0.
+
+<h2><a name="HISTVEGETATED">Historic Vegetation Cover</a></h2>
+
+This dataset is a binary reclassification of the LandFire BPS raster. Cells in the BPS raster that are 
+classified as any type of vegetation (grass, shrub, woody, etc.) are assigned a value of 1, and all
+other cells (e.g., barren rock, ice, open water, etc.) are assigned a value of 0.
+
+<h2><a name="CONVERSION">Vegetation Conversion</a></h2>
+
+This is a raster dataset that represents conversion from one vegetation type to another between the BPS
+and EVT LandFire rasters (i.e., from historic conditions to the present). Broad vegetation types, such as 
+conifer, shrub, riparian, etc. are given a conversion ID in both the EVT and BPS rasters. The codes from 
+the EVT raster are substracted from the codes in the BPS raster, resulting in unique conversion ID values.
+
+<h2><a name="FPACCESS">Floodplain Accessibility</a></h2>
+
+This is a raster dataset that attempts to estimate floodplain accessibility using an automated algorithm.
+A D-8 flow direction raster is first generated from a pit-filled DEM. Then, for each cell that begins within
+the valley bottom, flow directions are traced downstream. If that tracing reaches the drainage network, all 
+of the associated cells are coded as 1 for connected. If instead, the tracing reaches some sort of
+infrastructure first, all associated cells are coded as 0 for disconnected.
+
+<h2><a name="GEOM_POINTS">Anthropogenic Context IGOs</a></h2>
+
+<h2><a name="GEOM_LINES">Anthropogenic Context Reaches</a></h2>
+
+

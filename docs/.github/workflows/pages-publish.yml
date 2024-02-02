@@ -1,0 +1,87 @@
+name: Gatsby GHPages Publish
+# NOTE: This is designed to work for a site living in the /docs folder. You'll need to make changes if it is not.
+on:
+  push:
+    branches:
+      - docs
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Default to bash
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  # Build job
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ./docs/.nvmrc
+          cache-dependency-path: ./docs/package.json
+          cache: yarn
+
+      - name: Get correct version of Yarn
+        run: corepack enable; yarn set version berry
+
+      - name: Setup Pages
+        id: pages
+        uses: actions/configure-pages@v3
+        with:
+          # Automatically inject pathPrefix in your Gatsby configuration file.
+          #
+          # You may remove this line if you want to manage the configuration yourself.
+          static_site_generator: gatsby
+
+
+      - name: Restore cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ./docs/public
+            ./docs/.cache
+          key: ${{ runner.os }}-gatsby-build-${{ hashFiles('public') }}
+          restore-keys: |
+            ${{ runner.os }}-gatsby-build-
+
+      - name: Install dependencies
+        working-directory: ./docs
+        run: yarn install --immutable --immutable-cache
+        
+      - name: Build with Gatsby
+        working-directory: ./docs
+        env:
+          PREFIX_PATHS: 'true'
+        run: yarn run build
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v1
+        with:
+          path: ./docs/public
+
+  # Deployment job
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2

@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "declaration": true,
+    "esModuleInterop": true,
+    "module": "CommonJS",
+    "lib": [
+      "es6",
+      "dom",
+      "dom.iterable"
+    ],
+    "jsx": "react",
+    "noImplicitAny": false,
+    "noFallthroughCasesInSwitch": true,
+    "moduleResolution": "node",
+    "removeComments": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "sourceMap": true,
+    "target": "ES5"
+  },
+  "include": [
+    "."
+  ],
+  "exclude": [
+    "**/dist/**",
+    "node_modules",
+    "**/*.test.?s",
+    "**/*.spec.?s",
+  ]
+ }

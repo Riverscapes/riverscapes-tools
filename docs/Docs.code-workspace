@@ -1,0 +1,58 @@
+{
+  "folders": [
+    {
+      "name": "📜 Docs",
+      // Depending on where this workspace file ends up you may need to adjust this path "." is for when it is in the same folder as `gatsby-config.ts`
+      "path": "."
+    },
+    {
+      // The root folder is necessary so that this workspace can access git. The path will need to be adjuested depending on where this workspace file ends up.
+      // ".." is appropriate if this workspace file is in `ROOT/docs`
+      "name": "🏠 Root",
+      "path": ".."
+    },
+  ],
+  "settings": {
+    // TODO: Add your own site name here. Replace "GATSBYDOCS" with your site name or "QRiS Docs -" or whatever you want to see in the window title. 
+    "window.title": "GATSBYDOCS${separator}${activeEditorShort}${separator}${rootName}",
+    "[mdx]": {
+      "editor.wordWrap": "on"
+    },
+    "css.lint.validProperties": ["composes"],
+    "workbench.colorCustomizations": {
+			"titleBar.activeBackground": "#001768",
+      "sideBar.background": "#242132",
+			"editor.background": "#1e1c2c"
+		},
+    "editor.tabSize": 2,
+    "editor.codeActionsOnSave": {
+      "source.fixAll.eslint": "explicit"
+    },
+    "files.watcherExclude": {
+      "**/node_modules/**": true,
+      "**/.cache/**": true
+    },
+    "search.exclude": {
+      "**/node_modules/**": true,
+      "**/.cache/**": true,
+      "**/public/**": true,
+      "**/dist/**": true,
+    },
+    "files.exclude": {
+      "**/node_modules/**": true
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "GitHub.copilot",
+      "GitHub.copilot-chat",
+      "eriklynd.json-tools",
+      "yzhang.markdown-all-in-one",
+      "unifiedjs.vscode-mdx",
+      "dbaeumer.vscode-eslint",
+      "christian-kohler.npm-intellisense",
+      "mhutchie.git-graph"
+    ]
+  },
+  "terminal.integrated.defaultProfile.linux": "zsh"
+}

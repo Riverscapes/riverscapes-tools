@@ -1,0 +1,26 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "👷 Rebuild Gatsby Site",
+      "command": "yarn exec gatsby build",
+      "request": "launch",
+      "type": "node-terminal"
+    },
+    {
+      "name": "🗑️ Clean Gatsby Build",
+      "command": "yarn exec gatsby clean",
+      "request": "launch",
+      "type": "node-terminal"
+    },
+    {
+      "name": "📦 Upgrade Gatsby Theme",
+      "command": "yarn up @riverscapes/gatsby-theme",
+      "request": "launch",
+      "type": "node-terminal"
+    }
+  ]
+}

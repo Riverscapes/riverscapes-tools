@@ -1,0 +1,88 @@
+---
+title: Riverscapes Tools
+layout: default
+description: home page for Riverscapes Tools documentation
+banner: true
+isHome: false
+---
+
+import { Container } from '@mui/material'
+import RSCImage from '/static/images/tool-tiles/RSC_Tile.png'
+import ChannelAreaImage from '/static/images/tool-tiles/ChannelArea_Tile.png'
+import TauDEMImage from '/static/images/tool-tiles/TauDEM_Tile.png'
+import VBETImage from '/static/images/tool-tiles/VBET_Tile.png'
+import BRATImage from '/static/images/tool-tiles/BRAT_Tile.png'
+import AnthroImage from '/static/images/tool-tiles/anthro_tile.png'
+
+<Container maxWidth="xl">
+
+
+# RC Production-Grade, Network-Scale Tools
+
+Welcome to the documentation for the [Riverscape Consortium's](https://riverscapes.net) own production-grade family of network-scale riverscape models. These are riverscapes-compliant tools, which have been refactored to be capable of running in the cloud over regional, state-wide and/or nation-wide extents, while still resolving predictions of what is happening in individual reaches (i.e. 100 m to 500 m length scales) of riverscape.
+
+Unlike some of our operational-grade and professional-grade GIS tools, which "users" run the models themselves in desktop GIS, these tools are run centrally in the cloud and their outputs are consumed by users through the [Riverscapes Viewer](http://viewer.riverscapes.net) in the web browser or through desktop GIS. Users can access tool outputs, which our packaged as riverscapes projects in our [Riverscapes Data Exchange](https://data.riverscapes.net/).
+
+
+## Resources for Developers
+
+<Container maxWidth="xl">
+    <Grid container spacing={4} sx={{mt: 3}} padding={0}>
+      <StoryCard 
+        title="Riverscapes Context"
+        image={RSCImage}
+        description="The Riverscapes Context tool automatically aggregates a variety of nationally available spatial datasets into a riverscapes project for a given watershed (e.g. HUC8). These data can then be used for contextual purposes, mapping, or as input data in other tools."
+        to="/rscontext" />
+
+      <StoryCard 
+        title="Channel Area"
+        image={ChannelAreaImage}
+        description="The Channel Area tool generates polygons representing the active channel network within a watershed. "
+        to="/channelarea" />
+      <StoryCard 
+        title="TauDEM"
+        image={TauDEMImage}
+        description="The TauDEM is a suite of tools for topographic analysis using DEMs."
+        to="/taudem" />
+
+
+
+   <StoryCard 
+        title="VBET"
+        image={VBETImage}
+        description="The Valley Bottom Extraction Tool uses a DEM and a channel area network to estimate the valley bottom extents (area that could plausibly flood in contemporary natural flow regime) thereby defining the riverscape network."
+        to="/vbet" />
+
+   <StoryCard 
+        title="BRAT"
+        image={BRATImage}
+        description="The Beaver Restoration Assessment Tool combines a model estimating the capacity of a riverscape to support dam building activity with analysis of potential anthropogenic conflicts to create a tool that can be used to inform where LTPBRrestoration using beaver can be targeted."
+        to="/brat" />
+
+   <StoryCard 
+        title="Anthropogenic Context"
+        image={AnthroImage}
+        description="The Anthropogenic Context Tool adds attributes to stream network reaches and to points along the riverscape (valley bottom) center line that help to contextualize potential anthropogenic impacts to the riverscape. These attributes are used in portions of the BRAT and RCAT models."
+        to="/anthro" />
+
+
+  <StoryCard 
+        title="RCAT"
+        image={AnthroImage}
+        description=""
+        to="/anthro" />
+
+
+  <StoryCard 
+        title="RME"
+        image={AnthroImage}
+        description=""
+        to="/rme" />
+    </Grid>
+</Container>
+
+# Support
+
+The Riverscapes Consortium is committed to supporting users and consumers of these tool outputs. We encourage questions regarding tools and their use through our online support forum [here](https://github.com/Riverscapes/riverscapes-tools/discussions). A free GitHub account is required to post to the [discussion board](https://github.com/Riverscapes/riverscapes-tools/discussions) but you can browse without an account.
+
+</Container>
