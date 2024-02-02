@@ -88,7 +88,6 @@ try() {
     $RS_CONTEXT_DIR/topography/slope.tif \
     $RS_CONTEXT_DIR/topography/dem_hillshade.tif \
     $CHANNELAREA_DIR/outputs/channel_area.gpkg/channel_area \
-    $RS_CONTEXT_DIR/hydrology/nhdplushr.gpkg/NHDPlusFlowlineVAA \
     $VBET_DIR \
     NHD \
     level_path \
