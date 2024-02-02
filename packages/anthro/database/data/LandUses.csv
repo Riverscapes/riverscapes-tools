@@ -53,15 +53,15 @@ LandUseID,Name,Intensity
 52,Depressional Wetland,0
 53,Desert Scrub,0
 54,Developed-High Intensity,1
-55,Developed-Low Intensity,1
+55,Developed-Low Intensity,0.66
 56,Developed-Medium Intensity,1
 57,Developed-Open Space,0.33
 58,Developed-Roads,1
-59,Developed-Upland Deciduous Forest,1
-60,Developed-Upland Evergreen Forest,1
-61,Developed-Upland Herbaceous,1
-62,Developed-Upland Mixed Forest,1
-63,Developed-Upland Shrubland,1
+59,Developed-Upland Deciduous Forest,0.66
+60,Developed-Upland Evergreen Forest,0.66
+61,Developed-Upland Herbaceous,0.66
+62,Developed-Upland Mixed Forest,0.66
+63,Developed-Upland Shrubland,0.66
 64,Douglas-fir Forest and Woodland,0
 65,Douglas-fir-Grand Fir-White Fir Forest and Woodland,0
 66,Douglas-fir-Ponderosa Pine-Lodgepole Pine Forest and Woodland,0
