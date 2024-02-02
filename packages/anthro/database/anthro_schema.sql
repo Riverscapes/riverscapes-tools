@@ -72,7 +72,13 @@ CREATE TABLE IGOAttributes (
     RoadX_ct INTEGER,
     RoadX_dens REAL,
     DivPts_ct INTEGER,
-    DivPts_dens REAL);
+    DivPts_dens REAL,
+    Road_prim_len REAL,
+    Road_prim_dens REAL,
+    Road_sec_len REAL,
+    Road_sec_dens REAL,
+    Road_4wd_len REAL,
+    Road_4wd_dens REAL);
 
 CREATE TABLE DGOAttributes (
     DGOID INTEGER PRIMARY KEY NOT NULL,
@@ -86,7 +92,10 @@ CREATE TABLE DGOAttributes (
     Rail_len REAL,
     Canal_len REAL,
     RoadX_ct INTEGER,
-    DivPts_ct INTEGER);
+    DivPts_ct INTEGER,
+    Road_prim_len REAL,
+    Road_sec_len REAL,
+    Road_4wd_len REAL);
 
 CREATE TABLE ReachAttributes (
     ReachID INTEGER PRIMARY KEY NOT NULL,
