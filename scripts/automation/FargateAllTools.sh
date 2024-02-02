@@ -95,6 +95,11 @@ try() {
     --temp_folder $RSCONTEXT_SCRATCH_DIR \
     --verbose
   if [[ $? != 0 ]]; then return 1; fi
+
+  cd /usr/local/src/riverscapes-tools/packages/rscontext
+  python3 -m rscontext.rs_context_metrics \
+    $RSCONTEXT_DIR
+
   echo "<<RS_CONTEXT COMPLETE>>"
 
   # Upload the HUC into the warehouse
