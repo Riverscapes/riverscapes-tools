@@ -32,12 +32,9 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version-file: ./.nvmrc
-          cache-dependency-path: ./package.json
+          node-version-file: ./docs/.nvmrc
+          cache-dependency-path: ./docs/package.json
           cache: yarn
-
-      - name: Get correct version of Yarn
-        run: corepack enable; yarn set version berry
 
       - name: Setup Pages
         id: pages
@@ -48,23 +45,22 @@ jobs:
           # You may remove this line if you want to manage the configuration yourself.
           static_site_generator: gatsby
 
-
       - name: Restore cache
         uses: actions/cache@v3
         with:
           path: |
-            ./public
-            ./.cache
+            ./docs/public
+            ./docs/.cache
           key: ${{ runner.os }}-gatsby-build-${{ hashFiles('public') }}
           restore-keys: |
             ${{ runner.os }}-gatsby-build-
 
       - name: Install dependencies
-        working-directory: .
+        working-directory: ./docs
         run: yarn install
         
       - name: Build with Gatsby
-        working-directory: .
+        working-directory: ./docs
         env:
           PREFIX_PATHS: 'true'
         run: yarn run build
@@ -72,7 +68,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
         with:
-          path: ./public
+          path: ./docs/public
 
   # Deployment job
   deploy:
