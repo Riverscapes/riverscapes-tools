@@ -5,6 +5,7 @@
     Date:     August 2022
 """
 
+from typing import List
 import os
 import shutil
 
@@ -631,7 +632,7 @@ def raster_remove_zone(raster: Path, remove_raster: Path, output_raster: Path):
     return
 
 
-def get_endpoints_on_raster(raster: Path, geom_line: list[ogr.Geometry()], dist):
+def get_endpoints_on_raster(raster: Path, geom_line: List[ogr.Geometry()], dist):
     """return a list of endpoints for a linestring or multilinestring
 
     Args:
