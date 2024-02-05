@@ -67,7 +67,7 @@
         "NHD",
         "level_path",
         "NHDPlusID",
-        "TotDASqKm",
+        "DivDASqKm",
         // "--level_paths","${input:level_paths}",
         "--pitfill","{env:DATA_ROOT}/taudem/${input:HUC}/intermediates/pitfill.tif",
         "--dinfflowdir_ang","{env:DATA_ROOT}/taudem/${input:HUC}/intermediates/dinfflowdir_ang.tif",

@@ -92,7 +92,7 @@ try() {
     NHD \
     level_path \
     NHDPlusID \
-    TotDASqKm \
+    DivDASqKm \
     --pitfill $TAUDEM_DIR/intermediates/pitfill.tif \
     --dinfflowdir_ang $TAUDEM_DIR/intermediates/dinfflowdir_ang.tif \
     --dinfflowdir_slp $TAUDEM_DIR/outputs/dinfflowdir_slp.tif \
