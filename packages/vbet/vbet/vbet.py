@@ -336,9 +336,8 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
         curs = conn.cursor()
         level_paths_raw = curs.execute(
             f"SELECT {unique_stream_field}, MAX({drain_area_field}) AS drainage FROM {os.path.basename(line_network)} GROUP BY {unique_stream_field} ORDER BY drainage DESC").fetchall()
-        all_level_paths = list(str(int(lp[0])) for lp in level_paths_raw)
-        level_paths_drainage = {str(int(lp[0])): lp[1]
-                                for lp in level_paths_raw}
+        all_level_paths = list(str(int(lp[0])) for lp in level_paths_raw if lp[0] is not None)
+        level_paths_drainage = {str(int(lp[0])): lp[1] for lp in level_paths_raw if lp[0] is not None}
         level_paths_drainage[None] = 10
         log.info(f'Found {len(all_level_paths)} potential level paths to run.')
 
