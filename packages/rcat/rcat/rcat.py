@@ -139,7 +139,8 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, hillshade: Path, pitf
     # Create the output feature class fields. Only those listed here will get copied from the source.
     with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['GEOM_POINTS'].rel_path, write=True) as out_lyr:
         out_lyr.create_layer(ogr.wkbMultiPoint, epsg=cfg.OUTPUT_EPSG, options=['FID=IGOID'], fields={
-            'LevelPathI': ogr.OFTReal,
+            'FCode': ogr.OFTInteger,
+            'level_path': ogr.OFTReal,
             'seg_distance': ogr.OFTReal,
             'stream_size': ogr.OFTInteger,
             'LUI': ogr.OFTReal
@@ -147,7 +148,8 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, hillshade: Path, pitf
 
     with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['GEOM_DGOS'].rel_path, write=True) as out_lyr:
         out_lyr.create_layer(ogr.wkbMultiPolygon, epsg=cfg.OUTPUT_EPSG, options=['FID=DGOID'], fields={
-            'LevelPathI': ogr.OFTReal,
+            'FCode': ogr.OFTInteger,
+            'level_path': ogr.OFTReal,
             'seg_distance': ogr.OFTReal,
             'centerline_length': ogr.OFTInteger,
             'segment_area': ogr.OFTReal,

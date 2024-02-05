@@ -154,12 +154,13 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
 
     with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['ANTHRO_GEOM_LINES'].rel_path, write=True) as out_lyr:
         out_lyr.create_layer(ogr.wkbMultiLineString, epsg=cfg.OUTPUT_EPSG, options=['FID=ReachID'], fields={
-            'WatershedID': ogr.OFTString,
             'FCode': ogr.OFTInteger,
+            'ReachCode': ogr.OFTString,
             'TotDASqKm': ogr.OFTReal,
             'DivDASqKm': ogr.OFTReal,
             'GNIS_Name': ogr.OFTString,
-            'NHDPlusID': ogr.OFTReal
+            'NHDPlusID': ogr.OFTReal,
+            'level_path': ogr.OFTReal
         })
 
     db_metadata = {
@@ -177,7 +178,7 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
     copy_features_fields(input_layers['DGO'], dgo_geom_path, epsg=cfg.OUTPUT_EPSG)
 
     with SQLiteCon(outputs_gpkg_path) as database:
-        database.curs.execute('INSERT INTO ReachAttributes (ReachID, Orig_DA, iGeo_DA, ReachCode, WatershedID, StreamName, NHDPlusID) SELECT ReachID, TotDASqKm, DivDASqKm, FCode, WatershedID, GNIS_NAME, NHDPlusID FROM ReachGeometry')
+        database.curs.execute('INSERT INTO ReachAttributes (ReachID, TotDASqKm, DivDASqKm, ReachCode, FCode, StreamName, NHDPlusID) SELECT ReachID, TotDASqKm, DivDASqKm, ReachCode, FCode, GNIS_NAME, NHDPlusID FROM ReachGeometry')
         database.curs.execute('INSERT INTO IGOAttributes (IGOID, FCode, level_path, seg_distance, stream_size) SELECT IGOID, FCode, level_path, seg_distance, stream_size FROM IGOGeometry')
         database.curs.execute('INSERT INTO DGOAttributes (DGOID, FCode, level_path, seg_distance, segment_area, centerline_length) SELECT DGOID, FCode, level_path, seg_distance, segment_area, centerline_length FROM DGOGeometry')
 
