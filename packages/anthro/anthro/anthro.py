@@ -160,7 +160,8 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
             'DivDASqKm': ogr.OFTReal,
             'GNIS_Name': ogr.OFTString,
             'NHDPlusID': ogr.OFTReal,
-            'level_path': ogr.OFTReal
+            'level_path': ogr.OFTReal,
+            'ownership': ogr.OFTString
         })
 
     db_metadata = {
@@ -178,7 +179,7 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
     copy_features_fields(input_layers['DGO'], dgo_geom_path, epsg=cfg.OUTPUT_EPSG)
 
     with SQLiteCon(outputs_gpkg_path) as database:
-        database.curs.execute('INSERT INTO ReachAttributes (ReachID, TotDASqKm, DivDASqKm, ReachCode, FCode, StreamName, NHDPlusID) SELECT ReachID, TotDASqKm, DivDASqKm, ReachCode, FCode, GNIS_NAME, NHDPlusID FROM ReachGeometry')
+        database.curs.execute('INSERT INTO ReachAttributes (ReachID, TotDASqKm, DivDASqKm, ReachCode, FCode, StreamName, NHDPlusID, level_path, ownership) SELECT ReachID, TotDASqKm, DivDASqKm, ReachCode, FCode, GNIS_NAME, NHDPlusID, level_path, ownership FROM ReachGeometry')
         database.curs.execute('INSERT INTO IGOAttributes (IGOID, FCode, level_path, seg_distance, stream_size) SELECT IGOID, FCode, level_path, seg_distance, stream_size FROM IGOGeometry')
         database.curs.execute('INSERT INTO DGOAttributes (DGOID, FCode, level_path, seg_distance, segment_area, centerline_length) SELECT DGOID, FCode, level_path, seg_distance, segment_area, centerline_length FROM DGOGeometry')
 

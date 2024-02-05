@@ -101,9 +101,12 @@ CREATE TABLE ReachAttributes (
     ReachID INTEGER PRIMARY KEY NOT NULL,
     FCode INTEGER REFERENCES FCodes (FCode),
     ReachCode TEXT,
+    NHDPlusID INTEGER,
     StreamName TEXT,
+    level_path REAL,
     TotDASqKm REAL,
-    DivDASqKm REAL, --CONSTRAINT CK_Reaches_DrainageAreaSqKm CHECK (iGeo_DA >= 0),
+    DivDASqKm REAL,
+    ownership TEXT,
     iPC_Road REAL CONSTRAINT CHK_Reaches_RoadDist CHECK (iPC_Road >= 0),
     iPC_RoadX REAL CONSTRAINT CHK_Reaches_RoadCrossDists CHECK (iPC_RoadX >= 0),
     iPC_RoadVB REAL CONSTRAINT CHK_Reaches_RoadVBDist CHECK (iPC_RoadVB >= 0),
@@ -117,9 +120,7 @@ CREATE TABLE ReachAttributes (
     iPC_LowLU REAL,
     iPC_ModLU REAL,
     iPC_HighLU REAL,
-    oPC_Dist REAL,
-    AgencyID INTEGER REFERENCES Agencies (AgencyID),
-    NHDPlusID INTEGER);
+    oPC_Dist REAL);
 
 -- indexes
 
