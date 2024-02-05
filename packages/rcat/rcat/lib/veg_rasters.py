@@ -72,7 +72,7 @@ def rcat_rasters(existing_veg: str, historic_veg: str, database: str, out_folder
                     hist_riparian_arr[j, i] = int(hriparian_vals[histveg_arr[j, i]])
                     ex_vegetated_arr[j, i] = int(exvegetated_vals[exveg_arr[j, i]])
                     hist_vegetated_arr[j, i] = int(hvegetated_vals[histveg_arr[j, i]])
-                    if hconv_vals[histveg_arr[j, i]] - exconv_vals[exveg_arr[j, i]] in (-80, -60, -50, 0, 50, 60, 80, 97, 98, 99, 100);
+                    if hconv_vals[histveg_arr[j, i]] - exconv_vals[exveg_arr[j, i]] in (-80, -60, -50, 0, 50, 60, 80, 97, 98, 99, 100):
                         conv_arr[j, i] = hconv_vals[histveg_arr[j, i]] - exconv_vals[exveg_arr[j, i]]
                     else:
                         conv_arr[j, i] = 1000
