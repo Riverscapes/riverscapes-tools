@@ -158,10 +158,13 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, hillshade: Path, pitf
 
     with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['GEOM_LINES'].rel_path, write=True) as out_lyr:
         out_lyr.create_layer(ogr.wkbMultiLineString, epsg=cfg.OUTPUT_EPSG, options=['FID=ReachID'], fields={
-            'WatershedID': ogr.OFTString,
-            'ReachCode': ogr.OFTInteger,
+            'FCode': ogr.OFTInteger,
+            'ReachCode': ogr.OFTString,
+            'NHDPlusID': ogr.OFTInteger,
             'StreamName': ogr.OFTString,
-            'NHDPlusID': ogr.OFTReal,
+            'level_path': ogr.OFTReal,
+            'TotDASqKm': ogr.OFTReal,
+            'DivDASqKm': ogr.OFTReal,
             'iPC_LU': ogr.OFTReal
         })
 
@@ -179,9 +182,9 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, hillshade: Path, pitf
     copy_features_fields(input_layers['ANTHRODGO'], dgo_geom_path, epsg=cfg.OUTPUT_EPSG)
 
     with SQLiteCon(outputs_gpkg_path) as database:
-        database.curs.execute('INSERT INTO ReachAttributes (ReachID, ReachCode, WatershedID, StreamName, NHDPlusID, iPC_LU) SELECT ReachID, ReachCode, WatershedID, StreamName, NHDPlusID, iPC_LU FROM ReachGeometry')
-        database.curs.execute('INSERT INTO IGOAttributes (IGOID, LevelPathI, seg_distance, stream_size, LUI) SELECT IGOID, LevelPathI, seg_distance, stream_size, LUI FROM IGOGeometry')
-        database.curs.execute('INSERT INTO DGOAttributes (DGOID, LevelPathI, seg_distance, centerline_length, segment_area, LUI) SELECT DGOID, LevelPathI, seg_distance, centerline_length, segment_area, LUI FROM DGOGeometry')
+        database.curs.execute('INSERT INTO ReachAttributes (ReachID, FCode, ReachCode, NHDPlusID, StreamName, level_path, TotDASqKm, DivDASqKm, iPC_LU) SELECT ReachID, FCode, ReachCode, NHDPlusID, StreamName, level_path, TotDASqKm, DivDASqKm, iPC_LU FROM ReachGeometry')
+        database.curs.execute('INSERT INTO IGOAttributes (IGOID, FCode, level_path, seg_distance, stream_size, LUI) SELECT IGOID, FCode, level_path, seg_distance, stream_size, LUI FROM IGOGeometry')
+        database.curs.execute('INSERT INTO DGOAttributes (DGOID, FCode, level_path, seg_distance, centerline_length, segment_area, LUI) SELECT DGOID, FCode, level_path, seg_distance, centerline_length, segment_area, LUI FROM DGOGeometry')
 
         # Register vwReaches as a feature layer as well as its geometry column
         database.curs.execute("""INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id)
@@ -202,20 +205,20 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, hillshade: Path, pitf
         database.curs.execute("""INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m)
             SELECT 'vwDgos', column_name, geometry_type_name, srs_id, z, m FROM gpkg_geometry_columns WHERE table_name = 'DGOGeometry'""")
 
-        database.conn.execute('CREATE INDEX ix_igo_levelpath on IGOGeometry(LevelPathI)')
+        database.conn.execute('CREATE INDEX ix_igo_levelpath on IGOGeometry(level_path)')
         database.conn.execute('CREATE INDEX ix_igo_segdist on IGOGeometry(seg_distance)')
         database.conn.execute('CREATE INDEX ix_igo_size on IGOGeometry(stream_size)')
-        database.conn.execute('CREATE INDEX ix_dgo_levelpath on DGOGeometry(LevelPathI)')
+        database.conn.execute('CREATE INDEX ix_dgo_levelpath on DGOGeometry(level_path)')
         database.conn.execute('CREATE INDEX ix_dgo_segdist on DGOGeometry(seg_distance)')
 
         database.conn.commit()
 
-        database.curs.execute('SELECT DISTINCT LevelPathI FROM IGOGeometry')
+        database.curs.execute('SELECT DISTINCT level_path FROM IGOGeometry')
         levelps = database.curs.fetchall()
-        levelpathsin = [lp['LevelPathI'] for lp in levelps]
+        levelpathsin = [lp['level_path'] for lp in levelps]
 
     with SQLiteCon(inputs_gpkg_path) as db:
-        db.conn.execute('CREATE INDEX ix_dgo_levelpath on dgo(LevelPathI)')
+        db.conn.execute('CREATE INDEX ix_dgo_levelpath on dgo(level_path)')
         db.conn.execute('CREATE INDEX ix_dgo_segdist on dgo(seg_distance)')
         db.conn.commit()
 

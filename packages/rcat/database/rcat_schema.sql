@@ -168,7 +168,8 @@ CREATE TABLE ReachFPAccess (
 
 CREATE TABLE IGOAttributes (
     IGOID INTEGER PRIMARY KEY NOT NULL,
-    LevelPathI REAL,
+    FCode INTEGER,
+    level_path REAL,
     seg_distance REAL,
     stream_size INTEGER,
     LUI REAL,
@@ -196,7 +197,8 @@ CREATE TABLE IGOAttributes (
 
 CREATE TABLE DGOAttributes (
     DGOID INTEGER PRIMARY KEY NOT NULL,
-    LevelPathI REAL,
+    FCode INTEGER,
+    level_path REAL,
     seg_distance REAL,
     centerline_length REAL,
     segment_area REAL,
@@ -222,10 +224,13 @@ CREATE TABLE DGOAttributes (
 
 CREATE TABLE ReachAttributes (
     ReachID INTEGER PRIMARY KEY NOT NULL,
-    ReachCode INTEGER,
-    WatershedID TEXT,
-    StreamName TEXT,
+    FCode INTEGER,
+    ReachCode TEXT,
     NHDPlusID INTEGER,
+    StreamName TEXT,
+    level_path REAL,
+    TotDASqKm REAL,
+    DivDASqKm REAL,
     iPC_LU REAL,
     FloodplainAccess REAL,
     FromConifer REAL,
