@@ -58,7 +58,7 @@ def conflict_attributes(
 
     # Write float and string fields separately with log summary enabled
     write_db_attributes(output_gpkg, values, ['iPC_Road', 'iPC_RoadVB', 'iPC_Rail', 'iPC_RailVB', 'iPC_Canal', 'iPC_DivPts', 'iPC_RoadX', 'iPC_Privat', 'oPC_Dist'])
-    write_db_attributes(output_gpkg, values, ['AgencyID'], summarize=False)
+    # write_db_attributes(output_gpkg, values, ['AgencyID'], summarize=False)
 
 
 def calc_conflict_attributes(flowlines_path, valley_bottom, roads, rail, canals, ownership, buffer_distance_metres, cell_size_meters, epsg, canal_codes, intermediates_gpkg_path):
@@ -119,8 +119,8 @@ def calc_conflict_attributes(flowlines_path, valley_bottom, roads, rail, canals,
         values['oPC_Dist'] = min(proximities) if len(proximities) > 0 else -9999
 
     # Retrieve the agency responsible for administering the land at the midpoint of each reach
-    if len(reaches) > 0:
-        admin_agency(geopackage_path, reaches, ownership, results)
+    # if len(reaches) > 0:
+    #     admin_agency(geopackage_path, reaches, ownership, results)
 
     log.info('Infrastructure attribute calculation complete')
 
