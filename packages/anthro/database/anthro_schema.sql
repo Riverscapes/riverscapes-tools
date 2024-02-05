@@ -10,8 +10,8 @@ CREATE TABLE VegetationTypes (
     Physiognomy TEXT, 
     Notes TEXT);
 
-CREATE TABLE ReachCodes (
-    ReachCode INTEGER PRIMARY KEY NOT NULL, 
+CREATE TABLE FCodes (
+    FCode INTEGER PRIMARY KEY NOT NULL, 
     Name TEXT NOT NULL, 
     DisplayName TEXT, 
     Description TEXT NOT NULL);
@@ -99,11 +99,11 @@ CREATE TABLE DGOAttributes (
 
 CREATE TABLE ReachAttributes (
     ReachID INTEGER PRIMARY KEY NOT NULL,
-    ReachCode INTEGER REFERENCES ReachCodes (ReachCode),
-    WatershedID TEXT, --REFERENCES Watersheds (WatershedID) ON DELETE CASCADE,
+    FCode INTEGER REFERENCES FCodes (FCode),
+    ReachCode TEXT,
     StreamName TEXT,
-    Orig_DA REAL,
-    iGeo_DA REAL, --CONSTRAINT CK_Reaches_DrainageAreaSqKm CHECK (iGeo_DA >= 0),
+    TotDASqKm REAL,
+    DivDASqKm REAL, --CONSTRAINT CK_Reaches_DrainageAreaSqKm CHECK (iGeo_DA >= 0),
     iPC_Road REAL CONSTRAINT CHK_Reaches_RoadDist CHECK (iPC_Road >= 0),
     iPC_RoadX REAL CONSTRAINT CHK_Reaches_RoadCrossDists CHECK (iPC_RoadX >= 0),
     iPC_RoadVB REAL CONSTRAINT CHK_Reaches_RoadVBDist CHECK (iPC_RoadVB >= 0),
@@ -146,7 +146,7 @@ FROM DGOAttributes D
 
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Agencies', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('VegetationTypes', 'attributes');
-INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachCodes', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('FCodes', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachVegetation', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('DGOVegetation', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('MetaData', 'attributes');
