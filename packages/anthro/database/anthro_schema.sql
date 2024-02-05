@@ -1,8 +1,3 @@
-CREATE TABLE Agencies (
-    AgencyID INTEGER PRIMARY KEY NOT NULL UNIQUE, 
-    Name TEXT NOT NULL UNIQUE, 
-    Abbreviation TEXT NOT NULL UNIQUE);
-
 CREATE TABLE VegetationTypes (
     VegetationID INTEGER PRIMARY KEY NOT NULL,  
     Name TEXT NOT NULL, 
@@ -124,17 +119,9 @@ CREATE TABLE ReachAttributes (
 
 -- indexes
 
-
--- Non-spatial view of Anthro results with joins to the relevant tables
-CREATE VIEW vwReachAttributes AS
-SELECT R.*,
-       A.Name Agency
-FROM ReachAttributes R
-    INNER JOIN Agencies A ON R.AgencyID = A.AgencyID;
-
 -- The main views 
 CREATE VIEW vwReaches AS SELECT R.*, G.geom
-FROM vwReachAttributes R
+FROM ReachAttributes R
     INNER JOIN ReachGeometry G ON R.ReachID = G.ReachID;
 
 CREATE VIEW vwIgos AS SELECT I.*, G.geom
@@ -145,7 +132,6 @@ CREATE VIEW vwDgos AS SELECT D.*, G.geom
 FROM DGOAttributes D
     INNER JOIN DGOGeometry G ON D.DGOID = G.DGOID;
 
-INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Agencies', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('VegetationTypes', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('FCodes', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachVegetation', 'attributes');
@@ -157,4 +143,3 @@ INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Watersheds', 'attribu
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('IGOAttributes', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('DGOAttributes', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachAttributes', 'attributes');
-INSERT INTO gpkg_contents (table_name, data_type) VALUES ('vwReachAttributes', 'attributes');
