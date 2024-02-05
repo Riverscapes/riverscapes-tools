@@ -2711,27 +2711,27 @@ VegetationID,EpochID,Name,Physiognomy,LandUseGroup
 9315,1,Northern & Central Native Ruderal Forest,Conifer-Hardwood,Ruderal Forest
 9316,1,Northern & Central Plains Ruderal & Planted Shrubland,Exotic Tree-Shrub,Introduced Upland Vegetation-Shrub
 9317,1,Northern & Central Ruderal Shrubland,Exotic Tree-Shrub,Introduced Upland Vegetation-Shrub
-9318,1,Northern & Central Ruderal Wet Meadow & Marsh,Riparian,Introduced Herbaceous Wetland Vegetation
+9318,1,Northern & Central Ruderal Wet Meadow & Marsh,Exotic Herbaceous,Introduced Herbaceous Wetland Vegetation
 9319,1,Southeastern Exotic Ruderal Forest,Exotic Tree-Shrub,Introduced Upland Vegetation-Treed
-9320,1,Southeastern Native Ruderal Flooded & Swamp Forest,Riparian,Introduced Woody Wetland Vegetation
-9321,1,Southeastern Native Ruderal Forest,Conifer-Hardwood,Introduced Upland Vegetation-Treed
+9320,1,Southeastern Native Ruderal Flooded & Swamp Forest,Exotic Tree-Shrub,Introduced Woody Wetland Vegetation
+9321,1,Southeastern Native Ruderal Forest,Exotic Tree-Shrub,Introduced Upland Vegetation-Treed
 9322,1,Southeastern North American Temperate Forest Plantation,Conifer,Managed Tree Plantation
 9323,1,Southeastern Ruderal Shrubland,Exotic Tree-Shrub,Introduced Upland Vegetation-Shrub
-9324,1,Southeastern Ruderal Wet Meadow & Marsh,Riparian,Introduced Herbaceous Wetland Vegetation
+9324,1,Southeastern Ruderal Wet Meadow & Marsh,Exotic Herbaceous,Introduced Herbaceous Wetland Vegetation
 9325,1,Great Plains Comanchian Ruderal Shrubland,Exotic Tree-Shrub,Introduced Upland Vegetation-Shrub
 9326,1,Southern Vancouverian Lowland Ruderal Shrubland,Exotic Tree-Shrub,Introduced Upland Vegetation-Shrub
-9327,1,Interior West Ruderal Riparian Forest,Riparian,Introduced Riparian Vegetation
+9327,1,Interior West Ruderal Riparian Forest,Exotic Herbaceous,Introduced Riparian Vegetation
 9328,1,Interior Western North American Temperate Ruderal Shrubland,Exotic Tree-Shrub,Introduced Upland Vegetation-Shrub
-9329,1,Western North American Ruderal Wet Shrubland,Riparian,Introduced Woody Wetland Vegetation
-9332,1,Southeastern Exotic Ruderal Flooded & Swamp Forest,Riparian,Introduced Woody Wetland Vegetation
+9329,1,Western North American Ruderal Wet Shrubland,Exotic Tree-Shrub,Introduced Woody Wetland Vegetation
+9332,1,Southeastern Exotic Ruderal Flooded & Swamp Forest,Exotic Tree-Shrub,Introduced Woody Wetland Vegetation
 9336,1,Great Basin & Intermountain Ruderal Shrubland,Exotic Tree-Shrub,Introduced Upland Vegetation-Shrub
 9337,1,California Ruderal Scrub,Exotic Tree-Shrub,Introduced Upland Vegetation-Shrub
 9340,1,Caribbean Lowland Ruderal Rainforest,Hardwood,Caribbean Mixed Evergreen Deciduous Forest
 9341,1,Caribbean Montane Ruderal Forest,Hardwood,Caribbean Mixed Evergreen Deciduous Forest
-9343,1,Hawaiian Montane Ruderal Forest & Woodland,Hardwood,Introduced Upland Vegetation-Treed
-9344,1,Hawaiian Ruderal Coastal Salt Marsh,Riparian,Introduced Herbaceous Wetland Vegetation
-9345,1,Hawaiian Ruderal Flooded & Swamp Forest,Riparian,Introduced Woody Wetland Vegetation
-9346,1,Hawaiian Ruderal Freshwater Wet Meadow & Marsh,Riparian,Introduced Herbaceous Wetland Vegetation
+9343,1,Hawaiian Montane Ruderal Forest & Woodland,Exotic Tree-Shrub,Introduced Upland Vegetation-Treed
+9344,1,Hawaiian Ruderal Coastal Salt Marsh,Exotic Herbaceous,Introduced Herbaceous Wetland Vegetation
+9345,1,Hawaiian Ruderal Flooded & Swamp Forest,Exotic Tree-Shrub,Introduced Woody Wetland Vegetation
+9346,1,Hawaiian Ruderal Freshwater Wet Meadow & Marsh,Exotic Herbaceous,Introduced Herbaceous Wetland Vegetation
 9347,1,Hawaiian Ruderal Mangrove,Hardwood,Pacific Islands Mangrove Forest
 9348,1,Polynesian Ruderal Dry Woodland,Hardwood,Polynesian Ruderal Forest
 9349,1,Polynesian Ruderal Lowland Rainforest,Hardwood,Polynesian Ruderal Forest
@@ -2829,9 +2829,9 @@ VegetationID,EpochID,Name,Physiognomy,LandUseGroup
 9823,1,Southeastern Ruderal Grassland,Exotic Herbaceous,Introduced Perennial Grassland and Forbland
 9825,1,Great Plains Comanchian Ruderal Grassland,Exotic Herbaceous,Introduced Perennial Grassland and Forbland
 9826,1,Southern Vancouverian Lowland Ruderal Grassland,Exotic Herbaceous,Introduced Perennial Grassland and Forbland
-9827,1,Interior West Ruderal Riparian Scrub,Riparian,Introduced Riparian Vegetation
+9827,1,Interior West Ruderal Riparian Scrub,Exotic Tree-Shrub,Introduced Riparian Vegetation
 9828,1,Interior Western North American Temperate Ruderal Grassland,Exotic Herbaceous,Introduced Perennial Grassland and Forbland
-9829,1,Western North American Ruderal Wet Meadow & Marsh,Riparian,Introduced Herbaceous Wetland Vegetation
+9829,1,Western North American Ruderal Wet Meadow & Marsh,Exotic Herbaceous,Introduced Herbaceous Wetland Vegetation
 9848,1,Polynesian Ruderal Dry Scrub,Shrubland,Polynesian Ruderal Shrubland
 9850,1,Polynesian Ruderal Lowland Grassland,Grassland,Polynesian Ruderal Grassland
 9851,1,Polynesian Ruderal Herb Coastal Strand,Grassland,Polynesian Ruderal Grassland
