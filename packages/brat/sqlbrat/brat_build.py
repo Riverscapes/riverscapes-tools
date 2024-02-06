@@ -183,6 +183,11 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
     reach_geometry_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['BRAT_GEOMETRY'].rel_path)
     build_network(input_layers['FLOWLINES'], input_layers['FLOW_AREA'], reach_geometry_path, waterbodies_path=input_layers['WATERBODIES'], waterbody_max_size=max_waterbody, epsg=cfg.OUTPUT_EPSG, reach_codes=reach_codes, create_layer=False)
 
+    with GeopackageLayer(reach_geometry_path, write=True) as reach_lyr:
+        for feat, *_ in reach_lyr.iterate_features('Add WatershedID to ReachGeometry'):
+            feat.SetField('WatershedID', huc[:8])
+            reach_lyr.ogr_layer.SetFeature(feat)
+
     with SQLiteCon(outputs_gpkg_path) as database:
         # Data preparation SQL statements to handle any weird attributes
         database.curs.execute('INSERT INTO ReachAttributes (ReachID, Orig_DA, iGeo_DA, ReachCode, WatershedID, StreamName) SELECT ReachID, TotDASqKm, DivDASqKm, FCode, SUBSTR(WatershedID, 1, 8), GNIS_NAME FROM ReachGeometry')
