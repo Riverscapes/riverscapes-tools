@@ -16,12 +16,12 @@ lyrs_in_out = {
     'waterbodies': 'NHDWaterbody',
     'PITFILL': 'PITFILL',
     'igo': 'IGOGeometry',
+    'dgo': 'DGOGeometry',
     'reaches': 'ReachGeometry',
     'roads': 'roads',
     'rails': 'rails',
     'canals': 'canals',
-    'valley_bottom': 'vbet_full',
-    'dgo': 'vbet_dgos'
+    'valley_bottom': 'vbet_full'
 }
 
 
