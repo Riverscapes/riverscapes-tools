@@ -81,20 +81,14 @@
       ]
     },
     {
-      "name": "Run Floodplain Connectivity (BETA)",
+      "name": "VBET Metrics",
       "type": "python",
       "request": "launch",
-      "module": "vbet.floodplain_connectivity",
+      "module": "vbet.vbet_metrics",
       "console": "integratedTerminal",
       "args": [
-        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/network_intersected_300m",
-        "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/vbet_full",
-        "{env:DATA_ROOT}/rs_context/${input:HUC}/transportation/roads.shp",
-        "{env:DATA_ROOT}/rs_context/${input:HUC}/transportation/railways.shp",
-        "{env:DATA_ROOT}/vbet/${input:HUC}/connectivity",
-        "--debug_gpkg",
-        "{env:DATA_ROOT}/vbet/${input:HUC}/connectivity/debug.gpkg",
-        "--verbose"
+        "{env:DATA_ROOT}/vbet/${input:HUC}",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}"
       ]
     },
     {
