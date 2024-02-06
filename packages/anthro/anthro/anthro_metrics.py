@@ -8,7 +8,7 @@ import sqlite3
 from rscommons import Logger, dotenv
 
 
-def vbet_metrics(anthro_proj_path, vbet_proj_path):
+def anthro_metrics(anthro_proj_path, vbet_proj_path):
 
     log = Logger('Anthro Metrics')
     log.info('Calculating Anthro Metrics')
@@ -28,6 +28,14 @@ def vbet_metrics(anthro_proj_path, vbet_proj_path):
         av_lui = curs.fetchone()[0]
         curs.execute("SELECT SUM(Road_len) FROM DGOAttributes")
         vb_road_len = curs.fetchone()[0] / 1000
+        curs.execute("SELECT SUM(Rail_len) FROM DGOAttributes")
+        vb_rail_len = curs.fetchone()[0] / 1000
+        curs.execute("SELECT SUM(Canal_len) FROM DGOAttributes")
+        vb_canal_len = curs.fetchone()[0] / 1000
+        curs.execute("SELECT SUM(RoadX_ct) FROM DGOAttributes")
+        vb_road_cross = curs.fetchone()[0]
+        curs.execute("SELECT SUM(DivPts_ct) FROM DGOAttributes")
+        vb_div_pts = curs.fetchone()[0]
         curs.execute("""SELECT SUM(frac) FROM (SELECT (Road_len / centerline_length) * (segment_area / tot_area) frac FROM 
                      (SELECT Road_len, centerline_length, segment_area FROM DGOAttributes WHERE seg_distance is not NULL),
                      (SELECT SUM(segment_area) AS tot_area FROM DGOAttributes WHERE seg_distance is not NULL))""")
@@ -63,6 +71,10 @@ def vbet_metrics(anthro_proj_path, vbet_proj_path):
 
     metrics['aveLUI'] = str(av_lui)
     metrics['totVBRoadLength'] = str(vb_road_len)
+    metrics['totVBRailLength'] = str(vb_rail_len)
+    metrics['totVBCanalLength'] = str(vb_canal_len)
+    metrics['totRoadCrossings'] = str(vb_road_cross)
+    metrics['totDiversionPoints'] = str(vb_div_pts)
     metrics['aveRoadDensity'] = str(av_road_dens)
     metrics['avePrimaryRoadDensity'] = str(av_prim_road_dens)
     metrics['aveSecondaryRoadDensity'] = str(av_sec_road_dens)
@@ -85,7 +97,7 @@ def main():
     args = dotenv.parse_args_env(parser)
 
     try:
-        vbet_metrics(args.anthro_proj_path, args.vbet_proj_path)
+        anthro_metrics(args.anthro_proj_path, args.vbet_proj_path)
     except Exception as e:
         Logger('Anthro Metrics').error(e)
         traceback.print_exc(file=sys.stdout)
