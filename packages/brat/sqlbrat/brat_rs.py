@@ -15,7 +15,7 @@ lyrs_in_out = {
     'HILLSHADE': 'HILLSHADE',
     'EXVEG': 'EXVEG',
     'HISTVEG': 'HISTVEG',
-    'flowlines': 'network_intersected_300m',
+    'flowlines': 'network_intersected',
     'flowareas': 'NHDArea',
     'waterbodies': 'NHDWaterbody',
     'roads': 'Roads',
