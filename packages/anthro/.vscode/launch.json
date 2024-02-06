@@ -51,6 +51,17 @@
           ]
         },
         {
+          "name": "Calculate Anthro Metrics",
+          "type": "python",
+          "request": "launch",
+          "module": "anthro.anthro_metrics",
+          "console": "integratedTerminal",
+          "args": [
+            "{env:DATA_ROOT}/anthro/${input:HUC}",
+            "{env:DATA_ROOT}/vbet/${input:HUC}"
+          ]
+        },
+        {
           "name": "Write Anthro report",
           "type": "python",
           "request": "launch",
