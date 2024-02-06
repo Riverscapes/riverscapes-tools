@@ -63,7 +63,8 @@ LayerTypes = {
     'SLOPE_RASTER': RSLayer('Slope Raster', 'SLOPE_RASTER', 'Raster', 'inputs/slope.tif'),
     'HILLSHADE': RSLayer('DEM Hillshade', 'HILLSHADE', 'Raster', 'inputs/dem_hillshade.tif'),
     'INPUTS': RSLayer('Inputs', 'INPUTS', 'Geopackage', 'inputs/vbet_inputs.gpkg', {
-        'FLOWLINES': RSLayer('NHD Flowlines', 'FLOWLINES', 'Vector', 'flowlines'),
+        'NETWORK_INTERSECTION': RSLayer('NHD Flowlines intersected with road, rail and ownership', 'NETWORK_INTERSECTION', 'Vector', 'network_intersected'),
+        #'FLOWLINES': RSLayer('NHD Flowlines intersected with road, rail and ownership', 'FLOWLINES', 'Vector', 'flowlines'),
         'CHANNEL_AREA_POLYGONS': RSLayer('Channel Area Polygons', 'CHANNEL_AREA_POLYGONS', 'Vector', 'channel_area_polygons')
     }),
     # Taudem intermediate rasters can be provided as inputs, or generated in vbet
@@ -171,7 +172,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
 
     tmp_line_network = os.path.join(inputs_gpkg, 'flowlines_tmp')
     line_network = os.path.join(
-        inputs_gpkg, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
+        inputs_gpkg, LayerTypes['INPUTS'].sub_layers['NETWORK_INTERSECTION'].rel_path)
 
     clip_mask = None
     if mask is not None:

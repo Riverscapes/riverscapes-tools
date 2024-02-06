@@ -74,7 +74,7 @@ rscli download $CHANNELAREA_DIR --id $CHANNELAREA_ID \
   --no-input --no-ui --verbose
 
 rscli download $TAUDEM_DIR --id $TAUDEM_ID \
-  --file-filter "(gdal_slope.tif|pitfill.tif|dinfflowdir_ang.tif|dinfflowdir_slp.tif)" \
+  --file-filter "(pitfill.tif|dinfflowdir_ang.tif|dinfflowdir_slp.tif)" \
   --no-input --no-ui --verbose
 
 ##########################################################################################

@@ -664,7 +664,14 @@ class RSProject:
                     found_keys.append(id_out)
                     lyrnod_out.attrib['extRef'] = f"{warehouse_id}:{self.get_rsxpath(in_prj.XMLBuilder, lyrnod_in)}"
                     if lyrdesc is not None:
-                        self.XMLBuilder.add_sub_element(lyrnod_out, "Description", lyrdesc.text)
+                        lyrout_desc = lyrnod_out.find('Description')
+                        # If there is no description, add one
+                        if lyrout_desc is None:
+                            self.XMLBuilder.add_sub_element(lyrnod_out, "Description", lyrdesc.text)
+                        else:
+                            # If there is a description, append the new one
+                            lyrout_desc.text = f"{lyrout_desc.text}\n{lyrdesc.text}"
+
                     if 'id' in lyrnod_in.attrib.keys():
                         self.add_metadata([
                             # Copy all the project metadata into the layer we're importing

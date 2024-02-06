@@ -41,6 +41,7 @@ LYR_DESCRIPTIONS_JSON = os.path.join(os.path.dirname(__file__), 'layer_descripti
 LayerTypes = {
     'INPUTS': RSLayer('Inputs', 'INPUTS', 'Geopackage', 'inputs/inputs.gpkg', {
         'FLOWLINES': RSLayer('NHD Flowlines', 'NHDFlowline', 'Vector', 'flowlines'),
+        # The following optional layers get added dynamically if the are provided as inputs
         # 'FLOWAREAS': RSLayer('NHD Flow Areas', 'FLOWAREAS', 'Vector', 'flowareas'),
         # 'WATERBODY': RSLayer('NHD Water Body Areas', 'WATER_BODIES', 'Vector', 'waterbody'),
         # 'OTHER_POLYGONS': RSLayer('Other Custom channel Polygons', "CUSTOM_POLYGONS", 'Vector', 'other_channels')

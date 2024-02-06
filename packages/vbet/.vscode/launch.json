@@ -60,7 +60,7 @@
         "${input:HUC}",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydro_derivatives.gpkg/network_intersected",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/topography/dem.tif",
-        "{env:DATA_ROOT}/taudem/${input:HUC}/outputs/gdal_slope.tif",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/topography/slope.tif",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/topography/dem_hillshade.tif",
         "{env:DATA_ROOT}/channel_area/${input:HUC}/outputs/channel_area.gpkg/channel_area",
         "{env:DATA_ROOT}/vbet/${input:HUC}",
@@ -120,7 +120,7 @@
       "args": [
         "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydrology.gpkg/network",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/topography/dem.tif",
-        "{env:DATA_ROOT}/taudem/${input:HUC}/outputs/gdal_slope.tif",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/topography/slope.tif",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/NHDPlusCatchment.shp",
         "{env:DATA_ROOT}/channel_area/${input:HUC}/outputs/channel_area.gpkg/channel_area",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhd_data.sqlite/NHDPlusFlowlineVAA",
@@ -152,8 +152,10 @@
       "module": "vbet.vbet_rs",
       "console": "integratedTerminal",
       "args": [
-        "{env:DATA_ROOT}/vbet/${input:HUC}/project.rs.xml",
-        "{env:DATA_ROOT}/rs_context/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/taudem/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/channel_area/${input:HUC}/project.rs.xml"
+        // "{env:DATA_ROOT}/vbet/${input:HUC}/project.rs.xml",
+        // "{env:DATA_ROOT}/rs_context/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/taudem/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/channel_area/${input:HUC}/project.rs.xml"
+        "/workspaces/data/vbet/1601010101_test/project.rs.xml",
+        "/workspaces/data/rs_context/1601010101/project.rs.xml,/workspaces/data/taudem/1601010101/project.rs.xml,/workspaces/data/channel_area/1601010101/project.rs.xml"
       ]
     },    
     {
