@@ -5,7 +5,7 @@ import sys
 import json
 import sqlite3
 
-from rscommons import Logger
+from rscommons import Logger, dotenv
 
 
 def vbet_metrics(vbet_proj_path, rsc_proj_path):
@@ -13,8 +13,8 @@ def vbet_metrics(vbet_proj_path, rsc_proj_path):
     log = Logger('VBET Metrics')
     log.info('Calculating VBET Metrics')
 
-    # if not os.path.exists(os.path.join(rsc_proj_path, 'rscontext_metrics.json')):
-    #     raise FileNotFoundError('rscontext_metrics.json not found in {}'.format(rsc_proj_path))
+    if not os.path.exists(os.path.join(rsc_proj_path, 'rscontext_metrics.json')):
+        raise FileNotFoundError(f'rscontext_metrics.json not found in {rsc_proj_path}')
 
     with open(os.path.join(rsc_proj_path, 'rscontext_metrics.json')) as json_file:
         metrics = json.load(json_file)
@@ -55,22 +55,22 @@ def vbet_metrics(vbet_proj_path, rsc_proj_path):
                      (SELECT SUM(window_area) AS tot_area FROM vbet_igos))""")
         integrated_width = curs.fetchone()[0]
 
-    riverscape_network_density = riverscape_length / metrics['catchmentArea']
+    riverscape_network_density = riverscape_length / float(metrics['catchmentArea'])
     tot_hec_per_km = riverscape_area * 100 / riverscape_length
-    prop_riverscape = riverscape_area / metrics['catchmentArea']
+    prop_riverscape = riverscape_area / float(metrics['catchmentArea'])
 
-    metrics['riverscapeLength'] = riverscape_length
-    metrics['riverscapeArea'] = riverscape_area
-    metrics['riverscapeNetworkDensity'] = riverscape_network_density
-    metrics['avgValleyBottomWidth'] = integrated_width
-    metrics['avgChannelWidth'] = channel_width
-    metrics['lowlyingWidth'] = lowlying_width
-    metrics['elevatedWidth'] = elevated_width
-    metrics['lowlyingProp'] = lowlying_prop
-    metrics['elevatedProp'] = elevated_prop
-    metrics['totalHectaresPerKm'] = tot_hec_per_km
-    metrics['averageHectaresPerKm'] = avg_ha_per_km
-    metrics['proportionRiverscape'] = prop_riverscape
+    metrics['riverscapeLength'] = str(riverscape_length)
+    metrics['riverscapeArea'] = str(riverscape_area)
+    metrics['riverscapeNetworkDensity'] = str(riverscape_network_density)
+    metrics['avgValleyBottomWidth'] = str(integrated_width)
+    metrics['avgChannelWidth'] = str(channel_width)
+    metrics['lowlyingWidth'] = str(lowlying_width)
+    metrics['elevatedWidth'] = str(elevated_width)
+    metrics['lowlyingProp'] = str(lowlying_prop)
+    metrics['elevatedProp'] = str(elevated_prop)
+    metrics['totalHectaresPerKm'] = str(tot_hec_per_km)
+    metrics['averageHectaresPerKm'] = str(avg_ha_per_km)
+    metrics['proportionRiverscape'] = str(prop_riverscape)
 
     with open(os.path.join(vbet_proj_path, 'vbet_metrics.json'), 'w') as f:
         json.dump(metrics, f, indent=2)
@@ -81,7 +81,7 @@ def main():
     parser = argparse.ArgumentParser(description='VBET Metrics')
     parser.add_argument('vbet_proj_path', help='Path to the VBET project')
     parser.add_argument('rsc_proj_path', help='Path to the RSContext project')
-    args = parser.parse_args()
+    args = dotenv.parse_args_env(parser)
     try:
         vbet_metrics(args.vbet_proj_path, args.rsc_proj_path)
     except Exception as e:
