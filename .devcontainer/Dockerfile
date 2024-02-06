@@ -71,7 +71,7 @@ ENV PATH="${taudemDir}:${PATH}"
 
 # Now follow up on python install
 RUN pip install --upgrade pip
-RUN pip install numpy==1.23.4 Cython==0.29.23
+RUN pip install numpy==1.23.4 Cython==3.0.8
 
 # https://bobbyhadz.com/blog/python-error-in-package-setup-command-use-2to3-is-invalid
 RUN pip install "setuptools<58.0"

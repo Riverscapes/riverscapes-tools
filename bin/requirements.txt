@@ -7,7 +7,7 @@ click==7.1.2
 click-plugins==1.1.1
 cligj==0.5.0
 colorama==0.4.3
-Cython==0.29.23
+Cython==3.0.8
 decorator==4.4.2
 distlib==0.3.1
 docutils==0.15.2

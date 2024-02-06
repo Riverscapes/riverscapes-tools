@@ -7,9 +7,9 @@
   },
   // Put any environment variables you need here (as long as they apply to everyone)
   "containerEnv": {
-    "DATA_ROOT": "/workspaces/.codespaces/shared/data",
-    "NATIONAL_PROJECT": "/workspaces/.codespaces/shared/data/NationalDatasets",
-    "DOWNLOAD_FOLDER": "/workspaces/.codespaces/shared/data/download"
+    "DATA_ROOT": "/workspaces/data",
+    "NATIONAL_PROJECT": "/workspaces/data/NationalDatasets",
+    "DOWNLOAD_FOLDER": "/workspaces/data/download"
   },
   "customizations": {
     "vscode": {

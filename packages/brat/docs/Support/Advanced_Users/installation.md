@@ -64,7 +64,7 @@ Open a command prompt and ensure that you are using the virtual environment that
 Install Cython using PIP and the following command. Cython is big, so be patient!
 
 ```
-pip --timeout=120 install Cython==0.29.23
+pip --timeout=120 install Cython==3.0.8
 ```
 
 # 9. GIS Site Packages
