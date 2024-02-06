@@ -95,7 +95,7 @@ rscli download $TAUDEM_DIR --id $TAUDEM_ID \
 
 # Go get antrho result for this to work
 rscli download $ANTHRO_DIR --id $ANTHRO_ID \
-  --file-filter "(anthro.gpkg|inputs.gpkg)" \
+  --file-filter "(anthro.gpkg|inputs.gpkg|anthro_metrics.json)" \
   --no-input --no-ui --verbose
 
 ##########################################################################################
@@ -131,6 +131,10 @@ try() {
   python3 -m rcat.rcat_rs \
     $RCAT_DIR/project.rs.xml \
     "$RSCONTEXT_DIR/project.rs.xml,$VBET_DIR/project.rs.xml,$TAUDEM_DIR/project.rs.xml,$ANTHRO_DIR/project.rs.xml" \
+
+  python3 -m rcat.rcat_metrics \
+    $RCAT_DIR \
+    $ANTHRO_DIR
 
   echo "======================  Final Disk space usage ======================="
   df -h

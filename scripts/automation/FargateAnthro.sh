@@ -69,7 +69,7 @@ rscli download $RS_CONTEXT_DIR --id $RSCONTEXT_ID \
   --no-input --no-ui --verbose
   
 rscli download $VBET_DIR --id $VBET_ID \
-  --file-filter "(vbet.gpkg|vbet_intermediates.gpkg)" \
+  --file-filter "(vbet.gpkg|vbet_intermediates.gpkg|vbet_metrics.json)" \
   --no-input --no-ui --verbose
 
 ##########################################################################################
@@ -99,6 +99,10 @@ try() {
   python3 -m anthro.anthro_rs \
     $ANTHRO_DIR/project.rs.xml \
     $RS_CONTEXT_DIR/project.rs.xml,$VBET_DIR/project.rs.xml
+
+  python3 -m anthro.anthro_metrics \
+    $ANTHRO_DIR \
+    $VBET_DIR
 
   echo "======================  Final Disk space usage ======================="
   df -h

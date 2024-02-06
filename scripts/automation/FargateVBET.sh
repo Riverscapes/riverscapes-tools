@@ -67,7 +67,7 @@ VBET_TEMP=$DATA_DIR/vbet_temp
 
 # Get the RSCli project we need to make this happen
 rscli download $RS_CONTEXT_DIR --id $RSCONTEXT_ID \
-  --file-filter "(hillshade|slope|dem|hydrology|project_bounds.geojson)" \
+  --file-filter "(hillshade|slope|dem|hydrology|project_bounds.geojson|rscontext_metrics.json)" \
   --no-input --no-ui --verbose
   
 rscli download $CHANNELAREA_DIR --id $CHANNELAREA_ID \
@@ -108,6 +108,10 @@ try() {
   python3 -m vbet.vbet_rs \
     $VBET_DIR/project.rs.xml \
     $RS_CONTEXT_DIR/project.rs.xml,$TAUDEM_DIR/project.rs.xml,$CHANNELAREA_DIR/project.rs.xml
+
+  python3 -m vbet.vbet_metrics \
+    $VBET_DIR \
+    $RS_CONTEXT_DIR
 
   echo "======================  Final Disk space usage ======================="
   df -h
