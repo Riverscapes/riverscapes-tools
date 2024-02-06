@@ -52,6 +52,17 @@
           ]
         },
         {
+          "name": "Calculate RCAT Metrics",
+          "type": "python",
+          "request": "launch",
+          "module": "rcat.rcat_metrics",
+          "console": "integratedTerminal",
+          "args": [
+            "{env:DATA_ROOT}/rcat/${input:HUC}",
+            "{env:DATA_ROOT}/anthro/${input:HUC}"
+          ]
+        },
+        {
           "name": "Version Bump",
           "type": "python",
           "module": "rscommons.version",
