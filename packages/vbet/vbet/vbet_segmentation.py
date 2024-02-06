@@ -246,8 +246,9 @@ def calculate_dgo_metrics(vbet_dgos: Path, vbet_centerline: Path, dict_layers: d
 
             feat_dgo.SetField('centerline_length', length)
             feat_dgo.SetField('segment_area', vbet_area)
-            feat_dgo.SetField('integrated_width', vbet_area /
-                              length if length != 0.0 else 0.0)
+            if feat_dgo.GetField('seg_distance') is not None:
+                feat_dgo.SetField('integrated_width', vbet_area /
+                                  length if length != 0.0 else 0.0)
 
             for metric_layer_name, metric_layer_path in dict_layers.items():
                 with GeopackageLayer(metric_layer_path) as metric_lyr:
