@@ -362,10 +362,15 @@ def process_rasters(master_project: Dict, output_dir: str) -> None:
         raster = Raster(raster_info['occurences'][0]['path'])
 
         input_rasters = [rp['path'] for rp in raster_info['occurences']]
-        gdal_merge = os.path.join(os.path.dirname(__file__), '..', '..', '..', '.venv', 'bin', 'gdal_merge.py')
-        params = ['python', gdal_merge, '-o', raster_path, '-co', 'COMPRESS=LZW', '-a_nodata', str(raster.nodata)] + input_rasters
-        # print(params)
-        subprocess.call(params, shell=False)
+        # gdal_merge = os.path.join(os.path.dirname(__file__), '..', '..', '..', '.venv', 'bin', 'gdal_merge.py')
+        # params = ['python', gdal_merge, '-o', raster_path, '-co', 'COMPRESS=LZW', '-a_nodata', str(raster.nodata)] + input_rasters
+        # # print(params)
+        # subprocess.call(params, shell=False)
+
+        params = ['gdal_merge.py', '-o', raster_path, '-co', 'COMPRESS=LZW', '-a_nodata', str(raster.nodata)] + input_rasters
+        print(params)
+        params_flat = ' '.join(params)
+        subprocess.call(params_flat, shell=True)
 
 
 def get_raster_datasets(project, master_project) -> None:
