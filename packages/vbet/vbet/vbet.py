@@ -169,7 +169,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
     GeopackageLayer.delete(intermediates_gpkg)
     GeopackageLayer.delete(vbet_gpkg)
 
-    tmp_line_network = os.path.join(inputs_gpkg, 'flowlines_tmp')
+    tmp_line_network = os.path.join(project_folder, 'tmp.gpkg', 'flowlines_tmp')
     line_network = os.path.join(
         inputs_gpkg, LayerTypes['INPUTS'].sub_layers['NETWORK_INTERSECTION'].rel_path)
 
@@ -185,8 +185,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
     vbet_network(tmp_line_network, None, line_network, epsg=cfg.OUTPUT_EPSG,
                  fcodes=reach_codes, hard_clip_shape=clip_mask)
 
-    with GeopackageLayer(tmp_line_network) as lyr:
-        lyr.driver.DeleteDataSource(tmp_line_network)
+    GeopackageLayer.delete(os.path.dirname(tmp_line_network))
 
     channel_area = os.path.join(
         inputs_gpkg, LayerTypes['INPUTS'].sub_layers['CHANNEL_AREA_POLYGONS'].rel_path)
