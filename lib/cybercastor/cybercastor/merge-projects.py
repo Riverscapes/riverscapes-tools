@@ -9,6 +9,7 @@ import subprocess
 import json
 import argparse
 from osgeo import ogr
+from osgeo import gdal
 import semantic_version
 from osgeo import ogr, osr
 from rscommons import dotenv, Logger
@@ -360,14 +361,13 @@ def process_rasters(master_project: Dict, output_dir: str) -> None:
         safe_makedirs(os.path.dirname(raster_path))
 
         raster = Raster(raster_info['occurences'][0]['path'])
+        integer_raster_enums = [gdal.GDT_Byte, gdal.GDT_UInt16, gdal.GDT_UInt32, gdal.GDT_Int16, gdal.GDT_Int32]
+        compression = f'COMPRESS={"DEFLATE" if raster.dataType in integer_raster_enums else "LZW" }'
+        no_data = f'-a_nodata {raster.nodata}' if raster.nodata is not None else ''
 
         input_rasters = [rp['path'] for rp in raster_info['occurences']]
-        # gdal_merge = os.path.join(os.path.dirname(__file__), '..', '..', '..', '.venv', 'bin', 'gdal_merge.py')
-        # params = ['python', gdal_merge, '-o', raster_path, '-co', 'COMPRESS=LZW', '-a_nodata', str(raster.nodata)] + input_rasters
-        # # print(params)
-        # subprocess.call(params, shell=False)
 
-        params = ['gdal_merge.py', '-o', raster_path, '-co', 'COMPRESS=LZW', '-a_nodata', str(raster.nodata)] + input_rasters
+        params = ['gdal_merge.py', '-o', raster_path, '-co', compression, no_data] + input_rasters
         print(params)
         params_flat = ' '.join(params)
         subprocess.call(params_flat, shell=True)
