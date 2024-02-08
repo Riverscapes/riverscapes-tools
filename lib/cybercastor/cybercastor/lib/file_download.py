@@ -2,7 +2,8 @@ import os
 from rscommons.util import safe_makedirs
 from cybercastor.classes.RiverscapesAPI import RiverscapesAPI
 
-def download_files(stage, proj_type, huc, dl_files):
+
+def download_files(stage, proj_type, huc, dl_files, local_dir):
 
     riverscapes_api = RiverscapesAPI(stage=stage)
     search_query = riverscapes_api.load_query('searchProjects')
@@ -16,9 +17,9 @@ def download_files(stage, proj_type, huc, dl_files):
         'projectTypeId': proj_type,
         'meta': [
             {
-            'key': 'HUC',
-            'value': str(huc)
-        }]
+                'key': 'HUC',
+                'value': str(huc)
+            }]
     }
 
     limit = 500
@@ -30,7 +31,7 @@ def download_files(stage, proj_type, huc, dl_files):
         offset += limit
 
         projects = results['data']['searchProjects']['results']
-            
+
         for search_result in projects:
 
             project = search_result['item']
@@ -49,7 +50,7 @@ def download_files(stage, proj_type, huc, dl_files):
                 files_mess = file['downloadUrl'].split('?')[0]
                 file_name = os.path.basename(files_mess)
                 if file_name in dl_files:
-                    local_path = f'/mnt/c/Users/jordang/Documents/Riverscapes/data/{proj_type}/{dlhuc}/{file_name}'
+                    local_path = f'{local_dir}/{proj_type}/{dlhuc}/{file_name}'
                     if os.path.exists(local_path):
                         continue
                     safe_makedirs(os.path.dirname(local_path))
