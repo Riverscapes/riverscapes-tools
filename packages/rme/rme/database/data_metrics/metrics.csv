@@ -3,7 +3,7 @@ metric_id,name,machine_code,data_type,field_name,description,small,medium,large,
 2,Valley Gradient,VALGRAD,REAL,RME_IGO_valleybottom_gradient,Change in elevation along Centerline length,200.0,400.0,1400.0,(𝑡𝑜𝑝 𝑜𝑓 𝑠𝑒𝑔𝑚𝑒𝑛𝑡 𝑒𝑙𝑒𝑣. −𝑏𝑜𝑡𝑡𝑜𝑚 𝑜𝑓 𝑠𝑒𝑔𝑚𝑒𝑛𝑡 𝑒𝑙𝑒𝑣.)/(𝑣𝑎𝑙𝑙𝑒𝑦 𝑏𝑜𝑡𝑡𝑜𝑚 𝑐𝑒𝑛𝑡𝑒𝑟𝑙𝑖𝑛𝑒),1,1,
 3,Stream Order,STRMORDR,INTEGER,NHD_DGO_streamorder,standard strahler order attribute from NHD,,,,Copy NHD Attribute,1,1,
 4,Headwater,HEDWTR,INTEGER,NHD_DGO_headwater,Is greater than 50% of the analysis window marked as is_headwater?,400,400,400,Copy NHD VAA Attribute STARTFLAG,1,1,
-5,Stream Type,STRMTYPE,INTEGER,NHD_DGO_streamtype,NHD F Code Attribute,200,400,1400,Copy NHD Attribute FCODE,1,1,
+5,Stream Type,STRMTYPE,INTEGER,NHD_DGO_streamtype,NHD F Code Attribute,200,400,1400,Copy NHD Attribute FCODE,1,0,
 6,Low-Lying Valley Bottom,ACTFLDAREA,REAL,VBET_DGO_lowlying_area,Area of VBET Low Lying Floodplain,200,400,1400,Copy VBET Attribute,1,1,
 7,Elevated Valley Bottom,INACTFLDAREA,REAL,VBET_DGO_elevated_area,Area of VBET Elevated Floodplain,200,400,1400,Copy VBET Attribute,1,1,
 8,Active Channel Area,ACTCHANAREA,REAL,VBET_DGO_channel_area,Area of VBET Channel Area,200,400,1400,Copy VBET Attribute,1,1,
@@ -19,7 +19,7 @@ metric_id,name,machine_code,data_type,field_name,description,small,medium,large,
 18,Stream Size Metric,STRMSIZE,REAL,VBET_DGO_streamsize,Stream Size (calculated as integrated channel width),200,400,1400,,1,1,
 19,Valley Azimuth,VALAZMTH,REAL,RME_IGO_valley_azimuth,,200,400,1400,,,,
 20,Ecoregion III,ECORGIII,REAL,EPA_DGO_ecoregion3,"which ecoregion contains the majority of the analysis window?",500,500,1400,,2,1,
-21,Confluence C1ount,CONF,INTEGER,RME_DGO_confluences,,200,400,1400,,2,1
+21,Confluence Count,CONF,INTEGER,RME_DGO_confluences,,200,400,1400,,2,1
 22,Diffluence Count,DIFF,INTEGER,RME_DGO_diffluences,,200,400,1400,,2,1
 23,Planform Sinuosity of Main LevelPath,CHANSIN,REAL,RME_IGO_planform_sinuosity,,200,400,1400,(𝑛𝑒𝑡𝑤𝑜𝑟𝑘 𝑙𝑒𝑛𝑔𝑡ℎ)/(𝑠𝑡𝑟𝑎𝑖𝑔ℎ𝑡−𝑙𝑖𝑛𝑒 𝑑𝑖𝑠𝑡𝑎𝑛𝑐𝑒),2,1,
 24,Drainage Area,DRAINAREA,REAL,RME_DGO_drainage_area,,200,400,1400,,2,1,
