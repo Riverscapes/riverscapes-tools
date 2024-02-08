@@ -80,7 +80,7 @@ try() {
     $RS_CONTEXT_DIR/topography/dem.tif \
     $RS_CONTEXT_DIR/topography/slope.tif \
     $RS_CONTEXT_DIR/topography/dem_hillshade.tif \
-    $RS_CONTEXT_DIR/hydrology/hydro_derivatives.gpkg/network_intersected_300m \
+    $RS_CONTEXT_DIR/hydrology/hydro_derivatives.gpkg/network_intersected \
     $RS_CONTEXT_DIR/vegetation/existing_veg.tif \
     $RS_CONTEXT_DIR/vegetation/historic_veg.tif \
     $VBET_DIR/outputs/vbet.gpkg/vbet_full \
