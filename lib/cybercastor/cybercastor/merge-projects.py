@@ -8,8 +8,7 @@ import os
 import subprocess
 import json
 import argparse
-from osgeo import gdal
-from osgeo import ogr
+from osgeo import gdal, ogr
 from rscommons import Raster
 import xml.etree.ElementTree as ET
 from rsxml.project_xml import (
