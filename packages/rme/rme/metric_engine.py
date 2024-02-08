@@ -157,43 +157,31 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                                                        'Inputs', 'Intermediates', 'Outputs'], create_folders=True)
 
     inputs_gpkg = os.path.join(project_folder, LayerTypes['INPUTS'].rel_path)
-    intermediates_gpkg = os.path.join(
-        project_folder, LayerTypes['INTERMEDIATES'].rel_path)
-    outputs_gpkg = os.path.join(
-        project_folder, LayerTypes['RME_OUTPUTS'].rel_path)
+    intermediates_gpkg = os.path.join(project_folder, LayerTypes['INTERMEDIATES'].rel_path)
+    outputs_gpkg = os.path.join(project_folder, LayerTypes['RME_OUTPUTS'].rel_path)
     GeopackageLayer.delete(inputs_gpkg)
     GeopackageLayer.delete(intermediates_gpkg)
     GeopackageLayer.delete(outputs_gpkg)
 
-    flowlines = os.path.join(
-        inputs_gpkg, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
+    flowlines = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
     copy_feature_class(in_flowlines, flowlines)
-    ownership = os.path.join(
-        inputs_gpkg, LayerTypes['INPUTS'].sub_layers['OWNERSHIP'].rel_path)
+    ownership = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['OWNERSHIP'].rel_path)
     copy_feature_class(in_ownership, ownership)
-    states_f = os.path.join(
-        inputs_gpkg, LayerTypes['INPUTS'].sub_layers['STATES'].rel_path)
+    states_f = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['STATES'].rel_path)
     copy_feature_class(in_states, states_f)
-    counties_f = os.path.join(
-        inputs_gpkg, LayerTypes['INPUTS'].sub_layers['COUNTIES'].rel_path)
+    counties_f = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['COUNTIES'].rel_path)
     copy_feature_class(in_counties, counties_f)
-    segments = os.path.join(
-        outputs_gpkg, LayerTypes['INPUTS'].sub_layers['VBET_DGOS'].rel_path)
+    segments = os.path.join(outputs_gpkg, LayerTypes['INPUTS'].sub_layers['VBET_DGOS'].rel_path)
     copy_feature_class(in_segments, segments)
-    points = os.path.join(
-        outputs_gpkg, LayerTypes['INPUTS'].sub_layers['VBET_IGOS'].rel_path)
+    points = os.path.join(outputs_gpkg, LayerTypes['INPUTS'].sub_layers['VBET_IGOS'].rel_path)
     copy_feature_class(in_points, points)
-    centerlines = os.path.join(
-        inputs_gpkg, LayerTypes['INPUTS'].sub_layers['VBET_CENTERLINES'].rel_path)
+    centerlines = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['VBET_CENTERLINES'].rel_path)
     copy_feature_class(in_vbet_centerline, centerlines)
-    roads = os.path.join(
-        inputs_gpkg, LayerTypes['INPUTS'].sub_layers['ROADS'].rel_path)
+    roads = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['ROADS'].rel_path)
     copy_feature_class(in_roads, roads)
-    rail = os.path.join(
-        inputs_gpkg, LayerTypes['INPUTS'].sub_layers['RAIL'].rel_path)
+    rail = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['RAIL'].rel_path)
     copy_feature_class(in_rail, rail)
-    ecoregions = os.path.join(
-        inputs_gpkg, LayerTypes['INPUTS'].sub_layers['ECOREGIONS'].rel_path)
+    ecoregions = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['ECOREGIONS'].rel_path)
     copy_feature_class(in_ecoregions, ecoregions)
     if in_confinement_dgos:
         confinement_dgos = os.path.join(
@@ -220,19 +208,15 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
         geom = feat.GetGeometryRef()
         utm_epsg = get_utm_zone_epsg(geom.GetPoint(0)[0])
 
-    _dem_node, dem = project.add_project_raster(
-        proj_nodes['Inputs'], LayerTypes['DEM'], in_dem)
-    _hs_node, hillshade = project.add_project_raster(
-        proj_nodes['Inputs'], LayerTypes['HILLSHADE'], in_hillshade)
-    _ppt_node, ppt = project.add_project_raster(
-        proj_nodes['Inputs'], LayerTypes['PPT'], in_ppt)
+    _dem_node, dem = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], in_dem)
+    _hs_node, hillshade = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], in_hillshade)
+    _ppt_node, ppt = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['PPT'], in_ppt)
     project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
-    project.add_project_geopackage(
-        proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
+    project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
 
     vaa_table_name = copy_vaa_attributes(flowlines, in_vaa_table)
     line_network = join_attributes(inputs_gpkg, "vw_flowlines_vaa", os.path.basename(flowlines), vaa_table_name, 'NHDPlusID', [
-                                   'LevelPathI', 'DnLevelPat', 'UpLevelPat', 'Divergence', 'StreamOrde', 'STARTFLAG', 'DnDrainCou', 'RtnDiv'], 4326)
+                                   'STARTFLAG', 'DnDrainCou', 'RtnDiv'], 4326)
 
     # Prepare Junctions
     junctions = os.path.join(
@@ -291,18 +275,16 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
     # index level path and seg distance
     with sqlite3.connect(outputs_gpkg) as conn:
         curs = conn.cursor()
-        curs.execute(
-            "CREATE INDEX ix_dgos_level_path_seg_distance ON dgos (LevelPathI, seg_distance)")
+        curs.execute("CREATE INDEX ix_dgos_level_path_seg_distance ON dgos (level_path, seg_distance)")
         curs.execute("CREATE INDEX idx_size ON igos (stream_size)")
-        curs.execute(
-            "CREATE INDEX ix_igos_level_path_seg_distance ON igos (LevelPathI, seg_distance)")
+        curs.execute("CREATE INDEX ix_igos_level_path_seg_distance ON igos (level_path, seg_distance)")
         conn.commit()
 
     # Generate the list of level paths to run, sorted by ascending order and optional user filter
     level_paths_to_run = []
     with GeopackageLayer(line_network) as line_lyr:
         for feat, *_ in line_lyr.iterate_features():
-            level_path = feat.GetField('LevelPathI')
+            level_path = feat.GetField('level_path')
             level_paths_to_run.append(str(int(level_path)))
     level_paths_to_run = list(set(level_paths_to_run))
     if level_paths:
@@ -311,8 +293,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
     level_paths_to_run.sort(reverse=False)
 
     # store moving windows of igos for later summarization
-    windows = moving_window_dgo_ids(
-        points, segments, level_paths_to_run, window_distance)
+    windows = moving_window_dgo_ids(points, segments, level_paths_to_run, window_distance)
 
     # associate single DGOs with single IGOs for non moving window metrics
     log.info('Associating DGOs with IGOs')
@@ -321,9 +302,9 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
             GeopackageLayer(points) as lyr_points:
         for feat, *_ in lyr_points.iterate_features():
             igo_id = feat.GetFID()
-            level_path = feat.GetField('LevelPathI')
+            level_path = feat.GetField('level_path')
             seg_distance = feat.GetField('seg_distance')
-            sql = f'LevelPathI = {level_path} and seg_distance = {seg_distance}'
+            sql = f'level_path = {level_path} and seg_distance = {seg_distance}'
             for feat_seg, *_ in lyr_segments.iterate_features(attribute_filter=sql):
                 igo_dgo[igo_id] = feat_seg.GetFID()
                 break
@@ -349,21 +330,19 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                 rasterio.open(dem) as src_dem:
 
             # buffer_size_clip = lyr_points.rough_convert_metres_to_vector_units(0.25)
-            _transform_ref, transform = VectorBase.get_transform_from_epsg(
-                lyr_segments.spatial_ref, utm_epsg)
+            _transform_ref, transform = VectorBase.get_transform_from_epsg(lyr_segments.spatial_ref, utm_epsg)
             AnalysisLine.transform = transform
 
-            geom_flowline = collect_linestring(
-                line_network, f'LevelPathI = {level_path}')
+            geom_flowline = collect_linestring(line_network, f'level_path = {level_path}')
             if geom_flowline.IsEmpty():
                 log.error(
                     f'Flowline for level path {level_path} is empty geometry')
                 continue
 
             geom_centerline = collect_linestring(
-                centerlines, f'LevelPathI = {level_path}', precision=8)
+                centerlines, f'level_path = {level_path}', precision=8)
 
-            for feat_seg_dgo, *_ in lyr_segments.iterate_features(attribute_filter=f'LevelPathI = {level_path}'):
+            for feat_seg_dgo, *_ in lyr_segments.iterate_features(attribute_filter=f'level_path = {level_path}'):
                 # Gather common components for metric calcuations
                 feat_geom = feat_seg_dgo.GetGeometryRef().Clone()
                 dgo_id = feat_seg_dgo.GetFID()
@@ -374,7 +353,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                 # curs.execute("SELECT stream_size from points WHERE seg_distance = ? and LevelPathI = ?", (segment_distance, level_path))
                 # stream_size_id = curs.fetchone()[0]
                 with GeopackageLayer(points) as lyr_points:
-                    for pt_ftr, *_ in lyr_points.iterate_features(attribute_filter=f'LevelPathI = {level_path} and seg_distance = {segment_distance}'):
+                    for pt_ftr, *_ in lyr_points.iterate_features(attribute_filter=f'level_path = {level_path} and seg_distance = {segment_distance}'):
                         stream_size_id = pt_ftr.GetField('stream_size')
                         break
                 if not 'stream_size_id' in locals():
@@ -394,12 +373,9 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
 
                     stream_length, min_elev, max_elev = get_segment_measurements(
                         geom_flowline, src_dem, feat_geom, buffer_distance[stream_size], transform)
-                    measurements_output[measurements['STRMMINELEV']
-                                        ['measurement_id']] = min_elev
-                    measurements_output[measurements['STRMMAXELEV']
-                                        ['measurement_id']] = max_elev
-                    measurements_output[measurements['STRMLENG']
-                                        ['measurement_id']] = stream_length
+                    measurements_output[measurements['STRMMINELEV']['measurement_id']] = min_elev
+                    measurements_output[measurements['STRMMAXELEV']['measurement_id']] = max_elev
+                    measurements_output[measurements['STRMLENG']['measurement_id']] = stream_length
 
                     gradient = None if any(value is None for value in [max_elev, min_elev]) else str(
                         (max_elev - min_elev) / stream_length)
@@ -410,16 +386,13 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
 
                     centerline_length, *_ = get_segment_measurements(
                         geom_centerline, src_dem, feat_geom, buffer_distance[stream_size], transform)
-                    measurements_output[measurements['VALLENG']
-                                        ['measurement_id']] = centerline_length
+                    measurements_output[measurements['VALLENG']['measurement_id']] = centerline_length
 
                     if any(elev is None for elev in [min_elev, max_elev]):
                         _, min_elev, max_elev = get_segment_measurements(
                             geom_flowline, dem, feat_geom, buffer_distance[stream_size], transform)
-                        measurements_output[measurements['STRMMINELEV']
-                                            ['measurement_id']] = min_elev
-                        measurements_output[measurements['STRMMAXELEV']
-                                            ['measurement_id']] = max_elev
+                        measurements_output[measurements['STRMMINELEV']['measurement_id']] = min_elev
+                        measurements_output[measurements['STRMMAXELEV']['measurement_id']] = max_elev
 
                     gradient = None if any(value is None for value in [max_elev, min_elev]) else str(
                         (max_elev - min_elev) / centerline_length)
@@ -431,7 +404,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                     results = []
                     with GeopackageLayer(line_network) as lyr_lines:
                         for feat, *_ in lyr_lines.iterate_features(clip_shape=feat_geom):
-                            results.append(feat.GetField('StreamOrde'))
+                            results.append(feat.GetField('stream_order'))
                         lyr_lines.ogr_layer.SetSpatialFilter(None)
                     if len(results) > 0:
                         stream_order = str(max(results))
@@ -460,43 +433,41 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                     if sum(sum_attributes.values()) == 0:
                         is_headwater = None
                     else:
-                        is_headwater = str(1) if sum_attributes.get(
-                            '1', 0) / sum(sum_attributes.values()) > 0.5 else str(0)
+                        is_headwater = str(1) if sum_attributes.get('1', 0) / sum(sum_attributes.values()) > 0.5 else str(0)
                     metrics_output[metric['metric_id']] = is_headwater
 
                 if 'STRMTYPE' in metrics:
                     metric = metrics['STRMTYPE']
 
-                    attributes = {}
-                    with GeopackageLayer(line_network) as lyr_lines:
-                        for feat, *_ in lyr_lines.iterate_features(clip_shape=feat_geom):
-                            line_geom = feat.GetGeometryRef()
-                            attribute = str(feat.GetField('FCode'))
-                            geom_section = feat_geom.Intersection(line_geom)
-                            length = geom_section.Length()
-                            attributes[attribute] = attributes.get(
-                                attribute, 0) + length
-                        lyr_lines.ogr_layer.SetSpatialFilter(None)
-                        lyr_lines = None
-                    if len(attributes) == 0:
-                        majority_fcode = None
-                    else:
-                        majority_fcode = str(
-                            max(attributes, key=attributes.get))
-                    metrics_output[metric['metric_id']] = majority_fcode
+                    # attributes = {}
+                    # with GeopackageLayer(line_network) as lyr_lines:
+                    #     for feat, *_ in lyr_lines.iterate_features(clip_shape=feat_geom):
+                    #         line_geom = feat.GetGeometryRef()
+                    #         attribute = str(feat.GetField('FCode'))
+                    #         geom_section = feat_geom.Intersection(line_geom)
+                    #         length = geom_section.Length()
+                    #         attributes[attribute] = attributes.get(attribute, 0) + length
+                    #     lyr_lines.ogr_layer.SetSpatialFilter(None)
+                    #     lyr_lines = None
+                    # if len(attributes) == 0:
+                    #     majority_fcode = None
+                    # else:
+                    #     majority_fcode = str(max(attributes, key=attributes.get))
+                    fcode = feat_seg_dgo.GetField('FCode')
+                    metrics_output[metric['metric_id']] = str(fcode)
 
                 if 'ACTFLDAREA' in metrics:
                     metric = metrics['ACTFLDAREA']
 
-                    afp_area = feat_seg_dgo.GetField('active_floodplain_area') if feat_seg_dgo.GetField(
-                        'active_floodplain_area') is not None else 0.0
+                    afp_area = feat_seg_dgo.GetField('low_lying_floodplain_area') if feat_seg_dgo.GetField(
+                        'low_lying_floodplain_area') is not None else 0.0
                     metrics_output[metric['metric_id']] = str(afp_area)
 
                 if 'INACTFLDAREA' in metrics:
                     metric = metrics['INACTFLDAREA']
 
-                    ifp_area = feat_seg_dgo.GetField('inactive_floodplain_area') if feat_seg_dgo.GetField(
-                        'inactive_floodplain_area') is not None else 0.0
+                    ifp_area = feat_seg_dgo.GetField('elevated_floodplain_area') if feat_seg_dgo.GetField(
+                        'elevated_floodplain_area') is not None else 0.0
                     metrics_output[metric['metric_id']] = str(ifp_area)
 
                 if 'ACTCHANAREA' in metrics:
@@ -516,29 +487,30 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                 if 'INTGWDTH' in metrics:
                     metric = metrics['INTGWDTH']
 
-                    ig_width = str(feat_seg_dgo.GetField('segment_area') / feat_seg_dgo.GetField(
-                        'centerline_length')) if feat_seg_dgo.GetField('centerline_length') is not None else None
-                    metrics_output[metric['metric_id']] = ig_width
+                    # ig_width = str(feat_seg_dgo.GetField('segment_area') / feat_seg_dgo.GetField(
+                    #     'centerline_length')) if feat_seg_dgo.GetField('centerline_length') is not None else None
+                    ig_width = feat_seg_dgo.GetField('integrated_width')
+                    metrics_output[metric['metric_id']] = str(ig_width)
 
                 if 'CHANVBRAT' in metrics:
                     metric = metrics['CHANVBRAT']
 
                     ac_ratio = feat_seg_dgo.GetField('active_channel_prop') if feat_seg_dgo.GetField(
-                        'active_floodplain_prop') is not None else 0.0
+                        'active_channel_prop') is not None else 0.0
                     metrics_output[metric['metric_id']] = str(ac_ratio)
 
                 if 'LOWLYVBRAT' in metrics:
                     metric = metrics['LOWLYVBRAT']
 
                     lowly_ratio = feat_seg_dgo.GetField(
-                        'active_floodplain_prop') if feat_seg_dgo.GetField('segment_area') > 0.0 else None
+                        'low_lying_floodplain_prop') if feat_seg_dgo.GetField('segment_area') > 0.0 else None
                     metrics_output[metric['metric_id']] = lowly_ratio
 
                 if 'ELEVATEDVBRAT' in metrics:
                     metric = metrics['ELEVATEDVBRAT']
 
-                    elevated_ratio = feat_seg_dgo.GetField('inactive_floodplain_prop') if feat_seg_dgo.GetField(
-                        'inactive_floodplain_prop') is not None else 0.0
+                    elevated_ratio = feat_seg_dgo.GetField('elevated_floodplain_prop') if feat_seg_dgo.GetField(
+                        'elevated_floodplain_prop') is not None else 0.0
                     metrics_output[metric['metric_id']] = str(elevated_ratio)
 
                 if 'FLDVBRAT' in metrics:
@@ -565,8 +537,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                 if 'RELFLWLNGTH' in metrics:
                     metric = metrics['RELFLWLNGTH']
 
-                    geom_flowline_full = collect_linestring(
-                        line_network, f'vbet_level_path = {level_path}')
+                    geom_flowline_full = collect_linestring(line_network, f'level_path = {level_path}')
                     stream_length_total, *_ = get_segment_measurements(
                         geom_flowline_full, src_dem, feat_geom, buffer_distance[stream_size], transform)
                     centerline_length, *_ = get_segment_measurements(
@@ -590,46 +561,55 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                     metric = metrics['ECORGIII']
 
                     attributes = {}
-                    with GeopackageLayer(ecoregions) as lyr_ecoregions:
-                        for feat, *_ in lyr_ecoregions.iterate_features(clip_shape=feat_geom):
+                    # with GeopackageLayer(ecoregions) as lyr_ecoregions:
+                    #     for feat, *_ in lyr_ecoregions.iterate_features(clip_shape=feat_geom):
+                    #         geom_ecoregion = feat.GetGeometryRef()
+                    #         attribute = str(feat.GetField('US_L3CODE'))
+                    #         geom_section = feat_geom.Intersection(
+                    #             geom_ecoregion)
+                    #         area = geom_section.GetArea()
+                    #         attributes[attribute] = attributes.get(
+                    #             attribute, 0) + area
+                    #     lyr_ecoregions = None
+                    # if len(attributes) == 0:
+                    #     log.warning(
+                    #         f'Unable to find majority ecoregion III for pt {dgo_id} in level path {level_path}')
+                    #     majority_attribute = None
+                    # else:
+                    #     majority_attribute = str(
+                    #         max(attributes, key=attributes.get))
+                    with GeopackageLayer(line_network) as lyr_lines:
+                        for feat, *_ in lyr_lines.iterate_features(clip_shape=feat_geom):
                             geom_ecoregion = feat.GetGeometryRef()
-                            attribute = str(feat.GetField('US_L3CODE'))
-                            geom_section = feat_geom.Intersection(
-                                geom_ecoregion)
-                            area = geom_section.GetArea()
+                            attribute = feat.GetField('ecoregion_iii')
+                            geom_section = feat_geom.Intersection(geom_ecoregion)
+                            length = geom_section.Length()
                             attributes[attribute] = attributes.get(
-                                attribute, 0) + area
-                        lyr_ecoregions = None
+                                attribute, 0) + length
                     if len(attributes) == 0:
-                        log.warning(
-                            f'Unable to find majority ecoregion III for pt {dgo_id} in level path {level_path}')
+                        log.warning(f'Unable to find majority ecoregion III for pt {dgo_id} in level path {level_path}')
                         majority_attribute = None
                     else:
-                        majority_attribute = str(
-                            max(attributes, key=attributes.get))
+                        majority_attribute = str(max(attributes, key=attributes.get))
                     metrics_output[metric['metric_id']] = majority_attribute
 
                 if 'ECORGIV' in metrics:
                     metric = metrics['ECORGIV']
 
                     attributes = {}
-                    with GeopackageLayer(ecoregions) as lyr_ecoregions:
-                        for feat, *_ in lyr_ecoregions.iterate_features(clip_shape=feat_geom):
+                    with GeopackageLayer(line_network) as lyr_lines:
+                        for feat, *_ in lyr_lines.iterate_features(clip_shape=feat_geom):
                             geom_ecoregion = feat.GetGeometryRef()
-                            attribute = str(feat.GetField('US_L4CODE'))
-                            geom_section = feat_geom.Intersection(
-                                geom_ecoregion)
-                            area = geom_section.GetArea()
+                            attribute = feat.GetField('ecoregion_iv')
+                            geom_section = feat_geom.Intersection(geom_ecoregion)
+                            length = geom_section.Length()
                             attributes[attribute] = attributes.get(
-                                attribute, 0) + area
-                        lyr_ecoregions = None
+                                attribute, 0) + length
                     if len(attributes) == 0:
-                        log.warning(
-                            f'Unable to find majority ecoregion III for pt {dgo_id} in level path {level_path}')
+                        log.warning(f'Unable to find majority ecoregion IV for pt {dgo_id} in level path {level_path}')
                         majority_attribute = None
                     else:
-                        majority_attribute = str(
-                            max(attributes, key=attributes.get))
+                        majority_attribute = str(max(attributes, key=attributes.get))
                     metrics_output[metric['metric_id']] = majority_attribute
 
                 if 'CONF' in metrics:
@@ -663,8 +643,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                     metric = metrics['CHANSIN']
 
                     line = AnalysisLine(geom_flowline, feat_geom)
-                    measurements_output[measurements['STRMSTRLENG']
-                                        ['measurement_id']] = line.endpoint_distance
+                    measurements_output[measurements['STRMSTRLENG']['measurement_id']] = line.endpoint_distance
                     sin = str(line.sinuosity()) if line.sinuosity(
                     ) is not None else None
                     metrics_output[metric['metric_id']] = sin
@@ -680,16 +659,14 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                         drainage_area = str(max(results))
                     else:
                         drainage_area = None
-                        log.warning(
-                            f'Unable to calculate drainage area for pt {dgo_id} in level path {level_path}')
+                        log.warning(f'Unable to calculate drainage area for pt {dgo_id} in level path {level_path}')
                     metrics_output[metric['metric_id']] = drainage_area
 
                 if 'VALAZMTH' in metrics:
                     metric = metrics['VALAZMTH']
 
                     cline = AnalysisLine(geom_centerline, feat_geom)
-                    az = str(cline.azimuth()) if cline.azimuth(
-                    ) is not None else None
+                    az = str(cline.azimuth()) if cline.azimuth() is not None else None
                     metrics_output[metric['metric_id']] = az
 
                 if 'CNFMT' in metrics and confinement_dgos:
@@ -778,18 +755,31 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                     metric = metrics['AGENCY']
 
                     agencies = {}
-                    with GeopackageLayer(ownership) as lyr:
-                        for feat, *_ in lyr.iterate_features(clip_shape=feat_geom):
+                    # with GeopackageLayer(ownership) as lyr:
+                    #     for feat, *_ in lyr.iterate_features(clip_shape=feat_geom):
+                    #         geom_agency = feat.GetGeometryRef()
+                    #         attribute = feat.GetField('ADMIN_AGEN')
+                    #         geom_section = feat_geom.Intersection(geom_agency)
+                    #         area = geom_section.GetArea()
+                    #         agencies[attribute] = agencies.get(
+                    #             attribute, 0) + area
+                    #     lyr = None
+                    # if len(agencies) == 0:
+                    #     log.warning(
+                    #         f'Unable to find majority agency for pt {dgo_id} in level path {level_path}')
+                    #     majority_agency = None
+                    # else:
+                    #     majority_agency = str(max(agencies, key=agencies.get))
+                    # metrics_output[metric['metric_id']] = majority_agency
+                    with GeopackageLayer(line_network) as lyr_lines:
+                        for feat, *_ in lyr_lines.iterate_features(clip_shape=feat_geom):
                             geom_agency = feat.GetGeometryRef()
-                            attribute = feat.GetField('ADMIN_AGEN')
+                            attribute = feat.GetField('ownership')
                             geom_section = feat_geom.Intersection(geom_agency)
-                            area = geom_section.GetArea()
-                            agencies[attribute] = agencies.get(
-                                attribute, 0) + area
-                        lyr = None
+                            length = geom_section.Length()
+                            agencies[attribute] = agencies.get(attribute, 0) + length
                     if len(agencies) == 0:
-                        log.warning(
-                            f'Unable to find majority agency for pt {dgo_id} in level path {level_path}')
+                        log.warning(f'Unable to find majority agency for pt {dgo_id} in level path {level_path}')
                         majority_agency = None
                     else:
                         majority_agency = str(max(agencies, key=agencies.get))
@@ -799,17 +789,30 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                     metric = metrics['STATE']
 
                     states = {}
-                    with GeopackageLayer(states_f) as lyr:
-                        for feat, *_ in lyr.iterate_features(clip_shape=feat_geom):
+                    # with GeopackageLayer(states_f) as lyr:
+                    #     for feat, *_ in lyr.iterate_features(clip_shape=feat_geom):
+                    #         geom_state = feat.GetGeometryRef()
+                    #         attribute = feat.GetField('NAME')
+                    #         geom_section = feat_geom.Intersection(geom_state)
+                    #         area = geom_section.GetArea()
+                    #         states[attribute] = states.get(attribute, 0) + area
+                    #     lyr = None
+                    # if len(states) == 0:
+                    #     log.warning(
+                    #         f'Unable to find majority state for pt {dgo_id} in level path {level_path}')
+                    #     majority_state = None
+                    # else:
+                    #     majority_state = str(max(states, key=states.get))
+                    # metrics_output[metric['metric_id']] = majority_state
+                    with GeopackageLayer(line_network) as lyr_lines:
+                        for feat, *_ in lyr_lines.iterate_features(clip_shape=feat_geom):
                             geom_state = feat.GetGeometryRef()
-                            attribute = feat.GetField('NAME')
+                            attribute = feat.GetField('us_state')
                             geom_section = feat_geom.Intersection(geom_state)
-                            area = geom_section.GetArea()
-                            states[attribute] = states.get(attribute, 0) + area
-                        lyr = None
+                            length = geom_section.Length()
+                            states[attribute] = states.get(attribute, 0) + length
                     if len(states) == 0:
-                        log.warning(
-                            f'Unable to find majority state for pt {dgo_id} in level path {level_path}')
+                        log.warning(f'Unable to find majority state for pt {dgo_id} in level path {level_path}')
                         majority_state = None
                     else:
                         majority_state = str(max(states, key=states.get))
@@ -920,7 +923,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                     if fp_area is not None:
                         curs.execute(
                             f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['FLDPLNAREA']['metric_id']}, {str(fp_area)})")
-                        
+
                 if 'STRMSIZE' in metrics:
                     curs.execute(
                         f"SELECT measurement_value FROM measurement_values WHERE measurement_id = {measurements['STRMSTRLENG']['measurement_id']} AND dgo_id = {igo_dgo[igo_id]}")
@@ -930,7 +933,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                     ac = curs.fetchone()[0]
 
                     stream_size_metric = None if any(value is None for value in [
-                                                    ac, stream_length]) else float(ac) / float(stream_length)
+                        ac, stream_length]) else float(ac) / float(stream_length)
                     if stream_size_metric is not None:
                         curs.execute(
                             f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['STRMSIZE']['metric_id']}, {str(stream_size_metric)})")
@@ -940,16 +943,14 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                         f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['ECORGIII']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
                     ecor3 = curs.fetchone()[0]
                     if ecor3 is not None:
-                        curs.execute(
-                            f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['ECORGIII']['metric_id']}, {str(ecor3)})")
+                        curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['ECORGIII']['metric_id']}, '{str(ecor3)}')")
 
                 if 'ECORGIV' in metrics:
                     curs.execute(
                         f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['ECORGIV']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
                     ecor4 = curs.fetchone()[0]
                     if ecor4 is not None:
-                        curs.execute("""INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES (?, ?, ?)""", (
-                            igo_id, metrics['ECORGIV']['metric_id'], str(ecor4)))
+                        curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['ECORGIV']['metric_id']}, '{str(ecor4)}')")
 
                 if 'CONF' in metrics:
                     curs.execute(
@@ -974,7 +975,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                     if da is not None:
                         curs.execute(
                             f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['DRAINAREA']['metric_id']}, {str(da)})")
-            
+
                 if 'CONFMARG' in metrics and confinement_dgos:
                     curs.execute(
                         f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['CONFMARG']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
@@ -982,7 +983,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                     if conf_margin is not None:
                         curs.execute(
                             f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['CONFMARG']['metric_id']}, {str(conf_margin)})")
-            
+
                 if 'STATE' in metrics:
                     curs.execute(
                         f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['STATE']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
@@ -998,7 +999,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                     if county is not None:
                         curs.execute("""INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES (?, ?, ?)""", (
                             igo_id, metrics['COUNTY']['metric_id'], str(county)))
-                        
+
                 if 'AGENCY' in metrics:
                     curs.execute(
                         f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['AGENCY']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
@@ -1006,7 +1007,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                     if agency is not None:
                         curs.execute("""INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES (?, ?, ?)""", (
                             igo_id, metrics['AGENCY']['metric_id'], str(agency)))
-                        
+
             if 'STRMGRAD' in metrics:
                 curs.execute(
                     f"SELECT measurement_value FROM measurement_values WHERE measurement_id = {measurements['STRMMINELEV']['measurement_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
@@ -1031,7 +1032,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                 curs.execute(
                     f"SELECT measurement_value FROM measurement_values WHERE measurement_id = {measurements['VALLENG']['measurement_id']} AND dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
                 cl = [float(row[0])
-                          for row in curs.fetchall() if row[0] is not None]
+                      for row in curs.fetchall() if row[0] is not None]
                 centerline_length = sum(cl) if len(cl) > 0 else None
                 if any(elev is None for elev in [min_elev, max_elev]):
                     curs.execute(
@@ -1199,7 +1200,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                 if relative_flow_length is not None:
                     curs.execute(
                         f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['RELFLWLNGTH']['metric_id']}, {str(relative_flow_length)})")
-                
+
             if 'TRIBS' in metrics:
                 if stream_length is None:
                     curs.execute(
@@ -1313,7 +1314,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                     rls = [r[0] for r in raild if r[0] is not None]
                     cls = [r[1] for r in raild if r[1] is not None]
                     rail_density = sum(rls) / sum(cls) if sum(cls) > 0.0 else None
-                
+
                 if rail_density is not None:
                     curs.execute(
                         f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['RAILDENS']['metric_id']}, {str(rail_density)})")
@@ -1387,9 +1388,9 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
         # Create metric view
         metric_names_sql = ", ".join(
             [f"M.{sql_name(metric['field_name'])} {sql_name(metric['field_name'])}" for metric in metrics.values()])
-        sql = f'CREATE VIEW vw_igo_metrics AS SELECT G.fid fid, G.geom geom, G.LevelPathI level_path, G.seg_distance seg_distance, G.stream_size stream_size, {metric_names_sql} FROM igos G INNER JOIN igo_metrics_pivot M ON M.fid = G.fid;'
+        sql = f'CREATE VIEW vw_igo_metrics AS SELECT G.fid fid, G.geom geom, G.level_path, G.seg_distance seg_distance, G.stream_size stream_size, {metric_names_sql} FROM igos G INNER JOIN igo_metrics_pivot M ON M.fid = G.fid;'
         curs.execute(sql)
-        sql2 = f'CREATE VIEW vw_dgo_metrics AS SELECT G.fid fid, G.geom geom, G.LevelPathI level_path, G.seg_distance seg_distance, {metric_names_sql} FROM dgos G INNER JOIN dgo_metrics_pivot M ON M.fid = G.fid;'
+        sql2 = f'CREATE VIEW vw_dgo_metrics AS SELECT G.fid fid, G.geom geom, G.level_path, G.seg_distance seg_distance, {metric_names_sql} FROM dgos G INNER JOIN dgo_metrics_pivot M ON M.fid = G.fid;'
         curs.execute(sql2)
         conn.commit()
 
@@ -1410,7 +1411,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
         # Create measure view
         measure_names_sql = ", ".join(
             [f"M.{sql_name(measurement['name'])} {sql_name(measurement['name'])}" for measurement in measurements.values()])
-        sql = f'CREATE VIEW vw_measurements AS SELECT G.fid fid, G.geom geom, G.LevelPathI level_path, G.seg_distance seg_distance, {measure_names_sql} FROM dgos G INNER JOIN measurements_pivot M ON M.fid = G.fid;'
+        sql = f'CREATE VIEW vw_measurements AS SELECT G.fid fid, G.geom geom, G.level_path, G.seg_distance seg_distance, {measure_names_sql} FROM dgos G INNER JOIN measurements_pivot M ON M.fid = G.fid;'
         curs.execute(sql)
 
         # Add view to geopackage
@@ -1492,7 +1493,7 @@ def generate_window(lyr: GeopackageLayer, window: float, level_path: str, segmen
 
     min_dist = segment_dist - 0.5 * window
     max_dist = segment_dist + 0.5 * window
-    sql = f'LevelPathI = {level_path} AND seg_distance >= {min_dist} AND seg_distance <={max_dist}'
+    sql = f'level_path = {level_path} AND seg_distance >= {min_dist} AND seg_distance <={max_dist}'
     geom_window_sections = ogr.Geometry(ogr.wkbMultiPolygon)
     for feat, *_ in lyr.iterate_features(attribute_filter=sql):
         geom = feat.GetGeometryRef()
@@ -1564,7 +1565,7 @@ def sum_window_attributes(lyr: GeopackageLayer, window: float, level_path: str, 
     results = {}
     min_dist = segment_dist - 0.5 * window
     max_dist = segment_dist + 0.5 * window
-    sql = f'LevelPathI = {level_path} AND seg_distance >= {min_dist} AND seg_distance <={max_dist}'
+    sql = f'level_path = {level_path} AND seg_distance >= {min_dist} AND seg_distance <={max_dist}'
     for feat, *_ in lyr.iterate_features(attribute_filter=sql):
         for field in fields:
             result = feat.GetField(field)

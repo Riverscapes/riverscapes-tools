@@ -61,7 +61,7 @@ CREATE TABLE measurement_values (
 
 CREATE INDEX ix_dgo_metric_values_metric_id ON dgo_metric_values (metric_id);
 CREATE INDEX ix_igo_metric_values_metric_id ON igo_metric_values (metric_id);
-CREATE INDEX ix_active_fp_area ON dgos (active_floodplain_area);
+CREATE INDEX ix_active_fp_area ON dgos (low_lying_floodplain_area);
 CREATE INDEX ix_active_chan_area ON dgos (active_channel_area);
 CREATE INDEX ix_active_seg_area ON dgos (segment_area);
 CREATE INDEX ix_active_center_length ON dgos (centerline_length);
