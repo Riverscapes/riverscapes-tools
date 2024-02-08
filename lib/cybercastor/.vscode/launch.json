@@ -68,7 +68,7 @@
   "configurations": [
     {
       "name": "🦫 Monitor Cybercastor Jobs",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "cybercastor.monitor",
       "cwd": "${workspaceFolder}",
@@ -83,7 +83,7 @@
     },
     {
       "name": "🦫 AddJob - RUN Cybercastor",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "cybercastor.add_job",
       "cwd": "${workspaceFolder}",
@@ -98,7 +98,7 @@
     },    
     { 
       "name": "🧰 Create Job JSON file",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "cybercastor.create_job",
       "cwd": "${workspaceFolder}",
@@ -114,7 +114,7 @@
     },
     {
       "name": "🧰⬇️ DUMP to SQLITE",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "cybercastor.dump_all",
       "cwd": "${workspaceFolder}",
@@ -132,7 +132,7 @@
     },
     {
       "name": "EXPERIMENTAL - Scrape Projects",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "cybercastor.downloadFiles",
       "cwd": "${workspaceFolder}",
@@ -152,7 +152,7 @@
     },
     {
       "name": "EXPERIMENTAL WRITE VBET Synth Project File",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "cybercastor.scraper_project",
       "cwd": "${workspaceFolder}",
@@ -165,7 +165,7 @@
     },
     {
       "name": "EXPERIMENTAL Merge Projects",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "cybercastor.merge-projects",
       "cwd": "${workspaceFolder}",
@@ -184,7 +184,7 @@
 
    {
       "name": "Python: Current File",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "program": "${file}",
       "cwd": "${workspaceFolder}",

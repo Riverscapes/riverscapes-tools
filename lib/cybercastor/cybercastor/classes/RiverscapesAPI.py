@@ -1,18 +1,14 @@
 import os
+from typing import Dict
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from typing import Dict
 from urllib.parse import urlencode, urlparse, urlunparse
-import requests
-import webbrowser
-from typing import Dict
-import os
 import json
 import threading
 import hashlib
 import base64
-import os
 import logging
+import requests
 from rscommons import ProgressBar, Logger
 from cybercastor.lib.hashes import checkEtag
 
@@ -20,6 +16,7 @@ from cybercastor.lib.hashes import checkEtag
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 logging.getLogger("urllib3").propagate = False
 
+CHARSET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~'
 LOCAL_PORT = 4721
 LOGIN_SCOPE = 'openid'
 
@@ -33,12 +30,12 @@ class RiverscapesAPI:
     authentication workflow which is appropriate for end-users.
     """
 
-    def __init__(self, stage: str, machineAuth: Dict[str, str] = None, devHeaders: Dict[str, str] = None):
+    def __init__(self, stage: str, machine_auth: Dict[str, str] = None, dev_headers: Dict[str, str] = None):
         self.log = Logger('API')
-        self.machineAuth = machineAuth
-        self.devHeaders = devHeaders
-        self.accessToken = None
-        self.tokenTimeout = None
+        self.machine_auth = machine_auth
+        self.dev_headers = dev_headers
+        self.access_token = None
+        self.token_timeout = None
 
         if not stage or stage.upper() == 'PRODUCTION':
             self.uri = 'https://api.data.riverscapes.net'
@@ -61,10 +58,25 @@ class RiverscapesAPI:
         return result
 
     def _base64URL(self, string: bytes) -> str:
+        """_summary_
+
+        Args:
+            string (bytes): _description_
+
+        Returns:
+            str: _description_
+        """
         return base64.urlsafe_b64encode(string).decode('utf-8').replace('=', '').replace('+', '-').replace('/', '_')
 
     def _generate_random(self, size: int) -> str:
-        CHARSET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~'
+        """_summary_
+
+        Args:
+            size (int): _description_
+
+        Returns:
+            str: _description_
+        """
         buffer = os.urandom(size)
         state = []
         for b in buffer:
@@ -73,50 +85,66 @@ class RiverscapesAPI:
         return ''.join(state)
 
     def getAuth(self) -> Dict[str, str]:
+        """_summary_
+
+        Returns:
+            Dict[str, str]: _description_
+        """
         return {
             "domain": "auth.riverscapes.net",
             "clientId": "pH1ADlGVi69rMozJS1cixkuL5DMVLhKC"
         }
 
     def shutdown(self):
-        if self.tokenTimeout:
-            self.tokenTimeout.cancel()
+        """_summary_
+        """
+        if self.token_timeout:
+            self.token_timeout.cancel()
 
     def refresh_token(self):
-        self.log.info(f"Authenticating on Riverscapes API: {self.uri}")
-        if self.tokenTimeout:
-            self.tokenTimeout.cancel()
+        """_summary_
 
-        authDetails = self.getAuth()
+        Raises:
+            error: _description_
+
+        Returns:
+            _type_: _description_
+        """
+        self.log.info(f"Authenticating on Riverscapes API: {self.uri}")
+        if self.token_timeout:
+            self.token_timeout.cancel()
+
+        auth_details = self.getAuth()
 
         # On development there's no reason to actually go get a token
-        if self.devHeaders and len(self.devHeaders) > 0:
+        if self.dev_headers and len(self.dev_headers) > 0:
             return self
 
         # Step 1: Determine if we're machine code or user auth
         # If it's machine then we can fetch tokens much easier:
-        if self.machineAuth:
-            tokenUri = self.uri if self.uri.endswith('/') else self.uri + '/'
-            tokenUri += 'token'
+        if self.machine_auth:
+            token_uri = self.uri if self.uri.endswith('/') else self.uri + '/'
+            token_uri += 'token'
 
             options = {
                 'method': 'POST',
-                'url': tokenUri,
+                'url': token_uri,
                 'headers': {'content-type': 'application/x-www-form-urlencoded'},
                 'data': {
                     'audience': 'https://api.riverscapes.net',
                     'grant_type': 'client_credentials',
                     'scope': 'machine:admin',
-                    'client_id': self.machineAuth['clientId'],
-                    'client_secret': self.machineAuth['secretId'],
-                }
+                    'client_id': self.machine_auth['clientId'],
+                    'client_secret': self.machine_auth['secretId'],
+                },
+                'timeout': 10
             }
 
             try:
-                getTokenReturn = requests.request(**options).json()
+                get_token_return = requests.request(**options).json()
                 # NOTE: RETRY IS NOT NECESSARY HERE because we do our refresh on the API side of things
                 # self.tokenTimeout = setTimeout(self.refreshToken, 1000 * getTokenReturn['expires_in'] - 20)
-                self.accessToken = getTokenReturn['access_token']
+                self.access_token = get_token_return['access_token']
                 self.log.info("SUCCESSFUL Machine Authentication")
             except Exception as error:
                 self.log.info(f"Access Token error {error}")
@@ -129,9 +157,9 @@ class RiverscapesAPI:
             state = self._generate_random(32)
 
             redirect_url = f"http://localhost:{LOCAL_PORT}/rscli/"
-            login_url = urlparse(f"https://{authDetails['domain']}/authorize")
+            login_url = urlparse(f"https://{auth_details['domain']}/authorize")
             query_params = {
-                "client_id": authDetails["clientId"],
+                "client_id": auth_details["clientId"],
                 "response_type": "code",
                 "scope": LOGIN_SCOPE,
                 "state": state,
@@ -144,28 +172,41 @@ class RiverscapesAPI:
             webbrowser.open_new_tab(urlunparse(login_url))
 
             auth_code = self._wait_for_auth_code()
-            authentication_url = f"https://{authDetails['domain']}/oauth/token"
+            authentication_url = f"https://{auth_details['domain']}/oauth/token"
 
             data = {
                 "grant_type": "authorization_code",
-                "client_id": authDetails["clientId"],
+                "client_id": auth_details["clientId"],
                 "code_verifier": code_verifier,
                 "code": auth_code,
                 "redirect_uri": redirect_url,
             }
 
-            response = requests.post(authentication_url, headers={
-                                     "content-type": "application/x-www-form-urlencoded"}, data=data)
+            response = requests.post(authentication_url, headers={"content-type": "application/x-www-form-urlencoded"}, data=data, timeout=10)
             response.raise_for_status()
             res = response.json()
-            self.tokenTimeout = threading.Timer(
+            self.token_timeout = threading.Timer(
                 res["expires_in"] - 20, self.refresh_token)
-            self.tokenTimeout.start()
-            self.accessToken = res["access_token"]
+            self.token_timeout.start()
+            self.access_token = res["access_token"]
             self.log.success("SUCCESSFUL Browser Authentication")
 
     def _wait_for_auth_code(self):
+        """_summary_
+
+        Raises:
+            Exception: _description_
+
+        Returns:
+            _type_: _description_
+        """
         class AuthHandler(BaseHTTPRequestHandler):
+            """_summary_
+
+            Args:
+                BaseHTTPRequestHandler (_type_): _description_
+            """
+
             def stop(self):
                 self.server.shutdown()
 
@@ -197,21 +238,48 @@ class RiverscapesAPI:
         return auth_code
 
     def load_query(self, queryName: str) -> str:
-        with open(os.path.join(os.path.dirname(__file__), '..', 'graphql', 'riverscapes', 'queries', f'{queryName}.graphql'), 'r') as queryFile:
+        """_summary_
+
+        Args:
+            queryName (str): _description_
+
+        Returns:
+            str: _description_
+        """
+        with open(os.path.join(os.path.dirname(__file__), '..', 'graphql', 'riverscapes', 'queries', f'{queryName}.graphql'), 'r', encoding='utf-8') as queryFile:
             return queryFile.read()
 
     def load_mutation(self, mutationName: str) -> str:
-        with open(os.path.join(os.path.dirname(__file__), '..', 'graphql', 'riverscapes', 'mutations', f'{mutationName}.graphql'), 'r') as queryFile:
+        """_summary_
+
+        Args:
+            mutationName (str): _description_
+
+        Returns:
+            str: _description_
+        """
+        with open(os.path.join(os.path.dirname(__file__), '..', 'graphql', 'riverscapes', 'mutations', f'{mutationName}.graphql'), 'r', encoding='utf-8') as queryFile:
             return queryFile.read()
 
-    # A simple function to use requests.post to make the API call. Note the json= section.
     def run_query(self, query, variables):
+        """ A simple function to use requests.post to make the API call. Note the json= section.
+
+        Args:
+            query (_type_): _description_
+            variables (_type_): _description_
+
+        Raises:
+            Exception: _description_
+
+        Returns:
+            _type_: _description_
+        """
         headers = {"authorization": "Bearer " +
-                   self.accessToken} if self.accessToken else {}
+                   self.access_token} if self.access_token else {}
         request = requests.post(self.uri, json={
             'query': query,
             'variables': variables
-        }, headers=headers)
+        }, headers=headers, timeout=10)
 
         if request.status_code == 200:
             resp_json = request.json()
@@ -229,8 +297,7 @@ class RiverscapesAPI:
                 # self.retry = 0
                 return request.json()
         else:
-            raise Exception("Query failed to run by returning code of {}. {}".format(
-                request.status_code, query))
+            raise Exception(f"Query failed to run by returning code of {request.status_code}. {query}")
 
     def download_file(self, api_file_obj, local_path, force=False):
         """[summary]
@@ -242,19 +309,15 @@ class RiverscapesAPI:
         Keyword Arguments:
             force {bool} -- if true we will download regardless
         """
-        file_is_there = os.path.exists(
-            local_path) and os.path.isfile(local_path)
-        etagMatch = file_is_there and checkEtag(
-            local_path, api_file_obj['md5'])
+        file_is_there = os.path.exists(local_path) and os.path.isfile(local_path)
+        etag_match = file_is_there and checkEtag(local_path, api_file_obj['etag'])
 
-        if force is True or not file_is_there or not etagMatch:
-            if not etagMatch:
-                self.log.info(
-                    '        File etag mismatch. Re-downloading: {}'.format(local_path))
+        if force is True or not file_is_there or not etag_match:
+            if not etag_match and file_is_there:
+                self.log.info(f'        File etag mismatch. Re-downloading: {local_path}')
             elif not file_is_there:
-                self.log.info('        Downloading: {}'.format(local_path))
-            r = requests.get(
-                api_file_obj['downloadUrl'], allow_redirects=True, stream=True)
+                self.log.info(f'        Downloading: {local_path}')
+            r = requests.get(api_file_obj['downloadUrl'], allow_redirects=True, stream=True, timeout=10)
             total_length = r.headers.get('content-length')
 
             dl = 0
@@ -270,14 +333,16 @@ class RiverscapesAPI:
                         progbar.update(dl)
                     progbar.erase()
             return True
-        return False
+        else:
+            self.log.debug(f'        File already exists (skipping): {local_path}')
+            return False
 
 
 if __name__ == '__main__':
     log = Logger('API')
     gql = RiverscapesAPI(os.environ.get('RS_API_URL'))
     gql.refresh_token()
-    log.debug(gql.accessToken)
+    log.debug(gql.access_token)
     gql.shutdown()  # remember to shutdown so the threaded timer doesn't keep the process alive
 
     gql2 = RiverscapesAPI(os.environ.get('RS_API_URL'), {
@@ -285,5 +350,5 @@ if __name__ == '__main__':
         'secretId': os.environ['RS_CLIENT_SECRET']
     })
     gql2.refresh_token()
-    log.debug(gql2.accessToken)
+    log.debug(gql2.access_token)
     gql2.shutdown()  # remember to shutdown so the threaded timer doesn't keep the process alive

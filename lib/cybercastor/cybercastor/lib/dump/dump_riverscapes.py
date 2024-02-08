@@ -28,7 +28,7 @@ def dump_riverscapes(sqlite_db_path, stage):
     riverscapes_api = RiverscapesAPI(stage=stage)
     search_query = riverscapes_api.load_query('searchProjects')
     # Only refresh the token if we need to
-    if riverscapes_api.accessToken is None:
+    if riverscapes_api.access_token is None:
         riverscapes_api.refresh_token()
 
     searchParams = {}

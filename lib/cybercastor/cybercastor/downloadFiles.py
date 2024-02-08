@@ -6,13 +6,15 @@ import os
 import json
 import argparse
 import sqlite3
-import semantic_version
 from typing import Dict
 from shutil import rmtree
+import semver
+from termcolor import colored
+from dateutil.parser import parse as dateparse
 from osgeo import ogr, osr
 from rscommons import dotenv, GeopackageLayer, ShapefileLayer
-from cybercastor.classes.RiverscapesAPI import RiverscapesAPI
 from rscommons.util import safe_makedirs
+from cybercastor.classes.RiverscapesAPI import RiverscapesAPI
 
 igo_fields = {
     'HUC10': ogr.OFTString,
@@ -94,7 +96,7 @@ def scrape_projects(stage, hucs, output_db, reset):
 
     riverscapes_api = RiverscapesAPI(stage=stage)
     # Only refresh the token if we need to
-    if riverscapes_api.accessToken is None:
+    if riverscapes_api.access_token is None:
         riverscapes_api.refresh_token()
 
     queries = {
@@ -411,6 +413,13 @@ def process_dgos(vbet_intermediate_gpkg: str, scrape_output_gpkg: str, project_i
         conn.commit()
 
 
+def get_model_version(project):
+    for meta_item in project['meta']:
+        if meta_item['key'].replace(' ', '').lower() == 'modelversion':
+            return meta_item['value']
+    return '0.0.0'
+
+
 def get_projects(riverscapes_api, projects_query, project_type: str, huc: str) -> Dict:
     """[summary]"""
 
@@ -440,18 +449,37 @@ def get_projects(riverscapes_api, projects_query, project_type: str, huc: str) -
     elif len(projects) == 1:
         return projects[list(projects.keys())[0]]
     else:
-        # Find the model with the greatest version number
-        project_versions = {}
-        for project_id, project_info in projects.items():
-            for key, val in {meta_item['key']: meta_item['value'] for meta_item in project_info['meta']}.items():
-                if key.replace(' ', '').lower() == 'modelversion' and val is not None:
-                    project_versions[semantic_version.Version(
-                        val)] = project_id
-                    break
+        # Find the newest model (defined by the highest modelVersion and then the newest createdOn date)
+        # {
+        #   "createdOn": "2024-02-08T17:04:22.920Z",
+        #   "id": "f45301d2-b0b5-4a2f-97b7-477776d9bfe5",
+        #   "meta": [
+        #     {
+        #       "key": "ModelVersion",
+        #       "value": "1.1.1"
+        #     }
+        #   ],
+        #   "name": "Channel Area for HUC 17060304",
+        # }
+        newest_project = None
+        newest_project_version = None
+        print(colored(f"    Found {len(projects.keys())} possible projects for HUC: {huc}. Attempting to find newest:", 'yellow'))
+        for project in projects.values():
+            project_version = get_model_version(project)
+            print(colored(f"       Project: '{project['id']}' Model Version: '{project_version}' Created On: '{project['createdOn']}", 'cyan'))
+            if newest_project is None:
+                newest_project = project
+                newest_project_version = project_version
+            else:
+                if semver.compare(newest_project_version, project_version) < 0:
+                    newest_project = project
+                    newest_project_version = project_version
+                elif dateparse(newest_project['createdOn']) < dateparse(project['createdOn']):
+                    newest_project = project
+                    newest_project_version = project_version
 
-        project_versions_list = list(project_versions)
-        project_versions_list.sort(reverse=True)
-        return projects[project_versions[project_versions_list[0]]]
+        print(colored(f"    Choosing: '{newest_project['id']}' as newest project for HUC: '{huc}'' Model Version: '{newest_project_version}' Created On: '{newest_project['createdOn']}", 'yellow'))
+        return newest_project
 
 
 def get_dataset_files(riverscapes_api, files_query, datasets_query, project_id: str, dataset_xml_id: str) -> tuple:
@@ -459,7 +487,7 @@ def get_dataset_files(riverscapes_api, files_query, datasets_query, project_id: 
     # Build a dictionary of files in the project keyed by local path to downloadUrl
     file_results = riverscapes_api.run_query(
         files_query, {"projectId": project_id})
-    files = {file['localPath']             : file for file in file_results['data']['project']['files']}
+    files = {file['localPath']: file for file in file_results['data']['project']['files']}
 
     dataset_limit = 500
     dataset_offset = 0

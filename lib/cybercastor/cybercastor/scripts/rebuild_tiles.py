@@ -39,13 +39,13 @@ def rebuildWebTiles():
     ]
     answer1 = inquirer.prompt(question1)
 
-    riverscapes_api = RiverscapesAPI(stage=answer1['stage'], machineAuth={
+    riverscapes_api = RiverscapesAPI(stage=answer1['stage'], machine_auth={
         "clientId": os.environ['RS_CLIENT_ID'],
         "secretId": os.environ['RS_CLIENT_SECRET'],
     })
     search_query = riverscapes_api.load_query('searchProjects')
     # Only refresh the token if we need to
-    if riverscapes_api.accessToken is None:
+    if riverscapes_api.access_token is None:
         riverscapes_api.refresh_token()
 
     mutation_script = riverscapes_api.load_mutation('rebuildWebTiles')

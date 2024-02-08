@@ -79,7 +79,7 @@ def find_upstream_projects(job_data) -> bool:
             }
 
             # Only refresh the token if we need to
-            if riverscapes_api.accessToken is None:
+            if riverscapes_api.access_token is None:
                 # Note: We might have to re-run this if the token expires but it shouldn't happen
                 # within the context of a single call so for now leave this alone.
                 riverscapes_api.refresh_token()

@@ -2,12 +2,13 @@ import os
 from rscommons.util import safe_makedirs
 from cybercastor.classes.RiverscapesAPI import RiverscapesAPI
 
+
 def download_files(stage, proj_type, huc, dl_files):
 
     riverscapes_api = RiverscapesAPI(stage=stage)
     search_query = riverscapes_api.load_query('searchProjects')
     # Only refresh the token if we need to
-    if riverscapes_api.accessToken is None:
+    if riverscapes_api.access_token is None:
         riverscapes_api.refresh_token()
 
     project_files_query = riverscapes_api.load_query('projectFiles')
@@ -16,9 +17,9 @@ def download_files(stage, proj_type, huc, dl_files):
         'projectTypeId': proj_type,
         'meta': [
             {
-            'key': 'HUC',
-            'value': str(huc)
-        }]
+                'key': 'HUC',
+                'value': str(huc)
+            }]
     }
 
     limit = 500
@@ -30,7 +31,7 @@ def download_files(stage, proj_type, huc, dl_files):
         offset += limit
 
         projects = results['data']['searchProjects']['results']
-            
+
         for search_result in projects:
 
             project = search_result['item']

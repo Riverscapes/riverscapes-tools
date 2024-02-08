@@ -8,30 +8,35 @@ import os
 import subprocess
 import json
 import argparse
-from osgeo import ogr
 from osgeo import gdal
-import semantic_version
-from osgeo import ogr, osr
-from rscommons import dotenv, Logger
-from cybercastor.classes.RiverscapesAPI import RiverscapesAPI
-from rscommons.util import safe_makedirs
+from osgeo import ogr
 from rscommons import Raster
 import xml.etree.ElementTree as ET
 from rsxml.project_xml import (
     Project,
     MetaData,
     Meta,
-    MetaValue,
     ProjectBounds,
     Coords,
     BoundingBox,
-    Dataset,
-    GeoPackageDatasetTypes,
-    Realization,
 )
+from rscommons import dotenv, Logger
+from rscommons.util import safe_makedirs
+from rscommons import Raster
+from cybercastor.classes.RiverscapesAPI import RiverscapesAPI
 
 
 def search_projects(riverscapes_api, project_type: str, collection_id: str) -> List[str]:
+    """_summary_
+
+    Args:
+        riverscapes_api (_type_): _description_
+        project_type (str): _description_
+        collection_id (str): _description_
+
+    Returns:
+        List[str]: _description_
+    """
 
     # search_params = {
     #     'projectTypeId': project_type,
@@ -68,7 +73,7 @@ def search_projects(riverscapes_api, project_type: str, collection_id: str) -> L
     #     for project_id, project_info in projects.items():
     #         for key, val in {meta_item['key']: meta_item['value'] for meta_item in project_info['meta']}.items():
     #             if key.replace(' ', '').lower() == 'modelversion' and val is not None:
-    #                 project_versions[semantic_version.Version(val)] = project_id
+    #                 project_versions[semver.VersionInfo(val)] = project_id
     #                 break
 
     #     project_versions_list = list(project_versions)
@@ -77,6 +82,17 @@ def search_projects(riverscapes_api, project_type: str, collection_id: str) -> L
 
 
 def download_project(riverscapes_api, output_folder, project_id: str, force_download: bool) -> List[str]:
+    """_summary_
+
+    Args:
+        riverscapes_api (_type_): _description_
+        output_folder (_type_): _description_
+        project_id (str): _description_
+        force_download (bool): _description_
+
+    Returns:
+        List[str]: _description_
+    """
 
     # Build a dictionary of files in the project keyed by local path to downloadUrl
     files_query = riverscapes_api.load_query('projectFiles')
@@ -90,13 +106,8 @@ def download_project(riverscapes_api, output_folder, project_id: str, force_down
         if rel_path.endswith('project.rs.xml'):
             project_file_path = download_path
 
-        if os.path.isfile(download_path):
-            if not force_download:
-                continue
-            os.remove(download_path)
-
         safe_makedirs(os.path.dirname(download_path))
-        riverscapes_api.download_file(file, download_path, True)
+        riverscapes_api.download_file(file, download_path, force_download)
 
     log = Logger('Download')
     log.info(f'Downloaded {len(files)} file(s) to project folder {os.path.join(output_folder, project_id)}')
@@ -412,7 +423,7 @@ def main():
     log.setup(logPath=os.path.join(merged_folder, 'merge-projects.log'))
 
     riverscapes_api = RiverscapesAPI(stage=args.environment)
-    if riverscapes_api.accessToken is None:
+    if riverscapes_api.access_token is None:
         riverscapes_api.refresh_token()
 
     projects = search_projects(riverscapes_api, args.project_type, args.collection_id)
