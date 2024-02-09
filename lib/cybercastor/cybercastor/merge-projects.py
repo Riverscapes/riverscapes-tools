@@ -393,7 +393,8 @@ def get_raster_datasets(project, master_project) -> None:
     """
 
     tree = ET.parse(project)
-    for raster in tree.findall('.//Raster'):
+    rasters = tree.findall('.//Raster') + tree.findall('.//DEM')
+    for raster in rasters:
         raster_id = raster.attrib['id']
         path = raster.find('Path').text
         name = raster.find('Name').text
