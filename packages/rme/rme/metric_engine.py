@@ -54,15 +54,16 @@ LayerTypes = {
     # key: (name, id, tag, relpath)]
     'INPUTS': RSLayer('Inputs', 'INPUTS', 'Geopackage', 'inputs/inputs.gpkg', {
         'FLOWLINES': RSLayer('Flowlines', 'FLOWLINES', 'Vector', 'flowlines'),
-        'OWNERSHIP': RSLayer('Ownership', 'OWNERSHIP', 'Vector', 'ownership'),
-        'STATES': RSLayer('States', 'STATES', 'Vector', 'states'),
+        # 'OWNERSHIP': RSLayer('Ownership', 'OWNERSHIP', 'Vector', 'ownership'),
+        # 'STATES': RSLayer('States', 'STATES', 'Vector', 'states'),
         'COUNTIES': RSLayer('Counties', 'COUNTIES', 'Vector', 'counties'),
         'VBET_DGOS': RSLayer('Vbet DGOs', 'VBET_DGOS', 'Vector', 'dgos'),
         'VBET_IGOS': RSLayer('Vbet IGOs', 'VBET_IGOS', 'Vector', 'igos'),
         'VBET_CENTERLINES': RSLayer('VBET Centerline', 'VBET_CENTERLINE', 'Vector', 'valley_centerlines'),
-        'ECOREGIONS': RSLayer('Ecoregions', 'ECOREGIONS', 'Vector', 'ecoregions'),
-        'ROADS': RSLayer('Roads', 'Roads', 'Vector', 'roads'),
-        'RAIL': RSLayer('Rail', 'Rail', 'Vector', 'rail'),
+        # 'ECOREGIONS': RSLayer('Ecoregions', 'ECOREGIONS', 'Vector', 'ecoregions'),
+        # 'ROADS': RSLayer('Roads', 'Roads', 'Vector', 'roads'),
+        # 'RAIL': RSLayer('Rail', 'Rail', 'Vector', 'rail'),
+        # add these dynamically if they exist
         'CONFINEMENT_DGO': RSLayer('Confinement DGO', 'CONFINEMENT_DGO', 'Vector', 'confinement_dgo'),
         'ANTHRO_DGO': RSLayer('Anthropogenic DGO', 'ANTHRO_DGO', 'Vector', 'anthro_dgo'),
         'RCAT_DGO': RSLayer('RCAT DGO', 'RCAT_DGO', 'Vector', 'rcat_dgo')
@@ -89,9 +90,8 @@ window_distance = {'0': 200.0, '1': 400.0,
                    '2': 1200.0, '3': 2000.0, '4': 8000.0}
 
 
-def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership: Path, in_states: Path, in_counties: Path,
-                  in_segments: Path, in_points: Path, in_vbet_centerline: Path,
-                  in_dem: Path, in_hillshade: Path, in_ppt: Path, in_roads: Path, in_rail: Path, in_ecoregions: Path, project_folder: Path,
+def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties: Path, in_segments: Path, in_points: Path,
+                  in_vbet_centerline: Path, in_dem: Path, in_hillshade: Path, in_ppt: Path, project_folder: Path,
                   in_confinement_dgos: Path = None, in_anthro_dgos: Path = None, in_rcat_dgos: Path = None, level_paths: list = None, meta: dict = None):
     """Generate Riverscapes Metric Engine project and calculate metrics
 
@@ -165,10 +165,10 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
 
     flowlines = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
     copy_feature_class(in_flowlines, flowlines)
-    ownership = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['OWNERSHIP'].rel_path)
-    copy_feature_class(in_ownership, ownership)
-    states_f = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['STATES'].rel_path)
-    copy_feature_class(in_states, states_f)
+    # ownership = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['OWNERSHIP'].rel_path)
+    # copy_feature_class(in_ownership, ownership)
+    # states_f = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['STATES'].rel_path)
+    # copy_feature_class(in_states, states_f)
     counties_f = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['COUNTIES'].rel_path)
     copy_feature_class(in_counties, counties_f)
     segments = os.path.join(outputs_gpkg, LayerTypes['INPUTS'].sub_layers['VBET_DGOS'].rel_path)
@@ -177,12 +177,12 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
     copy_feature_class(in_points, points)
     centerlines = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['VBET_CENTERLINES'].rel_path)
     copy_feature_class(in_vbet_centerline, centerlines)
-    roads = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['ROADS'].rel_path)
-    copy_feature_class(in_roads, roads)
-    rail = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['RAIL'].rel_path)
-    copy_feature_class(in_rail, rail)
-    ecoregions = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['ECOREGIONS'].rel_path)
-    copy_feature_class(in_ecoregions, ecoregions)
+    # roads = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['ROADS'].rel_path)
+    # copy_feature_class(in_roads, roads)
+    # rail = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['RAIL'].rel_path)
+    # copy_feature_class(in_rail, rail)
+    # ecoregions = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['ECOREGIONS'].rel_path)
+    # copy_feature_class(in_ecoregions, ecoregions)
     if in_confinement_dgos:
         confinement_dgos = os.path.join(
             inputs_gpkg, LayerTypes['INPUTS'].sub_layers['CONFINEMENT_DGO'].rel_path)
@@ -839,6 +839,46 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                         majority_county = str(max(counties, key=counties.get))
                     metrics_output[metric['metric_id']] = majority_county
 
+                if 'PROP_RIP' in metrics:
+                    metric = metrics['PROP_RIP']
+
+                    with sqlite3.connect(inputs_gpkg) as conn:
+                        curs = conn.cursor()
+                        curs.execute(
+                            f"SELECT ExistingRiparianMean FROM rcat_dgo WHERE fid = {dgo_id}")
+                        fp_access = curs.fetchone()[0]
+                    metrics_output[metric['metric_id']] = str(fp_access)
+
+                if 'RVD' in metrics:
+                    metric = metrics['RVD']
+
+                    with sqlite3.connect(inputs_gpkg) as conn:
+                        curs = conn.cursor()
+                        curs.execute(
+                            f"SELECT RiparianDeparture FROM rcat_dgo WHERE fid = {dgo_id}")
+                        rvd = 1 - min(1, curs.fetchone()[0])
+                    metrics_output[metric['metric_id']] = str(rvd)
+
+                if 'AGCONV' in metrics:
+                    metric = metrics['AGCONV']
+
+                    with sqlite3.connect(inputs_gpkg) as conn:
+                        curs = conn.cursor()
+                        curs.execute(
+                            f"SELECT Agriculture FROM rcat_dgo WHERE fid = {dgo_id}")
+                        ag_conv = curs.fetchone()[0]
+                    metrics_output[metric['metric_id']] = str(ag_conv)
+
+                if 'DEVEL' in metrics:
+                    metric = metrics['DEVEL']
+
+                    with sqlite3.connect(inputs_gpkg) as conn:
+                        curs = conn.cursor()
+                        curs.execute(
+                            f"SELECT Development FROM rcat_dgo WHERE fid = {dgo_id}")
+                        devel = curs.fetchone()[0]
+                    metrics_output[metric['metric_id']] = str(devel)
+
                 # Write to Metrics
                 if len(metrics_output) > 0:
                     lp_metrics[dgo_id] = metrics_output
@@ -1297,7 +1337,6 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                     curs2.execute(
                         f"SELECT Road_len, centerline_length FROM anthro_dgo WHERE fid IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
                     roadd = curs2.fetchall()
-                    log.info(str(roadd))
                     rds = [r[0] for r in roadd if r[0] is not None]
                     cls = [r[1] for r in roadd if r[1] is not None]
                     road_density = sum(rds) / sum(cls) if sum(cls) > 0.0 else None
@@ -1342,6 +1381,54 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_ownership
                 if fp_access is not None:
                     curs.execute(
                         f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['FPACCESS']['metric_id']}, {str(fp_access)})")
+
+            if 'PROP_RIP' in metrics and rcat_dgos:
+                with sqlite3.connect(inputs_gpkg) as conn:
+                    curs2 = conn.cursor()
+                    curs2.execute(
+                        f"SELECT ExistingRiparianMean, segment_area FROM rcat_dgo WHERE fid IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                    rip = curs2.fetchall()
+                    proprip = sum(rip[i][0] * rip[i][1] for i in range(len(rip))) / sum([rip[i][1]
+                                                                                         for i in range(len(rip))]) if sum([rip[i][1] for i in range(len(rip))]) > 0.0 else None
+                if proprip is not None:
+                    curs.execute(
+                        f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['PROP_RIP']['metric_id']}, {str(proprip)})")
+
+            if 'RVD' in metrics and rcat_dgos:
+                with sqlite3.connect(inputs_gpkg) as conn:
+                    curs2 = conn.cursor()
+                    curs2.execute(
+                        f"SELECT RiparianDeparture, segment_area FROM rcat_dgo WHERE fid IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                    rvd = curs2.fetchall()
+                    rvd_val = sum((1 - min(rvd[i][0], 1)) * rvd[i][1] for i in range(len(rvd))) / sum([rvd[i][1]
+                                                                                                       for i in range(len(rvd))]) if sum([rvd[i][1] for i in range(len(rvd))]) > 0.0 else None
+                if rvd_val is not None:
+                    curs.execute(
+                        f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['RVD']['metric_id']}, {str(rvd_val)})")
+
+            if 'AGCONV' in metrics and rcat_dgos:
+                with sqlite3.connect(inputs_gpkg) as conn:
+                    curs2 = conn.cursor()
+                    curs2.execute(
+                        f"SELECT Agriculture, segment_area FROM rcat_dgo WHERE fid IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                    agconv = curs2.fetchall()
+                    agconv_val = sum(agconv[i][0] * agconv[i][1] for i in range(len(agconv))) / sum([agconv[i][1]
+                                                                                                     for i in range(len(agconv))]) if sum([agconv[i][1] for i in range(len(agconv))]) > 0.0 else None
+                if agconv_val is not None:
+                    curs.execute(
+                        f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['AGCONV']['metric_id']}, {str(agconv_val)})")
+
+            if 'DEVEL' in metrics and rcat_dgos:
+                with sqlite3.connect(inputs_gpkg) as conn:
+                    curs2 = conn.cursor()
+                    curs2.execute(
+                        f"SELECT Development, segment_area FROM rcat_dgo WHERE fid IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                    devel = curs2.fetchall()
+                    devel_val = sum(devel[i][0] * devel[i][1] for i in range(len(devel))) / sum([devel[i][1]
+                                                                                                 for i in range(len(devel))]) if sum([devel[i][1] for i in range(len(devel))]) > 0.0 else None
+                if devel_val is not None:
+                    curs.execute(
+                        f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['DEVEL']['metric_id']}, {str(devel_val)})")
 
             conn.commit()
     progbar.finish()
@@ -1584,8 +1671,6 @@ def main():
     parser.add_argument(
         'flowlines', help="NHD Flowlines (.shp, .gpkg/layer_name)", type=str)
     parser.add_argument('vaa_table', help="NHD Plus vaa table")
-    parser.add_argument('ownership', help='Ownership shapefile')
-    parser.add_argument('states', help='States shapefile')
     parser.add_argument('counties', help='Counties shapefile')
     parser.add_argument('dgos', help='vbet segment polygons')
     parser.add_argument(
@@ -1595,9 +1680,6 @@ def main():
     parser.add_argument('dem', help='dem')
     parser.add_argument('hillshade', help='hillshade')
     parser.add_argument('ppt', help='Precipitation Raster')
-    parser.add_argument('roads', help='Roads shapefile')
-    parser.add_argument('rail', help='Rail shapefile')
-    parser.add_argument('ecoregions', help='Ecoregions shapefile')
     parser.add_argument('output_folder', help='Output folder', type=str)
     parser.add_argument('--confinement_dgos',
                         help='confinement dgos', type=str)
@@ -1627,8 +1709,6 @@ def main():
                                          args.huc,
                                          args.flowlines,
                                          args.vaa_table,
-                                         args.ownership,
-                                         args.states,
                                          args.counties,
                                          args.dgos,
                                          args.vbet_points,
@@ -1636,9 +1716,6 @@ def main():
                                          args.dem,
                                          args.hillshade,
                                          args.ppt,
-                                         args.roads,
-                                         args.rail,
-                                         args.ecoregions,
                                          args.output_folder,
                                          args.confinement_dgos,
                                          args.anthro_dgos,
@@ -1650,8 +1727,6 @@ def main():
             metric_engine(args.huc,
                           args.flowlines,
                           args.vaa_table,
-                          args.ownership,
-                          args.states,
                           args.counties,
                           args.dgos,
                           args.vbet_points,
@@ -1659,9 +1734,6 @@ def main():
                           args.dem,
                           args.hillshade,
                           args.ppt,
-                          args.roads,
-                          args.rail,
-                          args.ecoregions,
                           args.output_folder,
                           args.confinement_dgos,
                           args.anthro_dgos,
