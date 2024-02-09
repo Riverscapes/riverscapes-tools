@@ -9,20 +9,15 @@ from rscommons import RSProject, RSMeta, dotenv, Logger
 from rme.utils.rme_report import RMEReport
 
 lyrs_in_out = {
-    'flowlines': 'NHDFlowline',
-    'ownership': 'Ownership',
-    'states': 'States',
+    'flowlines': 'network_intersected',
     'counties': 'Counties',
     'DEM': 'DEM',
     'HILLSHADE': 'HILLSHADE',
     'Precip': 'Precip',
-    'ecoregions': 'Ecoregions',
-    'roads': 'Roads',
-    'rail': 'Rail',
     'dgos': 'vbet_dgos',
     'igos': 'vbet_igos',
     'valley_centerlines': 'vbet_centerlines',
-    'confinement_dgo': 'confinement_dgos',
+    # 'confinement_dgo': 'confinement_dgos',
     'anthro_dgo': 'vwDgos',
     'rcat_dgo': 'vwDgos'
 }

@@ -64,9 +64,9 @@ LayerTypes = {
         # 'ROADS': RSLayer('Roads', 'Roads', 'Vector', 'roads'),
         # 'RAIL': RSLayer('Rail', 'Rail', 'Vector', 'rail'),
         # add these dynamically if they exist
-        'CONFINEMENT_DGO': RSLayer('Confinement DGO', 'CONFINEMENT_DGO', 'Vector', 'confinement_dgo'),
-        'ANTHRO_DGO': RSLayer('Anthropogenic DGO', 'ANTHRO_DGO', 'Vector', 'anthro_dgo'),
-        'RCAT_DGO': RSLayer('RCAT DGO', 'RCAT_DGO', 'Vector', 'rcat_dgo')
+        # 'CONFINEMENT_DGO': RSLayer('Confinement DGO', 'CONFINEMENT_DGO', 'Vector', 'confinement_dgo'),
+        # 'ANTHRO_DGO': RSLayer('Anthropogenic DGO', 'ANTHRO_DGO', 'Vector', 'anthro_dgo'),
+        # 'RCAT_DGO': RSLayer('RCAT DGO', 'RCAT_DGO', 'Vector', 'rcat_dgo')
     }),
     'DEM': RSLayer('DEM', 'DEM', 'Raster', 'inputs/dem.tif'),
     'HILLSHADE': RSLayer('Hillshade', 'HILLSHADE', 'Raster', 'inputs/hillshade.tif'),
@@ -104,9 +104,6 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
         in_vbet_centerline (Path): vbet centerlines
         in_dem (Path): input dem raster
         in_ppt (Path): input prism precpitation raster
-        in_roads (Path): NTD roads line network
-        in_rail (Path): NTD railroad line network
-        in_ecoregions (Path): epa ecoregions polygon layer
         project_folder (Path): output folder for RME project
         level_paths (list, optional): level paths to process. Defaults to None.
         meta (dict, optional): key-value pairs of metadata. Defaults to None.
@@ -165,10 +162,6 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
 
     flowlines = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
     copy_feature_class(in_flowlines, flowlines)
-    # ownership = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['OWNERSHIP'].rel_path)
-    # copy_feature_class(in_ownership, ownership)
-    # states_f = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['STATES'].rel_path)
-    # copy_feature_class(in_states, states_f)
     counties_f = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['COUNTIES'].rel_path)
     copy_feature_class(in_counties, counties_f)
     segments = os.path.join(outputs_gpkg, LayerTypes['INPUTS'].sub_layers['VBET_DGOS'].rel_path)
@@ -177,28 +170,26 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
     copy_feature_class(in_points, points)
     centerlines = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['VBET_CENTERLINES'].rel_path)
     copy_feature_class(in_vbet_centerline, centerlines)
-    # roads = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['ROADS'].rel_path)
-    # copy_feature_class(in_roads, roads)
-    # rail = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['RAIL'].rel_path)
-    # copy_feature_class(in_rail, rail)
-    # ecoregions = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['ECOREGIONS'].rel_path)
-    # copy_feature_class(in_ecoregions, ecoregions)
+    _dem_node, dem = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], in_dem)
+    _hs_node, hillshade = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], in_hillshade)
+    _ppt_node, ppt = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['PPT'], in_ppt)
+    in_gpkg_node, *_ = project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
     if in_confinement_dgos:
-        confinement_dgos = os.path.join(
-            inputs_gpkg, LayerTypes['INPUTS'].sub_layers['CONFINEMENT_DGO'].rel_path)
+        confinement_dgos = os.path.join(inputs_gpkg, 'confinement_dgo')
         copy_feature_class(in_confinement_dgos, confinement_dgos)
+        project.add_dataset(in_gpkg_node.find('Layers'), 'confinement_dgo', RSLayer('Confinement DGO', 'CONFINEMENT_DGO', 'Vector', 'confinement_dgo'), 'Vector', rel_path=True, sublayer=True)
     else:
         confinement_dgos = None
     if in_anthro_dgos:
-        anthro_dgos = os.path.join(
-            inputs_gpkg, LayerTypes['INPUTS'].sub_layers['ANTHRO_DGO'].rel_path)
+        anthro_dgos = os.path.join(inputs_gpkg, 'anthro_dgo')
         copy_feature_class(in_anthro_dgos, anthro_dgos)
+        project.add_dataset(in_gpkg_node.find('Layers'), 'anthro_dgo', RSLayer('Anthropogenic DGO', 'ANTHRO_DGO', 'Vector', 'anthro_dgo'), 'Vector', rel_path=True, sublayer=True)
     else:
         anthro_dgos = None
     if in_rcat_dgos:
-        rcat_dgos = os.path.join(
-            inputs_gpkg, LayerTypes['INPUTS'].sub_layers['RCAT_DGO'].rel_path)
+        rcat_dgos = os.path.join(inputs_gpkg, 'rcat_dgo')
         copy_feature_class(in_rcat_dgos, rcat_dgos)
+        project.add_dataset(in_gpkg_node.find('Layers'), 'rcat_dgo', RSLayer('RCAT DGO', 'RCAT_DGO', 'Vector', 'rcat_dgo'), 'Vector', rel_path=True, sublayer=True)
     else:
         rcat_dgos = None
 
@@ -207,12 +198,6 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
         feat = lyr_pts.ogr_layer.GetNextFeature()
         geom = feat.GetGeometryRef()
         utm_epsg = get_utm_zone_epsg(geom.GetPoint(0)[0])
-
-    _dem_node, dem = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], in_dem)
-    _hs_node, hillshade = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], in_hillshade)
-    _ppt_node, ppt = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['PPT'], in_ppt)
-    project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
-    project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
 
     vaa_table_name = copy_vaa_attributes(flowlines, in_vaa_table)
     line_network = join_attributes(inputs_gpkg, "vw_flowlines_vaa", os.path.basename(flowlines), vaa_table_name, 'NHDPlusID', [
@@ -1454,15 +1439,17 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
         sql2 = f"""CREATE VIEW igo_num_metrics (fid, {num_metric_names_sql}) AS SELECT M.igo_id, {metric_values_sql} FROM igo_metric_values M GROUP BY M.igo_id;"""
         curs.execute(sql2)
 
-        curs.execute(f"""CREATE VIEW dgo_text_metrics(fid, {text_metric_names_sql}) AS SELECT dgo.fid, e.ecoregion, o.ownership, s.us_state, c.county FROM dgos dgo LEFT JOIN
+        curs.execute(f"""CREATE VIEW dgo_text_metrics(fid, {text_metric_names_sql}) AS SELECT dgo.fid, e.ecoregion3, f.ecoregion4, o.ownership, s.us_state, c.county FROM dgos dgo LEFT JOIN
                      (SELECT dgo_id, metric_value AS ownership FROM dgo_metric_values WHERE metric_id={metrics['AGENCY']['metric_id']}) o ON o.dgo_id=dgo.fid LEFT JOIN
-                     (SELECT dgo_id, metric_value AS ecoregion FROM dgo_metric_values WHERE metric_id={metrics['ECORGIV']['metric_id']}) e ON e.dgo_id=dgo.fid LEFT JOIN
+                     (SELECT dgo_id, metric_value AS ecoregion3 FROM dgo_metric_values WHERE metric_id={metrics['ECORGIII']['metric_id']}) e ON e.dgo_id=dgo.fid LEFT JOIN
+                     (SELECT dgo_id, metric_value AS ecoregion4 FROM dgo_metric_values WHERE metric_id={metrics['ECORGIV']['metric_id']}) f ON e.dgo_id=dgo.fid LEFT JOIN
                      (SELECT dgo_id, metric_value AS us_state FROM dgo_metric_values WHERE metric_id={metrics['STATE']['metric_id']}) s ON s.dgo_id=dgo.fid LEFT JOIN
                      (SELECT dgo_id, metric_value AS county FROM dgo_metric_values WHERE metric_id={metrics['COUNTY']['metric_id']}) c ON c.dgo_id=dgo.fid
                      """)
-        curs.execute(f"""CREATE VIEW igo_text_metrics(fid, {text_metric_names_sql}) AS SELECT igo.fid, e.ecoregion, o.ownership, s.us_state, c.county FROM igos igo LEFT JOIN
+        curs.execute(f"""CREATE VIEW igo_text_metrics(fid, {text_metric_names_sql}) AS SELECT igo.fid, e.ecoregion3, f.ecoregion4, o.ownership, s.us_state, c.county FROM igos igo LEFT JOIN
                      (SELECT igo_id, metric_value AS ownership FROM igo_metric_values WHERE metric_id={metrics['AGENCY']['metric_id']}) o ON o.igo_id=igo.fid LEFT JOIN
-                     (SELECT igo_id, metric_value AS ecoregion FROM igo_metric_values WHERE metric_id={metrics['ECORGIV']['metric_id']}) e ON e.igo_id=igo.fid LEFT JOIN
+                     (SELECT igo_id, metric_value AS ecoregion3 FROM igo_metric_values WHERE metric_id={metrics['ECORGIII']['metric_id']}) e ON e.igo_id=igo.fid LEFT JOIN
+                     (SELECT igo_id, metric_value AS ecoregion4 FROM igo_metric_values WHERE metric_id={metrics['ECORGIV']['metric_id']}) e ON e.igo_id=igo.fid LEFT JOIN
                      (SELECT igo_id, metric_value AS us_state FROM igo_metric_values WHERE metric_id={metrics['STATE']['metric_id']}) s ON s.igo_id=igo.fid LEFT JOIN
                      (SELECT igo_id, metric_value AS county FROM igo_metric_values WHERE metric_id={metrics['COUNTY']['metric_id']}) c ON c.igo_id=igo.fid
                      """)
@@ -1510,6 +1497,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
         curs.execute("INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) values ('vw_measurements', 'geom', 'POLYGON', ?, 0, 0);", (epsg,))
         conn.commit()
 
+    project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
     project.add_project_geopackage(
         proj_nodes['Outputs'], LayerTypes['RME_OUTPUTS'])
 
