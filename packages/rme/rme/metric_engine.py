@@ -1442,14 +1442,14 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
         curs.execute(f"""CREATE VIEW dgo_text_metrics(fid, {text_metric_names_sql}) AS SELECT dgo.fid, e.ecoregion3, f.ecoregion4, o.ownership, s.us_state, c.county FROM dgos dgo LEFT JOIN
                      (SELECT dgo_id, metric_value AS ownership FROM dgo_metric_values WHERE metric_id={metrics['AGENCY']['metric_id']}) o ON o.dgo_id=dgo.fid LEFT JOIN
                      (SELECT dgo_id, metric_value AS ecoregion3 FROM dgo_metric_values WHERE metric_id={metrics['ECORGIII']['metric_id']}) e ON e.dgo_id=dgo.fid LEFT JOIN
-                     (SELECT dgo_id, metric_value AS ecoregion4 FROM dgo_metric_values WHERE metric_id={metrics['ECORGIV']['metric_id']}) f ON e.dgo_id=dgo.fid LEFT JOIN
+                     (SELECT dgo_id, metric_value AS ecoregion4 FROM dgo_metric_values WHERE metric_id={metrics['ECORGIV']['metric_id']}) f ON f.dgo_id=dgo.fid LEFT JOIN
                      (SELECT dgo_id, metric_value AS us_state FROM dgo_metric_values WHERE metric_id={metrics['STATE']['metric_id']}) s ON s.dgo_id=dgo.fid LEFT JOIN
                      (SELECT dgo_id, metric_value AS county FROM dgo_metric_values WHERE metric_id={metrics['COUNTY']['metric_id']}) c ON c.dgo_id=dgo.fid
                      """)
         curs.execute(f"""CREATE VIEW igo_text_metrics(fid, {text_metric_names_sql}) AS SELECT igo.fid, e.ecoregion3, f.ecoregion4, o.ownership, s.us_state, c.county FROM igos igo LEFT JOIN
                      (SELECT igo_id, metric_value AS ownership FROM igo_metric_values WHERE metric_id={metrics['AGENCY']['metric_id']}) o ON o.igo_id=igo.fid LEFT JOIN
                      (SELECT igo_id, metric_value AS ecoregion3 FROM igo_metric_values WHERE metric_id={metrics['ECORGIII']['metric_id']}) e ON e.igo_id=igo.fid LEFT JOIN
-                     (SELECT igo_id, metric_value AS ecoregion4 FROM igo_metric_values WHERE metric_id={metrics['ECORGIV']['metric_id']}) e ON e.igo_id=igo.fid LEFT JOIN
+                     (SELECT igo_id, metric_value AS ecoregion4 FROM igo_metric_values WHERE metric_id={metrics['ECORGIV']['metric_id']}) f ON f.igo_id=igo.fid LEFT JOIN
                      (SELECT igo_id, metric_value AS us_state FROM igo_metric_values WHERE metric_id={metrics['STATE']['metric_id']}) s ON s.igo_id=igo.fid LEFT JOIN
                      (SELECT igo_id, metric_value AS county FROM igo_metric_values WHERE metric_id={metrics['COUNTY']['metric_id']}) c ON c.igo_id=igo.fid
                      """)
