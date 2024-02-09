@@ -8,7 +8,7 @@ IFS=$'\n\t'
 (: "${TAGS?}")
 (: "${VBET_ID?}")
 (: "${RSCONTEXT_ID?}")
-(: "${CONFINEMENT_ID?}")
+# (: "${CONFINEMENT_ID?}")
 (: "${ANTHRO_ID?}")
 (: "${RCAT_ID?}")
 (: "${RS_API_URL?}")
@@ -46,7 +46,7 @@ EOF
 echo "TAGS: $TAGS"
 echo "VBET_ID: $VBET_ID"
 echo "RSCONTEXT_ID: $RSCONTEXT_ID"
-echo "CONFINEMENT_ID: $CONFINEMENT_ID"
+# echo "CONFINEMENT_ID: $CONFINEMENT_ID"
 echo "ANTHRO_ID: $ANTHRO_ID"
 echo "RCAT_ID: $RCAT_ID"
 echo "RS_API_URL: $RS_API_URL"
@@ -64,7 +64,7 @@ gdal-config --version
 DATA_DIR=/usr/local/data
 RS_CONTEXT_DIR=$DATA_DIR/rs_context/rs_context_$RSCONTEXT_ID
 VBET_DIR=$DATA_DIR/vbet/vbet_$VBET_ID
-CONFINEMENT_DIR=$DATA_DIR/confinement/confinement_$CONFINEMENT_ID
+# CONFINEMENT_DIR=$DATA_DIR/confinement/confinement_$CONFINEMENT_ID
 ANTHRO_DIR=$DATA_DIR/anthro/anthro_$ANTHRO_ID
 RCAT_DIR=$DATA_DIR/rcat/rcat_$RCAT_ID
 RME_DIR=$DATA_DIR/output/rme
@@ -75,16 +75,16 @@ RME_DIR=$DATA_DIR/output/rme
 
 # Get the RSCli project we need to make this happen
 rscli download $RS_CONTEXT_DIR --id $RSCONTEXT_ID \
-  --file-filter "(nhdplushr\.gpkg|dem.tif|dem_hillshade.tif|precipitation.tif|ecoregions|transportation|ownership|political_boundaries|project_bounds.geojson)" \
+  --file-filter "(nhdplushr\.gpkg|dem.tif|dem_hillshade.tif|precipitation.tif|political_boundaries|project_bounds.geojson)" \
   --no-input --no-ui --verbose
 
 rscli download $VBET_DIR --id $VBET_ID \
   --file-filter "(vbet\.gpkg|intermediates\.gpkg)" \
   --no-input --no-ui --verbose
 
-rscli download $CONFINEMENT_DIR --id $CONFINEMENT_ID \
-  --file-filter "(confinement\.gpkg)" \
-  --no-input --no-ui --verbose
+# rscli download $CONFINEMENT_DIR --id $CONFINEMENT_ID \
+#   --file-filter "(confinement\.gpkg)" \
+#   --no-input --no-ui --verbose
 
 rscli download $ANTHRO_DIR --id $ANTHRO_ID \
   --file-filter "(anthro\.gpkg)" \
@@ -104,10 +104,8 @@ df -h
 try() {
 
   rme $HUC \
-    $RS_CONTEXT_DIR/hydrology/nhdplushr.gpkg/NHDFlowline \
+    $RS_CONTEXT_DIR/hydrology/hydro_derivatives.gpkg/network_intersected \
     $RS_CONTEXT_DIR/hydrology/nhdplushr.gpkg/NHDPlusFlowlineVAA \
-    $RS_CONTEXT_DIR/ownership/ownership.shp \
-    $RS_CONTEXT_DIR/political_boundaries/states.shp \
     $RS_CONTEXT_DIR/political_boundaries/counties.shp \
     $VBET_DIR/intermediates/vbet_intermediates.gpkg/vbet_dgos \
     $VBET_DIR/outputs/vbet.gpkg/vbet_igos \
@@ -115,11 +113,7 @@ try() {
     $RS_CONTEXT_DIR/topography/dem.tif \
     $RS_CONTEXT_DIR/topography/dem_hillshade.tif \
     $RS_CONTEXT_DIR/climate/precipitation.tif \
-    $RS_CONTEXT_DIR/transportation/roads.shp \
-    $RS_CONTEXT_DIR/transportation/railways.shp \
-    $RS_CONTEXT_DIR/ecoregions/ecoregions.shp \
     $RME_DIR \
-    --confinement_dgos $CONFINEMENT_DIR/outputs/confinement.gpkg/confinement_dgos \
     --anthro_dgos $ANTHRO_DIR/outputs/anthro.gpkg/vwDgos \
     --rcat_dgos $RCAT_DIR/outputs/rcat.gpkg/vwDgos \
     --meta "Runner=Cybercastor" \
@@ -129,7 +123,7 @@ try() {
   cd /usr/local/src/riverscapes-tools/packages/rme
   python3 -m rme.rme_rs \
     $RME_DIR/project.rs.xml \
-    "$RS_CONTEXT_DIR/project.rs.xml,$VBET_DIR/project.rs.xml",$CONFINEMENT_DIR/project.rs.xml,$ANTHRO_DIR/project.rs.xml,$RCAT_DIR/project.rs.xml \
+    "$RS_CONTEXT_DIR/project.rs.xml,$VBET_DIR/project.rs.xml",$ANTHRO_DIR/project.rs.xml,$RCAT_DIR/project.rs.xml \
 
   echo "======================  Final Disk space usage ======================="
   df -h

@@ -18,7 +18,7 @@ metric_id,name,machine_code,data_type,field_name,description,small,medium,large,
 17,Relative Flow Length,RELFLWLNGTH,REAL,RME_IGO_rel_flow_length,,200,400,1400,sum of all blue line lenth/valley length,1,1,
 18,Stream Size Metric,STRMSIZE,REAL,VBET_DGO_streamsize,Stream Size (calculated as integrated channel width),200,400,1400,,1,1,
 19,Valley Azimuth,VALAZMTH,REAL,RME_IGO_valley_azimuth,,200,400,1400,,,,
-20,Ecoregion III,ECORGIII,REAL,EPA_DGO_ecoregion3,"which ecoregion contains the majority of the analysis window?",500,500,1400,,2,1,
+20,Ecoregion III,ECORGIII,TEXT,EPA_DGO_ecoregion3,"which ecoregion contains the majority of the analysis window?",500,500,1400,,2,1,
 21,Confluence Count,CONF,INTEGER,RME_DGO_confluences,,200,400,1400,,2,1
 22,Diffluence Count,DIFF,INTEGER,RME_DGO_diffluences,,200,400,1400,,2,1
 23,Planform Sinuosity of Main LevelPath,CHANSIN,REAL,RME_IGO_planform_sinuosity,,200,400,1400,(𝑛𝑒𝑡𝑤𝑜𝑟𝑘 𝑙𝑒𝑛𝑔𝑡ℎ)/(𝑠𝑡𝑟𝑎𝑖𝑔ℎ𝑡−𝑙𝑖𝑛𝑒 𝑑𝑖𝑠𝑡𝑎𝑛𝑐𝑒),2,1,
