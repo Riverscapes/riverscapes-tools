@@ -5,14 +5,12 @@ import os
 import traceback
 import argparse
 import sqlite3
-from datetime import datetime, timedelta
-from datetime import date
+from datetime import datetime, timedelta, date
+from rsxml import Logger, dotenv
 from cybercastor.classes.RiverscapesAPI import RiverscapesAPI
-from rscommons import Logger, dotenv
-from rscommons.util import safe_makedirs
 
 
-def dump_riverscapes(sqlite_db_path, stage):
+def dump_riverscapes(sqlite_db_path: str, stage: str):
     """ DUmp all projects to a DB
 
     Args:

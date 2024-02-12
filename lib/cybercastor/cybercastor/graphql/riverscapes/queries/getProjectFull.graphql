@@ -1,0 +1,149 @@
+query getProjectFull($id: ID!) {
+  project(id: $id) {
+    ...dbobj
+    bounds {
+      bbox
+      centroid
+      polygonUrl
+    }
+    heroImage {
+      lg
+      md
+      sm
+    }
+    ownedBy {
+      ...dbobjSm
+    }
+    citation
+    datasets(limit: 200, offset: 0) {
+      items {
+        ...dataset
+      }
+      ...paginated
+    }
+    permissions {
+      delete
+      update
+      view
+    }
+    projectType {
+      ...dbobjSm
+    }
+    qaqc(limit: 10, offset: 0) {
+      ...paginated
+      items {
+        ...dbobj
+        datePerformed
+        performedBy
+        state
+        supportingLinks {
+          alt
+          href
+          text
+        }
+      }
+    }
+    sponsor {
+      ...dbobjSm
+    }
+    collections(offset: 0, limit: 50) {
+      items {
+        ...dbobjSm
+      }
+      ...paginated
+    }
+    starred
+    starredCount
+    tags
+    totalSize
+    visibility
+    files {
+      localPath
+      size
+      contentType
+    }
+    tree {
+      defaultView
+      description
+      leaves {
+        blLayerId
+        id
+        label
+        #         layerId
+        #         layerName
+        #         layerPath
+        layerType
+        #         metaStr
+        #         nodeExists
+        pid
+        symbology
+        transparency
+      }
+      branches {
+        bid
+        collapsed
+        label
+        pid
+      }
+    }
+  }
+}
+
+fragment paginated on Pagination {
+  limit
+  offset
+  total
+}
+
+fragment dbobjSm on DBObj {
+  id
+  name
+}
+
+fragment dataset on Dataset {
+  ...dbobj
+  citation
+
+  rsXPath
+  layers {
+    lyrName
+    citation
+    meta {
+      key
+      type
+      value
+    }
+    name
+    summary
+  }
+  origin {
+    id
+  }
+  files {
+    contentType
+    downloadUrl
+    #     md5
+  }
+}
+
+fragment dbobj on DBObj {
+  id
+  name
+  summary
+  description
+  createdBy {
+    id
+    name
+  }
+  updatedBy {
+    id
+    name
+  }
+  createdOn
+  updatedOn
+  meta {
+    key
+    type
+    value
+  }
+}
