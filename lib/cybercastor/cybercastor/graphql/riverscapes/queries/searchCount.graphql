@@ -5,30 +5,6 @@
     $offset: Int!
     ) {
       searchProjects(limit: $limit, offset: $offset, params: $searchParams, sort: $sort) {
-    results {
-      item {
-        id
-        name
-        tags
-        visibility
-        meta {
-          key
-          value
-        }
-        projectType { id }
-        createdOn
-        updatedOn
-        ownedBy {
-          ... on Organization {
-            id
-          }
-          ... on User {
-            id
-          }
-          __typename
-        }
-      }
-    }
     total
     stats {
     ... on ProjectSearchMeta {
@@ -41,6 +17,6 @@
       projectTypes
     }
     __typename
-    }   
+    }    
   }
 }

@@ -430,6 +430,7 @@ scalar JSONObject
 enum JobStatusEnum {
   FAILED
   PROCESSING
+  READY
   SUCCESS
   UNKNOWN
 }
@@ -545,7 +546,7 @@ type Mutation {
   """
   Accept or reject an org invite. State afterward will be ACCEPTED or REJECTED
   """
-  actionOrganizationInvite(accept: Boolean, id: ID!): OrganizationInvite
+  actionOrganizationInvite(accept: Boolean!, id: ID!, role: OrganizationInviteRoleEnum): OrganizationInvite
   addCollectionProjects(collectionId: ID!, projectIds: [ID!]!): Collection
 
   """
@@ -581,10 +582,11 @@ type Mutation {
   @param projectId: (optional) The ID of the project. If not given then a new one is generated. If it exists in the system then an error is thrown.
   @param project: The project object
   @param projectTypeId: The ID of the project type
-  @param orgId: The ID of the organization
-  @param userId: The ID of the user
+  @param orgId: The ID of the organization. This will become the project owner. This field is mutually exclusive with userId
+  @param userId: The ID of the user. This will become the project owner. This field is mutually exclusive with orgId
+  @param agentId: The ID of the agent. This will become the createdBy field in the project
   """
-  createProject(orgId: ID, project: ProjectInput!, projectId: ID, projectTypeId: String, userId: ID): Project
+  createProject(agentId: ID, orgId: ID, project: ProjectInput!, projectId: ID, projectTypeId: String, userId: ID): Project
 
   """
   For most users "createProject" is actually "sugest a project type" and will be created
@@ -659,7 +661,15 @@ type Mutation {
 
   """Updating your user proile"""
   updateProfile(profile: ProfileInput!): Profile
-  updateProject(project: ProjectInput!, projectId: ID!): Project
+
+  """
+  Update a project. This is the main mutation for updating a project
+  @param projectId: The ID of the project
+  @param project: The project object
+  @param skipXMLUpdate: If true then the XML file is not updated. This is used by the uploader
+  @param agentId: The ID of the agent. This will become the updatedBy field in the project
+  """
+  updateProject(agentId: ID, project: ProjectInput!, projectId: ID!, skipXMLUpdate: Boolean): Project
   updateProjectDataset(dataset: DatasetUpdate!, projectId: ID!, rsXPath: String!): Dataset
   updateProjectDatasetLayer(datasetLayer: DatasetLayerUpdate!, lyrName: String!, projectId: ID!, rsXPath: String!): DatasetLayer
   updateProjectQAQC(projectId: ID!, qaqc: QAQCEventInput!, qaqcId: ID!): QAQCEvent
@@ -1059,6 +1069,7 @@ type Project implements DBObj & HasOwner & HasStar {
   datasets(limit: Int!, offset: Int!, sort: [SearchSortEnum!]): PaginatedDatasets!
   deleted: Boolean!
   description: String!
+  dirty: Boolean!
   files: [FileDownloadMeta!]!
 
   """Banner image (optional)"""
@@ -1540,6 +1551,7 @@ type Query {
   """
   checkUpload(token: String!): JobStatusObj
   collection(id: ID!): Collection
+  dirtyProjects(limit: Int!, offset: Int!): PaginatedProjects
   downloadFile(filePath: String!, projectId: ID!): FileDownloadMeta
   downloadZip(projectId: ID!): ZipFileDownloadMeta
   getLayerTiles(projectId: ID!, projectTypeId: String, rsXPath: String!): TileService
