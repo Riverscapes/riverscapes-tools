@@ -1,10 +1,10 @@
 """ This script demonstrates how to search for projects on the server
 """
+import os
 import json
-import semver
+import time
 from rsxml import Logger
 from termcolor import colored
-from dateutil.parser import parse as dateparse
 from cybercastor.classes.RiverscapesAPI import RiverscapesAPI, RiverscapesProject
 
 
@@ -75,7 +75,7 @@ def simple_search(api: RiverscapesAPI):
             }
         ],
     }
-    searched_projects = [p['id'] for p in api.search(search_params, progress_bar=True)]
+    searched_project_ids = [p.id for p, _stats in api.search(search_params, progress_bar=True)]
 
     # Collect all the metadata for each project by id
     # ====================================================================================================
@@ -85,7 +85,44 @@ def simple_search(api: RiverscapesAPI):
         # Used https://geojson.io to get a rough bbox to limit this query roughing to washington state (which makes the query cheaper)
         "bbox": [-125.40936477595693, 45.38966396117303, -116.21237724715607, 49.470853578429626]
     }
-    searched_project_meta = {p['id']: p['meta'] for p, _stats in api.search(search_params, progress_bar=True)}
+    searched_project_meta = {p.id: p.project_meta for p, _stats in api.search(search_params, progress_bar=True)}
+
+    log.info(f"Found {len(searched_project_meta)} projects")
+
+
+def simple_search_with_cache(api: RiverscapesAPI):
+    """Simple search with cache examples
+
+    If you want to cache the search results to a file and use them later, here's how you can do it.
+    This is useful if you're going to use the same data multiple times and you don't want to query the server
+    or if you want to keep a record of the data you've queried.
+
+    Args:
+        api (RiverscapesAPI): _description_
+    """
+
+    search_params = {
+        "projectTypeId": "vbet",
+        # Used https://geojson.io to get a rough bbox to limit this query roughing to washington state (which makes the query cheaper)
+        "bbox": [-125.40936477595693, 45.38966396117303, -116.21237724715607, 49.470853578429626]
+    }
+
+    # I the file creation date is younger than 6 hours then use it
+    cache_filename = 'my_awesome_search_results.json'
+    allowed_age = 6 * 3600  # 6 hours in seconds
+    data = None
+    if os.path.exists(cache_filename) and (os.path.getmtime(cache_filename) - time.time()) < allowed_age:
+        # Load the data from the file
+        with open(cache_filename, 'r', encoding='utf8') as f:
+            data = json.load(f)
+    else:
+        data = {p.id: p.project_meta for p, _stats in api.search(search_params, progress_bar=True)}
+        # Save the data to a file for later
+        with open(cache_filename, 'w', encoding='utf8') as f:
+            json.dump(data, f, indent=2)
+
+    # Now use the data
+    print(data)
 
 
 def retrieve_project(api: RiverscapesAPI):
@@ -108,6 +145,7 @@ def retrieve_project(api: RiverscapesAPI):
     # and it should give you everything including a download url, size, etag etc for each file
     # ====================================================================================================
     project_files = api.get_project_files("507916e1-b81d-4803-89d0-ccd65f6219e9")
+    print('Project Files:', project_files)
 
 
 def find_duplicates(api: RiverscapesAPI):
@@ -166,32 +204,25 @@ def find_duplicates(api: RiverscapesAPI):
                     deletable_projects.append(proj)
 
 
-def demo_search(stage: str):
-    """ Here is a demo script on how to search the API
-
-    Args:
-        stage (str): _description_
-    """
-
+if __name__ == '__main__':
     log = Logger('Search Projects')
     log.title('Demo script to search for projects on the serverand delete them.')
 
-    # Instantiate your API
-    riverscapes_api = RiverscapesAPI(stage=stage)
-    # Only refresh the token if we need to
+    # Instantiate your API once and then pass it around.
+    riverscapes_api = RiverscapesAPI(stage='production')
     riverscapes_api.refresh_token()
 
-    # Simple search examples
-    # simple_search(riverscapes_api)
-    # retrieve_project(riverscapes_api)
-
-    find_duplicates(riverscapes_api)
-
-    # Remember to shut down the API to stop the polling process that refreshes the token
-    riverscapes_api.shutdown()
+    # Examples
+    try:
+        simple_search(riverscapes_api)
+        retrieve_project(riverscapes_api)
+        simple_search_with_cache(riverscapes_api)
+        find_duplicates(riverscapes_api)
+    except Exception as e:
+        log.error(e)
+    finally:
+        # Remember to shut down the API to stop the polling process that refreshes the token
+        # If you put it inside a finally block it will always run (even if there's an error or a keyboard interrupt like ctrl+c)
+        riverscapes_api.shutdown()
 
     log.info("Done!")
-
-
-if __name__ == '__main__':
-    demo_search('production')
