@@ -1,20 +1,15 @@
+from typing import Dict
 import os
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from typing import Dict
 from urllib.parse import urlencode, urlparse, urlunparse
-import requests
-import webbrowser
-from typing import Dict
-import os
 import json
 import threading
 import hashlib
 import base64
-import os
 import logging
-from rscommons import ProgressBar, Logger
-from cybercastor.lib.hashes import checkEtag
+import requests
+from rsxml import Logger
 
 # Disable all the weird terminal noise from urllib3
 logging.getLogger("urllib3").setLevel(logging.WARNING)
@@ -22,6 +17,22 @@ logging.getLogger("urllib3").propagate = False
 
 LOCAL_PORT = 4722
 LOGIN_SCOPE = 'cybercastor:user'
+AUTH_DETAILS = {
+    "domain": "auth.riverscapes.net",
+    "clientId": "Q5EwJSZ9ocY9roT7GAwfBv47Tj57BTET"
+}
+
+
+class CybercastorAPIException(Exception):
+    """Exception raised for errors in the CybercastorAPI.
+
+    Attributes:
+        message -- explanation of the error
+    """
+
+    def __init__(self, message="CybercastorAPI encountered an error"):
+        self.message = message
+        super().__init__(self.message)
 
 
 class CybercastorAPI:
@@ -44,7 +55,6 @@ class CybercastorAPI:
             self.uri = 'https://api.cybercastor.riverscapes.net'
         elif stage.upper() == 'STAGING':
             self.uri = 'https://api.cybercastor.riverscapes.net/staging'
-        # TODO: might need to add a DEVELOPMENT stage here for testing. TBD
         else:
             raise Exception(f'Unknown stage: {stage}')
 
@@ -72,13 +82,10 @@ class CybercastorAPI:
             state.append(CHARSET[index])
         return ''.join(state)
 
-    def getAuth(self) -> Dict[str, str]:
-        return {
-            "domain": "auth.riverscapes.net",
-            "clientId": "Q5EwJSZ9ocY9roT7GAwfBv47Tj57BTET"
-        }
-
     def shutdown(self):
+        """Shutdown the API and cancel any pending token refreshes. This is important to call when you're done with the API.
+        """
+        self.log.debug("Shutting down Riverscapes API")
         if self.tokenTimeout:
             self.tokenTimeout.cancel()
 
@@ -93,7 +100,7 @@ class CybercastorAPI:
         results = self.run_query(get_job_query, {"jobId": job_id})
 
         # If there are more tasks then paginate through them
-        while (results['data']['getJob'] and results['data']['getJob']['tasks']['nextToken'] != None):
+        while (results['data']['getJob'] and results['data']['getJob']['tasks']['nextToken'] is not None):
             pageResults = self.run_query(get_job_task_page_query, {
                                          "jobId": job_id, "nextToken": results['data']['getJob']['tasks']['nextToken']})
             results['data']['getJob']['tasks']['items'] += pageResults['data']['getJob']['tasks']['items']
@@ -112,7 +119,7 @@ class CybercastorAPI:
         results = self.run_query(get_jobs_query, {"jobStatus": "ACTIVE"})
 
         # If there are more tasks then paginate through them
-        while (results['data']['getJobs'] and results['data']['getJobs']['nextToken'] != None):
+        while (results['data']['getJobs'] and results['data']['getJobs']['nextToken'] is not None):
             pageResults = self.run_query(get_jobs_query, {
                                          "jobStatus": "ACTIVE", "nextToken": results['data']['getJobs']['nextToken']})
 
@@ -126,11 +133,17 @@ class CybercastorAPI:
         return jobs
 
     def refresh_token(self):
+        """_summary_
+
+        Raises:
+            Exception: _description_
+
+        Returns:
+            _type_: _description_
+        """
         self.log.info(f"Authenticating on Cybercastor API: {self.uri}")
         if self.tokenTimeout:
             self.tokenTimeout.cancel()
-
-        authDetails = self.getAuth()
 
         # On development there's no reason to actually go get a token
         if self.devHeaders and len(self.devHeaders) > 0:
@@ -175,9 +188,9 @@ class CybercastorAPI:
             state = self._generate_random(32)
 
             redirect_url = f"http://localhost:{LOCAL_PORT}/cc_cli/"
-            login_url = urlparse(f"https://{authDetails['domain']}/authorize")
+            login_url = urlparse(f"https://{AUTH_DETAILS['domain']}/authorize")
             query_params = {
-                "client_id": authDetails["clientId"],
+                "client_id": AUTH_DETAILS["clientId"],
                 "response_type": "code",
                 "scope": LOGIN_SCOPE,
                 "state": state,
@@ -190,32 +203,52 @@ class CybercastorAPI:
             webbrowser.open_new_tab(urlunparse(login_url))
 
             auth_code = self._wait_for_auth_code()
-            authentication_url = f"https://{authDetails['domain']}/oauth/token"
+            authentication_url = f"https://{AUTH_DETAILS['domain']}/oauth/token"
 
             data = {
                 "grant_type": "authorization_code",
-                "client_id": authDetails["clientId"],
+                "client_id": AUTH_DETAILS["clientId"],
                 "code_verifier": code_verifier,
                 "code": auth_code,
                 "redirect_uri": redirect_url,
             }
 
             response = requests.post(authentication_url, headers={
-                                     "content-type": "application/x-www-form-urlencoded"}, data=data)
+                                     "content-type": "application/x-www-form-urlencoded"},
+                                     data=data,
+                                     timeout=60)
             response.raise_for_status()
             res = response.json()
             self.tokenTimeout = threading.Timer(
                 res["expires_in"] - 20, self.refresh_token)
             self.tokenTimeout.start()
             self.accessToken = res["access_token"]
-            self.log.success("SUCCESSFUL Browser Authentication")
+            self.log.info("SUCCESSFUL Browser Authentication")
 
     def _wait_for_auth_code(self):
+        """ Wait for the auth code to come back from the server using a simple HTTP server
+
+        Raises:
+            Exception: _description_
+
+        Returns:
+            _type_: _description_
+        """
         class AuthHandler(BaseHTTPRequestHandler):
+            """_summary_
+
+            Args:
+                BaseHTTPRequestHandler (_type_): _description_
+            """
+
             def stop(self):
+                """Stop the server
+                """
                 self.server.shutdown()
 
             def do_GET(self):
+                """ Do all the server stuff here
+                """
                 self.send_response(200)
                 self.send_header("Content-type", "text/html")
                 self.end_headers()
@@ -238,26 +271,55 @@ class CybercastorAPI:
         except KeyboardInterrupt:
             pass
         if not hasattr(server, "auth_code"):
-            raise Exception("Authentication failed")
-        auth_code = server.auth_code
+            raise CybercastorAPIException("Authentication failed")
+        else:
+            auth_code = server.auth_code if hasattr(server, "auth_code") else None
         return auth_code
 
     def load_query(self, queryName: str) -> str:
-        with open(os.path.join(os.path.dirname(__file__), '..', 'graphql', 'cybercastor', 'queries', f'{queryName}.graphql'), 'r') as queryFile:
+        """ Load a query file from the file system. 
+
+        Args:
+            queryName (str): _description_
+
+        Returns:
+            str: _description_
+        """
+        with open(os.path.join(os.path.dirname(__file__), '..', 'graphql', 'cybercastor', 'queries', f'{queryName}.graphql'), 'r', encoding='utf8') as queryFile:
             return queryFile.read()
 
     def load_mutation(self, mutationName: str) -> str:
-        with open(os.path.join(os.path.dirname(__file__), '..', 'graphql', 'cybercastor', 'mutations', f'{mutationName}.graphql'), 'r') as queryFile:
+        """ Load a mutation file from the file system.
+
+        Args:
+            mutationName (str): _description_
+
+        Returns:
+            str: _description_
+        """
+        with open(os.path.join(os.path.dirname(__file__), '..', 'graphql', 'cybercastor', 'mutations', f'{mutationName}.graphql'), 'r', encoding='utf8') as queryFile:
             return queryFile.read()
 
     # A simple function to use requests.post to make the API call. Note the json= section.
     def run_query(self, query, variables):
+        """ A simple function to use requests.post to make the API call. Note the json= section.
+
+        Args:
+            query (_type_): _description_
+            variables (_type_): _description_
+
+        Raises:
+            Exception: _description_
+
+        Returns:
+            _type_: _description_
+        """
         headers = {"authorization": "Bearer " +
                    self.accessToken} if self.accessToken else {}
         request = requests.post(self.uri, json={
             'query': query,
             'variables': variables
-        }, headers=headers)
+        }, headers=headers, timeout=60)
 
         if request.status_code == 200:
             resp_json = request.json()
@@ -277,8 +339,7 @@ class CybercastorAPI:
                 # self.retry = 0
                 return request.json()
         else:
-            raise Exception("Query failed to run by returning code of {}. {}".format(
-                request.status_code, query))
+            raise Exception(f"Query failed to run by returning code of {request.status_code}. {query}")
 
 
 if __name__ == '__main__':
