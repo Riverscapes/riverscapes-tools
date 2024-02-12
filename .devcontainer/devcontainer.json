@@ -20,12 +20,11 @@
           "editor.formatOnSave": true
         },
         "autopep8.args": [
-          "--max-line-length=240",
-          "--ignore=E501"
+          "--max-line-length=240"
         ],
         "pylint.args": [
           "--extension-pkg-whitelist=pygeoprocessing",
-          "--ignore=E501",
+         "--disable=E501,C0114,W0719",
           "--max-line-length=240"
         ],
         "python.analysis.extraPaths": ["../../lib/commons"],

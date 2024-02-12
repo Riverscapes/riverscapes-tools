@@ -142,11 +142,11 @@
       //"1707030107,1707030107",
       "args": [
         "${input:environment}",
-        "",
-        "/Users/philipbailey/GISData/riverscapes/data_exchange_files/huc10_attributes.json",
+        "1707030107",
+        "/workspaces/GISData/riverscapes/data_exchange_files/huc10_attributes.json",
         "{env:DATA_ROOT}/data_exchange_files",
         "{env:DATA_ROOT}/data_exchange_files/rme_scrape_v1.gpkg",
-        "/Users/philipbailey/GISData/watershed_boundaries/huc10_reference/huc10_conus.shp",
+        "/workspaces/GISData/watershed_boundaries/huc10_reference/huc10_conus.shp",
         "--verbose",
       ]
     },
