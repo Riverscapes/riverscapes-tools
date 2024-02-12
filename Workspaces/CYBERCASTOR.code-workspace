@@ -36,7 +36,7 @@
     ],
     "pylint.args": [
       "--extension-pkg-whitelist=pygeoprocessing",
-      "--disable=E501,C0114,W0719",
+      "--disable=C0301,C0114,C0103,W0719",
       "--max-line-length=240"
     ],
     "graphql-config.load.rootDir": "${workspaceFolder}",
