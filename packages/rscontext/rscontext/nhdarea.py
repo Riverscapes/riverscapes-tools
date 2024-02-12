@@ -115,6 +115,8 @@ def nhd_poly_level_paths(in_nhdpoly_split: str, in_nhd_vaa: str):
 
         for area_feat, *_ in lyr_area.iterate_features("NHD Flow Areas"):
             nhdplusid = area_feat.GetField('NHDPlusID')
+            if nhdplusid is None:
+                continue
             curs.execute(f"SELECT LevelPathI FROM NHDPlusFlowlineVAA WHERE NHDPlusID = {nhdplusid}")
             lpath = curs.fetchone()
             if lpath is not None:
