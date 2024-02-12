@@ -23,35 +23,42 @@ CHARSET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~'
 LOCAL_PORT = 4721
 LOGIN_SCOPE = 'openid'
 
+AUTH_DETAILS = {
+    "domain": "auth.riverscapes.net",
+    "clientId": "pH1ADlGVi69rMozJS1cixkuL5DMVLhKC"
+}
+
 
 class RiverscapesProject:
     """This is just a helper class to make some of the RiverscapesAPI calls easier to use
 
-    Raises:
-        Exception: _description_
-        error: _description_
-        Exception: _description_
-        Exception: _description_
-        Exception: _description_
-
     Returns:
-        _type_: _description_
-
-    Yields:
-        _type_: _description_
+        _type_: A RiverscapesProject object
     """
 
     def __init__(self, proj_obj):
-        self.json = proj_obj
-        self.id = proj_obj['id'] if 'id' in proj_obj else None
-        self.name = proj_obj['name'] if 'name' in proj_obj else None
-        self.created_date = dateparse(proj_obj['createdOn']) if 'createdOn' in proj_obj else None
-        self.updated_date = dateparse(proj_obj['updatedOn']) if 'updatedOn' in proj_obj else None
-        self.project_meta = {x['key']: x['value'] for x in proj_obj['meta']}
-        self.huc = self.project_meta['HUC'] if 'HUC' in self.project_meta else None
-        self.model_version = semver.VersionInfo.parse(self.project_meta['modelVersion']) if 'modelVersion' in self.project_meta else None
-        self.tags = proj_obj['tags'] if 'tags' in proj_obj else []
-        self.project_type = proj_obj['projectType']['id'] if 'projectType' in proj_obj and 'id' in proj_obj['projectType'] else None
+        """ Note that we do not check for the existence of the keys in the proj_obj. This is because the API is expected to return a 
+        consistent structure. If it doesn't then we want to know about it. 
+
+        For example, you don not NEED to return "id" from your graphql query (even though you always should):
+
+        THIS IS ONLY A CONVENIENCE CLASS. IT DOES NOT VALIDATE THE INPUTS. IT ASSUMES THE INPUTS ARE VALID.
+        """
+
+        try:
+            self.json = proj_obj
+            self.id = proj_obj['id'] if 'id' in proj_obj else None
+            self.name = proj_obj['name'] if 'name' in proj_obj else None
+            self.created_date = dateparse(proj_obj['createdOn']) if 'createdOn' in proj_obj else None
+            self.updated_date = dateparse(proj_obj['updatedOn']) if 'updatedOn' in proj_obj else None
+            self.project_meta = {x['key']: x['value'] for x in proj_obj['meta']}
+            self.huc = self.project_meta['HUC'] if 'HUC' in self.project_meta else None
+            self.model_version = semver.VersionInfo.parse(self.project_meta['modelVersion']) if 'modelVersion' in self.project_meta else None
+            self.tags = proj_obj['tags'] if 'tags' in proj_obj else []
+            self.project_type = proj_obj['projectType']['id'] if 'projectType' in proj_obj and 'id' in proj_obj['projectType'] else None
+
+        except Exception as error:
+            raise Exception(f"Error parsing project RiverscapesProject object: {error}") from error
 
 
 class RiverscapesAPIException(Exception):
@@ -102,24 +109,24 @@ class RiverscapesAPI:
         return result
 
     def _base64_url(self, string: bytes) -> str:
-        """_summary_
+        """ Convert a string to a base64url string
 
         Args:
-            string (bytes): _description_
+            string (bytes): this is the string to convert
 
         Returns:
-            str: _description_
+            str: the base64url string
         """
         return base64.urlsafe_b64encode(string).decode('utf-8').replace('=', '').replace('+', '-').replace('/', '_')
 
     def _generate_random(self, size: int) -> str:
-        """_summary_
+        """ Generate a random string of a given size
 
         Args:
-            size (int): _description_
+            size (int): the size of the string to generate
 
         Returns:
-            str: _description_
+            str: the random string
         """
         buffer = os.urandom(size)
         state = []
@@ -128,20 +135,10 @@ class RiverscapesAPI:
             state.append(CHARSET[index])
         return ''.join(state)
 
-    def get_auth(self) -> Dict[str, str]:
-        """_summary_
-
-        Returns:
-            Dict[str, str]: _description_
-        """
-        return {
-            "domain": "auth.riverscapes.net",
-            "clientId": "pH1ADlGVi69rMozJS1cixkuL5DMVLhKC"
-        }
-
     def shutdown(self):
         """_summary_
         """
+        self.log.debug("Shutting down Riverscapes API")
         if self.token_timeout:
             self.token_timeout.cancel()
 
@@ -157,8 +154,6 @@ class RiverscapesAPI:
         self.log.info(f"Authenticating on Riverscapes API: {self.uri}")
         if self.token_timeout:
             self.token_timeout.cancel()
-
-        auth_details = self.get_auth()
 
         # On development there's no reason to actually go get a token
         if self.dev_headers and len(self.dev_headers) > 0:
@@ -201,9 +196,9 @@ class RiverscapesAPI:
             state = self._generate_random(32)
 
             redirect_url = f"http://localhost:{LOCAL_PORT}/rscli/"
-            login_url = urlparse(f"https://{auth_details['domain']}/authorize")
+            login_url = urlparse(f"https://{AUTH_DETAILS['domain']}/authorize")
             query_params = {
-                "client_id": auth_details["clientId"],
+                "client_id": AUTH_DETAILS["clientId"],
                 "response_type": "code",
                 "scope": LOGIN_SCOPE,
                 "state": state,
@@ -216,11 +211,11 @@ class RiverscapesAPI:
             webbrowser.open_new_tab(urlunparse(login_url))
 
             auth_code = self._wait_for_auth_code()
-            authentication_url = f"https://{auth_details['domain']}/oauth/token"
+            authentication_url = f"https://{AUTH_DETAILS['domain']}/oauth/token"
 
             data = {
                 "grant_type": "authorization_code",
-                "client_id": auth_details["clientId"],
+                "client_id": AUTH_DETAILS["clientId"],
                 "code_verifier": code_verifier,
                 "code": auth_code,
                 "redirect_uri": redirect_url,
@@ -236,7 +231,7 @@ class RiverscapesAPI:
             self.log.info("SUCCESSFUL Browser Authentication")
 
     def _wait_for_auth_code(self):
-        """_summary_
+        """ Wait for the auth code to come back from the server using a simple HTTP server
 
         Raises:
             Exception: _description_

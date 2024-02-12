@@ -61,7 +61,7 @@ def simple_search(api: RiverscapesAPI):
     for project, stats in api.search(search_params, progress_bar=True):
         # Do a thing (like tag the project, delete it etc.)
         # INSERT THING DOING HERE
-        pass
+        log.debug(f"Project {project.id} has {len(project.files)} files")
 
     # Collect all projects together first. This is useful if you want to do a lot of things with the projects
     # or query the metadata of each project to filter it down further.
@@ -76,6 +76,7 @@ def simple_search(api: RiverscapesAPI):
         ],
     }
     searched_project_ids = [p.id for p, _stats in api.search(search_params, progress_bar=True)]
+    log.debug(f"Found {len(searched_project_ids)} projects")
 
     # Collect all the metadata for each project by id
     # ====================================================================================================
@@ -100,6 +101,7 @@ def simple_search_with_cache(api: RiverscapesAPI):
     Args:
         api (RiverscapesAPI): _description_
     """
+    log = Logger('Simple Search with Cache')
 
     search_params = {
         "projectTypeId": "vbet",
@@ -122,7 +124,7 @@ def simple_search_with_cache(api: RiverscapesAPI):
             json.dump(data, f, indent=2)
 
     # Now use the data
-    print(data)
+    log.debug(f"Found {len(data)} projects")
 
 
 def retrieve_project(api: RiverscapesAPI):
@@ -131,6 +133,7 @@ def retrieve_project(api: RiverscapesAPI):
     Args:
         api (RiverscapesAPI): _description_
     """
+    log = Logger('Retrieve Project')
     # Get a full project record. This is a MUCH heavier query than what comes back from the search results
     # But it does include:
     #     - datasets
@@ -140,12 +143,13 @@ def retrieve_project(api: RiverscapesAPI):
     #     - qaqc data
     # ====================================================================================================
     full_project = api.get_project_full("507916e1-b81d-4803-89d0-ccd65f6219e9")
+    log.debug(full_project)
 
     # Get Just the files corresponding to a project. This is a much cheaper query than the full query above
     # and it should give you everything including a download url, size, etag etc for each file
     # ====================================================================================================
     project_files = api.get_project_files("507916e1-b81d-4803-89d0-ccd65f6219e9")
-    print('Project Files:', project_files)
+    log.debug(project_files)
 
 
 def find_duplicates(api: RiverscapesAPI):
@@ -171,25 +175,33 @@ def find_duplicates(api: RiverscapesAPI):
         # }
     }
 
-    # Collect the metadata for each project into a dictionary with HUC as the key
+    # Collect the metadata for each project (of type RiverscapesProject) into a dictionary with HUC as the key This will look like:
+    # {
+    #     "vbet": {
+    #         "17060304": [proj1, proj2, proj3],
+    #         "17040302": [proj4, proj5, proj6],
+    #         ...
+    #     },
+    #     ...
+    # }
     huc_lookup = {}
     for project, _stats in api.search(search_params, progress_bar=True):
         if project.project_type is None:
             raise Exception(f"Project {project.id} has no project type. This is likely a query error")
 
         if project.huc is not None and project.project_type is not None:
-            if project.project_type not in huc_lookup:
-                huc_lookup[project.project_type] = {}
-            if project.huc not in huc_lookup[project.project_type]:
-                huc_lookup[project.project_type][project.huc] = []
-            huc_lookup[project.project_type][project.huc].append(project)
+            huc_lookup.setdefault(project.project_type, {}).setdefault(project.huc, []).append(project)
         else:
             log.warning(f"Project {project.id} has no HUC")
 
+    # Just a little helper function for printing out the project
     def proj_print_str(proj: RiverscapesProject):
         return f"{proj.project_type} [{proj.huc}] <{proj.model_version}> ({proj.id})"
 
     deletable_projects = []
+    # Now we go through the huc_lookup and find the projects that can be deleted
+    # For every project type and huc, we sort the projects by date and version and then keep the latest
+    # one and return everything else as "deletable"
     for project_type, hucs in huc_lookup.items():
         for huc, projects in hucs.items():
             # Only consider projects with more than one version
@@ -205,8 +217,8 @@ def find_duplicates(api: RiverscapesAPI):
 
 
 if __name__ == '__main__':
-    log = Logger('Search Projects')
-    log.title('Demo script to search for projects on the serverand delete them.')
+    mainlog = Logger('Search Projects')
+    mainlog.title('Demo script to search for projects on the serverand delete them.')
 
     # Instantiate your API once and then pass it around.
     riverscapes_api = RiverscapesAPI(stage='production')
@@ -214,15 +226,15 @@ if __name__ == '__main__':
 
     # Examples
     try:
-        simple_search(riverscapes_api)
+        # simple_search(riverscapes_api)
         retrieve_project(riverscapes_api)
         simple_search_with_cache(riverscapes_api)
-        find_duplicates(riverscapes_api)
+        # find_duplicates(riverscapes_api)
     except Exception as e:
-        log.error(e)
+        mainlog.error(e)
     finally:
         # Remember to shut down the API to stop the polling process that refreshes the token
         # If you put it inside a finally block it will always run (even if there's an error or a keyboard interrupt like ctrl+c)
         riverscapes_api.shutdown()
 
-    log.info("Done!")
+    mainlog.info("Done!")

@@ -31,7 +31,7 @@
       "--max-line-length=240",    ],
     "pylint.args": [
       "--extension-pkg-whitelist=pygeoprocessing",
-     "--disable=C0301,C0114,C0103,W0719",
+     "--disable=C0301,C0114,C0103,W0719,W0718",
       "--max-line-length=240"
     ],
     "python.analysis.extraPaths": ["../../lib/commons"],
