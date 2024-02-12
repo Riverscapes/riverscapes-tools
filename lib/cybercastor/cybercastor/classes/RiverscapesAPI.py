@@ -1,5 +1,5 @@
 import os
-from typing import Dict, List
+from typing import Dict, List, Generator, Tuple
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlencode, urlparse, urlunparse
@@ -86,12 +86,11 @@ class RiverscapesAPI:
             self.uri = 'https://api.data.riverscapes.net'
         elif stage.upper() == 'STAGING':
             self.uri = 'https://api.data.riverscapes.net/staging'
-        # TODO: might need to add a DEVELOPMENT stage here for testing. TBD
         else:
             raise RiverscapesAPIException(f'Unknown stage: {stage}')
 
     def _generate_challenge(self, code: str) -> str:
-        return self._base64URL(hashlib.sha256(code.encode('utf-8')).digest())
+        return self._base64_url(hashlib.sha256(code.encode('utf-8')).digest())
 
     def _generate_state(self, length: int) -> str:
         result = ''
@@ -102,7 +101,7 @@ class RiverscapesAPI:
             i -= 1
         return result
 
-    def _base64URL(self, string: bytes) -> str:
+    def _base64_url(self, string: bytes) -> str:
         """_summary_
 
         Args:
@@ -129,7 +128,7 @@ class RiverscapesAPI:
             state.append(CHARSET[index])
         return ''.join(state)
 
-    def getAuth(self) -> Dict[str, str]:
+    def get_auth(self) -> Dict[str, str]:
         """_summary_
 
         Returns:
@@ -159,7 +158,7 @@ class RiverscapesAPI:
         if self.token_timeout:
             self.token_timeout.cancel()
 
-        auth_details = self.getAuth()
+        auth_details = self.get_auth()
 
         # On development there's no reason to actually go get a token
         if self.dev_headers and len(self.dev_headers) > 0:
@@ -193,7 +192,7 @@ class RiverscapesAPI:
                 self.log.info("SUCCESSFUL Machine Authentication")
             except Exception as error:
                 self.log.info(f"Access Token error {error}")
-                raise RiverscapesAPIException(error)
+                raise RiverscapesAPIException(error) from error
 
         # If this is a user workflow then we need to pop open a web browser
         else:
@@ -324,8 +323,14 @@ class RiverscapesAPI:
         results = self.run_query(qry, {"id": project_id})
         return results['data']['getProject']
 
-    def search(self, search_params: Dict[str, str], sort: List[str] = None, progress_bar: bool = False):
+    def search(self, search_params: Dict[str, str], sort: List[str] = None, progress_bar: bool = False) -> Generator[Tuple[RiverscapesProject, Dict], None, None]:
         """ A simple function to make a yielded search on the riverscapes API
+
+        This search has two modes: If the total number of records is less than 10,000 then it will do a single paginated query. 
+        If the total number of records is greater than 10,000 then it will do a date-partitioned search. 
+        This is because ElasticSearch pagination breaks down at 10,000 items.
+
+        The mode used is chosen automatically based on the total number of records returned by the search.
 
         Args:
             query (str): _description_
@@ -341,7 +346,7 @@ class RiverscapesAPI:
 
         # The warehouse came online in April 2023
         start_date = datetime(2023, 4, 11, 0, 0, 0, 0)
-        one_week = timedelta(days=5) # Adjust to be an interval where 10,000 projects are unlikely to be found
+        time_interval = timedelta(days=1)  # Adjust to be an interval where 10,000 projects are unlikely to be found
         # Get the current timestamp
         current_date = datetime.now()
 
@@ -364,7 +369,7 @@ class RiverscapesAPI:
                         # This will mean "anything that day" and should avoid duplicates
                         # 2024-02-07T21:51:04.700Z
                         "from": start_date.strftime('%Y-%m-%dT%H:%M:%S.000Z'),
-                        "to": (start_date + one_week).strftime('%Y-%m-%dT%H:%M:%S.000Z')
+                        "to": (start_date + time_interval).strftime('%Y-%m-%dT%H:%M:%S.000Z')
                     }
                     offset = 0
                     inner_total = 0
@@ -383,7 +388,7 @@ class RiverscapesAPI:
                             yield RiverscapesProject(project), stats
                         offset += page_size
                     # Increment the start date by one day
-                    start_date += one_week
+                    start_date += time_interval
 
         # If there's less than 10,000 records then we can just do a single paginated query
         else:
