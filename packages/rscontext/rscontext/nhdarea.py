@@ -51,47 +51,46 @@ def split_nhd_polygon(in_nhd_poly: str, in_nhd_catchments: str, out_area_split: 
                     area_outputs[catch_id] = out_geom
             area_ids[area_id] = area_outputs
 
+        driver: ogr.Driver = ogr.GetDriverByName('ESRI Shapefile')
 
-    driver: ogr.Driver = ogr.GetDriverByName('ESRI Shapefile')
+        outdatasrc: ogr.DataSource = driver.CreateDataSource(out_area_split)
+        outlyr: ogr.Layer = outdatasrc.CreateLayer(os.path.basename(out_area_split), spatial_ref, geom_type=geom_type)
 
-    outdatasrc: ogr.DataSource = driver.CreateDataSource(out_area_split)
-    outlyr: ogr.Layer = outdatasrc.CreateLayer(os.path.basename(out_area_split), spatial_ref, geom_type=geom_type)
+        for i in range(0, in_layer_def.GetFieldCount()):
+            field_def: ogr.FieldDefn = in_layer_def.GetFieldDefn(i)
+            field_name: str = field_def.GetName()
+            fieldTypeCode = field_def.GetType()
+            if field_name.lower() == 'nhdplusid' and fieldTypeCode == ogr.OFTReal:
+                field_def.SetWidth(32)
+                field_def.SetPrecision(0)
+            outlyr.CreateField(field_def)
 
-    for i in range(0, in_layer_def.GetFieldCount()):
-        field_def: ogr.FieldDefn = in_layer_def.GetFieldDefn(i)
-        field_name: str = field_def.GetName()
-        fieldTypeCode = field_def.GetType()
-        if field_name.lower() == 'nhdplusid' and fieldTypeCode == ogr.OFTReal:
-            field_def.SetWidth(32)
-            field_def.SetPrecision(0)
-        outlyr.CreateField(field_def)
+        outlyr_def: ogr.FeatureDefn = outlyr.GetLayerDefn()
+        progbar = ProgressBar(len(area_ids), 50, "Adding features to output layer")
+        counter = 0
+        for area_id, outputs in area_ids.items():
+            counter += 1
+            progbar.update(counter)
+            for out_catch_id, out_geom in outputs.items():
+                for i in range(out_geom.GetGeometryCount()):
+                    g = out_geom.GetGeometryRef(i)
+                    geom = ogr.ForceToPolygon(g)
+                    out_feature: ogr.Feature = ogr.Feature(outlyr_def)
+                    for j in range(outlyr_def.GetFieldCount()):
+                        field_def = outlyr_def.GetFieldDefn(j)
+                        field_name = field_def.GetName()
+                        if field_name.lower() != 'nhdplusid':
+                            out_feature.SetField(outlyr_def.GetFieldDefn(j).GetNameRef(), area_feats[area_id].GetField(j))
+                        else:
+                            out_feature.SetField(field_name, nhdplusids[out_catch_id])
 
-    outlyr_def: ogr.FeatureDefn = outlyr.GetLayerDefn()
-    progbar = ProgressBar(len(area_ids), 50, "Adding features to output layer")
-    counter = 0
-    for area_id, outputs in area_ids.items():
-        counter += 1
-        progbar.update(counter)
-        for out_catch_id, out_geom in outputs.items():
-            for i in range(out_geom.GetGeometryCount()):
-                g = out_geom.GetGeometryRef(i)
-                geom = ogr.ForceToPolygon(g)
-                out_feature: ogr.Feature = ogr.Feature(outlyr_def)
-                for j in range(outlyr_def.GetFieldCount()):
-                    field_def = outlyr_def.GetFieldDefn(j)
-                    field_name = field_def.GetName()
-                    if field_name.lower() != 'nhdplusid':
-                        out_feature.SetField(outlyr_def.GetFieldDefn(j).GetNameRef(), area_feats[area_id].GetField(j))
-                    else:
-                        out_feature.SetField(field_name, nhdplusids[out_catch_id])
+                    out_feature.SetGeometry(geom)
+                    outlyr.CreateFeature(out_feature)
+                    out_feature = None
 
-                out_feature.SetGeometry(geom)
-                outlyr.CreateFeature(out_feature)
-                out_feature = None
+        progbar.finish()
 
-    progbar.finish()
-
-    outdatasrc = None
+        outdatasrc = None
 
     return out_area_split
 
@@ -109,7 +108,7 @@ def nhd_poly_level_paths(in_nhdpoly_split: str, in_nhd_vaa: str):
 
     with GeopackageLayer(in_nhdpoly_split, write=True) as lyr_area, \
             sqlite3.connect(in_nhd_vaa) as conn:
-        
+
         curs = conn.cursor()
         lp_field_def = ogr.FieldDefn('level_path', ogr.OFTReal)
         lyr_area.ogr_layer.CreateField(lp_field_def)
@@ -125,4 +124,4 @@ def nhd_poly_level_paths(in_nhdpoly_split: str, in_nhd_vaa: str):
             area_feat.SetField('level_path', levelpath)
             lyr_area.ogr_layer.SetFeature(area_feat)
 
-    return 
+    return
