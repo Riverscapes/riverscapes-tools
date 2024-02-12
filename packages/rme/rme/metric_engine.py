@@ -1462,9 +1462,9 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
         # Create metric view
         metric_names_sql = ", ".join(
             [f"M.{sql_name(metric['field_name'])} {sql_name(metric['field_name'])}" for metric in metrics.values()])
-        sql = f'CREATE VIEW vw_igo_metrics AS SELECT G.fid fid, G.geom geom, G.level_path, G.seg_distance seg_distance, G.stream_size stream_size, {metric_names_sql} FROM igos G INNER JOIN igo_metrics_pivot M ON M.fid = G.fid;'
+        sql = f'CREATE VIEW vw_igo_metrics AS SELECT G.fid, G.geom, G.level_path, G.seg_distance, G.stream_size, G.FCode, G.window_size, {metric_names_sql} FROM igos G INNER JOIN igo_metrics_pivot M ON M.fid = G.fid;'
         curs.execute(sql)
-        sql2 = f'CREATE VIEW vw_dgo_metrics AS SELECT G.fid fid, G.geom geom, G.level_path, G.seg_distance seg_distance, {metric_names_sql} FROM dgos G INNER JOIN dgo_metrics_pivot M ON M.fid = G.fid;'
+        sql2 = f'CREATE VIEW vw_dgo_metrics AS SELECT G.fid, G.geom, G.level_path, G.seg_distance, G.FCode, {metric_names_sql} FROM dgos G INNER JOIN dgo_metrics_pivot M ON M.fid = G.fid;'
         curs.execute(sql2)
         conn.commit()
 
