@@ -61,7 +61,7 @@ def simple_search(api: RiverscapesAPI):
     for project, stats in api.search(search_params, progress_bar=True):
         # Do a thing (like tag the project, delete it etc.)
         # INSERT THING DOING HERE
-        log.debug(f"Project {project.id} has {len(project.files)} files")
+        log.debug(f"Project {project.id} has {len(project.json['files'])} files")
 
     # Collect all projects together first. This is useful if you want to do a lot of things with the projects
     # or query the metadata of each project to filter it down further.
@@ -152,6 +152,37 @@ def retrieve_project(api: RiverscapesAPI):
     log.debug(project_files)
 
 
+def file_based(api: RiverscapesAPI):
+    """ Sometimes pulling the whole database and storing it in memory will crash your computer.
+    In these cases you can use the search function to write the results to a file and then read from that file later.
+
+    Args:
+        api (RiverscapesAPI): _description_
+    """
+    log = Logger('Simple Search')
+    # Set yp your search params
+    search_params = {
+        # "createdOn": {
+        #     "from": "2024-01-01T00:04:56Z",
+        # }
+    }
+
+    with open('SEARCH_FULL_RECORDS.json', 'w', encoding='utf8') as f_json, \
+            open('SEARCH_ONELINE_SUMMARY.csv', 'w', encoding='utf8') as f_csv:
+        f_json.write('[\n')
+        f_csv.write("id, project_type, huc, model_version, created_date\n")
+        counter = 0
+        for proj, _stats in api.search(search_params, progress_bar=True):
+            if counter > 0:
+                f_json.write(',\n')
+            json.dump(proj.json, f_json, indent=2)
+            f_csv.write(f"{proj.id}, {proj.project_type},{proj.huc},{proj.model_version},{proj.created_date}\n")
+            counter += 1
+        f_json.write(']\n')
+
+    log.info("Done")
+
+
 def find_duplicates(api: RiverscapesAPI):
     """ Finding duplicate projects
 
@@ -226,10 +257,11 @@ if __name__ == '__main__':
 
     # Examples
     try:
-        # simple_search(riverscapes_api)
+        simple_search(riverscapes_api)
         retrieve_project(riverscapes_api)
         simple_search_with_cache(riverscapes_api)
-        # find_duplicates(riverscapes_api)
+        find_duplicates(riverscapes_api)
+        file_based(riverscapes_api)
     except Exception as e:
         mainlog.error(e)
     finally:
