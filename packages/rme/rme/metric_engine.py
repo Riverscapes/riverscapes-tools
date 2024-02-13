@@ -57,8 +57,8 @@ LayerTypes = {
         # 'OWNERSHIP': RSLayer('Ownership', 'OWNERSHIP', 'Vector', 'ownership'),
         # 'STATES': RSLayer('States', 'STATES', 'Vector', 'states'),
         'COUNTIES': RSLayer('Counties', 'COUNTIES', 'Vector', 'counties'),
-        'VBET_DGOS': RSLayer('Vbet DGOs', 'VBET_DGOS', 'Vector', 'dgos'),
-        'VBET_IGOS': RSLayer('Vbet IGOs', 'VBET_IGOS', 'Vector', 'igos'),
+        'VBET_DGOS': RSLayer('Vbet DGOs', 'VBET_DGOS', 'Vector', 'vbet_dgos'),
+        'VBET_IGOS': RSLayer('Vbet IGOs', 'VBET_IGOS', 'Vector', 'vbet_igos'),
         'VBET_CENTERLINES': RSLayer('VBET Centerline', 'VBET_CENTERLINE', 'Vector', 'valley_centerlines'),
         # 'ECOREGIONS': RSLayer('Ecoregions', 'ECOREGIONS', 'Vector', 'ecoregions'),
         # 'ROADS': RSLayer('Roads', 'Roads', 'Vector', 'roads'),
@@ -70,11 +70,12 @@ LayerTypes = {
     }),
     'DEM': RSLayer('DEM', 'DEM', 'Raster', 'inputs/dem.tif'),
     'HILLSHADE': RSLayer('Hillshade', 'HILLSHADE', 'Raster', 'inputs/hillshade.tif'),
-    'PPT': RSLayer('Precipitation', 'Precip', 'Raster', 'inputs/precipitation.tif'),
     'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/rme_intermediates.gpkg', {
         'JUNCTION_POINTS': RSLayer('Junction Points', 'JUNCTION_POINTS', 'Vector', 'junction_points'),
     }),
     'RME_OUTPUTS': RSLayer('Riverscapes Metrics', 'RME_OUTPUTS', 'Geopackage', 'outputs/riverscapes_metrics.gpkg', {
+        'RME_DGO': RSLayer('RME DGO', 'RME_DGO', 'Vector', 'dgos'),
+        'RME_IGO': RSLayer('RME IGO', 'RME_IGO', 'Vector', 'igos'),
         'DGO_METRICS': RSLayer('DGO Metrics', 'DGO_METRICS', 'Vector', 'vw_dgo_metrics'),
         'IGO_METRICS': RSLayer('IGO Metrics', 'IGO_METRICS', 'Vector', 'vw_igo_metrics'),
         'DGO_MEASUREMENTS': RSLayer('DGO Measurements', 'DGO_MEASUREMENTS', 'Vector', 'vw_measurements')
@@ -91,7 +92,7 @@ window_distance = {'0': 200.0, '1': 400.0,
 
 
 def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties: Path, in_segments: Path, in_points: Path,
-                  in_vbet_centerline: Path, in_dem: Path, in_hillshade: Path, in_ppt: Path, project_folder: Path,
+                  in_vbet_centerline: Path, in_dem: Path, in_hillshade: Path, project_folder: Path,
                   in_confinement_dgos: Path = None, in_anthro_dgos: Path = None, in_rcat_dgos: Path = None, level_paths: list = None, meta: dict = None):
     """Generate Riverscapes Metric Engine project and calculate metrics
 
@@ -103,7 +104,6 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
         in_points (Path): vbet segmentation points
         in_vbet_centerline (Path): vbet centerlines
         in_dem (Path): input dem raster
-        in_ppt (Path): input prism precpitation raster
         project_folder (Path): output folder for RME project
         level_paths (list, optional): level paths to process. Defaults to None.
         meta (dict, optional): key-value pairs of metadata. Defaults to None.
@@ -164,15 +164,17 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
     copy_feature_class(in_flowlines, flowlines)
     counties_f = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['COUNTIES'].rel_path)
     copy_feature_class(in_counties, counties_f)
-    segments = os.path.join(outputs_gpkg, LayerTypes['INPUTS'].sub_layers['VBET_DGOS'].rel_path)
+    segments = os.path.join(outputs_gpkg, LayerTypes['RME_OUTPUTS'].sub_layers['RME_DGO'].rel_path)
+    copy_feature_class(in_segments, os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['VBET_DGOS'].rel_path))
     copy_feature_class(in_segments, segments)
-    points = os.path.join(outputs_gpkg, LayerTypes['INPUTS'].sub_layers['VBET_IGOS'].rel_path)
+    points = os.path.join(outputs_gpkg, LayerTypes['RME_OUTPUTS'].sub_layers['RME_IGO'].rel_path)
+    copy_feature_class(in_points, os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['VBET_IGOS'].rel_path))
     copy_feature_class(in_points, points)
     centerlines = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['VBET_CENTERLINES'].rel_path)
     copy_feature_class(in_vbet_centerline, centerlines)
     _dem_node, dem = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], in_dem)
     _hs_node, hillshade = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], in_hillshade)
-    _ppt_node, ppt = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['PPT'], in_ppt)
+
     in_gpkg_node, *_ = project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
     if in_confinement_dgos:
         confinement_dgos = os.path.join(inputs_gpkg, 'confinement_dgo')
@@ -1667,7 +1669,6 @@ def main():
                         help='vbet centerline feature class')
     parser.add_argument('dem', help='dem')
     parser.add_argument('hillshade', help='hillshade')
-    parser.add_argument('ppt', help='Precipitation Raster')
     parser.add_argument('output_folder', help='Output folder', type=str)
     parser.add_argument('--confinement_dgos',
                         help='confinement dgos', type=str)
@@ -1703,7 +1704,6 @@ def main():
                                          args.valley_centerline,
                                          args.dem,
                                          args.hillshade,
-                                         args.ppt,
                                          args.output_folder,
                                          args.confinement_dgos,
                                          args.anthro_dgos,
@@ -1721,7 +1721,6 @@ def main():
                           args.valley_centerline,
                           args.dem,
                           args.hillshade,
-                          args.ppt,
                           args.output_folder,
                           args.confinement_dgos,
                           args.anthro_dgos,
