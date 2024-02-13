@@ -1,5 +1,6 @@
 import os
-from typing import Dict, List, Generator, Tuple
+import re
+from typing import Dict, Generator, Tuple
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlencode, urlparse, urlunparse
@@ -29,6 +30,24 @@ AUTH_DETAILS = {
 }
 
 
+def sanitize_version(version: str) -> str:
+    """trailing zeros in versions are not allowed
+    """
+    return re.sub(r'\b0+([0-9])', r'\1', version.strip())
+
+
+def format_date(date: datetime) -> str:
+    """_summary_
+
+    Args:
+        date (datetime): _description_
+
+    Returns:
+        str: _description_
+    """
+    return date.strftime('%Y-%m-%dT%H:%M:%S.%fZ')[:-3]
+
+
 class RiverscapesProject:
     """This is just a helper class to make some of the RiverscapesAPI calls easier to use
 
@@ -44,6 +63,7 @@ class RiverscapesProject:
 
         THIS IS ONLY A CONVENIENCE CLASS. IT DOES NOT VALIDATE THE INPUTS. IT ASSUMES THE INPUTS ARE VALID.
         """
+        log = Logger('RiverscapesProject')
 
         try:
             self.json = proj_obj
@@ -51,9 +71,22 @@ class RiverscapesProject:
             self.name = proj_obj['name'] if 'name' in proj_obj else None
             self.created_date = dateparse(proj_obj['createdOn']) if 'createdOn' in proj_obj else None
             self.updated_date = dateparse(proj_obj['updatedOn']) if 'updatedOn' in proj_obj else None
+            # Turn the meta into a dictionary
             self.project_meta = {x['key']: x['value'] for x in proj_obj['meta']}
-            self.huc = self.project_meta['HUC'] if 'HUC' in self.project_meta else None
-            self.model_version = semver.VersionInfo.parse(self.project_meta['modelVersion']) if 'modelVersion' in self.project_meta else None
+            # make a lowercase version of the meta and strip away spaces, dashes, and underscores
+            self.project_meta_lwr = {x['key'].lower().replace(' ', '').replace('-', '').replace('_', ''): x['value'] for x in proj_obj['meta']}
+            self.huc = self.project_meta_lwr['huc'] if 'huc' in self.project_meta_lwr else None
+            try:
+                if 'modelversion' in self.project_meta_lwr:
+                    cleaned_version = sanitize_version(self.project_meta_lwr['modelversion'])
+                    self.model_version = semver.VersionInfo.parse(sanitize_version(cleaned_version))
+                else:
+                    self.model_version = None
+            except Exception as error:
+                log.error(f"Error parsing model version: {error}")
+                log.error(f"   Model version found: {self.project_meta_lwr['modelversion']}")
+                self.model_version = None
+
             self.tags = proj_obj['tags'] if 'tags' in proj_obj else []
             self.project_type = proj_obj['projectType']['id'] if 'projectType' in proj_obj and 'id' in proj_obj['projectType'] else None
 
@@ -318,7 +351,7 @@ class RiverscapesAPI:
         results = self.run_query(qry, {"id": project_id})
         return results['data']['getProject']
 
-    def search(self, search_params: Dict[str, str], sort: List[str] = None, progress_bar: bool = False) -> Generator[Tuple[RiverscapesProject, Dict], None, None]:
+    def search(self, search_params: Dict[str, str], progress_bar: bool = False) -> Generator[Tuple[RiverscapesProject, Dict], None, None]:
         """ A simple function to make a yielded search on the riverscapes API
 
         This search has two modes: If the total number of records is less than 10,000 then it will do a single paginated query. 
@@ -335,75 +368,60 @@ class RiverscapesAPI:
             Dict[str, str]: _description_
         """
         qry = self.load_query('searchProjects')
-        total = 0
         stats = {}
         page_size = 500
-
-        # The warehouse came online in April 2023
-        start_date = datetime(2023, 4, 11, 0, 0, 0, 0)
-        time_interval = timedelta(days=1)  # Adjust to be an interval where 10,000 projects are unlikely to be found
-        # Get the current timestamp
-        current_date = datetime.now()
+        # NOTE: DO NOT CHANGE THE SORT ORDER HERE. IT WILL BREAK THE PAGINATION.
+        sort = ['DATE_CREATED_DESC']
 
         # First make a quick query to get the total number of records
-        stats_results = self.run_query(qry, {"searchParams": search_params, "limit": 0, "offset": 0})
-        total = stats_results['data']['searchProjects']['total']
+        stats_results = self.run_query(qry, {"searchParams": search_params, "limit": 0, "offset": 0, "sort": sort})
+        overall_total = stats_results['data']['searchProjects']['total']
         stats = stats_results['data']['searchProjects']['stats']
-        _prg = ProgressBar(total, 30, 'Search Progress')
+        _prg = ProgressBar(overall_total, 30, 'Search Progress')
+        self.log.debug(f"Total records: {overall_total:,} .... starting retrieval...")
 
-        # ElasticSearch Pagination breaks down at 10,000 items so we need to do a date partitioned search. Time is a good a partition as any
-        # Note to self: We might do better by splitting things up be bonding box instead.
-        if total > 9999:
-            if 'created_on' in search_params:
-                raise RiverscapesAPIException(f"Search returned {total:,} records. This is too many to process using the 'createdOn' filter. Please refine your search or do not use 'createdOn' in your search parameters.")
-            else:
-                self.log.warning(f"Search returned {total:,} records (> 10,000). Switching to date-partitioned retrieval. (This may be a little slower)")
-                while start_date <= current_date:
-                    search_params['createdOn'] = {
-                        # Format the datetime and use the same date for from and to
-                        # This will mean "anything that day" and should avoid duplicates
-                        # 2024-02-07T21:51:04.700Z
-                        "from": start_date.strftime('%Y-%m-%dT%H:%M:%S.000Z'),
-                        "to": (start_date + time_interval).strftime('%Y-%m-%dT%H:%M:%S.000Z')
-                    }
-                    offset = 0
-                    inner_total = 0
-                    _prg.update(offset)
+        # Set initial to and from dates so that we can paginate through more than 10,000 recirds
+        now_date = datetime.now()
+        createdOn = search_params.get('createdOn', {})
+        search_to_date = dateparse(createdOn.get('to')) if createdOn.get('to') else now_date
+        search_from_date = dateparse(createdOn.get('from')) if createdOn.get('from') else None
 
-                    while offset == 0 or offset < inner_total:
-                        results = self.run_query(qry, {"searchParams": search_params, "limit": page_size, "offset": offset, "sort": sort})
-                        projects = results['data']['searchProjects']['results']
-                        inner_total = results['data']['searchProjects']['total']
-                        counter = 0
-                        for search_result in projects:
-                            counter += 1
-                            project = search_result['item']
-                            if progress_bar:
-                                _prg.update(offset + counter)
-                            yield RiverscapesProject(project), stats
-                        offset += page_size
-                    # Increment the start date by one day
-                    start_date += time_interval
+        num_results = 1  # Just to get the loop started
+        outer_counter = 0
+        while outer_counter < overall_total and num_results > 0:
+            search_params['createdOn'] = {
+                "to": format_date(search_to_date),
+                "from": format_date(search_from_date) if search_from_date else None
+            }
+            if progress_bar:
+                _prg.update(outer_counter)
+            # self.log.debug(f"   Searching from {search_from_date} to {search_to_date}")
+            results = self.run_query(qry, {"searchParams": search_params, "limit": page_size, "offset": 0, "sort": sort})
+            projects = results['data']['searchProjects']['results']
+            num_results = len(projects)
+            inner_counter = 0
+            project = None
+            for search_result in projects:
+                project_raw = search_result['item']
+                if progress_bar:
+                    _prg.update(outer_counter + inner_counter)
+                project = RiverscapesProject(project_raw)
+                # if inner_counter == 0:
+                #     self.log.debug(f"      First created date {project.created_date} -- {project.id}")
 
-        # If there's less than 10,000 records then we can just do a single paginated query
-        else:
-            offset = 0
-            while offset == 0 or offset < total:
-                results = self.run_query(qry, {"searchParams": search_params, "limit": page_size, "offset": offset, "sort": sort})
-                projects = results['data']['searchProjects']['results']
-                counter = 0
-                for search_result in projects:
-                    counter += 1
-                    project = search_result['item']
-                    if progress_bar:
-                        _prg.update(offset + counter)
-                    yield RiverscapesProject(project), stats
-                offset += page_size
+                yield (project, stats)
+                inner_counter += 1
+                outer_counter += 1
+            # Set the from date to the last project's created date
+            if project is not None:
+                # self.log.debug(f"      Last created date {project.created_date} -- {project.id}")
+                search_to_date = project.created_date - timedelta(milliseconds=1)
 
         # Now loop over the actual pages of projects and yield them back one-by-one
         if progress_bar:
             _prg.erase()
             _prg.finish()
+        self.log.debug(f"Search complete: retrieved {outer_counter:,} records")
 
     def get_project_full(self, project_id: str):
         """ This gets the full project record
