@@ -1,59 +1,59 @@
 import os
-from rscommons.util import safe_makedirs
-from cybercastor.classes.RiverscapesAPI import RiverscapesAPI
+from typing import List
+from rsxml import Logger
+import inquirer
+from cybercastor import RiverscapesAPI, RiverscapesSearchParams
 
 
-def download_files(stage, proj_type, huc, dl_files):
+def download_files(stage: str, filedir: str, proj_type: str, huc: str, re_filter: List[str]):
+    """ Download files from riverscapes
+
+    Args:
+        stage (_type_): 'production' or 'staging'
+        filedir (_type_): where to save the files
+        proj_type (_type_): Machine code for the project type
+        huc (_type_): HUC code
+        dl_files (_type_): List of files to download. If blank, all files will be downloaded
+    """
+    log = Logger('Download Riverscapes Files')
 
     riverscapes_api = RiverscapesAPI(stage=stage)
-    search_query = riverscapes_api.load_query('searchProjects')
-    # Only refresh the token if we need to
-    if riverscapes_api.access_token is None:
-        riverscapes_api.refresh_token()
+    riverscapes_api.refresh_token()
 
-    project_files_query = riverscapes_api.load_query('projectFiles')
-
-    search_params = {
+    search_params = RiverscapesSearchParams({
         'projectTypeId': proj_type,
-        'meta': [
-            {
-                'key': 'HUC',
-                'value': str(huc)
-            }]
-    }
+        'meta': {
+            'HUC': huc
+        }
+    })
 
-    limit = 500
-    offset = 0
-    total = 0
-    while offset == 0 or offset < total:
-        results = riverscapes_api.run_query(search_query, {"searchParams": search_params, "limit": limit, "offset": offset})
-        total = results['data']['searchProjects']['total']
-        offset += limit
+    for project, _stats in riverscapes_api.search(search_params):
 
-        projects = results['data']['searchProjects']['results']
+        # Since we're searching for a huc we can pretty reliably assume that we're only going to get one project
+        dlhuc = project.project_meta['HUC']
+        if not dlhuc or len(dlhuc.strip()) < 1:
+            log.warning(f'No HUC found for project: {project.id}')
+            continue
+        huc_dir = os.path.join(filedir, proj_type, f'{dlhuc}_{project.id}')
+        # Note that the files will not be re-downloaded if they already exist.
+        riverscapes_api.download_files(project.id, huc_dir, re_filter)
 
-        for search_result in projects:
+    # Remember to always shut down the API when you're done with it
+    riverscapes_api.shutdown()
 
-            project = search_result['item']
 
-            file_results = riverscapes_api.run_query(project_files_query, {"projectId": project['id']})
-            if not file_results:
-                continue
-            project_files = file_results['data']['project']['files']
+if __name__ == "__main__":
+    default_dir = os.path.join(os.path.expanduser("~"), 'MY_PROJECTS')
+    questions = [
+        # Also get if this is production or staging (default production)
+        inquirer.List('stage', message="Which stage?", choices=['production', 'staging'], default='production'),
 
-            for meta in project['meta']:
-                if meta['key'] == 'HUC':
-                    dlhuc = meta['value']
-                    break
+        # Use inquirer to get a path to the folder we want
+        inquirer.Text('filedir', message="Where do you want to save the files?", default=default_dir),
+        inquirer.List('proj_type', message="Which project type?", choices=['brat', 'vbet', 'RSContext'], default='brat'),
+        # HUC Code
+        inquirer.Text('huc', message="What HUC do you want to download?", default='1604010107')
+    ]
+    answers = inquirer.prompt(questions)
 
-            for file in project_files:
-                files_mess = file['downloadUrl'].split('?')[0]
-                file_name = os.path.basename(files_mess)
-                if file_name in dl_files:
-                    local_path = f'/mnt/c/Users/jordang/Documents/Riverscapes/data/{proj_type}/{dlhuc}/{file_name}'
-                    if os.path.exists(local_path):
-                        continue
-                    safe_makedirs(os.path.dirname(local_path))
-                    riverscapes_api.download_file(file, local_path)
-
-# download_files('production', 'brat', 1604010107, 'brat.gpkg')
+    download_files(answers['stage'], answers['filedir'], answers['proj_type'], answers['huc'], [r'.*brat\.gpkg'])
