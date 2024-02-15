@@ -54,6 +54,8 @@ class RiverscapesProject:
             self.name = proj_obj['name'] if 'name' in proj_obj else None
             self.created_date = dateparse(proj_obj['createdOn']) if 'createdOn' in proj_obj else None
             self.updated_date = dateparse(proj_obj['updatedOn']) if 'updatedOn' in proj_obj else None
+
+            self.visibility = proj_obj['visibility'] if 'visibility' in proj_obj else None
             # Turn the meta into a dictionary
             self.project_meta = {x['key']: x['value'] for x in proj_obj['meta']}
             # make a lowercase version of the meta and strip away spaces, dashes, and underscores

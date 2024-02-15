@@ -1,18 +1,23 @@
 """[summary]
 """
 import os
+from typing import List
 import json
-from cybercastor.classes.RiverscapesAPI import RiverscapesAPI
-from rscommons import Logger
+from rsxml import Logger, safe_makedirs
 import inquirer
+from cybercastor import RiverscapesAPI, RiverscapesProject, RiverscapesSearchParams
 
 
 def confirm(riverscapes_api):
+    """ Just a little confirmation function
+
+    Args:
+        riverscapes_api (_type_): _description_
+    """
     log = Logger('confirm')
     # Ask the user to confirm using inquirer
     questions = [
-        inquirer.Confirm('confirm1',
-                         message="Are you sure you want to rebuilt web tiles for all these projects?"),
+        inquirer.Confirm('confirm1', message="Are you sure you want to rebuilt web tiles for all these projects?"),
     ]
     if not inquirer.prompt(questions)['confirm1']:
         log.info("Good choice. Aborting!")
@@ -21,7 +26,7 @@ def confirm(riverscapes_api):
 
 
 def rebuildWebTiles():
-    """ DUmp all projects to a DB
+    """ rebuild web tiles
 
     Args:
         output_folder ([type]): [description]
@@ -29,6 +34,7 @@ def rebuildWebTiles():
     log = Logger('Rebuilt Web times')
     log.title('Rebuilt web tiles for either a group of projects or just one')
 
+    default_dir = os.path.join(os.path.expanduser("~"), 'RebuildTiles')
     question1 = [
         # Use inquirer to ask "Staging" or "Production"
         inquirer.List('stage',
@@ -36,18 +42,24 @@ def rebuildWebTiles():
                       default='staging',
                       choices=['staging', 'production'],
                       ),
+        inquirer.Text('filedir', message="Where do you want to save the files?", default=default_dir),
     ]
     answer1 = inquirer.prompt(question1)
 
-    riverscapes_api = RiverscapesAPI(stage=answer1['stage'], machine_auth={
-        "clientId": os.environ['RS_CLIENT_ID'],
-        "secretId": os.environ['RS_CLIENT_SECRET'],
-    })
-    search_query = riverscapes_api.load_query('searchProjects')
-    # Only refresh the token if we need to
-    if riverscapes_api.access_token is None:
-        riverscapes_api.refresh_token()
+    logdir = answer1['filedir']
+    if not os.path.exists(logdir):
+        safe_makedirs(logdir)
 
+    if not os.environ.get('RS_CLIENT_ID') or not os.environ.get('RS_CLIENT_SECRET'):
+        raise ValueError("You need to set the RS_CLIENT_ID and RS_CLIENT_SECRET environment variables")
+
+    riverscapes_api = RiverscapesAPI(stage=answer1['stage'], machine_auth={
+        "clientId": os.environ.get('RS_CLIENT_ID'),
+        "secretId": os.environ.get('RS_CLIENT_SECRET'),
+    })
+    riverscapes_api.refresh_token()
+
+    # Only refresh the token if we need to
     mutation_script = riverscapes_api.load_mutation('rebuildWebTiles')
     mutation_params = {
         "projectId": None,
@@ -87,65 +99,44 @@ def rebuildWebTiles():
     if answer3['wholeOrXpaths'] == 'xpaths':
         # Ask for a comma-separated list of xpaths
         rebuilt_xpaths = [
-            inquirer.Text('xpaths',
-                          message="What are the xpaths you want to rebuilt?",
-                          ),
+            inquirer.Text('xpaths', message="What are the xpaths you want to rebuilt?"),
         ]
-        mutation_params['rsXPaths'] = inquirer.prompt(rebuilt_xpaths)[
-            'xpaths'].split(',')
+        mutation_params['rsXPaths'] = inquirer.prompt(rebuilt_xpaths)['xpaths'].split(',')
 
     if answer2['oneOrSearch'] == 'one':
         # Ask for the project id
         question3 = [
-            inquirer.Text('projectId',
-                          message="What is the project id?",
-                          ),
+            inquirer.Text('projectId', message="What is the project id?"),
         ]
         project_id = inquirer.prompt(question3)['projectId']
         mutation_params['projectId'] = project_id
 
         # Ask the user to confirm using inquirer
-        log.info(f"Ready to call rebuild tiles on a single project")
+        log.info("Ready to call rebuild tiles on a single project")
         confirm(riverscapes_api)
 
         # Now run the mutation
         riverscapes_api.run_query(mutation_script, mutation_params)
 
     else:
-        searchParams = {
-            "projectTypeId": "rcat"
-            # "meta": [{
-            #     "key": "Runner",
-            #     "value": "Cybercastor",
-            # }]
-        }
+        search_params = RiverscapesSearchParams({"projectTypeId": "rcat"})
         log.info(
-            f"Ready to search for projects using search params: \n {json.dumps(searchParams, indent=2)}. \n\n IF THIS IS NOT WHAT YOU WANT, HIT CTRL-C NOW!")
+            f"Ready to search for projects using search params: \n {json.dumps(search_params, indent=2)}. \n\n IF THIS IS NOT WHAT YOU WANT, HIT CTRL-C NOW!")
         confirm(riverscapes_api)
 
-        changeable_projects = []
-        offset = 0
+        changeable_projects: List[RiverscapesProject] = []
         total = 0
-        # Create a timedelta object with a difference of 1 day
-        while offset == 0 or offset < total:
-
-            results = riverscapes_api.run_query(
-                search_query, {"searchParams": searchParams, "limit": 500, "offset": offset})
-            total = results['data']['searchProjects']['total']
-            offset += 500
-
-            projects = results['data']['searchProjects']['results']
-            log.info(f"   Fetching projects {offset} to {offset + 500}")
-            for project in projects:
-                changeable_projects.append(project['item'])
+        for project, _stats, search_total in riverscapes_api.search(search_params, progress_bar=True):
+            total = search_total
+            changeable_projects.append(project['item'])
 
         # Now write all projects to a log file as json
-        with open('rebuild_tiles.txt', 'w') as f:
-            f.write(json.dumps(changeable_projects))
+        logpath = os.path.join(logdir, 'rebuild_tiles.json')
+        with open(logpath, 'w', encoding='utf8') as f:
+            f.write(json.dumps([x.json for x in changeable_projects]))
 
         # Ask the user to confirm using inquirer
-        log.info(
-            f"Found {len(changeable_projects)} out of {total} projects to change rebuilt web tiles")
+        log.info(f"Found {len(changeable_projects)} out of {total} projects to change rebuilt web tiles")
         confirm(riverscapes_api)
 
         # Now rebuilt web tiles all projects
