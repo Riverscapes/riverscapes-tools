@@ -6,14 +6,14 @@ from cybercastor import RiverscapesAPI, RiverscapesSearchParams
 
 
 def download_files(stage: str, filedir: str, proj_type: str, huc: str, re_filter: List[str]):
-    """ Download files from riverscapes
+    """ Download files from a riverscapes project search
 
     Args:
         stage (_type_): 'production' or 'staging'
         filedir (_type_): where to save the files
         proj_type (_type_): Machine code for the project type
         huc (_type_): HUC code
-        dl_files (_type_): List of files to download. If blank, all files will be downloaded
+        re_filter (_type_): List of regex patterns to match in the file names
     """
     log = Logger('Download Riverscapes Files')
 

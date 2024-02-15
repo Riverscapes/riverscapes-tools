@@ -1,7 +1,7 @@
-from cybercastor.classes.RiverscapesAPI import RiverscapesAPI
 from rscommons import Logger
 import dateutil.parser
 import inquirer
+from cybercastor.classes.RiverscapesAPI import RiverscapesAPI
 
 # Key is JSON task script ID. Value is list of warehouse project types
 # https://cybercastor.northarrowresearch.com/engines/manifest.json
@@ -32,11 +32,22 @@ fargate_env_keys = {
 
 
 def find_upstream_projects(job_data) -> bool:
+    """ Find the upstream projects for a given task
+
+    Args:
+        job_data (_type_): _description_
+
+    Raises:
+        Exception: _description_
+
+    Returns:
+        bool: _description_
+    """
 
     log = Logger('Upstream Project Finder')
 
-    global upstream_project_types
-    global fargate_env_keys
+    # global upstream_project_types
+    # global fargate_env_keys
 
     # Verify that the task script is one that we know about
     task_script = job_data['taskScriptId']

@@ -1,62 +1,89 @@
-from termcolor import colored, cprint
 from datetime import datetime
-import json
+from termcolor import colored, cprint
+# import json
 
-possible_states = {'QUEUED': 'cyan', 'STARTING': 'cyan', 'RUNNING': 'yellow', 'STOPPED': 'red',
-                   'SUCCEEDED': 'green', 'FAILED': 'red', 'DELETE_REQUESTED': 'red', 'STOP_REQUESTED': 'red'}
+possible_states = {
+    'QUEUED': 'cyan',
+    'STARTING': 'cyan',
+    'RUNNING': 'yellow',
+    'STOPPED': 'red',
+    'SUCCEEDED': 'green', 
+    'FAILED': 'red',
+    'DELETE_REQUESTED': 'red', 
+    'STOP_REQUESTED': 'red'
+    }
 env_no_print = ['NO_UI']
 
 
 def print_job(job):
+    """ Print a job to the console
+
+    Args:
+        job (_type_): _description_
+    """
     # Clear the screen and start printing our report
 
     org = ""
     script = f"{job['taskScript']['name']} ({job['taskScript']['id']})" if 'taskScript' in job else '???'
-    tags = ''
+    # tags = ''
     try:
         if 'ORG_ID' in job['env']:
             org = f"Org: {job['env']['ORG_ID']}"
         tags = colored(', '.join(
-            ['{}: {}'.format(k, v) for k, v in job['env'].items() if 'TAG' in k]), 'blue')
+            [f'{k}: {v}' for k, v in job['env'].items() if 'TAG' in k]), 'blue')
     except Exception as e:
         print(e)
-        pass
 
-    title = "{}  < {} / {} / {} >".format(job['name'],
-                                          org, script, job['id'])
+    title = f"{job['name']}  < {org} / {script} / {job['id']} >"
 
     cprint(title, 'white', attrs=['bold', 'underline'])
 
     # cprint('=' * title_length, 'magenta')
 
     if 'description' in job and len(job['description']) > 0:
-        cprint('Description: {}'.format(job['description']), 'white')
+        cprint(f'Description: {job["description"]}', 'white')
 
     job_summary = {}
-    print('{}'.format(tags))
+    print('{tags}')
 
     def print_status(status, color):
         queued_names = [t['name']
                         for t in job['tasks']['items'] if t['status'] == status]
         job_summary[status] = len(queued_names)
-        if (len(queued_names) > 0):
-            cprint('\n{}: ({})'.format(status, len(queued_names)), color)
+        if len(queued_names) > 0:
+            cprint(f'\n{status}: ({len(queued_names)})', color)
             cprint(', '.join(queued_names), color)
 
-    [print_status(s, c) for s, c in possible_states.items()]
+    for s, c in possible_states.items():
+        print_status(s, c)
     print('')
 
 
 def print_date(timestamp_ms_str):
+    """ Print the date in a friendly manner
+
+    Args:
+        timestamp_ms_str (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     return datetime.utcfromtimestamp(int(timestamp_ms_str) / 1000).strftime('%b %d, %Y %H:%M:%S') + ' ({})'.format(timestamp_ms_str)
 
 
 def report_job(job):
+    """ Generate the report for this job
+
+    Args:
+        job (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     output = ['']
     # Clear the screen and start printing our report
-    output.append("{}  (id:{})".format(job['name'], job['id']))
-    output.append(
-        '=================================================================')
+    output.append(f"{job['name']}  (id:{job['id']})")
+    output.append('=================================================================')
     if 'description' in job and len(job['description']) > 0:
         output.append(job['description'])
 
@@ -69,11 +96,12 @@ def report_job(job):
         queuedNames = [t['name']
                        for t in job['tasks']['items'] if t['status'] == status]
         job_summary[status] = len(queuedNames)
-        if (len(queuedNames) > 0):
-            output.append('\n{}: ({})'.format(status, len(queuedNames)))
+        if len(queuedNames) > 0:
+            output.append(f'\n{status}: ({len(queuedNames)})')
             output.append(', '.join(queuedNames))
 
-    [print_status(s, c) for s, c in possible_states.items()]
+    for s, c in possible_states.items():
+        print_status(s, c)
 
     output.append('\nJobs:')
     output.append('----------------')
