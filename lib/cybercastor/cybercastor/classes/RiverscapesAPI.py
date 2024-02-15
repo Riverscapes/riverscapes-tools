@@ -291,7 +291,7 @@ class RiverscapesAPI:
         results = self.run_query(qry, {"id": project_id})
         return results['data']['getProject']
 
-    def search(self, search_params: RiverscapesSearchParams, progress_bar: bool = False, max_results: int = None) -> Generator[Tuple[RiverscapesProject, Dict], None, None]:
+    def search(self, search_params: RiverscapesSearchParams, progress_bar: bool = False, max_results: int = None) -> Generator[Tuple[RiverscapesProject, Dict, int], None, None]:
         """ A simple function to make a yielded search on the riverscapes API
 
         This search has two modes: If the total number of records is less than 10,000 then it will do a single paginated query. 
@@ -304,8 +304,8 @@ class RiverscapesAPI:
             query (str): _description_
             variables (Dict[str, str]): _description_
 
-        Returns:
-            Dict[str, str]: _description_
+        Yields:
+            Tuple[project: RiverscapeProject, stats: Dict[str, any], total: int]: the project, the stats dictionary and the total number of records 
         """
         qry = self.load_query('searchProjects')
         stats = {}
@@ -354,7 +354,7 @@ class RiverscapesAPI:
                 # if inner_counter == 0:
                 #     self.log.debug(f"      First created date {project.created_date} -- {project.id}")
 
-                yield (project, stats)
+                yield (project, stats, overall_total)
                 inner_counter += 1
                 outer_counter += 1
                 # This is mainly for demo purposes but if we've reached the max results then we can stop this whole thing

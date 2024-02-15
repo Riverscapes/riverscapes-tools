@@ -80,15 +80,11 @@ def projectTypeSync(stage: str, dry_run: bool = False):
         return os.path.join(this_dir, 'logos', 'upload', f"{machine_name}.png")
 
     # Load the projectTypes.json file for comparison
-    with open(os.path.join(this_dir, 'projectTypes.json'), 'r') as f:
+    with open(os.path.join(this_dir, 'projectTypes.json'), 'r', encoding='utf8') as f:
         project_types_local = json.loads(f.read())
 
-    # First get all the project types
-    search_query = riverscapes_api.load_query('projectTypes')
-
     # Only refresh the token if we need to
-    if riverscapes_api.access_token is None:
-        riverscapes_api.refresh_token()
+    riverscapes_api.refresh_token()
 
     project_sort = {
         'same': [],
@@ -100,8 +96,7 @@ def projectTypeSync(stage: str, dry_run: bool = False):
     }
 
     # Create a timedelta object with a difference of 1 day
-    results = riverscapes_api.run_query(search_query, {})
-    project_types_remote = results['data']['projectTypes']['items']
+    project_types_remote = riverscapes_api.get_project_types()
 
     # Now compare the two lists. the typical record looks like this:
     #       {
@@ -118,7 +113,7 @@ def projectTypeSync(stage: str, dry_run: bool = False):
     for pt_local in project_types_local:
         need_create = True
         remote_only = True
-        for pt_remote in project_types_remote:
+        for _machine_code, pt_remote in project_types_remote.items():
             if pt_local['machineName'] == pt_remote['machineName']:
                 need_create = False
                 # Compare the two records for these fields: name, summary, description, url, state, logo and meta
