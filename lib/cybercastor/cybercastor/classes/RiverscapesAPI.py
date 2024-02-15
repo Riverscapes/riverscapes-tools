@@ -1,5 +1,4 @@
 import os
-import re
 from typing import Dict, Generator, Tuple
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -12,9 +11,9 @@ import logging
 from datetime import datetime, timedelta
 import requests
 from dateutil.parser import parse as dateparse
-import semver
 from rsxml import Logger, ProgressBar
 from cybercastor.lib.hashes import checkEtag
+from cybercastor.classes.riverscapes_helpers import RiverscapesProject, RiverscapesProjectType, RiverscapesSearchParams, format_date
 
 # Disable all the weird terminal noise from urllib3
 logging.getLogger("urllib3").setLevel(logging.WARNING)
@@ -28,70 +27,6 @@ AUTH_DETAILS = {
     "domain": "auth.riverscapes.net",
     "clientId": "pH1ADlGVi69rMozJS1cixkuL5DMVLhKC"
 }
-
-
-def sanitize_version(version: str) -> str:
-    """trailing zeros in versions are not allowed
-    """
-    return re.sub(r'\b0+([0-9])', r'\1', version.strip())
-
-
-def format_date(date: datetime) -> str:
-    """_summary_
-
-    Args:
-        date (datetime): _description_
-
-    Returns:
-        str: _description_
-    """
-    return date.strftime('%Y-%m-%dT%H:%M:%S.%fZ')[:-3]
-
-
-class RiverscapesProject:
-    """This is just a helper class to make some of the RiverscapesAPI calls easier to use
-
-    Returns:
-        _type_: A RiverscapesProject object
-    """
-
-    def __init__(self, proj_obj):
-        """ Note that we do not check for the existence of the keys in the proj_obj. This is because the API is expected to return a 
-        consistent structure. If it doesn't then we want to know about it. 
-
-        For example, you don not NEED to return "id" from your graphql query (even though you always should):
-
-        THIS IS ONLY A CONVENIENCE CLASS. IT DOES NOT VALIDATE THE INPUTS. IT ASSUMES THE INPUTS ARE VALID.
-        """
-        log = Logger('RiverscapesProject')
-
-        try:
-            self.json = proj_obj
-            self.id = proj_obj['id'] if 'id' in proj_obj else None
-            self.name = proj_obj['name'] if 'name' in proj_obj else None
-            self.created_date = dateparse(proj_obj['createdOn']) if 'createdOn' in proj_obj else None
-            self.updated_date = dateparse(proj_obj['updatedOn']) if 'updatedOn' in proj_obj else None
-            # Turn the meta into a dictionary
-            self.project_meta = {x['key']: x['value'] for x in proj_obj['meta']}
-            # make a lowercase version of the meta and strip away spaces, dashes, and underscores
-            self.project_meta_lwr = {x['key'].lower().replace(' ', '').replace('-', '').replace('_', ''): x['value'] for x in proj_obj['meta']}
-            self.huc = self.project_meta_lwr['huc'] if 'huc' in self.project_meta_lwr else None
-            try:
-                if 'modelversion' in self.project_meta_lwr:
-                    cleaned_version = sanitize_version(self.project_meta_lwr['modelversion'])
-                    self.model_version = semver.VersionInfo.parse(sanitize_version(cleaned_version))
-                else:
-                    self.model_version = None
-            except Exception as error:
-                log.error(f"Error parsing model version: {error}")
-                log.error(f"   Model version found: {self.project_meta_lwr['modelversion']}")
-                self.model_version = None
-
-            self.tags = proj_obj['tags'] if 'tags' in proj_obj else []
-            self.project_type = proj_obj['projectType']['id'] if 'projectType' in proj_obj and 'id' in proj_obj['projectType'] else None
-
-        except Exception as error:
-            raise Exception(f"Error parsing project RiverscapesProject object: {error}") from error
 
 
 class RiverscapesAPIException(Exception):
@@ -351,7 +286,7 @@ class RiverscapesAPI:
         results = self.run_query(qry, {"id": project_id})
         return results['data']['getProject']
 
-    def search(self, search_params: Dict[str, str], progress_bar: bool = False) -> Generator[Tuple[RiverscapesProject, Dict], None, None]:
+    def search(self, search_params: RiverscapesSearchParams, progress_bar: bool = False, max_results: int = None) -> Generator[Tuple[RiverscapesProject, Dict], None, None]:
         """ A simple function to make a yielded search on the riverscapes API
 
         This search has two modes: If the total number of records is less than 10,000 then it will do a single paginated query. 
@@ -373,30 +308,35 @@ class RiverscapesAPI:
         # NOTE: DO NOT CHANGE THE SORT ORDER HERE. IT WILL BREAK THE PAGINATION.
         sort = ['DATE_CREATED_DESC']
 
+        if not search_params or not isinstance(search_params, RiverscapesSearchParams):
+            raise RiverscapesAPIException("search requires a valid RiverscapesSearchParams object")
+
         # First make a quick query to get the total number of records
-        stats_results = self.run_query(qry, {"searchParams": search_params, "limit": 0, "offset": 0, "sort": sort})
+        search_params_gql = search_params.to_gql()
+        stats_results = self.run_query(qry, {"searchParams": search_params_gql, "limit": 0, "offset": 0, "sort": sort})
         overall_total = stats_results['data']['searchProjects']['total']
         stats = stats_results['data']['searchProjects']['stats']
         _prg = ProgressBar(overall_total, 30, 'Search Progress')
         self.log.debug(f"Total records: {overall_total:,} .... starting retrieval...")
-
+        if max_results and max_results > 0:
+            self.log.debug(f"   ... but max_results is set to {max_results:,} so we will stop there.")
         # Set initial to and from dates so that we can paginate through more than 10,000 recirds
         now_date = datetime.now()
-        createdOn = search_params.get('createdOn', {})
+        createdOn = search_params_gql.get('createdOn', {})
         search_to_date = dateparse(createdOn.get('to')) if createdOn.get('to') else now_date
         search_from_date = dateparse(createdOn.get('from')) if createdOn.get('from') else None
 
         num_results = 1  # Just to get the loop started
         outer_counter = 0
         while outer_counter < overall_total and num_results > 0:
-            search_params['createdOn'] = {
+            search_params_gql['createdOn'] = {
                 "to": format_date(search_to_date),
                 "from": format_date(search_from_date) if search_from_date else None
             }
             if progress_bar:
                 _prg.update(outer_counter)
             # self.log.debug(f"   Searching from {search_from_date} to {search_to_date}")
-            results = self.run_query(qry, {"searchParams": search_params, "limit": page_size, "offset": 0, "sort": sort})
+            results = self.run_query(qry, {"searchParams": search_params_gql, "limit": page_size, "offset": 0, "sort": sort})
             projects = results['data']['searchProjects']['results']
             num_results = len(projects)
             inner_counter = 0
@@ -412,6 +352,11 @@ class RiverscapesAPI:
                 yield (project, stats)
                 inner_counter += 1
                 outer_counter += 1
+                # This is mainly for demo purposes but if we've reached the max results then we can stop this whole thing
+                if max_results and max_results > 0 and outer_counter >= max_results:
+                    self.log.warning(f"Max results reached: {max_results}. Stopping search.")
+                    return
+
             # Set the from date to the last project's created date
             if project is not None:
                 # self.log.debug(f"      Last created date {project.created_date} -- {project.id}")
@@ -453,7 +398,27 @@ class RiverscapesAPI:
         results = self.run_query(qry, {"projectId": project_id})
         return results['data']['project']['files']
 
-    def search_count(self, search_params: Dict[str, str]):
+    def get_project_types(self) -> Dict[str, RiverscapesProjectType]:
+        """_summary_
+
+        Returns:
+            _type_: _description_
+        """
+        qry = self.load_query('projectTypes')
+        offset = 0
+        limit = 100
+        total = -1
+        results = []
+        while total < 0 or offset < total:
+            qry_results = self.run_query(qry, {"limit": limit, "offset": offset})
+            total = qry_results['data']['projectTypes']['total']
+            offset += limit
+            for x in qry_results['data']['projectTypes']['items']:
+                results.append(x)
+
+        return {x['machineName']: RiverscapesProjectType(x) for x in results}
+
+    def search_count(self, search_params: RiverscapesSearchParams):
         """ Return the number of records that match the search parameters
         Args:
             query (str): _description_
@@ -463,7 +428,12 @@ class RiverscapesAPI:
             Tuple[total: int, Dict[str, any]]: the total results and the stats dictionary
         """
         qry = self.load_query('searchCount')
-        results = self.run_query(qry, {"searchParams": search_params, "limit": 0, "offset": 0})
+        if not search_params or not isinstance(search_params, RiverscapesSearchParams):
+            raise RiverscapesAPIException("searchCount requires a valid RiverscapesSearchParams object")
+        if search_params.keywords is not None or search_params.name is not None:
+            raise RiverscapesAPIException("searchCount does not support keywords or name search parameters as you will always get a large, non-representative count because of low-scoring items")
+
+        results = self.run_query(qry, {"searchParams": search_params.to_gql(), "limit": 0, "offset": 0})
         total = results['data']['searchProjects']['total']
         stats = results['data']['searchProjects']['stats']
         return (total, stats)
