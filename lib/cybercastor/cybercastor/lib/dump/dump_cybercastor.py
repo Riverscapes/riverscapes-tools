@@ -5,19 +5,21 @@ import os
 import traceback
 import argparse
 import sqlite3
-import requests
 import json
 from datetime import date
-from cybercastor.classes.CybercastorAPI import CybercastorAPI
+import requests
 from rscommons import Logger, dotenv
+from cybercastor.classes.CybercastorAPI import CybercastorAPI
 
 
-def dump_cybercastor(sqlite_db_path, cc_api_url, username, password, stage):
+def dump_cybercastor(db_path, cc_api_url, username, password, stage):
     """ DUmp all projects to a DB
 
     Args:
         output_folder ([type]): [description]
     """
+    raise NotImplementedError("This function is not ready for the new cybercastor API.  It needs to be updated.")
+
     log = Logger('DUMP Cybercastor to SQlite')
     log.title('Dump Cybercastor to SQLITE')
 
@@ -25,12 +27,11 @@ def dump_cybercastor(sqlite_db_path, cc_api_url, username, password, stage):
     ccAPI = CybercastorAPI(cc_api_url, username, password)
 
     # Connect to the DB and ensure foreign keys are enabled so that cascading deletes work
-    conn = sqlite3.connect(sqlite_db_path)
+    conn = sqlite3.connect(db_path)
     conn.execute('PRAGMA foreign_keys = ON')
     curs = conn.cursor()
 
-    resp = requests.get(
-        url="https://cybercastor.northarrowresearch.com/engines/manifest.json")
+    resp = requests.get(url="https://cybercastor.northarrowresearch.com/engines/manifest.json", timeout=30)
     data = resp.json()  # Check the JSON Response Content documentation below
 
     engine_data = [(ts['id'],
@@ -66,14 +67,17 @@ def dump_cybercastor(sqlite_db_path, cc_api_url, username, password, stage):
     # for table_name in ['cc_jobs', 'cc_job_metadata', 'cc_tasks', 'cc_task_metadata', 'cc_jobenv', 'cc_taskenv']:
     #     curs.execute(f"DELETE FROM sqlite_sequence WHERE name = '{table_name}'")
 
-    nexttoken = None
+    job_next_token = None
+    task_next_token = None
     page = 0
     num_projs = 0
-    while nexttoken or page == 0:
+    while job_next_token or page == 0:
         log.info(f"Getting page {page} of projects")
         page += 1
         # Get all project
-        result = ccAPI.get_jobs(None, None, 50, nexttoken)
+        result = ccAPI.run_query(ccAPI.load_query('GetProfile'), {
+            'jobNextToken': job_next_token,
+        })
         if 'nextToken' in result:
             nexttoken = result['nextToken']
         else:
@@ -150,43 +154,37 @@ def dump_cybercastor(sqlite_db_path, cc_api_url, username, password, stage):
 
             conn.commit()
 
-    log.info("Finished Writing: {}".format(sqlite_db_path))
+    log.info(f"Finished Writing: {db_path}")
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # parser.add_argument('hucs_json', help='JSON with array of HUCS', type=str)
-    parser.add_argument(
-        'output_db_path', help='The final resting place of the SQLITE DB', type=str)
+    parser.add_argument('output_db_path', help='The final resting place of the SQLITE DB', type=str)
     parser.add_argument('api_url', help='URL to the cybercastor API', type=str)
     parser.add_argument('username', help='API URL Username', type=str)
     parser.add_argument('password', help='API URL Password', type=str)
-    parser.add_argument(
-        'stage', help='URL to the cybercastor API', type=str, default='production')
-    parser.add_argument('--verbose', help='(optional) a little extra logging ',
-                        action='store_true', default=False)
+    parser.add_argument('stage', help='URL to the cybercastor API', type=str, default='production')
+    parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
     args = dotenv.parse_args_env(parser)
 
     # Stupid slash parsing
     fixedurl = args.api_url.replace(':/', '://')
 
     # Initiate the log file
-    log = Logger("SQLite DB Dump")
-    log.setup(logPath=os.path.join(args.output_db_path,
-              "dump_sqlite.log"), verbose=args.verbose)
+    mainlog = Logger("Cybercastor DB Dump")
+    mainlog.setup(logPath=os.path.join(args.output_db_path, "dump_cybercastor.log"), verbose=args.verbose)
 
     today_date = date.today().strftime("%d-%m-%Y")
 
     # No way to separate out production from staging in cybercastor.
-    sqlite_db_path = os.path.join(
-        args.output_db_path, f'production_{today_date}.gpkg')
+    sqlite_db_path = os.path.join(args.output_db_path, f'production_{today_date}.gpkg')
 
     try:
-        dump_cybercastor(sqlite_db_path, fixedurl,
-                         args.username, args.password, args.stage)
+        dump_cybercastor(sqlite_db_path, fixedurl, args.username, args.password, args.stage)
 
     except Exception as e:
-        log.error(e)
+        mainlog.error(e)
         traceback.print_exc(file=sys.stdout)
         sys.exit(1)
 

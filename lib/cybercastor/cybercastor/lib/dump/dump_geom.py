@@ -5,12 +5,12 @@ import os
 import traceback
 import argparse
 import sqlite3
-import requests
-import json
+# import json
 from datetime import date
-from cybercastor.classes.CybercastorAPI import CybercastorAPI
+# import requests
+# from cybercastor.classes.CybercastorAPI import CybercastorAPI
 from rscommons import Logger, dotenv
-from rscommons.util import safe_makedirs
+# from rscommons.util import safe_makedirs
 
 
 def dump_geom(sqlite_db_path, geom_template_db):
@@ -75,7 +75,7 @@ def dump_geom(sqlite_db_path, geom_template_db):
     source_conn.close()
     dest_conn.close()
 
-    log.info("Finished Writing: {}".format(sqlite_db_path))
+    log.info(f"Finished Writing: {sqlite_db_path}")
 
 
 if __name__ == '__main__':
@@ -92,14 +92,14 @@ if __name__ == '__main__':
     sqlite_db_path = os.path.join(args.output_db_path, f'production_{today_date}.gpkg')
 
     # Initiate the log file
-    log = Logger("SQLite DB GEOMETRY Dump")
-    log.setup(logPath=os.path.join(sqlite_db_path, "dump_geometry.log"), verbose=args.verbose)
+    mainlog = Logger("SQLite DB GEOMETRY Dump")
+    mainlog.setup(logPath=os.path.join(sqlite_db_path, "dump_geometry.log"), verbose=args.verbose)
 
     try:
         dump_geom(args.output_db_path, args.template_db_path)
 
     except Exception as e:
-        log.error(e)
+        mainlog.error(e)
         traceback.print_exc(file=sys.stdout)
         sys.exit(1)
 

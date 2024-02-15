@@ -1,4 +1,4 @@
-query GetProfile($jobNextToken: String, $taskNextToken: String){
+query GetProfile($jobNextToken: String){
   getProfile {
     id
     name
@@ -24,15 +24,6 @@ query GetProfile($jobNextToken: String, $taskNextToken: String){
         taskScript {
           id
           name
-        }
-        tasks(limit: 500, nextToken: $taskNextToken) {
-          items {
-            id
-            name
-            createdOn
-            status
-          }
-          nextToken
         }
       }
       nextToken

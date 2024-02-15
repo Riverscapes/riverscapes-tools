@@ -5,13 +5,18 @@ import os
 import traceback
 import argparse
 import sqlite3
-from datetime import date
+# from datetime import date
 from rscommons import Logger, dotenv
-from rscommons.util import safe_makedirs
+# from rscommons.util import safe_makedirs
 
 
 def dump_views(sqlite_db_path):
-    log = Logger('DUMP Cybercastor to SQlite')
+    """_summary_
+
+    Args:
+        sqlite_db_path (_type_): _description_
+    """
+    log = Logger('DUMP views to SQlite')
     log.title('Dump Views to SQLITE')
 
     conn = sqlite3.connect(sqlite_db_path)
@@ -37,11 +42,20 @@ def dump_views(sqlite_db_path):
     INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) 
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
     ''',
-                 ('vw_exchange_projects', gpkg_contents_row[1], gpkg_contents_row[2], gpkg_contents_row[3], gpkg_contents_row[4], gpkg_contents_row[5], gpkg_contents_row[6], gpkg_contents_row[7], gpkg_contents_row[8], gpkg_contents_row[9]))
+                 ('vw_exchange_projects',
+                  gpkg_contents_row[1],
+                  gpkg_contents_row[2],
+                  gpkg_contents_row[3],
+                  gpkg_contents_row[4],
+                  gpkg_contents_row[5],
+                  gpkg_contents_row[6],
+                  gpkg_contents_row[7],
+                  gpkg_contents_row[8],
+                  gpkg_contents_row[9]))
 
     conn.commit()
 
-    log.info("Finished Writing: {}".format(sqlite_db_path))
+    log.info(f"Finished Writing: {sqlite_db_path}")
 
 
 def make_gpkgrows(conn, table_name: str):
@@ -83,15 +97,15 @@ if __name__ == '__main__':
     args = dotenv.parse_args_env(parser)
 
     # Initiate the log file
-    log = Logger("SQLite Riverscapes Dump")
-    log.setup(logPath=os.path.join(args.output_db_path,
+    logmain = Logger("SQLite Riverscapes Dump")
+    logmain.setup(logPath=os.path.join(args.output_db_path,
               "dump_sqlite.log"), verbose=args.verbose)
 
     try:
         dump_views(args.output_db_path)
 
     except Exception as e:
-        log.error(e)
+        logmain.error(e)
         traceback.print_exc(file=sys.stdout)
         sys.exit(1)
 

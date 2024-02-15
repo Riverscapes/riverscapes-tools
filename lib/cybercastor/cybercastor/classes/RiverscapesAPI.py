@@ -1,6 +1,7 @@
 import os
-from typing import Dict, Generator, Tuple
+from typing import Dict, List, Generator, Tuple
 import webbrowser
+import re
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlencode, urlparse, urlunparse
 import json
@@ -11,7 +12,7 @@ import logging
 from datetime import datetime, timedelta
 import requests
 from dateutil.parser import parse as dateparse
-from rsxml import Logger, ProgressBar
+from rsxml import Logger, ProgressBar, safe_makedirs
 from cybercastor.lib.hashes import checkEtag
 from cybercastor.classes.riverscapes_helpers import RiverscapesProject, RiverscapesProjectType, RiverscapesSearchParams, format_date
 
@@ -110,7 +111,7 @@ class RiverscapesAPI:
         if self.token_timeout:
             self.token_timeout.cancel()
 
-    def refresh_token(self):
+    def refresh_token(self, force: bool = False):
         """_summary_
 
         Raises:
@@ -125,6 +126,10 @@ class RiverscapesAPI:
 
         # On development there's no reason to actually go get a token
         if self.dev_headers and len(self.dev_headers) > 0:
+            return self
+
+        if self.access_token and not force:
+            self.log.debug("   Token already exists. Not refreshing.")
             return self
 
         # Step 1: Determine if we're machine code or user auth
@@ -368,7 +373,7 @@ class RiverscapesAPI:
             _prg.finish()
         self.log.debug(f"Search complete: retrieved {outer_counter:,} records")
 
-    def get_project_full(self, project_id: str):
+    def get_project_full(self, project_id: str) -> RiverscapesProject:
         """ This gets the full project record
 
         This is a MUCH heavier query than what comes back from the search function. If all you need is the project metadata this is 
@@ -384,7 +389,7 @@ class RiverscapesAPI:
         results = self.run_query(qry, {"id": project_id})
         return RiverscapesProject(results['data']['project'])
 
-    def get_project_files(self, project_id: str):
+    def get_project_files(self, project_id: str) -> List[Dict[str, any]]:
         """ This returns the file listing with everything you need to download project files
 
 
@@ -474,8 +479,40 @@ class RiverscapesAPI:
         else:
             raise RiverscapesAPIException(f"Query failed to run by returning code of {request.status_code}. {query} {json.dumps(variables)}")
 
-    def download_file(self, api_file_obj, local_path, force=False):
-        """[summary]
+    def download_files(self, project_id: str, download_dir: str, re_filter: List[str] = None, force=False):
+        """ From a project id get all relevant files and download them
+
+        Args:
+            project_id (_type_): _description_
+            local_path (_type_): _description_
+            force (bool, optional): _description_. Defaults to False.
+        """
+
+        # Fetch the project files from the API
+        file_results = self.get_project_files(project_id)
+
+        # Now filter the list of files to anything that remains after the regex filter
+        filtered_files = []
+        for file in file_results:
+            if not 'localPath' in file:
+                self.log.warning('File has no localPath. Skipping')
+                continue
+            # now filter the
+            if re_filter is not None and len(re_filter) > 0:
+                if not any([re.compile(x).match(file['localPath'], re.IGNORECASE) for x in re_filter]):
+                    continue
+            filtered_files.append(file)
+
+        if len(filtered_files) == 0:
+            self.log.warning(f"No files found for project {project_id} with the given filters: {re_filter}")
+            return
+
+        for file in filtered_files:
+            local_file_path = os.path.join(download_dir, file['localPath'])
+            self.download_file(file, local_file_path, force)
+
+    def download_file(self, api_file_obj: Dict[str, any], local_path: str, force=False):
+        """ NOTE: The directory for this file will be created if it doesn't exist
 
         Arguments:
             api_file_obj {[type]} -- The dictionary that the API returns. should include the name, md5, size etc
@@ -486,6 +523,15 @@ class RiverscapesAPI:
         """
         file_is_there = os.path.exists(local_path) and os.path.isfile(local_path)
         etag_match = file_is_there and checkEtag(local_path, api_file_obj['etag'])
+
+        file_directory = os.path.dirname(local_path)
+
+        # Anything less than 5 characters is probably a bad path
+        if len(file_directory) < 5:
+            raise RiverscapesAPIException(f"Invalid file path: '{local_path}'")
+
+        if not os.path.exists(file_directory):
+            safe_makedirs(file_directory)
 
         if force is True or not file_is_there or not etag_match:
             if not etag_match and file_is_there:
