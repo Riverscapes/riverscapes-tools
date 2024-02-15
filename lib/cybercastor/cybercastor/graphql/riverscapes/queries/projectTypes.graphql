@@ -1,5 +1,5 @@
-query projectTypes_query {
-  projectTypes(limit: 40, offset: 0) {
+query projectTypes_query($limit: Int!, $offset: Int!) {
+  projectTypes(limit: $limit, offset: $offset) {
     items {
       ... on ProjectType {
         ...dbobj
@@ -9,6 +9,7 @@ query projectTypes_query {
         logo
       }
     }
+    total
   }
 }
 
