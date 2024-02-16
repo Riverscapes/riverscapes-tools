@@ -20,7 +20,7 @@ from rsxml.project_xml import (
 )
 from rsxml import dotenv, Logger, safe_makedirs
 from rscommons import Raster
-from cybercastor.classes.RiverscapesAPI import RiverscapesAPI, RiverscapesProject, RiverscapesSearchParams
+from cybercastor import RiverscapesAPI, RiverscapesProject, RiverscapesSearchParams
 
 
 def merge_projects(projects_lookup: Dict[str, RiverscapesProject], merged_dir: str, name: str, project_type: str, collection_id: str) -> None:

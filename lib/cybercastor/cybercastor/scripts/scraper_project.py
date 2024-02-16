@@ -4,7 +4,7 @@ import json
 import argparse
 import sqlite3
 from datetime import datetime
-from rscommons import dotenv
+from rsxml import dotenv
 from rsxml.project_xml import Project, ProjectBounds, Coords, BoundingBox, Realization, MetaData, Geopackage, GeopackageLayer, GeoPackageDatasetTypes
 
 

@@ -1,7 +1,7 @@
-from rscommons import Logger
+from rsxml import Logger
 import dateutil.parser
 import inquirer
-from cybercastor.classes.RiverscapesAPI import RiverscapesAPI
+from cybercastor import RiverscapesAPI
 
 # Key is JSON task script ID. Value is list of warehouse project types
 # https://cybercastor.northarrowresearch.com/engines/manifest.json

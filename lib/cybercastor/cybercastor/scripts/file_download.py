@@ -4,15 +4,11 @@ import inquirer
 from cybercastor import RiverscapesAPI, RiverscapesSearchParams
 
 
-def download_files():
-    """ Download files from a riverscapes project search
+def download_files(riverscapes_api: RiverscapesAPI):
+    """ Download files from a riverscapes project search (not all files, just the ones that match our regex filters)
 
-    Args:
-        stage (_type_): 'production' or 'staging'
-        filedir (_type_): where to save the files
-        proj_type (_type_): Machine code for the project type
-        huc (_type_): HUC code
-        re_filter (_type_): List of regex patterns to match in the file names
+        To run this file in VSCode choose "Python: Current File (Cybercastor)" from the command palette
+
     """
     log = Logger('Download Riverscapes Files')
     log.title('Download Riverscapes Files')
@@ -20,26 +16,22 @@ def download_files():
     # First gather everything we need to make a search
     # ================================================================================================================
 
+    # Load the search params from a JSON file so we don't have to hardcode them
     search_params = RiverscapesSearchParams.load_from_json(os.path.join(os.path.dirname(__file__), '..', '..', 'inputs', 'download_files_search.json'))
 
-    default_dir = os.path.join(os.path.expanduser("~"), 'DownloadedFiles')
+    default_dir = os.path.join(os.path.expanduser("~"), 'DownloadedFiles', riverscapes_api.stage)
     questions = [
-        # Also get if this is production or staging (default production)
-        inquirer.List('stage', message="Which Data Exchange stage?", choices=['production', 'staging'], default='production'),
         inquirer.Text('download_dir', message="Where do you want to save the downloaded files?", default=default_dir),
     ]
     answers = inquirer.prompt(questions)
-    stage = answers['stage']
     download_dir = answers['download_dir']
     safe_makedirs(download_dir)
 
+    # NOTE: File filters is a list of regexes. If any one of the regexes matches any file in a project it will be downloaded
     file_filters = [r'.*brat\.gpkg']
 
     # Make the search and download all necessary files
     # ================================================================================================================
-
-    riverscapes_api = RiverscapesAPI(stage=stage)
-    riverscapes_api.refresh_token()
 
     for project, _stats, _total in riverscapes_api.search(search_params):
 
@@ -57,4 +49,5 @@ def download_files():
 
 
 if __name__ == "__main__":
-    download_files()
+    with RiverscapesAPI() as api:
+        download_files(api)

@@ -1,5 +1,9 @@
 """
 Demo script to download files from Data Exchange
+
+
+NOTE: THIS SCRIPT IS A MESS AND WILL NEED TO BE REWORKED A BIT
+
 """
 import sys
 import os
