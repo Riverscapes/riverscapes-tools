@@ -1,12 +1,8 @@
 {
   "folders": [
     {
-      "name": "🦫 Cybercastor",
+      "name": "🦫 Cybercastor API",
       "path": "../lib/cybercastor",
-    },
-    {
-      "name": "🧬 GraphQL",
-      "path": "../lib/cybercastor/cybercastor/graphql",
     },
     {
       "name": "🤖 Cybercastor Automation Scripts",

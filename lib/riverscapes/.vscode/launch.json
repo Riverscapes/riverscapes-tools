@@ -27,28 +27,10 @@
   ],
   "configurations": [
     {
-      "name": "🧰⬇️ DUMP to SQLITE",
+      "name": "📦 Merge Projects Tool",
       "type": "debugpy",
       "request": "launch",
-      "module": "cybercastor.dump_all",
-      "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal",
-      "envFile": "${workspaceFolder}/.env",
-      // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
-      "args": [
-        "{env:DATA_ROOT}/warehouse_report",
-        // "${input:cc_environment}",
-        "production",
-        "{env:DATA_ROOT}/huc10.gpkg",
-        "${input:environment}",
-        "--verbose"
-      ]
-    },
-    {
-      "name": "📦 Merge Projects",
-      "type": "debugpy",
-      "request": "launch",
-      "module": "cybercastor.merge-projects",
+      "module": "riverscapes.merge-projects",
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "envFile": "${workspaceFolder}/.env",
@@ -57,10 +39,28 @@
       ]
     },    
     {
+      "name": "🧰⬇️ DUMP to SQLITE",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "riverscapes.dump_all",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/.env",
+      // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
+      "args": [
+        "{env:DATA_ROOT}/warehouse_report/${input:environment}.gpkg",
+        // "${input:cc_environment}",
+        "production",
+        "${input:environment}",
+        "{env:DATA_ROOT}/huc10.gpkg",
+        "--verbose"
+      ]
+    },  
+    {
       "name": "EXPERIMENTAL - Scrape Projects",
       "type": "debugpy",
       "request": "launch",
-      "module": "cybercastor.downloadFiles",
+      "module": "riverscapes.downloadFiles",
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "envFile": "${workspaceFolder}/.env",
@@ -80,7 +80,7 @@
       "name": "EXPERIMENTAL WRITE VBET Synth Project File",
       "type": "debugpy",
       "request": "launch",
-      "module": "cybercastor.scraper_project",
+      "module": "riverscapes.scraper_project",
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "envFile": "${workspaceFolder}/.env",

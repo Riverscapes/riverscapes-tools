@@ -4,16 +4,18 @@ import sys
 import os
 import traceback
 import argparse
-import sqlite3
-from rsxml import Logger, dotenv
-# from cybercastor.lib.dump.dump_cybercastor import dump_cybercastor
-from riverscapes import RiverscapesAPI, CybercastorAPI
+from rsxml import Logger, dotenv, safe_makedirs
+# Pull in the cybercastor API from that library
+from cybercastor.lib.dump.dump_cybercastor import dump_cybercastor
+from cybercastor import CybercastorAPI
+# This is the current library
+from riverscapes import RiverscapesAPI
 from riverscapes.lib.dump.dump_geom import dump_geom
 from riverscapes.lib.dump.dump_riverscapes import dump_riverscapes
-# from cybercastor.lib.dump.dump_views import dump_views
+from riverscapes.lib.dump.dump_views import dump_views
 
-# rs_api, cc_api, args.output_db_path, args.template_geom
-def dump_all(rs_api: RiverscapesAPI, cc_api: CybercastorAPI, sqlite_db_dir: str, template_geom):
+
+def dump_all(rs_api: RiverscapesAPI, cc_api: CybercastorAPI, sqlite_db_path: str, template_geom):
     """_summary_
 
     Args:
@@ -30,10 +32,8 @@ def dump_all(rs_api: RiverscapesAPI, cc_api: CybercastorAPI, sqlite_db_dir: str,
         log.error(f'The GeoPackge with HUC geoemtry does not exist: {template_geom}')
         raise Exception(f'The GeoPackge with HUC geoemtry does not exist: {template_geom}')
 
-    sqlite_db_path = os.path.join(sqlite_db_dir, f'DataExchange_{rs_api.stage}.gpkg')
-
-    # if os.path.exists(sqlite_db_path):
-    #     os.remove(sqlite_db_path)
+    if os.path.exists(sqlite_db_path):
+        os.remove(sqlite_db_path)
 
     # If there is no DB there then create a fresh one
     if not os.path.exists(sqlite_db_path):
@@ -41,45 +41,14 @@ def dump_all(rs_api: RiverscapesAPI, cc_api: CybercastorAPI, sqlite_db_dir: str,
         # First copy the geometry in. This will give us the gpkg tables the schema depends on
         dump_geom(sqlite_db_path, template_geom)
 
-    # Ensure the schema is up to date
-    create_database('cybercastor/lib/dump/schema.sql', sqlite_db_path)
-
     # Then add the cybercastor data
-    # dump_cybercastor(sqlite_db_path, cc_stage, stage)
+    dump_cybercastor(cc_api, sqlite_db_path)
     # Then add the riverscapes data (authentication will be a browser popup)
     dump_riverscapes(rs_api, sqlite_db_path)
     # # Then write any additional views
     # dump_views(sqlite_db_path)
 
     log.info(f"Finished Writing: {template_geom}")
-
-
-def create_database(schema_file_path: str, db_path: str):
-    """ Create a new database from the schema file
-
-    Args:
-        schema_file (_type_): _description_
-        db_name (_type_): _description_
-
-    Raises:
-        Exception: _description_
-    """
-    if not os.path.exists(schema_file_path):
-        raise Exception(f'The schema file does not exist: {schema_file_path}')
-    # Read the schema from the file
-    with open(schema_file_path, 'r', encoding='utf8') as file:
-        schema = file.read()
-
-    # Connect to a new database
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-
-    # Execute the schema to create tables
-    cursor.executescript(schema)
-
-    # Commit the changes and close the connection
-    conn.commit()
-    conn.close()
 
 
 if __name__ == '__main__':
@@ -93,7 +62,9 @@ if __name__ == '__main__':
 
     # Initiate the log file
     logmain = Logger("SQLite Riverscapes Dump")
-    logmain.setup(logPath=os.path.join(args.output_db_path, "dump_sqlite.log"), verbose=args.verbose)
+    db_dir = os.path.dirname(args.output_db_path)
+    safe_makedirs(db_dir)
+    logmain.setup(log_path=os.path.join(db_dir, "dump_sqlite.log"), verbose=args.verbose)
 
     try:
         with RiverscapesAPI(stage=args.rs_stage) as _rs_api, CybercastorAPI(stage=args.cc_stage) as _cc_api:
