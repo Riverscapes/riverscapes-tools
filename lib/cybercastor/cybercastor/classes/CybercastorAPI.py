@@ -62,7 +62,6 @@ class CybercastorAPI:
         else:
             raise Exception(f'Unknown stage: {stage}')
 
-
     def __enter__(self) -> 'CybercastorAPI':
         """ Allows us to use this class as a context manager
         """
@@ -106,7 +105,6 @@ class CybercastorAPI:
         if self.tokenTimeout:
             self.tokenTimeout.cancel()
 
-
     def get_job_paginated(self, job_id):
         """Get the current job and all tasks associated with it (paginate through until you have them all)
 
@@ -126,7 +124,7 @@ class CybercastorAPI:
 
         return results['data']['getJob'] if results['data'] and results['data']['getJob'] else None
 
-    def get_active_jobs(self):
+    def get_jobs_by_status(self, status: str = 'ACTIVE'):
         """ Get all the active jobs.
 
         Returns:
@@ -134,21 +132,31 @@ class CybercastorAPI:
         """
 
         get_jobs_query = self.load_query('GetJobsByStatus')
-        results = self.run_query(get_jobs_query, {"jobStatus": "ACTIVE"})
+        results = self.run_query(get_jobs_query, {"jobStatus": status})
 
         # If there are more tasks then paginate through them
         while (results['data']['getJobs'] and results['data']['getJobs']['nextToken'] is not None):
-            pageResults = self.run_query(get_jobs_query, {
-                                         "jobStatus": "ACTIVE", "nextToken": results['data']['getJobs']['nextToken']})
+            pageResults = self.run_query(get_jobs_query, {"jobStatus": status, "nextToken": results['data']['getJobs']['nextToken']})
 
             results['data']['getJobs']['items'] += pageResults['data']['getJobs']['items']
             results['data']['getJobs']['nextToken'] = pageResults['data']['getJobs']['nextToken']
 
         jobs = []
+        # Now we pull the entire job record for each job
         for job in results['data']['getJobs']['items']:
             jobs.append(self.get_job_paginated(job['id']))
 
         return jobs
+
+    def get_engines(self):
+        """ Get all the active cybercastor engines.
+
+        Returns:
+            _type_: _description_
+        """
+
+        results = self.run_query(self.load_query('GetEngines'), {})
+        return results['data']['getEngines']
 
     def refresh_token(self):
         """_summary_
@@ -303,7 +311,7 @@ class CybercastorAPI:
         Returns:
             str: _description_
         """
-        with open(os.path.join(os.path.dirname(__file__), '..', 'graphql', 'queries', f'{queryName}.graphql'), 'r', encoding='utf8') as queryFile:
+        with open(os.path.join(os.path.dirname(__file__), '..', '..', 'graphql', 'queries', f'{queryName}.graphql'), 'r', encoding='utf8') as queryFile:
             return queryFile.read()
 
     def load_mutation(self, mutationName: str) -> str:
@@ -315,7 +323,7 @@ class CybercastorAPI:
         Returns:
             str: _description_
         """
-        with open(os.path.join(os.path.dirname(__file__), '..', 'graphql', 'mutations', f'{mutationName}.graphql'), 'r', encoding='utf8') as queryFile:
+        with open(os.path.join(os.path.dirname(__file__), '..', '..', 'graphql', 'mutations', f'{mutationName}.graphql'), 'r', encoding='utf8') as queryFile:
             return queryFile.read()
 
     # A simple function to use requests.post to make the API call. Note the json= section.

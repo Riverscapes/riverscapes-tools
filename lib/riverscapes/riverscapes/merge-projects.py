@@ -376,10 +376,6 @@ def main():
             api.download_files(project.id, download_path)
             projects_lookup[download_path] = project
 
-            # TODO: DEBUGGING ONLY REMOVE ME IMMEDIATELY
-            if len(projects_lookup) > 3:
-                break
-
         merge_projects(projects_lookup, merged_folder, answers['output_name'], answers['project_type'], answers['collection_id'], api.stage)
 
     log.info('Process complete')

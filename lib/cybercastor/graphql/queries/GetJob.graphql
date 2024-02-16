@@ -18,6 +18,8 @@ query GetJob($jobId: ID!, $taskNextToken: String) {
     updatedById
     createdOn
     updatedOn
+    taskDefId
+    taskScriptId
     # Note: Make sure the field list matches getJobTaskPage.graphql
     tasks(limit: 500, nextToken: $taskNextToken) {
       items {

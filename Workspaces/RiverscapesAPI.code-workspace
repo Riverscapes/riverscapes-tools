@@ -1,12 +1,8 @@
 {
   "folders": [
     {
-      "name": "🏞️ Riverscapes",
+      "name": "🏞️ Riverscapes API",
       "path": "../lib/riverscapes",
-    },
-    {
-      "name": "🧬 GraphQL",
-      "path": "../lib/riverscapes/riverscapes/graphql",
     },
     {
       "name": "🤖 Cybercastor Automation Scripts",
