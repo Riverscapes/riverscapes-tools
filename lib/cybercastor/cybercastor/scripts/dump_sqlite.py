@@ -41,17 +41,13 @@ def get_job_diff(old, new):
     return status_change
 
 
-def main(cc_stage: str, download_running):
+def main(cc_api: CybercastorAPI, download_running: str, sqlite_path: str):
     """_summary_
 
     Args:
         cc_stage (str): _description_
         download_running (_type_): _description_
     """
-
-    # Initialize our API and log in
-    cc_api = CybercastorAPI(stage=cc_stage)
-    cc_api.refresh_token()
 
     ##############################
     # Monitoring
@@ -68,7 +64,7 @@ def main(cc_stage: str, download_running):
 
     while True:
         # Make an API query for the job that is in the output json file
-        paginated_jobs = cc_api.get_jobs()
+        paginated_jobs = cc_api.get_job_paginated()
         print(chr(27) + "[2J")
         print(datetime.utcnow())
 
@@ -88,7 +84,7 @@ def main(cc_stage: str, download_running):
         if len(monitor_json.keys()) == 0:
             cprint('(No Active Jobs)', 'red')
 
-        with open(monitor_json_path, 'w') as outfile:
+        with open(monitor_json_path, 'w', encoding='utf8') as outfile:
             json.dump(monitor_json, outfile, indent=4, sort_keys=True)
 
         for job in monitor_json.values():
@@ -96,8 +92,7 @@ def main(cc_stage: str, download_running):
 
         # Now do some reporting
         for job in monitor_json.values():
-            download_job_logs(job, os.path.join(
-                monitor_logs_path, monitor_logs_path), cc_stage, download_running)
+            download_job_logs(job, os.path.join(monitor_logs_path, monitor_logs_path), cc_api.stage, download_running)
 
         if download_running:
             print("DOWNLOAD RUNNING DOESN'T LOOP")
@@ -111,14 +106,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('stage', help='Cybercastor API stage', type=str, default='production')
     parser.add_argument('sqlite_folder', help='Path to existing database', type=str)
-    parser.add_argument('--verbose', help='(optional) a little extra logging ',
-                        action='store_true', default=False)
+    parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
 
     args = dotenv.parse_args_env(parser, os.path.join(
         os.path.dirname(__file__), '.env.python'))
-
-    # Stupid slash parsing
-    fixedurl = args.api_url.replace(':/', '://')
 
     # Initiate the log file
     log = Logger("Cybercastor Monitor")
@@ -126,7 +117,8 @@ if __name__ == '__main__':
     log.title('Cybercastor Monitor')
 
     try:
-        main(args.stage, args.download_running, args.sqlite_folder)
+        with CybercastorAPI(stage=args.stage) as api:
+            main(api, args.download_running, args.sqlite_folder)
 
     except Exception as e:
         log.error(e)

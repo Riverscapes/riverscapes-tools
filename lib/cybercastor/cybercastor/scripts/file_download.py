@@ -44,9 +44,6 @@ def download_files(riverscapes_api: RiverscapesAPI):
         # Note that the files will not be re-downloaded if they already exist.
         riverscapes_api.download_files(project.id, huc_dir, file_filters)
 
-    # Remember to always shut down the API when you're done with it
-    riverscapes_api.shutdown()
-
 
 if __name__ == "__main__":
     with RiverscapesAPI() as api:

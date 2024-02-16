@@ -86,19 +86,18 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('output_db_path', help='The final resting place of the SQLITE DB', type=str)
     parser.add_argument('cc_stage', help='Cybercastor API stage', type=str, default='production')
-    parser.add_argument('template_geom', help='the template gpkg of huc10 geometry', type=str)
     parser.add_argument('rs_stage', help='Riverscapes stage', type=str, default='production')
+    parser.add_argument('template_geom', help='the template gpkg of huc10 geometry', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
     args = dotenv.parse_args_env(parser)
 
     # Initiate the log file
     logmain = Logger("SQLite Riverscapes Dump")
-    logmain.setup(logPath=os.path.join(args.output_db_path,
-                                       "dump_sqlite.log"), verbose=args.verbose)
+    logmain.setup(logPath=os.path.join(args.output_db_path, "dump_sqlite.log"), verbose=args.verbose)
 
     try:
-        with RiverscapesAPI(stage=args.rs_stage) as rs_api, CybercastorAPI(stage=args.cc_stage) as cc_api:
-            dump_all(rs_api, cc_api, args.output_db_path, args.template_geom)
+        with RiverscapesAPI(stage=args.rs_stage) as _rs_api, CybercastorAPI(stage=args.cc_stage) as _cc_api:
+            dump_all(_rs_api, _cc_api, args.output_db_path, args.template_geom)
 
     except Exception as e:
         logmain.error(e)
