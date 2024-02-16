@@ -257,8 +257,6 @@ def main(cc_api: CybercastorAPI, job_json_dir) -> bool:
             manage_tasks(cc_api, job_monitor['id'])
 
     print('Goodbye!!')
-    # Remember to shut off the API when you're done with it
-    cc_api.shutdown()
     return repeat
 
 

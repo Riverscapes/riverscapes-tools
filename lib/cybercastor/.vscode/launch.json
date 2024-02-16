@@ -164,7 +164,7 @@
       ]
     },
     {
-      "name": "EXPERIMENTAL Merge Projects",
+      "name": "📦 Merge Projects",
       "type": "debugpy",
       "request": "launch",
       "module": "cybercastor.merge-projects",
@@ -172,7 +172,6 @@
       "console": "integratedTerminal",
       "envFile": "${workspaceFolder}/.env",
       "args": [
-        "production",
         "{env:DATA_ROOT}/merge-projects",
         "rs_metric_engine",
         "65095800-3938-4cf9-9565-59984de14302",
