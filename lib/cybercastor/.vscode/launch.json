@@ -112,24 +112,22 @@
         "${input:ORGANIZATION}"
       ]
     },
-    // {
-    //   "name": "🧰⬇️ DUMP to SQLITE",
-    //   "type": "debugpy",
-    //   "request": "launch",
-    //   "module": "cybercastor.dump_all",
-    //   "cwd": "${workspaceFolder}",
-    //   "console": "integratedTerminal",
-    //   "envFile": "${workspaceFolder}/.env",
-    //   // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
-    //   "args": [
-    //     "{env:DATA_ROOT}/warehouse_report",
-    //     // "${input:cc_environment}",
-    //     "production",
-    //     "{env:DATA_ROOT}/huc10.gpkg",
-    //     "${input:environment}",
-    //     "--verbose"
-    //   ]
-    // },
+    {
+      "name": "🧰⬇️ DUMP Cybercastpr",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cybercastor.lib.dump.dump_cybercastor",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/.env",
+      // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
+      "args": [
+        "{env:DATA_ROOT}/warehouse_report/cybercastor.gpkg",
+        // "${input:cc_environment}",
+        "production",
+        "--verbose"
+      ]
+    },
    {
       "name": "Python: Current File",
       "type": "debugpy",

@@ -7,9 +7,11 @@ import argparse
 import sqlite3
 import json
 from datetime import date
-import requests
+from dateutil.parser import parse as dateparse
 from rsxml import Logger, dotenv
 from cybercastor import CybercastorAPI
+
+SCHEMA_FILE = os.path.join(os.path.dirname(__file__), 'cybercastor_schema.sql')
 
 
 def dump_cybercastor(cc_api: CybercastorAPI, db_path: str):
@@ -22,19 +24,26 @@ def dump_cybercastor(cc_api: CybercastorAPI, db_path: str):
     log = Logger('DUMP Cybercastor to SQlite')
     log.title('Dump Cybercastor to SQLITE')
 
+    # We can safely run this
+    create_database(db_path)
+
     # Connect to the DB and ensure foreign keys are enabled so that cascading deletes work
     conn = sqlite3.connect(db_path)
     conn.execute('PRAGMA foreign_keys = ON')
     curs = conn.cursor()
 
-    resp = requests.get(url="https://cybercastor.northarrowresearch.com/engines/manifest.json", timeout=30)
-    data = resp.json()  # Check the JSON Response Content documentation below
-
+    cc_engines = cc_api.get_engines()
+    # Find our engine
+    riverscapes_tools_engine = next((e for e in cc_engines if e['id'] == 'riverscapesTools'), None)
+    if riverscapes_tools_engine is None:
+        log.error("Could not find the riverscapesTools engine")
+        return
+    # Find the task scripts
     engine_data = [(ts['id'],
                     ts['name'],
                     ts['description'],
                     ts['localScriptPath'],
-                    json.dumps(ts['taskVars'])) for ts in data[0]['taskScripts']]
+                    json.dumps(ts['taskVars'])) for ts in riverscapes_tools_engine['taskScripts']]
 
     # We reload everything every time
     curs.execute("DELETE FROM engine_scripts;")
@@ -63,33 +72,23 @@ def dump_cybercastor(cc_api: CybercastorAPI, db_path: str):
     # for table_name in ['cc_jobs', 'cc_job_metadata', 'cc_tasks', 'cc_task_metadata', 'cc_jobenv', 'cc_taskenv']:
     #     curs.execute(f"DELETE FROM sqlite_sequence WHERE name = '{table_name}'")
 
-    job_next_token = None
-    task_next_token = None
-    page = 0
-    num_projs = 0
-    while job_next_token or page == 0:
-        log.info(f"Getting page {page} of projects")
-        page += 1
-        # Get all project
-        result = cc_api.run_query(cc_api.load_query('GetProfile'), {
-            'jobNextToken': job_next_token,
-        })
-        if 'nextToken' in result:
-            nexttoken = result['nextToken']
-        else:
-            nexttoken = None
+    ALL_JOB_STATUSES = ['ACTIVE', 'COMPLETE', 'RESTART_REQUESTED', 'DELETE_REQUESTED', 'STOP_REQUESTED']
 
-        for job in result['jobs']:
+    for status in ALL_JOB_STATUSES:
+        results = cc_api.get_jobs_by_status(status)
+
+        for job in results:
             job_guid = job['id']
-            job_env = dict(json.loads(job['env']).items())
+            job_env = job['env']
 
             # "RS_API_URL": "https://api.data.riverscapes.net/staging",
             # A little hacky but anything without RS_API_URL is probably an old warehouse job
             if 'RS_API_URL' not in job_env:
                 continue
             is_staging = 'staging' in job_env['RS_API_URL']
-            # if rs_stage == 'staging' and not is_staging or rs_stage == 'production' and is_staging:
-            #     continue
+            # A little hack-y for now but let's just filter out all Riverscapes staging projects 
+            if is_staging:
+                continue
 
             insert_sql = """
                 INSERT INTO cc_jobs (
@@ -99,8 +98,8 @@ def dump_cybercastor(cc_api: CybercastorAPI, db_path: str):
             """
             curs.execute(insert_sql, (
                 job_guid,
-                job['createdBy'],
-                int(job['createdOn']),
+                job['createdBy']['id'],
+                int(dateparse(job['createdOn']).timestamp() * 1000),
                 job['description'],
                 job['name'],
                 job['status'],
@@ -110,7 +109,7 @@ def dump_cybercastor(cc_api: CybercastorAPI, db_path: str):
             jid = curs.lastrowid
 
             curs.executemany('INSERT INTO cc_job_metadata (job_id, key, value) VALUES (?,?,?)', [
-                (jid, key, value) for key, value in json.loads(job['meta']).items()])
+                (jid, key, value) for key, value in job['meta'].items()])
 
             curs.executemany('INSERT INTO cc_jobenv (job_id, key, value) VALUES (?,?,?)', [
                 (jid, key, value) for key, value in job_env.items()])
@@ -127,30 +126,59 @@ def dump_cybercastor(cc_api: CybercastorAPI, db_path: str):
                 curs.execute(insert_sql, (
                     jid,
                     task_guid,
-                    task['createdBy'],
-                    int(task['createdOn']
-                        ) if task['createdOn'] is not None else None,
-                    int(task['endedOn']) if task['endedOn'] is not None else None,
+                    task['createdBy']['id'],
+                    int(dateparse(task['createdOn']).timestamp() * 1000) if task['createdOn'] is not None else None,
+                    int(dateparse(task['endedOn']).timestamp() * 1000) if task['endedOn'] is not None else None,
                     task['logStream'],
                     task['logUrl'],
                     task['cpu'],
                     task['memory'],
                     task['name'],
-                    int(task['queriedOn']
-                        ) if task['queriedOn'] is not None else None,
-                    int(task['startedOn']
-                        ) if task['startedOn'] is not None else None,
+                    int(dateparse(task['queriedOn']).timestamp() * 1000) if task['queriedOn'] is not None else None,
+                    int(dateparse(task['startedOn']).timestamp() * 1000) if task['startedOn'] is not None else None,
                     task['status'],
                     json.dumps(task['taskDefProps']),
                 ))
                 tid = curs.lastrowid
 
                 curs.executemany('INSERT INTO cc_taskenv (task_id, key, value) VALUES (?,?,?)', [
-                    (tid, key, value) for key, value in json.loads(task['env']).items()])
+                    (tid, key, value) for key, value in task['env'].items()])
 
             conn.commit()
 
     log.info(f"Finished Writing: {db_path}")
+
+
+def create_database(db_path: str):
+    """ Create a new database from the schema file
+
+    Args:
+        schema_file (_type_): _description_
+        db_name (_type_): _description_
+
+    Raises:
+        Exception: _description_
+    """
+    log = Logger('CreateCybercastorDatabase')
+
+    if not os.path.exists(SCHEMA_FILE):
+        raise Exception(f'The schema file does not exist: {SCHEMA_FILE}')
+
+    # Read the schema from the file
+    with open(SCHEMA_FILE, 'r', encoding='utf8') as file:
+        schema = file.read()
+
+    # Connect to a new (or existing) database
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    # Execute the schema to create tables
+    log.info(f'Creating CYBERCASTOR database tables (if not exist): {db_path}')
+    cursor.executescript(schema)
+
+    # Commit the changes and close the connection
+    conn.commit()
+    conn.close()
 
 
 if __name__ == '__main__':
@@ -163,7 +191,7 @@ if __name__ == '__main__':
 
     # Initiate the log file
     mainlog = Logger("Cybercastor DB Dump")
-    mainlog.setup(logPath=os.path.join(args.output_db_path, "dump_cybercastor.log"), verbose=args.verbose)
+    mainlog.setup(log_path=os.path.join(args.output_db_path, "dump_cybercastor.log"), verbose=args.verbose)
 
     today_date = date.today().strftime("%d-%m-%Y")
 

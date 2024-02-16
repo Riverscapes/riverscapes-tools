@@ -68,7 +68,7 @@ def main(cc_api: CybercastorAPI, download_running):
 
     while True:
         # Make an API query for the job that is in the output json file
-        paginated_jobs = cc_api.get_active_jobs()
+        paginated_jobs = cc_api.get_jobs_by_status(status='ACTIVE')
         print(chr(27) + "[2J")
         print(datetime.utcnow())
 

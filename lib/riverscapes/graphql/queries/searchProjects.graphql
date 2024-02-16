@@ -21,9 +21,11 @@
         ownedBy {
           ... on Organization {
             id
+            name
           }
           ... on User {
             id
+            name
           }
           __typename
         }

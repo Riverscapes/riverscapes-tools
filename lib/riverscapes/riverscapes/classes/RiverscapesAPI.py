@@ -265,10 +265,8 @@ class RiverscapesAPI:
                 self.send_response(200)
                 self.send_header("Content-type", "text/html")
                 self.end_headers()
-                self.wfile.write(
-                    b"<html><head><title>CYBERCASTOR API: Authentication successful</title></head>")
-                self.wfile.write(
-                    b"<body><p>CYBERCASTOR API: Authentication successful. You can now close this window.</p></body></html>")
+                self.wfile.write(b"<html><head><title>Riverscapes API: Authentication successful</title></head>")
+                self.wfile.write(b"<body><p>Riverscapes API: Authentication successful. You can now close this window.</p></body></html>")
                 query = urlparse(self.path).query
                 if "=" in query and "code" in query:
                     self.server.auth_code = dict(x.split("=")
@@ -298,7 +296,7 @@ class RiverscapesAPI:
         Returns:
             str: _description_
         """
-        with open(os.path.join(os.path.dirname(__file__), '..', 'graphql', 'queries', f'{query_name}.graphql'), 'r', encoding='utf-8') as queryFile:
+        with open(os.path.join(os.path.dirname(__file__), '..', '..', 'graphql', 'queries', f'{query_name}.graphql'), 'r', encoding='utf-8') as queryFile:
             return queryFile.read()
 
     def load_mutation(self, mutation_name: str) -> str:
@@ -310,7 +308,7 @@ class RiverscapesAPI:
         Returns:
             str: _description_
         """
-        with open(os.path.join(os.path.dirname(__file__), '..', 'graphql', 'mutations', f'{mutation_name}.graphql'), 'r', encoding='utf-8') as queryFile:
+        with open(os.path.join(os.path.dirname(__file__), '..', '..', 'graphql', 'mutations', f'{mutation_name}.graphql'), 'r', encoding='utf-8') as queryFile:
             return queryFile.read()
 
     def get_project(self, project_id: str):

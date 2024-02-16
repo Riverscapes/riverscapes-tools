@@ -9,6 +9,8 @@ from datetime import datetime, date
 from rsxml import Logger, dotenv
 from riverscapes import RiverscapesAPI, RiverscapesSearchParams
 
+SCHEMA_FILE = os.path.join(os.path.dirname(__file__), 'riverscapes_schema.sql')
+
 
 def dump_riverscapes(rs_api: RiverscapesAPI, db_path: str):
     """ DUmp all projects to a DB
@@ -18,6 +20,9 @@ def dump_riverscapes(rs_api: RiverscapesAPI, db_path: str):
     """
     log = Logger('DUMP Riverscapes to SQlite')
     log.title('Dump Riverscapes to SQLITE')
+
+    # We can run this multiple times without any worry
+    create_database(db_path)
 
     conn = sqlite3.connect(db_path)
     conn.execute('PRAGMA foreign_keys = ON')
@@ -31,13 +36,16 @@ def dump_riverscapes(rs_api: RiverscapesAPI, db_path: str):
     # for that day over again. This will ensure we don't have duplicates.
     curs.execute("SELECT MAX(created_on) FROM rs_projects")
     last_inserted_row = curs.fetchone()
+
+    # NOTE: Big caveat here. The search is reverse chronological so this will only work if you've already allowed it 
+    # to fully complete once.
     if last_inserted_row[0] is not None:
         # Convert milliseconds to seconds and create a datetime object
         last_inserted = datetime.fromtimestamp(last_inserted_row[0] / 1000)
         searchParams.createdOnFrom = last_inserted
 
     # Create a timedelta object with a difference of 1 day
-    for project, _stats in rs_api.search(searchParams):
+    for project, _stats, _searchtotal in rs_api.search(searchParams, progress_bar=True):
 
         # Insert project data
         curs.execute('''
@@ -49,20 +57,55 @@ def dump_riverscapes(rs_api: RiverscapesAPI, db_path: str):
                          project.name,
                          ','.join(project.tags),
                          project.project_type,
-                         project.created_on.timestamp() * 1000,
-                         project['json']['ownedBy']['id'],
-                         project['json']['ownedBy']['name'],
-                         project['json']['ownedBy']['__typename']
+                         int(project.created_date.timestamp() * 1000),
+                         project.json['ownedBy']['id'],
+                         project.json['ownedBy']['name'],
+                         project.json['ownedBy']['__typename']
                      )
                      )
+
+        project_id = curs.lastrowid
 
         # Insert project meta data
         curs.executemany('INSERT INTO rs_project_meta(project_id, key, value) VALUES (?, ?, ?)', [
-            (project.id, key, value) for key, value in project.project_meta.items()
+            (project_id, key, value) for key, value in project.project_meta.items()
         ])
+
 
     conn.commit()
     log.info(f"Finished Writing: {db_path}")
+
+
+def create_database(db_path: str):
+    """ Create a new database from the schema file
+
+    Args:
+        schema_file (_type_): _description_
+        db_name (_type_): _description_
+
+    Raises:
+        Exception: _description_
+    """
+    log = Logger('Create Database')
+
+    if not os.path.exists(SCHEMA_FILE):
+        raise Exception(f'The schema file does not exist: {SCHEMA_FILE}')
+
+    # Read the schema from the file
+    with open(SCHEMA_FILE, 'r', encoding='utf8') as file:
+        schema = file.read()
+
+    # Connect to a new (or existing) database
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    # Execute the schema to create tables
+    log.info(f'Creating RIVERSCAPES database tables (if not exist): {db_path}')
+    cursor.executescript(schema)
+
+    # Commit the changes and close the connection
+    conn.commit()
+    conn.close()
 
 
 def create_views(sqlite_db_dir):

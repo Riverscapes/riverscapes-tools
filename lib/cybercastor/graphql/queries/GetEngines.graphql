@@ -19,6 +19,8 @@ query GetEngines {
             memoryLimitMiB
             ephemeralStorageGiB
           }
+          localScriptPath
+          remoteScriptPath
           taskVars {
               name
               description
