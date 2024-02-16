@@ -1,7 +1,7 @@
 import os
 from rsxml import Logger, safe_makedirs
 import inquirer
-from cybercastor import RiverscapesAPI, RiverscapesSearchParams
+from riverscapes import RiverscapesAPI, RiverscapesSearchParams
 
 
 def download_files(riverscapes_api: RiverscapesAPI):

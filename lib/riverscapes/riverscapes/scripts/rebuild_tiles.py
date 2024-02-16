@@ -9,7 +9,7 @@ from typing import List
 import json
 from rsxml import Logger, safe_makedirs
 import inquirer
-from cybercastor import RiverscapesAPI, RiverscapesProject, RiverscapesSearchParams
+from riverscapes import RiverscapesAPI, RiverscapesProject, RiverscapesSearchParams
 
 
 def confirm(msg: str = None):
