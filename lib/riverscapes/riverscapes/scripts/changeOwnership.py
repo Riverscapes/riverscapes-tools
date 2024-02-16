@@ -5,7 +5,7 @@ from typing import List
 import json
 from rsxml import Logger, safe_makedirs
 import inquirer
-from cybercastor import RiverscapesAPI, RiverscapesSearchParams, RiverscapesProject
+from riverscapes import RiverscapesAPI, RiverscapesSearchParams, RiverscapesProject
 
 
 def change_owner(riverscapes_api: RiverscapesAPI):

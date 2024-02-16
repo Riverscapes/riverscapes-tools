@@ -6,7 +6,7 @@ import json
 from termcolor import colored
 from rsxml import Logger, safe_makedirs
 import inquirer
-from cybercastor import RiverscapesAPI, RiverscapesSearchParams, RiverscapesProject
+from riverscapes import RiverscapesAPI, RiverscapesSearchParams, RiverscapesProject
 
 
 def delete_by_tags(riverscapes_api: RiverscapesAPI):

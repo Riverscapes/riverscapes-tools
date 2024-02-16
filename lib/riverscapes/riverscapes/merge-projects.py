@@ -22,7 +22,7 @@ from rsxml.project_xml import (
     BoundingBox,
 )
 from rscommons import Raster
-from cybercastor import RiverscapesAPI, RiverscapesProject, RiverscapesSearchParams
+from riverscapes import RiverscapesAPI, RiverscapesProject, RiverscapesSearchParams
 
 
 def merge_projects(projects_lookup: Dict[str, RiverscapesProject], merged_dir: str, name: str, project_type: str, collection_id: str, rs_stage: str) -> None:

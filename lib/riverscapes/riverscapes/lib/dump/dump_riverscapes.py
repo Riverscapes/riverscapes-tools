@@ -7,7 +7,7 @@ import argparse
 import sqlite3
 from datetime import datetime, date
 from rsxml import Logger, dotenv
-from cybercastor import RiverscapesAPI, RiverscapesSearchParams
+from riverscapes import RiverscapesAPI, RiverscapesSearchParams
 
 
 def dump_riverscapes(rs_api: RiverscapesAPI, db_path: str):

@@ -303,7 +303,7 @@ class CybercastorAPI:
         Returns:
             str: _description_
         """
-        with open(os.path.join(os.path.dirname(__file__), '..', 'graphql', 'cybercastor', 'queries', f'{queryName}.graphql'), 'r', encoding='utf8') as queryFile:
+        with open(os.path.join(os.path.dirname(__file__), '..', 'graphql', 'queries', f'{queryName}.graphql'), 'r', encoding='utf8') as queryFile:
             return queryFile.read()
 
     def load_mutation(self, mutationName: str) -> str:
@@ -315,7 +315,7 @@ class CybercastorAPI:
         Returns:
             str: _description_
         """
-        with open(os.path.join(os.path.dirname(__file__), '..', 'graphql', 'cybercastor', 'mutations', f'{mutationName}.graphql'), 'r', encoding='utf8') as queryFile:
+        with open(os.path.join(os.path.dirname(__file__), '..', 'graphql', 'mutations', f'{mutationName}.graphql'), 'r', encoding='utf8') as queryFile:
             return queryFile.read()
 
     # A simple function to use requests.post to make the API call. Note the json= section.
