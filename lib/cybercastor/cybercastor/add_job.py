@@ -11,7 +11,7 @@ import inquirer
 from termcolor import colored
 from rsxml import Logger, dotenv, safe_makedirs
 
-from cybercastor.classes.CybercastorAPI import CybercastorAPI
+from cybercastor import CybercastorAPI
 from cybercastor.lib.monitor import print_job, possible_states
 from cybercastor.lib.cloudwatch import download_job_logs
 from cybercastor.lib.rs_project_finder import find_upstream_projects
@@ -95,7 +95,7 @@ def get_params(job_obj):
     return params
 
 
-def main(job_json_dir, stage) -> bool:
+def main(cc_api: CybercastorAPI, job_json_dir) -> bool:
     """_summary_
 
     Args:
@@ -111,11 +111,6 @@ def main(job_json_dir, stage) -> bool:
         bool: _description_
     """
     log = Logger('AddJob')
-
-    # Initialize our API and log in right away to get it out of the way
-    # This will pop open a browser window
-    cc_api = CybercastorAPI(stage=stage)
-    cc_api.refresh_token()
 
     job_choices = {}
     repeat = False
@@ -254,8 +249,7 @@ def main(job_json_dir, stage) -> bool:
             break
 
         elif menu_choice == 'download_logs':
-            download_job_logs(job_monitor, monitor_logs_path,
-                              stage, download_running=True)
+            download_job_logs(job_monitor, monitor_logs_path, cc_api.stage, download_running=True)
             log.info('DONE!')
             time.sleep(3)
         elif menu_choice == 'task_manage':
@@ -322,18 +316,16 @@ def manage_tasks(cc_api: CybercastorAPI, job_id):
             inquirer.Checkbox('tasks',
                               message=f"Which tasks to {op_text}? <space> to select. <enter> to approve",
                               choices=[
-                                  (colored(f"{t['name']} ({t['status']})", possible_states[t['status']]), t)
-                                  for t in ts[dict_key]
-                              ]
-                              )
+                                  (colored(f"{t['name']} ({t['status']})", possible_states[t['status']]), t) for t in ts[dict_key]
+                              ])
         ]
         answers = inquirer.prompt(questions)['tasks']
-        if (len(answers) == 0) or not inquirer.confirm('This will restart {} tasks:'.format(len(answers))):
+        if (len(answers) == 0) or not inquirer.confirm(f'This will restart {len(answers)} tasks:'):
             return
         return change_task_status(cc_api, job_id, answers, op)
 
     # Affected all tasks of a certain type
-    elif menu_choice in change_state.keys():
+    elif menu_choice in change_state:
         if 'restart' in menu_choice:
             op_text = 'restart'
             op = VALID_OPS['START']
@@ -407,9 +399,10 @@ if __name__ == '__main__':
     outerlog.title('Cybercastor Add JOB')
 
     try:
-        RETRY = True
-        while RETRY is True:
-            RETRY = main(args.job_json, args.stage)
+        with CybercastorAPI(stage=args.stage) as api:
+            RETRY = True
+            while RETRY is True:
+                RETRY = main(api, args.job_json)
 
     except Exception as e:
         outerlog.error(e)

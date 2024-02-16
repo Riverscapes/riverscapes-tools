@@ -8,12 +8,12 @@ import sqlite3
 # import json
 from datetime import date
 # import requests
-# from cybercastor.classes.CybercastorAPI import CybercastorAPI
-from rscommons import Logger, dotenv
-# from rscommons.util import safe_makedirs
+# from cybercastor import CybercastorAPI
+from rsxml import Logger, dotenv
+# from rsxml import safe_makedirs
 
 
-def dump_geom(sqlite_db_path, geom_template_db):
+def dump_geom(sqlite_db_path: str, geom_template_db: str):
     """ DUmp all projects to a DB
 
     Args:
@@ -89,11 +89,11 @@ if __name__ == '__main__':
     today_date = date.today().strftime("%d-%m-%Y")
 
     # No way to separate out production from staging in cybercastor.
-    sqlite_db_path = os.path.join(args.output_db_path, f'production_{today_date}.gpkg')
+    sqlite_db_path_input = os.path.join(args.output_db_path, f'production_{today_date}.gpkg')
 
     # Initiate the log file
     mainlog = Logger("SQLite DB GEOMETRY Dump")
-    mainlog.setup(logPath=os.path.join(sqlite_db_path, "dump_geometry.log"), verbose=args.verbose)
+    mainlog.setup(logPath=os.path.join(sqlite_db_path_input, "dump_geometry.log"), verbose=args.verbose)
 
     try:
         dump_geom(args.output_db_path, args.template_db_path)

@@ -8,23 +8,19 @@ import sqlite3
 import json
 from datetime import date
 import requests
-from rscommons import Logger, dotenv
-from cybercastor.classes.CybercastorAPI import CybercastorAPI
+from rsxml import Logger, dotenv
+from cybercastor import CybercastorAPI
 
 
-def dump_cybercastor(db_path, cc_api_url, username, password, stage):
+def dump_cybercastor(cc_api: CybercastorAPI, db_path: str):
     """ DUmp all projects to a DB
 
     Args:
         output_folder ([type]): [description]
     """
-    raise NotImplementedError("This function is not ready for the new cybercastor API.  It needs to be updated.")
 
     log = Logger('DUMP Cybercastor to SQlite')
     log.title('Dump Cybercastor to SQLITE')
-
-    # Initialize CC API and log in
-    ccAPI = CybercastorAPI(cc_api_url, username, password)
 
     # Connect to the DB and ensure foreign keys are enabled so that cascading deletes work
     conn = sqlite3.connect(db_path)
@@ -75,7 +71,7 @@ def dump_cybercastor(db_path, cc_api_url, username, password, stage):
         log.info(f"Getting page {page} of projects")
         page += 1
         # Get all project
-        result = ccAPI.run_query(ccAPI.load_query('GetProfile'), {
+        result = cc_api.run_query(cc_api.load_query('GetProfile'), {
             'jobNextToken': job_next_token,
         })
         if 'nextToken' in result:
@@ -92,7 +88,7 @@ def dump_cybercastor(db_path, cc_api_url, username, password, stage):
             if 'RS_API_URL' not in job_env:
                 continue
             is_staging = 'staging' in job_env['RS_API_URL']
-            if stage == 'staging' and not is_staging or stage == 'production' and is_staging:
+            if cc_api.stage == 'staging' and not is_staging or cc_api.stage == 'production' and is_staging:
                 continue
 
             insert_sql = """
@@ -161,9 +157,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # parser.add_argument('hucs_json', help='JSON with array of HUCS', type=str)
     parser.add_argument('output_db_path', help='The final resting place of the SQLITE DB', type=str)
-    parser.add_argument('api_url', help='URL to the cybercastor API', type=str)
-    parser.add_argument('username', help='API URL Username', type=str)
-    parser.add_argument('password', help='API URL Password', type=str)
     parser.add_argument('stage', help='URL to the cybercastor API', type=str, default='production')
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
     args = dotenv.parse_args_env(parser)
@@ -181,7 +174,8 @@ if __name__ == '__main__':
     sqlite_db_path = os.path.join(args.output_db_path, f'production_{today_date}.gpkg')
 
     try:
-        dump_cybercastor(sqlite_db_path, fixedurl, args.username, args.password, args.stage)
+        with CybercastorAPI(fixedurl) as api:
+            dump_cybercastor(api, sqlite_db_path)
 
     except Exception as e:
         mainlog.error(e)

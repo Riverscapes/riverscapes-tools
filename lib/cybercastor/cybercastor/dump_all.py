@@ -5,14 +5,15 @@ import os
 import traceback
 import argparse
 import sqlite3
-from rscommons import Logger, dotenv
+from rsxml import Logger, dotenv
 # from cybercastor.lib.dump.dump_cybercastor import dump_cybercastor
+from cybercastor import RiverscapesAPI, CybercastorAPI
 from cybercastor.lib.dump.dump_geom import dump_geom
 from cybercastor.lib.dump.dump_riverscapes import dump_riverscapes
 # from cybercastor.lib.dump.dump_views import dump_views
 
-
-def dump_all(sqlite_db_dir, cc_stage, template_geom, rs_stage):
+# rs_api, cc_api, args.output_db_path, args.template_geom
+def dump_all(rs_api: RiverscapesAPI, cc_api: CybercastorAPI, sqlite_db_dir: str, template_geom):
     """_summary_
 
     Args:
@@ -29,7 +30,7 @@ def dump_all(sqlite_db_dir, cc_stage, template_geom, rs_stage):
         log.error(f'The GeoPackge with HUC geoemtry does not exist: {template_geom}')
         raise Exception(f'The GeoPackge with HUC geoemtry does not exist: {template_geom}')
 
-    sqlite_db_path = os.path.join(sqlite_db_dir, f'DataExchange_{rs_stage}.gpkg')
+    sqlite_db_path = os.path.join(sqlite_db_dir, f'DataExchange_{rs_api.stage}.gpkg')
 
     # if os.path.exists(sqlite_db_path):
     #     os.remove(sqlite_db_path)
@@ -46,7 +47,7 @@ def dump_all(sqlite_db_dir, cc_stage, template_geom, rs_stage):
     # Then add the cybercastor data
     # dump_cybercastor(sqlite_db_path, cc_stage, stage)
     # Then add the riverscapes data (authentication will be a browser popup)
-    dump_riverscapes(sqlite_db_path, rs_stage)
+    dump_riverscapes(rs_api, sqlite_db_path)
     # # Then write any additional views
     # dump_views(sqlite_db_path)
 
@@ -96,7 +97,8 @@ if __name__ == '__main__':
                                        "dump_sqlite.log"), verbose=args.verbose)
 
     try:
-        dump_all(args.output_db_path, args.cc_stage, args.template_geom, args.rs_stage)
+        with RiverscapesAPI(stage=args.rs_stage) as rs_api, CybercastorAPI(stage=args.cc_stage) as cc_api:
+            dump_all(rs_api, cc_api, args.output_db_path, args.template_geom)
 
     except Exception as e:
         logmain.error(e)

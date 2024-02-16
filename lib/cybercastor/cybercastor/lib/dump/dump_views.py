@@ -6,8 +6,8 @@ import traceback
 import argparse
 import sqlite3
 # from datetime import date
-from rscommons import Logger, dotenv
-# from rscommons.util import safe_makedirs
+from rsxml import Logger, dotenv
+# from rsxml import safe_makedirs
 
 
 def dump_views(sqlite_db_path):

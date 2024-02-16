@@ -8,8 +8,8 @@ import time
 import inquirer
 from termcolor import colored
 import requests
-from rscommons import Logger
-from cybercastor.classes.RiverscapesAPI import RiverscapesAPI
+from rsxml import Logger
+from cybercastor import RiverscapesAPI
 
 
 def string_same(label: str, local_obj: Dict[str, str], remote_obj: Dict[str, str]) -> bool:

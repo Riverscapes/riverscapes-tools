@@ -46,17 +46,34 @@ class CybercastorAPI:
 
     def __init__(self, stage: str, machineAuth: Dict[str, str] = None, devHeaders: Dict[str, str] = None):
         self.log = Logger('API')
+        if not stage:
+            raise Exception("You must specify a stage for the API: 'PRODUCTION' or 'STAGING'")
         self.machineAuth = machineAuth
         self.devHeaders = devHeaders
         self.accessToken = None
         self.tokenTimeout = None
 
-        if not stage or stage.upper() == 'PRODUCTION':
+        if stage.upper() == 'PRODUCTION':
             self.uri = 'https://api.cybercastor.riverscapes.net'
+            self.stage = 'PRODUCTION'
         elif stage.upper() == 'STAGING':
             self.uri = 'https://api.cybercastor.riverscapes.net/staging'
+            self.stage = 'STAGING'
         else:
             raise Exception(f'Unknown stage: {stage}')
+
+
+    def __enter__(self) -> 'CybercastorAPI':
+        """ Allows us to use this class as a context manager
+        """
+        self.refresh_token()
+        return self
+
+    def __exit__(self, _type, _value, _traceback):
+        """Behaviour on close when using the "with RiverscapesAPI():" Syntax
+        """
+        # Make sure to shut down the token poll event so the process can exit normally
+        self.shutdown()
 
     def _generate_challenge(self, code: str) -> str:
         return self._base64URL(hashlib.sha256(code.encode('utf-8')).digest())
@@ -88,6 +105,7 @@ class CybercastorAPI:
         self.log.debug("Shutting down Riverscapes API")
         if self.tokenTimeout:
             self.tokenTimeout.cancel()
+
 
     def get_job_paginated(self, job_id):
         """Get the current job and all tasks associated with it (paginate through until you have them all)

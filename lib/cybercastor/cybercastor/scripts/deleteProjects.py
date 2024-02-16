@@ -9,14 +9,12 @@ import inquirer
 from cybercastor import RiverscapesAPI, RiverscapesSearchParams, RiverscapesProject
 
 
-def delete_by_tags():
+def delete_by_tags(riverscapes_api: RiverscapesAPI):
     """ Delete all projects with certain tag(s)
 
-    Args:
-        stage (str): The server to run the script on
-        filedir (str): The directory to save the log file
-        proj_type (str): The project type to search for
-        tag (str): The tag to add to the projects
+    To run this file in VSCode choose "Python: Current File (Cybercastor)" from the command palette
+
+
     """
     log = Logger('AddTag')
     log.title('Add tag to Projects from the server')
@@ -24,12 +22,11 @@ def delete_by_tags():
     # First gather everything we need to make a search
     # ================================================================================================================
 
+    # Load the search params from a JSON file so we don't have to hardcode them
     search_params = RiverscapesSearchParams.load_from_json(os.path.join(os.path.dirname(__file__), '..', '..', 'inputs', 'add_tags_search.json'))
 
     default_dir = os.path.join(os.path.expanduser("~"), 'RSTagging')
     out_questions = [
-        # Also get if this is production or staging (default production)
-        inquirer.List('stage', message="Which Data Exchange stage?", choices=['production', 'staging'], default='production'),
         inquirer.Text('logdir', message="Where do you want to save the log files?", default=default_dir),
         inquirer.Text('tags', message="Comma-separated tags", default='zzzz,abc')
     ]
@@ -38,14 +35,10 @@ def delete_by_tags():
     safe_makedirs(logdir)
 
     tags = [x.strip() for x in out_answers['tags'].split(',')]
-    stage = out_answers['stage']
     filedir = out_answers['filedir']
 
     # Make the search and collect all the data
     # ================================================================================================================
-
-    riverscapes_api = RiverscapesAPI(stage=stage)
-    riverscapes_api.refresh_token()
 
     deletable_projects: List[RiverscapesProject] = []
 
@@ -54,15 +47,16 @@ def delete_by_tags():
         deletable_projects.append(project)
 
     # Now write all projects to a log file as json
-    logpath = os.path.join(filedir, f'delete_by_tag_{stage}_{"-".join(tags)}')
+    logpath = os.path.join(filedir, f'delete_by_tag_{riverscapes_api.stage}_{"-".join(tags)}')
     with open(logpath, 'w', encoding='utf8') as fobj:
-        fobj.write(json.dumps([x.json for x in deletable_projects]))
+        fobj.write(json.dumps([x.json for x in deletable_projects], indent=2))
 
     # Now ask if we're sure and then run mutations on all these projects
     # ================================================================================================================
 
     # Ask the user to confirm using inquirer
     log.info(f"Found {len(deletable_projects)} out of {total} projects to delete")
+    log.warning(f"Please review the summary of the affected projects in the log file at {logpath} before proceeding!")
     questions = [
         inquirer.Confirm('confirm1', message="Are you sure you want to PERMANENTLY DELETE the projects?"),
     ]
@@ -92,4 +86,5 @@ def delete_by_tags():
 
 
 if __name__ == '__main__':
-    delete_by_tags()
+    with RiverscapesAPI() as api:
+        delete_by_tags(api)
