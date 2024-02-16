@@ -5,7 +5,8 @@ import os
 import json
 import argparse
 
-job_types = ['rs_context', 'channel', 'taudem', 'rs_context_channel_taudem', 'vbet', 'rcat', 'rme', 'anthro']
+job_types = ['rs_context', 'channel', 'taudem', 'rs_context_channel_taudem', 'vbet', 'brat', 'rcat', 'rme', 'anthro']
+org_ids = {'BLM Riverscapes': '5d5bcccc-6632-4054-85f1-19501a6b3cdf'}
 
 
 # create a job file
@@ -66,7 +67,7 @@ if __name__ == "__main__":
     parser.add_argument('job_type', type=str, help='type of job')
     parser.add_argument('hucs', type=str, help='hucs to run the job on')
     parser.add_argument('tags', type=str, help='tags for the job')
-    parser.add_argument('org_id', type=str, help='orginization id for the job')
+    parser.add_argument('organization', type=str, help='orginization id for the job')
     parser.add_argument('--description', type=str, help='description of the job')
     parser.add_argument('--visibility', type=str, help='visibility of the job', default='PUBLIC')
     parser.add_argument('--server', type=str, help='server to run the job on', default='PRODUCTION')
@@ -74,12 +75,17 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # some string manipulation for the big run
-    job_name_outer = f'{args.job_type.upper()} {args.server.capitalize()} {args.huc_group}'
-    meta_outer = {"PROCESSING_GROUP": str(args.huc_group), "INITIATIVE": "NRCS,CEAP"}
-    # meta = None
-    description_outer = f"{args.job_type.upper()} run for {args.server.lower()} using all huc10s in {args.huc_group}"
-    # description = args.description
+    jobs = [args.job_type] if args.job_type != "all tools (as individual jobs)" else ['rs_context_channel_taudem', 'vbet', 'brat', 'anthro', 'rcat', 'rs_metric_engine']
 
-    # create the job file
-    create_job_file(job_name_outer, args.job_type, args.hucs, args.tags, args.org_id, args.visibility, args.server, description_outer, meta_outer)
+    for job in jobs:
+        # some string manipulation for the big run
+        job_name = f'{job.upper()} {args.server.capitalize()} {args.huc_group}'
+        meta = {"PROCESSING_GROUP": str(args.huc_group), "INITIATIVE": "NRCS,CEAP"}
+        # meta = None
+        description = f"{job.upper()} run for {args.server.lower()} using all huc10s in {args.huc_group}"
+        # description = args.description
+
+        org_id = org_ids[args.organization]
+
+        # create the job file
+        create_job_file(job_name, job, args.hucs, args.tags, org_id, args.visibility, args.server, description, meta)

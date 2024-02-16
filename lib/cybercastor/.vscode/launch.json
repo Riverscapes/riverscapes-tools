@@ -35,9 +35,18 @@
         "rs_context_channel_taudem",
         "vbet",
         "rcat",
-        "rme",
+        "rs_metric_engine",
         "anthro",
-        "brat"
+        "brat",
+        "all tools (as individual jobs)"
+      ],
+    },
+    {
+      "type": "pickString",
+      "id": "ORGANIZATION",
+      "description": "Which organization?",
+      "options": [
+        "BLM Riverscapes"
       ],
     },
     {
@@ -52,12 +61,12 @@
       "description": "What Tags?",
       "default": "CyberCastor,NRCS,CEAP"
     },
-    {
-      "type": "promptString",
-      "id": "ORGANIZATION",
-      "description": "What Organization?",
-      "default": "a52b8094-7a1d-4171-955c-ad30ae935296"
-    },
+    // {
+    //   "type": "promptString",
+    //   "id": "ORGANIZATION",
+    //   "description": "What Organization?",
+    //   "default": "a52b8094-7a1d-4171-955c-ad30ae935296"
+    // },
     {
       "type": "promptString",
       "id": "HUCs",
