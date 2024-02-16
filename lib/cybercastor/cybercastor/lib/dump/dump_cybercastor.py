@@ -88,8 +88,8 @@ def dump_cybercastor(cc_api: CybercastorAPI, db_path: str):
             if 'RS_API_URL' not in job_env:
                 continue
             is_staging = 'staging' in job_env['RS_API_URL']
-            if cc_api.stage == 'staging' and not is_staging or cc_api.stage == 'production' and is_staging:
-                continue
+            # if rs_stage == 'staging' and not is_staging or rs_stage == 'production' and is_staging:
+            #     continue
 
             insert_sql = """
                 INSERT INTO cc_jobs (
@@ -157,12 +157,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # parser.add_argument('hucs_json', help='JSON with array of HUCS', type=str)
     parser.add_argument('output_db_path', help='The final resting place of the SQLITE DB', type=str)
-    parser.add_argument('stage', help='URL to the cybercastor API', type=str, default='production')
+    parser.add_argument('cc_stage', help='The Cybercastor stage', type=str, default='production')
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
     args = dotenv.parse_args_env(parser)
-
-    # Stupid slash parsing
-    fixedurl = args.api_url.replace(':/', '://')
 
     # Initiate the log file
     mainlog = Logger("Cybercastor DB Dump")
@@ -174,7 +171,7 @@ if __name__ == '__main__':
     sqlite_db_path = os.path.join(args.output_db_path, f'production_{today_date}.gpkg')
 
     try:
-        with CybercastorAPI(fixedurl) as api:
+        with CybercastorAPI(stage=args.cc_stage) as api:
             dump_cybercastor(api, sqlite_db_path)
 
     except Exception as e:

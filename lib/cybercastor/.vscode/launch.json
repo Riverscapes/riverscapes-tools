@@ -164,7 +164,7 @@
       ]
     },
     {
-      "name": "EXPERIMENTAL Merge Projects",
+      "name": "📦 Merge Projects",
       "type": "debugpy",
       "request": "launch",
       "module": "cybercastor.merge-projects",
@@ -172,12 +172,7 @@
       "console": "integratedTerminal",
       "envFile": "${workspaceFolder}/.env",
       "args": [
-        "production",
         "{env:DATA_ROOT}/merge-projects",
-        "vbet",
-        "223c7eb2-6c39-437f-8421-428e113126ae",
-        "Blackfoot River Merged VBET",
-        "merge_vbet"
       ]
     },
 

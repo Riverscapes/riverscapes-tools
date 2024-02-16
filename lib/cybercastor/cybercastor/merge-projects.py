@@ -5,11 +5,14 @@ from typing import Dict, Tuple
 from datetime import datetime
 import sys
 import os
+import logging
 import subprocess
 import json
 import argparse
 import xml.etree.ElementTree as ET
 from osgeo import gdal, ogr
+import inquirer
+from rsxml import dotenv, Logger, safe_makedirs
 from rsxml.project_xml import (
     Project,
     MetaData,
@@ -18,12 +21,11 @@ from rsxml.project_xml import (
     Coords,
     BoundingBox,
 )
-from rsxml import dotenv, Logger, safe_makedirs
 from rscommons import Raster
 from cybercastor import RiverscapesAPI, RiverscapesProject, RiverscapesSearchParams
 
 
-def merge_projects(projects_lookup: Dict[str, RiverscapesProject], merged_dir: str, name: str, project_type: str, collection_id: str) -> None:
+def merge_projects(projects_lookup: Dict[str, RiverscapesProject], merged_dir: str, name: str, project_type: str, collection_id: str, rs_stage: str) -> None:
     """
     Merge the projects in the projects_lookup dictionary into a single project
     """
@@ -40,7 +42,7 @@ def merge_projects(projects_lookup: Dict[str, RiverscapesProject], merged_dir: s
 
         project_xml = os.path.join(proj_path, 'project.rs.xml')
         if project_xml is None:
-            print(f'Skipping project with no project.rs.xml file {project["id"]}')
+            log.warning(f'Skipping project with no project.rs.xml file {project["id"]}')
             continue
         first_project_xml = project_xml
 
@@ -68,7 +70,7 @@ def merge_projects(projects_lookup: Dict[str, RiverscapesProject], merged_dir: s
     bounding_box = BoundingBox(bounding_rect[0], bounding_rect[2], bounding_rect[1], bounding_rect[3])
     merge_project.bounds = ProjectBounds(coords, bounding_box, os.path.basename(output_bounds_path))
 
-    project_urls = [f'https://data.riverscapes.net/p/{project.id}' for proj_path, project in projects_lookup.items()]
+    project_urls = [f'https://{"staging." if rs_stage == "STAGING" else ""}data.riverscapes.net/p/{project.id}' for proj_path, project in projects_lookup.items()]
 
     merge_project.meta_data = MetaData([Meta('projects', json.dumps(project_urls), 'json', None)])
     merge_project.meta_data.add_meta('Date Created', str(datetime.now().isoformat()), meta_type='isodate', ext=None)
@@ -79,6 +81,7 @@ def merge_projects(projects_lookup: Dict[str, RiverscapesProject], merged_dir: s
     merge_project.write(merged_project_xml)
     replace_log_file(merged_project_xml)
     delete_unmerged_paths(merged_project_xml)
+    log.info(f'Merged project.rs.xml file written to {merged_project_xml}')
 
 
 def delete_unmerged_paths(merged_project_xml):
@@ -275,7 +278,8 @@ def process_vectors(master_project: Dict, output_dir: str) -> None:
 
                 # -nlt {geometry_type}
                 input_gpkg_file = input_gpkg['path']
-                cmd = f'ogr2ogr -f GPKG -makevalid -append  -nln {feature_class} {output_gpkg_file} {input_gpkg_file} {feature_class}'
+                cmd = f'ogr2ogr -f GPKG -makevalid -append  -nln {feature_class} "{output_gpkg_file}" "{input_gpkg_file}" {feature_class}'
+                log.debug(f'EXECUTING: {cmd}')
                 subprocess.call([cmd], shell=True, cwd=output_gpkg_dir)
 
 
@@ -292,19 +296,19 @@ def process_rasters(master_project: Dict, output_dir: str) -> None:
     for raster_info in master_project.values():
         log.info(f'Merging {len(raster_info["occurences"])} {raster_info["name"]} rasters.')
 
-        raster_path = os.path.join(output_dir, raster_info['path'])
-        safe_makedirs(os.path.dirname(raster_path))
+        output_raster_path = os.path.join(output_dir, raster_info['path'])
+        safe_makedirs(os.path.dirname(output_raster_path))
 
         raster = Raster(raster_info['occurences'][0]['path'])
         integer_raster_enums = [gdal.GDT_Byte, gdal.GDT_UInt16, gdal.GDT_UInt32, gdal.GDT_Int16, gdal.GDT_Int32]
         compression = f'COMPRESS={"DEFLATE" if raster.dataType in integer_raster_enums else "LZW" }'
         no_data = f'-a_nodata {raster.nodata}' if raster.nodata is not None else ''
 
-        input_rasters = [rp['path'] for rp in raster_info['occurences']]
+        input_rasters = [f"\"{rp['path']}\"" for rp in raster_info['occurences']]
 
-        params = ['gdal_merge.py', '-o', raster_path, '-co', compression, no_data] + input_rasters
-        print(params)
+        params = ['gdal_merge.py', '-o', f'"{output_raster_path}"', '-co', compression, no_data] + input_rasters
         params_flat = ' '.join(params)
+        log.debug(f'EXECUTING: {params_flat}')
         subprocess.call(params_flat, shell=True)
 
 
@@ -333,42 +337,50 @@ def main():
     """
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('environment', help='Riverscapes stage', type=str, default='production')
     parser.add_argument('working_folder', help='top level folder for downloads and output', type=str)
-    parser.add_argument('project_type', help='project type', type=str)
-    parser.add_argument('collection_id', help='ID of the collection containing the projects', type=str)
-    parser.add_argument('name', help='Output project name', type=str)
-    parser.add_argument('merged_folder', help='Subfolder inside working folder where output will be stored', type=str)
     args = dotenv.parse_args_env(parser)
 
-    # This is the folder where the merged project will be created
-    merged_folder = os.path.join(args.working_folder, args.merged_folder)
+    with RiverscapesAPI() as api:
+        project_types = api.get_project_types()
+        questions = [
+            inquirer.Text('collection_id', message="Enter a valid Collection ID", default="223c7eb2-6c39-437f-8421-428e113126ae"),
+            inquirer.Text('output_name', message="Enter the name for this project", default="Blackfoot River Merged VBET"),
+            # Choose a project type from a list of available project types
+            inquirer.List('project_type', message="Choose a project type", choices=project_types.keys(), default='VBET'),
+        ]
+        answers = inquirer.prompt(questions)
 
-    log = Logger('Setup')
-    log.setup(logPath=os.path.join(merged_folder, 'merge-projects.log'))
+        # Set up some reasonable folders to store things
+        working_folder = os.path.join(args.working_folder, f"MERGE_{answers['project_type']}_{answers['output_name']}")
+        download_folder = os.path.join(working_folder, 'downloads')
+        merged_folder = os.path.join(working_folder, 'merged')
 
-    riverscapes_api = RiverscapesAPI(stage=args.environment)
-    riverscapes_api.refresh_token()
+        safe_makedirs(merged_folder)
+        log = Logger('Setup')
+        # Put the log in the merged folder so it gets uploaded with the project
+        log.setup(log_path=os.path.join(merged_folder, 'merge-projects.log'), log_level=logging.DEBUG)
 
-    search_params = RiverscapesSearchParams({
-        'collection':  args.collection_id,
-        'projectTypeId': args.project_type,
-    })
+        # First, find the projects to merge using the Riverscapes API search
+        search_params = RiverscapesSearchParams({
+            'collection':  answers['collection_id'],
+            'projectTypeId': answers['project_type'],
+        })
 
-    projects_lookup: Dict[str, RiverscapesProject] = {}
-    for project, _stats, search_total in riverscapes_api.search(search_params, progress_bar=True):
-        if len(search_total) < 2:
-            log.error(f'Insufficient number of projects ({len(search_total)}) found with type {args.project_type} and tags {args.project_tags}. 2 or more needed.')
-            sys.exit(1)
+        projects_lookup: Dict[str, RiverscapesProject] = {}
+        for project, _stats, search_total in api.search(search_params, progress_bar=True):
+            if search_total < 2:
+                log.error(f'Insufficient number of projects ({search_total}) found with type {args.project_type} and tags {args.project_tags}. 2 or more needed.')
+                sys.exit(1)
 
-        download_path = os.path.join(args.working_folder, project.id)
-        riverscapes_api.download_files(project.id, args.working_folder)
-        projects_lookup[download_path] = project
+            download_path = os.path.join(download_folder, project.id)
+            api.download_files(project.id, download_path)
+            projects_lookup[download_path] = project
 
-    # Remember to shutdown the API client
-    riverscapes_api.shutdown()
+            # TODO: DEBUGGING ONLY REMOVE ME IMMEDIATELY
+            if len(projects_lookup) > 3:
+                break
 
-    merge_projects(projects_lookup, merged_folder, args.name, args.project_type, args.collection_id)
+        merge_projects(projects_lookup, merged_folder, answers['output_name'], answers['project_type'], answers['collection_id'], api.stage)
 
     log.info('Process complete')
 

@@ -31,7 +31,7 @@ def download_job_logs(job, outdir: str, stage: str, download_running=False):
         download_running (bool, optional): _description_. Defaults to False.
     """
     # Get some safe names for the log output
-    job_dir_name = "{}_{}".format(re.sub("[^\w]", "_", job['name']), job['id'])
+    job_dir_name = "{}_{}".format(re.sub(r"[^\w]", "_", job['name']), job['id'])
     job_dir = os.path.join(outdir, job_dir_name)
 
     # Clean the directory to put logs into

@@ -16,7 +16,7 @@ import semver
 from termcolor import colored
 from dateutil.parser import parse as dateparse
 from osgeo import ogr, osr
-from rsxml import safe_makedirs, dotenv
+from rsxml import safe_makedirs, dotenv, Logger
 from rsxml.project_xml import GeopackageLayer
 from rscommons import ShapefileLayer
 from cybercastor import RiverscapesAPI
@@ -95,6 +95,7 @@ lookups = {
 
 def scrape_projects(stage, hucs, output_db, reset):
     """[summary]"""
+    log = Logger('ScrapeProjects')
 
     # Update the HUCs that are required
     hucs_to_process = update_all_hucs_status(output_db, hucs, reset)
@@ -102,12 +103,7 @@ def scrape_projects(stage, hucs, output_db, reset):
     riverscapes_api = RiverscapesAPI(stage=stage)
     riverscapes_api.refresh_token()
 
-    queries = {
-        'datasets': riverscapes_api.load_query('projectDatasets')
-    }
-    # search_query = riverscapes_api.load_query('searchProjects')
-    # project_files_query = riverscapes_api.load_query('projectFiles')
-    # project_datasets_query = riverscapes_api.load_query('projectDatasets')
+    ds_qry = riverscapes_api.load_query('projectDatasets')
 
     count = 0
     queued_hucs = True
@@ -120,8 +116,7 @@ def scrape_projects(stage, hucs, output_db, reset):
 
         count += 1
         print(f'Processing HUC {huc} ({count} of {hucs_to_process})')
-        latest_project = get_projects(
-            riverscapes_api, queries['projects'], 'rs_metric_engine', huc)
+        latest_project = get_projects(riverscapes_api, queries['projects'], 'rs_metric_engine', huc)
         if latest_project is None:
             update_huc_status(output_db, huc, 'no project')
             continue
@@ -157,7 +152,8 @@ def scrape_projects(stage, hucs, output_db, reset):
 
             update_project_status(output_db, project_id, 'complete')
         except Exception as ex:
-            print('Error processing project')
+            log.error('Error processing project')
+            log.error(ex)
             update_project_status(output_db, project_id, 'error')
 
     print('Processing complete')
@@ -393,6 +389,14 @@ def process_igos(vbet_output_gpkg, scrape_output_gpkg, project_id: int, huc10: s
 
 
 def process_dgos(vbet_intermediate_gpkg: str, scrape_output_gpkg: str, project_id: int, huc10: str) -> None:
+    """_summary_
+
+    Args:
+        vbet_intermediate_gpkg (str): _description_
+        scrape_output_gpkg (str): _description_
+        project_id (int): _description_
+        huc10 (str): _description_
+    """
 
     with sqlite3.connect(scrape_output_gpkg) as conn:
         curs = conn.cursor()
@@ -414,7 +418,7 @@ def process_dgos(vbet_intermediate_gpkg: str, scrape_output_gpkg: str, project_i
         conn.commit()
 
 
-def get_model_version(project):
+def get_model_version(project: RiverscapesProject):
     for meta_item in project['meta']:
         if meta_item['key'].replace(' ', '').lower() == 'modelversion':
             return meta_item['value']
@@ -644,13 +648,10 @@ def build_output(output_gpkg: str, huc10_path: str, hucs: list, huc_attributes: 
         #     primary key (dgo_id, measurement_id)
         # )""")
 
-        conn.execute(
-            f'CREATE TABLE dgos (dgo_id integer not null primary key, {",".join(dgo_field_list)})')
+        conn.execute( f'CREATE TABLE dgos (dgo_id integer not null primary key, {",".join(dgo_field_list)})')
         conn.execute('ALTER TABLE dgos ADD COLUMN project_id INTEGER')
-        conn.execute(
-            'CREATE INDEX pk_vbet_dgos ON dgos (HUC10, level_path, seg_distance)')
-        conn.execute(
-            'CREATE INDEX vbet_dgos_project_id_idx ON dgos (project_id)')
+        conn.execute('CREATE INDEX pk_vbet_dgos ON dgos (HUC10, level_path, seg_distance)')
+        conn.execute('CREATE INDEX vbet_dgos_project_id_idx ON dgos (project_id)')
 
         # conn.execute('ALTER TABLE dgos ADD COLUMN FCode TEXT')
 
@@ -663,8 +664,7 @@ def build_output(output_gpkg: str, huc10_path: str, hucs: list, huc_attributes: 
         # Create table to track projects
         conn.execute('CREATE TABLE projects (id INTEGER PRIMARY KEY, guid TEXT NOT NULL, huc10 TEXT, project_type TEXT, model_version TEXT, status TEXT, metadata TEXT)')
         conn.execute('CREATE INDEX projects_huc10_idx ON projects (huc10)')
-        conn.execute(
-            'CREATE UNIQUE INDEX projects_guid_idx ON projects (guid)')
+        conn.execute('CREATE UNIQUE INDEX projects_guid_idx ON projects (guid)')
 
         # Triggers need to be off for the updates to feature class
         triggers = drop_triggers(conn)
@@ -675,16 +675,14 @@ def build_output(output_gpkg: str, huc10_path: str, hucs: list, huc_attributes: 
         with open(huc_attributes, encoding='utf8') as fhuc:
             huc_json = json.load(fhuc)
             for huc in huc_json:
-                conn.execute('UPDATE hucs SET name = ?, states = ?, areasqkm = ? WHERE huc10 = ?', [
-                             huc['NAME'], huc['STATES'], huc['AREASQKM'], huc['HUC10']])
+                conn.execute('UPDATE hucs SET name = ?, states = ?, areasqkm = ? WHERE huc10 = ?', [huc['NAME'], huc['STATES'], huc['AREASQKM'], huc['HUC10']])
 
         # Update which HUCs are required
         if len(hucs) < 1:
             conn.execute("UPDATE hucs SET status = 'queued'")
         else:
             conn.execute('UPDATE hucs SET status = NULL')
-            conn.execute(
-                f"UPDATE hucs SET status = 'queued' WHERE huc10 IN ({','.join(['?'] * len(hucs))})", hucs)
+            conn.execute(f"UPDATE hucs SET status = 'queued' WHERE huc10 IN ({','.join(['?'] * len(hucs))})", hucs)
 
         add_triggers(conn, triggers)
         conn.commit()
@@ -694,8 +692,7 @@ def drop_triggers(conn: sqlite3.Connection) -> None:
     """Drop all triggers from the database"""
 
     curs = conn.cursor()
-    curs.execute(
-        "SELECT type, name, tbl_name, rootpage, sql FROM sqlite_master WHERE type='trigger'")
+    curs.execute("SELECT type, name, tbl_name, rootpage, sql FROM sqlite_master WHERE type='trigger'")
     triggers = curs.fetchall()
     for trigger in triggers:
         curs.execute(f'DROP TRIGGER {trigger[1]}')
