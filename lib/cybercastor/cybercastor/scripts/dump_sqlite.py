@@ -3,12 +3,12 @@ import argparse
 import time
 import os
 import sys
-from termcolor import cprint
 from datetime import datetime
 import json
+from termcolor import cprint
 from rscommons import Logger, dotenv
 from cybercastor.lib.monitor import print_job
-from cybercastor.classes.CybercastorAPI import CybercastorAPI
+from cybercastor import CybercastorAPI
 from cybercastor.lib.cloudwatch import download_job_logs
 
 
@@ -25,15 +25,15 @@ def get_job_diff(old, new):
     old_tasks = {t['id']: t for t in old['tasks']['items']}
     new_tasks = {t['id']: t for t in new['tasks']['items']}
     status_change = {}
-    for id, task in old_tasks.items():
-        if id in new_tasks:
-            if (new_tasks[id]['status'] != task['status']):
-                status_change[id] = {
+    for tid, task in old_tasks.items():
+        if tid in new_tasks:
+            if (new_tasks[tid]['status'] != task['status']):
+                status_change[tid] = {
                     "task": task,
-                    "status": (task['status'], new_tasks[id]['status'])
+                    "status": (task['status'], new_tasks[tid]['status'])
                 }
         else:
-            status_change[id] = {
+            status_change[tid] = {
                 "task": task,
                 "status": (task['status'], None)
             }
@@ -42,6 +42,12 @@ def get_job_diff(old, new):
 
 
 def main(cc_stage: str, download_running):
+    """_summary_
+
+    Args:
+        cc_stage (str): _description_
+        download_running (_type_): _description_
+    """
 
     # Initialize our API and log in
     cc_api = CybercastorAPI(stage=cc_stage)
@@ -56,7 +62,7 @@ def main(cc_stage: str, download_running):
     monitor_json_path = os.path.join(os.path.dirname(__file__), 'monitor.output.json')
     monitor_logs_path = os.path.join(os.path.dirname(__file__), 'logs')
     if os.path.isfile(monitor_json_path):
-        with open(monitor_json_path) as f:
+        with open(monitor_json_path, 'r', encoding='utf8') as f:
             monitor_json = json.load(f)
     known_jobs = list(monitor_json.keys())
 

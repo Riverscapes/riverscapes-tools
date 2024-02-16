@@ -9,7 +9,7 @@ from rsxml import Logger, safe_makedirs
 from cybercastor import RiverscapesAPI, RiverscapesSearchParams, RiverscapesProject
 
 
-def changeVis(stage, filedir: str, vis: str):
+def changeVis():
     """ Find and change visibility of projects on the server
 
     Args:
@@ -19,26 +19,46 @@ def changeVis(stage, filedir: str, vis: str):
     log = Logger('ChangeVisibility')
     log.title('Change Visibility of Projects from the server')
 
+    # First gather everything we need to make a search
+    # ================================================================================================================
+
+    search_params = RiverscapesSearchParams.load_from_json(os.path.join(os.path.dirname(__file__), '..', '..', 'inputs', 'add_tags_search.json'))
+
+    default_dir = os.path.join(os.path.expanduser("~"), 'RSTagging')
+    out_questions = [
+        # Also get if this is production or staging (default production)
+        inquirer.List('stage', message="Which Data Exchange stage?", choices=['production', 'staging'], default='production'),
+        inquirer.Text('logdir', message="Where do you want to save the files?", default=default_dir),
+        inquirer.List('vis', message="Which visibility do you want to change to?", choices=['PUBLIC', 'PRIVATE'], default='public'),
+    ]
+    out_answers = inquirer.prompt(out_questions)
+
+    stage = out_answers['stage']
+    new_visibility = out_answers['vis']
+    logdir = out_answers['logdir']
+    if not os.path.exists(logdir):
+        safe_makedirs(logdir)
+
+    # Make the search and collect all the data
+    # ================================================================================================================
+
     riverscapes_api = RiverscapesAPI(stage=stage)
     riverscapes_api.refresh_token()
 
-    searchParams = RiverscapesSearchParams({
-        "meta": {
-            "Runner": "Cybercastor",
-        },
-    })
-
     changeable_projects: List[RiverscapesProject] = []
     total = 0
-    for project, _stats, search_total in riverscapes_api.search(searchParams, progress_bar=True):
+    for project, _stats, search_total in riverscapes_api.search(search_params, progress_bar=True):
         total = search_total
-        if project.visibility != vis:
+        if project.visibility != new_visibility:
             changeable_projects.append(project)
 
     # Now write all projects to a log file as json
-    logpath = os.path.join(filedir, 'change_visibility.json')
+    logpath = os.path.join(logdir, 'change_visibility.json')
     with open(logpath, 'w', encoding='utf8') as f:
         f.write(json.dumps([x.json for x in changeable_projects]))
+
+    # Now ask if we're sure and then run mutations on all these projects
+    # ================================================================================================================
 
     # Ask the user to confirm using inquirer
     log.info(f"Found {len(changeable_projects)} out of {total} projects to change visibility")
@@ -57,7 +77,7 @@ def changeVis(stage, filedir: str, vis: str):
     mutation_script = riverscapes_api.load_mutation('updateProject')
     for project in changeable_projects:
         log.info(f"Changing project: {project.name} with id: {project.id}")
-        riverscapes_api.run_query(mutation_script, {"projectId": project.id, "project": {"visibility": vis}})
+        riverscapes_api.run_query(mutation_script, {"projectId": project.id, "project": {"visibility": new_visibility}})
 
     # Shut down the API since we don;t need it anymore
     riverscapes_api.shutdown()
@@ -66,15 +86,4 @@ def changeVis(stage, filedir: str, vis: str):
 
 
 if __name__ == '__main__':
-    default_dir = os.path.join(os.path.expanduser("~"), 'ChangeVisibility')
-    out_questions = [
-        # Also get if this is production or staging (default production)
-        inquirer.List('stage', message="Which stage?", choices=['production', 'staging'], default='production'),
-        inquirer.Text('filedir', message="Where do you want to save the files?", default=default_dir),
-        inquirer.List('vis', message="Which visibility do you want to change to?", choices=['PUBLIC', 'PRIVATE'], default='public'),
-    ]
-    out_answers = inquirer.prompt(out_questions)
-    if not os.path.exists(out_answers['filedir']):
-        safe_makedirs(out_answers['filedir'])
-
-    changeVis(out_answers['stage'], out_answers['filedir'], out_answers['vis'])
+    changeVis()
