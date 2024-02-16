@@ -6,10 +6,10 @@ import traceback
 import argparse
 import sqlite3
 from rscommons import Logger, dotenv
-from cybercastor.lib.dump.dump_cybercastor import dump_cybercastor
+# from cybercastor.lib.dump.dump_cybercastor import dump_cybercastor
 from cybercastor.lib.dump.dump_geom import dump_geom
 from cybercastor.lib.dump.dump_riverscapes import dump_riverscapes
-from cybercastor.lib.dump.dump_views import dump_views
+# from cybercastor.lib.dump.dump_views import dump_views
 
 
 def dump_all(sqlite_db_dir, cc_stage, template_geom, rs_stage):
@@ -31,7 +31,6 @@ def dump_all(sqlite_db_dir, cc_stage, template_geom, rs_stage):
 
     sqlite_db_path = os.path.join(sqlite_db_dir, f'DataExchange_{rs_stage}.gpkg')
 
-    # TODO: TEMPORARY Cleanup DB File
     # if os.path.exists(sqlite_db_path):
     #     os.remove(sqlite_db_path)
 
@@ -51,7 +50,7 @@ def dump_all(sqlite_db_dir, cc_stage, template_geom, rs_stage):
     # # Then write any additional views
     # dump_views(sqlite_db_path)
 
-    log.info("Finished Writing: {}".format(template_geom))
+    log.info(f"Finished Writing: {template_geom}")
 
 
 def create_database(schema_file_path: str, db_path: str):
@@ -67,7 +66,7 @@ def create_database(schema_file_path: str, db_path: str):
     if not os.path.exists(schema_file_path):
         raise Exception(f'The schema file does not exist: {schema_file_path}')
     # Read the schema from the file
-    with open(schema_file_path, 'r') as file:
+    with open(schema_file_path, 'r', encoding='utf8') as file:
         schema = file.read()
 
     # Connect to a new database
@@ -92,15 +91,15 @@ if __name__ == '__main__':
     args = dotenv.parse_args_env(parser)
 
     # Initiate the log file
-    log = Logger("SQLite Riverscapes Dump")
-    log.setup(logPath=os.path.join(args.output_db_path,
-              "dump_sqlite.log"), verbose=args.verbose)
+    logmain = Logger("SQLite Riverscapes Dump")
+    logmain.setup(logPath=os.path.join(args.output_db_path,
+                                       "dump_sqlite.log"), verbose=args.verbose)
 
     try:
         dump_all(args.output_db_path, args.cc_stage, args.template_geom, args.rs_stage)
 
     except Exception as e:
-        log.error(e)
+        logmain.error(e)
         traceback.print_exc(file=sys.stdout)
         sys.exit(1)
 

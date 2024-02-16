@@ -16,7 +16,7 @@ else:
     raise FileNotFoundError(f"Could not find the file {INPUT_FILE}")
 
 
-def add_tag(stage, filedir: str, proj_type: str, tags: List[str]):
+def add_tag():
     """ Find and add tags to projects on the Riverscapes Data Exchange
 
     Args:
@@ -26,19 +26,30 @@ def add_tag(stage, filedir: str, proj_type: str, tags: List[str]):
     log = Logger('AddTag')
     log.title('Add tag to Projects from the server')
 
+    # First gather everything we need to make a search
+    # ================================================================================================================
+
+    search_params = RiverscapesSearchParams.load_from_json(os.path.join(os.path.dirname(__file__), '..', '..', 'inputs', 'add_tags_search.json'))
+
+    default_dir = os.path.join(os.path.expanduser("~"), 'RSTagging')
+    questions = [
+        # Also get if this is production or staging (default production)
+        inquirer.List('stage', message="Which Data Exchange stage?", choices=['production', 'staging'], default='production'),
+        inquirer.Text('logdir', message="Where do you want to save the log files?", default=default_dir),
+        inquirer.Text('tags', message="Comma-separated tags", default='zzzz,abc')
+    ]
+    answers = inquirer.prompt(questions)
+
+    tags = [x.strip() for x in answers['tags'].split(',')]
+    stage = answers['stage']
+    logdir = answers['logdir']
+    safe_makedirs(logdir)
+
+    # Make the search and collect all the data
+    # ================================================================================================================
+
     riverscapes_api = RiverscapesAPI(stage=stage)
     riverscapes_api.refresh_token()
-
-    searchParams = RiverscapesSearchParams({
-        'meta': {
-            'Runner': 'CyberCastor',
-        },
-        'projectTypeId': proj_type,
-        # 'createdOn': {
-            # "from": "2023-06-19",
-            # "to": "2023-06-19"
-        # }
-    })
 
     changeable_projects: List[RiverscapesProject] = []
 
@@ -46,16 +57,19 @@ def add_tag(stage, filedir: str, proj_type: str, tags: List[str]):
 
     # Create a timedelta object with a difference of 1 day
     total = 0
-    for project, _stats, search_total in riverscapes_api.search(searchParams, progress_bar=True):
+    for project, _stats, search_total in riverscapes_api.search(search_params, progress_bar=True):
         total = search_total
         if 'HUC' in project.project_meta and project.project_meta['HUC'] in huc_list:
             if any(tag not in project.tags for tag in tags):
                 changeable_projects.append(project)
 
     # Now write all projects to a log file as json
-    logpath = os.path.join(filedir, f'add_tag_{stage}_{"-".join(tags)}')
+    logpath = os.path.join(logdir, f'add_tag_{stage}_{"-".join(tags)}')
     with open(logpath, 'w', encoding='utf8') as fobj:
         fobj.write(json.dumps([x.json for x in changeable_projects]))
+
+    # Now ask if we're sure and then run mutations on all these projects
+    # ================================================================================================================
 
     # Ask the user to confirm using inquirer
     log.info(f"Found {len(changeable_projects)} out of {total} projects to add tag")
@@ -65,6 +79,7 @@ def add_tag(stage, filedir: str, proj_type: str, tags: List[str]):
     answers = inquirer.prompt(questions)
     if not answers['confirm1']:  # or not answers['confirm2']:
         log.info("Good choice. Aborting!")
+        riverscapes_api.shutdown()
         return
 
     # Now Change Owner of all projects
@@ -91,20 +106,4 @@ def add_tag(stage, filedir: str, proj_type: str, tags: List[str]):
 
 
 if __name__ == '__main__':
-    default_dir = os.path.join(os.path.expanduser("~"), 'RSTagging')
-    out_questions = [
-        # Also get if this is production or staging (default production)
-        inquirer.List('stage', message="Which stage?", choices=['production', 'staging'], default='production'),
-        inquirer.List('proj_type', message="Which project type?", choices=['brat', 'vbet', 'RSContext', 'anthro', '__ALL__'], default='brat'),
-        inquirer.Text('filedir', message="Where do you want to save the files?", default=default_dir),
-        inquirer.Text('tags', message="Comma-separated tags", default='zzzz,abc')
-    ]
-    out_answers = inquirer.prompt(out_questions)
-    if not os.path.exists(out_answers['filedir']):
-        safe_makedirs(out_answers['filedir'])
-
-    tag_input = [x.strip() for x in out_answers['tags'].split(',')]
-
-    proj_type_answer = out_answers['proj_type'] if out_answers['proj_type'] != '__ALL__' else None
-
-    add_tag(out_answers['stage'], out_answers['filedir'], proj_type_answer, tag_input)
+    add_tag()

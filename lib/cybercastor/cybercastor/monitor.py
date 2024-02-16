@@ -3,14 +3,13 @@ import argparse
 import time
 import os
 import sys
-from termcolor import cprint
 from datetime import datetime
 import json
+from termcolor import cprint
+from rsxml import safe_makedirs, Logger, dotenv
+from cybercastor import CybercastorAPI
 from cybercastor.lib.monitor import print_job
-from cybercastor.classes.CybercastorAPI import CybercastorAPI
 from cybercastor.lib.cloudwatch import download_job_logs
-from rscommons.util import safe_makedirs
-from rscommons import Logger, dotenv
 
 
 def get_job_diff(old, new):
@@ -26,15 +25,15 @@ def get_job_diff(old, new):
     old_tasks = {t['id']: t for t in old['tasks']['items']}
     new_tasks = {t['id']: t for t in new['tasks']['items']}
     status_change = {}
-    for id, task in old_tasks.items():
-        if id in new_tasks:
-            if (new_tasks[id]['status'] != task['status']):
-                status_change[id] = {
+    for tid, task in old_tasks.items():
+        if tid in new_tasks:
+            if (new_tasks[tid]['status'] != task['status']):
+                status_change[tid] = {
                     "task": task,
-                    "status": (task['status'], new_tasks[id]['status'])
+                    "status": (task['status'], new_tasks[tid]['status'])
                 }
         else:
-            status_change[id] = {
+            status_change[tid] = {
                 "task": task,
                 "status": (task['status'], None)
             }
@@ -43,6 +42,12 @@ def get_job_diff(old, new):
 
 
 def main(stage, download_running):
+    """_summary_
+
+    Args:
+        stage (_type_): _description_
+        download_running (_type_): _description_
+    """
 
     # Initialize our API and log in
     cc_api = CybercastorAPI(stage=stage)
@@ -54,14 +59,13 @@ def main(stage, download_running):
 
     # Now start a job loop
     monitor_json = {}
-    monitor_json_path = os.path.join(os.path.dirname(
-        __file__), '..', 'logs', 'monitor.output.json')
+    monitor_json_path = os.path.join(os.path.dirname(__file__), '..', 'logs', 'monitor.output.json')
     monitor_logs_path = os.path.join(os.path.dirname(__file__), '..', 'logs')
     # Clean the directory to put logs into
     safe_makedirs(monitor_logs_path)
 
     if os.path.isfile(monitor_json_path):
-        with open(monitor_json_path) as f:
+        with open(monitor_json_path, 'r', encoding='utf8') as f:
             monitor_json = json.load(f)
     known_jobs = list(monitor_json.keys())
 
@@ -87,7 +91,7 @@ def main(stage, download_running):
         if len(monitor_json.keys()) == 0:
             cprint('(No Active Jobs)', 'red')
 
-        with open(monitor_json_path, 'w') as outfile:
+        with open(monitor_json_path, 'w', encoding='utf8') as outfile:
             json.dump(monitor_json, outfile, indent=4, sort_keys=True)
 
         for job in monitor_json.values():
@@ -108,12 +112,9 @@ def main(stage, download_running):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('stage', help='Cybercastor API stage',
-                        type=str, default='production')
-    parser.add_argument('--verbose', help='(optional) a little extra logging ',
-                        action='store_true', default=False)
-    parser.add_argument('--download_running', help='(optional) download running logs. This is expensive so try to use sparingly',
-                        action='store_true', default=False)
+    parser.add_argument('stage', help='Cybercastor API stage', type=str, default='production')
+    parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
+    parser.add_argument('--download_running', help='(optional) download running logs. This is expensive so try to use sparingly', action='store_true', default=False)
 
     args = dotenv.parse_args_env(parser)
 

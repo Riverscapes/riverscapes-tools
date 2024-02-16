@@ -37,7 +37,7 @@ def simple_search(api: RiverscapesAPI):
     # NOTE: RiverscapesSearchParams will throw errors for common mistakes and anything it doesn't recognize as valid
     # ====================================================================================================
     log.title("All possible search parameters")
-    search_count = [x for x, _stats in api.search(RiverscapesSearchParams({
+    search_count = [x for x, _stats, _total in api.search(RiverscapesSearchParams({
         "projectTypeId": "vbet",  # Only return projects of this type
         "keywords": "my search terms",  # This will give a warning since keyword searches are not that useful in programmatic searches
         "name": "my project name",
@@ -63,13 +63,18 @@ def simple_search(api: RiverscapesAPI):
         }
     }))]
 
+    # EXAMPLE: You can also load search parameters from a json file if you want to keep it out of .git or if it changes frequently
+    # ====================================================================================================
+    loaded_search_params = RiverscapesSearchParams.load_from_json(os.path.join(os.path.dirname(__file__), '..', '..', 'inputs', 'DEMO_search.json'))
+    log.debug(json.dumps(loaded_search_params.to_gql(), indent=2))
+
     # EXAMPLE: Loop over each project and "DO" somewthing with each one
     # Note how the search function yields a project and a stats object. The query pagination is handled for you
     #
     # NB: We set max_results here for demo purposes so this doesn't take 20 minutes but you probably don't want to do that in production
     # ====================================================================================================
     log.title("Loop over each project and \"DO\" somewthing with each one")
-    for project, stats in api.search(RiverscapesSearchParams({"projectTypeId": "vbet"}), progress_bar=True, max_results=1234):
+    for project, stats, _total in api.search(RiverscapesSearchParams({"projectTypeId": "vbet"}), progress_bar=True, max_results=1234):
         # Do a thing (like tag the project, delete it etc.)
         # INSERT THING DOING HERE
         log.debug(f"Project {project.id} has {len(project.json['tags'])} tags")
@@ -84,7 +89,7 @@ def simple_search(api: RiverscapesAPI):
             "Runner": "Cybercastor",
         }
     })
-    searched_project_ids = [p.id for p, _stats in api.search(search_params, progress_bar=True, max_results=1234)]
+    searched_project_ids = [p.id for p, _stats, _total in api.search(search_params, progress_bar=True, max_results=1234)]
     log.debug(f"Found {len(searched_project_ids)} projects")
 
     # EXAMPLE Collect all the metadata for each project by id
@@ -95,10 +100,9 @@ def simple_search(api: RiverscapesAPI):
         # Used https://geojson.io to get a rough bbox to limit this query roughing to washington state (which makes the query cheaper)
         "bbox": [-125.40936477595693, 45.38966396117303, -116.21237724715607, 49.470853578429626]
     })
-    searched_project_meta = {p.id: p.project_meta for p, _stats in api.search(search_params, progress_bar=True, max_results=1234)}
+    searched_project_meta = {p.id: p.project_meta for p, _stats, _total in api.search(search_params, progress_bar=True, max_results=1234)}
 
     log.info(f"Found {len(searched_project_meta)} projects")
-
 
 
 def retrieve_project(api: RiverscapesAPI):
@@ -127,13 +131,12 @@ def retrieve_project(api: RiverscapesAPI):
     log.debug(project_files)
 
 
-
 def simple_search_with_cache(api: RiverscapesAPI):
     """Simple search with cache examples
 
     If you want to cache the search results to a file and use them later, here's how you can do it.
     This is useful if:
-    
+
         - You're going to use the same data multiple times and you don't want to query the server
         - If you want to keep a record of the data you've queried.
         - If you don't always need the freshest data (e.g. you're doing a demo or a test)
@@ -159,7 +162,7 @@ def simple_search_with_cache(api: RiverscapesAPI):
             data = json.load(f)
     else:
         log.info("Querying the server for fresh data")
-        data = {p.id: p.project_meta for p, _stats in api.search(search_params, progress_bar=True, max_results=1234)}
+        data = {p.id: p.project_meta for p, _stats, _total in api.search(search_params, progress_bar=True, max_results=1234)}
         # Save the data to a file for later
         with open(cache_filename, 'w', encoding='utf8') as f:
             json.dump(data, f, indent=2)
@@ -192,7 +195,7 @@ def stream_to_file(api: RiverscapesAPI):
         f_json.write('[\n')
         f_csv.write("id, project_type, huc, model_version, created_date\n")
         counter = 0
-        for proj, _stats in api.search(search_params, progress_bar=True, max_results=1234):
+        for proj, _stats, _total in api.search(search_params, progress_bar=True, max_results=1234):
             if counter > 0:
                 f_json.write(',\n')
             json.dump(proj.json, f_json, indent=2)
@@ -235,7 +238,7 @@ def find_duplicates(api: RiverscapesAPI):
     #     ...
     # }
     huc_lookup = {}
-    for project, _stats in api.search(search_params, progress_bar=True):
+    for project, _stats, _total in api.search(search_params, progress_bar=True):
         if project.project_type is None:
             raise Exception(f"Project {project.id} has no project type. This is likely a query error")
 

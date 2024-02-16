@@ -9,7 +9,7 @@ job_types = ['rs_context', 'channel', 'taudem', 'rs_context_channel_taudem', 'vb
 
 
 # create a job file
-def create_job_file(job_name, job_type, hucs, tags, org_id, visibility='PUBLIC', server="PRODUCTION", description=None, meta=None):
+def create_job_file(job_name: str, job_type: str, hucs, tags, org_id, visibility='PUBLIC', server="PRODUCTION", description=None, meta=None):
     """_summary_
 
     Args:
@@ -57,6 +57,7 @@ def create_job_file(job_name, job_type, hucs, tags, org_id, visibility='PUBLIC',
     with open(job_file, "w", encoding="utf-8") as f:
         json.dump(job_json, f, indent=2)
 
+
 if __name__ == "__main__":
 
     # argparse
@@ -74,11 +75,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # some string manipulation for the big run
-    job_name = f'{args.job_type.upper()} {args.server.capitalize()} {args.huc_group}'
-    meta = {"PROCESSING_GROUP": str(args.huc_group), "INITIATIVE": "NRCS,CEAP"}
+    job_name_outer = f'{args.job_type.upper()} {args.server.capitalize()} {args.huc_group}'
+    meta_outer = {"PROCESSING_GROUP": str(args.huc_group), "INITIATIVE": "NRCS,CEAP"}
     # meta = None
-    description = f"{args.job_type.upper()} run for {args.server.lower()} using all huc10s in {args.huc_group}"
+    description_outer = f"{args.job_type.upper()} run for {args.server.lower()} using all huc10s in {args.huc_group}"
     # description = args.description
 
     # create the job file
-    create_job_file(job_name, args.job_type, args.hucs, args.tags, args.org_id, args.visibility, args.server, description, meta)
+    create_job_file(job_name_outer, args.job_type, args.hucs, args.tags, args.org_id, args.visibility, args.server, description_outer, meta_outer)
