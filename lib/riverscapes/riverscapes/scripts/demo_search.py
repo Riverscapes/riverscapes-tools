@@ -11,7 +11,7 @@ import json
 import time
 from rsxml import Logger
 from termcolor import colored
-from cybercastor import RiverscapesAPI, RiverscapesProject, RiverscapesSearchParams
+from riverscapes import RiverscapesAPI, RiverscapesProject, RiverscapesSearchParams
 
 log = Logger('Search Projects')
 

@@ -19,9 +19,8 @@ except ImportError:
 
 import requests
 from dateutil.parser import parse as dateparse
-from rsxml import Logger, ProgressBar, safe_makedirs
-from cybercastor.lib.hashes import checkEtag
-from cybercastor.classes.riverscapes_helpers import RiverscapesProject, RiverscapesProjectType, RiverscapesSearchParams, format_date
+from rsxml import Logger, ProgressBar, safe_makedirs, calculate_etag
+from riverscapes.classes.riverscapes_helpers import RiverscapesProject, RiverscapesProjectType, RiverscapesSearchParams, format_date
 
 # Disable all the weird terminal noise from urllib3
 logging.getLogger("urllib3").setLevel(logging.WARNING)
@@ -89,20 +88,17 @@ class RiverscapesAPI:
         answers = inquirer.prompt(questions)
         return answers['stage'].upper()
 
-
     def __enter__(self) -> 'RiverscapesAPI':
         """ Allows us to use this class as a context manager
         """
         self.refresh_token()
         return self
 
-
     def __exit__(self, _type, _value, _traceback):
         """Behaviour on close when using the "with RiverscapesAPI():" Syntax
         """
         # Make sure to shut down the token poll event so the process can exit normally
         self.shutdown()
-
 
     def _generate_challenge(self, code: str) -> str:
         return self._base64_url(hashlib.sha256(code.encode('utf-8')).digest())
@@ -302,7 +298,7 @@ class RiverscapesAPI:
         Returns:
             str: _description_
         """
-        with open(os.path.join(os.path.dirname(__file__), '..', 'graphql', 'riverscapes', 'queries', f'{query_name}.graphql'), 'r', encoding='utf-8') as queryFile:
+        with open(os.path.join(os.path.dirname(__file__), '..', 'graphql', 'queries', f'{query_name}.graphql'), 'r', encoding='utf-8') as queryFile:
             return queryFile.read()
 
     def load_mutation(self, mutation_name: str) -> str:
@@ -314,7 +310,7 @@ class RiverscapesAPI:
         Returns:
             str: _description_
         """
-        with open(os.path.join(os.path.dirname(__file__), '..', 'graphql', 'riverscapes', 'mutations', f'{mutation_name}.graphql'), 'r', encoding='utf-8') as queryFile:
+        with open(os.path.join(os.path.dirname(__file__), '..', 'graphql', 'mutations', f'{mutation_name}.graphql'), 'r', encoding='utf-8') as queryFile:
             return queryFile.read()
 
     def get_project(self, project_id: str):
@@ -561,7 +557,7 @@ class RiverscapesAPI:
             force {bool} -- if true we will download regardless
         """
         file_is_there = os.path.exists(local_path) and os.path.isfile(local_path)
-        etag_match = file_is_there and checkEtag(local_path, api_file_obj['etag'])
+        etag_match = file_is_there and calculate_etag(local_path) == api_file_obj['etag']
 
         file_directory = os.path.dirname(local_path)
 

@@ -112,71 +112,24 @@
         "${input:ORGANIZATION}"
       ]
     },
-    {
-      "name": "🧰⬇️ DUMP to SQLITE",
-      "type": "debugpy",
-      "request": "launch",
-      "module": "cybercastor.dump_all",
-      "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal",
-      "envFile": "${workspaceFolder}/.env",
-      // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
-      "args": [
-        "{env:DATA_ROOT}/warehouse_report",
-        // "${input:cc_environment}",
-        "production",
-        "{env:DATA_ROOT}/huc10.gpkg",
-        "${input:environment}",
-        "--verbose"
-      ]
-    },
-    {
-      "name": "EXPERIMENTAL - Scrape Projects",
-      "type": "debugpy",
-      "request": "launch",
-      "module": "cybercastor.downloadFiles",
-      "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal",
-      "envFile": "${workspaceFolder}/.env",
-      // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
-      //"1707030107,1707030107",
-      "args": [
-        "${input:environment}",
-        "1707030107",
-        "/workspaces/GISData/riverscapes/data_exchange_files/huc10_attributes.json",
-        "{env:DATA_ROOT}/data_exchange_files",
-        "{env:DATA_ROOT}/data_exchange_files/rme_scrape_v1.gpkg",
-        "/workspaces/GISData/watershed_boundaries/huc10_reference/huc10_conus.shp",
-        "--verbose",
-      ]
-    },
-    {
-      "name": "EXPERIMENTAL WRITE VBET Synth Project File",
-      "type": "debugpy",
-      "request": "launch",
-      "module": "cybercastor.scraper_project",
-      "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal",
-      "envFile": "${workspaceFolder}/.env",
-      "args": [
-        "{env:DATA_ROOT}/data_exchange_files/vbet_scrape.gpkg",
-        "Philip Bailey"
-      ]
-    },
-    {
-      "name": "📦 Merge Projects",
-      "type": "debugpy",
-      "request": "launch",
-      "module": "cybercastor.merge-projects",
-      "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal",
-      "envFile": "${workspaceFolder}/.env",
-      "args": [
-        "{env:DATA_ROOT}/merge-projects",
-      ]
-    },
-
-
+    // {
+    //   "name": "🧰⬇️ DUMP to SQLITE",
+    //   "type": "debugpy",
+    //   "request": "launch",
+    //   "module": "cybercastor.dump_all",
+    //   "cwd": "${workspaceFolder}",
+    //   "console": "integratedTerminal",
+    //   "envFile": "${workspaceFolder}/.env",
+    //   // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
+    //   "args": [
+    //     "{env:DATA_ROOT}/warehouse_report",
+    //     // "${input:cc_environment}",
+    //     "production",
+    //     "{env:DATA_ROOT}/huc10.gpkg",
+    //     "${input:environment}",
+    //     "--verbose"
+    //   ]
+    // },
    {
       "name": "Python: Current File",
       "type": "debugpy",

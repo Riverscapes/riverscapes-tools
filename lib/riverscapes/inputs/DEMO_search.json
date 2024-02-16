@@ -1,0 +1,25 @@
+{
+  "projectTypeId": "vbet",  
+  "keywords": "my search terms",  
+  "name": "my project name",
+  "editableOnly": true,  
+  "createdOn": {
+      "from": "2024-01-02",  
+      "to": "2024-01-03"  
+  },
+  "updatedOn": {
+      "from": "2024-01-03T01:04:56Z",  
+      "to": "2024-01-04T03:04:56Z"  
+  },
+  "collection": "00000000-0000-0000-0000-000000000000",  
+  "ownedBy": {
+      "id": "00000000-0000-0000-0000-000000000000",  
+      "type": "USER"  
+  },
+  "tags": ["tag1", "tag2"],  
+  "bbox": [-125.40936477595693, 45.38966396117303, -116.21237724715607, 49.470853578429626],  
+  "meta": {
+      "Runner": "Cybercastor",
+      "HUC": "17060304"
+  }
+}

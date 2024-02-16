@@ -6,7 +6,6 @@ from setuptools import setup
 # https://packaging.python.org/discussions/install-requires-vs-requirements/
 install_requires = [
     'termcolor', 'Cython>=0.29.7', 'numpy>=1.16.3',
-    'riverscapes',
     'rsxml',
     'argparse',
     'rs-commons'
@@ -17,13 +16,13 @@ with open("README.md", "rb") as f:
 
 version = re.search(
     '^__version__\\s*=\\s*"(.*)"',
-    open('cybercastor/__version__.py', 'r', encoding='utf8').read(),
+    open('riverscapes/__version__.py', 'r', encoding='utf8').read(),
     re.M
 ).group(1)
 
-setup(name='cybercastor',
+setup(name='riverscapes',
       version=version,
-      description='Cybercastor',
+      description='Riverscapes API',
       author='Matt Reimer',
       license='MIT',
       python_requires='>3.5.2',
@@ -32,6 +31,6 @@ setup(name='cybercastor',
       install_requires=install_requires,
       zip_safe=False,
       packages=[
-          'cybercastor'
+          'riverscapes'
       ]
       )
