@@ -41,7 +41,7 @@ def get_job_diff(old, new):
     return status_change
 
 
-def main(stage, download_running):
+def main(cc_api: CybercastorAPI, download_running):
     """_summary_
 
     Args:
@@ -49,9 +49,6 @@ def main(stage, download_running):
         download_running (_type_): _description_
     """
 
-    # Initialize our API and log in
-    cc_api = CybercastorAPI(stage=stage)
-    cc_api.refresh_token()
 
     ##############################
     # Monitoring
@@ -124,7 +121,8 @@ if __name__ == '__main__':
     log.title('Cybercastor Monitor')
 
     try:
-        main(args.stage, args.download_running)
+        with CybercastorAPI(stage=args.stage) as api:
+            main(api, args.download_running)
 
     except Exception as e:
         log.error(e)

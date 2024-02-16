@@ -2,6 +2,9 @@
 
 NOTE: We set max_results=1234 on all these queries for demo purposes. You probably don't want to do that in production
 
+    To run this file in VSCode choose "Python: Current File (Cybercastor)" from the command palette
+
+
 """
 import os
 import json
@@ -270,25 +273,40 @@ def find_duplicates(api: RiverscapesAPI):
 
 
 if __name__ == '__main__':
-    # Instantiate your API once and then pass it around.
-    riverscapes_api = RiverscapesAPI(stage='production')
+
+    # Instantiating the API (Method 1)
+    # ====================================================================================================
+
+    # You can instantiate the API like this but you need to call refresh_token
+    # Note how it will ask y ou interactively for the stage. Specify the stage like this:
+    #   riverscapes_api = RiverscapesAPI(stage='dev') to not get the prompt
+    # 
+    # Also yout need to call riverscapes_api.shutdown() when you're done with it.
+    riverscapes_api = RiverscapesAPI()
     riverscapes_api.refresh_token()
 
-    # Retrieve a list of valid project type objects. This is useful for filtering your searches
-    project_types = riverscapes_api.get_project_types()
-
-    # Examples
+    # Here's how this looks:
     try:
-        simple_search(riverscapes_api)
-        retrieve_project(riverscapes_api)
-        simple_search_with_cache(riverscapes_api)
-        find_duplicates(riverscapes_api)
-        stream_to_file(riverscapes_api)
+        # Retrieve a list of valid project type objects. This is useful for filtering your searches
+        project_types = riverscapes_api.get_project_types()
     except Exception as e:
         log.error(e)
     finally:
         # Remember to shut down the API to stop the polling process that refreshes the token
         # If you put it inside a finally block it will always run (even if there's an error or a keyboard interrupt like ctrl+c)
         riverscapes_api.shutdown()
+
+
+    # But there's a better way! (Method 2)
+    # ====================================================================================================
+    # OR you can instantiate it with a "with" statement like this
+    # This might be slightly preferred because it handles the refresh token AND automatically shuts down the 
+    # polling process that refreshes the token when you're done with it
+    with RiverscapesAPI() as riverscapes_api:
+        simple_search(riverscapes_api)
+        retrieve_project(riverscapes_api)
+        simple_search_with_cache(riverscapes_api)
+        find_duplicates(riverscapes_api)
+        stream_to_file(riverscapes_api)
 
     log.info("Done!")

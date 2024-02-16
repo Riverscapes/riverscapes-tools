@@ -10,7 +10,7 @@ from rsxml import Logger, dotenv
 from cybercastor import RiverscapesAPI, RiverscapesSearchParams
 
 
-def dump_riverscapes(db_path: str, stage: str):
+def dump_riverscapes(rs_api: RiverscapesAPI, db_path: str):
     """ DUmp all projects to a DB
 
     Args:
@@ -23,9 +23,7 @@ def dump_riverscapes(db_path: str, stage: str):
     conn.execute('PRAGMA foreign_keys = ON')
     curs = conn.cursor()
 
-    riverscapes_api = RiverscapesAPI(stage=stage)
-    riverscapes_api.refresh_token()
-
+    # Basically just search for everything
     searchParams = RiverscapesSearchParams({})
 
     # Determine last created date projects in the database.
@@ -39,7 +37,7 @@ def dump_riverscapes(db_path: str, stage: str):
         searchParams.createdOnFrom = last_inserted
 
     # Create a timedelta object with a difference of 1 day
-    for project, _stats in riverscapes_api.search(searchParams):
+    for project, _stats in rs_api.search(searchParams):
 
         # Insert project data
         curs.execute('''
@@ -64,9 +62,6 @@ def dump_riverscapes(db_path: str, stage: str):
         ])
 
     conn.commit()
-    # Shut down the API since we don;t need it anymore
-    riverscapes_api.shutdown()
-
     log.info(f"Finished Writing: {db_path}")
 
 
@@ -103,7 +98,8 @@ if __name__ == '__main__':
     mainlog.setup(logPath=os.path.join(args.output_db_path, "dump_sqlite.log"), verbose=args.verbose)
 
     try:
-        dump_riverscapes(args.output_db_path, args.stage)
+        with RiverscapesAPI(args.stage) as api:
+            dump_riverscapes(api, sqlite_db_path)
 
     except Exception as e:
         mainlog.error(e)

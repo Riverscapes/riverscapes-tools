@@ -8,11 +8,11 @@ import inquirer
 from cybercastor import RiverscapesAPI, RiverscapesSearchParams, RiverscapesProject
 
 
-def change_owner():
+def change_owner(riverscapes_api: RiverscapesAPI):
     """ Change the ownership of projects based on a search of Riverscapes Data Exchange
 
-    Args:
-        output_folder ([type]): [description]
+    To run this file in VSCode choose "Python: Current File (Cybercastor)" from the command palette
+
     """
     log = Logger('ChangeOwner')
     log.title('Change Owner of Projects from the server')
@@ -24,23 +24,17 @@ def change_owner():
 
     default_dir = os.path.join(os.path.expanduser("~"), 'RSTagging')
     out_questions = [
-        # Also get if this is production or staging (default production)
-        inquirer.List('stage', message="Which Data Exchange stage?", choices=['production', 'staging'], default='production'),
         inquirer.Text('logdir', message="Where do you want to save the log files?", default=default_dir),
         inquirer.Text('orgGuid', message="Type the organization GUID?"),
     ]
     out_answers = inquirer.prompt(out_questions)
 
     new_org_id = out_answers['orgGuid']
-    stage = out_answers['stage']
     logdir = out_answers['logdir']
     safe_makedirs(logdir)
 
     # Make the search and collect all the data
     # ================================================================================================================
-
-    riverscapes_api = RiverscapesAPI(stage=stage)
-    riverscapes_api.refresh_token()
 
     changeable_projects: List[RiverscapesProject] = []
     total = 0
@@ -50,14 +44,15 @@ def change_owner():
             changeable_projects.append(project)
 
     # Now write all projects to a log file as json
-    logpath = os.path.join(logdir, 'change_owner_projects.json')
+    logpath = os.path.join(logdir, f'change_owner_projects_{riverscapes_api.stage}.json')
     with open(logpath, 'w', encoding='utf8') as f:
-        f.write(json.dumps([x.json for x in changeable_projects]))
+        f.write(json.dumps([x.json for x in changeable_projects], indent=2))
 
     # Now ask if we're sure and then run mutations on all these projects
     # ================================================================================================================
 
     log.info(f"Found {len(changeable_projects)} out of {total} projects to change ownership")
+    log.warning(f"Please review the summary of the affected projects in the log file at {logpath} before proceeding!")
     questions = [
         inquirer.Confirm('confirm1', message="Are you sure you want to change ownership on all these projects?"),
     ]
@@ -86,4 +81,5 @@ def change_owner():
 
 
 if __name__ == '__main__':
-    change_owner()
+    with RiverscapesAPI() as api:
+        change_owner(api)

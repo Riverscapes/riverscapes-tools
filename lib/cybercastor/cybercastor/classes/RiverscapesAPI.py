@@ -10,6 +10,13 @@ import hashlib
 import base64
 import logging
 from datetime import datetime, timedelta
+
+# We want to make inquirer optional so that we can use this module in other contexts
+try:
+    import inquirer
+except ImportError:
+    inquirer = None
+
 import requests
 from dateutil.parser import parse as dateparse
 from rsxml import Logger, ProgressBar, safe_makedirs
@@ -51,19 +58,51 @@ class RiverscapesAPI:
     authentication workflow which is appropriate for end-users.
     """
 
-    def __init__(self, stage: str, machine_auth: Dict[str, str] = None, dev_headers: Dict[str, str] = None):
+    def __init__(self, stage: str = None, machine_auth: Dict[str, str] = None, dev_headers: Dict[str, str] = None):
         self.log = Logger('API')
+        self.stage = stage.upper() if stage else self._get_stage_interactive()
+
         self.machine_auth = machine_auth
         self.dev_headers = dev_headers
         self.access_token = None
         self.token_timeout = None
 
-        if not stage or stage.upper() == 'PRODUCTION':
+        if self.stage.upper() == 'PRODUCTION':
             self.uri = 'https://api.data.riverscapes.net'
-        elif stage.upper() == 'STAGING':
+        elif self.stage.upper() == 'STAGING':
             self.uri = 'https://api.data.riverscapes.net/staging'
         else:
             raise RiverscapesAPIException(f'Unknown stage: {stage}')
+
+    def _get_stage_interactive(self):
+        """_summary_
+
+        Returns:
+            _type_: _description_
+        """
+        if not inquirer:
+            raise RiverscapesAPIException("Inquirer is not installed so interactive stage choosing is not possible. Either install inquirer or specify the stage in the constructor.")
+
+        questions = [
+            inquirer.List('stage', message="Which Data Exchange stage?", choices=['production', 'staging'], default='production'),
+        ]
+        answers = inquirer.prompt(questions)
+        return answers['stage'].upper()
+
+
+    def __enter__(self) -> 'RiverscapesAPI':
+        """ Allows us to use this class as a context manager
+        """
+        self.refresh_token()
+        return self
+
+
+    def __exit__(self, _type, _value, _traceback):
+        """Behaviour on close when using the "with RiverscapesAPI():" Syntax
+        """
+        # Make sure to shut down the token poll event so the process can exit normally
+        self.shutdown()
+
 
     def _generate_challenge(self, code: str) -> str:
         return self._base64_url(hashlib.sha256(code.encode('utf-8')).digest())
