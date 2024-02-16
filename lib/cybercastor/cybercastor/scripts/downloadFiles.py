@@ -12,9 +12,10 @@ import semver
 from termcolor import colored
 from dateutil.parser import parse as dateparse
 from osgeo import ogr, osr
-from rscommons import dotenv, GeopackageLayer, ShapefileLayer
-from rscommons.util import safe_makedirs
-from cybercastor.classes.RiverscapesAPI import RiverscapesAPI
+from rsxml import safe_makedirs, dotenv
+from rsxml.project_xml import GeopackageLayer
+from rscommons import ShapefileLayer
+from cybercastor import RiverscapesAPI
 
 igo_fields = {
     'HUC10': ogr.OFTString,
@@ -95,13 +96,9 @@ def scrape_projects(stage, hucs, output_db, reset):
     hucs_to_process = update_all_hucs_status(output_db, hucs, reset)
 
     riverscapes_api = RiverscapesAPI(stage=stage)
-    # Only refresh the token if we need to
-    if riverscapes_api.access_token is None:
-        riverscapes_api.refresh_token()
+    riverscapes_api.refresh_token()
 
     queries = {
-        'projects': riverscapes_api.load_query('searchProjects'),
-        'files': riverscapes_api.load_query('projectFiles'),
         'datasets': riverscapes_api.load_query('projectDatasets')
     }
     # search_query = riverscapes_api.load_query('searchProjects')
@@ -113,7 +110,7 @@ def scrape_projects(stage, hucs, output_db, reset):
     while queued_hucs is True:
         huc = get_next_huc(output_db)
         if huc is None:
-            print(f'No HUCs left to process for project type VBET')
+            print('No HUCs left to process for project type VBET')
             queued_hucs = False
             break
 

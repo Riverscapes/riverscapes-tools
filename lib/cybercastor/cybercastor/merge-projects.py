@@ -1,16 +1,15 @@
 """
 Demo script to download files from Data Exchange
 """
-from typing import Dict, List, Tuple
+from typing import Dict, Tuple
 from datetime import datetime
 import sys
 import os
 import subprocess
 import json
 import argparse
-from osgeo import gdal, ogr
-from rscommons import Raster
 import xml.etree.ElementTree as ET
+from osgeo import gdal, ogr
 from rsxml.project_xml import (
     Project,
     MetaData,
@@ -19,114 +18,31 @@ from rsxml.project_xml import (
     Coords,
     BoundingBox,
 )
-from rscommons import dotenv, Logger
-from rscommons.util import safe_makedirs
+from rsxml import dotenv, Logger, safe_makedirs
 from rscommons import Raster
-from cybercastor.classes.RiverscapesAPI import RiverscapesAPI
+from cybercastor.classes.RiverscapesAPI import RiverscapesAPI, RiverscapesProject, RiverscapesSearchParams
 
 
-def search_projects(riverscapes_api, project_type: str, collection_id: str) -> List[str]:
-    """_summary_
-
-    Args:
-        riverscapes_api (_type_): _description_
-        project_type (str): _description_
-        collection_id (str): _description_
-
-    Returns:
-        List[str]: _description_
+def merge_projects(projects_lookup: Dict[str, RiverscapesProject], merged_dir: str, name: str, project_type: str, collection_id: str) -> None:
     """
-
-    # search_params = {
-    #     'projectTypeId': project_type,
-    #     # 'meta': [{'key': 'ModelVersion', 'value': '1234'}],
-    #     'tags': project_tags
-    # }
-
-    log = Logger('Search')
-    log.info(f'Searching for projects with type {project_type} in collection {collection_id}')
-
-    project_limit = 500
-    project_offset = 0
-    total = 0
-    projects = []
-    while project_offset == 0 or project_offset < total:
-        results = riverscapes_api.run_query(riverscapes_api.load_query('collectionProjects'), {'collectionId': collection_id, 'limit': project_limit, 'offset': project_offset})
-        total = results['data']['collection']['projects']['total']
-        project_offset += project_limit
-
-        for project in results['data']['collection']['projects']['items']:
-            if project['projectType']['id'] == project_type:
-                projects.append(project)
-
-    log.info(f'Found {len(projects)} {project_type} project(s) in collection {collection_id}')
-    return projects
-
-    # if len(projects) == 0:
-    #     return None
-    # elif len(projects) == 1:
-    #     return projects[list(projects.keys())[0]]
-    # else:
-    #     # Find the model with the greatest version number
-    #     project_versions = {}
-    #     for project_id, project_info in projects.items():
-    #         for key, val in {meta_item['key']: meta_item['value'] for meta_item in project_info['meta']}.items():
-    #             if key.replace(' ', '').lower() == 'modelversion' and val is not None:
-    #                 project_versions[semver.VersionInfo(val)] = project_id
-    #                 break
-
-    #     project_versions_list = list(project_versions)
-    #     project_versions_list.sort(reverse=True)
-    #     return projects[project_versions[project_versions_list[0]]]
-
-
-def download_project(riverscapes_api, output_folder, project_id: str, force_download: bool) -> List[str]:
-    """_summary_
-
-    Args:
-        riverscapes_api (_type_): _description_
-        output_folder (_type_): _description_
-        project_id (str): _description_
-        force_download (bool): _description_
-
-    Returns:
-        List[str]: _description_
+    Merge the projects in the projects_lookup dictionary into a single project
     """
-
-    # Build a dictionary of files in the project keyed by local path to downloadUrl
-    files_query = riverscapes_api.load_query('projectFiles')
-    file_results = riverscapes_api.run_query(files_query, {"projectId": project_id})
-    files = {file['localPath']: file for file in file_results['data']['project']['files']}
-
-    project_file_path = None
-    for rel_path, file in files.items():
-        download_path = os.path.join(output_folder, project_id, rel_path)
-
-        if rel_path.endswith('project.rs.xml'):
-            project_file_path = download_path
-
-        safe_makedirs(os.path.dirname(download_path))
-        riverscapes_api.download_file(file, download_path, force_download)
-
-    log = Logger('Download')
-    log.info(f'Downloaded {len(files)} file(s) to project folder {os.path.join(output_folder, project_id)}')
-    return project_file_path
-
-
-def merge_projects(projects: List[str], merged_dir: str, name: str, project_type: str, collection_id: str) -> None:
 
     log = Logger('Merging')
-    log.info(f'Merging {len(projects)} project(s)')
+    log.info(f'Merging {len(projects_lookup)} project(s)')
 
     project_rasters = {}
     project_vectors = {}
     bounds_geojson_files = []
-    for project in projects:
 
-        project_xml = project['localPath']
+    first_project_xml = None
+    for proj_path, project in projects_lookup.items():
+
+        project_xml = os.path.join(proj_path, 'project.rs.xml')
         if project_xml is None:
             print(f'Skipping project with no project.rs.xml file {project["id"]}')
             continue
+        first_project_xml = project_xml
 
         get_raster_datasets(project_xml, project_rasters)
         get_vector_datasets(project_xml, project_vectors)
@@ -141,10 +57,10 @@ def merge_projects(projects: List[str], merged_dir: str, name: str, project_type
 
     # Generate a new project.rs.xml file for the merged project based
     # on the first project in the list
-    merge_project = Project.load_project(projects[0]['localPath'])
+    merge_project = Project.load_project(first_project_xml)
     merge_project.name = name
 
-    merge_project.description = f"""This project was generated by merging {len(projects)} {project_type} projects together,
+    merge_project.description = f"""This project was generated by merging {len(projects_lookup)} {project_type} projects together,
             using the merge-projects.py script.  The project bounds are the union of the bounds of the
             individual projects."""
 
@@ -152,7 +68,7 @@ def merge_projects(projects: List[str], merged_dir: str, name: str, project_type
     bounding_box = BoundingBox(bounding_rect[0], bounding_rect[2], bounding_rect[1], bounding_rect[3])
     merge_project.bounds = ProjectBounds(coords, bounding_box, os.path.basename(output_bounds_path))
 
-    project_urls = [f'https://data.riverscapes.net/p/{project["id"]}' for project in projects]
+    project_urls = [f'https://data.riverscapes.net/p/{project.id}' for proj_path, project in projects_lookup.items()]
 
     merge_project.meta_data = MetaData([Meta('projects', json.dumps(project_urls), 'json', None)])
     merge_project.meta_data.add_meta('Date Created', str(datetime.now().isoformat()), meta_type='isodate', ext=None)
@@ -207,6 +123,15 @@ def replace_log_file(merged_project_xml) -> None:
 
 
 def union_polygons(input_geojson_files, output_geojson_file) -> Tuple[str, str]:
+    """_summary_
+
+    Args:
+        input_geojson_files (_type_): _description_
+        output_geojson_file (_type_): _description_
+
+    Returns:
+        Tuple[str, str]: _description_
+    """
 
     # Create a new OGR memory data source
     mem_driver = ogr.GetDriverByName('Memory')
@@ -423,25 +348,29 @@ def main():
     log.setup(logPath=os.path.join(merged_folder, 'merge-projects.log'))
 
     riverscapes_api = RiverscapesAPI(stage=args.environment)
-    if riverscapes_api.access_token is None:
-        riverscapes_api.refresh_token()
+    riverscapes_api.refresh_token()
 
-    projects = search_projects(riverscapes_api, args.project_type, args.collection_id)
+    search_params = RiverscapesSearchParams({
+        'collection':  args.collection_id,
+        'projectTypeId': args.project_type,
+    })
 
-    if (len(projects) < 2):
-        log.error(f'Insufficient number of projects ({len(projects)}) found with type {args.project_type} and tags {args.project_tags}. 2 or more needed.')
-        sys.exit(1)
+    projects_lookup: Dict[str, RiverscapesProject] = {}
+    for project, _stats, search_total in riverscapes_api.search(search_params, progress_bar=True):
+        if len(search_total) < 2:
+            log.error(f'Insufficient number of projects ({len(search_total)}) found with type {args.project_type} and tags {args.project_tags}. 2 or more needed.')
+            sys.exit(1)
 
-    for project in projects:
-        project_id = project['id']
-        project_local = download_project(riverscapes_api, args.working_folder, project_id, False)
-        project['localPath'] = project_local
+        download_path = os.path.join(args.working_folder, project.id)
+        riverscapes_api.download_files(project.id, args.working_folder)
+        projects_lookup[download_path] = project
 
-    merge_projects(projects, merged_folder, args.name, args.project_type, args.collection_id)
+    # Remember to shutdown the API client
+    riverscapes_api.shutdown()
+
+    merge_projects(projects_lookup, merged_folder, args.name, args.project_type, args.collection_id)
 
     log.info('Process complete')
-
-    sys.exit(0)
 
 
 if __name__ == '__main__':

@@ -25,8 +25,8 @@ def confirm(riverscapes_api):
         exit()
 
 
-def rebuildWebTiles():
-    """ rebuild web tiles
+def rebuild_web_tiles():
+    """ Rebuild web tiles
 
     Args:
         output_folder ([type]): [description]
@@ -141,8 +141,7 @@ def rebuildWebTiles():
 
         # Now rebuilt web tiles all projects
         for project in changeable_projects:
-            print(
-                f"Rebuilding web tiles of project: {project['name']} with id: {project['id']}")
+            print(f"Rebuilding web tiles of project: {project['name']} with id: {project['id']}")
             mutation_params['projectId'] = project['id']
             riverscapes_api.run_query(mutation_script, mutation_params)
 
@@ -153,4 +152,4 @@ def rebuildWebTiles():
 
 
 if __name__ == '__main__':
-    rebuildWebTiles()
+    rebuild_web_tiles()

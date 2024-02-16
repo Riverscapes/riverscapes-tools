@@ -1,76 +1,89 @@
-"""Query Script to Find and delete projects on the server
-    June 06, 2023
+"""[summary]
 """
+import os
+from typing import List
 import json
-from cybercastor.classes.RiverscapesAPI import RiverscapesAPI
-from rscommons import Logger
+from termcolor import colored
+from rsxml import Logger, safe_makedirs
 import inquirer
+from cybercastor import RiverscapesAPI, RiverscapesSearchParams, RiverscapesProject
 
 
-def deleteProjects(stage):
-    """ Find and delete projects on the server
+def delete_by_tags():
+    """ Delete all projects with certain tag(s)
 
     Args:
-        stage (str): The stage to run the script on
+        stage (str): The server to run the script on
+        filedir (str): The directory to save the log file
+        proj_type (str): The project type to search for
+        tag (str): The tag to add to the projects
     """
-    log = Logger('DeleteProjects')
-    log.title('Delete Projects from the server')
+    log = Logger('AddTag')
+    log.title('Add tag to Projects from the server')
+
+    # First gather everything we need to make a search
+    # ================================================================================================================
+
+    search_params = RiverscapesSearchParams.load_from_json(os.path.join(os.path.dirname(__file__), '..', '..', 'inputs', 'add_tags_search.json'))
+
+    default_dir = os.path.join(os.path.expanduser("~"), 'RSTagging')
+    out_questions = [
+        # Also get if this is production or staging (default production)
+        inquirer.List('stage', message="Which Data Exchange stage?", choices=['production', 'staging'], default='production'),
+        inquirer.Text('logdir', message="Where do you want to save the log files?", default=default_dir),
+        inquirer.Text('tags', message="Comma-separated tags", default='zzzz,abc')
+    ]
+    out_answers = inquirer.prompt(out_questions)
+    logdir = out_answers['logdir']
+    safe_makedirs(logdir)
+
+    tags = [x.strip() for x in out_answers['tags'].split(',')]
+    stage = out_answers['stage']
+    filedir = out_answers['filedir']
+
+    # Make the search and collect all the data
+    # ================================================================================================================
 
     riverscapes_api = RiverscapesAPI(stage=stage)
-    search_query = riverscapes_api.load_query('searchProjects')
-    # Only refresh the token if we need to
-    if riverscapes_api.access_token is None:
-        riverscapes_api.refresh_token()
+    riverscapes_api.refresh_token()
 
-    searchParams = {
-        "meta": [{
-            "key": "Runner",
-            "value": "Cybercastor",
-        }]
-    }
+    deletable_projects: List[RiverscapesProject] = []
 
-    deletable_projects = []
-    offset = 0
     total = 0
-    # Create a timedelta object with a difference of 1 day
-    while offset == 0 or offset < total:
-
-        results = riverscapes_api.run_query(
-            search_query, {"searchParams": searchParams, "limit": 500, "offset": offset})
-        total = results['data']['searchProjects']['total']
-        offset += 500
-
-        projects = results['data']['searchProjects']['results']
-        log.info(f"   Fetching projects {offset} to {offset + 500}")
-        for search_result in projects:
-
-            project = search_result['item']
-            deletable_projects.append(project)
+    for project, _stats, _search_total in riverscapes_api.search(search_params, progress_bar=True):
+        deletable_projects.append(project)
 
     # Now write all projects to a log file as json
-    with open('deletable_projects.json', 'w') as f:
-        f.write(json.dumps(deletable_projects))
+    logpath = os.path.join(filedir, f'delete_by_tag_{stage}_{"-".join(tags)}')
+    with open(logpath, 'w', encoding='utf8') as fobj:
+        fobj.write(json.dumps([x.json for x in deletable_projects]))
+
+    # Now ask if we're sure and then run mutations on all these projects
+    # ================================================================================================================
 
     # Ask the user to confirm using inquirer
-    log.info(f"Found {len(deletable_projects)} projects to delete")
+    log.info(f"Found {len(deletable_projects)} out of {total} projects to delete")
     questions = [
-        inquirer.Confirm('confirm1',
-                         message="Are you sure you want to delete all projects?"),
-        inquirer.Confirm('confirm2',
-                         message="No, Seriously. You are DELETING PROJECTS!!! Are you really sure?"),
+        inquirer.Confirm('confirm1', message="Are you sure you want to PERMANENTLY DELETE the projects?"),
     ]
     answers = inquirer.prompt(questions)
-    if not answers['confirm1'] or not answers['confirm2']:
+    if not answers['confirm1']:  # or not answers['confirm2']:
         log.info("Good choice. Aborting!")
-        # Shut down the API since we don;t need it anymore
-        riverscapes_api.shutdown()
+        return
+    questions2 = [
+        inquirer.Confirm('confirm1', message=colored("NO, SERIOUSLY!!!!! TAKE A MOMENT HERE. ARE YOU ABSOLUTELY SURE?!?", 'red')),
+    ]
+    answers2 = inquirer.prompt(questions2)
+    if not answers2['confirm1']:  # or not answers['confirm2']:
+        log.info("Good choice. Aborting!")
         return
 
     # Now delete all projects
     mutation_script = riverscapes_api.load_mutation('deleteProject')
     for project in deletable_projects:
         print(f"Deleting project: {project['name']} with id: {project['id']}")
-        riverscapes_api.run_query(mutation_script, {"projectId": project['id'], 'options': {}})
+        raise Exception("TOO DANGEROUS!!! UNCOMMENT THE LINE BELOW TO DELETE PROJECTS!")
+        # riverscapes_api.run_query(mutation_script, {"projectId": project['id'], 'options': {}})
 
     # Shut down the API since we don;t need it anymore
     riverscapes_api.shutdown()
@@ -79,4 +92,4 @@ def deleteProjects(stage):
 
 
 if __name__ == '__main__':
-    deleteProjects('staging')
+    delete_by_tags()

@@ -1,4 +1,6 @@
+import os
 import re
+import json
 from datetime import datetime
 from dateutil.parser import parse as dateparse
 import semver
@@ -213,7 +215,6 @@ class RiverscapesSearchParams:
                 del sanitized["updatedOn"]
         return sanitized
 
-
     def validate(self):
         """ We can save a lot of grief here by validating the input parameters
         """
@@ -282,3 +283,24 @@ class RiverscapesSearchParams:
                 raise ValueError("bbox must be a list of the form [minLng, minLat, maxLng, maxLat] (your minLng must be less than maxLng and minLat must be less than maxLat)")
 
         self.log.debug("Search parameters validated Successfully!")
+
+    @staticmethod
+    def load_from_json(json_path: str):
+        """_summary_
+
+        Args:
+            json_obj (_type_): _description_
+
+        Returns:
+            _type_: _description_
+        """
+        log = Logger('SearchParams')
+        search_params = None
+        if not os.path.exists(json_path):
+            raise Exception(f"Could not find the file: {json_path}. Create this file and put a search inside it")
+
+        with open(json_path, 'r', encoding='utf8') as f:
+            search_params = RiverscapesSearchParams(json.load(f))
+        log.debug(f"Successfully loaded search parameters from: {json_path}")
+        log.debug(f"Search parameters: {json.dumps(search_params.to_gql(), indent=2)}")
+        return search_params

@@ -299,5 +299,11 @@ def projectTypeSync(stage: str, dry_run: bool = False):
 
 
 if __name__ == '__main__':
-    projectTypeSync('staging', False)
-    # projectTypeSync('production', True)
+    questions = [
+        # Also get if this is production or staging (default production)
+        inquirer.List('stage', message="Which Data Exchange stage?", choices=['production', 'staging'], default='production'),
+        inquirer.Confirm('dryrun', message="Dry run?", default=False)
+    ]
+    answers = inquirer.prompt(questions)
+
+    projectTypeSync(answers['stage'], answers['dryrun'])
