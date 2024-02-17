@@ -119,7 +119,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
         if p is not None:
             project_dgos.append(os.path.dirname(os.path.dirname(os.path.dirname(p))))
 
-    if len(project_dgos):
+    if len(project_dgos) > 0:
         vbin = vbet_inputs(os.path.dirname(os.path.dirname(
             os.path.dirname(in_segments))), project_dgos)
 
@@ -452,14 +452,14 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                     metric = metrics['STRMLENGTH']
 
                     with GeopackageLayer(line_network) as lyr_lines:
-                        len = 0
+                        leng = 0
                         for feat, *_ in lyr_lines.iterate_features(clip_shape=feat_geom):
                             geom_flowline_full = feat.GetGeometryRef()
                             feat_section = geom_flowline_full.Intersection(feat_geom)
                             section_proj = VectorBase.ogr2shapely(feat_section, transform=transform)
-                            len += section_proj.length
+                            leng += section_proj.length
                         lyr_lines = None
-                    metrics_output[metric['metric_id']] = str(len)
+                    metrics_output[metric['metric_id']] = str(leng)
 
                 if 'ACTFLDAREA' in metrics:
                     metric = metrics['ACTFLDAREA']
@@ -1495,7 +1495,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
 
             if 'BRATCAP' in metrics and brat_network:
                 metric = metrics['BRATCAP']
-                curs.execute(f"SELECT metric_value from dgo_metric_values WHERE dgoid IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])}) AND metric_id = {metric['metric_id']}")
+                curs.execute(f"SELECT metric_value from dgo_metric_values WHERE dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])}) AND metric_id = {metric['metric_id']}")
                 bratcap = curs.fetchall()
                 bratcap_val = np.mean(bratcap) if len(bratcap) > 0 else None
                 if bratcap_val is not None:
@@ -1504,7 +1504,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
 
             if 'BRATRISK' in metrics and brat_network:
                 metric = metrics['BRATRISK']
-                curs.execute(f"SELECT metric_value from dgo_metric_values WHERE dgoid IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])}) AND metric_id = {metric['metric_id']}")
+                curs.execute(f"SELECT metric_value from dgo_metric_values WHERE dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])}) AND metric_id = {metric['metric_id']}")
                 bratrisk = curs.fetchall()
                 bratrisk_val = max(set(bratrisk), key=bratrisk.count) if len(bratrisk) > 0 else None
                 if bratrisk_val is not None:
@@ -1513,7 +1513,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
 
             if 'BRATOPP' in metrics and brat_network:
                 metric = metrics['BRATOPP']
-                curs.execute(f"SELECT metric_value from dgo_metric_values WHERE dgoid IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])}) AND metric_id = {metric['metric_id']}")
+                curs.execute(f"SELECT metric_value from dgo_metric_values WHERE dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])}) AND metric_id = {metric['metric_id']}")
                 bratopp = curs.fetchall()
                 bratopp_val = max(set(bratopp), key=bratopp.count) if len(bratopp) > 0 else None
                 if bratopp_val is not None:
