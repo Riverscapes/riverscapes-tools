@@ -194,7 +194,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
                     lp_fcodes[feat.GetField(unique_stream_field)].append(feat.GetField('FCode'))
     for lp, fcs in lp_fcodes.items():
         if fcs == [33600, 55800] or fcs == [55800, 33600]:
-            lps_to_remove.append(lp)
+            lps_to_remove.append(str(lp))
 
     vbet_network(tmp_line_network, None, line_network, epsg=cfg.OUTPUT_EPSG,
                  fcodes=reach_codes, hard_clip_shape=clip_mask)
