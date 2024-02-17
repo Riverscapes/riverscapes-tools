@@ -93,7 +93,8 @@ window_distance = {'0': 200.0, '1': 400.0,
 
 def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties: Path, in_segments: Path, in_points: Path,
                   in_vbet_centerline: Path, in_dem: Path, in_hillshade: Path, project_folder: Path,
-                  in_confinement_dgos: Path = None, in_anthro_dgos: Path = None, in_rcat_dgos: Path = None, level_paths: list = None, meta: dict = None):
+                  in_confinement_dgos: Path = None, in_anthro_dgos: Path = None, in_rcat_dgos: Path = None, in_brat_network: Path = None,
+                  level_paths: list = None, meta: dict = None):
     """Generate Riverscapes Metric Engine project and calculate metrics
 
     Args:
@@ -116,9 +117,9 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
     project_dgos = []
     for p in [in_confinement_dgos, in_anthro_dgos, in_rcat_dgos]:
         if p is not None:
-            project_dgos.append(os.path.dirname(
-                os.path.dirname(os.path.dirname(p))))
-    if len(project_dgos) > 0:
+            project_dgos.append(os.path.dirname(os.path.dirname(os.path.dirname(p))))
+
+    if len(project_dgos):
         vbin = vbet_inputs(os.path.dirname(os.path.dirname(
             os.path.dirname(in_segments))), project_dgos)
 
@@ -194,6 +195,10 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
         project.add_dataset(in_gpkg_node.find('Layers'), 'rcat_dgo', RSLayer('RCAT DGO', 'RCAT_DGO', 'Vector', 'rcat_dgo'), 'Vector', rel_path=True, sublayer=True)
     else:
         rcat_dgos = None
+    if in_brat_network:
+        brat_network = os.path.join(inputs_gpkg, 'brat_network')
+        copy_feature_class(in_brat_network, brat_network)
+        project.add_dataset(in_gpkg_node.find('Layers'), 'brat_network', RSLayer('BRAT Network', 'BRAT_NETWORK', 'Vector', 'brat_network'), 'Vector', rel_path=True, sublayer=True)
 
     # get utm
     with GeopackageLayer(points) as lyr_pts:
@@ -443,6 +448,19 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                     fcode = feat_seg_dgo.GetField('FCode')
                     metrics_output[metric['metric_id']] = str(fcode)
 
+                if 'STRMLENGTH' in metrics:
+                    metric = metrics['STRMLENGTH']
+
+                    with GeopackageLayer(line_network) as lyr_lines:
+                        len = 0
+                        for feat, *_ in lyr_lines.iterate_features(clip_shape=feat_geom):
+                            geom_flowline_full = feat.GetGeometryRef()
+                            feat_section = geom_flowline_full.Intersection(feat_geom)
+                            section_proj = VectorBase.ogr2shapely(feat_section, transform=transform)
+                            len += section_proj.length
+                        lyr_lines = None
+                    metrics_output[metric['metric_id']] = str(len)
+
                 if 'ACTFLDAREA' in metrics:
                     metric = metrics['ACTFLDAREA']
 
@@ -574,7 +592,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                             attributes[attribute] = attributes.get(
                                 attribute, 0) + length
                     if len(attributes) == 0:
-                        log.warning(f'Unable to find majority ecoregion III for pt {dgo_id} in level path {level_path}')
+                        log.warning(f'Unable to find majority ecoregion III for dgo {dgo_id} in level path {level_path}')
                         majority_attribute = None
                     else:
                         majority_attribute = str(max(attributes, key=attributes.get))
@@ -593,7 +611,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                             attributes[attribute] = attributes.get(
                                 attribute, 0) + length
                     if len(attributes) == 0:
-                        log.warning(f'Unable to find majority ecoregion IV for pt {dgo_id} in level path {level_path}')
+                        log.warning(f'Unable to find majority ecoregion IV for dgo {dgo_id} in level path {level_path}')
                         majority_attribute = None
                     else:
                         majority_attribute = str(max(attributes, key=attributes.get))
@@ -646,7 +664,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                         drainage_area = str(max(results))
                     else:
                         drainage_area = None
-                        log.warning(f'Unable to calculate drainage area for pt {dgo_id} in level path {level_path}')
+                        log.warning(f'Unable to calculate drainage area for dgo {dgo_id} in level path {level_path}')
                     metrics_output[metric['metric_id']] = drainage_area
 
                 if 'VALAZMTH' in metrics:
@@ -766,7 +784,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                             length = geom_section.Length()
                             agencies[attribute] = agencies.get(attribute, 0) + length
                     if len(agencies) == 0:
-                        log.warning(f'Unable to find majority agency for pt {dgo_id} in level path {level_path}')
+                        log.warning(f'Unable to find majority agency for dgo {dgo_id} in level path {level_path}')
                         majority_agency = None
                     else:
                         majority_agency = str(max(agencies, key=agencies.get))
@@ -799,7 +817,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                             length = geom_section.Length()
                             states[attribute] = states.get(attribute, 0) + length
                     if len(states) == 0:
-                        log.warning(f'Unable to find majority state for pt {dgo_id} in level path {level_path}')
+                        log.warning(f'Unable to find majority state for dgo {dgo_id} in level path {level_path}')
                         majority_state = None
                     else:
                         majority_state = str(max(states, key=states.get))
@@ -820,7 +838,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                         lyr = None
                     if len(counties) == 0:
                         log.warning(
-                            f'Unable to find majority county for pt {dgo_id} in level path {level_path}')
+                            f'Unable to find majority county for dgo {dgo_id} in level path {level_path}')
                         majority_county = None
                     else:
                         majority_county = str(max(counties, key=counties.get))
@@ -865,6 +883,56 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                             f"SELECT Development FROM rcat_dgo WHERE fid = {dgo_id}")
                         devel = curs.fetchone()[0]
                     metrics_output[metric['metric_id']] = str(devel)
+
+                if 'BRATCAP' in metrics:
+                    metric = metrics['BRATCAP']
+                    attributes = {}
+                    with GeopackageLayer(brat_network) as lyr_brat:
+                        for feat, *_ in lyr_brat.iterate_features(clip_shape=feat_geom):
+                            geom_brat = feat.GetGeometryRef()
+                            capacity = feat.GetField('oCC_EX')
+                            # geom_section = feat_geom.Intersection(geom_brat)
+                            length = geom_brat.Length()
+                            attributes[capacity] = attributes.get(
+                                capacity, 0) + length
+                    tot_cap = sum(key * (val / sum(attributes.values())) for key, val in attributes.items())
+                    metrics_output[metric['metric_id']] = str(tot_cap)
+
+                if 'BRATRISK' in metrics:
+                    metric = metrics['BRATRISK']
+                    attributes = {}
+                    with GeopackageLayer(brat_network) as lyr_brat:
+                        for feat, *_ in lyr_brat.iterate_features(clip_shape=feat_geom):
+                            geom_brat = feat.GetGeometryRef()
+                            risk = feat.GetField('Risk')
+                            # geom_section = feat_geom.Intersection(geom_brat)
+                            length = geom_brat.Length()
+                            attributes[risk] = attributes.get(
+                                risk, 0) + length
+                        lyr_brat = None
+                    if len(attributes) == 0:
+                        tot_risk = None
+                    else:
+                        tot_risk = str(max(attributes, key=attributes.get))
+                    metrics_output[metric['metric_id']] = tot_risk
+
+                if 'BRATOPP' in metrics:
+                    metric = metrics['BRATOPP']
+                    attributes = {}
+                    with GeopackageLayer(brat_network) as lyr_brat:
+                        for feat, *_ in lyr_brat.iterate_features(clip_shape=feat_geom):
+                            geom_brat = feat.GetGeometryRef()
+                            opp = feat.GetField('Opportunity')
+                            # geom_section = feat_geom.Intersection(geom_brat)
+                            length = geom_brat.Length()
+                            attributes[opp] = attributes.get(
+                                opp, 0) + length
+                        lyr_brat = None
+                    if len(attributes) == 0:
+                        tot_opp = None
+                    else:
+                        tot_opp = str(max(attributes, key=attributes.get))
+                    metrics_output[metric['metric_id']] = tot_opp
 
                 # Write to Metrics
                 if len(metrics_output) > 0:
@@ -964,6 +1032,14 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                     if stream_size_metric is not None:
                         curs.execute(
                             f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['STRMSIZE']['metric_id']}, {str(stream_size_metric)})")
+
+                if 'STRMLENGTH' in metrics:
+                    curs.execute(
+                        f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['STRMLENGTH']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
+                    stream_length = curs.fetchone()[0]
+                    if stream_length is not None:
+                        curs.execute(
+                            f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['STRMLENGTH']['metric_id']}, {str(stream_length)})")
 
                 if 'ECORGIII' in metrics:
                     curs.execute(
@@ -1417,6 +1493,33 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                     curs.execute(
                         f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['DEVEL']['metric_id']}, {str(devel_val)})")
 
+            if 'BRATCAP' in metrics and brat_network:
+                metric = metrics['BRATCAP']
+                curs.execute(f"SELECT metric_value from dgo_metric_values WHERE dgoid IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])}) AND metric_id = {metric['metric_id']}")
+                bratcap = curs.fetchall()
+                bratcap_val = np.mean(bratcap) if len(bratcap) > 0 else None
+                if bratcap_val is not None:
+                    curs.execute(
+                        f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metric['metric_id']}, {str(bratcap_val)})")
+
+            if 'BRATRISK' in metrics and brat_network:
+                metric = metrics['BRATRISK']
+                curs.execute(f"SELECT metric_value from dgo_metric_values WHERE dgoid IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])}) AND metric_id = {metric['metric_id']}")
+                bratrisk = curs.fetchall()
+                bratrisk_val = max(set(bratrisk), key=bratrisk.count) if len(bratrisk) > 0 else None
+                if bratrisk_val is not None:
+                    curs.execute(
+                        f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metric['metric_id']}, {str(bratrisk_val)})")
+
+            if 'BRATOPP' in metrics and brat_network:
+                metric = metrics['BRATOPP']
+                curs.execute(f"SELECT metric_value from dgo_metric_values WHERE dgoid IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])}) AND metric_id = {metric['metric_id']}")
+                bratopp = curs.fetchall()
+                bratopp_val = max(set(bratopp), key=bratopp.count) if len(bratopp) > 0 else None
+                if bratopp_val is not None:
+                    curs.execute(
+                        f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metric['metric_id']}, {str(bratopp_val)})")
+
             conn.commit()
     progbar.finish()
 
@@ -1446,14 +1549,18 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                      (SELECT dgo_id, metric_value AS us_state FROM dgo_metric_values WHERE metric_id={metrics['STATE']['metric_id']}) s ON s.dgo_id=dgo.fid LEFT JOIN
                      (SELECT dgo_id, metric_value AS county FROM dgo_metric_values WHERE metric_id={metrics['COUNTY']['metric_id']}) c ON c.dgo_id=dgo.fid LEFT JOIN
                      (SELECT dgo_id, metric_value AS ecoregion3 FROM dgo_metric_values WHERE metric_id={metrics['ECORGIII']['metric_id']}) e ON e.dgo_id=dgo.fid LEFT JOIN
-                     (SELECT dgo_id, metric_value AS ecoregion4 FROM dgo_metric_values WHERE metric_id={metrics['ECORGIV']['metric_id']}) f ON f.dgo_id=dgo.fid
+                     (SELECT dgo_id, metric_value AS ecoregion4 FROM dgo_metric_values WHERE metric_id={metrics['ECORGIV']['metric_id']}) f ON f.dgo_id=dgo.fid LEFT JOIN
+                     (SELECT dgo_id, metric_value AS bratrisk FROM dgo_metric_values WHERE metric_id={metrics['BRATRISK']['metric_id']}) br ON br.dgo_id=dgo.fid LEFT JOIN
+                     (SELECT dgo_id, metric_value AS bratopp FROM dgo_metric_values WHERE metric_id={metrics['BRATOPP']['metric_id']}) bo ON bo.dgo_id=dgo.fid
                      """)
         curs.execute(f"""CREATE VIEW igo_text_metrics(fid, {text_metric_names_sql}) AS SELECT igo.fid, o.ownership, s.us_state, c.county, e.ecoregion3, f.ecoregion4 FROM igos igo LEFT JOIN
                      (SELECT igo_id, metric_value AS ownership FROM igo_metric_values WHERE metric_id={metrics['AGENCY']['metric_id']}) o ON o.igo_id=igo.fid LEFT JOIN
                      (SELECT igo_id, metric_value AS us_state FROM igo_metric_values WHERE metric_id={metrics['STATE']['metric_id']}) s ON s.igo_id=igo.fid LEFT JOIN
                      (SELECT igo_id, metric_value AS county FROM igo_metric_values WHERE metric_id={metrics['COUNTY']['metric_id']}) c ON c.igo_id=igo.fid LEFT JOIN
                      (SELECT igo_id, metric_value AS ecoregion3 FROM igo_metric_values WHERE metric_id={metrics['ECORGIII']['metric_id']}) e ON e.igo_id=igo.fid LEFT JOIN
-                     (SELECT igo_id, metric_value AS ecoregion4 FROM igo_metric_values WHERE metric_id={metrics['ECORGIV']['metric_id']}) f ON f.igo_id=igo.fid
+                     (SELECT igo_id, metric_value AS ecoregion4 FROM igo_metric_values WHERE metric_id={metrics['ECORGIV']['metric_id']}) f ON f.igo_id=igo.fid LEFT JOIN
+                     (SELECT igo_id, metric_value AS bratrisk FROM igo_metric_values WHERE metric_id={metrics['BRATRISK']['metric_id']}) br ON br.igo_id=igo.fid LEFT JOIN
+                     (SELECT igo_id, metric_value AS bratopp FROM igo_metric_values WHERE metric_id={metrics['BRATOPP']['metric_id']}) bo ON bo.igo_id=igo.fid
                      """)
         curs.execute(
             "CREATE VIEW dgo_metrics_pivot AS SELECT * FROM dgo_num_metrics JOIN dgo_text_metrics USING (fid);")
@@ -1674,6 +1781,7 @@ def main():
                         help='confinement dgos', type=str)
     parser.add_argument('--anthro_dgos', help='anthro dgos', type=str)
     parser.add_argument('--rcat_dgos', help='rcat_dgos', type=str)
+    parser.add_argument('--brat_network', help='brat network', type=str)
     parser.add_argument(
         '--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ',
@@ -1708,6 +1816,7 @@ def main():
                                          args.confinement_dgos,
                                          args.anthro_dgos,
                                          args.rcat_dgos,
+                                         args.brat_network,
                                          meta=meta)
             log.debug(f'Return code: {retcode}, [Max process usage] {max_obj}')
 
@@ -1725,6 +1834,7 @@ def main():
                           args.confinement_dgos,
                           args.anthro_dgos,
                           args.rcat_dgos,
+                          args.brat_network,
                           meta=meta)
 
     except Exception as e:
