@@ -18,7 +18,8 @@ lyrs_in_out = {
     'valley_centerlines': 'vbet_centerlines',
     # 'confinement_dgo': 'confinement_dgos',
     'anthro_dgo': 'vwDgos',
-    'rcat_dgo': 'vwDgos'
+    'rcat_dgo': 'vwDgos',
+    'brat_network': 'vwReaches'
 }
 
 

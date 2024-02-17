@@ -11,6 +11,7 @@ IFS=$'\n\t'
 # (: "${CONFINEMENT_ID?}")
 (: "${ANTHRO_ID?}")
 (: "${RCAT_ID?}")
+(: "${BRAT_ID?}")
 (: "${RS_API_URL?}")
 (: "${VISIBILITY?}")
 # These are machine credentials for the API which will allow the CLI to delegate uploading to either a specific user or an org
@@ -49,6 +50,7 @@ echo "RSCONTEXT_ID: $RSCONTEXT_ID"
 # echo "CONFINEMENT_ID: $CONFINEMENT_ID"
 echo "ANTHRO_ID: $ANTHRO_ID"
 echo "RCAT_ID: $RCAT_ID"
+echo "BRAT_ID: $BRAT_ID"
 echo "RS_API_URL: $RS_API_URL"
 echo "VISIBILITY: $VISIBILITY"
 if [ -n "$USER_ID" ]; then
@@ -67,6 +69,7 @@ VBET_DIR=$DATA_DIR/vbet/vbet_$VBET_ID
 # CONFINEMENT_DIR=$DATA_DIR/confinement/confinement_$CONFINEMENT_ID
 ANTHRO_DIR=$DATA_DIR/anthro/anthro_$ANTHRO_ID
 RCAT_DIR=$DATA_DIR/rcat/rcat_$RCAT_ID
+BRAT_DIR=$DATA_DIR/brat/brat_$BRAT_ID
 RME_DIR=$DATA_DIR/output/rme
 
 ##########################################################################################
@@ -94,6 +97,10 @@ rscli download $RCAT_DIR --id $RCAT_ID \
   --file-filter "(rcat\.gpkg)" \
   --no-input --no-ui --verbose
 
+rscli download $BRAT_DIR --id $BRAT_ID \
+  --file-filter "(brat\.gpkg)" \
+  --no-input --no-ui --verbose
+
 echo "======================  Initial Disk space usage ======================="
 df -h
 
@@ -115,6 +122,7 @@ try() {
     $RME_DIR \
     --anthro_dgos $ANTHRO_DIR/outputs/anthro.gpkg/vwDgos \
     --rcat_dgos $RCAT_DIR/outputs/rcat.gpkg/vwDgos \
+    --brat_network $BRAT_DIR/outputs/brat.gpkg/vwReaches \
     --meta "Runner=Cybercastor" \
     --verbose
   if [[ $? != 0 ]]; then return 1; fi
@@ -122,7 +130,7 @@ try() {
   cd /usr/local/src/riverscapes-tools/packages/rme
   python3 -m rme.rme_rs \
     $RME_DIR/project.rs.xml \
-    "$RS_CONTEXT_DIR/project.rs.xml,$VBET_DIR/project.rs.xml",$ANTHRO_DIR/project.rs.xml,$RCAT_DIR/project.rs.xml \
+    "$RS_CONTEXT_DIR/project.rs.xml,$VBET_DIR/project.rs.xml",$ANTHRO_DIR/project.rs.xml,$RCAT_DIR/project.rs.xml,$BRAT_DIR/project.rs.xml \
 
   echo "======================  Final Disk space usage ======================="
   df -h
