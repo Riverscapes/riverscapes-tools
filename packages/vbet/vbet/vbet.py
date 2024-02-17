@@ -17,6 +17,7 @@ import sqlite3
 import shutil
 from copy import deepcopy
 import warnings
+from math import ceil
 
 from osgeo import ogr
 import rasterio
@@ -181,6 +182,19 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
     log.info('Preparing network:')
     copy_feature_class(in_line_network, tmp_line_network,
                        epsg=cfg.OUTPUT_EPSG, clip_shape=clip_mask)
+
+    lp_fcodes = {}  # if its only canal and art path, the level path will get removed from the run
+    lps_to_remove = []
+    with GeopackageLayer(tmp_line_network) as lyr:
+        for feat, *_ in lyr.iterate_features():
+            if feat.GetField(unique_stream_field) not in lp_fcodes:
+                lp_fcodes[feat.GetField(unique_stream_field)] = [feat.GetField('FCode')]
+            else:
+                if feat.GetField('FCode') not in lp_fcodes[feat.GetField(unique_stream_field)]:
+                    lp_fcodes[feat.GetField(unique_stream_field)].append(feat.GetField('FCode'))
+    for lp, fcs in lp_fcodes.items():
+        if fcs == [33600, 55800] or fcs == [55800, 33600]:
+            lps_to_remove.append(lp)
 
     vbet_network(tmp_line_network, None, line_network, epsg=cfg.OUTPUT_EPSG,
                  fcodes=reach_codes, hard_clip_shape=clip_mask)
@@ -352,6 +366,10 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
             level_paths_to_run = all_level_paths
         all_level_paths = None
 
+    for lp in level_paths_to_run:
+        if lp in lps_to_remove:
+            level_paths_to_run.remove(lp)
+
         # level_path_stream_order = dict([(str(int(row[0])), row[1]) for row in curs.execute("SELECT LevelPathI, MAX(StreamOrde) FROM NHDPlusFlowlineVAA GROUP BY LevelPathI ").fetchall()])
         # level_path_stream_order[None] = 1
 
@@ -498,10 +516,17 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
         local_pitfill_dem = os.path.join(
             temp_folder_lpath, f'pitfill_dem_{level_path}.tif')
         with TimerBuckets('gdal'):
-            raster_warp(dinfflowdir_ang, local_dinfflowdir_ang,
-                        cfg.OUTPUT_EPSG, clip=envelope)
-            raster_warp(pitfill_dem, local_pitfill_dem,
-                        cfg.OUTPUT_EPSG, clip=envelope)
+            with GeopackageLayer(envelope) as envelope_lyr, rasterio.open(pitfill_dem) as pitfill_src:
+                envelope_extent = envelope_lyr.ogr_layer.GetExtent()
+
+                if ceil(abs(envelope_extent[0] - envelope_extent[1]) / pitfill_src.res[0]) >= pitfill_src.width or ceil(abs(envelope_extent[2] - envelope_extent[3]) / pitfill_src.res[1]) >= pitfill_src.height:
+                    raster_warp(pitfill_dem, local_pitfill_dem, cfg.OUTPUT_EPSG)
+                    raster_warp(dinfflowdir_ang, local_dinfflowdir_ang, cfg.OUTPUT_EPSG)
+                else:
+                    raster_warp(dinfflowdir_ang, local_dinfflowdir_ang,
+                                cfg.OUTPUT_EPSG, clip=envelope)
+                    raster_warp(pitfill_dem, local_pitfill_dem,
+                                cfg.OUTPUT_EPSG, clip=envelope)
 
         rasterized_channel = os.path.join(
             temp_folder_lpath, f'rasterized_channel_{level_path}.tif')
