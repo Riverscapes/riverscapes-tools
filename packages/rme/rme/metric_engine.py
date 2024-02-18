@@ -1497,7 +1497,8 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                 metric = metrics['BRATCAP']
                 curs.execute(f"SELECT metric_value from dgo_metric_values WHERE dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])}) AND metric_id = {metric['metric_id']}")
                 bratcap = curs.fetchall()
-                bratcap_val = np.mean(bratcap) if len(bratcap) > 0 else None
+                bratcap_list = [float(row[0]) for row in bratcap if row[0] is not None]
+                bratcap_val = np.mean(bratcap_list) if len(bratcap_list) > 0 else None
                 if bratcap_val is not None:
                     curs.execute(
                         f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metric['metric_id']}, {str(bratcap_val)})")
@@ -1505,20 +1506,22 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
             if 'BRATRISK' in metrics and brat_network:
                 metric = metrics['BRATRISK']
                 curs.execute(f"SELECT metric_value from dgo_metric_values WHERE dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])}) AND metric_id = {metric['metric_id']}")
-                bratrisk = curs.fetchall()
+                bratr = curs.fetchall()
+                bratrisk = [row[0] for row in bratr if row[0] is not None]
                 bratrisk_val = max(set(bratrisk), key=bratrisk.count) if len(bratrisk) > 0 else None
                 if bratrisk_val is not None:
                     curs.execute(
-                        f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metric['metric_id']}, {str(bratrisk_val)})")
+                        f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metric['metric_id']}, '{str(bratrisk_val)}')")
 
             if 'BRATOPP' in metrics and brat_network:
                 metric = metrics['BRATOPP']
                 curs.execute(f"SELECT metric_value from dgo_metric_values WHERE dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])}) AND metric_id = {metric['metric_id']}")
-                bratopp = curs.fetchall()
+                brato = curs.fetchall()
+                bratopp = [row[0] for row in brato if row[0] is not None]
                 bratopp_val = max(set(bratopp), key=bratopp.count) if len(bratopp) > 0 else None
                 if bratopp_val is not None:
                     curs.execute(
-                        f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metric['metric_id']}, {str(bratopp_val)})")
+                        f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metric['metric_id']}, '{str(bratopp_val)}')")
 
             conn.commit()
     progbar.finish()
@@ -1544,7 +1547,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
         sql2 = f"""CREATE VIEW igo_num_metrics (fid, {num_metric_names_sql}) AS SELECT M.igo_id, {metric_values_sql} FROM igo_metric_values M GROUP BY M.igo_id;"""
         curs.execute(sql2)
 
-        curs.execute(f"""CREATE VIEW dgo_text_metrics(fid, {text_metric_names_sql}) AS SELECT dgo.fid, o.ownership, s.us_state, c.county, e.ecoregion3, f.ecoregion4 FROM dgos dgo LEFT JOIN
+        curs.execute(f"""CREATE VIEW dgo_text_metrics(fid, {text_metric_names_sql}) AS SELECT dgo.fid, o.ownership, s.us_state, c.county, e.ecoregion3, f.ecoregion4, br.bratrisk, bo.bratopp FROM dgos dgo LEFT JOIN
                      (SELECT dgo_id, metric_value AS ownership FROM dgo_metric_values WHERE metric_id={metrics['AGENCY']['metric_id']}) o ON o.dgo_id=dgo.fid LEFT JOIN
                      (SELECT dgo_id, metric_value AS us_state FROM dgo_metric_values WHERE metric_id={metrics['STATE']['metric_id']}) s ON s.dgo_id=dgo.fid LEFT JOIN
                      (SELECT dgo_id, metric_value AS county FROM dgo_metric_values WHERE metric_id={metrics['COUNTY']['metric_id']}) c ON c.dgo_id=dgo.fid LEFT JOIN
@@ -1553,7 +1556,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                      (SELECT dgo_id, metric_value AS bratrisk FROM dgo_metric_values WHERE metric_id={metrics['BRATRISK']['metric_id']}) br ON br.dgo_id=dgo.fid LEFT JOIN
                      (SELECT dgo_id, metric_value AS bratopp FROM dgo_metric_values WHERE metric_id={metrics['BRATOPP']['metric_id']}) bo ON bo.dgo_id=dgo.fid
                      """)
-        curs.execute(f"""CREATE VIEW igo_text_metrics(fid, {text_metric_names_sql}) AS SELECT igo.fid, o.ownership, s.us_state, c.county, e.ecoregion3, f.ecoregion4 FROM igos igo LEFT JOIN
+        curs.execute(f"""CREATE VIEW igo_text_metrics(fid, {text_metric_names_sql}) AS SELECT igo.fid, o.ownership, s.us_state, c.county, e.ecoregion3, f.ecoregion4, br.bratrisk, bo.bratopp FROM igos igo LEFT JOIN
                      (SELECT igo_id, metric_value AS ownership FROM igo_metric_values WHERE metric_id={metrics['AGENCY']['metric_id']}) o ON o.igo_id=igo.fid LEFT JOIN
                      (SELECT igo_id, metric_value AS us_state FROM igo_metric_values WHERE metric_id={metrics['STATE']['metric_id']}) s ON s.igo_id=igo.fid LEFT JOIN
                      (SELECT igo_id, metric_value AS county FROM igo_metric_values WHERE metric_id={metrics['COUNTY']['metric_id']}) c ON c.igo_id=igo.fid LEFT JOIN
@@ -1594,7 +1597,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
         # Create measure view
         measure_names_sql = ", ".join(
             [f"M.{sql_name(measurement['name'])} {sql_name(measurement['name'])}" for measurement in measurements.values()])
-        sql = f'CREATE VIEW vw_measurements AS SELECT G.fid fid, G.geom geom, G.level_path, G.seg_distance seg_distance, {measure_names_sql} FROM dgos G INNER JOIN measurements_pivot M ON M.fid = G.fid;'
+        sql = f'CREATE VIEW vw_measurements AS SELECT G.fid, G.geom, G.level_path, G.seg_distance, {measure_names_sql} FROM dgos G INNER JOIN measurements_pivot M ON M.fid = G.fid;'
         curs.execute(sql)
 
         # Add view to geopackage
