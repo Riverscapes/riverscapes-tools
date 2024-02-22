@@ -551,6 +551,24 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
                     temp_folder_lpath, 'flowlines.gpkg', f'level_path_{level_path}')
                 copy_feature_class(line_network, level_path_flowlines,
                                    attribute_filter=f'{unique_stream_field} = {level_path}')
+                # check if the level path flowlines are empty or are of type point
+                with GeopackageLayer(level_path_flowlines) as lyr_flowlines:
+                    if lyr_flowlines.ogr_layer.GetFeatureCount() == 0:
+                        err_msg = f"No flowlines found for Level Path {level_path}."
+                        log.warning(err_msg)
+                        _tmterr("NO_FLOWLINES", err_msg)
+                        continue
+                    err = False
+                    for feat, *_ in lyr_flowlines.iterate_features():
+                        geom_test: ogr.Geometry = feat.GetGeometryRef()
+                        if geom_test.GetGeometryType() == ogr.wkbPoint:
+                            err = True
+                            break
+                    if err:
+                        err_msg = f"Point geometry found for Level Path {level_path}."
+                        log.warning(err_msg)
+                        _tmterr("POINT_FLOWLINES", err_msg)
+                        continue
                 rasterized_level_path = os.path.join(
                     temp_folder_lpath, f'rasterized_flowline_{level_path}.tif')
                 rasterize(level_path_flowlines, rasterized_level_path,
