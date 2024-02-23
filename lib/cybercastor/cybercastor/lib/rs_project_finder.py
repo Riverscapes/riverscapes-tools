@@ -1,10 +1,13 @@
-from rsxml import Logger
+# from rsxml import Logger
+
+from rscommons import Logger  # Logger from rsxml is missing log.success
+
 import dateutil.parser
 import inquirer
 from riverscapes import RiverscapesAPI
 
 # Key is JSON task script ID. Value is list of warehouse project types
-# https://cybercastor.northarrowresearch.com/engines/manifest.json
+# https://cybercastor.riverscapes.net/engines/manifest.json
 upstream_project_types = {
     'rs_context': [],
     'rs_context_channel_taudem': [],
@@ -14,7 +17,7 @@ upstream_project_types = {
     'confinement': ['rscontext', 'vbet'],
     'anthro': ['rscontext', 'vbet'],
     'rcat': ['rscontext', 'vbet', 'taudem', 'anthro'],
-    'rs_metric_engine': ['rscontext', 'vbet', 'confinement', 'anthro', 'rcat'],
+    'rs_metric_engine': ['rscontext', 'vbet', 'brat', 'anthro', 'rcat', 'confinement']
 }
 
 # Key is warehouse project type. Value is Fargate environment variable
