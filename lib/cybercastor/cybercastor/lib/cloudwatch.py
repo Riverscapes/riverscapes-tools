@@ -6,7 +6,7 @@ from datetime import datetime
 import boto3
 from rsxml import safe_makedirs, safe_remove_file
 from cybercastor.lib.monitor import report_job
-
+from termcolor import colored
 
 # export enum TaskStatusEnum {
 #     DELETE_REQUESTED = 'DELETE_REQUESTED',
@@ -97,6 +97,6 @@ def download_logs(job, task, group_name, stream, file_path):
                     event.update({'group': group_name, 'stream': stream})
                     out_to.write(json.dumps(event) + '\n')
         except Exception as e:
-            print(e)
+            print(colored(e, 'red'))
             out_to.write(f'ERROR RETRIEVING LOGS: Group: {group_name} Stream: {stream}')
-            out_to.write(e)
+            out_to.write(f'ERROR: {e}')
