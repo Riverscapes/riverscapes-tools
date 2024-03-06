@@ -794,6 +794,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
                         log.error(err_msg)
                         log.debug(err)
                         _tmterr("CENTERLINE_COST_ERROR", err_msg)
+                        continue
 
                     log.info('Vectorize centerline from Raster')
                     geom_centerline = raster2line_geom(
