@@ -642,6 +642,9 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
                 (in_transform[0] - out_transform[0]) / out_transform[1])
             row_off_delta = round(
                 (in_transform[3] - out_transform[3]) / out_transform[5])
+            if read_rasters['Slope'].width - col_off_delta < read_rasters['HAND'].width:
+                log.warning('Slope raster is smaller than the HAND raster. Adjusting col_off_delta.')
+                col_off_delta = col_off_delta - (read_rasters['HAND'].width - (read_rasters['Slope'].width-col_off_delta))
 
             for _ji, window in read_rasters['HAND'].block_windows(1):
                 progbar.update(counter)
@@ -654,6 +657,11 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
                         'HAND', 'Channel', 'TRANSFORM_ZONE_HAND', 'Proximity'] else modified_window
                     block[block_name] = raster.read(
                         1, window=out_window, masked=True)
+                    # if block[block_name].shape[1] != window.width:
+                    #     col_off_delta = col_off_delta - 1
+                    #     modified_window = Window(
+                    #         window.col_off + col_off_delta, window.row_off + row_off_delta, window.width, window.height)
+                    #     block[block_name] = raster.read(1, window=modified_window, masked=True)
 
                 transformed = {}
                 for name in vbet_run['Inputs']:
@@ -670,7 +678,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
                                 if w and issubclass(w[-1].category, RuntimeWarning):
                                     pass
                             transformed[name] = np.ma.MaskedArray(
-                                trans_ds, mask=block['HAND'].mask)
+                                trans_ds, mask=block[name].mask)
 
                         else:
                             transformed[name] = np.ma.MaskedArray(
