@@ -585,7 +585,8 @@ def raster_update_multiply(raster: Path, update_values_raster: Path, value=None)
         out_transform = rio_dest.get_transform()
         col_off_delta = round((in_transform[0] - out_transform[0]) / out_transform[1])
         row_off_delta = round((in_transform[3] - out_transform[3]) / out_transform[5])
-
+        if rio_dest.width - col_off_delta < rio_updates.width:
+            col_off_delta = col_off_delta - (rio_updates.width - (rio_dest.width - col_off_delta))
         for _ji, window in rio_updates.block_windows(1):
             out_window = Window(window.col_off + col_off_delta, window.row_off + row_off_delta, window.width, window.height)
 
