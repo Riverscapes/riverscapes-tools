@@ -592,6 +592,8 @@ def raster_update_multiply(raster: Path, update_values_raster: Path, value=None)
 
             array_dest = rio_dest.read(1, window=out_window, masked=True)
             array_update = rio_updates.read(1, window=window, masked=True)
+            if array_dest.shape[0] == 0:
+                continue
 
             if value is not None:
                 array_update = np.multiply(array_update, value)
