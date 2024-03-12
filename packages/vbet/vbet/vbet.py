@@ -657,11 +657,6 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
                         'HAND', 'Channel', 'TRANSFORM_ZONE_HAND', 'Proximity'] else modified_window
                     block[block_name] = raster.read(
                         1, window=out_window, masked=True)
-                    # if block[block_name].shape[1] != window.width:
-                    #     col_off_delta = col_off_delta - 1
-                    #     modified_window = Window(
-                    #         window.col_off + col_off_delta, window.row_off + row_off_delta, window.width, window.height)
-                    #     block[block_name] = raster.read(1, window=modified_window, masked=True)
 
                 transformed = {}
                 for name in vbet_run['Inputs']:
@@ -690,9 +685,13 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
                     masked_prox = np.ma.MaskedArray(
                         block['Proximity'].data, mask=block['HAND'].mask)
                     if name == 'Slope' and zone < 3:
-                        # transformed[name] = transformed[name] - ((np.log(masked_prox + 0.1) + 2.303) / np.log(max_prox + 2.303))
-                        transformed[name] = transformed[name] - \
-                            (np.sqrt(masked_prox) / np.sqrt(max_prox))
+                        with warnings.catch_warnings(record=True) as w:
+                            warnings.simplefilter("always")
+                            # transformed[name] = transformed[name] - ((np.log(masked_prox + 0.1) + 2.303) / np.log(max_prox + 2.303))
+                            transformed[name] = transformed[name] - \
+                                (np.sqrt(masked_prox) / np.sqrt(max_prox))
+                            if w and issubclass(w[-1].category, RuntimeWarning):
+                                pass
 
                 fvals_topo = vbet_run['Inputs']['HAND']['weight'] * transformed['HAND'] + \
                     vbet_run['Inputs']['Slope']['weight'] * \
