@@ -4,7 +4,7 @@ import traceback
 import sys
 from math import pi
 import json
-from rscommons import GeopackageLayer, Raster, dotenv, Logger
+from rscommons import GeopackageLayer, Raster, dotenv, Logger, RSProject, RSLayer
 from rscommons.classes.vector_base import VectorBase, get_utm_zone_epsg
 from shapely.geometry import Point
 
@@ -28,15 +28,15 @@ def rscontext_metrics(project_path):
         geom = VectorBase.ogr2shapely(ftr, transform)
         if not geom.is_valid:
             geom = geom.buffer(0)
-        
+
         catchment_rect = geom.minimum_rotated_rectangle
         dists = [Point(catchment_rect.exterior.coords[i]).distance(Point(catchment_rect.exterior.coords[i+1])) for i in range(4)]
         rad_dists = [Point(geom.centroid.coords).distance(Point(catchment_rect.exterior.coords[i])) for i in range(4)]
-    
+
         catchment_length_km = max(dists) / 1000
         bounding_circle_area = pi * (min(rad_dists) / 1000) ** 2
         catchment_perim_km = geom.length / 1000
-    
+
     with GeopackageLayer(os.path.join(project_path, 'hydrology', 'nhdplushr.gpkg'), layer_name='NHDFlowline') as nhd_lyr:
         peren = 0
         interm = 0
@@ -52,7 +52,7 @@ def rscontext_metrics(project_path):
     with Raster(os.path.join(project_path, 'topography/dem.tif')) as dem_src:
         dem = dem_src.array
         dem = dem[dem != dem_src.nodata]
-        relief  = dem.max() - dem.min()
+        relief = dem.max() - dem.min()
 
     out_metrics["catchmentLength"] = str(catchment_length_km)
     out_metrics["catchmentArea"] = str(catchment_area_km2)
@@ -70,9 +70,14 @@ def rscontext_metrics(project_path):
     with open(os.path.join(project_path, 'rscontext_metrics.json'), 'w') as f:
         json.dump(out_metrics, f, indent=2)
 
+    proj = RSProject(None, os.path.join(project_path, 'project.rs.xml'))
+    datasets_node = proj.XMLBuilder.find('Realizations').find('Realization').find('Datasets')
+    proj.add_dataset(datasets_node, os.path.join(project_path, 'rscontext_metrics.json'), RSLayer('Metrics', 'Metrics', 'File', 'rscontext_metrics.json'), 'File')
+    proj.XMLBuilder.write()
+
 
 def main():
-    
+
     parser = argparse.ArgumentParser()
     parser.add_argument('project_path', help='Path to project directory', type=str)
     args = dotenv.parse_args_env(parser)
