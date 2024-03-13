@@ -5,7 +5,7 @@ import sys
 import json
 import sqlite3
 
-from rscommons import Logger, dotenv
+from rscommons import Logger, dotenv, RSProject, RSLayer
 
 
 def anthro_metrics(anthro_proj_path, vbet_proj_path):
@@ -86,6 +86,12 @@ def anthro_metrics(anthro_proj_path, vbet_proj_path):
 
     with open(os.path.join(anthro_proj_path, 'anthro_metrics.json'), 'w') as json_file:
         json.dump(metrics, json_file, indent=2)
+
+    proj = RSProject(None, os.path.join(anthro_proj_path, 'project.rs.xml'))
+    realization_node = proj.XMLBuilder.find('Realizations').find('Realization')
+    datasets_node = proj.XMLBuilder.add_sub_element(realization_node, 'Datasets')
+    proj.add_dataset(datasets_node, os.path.join(anthro_proj_path, 'anthro_metrics.json'), RSLayer('Metrics', 'Metrics', 'File', 'anthro_metrics.json'), 'File')
+    proj.XMLBuilder.write()
 
     log.info('Anthro Metrics Calculated')
 

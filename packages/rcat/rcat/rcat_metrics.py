@@ -5,7 +5,7 @@ import sys
 import json
 import sqlite3
 
-from rscommons import Logger, dotenv
+from rscommons import Logger, dotenv, RSProject, RSLayer
 
 
 def rcat_metrics(rcat_proj_path, anthro_proj_path):
@@ -56,8 +56,16 @@ def rcat_metrics(rcat_proj_path, anthro_proj_path):
     metrics['avRiparianDeparture'] = av_riparian_departure
     metrics['avCondition'] = av_condition
 
-    with open(os.path.join(rcat_proj_path, 'rcat_metrics.json'), 'w') as json_file:
-        json.dump(metrics, json_file, indent=2)
+    with open(os.path.join(rcat_proj_path, 'rcat_metrics.json'), 'w') as json_out:
+        json.dump(metrics, json_out, indent=2)
+
+    proj = RSProject(None, os.path.join(rcat_proj_path, 'project.rs.xml'))
+    realization_node = proj.XMLBuilder.find('Realizations').find('Realization')
+    datasets_node = proj.XMLBuilder.add_sub_element(realization_node, 'Datasets')
+    proj.add_dataset(datasets_node, os.path.join(rcat_proj_path, 'rcat_metrics.json'), RSLayer('Metrics', 'Metrics', 'File', 'rcat_metrics.json'), 'File')
+    proj.XMLBuilder.write()
+
+    log.info('RCAT Metrics calculated successfully')
 
 
 def main():
