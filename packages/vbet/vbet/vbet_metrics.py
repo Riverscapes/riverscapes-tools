@@ -5,7 +5,7 @@ import sys
 import json
 import sqlite3
 
-from rscommons import Logger, dotenv
+from rscommons import Logger, dotenv, RSProject, RSLayer
 
 
 def vbet_metrics(vbet_proj_path, rsc_proj_path):
@@ -74,6 +74,12 @@ def vbet_metrics(vbet_proj_path, rsc_proj_path):
 
     with open(os.path.join(vbet_proj_path, 'vbet_metrics.json'), 'w') as f:
         json.dump(metrics, f, indent=2)
+
+    proj = RSProject(None, os.path.join(vbet_proj_path, 'project.rs.xml'))
+    realization_node = proj.XMLBuilder.find('Realizations').find('Realization')
+    datasets_node = proj.XMLBuilder.add_sub_element(realization_node, 'Datasets')
+    proj.add_dataset(datasets_node, os.path.join(vbet_proj_path, 'vbet_metrics.json'), RSLayer('Metrics', 'Metrics', 'File', 'vbet_metrics.json'), 'File')
+    proj.XMLBuilder.write()
 
 
 def main():
