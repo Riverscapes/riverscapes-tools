@@ -51,10 +51,10 @@ def rcat_metrics(rcat_proj_path, anthro_proj_path):
         metrics['propAgriculture'] = str(ag_km2 / float(metrics['riverscapeArea']))
         metrics['propDeveloped'] = str(dev_km2 / float(metrics['riverscapeArea']))
 
-    metrics['avPropAccessibleFloodplain'] = str(av_floodplain_access)
-    metrics['avPropRiparian'] = str(av_riparian_mean)
-    metrics['avRiparianDeparture'] = str(av_riparian_departure)
-    metrics['avCondition'] = str(av_condition)
+    metrics['avePropAccessibleFloodplain'] = str(av_floodplain_access)
+    metrics['avePropRiparian'] = str(av_riparian_mean)
+    metrics['aveRiparianDeparture'] = str(av_riparian_departure)
+    metrics['aveRiparianCondition'] = str(av_condition)
 
     with open(os.path.join(rcat_proj_path, 'rcat_metrics.json'), 'w') as json_out:
         json.dump(metrics, json_out, indent=2)
