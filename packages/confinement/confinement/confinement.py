@@ -31,6 +31,7 @@ from rscommons.moving_window import moving_window_dgo_ids
 from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions
 from rme.shapley_ops import line_segments, select_geoms_by_intersection, cut
 from confinement.utils.calc_confinement import calculate_confinement, dgo_confinement
+from confinement.utils.continuous_line import continuous_line
 from confinement.utils.confinement_moving_window import igo_confinement
 from confinement.utils.confinement_report import ConfinementReport
 from confinement.__version__ import __version__
@@ -412,6 +413,8 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
                 log.warning(
                     "Attempting to merge MultiLineString flowline for level path: {}".format(level_path))
                 geom_flowline = linemerge(geom_flowline)
+                if geom_flowline.geom_type == 'MultiLineString':
+                    geom_flowline = continuous_line(geom_flowline)
 
             if not geom_flowline.is_valid or geom_flowline.is_empty or geom_flowline.length == 0 or geom_flowline.geom_type == 'MultiLineString':
                 progbar.erase()
