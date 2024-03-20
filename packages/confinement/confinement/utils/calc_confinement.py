@@ -100,7 +100,7 @@ def dgo_confinement(confinement_type_network, out_dgos):
             confinement_lengths = {c_type: 0.0 for c_type in [
                 "Left", "Right", "Both", "None"]}
             for confinement_feat, *_ in confinement_lyr.iterate_features(clip_shape=dgo_geom):
-                con_type = confinement_feat.GetField("Confinement_Type")
+                con_type = confinement_feat.GetField("confinement_type")
                 confinement_ogr = confinement_feat.GetGeometryRef()
                 confinement_geom = GeopackageLayer.ogr2shapely(confinement_ogr)
                 confinement_clip = confinement_geom.intersection(dgo_geom)
@@ -128,11 +128,11 @@ def dgo_confinement(confinement_type_network, out_dgos):
                 segment_length if segment_length > 0.0 else 0.0
 
             dgo_feat.SetField(
-                "ConfinLeng", confinement_length + constricted_length)
-            dgo_feat.SetField("ConstrLeng", constricted_length)
-            dgo_feat.SetField("ApproxLeng", segment_length)
-            dgo_feat.SetField("Confinement_Ratio", confinement_ratio)
-            dgo_feat.SetField("Constriction_Ratio", constricted_ratio)
+                "confin_leng", confinement_length + constricted_length)
+            dgo_feat.SetField("constr_leng", constricted_length)
+            dgo_feat.SetField("approx_leng", segment_length)
+            dgo_feat.SetField("confinement_ratio", confinement_ratio)
+            dgo_feat.SetField("constriction_ratio", constricted_ratio)
 
             dgo_lyr.ogr_layer.SetFeature(dgo_feat)
 
