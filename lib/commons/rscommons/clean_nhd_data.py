@@ -37,7 +37,31 @@ def clean_nhd_data(huc, download_folder, unzip_folder, out_dir, out_epsg, force_
         else:
             attribute_filter = f"HUC{digits} LIKE '{huc}%'"
 
-        featureclasses[fclass] = export_feature_class(filegdb, fclass, out_dir, out_epsg, None, attribute_filter, None)
+        # check if the feature class exists
+        layer = ogr.Open(filegdb).GetLayerByName(fclass)
+        if layer is not None:
+            featureclasses[fclass] = export_feature_class(filegdb, fclass, out_dir, out_epsg, None, attribute_filter, None)
+        else:
+            # get the fields from the WBDHU4 feature class
+            datasource = ogr.Open(filegdb)
+            layer = datasource.GetLayer('WBDHU4')
+            layer_defn = layer.GetLayerDefn()
+            out_fields = {}
+            spatial_ref = layer.GetSpatialRef()
+            for i in range(layer_defn.GetFieldCount()):
+                field_def = layer_defn.GetFieldDefn(i)
+                field_name = field_def.GetName()
+                if field_name.lower() == 'huc4':
+                    field_name = f'huc{digits}'
+                out_fields[field_name] = field_def.GetType()
+            # create empty shapefile
+            out_ds = ogr.GetDriverByName("ESRI Shapefile").CreateDataSource(os.path.join(out_dir, fclass + '.shp'))
+            out_layer = out_ds.CreateLayer(fclass, spatial_ref, ogr.wkbPolygon)
+            for field, field_type in out_fields.items():
+                out_layer.CreateField(ogr.FieldDefn(field, field_type))
+            out_layer = None
+            out_ds = None
+            featureclasses[fclass] = os.path.join(out_dir, fclass + '.shp')
 
     # Retrieve the watershed boundary if processing 8 digit HUC
     boundary = get_geometry_union(featureclasses['WBDHU{}'.format(len(huc))], out_epsg) if len(huc) > 4 else None
