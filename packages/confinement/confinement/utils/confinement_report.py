@@ -25,7 +25,7 @@ class ConfinementReport(RSReport):
 
         self.raw_confinement()
         [self.confinement_ratio(field, field) for field in [
-            'Confinement_Ratio', 'Constriction_Ratio']]
+            'confinement_ratio', 'constriction_ratio']]
 
     def report_intro(self, tool_name):
         section = self.section('ReportIntro', 'Introduction')
@@ -34,7 +34,7 @@ class ConfinementReport(RSReport):
         curs = conn.cursor()
 
         row = curs.execute(
-            'SELECT Sum(ApproxLeng) AS TotalLength, Count(*) AS TotalReaches FROM Confinement_Ratio').fetchone()
+            'SELECT Sum(approx_leng) AS TotalLength, Count(*) AS TotalReaches FROM confinement_ratio').fetchone()
         values = {
             'Number of reaches': '{0:,d}'.format(row['TotalReaches']),
             'Total reach length (km)': '{0:,.0f}'.format(row['TotalLength'] / 1000),
@@ -49,7 +49,7 @@ class ConfinementReport(RSReport):
         conn = sqlite3.connect(self.database)
         curs = conn.cursor()
 
-        curs.execute('SELECT {} FROM Confinement_Ratio'.format(db_field))
+        curs.execute('SELECT {} FROM confinement_ratio'.format(db_field))
         data = [row[0] for row in curs.fetchall()]
 
         image_path = os.path.join(
@@ -81,14 +81,14 @@ class ConfinementReport(RSReport):
 
         curs = conn.cursor()
         curs.execute("""
-        SELECT Confinement_Type, (TypeLength / 1000.0) TypeLength, (100.0 * TypeLength / TotalLength) Ratio, (TotalLength / 1000.0) TotalLength
+        SELECT confinement_type, (TypeLength / 1000.0) TypeLength, (100.0 * TypeLength / TotalLength) Ratio, (TotalLength / 1000.0) TotalLength
         FROM
-        (SELECT Confinement_Type, Sum(ApproxLeng) TypeLength FROM Confinement_Raw GROUP BY Confinement_Type)
-        JOIN (SELECT Sum(ApproxLeng) TotalLength FROM Confinement_Raw)
+        (SELECT confinement_type, Sum(approx_leng) TypeLength FROM confinement_raw GROUP BY confinement_type)
+        JOIN (SELECT Sum(approx_leng) TotalLength FROM confinement_raw)
         """)
 
         for row in curs.fetchall():
-            item = keys[row['Confinement_Type']]
+            item = keys[row['confinement_type']]
             item['length'] = row['TypeLength']
             item['percent'] = row['Ratio']
 

@@ -9,7 +9,6 @@ IFS=$'\n\t'
 
 # These environment variables need to be present before the script starts
 (: "${VBET_ID?}")
-(: "${RSCONTEXT_ID?}")
 (: "${TAGS?}")
 (: "${RS_API_URL?}")
 (: "${VISIBILITY?}")
@@ -42,7 +41,6 @@ cat<<EOF
 EOF
 
 echo "VBET_ID: $VBET_ID"
-echo "RSCONTEXT_ID: $RSCONTEXT_ID"
 echo "TAGS: $TAGS"
 echo "VISIBILITY: $VISIBILITY"
 if [ -n "$USER_ID" ]; then
@@ -56,18 +54,12 @@ gdal-config --version
 
 # Define some folders that we can easily clean up later
 DATA_DIR=/usr/local/data
-RS_CONTEXT_DIR=$DATA_DIR/rs_context/rs_context_$RSCONTEXT_ID
 VBET_DIR=$DATA_DIR/vbet/vbet_$VBET_ID
 CONFINEMENT_DIR=$DATA_DIR/output/confinement
 
 ##########################################################################################
 # First Get RS_Context and VBET inputs
 ##########################################################################################
-
-# Get the RSCli project we need to make this happen
-rscli download $RS_CONTEXT_DIR --id $RSCONTEXT_ID \
-  --file-filter "(hydro_derivatives.gpkg|project_bounds.geojson)" \
-  --no-input --no-ui --verbose
 
 # Go get vbet result for this to work
 rscli download $VBET_DIR --id $VBET_ID \
@@ -84,17 +76,17 @@ df -h
 try() {
 
   confinement $HUC \
-    $VBET_DIR/inputs/vbet_inputs.gpkg/flowlines_vaa \
+    $VBET_DIR/inputs/vbet_inputs.gpkg/network_segmented \
     $VBET_DIR/inputs/vbet_inputs.gpkg/channel_area_polygons \
     $VBET_DIR/outputs/vbet.gpkg/vbet_full \
     $CONFINEMENT_DIR \
     $VBET_DIR/inputs/dem_hillshade.tif \
-    vbet_level_path \
+    level_path \
     ValleyBottom \
     $VBET_DIR/intermediates/vbet_intermediates.gpkg/vbet_dgos \
     $VBET_DIR/outputs/vbet.gpkg/vbet_igos \
     --buffer 15.0 \
-    --segmented_network $RS_CONTEXT_DIR/hydrology/hydro_derivatives.gpkg/network_intersected_300m \
+    --segmented_network $VBET_DIR/inputs/vbet_inputs.gpkg/network_segmented \
     --meta "Runner=Cybercastor" \
     --verbose
   if [[ $? != 0 ]]; then return 1; fi
@@ -102,7 +94,7 @@ try() {
   cd /usr/local/src/riverscapes-tools/packages/confinement
   python3 -m confinement.confinement_rs \
     $CONFINEMENT_DIR/project.rs.xml \
-    "$RS_CONTEXT_DIR/project.rs.xml,$VBET_DIR/project.rs.xml"
+    "$VBET_DIR/project.rs.xml"
 
   echo "======================  Final Disk space usage ======================="
   df -h
