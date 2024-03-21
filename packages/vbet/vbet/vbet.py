@@ -779,9 +779,19 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
                     valley_bottom_flowline_raster, cost_path_raster, temp_folder_lpath)
                 geom_flowline = collect_linestring(level_path_flowlines)
 
-                geom_flowline = ogr.ForceToMultiLineString(geom_flowline)
+                geom_flowline: ogr.Geometry = ogr.ForceToMultiLineString(geom_flowline)
+                if geom_flowline.GetGeometryType() != ogr.wkbMultiLineString:
+                    err_msg = f'Flowline for level path {level_path} is not a MultiLineString'
+                    log.error(err_msg)
+                    _tmterr("FLOWLINE_ERROR", err_msg)
+                    continue
                 with GeopackageLayer(temp_centerlines, write=True) as lyr_cl:
                     g_flowline = [g for g in geom_flowline]
+                    if len(g_flowline) ==0:
+                        err_msg = f'No flowline found for level path {level_path}'
+                        log.error(err_msg)
+                        _tmterr("NO_FLOWLINE", err_msg)
+                        continue
                     coords = get_endpoints_on_raster(
                         cost_path_raster, g_flowline, pixel_x)
                     if len(coords) != 2:
