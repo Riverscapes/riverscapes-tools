@@ -1,6 +1,6 @@
 VegetationID,EpochID,Name,DefaultSuitability,LandUseID,Physiognomy,Notes
--1111,2,Fill-Not Mapped,0,,,
 -9999,1,No Data,0,,,
+-1111,2,Fill-Not Mapped,0,,,
 11,2,Open Water,4,,,Test
 12,2,PerennialIce/Snow,0,,,
 31,2,Barren-Rock/Sand/Clay,0,,,
