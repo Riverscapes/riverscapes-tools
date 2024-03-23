@@ -1,0 +1,63 @@
+---
+title: CONUS BRAT Parameters
+layout: default
+banner: true
+---
+
+BRAT parameters for the Continental United States (CONUS) are stored in the BRAT git repository [here](https://github.com/Riverscapes/riverscapes-tools/tree/master/packages/brat/database/data). The parameters are stored in a series of plain text CSV files. These files are then used to populate the [BRAT SQLite database](https://tools.riverscapes.net/brat/advanced/database/) each time BRAT is run. Be careful to check your git branch to ensure you are looking at the latest parameters.
+
+We used to maintain a Postgres database for managing the contents of these CSV files. A Python script was used to populate the Postgres with the latest contents of the CSV files. Users would then connect to the Postgres database using software such as DataGrip to edit the values in Postgres. This provided a more powerful and rigorous way of working with the data because the database would enforce referential integrity as well as protect read only information from being overwritten.
+
+Unfrotunately this Postgres database is expensive to maintain and a security vulnerability with the way it was configured. In 2024, we deprecated the Postgres database in favour of the workflow described below.
+
+## BRAT Parameters Workflow
+
+We now use SQLite for BRAT parameter management. Essentially the workflow involves three steps:
+
+1. Creating a new SQLite database with the latest BRAT parameters.
+2. Editing the parameters in the SQLite database.
+3. Exporting the parameters from the SQLite database to the BRAT CSV files.
+4. Commiting and pushing the updated CSV files to github.
+
+### Step 1. Create a new CodeSpace
+
+Create a new CodeSpace in the [Riverscapes Tools](https://github.com/Riverscapes/riverscapes-tools/tree/master) github repository. Check where you are in git and ensure that you are on top of the latest BRAT parameter changes. Typically, this will be the `main` branch.
+
+Run the script at `/packages/brat/scripts/brat_parameters_sqlite/brat_params_create_sqlite.py`. This will create a new SQLite database containing the latest BRAT parameters, pulled from the CSV files. The database will be placed at the following path. Note that a new database is created each time the script is run.
+
+```
+/workspaces/data/brat_params_yyyy_mm_dd_hh_mm.sqlite
+```
+
+Download the database to you local machine (by right clicking on it in Visual Studio Code and selecting `Download`).
+
+### Step 2. Edit the parameters in the SQLite database
+
+Edit the parameters in the SQLite database using a SQLite client such as [DB Browser for SQLite](https://sqlitebrowser.org/), [SQLite Studio](https://sqlitestudio.pl/) or [Data Grid](https://www.jetbrains.com/datagrip/) (FWIW DataGrip is unnecessarily powerful for this task it was necessary for Postgres, but overkill for SQLite). 
+
+The primary tables that you will edit are:
+
+- `HydroParams`
+- `WatershedHydroParams`
+- `Watersheds`
+- `VegetationTypes`
+- `VegetationOverrides`
+- `LandUses`
+
+SQLite, unlike Postgres, does not support table and column locking. This means that all tables and columns are editing, when in reality only a few should be. Be careful to only edit the columns that you are supposed to. Ask a BRAT developer if you are unsure of what should be editable.
+
+### Step 3. Export the parameters from the SQLite database to the BRAT CSV files
+
+Run the script at `/packages/brat/scripts/brat_parameters_sqlite/brat_params_dump_to_file.py`. This will export the parameters from the SQLite database to the BRAT CSV files. The CSV files will be placed at the following path.
+
+### Step 4. Commit and push the updated CSV files to GitHub
+
+Using Visual Studio Code, review the changes to the CSV files. You should see that the changes you made in the SQLite database have been reflected in the CSV files. Pay close attention to gross changes that might be evidence of mistakes, such as all the data in a particular file being overwritten.
+
+Ensure that the *only* changes are to BRAT parameter files so that the changes you are about to commit are exclusively related to BRAT parameters.
+
+Create a new branch and call it something appropriate like `brat-params` to track your BRAT parameter changes.
+
+Commit and push your changes on the new branch.
+
+Create a pull request to merge your changes into the `main` branch and assign to a BRAT developer for review.
