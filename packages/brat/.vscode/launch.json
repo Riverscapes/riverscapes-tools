@@ -134,6 +134,27 @@
       ]
     },
     {
+      "name": "Create BRAT Parameter SQLite DB",
+      "type": "python",
+      "request": "launch",
+      "module": "scripts.brat_parameters_sqlite.brat_params_create_sqlite",
+      "console": "integratedTerminal",
+      "args": [
+        "{env:DATA_ROOT}",
+      ]
+    },
+
+    {
+      "name": "Dump BRAT Parameters from SQLite to CSV files",
+      "type": "python",
+      "request": "launch",
+      "module": "scripts.brat_parameters_sqlite.brat_params_dump_to_file",
+      "console": "integratedTerminal",
+      "args": [
+        "/workspaces/data/brat_params_2024_03_23_18_35.sqlite",
+      ]
+    },
+    {
       "name": "Version Bump",
       "type": "python",
       "module": "rscommons.version",
