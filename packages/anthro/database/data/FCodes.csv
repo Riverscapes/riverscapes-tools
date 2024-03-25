@@ -24,6 +24,8 @@ FCode,Name,DisplayName,Description
 42814,PIPELINE,Pipeline,Product|water; Pipeline Type|general case
 42815,PIPELINE,Pipeline,Product|water; Pipeline Type|penstock
 42816,PIPELINE,Pipeline,Product|water; Pipeline Type|aqueduct
+42820,PIPELINE,Pipeline,
+42823,PIPILINE,Pipeline,
 46000,STREAM/RIVER,Stream,feature type only: no attributes
 46003,STREAM/RIVER,Intermittent,Hydrographic Category|intermittent
 46006,STREAM/RIVER,Perennial,Hydrographic Category|perennial
