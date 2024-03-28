@@ -114,25 +114,26 @@ def projectTypeSync(stage: str, dry_run: bool = False):
         need_create = True
         remote_only = True
         for _machine_code, pt_remote in project_types_remote.items():
-            if pt_local['machineName'] == pt_remote['machineName']:
+            if pt_local['machineName'] == pt_remote.machine_name:
                 need_create = False
+                remote_json = pt_remote.json
                 # Compare the two records for these fields: name, summary, description, url, state, logo and meta
                 # We do the meta compare by stringifying the json. It's crude but it works
-                if not string_same('name', pt_local, pt_remote):
+                if not string_same('name', pt_local, remote_json):
                     project_sort['update'].append(pt_local)
-                elif not string_same('summary', pt_local, pt_remote):
+                elif not string_same('summary', pt_local, remote_json):
                     project_sort['update'].append(pt_local)
-                elif not string_same('description', pt_local, pt_remote):
+                elif not string_same('description', pt_local, remote_json):
                     project_sort['update'].append(pt_local)
-                elif not string_same('url', pt_local, pt_remote):
+                elif not string_same('url', pt_local, remote_json):
                     project_sort['update'].append(pt_local)
-                elif not string_same('state', pt_local, pt_remote):
+                elif not string_same('state', pt_local, remote_json):
                     project_sort['update'].append(pt_local)
                 # elif not string_same('logo', pt_local, pt_remote):
                 #     print(f"  logo is different for {pt_local['machineName']}: '{pt_local['logo']}' != '{pt_remote['logo']}'")
                 #     project_sort['update'].append(pt_local)
-                elif not json_same('meta', pt_local, pt_remote):
-                    print(f"  meta is different for {pt_local['machineName']}: '{colored(pt_local['meta'], 'red')}' != '{pt_remote['meta']}'")
+                elif not json_same('meta', pt_local, remote_json):
+                    print(f"  meta is different for {pt_local['machineName']}: '{colored(pt_local['meta'], 'red')}' != '{remote_json['meta']}'")
                     project_sort['update'].append(pt_local)
                 else:
                     project_sort['same'].append(pt_local)
@@ -144,8 +145,8 @@ def projectTypeSync(stage: str, dry_run: bool = False):
                     project_sort['upload_logo'].append(pt_local)
 
         # Now the reverse lookup to see if there are any remote only. We report these but don't delete them
-        for pt_remote in project_types_remote:
-            if pt_local['machineName'] != pt_remote['machineName']:
+        for pt_remote in project_types_remote.values():
+            if pt_local['machineName'] != pt_remote.machine_name:
                 remote_only = False
         if remote_only:
             project_sort['missing'].append(pt_local)
