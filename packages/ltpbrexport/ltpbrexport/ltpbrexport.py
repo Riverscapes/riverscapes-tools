@@ -121,6 +121,8 @@ def ltpbr_export(project_folder: str, epsg=4326, meta: Dict[str, str] = None) ->
             out_lyr.ogr_layer.CreateFeature(out_ftr)
         out_lyr.ogr_layer.CommitTransaction()
 
+    log.info(f'Exported {len(projects)} projects to {geopkg_path}')
+
     # Build a bounding box from the geometry collection
     bounding_rect = geometry_collection.GetEnvelope()
     centroid = geometry_collection.Centroid()
@@ -167,17 +169,17 @@ def ltpbr_export(project_folder: str, epsg=4326, meta: Dict[str, str] = None) ->
         bounds=ProjectBounds(
             centroid=Coords(centroid.GetX(), centroid.GetY()),
             bounding_box=BoundingBox(bounding_rect[0], bounding_rect[2], bounding_rect[1], bounding_rect[3]),
-            filepath=os.path.relpath(os.path.dirname(project_xml), bounds_path)
+            filepath=os.path.relpath(bounds_path, os.path.dirname(project_xml))
         ),
         realizations=[Realization(
-            name='LTPBR Export',
+            name='LTPBR Explorer Export',
             product_version=__version__,
             xml_id='LTPBR',
             date_created=datetime.now(),
             datasets=[Geopackage(
                 xml_id='OUTPUTS',
                 name='LTPBR Export',
-                path=os.path.relpath(os.path.dirname(project_xml), geopkg_path),
+                path=os.path.relpath(geopkg_path, os.path.dirname(project_xml)),
                 layers=[GeopackageLayer(
                     name='LTPBR Projects',
                     lyr_name='projects',
@@ -188,6 +190,7 @@ def ltpbr_export(project_folder: str, epsg=4326, meta: Dict[str, str] = None) ->
         )]
     )
     project.write(project_xml)
+    log.info('Riverscapes Project XML written to ' + project_xml)
 
     log.info('LTPBR Explorer Export complete')
 
@@ -205,11 +208,15 @@ def insert_lookup_data(curs: sqlite3.Cursor, table: str, fields) -> None:
     """
 
     data = get_json_data(table)
-
+    count = 0
     for json_obj in data:
         insert_query = f"INSERT INTO {table} ({', '.join(fields)}) VALUES ({', '.join(['?'] * len(fields))})"
         values = tuple(json_obj[field] for field in fields)
         curs.execute(insert_query, values)
+        count += 1
+
+    log = Logger('Lookup Data')
+    log.info(f'Inserted {count} records into {table}')
 
 
 def get_json_data(endpoint: str) -> dict:
@@ -223,9 +230,13 @@ def get_json_data(endpoint: str) -> dict:
         dict: the JSON data returned from the API converted to Python data structure
     """
 
+    log = Logger('API Request')
+
     try:
         # Send a GET request to the specified URL
-        response = requests.get(f'https://bda-explorer.herokuapp.com/{endpoint}.json', timeout=100)
+        url = f'https://bda-explorer.herokuapp.com/{endpoint}.json'
+        log.info(f'Retrieving data from {url}')
+        response = requests.get(url, timeout=100)
 
         # Check if the request was successful (status code 200)
         if response.status_code == 200:
