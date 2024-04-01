@@ -76,7 +76,7 @@ df -h
 try() {
 
   confinement $HUC \
-    $VBET_DIR/inputs/vbet_inputs.gpkg/network_segmented \
+    $VBET_DIR/inputs/vbet_inputs.gpkg/network_intersected \
     $VBET_DIR/inputs/vbet_inputs.gpkg/channel_area_polygons \
     $VBET_DIR/outputs/vbet.gpkg/vbet_full \
     $CONFINEMENT_DIR \
@@ -86,7 +86,7 @@ try() {
     $VBET_DIR/intermediates/vbet_intermediates.gpkg/vbet_dgos \
     $VBET_DIR/outputs/vbet.gpkg/vbet_igos \
     --buffer 15.0 \
-    --segmented_network $VBET_DIR/inputs/vbet_inputs.gpkg/network_segmented \
+    --segmented_network $VBET_DIR/inputs/vbet_inputs.gpkg/network_intersected \
     --meta "Runner=Cybercastor" \
     --verbose
   if [[ $? != 0 ]]; then return 1; fi
