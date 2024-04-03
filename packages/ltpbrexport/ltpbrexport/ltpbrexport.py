@@ -101,6 +101,7 @@ def ltpbr_export(project_folder: str, epsg=4326, meta: Dict[str, str] = None) ->
 
     # Retrieve the projects from the LTPBR Explorer API endpoint and write them to GeoPackage
     projects = get_json_data('projects')
+    affiliations = []
     with RSGeopackageLayer(geopkg_path, 'projects', write=True) as out_lyr:
         layer_defn: ogr.FeatureDefn = out_lyr.ogr_layer.GetLayerDefn()
         out_lyr.ogr_layer.StartTransaction()
@@ -119,7 +120,18 @@ def ltpbr_export(project_folder: str, epsg=4326, meta: Dict[str, str] = None) ->
                         out_ftr.SetField(field_name, proj[field_name])
 
             out_lyr.ogr_layer.CreateFeature(out_ftr)
+
+            # Project organization affiliations
+            affiliations += [(proj['id'], org['id']) for org in proj['organizations']]
+
         out_lyr.ogr_layer.CommitTransaction()
+
+    # Write the project affiliations to the database
+    with sqlite3.connect(geopkg_path) as conn:
+        conn.execute('PRAGMA foreign_keys = ON;')
+        curs = conn.cursor()
+        curs.executemany('INSERT INTO project_organizations (project_id, organization_id) VALUES (?, ?)', affiliations)
+        conn.commit()
 
     log.info(f'Exported {len(projects)} projects to {geopkg_path}')
 
@@ -140,8 +152,12 @@ def ltpbr_export(project_folder: str, epsg=4326, meta: Dict[str, str] = None) ->
 
     # Write the polygon to a GeoJSON text file
     geojson_data = {
-        "type": "Feature",
-        "geometry": json.loads(polygon.ExportToJson())
+        "type": "FeatureCollection",
+        "features": [{
+            "type": "Feature",
+            "properties": {},
+            "geometry": json.loads(polygon.ExportToJson())
+        }]
     }
 
     with open(bounds_path, 'w', encoding='utf8') as file:

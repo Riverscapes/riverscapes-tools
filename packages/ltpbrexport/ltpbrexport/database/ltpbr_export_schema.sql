@@ -21,3 +21,12 @@ CREATE TABLE organizations
     created_at datetime NOT NULL,
     updated_at datetime NOT NULL
 );
+
+CREATE TABLE project_organizations
+(
+    project_id INTEGER NOT NULL REFERENCES projects(fid),
+    organization_id INTEGER NOT NULL REFERENCES organizations(id),
+
+    PRIMARY KEY (project_id, organization_id)
+);
+CREATE INDEX project_organizations_organization_id ON project_organizations(organization_id);
