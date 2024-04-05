@@ -8,8 +8,9 @@ IFS=$'\n\t'
 # pip3 install -e /usr/local/src/riverscapes-tools/packages/confinement
 
 # These environment variables need to be present before the script starts
-(: "${VBET_ID?}")
 (: "${TAGS?}")
+(: "${RSCONTEXT_ID?}")
+(: "${VBET_ID?}")
 (: "${RS_API_URL?}")
 (: "${VISIBILITY?}")
 # These are machine credentials for the API which will allow the CLI to delegate uploading to either a specific user or an org
@@ -40,8 +41,9 @@ cat<<EOF
                                                                                                      
 EOF
 
-echo "VBET_ID: $VBET_ID"
 echo "TAGS: $TAGS"
+echo "RSCONTEXT_ID: $RSCONTEXT_ID"
+echo "VBET_ID: $VBET_ID"
 echo "VISIBILITY: $VISIBILITY"
 if [ -n "$USER_ID" ]; then
   echo "USER_ID: $USER_ID"
@@ -54,6 +56,7 @@ gdal-config --version
 
 # Define some folders that we can easily clean up later
 DATA_DIR=/usr/local/data
+RS_CONTEXT_DIR=$DATA_DIR/rs_context/rs_context_$RSCONTEXT_ID
 VBET_DIR=$DATA_DIR/vbet/vbet_$VBET_ID
 CONFINEMENT_DIR=$DATA_DIR/output/confinement
 
@@ -64,6 +67,11 @@ CONFINEMENT_DIR=$DATA_DIR/output/confinement
 # Go get vbet result for this to work
 rscli download $VBET_DIR --id $VBET_ID \
   --file-filter "(vbet\.gpkg|dem_hillshade.tif|vbet_intermediates\.gpkg|vbet_inputs\.gpkg)" \
+  --no-input --no-ui --verbose
+
+# Need the RS_Context for the project bounds
+rscli download $RS_CONTEXT_DIR --id $RSCONTEXT_ID \
+  --file-filter "(project_bounds.geojson)" \
   --no-input --no-ui --verbose
 
 ##########################################################################################
@@ -94,7 +102,7 @@ try() {
   cd /usr/local/src/riverscapes-tools/packages/confinement
   python3 -m confinement.confinement_rs \
     $CONFINEMENT_DIR/project.rs.xml \
-    "$VBET_DIR/project.rs.xml"
+    $RS_CONTEXT_DIR/project.rs.xml,$VBET_DIR/project.rs.xml
 
   echo "======================  Final Disk space usage ======================="
   df -h
