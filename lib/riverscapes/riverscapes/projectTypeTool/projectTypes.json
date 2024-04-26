@@ -945,7 +945,7 @@
     "state": "ACTIVE"
   },
   {
-    "name": "LTPBT Projects",
+    "name": "LTPBR Projects",
     "summary": "Low Tech Process Based Restoration Projects",
     "description": "Details of Low Tech Process Based Restoration Projects captured in the LTPBR Explorer online system. The LTPBR Explorer is a web-based tool that provides access to a database of Low Tech Process Based Restoration (LTPBR) projects. The LTPBR Explorer is a product of the Riverscapes Consortium, a group of scientists and practicioners working to advance the science and practice of river restoration. The LTPBR Explorer is designed to help users learn about LTPBR projects, explore the methods used in these projects, and access data and information that can be used to inform future restoration efforts. The LTPBR Explorer is a work in progress, and new projects are being added regularly. If you have a project that you would like to add to the LTPBR Explorer, please login to the system and click the Add a Project button.","meta": [
       {
@@ -967,6 +967,32 @@
     ],
     "url": "https://bda-explorer.herokuapp.com/",
     "machineName": "ltpbrprojects",
+    "state": "ACTIVE"
+  },
+  {
+    "name": "PIBO Riverscapes",
+    "summary": "PIBO points attributed with riverscapes model data",
+    "description": "PIBO monitoring sites with attributes from the riverscapes network models added to the points.",
+    "meta": [
+        { 
+          "key": "Resolution",
+          "value": "Reach"
+        },
+        { 
+          "key": "Extent",
+          "value": "Network"
+        },
+        {
+          "key": "Model Status",
+          "value": "Proof of Concept"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "Model Output"
+        }
+       ],
+    "url": null,
+    "machineName": "pibo_riverscapes",
     "state": "ACTIVE"
   }
 ]
