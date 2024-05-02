@@ -10,52 +10,52 @@ The Riverscape Metric Engine compiles a suite of metrics that provide informatio
 
 
 ## Attribute Names 
-Below is a list of the attribute names and their descriptions that are included in the IGO point feature class. This is an actively evolving list and will be updated as new metrics are added to the Riverscape Metric Engine.
-The name format is as follows: `<model the metric comes from>_<igo or dgo>_<metric description>`
-- **level_path**: the [NHD]() level path, which is a unique identifier for each stream from its origin to its end in the NHDPlusHR dataset.
--**seg_distance**: (From VBET) the distance along a given level path that the IGO is located (used for toplogical purposes).
--**stream_size**: (From VBET) the size classification of the stream (0-4) used for applying different parameters for different size streams in extracting the valley bottom.
--**FCode**: The dominant NHD FCode found within a DGO. FCode represents flow types (i.e., perennial, intermittent, ephemeral, etc.). See [NHD FCode Descriptions](https://files.hawaii.gov/dbedt/op/gis/data/NHD%20Complete%20FCode%20Attribute%20Value%20List.pdf) for more information.
--**window_size**: The length (m) of the moving window used to calculate the igo metrics.
--**rme_dgo_ownership**: The dominant ownership within the DGO associated with the IGO.
--**rme_dgo_state**: The dominant US state within the DGO associated with the IGO.
--**rme_dgo_county**: The dominant county within the DGO associated with the IGO.
--**rme_igo_prim_channel_gradient**: The gradient (m/m) of the primary channel within the DGO.
--**rme_igo_valleybottom_gradient**: The gradient (m/m) of the valley bottom.
--**rme_igo_rel_flow_length**: The length of channels within the analysis window divided by the valley centerline length (m/m).
--**rme_dgo_confluences**: The number of confluences per km of riverscape length.
--**rme_dgo_diffluences**: The number of diffluences per km of riverscape length.
--**rme_igo_trib_per_km**: The number of tributaries per km of riverscape length.
--**rme_igo_planform_sinuosity**: The planform sinuosity of the primary channel within the analysis window. Channel length divided by valley centerline length (m/m).
--**rme_dgo_drainage_area**: The drainage area (km^2) of the DGO.
--**nhd_dgo_stream_order**: The stream order of the primary NHD stream within the DGO.
--**nhd_dgo_headwater**: A binary value indicating if the DGO is a headwater (1) or not (0).
--**nhd_dgo_streamlength**: The length of channels within the DGO (m).
--**epa_dgo_ecoregion3**: The 3rd level of the EPA ecoregion classification within the DGO.
--**epa_dgo_ecoregion4**: The 4th level of the EPA ecoregion classification within the DGO.
--**vbet_dgo_lowlying_area**: The area of valley bottom classified as 'low_lying' within the DGO (m^2).
--**vbet_dgo_elevated_area**: The area of valley bottom classified as 'elevated' within the DGO (m^2).
--**vbet_dgo_channel_area**: The area of valley bottom classified as 'channel' within the DGO (m^2).
--**vbet_dgo_floodplain_area**: The area of valley bottom with the area of channel subtracted within the DGO (m^2).
--**vbet_igo_integrated_width**: The average valley bottom width within the analysis window (m).
--**vbet_igo_active_channel_ratio**: The ratio of active channel area to total valley bottom area within the analysis window.
--**vbet_igo_low_lying_ratio**: The ratio of low-lying area to total valley bottom area within the analysis window.
--**vbet_igo_elevated_ratio**: The ratio of elevated area to total valley bottom area within the analysis window.
--**vbet_igo_floodplain_ratio**: The ratio of floodplain area to total valley bottom area within the analysis window.
--**vbet_igo_acres_vb_per_mile**: The area of valley bottom per mile of riverscape length (acres/mile).
--**vbet_igo_hect_vb_per_km**: The area of valley bottom per km of riverscape length (hectares/km).
--**vbet_dgo_streamsize**: The estimated average channel width within the DGO (m).
--**conf_igo_confinement_ratio**: The length of channel abutting a confining margin divided by the total channel length within the analysis window (m/m).
--**conf_igo_constriction_ratio**: The length of channel abutting a confining margin divided by twice the total channel length within the analysis window (m/m).
--**conf_igo_confining_margins**: The length of confining margins (m) within the analysis window.
--**anthro_igo_road_dens**: The length of roads per length of riverscape centerline within the analysis window (m/m).
--**anthro_igo_rail_dens**: The length of railroads per length of riverscape centerline within the analysis window (m/m).
--**anthro_igo_land_use_intens**: Land use intensity from 0 (None) to 100 (High) within the analysis window.
--**rcat_igo_fldpln_access**: The proportion (0 - 1) of the analysis window that is not fragmented by infrastructure.
--**rcat_igo_prop_riparian**: The proportion (0 - 1) of the analysis window that has riparian vegetation cover.
--**rcat_igo_riparian_veg_departure**: The departure from historic riparian vegetation cover within the analysis window (0 no departure - 1 all riparian removed).
--**rcat_igo_riparian_ag_conversion**: The proportion (0 - 1) of riparian vegetation that has been converted to agriculture within the analysis window.
--**rcat_igo_riparian_develop**: The proportion (0 - 1) of riparian vegetation that has been developed within the analysis window.
--**brat_igo_capacity**: The capacity of channels within the analysis window to support dam-building activity by beaver (dams/km).
--**brat_igo_risk**: The risk to infrastructure of dam-building activity by beaver within the analysis window (conservative).
--**brat_igo_opportunity**: The opportunity for restoration using dam-building activity by beaver within the analysis window (based on capacity and risk).
+Below is a list of the attribute names and their descriptions that are included in the IGO point feature class. This is an actively evolving list and will be updated as new metrics are added to the Riverscape Metric Engine.\
+The name format is as follows: `<model the metric comes from>_<igo or dgo>_<metric description>`\
+- **level_path**: the [NHD]() level path, which is a unique identifier for each stream from its origin to its end in the NHDPlusHR dataset.\
+-**seg_distance**: (From VBET) the distance along a given level path that the IGO is located (used for toplogical purposes).\
+-**stream_size**: (From VBET) the size classification of the stream (0-4) used for applying different parameters for different size streams in extracting the valley bottom.\
+-**FCode**: The dominant NHD FCode found within a DGO. FCode represents flow types (i.e., perennial, intermittent, ephemeral, etc.). See [NHD FCode Descriptions](https://files.hawaii.gov/dbedt/op/gis/data/NHD%20Complete%20FCode%20Attribute%20Value%20List.pdf) for more information.\
+-**window_size**: The length (m) of the moving window used to calculate the igo metrics.\
+-**rme_dgo_ownership**: The dominant ownership within the DGO associated with the IGO.\
+-**rme_dgo_state**: The dominant US state within the DGO associated with the IGO.\
+-**rme_dgo_county**: The dominant county within the DGO associated with the IGO.\
+-**rme_igo_prim_channel_gradient**: The gradient (m/m) of the primary channel within the DGO.\
+-**rme_igo_valleybottom_gradient**: The gradient (m/m) of the valley bottom.\
+-**rme_igo_rel_flow_length**: The length of channels within the analysis window divided by the valley centerline length (m/m).\
+-**rme_dgo_confluences**: The number of confluences per km of riverscape length.\
+-**rme_dgo_diffluences**: The number of diffluences per km of riverscape length.\
+-**rme_igo_trib_per_km**: The number of tributaries per km of riverscape length.\
+-**rme_igo_planform_sinuosity**: The planform sinuosity of the primary channel within the analysis window. Channel length divided by valley centerline length (m/m).\
+-**rme_dgo_drainage_area**: The drainage area (km^2) of the DGO.\
+-**nhd_dgo_stream_order**: The stream order of the primary NHD stream within the DGO.\
+-**nhd_dgo_headwater**: A binary value indicating if the DGO is a headwater (1) or not (0).\
+-**nhd_dgo_streamlength**: The length of channels within the DGO (m).\
+-**epa_dgo_ecoregion3**: The 3rd level of the EPA ecoregion classification within the DGO.\
+-**epa_dgo_ecoregion4**: The 4th level of the EPA ecoregion classification within the DGO.\
+-**vbet_dgo_lowlying_area**: The area of valley bottom classified as 'low_lying' within the DGO (m^2).\
+-**vbet_dgo_elevated_area**: The area of valley bottom classified as 'elevated' within the DGO (m^2).\
+-**vbet_dgo_channel_area**: The area of valley bottom classified as 'channel' within the DGO (m^2).\
+-**vbet_dgo_floodplain_area**: The area of valley bottom with the area of channel subtracted within the DGO (m^2).\
+-**vbet_igo_integrated_width**: The average valley bottom width within the analysis window (m).\
+-**vbet_igo_active_channel_ratio**: The ratio of active channel area to total valley bottom area within the analysis window.\
+-**vbet_igo_low_lying_ratio**: The ratio of low-lying area to total valley bottom area within the analysis window.\
+-**vbet_igo_elevated_ratio**: The ratio of elevated area to total valley bottom area within the analysis window.\
+-**vbet_igo_floodplain_ratio**: The ratio of floodplain area to total valley bottom area within the analysis window.\
+-**vbet_igo_acres_vb_per_mile**: The area of valley bottom per mile of riverscape length (acres/mile).\
+-**vbet_igo_hect_vb_per_km**: The area of valley bottom per km of riverscape length (hectares/km).\
+-**vbet_dgo_streamsize**: The estimated average channel width within the DGO (m).\
+-**conf_igo_confinement_ratio**: The length of channel abutting a confining margin divided by the total channel length within the analysis window (m/m).\
+-**conf_igo_constriction_ratio**: The length of channel abutting a confining margin divided by twice the total channel length within the analysis window (m/m).\
+-**conf_igo_confining_margins**: The length of confining margins (m) within the analysis window.\
+-**anthro_igo_road_dens**: The length of roads per length of riverscape centerline within the analysis window (m/m).\
+-**anthro_igo_rail_dens**: The length of railroads per length of riverscape centerline within the analysis window (m/m).\
+-**anthro_igo_land_use_intens**: Land use intensity from 0 (None) to 100 (High) within the analysis window.\
+-**rcat_igo_fldpln_access**: The proportion (0 - 1) of the analysis window that is not fragmented by infrastructure.\
+-**rcat_igo_prop_riparian**: The proportion (0 - 1) of the analysis window that has riparian vegetation cover.\
+-**rcat_igo_riparian_veg_departure**: The departure from historic riparian vegetation cover within the analysis window (0 no departure - 1 all riparian removed).\
+-**rcat_igo_riparian_ag_conversion**: The proportion (0 - 1) of riparian vegetation that has been converted to agriculture within the analysis window.\
+-**rcat_igo_riparian_develop**: The proportion (0 - 1) of riparian vegetation that has been developed within the analysis window.\
+-**brat_igo_capacity**: The capacity of channels within the analysis window to support dam-building activity by beaver (dams/km).\
+-**brat_igo_risk**: The risk to infrastructure of dam-building activity by beaver within the analysis window (conservative).\
+-**brat_igo_opportunity**: The opportunity for restoration using dam-building activity by beaver within the analysis window (based on capacity and risk).\
