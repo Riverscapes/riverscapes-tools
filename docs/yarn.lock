@@ -3242,9 +3242,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@riverscapes/gatsby-theme@npm:^0.1.25":
-  version: 0.1.25
-  resolution: "@riverscapes/gatsby-theme@npm:0.1.25"
+"@riverscapes/gatsby-theme@npm:^0.1.26":
+  version: 0.1.26
+  resolution: "@riverscapes/gatsby-theme@npm:0.1.26"
   dependencies:
     "@emotion/react": "npm:^11.11.0"
     "@emotion/styled": "npm:^11.11.0"
@@ -3272,7 +3272,7 @@ __metadata:
     gatsby: ^5.13.0
     react: ^18.2.0
     react-dom: ^18.2.0
-  checksum: 10c0/57500bcb9884835aca01934b02144e17b83ac019d371bcf654ad000c4db3755f4633678fd42169340bd976553fcb2c49f77f1ce966c1b6b1582a0466d14d2e4d
+  checksum: 10c0/ee54e10cf4512a50e34917415ef201903525a3556cbab9d21f08da418f274f2707a9cd56cce3f1613b11d2a90e13f4f354aa3c920258a2ac1f923d9476403924
   languageName: node
   linkType: hard
 
@@ -3280,7 +3280,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@riverscapes/template-clean@workspace:."
   dependencies:
-    "@riverscapes/gatsby-theme": "npm:^0.1.25"
+    "@riverscapes/gatsby-theme": "npm:^0.1.26"
     gatsby: "npm:^5.13.0"
     react: "npm:^18.2.0"
     react-dom: "npm:^18.2.0"
