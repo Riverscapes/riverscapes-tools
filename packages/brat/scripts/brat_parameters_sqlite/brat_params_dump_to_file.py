@@ -18,6 +18,7 @@ from rscommons import ProgressBar
 # These are currently the only tables that are editable and written to CSV files
 tables = [
     # primary tables
+    'Watersheds',
     'HydroParams',
     'VegetationTypes',
     # intersect tables
