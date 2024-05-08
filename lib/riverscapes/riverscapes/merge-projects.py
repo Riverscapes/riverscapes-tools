@@ -24,6 +24,15 @@ from rsxml.project_xml import (
 from rscommons import Raster
 from riverscapes import RiverscapesAPI, RiverscapesProject, RiverscapesSearchParams
 
+name_lookup = {'RSContext': "RS Context",
+               'ChannelArea': "Channel Area",
+               'TauDEM': "TauDEM",
+               'VBET': "VBET",
+               'BRAT': "BRAT",
+               'anthro': "ANTHRO",
+               'rcat': "RCAT",
+               'rs_metric_engine': "Metric Engine"}
+
 
 def merge_projects(projects_lookup: Dict[str, RiverscapesProject], merged_dir: str, name: str, project_type: str, collection_id: str, rs_stage: str, delete_source: bool = False) -> None:
     """
@@ -359,8 +368,10 @@ def main():
         ]
         answers = inquirer.prompt(questions)
 
+        output_name = f"{answers['output_name']} Merged {name_lookup.get(answers['project_type'], answers['project_type'])}"
+
         # Set up some reasonable folders to store things
-        working_folder = os.path.join(args.working_folder, f"MERGE_{answers['project_type']}_{answers['output_name']}")
+        working_folder = os.path.join(args.working_folder, output_name)
         download_folder = os.path.join(working_folder, 'downloads')
         merged_folder = os.path.join(working_folder, 'merged')
 
@@ -387,7 +398,7 @@ def main():
 
         delete_source = answers['delete_source']
 
-        merge_projects(projects_lookup, merged_folder, answers['output_name'], answers['project_type'], answers['collection_id'], api.stage, delete_source=delete_source)
+        merge_projects(projects_lookup, merged_folder, output_name, answers['project_type'], answers['collection_id'], api.stage, delete_source=delete_source)
 
     log.info('Process complete')
 
