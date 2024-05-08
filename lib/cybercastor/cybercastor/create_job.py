@@ -5,7 +5,7 @@ import os
 import json
 import argparse
 
-job_types = ['rs_context', 'channel', 'taudem', 'rs_context_channel_taudem', 'vbet', 'brat', 'rcat', 'rme', 'anthro']
+job_types = ['rs_context', 'channel', 'taudem', 'rs_context_channel_taudem', 'vbet', 'brat', 'rcat', 'rme', 'anthro', 'confinement']
 org_ids = {'BLM Riverscapes': '5d5bcccc-6632-4054-85f1-19501a6b3cdf'}
 
 
