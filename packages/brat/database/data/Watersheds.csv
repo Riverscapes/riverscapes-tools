@@ -1103,7 +1103,7 @@ WatershedID,Name,AreaSqkm,States,Qlow,Q2,MaxDrainage,EcoregionID,Notes,Metadata
 10180003,Pathfinder-Seminoe Reservoirs,2669.36,WY,,,,18,,
 10180004,Medicine Bow,3733.46,WY,,,,18,,
 10180005,Little Medicine Bow,2650.53,WY,,,,18,,
-10180006,Sweetwater,7513.85,WY,,,,18,,
+10180006,Sweetwater,7513.85,WY,1.2967 * DRNAREA**0.4537,251.55 * DRNAREA**0.151,,18,,
 10180007,Middle North Platte-Casper,8996.46,WY,,,,43,,
 10180008,Glendo Reservoir,5510.33,WY,,,,25,,
 10180009,Middle North Platte-Scotts Bluff,13351.61,NE_WY,,,,25,,

@@ -23,6 +23,7 @@ from rscommons.vector_ops import copy_feature_class
 from rscommons import Logger, initGDALOGRErrors, RSLayer, RSProject, ModelConfig, dotenv
 from rscommons.util import parse_metadata, pretty_duration
 from rscommons.build_network import build_network
+from rscommons.segment_network import segment_network
 from rscommons.database import create_database, SQLiteCon
 from rscommons.reach_geometry import reach_geometry
 from sqlbrat.utils.vegetation_summary import vegetation_summary
@@ -52,7 +53,9 @@ LayerTypes = {
         'CANALS': RSLayer('Canals', 'CANALS', 'Vector', 'canals'),
         'OWNERSHIP': RSLayer('Land Ownership', 'OWNERSHIP', 'Vector', 'ownership')
     }),
-    'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/intermediates.gpkg', {}),
+    'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/intermediates.gpkg', {
+        'SEGMENTED_NETWORK': RSLayer('Segmented Network', 'SEGMENTED_NETWORK', 'Vector', 'segmented_network'),
+    }),
     'OUTPUTS': RSLayer('BRAT', 'OUTPUTS', 'Geopackage', 'outputs/brat.gpkg', {
         'BRAT_GEOMETRY': RSLayer('BRAT Geometry', 'BRAT_GEOMETRY', 'Vector', 'ReachGeometry'),
         'BRAT': RSLayer('BRAT', 'BRAT_RESULTS', 'Vector', 'vwReaches')
@@ -151,6 +154,10 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
         input_layers[input_key] = os.path.join(inputs_gpkg_path, rslayer.rel_path)
         copy_feature_class(source_layers[input_key], input_layers[input_key], cfg.OUTPUT_EPSG)
 
+    # segment the input flowlines and store them as intermediate
+    segmented_network_path = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['SEGMENTED_NETWORK'].rel_path)
+    segment_network(input_layers['FLOWLINES'], segmented_network_path, 300, 30, huc, create_layer=True)
+
     # Create the output feature class fields. Only those listed here will get copied from the source
     with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['BRAT_GEOMETRY'].rel_path, delete_dataset=True) as out_lyr:
         out_lyr.create_layer(ogr.wkbMultiLineString, epsg=cfg.OUTPUT_EPSG, options=['FID=ReachID'], fields={
@@ -181,7 +188,7 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
 
     # Copy the reaches into the output feature class layer, filtering by reach codes
     reach_geometry_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['BRAT_GEOMETRY'].rel_path)
-    build_network(input_layers['FLOWLINES'], input_layers['FLOW_AREA'], reach_geometry_path, waterbodies_path=input_layers['WATERBODIES'], waterbody_max_size=max_waterbody, epsg=cfg.OUTPUT_EPSG, reach_codes=reach_codes, create_layer=False)
+    build_network(segmented_network_path, input_layers['FLOW_AREA'], reach_geometry_path, waterbodies_path=input_layers['WATERBODIES'], waterbody_max_size=max_waterbody, epsg=cfg.OUTPUT_EPSG, reach_codes=reach_codes, create_layer=False)
 
     with GeopackageLayer(reach_geometry_path, write=True) as reach_lyr:
         for feat, *_ in reach_lyr.iterate_features('Add WatershedID to ReachGeometry'):
