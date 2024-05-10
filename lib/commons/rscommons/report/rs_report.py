@@ -148,7 +148,7 @@ class RSReport():
         return head
 
     @staticmethod
-    def create_table_from_sql(col_names, sql, database, el_parent, attrib=None, id_cols=None):
+    def create_table_from_sql(col_names, sql, database, el_parent, attrib=None, id_cols=None, val_type=None):
         if attrib is None:
             attrib = {}
         table = ET.Element('table', attrib=attrib)
@@ -178,7 +178,14 @@ class RSReport():
 
             data_row = []
             for col, val in row.items():
-                str_val, class_name = RSReport.format_value(val) if id_cols and col not in id_cols else [str(val), 'idVal']
+                if val_type is not None:
+                    str_val, class_name = RSReport.format_value(val, val_type)
+                else:
+                    str_val, class_name = (
+                        RSReport.format_value(val)
+                        if id_cols and col not in id_cols
+                        else [str(val), 'idVal']
+                    )
                 td = ET.Element('td', attrib={'class': class_name})
 
                 td.text = str_val
@@ -281,7 +288,7 @@ class RSReport():
                 formatted = value
                 class_name = 'text'
             elif val_type == float or isinstance(value, float):
-                formatted = '{0:,.2f}'.format(value)
+                formatted = '{0:,.2f}'.format(value or 0).rstrip('0').rstrip('.')
                 class_name = 'float num'
             elif val_type == int or isinstance(value, int):
                 formatted = '{0:,d}'.format(value)
