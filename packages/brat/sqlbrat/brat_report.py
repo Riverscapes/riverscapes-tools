@@ -268,7 +268,9 @@ class BratReport(RSReport):
                 ' FROM {0} DR LEFT JOIN vwReaches R ON DR.{1} = R.{1}'
                 ' JOIN (SELECT Sum(iGeo_Len) AS TotalLength FROM vwReaches)'
                 ' GROUP BY DR.{1}'.format(table, idfield),
-                self.database, section)
+                self.database, section, val_type=float)
+
+            print(label + ": ", table_data)
 
             pie_path = os.path.join(self.images_dir, '{}_pie.png'.format(label))
             col = [self.bratcolors[x[0]] for x in table_data]
