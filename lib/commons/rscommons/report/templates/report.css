@@ -134,7 +134,7 @@ a {
   margin-bottom: 2rem;
 }
 section.report-section {
-  padding: 2rem;
+  padding: 3rem;
 }
 section.report-section section.report-section {
   padding: 0;
@@ -154,8 +154,13 @@ section.report-section section.report-section::after {
   content: none;
 }
 
+
 h5.report-header {
   margin: 1rem 0;
+}
+
+.imgWrap {
+  text-align: center;
 }
 
 
@@ -211,7 +216,7 @@ h5.report-header {
   TABLES
 **/
 table {
-  margin: 1rem 0rem;
+  margin: 1rem auto;
   border: 1px solid #40434e55;
   border-spacing: 0;
 }
@@ -242,16 +247,24 @@ table .num {
 
 
 /* Link from the sections back to the TOC */
-a.nav-top {
+
+.top-button {
+  position: sticky;
   color: white;
+  font-weight: bold;
+  bottom: 4rem;
   float: right;
-  font-size: 1rem;
-  line-height: 2.4;
+  margin-right: 4rem;
+  background: #60606070;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
 }
-/* Add a little arrow for effect. This is the UTF-8 code */
-a.nav-top:after {
+
+.top-button:after {
   content: "\2191";
-}
+} 
+
 
 /* Table of contents */
 #TOC {
