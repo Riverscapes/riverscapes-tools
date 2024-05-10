@@ -199,6 +199,8 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
         brat_network = os.path.join(inputs_gpkg, 'brat_network')
         copy_feature_class(in_brat_network, brat_network)
         project.add_dataset(in_gpkg_node.find('Layers'), 'brat_network', RSLayer('BRAT Network', 'BRAT_NETWORK', 'Vector', 'brat_network'), 'Vector', rel_path=True, sublayer=True)
+    else:
+        brat_network = None
 
     # get utm
     with GeopackageLayer(points) as lyr_pts:
