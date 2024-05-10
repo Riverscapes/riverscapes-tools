@@ -884,7 +884,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                         devel = curs.fetchone()[0]
                     metrics_output[metric['metric_id']] = str(devel)
 
-                if 'BRATCAP' in metrics:
+                if 'BRATCAP' in metrics and brat_network:
                     metric = metrics['BRATCAP']
                     attributes = {}
                     with GeopackageLayer(brat_network) as lyr_brat:
@@ -898,7 +898,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                     tot_cap = sum(key * (val / sum(attributes.values())) for key, val in attributes.items())
                     metrics_output[metric['metric_id']] = str(tot_cap)
 
-                if 'BRATRISK' in metrics:
+                if 'BRATRISK' in metrics and brat_network:
                     metric = metrics['BRATRISK']
                     attributes = {}
                     with GeopackageLayer(brat_network) as lyr_brat:
@@ -916,7 +916,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                         tot_risk = str(max(attributes, key=attributes.get))
                     metrics_output[metric['metric_id']] = tot_risk
 
-                if 'BRATOPP' in metrics:
+                if 'BRATOPP' in metrics and brat_network:
                     metric = metrics['BRATOPP']
                     attributes = {}
                     with GeopackageLayer(brat_network) as lyr_brat:
