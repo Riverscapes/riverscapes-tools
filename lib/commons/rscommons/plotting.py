@@ -36,7 +36,7 @@ def xyscatter(values, xlabel, ylabel, chart_title, file_path, one2one=False):
     y = [y for x, y in values]
 
     plt.clf()
-    plt.scatter(x, y, c='#DA8044', alpha=0.5, label='{} (n = {:,})'.format(chart_title, len(x)))
+    plt.scatter(x, y, c='#004793', alpha=0.5, label='{} (n = {:,})'.format(chart_title, len(x)))
     plt.title = chart_title
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
@@ -106,7 +106,7 @@ def pie(x_values, labels, chart_title, color, file_path):
 
     plt.clf()
     fig, ax = plt.subplots()
-    chart = ax.pie(clean_values, labels=labels, colors=color, autopct='%1.0f%%', shadow=True)
+    chart = ax.pie(clean_values, labels=labels, colors=color, autopct='%1.0f%%')
 
     ax.set_title(chart_title)
 

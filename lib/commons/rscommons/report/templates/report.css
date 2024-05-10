@@ -134,15 +134,16 @@ a {
   margin-bottom: 2rem;
 }
 section.report-section {
-  padding: 1.5rem;
+  padding: 2rem;
 }
 section.report-section section.report-section {
   padding: 0;
 }
 section.report-section>.report-header{
-  margin: 1rem 0;
+  margin: 0 0 1rem 0;
 }
 
+/* horizontal line at bottom of outermost sections */
 section.report-section::after {
   content: "";
   width: 100%;
@@ -151,6 +152,10 @@ section.report-section::after {
 }
 section.report-section section.report-section::after {
   content: none;
+}
+
+h5.report-header {
+  margin: 1rem 0;
 }
 
 

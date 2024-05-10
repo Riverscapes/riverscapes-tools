@@ -169,7 +169,6 @@ class BratReport(RSReport):
 
         self.log.info('Finished writing report')
 
-
     def dam_capacity(self, parent_sec):
 
         self.log.info('Summarizing dam capacity outputs')
@@ -215,7 +214,8 @@ class BratReport(RSReport):
         pEl3.text = 'The following plots summarize the outputs for existing dam capacity and historic dam capacity.'
         section.append(pEl3)
 
-        subsection = self.section(None, 'Existing Dam Capacity', section, level=3)
+        # # Titles are already included in table/pie summary
+        # subsection = self.section(None, 'Existing Dam Capacity', section, level=3)
 
         self.attribute_table_and_pie('oCC_EX', [
             {'label': 'None', 'upper': 0},
@@ -223,9 +223,10 @@ class BratReport(RSReport):
             {'label': 'Occasional', 'lower': 1, 'upper': 5},
             {'label': 'Frequent', 'lower': 5, 'upper': 15},
             {'label': 'Pervasive', 'lower': 15}
-        ], subsection)
+        ], section)
 
-        subsection2 = self.section(None, 'Historic Dam Capacity', section, level=3)
+        # # Titles are already included in table/pie summary
+        # subsection2 = self.section(None, 'Historic Dam Capacity', section, level=3)
 
         self.attribute_table_and_pie('oCC_HPE', [
             {'label': 'None', 'upper': 0},
@@ -233,8 +234,7 @@ class BratReport(RSReport):
             {'label': 'Occasional', 'lower': 1, 'upper': 5},
             {'label': 'Frequent', 'lower': 5, 'upper': 15},
             {'label': 'Pervasive', 'lower': 15}
-        ], subsection2)
-
+        ], section)
 
     def conservation(self, parent_sec):
 
@@ -306,7 +306,6 @@ class BratReport(RSReport):
         # for attribute in ['iPC_Canal', 'iPC_DivPts', 'iPC_Privat']:
         #     self.reach_attribute(attribute, section)
 
-
     def reach_slope(self, parent_sec):
 
         section = self.section('Slope', 'Reach Average Slope', parent_sec, level=2)
@@ -323,7 +322,6 @@ class BratReport(RSReport):
             {'label': '8 - 23%', 'lower': 0.08, 'upper': 0.23},
             {'label': '>23%', 'lower': 0.23}
         ], section)
-
 
     def hydrology_plots(self, parent_sec):
         self.log.info('Recording hydrology information')
@@ -346,7 +344,7 @@ class BratReport(RSReport):
 
         allequns = row[1] + row[2]
 
-        RSReport.header(3, 'Hydrological Parameters', section)
+        RSReport.header(4, 'Hydrological Parameters', section)
         RSReport.create_table_from_sql(
             ['Parameter', 'Data Value', 'Data Units', 'Conversion Factor', 'Equation Value', 'Equation Units'],
             'SELECT Parameter, Value, DataUnits, Conversion, ConvertedValue, EquationUnits FROM vwHydroParams WHERE \'{0}\' LIKE \'{1}\'||Parameter||\'{1}\''.format(allequns, '%'),
@@ -380,7 +378,7 @@ class BratReport(RSReport):
             image_path = os.path.join(self.images_dir, 'drainage_area_{}.png'.format(variable.lower()))
 
         # Low Stream Power
-        RSReport.header(3, 'Base Flow Stream Power', section)
+        RSReport.header(4, 'Base Flow Stream Power', section)
 
         pEl2 = ET.Element('p')
         pEl2.text = 'Low flow stream power helps determine whether or not dam building activity can occur at base flows. Below are the stream power values and their associated categories.'
@@ -400,7 +398,7 @@ class BratReport(RSReport):
         ], section)
 
         # High Stream Power
-        RSReport.header(3, 'High Flow Stream Power', section)
+        RSReport.header(4, 'High Flow Stream Power', section)
 
         pEl3 = ET.Element('p')
         pEl3.text = 'High flow stream power helps determine whether or not dams can persist at typical flood flows. Below are the stream power values and their associated categories.'
@@ -419,7 +417,6 @@ class BratReport(RSReport):
             {'label': 'Potential Dam Blowout', 'lower': 1400, 'upper': 2200},
             {'label': 'Dam Blowout', 'lower': 2200}
         ], section)
-
 
     def anthro_intermediates(self, parent_sec):
 
@@ -469,7 +466,6 @@ class BratReport(RSReport):
             {'label': 'High', 'lower': 66}
         ], section2)
 
-
     def ownership(self, parent_sec):
         section = self.section('Ownership', 'Ownership', parent_sec, level=2)
 
@@ -502,7 +498,6 @@ class BratReport(RSReport):
         plot_wrapper.append(img_wrap)
 
         section.append(plot_wrapper)
-
 
     def drainage_network(self, parent_sec):
         # Create a section node to start adding things to. Section nodes are added to the table of contents if
@@ -566,7 +561,6 @@ class BratReport(RSReport):
         section.append(table_wrapper)
         section.append(plot_wrapper)
 
-
     def vegetation(self, parent_sec):
         self.log.info('Recording vegetation information')
         section = self.section('Vegetation', 'Vegetation', parent_sec, level=2)
@@ -576,7 +570,7 @@ class BratReport(RSReport):
 
         for epochid, veg_type in [(2, 'Historic Vegetation'), (1, 'Existing Vegetation')]:
 
-            RSReport.header(3, veg_type, section)
+            RSReport.header(4, veg_type, section)
 
             pEl = ET.Element('p')
             pEl.text = 'The 30 most common {} types within the 100m reach buffer.'.format(veg_type.lower())
@@ -602,7 +596,7 @@ class BratReport(RSReport):
                 (SELECT CAST(Sum(TotalArea) AS REAL) / 1000000 SumTotalArea FROM vwReachVegetationTypes WHERE EpochID = {0} AND Buffer = 100)""".format(epochid))
                 area_weighted_avg_suitability = curs.fetchone()[0]
 
-                RSReport.header(3, 'Suitability Breakdown', section)
+                RSReport.header(4, 'Suitability Breakdown', section)
                 pEl = ET.Element('p')
                 pEl.text = """The area weighted average {} suitability is {}.
                     The breakdown of the percentage of the 100m buffer within each suitability class
@@ -627,7 +621,6 @@ class BratReport(RSReport):
                     """.format(epochid), self.database, section, id_cols=id_cols)
             except Exception as ex:
                 self.log.warning('Error calculating vegetation report')
-
 
     def reach_attribute(self, attribute, parent_el):
         # Use a class here because it repeats
@@ -661,13 +654,12 @@ class BratReport(RSReport):
 
         reach_wrapper_inner.append(img_wrap)
 
-
     def attribute_table_and_pie(self, attribute_field, bins, elParent):
         """
         Expect the bins as list of dictionaries with keys "label", "lower", "upper"
         """
 
-        RSReport.header(3, '{} Summary'.format(self.f_names[attribute_field]), elParent)
+        RSReport.header(4, '{} Summary'.format(self.f_names[attribute_field]), elParent)
 
         conn = sqlite3.connect(self.database)
         conn.row_factory = _dict_factory
@@ -697,7 +689,13 @@ class BratReport(RSReport):
                         (select sum(igeo_len) / 1000 total_length from ReachAttributes) t
                          WHERE {}""".format(where_clause), sql_args)
             row = curs.fetchone()
-            data.append((label, row['ReachCount'], row['LengthKM'], row['LengthMiles'], row['Percent']))
+            data.append((
+                label,
+                (row['ReachCount'] or 0),
+                (row['LengthKM'] or 0),
+                (row['LengthMiles'] or 0),
+                (row['Percent'] or 0)
+            ))
 
         RSReport.create_table_from_tuple_list(['Category', 'Reach Count', 'Length (km)', 'Length (mi)', 'Percent (%)'], data, elParent)
 
@@ -727,7 +725,6 @@ class BratReport(RSReport):
         img_wrap.append(img)
         plot_wrapper.append(img_wrap)
         elParent.append(plot_wrapper)
-
 
     def reach_attribute_summaries(self):
 
@@ -826,7 +823,6 @@ class BratReport(RSReport):
             {'label': 'Moderate', 'lower': 0.3333, 'upper': 0.6666},
             {'label': 'High', 'lower': 0.6666}
         ], section)
-
 
     def geophysical_summary(self, parent_sec):
         self.log.info('Summarizing geophysical reach attributes')
