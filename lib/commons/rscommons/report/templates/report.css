@@ -66,7 +66,7 @@ font-family: Courier New,Courier,Lucida Sans Typewriter,Lucida Typewriter,monosp
 
 body {
   line-height: 1.5;
-  background: #fffffaff;
+  background: #ffffffff;
   color: #080705ff;
   font-family: Arial, sans-serif; 
 }
@@ -88,7 +88,7 @@ h2 {
   /* background: #073040; */
   padding: 5px 0px;
   /* color: #fffffaff; */
-  font-size: 1.5rem;
+  font-size: 2rem;
   font-weight: bold;
 }
 h3{
@@ -111,6 +111,7 @@ a {
   color: #003B80;
   text-decoration: none;
 }
+
 /**
   LAYOUT
 **/
@@ -121,7 +122,7 @@ a {
 #ReportInner{ 
   max-width: 66rem;
   margin: 0 auto;
-  background: #fffffaff;
+  background: #ffffffff;
   color: #080705ff;
 }
 #ReportIntro .tableWrapper {
@@ -131,14 +132,27 @@ a {
 
 .section-inner {
   margin-bottom: 2rem;
-  padding: 1rem 2rem;
 }
 section.report-section {
-  border-bottom: 1px solid #eeeeee;
+  padding: 1.5rem;
+}
+section.report-section section.report-section {
+  padding: 0;
 }
 section.report-section>.report-header{
-  padding: 1rem;
+  margin: 1rem 0;
 }
+
+section.report-section::after {
+  content: "";
+  width: 100%;
+  border-bottom: 1px solid #eeeeee;
+  display: inline-block;
+}
+section.report-section section.report-section::after {
+  content: none;
+}
+
 
 #HeaderBar .date{ float: right}
 #HeaderBar .projectType{ float: left}
@@ -179,7 +193,6 @@ section.report-section>.report-header{
 
 
 .dictable {
-  border: 5px solid #40434e55;
   text-align: left;
 }
 .fullwidth {
@@ -194,6 +207,8 @@ section.report-section>.report-header{
 **/
 table {
   margin: 1rem 0rem;
+  border: 1px solid #40434e55;
+  border-spacing: 0;
 }
 table tbody tr:nth-child(odd) td, 
 table tbody tr:nth-child(odd) th{
@@ -205,7 +220,7 @@ table tbody tr:nth-child(even) th{
 }
 table th, table td {
   border: 2px solid transparent;
-  /* padding: 2px 3px 2px 3px; */
+  padding: 4px;
 }
 table thead th {
   text-align: left;
@@ -214,21 +229,12 @@ table thead th {
   background-color: #616161;
   font-weight: bold;
 }
-table td {
-  /* padding: 2px; */
-}
 table .num {
   padding-right: 10px;
   padding-left: 20px;
   text-align: right;
 }
-table .num.float {
 
-}
-table .idVal {
-  text-align: center;
-  font-family: Arial, sans-serif;
-}
 
 /* Link from the sections back to the TOC */
 a.nav-top {

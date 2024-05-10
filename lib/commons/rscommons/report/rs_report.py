@@ -39,7 +39,7 @@ class RSReport():
         toc = ''
         if len(self.toc) > 0:
             toc = ET.tostring(self._table_of_contents(), method="html", encoding='unicode')
-        # Get my HTML templae and render it
+        # Get my HTML template and render it
 
         with open(os.path.join(self.template_path, 'template.html')) as t:
             template = Template(t.read())
