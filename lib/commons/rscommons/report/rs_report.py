@@ -33,6 +33,12 @@ class RSReport():
 
     def write(self):
         css_template = "<style>\n{}\n</style>"
+
+        # Add button to go to top
+        top_button = ET.Element('a', attrib={'class': 'top-button', 'href': '#TOC'})
+        top_button.text = "Top"
+        self.main_el.append(top_button)
+
         html_inner = ET.tostring(self.main_el, method="html", encoding='unicode')
         styles = ''.join([css_template.format(css) for css in self.css_files])
 
@@ -82,9 +88,6 @@ class RSReport():
         hlevel = level + 1
         if title:
             h_el = RSReport.header(hlevel, title, section)
-            a_el = ET.Element('a', attrib={'class': 'nav-top', 'href': '#TOC'})
-            a_el.text = 'Top'
-            h_el.append(a_el)
 
         section.append(section_inner)
         self.toc.append({
