@@ -14,7 +14,7 @@ upstream_project_types = {
     'confinement': ['rscontext', 'vbet'],
     'anthro': ['rscontext', 'vbet'],
     'rcat': ['rscontext', 'vbet', 'taudem', 'anthro'],
-    'rs_metric_engine': ['rscontext', 'vbet', 'confinement', 'anthro', 'rcat', 'brat'],
+    'rs_metric_engine': ['rscontext', 'vbet', 'confinement', 'anthro', 'rcat'],
 }
 
 # Key is warehouse project type. Value is Fargate environment variable
