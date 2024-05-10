@@ -680,7 +680,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                     with sqlite3.connect(inputs_gpkg) as conn:
                         curs = conn.cursor()
                         curs.execute(
-                            f"SELECT Confinement_Ratio FROM confinement_dgo WHERE fid = {dgo_id}")
+                            f"SELECT confinement_ratio FROM confinement_dgo WHERE fid = {dgo_id}")
                         conf_ratio = curs.fetchone()[0]
                     metrics_output[metric['metric_id']] = str(conf_ratio)
 
@@ -690,7 +690,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                     with sqlite3.connect(inputs_gpkg) as conn:
                         curs = conn.cursor()
                         curs.execute(
-                            f"SELECT Constriction_Ratio FROM confinement_dgo WHERE fid = {dgo_id}")
+                            f"SELECT constriction_ratio FROM confinement_dgo WHERE fid = {dgo_id}")
                         cons_ratio = curs.fetchone()[0]
                     metrics_output[metric['metric_id']] = str(cons_ratio)
 
@@ -700,7 +700,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                     with sqlite3.connect(inputs_gpkg) as conn:
                         curs = conn.cursor()
                         curs.execute(
-                            f"SELECT ConfinLeng FROM confinement_dgo WHERE fid = {dgo_id}")
+                            f"SELECT confin_leng FROM confinement_dgo WHERE fid = {dgo_id}")
                         conf_margin = curs.fetchone()[0]
                     metrics_output[metric['metric_id']] = str(conf_margin)
 
@@ -1374,7 +1374,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                 with sqlite3.connect(inputs_gpkg) as conn:
                     curs2 = conn.cursor()
                     curs2.execute(
-                        f"SELECT ConfinLeng, ApproxLeng FROM confinement_dgo WHERE fid IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                        f"SELECT confin_leng, approx_leng FROM confinement_dgo WHERE fid IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
                     confs = curs2.fetchall()
                     conf_ratio = sum([c[0] for c in confs]) / sum([c[1]
                                                                    for c in confs]) if sum([c[1] for c in confs]) > 0 else None
@@ -1386,7 +1386,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                 with sqlite3.connect(inputs_gpkg) as conn:
                     curs2 = conn.cursor()
                     curs2.execute(
-                        f"SELECT ConstrLeng, ApproxLeng FROM confinement_dgo WHERE fid IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                        f"SELECT constr_leng, approx_leng FROM confinement_dgo WHERE fid IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
                     cons = curs2.fetchall()
                     cons_ratio = sum([c[0] for c in cons]) / sum([c[1]
                                                                   for c in cons]) if sum([c[1] for c in cons]) > 0 else None
