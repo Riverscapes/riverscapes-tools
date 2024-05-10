@@ -270,8 +270,6 @@ class BratReport(RSReport):
                 ' GROUP BY DR.{1}'.format(table, idfield),
                 self.database, section, val_type=float)
 
-            print(label + ": ", table_data)
-
             pie_path = os.path.join(self.images_dir, '{}_pie.png'.format(label))
             col = [self.bratcolors[x[0]] for x in table_data]
             pie([x[3] for x in table_data], [x[0] for x in table_data], '{} by Stream Length'.format(label), col, pie_path)
