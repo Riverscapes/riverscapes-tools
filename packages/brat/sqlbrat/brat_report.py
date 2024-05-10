@@ -1,14 +1,12 @@
 import argparse
-from operator import le
 import sqlite3
 import os
-# from turtle import pen
+
 from xml.etree import ElementTree as ET
 
 from rscommons import Logger, dotenv, ModelConfig, RSReport, RSProject
 from rscommons.util import safe_makedirs
 from rscommons.plotting import xyscatter, box_plot, pie, horizontal_bar
-from sympy import sec
 
 from sqlbrat.__version__ import __version__
 
@@ -155,12 +153,14 @@ class BratReport(RSReport):
         outputs_section.append(pEl)
         self.dam_capacity(outputs_section)
         self.conservation(outputs_section)
+
         intermediates_section = self.section('Intermediates', 'Model Intermediates')
         self.reach_slope(intermediates_section)
         self.hydrology_plots(intermediates_section)
         self.anthro_intermediates(intermediates_section)
         # self.geophysical_summary(intermediates_section)
         self.ownership(intermediates_section)
+
         inputs_section = self.section('Inputs', 'Model Inputs')
         self.drainage_network(inputs_section)
         self.vegetation(inputs_section)
@@ -168,6 +168,7 @@ class BratReport(RSReport):
         # self.reach_attribute_summaries()
 
         self.log.info('Finished writing report')
+
 
     def dam_capacity(self, parent_sec):
 
@@ -188,7 +189,7 @@ class BratReport(RSReport):
         RSReport.create_table_from_dict(cap_dict, section)
 
         pEl2 = ET.Element('p')
-        pEl2.text = 'The following table contains the total beaver dam capacity for the watershed based on existing and historic vegetation. The vegetation only entries are capacitites based on only the vegetation fuzzy inference system; the others are based on the combined fuzzy inferences system that acocunts for hydrology and slope.'
+        pEl2.text = 'The following table contains the total beaver dam capacity for the watershed based on existing and historic vegetation. The vegetation only entries are capacitites based on only the vegetation fuzzy inference system; the others are based on the combined fuzzy inferences system that accounts for hydrology and slope.'
         section.append(pEl2)
 
         conn = sqlite3.connect(self.database)
@@ -233,6 +234,7 @@ class BratReport(RSReport):
             {'label': 'Frequent', 'lower': 5, 'upper': 15},
             {'label': 'Pervasive', 'lower': 15}
         ], subsection2)
+
 
     def conservation(self, parent_sec):
 
@@ -304,6 +306,7 @@ class BratReport(RSReport):
         # for attribute in ['iPC_Canal', 'iPC_DivPts', 'iPC_Privat']:
         #     self.reach_attribute(attribute, section)
 
+
     def reach_slope(self, parent_sec):
 
         section = self.section('Slope', 'Reach Average Slope', parent_sec, level=2)
@@ -320,6 +323,7 @@ class BratReport(RSReport):
             {'label': '8 - 23%', 'lower': 0.08, 'upper': 0.23},
             {'label': '>23%', 'lower': 0.23}
         ], section)
+
 
     def hydrology_plots(self, parent_sec):
         self.log.info('Recording hydrology information')
@@ -416,6 +420,7 @@ class BratReport(RSReport):
             {'label': 'Dam Blowout', 'lower': 2200}
         ], section)
 
+
     def anthro_intermediates(self, parent_sec):
 
         section = self.section('Proximity to Infrastructure', title='Proximity to Infrastructure', el_parent=parent_sec, level=2)
@@ -464,6 +469,7 @@ class BratReport(RSReport):
             {'label': 'High', 'lower': 66}
         ], section2)
 
+
     def ownership(self, parent_sec):
         section = self.section('Ownership', 'Ownership', parent_sec, level=2)
 
@@ -496,6 +502,7 @@ class BratReport(RSReport):
         plot_wrapper.append(img_wrap)
 
         section.append(plot_wrapper)
+
 
     def drainage_network(self, parent_sec):
         # Create a section node to start adding things to. Section nodes are added to the table of contents if
@@ -559,6 +566,7 @@ class BratReport(RSReport):
         section.append(table_wrapper)
         section.append(plot_wrapper)
 
+
     def vegetation(self, parent_sec):
         self.log.info('Recording vegetation information')
         section = self.section('Vegetation', 'Vegetation', parent_sec, level=2)
@@ -620,6 +628,7 @@ class BratReport(RSReport):
             except Exception as ex:
                 self.log.warning('Error calculating vegetation report')
 
+
     def reach_attribute(self, attribute, parent_el):
         # Use a class here because it repeats
         # section = self.section(None, attribute, parent_el, level=2)
@@ -651,6 +660,7 @@ class BratReport(RSReport):
         img_wrap.append(img)
 
         reach_wrapper_inner.append(img_wrap)
+
 
     def attribute_table_and_pie(self, attribute_field, bins, elParent):
         """
@@ -717,6 +727,7 @@ class BratReport(RSReport):
         img_wrap.append(img)
         plot_wrapper.append(img_wrap)
         elParent.append(plot_wrapper)
+
 
     def reach_attribute_summaries(self):
 
@@ -815,6 +826,7 @@ class BratReport(RSReport):
             {'label': 'Moderate', 'lower': 0.3333, 'upper': 0.6666},
             {'label': 'High', 'lower': 0.6666}
         ], section)
+
 
     def geophysical_summary(self, parent_sec):
         self.log.info('Summarizing geophysical reach attributes')
