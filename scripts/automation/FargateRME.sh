@@ -8,7 +8,7 @@ IFS=$'\n\t'
 (: "${TAGS?}")
 (: "${VBET_ID?}")
 (: "${RSCONTEXT_ID?}")
-# (: "${CONFINEMENT_ID?}")
+(: "${CONFINEMENT_ID?}")
 (: "${ANTHRO_ID?}")
 (: "${RCAT_ID?}")
 (: "${BRAT_ID?}")
@@ -47,7 +47,7 @@ EOF
 echo "TAGS: $TAGS"
 echo "VBET_ID: $VBET_ID"
 echo "RSCONTEXT_ID: $RSCONTEXT_ID"
-# echo "CONFINEMENT_ID: $CONFINEMENT_ID"
+echo "CONFINEMENT_ID: $CONFINEMENT_ID"
 echo "ANTHRO_ID: $ANTHRO_ID"
 echo "RCAT_ID: $RCAT_ID"
 echo "BRAT_ID: $BRAT_ID"
@@ -66,7 +66,7 @@ gdal-config --version
 DATA_DIR=/usr/local/data
 RS_CONTEXT_DIR=$DATA_DIR/rs_context/rs_context_$RSCONTEXT_ID
 VBET_DIR=$DATA_DIR/vbet/vbet_$VBET_ID
-# CONFINEMENT_DIR=$DATA_DIR/confinement/confinement_$CONFINEMENT_ID
+CONFINEMENT_DIR=$DATA_DIR/confinement/confinement_$CONFINEMENT_ID
 ANTHRO_DIR=$DATA_DIR/anthro/anthro_$ANTHRO_ID
 RCAT_DIR=$DATA_DIR/rcat/rcat_$RCAT_ID
 BRAT_DIR=$DATA_DIR/brat/brat_$BRAT_ID
@@ -85,9 +85,9 @@ rscli download $VBET_DIR --id $VBET_ID \
   --file-filter "(vbet\.gpkg|intermediates\.gpkg)" \
   --no-input --no-ui --verbose
 
-# rscli download $CONFINEMENT_DIR --id $CONFINEMENT_ID \
-#   --file-filter "(confinement\.gpkg)" \
-#   --no-input --no-ui --verbose
+rscli download $CONFINEMENT_DIR --id $CONFINEMENT_ID \
+  --file-filter "(confinement\.gpkg)" \
+  --no-input --no-ui --verbose
 
 rscli download $ANTHRO_DIR --id $ANTHRO_ID \
   --file-filter "(anthro\.gpkg)" \
@@ -120,6 +120,7 @@ try() {
     $RS_CONTEXT_DIR/topography/dem.tif \
     $RS_CONTEXT_DIR/topography/dem_hillshade.tif \
     $RME_DIR \
+    --confinement_dgos $CONFINEMENT_DIR/outputs/confinement.gpkg/confinement_dgos \
     --anthro_dgos $ANTHRO_DIR/outputs/anthro.gpkg/vwDgos \
     --rcat_dgos $RCAT_DIR/outputs/rcat.gpkg/vwDgos \
     --brat_network $BRAT_DIR/outputs/brat.gpkg/vwReaches \
@@ -130,7 +131,7 @@ try() {
   cd /usr/local/src/riverscapes-tools/packages/rme
   python3 -m rme.rme_rs \
     $RME_DIR/project.rs.xml \
-    "$RS_CONTEXT_DIR/project.rs.xml,$VBET_DIR/project.rs.xml",$ANTHRO_DIR/project.rs.xml,$RCAT_DIR/project.rs.xml,$BRAT_DIR/project.rs.xml \
+    "$RS_CONTEXT_DIR/project.rs.xml,$VBET_DIR/project.rs.xml",$CONFINEMENT_DIR/project.rs.xml,$ANTHRO_DIR/project.rs.xml,$RCAT_DIR/project.rs.xml,$BRAT_DIR/project.rs.xml \
 
   echo "======================  Final Disk space usage ======================="
   df -h
