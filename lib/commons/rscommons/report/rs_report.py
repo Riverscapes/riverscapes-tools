@@ -200,7 +200,7 @@ class RSReport():
         return data
 
     @staticmethod
-    def create_table_from_tuple_list(col_names, data, el_parent, attrib=None):
+    def create_table_from_tuple_list(col_names, data, el_parent, attrib=None, total_row=False):
 
         if attrib is None:
             attrib = {}
@@ -219,8 +219,11 @@ class RSReport():
         tbody = ET.Element('tbody')
         table.append(tbody)
 
-        for row in data:
-            tr = ET.Element('tr')
+        for i, row in enumerate(data):
+            if i == len(data) - 1 and total_row:
+                tr = ET.Element('tr', attrib={'class': 'total'})
+            else:
+                tr = ET.Element('tr')
             tbody.append(tr)
 
             for col in row:

@@ -654,6 +654,16 @@ class BratReport(RSReport):
 
         reach_wrapper_inner.append(img_wrap)
 
+    def get_total_row(self, data):
+        row = ["Total"]
+
+        for c in range(1, len(data[0])):
+            row.append(sum([
+                data[r][c] for r in range(len(data))
+            ]))
+
+        return tuple(row)
+
     def attribute_table_and_pie(self, attribute_field, bins, elParent):
         """
         Expect the bins as list of dictionaries with keys "label", "lower", "upper"
@@ -697,7 +707,13 @@ class BratReport(RSReport):
                 (row['Percent'] or 0)
             ))
 
-        RSReport.create_table_from_tuple_list(['Category', 'Reach Count', 'Length (km)', 'Length (mi)', 'Percent (%)'], data, elParent)
+        total_row = self.get_total_row(data)
+        RSReport.create_table_from_tuple_list(
+            ['Category', 'Reach Count', 'Length (km)', 'Length (mi)', 'Percent (%)'],
+            data + [total_row],
+            elParent,
+            total_row=True
+        )
 
         image_path = os.path.join(self.images_dir, '{}_pie.png'.format(attribute_field.lower()))
         col = [self.bratcolors[x[0]] for x in data]
