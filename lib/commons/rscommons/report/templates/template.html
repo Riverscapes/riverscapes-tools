@@ -30,7 +30,16 @@
             <h3>Project Meta</h3>
             <ul class="project-meta">
               {% for iname, idata in report.MetaData.items() -%}
-              <li><span class="key">{{iname}}:</span><span class="value">{{idata}}</span></li>
+              <li>
+                <span class="key">{{iname}}</span>
+                <span class="value">
+                  {% if idata.startswith('http') %}
+                    <a href="{{idata}}">{{idata}}</a>
+                  {% else %}
+                    {{idata}}
+                  {% endif %}
+                </span>
+              </li>
               {% endfor %}
             </ul>
             {% endif %}
