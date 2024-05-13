@@ -229,12 +229,10 @@ table tbody tr:nth-child(even) th{
   background: #f5f5f0f5;
 }
 table th, table td {
-  border: 2px solid transparent;
-  padding: 4px;
+  padding: 6px;
 }
 table thead th {
   text-align: left;
-  padding: 3px 5px;
   color: #fffffaff;
   background-color: #616161;
   font-weight: bold;
