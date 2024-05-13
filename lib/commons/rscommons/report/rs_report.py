@@ -241,8 +241,8 @@ class RSReport():
 
         Arguments:
             values {[type]} - - [description]
-            database {[type]} - - [description]
             el_parent {[type]} - - [description]
+            attrib {[type]} - - [description]
 
         Returns:
             [type] - - [description]
