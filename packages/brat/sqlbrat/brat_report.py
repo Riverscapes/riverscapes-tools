@@ -603,22 +603,29 @@ class BratReport(RSReport):
                     across all reaches in the watershed.""".format(veg_type.lower(), RSReport.format_value(area_weighted_avg_suitability)[0])
                 section.append(pEl)
 
-                RSReport.create_table_from_sql(['Suitability Class', '% with 100m Buffer'],
-                                               """
-                    SELECT EffectiveSuitability, 100.0 * SArea / SumTotalArea FROM
-                    (
-                        SELECT CAST(Sum(TotalArea) AS REAL) / 1000000 SArea, EffectiveSuitability
-                        FROM vwReachVegetationTypes
-                        WHERE EpochID = {0} AND Buffer = 100 GROUP BY EffectiveSuitability
-                    )
-                    JOIN
-                    (
-                        SELECT CAST(Sum(TotalArea) AS REAL) / 1000000 SumTotalArea
-                        FROM vwReachVegetationTypes
-                        WHERE EpochID = {0} AND Buffer = 100
-                    )
-                    ORDER BY EffectiveSuitability
-                    """.format(epochid), self.database, section, id_cols=id_cols)
+                RSReport.create_table_from_sql(
+                    ['Suitability Class', '% with 100m Buffer'],
+                    f"""
+                    SELECT DISTINCT DefaultSuitability, coalesce(Ratio, 0) Ratio
+                    FROM VegetationTypes VT
+                    LEFT JOIN (
+                        SELECT EffectiveSuitability, 100.0 * SArea / SumTotalArea Ratio
+                        FROM (
+                            SELECT CAST(Sum(TotalArea) AS REAL) / 1000000 SArea, EffectiveSuitability
+                            FROM vwReachVegetationTypes
+                            WHERE EpochID = {epochid} AND Buffer = 100
+                            GROUP BY EffectiveSuitability
+                        )
+                        JOIN (
+                            SELECT CAST(Sum(TotalArea) AS REAL) / 1000000 SumTotalArea
+                            FROM vwReachVegetationTypes
+                            WHERE EpochID = {epochid} AND Buffer = 100
+                        )
+                    ) ES ON VT.DefaultSuitability = ES.EffectiveSuitability
+                    ORDER BY DefaultSuitability;
+                    """,
+                    self.database, section, id_cols=id_cols
+                )
             except Exception as ex:
                 self.log.warning('Error calculating vegetation report')
 
