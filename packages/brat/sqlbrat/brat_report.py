@@ -337,7 +337,7 @@ class BratReport(RSReport):
         curs.execute('SELECT MaxDrainage, QLow, Q2 FROM Watersheds')
         row = curs.fetchone()
         RSReport.create_table_from_dict({
-            'Drainage area threshold (sqkm) above which dams are not built': row[0],
+            'Drainage area threshold (sqkm) above which dams are not built': str(row[0]),
             'Baseflow equation': row[1],
             'Peak Flow equation': row[2]
         }, section, attrib={'class': 'fullwidth'})
