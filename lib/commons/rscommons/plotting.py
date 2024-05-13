@@ -100,13 +100,59 @@ def line(x_values, y_values, xlabel, ylabel, chart_title, file_path):
     plt.savefig(file_path)
 
 
+def get_overlapping_groups(labels):
+    """Group overlapping labels, for pie charts."""
+
+    groups = []
+
+    # group labels by the distance between their centers
+    for label in labels:
+        for group in groups:
+            if (
+                abs(label.get_position()[1] - group[0].get_position()[1]) < 0.1
+                and abs(label.get_position()[0] - group[0].get_position()[0]) < 1
+            ):
+                group.append(label)
+                break
+        else:
+            groups.append([label])
+
+    return groups
+
+
+def group_pie_labels(labels):
+    """Improve formatting of overlapping labels in pie charts."""
+
+    groups = get_overlapping_groups(labels)
+
+    # if more than one label in group, combine text and hide others
+    for group in groups:
+        if len(group) > 1:
+            # reversed order is more likely to be correct, if the group is on right side
+            group[0].set_text(
+                ",\n".join(label.get_text() for label in reversed(group))
+            )
+            for label in group[1:]:
+                label.set_visible(False)
+
+    return labels
+
+
 def pie(x_values, labels, chart_title, color, file_path):
 
-    clean_values = [0 if x is None else x for x in x_values]
+    clean_labels = []
+    clean_values = []
+
+    for i, x in enumerate(x_values):
+        if x:
+            clean_labels.append(labels[i])
+            clean_values.append(x)
 
     plt.clf()
     fig, ax = plt.subplots()
-    chart = ax.pie(clean_values, labels=labels, colors=color, autopct='%1.0f%%')
+    chart = ax.pie(clean_values, labels=clean_labels, colors=color, autopct='%1.0f%%')
+
+    group_pie_labels(chart[1])
 
     ax.set_title(chart_title)
 
@@ -114,7 +160,7 @@ def pie(x_values, labels, chart_title, color, file_path):
         os.makedirs(os.path.dirname(file_path))
 
     plt.tight_layout()
-    plt.savefig(file_path)
+    plt.savefig(file_path, bbox_inches="tight")
     plt.close()
 
 
