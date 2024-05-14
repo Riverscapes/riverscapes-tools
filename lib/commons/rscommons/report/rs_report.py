@@ -343,7 +343,7 @@ class RSReport():
         el_parent.append(hEl)
         return hEl
 
-    def layerprint(self, lyr_el, parent_el, project_root, level: int = 2):
+    def layerprint(self, lyr_el, parent_el, project_root, level: int = 2, parent_pathstr=None):
         """Work in progress for printing Riverscapes layers
 
         Args:
@@ -358,26 +358,31 @@ class RSReport():
 
         section = self.section(None, '{}: {}'.format(tag, name), parent_el, level=level, attrib={'class': 'rsc-layer'})
 
-        meta = self.xml_project.get_metadata_dict(node=lyr_el)
-        if meta is not None:
-            self.create_table_from_dict(meta, section, attrib={'class': 'fullwidth'})
-
-        path_el = ET.Element('pre', attrib={'class': 'path'})
         pathstr = lyr_el.attrib['lyrName'] if 'lyrName' in lyr_el.attrib else lyr_el.find('Path').text
+
+        if tag == "Vector":
+            pathstr = os.path.join(parent_pathstr, pathstr)
+
         size = 0
         fpath = os.path.join(project_root, pathstr)
         if os.path.isfile(fpath):
             size = os.path.getsize(fpath)
 
+        meta = self.xml_project.get_metadata_dict(node=lyr_el)
+        if meta is not None:
+            meta["path"] = pathstr  # lowercase because some elements already have this
+            if size > 0:
+                meta["Size"] = sizeof_fmt(size)
+
+            self.create_table_from_dict(meta, section, attrib={'class': 'fullwidth'})
+
         if layers is not None:
+            if size > 0:
+                self.create_table_from_dict({'Total size': sizeof_fmt(size)}, section, attrib={'class': 'fullwidth'})
+
             layers_container = ET.Element('div', attrib={'class': 'inner-layer-container'})
             RSReport.header(level + 1, 'Layers', layers_container)
             for layer_el in list(layers):
-                self.layerprint(layer_el, layers_container, os.path.join(project_root, pathstr), level=level + 1)
+                self.layerprint(layer_el, layers_container, os.path.join(project_root, pathstr), level=level + 1, parent_pathstr=pathstr)
 
             section.append(layers_container)
-
-        footer = ET.Element('div', attrib={'class': 'layer-footer'})
-        path_el.text = 'Project path: {}  ({})'.format(pathstr, sizeof_fmt(size))
-        footer.append(path_el)
-        section.append(footer)
