@@ -268,9 +268,16 @@ class RSReport():
             th.text = key
             tr.append(th)
 
-            val, class_name = RSReport.format_value(val)
-            td = ET.Element('td', attrib={'class': class_name})
-            td.text = val
+            # If the value is a URL, make it a link
+            if isinstance(val, str) and val.startswith("http"):
+                td = ET.Element('td', attrib={'class': 'text url'})
+                a = ET.Element('a', attrib={'href': val})
+                a.text = val
+                td.append(a)
+            else:
+                val, class_name = RSReport.format_value(val)
+                td = ET.Element('td', attrib={'class': class_name})
+                td.text = val
             tr.append(td)
 
         el_parent.append(table)
