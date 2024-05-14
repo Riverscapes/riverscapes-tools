@@ -378,7 +378,10 @@ class RSReport():
 
         if layers is not None:
             if size > 0:
-                self.create_table_from_dict({'Total size': sizeof_fmt(size)}, section, attrib={'class': 'fullwidth'})
+                self.create_table_from_dict(
+                    {'Total size': sizeof_fmt(size), 'Path': pathstr},
+                    section, attrib={'class': 'fullwidth'}
+                )
 
             layers_container = ET.Element('div', attrib={'class': 'inner-layer-container'})
             RSReport.header(level + 1, 'Layers', layers_container)
