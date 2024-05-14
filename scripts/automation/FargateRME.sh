@@ -11,7 +11,7 @@ IFS=$'\n\t'
 (: "${CONFINEMENT_ID?}")
 (: "${ANTHRO_ID?}")
 (: "${RCAT_ID?}")
-# (: "${BRAT_ID?}")
+(: "${BRAT_ID?}")
 (: "${RS_API_URL?}")
 (: "${VISIBILITY?}")
 # These are machine credentials for the API which will allow the CLI to delegate uploading to either a specific user or an org
@@ -69,7 +69,7 @@ VBET_DIR=$DATA_DIR/vbet/vbet_$VBET_ID
 CONFINEMENT_DIR=$DATA_DIR/confinement/confinement_$CONFINEMENT_ID
 ANTHRO_DIR=$DATA_DIR/anthro/anthro_$ANTHRO_ID
 RCAT_DIR=$DATA_DIR/rcat/rcat_$RCAT_ID
-# BRAT_DIR=$DATA_DIR/brat/brat_$BRAT_ID
+BRAT_DIR=$DATA_DIR/brat/brat_$BRAT_ID
 RME_DIR=$DATA_DIR/output/rme
 
 ##########################################################################################
@@ -97,9 +97,9 @@ rscli download $RCAT_DIR --id $RCAT_ID \
   --file-filter "(rcat\.gpkg)" \
   --no-input --no-ui --verbose
 
-# rscli download $BRAT_DIR --id $BRAT_ID \
-#   --file-filter "(brat\.gpkg)" \
-#   --no-input --no-ui --verbose
+rscli download $BRAT_DIR --id $BRAT_ID \
+  --file-filter "(brat\.gpkg)" \
+  --no-input --no-ui --verbose
 
 echo "======================  Initial Disk space usage ======================="
 df -h
@@ -123,6 +123,7 @@ try() {
     --confinement_dgos $CONFINEMENT_DIR/outputs/confinement.gpkg/confinement_dgos \
     --anthro_dgos $ANTHRO_DIR/outputs/anthro.gpkg/vwDgos \
     --rcat_dgos $RCAT_DIR/outputs/rcat.gpkg/vwDgos \
+    --brat_network $BRAT_DIR/outputs/brat.gpkg/vwReaches \
     --meta "Runner=Cybercastor" \
     --verbose
   if [[ $? != 0 ]]; then return 1; fi

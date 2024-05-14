@@ -19,7 +19,7 @@ lyrs_in_out = {
     'confinement_dgo': 'confinement_dgos',
     'anthro_dgo': 'vwDgos',
     'rcat_dgo': 'vwDgos',
-    # 'brat_network': 'vwReaches'
+    'brat_network': 'vwReaches'
 }
 
 

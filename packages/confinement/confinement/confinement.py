@@ -447,7 +447,7 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
             geom_channel_buffer = geom_intersected.buffer(
                 buffer * meter_conversion)
 
-            if geom_channel_buffer is None or geom_channel_buffer.geom_type == "MultiPolygon":
+            if geom_channel_buffer is None or geom_channel_buffer.area == 0.0 or geom_channel_buffer.geom_type == "MultiPolygon":
                 progbar.erase()
                 log.warning(
                     "Invalid buffer polygon with level path: {}".format(level_path))

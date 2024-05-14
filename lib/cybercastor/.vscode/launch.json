@@ -174,10 +174,10 @@
       "args": [
         "production",
         "{env:DATA_ROOT}/merge-projects",
-        "vbet",
-        "223c7eb2-6c39-437f-8421-428e113126ae",
-        "Blackfoot River Merged VBET",
-        "merge_vbet"
+        "rs_metric_engine",
+        "65095800-3938-4cf9-9565-59984de14302",
+        "Southern OR Merged RME",
+        "merge_rme"
       ]
     },
 
