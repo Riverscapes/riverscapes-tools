@@ -499,7 +499,17 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
                         continue
 
             # Generate point to test side of flowline
-            geom_offset = geom_flowline.parallel_offset(offset, "left")
+            try:
+                geom_offset = geom_flowline.parallel_offset(offset, "left")
+            except Exception as e:
+                progbar.erase()
+                log.warning(
+                    "Error offsetting flowline with level path: {}".format(level_path))
+                log.warning(e)
+                err_count += 1
+                dbg_err_lines_lyr.create_feature(geom_flowline, {
+                                                 "ErrorProcess": "Offset Error", 'level_path': level_path, "ErrorMessage": "Error offsetting flowline"})
+                continue
             if not geom_offset.is_valid or geom_offset.is_empty or geom_offset.length == 0:
                 progbar.erase()
                 log.warning(
