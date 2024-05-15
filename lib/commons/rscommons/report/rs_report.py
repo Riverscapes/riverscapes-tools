@@ -370,7 +370,7 @@ class RSReport():
 
         pathstr = lyr_el.attrib['lyrName'] if 'lyrName' in lyr_el.attrib else lyr_el.find('Path').text
 
-        if tag == "Vector" and parent_pathstr is not None:
+        if parent_pathstr is not None:
             pathstr = os.path.join(parent_pathstr, pathstr)
 
         size = 0
