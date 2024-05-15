@@ -660,8 +660,8 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
                             f"leve path: {level_path} | Unknown geometry identified generating outputs for Raw Confinement.")
 
             # Calculated Confinement per Flowline
-            confinement_ratio = geom_confined / \
-                geom_flowline.length if geom_confined else 0.0  # .length
+            confinement_ratio = min(geom_confined /
+                                    geom_flowline.length, 1.0) if geom_confined else 0.0  # .length
             constricted_ratio = geom_constricted.length / \
                 geom_flowline.length if geom_constricted else 0.0
 
