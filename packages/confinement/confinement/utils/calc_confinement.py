@@ -64,9 +64,9 @@ def calculate_confinement(confinement_type_network, segment_network, output_netw
             segment_length = sum(
                 [confinement_length, constricted_length, unconfined_length])
             confinement_ratio = min((confinement_length + constricted_length) /
-                                    segment_length, 1.0) if segment_length > 0.0 else 0.0
+                                    segment_length, 1.0) if segment_length > 0.0 else None
             constricted_ratio = constricted_length / \
-                segment_length if segment_length > 0.0 else 0.0
+                segment_length if segment_length > 0.0 else None
             attributes = {
                 "confinement_ratio": confinement_ratio,
                 "constriction_ratio": constricted_ratio,
@@ -123,9 +123,9 @@ def dgo_confinement(confinement_type_network, out_dgos):
             segment_length = sum(
                 [confinement_length, constricted_length, unconfined_length])
             confinement_ratio = min((confinement_length + constricted_length) /
-                                    segment_length, 1.0) if segment_length > 0.0 else 0.0
+                                    segment_length, 1.0) if segment_length > 0.0 else None
             constricted_ratio = constricted_length / \
-                segment_length if segment_length > 0.0 else 0.0
+                segment_length if segment_length > 0.0 else None
 
             dgo_feat.SetField(
                 "confin_leng", confinement_length + constricted_length)
