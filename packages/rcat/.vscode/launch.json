@@ -63,6 +63,17 @@
           ]
         },
         {
+          "name": "Make RCAT report",
+          "type": "python",
+          "request": "launch",
+          "module": "rcat.rcat_report",
+          "console": "integratedTerminal",
+          "args": [
+            "{env:DATA_ROOT}/rcat/${input:HUC}/project.rs.xml",
+            "{env:DATA_ROOT}/rcat/${input:HUC}/outputs/rcat.html",
+          ]
+        },
+        {
           "name": "Version Bump",
           "type": "python",
           "module": "rscommons.version",
