@@ -17,11 +17,11 @@ def calculate_confinement(confinement_type_network, segment_network, output_netw
 
         output_lyr.create_layer_from_ref(segment_lyr, create_fields=False)
         output_lyr.create_fields({
-            'confinement_ratio': ogr.FieldDefn("Confinement_Ratio", ogr.OFTReal),
-            'constriction_ratio': ogr.FieldDefn("Constriction_Ratio", ogr.OFTReal),
-            'length': ogr.FieldDefn("ApproxLeng", ogr.OFTReal),
-            'confined_length': ogr.FieldDefn("ConfinLeng", ogr.OFTReal),
-            'constricted_length': ogr.FieldDefn("ConstrLeng", ogr.OFTReal)
+            'confinement_ratio': ogr.FieldDefn("confinement_ratio", ogr.OFTReal),
+            'constriction_ratio': ogr.FieldDefn("constriction_ratio", ogr.OFTReal),
+            'length': ogr.FieldDefn("approx_leng", ogr.OFTReal),
+            'confined_length': ogr.FieldDefn("confin_leng", ogr.OFTReal),
+            'constricted_length': ogr.FieldDefn("constr_leng", ogr.OFTReal)
         })
         output_lyr.ogr_layer.StartTransaction()
         for segment_feat, *_ in segment_lyr.iterate_features("Calculating confinement per segment"):
@@ -31,7 +31,7 @@ def calculate_confinement(confinement_type_network, segment_network, output_netw
             confinement_lengths = {c_type: 0.0 for c_type in [
                 "Left", "Right", "Both", "None"]}
             for confinement_feat, *_ in confinement_lyr.iterate_features(clip_shape=segment_poly):
-                con_type = confinement_feat.GetField("Confinement_Type")
+                con_type = confinement_feat.GetField("confinement_type")
                 confinement_ogr = confinement_feat.GetGeometryRef()
                 confinement_geom = GeopackageLayer.ogr2shapely(confinement_ogr)
                 confinement_clip = confinement_geom.intersection(segment_poly)
@@ -68,11 +68,11 @@ def calculate_confinement(confinement_type_network, segment_network, output_netw
             constricted_ratio = constricted_length / \
                 segment_length if segment_length > 0.0 else 0.0
             attributes = {
-                "Confinement_Ratio": confinement_ratio,
-                "Constriction_Ratio": constricted_ratio,
-                "ApproxLeng": segment_length,
-                "ConfinLeng": confinement_length + constricted_length,
-                "ConstrLeng": constricted_length
+                "confinement_ratio": confinement_ratio,
+                "constriction_ratio": constricted_ratio,
+                "approx_leng": segment_length,
+                "confin_leng": confinement_length + constricted_length,
+                "constr_leng": constricted_length
             }
             output_lyr.create_feature(segment_geom, attributes=attributes)
         output_lyr.ogr_layer.CommitTransaction()
