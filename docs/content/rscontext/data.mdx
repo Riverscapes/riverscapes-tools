@@ -80,6 +80,16 @@ Land ownership obtained from the [Bureau of Management (BLM) Land Surface Agency
 
 [Fair Market Value](https//orcid.org/0000-0001-7827-689X) raster. This raster was downloaded and converted to US dollars per hectare.
 
+## Political Boundaries
+
+<h2><a name="STATES"></a> <a name="States">States</a></h2>
+
+<h2><a name="COUNTIES"></a> <a name="Counties">Counties</a></h2>
+
+## Geology
+
+<h2><a name="GEOLOGY"></a> <a name="Geology">Geology</a></h2>
+
 ## Ecoregions
 
 <h2><a name="ECOREGIONS"></a> <a name="Ecoregions">Ecoregions</a></h2>
@@ -122,6 +132,23 @@ Level IV ecoregions (also contains levels I-III) obtained from the [Environmenta
 
 [National Hydrologic Dataset (NHD) High Resolution](https//www.usgs.gov/core-science-systems/ngp/national-hydrography/nhdplus-high-resolution). 124,000 stream network polyline feature class. This is the original data downloaded as an ESRI file geodatabase and then converted to an open source GeoPackage.
 
+<h2><a name="NHDAREA"></a> <a name="NHDArea">NHD Area</a></h2>
+
+<h2><a name="NHDPLUSFLOWLINEVAA"></a> <a name="NHDPlusFlowlineVAA">NHD Plus Flowline Value Added Attributes</a></h2> 
+
+<h2><a name="NHDPLUSCATCHMENT"></a> <a name="NHDPlusCatchment">NHD Catchment</a></h2>
+
+<h2><a name="NHDWATERBODY"></a> <a name="NHDWaterbody">NHD Waterbody</a></h2> 
+
+<h2>
+  <a name="WBDHU2"> Hydrological Units </a>
+  <a name="WBDHU4"></a>
+  <a name="WBDHU6"></a>
+  <a name="WBDHU8"></a>
+  <a name="WBDHU10"></a>
+  <a name="WBDHU12"></a>
+</h2>
+
 <h2><a name="BUFFERED_CLIP100"></a> <a name="buffered_clip100">100m Buffered Extent</a></h2>
 
 The riverscapes context project extent polygon buffered by 100m.
@@ -130,10 +157,26 @@ The riverscapes context project extent polygon buffered by 100m.
 
 The riverscapes context project extent polygon buffered by 500m.
 
-<h2><a name="NETWORK_300M"></a> <a name="network_300m"></a></h2>
+{/* NETWORK_CROSSINGS, NETWORK_INTERSECTION, CATCHMENTS, PROCESSING_EXTENT, NHDAreaSplit, NHDWaterbodySplit */}
+<h2><a name="NETWORK_CROSSINGS"> Network Crossings </a></h2>
+
+<h2><a name="NETWORK_INTERSECTION">  Network Intersection </a></h2>
+
+<h2><a name="CATCHMENTS"> Catchments </a></h2>
+
+<h2><a name="PROCESSING_EXTENT"> Processing Extent </a></h2>  
+
+<h2><a name="NHDAREASPLIT"></a> <a name="NHDAreaSplit"> NHD Area Split </a></h2>
+
+<h2><a name="NHDWATERBODYSPLIT"></a> <a name="NHDWaterbodySplit"> NHD Waterbody Split </a></h2>
+
+
+{/* Not used in rscontext report */}
+<h2><a name="NETWORK_300M"></a> <a name="network_300m"> Network 300m</a></h2>
 
 This polyline feature class is the original NHDPlusHR flow line network segmented into 300m reach lengths. Segmentation that would produce a feature of less than 50m is not performed. And features that are less than 50m are left untouched.
 
+{/* Not used in rscontext report */}
 <h2><a name="NETWORK_INTERSECTED_300M"></a> <a name="network_intersected_300m">Segmented Flow line Network Intersected with Infrastructure</a></h2>
 
 This polyline feature class is the NETWORK300M featureclass intersected with road and rail crossings and ownership.
