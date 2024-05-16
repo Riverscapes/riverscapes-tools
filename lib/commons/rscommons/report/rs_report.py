@@ -391,7 +391,12 @@ class RSReport():
             if size > 0:
                 meta["Size"] = sizeof_fmt(size)
 
-            # TODO see if we can auto detect tool name from "model documentation" meta
+            # Try to get tool name from another place in the metadata
+            # tool_name is used to correct specific URLs
+            if meta.get("Model Documentation") is not None:
+                name = meta.get("Model Documentation").split("/")[-1]
+                if len(name) > 0:
+                    tool_name = name
             self.create_table_from_dict(meta, section, attrib={'class': 'fullwidth'}, tool_name=tool_name)
 
         if layers is not None:
