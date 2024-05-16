@@ -241,13 +241,13 @@ class RSReport():
         if tool_name is None or tool_name in url:
             return re.sub(
                 "(https?://tools\.riverscapes\.net/.+/)data\.html(#.*)?",
-                r"\1data/\2",
+                lambda m: f"{m.group(1)}data/{(m.group(2) or '').upper()}",
                 url
             )
 
         return re.sub(
             "(https?://tools\.riverscapes\.net/)data/html(#.*)?",
-            rf"\1{tool_name}/data/\2",
+            lambda m: f"{m.group(1)}{tool_name}/data/{(m.group(2) or '').upper()}",
             url
         )
 
@@ -391,18 +391,20 @@ class RSReport():
             if size > 0:
                 meta["Size"] = sizeof_fmt(size)
 
+            # TODO see if we can auto detect tool name from "model documentation" meta
             self.create_table_from_dict(meta, section, attrib={'class': 'fullwidth'}, tool_name=tool_name)
 
         if layers is not None:
             if size > 0:
                 self.create_table_from_dict(
                     {'Total size': sizeof_fmt(size), 'Path': pathstr},
-                    section, attrib={'class': 'fullwidth'}
+                    section, attrib={'class': 'fullwidth'},
+                    tool_name=tool_name
                 )
 
             layers_container = ET.Element('div', attrib={'class': 'inner-layer-container'})
             RSReport.header(level + 1, 'Layers', layers_container)
             for layer_el in list(layers):
-                self.layerprint(layer_el, layers_container, os.path.join(project_root, pathstr), level=level + 1, parent_pathstr=pathstr)
+                self.layerprint(layer_el, layers_container, os.path.join(project_root, pathstr), level=level + 1, parent_pathstr=pathstr, tool_name=tool_name)
 
             section.append(layers_container)
