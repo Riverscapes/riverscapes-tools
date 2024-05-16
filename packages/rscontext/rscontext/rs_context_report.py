@@ -24,9 +24,9 @@ class RSContextReport(RSReport):
 
         for lyr in layers:
             if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']:
-                self.layerprint(lyr, section, self.project_root)
+                self.layerprint(lyr, section, self.project_root, tool_name="rscontext")
             if lyr.tag in ['SQLiteDB']:
-                self.layerprint(lyr, section, self.project_root)
+                self.layerprint(lyr, section, self.project_root, tool_name="rscontext")
 
 
 if __name__ == '__main__':
