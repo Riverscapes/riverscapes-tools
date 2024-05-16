@@ -237,15 +237,22 @@ class RSReport():
         el_parent.append(table)
 
     @staticmethod
-    def remove_data_dot_html(url):
+    def remove_data_dot_html(url, tool_name=None):
+        if tool_name is None or tool_name in url:
+            return re.sub(
+                "(https?://tools\.riverscapes\.net/.+/)data\.html(#.*)?",
+                r"\1data/\2",
+                url
+            )
+
         return re.sub(
-            "(https?://tools\.riverscapes\.net/.+/)data\.html(#.+)?$",
-            r"\1data/\2",
+            "(https?://tools\.riverscapes\.net/)data/html(#.*)?",
+            rf"\1{tool_name}/data/\2",
             url
         )
 
     @staticmethod
-    def create_table_from_dict(values, el_parent, attrib=None):
+    def create_table_from_dict(values, el_parent, attrib=None, tool_name=None):
         """Keys go in first col, values in second
 
         Arguments:
@@ -279,7 +286,7 @@ class RSReport():
 
             # If the value is a URL, make it a link
             if isinstance(val, str) and val.startswith("http"):
-                val = RSReport.remove_data_dot_html(val)
+                val = RSReport.remove_data_dot_html(val, tool_name=tool_name)
                 td = ET.Element('td', attrib={'class': 'text url'})
                 a = ET.Element('a', attrib={'href': val})
                 a.text = val
@@ -353,7 +360,7 @@ class RSReport():
         el_parent.append(hEl)
         return hEl
 
-    def layerprint(self, lyr_el, parent_el, project_root, level: int = 2, parent_pathstr=None):
+    def layerprint(self, lyr_el, parent_el, project_root, level: int = 2, parent_pathstr=None, tool_name=None):
         """Work in progress for printing Riverscapes layers
 
         Args:
@@ -384,7 +391,7 @@ class RSReport():
             if size > 0:
                 meta["Size"] = sizeof_fmt(size)
 
-            self.create_table_from_dict(meta, section, attrib={'class': 'fullwidth'})
+            self.create_table_from_dict(meta, section, attrib={'class': 'fullwidth'}, tool_name=tool_name)
 
         if layers is not None:
             if size > 0:
