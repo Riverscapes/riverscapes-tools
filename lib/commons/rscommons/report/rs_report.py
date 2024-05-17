@@ -237,22 +237,15 @@ class RSReport():
         el_parent.append(table)
 
     @staticmethod
-    def remove_data_dot_html(url, tool_name=None):
-        if tool_name is None or tool_name in url:
-            return re.sub(
-                "(https?://tools\.riverscapes\.net/.+/)data\.html(#.*)?",
-                lambda m: f"{m.group(1)}data/{(m.group(2) or '').upper()}",
-                url
-            )
-
+    def remove_data_dot_html(url):
         return re.sub(
-            "(https?://tools\.riverscapes\.net/)data/html(#.*)?",
-            lambda m: f"{m.group(1)}{tool_name}/data/{(m.group(2) or '').upper()}",
+            "(https?://tools\.riverscapes\.net/.+/)data\.html(#.+)?$",
+            r"\1data/\2",
             url
         )
 
     @staticmethod
-    def create_table_from_dict(values, el_parent, attrib=None, tool_name=None):
+    def create_table_from_dict(values, el_parent, attrib=None):
         """Keys go in first col, values in second
 
         Arguments:
@@ -286,7 +279,7 @@ class RSReport():
 
             # If the value is a URL, make it a link
             if isinstance(val, str) and val.startswith("http"):
-                val = RSReport.remove_data_dot_html(val, tool_name=tool_name)
+                val = RSReport.remove_data_dot_html(val)
                 td = ET.Element('td', attrib={'class': 'text url'})
                 a = ET.Element('a', attrib={'href': val})
                 a.text = val
@@ -360,7 +353,7 @@ class RSReport():
         el_parent.append(hEl)
         return hEl
 
-    def layerprint(self, lyr_el, parent_el, project_root, level: int = 2, parent_pathstr=None, tool_name=None):
+    def layerprint(self, lyr_el, parent_el, project_root, level: int = 2, parent_pathstr=None):
         """Work in progress for printing Riverscapes layers
 
         Args:
@@ -391,20 +384,18 @@ class RSReport():
             if size > 0:
                 meta["Size"] = sizeof_fmt(size)
 
-            # TODO see if we can auto detect tool name from "model documentation" meta
-            self.create_table_from_dict(meta, section, attrib={'class': 'fullwidth'}, tool_name=tool_name)
+        self.create_table_from_dict(meta, section, attrib={'class': 'fullwidth'})
 
         if layers is not None:
             if size > 0:
                 self.create_table_from_dict(
                     {'Total size': sizeof_fmt(size), 'Path': pathstr},
                     section, attrib={'class': 'fullwidth'},
-                    tool_name=tool_name
                 )
 
             layers_container = ET.Element('div', attrib={'class': 'inner-layer-container'})
             RSReport.header(level + 1, 'Layers', layers_container)
             for layer_el in list(layers):
-                self.layerprint(layer_el, layers_container, os.path.join(project_root, pathstr), level=level + 1, parent_pathstr=pathstr, tool_name=tool_name)
+                self.layerprint(layer_el, layers_container, os.path.join(project_root, pathstr), level=level + 1)
 
             section.append(layers_container)
