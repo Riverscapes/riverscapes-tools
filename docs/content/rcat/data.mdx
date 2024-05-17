@@ -39,6 +39,8 @@ and EVT LandFire rasters (i.e., from historic conditions to the present). Broad 
 conifer, shrub, riparian, etc. are given a conversion ID in both the EVT and BPS rasters. The codes from 
 the EVT raster are substracted from the codes in the BPS raster, resulting in unique conversion ID values.
 
+<h2><a name="D8FLOWDIR">D8 Flow Directions</a></h2>
+
 <h2><a name="FPACCESS">Floodplain Accessibility</a></h2>
 
 This is a raster dataset that attempts to estimate floodplain accessibility using an automated algorithm.
@@ -46,6 +48,10 @@ A D-8 flow direction raster is first generated from a pit-filled DEM. Then, for 
 the valley bottom, flow directions are traced downstream. If that tracing reaches the drainage network, all 
 of the associated cells are coded as 1 for connected. If instead, the tracing reaches some sort of
 infrastructure first, all associated cells are coded as 0 for disconnected.
+
+<h2><a name="RCAT_GEOM_POINTS">RCAT IGOs</a></h2>
+
+<h2><a name="RCAT_GEOM_LINES">RCAT Reaches</a></h2>
 
 <h2><a name="GEOM_POINTS">Anthropogenic Context IGOs</a></h2>
 
