@@ -384,7 +384,7 @@ class RSReport():
             if size > 0:
                 meta["Size"] = sizeof_fmt(size)
 
-        self.create_table_from_dict(meta, section, attrib={'class': 'fullwidth'})
+            self.create_table_from_dict(meta, section, attrib={'class': 'fullwidth'})
 
         if layers is not None:
             if size > 0:
@@ -396,6 +396,6 @@ class RSReport():
             layers_container = ET.Element('div', attrib={'class': 'inner-layer-container'})
             RSReport.header(level + 1, 'Layers', layers_container)
             for layer_el in list(layers):
-                self.layerprint(layer_el, layers_container, os.path.join(project_root, pathstr), level=level + 1)
+                self.layerprint(layer_el, layers_container, os.path.join(project_root, pathstr), level=level + 1, parent_pathstr=pathstr)
 
             section.append(layers_container)
