@@ -994,5 +994,14 @@
     "url": null,
     "machineName": "pibo_riverscapes",
     "state": "ACTIVE"
+  },
+  {
+    "name": "Riverscapes Studio",
+    "summary": "Riverscapes Studio project exported from QRiS",
+    "description": "Riverscapes Studio project exported from the QGIS Riverscapes Studio plug-in (QRiS). This project contains LTPBR planning, design, and monitoring event layers, as well as contextual layers and surfaces.",
+    "meta": [],
+    "url": "https://qris.riverscapes.net/",
+    "machineName": "RiverscapesStudio",
+    "state": "ACTIVE"
   }
 ]
