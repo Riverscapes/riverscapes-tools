@@ -12,20 +12,51 @@ class AnthroReport(RSReport):
         self.project_root = rs_project.project_dir
         self.report_intro()
 
+    def fix_typo(self, el):
+        """Recursively search for and fix specific typo one element's metadata."""
+
+        layers = el.find("Layers")
+        meta = self.xml_project.get_metadata_dict(node=el)
+
+        if meta is not None:
+            if (
+                meta.get("DocsUrl") == "https://tools.riverscapes.net/anthro/data/#ANTRHO_POINTS"
+                or meta.get("DocsUrl") == "https://tools.riverscapes.net/anthro/data.html#ANTRHO_POINTS"
+            ):
+                self.xml_project.add_metadata_simple(
+                    {"DocsUrl": "https://tools.riverscapes.net/anthro/data/#ANTHRO_POINTS"},
+                    node=el
+                )
+                return True
+
+        if layers is not None:
+            for layer_el in list(layers):
+                if self.fix_typo(layer_el):
+                    return True
+
+        return False
+
     def report_intro(self):
         realization = self.xml_project.XMLBuilder.find('Realizations').find('Realization')
 
         section_in = self.section('Inputs', 'Inputs')
         inputs = list(realization.find('Inputs'))
-        [self.layerprint(lyr, section_in, self.project_root, tool_name="rscontext") for lyr in inputs if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']]
+        for lyr in inputs:
+            if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']:
+                self.layerprint(lyr, section_in, self.project_root, tool_name="rscontext")
 
         section_inter = self.section('Intermediates', 'Intermediates')
         intermediates = list(realization.find('Intermediates'))
-        [self.layerprint(lyr, section_inter, self.project_root, tool_name="anthro") for lyr in intermediates if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']]
+        for lyr in intermediates:
+            if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']:
+                self.layerprint(lyr, section_inter, self.project_root, tool_name="anthro")
 
         section_out = self.section('Outputs', 'Outputs')
         outputs = list(realization.find('Outputs'))
-        [self.layerprint(lyr, section_out, self.project_root, tool_name="anthro") for lyr in outputs if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']]
+        for lyr in outputs:
+            if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']:
+                self.fix_typo(lyr)
+                self.layerprint(lyr, section_out, self.project_root, tool_name="anthro")
 
 
 if __name__ == '__main__':
