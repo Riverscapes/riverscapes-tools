@@ -140,7 +140,7 @@ channel $HUC \
   --flowareas $RSCONTEXT_DIR/hydrology/hydro_derivatives.gpkg/NHDAreaSplit \
   --waterbodies $RSCONTEXT_DIR/hydrology/hydro_derivatives.gpkg/NHDWaterbodySplit \
   --bankfull_function "0.177 * (a ** 0.397) * (p ** 0.453)" \
-  --bankfull_function_params "a=TotDASqKm" \
+  --bankfull_function_params "a=DivDASqKm" \
   --reach_code_field FCode \
   --flowline_reach_codes "33400,46000,46003,46006,46007", \
   --flowarea_reach_codes "53700,46100,48400,31800,34300,34305,34306,4600,46003,46006,46007","43100" \
