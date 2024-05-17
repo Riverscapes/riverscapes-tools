@@ -237,14 +237,6 @@ class RSReport():
         el_parent.append(table)
 
     @staticmethod
-    def remove_data_dot_html(url):
-        return re.sub(
-            "(https?://tools\.riverscapes\.net/.+/)data\.html(#.+)?$",
-            r"\1data/\2",
-            url
-        )
-
-    @staticmethod
     def create_table_from_dict(values, el_parent, attrib=None):
         """Keys go in first col, values in second
 
@@ -279,7 +271,6 @@ class RSReport():
 
             # If the value is a URL, make it a link
             if isinstance(val, str) and val.startswith("http"):
-                val = RSReport.remove_data_dot_html(val)
                 td = ET.Element('td', attrib={'class': 'text url'})
                 a = ET.Element('a', attrib={'href': val})
                 a.text = val
