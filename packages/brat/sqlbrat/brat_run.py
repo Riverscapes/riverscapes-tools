@@ -224,14 +224,14 @@ def augment_layermeta():
                         RSMeta('Description', json_data[h][0]),
                         RSMeta('SourceUrl', json_data[h][1], RSMetaTypes.URL),
                         RSMeta('DataProductVersion', json_data[h][2]),
-                        RSMeta('DocsUrl', 'https://tools.riverscapes.net/brat/data.html#{}'.format(sublyr.id), RSMetaTypes.URL)
+                        RSMeta('DocsUrl', 'https://tools.riverscapes.net/brat/data/#{}'.format(sublyr.id), RSMetaTypes.URL)
                     ]
         if k in json_data and len(json_data[k]) > 0:
             lyr.lyr_meta = [
                 RSMeta('Description', json_data[k][0]),
                 RSMeta('SourceUrl', json_data[k][1], RSMetaTypes.URL),
                 RSMeta('DataProductVersion', json_data[k][2]),
-                RSMeta('DocsUrl', 'https://tools.riverscapes.net/brat/data.html#{}'.format(lyr.id), RSMetaTypes.URL)
+                RSMeta('DocsUrl', 'https://tools.riverscapes.net/brat/data/#{}'.format(lyr.id), RSMetaTypes.URL)
             ]
 
 
