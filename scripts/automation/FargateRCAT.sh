@@ -75,7 +75,7 @@ pip install -e packages/rcat
 cd /usr/local/src
 
 ##########################################################################################
-# First Get RS_Context, taudem, antrho and vbet inputs
+# First Get RS_Context, taudem, anthro and vbet inputs
 ##########################################################################################
 
 # Get the RSCli project we need to make this happen
@@ -93,7 +93,7 @@ rscli download $TAUDEM_DIR --id $TAUDEM_ID \
   --file-filter "pitfill.tif" \
   --no-input --no-ui --verbose
 
-# Go get antrho result for this to work
+# Go get anthro result for this to work
 rscli download $ANTHRO_DIR --id $ANTHRO_ID \
   --file-filter "(anthro.gpkg|inputs.gpkg|anthro_metrics.json)" \
   --no-input --no-ui --verbose

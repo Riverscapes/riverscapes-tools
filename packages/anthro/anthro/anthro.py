@@ -64,7 +64,7 @@ LayerTypes = {
     }),
     'OUTPUTS': RSLayer('Anthropologic Outputs', 'OUTPUTS', 'Geopackage', 'outputs/anthro.gpkg', {
         'ANTHRO_GEOM_POINTS': RSLayer('Anthropogenic IGO Point Geometry', 'ANTHRO_GEOM_POINTS', 'Vector', 'IGOGeometry'),
-        'ANTHRO_POINTS': RSLayer('Anthropogenic Output Points', 'ANTRHO_POINTS', 'Vector', 'vwIgos'),
+        'ANTHRO_POINTS': RSLayer('Anthropogenic Output Points', 'ANTHRO_POINTS', 'Vector', 'vwIgos'),
         'ANTHRO_GEOM_LINES': RSLayer('Anthropogenic Reach Geometry', 'ANTHRO_GEOM_LINES', 'Vector', 'ReachGeometry'),
         'ANTHRO_LINES': RSLayer('Anthropogenic Output Lines', 'ANTHRO_LINES', 'Vector', 'vwReaches'),
         'ANTHRO_GEOM_DGOS': RSLayer('Anthropogenic Output DGOs Polygons', 'ANTHRO_GEOM_DGOS', 'Vector', 'DGOGeometry'),
