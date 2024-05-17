@@ -97,7 +97,7 @@ def channel(huc: int,
     log.info('Using Equation: "{}" and params: "{}"'.format(bankfull_function, bankfull_function_params))
 
     # Add the layer metadata immediately before we write anything
-    augment_layermeta('channel', LYR_DESCRIPTIONS_JSON, LayerTypes)
+    augment_layermeta('channelarea', LYR_DESCRIPTIONS_JSON, LayerTypes)
 
     meta['Bankfull Equation'] = bankfull_function
     for param, value in bankfull_function_params.items():
@@ -108,7 +108,7 @@ def channel(huc: int,
     project_name = 'Channel Area for HUC {}'.format(huc)
     project = RSProject(cfg, project_folder)
     project.create(project_name, 'ChannelArea', [
-        RSMeta('Model Documentation', 'https://tools.riverscapes.net/channel', RSMetaTypes.URL, locked=True),
+        RSMeta('Model Documentation', 'https://tools.riverscapes.net/channelarea', RSMetaTypes.URL, locked=True),
         RSMeta('HUC', str(huc), RSMetaTypes.HIDDEN, locked=True),
         RSMeta('Hydrologic Unit Code', str(huc))
     ])
@@ -357,11 +357,13 @@ def main():
         if args.debug is True:
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output_dir, 'vbet_mem.log')
-            retcode, max_obj = ThreadRun(channel, memfile, args.huc, args.flowlines, args.flowareas, args.waterbodies, args.bankfull_function, bankfull_params, args.output_dir, args.reach_code_field, reach_codes, epsg=epsg, meta=meta, other_polygons=args.other_polygons, bankfull_field=args.bankfull_field)
+            retcode, max_obj = ThreadRun(channel, memfile, args.huc, args.flowlines, args.flowareas, args.waterbodies, args.bankfull_function, bankfull_params, args.output_dir,
+                                         args.reach_code_field, reach_codes, epsg=epsg, meta=meta, other_polygons=args.other_polygons, bankfull_field=args.bankfull_field)
             log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
 
         else:
-            channel(args.huc, args.flowlines, args.flowareas, args.waterbodies, args.bankfull_function, bankfull_params, args.output_dir, args.reach_code_field, reach_codes, epsg=epsg, meta=meta, other_polygons=args.other_polygons, bankfull_field=args.bankfull_field)
+            channel(args.huc, args.flowlines, args.flowareas, args.waterbodies, args.bankfull_function, bankfull_params, args.output_dir,
+                    args.reach_code_field, reach_codes, epsg=epsg, meta=meta, other_polygons=args.other_polygons, bankfull_field=args.bankfull_field)
 
     except Exception as e:
         log.error(e)
