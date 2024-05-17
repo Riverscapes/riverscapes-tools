@@ -25,7 +25,7 @@ def augment_layermeta(proj_type: str, lyr_descriptions: str, lyr_types: dict):
                         # RSMeta('Description', json_data[h][0]),
                         RSMeta('SourceUrl', json_data[h][1], RSMetaTypes.URL),
                         RSMeta('DataProductVersion', json_data[h][2]),
-                        RSMeta('DocsUrl', f'https://tools.riverscapes.net/{proj_type}/data.html#{sublyr.id}', RSMetaTypes.URL)
+                        RSMeta('DocsUrl', f'https://tools.riverscapes.net/{proj_type}/data/#{sublyr.id}', RSMetaTypes.URL)
                     ]
 
         if k in json_data and len(json_data[k]) > 0:
@@ -33,7 +33,7 @@ def augment_layermeta(proj_type: str, lyr_descriptions: str, lyr_types: dict):
                 # RSMeta('Description', json_data[k][0]),
                 RSMeta('SourceUrl', json_data[k][1], RSMetaTypes.URL),
                 RSMeta('DataProductVersion', json_data[k][2]),
-                RSMeta('DocsUrl', f'https://tools.riverscapes.net/{proj_type}/data.html#{lyr.id}', RSMetaTypes.URL)
+                RSMeta('DocsUrl', f'https://tools.riverscapes.net/{proj_type}/data/#{lyr.id}', RSMetaTypes.URL)
             ]
 
 

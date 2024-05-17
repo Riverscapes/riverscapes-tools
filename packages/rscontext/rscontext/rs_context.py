@@ -371,7 +371,7 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states_
         project.XMLBuilder.add_sub_element(ntd_node, 'Description', 'The USGS Transportation downloadable data from The National Map (TNM) is based on TIGER/Line data provided through U.S. Census Bureau and supplemented with HERE road data to create tile cache base maps. Some of the TIGER/Line data includes limited corrections done by USGS. Transportation data consists of roads, railroads, trails, airports, and other features associated with the transport of people or commerce. The data is downloaded from science base by state then clipped to the project extent.')
         project.add_metadata([RSMeta('SourceUrl', 'https://data.usgs.gov/datacatalog/data/USGS:ad3d631d-f51f-4b6a-91a3-e617d6a58b4e', RSMetaTypes.URL),
                               RSMeta('DataProductVersion', '2020'),
-                              RSMeta('DocsUrl', f'https://tools.riverscapes.net/data/html#{name}', RSMetaTypes.URL)], ntd_node)
+                              RSMeta('DocsUrl', f'https://tools.riverscapes.net/rscontext/data/#{name}', RSMetaTypes.URL)], ntd_node)
         project.add_metadata([RSMeta(k, v, RSMetaTypes.URL)
                              for k, v in ntd_urls.items()], ntd_node)
 
