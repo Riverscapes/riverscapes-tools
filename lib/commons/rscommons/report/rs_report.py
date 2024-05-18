@@ -378,7 +378,7 @@ class RSReport():
             self.create_table_from_dict(meta, section, attrib={'class': 'fullwidth'})
         elif layers is None:
             p = ET.Element('em', attrib={'style': 'font-style: italic;'})
-            p.text = 'No metadata found.'
+            p.text = f'No metadata found for {pathstr}.'
             section.append(p)
 
         if layers is not None:
