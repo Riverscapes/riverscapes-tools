@@ -33,7 +33,7 @@ from rme.shapley_ops import line_segments, select_geoms_by_intersection, cut
 from confinement.utils.calc_confinement import calculate_confinement, dgo_confinement
 from confinement.utils.continuous_line import continuous_line
 from confinement.utils.confinement_moving_window import igo_confinement
-from confinement.utils.confinement_report import ConfinementReport
+from confinement.confinement_report import ConfinementReport
 from confinement.__version__ import __version__
 
 Path = str
