@@ -1,7 +1,6 @@
 import sqlite3
 import os
 import datetime
-import re
 from uuid import uuid4
 from xml.etree import ElementTree as ET
 from jinja2 import Template
@@ -361,6 +360,7 @@ class RSReport():
 
         pathstr = lyr_el.attrib['lyrName'] if 'lyrName' in lyr_el.attrib else lyr_el.find('Path').text
 
+        # Mostly to show full path for elements in geopackages
         if parent_pathstr is not None:
             pathstr = os.path.join(parent_pathstr, pathstr)
 
@@ -371,11 +371,11 @@ class RSReport():
 
         meta = self.xml_project.get_metadata_dict(node=lyr_el)
         if meta is not None:
-            meta["path"] = pathstr  # lowercase because some elements already have this
+            meta["path"] = pathstr  # lowercase to replace path for some elements that already have this
             if size > 0:
                 meta["Size"] = sizeof_fmt(size)
-
             self.create_table_from_dict(meta, section, attrib={'class': 'fullwidth'})
+
         elif layers is None:
             p = ET.Element('em', attrib={'style': 'font-style: italic;'})
             p.text = f'No metadata found for {pathstr}.'
