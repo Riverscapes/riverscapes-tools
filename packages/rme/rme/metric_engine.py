@@ -37,7 +37,7 @@ from rscommons.moving_window import moving_window_dgo_ids
 
 from rme.__version__ import __version__
 from rme.analysis_window import AnalysisLine
-from rme.utils.rme_report import RMEReport
+from rme.rme_report import RMEReport
 from rme.utils.check_vbet_inputs import vbet_inputs
 
 Path = str
@@ -135,21 +135,24 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                 log.error('DGO inputs do not have the same number of features')
                 sys.exit(1)
 
-    augment_layermeta('rs_metric_engine', LYR_DESCRIPTIONS_JSON, LayerTypes)
+    augment_layermeta('rme', LYR_DESCRIPTIONS_JSON, LayerTypes)
 
     start_time = time.time()
 
     project_name = f'Riverscapes Metrics for HUC {huc}'
     project = RSProject(cfg, project_folder)
-    project.create(project_name, 'rs_metric_engine', [
-        RSMeta('Model Documentation', 'https://tools.riverscapes.net/rme',
-               RSMetaTypes.URL, locked=True),
-        RSMeta('HUC', str(huc), RSMetaTypes.HIDDEN, locked=True),
-        RSMeta('Hydrologic Unit Code', str(huc), locked=True),
-        RSMeta('RME Version', cfg.version, locked=True),
-        RSMeta('RME Timestamp', str(int(time.time())),
-               RSMetaTypes.TIMESTAMP, locked=True)
-    ], meta)
+    project.create(
+        project_name,
+        'rme',
+        [
+            RSMeta('Model Documentation', 'https://tools.riverscapes.net/rme', RSMetaTypes.URL, locked=True),
+            RSMeta('HUC', str(huc), RSMetaTypes.HIDDEN, locked=True),
+            RSMeta('Hydrologic Unit Code', str(huc), locked=True),
+            RSMeta('RME Version', cfg.version, locked=True),
+            RSMeta('RME Timestamp', str(int(time.time())), RSMetaTypes.TIMESTAMP, locked=True)
+        ],
+        meta
+    )
 
     _realization, proj_nodes = project.add_realization(project_name, 'REALIZATION1', cfg.version, data_nodes=[
                                                        'Inputs', 'Intermediates', 'Outputs'], create_folders=True)
