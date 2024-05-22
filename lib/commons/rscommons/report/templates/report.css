@@ -261,6 +261,7 @@ table tr.total>td {
   cursor: pointer;
 }
 
+/* Add a little arrow for effect. This is the UTF-8 code */
 .top-button:after {
   content: "\2191";
 } 

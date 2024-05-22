@@ -214,9 +214,6 @@ class BratReport(RSReport):
         pEl3.text = 'The following plots summarize the outputs for existing dam capacity and historic dam capacity.'
         section.append(pEl3)
 
-        # # Titles are already included in table/pie summary
-        # subsection = self.section(None, 'Existing Dam Capacity', section, level=3)
-
         self.attribute_table_and_pie('oCC_EX', [
             {'label': 'None', 'upper': 0},
             {'label': 'Rare', 'lower': 0, 'upper': 1},
@@ -224,9 +221,6 @@ class BratReport(RSReport):
             {'label': 'Frequent', 'lower': 5, 'upper': 15},
             {'label': 'Pervasive', 'lower': 15}
         ], section)
-
-        # # Titles are already included in table/pie summary
-        # subsection2 = self.section(None, 'Historic Dam Capacity', section, level=3)
 
         self.attribute_table_and_pie('oCC_HPE', [
             {'label': 'None', 'upper': 0},
@@ -662,14 +656,14 @@ class BratReport(RSReport):
         reach_wrapper_inner.append(img_wrap)
 
     def get_total_row(self, data):
-        row = ["Total"]
+        total_row = ["Total"]
 
         for c in range(1, len(data[0])):
-            row.append(sum([
-                data[r][c] for r in range(len(data))
+            total_row.append(sum([
+                row[c] for row in data
             ]))
 
-        return tuple(row)
+        return tuple(total_row)
 
     def attribute_table_and_pie(self, attribute_field, bins, elParent):
         """

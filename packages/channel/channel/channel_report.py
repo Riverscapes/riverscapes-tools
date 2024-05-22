@@ -3,7 +3,6 @@
 
 import argparse
 import os
-import sqlite3
 from xml.etree import ElementTree as ET
 
 from rscommons import Logger, dotenv, ModelConfig, RSReport, RSProject, VectorBase, get_shp_or_gpkg
@@ -150,7 +149,7 @@ class ChannelReport(RSReport):
 
         section = self.section('AreaBreakdown', 'Data Source Breakdown', el_parent=self.out_section, level=2)
         table_contents = {
-            lyr_label_dict[i]: [v, v / 4046.8564, v / 10000]
+            lyr_label_dict[i]: [v, v / 4046.8564, v / 10000]  # m^2, acres, hectares
             for i, v in poly_areas.items()
         }
         self.custom_table(table_contents, section, header_names=['Data Source', 'Area (m^2)', 'Area (acres)', 'Area (hectares)'])
