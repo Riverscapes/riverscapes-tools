@@ -62,11 +62,14 @@ def xyscatter(values, xlabel, ylabel, chart_title, file_path, one2one=False):
     plt.savefig(file_path)
 
 
-def box_plot(values, ylabel, chart_title, file_path):
+def box_plot(values, chart_title, file_path):
+    clean_values = [0 if x is None else x for x in values]
 
-    _fig1, ax1 = plt.subplots()
-    ax1.set_title(chart_title)
-    ax1.boxplot(values)
+    plt.clf()
+    
+    plt.boxplot(clean_values, vert=False, meanline=True)
+    plt.title(chart_title)
+    # plt.violinplot(clean_values, showmeans=False, showmedians=True)
 
     if not os.path.isdir(os.path.dirname(file_path)):
         os.makedirs(os.path.dirname(file_path))
@@ -197,3 +200,37 @@ def horizontal_bar(x_values, labels, color, x_axis_label1, chart_title, file_pat
     plt.tight_layout()
     plt.savefig(file_path)
     plt.close()
+
+
+def vertical_bar(values, labels, y_axis_label, chart_title, file_path, color="#004793"):
+    """Make a vertical bar chart. The values and labels must be the same length.
+
+    Args:
+        values (list[float|int]): The values to plot.
+        labels (list[str]): The labels for each value.
+        y_axis_label (str): The label for the y-axis of the chart.
+        chart_title (str): The title of the chart.
+        file_path (str): The file path where the chart will be saved.
+        color (str): The color of the bars in the chart.
+
+    Returns:
+        None
+    """
+
+    clean_values = [0 if x is None else x for x in values]
+
+    plt.clf()
+
+    plt.bar(labels, clean_values, color=color)
+
+    plt.ylabel(y_axis_label)
+    plt.xlabel('')
+    plt.title(chart_title)
+
+    plt.grid(True, which='major', axis='y')
+
+    if not os.path.isdir(os.path.dirname(file_path)):
+        os.makedirs(os.path.dirname(file_path))
+
+    # plt.tight_layout()
+    plt.savefig(file_path, bbox_inches="tight")
