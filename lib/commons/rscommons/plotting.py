@@ -66,10 +66,10 @@ def box_plot(values, chart_title, file_path):
     clean_values = [0 if x is None else x for x in values]
 
     plt.clf()
-    
+
     plt.boxplot(clean_values, vert=False, meanline=True)
+    # plt.violisnplot(clean_values, showmeans=False, showmedians=True)
     plt.title(chart_title)
-    # plt.violinplot(clean_values, showmeans=False, showmedians=True)
 
     if not os.path.isdir(os.path.dirname(file_path)):
         os.makedirs(os.path.dirname(file_path))
