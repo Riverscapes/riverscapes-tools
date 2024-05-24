@@ -6,13 +6,25 @@
 }
 
 .metrics-card {
-    width: 40%;
+    width: 80%;
     margin: 1rem;
     padding: 1rem;
     border: 1px solid #eeeeee;
     border-radius: 5px;
     text-align: center;
 }
+@media (min-width: 850px) {
+    .metrics-card {
+        width: 35%;
+    }
+}
+@media (min-width: 1080px) {
+    .metrics-card {
+        width: 25%;
+    }
+}
+
+
 
 .metrics-card .metrics-card-header {
     margin-bottom: 1rem;
