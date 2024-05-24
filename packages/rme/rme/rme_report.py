@@ -18,6 +18,10 @@ class RMEReport(RSReport):
         self.database = database
         self.project_root = rs_project.project_dir
 
+        # The report has a core CSS file but we can extend it with our own if we want:
+        css_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'rme_report.css')
+        self.add_css(css_path)
+
         self.images_dir = os.path.join(os.path.dirname(report_path), 'images')
         safe_makedirs(self.images_dir)
 
@@ -60,7 +64,10 @@ class RMEReport(RSReport):
             tbody.append(tr)
 
             td = ET.Element("td", attrib={'class': 'text url'})
-            section_link = ET.Element('a', attrib={'href': f"#{field_name}"})
+            section_link = ET.Element(
+                'a',
+                attrib={'href': f"#{field_name}", 'id': f"{field_name}_header"}
+            )
             section_link.text = name
             td.append(section_link)
             tr.append(td)
@@ -73,6 +80,39 @@ class RMEReport(RSReport):
 
         section.append(table)
 
+    def avg_min_max_table(self, data, parent_section):
+        table = ET.Element('table')
+
+        thead = ET.Element('thead')
+        theadrow = ET.Element('tr')
+        thead.append(theadrow)
+        table.append(thead)
+
+        col_names = ["Average", "Min", "Max"]
+        for col in col_names:
+            th = ET.Element('th')
+            th.text = col
+            theadrow.append(th)
+
+        tbody = ET.Element('tbody')
+        table.append(tbody)
+
+        tr = ET.Element('tr')
+        tbody.append(tr)
+
+        clean_data = [0 if x is None else x for x in data]
+        min_val = min(clean_data)
+        max_val = max(clean_data)
+        avg_val = sum(clean_data) / len(clean_data)
+
+        for val in [avg_val, min_val, max_val]:
+            str_val, class_name = RSReport.format_value(val, float)
+            td = ET.Element('td', attrib={'class': class_name})
+            td.text = str_val
+            tr.append(td)
+
+        parent_section.append(table)
+
     def metrics_plots(self, parent_section):
         section = self.section("metric-plots", "Metric Plots", parent_section, level=3)
         plot_wrapper = ET.Element('div', attrib={'class': 'plots'})
@@ -81,13 +121,13 @@ class RMEReport(RSReport):
         curs = conn.cursor()
 
         curs.execute("""
-            SELECT LOWER(field_name), data_type
+            SELECT LOWER(field_name), data_type, name
             FROM metrics
             WHERE field_name != ''
         """)
         metrics_info = curs.fetchall()
 
-        for metric_name, data_type in metrics_info:
+        for metric_name, data_type, name in metrics_info:
             try:
                 curs.execute(f"""
                     SELECT {metric_name}
@@ -98,6 +138,14 @@ class RMEReport(RSReport):
                 self.log.error(f"Error fetching data for metric {metric_name} ({e})")
                 continue
 
+            card = ET.Element('div', attrib={'class': 'metrics-card', 'id': metric_name})
+            title = ET.Element(
+                'a',
+                attrib={'class': 'metrics-card-header', 'href': f"#{metric_name}_header"}
+            )
+            title.text = name
+            card.append(title)
+
             if data_type == "TEXT" or data_type == "INTEGER":
                 image_path = os.path.join(self.images_dir, f"{metric_name}_bar.png")
                 value_counts = Counter(values)
@@ -105,22 +153,22 @@ class RMEReport(RSReport):
                     value_counts.values(),
                     [str(i) for i in value_counts.keys()],
                     "count",
-                    f"{metric_name.title()} Distribution",
+                    f"{name} Distribution",
                     image_path
                 )
 
             elif data_type == "REAL":
-                # make box plot
-                image_path = os.path.join(self.images_dir, f"{metric_name}_box.png")
-                box_plot(values, f"{metric_name.title()} Distribution", image_path)
+                self.avg_min_max_table(values, card)
 
-            img_wrap = ET.Element('div', attrib={'class': 'imgWrap', 'id': metric_name})
+                image_path = os.path.join(self.images_dir, f"{metric_name}_box.png")
+                box_plot(values, f"{name} Distribution", image_path)
+
             img = ET.Element('img', attrib={
                 'src': os.path.join(os.path.basename(self.images_dir), os.path.basename(image_path)),
                 'alt': 'chart'
             })
-            img_wrap.append(img)
-            plot_wrapper.append(img_wrap)
+            card.append(img)
+            plot_wrapper.append(card)
         section.append(plot_wrapper)
 
     def report_content(self):
