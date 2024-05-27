@@ -80,7 +80,10 @@ LayerTypes = {
         'IGO_METRICS': RSLayer('IGO Metrics', 'IGO_METRICS', 'Vector', 'vw_igo_metrics'),
         'DGO_MEASUREMENTS': RSLayer('DGO Measurements', 'DGO_MEASUREMENTS', 'Vector', 'vw_measurements')
     }),
-    'REPORT': RSLayer('RME Report', 'REPORT', 'HTMLFile', 'outputs/rme.html')
+    'REPORT': RSLayer('RME Report', 'REPORT', 'HTMLFile', 'outputs/rme.html'),
+    'REPORT1': RSLayer('RME Report', 'REPORT1', 'HTMLFile', 'outputs/rme_perennial.html'),
+    'REPORT2': RSLayer('RME Report', 'REPORT2', 'HTMLFile', 'outputs/rme_public_lands.html'),
+    'REPORT3': RSLayer('RME Report', 'REPORT3', 'HTMLFile', 'outputs/rme_public_perennial.html'),
 }
 
 stream_size_lookup = {0: 'small', 1: 'medium',
@@ -1633,13 +1636,19 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
 
     add_layer_descriptions(project, LYR_DESCRIPTIONS_JSON, LayerTypes)
 
-    # Write a report
-    report_path = os.path.join(
-        project.project_dir, LayerTypes['REPORT'].rel_path)
-    project.add_report(proj_nodes['Outputs'],
-                       LayerTypes['REPORT'], replace=True)
-    report = RMEReport(outputs_gpkg, report_path, project)
-    report.write()
+    for i, filter_name in enumerate([None, "perennial", "public_lands", "public_perennial"]):
+        number = str(i) * (i > 0)
+
+        # Write a report
+        report_path = os.path.join(
+            project.project_dir, LayerTypes[f'REPORT{number}'].rel_path
+        )
+        project.add_report(
+            proj_nodes['Outputs'],
+            LayerTypes[f'REPORT{number}'], replace=True
+        )
+        report = RMEReport(outputs_gpkg, report_path, project, filter_name)
+        report.write()
 
     log.info('Riverscapes Metric Engine Finished')
     return

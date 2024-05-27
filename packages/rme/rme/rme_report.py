@@ -12,7 +12,7 @@ from rme.__version__ import __version__
 
 class RMEReport(RSReport):
 
-    def __init__(self, database, report_path, rs_project):
+    def __init__(self, database, report_path, rs_project, filter_name=None):
         super().__init__(rs_project, report_path)
         self.log = Logger('Riverscapes Metrics Report')
         self.database = database
@@ -22,7 +22,18 @@ class RMEReport(RSReport):
         css_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'rme_report.css')
         self.add_css(css_path)
 
-        self.images_dir = os.path.join(os.path.dirname(report_path), 'images')
+        self.filter_name = filter_name
+        self.sql_filter = {
+            None: None,
+            "perennial": "FCode IN (46007, 33400)",
+            "public_lands": "rme_dgo_ownership = 'BLM'",
+            "public_perennial": "(FCode IN (46007, 33400)) AND (rme_dgo_ownership = 'BLM')"
+        }[filter_name]
+
+        if self.filter_name is not None:
+            self.images_dir = os.path.join(os.path.dirname(report_path), 'images', self.filter_name)
+        else:
+            self.images_dir = os.path.join(os.path.dirname(report_path), 'images')
         safe_makedirs(self.images_dir)
 
         self.report_content()
@@ -129,10 +140,13 @@ class RMEReport(RSReport):
 
         for metric_name, data_type, name in metrics_info:
             try:
-                curs.execute(f"""
+                curs.execute(
+                    f"""
                     SELECT {metric_name}
                     FROM vw_igo_metrics
-                """)
+                    """
+                    + f"WHERE {self.sql_filter}" * (self.sql_filter is not None)
+                )
                 values = [row[0] for row in curs.fetchall()]
             except sqlite3.OperationalError as e:
                 self.log.error(f"Error fetching data for metric {metric_name} ({e})")
@@ -163,8 +177,14 @@ class RMEReport(RSReport):
                 image_path = os.path.join(self.images_dir, f"{metric_name}_box.png")
                 box_plot(values, f"{name} Distribution", image_path)
 
+            # Get path in form images/(optional subdirectory)/image_name
+            relative_dir = os.path.dirname(self.images_dir)
+            if os.path.basename(relative_dir) == 'images':
+                relative_dir = os.path.dirname(relative_dir)
+            image_src = os.path.relpath(image_path, relative_dir)
+
             img = ET.Element('img', attrib={
-                'src': os.path.join(os.path.basename(self.images_dir), os.path.basename(image_path)),
+                'src': image_src,
                 'alt': 'chart'
             })
             card.append(img)
@@ -204,5 +224,11 @@ if __name__ == '__main__':
 
     cfg = ModelConfig('http://xml.riverscapes.net/Projects/XSD/V2/RiverscapesProject.xsd', __version__)
     project = RSProject(cfg, args.projectxml)
-    report = RMEReport(args.database, args.report_path, project)
-    report.write()
+
+    for i, filter_name in enumerate([None, "perennial", "public_lands", "public_perennial"]):
+        if filter_name is not None:
+            report_path = args.report_path.replace('.html', f'_{filter_name}.html')
+        else:
+            report_path = args.report_path
+        report = RMEReport(args.database, report_path, project, filter_name)
+        report.write()
