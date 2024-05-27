@@ -81,9 +81,9 @@ LayerTypes = {
         'DGO_MEASUREMENTS': RSLayer('DGO Measurements', 'DGO_MEASUREMENTS', 'Vector', 'vw_measurements')
     }),
     'REPORT': RSLayer('RME Report', 'REPORT', 'HTMLFile', 'outputs/rme.html'),
-    'REPORT1': RSLayer('RME Report', 'REPORT1', 'HTMLFile', 'outputs/rme_perennial.html'),
-    'REPORT2': RSLayer('RME Report', 'REPORT2', 'HTMLFile', 'outputs/rme_public_lands.html'),
-    'REPORT3': RSLayer('RME Report', 'REPORT3', 'HTMLFile', 'outputs/rme_public_perennial.html'),
+    'REPORT_PERENNIAL': RSLayer('RME Perennial Streams Report', 'REPORT_PERENNIAL', 'HTMLFile', 'outputs/rme_perennial.html'),
+    'REPORT_PUBLIC_LANDS': RSLayer('RME Public Lands Report', 'REPORT_PUBLIC_LANDS', 'HTMLFile', 'outputs/rme_public_lands.html'),
+    'REPORT_PUBLIC_PERENNIAL': RSLayer('RME Public Perennial Report', 'REPORT_PUBLIC_PERENNIAL', 'HTMLFile', 'outputs/rme_public_perennial.html'),
 }
 
 stream_size_lookup = {0: 'small', 1: 'medium',
@@ -1636,16 +1636,16 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
 
     add_layer_descriptions(project, LYR_DESCRIPTIONS_JSON, LayerTypes)
 
-    for i, filter_name in enumerate([None, "perennial", "public_lands", "public_perennial"]):
-        number = str(i) * (i > 0)
+    for filter_name in [None, "perennial", "public_lands", "public_perennial"]:
+        report_suffix = f"_{filter_name.upper()}" if filter_name is not None else ""
 
         # Write a report
         report_path = os.path.join(
-            project.project_dir, LayerTypes[f'REPORT{number}'].rel_path
+            project.project_dir, LayerTypes[f'REPORT{report_suffix}'].rel_path
         )
         project.add_report(
             proj_nodes['Outputs'],
-            LayerTypes[f'REPORT{number}'], replace=True
+            LayerTypes[f'REPORT{report_suffix}'], replace=True
         )
         report = RMEReport(outputs_gpkg, report_path, project, filter_name)
         report.write()
