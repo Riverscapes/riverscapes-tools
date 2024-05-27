@@ -6,7 +6,7 @@ import traceback
 import sys
 import os
 from rscommons import RSProject, dotenv, Logger, RSMeta
-from confinement.utils.confinement_report import ConfinementReport
+from confinement.confinement_report import ConfinementReport
 
 lyrs_in_out = {
     # CONFINEMENT_ID: INPUT_ID
