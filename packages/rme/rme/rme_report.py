@@ -65,6 +65,7 @@ class RMEReport(RSReport):
         curs.execute("""
             SELECT name, description, method, LOWER(field_name)
             FROM metrics
+            WHERE is_active = 1
         """)
 
         tbody = ET.Element('tbody')
@@ -134,7 +135,7 @@ class RMEReport(RSReport):
         curs.execute("""
             SELECT LOWER(field_name), data_type, name
             FROM metrics
-            WHERE field_name != ''
+            WHERE field_name != '' AND is_active = 1
         """)
         metrics_info = curs.fetchall()
 
