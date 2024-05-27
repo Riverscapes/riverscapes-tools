@@ -18,13 +18,6 @@
         width: 35%;
     }
 }
-@media (min-width: 1080px) {
-    .metrics-card {
-        width: 25%;
-    }
-}
-
-
 
 .metrics-card .metrics-card-header {
     margin-bottom: 1rem;
