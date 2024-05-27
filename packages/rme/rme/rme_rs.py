@@ -6,7 +6,7 @@ import traceback
 import sys
 import os
 from rscommons import RSProject, RSMeta, dotenv, Logger
-from rme.utils.rme_report import RMEReport
+from rme.rme_report import RMEReport
 
 lyrs_in_out = {
     'flowlines': 'network_intersected',
@@ -73,13 +73,22 @@ def main():
             name_node.text = f"Metric Engine for {watershed_node.text}"
 
         out_prj.XMLBuilder.write()
-        report_path = out_prj.XMLBuilder.find(
-            './/HTMLFile[@id="REPORT"]/Path').text
         geopackage_path = out_prj.XMLBuilder.find(
-            './/Geopackage[@id="RME_OUTPUTS"]/Path').text
-        report = RMEReport(os.path.join(out_prj.project_dir, geopackage_path), os.path.join(
-            out_prj.project_dir, report_path), out_prj)
-        report.write()
+            './/Geopackage[@id="RME_OUTPUTS"]/Path'
+        ).text
+
+        for i, filter_name in enumerate([None, "perennial", "public_lands", "public_perennial"]):
+            report_path = out_prj.XMLBuilder.find(
+                f'.//HTMLFile[@id="REPORT{str(i) * (i>0)}"]/Path'
+            ).text
+
+            report = RMEReport(
+                os.path.join(out_prj.project_dir, geopackage_path),
+                os.path.join(out_prj.project_dir, report_path),
+                out_prj,
+                filter_name
+            )
+            report.write()
 
     except Exception as e:
         log.error(e)
