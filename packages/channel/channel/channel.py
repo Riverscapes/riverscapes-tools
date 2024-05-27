@@ -22,6 +22,7 @@ from rscommons import GeopackageLayer, get_shp_or_gpkg
 from rscommons.math import safe_eval
 from rscommons.raster_buffer_stats import raster_buffer_stats2
 from rscommons.vector_ops import get_geometry_unary_union, buffer_by_field, copy_feature_class, merge_feature_classes, difference
+from rscommons.classes.vector_base import VectorBase, get_utm_zone_epsg
 from rscommons.vbet_network import vbet_network
 from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions
 
@@ -239,6 +240,23 @@ def channel(huc: int,
         copy_feature_class(proj_custom_polygons, output_channel_area)
     else:
         log.warning('No output channel polygons were produced')
+
+    # add area field to output
+    with GeopackageLayer(output_channel_area, write=True) as layer:
+        longitude = layer.ogr_layer.GetExtent()[0]
+        proj_epsg = get_utm_zone_epsg(longitude)
+        __sref, transform = VectorBase.get_transform_from_epsg(layer.spatial_ref, proj_epsg)
+
+        layer.create_field('area_m2', ogr.OFTReal)
+        layer.ogr_layer.StartTransaction()
+        for feat, *_ in layer.iterate_features("Calculating area"):
+            feat_p = feat.GetGeometryRef().Clone()
+            feat_proj = VectorBase.ogr2shapely(feat_p, transform=transform)
+            area = feat_proj.area
+            feat.SetField('area_m2', area)
+            layer.ogr_layer.SetFeature(feat)
+            feat = None
+        layer.ogr_layer.CommitTransaction()
 
     # Now add our Geopackages to the project XML
     project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
