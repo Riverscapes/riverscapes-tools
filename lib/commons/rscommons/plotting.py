@@ -222,6 +222,7 @@ def vertical_bar(values, labels, y_axis_label, chart_title, file_path, color="#0
     plt.clf()
 
     plt.bar(labels, clean_values, color=color)
+    plt.xticks(rotation=45, ha='right')
 
     plt.ylabel(y_axis_label)
     plt.xlabel('')
