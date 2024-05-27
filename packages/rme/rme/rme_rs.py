@@ -77,9 +77,11 @@ def main():
             './/Geopackage[@id="RME_OUTPUTS"]/Path'
         ).text
 
-        for i, filter_name in enumerate([None, "perennial", "public_lands", "public_perennial"]):
+        for filter_name in [None, "perennial", "public_lands", "public_perennial"]:
+            report_suffix = f"_{filter_name.upper()}" if filter_name is not None else ""
+
             report_path = out_prj.XMLBuilder.find(
-                f'.//HTMLFile[@id="REPORT{str(i) * (i>0)}"]/Path'
+                f'.//HTMLFile[@id="REPORT{report_suffix}"]/Path'
             ).text
 
             report = RMEReport(

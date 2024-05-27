@@ -226,7 +226,7 @@ if __name__ == '__main__':
     cfg = ModelConfig('http://xml.riverscapes.net/Projects/XSD/V2/RiverscapesProject.xsd', __version__)
     project = RSProject(cfg, args.projectxml)
 
-    for i, filter_name in enumerate([None, "perennial", "public_lands", "public_perennial"]):
+    for filter_name in [None, "perennial", "public_lands", "public_perennial"]:
         if filter_name is not None:
             report_path = args.report_path.replace('.html', f'_{filter_name}.html')
         else:
