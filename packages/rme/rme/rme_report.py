@@ -13,8 +13,8 @@ from rme.__version__ import __version__
 # `LayerTypes` dictionary at the top of the metric_engine.py file
 FILTER_MAP = {
     "perennial": "FCode IN (46007, 33400)",
-    "public_lands": "rme_dgo_ownership = 'BLM'",
-    "public_perennial": "(FCode IN (46007, 33400)) AND (rme_dgo_ownership = 'BLM')"
+    "blm_lands": "rme_dgo_ownership = 'BLM'",
+    "blm_perennial": "(FCode IN (46007, 33400)) AND (rme_dgo_ownership = 'BLM')"
 }
 FILTER_NAMES = list(FILTER_MAP.keys())
 
