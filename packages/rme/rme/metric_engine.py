@@ -37,7 +37,7 @@ from rscommons.moving_window import moving_window_dgo_ids
 
 from rme.__version__ import __version__
 from rme.analysis_window import AnalysisLine
-from rme.rme_report import RMEReport
+from rme.rme_report import RMEReport, FILTER_NAMES
 from rme.utils.check_vbet_inputs import vbet_inputs
 
 Path = str
@@ -1636,7 +1636,10 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
 
     add_layer_descriptions(project, LYR_DESCRIPTIONS_JSON, LayerTypes)
 
-    for filter_name in [None, "perennial", "public_lands", "public_perennial"]:
+    # None will create the base report with no filter on the data
+    filter_names = [None] + FILTER_NAMES
+
+    for filter_name in filter_names:
         report_suffix = f"_{filter_name.upper()}" if filter_name is not None else ""
 
         # Write a report

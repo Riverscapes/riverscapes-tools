@@ -9,6 +9,15 @@ from rscommons.util import safe_makedirs
 from rscommons.plotting import box_plot, vertical_bar
 from rme.__version__ import __version__
 
+# NOTE: to change a filter name or add a new filter, you must also add it to the
+# `LayerTypes` dictionary at the top of the metric_engine.py file
+FILTER_MAP = {
+    "perennial": "FCode IN (46007, 33400)",
+    "public_lands": "rme_dgo_ownership = 'BLM'",
+    "public_perennial": "(FCode IN (46007, 33400)) AND (rme_dgo_ownership = 'BLM')"
+}
+FILTER_NAMES = list(FILTER_MAP.keys())
+
 
 class RMEReport(RSReport):
 
@@ -23,12 +32,7 @@ class RMEReport(RSReport):
         self.add_css(css_path)
 
         self.filter_name = filter_name
-        self.sql_filter = {
-            None: None,
-            "perennial": "FCode IN (46007, 33400)",
-            "public_lands": "rme_dgo_ownership = 'BLM'",
-            "public_perennial": "(FCode IN (46007, 33400)) AND (rme_dgo_ownership = 'BLM')"
-        }[filter_name]
+        self.sql_filter = FILTER_MAP.get(filter_name)
 
         if self.filter_name is not None:
             self.images_dir = os.path.join(os.path.dirname(report_path), 'images', self.filter_name)
@@ -226,7 +230,10 @@ if __name__ == '__main__':
     cfg = ModelConfig('http://xml.riverscapes.net/Projects/XSD/V2/RiverscapesProject.xsd', __version__)
     project = RSProject(cfg, args.projectxml)
 
-    for filter_name in [None, "perennial", "public_lands", "public_perennial"]:
+    # None will run report normally  with no filters
+    filter_names = [None] + FILTER_NAMES
+
+    for filter_name in filter_names:
         if filter_name is not None:
             report_path = args.report_path.replace('.html', f'_{filter_name}.html')
         else:
