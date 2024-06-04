@@ -6,7 +6,7 @@ import traceback
 import sys
 import os
 from rscommons import RSProject, RSMeta, dotenv, Logger
-from rme.rme_report import RMEReport
+from rme.rme_report import RMEReport, FILTER_NAMES
 
 lyrs_in_out = {
     'flowlines': 'network_intersected',
@@ -77,7 +77,10 @@ def main():
             './/Geopackage[@id="RME_OUTPUTS"]/Path'
         ).text
 
-        for filter_name in [None, "perennial", "public_lands", "public_perennial"]:
+        # None will run report normally with no filters
+        filter_names = [None] + FILTER_NAMES
+
+        for filter_name in filter_names:
             report_suffix = f"_{filter_name.upper()}" if filter_name is not None else ""
 
             report_path = out_prj.XMLBuilder.find(
