@@ -82,8 +82,8 @@ LayerTypes = {
     }),
     'REPORT': RSLayer('RME Report', 'REPORT', 'HTMLFile', 'outputs/rme.html'),
     'REPORT_PERENNIAL': RSLayer('RME Perennial Streams Report', 'REPORT_PERENNIAL', 'HTMLFile', 'outputs/rme_perennial.html'),
-    'REPORT_PUBLIC_LANDS': RSLayer('RME Public Lands Report', 'REPORT_PUBLIC_LANDS', 'HTMLFile', 'outputs/rme_public_lands.html'),
-    'REPORT_PUBLIC_PERENNIAL': RSLayer('RME Public Perennial Report', 'REPORT_PUBLIC_PERENNIAL', 'HTMLFile', 'outputs/rme_public_perennial.html'),
+    'REPORT_BLM_LANDS': RSLayer('RME BLM Lands Report', 'REPORT_BLM_LANDS', 'HTMLFile', 'outputs/rme_blm_lands.html'),
+    'REPORT_BLM_PERENNIAL': RSLayer('RME BLM Perennial Report', 'REPORT_BLM_PERENNIAL', 'HTMLFile', 'outputs/rme_blm_perennial.html'),
 }
 
 stream_size_lookup = {0: 'small', 1: 'medium',
