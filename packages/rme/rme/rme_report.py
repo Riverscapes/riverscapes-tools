@@ -12,9 +12,9 @@ from rme.__version__ import __version__
 # NOTE: to change a filter name or add a new filter, you must also add it to the
 # `LayerTypes` dictionary at the top of the metric_engine.py file
 FILTER_MAP = {
-    "perennial": "FCode IN (46007, 33400)",
+    "perennial": "FCode IN (46006, 55800)",
     "blm_lands": "rme_dgo_ownership = 'BLM'",
-    "blm_perennial": "(FCode IN (46007, 33400)) AND (rme_dgo_ownership = 'BLM')"
+    "blm_perennial": "(FCode IN (46006, 55800)) AND (rme_dgo_ownership = 'BLM')"
 }
 FILTER_NAMES = list(FILTER_MAP.keys())
 
