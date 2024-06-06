@@ -173,10 +173,10 @@
       "envFile": "${workspaceFolder}/.env",
       "args": [
         "{env:DATA_ROOT}/merge-projects",
-        "rs_metric_engine",
-        "65095800-3938-4cf9-9565-59984de14302",
-        "Southern OR Merged RME",
-        "merge_rme"
+        "rcat",
+        "4e454d54-2e93-4840-8ae7-f01118a7d3aa",
+        "Merged RCAT for Grand Junction Area",
+        "merge_rcat"
       ]
     },
 
