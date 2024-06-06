@@ -28,6 +28,7 @@ from rscommons.database import create_database, SQLiteCon
 from rscommons.reach_geometry import reach_geometry
 from sqlbrat.utils.vegetation_summary import vegetation_summary
 from sqlbrat.utils.conflict_attributes import conflict_attributes
+from sqlbrat.utils.dgo_geometry import dgo_geometry
 from sqlbrat.__version__ import __version__
 
 Path = str
@@ -45,6 +46,8 @@ LayerTypes = {
     'HISTVEG': RSLayer('Historic Vegetation', 'HISTVEG', 'Raster', 'inputs/historic_veg.tif'),
     'INPUTS': RSLayer('Confinement', 'INPUTS', 'Geopackage', 'inputs/inputs.gpkg', {
         'FLOWLINES': RSLayer('Segmented Flowlines', 'FLOWLINES', 'Vector', 'flowlines'),
+        'IGOS': RSLayer('Integrated Geographic Objects', 'IGOS', 'Vector', 'igos'),
+        'DGOS': RSLayer('Discrete Geographic Objects', 'DGOS', 'Vector', 'dgos'),
         'FLOW_AREA': RSLayer('NHD Flow Area', 'FLOW_AREA', 'Vector', 'flowareas'),
         'WATERBODIES': RSLayer('NHD Waterbody', 'WATERBODIES', 'Vector', 'waterbodies'),
         'VALLEY_BOTTOM': RSLayer('Valley Bottom', 'VALLEY_BOTTOM', 'Vector', 'valley_bottom'),
@@ -58,12 +61,16 @@ LayerTypes = {
     }),
     'OUTPUTS': RSLayer('BRAT', 'OUTPUTS', 'Geopackage', 'outputs/brat.gpkg', {
         'BRAT_GEOMETRY': RSLayer('BRAT Geometry', 'BRAT_GEOMETRY', 'Vector', 'ReachGeometry'),
-        'BRAT': RSLayer('BRAT', 'BRAT_RESULTS', 'Vector', 'vwReaches')
+        'BRAT': RSLayer('BRAT', 'BRAT_RESULTS', 'Vector', 'vwReaches'),
+        'DGO_GEOM': RSLayer('Discrete Geographic Objects Geometry', 'DGO_GEOM', 'Vector', 'DGOGeometry'),
+        'BRAT_DGOS': RSLayer('BRAT Discrete Geographic Objects', 'BRAT_DGOS', 'Vector', 'vwDgos'),
+        'IGO_GEOM': RSLayer('Integrated Geographic Objects Geometry', 'IGO_GEOM', 'Vector', 'IGOGeometry'),
+        'BRAT_IGOS': RSLayer('BRAT Integrated Geographic Objects', 'BRAT_IGOS', 'Vector', 'vwIgos'),
     })
 }
 
 
-def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Path,
+def brat_build(huc: int, flowlines: Path, dgos: Path, igos: Path, dem: Path, slope: Path, hillshade: Path,
                existing_veg: Path, historical_veg: Path, output_folder: Path,
                streamside_buffer: float, riparian_buffer: float,
                reach_codes: List[str], canal_codes: List[str], peren_codes: List[str],
@@ -140,6 +147,8 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
     # Copy all the original vectors to the inputs geopackage. This will ensure on same spatial reference
     source_layers = {
         'FLOWLINES': flowlines,
+        'DGOS': dgos,
+        'IGOS': igos,
         'FLOW_AREA': flow_areas,
         'WATERBODIES': waterbodies,
         'VALLEY_BOTTOM': valley_bottom,
@@ -167,6 +176,23 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
             'DivDASqKm': ogr.OFTReal,
             'GNIS_Name': ogr.OFTString,
             'NHDPlusID': ogr.OFTReal
+        })
+
+    with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['DGO_GEOM'].rel_path, delete_dataset=True) as out_lyr:
+        out_lyr.create_layer(ogr.wkbPolygon, epsg=cfg.OUTPUT_EPSG, options=['FID=DGOID'], fields={
+            'FCode': ogr.OFTInteger,
+            'level_path': ogr.OFTReal,
+            'seg_distance': ogr.OFTReal,
+            'centerline_length': ogr.OFTInteger,
+            'segment_area': ogr.OFTReal
+        })
+
+    with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['IGO_GEOM'].rel_path, delete_dataset=True) as out_lyr:
+        out_lyr.create_layer(ogr.wkbPolygon, epsg=cfg.OUTPUT_EPSG, options=['FID=IGOID'], fields={
+            'FCode': ogr.OFTInteger,
+            'level_path': ogr.OFTReal,
+            'seg_distance': ogr.OFTReal,
+            'stream_size': ogr.OFTInteger
         })
 
     db_metadata = {
@@ -212,6 +238,9 @@ def brat_build(huc: int, flowlines: Path, dem: Path, slope: Path, hillshade: Pat
 
     # Calculate the geophysical properties slope, min and max elevations
     reach_geometry(reach_geometry_path, dem_raster_path, elevation_buffer)
+
+    # Calculate geophysical attributes for the DGOs
+    dgo_geometry(input_layers['DGOS'], input_layers['FLOWLINES'], dem_raster_path, 100, outputs_gpkg_path)
 
     # Calculate the conflict attributes ready for conservation
     conflict_attributes(outputs_gpkg_path, reach_geometry_path,
