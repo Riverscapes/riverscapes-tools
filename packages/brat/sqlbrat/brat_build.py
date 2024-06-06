@@ -26,7 +26,7 @@ from rscommons.build_network import build_network
 from rscommons.segment_network import segment_network
 from rscommons.database import create_database, SQLiteCon
 from rscommons.reach_geometry import reach_geometry
-from sqlbrat.utils.vegetation_summary import vegetation_summary
+from sqlbrat.utils.vegetation_summary import vegetation_summary, dgo_veg_summary
 from sqlbrat.utils.conflict_attributes import conflict_attributes
 from sqlbrat.utils.dgo_geometry import dgo_geometry
 from sqlbrat.__version__ import __version__
@@ -242,7 +242,8 @@ def brat_build(huc: int, flowlines: Path, dgos: Path, igos: Path, dem: Path, slo
     # Calculate geophysical attributes for the DGOs
     dgo_geometry(input_layers['DGOS'], input_layers['FLOWLINES'], dem_raster_path, 100, outputs_gpkg_path)
 
-    # Calculate the conflict attributes ready for conservation
+    # Calculate the conflict attributes ready for conservation (for DGOs, imported from Anthro)
+    # This will be removed once Anthro is fully pulled out of BRAT
     conflict_attributes(outputs_gpkg_path, reach_geometry_path,
                         input_layers['VALLEY_BOTTOM'], input_layers['ROADS'], input_layers['RAIL'], input_layers['CANALS'],
                         input_layers['OWNERSHIP'], 30, 5, cfg.OUTPUT_EPSG, canal_codes, intermediates_gpkg_path)
@@ -254,6 +255,7 @@ def brat_build(huc: int, flowlines: Path, dgos: Path, igos: Path, dem: Path, slo
             buffer_path = os.path.join(intermediates_gpkg_path, f'buffer_{int(buffer)}m')
             polygon_path = buffer_path if buffer_path in buffer_paths else None
             vegetation_summary(outputs_gpkg_path, '{} {}m'.format(label, buffer), veg_raster, buffer, polygon_path)
+            dgo_veg_summary(outputs_gpkg_path, veg_raster, label, buffer)
             buffer_paths.append(buffer_path)
 
     # add buffers to project

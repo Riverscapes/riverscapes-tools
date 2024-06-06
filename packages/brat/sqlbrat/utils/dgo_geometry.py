@@ -107,6 +107,7 @@ def dgo_geometry(dgos, flowlines, dem, buffer_distance, out_gpkg_path):
             db_conn.curs.execute("""UPDATE DGOAttributes SET iGeo_DA = ? WHERE DGOID = ?""", (da, dgoid))
         for dgoid, slope in out_slope.items():
             db_conn.curs.execute("""UPDATE DGOAttributes SET iGeo_Slope = ? WHERE DGOID = ?""", (slope, dgoid))
+        db_conn.conn.commit()
 
 
 # dgo_geometry('/workspaces/data/test_data/test.gpkg/vbet_dgos', '/workspaces/data/test_data/test.gpkg/network_intersected', '/workspaces/data/test_data/dem.tif', 100, '/workspaces/data/test_data/test.gpkg')
