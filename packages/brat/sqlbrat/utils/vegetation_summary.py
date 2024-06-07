@@ -112,6 +112,11 @@ def vegetation_summary(outputs_gpkg_path: str, label: str, veg_raster: str, buff
 
 def dgo_veg_summary(outputs_gpkg_path: str, veg_raster: str, label: str, buffer):
 
+    if buffer == 30:
+        veg_area = 'streamside'
+    else:
+        veg_area = 'riparian'
+
     dataset = gdal.Open(veg_raster)
     geo_transform = dataset.GetGeoTransform()
     conversion_factor = VectorBase.rough_convert_metres_to_raster_units(veg_raster, 1.0)
@@ -122,21 +127,28 @@ def dgo_veg_summary(outputs_gpkg_path: str, veg_raster: str, label: str, buffer)
 
         for feature, _counter, _progbar in lyr.iterate_features(label):
             dgoid = feature.GetFID()
+            ftr_geom = feature.GetGeometryRef()
+            if ftr_geom.GetGeometryName() == 'MULTIPOLYGON':
+                ftr_geom = ftr_geom.GetGeometryRef(0)
             if buffer == 30:
                 raster_buffer = VectorBase.rough_convert_metres_to_raster_units(veg_raster, 30)
                 ftrs = []
-                for line_ftr, _counter, _progbar in line_lyr.iterate_features(clip_shape=feature.GetGeometryRef()):
+                for line_ftr, _counter, _progbar in line_lyr.iterate_features(clip_rect=ftr_geom):
                     if line_ftr.GetGeometryRef().GetGeometryName() == 'MULTILINESTRING':
                         for geom in line_ftr.GetGeometryRef():
-                            ftrs.append(VectorBase.ogr2shapely(geom))
+                            clipped_geom = geom.Intersection(ftr_geom)
+                            ftrs.append(VectorBase.ogr2shapely(clipped_geom))
                     else:
-                        ftrs.append(VectorBase.ogr2shapely(line_ftr.GetGeometryRef()))
-                if len(ftrs) > 0:
+                        clipped_geom = line_ftr.GetGeometryRef().Intersection(ftr_geom)
+                        ftrs.append(VectorBase.ogr2shapely(clipped_geom))
+                if len(ftrs) > 1:
                     fl_geom = linemerge(ftrs)
                     geom = fl_geom.buffer(raster_buffer)
                     geom = VectorBase.shapely2ogr(geom)
                 else:
-                    geom = feature.GetGeometryRef()
+                    fl_geom = VectorBase.shapely2ogr(ftrs[0])
+                    geom = fl_geom.buffer(raster_buffer)
+                    geom = VectorBase.shapely2ogr(geom)
             else:
                 geom = feature.GetGeometryRef()
 
@@ -149,7 +161,7 @@ def dgo_veg_summary(outputs_gpkg_path: str, veg_raster: str, label: str, buffer)
                 for oldvalue in np.unique(mask_raster):
                     if oldvalue is not np.ma.masked:
                         cell_count = np.count_nonzero(mask_raster == oldvalue)
-                        veg_counts.append([dgoid, int(oldvalue), cell_count * cell_area, cell_count])
+                        veg_counts.append([dgoid, int(oldvalue), veg_area, cell_count * cell_area, cell_count])
             except Exception as ex:
                 print('Error obtaining vegetation raster values for DGOID {}'.format(dgoid))
                 print(ex)
@@ -161,7 +173,7 @@ def dgo_veg_summary(outputs_gpkg_path: str, veg_raster: str, label: str, buffer)
             batch_count += 1
             if int(veg_record[1]) != -9999:
                 try:
-                    database.conn.execute('INSERT INTO DGOVegetation (DGOID, VegetationID, Area, CellCount) VALUES (?, ?, ?, ?)', veg_record)
+                    database.conn.execute('INSERT INTO DGOVegetation (DGOID, VegetationID, VegArea, Area, CellCount) VALUES (?, ?, ?, ?, ?)', veg_record)
                 except sqlite3.IntegrityError as err:
                     errstr = "Integrity Error when inserting records: DGOID: {} VegetationID: {}".format(veg_record[0], veg_record[1])
                     print(errstr)
@@ -173,3 +185,8 @@ def dgo_veg_summary(outputs_gpkg_path: str, veg_raster: str, label: str, buffer)
         if errs > 0:
             raise Exception('Errors were found inserting records into the database. Cannot continue.')
         database.conn.commit()
+
+
+def dgo_vegetation(outputs_gpkg_path: str):
+    """Function to sample vegetation related fields from the BRAT line network
+    onto DGOs for separate FIS calculation"""

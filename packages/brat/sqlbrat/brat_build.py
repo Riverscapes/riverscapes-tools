@@ -26,6 +26,7 @@ from rscommons.build_network import build_network
 from rscommons.segment_network import segment_network
 from rscommons.database import create_database, SQLiteCon
 from rscommons.reach_geometry import reach_geometry
+from rscommons.copy_features import copy_features_fields
 from sqlbrat.utils.vegetation_summary import vegetation_summary, dgo_veg_summary
 from sqlbrat.utils.conflict_attributes import conflict_attributes
 from sqlbrat.utils.dgo_geometry import dgo_geometry
@@ -168,7 +169,7 @@ def brat_build(huc: int, flowlines: Path, dgos: Path, igos: Path, dem: Path, slo
     segment_network(input_layers['FLOWLINES'], segmented_network_path, 300, 30, huc, create_layer=True)
 
     # Create the output feature class fields. Only those listed here will get copied from the source
-    with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['BRAT_GEOMETRY'].rel_path, delete_dataset=True) as out_lyr:
+    with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['BRAT_GEOMETRY'].rel_path, write=True) as out_lyr:
         out_lyr.create_layer(ogr.wkbMultiLineString, epsg=cfg.OUTPUT_EPSG, options=['FID=ReachID'], fields={
             'WatershedID': ogr.OFTString,
             'FCode': ogr.OFTInteger,
@@ -178,8 +179,9 @@ def brat_build(huc: int, flowlines: Path, dgos: Path, igos: Path, dem: Path, slo
             'NHDPlusID': ogr.OFTReal
         })
 
-    with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['DGO_GEOM'].rel_path, delete_dataset=True) as out_lyr:
-        out_lyr.create_layer(ogr.wkbPolygon, epsg=cfg.OUTPUT_EPSG, options=['FID=DGOID'], fields={
+    with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['DGO_GEOM'].rel_path, write=True) as dgo_lyr:
+        dgo_lyr.create_layer(ogr.wkbPolygon, epsg=cfg.OUTPUT_EPSG, options=['FID=DGOID'], fields={
+            'WatershedID': ogr.OFTString,
             'FCode': ogr.OFTInteger,
             'level_path': ogr.OFTReal,
             'seg_distance': ogr.OFTReal,
@@ -187,8 +189,8 @@ def brat_build(huc: int, flowlines: Path, dgos: Path, igos: Path, dem: Path, slo
             'segment_area': ogr.OFTReal
         })
 
-    with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['IGO_GEOM'].rel_path, delete_dataset=True) as out_lyr:
-        out_lyr.create_layer(ogr.wkbPolygon, epsg=cfg.OUTPUT_EPSG, options=['FID=IGOID'], fields={
+    with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['IGO_GEOM'].rel_path, write=True) as igo_lyr:
+        igo_lyr.create_layer(ogr.wkbPoint, epsg=cfg.OUTPUT_EPSG, options=['FID=IGOID'], fields={
             'FCode': ogr.OFTInteger,
             'level_path': ogr.OFTReal,
             'seg_distance': ogr.OFTReal,
@@ -214,7 +216,11 @@ def brat_build(huc: int, flowlines: Path, dgos: Path, igos: Path, dem: Path, slo
 
     # Copy the reaches into the output feature class layer, filtering by reach codes
     reach_geometry_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['BRAT_GEOMETRY'].rel_path)
+    dgo_geometry_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['DGO_GEOM'].rel_path)
+    igo_geometry_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['IGO_GEOM'].rel_path)
     build_network(segmented_network_path, input_layers['FLOW_AREA'], reach_geometry_path, waterbodies_path=input_layers['WATERBODIES'], waterbody_max_size=max_waterbody, epsg=cfg.OUTPUT_EPSG, reach_codes=reach_codes, create_layer=False)
+    copy_features_fields(input_layers['DGOS'], dgo_geometry_path, epsg=cfg.OUTPUT_EPSG)
+    copy_features_fields(input_layers['IGOS'], igo_geometry_path, epsg=cfg.OUTPUT_EPSG)
 
     with GeopackageLayer(reach_geometry_path, write=True) as reach_lyr:
         for feat, *_ in reach_lyr.iterate_features('Add WatershedID to ReachGeometry'):
@@ -227,12 +233,28 @@ def brat_build(huc: int, flowlines: Path, dgos: Path, igos: Path, dem: Path, slo
         database.curs.execute('UPDATE ReachAttributes SET IsPeren = 1 WHERE (ReachCode IN ({}))'.format(','.join(peren_codes)))
         database.curs.execute('UPDATE ReachAttributes SET iGeo_DA = 0 WHERE iGeo_DA IS NULL')
 
+        database.curs.execute('INSERT INTO DGOAttributes (DGOID, WatershedID, FCode, level_path, seg_distance, centerline_length, segment_area) SELECT DGOID, SUBSTR(WatershedID, 1, 8), FCode, level_path, seg_distance, centerline_length, segment_area FROM DGOGeometry')
+        database.curs.execute('INSERT INTO IGOAttributes (IGOID, FCode, level_path, seg_distance) SELECT IGOID, FCode, level_path, seg_distance FROM IGOGeometry')
+        database.curs.execute(f'UPDATE DGOAttributes SET WatershedID = {huc[:8]} WHERE WatershedID IS NULL')
+
         # Register vwReaches as a feature layer as well as its geometry column
         database.curs.execute("""INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id)
             SELECT 'vwReaches', data_type, 'Reaches', min_x, min_y, max_x, max_y, srs_id FROM gpkg_contents WHERE table_name = 'ReachGeometry'""")
 
         database.curs.execute("""INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m)
             SELECT 'vwReaches', column_name, geometry_type_name, srs_id, z, m FROM gpkg_geometry_columns WHERE table_name = 'ReachGeometry'""")
+
+        database.curs.execute("""INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id)
+            SELECT 'vwDgos', data_type, 'DGOs', min_x, min_y, max_x, max_y, srs_id FROM gpkg_contents WHERE table_name = 'DGOGeometry'""")
+
+        database.curs.execute("""INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m)
+            SELECT 'vwDgos', column_name, geometry_type_name, srs_id, z, m FROM gpkg_geometry_columns WHERE table_name = 'DGOGeometry'""")
+
+        database.curs.execute("""INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id)
+            SELECT 'vwIgos', data_type, 'IGOs', min_x, min_y, max_x, max_y, srs_id FROM gpkg_contents WHERE table_name = 'IGOGeometry'""")
+
+        database.curs.execute("""INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m)
+            SELECT 'vwIgos', column_name, geometry_type_name, srs_id, z, m FROM gpkg_geometry_columns WHERE table_name = 'IGOGeometry'""")
 
         database.conn.commit()
 
@@ -255,7 +277,6 @@ def brat_build(huc: int, flowlines: Path, dgos: Path, igos: Path, dem: Path, slo
             buffer_path = os.path.join(intermediates_gpkg_path, f'buffer_{int(buffer)}m')
             polygon_path = buffer_path if buffer_path in buffer_paths else None
             vegetation_summary(outputs_gpkg_path, '{} {}m'.format(label, buffer), veg_raster, buffer, polygon_path)
-            dgo_veg_summary(outputs_gpkg_path, veg_raster, label, buffer)
             buffer_paths.append(buffer_path)
 
     # add buffers to project
@@ -318,6 +339,8 @@ def main():
     parser.add_argument('hillshade', help='hillshade input', type=str)
 
     parser.add_argument('flowlines', help='flowlines input', type=str)
+    parser.add_argument('dgos', help='dgos input', type=str)
+    parser.add_argument('igos', help='igos input', type=str)
     parser.add_argument('existing_veg', help='existing_veg input', type=str)
     parser.add_argument('historical_veg', help='historical_veg input', type=str)
 
@@ -363,7 +386,7 @@ def main():
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output_folder, 'brat_build_memusage.log')
             retcode, max_obj = ThreadRun(brat_build, memfile,
-                                         args.huc, args.flowlines, args.dem, args.slope, args.hillshade,
+                                         args.huc, args.flowlines, args.dgos, args.igos, args.dem, args.slope, args.hillshade,
                                          args.existing_veg, args.historical_veg, args.output_folder,
                                          args.streamside_buffer, args.riparian_buffer,
                                          reach_codes, canal_codes, peren_codes,
@@ -375,7 +398,7 @@ def main():
             log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
         else:
             brat_build(
-                args.huc, args.flowlines, args.dem, args.slope, args.hillshade,
+                args.huc, args.flowlines, args.dgos, args.igos, args.dem, args.slope, args.hillshade,
                 args.existing_veg, args.historical_veg, args.output_folder,
                 args.streamside_buffer, args.riparian_buffer,
                 reach_codes, canal_codes, peren_codes,
