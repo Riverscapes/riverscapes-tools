@@ -1,23 +1,180 @@
-CREATE TABLE Ecoregions (EcoregionID INTEGER PRIMARY KEY UNIQUE NOT NULL, Name TEXT UNIQUE NOT NULL);
-CREATE TABLE DamLimitations (LimitationID INTEGER PRIMARY KEY NOT NULL UNIQUE, Name TEXT UNIQUE NOT NULL);
-CREATE TABLE DamOpportunities (OpportunityID INTEGER PRIMARY KEY UNIQUE NOT NULL, Name TEXT UNIQUE NOT NULL);
-CREATE TABLE DamRisks (RiskID INTEGER PRIMARY KEY UNIQUE NOT NULL, Name TEXT UNIQUE NOT NULL);
-CREATE TABLE DamCapacities (CapacityID INTEGER PRIMARY KEY NOT NULL, Name TEXT UNIQUE NOT NULL, MinCapacity REAL, MaxCapacity REAL);
-CREATE TABLE Epochs (EpochID INTEGER PRIMARY KEY NOT NULL, Name TEXT NOT NULL UNIQUE, Metadata TEXT, Notes TEXT);
-CREATE TABLE ReachCodes (ReachCode INTEGER PRIMARY KEY NOT NULL, Name TEXT NOT NULL, DisplayName TEXT, Description TEXT NOT NULL);
-CREATE TABLE ReachVegetation (ReachID INTEGER REFERENCES ReachAttributes ON DELETE CASCADE NOT NULL, VegetationID INTEGER REFERENCES VegetationTypes (VegetationID) NOT NULL, Buffer REAL NOT NULL CONSTRAINT CHK_ReachVegetation_Buffer CHECK (Buffer > 0), Area REAL NOT NULL CONSTRAINT CHK_ReachVegetation_Area CHECK (Area > 0), CellCount REAL NOT NULL CONSTRAINT CHK_ReachVegetation_CellCount CHECK (CellCount > 0), PRIMARY KEY (ReachID, VegetationID, Buffer));
-CREATE TABLE MetaData (KeyInfo TEXT PRIMARY KEY NOT NULL, ValueInfo TEXT);
-CREATE TABLE LandUses (LandUseID INTEGER PRIMARY KEY NOT NULL, Name TEXT UNIQUE NOT NULL, Intensity REAL NOT NULL CONSTRAINT CHK_LandUses_Itensity CHECK (Intensity >= 0 AND Intensity <= 1) DEFAULT (0));
-CREATE TABLE Agencies (AgencyID INTEGER PRIMARY KEY NOT NULL UNIQUE, Name TEXT NOT NULL UNIQUE, Abbreviation TEXT NOT NULL UNIQUE);
-CREATE TABLE LandUseIntensities (IntensityID INTEGER PRIMARY KEY NOT NULL, Name TEXT UNIQUE NOT NULL, MaxIntensity REAL NOT NULL UNIQUE, TargetCol TEXT UNIQUE NOT NULL);
-CREATE TABLE VegetationOverrides (EcoregionID INTEGER REFERENCES Ecoregions (EcoregionID) ON DELETE CASCADE NOT NULL, VegetationID INTEGER NOT NULL REFERENCES VegetationTypes (VegetationID) ON DELETE CASCADE, OverrideSuitability INTEGER NOT NULL CONSTRAINT CHK_VegetationOverrides_Suitability CHECK (OverrideSuitability >= 0 AND OverrideSuitability <= 4), Notes TEXT, PRIMARY KEY (EcoregionID, VegetationID));
-CREATE TABLE WatershedHydroParams (WatershedID TEXT REFERENCES Watersheds (WatershedID) ON DELETE CASCADE NOT NULL, ParamID INTEGER REFERENCES HydroParams (ParamID) NOT NULL, Value REAL NOT NULL, PRIMARY KEY (WatershedID, ParamID));
-CREATE TABLE Watersheds (WatershedID TEXT PRIMARY KEY NOT NULL UNIQUE, Name TEXT NOT NULL, AreaSqKm REAL CONSTRAINT CHK_HUCs_Area CHECK (AreaSqKm >= 0), States TEXT, Geometry STRING, EcoregionID INTEGER REFERENCES Ecoregions (EcoregionID), QLow TEXT, Q2 TEXT, MaxDrainage REAL CHECK (MaxDrainage >= 0), Metadata TEXT, Notes TEXT);
-CREATE TABLE VegetationTypes (VegetationID INTEGER PRIMARY KEY NOT NULL, EpochID INTEGER REFERENCES Epochs (EpochID) NOT NULL, Name TEXT NOT NULL, DefaultSuitability INTEGER CONSTRAINT CHK_VegetationTypes_DefaultSuitability CHECK (DefaultSuitability >= 0 AND DefaultSuitability <= 4) NOT NULL DEFAULT (0), LandUseID INTEGER REFERENCES LandUses (LandUseID), Physiognomy TEXT, Notes TEXT);
-CREATE TABLE ReachAttributes (ReachID INTEGER PRIMARY KEY NOT NULL, WatershedID TEXT REFERENCES Watersheds (WatershedID) ON DELETE CASCADE, ReachCode INTEGER REFERENCES ReachCodes (ReachCode), IsPeren INTEGER NOT NULL DEFAULT (0), StreamName TEXT, Orig_DA REAL, iGeo_Slope REAL, iGeo_ElMax REAL, iGeo_ElMin REAL, iGeo_Len REAL CONSTRAINT CHK_Reaches_LengthKm CHECK (iGeo_Len > 0), iGeo_DA REAL CONSTRAINT CK_Reaches_DrainageAreaSqKm CHECK (iGeo_DA >= 0), iVeg100EX REAL CONSTRAINT CHK_Reaches_ExistingVeg100 CHECK ((iVeg100EX >= 0) AND (iVeg100EX <= 4)), iVeg_30EX REAL CONSTRAINT CHK_Reaches_ExistingVeg30 CHECK ((iVeg_30EX >= 0) AND (iVeg_30EX <= 4)), iVeg100HPE REAL CONSTRAINT CHK_Reaches_HistoricVeg100 CHECK ((iVeg100HPE >= 0) AND (iVeg100HPE <= 4)), iVeg_30HPE REAL CONSTRAINT CH_Reaches_HistoricVeg30 CHECK ((iVeg_30HPE >= 0) AND (iVeg_30HPE <= 4)), iPC_Road REAL CONSTRAINT CHK_Reaches_RoadDist CHECK ((iPC_Road >= 0)), iPC_RoadX REAL CONSTRAINT CHK_Reaches_RoadCrossDist CHECK (iPC_RoadX >= 0), iPC_RoadVB REAL CONSTRAINT CGK_Reaches_RoadVBDist CHECK (iPC_RoadVB >= 0), iPC_Rail REAL CONSTRAINT CHK_Reaches_RailDist CHECK (iPC_Rail >= 0), iPC_RailVB REAL CONSTRAINT CHK_Reaches_RailVBDist CHECK (iPC_RailVB >= 0), iPC_LU REAL, iPC_VLowLU REAL, iPC_LowLU REAL, iPC_ModLU REAL, iPC_HighLU REAL, iHyd_QLow REAL CONSTRAINT CHK_Reaches_QLow CHECK (iHyd_QLow >= 0), iHyd_Q2 REAL CONSTRAINT CHK_Reaches_Q2 CHECK (iHyd_Q2 >= 0), iHyd_SPLow REAL CONSTRAINT CHK_Reaches_StreamPowerLow CHECK (iHyd_SPLow >= 0), iHyd_SP2 REAL CONSTRAINT CHK_Reaches_StreamPower2 CHECK (iHyd_SP2 >= 0), AgencyID INTEGER REFERENCES Agencies (AgencyID), oVC_HPE REAL, oVC_EX REAL, oCC_HPE REAL, mCC_HPE_CT REAL, oCC_EX REAL, mCC_EX_CT REAL, LimitationID INTEGER REFERENCES DamLimitations (LimitationID), RiskID INTEGER REFERENCES DamRisks (RiskID), OpportunityID INTEGER REFERENCES DamOpportunities (OpportunityID), iPC_Canal REAL, iPC_DivPts REAL, iPC_Privat REAL, oPC_Dist REAL, IsMainCh INTEGER, IsMultiCh INTEGER, mCC_HisDep REAL);
-CREATE TABLE DGOAttributes(DGOID INTEGER PRIMARY KEY NOT NULL, WatershedID TEXT REFERENCES Watersheds (WatershedID) ON DELETE CASCADE, iGeo_DA REAL CONSTRAINT CK_DGO_DrainageAreaSqKm CHECK (iGeo_DA >= 0), iGeo_Slope REAL)
+CREATE TABLE Ecoregions (
+     EcoregionID INTEGER PRIMARY KEY UNIQUE NOT NULL, 
+     Name TEXT UNIQUE NOT NULL);
 
-CREATE TABLE HydroParams (ParamID INTEGER PRIMARY KEY NOT NULL, Name TEXT UNIQUE NOT NULL, Description TEXT NOT NULL, Aliases TEXT, DataUnits TEXT NOT NULL, EquationUnits TEXT, Conversion REAL NOT NULL DEFAULT (1), Definition TEXT);
+CREATE TABLE DamLimitations (
+     LimitationID INTEGER PRIMARY KEY NOT NULL UNIQUE,
+     Name TEXT UNIQUE NOT NULL);
+
+CREATE TABLE DamOpportunities (
+     OpportunityID INTEGER PRIMARY KEY UNIQUE NOT NULL, 
+     Name TEXT UNIQUE NOT NULL);
+
+CREATE TABLE DamRisks (
+     RiskID INTEGER PRIMARY KEY UNIQUE NOT NULL, 
+     Name TEXT UNIQUE NOT NULL);
+
+CREATE TABLE DamCapacities (
+     CapacityID INTEGER PRIMARY KEY NOT NULL, 
+     Name TEXT UNIQUE NOT NULL, 
+     MinCapacity REAL, 
+     MaxCapacity REAL);
+     
+CREATE TABLE Epochs (
+     EpochID INTEGER PRIMARY KEY NOT NULL, 
+     Name TEXT NOT NULL UNIQUE, 
+     Metadata TEXT, 
+     Notes TEXT);
+
+CREATE TABLE ReachCodes (
+     ReachCode INTEGER PRIMARY KEY NOT NULL, 
+     Name TEXT NOT NULL, 
+     DisplayName TEXT, 
+     Description TEXT NOT NULL);
+
+CREATE TABLE ReachVegetation (
+     ReachID INTEGER REFERENCES ReachAttributes ON DELETE CASCADE NOT NULL, 
+     VegetationID INTEGER REFERENCES VegetationTypes (VegetationID) NOT NULL, 
+     Buffer REAL NOT NULL CONSTRAINT CHK_ReachVegetation_Buffer CHECK (Buffer > 0), 
+     Area REAL NOT NULL CONSTRAINT CHK_ReachVegetation_Area CHECK (Area > 0), 
+     CellCount REAL NOT NULL CONSTRAINT CHK_ReachVegetation_CellCount CHECK (CellCount > 0), 
+     PRIMARY KEY (ReachID, VegetationID, Buffer));
+
+CREATE TABLE MetaData (
+     KeyInfo TEXT PRIMARY KEY NOT NULL, 
+     ValueInfo TEXT);
+
+CREATE TABLE LandUses (
+     LandUseID INTEGER PRIMARY KEY NOT NULL, 
+     Name TEXT UNIQUE NOT NULL, 
+     Intensity REAL NOT NULL CONSTRAINT CHK_LandUses_Itensity CHECK (Intensity >= 0 AND Intensity <= 1) DEFAULT (0));
+
+CREATE TABLE Agencies (
+     AgencyID INTEGER PRIMARY KEY NOT NULL UNIQUE, 
+     Name TEXT NOT NULL UNIQUE, 
+     Abbreviation TEXT NOT NULL UNIQUE);
+
+CREATE TABLE LandUseIntensities (
+     IntensityID INTEGER PRIMARY KEY NOT NULL, 
+     Name TEXT UNIQUE NOT NULL, 
+     MaxIntensity REAL NOT NULL UNIQUE, 
+     TargetCol TEXT UNIQUE NOT NULL);
+
+CREATE TABLE VegetationOverrides (
+     EcoregionID INTEGER REFERENCES Ecoregions (EcoregionID) ON DELETE CASCADE NOT NULL, 
+     VegetationID INTEGER NOT NULL REFERENCES VegetationTypes (VegetationID) ON DELETE CASCADE, 
+     OverrideSuitability INTEGER NOT NULL CONSTRAINT CHK_VegetationOverrides_Suitability CHECK (OverrideSuitability >= 0 AND OverrideSuitability <= 4), 
+     Notes TEXT, 
+     PRIMARY KEY (EcoregionID, VegetationID));
+
+CREATE TABLE WatershedHydroParams (
+     WatershedID TEXT REFERENCES Watersheds (WatershedID) ON DELETE CASCADE NOT NULL, 
+     ParamID INTEGER REFERENCES HydroParams (ParamID) NOT NULL, 
+     Value REAL NOT NULL, 
+     PRIMARY KEY (WatershedID, ParamID));
+
+CREATE TABLE Watersheds (
+     WatershedID TEXT PRIMARY KEY NOT NULL UNIQUE, 
+     Name TEXT NOT NULL, 
+     AreaSqKm REAL CONSTRAINT CHK_HUCs_Area CHECK (AreaSqKm >= 0), 
+     States TEXT, 
+     Geometry STRING, 
+     EcoregionID INTEGER REFERENCES Ecoregions (EcoregionID), 
+     QLow TEXT, 
+     Q2 TEXT, 
+     MaxDrainage REAL CHECK (MaxDrainage >= 0), 
+     Metadata TEXT, 
+     Notes TEXT);
+
+CREATE TABLE VegetationTypes (
+     VegetationID INTEGER PRIMARY KEY NOT NULL, 
+     EpochID INTEGER REFERENCES Epochs (EpochID) NOT NULL, 
+     Name TEXT NOT NULL, 
+     DefaultSuitability INTEGER CONSTRAINT CHK_VegetationTypes_DefaultSuitability CHECK (DefaultSuitability >= 0 AND DefaultSuitability <= 4) NOT NULL DEFAULT (0), 
+     LandUseID INTEGER REFERENCES LandUses (LandUseID), 
+     Physiognomy TEXT, 
+     Notes TEXT);
+
+CREATE TABLE ReachAttributes (
+     ReachID INTEGER PRIMARY KEY NOT NULL, 
+     WatershedID TEXT REFERENCES Watersheds (WatershedID) ON DELETE CASCADE, 
+     ReachCode INTEGER REFERENCES ReachCodes (ReachCode), 
+     IsPeren INTEGER NOT NULL DEFAULT (0), 
+     StreamName TEXT, 
+     Orig_DA REAL, 
+     iGeo_Slope REAL, 
+     iGeo_ElMax REAL, 
+     iGeo_ElMin REAL, 
+     iGeo_Len REAL CONSTRAINT CHK_Reaches_LengthKm CHECK (iGeo_Len > 0), 
+     iGeo_DA REAL CONSTRAINT CK_Reaches_DrainageAreaSqKm CHECK (iGeo_DA >= 0), 
+     iVeg100EX REAL CONSTRAINT CHK_Reaches_ExistingVeg100 CHECK ((iVeg100EX >= 0) AND (iVeg100EX <= 4)), 
+     iVeg_30EX REAL CONSTRAINT CHK_Reaches_ExistingVeg30 CHECK ((iVeg_30EX >= 0) AND (iVeg_30EX <= 4)), 
+     iVeg100HPE REAL CONSTRAINT CHK_Reaches_HistoricVeg100 CHECK ((iVeg100HPE >= 0) AND (iVeg100HPE <= 4)), 
+     iVeg_30HPE REAL CONSTRAINT CH_Reaches_HistoricVeg30 CHECK ((iVeg_30HPE >= 0) AND (iVeg_30HPE <= 4)), 
+     iPC_Road REAL CONSTRAINT CHK_Reaches_RoadDist CHECK ((iPC_Road >= 0)), 
+     iPC_RoadX REAL CONSTRAINT CHK_Reaches_RoadCrossDist CHECK (iPC_RoadX >= 0), 
+     iPC_RoadVB REAL CONSTRAINT CGK_Reaches_RoadVBDist CHECK (iPC_RoadVB >= 0), 
+     iPC_Rail REAL CONSTRAINT CHK_Reaches_RailDist CHECK (iPC_Rail >= 0), 
+     iPC_RailVB REAL CONSTRAINT CHK_Reaches_RailVBDist CHECK (iPC_RailVB >= 0), 
+     iPC_LU REAL, 
+     iPC_VLowLU REAL, 
+     iPC_LowLU REAL, 
+     iPC_ModLU REAL, 
+     iPC_HighLU REAL, 
+     iHyd_QLow REAL CONSTRAINT CHK_Reaches_QLow CHECK (iHyd_QLow >= 0), 
+     iHyd_Q2 REAL CONSTRAINT CHK_Reaches_Q2 CHECK (iHyd_Q2 >= 0), 
+     iHyd_SPLow REAL CONSTRAINT CHK_Reaches_StreamPowerLow CHECK (iHyd_SPLow >= 0), 
+     iHyd_SP2 REAL CONSTRAINT CHK_Reaches_StreamPower2 CHECK (iHyd_SP2 >= 0), 
+     AgencyID INTEGER REFERENCES Agencies (AgencyID), 
+     oVC_HPE REAL, 
+     oVC_EX REAL, 
+     oCC_HPE REAL, 
+     mCC_HPE_CT REAL, 
+     oCC_EX REAL, 
+     mCC_EX_CT REAL, 
+     LimitationID INTEGER REFERENCES DamLimitations (LimitationID), 
+     RiskID INTEGER REFERENCES DamRisks (RiskID), 
+     OpportunityID INTEGER REFERENCES DamOpportunities (OpportunityID), 
+     iPC_Canal REAL, 
+     iPC_DivPts REAL, 
+     iPC_Privat REAL, 
+     oPC_Dist REAL, 
+     IsMainCh INTEGER, 
+     IsMultiCh INTEGER, 
+     mCC_HisDep REAL);
+
+CREATE TABLE DGOAttributes(
+     DGOID INTEGER PRIMARY KEY NOT NULL, 
+     WatershedID TEXT REFERENCES Watersheds (WatershedID) ON DELETE CASCADE,
+     FCode INTEGER REFERENCES ReachCodes (ReachCode),
+     level_path REAL,
+     seg_distance REAL,
+     centerline_length REAL,
+     segment_area REAL, 
+     iGeo_DA REAL CONSTRAINT CK_DGO_DrainageAreaSqKm CHECK (iGeo_DA >= 0), 
+     iGeo_Slope REAL, 
+     iVeg_100EX REAL CONSTRAINT CHK_Reaches_ExistingVeg100 CHECK ((iVeg_100EX >= 0) AND (iVeg_100EX <= 4)),
+     iVeg_30EX REAL CONSTRAINT CHK_Reaches_ExistingVeg30 CHECK ((iVeg_30EX >= 0) AND (iVeg_30EX <= 4)), 
+     iVeg_100HPE REAL CONSTRAINT CHK_Reaches_HistoricVeg100 CHECK ((iVeg_100HPE >= 0) AND (iVeg_100HPE <= 4)), 
+     iVeg_30HPE REAL CONSTRAINT CH_Reaches_HistoricVeg30 CHECK ((iVeg_30HPE >= 0) AND (iVeg_30HPE <= 4)),
+     );
+
+CREATE TABLE IGOAttributes(
+     IGOID INTEGER PRIMARY KEY NOT NULL,
+     FCode INTEGER REFERENCES ReachCodes (ReachCode),
+     level_path REAL,
+     seg_distance REAL);
+
+CREATE TABLE HydroParams (
+     ParamID INTEGER PRIMARY KEY NOT NULL, 
+     Name TEXT UNIQUE NOT NULL, 
+     Description TEXT NOT NULL, 
+     Aliases TEXT, 
+     DataUnits TEXT NOT NULL, 
+     EquationUnits TEXT, 
+     Conversion REAL NOT NULL DEFAULT (1),
+     Definition TEXT);
+
 CREATE INDEX FK_ReachVegetation_ReachID ON ReachVegetation (ReachID);
 CREATE INDEX FK_ReachVegetation_VegetationID ON ReachVegetation (VegetationID);
 CREATE INDEX FK_VegetationOverrides_EcoregionID ON VegetationOverrides (EcoregionID);
@@ -55,6 +212,14 @@ FROM ReachAttributes R
 CREATE VIEW vwReaches AS SELECT R.*, G.geom
 FROM vwReachAttributes R
          INNER JOIN ReachGeometry G ON R.ReachID = G.ReachID;
+
+CREATE VIEW vwDgos AS SELECT D.*, G.geom
+FROM DGOAttributes D
+         INNER JOIN DGOGeometry G ON D.DGOID = G.DGOID;
+
+CREATE VIEW vwIgos AS SELECT I.*, G.geom
+FROM IGOAttributes I
+         INNER JOIN IGOGeometry G ON I.IGOID = G.IGOID;
 
 CREATE VIEW vwHydroParams AS SELECT W.WatershedID,
        W.Name AS Watershed,
@@ -158,6 +323,8 @@ INSERT INTO gpkg_contents (table_name, data_type) VALUES ('WatershedHydroParams'
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Watersheds', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('VegetationTypes', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachAttributes', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('DGOAttributes', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('IGOAttributes', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('HydroParams', 'attributes');
 
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('vwReachAttributes', 'attributes');
