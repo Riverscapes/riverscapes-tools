@@ -720,7 +720,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                             metrics_output[metric['metric_id']] = str(road_density)
                         else:
                             road_density = None
-                        metrics_output[metric['metric_id']] = None
+                            metrics_output[metric['metric_id']] = None
 
                 if 'RAILDENS' in metrics and anthro_dgos:
                     metric = metrics['RAILDENS']
@@ -1578,7 +1578,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
             [f"M.{sql_name(metric['field_name'])} {sql_name(metric['field_name'])}" for metric in metrics.values()])
         sql = f'CREATE VIEW vw_igo_metrics AS SELECT G.fid, G.geom, G.level_path, G.seg_distance, G.stream_size, G.FCode, G.window_size, {metric_names_sql} FROM igos G INNER JOIN igo_metrics_pivot M ON M.fid = G.fid;'
         curs.execute(sql)
-        sql2 = f'CREATE VIEW vw_dgo_metrics AS SELECT G.fid, G.geom, G.level_path, G.seg_distance, G.FCode, {metric_names_sql} FROM dgos G INNER JOIN dgo_metrics_pivot M ON M.fid = G.fid;'
+        sql2 = f'CREATE VIEW vw_dgo_metrics AS SELECT G.fid, G.geom, G.level_path, G.seg_distance, G.FCode, G.segment_area, {metric_names_sql} FROM dgos G INNER JOIN dgo_metrics_pivot M ON M.fid = G.fid;'
         curs.execute(sql2)
         conn.commit()
 
