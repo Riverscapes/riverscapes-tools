@@ -6,7 +6,7 @@
   "license": "MIT",
   "author": "Matt Reimer <matt@northarrowresearch.com>",
   "dependencies": {
-    "@riverscapes/gatsby-theme": "^0.1.26",
+    "@riverscapes/gatsby-theme": "^0.1.28",
     "gatsby": "^5.13.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
