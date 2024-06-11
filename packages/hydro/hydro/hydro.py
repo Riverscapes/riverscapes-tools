@@ -23,6 +23,7 @@ from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions
 
 from hydro.utils.feature_geometry import reach_geometry, dgo_geometry
 from hydro.utils.hydrology import hydrology
+from hydro.hydro_report import HydroReport
 from hydro.__version__ import __version__
 
 Path = str

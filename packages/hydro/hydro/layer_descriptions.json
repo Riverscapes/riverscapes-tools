@@ -1,0 +1,8 @@
+{
+    "HYDRO_LINES": ["NHD Flowlines attributed with values for physical characteristics and hydrology",
+                    "", ""],
+    "HYDRO_POINTS": ["Integrated Geographic Objects (points spaced at equal intervals along the riverscape centerline) attributed with values for hydrology",
+                     "", ""],
+    "HYDRO_DGOS": ["Discrete Geographic Objects (riverscape segmented into discrete polygons) attributed with values for physical stream characteristics and hydrology",
+                   "",""]
+}
