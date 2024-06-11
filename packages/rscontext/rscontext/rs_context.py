@@ -39,6 +39,7 @@ from rscommons.util import (parse_metadata, pretty_duration, safe_makedirs,
 from rscommons.vector_ops import copy_feature_class
 from rscommons.geometry_ops import get_rectangle_as_geom
 from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions, raster_resolution_meta
+from rscommons.segment_network import segment_network
 
 from rscontext.__version__ import __version__
 from rscontext.boundary_management import raster_area_intersection
@@ -108,6 +109,7 @@ LayerTypes = {
         'BUFFEREDCLIP500': RSLayer('Buffered Clip Shape 500m', 'BUFFERED_CLIP500', 'Vector', 'buffered_clip500m'),
         'NETWORK_CROSSINGS': RSLayer('NHD Flowlines with road, rail and ownership crossings', 'NETWORK_CROSSINGS', 'Vector', 'network_crossings'),
         'NETWORK_INTERSECTION': RSLayer('NHD Flowlines intersected with road, rail and ownership', 'NETWORK_INTERSECTION', 'Vector', 'network_intersected'),
+        'NETWORK_SEGMENTED': RSLayer('NHD Flowlines segmented to 300 m (max) segments', 'NETWORK_SEGMENTED', 'Vector', 'network_segmented'),
         'CATCHMENTS': RSLayer('NHD Catchments', 'CATCHMENTS', 'Vector', 'catchments'),
         'PROCESSING_EXTENT': RSLayer('Processing Extent of HUC-DEM Intersection', 'PROCESSING_EXTENT', 'Vector', 'processing_extent'),
         'NHDAREASPLIT': RSLayer('NDH Area layer split by NHDPlusCatchments', 'NHDAreaSplit', 'Vector', 'NHDAreaSplit'),
@@ -538,6 +540,14 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states_
 
     rs_segmentation(view_vaa_flowline, lines, areas, hydro_deriv_gpkg_path)
     log.debug('Segmentation done in {:.1f} seconds'.format(tmr.ellapsed()))
+
+    # Add the segmented flowlines to the project
+    log.info('Adding 300 m segmented flowlines to project')
+    in_lines = os.path.join(
+        hydro_deriv_gpkg_path, LayerTypes['HYDRODERIVATIVES'].sub_layers['NETWORK_INTERSECTION'].rel_path)
+    segmented_flowlines = os.path.join(
+        hydro_deriv_gpkg_path, LayerTypes['HYDRODERIVATIVES'].sub_layers['NETWORK_SEGMENTED'].rel_path)
+    segment_network(in_lines, segmented_flowlines, 300, 30, huc, create_layer=True)
 
     # add geopackages to project xml
     project.add_project_geopackage(datasets, LayerTypes['NHDPLUSHR'])
