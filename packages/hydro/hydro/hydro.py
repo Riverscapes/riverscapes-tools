@@ -16,10 +16,11 @@ from rscommons import RSLayer, RSProject, ModelConfig
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons import GeopackageLayer
 from rscommons.vector_ops import copy_feature_class
-
+from rscommons.database import create_database, SQLiteCon
+from rscommons.copy_features import copy_features_fields
 from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions, raster_resolution_meta
 
-
+from hydro.utils.hydrology import hydrology
 from hydro.__version__ import __version__
 
 Path = str
@@ -100,8 +101,6 @@ def hydro_context(huc: int, hillshade: Path, igo: Path, dgo: Path, flowlines: Pa
             'level_path': ogr.OFTReal,
             'seg_distance': ogr.OFTReal,
             'stream_size': ogr.OFTInteger,
-            'window_size': ogr.OFTReal,
-            'window_area': ogr.OFTReal,
             'centerline_length': ogr.OFTReal
         })
 
@@ -117,7 +116,6 @@ def hydro_context(huc: int, hillshade: Path, igo: Path, dgo: Path, flowlines: Pa
     with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['HYDRO_GEOM_LINES'].rel_path, write=True) as out_lyr:
         out_lyr.create_layer(ogr.wkbMultiLineString, epsg=cfg.OUTPUT_EPSG, options=['FID=ReachID'], fields={
             'FCode': ogr.OFTInteger,
-            'ReachCode': ogr.OFTString,
             'TotDASqKm': ogr.OFTReal,
             'DivDASqKm': ogr.OFTReal,
             'GNIS_Name': ogr.OFTString,
@@ -125,3 +123,49 @@ def hydro_context(huc: int, hillshade: Path, igo: Path, dgo: Path, flowlines: Pa
             'level_path': ogr.OFTReal,
             'ownership': ogr.OFTString
         })
+
+    db_metadata = {
+        'Hydro DateTime': datetime.datetime.now().isoformat()
+    }
+    create_database(huc, outputs_gpkg_path, db_metadata, cfg.OUTPUT_EPSG, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'hydro_schema.sql'))
+
+    igo_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['ANTHRO_GEOM_POINTS'].rel_path)
+    line_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['ANTHRO_GEOM_LINES'].rel_path)
+    dgo_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['ANTHRO_GEOM_DGOS'].rel_path)
+    copy_features_fields(input_layers['IGO'], igo_geom_path, epsg=cfg.OUTPUT_EPSG)
+    copy_features_fields(input_layers['FLOWLINES'], line_geom_path, epsg=cfg.OUTPUT_EPSG)
+    copy_features_fields(input_layers['DGO'], dgo_geom_path, epsg=cfg.OUTPUT_EPSG)
+
+    with SQLiteCon(outputs_gpkg_path) as database:
+        database.curs.execute('INSERT INTO ReachAttributes (ReachID, FCode, NHDPlusID, StreamName, level_path, ownership), SELECT ReachID, FCode, NHDPlusID, GNIS_Name, level_path, ownership FROM ReachGeometry')
+        database.curs.execute('INSERT INTO DGOAttributes (DGOID, FCode, level_path, seg_distance, centerline_length, segment_area) SELECT DGOID, FCode, level_path, seg_distance, centerline_length, segment_area FROM DGOGeometry')
+        database.curs.execute('INSERT INTO IGOAttributes (IGOID, FCode, level_path, seg_distance,) SELECT IGOID, FCode, level_path, seg_distance, FROM IGOGeometry')
+
+        database.curs.execute("""INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id)
+            SELECT 'vwReaches', data_type, 'Reaches', min_x, min_y, max_x, max_y, srs_id FROM gpkg_contents WHERE table_name = 'ReachGeometry'""")
+
+        database.curs.execute("""INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m)
+            SELECT 'vwReaches', column_name, geometry_type_name, srs_id, z, m FROM gpkg_geometry_columns WHERE table_name = 'ReachGeometry'""")
+
+        database.curs.execute("""INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id)
+            SELECT 'vwIgos', data_type, 'igos', min_x, min_y, max_x, max_y, srs_id FROM gpkg_contents WHERE table_name = 'IGOGeometry'""")
+
+        database.curs.execute("""INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m)
+            SELECT 'vwIgos', column_name, geometry_type_name, srs_id, z, m FROM gpkg_geometry_columns WHERE table_name = 'IGOGeometry'""")
+
+        database.curs.execute("""INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id)
+            SELECT 'vwDgos', data_type, 'dgos', min_x, min_y, max_x, max_y, srs_id FROM gpkg_contents WHERE table_name = 'DGOGeometry'""")
+
+        database.curs.execute("""INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m)
+            SELECT 'vwDgos', column_name, geometry_type_name, srs_id, z, m FROM gpkg_geometry_columns WHERE table_name = 'DGOGeometry'""")
+
+        database.conn.execute('CREATE INDEX ix_igo_levelpath on IGOGeometry(level_path)')
+        database.conn.execute('CREATE INDEX ix_igo_segdist on IGOGeometry(seg_distance)')
+        database.conn.execute('CREATE INDEX ix_igo_size on IGOGeometry(stream_size)')
+        database.conn.execute('CREATE INDEX ix_dgo_levelpath on DGOGeometry(level_path)')
+        database.conn.execute('CREATE INDEX ix_dgo_segdist on DGOGeometry(seg_distance)')
+
+        database.conn.commit()
+
+    for suf in ['Low', '2']:
+        hydrology(outputs_gpkg_path, suf, huc)

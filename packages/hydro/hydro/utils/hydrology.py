@@ -28,50 +28,50 @@ def hydrology(gpkg_path: str, prefix: str, huc: str):
         Exception: When the watershed is missing the regional discharge equation
     """
 
-    hydrology_field = 'iHyd_Q{}'.format(prefix)
-    streampower_field = 'iHyd_SP{}'.format(prefix)
+    hydrology_field = f'Q{prefix}'
+    streampower_field = f'SP{prefix}'
 
     log = Logger('Hydrology')
-    log.info('Calculating Q{} hydrology for HUC {}'.format(prefix, huc))
-    log.info('Discharge field: {}'.format(hydrology_field))
-    log.info('Stream power field: {}'.format(streampower_field))
+    log.info(f'Calculating Q{prefix} hydrology for HUC {huc}')
+    log.info(f'Discharge field: {hydrology_field}')
+    log.info(f'Stream power field: {streampower_field}')
 
     # Load the hydrology equation for the HUC
     with SQLiteCon(gpkg_path) as database:
-        database.curs.execute('SELECT Q{} As Q FROM Watersheds WHERE WatershedID = ?'.format(prefix), [huc])
+        database.curs.execute(f'SELECT Q{prefix} As Q FROM Watersheds WHERE WatershedID = ?', [huc])
         equation = database.curs.fetchone()['Q']
         equation = equation.replace('^', '**')
 
         if not equation:
-            raise Exception('Missing {} hydrology formula for HUC {}'.format(prefix, huc))
+            raise Exception(f'Missing {prefix} hydrology formula for HUC {huc}')
 
-        log.info('Regional curve: {}'.format(equation))
+        log.info(f'Regional curve: {equation}')
 
         # Load the hydrology CONVERTED parameters for the HUC (the values will be in the same units as used in the regional equations)
         database.curs.execute('SELECT Parameter, ConvertedValue FROM vwHydroParams WHERE WatershedID = ?', [huc])
         params = {row['Parameter']: row['ConvertedValue'] for row in database.curs.fetchall()}
-        [log.info('Param: {} = {:.2f}'.format(key, value)) for key, value in params.items()]
+        [log.info(f'Param: {key} = {value:.2f}') for key, value in params.items()]
 
         # Load the conversion factor for converting reach attribute drainage areas to the values used in the regional equations
         database.curs.execute('SELECT Conversion FROM HydroParams WHERE Name = ?', [DRNAREA_PARAM])
         drainage_conversion_factor = database.curs.fetchone()['Conversion']
-        log.info('Reach drainage area attribute conversion factor = {}'.format(drainage_conversion_factor))
+        log.info(f'Reach drainage area attribute conversion factor = {drainage_conversion_factor}')
 
     # Load the discharges for each reach
-    reaches = load_attributes(gpkg_path, ['iGeo_DA'], '(iGeo_DA IS NOT NULL)')
-    log.info('{:,} reaches loaded with valid drainage area values'.format(len(reaches)))
+    reaches = load_attributes(gpkg_path, ['DrainArea'], '(DrainArea IS NOT NULL)')
+    log.info(f'{len(reaches):,} reaches loaded with valid drainage area values')
 
     # Calculate the discharges for each reach
     results = calculate_hydrology(reaches, equation, params, drainage_conversion_factor, hydrology_field)
-    log.info('{:,} reach hydrology values calculated.'.format(len(results)))
+    log.info(f'{len(results):,} reach hydrology values calculated.')
 
     # Write the discharges to the database
     write_db_attributes(gpkg_path, results, [hydrology_field])
 
     # Convert discharges to stream power
     with SQLiteCon(gpkg_path) as database:
-        database.curs.execute('UPDATE ReachAttributes SET {0} = ROUND((1000 * 9.80665) * iGeo_Slope * ({1} * 0.028316846592), 2)'
-                              ' WHERE ({1} IS NOT NULL) AND (iGeo_Slope IS NOT NULL)'.format(streampower_field, hydrology_field))
+        database.curs.execute(f"""UPDATE ReachAttributes SET {streampower_field} = ROUND((1000 * 9.80665) * iGeo_Slope * ({hydrology_field} * 0.028316846592), 2)
+                              WHERE ({hydrology_field} IS NOT NULL) AND (iGeo_Slope IS NOT NULL)""")
         database.conn.commit()
 
     log.info('Hydrology calculation complete')
@@ -103,15 +103,15 @@ def calculate_hydrology(reaches: dict, equation: str, params: dict, drainage_con
         for reachid, values in reaches.items():
 
             # Use the drainage area for the current reach and convert to the units used in the equation
-            params[DRNAREA_PARAM] = values['iGeo_DA'] * drainage_conversion_factor
+            params[DRNAREA_PARAM] = values['DrainArea'] * drainage_conversion_factor
 
             # Execute the equation but restrict the use of all built-in functions
             eval_result = eval(equation, {'__builtins__': None}, params)
             results[reachid] = {field: eval_result}
     except Exception as ex:
-        [log.warning('{}: {}'.format(param, value)) for param, value in params.items()]
-        log.warning('Hydrology formula failed: {}'.format(equation))
-        log.error('Error calculating {} hydrology')
+        [log.warning(f'{param}: {value}') for param, value in params.items()]
+        log.warning(f'Hydrology formula failed: {equation}')
+        log.error('Error calculating hydrology')
         raise ex
 
     return results
