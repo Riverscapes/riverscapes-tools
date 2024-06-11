@@ -1,0 +1,1 @@
+sqlite3 ./hydro_template.sqlite < ./dump_schema.sql
