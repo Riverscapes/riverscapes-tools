@@ -12,7 +12,7 @@ lyrs_in_out = {
     # ANTHRO_ID: INPUT_ID
     'HILLSHADE': 'HILLSHADE',
     'EXVEG': 'EXVEG',
-    'flowlines': 'network_intersected',
+    'flowlines': 'network_segmented',
     'roads': 'Roads',
     'rails': 'Rail',
     'canals': 'Canals',
