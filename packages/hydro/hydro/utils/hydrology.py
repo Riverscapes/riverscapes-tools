@@ -8,7 +8,7 @@ import os
 import sys
 import traceback
 from rscommons import Logger, dotenv
-from rscommons.database import write_db_attributes, SQLiteCon, load_attributes
+from rscommons.database import write_db_attributes, write_db_dgo_attributes, SQLiteCon, load_attributes, load_dgo_attributes
 
 
 # This is the reach drainage area variable in the regional curve equations
@@ -59,19 +59,25 @@ def hydrology(gpkg_path: str, prefix: str, huc: str):
 
     # Load the discharges for each reach
     reaches = load_attributes(gpkg_path, ['DrainArea'], '(DrainArea IS NOT NULL)')
+    dgos = load_dgo_attributes(gpkg_path, ['DrainArea'], '(DrainArea IS NOT NULL)')
     log.info(f'{len(reaches):,} reaches loaded with valid drainage area values')
 
     # Calculate the discharges for each reach
-    results = calculate_hydrology(reaches, equation, params, drainage_conversion_factor, hydrology_field)
-    log.info(f'{len(results):,} reach hydrology values calculated.')
+    reach_results = calculate_hydrology(reaches, equation, params, drainage_conversion_factor, hydrology_field)
+    dgo_results = calculate_hydrology(dgos, equation, params, drainage_conversion_factor, hydrology_field)
+    log.info(f'{len(reach_results):,} reach hydrology values calculated.')
+    log.info(f'{len(dgo_results):,} dgo hydrology values calculated.')
 
     # Write the discharges to the database
-    write_db_attributes(gpkg_path, results, [hydrology_field])
+    write_db_attributes(gpkg_path, reach_results, [hydrology_field])
+    write_db_dgo_attributes(gpkg_path, dgo_results, [hydrology_field])
 
     # Convert discharges to stream power
     with SQLiteCon(gpkg_path) as database:
-        database.curs.execute(f"""UPDATE ReachAttributes SET {streampower_field} = ROUND((1000 * 9.80665) * iGeo_Slope * ({hydrology_field} * 0.028316846592), 2)
-                              WHERE ({hydrology_field} IS NOT NULL) AND (iGeo_Slope IS NOT NULL)""")
+        database.curs.execute(f"""UPDATE ReachAttributes SET {streampower_field} = ROUND((1000 * 9.80665) * Slope * ({hydrology_field} * 0.028316846592), 2)
+                              WHERE ({hydrology_field} IS NOT NULL) AND (Slope IS NOT NULL)""")
+        database.curs.execute(f"""UPDATE DGOAttributes SET {streampower_field} = ROUND((1000 * 9.80665) * Slope * ({hydrology_field} * 0.028316846592), 2)
+                              WHERE ({hydrology_field} IS NOT NULL) AND (Slope IS NOT NULL)""")
         database.conn.commit()
 
     log.info('Hydrology calculation complete')

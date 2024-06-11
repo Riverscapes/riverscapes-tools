@@ -8,9 +8,10 @@ import traceback
 import sys
 import time
 import datetime
-from typing import Dict, List
+from typing import Dict
 from osgeo import ogr
 
+from rscommons.util import pretty_duration, parse_metadata
 from rscommons import Logger, initGDALOGRErrors, dotenv
 from rscommons import RSLayer, RSProject, ModelConfig
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
@@ -18,8 +19,9 @@ from rscommons import GeopackageLayer
 from rscommons.vector_ops import copy_feature_class
 from rscommons.database import create_database, SQLiteCon
 from rscommons.copy_features import copy_features_fields
-from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions, raster_resolution_meta
+from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions
 
+from hydro.utils.feature_geometry import reach_geometry, dgo_geometry
 from hydro.utils.hydrology import hydrology
 from hydro.__version__ import __version__
 
@@ -31,6 +33,7 @@ cfg = ModelConfig('https://xml.riverscapes.net/Projects/XSD/V2/RiverscapesProjec
 
 LYR_DESCRIPTIONS_JSON = os.path.join(os.path.dirname(__file__), 'layer_descriptions.json')
 LayerTypes = {
+    'DEM': RSLayer('Digital Elevation Model', 'DEM', 'Raster', 'inputs/dem.tif'),
     'HILLSHADE': RSLayer('DEM Hillshade', 'HILLSHADE', 'Raster', 'inputs/dem_hillshade.tif'),
     'INPUTS': RSLayer('Hydrologic Inputs', 'INPUTS', 'Geopackage', 'inputs/hydro_inputs.gpkg', {
         'IGO': RSLayer('Integrated Geographic Objects', 'IGO', 'Vector', 'igo'),
@@ -49,7 +52,7 @@ LayerTypes = {
 }
 
 
-def hydro_context(huc: int, hillshade: Path, igo: Path, dgo: Path, flowlines: Path,
+def hydro_context(huc: int, dem: Path, hillshade: Path, igo: Path, dgo: Path, flowlines: Path,
                   output_folder: Path, meta: Dict[str, str]):
 
     log = Logger('Hydrologic Context')
@@ -71,6 +74,7 @@ def hydro_context(huc: int, hillshade: Path, igo: Path, dgo: Path, flowlines: Pa
 
     log.info('Adding input rasters to project')
     project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], hillshade)
+    dem_node, dem_path = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], dem)
 
     project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
     project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['OUTPUTS'])
@@ -167,5 +171,95 @@ def hydro_context(huc: int, hillshade: Path, igo: Path, dgo: Path, flowlines: Pa
 
         database.conn.commit()
 
+    # Associate DGOs with corresponding IGOs
+    dgo_igo = {}
+    with GeopackageLayer(outputs_gpkg_path, 'DGOGeometry') as dgo_lyr, \
+            GeopackageLayer(outputs_gpkg_path, 'IGOGeometry') as igo_lyr:
+        for dgo_feat, *_ in dgo_lyr.iterate_features():
+            dgo_id = dgo_feat.GetFID()
+            lp = dgo_feat.GetField('level_path')
+            seg_dist = dgo_feat.GetField('seg_distance')
+            for igo_feat, *_ in igo_lyr.iterate_features(attribute_filter=f'level_path = {lp} and seg_distance = {seg_dist}'):
+                if igo_feat.IsValid():
+                    igo_id = igo_feat.GetFID()
+                    dgo_igo[dgo_id] = igo_id
+                    break
+
+    # Calculate slope, length, drainage area for reaches and DGOs
+    reach_geometry(outputs_gpkg_path, dem_path, 100)
+    dgo_geometry(outputs_gpkg_path, dem_path)
+
+    # Calculate discharge and stream power values
     for suf in ['Low', '2']:
         hydrology(outputs_gpkg_path, suf, huc)
+
+    # copy values from DGOs to IGOs
+    with SQLiteCon(outputs_gpkg_path) as database:
+        for dgo_id, igo_id in dgo_igo.items():
+            database.curs.execute(f'UPDATE IGOAttributes SET QLow = SELECT QLow FROM DGOAttributes WHERE DGOID = {dgo_id} AND IGOID = {igo_id}')
+            database.curs.execute(f'UPDATE IGOAttributes SET Q2 = SELECT Q2 FROM DGOAttributes WHERE DGOID = {dgo_id} AND IGOID = {igo_id}')
+            database.curs.execute(f'UPDATE IGOAttributes SET SPLow = SELECT SPLow FROM DGOAttributes WHERE DGOID = {dgo_id} AND IGOID = {igo_id}')
+            database.curs.execute(f'UPDATE IGOAttributes SET SP2 = SELECT SP2 FROM DGOAttributes WHERE DGOID = {dgo_id} AND IGOID = {igo_id}')
+        database.conn.commit()
+
+    ellapsed_time = time.time() - start_time
+
+    project.add_metadata([
+        RSMeta('ProcTimeS', f'{ellapsed_time:.2f}', RSMetaTypes.HIDDEN, locked=True),
+        RSMeta('Processing Time', pretty_duration(ellapsed_time), locked=True)]
+    )
+
+    add_layer_descriptions(project, LYR_DESCRIPTIONS_JSON, LayerTypes)
+
+    report_path = os.path.join(output_folder, LayerTypes['REPORT'].rel_path)
+    project.add_report(proj_nodes['Outputs'], LayerTypes['REPORT'], replace=True)
+
+    report = HydroReport(report_path, project)
+    report.write()
+
+    log.info('Hydrologic Context completed successfully')
+
+
+def main():
+
+    parser = argparse.ArgumentParser(description='Build a Hydrologic Context project')
+    parser.add_argument('huc', type=int, help='Hydrologic Unit Code')
+    parser.add_argument('dem', type=str, help='Path to DEM raster')
+    parser.add_argument('hillshade', type=str, help='Path to hillshade raster')
+    parser.add_argument('igo', type=str, help='Path to IGO feature class')
+    parser.add_argument('dgo', type=str, help='Path to DGO feature class')
+    parser.add_argument('flowlines', type=str, help='Path to flowlines feature class')
+    parser.add_argument('output_folder', type=str, help='Output folder')
+    parser.add_argument('--meta', type=str, help='Metadata in JSON format', default='{}')
+    parser.add_argument('--verbose', help='(optional) a little extra logging', action='store_true', default=False)
+    parser.add_argument('--debug', help='(optional) run in debug mode', action='store_true', default=False)
+
+    args = dotenv.parse_args_env(parser)
+
+    log = Logger('Hydrologic Context')
+    log.setup(logPath=os.path.join(args.output_folder, 'hydro.log'), verbose=args.verbose)
+    log.title(f'Hydrologic Context for HUC: {args.huc}')
+
+    meta = parse_metadata(args.meta)
+
+    try:
+        if args.debug is True:
+            from rscommons.debug import ThreadRun
+            memfile = os.path.join(args.output_folder, 'hydro_memusage.log')
+            retcode, max_obj = ThreadRun(hydro_context, memfile,
+                                         args.huc, args.dem, args.hillshade, args.igo, args.dgo,
+                                         args.flowlines, args.output_folder, meta)
+            log.debug(f'Return code: {retcode}, Max memory usage: {max_obj}')
+        else:
+            hydro_context(args.huc, args.dem, args.hillshade, args.igo, args.dgo, args.flowlines, args.output_folder, meta)
+
+    except Exception as ex:
+        log.error(f'Error: {ex}')
+        traceback.print_exc(file=sys.stdout)
+        sys.exit(1)
+
+    sys.exit(0)
+
+
+if __name__ == '__main__':
+    main()
