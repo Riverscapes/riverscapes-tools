@@ -39,6 +39,9 @@ def hydrology(gpkg_path: str, prefix: str, huc: str):
     # Load the hydrology equation for the HUC
     with SQLiteCon(gpkg_path) as database:
         database.curs.execute(f'SELECT Q{prefix} As Q FROM Watersheds WHERE WatershedID = ?', [huc])
+        if database.curs.fetchone() is None:
+            database.curs.execute(f'SELECT Q{prefix} As Q FROM Watersheds WHERE WatershedID = ?', [huc[:8]])
+            huc = huc[:8]
         equation = database.curs.fetchone()['Q']
         equation = equation.replace('^', '**')
 

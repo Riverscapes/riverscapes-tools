@@ -13,8 +13,8 @@ from rscommons.database import SQLiteCon, write_db_attributes, write_db_dgo_attr
 from rscommons.raster_buffer_stats import raster_buffer_stats2
 
 
-default_field_names = {'Length': 'Length_m', 'Gradient': 'Slope', 'MinElevation': 'MinElev', 'MaxElevation': 'MaxElev'}
-default_dgo_field_names = {'Length': 'Length_m', 'Gradient': 'Slope', 'MinElevation': 'MinElev', 'MaxElevation': 'MaxElev', 'DrainArea': 'DrainArea'}
+default_field_names = {'Length': 'Length_m', 'Gradient': 'Slope', 'MinElevation': 'ElevMin', 'MaxElevation': 'ElevMax'}
+default_dgo_field_names = {'Length': 'Length_m', 'Gradient': 'Slope', 'MinElevation': 'ElevMin', 'MaxElevation': 'ElevMax', 'DrainArea': 'DrainArea'}
 
 
 def reach_geometry(gpk_path: str, dem_path: str, buffer_distance: float, field_names=default_field_names):
@@ -86,7 +86,7 @@ def reach_geometry(gpk_path: str, dem_path: str, buffer_distance: float, field_n
     write_db_attributes(gpk_path, reaches, [field_names['Length'], field_names['MaxElevation'], field_names['MinElevation'], field_names['Gradient']])
 
 
-def dgo_geometry(gpk_path: str, dem_path: str, field_names=default_field_names):
+def dgo_geometry(gpk_path: str, dem_path: str, field_names=default_dgo_field_names):
     """Copy hydrology attributes over from the reaches feature class to the DGO and IGO feature classes"""
 
     log = Logger('Reach Geometry')
@@ -111,24 +111,31 @@ def dgo_geometry(gpk_path: str, dem_path: str, field_names=default_field_names):
             dgo_geom = dgo_ftr.GetGeometryRef()
 
             # Get the reach attributes for this DGO
-            drain_area = []
+            drain_area = [0]
             ftrs = []
             for reach_ftr, *_ in reaches_lyr.iterate_features(clip_shape=dgo_geom):
                 if reach_ftr.GetGeometryRef() is None:
                     continue
                 geom_clipped = dgo_geom.Intersection(reach_ftr.GetGeometryRef())
                 if geom_clipped.GetGeometryName() == 'MULTILINESTRING':
-                    geom_clipped = reduce_precision(geom_clipped, 6)
-                    geom_clipped = ogr.ForceToLineString(geom_clipped)
-                    ftrs.append(VectorBase.ogr2shapely(geom_clipped))
+                    # geom_clipped = reduce_precision(geom_clipped, 6)
+                    # geom_clipped = ogr.ForceToLineString(geom_clipped)
+                    for geom in geom_clipped:
+                        ftrs.append(VectorBase.ogr2shapely(geom))
                 else:
                     ftrs.append(VectorBase.ogr2shapely(geom_clipped))
 
-                drain_area.append(reach_ftr.GetField('DrainArea'))
-            if len(ftrs) > 1:
-                line = linemerge(ftrs)
+                da = reach_ftr.GetField('DrainArea')
+                if da is not None:
+                    drain_area.append(da)
+            if len(ftrs) == 0:
+                continue
             else:
-                line = ftrs[0]
+                if len(ftrs) > 1:
+                    line = linemerge(ftrs)
+                else:
+                    line = ftrs[0]
+            line = VectorBase.shapely2ogr(line)
 
             endpoints = get_endpoints(line)
             elevations = []
@@ -145,7 +152,7 @@ def dgo_geometry(gpk_path: str, dem_path: str, field_names=default_field_names):
             dgo_atts[dgoid] = {field_names['Length']: stream_length,
                                field_names['MaxElevation']: elevations[-1],
                                field_names['MinElevation']: elevations[0],
-                               field_names['Gradient']: elevations[-1] - elevations[0],
+                               field_names['Gradient']: (elevations[-1] - elevations[0]) / stream_length,
                                field_names['DrainArea']: max(drain_area)}
 
     write_db_dgo_attributes(gpk_path, dgo_atts, [field_names['Length'], field_names['MaxElevation'], field_names['MinElevation'], field_names['Gradient'], field_names['DrainArea']])

@@ -1,16 +1,21 @@
+CREATE TABLE Ecoregions (
+    EcoregionID INTEGER PRIMARY KEY UNIQUE NOT NULL, 
+    Name TEXT UNIQUE NOT NULL);
+
 CREATE TABLE Watersheds (
     WatershedID TEXT PRIMARY KEY NOT NULL UNIQUE, 
     Name TEXT NOT NULL, 
     AreaSqKm REAL CONSTRAINT CHK_HUCs_Area CHECK (AreaSqKm >= 0), 
-    States TEXT, 
-    Geometry STRING, 
+    States TEXT,
     QLow TEXT, 
     Q2 TEXT, 
-    MaxDrainage REAL CHECK (MaxDrainage >= 0), 
-    Metadata TEXT, 
-    Notes TEXT);
+    MaxDrainage REAL CHECK (MaxDrainage >= 0),
+    EcoregionID INTEGER REFERENCES Ecoregions (EcoregionID),
+    Notes TEXT,
+    Metadata TEXT);
 
-CREATE TABLE WatershedHydroParams (WatershedID TEXT REFERENCES Watersheds (WatershedID) ON DELETE CASCADE NOT NULL, 
+CREATE TABLE WatershedHydroParams (
+    WatershedID TEXT REFERENCES Watersheds (WatershedID) ON DELETE CASCADE NOT NULL, 
     ParamID INTEGER REFERENCES HydroParams (ParamID) NOT NULL, 
     Value REAL NOT NULL, 
     PRIMARY KEY (WatershedID, ParamID));
@@ -85,6 +90,10 @@ CREATE TABLE IGOAttributes(
     SP2 REAL
 );
 
+CREATE TABLE MetaData (
+    KeyInfo TEXT PRIMARY KEY NOT NULL, 
+    ValueInfo TEXT);
+
 -- indexes
 
 -- The main views
@@ -100,10 +109,33 @@ CREATE VIEW vwIGOs AS SELECT I.*, G.geom
 FROM IGOAttributes I
     INNER JOIN IGOGeometry G ON I.IGOID = G.IGOID;
 
+CREATE VIEW vwHydroParams AS SELECT W.WatershedID,
+       W.Name AS Watershed,
+       W.States,
+       W.Metadata,
+       E.EcoregionID,
+       E.Name AS Ecoregion,
+       HP.ParamID,
+       HP.Name AS Parameter,
+       HP.Aliases,
+       HP.DataUnits,
+       HP.EquationUnits,
+       WHP.Value,
+       HP.Conversion,
+       WHP.Value * HP.Conversion AS ConvertedValue
+  FROM Watersheds W
+       INNER JOIN
+       Ecoregions E ON W.EcoregionID = E.EcoregionID
+       INNER JOIN
+       WatershedHydroParams WHP ON W.WatershedID = WHP.WatershedID
+       INNER JOIN
+       HydroParams HP ON WHP.ParamID = HP.ParamID;
+
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Watersheds', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('WatershedHydroParams', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('HydroParams', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('FCodes', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachAttributes', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('DGOAttributes', 'attributes');
-INSERT INTO gpkg_contents (table_name, data_type) VALUES ('IGOAttributes', 'attributes')
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('IGOAttributes', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('MetaData', 'attributes')
