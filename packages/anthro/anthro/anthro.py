@@ -160,8 +160,14 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
             'DivDASqKm': ogr.OFTReal,
             'GNIS_Name': ogr.OFTString,
             'NHDPlusID': ogr.OFTReal,
+            'WatershedID': ogr.OFTString,
             'level_path': ogr.OFTReal,
-            'ownership': ogr.OFTString
+            'ownership': ogr.OFTString,
+            'divergence': ogr.OFTReal,
+            'stream_order': ogr.OFTInteger,
+            'us_state': ogr.OFTString,
+            'ecoregion_iii': ogr.OFTString,
+            'ecoregion_iv': ogr.OFTString
         })
 
     db_metadata = {
@@ -179,9 +185,12 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
     copy_features_fields(input_layers['DGO'], dgo_geom_path, epsg=cfg.OUTPUT_EPSG)
 
     with SQLiteCon(outputs_gpkg_path) as database:
-        database.curs.execute('INSERT INTO ReachAttributes (ReachID, TotDASqKm, DivDASqKm, ReachCode, FCode, StreamName, NHDPlusID, level_path, ownership) SELECT ReachID, TotDASqKm, DivDASqKm, ReachCode, FCode, GNIS_NAME, NHDPlusID, level_path, ownership FROM ReachGeometry')
-        database.curs.execute('INSERT INTO IGOAttributes (IGOID, FCode, level_path, seg_distance, stream_size) SELECT IGOID, FCode, level_path, seg_distance, stream_size FROM IGOGeometry')
-        database.curs.execute('INSERT INTO DGOAttributes (DGOID, FCode, level_path, seg_distance, segment_area, centerline_length) SELECT DGOID, FCode, level_path, seg_distance, segment_area, centerline_length FROM DGOGeometry')
+        database.curs.execute("""INSERT INTO ReachAttributes (ReachID, FCode, ReachCode, NHDPlusID, StreamName, level_path, TotDASqKM, DivDASqKM, WatershedID, ownership, divergence, stream_order, us_state, ecoregion_iii, ecoregion_iv)
+                              SELECT ReachID, FCode, ReachCode, NHDPlusID, GNIS_Name, level_path, TotDASqKM, DivDASqKM, WatershedID, ownership, divergence, stream_order, us_state, ecoregion_iii, ecoregion_iv FROM ReachGeometry""")
+        database.curs.execute("""INSERT INTO IGOAttributes (IGOID, FCode, level_path, seg_distance, stream_size)
+                              SELECT IGOID, FCode, level_path, seg_distance, stream_size FROM IGOGeometry""")
+        database.curs.execute("""INSERT INTO DGOAttributes (DGOID, FCode, level_path, seg_distance, segment_area, centerline_length)
+                              SELECT DGOID, FCode, level_path, seg_distance, segment_area, centerline_length FROM DGOGeometry""")
 
         # Register vwReaches as a feature layer as well as its geometry column
         database.curs.execute("""INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id)
