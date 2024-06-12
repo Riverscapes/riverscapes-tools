@@ -55,7 +55,7 @@
           ]
         },
         {
-          "name": "Write Anthro report",
+          "name": "Write Hydro report",
           "type": "python",
           "request": "launch",
           "module": "hydro.hydro_report",
