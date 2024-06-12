@@ -54,9 +54,9 @@ LayerTypes = {
         'WATERBODIES': RSLayer('NHD Waterbody', 'WATERBODIES', 'Vector', 'waterbodies'),
         'VALLEY_BOTTOM': RSLayer('Valley Bottom', 'VALLEY_BOTTOM', 'Vector', 'valley_bottom'),
     }),
-    # 'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/intermediates.gpkg', {
-    #     'SEGMENTED_NETWORK': RSLayer('Segmented Network', 'SEGMENTED_NETWORK', 'Vector', 'segmented_network'),
-    # }),
+    'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/intermediates.gpkg', {
+        'SEGMENTED_NETWORK': RSLayer('Segmented Network', 'SEGMENTED_NETWORK', 'Vector', 'segmented_network'),
+    }),
     'OUTPUTS': RSLayer('BRAT', 'OUTPUTS', 'Geopackage', 'outputs/brat.gpkg', {
         'BRAT_GEOMETRY': RSLayer('BRAT Geometry', 'BRAT_GEOMETRY', 'Vector', 'ReachGeometry'),
         'BRAT': RSLayer('BRAT', 'BRAT_RESULTS', 'Vector', 'vwReaches'),
@@ -124,21 +124,19 @@ def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Pa
     _realization, proj_nodes = project.add_realization(project_name, 'REALIZATION1', cfg.version, data_nodes=['Inputs', 'Intermediates', 'Outputs'])
 
     log.info('Adding input rasters to project')
-    _dem_raster_path_node, dem_raster_path = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], dem)
     _existing_path_node, prj_existing_path = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['EXVEG'], existing_veg)
     _historic_path_node, prj_historic_path = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HISTVEG'], historical_veg)
     project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], hillshade)
-    project.add_project_raster(proj_nodes['Inputs'], LayerTypes['SLOPE'], slope)
     project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
     db_node, _db_path, *_ = project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['OUTPUTS'])
 
     inputs_gpkg_path = os.path.join(output_folder, LayerTypes['INPUTS'].rel_path)
-    # intermediates_gpkg_path = os.path.join(output_folder, LayerTypes['INTERMEDIATES'].rel_path)
+    intermediates_gpkg_path = os.path.join(output_folder, LayerTypes['INTERMEDIATES'].rel_path)
     outputs_gpkg_path = os.path.join(output_folder, LayerTypes['OUTPUTS'].rel_path)
 
     # Make sure we're starting with empty/fresh geopackages
     GeopackageLayer.delete(inputs_gpkg_path)
-    # GeopackageLayer.delete(intermediates_gpkg_path)
+    GeopackageLayer.delete(intermediates_gpkg_path)
     GeopackageLayer.delete(outputs_gpkg_path)
 
     # Copy all the original vectors to the inputs geopackage. This will ensure on same spatial reference
@@ -158,25 +156,33 @@ def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Pa
     for input_key, rslayer in LayerTypes['INPUTS'].sub_layers.items():
         input_layers[input_key] = os.path.join(inputs_gpkg_path, rslayer.rel_path)
         copy_feature_class(source_layers[input_key], input_layers[input_key], cfg.OUTPUT_EPSG)
+        if input_key in ['HYDRO_FLOWLINES', 'ANTHRO_FLOWLINES', 'HYDRO_IGOS', 'ANTHRO_IGOS', 'HYDRO_DGOS', 'ANTHRO_DGOS']:
+            out_path = os.path.join(outputs_gpkg_path, LayerTypes['INPUTS'].sub_layers[input_key].rel_path)
+            copy_feature_class(source_layers[input_key], out_path, cfg.OUTPUT_EPSG)
 
     # Create the output feature class fields. Only those listed here will get copied from the source
     with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['BRAT_GEOMETRY'].rel_path, write=True) as out_lyr:
         out_lyr.create_layer(ogr.wkbMultiLineString, epsg=cfg.OUTPUT_EPSG, options=['FID=ReachID'], fields={
-            'WatershedID': ogr.OFTString,
             'FCode': ogr.OFTInteger,
-            'TotDASqKm': ogr.OFTReal,
-            'DivDASqKm': ogr.OFTReal,
-            'GNIS_Name': ogr.OFTString,
-            'NHDPlusID': ogr.OFTReal
+            'ReachCode': ogr.OFTString,
+            'StreamName': ogr.OFTString,
+            'NHDPlusID': ogr.OFTReal,
+            'WatershedID': ogr.OFTString,
+            'level_path': ogr.OFTReal,
+            'ownership': ogr.OFTString,
+            'divergence': ogr.OFTReal,
+            'stream_order': ogr.OFTInteger,
+            'us_state': ogr.OFTString,
+            'ecoregion_iii': ogr.OFTString,
+            'ecoregion_iv': ogr.OFTString
         })
 
     with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['DGO_GEOM'].rel_path, write=True) as dgo_lyr:
         dgo_lyr.create_layer(ogr.wkbPolygon, epsg=cfg.OUTPUT_EPSG, options=['FID=DGOID'], fields={
-            'WatershedID': ogr.OFTString,
             'FCode': ogr.OFTInteger,
             'level_path': ogr.OFTReal,
             'seg_distance': ogr.OFTReal,
-            'centerline_length': ogr.OFTInteger,
+            'centerline_length': ogr.OFTReal,
             'segment_area': ogr.OFTReal
         })
 
@@ -185,7 +191,7 @@ def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Pa
             'FCode': ogr.OFTInteger,
             'level_path': ogr.OFTReal,
             'seg_distance': ogr.OFTReal,
-            'stream_size': ogr.OFTInteger
+            'centerline_length': ogr.OFTReal
         })
 
     db_metadata = {
@@ -194,8 +200,7 @@ def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Pa
         'Riparian_Buffer': str(riparian_buffer),
         'Reach_Codes': ','.join(reach_codes),
         'Canal_Codes': ','.join(canal_codes),
-        'Max_Waterbody': str(max_waterbody),
-        'Elevation_Buffer': str(elevation_buffer)
+        'Max_Waterbody': str(max_waterbody)
     }
 
     # Execute the SQL to create the lookup tables in the output geopackage
@@ -209,20 +214,28 @@ def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Pa
     reach_geometry_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['BRAT_GEOMETRY'].rel_path)
     dgo_geometry_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['DGO_GEOM'].rel_path)
     igo_geometry_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['IGO_GEOM'].rel_path)
-    build_network(segmented_network_path, input_layers['FLOW_AREA'], reach_geometry_path, waterbodies_path=input_layers['WATERBODIES'], waterbody_max_size=max_waterbody, epsg=cfg.OUTPUT_EPSG, reach_codes=reach_codes, create_layer=False)
-    copy_features_fields(input_layers['DGOS'], dgo_geometry_path, epsg=cfg.OUTPUT_EPSG)
-    copy_features_fields(input_layers['IGOS'], igo_geometry_path, epsg=cfg.OUTPUT_EPSG)
+    # build_network(segmented_network_path, input_layers['FLOW_AREA'], reach_geometry_path, waterbodies_path=input_layers['WATERBODIES'], waterbody_max_size=max_waterbody, epsg=cfg.OUTPUT_EPSG, reach_codes=reach_codes, create_layer=False)
+    copy_features_fields(input_layers['HYDRO_FLOWLINES'], reach_geometry_path, epsg=cfg.OUTPUT_EPSG)
+    copy_features_fields(input_layers['HYDRO_DGOS'], dgo_geometry_path, epsg=cfg.OUTPUT_EPSG)
+    copy_features_fields(input_layers['HYDRO_IGOS'], igo_geometry_path, epsg=cfg.OUTPUT_EPSG)
 
-    with GeopackageLayer(reach_geometry_path, write=True) as reach_lyr:
-        for feat, *_ in reach_lyr.iterate_features('Add WatershedID to ReachGeometry'):
-            feat.SetField('WatershedID', huc[:8])
-            reach_lyr.ogr_layer.SetFeature(feat)
+    # with GeopackageLayer(reach_geometry_path, write=True) as reach_lyr:
+    #     for feat, *_ in reach_lyr.iterate_features('Add WatershedID to ReachGeometry'):
+    #         feat.SetField('WatershedID', huc[:8])
+    #         reach_lyr.ogr_layer.SetFeature(feat)
 
     with SQLiteCon(outputs_gpkg_path) as database:
         # Data preparation SQL statements to handle any weird attributes
-        database.curs.execute('INSERT INTO ReachAttributes (ReachID, Orig_DA, iGeo_DA, ReachCode, WatershedID, StreamName) SELECT ReachID, TotDASqKm, DivDASqKm, FCode, SUBSTR(WatershedID, 1, 8), GNIS_NAME FROM ReachGeometry')
-        database.curs.execute('UPDATE ReachAttributes SET IsPeren = 1 WHERE (ReachCode IN ({}))'.format(','.join(peren_codes)))
+        database.curs.execute("""CREATE VIEW vwHydroAnthro AS
+                              SELECT H.fid, H.WatershedID, H.FCode, H.StreamName, Slope, Length_m, DrainArea, QLow, Q2, SPLow, SP2, iPC_Road, iPC_RoadX, iPC_RoadVB, iPC_Rail, iPC_RailVB, iPC_DivPts, iPC_Privat, iPC_Canal, iPC_LU, iPC_VLowLU, iPC_LowLU, iPC_ModLU, iPC_HighLU, oPC_Dist
+                              FROM hydro_flowlines H LEFT JOIN anthro_flowlines A ON H.fid = A.fid""")
+        database.conn.commit()
+
+        database.curs.execute("""INSERT INTO ReachAttributes (ReachID, WatershedID, ReachCode, StreamName, iGeo_Slope, iGeo_Len, iGeo_DA, iPC_Road, iPC_RoadX, iPC_RoadVB, iPC_Rail, iPC_RailVB, iPC_LU, iHyd_Q2, iHyd_QLow, iHyd_SP2, iHyd_SPLow) 
+                              SELECT fid, WatershedID, FCode, StreamName, Slope, Length_m, DrainArea, iPC_Road, iPC_RoadX, iPC_RoadVB, iPC_Rail, iPC_RailVB, iPC_LU, Q2, QLow, SP2, SPLow FROM vwHydroAnthro""")
+        database.curs.execute(f'UPDATE ReachAttributes SET IsPeren = 1 WHERE (ReachCode IN ({", ".join(peren_codes)}))')
         database.curs.execute('UPDATE ReachAttributes SET iGeo_DA = 0 WHERE iGeo_DA IS NULL')
+        database.conn.commit()
 
         database.curs.execute('INSERT INTO DGOAttributes (DGOID, WatershedID, FCode, level_path, seg_distance, centerline_length, segment_area) SELECT DGOID, SUBSTR(WatershedID, 1, 8), FCode, level_path, seg_distance, centerline_length, segment_area FROM DGOGeometry')
         database.curs.execute('INSERT INTO IGOAttributes (IGOID, FCode, level_path, seg_distance) SELECT IGOID, FCode, level_path, seg_distance FROM IGOGeometry')
@@ -250,16 +263,16 @@ def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Pa
         database.conn.commit()
 
     # Calculate the geophysical properties slope, min and max elevations
-    reach_geometry(reach_geometry_path, dem_raster_path, elevation_buffer)
+    # reach_geometry(reach_geometry_path, dem_raster_path, elevation_buffer)
 
     # Calculate geophysical attributes for the DGOs
-    dgo_geometry(input_layers['DGOS'], input_layers['FLOWLINES'], dem_raster_path, 100, outputs_gpkg_path)
+    # dgo_geometry(input_layers['DGOS'], input_layers['FLOWLINES'], dem_raster_path, 100, outputs_gpkg_path)
 
     # Calculate the conflict attributes ready for conservation (for DGOs, imported from Anthro)
     # This will be removed once Anthro is fully pulled out of BRAT
-    conflict_attributes(outputs_gpkg_path, reach_geometry_path,
-                        input_layers['VALLEY_BOTTOM'], input_layers['ROADS'], input_layers['RAIL'], input_layers['CANALS'],
-                        input_layers['OWNERSHIP'], 30, 5, cfg.OUTPUT_EPSG, canal_codes, intermediates_gpkg_path)
+    # conflict_attributes(outputs_gpkg_path, reach_geometry_path,
+    #                     input_layers['VALLEY_BOTTOM'], input_layers['ROADS'], input_layers['RAIL'], input_layers['CANALS'],
+    #                     input_layers['OWNERSHIP'], 30, 5, cfg.OUTPUT_EPSG, canal_codes, intermediates_gpkg_path)
 
     # Calculate the vegetation cell counts for each epoch and buffer
     buffer_paths = []
@@ -325,25 +338,21 @@ def main():
     )
     parser.add_argument('huc', help='huc input', type=str)
 
-    parser.add_argument('dem', help='dem input', type=str)
-    parser.add_argument('slope', help='slope input', type=str)
     parser.add_argument('hillshade', help='hillshade input', type=str)
 
-    parser.add_argument('flowlines', help='flowlines input', type=str)
-    parser.add_argument('dgos', help='dgos input', type=str)
-    parser.add_argument('igos', help='igos input', type=str)
+    parser.add_argument('hydro_flowlines', help='hydro flowlines input', type=str)
+    parser.add_argument('hydro_dgos', help='hydro dgos input', type=str)
+    parser.add_argument('hydro_igos', help='hydro igos input', type=str)
+    parser.add_argument('anthro_flowlines', help='anthro flowlines input', type=str)
+    parser.add_argument('anthro_dgos', help='anthro dgos input', type=str)
+    parser.add_argument('anthro_igos', help='anthro igos input', type=str)
     parser.add_argument('existing_veg', help='existing_veg input', type=str)
     parser.add_argument('historical_veg', help='historical_veg input', type=str)
 
     parser.add_argument('valley_bottom', help='Valley bottom shapeFile', type=str)
-    parser.add_argument('roads', help='Roads shapeFile', type=str)
-    parser.add_argument('rail', help='Railways shapefile', type=str)
-    parser.add_argument('canals', help='Canals shapefile', type=str)
-    parser.add_argument('ownership', help='Ownership shapefile', type=str)
 
     parser.add_argument('streamside_buffer', help='streamside_buffer input', type=float)
     parser.add_argument('riparian_buffer', help='riparian_buffer input', type=float)
-    parser.add_argument('elevation_buffer', help='elevation_buffer input', type=float)
 
     parser.add_argument('output_folder', help='output_folder input', type=str)
 
@@ -377,26 +386,24 @@ def main():
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output_folder, 'brat_build_memusage.log')
             retcode, max_obj = ThreadRun(brat_build, memfile,
-                                         args.huc, args.flowlines, args.dgos, args.igos, args.dem, args.slope, args.hillshade,
-                                         args.existing_veg, args.historical_veg, args.output_folder,
+                                         args.huc, args.hydro_flowlines, args.hydro_dgos, args.hydro_igos,
+                                         args.anthro_flowlines, args.anthro_dgos, args.anthro_igos,
+                                         args.hillshade, args.existing_veg, args.historical_veg, args.output_folder,
                                          args.streamside_buffer, args.riparian_buffer,
                                          reach_codes, canal_codes, peren_codes,
                                          args.flow_areas, args.waterbodies, args.max_waterbody,
-                                         args.valley_bottom, args.roads, args.rail, args.canals, args.ownership,
-                                         args.elevation_buffer,
-                                         meta
+                                         args.valley_bottom, meta
                                          )
             log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
         else:
             brat_build(
-                args.huc, args.flowlines, args.dgos, args.igos, args.dem, args.slope, args.hillshade,
-                args.existing_veg, args.historical_veg, args.output_folder,
+                args.huc, args.hydro_flowlines, args.hydro_dgos, args.hydro_igos,
+                args.anthro_flowlines, args.anthro_dgos, args.anthro_igos,
+                args.hillshade, args.existing_veg, args.historical_veg, args.output_folder,
                 args.streamside_buffer, args.riparian_buffer,
                 reach_codes, canal_codes, peren_codes,
                 args.flow_areas, args.waterbodies, args.max_waterbody,
-                args.valley_bottom, args.roads, args.rail, args.canals, args.ownership,
-                args.elevation_buffer,
-                meta
+                args.valley_bottom, meta
             )
 
     except Exception as ex:

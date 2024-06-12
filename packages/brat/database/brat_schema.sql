@@ -97,11 +97,10 @@ CREATE TABLE VegetationTypes (
 
 CREATE TABLE ReachAttributes (
      ReachID INTEGER PRIMARY KEY NOT NULL, 
-     WatershedID TEXT REFERENCES Watersheds (WatershedID) ON DELETE CASCADE, 
+     WatershedID TEXT, 
      ReachCode INTEGER REFERENCES ReachCodes (ReachCode), 
      IsPeren INTEGER NOT NULL DEFAULT (0), 
-     StreamName TEXT, 
-     Orig_DA REAL, 
+     StreamName TEXT,
      iGeo_Slope REAL, 
      iGeo_ElMax REAL, 
      iGeo_ElMin REAL, 
@@ -111,7 +110,7 @@ CREATE TABLE ReachAttributes (
      iVeg_30EX REAL CONSTRAINT CHK_Reaches_ExistingVeg30 CHECK ((iVeg_30EX >= 0) AND (iVeg_30EX <= 4)), 
      iVeg100HPE REAL CONSTRAINT CHK_Reaches_HistoricVeg100 CHECK ((iVeg100HPE >= 0) AND (iVeg100HPE <= 4)), 
      iVeg_30HPE REAL CONSTRAINT CH_Reaches_HistoricVeg30 CHECK ((iVeg_30HPE >= 0) AND (iVeg_30HPE <= 4)), 
-     iPC_Road REAL CONSTRAINT CHK_Reaches_RoadDist CHECK ((iPC_Road >= 0)), 
+     iPC_Road REAL CONSTRAINT CHK_Reaches_RoadDist CHECK (iPC_Road >= 0), 
      iPC_RoadX REAL CONSTRAINT CHK_Reaches_RoadCrossDist CHECK (iPC_RoadX >= 0), 
      iPC_RoadVB REAL CONSTRAINT CGK_Reaches_RoadVBDist CHECK (iPC_RoadVB >= 0), 
      iPC_Rail REAL CONSTRAINT CHK_Reaches_RailDist CHECK (iPC_Rail >= 0), 
@@ -156,7 +155,7 @@ CREATE TABLE DGOAttributes(
      iVeg_100EX REAL CONSTRAINT CHK_Reaches_ExistingVeg100 CHECK ((iVeg_100EX >= 0) AND (iVeg_100EX <= 4)),
      iVeg_30EX REAL CONSTRAINT CHK_Reaches_ExistingVeg30 CHECK ((iVeg_30EX >= 0) AND (iVeg_30EX <= 4)), 
      iVeg_100HPE REAL CONSTRAINT CHK_Reaches_HistoricVeg100 CHECK ((iVeg_100HPE >= 0) AND (iVeg_100HPE <= 4)), 
-     iVeg_30HPE REAL CONSTRAINT CH_Reaches_HistoricVeg30 CHECK ((iVeg_30HPE >= 0) AND (iVeg_30HPE <= 4)),
+     iVeg_30HPE REAL CONSTRAINT CH_Reaches_HistoricVeg30 CHECK ((iVeg_30HPE >= 0) AND (iVeg_30HPE <= 4))
      );
 
 CREATE TABLE IGOAttributes(
