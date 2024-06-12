@@ -40,26 +40,23 @@ cfg = ModelConfig('https://xml.riverscapes.net/Projects/XSD/V2/RiverscapesProjec
 
 LYR_DESCRIPTIONS_JSON = os.path.join(os.path.dirname(__file__), 'layer_descriptions.json')
 LayerTypes = {
-    'DEM': RSLayer('NED 10m DEM', 'DEM', 'DEM', 'inputs/dem.tif'),
-    'SLOPE': RSLayer('Slope Raster', 'SLOPE', 'Raster', 'inputs/slope.tif'),
     'HILLSHADE': RSLayer('DEM Hillshade', 'HILLSHADE', 'Raster', 'inputs/dem_hillshade.tif'),
     'EXVEG': RSLayer('Existing Vegetation', 'EXVEG', 'Raster', 'inputs/existing_veg.tif'),
     'HISTVEG': RSLayer('Historic Vegetation', 'HISTVEG', 'Raster', 'inputs/historic_veg.tif'),
     'INPUTS': RSLayer('Confinement', 'INPUTS', 'Geopackage', 'inputs/inputs.gpkg', {
-        'FLOWLINES': RSLayer('Segmented Flowlines', 'FLOWLINES', 'Vector', 'flowlines'),
-        'IGOS': RSLayer('Integrated Geographic Objects', 'IGOS', 'Vector', 'igos'),
-        'DGOS': RSLayer('Discrete Geographic Objects', 'DGOS', 'Vector', 'dgos'),
+        'HYDRO_FLOWLINES': RSLayer('Hydro Flowlines', 'HYDRO_FLOWLINES', 'Vector', 'hydro_flowlines'),
+        'HYDRO_IGOS': RSLayer('Hydro Integrated Geographic Objects', 'HYDRO_IGOS', 'Vector', 'hydro_igos'),
+        'HYDRO_DGOS': RSLayer('Hyrdo Discrete Geographic Objects', 'HYDRO_DGOS', 'Vector', 'hydro_dgos'),
+        'ANTHRO_FLOWLINES': RSLayer('Anthro Segmented Flowlines', 'ANTHRO_FLOWLINES', 'Vector', 'anthro_flowlines'),
+        'ANTHRO_IGOS': RSLayer('Anthro Integrated Geographic Objects', 'ANTHRO_IGOS', 'Vector', 'anthro_igos'),
+        'ANTHRO_DGOS': RSLayer('Anthro Discrete Geographic Objects', 'ANTHRO_DGOS', 'Vector', 'anthro_dgos'),
         'FLOW_AREA': RSLayer('NHD Flow Area', 'FLOW_AREA', 'Vector', 'flowareas'),
         'WATERBODIES': RSLayer('NHD Waterbody', 'WATERBODIES', 'Vector', 'waterbodies'),
         'VALLEY_BOTTOM': RSLayer('Valley Bottom', 'VALLEY_BOTTOM', 'Vector', 'valley_bottom'),
-        'ROADS': RSLayer('Roads', 'ROADS', 'Vector', 'roads'),
-        'RAIL': RSLayer('Rail', 'RAIL', 'Vector', 'rail'),
-        'CANALS': RSLayer('Canals', 'CANALS', 'Vector', 'canals'),
-        'OWNERSHIP': RSLayer('Land Ownership', 'OWNERSHIP', 'Vector', 'ownership')
     }),
-    'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/intermediates.gpkg', {
-        'SEGMENTED_NETWORK': RSLayer('Segmented Network', 'SEGMENTED_NETWORK', 'Vector', 'segmented_network'),
-    }),
+    # 'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/intermediates.gpkg', {
+    #     'SEGMENTED_NETWORK': RSLayer('Segmented Network', 'SEGMENTED_NETWORK', 'Vector', 'segmented_network'),
+    # }),
     'OUTPUTS': RSLayer('BRAT', 'OUTPUTS', 'Geopackage', 'outputs/brat.gpkg', {
         'BRAT_GEOMETRY': RSLayer('BRAT Geometry', 'BRAT_GEOMETRY', 'Vector', 'ReachGeometry'),
         'BRAT': RSLayer('BRAT', 'BRAT_RESULTS', 'Vector', 'vwReaches'),
@@ -71,13 +68,12 @@ LayerTypes = {
 }
 
 
-def brat_build(huc: int, flowlines: Path, dgos: Path, igos: Path, dem: Path, slope: Path, hillshade: Path,
-               existing_veg: Path, historical_veg: Path, output_folder: Path,
-               streamside_buffer: float, riparian_buffer: float,
-               reach_codes: List[str], canal_codes: List[str], peren_codes: List[str],
-               flow_areas: Path, waterbodies: Path, max_waterbody: float,
-               valley_bottom: Path, roads: Path, rail: Path, canals: Path, ownership: Path,
-               elevation_buffer: float, meta: Dict[str, str]):
+def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Path,
+               anthro_flowlines: Path, anthro_igos: Path, anthro_dgos: Path, hillshade: Path,
+               existing_veg: Path, historical_veg: Path, output_folder: Path, streamside_buffer: float,
+               riparian_buffer: float, reach_codes: List[str], canal_codes: List[str], peren_codes: List[str],
+               flow_areas: Path, waterbodies: Path, max_waterbody: float, valley_bottom: Path,
+               meta: Dict[str, str]):
     """Build a BRAT project by segmenting a reach network and copying
     all the necessary layers into the resultant BRAT project
 
@@ -137,36 +133,31 @@ def brat_build(huc: int, flowlines: Path, dgos: Path, igos: Path, dem: Path, slo
     db_node, _db_path, *_ = project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['OUTPUTS'])
 
     inputs_gpkg_path = os.path.join(output_folder, LayerTypes['INPUTS'].rel_path)
-    intermediates_gpkg_path = os.path.join(output_folder, LayerTypes['INTERMEDIATES'].rel_path)
+    # intermediates_gpkg_path = os.path.join(output_folder, LayerTypes['INTERMEDIATES'].rel_path)
     outputs_gpkg_path = os.path.join(output_folder, LayerTypes['OUTPUTS'].rel_path)
 
     # Make sure we're starting with empty/fresh geopackages
     GeopackageLayer.delete(inputs_gpkg_path)
-    GeopackageLayer.delete(intermediates_gpkg_path)
+    # GeopackageLayer.delete(intermediates_gpkg_path)
     GeopackageLayer.delete(outputs_gpkg_path)
 
     # Copy all the original vectors to the inputs geopackage. This will ensure on same spatial reference
     source_layers = {
-        'FLOWLINES': flowlines,
-        'DGOS': dgos,
-        'IGOS': igos,
+        'HYDRO_FLOWLINES': hydro_flowlines,
+        'HYDRO_IGOS': hydro_igos,
+        'HYDRO_DGOS': hydro_dgos,
+        'ANTHRO_FLOWLINES': anthro_flowlines,
+        'ANTHRO_IGOS': anthro_igos,
+        'ANTHRO_DGOS': anthro_dgos,
         'FLOW_AREA': flow_areas,
         'WATERBODIES': waterbodies,
-        'VALLEY_BOTTOM': valley_bottom,
-        'ROADS': roads,
-        'RAIL': rail,
-        'CANALS': canals,
-        'OWNERSHIP': ownership
+        'VALLEY_BOTTOM': valley_bottom
     }
 
     input_layers = {}
     for input_key, rslayer in LayerTypes['INPUTS'].sub_layers.items():
         input_layers[input_key] = os.path.join(inputs_gpkg_path, rslayer.rel_path)
         copy_feature_class(source_layers[input_key], input_layers[input_key], cfg.OUTPUT_EPSG)
-
-    # segment the input flowlines and store them as intermediate
-    segmented_network_path = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['SEGMENTED_NETWORK'].rel_path)
-    segment_network(input_layers['FLOWLINES'], segmented_network_path, 300, 30, huc, create_layer=True)
 
     # Create the output feature class fields. Only those listed here will get copied from the source
     with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['BRAT_GEOMETRY'].rel_path, write=True) as out_lyr:
