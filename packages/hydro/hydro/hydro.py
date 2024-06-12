@@ -172,6 +172,12 @@ def hydro_context(huc: int, dem: Path, hillshade: Path, igo: Path, dgo: Path, fl
 
         database.conn.commit()
 
+        database.curs.execute(f'UPDATE ReachAttributes SET WatershedID = {huc}')
+        database.curs.execute(f'UPDATE DGOAttributes SET WatershedID = {huc}')
+        database.curs.execute(f'UPDATE IGOAttributes SET WatershedID = {huc}')
+
+        database.conn.commit()
+
     # Associate DGOs with corresponding IGOs
     dgo_igo = {}
     with GeopackageLayer(outputs_gpkg_path, 'DGOGeometry') as dgo_lyr, \
@@ -199,6 +205,11 @@ def hydro_context(huc: int, dem: Path, hillshade: Path, igo: Path, dgo: Path, fl
     # copy values from DGOs to IGOs
     with SQLiteCon(outputs_gpkg_path) as database:
         for dgo_id, igo_id in dgo_igo.items():
+            database.curs.execute(f'UPDATE IGOAttributes SET ElevMax = (SELECT ElevMax FROM DGOAttributes WHERE DGOID = {dgo_id}) WHERE IGOID = {igo_id}')
+            database.curs.execute(f'UPDATE IGOAttributes SET ElevMin = (SELECT ElevMin FROM DGOAttributes WHERE DGOID = {dgo_id}) WHERE IGOID = {igo_id}')
+            database.curs.execute(f'UPDATE IGOAttributes SET Length_m = (SELECT Length_m FROM DGOAttributes WHERE DGOID = {dgo_id}) WHERE IGOID = {igo_id}')
+            database.curs.execute(f'UPDATE IGOAttributes SET Slope = (SELECT Slope FROM DGOAttributes WHERE DGOID = {dgo_id}) WHERE IGOID = {igo_id}')
+            database.curs.execute(f'UPDATE IGOAttributes SET DrainArea = (SELECT DrainArea FROM DGOAttributes WHERE DGOID = {dgo_id}) WHERE IGOID = {igo_id}')
             database.curs.execute(f'UPDATE IGOAttributes SET QLow = (SELECT QLow FROM DGOAttributes WHERE DGOID = {dgo_id}) WHERE IGOID = {igo_id}')
             database.curs.execute(f'UPDATE IGOAttributes SET Q2 = (SELECT Q2 FROM DGOAttributes WHERE DGOID = {dgo_id}) WHERE IGOID = {igo_id}')
             database.curs.execute(f'UPDATE IGOAttributes SET SPLow = (SELECT SPLow FROM DGOAttributes WHERE DGOID = {dgo_id}) WHERE IGOID = {igo_id}')
