@@ -121,8 +121,8 @@ def hydro_context(huc: int, dem: Path, hillshade: Path, igo: Path, dgo: Path, fl
     with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['HYDRO_GEOM_LINES'].rel_path, write=True) as out_lyr:
         out_lyr.create_layer(ogr.wkbMultiLineString, epsg=cfg.OUTPUT_EPSG, options=['FID=ReachID'], fields={
             'FCode': ogr.OFTInteger,
-            'TotDASqKm': ogr.OFTReal,
-            'DivDASqKm': ogr.OFTReal,
+            'TotDASqKM': ogr.OFTReal,
+            'DivDASqKM': ogr.OFTReal,
             'GNIS_Name': ogr.OFTString,
             'NHDPlusID': ogr.OFTReal,
             'level_path': ogr.OFTReal,
@@ -132,19 +132,19 @@ def hydro_context(huc: int, dem: Path, hillshade: Path, igo: Path, dgo: Path, fl
     db_metadata = {
         'Hydro DateTime': datetime.datetime.now().isoformat()
     }
-    create_database(huc, outputs_gpkg_path, db_metadata, cfg.OUTPUT_EPSG, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'hydro_schema.sql'))
+    create_database(str(huc), outputs_gpkg_path, db_metadata, cfg.OUTPUT_EPSG, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'hydro_schema.sql'))
 
-    igo_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['ANTHRO_GEOM_POINTS'].rel_path)
-    line_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['ANTHRO_GEOM_LINES'].rel_path)
-    dgo_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['ANTHRO_GEOM_DGOS'].rel_path)
+    igo_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['HYDRO_GEOM_POINTS'].rel_path)
+    line_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['HYDRO_GEOM_LINES'].rel_path)
+    dgo_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['HYDRO_GEOM_DGOS'].rel_path)
     copy_features_fields(input_layers['IGO'], igo_geom_path, epsg=cfg.OUTPUT_EPSG)
     copy_features_fields(input_layers['FLOWLINES'], line_geom_path, epsg=cfg.OUTPUT_EPSG)
     copy_features_fields(input_layers['DGO'], dgo_geom_path, epsg=cfg.OUTPUT_EPSG)
 
     with SQLiteCon(outputs_gpkg_path) as database:
-        database.curs.execute('INSERT INTO ReachAttributes (ReachID, FCode, NHDPlusID, StreamName, level_path, ownership), SELECT ReachID, FCode, NHDPlusID, GNIS_Name, level_path, ownership FROM ReachGeometry')
+        database.curs.execute('INSERT INTO ReachAttributes (ReachID, FCode, NHDPlusID, StreamName, level_path, ownership, DrainArea) SELECT ReachID, FCode, NHDPlusID, GNIS_Name, level_path, ownership, DivDASqKM FROM ReachGeometry')
         database.curs.execute('INSERT INTO DGOAttributes (DGOID, FCode, level_path, seg_distance, centerline_length, segment_area) SELECT DGOID, FCode, level_path, seg_distance, centerline_length, segment_area FROM DGOGeometry')
-        database.curs.execute('INSERT INTO IGOAttributes (IGOID, FCode, level_path, seg_distance,) SELECT IGOID, FCode, level_path, seg_distance, FROM IGOGeometry')
+        database.curs.execute('INSERT INTO IGOAttributes (IGOID, FCode, level_path, seg_distance) SELECT IGOID, FCode, level_path, seg_distance FROM IGOGeometry')
 
         database.curs.execute("""INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id)
             SELECT 'vwReaches', data_type, 'Reaches', min_x, min_y, max_x, max_y, srs_id FROM gpkg_contents WHERE table_name = 'ReachGeometry'""")
@@ -180,8 +180,10 @@ def hydro_context(huc: int, dem: Path, hillshade: Path, igo: Path, dgo: Path, fl
             dgo_id = dgo_feat.GetFID()
             lp = dgo_feat.GetField('level_path')
             seg_dist = dgo_feat.GetField('seg_distance')
-            for igo_feat, *_ in igo_lyr.iterate_features(attribute_filter=f'level_path = {lp} and seg_distance = {seg_dist}'):
-                if igo_feat.IsValid():
+            if lp is None or seg_dist is None:
+                continue
+            for igo_feat, *_ in igo_lyr.iterate_features(clip_shape=dgo_feat.GetGeometryRef()):
+                if igo_feat:
                     igo_id = igo_feat.GetFID()
                     dgo_igo[dgo_id] = igo_id
                     break
@@ -192,15 +194,15 @@ def hydro_context(huc: int, dem: Path, hillshade: Path, igo: Path, dgo: Path, fl
 
     # Calculate discharge and stream power values
     for suf in ['Low', '2']:
-        hydrology(outputs_gpkg_path, suf, huc)
+        hydrology(outputs_gpkg_path, suf, str(huc))
 
     # copy values from DGOs to IGOs
     with SQLiteCon(outputs_gpkg_path) as database:
         for dgo_id, igo_id in dgo_igo.items():
-            database.curs.execute(f'UPDATE IGOAttributes SET QLow = SELECT QLow FROM DGOAttributes WHERE DGOID = {dgo_id} AND IGOID = {igo_id}')
-            database.curs.execute(f'UPDATE IGOAttributes SET Q2 = SELECT Q2 FROM DGOAttributes WHERE DGOID = {dgo_id} AND IGOID = {igo_id}')
-            database.curs.execute(f'UPDATE IGOAttributes SET SPLow = SELECT SPLow FROM DGOAttributes WHERE DGOID = {dgo_id} AND IGOID = {igo_id}')
-            database.curs.execute(f'UPDATE IGOAttributes SET SP2 = SELECT SP2 FROM DGOAttributes WHERE DGOID = {dgo_id} AND IGOID = {igo_id}')
+            database.curs.execute(f'UPDATE IGOAttributes SET QLow = (SELECT QLow FROM DGOAttributes WHERE DGOID = {dgo_id}) WHERE IGOID = {igo_id}')
+            database.curs.execute(f'UPDATE IGOAttributes SET Q2 = (SELECT Q2 FROM DGOAttributes WHERE DGOID = {dgo_id}) WHERE IGOID = {igo_id}')
+            database.curs.execute(f'UPDATE IGOAttributes SET SPLow = (SELECT SPLow FROM DGOAttributes WHERE DGOID = {dgo_id}) WHERE IGOID = {igo_id}')
+            database.curs.execute(f'UPDATE IGOAttributes SET SP2 = (SELECT SP2 FROM DGOAttributes WHERE DGOID = {dgo_id}) WHERE IGOID = {igo_id}')
         database.conn.commit()
 
     ellapsed_time = time.time() - start_time
