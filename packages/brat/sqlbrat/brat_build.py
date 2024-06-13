@@ -23,13 +23,10 @@ from rscommons.vector_ops import copy_feature_class
 from rscommons import Logger, initGDALOGRErrors, RSLayer, RSProject, ModelConfig, dotenv
 from rscommons.util import parse_metadata, pretty_duration
 from rscommons.build_network import build_network
-from rscommons.segment_network import segment_network
 from rscommons.database import create_database, SQLiteCon
-from rscommons.reach_geometry import reach_geometry
 from rscommons.copy_features import copy_features_fields
+from rscommons.line_attributes_to_dgo import line_attributes_to_dgo
 from sqlbrat.utils.vegetation_summary import vegetation_summary, dgo_veg_summary
-from sqlbrat.utils.conflict_attributes import conflict_attributes
-from sqlbrat.utils.dgo_geometry import dgo_geometry
 from sqlbrat.__version__ import __version__
 
 Path = str
@@ -227,16 +224,24 @@ def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Pa
         database.curs.execute("""CREATE VIEW vwHydroAnthro AS
                               SELECT H.fid, Slope, Length_m, DrainArea, QLow, Q2, SPLow, SP2, iPC_Road, iPC_RoadX, iPC_RoadVB, iPC_Rail, iPC_RailVB, iPC_DivPts, iPC_Privat, iPC_Canal, iPC_LU, iPC_VLowLU, iPC_LowLU, iPC_ModLU, iPC_HighLU, oPC_Dist
                               FROM hydro_flowlines H LEFT JOIN anthro_flowlines A ON H.fid = A.fid""")
+        database.curs.execute("""CREATE VIEW vwHydroAnthroDGO AS
+                              SELECT H.fid, Slope, Length_m, DrainArea, Qlow, Q2, SPLow, SP2, LUI, Road_len, Rail_len, Canal_len, RoadX_ct, DivPts_ct, Road_prim_len, Road_sec_len, Road_4wd_len
+                              FROM hydro_dgos H LEFT JOIN anthro_dgos A ON H.fid = A.fid""")
         database.conn.commit()
 
     with SQLiteCon(outputs_gpkg_path) as database:
         # Data preparation SQL statements to handle any weird attributes
         database.curs.execute("""ATTACH DATABASE ? AS inputs""", (inputs_gpkg_path,))
         database.curs.execute("""INSERT INTO HydroAnthroReach SELECT * FROM inputs.vwHydroAnthro""")
+        database.curs.execute("""INSERT INTO HydroAnthroDGO SELECT * FROM inputs.vwHydroAnthroDGO""")
         database.conn.commit()
 
         database.curs.execute("""INSERT INTO ReachAttributes (ReachID, WatershedID, ReachCode, StreamName)
                               SELECT ReachID, WatershedID, FCode, StreamName FROM ReachGeometry""")
+        database.curs.execute("""INSERT INTO DGOAttributes (DGOID, FCode, level_path, seg_distance, centerline_length, segment_area) 
+                              SELECT DGOID, FCode, level_path, seg_distance, centerline_length, segment_area FROM DGOGeometry""")
+        database.curs.execute("""INSERT INTO IGOAttributes (IGOID, FCode, level_path, seg_distance) 
+                              SELECT IGOID, FCode, level_path, seg_distance FROM IGOGeometry""")
         database.conn.commit()
 
         database.curs.execute("""SELECT ReachID FROM ReachAttributes""")
@@ -250,8 +255,6 @@ def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Pa
         database.curs.execute('UPDATE ReachAttributes SET iGeo_DA = 0 WHERE iGeo_DA IS NULL')
         database.conn.commit()
 
-        database.curs.execute('INSERT INTO DGOAttributes (DGOID, FCode, level_path, seg_distance, centerline_length, segment_area) SELECT DGOID, FCode, level_path, seg_distance, centerline_length, segment_area FROM DGOGeometry')
-        database.curs.execute('INSERT INTO IGOAttributes (IGOID, FCode, level_path, seg_distance) SELECT IGOID, FCode, level_path, seg_distance FROM IGOGeometry')
         database.curs.execute(f'UPDATE DGOAttributes SET WatershedID = {huc} WHERE WatershedID IS NULL')
 
         # Register vwReaches as a feature layer as well as its geometry column
@@ -286,6 +289,10 @@ def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Pa
     # conflict_attributes(outputs_gpkg_path, reach_geometry_path,
     #                     input_layers['VALLEY_BOTTOM'], input_layers['ROADS'], input_layers['RAIL'], input_layers['CANALS'],
     #                     input_layers['OWNERSHIP'], 30, 5, cfg.OUTPUT_EPSG, canal_codes, intermediates_gpkg_path)
+
+    # copy conflict attributes from reaches to dgos
+    copy_fields_lwa = {field: field for field in ['iPC_Road', 'iPC_RoadX', 'iPC_RoadVB', 'iPC_Rail', 'iPC_RailVB', 'iPC_DivPts', 'iPC_Privat', 'iPC_Canal', 'iPC_LU', 'iPC_VLowLU', 'iPC_LowLU', 'iPC_ModLU', 'iPC_HighLU', 'oPC_Dist']}
+    line_attributes_to_dgo(input_layers['ANTHRO_FLOWLINES'], input_layers['HYDRO_DGOS'], copy_fields_lwa, method='lwa', dgo_table=os.path.join(outputs_gpkg_path, 'DGOAttributes'))
 
     # Calculate the vegetation cell counts for each epoch and buffer
     buffer_paths = []
