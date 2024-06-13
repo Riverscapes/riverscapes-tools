@@ -156,9 +156,9 @@ def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Pa
     for input_key, rslayer in LayerTypes['INPUTS'].sub_layers.items():
         input_layers[input_key] = os.path.join(inputs_gpkg_path, rslayer.rel_path)
         copy_feature_class(source_layers[input_key], input_layers[input_key], cfg.OUTPUT_EPSG)
-        if input_key in ['HYDRO_FLOWLINES', 'ANTHRO_FLOWLINES', 'HYDRO_IGOS', 'ANTHRO_IGOS', 'HYDRO_DGOS', 'ANTHRO_DGOS']:
-            out_path = os.path.join(outputs_gpkg_path, LayerTypes['INPUTS'].sub_layers[input_key].rel_path)
-            copy_feature_class(source_layers[input_key], out_path, cfg.OUTPUT_EPSG)
+        # if input_key in ['HYDRO_FLOWLINES', 'ANTHRO_FLOWLINES', 'HYDRO_IGOS', 'ANTHRO_IGOS', 'HYDRO_DGOS', 'ANTHRO_DGOS']:
+        #     out_path = os.path.join(outputs_gpkg_path, LayerTypes['INPUTS'].sub_layers[input_key].rel_path)
+        #     copy_feature_class(source_layers[input_key], out_path, cfg.OUTPUT_EPSG)
 
     # Create the output feature class fields. Only those listed here will get copied from the source
     with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['BRAT_GEOMETRY'].rel_path, write=True) as out_lyr:
@@ -223,23 +223,36 @@ def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Pa
     #     for feat, *_ in reach_lyr.iterate_features('Add WatershedID to ReachGeometry'):
     #         feat.SetField('WatershedID', huc[:8])
     #         reach_lyr.ogr_layer.SetFeature(feat)
-
-    with SQLiteCon(outputs_gpkg_path) as database:
-        # Data preparation SQL statements to handle any weird attributes
+    with SQLiteCon(inputs_gpkg_path) as database:
         database.curs.execute("""CREATE VIEW vwHydroAnthro AS
-                              SELECT H.fid, H.WatershedID, H.FCode, H.StreamName, Slope, Length_m, DrainArea, QLow, Q2, SPLow, SP2, iPC_Road, iPC_RoadX, iPC_RoadVB, iPC_Rail, iPC_RailVB, iPC_DivPts, iPC_Privat, iPC_Canal, iPC_LU, iPC_VLowLU, iPC_LowLU, iPC_ModLU, iPC_HighLU, oPC_Dist
+                              SELECT H.fid, Slope, Length_m, DrainArea, QLow, Q2, SPLow, SP2, iPC_Road, iPC_RoadX, iPC_RoadVB, iPC_Rail, iPC_RailVB, iPC_DivPts, iPC_Privat, iPC_Canal, iPC_LU, iPC_VLowLU, iPC_LowLU, iPC_ModLU, iPC_HighLU, oPC_Dist
                               FROM hydro_flowlines H LEFT JOIN anthro_flowlines A ON H.fid = A.fid""")
         database.conn.commit()
 
-        database.curs.execute("""INSERT INTO ReachAttributes (ReachID, WatershedID, ReachCode, StreamName, iGeo_Slope, iGeo_Len, iGeo_DA, iPC_Road, iPC_RoadX, iPC_RoadVB, iPC_Rail, iPC_RailVB, iPC_LU, iHyd_Q2, iHyd_QLow, iHyd_SP2, iHyd_SPLow) 
-                              SELECT fid, WatershedID, FCode, StreamName, Slope, Length_m, DrainArea, iPC_Road, iPC_RoadX, iPC_RoadVB, iPC_Rail, iPC_RailVB, iPC_LU, Q2, QLow, SP2, SPLow FROM vwHydroAnthro""")
+    with SQLiteCon(outputs_gpkg_path) as database:
+        # Data preparation SQL statements to handle any weird attributes
+        database.curs.execute("""ATTACH DATABASE ? AS inputs""", (inputs_gpkg_path,))
+        database.curs.execute("""INSERT INTO HydroAnthroReach SELECT * FROM inputs.vwHydroAnthro""")
+        database.conn.commit()
+
+        database.curs.execute("""INSERT INTO ReachAttributes (ReachID, WatershedID, ReachCode, StreamName)
+                              SELECT ReachID, WatershedID, FCode, StreamName FROM ReachGeometry""")
+        database.conn.commit()
+
+        database.curs.execute("""SELECT ReachID FROM ReachAttributes""")
+        for row in database.curs.fetchall():
+            database.curs.execute(f"""UPDATE ReachAttributes SET (iGeo_Slope, iGeo_Len, iGeo_DA, iHyd_QLow, iHyd_Q2, iHyd_SPLow, iHyd_SP2, iPC_Road, iPC_RoadX, iPC_RoadVB, iPC_Rail, iPC_RailVB, iPC_DivPts, iPC_Privat, iPC_Canal, iPC_LU, iPC_VLowLU, iPC_LowLU, iPC_ModLU, iPC_HighLU, oPC_Dist) =
+                                  (SELECT Slope, Length_m, DrainArea, QLow, Q2, SPLow, SP2, iPC_Road, iPC_RoadX, iPC_RoadVB, iPC_Rail, iPC_RailVB, iPC_DivPts, iPC_Privat, iPC_Canal, iPC_LU, iPC_VLowLU, iPC_LowLU, iPC_ModLU, iPC_HighLU, oPC_Dist FROM HydroAnthroReach WHERE ReachID = {row['ReachID']})
+                                  WHERE ReachID = {row['ReachID']}""")
+        database.conn.commit()
+
         database.curs.execute(f'UPDATE ReachAttributes SET IsPeren = 1 WHERE (ReachCode IN ({", ".join(peren_codes)}))')
         database.curs.execute('UPDATE ReachAttributes SET iGeo_DA = 0 WHERE iGeo_DA IS NULL')
         database.conn.commit()
 
-        database.curs.execute('INSERT INTO DGOAttributes (DGOID, WatershedID, FCode, level_path, seg_distance, centerline_length, segment_area) SELECT DGOID, SUBSTR(WatershedID, 1, 8), FCode, level_path, seg_distance, centerline_length, segment_area FROM DGOGeometry')
+        database.curs.execute('INSERT INTO DGOAttributes (DGOID, FCode, level_path, seg_distance, centerline_length, segment_area) SELECT DGOID, FCode, level_path, seg_distance, centerline_length, segment_area FROM DGOGeometry')
         database.curs.execute('INSERT INTO IGOAttributes (IGOID, FCode, level_path, seg_distance) SELECT IGOID, FCode, level_path, seg_distance FROM IGOGeometry')
-        database.curs.execute(f'UPDATE DGOAttributes SET WatershedID = {huc[:8]} WHERE WatershedID IS NULL')
+        database.curs.execute(f'UPDATE DGOAttributes SET WatershedID = {huc} WHERE WatershedID IS NULL')
 
         # Register vwReaches as a feature layer as well as its geometry column
         database.curs.execute("""INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id)
@@ -341,11 +354,11 @@ def main():
     parser.add_argument('hillshade', help='hillshade input', type=str)
 
     parser.add_argument('hydro_flowlines', help='hydro flowlines input', type=str)
-    parser.add_argument('hydro_dgos', help='hydro dgos input', type=str)
     parser.add_argument('hydro_igos', help='hydro igos input', type=str)
+    parser.add_argument('hydro_dgos', help='hydro dgos input', type=str)
     parser.add_argument('anthro_flowlines', help='anthro flowlines input', type=str)
-    parser.add_argument('anthro_dgos', help='anthro dgos input', type=str)
     parser.add_argument('anthro_igos', help='anthro igos input', type=str)
+    parser.add_argument('anthro_dgos', help='anthro dgos input', type=str)
     parser.add_argument('existing_veg', help='existing_veg input', type=str)
     parser.add_argument('historical_veg', help='historical_veg input', type=str)
 
@@ -386,8 +399,8 @@ def main():
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output_folder, 'brat_build_memusage.log')
             retcode, max_obj = ThreadRun(brat_build, memfile,
-                                         args.huc, args.hydro_flowlines, args.hydro_dgos, args.hydro_igos,
-                                         args.anthro_flowlines, args.anthro_dgos, args.anthro_igos,
+                                         args.huc, args.hydro_flowlines, args.hydro_igos, args.hydro_dgos,
+                                         args.anthro_flowlines, args.anthro_igos, args.anthro_dgos,
                                          args.hillshade, args.existing_veg, args.historical_veg, args.output_folder,
                                          args.streamside_buffer, args.riparian_buffer,
                                          reach_codes, canal_codes, peren_codes,
@@ -397,8 +410,8 @@ def main():
             log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
         else:
             brat_build(
-                args.huc, args.hydro_flowlines, args.hydro_dgos, args.hydro_igos,
-                args.anthro_flowlines, args.anthro_dgos, args.anthro_igos,
+                args.huc, args.hydro_flowlines, args.hydro_igos, args.hydro_dgos,
+                args.anthro_flowlines, args.anthro_igos, args.anthro_dgos,
                 args.hillshade, args.existing_veg, args.historical_veg, args.output_folder,
                 args.streamside_buffer, args.riparian_buffer,
                 reach_codes, canal_codes, peren_codes,
