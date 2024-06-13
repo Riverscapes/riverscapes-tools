@@ -112,7 +112,7 @@ CREATE TABLE HydroAnthroDGO(
      Q2 REAL, 
      SPLow REAL,
      SP2 REAL,
-     LUI, REAL,
+     LUI REAL,
      Road_len REAL,
      Rail_len REAL,
      Canal_len REAL,
@@ -333,6 +333,7 @@ INSERT INTO gpkg_contents (table_name, data_type) VALUES ('VegetationOverrides',
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Watersheds', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('VegetationTypes', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('HydroAnthroReach', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('HydroAnthroDGO', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachAttributes', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('DGOAttributes', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('IGOAttributes', 'attributes');
