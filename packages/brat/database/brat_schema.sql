@@ -44,21 +44,10 @@ CREATE TABLE MetaData (
      KeyInfo TEXT PRIMARY KEY NOT NULL, 
      ValueInfo TEXT);
 
-CREATE TABLE LandUses (
-     LandUseID INTEGER PRIMARY KEY NOT NULL, 
-     Name TEXT UNIQUE NOT NULL, 
-     Intensity REAL NOT NULL CONSTRAINT CHK_LandUses_Itensity CHECK (Intensity >= 0 AND Intensity <= 1) DEFAULT (0));
-
 CREATE TABLE Agencies (
      AgencyID INTEGER PRIMARY KEY NOT NULL UNIQUE, 
      Name TEXT NOT NULL UNIQUE, 
      Abbreviation TEXT NOT NULL UNIQUE);
-
-CREATE TABLE LandUseIntensities (
-     IntensityID INTEGER PRIMARY KEY NOT NULL, 
-     Name TEXT UNIQUE NOT NULL, 
-     MaxIntensity REAL NOT NULL UNIQUE, 
-     TargetCol TEXT UNIQUE NOT NULL);
 
 CREATE TABLE VegetationOverrides (
      EcoregionID INTEGER REFERENCES Ecoregions (EcoregionID) ON DELETE CASCADE NOT NULL, 
@@ -66,12 +55,6 @@ CREATE TABLE VegetationOverrides (
      OverrideSuitability INTEGER NOT NULL CONSTRAINT CHK_VegetationOverrides_Suitability CHECK (OverrideSuitability >= 0 AND OverrideSuitability <= 4), 
      Notes TEXT, 
      PRIMARY KEY (EcoregionID, VegetationID));
-
-CREATE TABLE WatershedHydroParams (
-     WatershedID TEXT REFERENCES Watersheds (WatershedID) ON DELETE CASCADE NOT NULL, 
-     ParamID INTEGER REFERENCES HydroParams (ParamID) NOT NULL, 
-     Value REAL NOT NULL, 
-     PRIMARY KEY (WatershedID, ParamID));
 
 CREATE TABLE Watersheds (
      WatershedID TEXT PRIMARY KEY NOT NULL UNIQUE, 
@@ -94,6 +77,31 @@ CREATE TABLE VegetationTypes (
      LandUseID INTEGER REFERENCES LandUses (LandUseID), 
      Physiognomy TEXT, 
      Notes TEXT);
+
+CREATE TABLE HydroAnthroReach(
+     ReachID INTEGER PRIMARY KEY NOT NULL,
+     Slope REAL, 
+     Length_m REAL, 
+     DrainArea REAL, 
+     QLow REAL, 
+     Q2 REAL, 
+     SPLow REAL, 
+     SP2 REAL, 
+     iPC_Road REAL, 
+     iPC_RoadX REAL, 
+     iPC_RoadVB REAL, 
+     iPC_Rail REAL, 
+     iPC_RailVB REAL, 
+     iPC_DivPts REAL, 
+     iPC_Privat REAL, 
+     iPC_Canal REAL, 
+     iPC_LU REAL, 
+     iPC_VLowLU REAL, 
+     iPC_LowLU REAL, 
+     iPC_ModLU REAL, 
+     iPC_HighLU REAL, 
+     oPC_Dist REAL 
+);
 
 CREATE TABLE ReachAttributes (
      ReachID INTEGER PRIMARY KEY NOT NULL, 
@@ -144,7 +152,7 @@ CREATE TABLE ReachAttributes (
 
 CREATE TABLE DGOAttributes(
      DGOID INTEGER PRIMARY KEY NOT NULL, 
-     WatershedID TEXT REFERENCES Watersheds (WatershedID) ON DELETE CASCADE,
+     WatershedID TEXT,
      FCode INTEGER REFERENCES ReachCodes (ReachCode),
      level_path REAL,
      seg_distance REAL,
@@ -163,16 +171,6 @@ CREATE TABLE IGOAttributes(
      FCode INTEGER REFERENCES ReachCodes (ReachCode),
      level_path REAL,
      seg_distance REAL);
-
-CREATE TABLE HydroParams (
-     ParamID INTEGER PRIMARY KEY NOT NULL, 
-     Name TEXT UNIQUE NOT NULL, 
-     Description TEXT NOT NULL, 
-     Aliases TEXT, 
-     DataUnits TEXT NOT NULL, 
-     EquationUnits TEXT, 
-     Conversion REAL NOT NULL DEFAULT (1),
-     Definition TEXT);
 
 CREATE INDEX FK_ReachVegetation_ReachID ON ReachVegetation (ReachID);
 CREATE INDEX FK_ReachVegetation_VegetationID ON ReachVegetation (VegetationID);
@@ -220,28 +218,6 @@ CREATE VIEW vwIgos AS SELECT I.*, G.geom
 FROM IGOAttributes I
          INNER JOIN IGOGeometry G ON I.IGOID = G.IGOID;
 
-CREATE VIEW vwHydroParams AS SELECT W.WatershedID,
-       W.Name AS Watershed,
-       W.States,
-       W.Metadata,
-       E.EcoregionID,
-       E.Name AS Ecoregion,
-       HP.ParamID,
-       HP.Name AS Parameter,
-       HP.Aliases,
-       HP.DataUnits,
-       HP.EquationUnits,
-       WHP.Value,
-       HP.Conversion,
-       WHP.Value * HP.Conversion AS ConvertedValue
-  FROM Watersheds W
-       INNER JOIN
-       Ecoregions E ON W.EcoregionID = E.EcoregionID
-       INNER JOIN
-       WatershedHydroParams WHP ON W.WatershedID = WHP.WatershedID
-       INNER JOIN
-       HydroParams HP ON WHP.ParamID = HP.ParamID
-/* vwHydroParams(WatershedID,Watershed,States,Metadata,EcoregionID,Ecoregion,ParamID,Parameter,Aliases,DataUnits,EquationUnits,Value,Conversion,ConvertedValue) */;
 CREATE VIEW vwVegetationSuitability AS SELECT VT.VegetationID,
        VegetationName,
        EpochID,
@@ -314,19 +290,15 @@ INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Epochs', 'attributes'
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachCodes', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachVegetation', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('MetaData', 'attributes');
-INSERT INTO gpkg_contents (table_name, data_type) VALUES ('LandUses', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Agencies', 'attributes');
-INSERT INTO gpkg_contents (table_name, data_type) VALUES ('LandUseIntensities', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('VegetationOverrides', 'attributes');
-INSERT INTO gpkg_contents (table_name, data_type) VALUES ('WatershedHydroParams', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Watersheds', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('VegetationTypes', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('HydroAnthroReach', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachAttributes', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('DGOAttributes', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('IGOAttributes', 'attributes');
-INSERT INTO gpkg_contents (table_name, data_type) VALUES ('HydroParams', 'attributes');
 
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('vwReachAttributes', 'attributes');
-INSERT INTO gpkg_contents (table_name, data_type) VALUES ('vwHydroParams', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('vwVegetationSuitability', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('vwReachVegetationTypes', 'attributes');
