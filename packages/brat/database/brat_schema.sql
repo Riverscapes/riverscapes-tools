@@ -44,10 +44,10 @@ CREATE TABLE MetaData (
      KeyInfo TEXT PRIMARY KEY NOT NULL, 
      ValueInfo TEXT);
 
-CREATE TABLE Agencies (
-     AgencyID INTEGER PRIMARY KEY NOT NULL UNIQUE, 
-     Name TEXT NOT NULL UNIQUE, 
-     Abbreviation TEXT NOT NULL UNIQUE);
+-- CREATE TABLE Agencies (
+--      AgencyID INTEGER PRIMARY KEY NOT NULL UNIQUE, 
+--      Name TEXT NOT NULL UNIQUE, 
+--      Abbreviation TEXT NOT NULL UNIQUE);
 
 CREATE TABLE VegetationOverrides (
      EcoregionID INTEGER REFERENCES Ecoregions (EcoregionID) ON DELETE CASCADE NOT NULL, 
@@ -103,6 +103,26 @@ CREATE TABLE HydroAnthroReach(
      oPC_Dist REAL 
 );
 
+CREATE TABLE HydroAnthroDGO(
+     DGOID INTEGER PRIMARY KEY NOT NULL,
+     Slope REAL, 
+     Length_m REAL, 
+     DrainArea REAL, 
+     QLow REAL, 
+     Q2 REAL, 
+     SPLow REAL,
+     SP2 REAL,
+     LUI, REAL,
+     Road_len REAL,
+     Rail_len REAL,
+     Canal_len REAL,
+     RoaX_ct REAL,
+     DivPts_ct REAL,
+     Road_prim_len REAL,
+     Road_sec_len REAL,
+     Road_4wd_len REAL
+);
+
 CREATE TABLE ReachAttributes (
      ReachID INTEGER PRIMARY KEY NOT NULL, 
      WatershedID TEXT, 
@@ -132,7 +152,7 @@ CREATE TABLE ReachAttributes (
      iHyd_Q2 REAL CONSTRAINT CHK_Reaches_Q2 CHECK (iHyd_Q2 >= 0), 
      iHyd_SPLow REAL CONSTRAINT CHK_Reaches_StreamPowerLow CHECK (iHyd_SPLow >= 0), 
      iHyd_SP2 REAL CONSTRAINT CHK_Reaches_StreamPower2 CHECK (iHyd_SP2 >= 0), 
-     AgencyID INTEGER REFERENCES Agencies (AgencyID), 
+     --AgencyID INTEGER REFERENCES Agencies (AgencyID), 
      oVC_HPE REAL, 
      oVC_EX REAL, 
      oCC_HPE REAL, 
@@ -163,7 +183,25 @@ CREATE TABLE DGOAttributes(
      iVeg_100EX REAL CONSTRAINT CHK_Reaches_ExistingVeg100 CHECK ((iVeg_100EX >= 0) AND (iVeg_100EX <= 4)),
      iVeg_30EX REAL CONSTRAINT CHK_Reaches_ExistingVeg30 CHECK ((iVeg_30EX >= 0) AND (iVeg_30EX <= 4)), 
      iVeg_100HPE REAL CONSTRAINT CHK_Reaches_HistoricVeg100 CHECK ((iVeg_100HPE >= 0) AND (iVeg_100HPE <= 4)), 
-     iVeg_30HPE REAL CONSTRAINT CH_Reaches_HistoricVeg30 CHECK ((iVeg_30HPE >= 0) AND (iVeg_30HPE <= 4))
+     iVeg_30HPE REAL CONSTRAINT CH_Reaches_HistoricVeg30 CHECK ((iVeg_30HPE >= 0) AND (iVeg_30HPE <= 4)),
+     iHyd_Q2 REAL CONSTRAINT CHK_Reaches_Q2 CHECK (iHyd_Q2 >= 0),
+     iHyd_QLow REAL CONSTRAINT CHK_Reaches_QLow CHECK (iHyd_QLow >= 0),
+     iHyd_SPLow REAL CONSTRAINT CHK_Reaches_StreamPowerLow CHECK (iHyd_SPLow >= 0),
+     iHyd_SP2 REAL CONSTRAINT CHK_Reaches_StreamPower2 CHECK (iHyd_SP2 >= 0),
+     iPC_Road REAL CONSTRAINT CHK_Reaches_RoadDist CHECK (iPC_Road >= 0), 
+     iPC_RoadX REAL CONSTRAINT CHK_Reaches_RoadCrossDist CHECK (iPC_RoadX >= 0), 
+     iPC_RoadVB REAL CONSTRAINT CGK_Reaches_RoadVBDist CHECK (iPC_RoadVB >= 0), 
+     iPC_Rail REAL CONSTRAINT CHK_Reaches_RailDist CHECK (iPC_Rail >= 0), 
+     iPC_RailVB REAL CONSTRAINT CHK_Reaches_RailVBDist CHECK (iPC_RailVB >= 0), 
+     iPC_LU REAL, 
+     iPC_VLowLU REAL, 
+     iPC_LowLU REAL, 
+     iPC_ModLU REAL, 
+     iPC_HighLU REAL,
+     iPC_Canal REAL, 
+     iPC_DivPts REAL, 
+     iPC_Privat REAL, 
+     oPC_Dist REAL
      );
 
 CREATE TABLE IGOAttributes(
@@ -185,22 +223,22 @@ CREATE INDEX FX_Reaches_FCode ON ReachAttributes (ReachCode);
 CREATE INDEX FX_Reaches_HUC ON ReachAttributes (WatershedID);
 CREATE INDEX FX_Reaches_DamRiskID ON ReachAttributes (RiskID);
 CREATE INDEX FX_Reaches_DamLimitationID ON ReachAttributes (LimitationID);
-CREATE INDEX FX_Reaches_AgencyID ON ReachAttributes (AgencyID);
+-- CREATE INDEX FX_Reaches_AgencyID ON ReachAttributes (AgencyID);
 CREATE INDEX FX_Reaches_OpportunityID ON ReachAttributes (OpportunityID);
 
 -- Non-spatial view of BRAT results with joins to the relevant tables
 CREATE VIEW vwReachAttributes AS
 SELECT R.*,
-       W.Name         Watershed,
+       -- W.Name         Watershed,
        RC.DisplayName ReachType,
-       A.Name         Agency,
+       --A.Name         Agency,
        DL.Name        Limitation,
        DR.Name        Risk,
        DD.Name        Opportunity
 FROM ReachAttributes R
-         INNER JOIN Watersheds W ON R.WatershedID = W.WatershedID
+         --INNER JOIN Watersheds W ON R.WatershedID = W.WatershedID
          LEFT JOIN ReachCodes RC ON R.ReachCode = RC.ReachCode
-         LEFT JOIN Agencies A ON R.AgencyID = A.AgencyID
+         --LEFT JOIN Agencies A ON R.AgencyID = A.AgencyID
          LEFT JOIN DamRisks DR ON R.RiskID = DR.RiskID
          LEFT JOIN DamLimitations DL ON R.LimitationID = DL.LimitationID
          LEFT JOIN DamOpportunities DD ON R.OpportunityID = DD.OpportunityID;
@@ -290,7 +328,7 @@ INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Epochs', 'attributes'
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachCodes', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachVegetation', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('MetaData', 'attributes');
-INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Agencies', 'attributes');
+--INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Agencies', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('VegetationOverrides', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Watersheds', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('VegetationTypes', 'attributes');
