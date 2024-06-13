@@ -153,9 +153,6 @@ def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Pa
     for input_key, rslayer in LayerTypes['INPUTS'].sub_layers.items():
         input_layers[input_key] = os.path.join(inputs_gpkg_path, rslayer.rel_path)
         copy_feature_class(source_layers[input_key], input_layers[input_key], cfg.OUTPUT_EPSG)
-        # if input_key in ['HYDRO_FLOWLINES', 'ANTHRO_FLOWLINES', 'HYDRO_IGOS', 'ANTHRO_IGOS', 'HYDRO_DGOS', 'ANTHRO_DGOS']:
-        #     out_path = os.path.join(outputs_gpkg_path, LayerTypes['INPUTS'].sub_layers[input_key].rel_path)
-        #     copy_feature_class(source_layers[input_key], out_path, cfg.OUTPUT_EPSG)
 
     # Create the output feature class fields. Only those listed here will get copied from the source
     with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['BRAT_GEOMETRY'].rel_path, write=True) as out_lyr:
@@ -250,6 +247,12 @@ def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Pa
                                   (SELECT Slope, Length_m, DrainArea, QLow, Q2, SPLow, SP2, iPC_Road, iPC_RoadX, iPC_RoadVB, iPC_Rail, iPC_RailVB, iPC_DivPts, iPC_Privat, iPC_Canal, iPC_LU, iPC_VLowLU, iPC_LowLU, iPC_ModLU, iPC_HighLU, oPC_Dist FROM HydroAnthroReach WHERE ReachID = {row['ReachID']})
                                   WHERE ReachID = {row['ReachID']}""")
         database.conn.commit()
+        database.curs.execute("""SELECT DGOID FROM DGOAttributes""")
+        for row in database.curs.fetchall():
+            database.curs.execute(f"""UPDATE DGOAttributes SET (iGeo_Slope, iGeo_Len, iGeo_DA, iHyd_QLow, iHyd_Q2, iHyd_SPLow, iHyd_SP2) =
+                                  (SELECT Slope, Length_m, DrainArea, Qlow, Q2, SPLow, SP2 FROM HydroAnthroDGO WHERE DGOID = {row['DGOID']})
+                                  WHERE DGOID = {row['DGOID']}""")
+        database.conn.commit()
 
         database.curs.execute(f'UPDATE ReachAttributes SET IsPeren = 1 WHERE (ReachCode IN ({", ".join(peren_codes)}))')
         database.curs.execute('UPDATE ReachAttributes SET iGeo_DA = 0 WHERE iGeo_DA IS NULL')
@@ -278,21 +281,9 @@ def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Pa
 
         database.conn.commit()
 
-    # Calculate the geophysical properties slope, min and max elevations
-    # reach_geometry(reach_geometry_path, dem_raster_path, elevation_buffer)
-
-    # Calculate geophysical attributes for the DGOs
-    # dgo_geometry(input_layers['DGOS'], input_layers['FLOWLINES'], dem_raster_path, 100, outputs_gpkg_path)
-
-    # Calculate the conflict attributes ready for conservation (for DGOs, imported from Anthro)
-    # This will be removed once Anthro is fully pulled out of BRAT
-    # conflict_attributes(outputs_gpkg_path, reach_geometry_path,
-    #                     input_layers['VALLEY_BOTTOM'], input_layers['ROADS'], input_layers['RAIL'], input_layers['CANALS'],
-    #                     input_layers['OWNERSHIP'], 30, 5, cfg.OUTPUT_EPSG, canal_codes, intermediates_gpkg_path)
-
     # copy conflict attributes from reaches to dgos
     copy_fields_lwa = {field: field for field in ['iPC_Road', 'iPC_RoadX', 'iPC_RoadVB', 'iPC_Rail', 'iPC_RailVB', 'iPC_DivPts', 'iPC_Privat', 'iPC_Canal', 'iPC_LU', 'iPC_VLowLU', 'iPC_LowLU', 'iPC_ModLU', 'iPC_HighLU', 'oPC_Dist']}
-    line_attributes_to_dgo(input_layers['ANTHRO_FLOWLINES'], input_layers['HYDRO_DGOS'], copy_fields_lwa, method='lwa', dgo_table=os.path.join(outputs_gpkg_path, 'DGOAttributes'))
+    line_attributes_to_dgo(input_layers['ANTHRO_FLOWLINES'], input_layers['HYDRO_DGOS'], copy_fields_lwa, method='lwa', dgo_table=outputs_gpkg_path)
 
     # Calculate the vegetation cell counts for each epoch and buffer
     buffer_paths = []

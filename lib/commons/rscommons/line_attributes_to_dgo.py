@@ -30,8 +30,8 @@ def line_attributes_to_dgo(line_ftrs: str, dgo_ftrs: str, field_map: dict, metho
                     raise ValueError(f'Field {dgo_field} not found in {dgo_ftrs}')
     if dgo_table is not None:
         with SQLiteCon(dgo_table) as db:
-            db.curs.execute(f"""PRAGMA table_info({dgo_table})""")
-            dgo_fields = [field[1] for field in db.curs.fetchall()]
+            db.curs.execute("""PRAGMA table_info(DGOAttributes)""")
+            dgo_fields = [field['name'] for field in db.curs.fetchall()]
             for dgo_field in field_map.values():
                 if dgo_field not in dgo_fields:
                     log.error(f'Field {dgo_field} not found in {dgo_table}')
@@ -59,7 +59,6 @@ def line_attributes_to_dgo(line_ftrs: str, dgo_ftrs: str, field_map: dict, metho
             for field in field_map.keys():
                 vals_dict = {val: length for val, length in zip(intersecting_lines[field]['val'], intersecting_lines[field]['length']) if val is not None}
                 if len(vals_dict) == 0:
-                    log.info(f'Intersecting line segment has no attribute value for field: {field} for DGO: {dgoid}')
                     continue
                 if method == 'lwa':
                     total_length = sum(vals_dict.values())
@@ -68,7 +67,7 @@ def line_attributes_to_dgo(line_ftrs: str, dgo_ftrs: str, field_map: dict, metho
                         dgo_lyr.ogr_layer.SetFeature(dgo_feature)
                     if dgo_table is not None:
                         with SQLiteCon(dgo_table) as db:
-                            db.curs.execute(f'UPDATE {dgo_table} SET {field_map[field]} = ? WHERE dgoid = ?', (sum([val * length / total_length for val, length in vals_dict.items()]), dgoid))
+                            db.curs.execute(f'UPDATE DGOAttributes SET {field_map[field]} = ? WHERE dgoid = ?', (sum([val * length / total_length for val, length in vals_dict.items()]), dgoid))
                             db.conn.commit()
                 elif method == 'lsl':
                     if update_dgo_ftrs:
@@ -76,7 +75,7 @@ def line_attributes_to_dgo(line_ftrs: str, dgo_ftrs: str, field_map: dict, metho
                         dgo_lyr.ogr_layer.SetFeature(dgo_feature)
                     if dgo_table is not None:
                         with SQLiteCon(dgo_table) as db:
-                            db.curs.execute(f'UPDATE {dgo_table} SET {field_map[field]} = ? WHERE dgoid = ?', (max(vals_dict, key=vals_dict.get), dgoid))
+                            db.curs.execute(f'UPDATE DGOAttributes SET {field_map[field]} = ? WHERE dgoid = ?', (max(vals_dict, key=vals_dict.get), dgoid))
                             db.conn.commit()
                 else:
                     log.error(f'Method {method} not recognised')
