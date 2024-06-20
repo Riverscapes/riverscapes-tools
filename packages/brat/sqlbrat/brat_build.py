@@ -27,6 +27,10 @@ from rscommons.database import create_database, SQLiteCon
 from rscommons.copy_features import copy_features_fields
 from rscommons.line_attributes_to_dgo import line_attributes_to_dgo
 from sqlbrat.utils.vegetation_summary import vegetation_summary, dgo_veg_summary
+from sqlbrat.utils.vegetation_suitability import vegetation_suitability, output_vegetation_raster
+from sqlbrat.utils.vegetation_fis import vegetation_fis
+from sqlbrat.utils.combined_fis import combined_fis
+from sqlbrat.utils.conservation import conservation
 from sqlbrat.__version__ import __version__
 
 Path = str
@@ -54,6 +58,8 @@ LayerTypes = {
     'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/intermediates.gpkg', {
         'SEGMENTED_NETWORK': RSLayer('Segmented Network', 'SEGMENTED_NETWORK', 'Vector', 'segmented_network'),
     }),
+    'EXVEG_SUIT': RSLayer('Existing Vegetation', 'EXVEG_SUIT', 'Raster', 'intermediates/existing_veg_suitability.tif'),
+    'HISTVEG_SUIT': RSLayer('Historic Vegetation', 'HISTVEG_SUIT', 'Raster', 'intermediates/historic_veg_suitability.tif'),
     'OUTPUTS': RSLayer('BRAT', 'OUTPUTS', 'Geopackage', 'outputs/brat.gpkg', {
         'BRAT_GEOMETRY': RSLayer('BRAT Geometry', 'BRAT_GEOMETRY', 'Vector', 'ReachGeometry'),
         'BRAT': RSLayer('BRAT', 'BRAT_RESULTS', 'Vector', 'vwReaches'),
@@ -61,8 +67,24 @@ LayerTypes = {
         'BRAT_DGOS': RSLayer('BRAT Discrete Geographic Objects', 'BRAT_DGOS', 'Vector', 'vwDgos'),
         'IGO_GEOM': RSLayer('Integrated Geographic Objects Geometry', 'IGO_GEOM', 'Vector', 'IGOGeometry'),
         'BRAT_IGOS': RSLayer('BRAT Integrated Geographic Objects', 'BRAT_IGOS', 'Vector', 'vwIgos'),
-    })
+    }),
+    'BRAT_RUN_REPORT': RSLayer('BRAT Report', 'BRAT_RUN_REPORT', 'HTMLFile', 'outputs/brat.html')
 }
+
+# Dictionary of fields that this process outputs, keyed by ShapeFile data type
+output_fields = {
+    ogr.OFTInteger: ['RiskID', 'LimitationID', 'OpportunityID'],
+    ogr.OFTReal: ['iVeg100EX', 'iVeg_30EX', 'iVeg100HPE', 'iVeg_30HPE', 'iPC_LU',
+                  'iPC_VLowLU', 'iPC_LowLU', 'iPC_ModLU', 'iPC_HighLU', 'iHyd_QLow',
+                  'iHyd_Q2', 'iHyd_SPLow', 'iHyd_SP2', 'oVC_HPE', 'oVC_EX', 'oCC_HPE',
+                  'mCC_HPE_CT', 'oCC_EX', 'mCC_EX_CT', 'mCC_HisDep']
+}
+
+Epochs = [
+    # (epoch, prefix, LayerType, OrigId)
+    ('Existing', 'EX', 'EXVEG_SUIT', 'EXVEG'),
+    ('Historic', 'HPE', 'HISTVEG_SUIT', 'HISTVEG')
+]
 
 
 def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Path,
@@ -112,10 +134,11 @@ def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Pa
     project_name = 'BRAT for HUC {}'.format(huc)
     project = RSProject(cfg, output_folder)
     project.create(project_name, 'BRAT', [
-        RSMeta('HUC{}'.format(len(huc)), str(huc)),
-        RSMeta('HUC', str(huc)),
-        RSMeta('BRATBuildVersion', cfg.version),
-        RSMeta('BRATBuildTimestamp', str(int(time.time())))
+        RSMeta('Model Documentation', 'https://tools.riverscapes.net/brat', RSMetaTypes.URL, locked=True),
+        RSMeta('HUC', str(huc), RSMetaTypes.HIDDEN, locked=True),
+        RSMeta('Hydrologic Unit Code', str(huc), locked=True),
+        RSMeta('BRAT Version', cfg.version, locked=True),
+        RSMeta('BRAT Timestamp', str(int(time.time())))
     ], meta)
 
     _realization, proj_nodes = project.add_realization(project_name, 'REALIZATION1', cfg.version, data_nodes=['Inputs', 'Intermediates', 'Outputs'])
@@ -213,10 +236,17 @@ def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Pa
     copy_features_fields(input_layers['HYDRO_DGOS'], dgo_geometry_path, epsg=cfg.OUTPUT_EPSG)
     copy_features_fields(input_layers['HYDRO_IGOS'], igo_geometry_path, epsg=cfg.OUTPUT_EPSG)
 
+    # Check that there are features to process
+    with GeopackageLayer(outputs_gpkg_path, 'ReachGeometry') as lyr:
+        if lyr.ogr_layer.GetFeatureCount() == 0:
+            log.info('No features to process; BRAT run complete')
+            return
+
     # with GeopackageLayer(reach_geometry_path, write=True) as reach_lyr:
     #     for feat, *_ in reach_lyr.iterate_features('Add WatershedID to ReachGeometry'):
     #         feat.SetField('WatershedID', huc[:8])
     #         reach_lyr.ogr_layer.SetFeature(feat)
+
     with SQLiteCon(inputs_gpkg_path) as database:
         database.curs.execute("""CREATE VIEW vwHydroAnthro AS
                               SELECT H.fid, Slope, Length_m, DrainArea, QLow, Q2, SPLow, SP2, iPC_Road, iPC_RoadX, iPC_RoadVB, iPC_Rail, iPC_RailVB, iPC_DivPts, iPC_Privat, iPC_Canal, iPC_LU, iPC_VLowLU, iPC_LowLU, iPC_ModLU, iPC_HighLU, oPC_Dist
@@ -249,8 +279,8 @@ def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Pa
         database.conn.commit()
         database.curs.execute("""SELECT DGOID FROM DGOAttributes""")
         for row in database.curs.fetchall():
-            database.curs.execute(f"""UPDATE DGOAttributes SET (iGeo_Slope, iGeo_Len, iGeo_DA, iHyd_QLow, iHyd_Q2, iHyd_SPLow, iHyd_SP2) =
-                                  (SELECT Slope, Length_m, DrainArea, Qlow, Q2, SPLow, SP2 FROM HydroAnthroDGO WHERE DGOID = {row['DGOID']})
+            database.curs.execute(f"""UPDATE DGOAttributes SET (iGeo_Slope, iGeo_DA, iHyd_QLow, iHyd_Q2, iHyd_SPLow, iHyd_SP2) =
+                                  (SELECT Slope, DrainArea, Qlow, Q2, SPLow, SP2 FROM HydroAnthroDGO WHERE DGOID = {row['DGOID']})
                                   WHERE DGOID = {row['DGOID']}""")
         database.conn.commit()
 
@@ -282,8 +312,8 @@ def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Pa
         database.conn.commit()
 
     # copy conflict attributes from reaches to dgos
-    copy_fields_lwa = {field: field for field in ['iPC_Road', 'iPC_RoadX', 'iPC_RoadVB', 'iPC_Rail', 'iPC_RailVB', 'iPC_DivPts', 'iPC_Privat', 'iPC_Canal', 'iPC_LU', 'iPC_VLowLU', 'iPC_LowLU', 'iPC_ModLU', 'iPC_HighLU', 'oPC_Dist']}
-    line_attributes_to_dgo(input_layers['ANTHRO_FLOWLINES'], input_layers['HYDRO_DGOS'], copy_fields_lwa, method='lwa', dgo_table=outputs_gpkg_path)
+    # copy_fields_lwa = {field: field for field in ['iPC_Road', 'iPC_RoadX', 'iPC_RoadVB', 'iPC_Rail', 'iPC_RailVB', 'iPC_DivPts', 'iPC_Privat', 'iPC_Canal', 'iPC_LU', 'iPC_VLowLU', 'iPC_LowLU', 'iPC_ModLU', 'iPC_HighLU', 'oPC_Dist']}
+    # line_attributes_to_dgo(input_layers['ANTHRO_FLOWLINES'], input_layers['HYDRO_DGOS'], copy_fields_lwa, method='lwa', dgo_table=outputs_gpkg_path)
 
     # Calculate the vegetation cell counts for each epoch and buffer
     buffer_paths = []
@@ -302,6 +332,30 @@ def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Pa
                                                                                      RSMeta('DataProductVersion', cfg.version),
                                                                                      RSMeta('DocsUrl', f'https://tools.riverscapes.net/brat/data/#{int(buffer)}M_BUFFER', RSMetaTypes.URL)]
 
+    watershed, max_drainage_area, ecoregion = get_watershed_info(outputs_gpkg_path)
+
+    # Calculate the vegetation and combined FIS for the existing and historical vegetation epochs
+    for epoch, prefix, ltype, orig_id in Epochs:
+
+        # Calculate the vegetation suitability for each buffer
+        [vegetation_suitability(outputs_gpkg_path, buffer, prefix, ecoregion) for buffer in get_stream_buffers(outputs_gpkg_path)]
+
+        # Run the vegetation and then combined FIS for this epoch
+        vegetation_fis(outputs_gpkg_path, epoch, prefix)
+        combined_fis(outputs_gpkg_path, epoch, prefix, max_drainage_area)
+
+        orig_raster = os.path.join(project.project_dir, proj_nodes['Inputs'].find('Raster[@id="{}"]/Path'.format(orig_id)).text)
+        _veg_suit_raster_node, veg_suit_raster = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes[ltype], None, True)
+        output_vegetation_raster(outputs_gpkg_path, orig_raster, veg_suit_raster, epoch, prefix, ecoregion)
+
+    # Calculate departure from historical conditions
+    with SQLiteCon(outputs_gpkg_path) as database:
+        log.info('Calculating departure from historic conditions')
+        database.curs.execute('UPDATE ReachAttributes SET mCC_HisDep = mCC_HPE_CT - mCC_EX_CT WHERE (mCC_EX_CT IS NOT NULL) AND (mCC_HPE_CT IS NOT NULL)')
+        database.conn.commit()
+
+    conservation(outputs_gpkg_path)
+
     ellapsed_time = time.time() - start_time
 
     project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
@@ -311,6 +365,58 @@ def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Pa
     ])
 
     log.info('BRAT build completed successfully.')
+
+
+def get_watershed_info(gpkg_path):
+    """Query a BRAT database and get information about
+    the watershed being run. Assumes that all watersheds
+    except the one being run have been deleted.
+
+    Arguments:
+        database {str} -- Path to the BRAT SQLite database
+
+    Returns:
+        [tuple] -- WatershedID, max drainage area, EcoregionID with which
+        the watershed is associated.
+    """
+
+    with SQLiteCon(gpkg_path) as database:
+        database.curs.execute('SELECT WatershedID, MaxDrainage, EcoregionID FROM Watersheds')
+        row = database.curs.fetchone()
+        watershed = row['WatershedID']
+        max_drainage = row['MaxDrainage']
+        ecoregion = row['EcoregionID']
+
+    log = Logger('BRAT Run')
+
+    if not watershed:
+        raise Exception('Missing watershed in BRAT datatabase {}'.format(database))
+
+    if not max_drainage:
+        log.warning('Missing max drainage for watershed {}'.format(watershed))
+
+    if not ecoregion:
+        raise Exception('Missing ecoregion for watershed {}'.format(watershed))
+
+    return watershed, max_drainage, ecoregion
+
+
+def get_stream_buffers(gpkg_path):
+    """Get the list of buffers used to sample the vegetation.
+    Assumes that the vegetation has already been sample and that
+    the streamside and riparian buffers are the only values in
+    the ReachVegetation database table.
+
+    Arguments:
+        database {str} -- Path to the BRAT database
+
+    Returns:
+        [list] -- all discrete vegetation buffers
+    """
+
+    with SQLiteCon(gpkg_path) as database:
+        database.curs.execute('SELECT Buffer FROM ReachVegetation GROUP BY Buffer')
+        return [row['Buffer'] for row in database.curs.fetchall()]
 
 
 def augment_layermeta():
