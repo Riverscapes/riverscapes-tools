@@ -82,8 +82,13 @@ LayerTypes = {
     }),
     'REPORT': RSLayer('RME Report', 'REPORT', 'HTMLFile', 'outputs/rme.html'),
     'REPORT_PERENNIAL': RSLayer('RME Perennial Streams Report', 'REPORT_PERENNIAL', 'HTMLFile', 'outputs/rme_perennial.html'),
+    'REPORT_PUBLIC_PERENNIAL': RSLayer('RME Public Perennial Streams Report', 'REPORT_PUBLIC_PERENNIAL', 'HTMLFile', 'outputs/rme_public_perennial.html'),
     'REPORT_BLM_LANDS': RSLayer('RME BLM Lands Report', 'REPORT_BLM_LANDS', 'HTMLFile', 'outputs/rme_blm_lands.html'),
     'REPORT_BLM_PERENNIAL': RSLayer('RME BLM Perennial Report', 'REPORT_BLM_PERENNIAL', 'HTMLFile', 'outputs/rme_blm_perennial.html'),
+    'REPORT_USFS_PERENNIAL': RSLayer('RME USFS Perennial Report', 'REPORT_USFS_PERENNIAL', 'HTMLFile', 'outputs/rme_usfs_perennial.html'),
+    'REPORT_NPS_PERENNIAL': RSLayer('RME NPS Perennial Report', 'REPORT_NPS_PERENNIAL', 'HTMLFile', 'outputs/rme_nps_perennial.html'),
+    'REPORT_ST_PERENNIAL': RSLayer('RME ST Perennial Report', 'REPORT_ST_PERENNIAL', 'HTMLFile', 'outputs/rme_st_perennial.html'),
+    'REPORT_FWS_PERENNIAL': RSLayer('RME FWS Perennial Report', 'REPORT_FWS_PERENNIAL', 'HTMLFile', 'outputs/rme_fws_perennial.html'),
 }
 
 stream_size_lookup = {0: 'small', 1: 'medium',

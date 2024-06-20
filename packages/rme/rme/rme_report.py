@@ -13,8 +13,13 @@ from rme.__version__ import __version__
 # `LayerTypes` dictionary at the top of the metric_engine.py file
 FILTER_MAP = {
     "perennial": "FCode IN (46006, 55800)",
+    "public_perennial": "(FCode IN (46006, 55800)) AND (rme_dgo_ownership NOT IN ('PVT', 'UND', 'BIA', 'LG')) AND (rme_dgo_ownership IS NOT NULL)",
     "blm_lands": "rme_dgo_ownership = 'BLM'",
-    "blm_perennial": "(FCode IN (46006, 55800)) AND (rme_dgo_ownership = 'BLM')"
+    "blm_perennial": "(FCode IN (46006, 55800)) AND (rme_dgo_ownership = 'BLM')",
+    "usfs_perennial": "(FCode IN (46006, 55800)) AND (rme_dgo_ownership IN ('USFS', '4USFS'))",
+    "nps_perennial": "(FCode IN (46006, 55800)) AND (rme_dgo_ownership = 'NPS')",
+    'st_perennial': "(FCode IN (46006, 55800)) AND (rme_dgo_ownership = 'ST')",
+    'fws_perennial': "(FCode IN (46006, 55800)) AND (rme_dgo_ownership = 'FWS')",
 }
 FILTER_NAMES = list(FILTER_MAP.keys())
 
@@ -116,7 +121,8 @@ class RMEReport(RSReport):
         tr = ET.Element('tr')
         tbody.append(tr)
 
-        clean_data = [0 if x is None else x for x in data]
+        # Just make it all 0 if there is no data
+        clean_data = [0 if x is None else x for x in data] or [0]
         min_val = min(clean_data)
         max_val = max(clean_data)
         avg_val = sum(clean_data) / len(clean_data)
