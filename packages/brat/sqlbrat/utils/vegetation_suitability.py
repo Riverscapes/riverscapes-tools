@@ -66,7 +66,7 @@ def calculate_vegetation_suitability(gpkg_path: str, buffer: float, epoch: str, 
 
         database.curs.execute('SELECT R.ReachID, Round(SUM(CAST(IFNULL(OverrideSuitability, DefaultSuitability) AS REAL) * CAST(CellCount AS REAL) / CAST(TotalCells AS REAL)), 2) AS VegSuitability'
                               ' FROM vwReaches R'
-                              ' INNER JOIN Watersheds W ON R.WatershedID = W.WatershedID'
+                              ' INNER JOIN Watersheds W ON SUBSTR(R.WatershedID, 1, 8) = W.WatershedID'
                               ' INNER JOIN Ecoregions E ON W.EcoregionID = E.EcoregionID'
                               ' INNER JOIN ReachVegetation RV ON R.ReachID = RV.ReachID'
                               ' INNER JOIN VegetationTypes VT ON RV.VegetationID = VT.VegetationID'

@@ -86,7 +86,7 @@ def calc_risks(risks: dict, occ_ex: float, opc_dist: float, ipc_lu: float, ipc_c
         # if canals are within 20 meters (usually means canal is on the reach)
         return risks['Considerable Risk']
     else:
-        if opc_dist is not None:
+        if opc_dist is not None and ipc_lu is not None:
             # if infrastructure within 30 m or land use is high
             # if capacity is frequent or pervasive risk is considerable
             # if capaicty is rare or ocassional risk is some
@@ -179,24 +179,27 @@ def calc_opportunities(opportunities: dict, risks: dict, risk_id: float, occ_hpe
         [type]: [description]
     """
 
-    if risk_id == risks['Negligible Risk'] or risk_id == risks['Minor Risk']:
-        # 'oCC_EX' Frequent or Pervasive
-        # 'mCC_HisDep' <= 3
-        if occ_ex >= 5 and mcc_hisdep <= 3:
-            return opportunities['Easiest - Low-Hanging Fruit']
-        # 'oCC_EX' Occasional, Frequent, or Pervasive
-        # 'oCC_HPE' Frequent or Pervasive
-        # 'mCC_HisDep' <= 3
-        # 'ipc_vlowlu'(i.e., Natural) > 75
-        # 'ipc_highlu' (i.e., Developed) < 10
-        elif occ_ex > 1 and mcc_hisdep <= 3 and occ_hpe >= 5 and ipc_vlowlu > 75 and ipc_highlu < 10:
-            return opportunities['Straight Forward - Quick Return']
-        # 'oCC_EX' Rare or Occasional
-        # 'oCC_HPE' Frequent or Pervasive
-        # 'iPC_VLowLU'(i.e., Natural) > 75
-        # 'iPC_HighLU' (i.e., Developed) < 10
-        elif occ_ex > 0 and occ_ex < 5 and occ_hpe >= 5 and ipc_vlowlu > 75 and ipc_highlu < 10:
-            return opportunities['Strategic - Long-Term Investment']
+    if occ_ex is not None and mcc_hisdep is not None and occ_hpe is not None and ipc_vlowlu is not None and ipc_highlu is not None:
+        if risk_id == risks['Negligible Risk'] or risk_id == risks['Minor Risk']:
+            # 'oCC_EX' Frequent or Pervasive
+            # 'mCC_HisDep' <= 3
+            if occ_ex >= 5 and mcc_hisdep <= 3:
+                return opportunities['Easiest - Low-Hanging Fruit']
+            # 'oCC_EX' Occasional, Frequent, or Pervasive
+            # 'oCC_HPE' Frequent or Pervasive
+            # 'mCC_HisDep' <= 3
+            # 'ipc_vlowlu'(i.e., Natural) > 75
+            # 'ipc_highlu' (i.e., Developed) < 10
+            elif occ_ex > 1 and mcc_hisdep <= 3 and occ_hpe >= 5 and ipc_vlowlu > 75 and ipc_highlu < 10:
+                return opportunities['Straight Forward - Quick Return']
+            # 'oCC_EX' Rare or Occasional
+            # 'oCC_HPE' Frequent or Pervasive
+            # 'iPC_VLowLU'(i.e., Natural) > 75
+            # 'iPC_HighLU' (i.e., Developed) < 10
+            elif occ_ex > 0 and occ_ex < 5 and occ_hpe >= 5 and ipc_vlowlu > 75 and ipc_highlu < 10:
+                return opportunities['Strategic - Long-Term Investment']
+            else:
+                return opportunities['NA']
         else:
             return opportunities['NA']
     else:
