@@ -279,13 +279,14 @@ def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Pa
         database.conn.commit()
         database.curs.execute("""SELECT DGOID FROM DGOAttributes""")
         for row in database.curs.fetchall():
-            database.curs.execute(f"""UPDATE DGOAttributes SET (iGeo_Slope, iGeo_DA, iHyd_QLow, iHyd_Q2, iHyd_SPLow, iHyd_SP2) =
-                                  (SELECT Slope, DrainArea, Qlow, Q2, SPLow, SP2 FROM HydroAnthroDGO WHERE DGOID = {row['DGOID']})
+            database.curs.execute(f"""UPDATE DGOAttributes SET (iGeo_Slope, iGeo_DA, iHyd_QLow, iHyd_Q2, iHyd_SPLow, iHyd_SP2, LUI, Road_len, Rail_len, Canal_len, RoadX_ct, DivPts_ct, Road_prim_len, Road_sec_len, Road_4wd_len) =
+                                  (SELECT Slope, DrainArea, Qlow, Q2, SPLow, SP2, LUI, Road_len, Rail_len, Canal_len, RoadX_ct, DivPts_ct, Road_prim_len, Road_sec_len, Road_4wd_len FROM HydroAnthroDGO WHERE DGOID = {row['DGOID']})
                                   WHERE DGOID = {row['DGOID']}""")
         database.conn.commit()
 
         database.curs.execute(f'UPDATE ReachAttributes SET IsPeren = 1 WHERE (ReachCode IN ({", ".join(peren_codes)}))')
-        database.curs.execute('UPDATE ReachAttributes SET iGeo_DA = 0 WHERE iGeo_DA IS NULL')
+        database.curs.execute('UPDATE ReachAttributes SET iGeo_DA = 0.01 WHERE iGeo_DA IS NULL')
+        database.curs.execute('UPDATE ReachAttributes SET iGeo_DA = 0.01 WHERE iGeo_DA = 0')
         database.conn.commit()
 
         database.curs.execute(f'UPDATE DGOAttributes SET WatershedID = {huc} WHERE WatershedID IS NULL')
@@ -355,6 +356,18 @@ def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Pa
         database.conn.commit()
 
     conservation(outputs_gpkg_path)
+
+    # copy field necessary for models from reaches to dgos
+    log.info('Copying FIS input fields from reaches to DGOs')
+    copy_fields_lwa = {field: field for field in ['iVeg100EX', 'iVeg_30EX', 'iVeg100HPE', 'iVeg_30HPE']}
+    copy_fields_lsl = {field: field for field in ['Risk', 'Limitation', 'Opportunity']}
+    line_attributes_to_dgo(os.path.join(outputs_gpkg_path, 'vwReaches'), input_layers['HYDRO_DGOS'], copy_fields_lwa, method='lwa', dgo_table=outputs_gpkg_path)
+    line_attributes_to_dgo(os.path.join(outputs_gpkg_path, 'vwReaches'), input_layers['HYDRO_DGOS'], copy_fields_lsl, method='lsl', dgo_table=outputs_gpkg_path)
+
+    log.info('Applying FIS to DGOs')
+    for epoch, prefix, ltype, orig_id in Epochs:
+        vegetation_fis(outputs_gpkg_path, epoch, prefix, dgo=True)
+        combined_fis(outputs_gpkg_path, epoch, prefix, max_drainage_area, dgo=True)
 
     ellapsed_time = time.time() - start_time
 
