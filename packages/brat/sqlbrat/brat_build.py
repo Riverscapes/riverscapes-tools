@@ -26,6 +26,7 @@ from rscommons.build_network import build_network
 from rscommons.database import create_database, SQLiteCon
 from rscommons.copy_features import copy_features_fields
 from rscommons.line_attributes_to_dgo import line_attributes_to_dgo
+from rscommons.moving_window import moving_window_dgo_ids
 from sqlbrat.utils.vegetation_summary import vegetation_summary, dgo_veg_summary
 from sqlbrat.utils.vegetation_suitability import vegetation_suitability, output_vegetation_raster
 from sqlbrat.utils.vegetation_fis import vegetation_fis
@@ -265,9 +266,9 @@ def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Pa
 
         database.curs.execute("""INSERT INTO ReachAttributes (ReachID, WatershedID, ReachCode, StreamName)
                               SELECT ReachID, WatershedID, FCode, StreamName FROM ReachGeometry""")
-        database.curs.execute("""INSERT INTO DGOAttributes (DGOID, FCode, level_path, seg_distance, centerline_length, segment_area) 
+        database.curs.execute("""INSERT INTO DGOAttributes (DGOID, ReachCode, level_path, seg_distance, centerline_length, segment_area)
                               SELECT DGOID, FCode, level_path, seg_distance, centerline_length, segment_area FROM DGOGeometry""")
-        database.curs.execute("""INSERT INTO IGOAttributes (IGOID, FCode, level_path, seg_distance) 
+        database.curs.execute("""INSERT INTO IGOAttributes (IGOID, FCode, level_path, seg_distance)
                               SELECT IGOID, FCode, level_path, seg_distance FROM IGOGeometry""")
         database.conn.commit()
 
@@ -279,8 +280,8 @@ def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Pa
         database.conn.commit()
         database.curs.execute("""SELECT DGOID FROM DGOAttributes""")
         for row in database.curs.fetchall():
-            database.curs.execute(f"""UPDATE DGOAttributes SET (iGeo_Slope, iGeo_DA, iHyd_QLow, iHyd_Q2, iHyd_SPLow, iHyd_SP2, LUI, Road_len, Rail_len, Canal_len, RoadX_ct, DivPts_ct, Road_prim_len, Road_sec_len, Road_4wd_len) =
-                                  (SELECT Slope, DrainArea, Qlow, Q2, SPLow, SP2, LUI, Road_len, Rail_len, Canal_len, RoadX_ct, DivPts_ct, Road_prim_len, Road_sec_len, Road_4wd_len FROM HydroAnthroDGO WHERE DGOID = {row['DGOID']})
+            database.curs.execute(f"""UPDATE DGOAttributes SET (iGeo_Slope, iGeo_Len, iGeo_DA, iHyd_QLow, iHyd_Q2, iHyd_SPLow, iHyd_SP2, LUI, Road_len, Rail_len, Canal_len, RoadX_ct, DivPts_ct, Road_prim_len, Road_sec_len, Road_4wd_len) =
+                                  (SELECT Slope, Length_m, DrainArea, Qlow, Q2, SPLow, SP2, LUI, Road_len, Rail_len, Canal_len, RoadX_ct, DivPts_ct, Road_prim_len, Road_sec_len, Road_4wd_len FROM HydroAnthroDGO WHERE DGOID = {row['DGOID']})
                                   WHERE DGOID = {row['DGOID']}""")
         database.conn.commit()
 
@@ -310,7 +311,39 @@ def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Pa
         database.curs.execute("""INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m)
             SELECT 'vwIgos', column_name, geometry_type_name, srs_id, z, m FROM gpkg_geometry_columns WHERE table_name = 'IGOGeometry'""")
 
+        database.conn.execute('CREATE INDEX ix_igo_levelpath on IGOGeometry(level_path)')
+        database.conn.execute('CREATE INDEX ix_igo_segdist on IGOGeometry(seg_distance)')
+        database.conn.execute('CREATE INDEX ix_dgo_levelpath on DGOGeometry(level_path)')
+        database.conn.execute('CREATE INDEX ix_dgo_segdist on DGOGeometry(seg_distance)')
+
         database.conn.commit()
+
+        database.curs.execute('SELECT DISTINCT level_path FROM IGOGeometry')
+        levelps = database.curs.fetchall()
+        levelpathsin = [lp['level_path'] for lp in levelps]
+
+    with SQLiteCon(inputs_gpkg_path) as db:
+        db.conn.execute('CREATE INDEX ix_dgo_levelpath on hydro_dgos(level_path)')
+        db.conn.execute('CREATE INDEX ix_dgo_segdist on hydro_dgos(seg_distance)')
+        db.conn.commit()
+
+    # set window distances for different stream sizes
+    distancein = {
+        '0': 200,
+        '1': 400,
+        '2': 1200,
+        '3': 2000,
+        '4': 8000
+    }
+    project.add_metadata(
+        [RSMeta('Small Search Window', str(distancein['0']), RSMetaTypes.INT, locked=True),
+         RSMeta('Medium Search Window', str(distancein['1']), RSMetaTypes.INT, locked=True),
+         RSMeta('Large Search Window', str(distancein['2']), RSMetaTypes.INT, locked=True),
+         RSMeta('Very Large Search Window', str(distancein['3']), RSMetaTypes.INT, locked=True),
+         RSMeta('Huge Search Window', str(distancein['4']), RSMetaTypes.INT, locked=True)])
+
+    # associate DGO IDs with IGO IDs for moving windows
+    windows = moving_window_dgo_ids(igo_geometry_path, input_layers['HYDRO_DGOS'], levelpathsin, distancein)
 
     # copy conflict attributes from reaches to dgos
     # copy_fields_lwa = {field: field for field in ['iPC_Road', 'iPC_RoadX', 'iPC_RoadVB', 'iPC_Rail', 'iPC_RailVB', 'iPC_DivPts', 'iPC_Privat', 'iPC_Canal', 'iPC_LU', 'iPC_VLowLU', 'iPC_LowLU', 'iPC_ModLU', 'iPC_HighLU', 'oPC_Dist']}
