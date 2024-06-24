@@ -14,11 +14,11 @@ import numpy as np
 import skfuzzy as fuzz
 from skfuzzy import control as ctrl
 from rscommons import Logger, ProgressBar, dotenv
-from rscommons.database import load_attributes
-from rscommons.database import write_db_attributes
+from rscommons.database import load_attributes, load_dgo_attributes
+from rscommons.database import write_db_attributes, write_db_dgo_attributes
 
 
-def vegetation_fis(database: str, label: str, veg_type: str):
+def vegetation_fis(database: str, label: str, veg_type: str, dgo: bool = None):
     """Calculate vegetation suitability for each reach in a BRAT
     SQLite database
 
@@ -35,9 +35,14 @@ def vegetation_fis(database: str, label: str, veg_type: str):
     riparian_field = 'iVeg100{}'.format(veg_type)
     out_field = 'oVC_{}'.format(veg_type)
 
-    feature_values = load_attributes(database, [streamside_field, riparian_field], '({} IS NOT NULL) AND ({} IS NOT NULL)'.format(streamside_field, riparian_field))
-    calculate_vegegtation_fis(feature_values, streamside_field, riparian_field, out_field)
-    write_db_attributes(database, feature_values, [out_field])
+    if not dgo:
+        feature_values = load_attributes(database, [streamside_field, riparian_field], '({} IS NOT NULL) AND ({} IS NOT NULL)'.format(streamside_field, riparian_field))
+        calculate_vegegtation_fis(feature_values, streamside_field, riparian_field, out_field)
+        write_db_attributes(database, feature_values, [out_field])
+    else:
+        feature_values = load_dgo_attributes(database, [streamside_field, riparian_field], '({} IS NOT NULL) AND ({} IS NOT NULL)'.format(streamside_field, riparian_field))
+        calculate_vegegtation_fis(feature_values, streamside_field, riparian_field, out_field)
+        write_db_dgo_attributes(database, feature_values, [out_field])
 
     log.info('Process completed successfully.')
 

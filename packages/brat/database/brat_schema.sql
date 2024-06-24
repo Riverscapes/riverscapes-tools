@@ -100,7 +100,7 @@ CREATE TABLE HydroAnthroReach(
      iPC_LowLU REAL, 
      iPC_ModLU REAL, 
      iPC_HighLU REAL, 
-     oPC_Dist REAL 
+     oPC_Dist REAL
 );
 
 CREATE TABLE HydroAnthroDGO(
@@ -180,28 +180,32 @@ CREATE TABLE DGOAttributes(
      segment_area REAL, 
      iGeo_DA REAL CONSTRAINT CK_DGO_DrainageAreaSqKm CHECK (iGeo_DA >= 0), 
      iGeo_Slope REAL, 
-     iVeg_100EX REAL CONSTRAINT CHK_Reaches_ExistingVeg100 CHECK ((iVeg_100EX >= 0) AND (iVeg_100EX <= 4)),
+     iVeg100EX REAL CONSTRAINT CHK_Reaches_ExistingVeg100 CHECK ((iVeg100EX >= 0) AND (iVeg100EX <= 4)),
      iVeg_30EX REAL CONSTRAINT CHK_Reaches_ExistingVeg30 CHECK ((iVeg_30EX >= 0) AND (iVeg_30EX <= 4)), 
-     iVeg_100HPE REAL CONSTRAINT CHK_Reaches_HistoricVeg100 CHECK ((iVeg_100HPE >= 0) AND (iVeg_100HPE <= 4)), 
+     iVeg100HPE REAL CONSTRAINT CHK_Reaches_HistoricVeg100 CHECK ((iVeg100HPE >= 0) AND (iVeg100HPE <= 4)), 
      iVeg_30HPE REAL CONSTRAINT CH_Reaches_HistoricVeg30 CHECK ((iVeg_30HPE >= 0) AND (iVeg_30HPE <= 4)),
      iHyd_Q2 REAL CONSTRAINT CHK_Reaches_Q2 CHECK (iHyd_Q2 >= 0),
      iHyd_QLow REAL CONSTRAINT CHK_Reaches_QLow CHECK (iHyd_QLow >= 0),
      iHyd_SPLow REAL CONSTRAINT CHK_Reaches_StreamPowerLow CHECK (iHyd_SPLow >= 0),
      iHyd_SP2 REAL CONSTRAINT CHK_Reaches_StreamPower2 CHECK (iHyd_SP2 >= 0),
-     iPC_Road REAL CONSTRAINT CHK_Reaches_RoadDist CHECK (iPC_Road >= 0), 
-     iPC_RoadX REAL CONSTRAINT CHK_Reaches_RoadCrossDist CHECK (iPC_RoadX >= 0), 
-     iPC_RoadVB REAL CONSTRAINT CGK_Reaches_RoadVBDist CHECK (iPC_RoadVB >= 0), 
-     iPC_Rail REAL CONSTRAINT CHK_Reaches_RailDist CHECK (iPC_Rail >= 0), 
-     iPC_RailVB REAL CONSTRAINT CHK_Reaches_RailVBDist CHECK (iPC_RailVB >= 0), 
-     iPC_LU REAL, 
-     iPC_VLowLU REAL, 
-     iPC_LowLU REAL, 
-     iPC_ModLU REAL, 
-     iPC_HighLU REAL,
-     iPC_Canal REAL, 
-     iPC_DivPts REAL, 
-     iPC_Privat REAL, 
-     oPC_Dist REAL
+     oVC_HPE REAL, 
+     oVC_EX REAL, 
+     oCC_HPE REAL, 
+     mCC_HPE_CT REAL, 
+     oCC_EX REAL, 
+     mCC_EX_CT REAL,
+     LUI REAL,
+     Road_len REAL,
+     Rail_len REAL,
+     Canal_len REAL,
+     RoadX_ct REAL,
+     DivPts_ct REAL,
+     Road_prim_len REAL,
+     Road_sec_len REAL,
+     Road_4wd_len REAL,
+     Risk TEXT,
+     Limitation TEXT,
+     Opportunity TEXT
      );
 
 CREATE TABLE IGOAttributes(
