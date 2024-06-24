@@ -152,8 +152,8 @@ def hydro_context(huc: int, dem: Path, hillshade: Path, igo: Path, dgo: Path, fl
                               SELECT ReachID, FCode, NHDPlusID, WatershedID, GNIS_Name, level_path, ownership, divergence, stream_order, us_state, ecoregion_iii, ecoregion_iv, DivDASqKM FROM ReachGeometry""")
         database.curs.execute("""INSERT INTO DGOAttributes (DGOID, FCode, level_path, seg_distance, centerline_length, segment_area) 
                               SELECT DGOID, FCode, level_path, seg_distance, centerline_length, segment_area FROM DGOGeometry""")
-        database.curs.execute("""INSERT INTO IGOAttributes (IGOID, FCode, level_path, seg_distance) 
-                              SELECT IGOID, FCode, level_path, seg_distance FROM IGOGeometry""")
+        database.curs.execute("""INSERT INTO IGOAttributes (IGOID, FCode, level_path, seg_distance, stream_size) 
+                              SELECT IGOID, FCode, level_path, seg_distance, stream_size FROM IGOGeometry""")
 
         database.curs.execute("""INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id)
             SELECT 'vwReaches', data_type, 'Reaches', min_x, min_y, max_x, max_y, srs_id FROM gpkg_contents WHERE table_name = 'ReachGeometry'""")

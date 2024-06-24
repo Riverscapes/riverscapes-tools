@@ -83,6 +83,7 @@ CREATE TABLE IGOAttributes(
     FCode INTEGER REFERENCES FCodes (FCode),
     level_path REAL,
     seg_distance REAL,
+    stream_size INTEGER,
     WatershedID TEXT,
     ElevMax REAL,
     ElevMin REAL,
