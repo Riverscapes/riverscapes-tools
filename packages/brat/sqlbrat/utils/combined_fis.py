@@ -34,14 +34,13 @@ def combined_fis(database: str, label: str, veg_type: str, max_drainage_area: fl
     capacity_field = 'oCC_{}'.format(veg_type)
     dam_count_field = 'mCC_{}_CT'.format(veg_type)
 
-    if not dgo:
-        fields = [veg_fis_field, 'iGeo_Slope', 'iGeo_DA', 'iHyd_SP2', 'iHyd_SPLow', 'iGeo_Len', 'ReachCode']
-        reaches = load_attributes(database, fields, ' AND '.join(['({} IS NOT NULL)'.format(f) for f in fields]))
+    fields = [veg_fis_field, 'iGeo_Slope', 'iGeo_DA', 'iHyd_SP2', 'iHyd_SPLow', 'iGeo_Len', 'ReachCode']
 
+    if not dgo:
+        reaches = load_attributes(database, fields, ' AND '.join(['({} IS NOT NULL)'.format(f) for f in fields]))
         calculate_combined_fis(reaches, veg_fis_field, capacity_field, dam_count_field, max_drainage_area)
         write_db_attributes(database, reaches, [capacity_field, dam_count_field], log)
     else:
-        fields = [veg_fis_field, 'iGeo_Slope', 'iGeo_DA', 'iHyd_SP2', 'iHyd_SPLow', 'iGeo_Len', 'FCode']
         feature_values = load_dgo_attributes(database, fields, ' AND '.join(['({} IS NOT NULL)'.format(f) for f in fields]))
         calculate_combined_fis(feature_values, veg_fis_field, capacity_field, dam_count_field, max_drainage_area)
         write_db_dgo_attributes(database, feature_values, [capacity_field, dam_count_field], log)
@@ -79,10 +78,7 @@ def calculate_combined_fis(feature_values: dict, veg_fis_field: str, capacity_fi
     counter = 0
     for reach_id, values in feature_values.items():
         reachid_array[counter] = reach_id
-        try:
-            reachcode_array[counter] = values['ReachCode']
-        except KeyError:
-            reachcode_array[counter] = values['FCode']
+        reachcode_array[counter] = values['ReachCode']
         veg_array[counter] = values[veg_fis_field]
         hydlow_array[counter] = values['iHyd_SPLow']
         hydq2_array[counter] = values['iHyd_SP2']
