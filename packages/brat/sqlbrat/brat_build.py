@@ -209,7 +209,8 @@ def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Pa
             'FCode': ogr.OFTInteger,
             'level_path': ogr.OFTReal,
             'seg_distance': ogr.OFTReal,
-            'centerline_length': ogr.OFTReal
+            'centerline_length': ogr.OFTReal,
+            'stream_size': ogr.OFTInteger
         })
 
     db_metadata = {
@@ -266,10 +267,10 @@ def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Pa
 
         database.curs.execute("""INSERT INTO ReachAttributes (ReachID, WatershedID, ReachCode, StreamName)
                               SELECT ReachID, WatershedID, FCode, StreamName FROM ReachGeometry""")
-        database.curs.execute("""INSERT INTO DGOAttributes (DGOID, ReachCode, level_path, seg_distance, centerline_length, segment_area)
+        database.curs.execute("""INSERT INTO DGOAttributes (DGOID, FCode, level_path, seg_distance, centerline_length, segment_area)
                               SELECT DGOID, FCode, level_path, seg_distance, centerline_length, segment_area FROM DGOGeometry""")
-        database.curs.execute("""INSERT INTO IGOAttributes (IGOID, FCode, level_path, seg_distance)
-                              SELECT IGOID, FCode, level_path, seg_distance FROM IGOGeometry""")
+        database.curs.execute("""INSERT INTO IGOAttributes (IGOID, FCode, level_path, seg_distance, stream_size)
+                              SELECT IGOID, FCode, level_path, seg_distance, stream_size FROM IGOGeometry""")
         database.conn.commit()
 
         database.curs.execute("""SELECT ReachID FROM ReachAttributes""")

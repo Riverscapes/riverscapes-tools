@@ -173,7 +173,7 @@ CREATE TABLE ReachAttributes (
 CREATE TABLE DGOAttributes(
      DGOID INTEGER PRIMARY KEY NOT NULL, 
      WatershedID TEXT,
-     ReachCode INTEGER REFERENCES ReachCodes (ReachCode),
+     FCode INTEGER REFERENCES ReachCodes (ReachCode),
      level_path REAL,
      seg_distance REAL,
      centerline_length REAL,
@@ -213,7 +213,8 @@ CREATE TABLE IGOAttributes(
      IGOID INTEGER PRIMARY KEY NOT NULL,
      FCode INTEGER REFERENCES ReachCodes (ReachCode),
      level_path REAL,
-     seg_distance REAL);
+     seg_distance REAL,
+     stream_size INTEGER);
 
 CREATE INDEX FK_ReachVegetation_ReachID ON ReachVegetation (ReachID);
 CREATE INDEX FK_ReachVegetation_VegetationID ON ReachVegetation (VegetationID);

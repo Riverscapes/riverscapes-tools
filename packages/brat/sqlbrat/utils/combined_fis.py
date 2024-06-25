@@ -79,7 +79,10 @@ def calculate_combined_fis(feature_values: dict, veg_fis_field: str, capacity_fi
     counter = 0
     for reach_id, values in feature_values.items():
         reachid_array[counter] = reach_id
-        reachcode_array[counter] = values['ReachCode']
+        try:
+            reachcode_array[counter] = values['ReachCode']
+        except KeyError:
+            reachcode_array[counter] = values['FCode']
         veg_array[counter] = values[veg_fis_field]
         hydlow_array[counter] = values['iHyd_SPLow']
         hydq2_array[counter] = values['iHyd_SP2']
