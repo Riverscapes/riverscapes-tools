@@ -33,6 +33,7 @@ from sqlbrat.utils.vegetation_fis import vegetation_fis
 from sqlbrat.utils.combined_fis import combined_fis
 from sqlbrat.utils.conservation import conservation
 from sqlbrat.utils.igo_attributes import igo_attributes
+from sqlbrat.brat_report import BratReport
 from sqlbrat.__version__ import __version__
 
 Path = str
@@ -409,13 +410,19 @@ def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Pa
 
     ellapsed_time = time.time() - start_time
 
+    report_path = os.path.join(project.project_dir, LayerTypes['BRAT_RUN_REPORT'].rel_path)
+    project.add_report(proj_nodes['Outputs'], LayerTypes['BRAT_RUN_REPORT'], replace=True)
+
     project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
     project.add_metadata([
         RSMeta("BratBuildProcTimeS", "{:.2f}".format(ellapsed_time), RSMetaTypes.INT),
         RSMeta("BratBuildProcTimeHuman", pretty_duration(ellapsed_time))
     ])
 
-    log.info('BRAT build completed successfully.')
+    report = BratReport(outputs_gpkg_path, report_path, project)
+    report.write()
+
+    log.info('BRAT run complete')
 
 
 def get_watershed_info(gpkg_path):
