@@ -16,7 +16,7 @@ def line_attributes_to_dgo(line_ftrs: str, dgo_ftrs: str, field_map: dict, metho
             for longest segment length. Defaults to 'lwa'."""
 
     log = Logger('Transfer attributes from line to DGO')
-    log.info(f'Transferring attributes from {line_ftrs} to {dgo_ftrs}')
+    log.info(f'Transferring attributes from {line_ftrs} to DGO features')
 
     # check that fields from dict exist in both feature classes
     with get_shp_or_gpkg(line_ftrs) as line_lyr, get_shp_or_gpkg(dgo_ftrs) as dgo_lyr:

@@ -32,6 +32,7 @@ from sqlbrat.utils.vegetation_suitability import vegetation_suitability, output_
 from sqlbrat.utils.vegetation_fis import vegetation_fis
 from sqlbrat.utils.combined_fis import combined_fis
 from sqlbrat.utils.conservation import conservation
+from sqlbrat.utils.igo_attributes import igo_attributes
 from sqlbrat.__version__ import __version__
 
 Path = str
@@ -267,9 +268,9 @@ def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Pa
 
         database.curs.execute("""INSERT INTO ReachAttributes (ReachID, WatershedID, ReachCode, StreamName)
                               SELECT ReachID, WatershedID, FCode, StreamName FROM ReachGeometry""")
-        database.curs.execute("""INSERT INTO DGOAttributes (DGOID, FCode, level_path, seg_distance, centerline_length, segment_area)
+        database.curs.execute("""INSERT INTO DGOAttributes (DGOID, ReachCode, level_path, seg_distance, centerline_length, segment_area)
                               SELECT DGOID, FCode, level_path, seg_distance, centerline_length, segment_area FROM DGOGeometry""")
-        database.curs.execute("""INSERT INTO IGOAttributes (IGOID, FCode, level_path, seg_distance, stream_size)
+        database.curs.execute("""INSERT INTO IGOAttributes (IGOID, ReachCode, level_path, seg_distance, stream_size)
                               SELECT IGOID, FCode, level_path, seg_distance, stream_size FROM IGOGeometry""")
         database.conn.commit()
 
@@ -402,6 +403,9 @@ def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Pa
     for epoch, prefix, ltype, orig_id in Epochs:
         vegetation_fis(outputs_gpkg_path, epoch, prefix, dgo=True)
         combined_fis(outputs_gpkg_path, epoch, prefix, max_drainage_area, dgo=True)
+
+    # moving window analysis
+    igo_attributes(outputs_gpkg_path, windows)
 
     ellapsed_time = time.time() - start_time
 
