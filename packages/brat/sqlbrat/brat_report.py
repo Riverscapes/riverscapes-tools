@@ -160,7 +160,7 @@ class BratReport(RSReport):
         self.hydrology_plots(intermediates_section)
         self.anthro_intermediates(intermediates_section)
         # self.geophysical_summary(intermediates_section)
-        self.ownership(intermediates_section)
+        # self.ownership(intermediates_section)
         inputs_section = self.section('Inputs', 'Model Inputs')
         self.drainage_network(inputs_section)
         self.vegetation(inputs_section)
@@ -343,10 +343,10 @@ class BratReport(RSReport):
         allequns = row[1] + row[2]
 
         RSReport.header(3, 'Hydrological Parameters', section)
-        RSReport.create_table_from_sql(
-            ['Parameter', 'Data Value', 'Data Units', 'Conversion Factor', 'Equation Value', 'Equation Units'],
-            'SELECT Parameter, Value, DataUnits, Conversion, ConvertedValue, EquationUnits FROM vwHydroParams WHERE \'{0}\' LIKE \'{1}\'||Parameter||\'{1}\''.format(allequns, '%'),
-            self.database, section, attrib={'class': 'fullwidth'})
+        # RSReport.create_table_from_sql(
+        #     ['Parameter', 'Data Value', 'Data Units', 'Conversion Factor', 'Equation Value', 'Equation Units'],
+        #     'SELECT Parameter, Value, DataUnits, Conversion, ConvertedValue, EquationUnits FROM vwHydroParams WHERE \'{0}\' LIKE \'{1}\'||Parameter||\'{1}\''.format(allequns, '%'),
+        #     self.database, section, attrib={'class': 'fullwidth'})
 
         variables = [
             ('iHyd_QLow', 'Baseflow (CFS)'),

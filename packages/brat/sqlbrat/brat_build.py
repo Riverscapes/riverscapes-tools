@@ -33,6 +33,7 @@ from sqlbrat.utils.vegetation_fis import vegetation_fis
 from sqlbrat.utils.combined_fis import combined_fis
 from sqlbrat.utils.conservation import conservation
 from sqlbrat.utils.igo_attributes import igo_attributes
+from sqlbrat.utils.riverscapes_brat import riverscape_brat
 from sqlbrat.brat_report import BratReport
 from sqlbrat.__version__ import __version__
 
@@ -394,19 +395,20 @@ def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Pa
     conservation(outputs_gpkg_path)
 
     # copy field necessary for models from reaches to dgos
-    log.info('Copying FIS input fields from reaches to DGOs')
-    copy_fields_lwa = {field: field for field in ['iVeg100EX', 'iVeg_30EX', 'iVeg100HPE', 'iVeg_30HPE']}
-    copy_fields_lsl = {field: field for field in ['Risk', 'Limitation', 'Opportunity']}
-    line_attributes_to_dgo(os.path.join(outputs_gpkg_path, 'vwReaches'), input_layers['HYDRO_DGOS'], copy_fields_lwa, method='lwa', dgo_table=outputs_gpkg_path)
-    line_attributes_to_dgo(os.path.join(outputs_gpkg_path, 'vwReaches'), input_layers['HYDRO_DGOS'], copy_fields_lsl, method='lsl', dgo_table=outputs_gpkg_path)
+    # log.info('Copying FIS input fields from reaches to DGOs')
+    # copy_fields_lwa = {field: field for field in ['iVeg100EX', 'iVeg_30EX', 'iVeg100HPE', 'iVeg_30HPE']}
+    # copy_fields_lsl = {field: field for field in ['Risk', 'Limitation', 'Opportunity']}
+    # line_attributes_to_dgo(os.path.join(outputs_gpkg_path, 'vwReaches'), input_layers['HYDRO_DGOS'], copy_fields_lwa, method='lwa', dgo_table=outputs_gpkg_path)
+    # line_attributes_to_dgo(os.path.join(outputs_gpkg_path, 'vwReaches'), input_layers['HYDRO_DGOS'], copy_fields_lsl, method='lsl', dgo_table=outputs_gpkg_path)
 
-    log.info('Applying FIS to DGOs')
-    for epoch, prefix, ltype, orig_id in Epochs:
-        vegetation_fis(outputs_gpkg_path, epoch, prefix, dgo=True)
-        combined_fis(outputs_gpkg_path, epoch, prefix, max_drainage_area, dgo=True)
+    # log.info('Applying FIS to DGOs')
+    # for epoch, prefix, ltype, orig_id in Epochs:
+    #     vegetation_fis(outputs_gpkg_path, epoch, prefix, dgo=True)
+    #     combined_fis(outputs_gpkg_path, epoch, prefix, max_drainage_area, dgo=True)
 
     # moving window analysis
-    igo_attributes(outputs_gpkg_path, windows)
+    # igo_attributes(outputs_gpkg_path, windows)
+    riverscape_brat(outputs_gpkg_path, windows)
 
     ellapsed_time = time.time() - start_time
 
