@@ -70,6 +70,17 @@
       ]
     },
     {
+      "name": "Write TauDEM Report",
+      "type": "python",
+      "request": "launch",
+      "module": "taudem.taudem_report",
+      "console": "integratedTerminal",
+      "args": [
+        "{env:DATA_ROOT}/taudem/${input:HUC}/project.rs.xml",
+        "{env:DATA_ROOT}/taudem/${input:HUC}/outputs/taudem.html"
+      ]
+    },
+    {
       "name": "Version Bump",
       "type": "python",
       "module": "rscommons.version",

@@ -1,0 +1,32 @@
+.plots {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.metrics-card {
+    width: 80%;
+    margin: 1rem;
+    padding: 1rem;
+    border: 1px solid #eeeeee;
+    border-radius: 5px;
+    text-align: center;
+}
+@media (min-width: 850px) {
+    .metrics-card {
+        width: 35%;
+    }
+}
+
+.metrics-card .metrics-card-header {
+    margin-bottom: 1rem;
+    font-weight: bold;
+}
+
+.metrics-card img {
+    display: block;
+    margin: 0 auto;
+    max-width: 100%;
+    height: auto;
+}

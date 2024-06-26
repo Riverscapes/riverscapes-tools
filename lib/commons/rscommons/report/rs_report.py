@@ -33,13 +33,19 @@ class RSReport():
 
     def write(self):
         css_template = "<style>\n{}\n</style>"
+
+        # Add button to go to top
+        top_button = ET.Element('a', attrib={'class': 'top-button', 'href': '#TOC'})
+        top_button.text = "Top"
+        self.main_el.append(top_button)
+
         html_inner = ET.tostring(self.main_el, method="html", encoding='unicode')
         styles = ''.join([css_template.format(css) for css in self.css_files])
 
         toc = ''
         if len(self.toc) > 0:
             toc = ET.tostring(self._table_of_contents(), method="html", encoding='unicode')
-        # Get my HTML templae and render it
+        # Get my HTML template and render it
 
         with open(os.path.join(self.template_path, 'template.html')) as t:
             template = Template(t.read())
@@ -82,9 +88,6 @@ class RSReport():
         hlevel = level + 1
         if title:
             h_el = RSReport.header(hlevel, title, section)
-            a_el = ET.Element('a', attrib={'class': 'nav-top', 'href': '#TOC'})
-            a_el.text = 'Top'
-            h_el.append(a_el)
 
         section.append(section_inner)
         self.toc.append({
@@ -148,7 +151,7 @@ class RSReport():
         return head
 
     @staticmethod
-    def create_table_from_sql(col_names, sql, database, el_parent, attrib=None, id_cols=None):
+    def create_table_from_sql(col_names, sql, database, el_parent, attrib=None, id_cols=None, val_type=None):
         if attrib is None:
             attrib = {}
         table = ET.Element('table', attrib=attrib)
@@ -178,7 +181,14 @@ class RSReport():
 
             data_row = []
             for col, val in row.items():
-                str_val, class_name = RSReport.format_value(val) if id_cols and col not in id_cols else [str(val), 'idVal']
+                if val_type is not None:
+                    str_val, class_name = RSReport.format_value(val, val_type)
+                else:
+                    str_val, class_name = (
+                        RSReport.format_value(val)
+                        if id_cols and col not in id_cols
+                        else [str(val), 'idVal']
+                    )
                 td = ET.Element('td', attrib={'class': class_name})
 
                 td.text = str_val
@@ -190,7 +200,7 @@ class RSReport():
         return data
 
     @staticmethod
-    def create_table_from_tuple_list(col_names, data, el_parent, attrib=None):
+    def create_table_from_tuple_list(col_names, data, el_parent, attrib=None, total_row=False):
 
         if attrib is None:
             attrib = {}
@@ -209,8 +219,11 @@ class RSReport():
         tbody = ET.Element('tbody')
         table.append(tbody)
 
-        for row in data:
-            tr = ET.Element('tr')
+        for i, row in enumerate(data):
+            if i == len(data) - 1 and total_row:
+                tr = ET.Element('tr', attrib={'class': 'total'})
+            else:
+                tr = ET.Element('tr')
             tbody.append(tr)
 
             for col in row:
@@ -228,8 +241,8 @@ class RSReport():
 
         Arguments:
             values {[type]} - - [description]
-            database {[type]} - - [description]
             el_parent {[type]} - - [description]
+            attrib {[type]} - - [description]
 
         Returns:
             [type] - - [description]
@@ -255,9 +268,16 @@ class RSReport():
             th.text = key
             tr.append(th)
 
-            val, class_name = RSReport.format_value(val)
-            td = ET.Element('td', attrib={'class': class_name})
-            td.text = val
+            # If the value is a URL, make it a link
+            if isinstance(val, str) and val.startswith("http"):
+                td = ET.Element('td', attrib={'class': 'text url'})
+                a = ET.Element('a', attrib={'href': val})
+                a.text = val
+                td.append(a)
+            else:
+                val, class_name = RSReport.format_value(val)
+                td = ET.Element('td', attrib={'class': class_name})
+                td.text = val
             tr.append(td)
 
         el_parent.append(table)
@@ -281,7 +301,7 @@ class RSReport():
                 formatted = value
                 class_name = 'text'
             elif val_type == float or isinstance(value, float):
-                formatted = '{0:,.2f}'.format(value)
+                formatted = '{0:,.2f}'.format(value or 0).rstrip('0').rstrip('.')
                 class_name = 'float num'
             elif val_type == int or isinstance(value, int):
                 formatted = '{0:,d}'.format(value)
@@ -323,7 +343,7 @@ class RSReport():
         el_parent.append(hEl)
         return hEl
 
-    def layerprint(self, lyr_el, parent_el, project_root, level: int = 2):
+    def layerprint(self, lyr_el, parent_el, project_root, level: int = 2, parent_pathstr=None):
         """Work in progress for printing Riverscapes layers
 
         Args:
@@ -338,26 +358,39 @@ class RSReport():
 
         section = self.section(None, '{}: {}'.format(tag, name), parent_el, level=level, attrib={'class': 'rsc-layer'})
 
-        meta = self.xml_project.get_metadata_dict(node=lyr_el)
-        if meta is not None:
-            self.create_table_from_dict(meta, section, attrib={'class': 'fullwidth'})
-
-        path_el = ET.Element('pre', attrib={'class': 'path'})
         pathstr = lyr_el.attrib['lyrName'] if 'lyrName' in lyr_el.attrib else lyr_el.find('Path').text
+
+        # Mostly to show full path for elements in geopackages
+        if parent_pathstr is not None:
+            pathstr = os.path.join(parent_pathstr, pathstr)
+
         size = 0
         fpath = os.path.join(project_root, pathstr)
         if os.path.isfile(fpath):
             size = os.path.getsize(fpath)
 
+        meta = self.xml_project.get_metadata_dict(node=lyr_el)
+        if meta is not None:
+            meta["path"] = pathstr  # lowercase to replace path for some elements that already have this
+            if size > 0:
+                meta["Size"] = sizeof_fmt(size)
+            self.create_table_from_dict(meta, section, attrib={'class': 'fullwidth'})
+
+        elif layers is None:
+            p = ET.Element('em', attrib={'style': 'font-style: italic;'})
+            p.text = f'No metadata found for {pathstr}.'
+            section.append(p)
+
         if layers is not None:
+            if size > 0:
+                self.create_table_from_dict(
+                    {'Total size': sizeof_fmt(size), 'Path': pathstr},
+                    section, attrib={'class': 'fullwidth'},
+                )
+
             layers_container = ET.Element('div', attrib={'class': 'inner-layer-container'})
             RSReport.header(level + 1, 'Layers', layers_container)
             for layer_el in list(layers):
-                self.layerprint(layer_el, layers_container, os.path.join(project_root, pathstr), level=level + 1)
+                self.layerprint(layer_el, layers_container, os.path.join(project_root, pathstr), level=level + 1, parent_pathstr=pathstr)
 
             section.append(layers_container)
-
-        footer = ET.Element('div', attrib={'class': 'layer-footer'})
-        path_el.text = 'Project path: {}  ({})'.format(pathstr, sizeof_fmt(size))
-        footer.append(path_el)
-        section.append(footer)

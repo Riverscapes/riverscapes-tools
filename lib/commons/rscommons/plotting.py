@@ -36,7 +36,7 @@ def xyscatter(values, xlabel, ylabel, chart_title, file_path, one2one=False):
     y = [y for x, y in values]
 
     plt.clf()
-    plt.scatter(x, y, c='#DA8044', alpha=0.5, label='{} (n = {:,})'.format(chart_title, len(x)))
+    plt.scatter(x, y, c='#004793', alpha=0.5, label='{} (n = {:,})'.format(chart_title, len(x)))
     plt.title = chart_title
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
@@ -62,11 +62,14 @@ def xyscatter(values, xlabel, ylabel, chart_title, file_path, one2one=False):
     plt.savefig(file_path)
 
 
-def box_plot(values, ylabel, chart_title, file_path):
+def box_plot(values, chart_title, file_path):
+    clean_values = [0 if x is None else x for x in values]
 
-    _fig1, ax1 = plt.subplots()
-    ax1.set_title(chart_title)
-    ax1.boxplot(values)
+    plt.clf()
+
+    plt.boxplot(clean_values, vert=False, meanline=True)
+    # plt.violisnplot(clean_values, showmeans=False, showmedians=True)
+    plt.title(chart_title)
 
     if not os.path.isdir(os.path.dirname(file_path)):
         os.makedirs(os.path.dirname(file_path))
@@ -100,13 +103,59 @@ def line(x_values, y_values, xlabel, ylabel, chart_title, file_path):
     plt.savefig(file_path)
 
 
+def get_overlapping_groups(labels):
+    """Group overlapping labels, for pie charts."""
+
+    groups = []
+
+    # group labels by the distance between their centers
+    for label in labels:
+        for group in groups:
+            if (
+                abs(label.get_position()[1] - group[0].get_position()[1]) < 0.1
+                and abs(label.get_position()[0] - group[0].get_position()[0]) < 1
+            ):
+                group.append(label)
+                break
+        else:
+            groups.append([label])
+
+    return groups
+
+
+def group_pie_labels(labels):
+    """Improve formatting of overlapping labels in pie charts."""
+
+    groups = get_overlapping_groups(labels)
+
+    # if more than one label in group, combine text and hide others
+    for group in groups:
+        if len(group) > 1:
+            # reversed order is more likely to be correct, if the group is on right side
+            group[0].set_text(
+                ",\n".join(label.get_text() for label in reversed(group))
+            )
+            for label in group[1:]:
+                label.set_visible(False)
+
+    return labels
+
+
 def pie(x_values, labels, chart_title, color, file_path):
 
-    clean_values = [0 if x is None else x for x in x_values]
+    clean_labels = []
+    clean_values = []
+
+    for i, x in enumerate(x_values):
+        if x:
+            clean_labels.append(labels[i])
+            clean_values.append(x)
 
     plt.clf()
     fig, ax = plt.subplots()
-    chart = ax.pie(clean_values, labels=labels, colors=color, autopct='%1.0f%%', shadow=True)
+    chart = ax.pie(clean_values, labels=clean_labels, colors=color, autopct='%1.0f%%')
+
+    group_pie_labels(chart[1])
 
     ax.set_title(chart_title)
 
@@ -114,7 +163,7 @@ def pie(x_values, labels, chart_title, color, file_path):
         os.makedirs(os.path.dirname(file_path))
 
     plt.tight_layout()
-    plt.savefig(file_path)
+    plt.savefig(file_path, bbox_inches="tight")
     plt.close()
 
 
@@ -151,3 +200,38 @@ def horizontal_bar(x_values, labels, color, x_axis_label1, chart_title, file_pat
     plt.tight_layout()
     plt.savefig(file_path)
     plt.close()
+
+
+def vertical_bar(values, labels, y_axis_label, chart_title, file_path, color="#004793"):
+    """Make a vertical bar chart. The values and labels must be the same length.
+
+    Args:
+        values (list[float|int]): The values to plot.
+        labels (list[str]): The labels for each value.
+        y_axis_label (str): The label for the y-axis of the chart.
+        chart_title (str): The title of the chart.
+        file_path (str): The file path where the chart will be saved.
+        color (str): The color of the bars in the chart.
+
+    Returns:
+        None
+    """
+
+    clean_values = [0 if x is None else x for x in values]
+
+    plt.clf()
+
+    plt.bar(labels, clean_values, color=color)
+    plt.xticks(rotation=45, ha='right')
+
+    plt.ylabel(y_axis_label)
+    plt.xlabel('')
+    plt.title(chart_title)
+
+    plt.grid(True, which='major', axis='y')
+
+    if not os.path.isdir(os.path.dirname(file_path)):
+        os.makedirs(os.path.dirname(file_path))
+
+    # plt.tight_layout()
+    plt.savefig(file_path, bbox_inches="tight")

@@ -8,7 +8,7 @@ metric_id,name,machine_code,data_type,field_name,description,small,medium,large,
 7,Valley Azimuth,VALAZMTH,REAL,RME_IGO_valley_azimuth,,200,400,1400,,,,
 8,Confluence Count,CONF,INTEGER,RME_DGO_confluences,,200,400,1400,,2,1
 9,Diffluence Count,DIFF,INTEGER,RME_DGO_diffluences,,200,400,1400,,2,1
-10,Tributary Junction Count,TRIBS,INTEGER,RME_IGO_trib_per_km,,400,400,1400,,2,1,
+10,Tributary Junction Count,TRIBS,REAL,RME_IGO_trib_per_km,,400,400,1400,,2,1,
 11,Planform Sinuosity of Main LevelPath,CHANSIN,REAL,RME_IGO_planform_sinuosity,,200,400,1400,(𝑛𝑒𝑡𝑤𝑜𝑟𝑘 𝑙𝑒𝑛𝑔𝑡ℎ)/(𝑠𝑡𝑟𝑎𝑖𝑔ℎ𝑡−𝑙𝑖𝑛𝑒 𝑑𝑖𝑠𝑡𝑎𝑛𝑐𝑒),2,1,
 12,Drainage Area,DRAINAREA,REAL,RME_DGO_drainage_area,,200,400,1400,,2,1,
 13,Stream Order,STRMORDR,INTEGER,NHD_DGO_streamorder,standard strahler order attribute from NHD,,,,Copy NHD Attribute,1,1,

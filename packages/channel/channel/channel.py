@@ -98,7 +98,7 @@ def channel(huc: int,
     log.info('Using Equation: "{}" and params: "{}"'.format(bankfull_function, bankfull_function_params))
 
     # Add the layer metadata immediately before we write anything
-    augment_layermeta('channel', LYR_DESCRIPTIONS_JSON, LayerTypes)
+    augment_layermeta('channelarea', LYR_DESCRIPTIONS_JSON, LayerTypes)
 
     meta['Bankfull Equation'] = bankfull_function
     for param, value in bankfull_function_params.items():
@@ -109,7 +109,7 @@ def channel(huc: int,
     project_name = 'Channel Area for HUC {}'.format(huc)
     project = RSProject(cfg, project_folder)
     project.create(project_name, 'ChannelArea', [
-        RSMeta('Model Documentation', 'https://tools.riverscapes.net/channel', RSMetaTypes.URL, locked=True),
+        RSMeta('Model Documentation', 'https://tools.riverscapes.net/channelarea', RSMetaTypes.URL, locked=True),
         RSMeta('HUC', str(huc), RSMetaTypes.HIDDEN, locked=True),
         RSMeta('Hydrologic Unit Code', str(huc))
     ])

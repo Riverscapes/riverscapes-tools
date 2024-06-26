@@ -1,14 +1,12 @@
 import argparse
-from operator import le
 import sqlite3
 import os
-# from turtle import pen
+
 from xml.etree import ElementTree as ET
 
 from rscommons import Logger, dotenv, ModelConfig, RSReport, RSProject
 from rscommons.util import safe_makedirs
 from rscommons.plotting import xyscatter, box_plot, pie, horizontal_bar
-from sympy import sec
 
 from sqlbrat.__version__ import __version__
 
@@ -155,12 +153,14 @@ class BratReport(RSReport):
         outputs_section.append(pEl)
         self.dam_capacity(outputs_section)
         self.conservation(outputs_section)
+
         intermediates_section = self.section('Intermediates', 'Model Intermediates')
         self.reach_slope(intermediates_section)
         self.hydrology_plots(intermediates_section)
         self.anthro_intermediates(intermediates_section)
         # self.geophysical_summary(intermediates_section)
         self.ownership(intermediates_section)
+
         inputs_section = self.section('Inputs', 'Model Inputs')
         self.drainage_network(inputs_section)
         self.vegetation(inputs_section)
@@ -188,7 +188,7 @@ class BratReport(RSReport):
         RSReport.create_table_from_dict(cap_dict, section)
 
         pEl2 = ET.Element('p')
-        pEl2.text = 'The following table contains the total beaver dam capacity for the watershed based on existing and historic vegetation. The vegetation only entries are capacitites based on only the vegetation fuzzy inference system; the others are based on the combined fuzzy inferences system that acocunts for hydrology and slope.'
+        pEl2.text = 'The following table contains the total beaver dam capacity for the watershed based on existing and historic vegetation. The vegetation only entries are capacitites based on only the vegetation fuzzy inference system; the others are based on the combined fuzzy inferences system that accounts for hydrology and slope.'
         section.append(pEl2)
 
         conn = sqlite3.connect(self.database)
@@ -214,17 +214,13 @@ class BratReport(RSReport):
         pEl3.text = 'The following plots summarize the outputs for existing dam capacity and historic dam capacity.'
         section.append(pEl3)
 
-        subsection = self.section(None, 'Existing Dam Capacity', section, level=3)
-
         self.attribute_table_and_pie('oCC_EX', [
             {'label': 'None', 'upper': 0},
             {'label': 'Rare', 'lower': 0, 'upper': 1},
             {'label': 'Occasional', 'lower': 1, 'upper': 5},
             {'label': 'Frequent', 'lower': 5, 'upper': 15},
             {'label': 'Pervasive', 'lower': 15}
-        ], subsection)
-
-        subsection2 = self.section(None, 'Historic Dam Capacity', section, level=3)
+        ], section)
 
         self.attribute_table_and_pie('oCC_HPE', [
             {'label': 'None', 'upper': 0},
@@ -232,7 +228,7 @@ class BratReport(RSReport):
             {'label': 'Occasional', 'lower': 1, 'upper': 5},
             {'label': 'Frequent', 'lower': 5, 'upper': 15},
             {'label': 'Pervasive', 'lower': 15}
-        ], subsection2)
+        ], section)
 
     def conservation(self, parent_sec):
 
@@ -266,7 +262,7 @@ class BratReport(RSReport):
                 ' FROM {0} DR LEFT JOIN vwReaches R ON DR.{1} = R.{1}'
                 ' JOIN (SELECT Sum(iGeo_Len) AS TotalLength FROM vwReaches)'
                 ' GROUP BY DR.{1}'.format(table, idfield),
-                self.database, section)
+                self.database, section, val_type=float)
 
             pie_path = os.path.join(self.images_dir, '{}_pie.png'.format(label))
             col = [self.bratcolors[x[0]] for x in table_data]
@@ -335,14 +331,14 @@ class BratReport(RSReport):
         curs.execute('SELECT MaxDrainage, QLow, Q2 FROM Watersheds')
         row = curs.fetchone()
         RSReport.create_table_from_dict({
-            'Drainage area threshold (sqkm) above which dams are not built': row[0],
+            'Drainage area threshold (sqkm) above which dams are not built': str(row[0]),
             'Baseflow equation': row[1],
             'Peak Flow equation': row[2]
         }, section, attrib={'class': 'fullwidth'})
 
         allequns = row[1] + row[2]
 
-        RSReport.header(3, 'Hydrological Parameters', section)
+        RSReport.header(4, 'Hydrological Parameters', section)
         RSReport.create_table_from_sql(
             ['Parameter', 'Data Value', 'Data Units', 'Conversion Factor', 'Equation Value', 'Equation Units'],
             'SELECT Parameter, Value, DataUnits, Conversion, ConvertedValue, EquationUnits FROM vwHydroParams WHERE \'{0}\' LIKE \'{1}\'||Parameter||\'{1}\''.format(allequns, '%'),
@@ -376,7 +372,7 @@ class BratReport(RSReport):
             image_path = os.path.join(self.images_dir, 'drainage_area_{}.png'.format(variable.lower()))
 
         # Low Stream Power
-        RSReport.header(3, 'Base Flow Stream Power', section)
+        RSReport.header(4, 'Base Flow Stream Power', section)
 
         pEl2 = ET.Element('p')
         pEl2.text = 'Low flow stream power helps determine whether or not dam building activity can occur at base flows. Below are the stream power values and their associated categories.'
@@ -396,7 +392,7 @@ class BratReport(RSReport):
         ], section)
 
         # High Stream Power
-        RSReport.header(3, 'High Flow Stream Power', section)
+        RSReport.header(4, 'High Flow Stream Power', section)
 
         pEl3 = ET.Element('p')
         pEl3.text = 'High flow stream power helps determine whether or not dams can persist at typical flood flows. Below are the stream power values and their associated categories.'
@@ -568,7 +564,7 @@ class BratReport(RSReport):
 
         for epochid, veg_type in [(2, 'Historic Vegetation'), (1, 'Existing Vegetation')]:
 
-            RSReport.header(3, veg_type, section)
+            RSReport.header(4, veg_type, section)
 
             pEl = ET.Element('p')
             pEl.text = 'The 30 most common {} types within the 100m reach buffer.'.format(veg_type.lower())
@@ -594,29 +590,36 @@ class BratReport(RSReport):
                 (SELECT CAST(Sum(TotalArea) AS REAL) / 1000000 SumTotalArea FROM vwReachVegetationTypes WHERE EpochID = {0} AND Buffer = 100)""".format(epochid))
                 area_weighted_avg_suitability = curs.fetchone()[0]
 
-                RSReport.header(3, 'Suitability Breakdown', section)
+                RSReport.header(4, 'Suitability Breakdown', section)
                 pEl = ET.Element('p')
                 pEl.text = """The area weighted average {} suitability is {}.
                     The breakdown of the percentage of the 100m buffer within each suitability class
                     across all reaches in the watershed.""".format(veg_type.lower(), RSReport.format_value(area_weighted_avg_suitability)[0])
                 section.append(pEl)
 
-                RSReport.create_table_from_sql(['Suitability Class', '% with 100m Buffer'],
-                                               """
-                    SELECT EffectiveSuitability, 100.0 * SArea / SumTotalArea FROM
-                    (
-                        SELECT CAST(Sum(TotalArea) AS REAL) / 1000000 SArea, EffectiveSuitability
-                        FROM vwReachVegetationTypes
-                        WHERE EpochID = {0} AND Buffer = 100 GROUP BY EffectiveSuitability
-                    )
-                    JOIN
-                    (
-                        SELECT CAST(Sum(TotalArea) AS REAL) / 1000000 SumTotalArea
-                        FROM vwReachVegetationTypes
-                        WHERE EpochID = {0} AND Buffer = 100
-                    )
-                    ORDER BY EffectiveSuitability
-                    """.format(epochid), self.database, section, id_cols=id_cols)
+                RSReport.create_table_from_sql(
+                    ['Suitability Class', '% with 100m Buffer'],
+                    f"""
+                    SELECT DISTINCT DefaultSuitability, coalesce(Ratio, 0) Ratio
+                    FROM VegetationTypes VT
+                    LEFT JOIN (
+                        SELECT EffectiveSuitability, 100.0 * SArea / SumTotalArea Ratio
+                        FROM (
+                            SELECT CAST(Sum(TotalArea) AS REAL) / 1000000 SArea, EffectiveSuitability
+                            FROM vwReachVegetationTypes
+                            WHERE EpochID = {epochid} AND Buffer = 100
+                            GROUP BY EffectiveSuitability
+                        )
+                        JOIN (
+                            SELECT CAST(Sum(TotalArea) AS REAL) / 1000000 SumTotalArea
+                            FROM vwReachVegetationTypes
+                            WHERE EpochID = {epochid} AND Buffer = 100
+                        )
+                    ) ES ON VT.DefaultSuitability = ES.EffectiveSuitability
+                    ORDER BY DefaultSuitability;
+                    """,
+                    self.database, section, id_cols=id_cols
+                )
             except Exception as ex:
                 self.log.warning('Error calculating vegetation report')
 
@@ -652,12 +655,22 @@ class BratReport(RSReport):
 
         reach_wrapper_inner.append(img_wrap)
 
+    def get_total_row(self, data):
+        total_row = ["Total"]
+
+        for c in range(1, len(data[0])):
+            total_row.append(sum([
+                row[c] for row in data
+            ]))
+
+        return tuple(total_row)
+
     def attribute_table_and_pie(self, attribute_field, bins, elParent):
         """
         Expect the bins as list of dictionaries with keys "label", "lower", "upper"
         """
 
-        RSReport.header(3, '{} Summary'.format(self.f_names[attribute_field]), elParent)
+        RSReport.header(4, '{} Summary'.format(self.f_names[attribute_field]), elParent)
 
         conn = sqlite3.connect(self.database)
         conn.row_factory = _dict_factory
@@ -687,9 +700,21 @@ class BratReport(RSReport):
                         (select sum(igeo_len) / 1000 total_length from ReachAttributes) t
                          WHERE {}""".format(where_clause), sql_args)
             row = curs.fetchone()
-            data.append((label, row['ReachCount'], row['LengthKM'], row['LengthMiles'], row['Percent']))
+            data.append((
+                label,
+                (row['ReachCount'] or 0),
+                (row['LengthKM'] or 0),
+                (row['LengthMiles'] or 0),
+                (row['Percent'] or 0)
+            ))
 
-        RSReport.create_table_from_tuple_list(['Category', 'Reach Count', 'Length (km)', 'Length (mi)', 'Percent (%)'], data, elParent)
+        total_row = self.get_total_row(data)
+        RSReport.create_table_from_tuple_list(
+            ['Category', 'Reach Count', 'Length (km)', 'Length (mi)', 'Percent (%)'],
+            data + [total_row],
+            elParent,
+            total_row=True
+        )
 
         image_path = os.path.join(self.images_dir, '{}_pie.png'.format(attribute_field.lower()))
         col = [self.bratcolors[x[0]] for x in data]
