@@ -589,6 +589,32 @@
     "state": "ACTIVE"
   },
   {
+    "name": "Sediment Fingerpinting",
+    "summary": "Sediment Fingerprinting Database",
+    "description": "Sediment fingerprinting data that has been collected within the Mississippi River Basin into a coherent database, which contains 225,035 samples and a total of 3,715,811 geochemical measurements.",
+    "meta": [
+        { 
+          "key": "Resolution",
+          "value": "Network"
+        },
+        { 
+          "key": "Extent",
+          "value": "Mississippi River Basin"
+        },
+        {
+          "key": "Model Status",
+          "value": "Production Grade"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "Curated Dataset"
+        }
+       ],
+    "url": "https://qcnr.usu.edu/labs/belmont-lab/resources",
+    "machineName": "sed_fingerprint",
+    "state": "ACTIVE"
+  },
+  {
     "name": "SOLAR - CHaMP",
     "summary": null,
     "description": "",
