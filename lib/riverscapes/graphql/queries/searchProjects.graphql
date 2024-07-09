@@ -11,6 +11,7 @@
         name
         tags
         visibility
+        totalSize
         meta {
           key
           value
