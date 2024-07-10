@@ -15,10 +15,10 @@
   ],
   "configurations": [
     {
-      "name": "BRAT Build",
+      "name": "Run BRAT",
       "type": "python",
       "request": "launch",
-      "module": "sqlbrat.brat_build",
+      "module": "sqlbrat.brat",
       "console": "integratedTerminal",
       "args": [
         "${input:HUC}",
@@ -49,17 +49,6 @@
         "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhdplushr.gpkg/NHDWaterbody",
         "--max_waterbody",
         "0.001", // max_waterbody
-        "--verbose"
-      ]
-    },
-    {
-      "name": "BRAT Run",
-      "type": "python",
-      "request": "launch",
-      "module": "sqlbrat.brat_run",
-      "console": "integratedTerminal",
-      "args": [
-        "{env:DATA_ROOT}/brat/${input:HUC}",
         "--verbose"
       ]
     },

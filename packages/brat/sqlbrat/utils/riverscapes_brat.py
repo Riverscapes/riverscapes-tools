@@ -28,9 +28,14 @@ def riverscape_brat(gpkg_path: str, windows: dict):
             dgoid = dgo_feature.GetFID()
             dgo_geom = dgo_feature.GetGeometryRef()
             centerline_len = dgo_feature.GetField('centerline_length')
+            seg_dist = dgo_feature.GetField('seg_distance')
+            if seg_dist is None:
+                continue
 
             ex_num_dams = 0
             hist_num_dams = 0
+            ex_veg_dams = 0
+            hist_veg_dams = 0
             lengths = []
             risk = []
             limitation = []
@@ -44,10 +49,14 @@ def riverscape_brat(gpkg_path: str, windows: dict):
                         reach_length = reach_shapely.length / 1000
                         ex_density = reach_feature.GetField('oCC_EX')
                         hist_density = reach_feature.GetField('oCC_HPE')
+                        ex_veg_density = reach_feature.GetField('oVC_EX')
+                        hist_veg_density = reach_feature.GetField('oVC_HPE')
                         if ex_density is None or hist_density is None:
                             continue
                         ex_num_dams += ex_density * reach_length
                         hist_num_dams += hist_density * reach_length
+                        ex_veg_dams += ex_veg_density * reach_length
+                        hist_veg_dams += hist_veg_density * reach_length
                         lengths.append(reach_length)
                         risk.append(reach_feature.GetField('Risk'))
                         limitation.append(reach_feature.GetField('Limitation'))
@@ -61,7 +70,8 @@ def riverscape_brat(gpkg_path: str, windows: dict):
                 db.curs.execute(f"UPDATE DGOAttributes SET Risk = '{risk_val}', Limitation = '{limitation_val}', Opportunity = '{opportunity_val}' WHERE DGOID = {dgoid}")
 
             if centerline_len > 0:
-                db.curs.execute(f"UPDATE DGOAttributes SET oCC_EX = {ex_num_dams / (centerline_len / 1000)}, oCC_HPE = {hist_num_dams /  (centerline_len / 1000)} WHERE DGOID = {dgoid}")
+                db.curs.execute(f"""UPDATE DGOAttributes SET oCC_EX = {ex_num_dams / (centerline_len / 1000)}, oCC_HPE = {hist_num_dams /  (centerline_len / 1000)}, 
+                                oVC_EX = {ex_veg_dams / (centerline_len / 1000)}, oVC_HPE = {hist_veg_dams /  (centerline_len / 1000)} WHERE DGOID = {dgoid}""")
 
         db.conn.commit()
 
@@ -76,22 +86,26 @@ def riverscape_brat(gpkg_path: str, windows: dict):
         progbar.update(counter)
         ex_dams = 0
         hist_dams = 0
+        ex_veg_dams = 0
+        hist_veg_dams = 0
         cl_len = 0
         area = []
         risk = []
         limitation = []
         opportunity = []
         for dgoid in dgoids:
-            curs.execute(f'SELECT centerline_length, oCC_EX, oCC_HPE, Risk, Limitation, Opportunity FROM DGOAttributes WHERE DGOID = {dgoid}')
+            curs.execute(f'SELECT centerline_length, oCC_EX, oCC_HPE, oVC_EX, oVC_HPE, Risk, Limitation, Opportunity FROM DGOAttributes WHERE DGOID = {dgoid}')
             dgoattrs = curs.fetchone()
             if dgoattrs[1] is None:
                 continue
             cl_len += dgoattrs[0]
             ex_dams += dgoattrs[0]/1000 * dgoattrs[1]
             hist_dams += dgoattrs[0]/1000 * dgoattrs[2]
-            risk.append(dgoattrs[3])
-            limitation.append(dgoattrs[4])
-            opportunity.append(dgoattrs[5])
+            ex_veg_dams += dgoattrs[0]/1000 * dgoattrs[3]
+            hist_veg_dams += dgoattrs[0]/1000 * dgoattrs[4]
+            risk.append(dgoattrs[5])
+            limitation.append(dgoattrs[6])
+            opportunity.append(dgoattrs[7])
             curs.execute(f'SELECT segment_area FROM DGOAttributes WHERE DGOID = {dgoid}')
             area.append(curs.fetchone()[0])
 
@@ -100,7 +114,8 @@ def riverscape_brat(gpkg_path: str, windows: dict):
         limitation_val = limitation[ix]
         opportunity_val = opportunity[ix]
 
-        curs.execute(f"UPDATE IGOAttributes SET oCC_EX = {ex_dams / (cl_len / 1000)}, oCC_HPE = {hist_dams / (cl_len / 1000)} WHERE IGOID = {igoid}")
+        curs.execute(f"""UPDATE IGOAttributes SET oCC_EX = {ex_dams / (cl_len / 1000)}, oCC_HPE = {hist_dams / (cl_len / 1000)},
+                     oVC_EX = {ex_veg_dams / (cl_len / 1000)}, oVC_HPE = {hist_veg_dams / (cl_len / 1000)} WHERE IGOID = {igoid}""")
         curs.execute(f"UPDATE IGOAttributes SET Risk = '{risk_val}', Limitation = '{limitation_val}', Opportunity = '{opportunity_val}' WHERE IGOID = {igoid}")
         conn.commit()
     conn.close()

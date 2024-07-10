@@ -25,14 +25,12 @@ from rscommons.util import parse_metadata, pretty_duration
 from rscommons.build_network import build_network
 from rscommons.database import create_database, SQLiteCon
 from rscommons.copy_features import copy_features_fields
-from rscommons.line_attributes_to_dgo import line_attributes_to_dgo
 from rscommons.moving_window import moving_window_dgo_ids
-from sqlbrat.utils.vegetation_summary import vegetation_summary, dgo_veg_summary
+from sqlbrat.utils.vegetation_summary import vegetation_summary
 from sqlbrat.utils.vegetation_suitability import vegetation_suitability, output_vegetation_raster
 from sqlbrat.utils.vegetation_fis import vegetation_fis
 from sqlbrat.utils.combined_fis import combined_fis
 from sqlbrat.utils.conservation import conservation
-from sqlbrat.utils.igo_attributes import igo_attributes
 from sqlbrat.utils.riverscapes_brat import riverscape_brat
 from sqlbrat.brat_report import BratReport
 from sqlbrat.__version__ import __version__
@@ -180,6 +178,14 @@ def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Pa
     for input_key, rslayer in LayerTypes['INPUTS'].sub_layers.items():
         input_layers[input_key] = os.path.join(inputs_gpkg_path, rslayer.rel_path)
         copy_feature_class(source_layers[input_key], input_layers[input_key], cfg.OUTPUT_EPSG)
+
+    # check that anthro and hydro inputs are same dataset
+    with GeopackageLayer(input_layers['HYDRO_FLOWLINES']) as hydro_lyr, GeopackageLayer(input_layers['ANTHRO_FLOWLINES']) as anthro_lyr:
+        if hydro_lyr.ogr_layer.GetFeatureCount() != anthro_lyr.ogr_layer.GetFeatureCount():
+            raise Exception('Different number of Anthro and Hydro flowline features')
+    with GeopackageLayer(input_layers['HYDRO_DGOS']) as hydro_lyr, GeopackageLayer(input_layers['ANTHRO_DGOS']) as anthro_lyr:
+        if hydro_lyr.ogr_layer.GetFeatureCount() != anthro_lyr.ogr_layer.GetFeatureCount():
+            raise Exception('Different number of Anthro and Hydro DGO features')
 
     # Create the output feature class fields. Only those listed here will get copied from the source
     with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['BRAT_GEOMETRY'].rel_path, write=True) as out_lyr:
@@ -349,10 +355,6 @@ def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Pa
     # associate DGO IDs with IGO IDs for moving windows
     windows = moving_window_dgo_ids(igo_geometry_path, input_layers['HYDRO_DGOS'], levelpathsin, distancein)
 
-    # copy conflict attributes from reaches to dgos
-    # copy_fields_lwa = {field: field for field in ['iPC_Road', 'iPC_RoadX', 'iPC_RoadVB', 'iPC_Rail', 'iPC_RailVB', 'iPC_DivPts', 'iPC_Privat', 'iPC_Canal', 'iPC_LU', 'iPC_VLowLU', 'iPC_LowLU', 'iPC_ModLU', 'iPC_HighLU', 'oPC_Dist']}
-    # line_attributes_to_dgo(input_layers['ANTHRO_FLOWLINES'], input_layers['HYDRO_DGOS'], copy_fields_lwa, method='lwa', dgo_table=outputs_gpkg_path)
-
     # Calculate the vegetation cell counts for each epoch and buffer
     buffer_paths = []
     for label, veg_raster in [('Existing Veg', prj_existing_path), ('Historical Veg', prj_historic_path)]:
@@ -394,20 +396,7 @@ def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Pa
 
     conservation(outputs_gpkg_path)
 
-    # copy field necessary for models from reaches to dgos
-    # log.info('Copying FIS input fields from reaches to DGOs')
-    # copy_fields_lwa = {field: field for field in ['iVeg100EX', 'iVeg_30EX', 'iVeg100HPE', 'iVeg_30HPE']}
-    # copy_fields_lsl = {field: field for field in ['Risk', 'Limitation', 'Opportunity']}
-    # line_attributes_to_dgo(os.path.join(outputs_gpkg_path, 'vwReaches'), input_layers['HYDRO_DGOS'], copy_fields_lwa, method='lwa', dgo_table=outputs_gpkg_path)
-    # line_attributes_to_dgo(os.path.join(outputs_gpkg_path, 'vwReaches'), input_layers['HYDRO_DGOS'], copy_fields_lsl, method='lsl', dgo_table=outputs_gpkg_path)
-
-    # log.info('Applying FIS to DGOs')
-    # for epoch, prefix, ltype, orig_id in Epochs:
-    #     vegetation_fis(outputs_gpkg_path, epoch, prefix, dgo=True)
-    #     combined_fis(outputs_gpkg_path, epoch, prefix, max_drainage_area, dgo=True)
-
     # moving window analysis
-    # igo_attributes(outputs_gpkg_path, windows)
     riverscape_brat(outputs_gpkg_path, windows)
 
     ellapsed_time = time.time() - start_time
