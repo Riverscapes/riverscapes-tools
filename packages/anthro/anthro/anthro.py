@@ -138,8 +138,6 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
             'level_path': ogr.OFTReal,
             'seg_distance': ogr.OFTReal,
             'stream_size': ogr.OFTInteger,
-            'window_size': ogr.OFTReal,
-            'window_area': ogr.OFTReal,
             'centerline_length': ogr.OFTReal
         })
 

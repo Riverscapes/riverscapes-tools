@@ -161,10 +161,17 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, hillshade: Path, pitf
             'FCode': ogr.OFTInteger,
             'ReachCode': ogr.OFTString,
             'NHDPlusID': ogr.OFTInteger,
+            'WatershedID': ogr.OFTString,
             'StreamName': ogr.OFTString,
             'level_path': ogr.OFTReal,
             'TotDASqKm': ogr.OFTReal,
             'DivDASqKm': ogr.OFTReal,
+            'ownership': ogr.OFTString,
+            'divergence': ogr.OFTInteger,
+            'stream_order': ogr.OFTInteger,
+            'us_state': ogr.OFTString,
+            'ecoregion_iii': ogr.OFTString,
+            'ecoregion_iv': ogr.OFTString,
             'iPC_LU': ogr.OFTReal
         })
 
@@ -182,7 +189,9 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, hillshade: Path, pitf
     copy_features_fields(input_layers['ANTHRODGO'], dgo_geom_path, epsg=cfg.OUTPUT_EPSG)
 
     with SQLiteCon(outputs_gpkg_path) as database:
-        database.curs.execute('INSERT INTO ReachAttributes (ReachID, FCode, ReachCode, NHDPlusID, StreamName, level_path, TotDASqKm, DivDASqKm, iPC_LU) SELECT ReachID, FCode, ReachCode, NHDPlusID, StreamName, level_path, TotDASqKm, DivDASqKm, iPC_LU FROM ReachGeometry')
+        database.curs.execute("""INSERT INTO ReachAttributes (ReachID, FCode, ReachCode, NHDPlusID, WatershedID, StreamName, level_path, TotDASqKm, DivDASqKm, ownership, divergence, stream_order, us_state, ecoregion_iii, ecoregion_iv, iPC_LU) 
+                              SELECT ReachID, FCode, ReachCode, NHDPlusID, WatershedID, StreamName, level_path, TotDASqKm, DivDASqKm, ownership, divergence, stream_order, us_state, ecoregion_iii, ecoregion_iv, iPC_LU 
+                              FROM ReachGeometry""")
         database.curs.execute('INSERT INTO IGOAttributes (IGOID, FCode, level_path, seg_distance, stream_size, LUI) SELECT IGOID, FCode, level_path, seg_distance, stream_size, LUI FROM IGOGeometry')
         database.curs.execute('INSERT INTO DGOAttributes (DGOID, FCode, level_path, seg_distance, centerline_length, segment_area, LUI) SELECT DGOID, FCode, level_path, seg_distance, centerline_length, segment_area, LUI FROM DGOGeometry')
 
