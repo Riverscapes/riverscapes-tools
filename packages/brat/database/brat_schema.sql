@@ -78,31 +78,6 @@ CREATE TABLE VegetationTypes (
      Physiognomy TEXT, 
      Notes TEXT);
 
-CREATE TABLE HydroAnthroReach(
-     ReachID INTEGER PRIMARY KEY NOT NULL,
-     Slope REAL, 
-     Length_m REAL, 
-     DrainArea REAL, 
-     QLow REAL, 
-     Q2 REAL, 
-     SPLow REAL, 
-     SP2 REAL, 
-     iPC_Road REAL, 
-     iPC_RoadX REAL, 
-     iPC_RoadVB REAL, 
-     iPC_Rail REAL, 
-     iPC_RailVB REAL, 
-     iPC_DivPts REAL, 
-     iPC_Privat REAL, 
-     iPC_Canal REAL, 
-     iPC_LU REAL, 
-     iPC_VLowLU REAL, 
-     iPC_LowLU REAL, 
-     iPC_ModLU REAL, 
-     iPC_HighLU REAL, 
-     oPC_Dist REAL
-);
-
 CREATE TABLE HydroAnthroDGO(
      DGOID INTEGER PRIMARY KEY NOT NULL,
      Slope REAL, 
@@ -124,11 +99,19 @@ CREATE TABLE HydroAnthroDGO(
 );
 
 CREATE TABLE ReachAttributes (
-     ReachID INTEGER PRIMARY KEY NOT NULL, 
-     WatershedID TEXT, 
-     ReachCode INTEGER REFERENCES ReachCodes (ReachCode), 
-     IsPeren INTEGER NOT NULL DEFAULT (0), 
+     ReachID INTEGER PRIMARY KEY NOT NULL,
+     ReachCode INTEGER REFERENCES ReachCodes (ReachCode),
      StreamName TEXT,
+     NHDPlusID REAL,
+     WatershedID TEXT, 
+     level_path REAL,
+     ownership TEXT,
+     divergence REAL,
+     stream_order INTEGER,
+     us_state TEXT,
+     ecoregion_iii TEXT,
+     ecoregion_iv TEXT,
+     IsPeren INTEGER NOT NULL DEFAULT (0), 
      iGeo_Slope REAL, 
      iGeo_ElMax REAL, 
      iGeo_ElMin REAL, 
@@ -260,7 +243,7 @@ FROM ReachAttributes R
 -- The main BRAT view that RAVE uses and end users should interact with
 CREATE VIEW vwReaches AS SELECT R.*, G.geom
 FROM vwReachAttributes R
-         INNER JOIN ReachGeometry G ON R.ReachID = G.ReachID;
+         INNER JOIN ReachGeometry G ON R.ReachID = G.fid;
 
 CREATE VIEW vwDgos AS SELECT D.*, G.geom
 FROM DGOAttributes D
@@ -346,7 +329,6 @@ INSERT INTO gpkg_contents (table_name, data_type) VALUES ('MetaData', 'attribute
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('VegetationOverrides', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Watersheds', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('VegetationTypes', 'attributes');
-INSERT INTO gpkg_contents (table_name, data_type) VALUES ('HydroAnthroReach', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('HydroAnthroDGO', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('ReachAttributes', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('DGOAttributes', 'attributes');

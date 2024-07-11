@@ -15,6 +15,7 @@ import traceback
 import datetime
 import time
 import json
+import sqlite3
 from typing import List, Dict
 from osgeo import ogr
 from rscommons import GeopackageLayer
@@ -58,7 +59,7 @@ LayerTypes = {
         'VALLEY_BOTTOM': RSLayer('Valley Bottom', 'VALLEY_BOTTOM', 'Vector', 'valley_bottom'),
     }),
     'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/intermediates.gpkg', {
-        'SEGMENTED_NETWORK': RSLayer('Segmented Network', 'SEGMENTED_NETWORK', 'Vector', 'segmented_network'),
+        'ATTRIBUTED_NETWORK': RSLayer('Segmented Network', 'ATTRIBUTED_NETWORK', 'Vector', 'attributed_network'),
     }),
     'EXVEG_SUIT': RSLayer('Existing Vegetation', 'EXVEG_SUIT', 'Raster', 'intermediates/existing_veg_suitability.tif'),
     'HISTVEG_SUIT': RSLayer('Historic Vegetation', 'HISTVEG_SUIT', 'Raster', 'intermediates/historic_veg_suitability.tif'),
@@ -89,51 +90,48 @@ Epochs = [
 ]
 
 
-def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Path,
-               anthro_flowlines: Path, anthro_igos: Path, anthro_dgos: Path, hillshade: Path,
-               existing_veg: Path, historical_veg: Path, output_folder: Path, streamside_buffer: float,
-               riparian_buffer: float, reach_codes: List[str], canal_codes: List[str], peren_codes: List[str],
-               flow_areas: Path, waterbodies: Path, max_waterbody: float, valley_bottom: Path,
-               meta: Dict[str, str]):
+def brat(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Path,
+         anthro_flowlines: Path, anthro_igos: Path, anthro_dgos: Path, hillshade: Path,
+         existing_veg: Path, historical_veg: Path, output_folder: Path, streamside_buffer: float,
+         riparian_buffer: float, reach_codes: List[str], canal_codes: List[str], peren_codes: List[str],
+         flow_areas: Path, waterbodies: Path, max_waterbody: float, valley_bottom: Path,
+         meta: Dict[str, str]):
     """Build a BRAT project by segmenting a reach network and copying
     all the necessary layers into the resultant BRAT project
 
     Arguments:
         huc {str} -- Watershed identifier
-        flowlines {str} -- Path to the raw, original polyline flowline ShapeFile
-        flow_areas {str} -- Path to the polygon ShapeFile that contains large river outlines
-        waterbodies {str} -- Path to the polygon ShapeFile containing water bodies
-        max_length {float} -- Maximum allowable flow line segment after segmentation
-        min_length {float} -- Shortest allowable flow line segment after segmentation
-        dem {str} -- Path to the DEM raster for the watershed
-        slope {str} -- Path to the slope raster
+        hydro flowlines {str} -- Path to the flowline output from hydro
+        hydro_igos {str} -- Path to the integrated geographic objects output from hydro
+        hydro_dgos {str} -- Path to the discrete geographic objects output from hydro
+        anthro_flowlines {str} -- Path to the flowline output from anthro
+        anthro_igos {str} -- Path to the integrated geographic objects output from anthro
+        anthro_dgos {str} -- Path to the discrete geographic objects output from anthro
         hillshade {str} -- Path to the DEM hillshade raster
         existing_veg {str} -- Path to the excisting vegetation raster
         historical_veg {str} -- Path to the historical vegetation raster
         output_folder {str} -- Output folder where the BRAT project will get created
         streamside_buffer {float} -- Streamside vegetation buffer (meters)
         riparian_buffer {float} -- Riparian vegetation buffer (meters)
-        intermittent {bool} -- True to keep intermittent streams. False discard them.
-        ephemeral {bool} -- True to keep ephemeral streams. False to discard them.
+        reach_codes {List[str]} -- List of reach codes to be retained
+        canal_codes {List[str]} -- List of canal codes to be retained
+        peren_codes {List[str]} -- List of perennial codes to be retained
+        flow_areas {str} -- Path to the polygon ShapeFile that contains large river outlines
+        waterbodies {str} -- Path to the polygon ShapeFile containing water bodies
         max_waterbody {float} -- Area (sqm) of largest waterbody to be retained.
         valley_bottom {str} -- Path to valley bottom polygon layer.
-        roads {str} -- Path to polyline roads ShapeFile
-        rail {str} -- Path to polyline railway ShapeFile
-        canals {str} -- Path to polyline canals ShapeFile
-        ownership {str} -- Path to land ownership polygon ShapeFile
-        elevation_buffer {float} -- Distance to buffer DEM when sampling elevation
         meta (Dict[str,str]): dictionary of riverscapes metadata key: value pairs
     """
 
     log = Logger("BRAT Build")
-    log.info('HUC: {}'.format(huc))
-    log.info('EPSG: {}'.format(cfg.OUTPUT_EPSG))
+    log.info(f'HUC: {huc}')
+    log.info(f'EPSG: {cfg.OUTPUT_EPSG}')
 
     augment_layermeta()
 
     start_time = time.time()
 
-    project_name = 'BRAT for HUC {}'.format(huc)
+    project_name = f'BRAT for HUC {huc}'
     project = RSProject(cfg, output_folder)
     project.create(project_name, 'BRAT', [
         RSMeta('Model Documentation', 'https://tools.riverscapes.net/brat', RSMetaTypes.URL, locked=True),
@@ -182,16 +180,15 @@ def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Pa
     # check that anthro and hydro inputs are same dataset
     with GeopackageLayer(input_layers['HYDRO_FLOWLINES']) as hydro_lyr, GeopackageLayer(input_layers['ANTHRO_FLOWLINES']) as anthro_lyr:
         if hydro_lyr.ogr_layer.GetFeatureCount() != anthro_lyr.ogr_layer.GetFeatureCount():
-            raise Exception('Different number of Anthro and Hydro flowline features')
+            raise Exception('Different number of Anthro and Hydro flowline features; may have different different upstream RS Context projects')
     with GeopackageLayer(input_layers['HYDRO_DGOS']) as hydro_lyr, GeopackageLayer(input_layers['ANTHRO_DGOS']) as anthro_lyr:
         if hydro_lyr.ogr_layer.GetFeatureCount() != anthro_lyr.ogr_layer.GetFeatureCount():
-            raise Exception('Different number of Anthro and Hydro DGO features')
+            raise Exception('Different number of Anthro and Hydro DGO features; may have different upstream VBET projects')
 
     # Create the output feature class fields. Only those listed here will get copied from the source
-    with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['BRAT_GEOMETRY'].rel_path, write=True) as out_lyr:
+    with GeopackageLayer(intermediates_gpkg_path, layer_name=LayerTypes['INTERMEDIATES'].sub_layers['ATTRIBUTED_NETWORK'].rel_path, write=True) as out_lyr:
         out_lyr.create_layer(ogr.wkbMultiLineString, epsg=cfg.OUTPUT_EPSG, options=['FID=ReachID'], fields={
             'FCode': ogr.OFTInteger,
-            'ReachCode': ogr.OFTString,
             'StreamName': ogr.OFTString,
             'NHDPlusID': ogr.OFTReal,
             'WatershedID': ogr.OFTString,
@@ -238,8 +235,16 @@ def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Pa
 
     project.add_metadata([RSMeta('HUC8_Watershed', watershed_name)])
 
+    # set up intermediates db
+    qry = open(os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'intermediates_schema.sql'), 'r').read()
+    sqlite3.complete_statement(qry)
+    conn = sqlite3.connect(intermediates_gpkg_path)
+    conn.execute('PRAGMA foreign_keys=ON')
+    curs = conn.cursor()
+    curs.executescript(qry)
+
     # Copy the reaches into the output feature class layer, filtering by reach codes
-    reach_geometry_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['BRAT_GEOMETRY'].rel_path)
+    reach_geometry_path = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['ATTRIBUTED_NETWORK'].rel_path)
     dgo_geometry_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['DGO_GEOM'].rel_path)
     igo_geometry_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['IGO_GEOM'].rel_path)
     # build_network(segmented_network_path, input_layers['FLOW_AREA'], reach_geometry_path, waterbodies_path=input_layers['WATERBODIES'], waterbody_max_size=max_waterbody, epsg=cfg.OUTPUT_EPSG, reach_codes=reach_codes, create_layer=False)
@@ -248,7 +253,7 @@ def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Pa
     copy_features_fields(input_layers['HYDRO_IGOS'], igo_geometry_path, epsg=cfg.OUTPUT_EPSG)
 
     # Check that there are features to process
-    with GeopackageLayer(outputs_gpkg_path, 'ReachGeometry') as lyr:
+    with GeopackageLayer(intermediates_gpkg_path, 'attributed_network') as lyr:
         if lyr.ogr_layer.GetFeatureCount() == 0:
             log.info('No features to process; BRAT run complete')
             return
@@ -267,20 +272,13 @@ def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Pa
                               FROM hydro_dgos H LEFT JOIN anthro_dgos A ON H.fid = A.fid""")
         database.conn.commit()
 
-    with SQLiteCon(outputs_gpkg_path) as database:
-        # Data preparation SQL statements to handle any weird attributes
+    with SQLiteCon(intermediates_gpkg_path) as database:
         database.curs.execute("""ATTACH DATABASE ? AS inputs""", (inputs_gpkg_path,))
         database.curs.execute("""INSERT INTO HydroAnthroReach SELECT * FROM inputs.vwHydroAnthro""")
-        database.curs.execute("""INSERT INTO HydroAnthroDGO SELECT * FROM inputs.vwHydroAnthroDGO""")
         database.conn.commit()
 
-        database.curs.execute("""INSERT INTO ReachAttributes (ReachID, WatershedID, ReachCode, StreamName)
-                              SELECT ReachID, WatershedID, FCode, StreamName FROM ReachGeometry""")
-        database.curs.execute("""INSERT INTO DGOAttributes (DGOID, ReachCode, level_path, seg_distance, centerline_length, segment_area)
-                              SELECT DGOID, FCode, level_path, seg_distance, centerline_length, segment_area FROM DGOGeometry""")
-        database.curs.execute("""INSERT INTO IGOAttributes (IGOID, ReachCode, level_path, seg_distance, stream_size)
-                              SELECT IGOID, FCode, level_path, seg_distance, stream_size FROM IGOGeometry""")
-        database.conn.commit()
+        database.curs.execute("""INSERT INTO ReachAttributes (ReachID, FCode, StreamName, NHDPlusID, WatershedID, level_path, ownership, divergence, stream_order, us_state, ecoregion_iii, ecoregion_iv)
+                              SELECT ReachID, FCode, StreamName, NHDPlusID, WatershedID, level_path, ownership, divergence, stream_order, us_state, ecoregion_iii, ecoregion_iv FROM attributed_network""")
 
         database.curs.execute("""SELECT ReachID FROM ReachAttributes""")
         for row in database.curs.fetchall():
@@ -288,12 +286,43 @@ def brat_build(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Pa
                                   (SELECT Slope, Length_m, DrainArea, QLow, Q2, SPLow, SP2, iPC_Road, iPC_RoadX, iPC_RoadVB, iPC_Rail, iPC_RailVB, iPC_DivPts, iPC_Privat, iPC_Canal, iPC_LU, iPC_VLowLU, iPC_LowLU, iPC_ModLU, iPC_HighLU, oPC_Dist FROM HydroAnthroReach WHERE ReachID = {row['ReachID']})
                                   WHERE ReachID = {row['ReachID']}""")
         database.conn.commit()
+
+        database.curs.execute("""INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id)
+            SELECT 'vwIntReaches', data_type, 'Reaches', min_x, min_y, max_x, max_y, srs_id FROM gpkg_contents WHERE table_name = 'attributed_network'""")
+
+        database.curs.execute("""INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m)
+            SELECT 'vwIntReaches', column_name, geometry_type_name, srs_id, z, m FROM gpkg_geometry_columns WHERE table_name = 'attributed_network'""")
+        database.conn.commit()
+
+    # copy intermediate network to output network
+    int_reach_path = os.path.join(intermediates_gpkg_path, 'vwIntReaches')
+    brat_reach_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['BRAT_GEOMETRY'].rel_path)
+    build_network(int_reach_path, input_layers['FLOW_AREA'], brat_reach_path, cfg.OUTPUT_EPSG, reach_codes, input_layers['WATERBODIES'], max_waterbody)
+
+    with SQLiteCon(outputs_gpkg_path) as database:
+        # Data preparation SQL statements to handle any weird attributes
+        database.curs.execute("""ATTACH DATABASE ? AS inputs""", (inputs_gpkg_path,))
+        database.curs.execute("""INSERT INTO HydroAnthroDGO SELECT * FROM inputs.vwHydroAnthroDGO""")
+        database.conn.commit()
+
+        database.curs.execute("""INSERT INTO DGOAttributes (DGOID, ReachCode, level_path, seg_distance, centerline_length, segment_area)
+                              SELECT DGOID, FCode, level_path, seg_distance, centerline_length, segment_area FROM DGOGeometry""")
+        database.curs.execute("""INSERT INTO IGOAttributes (IGOID, ReachCode, level_path, seg_distance, stream_size)
+                              SELECT IGOID, FCode, level_path, seg_distance, stream_size FROM IGOGeometry""")
+        database.conn.commit()
+
         database.curs.execute("""SELECT DGOID FROM DGOAttributes""")
         for row in database.curs.fetchall():
             database.curs.execute(f"""UPDATE DGOAttributes SET (iGeo_Slope, iGeo_Len, iGeo_DA, iHyd_QLow, iHyd_Q2, iHyd_SPLow, iHyd_SP2, LUI, Road_len, Rail_len, Canal_len, RoadX_ct, DivPts_ct, Road_prim_len, Road_sec_len, Road_4wd_len) =
                                   (SELECT Slope, Length_m, DrainArea, Qlow, Q2, SPLow, SP2, LUI, Road_len, Rail_len, Canal_len, RoadX_ct, DivPts_ct, Road_prim_len, Road_sec_len, Road_4wd_len FROM HydroAnthroDGO WHERE DGOID = {row['DGOID']})
                                   WHERE DGOID = {row['DGOID']}""")
         database.conn.commit()
+
+        database.curs.execute("""INSERT INTO ReachAttributes (ReachID, ReachCode, StreamName, NHDPlusID, WatershedID, level_path, ownership, divergence, stream_order, us_state, ecoregion_iii, ecoregion_iv, 
+                              iGeo_Slope, iGeo_Len, iGeo_DA, iHyd_QLow, iHyd_Q2, iHyd_SPLow, iHyd_SP2, iPC_Road, iPC_RoadX, iPC_RoadVB, iPC_Rail, iPC_RailVB, iPC_DivPts, iPC_Privat, iPC_Canal, iPC_LU, iPC_VLowLU, iPC_LowLU, iPC_ModLU, iPC_HighLU, oPC_Dist)
+                              SELECT fid, FCode, StreamName, NHDPlusID, WatershedID, level_path, ownership, divergence, stream_order, us_state, ecoregion_iii, ecoregion_iv,
+                              iGeo_Slope, iGeo_Len, iGeo_DA, iHyd_QLow, iHyd_Q2, iHyd_SPLow, iHyd_SP2, iPC_Road, iPC_RoadX, iPC_RoadVB, iPC_Rail, iPC_RailVB, iPC_DivPts, iPC_Privat, iPC_Canal, iPC_LU, iPC_VLowLU, iPC_LowLU, iPC_ModLU, iPC_HighLU, oPC_Dist 
+                              FROM ReachGeometry""")
 
         database.curs.execute(f'UPDATE ReachAttributes SET IsPeren = 1 WHERE (ReachCode IN ({", ".join(peren_codes)}))')
         database.curs.execute('UPDATE ReachAttributes SET iGeo_DA = 0.01 WHERE iGeo_DA IS NULL')
@@ -551,7 +580,7 @@ def main():
         if args.debug is True:
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output_folder, 'brat_build_memusage.log')
-            retcode, max_obj = ThreadRun(brat_build, memfile,
+            retcode, max_obj = ThreadRun(brat, memfile,
                                          args.huc, args.hydro_flowlines, args.hydro_igos, args.hydro_dgos,
                                          args.anthro_flowlines, args.anthro_igos, args.anthro_dgos,
                                          args.hillshade, args.existing_veg, args.historical_veg, args.output_folder,
@@ -562,7 +591,7 @@ def main():
                                          )
             log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
         else:
-            brat_build(
+            brat(
                 args.huc, args.hydro_flowlines, args.hydro_igos, args.hydro_dgos,
                 args.anthro_flowlines, args.anthro_igos, args.anthro_dgos,
                 args.hillshade, args.existing_veg, args.historical_veg, args.output_folder,
