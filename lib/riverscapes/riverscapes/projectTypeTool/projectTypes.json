@@ -1029,5 +1029,31 @@
     "url": "https://qris.riverscapes.net/",
     "machineName": "RiverscapesStudio",
     "state": "ACTIVE"
+  },
+  {
+    "name": "Hydrologic Context",
+    "summary": "Hydrologic Context project for estimating flow and stream power values",
+    "description": "Estimates low flow, Q2 flood, low stream power, and Q2 stream power for input stream network and DGO features.",
+    "meta": [
+        { 
+          "key": "Resolution",
+          "value": "Reach"
+        },
+        { 
+          "key": "Extent",
+          "value": "Network"
+        },
+        {
+          "key": "Model Status",
+          "value": "Production Grade"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "Model Output"
+        }
+       ],
+    "url": null,
+    "machineName": "hydro_context",
+    "state": "ACTIVE"
   }
 ]
