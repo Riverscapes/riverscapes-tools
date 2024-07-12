@@ -646,7 +646,7 @@ class BratReport(RSReport):
         image_path = os.path.join(self.images_dir, 'attribute_{}.png'.format(attribute))
         curs.execute('SELECT {0} FROM vwReaches WHERE {0} IS NOT NULL'.format(attribute))
         values = [row[attribute] for row in curs.fetchall()]
-        box_plot(values, attribute, self.f_names[attribute], image_path)
+        box_plot(values, self.f_names[attribute], image_path)
 
         img_wrap = ET.Element('div', attrib={'class': 'imgWrap'})
         img = ET.Element('img', attrib={'class': 'boxplot', 'alt': 'boxplot', 'src': '{}/{}'.format(os.path.basename(self.images_dir), os.path.basename(image_path))})
