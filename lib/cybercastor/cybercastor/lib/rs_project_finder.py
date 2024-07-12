@@ -9,10 +9,11 @@ upstream_project_types = {
     'rs_context': [],
     'rs_context_channel_taudem': [],
     'vbet': ['rscontext', 'channelarea', 'taudem'],
-    'brat': ['rscontext', 'vbet'],
+    'brat': ['rscontext', 'hydro_context', 'anthro', 'vbet'],
     'channel': ['rscontext'],
     'confinement': ['rscontext', 'vbet'],
     'anthro': ['rscontext', 'vbet'],
+    'hydro_context': ['rscontext', 'vbet'],
     'rcat': ['rscontext', 'vbet', 'taudem', 'anthro'],
     'rs_metric_engine': ['rscontext', 'vbet', 'confinement', 'anthro', 'rcat', 'brat'],
 }
@@ -25,6 +26,7 @@ fargate_env_keys = {
     'vbet': 'VBET_ID',
     'brat': 'BRAT_ID',
     'anthro': 'ANTHRO_ID',
+    'hydro': 'HYDRO_ID',
     'rcat': 'RCAT_ID',
     'confinement': 'CONFINEMENT_ID',
     'rs_metric_engine': 'RME_ID',
@@ -103,7 +105,7 @@ def find_upstream_projects(job_data) -> bool:
                 log.error(msg)
                 errors.append(msg)
             elif len(available_projects) == 1:
-                log.success(f'Found project for {huc} of type {project_type}: {available_projects[0]["item"]["id"]}')
+                log.info(f'Found project for {huc} of type {project_type}: {available_projects[0]["item"]["id"]}')
                 selected_project = available_projects[0]['item']['id']
             else:
                 # Build a list of the projects that were found. Key is user-friendly string for CLI. Value is project GUID
