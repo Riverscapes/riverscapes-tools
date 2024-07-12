@@ -8,6 +8,8 @@ IFS=$'\n\t'
 (: "${TAGS?}")
 (: "${VBET_ID?}")
 (: "${RSCONTEXT_ID?}")
+(: "${HYDRO_ID?}")
+(: "${ANTHRO_ID?}")
 (: "${RS_API_URL?}")
 (: "${VISIBILITY?}")
 # These are machine credentials for the API which will allow the CLI to delegate uploading to either a specific user or an org
@@ -37,6 +39,8 @@ EOF
 echo "TAGS: $TAGS"
 echo "VBET_ID: $VBET_ID"
 echo "RSCONTEXT_ID: $RSCONTEXT_ID"
+echo "HYDRO_ID: $HYDRO_ID"
+echo "ANTHRO_ID: $ANTHRO_ID"
 echo "VISIBILITY: $VISIBILITY"
 if [ -n "$USER_ID" ]; then
   echo "USER_ID: $USER_ID"
@@ -51,6 +55,8 @@ gdal-config --version
 DATA_DIR=/usr/local/data
 RS_CONTEXT_DIR=$DATA_DIR/rs_context/data
 VBET_DIR=$DATA_DIR/vbet/data
+HYDRO_DIR=$DATA_DIR/hydro/data
+ANTHRO_DIR=$DATA_DIR/anthro/data
 BRAT_DIR=$DATA_DIR/output
 
 ##########################################################################################
@@ -59,12 +65,20 @@ BRAT_DIR=$DATA_DIR/output
 
 # Get the RSCli project we need to make this happen
 rscli download $RS_CONTEXT_DIR --id "$RSCONTEXT_ID" \
-  --file-filter "(dem_hillshade|slope|dem|hydrology|existing_veg|historic_veg|transportation|ownership|project_bounds.geojson)" \
+  --file-filter "(dem_hillshade||hydrology|existing_veg|historic_veg|project_bounds.geojson)" \
   --no-input --no-ui --verbose
 
 # Go get vbet result for this to work
 rscli download $VBET_DIR --id "$VBET_ID"\
   --file-filter "vbet\.gpkg" \
+  --no-input --no-ui --verbose
+
+rscli download $HYDRO_DIR --id "$HYDRO_ID" \
+  --file-filter "hydro\.gpkg" \
+  --no-input --no-ui --verbose
+
+rscli download $ANTHRO_DIR --id "$ANTHRO_ID" \
+  --file-filter "anthro\.gpkg" \
   --no-input --no-ui --verbose
 
 echo "======================  Initial Disk space usage ======================="
@@ -76,20 +90,18 @@ try() {
   ##########################################################################################
   # Now Run BRAT Build
   ##########################################################################################
-  bratbuild $HUC \
-    $RS_CONTEXT_DIR/topography/dem.tif \
-    $RS_CONTEXT_DIR/topography/slope.tif \
+  brat $HUC \
     $RS_CONTEXT_DIR/topography/dem_hillshade.tif \
-    $RS_CONTEXT_DIR/hydrology/hydro_derivatives.gpkg/network_intersected \
+    $HYDRO_DIR/outputs/hydro.gpkg/vwReaches \
+    $HYDRO_DIR/outputs/hydro.gpkg/vwIgos \
+    $HYDRO_DIR/outputs/hydro.gpkg/vwDgos \
+    $ANTHRO_DIR/outputs/anthro.gpkg/vwReaches \
+    $ANTHRO_DIR/outputs/anthro.gpkg/vwIgos \
+    $ANTHRO_DIR/outputs/anthro.gpkg/vwDgos \
     $RS_CONTEXT_DIR/vegetation/existing_veg.tif \
     $RS_CONTEXT_DIR/vegetation/historic_veg.tif \
     $VBET_DIR/outputs/vbet.gpkg/vbet_full \
-    $RS_CONTEXT_DIR/transportation/roads.shp \
-    $RS_CONTEXT_DIR/transportation/railways.shp \
-    $RS_CONTEXT_DIR/transportation/canals.shp \
-    $RS_CONTEXT_DIR/ownership/ownership.shp \
     30 \
-    100 \
     100 \
     $BRAT_DIR \
     --reach_codes 33400,33600,33601,33603,46000,46003,46006,46007 \
@@ -124,17 +136,11 @@ try() {
   # fi
 
   # if [[ $? != 0 ]]; then return 1; fi
-  
-  ##########################################################################################
-  # Now Run BRAT Run
-  ##########################################################################################
-  bratrun $BRAT_DIR --verbose
-  if [[ $? != 0 ]]; then return 1; fi
 
   cd /usr/local/src/riverscapes-tools/packages/brat
   python3 -m sqlbrat.brat_rs \
     $BRAT_DIR/project.rs.xml \
-    $RS_CONTEXT_DIR/project.rs.xml,$VBET_DIR/project.rs.xml
+    $RS_CONTEXT_DIR/project.rs.xml,$HYDRO_DIR/project.rs.xml,$ANTHRO_DIR/project.rs.xml,$VBET_DIR/project.rs.xml
 
   echo "======================  Final Disk space usage ======================="
   df -h
