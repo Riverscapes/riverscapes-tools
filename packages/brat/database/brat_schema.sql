@@ -113,8 +113,6 @@ CREATE TABLE ReachAttributes (
      ecoregion_iv TEXT,
      IsPeren INTEGER NOT NULL DEFAULT (0), 
      iGeo_Slope REAL, 
-     iGeo_ElMax REAL, 
-     iGeo_ElMin REAL, 
      iGeo_Len REAL CONSTRAINT CHK_Reaches_LengthKm CHECK (iGeo_Len > 0), 
      iGeo_DA REAL CONSTRAINT CK_Reaches_DrainageAreaSqKm CHECK (iGeo_DA >= 0), 
      iVeg100EX REAL CONSTRAINT CHK_Reaches_ExistingVeg100 CHECK ((iVeg100EX >= 0) AND (iVeg100EX <= 4)), 

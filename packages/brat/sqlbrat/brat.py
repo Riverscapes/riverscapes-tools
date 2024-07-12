@@ -327,6 +327,11 @@ def brat(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Path,
         database.curs.execute(f'UPDATE ReachAttributes SET IsPeren = 1 WHERE (ReachCode IN ({", ".join(peren_codes)}))')
         database.curs.execute('UPDATE ReachAttributes SET iGeo_DA = 0.01 WHERE iGeo_DA IS NULL')
         database.curs.execute('UPDATE ReachAttributes SET iGeo_DA = 0.01 WHERE iGeo_DA = 0')
+        database.curs.execute('UPDATE ReachAttributes SET IsMultiCh = 1 WHERE divergence > 0')
+        database.curs.execute('UPDATE ReachAttributes SET IsMultiCh = 0 WHERE divergence = 0')
+        database.conn.commit()
+        database.curs.execute('UPDATE ReachAttributes SET IsMainCh = 1 WHERE divergence IN (0, 1)')
+        database.curs.execute('UPDATE ReachAttributes SET IsMainCh = 0 WHERE divergence = 2')
         database.conn.commit()
 
         database.curs.execute(f'UPDATE DGOAttributes SET WatershedID = {huc} WHERE WatershedID IS NULL')

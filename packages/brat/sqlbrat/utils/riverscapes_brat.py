@@ -9,8 +9,8 @@ from rscommons.classes.vector_base import get_utm_zone_epsg
 def riverscape_brat(gpkg_path: str, windows: dict):
     """
     Args:
-        gpkg_path (str): _description_
-        windows (dict): _description_
+        gpkg_path (str): project output geopackage path
+        windows (dict): dictionary of moving windows relating dgo IDs to igo IDs
     """
 
     log = Logger('Riversapes BRAT')
@@ -32,6 +32,10 @@ def riverscape_brat(gpkg_path: str, windows: dict):
             if seg_dist is None:
                 continue
 
+            ex30 = {}
+            ex100 = {}
+            hpe30 = {}
+            hpe100 = {}
             ex_num_dams = 0
             hist_num_dams = 0
             ex_veg_dams = 0
@@ -51,6 +55,10 @@ def riverscape_brat(gpkg_path: str, windows: dict):
                         hist_density = reach_feature.GetField('oCC_HPE')
                         ex_veg_density = reach_feature.GetField('oVC_EX')
                         hist_veg_density = reach_feature.GetField('oVC_HPE')
+                        exveg30 = reach_feature.GetField('iVeg_30EX')
+                        exveg100 = reach_feature.GetField('iVeg100EX')
+                        hpeveg30 = reach_feature.GetField('iVeg_30HPE')
+                        hpeveg100 = reach_feature.GetField('iVeg100HPE')
                         if ex_density is None or hist_density is None:
                             continue
                         ex_num_dams += ex_density * reach_length
@@ -61,6 +69,10 @@ def riverscape_brat(gpkg_path: str, windows: dict):
                         risk.append(reach_feature.GetField('Risk'))
                         limitation.append(reach_feature.GetField('Limitation'))
                         opportunity.append(reach_feature.GetField('Opportunity'))
+                        ex30[exveg30] = reach_length
+                        ex100[exveg100] = reach_length
+                        hpe30[hpeveg30] = reach_length
+                        hpe100[hpeveg100] = reach_length
 
             if len(lengths) > 0:
                 ix = lengths.index(max(lengths))
@@ -72,6 +84,24 @@ def riverscape_brat(gpkg_path: str, windows: dict):
             if centerline_len > 0:
                 db.curs.execute(f"""UPDATE DGOAttributes SET oCC_EX = {ex_num_dams / (centerline_len / 1000)}, oCC_HPE = {hist_num_dams /  (centerline_len / 1000)}, 
                                 oVC_EX = {ex_veg_dams / (centerline_len / 1000)}, oVC_HPE = {hist_veg_dams /  (centerline_len / 1000)} WHERE DGOID = {dgoid}""")
+            if len(lengths) > 0:
+                db.curs.execute(f"""UPDATE DGOAttributes SET mCC_EX_CT  = {ex_num_dams}, mCC_HPE_CT = {hist_num_dams} WHERE DGOID = {dgoid}""")
+
+            if len(ex30) == 0:
+                e30, e100, h30, h100 = None, None, None, None
+            elif len(ex30) == 1:
+                e30 = list(ex30.keys())[0]
+                e100 = list(ex100.keys())[0]
+                h30 = list(hpe30.keys())[0]
+                h100 = list(hpe100.keys())[0]
+            else:
+                e30 = sum([k * (v / sum(ex30.values())) for k, v in ex30.items()])
+                e100 = sum([k * (v / sum(ex100.values())) for k, v in ex100.items()])
+                h30 = sum([k * (v / sum(hpe30.values())) for k, v in hpe30.items()])
+                h100 = sum([k * (v / sum(hpe100.values())) for k, v in hpe100.items()])
+
+            if e30 is not None:
+                db.curs.execute(f"""UPDATE DGOAttributes SET iVeg_30EX = {e30}, iVeg100EX = {e100}, iVeg_30HPE = {h30}, iVeg100HPE = {h100} WHERE DGOID = {dgoid}""")
 
         db.conn.commit()
 
