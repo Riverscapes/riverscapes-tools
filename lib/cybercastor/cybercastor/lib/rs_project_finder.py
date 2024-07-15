@@ -26,7 +26,7 @@ fargate_env_keys = {
     'vbet': 'VBET_ID',
     'brat': 'BRAT_ID',
     'anthro': 'ANTHRO_ID',
-    'hydro': 'HYDRO_ID',
+    'hydro_context': 'HYDRO_ID',
     'rcat': 'RCAT_ID',
     'confinement': 'CONFINEMENT_ID',
     'rs_metric_engine': 'RME_ID',
