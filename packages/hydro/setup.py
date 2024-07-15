@@ -19,7 +19,7 @@ version = re.search(
     re.M
 ).group(1)
 
-setup(name='hydro',
+setup(name='hydro_context',
       version=version,
       description='Riverscapes Open Source Python Hydrologic Context',
       author='Jordan Gilbert',
@@ -29,7 +29,7 @@ setup(name='hydro',
       author_email='info@northarrowresearch.com',
       install_requires=install_requires,
       entry_points={
-          "console_scripts": ['hydro = hydro.hydro:main']
+          "console_scripts": ['hydro_context = hydro.hydro:main']
       },
       zip_safe=False,
       url='https://github.com/Riverscapes/riverscapes-tools/tree/master/packages/hydro',
