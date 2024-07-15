@@ -59,13 +59,13 @@ def hydro_context(huc: int, dem: Path, hillshade: Path, igo: Path, dgo: Path, fl
     log = Logger('Hydrologic Context')
     log.info(f'Starting Hydrologic Context for HUC {huc}')
 
-    augment_layermeta('hydro', LYR_DESCRIPTIONS_JSON, LayerTypes)
+    augment_layermeta('hydro_context', LYR_DESCRIPTIONS_JSON, LayerTypes)
 
     start_time = time.time()
 
     project_name = f'Hydrologic Context for HUC {huc}'
     project = RSProject(cfg, output_folder)
-    project.create(project_name, 'Hydro', [
+    project.create(project_name, 'hydro_context', [
         RSMeta('Model Documentation', 'https://tools.riverscapes.net/hydro', RSMetaTypes.URL, locked=True),
         RSMeta('HUC', str(huc), RSMetaTypes.HIDDEN, locked=True),
         RSMeta('Hydrologic Unit Code', str(huc), locked=True)
