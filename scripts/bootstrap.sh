@@ -25,3 +25,4 @@ python3 -m venv .venv
 .venv/bin/pip install -e ./packages/hand
 .venv/bin/pip install -e ./packages/rcat
 .venv/bin/pip install -e ./packages/confinement
+.venv/bin/pip install -e ./packages/hydro
