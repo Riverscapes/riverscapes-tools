@@ -59,6 +59,10 @@ RS_CONTEXT_DIR=$DATA_DIR/rs_context/rs_context_$RSCONTEXT_ID
 VBET_DIR=$DATA_DIR/vbet/vbet_$VBET_ID
 HYDRO_DIR=$DATA_DIR/output/hydro
 
+cd /usr/local/src/riverscapes-tools
+pip install -e packages/hydro
+cd /usr/local/src
+
 ##########################################################################################
 # First Get RS_Context and VBET inputs
 ##########################################################################################
