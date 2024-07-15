@@ -207,6 +207,14 @@ def hydro_context(huc: int, dem: Path, hillshade: Path, igo: Path, dgo: Path, fl
     reach_geometry(outputs_gpkg_path, dem_path, 100)
     dgo_geometry(outputs_gpkg_path, dem_path)
 
+    # get rid of zero and null drainage areas
+    with SQLiteCon(outputs_gpkg_path) as database:
+        database.curs.execute('SELECT DrainArea FROM ReachAttributes WHERE DrainArea != 0 AND DrainArea IS NOT NULL')
+        das = [row['DrainArea'] for row in database.curs.fetchall()]
+        minval = min(das)
+        database.curs.execute(f'UPDATE ReachAttributes SET DrainArea = {minval} WHERE DrainArea = 0 OR DrainArea IS NULL')
+        database.conn.commit()
+
     # Calculate discharge and stream power values
     for suf in ['Low', '2']:
         hydrology(outputs_gpkg_path, suf, str(huc))
