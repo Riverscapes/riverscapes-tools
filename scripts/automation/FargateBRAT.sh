@@ -59,6 +59,10 @@ HYDRO_DIR=$DATA_DIR/hydro/data
 ANTHRO_DIR=$DATA_DIR/anthro/data
 BRAT_DIR=$DATA_DIR/output
 
+cd /usr/local/src/riverscapes-tools
+pip install -e packages/brat
+cd /usr/local/src
+
 ##########################################################################################
 # First Get RS_Context and VBET inputs
 ##########################################################################################

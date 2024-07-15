@@ -31,8 +31,7 @@ setup(name='sqlbrat',
       zip_safe=False,
       entry_points={
           "console_scripts": [
-              'bratbuild = sqlbrat.brat_build:main',
-              'bratrun = sqlbrat.brat_run:main'
+              'brat = sqlbrat.brat:main'
           ]
       },
       url='https://github.com/Riverscapes/vbet',
