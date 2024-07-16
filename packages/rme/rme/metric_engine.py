@@ -151,7 +151,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
     project = RSProject(cfg, project_folder)
     project.create(
         project_name,
-        'rme',
+        'rs_metric_engine',
         [
             RSMeta('Model Documentation', 'https://tools.riverscapes.net/rme', RSMetaTypes.URL, locked=True),
             RSMeta('HUC', str(huc), RSMetaTypes.HIDDEN, locked=True),
