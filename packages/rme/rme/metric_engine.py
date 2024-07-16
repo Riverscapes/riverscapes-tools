@@ -1488,10 +1488,10 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
 
             if 'BRATCAP' in metrics and brat_dgos:
                 with sqlite3.connect(inputs_gpkg) as conn:
-                    curs = conn.cursor()
-                    curs.execute(
+                    curs2 = conn.cursor()
+                    curs2.execute(
                         f"SELECT oCC_EX, centerline_length FROM brat_dgo WHERE fid IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
-                    caps = curs.fetchall()
+                    caps = curs2.fetchall()
                     brat_cap = sum(caps[i][0] * (caps[i][1]/1000) for i in range(len(caps))) / (sum([caps[i][1] for i in range(len(caps))])/1000) if sum([caps[i][1] for i in range(len(caps))]) > 0.0 else None
                 if brat_cap is not None:
                     curs.execute(
