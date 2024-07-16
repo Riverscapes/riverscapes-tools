@@ -101,7 +101,7 @@ window_distance = {'0': 200.0, '1': 400.0,
 
 def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties: Path, in_segments: Path, in_points: Path,
                   in_vbet_centerline: Path, in_dem: Path, in_hillshade: Path, project_folder: Path,
-                  in_confinement_dgos: Path = None, in_anthro_dgos: Path = None, in_rcat_dgos: Path = None, in_brat_network: Path = None,
+                  in_confinement_dgos: Path = None, in_anthro_dgos: Path = None, in_rcat_dgos: Path = None, in_brat_dgos: Path = None,
                   level_paths: list = None, meta: dict = None):
     """Generate Riverscapes Metric Engine project and calculate metrics
 
@@ -206,12 +206,12 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
         project.add_dataset(in_gpkg_node.find('Layers'), 'rcat_dgo', RSLayer('RCAT DGO', 'RCAT_DGO', 'Vector', 'rcat_dgo'), 'Vector', rel_path=True, sublayer=True)
     else:
         rcat_dgos = None
-    if in_brat_network:
-        brat_network = os.path.join(inputs_gpkg, 'brat_network')
-        copy_feature_class(in_brat_network, brat_network)
-        project.add_dataset(in_gpkg_node.find('Layers'), 'brat_network', RSLayer('BRAT Network', 'BRAT_NETWORK', 'Vector', 'brat_network'), 'Vector', rel_path=True, sublayer=True)
+    if in_brat_dgos:
+        brat_dgos = os.path.join(inputs_gpkg, 'brat_dgo')
+        copy_feature_class(in_brat_dgos, brat_dgos)
+        project.add_dataset(in_gpkg_node.find('Layers'), 'brat_dgo', RSLayer('BRAT DGO', 'BRAT_DGO', 'Vector', 'brat_network'), 'Vector', rel_path=True, sublayer=True)
     else:
-        brat_network = None
+        brat_dgos = None
 
     # get utm
     with GeopackageLayer(points) as lyr_pts:
@@ -897,55 +897,35 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                         devel = curs.fetchone()[0]
                     metrics_output[metric['metric_id']] = str(devel)
 
-                if 'BRATCAP' in metrics and brat_network:
+                if 'BRATCAP' in metrics and brat_dgos:
                     metric = metrics['BRATCAP']
-                    attributes = {}
-                    with GeopackageLayer(brat_network) as lyr_brat:
-                        for feat, *_ in lyr_brat.iterate_features(clip_shape=feat_geom):
-                            geom_brat = feat.GetGeometryRef()
-                            capacity = feat.GetField('oCC_EX')
-                            # geom_section = feat_geom.Intersection(geom_brat)
-                            length = geom_brat.Length()
-                            attributes[capacity] = attributes.get(
-                                capacity, 0) + length
-                    tot_cap = sum(key * (val / sum(attributes.values())) for key, val in attributes.items())
-                    metrics_output[metric['metric_id']] = str(tot_cap)
 
-                if 'BRATRISK' in metrics and brat_network:
+                    with sqlite3.connect(inputs_gpkg) as conn:
+                        curs = conn.cursor()
+                        curs.execute(
+                            f"SELECT oCC_EX FROM brat_dgo WHERE fid = {dgo_id}")
+                        bratcap = curs.fetchone()[0]
+                    metrics_output[metric['metric_id']] = str(bratcap)
+
+                if 'BRATRISK' in metrics and brat_dgos:
                     metric = metrics['BRATRISK']
-                    attributes = {}
-                    with GeopackageLayer(brat_network) as lyr_brat:
-                        for feat, *_ in lyr_brat.iterate_features(clip_shape=feat_geom):
-                            geom_brat = feat.GetGeometryRef()
-                            risk = feat.GetField('Risk')
-                            # geom_section = feat_geom.Intersection(geom_brat)
-                            length = geom_brat.Length()
-                            attributes[risk] = attributes.get(
-                                risk, 0) + length
-                        lyr_brat = None
-                    if len(attributes) == 0:
-                        tot_risk = None
-                    else:
-                        tot_risk = str(max(attributes, key=attributes.get))
-                    metrics_output[metric['metric_id']] = tot_risk
 
-                if 'BRATOPP' in metrics and brat_network:
+                    with sqlite3.connect(inputs_gpkg) as conn:
+                        curs = conn.cursor()
+                        curs.execute(
+                            f"SELECT Risk FROM brat_dgo WHERE fid = {dgo_id}")
+                        bratrisk = curs.fetchone()[0]
+                    metrics_output[metric['metric_id']] = str(bratrisk)
+
+                if 'BRATOPP' in metrics and brat_dgos:
                     metric = metrics['BRATOPP']
-                    attributes = {}
-                    with GeopackageLayer(brat_network) as lyr_brat:
-                        for feat, *_ in lyr_brat.iterate_features(clip_shape=feat_geom):
-                            geom_brat = feat.GetGeometryRef()
-                            opp = feat.GetField('Opportunity')
-                            # geom_section = feat_geom.Intersection(geom_brat)
-                            length = geom_brat.Length()
-                            attributes[opp] = attributes.get(
-                                opp, 0) + length
-                        lyr_brat = None
-                    if len(attributes) == 0:
-                        tot_opp = None
-                    else:
-                        tot_opp = str(max(attributes, key=attributes.get))
-                    metrics_output[metric['metric_id']] = tot_opp
+
+                    with sqlite3.connect(inputs_gpkg) as conn:
+                        curs = conn.cursor()
+                        curs.execute(
+                            f"SELECT Opportunity FROM brat_dgo WHERE fid = {dgo_id}")
+                        bratopp = curs.fetchone()[0]
+                    metrics_output[metric['metric_id']] = str(bratopp)
 
                 # Write to Metrics
                 if len(metrics_output) > 0:
@@ -1506,17 +1486,18 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                     curs.execute(
                         f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['DEVEL']['metric_id']}, {str(devel_val)})")
 
-            if 'BRATCAP' in metrics and brat_network:
-                metric = metrics['BRATCAP']
-                curs.execute(f"SELECT metric_value from dgo_metric_values WHERE dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])}) AND metric_id = {metric['metric_id']}")
-                bratcap = curs.fetchall()
-                bratcap_list = [float(row[0]) for row in bratcap if row[0] is not None]
-                bratcap_val = np.mean(bratcap_list) if len(bratcap_list) > 0 else None
-                if bratcap_val is not None:
+            if 'BRATCAP' in metrics and brat_dgos:
+                with sqlite3.connect(inputs_gpkg) as conn:
+                    curs = conn.cursor()
                     curs.execute(
-                        f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metric['metric_id']}, {str(bratcap_val)})")
+                        f"SELECT oCC_EX, centerline_length FROM brat_dgo WHERE fid IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                    caps = curs.fetchall()
+                    brat_cap = sum(caps[i][0] * (caps[i][1]/1000) for i in range(len(caps))) / (sum([caps[i][1] for i in range(len(caps))])/1000) if sum([caps[i][1] for i in range(len(caps))]) > 0.0 else None
+                if brat_cap is not None:
+                    curs.execute(
+                        f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['BRATCAP']['metric_id']}, {str(brat_cap)})")
 
-            if 'BRATRISK' in metrics and brat_network:
+            if 'BRATRISK' in metrics and brat_dgos:
                 metric = metrics['BRATRISK']
                 curs.execute(f"SELECT metric_value from dgo_metric_values WHERE dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])}) AND metric_id = {metric['metric_id']}")
                 bratr = curs.fetchall()
@@ -1526,7 +1507,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                     curs.execute(
                         f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metric['metric_id']}, '{str(bratrisk_val)}')")
 
-            if 'BRATOPP' in metrics and brat_network:
+            if 'BRATOPP' in metrics and brat_dgos:
                 metric = metrics['BRATOPP']
                 curs.execute(f"SELECT metric_value from dgo_metric_values WHERE dgo_id IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])}) AND metric_id = {metric['metric_id']}")
                 brato = curs.fetchall()

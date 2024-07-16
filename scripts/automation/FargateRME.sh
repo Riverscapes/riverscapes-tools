@@ -123,7 +123,7 @@ try() {
     --confinement_dgos $CONFINEMENT_DIR/outputs/confinement.gpkg/confinement_dgos \
     --anthro_dgos $ANTHRO_DIR/outputs/anthro.gpkg/vwDgos \
     --rcat_dgos $RCAT_DIR/outputs/rcat.gpkg/vwDgos \
-    --brat_network $BRAT_DIR/outputs/brat.gpkg/vwReaches \
+    --brat_dgos $BRAT_DIR/outputs/brat.gpkg/vwDgos \
     --meta "Runner=Cybercastor" \
     --verbose
   if [[ $? != 0 ]]; then return 1; fi
@@ -131,7 +131,7 @@ try() {
   cd /usr/local/src/riverscapes-tools/packages/rme
   python3 -m rme.rme_rs \
     $RME_DIR/project.rs.xml \
-    "$RS_CONTEXT_DIR/project.rs.xml,$VBET_DIR/project.rs.xml",$CONFINEMENT_DIR/project.rs.xml,$ANTHRO_DIR/project.rs.xml,$RCAT_DIR/project.rs.xml \
+    "$RS_CONTEXT_DIR/project.rs.xml,$VBET_DIR/project.rs.xml",$CONFINEMENT_DIR/project.rs.xml,$ANTHRO_DIR/project.rs.xml,$RCAT_DIR/project.rs.xml,$BRAT_DIR/project.rs.xml \
 
   echo "======================  Final Disk space usage ======================="
   df -h
