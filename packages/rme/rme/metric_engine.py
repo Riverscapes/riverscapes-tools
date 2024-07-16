@@ -1793,7 +1793,7 @@ def main():
                         help='confinement dgos', type=str)
     parser.add_argument('--anthro_dgos', help='anthro dgos', type=str)
     parser.add_argument('--rcat_dgos', help='rcat_dgos', type=str)
-    parser.add_argument('--brat_network', help='brat network', type=str)
+    parser.add_argument('--brat_dgos', help='brat dgos', type=str)
     parser.add_argument(
         '--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ',
@@ -1828,7 +1828,7 @@ def main():
                                          args.confinement_dgos,
                                          args.anthro_dgos,
                                          args.rcat_dgos,
-                                         args.brat_network,
+                                         args.brat_dgos,
                                          meta=meta)
             log.debug(f'Return code: {retcode}, [Max process usage] {max_obj}')
 
@@ -1846,7 +1846,7 @@ def main():
                           args.confinement_dgos,
                           args.anthro_dgos,
                           args.rcat_dgos,
-                          args.brat_network,
+                          args.brat_dgos,
                           meta=meta)
 
     except Exception as e:
