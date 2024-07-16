@@ -72,6 +72,10 @@ RCAT_DIR=$DATA_DIR/rcat/rcat_$RCAT_ID
 BRAT_DIR=$DATA_DIR/brat/brat_$BRAT_ID
 RME_DIR=$DATA_DIR/output/rme
 
+cd /usr/local/src/riverscapes-tools
+pip install -e packages/brat
+cd /usr/local/src
+
 ##########################################################################################
 # First Get RS_Context and VBET inputs
 ##########################################################################################
