@@ -611,6 +611,7 @@ class RSProject:
         # Loop over input project.rs.xml files
         input_path_meta = []
         found_keys = []  # list of found nodes so that they don't get repeated if they exist in two projects
+        found_in_keys = {}
         for in_prj_path in in_proj_files:
             in_prj = RSProject(None, in_prj_path)
 
@@ -637,11 +638,19 @@ class RSProject:
             for id_out, id_in in working_id_list.items():
                 lyrnod_in = None
                 for n in in_prj.XMLBuilder.tree.iter():
+                    if n.tag == 'ProjectType':
+                        projtype = n.text
                     if 'lyrName' in n.attrib.keys():
                         if n.attrib['lyrName'] == id_in:
+                            if id_in in found_in_keys.keys():
+                                if projtype in found_in_keys[id_in]:
+                                    continue
                             lyrnod_in = n
                     elif 'id' in n.attrib.keys():
                         if n.attrib['id'] == id_in:
+                            if id_in in found_in_keys.keys():
+                                if projtype in found_in_keys[id_in]:
+                                    continue
                             lyrnod_in = n
 
                 if lyrnod_in is None:
@@ -662,6 +671,10 @@ class RSProject:
 
                 if id_out not in found_keys and lyrnod_in is not None and lyrnod_out is not None:
                     found_keys.append(id_out)
+                    if id_in in found_in_keys.keys():
+                        found_in_keys[id_in].append(projtype)
+                    else:
+                        found_in_keys[id_in] = [projtype]
                     lyrnod_out.attrib['extRef'] = f"{warehouse_id}:{self.get_rsxpath(in_prj.XMLBuilder, lyrnod_in)}"
                     if lyrdesc is not None:
                         lyrout_desc = lyrnod_out.find('Description')
