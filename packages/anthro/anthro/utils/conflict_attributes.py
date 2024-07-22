@@ -259,6 +259,7 @@ def distance_from_features(polygons, tmp_folder, bounds, cell_size_meters, cell_
     # geoprocessing.distance_transform_edt((features_raster, 1), distance_raster)
     with rasterio.open(features_raster) as src:
         profile = src.profile
+        profile.update(nodata=-9999)
         features_arr = src.read(1)
         distance = distance_transform_edt(np.logical_not(features_arr))
 
