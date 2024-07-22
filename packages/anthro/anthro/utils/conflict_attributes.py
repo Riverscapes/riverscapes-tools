@@ -14,6 +14,8 @@ import shutil
 from typing import List
 from osgeo import ogr, gdal
 from pygeoprocessing import geoprocessing
+from scipy.ndimage import distance_transform_edt
+import numpy as np
 import rasterio.shutil
 from rscommons import ProgressBar, Logger
 from rscommons.raster_buffer_stats import raster_buffer_stats2
@@ -254,7 +256,14 @@ def distance_from_features(polygons, tmp_folder, bounds, cell_size_meters, cell_
     progbar.finish()
 
     log.info('Calculating Euclidean distance for {}'.format(field))
-    geoprocessing.distance_transform_edt((features_raster, 1), distance_raster)
+    # geoprocessing.distance_transform_edt((features_raster, 1), distance_raster)
+    with rasterio.open(features_raster) as src:
+        profile = src.profile
+        features_arr = src.read(1)
+        distance = distance_transform_edt(np.logical_not(features_arr))
+
+    with rasterio.open(distance_raster, 'w', **profile) as dst:
+        dst.write(distance, 1)
 
     # Calculate the Euclidean distance statistics (mean, min, max etc) for each polygon
     values = raster_buffer_stats2(polygons, distance_raster)
