@@ -13,7 +13,6 @@ import os
 import shutil
 from typing import List
 from osgeo import ogr, gdal
-from pygeoprocessing import geoprocessing
 from scipy.ndimage import distance_transform_edt
 import numpy as np
 import rasterio.shutil
@@ -256,7 +255,6 @@ def distance_from_features(polygons, tmp_folder, bounds, cell_size_meters, cell_
     progbar.finish()
 
     log.info('Calculating Euclidean distance for {}'.format(field))
-    # geoprocessing.distance_transform_edt((features_raster, 1), distance_raster)
     with rasterio.open(features_raster) as src:
         profile = src.profile
         profile.update(nodata=-9999)
