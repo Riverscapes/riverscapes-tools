@@ -42,3 +42,4 @@ ParamID,Name,Description,Aliases,DataUnits,EquationUnits,Conversion,Definition
 41,BSLDEM30ff,Mean Basin Slope from 30m DEM ft/ft,,foot/foot ,foot/foot,1.0,
 42,PRC10,Mean October precipitation ininches,,millimeters,feet,0.0393701,
 43,SLOP30_10M, Percent area with slopes greater than 30 percent, SLOP30_10M,percent,percent,1.0,Percent area with slopes greater than 30 percent from 10m NED
+44,HIGHREG,High flow region number,HIGHREG,unknown,unknown,1.0,High flow region number

@@ -1576,7 +1576,7 @@ WatershedID,Name,AreaSqkm,States,Qlow,Q2,MaxDrainage,EcoregionID,Notes,Metadata
 13050002,Eastern Estancia,1333.11,NM,,,,26,,
 13050003,Tularosa Valley,17382.02,NM_TX,,,,24,,
 13050004,Salt Basin,20518.16,NM_TX,,,,24,,
-13060001,Pecos Headwaters,9016.33,NM,,,,26,,
+13060001,Pecos Headwaters,9016.33,NM,0.9865*DRNAREA**0.4763,(4.771*10**3)*(DRNAREA**0.467)*((ELEV/1000)**-1.36)*(BSLDEM30ff**0.589),11370.0,26,,
 13060002,Pintada Arroyo,2667.85,NM,,,,26,,
 13060003,Upper Pecos,10897.58,NM,(0.00142*DRNAREA)+3.59,(4.771*10**3)*(DRNAREA**0.467)*((ELEV/1000)**-1.36)*(BSLDEM30ff**0.589),11370.0,26,,
 13060004,Taiban,2086.7,NM,,,,25,,
