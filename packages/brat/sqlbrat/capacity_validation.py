@@ -1,7 +1,10 @@
 import os
 import csv
 
+import numpy as np
 from shapely.ops import nearest_points, unary_union
+import matplotlib.pyplot as plt
+from scipy.stats import linregress
 
 from rscommons import GeopackageLayer, Logger
 from rscommons.classes.vector_base import VectorBase
@@ -13,6 +16,7 @@ def validate_capacity(brat_gpkg_path: str, dams_gpkg_path: str):
     log = Logger('BRAT Capacity Validation')
     dam_count_table(brat_gpkg_path, dams_gpkg_path)
     electivity_index(brat_gpkg_path)
+    validation_plots(brat_gpkg_path)
 
     log.info('Done')
 
@@ -97,6 +101,39 @@ def electivity_index(gpkg_path: str):
 
 
 def validation_plots(brat_gpkg_path: str):
+    pred_obs = {}
+    with SQLiteCon(brat_gpkg_path) as db:
+        db.curs.execute('SELECT AVG(dam_density) AS avg_dam_density, AVG(predicted_capacity) AS avg_pred_cap FROM dam_counts WHERE predicted_capacity = 0')
+        none_res = db.curs.fetchone()
+        pred_obs['none'] = [none_res['avg_dam_density'], none_res['avg_pred_cap']]
+        db.curs.execute('SELECT AVG(dam_density) AS avg_dam_density, AVG(predicted_capacity) AS avg_pred_cap FROM dam_counts WHERE predicted_capacity > 0 and predicted_capacity <= 1')
+        rare_res = db.curs.fetchone()
+        pred_obs['rare'] = [rare_res['avg_dam_density'], rare_res['avg_pred_cap']]
+        db.curs.execute('SELECT AVG(dam_density) AS avg_dam_density, AVG(predicted_capacity) AS avg_pred_cap FROM dam_counts WHERE predicted_capacity > 1 and predicted_capacity <= 5')
+        occ_res = db.curs.fetchone()
+        pred_obs['occ'] = [occ_res['avg_dam_density'], occ_res['avg_pred_cap']]
+        db.curs.execute('SELECT AVG(dam_density) AS avg_dam_density, AVG(predicted_capacity) AS avg_pred_cap FROM dam_counts WHERE predicted_capacity > 5 and predicted_capacity <= 15')
+        freq_res = db.curs.fetchone()
+        pred_obs['freq'] = [freq_res['avg_dam_density'], freq_res['avg_pred_cap']]
+        db.curs.execute('SELECT AVG(dam_density) AS avg_dam_density, AVG(predicted_capacity) AS avg_pred_cap FROM dam_counts WHERE predicted_capacity > 15')
+        perv_res = db.curs.fetchone()
+        pred_obs['perv'] = [perv_res['avg_dam_density'], perv_res['avg_pred_cap']]
+
+    pred = np.asarray([v[1] for v in pred_obs.values()])
+    obs = np.asarray([v[0] for v in pred_obs.values()])
+
+    regr = linregress(pred, obs)
+
+    fig, ax = plt.subplots()
+    ax.scatter(pred, obs, c=['r', 'orange', 'yellow', 'g', 'b'])
+    ax.plot(pred, regr.intercept + regr.slope * pred, 'k')
+    ax.text(1, 0.5*max(obs), f'$R^2$: {regr.rvalue**2:.3f}')
+    ax.set_title('Observed Vs. Predicted Dam Densities Averaged by Category')
+    ax.set_xlabel(r'Predicted Maximum Capacity $\frac{dams}{km}$')
+    ax.set_ylabel(r'Observed Dam Density $\frac{dams}{km}$')
+    plt.tight_layout()
+    plt.savefig(os.path.join(os.path.dirname(brat_gpkg_path), 'obs_v_pred.png'))
+    plt.show()
 
 
 bgp = '/workspaces/data/brat/1701020501/outputs/brat.gpkg'
