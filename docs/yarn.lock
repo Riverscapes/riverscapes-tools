@@ -3242,9 +3242,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@riverscapes/gatsby-theme@npm:^0.1.28":
-  version: 0.1.28
-  resolution: "@riverscapes/gatsby-theme@npm:0.1.28"
+"@riverscapes/gatsby-theme@npm:^0.1.30":
+  version: 0.1.30
+  resolution: "@riverscapes/gatsby-theme@npm:0.1.30"
   dependencies:
     "@emotion/react": "npm:^11.11.0"
     "@emotion/styled": "npm:^11.11.0"
@@ -3263,6 +3263,7 @@ __metadata:
     gatsby-remark-prismjs: "npm:^7.10.0"
     gatsby-remark-responsive-iframe: "npm:^6.10.0"
     gatsby-source-filesystem: "npm:^5.13.0"
+    gatsby-transformer-json: "npm:^5.13.1"
     gatsby-transformer-remark: "npm:^6.13.0"
     gatsby-transformer-sharp: "npm:^5.13.0"
     loglevel: "npm:^1.8.1"
@@ -3272,7 +3273,7 @@ __metadata:
     gatsby: ^5.13.0
     react: ^18.2.0
     react-dom: ^18.2.0
-  checksum: 10c0/17d4f241e417cb683d75c0758f8ceae2a86850539c5ff04e96fde8093b60417d58cafb4b8478c07ecfce6b3824440734b49522c13487d9ad86a3a3479d141866
+  checksum: 10c0/5a50db52f07edb49f0d42fd00721c54c587d03a2c743bbde5913b4f3499e378a68cf859d7adcaccd63a49b112635cb6cc572c0e9f9bdfa73a8f62ce24cd3585c
   languageName: node
   linkType: hard
 
@@ -3280,7 +3281,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@riverscapes/template-clean@workspace:."
   dependencies:
-    "@riverscapes/gatsby-theme": "npm:^0.1.28"
+    "@riverscapes/gatsby-theme": "npm:^0.1.30"
     gatsby: "npm:^5.13.0"
     react: "npm:^18.2.0"
     react-dom: "npm:^18.2.0"
@@ -8330,6 +8331,18 @@ __metadata:
     lodash: "npm:^4.17.21"
     node-fetch: "npm:^2.6.11"
   checksum: 10c0/36af56dbd2f72f8e3327f7c2b0e8e65090ebef09e302fd5a999641812b37e810fb12b4a4ec0de833abf34b69c16f1c2061c5fbaad34d52ab6f68ec1ac75bf450
+  languageName: node
+  linkType: hard
+
+"gatsby-transformer-json@npm:^5.13.1":
+  version: 5.13.1
+  resolution: "gatsby-transformer-json@npm:5.13.1"
+  dependencies:
+    "@babel/runtime": "npm:^7.20.13"
+    bluebird: "npm:^3.7.2"
+  peerDependencies:
+    gatsby: ^5.0.0-next
+  checksum: 10c0/5c26b08a161a1d98bff74b8b03a7786e1cf357bf5022b84008d3bbfada89e45b696c01e610cfe9b9a566aecd8c82c935c2bba0ec79d5ce018b6cd970a23d8558
   languageName: node
   linkType: hard
 

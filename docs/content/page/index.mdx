@@ -24,56 +24,12 @@ Welcome to the documentation for the [Riverscape Consortium's](https://riverscap
 
 Unlike some of our operational-grade and professional-grade GIS tools, which "users" run the models themselves in desktop GIS, these tools are run centrally in the cloud and their outputs are consumed by users through the [Riverscapes Viewer](http://viewer.riverscapes.net) in the web browser or through desktop GIS. Users can access tool outputs, which our packaged as riverscapes projects in our [Riverscapes Data Exchange](https://data.riverscapes.net/).
 
-<Container maxWidth="xl">
-    <Grid container spacing={4} sx={{mt: 3}} padding={0}>
-      <StoryCard 
-        title="Riverscapes Context"
-        image={RSCImage}
-        description="The Riverscapes Context tool automatically aggregates a variety of nationally available spatial datasets into a riverscapes project for a given watershed (e.g. HUC8). These data can then be used for contextual purposes, mapping, or as input data in other tools."
-        to="/rscontext" />
-      <StoryCard 
-        title="Channel Area"
-        image={ChannelAreaImage}
-        description="The Channel Area tool generates polygons representing the active channel network within a watershed. "
-        to="/channelarea" />
-      <StoryCard 
-        title="TauDEM"
-        image={TauDEMImage}
-        description="The TauDEM is a suite of tools for topographic analysis using DEMs."
-        to="/taudem" />
-      <StoryCard 
-        title="VBET"
-        image={VBETImage}
-        description="The Valley Bottom Extraction Tool uses a DEM and a channel area network to estimate the valley bottom extents (area that could plausibly flood in contemporary natural flow regime) thereby defining the riverscape network."
-        to="/vbet" />
-
-   <StoryCard 
-        title="BRAT"
-        image={BRATImage}
-        description="The Beaver Restoration Assessment Tool combines a model estimating the capacity of a riverscape to support dam building activity with analysis of potential anthropogenic conflicts to create a tool that can be used to inform where LTPBRrestoration using beaver can be targeted."
-        to="/brat" />
-
-   <StoryCard 
-        title="Anthropogenic Context"
-        image={AnthroImage}
-        description="The Anthropogenic Context Tool adds attributes to stream network reaches and to points along the riverscape (valley bottom) center line that help to contextualize potential anthropogenic impacts to the riverscape. These attributes are used in portions of the BRAT and RCAT models."
-        to="/anthro" />
-
-
-  <StoryCard 
-        title="RCAT"
-        image={RCATImage}
-        description=""
-        to="/rcat" />
-
-
-  <StoryCard 
-        title="RME"
-        image={RMEImage}
-        description=""
-        to="/rme" />
-    </Grid>
-</Container>
+<ToolListContainer name="Explore Applications" initialFilters={{
+  purpose: [],
+  compliance: [],
+  interface: [],
+  resolution: []
+}} />
 
 # The Waterfall
 
