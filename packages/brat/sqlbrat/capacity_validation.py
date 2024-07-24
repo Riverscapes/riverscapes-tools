@@ -1,4 +1,5 @@
 import os
+import csv
 
 from shapely.ops import nearest_points, unary_union
 
@@ -10,6 +11,13 @@ from rscommons.database import SQLiteCon
 def validate_capacity(brat_gpkg_path: str, dams_gpkg_path: str):
 
     log = Logger('BRAT Capacity Validation')
+    dam_count_table(brat_gpkg_path, dams_gpkg_path)
+    electivity_index(brat_gpkg_path)
+
+    log.info('Done')
+
+
+def dam_count_table(brat_gpkg_path: str, dams_gpkg_path: str):
 
     dam_cts = {}  # reachid: dam count
 
@@ -38,24 +46,57 @@ def validate_capacity(brat_gpkg_path: str, dams_gpkg_path: str):
                     else:
                         dam_cts[reachid] += 1
 
-    print((max(dam_cts, key=dam_cts.get)))
-    print(dam_cts[max(dam_cts, key=dam_cts.get)])
-
-    log.info('Adding dam count table to geopackage')
     with SQLiteCon(brat_gpkg_path) as db:
         db.curs.execute('SELECT ReachID FROM vwReaches')
         reachids = [row['ReachID'] for row in db.curs.fetchall()]
         db.curs.execute('DROP TABLE IF EXISTS dam_counts')
-        db.curs.execute('CREATE TABLE dam_counts (reachid INTEGER PRIMARY KEY, dam_count INTEGER)')
+        db.curs.execute('CREATE TABLE dam_counts (ReachID INTEGER PRIMARY KEY, dam_count INTEGER, dam_density REAL, predicted_capacity REAL, length REAL)')
+        db.curs.execute('INSERT INTO dam_counts (ReachID, predicted_capacity, length) SELECT ReachID, oCC_EX, iGeo_Len FROM vwReaches')
         for reachid in reachids:
             if reachid in dam_cts.keys():
-                db.curs.execute('INSERT INTO dam_counts (reachid, dam_count) VALUES (?, ?)', (reachid, dam_cts[reachid]))
+                db.curs.execute('UPDATE dam_counts SET dam_count = ? WHERE reachid = ?', (dam_cts[reachid], reachid))
             else:
-                db.curs.execute('INSERT INTO dam_counts (reachid, dam_count) VALUES (?, ?)', (reachid, 0))
+                db.curs.execute('UPDATE dam_counts SET dam_count = ? WHERE reachid = ?', (0, reachid))
+        db.curs.execute('UPDATE dam_counts SET dam_density = dam_count / (length/1000)')
         db.conn.commit()
-        db.curs.execute('INSERT INTO gpkg_contents (table_name, data_type) VALUES (?, ?)', ('dam_counts', 'attributes'))
-        db.conn.commit()
-    log.info('Done')
+
+
+def electivity_index(gpkg_path: str):
+    out_path = os.path.join(os.path.dirname(gpkg_path), 'electivity_index.csv')
+
+    with SQLiteCon(gpkg_path) as db:
+        db.curs.execute('SELECT SUM(dam_count) AS dams FROM dam_counts')
+        total_dams = db.curs.fetchone()['dams']
+        db.curs.execute('SELECT SUM(iGeo_Len) As len FROM vwReaches')
+        total_length = db.curs.fetchone()['len']
+        db.curs.execute('SELECT SUM(dam_count) AS dc, SUM(length) AS sl FROM dam_counts WHERE predicted_capacity = 0')
+        none_cap = db.curs.fetchone()
+        none_ei = (none_cap['dc'] / total_dams) / (none_cap['sl'] / total_length)
+        db.curs.execute('SELECT SUM(dam_count) AS dc, SUM(length) AS sl FROM dam_counts WHERE predicted_capacity > 0 and predicted_capacity <= 1')
+        rare_cap = db.curs.fetchone()
+        rare_ei = (rare_cap['dc'] / total_dams) / (rare_cap['sl'] / total_length)
+        db.curs.execute('SELECT SUM(dam_count) AS dc, SUM(length) AS sl FROM dam_counts WHERE predicted_capacity > 1 and predicted_capacity <= 5')
+        occ_cap = db.curs.fetchone()
+        occ_ei = (occ_cap['dc'] / total_dams) / (occ_cap['sl'] / total_length)
+        db.curs.execute('SELECT SUM(dam_count) AS dc, SUM(length) AS sl FROM dam_counts WHERE predicted_capacity > 5 and predicted_capacity <= 15')
+        freq_cap = db.curs.fetchone()
+        freq_ei = (freq_cap['dc'] / total_dams) / (freq_cap['sl'] / total_length)
+        db.curs.execute('SELECT SUM(dam_count) AS dc, SUM(length) AS sl FROM dam_counts WHERE predicted_capacity > 15')
+        perv_cap = db.curs.fetchone()
+        perv__ei = (perv_cap['dc'] / total_dams) / (perv_cap['sl'] / total_length)
+
+    with open(out_path, 'w', newline='') as csvfile:
+        fieldnames = ['Capcacity', 'EI']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerow({'Capcacity': 'None', 'EI': none_ei})
+        writer.writerow({'Capcacity': 'Rare', 'EI': rare_ei})
+        writer.writerow({'Capcacity': 'Occasional', 'EI': occ_ei})
+        writer.writerow({'Capcacity': 'Frequent', 'EI': freq_ei})
+        writer.writerow({'Capcacity': 'Pervasive', 'EI': perv__ei})
+
+
+def validation_plots(brat_gpkg_path: str):
 
 
 bgp = '/workspaces/data/brat/1701020501/outputs/brat.gpkg'
