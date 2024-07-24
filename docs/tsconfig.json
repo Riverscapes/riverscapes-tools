@@ -25,6 +25,6 @@
     "**/dist/**",
     "node_modules",
     "**/*.test.?s",
-    "**/*.spec.?s",
+    "**/*.spec.?s"
   ]
- }
+}

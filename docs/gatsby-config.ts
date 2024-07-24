@@ -68,7 +68,7 @@ module.exports = {
     {
       resolve: '@riverscapes/gatsby-theme',
       options: {
-        contentPath: `${__dirname}/content`,
+        contentPath: `${__dirname}/content/page`,
         manifest: {
           name: `Riverscapes Gatsby Template Site`,
           short_name: `RiverscapesTemplate`,
