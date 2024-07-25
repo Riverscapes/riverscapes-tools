@@ -149,9 +149,10 @@ def riverscape_brat(gpkg_path: str, windows: dict):
             limitation_val = None
             opportunity_val = None
 
-        curs.execute(f"""UPDATE IGOAttributes SET oCC_EX = {ex_dams / (cl_len / 1000)}, oCC_HPE = {hist_dams / (cl_len / 1000)},
-                     oVC_EX = {ex_veg_dams / (cl_len / 1000)}, oVC_HPE = {hist_veg_dams / (cl_len / 1000)} WHERE IGOID = {igoid}""")
-        curs.execute(f"UPDATE IGOAttributes SET Risk = '{risk_val}', Limitation = '{limitation_val}', Opportunity = '{opportunity_val}' WHERE IGOID = {igoid}")
-        conn.commit()
+        if cl_len > 0:
+            curs.execute(f"""UPDATE IGOAttributes SET oCC_EX = {ex_dams / (cl_len / 1000)}, oCC_HPE = {hist_dams / (cl_len / 1000)},
+                        oVC_EX = {ex_veg_dams / (cl_len / 1000)}, oVC_HPE = {hist_veg_dams / (cl_len / 1000)} WHERE IGOID = {igoid}""")
+            curs.execute(f"UPDATE IGOAttributes SET Risk = '{risk_val}', Limitation = '{limitation_val}', Opportunity = '{opportunity_val}' WHERE IGOID = {igoid}")
+            conn.commit()
     conn.close()
     log.info('BRAT DGO and IGO Outputs Calculated')
