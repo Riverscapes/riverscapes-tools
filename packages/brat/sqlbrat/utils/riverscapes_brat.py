@@ -139,12 +139,12 @@ def riverscape_brat(gpkg_path: str, windows: dict):
             curs.execute(f'SELECT segment_area FROM DGOAttributes WHERE DGOID = {dgoid}')
             area.append(curs.fetchone()[0])
 
-        try:
+        if len(area) > 0:
             ix = area.index(max(area))
             risk_val = risk[ix]
             limitation_val = limitation[ix]
             opportunity_val = opportunity[ix]
-        except ValueError:
+        else:
             risk_val = None
             limitation_val = None
             opportunity_val = None
