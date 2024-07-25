@@ -139,10 +139,15 @@ def riverscape_brat(gpkg_path: str, windows: dict):
             curs.execute(f'SELECT segment_area FROM DGOAttributes WHERE DGOID = {dgoid}')
             area.append(curs.fetchone()[0])
 
-        ix = area.index(max(area))
-        risk_val = risk[ix]
-        limitation_val = limitation[ix]
-        opportunity_val = opportunity[ix]
+        try:
+            ix = area.index(max(area))
+            risk_val = risk[ix]
+            limitation_val = limitation[ix]
+            opportunity_val = opportunity[ix]
+        except ValueError:
+            risk_val = None
+            limitation_val = None
+            opportunity_val = None
 
         curs.execute(f"""UPDATE IGOAttributes SET oCC_EX = {ex_dams / (cl_len / 1000)}, oCC_HPE = {hist_dams / (cl_len / 1000)},
                      oVC_EX = {ex_veg_dams / (cl_len / 1000)}, oVC_HPE = {hist_veg_dams / (cl_len / 1000)} WHERE IGOID = {igoid}""")
