@@ -14,6 +14,7 @@ from rscommons.database import SQLiteCon
 def validate_capacity(brat_gpkg_path: str, dams_gpkg_path: str):
 
     log = Logger('BRAT Capacity Validation')
+    os.mkdir(os.path.join(os.path.dirname(brat_gpkg_path), 'validation'))
     dam_count_table(brat_gpkg_path, dams_gpkg_path)
     electivity_index(brat_gpkg_path)
     validation_plots(brat_gpkg_path)
@@ -66,7 +67,7 @@ def dam_count_table(brat_gpkg_path: str, dams_gpkg_path: str):
 
 
 def electivity_index(gpkg_path: str):
-    out_path = os.path.join(os.path.dirname(gpkg_path), 'electivity_index.csv')
+    out_path = os.path.join(os.path.dirname(gpkg_path), 'validation/electivity_index.csv')
 
     with SQLiteCon(gpkg_path) as db:
         db.curs.execute('SELECT SUM(dam_count) AS dams FROM dam_counts')
@@ -132,8 +133,35 @@ def validation_plots(brat_gpkg_path: str):
     ax.set_xlabel(r'Predicted Maximum Capacity $\frac{dams}{km}$')
     ax.set_ylabel(r'Observed Dam Density $\frac{dams}{km}$')
     plt.tight_layout()
-    plt.savefig(os.path.join(os.path.dirname(brat_gpkg_path), 'obs_v_pred.png'))
+    plt.savefig(os.path.join(os.path.dirname(brat_gpkg_path), 'validation/obs_v_pred.png'))
     plt.show()
+
+    with SQLiteCon(brat_gpkg_path) as db:
+        db.curs.execute('SELECT dam_density, predicted_capacity FROM dam_counts WHERE dam_density > 0 or (dam_density = 0 and predicted_capacity = 0)')
+        data = db.curs.fetchall()
+        obs_pred = np.asarray(([d['dam_density'] for d in data], [d['predicted_capacity'] for d in data]))
+
+    quan_90 = np.quantile(obs_pred, 0.9, axis=0)
+    quan_75 = np.quantile(obs_pred, 0.75, axis=0)
+
+    res = linregress(obs_pred[1], obs_pred[0])
+    res90 = linregress(obs_pred[1], quan_90)
+    res75 = linregress(obs_pred[1], quan_75)
+
+    xdata = np.sort(obs_pred[1])
+
+    fig, ax = plt.subplots()
+    ax.scatter(obs_pred[1], obs_pred[0], marker='x', c='darkblue')
+    # ax.plot([0, max(obs_pred[1])], [0, max(obs_pred[1])], 'r', label='1:1')
+    ax.plot(xdata, res.intercept + res.slope * xdata, 'k', linestyle='--', label='50th Percentile')
+    ax.plot(xdata, res90.intercept + res90.slope * xdata, 'k', linestyle='-.', label='90th Percentile')
+    ax.plot(xdata, res75.intercept + res75.slope * xdata, 'k', linestyle=':', label='75th Percentile')
+    ax.set_title('Observed Vs. Predicted Dam Densities')
+    ax.set_xlabel(r'Predicted Maximum Capacity $\frac{dams}{km}$')
+    ax.set_ylabel(r'Observed Dam Density $\frac{dams}{km}$')
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(os.path.join(os.path.dirname(brat_gpkg_path), 'validation/regressions.png'))
 
 
 bgp = '/workspaces/data/brat/1701020501/outputs/brat.gpkg'
