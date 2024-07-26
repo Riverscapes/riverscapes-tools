@@ -1,7 +1,7 @@
 ---
 title: Riverscapes Tools
 layout: default
-description: home page for Riverscapes Tools documentation
+description: Home page for riverscapes tools documentation
 banner: true
 isHome: false
 ---
@@ -18,22 +18,24 @@ import RMEImage from '/static/images/tool-tiles/RME_Tile.png'
 
 <Container maxWidth="xl">
 
-# RC Production-Grade, Network-Scale Tools
+Use the list below to discover and learn more about tools related to riverscapes health. Use the filters to find tools that comply with the Riverscapes Consortium's tool standards, and that meet the tool grade that you are looking for.
 
-Welcome to the documentation for the [Riverscape Consortium's](https://riverscapes.net) own production-grade family of network-scale riverscape models. These are riverscapes-compliant tools, which have been refactored to be capable of running in the cloud over regional, state-wide and/or nation-wide extents, while still resolving predictions of what is happening in individual reaches (i.e. 100 m to 500 m length scales) of riverscape.
+Some of the tools are developed by the [Riverscapes Consortium](https://riverscapes.net)'s own developers and these tools also have documentation on this website. Other tools listed below were developed by partners and collaborators.
 
-Unlike some of our operational-grade and professional-grade GIS tools, which "users" run the models themselves in desktop GIS, these tools are run centrally in the cloud and their outputs are consumed by users through the [Riverscapes Viewer](http://viewer.riverscapes.net) in the web browser or through desktop GIS. Users can access tool outputs, which our packaged as riverscapes projects in our [Riverscapes Data Exchange](https://data.riverscapes.net/).
+<Alert severity="success"> The Riverscapes Consortium is committed to supporting the development of tools that meet the consortium's standards, and to providing a platform for the distribution of these tools. Email the Riverscapes Consortium at support@riverscapes.freshdesk.com if you have a tool that you would like listed here.</Alert>
+
+Learn more about: [tool grade](https://developer.riverscapes.net/MIGRATED/Tools/toolStandards/) and [riverscapes standards and compliance](https://developer.riverscapes.net/standards/)
 
 <ToolListContainer name="Explore Applications" initialFilters={{
-  purpose: [],
-  compliance: [],
+  grade: ["Production","Professional", "Commercial"],
+  compliance: ["Compliant"],
   interface: [],
   resolution: []
 }} />
 
 # The Waterfall
 
-The tools listed above can be chained together to create a "waterfall" that produces a riverscapes project. The Riverscapes Context tool is the first tool in the waterfall, and it is used to create a series of riverscapes projects focused on different aspects of riverscape health. 
+The Riverscapes Consortium production-grade tools listed above can be chained together to create a "waterfall" that produces a riverscapes project. The [Riverscapes Context](/rscontext) tool is the first tool in the waterfall, and it is used to create a series of riverscapes projects focused on different aspects of riverscape health. 
 
 All models depend on an initial [Riverscapes Context](/rscontext) project that collects together the prerequisite national datasets for a given watershed. The dependencies of the other tools are shown in the waterfall diagram below. The [Riverscapes Metric Engine](/rme) collatates metrics from the other tools to create a comprehensive assessment of riverscape health based on Discreet and Integrated Geographic Objects (DGO and IGO respectively).
 
