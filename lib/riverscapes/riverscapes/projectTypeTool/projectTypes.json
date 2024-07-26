@@ -1055,5 +1055,31 @@
     "url": null,
     "machineName": "hydro_context",
     "state": "ACTIVE"
+  },
+  {
+    "name": "BLMContext",
+    "summary": "BLM Context Project",
+    "description": "The BLM Context Project is a collection of national datasets that provide contextual information useful for planning stream restoration projects in Bureau of Land Management (BLM) priority watersheds.",
+    "meta": [
+        { 
+          "key": "Resolution",
+          "value": "Catchment"
+        },
+        { 
+          "key": "Extent",
+          "value": "Multiple Watersheds"
+        },
+        {
+          "key": "Model Status",
+          "value": "Production Grade"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "Curated Dataset"
+        }
+       ],
+    "url": null,
+    "machineName": "BLMContext",
+    "state": "ACTIVE"
   }
 ]
