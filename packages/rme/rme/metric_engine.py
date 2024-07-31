@@ -672,7 +672,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                     results = []
                     with GeopackageLayer(line_network) as lyr_lines:
                         for feat, *_ in lyr_lines.iterate_features(clip_shape=feat_geom):
-                            results.append(feat.GetField('TotDASqKm'))
+                            results.append(feat.GetField('DivDASqKm'))
                     if len(results) > 0:
                         drainage_area = str(max(results))
                     else:
