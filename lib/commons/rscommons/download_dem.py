@@ -19,8 +19,9 @@ import traceback
 from osgeo import gdal, ogr, osr
 import rasterio
 from rscommons.download import download_unzip, download_file
-from rscommons.science_base import get_dem_urls
+from rscommons.national_map import get_dem_urls
 from rscommons import Logger, Geotransform, ProgressBar
+
 
 # NED data sometimes has small discrepencies in its cell widths. For this reason we need a tolerance,
 # below which value we just treat everything as if its fine. This way we don't need to resample which can
@@ -45,9 +46,9 @@ def download_dem(vector_path, _epsg, buffer_dist, download_folder, unzip_folder,
 
     log = Logger('DEM')
 
-    # Query Science Base API for NED 10m DEM rasters within HUC 8 boundary
+    # Query The National Map API for NED 10m DEM rasters within HUC 8 boundary
     urls = get_dem_urls(vector_path, buffer_dist)
-    log.info('{} DEM raster(s) identified on Science Base.'.format(len(urls)))
+    log.info('{} DEM raster(s) identified on The National Map.'.format(len(urls)))
 
     rasters = {}
 
