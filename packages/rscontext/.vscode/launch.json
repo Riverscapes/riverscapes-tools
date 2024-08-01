@@ -109,6 +109,22 @@
       ]
     },
     {
+      "name": "Generate BLM Context",
+      "request": "launch",
+      "type": "python",
+      "module": "rscontext.blm_context",
+      "console": "integratedTerminal",
+      "args":[
+        "${input:HUC}",
+        "{env:DATA_ROOT/blm_context/national",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}",
+        "{env:DATA_ROOT}/vbet/${input:HUC}",
+        "{env:DATA_ROOT}/blm_context/${input:HUC}",
+        "--verbose",
+        "--debug"
+      ]
+    },
+    {
       "name": "Generate Bounding GeoJSON",
       "type": "python",
       "request": "launch",
