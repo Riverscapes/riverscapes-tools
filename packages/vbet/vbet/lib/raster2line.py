@@ -67,6 +67,8 @@ def array2geom(array, rasterfn, pixelValue, precision=13):
         count += 1
 
     # dict2wkbMultiLineString
+    line_segs = []
+    coords = []
     multiline = ogr.Geometry(ogr.wkbMultiLineString)
     for i in itertools.combinations(pointDict.values(), 2):
         point1 = ogr.Geometry(ogr.wkbPoint)
@@ -80,7 +82,21 @@ def array2geom(array, rasterfn, pixelValue, precision=13):
             line = ogr.Geometry(ogr.wkbLineString)
             line.AddPoint(i[0][0], i[0][1])
             line.AddPoint(i[1][0], i[1][1])
-            multiline.AddGeometry(line)
+            # multiline.AddGeometry(line)
+            coords.append(i[0])
+            coords.append(i[1])
+            line_segs.append(line)
+
+    repeated_coords = []
+    for coord in coords:
+        if coords.count(coord) > 2:
+            repeated_coords.append(coord)
+
+    for line in line_segs:
+        if (line.GetPoint(0)[0], line.GetPoint(0)[1]) in repeated_coords:
+            if (line.GetPoint(1)[0], line.GetPoint(1)[1]) in repeated_coords:
+                continue
+        multiline.AddGeometry(line)
 
     return multiline
 

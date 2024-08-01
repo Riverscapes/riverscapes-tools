@@ -1,5 +1,11 @@
 # Riverscapes Metric Engine (RME)
 
+## [0.6.10] - 2024-JULY-31
+
+### Changed
+- updated drainage area to pull from DivDASqKm
+- changed fields to be correct data types instead of all strings
+
 ## [0.6.7] - 2024-MAY-10
 
 ### Changed
