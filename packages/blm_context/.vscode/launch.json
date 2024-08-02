@@ -1,0 +1,84 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "HUC",
+      "description": "What HUC?",
+      // "default": "17070202" // North Fork John Day
+      "default": "1706030607" // Really small HUC
+      // "default": "17060103" // Asotin
+    },
+    {
+      "type": "promptString",
+      "id": "VPU",
+      "description": "What VPU?",
+      // "default": "17070202" // North Fork John Day
+      "default": "1701" // Really small HUC
+      // "default": "17060103" // Asotin
+    }
+  ],  
+  "configurations": [
+    {
+      "name": "Generate BLM Context",
+      "request": "launch",
+      "type": "debugpy",
+      "module": "blm_context.blm_context",
+      "console": "integratedTerminal",
+      "args":[
+        "${input:HUC}",
+        "{env:DATA_ROOT}/blm_context/national",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}",
+        "{env:DATA_ROOT}/vbet/${input:HUC}",
+        "{env:DATA_ROOT}/blm_context/${input:HUC}",
+        "--verbose",
+        "--debug"
+      ]
+    },
+    {
+      "name": "BLM Context Metrics",
+      "type": "python",
+      "request": "launch",
+      "module": "blm_context.blm_context_metrics",
+      "console": "integratedTerminal",
+      "args": [
+        "{env:DATA_ROOT}/rs_context/${input:HUC}"
+      ]
+    },
+    {
+      "name": "Write report",
+      "type": "python",
+      "request": "launch",
+      "module": "rscontext.rs_context_report",
+      "console": "integratedTerminal",
+      "args": [
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/project.rs.xml",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/rsc_report.html"
+      ]
+    },
+    {
+      "name": "Calculate Metrics",
+      "type": "python",
+      "request": "launch",
+      "module": "rscommons.classes.project_metrics",
+      "console": "integratedTerminal",
+      "args": [
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhdplushr.gpkg",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/project.rs.xml"
+      ]
+    },
+    {
+      "name": "Version Bump",
+      "type": "python",
+      "module": "rscommons.version",
+      "args": [
+        "${workspaceFolder}/rscontext/__version__.py"
+      ],
+      "request": "launch",
+      "console": "integratedTerminal"
+    }    
+  ]
+}
