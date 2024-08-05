@@ -35,7 +35,6 @@
         "{env:DATA_ROOT}/vbet/${input:HUC}",
         "{env:DATA_ROOT}/blm_context/${input:HUC}",
         "--verbose",
-        "--debug"
       ]
     },
     {

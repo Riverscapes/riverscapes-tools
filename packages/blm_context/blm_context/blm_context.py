@@ -154,8 +154,6 @@ def blm_context(huc: int, blm_context_folder: str, rsc_folder: str, vbet_folder:
     if not (len(huc) in [4, 6, 8, 10, 12]):
         raise Exception('Invalid HUC identifier. Must be 4, 8, 10 or 12 digit integer')
 
-    if os.path.exists(output_folder):
-        safe_remove_dir(output_folder)
     safe_makedirs(output_folder)
 
     project_name = f'Riverscapes Context for HUC {huc}'
@@ -181,12 +179,14 @@ def blm_context(huc: int, blm_context_folder: str, rsc_folder: str, vbet_folder:
     nhdplushr_gpkg_src = os.path.join(rsc_folder, 'hydrology', 'nhdplushr.gpkg')
     log.info(f'Copying NHDPlusHR geopackage from {nhdplushr_gpkg_src} to {nhdplushr_gpkg}')
     shutil.copy(nhdplushr_gpkg_src, nhdplushr_gpkg)
+    project.add_project_geopackage(datasets, LayerTypes['NHDPLUSHR'])
 
     # Copy the derived hydrology geopackage
     hydro_derivatives_gpkg = os.path.join(hydrology_folder, 'hydro_derivatives.gpkg')
     hydro_derivatives_gpkg_src = os.path.join(rsc_folder, 'hydrology', 'hydro_derivatives.gpkg')
     log.info(f'Copying Hydrology Derivatives geopackage from {hydro_derivatives_gpkg_src} to {hydro_derivatives_gpkg}')
     shutil.copy(hydro_derivatives_gpkg_src, hydro_derivatives_gpkg)
+    project.add_project_geopackage(datasets, LayerTypes['HYDRODERIVATIVES'])
 
     # Copy the hillshade
     topogrpahy_folder = os.path.join(output_folder, 'topography')
@@ -195,6 +195,7 @@ def blm_context(huc: int, blm_context_folder: str, rsc_folder: str, vbet_folder:
     hillshade_src = os.path.join(rsc_folder, 'topography', 'dem_hillshade.tif')
     log.info(f'Copying hillshade from {hillshade_src} to {hillshade}')
     shutil.copy(hillshade_src, hillshade)
+    project.add_project_raster(datasets, LayerTypes['HILLSHADE'])
 
     # Get the DGO and IGO from VBET
     vbet_output_folder = os.path.join(output_folder, 'vbet')
@@ -203,6 +204,7 @@ def blm_context(huc: int, blm_context_folder: str, rsc_folder: str, vbet_folder:
     vbet_gpkg_src = os.path.join(vbet_folder, 'outputs', 'vbet.gpkg')
     log.info(f'Copying VBET geopackage from {vbet_gpkg_src} to {vbet_gpkg}')
     shutil.copy(vbet_gpkg_src, vbet_gpkg)
+    project.add_project_geopackage(datasets, LayerTypes['VBET'])
 
     # Get the HUC10 boundary layer
     huc_boundary = os.path.join(nhdplushr_gpkg, 'WBDHU10')
@@ -215,34 +217,36 @@ def blm_context(huc: int, blm_context_folder: str, rsc_folder: str, vbet_folder:
             else:
                 huc_boundary_geom = huc_boundary_geom.Union(geom)
 
-    list_of_blm_context_layers = [
-        'Habitat_Designations/USFWS_Critical_Habitat_A.gpkg/USFWS_Critical_Habitat_A',
-        'Habitat_Designations/USFWS_Critical_Habitat_L.gpkg/USFWS_Critical_Habitat_L',
-        'Land_Use_Planning/NIFC_Fuel_Polys.gpkg/NIFC_Fuel_Polys',
-        'Land_Use_Planning/BLM_Natl_Fire_Perimeters_P.gpkg/BLM_Natl_Fire_Perimeters_P',
-        'Land_Use_Planning/BLM_Natl_Visual_Resource_Inventory_Classes_Polygon_A.gpkg/BLM_Natl_Visual_Resource_Inventory_Classes_Polygon_A',
-        'Land_Use_Planning/BLM_Natl_Area_Critical_Env_Concern_A.gpkg/BLM_Natl_Area_Critical_Env_Concern_A',
-        'Land_Use_Planning/BLM_Natl_Wild_Horse_and_Burro_Herd_Mgmt_Area_A.gpkg/BLM_Natl_Wild_Horse_and_Burro_Herd_Mgmt_Area_A',
-        'Land_Use_Planning/BLM_Natl_Grazing_Allotment_P.gpkg/BLM_Natl_Grazing_Allotment_P',
-        'Land_Use_Planning/BLM_Natl_WesternUS_GRSG_ROD_Habitat_Mgmt_Areas_Aug22_A.gpkg/BLM_Natl_WesternUS_GRSG_ROD_Habitat_Mgmt_Areas_Aug22_A',
-        'Land_Use_Planning/BLM_Natl_Land_Use_Plans_2022_A.gpkg/BLM_Natl_Land_Use_Plans_2022_A',
-        'Land_Use_Planning/BLM_Natl_Revision_Development_Land_Use_Plans_A.gpkg/BLM_Natl_Revision_Development_Land_Use_Plans_A',
-        'Land_Use_Planning/BLM_ES_SO_Natl_Scenic_Historic_Trails_NLCS_L.gpkg/BLM_ES_SO_Natl_Scenic_Historic_Trails_NLCS_L',
-        'Land_Use_Planning/BLM_Natl_Recreation_Site_Polygons.gpkg/BLM_Natl_Recreation_Site_Polygons',
-        'BLM_National_Priority_Areas/BLM_Restoration_Landscapes_A.gpkg/BLM_Restoration_Landscapes_A',
-        'BLM_National_Priority_Areas/DOI_Keystone_Initiatives_A.gpkg/DOI_Keystone_Initiatives_A',
-        'National_Landscape_Conservation_System/BLM_Natl_NLCS_Wilderness_Areas_A.gpkg/BLM_Natl_NLCS_Wilderness_Areas_A',
-        'National_Landscape_Conservation_System/BLM_Natl_NLCS_Wilderness_Study_Areas_A.gpkg/BLM_Natl_NLCS_Wilderness_Study_Areas_A',
-        'National_Landscape_Conservation_System/BLM_NLCS_Natl_Monuments_Cons_Areas_A.gpkg/BLM_NLCS_Natl_Monuments_Cons_Areas_A'
-    ]
-    for layer in list_of_blm_context_layers:
+    list_of_blm_context_layers = {
+        'USFWS_CRITICAL_HABITAT_A': 'Habitat_Designations/USFWS_Critical_Habitat_A.gpkg/USFWS_Critical_Habitat_A',
+        'USFWS_CRITICAL_HABITAT_L': 'Habitat_Designations/USFWS_Critical_Habitat_L.gpkg/USFWS_Critical_Habitat_L',
+        'NIFC_FUEL_POLYS': 'Land_Use_Planning/NIFC_Fuel_Polys.gpkg/NIFC_Fuel_Polys',
+        'BLM_NATL_FIRE_PERIMETERS_P': 'Land_Use_Planning/BLM_Natl_Fire_Perimeters_P.gpkg/BLM_Natl_Fire_Perimeters_P',
+        'BLM_NATL_VISUAL_RESOURCE_INVENTORY_CLASSES_POLYGON_A': 'Land_Use_Planning/BLM_Natl_Visual_Resource_Inventory_Classes_Polygon_A.gpkg/BLM_Natl_Visual_Resource_Inventory_Classes_Polygon_A',
+        'BLM_NATL_AREA_CRITICAL_ENV_CONCERN_A': 'Land_Use_Planning/BLM_Natl_Area_Critical_Env_Concern_A.gpkg/BLM_Natl_Area_Critical_Env_Concern_A',
+        'BLM_NATL_WILD_HORSE_AND_BURRO_HERD_MGMT_AREA_A': 'Land_Use_Planning/BLM_Natl_Wild_Horse_and_Burro_Herd_Mgmt_Area_A.gpkg/BLM_Natl_Wild_Horse_and_Burro_Herd_Mgmt_Area_A',
+        'BLM_NATL_GRAZING_ALLOTMENT_P': 'Land_Use_Planning/BLM_Natl_Grazing_Allotment_P.gpkg/BLM_Natl_Grazing_Allotment_P',
+        'BLM_NATL_WESTERNUS_GRSG_ROD_HABITAT_MGMT_AREAS_AUG22_A': 'Land_Use_Planning/BLM_Natl_WesternUS_GRSG_ROD_Habitat_Mgmt_Areas_Aug22_A.gpkg/BLM_Natl_WesternUS_GRSG_ROD_Habitat_Mgmt_Areas_Aug22_A',
+        'BLM_NATL_LAND_USE_PLANS_2022_A': 'Land_Use_Planning/BLM_Natl_Land_Use_Plans_2022_A.gpkg/BLM_Natl_Land_Use_Plans_2022_A',
+        'BLM_NATL_REVISION_DEVELOPMENT_LAND_USE_PLANS_A': 'Land_Use_Planning/BLM_Natl_Revision_Development_Land_Use_Plans_A.gpkg/BLM_Natl_Revision_Development_Land_Use_Plans_A',
+        'BLM_ES_SO_NATL_SCENIC_HISTORIC_TRAILS_NLCS_L': 'Land_Use_Planning/BLM_ES_SO_Natl_Scenic_Historic_Trails_NLCS_L.gpkg/BLM_ES_SO_Natl_Scenic_Historic_Trails_NLCS_L',
+        'BLM_NATL_RECREATION_SITE_POLYGONS': 'Land_Use_Planning/BLM_Natl_Recreation_Site_Polygons.gpkg/BLM_Natl_Recreation_Site_Polygons',
+        'BLM_RESTORATION_LANDSCAPES_A': 'BLM_National_Priority_Areas/BLM_Restoration_Landscapes_A.gpkg/BLM_Restoration_Landscapes_A',
+        'DOI_KEYSTONE_INITIATIVES_A': 'BLM_National_Priority_Areas/DOI_Keystone_Initiatives_A.gpkg/DOI_Keystone_Initiatives_A',
+        'BLM_NATL_NLCS_WILDERNESS_AREAS_A': 'National_Landscape_Conservation_System/BLM_Natl_NLCS_Wilderness_Areas_A.gpkg/BLM_Natl_NLCS_Wilderness_Areas_A',
+        'BLM_NATL_NLCS_WILDERNESS_STUDY_AREAS_A': 'National_Landscape_Conservation_System/BLM_Natl_NLCS_Wilderness_Study_Areas_A.gpkg/BLM_Natl_NLCS_Wilderness_Study_Areas_A',
+        'BLM_NLCS_NATL_MONUMENTS_CONS_AREAS_A': 'National_Landscape_Conservation_System/BLM_NLCS_Natl_Monuments_Cons_Areas_A.gpkg/BLM_NLCS_Natl_Monuments_Cons_Areas_A'
+    }
+    for name, layer in list_of_blm_context_layers.items():
         layer_path = os.path.join(blm_context_folder, layer)
         output_layer = os.path.join(output_folder, layer)
         safe_makedirs(os.path.dirname(os.path.dirname(output_layer)))
         # Clip the layer to the HUC10 boundary
-        log.info(f'Clipping {layer} to HUC10 boundary')
+        log.info(f'Preparing to clip {layer} to HUC10 boundary')
         copy_feature_class(layer_path, output_layer, epsg=cfg.OUTPUT_EPSG, clip_shape=huc_boundary_geom, hard_clip=True)
-        log.info(f'Clipped {layer_path} to {output_layer}')
+        project.add_project_geopackage(datasets, LayerTypes[name])
+
+    log.info('BLM Context complete')
 
 
 def main():
@@ -269,10 +273,12 @@ def main():
 
     args = dotenv.parse_args_env(parser)
 
+    if os.path.exists(args.output_folder):
+        safe_remove_dir(args.output_folder)
+
     # Initiate the log file
     log = Logger("BLM Context")
-    log.setup(logPath=os.path.join(
-        args.output_folder, "blm_context.log"), verbose=args.verbose)
+    log.setup(logPath=os.path.join(args.output_folder, "blm_context.log"), verbose=args.verbose)
     log.title(f'BLM Context For HUC: {args.huc}')
 
     log.info(f'HUC: {args.huc}')
