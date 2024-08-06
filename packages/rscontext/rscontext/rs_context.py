@@ -31,10 +31,8 @@ from rscommons.geographic_raster import gdal_dem_geographic
 # from rscommons.prism import calculate_bankfull_width
 from rscommons.project_bounds import generate_project_extents_from_layer
 from rscommons.raster_warp import raster_vrt_stitch, raster_warp
-from rscommons.science_base import (download_shapefile_collection,
-                                    get_ntd_urls, us_states)
-from rscommons.util import (parse_metadata, pretty_duration, safe_makedirs,
-                            safe_remove_dir)
+from rscommons.national_map import (download_shapefile_collection, get_ntd_urls, us_states)
+from rscommons.util import (parse_metadata, pretty_duration, safe_makedirs, safe_remove_dir)
 # from rscommons.raster_buffer_stats import raster_buffer_stats2
 from rscommons.vector_ops import copy_feature_class
 from rscommons.geometry_ops import get_rectangle_as_geom
@@ -380,8 +378,7 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states_
     # download contributing DEM rasters, mosaic and reproject into compressed GeoTIF
     ned_download_folder = os.path.join(download_folder, 'ned')
     ned_unzip_folder = os.path.join(scratch_dir, 'ned')
-    dem_rasters, urls = download_dem(
-        nhd[boundary], cfg.OUTPUT_EPSG, 0.01, ned_download_folder, ned_unzip_folder, force_download)
+    dem_rasters, urls = download_dem(nhd[boundary], cfg.OUTPUT_EPSG, 0.01, ned_download_folder, ned_unzip_folder, force_download)
 
     processing_boundary = os.path.join(
         hydro_deriv_gpkg_path, LayerTypes['HYDRODERIVATIVES'].sub_layers['PROCESSING_EXTENT'].rel_path)
@@ -611,20 +608,24 @@ def get_nhd_states(inpath):
     states = []
     for feature in layer:
         value = feature.GetField('States')
-        [states.append(us_states[acronym]) for acronym in value.split(',')]
+        for acronym in value.split(','):
+            if acronym not in us_states:
+                log.warning('State acronym {} not found in us_states'.format(acronym))
+
+            if acronym not in states:
+                states.append(acronym)
 
     data_source = None
 
-    if 'Canada' in states:
+    if 'CN' in states:
         if len(states) == 1:
             log.error('HUC is entirely within Canada. No DEMs will be available.')
         else:
             log.warning(
                 'HUC is partially in Canada. Certain data will only be available for US portion.')
 
-    log.info('HUC intersects {} state(s): {}'.format(
-        len(states), ', '.join(states)))
-    return list(dict.fromkeys(states))
+    log.info('HUC intersects {} state(s): {}'.format(len(states), ', '.join(states)))
+    return states
 
 
 def main():
