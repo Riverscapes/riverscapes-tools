@@ -72,9 +72,10 @@ def beaver_activity(huc, proj_boundary, beaver_dams, output_dir, beaver_sign=Non
             out_lyr.create_layer(ogr.wkbMultiPoint, epsg=cfg.OUTPUT_EPSG, fields={
                 'type': ogr.OFTString
             })
-            boundary_ftr = boundary.ogr_layer.GetNextFeature().GetGeometryRef()
-            for ftr, *_ in sign.iterate_features(clip_shape=boundary_ftr):
-                if ftr.GetGeometryRef().Intersects(boundary_ftr):
+            boundary_ftr = boundary.ogr_layer.GetNextFeature()
+            bbox = boundary_ftr.GetGeometryRef().GetEnvelope()
+            for ftr, *_ in sign.iterate_features(clip_rect=bbox):
+                if ftr.GetGeometryRef().Intersects(boundary_ftr.GetGeometryRef()):
                     dam_cer = ftr.GetField('sign_type')  # are these always the same or should it be a list param
                     new_ftr = ogr.Feature(out_lyr.ogr_layer.GetLayerDefn())
                     new_ftr.SetGeometry(ftr.GetGeometryRef())
