@@ -1077,9 +1077,35 @@
           "key": "Riverscapes Project Class",
           "value": "Curated Dataset"
         }
-       ],
+    ],
     "url": null,
     "machineName": "BLMContext",
+    "state": "ACTIVE"
+  },
+  { 
+    "name": "Beaver Activity",
+    "summary": "Beaver dam and beaver sign project",
+    "description": "A project to store point feature classes representing locations of beaver dams and beaver sign based on desktop census and field data.",
+    "meta": [
+      { 
+          "key": "Resolution",
+          "value": "Reach"
+        },
+        { 
+          "key": "Extent",
+          "value": "Network"
+        },
+        {
+          "key": "Model Status",
+          "value": "Production Grade"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "Curated Dataset"
+        }
+       ],
+    "url": null,
+    "machineName": "Beaver_Activity",
     "state": "ACTIVE"
   }
 ]

@@ -142,6 +142,20 @@
       ]
     },
     {
+      "name": "Create BRAT Activity Project",
+      "type": "python",
+      "request": "launch",
+      "module": "beaver_sign.beaver_sign",
+      "console": "integratedTerminal",
+      "args": [
+        "${input:HUC}",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhdplushr.gpkg/WBDHU10",
+        "{env:DATA_ROOT}/test_data/Survey_Montana_Bitterroot_17010205.shp",
+        "{env:DATA_ROOT}/beaver_activity/${input:HUC}",
+        "--verbose"
+      ]
+    },
+    {
       "name": "Version Bump",
       "type": "python",
       "module": "rscommons.version",
