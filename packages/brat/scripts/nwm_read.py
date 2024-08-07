@@ -18,15 +18,6 @@ from osgeo import ogr
 from sqlbrat.lib.flow_accumulation import flow_accumulation
 from sqlbrat.lib.flow_accumulation import flow_accum_to_drainage_area
 
-from rscommons import Logger
-from rscommons.download_dem import download_dem
-from rscommons.science_base import download_shapefile_collection
-from rscommons.science_base import get_nhd_url
-from rscommons.science_base import get_ntd_urls
-from rscommons.science_base import us_states
-from rscommons.clean_ntd_data import clean_ntd_data
-from rscommons.clean_ntd_data import extract_canals
-
 
 # https://unidata.github.io/netcdf4-python/netCDF4/index.html
 

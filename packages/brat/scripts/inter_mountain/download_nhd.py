@@ -2,7 +2,7 @@ import os
 import csv
 import argparse
 from rscommons import dotenv
-from rscommons.science_base import get_nhdhr_url
+from rscommons.national_map import get_nhdhr_url
 from rscommons.download import download_file
 
 # Science base GUID for NHD Plus HR parent item
