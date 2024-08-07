@@ -1,4 +1,5 @@
-"""[summary]
+"""
+Dumps Riverscapes Data Exchange projects to a SQLite database
 """
 import sys
 import os
@@ -37,7 +38,7 @@ def dump_riverscapes(rs_api: RiverscapesAPI, db_path: str):
     curs.execute("SELECT MAX(created_on) FROM rs_projects")
     last_inserted_row = curs.fetchone()
 
-    # NOTE: Big caveat here. The search is reverse chronological so this will only work if you've already allowed it 
+    # NOTE: Big caveat here. The search is reverse chronological so this will only work if you've already allowed it
     # to fully complete once.
     if last_inserted_row[0] is not None:
         # Convert milliseconds to seconds and create a datetime object
@@ -70,7 +71,6 @@ def dump_riverscapes(rs_api: RiverscapesAPI, db_path: str):
         curs.executemany('INSERT INTO rs_project_meta(project_id, key, value) VALUES (?, ?, ?)', [
             (project_id, key, value) for key, value in project.project_meta.items()
         ])
-
 
     conn.commit()
     log.info(f"Finished Writing: {db_path}")
