@@ -31,6 +31,18 @@ def vbet_network(flow_lines_path: str, flow_areas_path: str, out_path: str, epsg
     with get_shp_or_gpkg(out_path, write=True) as vbet_net, \
             get_shp_or_gpkg(flow_lines_path) as flow_lines_lyr:
 
+        # add fcodes from included level paths that aren't already in the list
+        stream_names = []
+        for line_ftr, *_ in flow_lines_lyr.iterate_features():
+            if str(line_ftr.GetField(reach_code_field)) in fcodes:
+                if line_ftr.GetField('GNIS_Name') not in stream_names and line_ftr.GetField('GNIS_Name') is not None:
+                    stream_names.append(line_ftr.GetField('GNIS_Name'))  # this is NHD only this way
+
+        for line_ftr, *_ in flow_lines_lyr.iterate_features():
+            if line_ftr.GetField('GNIS_Name') in stream_names:
+                if str(line_ftr.GetField(reach_code_field)) not in fcodes:
+                    fcodes.append(str(line_ftr.GetField(reach_code_field)))
+
         # Add input Layer Fields to the output Layer if it is the one we want
         vbet_net.create_layer_from_ref(flow_lines_lyr, epsg=epsg)
 
