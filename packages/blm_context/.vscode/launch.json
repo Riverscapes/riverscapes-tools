@@ -9,7 +9,7 @@
       "id": "HUC",
       "description": "What HUC?",
       // "default": "17070202" // North Fork John Day
-      "default": "1706030607" // Really small HUC
+      "default": "1002000107" // Really small HUC
       // "default": "17060103" // Asotin
     },
     {
@@ -39,7 +39,7 @@
     },
     {
       "name": "BLM Context Metrics",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "blm_context.blm_context_metrics",
       "console": "integratedTerminal",
@@ -48,10 +48,21 @@
       ]
     },
     {
-      "name": "Write report",
-      "type": "python",
+      "name": "Augment XML",
+      "type": "debugpy",
       "request": "launch",
-      "module": "rscontext.rs_context_report",
+      "module": "blm_context.blm_context_rs",
+      "console": "integratedTerminal",
+      "args": [
+        "{env:DATA_ROOT}/blm_context/${input:HUC}/project.rs.xml",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/blm_context/national/project.rs.xml,{env:DATA_ROOT}/vbet/${input:HUC}/project.rs.xml"
+      ]
+    }, 
+    {
+      "name": "Write report",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "blm_context.blm_context_report",
       "console": "integratedTerminal",
       "args": [
         "{env:DATA_ROOT}/rs_context/${input:HUC}/project.rs.xml",
@@ -60,7 +71,7 @@
     },
     {
       "name": "Calculate Metrics",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "rscommons.classes.project_metrics",
       "console": "integratedTerminal",
@@ -71,10 +82,10 @@
     },
     {
       "name": "Version Bump",
-      "type": "python",
+      "type": "debugpy",
       "module": "rscommons.version",
       "args": [
-        "${workspaceFolder}/rscontext/__version__.py"
+        "${workspaceFolder}/blm_context/__version__.py"
       ],
       "request": "launch",
       "console": "integratedTerminal"

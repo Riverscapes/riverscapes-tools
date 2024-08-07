@@ -92,11 +92,11 @@ try() {
   cd /usr/local/src/riverscapes-tools/packages/blm_context
   python3 -m blm_context.blm_context_rs \
     $BLM_CONTEXT_DIR/project.rs.xml \
-    $NATIONAL_BLM_CONTEXT_DIR/project.rs.xml,$RS_CONTEXT_DIR/project.rs.xml,$VBET_DIR/project.rs.xml
+    $RS_CONTEXT_DIR/project.rs.xml,$NATIONAL_BLM_CONTEXT_DIR/project.rs.xml,$VBET_DIR/project.rs.xml
 
-  python3 -m blm_context.blm_context_metrics \
-    $VBET_DIR \
-    $BLM_CONTEXT_DIR
+  # python3 -m blm_context.blm_context_metrics \
+  #   $VBET_DIR \
+  #   $BLM_CONTEXT_DIR
 
   echo "======================  Final Disk space usage ======================="
   df -h

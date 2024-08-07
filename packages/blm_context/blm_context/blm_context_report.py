@@ -7,10 +7,10 @@ from rscommons import Logger, dotenv, ModelConfig, RSReport, RSProject
 # from rscommons.util import safe_makedirs, sizeof_fmt
 # from rscommons.plotting import xyscatter, box_plot
 
-from rscontext.__version__ import __version__
+from blm_context.__version__ import __version__
 
 
-class RSContextReport(RSReport):
+class BLMContextReport(RSReport):
 
     def __init__(self, report_path, rs_project, project_root):
         super().__init__(rs_project, report_path)
@@ -38,5 +38,5 @@ if __name__ == '__main__':
 
     cfg = ModelConfig('https://xml.riverscapes.net/Projects/XSD/V2/RiverscapesProject.xsd', __version__)
     project = RSProject(cfg, args.projectxml)
-    report = RSContextReport(args.report_path, project, os.path.dirname(args.projectxml))
+    report = BLMContextReport(args.report_path, project, os.path.dirname(args.projectxml))
     report.write()

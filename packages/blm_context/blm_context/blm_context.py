@@ -8,14 +8,10 @@
 # Date:     29 Jul 2024
 # -------------------------------------------------------------------------------
 import argparse
-import glob
-import json
 import os
 import sys
 import shutil
-import time
 import traceback
-import uuid
 from typing import Dict
 
 from osgeo import ogr
@@ -25,7 +21,7 @@ from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 
 from rscommons.util import (parse_metadata, pretty_duration, safe_makedirs, safe_remove_dir)
 from rscommons.vector_ops import copy_feature_class
-from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions, raster_resolution_meta
+from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions
 
 from blm_context.__version__ import __version__
 
@@ -38,7 +34,6 @@ LYR_DESCRIPTIONS_JSON = os.path.join(
     os.path.dirname(__file__), 'layer_descriptions.json')
 LayerTypes = {
     # key: (name, id, tag, relpath)
-    # 'DEM': RSLayer('NED 10m DEM', 'DEM', 'Raster', 'topography/dem.tif'),
     'HILLSHADE': RSLayer('DEM Hillshade', 'HILLSHADE', 'Raster', 'topography/dem_hillshade.tif'),
     # NHD Geopackage Layers
     'NHDPLUSHR': RSLayer('NHD HR Plus', 'NHDPLUSHR', 'Geopackage', 'hydrology/nhdplushr.gpkg', {
@@ -82,7 +77,7 @@ LayerTypes = {
         'USFWS_CRITICAL_HABITAT_A': RSLayer('USFWS Critical Habitat A', 'USFWS_CRITICAL_HABITAT_A', 'Vector', 'USFWS_Critical_Habitat_A')
     }),
     'USFWS_CRITICAL_HABITAT_L': RSLayer('USFWS Critical Habitat L', 'USFWS_CRITICAL_HABITAT_L', 'Geopackage', 'Habitat_Designations/USFWS_Critical_Habitat_L.gpkg', {
-        'USFWS_CRITICAL_HABITAT_L': RSLayer('USFWS Critical Habitat L', 'USFWS_CRITICAL_HABITAT_L', 'Vector', 'USFWS_Critical_Habitat_A')
+        'USFWS_CRITICAL_HABITAT_L': RSLayer('USFWS Critical Habitat L', 'USFWS_CRITICAL_HABITAT_L', 'Vector', 'USFWS_Critical_Habitat_L')
     }),
     # 'Land Use Planning'
     'NIFC_FUEL_POLYS': RSLayer('NIFC Fuel Polys', 'NIFC_FUEL_POLYS', 'Geopackage', 'Land_Use_Planning/NIFC_Fuel_Polys.gpkg', {
@@ -122,7 +117,7 @@ LayerTypes = {
     'BLM_RESTORATION_LANDSCAPES_A': RSLayer('BLM Restoration Landscapes A', 'BLM_RESTORATION_LANDSCAPES_A', 'Geopackage', 'BLM_National_Priority_Areas/BLM_Restoration_Landscapes_A.gpkg', {
         'BLM_RESTORATION_LANDSCAPES_A': RSLayer('BLM Restoration Landscapes A', 'BLM_RESTORATION_LANDSCAPES_A', 'Vector', 'BLM_Restoration_Landscapes_A')
     }),
-    'DOI_KEYSTONE_INITIATIVES_A': RSLayer('DOI Keystone Initiatives A', 'DOI_KEYSTONE_INITIATIVES_A', 'Geopackage', 'National_Priority_Areas/DOI_Keystone_Initiatives_A.gpkg', {
+    'DOI_KEYSTONE_INITIATIVES_A': RSLayer('DOI Keystone Initiatives A', 'DOI_KEYSTONE_INITIATIVES_A', 'Geopackage', 'BLM_National_Priority_Areas/DOI_Keystone_Initiatives_A.gpkg', {
         'DOI_KEYSTONE_INITIATIVES_A': RSLayer('DOI Keystone Initiatives A', 'DOI_KEYSTONE_INITIATIVES_A', 'Vector', 'DOI_Keystone_Initiatives_A')
     }),
     # 'National Landscape Conservation
@@ -143,7 +138,7 @@ def blm_context(huc: int, blm_context_folder: str, rsc_folder: str, vbet_folder:
     log = Logger("BLM Context")
 
     # Add the layer metadata immediately before we write anything
-    augment_layermeta('rscontext', LYR_DESCRIPTIONS_JSON, LayerTypes)
+    # augment_layermeta('rscontext', LYR_DESCRIPTIONS_JSON, LayerTypes)
 
     log.info(f'Starting BLM Context v. {__version__}')
 
@@ -156,11 +151,11 @@ def blm_context(huc: int, blm_context_folder: str, rsc_folder: str, vbet_folder:
 
     safe_makedirs(output_folder)
 
-    project_name = f'Riverscapes Context for HUC {huc}'
+    project_name = f'BLM Context for HUC {huc}'
     project = RSProject(cfg, output_folder)
-    project.create(project_name, 'RSContext', [
-        RSMeta('Model Documentation', 'https://tools.riverscapes.net/rscontext',
-               RSMetaTypes.URL, locked=True),
+    project.create(project_name, 'BLMContext', [
+        # RSMeta('Model Documentation', 'https://tools.riverscapes.net/blm_context',
+        #        RSMetaTypes.URL, locked=True),
         RSMeta('HUC', str(huc), RSMetaTypes.HIDDEN, locked=True),
         RSMeta('Hydrologic Unit Code', str(huc), locked=True)
     ])
