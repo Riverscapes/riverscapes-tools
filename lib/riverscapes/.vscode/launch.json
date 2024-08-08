@@ -39,7 +39,7 @@
       ]
     },    
     {
-      "name": "🧰⬇️ DUMP to SQLITE",
+      "name": "🧰⬇️ DUMP Data Exchange to SQLite",
       "type": "debugpy",
       "request": "launch",
       "module": "riverscapes.dump_all",
@@ -49,6 +49,10 @@
       // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
       "args": [
         "{env:DATA_ROOT}/warehouse_report/riverscapes_${input:environment}.gpkg",
+<<<<<<< Updated upstream
+=======
+        // "${input:cc_environment}",
+>>>>>>> Stashed changes
         "production",
         "{env:DATA_ROOT}/huc10.gpkg",
         "--verbose"

@@ -41,7 +41,7 @@ def get_job_diff(old, new):
     return status_change
 
 
-def main(cc_api: CybercastorAPI, download_running: str, sqlite_path: str):
+def main(cc_api: CybercastorAPI, download_running: str, output_db_path: str):
     """_summary_
 
     Args:
@@ -104,12 +104,12 @@ def main(cc_api: CybercastorAPI, download_running: str, sqlite_path: str):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('stage', help='Cybercastor API stage', type=str, default='production')
-    parser.add_argument('sqlite_folder', help='Path to existing database', type=str)
+    # See Riverscapes API in this repo for script to create the SQLite database
+    parser.add_argument('output_db_path', help='Existing output SQLite database', type=str)
+    parser.add_argument('cc_stage', help='Cybercastor API stage', type=str, default='production')
+    parser.add_argument('download_running', help='Boolean determining whether to download running jobs', type=str, default='False')
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
-
-    args = dotenv.parse_args_env(parser, os.path.join(
-        os.path.dirname(__file__), '.env.python'))
+    args = dotenv.parse_args_env(parser, os.path.join(os.path.dirname(__file__), '.env.python'))
 
     # Initiate the log file
     log = Logger("Cybercastor Monitor")
@@ -118,7 +118,7 @@ if __name__ == '__main__':
 
     try:
         with CybercastorAPI(stage=args.stage) as api:
-            main(api, args.download_running, args.sqlite_folder)
+            main(api, bool(args.download_running), args.output_db_path)
 
     except Exception as e:
         log.error(e)

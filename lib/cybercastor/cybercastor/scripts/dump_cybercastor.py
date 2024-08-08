@@ -11,11 +11,11 @@ from dateutil.parser import parse as dateparse
 from rsxml import Logger, dotenv
 from cybercastor import CybercastorAPI
 
-SCHEMA_FILE = os.path.join(os.path.dirname(__file__), 'cybercastor_schema.sql')
+SCHEMA_FILE = os.path.join(os.path.dirname(__file__), '../lib/dump/cybercastor_schema.sql')
 
 
 def dump_cybercastor(cc_api: CybercastorAPI, db_path: str):
-    """ DUmp all projects to a DB
+    """ Dump cyber castor runs to SQLite database
 
     Args:
         output_folder ([type]): [description]
@@ -24,7 +24,7 @@ def dump_cybercastor(cc_api: CybercastorAPI, db_path: str):
     log = Logger('DUMP Cybercastor to SQlite')
     log.title('Dump Cybercastor to SQLITE')
 
-    # We can safely run this
+    # We can safely run this every time since we're going to delete everything
     create_database(db_path)
 
     # Connect to the DB and ensure foreign keys are enabled so that cascading deletes work
@@ -86,7 +86,7 @@ def dump_cybercastor(cc_api: CybercastorAPI, db_path: str):
             if 'RS_API_URL' not in job_env:
                 continue
             is_staging = 'staging' in job_env['RS_API_URL']
-            # A little hack-y for now but let's just filter out all Riverscapes staging projects 
+            # A little hack-y for now but let's just filter out all Riverscapes staging projects
             if is_staging:
                 continue
 
@@ -123,6 +123,9 @@ def dump_cybercastor(cc_api: CybercastorAPI, db_path: str):
                     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 """
                 task_guid = task['id']
+                task_def_props = json.dumps(task['taskDefProps'])
+                task_def_props_sql = task_def_props if task_def_props != 'null' else None
+
                 curs.execute(insert_sql, (
                     jid,
                     task_guid,
@@ -137,7 +140,7 @@ def dump_cybercastor(cc_api: CybercastorAPI, db_path: str):
                     int(dateparse(task['queriedOn']).timestamp() * 1000) if task['queriedOn'] is not None else None,
                     int(dateparse(task['startedOn']).timestamp() * 1000) if task['startedOn'] is not None else None,
                     task['status'],
-                    json.dumps(task['taskDefProps']),
+                    task_def_props_sql,
                 ))
                 tid = curs.lastrowid
 
@@ -161,7 +164,7 @@ def create_database(db_path: str):
     """
     log = Logger('CreateCybercastorDatabase')
 
-    if not os.path.exists(SCHEMA_FILE):
+    if not os.path.exists(db_path) and not os.path.exists(SCHEMA_FILE):
         raise Exception(f'The schema file does not exist: {SCHEMA_FILE}')
 
     # Read the schema from the file
@@ -176,31 +179,26 @@ def create_database(db_path: str):
     log.info(f'Creating CYBERCASTOR database tables (if not exist): {db_path}')
     cursor.executescript(schema)
 
-    # Commit the changes and close the connection
     conn.commit()
     conn.close()
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    # parser.add_argument('hucs_json', help='JSON with array of HUCS', type=str)
-    parser.add_argument('output_db_path', help='The final resting place of the SQLITE DB', type=str)
+    parser.add_argument('output_db_path', help='Absolute path to output SQLite database', type=str)
     parser.add_argument('cc_stage', help='The Cybercastor stage', type=str, default='production')
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
     args = dotenv.parse_args_env(parser)
 
     # Initiate the log file
     mainlog = Logger("Cybercastor DB Dump")
-    mainlog.setup(log_path=os.path.join(args.output_db_path, "dump_cybercastor.log"), verbose=args.verbose)
+    mainlog.setup(log_path=os.path.join(os.path.dirname(args.output_db_path), "dump_cybercastor.log"), verbose=args.verbose)
 
-    today_date = date.today().strftime("%d-%m-%Y")
-
-    # No way to separate out production from staging in cybercastor.
-    sqlite_db_path = os.path.join(args.output_db_path, f'production_{today_date}.gpkg')
+    # today_date = date.today().strftime("%d-%m-%Y")
 
     try:
         with CybercastorAPI(stage=args.cc_stage) as api:
-            dump_cybercastor(api, sqlite_db_path)
+            dump_cybercastor(api, args.output_db_path)
 
     except Exception as e:
         mainlog.error(e)

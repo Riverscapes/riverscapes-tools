@@ -118,20 +118,18 @@
       ]
     },
     {
-      "name": "🧰⬇️ DUMP to SQLITE",
+      "name": "🧰⬇️ DUMP CCastor to SQLite",
       "type": "debugpy",
       "request": "launch",
-      "module": "cybercastor.dump_all",
+      "module": "cybercastor.scripts.dump_cybercastor",
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "envFile": "${workspaceFolder}/.env",
-      // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
       "args": [
-        "{env:DATA_ROOT}/warehouse_report",
+        "{env:DATA_ROOT}/warehouse_report/riverscapes_${input:environment}.gpkg",
         // "${input:cc_environment}",
+        // We always want the CC production environment
         "production",
-        "{env:DATA_ROOT}/huc10.gpkg",
-        "${input:environment}",
         "--verbose"
       ]
     },
