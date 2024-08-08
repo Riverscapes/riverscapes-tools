@@ -88,7 +88,7 @@ def create_database(db_path: str):
     """
     log = Logger('Create Database')
 
-    if not os.path.exists(SCHEMA_FILE):
+    if not os.path.exists(db_path) and not os.path.exists(SCHEMA_FILE):
         raise Exception(f'The schema file does not exist: {SCHEMA_FILE}')
 
     # Read the schema from the file
@@ -106,21 +106,6 @@ def create_database(db_path: str):
     # Commit the changes and close the connection
     conn.commit()
     conn.close()
-
-
-def create_views(sqlite_db_dir):
-    """_summary_
-
-    Args:
-        sqlite_db_dir (_type_): _description_
-    """
-    today_date = date.today().strftime("%d-%m-%Y")
-
-    # No way to separate out production from staging in cybercastor.
-    sqlite_db_path = os.path.join(
-        sqlite_db_dir, f'production_{today_date}.gpkg')
-    conn = sqlite3.connect(sqlite_db_path)
-    curs = conn.cursor()
 
 
 if __name__ == '__main__':
