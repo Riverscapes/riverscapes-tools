@@ -110,6 +110,8 @@
   "NHDFlowline": ["NHDFlowline is the fundamental flow network consisting predominantly of stream/river and artificial path vector features. It represents the spatial geometry, carries the attributes, and contains linear referencing measures for locating features or “events” on the network. Additional NHDFlowline features are canal/ditch, pipeline, connector, underground conduit, and coastline.",
   "https://www.usgs.gov/national-hydrography/nhdplus-high-resolution",
   "2017"],
+  "NHDFlowlineVAA": ["", "https://www.usgs.gov/national-hydrography/nhdplus-high-resolution", "2017"],
+  "NHDCatchmentVAA": ["", "https://www.usgs.gov/national-hydrography/nhdplus-high-resolution", "2017"],
   "NHDArea": ["NHDArea contains many additional water-polygon features. One of the more important is the stream/river feature. It represents the areal extent of the water in a wide stream/river with a basic set of attributes. These polygons typically encompass NHDFlowline artificial paths that represent the stream network. Artificial path carries the critical attributes of the stream/river, whereas NHDArea represents the geometric extent.",
   "https://www.usgs.gov/national-hydrography/nhdplus-high-resolution",
   "2017"],
