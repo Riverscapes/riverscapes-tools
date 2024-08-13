@@ -20,7 +20,6 @@ postgis==1.0.4
 psutil==5.8.0
 psycopg2-binary==2.9.3
 pycodestyle==2.11.1
-pygeoprocessing==2.4.0
 Pygments>=2.7.4
 PyInquirer==1.0.3
 pylint==3.0.3

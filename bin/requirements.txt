@@ -27,7 +27,6 @@ psutil==5.8.0
 psycopg2-binary==2.8.5
 pyasn1==0.4.8
 pycodestyle==2.6.0
-pygeoprocessing==2.1.0
 Pygments>=2.7.4
 PyInquirer==1.0.3
 pylint==2.6.0
