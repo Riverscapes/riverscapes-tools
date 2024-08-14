@@ -83,14 +83,14 @@ def electivity_index(gpkg_path: str):
         none_len = none_cap['sl']
         none_ct = none_cap['dc']
         none_predcap = none_cap['cap']
-        none_percap = none_ct / none_predcap if none_predcap > 0 else 'NA'
+        none_percap = round((none_ct / none_predcap)*100, 2) if none_predcap > 0 else 'NA'
         none_ei = (none_ct / total_dams) / (none_len / total_length)
         db.curs.execute('SELECT SUM(dam_count) AS dc, SUM(length) AS sl, SUM(predicted_capacity * (length/1000)) AS cap FROM dam_counts WHERE predicted_capacity > 0 and predicted_capacity <= 1')
         rare_cap = db.curs.fetchone()
         rare_len = rare_cap['sl']
         rare_ct = rare_cap['dc']
         rare_predcap = rare_cap['cap']
-        rare_percap = rare_ct / rare_predcap if rare_predcap > 0 else 'NA'
+        rare_percap = round((rare_ct / rare_predcap)*100, 2) if rare_predcap > 0 else 'NA'
         rare_ei = (rare_ct / total_dams) / (rare_len / total_length)
         db.curs.execute('SELECT SUM(dam_count) AS dc, SUM(length) AS sl, SUM(predicted_capacity * (length/1000)) AS cap FROM dam_counts WHERE predicted_capacity > 1 and predicted_capacity <= 5')
         occ_cap = db.curs.fetchone()
@@ -98,80 +98,80 @@ def electivity_index(gpkg_path: str):
         occ_ct = occ_cap['dc']
         occ_predcap = occ_cap['cap']
         occ_ei = (occ_ct / total_dams) / (occ_len / total_length)
-        occ_percap = occ_ct / occ_predcap if occ_predcap > 0 else 'NA'
+        occ_percap = round((occ_ct / occ_predcap)*100, 2) if occ_predcap > 0 else 'NA'
         db.curs.execute('SELECT SUM(dam_count) AS dc, SUM(length) AS sl, SUM(predicted_capacity * (length/1000)) AS cap FROM dam_counts WHERE predicted_capacity > 5 and predicted_capacity <= 15')
         freq_cap = db.curs.fetchone()
         freq_len = freq_cap['sl']
         freq_ct = freq_cap['dc']
         freq_predcap = freq_cap['cap']
-        freq_percap = freq_ct / freq_predcap if freq_predcap > 0 else 'NA'
+        freq_percap = round((freq_ct / freq_predcap)*100, 2) if freq_predcap > 0 else 'NA'
         freq_ei = (freq_ct / total_dams) / (freq_len / total_length)
         db.curs.execute('SELECT SUM(dam_count) AS dc, SUM(length) AS sl, SUM(predicted_capacity * (length/1000)) AS cap FROM dam_counts WHERE predicted_capacity > 15')
         perv_cap = db.curs.fetchone()
         perv_len = perv_cap['sl']
         perv_ct = perv_cap['dc']
         perv_predcap = perv_cap['cap']
-        perv_percap = perv_ct / perv_predcap if perv_predcap > 0 else 'NA'
+        perv_percap = round((perv_ct / perv_predcap)*100, 2) if perv_predcap > 0 else 'NA'
         perv_ei = (perv_ct / total_dams) / (perv_len / total_length)
 
     with open(out_path, 'w', newline='') as csvfile:
-        fieldnames = ['Capacity', 'Stream Length', 'Percent of Drainage Network', 'Surveyed Dams', 'BRAT Estimated Capacity',
-                      'Average Surveyed Dam Density', 'Average Predicted Capacity', 'Percent of Modeled Capacity', 'Electivity Index']
+        fieldnames = ['Capacity', 'Stream Length (km)', 'Percent of Drainage Network', 'Surveyed Dams', 'BRAT Estimated Capacity',
+                      'Average Surveyed Dam Density (dams/km)', 'Average Predicted Capacity (dams/km)', 'Percent of Modeled Capacity', 'Electivity Index']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerow({'Capacity': 'None',
-                         'Stream Length': none_len,
-                         'Percent of Drainage Network': (none_len/total_length)*100,
+                         'Stream Length (km)': int(none_len/1000),
+                         'Percent of Drainage Network': round((none_len/total_length)*100, 1),
                          'Surveyed Dams': none_ct,
-                         'BRAT Estimated Capacity': none_predcap,
-                         'Average Surveyed Dam Density': none_ct / (none_len/1000),
-                         'Average Predicted Capacity': none_predcap / (none_len/1000),
+                         'BRAT Estimated Capacity': int(none_predcap),
+                         'Average Surveyed Dam Density (dams/km)': round(none_ct / (none_len/1000), 3),
+                         'Average Predicted Capacity (dams/km)': round(none_predcap / (none_len/1000), 2),
                          'Percent of Modeled Capacity': none_percap,
-                         'Electivity Index': none_ei})
+                         'Electivity Index': round(none_ei, 2)})
         writer.writerow({'Capacity': 'Rare',
-                         'Stream Length': rare_len,
-                         'Percent of Drainage Network': (rare_len/total_length)*100,
+                         'Stream Length (km)': int(rare_len/1000),
+                         'Percent of Drainage Network': round((rare_len/total_length)*100, 1),
                          'Surveyed Dams': rare_ct,
-                         'BRAT Estimated Capacity': rare_predcap,
-                         'Average Surveyed Dam Density': rare_ct / (rare_len/1000),
-                         'Average Predicted Capacity': rare_predcap / (rare_len/1000),
+                         'BRAT Estimated Capacity': int(rare_predcap),
+                         'Average Surveyed Dam Density (dams/km)': round(rare_ct / (rare_len/1000), 3),
+                         'Average Predicted Capacity (dams/km)': round(rare_predcap / (rare_len/1000), 2),
                          'Percent of Modeled Capacity': rare_percap,
-                         'Electivity Index': rare_ei})
+                         'Electivity Index': round(rare_ei, 2)})
         writer.writerow({'Capacity': 'Occasional',
-                         'Stream Length': occ_len,
-                         'Percent of Drainage Network': (occ_len/total_length)*100,
+                         'Stream Length (km)': int(occ_len/1000),
+                         'Percent of Drainage Network': round((occ_len/total_length)*100, 1),
                          'Surveyed Dams': occ_ct,
-                         'BRAT Estimated Capacity': occ_predcap,
-                         'Average Surveyed Dam Density': occ_ct / (occ_len/1000),
-                         'Average Predicted Capacity': occ_predcap / (occ_len/1000),
+                         'BRAT Estimated Capacity': int(occ_predcap),
+                         'Average Surveyed Dam Density (dams/km)': round(occ_ct / (occ_len/1000), 3),
+                         'Average Predicted Capacity (dams/km)': round(occ_predcap / (occ_len/1000), 2),
                          'Percent of Modeled Capacity': occ_percap,
-                         'Electivity Index': occ_ei})
+                         'Electivity Index': round(occ_ei, 2)})
         writer.writerow({'Capacity': 'Frequent',
-                         'Stream Length': freq_len,
-                         'Percent of Drainage Network': (freq_len/total_length)*100,
+                         'Stream Length (km)': int(freq_len/1000),
+                         'Percent of Drainage Network': round((freq_len/total_length)*100, 1),
                          'Surveyed Dams': freq_ct,
-                         'BRAT Estimated Capacity': freq_predcap,
-                         'Average Surveyed Dam Density': freq_ct / (freq_len/1000),
-                         'Average Predicted Capacity': freq_predcap / (freq_len/1000),
+                         'BRAT Estimated Capacity': int(freq_predcap),
+                         'Average Surveyed Dam Density (dams/km)': round(freq_ct / (freq_len/1000), 3),
+                         'Average Predicted Capacity (dams/km)': round(freq_predcap / (freq_len/1000), 2),
                          'Percent of Modeled Capacity': freq_percap,
-                         'Electivity Index': freq_ei})
+                         'Electivity Index': round(freq_ei, 2)})
         writer.writerow({'Capacity': 'Pervasive',
-                         'Stream Length': perv_len,
-                         'Percent of Drainage Network': (perv_len/total_length)*100,
+                         'Stream Length (km)': int(perv_len/1000),
+                         'Percent of Drainage Network': round((perv_len/total_length)*100, 1),
                          'Surveyed Dams': perv_ct,
-                         'BRAT Estimated Capacity': perv_predcap,
-                         'Average Surveyed Dam Density': perv_ct / (perv_len/1000),
-                         'Average Predicted Capacity': perv_predcap / (perv_len/1000),
+                         'BRAT Estimated Capacity': int(perv_predcap),
+                         'Average Surveyed Dam Density (dams/km)': round(perv_ct / (perv_len/1000), 3),
+                         'Average Predicted Capacity (dams/km)': round(perv_predcap / (perv_len/1000), 2),
                          'Percent of Modeled Capacity': perv_percap,
-                         'Electivity Index': perv_ei})
+                         'Electivity Index': round(perv_ei, 2)})
         writer.writerow({'Capacity': 'Total',
-                         'Stream Length': total_length,
+                         'Stream Length (km)': int(total_length/1000),
                          'Percent of Drainage Network': 100,
                          'Surveyed Dams': total_dams,
-                         'BRAT Estimated Capacity': none_predcap + rare_predcap + occ_predcap + freq_predcap + perv_predcap,
-                         'Average Surveyed Dam Density': (none_ct + rare_ct + occ_ct + freq_ct + perv_ct) / (total_length/1000),
-                         'Average Predicted Capacity': (none_predcap + rare_predcap + occ_predcap + freq_predcap + perv_predcap) / (total_length/1000),
-                         'Percent of Modeled Capacity': (none_ct + rare_ct + occ_ct + freq_ct + perv_ct) / (none_predcap + rare_predcap + occ_predcap + freq_predcap + perv_predcap),
+                         'BRAT Estimated Capacity': int(none_predcap + rare_predcap + occ_predcap + freq_predcap + perv_predcap),
+                         'Average Surveyed Dam Density (dams/km)': round((none_ct + rare_ct + occ_ct + freq_ct + perv_ct) / (total_length/1000), 3),
+                         'Average Predicted Capacity (dams/km)': round((none_predcap + rare_predcap + occ_predcap + freq_predcap + perv_predcap) / (total_length/1000), 2),
+                         'Percent of Modeled Capacity': round(((none_ct + rare_ct + occ_ct + freq_ct + perv_ct) / (none_predcap + rare_predcap + occ_predcap + freq_predcap + perv_predcap))*100, 2),
                          'Electivity Index': 'NA'})
 
 
@@ -211,7 +211,7 @@ def validation_plots(brat_gpkg_path: str):
     plt.show()
 
     with SQLiteCon(brat_gpkg_path) as db:
-        db.curs.execute('SELECT dam_density, predicted_capacity FROM dam_counts WHERE dam_density > 0 and dam_density < 45 or (dam_density = 0 and predicted_capacity = 0)')
+        db.curs.execute('SELECT dam_density, predicted_capacity FROM dam_counts WHERE dam_density > 0 or (dam_density = 0 and predicted_capacity = 0)')
         data = db.curs.fetchall()
         obs_pred = np.asarray(([d['dam_density'] for d in data if d['dam_density'] is not None and d['predicted_capacity'] is not None],
                                [d['predicted_capacity'] for d in data if d['dam_density'] is not None and d['predicted_capacity'] is not None]))
@@ -231,6 +231,7 @@ def validation_plots(brat_gpkg_path: str):
     ax.plot(xdata, res90.intercept + res90.slope * xdata, 'k', linestyle='-.', label='90th Percentile')
     ax.plot(xdata, res75.intercept + res75.slope * xdata, 'k', linestyle=':', label='75th Percentile')
     ax.plot(xdata, res.intercept + res.slope * xdata, 'k', linestyle='--', label='50th Percentile')
+    ax.set_ylim(0, 45)
     ax.set_title('Observed Vs. Predicted Dam Densities')
     ax.set_xlabel(r'Predicted Maximum Capacity $\frac{dams}{km}$')
     ax.set_ylabel(r'Observed Dam Density $\frac{dams}{km}$')
@@ -251,7 +252,7 @@ def main():
 
     log = Logger('BRAT Capacity Validation')
     log.setup(logPath=os.path.join(os.path.dirname(args.brat_gpkg), 'validation/validation.log'), verbose=args.verbose)
-    log.title(f'BRAT Capactiy Validation for HUC {args.huc}')
+    log.title(f'BRAT Capacity Validation for HUC {args.huc}')
 
     try:
         if args.debug is True:
