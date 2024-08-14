@@ -53,9 +53,9 @@ def beaver_activity(huc, proj_boundary, beaver_dams, output_dir, beaver_sign=Non
         bbox = boundary_ftr.GetGeometryRef().GetEnvelope()
         for ftr, *_ in dams.iterate_features(clip_rect=bbox):
             if ftr.GetGeometryRef().Intersects(boundary_ftr.GetGeometryRef()):
-                dam_cer = ftr.GetField('dam_certai')  # are these always the same or should it be a list param
-                dam_type = ftr.GetField('feature_ty')
-                type_cer = ftr.GetField('feature__1')
+                dam_cer = ftr.GetField('dam_cer')  # are these always the same or should it be a list param
+                dam_type = ftr.GetField('type')
+                type_cer = ftr.GetField('type_cer')
                 new_ftr = ogr.Feature(out_lyr.ogr_layer.GetLayerDefn())
                 new_ftr.SetGeometry(ftr.GetGeometryRef())
                 new_ftr.SetField('dam_cer', dam_cer)

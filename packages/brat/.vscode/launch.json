@@ -149,9 +149,22 @@
       "console": "integratedTerminal",
       "args": [
         "${input:HUC}",
-        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhdplushr.gpkg/WBDHU10",
-        "{env:DATA_ROOT}/test_data/Survey_Montana_Bitterroot_17010205.shp",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhdplushr.gpkg/WBDHU8",
+        "{env:DATA_ROOT}/test_data/Survey_MT_Complete.shp",
         "{env:DATA_ROOT}/beaver_activity/${input:HUC}",
+        "--verbose"
+      ]
+    },
+    {
+      "name": "Validate BRAT Capacity",
+      "type": "python",
+      "request": "launch",
+      "module": "sqlbrat.capacity_validation",
+      "console": "integratedTerminal",
+      "args": [
+        "${input:HUC}",
+        "{env:DATA_ROOT}/brat/${input:HUC}/outputs/brat.gpkg",
+        "{env:DATA_ROOT}/beaver_activity/${input:HUC}/beaver_activity.gpkg",
         "--verbose"
       ]
     },

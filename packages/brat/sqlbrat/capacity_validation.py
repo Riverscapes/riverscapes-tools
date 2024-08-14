@@ -1,12 +1,15 @@
 import os
 import csv
+import sys
+import traceback
+import argparse
 
 import numpy as np
 from shapely.ops import nearest_points, unary_union
 import matplotlib.pyplot as plt
 from scipy.stats import linregress
 
-from rscommons import GeopackageLayer, Logger
+from rscommons import GeopackageLayer, Logger, dotenv
 from rscommons.classes.vector_base import VectorBase
 from rscommons.database import SQLiteCon
 
@@ -14,7 +17,8 @@ from rscommons.database import SQLiteCon
 def validate_capacity(brat_gpkg_path: str, dams_gpkg_path: str):
 
     log = Logger('BRAT Capacity Validation')
-    os.mkdir(os.path.join(os.path.dirname(brat_gpkg_path), 'validation'))
+    if not os.path.exists(os.path.join(os.path.dirname(brat_gpkg_path), 'validation')):
+        os.mkdir(os.path.join(os.path.dirname(brat_gpkg_path), 'validation'))
     dam_count_table(brat_gpkg_path, dams_gpkg_path)
     electivity_index(brat_gpkg_path)
     validation_plots(brat_gpkg_path)
@@ -27,7 +31,7 @@ def dam_count_table(brat_gpkg_path: str, dams_gpkg_path: str):
     dam_cts = {}  # reachid: dam count
 
     with GeopackageLayer(os.path.join(brat_gpkg_path, 'vwReaches')) as brat_lyr, \
-            GeopackageLayer(os.path.join(dams_gpkg_path, 'census')) as dams_lyr:
+            GeopackageLayer(os.path.join(dams_gpkg_path, 'dams')) as dams_lyr:
 
         buffer_distance = brat_lyr.rough_convert_metres_to_vector_units(10)
 
@@ -52,11 +56,11 @@ def dam_count_table(brat_gpkg_path: str, dams_gpkg_path: str):
                         dam_cts[reachid] += 1
 
     with SQLiteCon(brat_gpkg_path) as db:
-        db.curs.execute('SELECT ReachID FROM vwReaches')
-        reachids = [row['ReachID'] for row in db.curs.fetchall()]
+        db.curs.execute('SELECT fid FROM vwReaches')
+        reachids = [row['fid'] for row in db.curs.fetchall()]
         db.curs.execute('DROP TABLE IF EXISTS dam_counts')
         db.curs.execute('CREATE TABLE dam_counts (ReachID INTEGER PRIMARY KEY, dam_count INTEGER, dam_density REAL, predicted_capacity REAL, length REAL)')
-        db.curs.execute('INSERT INTO dam_counts (ReachID, predicted_capacity, length) SELECT ReachID, oCC_EX, iGeo_Len FROM vwReaches')
+        db.curs.execute('INSERT INTO dam_counts (ReachID, predicted_capacity, length) SELECT fid, oCC_EX, iGeo_Len FROM vwReaches')
         for reachid in reachids:
             if reachid in dam_cts.keys():
                 db.curs.execute('UPDATE dam_counts SET dam_count = ? WHERE reachid = ?', (dam_cts[reachid], reachid))
@@ -111,11 +115,11 @@ def electivity_index(gpkg_path: str):
         perv_ei = (perv_ct / total_dams) / (perv_len / total_length)
 
     with open(out_path, 'w', newline='') as csvfile:
-        fieldnames = ['Capcacity', 'Stream Length', 'Percent of Drainage Network', 'Surveyed Dams', 'BRAT Estimated Capacity',
-                      'Average Surveyed Dam Density', 'Average Predicted Capacity', 'Percent of Modeled Capacity', 'EI']
+        fieldnames = ['Capacity', 'Stream Length', 'Percent of Drainage Network', 'Surveyed Dams', 'BRAT Estimated Capacity',
+                      'Average Surveyed Dam Density', 'Average Predicted Capacity', 'Percent of Modeled Capacity', 'Electivity Index']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
-        writer.writerow({'Capcacity': 'None',
+        writer.writerow({'Capacity': 'None',
                          'Stream Length': none_len,
                          'Percent of Drainage Network': (none_len/total_length)*100,
                          'Surveyed Dams': none_ct,
@@ -123,8 +127,8 @@ def electivity_index(gpkg_path: str):
                          'Average Surveyed Dam Density': none_ct / (none_len/1000),
                          'Average Predicted Capacity': none_predcap / (none_len/1000),
                          'Percent of Modeled Capacity': none_percap,
-                         'EI': none_ei})
-        writer.writerow({'Capcacity': 'Rare',
+                         'Electivity Index': none_ei})
+        writer.writerow({'Capacity': 'Rare',
                          'Stream Length': rare_len,
                          'Percent of Drainage Network': (rare_len/total_length)*100,
                          'Surveyed Dams': rare_ct,
@@ -132,8 +136,8 @@ def electivity_index(gpkg_path: str):
                          'Average Surveyed Dam Density': rare_ct / (rare_len/1000),
                          'Average Predicted Capacity': rare_predcap / (rare_len/1000),
                          'Percent of Modeled Capacity': rare_percap,
-                         'EI': rare_ei})
-        writer.writerow({'Capcacity': 'Occasional',
+                         'Electivity Index': rare_ei})
+        writer.writerow({'Capacity': 'Occasional',
                          'Stream Length': occ_len,
                          'Percent of Drainage Network': (occ_len/total_length)*100,
                          'Surveyed Dams': occ_ct,
@@ -141,8 +145,8 @@ def electivity_index(gpkg_path: str):
                          'Average Surveyed Dam Density': occ_ct / (occ_len/1000),
                          'Average Predicted Capacity': occ_predcap / (occ_len/1000),
                          'Percent of Modeled Capacity': occ_percap,
-                         'EI': occ_ei})
-        writer.writerow({'Capcacity': 'Frequent',
+                         'Electivity Index': occ_ei})
+        writer.writerow({'Capacity': 'Frequent',
                          'Stream Length': freq_len,
                          'Percent of Drainage Network': (freq_len/total_length)*100,
                          'Surveyed Dams': freq_ct,
@@ -150,8 +154,8 @@ def electivity_index(gpkg_path: str):
                          'Average Surveyed Dam Density': freq_ct / (freq_len/1000),
                          'Average Predicted Capacity': freq_predcap / (freq_len/1000),
                          'Percent of Modeled Capacity': freq_percap,
-                         'EI': freq_ei})
-        writer.writerow({'Capcacity': 'Pervasive',
+                         'Electivity Index': freq_ei})
+        writer.writerow({'Capacity': 'Pervasive',
                          'Stream Length': perv_len,
                          'Percent of Drainage Network': (perv_len/total_length)*100,
                          'Surveyed Dams': perv_ct,
@@ -159,7 +163,16 @@ def electivity_index(gpkg_path: str):
                          'Average Surveyed Dam Density': perv_ct / (perv_len/1000),
                          'Average Predicted Capacity': perv_predcap / (perv_len/1000),
                          'Percent of Modeled Capacity': perv_percap,
-                         'EI': perv_ei})
+                         'Electivity Index': perv_ei})
+        writer.writerow({'Capacity': 'Total',
+                         'Stream Length': total_length,
+                         'Percent of Drainage Network': 100,
+                         'Surveyed Dams': total_dams,
+                         'BRAT Estimated Capacity': none_predcap + rare_predcap + occ_predcap + freq_predcap + perv_predcap,
+                         'Average Surveyed Dam Density': (none_ct + rare_ct + occ_ct + freq_ct + perv_ct) / (total_length/1000),
+                         'Average Predicted Capacity': (none_predcap + rare_predcap + occ_predcap + freq_predcap + perv_predcap) / (total_length/1000),
+                         'Percent of Modeled Capacity': (none_ct + rare_ct + occ_ct + freq_ct + perv_ct) / (none_predcap + rare_predcap + occ_predcap + freq_predcap + perv_predcap),
+                         'Electivity Index': 'NA'})
 
 
 def validation_plots(brat_gpkg_path: str):
@@ -198,9 +211,10 @@ def validation_plots(brat_gpkg_path: str):
     plt.show()
 
     with SQLiteCon(brat_gpkg_path) as db:
-        db.curs.execute('SELECT dam_density, predicted_capacity FROM dam_counts WHERE dam_density > 0 or (dam_density = 0 and predicted_capacity = 0)')
+        db.curs.execute('SELECT dam_density, predicted_capacity FROM dam_counts WHERE dam_density > 0 and dam_density < 45 or (dam_density = 0 and predicted_capacity = 0)')
         data = db.curs.fetchall()
-        obs_pred = np.asarray(([d['dam_density'] for d in data], [d['predicted_capacity'] for d in data]))
+        obs_pred = np.asarray(([d['dam_density'] for d in data if d['dam_density'] is not None and d['predicted_capacity'] is not None],
+                               [d['predicted_capacity'] for d in data if d['dam_density'] is not None and d['predicted_capacity'] is not None]))
 
     quan_90 = np.quantile(obs_pred, 0.9, axis=0)
     quan_75 = np.quantile(obs_pred, 0.75, axis=0)
@@ -225,7 +239,35 @@ def validation_plots(brat_gpkg_path: str):
     plt.savefig(os.path.join(os.path.dirname(brat_gpkg_path), 'validation/regressions.png'))
 
 
-bgp = '/workspaces/data/brat/1701020501/outputs/brat.gpkg'
-dgp = '/workspaces/data/beaver_activity/1701020501/census.gpkg'
+def main():
 
-validate_capacity(bgp, dgp)
+    parser = argparse.ArgumentParser(description='Validate BRAT capacity estimates')
+    parser.add_argument('huc', type=int, help='HUC code')
+    parser.add_argument('brat_gpkg', type=str, help='Path to BRAT geopackage')
+    parser.add_argument('dams_gpkg', type=str, help='Path to dams geopackage')
+    parser.add_argument('--verbose', action='store_true', help='Print log messages to console', default=False)
+    parser.add_argument('--debug', action='store_true', help='Run in debug mode', default=False)
+    args = dotenv.parse_args_env(parser)
+
+    log = Logger('BRAT Capacity Validation')
+    log.setup(logPath=os.path.join(os.path.dirname(args.brat_gpkg), 'validation/validation.log'), verbose=args.verbose)
+    log.title(f'BRAT Capactiy Validation for HUC {args.huc}')
+
+    try:
+        if args.debug is True:
+            from rscommons.debug import ThreadRun
+            memfile = os.path.join(os.path.dirname(args.brat_gpkg), 'validation/mem_usage.log')
+            retcode, max_obj = ThreadRun(validate_capacity, memfile, args.brat_gpkg, args.dams_gpkg)
+            log.debug(f'Return code: {retcode}, [Max process usage] {max_obj}')
+        else:
+            validate_capacity(args.brat_gpkg, args.dams_gpkg)
+    except Exception as e:
+        log.error(f'Error: {e}')
+        traceback.print_exc(file=sys.stdout)
+        sys.exit(1)
+
+    sys.exit(0)
+
+
+if __name__ == '__main__':
+    main()
