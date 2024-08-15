@@ -33,7 +33,7 @@ def dam_count_table(brat_gpkg_path: str, dams_gpkg_path: str):
     with GeopackageLayer(os.path.join(brat_gpkg_path, 'vwReaches')) as brat_lyr, \
             GeopackageLayer(os.path.join(dams_gpkg_path, 'dams')) as dams_lyr:
 
-        buffer_distance = brat_lyr.rough_convert_metres_to_vector_units(10)
+        buffer_distance = brat_lyr.rough_convert_metres_to_vector_units(0.1)
 
         # create a dissolved drainage network
         line_geoms = [ftr for ftr in brat_lyr.ogr_layer]
@@ -42,18 +42,23 @@ def dam_count_table(brat_gpkg_path: str, dams_gpkg_path: str):
 
         # get the points on the line network that are closest to the dam points
         for dam_ftr, *_ in dams_lyr.iterate_features('Finding dam counts for reaches'):
+            dam_id = dam_ftr.GetFID()
             dam_geom = dam_ftr.GetGeometryRef()
             nearest_line = nearest_points(merged_line, VectorBase.ogr2shapely(dam_geom))
             dam_buf = nearest_line[0].buffer(buffer_distance)
 
+            ct = 0
             for line_ftr, *_ in brat_lyr.iterate_features(clip_shape=dam_buf):
-                reachid = line_ftr.GetFID()
-                line_geom = line_ftr.GetGeometryRef()
-                if line_geom is not None:
-                    if reachid not in dam_cts.keys():
-                        dam_cts[reachid] = 1
-                    else:
-                        dam_cts[reachid] += 1
+                if ct == 0:
+                    reachid = line_ftr.GetFID()
+                    line_geom = line_ftr.GetGeometryRef()
+                    if line_geom is not None:
+                        if reachid not in dam_cts.keys():
+                            dam_cts[reachid] = 1
+                            ct += 1
+                        else:
+                            dam_cts[reachid] += 1
+                            ct += 1
 
     with SQLiteCon(brat_gpkg_path) as db:
         db.curs.execute('SELECT fid FROM vwReaches')
@@ -72,6 +77,14 @@ def dam_count_table(brat_gpkg_path: str, dams_gpkg_path: str):
 
 def electivity_index(gpkg_path: str):
     out_path = os.path.join(os.path.dirname(gpkg_path), 'validation/electivity_index.csv')
+    if os.path.exists(out_path):
+        os.remove(out_path)
+    if os.path.exists(os.path.join(os.path.dirname(gpkg_path), 'validation/error_segments.csv')):
+        os.remove(os.path.join(os.path.dirname(gpkg_path), 'validation/error_segments.csv'))
+    if os.path.exists(os.path.join(os.path.dirname(gpkg_path), 'validation/none_segments.csv')):
+        os.remove(os.path.join(os.path.dirname(gpkg_path), 'validation/none_segments.csv'))
+    err_segs = {}
+    none_segs = {}
 
     with SQLiteCon(gpkg_path) as db:
         db.curs.execute('SELECT SUM(dam_count) AS dams FROM dam_counts')
@@ -114,6 +127,15 @@ def electivity_index(gpkg_path: str):
         perv_percap = round((perv_ct / perv_predcap)*100, 2) if perv_predcap > 0 else 'NA'
         perv_ei = (perv_ct / total_dams) / (perv_len / total_length)
 
+        db.curs.execute('SELECT ReachID, dam_count, predicted_capacity*(length/1000) AS pred FROM dam_counts WHERE dam_count > 0 and predicted_capacity NOT NULL')
+        for row in db.curs.fetchall():
+            if row['dam_count'] > row['pred'] + 1 or row['pred'] == 0:
+                err_segs[row['ReachID']] = int(row['dam_count'] - row['pred'])
+            if row['pred'] == 0:
+                none_segs[row['ReachID']] = row['dam_count']
+
+    if os.path.exists(out_path):
+        os.remove(out_path)
     with open(out_path, 'w', newline='') as csvfile:
         fieldnames = ['Capacity', 'Stream Length (km)', 'Percent of Drainage Network', 'Surveyed Dams', 'BRAT Estimated Capacity',
                       'Average Surveyed Dam Density (dams/km)', 'Average Predicted Capacity (dams/km)', 'Percent of Modeled Capacity', 'Electivity Index']
@@ -173,6 +195,22 @@ def electivity_index(gpkg_path: str):
                          'Average Predicted Capacity (dams/km)': round((none_predcap + rare_predcap + occ_predcap + freq_predcap + perv_predcap) / (total_length/1000), 2),
                          'Percent of Modeled Capacity': round(((none_ct + rare_ct + occ_ct + freq_ct + perv_ct) / (none_predcap + rare_predcap + occ_predcap + freq_predcap + perv_predcap))*100, 2),
                          'Electivity Index': 'NA'})
+
+    if len(err_segs) > 0:
+        with open(os.path.join(os.path.dirname(gpkg_path), 'validation/error_segments.csv'), 'w', newline='') as csvfile:
+            fieldnames = ['ReachID', 'Error']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            for k, v in err_segs.items():
+                writer.writerow({'ReachID': k, 'Error': v})
+
+    if len(none_segs) > 0:
+        with open(os.path.join(os.path.dirname(gpkg_path), 'validation/none_segments.csv'), 'w', newline='') as csvfile:
+            fieldnames = ['ReachID', 'Dams']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            for k, v in none_segs.items():
+                writer.writerow({'ReachID': k, 'Dams': v})
 
 
 def validation_plots(brat_gpkg_path: str):

@@ -142,7 +142,7 @@
       ]
     },
     {
-      "name": "Create BRAT Activity Project",
+      "name": "Create Beaver Activity Project",
       "type": "python",
       "request": "launch",
       "module": "beaver_sign.beaver_sign",
