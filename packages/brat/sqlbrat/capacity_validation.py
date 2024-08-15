@@ -96,8 +96,15 @@ def electivity_index(gpkg_path: str):
         none_len = none_cap['sl']
         none_ct = none_cap['dc']
         none_predcap = none_cap['cap']
-        none_percap = round((none_ct / none_predcap)*100, 2) if none_predcap > 0 else 'NA'
-        none_ei = (none_ct / total_dams) / (none_len / total_length)
+        if none_len is None:
+            none_len = 0.001
+            none_ct = 0
+            none_predcap = 0
+            none_percap = 0
+            none_ei = 0
+        else:
+            none_percap = round((none_ct / none_predcap)*100, 2) if none_predcap > 0 else 'NA'
+            none_ei = (none_ct / total_dams) / (none_len / total_length)
         db.curs.execute('SELECT SUM(dam_count) AS dc, SUM(length) AS sl, SUM(predicted_capacity * (length/1000)) AS cap FROM dam_counts WHERE predicted_capacity > 0 and predicted_capacity <= 1')
         rare_cap = db.curs.fetchone()
         rare_len = rare_cap['sl']
@@ -218,6 +225,10 @@ def validation_plots(brat_gpkg_path: str):
     with SQLiteCon(brat_gpkg_path) as db:
         db.curs.execute('SELECT AVG(dam_density) AS avg_dam_density, AVG(predicted_capacity) AS avg_pred_cap FROM dam_counts WHERE predicted_capacity = 0')
         none_res = db.curs.fetchone()
+        if none_res['avg_dam_density'] is None:
+            none_res['avg_dam_density'] = 0
+        if none_res['avg_pred_cap'] is None:
+            none_res['avg_pred_cap'] = 0
         pred_obs['none'] = [none_res['avg_dam_density'], none_res['avg_pred_cap']]
         db.curs.execute('SELECT AVG(dam_density) AS avg_dam_density, AVG(predicted_capacity) AS avg_pred_cap FROM dam_counts WHERE predicted_capacity > 0 and predicted_capacity <= 1')
         rare_res = db.curs.fetchone()
