@@ -42,9 +42,9 @@ class ProgressBar:
         else:
             duration = pretty_duration(int(time.time() - self.start_time))
         if self.byteFormat:
-            writestr = "Completed: {}  Total Time: {}     \n".format(sizeof_fmt(self.total), duration)
+            writestr = "Completed: {}  Total Time: {}     ".format(sizeof_fmt(self.total), duration)
         else:
-            writestr = "Completed {:,} operations.  Total Time: {}     \n".format(self.total, duration)
+            writestr = "Completed {:,} operations.  Total Time: {}     ".format(self.total, duration)
         log = Logger(self.text)
         log.info(writestr)
 
