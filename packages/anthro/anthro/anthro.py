@@ -81,6 +81,7 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
     """
 
     log = Logger("Anthropogenic Context")
+    log.info(f'Starting Anthropogenic Context v.{cfg.version}')
     log.info(f'HUC: {huc}')
     log.info(f'EPSG: {cfg.OUTPUT_EPSG}')
 

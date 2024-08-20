@@ -85,6 +85,7 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, hillshade: Path, pitf
          flow_areas: Path, waterbodies: Path, meta: Dict[str, str]):
 
     log = Logger('RCAT')
+    log.info(f'Starting RCAT v.{cfg.version}')
     log.info(f'HUC: {huc}')
     log.info(f'EPSG: {cfg.OUTPUT_EPSG}')
 

@@ -124,6 +124,7 @@ def brat(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Path,
     """
 
     log = Logger("BRAT")
+    log.info(f'Starting BRAT v.{cfg.version}')
     log.info(f'HUC: {huc}')
     log.info(f'EPSG: {cfg.OUTPUT_EPSG}')
 

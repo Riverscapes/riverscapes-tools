@@ -350,6 +350,7 @@ def main():
     log.setup(logPath=os.path.join(args.output_dir, 'channel_area.log'), verbose=args.verbose)
     log.title('Riverscapes Channel Area For HUC: {}'.format(args.huc))
 
+    # Version is also reported from channel function but due to below section it gets slightly buried
     log.info('Channel Area Tool v.{}'.format(cfg.version))
 
     meta = parse_metadata(args.meta)

@@ -276,6 +276,9 @@ def main():
     log.setup(logPath=os.path.join(args.output_folder, "blm_context.log"), verbose=args.verbose)
     log.title(f'BLM Context For HUC: {args.huc}')
 
+    # Version info also logged from blm_context() function but log it here at the top for consistency
+    log.info(f'BLM Context Tool v. {cfg.version}')
+
     log.info(f'HUC: {args.huc}')
     log.info(f'EPSG: {cfg.OUTPUT_EPSG}')
     log.info(f'National BLM Context Project: {args.blm_context_folder}')

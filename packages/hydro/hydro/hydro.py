@@ -57,7 +57,7 @@ def hydro_context(huc: int, dem: Path, hillshade: Path, igo: Path, dgo: Path, fl
                   output_folder: Path, meta: Dict[str, str]):
 
     log = Logger('Hydrologic Context')
-    log.info(f'Starting Hydrologic Context for HUC {huc}')
+    log.info(f'Starting Hydrologic Context v.{cfg.version} for HUC {huc}')
 
     augment_layermeta('hydro_context', LYR_DESCRIPTIONS_JSON, LayerTypes)
 
