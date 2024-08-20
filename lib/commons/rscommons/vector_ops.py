@@ -307,6 +307,8 @@ def merge_feature_classes(feature_class_paths: List[str], out_layer_path: str, b
                     if out_layer.ogr_layer_def.GetFieldIndex(in_field_def.GetName()) == -1:
                         out_layer.ogr_layer.CreateField(in_field_def)
 
+        fccount = 0
+
         for in_layer_path in feature_class_paths:
             fccount += 1
             log.info("Merging feature class {}/{}".format(fccount, len(feature_class_paths)))
