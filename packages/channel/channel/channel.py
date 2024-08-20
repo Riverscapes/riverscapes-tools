@@ -350,6 +350,8 @@ def main():
     log.setup(logPath=os.path.join(args.output_dir, 'channel_area.log'), verbose=args.verbose)
     log.title('Riverscapes Channel Area For HUC: {}'.format(args.huc))
 
+    log.info('Channel Area Tool v.{}'.format(cfg.version))
+
     meta = parse_metadata(args.meta)
     bankfull_params = parse_metadata(args.bankfull_function_params)
 
