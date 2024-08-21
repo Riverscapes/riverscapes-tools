@@ -123,7 +123,7 @@ def brat(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Path,
         meta (Dict[str,str]): dictionary of riverscapes metadata key: value pairs
     """
 
-    log = Logger("BRAT Build")
+    log = Logger("BRAT")
     log.info(f'HUC: {huc}')
     log.info(f'EPSG: {cfg.OUTPUT_EPSG}')
 
@@ -576,7 +576,7 @@ def main():
 
     # Initiate the log file
     log = Logger("BRAT Build")
-    log.setup(logPath=os.path.join(args.output_folder, "brat_build.log"), verbose=args.verbose)
+    log.setup(logPath=os.path.join(args.output_folder, "brat.log"), verbose=args.verbose)
     log.title('BRAT Build Tool For HUC: {}'.format(args.huc))
 
     meta = parse_metadata(args.meta)
