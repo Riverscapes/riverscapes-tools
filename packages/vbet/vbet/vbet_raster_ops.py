@@ -202,9 +202,6 @@ def proximity_raster(src_raster_path: Path, out_raster_path: Path, dist_units: s
         else:
             shutil.copyfile(temp_path, out_raster_path)
 
-        if os.path.exists(temp_path):
-            deleteRaster(temp_path)
-
         log.info('completed in {}'.format(tmr.toString()))
 
 
