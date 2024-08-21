@@ -223,8 +223,8 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
     field_lookup = {
         'side': ogr.FieldDefn("side", ogr.OFTString),
         # ArcGIS cannot read Int64 and will show up as 0, however data is stored correctly in GPKG
-        'flowlineID': ogr.FieldDefn("NHDPlusID", ogr.OFTString),
-        'level_path': ogr.FieldDefn("level_path", ogr.OFTString),
+        'flowlineID': ogr.FieldDefn("NHDPlusID", ogr.OFTReal),
+        'level_path': ogr.FieldDefn("level_path", ogr.OFTReal),
         'confinement_type': ogr.FieldDefn("confinement_type", ogr.OFTString),
         'confinement_ratio': ogr.FieldDefn("confinement_ratio", ogr.OFTReal),
         'constriction_ratio': ogr.FieldDefn("constriction_ratio", ogr.OFTReal),

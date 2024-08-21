@@ -160,7 +160,7 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, hillshade: Path, pitf
         out_lyr.create_layer(ogr.wkbMultiLineString, epsg=cfg.OUTPUT_EPSG, options=['FID=ReachID'], fields={
             'FCode': ogr.OFTInteger,
             'ReachCode': ogr.OFTString,
-            'NHDPlusID': ogr.OFTInteger,
+            'NHDPlusID': ogr.OFTReal,
             'WatershedID': ogr.OFTString,
             'StreamName': ogr.OFTString,
             'level_path': ogr.OFTReal,

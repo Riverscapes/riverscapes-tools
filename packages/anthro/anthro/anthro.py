@@ -161,7 +161,7 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
             'WatershedID': ogr.OFTString,
             'level_path': ogr.OFTReal,
             'ownership': ogr.OFTString,
-            'divergence': ogr.OFTReal,
+            'divergence': ogr.OFTInteger,
             'stream_order': ogr.OFTInteger,
             'us_state': ogr.OFTString,
             'ecoregion_iii': ogr.OFTString,
