@@ -6,7 +6,7 @@ import traceback
 import argparse
 import sqlite3
 import json
-from datetime import date
+import shutil
 from dateutil.parser import parse as dateparse
 from rsxml import Logger, dotenv
 from cybercastor import CybercastorAPI
@@ -187,6 +187,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('output_db_path', help='Absolute path to output SQLite database', type=str)
     parser.add_argument('cc_stage', help='The Cybercastor stage', type=str, default='production')
+    parser.add_argument('template', help='GeoPackage with HUC10 geometries to use as starting point', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
     args = dotenv.parse_args_env(parser)
 
@@ -194,9 +195,11 @@ if __name__ == '__main__':
     mainlog = Logger("Cybercastor DB Dump")
     mainlog.setup(log_path=os.path.join(os.path.dirname(args.output_db_path), "dump_cybercastor.log"), verbose=args.verbose)
 
-    # today_date = date.today().strftime("%d-%m-%Y")
-
     try:
+        # If the output doesn't exist and HUC10 geometry does, then copy the HUC10 geometry to the output
+        if not os.path.exists(args.output_db_path) and os.path.exists(args.template):
+            shutil.copyfile(args.template, args.output_db_path)
+
         with CybercastorAPI(stage=args.cc_stage) as api:
             dump_cybercastor(api, args.output_db_path)
 

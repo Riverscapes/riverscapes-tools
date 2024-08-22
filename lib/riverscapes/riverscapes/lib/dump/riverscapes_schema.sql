@@ -3,11 +3,12 @@
 ------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS rs_projects
 (
-    id              INTEGER PRIMARY KEY,
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
     project_id      TEXT NOT NULL UNIQUE,
     name            TEXT,
     project_type_id TEXT,
     tags            TEXT,
+    huc10           TEXT,
     created_on      INTEGER,
     owned_by_id     TEXT,
     owner_by_name   TEXT,
@@ -18,7 +19,7 @@ CREATE INDEX IF NOT EXISTS is_rs_projects_created_on ON rs_projects (created_on)
 
 CREATE TABLE IF NOT EXISTS rs_project_meta
 (
-    id         INTEGER PRIMARY KEY,
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
     project_id INTEGER REFERENCES rs_projects (id) ON DELETE CASCADE,
     key        TEXT,
     value      TEXT
@@ -44,7 +45,7 @@ SELECT DISTINCT huc.fid, huc.geom, t.status, j.task_script_id
         and w10a.STATES != 'CN'
         and w10a.STATES != 'MX';
 
-        INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y,
+INSERT INTO gpkg_contents (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y,
                            srs_id)
 SELECT 'vw_cc_huc_status',
        data_type,
@@ -57,7 +58,8 @@ SELECT 'vw_cc_huc_status',
        max_y,
        srs_id
 FROM gpkg_contents
-WHERE table_name = 'Huc10_conus';
+WHERE table_name = 'Huc10_conus'
+ON CONFLICT DO NOTHING;
 
 INSERT INTO gpkg_geometry_columns
 SELECT 'vw_cc_huc_status', column_name, geometry_type_name, srs_id, z, m
@@ -94,7 +96,8 @@ SELECT 'vw_projects',
        max_y,
        srs_id
 FROM gpkg_contents
-WHERE table_name = 'Huc10_conus';
+WHERE table_name = 'Huc10_conus'
+ON CONFLICT DO NOTHING;
 
 INSERT INTO gpkg_geometry_columns
 SELECT 'vw_projects', column_name, geometry_type_name, srs_id, z, m
