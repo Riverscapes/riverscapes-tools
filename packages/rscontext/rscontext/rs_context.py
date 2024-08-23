@@ -300,9 +300,9 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states_
     nhd_poly_level_paths(waterbody_split_out, nhd_gpkg_path)
 
     # HUC 8 extent polygon
-    nhd['HUC8Extent'] = os.path.join(
-        os.path.dirname(nhd['WBDHU8']), 'max_extent.shp')
-    with get_shp_or_gpkg(nhd['WBDHU8']) as huc8lyr, get_shp_or_gpkg(nhd['HUC8Extent'], write=True) as outlyr:
+    nhd['ProcessingExtent'] = os.path.join(
+        os.path.dirname(nhd['WBDHU10']), 'max_extent.shp')
+    with get_shp_or_gpkg(nhd['WBDHU10']) as huc8lyr, get_shp_or_gpkg(nhd['ProcessingExtent'], write=True) as outlyr:
         bbox = huc8lyr.ogr_layer.GetExtent()
         extent_box = get_rectangle_as_geom(bbox)
 
@@ -462,13 +462,13 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states_
     # Clip the landownership Shapefile to a 10km buffer around the watershed boundary
     own_path = os.path.join(output_folder, LayerTypes['OWNERSHIP'].rel_path)
     project.add_dataset(datasets, own_path, LayerTypes['OWNERSHIP'], 'Vector')
-    clip_vector_layer(nhd['HUC8Extent'], ownership,
+    clip_vector_layer(nhd['ProcessingExtent'], ownership,
                       own_path, cfg.OUTPUT_EPSG, 10000, clip=True)
 
     # Clip the states shapefile to a 10km buffer around the watershed boundary
     states_path = os.path.join(output_folder, LayerTypes['STATES'].rel_path)
     project.add_dataset(datasets, states_path, LayerTypes['STATES'], 'Vector')
-    clip_vector_layer(nhd['HUC8Extent'], us_states_shp,
+    clip_vector_layer(nhd['ProcessingExtent'], us_states_shp,
                       states_path, cfg.OUTPUT_EPSG, 1000)
 
     # Clip the counties shapefile to a 10km buffer around the watershed boundary
@@ -476,20 +476,20 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states_
         output_folder, LayerTypes['COUNTIES'].rel_path)
     project.add_dataset(datasets, counties_path,
                         LayerTypes['COUNTIES'], 'Vector')
-    clip_vector_layer(nhd['HUC8Extent'], us_counties,
+    clip_vector_layer(nhd['ProcessingExtent'], us_counties,
                       counties_path, cfg.OUTPUT_EPSG, 1000)
 
     # Clip the geology shapefile to a 10km buffer around the watershed boundary
     # geology is in national project - can also be retrieved from science base
     geo_path = os.path.join(output_folder, LayerTypes['GEOLOGY'].rel_path)
     project.add_dataset(datasets, geo_path, LayerTypes['GEOLOGY'], 'Vector')
-    clip_vector_layer(nhd['HUC8Extent'], geology, geo_path,
+    clip_vector_layer(nhd['ProcessingExtent'], geology, geo_path,
                       cfg.OUTPUT_EPSG, 10000, clip=True)
 
     # Filter the ecoregions Shapefile to only include attributes that intersect with our HUC
     eco_path = os.path.join(output_folder, 'ecoregions', 'ecoregions.shp')
     project.add_dataset(datasets, eco_path, LayerTypes['ECOREGIONS'], 'Vector')
-    clip_vector_layer(nhd['HUC8Extent'], ecoregions,
+    clip_vector_layer(nhd['ProcessingExtent'], ecoregions,
                       eco_path, cfg.OUTPUT_EPSG, 1000)
 
     #######################################################
