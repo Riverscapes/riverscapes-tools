@@ -1,17 +1,17 @@
 CREATE TABLE Ecoregions (
-     EcoregionID INTEGER PRIMARY KEY UNIQUE NOT NULL, 
+     EcoregionID INTEGER PRIMARY KEY NOT NULL, 
      Name TEXT UNIQUE NOT NULL);
 
 CREATE TABLE DamLimitations (
-     LimitationID INTEGER PRIMARY KEY NOT NULL UNIQUE,
+     LimitationID INTEGER PRIMARY KEY NOT NULL,
      Name TEXT UNIQUE NOT NULL);
 
 CREATE TABLE DamOpportunities (
-     OpportunityID INTEGER PRIMARY KEY UNIQUE NOT NULL, 
+     OpportunityID INTEGER PRIMARY KEY NOT NULL, 
      Name TEXT UNIQUE NOT NULL);
 
 CREATE TABLE DamRisks (
-     RiskID INTEGER PRIMARY KEY UNIQUE NOT NULL, 
+     RiskID INTEGER PRIMARY KEY NOT NULL, 
      Name TEXT UNIQUE NOT NULL);
 
 CREATE TABLE DamCapacities (
@@ -151,6 +151,8 @@ CREATE TABLE ReachAttributes (
      IsMultiCh INTEGER, 
      mCC_HisDep REAL);
 
+CREATE INDEX ix_reach_attributes_level_path ON ReachAttributes(level_path);
+
 CREATE TABLE DGOAttributes(
      DGOID INTEGER PRIMARY KEY NOT NULL, 
      WatershedID TEXT,
@@ -190,6 +192,8 @@ CREATE TABLE DGOAttributes(
      Opportunity TEXT
      );
 
+CREATE INDEX ix_dgo_attributes_level_path ON DGOAttributes(level_path, sequence);
+
 CREATE TABLE IGOAttributes(
      IGOID INTEGER PRIMARY KEY NOT NULL,
      ReachCode INTEGER REFERENCES ReachCodes (ReachCode),
@@ -205,9 +209,13 @@ CREATE TABLE IGOAttributes(
      Opportunity TEXT
      );
 
-CREATE INDEX FK_ReachVegetation_ReachID ON ReachVegetation (ReachID);
+CREATE INDEX ix_igo_attributes_level_path ON IGOAttributes(level_path, sequence);
+
+-- I don't think we need the following because the compound primary key for ReachVegetation starts with ReachID
+-- CREATE INDEX FK_ReachVegetation_ReachID ON ReachVegetation (ReachID);
 CREATE INDEX FK_ReachVegetation_VegetationID ON ReachVegetation (VegetationID);
-CREATE INDEX FK_VegetationOverrides_EcoregionID ON VegetationOverrides (EcoregionID);
+-- I don't think we need the following because the compound primary key for VegetationOverrides starts with EcoregionID
+-- CREATE INDEX FK_VegetationOverrides_EcoregionID ON VegetationOverrides (EcoregionID);
 CREATE INDEX FK_VegetationOverrides_VegetationID ON VegetationOverrides (VegetationID);
 CREATE INDEX IX_Watersheds_EcoregionID ON Watersheds (EcoregionID);
 CREATE INDEX IX_Watersheds_States ON Watersheds (States);
