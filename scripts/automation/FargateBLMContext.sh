@@ -58,6 +58,10 @@ RS_CONTEXT_DIR=$DATA_DIR/rs_context/rs_context_$RSCONTEXT_ID
 VBET_DIR=$DATA_DIR/vbet/vbet_$VBET_ID
 BLM_CONTEXT_DIR=$DATA_DIR/blm_context/output
 
+cd /usr/local/src/riverscapes-tools
+pip install -e packages/blm_context
+cd /usr/local/src
+
 ##########################################################################################
 # First Get the National BLM Context, RS_Context, and VBET inputs
 ##########################################################################################
