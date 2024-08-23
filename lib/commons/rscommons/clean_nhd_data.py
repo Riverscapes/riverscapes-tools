@@ -67,10 +67,14 @@ def clean_nhd_data(huc, download_folder, unzip_folder, out_dir, out_epsg, force_
     boundary = get_geometry_union(featureclasses['WBDHU{}'.format(len(huc))], out_epsg) if len(huc) > 4 else None
 
     # Retrieve the name of the HUC
+    fc_path = featureclasses['WBDHU{}'.format(len(huc))]
     driver = ogr.GetDriverByName("ESRI Shapefile")
-    datasource = driver.Open(featureclasses['WBDHU{}'.format(len(huc))], 0)
+    datasource = driver.Open(fc_path, 0)
     layer = datasource.GetLayer()
-    huc_name = layer[0].GetField('name')
+    try:
+        huc_name = layer[0].GetField('name')
+    except:
+        raise Exception(f'Unable to retrieve huc name from layer {fc_path}. Check that layer exists with field and at least one feature present')
     datasource = None
 
     # NHDFlowlines and incorporate the desired value added attributes from the VAA geodatabase table into the NHD flow lines
