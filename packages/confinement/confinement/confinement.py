@@ -324,7 +324,6 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
 
     with GeopackageLayer(output_gpkg, layer_name=LayerTypes['CONFINEMENT'].sub_layers["CONFINEMENT_BUFFERS"].rel_path, write=True) as lyr:
         lyr.create(ogr.wkbPolygon, spatial_ref=srs)
-        lyr.ogr_layer.CreateField(field_lookup['level_path'])
 
     with GeopackageLayer(intermediates_gpkg, layer_name=LayerTypes['INTERMEDIATES'].sub_layers["SPLIT_POINTS"].rel_path, write=True) as lyr:
         lyr.create(ogr.wkbPoint, spatial_ref=srs)
@@ -449,7 +448,7 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
                 log.warning(
                     "Invalid buffer polygon with level path: {}".format(level_path))
                 continue
-            buff_lyr.create_feature(geom_channel_buffer, attributes={'level_path': level_path})
+            buff_lyr.create_feature(geom_channel_buffer)
 
             # Split the Buffer by the flowline
             start = nearest_points(
