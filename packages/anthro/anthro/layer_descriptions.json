@@ -1,4 +1,6 @@
 {
+    "ANTHRO_GEOM_DGOS": ["", "", ""],
+    "ANTHRO_DGOS": ["", "", ""],
     "ANTHRO_GEOM_LINES": ["NHD Flowlines attributed with values for use in the BRAT conflict potential model, as well as the Riparian Condition Assessment Tool",
                          "",""],
     "ANTHRO_LINES": ["Anthropogenic Context model outputs attributed to flowline features.","",""],

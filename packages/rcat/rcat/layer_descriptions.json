@@ -16,5 +16,8 @@
     "GEOM_POINTS": ["Integrated Geographic Objects (points) attributed with values for rcat analyses",
                    "",""],
     "GEOM_LINES": ["NHD Flowlines attributed with values for rcat analyses", 
-                   "", ""]
+                   "", ""],
+    "REACHES": ["", "", ""],
+    "GEOM_DGOS": ["", "", ""],
+    "DGOS": ["", "", ""]
 }
