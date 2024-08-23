@@ -299,11 +299,11 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states_
     nhd_poly_level_paths(area_split_out, nhd_gpkg_path)
     nhd_poly_level_paths(waterbody_split_out, nhd_gpkg_path)
 
-    # HUC 8 extent polygon
+    # HUC 10 extent polygon
     nhd['ProcessingExtent'] = os.path.join(
         os.path.dirname(nhd['WBDHU10']), 'max_extent.shp')
-    with get_shp_or_gpkg(nhd['WBDHU10']) as huc8lyr, get_shp_or_gpkg(nhd['ProcessingExtent'], write=True) as outlyr:
-        bbox = huc8lyr.ogr_layer.GetExtent()
+    with get_shp_or_gpkg(nhd['WBDHU10']) as huc10lyr, get_shp_or_gpkg(nhd['ProcessingExtent'], write=True) as outlyr:
+        bbox = huc10lyr.ogr_layer.GetExtent()
         extent_box = get_rectangle_as_geom(bbox)
 
         outlyr.create_layer(ogr.wkbPolygon, 4326)
