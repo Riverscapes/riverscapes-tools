@@ -57,7 +57,8 @@ def hydro_context(huc: int, dem: Path, hillshade: Path, igo: Path, dgo: Path, fl
                   output_folder: Path, meta: Dict[str, str]):
 
     log = Logger('Hydrologic Context')
-    log.info(f'Starting Hydrologic Context v.{cfg.version} for HUC {huc}')
+    log.info(f'Starting Hydrologic Context v.{cfg.version}')
+    log.info(f'HUC: {huc}')
 
     augment_layermeta('hydro_context', LYR_DESCRIPTIONS_JSON, LayerTypes)
 
@@ -148,11 +149,11 @@ def hydro_context(huc: int, dem: Path, hillshade: Path, igo: Path, dgo: Path, fl
     copy_features_fields(input_layers['DGO'], dgo_geom_path, epsg=cfg.OUTPUT_EPSG)
 
     with SQLiteCon(outputs_gpkg_path) as database:
-        database.curs.execute("""INSERT INTO ReachAttributes (ReachID, FCode, NHDPlusID, WatershedID, StreamName, level_path, ownership, divergence, stream_order, us_state, ecoregion_iii, ecoregion_iv, DrainArea) 
+        database.curs.execute("""INSERT INTO ReachAttributes (ReachID, FCode, NHDPlusID, WatershedID, StreamName, level_path, ownership, divergence, stream_order, us_state, ecoregion_iii, ecoregion_iv, DrainArea)
                               SELECT ReachID, FCode, NHDPlusID, WatershedID, GNIS_Name, level_path, ownership, divergence, stream_order, us_state, ecoregion_iii, ecoregion_iv, DivDASqKM FROM ReachGeometry""")
-        database.curs.execute("""INSERT INTO DGOAttributes (DGOID, FCode, level_path, seg_distance, centerline_length, segment_area) 
+        database.curs.execute("""INSERT INTO DGOAttributes (DGOID, FCode, level_path, seg_distance, centerline_length, segment_area)
                               SELECT DGOID, FCode, level_path, seg_distance, centerline_length, segment_area FROM DGOGeometry""")
-        database.curs.execute("""INSERT INTO IGOAttributes (IGOID, FCode, level_path, seg_distance, stream_size) 
+        database.curs.execute("""INSERT INTO IGOAttributes (IGOID, FCode, level_path, seg_distance, stream_size)
                               SELECT IGOID, FCode, level_path, seg_distance, stream_size FROM IGOGeometry""")
 
         database.curs.execute("""INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id)

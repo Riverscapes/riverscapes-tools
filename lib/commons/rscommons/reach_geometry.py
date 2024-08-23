@@ -16,7 +16,8 @@ from rscommons.classes.vector_base import get_utm_zone_epsg
 
 Path = str
 
-default_field_names = {'Length': 'iGeo_Len', 'Gradient': 'iGeo_Slope', 'MinElevation': 'iGeo_ElMin', 'MaxElevation':'IGeo_ElMax'}
+default_field_names = {'Length': 'iGeo_Len', 'Gradient': 'iGeo_Slope', 'MinElevation': 'iGeo_ElMin', 'MaxElevation': 'IGeo_ElMax'}
+
 
 def reach_geometry(flow_lines: Path, dem_path: Path, buffer_distance: float, field_names=default_field_names):
     """ Calculate reach geometry BRAT attributes
@@ -88,7 +89,7 @@ def reach_geometry(flow_lines: Path, dem_path: Path, buffer_distance: float, fie
             if sta_data['Mean'] is not None and end_data['Mean'] is not None and sta_data['Mean'] != end_data['Mean']:
                 data[field_names['Gradient']] = abs(sta_data['Mean'] - end_data['Mean']) / data[field_names['Length']]
         else:
-            log.warning('{:,} features skipped because one or both ends of polyline not on DEM raster'.format(reach_id))
+            log.warning('Reach ID {} skipped because one or both ends of polyline not on DEM raster'.format(reach_id))
 
     write_db_attributes(os.path.dirname(flow_lines), reaches, [field_names['Length'], field_names['MaxElevation'], field_names['MinElevation'], field_names['Gradient']])
 

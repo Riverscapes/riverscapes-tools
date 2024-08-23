@@ -81,7 +81,7 @@ def reach_geometry(gpk_path: str, dem_path: str, buffer_distance: float, field_n
             if sta_data['Mean'] is not None and end_data['Mean'] is not None and sta_data['Mean'] != end_data['Mean']:
                 data[field_names['Gradient']] = abs(sta_data['Mean'] - end_data['Mean']) / data[field_names['Length']]
         else:
-            log.warning('{:,} features skipped because one or both ends of polyline not on DEM raster'.format(reach_id))
+            log.warning('Reach ID {} skipped because one or both ends of polyline not on DEM raster'.format(reach_id))
 
     write_db_attributes(gpk_path, reaches, [field_names['Length'], field_names['MaxElevation'], field_names['MinElevation'], field_names['Gradient']])
 
