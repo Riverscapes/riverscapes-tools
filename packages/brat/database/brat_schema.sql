@@ -192,7 +192,7 @@ CREATE TABLE DGOAttributes(
      Opportunity TEXT
      );
 
-CREATE INDEX ix_dgo_attributes_level_path ON DGOAttributes(level_path, sequence);
+CREATE INDEX ix_dgo_attributes_level_path ON DGOAttributes(level_path, seg_distance);
 
 CREATE TABLE IGOAttributes(
      IGOID INTEGER PRIMARY KEY NOT NULL,
@@ -209,7 +209,7 @@ CREATE TABLE IGOAttributes(
      Opportunity TEXT
      );
 
-CREATE INDEX ix_igo_attributes_level_path ON IGOAttributes(level_path, sequence);
+CREATE INDEX ix_igo_attributes_level_path ON IGOAttributes(level_path, seg_distance);
 
 -- I don't think we need the following because the compound primary key for ReachVegetation starts with ReachID
 -- CREATE INDEX FK_ReachVegetation_ReachID ON ReachVegetation (ReachID);
