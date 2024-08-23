@@ -356,10 +356,16 @@ def brat(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Path,
         database.curs.execute("""INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m)
             SELECT 'vwIgos', column_name, geometry_type_name, srs_id, z, m FROM gpkg_geometry_columns WHERE table_name = 'IGOGeometry'""")
 
-        database.conn.execute('CREATE INDEX ix_igo_levelpath on IGOGeometry(level_path)')
-        database.conn.execute('CREATE INDEX ix_igo_segdist on IGOGeometry(seg_distance)')
-        database.conn.execute('CREATE INDEX ix_dgo_levelpath on DGOGeometry(level_path)')
-        database.conn.execute('CREATE INDEX ix_dgo_segdist on DGOGeometry(seg_distance)')
+        database.conn.execute('CREATE INDEX ix_igo_levelpath on IGOGeometry(level_path, seg_distance)')
+        database.conn.execute('CREATE INDEX ix_igo_fcode on IGOGeometry(FCode)')
+        database.conn.execute('CREATE INDEX ix_dgo_levelpath on DGOGeometry(level_path, seg_distance)')
+        database.conn.execute('CREATE INDEX ix_dgo_fcode on DGOGeometry(FCode)')
+
+        database.conn.execute('CREATE INDEX ix_igo_atts_levelpath on IGOAttributes(level_path, seg_distance)')
+        database.conn.execute('CREATE INDEX ix_dgo_atts_levelpath on DGOAttributes(level_path, seg_distance)')
+
+        database.conn.execute("CREATE INDEX ix_reach_geometry_fcode on ReachGeometry(FCode)")
+        database.conn.execute("CREATE INDEX ix_reach_geometry_levelpath on ReachGeometry(level_path)")
 
         database.conn.commit()
 
