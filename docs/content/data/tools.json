@@ -95,7 +95,7 @@
     "toolId": "hydro",
     "name": "Hydrological Context",
     "description": "A series of algorithms that calculate key discharges for assessing riverscapes health.",
-    "url": "https://tools.riverscapes.net/rcat/",
+    "url": "https://tools.riverscapes.net/hydro/",
     "grade": ["Research"],
     "compliance": ["Compliant"],
     "interface": ["Command Line"],
