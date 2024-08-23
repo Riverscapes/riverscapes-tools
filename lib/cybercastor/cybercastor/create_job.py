@@ -5,11 +5,11 @@ import os
 import json
 import argparse
 
-job_types = ['rs_context', 'channel', 'taudem', 'rs_context_channel_taudem', 'vbet', 'rcat', 'rme', 'anthro']
-
+job_types = ['rs_context', 'channel', 'taudem', 'rs_context_channel_taudem', 'vbet', 'rcat', 'rs_metric_engine', 'anthro', 'confinement', 'hydro_context', 'blm_context']
+org_ids = {'BLM Riverscapes': '5d5bcccc-6632-4054-85f1-19501a6b3cdf'}
 
 # create a job file
-def create_job_file(job_name: str, job_type: str, hucs, tags, org_id, visibility='PUBLIC', server="PRODUCTION", description=None, meta=None):
+def create_job_file(job_name: str, job_type: str, hucs, tags, org_id, visibility='PUBLIC', server="PRODUCTION", description=None, meta=None, git_ref=None):
     """_summary_
 
     Args:
@@ -45,6 +45,9 @@ def create_job_file(job_name: str, job_type: str, hucs, tags, org_id, visibility
     env = {"TAGS": tags,
            "VISIBILITY": visibility,
            "ORG_ID": org_id}
+    
+    if git_ref is not None:
+        env['GIT_REF'] = git_ref
 
     job_json = {"$schema": "../job.schema.json",
                 "name": job_name,
@@ -70,16 +73,20 @@ if __name__ == "__main__":
     parser.add_argument('--description', type=str, help='description of the job')
     parser.add_argument('--visibility', type=str, help='visibility of the job', default='PUBLIC')
     parser.add_argument('--server', type=str, help='server to run the job on', default='PRODUCTION')
+    parser.add_argument('--git_ref', type=str, help="optional run on different git branch", default='master')
     parser.add_argument('--meta', type=str, help='meta data for the job', default=None)
 
     args = parser.parse_args()
 
-    # some string manipulation for the big run
-    job_name_outer = f'{args.job_type.upper()} {args.server.capitalize()} {args.huc_group}'
-    meta_outer = {"PROCESSING_GROUP": str(args.huc_group), "INITIATIVE": "NRCS,CEAP"}
-    # meta = None
-    description_outer = f"{args.job_type.upper()} run for {args.server.lower()} using all huc10s in {args.huc_group}"
-    # description = args.description
+    jobs = [args.job_type] if args.job_type != "all tools (as individual jobs)" else ['rs_context_channel_taudem', 'vbet', 'brat', 'anthro', 'rcat', 'rs_metric_engine', 'confinement', 'hydro_context']
 
-    # create the job file
-    create_job_file(job_name_outer, args.job_type, args.hucs, args.tags, args.org_id, args.visibility, args.server, description_outer, meta_outer)
+    for job in jobs:
+        # some string manipulation for the big run
+        job_name = f'{job.upper()} {args.server.capitalize()} {args.huc_group}'
+        meta = {"PROCESSING_GROUP": str(args.huc_group), "INITIATIVE": "NRCS,CEAP"}
+        # meta = None
+        description = f"{job.upper()} run for {args.server.lower()} using all huc10s in {args.huc_group}"
+        git_ref = args.git_ref if args.git_ref != 'master' else None
+
+        # create the job file
+        create_job_file(job_name, job, args.hucs, args.tags, args.org_id, args.visibility, args.server, description, meta, git_ref)
