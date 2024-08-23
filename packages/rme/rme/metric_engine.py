@@ -281,8 +281,10 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
     with sqlite3.connect(outputs_gpkg) as conn:
         curs = conn.cursor()
         curs.execute("CREATE INDEX ix_dgos_level_path_seg_distance ON dgos (level_path, seg_distance)")
-        curs.execute("CREATE INDEX idx_size ON igos (stream_size)")
+        curs.execute("CREATE INDEX idx_igos_size ON igos (stream_size)")
+        curs.execute("CREATE INDEX ix_dgos_fcode ON dgos (FCode)")
         curs.execute("CREATE INDEX ix_igos_level_path_seg_distance ON igos (level_path, seg_distance)")
+        curs.execute("CREATE INDEX idx_igos_fcode ON igos (FCode)")
         conn.commit()
 
     # Generate the list of level paths to run, sorted by ascending order and optional user filter
@@ -1583,7 +1585,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
         measure_names_sql = ', '.join(
             [sql_name(measurement["name"]) for measurement in measurements.values()])
         measure_values_sql = ", ".join(
-            [f"{sql_round(measurement['data_type'], measurement['measurement_id'],'measurement')} {sql_name(measurement['name'])}" for measurement in measurements.values()])
+            [f"{sql_round(measurement['data_type'], measurement['measurement_id'], 'measurement')} {sql_name(measurement['name'])}" for measurement in measurements.values()])
         sql = f'INSERT INTO measurements_pivot (fid, {measure_names_sql}) SELECT M.dgo_id, {measure_values_sql} FROM measurement_values M GROUP BY M.dgo_id;'
         curs.execute(sql)
         conn.commit()
