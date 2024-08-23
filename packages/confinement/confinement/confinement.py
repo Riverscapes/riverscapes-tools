@@ -312,7 +312,6 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
         curs = conn.cursor()
         curs.execute('CREATE INDEX IF NOT EXISTS dgo_levelpath_seg_distance ON confinement_dgos (level_path, seg_distance)')
         curs.execute('CREATE INDEX IF NOT EXISTS igo_levelpath_seg_distance ON confinement_igos (level_path, seg_distance)')
-        curs.execute('CREATE INDEX IF NOT EXISTS buffers_levelpath ON confinement_buffers (level_path)')
         curs.execute('CREATE INDEX IF NOT EXISTS ratio_levelpath ON confinement_ratio (level_path)')
         curs.execute('CREATE INDEX IF NOT EXISTS raw_levelpath ON confinement_raw (level_path)')
         curs.execute('CREATE INDEX IF NOT EXISTS margins_levelpath ON confining_margins (level_path, side)')
@@ -450,7 +449,7 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
                 log.warning(
                     "Invalid buffer polygon with level path: {}".format(level_path))
                 continue
-            buff_lyr.create_feature(geom_channel_buffer)
+            buff_lyr.create_feature(geom_channel_buffer, attributes={'level_path': level_path})
 
             # Split the Buffer by the flowline
             start = nearest_points(
