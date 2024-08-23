@@ -24,8 +24,17 @@ from rsxml.project_xml import (
 from rscommons import Raster
 from riverscapes import RiverscapesAPI, RiverscapesProject, RiverscapesSearchParams
 
+name_lookup = {'RSContext': "RS Context",
+               'ChannelArea': "Channel Area",
+               'TauDEM': "TauDEM",
+               'VBET': "VBET",
+               'BRAT': "BRAT",
+               'anthro': "ANTHRO",
+               'rcat': "RCAT",
+               'rs_metric_engine': "Metric Engine"}
 
-def merge_projects(projects_lookup: Dict[str, RiverscapesProject], merged_dir: str, name: str, project_type: str, collection_id: str, rs_stage: str) -> None:
+
+def merge_projects(projects_lookup: Dict[str, RiverscapesProject], merged_dir: str, name: str, project_type: str, collection_id: str, rs_stage: str, delete_source: bool = False) -> None:
     """
     Merge the projects in the projects_lookup dictionary into a single project
     """
@@ -50,7 +59,7 @@ def merge_projects(projects_lookup: Dict[str, RiverscapesProject], merged_dir: s
         get_vector_datasets(project_xml, project_vectors)
         get_bounds_geojson_file(project_xml, bounds_geojson_files)
 
-    process_rasters(project_rasters, merged_dir)
+    process_rasters(project_rasters, merged_dir, delete_source=delete_source)
     process_vectors(project_vectors, merged_dir)
 
     # build union of project bounds
@@ -283,7 +292,7 @@ def process_vectors(master_project: Dict, output_dir: str) -> None:
                 subprocess.call([cmd], shell=True, cwd=output_gpkg_dir)
 
 
-def process_rasters(master_project: Dict, output_dir: str) -> None:
+def process_rasters(master_project: Dict, output_dir: str, delete_source: bool = False) -> None:
     """
     Process the raster datasets in the master project dictionary.  This will
     merge all occurances of each type of raster into a single raster for each type.
@@ -310,6 +319,14 @@ def process_rasters(master_project: Dict, output_dir: str) -> None:
         params_flat = ' '.join(params)
         log.debug(f'EXECUTING: {params_flat}')
         subprocess.call(params_flat, shell=True)
+
+        # Delete the source rasters to free up space
+        if delete_source is True:
+            for raster_path in input_rasters:
+                raster_path = raster_path[1:-1]  # remove the extra quotes
+                if os.path.isfile(raster_path):
+                    log.info(f'Deleting source raster {raster_path}')
+                    os.remove(raster_path)
 
 
 def get_raster_datasets(project, master_project) -> None:
@@ -343,15 +360,18 @@ def main():
     with RiverscapesAPI() as api:
         project_types = api.get_project_types()
         questions = [
-            inquirer.Text('collection_id', message="Enter a valid Collection ID", default="223c7eb2-6c39-437f-8421-428e113126ae"),
-            inquirer.Text('output_name', message="Enter the name for this project", default="Blackfoot River Merged VBET"),
+            inquirer.Text('collection_id', message="Enter a valid Collection ID", default="847cfe5f-dc27-42d2-9262-10066f8788d6"),
+            inquirer.Text('output_name', message="Enter the name for this project", default="Snake River Plains Merged "),
             # Choose a project type from a list of available project types
             inquirer.List('project_type', message="Choose a project type", choices=project_types.keys(), default='VBET'),
+            inquirer.Confirm('delete_source', message="Delete source files after merging?", default=False)
         ]
         answers = inquirer.prompt(questions)
 
+        output_name = f"{answers['output_name']} Merged {name_lookup.get(answers['project_type'], answers['project_type'])}"
+
         # Set up some reasonable folders to store things
-        working_folder = os.path.join(args.working_folder, f"MERGE_{answers['project_type']}_{answers['output_name']}")
+        working_folder = os.path.join(args.working_folder, output_name)
         download_folder = os.path.join(working_folder, 'downloads')
         merged_folder = os.path.join(working_folder, 'merged')
 
@@ -376,7 +396,9 @@ def main():
             api.download_files(project.id, download_path)
             projects_lookup[download_path] = project
 
-        merge_projects(projects_lookup, merged_folder, answers['output_name'], answers['project_type'], answers['collection_id'], api.stage)
+        delete_source = answers['delete_source']
+
+        merge_projects(projects_lookup, merged_folder, output_name, answers['project_type'], answers['collection_id'], api.stage, delete_source=delete_source)
 
     log.info('Process complete')
 
