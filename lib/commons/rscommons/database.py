@@ -97,6 +97,9 @@ def create_database(huc: str, db_path: str, metadata: Dict[str, str], epsg: int,
     row = curs.fetchone()
     watershed_name = row[0] if row else None
 
+    # change the HUC from 8 to whatever the actual number is
+    curs.execute(f'UPDATE Watersheds SET WatershedID = {huc}')
+
     conn.commit()
     conn.execute("VACUUM")
 
