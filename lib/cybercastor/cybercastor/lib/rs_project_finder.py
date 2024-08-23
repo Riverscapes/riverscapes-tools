@@ -1,10 +1,13 @@
-from rsxml import Logger
+# from rsxml import Logger
+
+from rscommons import Logger  # Logger from rsxml is missing log.success
+
 import dateutil.parser
 import inquirer
 from riverscapes import RiverscapesAPI
 
 # Key is JSON task script ID. Value is list of warehouse project types
-# https://cybercastor.northarrowresearch.com/engines/manifest.json
+# https://cybercastor.riverscapes.net/engines/manifest.json
 upstream_project_types = {
     'rs_context': [],
     'rs_context_channel_taudem': [],
@@ -15,7 +18,8 @@ upstream_project_types = {
     'anthro': ['rscontext', 'vbet'],
     'hydro_context': ['rscontext', 'vbet'],
     'rcat': ['rscontext', 'vbet', 'taudem', 'anthro'],
-    'rs_metric_engine': ['rscontext', 'vbet', 'confinement', 'anthro', 'rcat', 'brat'],
+    'blm_context': ['rscontext', 'vbet'],
+    'rs_metric_engine': ['rscontext', 'vbet', 'brat', 'anthro', 'rcat', 'confinement']
 }
 
 # Key is warehouse project type. Value is Fargate environment variable
@@ -65,6 +69,8 @@ def find_upstream_projects(job_data) -> bool:
 
     errors = []
 
+    org_id = None
+
     # Loop over all the HUCs in the job
     for huc in job_data['hucs']:
 
@@ -79,6 +85,15 @@ def find_upstream_projects(job_data) -> bool:
                 lookup_val = job_data['lookups'][huc][fargate_env_keys[project_type]]
                 log.info(f'Already found project for {huc} of type {project_type}: {lookup_val}. Skipping.')
                 continue
+
+            if org_id is not False:
+                if org_id is None:
+                    limit_by_org = inquirer.confirm('Limit upstream project search by job organization?')
+                    if limit_by_org:
+                        org_id = job_data['env']['ORG_ID']
+                    else:
+                        org_id = False
+
             selected_project = None
             log.info(f'Searching warehouse for project type {project_type} for HUC {huc}')
 
@@ -90,6 +105,9 @@ def find_upstream_projects(job_data) -> bool:
                     "value": huc,
                 }]
             }
+            if org_id is not None and org_id is not False:
+                org = {'id': org_id, "type": "ORGANIZATION"}
+                searchParams['ownedBy'] = org
 
             # Only refresh the token if we need to
             if riverscapes_api.access_token is None:

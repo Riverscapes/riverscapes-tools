@@ -34,10 +34,13 @@
         "taudem",
         "rs_context_channel_taudem",
         "vbet",
-        "rcat",
-        "rme",
         "anthro",
-        "brat"
+        "brat",
+        "rcat",
+        "confinement",
+        "rs_metric_engine",
+        "blm_context",
+        "all tools (as individual jobs)"
       ],
     },
     {
