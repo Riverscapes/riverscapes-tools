@@ -149,6 +149,13 @@ def hydro_context(huc: int, dem: Path, hillshade: Path, igo: Path, dgo: Path, fl
     copy_features_fields(input_layers['DGO'], dgo_geom_path, epsg=cfg.OUTPUT_EPSG)
 
     with SQLiteCon(outputs_gpkg_path) as database:
+        database.curs.execute(f"""CREATE VIEW vwHydroParams AS SELECT W.WatershedID, W.Name AS Watershed, W.States, W.Metadata,
+                                  E.EcoregionID, E.Name AS Ecoregion, HP.ParamID, HP.Name AS Parameter, HP.Aliases, HP.DataUnits, HP.EquationUnits,
+                                  WHP.Value, HP.Conversion, WHP.Value * HP.Conversion AS ConvertedValue
+                                  FROM Watersheds W INNER JOIN Ecoregions E ON W.EcoregionID = E.EcoregionID INNER JOIN
+                                  WatershedHydroParams WHP ON W.WatershedID = WHP.WatershedID INNER JOIN HydroParams HP ON WHP.ParamID = HP.ParamID
+                                  WHERE W.WatershedID LIKE '{str(huc)[:8]}%' ORDER BY LENGTH(W.WatershedID) DESC""")
+
         database.curs.execute("""INSERT INTO ReachAttributes (ReachID, FCode, NHDPlusID, WatershedID, StreamName, level_path, ownership, divergence, stream_order, us_state, ecoregion_iii, ecoregion_iv, DrainArea)
                               SELECT ReachID, FCode, NHDPlusID, WatershedID, GNIS_Name, level_path, ownership, divergence, stream_order, us_state, ecoregion_iii, ecoregion_iv, DivDASqKM FROM ReachGeometry""")
         database.curs.execute("""INSERT INTO DGOAttributes (DGOID, FCode, level_path, seg_distance, centerline_length, segment_area)
