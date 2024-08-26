@@ -202,7 +202,27 @@ class RMEReport(RSReport):
             plot_wrapper.append(card)
         section.append(plot_wrapper)
 
+    def filters_section(self, parent_section):
+        filter_name_pretty = self.filter_name.replace('_', ' ').title()
+
+        p = ET.Element('p')
+        p.text = f"The report has been filtered to only show data for {filter_name_pretty} lands."
+        parent_section.append(p)
+
+        # Brief section about the technical details of the filter; the specific sql query
+        p1 = ET.Element('p')
+        p1.text = "The filter is applied by using the following SQL query:"
+        parent_section.append(p1)
+
+        pre = ET.Element('pre')
+        pre.text = self.sql_filter
+        parent_section.append(pre)
+
     def report_content(self):
+        if self.filter_name is not None:
+            section_filters = self.section('Filters', 'Filters')
+            self.filters_section(section_filters)
+
         realization = self.xml_project.XMLBuilder.find('Realizations').find('Realization')
 
         section_in = self.section('Inputs', 'Inputs')
