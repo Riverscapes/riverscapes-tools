@@ -234,6 +234,13 @@ def brat(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Path,
     # Just for fun add the db metadata back to the xml
     project.add_metadata_simple(db_metadata)
 
+    # make sure there's a watershed table entry with the huc being run
+    with SQLiteCon(outputs_gpkg_path) as database:
+        database.curs.execute('SELECT * FROM Watersheds WHERE WatershedID = ?', (huc,))
+        if not database.curs.fetchone():
+            database.curs.execute(f'UPDATE Watersheds SET WatershedID = {huc} WHERE WatershedID = {str(huc)[:8]}')
+            database.conn.commit()
+
     project.add_metadata([RSMeta('HUC8_Watershed', watershed_name)])
 
     # set up intermediates db
