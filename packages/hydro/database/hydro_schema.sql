@@ -15,7 +15,7 @@ CREATE TABLE Watersheds (
     Metadata TEXT);
 
 CREATE TABLE WatershedHydroParams (
-    WatershedID TEXT REFERENCES Watersheds (WatershedID) ON DELETE CASCADE NOT NULL, 
+    WatershedID TEXT, -- REFERENCES Watersheds (WatershedID) ON DELETE CASCADE NOT NULL, 
     ParamID INTEGER REFERENCES HydroParams (ParamID) NOT NULL, 
     Value REAL NOT NULL, 
     PRIMARY KEY (WatershedID, ParamID));
@@ -114,28 +114,6 @@ FROM DGOAttributes D
 CREATE VIEW vwIGOs AS SELECT I.*, G.geom
 FROM IGOAttributes I
     INNER JOIN IGOGeometry G ON I.IGOID = G.IGOID;
-
-CREATE VIEW vwHydroParams AS SELECT W.WatershedID,
-       W.Name AS Watershed,
-       W.States,
-       W.Metadata,
-       E.EcoregionID,
-       E.Name AS Ecoregion,
-       HP.ParamID,
-       HP.Name AS Parameter,
-       HP.Aliases,
-       HP.DataUnits,
-       HP.EquationUnits,
-       WHP.Value,
-       HP.Conversion,
-       WHP.Value * HP.Conversion AS ConvertedValue
-  FROM Watersheds W
-       INNER JOIN
-       Ecoregions E ON W.EcoregionID = E.EcoregionID
-       INNER JOIN
-       WatershedHydroParams WHP ON W.WatershedID = WHP.WatershedID
-       INNER JOIN
-       HydroParams HP ON WHP.ParamID = HP.ParamID;
 
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('Watersheds', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('WatershedHydroParams', 'attributes');
