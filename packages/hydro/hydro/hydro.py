@@ -141,6 +141,16 @@ def hydro_context(huc: int, dem: Path, hillshade: Path, igo: Path, dgo: Path, fl
     }
     create_database(str(huc), outputs_gpkg_path, db_metadata, cfg.OUTPUT_EPSG, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'hydro_schema.sql'))
 
+    # add a table entry that corresponds to the huc being run if doesn't exist.
+    with SQLiteCon(outputs_gpkg_path) as database:
+        database.curs.execute(f"SELECT * FROM Watersheds WHERE WatershedID = '{huc}'")
+        if not database.curs.fetchone():
+            database.curs.execute(f"SELECT * FROM Watersheds WHERE WatershedID = '{str(huc)[:8]}'")
+            row = database.curs.fetchone()
+            database.curs.execute(f"""INSERT INTO Watersheds (WatershedID, Name, States, QLow, Q2, MaxDrainage, EcoregionID) 
+                                  VALUES ('{huc}', '{row['Name']}', '{row['States']}', '{row['QLow']}', '{row['Q2']}', {row['MaxDrainage']}, {row['EcoregionID']})""")
+            database.conn.commit()
+
     igo_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['HYDRO_GEOM_POINTS'].rel_path)
     line_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['HYDRO_GEOM_LINES'].rel_path)
     dgo_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['HYDRO_GEOM_DGOS'].rel_path)
