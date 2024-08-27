@@ -43,7 +43,7 @@ LayerTypes = {
     }),
     'OUTPUTS': RSLayer('Hydrologic Outputs', 'OUTPUTS', 'Geopackage', 'outputs/hydro.gpkg', {
         'HYDRO_GEOM_POINTS': RSLayer('Hydrologic IGO Point Geometry', 'HYDRO_GEOM_POINTS', 'Vector', 'IGOGeometry'),
-        'HYDRO_POINTS': RSLayer('Hydrologic Output Points', 'ANTRHO_POINTS', 'Vector', 'vwIgos'),
+        'HYDRO_POINTS': RSLayer('Hydrologic Output Points', 'ANTHRO_POINTS', 'Vector', 'vwIgos'),
         'HYDRO_GEOM_LINES': RSLayer('Hydrologic Reach Geometry', 'HYDRO_GEOM_LINES', 'Vector', 'ReachGeometry'),
         'HYDRO_LINES': RSLayer('Hydrologic Output Lines', 'HYDRO_LINES', 'Vector', 'vwReaches'),
         'HYDRO_GEOM_DGOS': RSLayer('Hydrologic Output DGOs Polygons', 'HYDRO_GEOM_DGOS', 'Vector', 'DGOGeometry'),
@@ -60,7 +60,7 @@ def hydro_context(huc: int, dem: Path, hillshade: Path, igo: Path, dgo: Path, fl
     log.info(f'Starting Hydrologic Context v.{cfg.version}')
     log.info(f'HUC: {huc}')
 
-    augment_layermeta('hydro_context', LYR_DESCRIPTIONS_JSON, LayerTypes)
+    augment_layermeta('hydro', LYR_DESCRIPTIONS_JSON, LayerTypes)
 
     start_time = time.time()
 
