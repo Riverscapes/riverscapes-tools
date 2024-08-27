@@ -63,7 +63,8 @@ class ConfinementReport(RSReport):
         # charts and tables
         self.raw_confinement(section_out)
         for field in ['confinement_ratio', 'constriction_ratio']:
-            self.confinement_ratio(field, field, section_out)
+            format_label = field.replace('_', ' ').title()
+            self.confinement_ratio(field, format_label, section_out)
 
         outputs = list(realization.find('Outputs'))
         [self.layerprint(lyr, section_out, self.project_root) for lyr in outputs if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']]
@@ -79,7 +80,7 @@ class ConfinementReport(RSReport):
 
         image_path = os.path.join(
             self.images_dir, '{}.png'.format(db_field.lower()))
-        histogram(data, 10, image_path)
+        histogram(data, 10, image_path, 'Confinement Ratio', 'Length (km)')
 
         img_wrap = ET.Element('div', attrib={'class': 'imgWrap'})
         img = ET.Element('img', attrib={
