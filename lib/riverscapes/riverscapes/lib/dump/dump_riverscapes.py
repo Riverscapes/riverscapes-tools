@@ -55,17 +55,26 @@ def dump_riverscapes(rs_api: RiverscapesAPI, db_path: str):
             if key in project.project_meta:
                 value = project.project_meta[key]
                 huc10 = value if len(value) == 10 else None
+                break
+
+        # Attempt to retrieve the model version from the project metadata if it exists
+        model_version = None
+        for key in ['model_version', 'modelVersion', 'Model Version']:
+            if key in project.project_meta:
+                model_version = project.project_meta[key]
+                break
 
         # Insert project data
         curs.execute('''
-            INSERT INTO rs_projects(project_id, name, tags, huc10, project_type_id, created_on, owned_by_id, owner_by_name, owner_by_type)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO rs_projects(project_id, name, tags, huc10, model_version, project_type_id, created_on, owned_by_id, owned_by_name, owned_by_type)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''',
                      (
                          project.id,
                          project.name,
                          ','.join(project.tags),
                          huc10,
+                         model_version,
                          project.project_type,
                          int(project.created_date.timestamp() * 1000),
                          project.json['ownedBy']['id'],

@@ -50,7 +50,7 @@
         "{env:DATA_ROOT}/warehouse_report/riverscapes_${input:environment}.gpkg",
         // "${input:cc_environment}",
         "production",        
-        "/Users/philipbailey/GISData/riverscapes/huc10.gpkg",
+        "/Users/philipbailey/GISData/riverscapes/warehouse_report/watershed_boundary_template.gpkg",
         "--verbose"
       ]
     },  
