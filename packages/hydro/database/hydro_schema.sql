@@ -1,9 +1,12 @@
-CREATE TABLE Ecoregions (
-    EcoregionID INTEGER PRIMARY KEY UNIQUE NOT NULL, 
-    Name TEXT UNIQUE NOT NULL);
+CREATE TABLE Ecoregions
+(
+    EcoregionID INTEGER PRIMARY KEY NOT NULL, 
+    Name TEXT UNIQUE NOT NULL
+);
 
-CREATE TABLE Watersheds (
-    WatershedID TEXT PRIMARY KEY NOT NULL UNIQUE, 
+CREATE TABLE Watersheds
+(
+    WatershedID TEXT PRIMARY KEY NOT NULL, 
     Name TEXT NOT NULL, 
     AreaSqKm REAL CONSTRAINT CHK_HUCs_Area CHECK (AreaSqKm >= 0), 
     States TEXT,
@@ -12,30 +15,40 @@ CREATE TABLE Watersheds (
     MaxDrainage REAL CHECK (MaxDrainage >= 0),
     EcoregionID INTEGER REFERENCES Ecoregions (EcoregionID),
     Notes TEXT,
-    Metadata TEXT);
+    Metadata TEXT
+);
 
-CREATE TABLE WatershedHydroParams (
+CREATE TABLE WatershedHydroParams
+(
     WatershedID TEXT, -- REFERENCES Watersheds (WatershedID) ON DELETE CASCADE NOT NULL, 
     ParamID INTEGER REFERENCES HydroParams (ParamID) NOT NULL, 
     Value REAL NOT NULL, 
-    PRIMARY KEY (WatershedID, ParamID));
 
-CREATE TABLE HydroParams (ParamID INTEGER PRIMARY KEY NOT NULL, 
+    PRIMARY KEY (WatershedID, ParamID)
+);
+
+CREATE TABLE HydroParams
+(
+    ParamID INTEGER PRIMARY KEY NOT NULL, 
     Name TEXT UNIQUE NOT NULL, 
     Description TEXT NOT NULL,
     Aliases TEXT, 
     DataUnits TEXT NOT NULL, 
     EquationUnits TEXT, 
     Conversion REAL NOT NULL DEFAULT (1), 
-    Definition TEXT);
+    Definition TEXT
+);
 
-CREATE TABLE FCodes (
+CREATE TABLE FCodes
+(
     FCode INTEGER PRIMARY KEY NOT NULL, 
     Name TEXT NOT NULL, 
     DisplayName TEXT, 
-    Description TEXT NOT NULL);
+    Description TEXT NOT NULL
+);
 
-CREATE TABLE ReachAttributes(
+CREATE TABLE ReachAttributes
+(
     ReachID INTEGER PRIMARY KEY NOT NULL,
     FCode INTEGER REFERENCES FCodes (FCode),
     NHDPlusID INTEGER,
@@ -59,7 +72,8 @@ CREATE TABLE ReachAttributes(
     SP2 REAL
 );
 
-CREATE TABLE DGOAttributes(
+CREATE TABLE DGOAttributes
+(
     DGOID INTEGER PRIMARY KEY NOT NULL,
     FCode INTEGER REFERENCES FCodes (FCode),
     level_path REAL,
@@ -78,7 +92,11 @@ CREATE TABLE DGOAttributes(
     SP2 REAL
 );
 
-CREATE TABLE IGOAttributes(
+CREATE INDEX ix_dgoattributes_fcode ON DGOAttributes (FCode);
+CREATE INDEX ix_dgoattributes_level_path ON DGOAttributes (level_path, seg_distance);
+
+CREATE TABLE IGOAttributes
+(
     IGOID INTEGER PRIMARY KEY NOT NULL,
     FCode INTEGER REFERENCES FCodes (FCode),
     level_path REAL,
@@ -96,9 +114,15 @@ CREATE TABLE IGOAttributes(
     SP2 REAL
 );
 
-CREATE TABLE MetaData (
+CREATE INDEX ix_igoattributes_fcode ON IGOAttributes (FCode);
+CREATE INDEX ix_igoattributes_level_path ON IGOAttributes (level_path, seg_distance);
+
+
+CREATE TABLE MetaData
+(
     KeyInfo TEXT PRIMARY KEY NOT NULL, 
-    ValueInfo TEXT);
+    ValueInfo TEXT
+);
 
 -- indexes
 

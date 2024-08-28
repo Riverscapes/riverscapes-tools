@@ -147,7 +147,7 @@ def hydro_context(huc: int, dem: Path, hillshade: Path, igo: Path, dgo: Path, fl
         if not database.curs.fetchone():
             database.curs.execute(f"SELECT * FROM Watersheds WHERE WatershedID = '{str(huc)[:8]}'")
             row = database.curs.fetchone()
-            database.curs.execute(f"""INSERT INTO Watersheds (WatershedID, Name, States, QLow, Q2, MaxDrainage, EcoregionID) 
+            database.curs.execute(f"""INSERT INTO Watersheds (WatershedID, Name, States, QLow, Q2, MaxDrainage, EcoregionID)
                                   VALUES ('{huc}', '{row['Name']}', '{row['States']}', '{row['QLow']}', '{row['Q2']}', {row['MaxDrainage']}, {row['EcoregionID']})""")
             database.conn.commit()
 
@@ -191,11 +191,12 @@ def hydro_context(huc: int, dem: Path, hillshade: Path, igo: Path, dgo: Path, fl
         database.curs.execute("""INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m)
             SELECT 'vwDgos', column_name, geometry_type_name, srs_id, z, m FROM gpkg_geometry_columns WHERE table_name = 'DGOGeometry'""")
 
-        database.conn.execute('CREATE INDEX ix_igo_levelpath on IGOGeometry(level_path)')
-        database.conn.execute('CREATE INDEX ix_igo_segdist on IGOGeometry(seg_distance)')
-        database.conn.execute('CREATE INDEX ix_igo_size on IGOGeometry(stream_size)')
-        database.conn.execute('CREATE INDEX ix_dgo_levelpath on DGOGeometry(level_path)')
-        database.conn.execute('CREATE INDEX ix_dgo_segdist on DGOGeometry(seg_distance)')
+        database.conn.execute('CREATE INDEX ix_igogeometry_fcode on IGOGeometry(FCode)')
+        database.conn.execute('CREATE INDEX ix_igogeometry_levelpath on IGOGeometry(level_path, seg_distance)')
+        database.conn.execute('CREATE INDEX ix_igogeometry_size on IGOGeometry(stream_size)')
+
+        database.conn.execute('CREATE INDEX ix_dgogeometry_fcode on DGOGeometry(FCode)')
+        database.conn.execute('CREATE INDEX ix_dgogeometry_levelpath on DGOGeometry(level_path, seg_distance)')
 
         database.conn.commit()
 
