@@ -54,7 +54,9 @@ def hydrology(gpkg_path: str, prefix: str, huc: str):
         log.info(f'Regional curve: {equation}')
 
         # Load the hydrology CONVERTED parameters for the HUC (the values will be in the same units as used in the regional equations)
-        database.curs.execute('SELECT Parameter, ConvertedValue FROM vwHydroParams WHERE WatershedID = ?', [huc])
+        # The params could be associated with a HUC10 or HUC8. Query modified to sort by length of HUC to ensure HUC10 is loaded last
+        # and therefore becomes the final parameter key added to the dictionary
+        database.curs.execute('SELECT Parameter, ConvertedValue FROM vwHydroParams WHERE WatershedID LIKE ? ORDER BY LENGTH(WatershedID) ASC', [f'{huc[:8]}%'])
         params = {row['Parameter']: row['ConvertedValue'] for row in database.curs.fetchall()}
         [log.info(f'Param: {key} = {value:.2f}') for key, value in params.items()]
 
