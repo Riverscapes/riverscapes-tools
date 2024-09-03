@@ -24,7 +24,7 @@
   "configurations": [
     {
       "name": "RS Context",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "rscontext.rs_context",
       "console": "integratedTerminal",
@@ -51,7 +51,7 @@
     },
     {
       "name": "RS Context Metrics",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "rscontext.rs_context_metrics",
       "console": "integratedTerminal",
@@ -61,7 +61,7 @@
     },
     {
       "name": "Modis (LST)",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "scripts.land_surface_temp",
       "console": "integratedTerminal",
@@ -88,7 +88,7 @@
     // },
     {
       "name": "Write report",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "rscontext.rs_context_report",
       "console": "integratedTerminal",
@@ -99,7 +99,7 @@
     },
     {
       "name": "Calculate Metrics",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "rscommons.classes.project_metrics",
       "console": "integratedTerminal",
@@ -110,7 +110,7 @@
     },
     {
       "name": "Generate Bounding GeoJSON",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "rscommons.project_bounds",
       "console": "integratedTerminal",
@@ -121,7 +121,7 @@
     },
     {
       "name": "Version Bump",
-      "type": "python",
+      "type": "debugpy",
       "module": "rscommons.version",
       "args": [
         "${workspaceFolder}/rscontext/__version__.py"

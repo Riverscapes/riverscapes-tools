@@ -9,6 +9,7 @@
       "type": "pickString",
       "description": "Select a RIVERSCAPES API environment",
       "options": [
+        "local",
         "staging",
         "production"
       ],
@@ -19,6 +20,7 @@
       "type": "pickString",
       "description": "Select a CYBERCASTOR API environment",
       "options": [
+        "local",
         "staging",
         "production"
       ],
@@ -78,8 +80,8 @@
       "console": "integratedTerminal",
       "envFile": "${workspaceFolder}/.env",
       "args": [
-        // "${input:cc_environment}",
-        "production",
+        "${input:cc_environment}",
+        // "production",
         // "--download_running",
         "--verbose"
       ]
@@ -94,12 +96,12 @@
       "envFile": "${workspaceFolder}/.env",
       "args": [
         "${workspaceFolder}/jobs/",
-        // "${input:cc_environment}",
-        "production",
+        "${input:cc_environment}",
+        // "production",
         "--verbose"
       ]
-    },    
-    { 
+    },
+    {
       "name": "🧰 Create Job JSON file",
       "type": "debugpy",
       "request": "launch",
@@ -182,9 +184,7 @@
         "merge_rcat"
       ]
     },
-
-
-   {
+    {
       "name": "Python: Current File",
       "type": "debugpy",
       "request": "launch",

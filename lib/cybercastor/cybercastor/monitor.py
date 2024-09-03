@@ -49,7 +49,6 @@ def main(cc_api: CybercastorAPI, download_running):
         download_running (_type_): _description_
     """
 
-
     ##############################
     # Monitoring
     ##############################

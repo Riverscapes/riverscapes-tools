@@ -59,6 +59,9 @@ class CybercastorAPI:
         elif stage.upper() == 'STAGING':
             self.uri = 'https://api.cybercastor.riverscapes.net/staging'
             self.stage = 'STAGING'
+        elif stage.upper() == 'LOCAL':
+            self.uri = 'http://127.0.0.1:7015'
+            self.stage = 'LOCAL'
         else:
             raise Exception(f'Unknown stage: {stage}')
 

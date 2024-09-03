@@ -309,7 +309,7 @@ def manage_tasks(cc_api: CybercastorAPI, job_id):
         else:
             op_text = 'stop'
             dict_key = 'stoppable'
-            op = VALID_OPS['stop']
+            op = VALID_OPS['STOP']
         questions = [
             inquirer.Checkbox('tasks',
                               message=f"Which tasks to {op_text}? <space> to select. <enter> to approve",

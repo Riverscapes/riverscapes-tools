@@ -54,7 +54,7 @@ def download_job_logs(job, outdir: str, stage: str, download_running=False):
             for filePath in glob(task_log_glob):
                 safe_remove_file(filePath)
             # TODO: I don't love this but for now it will need to do
-            log_group = 'CybercastorLogs_staging' if stage == 'staging' else 'CybercastorLogs_production'
+            log_group = 'CybercastorLogs_staging' if stage == 'STAGING' else 'CybercastorLogs_production'
             download_logs(job, t, log_group, t['logStream'], task_log_path)
 
 
