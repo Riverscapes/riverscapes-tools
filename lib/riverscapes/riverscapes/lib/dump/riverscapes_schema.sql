@@ -23,7 +23,7 @@ CREATE INDEX IF NOT EXISTS ix_rs_projects_model_version ON rs_projects (model_ve
 CREATE TABLE IF NOT EXISTS rs_project_meta
 (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    project_id INTEGER REFERENCES rs_projects (id) ON DELETE CASCADE,
+    project_id INTEGER NOT NULL REFERENCES rs_projects (id) ON DELETE CASCADE,
     key        TEXT,
     value      TEXT
 );

@@ -67,7 +67,7 @@ def dump_riverscapes(rs_api: RiverscapesAPI, db_path: str):
         # Insert project data
         curs.execute('''
             INSERT INTO rs_projects(project_id, name, tags, huc10, model_version, project_type_id, created_on, owned_by_id, owned_by_name, owned_by_type)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING
             ''',
                      (
                          project.id,
@@ -82,10 +82,12 @@ def dump_riverscapes(rs_api: RiverscapesAPI, db_path: str):
                          project.json['ownedBy']['__typename']
                      ))
 
-        project_id = curs.lastrowid
+        # Don't rely on curs.lastrowid because it's not reliable when using ON CONFLICT DO NOTHING
+        curs.execute('SELECT id FROM rs_projects WHERE project_id = ?', [project.id])
+        project_id = curs.fetchone()[0]
 
         # Insert project meta data
-        curs.executemany('INSERT INTO rs_project_meta(project_id, key, value) VALUES (?, ?, ?)', [
+        curs.executemany('INSERT INTO rs_project_meta (project_id, key, value) VALUES (?, ?, ?) ON CONFLICT DO NOTHING', [
             (project_id, key, value) for key, value in project.project_meta.items()
         ])
 
