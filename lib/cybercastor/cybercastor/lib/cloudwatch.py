@@ -99,4 +99,4 @@ def download_logs(job, task, group_name, stream, file_path):
         except Exception as e:
             print(e)
             out_to.write(f'ERROR RETRIEVING LOGS: Group: {group_name} Stream: {stream}')
-            out_to.write(e)
+            out_to.write(str(e))
