@@ -9,7 +9,7 @@ import threading
 import hashlib
 import base64
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # We want to make inquirer optional so that we can use this module in other contexts
 try:
@@ -360,7 +360,7 @@ class RiverscapesAPI:
         if max_results and max_results > 0:
             self.log.debug(f"   ... but max_results is set to {max_results:,} so we will stop there.")
         # Set initial to and from dates so that we can paginate through more than 10,000 recirds
-        now_date = datetime.now()
+        now_date = datetime.now(timezone.utc)
         createdOn = search_params_gql.get('createdOn', {})
         search_to_date = dateparse(createdOn.get('to')) if createdOn.get('to') else now_date
         search_from_date = dateparse(createdOn.get('from')) if createdOn.get('from') else None
