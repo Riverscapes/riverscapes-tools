@@ -102,6 +102,19 @@
       ]
     },
     {
+      "name": "🦫 Add Batch Job - RUN Cybercastor",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cybercastor.add_job_batch",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/.env",
+      "args": [
+        "production",
+        "{env:DATA_ROOT}/warehouse_report/riverscapes_production.gpkg",
+      ]
+    },
+    {
       "name": "🧰 Create Job JSON file",
       "type": "debugpy",
       "request": "launch",
