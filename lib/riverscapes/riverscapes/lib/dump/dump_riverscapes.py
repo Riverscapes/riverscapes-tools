@@ -124,12 +124,11 @@ if __name__ == '__main__':
     parser.add_argument('output_db_path', help='The final resting place of the SQLite DB', type=str)
     parser.add_argument('stage', help='URL to the cybercastor API', type=str, default='production')
     parser.add_argument('template', help='GeoPackage with HUC10 geometries on which to start the process', type=str)
-    parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
     args = dotenv.parse_args_env(parser)
 
     # Initiate the log file
     mainlog = Logger("SQLite Riverscapes Dump")
-    mainlog.setup(log_path=os.path.join(os.path.dirname(args.output_db_path), "dump_riverscapes.log"), verbose=args.verbose)
+    mainlog.setup(log_path=os.path.join(os.path.dirname(args.output_db_path), "dump_riverscapes.log"), verbose=True)
 
     try:
         # If the output doesn't exist and HUC10 geometry does, then copy the HUC10 geometry to the output
