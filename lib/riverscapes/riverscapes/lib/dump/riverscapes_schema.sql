@@ -87,6 +87,7 @@ CREATE VIEW vw_projects as
        h.states,
        r.model_version,
        r.created_on,
+       r.tags,
        datetime(r.created_on / 1000, 'unixepoch') created_on_dt,
        owned_by_id,
        owned_by_name,
