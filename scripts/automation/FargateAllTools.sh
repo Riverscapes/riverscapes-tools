@@ -82,8 +82,8 @@ df -h
 try() {
 
   rscontext $HUC \
-    /efsshare/NationalDatasets/landfire/200/us_200evt.tif \
-    /efsshare/NationalDatasets/landfire/200/us_200bps.tif \
+    /efsshare/NationalDatasets/landfire/220/us_200evt.tif \
+    /efsshare/NationalDatasets/landfire/220/us_200bps.tif \
     /efsshare/NationalDatasets/ownership/surface_management_agency.shp \
     /efsshare/NationalDatasets/ownership/FairMarketValue.tif \
     /efsshare/NationalDatasets/ecoregions/us_eco_l3_state_boundaries.shp \

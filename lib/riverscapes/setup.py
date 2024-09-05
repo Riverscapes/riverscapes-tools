@@ -7,8 +7,7 @@ from setuptools import setup
 install_requires = [
     'termcolor', 'Cython>=0.29.7', 'numpy>=1.16.3',
     'rsxml',
-    'argparse',
-    'rs-commons'
+    'argparse'
 ]
 
 with open("README.md", "rb") as f:

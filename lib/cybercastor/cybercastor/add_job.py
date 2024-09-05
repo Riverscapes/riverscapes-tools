@@ -9,7 +9,8 @@ import json
 from datetime import datetime
 import inquirer
 from termcolor import colored
-from rsxml import Logger, dotenv, safe_makedirs
+from rsxml import Logger, dotenv
+from rsxml.util import safe_makedirs
 
 from cybercastor import CybercastorAPI
 from cybercastor.lib.monitor import print_job, possible_states

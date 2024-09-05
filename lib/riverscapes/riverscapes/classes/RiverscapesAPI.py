@@ -19,7 +19,8 @@ except ImportError:
 
 import requests
 from dateutil.parser import parse as dateparse
-from rsxml import Logger, ProgressBar, safe_makedirs, calculate_etag
+from rsxml import Logger, ProgressBar, calculate_etag
+from rsxml.util import safe_makedirs
 from riverscapes.classes.riverscapes_helpers import RiverscapesProject, RiverscapesProjectType, RiverscapesSearchParams, format_date
 
 # Disable all the weird terminal noise from urllib3

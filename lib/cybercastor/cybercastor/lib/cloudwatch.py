@@ -4,7 +4,7 @@ import os
 import re
 from datetime import datetime
 import boto3
-from rsxml import safe_makedirs, safe_remove_file
+from rsxml.util import safe_makedirs, safe_remove_file
 from cybercastor.lib.monitor import report_job
 
 

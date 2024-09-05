@@ -6,7 +6,8 @@ import sys
 from datetime import datetime
 import json
 from termcolor import cprint
-from rsxml import safe_makedirs, Logger, dotenv
+from rsxml import Logger, dotenv
+from rsxml.util import safe_makedirs
 from cybercastor import CybercastorAPI
 from cybercastor.lib.monitor import print_job
 from cybercastor.lib.cloudwatch import download_job_logs
