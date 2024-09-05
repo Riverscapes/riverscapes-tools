@@ -223,7 +223,7 @@ def hydro_context(huc: int, dem: Path, hillshade: Path, igo: Path, dgo: Path, fl
                     break
 
     # Calculate slope, length, drainage area for reaches and DGOs
-    reach_geometry(outputs_gpkg_path, dem_path, 100)
+    reach_geometry(outputs_gpkg_path, dem_path, 30)
     dgo_geometry(outputs_gpkg_path, dem_path)
 
     # get rid of zero and null drainage areas

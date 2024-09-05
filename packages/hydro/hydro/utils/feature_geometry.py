@@ -75,8 +75,8 @@ def reach_geometry(gpk_path: str, dem_path: str, buffer_distance: float, field_n
             sta_data = line_start_elevations[reach_id]
             end_data = line_end_elevations[reach_id]
 
-            data[field_names['MaxElevation']] = _max_ignore_none(sta_data['Maximum'], end_data['Maximum'])
-            data[field_names['MinElevation']] = _min_ignore_none(sta_data['Minimum'], end_data['Minimum'])
+            data[field_names['MaxElevation']] = _min_ignore_none(sta_data['Minimum'], sta_data['Mean'])
+            data[field_names['MinElevation']] = _min_ignore_none(end_data['Minimum'], end_data['Mean'])
 
             if sta_data['Mean'] is not None and end_data['Mean'] is not None and sta_data['Mean'] != end_data['Mean']:
                 data[field_names['Gradient']] = abs(sta_data['Mean'] - end_data['Mean']) / data[field_names['Length']]
