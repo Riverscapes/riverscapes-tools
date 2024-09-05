@@ -111,7 +111,7 @@ def calculate_vegegtation_fis(feature_values: dict, streamside_field: str, ripar
         ctrl.Rule(riparian['barely'] & streamside['barely'], density['rare']),  # matBRAT has consequnt as 'occasional'
         ctrl.Rule(riparian['moderately'] & streamside['barely'], density['occasional']),
         ctrl.Rule(riparian['suitable'] & streamside['barely'], density['occasional']),
-        ctrl.Rule(riparian['preferred'] & streamside['barely'], density['occasional']),
+        ctrl.Rule(riparian['preferred'] & streamside['barely'], density['frequent']),
         ctrl.Rule(riparian['unsuitable'] & streamside['moderately'], density['rare']),
         ctrl.Rule(riparian['barely'] & streamside['moderately'], density['occasional']),
         ctrl.Rule(riparian['moderately'] & streamside['moderately'], density['occasional']),
