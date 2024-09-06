@@ -87,6 +87,19 @@
       ]
     },
     {
+      "name": "💀💀💀 DELETE PROJECTS - DANGER 💀💀💀",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "riverscapes.lib.deletE_project_batch",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/.env",
+      "args": [
+        "production",
+        "06e26936-8eeb-40ac-b818-2bf04402551b,09be98d2-ebeb-4475-a1d1-85130283376f"
+      ]
+    },
+    {
       "name": "Python: Current File",
       "type": "debugpy",
       "request": "launch",
