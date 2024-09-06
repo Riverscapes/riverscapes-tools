@@ -7,7 +7,7 @@ import os
 import traceback
 import argparse
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
 from rsxml import Logger, dotenv
 from riverscapes import RiverscapesAPI, RiverscapesSearchParams
 
@@ -43,7 +43,7 @@ def dump_riverscapes(rs_api: RiverscapesAPI, db_path: str):
     # to fully complete once.
     if last_inserted_row[0] is not None:
         # Convert milliseconds to seconds and create a datetime object
-        last_inserted = datetime.fromtimestamp(last_inserted_row[0] / 1000)
+        last_inserted = datetime.fromtimestamp(last_inserted_row[0] / 1000, tz=timezone.utc)
         searchParams.createdOnFrom = last_inserted
 
     # Create a timedelta object with a difference of 1 day

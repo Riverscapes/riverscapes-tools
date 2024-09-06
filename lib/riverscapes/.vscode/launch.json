@@ -51,7 +51,6 @@
         // "${input:cc_environment}",
         "production",        
         "/Users/philipbailey/GISData/riverscapes/warehouse_report/watershed_boundary_template.gpkg",
-        "--verbose"
       ]
     },  
     {
