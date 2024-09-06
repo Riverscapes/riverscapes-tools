@@ -23,7 +23,7 @@ def delete_project_batch(api: RiverscapesAPI, stage: str, project_ids: List[str]
 
     delete_qry = api.load_mutation('deleteProject')
     for project_id in project_ids:
-        api.run_query(delete_qry, {'projectId': project_id})
+        api.run_query(delete_qry, {'projectId': project_id, 'options': {}})
 
     print('Process complete')
 

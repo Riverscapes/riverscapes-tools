@@ -90,7 +90,7 @@
       "name": "💀💀💀 DELETE PROJECTS - DANGER 💀💀💀",
       "type": "debugpy",
       "request": "launch",
-      "module": "riverscapes.lib.deletE_project_batch",
+      "module": "riverscapes.lib.dump.delete_project_batch",
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "envFile": "${workspaceFolder}/.env",
