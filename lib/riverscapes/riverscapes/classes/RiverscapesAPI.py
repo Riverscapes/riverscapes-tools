@@ -325,7 +325,7 @@ class RiverscapesAPI:
         results = self.run_query(qry, {"id": project_id})
         return results['data']['getProject']
 
-    def search(self, search_params: RiverscapesSearchParams, progress_bar: bool = False, page_size: int = 500, max_results: int = None) -> Generator[Tuple[RiverscapesProject, Dict, int], None, None]:
+    def search(self, search_params: RiverscapesSearchParams, progress_bar: bool = False, page_size: int = 500, sort: List[str] = None, max_results: int = None) -> Generator[Tuple[RiverscapesProject, Dict, int], None, None]:
         """ A simple function to make a yielded search on the riverscapes API
 
         This search has two modes: If the total number of records is less than 10,000 then it will do a single paginated query. 
@@ -345,7 +345,7 @@ class RiverscapesAPI:
         stats = {}
 
         # NOTE: DO NOT CHANGE THE SORT ORDER HERE. IT WILL BREAK THE PAGINATION.
-        sort = ['DATE_CREATED_DESC']
+        sort = sort if sort else ['DATE_CREATED_DESC']
 
         if not search_params or not isinstance(search_params, RiverscapesSearchParams):
             raise RiverscapesAPIException("search requires a valid RiverscapesSearchParams object")

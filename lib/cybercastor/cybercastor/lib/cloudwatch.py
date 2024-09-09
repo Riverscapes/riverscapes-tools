@@ -22,7 +22,7 @@ READY = ['STOPPED', 'SUCCEEDED', 'FAILED']
 READY_RUNNING = ['STOPPED', 'SUCCEEDED', 'FAILED', 'RUNNING']
 
 
-def download_job_logs(job, outdir: str, stage: str, download_running=False):
+def download_job_logs(job, outdir: str, stage: str, download_running=False, download_success=False, download_failure=False):
     """Download all the Cloudwatch logs for a given job
 
     Args:
@@ -49,13 +49,25 @@ def download_job_logs(job, outdir: str, stage: str, download_running=False):
         task_log_path = os.path.join(
             job_dir, f"{t['status']}-{t['name']}.log")
         task_log_glob = os.path.join(job_dir, f"*-{t['name']}.log")
-        if (t['status'] == 'RUNNING' and t['logStream']) or not os.path.isfile(task_log_path):
-            # Clean out any other logs for this that may exist
-            for filePath in glob(task_log_glob):
-                safe_remove_file(filePath)
-            # TODO: I don't love this but for now it will need to do
-            log_group = 'CybercastorLogs_staging' if stage == 'STAGING' else 'CybercastorLogs_production'
-            download_logs(job, t, log_group, t['logStream'], task_log_path)
+
+        task_status = t['status']
+        if 'logStream' not in t or not t['logStream']:
+            continue
+        if task_status == 'RUNNING' and not download_running:
+            continue
+        if task_status == 'SUCCEEDED' and not download_success:
+            continue
+        if task_status == 'FAILED' and not download_failure:
+            continue
+        if os.path.isfile(task_log_path):
+            continue
+
+        # Clean out any other logs for this that may exist
+        for filePath in glob(task_log_glob):
+            safe_remove_file(filePath)
+        # TODO: I don't love this but for now it will need to do
+        log_group = 'CybercastorLogs_staging' if stage == 'STAGING' else 'CybercastorLogs_production'
+        download_logs(job, t, log_group, t['logStream'], task_log_path)
 
 
 def download_logs(job, task, group_name, stream, file_path):
@@ -74,14 +86,11 @@ def download_logs(job, task, group_name, stream, file_path):
         # Every log gets a copy of the task object too
         revised_job = {k: v for k, v in job.items(
         ) if k in ['id', 'name', 'decription', 'taskDefId', 'taskScriptId', 'meta']}
-        out_to.write(
-            'Cybercastor Job\n------------------------------------------------------------------------\n')
+        out_to.write('Cybercastor Job\n------------------------------------------------------------------------\n')
         out_to.write(json.dumps(revised_job, indent=4, sort_keys=True) + '\n')
-        out_to.write(
-            '\nCybercastor Task\n------------------------------------------------------------------------\n')
+        out_to.write('\nCybercastor Task\n------------------------------------------------------------------------\n')
         out_to.write(json.dumps(task, indent=4, sort_keys=True) + '\n')
-        out_to.write(
-            '\nCybercastor Task Log\n------------------------------------------------------------------------\n')
+        out_to.write('\nCybercastor Task Log\n------------------------------------------------------------------------\n')
         try:
             logs_batch = client.get_log_events(logGroupName=group_name, logStreamName=stream, startTime=0)
             for event in logs_batch['events']:

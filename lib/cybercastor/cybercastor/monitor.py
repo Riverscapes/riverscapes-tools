@@ -42,7 +42,7 @@ def get_job_diff(old, new):
     return status_change
 
 
-def main(cc_api: CybercastorAPI, download_running):
+def main(cc_api: CybercastorAPI, download_running: bool, download_success: bool, download_failure: bool):
     """_summary_
 
     Args:
@@ -96,8 +96,7 @@ def main(cc_api: CybercastorAPI, download_running):
 
         # Now do some reporting
         for job in monitor_json.values():
-            download_job_logs(job, os.path.join(
-                monitor_logs_path, monitor_logs_path), download_running)
+            download_job_logs(job, os.path.join(monitor_logs_path, monitor_logs_path), download_running, download_success, download_failure)
 
         if download_running:
             print("DOWNLOAD RUNNING DOESN'T LOOP")
@@ -112,6 +111,8 @@ if __name__ == '__main__':
     parser.add_argument('stage', help='Cybercastor API stage', type=str, default='production')
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
     parser.add_argument('--download_running', help='(optional) download running logs. This is expensive so try to use sparingly', action='store_true', default=False)
+    parser.add_argument('--download_success', help='(optional) download running logs. This is expensive so try to use sparingly', action='store_true', default=False)
+    parser.add_argument('--download_failure', help='(optional) download running logs. This is expensive so try to use sparingly', action='store_true', default=False)
 
     args = dotenv.parse_args_env(parser)
 
@@ -122,7 +123,7 @@ if __name__ == '__main__':
 
     try:
         with CybercastorAPI(stage=args.stage) as api:
-            main(api, args.download_running)
+            main(api, args.download_running, args.download_success, args.download_failure)
 
     except Exception as e:
         log.error(e)

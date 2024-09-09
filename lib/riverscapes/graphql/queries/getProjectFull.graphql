@@ -103,7 +103,7 @@ fragment dbobjSm on DBObj {
 fragment dataset on Dataset {
   ...dbobj
   citation
-
+  datasetType
   rsXPath
   layers {
     lyrName

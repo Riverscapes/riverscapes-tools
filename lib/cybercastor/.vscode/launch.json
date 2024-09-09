@@ -82,7 +82,9 @@
       "args": [
         "${input:cc_environment}",
         // "production",
-        // "--download_running",
+        // "--download_running", // VERY EXPENSIVE USE WITH CARE
+        // "--download_success",
+        "--download_failure",
         "--verbose"
       ]
     },
