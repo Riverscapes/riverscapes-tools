@@ -150,6 +150,8 @@
       "args": [
         "${input:HUC}",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhdplushr.gpkg/WBDHU8",
+        "{env:DATA_ROOT}/vbet/${input:HUC}/intermediates/vbet_intermediates.gpkg/vbet_dgos", //change this to the BRAT DGOs once implemented
+        "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/vbet_igos",
         "{env:DATA_ROOT}/test_data/Survey_MT_Complete.shp",
         "{env:DATA_ROOT}/beaver_activity/${input:HUC}",
         "--verbose"
