@@ -10,6 +10,7 @@ import json
 from cybercastor import CybercastorAPI
 from rsxml import dotenv
 from .add_job import get_params
+from cybercastor.lib.rs_project_finder import fargate_env_keys
 
 # Maximum number of tasks that can be submitted in a single job
 MAX_TASKS = 500
@@ -131,9 +132,10 @@ def create_and_run_batch_job(api: CybercastorAPI, stage: str, db_path: str) -> N
     skipped_hucs = {}
     if len(job_types[answers["engine"]]['upstream']) > 0:
         for huc in hucs:
-            upstream_projects, missing_project_types = get_upstream_projects(huc, answers["engine"], curs)
+            upstream_projects, missing_project_types = get_upstream_projects(huc, answers['engine'], curs)
             if len(missing_project_types) > 0:
                 skipped_hucs[huc] = missing_project_types
+                lookups.pop(huc)
             else:
                 lookups[huc] = upstream_projects
 
@@ -143,7 +145,7 @@ def create_and_run_batch_job(api: CybercastorAPI, stage: str, db_path: str) -> N
 
             partial_batch_questions = [
                 inquirer.Confirm('partial_batch',
-                                 message=f'Continue partial batch ({len(hucs) - len(skipped_hucs)}/{len(hucs)})?', default=False),
+                                 message=f'Continue partial batch ({len(lookups)} of {len(hucs)})?', default=False),
             ]
 
             missing_file = os.path.join(os.path.dirname(__file__), "..", "jobs", answers["name"] + "_missing.json")
@@ -163,7 +165,7 @@ def create_and_run_batch_job(api: CybercastorAPI, stage: str, db_path: str) -> N
     job_obj["description"] = answers["description"]
     job_obj["taskScriptId"] = answers["engine"]
     job_obj["env"]["TAGS"] = answers["tags"]
-    job_obj["hucs"] = hucs
+    job_obj["hucs"] = list(lookups.keys())
     job_obj["lookups"] = lookups
 
     if stage == 'production':
@@ -214,13 +216,13 @@ def get_upstream_projects(huc: str, job_type: str, curs: sqlite3.Cursor) -> list
 
     missing_project_types = []
     upstream_projects = {}
-    for upstream_type in job_types[job_type]:
+    for upstream_type in job_types[job_type]['upstream']:
         curs.execute("SELECT project_id FROM vw_conus_projects WHERE huc10 = ? AND project_type_id = ? ORDER BY created_on DESC LIMIT 1", (huc, upstream_type))
         row = curs.fetchone()
         if row is None:
             missing_project_types.append(upstream_type)
         else:
-            upstream_projects[upstream_type] = row[0]
+            upstream_projects[fargate_env_keys[upstream_type]] = row[0]
 
     return upstream_projects, missing_project_types
 
