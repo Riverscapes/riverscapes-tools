@@ -18,7 +18,10 @@ def riverscapes_dam_counts(gpkg_path: str, windows: dict):
         for igo_ftr, *_ in igo_lyr.iterate_features('Getting info from DGOs'):
             dam_ct = 0
             cl_len = 0
-            sql = f'WHERE fid in {str(tuple(windows[igo_ftr.GetFID()]))}'
+            if len(windows[igo_ftr.GetFID()]) == 1:
+                sql = f'fid = {windows[igo_ftr.GetFID()][0]}'
+            else:
+                sql = f'fid in {str(tuple(windows[igo_ftr.GetFID()]))}'
             for dgo_ftr, *_ in dgo_lyr.iterate_features(attribute_filter=sql):
                 dam_ct += dgo_ftr.GetField('dam_ct')
                 cl_len += dgo_ftr.GetField('centerline_length')
