@@ -64,7 +64,8 @@ def dam_count_table(brat_gpkg_path: str, dams_gpkg_path: str):
         db.curs.execute('SELECT fid FROM vwReaches')
         reachids = [row['fid'] for row in db.curs.fetchall()]
         db.curs.execute('DROP TABLE IF EXISTS dam_counts')
-        db.curs.execute('CREATE TABLE dam_counts (ReachID INTEGER PRIMARY KEY, dam_count INTEGER, dam_density REAL, predicted_capacity REAL, length REAL)')
+        db.curs.execute('DROP VIEW IF EXISTS vwCapacity')
+        db.curs.execute('CREATE TABLE dam_counts (ReachID INTEGER PRIMARY KEY, dam_count INTEGER, dam_density REAL, predicted_capacity REAL, length REAL, percent_capacity REAL)')
         db.curs.execute('INSERT INTO dam_counts (ReachID, predicted_capacity, length) SELECT fid, oCC_EX, iGeo_Len FROM vwReaches')
         for reachid in reachids:
             if reachid in dam_cts.keys():
@@ -72,6 +73,18 @@ def dam_count_table(brat_gpkg_path: str, dams_gpkg_path: str):
             else:
                 db.curs.execute('UPDATE dam_counts SET dam_count = ? WHERE reachid = ?', (0, reachid))
         db.curs.execute('UPDATE dam_counts SET dam_density = dam_count / (length/1000)')
+        db.conn.commit()
+        db.curs.execute('UPDATE dam_counts SET percent_capacity = dam_density / predicted_capacity')
+        db.conn.commit()
+
+        db.curs.execute("""CREATE VIEW vwCapacity AS SELECT B.fid, B.ReachCode, B.geom, C.predicted_capacity, C.dam_density, C.percent_capacity FROM vwReaches B
+                           INNER JOIN dam_counts C ON B.fid = C.ReachID""")
+        db.conn.commit()
+
+        db.curs.execute("""INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id)
+            SELECT 'vwCapacity', data_type, 'Capacity', min_x, min_y, max_x, max_y, srs_id FROM gpkg_contents WHERE table_name = 'ReachGeometry'""")
+        db.curs.execute("""INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m)
+            SELECT 'vwCapacity', column_name, geometry_type_name, srs_id, z, m FROM gpkg_geometry_columns WHERE table_name = 'ReachGeometry'""")
         db.conn.commit()
 
 
