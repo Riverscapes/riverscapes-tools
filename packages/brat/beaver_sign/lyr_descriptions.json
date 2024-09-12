@@ -1,6 +1,6 @@
 {
-    "DGOS": ["Discrete Geographic Objects - The valley bottom split into a sampling frame of polygons where length of the polygon varies based on stream size", ""],
-    "IGOS": ["Integrated Geographic Objects - Points at the center of DGO polygons used to summarize moving window analyses", ""],
+    "DGOS": ["Discrete Geographic Objects - The valley bottom split into a sampling frame of polygons where length of the polygon varies based on stream size", "", ""],
+    "IGOS": ["Integrated Geographic Objects - Points at the center of DGO polygons used to summarize moving window analyses", "", ""],
     "DAMS": ["Locations of dam points collected via desktop census or in the field", "", ""],
     "SIGN": ["Locations of other beaver sign collected in the field", "", ""]
 }
