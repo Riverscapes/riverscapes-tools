@@ -23,6 +23,8 @@ def riverscapes_dam_counts(gpkg_path: str, windows: dict):
             else:
                 sql = f'fid in {str(tuple(windows[igo_ftr.GetFID()]))}'
             for dgo_ftr, *_ in dgo_lyr.iterate_features(attribute_filter=sql):
+                if dgo_ftr.GetField('centerline_length') is None or dgo_ftr.GetField('centerline_length') == 0:
+                    continue
                 dam_ct += dgo_ftr.GetField('dam_ct')
                 cl_len += dgo_ftr.GetField('centerline_length')
             out_data[igo_ftr.GetFID()] = [dam_ct, cl_len]
@@ -32,6 +34,8 @@ def riverscapes_dam_counts(gpkg_path: str, windows: dict):
         igo_lyr.ogr_layer.CreateField(ogr.FieldDefn('dam_density', ogr.OFTReal))
         for ftr, *_ in igo_lyr.iterate_features('Attributing IGOs'):
             dam_ct, cl_len = out_data[ftr.GetFID()]
+            if cl_len == 0:
+                continue
             ftr.SetField('dam_ct', dam_ct)
             ftr.SetField('dam_density', dam_ct / (cl_len / 1000))
             igo_lyr.ogr_layer.SetFeature(ftr)

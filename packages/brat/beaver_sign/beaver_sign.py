@@ -8,7 +8,7 @@ from rscommons import initGDALOGRErrors, ModelConfig, Logger, RSLayer, RSProject
 from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions
 from rscommons.vector_ops import copy_feature_class
 from rscommons.database import SQLiteCon
-from rscommons.moving_window import moving_window_dgo_ids
+from rscommons.moving_window import moving_window_dgo_ids, moving_window_by_intersection
 from rscommons.project_bounds import generate_project_extents_from_layer
 
 from beaver_sign.utils.dam_counts_to_dgos import dam_counts_to_dgos
@@ -110,26 +110,22 @@ def beaver_activity(huc, proj_boundary, dgos, igos, beaver_dams, output_dir, bea
 
     # list of level paths
     with SQLiteCon(output_gpkg_path) as db:
-        try:
-            db.conn.execute('CREATE INDEX ix_igo_levelpath on igos(level_path)')
-            lp_field = 'level_path'
-        except Exception:
-            db.conn.execute('CREATE INDEX ix_igo_levelpath on igos(LevelPathI)')
-            lp_field = 'LevelPathI'
+        db.conn.execute('CREATE INDEX ix_igo_levelpath on igos(level_path)')
         db.conn.execute('CREATE INDEX ix_igo_segdist on igos(seg_distance)')
         db.conn.execute('CREATE INDEX ix_igo_size on igos(stream_size)')
-        db.conn.execute(f'CREATE INDEX ix_dgo_levelpath on dgos({lp_field})')
+        db.conn.execute('CREATE INDEX ix_dgo_levelpath on dgos(level_path)')
         db.conn.execute('CREATE INDEX ix_dgo_segdist on dgos(seg_distance)')
 
         db.conn.commit()
 
-        db.curs.execute(f'SELECT distinct {lp_field} FROM dgos')
+        db.curs.execute('SELECT distinct level_path FROM dgos')
         levelps = db.curs.fetchall()
-        levelpathsin = [lp[f'{lp_field}'] for lp in levelps]
+        levelpathsin = [lp['level_path'] for lp in levelps]
 
     dam_counts_to_dgos(os.path.join(output_gpkg_path, LayerTypes['BEAVER_ACTIVITY'].sub_layers['DAMS'].rel_path), dgos_out)
 
-    windows = moving_window_dgo_ids(igos_out, dgos_out, levelpathsin, lp_field, distancein)
+    # windows = moving_window_dgo_ids(igos_out, dgos_out, levelpathsin, distancein)
+    windows = moving_window_by_intersection(igos_out, dgos_out, levelpathsin)
     riverscapes_dam_counts(output_gpkg_path, windows)
 
     # add project extents

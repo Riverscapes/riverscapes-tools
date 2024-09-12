@@ -41,21 +41,53 @@ def get_moving_windows(igo: str, dgo: str, level_paths: list, distance: dict):
     return windows
 
 
-def moving_window_dgo_ids(igo: str, dgo: str, level_paths: list, field_name: str,  distance: dict):
+def moving_window_dgo_ids(igo: str, dgo: str, level_paths: list, distance: dict):
 
     windows = {}
 
     with GeopackageLayer(igo) as lyr_igo, GeopackageLayer(dgo) as lyr_dgo:
         for level_path in level_paths:
-            for feat_seg_pt, *_, in lyr_igo.iterate_features(f'Finding windows on {level_path}', attribute_filter=f"{field_name} = {level_path}"):
+            for feat_seg_pt, *_, in lyr_igo.iterate_features(f'Finding windows on {level_path}', attribute_filter=f"level_path = {level_path}"):
                 window_distance = distance[str(feat_seg_pt.GetField('stream_size'))]
                 dist = feat_seg_pt.GetField('seg_distance')
                 min_dist = dist - 0.5 * window_distance
                 max_dist = dist + 0.5 * window_distance
 
                 dgoids = []
-                for feat_seg_poly, *_ in lyr_dgo.iterate_features(attribute_filter=f"{field_name} = {int(level_path)} and seg_distance >= {int(min_dist)} and seg_distance <= {int(max_dist)}"):
+                for feat_seg_poly, *_ in lyr_dgo.iterate_features(attribute_filter=f"level_path = {int(level_path)} and seg_distance >= {int(min_dist)} and seg_distance <= {int(max_dist)}"):
                     dgoids.append(feat_seg_poly.GetFID())
+                windows[feat_seg_pt.GetFID()] = dgoids
+
+    return windows
+
+
+def moving_window_by_intersection(igo: str, dgo: str, level_paths: list):
+    """This function creates 3 DGO moving windows based on intersection instead of distance values (merged VBET projects can have duplicat seg_distance for now)"""
+
+    windows = {}
+    associated_dgo = {}
+
+    with GeopackageLayer(igo) as lyr_igo, GeopackageLayer(dgo) as lyr_dgo:
+        for level_path in level_paths:
+            for feat_seg_pt, *_, in lyr_igo.iterate_features('Finding IGOs associated DGOs', attribute_filter=f"level_path = {level_path}"):
+                geom = feat_seg_pt.GetGeometryRef()
+                seg_dist = feat_seg_pt.GetField('seg_distance')
+
+                for feat_seg_poly, *_ in lyr_dgo.iterate_features(attribute_filter=f"level_path = {int(level_path)} and seg_distance = {int(seg_dist)}"):
+                    if feat_seg_poly.GetGeometryRef().Contains(geom):
+                        associated_dgo[feat_seg_pt.GetFID()] = feat_seg_poly
+
+        for level_path in level_paths:
+            for feat_seg_pt, *_, in lyr_igo.iterate_features(f'Finding windows on {level_path}', attribute_filter=f"level_path = {level_path}"):
+                dgoids = []
+                if feat_seg_pt.GetFID() in associated_dgo:
+                    adgo = associated_dgo[feat_seg_pt.GetFID()]
+                    dgoids.append(adgo.GetFID())
+                    for feat_seg_poly, *_ in lyr_dgo.iterate_features(clip_shape=adgo.GetGeometryRef(), attribute_filter=f"level_path = {int(level_path)}"):
+                        geom_poly = feat_seg_poly.GetGeometryRef()
+                        if geom_poly.Intersects(adgo.GetGeometryRef()) and feat_seg_poly.GetFID() not in dgoids:
+                            dgoids.append(feat_seg_poly.GetFID())
+
                 windows[feat_seg_pt.GetFID()] = dgoids
 
     return windows
