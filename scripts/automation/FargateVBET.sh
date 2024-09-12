@@ -145,6 +145,6 @@ try() {
 }
 try || {
   # Emergency Cleanup
-  echo "<<RS CONTEXT PROCESS ENDED WITH AN ERROR>>"
+  echo "<<VBET PROCESS ENDED WITH AN ERROR>>"
   exit 1
 }
