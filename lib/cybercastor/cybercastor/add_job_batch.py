@@ -105,7 +105,7 @@ def create_and_run_batch_job(api: CybercastorAPI, stage: str, db_path: str) -> N
     answers = inquirer.prompt(questions)
 
     # Note how this  uses the vw_conus_projects view to filter only to 2024 CONUS run projects (ignoring legacy model runs)
-    sql_base = 'SELECT b.huc10 FROM vw_conus_hucs b {0} WHERE b.batch_id = ? {1}'
+    sql_base = 'SELECT b.huc10 FROM batch_hucs b INNER JOIN vw_conus_hucs h ON b.huc10 = h.huc10 {0} WHERE b.batch_id = ? {1}'
     sql_part1 = "LEFT JOIN (SELECT huc10 FROM vw_conus_projects WHERE project_type_id = ?) vcp ON b.huc10 = vcp.huc10" if answers["omit_existing"] else ''
     sql_part2 = "AND vcp.huc10 IS NULL" if answers["omit_existing"] else ''
     sql_final = sql_base.format(sql_part1, sql_part2)
