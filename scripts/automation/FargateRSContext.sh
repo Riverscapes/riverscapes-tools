@@ -117,6 +117,6 @@ try() {
 
 }
 try || {
-  echo "<<PROCESS COMPLETE WITH ERROR>>"
+  echo "<<RS CONTEXT PROCESS COMPLETE WITH ERROR>>"
   exit 1
 }
