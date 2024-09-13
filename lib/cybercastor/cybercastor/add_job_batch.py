@@ -96,25 +96,33 @@ def create_and_run_batch_job(api: CybercastorAPI, stage: str, db_path: str) -> N
         ),
         inquirer.Text("name", message="Job name?"),
         inquirer.Text("description", message="Job description?"),
-        inquirer.Text("batch_id", message="Database Batch ID?"),
         inquirer.Text("tags", message="Tags?", default="2024CONUS"),
+        inquirer.List("method", message="Method?", choices=["Batch ID", 'HUC List']),
         inquirer.Confirm("omit_existing", message="Omit HUCs that already exist?", default=True),
-        inquirer.Confirm("start_job", message="Start job?", default=False),
     ]
-
     answers = inquirer.prompt(questions)
 
-    # Note how this  uses the vw_conus_projects view to filter only to 2024 CONUS run projects (ignoring legacy model runs)
-    sql_base = 'SELECT b.huc10 FROM batch_hucs b INNER JOIN vw_conus_hucs h ON b.huc10 = h.huc10 {0} WHERE b.batch_id = ? {1}'
-    sql_part1 = "LEFT JOIN (SELECT huc10 FROM vw_conus_projects WHERE project_type_id = ?) vcp ON b.huc10 = vcp.huc10" if answers["omit_existing"] else ''
-    sql_part2 = "AND vcp.huc10 IS NULL" if answers["omit_existing"] else ''
-    sql_final = sql_base.format(sql_part1, sql_part2)
+    if answers["method"] == 'HUC List':
+        huc_answers = inquirer.prompt([inquirer.Text("huc_list", message="HUC list?")])
+        hucs = huc_answers['huc_list'].split(',')
+    else:
+        batch_answers = inquirer.prompt([inquirer.Text("batch_id", message="Database Batch ID?")])
+        if answers['description'] is None or answers['description'] == '':
+            answers['description'] = f'Batch ID: {batch_answers["batch_id"]}'
 
-    sql_parms = [job_types[answers['engine']]['output']] if answers["omit_existing"] else []
-    sql_parms.append(answers['batch_id'])
+        # Notes:
+        # 1. Uses the vw_conus_projects view to filter only to 2024 CONUS run projects (ignoring legacy model runs)
+        # 2. Uses the HUC10 table identifier that incorporates any aliasing of HUCs to match NHD (not WBD)
+        sql_base = 'SELECT h.huc10 FROM batch_hucs b INNER JOIN vw_conus_hucs h ON b.huc10 = h.huc10 {0} WHERE b.batch_id = ? {1}'
+        sql_part1 = "LEFT JOIN (SELECT huc10 FROM vw_conus_projects WHERE project_type_id = ?) vcp ON b.huc10 = vcp.huc10" if answers["omit_existing"] else ''
+        sql_part2 = "AND vcp.huc10 IS NULL" if answers["omit_existing"] else ''
+        sql_final = sql_base.format(sql_part1, sql_part2)
 
-    curs.execute(sql_final, sql_parms)
-    hucs = [row[0] for row in curs.fetchall()]
+        sql_parms = [job_types[answers['engine']]['output']] if answers["omit_existing"] else []
+        sql_parms.append(batch_answers['batch_id'])
+
+        curs.execute(sql_final, sql_parms)
+        hucs = [row[0] for row in curs.fetchall()]
 
     if len(hucs) == 0:
         print(f'No HUCs found for the given batch ID ({answers['batch_id']}). Exiting.')
@@ -157,6 +165,11 @@ def create_and_run_batch_job(api: CybercastorAPI, stage: str, db_path: str) -> N
             if not partial_batch_answers['partial_batch']:
                 return
 
+    start_answers = inquirer.prompt([inquirer.Confirm("start_job", message="Start job?", default=False)])
+    if start_answers['start_job'] is not True:
+        print('Aborting. No job created or started.')
+        return
+
     job_path = os.path.join(os.path.dirname(__file__), "..", "jobs", answers["name"] + ".json")
     job_path = get_unique_filename(job_path)
 
@@ -180,7 +193,7 @@ def create_and_run_batch_job(api: CybercastorAPI, stage: str, db_path: str) -> N
 
     print(f"Job file created: {job_path}")
 
-    if answers["start_job"]:
+    if start_answers["start_job"]:
         print("Starting job...")
         params = get_params(job_obj)
         add_job_mutation = api.load_mutation('addJob')
