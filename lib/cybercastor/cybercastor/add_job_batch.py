@@ -94,21 +94,31 @@ def create_and_run_batch_job(api: CybercastorAPI, stage: str, db_path: str) -> N
             message="Cybercastor engine?",
             choices=job_types.keys(),
         ),
-        inquirer.Text("name", message="Job name?"),
-        inquirer.Text("description", message="Job description?"),
-        inquirer.Text("tags", message="Tags?", default="2024CONUS"),
         inquirer.List("method", message="Method?", choices=["Batch ID", 'HUC List']),
+        inquirer.Text("tags", message="Tags?", default="2024CONUS"),
         inquirer.Confirm("omit_existing", message="Omit HUCs that already exist?", default=True),
     ]
     answers = inquirer.prompt(questions)
 
+    default_job_name = None
+    default_description = None
     if answers["method"] == 'HUC List':
         huc_answers = inquirer.prompt([inquirer.Text("huc_list", message="HUC list?")])
         hucs = huc_answers['huc_list'].split(',')
     else:
-        batch_answers = inquirer.prompt([inquirer.Text("batch_id", message="Database Batch ID?")])
-        if answers['description'] is None or answers['description'] == '':
-            answers['description'] = f'Batch ID: {batch_answers["batch_id"]}'
+        curs.execute("""
+            SELECT b.batch_id, b.name, count(bh.batch_id) hucs
+            FROM batches b
+                inner join batch_hucs bh on b.batch_id = bh.batch_id
+            GROUP BY b.name
+            ORDER BY b.name
+        """)
+        batches = {f'{row[1]} - ID{row[0]} ({row[2]} HUCs)': row[0] for row in curs.fetchall()}
+
+        batch_answers = inquirer.prompt([inquirer.List("batch", message="Batch?", choices=batches.keys())])
+        batch_id = batches[batch_answers['batch']]
+        default_job_name = batch_answers['batch'].split(' - ')[0]
+        default_description = f'Batch ID {batch_id}'
 
         # Notes:
         # 1. Uses the vw_conus_projects view to filter only to 2024 CONUS run projects (ignoring legacy model runs)
@@ -119,10 +129,16 @@ def create_and_run_batch_job(api: CybercastorAPI, stage: str, db_path: str) -> N
         sql_final = sql_base.format(sql_part1, sql_part2)
 
         sql_parms = [job_types[answers['engine']]['output']] if answers["omit_existing"] else []
-        sql_parms.append(batch_answers['batch_id'])
+        sql_parms.append(batch_id)
 
         curs.execute(sql_final, sql_parms)
         hucs = [row[0] for row in curs.fetchall()]
+
+    job_name_questions = [
+        inquirer.Text("name", message="Job name?", default=default_job_name),
+        inquirer.Text("description", message="Job description?", default=default_description)
+    ]
+    job_name_answers = inquirer.prompt(job_name_questions)
 
     if len(hucs) == 0:
         print(f'No HUCs found for the given batch ID ({answers['batch_id']}). Exiting.')
@@ -156,9 +172,9 @@ def create_and_run_batch_job(api: CybercastorAPI, stage: str, db_path: str) -> N
                                  message=f'Continue partial batch ({len(lookups)} of {len(hucs)})?', default=False),
             ]
 
-            missing_file = os.path.join(os.path.dirname(__file__), "..", "jobs", answers["name"] + "_missing.json")
+            missing_file = os.path.join(os.path.dirname(__file__), "..", "jobs", job_name_answers["name"] + "_missing.json")
             print(f'Writing skipped HUCs to {missing_file}')
-            with open(missing_file, "w") as f:
+            with open(missing_file, "w", encoding='utf8') as f:
                 json.dump(skipped_hucs, f, indent=4)
 
             partial_batch_answers = inquirer.prompt(partial_batch_questions)
@@ -170,12 +186,12 @@ def create_and_run_batch_job(api: CybercastorAPI, stage: str, db_path: str) -> N
         print('Aborting. No job created or started.')
         return
 
-    job_path = os.path.join(os.path.dirname(__file__), "..", "jobs", answers["name"] + ".json")
+    job_path = os.path.join(os.path.dirname(__file__), "..", "jobs", job_name_answers["name"] + ".json")
     job_path = get_unique_filename(job_path)
 
     job_obj = job_template.copy()
-    job_obj["name"] = answers["name"]
-    job_obj["description"] = answers["description"]
+    job_obj["name"] = job_name_answers["name"]
+    job_obj["description"] = job_name_answers["description"]
     job_obj["taskScriptId"] = answers["engine"]
     job_obj["env"]["TAGS"] = answers["tags"]
     job_obj["hucs"] = list(lookups.keys())
@@ -186,9 +202,9 @@ def create_and_run_batch_job(api: CybercastorAPI, stage: str, db_path: str) -> N
     elif stage == 'staging':
         job_obj['env']['RS_API_URL'] = 'https://api.data.riverscapes.net/staging'
     else:
-        raise Exception(f'Unknown server enviornment')
+        raise Exception('Unknown server enviornment')
 
-    with open(job_path, "w") as f:
+    with open(job_path, "w", encoding='utf8') as f:
         json.dump(job_obj, f, indent=4)
 
     print(f"Job file created: {job_path}")
