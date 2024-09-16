@@ -346,6 +346,12 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
 
     with GeopackageLayer(line_network) as lyr_ref:
         if lyr_ref.ogr_layer.GetFeatureCount() == 0:
+            with GeopackageLayer(os.path.join(intermediates_gpkg, LayerTypes['INTERMEDIATES'].sub_layers['VBET_DGO_POLYGONS'].rel_path), write=True) as lyr_dgo:
+                lyr_dgo.create_layer(
+                    ogr.wkbMultiPolygon, spatial_ref=lyr_ref.spatial_ref)
+            with GeopackageLayer(os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['SEGMENTATION_POINTS'].rel_path), write=True) as lyr_igo:
+                lyr_igo.create_layer(
+                    ogr.wkbMultiPoint, spatial_ref=lyr_ref.spatial_ref)
             log.info('No features found in the input network. Exiting.')
             return
 
