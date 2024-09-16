@@ -140,6 +140,8 @@ def split_vbet_polygons(vbet_polygons: Path, segmentation_points: Path, out_spli
             for point_feat, *_ in points_lyr.iterate_features(attribute_filter=f'{unique_stream_field} = {level_path}'):
                 point_geom = point_feat.GetGeometryRef()
                 point_sgeom = VectorBase.ogr2shapely(point_geom)
+                if point_sgeom is None:
+                    continue
                 list_points.append(point_sgeom)
 
             seed_points_sgeom_mpt = MultiPoint(list_points)

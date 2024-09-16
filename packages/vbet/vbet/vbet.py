@@ -344,6 +344,11 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
         lyr_active_vbet_init.create_layer(
             ogr.wkbMultiPolygon, spatial_ref=lyr_ref.spatial_ref, fields=fields)
 
+    with GeopackageLayer(line_network) as lyr_ref:
+        if lyr_ref.ogr_layer.GetFeatureCount() == 0:
+            log.info('No features found in the input network. Exiting.')
+            return
+
     # Generate the list of level paths to run, sorted by ascending order and optional user filter
     level_paths_to_run = []
     with sqlite3.connect(inputs_gpkg) as conn:
@@ -787,7 +792,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
                     continue
                 with GeopackageLayer(temp_centerlines, write=True) as lyr_cl:
                     g_flowline = [g for g in geom_flowline]
-                    if len(g_flowline) ==0:
+                    if len(g_flowline) == 0:
                         err_msg = f'No flowline found for level path {level_path}'
                         log.error(err_msg)
                         _tmterr("NO_FLOWLINE", err_msg)
