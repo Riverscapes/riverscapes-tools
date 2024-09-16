@@ -89,9 +89,9 @@ rscli download $VBET_DIR --id $VBET_ID \
   --file-filter "(vbet\.gpkg|intermediates\.gpkg)" \
   --no-input --no-ui --verbose
 
-rscli download $CONFINEMENT_DIR --id $CONFINEMENT_ID \
-  --file-filter "(confinement\.gpkg)" \
-  --no-input --no-ui --verbose
+# rscli download $CONFINEMENT_DIR --id $CONFINEMENT_ID \
+#   --file-filter "(confinement\.gpkg)" \
+#   --no-input --no-ui --verbose
 
 rscli download $ANTHRO_DIR --id $ANTHRO_ID \
   --file-filter "(anthro\.gpkg)" \
@@ -101,9 +101,9 @@ rscli download $RCAT_DIR --id $RCAT_ID \
   --file-filter "(rcat\.gpkg)" \
   --no-input --no-ui --verbose
 
-rscli download $BRAT_DIR --id $BRAT_ID \
-  --file-filter "(brat\.gpkg)" \
-  --no-input --no-ui --verbose
+# rscli download $BRAT_DIR --id $BRAT_ID \
+#   --file-filter "(brat\.gpkg)" \
+#   --no-input --no-ui --verbose
 
 echo "======================  Initial Disk space usage ======================="
 df -h
@@ -131,9 +131,9 @@ try() {
   if [[ $? != 0 ]]; then return 1; fi
 
   cd /usr/local/src/riverscapes-tools/packages/rme
-  python3 -m rme.rme_rs \
-    $RME_DIR/project.rs.xml \
-    "$RS_CONTEXT_DIR/project.rs.xml,$VBET_DIR/project.rs.xml",$CONFINEMENT_DIR/project.rs.xml,$ANTHRO_DIR/project.rs.xml,$RCAT_DIR/project.rs.xml,$BRAT_DIR/project.rs.xml \
+  # python3 -m rme.rme_rs \
+  #   $RME_DIR/project.rs.xml \
+  #   "$RS_CONTEXT_DIR/project.rs.xml,$VBET_DIR/project.rs.xml",$CONFINEMENT_DIR/project.rs.xml,$ANTHRO_DIR/project.rs.xml,$RCAT_DIR/project.rs.xml,$BRAT_DIR/project.rs.xml \
 
   echo "======================  Final Disk space usage ======================="
   df -h
