@@ -13,6 +13,7 @@ from osgeo import ogr, osr
 from shapely.ops import linemerge, voronoi_diagram
 from shapely.geometry import MultiLineString, MultiPoint
 from shapely.topology import TopologicalError
+from shapely.validation import make_valid
 
 from rscommons import GeopackageLayer, Logger, VectorBase, dotenv
 from rscommons.util import parse_metadata
@@ -141,13 +142,19 @@ def split_vbet_polygons(vbet_polygons: Path, segmentation_points: Path, out_spli
             for point_feat, *_ in points_lyr.iterate_features(attribute_filter=f'{unique_stream_field} = {level_path}'):
                 point_geom = point_feat.GetGeometryRef()
                 point_sgeom = VectorBase.ogr2shapely(point_geom)
-                if point_sgeom is None:
+                if not point_sgeom.is_valid:
+                    make_valid(point_sgeom)
+                if point_sgeom is None or point_sgeom.is_empty:
                     continue
                 list_points.append(point_sgeom)
 
             log.info(f'points for voronoi: {list_points}')
 
             seed_points_sgeom_mpt = MultiPoint(list_points)
+            if not seed_points_sgeom_mpt.is_valid:
+                make_valid(seed_points_sgeom_mpt)
+            if seed_points_sgeom_mpt is None or seed_points_sgeom_mpt.is_empty:
+                continue
             voronoi = voronoi_diagram(
                 seed_points_sgeom_mpt, envelope=vbet_sgeom)
             for poly in voronoi.geoms:

@@ -305,7 +305,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
     # Difference raster created later on...
     inactive_zone_raster = os.path.join(
         project_folder, LayerTypes['ELEVATED_FP_ZONES'].rel_path)
-    for raster in [vbet_zone_raster, active_zone_raster]:
+    for raster in [vbet_zone_raster, active_zone_raster, inactive_zone_raster]:
         with rasterio.open(raster, 'w', **int_meta) as rio:
             rio.write(empty_array, 1)
     _vbet_zones_node, vbet_zone_ras = project.add_project_raster(
@@ -352,6 +352,20 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
             with GeopackageLayer(os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['SEGMENTATION_POINTS'].rel_path), write=True) as lyr_igo:
                 lyr_igo.create_layer(
                     ogr.wkbMultiPoint, spatial_ref=lyr_ref.spatial_ref)
+            with GeopackageLayer(os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['LOW_LYING_FLOODPLAIN'].rel_path), write=True) as lyr_fp:
+                lyr_fp.create_layer(
+                    ogr.wkbMultiPolygon, spatial_ref=lyr_ref.spatial_ref)
+            with GeopackageLayer(os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['ELEVATED_FLOODPLAIN'].rel_path), write=True) as lyr_fp:
+                lyr_fp.create_layer(
+                    ogr.wkbMultiPolygon, spatial_ref=lyr_ref.spatial_ref)
+            with GeopackageLayer(os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['FLOODPLAIN'].rel_path), write=True) as lyr_fp:
+                lyr_fp.create_layer(
+                    ogr.wkbMultiPolygon, spatial_ref=lyr_ref.spatial_ref)
+            with GeopackageLayer(os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['VBET_CENTERLINES'].rel_path), write=True) as lyr_fp:
+                lyr_fp.create_layer(
+                    ogr.wkbMultiLineString, spatial_ref=lyr_ref.spatial_ref)
+            project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
+            project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['VBET_OUTPUTS'])
             log.info('No features found in the input network. Exiting.')
             return
 
