@@ -213,6 +213,9 @@ def get_channel_level_path(channel_area, lines, unique_stream_field, unique_reac
             nhidid_lpath_lookup[nhd_id] = lpath
 
     log.debug(f'Found {len(nhidid_lpath_lookup.keys())} level path lookups in flowline network')
+    if len(nhidid_lpath_lookup.keys()) == 0:
+        log.error('No level paths found in flowline network')
+        return
 
     with GeopackageLayer(channel_area) as lyr_channel, \
             GeopackageLayer(lines) as lyr_intersect:
