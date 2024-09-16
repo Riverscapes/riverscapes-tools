@@ -124,10 +124,8 @@ try() {
     $RS_CONTEXT_DIR/topography/dem.tif \
     $RS_CONTEXT_DIR/topography/dem_hillshade.tif \
     $RME_DIR \
-    --confinement_dgos $CONFINEMENT_DIR/outputs/confinement.gpkg/confinement_dgos \
     --anthro_dgos $ANTHRO_DIR/outputs/anthro.gpkg/vwDgos \
     --rcat_dgos $RCAT_DIR/outputs/rcat.gpkg/vwDgos \
-    --brat_dgos $BRAT_DIR/outputs/brat.gpkg/vwDgos \
     --meta "Runner=Cybercastor" \
     --verbose
   if [[ $? != 0 ]]; then return 1; fi
