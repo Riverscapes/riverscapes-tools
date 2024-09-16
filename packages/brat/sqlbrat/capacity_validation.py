@@ -66,8 +66,8 @@ def dam_count_table(brat_gpkg_path: str, dams_gpkg_path: str):
         db.curs.execute('SELECT fid FROM vwReaches')
         reachids = [row['fid'] for row in db.curs.fetchall()]
         db.curs.execute('DROP TABLE IF EXISTS dam_counts')
-        db.curs.execute('CREATE TABLE dam_counts (ReachID INTEGER PRIMARY KEY, dam_count INTEGER, dam_density REAL, predicted_capacity REAL, length REAL, percent_capacity REAL)')
-        db.curs.execute('INSERT INTO dam_counts (ReachID, predicted_capacity, length) SELECT fid, oCC_EX, iGeo_Len FROM vwReaches')
+        db.curs.execute('CREATE TABLE dam_counts (ReachID INTEGER PRIMARY KEY, FCode INTEGER, dam_count INTEGER, dam_density REAL, predicted_capacity REAL, length REAL, percent_capacity REAL)')
+        db.curs.execute('INSERT INTO dam_counts (ReachID, FCode, predicted_capacity, length) SELECT fid, ReachCode, oCC_EX, iGeo_Len FROM vwReaches')
         for reachid in reachids:
             if reachid in dam_cts.keys():
                 db.curs.execute('UPDATE dam_counts SET dam_count = ? WHERE reachid = ?', (dam_cts[reachid], reachid))
@@ -111,7 +111,7 @@ def electivity_index(gpkg_path: str):
         total_dams = db.curs.fetchone()['dams']
         db.curs.execute('SELECT SUM(iGeo_Len) As len FROM vwReaches')
         total_length = db.curs.fetchone()['len']
-        db.curs.execute('SELECT SUM(dam_count) AS dc, SUM(length) AS sl, SUM(predicted_capacity * (length/1000)) AS cap FROM dam_counts WHERE predicted_capacity = 0')
+        db.curs.execute('SELECT SUM(dam_count) AS dc, SUM(length) AS sl, SUM(predicted_capacity * (length/1000)) AS cap FROM dam_counts WHERE predicted_capacity = 0 and (dam_count > 0 or FCode in (46006, 55800))')
         none_cap = db.curs.fetchone()
         none_len = none_cap['sl']
         none_ct = none_cap['dc']
@@ -125,28 +125,28 @@ def electivity_index(gpkg_path: str):
         else:
             none_percap = round((none_ct / none_predcap)*100, 2) if none_predcap > 0 else 'NA'
             none_ei = (none_ct / total_dams) / (none_len / total_length)
-        db.curs.execute('SELECT SUM(dam_count) AS dc, SUM(length) AS sl, SUM(predicted_capacity * (length/1000)) AS cap FROM dam_counts WHERE predicted_capacity > 0 and predicted_capacity <= 1')
+        db.curs.execute('SELECT SUM(dam_count) AS dc, SUM(length) AS sl, SUM(predicted_capacity * (length/1000)) AS cap FROM dam_counts WHERE predicted_capacity > 0 and predicted_capacity <= 1 and (dam_count > 0 or FCode in (46006, 55800))')
         rare_cap = db.curs.fetchone()
         rare_len = rare_cap['sl']
         rare_ct = rare_cap['dc']
         rare_predcap = rare_cap['cap']
         rare_percap = round((rare_ct / rare_predcap)*100, 2) if rare_predcap > 0 else 'NA'
         rare_ei = (rare_ct / total_dams) / (rare_len / total_length)
-        db.curs.execute('SELECT SUM(dam_count) AS dc, SUM(length) AS sl, SUM(predicted_capacity * (length/1000)) AS cap FROM dam_counts WHERE predicted_capacity > 1 and predicted_capacity <= 5')
+        db.curs.execute('SELECT SUM(dam_count) AS dc, SUM(length) AS sl, SUM(predicted_capacity * (length/1000)) AS cap FROM dam_counts WHERE predicted_capacity > 1 and predicted_capacity <= 5 and (dam_count > 0 or FCode in (46006, 55800))')
         occ_cap = db.curs.fetchone()
         occ_len = occ_cap['sl']
         occ_ct = occ_cap['dc']
         occ_predcap = occ_cap['cap']
         occ_ei = (occ_ct / total_dams) / (occ_len / total_length)
         occ_percap = round((occ_ct / occ_predcap)*100, 2) if occ_predcap > 0 else 'NA'
-        db.curs.execute('SELECT SUM(dam_count) AS dc, SUM(length) AS sl, SUM(predicted_capacity * (length/1000)) AS cap FROM dam_counts WHERE predicted_capacity > 5 and predicted_capacity <= 15')
+        db.curs.execute('SELECT SUM(dam_count) AS dc, SUM(length) AS sl, SUM(predicted_capacity * (length/1000)) AS cap FROM dam_counts WHERE predicted_capacity > 5 and predicted_capacity <= 15 and (dam_count > 0 or FCode in (46006, 55800))')
         freq_cap = db.curs.fetchone()
         freq_len = freq_cap['sl']
         freq_ct = freq_cap['dc']
         freq_predcap = freq_cap['cap']
         freq_percap = round((freq_ct / freq_predcap)*100, 2) if freq_predcap > 0 else 'NA'
         freq_ei = (freq_ct / total_dams) / (freq_len / total_length)
-        db.curs.execute('SELECT SUM(dam_count) AS dc, SUM(length) AS sl, SUM(predicted_capacity * (length/1000)) AS cap FROM dam_counts WHERE predicted_capacity > 15')
+        db.curs.execute('SELECT SUM(dam_count) AS dc, SUM(length) AS sl, SUM(predicted_capacity * (length/1000)) AS cap FROM dam_counts WHERE predicted_capacity > 15 and (dam_count > 0 or FCode in (46006, 55800))')
         perv_cap = db.curs.fetchone()
         perv_len = perv_cap['sl']
         perv_ct = perv_cap['dc']
@@ -243,23 +243,23 @@ def electivity_index(gpkg_path: str):
 def validation_plots(brat_gpkg_path: str):
     pred_obs = {}
     with SQLiteCon(brat_gpkg_path) as db:
-        db.curs.execute('SELECT AVG(dam_density) AS avg_dam_density, AVG(predicted_capacity) AS avg_pred_cap FROM dam_counts WHERE predicted_capacity = 0')
+        db.curs.execute('SELECT AVG(dam_density) AS avg_dam_density, AVG(predicted_capacity) AS avg_pred_cap FROM dam_counts WHERE predicted_capacity = 0 and (dam_count > 0 or FCode in (46006, 55800))')
         none_res = db.curs.fetchone()
         if none_res['avg_dam_density'] is None:
             none_res['avg_dam_density'] = 0
         if none_res['avg_pred_cap'] is None:
             none_res['avg_pred_cap'] = 0
         pred_obs['none'] = [none_res['avg_dam_density'], none_res['avg_pred_cap']]
-        db.curs.execute('SELECT AVG(dam_density) AS avg_dam_density, AVG(predicted_capacity) AS avg_pred_cap FROM dam_counts WHERE predicted_capacity > 0 and predicted_capacity <= 1')
+        db.curs.execute('SELECT AVG(dam_density) AS avg_dam_density, AVG(predicted_capacity) AS avg_pred_cap FROM dam_counts WHERE predicted_capacity > 0 and predicted_capacity <= 1 and (dam_count > 0 or FCode in (46006, 55800))')
         rare_res = db.curs.fetchone()
         pred_obs['rare'] = [rare_res['avg_dam_density'], rare_res['avg_pred_cap']]
-        db.curs.execute('SELECT AVG(dam_density) AS avg_dam_density, AVG(predicted_capacity) AS avg_pred_cap FROM dam_counts WHERE predicted_capacity > 1 and predicted_capacity <= 5')
+        db.curs.execute('SELECT AVG(dam_density) AS avg_dam_density, AVG(predicted_capacity) AS avg_pred_cap FROM dam_counts WHERE predicted_capacity > 1 and predicted_capacity <= 5 and (dam_count > 0 or FCode in (46006, 55800))')
         occ_res = db.curs.fetchone()
         pred_obs['occ'] = [occ_res['avg_dam_density'], occ_res['avg_pred_cap']]
-        db.curs.execute('SELECT AVG(dam_density) AS avg_dam_density, AVG(predicted_capacity) AS avg_pred_cap FROM dam_counts WHERE predicted_capacity > 5 and predicted_capacity <= 15')
+        db.curs.execute('SELECT AVG(dam_density) AS avg_dam_density, AVG(predicted_capacity) AS avg_pred_cap FROM dam_counts WHERE predicted_capacity > 5 and predicted_capacity <= 15 and (dam_count > 0 or FCode in (46006, 55800))')
         freq_res = db.curs.fetchone()
         pred_obs['freq'] = [freq_res['avg_dam_density'], freq_res['avg_pred_cap']]
-        db.curs.execute('SELECT AVG(dam_density) AS avg_dam_density, AVG(predicted_capacity) AS avg_pred_cap FROM dam_counts WHERE predicted_capacity > 15')
+        db.curs.execute('SELECT AVG(dam_density) AS avg_dam_density, AVG(predicted_capacity) AS avg_pred_cap FROM dam_counts WHERE predicted_capacity > 15 and (dam_count > 0 or FCode in (46006, 55800))')
         perv_res = db.curs.fetchone()
         pred_obs['perv'] = [perv_res['avg_dam_density'], perv_res['avg_pred_cap']]
 
