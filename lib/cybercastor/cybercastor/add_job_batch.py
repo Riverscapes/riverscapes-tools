@@ -88,17 +88,17 @@ def create_and_run_batch_job(api: CybercastorAPI, stage: str, db_path: str) -> N
     conn = sqlite3.connect(db_path)
     curs = conn.cursor()
 
+    job_type_names = list(job_types.keys())
+    job_type_names.sort()
+
     questions = [
-        inquirer.List(
-            "engine",
-            message="Cybercastor engine?",
-            choices=job_types.keys(),
-        ),
-        inquirer.List("method", message="Method?", choices=["Batch ID", 'HUC List']),
+        inquirer.List('engine', message='Cybercastor engine?', choices=job_type_names),
+        inquirer.List("method", message="Method?", choices=["Batch", 'HUC List']),
         inquirer.Text("tags", message="Tags?", default="2024CONUS"),
         inquirer.Confirm("omit_existing", message="Omit HUCs that already exist?", default=True),
     ]
     answers = inquirer.prompt(questions)
+    engine = job_types[answers['engine']]
 
     default_job_name = None
     default_description = None
@@ -128,7 +128,7 @@ def create_and_run_batch_job(api: CybercastorAPI, stage: str, db_path: str) -> N
         sql_part2 = "AND vcp.huc10 IS NULL" if answers["omit_existing"] else ''
         sql_final = sql_base.format(sql_part1, sql_part2)
 
-        sql_parms = [job_types[answers['engine']]['output']] if answers["omit_existing"] else []
+        sql_parms = [engine['output']] if answers["omit_existing"] else []
         sql_parms.append(batch_id)
 
         curs.execute(sql_final, sql_parms)
@@ -154,12 +154,13 @@ def create_and_run_batch_job(api: CybercastorAPI, stage: str, db_path: str) -> N
 
     lookups = {huc: {} for huc in hucs}
     skipped_hucs = {}
-    if len(job_types[answers["engine"]]['upstream']) > 0:
+    if len(engine['upstream']) > 0:
         for huc in hucs:
-            upstream_projects, missing_project_types = get_upstream_projects(huc, answers['engine'], curs)
+            upstream_projects, missing_project_types = get_upstream_projects(huc, engine, curs)
             if len(missing_project_types) > 0:
                 skipped_hucs[huc] = missing_project_types
-                lookups.pop(huc)
+                if huc in lookups:
+                    lookups.pop(huc)
             else:
                 lookups[huc] = upstream_projects
 
@@ -222,6 +223,9 @@ def create_and_run_batch_job(api: CybercastorAPI, stage: str, db_path: str) -> N
         with open(outputFile, 'w', encoding='utf8') as outfile:
             json.dump(job_out, outfile, indent=4, sort_keys=True)
 
+    another_job = inquirer.prompt([inquirer.Confirm("another_job", message="Create another job?", default=False)])
+    return another_job['another_job']
+
 
 def get_unique_filename(filepath: str) -> str:
     # Split the file path into directory, file name, and extension
@@ -245,7 +249,7 @@ def get_upstream_projects(huc: str, job_type: str, curs: sqlite3.Cursor) -> list
 
     missing_project_types = []
     upstream_projects = {}
-    for upstream_type in job_types[job_type]['upstream']:
+    for upstream_type in job_type['upstream']:
         curs.execute("SELECT project_id FROM vw_conus_projects WHERE huc10 = ? AND project_type_id = ? ORDER BY created_on DESC LIMIT 1", (huc, upstream_type))
         row = curs.fetchone()
         if row is None:
@@ -264,4 +268,6 @@ if __name__ == "__main__":
     args = dotenv.parse_args_env(parser)
 
     with CybercastorAPI(stage=args.stage) as api:
-        create_and_run_batch_job(api, args.stage, args.db_path)
+        another = True
+        while another:
+            another = create_and_run_batch_job(api, args.stage, args.db_path)
