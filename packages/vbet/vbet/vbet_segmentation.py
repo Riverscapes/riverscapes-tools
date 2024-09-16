@@ -136,6 +136,8 @@ def split_vbet_polygons(vbet_polygons: Path, segmentation_points: Path, out_spli
             if not vbet_geom.IsValid():
                 vbet_geom = vbet_geom.MakeValid()
             vbet_sgeom = VectorBase.ogr2shapely(vbet_geom)
+            if vbet_sgeom is None or vbet_sgeom.is_empty:
+                continue
             list_points = []
 
             for point_feat, *_ in points_lyr.iterate_features(attribute_filter=f'{unique_stream_field} = {level_path}'):
@@ -154,6 +156,7 @@ def split_vbet_polygons(vbet_polygons: Path, segmentation_points: Path, out_spli
                 continue
             log.info(f'Generating Voronoi Diagram for Level Path {level_path}')
             log.info(f'pts: {[pt.wkt for pt in seed_points_sgeom_mpt.geoms]}')
+            log.info(f'vbet: {vbet_sgeom.wkt}')
             voronoi = voronoi_diagram(
                 seed_points_sgeom_mpt, envelope=vbet_sgeom)
             for poly in voronoi.geoms:
