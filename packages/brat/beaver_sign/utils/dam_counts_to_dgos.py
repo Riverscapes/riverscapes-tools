@@ -30,7 +30,8 @@ def dam_counts_to_dgos(dam_pts: str, dgos: str):
                 if geom.Contains(dam_ftr.GetGeometryRef()):
                     dam_ct += 1
 
-            dam_cts[dgo_ftr.GetFID()] = [dam_ct, cl_len]
+            if dam_ct > 0:
+                dam_cts[dgo_ftr.GetFID()] = [dam_ct, cl_len]
 
     with GeopackageLayer(dgos, write=True) as dgo:
         dgo.ogr_layer.CreateField(ogr.FieldDefn('dam_ct', ogr.OFTInteger))
@@ -58,5 +59,7 @@ def dam_counts_to_dgos(dam_pts: str, dgos: str):
         ct += 1
         progbar.update(ct)
         conn.ExecuteSQL(f'UPDATE dgos SET dam_ct = {dam_ct[0]}, dam_density = {dam_ct[0] / (dam_ct[1] / 1000)} WHERE fid = {fid}')
+
+    conn.ExecuteSQL('UPDATE dgos SET dam_ct = 0, dam_density = 0 WHERE dam_ct IS NULL')
 
     log.info('Dam counts added to DGOs')
