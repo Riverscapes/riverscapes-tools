@@ -109,7 +109,7 @@ def electivity_index(gpkg_path: str):
     with SQLiteCon(gpkg_path) as db:
         db.curs.execute('SELECT SUM(dam_count) AS dams FROM dam_counts')
         total_dams = db.curs.fetchone()['dams']
-        db.curs.execute('SELECT SUM(iGeo_Len) As len FROM vwReaches')
+        db.curs.execute('SELECT SUM(length) As len FROM dam_counts where dam_count > 0 or FCode in (46006, 55800)')
         total_length = db.curs.fetchone()['len']
         db.curs.execute('SELECT SUM(dam_count) AS dc, SUM(length) AS sl, SUM(predicted_capacity * (length/1000)) AS cap FROM dam_counts WHERE predicted_capacity = 0 and (dam_count > 0 or FCode in (46006, 55800))')
         none_cap = db.curs.fetchone()
