@@ -31,7 +31,9 @@ def dump_riverscapes(rs_api: RiverscapesAPI, db_path: str):
     curs = conn.cursor()
 
     # Basically just search for everything
-    searchParams = RiverscapesSearchParams({})
+    searchParams = RiverscapesSearchParams({
+        'tags': ['2024CONUS'],
+    })
 
     # Determine last created date projects in the database.
     # Delete all projects that were in that same day and then start the download
@@ -47,7 +49,7 @@ def dump_riverscapes(rs_api: RiverscapesAPI, db_path: str):
         searchParams.createdOnFrom = last_inserted
 
     # Create a timedelta object with a difference of 1 day
-    for project, _stats, _searchtotal in rs_api.search(searchParams, progress_bar=True, page_size=200):
+    for project, _stats, _searchtotal in rs_api.search(searchParams, progress_bar=True, page_size=100):
 
         # Attempt to retrieve the huc10 from the project metadata if it exists
         huc10 = None
