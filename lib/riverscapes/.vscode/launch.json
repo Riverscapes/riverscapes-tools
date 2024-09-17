@@ -101,6 +101,19 @@
       ]
     },
     {
+      "name": "Scrape RME",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "riverscapes.scrape-rme",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/.env",
+      "args": [
+        "production",
+        "{env:DATA_ROOT}/rme-scrape",
+        "{env:DATA_ROOT}/warehouse_report/riverscapes_production.gpkg",     ]
+    },
+    {
       "name": "Python: Current File",
       "type": "debugpy",
       "request": "launch",
