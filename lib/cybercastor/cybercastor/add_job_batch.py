@@ -46,7 +46,7 @@ job_types = {
     },
     'rs_metric_engine': {
         'output': 'rs_metric_engine',
-        'upstream': ['rscontext', 'rcat', 'brat', 'confinement', 'vbet'],
+        'upstream': ['rscontext', 'rcat',  'vbet', 'anthro'],  # 'brat''confinement',
     },
     'anthro': {
         'output': 'anthro',
@@ -83,7 +83,7 @@ job_template = {
 }
 
 
-def create_and_run_batch_job(api: CybercastorAPI, stage: str, db_path: str) -> None:
+def create_and_run_batch_job(api: CybercastorAPI, stage: str, db_path: str, git_ref: str, engine: str) -> None:
 
     conn = sqlite3.connect(db_path)
     curs = conn.cursor()
@@ -92,7 +92,7 @@ def create_and_run_batch_job(api: CybercastorAPI, stage: str, db_path: str) -> N
     job_type_names.sort()
 
     questions = [
-        inquirer.List('engine', message='Cybercastor engine?', choices=job_type_names),
+        inquirer.List('engine', message='Cybercastor engine?', choices=job_type_names, default=engine),
         inquirer.List("method", message="Method?", choices=["Batch", 'HUC List']),
         inquirer.Text("tags", message="Tags?", default="2024CONUS"),
         inquirer.Confirm("omit_existing", message="Omit HUCs that already exist?", default=True),
@@ -162,6 +162,10 @@ def create_and_run_batch_job(api: CybercastorAPI, stage: str, db_path: str) -> N
                 if huc in lookups:
                     lookups.pop(huc)
             else:
+                if answers['engine'] == 'rs_metric_engine':
+                    upstream_projects['BRAT_ID'] = '00000000-0000-0000-0000-000000000000'
+                    upstream_projects['CONFINEMENT_ID'] = '00000000-0000-0000-0000-000000000000'
+
                 lookups[huc] = upstream_projects
 
         print(f'Found {len(lookups)} of {len(hucs)} HUCs with all upstream projects.')
@@ -182,7 +186,11 @@ def create_and_run_batch_job(api: CybercastorAPI, stage: str, db_path: str) -> N
             if not partial_batch_answers['partial_batch']:
                 return
 
-    start_answers = inquirer.prompt([inquirer.Confirm("start_job", message="Start job?", default=False)])
+    start_answers = inquirer.prompt([
+        inquirer.Text("git_ref", message="Git branch?", default='master' if git_ref is None else git_ref),
+        inquirer.Confirm("start_job", message="Start job?", default=False)
+    ])
+
     if start_answers['start_job'] is not True:
         print('Aborting. No job created or started.')
         return
@@ -197,6 +205,11 @@ def create_and_run_batch_job(api: CybercastorAPI, stage: str, db_path: str) -> N
     job_obj["env"]["TAGS"] = answers["tags"]
     job_obj["hucs"] = list(lookups.keys())
     job_obj["lookups"] = lookups
+
+    git_ref = start_answers["git_ref"]
+    if git_ref is not None and git_ref != '' and git_ref != 'master':
+        print(f"Using git ref: {git_ref}")
+        job_obj["env"]["GIT_REF"] = git_ref
 
     if stage == 'production':
         job_obj['env']['RS_API_URL'] = 'https://api.data.riverscapes.net'
@@ -224,7 +237,7 @@ def create_and_run_batch_job(api: CybercastorAPI, stage: str, db_path: str) -> N
             json.dump(job_out, outfile, indent=4, sort_keys=True)
 
     another_job = inquirer.prompt([inquirer.Confirm("another_job", message="Create another job?", default=False)])
-    return another_job['another_job']
+    return another_job['another_job'], engine['output'], git_ref
 
 
 def get_unique_filename(filepath: str) -> str:
@@ -269,5 +282,7 @@ if __name__ == "__main__":
 
     with CybercastorAPI(stage=args.stage) as api:
         another = True
+        known_engine = None
+        git_ref = None
         while another:
-            another = create_and_run_batch_job(api, args.stage, args.db_path)
+            another, known_engine, git_ref = create_and_run_batch_job(api, args.stage, args.db_path, git_ref, known_engine)
