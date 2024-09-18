@@ -533,7 +533,7 @@ class RiverscapesAPI:
                 continue
             # now filter the
             if re_filter is not None and len(re_filter) > 0:
-                if not any([re.compile(x).match(file['localPath'], re.IGNORECASE) for x in re_filter]):
+                if not any([re.compile(x, re.IGNORECASE).match(file['localPath'], ) for x in re_filter]):
                     continue
             filtered_files.append(file)
 
