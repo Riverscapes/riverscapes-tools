@@ -111,7 +111,9 @@
       "args": [
         "production",
         "{env:DATA_ROOT}/rme-scrape",
-        "{env:DATA_ROOT}/warehouse_report/riverscapes_production.gpkg",     ]
+        "{env:DATA_ROOT}/warehouse_report/riverscapes_production.gpkg",
+        "17"
+    ]
     },
     {
       "name": "Python: Current File",
