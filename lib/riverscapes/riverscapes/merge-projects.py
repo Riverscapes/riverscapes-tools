@@ -1,8 +1,16 @@
 """
-Demo script to download files from Data Exchange
+Merge projects within a collection into a single collection.
+
+Example file regex list: .*brat\.gpkg|.*brat\.html
+
+Note:
+- period then star matches any characters at the start of the string.
+- periods in the actual string need to be escaped with a backslash.
+- the pipe character is used to separate the regexes.
 """
-from typing import Dict, Tuple
+from typing import Dict, Tuple, List
 from datetime import datetime
+import re
 import sys
 import os
 import logging
@@ -34,7 +42,7 @@ name_lookup = {'RSContext': "RS Context",
                'rs_metric_engine': "Metric Engine"}
 
 
-def merge_projects(projects_lookup: Dict[str, RiverscapesProject], merged_dir: str, name: str, project_type: str, collection_id: str, rs_stage: str, delete_source: bool = False) -> None:
+def merge_projects(projects_lookup: Dict[str, RiverscapesProject], merged_dir: str, name: str, project_type: str, collection_id: str, rs_stage: str, regex_list: List[str], delete_source: bool = False) -> None:
     """
     Merge the projects in the projects_lookup dictionary into a single project
     """
@@ -55,8 +63,8 @@ def merge_projects(projects_lookup: Dict[str, RiverscapesProject], merged_dir: s
             continue
         first_project_xml = project_xml
 
-        get_raster_datasets(project_xml, project_rasters)
-        get_vector_datasets(project_xml, project_vectors)
+        get_raster_datasets(project_xml, project_rasters, regex_list)
+        get_vector_datasets(project_xml, project_vectors, regex_list)
         get_bounds_geojson_file(project_xml, bounds_geojson_files)
 
     process_rasters(project_rasters, merged_dir, delete_source=delete_source)
@@ -228,7 +236,7 @@ def get_bounds_geojson_file(project_xml_path: str, bounds_files):
         bounds_files.append(abs_path)
 
 
-def get_vector_datasets(project_xml_path: str, master_project: Dict) -> None:
+def get_vector_datasets(project_xml_path: str, master_project: Dict, regex_list) -> None:
     """
     Discover all the vector datasets in the project.rs.xml file and incorporate them
     intro the master project dictionary.
@@ -236,12 +244,18 @@ def get_vector_datasets(project_xml_path: str, master_project: Dict) -> None:
     master_project: Dict - The master list of GeoPackages and feature classes
     """
 
+    log = Logger('Vectors')
+
     tree = ET.parse(project_xml_path)
     # find each geopackage in the project
     for geopackage in tree.findall('.//Geopackage'):
         gpkg_id = geopackage.attrib['id']
         path = geopackage.find('Path').text
         name = geopackage.find('Name').text
+
+        if not any([re.compile(x, re.IGNORECASE).match(path) for x in regex_list]):
+            log.info(f'Skipping non-regex raster {name} with path {path}')
+            continue
 
         if (gpkg_id not in master_project):
             master_project[gpkg_id] = {'rel_path': path, 'abs_path': os.path.join(os.path.dirname(project_xml_path), path), 'name': name, 'id': gpkg_id, 'layers': {}}
@@ -310,7 +324,7 @@ def process_rasters(master_project: Dict, output_dir: str, delete_source: bool =
 
         raster = Raster(raster_info['occurences'][0]['path'])
         integer_raster_enums = [gdal.GDT_Byte, gdal.GDT_UInt16, gdal.GDT_UInt32, gdal.GDT_Int16, gdal.GDT_Int32]
-        compression = f'COMPRESS={"DEFLATE" if raster.dataType in integer_raster_enums else "LZW" }'
+        compression = f'COMPRESS={"DEFLATE" if raster.dataType in integer_raster_enums else "LZW"}'
         no_data = f'-a_nodata {raster.nodata}' if raster.nodata is not None else ''
 
         input_rasters = [f"\"{rp['path']}\"" for rp in raster_info['occurences']]
@@ -329,13 +343,15 @@ def process_rasters(master_project: Dict, output_dir: str, delete_source: bool =
                     os.remove(raster_path)
 
 
-def get_raster_datasets(project, master_project) -> None:
+def get_raster_datasets(project, master_project, regex_list: List[str]) -> None:
     """
     Discover all the rasters in the project.rs.xml file and incorporate them
-    intro the master project dictionary.
+    intro the master project dictionary. If their path matches the regex_list
     project: str - Path to the project.rs.xml file
     master_project: Dict - The master list of rasters across all projects
     """
+
+    log = Logger('Rasters')
 
     tree = ET.parse(project)
     rasters = tree.findall('.//Raster') + tree.findall('.//DEM')
@@ -343,6 +359,11 @@ def get_raster_datasets(project, master_project) -> None:
         raster_id = raster.attrib['id']
         path = raster.find('Path').text
         name = raster.find('Name').text
+
+        if not any([re.compile(x, re.IGNORECASE).match(path) for x in regex_list]):
+            log.info(f'Skipping non-regex raster {name} with path {path}')
+            continue
+
         if raster_id not in master_project:
             master_project[raster_id] = {'path': path, 'name': name, 'id': raster_id, 'occurences': []}
         master_project[raster_id]['occurences'].append({'path': os.path.join(os.path.dirname(project), path)})
@@ -357,18 +378,30 @@ def main():
     parser.add_argument('working_folder', help='top level folder for downloads and output', type=str)
     args = dotenv.parse_args_env(parser)
 
+    default_file_regex = r'.*'
+
     with RiverscapesAPI() as api:
         project_types = api.get_project_types()
         questions = [
-            inquirer.Text('collection_id', message="Enter a valid Collection ID", default="847cfe5f-dc27-42d2-9262-10066f8788d6"),
-            inquirer.Text('output_name', message="Enter the name for this project", default="Snake River Plains Merged "),
+            inquirer.Text('collection_id', message="Enter a valid Collection ID", default="e93450e5-68bf-4c43-bca0-6a6995bd06ad"),
+            inquirer.Text('output_name', message="Enter the name for this project", default="test"),
             # Choose a project type from a list of available project types
-            inquirer.List('project_type', message="Choose a project type", choices=project_types.keys(), default='VBET'),
-            inquirer.Confirm('delete_source', message="Delete source files after merging?", default=False)
+            inquirer.List('project_type', message="Choose a project type", choices=project_types.keys(), default='BRAT'),
+            inquirer.Confirm('delete_source', message="Delete source files after merging?", default=False),
+            # example: .*brat\.gpkg|.*brat\.html
+            inquirer.Text('file_regex_list', message='List of file regexes to download. Separate with Pipe (|)', default=default_file_regex),
         ]
         answers = inquirer.prompt(questions)
 
         output_name = f"{answers['output_name']} Merged {name_lookup.get(answers['project_type'], answers['project_type'])}"
+
+        # Parse the file regex list separated by pipes.
+        file_regex_list = answers['file_regex_list'].split('|') if answers['file_regex_list'] != default_file_regex and answers['file_regex_list'] != '' else []
+
+        # Always include files used by the merge process: project xml, any logs and bounds GeoJSON
+        file_regex_list.append(r'project\.rs\.xml')
+        file_regex_list.append(r'project_bounds\.geojson')
+        file_regex_list.append(r'.*\.log')
 
         # Set up some reasonable folders to store things
         working_folder = os.path.join(args.working_folder, output_name)
@@ -393,12 +426,12 @@ def main():
                 sys.exit(1)
 
             download_path = os.path.join(download_folder, project.id)
-            api.download_files(project.id, download_path)
+            api.download_files(project.id, download_path, file_regex_list)
             projects_lookup[download_path] = project
 
         delete_source = answers['delete_source']
 
-        merge_projects(projects_lookup, merged_folder, output_name, answers['project_type'], answers['collection_id'], api.stage, delete_source=delete_source)
+        merge_projects(projects_lookup, merged_folder, output_name, answers['project_type'], answers['collection_id'], api.stage, file_regex_list, delete_source=delete_source)
 
     log.info('Process complete')
 
