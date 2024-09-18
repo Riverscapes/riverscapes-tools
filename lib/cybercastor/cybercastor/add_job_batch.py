@@ -141,7 +141,7 @@ def create_and_run_batch_job(api: CybercastorAPI, stage: str, db_path: str, git_
     job_name_answers = inquirer.prompt(job_name_questions)
 
     if len(hucs) == 0:
-        print(f'No HUCs found for the given batch ID ({answers['batch_id']}). Exiting.')
+        print(f'No HUCs found for the given batch ID ({batch_id}). Exiting.')
         return
 
     if (len(hucs) > MAX_TASKS):
