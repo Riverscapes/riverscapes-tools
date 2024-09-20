@@ -114,6 +114,7 @@ CREATE TABLE metrics (
     dgo_area_acres REAL,
     dgo_length_miles REAL,
     active_area REAL,
+    active_area_max REAL,
     floodplain_access_area REAL,
     lui_zero_area REAL,
     hist_riparian_area REAL,
@@ -134,6 +135,7 @@ SELECT
     dgo_area_acres,
     dgo_length_miles,
     active_area,
+    active_area_max,
     floodplain_access_area,
     lui_zero_area,
     hist_riparian_area
