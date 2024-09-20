@@ -42,15 +42,15 @@ def scrape_rme(rs_api: RiverscapesAPI,  projects: Dict[str, str], download_dir: 
 
             scrape_huc(huc, rme_guid, rme_gpkg, rcat_guid, rcat_gpkg, output_gpkg)
 
-            if delete_downloads is True:
-                try:
-                    log.info(f'Deleting download directory {huc_dir}')
-                    shutil.rmtree(huc_dir)
-                except Exception as e:
-                    log.error(f'Error deleting download directory {huc_dir}: {e}')
         except Exception as e:
             log.error(f'Error scraping HUC {huc}: {e}')
-            continue
+
+        if delete_downloads is True and os.path.isdir(huc_dir):
+            try:
+                log.info(f'Deleting download directory {huc_dir}')
+                shutil.rmtree(huc_dir)
+            except Exception as e:
+                log.error(f'Error deleting download directory {huc_dir}: {e}')
 
 
 def download_file(rs_api: RiverscapesAPI, project_id: str, download_dir: str, regex: str) -> str:
@@ -330,7 +330,8 @@ def main():
         print(f'Data Exchange project dump database file not found: {args.db_path}')
         sys.exit(1)
 
-    if args.huc2 < 1 or args.huc2 > 18:
+    huc2 = int(args.huc2)
+    if huc2 < 1 or huc2 > 18:
         print(f'HUC2 {args.huc2} must be between 1 and 18')
 
     # Set up some reasonable folders to store things
@@ -372,7 +373,7 @@ def main():
     log.info(f'Found {len(projects)} RME projects in Data Exchange dump')
 
     with RiverscapesAPI(stage=args.stage) as api:
-        scrape_rme(api, projects, download_folder, os.path.join(scraped_folder, f'rme_scrape_huc{args.huc2}.gpkg'), False)
+        scrape_rme(api, projects, download_folder, os.path.join(scraped_folder, f'rme_scrape_huc{args.huc2}.gpkg'), True)
 
     log.info('Process complete')
 

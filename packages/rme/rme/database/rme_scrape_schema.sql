@@ -58,6 +58,8 @@ create table dgos
 CREATE INDEX dgos_huc_level_path_seg_distance_index
     ON dgos (huc, level_path, seg_distance);
 
+CREATE index if_dgo_fcode ON dgos(huc, level_path, seg_distance, fcode);
+
 CREATE TABLE dgo_metric_values (
     huc TEXT NOT NULL,
     level_path TEXT NOT NULL,
@@ -69,7 +71,12 @@ CREATE TABLE dgo_metric_values (
 );
 
 CREATE index dgo_metric_values_huc_level_path_seg_distance_metric_id_index
-    on dgo_metric_values (huc, level_path, seg_distance, metric_id);
+    on dgo_metric_values (huc, level_path, seg_distance);
+
+CREATE index ix_dgo_metric_values_ownership
+    ON dgo_metric_values (huc, level_path, seg_distance, metric_value) where metric_id = 1;
+
+CREATE index dgo_metric_values_metric_id ON dgo_metric_values (metric_id);
 
 CREATE TABLE igo_metric_values (
     huc TEXT NOT NULL,
@@ -82,7 +89,10 @@ CREATE TABLE igo_metric_values (
 );
 
 CREATE INDEX igo_metric_values_huc_level_path_seg_distance_metric_id_index
-    ON igo_metric_values (huc, level_path, seg_distance, metric_id);
+    ON igo_metric_values (huc, level_path, seg_distance);
+
+CREATE index ix_igo_metric_values_metric_id ON igo_metric_values(metric_id);
+
 
 create table rcat_dgos
 (
