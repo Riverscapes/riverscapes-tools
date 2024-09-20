@@ -185,9 +185,11 @@ def scrape_rme_statistics(curs: sqlite3.Cursor, state: Dict[str, str], flow: Dic
     base_sql = '''
         SELECT count(*), coalesce(sum(d.centerline_length),0) length, coalesce(sum(d.segment_area), 0) area
         FROM dgos d
-        LEFT JOIN dgo_metric_values dmo ON d.fid = dmo.dgo_id
         LEFT JOIN dgo_metric_values dms ON d.fid = dms.dgo_id
         '''
+
+    if owner is not None:
+        base_sql += ' LEFT JOIN dgo_metric_values dmo ON d.fid = dmo.dgo_id'
 
     final_sql = add_where_clauses(base_sql, state, flow, owner)
     curs.execute(final_sql)
@@ -216,18 +218,20 @@ def scrape_rcat_statistics(curs: sqlite3.Cursor, state: Dict[str, str], flow: Di
                             min(
                                 1,
                                 RiparianDeparture
-                            ),
+                            )
+                        ),
                         active_channel_prop
-                        )
-                    ) * d.segment_area
-                )
-            , 0) active_area,
+                    )
+                       ) * d.segment_area
+            , 0)            active_area,
             coalesce(sum(CASE WHEN lui = 0 THEN d.segment_area ELSE 0 END), 0)             lui_zero_count
         FROM DGOAttributes d
             INNER JOIN dgos on dgos.level_path = d.level_path AND dgos.seg_distance = d.seg_distance
-            INNER JOIN dgo_metric_values dmo ON dgos.fid = dmo.dgo_id
             INNER JOIN dgo_metric_values dms ON dgos.fid = dms.dgo_id
         '''
+
+    if owner is not None:
+        base_sql += ' INNER JOIN dgo_metric_values dmo ON dgos.fid = dmo.dgo_id'
 
     final_sql = add_where_clauses(base_sql, state, flow, owner)
     curs.execute(final_sql)
