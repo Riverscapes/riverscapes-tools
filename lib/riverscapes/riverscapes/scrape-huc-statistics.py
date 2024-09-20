@@ -209,21 +209,16 @@ def scrape_rcat_statistics(curs: sqlite3.Cursor, state: Dict[str, str], flow: Di
     base_sql = '''
         SELECT coalesce(sum(d.HistoricRiparianMean * d.segment_area), 0)         historic_riparian_area,
             coalesce(sum(d.FloodplainAccess * d.segment_area), 0)             floodplain_access_area,
-            coalesce(
-                sum(
-                    max(
-                        min(
-                            dgos.low_lying_floodplain_prop + dgos.active_channel_prop,
-                            FloodplainAccess,
-                            min(
-                                1,
-                                RiparianDeparture
-                            )
-                        ),
-                        active_channel_prop
-                    )
-                       ) * d.segment_area
-            , 0)            active_area,
+            coalesce(sum(
+                max(
+                    min(
+                        (dgos.low_lying_floodplain_prop + dgos.active_channel_prop),
+                        FloodplainAccess,
+                        min(1, RiparianDeparture)
+                    ),
+                    active_channel_prop
+                ) * d.segment_area
+            ),0)  active_area,
             coalesce(sum(CASE WHEN lui = 0 THEN d.segment_area ELSE 0 END), 0)             lui_zero_count
         FROM DGOAttributes d
             INNER JOIN dgos on dgos.level_path = d.level_path AND dgos.seg_distance = d.seg_distance
@@ -410,10 +405,6 @@ def main():
     if len(projects) == 0:
         log.info('No projects found in Data Exchange dump with both RCAT and RME')
         sys.exit(0)
-
-    # Filters for debugging
-    # projects = {'1701010111': projects['1701010111']}
-    # projects = {key: val for key, val in projects.items() if key.startswith('17')}
 
     log.info(f'Found {len(projects)} RME projects in Data Exchange dump with both RME and RCAT')
 
