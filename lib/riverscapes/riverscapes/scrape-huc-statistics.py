@@ -36,7 +36,7 @@ DATA_TEMPLATE = {
     'dgo_length_miles': None,
     'active_area': None,
     'floodplain_access_area': None,
-    'lui_zero_count': None,
+    'lui_zero_area': None,
     'hist_riparian_area': None,
 }
 
@@ -209,12 +209,15 @@ def scrape_rcat_statistics(curs: sqlite3.Cursor, state: Dict[str, str], flow: Di
             coalesce(sum(d.FloodplainAccess * d.segment_area), 0)             floodplain_access_area,
             coalesce(
                 sum(
-                    min(
-                        dgos.low_lying_floodplain_prop + dgos.active_channel_prop,
-                        FloodplainAccess,
+                    max(
                         min(
-                            1,
-                            RiparianDeparture
+                            dgos.low_lying_floodplain_prop + dgos.active_channel_prop,
+                            FloodplainAccess,
+                            min(
+                                1,
+                                RiparianDeparture
+                            ),
+                        active_channel_prop
                         )
                     ) * d.segment_area
                 )
@@ -228,12 +231,12 @@ def scrape_rcat_statistics(curs: sqlite3.Cursor, state: Dict[str, str], flow: Di
 
     final_sql = add_where_clauses(base_sql, state, flow, owner)
     curs.execute(final_sql)
-    hist_riparian_area, floodplain_access_area, active_area, lui_zero_count = curs.fetchone()
+    hist_riparian_area, floodplain_access_area, active_area, lui_zero_area = curs.fetchone()
 
     output['hist_riparian_area'] = hist_riparian_area * SQMETRES_TO_ACRES
     output['floodplain_access_area'] = floodplain_access_area * SQMETRES_TO_ACRES
     output['active_area'] = active_area * SQMETRES_TO_ACRES
-    output['lui_zero_count'] = lui_zero_count
+    output['lui_zero_area'] = lui_zero_area * SQMETRES_TO_ACRES
 
 
 def add_where_clauses(base_sql: str, state: Dict[str, str], flow: Dict[str, str], owner: Dict[str, str]) -> str:
