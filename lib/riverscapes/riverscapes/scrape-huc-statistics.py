@@ -27,6 +27,7 @@ SQMETRES_TO_ACRES = 0.000247105
 # Output template for the data to be scraped.
 # Keys must match the schema of the output database 'metrics' table
 DATA_TEMPLATE = {
+    'state_id': None,
     'owner_id': None,
     'flow_id': None,
     'huc10': None,
@@ -50,6 +51,7 @@ def scrape_hucs(rs_api: RiverscapesAPI,  projects: Dict[str, str], download_dir:
     # Load the foreign key look up tables for owners and flows
     owners = load_filters(output_db, 'owners')
     flows = load_filters(output_db, 'flows')
+    states = load_filters(output_db, 'us_states')
 
     for index, (huc, project_ids) in enumerate(projects.items(), start=1):
         try:
@@ -80,27 +82,35 @@ def scrape_hucs(rs_api: RiverscapesAPI,  projects: Dict[str, str], download_dir:
                     copy_table_between_cursors(rme_curs, rcat_curs, 'dgos')
                     rcat_conn.commit()  # so we can test queries in DataGrip
 
-                    for __flow_name, flow_data in flows.items():
+                    for __state_name, state_data in states.items():
 
-                        # Without an owner filter we get statistics for all owners for a certain FCode
-                        data = copy.deepcopy(DATA_TEMPLATE)
-                        data['flow_id'] = flow_data['id']
-                        data['huc10'] = huc
-                        scrape_rme_statistics(rme_curs, None, flow_data, data)
-                        scrape_rcat_statistics(rcat_curs, None, flow_data, data)
-                        huc_metrics.append(data)
+                        for __flow_name, flow_data in flows.items():
 
-                        for __owner_name, owner_data in owners.items():
-
+                            # Without an owner filter we get statistics for all owners for a certain FCode
                             data = copy.deepcopy(DATA_TEMPLATE)
-                            data['owner_id'] = owner_data['id']
+                            data['state_id'] = state_data['id']
                             data['flow_id'] = flow_data['id']
                             data['huc10'] = huc
+                            scrape_rme_statistics(rme_curs, state_data, flow_data, None, data)
+                            scrape_rcat_statistics(rcat_curs, state_data, flow_data, None, data)
 
-                            # Statistics with both owner and flow filters
-                            scrape_rme_statistics(rme_curs, owner_data, flow_data, data)
-                            scrape_rcat_statistics(rcat_curs, owner_data, flow_data, data)
-                            huc_metrics.append(data)
+                            if data['dgo_count'] > 0:
+                                huc_metrics.append(data)
+
+                            for __owner_name, owner_data in owners.items():
+
+                                data = copy.deepcopy(DATA_TEMPLATE)
+                                data['state_id'] = state_data['id']
+                                data['owner_id'] = owner_data['id']
+                                data['flow_id'] = flow_data['id']
+                                data['huc10'] = huc
+
+                                # Statistics with both owner and flow filters
+                                scrape_rme_statistics(rme_curs, state_data, flow_data, owner_data, data)
+                                scrape_rcat_statistics(rcat_curs, state_data, flow_data, owner_data, data)
+
+                                if data['dgo_count'] > 0:
+                                    huc_metrics.append(data)
 
             # Store the output HUC metrics
             keys = huc_metrics[0].keys()
@@ -166,7 +176,7 @@ def copy_table_between_cursors(src_cursor, dest_cursor, table_name):
     dest_cursor.executemany(insert_sql, rows)
 
 
-def scrape_rme_statistics(curs: sqlite3.Cursor, owner: Dict[str, str], flow: Dict[str, str], output: Dict[str, float]) -> None:
+def scrape_rme_statistics(curs: sqlite3.Cursor, state: Dict[str, str], flow: Dict[str, str], owner: Dict[str, str], output: Dict[str, float]) -> None:
     """
     Scrape statistics from the RME output. The owner and flow filters are optional.
     The output of this function is to insert several RME statistics into the "data" dictionary.
@@ -175,10 +185,11 @@ def scrape_rme_statistics(curs: sqlite3.Cursor, owner: Dict[str, str], flow: Dic
     base_sql = '''
         SELECT count(*), coalesce(sum(d.centerline_length),0) length, coalesce(sum(d.segment_area), 0) area
         FROM dgos d
-        LEFT JOIN dgo_metric_values dmv ON d.fid = dmv.dgo_id
+        LEFT JOIN dgo_metric_values dmo ON d.fid = dmo.dgo_id
+        LEFT JOIN dgo_metric_values dms ON d.fid = dms.dgo_id
         '''
 
-    final_sql = add_where_clauses(base_sql, owner, flow)
+    final_sql = add_where_clauses(base_sql, state, flow, owner)
     curs.execute(final_sql)
     dgo_count, dgo_length, dgo_area = curs.fetchone()
 
@@ -187,7 +198,7 @@ def scrape_rme_statistics(curs: sqlite3.Cursor, owner: Dict[str, str], flow: Dic
     output['dgo_area_acres'] = dgo_area * SQMETRES_TO_ACRES
 
 
-def scrape_rcat_statistics(curs: sqlite3.Cursor, owner: Dict[str, str], flow: Dict[str, str], output: Dict) -> None:
+def scrape_rcat_statistics(curs: sqlite3.Cursor, state: Dict[str, str], flow: Dict[str, str], owner: Dict[str, str], output: Dict) -> None:
     """
     Scrape statistics from the RCAT output. Note that by this point RCAT db should include several RME tables.
     The owner and flow filters are optional. The output of this function is to insert several RME statistics into the "data" dictionary.
@@ -201,10 +212,11 @@ def scrape_rcat_statistics(curs: sqlite3.Cursor, owner: Dict[str, str], flow: Di
             coalesce(sum(CASE WHEN lui = 0 THEN 1 ELSE 0 END), 0)             lui_zero_count
         FROM DGOAttributes d
             INNER JOIN dgos on dgos.level_path = d.level_path AND dgos.seg_distance = d.seg_distance
-            INNER JOIN dgo_metric_values dmv ON dgos.fid = dmv.dgo_id
+            INNER JOIN dgo_metric_values dmo ON dgos.fid = dmo.dgo_id
+            INNER JOIN dgo_metric_values dms ON dgos.fid = dms.dgo_id
         '''
 
-    final_sql = add_where_clauses(base_sql, owner, flow)
+    final_sql = add_where_clauses(base_sql, state, flow, owner)
     curs.execute(final_sql)
     hist_riparian_area, floodplain_access_area, active_area, lui_zero_count = curs.fetchone()
 
@@ -214,27 +226,23 @@ def scrape_rcat_statistics(curs: sqlite3.Cursor, owner: Dict[str, str], flow: Di
     output['lui_zero_count'] = lui_zero_count
 
 
-def add_where_clauses(base_sql: str, owner: Dict[str, str], flow: Dict[str, str]) -> str:
+def add_where_clauses(base_sql: str, state: Dict[str, str], flow: Dict[str, str], owner: Dict[str, str]) -> str:
     """
-    Add WHERE clauses to the SQL query based on the owner and flow
+    Add WHERE clauses to the SQL query based on the state, owner and flow.
+    Note that owner is the only filter than can be None!
     """
 
-    final_sql = base_sql
-    if owner is not None or flow is not None:
-        final_sql += ' WHERE'
+    final_sql = base_sql + ' WHERE '
 
-        if owner is not None:
-            # make a comma separated list wrapping each item in single quotes
-            o_clause = ','.join([f"'{o}'" for o in owner['where_clause'].split(",")])
-            final_sql += f' dmv.metric_id = 1 AND dmv.metric_value IN ({o_clause})'
+    s_clause = ','.join([f"'{s}'" for s in state['where_clause'].split(",")])
+    final_sql += f'( dms.metric_id = 2 AND dms.metric_value IN ({s_clause}))'
 
-        if flow is not None:
-            if owner is not None:
-                final_sql += ' AND'
+    f_clause = ','.join([f"'{f}'" for f in flow['where_clause'].split(",")])
+    final_sql += f' AND (d.FCode IN ({f_clause}))'
 
-            # make a comma separated list wrapping each item in single quotes
-            f_clause = ','.join([f"'{f}'" for f in flow['where_clause'].split(",")])
-            final_sql += f' d.FCode IN ({f_clause})'
+    if owner is not None:
+        o_clause = ','.join([f"'{o}'" for o in owner['where_clause'].split(",")])
+        final_sql += f' AND (dmo.metric_id = 1 AND dmo.metric_value IN ({o_clause}))'
 
     return final_sql
 
@@ -340,6 +348,7 @@ def main():
     parser.add_argument('working_folder', help='top level folder for downloads and output', type=str)
     parser.add_argument('db_path', help='Path to the warehouse dump database', type=str)
     parser.add_argument('--delete', help='Whether or not to delete downloaded GeoPackages', type=bool, default=False)
+    parser.add_argument('--huc_filter', help='HUC filter SQL prefix ("17%")', type=str, default='')
     args = dotenv.parse_args_env(parser)
 
     if not os.path.isfile(args.db_path):
@@ -355,10 +364,12 @@ def main():
     log = Logger('Setup')
     log.setup(log_path=os.path.join(scraped_folder, 'rme-scrape.log'), log_level=logging.DEBUG)
 
+    huc_filter = f" AND (huc10 LIKE ('{args.huc_filter}')) " if args.huc_filter and args.huc_filter != '.' else ''
+
     # Determine projects in the dumped warehouse database that have both RCAT and RME available
     with sqlite3.connect(args.db_path) as conn:
         curs = conn.cursor()
-        curs.execute('''
+        curs.execute(f'''
             SELECT huc10, min(rme_project_id), min(rcat_project_id)
             FROM
             (
@@ -372,6 +383,7 @@ def main():
             GROUP BY huc10
             HAVING min(rme_project_id) IS NOT NULL
                 AND min(rcat_project_id) IS NOT NULL
+                {huc_filter}
             ''')
         projects = {row[0]: {
             'rme': row[1],
@@ -384,7 +396,7 @@ def main():
 
     # Filters for debugging
     # projects = {'1701010111': projects['1701010111']}
-    projects = {key: val for key, val in projects.items() if key.startswith('17')}
+    # projects = {key: val for key, val in projects.items() if key.startswith('17')}
 
     log.info(f'Found {len(projects)} RME projects in Data Exchange dump with both RME and RCAT')
 
