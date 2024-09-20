@@ -207,9 +207,19 @@ def scrape_rcat_statistics(curs: sqlite3.Cursor, state: Dict[str, str], flow: Di
     base_sql = '''
         SELECT coalesce(sum(d.HistoricRiparianMean * d.segment_area), 0)         historic_riparian_area,
             coalesce(sum(d.FloodplainAccess * d.segment_area), 0)             floodplain_access_area,
-            coalesce(sum(min(dgos.low_lying_floodplain_prop, dgos.active_channel_prop, FloodplainAccess,
-            min(1, RiparianDeparture)) * d.segment_area), 0) active_area,
-            coalesce(sum(CASE WHEN lui = 0 THEN 1 ELSE 0 END), 0)             lui_zero_count
+            coalesce(
+                sum(
+                    min(
+                        dgos.low_lying_floodplain_prop + dgos.active_channel_prop,
+                        FloodplainAccess,
+                        min(
+                            1,
+                            RiparianDeparture
+                        )
+                    ) * d.segment_area
+                )
+            , 0) active_area,
+            coalesce(sum(CASE WHEN lui = 0 THEN d.segment_area ELSE 0 END), 0)             lui_zero_count
         FROM DGOAttributes d
             INNER JOIN dgos on dgos.level_path = d.level_path AND dgos.seg_distance = d.seg_distance
             INNER JOIN dgo_metric_values dmo ON dgos.fid = dmo.dgo_id

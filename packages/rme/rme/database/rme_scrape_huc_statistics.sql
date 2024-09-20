@@ -109,7 +109,7 @@ CREATE TABLE metrics (
     lui_zero_count REAL,
     hist_riparian_area REAL,
 
-    PRIMARY KEY(huc10, owner_id, flow_id)
+    PRIMARY KEY(huc10, state_id, owner_id, flow_id)
 );
 
 CREATE INDEX owner_id ON metrics(owner_id);

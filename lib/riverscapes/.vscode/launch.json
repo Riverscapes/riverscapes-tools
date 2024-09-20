@@ -128,9 +128,9 @@
         "{env:DATA_ROOT}/rme-scrape",
         "{env:DATA_ROOT}/warehouse_report/riverscapes_production.gpkg",
         "--delete",
-        "True",
+        "False",
         "--huc_filter",
-        "17%"
+        "1601%"
       ]
     },
     {
