@@ -14,15 +14,24 @@ CREATE TABLE owners (
 );
 
 INSERT INTO owners (id, name, where_clause) VALUES
-    (1, 'Federal', 'USFS,FWS,BLM,USDA,USBR,NPS,DOD,USACE,VA,DOE,FAA,ARMY,USMC,USAF'),
-    (2, 'BLM', 'BLM'),
-    (3, 'USFS', 'USFS'),
-    (4, 'FWS', 'FWS'),
-    (5, 'NPS', 'NPS'),
-    (6, 'DOD', 'DOD'),
-    (7, 'State', 'ST'),
-    (8, 'Tribal', 'BIA'),
-    (9, 'Private', 'PVT');
+    (1, 'BLM', 'BLM'),
+    (2, 'USFS', 'USFS'),
+    (3, 'FWS', 'FWS'),
+    (4, 'NPS', 'NPS'),
+    (5, 'DOD', 'DOD'),
+    (6, 'State', 'ST'),
+    (7, 'Tribal', 'BIA'),
+    (8, 'Private', 'PVT'),
+    (9, 'USDA', 'USDA'),
+    (10, 'USBR', 'USBR'),
+    (11, 'USACE', 'USACE'),
+    (12, 'VA', 'VA'),
+    (13, 'DOE', 'DOE'),
+    (14, 'FAA', 'FAA'),
+    (15, 'ARMY', 'ARMY'),
+    (16, 'USMC', 'USMC'),
+    (17, 'USAF', 'USAF');
+    -- (18, 'Federal', 'USFS,FWS,BLM,USDA,USBR,NPS,DOD,USACE,VA,DOE,FAA,ARMY,USMC,USAF'),
     -- (10, 'Other', NULL);
 
 CREATE TABLE flows (
