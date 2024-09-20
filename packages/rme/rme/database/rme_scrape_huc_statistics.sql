@@ -106,7 +106,7 @@ CREATE TABLE metrics (
     dgo_length_miles REAL,
     active_area REAL,
     floodplain_access_area REAL,
-    lui_zero_count REAL,
+    lui_zero_area REAL,
     hist_riparian_area REAL,
 
     PRIMARY KEY(huc10, state_id, owner_id, flow_id)
@@ -126,7 +126,7 @@ SELECT
     dgo_length_miles,
     active_area,
     floodplain_access_area,
-    lui_zero_count,
+    lui_zero_area,
     hist_riparian_area
 FROM
     metrics m
