@@ -1,6 +1,8 @@
 
 CREATE TABLE hucs (
     huc10 TEXT NOT NULL PRIMARY KEY,
+    rme_project_guid TEXT NOT NULL,
+    rcat_project_guid TEXT NOT NULL,
     scraped_on DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -67,5 +69,5 @@ SELECT
     hist_riparian_area
 FROM
     metrics m
-    INNER JOIN owners o ON m.owner_id = o.id
-    INNER JOIN flows f ON m.flow_id = f.id;
+    INNER JOIN flows f ON m.flow_id = f.id
+    LEFT JOIN owners o ON m.owner_id = o.id;
