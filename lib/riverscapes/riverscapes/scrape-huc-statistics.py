@@ -1,11 +1,14 @@
 """
-Demo script to download files from Data Exchange
+Scrapes RME and RCAT outout GeoPackages from Data Exchange and extracts statistics for each HUC.
+Produced for the BLM 2024 September analysis of 2024 CONUS RME projects.
+Philip Bailey
 """
 from typing import Dict
 import shutil
 import sys
 import re
 import os
+import copy
 import sqlite3
 import logging
 import argparse
@@ -13,39 +16,60 @@ import uuid
 from rsxml import dotenv, Logger, safe_makedirs
 from riverscapes import RiverscapesAPI
 
-# RegEx for finding the RME output GeoPackages
+# RegEx for finding RME and RCAT output GeoPackages
 RME_OUTPUT_GPKG_REGEX = r'.*riverscapes_metrics\.gpkg'
 RCAT_OUTPUT_GPKG_REGEX = r'.*rcat\.gpkg'
 
+# Conversion factors
 METRES_TO_MILES = 0.000621371
 SQMETRES_TO_ACRES = 0.000247105
 
+# Output template for the data to be scraped.
+# Keys must match the schema of the output database 'metrics' table
+DATA_TEMPLATE = {
+    'owner_id': None,
+    'flow_id': None,
+    'huc10': None,
+    'dgo_count': None,
+    'dgo_area_acres': None,
+    'dgo_length_miles': None,
+    'active_area': None,
+    'floodplain_access_area': None,
+    'lui_zero_count': None,
+    'hist_riparian_area': None,
+}
 
-def scrape_rme(rs_api: RiverscapesAPI,  projects: Dict[str, str], download_dir: str, output_db: str, delete_downloads: bool) -> None:
 
-    log = Logger('Scrape RME')
+def scrape_hucs(rs_api: RiverscapesAPI,  projects: Dict[str, str], download_dir: str, output_db: str, delete_downloads: bool) -> None:
+    """
+    Loop over all the projects, download the RME and RCAT output GeoPackages, and scrape the statistics
+    """
 
+    log = Logger('Scrape HUCs')
+
+    # Load the foreign key look up tables for owners and flows
     owners = load_filters(output_db, 'owners')
     flows = load_filters(output_db, 'flows')
 
-    for huc, project_ids in projects.items():
+    for index, (huc, project_ids) in enumerate(projects.items(), start=1):
         try:
+            # HUCs that appears in 'hucs' db table are skipped
             if continue_with_huc(huc, output_db) is not True:
                 continue
 
-            log.info(f'Scraping RME metrics for HUC {huc}')
+            log.info(f'Scraping RME metrics for HUC {huc} ({index} of {len(projects)})')
             huc_dir = os.path.join(download_dir, huc)
-            safe_makedirs(huc_dir)
 
             rme_guid = project_ids['rme']
             rme_gpkg = download_file(rs_api, rme_guid, os.path.join(huc_dir, 'rme'), RME_OUTPUT_GPKG_REGEX)
 
             rcat_guid = project_ids['rcat']
             rcat_gpkg = download_file(rs_api, rcat_guid, os.path.join(huc_dir, 'rcat'), RCAT_OUTPUT_GPKG_REGEX)
+
+            # Copy RCAT db so we copy some RME data into it without mutating the original
             rcat_gpkg_copy = copy_file_with_unique_name(rcat_gpkg)
 
             huc_metrics = []
-
             with sqlite3.connect(rme_gpkg) as rme_conn:
                 rme_curs = rme_conn.cursor()
 
@@ -56,22 +80,24 @@ def scrape_rme(rs_api: RiverscapesAPI,  projects: Dict[str, str], download_dir: 
                     copy_table_between_cursors(rme_curs, rcat_curs, 'dgos')
                     rcat_conn.commit()  # so we can test queries in DataGrip
 
-                    for __owner_name, owner_data in owners.items():
-                        for __flow_name, flow_data in flows.items():
+                    for __flow_name, flow_data in flows.items():
 
-                            data = {
-                                'owner_id': owner_data['id'],
-                                'flow_id': flow_data['id'],
-                                'huc10': huc,
-                                'dgo_count': None,
-                                'dgo_area_acres': None,
-                                'dgo_length_miles': None,
-                                'active_area': None,
-                                'floodplain_access_area': None,
-                                'lui_zero_count': None,
-                                'hist_riparian_area': None,
-                            }
+                        # Without an owner filter we get statistics for all owners for a certain FCode
+                        data = copy.deepcopy(DATA_TEMPLATE)
+                        data['flow_id'] = flow_data['id']
+                        data['huc10'] = huc
+                        scrape_rme_statistics(rme_curs, None, flow_data, data)
+                        scrape_rcat_statistics(rcat_curs, None, flow_data, data)
+                        huc_metrics.append(data)
 
+                        for __owner_name, owner_data in owners.items():
+
+                            data = copy.deepcopy(DATA_TEMPLATE)
+                            data['owner_id'] = owner_data['id']
+                            data['flow_id'] = flow_data['id']
+                            data['huc10'] = huc
+
+                            # Statistics with both owner and flow filters
                             scrape_rme_statistics(rme_curs, owner_data, flow_data, data)
                             scrape_rcat_statistics(rcat_curs, owner_data, flow_data, data)
                             huc_metrics.append(data)
@@ -80,7 +106,7 @@ def scrape_rme(rs_api: RiverscapesAPI,  projects: Dict[str, str], download_dir: 
             keys = huc_metrics[0].keys()
             with sqlite3.connect(output_db) as conn:
                 curs = conn.cursor()
-                curs.execute('INSERT INTO hucs (huc10) VALUES (?)', [huc])
+                curs.execute('INSERT INTO hucs (huc10, rme_project_guid, rcat_project_guid) VALUES (?, ?, ?)', [huc, rme_guid, rcat_guid])
                 curs.executemany(f'INSERT INTO metrics ({", ".join(keys)}) VALUES ({", ".join(["?" for _ in keys])})', [tuple(m[k] for k in keys) for m in huc_metrics])
                 conn.commit()
 
@@ -96,11 +122,12 @@ def scrape_rme(rs_api: RiverscapesAPI,  projects: Dict[str, str], download_dir: 
 
 
 def copy_file_with_unique_name(file_path):
-    # Get the folder and original file name
+    """
+    Deduce a new, unique file name from the original file name and copy the file to the new file name.
+    """
+
     folder = os.path.dirname(file_path)
     original_filename = os.path.basename(file_path)
-
-    # Split the filename into name and extension
     name, ext = os.path.splitext(original_filename)
 
     # Generate a unique filename using uuid
@@ -110,16 +137,18 @@ def copy_file_with_unique_name(file_path):
     # Copy the file to the new file path
     shutil.copy2(file_path, new_file_path)
 
-    print(f"File copied to: {new_file_path}")
+    # print(f"File copied to: {new_file_path}")
     return new_file_path
 
 
 def copy_table_between_cursors(src_cursor, dest_cursor, table_name):
+    """
+    Copy a table structure and data from the source cursor to destination cursor
+    """
+
     # Get table schema from the source database
     src_cursor.execute(f"SELECT sql FROM sqlite_master WHERE type='table' AND name='{table_name}'")
     create_table_sql = src_cursor.fetchone()[0]
-
-    # Create the table in the destination database
     dest_cursor.execute(create_table_sql)
 
     # Get all data from the source table
@@ -137,48 +166,58 @@ def copy_table_between_cursors(src_cursor, dest_cursor, table_name):
     dest_cursor.executemany(insert_sql, rows)
 
 
-def scrape_rme_statistics(curs: sqlite3.Cursor, owner: Dict[str, str], flow: Dict[str, str], data: Dict) -> None:
+def scrape_rme_statistics(curs: sqlite3.Cursor, owner: Dict[str, str], flow: Dict[str, str], output: Dict[str, float]) -> None:
+    """
+    Scrape statistics from the RME output. The owner and flow filters are optional.
+    The output of this function is to insert several RME statistics into the "data" dictionary.
+    """
 
     base_sql = '''
-      select count(*), coalesce(sum(d.centerline_length),0) length, coalesce(sum(d.segment_area), 0) area
-        from dgos d
-        left join dgo_metric_values dmv on d.fid = dmv.dgo_id
+        SELECT count(*), coalesce(sum(d.centerline_length),0) length, coalesce(sum(d.segment_area), 0) area
+        FROM dgos d
+        LEFT JOIN dgo_metric_values dmv ON d.fid = dmv.dgo_id
         '''
 
     final_sql = add_where_clauses(base_sql, owner, flow)
     curs.execute(final_sql)
     dgo_count, dgo_length, dgo_area = curs.fetchone()
 
-    data['dgo_count'] = dgo_count
-    data['dgo_length_miles'] = dgo_length * METRES_TO_MILES
-    data['dgo_area_acres'] = dgo_area * SQMETRES_TO_ACRES
+    output['dgo_count'] = dgo_count
+    output['dgo_length_miles'] = dgo_length * METRES_TO_MILES
+    output['dgo_area_acres'] = dgo_area * SQMETRES_TO_ACRES
 
 
-def scrape_rcat_statistics(curs: sqlite3.Cursor, owner: Dict[str, str], flow: Dict[str, str], data: Dict) -> None:
+def scrape_rcat_statistics(curs: sqlite3.Cursor, owner: Dict[str, str], flow: Dict[str, str], output: Dict) -> None:
+    """
+    Scrape statistics from the RCAT output. Note that by this point RCAT db should include several RME tables.
+    The owner and flow filters are optional. The output of this function is to insert several RME statistics into the "data" dictionary.
+    """
 
     base_sql = '''
-select coalesce(sum(d.HistoricRiparianMean * d.segment_area), 0)         historic_riparian_area,
-       coalesce(sum(d.FloodplainAccess * d.segment_area), 0)             floodplain_access_area,
-       coalesce(sum(min(dgos.low_lying_floodplain_prop, dgos.active_channel_prop, FloodplainAccess,
-                        min(1, RiparianDeparture)) * d.segment_area), 0) active_area,
-       coalesce(sum(CASE WHEN lui = 0 THEN 1 ELSE 0 END), 0)             lui_zero_count
-from DGOAttributes d
-         inner join dgos
-                    on dgos.level_path = d.level_path and dgos.seg_distance = d.seg_distance
-         inner join dgo_metric_values dmv on dgos.fid = dmv.dgo_id
-    '''
+        SELECT coalesce(sum(d.HistoricRiparianMean * d.segment_area), 0)         historic_riparian_area,
+            coalesce(sum(d.FloodplainAccess * d.segment_area), 0)             floodplain_access_area,
+            coalesce(sum(min(dgos.low_lying_floodplain_prop, dgos.active_channel_prop, FloodplainAccess,
+            min(1, RiparianDeparture)) * d.segment_area), 0) active_area,
+            coalesce(sum(CASE WHEN lui = 0 THEN 1 ELSE 0 END), 0)             lui_zero_count
+        FROM DGOAttributes d
+            INNER JOIN dgos on dgos.level_path = d.level_path AND dgos.seg_distance = d.seg_distance
+            INNER JOIN dgo_metric_values dmv ON dgos.fid = dmv.dgo_id
+        '''
 
     final_sql = add_where_clauses(base_sql, owner, flow)
     curs.execute(final_sql)
     hist_riparian_area, floodplain_access_area, active_area, lui_zero_count = curs.fetchone()
 
-    data['hist_riparian_area'] = hist_riparian_area * SQMETRES_TO_ACRES
-    data['floodplain_access_area'] = floodplain_access_area * SQMETRES_TO_ACRES
-    data['active_area'] = active_area * SQMETRES_TO_ACRES
-    data['lui_zero_count'] = lui_zero_count
+    output['hist_riparian_area'] = hist_riparian_area * SQMETRES_TO_ACRES
+    output['floodplain_access_area'] = floodplain_access_area * SQMETRES_TO_ACRES
+    output['active_area'] = active_area * SQMETRES_TO_ACRES
+    output['lui_zero_count'] = lui_zero_count
 
 
 def add_where_clauses(base_sql: str, owner: Dict[str, str], flow: Dict[str, str]) -> str:
+    """
+    Add WHERE clauses to the SQL query based on the owner and flow
+    """
 
     final_sql = base_sql
     if owner is not None or flow is not None:
@@ -201,9 +240,10 @@ def add_where_clauses(base_sql: str, owner: Dict[str, str], flow: Dict[str, str]
 
 
 def download_file(rs_api: RiverscapesAPI, project_id: str, download_dir: str, regex: str) -> str:
-    '''
-    Download files from a project on Data Exchange
-    '''
+    """
+    Download files from a project on Data Exchange that match the regex string
+    Return the path to the downloaded file
+    """
 
     gpkg_path = get_matching_file(download_dir, regex)
     if gpkg_path is not None and os.path.isfile(gpkg_path):
@@ -213,6 +253,7 @@ def download_file(rs_api: RiverscapesAPI, project_id: str, download_dir: str, re
 
     gpkg_path = get_matching_file(download_dir, regex)
 
+    # Cannot proceed with this HUC if the output GeoPackage is missing
     if gpkg_path is None or not os.path.isfile(gpkg_path):
         raise FileNotFoundError(f'Could not find output GeoPackage in {download_dir}')
 
@@ -220,6 +261,12 @@ def download_file(rs_api: RiverscapesAPI, project_id: str, download_dir: str, re
 
 
 def get_matching_file(parent_dir: str, regex: str) -> str:
+    """
+    Get the path to the first file in the parent directory that matches the regex.
+    Returns None if no file is found.
+    This is used to check if the output GeoPackage has already been downloaded and
+    to avoid downloading it again.
+    """
 
     regex = re.compile(regex)
     for root, __dirs, files in os.walk(parent_dir):
@@ -233,7 +280,8 @@ def get_matching_file(parent_dir: str, regex: str) -> str:
 
 def load_filters(output_db: str, table_name: str) -> Dict[str, Dict[str, str]]:
     '''
-    Load the filters from the output database for a particular table
+    Load the filters from the output database for a particular table.
+    This is used for both ownerships and flows lookups
     '''
 
     with sqlite3.connect(output_db) as conn:
@@ -244,7 +292,9 @@ def load_filters(output_db: str, table_name: str) -> Dict[str, Dict[str, str]]:
 
 def continue_with_huc(huc: str, output_db: str) -> bool:
     '''
-    Check if the HUC already exists in the output GeoPackage
+    Check if the HUC already exists in the output GeoPackage. 
+    This is used to determine if the HUC has already been scraped and whether it
+    can be skipped.
     '''
 
     if not os.path.isfile(output_db):
@@ -259,7 +309,12 @@ def continue_with_huc(huc: str, output_db: str) -> bool:
 
 
 def create_output_db(output_db: str) -> None:
+    """ 
+    Build the output SQLite database by running the schema file.
+    """
 
+    # As a precaution, do not overwrite or delete the output database.
+    # Force the user to delete it manually if they want to rebuild it.
     if os.path.isfile(output_db):
         return
 
@@ -284,6 +339,7 @@ def main():
     parser.add_argument('stage', help='Environment: staging or production', type=str)
     parser.add_argument('working_folder', help='top level folder for downloads and output', type=str)
     parser.add_argument('db_path', help='Path to the warehouse dump database', type=str)
+    parser.add_argument('--delete', help='Whether or not to delete downloaded GeoPackages', type=bool, default=False)
     args = dotenv.parse_args_env(parser)
 
     if not os.path.isfile(args.db_path):
@@ -299,23 +355,23 @@ def main():
     log = Logger('Setup')
     log.setup(log_path=os.path.join(scraped_folder, 'rme-scrape.log'), log_level=logging.DEBUG)
 
-    # Determine all the RME projects from the dumped warehouse
+    # Determine projects in the dumped warehouse database that have both RCAT and RME available
     with sqlite3.connect(args.db_path) as conn:
         curs = conn.cursor()
         curs.execute('''
-            select huc10, min(rme_project_id), min(rcat_project_id)
-            from
+            SELECT huc10, min(rme_project_id), min(rcat_project_id)
+            FROM
             (
-                select huc10,
-                    case when project_type_id = 'rs_metric_engine' then project_id else null end rme_project_id,
-                    case when project_type_id = 'rcat' then project_id else null end             rcat_project_id
-                from vw_conus_projects
-                where project_type_id in ('rs_metric_engine', 'rcat')
-                    and tags = '2024CONUS'
+                SELECT huc10,
+                    CASE WHEN project_type_id = 'rs_metric_engine' THEN project_id ELSE NULL END rme_project_id,
+                    CASE WHEN project_type_id = 'rcat' then project_id ELSE NULL END             rcat_project_id
+                FROM vw_conus_projects
+                WHERE project_type_id IN ('rs_metric_engine', 'rcat')
+                    AND tags = '2024CONUS'
             )
-            group by huc10
-            having min(rme_project_id) is not null
-                and min(rcat_project_id) is not null
+            GROUP BY huc10
+            HAVING min(rme_project_id) IS NOT NULL
+                AND min(rcat_project_id) IS NOT NULL
             ''')
         projects = {row[0]: {
             'rme': row[1],
@@ -323,18 +379,20 @@ def main():
         } for row in curs.fetchall()}
 
     if len(projects) == 0:
-        log.info('No RME projects found in Data Exchange dump')
+        log.info('No projects found in Data Exchange dump with both RCAT and RME')
         sys.exit(0)
 
-    projects = {'1701010111': projects['1701010111']}
+    # Filters for debugging
+    # projects = {'1701010111': projects['1701010111']}
+    projects = {key: val for key, val in projects.items() if key.startswith('17')}
 
-    log.info(f'Found {len(projects)} RME projects in Data Exchange dump')
+    log.info(f'Found {len(projects)} RME projects in Data Exchange dump with both RME and RCAT')
 
-    output_db = os.path.join(scraped_folder, 'rme_scrape_output.db')
+    output_db = os.path.join(scraped_folder, 'rme_scrape_output.sqlite')
     create_output_db(output_db)
 
     with RiverscapesAPI(stage=args.stage) as api:
-        scrape_rme(api, projects, download_folder, output_db, False)
+        scrape_hucs(api, projects, download_folder, output_db, args.delete)
 
     log.info('Process complete')
 
