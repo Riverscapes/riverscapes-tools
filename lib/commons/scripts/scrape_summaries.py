@@ -4,7 +4,7 @@ folks could use for additional metrics beyond what is going into the paragraph""
 import sqlite3
 import csv
 
-db = '/workspaces/data/test_data/rme_scrape_output_1601.sqlite'
+db = '/workspaces/data/test_data/2024_09_20_rme_scrape_output_1601_v2.sqlite'
 csv_out = '/workspaces/data/test_data/scrape_table.csv'
 
 conn = sqlite3.connect(db)
@@ -31,7 +31,30 @@ metrics = {'Riverscape Length (mi)': ['SELECT sum(dgo_length_miles) FROM vw_metr
                                  """SELECT sum((active / area) * (area / tot_area)) FROM (SELECT active_area active,
                                 dgo_area_acres area, (SELECT sum(dgo_area_acres) FROM vw_metrics where us_state = (?) and fcode IN (?) and ownership = (?)) tot_area
                                 FROM vw_metrics WHERE us_state = (?) AND fcode IN (?) AND ownership = (?));"""],
-           'Recovery Potential': ['']}
+           'Recovery Potential': ["""SELECT max(0, sum((fpaccess / area) * (area / tot_area)) - sum((active / area) * (area / tot_area))) FROM (SELECT active_area active, floodplain_access_area fpaccess,
+                                    dgo_area_acres area, (SELECT sum(dgo_area_acres) FROM vw_metrics WHERE ownership IS NULL) tot_area
+                                    FROM vw_metrics WHERE ownership IS NULL);""",
+                                  """SELECT max(0, sum((fpaccess / area) * (area / tot_area)) - sum((active / area) * (area / tot_area))) FROM (SELECT active_area active, floodplain_access_area fpaccess,
+                                dgo_area_acres area, (SELECT sum(dgo_area_acres) FROM vw_metrics where us_state = (?) AND ownership IS NULL) tot_area
+                                FROM vw_metrics WHERE us_state = (?) AND ownership IS NULL);""",
+                                  """SELECT max(0, sum((fpaccess / area) * (area / tot_area)) - sum((active / area) * (area / tot_area))) FROM (SELECT active_area active, floodplain_access_area fpaccess,
+                                dgo_area_acres area, (SELECT sum(dgo_area_acres) FROM vw_metrics where us_state = (?) and fcode IN (?) AND ownership IS NULL) tot_area
+                                FROM vw_metrics WHERE us_state = (?) AND fcode IN (?) AND ownership IS NULL);""",
+                                  """SELECT max(0, sum((fpaccess / area) * (area / tot_area)) - sum((active / area) * (area / tot_area))) FROM (SELECT active_area active, floodplain_access_area fpaccess,
+                                dgo_area_acres area, (SELECT sum(dgo_area_acres) FROM vw_metrics where us_state = (?) and fcode IN (?) and ownership = (?)) tot_area
+                                FROM vw_metrics WHERE us_state = (?) AND fcode IN (?) AND ownership = (?));"""],
+           'Functioning Below Capacity': ["""SELECT 1 - sum((lui / area) * (area / tot_area)) FROM (SELECT lui_zero_area lui,
+                                    dgo_area_acres area, (SELECT sum(dgo_area_acres) FROM vw_metrics WHERE ownership IS NULL) tot_area
+                                    FROM vw_metrics WHERE ownership IS NULL);""",
+                                          """SELECT 1 - sum((lui / area) * (area / tot_area)) FROM (SELECT lui_zero_area lui,
+                                dgo_area_acres area, (SELECT sum(dgo_area_acres) FROM vw_metrics where us_state = (?) AND ownership IS NULL) tot_area
+                                FROM vw_metrics WHERE us_state = (?) AND ownership IS NULL);""",
+                                          """SELECT 1 - sum((lui / area) * (area / tot_area)) FROM (SELECT lui_zero_area lui,
+                                dgo_area_acres area, (SELECT sum(dgo_area_acres) FROM vw_metrics where us_state = (?) and fcode IN (?) AND ownership IS NULL) tot_area
+                                FROM vw_metrics WHERE us_state = (?) AND fcode IN (?) AND ownership IS NULL);""",
+                                          """SELECT 1 - sum((lui / area) * (area / tot_area)) FROM (SELECT lui_zero_area lui,
+                                dgo_area_acres area, (SELECT sum(dgo_area_acres) FROM vw_metrics where us_state = (?) and fcode IN (?) and ownership = (?)) tot_area
+                                FROM vw_metrics WHERE us_state = (?) AND fcode IN (?) AND ownership = (?));"""]}
 
 # get states
 curs.execute('SELECT DISTINCT us_state FROM vw_metrics')
@@ -54,6 +77,7 @@ with open(csv_out, 'w') as f:
     writer.writerow(['Metric', 'State', 'Flow', 'Ownership', 'Value'])
 
     for metric, query in metrics.items():
+        print(f'Performing queries for metric: {metric}')
         curs.execute(query[0])
         total = curs.fetchone()[0]
         writer.writerow([metric, '-', '-', '-', total])
