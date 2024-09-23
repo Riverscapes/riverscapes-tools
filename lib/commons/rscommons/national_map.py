@@ -297,18 +297,19 @@ def get_dem_urls(vector_path, buffer_dist):
         if lat_long in lat_long_used:
             # Only one url per lat/long
             continue
-        if url in data:
-            # use url if its in the list
-            clean_urls.append(url)
-        else:
-            # Find corresponding urls for lat long
-            candidate_urls = [val for val in data if lat_long in val]
-            if len(candidate_urls) == 0:
-                log = Logger('The National Map')
-                log.error(f'Unable to find valid download url for: {url}')
-                raise Exception(f'Unable to find valid download url for: {url}')
-            # Append the newest dem
-            clean_urls.append(candidate_urls[-1])
+        # if url in data:
+        #     # use url if its in the list
+        #     clean_urls.append(url)
+        # else:
+        #     # Find corresponding urls for lat long
+        #     candidate_urls = [val for val in data if lat_long in val]
+        #     if len(candidate_urls) == 0:
+        #         log = Logger('The National Map')
+        #         log.error(f'Unable to find valid download url for: {url}')
+        #         raise Exception(f'Unable to find valid download url for: {url}')
+        #     # Append the newest dem
+        #    clean_urls.append(candidate_urls[-1])
+        clean_urls.append(url)
         lat_long_used.append(lat_long)
 
     return clean_urls
