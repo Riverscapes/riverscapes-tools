@@ -106,7 +106,7 @@ VALUES
     (50,'Wyoming','WY');
 
 CREATE TABLE metrics (
-    huc10 INT NOT NULL REFERENCES hucs(huc10) ON DELETE CASCADE,
+    huc10 TEXT NOT NULL REFERENCES hucs(huc10) ON DELETE CASCADE,
     state_id INT REFERENCES us_states(id) ON DELETE CASCADE,
     owner_id INT REFERENCES owners(id) ON DELETE CASCADE,
     flow_id INT REFERENCES flows(id) ON DELETE CASCADE,
