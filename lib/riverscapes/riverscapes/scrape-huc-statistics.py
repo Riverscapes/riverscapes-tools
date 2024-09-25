@@ -205,46 +205,49 @@ def scrape_rcat_statistics(curs: sqlite3.Cursor, state: Dict[str, str], flow: Di
     """
     Scrape statistics from the RCAT output. Note that by this point RCAT db should include several RME tables.
     The owner and flow filters are optional. The output of this function is to insert several RME statistics into the "data" dictionary.
+
+    Note that DGOAttributes sometimes has multiple rows for the same level_path and seg_distance. This is why we use a CTE to get the largest segment area.
+    https://chatgpt.com/c/66f42959-d304-8008-8397-a75cfda6df21
+    https://github.com/Riverscapes/riverscapes-tools/issues/1024
     """
 
     base_sql = '''
-        SELECT coalesce(sum(d.HistoricRiparianMean * d.segment_area), 0)         historic_riparian_area,
-            coalesce(sum(d.FloodplainAccess * d.segment_area), 0)             floodplain_access_area,
-            coalesce(sum(
-                max(
-                    min(
-                        (dgos.low_lying_floodplain_prop + dgos.active_channel_prop),
-                        FloodplainAccess,
-                        min(1, RiparianDeparture)
-                    ),
-                    active_channel_prop
-                ) * d.segment_area
-            ),0)  active_area,
-
-
-
-
-            coalesce(sum(
-                max(
-                    (
-                        (dgos.low_lying_floodplain_prop + dgos.active_channel_prop) +
-                        FloodplainAccess +
-                        min(1, RiparianDeparture)
-                    ) / 3,
-                    active_channel_prop
-                ) * d.segment_area
-            ),0)  active_area_max,
-
-
-
-
-
-
-
-            coalesce(sum(CASE WHEN lui = 0 THEN d.segment_area ELSE 0 END), 0)             lui_zero_count
+        WITH LargestSegmentArea AS (
+    SELECT *
+    FROM DGOAttributes d
+    WHERE (d.level_path, d.seg_distance, d.segment_area) IN (
+        SELECT d.level_path, d.seg_distance, MAX(d.segment_area)
         FROM DGOAttributes d
-            INNER JOIN dgos on dgos.level_path = d.level_path AND dgos.seg_distance = d.seg_distance
-            INNER JOIN dgo_metric_values dms ON dgos.fid = dms.dgo_id
+        GROUP BY d.level_path, d.seg_distance
+    )
+)
+SELECT
+       coalesce(sum(d.HistoricRiparianMean * d.segment_area), 0)          historic_riparian_area,
+       coalesce(sum(d.FloodplainAccess * d.segment_area), 0)              floodplain_access_area,
+       coalesce(sum(
+                            max(
+                                    min(
+                                            (dgos.low_lying_floodplain_prop + dgos.active_channel_prop),
+                                            FloodplainAccess,
+                                            min(1, RiparianDeparture)
+                                        ),
+                                    active_channel_prop
+                                ) * d.segment_area
+                    ), 0) * 0.000247105                                   active_area,
+       coalesce(sum(
+                            max(
+                                        (
+                                                (dgos.low_lying_floodplain_prop + dgos.active_channel_prop) +
+                                                FloodplainAccess +
+                                                min(1, RiparianDeparture)
+                                            ) / 3,
+                                        active_channel_prop
+                                ) * d.segment_area
+                    ), 0)                                                 active_area_max,
+       coalesce(sum(CASE WHEN lui = 0 THEN d.segment_area ELSE 0 END), 0) lui_zero_count
+FROM LargestSegmentArea d
+         INNER JOIN dgos on dgos.level_path = d.level_path AND dgos.seg_distance = d.seg_distance
+         INNER JOIN dgo_metric_values dms ON dgos.fid = dms.dgo_id
         '''
 
     if owner is not None:
