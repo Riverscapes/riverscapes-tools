@@ -20,7 +20,13 @@ def access_algorithm(int[:, :] fdarray, int fd_nd, int[:, :] chan_a, int chan_nd
     out_array = np.full((x_max, y_max), fd_nd, dtype=DTYPE)
     cdef int[:, :] out_view = out_array
 
+    print(f'x_max: {x_max}, y_max: {y_max}')
+    cdef int cells_processed = 0
+    cdef int no_connect = 0
     for row in range(x_max):
+        # If we're an even percent done then print a message
+        if row % (x_max // 10) == 0:
+            print(f'row: {row} of {x_max} {row / x_max * 100}%')
         for col in range(y_max):
             if vb_a[row, col] == vb_nd:
                 continue
@@ -84,13 +90,15 @@ def access_algorithm(int[:, :] fdarray, int fd_nd, int[:, :] chan_a, int chan_nd
                             rowa = rowa + 1
                             cola = cola + 1
                         if [rowa, cola] in subprocessed:
-                            print('circular flow path, could not resolve connectivity')
+                            no_connect += 1
                             for coord in subprocessed:
                                 out_view[coord[0], coord[1]] = 2
                             next_cell = None
                         else:
                             subprocessed.append([rowa, cola])
-                            print(f'subprocessed {len(subprocessed)} cells')
+                            cells_processed += len(subprocessed)
                             next_cell = fdarray[rowa, cola]
 
+    print(f'cells processed: {cells_processed}')
+    print(f'no connectivity: {no_connect}')
     return out_array
