@@ -33,6 +33,7 @@ from sqlbrat.utils.vegetation_fis import vegetation_fis
 from sqlbrat.utils.combined_fis import combined_fis
 from sqlbrat.utils.conservation import conservation
 from sqlbrat.utils.riverscapes_brat import riverscape_brat
+from sqlbrat.utils.dam_reach_type import dam_reach_type
 from sqlbrat.brat_report import BratReport
 from sqlbrat.__version__ import __version__
 
@@ -443,6 +444,8 @@ def brat(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Path,
         database.conn.commit()
 
     conservation(outputs_gpkg_path)
+
+    dam_reach_type(outputs_gpkg_path)
 
     # moving window analysis
     riverscape_brat(outputs_gpkg_path, windows)
