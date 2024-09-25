@@ -149,7 +149,8 @@ CREATE TABLE ReachAttributes (
      oPC_Dist REAL, 
      IsMainCh INTEGER, 
      IsMultiCh INTEGER, 
-     mCC_HisDep REAL);
+     mCC_HisDep REAL,
+     Dam_Setting TEXT);
 
 CREATE INDEX ix_reach_attributes_level_path ON ReachAttributes(level_path);
 

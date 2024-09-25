@@ -26,6 +26,7 @@ def riverscape_brat(gpkg_path: str, windows: dict):
 
         for dgo_feature, _counter, _progbar in dgo_lyr.iterate_features("Processing DGO features"):
             dgoid = dgo_feature.GetFID()
+            log.info(f'Processing DGO {dgoid}')
             dgo_geom = dgo_feature.GetGeometryRef()
             centerline_len = dgo_feature.GetField('centerline_length')
             seg_dist = dgo_feature.GetField('seg_distance')
