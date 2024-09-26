@@ -1,5 +1,6 @@
 import os
 import sqlite3
+import time
 
 from rscommons import Logger, ProgressBar, get_shp_or_gpkg, VectorBase
 from rscommons.database import SQLiteCon
@@ -19,14 +20,16 @@ def riverscape_brat(gpkg_path: str, windows: dict):
     dgo = os.path.join(gpkg_path, 'vwDgos')
 
     log.info('Calculating BRAT Outputs on DGOs')
-    with get_shp_or_gpkg(dgo) as dgo_lyr, SQLiteCon(gpkg_path) as db:
+    with get_shp_or_gpkg(dgo) as dgo_lyr:  # , SQLiteCon(gpkg_path) as db:
         long = dgo_lyr.ogr_layer.GetExtent()[0]
         proj_epsg = get_utm_zone_epsg(long)
         sref, transform = VectorBase.get_transform_from_epsg(dgo_lyr.spatial_ref, proj_epsg)
 
+        dgo_atts = {}
         for dgo_feature, _counter, _progbar in dgo_lyr.iterate_features("Processing DGO features"):
+            # st = time.time()
             dgoid = dgo_feature.GetFID()
-            log.info(f'Processing DGO {dgoid}')
+
             dgo_geom = dgo_feature.GetGeometryRef()
             centerline_len = dgo_feature.GetField('centerline_length')
             seg_dist = dgo_feature.GetField('seg_distance')
@@ -76,20 +79,44 @@ def riverscape_brat(gpkg_path: str, windows: dict):
                         hpe100[hpeveg100] = reach_length
 
             if len(lengths) > 0:
+                dgo_atts[dgoid] = {'Lengths': sum(lengths)}
                 ix = lengths.index(max(lengths))
-                risk_val = risk[ix]
-                limitation_val = limitation[ix]
-                opportunity_val = opportunity[ix]
-                db.curs.execute(f"UPDATE DGOAttributes SET Risk = '{risk_val}', Limitation = '{limitation_val}', Opportunity = '{opportunity_val}' WHERE DGOID = {dgoid}")
+                # risk_val = risk[ix]
+                dgo_atts[dgoid]['Risk'] = risk[ix]
+                # limitation_val = limitation[ix]
+                dgo_atts[dgoid]['Limitation'] = limitation[ix]
+                # opportunity_val = opportunity[ix]
+                dgo_atts[dgoid]['Opportunity'] = opportunity[ix]
+                # db.curs.execute(f"UPDATE DGOAttributes SET Risk = '{risk_val}', Limitation = '{limitation_val}', Opportunity = '{opportunity_val}' WHERE DGOID = {dgoid}")
+            else:
+                dgo_atts[dgoid] = {'Lengths': 0}
+                dgo_atts[dgoid]['Risk'] = 'NA'
+                dgo_atts[dgoid]['Limitation'] = 'NA'
+                dgo_atts[dgoid]['Opportunity'] = 'NA'
 
             if centerline_len > 0:
-                db.curs.execute(f"""UPDATE DGOAttributes SET oCC_EX = {ex_num_dams / (centerline_len / 1000)}, oCC_HPE = {hist_num_dams /  (centerline_len / 1000)}, 
-                                oVC_EX = {ex_veg_dams / (centerline_len / 1000)}, oVC_HPE = {hist_veg_dams /  (centerline_len / 1000)} WHERE DGOID = {dgoid}""")
+                dgo_atts[dgoid]['oCC_EX'] = ex_num_dams / (centerline_len / 1000)
+                dgo_atts[dgoid]['oCC_HPE'] = hist_num_dams / (centerline_len / 1000)
+                dgo_atts[dgoid]['oVC_EX'] = ex_veg_dams / (centerline_len / 1000)
+                dgo_atts[dgoid]['oVC_HPE'] = hist_veg_dams / (centerline_len / 1000)
+                # db.curs.execute(f"""UPDATE DGOAttributes SET oCC_EX = {ex_num_dams / (centerline_len / 1000)}, oCC_HPE = {hist_num_dams /  (centerline_len / 1000)},
+                #                 oVC_EX = {ex_veg_dams / (centerline_len / 1000)}, oVC_HPE = {hist_veg_dams /  (centerline_len / 1000)} WHERE DGOID = {dgoid}""")
+            else:
+                dgo_atts[dgoid]['oCC_EX'] = 0
+                dgo_atts[dgoid]['oCC_HPE'] = 0
+                dgo_atts[dgoid]['oVC_EX'] = 0
+                dgo_atts[dgoid]['oVC_HPE'] = 0
+
             if len(lengths) > 0:
-                db.curs.execute(f"""UPDATE DGOAttributes SET mCC_EX_CT  = {ex_num_dams}, mCC_HPE_CT = {hist_num_dams} WHERE DGOID = {dgoid}""")
+                # db.curs.execute(f"""UPDATE DGOAttributes SET mCC_EX_CT  = {ex_num_dams}, mCC_HPE_CT = {hist_num_dams} WHERE DGOID = {dgoid}""")
+                dgo_atts[dgoid]['mCC_EX_CT'] = ex_num_dams
+                dgo_atts[dgoid]['mCC_HPE_CT'] = hist_num_dams
+            else:
+                dgo_atts[dgoid]['mCC_EX_CT'] = 0
+                dgo_atts[dgoid]['mCC_HPE_CT'] = 0
 
             if len(ex30) == 0:
-                e30, e100, h30, h100 = None, None, None, None
+                e30, e100, h30, h100 = 0, 0, 0, 0
             elif len(ex30) == 1:
                 e30 = list(ex30.keys())[0]
                 e100 = list(ex100.keys())[0]
@@ -100,14 +127,31 @@ def riverscape_brat(gpkg_path: str, windows: dict):
                 e100 = sum([k * (v / sum(ex100.values())) for k, v in ex100.items()])
                 h30 = sum([k * (v / sum(hpe30.values())) for k, v in hpe30.items()])
                 h100 = sum([k * (v / sum(hpe100.values())) for k, v in hpe100.items()])
+            dgo_atts[dgoid]['iVeg_30EX'] = e30
+            dgo_atts[dgoid]['iVeg100EX'] = e100
+            dgo_atts[dgoid]['iVeg_30HPE'] = h30
+            dgo_atts[dgoid]['iVeg100HPE'] = h100
 
-            if e30 is not None:
-                db.curs.execute(f"""UPDATE DGOAttributes SET iVeg_30EX = {e30}, iVeg100EX = {e100}, iVeg_30HPE = {h30}, iVeg100HPE = {h100} WHERE DGOID = {dgoid}""")
+            # if e30 is not None:
+            #     db.curs.execute(f"""UPDATE DGOAttributes SET iVeg_30EX = {e30}, iVeg100EX = {e100}, iVeg_30HPE = {h30}, iVeg100HPE = {h100} WHERE DGOID = {dgoid}""")
 
-        db.conn.commit()
+            # db.conn.commit()
+            # log.info(f'DGO: {dgoid} processed in {time.time() - st:.2f} seconds')
 
     conn = sqlite3.connect(gpkg_path)
     curs = conn.cursor()
+
+    log.info('Updating DGO Attributes')
+    progbar = ProgressBar(len(dgo_atts))
+    counter = 0
+    for dgoid, attrs in dgo_atts.items():
+        counter += 1
+        progbar.update(counter)
+        curs.execute(f"""UPDATE DGOAttributes SET oCC_EX = {attrs['oCC_EX']}, oCC_HPE = {attrs['oCC_HPE']}, oVC_EX = {attrs['oVC_EX']}, oVC_HPE = {attrs['oVC_HPE']},
+                        mCC_EX_CT = {attrs['mCC_EX_CT']}, mCC_HPE_CT = {attrs['mCC_HPE_CT']}, iVeg_30EX = {attrs['iVeg_30EX']}, iVeg100EX = {attrs['iVeg100EX']},
+                        iVeg_30HPE = {attrs['iVeg_30HPE']}, iVeg100HPE = {attrs['iVeg100HPE']} WHERE DGOID = {dgoid}""")
+        curs.execute(f"UPDATE DGOAttributes SET Risk = '{attrs['Risk']}', Limitation = '{attrs['Limitation']}', Opportunity = '{attrs['Opportunity']}' WHERE DGOID = {dgoid}")
+        conn.commit()
 
     log.info('Calculating BRAT Outputs on IGOs (moving window)')
     progbar = ProgressBar(len(windows))
