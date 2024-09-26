@@ -77,8 +77,8 @@ def dam_count_table(brat_gpkg_path: str, dams_gpkg_path: str):
         db.conn.commit()
         db.curs.execute('UPDATE dam_counts SET percent_capacity = dam_density / predicted_capacity')
         db.conn.commit()
-        db.curs.execute('UPDATE dam_counts SET predicted_capacity = 0 WHERE predicted_capacity IS NULL')
-        db.conn.commit()
+        # db.curs.execute('UPDATE dam_counts SET predicted_capacity = 0 WHERE predicted_capacity IS NULL')
+        # db.conn.commit()
 
         try:
             db.curs.execute("""CREATE VIEW vwCapacity AS SELECT B.fid, B.ReachCode, B.geom, C.predicted_capacity, C.dam_density, C.percent_capacity FROM vwReaches B
