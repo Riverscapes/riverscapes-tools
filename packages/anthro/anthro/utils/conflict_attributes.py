@@ -255,14 +255,67 @@ def distance_from_features(polygons, tmp_folder, bounds, cell_size_meters, cell_
     progbar.finish()
 
     log.info('Calculating Euclidean distance for {}'.format(field))
-    with rasterio.open(features_raster) as src:
-        profile = src.profile
-        profile.update(nodata=-9999)
-        features_arr = src.read(1)
-        distance = distance_transform_edt(np.logical_not(features_arr))
+    # with rasterio.open(features_raster) as src:
+    #     profile = src.profile
+    #     profile.update(nodata=-9999)
+    #     features_arr = src.read(1)
+    #     features_arr_not = np.logical_not(features_arr)
+    #     distance = distance_transform_edt(features_arr_not)
 
-    with rasterio.open(distance_raster, 'w', **profile) as dst:
-        dst.write(distance, 1)
+    # Define chunk size for memory efficiency
+    chunk_size = 1000  # Adjust based on your memory capacity
+
+    # with rasterio.open(features_raster) as src:
+    #     # Get the profile of the input raster
+    #     profile = src.profile
+
+    #     # Read the entire array's shape (height and width)
+    #     height, width = src.shape
+
+    #     # Prepare an output array to store the distance transform
+    #     distance = np.zeros((height, width), dtype=np.float32)
+
+    #     # Loop over the raster in chunks
+    #     for i in range(0, height, chunk_size):
+    #         for j in range(0, width, chunk_size):
+    #             # Define the window (chunk) boundaries
+    #             window = rasterio.windows.Window(j, i, min(chunk_size, width - j), min(chunk_size, height - i))
+
+    #             # Read the chunk of the raster
+    #             features_arr = src.read(1, window=window)
+
+    #             # Ensure that the chunk has only 0 and 1 values (if needed)
+    #             features_arr = np.where((features_arr == 1) | (features_arr == 0), features_arr, 1)
+
+    #             # Apply logical NOT to the chunk
+    #             features_arr_not = np.logical_not(features_arr.astype(bool))
+
+    #             # Perform distance transform on the chunk
+    #             distance_chunk = distance_transform_edt(features_arr_not)
+
+    #             # Write the chunk's distance values back into the full distance array
+    #             distance[i:i+chunk_size, j:j+chunk_size] = distance_chunk
+
+    #     # Update the profile to set the data type to float32 for the distance output
+    #     profile.update(dtype=rasterio.float32, nodata=-9999)
+
+    # with rasterio.open(distance_raster, 'w', **profile) as dst:
+    #     dst.write(distance, 1)
+
+    with rasterio.open(features_raster, 'r') as rio_dest:
+
+        out_meta = rio_dest.meta
+        out_meta['driver'] = 'GTiff'
+        out_meta['count'] = 1
+        out_meta['compress'] = 'deflate'
+
+        with rasterio.open(distance_raster, 'w', **out_meta) as rio_output:
+            for _ji, window in rio_dest.block_windows(1):
+                features_arr = np.array(rio_dest.read(1, window=window))  # mask of existing data in destination raster
+                features_arr_not = np.logical_not(features_arr.astype(bool))
+
+                distance_chunk = distance_transform_edt(features_arr_not)
+                rio_output.write(distance_chunk, window=window, indexes=1)
 
     # Calculate the Euclidean distance statistics (mean, min, max etc) for each polygon
     values = raster_buffer_stats2(polygons, distance_raster)
