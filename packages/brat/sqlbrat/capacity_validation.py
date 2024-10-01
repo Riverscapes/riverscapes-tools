@@ -36,6 +36,7 @@ def dam_count_table(brat_gpkg_path: str, dams_gpkg_path: str):
             GeopackageLayer(os.path.join(dams_gpkg_path, 'dams')) as dams_lyr:
 
         buffer_distance = brat_lyr.rough_convert_metres_to_vector_units(0.1)
+        max_distance = brat_lyr.rough_convert_metres_to_vector_units(30)
 
         # create a dissolved drainage network
         line_geoms = [ftr for ftr in brat_lyr.ogr_layer]
@@ -47,11 +48,15 @@ def dam_count_table(brat_gpkg_path: str, dams_gpkg_path: str):
             dam_id = dam_ftr.GetFID()
             dam_geom = dam_ftr.GetGeometryRef()
             nearest_line = nearest_points(merged_line, VectorBase.ogr2shapely(dam_geom))
+            if nearest_line[0].distance(VectorBase.ogr2shapely(dam_geom)) > max_distance:
+                continue
             dam_buf = nearest_line[0].buffer(buffer_distance)
 
             ct = 0
             for line_ftr, *_ in brat_lyr.iterate_features(clip_shape=dam_buf):
                 if ct == 0:
+                    if line_ftr.GetField('iGeo_Len') < 100:
+                        continue
                     reachid = line_ftr.GetFID()
                     line_geom = line_ftr.GetGeometryRef()
                     if line_geom is not None:
