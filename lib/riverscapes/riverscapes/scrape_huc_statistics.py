@@ -12,8 +12,7 @@ import copy
 import sqlite3
 import argparse
 import uuid
-from rsxml import dotenv, Logger
-from riverscapes import RiverscapesAPI
+from rscommons import Logger, dotenv
 
 # RegEx for finding RME and RCAT output GeoPackages
 RME_OUTPUT_GPKG_REGEX = r'.*riverscapes_metrics\.gpkg'
@@ -339,27 +338,6 @@ def add_where_clauses(base_sql: str, state: Dict[str, str], flow: Dict[str, str]
     return final_sql
 
 
-def download_file(rs_api: RiverscapesAPI, project_id: str, download_dir: str, regex: str) -> str:
-    """
-    Download files from a project on Data Exchange that match the regex string
-    Return the path to the downloaded file
-    """
-
-    gpkg_path = get_matching_file(download_dir, regex)
-    if gpkg_path is not None and os.path.isfile(gpkg_path):
-        return gpkg_path
-
-    rs_api.download_files(project_id, download_dir, [regex])
-
-    gpkg_path = get_matching_file(download_dir, regex)
-
-    # Cannot proceed with this HUC if the output GeoPackage is missing
-    if gpkg_path is None or not os.path.isfile(gpkg_path):
-        raise FileNotFoundError(f'Could not find output GeoPackage in {download_dir}')
-
-    return gpkg_path
-
-
 def get_matching_file(parent_dir: str, regex: str) -> str:
     """
     Get the path to the first file in the parent directory that matches the regex.
@@ -453,15 +431,17 @@ def main():
 
     # Initiate the log file
     log = Logger('RME Scrape')
-    log.setup(logPath=os.path.join(args.rme_gpkg, 'rme_scrape.log'), verbose=args.verbose)
-    log.title(f'RME scrape for HUC: {args.hucs}')
+
+    log_dir = os.path.join(os.path.dirname(args.rme_gpkg))
+    log.setup(logPath=os.path.join(log_dir, 'rme_scrape.log'), verbose=args.verbose)
+    log.title(f'RME scrape for HUC: {args.huc}')
 
     if not os.path.isfile(args.rme_gpkg):
         log.error(f'RME output GeoPackage cannot be found: {args.rme_gpkg}')
         sys.exit(1)
 
     if not os.path.isfile(args.rcat_gpkg):
-        log.error(f'RCAT output GeoPackage cannot be found: {args.rme_gpkg}')
+        log.error(f'RCAT output GeoPackage cannot be found: {args.rcat_gpkg}')
         sys.exit(1)
 
     # Place the output RME scrape database in the same directory as the RME GeoPackage
