@@ -79,7 +79,11 @@ try() {
   cd $RME_DIR
   
   # We're re-uploading a project so there's no need to create a new one
-  rscli upload . --tags "$TAGS" --no-input --no-ui --verbose
+  rscli upload . --tags "$TAGS" \
+    --no-input \
+    --no-delete \
+    --no-ui \
+    --verbose
 
   if [[ $? != 0 ]]; then return 1; fi
 
