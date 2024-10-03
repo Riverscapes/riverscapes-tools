@@ -5,12 +5,12 @@ This script uses Philip's warehouse database to find HUCs that have not been pro
 import argparse
 import os
 import sqlite3
-import inquirer
 import json
-from cybercastor import CybercastorAPI
+import inquirer
 from rsxml import dotenv
-from .add_job import get_params
+from cybercastor import CybercastorAPI
 from cybercastor.lib.rs_project_finder import fargate_env_keys
+from .add_job import get_params
 
 # Maximum number of tasks that can be submitted in a single job
 MAX_TASKS = 500
@@ -64,6 +64,10 @@ job_types = {
     {
         'output': 'brat',
         'upstream': ['rscontext', 'vbet', 'hydro', 'anthro'],
+    },
+    'rme_scraper': {
+        'output': 'rs_metric_engine',
+        'upstream': ['rs_metric_engine', 'rcat']
     }
 }
 
@@ -266,7 +270,9 @@ def create_and_run_batch_job(api: CybercastorAPI, stage: str, db_path: str, git_
 
 
 def get_unique_filename(filepath: str) -> str:
-    # Split the file path into directory, file name, and extension
+    """
+    Split the file path into directory, file name, and extension
+    """
     directory, filename = os.path.split(filepath)
     name, ext = os.path.splitext(filename)
 
@@ -284,6 +290,9 @@ def get_unique_filename(filepath: str) -> str:
 
 
 def get_upstream_projects(huc: str, job_type: str, curs: sqlite3.Cursor) -> list:
+    """
+    Find the most recent project of each upstream type for a given HUC
+    """
 
     missing_project_types = []
     upstream_projects = {}
@@ -305,9 +314,13 @@ if __name__ == "__main__":
     parser.add_argument('db_path', type=str, help='Path to batch database')
     args = dotenv.parse_args_env(parser)
 
-    with CybercastorAPI(stage=args.stage) as api:
+    with CybercastorAPI(stage=args.stage) as cc_api:
         another = True
         known_engine = None
-        git_ref = None
+        git_ref_repeat = None
         while another:
-            another, known_engine, git_ref = create_and_run_batch_job(api, args.stage, args.db_path, git_ref, known_engine)
+            result = create_and_run_batch_job(cc_api, args.stage, args.db_path, git_ref_repeat, known_engine)
+            if result is None:
+                another = False
+            else:
+                another, known_engine, git_ref_repeat = result
