@@ -52,7 +52,6 @@ rscli download $RCAT_DIR --id $RCAT_ID \
   --no-input --no-ui --verbose
 
 rscli download $RME_DIR --id $RME_ID \
-  --file-filter "(riverscapes_metrics\.gpkg)" \
   --no-input --no-ui --verbose
 
 
