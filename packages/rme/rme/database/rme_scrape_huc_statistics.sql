@@ -111,13 +111,29 @@ CREATE TABLE metrics (
     owner_id INT REFERENCES owners(id) ON DELETE CASCADE,
     flow_id INT REFERENCES flows(id) ON DELETE CASCADE,
     dgo_count REAL,
-    dgo_area_acres REAL,
-    dgo_length_miles REAL,
+    riverscape_area REAL,
+    riverscape_length REAL,
+    channel_gradient REAL,
+    valley_gradient REAL,
+    channel_length REAL,
+    low_lying_area REAL,
+    elevated_area REAL,
+    channel_area REAL,
+    valley_width REAL,
+    road_length REAL,
+    rail_length REAL,
+    land_use_intensity REAL,
+    accessible_floodplain_area REAL,
+    riparian_area REAL,
+    riparian_departure REAL,
+    riparian_ag_conv_area REAL,
+    riparian_developed_area REAL,
+
+    hist_riparian_area REAL,
+    floodplain_access_area REAL,
     active_area REAL,
     active_area_max REAL,
-    floodplain_access_area REAL,
     lui_zero_area REAL,
-    hist_riparian_area REAL,
 
     PRIMARY KEY(huc10, state_id, owner_id, flow_id)
 );
@@ -127,18 +143,11 @@ CREATE INDEX flow_id ON metrics(flow_id);
 
 CREATE VIEW vw_metrics AS
 SELECT
-    huc10,
+    m.huc10,
     s.where_clause AS us_state,
     o.name AS ownership,
     f.name AS fcode,
-    dgo_count,
-    dgo_area_acres,
-    dgo_length_miles,
-    active_area,
-    active_area_max,
-    floodplain_access_area,
-    lui_zero_area,
-    hist_riparian_area
+    m.*
 FROM
     metrics m
     INNER JOIN flows f ON m.flow_id = f.id
