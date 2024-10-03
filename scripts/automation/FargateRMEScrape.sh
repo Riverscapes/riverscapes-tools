@@ -10,6 +10,7 @@ IFS=$'\n\t'
 # These are properties we pass to rscli
 (: "${TAGS?}")
 (: "${RS_API_URL?}")
+(: "${HUC?}")
 # These are machine credentials for the API which will allow the CLI to delegate uploading to either a specific user or an org
 (: "${RS_CLIENT_ID?}")
 (: "${RS_CLIENT_SECRET?}")
@@ -56,13 +57,9 @@ rscli download $RME_DIR --id $RME_ID \
 try() {
   cd /usr/local/src/riverscapes-tools/lib/riverscapes/riverscapes
   
-  # Pull the huc code out of the project XML
-  HUC_CODE=$(grep 'Meta name="HUC"' $RME_DIR/project.rs.xml | head -n 1 | awk -F'[<>]' '{print $3}')
-  (: "${HUC_CODE?}")
-  echo "HUC_CODE: $HUC_CODE"
-  
+  # Pull the huc code out of the project XML  
   python3 scrape_huc_statistics.py \
-    $HUC_CODE \
+    $HUC \
     $RME_DIR/outputs/riverscapes_metrics.gpkg \
     --delete \
     --verbose
