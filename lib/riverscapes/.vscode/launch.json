@@ -8,7 +8,7 @@
       "type": "promptString",
       "id": "HUC",
       "description": "What HUC?",
-      "default": "0802020409" // Really small HUC
+      "default": "0808010105" // Really small HUC
     },
     {
       "id": "environment",
@@ -150,7 +150,6 @@
       "args": [
         "${input:HUC}",
         "{env:DATA_ROOT}/rme/${input:HUC}/outputs/riverscapes_metrics.gpkg",
-        "{env:DATA_ROOT}/rcat/${input:HUC}/outputs/rcat.gpkg",
         "--verbose",
       ]
     },

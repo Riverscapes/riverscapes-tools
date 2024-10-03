@@ -374,7 +374,6 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('huc', help='HUC code for the scrape', type=str)
     parser.add_argument('rme_gpkg', help='RME output GeoPackage path', type=str)
-    parser.add_argument('rcat_gpkg', help='RCAT output GeoPackage path', type=str)
     parser.add_argument('-v', '--verbose', help='Verbose logging', action='store_true')
     args = dotenv.parse_args_env(parser)
 
