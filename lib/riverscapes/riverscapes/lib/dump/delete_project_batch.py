@@ -59,7 +59,7 @@ def delete_project_batch(rs_api: RiverscapesAPI, stage: str, db_path: str, proje
                 if answers['delete_local']:
                     curs.execute('DELETE FROM rs_projects WHERE project_id = ?', [project_id])
         except Exception as e:
-            if e is not None and 'not found' in str(e):
+            if e is not None and ('not found' in str(e) or 'already deleted' in str(e)):
                 not_found += 1
             else:
                 raise e
