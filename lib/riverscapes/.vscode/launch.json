@@ -5,6 +5,12 @@
   "version": "0.2.0",
   "inputs": [
     {
+      "type": "promptString",
+      "id": "HUC",
+      "description": "What HUC?",
+      "default": "0802020409" // Really small HUC
+    },
+    {
       "id": "environment",
       "type": "pickString",
       "description": "Select a RIVERSCAPES API environment",
@@ -142,9 +148,9 @@
       "console": "integratedTerminal",
       "envFile": "${workspaceFolder}/.env",
       "args": [
-        "0808010105",
-        "{env:DATA_ROOT}/rme-scrape/downloads/0808010105/rme/outputs/riverscapes_metrics.gpkg",
-        "{env:DATA_ROOT}/rme-scrape/downloads/0808010105/rcat/outputs/rcat.gpkg",
+        "${input:HUC}",
+        "{env:DATA_ROOT}/rme/${input:HUC}/outputs/riverscapes_metrics.gpkg",
+        "{env:DATA_ROOT}/rcat/${input:HUC}/outputs/rcat.gpkg",
         "--verbose",
       ]
     },
