@@ -390,10 +390,13 @@ def create_output_db(output_db: str) -> None:
     """ 
     Build the output SQLite database by running the schema file.
     """
+    log = Logger('Create Output DB')
+    log.info(f'Creating output database: {output_db}')
 
     # As a precaution, do not overwrite or delete the output database.
     # Force the user to delete it manually if they want to rebuild it.
     if os.path.isfile(output_db):
+        log.error(f'Output database already exists. Skipping creation.')
         return
 
     schema_dir = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'packages', 'rme', 'rme', 'database')
@@ -402,11 +405,13 @@ def create_output_db(output_db: str) -> None:
 
     with sqlite3.connect(output_db) as conn:
         curs = conn.cursor()
+        log.info('Creating output database schema')
         with open(os.path.join(schema_dir, 'rme_scrape_huc_statistics.sql'), encoding='utf-8') as sqlfile:
             sql_commands = sqlfile.read()
             curs.executescript(sql_commands)
             conn.commit()
 
+    log.info('Output database created')
 
 def dict_factory(cursor, row):
     """Apply the dictionary factory to the cursor so that columns can be accessed by name"""
