@@ -6,7 +6,6 @@ IFS=$'\n\t'
 
 # These environment variables need to be present before the script starts
 # These are ids that we will use in rscli to download the necessary files
-(: "${RCAT_ID?}")
 (: "${RME_ID?}")
 # These are properties we pass to rscli
 (: "${TAGS?}")
@@ -31,7 +30,6 @@ EOF
 
 echo "TAGS: $TAGS"
 echo "RME_ID: $RME_ID"
-echo "RCAT_ID: $RCAT_ID"
 echo "RS_API_URL: $RS_API_URL"
 
 echo "======================  GDAL Version ======================="
@@ -41,15 +39,11 @@ gdal-config --version
 DATA_DIR=/usr/local/data
 
 RME_DIR=$DATA_DIR/rme/rme_$RME_ID
-RCAT_DIR=$DATA_DIR/rcat/rcat_$RCAT_ID
 
 ##########################################################################################
-# First Get RME and RCAT inputs
+# First Get RME inputs
 ##########################################################################################
 
-rscli download $RCAT_DIR --id $RCAT_ID \
-  --file-filter "(rcat\.gpkg)" \
-  --no-input --no-ui --verbose
 
 rscli download $RME_DIR --id $RME_ID \
   --no-input --no-ui --verbose
@@ -70,7 +64,6 @@ try() {
   python3 scrape_huc_statistics.py \
     $HUC_CODE \
     $RME_DIR/outputs/riverscapes_metrics.gpkg \
-    $RCAT_DIR/outputs/rcat.gpkg \
     --verbose
   if [[ $? != 0 ]]; then return 1; fi
 
