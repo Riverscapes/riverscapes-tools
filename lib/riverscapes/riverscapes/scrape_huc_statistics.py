@@ -1,19 +1,18 @@
 """
-Scrapes RME and RCAT outout GeoPackages from Data Exchange and extracts statistics for each HUC.
+Scrapes RME and RCAT outout GeoPackages from Data Exchange and extracts statistics for a single HUC.
 Produced for the BLM 2024 September analysis of 2024 CONUS RME projects.
 Philip Bailey
 """
-from typing import Dict, Tuple
+from typing import Dict
 import shutil
 import sys
 import re
 import os
 import copy
 import sqlite3
-import logging
 import argparse
 import uuid
-from rsxml import dotenv, Logger, safe_makedirs
+from rsxml import dotenv, Logger
 from riverscapes import RiverscapesAPI
 
 # RegEx for finding RME and RCAT output GeoPackages
@@ -57,40 +56,14 @@ rme_metric_defs = (
 METRES_TO_MILES = 0.000621371
 SQMETRES_TO_ACRES = 0.000247105
 
-# Output template for the data to be scraped.
-# Keys must match the schema of the output database 'metrics' table
-# DATA_TEMPLATE = {
-#     'state_id': None,
-#     'owner_id': None,
-#     'flow_id': None,
-#     'huc10': None,
-#     'dgo_count': None,
-#     'riverscape_area': None,
-#     'riverscape_length': None,
-#     'channel_gradient': None,
-#     'valley_gradient': None,
-#     'channel_length': None,
-#     'low_lying_area': None,
-#     'elevated_area': None,
-#     'channel_area': None,
-#     'valley_width': None,
-#     'road_length': None,
-#     'rail_length': None,
-#     'land_use_intensity': None,
-#     'accessible_floodplain_area': None,
-#     'riparian_area': None,
-#     'riparian_departure': None,
-#     'riparian_ag_conv_area': None,
-#     'riparian_developed_area': None
-# }
 
-
-def scrape_hucs(rs_api: RiverscapesAPI,  projects: Dict[str, str], download_dir: str, output_db: str, delete_downloads: bool) -> None:
+def scrape_huc_statistics(huc: str, rme_gpkg: str, rcat_gpkg: str, output_db: str) -> None:
     """
-    Loop over all the projects, download the RME and RCAT output GeoPackages, and scrape the statistics
+    Scrape the RME statistics for a single HUC.
+
     """
 
-    log = Logger('Scrape HUCs')
+    log = Logger('Scrape HUC')
 
     # Load the foreign key look up tables for owners and flows
     owners = load_filters(output_db, 'owners')
@@ -100,83 +73,60 @@ def scrape_hucs(rs_api: RiverscapesAPI,  projects: Dict[str, str], download_dir:
     # Get an empty template from the output db for the data to be scraped
     data_template = get_data_template(output_db)
 
-    for index, (huc, project_ids) in enumerate(projects.items(), start=1):
-        try:
-            # HUCs that appears in 'hucs' db table are skipped
-            if continue_with_huc(huc, output_db) is not True:
-                continue
+    log.info(f'Scraping metrics for HUC {huc}')
 
-            log.info(f'Scraping RME metrics for HUC {huc} ({index} of {len(projects)})')
-            huc_dir = os.path.join(download_dir, huc)
+    # Copy RCAT db so we copy some RME data into it without mutating the original
+    rcat_gpkg_copy = copy_file_with_unique_name(rcat_gpkg)
 
-            rme_guid = project_ids['rme']
-            rme_gpkg = download_file(rs_api, rme_guid, os.path.join(huc_dir, 'rme'), RME_OUTPUT_GPKG_REGEX)
+    huc_metrics = []
+    with sqlite3.connect(rme_gpkg) as rme_conn:
+        rme_conn.row_factory = dict_factory
+        rme_curs = rme_conn.cursor()
 
-            rcat_guid = project_ids['rcat']
-            rcat_gpkg = download_file(rs_api, rcat_guid, os.path.join(huc_dir, 'rcat'), RCAT_OUTPUT_GPKG_REGEX)
+        with sqlite3.connect(rcat_gpkg_copy) as rcat_conn:
+            rcat_curs = rcat_conn.cursor()
 
-            # Copy RCAT db so we copy some RME data into it without mutating the original
-            rcat_gpkg_copy = copy_file_with_unique_name(rcat_gpkg)
+            copy_table_between_cursors(rme_curs, rcat_curs, 'dgo_metric_values')
+            copy_table_between_cursors(rme_curs, rcat_curs, 'dgos')
+            rcat_conn.commit()  # so we can test queries in DataGrip
 
-            huc_metrics = []
-            with sqlite3.connect(rme_gpkg) as rme_conn:
-                rme_conn.row_factory = dict_factory
-                rme_curs = rme_conn.cursor()
+            for __state_name, state_data in states.items():
 
-                with sqlite3.connect(rcat_gpkg_copy) as rcat_conn:
-                    rcat_curs = rcat_conn.cursor()
+                for __flow_name, flow_data in flows.items():
 
-                    copy_table_between_cursors(rme_curs, rcat_curs, 'dgo_metric_values')
-                    copy_table_between_cursors(rme_curs, rcat_curs, 'dgos')
-                    rcat_conn.commit()  # so we can test queries in DataGrip
+                    # Without an owner filter we get statistics for all owners for a certain FCode
+                    data = copy.deepcopy(data_template)
+                    data['state_id'] = state_data['id']
+                    data['flow_id'] = flow_data['id']
+                    data['huc10'] = huc
+                    scrape_rme_statistics(rme_curs, state_data, flow_data, None, data)
+                    scrape_rcat_statistics(rcat_curs, state_data, flow_data, None, data)
 
-                    for __state_name, state_data in states.items():
+                    if data['dgo_count'] > 0:
+                        huc_metrics.append(data)
 
-                        for __flow_name, flow_data in flows.items():
+                    for __owner_name, owner_data in owners.items():
 
-                            # Without an owner filter we get statistics for all owners for a certain FCode
-                            data = copy.deepcopy(data_template)
-                            data['state_id'] = state_data['id']
-                            data['flow_id'] = flow_data['id']
-                            data['huc10'] = huc
-                            scrape_rme_statistics(rme_curs, state_data, flow_data, None, data)
-                            scrape_rcat_statistics(rcat_curs, state_data, flow_data, None, data)
+                        data = copy.deepcopy(data_template)
+                        data['state_id'] = state_data['id']
+                        data['owner_id'] = owner_data['id']
+                        data['flow_id'] = flow_data['id']
+                        data['huc10'] = huc
 
-                            if data['dgo_count'] > 0:
-                                huc_metrics.append(data)
+                        # Statistics with both owner and flow filters
+                        scrape_rme_statistics(rme_curs, state_data, flow_data, owner_data, data)
+                        scrape_rcat_statistics(rcat_curs, state_data, flow_data, owner_data, data)
 
-                            for __owner_name, owner_data in owners.items():
+                        if data['dgo_count'] > 0:
+                            huc_metrics.append(data)
 
-                                data = copy.deepcopy(data_template)
-                                data['state_id'] = state_data['id']
-                                data['owner_id'] = owner_data['id']
-                                data['flow_id'] = flow_data['id']
-                                data['huc10'] = huc
-
-                                # Statistics with both owner and flow filters
-                                scrape_rme_statistics(rme_curs, state_data, flow_data, owner_data, data)
-                                scrape_rcat_statistics(rcat_curs, state_data, flow_data, owner_data, data)
-
-                                if data['dgo_count'] > 0:
-                                    huc_metrics.append(data)
-
-            # Store the output HUC metrics
-            keys = huc_metrics[0].keys()
-            with sqlite3.connect(output_db) as conn:
-                curs = conn.cursor()
-                curs.execute('INSERT INTO hucs (huc10, rme_project_guid, rcat_project_guid) VALUES (?, ?, ?)', [huc, rme_guid, rcat_guid])
-                curs.executemany(f'INSERT INTO metrics ({", ".join(keys)}) VALUES ({", ".join(["?" for _ in keys])})', [tuple(m[k] for k in keys) for m in huc_metrics])
-                conn.commit()
-
-        except Exception as e:
-            log.error(f'Error scraping HUC {huc}: {e}')
-
-        if delete_downloads is True and os.path.isdir(huc_dir):
-            try:
-                log.info(f'Deleting download directory {huc_dir}')
-                shutil.rmtree(huc_dir)
-            except Exception as e:
-                log.error(f'Error deleting download directory {huc_dir}: {e}')
+    # Store the output HUC metrics
+    keys = huc_metrics[0].keys()
+    with sqlite3.connect(output_db) as conn:
+        curs = conn.cursor()
+        curs.execute('INSERT INTO hucs (huc10, rme_project_guid, rcat_project_guid) VALUES (?, ?, ?)', [huc, None, None])
+        curs.executemany(f'INSERT INTO metrics ({", ".join(keys)}) VALUES ({", ".join(["?" for _ in keys])})', [tuple(m[k] for k in keys) for m in huc_metrics])
+        conn.commit()
 
 
 def get_data_template(output_db: str) -> Dict[str, float]:
@@ -269,6 +219,18 @@ def scrape_rme_statistics(curs: sqlite3.Cursor, state: Dict[str, str], flow: Dic
 
 
 def get_rme_metric_summary(curs: sqlite3.Cursor, state: Dict[str, str], flow: Dict[str, str], owner: Dict[str, str], metric_id: int, summary_method: str) -> float:
+    """
+    For a given metric (by metric_id) this method generates several summary metrics:
+        - Length weighted average
+        - Area weighted average
+        - Sum of metric values
+        - Sum of metric values multiplied by centerline length
+        - Sum of metric values multiplied by segment area
+
+    The caller specifies which of these metrics they want returned by passing in the summary_method.
+
+    The caller can filter by state, flow and optionally owner.
+    """
 
     owner_table_join = '' if owner is None else ' LEFT JOIN dgo_metric_values dmo ON d.fid = dmo.dgo_id'
 
@@ -469,6 +431,8 @@ def create_output_db(output_db: str) -> None:
 
 
 def dict_factory(cursor, row):
+    """Apply the dictionary factory to the cursor so that columns can be accessed by name"""
+
     d = {}
     for idx, col in enumerate(cursor.description):
         d[col[0]] = row[idx]
@@ -477,67 +441,39 @@ def dict_factory(cursor, row):
 
 def main():
     """
-    Scrape RME projects
+    Scrape RME metrics for a single HUC
     """
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('stage', help='Environment: staging or production', type=str)
-    parser.add_argument('working_folder', help='top level folder for downloads and output', type=str)
-    parser.add_argument('db_path', help='Path to the warehouse dump database', type=str)
-    parser.add_argument('--delete', help='Whether or not to delete downloaded GeoPackages', type=bool, default=False)
-    parser.add_argument('--huc_filter', help='HUC filter SQL prefix ("17%")', type=str, default='')
+    parser.add_argument('huc', help='HUC code for the scrape', type=str)
+    parser.add_argument('rme_gpkg', help='RME output GeoPackage path', type=str)
+    parser.add_argument('rcat_gpkg', help='RCAT output GeoPackage path', type=str)
+    parser.add_argument('-v', '--verbose', help='Verbose logging', action='store_true')
     args = dotenv.parse_args_env(parser)
 
-    if not os.path.isfile(args.db_path):
-        print(f'Data Exchange project dump database file not found: {args.db_path}')
+    # Initiate the log file
+    log = Logger('RME Scrape')
+    log.setup(logPath=os.path.join(args.rme_gpkg, 'rme_scrape.log'), verbose=args.verbose)
+    log.title(f'RME scrape for HUC: {args.hucs}')
+
+    if not os.path.isfile(args.rme_gpkg):
+        log.error(f'RME output GeoPackage cannot be found: {args.rme_gpkg}')
         sys.exit(1)
 
-    # Set up some reasonable folders to store things
-    working_folder = args.working_folder  # os.path.join(args.working_folder, output_name)
-    download_folder = os.path.join(working_folder, 'downloads')
-    scraped_folder = working_folder  # os.path.join(working_folder, 'scraped')
+    if not os.path.isfile(args.rcat_gpkg):
+        log.error(f'RCAT output GeoPackage cannot be found: {args.rme_gpkg}')
+        sys.exit(1)
 
-    safe_makedirs(scraped_folder)
-    log = Logger('Setup')
-    log.setup(log_path=os.path.join(scraped_folder, 'rme-scrape.log'), log_level=logging.DEBUG)
+    # Place the output RME scrape database in the same directory as the RME GeoPackage
+    output_db = os.path.join(os.path.dirname(args.rme_gpkg), 'rme_scrape.sqlite')
+    log.info(f'Output database: {output_db}')
 
-    huc_filter = f" AND (huc10 LIKE ('{args.huc_filter}')) " if args.huc_filter and args.huc_filter != '.' else ''
-
-    # Determine projects in the dumped warehouse database that have both RCAT and RME available
-    with sqlite3.connect(args.db_path) as conn:
-        curs = conn.cursor()
-        curs.execute(f'''
-            SELECT huc10, min(rme_project_id), min(rcat_project_id)
-            FROM
-            (
-                SELECT huc10,
-                    CASE WHEN project_type_id = 'rs_metric_engine' THEN project_id ELSE NULL END rme_project_id,
-                    CASE WHEN project_type_id = 'rcat' then project_id ELSE NULL END             rcat_project_id
-                FROM vw_conus_projects
-                WHERE project_type_id IN ('rs_metric_engine', 'rcat')
-                    AND tags = '2024CONUS'
-            )
-            GROUP BY huc10
-            HAVING min(rme_project_id) IS NOT NULL
-                AND min(rcat_project_id) IS NOT NULL
-                {huc_filter}
-            ''')
-        projects = {row[0]: {
-            'rme': row[1],
-            'rcat': row[2]
-        } for row in curs.fetchall()}
-
-    if len(projects) == 0:
-        log.info('No projects found in Data Exchange dump with both RCAT and RME')
-        sys.exit(0)
-
-    log.info(f'Found {len(projects)} RME projects in Data Exchange dump with both RME and RCAT')
-
-    output_db = os.path.join(scraped_folder, 'rme_scrape_output.sqlite')
-    create_output_db(output_db)
-
-    with RiverscapesAPI(stage=args.stage) as api:
-        scrape_hucs(api, projects, download_folder, output_db, args.delete)
+    try:
+        create_output_db(output_db)
+        scrape_huc_statistics(args.huc, args.rme_gpkg, args.rcat_gpkg, output_db)
+    except Exception as e:
+        log.error(f'Error scraping HUC {args.huc}: {e}')
+        sys.exit(1)
 
     log.info('Process complete')
 
