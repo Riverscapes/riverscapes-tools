@@ -142,7 +142,7 @@ CREATE TABLE metrics (
     rail_density REAL,
     riparian_ag_conversion_proportion REAL,
     riparian_developed_proportion REAL,
-    beaver_dam_density REAL,
+    -- beaver_dam_density REAL,
 
     PRIMARY KEY(huc10, state_id, owner_id, flow_id)
 );
