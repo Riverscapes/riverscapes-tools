@@ -129,11 +129,20 @@ CREATE TABLE metrics (
     riparian_ag_conv_area REAL,
     riparian_developed_area REAL,
 
-    hist_riparian_area REAL,
+    -- hist_riparian_area REAL,
     -- floodplain_access_area REAL,
     -- active_area REAL,
     -- active_area_max REAL,
     lui_zero_area REAL,
+
+    hist_riparian_area REAL,
+    relative_flow_length REAL,
+    acres_vb_per_mile REAL,
+    road_density REAL,
+    rail_density REAL,
+    riparian_ag_conversion_proportion REAL,
+    riparian_developed_proportion REAL,
+    beaver_dam_density REAL,
 
     PRIMARY KEY(huc10, state_id, owner_id, flow_id)
 );

@@ -114,7 +114,22 @@ def scrape_huc_statistics(huc: str, rme_gpkg: str, output_db: str) -> None:
         curs = conn.cursor()
         curs.execute('INSERT INTO hucs (huc10, rme_project_guid, rcat_project_guid) VALUES (?, ?, ?)', [huc, None, None])
         curs.executemany(f'INSERT INTO metrics ({", ".join(keys)}) VALUES ({", ".join(["?" for _ in keys])})', [tuple(m[k] for k in keys) for m in huc_metrics])
+        secondary_metrics(curs)
         conn.commit()
+
+
+def secondary_metrics(curs: sqlite3.Cursor) -> None:
+    """ After the metrics have been scraped, calculate the secondary metrics with simple SQL updates
+    """
+
+    curs.execute('UPDATE metrics SET hist_riparian_area = riparian_area / (1 - riparian_departure)')
+    curs.execute('UPDATE metrics SET relative_flow_length = channel_length / riverscape_length')
+    curs.execute('UPDATE metrics SET acres_vb_per_mile = (riverscape_area * 0.000247105) / (riverscape_length * 0.000621371)')
+    curs.execute('UPDATE metrics SET road_density = road_length / riverscape_length')
+    curs.execute('UPDATE metrics SET rail_density = rail_length / riverscape_length')
+    curs.execute('UPDATE metrics SET riparian_ag_conversion_proportion = riparian_ag_conv_area / riverscape_area')
+    curs.execute('UPDATE metrics SET riparian_developed_proportion = riparian_developed_area / riverscape_area')
+    # curs.execute('UPDATE metrics SET beaver_dam_density = beaver_dam_capacity / riverscape_length')
 
 
 def get_data_template(output_db: str) -> Dict[str, float]:
@@ -324,7 +339,7 @@ def create_output_db(output_db: str) -> None:
     # As a precaution, do not overwrite or delete the output database.
     # Force the user to delete it manually if they want to rebuild it.
     if os.path.isfile(output_db):
-        log.error(f'Output database already exists. Skipping creation.')
+        log.error('Output database already exists. Skipping creation.')
         return
 
     schema_dir = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'packages', 'rme', 'rme', 'database')
