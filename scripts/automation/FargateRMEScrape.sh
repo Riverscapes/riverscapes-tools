@@ -64,6 +64,7 @@ try() {
   python3 scrape_huc_statistics.py \
     $HUC_CODE \
     $RME_DIR/outputs/riverscapes_metrics.gpkg \
+    --delete \
     --verbose
   if [[ $? != 0 ]]; then return 1; fi
 
