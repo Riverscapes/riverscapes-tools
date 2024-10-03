@@ -329,7 +329,7 @@ def continue_with_huc(huc: str, output_db: str) -> bool:
     return False
 
 
-def create_output_db(output_db: str) -> None:
+def create_output_db(output_db: str, delete: bool) -> None:
     """ 
     Build the output SQLite database by running the schema file.
     """
@@ -339,8 +339,12 @@ def create_output_db(output_db: str) -> None:
     # As a precaution, do not overwrite or delete the output database.
     # Force the user to delete it manually if they want to rebuild it.
     if os.path.isfile(output_db):
-        log.error('Output database already exists. Skipping creation.')
-        return
+        if delete is True:
+            log.info(f'Deleting existing output database {output_db}')
+            os.remove(output_db)
+        else:
+            log.error('Output database already exists. Skipping creation.')
+            return
 
     schema_dir = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'packages', 'rme', 'rme', 'database')
     if not os.path.isdir(schema_dir):
@@ -374,6 +378,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('huc', help='HUC code for the scrape', type=str)
     parser.add_argument('rme_gpkg', help='RME output GeoPackage path', type=str)
+    parser.add_argument('--delete', help='Delete the output database if it exists', action='store_true')
     parser.add_argument('-v', '--verbose', help='Verbose logging', action='store_true')
     args = dotenv.parse_args_env(parser)
 
@@ -393,7 +398,7 @@ def main():
     log.info(f'Output database: {output_db}')
 
     try:
-        create_output_db(output_db)
+        create_output_db(output_db, args.delete)
         scrape_huc_statistics(args.huc, args.rme_gpkg, output_db)
     except Exception as e:
         log.error(f'Error scraping HUC {args.huc}: {e}')
