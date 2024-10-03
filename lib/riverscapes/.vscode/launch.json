@@ -116,10 +116,10 @@
       ]
     },
     {
-      "name": "Scrape HUC statistics",
+      "name": "Scrape HUC statistics - BATCH",
       "type": "debugpy",
       "request": "launch",
-      "module": "riverscapes.scrape-huc-statistics",
+      "module": "riverscapes.scrape_huc_statistics_batch",
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "envFile": "${workspaceFolder}/.env",
@@ -131,6 +131,21 @@
         "True",
         "--huc_filter",
         "1601%"
+      ]
+    },
+    {
+      "name": "Scrape HUC statistics - SINGLE HUC",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "riverscapes.scrape_huc_statistics",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/.env",
+      "args": [
+        "0808010105",
+        "{env:DATA_ROOT}/rme-scrape/downloads/0808010105/rme/outputs/riverscapes_metrics.gpkg",
+        "{env:DATA_ROOT}/rme-scrape/downloads/0808010105/rcat/outputs/rcat.gpkg",
+        "--verbose",
       ]
     },
     {
