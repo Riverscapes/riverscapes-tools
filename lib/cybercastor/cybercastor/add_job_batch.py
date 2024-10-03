@@ -67,6 +67,26 @@ job_types = {
     }
 }
 
+# 1. Leave resources out for standard box.
+# 2. Medium:
+#  "resources": {
+#         "cpu": 1024,
+#         "memory": 8192,
+#         "disk": 30
+#     },
+# 3. Big:
+#  "resources": {
+#         "cpu": 2048,
+#         "memory": 16384,
+#         "disk": 30
+#     },
+# 4. Very Big
+#  "resources": {
+#         "cpu": 4096,
+#         "memory": 30720,
+#         "disk": 30
+#     },
+
 job_template = {
     "$schema": "../job.schema.json",
     "name": None,
@@ -79,7 +99,12 @@ job_template = {
         "ORG_ID": "5d5bcccc-6632-4054-85f1-19501a6b3cdf"
     },
     "hucs": [],
-    "lookups": {}
+    "lookups": {},
+    # "resources": {
+    #     "cpu": 4096,
+    #     "memory": 30720,
+    #     "disk": 30
+    # },
 }
 
 
