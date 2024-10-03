@@ -1,5 +1,5 @@
 """
-Scrapes RME and RCAT outout GeoPackages from Data Exchange and extracts statistics for a single HUC.
+Scrapes RME GeoPackage from Data Exchange and extracts statistics for a single HUC.
 Produced for the BLM 2024 September analysis of 2024 CONUS RME projects.
 Philip Bailey
 """
@@ -14,16 +14,15 @@ import argparse
 import uuid
 from rscommons import Logger, dotenv
 
-# RegEx for finding RME and RCAT output GeoPackages
-RME_OUTPUT_GPKG_REGEX = r'.*riverscapes_metrics\.gpkg'
-RCAT_OUTPUT_GPKG_REGEX = r'.*rcat\.gpkg'
-
 # Metric summary methods used in dictionary below
 LENGTH_WEIGHTED_AVG = 'length_weighted_avg'
 AREA_WEIGHTED_AVG = 'area_weighted_avg'
 SUM_METRIC = 'sum_metric_value'
 MULTIPLIED_BY_LENGTH = 'multiplied_by_length'
 MULTIPLIED_BY_AREA = 'multiplied_by_area'
+
+# Sums the segment area for DGOs that have the corresponding metric value equal to zero
+SUM_AREA_ZERO_COUNT = 'sum_area_zero_count'
 
 # These are RME metrics than can be scraped. The items in each Tuple are:
 # 1. The name of the metric in the RME database (not used by this code)
@@ -48,15 +47,17 @@ rme_metric_defs = (
     ('rcat_igo_riparian_veg_departure',	40,	AREA_WEIGHTED_AVG,		'riparian_departure'),
     ('rcat_igo_riparian_ag_conversion',	41,	MULTIPLIED_BY_AREA,		'riparian_ag_conv_area'),
     ('rcat_igo_riparian_develop',	42, MULTIPLIED_BY_AREA,		'riparian_developed_area'),
+    ('rcat_lui_zero_count',	37,	SUM_AREA_ZERO_COUNT,		'lui_zero_area')
     # ('brat_igo_capacity',	43,	SUM_METRIC,		'beaver_dam_capacity')
 )
 
 # Conversion factors
-METRES_TO_MILES = 0.000621371
-SQMETRES_TO_ACRES = 0.000247105
+# 3 Oct 2024 - decided to keep the units in the database and not convert them here
+# METRES_TO_MILES = 0.000621371
+# SQMETRES_TO_ACRES = 0.000247105
 
 
-def scrape_huc_statistics(huc: str, rme_gpkg: str, rcat_gpkg: str, output_db: str) -> None:
+def scrape_huc_statistics(huc: str, rme_gpkg: str, output_db: str) -> None:
     """
     Scrape the RME statistics for a single HUC.
 
@@ -74,50 +75,38 @@ def scrape_huc_statistics(huc: str, rme_gpkg: str, rcat_gpkg: str, output_db: st
 
     log.info(f'Scraping metrics for HUC {huc}')
 
-    # Copy RCAT db so we copy some RME data into it without mutating the original
-    rcat_gpkg_copy = copy_file_with_unique_name(rcat_gpkg)
-
     huc_metrics = []
     with sqlite3.connect(rme_gpkg) as rme_conn:
         rme_conn.row_factory = dict_factory
         rme_curs = rme_conn.cursor()
 
-        with sqlite3.connect(rcat_gpkg_copy) as rcat_conn:
-            rcat_curs = rcat_conn.cursor()
+        for __state_name, state_data in states.items():
 
-            copy_table_between_cursors(rme_curs, rcat_curs, 'dgo_metric_values')
-            copy_table_between_cursors(rme_curs, rcat_curs, 'dgos')
-            rcat_conn.commit()  # so we can test queries in DataGrip
+            for __flow_name, flow_data in flows.items():
 
-            for __state_name, state_data in states.items():
+                # Without an owner filter we get statistics for all owners for a certain FCode
+                data = copy.deepcopy(data_template)
+                data['state_id'] = state_data['id']
+                data['flow_id'] = flow_data['id']
+                data['huc10'] = huc
+                scrape_rme_statistics(rme_curs, state_data, flow_data, None, data)
 
-                for __flow_name, flow_data in flows.items():
+                if data['dgo_count'] > 0:
+                    huc_metrics.append(data)
 
-                    # Without an owner filter we get statistics for all owners for a certain FCode
+                for __owner_name, owner_data in owners.items():
+
                     data = copy.deepcopy(data_template)
                     data['state_id'] = state_data['id']
+                    data['owner_id'] = owner_data['id']
                     data['flow_id'] = flow_data['id']
                     data['huc10'] = huc
-                    scrape_rme_statistics(rme_curs, state_data, flow_data, None, data)
-                    scrape_rcat_statistics(rcat_curs, state_data, flow_data, None, data)
+
+                    # Statistics with both owner and flow filters
+                    scrape_rme_statistics(rme_curs, state_data, flow_data, owner_data, data)
 
                     if data['dgo_count'] > 0:
                         huc_metrics.append(data)
-
-                    for __owner_name, owner_data in owners.items():
-
-                        data = copy.deepcopy(data_template)
-                        data['state_id'] = state_data['id']
-                        data['owner_id'] = owner_data['id']
-                        data['flow_id'] = flow_data['id']
-                        data['huc10'] = huc
-
-                        # Statistics with both owner and flow filters
-                        scrape_rme_statistics(rme_curs, state_data, flow_data, owner_data, data)
-                        scrape_rcat_statistics(rcat_curs, state_data, flow_data, owner_data, data)
-
-                        if data['dgo_count'] > 0:
-                            huc_metrics.append(data)
 
     # Store the output HUC metrics
     keys = huc_metrics[0].keys()
@@ -209,8 +198,8 @@ def scrape_rme_statistics(curs: sqlite3.Cursor, state: Dict[str, str], flow: Dic
     row = curs.fetchone()
 
     output['dgo_count'] = row['dgo_count']
-    output['riverscape_length'] = row['riverscape_length'] * METRES_TO_MILES
-    output['riverscape_area'] = row['riverscape_area'] * SQMETRES_TO_ACRES
+    output['riverscape_length'] = row['riverscape_length']  # * METRES_TO_MILES
+    output['riverscape_area'] = row['riverscape_area']  # * SQMETRES_TO_ACRES
 
     # Now process the individual RME metrics
     for __metric_name, metric_id, summary_method, output_key in rme_metric_defs:
@@ -225,6 +214,7 @@ def get_rme_metric_summary(curs: sqlite3.Cursor, state: Dict[str, str], flow: Di
         - Sum of metric values
         - Sum of metric values multiplied by centerline length
         - Sum of metric values multiplied by segment area
+        - Sum of metric values where they are zero
 
     The caller specifies which of these metrics they want returned by passing in the summary_method.
 
@@ -237,9 +227,10 @@ def get_rme_metric_summary(curs: sqlite3.Cursor, state: Dict[str, str], flow: Di
         SELECT
             SUM(dmv.metric_value * d.centerline_length) / SUM(d.centerline_length) AS {LENGTH_WEIGHTED_AVG},
             SUM(dmv.metric_value * d.segment_area) / SUM(d.segment_area) AS {AREA_WEIGHTED_AVG},
-            SUM(d.centerline_length) AS {SUM_METRIC},
+            SUM(dmv.metric_value) AS {SUM_METRIC},
             SUM(dmv.metric_value * d.centerline_length) AS {MULTIPLIED_BY_LENGTH},
-            SUM(dmv.metric_value * d.segment_area) AS {MULTIPLIED_BY_AREA}
+            SUM(dmv.metric_value * d.segment_area) AS {MULTIPLIED_BY_AREA},
+            COALESCE(sum(CASE WHEN dmv.metric_value = 0 THEN d.segment_area ELSE 0 END), 0) {SUM_AREA_ZERO_COUNT}
         FROM dgos d
                 INNER JOIN dgo_metric_values dmv ON d.fid = dmv.dgo_id
                 LEFT JOIN dgo_metric_values dms ON d.fid = dms.dgo_id
@@ -251,69 +242,6 @@ def get_rme_metric_summary(curs: sqlite3.Cursor, state: Dict[str, str], flow: Di
     curs.execute(final_sql, [metric_id])
     row = curs.fetchone()
     return row[summary_method]
-
-
-def scrape_rcat_statistics(curs: sqlite3.Cursor, state: Dict[str, str], flow: Dict[str, str], owner: Dict[str, str], output: Dict) -> None:
-    """
-    Scrape statistics from the RCAT output. Note that by this point RCAT db should include several RME tables.
-    The owner and flow filters are optional. The output of this function is to insert several RME statistics into the "data" dictionary.
-
-    Note that DGOAttributes sometimes has multiple rows for the same level_path and seg_distance. This is why we use a CTE to get the largest segment area.
-    https://chatgpt.com/c/66f42959-d304-8008-8397-a75cfda6df21
-    https://github.com/Riverscapes/riverscapes-tools/issues/1024
-    """
-
-    base_sql = '''
-        WITH LargestSegmentArea AS (
-    SELECT *
-    FROM DGOAttributes d
-    WHERE (d.level_path, d.seg_distance, d.segment_area) IN (
-        SELECT d.level_path, d.seg_distance, MAX(d.segment_area)
-        FROM DGOAttributes d
-        GROUP BY d.level_path, d.seg_distance
-    )
-)
-SELECT
-       coalesce(sum(d.HistoricRiparianMean * d.segment_area), 0)          historic_riparian_area,
-       coalesce(sum(d.FloodplainAccess * d.segment_area), 0)              floodplain_access_area,
-       coalesce(sum(
-                            max(
-                                    min(
-                                            (dgos.low_lying_floodplain_prop + dgos.active_channel_prop),
-                                            FloodplainAccess,
-                                            min(1, RiparianDeparture)
-                                        ),
-                                    active_channel_prop
-                                ) * d.segment_area
-                    ), 0) * 0.000247105                                   active_area,
-       coalesce(sum(
-                            max(
-                                        (
-                                                (dgos.low_lying_floodplain_prop + dgos.active_channel_prop) +
-                                                FloodplainAccess +
-                                                min(1, RiparianDeparture)
-                                            ) / 3,
-                                        active_channel_prop
-                                ) * d.segment_area
-                    ), 0)                                                 active_area_max,
-       coalesce(sum(CASE WHEN lui = 0 THEN d.segment_area ELSE 0 END), 0) lui_zero_count
-FROM LargestSegmentArea d
-         INNER JOIN dgos on dgos.level_path = d.level_path AND dgos.seg_distance = d.seg_distance
-         INNER JOIN dgo_metric_values dms ON dgos.fid = dms.dgo_id
-        '''
-
-    if owner is not None:
-        base_sql += ' INNER JOIN dgo_metric_values dmo ON dgos.fid = dmo.dgo_id'
-
-    final_sql = add_where_clauses(base_sql, state, flow, owner)
-    curs.execute(final_sql)
-    hist_riparian_area, floodplain_access_area, active_area, active_area_max, lui_zero_area = curs.fetchone()
-
-    output['hist_riparian_area'] = hist_riparian_area * SQMETRES_TO_ACRES
-    output['floodplain_access_area'] = floodplain_access_area * SQMETRES_TO_ACRES
-    output['active_area'] = active_area * SQMETRES_TO_ACRES
-    output['active_area_max'] = active_area_max * SQMETRES_TO_ACRES
-    output['lui_zero_area'] = lui_zero_area * SQMETRES_TO_ACRES
 
 
 def add_where_clauses(base_sql: str, state: Dict[str, str], flow: Dict[str, str], owner: Dict[str, str]) -> str:
@@ -413,6 +341,7 @@ def create_output_db(output_db: str) -> None:
 
     log.info('Output database created')
 
+
 def dict_factory(cursor, row):
     """Apply the dictionary factory to the cursor so that columns can be accessed by name"""
 
@@ -445,17 +374,13 @@ def main():
         log.error(f'RME output GeoPackage cannot be found: {args.rme_gpkg}')
         sys.exit(1)
 
-    if not os.path.isfile(args.rcat_gpkg):
-        log.error(f'RCAT output GeoPackage cannot be found: {args.rcat_gpkg}')
-        sys.exit(1)
-
     # Place the output RME scrape database in the same directory as the RME GeoPackage
     output_db = os.path.join(os.path.dirname(args.rme_gpkg), 'rme_scrape.sqlite')
     log.info(f'Output database: {output_db}')
 
     try:
         create_output_db(output_db)
-        scrape_huc_statistics(args.huc, args.rme_gpkg, args.rcat_gpkg, output_db)
+        scrape_huc_statistics(args.huc, args.rme_gpkg, output_db)
     except Exception as e:
         log.error(f'Error scraping HUC {args.huc}: {e}')
         sys.exit(1)
