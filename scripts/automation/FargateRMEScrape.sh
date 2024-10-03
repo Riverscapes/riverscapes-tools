@@ -60,16 +60,18 @@ rscli download $RME_DIR --id $RME_ID \
 ##########################################################################################
 
 try() {
-  cd /usr/local/src/riverscapes-tools
-
-  printf "\n\n======================  Running RME Scraper =======================\n\n"
-  printf "python3 -m rme.stuff \\\n"
-  ls -haltr > $RME_DIR/NEWFILE.txt
-  # python3 -m rme.stuff \
-  #   $RME_DIR/outputs/riverscapes_metrics.gpkg \
-  #   $RCAT_DIR/outputs/rcat.gpkg/rcat \
-  #   $RME_DIR \
-  #   --verbose
+  cd /usr/local/src/riverscapes-tools/lib/riverscapes/riverscapes
+  
+  # Pull the huc code out of the project XML
+  HUC_CODE=$(grep 'Meta name="HUC"' $RME_DIR/project.rs.xml | head -n 1 | awk -F'[<>]' '{print $3}')
+  (: "${HUC_CODE?}")
+  echo "HUC_CODE: $HUC_CODE"
+  
+  python3 scrape_huc_statistics.py \
+    $HUC_CODE \
+    $RME_DIR/outputs/riverscapes_metrics.gpkg \
+    $RCAT_DIR/outputs/rcat.gpkg \
+    --verbose
   if [[ $? != 0 ]]; then return 1; fi
 
   echo "======================  Upload to the warehouse ======================="
