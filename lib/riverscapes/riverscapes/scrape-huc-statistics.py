@@ -3,7 +3,7 @@ Scrapes RME and RCAT outout GeoPackages from Data Exchange and extracts statisti
 Produced for the BLM 2024 September analysis of 2024 CONUS RME projects.
 Philip Bailey
 """
-from typing import Dict
+from typing import Dict, Tuple
 import shutil
 import sys
 import re
@@ -20,26 +20,69 @@ from riverscapes import RiverscapesAPI
 RME_OUTPUT_GPKG_REGEX = r'.*riverscapes_metrics\.gpkg'
 RCAT_OUTPUT_GPKG_REGEX = r'.*rcat\.gpkg'
 
+# Metric summary methods used in dictionary below
+LENGTH_WEIGHTED_AVG = 'length_weighted_avg'
+AREA_WEIGHTED_AVG = 'area_weighted_avg'
+SUM_METRIC = 'sum_metric_value'
+MULTIPLIED_BY_LENGTH = 'multiplied_by_length'
+MULTIPLIED_BY_AREA = 'multiplied_by_area'
+
+# These are RME metrics than can be scraped. The items in each Tuple are:
+# 1. The name of the metric in the RME database (not used by this code)
+# 2. The metric ID in the RME database
+# 3. The type of summary to use
+# 4. The key to use in the output dictionary
+rme_metric_defs = (
+    ('rme_igo_prim_channel_gradient',	4,	LENGTH_WEIGHTED_AVG,		'channel_gradient'),
+    ('rme_igo_valley_bottom_gradient',	5,	LENGTH_WEIGHTED_AVG,		'valley_gradient'),
+    ('nhd_dgo_streamlength',	16,	SUM_METRIC,		'channel_length'),
+    ('vbet_dgo_lowlying_area',	19,	SUM_METRIC,		'low_lying_area'),
+    ('vbet_dgo_elevated_area',	20,	SUM_METRIC, 'elevated_area'),
+    ('vbet_dgo_channel_area',	21,	SUM_METRIC,		'channel_area'),
+    ('vbet_igo_integrated_width',	23, LENGTH_WEIGHTED_AVG,		'valley_width'),
+    # ('conf_igo_confinement_ratio',	31,	LENGTH_WEIGHTED_AVG,	'confinement'),
+    # ('conf_igo_constriction_ratio', 32,	LENGTH_WEIGHTED_AVG,		'constriction'),
+    ('anthro_igo_road_dens',	35,	MULTIPLIED_BY_LENGTH,		'road_length'),
+    ('anthro_igo_rail_dens',	36,	MULTIPLIED_BY_LENGTH,		'rail_length'),
+    ('anthro_igo_land_use_intens',	37,	AREA_WEIGHTED_AVG,		'land_use_intensity'),
+    ('rcat_igo_fldpln_access',	38,	MULTIPLIED_BY_AREA,		'accessible_floodplain_area'),
+    ('rcat_igo_prop_riparian',	39,	MULTIPLIED_BY_AREA,		'riparian_area'),
+    ('rcat_igo_riparian_veg_departure',	40,	AREA_WEIGHTED_AVG,		'riparian_departure'),
+    ('rcat_igo_riparian_ag_conversion',	41,	MULTIPLIED_BY_AREA,		'riparian_ag_conv_area'),
+    ('rcat_igo_riparian_develop',	42, MULTIPLIED_BY_AREA,		'riparian_developed_area'),
+    # ('brat_igo_capacity',	43,	SUM_METRIC,		'beaver_dam_capacity')
+)
+
 # Conversion factors
 METRES_TO_MILES = 0.000621371
 SQMETRES_TO_ACRES = 0.000247105
 
 # Output template for the data to be scraped.
 # Keys must match the schema of the output database 'metrics' table
-DATA_TEMPLATE = {
-    'state_id': None,
-    'owner_id': None,
-    'flow_id': None,
-    'huc10': None,
-    'dgo_count': None,
-    'dgo_area_acres': None,
-    'dgo_length_miles': None,
-    'active_area': None,
-    'active_area_max': None,
-    'floodplain_access_area': None,
-    'lui_zero_area': None,
-    'hist_riparian_area': None,
-}
+# DATA_TEMPLATE = {
+#     'state_id': None,
+#     'owner_id': None,
+#     'flow_id': None,
+#     'huc10': None,
+#     'dgo_count': None,
+#     'riverscape_area': None,
+#     'riverscape_length': None,
+#     'channel_gradient': None,
+#     'valley_gradient': None,
+#     'channel_length': None,
+#     'low_lying_area': None,
+#     'elevated_area': None,
+#     'channel_area': None,
+#     'valley_width': None,
+#     'road_length': None,
+#     'rail_length': None,
+#     'land_use_intensity': None,
+#     'accessible_floodplain_area': None,
+#     'riparian_area': None,
+#     'riparian_departure': None,
+#     'riparian_ag_conv_area': None,
+#     'riparian_developed_area': None
+# }
 
 
 def scrape_hucs(rs_api: RiverscapesAPI,  projects: Dict[str, str], download_dir: str, output_db: str, delete_downloads: bool) -> None:
@@ -53,6 +96,9 @@ def scrape_hucs(rs_api: RiverscapesAPI,  projects: Dict[str, str], download_dir:
     owners = load_filters(output_db, 'owners')
     flows = load_filters(output_db, 'flows')
     states = load_filters(output_db, 'us_states')
+
+    # Get an empty template from the output db for the data to be scraped
+    data_template = get_data_template(output_db)
 
     for index, (huc, project_ids) in enumerate(projects.items(), start=1):
         try:
@@ -74,6 +120,7 @@ def scrape_hucs(rs_api: RiverscapesAPI,  projects: Dict[str, str], download_dir:
 
             huc_metrics = []
             with sqlite3.connect(rme_gpkg) as rme_conn:
+                rme_conn.row_factory = dict_factory
                 rme_curs = rme_conn.cursor()
 
                 with sqlite3.connect(rcat_gpkg_copy) as rcat_conn:
@@ -88,7 +135,7 @@ def scrape_hucs(rs_api: RiverscapesAPI,  projects: Dict[str, str], download_dir:
                         for __flow_name, flow_data in flows.items():
 
                             # Without an owner filter we get statistics for all owners for a certain FCode
-                            data = copy.deepcopy(DATA_TEMPLATE)
+                            data = copy.deepcopy(data_template)
                             data['state_id'] = state_data['id']
                             data['flow_id'] = flow_data['id']
                             data['huc10'] = huc
@@ -100,7 +147,7 @@ def scrape_hucs(rs_api: RiverscapesAPI,  projects: Dict[str, str], download_dir:
 
                             for __owner_name, owner_data in owners.items():
 
-                                data = copy.deepcopy(DATA_TEMPLATE)
+                                data = copy.deepcopy(data_template)
                                 data['state_id'] = state_data['id']
                                 data['owner_id'] = owner_data['id']
                                 data['flow_id'] = flow_data['id']
@@ -132,6 +179,18 @@ def scrape_hucs(rs_api: RiverscapesAPI,  projects: Dict[str, str], download_dir:
                 log.error(f'Error deleting download directory {huc_dir}: {e}')
 
 
+def get_data_template(output_db: str) -> Dict[str, float]:
+    """
+    Get the data template from the destination cursor
+    """
+    with sqlite3.connect(output_db) as dest_conn:
+        dest_conn.row_factory = dict_factory
+        dest_cursor = dest_conn.cursor()
+        dest_cursor.execute('PRAGMA table_info(metrics)')
+        columns = [info['name'] for info in dest_cursor.fetchall()]
+        return {col: None for col in columns}
+
+
 def copy_file_with_unique_name(file_path):
     """
     Deduce a new, unique file name from the original file name and copy the file to the new file name.
@@ -159,7 +218,7 @@ def copy_table_between_cursors(src_cursor, dest_cursor, table_name):
 
     # Get table schema from the source database
     src_cursor.execute(f"SELECT sql FROM sqlite_master WHERE type='table' AND name='{table_name}'")
-    create_table_sql = src_cursor.fetchone()[0]
+    create_table_sql = src_cursor.fetchone()['sql']
     dest_cursor.execute(create_table_sql)
 
     # Get all data from the source table
@@ -168,13 +227,14 @@ def copy_table_between_cursors(src_cursor, dest_cursor, table_name):
 
     # Get the column names from the source table
     src_cursor.execute(f"PRAGMA table_info({table_name})")
-    columns = [info[1] for info in src_cursor.fetchall()]  # info[1] gives the column names
+    columns = [info['name'] for info in src_cursor.fetchall()]  # info[1] gives the column names
     columns_str = ', '.join(columns)
 
     # Insert data into the destination table
     placeholders = ', '.join(['?' for _ in columns])  # Create placeholders for SQL insert
     insert_sql = f"INSERT INTO {table_name} ({columns_str}) VALUES ({placeholders})"
-    dest_cursor.executemany(insert_sql, rows)
+    row_tuples = [[row[col] for col in columns] for row in rows]
+    dest_cursor.executemany(insert_sql, row_tuples)
 
 
 def scrape_rme_statistics(curs: sqlite3.Cursor, state: Dict[str, str], flow: Dict[str, str], owner: Dict[str, str], output: Dict[str, float]) -> None:
@@ -184,7 +244,10 @@ def scrape_rme_statistics(curs: sqlite3.Cursor, state: Dict[str, str], flow: Dic
     """
 
     base_sql = '''
-        SELECT count(*), coalesce(sum(d.centerline_length),0) length, coalesce(sum(d.segment_area), 0) area
+        SELECT
+            count(*) dgo_count,
+            coalesce(sum(d.centerline_length),0) riverscape_length,
+            coalesce(sum(d.segment_area), 0) riverscape_area
         FROM dgos d
         LEFT JOIN dgo_metric_values dms ON d.fid = dms.dgo_id
         '''
@@ -194,11 +257,39 @@ def scrape_rme_statistics(curs: sqlite3.Cursor, state: Dict[str, str], flow: Dic
 
     final_sql = add_where_clauses(base_sql, state, flow, owner)
     curs.execute(final_sql)
-    dgo_count, dgo_length, dgo_area = curs.fetchone()
+    row = curs.fetchone()
 
-    output['dgo_count'] = dgo_count
-    output['dgo_length_miles'] = dgo_length * METRES_TO_MILES
-    output['dgo_area_acres'] = dgo_area * SQMETRES_TO_ACRES
+    output['dgo_count'] = row['dgo_count']
+    output['riverscape_length'] = row['riverscape_length'] * METRES_TO_MILES
+    output['riverscape_area'] = row['riverscape_area'] * SQMETRES_TO_ACRES
+
+    # Now process the individual RME metrics
+    for __metric_name, metric_id, summary_method, output_key in rme_metric_defs:
+        output[output_key] = get_rme_metric_summary(curs, state, flow, owner, metric_id, summary_method)
+
+
+def get_rme_metric_summary(curs: sqlite3.Cursor, state: Dict[str, str], flow: Dict[str, str], owner: Dict[str, str], metric_id: int, summary_method: str) -> float:
+
+    owner_table_join = '' if owner is None else ' LEFT JOIN dgo_metric_values dmo ON d.fid = dmo.dgo_id'
+
+    base_sql = f'''
+        SELECT
+            SUM(dmv.metric_value * d.centerline_length) / SUM(d.centerline_length) AS {LENGTH_WEIGHTED_AVG},
+            SUM(dmv.metric_value * d.segment_area) / SUM(d.segment_area) AS {AREA_WEIGHTED_AVG},
+            SUM(d.centerline_length) AS {SUM_METRIC},
+            SUM(dmv.metric_value * d.centerline_length) AS {MULTIPLIED_BY_LENGTH},
+            SUM(dmv.metric_value * d.segment_area) AS {MULTIPLIED_BY_AREA}
+        FROM dgos d
+                INNER JOIN dgo_metric_values dmv ON d.fid = dmv.dgo_id
+                LEFT JOIN dgo_metric_values dms ON d.fid = dms.dgo_id
+                {owner_table_join}
+        WHERE dmv.metric_id = ?
+        '''
+
+    final_sql = add_where_clauses(base_sql, state, flow, owner)
+    curs.execute(final_sql, [metric_id])
+    row = curs.fetchone()
+    return row[summary_method]
 
 
 def scrape_rcat_statistics(curs: sqlite3.Cursor, state: Dict[str, str], flow: Dict[str, str], owner: Dict[str, str], output: Dict) -> None:
@@ -270,7 +361,8 @@ def add_where_clauses(base_sql: str, state: Dict[str, str], flow: Dict[str, str]
     Note that owner is the only filter than can be None!
     """
 
-    final_sql = base_sql + ' WHERE '
+    final_sql = base_sql
+    final_sql += ' WHERE ' if 'WHERE' not in base_sql else ' AND '
 
     s_clause = ','.join([f"'{s}'" for s in state['where_clause'].split(",")])
     final_sql += f'( dms.metric_id = 2 AND dms.metric_value IN ({s_clause}))'
@@ -374,6 +466,13 @@ def create_output_db(output_db: str) -> None:
             sql_commands = sqlfile.read()
             curs.executescript(sql_commands)
             conn.commit()
+
+
+def dict_factory(cursor, row):
+    d = {}
+    for idx, col in enumerate(cursor.description):
+        d[col[0]] = row[idx]
+    return d
 
 
 def main():
