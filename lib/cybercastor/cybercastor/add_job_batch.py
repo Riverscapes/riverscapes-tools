@@ -67,7 +67,7 @@ job_types = {
     },
     'rme_scraper': {
         'output': 'rs_metric_engine',
-        'upstream': ['rs_metric_engine', 'rcat']
+        'upstream': ['rs_metric_engine']
     }
 }
 
