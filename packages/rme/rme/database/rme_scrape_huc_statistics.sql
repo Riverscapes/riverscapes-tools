@@ -130,9 +130,9 @@ CREATE TABLE metrics (
     riparian_developed_area REAL,
 
     hist_riparian_area REAL,
-    floodplain_access_area REAL,
-    active_area REAL,
-    active_area_max REAL,
+    -- floodplain_access_area REAL,
+    -- active_area REAL,
+    -- active_area_max REAL,
     lui_zero_area REAL,
 
     PRIMARY KEY(huc10, state_id, owner_id, flow_id)
