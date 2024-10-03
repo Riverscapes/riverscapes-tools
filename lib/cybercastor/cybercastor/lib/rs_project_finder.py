@@ -8,7 +8,7 @@ from riverscapes import RiverscapesAPI
 
 # Key is JSON task script ID. Value is list of warehouse project types
 # https://cybercastor.riverscapes.net/engines/manifest.json
-upstream_project_types = {
+engine_projecttype_map = {
     'rs_context': [],
     'rs_context_channel_taudem': [],
     'vbet': ['rscontext', 'channelarea', 'taudem'],
@@ -19,7 +19,8 @@ upstream_project_types = {
     'hydro_context': ['rscontext', 'vbet'],
     'rcat': ['rscontext', 'vbet', 'taudem', 'anthro'],
     'blm_context': ['rscontext', 'vbet'],
-    'rs_metric_engine': ['rscontext', 'vbet', 'brat', 'anthro', 'rcat', 'confinement']
+    'rs_metric_engine': ['rscontext', 'vbet', 'brat', 'anthro', 'rcat', 'confinement'],
+    'rme_scraper': ['rs_metric_engine', 'rcat'],
 }
 
 # Key is warehouse project type. Value is Fargate environment variable
@@ -52,12 +53,12 @@ def find_upstream_projects(job_data) -> bool:
 
     log = Logger('Upstream Project Finder')
 
-    # global upstream_project_types
+    # global engine_projecttype_map
     # global fargate_env_keys
 
     # Verify that the task script is one that we know about
     task_script = job_data['taskScriptId']
-    if task_script not in upstream_project_types:
+    if task_script not in engine_projecttype_map:
         raise Exception(f'Unknown task script {task_script}')
 
     if 'lookups' not in job_data:
@@ -79,7 +80,7 @@ def find_upstream_projects(job_data) -> bool:
             job_data['lookups'][huc] = {}
 
         # Loop over all the project types that we need to find upstream projects for
-        for project_type in upstream_project_types[task_script]:
+        for project_type in engine_projecttype_map[task_script]:
             # if
             if fargate_env_keys[project_type] in job_data['lookups'][huc]:
                 lookup_val = job_data['lookups'][huc][fargate_env_keys[project_type]]
