@@ -1,8 +1,8 @@
 
 CREATE TABLE hucs (
     huc10 TEXT NOT NULL PRIMARY KEY,
-    rme_project_guid TEXT NOT NULL,
-    rcat_project_guid TEXT NOT NULL,
+    rme_project_guid TEXT,
+    rcat_project_guid TEXT,
     scraped_on DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
