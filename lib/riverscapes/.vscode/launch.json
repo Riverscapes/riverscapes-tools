@@ -154,6 +154,23 @@
       ]
     },
     {
+      "name": "Merge RME Scrapes",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "riverscapes.merge_rme_scrapes",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/.env",
+      "args": [
+        "production",
+        "{env:DATA_ROOT}/merge_rme_scrape",
+        "2024CONUS,rme_scrape",
+        // "--delete",
+        "--huc_filter",
+        "14",
+      ]
+    },
+    {
       "name": "Python: Current File",
       "type": "debugpy",
       "request": "launch",
