@@ -1,7 +1,11 @@
 """
-Scrapes RME and RCAT outout GeoPackages from Data Exchange and extracts statistics for each HUC.
+Scrapes RME and RCAT output GeoPackages from Data Exchange and extracts statistics for each HUC.
 Produced for the BLM 2024 September analysis of 2024 CONUS RME projects.
-Philip Bailey
+
+This script assumes that the `scrape_huc_statistics.py` script has been run on each RME project.
+The scrape_huc_statistics.py script extracts statistics from the RME and RCAT output GeoPackages
+and generates a new 'rme_scrape.sqlite' file in the project. This is then uploaded into the 
+project on the Data Exchange. 
 """
 import shutil
 import re

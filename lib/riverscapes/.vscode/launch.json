@@ -117,8 +117,9 @@
       "args": [
         "production",
         "{env:DATA_ROOT}/rme-scrape",
-        "{env:DATA_ROOT}/warehouse_report/riverscapes_production.gpkg",
-        "17"
+        "2024CONUS",
+        "--huc_filter",
+        "14"
       ]
     },
     {
