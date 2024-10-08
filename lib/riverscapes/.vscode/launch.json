@@ -117,10 +117,8 @@
       "args": [
         "production",
         "{env:DATA_ROOT}/rme-scrape",
-        "2024CONUS",
+        "colorado_rme_scrape",
         "--delete",
-        "--huc_filter",
-        "14"
       ]
     },
     ,
