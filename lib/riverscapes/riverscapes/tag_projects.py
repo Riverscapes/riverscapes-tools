@@ -6,11 +6,12 @@ Philip Bailey
 from typing import Tuple
 from collections import Counter
 import sys
+import logging
 import os
 import sqlite3
 import argparse
 import inquirer
-from rsxml import dotenv
+from rsxml import dotenv, Logger, ProgressBar
 from riverscapes import RiverscapesAPI
 
 name_lookup = {'RSContext': "RS Context",
@@ -31,6 +32,8 @@ def tag_projects(rs_api: RiverscapesAPI, engine: str, db_path: str) -> Tuple[boo
     """ Update the tags on a batch of projects
     """
 
+    log = Logger('Tagging')
+
     questions = [
         inquirer.List('engine', message='Cybercastor engine?', choices=name_lookup.keys(), default=engine),
         inquirer.Text("new-tags", message="New tags?", default="2024CONUS"),
@@ -38,6 +41,7 @@ def tag_projects(rs_api: RiverscapesAPI, engine: str, db_path: str) -> Tuple[boo
         inquirer.List('replace', message='Replace existing tags?', choices=['Yes', 'No'], default='No'),
     ]
     answers = inquirer.prompt(questions)
+    log.info(f'Tagging {answers['engine']} projects with {answers["new-tags"]}')
 
     clean_tags = clean_tag_string(answers['new-tags'])
 
@@ -62,6 +66,8 @@ def tag_projects(rs_api: RiverscapesAPI, engine: str, db_path: str) -> Tuple[boo
             batch_answers = inquirer.prompt([inquirer.List("batch", message="Batch?", choices=batches.keys()),
                                              inquirer.Text("existing-tags", message="Existing tags?", default="2024CONUS")])
             batch_id = batches[batch_answers['batch']]
+            log.info(f'Batch {batch_answers['batch']} ({batch_id}) selected')
+
             existing_tags = clean_tag_string(batch_answers['existing-tags'])
             tag_clauses = 'AND' + " AND ".join([f" (tags LIKE ('%{tag}%')) " for tag in existing_tags])
 
@@ -81,13 +87,20 @@ def tag_projects(rs_api: RiverscapesAPI, engine: str, db_path: str) -> Tuple[boo
         print('No projects found for the specified engine and HUCs')
         return False, answers['engine']
 
+    for project_id in project_ids:
+        log.info('Project ID: {project_id}')
+
     project_check = inquirer.prompt([inquirer.List("project_check", message=f'Continue and update {len(project_ids)} projects?', choices=['Yes', 'No'], default='No')])
     if project_check['project_check'] != 'Yes':
         return False, answers['engine']
 
     get_project_query = rs_api.load_query('getProjectTags')
     tags_mutation = rs_api.load_mutation('updateProject')
+    _prg = ProgressBar(len(project_ids), 30, 'Tagging Projects')
+    outer_counter = 0
     for project_id in project_ids:
+        outer_counter += 1
+        _prg.update(outer_counter)
         project = rs_api.run_query(get_project_query, {"id": project_id})
         existing_tags = project['data']['project']['tags']
 
@@ -101,6 +114,10 @@ def tag_projects(rs_api: RiverscapesAPI, engine: str, db_path: str) -> Tuple[boo
             new_tags = list(set(existing_tags + clean_tags))
 
         rs_api.run_query(tags_mutation, {"projectId": project_id, "project": {"tags": new_tags}})
+
+    _prg.finish()
+
+    log.info('Tagging complete')
 
     continue_answers = inquirer.prompt([inquirer.List("continue", message="Run another batch?", choices=['Yes', 'No'], default='No')])
     return continue_answers['continue'] == 'Yes', answers['engine']
@@ -119,6 +136,11 @@ def main():
     if not os.path.isfile(args.db_path):
         print(f'Data Exchange project dump database file not found: {args.db_path}')
         sys.exit(1)
+
+    log = Logger('Setup')
+    log.setup(log_path=os.path.join(os.path.dirname(__file__), 'project-tags.log'), log_level=logging.DEBUG)
+    log.info(f'Starting project tagger against {args.stage}')
+    log.info(f'Using database {args.db_path}')
 
     more_projects = True
     current_engine = ''
