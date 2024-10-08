@@ -1,0 +1,9 @@
+query getProjectFull($id: ID!) {
+  project(id: $id) {
+    id
+    name
+    tags
+    createdOn
+    updatedOn
+    }
+}
