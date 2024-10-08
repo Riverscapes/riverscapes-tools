@@ -164,7 +164,7 @@ def scrape_huc(huc10: str, rme_gpkg: str, rme_guid: str, output_gpkg: str) -> No
             process_rme_dgos(in_cursor, out_cursor, huc10)
             # process_rcat_dgos(rcat_pgkg, out_cursor, huc)
 
-            for prefix in ['dgo', 'igo']:
+            for prefix in ['dgo']:
                 process_rme_metric_values(in_cursor, out_cursor, prefix, huc10)
 
             out_cursor.execute('INSERT INTO hucs (huc, rme_project_id) VALUES (?, ?)', [huc10, rme_guid])
@@ -403,7 +403,7 @@ def main():
         'projectTypeId': 'rs_metric_engine',
     })
 
-    if args.huc_filter != '':
+    if args.huc_filter != '' and args.huc_filter != '.':
         search_params.meta = {
             "HUC": args.huc_filter
         }
