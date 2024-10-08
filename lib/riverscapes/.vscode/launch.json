@@ -118,8 +118,23 @@
         "production",
         "{env:DATA_ROOT}/rme-scrape",
         "2024CONUS",
+        "--delete",
         "--huc_filter",
         "14"
+      ]
+    },
+    ,
+    {
+      "name": "TAGS - batch update project tags",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "riverscapes.tag_projects",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/.env",
+      "args": [
+        "production",
+        "{env:DATA_ROOT}/warehouse_report/riverscapes_production.gpkg",
       ]
     },
     {
