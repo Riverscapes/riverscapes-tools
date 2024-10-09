@@ -1107,5 +1107,30 @@
     "url": null,
     "machineName": "Beaver_Activity",
     "state": "ACTIVE"
+  },
+  {
+    "name": "Riverscapes IGOs",
+    "summary": "Riverscapes integrated geographic objects scraped from RME projects into a synthesis project at other scales.",
+    "meta": [
+      { 
+          "key": "Resolution",
+          "value": "Reach"
+        },
+        { 
+          "key": "Extent",
+          "value": "Regional"
+        },
+        {
+          "key": "Model Status",
+          "value": "Research Grade"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "Curated Dataset"
+        }
+    ],
+    "url": null,
+    "machineName": "IGOScrape",
+    "state": "ACTIVE"
   }
 ]
