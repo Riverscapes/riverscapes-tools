@@ -3669,7 +3669,7 @@ VegetationID,EpochID,Name,DefaultSuitability,LandUseID,Physiognomy,Notes
 7964,1,Western Cool Temperate Row Crop,1,7,Agricultural,
 7965,1,Western Cool Temperate Close Grown Crop,1,3,Agricultural,
 7966,1,Western Cool Temperate Fallow/Idle Cropland,1,4,Agricultural,
-7967,1,Western Cool Temperate Pasture and Hayland,2,6,Agricultural,
+7967,1,Western Cool Temperate Pasture and Hayland,1,6,Agricultural,
 7968,1,Western Cool Temperate Wheat,1,10,Agricultural,
 7970,1,Eastern Cool Temperate Orchard,2,5,Agricultural,
 7971,1,Eastern Cool Temperate Vineyard,1,9,Agricultural,
