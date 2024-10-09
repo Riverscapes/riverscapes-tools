@@ -58,10 +58,22 @@ def scrape_rme(rs_api: RiverscapesAPI, search_params: RiverscapesSearchParams, d
             rme_gpkg = download_file(rs_api, project.id, os.path.join(huc_dir, 'rme'), RME_OUTPUT_GPKG_REGEX)
 
             if not os.path.isfile(output_gpkg):
-                # Get the metric columns from the RME GeoPackage
+
+                # First, there are some fields from the DGO feature class that we want as well
+                metric_col_types['fcode'] = 'INTEGER'
+                metric_col_types['segment_area'] = 'REAL'
+                metric_col_types['centerline_length'] = 'REAL'
+
+                # Now get the metric columns from the RME GeoPackage
                 with sqlite3.connect(rme_gpkg) as rme_conn:
                     rme_curs = rme_conn.cursor()
-                    rme_curs.execute('SELECT metric_id, field_name, data_type FROM metrics')
+                    rme_curs.execute('''
+                        SELECT metric_id, field_name, data_type
+                        FROM metrics
+                        WHERE (is_active <> 0)
+                            AND (field_name is not null)
+                            AND (data_type is not null)
+                    ''')
                     for row in rme_curs.fetchall():
                         metric_col_types[row[1]] = row[2]
                         metric_ids[row[0]] = row[1]
@@ -171,7 +183,7 @@ def create_gpkg(output_gpkg: str, metric_cols: Dict[str, str]) -> None:
     field_level_path.SetWidth(50)
     layer.CreateField(field_level_path)
 
-    field_seg_distance = ogr.FieldDefn("seg_distance", ogr.OFTReal)
+    field_seg_distance = ogr.FieldDefn("seg_distance", ogr.OFTInteger)
     layer.CreateField(field_seg_distance)
 
     for field_name, field_type in metric_cols.items():
@@ -243,6 +255,18 @@ def scrape_huc(huc10: str, rme_gpkg: str, metric_ids: Dict[int, str], driver: og
 
             for row in rme_curs.fetchall():
                 target_feature.SetField(metric_ids[row[0]], row[1])
+
+            # and now the DGO fields
+            rme_curs.execute('''
+                SELECT fcode, segment_area, centerline_length
+                FROM dgos
+                WHERE (level_path = ?)
+                    AND (seg_distance = ?)
+                LIMIT 1''', [level_path, seg_distance])
+            dgo_row = rme_curs.fetchone()
+            target_feature.SetField('fcode', dgo_row[0])
+            target_feature.SetField('segment_area', dgo_row[1])
+            target_feature.SetField('centerline_length', dgo_row[2])
 
             # Add the feature to the target layer
             target_layer.CreateFeature(target_feature)
