@@ -57,7 +57,7 @@ def scrape_rme(rs_api: RiverscapesAPI, search_params: RiverscapesSearchParams, d
             huc_dir = os.path.join(download_dir, huc10)
             rme_gpkg = download_file(rs_api, project.id, os.path.join(huc_dir, 'rme'), RME_OUTPUT_GPKG_REGEX)
 
-            if not os.path.isfile(output_gpkg):
+            if not os.path.isfile(output_gpkg) or metric_ids == {}:
 
                 # First, there are some fields from the DGO feature class that we want as well
                 metric_col_types['fcode'] = 'INTEGER'
@@ -79,7 +79,8 @@ def scrape_rme(rs_api: RiverscapesAPI, search_params: RiverscapesSearchParams, d
                         metric_ids[row[0]] = row[1]
 
                 # Create the output GeoPackage with the IGOs feature class
-                create_gpkg(output_gpkg, metric_col_types)
+                if not os.path.isfile(output_gpkg):
+                    create_gpkg(output_gpkg, metric_col_types)
 
             if target_ds is None:
                 target_ds = gpkg_driver.Open(output_gpkg, 1)  # 1 means read/write mode
@@ -264,9 +265,10 @@ def scrape_huc(huc10: str, rme_gpkg: str, metric_ids: Dict[int, str], driver: og
                     AND (seg_distance = ?)
                 LIMIT 1''', [level_path, seg_distance])
             dgo_row = rme_curs.fetchone()
-            target_feature.SetField('fcode', dgo_row[0])
-            target_feature.SetField('segment_area', dgo_row[1])
-            target_feature.SetField('centerline_length', dgo_row[2])
+            if dgo_row is not None:
+                target_feature.SetField('fcode', dgo_row[0])
+                target_feature.SetField('segment_area', dgo_row[1])
+                target_feature.SetField('centerline_length', dgo_row[2])
 
             # Add the feature to the target layer
             target_layer.CreateFeature(target_feature)
