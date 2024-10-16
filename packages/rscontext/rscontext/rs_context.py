@@ -311,7 +311,7 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states_
         outlyr.ogr_layer.CreateFeature(feat)
 
     name_node = project.XMLBuilder.find('Name')
-    name_node.text = f"Riversapes Context for {huc_name}"
+    name_node.text = f"Riverscapes Context for {huc_name}"
     project.add_metadata([RSMeta('Watershed', huc_name)])
 
     # PRISM climate rasters
