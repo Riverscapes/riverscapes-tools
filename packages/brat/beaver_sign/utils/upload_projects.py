@@ -13,10 +13,10 @@ def upload_projects(directory: str, org: str, tags: str):
 
     subdirs = os.listdir(directory)
     for subdir in subdirs:
-        subprocess.run(["rscli", "upload", subdir, "--org", org, "--tags", tags])
+        subprocess.run(["rscli", "upload", os.path.join(directory, subdir), "--org", org, "--tags", tags])
 
 
-in_dir = '/mnt/c/Users/jordang/Box/0_ET_AL/Projects/USA/Montana/2023_Montana_Statewide_Beaver_Dam_Census/work_data/Beaver_Activity_projects'
+in_dir = '/workspaces/data/beaver_activity'
 in_org = '06439423-ee19-4040-9ebd-01c6e481a763'
 in_tags = 'MT_Dam_Census'
 
