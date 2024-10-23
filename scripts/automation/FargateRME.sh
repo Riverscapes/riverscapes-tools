@@ -109,9 +109,10 @@ echo "======================  Initial Disk space usage ======================="
 df -h
 
 ##########################################################################################
-# Now Run GNAT
+# Now Run RME
 ##########################################################################################
 
+echo "======================  Running RME ======================="
 try() {
 
   rme $HUC \
@@ -130,10 +131,13 @@ try() {
     --verbose
   if [[ $? != 0 ]]; then return 1; fi
 
+  echo "======================  Augmenting the RME project ======================="
   cd /usr/local/src/riverscapes-tools/packages/rme
   python3 -m rme.rme_rs \
     $RME_DIR/project.rs.xml \
     "$RS_CONTEXT_DIR/project.rs.xml,$VBET_DIR/project.rs.xml",$CONFINEMENT_DIR/project.rs.xml,$ANTHRO_DIR/project.rs.xml,$RCAT_DIR/project.rs.xml,$BRAT_DIR/project.rs.xml \
+
+  if [[ $? != 0 ]]; then return 1; fi
 
   echo "======================  Final Disk space usage ======================="
   df -h
