@@ -35,21 +35,21 @@ def add_da_to_sites(db_path, err_filepath):
     conn = sqlite3.connect(db_path)
     c = conn.cursor()
     # c.execute('ALTER TABLE sites ADD COLUMN da REAL')
-    c.execute('SELECT site_no FROM sites')
+    c.execute('SELECT site_no FROM sites WHERE da IS NULL')
     sites = c.fetchall()
     progbar = ProgressBar(len(sites), 50, 'Getting gage drainage areas')
     counter = 0
     for site in sites:
         site_no = site[0]
         da = get_gage_da(site_no)
-        if da is None:
+        if da is None or da[0] is None and da[1] is None:
             continue
-        if da[0] is not None and da[0] != '':
+        if da[0] != '':
             outputs[site_no] = da[0]
-        elif (da[0] is None or da[1] == '') and da[1] is not None and da[1] != '':
+        elif da[1] != '':
             outputs[site_no] = da[1]
         else:
-            errs['site_no'].append((site_no, da[2]))
+            errs['site_no'].append((site_no, da[0], da[1], da[2]))
 
         counter += 1
         progbar.update(counter)

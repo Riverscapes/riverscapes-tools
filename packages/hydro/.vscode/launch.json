@@ -72,8 +72,8 @@
           "module": "hydro.utils.hydro_regressions",
           "console": "integratedTerminal",
           "args": [
-            "../database/data/Watersheds.csv",
-            "{env:DATA_ROOT}/some_path",
+            "{env:DATA_ROOT}/Watersheds.csv",
+            "{env:DATA_ROOT}/riverscapes_production.gpkg",
             "Jordan Gilbert"
           ]
         },
