@@ -32,6 +32,12 @@ def generate_linear_regressions(data_dict, x_key, y_key):
     # Extract data from the dictionary
     X = np.array(data_dict[x_key]).reshape(-1, 1)
     y = np.array(data_dict[y_key])
+    # Find indices where X is 0
+    zero_indices = np.where(X == 0)[0]
+
+    # Remove these indices from X and y
+    X = np.delete(X, zero_indices, axis=0)
+    y = np.delete(y, zero_indices, axis=0)
 
     # Create and train the regular linear regression model
     model_regular = LinearRegression(fit_intercept=False)
@@ -178,8 +184,6 @@ def update_watersheds_table(csv_path, db_path, operator):
     progbar = ProgressBar(len(huc8s_qlow), 50, 'Updating watersheds')
     counter = 0
     for huc in huc8s_qlow:
-        if huc == '16020301':
-            print('here')
         try:
             data, gage_ct, huc_level = generate_gage_data(db_path, huc, 5)
             qlow = generate_linear_regressions(data, 'DA', 'Qlow')
