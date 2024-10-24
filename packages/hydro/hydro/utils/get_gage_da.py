@@ -42,7 +42,7 @@ def add_da_to_sites(db_path, err_filepath):
     for site in sites:
         site_no = site[0]
         da = get_gage_da(site_no)
-        if da is None or da[0] is None and da[1] is None:
+        if da is None or (da[0] is None and da[1] is None):
             continue
         if da[0] != '':
             outputs[site_no] = da[0]
