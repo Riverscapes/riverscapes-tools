@@ -148,7 +148,7 @@ def hydro_context(huc: int, dem: Path, hillshade: Path, igo: Path, dgo: Path, fl
             database.curs.execute(f"SELECT * FROM Watersheds WHERE WatershedID = '{str(huc)[:8]}'")
             row = database.curs.fetchone()
             database.curs.execute(f"""INSERT INTO Watersheds (WatershedID, Name, States, QLow, Q2, MaxDrainage, EcoregionID)
-                                  VALUES ('{huc}', '{row['Name']}', '{row['States']}', '{row['QLow']}', '{row['Q2']}', {row['MaxDrainage']}, {row['EcoregionID']})""")
+                                  VALUES ('{huc}', '{row['Name']}', '{row['States']}', '{row['QLow']}', '{row['Q2']}', '{row['MaxDrainage']}', '{row['EcoregionID']}')""")
             database.conn.commit()
 
     igo_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['HYDRO_GEOM_POINTS'].rel_path)
