@@ -33,5 +33,6 @@ FCode,Name,DisplayName,Description
 46003,STREAM/RIVER,Intermittent,Hydrographic Category|intermittent
 46006,STREAM/RIVER,Perennial,Hydrographic Category|perennial
 46007,STREAM/RIVER,Ephemeral,Hydrographic Category|ephemeral
+46800,DRAINAGE LINE,Drainage Line,feature type only: no attributes
 55800,ARTIFICIAL PATH,Artificial Path,feature type only: no attributes
 56600,COASTLINE,Coastline,feature type only: no attributes
