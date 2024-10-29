@@ -66,8 +66,8 @@ def hydrology(gpkg_path: str, prefix: str, huc: str):
         log.info(f'Reach drainage area attribute conversion factor = {drainage_conversion_factor}')
 
     # Load the discharges for each reach
-    reaches = load_attributes(gpkg_path, ['DrainArea'], '(DrainArea IS NOT NULL)')
-    dgos = load_dgo_attributes(gpkg_path, ['DrainArea'], '(DrainArea IS NOT NULL)')
+    reaches = load_attributes(gpkg_path, ['DrainArea'], '(DrainArea IS NOT NULL AND DrainArea > 0)')
+    dgos = load_dgo_attributes(gpkg_path, ['DrainArea'], '(DrainArea IS NOT NULL AND DrainArea > 0)')
     log.info(f'{len(reaches):,} reaches loaded with valid drainage area values')
 
     # Calculate the discharges for each reach
