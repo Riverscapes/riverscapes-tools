@@ -273,7 +273,7 @@ def hydro_context(huc: int, dem: Path, hillshade: Path, igo: Path, dgo: Path, fl
 def main():
 
     parser = argparse.ArgumentParser(description='Build a Hydrologic Context project')
-    parser.add_argument('huc', type=int, help='Hydrologic Unit Code')
+    parser.add_argument('huc', type=str, help='Hydrologic Unit Code')
     parser.add_argument('dem', type=str, help='Path to DEM raster')
     parser.add_argument('hillshade', type=str, help='Path to hillshade raster')
     parser.add_argument('igo', type=str, help='Path to IGO feature class')
