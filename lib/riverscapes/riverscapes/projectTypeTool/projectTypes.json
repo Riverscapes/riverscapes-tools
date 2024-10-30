@@ -1111,6 +1111,7 @@
   {
     "name": "Riverscapes IGOs",
     "summary": "Riverscapes integrated geographic objects scraped from RME projects into a synthesis project at other scales.",
+    "description":  "Riverscapes integrated geographic objects scraped from RME projects into a synthesis project at other scales.",
     "meta": [
       { 
           "key": "Resolution",
@@ -1130,7 +1131,7 @@
         }
     ],
     "url": null,
-    "machineName": "IGOScrape",
+    "machineName": "igos",
     "state": "ACTIVE"
   },
   {

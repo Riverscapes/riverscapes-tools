@@ -140,6 +140,7 @@ class RiverscapesSearchParams:
         if not isinstance(input_obj, dict):
             raise ValueError("Input must be a dictionary")
 
+        self.original_json = input_obj
         # If input_obj is empty then we can just return an empty search params object
         if len(input_obj) == 0:
             self.log.warning("Empty search parameters object. This will return all projects. This will take a long time and may not be what you want. Use with caution.")

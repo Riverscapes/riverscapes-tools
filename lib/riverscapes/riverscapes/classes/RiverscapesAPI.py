@@ -2,6 +2,7 @@ import os
 from typing import Dict, List, Generator, Tuple
 import webbrowser
 import re
+import concurrent.futures
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlencode, urlparse, urlunparse
 import json
@@ -388,7 +389,7 @@ class RiverscapesAPI:
                 # if inner_counter == 0:
                 #     self.log.debug(f"      First created date {project.created_date} -- {project.id}")
 
-                yield (project, stats, overall_total)
+                yield (project, stats, overall_total, _prg)
                 inner_counter += 1
                 outer_counter += 1
                 # This is mainly for demo purposes but if we've reached the max results then we can stop this whole thing
@@ -406,6 +407,57 @@ class RiverscapesAPI:
             _prg.erase()
             _prg.finish()
         self.log.debug(f"Search complete: retrieved {outer_counter:,} records")
+
+    def process_search_results_async(self,
+                                     callback: callable,
+                                     search_params: RiverscapesSearchParams,
+                                     progress_bar: bool = False,
+                                     page_size: int = 500,
+                                     sort: List[str] = None,
+                                     max_results: int = None,
+                                     max_workers=5
+                                     ):
+        """
+
+        Considerations:
+            1. Thread safety: The callback function should be thread-safe. It should not modify any shared state.
+            2. Error handling: The callback function should handle any exceptions that occur during processing.
+            3. Watch your network usage: If you are making network requests in the callback function, be aware of the potential for rate limiting. 3-5 threads is a good starting point.
+            4. Logging: Logging may happen out of order. Consider prefixing your log messages so you can sort out which thread did what.
+
+        Args:
+            callback (callable): This is the function that will be called for each project. It should take the following arguments:
+                project (RiverscapesProject): The project object
+                stats (Dict[str, any]): The stats dictionary
+                total (int): The total number of records
+                progress (ProgressBar): The progress bar object
+            search_params (RiverscapesSearchParams): SAME AS THE SEARCH FUNCTION
+            progress_bar (bool, optional): SAME AS THE SEARCH FUNCTION
+            page_size (int, optional): SAME AS THE SEARCH FUNCTION
+            sort (List[str], optional): SAME AS THE SEARCH FUNCTION
+            max_results (int, optional): SAME AS THE SEARCH FUNCTION
+            max_workers (int, optional): Here is where you can set the number of workers for the ThreadPoolExecutor. Defaults to 5.
+        """
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = []
+            for project, _stats, _total, _prg in self.search(search_params, progress_bar=progress_bar, page_size=page_size, sort=sort, max_results=max_results):
+                # Submit a new job only if we have not reached max_workers
+                if len(futures) >= max_workers:
+                    # Wait for at least one future to complete before continuing
+                    done, not_done = concurrent.futures.wait(futures, return_when=concurrent.futures.FIRST_COMPLETED)
+                    futures = list(not_done)  # Update futures list with only incomplete futures
+
+                # Submit the job and track the future
+                future = executor.submit(callback, project, _stats, _total, _prg)
+                futures.append(future)
+
+            # Final block to ensure all futures are completed
+            for future in concurrent.futures.as_completed(futures):
+                try:
+                    future.result()  # Gather results or handle exceptions
+                except Exception as e:
+                    log.error(f"Project {project.id} generated an exception: {e}")
+        return
 
     def get_project_full(self, project_id: str) -> RiverscapesProject:
         """ This gets the full project record
