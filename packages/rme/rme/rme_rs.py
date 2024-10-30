@@ -77,6 +77,10 @@ def main():
             './/Geopackage[@id="RME_OUTPUTS"]/Path'
         ).text
 
+        intermediates_path = out_prj.XMLBuilder.find(
+            './/Geopackage[@id="INTERMEDIATES"]/Path'
+        ).text
+
         # None will run report normally with no filters
         filter_names = [None] + FILTER_NAMES
 
@@ -91,7 +95,8 @@ def main():
                 os.path.join(out_prj.project_dir, geopackage_path),
                 os.path.join(out_prj.project_dir, report_path),
                 out_prj,
-                filter_name
+                filter_name,
+                intermediates_path
             )
             report.write()
 

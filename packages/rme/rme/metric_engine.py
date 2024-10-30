@@ -18,7 +18,7 @@ import argparse
 import traceback
 from collections import Counter
 
-from osgeo import ogr
+from osgeo import ogr, osr
 from osgeo import gdal
 import numpy as np
 import rasterio
@@ -72,13 +72,15 @@ LayerTypes = {
     'HILLSHADE': RSLayer('Hillshade', 'HILLSHADE', 'Raster', 'inputs/hillshade.tif'),
     'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/rme_intermediates.gpkg', {
         'JUNCTION_POINTS': RSLayer('Junction Points', 'JUNCTION_POINTS', 'Vector', 'junction_points'),
-    }),
-    'RME_OUTPUTS': RSLayer('Riverscapes Metrics', 'RME_OUTPUTS', 'Geopackage', 'outputs/riverscapes_metrics.gpkg', {
         'RME_DGO': RSLayer('RME DGO', 'RME_DGO', 'Vector', 'dgos'),
         'RME_IGO': RSLayer('RME IGO', 'RME_IGO', 'Vector', 'igos'),
-        'DGO_METRICS': RSLayer('DGO Metrics', 'DGO_METRICS', 'Vector', 'vw_dgo_metrics'),
-        'IGO_METRICS': RSLayer('IGO Metrics', 'IGO_METRICS', 'Vector', 'vw_igo_metrics'),
+        'DGO_METRIC_VIEW': RSLayer('DGO Metrics', 'DGO_METRICS', 'Vector', 'vw_dgo_metrics'),
+        'IGO_METRIC_VIEW': RSLayer('IGO Metrics', 'IGO_METRICS', 'Vector', 'vw_igo_metrics'),
         'DGO_MEASUREMENTS': RSLayer('DGO Measurements', 'DGO_MEASUREMENTS', 'Vector', 'vw_measurements')
+    }),
+    'RME_OUTPUTS': RSLayer('Riverscapes Metrics', 'RME_OUTPUTS', 'Geopackage', 'outputs/riverscapes_metrics.gpkg', {
+        'DGO_METRICS': RSLayer('RME DGO', 'RME_DGO', 'Vector', 'dgos'),
+        'IGO_METRICS': RSLayer('RME IGO', 'RME_IGO', 'Vector', 'igos'),
     }),
     'REPORT': RSLayer('RME Report', 'REPORT', 'HTMLFile', 'outputs/rme.html'),
     'REPORT_PERENNIAL': RSLayer('RME Perennial Streams Report', 'REPORT_PERENNIAL', 'HTMLFile', 'outputs/rme_perennial.html'),
@@ -176,10 +178,10 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
     copy_feature_class(in_flowlines, flowlines)
     counties_f = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['COUNTIES'].rel_path)
     copy_feature_class(in_counties, counties_f)
-    segments = os.path.join(outputs_gpkg, LayerTypes['RME_OUTPUTS'].sub_layers['RME_DGO'].rel_path)
+    segments = os.path.join(intermediates_gpkg, LayerTypes['INTERMEDIATES'].sub_layers['RME_DGO'].rel_path)
     copy_feature_class(in_segments, os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['VBET_DGOS'].rel_path))
     copy_feature_class(in_segments, segments)
-    points = os.path.join(outputs_gpkg, LayerTypes['RME_OUTPUTS'].sub_layers['RME_IGO'].rel_path)
+    points = os.path.join(intermediates_gpkg, LayerTypes['INTERMEDIATES'].sub_layers['RME_IGO'].rel_path)
     copy_feature_class(in_points, os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['VBET_IGOS'].rel_path))
     copy_feature_class(in_points, points)
     centerlines = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['VBET_CENTERLINES'].rel_path)
@@ -267,18 +269,18 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
 
     database_folder = os.path.join(os.path.abspath(
         os.path.dirname(__file__)), 'database')
-    with sqlite3.connect(outputs_gpkg) as conn:
+    with sqlite3.connect(intermediates_gpkg) as conn:
         cursor = conn.cursor()
         with open(os.path.join(database_folder, 'metrics_schema.sql'), encoding='utf-8') as sqlfile:
             sql_commands = sqlfile.read()
             cursor.executescript(sql_commands)
             conn.commit()
     # Load tables
-    load_lookup_data(outputs_gpkg, os.path.join(
+    load_lookup_data(intermediates_gpkg, os.path.join(
         database_folder, 'data_metrics'))
 
     # index level path and seg distance
-    with sqlite3.connect(outputs_gpkg) as conn:
+    with sqlite3.connect(intermediates_gpkg) as conn:
         curs = conn.cursor()
         curs.execute("CREATE INDEX ix_dgos_level_path_seg_distance ON dgos (level_path, seg_distance)")
         curs.execute("CREATE INDEX idx_igos_size ON igos (stream_size)")
@@ -316,8 +318,8 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                 igo_dgo[igo_id] = feat_seg.GetFID()
                 break
 
-    metrics = generate_metric_list(outputs_gpkg)
-    measurements = generate_metric_list(outputs_gpkg, 'measurements')
+    metrics = generate_metric_list(intermediates_gpkg)
+    measurements = generate_metric_list(intermediates_gpkg, 'measurements')
 
     buffer_distance = {}
     for stream_size, distance in gradient_buffer_lookup.items():
@@ -937,7 +939,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                     lp_meas[dgo_id] = measurements_output
                     # curs.executemany("INSERT INTO measurement_values (dgo_id, measurement_id, measurement_value) VALUES (?,?,?)", [(dgo_id, name, value) for name, value in measurements_output.items()])
 
-        with sqlite3.connect(outputs_gpkg) as conn:
+        with sqlite3.connect(intermediates_gpkg) as conn:
             curs = conn.cursor()
             for dgo_id, vals in lp_metrics.items():
                 curs.executemany("INSERT INTO dgo_metric_values (dgo_id, metric_id, metric_value) VALUES (?,?,?)", [
@@ -954,7 +956,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
     for igo_id, dgo_ids in windows.items():
         counter += 1
         progbar.update(counter)
-        with sqlite3.connect(outputs_gpkg) as conn:
+        with sqlite3.connect(intermediates_gpkg) as conn:
             curs = conn.cursor()
 
             if igo_id in igo_dgo.keys():
@@ -1522,8 +1524,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
             conn.commit()
     progbar.finish()
 
-    epsg = 4326
-    with sqlite3.connect(outputs_gpkg) as conn:
+    with sqlite3.connect(intermediates_gpkg) as conn:
         curs = conn.cursor()
 
         # Insert Values into Pivot table
@@ -1611,6 +1612,76 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                      SELECT 'vw_measurements', column_name, geometry_type_name, srs_id, z, m FROM gpkg_geometry_columns WHERE table_name = 'dgos'""")
         conn.commit()
 
+    # Flattnen outputs
+    log.info('Preparing Final RME Outputs')
+    
+    field_types = {}
+    with sqlite3.connect(intermediates_gpkg) as conn:
+        rme_curs = conn.cursor()
+        rme_curs.execute('''
+            SELECT metric_id, field_name, data_type
+            FROM metrics
+            WHERE (is_active <> 0)
+                AND (field_name is not null)
+                AND (data_type is not null)
+        ''')
+        for row in rme_curs.fetchall():
+            field_type = row[2]
+            oft_type = ogr.OFTString
+            if field_type.lower() == 'integer':
+                oft_type = ogr.OFTInteger
+            elif field_type.lower() == 'real':
+                oft_type = ogr.OFTReal
+            field_types[row[1].lower()] = oft_type
+    
+    with GeopackageLayer(intermediates_gpkg, 'vw_igo_metrics') as igo_metrics_layer, \
+            GeopackageLayer(outputs_gpkg, LayerTypes['RME_OUTPUTS'].sub_layers['IGO_METRICS'].rel_path, write=True) as igo_output_layer:
+    
+        fields = igo_metrics_layer.get_fields()
+        igo_output_layer.create_layer_from_ref(igo_metrics_layer, create_fields=False)
+
+        # reapply the field types
+        for field, defn in fields.items():
+            if field in field_types:
+                igo_output_layer.create_field(field, field_types[field])
+            else:
+                igo_output_layer.create_field(field, field_def=defn)
+
+        for feature, *_ in igo_metrics_layer.iterate_features('Copying IGO Metrics'):
+            feature: ogr.Feature
+            geometry: ogr.Geometry = feature.GetGeometryRef()
+            attributes = {field: feature.GetField(field) for field in fields}
+            igo_output_layer.create_feature(geometry, attributes)
+
+    with GeopackageLayer(intermediates_gpkg, 'vw_dgo_metrics') as dgo_metrics_layer, \
+            GeopackageLayer(outputs_gpkg, LayerTypes['RME_OUTPUTS'].sub_layers['DGO_METRICS'].rel_path, write=True) as dgo_output_layer:
+        
+        fields = dgo_metrics_layer.get_fields()
+        dgo_output_layer.create_layer_from_ref(dgo_metrics_layer, create_fields=False)
+
+        # reapply the field types
+        for field, defn in fields.items():
+            if field in field_types:
+                dgo_output_layer.create_field(field, field_types[field])
+            else:
+                dgo_output_layer.create_field(field, field_def=defn)
+
+        for feature, *_ in dgo_metrics_layer.iterate_features('Copying DGO Metrics'):
+            feature: ogr.Feature
+            geometry: ogr.Geometry = feature.GetGeometryRef()
+            attributes = {field: feature.GetField(field) for field in fields}
+            dgo_output_layer.create_feature(geometry, attributes)
+
+    #  index sg_distance, level_path and FCode in both the DGOs and IGOs tables
+    with sqlite3.connect(outputs_gpkg) as conn:
+        curs = conn.cursor()
+        curs.execute('CREATE INDEX idx_dgo_combined ON dgos(seg_distance, level_path, FCode);')
+        curs.execute('CREATE INDEX idx_igo_combined ON igos(seg_distance, level_path, FCode);')
+        curs.execute('CREATE INDEX idx_dgos_level_path_seg_distance ON dgos (level_path, seg_distance);')
+        curs.execute('CREATE INDEX idx_igos_level_path_seg_distance ON igos (level_path, seg_distance);')
+        conn.commit()
+
+    # Add nodes to the project
     project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
     project.add_project_geopackage(
         proj_nodes['Outputs'], LayerTypes['RME_OUTPUTS'])
@@ -1638,7 +1709,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
             proj_nodes['Outputs'],
             LayerTypes[f'REPORT{report_suffix}'], replace=True
         )
-        report = RMEReport(outputs_gpkg, report_path, project, filter_name)
+        report = RMEReport(outputs_gpkg, report_path, project, filter_name, intermediates_gpkg)
         report.write()
 
     log.info('Riverscapes Metric Engine Finished')
