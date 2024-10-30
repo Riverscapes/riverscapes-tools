@@ -79,8 +79,8 @@ LayerTypes = {
         'DGO_MEASUREMENTS': RSLayer('DGO Measurements', 'DGO_MEASUREMENTS', 'Vector', 'vw_measurements')
     }),
     'RME_OUTPUTS': RSLayer('Riverscapes Metrics', 'RME_OUTPUTS', 'Geopackage', 'outputs/riverscapes_metrics.gpkg', {
-        'DGO_METRICS': RSLayer('RME DGO', 'RME_DGO', 'Vector', 'dgos'),
-        'IGO_METRICS': RSLayer('RME IGO', 'RME_IGO', 'Vector', 'igos'),
+        'DGO_METRICS': RSLayer('RME DGO', 'RME_DGO', 'Vector', 'rme_dgos'),
+        'IGO_METRICS': RSLayer('RME IGO', 'RME_IGO', 'Vector', 'rme_igos'),
     }),
     'REPORT': RSLayer('RME Report', 'REPORT', 'HTMLFile', 'outputs/rme.html'),
     'REPORT_PERENNIAL': RSLayer('RME Perennial Streams Report', 'REPORT_PERENNIAL', 'HTMLFile', 'outputs/rme_perennial.html'),
@@ -1634,8 +1634,11 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                 oft_type = ogr.OFTReal
             field_types[row[1].lower()] = oft_type
     
+    rme_igos = LayerTypes['RME_OUTPUTS'].sub_layers['IGO_METRICS'].rel_path
+    rme_dgos = LayerTypes['RME_OUTPUTS'].sub_layers['DGO_METRICS'].rel_path
+
     with GeopackageLayer(intermediates_gpkg, 'vw_igo_metrics') as igo_metrics_layer, \
-            GeopackageLayer(outputs_gpkg, LayerTypes['RME_OUTPUTS'].sub_layers['IGO_METRICS'].rel_path, write=True) as igo_output_layer:
+            GeopackageLayer(outputs_gpkg, rme_igos, write=True) as igo_output_layer:
     
         fields = igo_metrics_layer.get_fields()
         igo_output_layer.create_layer_from_ref(igo_metrics_layer, create_fields=False)
@@ -1654,7 +1657,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
             igo_output_layer.create_feature(geometry, attributes)
 
     with GeopackageLayer(intermediates_gpkg, 'vw_dgo_metrics') as dgo_metrics_layer, \
-            GeopackageLayer(outputs_gpkg, LayerTypes['RME_OUTPUTS'].sub_layers['DGO_METRICS'].rel_path, write=True) as dgo_output_layer:
+            GeopackageLayer(outputs_gpkg, rme_dgos, write=True) as dgo_output_layer:
         
         fields = dgo_metrics_layer.get_fields()
         dgo_output_layer.create_layer_from_ref(dgo_metrics_layer, create_fields=False)
@@ -1675,10 +1678,10 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
     #  index sg_distance, level_path and FCode in both the DGOs and IGOs tables
     with sqlite3.connect(outputs_gpkg) as conn:
         curs = conn.cursor()
-        curs.execute('CREATE INDEX idx_dgo_combined ON dgos(seg_distance, level_path, FCode);')
-        curs.execute('CREATE INDEX idx_igo_combined ON igos(seg_distance, level_path, FCode);')
-        curs.execute('CREATE INDEX idx_dgos_level_path_seg_distance ON dgos (level_path, seg_distance);')
-        curs.execute('CREATE INDEX idx_igos_level_path_seg_distance ON igos (level_path, seg_distance);')
+        curs.execute('CREATE INDEX idx_dgo_combined ON rme_dgos(seg_distance, level_path, FCode);')
+        curs.execute('CREATE INDEX idx_igo_combined ON rme_igos(seg_distance, level_path, FCode);')
+        curs.execute('CREATE INDEX idx_dgos_level_path_seg_distance ON rme_dgos (level_path, seg_distance);')
+        curs.execute('CREATE INDEX idx_igos_level_path_seg_distance ON rme_igos (level_path, seg_distance);')
         conn.commit()
 
     # Add nodes to the project
