@@ -96,7 +96,7 @@ def main():
                 os.path.join(out_prj.project_dir, report_path),
                 out_prj,
                 filter_name,
-                intermediates_path
+                os.path.join(out_prj.project_dir, intermediates_path)
             )
             report.write()
 

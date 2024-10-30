@@ -55,7 +55,8 @@
       "args": [
         "{env:DATA_ROOT}/rme/${input:HUC}/outputs/riverscapes_metrics.gpkg",
         "{env:DATA_ROOT}/rme/${input:HUC}/project.rs.xml",
-        "{env:DATA_ROOT}/rme/${input:HUC}/outputs/rme.html"
+        "{env:DATA_ROOT}/rme/${input:HUC}/outputs/rme.html",
+        "--intermediates", "{env:DATA_ROOT}/rme/${input:HUC}/intermediates/rme_intermediates.gpkg",
       ]
     },
     {
