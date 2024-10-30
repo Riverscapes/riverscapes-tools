@@ -26,10 +26,11 @@ FILTER_NAMES = list(FILTER_MAP.keys())
 
 class RMEReport(RSReport):
 
-    def __init__(self, database, report_path, rs_project, filter_name=None):
+    def __init__(self, database, report_path, rs_project, filter_name=None, intermediate_database=None):
         super().__init__(rs_project, report_path)
         self.log = Logger('Riverscapes Metrics Report')
         self.database = database
+        self.intermediate_database = intermediate_database
         self.project_root = rs_project.project_dir
 
         # The report has a core CSS file but we can extend it with our own if we want:
@@ -69,7 +70,11 @@ class RMEReport(RSReport):
             th.text = col
             theadrow.append(th)
 
-        conn = sqlite3.connect(self.database)
+        if self.intermediate_database is None:
+            self.log.warning("No intermediate database provided, skipping metric plots")
+            return
+
+        conn = sqlite3.connect(self.intermediate_database)
         curs = conn.cursor()
         curs.execute("""
             SELECT name, description, method, LOWER(field_name)
@@ -139,7 +144,10 @@ class RMEReport(RSReport):
         section = self.section("metric-plots", "Metric Plots", parent_section, level=3)
         plot_wrapper = ET.Element('div', attrib={'class': 'plots'})
 
-        conn = sqlite3.connect(self.database)
+        if self.intermediate_database is None:
+            self.log.warning("No intermediate database provided, skipping metric plots")
+            return
+        conn = sqlite3.connect(self.intermediate_database)
         curs = conn.cursor()
 
         curs.execute("""
@@ -251,6 +259,7 @@ if __name__ == '__main__':
     parser.add_argument('database', help='Path to the database', type=str)
     parser.add_argument('projectxml', help='Path to the RME project.rs.xml', type=str)
     parser.add_argument('report_path', help='Output path where report will be generated', type=str)
+    parser.add_argument('--intermediates', help='Path to the intermediate database', type=str, default=None)
     args = dotenv.parse_args_env(parser)
 
     cfg = ModelConfig('http://xml.riverscapes.net/Projects/XSD/V2/RiverscapesProject.xsd', __version__)
@@ -264,5 +273,5 @@ if __name__ == '__main__':
             report_path = args.report_path.replace('.html', f'_{filter_name}.html')
         else:
             report_path = args.report_path
-        report = RMEReport(args.database, report_path, project, filter_name)
+        report = RMEReport(args.database, report_path, project, filter_name, args.intermediates)
         report.write()

@@ -1,7 +1,9 @@
 {
     "JUNCTION_POINTS": ["Points where flowlines converge or diverge","",""],
-    "RME_DGO": ["Discrete geographic objects (DGO) polygon geometries for storing RME attributes","",""],
-    "RME_IGO": ["Integrated geographic objects (IGO) point geometries for storing RME moving window attributes","",""],
+    "IGO_METRIC_VIEW": ["Riverscape metrics summarized onto integrated geographic objects (IGO) points using a moving window analysis (intermediate data product only)","",""],
+    "DGO_METRIC_VIEW": ["Riverscape metrics summarized within and attributed onto discrete geographic object (DGO) polygons (intermediate data product only)","",""],
+    "RME_DGO": ["Discrete geographic objects (DGO) polygon geometries for storing RME attributes (intermediate data product only)","",""],
+    "RME_IGO": ["Integrated geographic objects (IGO) point geometries for storing RME moving window attributes (intermediate data product only)","",""],
     "DGO_METRICS": ["Riverscape metrics summarized within and attributed onto discrete geographic object (DGO) polygons","",""],
     "IGO_METRICS": ["Riverscape metrics summarized onto integrated geographic objects (IGO) points using a moving window analysis","",""],
     "DGO_MEASUREMENTS": ["Measurements taken from DEM input stored for each DGO","",""]
