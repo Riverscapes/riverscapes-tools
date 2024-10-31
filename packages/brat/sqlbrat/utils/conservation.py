@@ -38,7 +38,7 @@ def calculate_conservation(database: str):
 
     # Verify all the input fields are present and load their values
     reaches = load_attributes(database,
-                              ['oVC_HPE', 'oVC_EX', 'oCC_HPE', 'oCC_EX', 'iGeo_Slope', 'mCC_HisDep', 'iPC_VLowLU', 'iPC_HighLU', 'iPC_LU', 'oPC_Dist', 'iHyd_SPLow', 'iHyd_SP2', 'iPC_Canal'],
+                              ['oVC_HPE', 'oVC_EX', 'oCC_HPE', 'oCC_EX', 'iGeo_Slope', 'mCC_HisDep', 'iPC_VLowLU', 'iPC_HighLU', 'iPC_LU', 'oPC_Dist', 'iHyd_SPLow', 'iHyd_SP2', 'iPC_Canal', 'Dam_Setting'],
                               '(oCC_EX IS NOT NULL) AND (mCC_HisDep IS NOT NULL)')
 
     log.info('Calculating conservation for {:,} reaches.'.format(len(reaches)))
@@ -56,7 +56,7 @@ def calculate_conservation(database: str):
         values['LimitationID'] = calc_limited(limitations, values['oVC_HPE'], values['oVC_EX'], values['oCC_EX'], values['iGeo_Slope'], values['iPC_LU'], values['iHyd_SPLow'], values['iHyd_SPLow'])
 
         # Conservation and restoration opportunties
-        values['OpportunityID'] = calc_opportunities(opportunties, risks, values['RiskID'], values['oCC_HPE'], values['oCC_EX'], values['mCC_HisDep'], values['iPC_VLowLU'], values['iPC_HighLU'])
+        values['OpportunityID'] = calc_opportunities(opportunties, risks, values['RiskID'], values['oCC_HPE'], values['oCC_EX'], values['oVC_EX'], values['mCC_HisDep'], values['iPC_VLowLU'], values['iPC_HighLU'], values['Dam_Setting'])
 
     log.info('Conservation calculation complete')
     return reaches
@@ -159,7 +159,7 @@ def calc_limited(limitations: dict, ovc_hpe: float, ovc_ex: float, occ_ex: float
     raise Exception('Unhandled dam limitation')
 
 
-def calc_opportunities(opportunities: dict, risks: dict, risk_id: float, occ_hpe: float, occ_ex: float, mcc_hisdep: float, ipc_vlowlu: float, ipc_highlu: float) -> int:
+def calc_opportunities(opportunities: dict, risks: dict, risk_id: float, occ_hpe: float, occ_ex: float, ovc_ex: float, mcc_hisdep: float, ipc_vlowlu: float, ipc_highlu: float, dam_setting: str) -> int:
     """ Calculate conservation opportunities
 
     Args:
@@ -179,25 +179,62 @@ def calc_opportunities(opportunities: dict, risks: dict, risk_id: float, occ_hpe
         [type]: [description]
     """
 
+# IF current capacity is same or greater than historic, capacity is greater than 0, very low land use is 95% or greater, and Risk is Negligible or Minor THEN "Conservation Reach"
+
+# IF capacity >= 5 and mcc_hisdep <= 3 and setting is Classic and Risk is Negligible or Minor THEN Easiest - Low-Hanging Fruit
+
+
+# IF capacity >=1 and mCC_hisdep <= 3 and setting is Classic and Risk is Some and iPC_HighLU < 50 THEN Strategic - Long-Term Investment
+
+# IF Setting is Floodplain and veg capacity >= 1 and Risk less than Considerable and HighLU < 50 THEN Potential Floodplain Opportunities
+
+# IF Setting is Steep and capacity >=1 and mcc_hisdep <= 3 THEN Steep Streams - Lower Priority
+
     if occ_ex is not None and mcc_hisdep is not None and occ_hpe is not None and ipc_vlowlu is not None and ipc_highlu is not None:
-        if risk_id == risks['Negligible Risk'] or risk_id == risks['Minor Risk']:
-            # 'oCC_EX' Frequent or Pervasive
-            # 'mCC_HisDep' <= 3
-            if occ_ex >= 5 and mcc_hisdep <= 3:
-                return opportunities['Easiest - Low-Hanging Fruit']
-            # 'oCC_EX' Occasional, Frequent, or Pervasive
-            # 'oCC_HPE' Frequent or Pervasive
-            # 'mCC_HisDep' <= 3
-            # 'ipc_vlowlu'(i.e., Natural) > 75
-            # 'ipc_highlu' (i.e., Developed) < 10
-            elif occ_ex > 1 and mcc_hisdep <= 3 and occ_hpe >= 5 and ipc_vlowlu > 75 and ipc_highlu < 10:
-                return opportunities['Straight Forward - Quick Return']
-            # 'oCC_EX' Rare or Occasional
-            # 'oCC_HPE' Frequent or Pervasive
-            # 'iPC_VLowLU'(i.e., Natural) > 75
-            # 'iPC_HighLU' (i.e., Developed) < 10
-            elif occ_ex > 0 and occ_ex < 5 and occ_hpe >= 5 and ipc_vlowlu > 75 and ipc_highlu < 10:
-                return opportunities['Strategic - Long-Term Investment']
+        if dam_setting == 'Classic':
+            if risk_id == risks['Negligible Risk'] or risk_id == risks['Minor Risk']:
+                if occ_ex >= 0.9*occ_hpe and occ_ex > 0 and ipc_vlowlu >= 0.95:
+                    return opportunities['Conservation']
+                if occ_ex >= 5:
+                    if mcc_hisdep <= 3:
+                        if ipc_vlowlu > 90:
+                            return opportunities['Easiest - Low-Hanging Fruit']
+                        else:
+                            return opportunities['Straight Forward - Quick Return']
+                    else:
+                        if ipc_vlowlu > 90:
+                            return opportunities['Straight Forward - Quick Return']
+                        else:
+                            return opportunities['Strategic - Long-Term Investment']
+                else:
+                    if ipc_highlu < 10:
+                        return opportunities['Address Resource Limitations']
+                    else:
+                        return opportunities['NA']
+            elif risk_id == risks['Some Risk']:
+                if occ_ex >= 5:
+                    if mcc_hisdep <= 3:
+                        return opportunities['Straight Forward - Quick Return']
+                    else:
+                        return opportunities['Strategic - Long-Term Investment']
+                elif occ_ex >= 1 and occ_ex < 5:
+                    return opportunities['Address Resource Limitations']
+                else:
+                    return opportunities['NA']
+            elif risk_id == risks['Considerable Risk']:
+                if occ_ex >= 5:
+                    return opportunities['Strategic - Long-Term Investment']
+                else:
+                    return opportunities['NA']
+
+        elif dam_setting == 'Floodplain':
+            if ovc_ex >= 1 and risk_id == risks['Negligible Risk'] or risk_id == risks['Minor Risk'] and ipc_highlu < 50:
+                return opportunities['Potential Floodplain/Side Channel Opportunities']
+            else:
+                return opportunities['NA']
+        elif dam_setting == 'Steep':
+            if occ_ex >= 1 and mcc_hisdep <= 3:
+                return opportunities['Steep Streams - Lower Priority']
             else:
                 return opportunities['NA']
         else:

@@ -443,9 +443,9 @@ def brat(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Path,
         database.curs.execute('UPDATE ReachAttributes SET mCC_HisDep = mCC_HPE_CT - mCC_EX_CT WHERE (mCC_EX_CT IS NOT NULL) AND (mCC_HPE_CT IS NOT NULL)')
         database.conn.commit()
 
-    conservation(outputs_gpkg_path)
-
     dam_reach_type(outputs_gpkg_path)
+
+    conservation(outputs_gpkg_path)
 
     # moving window analysis
     riverscape_brat(outputs_gpkg_path, windows)
