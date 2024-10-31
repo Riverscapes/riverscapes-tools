@@ -1678,8 +1678,8 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
     #  index sg_distance, level_path and FCode in both the DGOs and IGOs tables
     with sqlite3.connect(outputs_gpkg) as conn:
         curs = conn.cursor()
-        curs.execute('CREATE INDEX idx_dgo_combined ON rme_dgos(seg_distance, level_path, FCode);')
-        curs.execute('CREATE INDEX idx_igo_combined ON rme_igos(seg_distance, level_path, FCode);')
+        curs.execute('CREATE INDEX idx_dgo_fcode ON rme_dgos(FCode);')
+        curs.execute('CREATE INDEX idx_igo_fcode ON rme_igos(FCode);')
         curs.execute('CREATE INDEX idx_dgos_level_path_seg_distance ON rme_dgos (level_path, seg_distance);')
         curs.execute('CREATE INDEX idx_igos_level_path_seg_distance ON rme_igos (level_path, seg_distance);')
         conn.commit()
