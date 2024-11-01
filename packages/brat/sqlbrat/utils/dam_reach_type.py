@@ -11,7 +11,7 @@ def dam_reach_type(brat_gpkg):
     curs.execute('SELECT MaxDrainage from Watersheds')
     max_drainage = curs.fetchone()[0]
 
-    if max_drainage is None:
+    if max_drainage is None or max_drainage == '':
         max_drainage = 1000000
     curs.execute(f"""UPDATE ReachAttributes SET Dam_Setting = 'Classic' WHERE iGeo_DA < {max_drainage} AND iGeo_Slope < 0.06 AND oCC_EX > 0""")
     curs.execute(f"""UPDATE ReachAttributes SET Dam_Setting = 'Steep' WHERE iGeo_DA < {max_drainage} AND iGeo_Slope >= 0.06 AND oCC_EX > 0""")

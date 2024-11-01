@@ -38,7 +38,7 @@ def calculate_conservation(database: str):
 
     # Verify all the input fields are present and load their values
     reaches = load_attributes(database,
-                              ['oVC_HPE', 'oVC_EX', 'oCC_HPE', 'oCC_EX', 'iGeo_Slope', 'mCC_HisDep', 'iPC_VLowLU', 'iPC_HighLU', 'iPC_LU', 'oPC_Dist', 'iHyd_SPLow', 'iHyd_SP2', 'iPC_Canal', 'Dam_Setting'],
+                              ['oVC_HPE', 'oVC_EX', 'oCC_HPE', 'oCC_EX', 'iGeo_Slope', 'mCC_HisDep', 'iPC_VLowLU', 'iPC_HighLU', 'iPC_LU', 'iPC_RoadX', 'iPC_RoadVB', 'iPC_RailVB', 'iHyd_SPLow', 'iHyd_SP2', 'iPC_Canal', 'Dam_Setting'],
                               '(oCC_EX IS NOT NULL) AND (mCC_HisDep IS NOT NULL)')
 
     log.info('Calculating conservation for {:,} reaches.'.format(len(reaches)))
@@ -50,7 +50,7 @@ def calculate_conservation(database: str):
     for values in reaches.values():
 
         # Areas beavers can build dams, but could have undesireable impacts
-        values['RiskID'] = calc_risks(risks, values['oCC_EX'], values['oPC_Dist'], values['iPC_LU'], values['iPC_Canal'])
+        values['RiskID'] = calc_risks(risks, values['oCC_EX'], values['iPC_LU'], values['iPC_Canal'], values['iPC_RoadX'], values['iPC_RoadVB'], values['iPC_RailVB'])
 
         # Areas beavers can't build dams and why
         values['LimitationID'] = calc_limited(limitations, values['oVC_HPE'], values['oVC_EX'], values['oCC_EX'], values['iGeo_Slope'], values['iPC_LU'], values['iHyd_SPLow'], values['iHyd_SPLow'])
@@ -62,7 +62,7 @@ def calculate_conservation(database: str):
     return reaches
 
 
-def calc_risks(risks: dict, occ_ex: float, opc_dist: float, ipc_lu: float, ipc_canal: float):
+def calc_risks(risks: dict, occ_ex: float, ipc_lu: float, ipc_canal: float, ipc_roadx: float, ipc_roadvb: float, ipc_railvb: float) -> int:
     """ Calculate risk values
 
     Args:
@@ -86,26 +86,30 @@ def calc_risks(risks: dict, occ_ex: float, opc_dist: float, ipc_lu: float, ipc_c
         # if canals are within 20 meters (usually means canal is on the reach)
         return risks['Considerable Risk']
     else:
-        if opc_dist is not None and ipc_lu is not None:
-            # if infrastructure within 30 m or land use is high
-            # if capacity is frequent or pervasive risk is considerable
-            # if capaicty is rare or ocassional risk is some
-            if opc_dist <= 30 or ipc_lu >= 0.66:
-                if occ_ex >= 5.0:
-                    return risks['Considerable Risk']
-                else:
-                    return risks['Some Risk']
-            # if infrastructure within 30 to 100 m
-            # if capacity is frequent or pervasive risk is some
-            # if capaicty is rare or ocassional risk is minor
-            elif opc_dist <= 100:
-                if occ_ex >= 5.0:
-                    return risks['Some Risk']
-                else:
+        conf_inputs = [input for input in [ipc_roadx, ipc_roadvb, ipc_railvb] if input is not None]
+        if len(conf_inputs) > 0:
+            if min(conf_inputs) is not None and ipc_lu is not None:
+                # if infrastructure within 30 m or land use is high
+                # if capacity is frequent or pervasive risk is considerable
+                # if capaicty is rare or ocassional risk is some
+                if min(conf_inputs) <= 30 or ipc_lu >= 66:
+                    if occ_ex >= 5.0:
+                        return risks['Considerable Risk']
+                    else:
+                        return risks['Some Risk']
+                # if infrastructure within 30 to 100 m
+                # if capacity is frequent or pervasive risk is some
+                # if capaicty is rare or ocassional risk is minor
+                elif min(conf_inputs) <= 100:
+                    if occ_ex >= 5.0:
+                        return risks['Some Risk']
+                    else:
+                        return risks['Minor Risk']
+                # if infrastructure within 100 to 300 m or land use is 0.33 to 0.66 risk is minor
+                elif min(conf_inputs) <= 300 or ipc_lu >= 33:
                     return risks['Minor Risk']
-            # if infrastructure within 100 to 300 m or land use is 0.33 to 0.66 risk is minor
-            elif opc_dist <= 300 or ipc_lu >= 0.33:
-                return risks['Minor Risk']
+                else:
+                    return risks['Negligible Risk']
             else:
                 return risks['Negligible Risk']
         else:
@@ -193,19 +197,19 @@ def calc_opportunities(opportunities: dict, risks: dict, risk_id: float, occ_hpe
     if occ_ex is not None and mcc_hisdep is not None and occ_hpe is not None and ipc_vlowlu is not None and ipc_highlu is not None:
         if dam_setting == 'Classic':
             if risk_id == risks['Negligible Risk'] or risk_id == risks['Minor Risk']:
-                if occ_ex >= 0.9*occ_hpe and occ_ex > 0 and ipc_vlowlu >= 0.95:
-                    return opportunities['Conservation']
+                if occ_ex >= 0.9*occ_hpe and occ_ex > 0 and ipc_vlowlu >= 95:
+                    return opportunities['Conservation/Restoration']
                 if occ_ex >= 5:
                     if mcc_hisdep <= 3:
                         if ipc_vlowlu > 90:
-                            return opportunities['Easiest - Low-Hanging Fruit']
+                            return opportunities['Lowest Effort - Easy Uplift']
                         else:
-                            return opportunities['Straight Forward - Quick Return']
+                            return opportunities['Medium Effort - Quick Uplift']
                     else:
                         if ipc_vlowlu > 90:
-                            return opportunities['Straight Forward - Quick Return']
+                            return opportunities['Medium Effort - Quick Uplift']
                         else:
-                            return opportunities['Strategic - Long-Term Investment']
+                            return opportunities['Higher Effort - Long-Term Investment']
                 else:
                     if ipc_highlu < 10:
                         return opportunities['Address Resource Limitations']
@@ -214,21 +218,21 @@ def calc_opportunities(opportunities: dict, risks: dict, risk_id: float, occ_hpe
             elif risk_id == risks['Some Risk']:
                 if occ_ex >= 5:
                     if mcc_hisdep <= 3:
-                        return opportunities['Straight Forward - Quick Return']
+                        return opportunities['Medium Effort - Quick Uplift']
                     else:
-                        return opportunities['Strategic - Long-Term Investment']
+                        return opportunities['Higher Effort - Long-Term Investment']
                 elif occ_ex >= 1 and occ_ex < 5:
                     return opportunities['Address Resource Limitations']
                 else:
                     return opportunities['NA']
             elif risk_id == risks['Considerable Risk']:
                 if occ_ex >= 5:
-                    return opportunities['Strategic - Long-Term Investment']
+                    return opportunities['Higher Effort - Long-Term Investment']
                 else:
                     return opportunities['NA']
 
         elif dam_setting == 'Floodplain':
-            if ovc_ex >= 1 and risk_id == risks['Negligible Risk'] or risk_id == risks['Minor Risk'] and ipc_highlu < 50:
+            if ovc_ex > 5 and risk_id == risks['Negligible Risk'] or risk_id == risks['Minor Risk'] and ipc_highlu < 25:
                 return opportunities['Potential Floodplain/Side Channel Opportunities']
             else:
                 return opportunities['NA']
