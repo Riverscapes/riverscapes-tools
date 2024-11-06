@@ -38,7 +38,7 @@ def calculate_conservation(database: str):
 
     # Verify all the input fields are present and load their values
     reaches = load_attributes(database,
-                              ['oVC_HPE', 'oVC_EX', 'oCC_HPE', 'oCC_EX', 'iGeo_Slope', 'mCC_HisDep', 'iPC_VLowLU', 'iPC_HighLU', 'iPC_LU', 'iPC_RoadX', 'iPC_RoadVB', 'iPC_RailVB', 'iHyd_SPLow', 'iHyd_SP2', 'iPC_Canal', 'Dam_Setting'],
+                              ['oVC_HPE', 'oVC_EX', 'oCC_HPE', 'oCC_EX', 'iGeo_Slope', 'iPC_VLowLU', 'iPC_HighLU', 'iPC_LU', 'iPC_RoadX', 'iPC_RoadVB', 'iPC_RailVB', 'iHyd_SPLow', 'iHyd_SP2', 'iPC_Canal', 'Dam_Setting'],
                               '(oCC_EX IS NOT NULL) AND (mCC_HisDep IS NOT NULL)')
 
     log.info('Calculating conservation for {:,} reaches.'.format(len(reaches)))
@@ -56,7 +56,7 @@ def calculate_conservation(database: str):
         values['LimitationID'] = calc_limited(limitations, values['oVC_HPE'], values['oVC_EX'], values['oCC_EX'], values['iGeo_Slope'], values['iPC_LU'], values['iHyd_SPLow'], values['iHyd_SPLow'])
 
         # Conservation and restoration opportunties
-        values['OpportunityID'] = calc_opportunities(opportunties, risks, values['RiskID'], values['oCC_HPE'], values['oCC_EX'], values['oVC_EX'], values['mCC_HisDep'], values['iPC_VLowLU'], values['iPC_HighLU'], values['Dam_Setting'])
+        values['OpportunityID'] = calc_opportunities(opportunties, risks, values['RiskID'], values['oCC_HPE'], values['oCC_EX'], values['oVC_EX'], values['iPC_VLowLU'], values['iPC_HighLU'], values['Dam_Setting'])
 
     log.info('Conservation calculation complete')
     return reaches
@@ -163,7 +163,7 @@ def calc_limited(limitations: dict, ovc_hpe: float, ovc_ex: float, occ_ex: float
     raise Exception('Unhandled dam limitation')
 
 
-def calc_opportunities(opportunities: dict, risks: dict, risk_id: float, occ_hpe: float, occ_ex: float, ovc_ex: float, mcc_hisdep: float, ipc_vlowlu: float, ipc_highlu: float, dam_setting: str) -> int:
+def calc_opportunities(opportunities: dict, risks: dict, risk_id: float, occ_hpe: float, occ_ex: float, ovc_ex: float, ipc_vlowlu: float, ipc_highlu: float, dam_setting: str) -> int:
     """ Calculate conservation opportunities
 
     Args:
@@ -183,68 +183,61 @@ def calc_opportunities(opportunities: dict, risks: dict, risk_id: float, occ_hpe
         [type]: [description]
     """
 
-# IF current capacity is same or greater than historic, capacity is greater than 0, very low land use is 95% or greater, and Risk is Negligible or Minor THEN "Conservation Reach"
-
-# IF capacity >= 5 and mcc_hisdep <= 3 and setting is Classic and Risk is Negligible or Minor THEN Easiest - Low-Hanging Fruit
-
-
-# IF capacity >=1 and mCC_hisdep <= 3 and setting is Classic and Risk is Some and iPC_HighLU < 50 THEN Strategic - Long-Term Investment
-
-# IF Setting is Floodplain and veg capacity >= 1 and Risk less than Considerable and HighLU < 50 THEN Potential Floodplain Opportunities
-
-# IF Setting is Steep and capacity >=1 and mcc_hisdep <= 3 THEN Steep Streams - Lower Priority
-
-    if occ_ex is not None and mcc_hisdep is not None and occ_hpe is not None and ipc_vlowlu is not None and ipc_highlu is not None:
-        if dam_setting == 'Classic':
+    if occ_ex is not None and occ_hpe is not None and ipc_vlowlu is not None and ipc_highlu is not None:
+        if dam_setting in ('Classic', 'Steep'):
             if risk_id == risks['Negligible Risk'] or risk_id == risks['Minor Risk']:
-                if occ_ex >= 0.9*occ_hpe and occ_ex > 0 and ipc_vlowlu >= 95:
-                    return opportunities['Conservation/Restoration']
-                if occ_ex >= 5:
-                    if mcc_hisdep <= 3:
-                        if ipc_vlowlu > 90:
-                            return opportunities['Lowest Effort - Easy Uplift']
-                        else:
-                            return opportunities['Medium Effort - Quick Uplift']
+                if occ_hpe >= 5 and occ_ex >= 0.9*occ_hpe and occ_ex > 0 and ipc_vlowlu >= 95:
+                    return opportunities['Conservation or Lowest-Hanging Fruit']
+                if occ_ex > 10:
+                    if ipc_vlowlu > 90:
+                        return opportunities['Conservation or Lowest-Hanging Fruit']
                     else:
-                        if ipc_vlowlu > 90:
-                            return opportunities['Medium Effort - Quick Uplift']
-                        else:
-                            return opportunities['Higher Effort - Long-Term Investment']
+                        return opportunities['Lower Effort']
+                elif occ_ex >= 5 and occ_ex < 10:
+                    if ipc_vlowlu > 90:
+                        return opportunities['Lower Effort']
+                    else:
+                        return opportunities['Moderate Effort']
                 else:
-                    if ipc_highlu < 10:
+                    if ipc_vlowlu > 90:
+                        return opportunities['Natural or Anthropogenic Limitations']
+                    elif ipc_highlu > 25:
+                        return opportunities['Natural or Anthropogenic Limitations']
+                    else:
                         return opportunities['Address Resource Limitations']
+            else:
+                if occ_ex > 10:
+                    if ipc_highlu > 25:
+                        return opportunities['Higher Effort']
                     else:
-                        return opportunities['NA']
-            elif risk_id == risks['Some Risk']:
-                if occ_ex >= 5:
-                    if mcc_hisdep <= 3:
-                        return opportunities['Medium Effort - Quick Uplift']
+                        return opportunities['Moderate Effort']
+                elif occ_ex >= 5 and occ_ex < 10:
+                    if ipc_highlu > 25:
+                        return opportunities['Natural or Anthropogenic Limitations']
                     else:
-                        return opportunities['Higher Effort - Long-Term Investment']
-                elif occ_ex >= 1 and occ_ex < 5:
-                    return opportunities['Address Resource Limitations']
+                        return opportunities['Higher Effort']
                 else:
-                    return opportunities['NA']
-            elif risk_id == risks['Considerable Risk']:
-                if occ_ex >= 5:
-                    return opportunities['Higher Effort - Long-Term Investment']
-                else:
-                    return opportunities['NA']
+                    if ipc_highlu > 25:
+                        return opportunities['Natural or Anthropogenic Limitations']
+                    else:
+                        return opportunities['Address Resource Limitations']
 
         elif dam_setting == 'Floodplain':
-            if ovc_ex > 5 and risk_id == risks['Negligible Risk'] or risk_id == risks['Minor Risk'] and ipc_highlu < 25:
-                return opportunities['Potential Floodplain/Side Channel Opportunities']
+            if risk_id == risks['Negligible Risk'] or risk_id == risks['Minor Risk']:
+                if ovc_ex >= 5:
+                    if ipc_highlu > 25:
+                        return opportunities['Natural or Anthropogenic Limitations']
+                    else:
+                        return opportunities['Potential Floodplain/Side Channel Opportunities']
+                else:
+                    return opportunities['Natural or Anthropogenic Limitations']
             else:
-                return opportunities['NA']
-        elif dam_setting == 'Steep':
-            if occ_ex >= 1 and mcc_hisdep <= 3:
-                return opportunities['Steep Streams - Lower Priority']
-            else:
-                return opportunities['NA']
+                return opportunities['Natural or Anthropogenic Limitations']
+
         else:
-            return opportunities['NA']
+            return opportunities['Natural or Anthropogenic Limitations']
     else:
-        return opportunities['NA']
+        return opportunities['Natural or Anthropogenic Limitations']
 
     raise Exception('Unhandled conservation opportunity')
 

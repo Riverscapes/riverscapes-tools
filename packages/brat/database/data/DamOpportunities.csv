@@ -1,9 +1,8 @@
 OpportunityID,Name
-1,Conservation/Restoration
-2,Lowest Effort - Easy Uplift
-3,Medium Effort - Quick Uplift
-4,Higher Effort - Long-Term Investment
+1,Conservation or Lowest-Hanging Fruit
+2,Lower Effort
+3,Moderate Effort
+4,Higher Effort
 5,Address Resource Limitations
 6,Potential Floodplain/Side Channel Opportunities
-7,Steep Streams - Lower Priority
-8,NA
+7,Natural or Anthropogenic Limitations
