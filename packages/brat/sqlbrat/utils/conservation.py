@@ -11,7 +11,7 @@ from rscommons import Logger, dotenv
 from rscommons.database import load_attributes, write_db_attributes, SQLiteCon
 
 
-def conservation(database: str):
+def conservation(database: str, max_da: float = None):
     """Calculate conservation fields for an existing BRAT database
     Assumes that conflict attributes and the dam capacity model
     have already been run for the database
@@ -20,11 +20,11 @@ def conservation(database: str):
         database {str} -- Path to BRAT database
     """
 
-    results = calculate_conservation(database)
+    results = calculate_conservation(database, max_da)
     write_db_attributes(database, results, ['OpportunityID', 'LimitationID', 'RiskID'])
 
 
-def calculate_conservation(database: str):
+def calculate_conservation(database: str, max_da: float = None):
     """ Perform conservation calculations
 
     Args:
@@ -38,7 +38,7 @@ def calculate_conservation(database: str):
 
     # Verify all the input fields are present and load their values
     reaches = load_attributes(database,
-                              ['oVC_HPE', 'oVC_EX', 'oCC_HPE', 'oCC_EX', 'iGeo_Slope', 'iPC_VLowLU', 'iPC_HighLU', 'iPC_LU', 'iPC_RoadX', 'iPC_RoadVB', 'iPC_RailVB', 'iHyd_SPLow', 'iHyd_SP2', 'iPC_Canal', 'Dam_Setting'],
+                              ['oVC_HPE', 'oVC_EX', 'oCC_HPE', 'oCC_EX', 'iGeo_Slope', 'iPC_VLowLU', 'iPC_HighLU', 'iPC_LU', 'iPC_RoadX', 'iPC_RoadVB', 'iPC_RailVB', 'iHyd_SPLow', 'iHyd_SP2', 'iPC_Canal', 'Dam_Setting', 'iGeo_DA'],
                               '(oCC_EX IS NOT NULL) AND (mCC_HisDep IS NOT NULL)')
 
     log.info('Calculating conservation for {:,} reaches.'.format(len(reaches)))
@@ -53,7 +53,7 @@ def calculate_conservation(database: str):
         values['RiskID'] = calc_risks(risks, values['oCC_EX'], values['iPC_LU'], values['iPC_Canal'], values['iPC_RoadX'], values['iPC_RoadVB'], values['iPC_RailVB'])
 
         # Areas beavers can't build dams and why
-        values['LimitationID'] = calc_limited(limitations, values['oVC_HPE'], values['oVC_EX'], values['oCC_EX'], values['iGeo_Slope'], values['iPC_LU'], values['iHyd_SPLow'], values['iHyd_SPLow'])
+        values['LimitationID'] = calc_limited(limitations, values['oVC_HPE'], values['oVC_EX'], values['oCC_EX'], values['iGeo_Slope'], values['iPC_LU'], values['iHyd_SPLow'], values['iHyd_SP2'], values['iGeo_DA'], max_da)
 
         # Conservation and restoration opportunties
         values['OpportunityID'] = calc_opportunities(opportunties, risks, values['RiskID'], values['oCC_HPE'], values['oCC_EX'], values['oVC_EX'], values['iPC_VLowLU'], values['iPC_HighLU'], values['Dam_Setting'])
@@ -118,7 +118,7 @@ def calc_risks(risks: dict, occ_ex: float, ipc_lu: float, ipc_canal: float, ipc_
     raise Exception('Unhandled undesireable dam risk')
 
 
-def calc_limited(limitations: dict, ovc_hpe: float, ovc_ex: float, occ_ex: float, slope: float, landuse: float, splow: float, sp2: float) -> int:
+def calc_limited(limitations: dict, ovc_hpe: float, ovc_ex: float, occ_ex: float, slope: float, landuse: float, splow: float, sp2: float, da: float, max_da: float) -> int:
     """ Calculate limitations to conservation
 
     Args:
@@ -143,20 +143,25 @@ def calc_limited(limitations: dict, ovc_hpe: float, ovc_ex: float, occ_ex: float
     if ovc_hpe is not None and ovc_hpe <= 0:
         # 'oVC_EX' Occasional, Frequent, or Pervasive (some areas have oVC_EX > oVC_HPE)
         if ovc_ex is not None and ovc_ex > 0:
-            return limitations['Potential Reservoir or Landuse']
+            return limitations['Potential Reservoir or Land Use Change']
         else:
             return limitations['Naturally Vegetation Limited']
     # 'iGeo_Slope' > 23%
     elif slope is not None and slope > 0.23:
         return limitations['Slope Limited']
+    elif (splow is not None and splow >= 190) or (sp2 is not None and sp2 >= 2400):
+        return limitations['Stream Power Limited']
     # 'oCC_EX' None (Primary focus of this layer is the places that can't support dams now... so why?)
     elif occ_ex is not None and occ_ex <= 0:
-        if landuse is not None and landuse > 0.3:
-            return limitations['Anthropogenically Limited']
-        elif (splow is not None and splow >= 190) or (sp2 is not None and sp2 >= 2400):
-            return limitations['Stream Power Limited']
+        if max_da is not None and da is not None and da > max_da:
+            return limitations['Stream Size Limited']
+        elif (max_da is not None and da is not None and da < max_da) or max_da is None:
+            if landuse is not None and landuse > 30:
+                return limitations['Anthropogenically Limited']
+            else:
+                return limitations['Other']
         else:
-            return limitations['...TBD...']
+            return limitations['Other']
     else:
         return limitations['Dam Building Possible']
 
@@ -192,12 +197,12 @@ def calc_opportunities(opportunities: dict, risks: dict, risk_id: float, occ_hpe
                     if ipc_vlowlu > 90:
                         return opportunities['Conservation or Lowest-Hanging Fruit']
                     else:
-                        return opportunities['Lower Effort']
+                        return opportunities['Low-Hanging Fruit']
                 elif occ_ex >= 5 and occ_ex < 10:
                     if ipc_vlowlu > 90:
-                        return opportunities['Lower Effort']
+                        return opportunities['Low-Hanging Fruit']
                     else:
-                        return opportunities['Moderate Effort']
+                        return opportunities['Quick Return']
                 else:
                     if ipc_vlowlu > 90:
                         return opportunities['Natural or Anthropogenic Limitations']
@@ -208,14 +213,14 @@ def calc_opportunities(opportunities: dict, risks: dict, risk_id: float, occ_hpe
             else:
                 if occ_ex > 10:
                     if ipc_highlu > 25:
-                        return opportunities['Higher Effort']
+                        return opportunities['Longer-Term Investment']
                     else:
-                        return opportunities['Moderate Effort']
+                        return opportunities['Quick Return']
                 elif occ_ex >= 5 and occ_ex < 10:
                     if ipc_highlu > 25:
                         return opportunities['Natural or Anthropogenic Limitations']
                     else:
-                        return opportunities['Higher Effort']
+                        return opportunities['Longer-Term Investment']
                 else:
                     if ipc_highlu > 25:
                         return opportunities['Natural or Anthropogenic Limitations']

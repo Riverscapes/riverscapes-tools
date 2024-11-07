@@ -445,7 +445,7 @@ def brat(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Path,
 
     dam_reach_type(outputs_gpkg_path)
 
-    conservation(outputs_gpkg_path)
+    conservation(outputs_gpkg_path, max_drainage_area)
 
     # moving window analysis
     riverscape_brat(outputs_gpkg_path, windows)

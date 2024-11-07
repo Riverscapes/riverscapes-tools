@@ -1,8 +1,9 @@
 LimitationID,Name
 1,Dam Building Possible
 2,Naturally Vegetation Limited
-3,Potential Reservoir or Landuse
-4,...TBD...
+3,Potential Reservoir or Land Use Change
+4,Other
 5,Stream Power Limited
 6,Anthropogenically Limited
 7,Slope Limited
+8,Stream Size Limited

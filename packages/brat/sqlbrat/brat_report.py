@@ -67,20 +67,22 @@ class BratReport(RSReport):
             'Anthropogenically Limited': '#e6c700',
             'Stream Power Limited': '#00a9e6',
             'Slope Limited': '#ff0000',
-            'Potential Reservoir or Landuse': '#ff73df',
+            'Potential Reservoir or Land Use Change': '#ff73df',
             'Naturally Vegetation Limited': '#267300',
-            'Stream Size Limited': '#00ad35',
+            'Stream Size Limited': '#ff8c09',
             'Dam Building Possible': '#a5a5a5',
-            '...TBD...': '#b9b9b9',
+            'Other': '#000000',
             'Considerable Risk': '#e60000',
             'Some Risk': '#ffaa00',
             'Minor Risk': '#00c5ff',
             'Negligible Risk': '#a5a5a5',
-            'Easiest - Low-Hanging Fruit': '#00a800',
-            'Straight Forward - Quick Return': '#00c5ff',
-            'Strategic - Long-Term Investment': '#e6cc00',
-            'NA': '#b9b9b9',
-            'Other': '#b9b9b9',
+            'Conservation or Lowest-Hanging Fruit': '#8808b6',
+            'Low-Hanging Fruit': '#00a800',
+            'Quick Return': '#00c5ff',
+            'Longer-Term Investment': '#e6cc00',
+            'Address Resource Limitations': '#895d40',
+            'Natural or Anthropogenic Limitations': '#b9b9b9',
+            'Potential Floodplain/Side Channel Opportunities': '#1111e5',
             'Private': '#94345a',
             'United States Forest Service': '#89f575',
             'Bureau of Land Management': '#57b2f2',
@@ -265,7 +267,7 @@ class BratReport(RSReport):
 
             pie_path = os.path.join(self.images_dir, '{}_pie.png'.format(label))
             col = [self.bratcolors[x[0]] for x in table_data]
-            pie([x[3] for x in table_data], [x[0] for x in table_data], '{} by Stream Length'.format(label), col, pie_path)
+            pie([x[4] for x in table_data], [x[0] for x in table_data], '{} by Stream Length'.format(label), col, pie_path)
 
             plot_wrapper = ET.Element('div', attrib={'class': 'plots'})
             img_wrap = ET.Element('div', attrib={'class': 'imgWrap'})
