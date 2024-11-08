@@ -7,7 +7,8 @@ import os
 import sys
 from typing import List
 import json
-from rsxml import Logger, safe_makedirs
+from rsxml import Logger
+from rsxml.util import safe_makedirs
 import inquirer
 from riverscapes import RiverscapesAPI, RiverscapesProject, RiverscapesSearchParams
 
