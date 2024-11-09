@@ -1,0 +1,61 @@
+{
+  "folders": [
+    {
+      "name": "🚀 RSContext - NEW ZEALAND",
+      "path": "../packages/rscontext_nz"
+    },
+    {
+      "name": "📦 RSCommons",
+      "path": "../lib/commons"
+    },
+		{
+      "name": "🤖 Cybercastor Automation Scripts",
+			"path": "../scripts/automation"
+		},
+    {
+      "name": "🧰 Workspaces",
+      "path": "."
+    },
+		{
+			"name": "🏠 Git Root",
+			"path": ".."
+		},
+  ],
+  "settings": {
+    "terminal.integrated.defaultProfile.linux": "zsh",
+    "[python]": {
+      "editor.tabSize": 4,
+      "editor.formatOnSave": true,
+    },
+    "autopep8.args": [
+      "--max-line-length=240",
+    ],
+    "pylint.args": [
+     "--disable=C0301,C0114,C0103,W0719,W0718",
+      "--max-line-length=240"
+    ],
+    "python.analysis.extraPaths": ["../../lib/commons"],
+    "python.terminal.activateEnvironment": true,
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": true,
+    "files.watcherExclude": {
+      "**/*.egg-info/**": true,
+      "**/docs/**": true,
+      "**/*.pytest_cache/**": true,
+      "**/.venv/**": true,
+      "**/__pycache__/**": true
+    },
+    "search.exclude": {
+      "**/*.egg-info/**": true,
+      "**/*.pytest_cache/**": true,
+      "**/.venv/**": true,
+      "**/__pycache__/**": true
+    },
+    "files.exclude": {
+      "**/*.egg-info/**": true,
+      "**/*.pytest_cache/**": true,
+      "**/.venv/**": true,
+      "**/__pycache__/**": true
+    },
+  }
+}
