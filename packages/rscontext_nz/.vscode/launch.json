@@ -6,8 +6,8 @@
   "inputs": [
     {
       "type": "promptString",
-      "id": "HUC",
-      "description": "What Watershed/HUC?",
+      "id": "WatershedID",
+      "description": "What Watershed ID?",
       "default": "1706030607" // Really small HUC
     }
   ],  
@@ -23,7 +23,7 @@
         "${input:HUC}",
         "{env:NATIONAL_PROJECT}/outputs/hydrography.gpkg",
         "{env:NATIONAL_PROJECT}/outputs/topography/national_dem.vrt",
-        "{env:DATA_ROOT}/rs_context/${input:HUC}",
+        "{env:DATA_ROOT}/rs_context/${input:WatershedID}",
         "{env:DOWNLOAD_FOLDER}",
         "--meta", "Runner=VSCode",
         // "--temp_folder", "{env:DOWNLOAD_FOLDER}/tmp",

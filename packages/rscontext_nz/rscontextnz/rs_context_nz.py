@@ -1,12 +1,23 @@
-#!/usr/bin/env python3
-# Name:     Riverscapes Context New Zealand
-#
-# Purpose:  Build a riverscapes context project for a single New Zealand Watershed
-#
-# Author:   Philip Bailey
-#
-# Date:     9 Nov 2024
-# -------------------------------------------------------------------------------
+"""
+Name:       Riverscapes Context New Zealand
+
+Purpose:    Build a Riverscapes Context project for a single New Zealand watershed
+
+Setup:      1. Use a GitHub CodeSpace within the Riverscapes Tools repo to run this script.
+            2. Ensure you are using the RSContext for New Zealand Workspace.
+            2. Use rscli to download the New Zealand National Project to /Workspace/data.
+            3. Use the Debug command and pick "RS Context - NEW ZEALAND" to run this script.
+            4. When prompted, provide the Watershed ID for the watershed (HUC) you want to process.
+                This must correspond to a feature in the national hydrography watersheds feature class.
+            5. The script will process the hydrography and topography data for the specified watershed.
+            6. The output will be saved to the /Workspace/output folder.
+            7. If you want to keep the output, use rscli to upload the output project to the Riverscapes Data Exchange.
+
+Author:     Philip Bailey
+
+Date:       9 Nov 2024
+------------------------------------------------------------------------------------------------------
+"""
 from typing import Tuple, Dict
 import argparse
 import json
@@ -40,13 +51,13 @@ def rs_context_nz(watershed_id: str, natl_hydro_gpkg: str, topo_vrt: str, output
     and generating reports.
 
     Parameters:
-    huc (str): Hydrologic Unit Code for the watershed.
-    hydrography (str): Path to the hydrography data file.
-    topography (str): Path to the topography data file.
-    output (str): Directory where the output files will be saved.
-    download (str): Directory where downloaded files will be stored.
+    watershed_id (str): Watershed ID for the watershed to be processed.
+    natl_hydro_gpkg (str): Path to the national hydrography GeoPackage.
+    topo_very (str): Path to the national topography VRT file.
+    output_folder (str): Directory where the output files will be saved.
+    download_folder (str): Directory where downloaded files will be stored.
     scratch_dir (str): Directory for temporary files.
-    meta (Dict[str, str]): Metadata dictionary containing additional information.
+    meta (Dict[str, str]): Metadata dictionary containing additional information that will be saved to the output project.
 
     Returns:
     None
@@ -73,9 +84,21 @@ def rs_context_nz(watershed_id: str, natl_hydro_gpkg: str, topo_vrt: str, output
 
     log.info('Riverscapes Context processing complete')
 
-def process_hydrography(hydro_gpkg: str, watershed_id: str, output_folder: str) -> Tuple[str, geom]:
+def process_hydrography(hydro_gpkg: str, watershed_id: str, output_folder: str) -> Tuple[str, str, geom]:
     """
     Process the hydrography data for the specified watershed.
+
+    This function processes the hydrography data for a given watershed by clipping the national hydrography 
+    feature classes to the watershed boundary and saving the results to an output GeoPackage.
+
+    Parameters:
+    hydro_gpkg (str): Path to the GeoPackage containing national hydrography feature classes.
+    watershed_id (str): Identifier for the watershed.
+    output_folder (str): Directory where the output files will be saved.
+
+    Returns:
+    Tuple[str, str, geom]: A tuple containing the path to the output GeoPackage, the name of the watershed
+    and the watershed boundary geometry.
     """
 
     log = Logger('Hydrography')
@@ -87,7 +110,8 @@ def process_hydrography(hydro_gpkg: str, watershed_id: str, output_folder: str) 
     input_junctions = os.path.join(hydro_gpkg, 'hydro_net_junctions')
 
     # Load the watershed boundary polygon
-    watershed_boundary = get_geometry_union(input_watersheds, cfg.OUTPUT_EPSG)
+    watershed_boundary = get_geometry_union(input_watersheds, cfg.OUTPUT_EPSG, f'watershed_id={watershed_id}')
+    watershed_name = ''
 
     # TODO: If more processing of hydrography is needed, then perform these operations here.
     # Optionally, copy the hydrography feature classes into an intermediates GeoPackage
@@ -108,7 +132,7 @@ def process_hydrography(hydro_gpkg: str, watershed_id: str, output_folder: str) 
 
     log.info(f'Hydrography processed and saved to {output_gpkg}')
 
-    return  output_gpkg, watershed_boundary
+    return  output_gpkg, watershed_name, watershed_boundary
 
 
 def process_topography(topo_vrt: str, huc: str, output_folder: str, scratch_dir: str, processing_boundary) -> Tuple[str,str,str]:
@@ -189,7 +213,7 @@ def main():
     parser = argparse.ArgumentParser(description='Riverscapes Context Tool')
     parser.add_argument('watershed_id', help='Watershed/HUC identifier', type=str)
     parser.add_argument('hydro_gpkg', help='Path to GeoPackage containing national hydrography feature classes', type=str)
-    parser.add_argument('topo_folder', help='Path to VRT file referencing national DEM rasters', type=str)
+    parser.add_argument('topo_vrt', help='Path to VRT file referencing national DEM rasters', type=str)
     parser.add_argument('output', help='Path to the output folder', type=str)
     parser.add_argument('--temp_folder', help='(optional) cache folder for downloading files ', type=str)
     parser.add_argument('--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
