@@ -1,0 +1,36 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "HUC",
+      "description": "What Watershed/HUC?",
+      "default": "1706030607" // Really small HUC
+    }
+  ],  
+  "configurations": [
+    {
+      "name": "RS Context - NEW ZEALAND",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "rscontextnz.rs_context_nz",
+      "console": "integratedTerminal",
+      // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
+      "args": [
+        "${input:HUC}",
+        "{env:NATIONAL_PROJECT}/outputs/hydrography.gpkg",
+        "{env:NATIONAL_PROJECT}/outputs/topography/national_dem.vrt",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}",
+        "{env:DOWNLOAD_FOLDER}",
+        "--meta", "Runner=VSCode",
+        // "--temp_folder", "{env:DOWNLOAD_FOLDER}/tmp",
+        // "--force",
+        "--verbose",
+        "--debug"
+      ]
+    },
+  ]
+}
