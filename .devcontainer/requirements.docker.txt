@@ -12,7 +12,7 @@ isort==5.4.2
 jinja2>=2.11.3
 jmespath==0.10.0
 lazy-object-proxy==1.4.3
-matplotlib==3.4.2
+matplotlib==3.9.2
 mccabe==0.6.1
 networkx==2.5
 numpy==1.23.4
@@ -28,10 +28,9 @@ python-dateutil==2.8.1
 rasterio>=1.1.5
 regex==2020.7.14
 rsa>=4.7
-rsxml==2.0.5
+rsxml==2.0.6
 Rtree>=0.9.4
 scikit-fuzzy==0.4.2
-scikit-image==0.19.2
 scipy>=1.8.1
 semver==2.10.2
 Shapely==1.8.5.post1
