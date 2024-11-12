@@ -136,7 +136,7 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
     with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['ANTHRO_GEOM_POINTS'].rel_path, delete_dataset=True) as out_lyr:
         out_lyr.create_layer(ogr.wkbMultiPoint, epsg=cfg.OUTPUT_EPSG, options=['FID=IGOID'], fields={
             'FCode': ogr.OFTInteger,
-            'level_path': ogr.OFTReal,
+            'level_path': ogr.OFTString,
             'seg_distance': ogr.OFTReal,
             'stream_size': ogr.OFTInteger,
             'centerline_length': ogr.OFTReal
@@ -145,7 +145,7 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
     with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['ANTHRO_GEOM_DGOS'].rel_path, write=True) as out_lyr:
         out_lyr.create_layer(ogr.wkbMultiPolygon, epsg=cfg.OUTPUT_EPSG, options=['FID=DGOID'], fields={
             'FCode': ogr.OFTInteger,
-            'level_path': ogr.OFTReal,
+            'level_path': ogr.OFTString,
             'seg_distance': ogr.OFTReal,
             'centerline_length': ogr.OFTReal,
             'segment_area': ogr.OFTReal
@@ -160,7 +160,7 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
             'GNIS_Name': ogr.OFTString,
             'NHDPlusID': ogr.OFTReal,
             'WatershedID': ogr.OFTString,
-            'level_path': ogr.OFTReal,
+            'level_path': ogr.OFTString,
             'ownership': ogr.OFTString,
             'divergence': ogr.OFTInteger,
             'stream_order': ogr.OFTInteger,

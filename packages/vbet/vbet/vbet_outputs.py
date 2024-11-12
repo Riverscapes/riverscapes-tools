@@ -185,7 +185,7 @@ def clean_up_centerlines(in_centerlines, vbet_polygons, out_centerlines, clip_bu
                 continue
             geom_vbet = feat_vbet.GetGeometryRef()
             geom_clip = geom_vbet.Buffer(clip_buffer_value)
-            for feat_centerline, *_ in lyr_in_centerlines.iterate_features(write_layers=[lyr_centerlines], attribute_filter=f"{unique_stream_field} = {level_path}", clip_shape=geom_vbet):
+            for feat_centerline, *_ in lyr_in_centerlines.iterate_features(write_layers=[lyr_centerlines], attribute_filter=f"{unique_stream_field} = '{level_path}'", clip_shape=geom_vbet):
                 geom_centerline = feat_centerline.GetGeometryRef().Clone()
                 geom_centerline_clipped = geom_clip.Intersection(geom_centerline)
                 attributes = {f'{unique_stream_field}': level_path}

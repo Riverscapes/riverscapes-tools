@@ -101,7 +101,7 @@ def generate_igo_points(line_network: Path, out_points_layer: Path, unique_strea
                     geom_pnt.AddPoint_2D(pnt.x, pnt.y)
                     geom_pnt.Transform(transform_back)
                     # add the point feature to the output.
-                    attributes = {f'{unique_stream_field}': str(int(level_path)),
+                    attributes = {f'{unique_stream_field}': str(level_path),
                                   'seg_distance': out_dist,
                                   'stream_size': stream_size}
                     out_lyr.create_feature(geom_pnt, attributes=attributes)
@@ -138,7 +138,7 @@ def split_vbet_polygons(vbet_polygons: Path, segmentation_points: Path, out_spli
                 continue
             list_points = []
 
-            for point_feat, *_ in points_lyr.iterate_features(attribute_filter=f'{unique_stream_field} = {level_path}'):
+            for point_feat, *_ in points_lyr.iterate_features(attribute_filter=f"{unique_stream_field} = '{level_path}'"):
                 point_geom = point_feat.GetGeometryRef()
                 point_sgeom = VectorBase.ogr2shapely(point_geom)
                 if not point_sgeom.is_valid:
@@ -169,7 +169,7 @@ def split_vbet_polygons(vbet_polygons: Path, segmentation_points: Path, out_spli
                 clean_geom = poly_intersect.buffer(0) if poly_intersect.is_valid is not True else poly_intersect
                 geom_out = VectorBase.shapely2ogr(clean_geom)
                 geom_out = ogr.ForceToMultiPolygon(geom_out)
-                out_lyr.create_feature(geom_out, {f'{unique_stream_field}': str(int(level_path))})
+                out_lyr.create_feature(geom_out, {f'{unique_stream_field}': str(level_path)})
 
         for segment_feat, *_ in out_lyr.iterate_features('Writing segment dist to polygons'):
             polygon = segment_feat.GetGeometryRef()
@@ -353,12 +353,12 @@ def calculate_vbet_window_metrics(vbet_igos: Path, vbet_dgos: Path, level_paths:
                 continue
             window_distance = distance_lookup[level_path]
             window_addon = {200: 100, 400: 200, 1200: 300, 2000: 500, 8000: 2000}
-            for feat_igo, *_ in lyr_igos.iterate_features(f'Summerizing vbet metrics for {level_path}', attribute_filter=f"{unique_stream_field} = {level_path}"):
+            for feat_igo, *_ in lyr_igos.iterate_features(f'Summerizing vbet metrics for {level_path}', attribute_filter=f"{unique_stream_field} = '{level_path}'"):
                 # Construct the igo window selection logic
                 igo_distance = feat_igo.GetField('seg_distance')
                 min_dist = igo_distance - 0.5 * window_distance
                 max_dist = igo_distance + 0.5 * window_distance
-                sql_igo_window = f"{unique_stream_field} = {level_path} AND seg_distance >= {min_dist} AND seg_distance <= {max_dist}"
+                sql_igo_window = f"{unique_stream_field} = '{level_path}' AND seg_distance >= {min_dist} AND seg_distance <= {max_dist}"
 
                 # Gather Window Measurements from the dgos
                 window_measurements = dict.fromkeys(metric_names, 0.0)
@@ -454,7 +454,7 @@ def add_fcodes(in_dgos, in_igos, in_flowlines):
             dgo_lyr.ogr_layer.SetFeature(dgo_feat)
             dgo_feat = None
 
-            for igo_feat, *_ in igo_lyr.iterate_features(attribute_filter=f"level_path = {levelpath} AND seg_distance = {segdistance}"):
+            for igo_feat, *_ in igo_lyr.iterate_features(attribute_filter=f"level_path = '{levelpath}' AND seg_distance = {segdistance}"):
                 igo_feat.SetField('FCode', maj_fode)
                 igo_lyr.ogr_layer.SetFeature(igo_feat)
                 igo_feat = None

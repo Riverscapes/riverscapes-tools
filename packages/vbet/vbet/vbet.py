@@ -464,7 +464,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
         safe_makedirs(temp_folder_lpath)
 
         # Gather the channel area polygon for the level path
-        sql = f"{unique_stream_field} = {level_path}" if level_path is not None else f"{unique_stream_field} is NULL"
+        sql = f"{unique_stream_field} = '{level_path}'" if level_path is not None else f"{unique_stream_field} is NULL"
         level_path_polygons = os.path.join(
             temp_folder_lpath, 'channel_polygons.gpkg', f'level_path_{level_path}')
         with TimerBuckets('ogr'):
@@ -575,7 +575,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
                 level_path_flowlines = os.path.join(
                     temp_folder_lpath, 'flowlines.gpkg', f'level_path_{level_path}')
                 copy_feature_class(line_network, level_path_flowlines,
-                                   attribute_filter=f'{unique_stream_field} = {level_path}')
+                                   attribute_filter=f"{unique_stream_field} = '{level_path}'")
                 # check if the level path flowlines are empty or are of type point
                 with GeopackageLayer(level_path_flowlines) as lyr_flowlines:
                     if lyr_flowlines.ogr_layer.GetFeatureCount() == 0:
@@ -1037,7 +1037,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
         if level_path is None:
             continue
         calculate_dgo_metrics(segmentation_polygons, output_centerlines,
-                              metric_layers, f"{unique_stream_field} = {level_path}")
+                              metric_layers, f"{unique_stream_field} = '{level_path}'")
     _tmr_waypt.timer_break('CalcSegmentMetrics')
 
     log.info('Summerizing VBET Metrics')
