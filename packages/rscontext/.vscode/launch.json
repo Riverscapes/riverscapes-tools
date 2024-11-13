@@ -9,7 +9,7 @@
       "id": "HUC",
       "description": "What HUC?",
       // "default": "17070202" // North Fork John Day
-      "default": "1706030607" // Really small HUC
+      "default": "1005001208" // Really small HUC
       // "default": "17060103" // Asotin
     },
     {
@@ -86,6 +86,35 @@
     //     "--verbose",
     //   ]
     // },
+
+    {
+      "name": "Hypsometric Curve",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "scripts.hypsometric_curve",
+      "console": "integratedTerminal",
+      "args": [
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhdplushr.gpkg",
+        "WBDHU10",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/topography/dem.tif",
+        "{env:DATA_ROOT}/blm_metrics/${input:HUC}/hypsometric_curve.png",
+      ]
+    },
+    {
+      "name": "Metric Plots",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "scripts.blm_charts",
+      "console": "integratedTerminal",
+      "args": [
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/ownership/ownership.shp",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhdplushr.gpkg",
+        "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg",
+        "{env:DATA_ROOT}/anthro/${input:HUC}/outputs/anthro.gpkg",
+        "{env:DATA_ROOT}/rcat/${input:HUC}/outputs/rcat.gpkg",
+        "{env:DATA_ROOT}/blm_metrics/${input:HUC}"
+      ]
+    },
     {
       "name": "Write report",
       "type": "debugpy",
