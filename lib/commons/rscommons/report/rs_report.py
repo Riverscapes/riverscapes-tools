@@ -31,7 +31,7 @@ class RSReport():
 
         self.main_el = ET.Element('main', attrib={'id': 'ReportInner'})
 
-    def write(self):
+    def write(self, title: str = None) -> None:
         css_template = "<style>\n{}\n</style>"
 
         # Add button to go to top
@@ -47,16 +47,16 @@ class RSReport():
             toc = ET.tostring(self._table_of_contents(), method="html", encoding='unicode')
         # Get my HTML template and render it
 
-        with open(os.path.join(self.template_path, 'template.html')) as t:
+        with open(os.path.join(self.template_path, 'template.html'), encoding='utf8') as t:
             template = Template(t.read())
 
         now = datetime.datetime.now()
         final_render = template.render(report={
-            'title': self.xml_project.XMLBuilder.find('Name').text,
-            'ProjectType': self.xml_project.XMLBuilder.find('ProjectType').text,
-            'MetaData': self.xml_project.get_metadata_dict(),
+            'title': self.xml_project.XMLBuilder.find('Name').text if self.xml_project is not None else title,
+            'ProjectType': self.xml_project.XMLBuilder.find('ProjectType').text if self.xml_project is not None else 'Unknown',
+            'MetaData': self.xml_project.get_metadata_dict() if self.xml_project is not None else {},
             'date': now.strftime('%B %d, %Y - %I:%M%p'),
-            'Warehouse': self.xml_project.get_metadata_dict(tag='Warehouse'),
+            'Warehouse': self.xml_project.get_metadata_dict(tag='Warehouse') if self.xml_project is not None else {},
             'head': styles,
             'toc': toc,
             'body': html_inner,
@@ -68,7 +68,7 @@ class RSReport():
         self.log.debug('Report Writing Completed')
 
     def add_css(self, filepath):
-        with open(filepath) as css_file:
+        with open(filepath, encoding='utf8') as css_file:
             css = css_file.read()
         self.css_files.append(css)
 

@@ -5,11 +5,16 @@
   "version": "0.2.0",
   "inputs": [
     {
-      "type": "promptString",
+      "type": "pickString",
       "id": "HUC",
       "description": "What HUC?",
       // "default": "17070202" // North Fork John Day
-      "default": "17060304" // Really small HUC
+      // "default": "1005001208", // Really small HUC
+      "options": [
+        "1005001208", // Really small HUC
+        "1005001205", // North Fork John Day
+        "1005001203", // Asotin]"
+      ]
       // "default": "17060103" // Asotin
     }
   ],
@@ -57,6 +62,19 @@
         "{env:DATA_ROOT}/rme/${input:HUC}/project.rs.xml",
         "{env:DATA_ROOT}/rme/${input:HUC}/outputs/rme.html",
         "--intermediates", "{env:DATA_ROOT}/rme/${input:HUC}/intermediates/rme_intermediates.gpkg",
+      ]
+    },
+    {
+      "name": "Write Watershed Condition Assessment Report",
+      "type": "python",
+      "request": "launch",
+      "module": "rme.wsca_report",
+      "console": "integratedTerminal",
+      "args": [
+        "${input:HUC}",
+        "{env:DATA_ROOT}/${input:HUC}",
+        "{env:DATA_ROOT}/${input:HUC}/outputs/wsca_report.html",
+        "--verbose"
       ]
     },
     {

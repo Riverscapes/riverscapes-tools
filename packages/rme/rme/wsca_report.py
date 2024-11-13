@@ -1,0 +1,140 @@
+import os
+import sys
+import traceback
+import argparse
+import sqlite3
+import json
+from collections import Counter
+from xml.etree import ElementTree as ET
+
+from rscommons import Logger, dotenv, ModelConfig, RSReport, RSProject
+from rscommons.util import safe_makedirs
+from rscommons.plotting import box_plot, vertical_bar
+from rme.__version__ import __version__
+import time
+from collections import Counter
+
+from osgeo import ogr, osr
+from osgeo import gdal
+import numpy as np
+import rasterio
+from rasterio.mask import mask
+from shapely.geometry import Point
+
+from rscommons import GeopackageLayer, dotenv, Logger, initGDALOGRErrors, ModelConfig, RSLayer, RSMeta, RSMetaTypes, RSProject, VectorBase, ProgressBar
+from rscommons.classes.vector_base import get_utm_zone_epsg
+from rscommons.util import parse_metadata, pretty_duration
+from rscommons.database import load_lookup_data
+from rscommons.geometry_ops import reduce_precision, get_endpoints
+from rscommons.vector_ops import copy_feature_class, collect_linestring
+from rscommons.vbet_network import copy_vaa_attributes, join_attributes
+from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions
+from rscommons.moving_window import moving_window_dgo_ids
+
+from rme.__version__ import __version__
+from rme.analysis_window import AnalysisLine
+
+
+class WSCAReport(RSReport):
+    """ Watershed Condition Assessment Report """
+
+    def __init__(self, huc: str, input_dir: str, output_dir: str, report_path: str, verbose: bool = False):
+        super().__init__(None, report_path)
+        self.huc = huc
+        self.input_dir = input_dir
+        self.output_dir = output_dir
+        self.images_dir = os.path.join(os.path.dirname(report_path), 'images')
+        self.verbose = verbose
+
+        # The report has a core CSS file but we can extend it with our own if we want:
+        css_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'rme_report.css')
+        self.add_css(css_path)
+
+        safe_makedirs(self.images_dir)
+
+        ws_context_section = self.section('WSContext', 'Watershed Context')
+
+        rs_context_dir = os.path.join(input_dir, 'rs_context')
+        rs_context_json = os.path.join(rs_context_dir, 'rscontext_metrics.json')
+        rsc_metrics_json = json.load(open(rs_context_json))
+
+        table_wrapper2 = ET.Element('div', attrib={'class': 'tableWrapper'})
+
+        rsc_metrics_dict = {
+            'Catchment Length (km)': rsc_metrics_json['catchmentLength'],
+            'Catchment Area (km^2)': rsc_metrics_json['catchmentArea'],
+            'Catchment Perimeter (km)': rsc_metrics_json['catchmentPerimeter'],
+            'Circularity Ratio': rsc_metrics_json['circularityRatio'],
+            'Elongation Ratio': rsc_metrics_json['elongationRatio'],
+            'Form Factor': rsc_metrics_json['formFactor'],
+            'Catchment Relief (m)': rsc_metrics_json['catchmentRelief'],
+            'Relief Ratio': rsc_metrics_json['reliefRatio'],
+            'Drainage Density (Perennial, km/km^2)': rsc_metrics_json['drainageDensityPerennial'],
+            'Drainage Density (Intermittent, km/km^2)': rsc_metrics_json['drainageDensityIntermittent'],
+            'Drainage Density (Ephemeral, km/km^2)': rsc_metrics_json['drainageDensityEphemeral'],
+            'Drainage Density (Total, km/km^2)': rsc_metrics_json['drainageDensityAll']
+        }
+
+        self.create_table_from_dict(rsc_metrics_dict, table_wrapper2)
+        ws_context_section.append(table_wrapper2)
+
+        pass
+
+        # self.report_content()
+
+    # def report_content(self):
+    #     if self.filter_name is not None:
+    #         section_filters = self.section('Filters', 'Filters')
+    #         self.filters_section(section_filters)
+
+    #     realization = self.xml_project.XMLBuilder.find('Realizations').find('Realization')
+
+    #     section_in = self.section('Inputs', 'Inputs')
+    #     inputs = list(realization.find('Inputs'))
+    #     for lyr in inputs:
+    #         if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']:
+    #             self.layerprint(lyr, section_in, self.project_root)
+
+    #     section_inter = self.section('Intermediates', 'Intermediates')
+    #     intermediates = list(realization.find('Intermediates'))
+    #     for lyr in intermediates:
+    #         if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']:
+    #             self.layerprint(lyr, section_inter, self.project_root)
+
+    #     section_out = self.section('Outputs', 'Outputs')
+    #     outputs = list(realization.find('Outputs'))
+    #     self.metrics_section(section_out)
+    #     for lyr in outputs:
+    #         if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']:
+    #             self.layerprint(lyr, section_out, self.project_root)
+
+
+def main():
+    """Watershed Assessment Report"""
+
+    parser = argparse.ArgumentParser(description='Riverscapes Watershed Report')
+    parser.add_argument('huc', help='HUC identifier', type=str)
+    parser.add_argument('input_folder', help='Parent folder inside which whole riverscapes projects are stored', type=str)
+    parser.add_argument('report_path', help='Output report file path', type=str)
+    parser.add_argument('--verbose', help='(optional) a little extra logging', action='store_true', default=False)
+    args = dotenv.parse_args_env(parser)
+
+    # Initiate the log file
+    log = Logger("Watershed Condition Assessment Report")
+    log.setup(logPath=os.path.join(os.path.dirname(args.report_path), "wsca_report.log"), verbose=args.verbose)
+    log.title(f'Watershed Condition Assessment Report For HUC: {args.huc}')
+
+    # try:
+    report = WSCAReport(args.huc, args.input_folder, os.path.dirname(args.report_path), args.report_path, args.verbose)
+    report.write(title=f'Watershed Condition Assessment Report For HUC: {args.huc}')
+
+    # except Exception as e:
+    #     log.error(e)
+    #     traceback.print_exc(file=sys.stdout)
+    #     sys.exit(1)
+
+    sys.exit(0)
+
+
+if __name__ == '__main__':
+    main()
