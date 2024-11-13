@@ -34,6 +34,8 @@ from rscommons.moving_window import moving_window_dgo_ids
 from rme.__version__ import __version__
 from rme.analysis_window import AnalysisLine
 
+from .utils.hypsometric_curve import hipsometric_curve
+
 
 class WSCAReport(RSReport):
     """ Watershed Condition Assessment Report """
@@ -78,9 +80,28 @@ class WSCAReport(RSReport):
         self.create_table_from_dict(rsc_metrics_dict, table_wrapper2)
         ws_context_section.append(table_wrapper2)
 
-        pass
+        nhd_gpkg = os.path.join(rs_context_dir, 'hydrology', 'nhdplushr.gpkg')
+        nhd_gpkg_layer = 'WBDHU10'
+        dem_path = os.path.join(rs_context_dir, 'topography', 'dem.tif')
+        hipso_curve_path = os.path.join(self.images_dir, 'hypsometric_curve.png')
+        hipsometric_curve(hipso_curve_path, nhd_gpkg, nhd_gpkg_layer, dem_path)
 
-        # self.report_content()
+        plot_wrapper = ET.Element('div', attrib={'class': 'plots'})
+        relative_dir = os.path.dirname(self.images_dir)
+        if os.path.basename(relative_dir) == 'images':
+            relative_dir = os.path.dirname(relative_dir)
+        image_src = os.path.relpath(hipso_curve_path, relative_dir)
+
+        img = ET.Element('img', attrib={
+            'src': image_src,
+            'alt': 'chart'
+        })
+
+        plot_wrapper.append(img)
+
+    pass
+
+    # self.report_content()
 
     # def report_content(self):
     #     if self.filter_name is not None:

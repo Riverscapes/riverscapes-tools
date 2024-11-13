@@ -14,6 +14,34 @@ from rscommons import dotenv
 from rscommons.classes.vector_classes import GeopackageLayer
 
 
+def hipsometric_curve(output_image: str, geopackage_path: str, layer_name: str, dem_path: str) -> None:
+    # create the output folder structure if it doesn't exist
+    output_folder = os.path.dirname(output_image)
+    os.makedirs(output_folder, exist_ok=True)
+
+    # Read the polygon and DEM
+    with GeopackageLayer(geopackage_path, layer_name) as polygon_layer:
+        geoms = ogr.Geometry(ogr.wkbMultiPolygon)
+        for feature, *_ in polygon_layer.iterate_features():
+            feature: ogr.Feature
+            geom: ogr.Geometry = feature.GetGeometryRef()
+            geoms.AddGeometry(geom)
+
+        rough_units = 1 / polygon_layer.rough_convert_metres_to_vector_units(1.0)
+        polygon_json = json.loads(geoms.ExportToJson())
+    dem = rasterio.open(dem_path)
+
+    # Mask the DEM with the polygon
+    shapes = [shape(polygon_json)]
+    masked_dem, _out_transform = mask(dem, shapes, crop=True)
+
+    # Calculate the hypsometric curve with binning
+    elevations, bin_counts, min_elevation, max_elevation, cell_area, total_area = calculate_hypsometric_curve(masked_dem, dem.nodata, dem.transform, rough_units)
+
+    # Plot the hypsometric curve
+    plot_hypsometric_curve(elevations, bin_counts, min_elevation, max_elevation, cell_area, total_area, output_image)
+
+
 def calculate_hypsometric_curve(elevation_data: np.array, nodata_value, transform, rough_units, num_bins=50):
     print("Elevation data shape: ", elevation_data.shape)
     elevation_data = elevation_data.flatten()
@@ -109,36 +137,7 @@ def main():
     parser.add_argument('output_image', type=str, help='Path to save the hypsometric curve plot')
     args = dotenv.parse_args_env(parser)
 
-    geopackage_path = args.geopackage_path
-    layer_name = args.layer_name
-    dem_path = args.dem_path
-    output_image = args.output_image
-
-    # create the output folder structure if it doesn't exist
-    output_folder = os.path.dirname(output_image)
-    os.makedirs(output_folder, exist_ok=True)
-
-    # Read the polygon and DEM
-    with GeopackageLayer(geopackage_path, layer_name) as polygon_layer:
-        geoms = ogr.Geometry(ogr.wkbMultiPolygon)
-        for feature, *_ in polygon_layer.iterate_features():
-            feature: ogr.Feature
-            geom: ogr.Geometry = feature.GetGeometryRef()
-            geoms.AddGeometry(geom)
-
-        rough_units = 1 / polygon_layer.rough_convert_metres_to_vector_units(1.0)
-        polygon_json = json.loads(geoms.ExportToJson())
-    dem = rasterio.open(dem_path)
-
-    # Mask the DEM with the polygon
-    shapes = [shape(polygon_json)]
-    masked_dem, _out_transform = mask(dem, shapes, crop=True)
-
-    # Calculate the hypsometric curve with binning
-    elevations, bin_counts, min_elevation, max_elevation, cell_area, total_area = calculate_hypsometric_curve(masked_dem, dem.nodata, dem.transform, rough_units)
-
-    # Plot the hypsometric curve
-    plot_hypsometric_curve(elevations, bin_counts, min_elevation, max_elevation, cell_area, total_area, output_image)
+    hipsometric_curve(args.output_image, args.geopackage_path, args.layer_name, args.dem_path)
 
 
 if __name__ == "__main__":
