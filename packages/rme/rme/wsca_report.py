@@ -81,6 +81,12 @@ class WSCAReport(RSReport):
             'Drainage Density (Total, km/km^2)': rsc_metrics_json['drainageDensityAll']
         }
 
+        vbet_dir = os.path.join(input_dir, 'vbet')
+        vbet_json_metrics = os.path.join(vbet_dir, 'vbet_metrics.json')
+        vbet_metrics = get_vbet_json_metrics(vbet_json_metrics)
+        for key, val in vbet_metrics.items():
+            rsc_metrics_dict[key] = val
+
         rme_dir = os.path.join(input_dir, 'rme')
         rme_output_gpkg = os.path.join(rme_dir, 'outputs', 'riverscapes_metrics.gpkg')
         rme_metric_values = get_rme_values(os.path.join(rs_context_dir, rme_output_gpkg))
@@ -160,7 +166,30 @@ def get_rme_values(rme_gpkg: str) -> dict:
             row = curs.fetchone()
             rme_values[level] = row[0]
 
+        # Stream Gradient
+        curs.execute('SELECT AVG(metric_value) FROM dgo_metric_values WHERE metric_id= 4')
+        row = curs.fetchone()
+        rme_values['Mean Stream Gradient'] = row[0]
+
     return rme_values
+
+
+def get_vbet_json_metrics(metrics_json_path) -> dict:
+
+    with open(metrics_json_path, 'r', encoding='utf-8') as f:
+        metrics_json = json.load(f)
+
+    total_area = float(metrics_json['catchmentArea'])
+
+    formated = {
+        'Total Valley Bottom Area per Unit Length (m^2/m)': metrics_json['totalHectaresPerKm'],
+        'Average Valley Bottom Area per Unit Length (m^2/m)': metrics_json['averageHectaresPerKm'],
+        'Average Valley Bottom Width (m)': metrics_json['avgValleyBottomWidth'],
+        'Proportion Riverscape (%)': float(metrics_json['proportionRiverscape']) * 100,
+        'Area of Riverscapes (km^2)': float(metrics_json['proportionRiverscape']) * total_area,
+        'Area of Non-Riverscapes (km^2)': (1 - float(metrics_json['proportionRiverscape'])) * total_area
+    }
+    return formated
 
 
 def get_watershed_boundary_geom(nhd_gpkg: str) -> shape:
