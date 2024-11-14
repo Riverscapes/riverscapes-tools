@@ -2,10 +2,11 @@
 import os
 import argparse
 
-from osgeo import ogr
+from osgeo import ogr, osr
 
 from rscommons import dotenv
-from rscommons.plotting import horizontal_bar
+from rscommons.plotting import horizontal_bar, pie
+from rscommons.classes.vector_base import get_utm_zone_epsg
 from rscommons.classes.vector_classes import ShapefileLayer, GeopackageLayer
 
 land_owhership_colors = {
@@ -41,16 +42,29 @@ def charts(land_owner_shp, nhdplushr_gkpg, vbet_gpkg, ahthro_gpkg, rcat_gpkg, ou
 
     # Get the HUC10 watershed boundary
     with GeopackageLayer(nhdplushr_gkpg, 'WBDHU10') as polygon_layer:
+        srs = polygon_layer.ogr_layer.GetSpatialRef()
         geom_huc10 = ogr.Geometry(ogr.wkbMultiPolygon)
+        geom_huc10.AssignSpatialReference(srs)
         for feature, *_ in polygon_layer.iterate_features():
             feature: ogr.Feature
             geom: ogr.Geometry = feature.GetGeometryRef()
             geom_huc10.AddGeometry(geom)
+        centroid: ogr.Geometry = geom_huc10.Centroid()
+        x, y, _ = centroid.GetPoint()
+        utm = get_utm_zone_epsg(x)
+
+        # Create the spatial reference and import the EPSG code
+        srs_utm = osr.SpatialReference()
+        srs_utm.ImportFromEPSG(utm)
+
+        # geom_huc10.TransformTo(srs_utm)
 
     # Get the BLM and Non-BLM land ownership within the HUC10 boundary
     with ShapefileLayer(land_owner_shp) as land_owner:
         geom_blm = ogr.Geometry(ogr.wkbMultiPolygon)
+        geom_blm.AssignSpatialReference(srs)
         geom_non_blm = ogr.Geometry(ogr.wkbMultiPolygon)
+        geom_non_blm.AssignSpatialReference(srs)
         geoms_non_blm = {}
         for feature, *_ in land_owner.iterate_features(clip_shape=geom_huc10):
             feature: ogr.Feature
@@ -69,6 +83,7 @@ def charts(land_owner_shp, nhdplushr_gkpg, vbet_gpkg, ahthro_gpkg, rcat_gpkg, ou
                 geom_non_blm.AddGeometry(geom_intersection)
                 if feature.GetField('ADMIN_AGEN') not in geoms_non_blm:
                     g = ogr.Geometry(ogr.wkbMultiPolygon)
+                    g.AssignSpatialReference(srs)
                     geoms_non_blm[feature.GetField('ADMIN_AGEN')] = g
                 if geom_intersection.GetGeometryType() == ogr.wkbMultiPolygon:
                     for g in geom_intersection:
@@ -76,10 +91,15 @@ def charts(land_owner_shp, nhdplushr_gkpg, vbet_gpkg, ahthro_gpkg, rcat_gpkg, ou
                 else:
                     geoms_non_blm[feature.GetField('ADMIN_AGEN')].AddGeometry(geom_intersection.Clone())
             geom_intersection = None
+        geom_blm.TransformTo(srs_utm)
+        geom_non_blm.TransformTo(srs_utm)
+        for geom in geoms_non_blm.values():
+            geom.TransformTo(srs_utm)
 
     # Get the riverscape (vbet-dgo polygons) vs non-riverscape areas
     with GeopackageLayer(vbet_gpkg, 'vbet_full') as vbet_layer:
         geom_riverscape = ogr.Geometry(ogr.wkbMultiPolygon)
+        geom_riverscape.AssignSpatialReference(srs)
         for feature, *_ in vbet_layer.iterate_features(clip_shape=geom_huc10):
             feature: ogr.Feature
             geom: ogr.Geometry = feature.GetGeometryRef()
@@ -88,28 +108,34 @@ def charts(land_owner_shp, nhdplushr_gkpg, vbet_gpkg, ahthro_gpkg, rcat_gpkg, ou
             if geom_intersection.IsEmpty() or geom_intersection.GetArea() == 0.0:
                 continue
             geom_riverscape.AddGeometry(geom_intersection)
+        geom_riverscape.TransformTo(srs_utm)
 
     # LAND OWNERSHIP
-    # Horizontal Bar Chart of land ownesrship by area for riverscape (acres and percentage)
-    area_blm_land_ownership = geom_blm.GetArea()
-    area_non_blm_land_ownership = geom_non_blm.GetArea()
-    area_blm_land_ownership_riverscape = geom_riverscape.Intersection(geom_blm).GetArea()
-    area_blm_land_ownership_riverscape_acres = area_blm_land_ownership_riverscape * 0.000247105
-    percent_blm_land_ownership_riverscape = (area_blm_land_ownership_riverscape / area_blm_land_ownership) * 100
-    # area_blm_land_ownership_non_riverscape = geom_huc10.Difference(geom_riverscape).Intersection(geom_non_blm).GetArea()
-    # area_blm_land_ownership_non_riverscape_acres = area_blm_land_ownership_non_riverscape * 0.000247105
-    # percent_blm_land_ownership_riverscape = (area_blm
-    # area_non_blm_land_ownership_riverscape = geom_non_blm.Intersection(geom_riverscape).GetArea()
+    # Horizontal Bar Chart of land ownesrship by area for watershed (non-riverscape)
+    area_blm_land_ownership_acres = geom_blm.GetArea() * 0.000247105
     areas = {}
-    percents = {}
     for land_owner, geom in geoms_non_blm.items():
-        areas[land_owner] = geom.GetArea()
-    areas['BLM'] = area_blm_land_ownership
+        areas[land_owner] = geom.GetArea() * 0.000247105
+    areas['BLM'] = area_blm_land_ownership_acres
 
     values = list(areas.values())
     labels = [land_ownership_labels.get(l, l) for l in areas.keys()]
     colors = [land_owhership_colors.get(l, '#000000') for l in areas.keys()]
-    horizontal_bar(values, labels, colors, 'Land Ownership by Area', 'Land Ownership', os.path.join(out_path, 'land_ownership_by_area.png'))
+    horizontal_bar(values, labels, colors, 'Area (Acres)', 'Land Ownership by Area (Entire Watershed)', os.path.join(out_path, 'land_ownership_by_area.png'))
+    # pie(values, labels, 'Land Ownership by Area', colors, os.path.join(out_path, 'land_ownership_by_area_pie.png'))
+
+    # Horizontal Bar Chart of land ownesrship by area for riverscape
+    geom_blm_riverscape = geom_riverscape.Intersection(geom_blm)
+    area_blm_land_ownership_riverscape_acres = geom_blm_riverscape.GetArea() * 0.000247105
+    riverscape_areas = {}
+    for land_owner, geom in geoms_non_blm.items():
+        riverscape_areas[land_owner] = geom.Intersection(geom_riverscape).GetArea() * 0.000247105
+    riverscape_areas['BLM'] = area_blm_land_ownership_riverscape_acres
+
+    values = list(riverscape_areas.values())
+    labels = [land_ownership_labels.get(l, l) for l in riverscape_areas.keys()]
+    colors = [land_owhership_colors.get(l, '#000000') for l in riverscape_areas.keys()]
+    horizontal_bar(values, labels, colors, 'Area (Acres)', 'Land Ownership by Area (Riverscape)', os.path.join(out_path, 'land_ownership_by_area_riverscape.png'))
 
     # Get the RCAT
 

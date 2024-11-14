@@ -138,7 +138,7 @@
       "name": "Hypsometric Curve",
       "type": "debugpy",
       "request": "launch",
-      "module": "scripts.hypsometric_curve",
+      "module": "rme.utils.hypsometric_curve",
       "console": "integratedTerminal",
       "args": [
         "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhdplushr.gpkg",
@@ -151,7 +151,7 @@
       "name": "Metric Plots",
       "type": "debugpy",
       "request": "launch",
-      "module": "scripts.blm_charts",
+      "module": "rme.utils.blm_charts",
       "console": "integratedTerminal",
       "args": [
         "{env:DATA_ROOT}/rs_context/${input:HUC}/ownership/ownership.shp",
