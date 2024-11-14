@@ -1,7 +1,11 @@
 
 import os
+import json
 import argparse
 
+import rasterio
+from rasterio.mask import mask
+from shapely.geometry import shape
 from osgeo import ogr, osr
 
 from rscommons import dotenv
@@ -38,7 +42,20 @@ land_ownership_labels = {
 }
 
 
-def charts(land_owner_shp, nhdplushr_gkpg, vbet_gpkg, ahthro_gpkg, rcat_gpkg, out_path):
+def charts(rsc_project_folder, vbet_project_folder, rcat_project_folder, anthro_project_folder, rme_project_folder, out_path):
+
+    output_charts = {
+        'Land Ownership by Area (Entire Watershed)': os.path.join(out_path, 'land_ownership_by_area.png'),
+        'Land Ownership by Area (Riverscape)': os.path.join(out_path, 'land_ownership_by_area_riverscape.png'),
+        'Land Ownership by Mileage': os.path.join(out_path, 'land_ownership_by_mileage.png')
+    }
+
+    land_owner_shp = os.path.join(rsc_project_folder, 'ownership', 'ownership.shp')
+    nhdplushr_gkpg = os.path.join(rsc_project_folder, 'hydrology', 'nhdplushr.gpkg')
+    vbet_gpkg = os.path.join(vbet_project_folder, 'outputs', 'vbet.gpkg')
+    ahthro_gpkg = os.path.join(anthro_project_folder, 'outputs', 'anthro.gpkg')
+    rcat_gpkg = os.path.join(rcat_project_folder, 'outputs', 'rcat.gpkg')
+    hydro_derivatives_gpkg = os.path.join(rsc_project_folder, 'hydrology', 'hydro_derivatives.gpkg')
 
     # Get the HUC10 watershed boundary
     with GeopackageLayer(nhdplushr_gkpg, 'WBDHU10') as polygon_layer:
@@ -121,7 +138,7 @@ def charts(land_owner_shp, nhdplushr_gkpg, vbet_gpkg, ahthro_gpkg, rcat_gpkg, ou
     values = list(areas.values())
     labels = [land_ownership_labels.get(l, l) for l in areas.keys()]
     colors = [land_owhership_colors.get(l, '#000000') for l in areas.keys()]
-    horizontal_bar(values, labels, colors, 'Area (Acres)', 'Land Ownership by Area (Entire Watershed)', os.path.join(out_path, 'land_ownership_by_area.png'))
+    horizontal_bar(values, labels, colors, 'Area (Acres)', 'Land Ownership by Area (Entire Watershed)', output_charts['Land Ownership by Area (Entire Watershed)'])
     # pie(values, labels, 'Land Ownership by Area', colors, os.path.join(out_path, 'land_ownership_by_area_pie.png'))
 
     # Horizontal Bar Chart of land ownesrship by area for riverscape
@@ -135,11 +152,42 @@ def charts(land_owner_shp, nhdplushr_gkpg, vbet_gpkg, ahthro_gpkg, rcat_gpkg, ou
     values = list(riverscape_areas.values())
     labels = [land_ownership_labels.get(l, l) for l in riverscape_areas.keys()]
     colors = [land_owhership_colors.get(l, '#000000') for l in riverscape_areas.keys()]
-    horizontal_bar(values, labels, colors, 'Area (Acres)', 'Land Ownership by Area (Riverscape)', os.path.join(out_path, 'land_ownership_by_area_riverscape.png'))
+    horizontal_bar(values, labels, colors, 'Area (Acres)', 'Land Ownership by Area (Riverscape)', output_charts['Land Ownership by Area (Riverscape)'])
 
-    # Get the RCAT
+    with GeopackageLayer(hydro_derivatives_gpkg, 'network_intersected') as network_intersected_lyr:
+        lengths = {}
+        for feature, *_ in network_intersected_lyr.iterate_features(clip_shape=geom_huc10):
+            feature: ogr.Feature
+            geom: ogr.Geometry = feature.GetGeometryRef()
+            geom_intersection: ogr.Geometry = geom.Intersection(geom_huc10)
+            geom_intersection.MakeValid()
+            # transform to UTM
+            geom_intersection.TransformTo(srs_utm)
+            if geom_intersection.IsEmpty() or geom_intersection.Length() == 0.0:
+                continue
+            ownership = feature.GetField('ownership')
+            if ownership not in lengths:
+                lengths[ownership] = 0.0
+            mileage = geom_intersection.Length() * 0.000621371
+            lengths[ownership] += mileage
+        total_length = sum(lengths.values())
 
+    values = list(lengths.values())
+    labels = [land_ownership_labels.get(l, l) for l in lengths.keys()]
+    colors = [land_owhership_colors.get(l, '#000000') for l in lengths.keys()]
+    horizontal_bar(values, labels, colors, 'Length (mileage)', 'Land Ownership by Mileage', output_charts['Land Ownership by Mileage'])
+
+    # RCAT
     # LU/LC Type - hori for non-riverscape (BLM vs. Non-BLM) (We can use RCAT land use types for this.)
+
+    # load the lu raster
+    # lu_path = os.path.join(rcat_gpkg, 'lu')
+    # with rasterio.open(lu_path) as raster:
+    #     shapes_blm = [shape(json.loads(geom_blm.ExportToJson()))]
+    #     masked_raster_blm, _out_transform = mask(raster, shapes_blm, crop=True)
+
+    #     shapes_non_blm = [shape(json.loads(geom_non_blm.ExportToJson()))]
+    #     masked_raster_non_blm, _out_transform = mask(raster, shapes_non_blm, crop=True)
 
     # Bar or pie chart of LU/LC Type for riverscape (BLM vs. Non-BLM) (We can use RCAT land use types for this.)
     # LU/LC Change - Bar or Pie chart of LU/LC change for non-riverscape (BLM vs. Non-BLM)
@@ -153,18 +201,20 @@ def charts(land_owner_shp, nhdplushr_gkpg, vbet_gpkg, ahthro_gpkg, rcat_gpkg, ou
     # land use intensity - Horizontal bar chart of land use intensity for the non-riverscape (BLM vs. non-BLM) ( get this from anthro)
     # land use intensity change - horizontal bar chart of land use intensity change for the non-riverscape (BLM vs. non-BLM) ( get this from anthro)
 
+    return output_charts
+
 
 def main():
     parser = argparse.ArgumentParser(description='Calculate hypsometric curve from a DEM within a polygon')
-    parser.add_argument('land_ownership_shp', type=str, help='Path to the land ownership shapefile')
-    parser.add_argument('nhdplushr_gpkg', type=str, help='Path to the NHDPlus HR geopackage')
-    parser.add_argument('vbet_gpkg', type=str, help='')
-    parser.add_argument('ahthro_gpkg', type=str, help='')
-    parser.add_argument('rcat_gpkg', type=str, help='')
+    parser.add_argument('riverscapes_context_project_folder', type=str, help='Path to the riverscapes context project folder')
+    parser.add_argument('vbet_project_folder', type=str, help='Path to the vbet project folder')
+    parser.add_argument('rcat_project_folder', type=str, help='Path to the rcat project folder')
+    parser.add_argument('ahthro_project_folder', type=str, help='Path to the anthro project folder')
+    parser.add_argument('rme_project_folder', type=str, help='Path to the rme project folder')
     parser.add_argument('output_path', type=str, help='Path to save the plots')
     args = dotenv.parse_args_env(parser)
 
-    charts(args.land_ownership_shp, args.nhdplushr_gpkg, args.vbet_gpkg, args.ahthro_gpkg, args.rcat_gpkg, args.output_path)
+    out_charts = charts(args.riverscapes_context_project_folder, args.vbet_project_folder, args.rcat_project_folder, args.ahthro_project_folder, args.rme_project_folder, args.output_path)
 
 
 if __name__ == '__main__':
