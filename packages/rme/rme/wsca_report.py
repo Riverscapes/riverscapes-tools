@@ -6,7 +6,7 @@ import sqlite3
 import json
 from collections import Counter
 from xml.etree import ElementTree as ET
-
+from shapely.geometry import shape
 from rscommons import Logger, dotenv, ModelConfig, RSReport, RSProject
 from rscommons.util import safe_makedirs
 from rscommons.plotting import box_plot, vertical_bar
@@ -30,6 +30,7 @@ from rscommons.vector_ops import copy_feature_class, collect_linestring
 from rscommons.vbet_network import copy_vaa_attributes, join_attributes
 from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions
 from rscommons.moving_window import moving_window_dgo_ids
+from rscommons.raster_buffer_stats import raster_buffer_stats2
 
 from rme.__version__ import __version__
 from rme.analysis_window import AnalysisLine
@@ -56,9 +57,12 @@ class WSCAReport(RSReport):
 
         ws_context_section = self.section('WSContext', 'Watershed Context')
 
+        physio_section = self.section('Physiography', 'Physiographic Attributes', ws_context_section)
+
         rs_context_dir = os.path.join(input_dir, 'rs_context')
         rs_context_json = os.path.join(rs_context_dir, 'rscontext_metrics.json')
-        rsc_metrics_json = json.load(open(rs_context_json))
+        rsc_metrics_json = json.load(open(rs_context_json, encoding='utf-8'))
+        rsc_nhd_gpkg = os.path.join(rs_context_dir, 'hydrology', 'nhdplushr.gpkg')
 
         table_wrapper2 = ET.Element('div', attrib={'class': 'tableWrapper'})
 
@@ -77,8 +81,21 @@ class WSCAReport(RSReport):
             'Drainage Density (Total, km/km^2)': rsc_metrics_json['drainageDensityAll']
         }
 
+        rme_dir = os.path.join(input_dir, 'rme')
+        rme_output_gpkg = os.path.join(rme_dir, 'outputs', 'riverscapes_metrics.gpkg')
+        rme_metric_values = get_rme_values(os.path.join(rs_context_dir, rme_output_gpkg))
+
+        for key, val in rme_metric_values.items():
+            rsc_metrics_dict[key] = val
+
+        precip_stats = get_precipiation_stats(rsc_nhd_gpkg, os.path.join(rs_context_dir, 'climate', 'precipitation.tif'))
+
+        rsc_metrics_dict['Mean Annual Precipitation (mm)'] = precip_stats['Mean']
+        rsc_metrics_dict['Maximum Annual Precipitation (mm)'] = precip_stats['Maximum']
+        rsc_metrics_dict['Minimum Annual Precipitation (mm)'] = precip_stats['Minimum']
+
         self.create_table_from_dict(rsc_metrics_dict, table_wrapper2)
-        ws_context_section.append(table_wrapper2)
+        physio_section.append(table_wrapper2)
 
         nhd_gpkg = os.path.join(rs_context_dir, 'hydrology', 'nhdplushr.gpkg')
         nhd_gpkg_layer = 'WBDHU10'
@@ -98,6 +115,7 @@ class WSCAReport(RSReport):
         })
 
         plot_wrapper.append(img)
+        ws_context_section.append(plot_wrapper)
 
     pass
 
@@ -128,6 +146,49 @@ class WSCAReport(RSReport):
     #     for lyr in outputs:
     #         if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']:
     #             self.layerprint(lyr, section_out, self.project_root)
+
+
+def get_rme_values(rme_gpkg: str) -> dict:
+
+    rme_values = {}
+    with sqlite3.connect(rme_gpkg) as conn:
+        curs = conn.cursor()
+
+        # Modal Ecoregion III (metric ID 17)
+        for level, metric_id in [('Ecoregion III', 17), ('Ecoregion IV', 18)]:
+            curs.execute('SELECT metric_value, count(*) frequency FROM dgo_metric_values WHERE metric_id= ? GROUP BY metric_value ORDER by frequency DESC limit 1', [metric_id])
+            row = curs.fetchone()
+            rme_values[level] = row[0]
+
+    return rme_values
+
+
+def get_watershed_boundary_geom(nhd_gpkg: str) -> shape:
+    """Takes the NHD GeoPackage and returns the watershed boundary 
+    as a Shapely Geometry
+    """
+
+    # Read the polygon and DEM
+    with GeopackageLayer(nhd_gpkg, 'WBDHU10') as polygon_layer:
+        geoms = ogr.Geometry(ogr.wkbMultiPolygon)
+        for feature, *_ in polygon_layer.iterate_features():
+            feature: ogr.Feature
+            geom: ogr.Geometry = feature.GetGeometryRef()
+            geoms.AddGeometry(geom)
+
+        # rough_units = 1 / polygon_layer.rough_convert_metres_to_vector_units(1.0)
+        polygon_json = json.loads(geoms.ExportToJson())
+
+    # Mask the DEM with the polygon
+    return shape(polygon_json)
+
+
+def get_precipiation_stats(nhd_gpkg: str, precip_raster: str) -> float:
+
+    watershed_boundary = get_watershed_boundary_geom(nhd_gpkg)
+
+    stats = raster_buffer_stats2({1: watershed_boundary}, precip_raster)
+    return stats[1]
 
 
 def main():
