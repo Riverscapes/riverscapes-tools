@@ -41,24 +41,33 @@ land_ownership_labels = {
     'UND': 'Unknown'
 }
 
+land_use_intensity_labels = {
+    0: 'Very Low',
+    33: 'Low',
+    66: 'Moderate',
+    100: 'High'
+}
+
+land_use_intensity_colors = {
+    0: '#267300',
+    33: '#a4c400',
+    66: '#ffbb00',
+    100: '#ff2600'
+}
+
 
 def charts(rsc_project_folder, vbet_project_folder, rcat_project_folder, anthro_project_folder, rme_project_folder, out_path):
 
     output_charts = {
         'Land Ownership by Area (Entire Watershed)': os.path.join(out_path, 'land_ownership_by_area.png'),
         'Land Ownership by Area (Riverscape)': os.path.join(out_path, 'land_ownership_by_area_riverscape.png'),
-        'Land Ownership by Mileage': os.path.join(out_path, 'land_ownership_by_mileage.png')
+        'Land Ownership by Mileage': os.path.join(out_path, 'land_ownership_by_mileage.png'),
+        'Land Use Intensity (BLM)': os.path.join(out_path, 'land_use_intensity_blm.png'),
+        'Land Use Intensity (Non-BLM)': os.path.join(out_path, 'land_use_intensity_non_blm.png')
     }
 
-    land_owner_shp = os.path.join(rsc_project_folder, 'ownership', 'ownership.shp')
-    nhdplushr_gkpg = os.path.join(rsc_project_folder, 'hydrology', 'nhdplushr.gpkg')
-    vbet_gpkg = os.path.join(vbet_project_folder, 'outputs', 'vbet.gpkg')
-    ahthro_gpkg = os.path.join(anthro_project_folder, 'outputs', 'anthro.gpkg')
-    rcat_gpkg = os.path.join(rcat_project_folder, 'outputs', 'rcat.gpkg')
-    hydro_derivatives_gpkg = os.path.join(rsc_project_folder, 'hydrology', 'hydro_derivatives.gpkg')
-
     # Get the HUC10 watershed boundary
-    with GeopackageLayer(nhdplushr_gkpg, 'WBDHU10') as polygon_layer:
+    with GeopackageLayer(os.path.join(rsc_project_folder, 'hydrology', 'nhdplushr.gpkg'), 'WBDHU10') as polygon_layer:
         srs = polygon_layer.ogr_layer.GetSpatialRef()
         geom_huc10 = ogr.Geometry(ogr.wkbMultiPolygon)
         geom_huc10.AssignSpatialReference(srs)
@@ -77,7 +86,7 @@ def charts(rsc_project_folder, vbet_project_folder, rcat_project_folder, anthro_
         # geom_huc10.TransformTo(srs_utm)
 
     # Get the BLM and Non-BLM land ownership within the HUC10 boundary
-    with ShapefileLayer(land_owner_shp) as land_owner:
+    with ShapefileLayer(os.path.join(rsc_project_folder, 'ownership', 'ownership.shp')) as land_owner:
         geom_blm = ogr.Geometry(ogr.wkbMultiPolygon)
         geom_blm.AssignSpatialReference(srs)
         geom_non_blm = ogr.Geometry(ogr.wkbMultiPolygon)
@@ -114,7 +123,7 @@ def charts(rsc_project_folder, vbet_project_folder, rcat_project_folder, anthro_
             geom.TransformTo(srs_utm)
 
     # Get the riverscape (vbet-dgo polygons) vs non-riverscape areas
-    with GeopackageLayer(vbet_gpkg, 'vbet_full') as vbet_layer:
+    with GeopackageLayer(os.path.join(vbet_project_folder, 'outputs', 'vbet.gpkg'), 'vbet_full') as vbet_layer:
         geom_riverscape = ogr.Geometry(ogr.wkbMultiPolygon)
         geom_riverscape.AssignSpatialReference(srs)
         for feature, *_ in vbet_layer.iterate_features(clip_shape=geom_huc10):
@@ -154,7 +163,7 @@ def charts(rsc_project_folder, vbet_project_folder, rcat_project_folder, anthro_
     colors = [land_owhership_colors.get(l, '#000000') for l in riverscape_areas.keys()]
     horizontal_bar(values, labels, colors, 'Area (Acres)', 'Land Ownership by Area (Riverscape)', output_charts['Land Ownership by Area (Riverscape)'])
 
-    with GeopackageLayer(hydro_derivatives_gpkg, 'network_intersected') as network_intersected_lyr:
+    with GeopackageLayer(os.path.join(rsc_project_folder, 'hydrology', 'hydro_derivatives.gpkg'), 'network_intersected') as network_intersected_lyr:
         lengths = {}
         for feature, *_ in network_intersected_lyr.iterate_features(clip_shape=geom_huc10):
             feature: ogr.Feature
@@ -198,7 +207,54 @@ def charts(rsc_project_folder, vbet_project_folder, rcat_project_folder, anthro_
     # Bar or pie chart of land use intensity for riverscape (BLM vs. non-BLM) ( get this from anthro)
     # LU/LC Type -horizontal bar chart for LULC Type for the non-riverscape (BLM vs. Non-BLM)
     # LU/LC Change - horizontal bar chart of LU/LC change for non-riverscape (BLM vs. Non-BLM)
+
     # land use intensity - Horizontal bar chart of land use intensity for the non-riverscape (BLM vs. non-BLM) ( get this from anthro)
+    with rasterio.open(os.path.join(anthro_project_folder, 'intermediates', 'lui.tif')) as raster_lui:
+
+        no_data = int(raster_lui.nodata)
+
+        geom_blm.TransformTo(srs)  # get back to the original srs
+        shapes_blm = [shape(json.loads(geom_blm.ExportToJson()))]
+        masked, *_ = mask(raster_lui, shapes_blm, crop=True)
+
+        # get the count of each land use intensity value
+        land_use_intensity_counts_blm = {}
+        for value in masked.flatten():
+            value = int(value)
+            if value == no_data:
+                continue
+            if value in land_use_intensity_counts_blm:
+                land_use_intensity_counts_blm[value] += 1
+            else:
+                land_use_intensity_counts_blm[value] = 1
+
+        geom_non_blm.TransformTo(srs)  # get back to the original srs
+        shapes_non_blm = [shape(json.loads(geom_non_blm.ExportToJson()))]
+        masked, *_ = mask(raster_lui, shapes_non_blm, crop=True)
+
+        # get the count of each land use intensity value
+        land_use_intensity_counts_non_blm = {}
+        for value in masked.flatten():
+            value = int(value)
+            if value == no_data:
+                continue
+            if value in land_use_intensity_counts_non_blm:
+                land_use_intensity_counts_non_blm[value] += 1
+            else:
+                land_use_intensity_counts_non_blm[value] = 1
+
+    # BLM land use intensity
+    values = list(land_use_intensity_counts_blm.values())
+    labels = [land_use_intensity_labels.get(l, l) for l in land_use_intensity_counts_blm.keys()]
+    colors = [land_use_intensity_colors.get(l, '#000000') for l in land_use_intensity_counts_blm.keys()]
+    horizontal_bar(values, labels, colors, 'Cell Count', 'Land Use Intensity (BLM)', output_charts['Land Use Intensity (BLM)'])
+
+    # Non-BLM land use intensity
+    values = list(land_use_intensity_counts_non_blm.values())
+    labels = [land_use_intensity_labels.get(l, l) for l in land_use_intensity_counts_non_blm.keys()]
+    colors = [land_use_intensity_colors.get(l, '#000000') for l in land_use_intensity_counts_non_blm.keys()]
+    horizontal_bar(values, labels, colors, 'Cell Count', 'Land Use Intensity (Non-BLM)', output_charts['Land Use Intensity (Non-BLM)'])
+
     # land use intensity change - horizontal bar chart of land use intensity change for the non-riverscape (BLM vs. non-BLM) ( get this from anthro)
 
     return output_charts
