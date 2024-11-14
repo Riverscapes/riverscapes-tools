@@ -1,3 +1,4 @@
+from typing import List
 import os
 import sys
 import traceback
@@ -36,6 +37,9 @@ from rme.__version__ import __version__
 from rme.analysis_window import AnalysisLine
 
 from .utils.hypsometric_curve import hipsometric_curve
+
+ACRES_PER_SQ_METRE = 0.000247105
+ACRES_PER_SQ_KM = 247.105
 
 
 class WSCAReport(RSReport):
@@ -134,6 +138,43 @@ class WSCAReport(RSReport):
                                     relative to non-BLM administered resources, strongly controls the BLM\'s ability to maintain or improve the health and productivity of these areas.'''
         s2_section.append(s2_intro)
 
+        # for is_blm in [True, False]:
+        #     peren_stats = get_rme_stats(rme_output_gpkg, is_blm, True, [46006, 55800])
+        #     non_peren_stats = get_rme_stats(rme_output_gpkg, is_blm, False, [46006, 55800])
+
+        #     s2_metrics = {
+        #         'Area of Perennial Riverscape (mi)': peren_stats['PROP_RIP']['raw_area'] * 0.000000386102159,
+        #     }
+
+        #     table_wrapper3 = ET.Element('div', attrib={'class': 'tableWrapper'})
+        #     self.create_table_from_dict(s2_metrics, table_wrapper3)
+        #     s2_section.append(table_wrapper3)
+
+        # intermittent_length = vbet_metrics['drainageDensityIntermittent'] * vbet_metrics['catchmentArea'] * 0.621371
+        # ephemeral_length = vbet_metrics['drainageDensityEphemeral'] * vbet_metrics['catchmentArea'] * 0.621371
+
+        # s2_metrics = {
+        # 'Valley Bottom Area (acres)': rme_stats[] vbet_metrics['riverscapeArea'] * ACRES_PER_SQ_KM,
+        # 'Perennial Stream length (mi)': vbet_metrics['drainageDensityPerennial'] * vbet_metrics['catchmentArea'] * 0.621371,  # km to mi
+        # 'Non-Perennial Stream length (mi)': intermittent_length + ephemeral_length,
+        # 'Area of Perennial Riverscape (mi)': peren_   # Sum segment_area for DGOs filtered for FCode 46006 + 55800 (sq m)
+        # 'Area of Non-Perennial Riverscape (mi)':  # Sum segment_area for DGOs filtered NOT (46006 + 55800) (sq m)
+        # 'Riparian area in perennial riverscape (acres)': sum(PROP_RIP * segment_area) filtered by FCode(sq m)
+        # 'Riparian area in non-perennial riverscape (acres)': sum(PROP_RIP * segment_area) filtered by NOT FCode(sq m),
+        # }
+
+        # natural_waterbodies
+        # TODO: sum waterbodty areas for FCode (361%, 390%, 466%, 493%) anything begining with these digits
+
+        # artificial_waterbodies
+        # TODO: sum waterbodty areas for FCode (436%)
+
+        # count of dams is count of artifical waterbodies
+
+        table_wrapper3 = ET.Element('div', attrib={'class': 'tableWrapper'})
+        self.create_table_from_dict(s2_metrics, table_wrapper3)
+        s2_section.append(table_wrapper3)
+
     pass
 
     # self.report_content()
@@ -183,6 +224,39 @@ def get_rme_values(rme_gpkg: str) -> dict:
         rme_values['Mean Stream Gradient'] = row[0]
 
     return rme_values
+
+
+def get_rme_stats(rme_gpkg: str, filter_blm: bool, include_fcodes: bool, fcodes: List[int]) -> dict:
+
+    filter_fcodes = ''
+    if fcodes is not None and len(fcodes) > 0:
+        fcodes_str = ', '.join([str(fcode) for fcode in fcodes])
+        filter_fcodes = f'AND (d.fcode {"" if include_fcodes is True else "NOT"} IN ({fcodes_str}))'
+
+    rme_stats = {}
+    with sqlite3.connect(rme_gpkg) as conn:
+        curs = conn.cursor()
+
+        sql = f'''
+            SELECT m.machine_code,
+                sum(mv.metric_value) total,
+                sum(mv.metric_value * d.segment_area) total_area,
+                avg(mv.metric_value) avg,
+                max(mv.metric_value) max,
+                min(mv.metric_value) min,
+                sum(d.segment_area) raw_area
+            FROM dgos d
+                inner join dgo_metric_values mv ON d.fid = mv.dgo_id
+                inner join metrics m on mv.metric_id = m.metric_id
+                inner join (select dgo_id, metric_value from dgo_metric_values WHERE (metric_id = 1)) o ON mv.dgo_id = o.dgo_id
+            WHERE (o.metric_value {'=' if filter_blm is True else '<>' } 'BLM')
+                {filter_fcodes}
+            group by m.machine_code'''
+
+        curs.execute(sql)
+        rme_stats = {row[0]: {'total': float(row[1]), 'avg': float(row[2]), 'max': float(row[3]), 'min': float(row[4]), 'raw_area': float(row[5])} for row in curs.fetchall()}
+
+    return rme_stats
 
 
 def get_vbet_json_metrics(metrics_json_path) -> dict:
