@@ -52,6 +52,32 @@
     "state": "ACTIVE"
   },
   {
+    "name": "Riverscapes Beaver Restoration Assessment Tool (BRAT)",
+    "summary": "The hybrid channel network/riverscape network Beaver Restoration Assessment Tool (sqlBRAT)",
+    "description": "The [Beaver Restoration Assessment Tool](https://tools.riverscapes.net/brat) combines a model estimating the capacity of a riverscape to support dam building activity with analysis of potential anthropogenic conflicts to create a tool that can be used to inform where [LTPBR restoration](http://lowtechpbr.restoration.usu.edu/) using beaver can be targeted.",
+    "meta": [
+        { 
+          "key": "Resolution",
+          "value": "Reach"
+        },
+        { 
+          "key": "Extent",
+          "value": "Network"
+        },
+        {
+          "key": "Model Status",
+          "value": "Production Grade"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "Model Output"
+        }
+       ],
+    "url": "https://tools.riverscapes.net/brat",
+    "machineName": "Riverscapes_BRAT",
+    "state": "ACTIVE"
+  },
+  {
     "name": "CAD Export - CHaMP",
     "summary": "Raw Topographic Survey Data Export",
     "description": "In the [CHAMP](https://champmonitoring.org) site visits, topographic survyes were collected with total stations. This is the raw topographic exports including points and breaklines in a DXF format. This was used as input into [CHaMP Topo Processing Toolbar](http://champtools.northarrowresearch.com/) to produce TINs and DEMs.",

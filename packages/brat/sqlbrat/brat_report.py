@@ -78,7 +78,7 @@ class BratReport(RSReport):
             'Negligible Risk': '#a5a5a5',
             'Conservation/Appropriate for Translocation': '#00a800',
             'Encourage Beaver Expansion/Colonization': '#00c5ff',
-            'Appropriate for BDAs': '#e6cc00',
+            'Appropriate for Beaver Mimicry': '#e6cc00',
             'Address Resource Limitations': '#895d40',
             'Natural or Anthropogenic Limitations': '#b9b9b9',
             'Potential Floodplain/Side Channel Opportunities': '#1111e5',

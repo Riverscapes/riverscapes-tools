@@ -24,9 +24,15 @@ ReachCode,Name,DisplayName,Description
 42814,PIPELINE,Pipeline,Product|water; Pipeline Type|general case
 42815,PIPELINE,Pipeline,Product|water; Pipeline Type|penstock
 42816,PIPELINE,Pipeline,Product|water; Pipeline Type|aqueduct
+42820,PIPELINE,Pipeline,Product|water; Pipeline Type|stormwater; Relationship to Surface|null
+42821,PIPELINE,Pipeline,Product|water; Pipeline Type|stormwater; Relationship to Surface|at or near
+42822,PIPELINE,Pipeline,Product|water; Pipeline Type|stormwater; Relationship to Surface|elevate
+42823,PIPELINE,Pipeline,Product|water; Pipeline Type|stormwater; Relationship to Surface|underground
+42824,PIPELINE,Pipeline,Product|water; Pipeline Type|stormwater; Relationship to Surface|underwater
 46000,STREAM/RIVER,Stream,feature type only: no attributes
 46003,STREAM/RIVER,Intermittent,Hydrographic Category|intermittent
 46006,STREAM/RIVER,Perennial,Hydrographic Category|perennial
 46007,STREAM/RIVER,Ephemeral,Hydrographic Category|ephemeral
+46800,DRAINAGE LINE,Drainage Line,feature type only: no attributes
 55800,ARTIFICIAL PATH,Artificial Path,feature type only: no attributes
 56600,COASTLINE,Coastline,feature type only: no attributes

@@ -135,7 +135,7 @@ def brat(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Path,
 
     project_name = f'BRAT for HUC {huc}'
     project = RSProject(cfg, output_folder)
-    project.create(project_name, 'BRAT', [
+    project.create(project_name, 'Riverscapes_BRAT', [
         RSMeta('Model Documentation', 'https://tools.riverscapes.net/brat', RSMetaTypes.URL, locked=True),
         RSMeta('HUC', str(huc), RSMetaTypes.HIDDEN, locked=True),
         RSMeta('Hydrologic Unit Code', str(huc), locked=True),
