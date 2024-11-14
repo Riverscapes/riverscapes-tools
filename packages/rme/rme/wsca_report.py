@@ -123,6 +123,17 @@ class WSCAReport(RSReport):
         plot_wrapper.append(img)
         ws_context_section.append(plot_wrapper)
 
+        ############################################################################
+        s2_section = self.section('Section2', 'Section 2 - Inventory of Water, Riparian-wetland, and Aquatic Resources')
+
+        s2_intro = ET.Element('p')
+        s2_intro.text = f'''The BLM administers the following extent and relative distribution of water,
+                                     riparian-wetland, and aquatic resources in watershed {huc}.
+                                     Many of these landscape features are created and maintained by inter-connected biophysical processes that operate within and across ownership boundaries.
+                                     Consequently, the distribution and abundance of BLM administered resources,
+                                    relative to non-BLM administered resources, strongly controls the BLM\'s ability to maintain or improve the health and productivity of these areas.'''
+        s2_section.append(s2_intro)
+
     pass
 
     # self.report_content()
