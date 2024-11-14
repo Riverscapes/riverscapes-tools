@@ -37,6 +37,7 @@ from rme.__version__ import __version__
 from rme.analysis_window import AnalysisLine
 
 from .utils.hypsometric_curve import hipsometric_curve
+from .utils.blm_charts import charts
 
 ACRES_PER_SQ_METRE = 0.000247105
 ACRES_PER_SQ_KM = 247.105
@@ -127,6 +128,20 @@ class WSCAReport(RSReport):
         plot_wrapper.append(img)
         ws_context_section.append(plot_wrapper)
 
+        rcat_dir = os.path.join(input_dir, 'rcat')
+        anthro_dir = os.path.join(input_dir, 'anthro')
+
+        land_charts = charts(rs_context_dir, vbet_dir, rcat_dir, anthro_dir, rme_dir, self.images_dir)
+        for name, path in land_charts.items():
+            new_ = ET.Element('div', attrib={'class': 'plots'})
+            image_src = os.path.relpath(path, relative_dir)
+            img = ET.Element('img', attrib={
+                'src': image_src,
+                'alt': 'chart'
+            })
+            plot_wrapper.append(img)
+            ws_context_section.append(plot_wrapper)
+
         ############################################################################
         s2_section = self.section('Section2', 'Section 2 - Inventory of Water, Riparian-wetland, and Aquatic Resources')
 
@@ -172,7 +187,7 @@ class WSCAReport(RSReport):
         # count of dams is count of artifical waterbodies
 
         table_wrapper3 = ET.Element('div', attrib={'class': 'tableWrapper'})
-        self.create_table_from_dict(s2_metrics, table_wrapper3)
+        # self.create_table_from_dict(s2_metrics, table_wrapper3)
         s2_section.append(table_wrapper3)
 
     pass
