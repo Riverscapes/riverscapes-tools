@@ -53,7 +53,7 @@ def add_tag(riverscapes_api: RiverscapesAPI):
 
     # Create a timedelta object with a difference of 1 day
     total = 0
-    for project, _stats, search_total in riverscapes_api.search(search_params, progress_bar=True):
+    for project, _stats, search_total, _prg in riverscapes_api.search(search_params, progress_bar=True):
         total = search_total
         if any(tag not in project.tags for tag in tags):
             changeable_projects.append(project)

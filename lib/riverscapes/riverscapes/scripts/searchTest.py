@@ -22,7 +22,7 @@ def change_owner(riverscapes_api: RiverscapesAPI):
     # Make the search and collect all the data
     # ================================================================================================================
 
-    for project, _stats, search_total in riverscapes_api.search(search_params, progress_bar=True):
+    for project, _stats, search_total, _prg in riverscapes_api.search(search_params, progress_bar=True):
         print(search_total)
 
 

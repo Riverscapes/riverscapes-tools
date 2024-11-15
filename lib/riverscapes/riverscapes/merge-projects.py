@@ -420,7 +420,7 @@ def main():
         })
 
         projects_lookup: Dict[str, RiverscapesProject] = {}
-        for project, _stats, search_total in api.search(search_params, progress_bar=True):
+        for project, _stats, search_total, _prg in api.search(search_params, progress_bar=True):
             if search_total < 2:
                 log.error(f'Insufficient number of projects ({search_total}) found with type {args.project_type} and tags {args.project_tags}. 2 or more needed.')
                 sys.exit(1)

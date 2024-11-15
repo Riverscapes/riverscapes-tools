@@ -28,7 +28,7 @@ def merge_rme_scrapes(rs_api: RiverscapesAPI, search_params: RiverscapesSearchPa
     log = Logger('Merge RME Scrapes')
 
     # Create a timedelta object with a difference of 1 day
-    for project, _stats, _searchtotal in rs_api.search(search_params, progress_bar=True, page_size=100):
+    for project, _stats, _searchtotal, _prg in rs_api.search(search_params, progress_bar=True, page_size=100):
 
         # Attempt to retrieve the huc10 from the project metadata if it exists
         huc10 = None

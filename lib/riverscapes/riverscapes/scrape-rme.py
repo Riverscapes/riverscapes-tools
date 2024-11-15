@@ -37,7 +37,7 @@ def scrape_rme(rs_api: RiverscapesAPI, search_params: RiverscapesSearchParams, d
     metric_ids = {}
 
     # Loop over all projects yielded by the search
-    for project, _stats, _searchtotal in rs_api.search(search_params, progress_bar=True, page_size=100):
+    for project, _stats, _searchtotal, _prg in rs_api.search(search_params, progress_bar=True, page_size=100):
         try:
             # Attempt to retrieve the huc10 from the project metadata if it exists
             huc10 = None

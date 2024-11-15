@@ -49,7 +49,7 @@ def dump_riverscapes(rs_api: RiverscapesAPI, db_path: str):
         searchParams.createdOnFrom = last_inserted
 
     # Create a timedelta object with a difference of 1 day
-    for project, _stats, _searchtotal in rs_api.search(searchParams, progress_bar=True, page_size=100):
+    for project, _stats, _searchtotal, _prg in rs_api.search(searchParams, progress_bar=True, page_size=100):
 
         # Attempt to retrieve the huc10 from the project metadata if it exists
         huc10 = None

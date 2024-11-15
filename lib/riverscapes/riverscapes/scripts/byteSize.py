@@ -33,7 +33,7 @@ def total_bytes_calc(api: RiverscapesAPI):
     log.title("Loop over each project and \"DO\" somewthing with each one")
 
     # Note how we keep the page size low here because byte size can be a little more expensive to calculate
-    for project, _stats, _total in api.search(RiverscapesSearchParams({"projectTypeId": "vbet"}), progress_bar=True, page_size=100):
+    for project, _stats, _total, _prg in api.search(RiverscapesSearchParams({"projectTypeId": "vbet"}), progress_bar=True, page_size=100):
 
         size = project.json['totalSize']
         total_bytes += size

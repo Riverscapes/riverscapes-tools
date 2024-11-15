@@ -33,7 +33,7 @@ def download_files(riverscapes_api: RiverscapesAPI):
     # Make the search and download all necessary files
     # ================================================================================================================
 
-    for project, _stats, _total in riverscapes_api.search(search_params):
+    for project, _stats, _total, _prg in riverscapes_api.search(search_params):
 
         # Since we're searching for a huc we can pretty reliably assume that we're only going to get one project
         dlhuc = project.project_meta['HUC']

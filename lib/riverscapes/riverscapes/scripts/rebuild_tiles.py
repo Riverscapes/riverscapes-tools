@@ -99,7 +99,7 @@ def rebuild_web_tiles(riverscapes_api: RiverscapesAPI):
 
         changeable_projects: List[RiverscapesProject] = []
         total = 0
-        for project, _stats, search_total in riverscapes_api.search(search_params, progress_bar=True):
+        for project, _stats, search_total, _prg in riverscapes_api.search(search_params, progress_bar=True):
             total = search_total
             changeable_projects.append(project['item'])
 

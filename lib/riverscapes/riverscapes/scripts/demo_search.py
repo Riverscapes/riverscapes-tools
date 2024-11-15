@@ -40,7 +40,7 @@ def simple_search(api: RiverscapesAPI):
     # NOTE: RiverscapesSearchParams will throw errors for common mistakes and anything it doesn't recognize as valid
     # ====================================================================================================
     log.title("All possible search parameters")
-    search_count = [x for x, _stats, _total in api.search(RiverscapesSearchParams({
+    search_count = [x for x, _stats, _total, _prg in api.search(RiverscapesSearchParams({
         "projectTypeId": "vbet",  # Only return projects of this type
         "keywords": "my search terms",  # This will give a warning since keyword searches are not that useful in programmatic searches
         "name": "my project name",
@@ -77,7 +77,7 @@ def simple_search(api: RiverscapesAPI):
     # NB: We set max_results here for demo purposes so this doesn't take 20 minutes but you probably don't want to do that in production
     # ====================================================================================================
     log.title("Loop over each project and \"DO\" somewthing with each one")
-    for project, stats, _total in api.search(RiverscapesSearchParams({"projectTypeId": "vbet"}), progress_bar=True, max_results=1234):
+    for project, stats, _total, _prg in api.search(RiverscapesSearchParams({"projectTypeId": "vbet"}), progress_bar=True, max_results=1234):
         # Do a thing (like tag the project, delete it etc.)
         # INSERT THING DOING HERE
         log.debug(f"Project {project.id} has {len(project.json['tags'])} tags")
@@ -92,7 +92,7 @@ def simple_search(api: RiverscapesAPI):
             "Runner": "Cybercastor",
         }
     })
-    searched_project_ids = [p.id for p, _stats, _total in api.search(search_params, progress_bar=True, max_results=1234)]
+    searched_project_ids = [p.id for p, _stats, _total, _prg in api.search(search_params, progress_bar=True, max_results=1234)]
     log.debug(f"Found {len(searched_project_ids)} projects")
 
     # EXAMPLE Collect all the metadata for each project by id
@@ -103,7 +103,7 @@ def simple_search(api: RiverscapesAPI):
         # Used https://geojson.io to get a rough bbox to limit this query roughing to washington state (which makes the query cheaper)
         "bbox": [-125.40936477595693, 45.38966396117303, -116.21237724715607, 49.470853578429626]
     })
-    searched_project_meta = {p.id: p.project_meta for p, _stats, _total in api.search(search_params, progress_bar=True, max_results=1234)}
+    searched_project_meta = {p.id: p.project_meta for p, _stats, _total, _prg in api.search(search_params, progress_bar=True, max_results=1234)}
 
     log.info(f"Found {len(searched_project_meta)} projects")
 
@@ -165,7 +165,7 @@ def simple_search_with_cache(api: RiverscapesAPI):
             data = json.load(f)
     else:
         log.info("Querying the server for fresh data")
-        data = {p.id: p.project_meta for p, _stats, _total in api.search(search_params, progress_bar=True, max_results=1234)}
+        data = {p.id: p.project_meta for p, _stats, _total, _prg in api.search(search_params, progress_bar=True, max_results=1234)}
         # Save the data to a file for later
         with open(cache_filename, 'w', encoding='utf8') as f:
             json.dump(data, f, indent=2)
@@ -198,7 +198,7 @@ def stream_to_file(api: RiverscapesAPI):
         f_json.write('[\n')
         f_csv.write("id, project_type, huc, model_version, created_date\n")
         counter = 0
-        for proj, _stats, _total in api.search(search_params, progress_bar=True, max_results=1234):
+        for proj, _stats, _total, _prg in api.search(search_params, progress_bar=True, max_results=1234):
             if counter > 0:
                 f_json.write(',\n')
             json.dump(proj.json, f_json, indent=2)
@@ -241,7 +241,7 @@ def find_duplicates(api: RiverscapesAPI):
     #     ...
     # }
     huc_lookup = {}
-    for project, _stats, _total in api.search(search_params, progress_bar=True):
+    for project, _stats, _total, _prg in api.search(search_params, progress_bar=True):
         if project.project_type is None:
             raise Exception(f"Project {project.id} has no project type. This is likely a query error")
 
@@ -280,7 +280,7 @@ if __name__ == '__main__':
     # You can instantiate the API like this but you need to call refresh_token
     # Note how it will ask y ou interactively for the stage. Specify the stage like this:
     #   riverscapes_api = RiverscapesAPI(stage='dev') to not get the prompt
-    # 
+    #
     # Also yout need to call riverscapes_api.shutdown() when you're done with it.
     riverscapes_api = RiverscapesAPI()
     riverscapes_api.refresh_token()
@@ -296,11 +296,10 @@ if __name__ == '__main__':
         # If you put it inside a finally block it will always run (even if there's an error or a keyboard interrupt like ctrl+c)
         riverscapes_api.shutdown()
 
-
     # But there's a better way! (Method 2)
     # ====================================================================================================
     # OR you can instantiate it with a "with" statement like this
-    # This might be slightly preferred because it handles the refresh token AND automatically shuts down the 
+    # This might be slightly preferred because it handles the refresh token AND automatically shuts down the
     # polling process that refreshes the token when you're done with it
     with RiverscapesAPI() as riverscapes_api:
         simple_search(riverscapes_api)

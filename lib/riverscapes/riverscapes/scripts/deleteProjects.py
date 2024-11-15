@@ -43,7 +43,7 @@ def delete_by_tags(riverscapes_api: RiverscapesAPI):
     deletable_projects: List[RiverscapesProject] = []
 
     total = 0
-    for project, _stats, _search_total in riverscapes_api.search(search_params, progress_bar=True):
+    for project, _stats, _search_total, _prg in riverscapes_api.search(search_params, progress_bar=True):
         deletable_projects.append(project)
 
     # Now write all projects to a log file as json
