@@ -13,6 +13,8 @@ from rscommons.plotting import horizontal_bar, pie
 from rscommons.classes.vector_base import get_utm_zone_epsg
 from rscommons.classes.vector_classes import ShapefileLayer, GeopackageLayer
 
+from .blm_classes import existing_vegetation_types
+
 land_owhership_colors = {
     'BIA': '#ffb554',
     'BLM': '#ffea8c',
@@ -56,6 +58,20 @@ land_use_intensity_colors = {
 }
 
 
+existing_vegetation_colors = {
+    "Open tree canopy": "#b4ff94",
+    "Closed tree canopy": "#003300",
+    "Dwarf-shrubland": "#c7b081",
+    "Shrubland": "#826548",
+    "Sparse tree canopy": "#3792ad",
+    "Herbaceous - shrub-steppe": "#c7b081",
+    "Herbaceous - grassland": "#ffe282",
+    "Non-vegetated": "#0000ff",
+    "No Dominant Lifeform": "#ff7a8f",
+    "Sparsely vegetated": "#646464",
+}
+
+
 def charts(rsc_project_folder, vbet_project_folder, rcat_project_folder, anthro_project_folder, rme_project_folder, out_path):
 
     output_charts = {
@@ -63,7 +79,9 @@ def charts(rsc_project_folder, vbet_project_folder, rcat_project_folder, anthro_
         'Land Ownership by Area (Riverscape)': os.path.join(out_path, 'land_ownership_by_area_riverscape.png'),
         'Land Ownership by Mileage': os.path.join(out_path, 'land_ownership_by_mileage.png'),
         'Land Use Intensity (BLM)': os.path.join(out_path, 'land_use_intensity_blm.png'),
-        'Land Use Intensity (Non-BLM)': os.path.join(out_path, 'land_use_intensity_non_blm.png')
+        'Land Use Intensity (Non-BLM)': os.path.join(out_path, 'land_use_intensity_non_blm.png'),
+        'Land Use Type (BLM)': os.path.join(out_path, 'land_use_type_blm.png'),
+        'Land Use Type (Non-BLM)': os.path.join(out_path, 'land_use_type_non_blm.png')
     }
 
     # Get the HUC10 watershed boundary
@@ -186,17 +204,54 @@ def charts(rsc_project_folder, vbet_project_folder, rcat_project_folder, anthro_
     colors = [land_owhership_colors.get(l, '#000000') for l in lengths.keys()]
     horizontal_bar(values, labels, colors, 'Length (mileage)', 'Land Ownership by Mileage', output_charts['Land Ownership by Mileage'])
 
+    # get back to the original srs
+    geom_blm.TransformTo(srs)
+    geom_non_blm.TransformTo(srs)
+
     # RCAT
     # LU/LC Type - hori for non-riverscape (BLM vs. Non-BLM) (We can use RCAT land use types for this.)
+    with rasterio.open(os.path.join(rcat_project_folder, 'inputs', 'existing_veg.tif')) as raster:
+        no_data = int(raster.nodata)
 
-    # load the lu raster
-    # lu_path = os.path.join(rcat_gpkg, 'lu')
-    # with rasterio.open(lu_path) as raster:
-    #     shapes_blm = [shape(json.loads(geom_blm.ExportToJson()))]
-    #     masked_raster_blm, _out_transform = mask(raster, shapes_blm, crop=True)
+        shapes_blm = [shape(json.loads(geom_blm.ExportToJson()))]
+        masked, *_ = mask(raster, shapes_blm, crop=True)
+        # get the count of each land use intensity value
+        raster_counts_blm = {}
+        for value in masked.flatten():
+            value = int(value)
+            if value == no_data:
+                continue
+            name = existing_vegetation_types.get(value, 'Unknown')
+            if name in raster_counts_blm:
+                raster_counts_blm[name] += 1
+            else:
+                raster_counts_blm[name] = 1
 
-    #     shapes_non_blm = [shape(json.loads(geom_non_blm.ExportToJson()))]
-    #     masked_raster_non_blm, _out_transform = mask(raster, shapes_non_blm, crop=True)
+        shapes_non_blm = [shape(json.loads(geom_non_blm.ExportToJson()))]
+        masked, *_ = mask(raster, shapes_non_blm, crop=True)
+        # get the count of each land use intensity value
+        raster_counts_non_blm = {}
+        for value in masked.flatten():
+            value = int(value)
+            if value == no_data:
+                continue
+            name = existing_vegetation_types.get(value, 'Unknown')
+            if name in raster_counts_non_blm:
+                raster_counts_non_blm[name] += 1
+            else:
+                raster_counts_non_blm[name] = 1
+
+    # Land Use Type BLM
+    values = list(raster_counts_blm.values())
+    labels = list(raster_counts_blm.keys())
+    colors = [existing_vegetation_colors.get(l, '#000000') for l in raster_counts_blm.keys()]
+    horizontal_bar(values, labels, colors, 'Cell Count', 'Land Use Type (BLM)', output_charts['Land Use Type (BLM)'])
+
+    # Land Use Type Non-BLM
+    values = list(raster_counts_non_blm.values())
+    labels = list(raster_counts_non_blm.keys())
+    colors = [existing_vegetation_colors.get(l, '#000000') for l in raster_counts_non_blm.keys()]
+    horizontal_bar(values, labels, colors, 'Cell Count', 'Land Use Type (Non-BLM)', output_charts['Land Use Type (Non-BLM)'])
 
     # Bar or pie chart of LU/LC Type for riverscape (BLM vs. Non-BLM) (We can use RCAT land use types for this.)
     # LU/LC Change - Bar or Pie chart of LU/LC change for non-riverscape (BLM vs. Non-BLM)
@@ -210,13 +265,10 @@ def charts(rsc_project_folder, vbet_project_folder, rcat_project_folder, anthro_
 
     # land use intensity - Horizontal bar chart of land use intensity for the non-riverscape (BLM vs. non-BLM) ( get this from anthro)
     with rasterio.open(os.path.join(anthro_project_folder, 'intermediates', 'lui.tif')) as raster_lui:
-
         no_data = int(raster_lui.nodata)
 
-        geom_blm.TransformTo(srs)  # get back to the original srs
         shapes_blm = [shape(json.loads(geom_blm.ExportToJson()))]
         masked, *_ = mask(raster_lui, shapes_blm, crop=True)
-
         # get the count of each land use intensity value
         land_use_intensity_counts_blm = {}
         for value in masked.flatten():
@@ -228,10 +280,8 @@ def charts(rsc_project_folder, vbet_project_folder, rcat_project_folder, anthro_
             else:
                 land_use_intensity_counts_blm[value] = 1
 
-        geom_non_blm.TransformTo(srs)  # get back to the original srs
         shapes_non_blm = [shape(json.loads(geom_non_blm.ExportToJson()))]
         masked, *_ = mask(raster_lui, shapes_non_blm, crop=True)
-
         # get the count of each land use intensity value
         land_use_intensity_counts_non_blm = {}
         for value in masked.flatten():
