@@ -42,6 +42,10 @@ def rscontext_metrics(project_path):
     with sqlite3.connect(os.path.join(project_path, 'hydrology', 'nhdplushr.gpkg')) as conn:
         cursor = conn.cursor()
 
+        cursor.execute('SELECT Name FROM WBDHU10 LIMIT 1')
+        row = cursor.fetchone()
+        pass
+
         ####################
         # Flowline metrics
 
@@ -62,12 +66,13 @@ def rscontext_metrics(project_path):
 
         ####################################################################################################
         # Waterbody metrics
-
         cursor.execute('select coalesce(sum(AreaSqKM), 0), coalesce(count(*), 0) FROM NHDWaterbody')
         out_metrics['waterbodyAreaSqKm'], out_metrics['waterbodyFeatureCount'] = cursor.fetchone()
 
-        for name, fcode in [('LakesPonds', 39000),  ('Reservoir', 43600),     ('Estuaries', 49300),     ('Playa', 36100)]:
-            cursor.execute('select coalesce(sum(AreaSqKm), 0), coalesce(count(*), 0) FROM NHDWaterbody WHERE FCode = ?', [fcode])
+        # Waterbody types. The first 3 digits of the 5 digit FCode identify the waterbody "SUBTYPE"
+        # https://www.usgs.gov/ngp-standards-and-specifications/national-hydrography-dataset-nhd-data-dictionary-feature-classes
+        for name, fcode in [('LakesPonds', 390),  ('Reservoir', 436),     ('Estuaries', 493),     ('Playa', 361), ('SwampMarsh', 466), ('IceSnow', 378)]:
+            cursor.execute('SELECT coalesce(sum(AreaSqKm), 0), coalesce(count(*), 0) FROM NHDWaterbody WHERE CAST(FCode AS TEXT) LIKE ?', [f'{fcode}%'])
             out_metrics[f'waterbody{name}AreaSqKm'], out_metrics[f'waterbody{name}FeatureCount'] = cursor.fetchone()
 
     ####################################################################################################
@@ -82,15 +87,15 @@ def rscontext_metrics(project_path):
         with GeopackageLayer(os.path.join(project_path, 'hydrology', 'nhdplushr.gpkg'), 'WBDHU10') as watershed_lyr:
             _spatial_ref, transform = VectorBase.get_transform_from_raster(watershed_lyr.spatial_ref, raster_path)
             trans_polygons = {feat.GetFID():  VectorBase.ogr2shapely(feat.GetGeometryRef(), transform) for feat, *_, in watershed_lyr.iterate_features()}
-
             raster_stats = raster_buffer_stats2(trans_polygons, raster_path)
-            for key, val in raster_stats.items():
-                out_metrics[f'{raster_id}{key}'] = val
 
-    with Raster(os.path.join(project_path, 'topography/dem.tif')) as dem_src:
-        dem = dem_src.array
-        dem = dem[dem != dem_src.nodata]
-        relief = dem.max() - dem.min()
+            raster_slug = raster_id.lower()
+            out_metrics[f'{raster_slug}Maximum'] = max(raster_stats.values(), key=lambda x: x['Maximum'])['Maximum']
+            out_metrics[f'{raster_slug}Minimum'] = min(raster_stats.values(), key=lambda x: x['Minimum'])['Minimum']
+            out_metrics[f'{raster_slug}Sum'] = sum(entry['Sum'] for entry in raster_stats.values())
+            out_metrics[f'{raster_slug}Count'] = sum(entry['Count'] for entry in raster_stats.values())
+            out_metrics[f'{raster_slug}Mean'] = out_metrics[f'{raster_slug}Sum'] / out_metrics[f'{raster_slug}Count'] if out_metrics[f'{raster_slug}Count'] > 0 else None
+            out_metrics[f'{raster_slug}Range'] = out_metrics[f'{raster_slug}Maximum'] - out_metrics[f'{raster_slug}Minimum']
 
     out_metrics["catchmentLength"] = catchment_length_km
     out_metrics["catchmentArea"] = catchment_area_km2
@@ -98,8 +103,8 @@ def rscontext_metrics(project_path):
     out_metrics["circularityRatio"] = catchment_area_km2 / bounding_circle_area
     out_metrics["elongationRatio"] = catchment_area_km2**0.5 / catchment_length_km
     out_metrics["formFactor"] = catchment_area_km2 / catchment_length_km**2
-    out_metrics["catchmentRelief"] = relief
-    out_metrics["reliefRatio"] = (relief / 1000) / catchment_length_km
+    out_metrics["catchmentRelief"] = out_metrics['demRange']
+    out_metrics["reliefRatio"] = (out_metrics['demRange'] / 1000) / catchment_length_km
     out_metrics["drainageDensityPerennial"] = out_metrics['flowlineLengthPerennialKm'] / catchment_area_km2
     out_metrics["drainageDensityIntermittent"] = out_metrics['flowlineLengthIntermittentKm'] / catchment_area_km2
     out_metrics["drainageDensityEphemeral"] = out_metrics['flowlineLengthEphemeralKm'] / catchment_area_km2
