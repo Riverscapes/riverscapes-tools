@@ -1,3 +1,6 @@
+"""
+Generate Metrics JSON for a single Riverscapes Context Project
+"""
 import sqlite3
 import argparse
 import os
@@ -5,9 +8,9 @@ import traceback
 import sys
 from math import pi
 import json
-from rscommons import GeopackageLayer, Raster, dotenv, Logger, RSProject, RSLayer
-from rscommons.classes.vector_base import VectorBase, get_utm_zone_epsg
 from shapely.geometry import Point
+from rscommons import GeopackageLayer, dotenv, Logger, RSProject, RSLayer
+from rscommons.classes.vector_base import VectorBase, get_utm_zone_epsg
 from rscommons.raster_buffer_stats import raster_buffer_stats2
 
 
@@ -22,7 +25,7 @@ def rscontext_metrics(project_path):
     with GeopackageLayer(os.path.join(project_path, 'hydrology', 'nhdplushr.gpkg'), 'WBDHU10') as wbd_lyr:
         long = wbd_lyr.ogr_layer.GetExtent()[0]
         proj_epsg = get_utm_zone_epsg(long)
-        sref, transform = wbd_lyr.get_transform_from_epsg(wbd_lyr.spatial_ref, proj_epsg)
+        _sref, transform = wbd_lyr.get_transform_from_epsg(wbd_lyr.spatial_ref, proj_epsg)
 
         ftr = wbd_lyr.ogr_layer.GetNextFeature()
         catchment_area_km2 = ftr.GetField('AreaSqKm')
@@ -124,10 +127,12 @@ def rscontext_metrics(project_path):
 
 
 def main():
+    """Run this method to generate metrics for the RSContext project."""
 
     parser = argparse.ArgumentParser()
     parser.add_argument('project_path', help='Path to project directory', type=str)
     args = dotenv.parse_args_env(parser)
+
     try:
         rscontext_metrics(args.project_path)
     except Exception as e:
