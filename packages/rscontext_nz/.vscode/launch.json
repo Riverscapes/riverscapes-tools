@@ -28,7 +28,8 @@
       "args": [
         "${input:WatershedID}",
         "{env:NATIONAL_PROJECT}/outputs/hydrography.gpkg",
-        "{env:NATIONAL_PROJECT}/outputs/topography/national_dem.vrt",
+        "{env:NATIONAL_PROJECT}/outputs/topography/dem_south.tif",
+        "{env:NATIONAL_PROJECT}/outputs/topography/dem_north.tif",
         "{env:DATA_ROOT}/rs_context/${input:WatershedID}",
         "{env:DOWNLOAD_FOLDER}",
         "--meta", "Runner=VSCode",
@@ -49,6 +50,5 @@
         "${input:HydroID}",
       ]
     },
-
   ]
 }
