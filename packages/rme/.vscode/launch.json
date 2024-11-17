@@ -72,8 +72,8 @@
       "console": "integratedTerminal",
       "args": [
         "${input:HUC}",
-        "{env:DATA_ROOT}/${input:HUC}",
-        "{env:DATA_ROOT}/${input:HUC}/outputs/wsca_report.html",
+        "{env:DATA_ROOT}/rme/${input:HUC}",
+        "{env:DATA_ROOT}/rme/${input:HUC}/outputs/wsca_report.html",
         "--verbose"
       ]
     },
