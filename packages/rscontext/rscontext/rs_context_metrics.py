@@ -45,11 +45,13 @@ def rscontext_metrics(project_path):
     with sqlite3.connect(os.path.join(project_path, 'hydrology', 'nhdplushr.gpkg')) as conn:
         cursor = conn.cursor()
 
-        cursor.execute('SELECT HUC10, Name, AreaSqKm FROM WBDHU10 LIMIT 1')
+        cursor.execute('SELECT HUC10, Name, States, AreaSqKm, AreaAcres FROM WBDHU10 LIMIT 1')
         row = cursor.fetchone()
-        out_metrics['HUC'] = row[0]
-        out_metrics['HUCName'] = row[1]
-        out_metrics['HUCAreaSqKm'] = row[2]
+        out_metrics['huc'] = row[0]
+        out_metrics['hucName'] = row[1]
+        out_metrics['hucStates'] = row[2]
+        out_metrics['hucAreaSqKm'] = row[3]
+        out_metrics['hucAreaAcres'] = row[4]
 
         ####################
         # Flowline metrics
