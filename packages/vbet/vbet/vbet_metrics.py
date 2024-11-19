@@ -57,6 +57,14 @@ def vbet_metrics(vbet_proj_path, rsc_proj_path):
         metrics['vbetDgoMaxArea'] = max_area
         metrics['vbetDgoAvgArea'] = avg_area
 
+        curs.execute('SELECT sum(centerline_length), min(centerline_length), max(centerline_length), avg(centerline_length), count(*) FROM vbet_igos')
+        total_length, min_length, max_length, avg_length, count = curs.fetchone()
+        metrics['vbetIgoCount'] = count
+        metrics['vbetIgoTotalCenterlineLength'] = total_length
+        metrics['vbetIgoMinCenterlineLength'] = min_length
+        metrics['vbetIgoMaxCenterlineLength'] = max_length
+        metrics['vbetIgoAvgCenterlineLength'] = avg_length
+
         curs.execute('SELECT COUNT(*) FROM (SELECT DISTINCT level_path FROM vbet_dgos)')
         metrics['vbetLevelPathCount'] = curs.fetchone()[0]
 
@@ -65,14 +73,6 @@ def vbet_metrics(vbet_proj_path, rsc_proj_path):
         curs.execute("""SELECT SUM(width_frac) FROM (SELECT integrated_width * (window_area / tot_area) width_frac FROM (SELECT window_area, integrated_width FROM vbet_igos),
                      (SELECT SUM(window_area) AS tot_area FROM vbet_igos))""")
         integrated_width = curs.fetchone()[0]
-
-        curs.execute('SELECT sum(centerline_length), min(centerline_length), max(centerline_length), avg(centerline_length), count(*) FROM vbet_igos')
-        total_length, min_length, max_length, avg_length, count = curs.fetchone()
-        metrics['vbetIgoCount'] = count
-        metrics['vbetIgoTotalCenterlineLength'] = total_length
-        metrics['vbetIgoMinCenterlineLength'] = min_length
-        metrics['vbetIgoMaxCenterlineLength'] = max_length
-        metrics['vbetIgoAvgCenterlineLength'] = avg_length
 
     riverscape_network_density = riverscape_length / float(metrics['catchmentArea'])
     tot_hec_per_km = riverscape_area * 100 / riverscape_length
