@@ -9,7 +9,8 @@ import sys
 from math import pi
 import json
 from shapely.geometry import Point
-from rscommons import GeopackageLayer, dotenv, Logger, RSProject, RSLayer
+from osgeo import ogr, osr
+from rscommons import GeopackageLayer, dotenv, Logger, RSProject, RSLayer, ShapefileLayer
 from rscommons.classes.vector_base import VectorBase, get_utm_zone_epsg
 from rscommons.raster_buffer_stats import raster_buffer_stats2
 
@@ -119,6 +120,8 @@ def rscontext_metrics(project_path):
                                          out_metrics['flowlineLengthIntermittentKm'] +
                                          out_metrics['flowlineLengthEphemeralKm']) / catchment_area_km2
 
+    out_metrics['ownership'] = land_ownership(project_path)
+
     with open(os.path.join(project_path, 'rscontext_metrics.json'), 'w', encoding='utf8') as f:
         json.dump(out_metrics, f, indent=2)
 
@@ -126,6 +129,54 @@ def rscontext_metrics(project_path):
     datasets_node = proj.XMLBuilder.find('Realizations').find('Realization').find('Datasets')
     proj.add_dataset(datasets_node, os.path.join(project_path, 'rscontext_metrics.json'), RSLayer('Metrics', 'Metrics', 'File', 'rscontext_metrics.json'), 'File')
     proj.XMLBuilder.write()
+
+
+def land_ownership(project_path: str, ) -> dict:
+    """Calculate the area of each land ownership type within the project watershed."""
+
+    # Load the watershed geometries and determine the UTM zone
+    with GeopackageLayer(os.path.join(project_path, 'hydrology', 'nhdplushr.gpkg'), 'WBDHU10') as polygon_layer:
+        huc_srs = polygon_layer.ogr_layer.GetSpatialRef()
+
+        # Combine all the watershed geometries into a single multi-polygon
+        geom_huc10 = ogr.Geometry(ogr.wkbMultiPolygon)
+        geom_huc10.AssignSpatialReference(huc_srs)
+        for feature, *_ in polygon_layer.iterate_features():
+            feature: ogr.Feature
+            geom: ogr.Geometry = feature.GetGeometryRef()
+            geom_huc10.AddGeometry(geom)
+
+        # Get the UTM zone for the centroid of the watershed
+        centroid: ogr.Geometry = geom_huc10.Centroid()
+        x, _y, _ = centroid.GetPoint()
+        utm = get_utm_zone_epsg(x)
+        srs_utm = osr.SpatialReference()
+        srs_utm.ImportFromEPSG(utm)
+
+    # Loop over all ownership polygons and intersect with watershed
+    ownership_areas = {}
+    with ShapefileLayer(os.path.join(project_path, 'ownership', 'ownership.shp')) as land_owner:
+        for feature, *_ in land_owner.iterate_features(clip_shape=geom_huc10):
+            feature: ogr.Feature
+            owner = feature.GetField('ADMIN_AGEN')
+            if owner is None or owner == '':
+                continue
+
+            geom: ogr.Geometry = feature.GetGeometryRef()
+            geom.TransformTo(huc_srs)
+            intersection = geom.Intersection(geom_huc10)
+            intersection.MakeValid()
+            if intersection.IsEmpty() or intersection.GetArea() == 0.0:
+                continue
+
+            if owner not in ownership_areas:
+                ownership_areas[owner] = 0.0
+
+            # Store the intersection area in the UTM projection
+            intersection.TransformTo(srs_utm)
+            ownership_areas[owner] += intersection.GetArea()
+
+    return ownership_areas
 
 
 def main():
