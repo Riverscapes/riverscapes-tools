@@ -41,6 +41,8 @@ from .utils.blm_charts import charts
 
 ACRES_PER_SQ_METRE = 0.000247105
 ACRES_PER_SQ_KM = 247.105
+MILES_PER_KM = 0.621371
+SQ_MILES_PER_SQ_KM = 0.386102159
 
 
 class WSCAReport(RSReport):
@@ -62,12 +64,13 @@ class WSCAReport(RSReport):
 
         ws_context_section = self.section('WSContext', 'Watershed Context')
 
-        physio_section = self.section('Physiography', 'Physiographic Attributes', ws_context_section, level=2)
-
         rs_context_dir = os.path.join(input_dir, 'rs_context', huc)
         rs_context_json = os.path.join(rs_context_dir, 'rscontext_metrics.json')
         rsc_metrics_json = json.load(open(rs_context_json, encoding='utf-8'))
         rsc_nhd_gpkg = os.path.join(rs_context_dir, 'hydrology', 'nhdplushr.gpkg')
+
+        self.physiography(ws_context_section, rs_context_dir, rsc_nhd_gpkg, rsc_metrics_json)
+        self.hydrography(ws_context_section, rs_context_dir, rsc_nhd_gpkg, rsc_metrics_json)
 
         table_wrapper2 = ET.Element('div', attrib={'class': 'tableWrapper'})
 
@@ -102,8 +105,8 @@ class WSCAReport(RSReport):
         # for key, val in rme_metric_values.items():
         #     rsc_metrics_dict[key] = val
 
-        self.create_table_from_dict(rsc_metrics_dict, table_wrapper2)
-        physio_section.append(table_wrapper2)
+        # self.create_table_from_dict(rsc_metrics_dict, table_wrapper2)
+        # physio_section.append(table_wrapper2)
 
         return
 
@@ -218,24 +221,24 @@ class WSCAReport(RSReport):
     #         if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']:
     #             self.layerprint(lyr, section_out, self.project_root)
 
-    def physiography(self, parent, rs_context_dir: str, rsc_nhd_gpkg: str, rsc_metrics_json: dict) -> None:
+    def physiography(self, parent, rs_context_dir: str, rsc_nhd_gpkg: str, rsc_metrics: dict) -> None:
 
-        physio_section = self.section('Physiography', 'Physiographic Attributes', parent, level=2)
+        section = self.section('Physiography', 'Physiographic Attributes', parent, level=2)
 
         metrics = {
-            'Catchment Length (km)': rsc_metrics_json['catchmentLength'],
-            'Catchment Area (km^2)': rsc_metrics_json['catchmentArea'],
-            'Catchment Perimeter (km)': rsc_metrics_json['catchmentPerimeter'],
-            'Circularity Ratio': rsc_metrics_json['circularityRatio'],
-            'Elongation Ratio': rsc_metrics_json['elongationRatio'],
-            'Form Factor': rsc_metrics_json['formFactor'],
-            'Catchment Relief (m)': rsc_metrics_json['catchmentRelief'],
-            'Relief Ratio': rsc_metrics_json['reliefRatio']
+            'Catchment Length': [f"{rsc_metrics['catchmentLength']:,.2f} km", f"{rsc_metrics['catchmentLength'] * MILES_PER_KM:,.2f} miles"],
+            'Catchment Area': [f"{rsc_metrics['catchmentArea']:,.2f} km²", f"{rsc_metrics['catchmentArea'] * SQ_MILES_PER_SQ_KM:,.2f} miles²"],
+            'Catchment Perimeter': [f"{rsc_metrics['catchmentPerimeter']:,.2f} km", f"{rsc_metrics['catchmentPerimeter']:,.2f} miles"],
+            'Circularity Ratio': [f"{rsc_metrics['circularityRatio']:,.2f}"],
+            'Elongation Ratio': [f"{rsc_metrics['elongationRatio']:,.2f}"],
+            'Form Factor': [f"{rsc_metrics['formFactor']:,.2f}"],
+            'Catchment Relief': [f"{rsc_metrics['catchmentRelief']:,.2f} m", f"{rsc_metrics['catchmentRelief'] * 3.28084:,.2f} ft"],
+            'Relief Ratio': [f"{rsc_metrics['reliefRatio']:,.2f}"]
         }
 
         table_wrapper = ET.Element('div', attrib={'class': 'tableWrapper'})
-        self.create_table_from_dict(metrics, table_wrapper)
-        physio_section.append(table_wrapper)
+        self.create_table_from_dict_of_multiple_values(metrics, table_wrapper)
+        section.append(table_wrapper)
 
         nhd_gpkg_layer = 'WBDHU10'
         dem_path = os.path.join(rs_context_dir, 'topography', 'dem.tif')
@@ -255,6 +258,48 @@ class WSCAReport(RSReport):
 
         plot_wrapper.append(img)
         parent.append(plot_wrapper)
+
+    def hydrography(self, parent, rs_context_dir: str, rsc_nhd_gpkg: str, rsc_metrics: dict) -> None:
+
+        section = self.section('Hydrography', 'Hydrographic Attributes', parent, level=2)
+
+        metrics = {
+            "Perennial Stream Length": [f"{rsc_metrics['flowlineLengthPerennialKm']:,.2f} km", f"{rsc_metrics['flowlineLengthPerennialKm'] * MILES_PER_KM:,.2f} miles", f"{100 * rsc_metrics['flowlineLengthPerennialKm'] / rsc_metrics['flowlineLengthAllKm']:,.2f} %"],
+            "Intermittent Stream Length": [f"{rsc_metrics['flowlineLengthIntermittentKm']:,.2f} km", f"{rsc_metrics['flowlineLengthIntermittentKm'] * MILES_PER_KM:,.2f} miles", f"{100 * rsc_metrics['flowlineLengthIntermittentKm'] / rsc_metrics['flowlineLengthAllKm']:,.2f} %"],
+            "Ephemeral Stream Length": [f"{rsc_metrics['flowlineLengthEphemeralKm']:,.2f} km", f"{rsc_metrics['flowlineLengthEphemeralKm'] * MILES_PER_KM:,.2f} miles", f"{100 * rsc_metrics['flowlineLengthEphemeralKm'] / rsc_metrics['flowlineLengthAllKm']:,.2f} %"],
+            "Canal Length": [f"{rsc_metrics['flowlineLengthCanalsKm']:,.2f} km", f"{rsc_metrics['flowlineLengthCanalsKm'] * MILES_PER_KM:,.2f} miles"],
+            "Total Stream Length": [f"{rsc_metrics['flowlineLengthAllKm']:,.2f} km", f"{rsc_metrics['flowlineLengthAllKm'] * MILES_PER_KM:,.2f} miles"],
+            'Drainage Density (Perennial, km/km^2)': [rsc_metrics['drainageDensityPerennial']],
+            'Drainage Density (Intermittent, km/km^2)': [rsc_metrics['drainageDensityIntermittent']],
+            'Drainage Density (Ephemeral, km/km^2)': [rsc_metrics['drainageDensityEphemeral']],
+            'Drainage Density (Total, km/km^2)': [rsc_metrics['drainageDensityAll']]
+        }
+
+
+#   "flowlineLengthPerennialKm": 16.45200000000001,
+#   "flowlineLengthIntermittentKm": 676.7447454199988,
+#   "flowlineLengthEphemeralKm": 0,
+#   "flowlineLengthCanalsKm": 22.854000000000006,
+#   "flowlineLengthAllKm": 716.4717454199989,
+#   "flowlineFeatureCount": 1021,
+#   "waterbodyAreaSqKm": 2.1280630599999966,
+#   "waterbodyFeatureCount": 103,
+#   "waterbodyLakesPondsAreaSqKm": 1.4379999999999984,
+#   "waterbodyLakesPondsFeatureCount": 102,
+#   "waterbodyReservoirAreaSqKm": 0.69006306,
+#   "waterbodyReservoirFeatureCount": 1,
+#   "waterbodyEstuariesAreaSqKm": 0,
+#   "waterbodyEstuariesFeatureCount": 0,
+#   "waterbodyPlayaAreaSqKm": 0,
+#   "waterbodyPlayaFeatureCount": 0,
+#   "waterbodySwampMarshAreaSqKm": 0,
+#   "waterbodySwampMarshFeatureCount": 0,
+#   "waterbodyIceSnowAreaSqKm": 0,
+#   "waterbodyIceSnowFeatureCount": 0,
+
+        table_wrapper = ET.Element('div', attrib={'class': 'tableWrapper'})
+        self.create_table_from_dict_of_multiple_values(metrics, table_wrapper)
+        section.append(table_wrapper)
 
 
 def get_rme_values(rme_gpkg: str) -> dict:
@@ -329,7 +374,7 @@ def get_vbet_json_metrics(metrics_json_path) -> dict:
 
 
 def get_watershed_boundary_geom(nhd_gpkg: str) -> shape:
-    """Takes the NHD GeoPackage and returns the watershed boundary 
+    """Takes the NHD GeoPackage and returns the watershed boundary
     as a Shapely Geometry
     """
 
