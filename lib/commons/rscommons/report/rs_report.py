@@ -236,6 +236,61 @@ class RSReport():
         el_parent.append(table)
 
     @staticmethod
+    def create_table_from_dict_of_multiple_values(values: dict, el_parent, attrib=None):
+        """Keys go in first col, values in second
+
+        Arguments:
+            values {[type]} - - [description]
+            el_parent {[type]} - - [description]
+            attrib {[type]} - - [description]
+
+        Returns:
+            [type] - - [description]
+        """
+        if attrib is None:
+            attrib = {}
+        if 'class' in attrib:
+            attrib['class'] = 'dictable {}'.format(attrib['class'])
+        else:
+            attrib['class'] = 'dictable'
+
+        table = ET.Element('table', attrib=attrib)
+
+        tbody = ET.Element('tbody')
+        table.append(tbody)
+
+        # # find the dict with the longest len(values)
+        # max_len = max([len(val) for val in values.values()])
+
+        for key, val in values.items():
+
+            tr = ET.Element('tr')
+            tbody.append(tr)
+
+            th = ET.Element('th')
+            th.text = key
+            tr.append(th)
+
+            #  Turn the value into a list if it isn't a list or tuple
+            if not isinstance(val, (list, tuple)):
+                val = [val]
+
+            for v in val:
+                # If the value is a URL, make it a link
+                if isinstance(v, str) and v.startswith("http"):
+                    td = ET.Element('td', attrib={'class': 'text url'})
+                    a = ET.Element('a', attrib={'href': v})
+                    a.text = v
+                    td.append(a)
+                else:
+                    v, class_name = RSReport.format_value(v)
+                    td = ET.Element('td', attrib={'class': class_name})
+                    td.text = v
+                tr.append(td)
+
+        el_parent.append(table)
+
+    @staticmethod
     def create_table_from_dict(values, el_parent, attrib=None):
         """Keys go in first col, values in second
 
