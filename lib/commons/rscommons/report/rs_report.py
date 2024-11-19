@@ -237,15 +237,16 @@ class RSReport():
 
     @staticmethod
     def create_table_from_dict_of_multiple_values(values: dict, el_parent, attrib=None):
-        """Keys go in first col, values in second
+        """
+        Create an HTML table from a dictionary where keys go in the first column and values in the second.
 
         Arguments:
-            values {[type]} - - [description]
-            el_parent {[type]} - - [description]
-            attrib {[type]} - - [description]
+            values (Dict[str, Any]): A dictionary where each key maps to a value or a list of values.
+            el_parent (ET.Element): The parent XML element to which the table will be appended.
+            attrib (Dict[str, str], optional): A dictionary of attributes for the table element. Defaults to None.
 
         Returns:
-            [type] - - [description]
+            None
         """
         if attrib is None:
             attrib = {}
@@ -259,8 +260,8 @@ class RSReport():
         tbody = ET.Element('tbody')
         table.append(tbody)
 
-        # # find the dict with the longest len(values)
-        # max_len = max([len(val) for val in values.values()])
+        # find the dict with the longest len(values)
+        max_len = max([len(val) if isinstance(val, (list, tuple)) else 1 for val in values.values()])
 
         for key, val in values.items():
 
@@ -274,7 +275,7 @@ class RSReport():
             #  Turn the value into a list if it isn't a list or tuple
             if not isinstance(val, (list, tuple)):
                 val = [val]
-
+            val_count = 0
             for v in val:
                 # If the value is a URL, make it a link
                 if isinstance(v, str) and v.startswith("http"):
@@ -286,6 +287,13 @@ class RSReport():
                     v, class_name = RSReport.format_value(v)
                     td = ET.Element('td', attrib={'class': class_name})
                     td.text = v
+                tr.append(td)
+                val_count += 1
+
+            #  Add empty cells to fill out the row
+            for _ in range(max_len - val_count):
+                td = ET.Element('td')
+                td.text = ''
                 tr.append(td)
 
         el_parent.append(table)
