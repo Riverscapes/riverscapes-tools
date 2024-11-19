@@ -31,7 +31,7 @@ from rscommons.vector_ops import copy_feature_class, collect_linestring
 from rscommons.vbet_network import copy_vaa_attributes, join_attributes
 from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions
 from rscommons.moving_window import moving_window_dgo_ids
-
+from rscommons.plotting import xyscatter, box_plot, pie, horizontal_bar
 
 from rme.__version__ import __version__
 from rme.analysis_window import AnalysisLine
@@ -244,16 +244,18 @@ class WSCAReport(RSReport):
         dem_path = os.path.join(rs_context_dir, 'topography', 'dem.tif')
         hipso_curve_path = os.path.join(self.images_dir, 'hypsometric_curve.png')
         hipsometric_curve(hipso_curve_path, rsc_nhd_gpkg, nhd_gpkg_layer, dem_path)
+        self.insert_image(section, hipso_curve_path, 'Hypsometric Curve')
 
+    def insert_image(self, parent, image_path: str, alt_text: str) -> None:
         plot_wrapper = ET.Element('div', attrib={'class': 'plots'})
         relative_dir = os.path.dirname(self.images_dir)
         if os.path.basename(relative_dir) == 'images':
             relative_dir = os.path.dirname(relative_dir)
-        image_src = os.path.relpath(hipso_curve_path, relative_dir)
+        image_src = os.path.relpath(image_path, relative_dir)
 
         img = ET.Element('img', attrib={
             'src': image_src,
-            'alt': 'chart'
+            'alt': alt_text
         })
 
         plot_wrapper.append(img)
@@ -267,39 +269,50 @@ class WSCAReport(RSReport):
             "Perennial Stream Length": [f"{rsc_metrics['flowlineLengthPerennialKm']:,.2f} km", f"{rsc_metrics['flowlineLengthPerennialKm'] * MILES_PER_KM:,.2f} miles", f"{100 * rsc_metrics['flowlineLengthPerennialKm'] / rsc_metrics['flowlineLengthAllKm']:,.2f} %"],
             "Intermittent Stream Length": [f"{rsc_metrics['flowlineLengthIntermittentKm']:,.2f} km", f"{rsc_metrics['flowlineLengthIntermittentKm'] * MILES_PER_KM:,.2f} miles", f"{100 * rsc_metrics['flowlineLengthIntermittentKm'] / rsc_metrics['flowlineLengthAllKm']:,.2f} %"],
             "Ephemeral Stream Length": [f"{rsc_metrics['flowlineLengthEphemeralKm']:,.2f} km", f"{rsc_metrics['flowlineLengthEphemeralKm'] * MILES_PER_KM:,.2f} miles", f"{100 * rsc_metrics['flowlineLengthEphemeralKm'] / rsc_metrics['flowlineLengthAllKm']:,.2f} %"],
-            "Canal Length": [f"{rsc_metrics['flowlineLengthCanalsKm']:,.2f} km", f"{rsc_metrics['flowlineLengthCanalsKm'] * MILES_PER_KM:,.2f} miles"],
+            "Canal Length": [f"{rsc_metrics['flowlineLengthCanalsKm']:,.2f} km", f"{rsc_metrics['flowlineLengthCanalsKm'] * MILES_PER_KM:,.2f} miles", f"{100 * rsc_metrics['flowlineLengthCanalsKm'] / rsc_metrics['flowlineLengthAllKm']:,.2f} %"],
             "Total Stream Length": [f"{rsc_metrics['flowlineLengthAllKm']:,.2f} km", f"{rsc_metrics['flowlineLengthAllKm'] * MILES_PER_KM:,.2f} miles"],
-            'Drainage Density (Perennial, km/km^2)': [rsc_metrics['drainageDensityPerennial']],
-            'Drainage Density (Intermittent, km/km^2)': [rsc_metrics['drainageDensityIntermittent']],
-            'Drainage Density (Ephemeral, km/km^2)': [rsc_metrics['drainageDensityEphemeral']],
-            'Drainage Density (Total, km/km^2)': [rsc_metrics['drainageDensityAll']]
+            'Perennial Drainage Density': [f"{rsc_metrics['drainageDensityPerennial']:,.2f} km/km²"],
+            'Intermittent Drainage Density': [f"{rsc_metrics['drainageDensityIntermittent']:,.2f} km/km²"],
+            'Ephemeral Drainage Density': [f"{rsc_metrics['drainageDensityEphemeral']:,.2f} km/km²"],
+            'Total Drainage Density': [f"{rsc_metrics['drainageDensityAll']:,.2f} km/km²"],
         }
-
-
-#   "flowlineLengthPerennialKm": 16.45200000000001,
-#   "flowlineLengthIntermittentKm": 676.7447454199988,
-#   "flowlineLengthEphemeralKm": 0,
-#   "flowlineLengthCanalsKm": 22.854000000000006,
-#   "flowlineLengthAllKm": 716.4717454199989,
-#   "flowlineFeatureCount": 1021,
-#   "waterbodyAreaSqKm": 2.1280630599999966,
-#   "waterbodyFeatureCount": 103,
-#   "waterbodyLakesPondsAreaSqKm": 1.4379999999999984,
-#   "waterbodyLakesPondsFeatureCount": 102,
-#   "waterbodyReservoirAreaSqKm": 0.69006306,
-#   "waterbodyReservoirFeatureCount": 1,
-#   "waterbodyEstuariesAreaSqKm": 0,
-#   "waterbodyEstuariesFeatureCount": 0,
-#   "waterbodyPlayaAreaSqKm": 0,
-#   "waterbodyPlayaFeatureCount": 0,
-#   "waterbodySwampMarshAreaSqKm": 0,
-#   "waterbodySwampMarshFeatureCount": 0,
-#   "waterbodyIceSnowAreaSqKm": 0,
-#   "waterbodyIceSnowFeatureCount": 0,
 
         table_wrapper = ET.Element('div', attrib={'class': 'tableWrapper'})
         self.create_table_from_dict_of_multiple_values(metrics, table_wrapper)
         section.append(table_wrapper)
+
+        pie_values = [
+            ('Perennial', rsc_metrics['flowlineLengthPerennialKm'], 'Perennial Stream Length'),
+            ('Intermittent', rsc_metrics['flowlineLengthIntermittentKm'], 'Intermittent Stream Length'),
+            ('Ephemeral', rsc_metrics['flowlineLengthEphemeralKm'], 'Ephemeral Stream Length'),
+            ('Canal', rsc_metrics['flowlineLengthCanalsKm'], 'Canal Length')
+        ]
+
+        pie_path = os.path.join(self.images_dir, 'stream_type_pie.png')
+        # col = [self.bratcolors[x[0]] for x in table_data]
+        pie([x[1] for x in pie_values], [x[2] for x in pie_values], 'Stream Length Breakdown', None, pie_path)
+        self.insert_image(section, pie_path, 'Pie Chart')
+
+        self.create_table_from_tuple_list(['Waterbody Type', 'Count', 'Area (km²)', 'Area (mi²)', 'Parecent (%)'], [
+            (
+                'Lakes/Ponds',
+                rsc_metrics['waterbodyLakesPondsFeatureCount'],
+                rsc_metrics['waterbodyLakesPondsAreaSqKm'], rsc_metrics['waterbodyLakesPondsAreaSqKm'] * SQ_MILES_PER_SQ_KM,
+                100 * rsc_metrics['waterbodyLakesPondsAreaSqKm'] / rsc_metrics['waterbodyAreaSqKm']
+            ),
+            (
+                'Reservoirs', rsc_metrics['waterbodyReservoirFeatureCount'], rsc_metrics['waterbodyReservoirAreaSqKm'], rsc_metrics['waterbodyReservoirAreaSqKm']
+                * SQ_MILES_PER_SQ_KM, 100 * rsc_metrics['waterbodyReservoirAreaSqKm'] / rsc_metrics['waterbodyAreaSqKm']),
+            ('Estuaries', rsc_metrics['waterbodyEstuariesFeatureCount'], rsc_metrics['waterbodyEstuariesAreaSqKm'], rsc_metrics['waterbodyEstuariesAreaSqKm']
+             * SQ_MILES_PER_SQ_KM, 100 * rsc_metrics['waterbodyEstuariesAreaSqKm'] / rsc_metrics['waterbodyAreaSqKm']),
+            ('Playa', rsc_metrics['waterbodyPlayaFeatureCount'], rsc_metrics['waterbodyPlayaAreaSqKm'], rsc_metrics['waterbodyPlayaAreaSqKm']
+             * SQ_MILES_PER_SQ_KM, 100 * rsc_metrics['waterbodyPlayaAreaSqKm'] / rsc_metrics['waterbodyAreaSqKm']),
+            ('Swamp/Marsh', rsc_metrics['waterbodySwampMarshFeatureCount'], rsc_metrics['waterbodySwampMarshAreaSqKm'], rsc_metrics['waterbodySwampMarshAreaSqKm']
+             * SQ_MILES_PER_SQ_KM, 100 * rsc_metrics['waterbodySwampMarshAreaSqKm'] / rsc_metrics['waterbodyAreaSqKm']),
+            ('Ice/Snow', rsc_metrics['waterbodyIceSnowFeatureCount'], rsc_metrics['waterbodyIceSnowAreaSqKm'],
+             rsc_metrics['waterbodyIceSnowAreaSqKm'] * SQ_MILES_PER_SQ_KM, 100 * rsc_metrics['waterbodyIceSnowAreaSqKm'] / rsc_metrics['waterbodyAreaSqKm']),
+            ('Total', rsc_metrics['waterbodyFeatureCount'], rsc_metrics['waterbodyAreaSqKm'], rsc_metrics['waterbodyAreaSqKm'] * SQ_MILES_PER_SQ_KM, 100),
+        ], section, None, True)
 
 
 def get_rme_values(rme_gpkg: str) -> dict:
