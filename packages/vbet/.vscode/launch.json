@@ -8,7 +8,7 @@
       "type": "promptString",
       "id": "HUC",
       "description": "What HUC?",
-      "default": "1706030607"
+      "default": "1005001208"
       // "default": "17070202" // North Fork John Day
       // "default": "17060304", // Really small HUC
       // "default": "10190002" // VBET TAKING TOO LONG
