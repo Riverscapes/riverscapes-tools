@@ -37,12 +37,14 @@ from rme.__version__ import __version__
 from rme.analysis_window import AnalysisLine
 
 from .utils.hypsometric_curve import hipsometric_curve
-from .utils.blm_charts import charts
+from .utils.blm_charts import charts, land_ownership_labels
 
 ACRES_PER_SQ_METRE = 0.000247105
 ACRES_PER_SQ_KM = 247.105
 MILES_PER_KM = 0.621371
 SQ_MILES_PER_SQ_KM = 0.386102159
+SQ_MILES_PER_SQ_M = 0.000000386102159
+SQ_KM_PER_SQ_M = 0.000001
 
 
 class WSCAReport(RSReport):
@@ -71,6 +73,7 @@ class WSCAReport(RSReport):
 
         self.physiography(ws_context_section, rs_context_dir, rsc_nhd_gpkg, rsc_metrics_json)
         self.hydrography(ws_context_section, rs_context_dir, rsc_nhd_gpkg, rsc_metrics_json)
+        self.watershed_ownership(ws_context_section, rsc_metrics_json)
 
         table_wrapper2 = ET.Element('div', attrib={'class': 'tableWrapper'})
 
@@ -313,6 +316,34 @@ class WSCAReport(RSReport):
              rsc_metrics['waterbodyIceSnowAreaSqKm'] * SQ_MILES_PER_SQ_KM, 100 * rsc_metrics['waterbodyIceSnowAreaSqKm'] / rsc_metrics['waterbodyAreaSqKm']),
             ('Total', rsc_metrics['waterbodyFeatureCount'], rsc_metrics['waterbodyAreaSqKm'], rsc_metrics['waterbodyAreaSqKm'] * SQ_MILES_PER_SQ_KM, 100),
         ], section, None, True)
+
+    def watershed_ownership(self, parent, rsc_metrics: dict) -> None:
+
+        section = self.section('Ownership', 'Watershed Ownership', parent, level=2)
+
+        allocated_areas = sum([area_m2 for area_m2 in rsc_metrics['ownership'].values()])
+
+        # raw_values = [(land_ownership_labels[owner], area_m2 * SQ_KM_PER_SQ_M, area_m2 * SQ_MILES_PER_SQ_M, 100 * area_m2 / allocated_areas) for owner, area_m2 in rsc_metrics['ownership']]
+        display_Values = [(
+            land_ownership_labels[owner],
+            f"{area_m2 * SQ_KM_PER_SQ_M:,.2f} km²",
+            f"{area_m2 * SQ_MILES_PER_SQ_M:,.2f} mi²",
+            f"{100 * area_m2 / allocated_areas:,.2f} %"
+        ) for owner, area_m2 in rsc_metrics['ownership'].items()]
+
+        self.create_table_from_tuple_list(['Watershed Ownership', 'Area (km²)', 'Area (mi²)', 'Percent (%)'], display_Values, section)
+
+        pie_values = [(land_ownership_labels[owner], area_m2) for owner, area_m2 in rsc_metrics['ownership'].items()]
+        pie_path = os.path.join(self.images_dir, 'ownership_pie.png')
+        pie([x[1] for x in pie_values], [x[0] for x in pie_values], 'Ownership Breakdown', None, pie_path)
+        self.insert_image(section, pie_path, 'Pie Chart')
+
+        keys = list(rsc_metrics['ownership'].keys())
+        values = list(rsc_metrics['ownership'].values())
+        labels = [land_ownership_labels[key] for key in keys]
+        bar_path = os.path.join(self.images_dir, 'ownership_bar.png')
+        horizontal_bar(values, labels, None, 'Area (mi²)',  'Land Ownership Breakdown', bar_path)
+        self.insert_image(section, bar_path, 'Bar Chart')
 
 
 def get_rme_values(rme_gpkg: str) -> dict:
