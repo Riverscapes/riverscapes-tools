@@ -62,9 +62,13 @@ job_types = {
     },
     'brat':
     {
-        'output': 'brat',
-        'upstream': ['rscontext', 'vbet', 'hydro', 'anthro'],
+        'output': 'riverscapes_brat',
+        'upstream': ['rscontext', 'vbet', 'hydro_context', 'anthro'],
     },
+    # 'riverscapes_brat': {
+    #     'output': 'riverscapes_brat',
+    #     'upstream': ['rscontext', 'vbet', 'hydro_context', 'anthro'],
+    # },
     'rme_scraper': {
         'output': 'rs_metric_engine',
         'upstream': ['rs_metric_engine']
