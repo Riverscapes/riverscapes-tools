@@ -31,7 +31,7 @@ from rscommons.vector_ops import copy_feature_class, collect_linestring
 from rscommons.vbet_network import copy_vaa_attributes, join_attributes
 from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions
 from rscommons.moving_window import moving_window_dgo_ids
-from rscommons.raster_buffer_stats import raster_buffer_stats2
+
 
 from rme.__version__ import __version__
 from rme.analysis_window import AnalysisLine
@@ -62,9 +62,9 @@ class WSCAReport(RSReport):
 
         ws_context_section = self.section('WSContext', 'Watershed Context')
 
-        physio_section = self.section('Physiography', 'Physiographic Attributes', ws_context_section)
+        physio_section = self.section('Physiography', 'Physiographic Attributes', ws_context_section, level=2)
 
-        rs_context_dir = os.path.join(input_dir, 'rs_context')
+        rs_context_dir = os.path.join(input_dir, 'rs_context', huc)
         rs_context_json = os.path.join(rs_context_dir, 'rscontext_metrics.json')
         rsc_metrics_json = json.load(open(rs_context_json, encoding='utf-8'))
         rsc_nhd_gpkg = os.path.join(rs_context_dir, 'hydrology', 'nhdplushr.gpkg')
@@ -83,36 +83,34 @@ class WSCAReport(RSReport):
             'Drainage Density (Perennial, km/km^2)': rsc_metrics_json['drainageDensityPerennial'],
             'Drainage Density (Intermittent, km/km^2)': rsc_metrics_json['drainageDensityIntermittent'],
             'Drainage Density (Ephemeral, km/km^2)': rsc_metrics_json['drainageDensityEphemeral'],
-            'Drainage Density (Total, km/km^2)': rsc_metrics_json['drainageDensityAll']
+            'Drainage Density (Total, km/km^2)': rsc_metrics_json['drainageDensityAll'],
+            'Mean Annual Precipitation (mm)': rsc_metrics_json['precipMean'],
+            'Maximum Annual Precipitation (mm)': rsc_metrics_json['precipMaximum'],
+            'Minimum Annual Precipitation (mm)': rsc_metrics_json['precipMinimum']
         }
 
-        vbet_dir = os.path.join(input_dir, 'vbet')
+        vbet_dir = os.path.join(input_dir, 'vbet', huc)
         vbet_json_metrics = os.path.join(vbet_dir, 'vbet_metrics.json')
         vbet_metrics = get_vbet_json_metrics(vbet_json_metrics)
         for key, val in vbet_metrics.items():
             rsc_metrics_dict[key] = val
 
-        rme_dir = os.path.join(input_dir, 'rme')
-        rme_output_gpkg = os.path.join(rme_dir, 'outputs', 'riverscapes_metrics.gpkg')
-        rme_metric_values = get_rme_values(os.path.join(rs_context_dir, rme_output_gpkg))
+        # rme_dir = os.path.join(input_dir, 'rme', huc)
+        # rme_output_gpkg = os.path.join(rme_dir, 'outputs', 'riverscapes_metrics.gpkg')
+        # rme_metric_values = get_rme_values(os.path.join(rs_context_dir, rme_output_gpkg))
 
-        for key, val in rme_metric_values.items():
-            rsc_metrics_dict[key] = val
-
-        precip_stats = get_precipiation_stats(rsc_nhd_gpkg, os.path.join(rs_context_dir, 'climate', 'precipitation.tif'))
-
-        rsc_metrics_dict['Mean Annual Precipitation (mm)'] = precip_stats['Mean']
-        rsc_metrics_dict['Maximum Annual Precipitation (mm)'] = precip_stats['Maximum']
-        rsc_metrics_dict['Minimum Annual Precipitation (mm)'] = precip_stats['Minimum']
+        # for key, val in rme_metric_values.items():
+        #     rsc_metrics_dict[key] = val
 
         self.create_table_from_dict(rsc_metrics_dict, table_wrapper2)
         physio_section.append(table_wrapper2)
 
-        nhd_gpkg = os.path.join(rs_context_dir, 'hydrology', 'nhdplushr.gpkg')
+        return
+
         nhd_gpkg_layer = 'WBDHU10'
         dem_path = os.path.join(rs_context_dir, 'topography', 'dem.tif')
         hipso_curve_path = os.path.join(self.images_dir, 'hypsometric_curve.png')
-        hipsometric_curve(hipso_curve_path, nhd_gpkg, nhd_gpkg_layer, dem_path)
+        hipsometric_curve(hipso_curve_path, rsc_nhd_gpkg, nhd_gpkg_layer, dem_path)
 
         plot_wrapper = ET.Element('div', attrib={'class': 'plots'})
         relative_dir = os.path.dirname(self.images_dir)
@@ -128,8 +126,8 @@ class WSCAReport(RSReport):
         plot_wrapper.append(img)
         ws_context_section.append(plot_wrapper)
 
-        rcat_dir = os.path.join(input_dir, 'rcat')
-        anthro_dir = os.path.join(input_dir, 'anthro')
+        rcat_dir = os.path.join(input_dir, 'rcat', huc)
+        anthro_dir = os.path.join(input_dir, 'anthro', huc)
 
         land_charts = charts(rs_context_dir, vbet_dir, rcat_dir, anthro_dir, rme_dir, self.images_dir)
         for name, path in land_charts.items():
@@ -219,6 +217,44 @@ class WSCAReport(RSReport):
     #     for lyr in outputs:
     #         if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']:
     #             self.layerprint(lyr, section_out, self.project_root)
+
+    def physiography(self, parent, rs_context_dir: str, rsc_nhd_gpkg: str, rsc_metrics_json: dict) -> None:
+
+        physio_section = self.section('Physiography', 'Physiographic Attributes', parent, level=2)
+
+        metrics = {
+            'Catchment Length (km)': rsc_metrics_json['catchmentLength'],
+            'Catchment Area (km^2)': rsc_metrics_json['catchmentArea'],
+            'Catchment Perimeter (km)': rsc_metrics_json['catchmentPerimeter'],
+            'Circularity Ratio': rsc_metrics_json['circularityRatio'],
+            'Elongation Ratio': rsc_metrics_json['elongationRatio'],
+            'Form Factor': rsc_metrics_json['formFactor'],
+            'Catchment Relief (m)': rsc_metrics_json['catchmentRelief'],
+            'Relief Ratio': rsc_metrics_json['reliefRatio']
+        }
+
+        table_wrapper = ET.Element('div', attrib={'class': 'tableWrapper'})
+        self.create_table_from_dict(metrics, table_wrapper)
+        physio_section.append(table_wrapper)
+
+        nhd_gpkg_layer = 'WBDHU10'
+        dem_path = os.path.join(rs_context_dir, 'topography', 'dem.tif')
+        hipso_curve_path = os.path.join(self.images_dir, 'hypsometric_curve.png')
+        hipsometric_curve(hipso_curve_path, rsc_nhd_gpkg, nhd_gpkg_layer, dem_path)
+
+        plot_wrapper = ET.Element('div', attrib={'class': 'plots'})
+        relative_dir = os.path.dirname(self.images_dir)
+        if os.path.basename(relative_dir) == 'images':
+            relative_dir = os.path.dirname(relative_dir)
+        image_src = os.path.relpath(hipso_curve_path, relative_dir)
+
+        img = ET.Element('img', attrib={
+            'src': image_src,
+            'alt': 'chart'
+        })
+
+        plot_wrapper.append(img)
+        parent.append(plot_wrapper)
 
 
 def get_rme_values(rme_gpkg: str) -> dict:
@@ -310,14 +346,6 @@ def get_watershed_boundary_geom(nhd_gpkg: str) -> shape:
 
     # Mask the DEM with the polygon
     return shape(polygon_json)
-
-
-def get_precipiation_stats(nhd_gpkg: str, precip_raster: str) -> float:
-
-    watershed_boundary = get_watershed_boundary_geom(nhd_gpkg)
-
-    stats = raster_buffer_stats2({1: watershed_boundary}, precip_raster)
-    return stats[1]
 
 
 def main():
