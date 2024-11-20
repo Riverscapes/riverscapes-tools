@@ -839,3 +839,30 @@ existing_vegetation_types = {
     9290: "Sparsely vegetated",
     9312: "Open Tree Canopy"
 }
+
+rcat_conversion = {
+    -80: "From Conifer to Riparian",
+    -60: "From Devegetated to Riparian",
+    -50: "From Grass/Shrubland to Riparian",
+    -30: "Non-Riparian Conversion",
+    -20: "Non-Riparian Conversion",
+    10: "Non-Riparian Conversion",
+    17: "Non-Riparian Conversion",
+    18: "Non-Riparian Conversion",
+    19: "Non-Riparian Conversion",
+    20: "Non-Riparian Conversion",
+    30: "Non-Riparian Conversion",
+    38: "Non-Riparian Conversion",
+    47: "Non-Riparian Conversion",
+    48: "Non-Riparian Conversion",
+    49: "Non-Riparian Conversion",
+    0: "Negligible to Minor Veg. Conversion",
+    50: "Conv. To Grass/Shrubland",
+    60: "Devegetation",
+    80: "Conifer Encroachment",
+    97: "Conv. To Invasive",
+    98: "Development",
+    99: "Conv. to Agriculture",
+    100: "Multiple Conv. Types",
+    1000: "Non-Riparian Conversion"
+}
