@@ -9,11 +9,11 @@ from shapely.geometry import shape
 from osgeo import ogr, osr
 
 from rscommons import dotenv
-from rscommons.plotting import horizontal_bar, pie
+from rscommons.plotting import horizontal_bar
 from rscommons.classes.vector_base import get_utm_zone_epsg
 from rscommons.classes.vector_classes import ShapefileLayer, GeopackageLayer
 
-from .blm_classes import existing_vegetation_types
+from .blm_classes import existing_vegetation_types, rcat_conversion
 
 land_owhership_colors = {
     'BIA': '#ffb554',
@@ -71,6 +71,22 @@ existing_vegetation_colors = {
     "Sparsely vegetated": "#646464",
 }
 
+rcat_conversion_colors = {
+    "From Conifer to Riparian": "#f2d1e4",
+    "From Devegetated to Riparian": "#f7d6a7",
+    "From Grass/Shrubland to Riparian": "#d7ebf2",
+    "Non-Riparian Conversion": "#ffffff",
+    "Negligible to Minor Veg. Conversion": "#6dbe45",
+    "Conv. To Grass/Shrubland": "#36c3f2",
+    "Devegetation": "#a6742a",
+    "Conifer Encroachment": "#d74699",
+    "Conv. To Invasive": "#894c9e",
+    "Development": "#ed2024",
+    "Conv. to Agriculture": "#e5e515",
+    "Multiple Conv. Types": "#4f4f4f",
+    "Non-Riparian Conversions": "#f9720b"
+}
+
 
 def charts(rsc_project_folder, vbet_project_folder, rcat_project_folder, anthro_project_folder, rme_project_folder, out_path):
 
@@ -81,7 +97,9 @@ def charts(rsc_project_folder, vbet_project_folder, rcat_project_folder, anthro_
         'Land Use Intensity (BLM)': os.path.join(out_path, 'land_use_intensity_blm.png'),
         'Land Use Intensity (Non-BLM)': os.path.join(out_path, 'land_use_intensity_non_blm.png'),
         'Land Use Type (BLM)': os.path.join(out_path, 'land_use_type_blm.png'),
-        'Land Use Type (Non-BLM)': os.path.join(out_path, 'land_use_type_non_blm.png')
+        'Land Use Type (Non-BLM)': os.path.join(out_path, 'land_use_type_non_blm.png'),
+        'Land Use Conversion (BLM)': os.path.join(out_path, 'land_use_conversion_blm.png'),
+        'Land Use Conversion (Non-BLM)': os.path.join(out_path, 'land_use_conversion_non_blm.png'),
     }
 
     # Get the HUC10 watershed boundary
@@ -260,15 +278,53 @@ def charts(rsc_project_folder, vbet_project_folder, rcat_project_folder, anthro_
     colors = [existing_vegetation_colors.get(l, '#000000') for l in raster_counts_non_blm.keys()]
     horizontal_bar(values, labels, colors, 'Acres', 'Land Use Type (Non-BLM)', output_charts['Land Use Type (Non-BLM)'])
 
-    # Bar or pie chart of LU/LC Type for riverscape (BLM vs. Non-BLM) (We can use RCAT land use types for this.)
     # LU/LC Change - Bar or Pie chart of LU/LC change for non-riverscape (BLM vs. Non-BLM)
-    # LU/LC Change - Bar or Pie chart of LU/LC change for riverscape (BLM vs. Non-BLM)
+    with rasterio.open(os.path.join(rcat_project_folder, 'intermediates', 'conversion.tif')) as raster:
+        no_data = int(raster.nodata)
+        cell_width = raster.transform[0] * rough_units
+        cell_height = abs(raster.transform[4]) * rough_units  # Ensure the cell height is positive
+        cell_area_m2 = cell_width * cell_height
+        cell_area_acres = cell_area_m2 * 0.000247105
 
-    # Bar or pie chart of land use intensity for non-riverscape (BLM vs. non-BLM) ( get this from anthro)
+        shapes_blm = [shape(json.loads(geom_blm.ExportToJson()))]
+        masked, *_ = mask(raster, shapes_blm, crop=True)
+        # get the count of each land use intensity value
+        raster_counts_blm = {}
+        for value in masked.flatten():
+            value = int(value)
+            if value == no_data:
+                continue
+            name = rcat_conversion.get(value, 'Unknown')
+            if name in raster_counts_blm:
+                raster_counts_blm[name] += 1
+            else:
+                raster_counts_blm[name] = 1
 
-    # Bar or pie chart of land use intensity for riverscape (BLM vs. non-BLM) ( get this from anthro)
-    # LU/LC Type -horizontal bar chart for LULC Type for the non-riverscape (BLM vs. Non-BLM)
-    # LU/LC Change - horizontal bar chart of LU/LC change for non-riverscape (BLM vs. Non-BLM)
+        shapes_non_blm = [shape(json.loads(geom_non_blm.ExportToJson()))]
+        masked, *_ = mask(raster, shapes_non_blm, crop=True)
+        # get the count of each land use intensity value
+        raster_counts_non_blm = {}
+        for value in masked.flatten():
+            value = int(value)
+            if value == no_data:
+                continue
+            name = rcat_conversion.get(value, 'Unknown')
+            if name in raster_counts_non_blm:
+                raster_counts_non_blm[name] += 1
+            else:
+                raster_counts_non_blm[name] = 1
+
+    # Land Use Type BLM
+    values = list(value * cell_area_acres for value in raster_counts_blm.values())
+    labels = list(raster_counts_blm.keys())
+    colors = [rcat_conversion_colors.get(l, '#000000') for l in raster_counts_blm.keys()]
+    horizontal_bar(values, labels, colors, 'Acres', 'Land Use Change (BLM)', output_charts['Land Use Conversion (BLM)'])
+
+    # Land Use Type Non-BLM
+    values = list(value * cell_area_acres for value in raster_counts_non_blm.values())
+    labels = list(raster_counts_non_blm.keys())
+    colors = [rcat_conversion_colors.get(l, '#000000') for l in raster_counts_non_blm.keys()]
+    horizontal_bar(values, labels, colors, 'Acres', 'Land Use Change (Non-BLM)', output_charts['Land Use Conversion (Non-BLM)'])
 
     # land use intensity - Horizontal bar chart of land use intensity for the non-riverscape (BLM vs. non-BLM) ( get this from anthro)
     with rasterio.open(os.path.join(anthro_project_folder, 'intermediates', 'lui.tif')) as raster_lui:
