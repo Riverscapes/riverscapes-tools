@@ -208,10 +208,17 @@ def charts(rsc_project_folder, vbet_project_folder, rcat_project_folder, anthro_
     geom_blm.TransformTo(srs)
     geom_non_blm.TransformTo(srs)
 
+    with GeopackageLayer(os.path.join(rsc_project_folder, 'hydrology', 'nhdplushr.gpkg'), 'WBDHU10') as polygon_layer:
+        rough_units = 1 / polygon_layer.rough_convert_metres_to_vector_units(1.0)
+
     # RCAT
     # LU/LC Type - hori for non-riverscape (BLM vs. Non-BLM) (We can use RCAT land use types for this.)
     with rasterio.open(os.path.join(rcat_project_folder, 'inputs', 'existing_veg.tif')) as raster:
         no_data = int(raster.nodata)
+        cell_width = raster.transform[0] * rough_units
+        cell_height = abs(raster.transform[4]) * rough_units  # Ensure the cell height is positive
+        cell_area_m2 = cell_width * cell_height
+        cell_area_acres = cell_area_m2 * 0.000247105
 
         shapes_blm = [shape(json.loads(geom_blm.ExportToJson()))]
         masked, *_ = mask(raster, shapes_blm, crop=True)
@@ -242,16 +249,16 @@ def charts(rsc_project_folder, vbet_project_folder, rcat_project_folder, anthro_
                 raster_counts_non_blm[name] = 1
 
     # Land Use Type BLM
-    values = list(raster_counts_blm.values())
+    values = list(value * cell_area_acres for value in raster_counts_blm.values())
     labels = list(raster_counts_blm.keys())
     colors = [existing_vegetation_colors.get(l, '#000000') for l in raster_counts_blm.keys()]
-    horizontal_bar(values, labels, colors, 'Cell Count', 'Land Use Type (BLM)', output_charts['Land Use Type (BLM)'])
+    horizontal_bar(values, labels, colors, 'Acres', 'Land Use Type (BLM)', output_charts['Land Use Type (BLM)'])
 
     # Land Use Type Non-BLM
-    values = list(raster_counts_non_blm.values())
+    values = list(value * cell_area_acres for value in raster_counts_non_blm.values())
     labels = list(raster_counts_non_blm.keys())
     colors = [existing_vegetation_colors.get(l, '#000000') for l in raster_counts_non_blm.keys()]
-    horizontal_bar(values, labels, colors, 'Cell Count', 'Land Use Type (Non-BLM)', output_charts['Land Use Type (Non-BLM)'])
+    horizontal_bar(values, labels, colors, 'Acres', 'Land Use Type (Non-BLM)', output_charts['Land Use Type (Non-BLM)'])
 
     # Bar or pie chart of LU/LC Type for riverscape (BLM vs. Non-BLM) (We can use RCAT land use types for this.)
     # LU/LC Change - Bar or Pie chart of LU/LC change for non-riverscape (BLM vs. Non-BLM)
@@ -266,6 +273,10 @@ def charts(rsc_project_folder, vbet_project_folder, rcat_project_folder, anthro_
     # land use intensity - Horizontal bar chart of land use intensity for the non-riverscape (BLM vs. non-BLM) ( get this from anthro)
     with rasterio.open(os.path.join(anthro_project_folder, 'intermediates', 'lui.tif')) as raster_lui:
         no_data = int(raster_lui.nodata)
+        cell_width = raster_lui.transform[0] * rough_units
+        cell_height = abs(raster_lui.transform[4]) * rough_units  # Ensure the cell height is positive
+        cell_area_m2 = cell_width * cell_height
+        cell_area_acres = cell_area_m2 * 0.000247105
 
         shapes_blm = [shape(json.loads(geom_blm.ExportToJson()))]
         masked, *_ = mask(raster_lui, shapes_blm, crop=True)
@@ -294,16 +305,16 @@ def charts(rsc_project_folder, vbet_project_folder, rcat_project_folder, anthro_
                 land_use_intensity_counts_non_blm[value] = 1
 
     # BLM land use intensity
-    values = list(land_use_intensity_counts_blm.values())
+    values = list(value * cell_area_acres for value in land_use_intensity_counts_blm.values())
     labels = [land_use_intensity_labels.get(l, l) for l in land_use_intensity_counts_blm.keys()]
     colors = [land_use_intensity_colors.get(l, '#000000') for l in land_use_intensity_counts_blm.keys()]
-    horizontal_bar(values, labels, colors, 'Cell Count', 'Land Use Intensity (BLM)', output_charts['Land Use Intensity (BLM)'])
+    horizontal_bar(values, labels, colors, 'Acres', 'Land Use Intensity (BLM)', output_charts['Land Use Intensity (BLM)'])
 
     # Non-BLM land use intensity
-    values = list(land_use_intensity_counts_non_blm.values())
+    values = list(value * cell_area_acres for value in land_use_intensity_counts_non_blm.values())
     labels = [land_use_intensity_labels.get(l, l) for l in land_use_intensity_counts_non_blm.keys()]
     colors = [land_use_intensity_colors.get(l, '#000000') for l in land_use_intensity_counts_non_blm.keys()]
-    horizontal_bar(values, labels, colors, 'Cell Count', 'Land Use Intensity (Non-BLM)', output_charts['Land Use Intensity (Non-BLM)'])
+    horizontal_bar(values, labels, colors, 'Acres', 'Land Use Intensity (Non-BLM)', output_charts['Land Use Intensity (Non-BLM)'])
 
     # land use intensity change - horizontal bar chart of land use intensity change for the non-riverscape (BLM vs. non-BLM) ( get this from anthro)
 
