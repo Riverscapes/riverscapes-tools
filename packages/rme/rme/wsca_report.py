@@ -37,7 +37,7 @@ from rme.__version__ import __version__
 from rme.analysis_window import AnalysisLine
 
 from .utils.hypsometric_curve import hipsometric_curve
-from .utils.blm_charts import charts, land_ownership_labels
+from .utils.blm_charts import charts as blm_charts, land_ownership_labels
 
 ACRES_PER_SQ_METRE = 0.000247105
 ACRES_PER_SQ_KM = 247.105
@@ -64,9 +64,14 @@ class WSCAReport(RSReport):
 
         safe_makedirs(self.images_dir)
 
+        ##############################################################################################################################
         ws_context_section = self.section('WSContext', 'Watershed Context')
 
         rs_context_dir = os.path.join(input_dir, 'rs_context', huc)
+        rcat_dir = os.path.join(input_dir, 'rcat', huc)
+        anthro_dir = os.path.join(input_dir, 'anthro', huc)
+        vbet_dir = os.path.join(input_dir, 'vbet', huc)
+
         rs_context_json = os.path.join(rs_context_dir, 'rscontext_metrics.json')
         rsc_metrics_json = json.load(open(rs_context_json, encoding='utf-8'))
         rsc_nhd_gpkg = os.path.join(rs_context_dir, 'hydrology', 'nhdplushr.gpkg')
@@ -79,80 +84,10 @@ class WSCAReport(RSReport):
         self.hydrography(ws_context_section, rs_context_dir, rsc_nhd_gpkg, rsc_metrics_json)
         self.watershed_ownership(ws_context_section, rsc_metrics_json)
         self.riverscape_ownership(ws_context_section, rme_metrics)
+        self.land_use(ws_context_section, rs_context_dir, vbet_dir, rcat_dir, anthro_dir, rme_dir)
 
-        table_wrapper2 = ET.Element('div', attrib={'class': 'tableWrapper'})
-
-        rsc_metrics_dict = {
-            'Catchment Length (km)': rsc_metrics_json['catchmentLength'],
-            'Catchment Area (km^2)': rsc_metrics_json['catchmentArea'],
-            'Catchment Perimeter (km)': rsc_metrics_json['catchmentPerimeter'],
-            'Circularity Ratio': rsc_metrics_json['circularityRatio'],
-            'Elongation Ratio': rsc_metrics_json['elongationRatio'],
-            'Form Factor': rsc_metrics_json['formFactor'],
-            'Catchment Relief (m)': rsc_metrics_json['catchmentRelief'],
-            'Relief Ratio': rsc_metrics_json['reliefRatio'],
-            'Drainage Density (Perennial, km/km^2)': rsc_metrics_json['drainageDensityPerennial'],
-            'Drainage Density (Intermittent, km/km^2)': rsc_metrics_json['drainageDensityIntermittent'],
-            'Drainage Density (Ephemeral, km/km^2)': rsc_metrics_json['drainageDensityEphemeral'],
-            'Drainage Density (Total, km/km^2)': rsc_metrics_json['drainageDensityAll'],
-            'Mean Annual Precipitation (mm)': rsc_metrics_json['precipMean'],
-            'Maximum Annual Precipitation (mm)': rsc_metrics_json['precipMaximum'],
-            'Minimum Annual Precipitation (mm)': rsc_metrics_json['precipMinimum']
-        }
-
-        vbet_dir = os.path.join(input_dir, 'vbet', huc)
-        vbet_json_metrics = os.path.join(vbet_dir, 'vbet_metrics.json')
-        vbet_metrics = get_vbet_json_metrics(vbet_json_metrics)
-        for key, val in vbet_metrics.items():
-            rsc_metrics_dict[key] = val
-
-        # rme_dir = os.path.join(input_dir, 'rme', huc)
-        # rme_output_gpkg = os.path.join(rme_dir, 'outputs', 'riverscapes_metrics.gpkg')
-        # rme_metric_values = get_rme_values(os.path.join(rs_context_dir, rme_output_gpkg))
-
-        # for key, val in rme_metric_values.items():
-        #     rsc_metrics_dict[key] = val
-
-        # self.create_table_from_dict(rsc_metrics_dict, table_wrapper2)
-        # physio_section.append(table_wrapper2)
-
-        return
-
-        nhd_gpkg_layer = 'WBDHU10'
-        dem_path = os.path.join(rs_context_dir, 'topography', 'dem.tif')
-        hipso_curve_path = os.path.join(self.images_dir, 'hypsometric_curve.png')
-        hipsometric_curve(hipso_curve_path, rsc_nhd_gpkg, nhd_gpkg_layer, dem_path)
-
-        plot_wrapper = ET.Element('div', attrib={'class': 'plots'})
-        relative_dir = os.path.dirname(self.images_dir)
-        if os.path.basename(relative_dir) == 'images':
-            relative_dir = os.path.dirname(relative_dir)
-        image_src = os.path.relpath(hipso_curve_path, relative_dir)
-
-        img = ET.Element('img', attrib={
-            'src': image_src,
-            'alt': 'chart'
-        })
-
-        plot_wrapper.append(img)
-        ws_context_section.append(plot_wrapper)
-
-        rcat_dir = os.path.join(input_dir, 'rcat', huc)
-        anthro_dir = os.path.join(input_dir, 'anthro', huc)
-
-        land_charts = charts(rs_context_dir, vbet_dir, rcat_dir, anthro_dir, rme_dir, self.images_dir)
-        for name, path in land_charts.items():
-            new_ = ET.Element('div', attrib={'class': 'plots'})
-            image_src = os.path.relpath(path, relative_dir)
-            img = ET.Element('img', attrib={
-                'src': image_src,
-                'alt': 'chart'
-            })
-            plot_wrapper.append(img)
-            ws_context_section.append(plot_wrapper)
-
-        ############################################################################
-        s2_section = self.section('Section2', 'Section 2 - Inventory of Water, Riparian-wetland, and Aquatic Resources')
+        ##############################################################################################################################
+        s2_section = self.section('Section2', 'Aquatic Resources')
 
         s2_intro = ET.Element('p')
         s2_intro.text = f'''The BLM administers the following extent and relative distribution of water,
@@ -162,17 +97,7 @@ class WSCAReport(RSReport):
                                     relative to non-BLM administered resources, strongly controls the BLM\'s ability to maintain or improve the health and productivity of these areas.'''
         s2_section.append(s2_intro)
 
-        # for is_blm in [True, False]:
-        #     peren_stats = get_rme_stats(rme_output_gpkg, is_blm, True, [46006, 55800])
-        #     non_peren_stats = get_rme_stats(rme_output_gpkg, is_blm, False, [46006, 55800])
-
-        #     s2_metrics = {
-        #         'Area of Perennial Riverscape (mi)': peren_stats['PROP_RIP']['raw_area'] * 0.000000386102159,
-        #     }
-
-        #     table_wrapper3 = ET.Element('div', attrib={'class': 'tableWrapper'})
-        #     self.create_table_from_dict(s2_metrics, table_wrapper3)
-        #     s2_section.append(table_wrapper3)
+        self.acquatic_resources(s2_section, vbet_metrics, rme_metrics)
 
         # intermittent_length = vbet_metrics['drainageDensityIntermittent'] * vbet_metrics['catchmentArea'] * 0.621371
         # ephemeral_length = vbet_metrics['drainageDensityEphemeral'] * vbet_metrics['catchmentArea'] * 0.621371
@@ -324,31 +249,16 @@ class WSCAReport(RSReport):
 
     def watershed_ownership(self, parent, rsc_metrics: dict) -> None:
 
-        section = self.section('Ownership', 'Watershed Ownership', parent, level=2)
+        total_area = sum([area_m2 for area_m2 in rsc_metrics['ownership'].values()])
 
-        allocated_areas = sum([area_m2 for area_m2 in rsc_metrics['ownership'].values()])
-
-        # raw_values = [(land_ownership_labels[owner], area_m2 * SQ_KM_PER_SQ_M, area_m2 * SQ_MILES_PER_SQ_M, 100 * area_m2 / allocated_areas) for owner, area_m2 in rsc_metrics['ownership']]
-        display_Values = [(
+        display_data = [(
             land_ownership_labels[owner],
-            f"{area_m2 * SQ_KM_PER_SQ_M:,.2f} km²",
-            f"{area_m2 * SQ_MILES_PER_SQ_M:,.2f} mi²",
-            f"{100 * area_m2 / allocated_areas:,.2f} %"
-        ) for owner, area_m2 in rsc_metrics['ownership'].items()]
+            area * SQ_KM_PER_SQ_M,
+            area * SQ_MILES_PER_SQ_M,
+            100 * area / total_area,
+        ) for owner, area in rsc_metrics['ownership'].items()]
 
-        self.create_table_from_tuple_list(['Watershed Ownership', 'Area (km²)', 'Area (mi²)', 'Percent (%)'], display_Values, section)
-
-        pie_values = [(land_ownership_labels[owner], area_m2) for owner, area_m2 in rsc_metrics['ownership'].items()]
-        pie_path = os.path.join(self.images_dir, 'ownership_pie.png')
-        pie([x[1] for x in pie_values], [x[0] for x in pie_values], 'Ownership Breakdown', None, pie_path)
-        self.insert_image(section, pie_path, 'Pie Chart')
-
-        keys = list(rsc_metrics['ownership'].keys())
-        values = list(rsc_metrics['ownership'].values())
-        labels = [land_ownership_labels[key] for key in keys]
-        bar_path = os.path.join(self.images_dir, 'ownership_bar.png')
-        horizontal_bar(values, labels, None, 'Area (mi²)',  'Land Ownership Breakdown', bar_path)
-        self.insert_image(section, bar_path, 'Bar Chart')
+        self._ownership_section(parent, 'Watershed Ownership', display_data)
 
     def riverscape_ownership(self, parent, rme_metrics) -> None:
 
@@ -387,18 +297,49 @@ class WSCAReport(RSReport):
             f'{percent:,.2f} %'
         ) for owner, areakm, areami, percent in data]
 
-        self.create_table_from_tuple_list([title, 'Area (km²)', 'Area (mi²)', 'Percent (%)'], table_data, section)
+        sorted_table_data = sorted(table_data, key=lambda x: x[0])
+        sorted_raw_data = sorted(data, key=lambda x: x[0])
+
+        self.create_table_from_tuple_list([title, 'Area (km²)', 'Area (mi²)', 'Percent (%)'], sorted_table_data, section)
+
+        # sorted_pie_data = sorted(data, key=lambda x: x[0])
 
         pie_path = os.path.join(self.images_dir, f'{title_ns}_pie.png')
-        pie([x[1] for x in data], [x[0] for x in data], f'{title} Breakdown', None, pie_path)
+        pie([x[1] for x in sorted_raw_data], [x[0] for x in sorted_raw_data], f'{title} Breakdown', None, pie_path)
         self.insert_image(section, pie_path, 'Pie Chart')
 
-        keys = [item[0] for item in data]
-        values = [item[1] for item in data]
+        keys = [item[0] for item in sorted_raw_data]
+        values = [item[1] for item in sorted_raw_data]
         labels = [key for key in keys]
         bar_path = os.path.join(self.images_dir, f'{title_ns}_bar.png')
         horizontal_bar(values, labels, None, 'Area (mi²)',  f'{title} Breakdown', bar_path)
         self.insert_image(section, bar_path, 'Bar Chart')
+
+    def land_use(self, parent, rs_context_dir: str, vbet_dir: str, rcat_dir: str, anthro_dir: str, rme_dir: str) -> None:
+
+        land_charts = blm_charts(rs_context_dir, vbet_dir, rcat_dir, anthro_dir, rme_dir, self.images_dir)
+        # Kelly produces all the charts in one dictionary. Break them into categories
+
+        for category in ['Land Use Intensity', 'Land Use Type']:
+            section = self.section(category.replace(' ', ''), category, parent, level=2)
+            for chart_name, chart_path in land_charts.items():
+                if category in chart_name:
+                    self.insert_image(section, chart_path, chart_name)
+
+    def acquatic_resources(self, parent, vbet_metrics, rme_metrics) -> None:
+
+        intermittent_length = vbet_metrics['drainageDensityIntermittent'] * vbet_metrics['catchmentArea'] * 0.621371
+        ephemeral_length = vbet_metrics['drainageDensityEphemeral'] * vbet_metrics['catchmentArea'] * 0.621371
+
+        s2_metrics = {
+            'Valley Bottom Area (acres)': rme_stats[] vbet_metrics['riverscapeArea'] * ACRES_PER_SQ_KM,
+            'Perennial Stream length (mi)': vbet_metrics['drainageDensityPerennial'] * vbet_metrics['catchmentArea'] * 0.621371,  # km to mi
+            'Non-Perennial Stream length (mi)': intermittent_length + ephemeral_length,
+            'Area of Perennial Riverscape (mi)': peren_   # Sum segment_area for DGOs filtered for FCode 46006 + 55800 (sq m)
+            'Area of Non-Perennial Riverscape (mi)':  # Sum segment_area for DGOs filtered NOT (46006 + 55800) (sq m)
+            'Riparian area in perennial riverscape (acres)': sum(PROP_RIP * segment_area) filtered by FCode(sq m)
+            'Riparian area in non-perennial riverscape (acres)': sum(PROP_RIP * segment_area) filtered by NOT FCode(sq m),
+        }
 
 
 def get_rme_values(rme_gpkg: str) -> dict:
