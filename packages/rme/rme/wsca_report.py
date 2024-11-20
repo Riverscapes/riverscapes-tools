@@ -5,7 +5,7 @@ import traceback
 import argparse
 import sqlite3
 import json
-from collections import Counter
+from collections import Counter, defaultdict
 from xml.etree import ElementTree as ET
 from shapely.geometry import shape
 from rscommons import Logger, dotenv, ModelConfig, RSReport, RSProject
@@ -71,9 +71,14 @@ class WSCAReport(RSReport):
         rsc_metrics_json = json.load(open(rs_context_json, encoding='utf-8'))
         rsc_nhd_gpkg = os.path.join(rs_context_dir, 'hydrology', 'nhdplushr.gpkg')
 
+        rme_dir = os.path.join(input_dir, 'rme', huc)
+        rme_metrics_json = os.path.join(rme_dir, 'rme_metrics.json')
+        rme_metrics = json.load(open(rme_metrics_json, encoding='utf-8'))
+
         self.physiography(ws_context_section, rs_context_dir, rsc_nhd_gpkg, rsc_metrics_json)
         self.hydrography(ws_context_section, rs_context_dir, rsc_nhd_gpkg, rsc_metrics_json)
         self.watershed_ownership(ws_context_section, rsc_metrics_json)
+        self.riverscape_ownership(ws_context_section, rme_metrics)
 
         table_wrapper2 = ET.Element('div', attrib={'class': 'tableWrapper'})
 
@@ -345,7 +350,55 @@ class WSCAReport(RSReport):
         horizontal_bar(values, labels, None, 'Area (mi²)',  'Land Ownership Breakdown', bar_path)
         self.insert_image(section, bar_path, 'Bar Chart')
 
-    def riverscape_ownership(self, , parent, rme_gpkg: str) -> None:
+    def riverscape_ownership(self, parent, rme_metrics) -> None:
+
+        # Use a defaultdict to aggregate areas by owner
+        area_sums = defaultdict(float)
+        total_area = 0.0
+
+        for item in rme_metrics['rme']["ownership"]:
+            area_sums[item["owner"] if item["owner"] != 'Unknown' else 'UND'] += item["area"]
+            total_area += item["area"]
+
+        # Convert defaultdict to a regular dictionary for display
+        area_sums = dict(area_sums)
+
+        # Output the results
+        display_data = [(
+            land_ownership_labels[owner],
+            area * SQ_KM_PER_SQ_M,
+            area * SQ_MILES_PER_SQ_M,
+            100 * area / total_area,
+        ) for owner, area in area_sums.items()]
+
+        self._ownership_section(parent, 'Riverscape Ownership', display_data)
+
+    def _ownership_section(self, parent, title, data) -> None:
+
+        title_ns = title.replace(' ', '')
+        section = self.section(title_ns, title, parent, level=2)
+
+        total_area = sum([x[1] for x in data])
+
+        table_data = [(
+            owner,
+            f'{areakm:,.2f} km²',
+            f'{areami:,.2f} mi²',
+            f'{percent:,.2f} %'
+        ) for owner, areakm, areami, percent in data]
+
+        self.create_table_from_tuple_list([title, 'Area (km²)', 'Area (mi²)', 'Percent (%)'], table_data, section)
+
+        pie_path = os.path.join(self.images_dir, f'{title_ns}_pie.png')
+        pie([x[1] for x in data], [x[0] for x in data], f'{title} Breakdown', None, pie_path)
+        self.insert_image(section, pie_path, 'Pie Chart')
+
+        keys = [item[0] for item in data]
+        values = [item[1] for item in data]
+        labels = [key for key in keys]
+        bar_path = os.path.join(self.images_dir, f'{title_ns}_bar.png')
+        horizontal_bar(values, labels, None, 'Area (mi²)',  f'{title} Breakdown', bar_path)
+        self.insert_image(section, bar_path, 'Bar Chart')
 
 
 def get_rme_values(rme_gpkg: str) -> dict:
