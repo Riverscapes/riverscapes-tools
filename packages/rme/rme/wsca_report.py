@@ -345,6 +345,8 @@ class WSCAReport(RSReport):
         horizontal_bar(values, labels, None, 'Area (mi²)',  'Land Ownership Breakdown', bar_path)
         self.insert_image(section, bar_path, 'Bar Chart')
 
+    def riverscape_ownership(self, , parent, rme_gpkg: str) -> None:
+
 
 def get_rme_values(rme_gpkg: str) -> dict:
 
