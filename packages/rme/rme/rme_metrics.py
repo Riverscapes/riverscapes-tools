@@ -57,11 +57,11 @@ def rme_metrics(project_path, vbet_proj_path):
                 ELSE 'Unknown'
             END AS flowType,
             COALESCE(SUM(segment_area), 0) area,
-            COALESCE(SUM(centerline_length), 0) length,
+            COALESCE(SUM(centerline_length), 0) length
         FROM
             rme_dgos
         GROUP BY
-            Ownership, FlowType""")
+            owner, flowType""")
 
         rme_metrics['ownership'] = [{'owner': row['owner'], 'flowTpe': row['flowType'], 'area': row['area'], 'length': row['length']} for row in curs.fetchall()]
 
@@ -69,23 +69,7 @@ def rme_metrics(project_path, vbet_proj_path):
         decimal_fields = [row['name'] for row in curs.fetchall()]
 
         for owner_name, owner_clause in owner_clauses.items():
-
-            group_by = []
-            if owner_name == "'All'":
-                owner_field = 'All'
-            elif owner_name == 'Federal':
-                owner_field = "'Federal'"
-                group_by.append('Ownership')
-            else:
-                owner_field = "COALESCE(rme_dgo_ownership, 'Unknown')"
-                group_by.append('Ownership')
-
             for flow_name, flow_clause in flow_type_clauses.items():
-
-                if flow_type != 'All':
-                    flow_type_where_clause = f"AND FCode IN ({','.join([str(x) for x in PERENNIAL])})"
-                    group_by.append('FlowType')
-
                 for field in decimal_fields:
 
                     curs.execute(f"""
@@ -101,41 +85,49 @@ def rme_metrics(project_path, vbet_proj_path):
                             {owner_clause}
                             AND {flow_clause}
                     """)
+                    row = curs.fetchone()
+                    if row['Tally'] > 0:
+                        rme_metrics[field.replace('_', '')] = {
+                            'owner': owner_name,
+                            'flowType': flow_name,
+                            'min': row['MinValue'],
+                            'max': row['MaxValue'],
+                            'avg': row['AvgValue'],
+                            'count': row['Tally'],
+                            'sum': row['SumValue']
+                        }
 
-        curs.execute("SELECT name, type FROM pragma_table_info('your_table_name') WHERE LOWER(type) IN ('integer', 'int', 'smallint', 'tinyint', 'bigint', 'unsigned big int')")
-        integer_fields = [row['name'] for row in curs.fetchall()]
+        # curs.execute("SELECT name, type FROM pragma_table_info('your_table_name') WHERE LOWER(type) IN ('integer', 'int', 'smallint', 'tinyint', 'bigint', 'unsigned big int')")
+        # integer_fields = [row['name'] for row in curs.fetchall()]
 
+        with open(os.path.join(vbet_proj_path, 'vbet_metrics.json'), encoding='utf8') as json_file:
+            metrics = json.load(json_file)
 
-")
+        metrics['rme'] = rme_metrics
 
-    with open(os.path.join(vbet_proj_path, 'vbet_metrics.json'), encoding='utf8') as json_file:
-        metrics= json.load(json_file)
+        with open(os.path.join(project_path, 'rme_metrics.json'), 'w', encoding='utf8') as f:
+            json.dump(metrics, f, indent=2)
 
-    metrics['rme']= rme_metrics
-
-    with open(os.path.join(project_path, 'rme_metrics.json'), 'w', encoding='utf8') as f:
-        json.dump(metrics, f, indent=2)
-
-    # proj = RSProject(None, os.path.join(project_path, 'project.rs.xml'))
-    # datasets_node = proj.XMLBuilder.find('Realizations').find('Realization').find('Datasets')
-    # proj.add_dataset(datasets_node, os.path.join(project_path, 'rme_metrics.json'), RSLayer('Metrics', 'Metrics', 'File', 'rme_metrics.json'), 'File')
-    # proj.XMLBuilder.write()
+        # proj = RSProject(None, os.path.join(project_path, 'project.rs.xml'))
+        # datasets_node = proj.XMLBuilder.find('Realizations').find('Realization').find('Datasets')
+        # proj.add_dataset(datasets_node, os.path.join(project_path, 'rme_metrics.json'), RSLayer('Metrics', 'Metrics', 'File', 'rme_metrics.json'), 'File')
+        # proj.XMLBuilder.write()
 
 
 def dict_factory(cursor, row):
-    d= {}
+    d = {}
     for idx, col in enumerate(cursor.description):
-        d[col[0]]= row[idx]
+        d[col[0]] = row[idx]
     return d
 
 
 def main():
     """Run this method to generate the summary JSON metrics for the RME project."""
 
-    parser= argparse.ArgumentParser()
+    parser = argparse.ArgumentParser()
     parser.add_argument('project_path', help='Path to project directory', type=str)
     parser.add_argument('vbet_path', help='Path to VBET project directory', type=str)
-    args= dotenv.parse_args_env(parser)
+    args = dotenv.parse_args_env(parser)
 
     try:
         rme_metrics(args.project_path, args.vbet_path)
