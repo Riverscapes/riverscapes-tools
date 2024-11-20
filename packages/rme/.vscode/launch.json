@@ -65,6 +65,17 @@
       ]
     },
     {
+      "name": "Write RME Metrics",
+      "type": "python",
+      "request": "launch",
+      "module": "rme.rme_metrics",
+      "console": "integratedTerminal",
+      "args": [
+        "{env:DATA_ROOT}/rme/${input:HUC}",
+        "{env:DATA_ROOT}/vbet/${input:HUC}",
+      ]
+    },
+    {
       "name": "Write Watershed Condition Assessment Report",
       "type": "python",
       "request": "launch",
