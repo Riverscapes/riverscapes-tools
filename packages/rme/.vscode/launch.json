@@ -42,10 +42,10 @@
         //"{env:DATA_ROOT}/rs_context/${input:HUC}/transportation/railways.shp",
         //"{env:DATA_ROOT}/rs_context/${input:HUC}/ecoregions/ecoregions.shp",
         "{env:DATA_ROOT}/rme/${input:HUC}",
-        // "--confinement_dgos", "{env:DATA_ROOT}/confinement/${input:HUC}/outputs/confinement.gpkg/confinement_dgos",
+        "--confinement_dgos", "{env:DATA_ROOT}/confinement/${input:HUC}/outputs/confinement.gpkg/confinement_dgos",
         "--anthro_dgos", "{env:DATA_ROOT}/anthro/${input:HUC}/outputs/anthro.gpkg/vwDgos",
         "--rcat_dgos", "{env:DATA_ROOT}/rcat/${input:HUC}/outputs/rcat.gpkg/vwDgos",
-        // "--brat_dgos", "{env:DATA_ROOT}/brat/${input:HUC}/outputs/brat.gpkg/vwDgos",
+        "--brat_dgos", "{env:DATA_ROOT}/brat/${input:HUC}/outputs/brat.gpkg/vwDgos",
         //"--epsg", "5070",
         //"--meta",
         "--verbose"
