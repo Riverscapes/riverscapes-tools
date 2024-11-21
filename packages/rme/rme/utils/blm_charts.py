@@ -88,7 +88,7 @@ rcat_conversion_colors = {
 }
 
 
-def charts(rsc_project_folder, vbet_project_folder, rcat_project_folder, anthro_project_folder, rme_project_folder, out_path):
+def charts(rsc_project_folder, vbet_project_folder, rcat_project_folder, anthro_project_folder, rme_project_folder, out_path) -> dict:
 
     output_charts = {
         'Land Ownership by Area (Entire Watershed)': os.path.join(out_path, 'land_ownership_by_area.png'),
@@ -377,6 +377,131 @@ def charts(rsc_project_folder, vbet_project_folder, rcat_project_folder, anthro_
     return output_charts
 
 
+def vegetation_charts(rcat_project_folder, out_path) -> dict:
+    """
+    Generates vegetation charts for a given RCAT project folder and saves them to the specified output path.
+    Args:
+        rcat_project_folder (str): The path to the RCAT project folder containing input data.
+        out_path (str): The path where the output charts will be saved.
+    Returns:
+        dict: A dictionary containing the paths to the generated charts
+    """
+
+    output_charts = {
+        'Land Use Type (Riverscapes)': os.path.join(out_path, 'land_use_type_riverscapes.png'),
+        'Historic Land Use Type (Riverscapes)': os.path.join(out_path, 'historic_land_use_type_riverscapes.png')
+    }
+
+    # read the historic veg.clr file next to this file
+    historic_vegetation_labels, historic_vegetation_colors = read_clr_file(os.path.join(os.path.dirname(__file__), 'historic_veg.clr'))
+
+    # Get the riverscape (vbet-dgo polygons) vs non-riverscape areas
+    with GeopackageLayer(os.path.join(rcat_project_folder, 'inputs', 'inputs.gpkg'), 'dgo') as dgo_layer:
+        srs = dgo_layer.ogr_layer.GetSpatialRef()
+        rough_units = 1 / dgo_layer.rough_convert_metres_to_vector_units(1.0)
+
+        # geom_riverscape = ogr.Geometry(ogr.wkbMultiPolygon)
+        # geom_riverscape.AssignSpatialReference(srs)
+        shapes_riverscape = []
+        for feature, *_ in dgo_layer.iterate_features():
+            feature: ogr.Feature
+            geom: ogr.Geometry = feature.GetGeometryRef()
+            if geom.IsEmpty() or geom.GetArea() == 0.0:
+                continue
+            if not geom.IsValid():
+                geom.MakeValid()
+            shapes_riverscape.append(shape(json.loads(geom.ExportToJson())))
+
+            # if geom.GetGeometryType() == ogr.wkbMultiPolygon:
+            #     for g in geom:
+            #         geom_riverscape.AddGeometry(g.Clone())
+            # else:
+            #     geom_riverscape.AddGeometry(geom.Clone())
+            # if not geom_riverscape.IsValid():
+            #     geom_riverscape.MakeValid()
+
+    # RCAT
+    # LU/LC Type - hori for riverscape (We can use RCAT land use types for this.)
+    with rasterio.open(os.path.join(rcat_project_folder, 'inputs', 'existing_veg.tif')) as raster:
+        no_data = int(raster.nodata)
+        cell_width = raster.transform[0] * rough_units
+        cell_height = abs(raster.transform[4]) * rough_units  # Ensure the cell height is positive
+        cell_area_m2 = cell_width * cell_height
+        cell_area_acres = cell_area_m2 * 0.000247105
+
+        masked, *_ = mask(raster, shapes_riverscape, crop=True)
+        # get the count of each land use intensity value
+        raster_counts = {}
+        for value in masked.flatten():
+            value = int(value)
+            if value == no_data:
+                continue
+            name = existing_vegetation_types.get(value, 'Unknown')
+            if name in raster_counts:
+                raster_counts[name] += 1
+            else:
+                raster_counts[name] = 1
+
+    # Land Use Type Riverscape
+    values = list(value * cell_area_acres for value in raster_counts.values())
+    labels = list(str(key) for key in raster_counts)
+    colors = [existing_vegetation_colors.get(l, '#000000') for l in raster_counts.keys()]
+    horizontal_bar(values, labels, colors, 'Acres', 'Land Use Type (Riverscapes)', output_charts['Land Use Type (Riverscapes)'])
+
+    # BPS Historic Land Use Type - hori for riverscape (We can use RCAT land use types for this.)
+    with rasterio.open(os.path.join(rcat_project_folder, 'inputs', 'historic_veg.tif')) as raster:
+        no_data = int(raster.nodata)
+        cell_width = raster.transform[0] * rough_units
+        cell_height = abs(raster.transform[4]) * rough_units  # Ensure the cell height is positive
+        cell_area_m2 = cell_width * cell_height
+        cell_area_acres = cell_area_m2 * 0.000247105
+
+        masked, *_ = mask(raster, shapes_riverscape, crop=True)
+        # get the count of each land use intensity value
+        raster_counts = {}
+        for value in masked.flatten():
+            value = int(value)
+            if value == no_data:
+                continue
+            name = value
+            # name = rcat_conversion.get(value, 'Unknown')
+            if name in raster_counts:
+                raster_counts[name] += 1
+            else:
+                raster_counts[name] = 1
+
+    # Historic Land Use Type Riverscape
+    values = list(value * cell_area_acres for value in raster_counts.values())
+    labels = list(historic_vegetation_labels.get(str(key), 'Unknown') for key in raster_counts)
+    colors = [historic_vegetation_colors.get(str(l), '#000000') for l in raster_counts]
+    horizontal_bar(values, labels, colors, 'Acres', 'Historic Land Use Type (Riverscapes)', output_charts['Historic Land Use Type (Riverscapes)'])
+
+    return output_charts
+
+
+def read_clr_file(file_path):
+
+    # clr file is space-delimited text with the following format for each line: key, r, g, b, alpha and description (which can have spaces)
+    # need to output two dicts, one with the key: description and the other with the key: #rrggbb
+
+    with open(file_path, 'r') as f:
+        lines = f.readlines()
+
+    clr_dict = {}
+    clr_hex_dict = {}
+    for line in lines:
+        parts = line.strip().split(' ')
+        key = parts[0]
+        r = int(parts[1])
+        g = int(parts[2])
+        b = int(parts[3])
+        _a = int(parts[4])
+        description = ' '.join(parts[5:])
+        clr_dict[key] = description
+        clr_hex_dict[key] = f'#{r:02x}{g:02x}{b:02x}'
+    return clr_dict, clr_hex_dict
+
+
 def main():
     parser = argparse.ArgumentParser(description='Calculate hypsometric curve from a DEM within a polygon')
     parser.add_argument('riverscapes_context_project_folder', type=str, help='Path to the riverscapes context project folder')
@@ -387,7 +512,11 @@ def main():
     parser.add_argument('output_path', type=str, help='Path to save the plots')
     args = dotenv.parse_args_env(parser)
 
-    out_charts = charts(args.riverscapes_context_project_folder, args.vbet_project_folder, args.rcat_project_folder, args.ahthro_project_folder, args.rme_project_folder, args.output_path)
+    # out_charts = charts(args.riverscapes_context_project_folder, args.vbet_project_folder, args.rcat_project_folder, args.ahthro_project_folder, args.rme_project_folder, args.output_path)
+    veg_charts = vegetation_charts(args.rcat_project_folder, args.output_path)
+
+    # add the vegetation charts to the output charts
+    # out_charts.update(veg_charts)
 
 
 if __name__ == '__main__':
