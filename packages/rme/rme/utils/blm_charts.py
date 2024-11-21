@@ -9,7 +9,7 @@ from shapely.geometry import shape
 from osgeo import ogr, osr
 
 from rscommons import dotenv
-from rscommons.plotting import horizontal_bar
+from rscommons.plotting import horizontal_bar, vertical_bar
 from rscommons.classes.vector_base import get_utm_zone_epsg
 from rscommons.classes.vector_classes import ShapefileLayer, GeopackageLayer
 
@@ -388,8 +388,8 @@ def vegetation_charts(rcat_project_folder, out_path) -> dict:
     """
 
     output_charts = {
-        'Land Use Type (Riverscapes)': os.path.join(out_path, 'land_use_type_riverscapes.png'),
-        'Historic Land Use Type (Riverscapes)': os.path.join(out_path, 'historic_land_use_type_riverscapes.png')
+        'LANDFIRE Existing Vegetation Type (EVT)': os.path.join(out_path, 'evt_riverscapes.png'),
+        'LANDFIRE Biophysical Setting (BPS)': os.path.join(out_path, 'bps_riverscapes.png')
     }
 
     # read the historic veg.clr file next to this file
@@ -446,7 +446,8 @@ def vegetation_charts(rcat_project_folder, out_path) -> dict:
     values = list(value * cell_area_acres for value in raster_counts.values())
     labels = list(str(key) for key in raster_counts)
     colors = [existing_vegetation_colors.get(l, '#000000') for l in raster_counts.keys()]
-    horizontal_bar(values, labels, colors, 'Acres', 'Land Use Type (Riverscapes)', output_charts['Land Use Type (Riverscapes)'])
+    # horizontal_bar(values, labels, colors, 'Acres', 'LANDFIRE Existing Vegetation Type (EVT)', output_charts['LANDFIRE Existing Vegetation Type (EVT)'])
+    vertical_bar(values, labels, 'Acres of Riverscape', 'LANDFIRE Existing Vegetation Type (EVT)', output_charts['LANDFIRE Existing Vegetation Type (EVT)'], colors)
 
     # BPS Historic Land Use Type - hori for riverscape (We can use RCAT land use types for this.)
     with rasterio.open(os.path.join(rcat_project_folder, 'inputs', 'historic_veg.tif')) as raster:
@@ -474,7 +475,8 @@ def vegetation_charts(rcat_project_folder, out_path) -> dict:
     values = list(value * cell_area_acres for value in raster_counts.values())
     labels = list(historic_vegetation_labels.get(str(key), 'Unknown') for key in raster_counts)
     colors = [historic_vegetation_colors.get(str(l), '#000000') for l in raster_counts]
-    horizontal_bar(values, labels, colors, 'Acres', 'Historic Land Use Type (Riverscapes)', output_charts['Historic Land Use Type (Riverscapes)'])
+    # horizontal_bar(values, labels, colors, 'Acres', 'Historic Land Use Type (Riverscapes)', output_charts['Historic Land Use Type (Riverscapes)'])
+    vertical_bar(values, labels, 'Acres of Riverscape', 'LANDFIRE Biophysical Setting (BPS)', output_charts['LANDFIRE Biophysical Setting (BPS)'], colors)
 
     return output_charts
 
