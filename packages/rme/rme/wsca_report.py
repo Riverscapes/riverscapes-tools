@@ -10,10 +10,11 @@ from xml.etree import ElementTree as ET
 from shapely.geometry import shape
 from rscommons import Logger, dotenv, ModelConfig, RSReport, RSProject
 from rscommons.util import safe_makedirs
-from rscommons.plotting import box_plot, vertical_bar
+from rscommons.plotting import box_plot, vertical_bar, histogram
 from rme.__version__ import __version__
 import time
 from collections import Counter
+import matplotlib.pyplot as plt
 
 from osgeo import ogr, osr
 from osgeo import gdal
@@ -45,6 +46,7 @@ MILES_PER_KM = 0.621371
 SQ_MILES_PER_SQ_KM = 0.386102159
 SQ_MILES_PER_SQ_M = 0.000000386102159
 SQ_KM_PER_SQ_M = 0.000001
+MILES_PER_M = 0.000621371
 
 
 class WSCAReport(RSReport):
@@ -77,6 +79,7 @@ class WSCAReport(RSReport):
         rsc_nhd_gpkg = os.path.join(rs_context_dir, 'hydrology', 'nhdplushr.gpkg')
 
         rme_dir = os.path.join(input_dir, 'rme', huc)
+        rme_gpkg = os.path.join(rme_dir, 'outputs', 'riverscapes_metrics.gpkg')
         rme_metrics_json = os.path.join(rme_dir, 'rme_metrics.json')
         rme_metrics = json.load(open(rme_metrics_json, encoding='utf-8'))
 
@@ -97,7 +100,12 @@ class WSCAReport(RSReport):
                                     relative to non-BLM administered resources, strongly controls the BLM\'s ability to maintain or improve the health and productivity of these areas.'''
         s2_section.append(s2_intro)
 
-        self.acquatic_resources(s2_section, vbet_metrics, rme_metrics)
+        self.acquatic_resources(s2_section, rme_metrics)
+
+        biophysical_section = self.section('Biophysical', 'Biophysical Settings')
+        self.hydro_geomorphic(biophysical_section, rme_metrics)
+        self.slope_analysis(biophysical_section, rme_gpkg)
+        self.stream_order(biophysical_section, rme_gpkg)
 
         # intermittent_length = vbet_metrics['drainageDensityIntermittent'] * vbet_metrics['catchmentArea'] * 0.621371
         # ephemeral_length = vbet_metrics['drainageDensityEphemeral'] * vbet_metrics['catchmentArea'] * 0.621371
@@ -326,20 +334,131 @@ class WSCAReport(RSReport):
                 if category in chart_name:
                     self.insert_image(section, chart_path, chart_name)
 
-    def acquatic_resources(self, parent, vbet_metrics, rme_metrics) -> None:
+    def acquatic_resources(self, parent, rme_metrics) -> None:
 
-        intermittent_length = vbet_metrics['drainageDensityIntermittent'] * vbet_metrics['catchmentArea'] * 0.621371
-        ephemeral_length = vbet_metrics['drainageDensityEphemeral'] * vbet_metrics['catchmentArea'] * 0.621371
+        metrics = []
 
-        s2_metrics = {
-            'Valley Bottom Area (acres)': rme_stats[] vbet_metrics['riverscapeArea'] * ACRES_PER_SQ_KM,
-            'Perennial Stream length (mi)': vbet_metrics['drainageDensityPerennial'] * vbet_metrics['catchmentArea'] * 0.621371,  # km to mi
-            'Non-Perennial Stream length (mi)': intermittent_length + ephemeral_length,
-            'Area of Perennial Riverscape (mi)': peren_   # Sum segment_area for DGOs filtered for FCode 46006 + 55800 (sq m)
-            'Area of Non-Perennial Riverscape (mi)':  # Sum segment_area for DGOs filtered NOT (46006 + 55800) (sq m)
-            'Riparian area in perennial riverscape (acres)': sum(PROP_RIP * segment_area) filtered by FCode(sq m)
-            'Riparian area in non-perennial riverscape (acres)': sum(PROP_RIP * segment_area) filtered by NOT FCode(sq m),
-        }
+        blm_area = sum([result['sum'] for result in rme_metrics['rme']['segmentarea'] if result['owner'] == 'BLM'])
+        non_area = sum([result['sum'] for result in rme_metrics['rme']['segmentarea'] if result['owner'] == 'Non-BLM'])
+        metrics.append(('Riverscape Area (acres)', f'{blm_area * ACRES_PER_SQ_METRE:,.2f}', f'{non_area * ACRES_PER_SQ_METRE:,.2f}'))
+
+        for flow_type in ['Perennial', 'Intermittent', 'Ephemeral']:
+            blm_length = sum([result['sum'] for result in rme_metrics['rme']['centerlinelength'] if result['owner'] == 'BLM' and result['flowType'] == flow_type])
+            non_blm_length = sum([result['sum'] for result in rme_metrics['rme']['centerlinelength'] if result['owner'] == 'Non-BLM' and result['flowType'] == flow_type])
+            metrics.append((f'{flow_type} Riverscapes Length (miles)', f'{blm_length * MILES_PER_M :,.2f}', f'{non_blm_length* MILES_PER_M:,.2f}'))
+
+        for flow_type in ['Perennial', 'Non-Perennial']:
+            blm_area = sum([result['sum'] for result in rme_metrics['rme']['segmentarea'] if result['owner'] == 'BLM' and result['flowType'] == flow_type])
+            non_area = sum([result['sum'] for result in rme_metrics['rme']['segmentarea'] if result['owner'] == 'Non-BLM' and result['flowType'] == flow_type])
+            metrics.append((f'{flow_type} Riverscape Area (acres)', f'{blm_area * ACRES_PER_SQ_METRE:,.2f}', f'{non_area * ACRES_PER_SQ_METRE:,.2f}'))
+
+        for flow_type in ['Perennial', 'Non-Perennial']:
+            blm_area = sum([result['sum'] for result in rme_metrics['rme']['riparianarea'] if result['owner'] == 'BLM' and result['flowType'] == flow_type])
+            non_area = sum([result['sum'] for result in rme_metrics['rme']['riparianarea'] if result['owner'] == 'Non-BLM' and result['flowType'] == flow_type])
+            metrics.append((f'{flow_type} Riparian Area (acres)', f'{blm_area * ACRES_PER_SQ_METRE:,.2f}', f'{non_area * ACRES_PER_SQ_METRE:,.2f}'))
+
+        self.create_table_from_tuple_list(['', 'BLM', 'Non-BLM',], metrics, parent)
+
+    def hydro_geomorphic(self, parent, rme_metrics):
+
+        section = self.section('HydroGeomorphic', 'Hydro Geomorphic', parent, level=2)
+
+        pass
+
+    def slope_analysis(self, parent, rme_gpkg: str) -> None:
+
+        section = self.section('SlopeAnalysis', 'Slope Analysis', parent, level=2)
+
+        with sqlite3.connect(rme_gpkg) as conn:
+            curs = conn.cursor()
+
+            for owner, owner_filter in [('BLM', " = 'BLM'",), ('Non-BLM', " <> 'BLM'",)]:
+                for flow, flow_filter in [('Perennial', " IN (46003, 55800)",), ('Non-Perennial', " NOT IN (46003, 55800)",)]:
+
+                    curs.execute(f'''
+                        SELECT
+                            nhd_dgo_streamlength, rme_igo_prim_channel_gradient
+                        FROM rme_igos
+                        WHERE (rme_igo_prim_channel_gradient IS NOT NULL)
+                            AND (rme_dgo_ownership {owner_filter})
+                            AND (FCode {flow_filter})''')
+
+                    slope_data = [(row[0] * MILES_PER_M, row[1] * 100.0) for row in curs.fetchall()]
+
+                    if len(slope_data) == 0:
+                        continue
+
+                    lengths, gradients = zip(*slope_data)
+                    num_bins = 5
+
+                    # Compute the bins
+                    bin_edges = np.linspace(min(gradients), max(gradients), num_bins + 1)
+
+                    # Sum stream lengths for each gradient bin
+                    bin_sums = np.histogram(gradients, bins=bin_edges, weights=lengths)[0]
+
+                    # Midpoints for bar chart x-axis
+                    bin_midpoints = (bin_edges[:-1] + bin_edges[1:]) / 2
+
+                    # Plot the bar chart
+                    plt.bar(bin_midpoints, bin_sums, width=(bin_edges[1] - bin_edges[0]))
+
+                    # Add labels and title
+                    plt.xlabel('Slope (%)')
+                    plt.ylabel('Summed Stream Lengths (miles)')
+                    plt.title(f'{owner} {flow} Stream Lengths Summed by Slope Bins')
+
+                    img_path = os.path.join(self.images_dir, f'{owner}_{flow}_slope_histogram.png')
+                    plt.savefig(img_path, bbox_inches="tight")
+                    plt.close()
+
+                    self.insert_image(section, img_path, f'{owner} {flow} Slope Histogram')
+
+    def stream_order(self, parent, rme_gpkg: str) -> None:
+
+        section = self.section('StreamOrder', 'Stream Order', parent, level=2)
+
+        with sqlite3.connect(rme_gpkg) as conn:
+            curs = conn.cursor()
+
+            stream_data = []
+            blm_data = {}
+            non_blm_data = {}
+            for owner_label, owner_condition in [('BLM', "= 'BLM'"), ('Non-BLM', "<> 'BLM'")]:
+                curs.execute(f'''
+                    SELECT nhd_dgo_streamorder, SUM(nhd_dgo_streamlength)
+                    FROM rme_dgos
+                    WHERE rme_dgo_ownership {owner_condition}
+                    GROUP BY nhd_dgo_streamorder
+                    ORDER BY nhd_dgo_streamorder''')
+
+                # Fetch the results and store them in dictionaries for lookup
+                if owner_label == 'BLM':
+                    blm_data = {row[0]: row[1] * MILES_PER_M for row in curs.fetchall()}  # Convert meters to miles
+                else:
+                    non_blm_data = {row[0]: row[1] * MILES_PER_M for row in curs.fetchall()}  # Convert meters to miles
+
+        # Combine data from both ownerships
+        stream_orders = set(blm_data.keys()).union(non_blm_data.keys())
+        for stream_order in sorted(stream_orders):
+            blm_length = blm_data.get(stream_order, 0)  # Default to 0 if no data for this stream order
+            non_blm_length = non_blm_data.get(stream_order, 0)  # Default to 0 if no data for this stream order
+            total_length = blm_length + non_blm_length
+
+            # Calculate percentages
+            blm_percent = (blm_length / total_length * 100) if total_length > 0 else 0
+            non_blm_percent = (non_blm_length / total_length * 100) if total_length > 0 else 0
+
+            # Append data to the list
+            stream_data.append((stream_order, blm_length, blm_percent, non_blm_length, non_blm_percent))
+
+        table_data = [(i[0], f'{i[1]:,.2f}', f'{i[2]:.0f}', f'{i[3]:,.2f}', f'{i[4]:.0f}') for i in stream_data]
+        self.create_table_from_tuple_list(['Stream\nOrder', 'BLM\n(miles)', 'BLM\n(%)', 'Non-BLM\n(miles)', 'Non-BLM\n(%)'], table_data, parent)
+
+        for owner, order in [('BLM', 1), ('Non-BLM', 3)]:
+            img_path = os.path.join(self.images_dir, f'stream_order_{owner.lower()}_bar.png')
+            horizontal_bar([i[order] for i in stream_data], [i[0] for i in stream_data], None, 'Length (miles)', f'{owner} Stream Order Length', img_path)
+            self.insert_image(section, img_path, f'{owner} Stream Order Length')
 
 
 def get_rme_values(rme_gpkg: str) -> dict:

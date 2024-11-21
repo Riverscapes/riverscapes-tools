@@ -16,7 +16,7 @@ EPHEMERAL = [46007]
 owner_clauses = {
     'All': '1=1',
     'BLM': "rme_dgo_ownership = 'BLM'",
-    'nonBLM': "rme_dgo_ownership != 'BLM'",
+    'Non-BLM': "rme_dgo_ownership != 'BLM'",
     'Federal': "rme_dgo_ownership IN ('BLM', 'USFS', 'NPS', 'FWS', 'USFWS', 'USBR', 'USGS', 'USACE', 'USDA', 'USDOI', 'DoD')"
 }
 
@@ -24,7 +24,8 @@ flow_type_clauses = {
     'All': '1=1',
     'Perennial': f'FCode IN ({",".join([str(x) for x in PERENNIAL])})',
     'Intermittent': f'FCode IN ({",".join([str(x) for x in INERMITTENT])})',
-    'Ephemeral': f'FCode IN ({",".join([str(x) for x in EPHEMERAL])})'
+    'Ephemeral': f'FCode IN ({",".join([str(x) for x in EPHEMERAL])})',
+    'Non-Perennial': f'FCode NOT IN ({",".join([str(x) for x in PERENNIAL])})',
 }
 
 
@@ -68,9 +69,11 @@ def rme_metrics(project_path, vbet_proj_path):
         curs.execute("SELECT name, type FROM pragma_table_info('rme_dgos') WHERE LOWER(type) IN ('real', 'float', 'double', 'decimal')")
         decimal_fields = [row['name'] for row in curs.fetchall()]
 
-        for owner_name, owner_clause in owner_clauses.items():
-            for flow_name, flow_clause in flow_type_clauses.items():
-                for field in decimal_fields:
+        for field in decimal_fields:
+            metric_name = field.replace('_', '')
+            rme_metrics[metric_name] = []
+            for owner_name, owner_clause in owner_clauses.items():
+                for flow_name, flow_clause in flow_type_clauses.items():
 
                     curs.execute(f"""
                         SELECT
@@ -87,7 +90,7 @@ def rme_metrics(project_path, vbet_proj_path):
                     """)
                     row = curs.fetchone()
                     if row['Tally'] > 0:
-                        rme_metrics[field.replace('_', '')] = {
+                        rme_metrics[metric_name].append({
                             'owner': owner_name,
                             'flowType': flow_name,
                             'min': row['MinValue'],
@@ -95,7 +98,27 @@ def rme_metrics(project_path, vbet_proj_path):
                             'avg': row['AvgValue'],
                             'count': row['Tally'],
                             'sum': row['SumValue']
-                        }
+                        })
+
+        # Riparian area requires multiplying proportion by segment area
+        for owner_name, owner_clause in owner_clauses.items():
+            rme_metrics['riparianarea'] = []
+            for flow_name, flow_clause in flow_type_clauses.items():
+                curs.execute(f"""
+                    SELECT
+                        COALESCE(SUM(rcat_igo_prop_riparian * segment_area), 0) AS SumValue
+                    FROM
+                        rme_dgos
+                    WHERE
+                        {owner_clause}
+                        AND {flow_clause}
+                """)
+                row = curs.fetchone()
+                rme_metrics['riparianarea'].append({
+                    'owner': owner_name,
+                    'flowType': flow_name,
+                    'sum': row['SumValue']
+                })
 
         # curs.execute("SELECT name, type FROM pragma_table_info('your_table_name') WHERE LOWER(type) IN ('integer', 'int', 'smallint', 'tinyint', 'bigint', 'unsigned big int')")
         # integer_fields = [row['name'] for row in curs.fetchall()]

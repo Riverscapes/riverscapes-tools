@@ -77,10 +77,13 @@ def box_plot(values, chart_title, file_path):
     plt.savefig(file_path)
 
 
-def histogram(values, bins, file_path, xlabel=None, ylabel=None):
+def histogram(values, bins, file_path, xlabel=None, ylabel=None, title=None):
 
     plt.clf()
     plt.hist(values, bins)
+
+    if title is not None:
+        plt.title(title)
 
     if xlabel is not None:
         plt.xlabel(xlabel)
