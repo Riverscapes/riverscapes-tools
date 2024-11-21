@@ -38,7 +38,7 @@ from rme.__version__ import __version__
 from rme.analysis_window import AnalysisLine
 
 from .utils.hypsometric_curve import hipsometric_curve
-from .utils.blm_charts import charts as blm_charts, land_ownership_labels
+from .utils.blm_charts import charts as blm_charts, vegetation_charts, land_ownership_labels
 
 ACRES_PER_SQ_METRE = 0.000247105
 ACRES_PER_SQ_KM = 247.105
@@ -106,6 +106,9 @@ class WSCAReport(RSReport):
         self.hydro_geomorphic(biophysical_section, rme_metrics)
         self.slope_analysis(biophysical_section, rme_gpkg)
         self.stream_order(biophysical_section, rme_gpkg)
+        self.sinuosity(biophysical_section, rme_gpkg)
+        self.valley_bottom_density(biophysical_section, rme_gpkg)
+        self.vegetation(biophysical_section, rcat_dir)
 
         # intermittent_length = vbet_metrics['drainageDensityIntermittent'] * vbet_metrics['catchmentArea'] * 0.621371
         # ephemeral_length = vbet_metrics['drainageDensityEphemeral'] * vbet_metrics['catchmentArea'] * 0.621371
@@ -372,8 +375,15 @@ class WSCAReport(RSReport):
         with sqlite3.connect(rme_gpkg) as conn:
             curs = conn.cursor()
 
-            for owner, owner_filter in [('BLM', " = 'BLM'",), ('Non-BLM', " <> 'BLM'",)]:
-                for flow, flow_filter in [('Perennial', " IN (46003, 55800)",), ('Non-Perennial', " NOT IN (46003, 55800)",)]:
+            # Prepare lists for the BLM and Non-BLM data
+            blm_lengths = []
+            blm_gradients = []
+            non_blm_lengths = []
+            non_blm_gradients = []
+
+            # Loop over ownership and flow categories
+            for owner, owner_filter in [('BLM', " = 'BLM'"), ('Non-BLM', " <> 'BLM'")]:
+                for flow, flow_filter in [('Perennial', " IN (46003, 55800)"), ('Non-Perennial', " NOT IN (46003, 55800)")]:
 
                     curs.execute(f'''
                         SELECT
@@ -389,30 +399,48 @@ class WSCAReport(RSReport):
                         continue
 
                     lengths, gradients = zip(*slope_data)
-                    num_bins = 5
 
-                    # Compute the bins
-                    bin_edges = np.linspace(min(gradients), max(gradients), num_bins + 1)
+                    # Store data for BLM and Non-BLM separately
+                    if owner == 'BLM':
+                        blm_lengths.extend(lengths)
+                        blm_gradients.extend(gradients)
+                    else:
+                        non_blm_lengths.extend(lengths)
+                        non_blm_gradients.extend(gradients)
 
-                    # Sum stream lengths for each gradient bin
-                    bin_sums = np.histogram(gradients, bins=bin_edges, weights=lengths)[0]
+            # Now calculate the histogram with both data sets
+            num_bins = 5
+            bin_edges = np.linspace(min(min(blm_gradients), min(non_blm_gradients)),
+                                    max(max(blm_gradients), max(non_blm_gradients)),
+                                    num_bins + 1)
 
-                    # Midpoints for bar chart x-axis
-                    bin_midpoints = (bin_edges[:-1] + bin_edges[1:]) / 2
+            # Sum stream lengths for each gradient bin
+            blm_bin_sums = np.histogram(blm_gradients, bins=bin_edges, weights=blm_lengths)[0]
+            non_blm_bin_sums = np.histogram(non_blm_gradients, bins=bin_edges, weights=non_blm_lengths)[0]
 
-                    # Plot the bar chart
-                    plt.bar(bin_midpoints, bin_sums, width=(bin_edges[1] - bin_edges[0]))
+            # Create labels for the bin ranges (e.g., "0-5%", "5-10%", etc.)
+            bin_labels = [f'{int(bin_edges[i]):d}-{int(bin_edges[i+1]):d}%' for i in range(len(bin_edges)-1)]
 
-                    # Add labels and title
-                    plt.xlabel('Slope (%)')
-                    plt.ylabel('Summed Stream Lengths (miles)')
-                    plt.title(f'{owner} {flow} Stream Lengths Summed by Slope Bins')
+            # Create the bar chart with two series
+            plt.bar(bin_labels, blm_bin_sums, width=0.4, label='BLM', color='blue', align='center')  # , edgecolor='black'
+            plt.bar(bin_labels, non_blm_bin_sums, width=0.4, label='Non-BLM', color='green', align='edge')  # , edgecolor='black'
 
-                    img_path = os.path.join(self.images_dir, f'{owner}_{flow}_slope_histogram.png')
-                    plt.savefig(img_path, bbox_inches="tight")
-                    plt.close()
+            # Add labels and title
+            plt.xlabel('Slope (%)')
+            plt.ylabel('Summed Stream Lengths (miles)')
+            plt.title('Stream Lengths Summed by Slope Bins (BLM & Non-BLM)')
 
-                    self.insert_image(section, img_path, f'{owner} {flow} Slope Histogram')
+            # Add a legend to differentiate the two series
+            plt.legend()
+
+            # Save the combined chart as an image
+            img_path = os.path.join(self.images_dir, 'combined_slope_histogram_with_ranges.png')
+            plt.tight_layout()  # Adjust layout to avoid label clipping
+            plt.savefig(img_path, bbox_inches="tight")
+            plt.close()
+
+            # Insert the image into your report or interface
+            self.insert_image(section, img_path, 'Combined Slope Histogram (BLM & Non-BLM)')
 
     def stream_order(self, parent, rme_gpkg: str) -> None:
 
@@ -421,9 +449,14 @@ class WSCAReport(RSReport):
         with sqlite3.connect(rme_gpkg) as conn:
             curs = conn.cursor()
 
-            stream_data = []
+            # Prepare lists to hold data for both series
+            stream_orders = []
+            blm_lengths = []
+            non_blm_lengths = []
             blm_data = {}
             non_blm_data = {}
+
+            # Loop over ownership categories and fetch data
             for owner_label, owner_condition in [('BLM', "= 'BLM'"), ('Non-BLM', "<> 'BLM'")]:
                 curs.execute(f'''
                     SELECT nhd_dgo_streamorder, SUM(nhd_dgo_streamlength)
@@ -438,27 +471,121 @@ class WSCAReport(RSReport):
                 else:
                     non_blm_data = {row[0]: row[1] * MILES_PER_M for row in curs.fetchall()}  # Convert meters to miles
 
-        # Combine data from both ownerships
-        stream_orders = set(blm_data.keys()).union(non_blm_data.keys())
-        for stream_order in sorted(stream_orders):
-            blm_length = blm_data.get(stream_order, 0)  # Default to 0 if no data for this stream order
-            non_blm_length = non_blm_data.get(stream_order, 0)  # Default to 0 if no data for this stream order
-            total_length = blm_length + non_blm_length
+            # Combine data from both ownerships
+            stream_orders = list(set(blm_data.keys()).union(non_blm_data.keys()))
+            for stream_order in sorted(stream_orders):
+                blm_length = blm_data.get(stream_order, 0)  # Default to 0 if no data for this stream order
+                non_blm_length = non_blm_data.get(stream_order, 0)  # Default to 0 if no data for this stream order
 
-            # Calculate percentages
-            blm_percent = (blm_length / total_length * 100) if total_length > 0 else 0
-            non_blm_percent = (non_blm_length / total_length * 100) if total_length > 0 else 0
+                # Append data to the lists for charting
+                blm_lengths.append(blm_length)
+                non_blm_lengths.append(non_blm_length)
+                stream_orders.append(stream_order)
 
-            # Append data to the list
-            stream_data.append((stream_order, blm_length, blm_percent, non_blm_length, non_blm_percent))
+            # Create the bar chart with two series
+            bar_width = 0.35  # Width of each bar
+            index = np.arange(len(blm_lengths))  # X-axis positions for bars
 
-        table_data = [(i[0], f'{i[1]:,.2f}', f'{i[2]:.0f}', f'{i[3]:,.2f}', f'{i[4]:.0f}') for i in stream_data]
-        self.create_table_from_tuple_list(['Stream\nOrder', 'BLM\n(miles)', 'BLM\n(%)', 'Non-BLM\n(miles)', 'Non-BLM\n(%)'], table_data, parent)
+            fig, ax = plt.subplots(figsize=(10, 6))
 
-        for owner, order in [('BLM', 1), ('Non-BLM', 3)]:
-            img_path = os.path.join(self.images_dir, f'stream_order_{owner.lower()}_bar.png')
-            horizontal_bar([i[order] for i in stream_data], [i[0] for i in stream_data], None, 'Length (miles)', f'{owner} Stream Order Length', img_path)
-            self.insert_image(section, img_path, f'{owner} Stream Order Length')
+            # Plot bars for BLM and Non-BLM data, grouped by stream order
+            ax.bar(index - bar_width / 2, blm_lengths, bar_width, label='BLM', color='blue')  # , edgecolor='black')
+            ax.bar(index + bar_width / 2, non_blm_lengths, bar_width, label='Non-BLM', color='green')  # , edgecolor='black')
+
+            # Add labels, title, and legend
+            ax.set_xlabel('Stream Order')
+            ax.set_ylabel('Stream Length (miles)')
+            ax.set_title('Stream Order Lengths for BLM and Non-BLM')
+            ax.set_xticks(index)
+            ax.set_xticklabels([str(order+1) for order in range(len(blm_lengths))])  # , rotation=45)
+            ax.legend()
+
+            # Save the chart as an image
+            img_path = os.path.join(self.images_dir, 'combined_stream_order_bar_chart.png')
+            plt.tight_layout()  # Adjust layout to prevent clipping of labels
+            plt.savefig(img_path)
+            plt.close()
+
+            # Insert the image into your report or interface
+            self.insert_image(section, img_path, 'Combined Stream Order Length Chart')
+
+    def sinuosity(self, parent, rme_gpkg):
+
+        section = self.section('SinuosityAnalysis', 'Sinuosity Analysis', parent, level=2)
+
+        with sqlite3.connect(rme_gpkg) as conn:
+            curs = conn.cursor()
+
+            # Prepare to collect data for both series
+            bin_sums_blm = None
+            bin_sums_non_blm = None
+            bin_midpoints = None
+
+            for owner, owner_filter in [('BLM', " = 'BLM'",), ('Non-BLM', " <> 'BLM'",)]:
+                curs.execute(f'''
+                    SELECT
+                        nhd_dgo_streamlength, rme_igo_planform_sinuosity
+                    FROM rme_igos
+                    WHERE (rme_igo_planform_sinuosity IS NOT NULL)
+                        AND (rme_dgo_ownership {owner_filter})''')
+
+                raw_data = [(row[0] * MILES_PER_M, row[1]) for row in curs.fetchall()]
+
+                if len(raw_data) == 0:
+                    continue
+
+                lengths, gradients = zip(*raw_data)
+                num_bins = 5
+
+                # Compute the bins
+                bin_edges = np.linspace(min(gradients), max(gradients), num_bins + 1)
+
+                # Sum stream lengths for each gradient bin
+                bin_sums = np.histogram(gradients, bins=bin_edges, weights=lengths)[0]
+
+                # Midpoints for bar chart x-axis
+                if bin_midpoints is None:
+                    bin_midpoints = (bin_edges[:-1] + bin_edges[1:]) / 2
+
+                # Store data for each owner
+                if owner == 'BLM':
+                    bin_sums_blm = bin_sums
+                else:
+                    bin_sums_non_blm = bin_sums
+
+            # Check if both series have data
+            if bin_sums_blm is not None and bin_sums_non_blm is not None:
+                # Plot the bar chart with two series
+                bar_width = (bin_edges[1] - bin_edges[0]) / 3  # Smaller width for grouped bars
+
+                plt.bar(bin_midpoints - bar_width / 2, bin_sums_blm, width=bar_width, color='blue', label='BLM', edgecolor='black')
+                plt.bar(bin_midpoints + bar_width / 2, bin_sums_non_blm, width=bar_width, color='green', label='Non-BLM', edgecolor='black')
+
+                # Add labels, legend, and grid
+                plt.xlabel('Sinuosity')
+                plt.ylabel('Summed Stream Lengths (miles)')
+                plt.title('Stream Lengths Summed by Sinuosity Bins (BLM vs Non-BLM)')
+                plt.grid(axis='y', linestyle='--', alpha=0.7)
+                plt.legend()
+
+                # Save the chart as an image
+                img_path = os.path.join(self.images_dir, 'combined_sinuosity_histogram.png')
+                plt.savefig(img_path, bbox_inches="tight")
+                plt.close()
+
+                self.insert_image(section, img_path, 'Combined Sinuosity Histogram')
+
+    def valley_bottom_density(self, parent, rme_gpkg: str) -> None:
+
+        pass
+
+    def vegetation(self, biophysical_section, rcat_dir):
+
+        vegetation_section = self.section('Vegetation', 'Vegetation', biophysical_section, level=2)
+        charts_dict = vegetation_charts(rcat_dir, self.images_dir)
+
+        for key, val in charts_dict.items():
+            self.insert_image(vegetation_section, val, key)
 
 
 def get_rme_values(rme_gpkg: str) -> dict:
