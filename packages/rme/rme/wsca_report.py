@@ -83,6 +83,9 @@ class WSCAReport(RSReport):
         rme_metrics_json = os.path.join(rme_dir, 'rme_metrics.json')
         rme_metrics = json.load(open(rme_metrics_json, encoding='utf-8'))
 
+        brat_dir = os.path.join(input_dir, 'brat', huc)
+        brat_gpkg = os.path.join(brat_dir, 'outputs', 'brat.gpkg')
+
         self.physiography(ws_context_section, rs_context_dir, rsc_nhd_gpkg, rsc_metrics_json)
         self.hydrography(ws_context_section, rs_context_dir, rsc_nhd_gpkg, rsc_metrics_json)
         self.watershed_ownership(ws_context_section, rsc_metrics_json)
@@ -108,7 +111,11 @@ class WSCAReport(RSReport):
         self.stream_order(biophysical_section, rme_gpkg)
         self.sinuosity(biophysical_section, rme_gpkg)
         self.valley_bottom_density(biophysical_section, rme_gpkg)
-        self.vegetation(biophysical_section, rcat_dir)
+
+        ecology_section = self.section('Ecological', 'Ecological', level=2)
+        self.vegetation(ecology_section, rcat_dir)
+        self.beaver(ecology_section, brat_gpkg)
+        self.beaver_unsuitable(ecology_section, brat_gpkg)
 
         # intermittent_length = vbet_metrics['drainageDensityIntermittent'] * vbet_metrics['catchmentArea'] * 0.621371
         # ephemeral_length = vbet_metrics['drainageDensityEphemeral'] * vbet_metrics['catchmentArea'] * 0.621371
@@ -558,6 +565,7 @@ class WSCAReport(RSReport):
                 # Plot the bar chart with two series
                 bar_width = (bin_edges[1] - bin_edges[0]) / 3  # Smaller width for grouped bars
 
+                plt.clf()
                 plt.bar(bin_midpoints - bar_width / 2, bin_sums_blm, width=bar_width, color='blue', label='BLM', edgecolor='black')
                 plt.bar(bin_midpoints + bar_width / 2, bin_sums_non_blm, width=bar_width, color='green', label='Non-BLM', edgecolor='black')
 
@@ -581,11 +589,128 @@ class WSCAReport(RSReport):
 
     def vegetation(self, biophysical_section, rcat_dir):
 
-        vegetation_section = self.section('Vegetation', 'Vegetation', biophysical_section, level=2)
+        vegetation_section = self.section('Vegetation', 'Vegetation', biophysical_section, level=3)
         charts_dict = vegetation_charts(rcat_dir, self.images_dir)
 
         for key, val in charts_dict.items():
             self.insert_image(vegetation_section, val, key)
+
+    def beaver(self, ecology_section, brat_gpkg):
+
+        section = self.section('Beaver', 'Beaver', ecology_section, level=3)
+
+        with sqlite3.connect(brat_gpkg) as conn:
+            curs = conn.cursor()
+
+            # Define bins and labels
+            bins = [0, 1, 5, 15, 40]  # Bin edges
+            bin_labels = ["0", "0-1", "1-5", "5-15", "15-40"]  # Labels for the bins
+            colors = ['red', 'orange', 'yellow', 'green', 'blue']  # Colors for the bins
+
+            # Execute the query
+            curs.execute("""
+                    SELECT centerline_length, oCC_EX, oCC_HPE
+                    FROM vwDGOs
+                    WHERE centerline_length > 0
+                    AND oCC_EX IS NOT NULL
+                    AND oCC_HPE IS NOT NULL
+                """)
+
+            data = curs.fetchall()
+            existing_lengths = [(length * MILES_PER_M, occ_ex) for length, occ_ex, occ_hpe in data]
+            historic_lengths = [(length * MILES_PER_M, occ_hpe) for length, occ_ex, occ_hpe in data]
+
+            # Function to sum lengths by bins
+            # def sum_lengths_by_bins(lengths_and_values, bins):
+            #     bin_sums = np.zeros(len(bins))  # Initialize bin sums to 0
+            #     for length, value in lengths_and_values:
+            #         # Determine the appropriate bin
+            #         for i in range(len(bins) - 1):
+            #             if bins[i] <= value < bins[i + 1]:
+            #                 bin_sums[i] += length
+            #                 break
+            #     return bin_sums
+
+            def sum_lengths_by_bins(lengths):
+                bin_sums = [0] * len(bins)
+                bin_sums[0] = sum([length for length, value in lengths if value == 0])
+                bin_sums[1] = sum([length for length, value in lengths if 0 < value <= 1])
+                bin_sums[2] = sum([length for length, value in lengths if 1 < value <= 5])
+                bin_sums[3] = sum([length for length, value in lengths if 5 < value <= 15])
+                bin_sums[4] = sum([length for length, value in lengths if 15 < value <= 40])
+                return bin_sums
+
+            # Calculate bin sums for both series
+            existing_bin_sums = sum_lengths_by_bins(existing_lengths)
+            historic_bin_sums = sum_lengths_by_bins(historic_lengths)
+
+            # Create the bar chart
+            bar_width = 0.4
+            x = np.arange(len(bin_labels))  # Positions for the bins
+
+            # Create bars with specific colors
+            plt.clf()
+            for i in range(len(bin_labels)):
+
+                plt.bar(
+                    x[i] + bar_width / 2,
+                    historic_bin_sums[i],
+                    bar_width,
+                    label='Historic Capacity' if i == 0 else "",  # Add label only for the first bin
+                    color=colors[i],
+                    edgecolor='black',
+                    alpha=0.7  # Slightly transparent for differentiation
+                )
+
+                plt.bar(
+                    x[i] - bar_width / 2,
+                    existing_bin_sums[i],
+                    bar_width,
+                    label='Existing Capacity' if i == 0 else "",  # Add label only for the first bin
+                    color=colors[i],
+                    edgecolor='black'
+                )
+
+            # Add labels, title, and legend
+            plt.xlabel('Beaver Dam Capacity (Historic - Existing)')
+            plt.ylabel('Stream Length (miles)')
+            plt.title('Stream Lengths by Beaver Dam Capacity Bins')
+            plt.xticks(x, bin_labels)  # Set custom x-axis labels
+            # plt.legend()
+
+            # Save the chart
+            plt.tight_layout()
+            img_path = os.path.join(self.images_dir, 'combined_capacity_histogram.png')
+            plt.savefig(img_path, bbox_inches="tight")
+            plt.close()
+
+            self.insert_image(section, img_path, 'Combined Beaver Data Capacity Histogram')
+
+    def beaver_unsuitable(self, ecology_section, brat_gpkg):
+
+        with sqlite3.connect(brat_gpkg) as conn:
+            curs = conn.cursor()
+
+            curs.execute("""
+               SELECT DL.Name, coalesce(V.Tally, 0)
+FROM DamLimitations DL
+         LEFT JOIN
+     (SELECT Limitation, sum(centerline_length) Tally
+      from vwDgos
+      WHERE Limitation is not null
+        and Limitation <> 'Dam Building Possible'
+        and Limitation <> 'NA'
+      group by Limitation) V ON DL.Name = V.Limitation
+      WHERE DL.Name <> 'Dam Building Possible'""")
+
+            data = [(row[0], row[1] * MILES_PER_M) for row in curs.fetchall()]
+
+            values = [x[1] for x in data]
+            labels = [x[0] for x in data]
+
+            img_path = os.path.join(self.images_dir, 'beaver_unsuitable.png')
+            horizontal_bar(values, labels, None, 'Stream Length (miles)', 'Beaver Unsuitable Habitat', img_path)
+            self.insert_image(ecology_section, img_path, 'Unsuitable Beaver Habitat')
 
 
 def get_rme_values(rme_gpkg: str) -> dict:
