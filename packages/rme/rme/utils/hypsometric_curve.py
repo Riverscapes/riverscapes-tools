@@ -7,11 +7,14 @@ from osgeo import ogr
 import rasterio
 from rasterio.mask import mask
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MultipleLocator
 from matplotlib.colors import LinearSegmentedColormap
 from shapely.geometry import shape
 
 from rscommons import dotenv
 from rscommons.classes.vector_classes import GeopackageLayer
+
+FEET_PER_METER = 3.28084
 
 
 def hipsometric_curve(output_image: str, geopackage_path: str, layer_name: str, dem_path: str) -> None:
@@ -37,6 +40,10 @@ def hipsometric_curve(output_image: str, geopackage_path: str, layer_name: str, 
 
     # Calculate the hypsometric curve with binning
     elevations, bin_counts, min_elevation, max_elevation, cell_area, total_area = calculate_hypsometric_curve(masked_dem, dem.nodata, dem.transform, rough_units)
+
+    elevations = elevations * FEET_PER_METER
+    min_elevation *= FEET_PER_METER
+    max_elevation *= FEET_PER_METER
 
     # Plot the hypsometric curve
     plot_hypsometric_curve(elevations, bin_counts, min_elevation, max_elevation, cell_area, total_area, output_image)
@@ -104,10 +111,14 @@ def plot_hypsometric_curve(elevations, bin_counts, min_elevation, max_elevation,
     # Plot the original hypsometric curve
     ax1.barh(elevations, bin_areas, height=heights, align='center', label='Hypsometric Curve', color=colors)
 
-    ax1.set_ylabel('Elevation')
+    ax1.set_ylabel('Elevation (ft)')
     ax1.set_xlabel('Area (sq. mi)')
     ax1.set_title('Hypsometric Curve')
     ax1.grid(True)
+    ax1.minorticks_on()
+    ax1.xaxis.set_minor_locator(MultipleLocator(0.2))
+    ax1.yaxis.set_minor_locator(MultipleLocator(20))
+    # ax1.axes.set_minor_locator(MultipleLocator(.2))
 
     # Calculate the percentage that one square mile represents of the total area
     percentage_per_sq_mile = 100 / total_area
@@ -116,6 +127,8 @@ def plot_hypsometric_curve(elevations, bin_counts, min_elevation, max_elevation,
     ax2 = ax1.twiny()
     ax2.set_xlim(ax1.get_xlim())
     ax2.set_xticks(ax1.get_xticks())
+    ax2.minorticks_on()
+    ax2.yaxis.set_minor_locator(MultipleLocator(20))
 
     # Ensure the number of tick labels matches the number of tick locations
     tick_labels = [x * percentage_per_sq_mile for x in ax1.get_xticks()]
