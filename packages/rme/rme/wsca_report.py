@@ -1,41 +1,20 @@
 from typing import List
 import os
 import sys
-import traceback
 import argparse
 import sqlite3
 import json
-from collections import Counter, defaultdict
+from collections import defaultdict
 from xml.etree import ElementTree as ET
-from shapely.geometry import shape
-from rscommons import Logger, dotenv, ModelConfig, RSReport, RSProject
-from rscommons.util import safe_makedirs
-from rscommons.plotting import box_plot, vertical_bar, histogram
-from rme.__version__ import __version__
-import time
-from collections import Counter
-import matplotlib.pyplot as plt
-
-from osgeo import ogr, osr
-from osgeo import gdal
 import numpy as np
-import rasterio
-from rasterio.mask import mask
-from shapely.geometry import Point
-
-from rscommons import GeopackageLayer, dotenv, Logger, initGDALOGRErrors, ModelConfig, RSLayer, RSMeta, RSMetaTypes, RSProject, VectorBase, ProgressBar
-from rscommons.classes.vector_base import get_utm_zone_epsg
-from rscommons.util import parse_metadata, pretty_duration
-from rscommons.database import load_lookup_data
-from rscommons.geometry_ops import reduce_precision, get_endpoints
-from rscommons.vector_ops import copy_feature_class, collect_linestring
-from rscommons.vbet_network import copy_vaa_attributes, join_attributes
-from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions
-from rscommons.moving_window import moving_window_dgo_ids
-from rscommons.plotting import xyscatter, box_plot, pie, horizontal_bar
-
+from shapely.geometry import shape
+import matplotlib.pyplot as plt
+from osgeo import ogr
+from rscommons import Logger, dotenv, RSReport
+from rscommons.util import safe_makedirs
+from rscommons.plotting import pie, horizontal_bar
 from rme.__version__ import __version__
-from rme.analysis_window import AnalysisLine
+
 
 from .utils.hypsometric_curve import hipsometric_curve
 from .utils.blm_charts import charts as blm_charts, vegetation_charts, land_ownership_labels
@@ -47,6 +26,8 @@ SQ_MILES_PER_SQ_KM = 0.386102159
 SQ_MILES_PER_SQ_M = 0.000000386102159
 SQ_KM_PER_SQ_M = 0.000001
 MILES_PER_M = 0.000621371
+
+BLM_COLOR = 'orange'
 
 
 class WSCAReport(RSReport):
@@ -117,61 +98,6 @@ class WSCAReport(RSReport):
         self.beaver(ecology_section, brat_gpkg)
         self.beaver_unsuitable(ecology_section, brat_gpkg)
 
-        # intermittent_length = vbet_metrics['drainageDensityIntermittent'] * vbet_metrics['catchmentArea'] * 0.621371
-        # ephemeral_length = vbet_metrics['drainageDensityEphemeral'] * vbet_metrics['catchmentArea'] * 0.621371
-
-        # s2_metrics = {
-        # 'Valley Bottom Area (acres)': rme_stats[] vbet_metrics['riverscapeArea'] * ACRES_PER_SQ_KM,
-        # 'Perennial Stream length (mi)': vbet_metrics['drainageDensityPerennial'] * vbet_metrics['catchmentArea'] * 0.621371,  # km to mi
-        # 'Non-Perennial Stream length (mi)': intermittent_length + ephemeral_length,
-        # 'Area of Perennial Riverscape (mi)': peren_   # Sum segment_area for DGOs filtered for FCode 46006 + 55800 (sq m)
-        # 'Area of Non-Perennial Riverscape (mi)':  # Sum segment_area for DGOs filtered NOT (46006 + 55800) (sq m)
-        # 'Riparian area in perennial riverscape (acres)': sum(PROP_RIP * segment_area) filtered by FCode(sq m)
-        # 'Riparian area in non-perennial riverscape (acres)': sum(PROP_RIP * segment_area) filtered by NOT FCode(sq m),
-        # }
-
-        # natural_waterbodies
-        # TODO: sum waterbodty areas for FCode (361%, 390%, 466%, 493%) anything begining with these digits
-
-        # artificial_waterbodies
-        # TODO: sum waterbodty areas for FCode (436%)
-
-        # count of dams is count of artifical waterbodies
-
-        table_wrapper3 = ET.Element('div', attrib={'class': 'tableWrapper'})
-        # self.create_table_from_dict(s2_metrics, table_wrapper3)
-        s2_section.append(table_wrapper3)
-
-    pass
-
-    # self.report_content()
-
-    # def report_content(self):
-    #     if self.filter_name is not None:
-    #         section_filters = self.section('Filters', 'Filters')
-    #         self.filters_section(section_filters)
-
-    #     realization = self.xml_project.XMLBuilder.find('Realizations').find('Realization')
-
-    #     section_in = self.section('Inputs', 'Inputs')
-    #     inputs = list(realization.find('Inputs'))
-    #     for lyr in inputs:
-    #         if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']:
-    #             self.layerprint(lyr, section_in, self.project_root)
-
-    #     section_inter = self.section('Intermediates', 'Intermediates')
-    #     intermediates = list(realization.find('Intermediates'))
-    #     for lyr in intermediates:
-    #         if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']:
-    #             self.layerprint(lyr, section_inter, self.project_root)
-
-    #     section_out = self.section('Outputs', 'Outputs')
-    #     outputs = list(realization.find('Outputs'))
-    #     self.metrics_section(section_out)
-    #     for lyr in outputs:
-    #         if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']:
-    #             self.layerprint(lyr, section_out, self.project_root)
-
     def physiography(self, parent, rs_context_dir: str, rsc_nhd_gpkg: str, rsc_metrics: dict) -> None:
 
         section = self.section('Physiography', 'Physiographic Attributes', parent, level=2)
@@ -216,33 +142,44 @@ class WSCAReport(RSReport):
 
         section = self.section('Hydrography', 'Hydrographic Attributes', parent, level=2)
 
-        metrics = {
-            "Perennial Stream Length": [f"{rsc_metrics['flowlineLengthPerennialKm']:,.2f} km", f"{rsc_metrics['flowlineLengthPerennialKm'] * MILES_PER_KM:,.2f} miles", f"{100 * rsc_metrics['flowlineLengthPerennialKm'] / rsc_metrics['flowlineLengthAllKm']:,.2f} %"],
-            "Intermittent Stream Length": [f"{rsc_metrics['flowlineLengthIntermittentKm']:,.2f} km", f"{rsc_metrics['flowlineLengthIntermittentKm'] * MILES_PER_KM:,.2f} miles", f"{100 * rsc_metrics['flowlineLengthIntermittentKm'] / rsc_metrics['flowlineLengthAllKm']:,.2f} %"],
-            "Ephemeral Stream Length": [f"{rsc_metrics['flowlineLengthEphemeralKm']:,.2f} km", f"{rsc_metrics['flowlineLengthEphemeralKm'] * MILES_PER_KM:,.2f} miles", f"{100 * rsc_metrics['flowlineLengthEphemeralKm'] / rsc_metrics['flowlineLengthAllKm']:,.2f} %"],
-            "Canal Length": [f"{rsc_metrics['flowlineLengthCanalsKm']:,.2f} km", f"{rsc_metrics['flowlineLengthCanalsKm'] * MILES_PER_KM:,.2f} miles", f"{100 * rsc_metrics['flowlineLengthCanalsKm'] / rsc_metrics['flowlineLengthAllKm']:,.2f} %"],
-            "Total Stream Length": [f"{rsc_metrics['flowlineLengthAllKm']:,.2f} km", f"{rsc_metrics['flowlineLengthAllKm'] * MILES_PER_KM:,.2f} miles"],
-            'Perennial Drainage Density': [f"{rsc_metrics['drainageDensityPerennial']:,.2f} km/km²"],
-            'Intermittent Drainage Density': [f"{rsc_metrics['drainageDensityIntermittent']:,.2f} km/km²"],
-            'Ephemeral Drainage Density': [f"{rsc_metrics['drainageDensityEphemeral']:,.2f} km/km²"],
-            'Total Drainage Density': [f"{rsc_metrics['drainageDensityAll']:,.2f} km/km²"],
-        }
+        length_section = self.section('StreamLength', 'Stream Length', parent, level=3)
 
-        table_wrapper = ET.Element('div', attrib={'class': 'tableWrapper'})
-        self.create_table_from_dict_of_multiple_values(metrics, table_wrapper)
-        section.append(table_wrapper)
+        perl = rsc_metrics['flowlineLengthPerennialKm']
+        intl = rsc_metrics['flowlineLengthIntermittentKm']
+        ephl = rsc_metrics['flowlineLengthEphemeralKm']
+        canl = rsc_metrics['flowlineLengthCanalsKm']
+        totl = rsc_metrics['flowlineLengthAllKm']
+
+        self.create_table_from_tuple_list(['', 'Length (km)', 'Length (mi)', 'Length (%)'], [
+            ('Perennial', perl, perl * MILES_PER_KM, 100 * perl / totl),
+            ('Intermittent', intl, intl * MILES_PER_KM, 100 * intl / totl),
+            ('Ephemeral', ephl, ephl * MILES_PER_KM, 100 * ephl / totl),
+            ('Canal', canl, canl * MILES_PER_KM, 100 * canl / totl),
+            ('Total', totl, totl * MILES_PER_KM, 100)], length_section, None, True)
 
         pie_values = [
-            ('Perennial', rsc_metrics['flowlineLengthPerennialKm'], 'Perennial Stream Length'),
-            ('Intermittent', rsc_metrics['flowlineLengthIntermittentKm'], 'Intermittent Stream Length'),
-            ('Ephemeral', rsc_metrics['flowlineLengthEphemeralKm'], 'Ephemeral Stream Length'),
-            ('Canal', rsc_metrics['flowlineLengthCanalsKm'], 'Canal Length')
+            ('Perennial', rsc_metrics['flowlineLengthPerennialKm'], 'Perennial'),
+            ('Intermittent', rsc_metrics['flowlineLengthIntermittentKm'], 'Intermittent'),
+            ('Ephemeral', rsc_metrics['flowlineLengthEphemeralKm'], 'Ephemeral'),
+            ('Canal', rsc_metrics['flowlineLengthCanalsKm'], 'Canal')
         ]
 
         pie_path = os.path.join(self.images_dir, 'stream_type_pie.png')
-        # col = [self.bratcolors[x[0]] for x in table_data]
         pie([x[1] for x in pie_values], [x[2] for x in pie_values], 'Stream Length Breakdown', None, pie_path)
-        self.insert_image(section, pie_path, 'Pie Chart')
+        self.insert_image(length_section, pie_path, 'Pie Chart')
+
+        density_section = self.section('DrainageDensity', 'Drainage Density', parent, level=3)
+
+        perd = rsc_metrics['drainageDensityPerennial']
+        intd = rsc_metrics['drainageDensityIntermittent']
+        ephd = rsc_metrics['drainageDensityEphemeral']
+        alld = rsc_metrics['drainageDensityAll']
+
+        self.create_table_from_tuple_list(['', 'Density (km/km²)', 'Density (mi/mi²)'], [
+            ('Perennial', perd, perd * SQ_MILES_PER_SQ_KM),
+            ('Intermittent', intd, perd * SQ_MILES_PER_SQ_KM),
+            ('Ephemeral', ephd, ephd * SQ_MILES_PER_SQ_KM),
+            ('Overall', alld, alld * SQ_MILES_PER_SQ_KM)], density_section, None, False)
 
         self.create_table_from_tuple_list(['Waterbody Type', 'Count', 'Area (km²)', 'Area (mi²)', 'Parecent (%)'], [
             (
@@ -308,29 +245,32 @@ class WSCAReport(RSReport):
 
         total_area = sum([x[1] for x in data])
 
-        table_data = [(
-            owner,
-            f'{areakm:,.2f} km²',
-            f'{areami:,.2f} mi²',
-            f'{percent:,.2f} %'
-        ) for owner, areakm, areami, percent in data]
-
-        sorted_table_data = sorted(table_data, key=lambda x: x[0])
+        sorted_table_data = sorted(data, key=lambda x: x[0])
         sorted_raw_data = sorted(data, key=lambda x: x[0])
+        sorted_table_data.append(('Total', total_area, total_area * SQ_MILES_PER_SQ_M, 100))
 
-        self.create_table_from_tuple_list([title, 'Area (km²)', 'Area (mi²)', 'Percent (%)'], sorted_table_data, section)
+        self.create_table_from_tuple_list([title, 'Area (km²)', 'Area (mi²)', 'Percent (%)'], sorted_table_data, section, None, True)
 
-        # sorted_pie_data = sorted(data, key=lambda x: x[0])
+        # Get list of default colours and remove any that are close to orange being used for BLM
+        default_colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+        default_colors.remove('#ff7f0e')
+
+        # Ensure orange is used for BLM
+        labels = [x[0] for x in sorted_raw_data]
+        blm_label = next((s for s in labels if 'BLM' in s), None)
+        if blm_label is not None:
+            i = labels.index(blm_label)
+            default_colors.insert(i, BLM_COLOR)
 
         pie_path = os.path.join(self.images_dir, f'{title_ns}_pie.png')
-        pie([x[1] for x in sorted_raw_data], [x[0] for x in sorted_raw_data], f'{title} Breakdown', None, pie_path)
+        pie([x[1] for x in sorted_raw_data], [x[0] for x in sorted_raw_data], f'{title} Breakdown', default_colors, pie_path)
         self.insert_image(section, pie_path, 'Pie Chart')
 
         keys = [item[0] for item in sorted_raw_data]
-        values = [item[1] for item in sorted_raw_data]
+        values = [item[2] for item in sorted_raw_data]
         labels = [key for key in keys]
         bar_path = os.path.join(self.images_dir, f'{title_ns}_bar.png')
-        horizontal_bar(values, labels, None, 'Area (mi²)',  f'{title} Breakdown', bar_path)
+        horizontal_bar(values, labels, default_colors, 'Area (mi²)',  f'{title} Breakdown', bar_path)
         self.insert_image(section, bar_path, 'Bar Chart')
 
     def land_use(self, parent, rs_context_dir: str, vbet_dir: str, rcat_dir: str, anthro_dir: str, rme_dir: str) -> None:
@@ -426,11 +366,23 @@ class WSCAReport(RSReport):
             non_blm_bin_sums = np.histogram(non_blm_gradients, bins=bin_edges, weights=non_blm_lengths)[0]
 
             # Create labels for the bin ranges (e.g., "0-5%", "5-10%", etc.)
-            bin_labels = [f'{int(bin_edges[i]):d}-{int(bin_edges[i+1]):d}%' for i in range(len(bin_edges)-1)]
+            bin_labels = [f'{int(bin_edges[i]):d} - {int(bin_edges[i+1]):d}' for i in range(len(bin_edges)-1)]
+
+            bar_width = 0.35  # Width of each bar
+
+            # Plot bars for BLM and Non-BLM data, grouped by slope bin
+            _fig, ax = plt.subplots(figsize=(10, 6))
+            index = np.arange(len(blm_bin_sums))
+            ax.bar(index - bar_width / 2, blm_bin_sums, bar_width, label='BLM', color=BLM_COLOR)  # , edgecolor='black')
+            ax.bar(index + bar_width / 2, non_blm_bin_sums, bar_width, label='Non-BLM', color='green')  # , edgecolor='black')
+
+            # Set x-axis ticks and labels
+            ax.set_xticks(index)  # Set the positions of the ticks
+            ax.set_xticklabels(bin_labels)  # Set the labels for the ticks
 
             # Create the bar chart with two series
-            plt.bar(bin_labels, blm_bin_sums, width=0.4, label='BLM', color='blue', align='center')  # , edgecolor='black'
-            plt.bar(bin_labels, non_blm_bin_sums, width=0.4, label='Non-BLM', color='green', align='edge')  # , edgecolor='black'
+            # plt.bar(bin_labels, blm_bin_sums, width=bar_width, label='BLM', color=BLM_COLOR)  # , align='center')  # , edgecolor='black'
+            # plt.bar(bin_labels, non_blm_bin_sums, width=bar_width, label='Non-BLM', color='green')  # , align='edge')  # , edgecolor='black'
 
             # Add labels and title
             plt.xlabel('Slope (%)')
@@ -442,12 +394,12 @@ class WSCAReport(RSReport):
 
             # Save the combined chart as an image
             img_path = os.path.join(self.images_dir, 'combined_slope_histogram_with_ranges.png')
-            plt.tight_layout()  # Adjust layout to avoid label clipping
+            # plt.tight_layout()  # Adjust layout to avoid label clipping
             plt.savefig(img_path, bbox_inches="tight")
             plt.close()
 
             # Insert the image into your report or interface
-            self.insert_image(section, img_path, 'Combined Slope Histogram (BLM & Non-BLM)')
+            self.insert_image(section, img_path, 'Riverscape Lengths by Slope Bin')
 
     def stream_order(self, parent, rme_gpkg: str) -> None:
 
@@ -493,23 +445,23 @@ class WSCAReport(RSReport):
             bar_width = 0.35  # Width of each bar
             index = np.arange(len(blm_lengths))  # X-axis positions for bars
 
-            fig, ax = plt.subplots(figsize=(10, 6))
+            _fig, ax = plt.subplots(figsize=(10, 6))
 
             # Plot bars for BLM and Non-BLM data, grouped by stream order
-            ax.bar(index - bar_width / 2, blm_lengths, bar_width, label='BLM', color='blue')  # , edgecolor='black')
+            ax.bar(index - bar_width / 2, blm_lengths, bar_width, label='BLM', color=BLM_COLOR)  # , edgecolor='black')
             ax.bar(index + bar_width / 2, non_blm_lengths, bar_width, label='Non-BLM', color='green')  # , edgecolor='black')
 
             # Add labels, title, and legend
             ax.set_xlabel('Stream Order')
             ax.set_ylabel('Stream Length (miles)')
-            ax.set_title('Stream Order Lengths for BLM and Non-BLM')
+            ax.set_title('Stream Order Lengths')
             ax.set_xticks(index)
             ax.set_xticklabels([str(order+1) for order in range(len(blm_lengths))])  # , rotation=45)
             ax.legend()
 
             # Save the chart as an image
             img_path = os.path.join(self.images_dir, 'combined_stream_order_bar_chart.png')
-            plt.tight_layout()  # Adjust layout to prevent clipping of labels
+            # plt.tight_layout()  # Adjust layout to prevent clipping of labels
             plt.savefig(img_path)
             plt.close()
 
@@ -566,8 +518,8 @@ class WSCAReport(RSReport):
                 bar_width = (bin_edges[1] - bin_edges[0]) / 3  # Smaller width for grouped bars
 
                 plt.clf()
-                plt.bar(bin_midpoints - bar_width / 2, bin_sums_blm, width=bar_width, color='blue', label='BLM', edgecolor='black')
-                plt.bar(bin_midpoints + bar_width / 2, bin_sums_non_blm, width=bar_width, color='green', label='Non-BLM', edgecolor='black')
+                plt.bar(bin_midpoints - bar_width / 2, bin_sums_blm, width=bar_width, color=BLM_COLOR, label='BLM')
+                plt.bar(bin_midpoints + bar_width / 2, bin_sums_non_blm, width=bar_width, color='green', label='Non-BLM')
 
                 # Add labels, legend, and grid
                 plt.xlabel('Sinuosity')

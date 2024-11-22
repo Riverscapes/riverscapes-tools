@@ -149,7 +149,7 @@ def group_pie_labels(labels):
     return labels
 
 
-def pie(x_values, labels, chart_title, color, file_path):
+def pie(x_values, labels, chart_title, colors, file_path):
 
     clean_labels = []
     clean_values = []
@@ -161,7 +161,7 @@ def pie(x_values, labels, chart_title, color, file_path):
 
     plt.clf()
     fig, ax = plt.subplots()
-    chart = ax.pie(clean_values, labels=clean_labels, colors=color, autopct='%1.0f%%')
+    chart = ax.pie(clean_values, labels=clean_labels, colors=colors, autopct='%1.0f%%')
 
     group_pie_labels(chart[1])
 
