@@ -10,11 +10,11 @@
       "description": "What HUC?",
       // "default": "17070202" // North Fork John Day
       // "default": "1005001208", // Really small HUC
-      "options": [
-        "1005001208", // Really small HUC
-        "1005001205", // North Fork John Day
-        "1005001203", // Asotin]"
-      ]
+      // "options": [
+      //   "1005001208", // Really small HUC
+      //   "1005001205", // North Fork John Day
+      //   "1005001203", // Asotin]"
+      // ]
       // "default": "17060103" // Asotin
     }
   ],
@@ -82,9 +82,9 @@
       "module": "rme.wsca_report",
       "console": "integratedTerminal",
       "args": [
-        "${input:HUC}",
+        "1005001208",
         "{env:DATA_ROOT}",
-        "{env:DATA_ROOT}/rme/${input:HUC}/outputs/wsca_report.html",
+        "{env:DATA_ROOT}/rme/1005001208/outputs/wsca_report.html",
         "--verbose"
       ]
     },
