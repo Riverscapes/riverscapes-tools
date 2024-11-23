@@ -10,11 +10,11 @@
       "description": "What HUC?",
       // "default": "17070202" // North Fork John Day
       // "default": "1005001208", // Really small HUC
-      // "options": [
-      //   "1005001208", // Really small HUC
-      //   "1005001205", // North Fork John Day
-      //   "1005001203", // Asotin]"
-      // ]
+      "options": [
+        "1005001208", // Really small HUC
+        "1005001205", // North Fork John Day
+        "1005001203", // Asotin]"
+      ]
       // "default": "17060103" // Asotin
     }
   ],
@@ -170,7 +170,8 @@
         "{env:DATA_ROOT}/rcat/${input:HUC}",
         "{env:DATA_ROOT}/anthro/${input:HUC}",
         "{env:DATA_ROOT}/rme/${input:HUC}",
-        "{env:DATA_ROOT}/blm_metrics/${input:HUC}"
+        "{env:DATA_ROOT}/blm_riparian.gpkg",
+        "{env:DATA_ROOT}/blm_metrics/${input:HUC}",
       ]
     },
     {

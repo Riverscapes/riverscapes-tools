@@ -18,7 +18,7 @@ from rme.__version__ import __version__
 
 
 from .utils.hypsometric_curve import hipsometric_curve
-from .utils.blm_charts import charts as blm_charts, vegetation_charts, land_ownership_labels
+from .utils.blm_charts import charts as blm_charts, vegetation_charts, land_ownership_labels, riparian_charts
 
 ACRES_PER_SQ_METRE = 0.000247105
 ACRES_PER_SQ_KM = 247.105
@@ -48,7 +48,8 @@ class WSCAReport(RSReport):
         x_labels: List[str],
         colors: List[str],
         x_label: str,
-        y_label: str
+        y_label: str,
+        is_vertical: bool = False
     ) -> None:
         """
         Create and save a plot with multiple series as a clustered bar chart.
@@ -74,21 +75,35 @@ class WSCAReport(RSReport):
         indices = np.arange(num_categories)  # Base x positions for the groups
         for i, series in enumerate(data):
             bar_positions = indices + i * bar_width - (num_series * bar_width) / 2 + bar_width / 2
-            ax.bar(bar_positions, series, bar_width, label=series_labels[i], color=colors[i])
+            if is_vertical is True:
+                ax.bar(bar_positions, series, bar_width, label=series_labels[i], color=colors[i])
+            else:
+                ax.barh(bar_positions, series, bar_width, label=series_labels[i], color=colors[i])
 
-        # Adjust x-axis tick marks to align with the center of each cluster
-        ax.set_xticks(indices)
-        ax.set_xticklabels(x_labels)
+        if is_vertical is True:
+            ax.set_xticks(indices)
+            ax.set_xticklabels(x_labels)
 
-        # Set chart labels and title
-        ax.set_xlabel(x_label)
-        ax.set_ylabel(y_label)
-        ax.set_title(title)
-        ax.legend()
-        plt.grid(axis='y', linestyle='--', alpha=PLOT_ALPHA)
+            # Set chart labels and title
+            ax.set_xlabel(x_label)
+            ax.set_ylabel(y_label)
+            ax.set_title(title)
+            ax.legend()
+            plt.grid(axis='y', linestyle='--', alpha=PLOT_ALPHA)
+        else:
+            ax.set_yticks(indices)
+            ax.set_yticklabels(x_labels)
+
+            # Set chart labels and title
+            ax.set_xlabel(y_label)
+            ax.set_ylabel(x_label)
+            ax.set_title(title)
+            ax.legend()
+            plt.grid(axis='x', linestyle='--', alpha=PLOT_ALPHA)
 
         # Save and insert the image
         img_path = os.path.join(self.images_dir, f"{title.replace(' ', '_')}.png")
+        plt.tight_layout()
         plt.savefig(img_path)
         plt.close()
         self.insert_image(parent, img_path, title)
@@ -102,7 +117,8 @@ class WSCAReport(RSReport):
         x_labels: List[str],
         colors: List[str],
         x_label: str,
-        y_label: str
+        y_label: str,
+        is_vertical: bool = False
     ) -> None:
         """
         Create and save a plot with multiple series as a clustered bar chart.
@@ -134,18 +150,29 @@ class WSCAReport(RSReport):
             hatch = None if is_stack == 0 else 'x'
             bottom = None if is_stack == 0 else data[i - 1]
             bar_positions = indices + stack * bar_width - (num_series * bar_width) / 2 + (bar_width / 2) * (0.5 if is_stack == 0 else -0.5)
-            ax.bar(bar_positions, series, bar_width, bottom=bottom, label=series_labels[i], color=colors[i], hatch=hatch, edgecolor='black', linewidth=0.2)
+            if is_vertical is True:
+                ax.bar(bar_positions, series, bar_width, bottom=bottom, label=series_labels[i], color=colors[i], hatch=hatch, edgecolor='black', linewidth=0.2)
+            else:
+                ax.barh(bar_positions, series, bar_width, left=bottom, label=series_labels[i], color=colors[i], hatch=hatch, edgecolor='black', linewidth=0.2)
 
-        # Adjust x-axis tick marks to align with the center of each cluster
-        ax.set_xticks(indices)
-        ax.set_xticklabels(x_labels)
+        if is_vertical is True:
+            ax.set_xticks(indices)
+            ax.set_xticklabels(x_labels)
 
-        # Set chart labels and title
-        ax.set_xlabel(x_label)
-        ax.set_ylabel(y_label)
-        ax.set_title(title)
-        ax.legend()
-        plt.grid(axis='y', linestyle='--', alpha=PLOT_ALPHA)
+            ax.set_xlabel(x_label)
+            ax.set_ylabel(y_label)
+            ax.set_title(title)
+            ax.legend()
+            plt.grid(axis='y', linestyle='--', alpha=PLOT_ALPHA)
+        else:
+            ax.set_yticks(indices)
+            ax.set_yticklabels(x_labels)
+
+            ax.set_xlabel(y_label)
+            ax.set_ylabel(x_label)
+            ax.set_title(title)
+            ax.legend()
+            plt.grid(axis='x', linestyle='--', alpha=PLOT_ALPHA)
 
         # Save and insert the image
         img_path = os.path.join(self.images_dir, f"{title.replace(' ', '_')}.png")
@@ -176,7 +203,7 @@ class WSCAReport(RSReport):
         # # colors = ['red', 'green', 'blue', 'orange', 'purple']
         # colors = [BLM_COLOR, BLM_COLOR, 'grey', 'grey']
         # # self.clustered_bar_chart(ws_context_section, 'Test Plot', data, ['BLM', 'Non-BLM'], labels, colors, 'X Label', 'Y Label')
-        # self.stacked_clustered_bar_chart(ws_context_section, 'Test Plot', data2, ['BLM - Perennial', 'BLM - Non-Perennial', 'Non-BLM - Perennial', 'Non-BLM - Non-Perennial'], labels, colors, 'X Label', 'Y Label')
+        # self.stacked_clustered_bar_chart(ws_context_section, 'Test Plot', data2, ['BLM - Perennial', 'BLM - Non-Perennial', 'Non-BLM - Perennial', 'Non-BLM - Non-Perennial'], labels, colors, 'X Label', 'Y Label', False)
         # return
 
         rs_context_dir = os.path.join(input_dir, 'rs_context', huc)
@@ -229,7 +256,7 @@ class WSCAReport(RSReport):
 
         s3_section = self.section('Riparian', 'Section 3 - Conditions: Water, Riparian-wetland, and Aquatic Areas', level=1)
         riparian_section = self.section('Riparian', 'Riparian Conditions', s3_section, level=2)
-        self.riparian_condition(riparian_section, rme_gpkg)
+        self.riparian_condition(riparian_section, rme_dir)
         self.geomorphic(riparian_section, rme_gpkg)
         self.floodplain_access(riparian_section, rme_gpkg)
         self.starvation(riparian_section, brat_gpkg)
@@ -502,8 +529,31 @@ class WSCAReport(RSReport):
 
             self.stacked_clustered_bar_chart(section, 'Slope Analysis', chart_data, series_labels, bin_labels, colors, 'Slope (%)', 'Stream Length (miles)')
 
-    def riparian_condition(self, riparian_section, rme_gpkg):
-        pass
+    def riparian_condition(self, riparian_section, rme_dir):
+
+        section = self.section('Riparian', 'Riparian', riparian_section, level=3)
+
+        riparian_gpkg = os.path.join(os.path.dirname(rme_dir), '..', 'blm_riparian.gpkg')
+
+        # Returns a dictionary of ownership, with subdictionaries of riparian class keyed to areas (m2)
+        riparian = riparian_charts(rme_dir, riparian_gpkg)
+
+        # Get the unique riparian categories
+        unique_categories = []
+        for owner, cats in riparian.items():
+            unique_categories += list(cats.keys())
+
+        unique_categories = list(set(unique_categories))
+
+        data = []
+        for owner in ['BLM', 'Non-BLM']:
+            owner_data = riparian[owner]
+            owner_series = []
+            for cat in unique_categories:
+                owner_series.append(owner_data.get(cat, 0) * ACRES_PER_SQ_M)
+            data.append(owner_series)
+
+        self.clustered_bar_chart(section, 'Riverscapes Riparian Condition', data, ['BLM', 'Non-BLM'], unique_categories, [BLM_COLOR, NON_BLM_COLOR], 'Riparian Condition', 'Area (acres)')
 
     def geomorphic(self, riparian_section, rme_gpkg):
         pass
