@@ -178,7 +178,7 @@ def pie(x_values, labels, chart_title, colors, file_path):
 def horizontal_bar(x_values, labels, color, x_axis_label1, chart_title, file_path, x_axis_label2=None):
 
     clean_values = [0 if x is None else x for x in x_values]
-    bar_labels = [(i / sum(clean_values)) * 100 for i in clean_values]
+    bar_labels = [(i / sum(clean_values)) * 100 for i in clean_values] if (sum(clean_values) > 0) else [0] * len(clean_values)
 
     plt.clf()
     fig, ax = plt.subplots()

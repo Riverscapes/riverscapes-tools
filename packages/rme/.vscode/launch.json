@@ -82,9 +82,9 @@
       "module": "rme.wsca_report",
       "console": "integratedTerminal",
       "args": [
-        "1005001208",
+        "${input:HUC}",
         "{env:DATA_ROOT}",
-        "{env:DATA_ROOT}/rme/1005001208/outputs/wsca_report.html",
+        "{env:DATA_ROOT}/rme/${input:HUC}/outputs/wsca_report.html",
         "--verbose"
       ]
     },
