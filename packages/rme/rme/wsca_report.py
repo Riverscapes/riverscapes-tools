@@ -223,6 +223,11 @@ class WSCAReport(RSReport):
         brat_dir = os.path.join(input_dir, 'brat', huc)
         brat_gpkg = os.path.join(brat_dir, 'outputs', 'brat.gpkg')
 
+        with sqlite3.connect(rsc_nhd_gpkg) as conn:
+            curs = conn.cursor()
+            curs.execute('SELECT Name FROM WBDHU10 LIMIT 1')
+            self.title = f'Watershed Condition Assessment Report for {curs.fetchone()[0]} ({huc})'
+
         self.physiography(ws_context_section, rs_context_dir, rsc_nhd_gpkg, rsc_metrics_json)
         self.hydrography(ws_context_section, rs_context_dir, rsc_nhd_gpkg, rsc_metrics_json)
         self.watershed_ownership(ws_context_section, rsc_metrics_json)
@@ -243,7 +248,11 @@ class WSCAReport(RSReport):
         self.acquatic_resources(s2_section, rme_metrics)
 
         biophysical_section = self.section('Biophysical', 'Biophysical Settings')
-        self.hydro_geomorphic(biophysical_section, rme_gpkg)
+
+        hydro_geo = self.section('HydroGeomorphic', 'Hydro Geomorphic', biophysical_section, level=2)
+
+        self.confinement(hydro_geo, rme_gpkg)
+        self.vbet_density(hydro_geo, rme_gpkg)
         self.slope_analysis(biophysical_section, rme_gpkg)
         self.stream_order(biophysical_section, rme_gpkg)
         self.sinuosity(biophysical_section, rme_gpkg)
@@ -252,7 +261,6 @@ class WSCAReport(RSReport):
         self.vegetation(ecology_section, rcat_dir)
         self.beaver(ecology_section, brat_gpkg)
         self.beaver_unsuitable(ecology_section, brat_gpkg)
-        self.confinement(ecology_section, rme_gpkg)
 
         s3_section = self.section('Riparian', 'Section 3 - Conditions: Water, Riparian-wetland, and Aquatic Areas', level=1)
         riparian_section = self.section('Riparian', 'Riparian Conditions', s3_section, level=2)
@@ -370,7 +378,7 @@ class WSCAReport(RSReport):
         total_area = sum([area_m2 for area_m2 in rsc_metrics['ownership'].values()])
 
         display_data = [(
-            land_ownership_labels[owner],
+            land_ownership_labels[owner] if owner != 'BLM' else 'BLM',
             area * SQ_KM_PER_SQ_M,
             area * SQ_MILES_PER_SQ_M,
             100 * area / total_area,
@@ -393,7 +401,7 @@ class WSCAReport(RSReport):
 
         # Output the results
         display_data = [(
-            land_ownership_labels[owner],
+            land_ownership_labels[owner] if owner != 'BLM' else 'BLM',
             area * SQ_KM_PER_SQ_M,
             area * SQ_MILES_PER_SQ_M,
             100 * area / total_area,
@@ -471,13 +479,6 @@ class WSCAReport(RSReport):
             metrics.append((f'{flow_type} Riparian Area (acres)', f'{blm_area * ACRES_PER_SQ_METRE:,.2f}', f'{non_area * ACRES_PER_SQ_METRE:,.2f}'))
 
         self.create_table_from_tuple_list(['', 'BLM', 'Non-BLM',], metrics, parent)
-
-    def hydro_geomorphic(self, parent, rme_gpkg):
-
-        section = self.section('HydroGeomorphic', 'Hydro Geomorphic', parent, level=2)
-
-        self.confinement(section, rme_gpkg)
-        self.vbet_density(parent, rme_gpkg)
 
     def slope_analysis(self, parent, rme_gpkg: str) -> None:
 
@@ -882,13 +883,13 @@ FROM DamLimitations DL
             bin_labels = [f'{bins[i-1]}-{bins[i]}' if i != 0 else f'< {bins[i]}' for i in range(len(bins))]
 
             for flow, flow_filter in [('Perennial', " IN (46003, 55800)"), ('Non-Perennial', " NOT IN (46003, 55800)")]:
-                data = {'BLM': [0.00] * len(bins), 'Non-BLM': [0.00] * len(bins)}
                 for owner, owner_filter in [('BLM', " = 'BLM'"), ('Non-BLM', " <> 'BLM'")]:
                     curs.execute(f'''
                     SELECT conf_igo_confinement_ratio, centerline_length, segment_area
                         FROM rme_dgos
                         where rme_dgo_ownership {owner_filter}
-                            and fcode {flow_filter}''')
+                            and fcode {flow_filter}
+and conf_igo_confinement_ratio is not null and centerline_length is not null and segment_area is not null''')
 
                     for row in curs.fetchall():
                         confinement_ratio = row[0]
@@ -896,11 +897,17 @@ FROM DamLimitations DL
                         value = row[1] * MILES_PER_M if field == 'centerline_length' else row[2] * ACRES_PER_SQ_METRE
                         for idx, upper_limit in enumerate(bins):
                             if confinement_ratio < upper_limit:
-                                data[owner][idx] += value
+                                data[flow][owner][idx] += value
                                 break
 
-                plot_data = [data[owner] for owner in ['BLM', 'Non-BLM']]
-                self.clustered_bar_chart(section, f'{title} - {flow}', plot_data, ['BLM', 'Non-BLM'], bin_labels, [BLM_COLOR, NON_BLM_COLOR], 'Confinement Ratio', y_label)
+            plot_data = [
+                data['Perennial']['BLM'],
+                data['Non-Perennial']['Non-BLM'],
+                data['Perennial']['BLM'],
+                data['Non-Perennial']['Non-BLM']
+            ]
+            self.stacked_clustered_bar_chart(section, f'{title}', plot_data, ['BLM - Perennial', 'BLM Non-Perennial', 'Non-BLM - Perennial', 'Bob-BLM - Non-Perennial'],
+                                             bin_labels, [BLM_COLOR, BLM_COLOR, NON_BLM_COLOR, NON_BLM_COLOR], 'Confinement Ratio', y_label)
 
     def vbet_density(self, parent, rme_gpkg):
 
@@ -918,7 +925,7 @@ FROM DamLimitations DL
                         and segment_area is not null
                         and centerline_length is not null
                     GROUP BY rme_dgo_ownership = 'BLM')
-                         ORDER BY isBLM''')
+                         ORDER BY NOT isBLM''')
             densities = [(row[0], row[1]) for row in curs.fetchall()]
             values = [x[1] for x in densities]
             labels = [x[0] for x in densities]
@@ -1036,7 +1043,7 @@ def main():
 
     # try:
     report = WSCAReport(args.huc, args.input_folder, os.path.dirname(args.report_path), args.report_path, args.verbose)
-    report.write(title=f'Watershed Condition Assessment Report For HUC: {args.huc}')
+    report.write(title=report.title)
 
     # except Exception as e:
     #     log.error(e)

@@ -219,6 +219,7 @@ def charts(rsc_project_folder, vbet_project_folder, rcat_project_folder, anthro_
 
     values = list(lengths.values())
     labels = [land_ownership_labels.get(l, l) for l in lengths.keys()]
+    labels = [l if l is not None else '' for l in labels]
     colors = [land_owhership_colors.get(l, '#000000') for l in lengths.keys()]
     horizontal_bar(values, labels, colors, 'Length (mileage)', 'Land Ownership by Mileage', output_charts['Land Ownership by Mileage'])
 

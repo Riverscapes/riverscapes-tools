@@ -57,6 +57,11 @@ def vbet_metrics(vbet_proj_path, rsc_proj_path):
         metrics['vbetDgoMaxArea'] = max_area
         metrics['vbetDgoAvgArea'] = avg_area
 
+        curs.execute('SELECT COUNT(*) FROM (SELECT DISTINCT level_path FROM vbet_dgos)')
+        metrics['vbetLevelPathCount'] = curs.fetchone()[0]
+
+    with sqlite3.connect(os.path.join(vbet_proj_path, 'outputs', 'vbet.gpkg')) as conn:
+        curs = conn.cursor()
         curs.execute('SELECT sum(centerline_length), min(centerline_length), max(centerline_length), avg(centerline_length), count(*) FROM vbet_igos')
         total_length, min_length, max_length, avg_length, count = curs.fetchone()
         metrics['vbetIgoCount'] = count
@@ -65,10 +70,6 @@ def vbet_metrics(vbet_proj_path, rsc_proj_path):
         metrics['vbetIgoMaxCenterlineLength'] = max_length
         metrics['vbetIgoAvgCenterlineLength'] = avg_length
 
-        curs.execute('SELECT COUNT(*) FROM (SELECT DISTINCT level_path FROM vbet_dgos)')
-        metrics['vbetLevelPathCount'] = curs.fetchone()[0]
-
-    with sqlite3.connect(os.path.join(vbet_proj_path, 'outputs', 'vbet.gpkg')) as conn:
         curs = conn.cursor()
         curs.execute("""SELECT SUM(width_frac) FROM (SELECT integrated_width * (window_area / tot_area) width_frac FROM (SELECT window_area, integrated_width FROM vbet_igos),
                      (SELECT SUM(window_area) AS tot_area FROM vbet_igos))""")
