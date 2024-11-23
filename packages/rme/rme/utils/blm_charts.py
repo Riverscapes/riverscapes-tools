@@ -504,6 +504,49 @@ def read_clr_file(file_path):
     return clr_dict, clr_hex_dict
 
 
+def riparian_charts(rme_project: str, riparian_gpkg: str) -> dict:
+
+    rme_gpkg = os.path.join(rme_project, 'outputs', 'riverscapes_metrics.gpkg')
+
+    results = {}
+
+    # Loop over each VBET polygon
+    with GeopackageLayer(rme_gpkg, 'rme_dgos') as rme_lyr:
+        for rme_feature, *_ in rme_lyr.iterate_features():
+            rme_feature: ogr.Feature
+            rme_ownership = rme_feature.GetField('rme_dgo_ownership')
+            rme_ownership = rme_ownership if rme_ownership == 'BLM' else 'Non-BLM'
+            dgo_geom: ogr.Geometry = rme_feature.GetGeometryRef()
+
+            # Get the riparian area within the VBET polygon
+            with GeopackageLayer(riparian_gpkg, 'riparian') as riparian_lyr:
+
+                # transform the VBET geometry to the riparian layer's srs
+                riparian_lyr_srs = riparian_lyr.ogr_layer.GetSpatialRef()
+                dgo_geom.TransformTo(riparian_lyr_srs)
+
+                for riparian_feature, *_ in riparian_lyr.iterate_features(clip_shape=dgo_geom):
+                    riparian_feature: ogr.Feature
+                    riparian_class = riparian_feature.GetField('WETLAND_TY')
+                    riparian_geom: ogr.Geometry = riparian_feature.GetGeometryRef()
+
+                    # intersect the VBET geometry with the riparian geometry
+                    riparian_geom: ogr.Geometry = riparian_geom.Intersection(dgo_geom)
+                    riparian_geom.MakeValid()
+                    if riparian_geom.IsEmpty() or riparian_geom.GetArea() == 0.0:
+                        continue
+
+                    if rme_ownership not in results:
+                        results[rme_ownership] = {}
+
+                    if riparian_class not in results[rme_ownership]:
+                        results[rme_ownership][riparian_class] = 0.0
+
+                    results[rme_ownership][riparian_class] += riparian_geom.GetArea()
+
+    return results
+
+
 def main():
     parser = argparse.ArgumentParser(description='Calculate hypsometric curve from a DEM within a polygon')
     parser.add_argument('riverscapes_context_project_folder', type=str, help='Path to the riverscapes context project folder')
@@ -511,11 +554,13 @@ def main():
     parser.add_argument('rcat_project_folder', type=str, help='Path to the rcat project folder')
     parser.add_argument('ahthro_project_folder', type=str, help='Path to the anthro project folder')
     parser.add_argument('rme_project_folder', type=str, help='Path to the rme project folder')
+    parser.add_argument('riparian_gpkg', type=str, help='Path to the bespoke BLM riparian GeoPackage')
     parser.add_argument('output_path', type=str, help='Path to save the plots')
     args = dotenv.parse_args_env(parser)
 
     # out_charts = charts(args.riverscapes_context_project_folder, args.vbet_project_folder, args.rcat_project_folder, args.ahthro_project_folder, args.rme_project_folder, args.output_path)
-    veg_charts = vegetation_charts(args.rcat_project_folder, args.output_path)
+    # veg_charts = vegetation_charts(args.rcat_project_folder, args.output_path)
+    riparian_charts(args.rme_project_folder, args.riparian_gpkg)
 
     # add the vegetation charts to the output charts
     # out_charts.update(veg_charts)
