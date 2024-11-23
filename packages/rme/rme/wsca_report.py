@@ -1,6 +1,7 @@
 from typing import List
 import os
 import sys
+import copy
 import argparse
 import sqlite3
 import json
@@ -26,12 +27,131 @@ SQ_MILES_PER_SQ_KM = 0.386102159
 SQ_MILES_PER_SQ_M = 0.000000386102159
 SQ_KM_PER_SQ_M = 0.000001
 MILES_PER_M = 0.000621371
+ACRES_PER_SQ_M = 0.000247105
 
-BLM_COLOR = 'orange'
+BLM_COLOR = '#F7E794'
+NON_BLM_COLOR = 'grey'
+
+BAR_WIDTH = 0.35
+PLOT_ALPHA = 0.5
 
 
 class WSCAReport(RSReport):
     """ Watershed Condition Assessment Report """
+
+    def clustered_bar_chart(
+        self,
+        parent: ET.Element,
+        title: str,
+        data: List[List[float]],
+        series_labels: List[str],
+        x_labels: List[str],
+        colors: List[str],
+        x_label: str,
+        y_label: str
+    ) -> None:
+        """
+        Create and save a plot with multiple series as a clustered bar chart.
+
+        :param parent: The parent XML element to which the image will be added.
+        :param title: Title of the plot.
+        :param data: List of series data, each series being a list of floats.
+        :param series_labels: List of labels for each series.
+        :param x_labels: List of labels for the x-axis.
+        :param colors: List of colors for the series.
+        :param x_label: Label for the x-axis.
+        :param y_label: Label for the y-axis.
+        """
+        plt.clf()
+        _fig, ax = plt.subplots(figsize=(10, 6))
+
+        # Number of series and bars in each group
+        num_series = len(data)
+        num_categories = len(data[0])
+        bar_width = 0.8 / num_series  # Adjust bar width to fit all series within a group
+
+        # Calculate the positions for the bars
+        indices = np.arange(num_categories)  # Base x positions for the groups
+        for i, series in enumerate(data):
+            bar_positions = indices + i * bar_width - (num_series * bar_width) / 2 + bar_width / 2
+            ax.bar(bar_positions, series, bar_width, label=series_labels[i], color=colors[i])
+
+        # Adjust x-axis tick marks to align with the center of each cluster
+        ax.set_xticks(indices)
+        ax.set_xticklabels(x_labels)
+
+        # Set chart labels and title
+        ax.set_xlabel(x_label)
+        ax.set_ylabel(y_label)
+        ax.set_title(title)
+        ax.legend()
+        plt.grid(axis='y', linestyle='--', alpha=PLOT_ALPHA)
+
+        # Save and insert the image
+        img_path = os.path.join(self.images_dir, f"{title.replace(' ', '_')}.png")
+        plt.savefig(img_path)
+        plt.close()
+        self.insert_image(parent, img_path, title)
+
+    def stacked_clustered_bar_chart(
+        self,
+        parent: ET.Element,
+        title: str,
+        data: List[List[float]],
+        series_labels: List[str],
+        x_labels: List[str],
+        colors: List[str],
+        x_label: str,
+        y_label: str
+    ) -> None:
+        """
+        Create and save a plot with multiple series as a clustered bar chart.
+
+        Pairs of series are stacked together.
+
+        :param parent: The parent XML element to which the image will be added.
+        :param title: Title of the plot.
+        :param data: List of series data, each series being a list of floats.
+        :param series_labels: List of labels for each series.
+        :param x_labels: List of labels for the x-axis.
+        :param colors: List of colors for the series.
+        :param x_label: Label for the x-axis.
+        :param y_label: Label for the y-axis.
+        """
+        plt.clf()
+        _fig, ax = plt.subplots(figsize=(10, 6))
+
+        # Number of series and bars in each group
+        num_series = len(data) / 2.0
+        num_categories = len(data[0])
+        bar_width = 0.8 / num_series  # Adjust bar width to fit all series within a group
+
+        # Calculate the positions for the bars
+        indices = np.arange(num_categories)  # Base x positions for the groups
+        for i, series in enumerate(data):
+            stack = i/2.0
+            is_stack = i % 2
+            hatch = None if is_stack == 0 else 'x'
+            bottom = None if is_stack == 0 else data[i - 1]
+            bar_positions = indices + stack * bar_width - (num_series * bar_width) / 2 + (bar_width / 2) * (0.5 if is_stack == 0 else -0.5)
+            ax.bar(bar_positions, series, bar_width, bottom=bottom, label=series_labels[i], color=colors[i], hatch=hatch, edgecolor='black', linewidth=0.2)
+
+        # Adjust x-axis tick marks to align with the center of each cluster
+        ax.set_xticks(indices)
+        ax.set_xticklabels(x_labels)
+
+        # Set chart labels and title
+        ax.set_xlabel(x_label)
+        ax.set_ylabel(y_label)
+        ax.set_title(title)
+        ax.legend()
+        plt.grid(axis='y', linestyle='--', alpha=PLOT_ALPHA)
+
+        # Save and insert the image
+        img_path = os.path.join(self.images_dir, f"{title.replace(' ', '_')}.png")
+        plt.savefig(img_path)
+        plt.close()
+        self.insert_image(parent, img_path, title)
 
     def __init__(self, huc: str, input_dir: str, output_dir: str, report_path: str, verbose: bool = False):
         super().__init__(None, report_path)
@@ -49,6 +169,15 @@ class WSCAReport(RSReport):
 
         ##############################################################################################################################
         ws_context_section = self.section('WSContext', 'Watershed Context')
+
+        # data1 = [[1, 2, 3, 4, 5], [6, 7, 8, 9, 10]]
+        # data2 = [[1, 2, 3, 4, 5], [5, 4, 3, 2, 1], [2, 3, 4, 5, 6], [5, 4, 3, 2, 1]]
+        # labels = ['A', 'B', 'C', 'D', 'E']
+        # # colors = ['red', 'green', 'blue', 'orange', 'purple']
+        # colors = [BLM_COLOR, BLM_COLOR, 'grey', 'grey']
+        # # self.clustered_bar_chart(ws_context_section, 'Test Plot', data, ['BLM', 'Non-BLM'], labels, colors, 'X Label', 'Y Label')
+        # self.stacked_clustered_bar_chart(ws_context_section, 'Test Plot', data2, ['BLM - Perennial', 'BLM - Non-Perennial', 'Non-BLM - Perennial', 'Non-BLM - Non-Perennial'], labels, colors, 'X Label', 'Y Label')
+        # return
 
         rs_context_dir = os.path.join(input_dir, 'rs_context', huc)
         rcat_dir = os.path.join(input_dir, 'rcat', huc)
@@ -87,16 +216,23 @@ class WSCAReport(RSReport):
         self.acquatic_resources(s2_section, rme_metrics)
 
         biophysical_section = self.section('Biophysical', 'Biophysical Settings')
-        self.hydro_geomorphic(biophysical_section, rme_metrics)
+        self.hydro_geomorphic(biophysical_section, rme_gpkg)
         self.slope_analysis(biophysical_section, rme_gpkg)
         self.stream_order(biophysical_section, rme_gpkg)
         self.sinuosity(biophysical_section, rme_gpkg)
-        self.valley_bottom_density(biophysical_section, rme_gpkg)
 
         ecology_section = self.section('Ecological', 'Ecological', level=2)
         self.vegetation(ecology_section, rcat_dir)
         self.beaver(ecology_section, brat_gpkg)
         self.beaver_unsuitable(ecology_section, brat_gpkg)
+        self.confinement(ecology_section, rme_gpkg)
+
+        s3_section = self.section('Riparian', 'Section 3 - Conditions: Water, Riparian-wetland, and Aquatic Areas', level=1)
+        riparian_section = self.section('Riparian', 'Riparian Conditions', s3_section, level=2)
+        self.riparian_condition(riparian_section, rme_gpkg)
+        self.geomorphic(riparian_section, rme_gpkg)
+        self.floodplain_access(riparian_section, rme_gpkg)
+        self.starvation(riparian_section, brat_gpkg)
 
     def physiography(self, parent, rs_context_dir: str, rsc_nhd_gpkg: str, rsc_metrics: dict) -> None:
 
@@ -309,11 +445,12 @@ class WSCAReport(RSReport):
 
         self.create_table_from_tuple_list(['', 'BLM', 'Non-BLM',], metrics, parent)
 
-    def hydro_geomorphic(self, parent, rme_metrics):
+    def hydro_geomorphic(self, parent, rme_gpkg):
 
         section = self.section('HydroGeomorphic', 'Hydro Geomorphic', parent, level=2)
 
-        pass
+        self.confinement(section, rme_gpkg)
+        self.vbet_density(parent, rme_gpkg)
 
     def slope_analysis(self, parent, rme_gpkg: str) -> None:
 
@@ -322,84 +459,101 @@ class WSCAReport(RSReport):
         with sqlite3.connect(rme_gpkg) as conn:
             curs = conn.cursor()
 
-            # Prepare lists for the BLM and Non-BLM data
-            blm_lengths = []
-            blm_gradients = []
-            non_blm_lengths = []
-            non_blm_gradients = []
+            bins = [0.5, 1.0, 3.0, 8.0, 23.0, 100]
+            data = {owner: {flow: [0.0]*len(bins) for flow in ['Perennial', 'Non-Perennial']} for owner in ['BLM', 'Non-BLM']}
+            curs.execute('''
+                SELECT rme_dgo_ownership, FCode, nhd_dgo_streamlength, rme_igo_prim_channel_gradient
+                FROM rme_igos
+                WHERE (rme_igo_prim_channel_gradient IS NOT NULL)
+                    AND (nhd_dgo_streamlength IS NOT NULL)''')
 
-            # Loop over ownership and flow categories
-            for owner, owner_filter in [('BLM', " = 'BLM'"), ('Non-BLM', " <> 'BLM'")]:
-                for flow, flow_filter in [('Perennial', " IN (46003, 55800)"), ('Non-Perennial', " NOT IN (46003, 55800)")]:
+            for row in curs.fetchall():
+                owner = 'BLM' if row[0] == 'BLM' else 'Non-BLM'
+                flow = 'Perennial' if row[1] in [46003, 55800] else 'Non-Perennial'
+                slope = row[3] * 100.0
 
-                    curs.execute(f'''
-                        SELECT
-                            nhd_dgo_streamlength, rme_igo_prim_channel_gradient
-                        FROM rme_igos
-                        WHERE (rme_igo_prim_channel_gradient IS NOT NULL)
-                            AND (rme_dgo_ownership {owner_filter})
-                            AND (FCode {flow_filter})''')
+                for i, bin_top in enumerate(bins):
+                    if slope < bin_top:
+                        data[owner][flow][i] += row[2] * MILES_PER_M
+                        break
 
-                    slope_data = [(row[0] * MILES_PER_M, row[1] * 100.0) for row in curs.fetchall()]
+            chart_data = [
+                data['BLM']['Perennial'],
+                data['BLM']['Non-Perennial'],
+                data['Non-BLM']['Perennial'],
+                data['Non-BLM']['Non-Perennial']
+            ]
 
-                    if len(slope_data) == 0:
-                        continue
+            colors = [BLM_COLOR, BLM_COLOR, NON_BLM_COLOR, NON_BLM_COLOR]
 
-                    lengths, gradients = zip(*slope_data)
+            bin_labels = []
+            for i, bin_top in enumerate(bins):
+                bin_lower = 0.0 if i == 0 else bins[i-1]
+                bin_lower_label = f'{bin_lower:.1f}' if bin_lower > 0 and bin_lower < 1 else f'{int(bin_lower):d}'
 
-                    # Store data for BLM and Non-BLM separately
-                    if owner == 'BLM':
-                        blm_lengths.extend(lengths)
-                        blm_gradients.extend(gradients)
-                    else:
-                        non_blm_lengths.extend(lengths)
-                        non_blm_gradients.extend(gradients)
+                bin_upper_label = f'{bin_top:.1f}' if bin_top < 1 else f'{int(bin_top):d}'
 
-            # Now calculate the histogram with both data sets
-            num_bins = 5
-            bin_edges = np.linspace(min(min(blm_gradients), min(non_blm_gradients)),
-                                    max(max(blm_gradients), max(non_blm_gradients)),
-                                    num_bins + 1)
+                if i == len(bins) - 1:
+                    bin_labels.append(f'> {bin_lower_label}')
+                else:
+                    bin_labels.append(f'{bin_lower_label} - {bin_upper_label}')
 
-            # Sum stream lengths for each gradient bin
-            blm_bin_sums = np.histogram(blm_gradients, bins=bin_edges, weights=blm_lengths)[0]
-            non_blm_bin_sums = np.histogram(non_blm_gradients, bins=bin_edges, weights=non_blm_lengths)[0]
+            series_labels = ['BLM - Perennial', 'BLM - Non-Perennial', 'Non-BLM - Perennial', 'Non-BLM - Non-Perennial']
 
-            # Create labels for the bin ranges (e.g., "0-5%", "5-10%", etc.)
-            bin_labels = [f'{int(bin_edges[i]):d} - {int(bin_edges[i+1]):d}' for i in range(len(bin_edges)-1)]
+            self.stacked_clustered_bar_chart(section, 'Slope Analysis', chart_data, series_labels, bin_labels, colors, 'Slope (%)', 'Stream Length (miles)')
 
-            bar_width = 0.35  # Width of each bar
+    def riparian_condition(self, riparian_section, rme_gpkg):
+        pass
 
-            # Plot bars for BLM and Non-BLM data, grouped by slope bin
-            _fig, ax = plt.subplots(figsize=(10, 6))
-            index = np.arange(len(blm_bin_sums))
-            ax.bar(index - bar_width / 2, blm_bin_sums, bar_width, label='BLM', color=BLM_COLOR)  # , edgecolor='black')
-            ax.bar(index + bar_width / 2, non_blm_bin_sums, bar_width, label='Non-BLM', color='green')  # , edgecolor='black')
+    def geomorphic(self, riparian_section, rme_gpkg):
+        pass
 
-            # Set x-axis ticks and labels
-            ax.set_xticks(index)  # Set the positions of the ticks
-            ax.set_xticklabels(bin_labels)  # Set the labels for the ticks
+    def floodplain_access(self, parent, rme_gpkg: str) -> None:
 
-            # Create the bar chart with two series
-            # plt.bar(bin_labels, blm_bin_sums, width=bar_width, label='BLM', color=BLM_COLOR)  # , align='center')  # , edgecolor='black'
-            # plt.bar(bin_labels, non_blm_bin_sums, width=bar_width, label='Non-BLM', color='green')  # , align='edge')  # , edgecolor='black'
+        section = self.section('FloodplainAccessibility', 'Floodplain Accessibility', parent, level=2)
 
-            # Add labels and title
-            plt.xlabel('Slope (%)')
-            plt.ylabel('Summed Stream Lengths (miles)')
-            plt.title('Stream Lengths Summed by Slope Bins (BLM & Non-BLM)')
+        with sqlite3.connect(rme_gpkg) as conn:
+            curs = conn.cursor()
 
-            # Add a legend to differentiate the two series
-            plt.legend()
+            curs.execute('''
+               SELECT rme_dgo_ownership, sum(rme_dgos.segment_area), sum(rcat_igo_fldpln_access * rme_dgos.segment_area), sum((1- rcat_igo_fldpln_access) * rme_dgos.segment_area)  FROM rme_dgos
+                where segment_area is not null and  rcat_igo_fldpln_access is not null and rme_dgo_ownership is not null
+                GROUP BY rme_dgo_ownership''')
 
-            # Save the combined chart as an image
-            img_path = os.path.join(self.images_dir, 'combined_slope_histogram_with_ranges.png')
-            # plt.tight_layout()  # Adjust layout to avoid label clipping
-            plt.savefig(img_path, bbox_inches="tight")
-            plt.close()
+            total_areas = {'BLM': 0.0, 'Non-BLM': 0.0}
+            accessible_areas = {'BLM': 0.0, 'Non-BLM': 0.0}
+            inaccessible_areas = {'BLM': 0.0, 'Non-BLM': 0.0}
 
-            # Insert the image into your report or interface
-            self.insert_image(section, img_path, 'Riverscape Lengths by Slope Bin')
+            for row in curs.fetchall():
+                owner = 'BLM' if row[0] == 'BLM' else 'Non-BLM'
+                total_areas[owner] += row[1] * ACRES_PER_SQ_METRE
+                accessible_areas[owner] += row[2] * ACRES_PER_SQ_METRE
+                inaccessible_areas[owner] += row[3] * ACRES_PER_SQ_METRE
+
+            table_data = []
+            for label, data in [('Accessible Area', accessible_areas), ('Inaccessible Area', inaccessible_areas)]:
+                row_data = [label]
+                for owner in ['BLM', 'Non-BLM']:
+                    row_data.append(data[owner])
+                    row_data.append(100 * data[owner] / total_areas[owner])
+
+                table_data.append(row_data)
+
+            table_data.append(['Total', total_areas['BLM'], None, total_areas['Non-BLM'], None])
+
+            self.create_table_from_tuple_list(['', 'BLM\n(acres)', '\n%', 'Non-BLM (acres)', '\n%'], table_data, section, None, True)
+
+    def starvation(self, parent, brat_gpkg: str) -> None:
+
+        section = self.section('Starvation', 'Structural Starvation', parent, level=2)
+
+        with sqlite3.connect(brat_gpkg) as conn:
+            curs = conn.cursor()
+
+            curs.execute("SELECT coalesce(sum(centerline_length),0) FROM vwDgos where Limitation = 'Stream Power Limited'")
+            length = curs.fetchone()[0] * MILES_PER_M
+
+            self.create_table_from_dict({'Stream Power Limited Length (miles)': length}, section)
 
     def stream_order(self, parent, rme_gpkg: str) -> None:
 
@@ -449,7 +603,7 @@ class WSCAReport(RSReport):
 
             # Plot bars for BLM and Non-BLM data, grouped by stream order
             ax.bar(index - bar_width / 2, blm_lengths, bar_width, label='BLM', color=BLM_COLOR)  # , edgecolor='black')
-            ax.bar(index + bar_width / 2, non_blm_lengths, bar_width, label='Non-BLM', color='green')  # , edgecolor='black')
+            ax.bar(index + bar_width / 2, non_blm_lengths, bar_width, label='Non-BLM', color=NON_BLM_COLOR)  # , edgecolor='black')
 
             # Add labels, title, and legend
             ax.set_xlabel('Stream Order')
@@ -458,6 +612,8 @@ class WSCAReport(RSReport):
             ax.set_xticks(index)
             ax.set_xticklabels([str(order+1) for order in range(len(blm_lengths))])  # , rotation=45)
             ax.legend()
+
+            plt.grid(axis='y', linestyle='--', alpha=PLOT_ALPHA)
 
             # Save the chart as an image
             img_path = os.path.join(self.images_dir, 'combined_stream_order_bar_chart.png')
@@ -519,13 +675,13 @@ class WSCAReport(RSReport):
 
                 plt.clf()
                 plt.bar(bin_midpoints - bar_width / 2, bin_sums_blm, width=bar_width, color=BLM_COLOR, label='BLM')
-                plt.bar(bin_midpoints + bar_width / 2, bin_sums_non_blm, width=bar_width, color='green', label='Non-BLM')
+                plt.bar(bin_midpoints + bar_width / 2, bin_sums_non_blm, width=bar_width, color=NON_BLM_COLOR, label='Non-BLM')
 
                 # Add labels, legend, and grid
                 plt.xlabel('Sinuosity')
                 plt.ylabel('Summed Stream Lengths (miles)')
                 plt.title('Stream Lengths Summed by Sinuosity Bins (BLM vs Non-BLM)')
-                plt.grid(axis='y', linestyle='--', alpha=0.7)
+                plt.grid(axis='y', linestyle='--', alpha=PLOT_ALPHA)
                 plt.legend()
 
                 # Save the chart as an image
@@ -534,10 +690,6 @@ class WSCAReport(RSReport):
                 plt.close()
 
                 self.insert_image(section, img_path, 'Combined Sinuosity Histogram')
-
-    def valley_bottom_density(self, parent, rme_gpkg: str) -> None:
-
-        pass
 
     def vegetation(self, biophysical_section, rcat_dir):
 
@@ -610,8 +762,7 @@ class WSCAReport(RSReport):
                     bar_width,
                     label='Historic Capacity' if i == 0 else "",  # Add label only for the first bin
                     color=colors[i],
-                    edgecolor='black',
-                    alpha=0.7  # Slightly transparent for differentiation
+                    edgecolor='black'
                 )
 
                 plt.bar(
@@ -624,9 +775,9 @@ class WSCAReport(RSReport):
                 )
 
             # Add labels, title, and legend
-            plt.xlabel('Beaver Dam Capacity (Historic - Existing)')
+            plt.xlabel('Beaver Dam Capacity (dams per km)')
             plt.ylabel('Stream Length (miles)')
-            plt.title('Stream Lengths by Beaver Dam Capacity Bins')
+            plt.title('Historic and Existing Beaver Dam Capacity')
             plt.xticks(x, bin_labels)  # Set custom x-axis labels
             # plt.legend()
 
@@ -663,6 +814,68 @@ FROM DamLimitations DL
             img_path = os.path.join(self.images_dir, 'beaver_unsuitable.png')
             horizontal_bar(values, labels, None, 'Stream Length (miles)', 'Beaver Unsuitable Habitat', img_path)
             self.insert_image(ecology_section, img_path, 'Unsuitable Beaver Habitat')
+
+    def confinement(self, parent, rme_gpkg):
+
+        section = self.section('Confinement', 'Confinement', parent, level=3)
+        self._confinement(section, rme_gpkg, 'Confinement Ratio Lengths', 'Length (miles)', 'centerline_length')
+        self._confinement(section, rme_gpkg, 'Confinement Ratio Areas', 'Area (acres)', 'segment_area')
+
+    def _confinement(self, section, rme_gpkg, title: str, y_label, field: str) -> None:
+
+        with sqlite3.connect(rme_gpkg) as conn:
+            curs = conn.cursor()
+
+            # 0-0.1 - unconfined, 0.1-0.5 partly confined, planform controlled 0.5-0.85, partly confined valley controlled, 0.85-1 - confined
+            bins = [0.1, 0.5, 0.85, 1.0]
+            data = {'Perennial': {'BLM': [0.00] * len(bins), 'Non-BLM': [0.00] * len(bins)}, 'Non-Perennial': {'BLM': [0.00] * len(bins), 'Non-BLM': [0.00] * len(bins)}}
+            bin_labels = [f'{bins[i-1]}-{bins[i]}' if i != 0 else f'< {bins[i]}' for i in range(len(bins))]
+
+            for flow, flow_filter in [('Perennial', " IN (46003, 55800)"), ('Non-Perennial', " NOT IN (46003, 55800)")]:
+                data = {'BLM': [0.00] * len(bins), 'Non-BLM': [0.00] * len(bins)}
+                for owner, owner_filter in [('BLM', " = 'BLM'"), ('Non-BLM', " <> 'BLM'")]:
+                    curs.execute(f'''
+                    SELECT conf_igo_confinement_ratio, centerline_length, segment_area
+                        FROM rme_dgos
+                        where rme_dgo_ownership {owner_filter}
+                            and fcode {flow_filter}''')
+
+                    for row in curs.fetchall():
+                        confinement_ratio = row[0]
+                        # Pick length or area
+                        value = row[1] * MILES_PER_M if field == 'centerline_length' else row[2] * ACRES_PER_SQ_METRE
+                        for idx, upper_limit in enumerate(bins):
+                            if confinement_ratio < upper_limit:
+                                data[owner][idx] += value
+                                break
+
+                plot_data = [data[owner] for owner in ['BLM', 'Non-BLM']]
+                self.clustered_bar_chart(section, f'{title} - {flow}', plot_data, ['BLM', 'Non-BLM'], bin_labels, [BLM_COLOR, NON_BLM_COLOR], 'Confinement Ratio', y_label)
+
+    def vbet_density(self, parent, rme_gpkg):
+
+        section = self.section('ValleyBottomDensity', 'Valley Bottom Density', parent, level=3)
+
+        with sqlite3.connect(rme_gpkg) as conn:
+            curs = conn.cursor()
+
+            curs.execute('''
+                SELECT case when isBLM Then 'BLM' ELSE 'Non-BLM' END, TotalArea / TotalLength
+                FROM (
+                    SELECT rme_dgo_ownership = 'BLM' IsBLM, sum(segment_area) TotalArea, sum(centerline_length) TotalLength
+                    FROM rme_dgos
+                    WHERE rme_dgo_ownership is not null
+                        and segment_area is not null
+                        and centerline_length is not null
+                    GROUP BY rme_dgo_ownership = 'BLM')
+                         ORDER BY isBLM''')
+            densities = [(row[0], row[1]) for row in curs.fetchall()]
+            values = [x[1] for x in densities]
+            labels = [x[0] for x in densities]
+
+            img_path = os.path.join(self.images_dir, 'vbet_density.png')
+            horizontal_bar(values, labels, [BLM_COLOR, 'green'], 'Density (Acres per Mile)', 'Valley Bottom Density Distribution', img_path)
+            self.insert_image(section, img_path, 'Valley Bottom Density')
 
 
 def get_rme_values(rme_gpkg: str) -> dict:
