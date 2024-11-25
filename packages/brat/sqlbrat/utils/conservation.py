@@ -200,7 +200,7 @@ def calc_opportunities(opportunities: dict, risks: dict, risk_id: float, reachco
                     elif occ_ex >= 5 and occ_ex < 10:
                         return opportunities['Encourage Beaver Expansion/Colonization']
                     else:
-                        if ipc_highlu >= 25:
+                        if ipc_highlu >= 25 or ovc_ex >= 5:
                             return opportunities['Natural or Anthropogenic Limitations']
                         else:
                             return opportunities['Address Resource Limitations']
@@ -216,7 +216,7 @@ def calc_opportunities(opportunities: dict, risks: dict, risk_id: float, reachco
                         else:
                             return opportunities['Appropriate for Beaver Mimicry']
                     else:
-                        if ipc_highlu >= 25:
+                        if ipc_highlu >= 25 or ovc_ex >= 5:
                             return opportunities['Natural or Anthropogenic Limitations']
                         else:
                             return opportunities['Address Resource Limitations']

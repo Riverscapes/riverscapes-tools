@@ -901,6 +901,16 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                         devel = curs.fetchone()[0]
                     metrics_output[metric['metric_id']] = str(devel)
 
+                if 'RIPCOND' in metrics:
+                    metric = metrics['RIPCOND']
+
+                    with sqlite3.connect(inputs_gpkg) as conn:
+                        curs = conn.cursor()
+                        curs.execute(
+                            f"SELECT Condition FROM rcat_dgo WHERE fid = {dgo_id}")
+                        rip_cond = curs.fetchone()[0]
+                    metrics_output[metric['metric_id']] = str(rip_cond)
+
                 if 'BRATCAP' in metrics and brat_dgos:
                     metric = metrics['BRATCAP']
 
@@ -1490,6 +1500,18 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                     curs.execute(
                         f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['DEVEL']['metric_id']}, {str(devel_val)})")
 
+            if 'RIPCOND' in metrics and rcat_dgos:
+                with sqlite3.connect(inputs_gpkg) as conn:
+                    curs2 = conn.cursor()
+                    curs2.execute(
+                        f"SELECT Condition, segment_area FROM rcat_dgo WHERE fid IN ({','.join([str(dgo_id) for dgo_id in dgo_ids])})")
+                    ripcond = curs2.fetchall()
+                    ripcond_val = sum(ripcond[i][0] * ripcond[i][1] for i in range(len(ripcond))) / sum([ripcond[i][1]
+                                                                                                         for i in range(len(ripcond))]) if sum([ripcond[i][1] for i in range(len(ripcond))]) > 0.0 else None
+                if ripcond_val is not None:
+                    curs.execute(
+                        f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['RIPCOND']['metric_id']}, {str(ripcond_val)})")
+
             if 'BRATCAP' in metrics and brat_dgos:
                 with sqlite3.connect(inputs_gpkg) as conn:
                     curs2 = conn.cursor()
@@ -1614,7 +1636,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
 
     # Flattnen outputs
     log.info('Preparing Final RME Outputs')
-    
+
     field_types = {}
     with sqlite3.connect(intermediates_gpkg) as conn:
         rme_curs = conn.cursor()
@@ -1633,13 +1655,13 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
             elif field_type.lower() == 'real':
                 oft_type = ogr.OFTReal
             field_types[row[1].lower()] = oft_type
-    
+
     rme_igos = LayerTypes['RME_OUTPUTS'].sub_layers['IGO_METRICS'].rel_path
     rme_dgos = LayerTypes['RME_OUTPUTS'].sub_layers['DGO_METRICS'].rel_path
 
     with GeopackageLayer(intermediates_gpkg, 'vw_igo_metrics') as igo_metrics_layer, \
             GeopackageLayer(outputs_gpkg, rme_igos, write=True) as igo_output_layer:
-    
+
         fields = igo_metrics_layer.get_fields()
         igo_output_layer.create_layer_from_ref(igo_metrics_layer, create_fields=False)
 
@@ -1658,7 +1680,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
 
     with GeopackageLayer(intermediates_gpkg, 'vw_dgo_metrics') as dgo_metrics_layer, \
             GeopackageLayer(outputs_gpkg, rme_dgos, write=True) as dgo_output_layer:
-        
+
         fields = dgo_metrics_layer.get_fields()
         dgo_output_layer.create_layer_from_ref(dgo_metrics_layer, create_fields=False)
 
