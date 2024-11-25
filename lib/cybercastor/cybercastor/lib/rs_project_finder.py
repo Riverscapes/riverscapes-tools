@@ -19,7 +19,7 @@ engine_projecttype_map = {
     'hydro_context': ['rscontext', 'vbet'],
     'rcat': ['rscontext', 'vbet', 'taudem', 'anthro'],
     'blm_context': ['rscontext', 'vbet'],
-    'rs_metric_engine': ['rscontext', 'vbet', 'brat', 'anthro', 'rcat', 'confinement'],
+    'rs_metric_engine': ['rscontext', 'vbet', 'riverscapes_brat', 'anthro', 'rcat', 'confinement'],
     'rme_scraper': ['rs_metric_engine', 'rcat'],
 }
 
@@ -30,6 +30,7 @@ fargate_env_keys = {
     'taudem': 'TAUDEM_ID',
     'vbet': 'VBET_ID',
     'brat': 'BRAT_ID',
+    'riverscapes_brat': 'BRAT_ID',
     'anthro': 'ANTHRO_ID',
     'hydro_context': 'HYDRO_ID',
     'rcat': 'RCAT_ID',
