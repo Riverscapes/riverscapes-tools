@@ -52,7 +52,7 @@ def rme_metrics(project_path, vbet_proj_path):
             SELECT
             COALESCE(rme_dgo_ownership, 'Unknown') AS owner,
             CASE
-                WHEN FCode IN (46003, 55800) THEN 'Perennial'
+                WHEN FCode IN (46006, 55800) THEN 'Perennial'
                 WHEN FCode = 46003 THEN 'Intermittent'
                 WHEN FCode = 46007 THEN 'Ephemeral'
                 ELSE 'Unknown'
