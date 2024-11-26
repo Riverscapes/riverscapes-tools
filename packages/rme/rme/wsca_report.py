@@ -1012,7 +1012,7 @@ and conf_igo_confinement_ratio is not null and centerline_length is not null and
                     chart_data.append([data[owner][flow][label] for label, _ in bin_uppers])
                     series_labels.append(f'{owner} - {flow}')
 
-            self.stacked_clustered_bar_chart(parent, title, chart_data, series_labels, [label for label, _upper in bin_uppers], [BLM_COLOR, BLM_COLOR, NON_BLM_COLOR, NON_BLM_COLOR], title, y_axis_label)
+            self.stacked_clustered_bar_chart(parent, title + ' ' + y_axis_label, chart_data, series_labels, [label for label, _upper in bin_uppers], [BLM_COLOR, BLM_COLOR, NON_BLM_COLOR, NON_BLM_COLOR], title, y_axis_label)
 
     def vbet_density(self, parent, rme_gpkg):
 
