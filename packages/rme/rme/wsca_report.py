@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict, Tuple
 import os
 import sys
 import copy
@@ -75,6 +75,7 @@ class WSCAReport(RSReport):
         indices = np.arange(num_categories)  # Base x positions for the groups
         for i, series in enumerate(data):
             bar_positions = indices + i * bar_width - (num_series * bar_width) / 2 + bar_width / 2
+
             if is_vertical is True:
                 ax.bar(bar_positions, series, bar_width, label=series_labels[i], color=colors[i])
             else:
@@ -174,6 +175,8 @@ class WSCAReport(RSReport):
             ax.legend()
             plt.grid(axis='x', linestyle='--', alpha=PLOT_ALPHA)
 
+        plt.tight_layout()
+
         # Save and insert the image
         img_path = os.path.join(self.images_dir, f"{title.replace(' ', '_')}.png")
         plt.savefig(img_path)
@@ -233,6 +236,7 @@ class WSCAReport(RSReport):
         self.watershed_ownership(ws_context_section, rsc_metrics_json)
         self.riverscape_ownership(ws_context_section, rme_metrics)
         self.land_use(ws_context_section, rs_context_dir, vbet_dir, rcat_dir, anthro_dir, rme_dir)
+        self.land_use_intensity(ws_context_section, rme_gpkg)
 
         ##############################################################################################################################
         s2_section = self.section('Section2', 'Aquatic Resources')
@@ -264,10 +268,21 @@ class WSCAReport(RSReport):
 
         s3_section = self.section('Riparian', 'Section 3 - Conditions: Water, Riparian-wetland, and Aquatic Areas', level=1)
         riparian_section = self.section('Riparian', 'Riparian Conditions', s3_section, level=2)
-        self.riparian_condition(riparian_section, rme_dir)
         self.geomorphic(riparian_section, rme_gpkg)
         self.floodplain_access(riparian_section, rme_gpkg)
         self.starvation(riparian_section, brat_gpkg)
+
+        rcat_riparian_condition_bins = [('Very Poor', 0.2), ('Poor', 0.4), ('Moderate', 0.6), ('Good', 0.85), ('Intact', 1.0)]
+        rcat_riparian_departure_bins = [('No Historic Riparian Veg Detected', 0.0), ('Negligible', 0.1), ('Minor', 0.3333), ('Significant', 0.6666), ('Large', 1.0)]
+        rcat_anthro_lu_intense_bins = [('Very Low', 0.0), ('Low', 0.33), ('Moderate', 0.66), ('High', 1.0)]
+
+        for field in ['segment_area', 'centerline_length']:
+            self.rme_prop_field(s3_section, 'RCAT Riparian Condition', 'rcat_igo_riparian_condition', field, rcat_riparian_condition_bins, rme_gpkg)
+            self.rme_prop_field(s3_section, 'RCAT Riparian Departure', 'rcat_igo_riparian_veg_departure', field, rcat_riparian_departure_bins, rme_gpkg)
+            self.rme_prop_field(s3_section, 'Anthro Land Use Intensity', 'anthro_igo_land_use_intens', field, rcat_anthro_lu_intense_bins, rme_gpkg)
+
+        rcat_fld_plain_bins = [('< 0.2', 0.2), ('0.2 - 0.4', 0.4), ('0.4 - 0.6', 0.6), ('0.6 - 0.8', 0.8), ('0.8 - 1.0', 1.0)]
+        self.rme_prop_field(s3_section, 'RCAT Floodplain Accessibility', 'rcat_igo_fldpln_access', 'rcat_igo_fldpln_access', rcat_fld_plain_bins, rme_gpkg)
 
     def physiography(self, parent, rs_context_dir: str, rsc_nhd_gpkg: str, rsc_metrics: dict) -> None:
 
@@ -380,7 +395,7 @@ class WSCAReport(RSReport):
         display_data = [(
             land_ownership_labels[owner] if owner != 'BLM' else 'BLM',
             area * SQ_KM_PER_SQ_M,
-            area * SQ_MILES_PER_SQ_M,
+            area * ACRES_PER_SQ_M,
             100 * area / total_area,
         ) for owner, area in rsc_metrics['ownership'].items()]
 
@@ -403,7 +418,7 @@ class WSCAReport(RSReport):
         display_data = [(
             land_ownership_labels[owner] if owner != 'BLM' else 'BLM',
             area * SQ_KM_PER_SQ_M,
-            area * SQ_MILES_PER_SQ_M,
+            area * ACRES_PER_SQ_M,
             100 * area / total_area,
         ) for owner, area in area_sums.items()]
 
@@ -418,9 +433,9 @@ class WSCAReport(RSReport):
 
         sorted_table_data = sorted(data, key=lambda x: x[0])
         sorted_raw_data = sorted(data, key=lambda x: x[0])
-        sorted_table_data.append(('Total', total_area, total_area * SQ_MILES_PER_SQ_M, 100))
+        sorted_table_data.append(('Total', total_area, total_area * ACRES_PER_SQ_KM, 100))
 
-        self.create_table_from_tuple_list([title, 'Area (km²)', 'Area (mi²)', 'Percent (%)'], sorted_table_data, section, None, True)
+        self.create_table_from_tuple_list([title, 'Area (km²)', 'Area (acres)', 'Percent (%)'], sorted_table_data, section, None, True)
 
         # Get list of default colours and remove any that are close to orange being used for BLM
         default_colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
@@ -441,7 +456,7 @@ class WSCAReport(RSReport):
         values = [item[2] for item in sorted_raw_data]
         labels = [key for key in keys]
         bar_path = os.path.join(self.images_dir, f'{title_ns}_bar.png')
-        horizontal_bar(values, labels, default_colors, 'Area (mi²)',  f'{title} Breakdown', bar_path)
+        horizontal_bar(values, labels, default_colors, 'Area (acres)',  f'{title} Breakdown', bar_path)
         self.insert_image(section, bar_path, 'Bar Chart')
 
     def land_use(self, parent, rs_context_dir: str, vbet_dir: str, rcat_dir: str, anthro_dir: str, rme_dir: str) -> None:
@@ -449,7 +464,7 @@ class WSCAReport(RSReport):
         land_charts = blm_charts(rs_context_dir, vbet_dir, rcat_dir, anthro_dir, rme_dir, self.images_dir)
         # Kelly produces all the charts in one dictionary. Break them into categories
 
-        for category in ['Land Use Intensity', 'Land Use Type']:
+        for category in ['Land Use Type']:
             section = self.section(category.replace(' ', ''), category, parent, level=2)
             for chart_name, chart_path in land_charts.items():
                 if category in chart_name:
@@ -459,8 +474,8 @@ class WSCAReport(RSReport):
 
         metrics = []
 
-        blm_area = sum([result['sum'] for result in rme_metrics['rme']['segmentarea'] if result['owner'] == 'BLM'])
-        non_area = sum([result['sum'] for result in rme_metrics['rme']['segmentarea'] if result['owner'] == 'Non-BLM'])
+        blm_area = sum([result['sum'] for result in rme_metrics['rme']['segmentarea'] if result['owner'] == 'BLM' and result['flowType'] == 'All'])
+        non_area = sum([result['sum'] for result in rme_metrics['rme']['segmentarea'] if result['owner'] == 'Non-BLM' and result['flowType'] == 'All'])
         metrics.append(('Riverscape Area (acres)', f'{blm_area * ACRES_PER_SQ_METRE:,.2f}', f'{non_area * ACRES_PER_SQ_METRE:,.2f}'))
 
         for flow_type in ['Perennial', 'Intermittent', 'Ephemeral']:
@@ -497,7 +512,7 @@ class WSCAReport(RSReport):
 
             for row in curs.fetchall():
                 owner = 'BLM' if row[0] == 'BLM' else 'Non-BLM'
-                flow = 'Perennial' if row[1] in [46003, 55800] else 'Non-Perennial'
+                flow = 'Perennial' if row[1] in [46006, 55800] else 'Non-Perennial'
                 slope = row[3] * 100.0
 
                 for i, bin_top in enumerate(bins):
@@ -530,6 +545,31 @@ class WSCAReport(RSReport):
 
             self.stacked_clustered_bar_chart(section, 'Slope Analysis', chart_data, series_labels, bin_labels, colors, 'Slope (%)', 'Stream Length (miles)')
 
+    def land_use_intensity(self, parent, rme_gpkg: str) -> None:
+
+        section = self.section('LandUseIntensity', 'Riverscape Land Use Intensity', parent, level=3)
+
+        with sqlite3.connect(rme_gpkg) as conn:
+            curs = conn.cursor()
+
+            bins = [0.0, 33.0, 66.0, 100.0]
+            data = {'BLM': [0.0]*len(bins), 'Non-BLM': [0.0]*len(bins)}
+
+            curs.execute('''SELECT rme_dgo_ownership, anthro_igo_land_use_intens, segment_area FROM rme_dgos
+                WHERE segment_area IS NOT NULL AND anthro_igo_land_use_intens IS NOT NULL''')
+
+            for row in curs.fetchall():
+                owner = 'BLM' if row[0] == 'BLM' else 'Non-BLM'
+                intensity = row[1]
+                area = row[2] * ACRES_PER_SQ_METRE
+                for i, bin_top in enumerate(bins):
+                    if intensity <= bin_top:
+                        data[owner][i] += area
+                        break
+
+            chart_data = [data['BLM'], data['Non-BLM']]
+            self.clustered_bar_chart(section, 'Riverscape Land Use Intensity', chart_data, ['BLM', 'Non-BLM'], ['Very Low', 'Low', 'Moderate', 'High'], [BLM_COLOR, NON_BLM_COLOR], 'Land Use Intensity', 'Area (acres)')
+
     def riparian_condition(self, riparian_section, rme_dir):
 
         section = self.section('Riparian', 'Riparian', riparian_section, level=3)
@@ -554,7 +594,7 @@ class WSCAReport(RSReport):
                 owner_series.append(owner_data.get(cat, 0) * ACRES_PER_SQ_M)
             data.append(owner_series)
 
-        self.clustered_bar_chart(section, 'Riverscapes Riparian Condition', data, ['BLM', 'Non-BLM'], unique_categories, [BLM_COLOR, NON_BLM_COLOR], 'Riparian Condition', 'Area (acres)')
+        self.clustered_bar_chart(section, 'Riverscapes Riparian Condition', data, ['BLM', 'Non-BLM'], unique_categories, [BLM_COLOR, NON_BLM_COLOR], '', 'Area (acres)')
 
     def geomorphic(self, riparian_section, rme_gpkg):
         pass
@@ -769,22 +809,12 @@ class WSCAReport(RSReport):
                     WHERE centerline_length > 0
                     AND oCC_EX IS NOT NULL
                     AND oCC_HPE IS NOT NULL
+                    AND ReachCode in (46006, 55800)
                 """)
 
             data = curs.fetchall()
             existing_lengths = [(length * MILES_PER_M, occ_ex) for length, occ_ex, occ_hpe in data]
             historic_lengths = [(length * MILES_PER_M, occ_hpe) for length, occ_ex, occ_hpe in data]
-
-            # Function to sum lengths by bins
-            # def sum_lengths_by_bins(lengths_and_values, bins):
-            #     bin_sums = np.zeros(len(bins))  # Initialize bin sums to 0
-            #     for length, value in lengths_and_values:
-            #         # Determine the appropriate bin
-            #         for i in range(len(bins) - 1):
-            #             if bins[i] <= value < bins[i + 1]:
-            #                 bin_sums[i] += length
-            #                 break
-            #     return bin_sums
 
             def sum_lengths_by_bins(lengths):
                 bin_sums = [0] * len(bins)
@@ -808,15 +838,6 @@ class WSCAReport(RSReport):
             for i in range(len(bin_labels)):
 
                 plt.bar(
-                    x[i] + bar_width / 2,
-                    historic_bin_sums[i],
-                    bar_width,
-                    label='Historic Capacity' if i == 0 else "",  # Add label only for the first bin
-                    color=colors[i],
-                    edgecolor='black'
-                )
-
-                plt.bar(
                     x[i] - bar_width / 2,
                     existing_bin_sums[i],
                     bar_width,
@@ -825,12 +846,22 @@ class WSCAReport(RSReport):
                     edgecolor='black'
                 )
 
+                plt.bar(
+                    x[i] + bar_width / 2,
+                    historic_bin_sums[i],
+                    bar_width,
+                    label='Historic Capacity' if i == 0 else "",  # Add label only for the first bin
+                    color=colors[i],
+                    edgecolor='black',
+                    hatch='x'
+                )
+
             # Add labels, title, and legend
-            plt.xlabel('Beaver Dam Capacity (dams per km)')
-            plt.ylabel('Stream Length (miles)')
+            plt.xlabel('Beaver Dam Capacity (dams per km) for Perennial Streams')
+            plt.ylabel('Riverscape Length (miles)')
             plt.title('Historic and Existing Beaver Dam Capacity')
             plt.xticks(x, bin_labels)  # Set custom x-axis labels
-            # plt.legend()
+            plt.legend()
 
             # Save the chart
             plt.tight_layout()
@@ -869,8 +900,18 @@ FROM DamLimitations DL
     def confinement(self, parent, rme_gpkg):
 
         section = self.section('Confinement', 'Confinement', parent, level=3)
-        self._confinement(section, rme_gpkg, 'Confinement Ratio Lengths', 'Length (miles)', 'centerline_length')
-        self._confinement(section, rme_gpkg, 'Confinement Ratio Areas', 'Area (acres)', 'segment_area')
+        # self._confinement(section, rme_gpkg, 'Confinement Ratio Lengths', 'Length (miles)', 'centerline_length')
+        # self._confinement(section, rme_gpkg, 'Confinement Ratio Areas', 'Area (acres)', 'segment_area')
+
+        bins = [
+            ('Laterally Unconfined', 0.1),
+            ('Partly Confined - Planform Controlled', 0.5),
+            ('Partly Confined - Margin Controlled', 0.9),
+            ('> 90% Confined', 1.0)
+        ]
+
+        self.rme_prop_field(section, 'Confinement Ratio Lengths', 'conf_igo_confinement_ratio', 'centerline_length', bins, rme_gpkg)
+        self.rme_prop_field(section, 'Confinement Ratio Areas', 'conf_igo_confinement_ratio', 'segment_area', bins, rme_gpkg)
 
     def _confinement(self, section, rme_gpkg, title: str, y_label, field: str) -> None:
 
@@ -882,7 +923,7 @@ FROM DamLimitations DL
             data = {'Perennial': {'BLM': [0.00] * len(bins), 'Non-BLM': [0.00] * len(bins)}, 'Non-Perennial': {'BLM': [0.00] * len(bins), 'Non-BLM': [0.00] * len(bins)}}
             bin_labels = [f'{bins[i-1]}-{bins[i]}' if i != 0 else f'< {bins[i]}' for i in range(len(bins))]
 
-            for flow, flow_filter in [('Perennial', " IN (46003, 55800)"), ('Non-Perennial', " NOT IN (46003, 55800)")]:
+            for flow, flow_filter in [('Perennial', " IN (46006, 55800)"), ('Non-Perennial', " NOT IN (46006, 55800)")]:
                 for owner, owner_filter in [('BLM', " = 'BLM'"), ('Non-BLM', " <> 'BLM'")]:
                     curs.execute(f'''
                     SELECT conf_igo_confinement_ratio, centerline_length, segment_area
@@ -908,6 +949,70 @@ and conf_igo_confinement_ratio is not null and centerline_length is not null and
             ]
             self.stacked_clustered_bar_chart(section, f'{title}', plot_data, ['BLM - Perennial', 'BLM Non-Perennial', 'Non-BLM - Perennial', 'Bob-BLM - Non-Perennial'],
                                              bin_labels, [BLM_COLOR, BLM_COLOR, NON_BLM_COLOR, NON_BLM_COLOR], 'Confinement Ratio', y_label)
+
+    def rme_prop_field(self, parent, title, field_name, cumulative_calc, bin_uppers: List[Tuple[str, float]], rme_gpkg):
+        """
+
+
+        Args:
+            parent (_type_): _description_
+            title (_type_): _description_
+            field_name (_type_): _description_
+            cumulative_calc (_type_): pass in 'segment_area' or 'centerline_length' for index fields, or 'segment_area * prop_field' or 'centerline_length * prop_field' for proportional fields
+            bin_uppers (List[Tuple[str, float]]): _description_
+            rme_gpkg (_type_): _description_
+        """
+
+        with sqlite3.connect(rme_gpkg) as conn:
+            curs = conn.cursor()
+
+            data = {
+                'BLM': {
+                    'Perennial': {label: 0.0 for label, _ in bin_uppers},
+                    'Non-Perennial': {label: 0.0 for label, _ in bin_uppers}
+                },
+                'Non-BLM': {
+                    'Perennial': {label: 0.0 for label, _ in bin_uppers},
+                    'Non-Perennial': {label: 0.0 for label, _ in bin_uppers}
+                }
+            }
+
+            is_area_calc = 'segment_area' in cumulative_calc
+            y_axis_label = 'Area (acres)' if is_area_calc is True else 'Length (miles)'
+            unit_conversion = ACRES_PER_SQ_METRE if is_area_calc is True else MILES_PER_M
+
+            curs.execute(f'''
+                SELECT
+                    rme_dgo_ownership,
+                    FCode,
+                    {cumulative_calc},
+                    {field_name}
+                FROM rme_dgos
+                WHERE (segment_area is not null)
+                    AND (rme_dgo_ownership is not null)
+                    AND ({field_name} is not null)
+                    AND (centerline_length is not null)''')
+
+            for row in curs.fetchall():
+                owner = row[0] if row[0] == 'BLM' else 'Non-BLM'
+                flow = 'Perennial' if row[1] in [46006, 55800] else 'Non-Perennial'
+                cumulative_field_value = row[2] * unit_conversion
+                binning_value = row[3]
+
+                for label, upper in bin_uppers:
+                    if binning_value <= upper:
+                        data[owner][flow][label] += cumulative_field_value
+                        break
+
+            # Prepare data for the chart
+            chart_data = []
+            series_labels = []
+            for owner in ['BLM', 'Non-BLM']:
+                for flow in ['Perennial', 'Non-Perennial']:
+                    chart_data.append([data[owner][flow][label] for label, _ in bin_uppers])
+                    series_labels.append(f'{owner} - {flow}')
+
+            self.stacked_clustered_bar_chart(parent, title, chart_data, series_labels, [label for label, _upper in bin_uppers], [BLM_COLOR, BLM_COLOR, NON_BLM_COLOR, NON_BLM_COLOR], title, y_axis_label)
 
     def vbet_density(self, parent, rme_gpkg):
 
