@@ -1,0 +1,15 @@
+---
+title: VBET Algorithm
+banner: true
+layout: default
+---
+
+VBET generates valley bottom on a stream by stream basis (using 'level_path' for NHD data or whatever unique stream ID fields exists for custom data), starting with the largest stream and working down to the smallest stream. For each unique stream:
+
+1. **Extract channel area for stream**: the channel area polygon for just the unique stream is extracted and rasterized. This raster is used to generate the HAND raster, as well as for a line of evidence in the valley bottom extraction process.
+2. **Clip DEM**: the input DEM is clipped to an extent that includes the drainage wings of the stream.
+3. **Generate HAND raster**: the HAND raster is generated using the TauDEM tool.
+4. **Generate Slope raster**: the slope raster is generated from the clipped DEM (or clipped to the extent of the DEM if an input slope raster is provided).
+5. **Transform HAND and slope rasters into evidence rasters**: the HAND and slope rasters are transformed into rasters with values from 0 to 1, where 0 represents low evidence and 1 represents strong evidence. The transformations are performed using log-likelihood functions that were calibrated by taking points at different locations within and outside of riverscapes, classifying them as valley bottom or not, and extracting the slope and HAND values at those points. This was performed on a dataset of thousands of points across the United States.
+6. **Inverse distance weighting of slope evidence**: the slope raster is reweighted using the inverse of the distance from the stream channel. This is done to give more weight to the low slope values near the stream channel relative to low slope values far from the channel (e.g. ridge tops have low slopes but are essentially the opposite of valley bottom).  This is done by computing a proximity raster from the rasterized channel area input. For each slope evidence raster cell, the square root of the distance at that cell divided by the square root of the maximum distance is subtracted from the slope evidence value. 
+7. **Combine evidence rasters**: the slope and HAND evidence rasters are combined using a weighted product. The weights can be set by the user, but the default is 0.65 for HAND and 0.35 for slope. Cells that correspond with the channel area raster are automatically set to 0.995. 
