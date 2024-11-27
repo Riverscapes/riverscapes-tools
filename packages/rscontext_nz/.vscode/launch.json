@@ -15,6 +15,12 @@
       "id": "HydroID",
       "description": "Pick a HydroID to process",
       "default": "330456"
+    },
+    {
+      "type": "promptString",
+      "id": "WatershedHydroID",
+      "description": "Pick a WatershedHydroID to process",
+      "default": "563738"
     }
   ],  
   "configurations": [
@@ -40,14 +46,26 @@
       ]
     },
     {
+      "name": "Calculate Level Paths",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "scripts.calc_level_path",
+      "console": "integratedTerminal",
+      "args": [
+        "/Users/philipbailey/GISData/nz/nz_national_project2/hydrography/NZREC2_v5_Hydrography.gpkg",
+        "${input:WatershedHydroID}",
+        "False"
+      ]
+    },
+    {
       "name": "Traverse Network",
       "type": "debugpy",
       "request": "launch",
       "module": "scripts.traverse_network",
       "console": "integratedTerminal",
       "args": [
-        "/Users/philipbailey/GISData/nz/REC2_geodata_version_5/nz_national_project/hydrography/NZREC2_v5_Hydrography.gpkg",
-        "${input:HydroID}",
+        "/Users/philipbailey/GISData/nz/nz_national_project2/hydrography/NZREC2_v5_Hydrography.gpkg",
+        "${input:HydroID}"
       ]
     },
   ]
