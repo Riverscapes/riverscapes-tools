@@ -17,7 +17,7 @@ Author:     Philip Bailey
 
 Date:       9 Nov 2024
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-from typing import Tuple, Dict
+from typing import Tuple
 import argparse
 import sqlite3
 import json
@@ -26,22 +26,34 @@ import sys
 import traceback
 from osgeo import ogr
 
-from rscommons import (Logger, ModelConfig, dotenv, initGDALOGRErrors)
+from rscommons import Logger, ModelConfig, dotenv, initGDALOGRErrors
 from rscommons.classes.rs_project import RSLayer, RSProject, RSMeta, RSMetaTypes
 from rscommons.geographic_raster import gdal_dem_geographic
-from rscommons.project_bounds import generate_project_extents_from_layer
+from rscommons.project_bounds import generate_project_extents_from_geom
 from rscommons.raster_warp import raster_warp
-from rscommons.util import (parse_metadata, safe_makedirs, safe_remove_dir)
+from rscommons.util import safe_makedirs
 from rscommons.vector_ops import copy_feature_class
-from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions, raster_resolution_meta
-from rscommons.shapefile import copy_feature_class
-from rscommons.shapefile import get_geometry_union
-
+from rscommons.classes.vector_classes import GeopackageLayer
+from rscommons.shapefile import get_transform_from_epsg
+from rscontextnz.__version__ import __version__
 from .calc_level_path import calc_level_path, get_triggers
 
-from rscontextnz.__version__ import __version__
-
 cfg = ModelConfig('https://xml.riverscapes.net/Projects/XSD/V2/RiverscapesProject.xsd', __version__)
+
+initGDALOGRErrors()
+
+LayerTypes = {
+    # key: (name, id, tag, relpath)
+    'DEM': RSLayer('8m DEM', 'DEM', 'Raster', 'topography/dem.tif'),
+    'HILLSHADE': RSLayer('DEM Hillshade', 'HILLSHADE', 'Raster', 'topography/dem_hillshade.tif'),
+    'SLOPE': RSLayer('Slope', 'SLOPE', 'Raster', 'topography/slope.tif'),
+    'HYDRO': RSLayer('Hydrography', 'HYDROGRAPHY', 'Geopackage', 'hydrography/hydrography.gpkg', {
+        'FlowLines': RSLayer('Flow Lines', 'riverlines', 'Vector', 'riverlines'),
+        'Watersheds': RSLayer('Watersheds', 'watersheds', 'Vector', 'watersheds'),
+        'Catchments': RSLayer('Catchments', 'catchments', 'Vector', 'catchments'),
+        'Junctions': RSLayer('Hydro Junctions', 'junctions', 'Vector', 'junctions'),
+    }),
+}
 
 
 def rs_context_nz(watershed_id: str, natl_hydro_gpkg: str, dem_north: str, dem_south: str, output_folder: str) -> None:
@@ -61,27 +73,40 @@ def rs_context_nz(watershed_id: str, natl_hydro_gpkg: str, dem_north: str, dem_s
 
     safe_makedirs(output_folder)
 
-    hydro_gpkg, boundary, is_north = process_hydrography(natl_hydro_gpkg, watershed_id, output_folder)
-    dem, slope, hillshade = process_topography(dem_north if is_north is True else dem_south, output_folder, boundary)
+    hydro_gpkg, ws_name, is_north, trans_geom = process_hydrography(natl_hydro_gpkg, watershed_id, output_folder)
+    dem, slope, hillshade = process_topography(dem_north if is_north is True else dem_south, output_folder, None)
 
     # Write a the project bounds as a GeoJSON file and return the centroid and bounding box
     bounds_file = os.path.join(output_folder, 'project_bounds.geojson')
-    bounds_info = generate_project_extents_from_layer(boundary, bounds_file)
+    bounds_info = generate_project_extents_from_geom(trans_geom, bounds_file)
 
     metrics_file = os.path.join(output_folder, 'rscontext_metrics.json')
     calculate_metrics(hydro_gpkg, dem, slope, metrics_file)
 
-    # TODO: Optional... add other contextual data (land cover, soils, transportation, vegetation etc.)
-    # TODO: Optional... build HTML report for the watershed, summarizing the data and processing steps
-    # TODO: Optional... write a JSON file with metrics for the watershed (km of perennial, intermittent, ephemeral streams, etc.)
+    # Build the Riverscapes Context project
+    project_name = f'Riverscapes Context for {ws_name}'
+    project = RSProject(cfg, output_folder)
+    project.create(project_name, 'RSContextNZ', [
+        RSMeta('Model Documentation', 'https://tools.riverscapes.net/rscontextnz', RSMetaTypes.URL, locked=True),
+        RSMeta('HUC', str(watershed_id), RSMetaTypes.HIDDEN, locked=True),
+        RSMeta('Hydrologic Unit Code', str(watershed_id), locked=True),
+        RSMeta('Watershed Name', ws_name, RSMetaTypes.HIDDEN, locked=True),
+    ])
 
-    # TODO: Build the Riverscapes Project metadata XML file project.rs.xml
-    # bounds_info['CENTROID'], bounds_info['BBOX']
+    project.add_project_extent(bounds_file, bounds_info['CENTROID'], bounds_info['BBOX'])
+    realization = project.add_realization(project_name, 'REALIZATION1', cfg.version)
+    datasets = project.XMLBuilder.add_sub_element(realization, 'Datasets')
+
+    project.add_project_geopackage(datasets, LayerTypes['HYDRO'])
+    project.add_dataset(datasets, metrics_file, RSLayer('Metrics', 'Metrics', 'File', os.path.basename(metrics_file)), 'File')
+    project.add_dataset(datasets, dem, LayerTypes['DEM'], 'DEM')
+    project.add_dataset(datasets, slope, LayerTypes['SLOPE'], 'Raster')
+    project.add_dataset(datasets, hillshade, LayerTypes['HILLSHADE'], 'Raster')
 
     log.info('Riverscapes Context processing complete')
 
 
-def process_hydrography(hydro_gpkg: str, watershed_id: str, output_folder: str) -> Tuple[str, str, geom, bool]:
+def process_hydrography(national_hydro_gpkg: str, watershed_id: str, output_folder: str) -> Tuple[str, str, bool: ogr.Geometry]:
     """
     Process the hydrography data for the specified watershed.
 
@@ -101,28 +126,29 @@ def process_hydrography(hydro_gpkg: str, watershed_id: str, output_folder: str) 
     log = Logger('Hydrography')
     log.info(f'Processing Hydrography for watershed {watershed_id}')
 
-    input_watersheds = os.path.join(hydro_gpkg, 'NZ_Large_River_Catchments')
-    input_rivers = os.path.join(hydro_gpkg, 'riverlines')
-    input_catchments = os.path.join(hydro_gpkg, 'rec2ws')
-    input_junctions = os.path.join(hydro_gpkg, 'hydro_net_junctions')
+    input_watersheds = os.path.join(national_hydro_gpkg, 'NZ_Large_River_Catchments')
+    input_rivers = os.path.join(national_hydro_gpkg, 'riverlines')
+    input_catchments = os.path.join(national_hydro_gpkg, 'rec2ws')
+    input_junctions = os.path.join(national_hydro_gpkg, 'hydro_net_junctions')
 
-    # Load the watershed boundary polygon
-    watershed_boundary = get_geometry_union(input_watersheds, cfg.OUTPUT_EPSG, f'HydroID={watershed_id}')
+    # Load the watershed boundary polygon (in original projection)
+    orig_ws_boundary, trans_geom = get_geometry(national_hydro_gpkg,  'NZ_Large_River_Catchments', f'HydroID={watershed_id}', cfg.OUTPUT_EPSG)
 
     # Retrieve the watershed name and whether this watershed is on the North or South Island
-    with sqlite3.connect(hydro_gpkg) as conn:
+    with sqlite3.connect(national_hydro_gpkg) as conn:
         curs = conn.cursor()
-        curs.execute('SELECT RivName, is_north FROM NZ_Large_River_Catchments WHERE HydroID = ?', [watershed_id])
+        curs.execute('SELECT RivName, island FROM NZ_Large_River_Catchments WHERE HydroID = ?', [watershed_id])
         row = curs.fetchone()
         watershed_name = row[0]
-        is_north = row[1] != 0
+        is_north = row[1].lower() == 'n'
 
     # Clip the national hydrography feature classes into the output GeoPackage
-    output_gpkg = os.path.join(output_folder, 'hydrography.gpkg')
-    copy_feature_class(input_watersheds, cfg.OUTPUT_EPSG, output_gpkg, attribute_filter=f'"HydroID"=\'{watershed_id}\'')
-    copy_feature_class(input_rivers, cfg.OUTPUT_EPSG, output_gpkg, clip_shape=watershed_boundary)
-    copy_feature_class(input_catchments, cfg.OUTPUT_EPSG, output_gpkg, clip_shape=watershed_boundary)
-    copy_feature_class(input_junctions, cfg.OUTPUT_EPSG, output_gpkg, clip_shape=watershed_boundary)
+    output_gpkg = os.path.join(output_folder, 'hydrography', 'hydrography.gpkg')
+    output_watersheds = os.path.join(output_gpkg, 'watersheds')
+    copy_feature_class(input_watersheds, output_watersheds, 2193, attribute_filter=f'"HydroID"=\'{watershed_id}\'')
+    copy_feature_class(input_rivers, os.path.join(output_gpkg, 'riverlines'), cfg.OUTPUT_EPSG, clip_shape=orig_ws_boundary)
+    copy_feature_class(input_catchments, os.path.join(output_gpkg, 'catchments'), cfg.OUTPUT_EPSG, clip_shape=orig_ws_boundary)
+    copy_feature_class(input_junctions, os.path.join(output_gpkg, 'junctions'), cfg.OUTPUT_EPSG, clip_shape=orig_ws_boundary)
 
     with sqlite3.connect(output_gpkg) as conn:
         curs = conn.cursor()
@@ -136,6 +162,9 @@ def process_hydrography(hydro_gpkg: str, watershed_id: str, output_folder: str) 
         # Add the riverscape fields to the riverlines feature class
         for field, data_type in [('level_path', 'REAL'), ('FCode', 'INTEGER'), ('TotDASqKM', 'REAL')]:
             curs.execute(f'ALTER TABLE riverlines ADD COLUMN {field} {data_type}')
+
+        for field in ['level_path', 'HydroID', 'FCode', 'TO_NODE', 'FROM_NODE']:
+            curs.execute(f'CREATE INDEX idx_{field} ON riverlines({field})')
 
         # Assign level paths to all reaches in the GeoPackage
         calc_level_path(curs, watershed_id, True)
@@ -155,7 +184,24 @@ def process_hydrography(hydro_gpkg: str, watershed_id: str, output_folder: str) 
 
     log.info(f'Hydrography processed and saved to {output_gpkg}')
 
-    return output_gpkg, watershed_name, watershed_boundary, is_north
+    return output_gpkg, watershed_name, is_north, trans_geom
+
+
+def get_geometry(gpkg: str, layer_name: str, where_clause: str, output_epsg: int) -> Tuple[ogr.Geometry]:
+    """
+    Get the geometry for a feature in a GeoPackage layer.
+    """
+
+    with GeopackageLayer(gpkg, layer_name) as in_layer:
+
+        output_srs, _transform = get_transform_from_epsg(in_layer.spatial_ref, output_epsg)
+
+        for rme_feature, *_ in in_layer.iterate_features(attribute_filter=where_clause):
+            rme_feature: ogr.Feature
+            original_geom: ogr.Geometry = rme_feature.GetGeometryRef().Clone()
+            transform_geom = original_geom.Clone()
+            transform_geom.TransformTo(output_srs)
+            return original_geom, transform_geom
 
 
 def calculate_metrics(output_gpkg: str, dem_path: str, slope_path: str, output_file: str) -> dict:
@@ -167,19 +213,19 @@ def calculate_metrics(output_gpkg: str, dem_path: str, slope_path: str, output_f
     with sqlite3.connect(output_gpkg) as conn:
         curs = conn.cursor()
 
-        curs.execute('SELECT watershed_name, island_flag, areasqkm FROM watersheds')
+        curs.execute('SELECT RivName, island, CUM_AREA FROM watersheds')
         row = curs.fetchone()
-        metrics['watershed_name'] = row[0]
-        metrics['island_flag'] = 'north' if row[1] == 'N' else 'south'
-        metrics['watershed_area'] = row[2]
+        metrics['watershedName'] = row[0]
+        metrics['island'] = 'north' if row[1] == 'N' else 'south'
+        metrics['watershedArea'] = row[2]
 
         # River lines
-        curs.execute('SELECT COUNT(*), Sum(length_km), Min(TotDASqKm), Max(TotDASqKm) FROM riverlines')
+        curs.execute('SELECT COUNT(*), Sum(Shape_Length), Min(TotDASqKm), Max(TotDASqKm) FROM riverlines')
         row = curs.fetchone()
-        metrics['river_count'] = row[0]
-        metrics['river_length'] = row[1]
-        metrics['river_min_drainage_area'] = row[2]
-        metrics['river_max_drainage_area'] = row[3]
+        metrics['riverCount'] = row[0]
+        metrics['riverLength'] = row[1]
+        metrics['riverMinDrainageArea'] = row[2]
+        metrics['riverMaxDrainageArea'] = row[3]
 
     # TODO: Include raster statistics in metrics
 
@@ -195,13 +241,14 @@ def process_topography(input_dem: str, output_folder: str, processing_boundary) 
     log = Logger('Topography')
     log.info(f'Processing topography using DEM: {input_dem}')
 
-    output_dem = os.path.join(output_folder, 'dem.tif')
-    output_slope = os.path.join(output_folder, 'slope.tif')
-    output_hillshade = os.path.join(output_folder, 'hillshade.tif')
+    topo_folder = os.path.join(output_folder, 'topography')
+    output_dem = os.path.join(topo_folder, 'dem.tif')
+    output_slope = os.path.join(topo_folder, 'slope.tif')
+    output_hillshade = os.path.join(topo_folder, 'hillshade.tif')
 
-    raster_warp(input_dem, output_dem, epsg, processing_boundary, {"cutlineBlend": 1})
+    raster_warp(input_dem, output_dem, 2193, processing_boundary, {"cutlineBlend": 1})
     gdal_dem_geographic(output_dem, output_slope, 'slope')
-    gdal_dem_geographic(output_dem, output_slope, 'hillshade')
+    gdal_dem_geographic(output_dem, output_hillshade, 'hillshade')
 
     log.info(f'DEM produced at {output_dem}')
     log.info(f'Slope produced at {output_slope}')
@@ -224,10 +271,10 @@ def main():
     args = dotenv.parse_args_env(parser)
 
     log = Logger('RS Context')
-    log.setup(logPath=os.path.join(args.output, 'rs_context_nz.log'), verbose=args.verbose)
+    log.setup(logPath=os.path.join(args.output, 'RSContextNZ.log'), verbose=args.verbose)
     log.title(f'Riverscapes Context NZ For Watershed: {args.watershed_id}')
 
-    log.info(f'Watershed ID: {args.waterhsed_id}')
+    log.info(f'Watershed ID: {args.watershed_id}')
     log.info(f'Model Version: {__version__}')
     log.info(f'EPSG: {cfg.OUTPUT_EPSG}')
     log.info(f'Output folder: {args.output}')
