@@ -1,15 +1,13 @@
 import argparse
-import os
 import sqlite3
-from osgeo import ogr
 
 NEXT_REACH_QUERY = 'SELECT us.Shape_length, ds.HydroID FROM riverlines us LEFT JOIN riverlines ds on us.To_NODE = ds.FROM_NODE WHERE us.HydroID = ?'
 
 
-def level_path(gpkg_path, curs: sqlite3.Cursor, watershed_id: int, reset_first: bool) -> None:
+def level_path(curs: sqlite3.Cursor, watershed_id: int, reset_first: bool) -> None:
 
     if reset_first is True:
-        curs.execute("UPDATE riverlines SET level_path = NULL WHERE watershed_id = ?", [watershed_id])
+        curs.execute("UPDATE riverlines SET level_path = NULL WHERE WatershedHydroID = ?", [watershed_id])
 
     # Find all the headwaters in the watershed
     headwater_id = -1
@@ -21,18 +19,27 @@ def level_path(gpkg_path, curs: sqlite3.Cursor, watershed_id: int, reset_first: 
     for hydro_id in level_path_lengths.keys():
         level_path_lengths[hydro_id] = calculate_length(curs, hydro_id)
 
-    sorted_dict = dict(sorted(level_path_lengths.items(), key=lambda item: item[1], reverse=True))
-    print(f'Calculated level path flow lengths {len(sorted_dict)} headwaters in watershed {watershed_id}')
+    # sorted_dict = dict(sorted(level_path_lengths.items(), key=lambda item: item[1], reverse=True))
+    # print(f'Calculated level path flow lengths {len(sorted_dict)} headwaters in watershed {watershed_id}')
+
+    triggers = get_triggers(curs, 'riverlines')
+    for trigger in triggers:
+        curs.execute(f"DROP TRIGGER {trigger[1]}")
 
     num_processed = 0
-    ds = ogr.Open(gpkg_path)
-    for hydro_id, _length in sorted_dict.items():
+    print('Assigning level paths to reaches...')
+    for hydro_id, _length in sorted(level_path_lengths.items(), key=lambda item: item[1], reverse=True):
+        # print(f"{key}: {value}")
         num_processed += 1
-        level_path = float(watershed_id * 10 ^ 6 + num_processed)
-        num_reaches = assign_level_path(ds, curs, hydro_id, level_path)
-        print(f'Assigned level path {level_path} to {num_reaches} reaches starting at HydroID {hydro_id}')
+        new_level_path = float(watershed_id * 10**9 + num_processed)
+        num_reaches = assign_level_path(curs, hydro_id, new_level_path)
+        # print(f'Assigned level path {level_path} to {num_reaches} reaches starting at HydroID {hydro_id}')
 
-    ds = None
+    for trigger in triggers:
+        curs.execute(trigger[4])
+
+    print(f'Assigned level paths to {num_processed} headwaters in watershed {watershed_id}')
+
     # print(row)
     # headwater_id = row[0]
 
@@ -41,6 +48,12 @@ def level_path(gpkg_path, curs: sqlite3.Cursor, watershed_id: int, reset_first: 
     # rows = curs.fetchall()
     # for row in rows:
     #     print(row)
+
+
+def get_triggers(curs: sqlite3.Cursor, table: str):
+    """Get the triggers for the watershed."""
+    curs.execute("SELECT * FROM sqlite_master WHERE type = 'trigger' AND tbl_name = ?", [table])
+    return curs.fetchall()
 
 
 def calculate_length(curs: sqlite3.Cursor, hydro_id: int):
@@ -62,22 +75,25 @@ def calculate_length(curs: sqlite3.Cursor, hydro_id: int):
     return cum_length
 
 
-def assign_level_path(ds, curs: sqlite3.Cursor, hydro_id, level_path: float) -> int:
+def assign_level_path(curs: sqlite3.Cursor, headwater_hydro_id, level_path: float) -> int:
     """Assign a level path to each reach starting at the headwater down to the ocean."""
 
     num_reaches = 0
+    hydro_id = headwater_hydro_id
     while hydro_id is not None:
         num_reaches += 1
-        ds.ExecuteSQL(f'UPDATE riverlines SET level_path = {level_path} WHERE HydroID = {hydro_id}')
+        curs.execute('UPDATE riverlines SET level_path = ? WHERE HydroID = ? AND level_path IS NULL', [level_path, hydro_id])
         curs.execute(NEXT_REACH_QUERY, [hydro_id])
         row = curs.fetchall()
         if len(row) == 1:
             hydro_id = row[0][1]
         elif row is None or len(row) == 0:
+            print(f'Assigned path {level_path} to {num_reaches} reaches starting at HydroID {headwater_hydro_id}')
             return num_reaches
         else:
             raise Exception(f"More than one downstream reach found for HydroID {hydro_id}")
 
+    print(f'Assigned level path {level_path} to {num_reaches} reaches starting at HydroID {headwater_hydro_id}')
     return num_reaches
 
 
@@ -92,7 +108,7 @@ def main():
     with sqlite3.connect(args.hydro_gpkg) as conn:
         curs = conn.cursor()
         try:
-            level_path(args.hydro_gpkg, curs, args.watershed_id, args.reset_first.lower() == 'true')
+            level_path(curs, args.watershed_id, args.reset_first.lower() == 'true')
             conn.commit()
         except Exception as e:
             conn.rollback()
