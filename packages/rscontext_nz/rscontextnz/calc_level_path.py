@@ -25,21 +25,21 @@ def calc_level_path(curs: sqlite3.Cursor, watershed_id: int, reset_first: bool) 
 
     curs.execute("SELECT HydroID FROM riverlines WHERE Headwater <> 0 and WatershedHydroID = ? and level_path IS NULL", [watershed_id])
     level_path_lengths = {row[0]: 0.00 for row in curs.fetchall()}
-    print(f'Found {len(level_path_lengths)} headwaters in watershed {watershed_id}')
+    log.info(f'Found {len(level_path_lengths)} headwaters in watershed {watershed_id}')
 
     for hydro_id in level_path_lengths.keys():
         level_path_lengths[hydro_id] = calculate_length(curs, hydro_id)
 
     num_processed = 0
-    print('Assigning level paths to reaches...')
+    log.info('Assigning level paths to reaches...')
     for hydro_id, _length in sorted(level_path_lengths.items(), key=lambda item: item[1], reverse=True):
         # print(f"{key}: {value}")
         num_processed += 1
         new_level_path = float(watershed_id * 10**9 + num_processed)
         num_reaches = assign_level_path(curs, hydro_id, new_level_path)
-        log.info(f'Assigned level path {calc_level_path} to {num_reaches} reaches starting at HydroID {hydro_id}')
+        # log.debug(f'Assigned level path {new_level_path} to {num_reaches} reaches starting at HydroID {hydro_id}')
 
-    print(f'Assigned level paths to {num_processed} headwaters in watershed {watershed_id}')
+    log.info(f'Assigned level paths to {num_processed} headwaters in watershed {watershed_id}')
 
 
 def get_triggers(curs: sqlite3.Cursor, table: str):
@@ -80,7 +80,7 @@ def assign_level_path(curs: sqlite3.Cursor, headwater_hydro_id, level_path: floa
         if len(row) == 1:
             hydro_id = row[0][1]
         elif row is None or len(row) == 0:
-            print(f'Assigned path {level_path} to {num_reaches} reaches starting at HydroID {headwater_hydro_id}')
+            # log.debug(f'Assigned path {level_path} to {num_reaches} reaches starting at HydroID {headwater_hydro_id}')
             return num_reaches
         else:
             raise Exception(f"More than one downstream reach found for HydroID {hydro_id}")
