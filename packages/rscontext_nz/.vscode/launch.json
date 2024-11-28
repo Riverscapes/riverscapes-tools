@@ -6,21 +6,9 @@
   "inputs": [
     {
       "type": "promptString",
-      "id": "WatershedID",
-      "description": "What Watershed ID?",
-      "default": "1706030607" // Really small HUC
-    },
-    {
-      "type": "promptString",
-      "id": "HydroID",
-      "description": "Pick a HydroID to process",
-      "default": "330456"
-    },
-    {
-      "type": "promptString",
       "id": "WatershedHydroID",
       "description": "Pick a WatershedHydroID to process",
-      "default": "563738"
+      "default": "563738" // South Island near Christchurch
     }
   ],  
   "configurations": [
@@ -32,15 +20,11 @@
       "console": "integratedTerminal",
       // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
       "args": [
-        "${input:WatershedID}",
-        "{env:NATIONAL_PROJECT}/outputs/hydrography.gpkg",
-        "{env:NATIONAL_PROJECT}/outputs/topography/dem_south.tif",
-        "{env:NATIONAL_PROJECT}/outputs/topography/dem_north.tif",
-        "{env:DATA_ROOT}/rs_context/${input:WatershedID}",
-        "{env:DOWNLOAD_FOLDER}",
-        "--meta", "Runner=VSCode",
-        // "--temp_folder", "{env:DOWNLOAD_FOLDER}/tmp",
-        // "--force",
+        "${input:WatershedHydroID}",
+        "{env:NATIONAL_PROJECT_NZ}/outputs/hydrography.gpkg",
+        "{env:NATIONAL_PROJECT_NZ}/outputs/topography/dem_north.tif",
+        "{env:NATIONAL_PROJECT_NZ}/outputs/topography/dem_south.tif",
+        "{env:DATA_ROOT}/rs_context/${input:WatershedHydroID}",
         "--verbose",
         "--debug"
       ]
