@@ -19,11 +19,14 @@
       "module": "rscontextnz.rs_context_nz",
       "console": "integratedTerminal",
       // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
+      "env": {
+        "NATIONAL_PROJECT_NZ": "/workspaces/data/NationalDatasetsNZ"
+      },
       "args": [
         "${input:WatershedHydroID}",
-        "{env:NATIONAL_PROJECT_NZ}/outputs/hydrography.gpkg",
-        "{env:NATIONAL_PROJECT_NZ}/outputs/topography/dem_north.tif",
-        "{env:NATIONAL_PROJECT_NZ}/outputs/topography/dem_south.tif",
+        "{env:NATIONAL_PROJECT_NZ}/hydrography/NZREC2_v5_Hydrography.gpkg",
+        "{env:NATIONAL_PROJECT_NZ}/topography/NORTH_ISLAND_8m.tif",
+        "{env:NATIONAL_PROJECT_NZ}/topography/SOUTH_ISLAND_8m.tif",
         "{env:DATA_ROOT}/rs_context/${input:WatershedHydroID}",
         "--verbose",
         "--debug"
