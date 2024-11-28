@@ -330,7 +330,7 @@ def main():
     parser.add_argument('--flowline_reach_codes', help='Comma delimited reach codes (FCode) to retain when filtering features. Omitting this option retains all features.', type=str)
     parser.add_argument('--flowarea_reach_codes', help='Comma delimited reach codes (FCode) to retain when filtering features. Omitting this option retains all features.', type=str)
     parser.add_argument('--waterbody_reach_codes', help='Comma delimited reach codes (FCode) to retain when filtering features. Omitting this option retains all features.', type=str)
-    parser.add_argument('--precip', help='mean annual precipiation in cm')
+    parser.add_argument('--precip', help='mean annual precipiation in cm', type=float)
     parser.add_argument('--prism_data')
     parser.add_argument('--huc8boundary')
     parser.add_argument('--other_polygons')
