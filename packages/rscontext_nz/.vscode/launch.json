@@ -54,7 +54,7 @@
       "args": [
         "/Users/philipbailey/GISData/nz/nz_national_project2/hydrography/NZREC2_v5_Hydrography.gpkg",
         "${input:WatershedHydroID}",
-        "False"
+        "True"
       ]
     },
     {
