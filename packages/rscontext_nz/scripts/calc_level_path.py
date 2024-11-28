@@ -1,11 +1,12 @@
 import argparse
 import os
 import sqlite3
+from osgeo import ogr
 
-NEXT_REACH_QUERY = 'SELECT us.Shape_len, ds.HydroID FROM riverlines us LEFT JOIN riverlines ds on us.To_NODE = ds.FROM_NODE WHERE us.HydroID = ?'
+NEXT_REACH_QUERY = 'SELECT us.Shape_length, ds.HydroID FROM riverlines us LEFT JOIN riverlines ds on us.To_NODE = ds.FROM_NODE WHERE us.HydroID = ?'
 
 
-def level_path(curs: sqlite3.Cursor, watershed_id: int, reset_first: bool) -> None:
+def level_path(gpkg_path, curs: sqlite3.Cursor, watershed_id: int, reset_first: bool) -> None:
 
     if reset_first is True:
         curs.execute("UPDATE riverlines SET level_path = NULL WHERE watershed_id = ?", [watershed_id])
@@ -13,22 +14,25 @@ def level_path(curs: sqlite3.Cursor, watershed_id: int, reset_first: bool) -> No
     # Find all the headwaters in the watershed
     headwater_id = -1
 
-    curs.execute("SELECT HydroID FROM riverlines WHERE Headwater <> 0 and watershed_id = ? and level_path IS NULL", [headwater_id, watershed_id])
+    curs.execute("SELECT HydroID FROM riverlines WHERE Headwater <> 0 and WatershedHydroID = ? and level_path IS NULL", [watershed_id])
     level_path_lengths = {row[0]: 0.00 for row in curs.fetchall()}
+    print(f'Found {len(level_path_lengths)} headwaters in watershed {watershed_id}')
 
     for hydro_id in level_path_lengths.keys():
         level_path_lengths[hydro_id] = calculate_length(curs, hydro_id)
 
-    sorted_dict = dict(sorted(level_path_lengths.items(), key=lambda item: item[1]))
-    print(f'Identified {len(sorted_dict)} headwaters in watershed {watershed_id}')
+    sorted_dict = dict(sorted(level_path_lengths.items(), key=lambda item: item[1], reverse=True))
+    print(f'Calculated level path flow lengths {len(sorted_dict)} headwaters in watershed {watershed_id}')
 
     num_processed = 0
+    ds = ogr.Open(gpkg_path)
     for hydro_id, _length in sorted_dict.items():
         num_processed += 1
         level_path = float(watershed_id * 10 ^ 6 + num_processed)
-        num_reaches = assign_level_path(curs, hydro_id, level_path)
+        num_reaches = assign_level_path(ds, curs, hydro_id, level_path)
         print(f'Assigned level path {level_path} to {num_reaches} reaches starting at HydroID {hydro_id}')
 
+    ds = None
     # print(row)
     # headwater_id = row[0]
 
@@ -58,13 +62,13 @@ def calculate_length(curs: sqlite3.Cursor, hydro_id: int):
     return cum_length
 
 
-def assign_level_path(curs: sqlite3.Cursor, hydro_id, level_path: float) -> int:
+def assign_level_path(ds, curs: sqlite3.Cursor, hydro_id, level_path: float) -> int:
     """Assign a level path to each reach starting at the headwater down to the ocean."""
 
     num_reaches = 0
     while hydro_id is not None:
         num_reaches += 1
-        curs.execute("UPDATE riverlines SET level_path = ? WHERE HydroID = ?", [level_path, hydro_id])
+        ds.ExecuteSQL(f'UPDATE riverlines SET level_path = {level_path} WHERE HydroID = {hydro_id}')
         curs.execute(NEXT_REACH_QUERY, [hydro_id])
         row = curs.fetchall()
         if len(row) == 1:
@@ -80,15 +84,15 @@ def assign_level_path(curs: sqlite3.Cursor, hydro_id, level_path: float) -> int:
 def main():
     """Calculate the level path for each reach in a single watershed."""
     parser = argparse.ArgumentParser()
-    parser.add_argument('hydro_gpkg', type=str, required=True)
-    parser.add_argument('watershed_id', type=int, required=True)
-    parser.add_argument('reset_first', type=bool, default=False)
+    parser.add_argument('hydro_gpkg', type=str)
+    parser.add_argument('watershed_id', type=int)
+    parser.add_argument('reset_first', type=str)
     args = parser.parse_args()
 
     with sqlite3.connect(args.hydro_gpkg) as conn:
         curs = conn.cursor()
         try:
-            level_path(curs, args.watershed_id, args.reset_first)
+            level_path(args.hydro_gpkg, curs, args.watershed_id, args.reset_first.lower() == 'true')
             conn.commit()
         except Exception as e:
             conn.rollback()
