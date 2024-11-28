@@ -9,7 +9,8 @@
   "containerEnv": {
     "DATA_ROOT": "/workspaces/data",
     "NATIONAL_PROJECT": "/workspaces/data/NationalDatasets",
-    "DOWNLOAD_FOLDER": "/workspaces/data/download"
+    "DOWNLOAD_FOLDER": "/workspaces/data/download",
+    "NATIONAL_PROJECT_NZ": "/workspaces/data/NationalDatasetsNZ"
   },
   "customizations": {
     "vscode": {
