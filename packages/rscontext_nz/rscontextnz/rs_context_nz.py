@@ -236,7 +236,7 @@ def main():
         rs_context_nz(args.watershed_id, args.hydro_gpkg, args.dem_north, args.dem_south, args.output)
     except Exception as e:
         log.error(e)
-        traceback.print_exc(file=sys.stdout)å
+        traceback.print_exc(file=sys.stdout)
         sys.exit(1)
 
     sys.exit(0)
