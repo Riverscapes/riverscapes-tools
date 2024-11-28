@@ -37,58 +37,49 @@ from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions
 from rscommons.shapefile import copy_feature_class
 from rscommons.shapefile import get_geometry_union
 
+from .calc_level_path import calc_level_path, get_triggers
+
 from rscontextnz.__version__ import __version__
 
 cfg = ModelConfig('https://xml.riverscapes.net/Projects/XSD/V2/RiverscapesProject.xsd', __version__)
 
 
-def rs_context_nz(watershed_id: str, natl_hydro_gpkg: str, dem_north: str, dem_south: str, output_folder: str, download_folder: str, scratch_dir: str, meta: Dict[str, str]):
+def rs_context_nz(watershed_id: str, natl_hydro_gpkg: str, dem_north: str, dem_south: str, output_folder: str) -> None:
     """
     Run the Riverscapes Context Tool for New Zealand for a single watershed.
-
-    This function processes geographic and hydrologic data for a specified watershed in New Zealand.
-    It performs various operations such as downloading necessary data, clipping vector layers, 
-    and generating reports.
+    This function processes hydrographic and topographic data for a specified watershed in New Zealand.
 
     Parameters:
     watershed_id (str): Watershed ID for the watershed to be processed.
     natl_hydro_gpkg (str): Path to the national hydrography GeoPackage.
-    topo_very (str): Path to the national topography VRT file.
+    dem_north (str): Path to the North Island DEM raster.
+    dem_south (str): Path to the South Island DEM raster.
     output_folder (str): Directory where the output files will be saved.
-    download_folder (str): Directory where downloaded files will be stored.
-    scratch_dir (str): Directory for temporary files.
-    meta (Dict[str, str]): Metadata dictionary containing additional information that will be saved to the output project.
-
-    Returns:
-    None
     """
 
     log = Logger('RS Context')
 
     safe_makedirs(output_folder)
-    safe_makedirs(download_folder)
 
     hydro_gpkg, boundary, is_north = process_hydrography(natl_hydro_gpkg, watershed_id, output_folder)
     dem, slope, hillshade = process_topography(dem_north if is_north is True else dem_south, output_folder, boundary)
-    
+
+    # Write a the project bounds as a GeoJSON file and return the centroid and bounding box
     bounds_file = os.path.join(output_folder, 'project_bounds.geojson')
     bounds_info = generate_project_extents_from_layer(boundary, bounds_file)
-    
-    metrics_file = os.path.join(output_folder, 'metrics.json')
+
+    metrics_file = os.path.join(output_folder, 'rscontext_metrics.json')
     calculate_metrics(hydro_gpkg, dem, slope, metrics_file)
 
     # TODO: Optional... add other contextual data (land cover, soils, transportation, vegetation etc.)
     # TODO: Optional... build HTML report for the watershed, summarizing the data and processing steps
     # TODO: Optional... write a JSON file with metrics for the watershed (km of perennial, intermittent, ephemeral streams, etc.)
 
-
-    # Write a the project bounds as a GeoJSON file and return the centroid and bounding box
-    
-
     # TODO: Build the Riverscapes Project metadata XML file project.rs.xml
     # bounds_info['CENTROID'], bounds_info['BBOX']
 
     log.info('Riverscapes Context processing complete')
+
 
 def process_hydrography(hydro_gpkg: str, watershed_id: str, output_folder: str) -> Tuple[str, str, geom, bool]:
     """
@@ -110,43 +101,62 @@ def process_hydrography(hydro_gpkg: str, watershed_id: str, output_folder: str) 
     log = Logger('Hydrography')
     log.info(f'Processing Hydrography for watershed {watershed_id}')
 
-    input_watersheds = os.path.join(hydro_gpkg, 'watersheds')
+    input_watersheds = os.path.join(hydro_gpkg, 'NZ_Large_River_Catchments')
     input_rivers = os.path.join(hydro_gpkg, 'riverlines')
     input_catchments = os.path.join(hydro_gpkg, 'rec2ws')
     input_junctions = os.path.join(hydro_gpkg, 'hydro_net_junctions')
 
     # Load the watershed boundary polygon
-    watershed_boundary = get_geometry_union(input_watersheds, cfg.OUTPUT_EPSG, f'watershed_id={watershed_id}')
+    watershed_boundary = get_geometry_union(input_watersheds, cfg.OUTPUT_EPSG, f'HydroID={watershed_id}')
 
     # Retrieve the watershed name and whether this watershed is on the North or South Island
     with sqlite3.connect(hydro_gpkg) as conn:
-        cur = conn.cursor()
-        cur.execute('SELECT name, island_flag FROM watersheds WHERE watershed_id = ?', [watershed_id])
-        row = cur.fetchone()
+        curs = conn.cursor()
+        curs.execute('SELECT RivName, is_north FROM NZ_Large_River_Catchments WHERE HydroID = ?', [watershed_id])
+        row = curs.fetchone()
         watershed_name = row[0]
-        is_north = row[1] == 'N'
-
-    # TODO: If more processing of hydrography is needed, then perform these operations here.
-    # Optionally, copy the hydrography feature classes into an intermediates GeoPackage
-    # and do the processing there. Avoid modifying the original hydrography data.
-    # Finally, copy the resultant feature classes into the output GeoPackage.
+        is_north = row[1] != 0
 
     # Clip the national hydrography feature classes into the output GeoPackage
     output_gpkg = os.path.join(output_folder, 'hydrography.gpkg')
-    copy_feature_class(input_watersheds, cfg.OUTPUT_EPSG, output_gpkg, attribute_filter=f'"watershed_id"=\'{watershed_id}\'')
+    copy_feature_class(input_watersheds, cfg.OUTPUT_EPSG, output_gpkg, attribute_filter=f'"HydroID"=\'{watershed_id}\'')
     copy_feature_class(input_rivers, cfg.OUTPUT_EPSG, output_gpkg, clip_shape=watershed_boundary)
     copy_feature_class(input_catchments, cfg.OUTPUT_EPSG, output_gpkg, clip_shape=watershed_boundary)
     copy_feature_class(input_junctions, cfg.OUTPUT_EPSG, output_gpkg, clip_shape=watershed_boundary)
 
-    # TODO: Add and calculate fields needed by other Riverscapes tools
-    # 1. level_path (string)
-    # 2. FCode (ReachCode) https://github.com/Riverscapes/riverscapes-tools/blob/master/packages/brat/database/data/ReachCodes.csv
-    # 3. DRNAREA (double) upstream drainage area
+    with sqlite3.connect(output_gpkg) as conn:
+        curs = conn.cursor()
 
+        # Drop triggers so that we can update the feature class
+        log.info('Dropping triggers to allow for updating level path')
+        triggers = get_triggers(curs, 'riverlines')
+        for trigger in triggers:
+            curs.execute(f"DROP TRIGGER {trigger[1]}")
+
+        # Add the riverscape fields to the riverlines feature class
+        for field, data_type in [('level_path', 'REAL'), ('FCode', 'INTEGER'), ('TotDASqKM', 'REAL')]:
+            curs.execute(f'ALTER TABLE riverlines ADD COLUMN {field} {data_type}')
+
+        # Assign level paths to all reaches in the GeoPackage
+        calc_level_path(curs, watershed_id, True)
+
+        # Assign FCode. Apply the NHD artifical path code to any features that have an LID (presumed to be Lake ID)
+        curs.execute('UPDATE riverlines SET FCode = ? WHERE LID <> 0', [55800])
+        curs.execute('UPDATE riverlines SET FCode = ? WHERE LID = 0', [46006])
+
+        # Assign Drainage Area to the riverlines
+        curs.execute('UPDATE riverlines SET TotDASqKM = CUM_AREA')
+
+        log.info('Recreating triggers')
+        for trigger in triggers:
+            curs.execute(trigger[4])
+
+        conn.commit()
 
     log.info(f'Hydrography processed and saved to {output_gpkg}')
 
-    return  output_gpkg, watershed_name, watershed_boundary, is_north
+    return output_gpkg, watershed_name, watershed_boundary, is_north
+
 
 def calculate_metrics(output_gpkg: str, dem_path: str, slope_path: str, output_file: str) -> dict:
 
@@ -176,7 +186,8 @@ def calculate_metrics(output_gpkg: str, dem_path: str, slope_path: str, output_f
     with open(output_file, 'w', encoding='utf8') as f:
         json.dump(metrics, f, indent=2)
 
-def process_topography(input_dem: str, output_folder: str, processing_boundary) -> Tuple[str,str,str]:
+
+def process_topography(input_dem: str, output_folder: str, processing_boundary) -> Tuple[str, str, str]:
     """
     Process the topography data for the specified watershed.
     """
@@ -201,50 +212,33 @@ def process_topography(input_dem: str, output_folder: str, processing_boundary) 
 
 
 def main():
-    """
-    Main entry point for New Zealand RS Context
-    """
+    """ Main entry point for New Zealand RS Context"""
     parser = argparse.ArgumentParser(description='Riverscapes Context Tool')
-    parser.add_argument('watershed_id', help='Watershed/HUC identifier', type=str)
+    parser.add_argument('watershed_id', help='Watershed/HUC identifier', type=int)
     parser.add_argument('hydro_gpkg', help='Path to GeoPackage containing national hydrography feature classes', type=str)
     parser.add_argument('dem_north', help='Path to North Island DEM raster.', type=str)
     parser.add_argument('dem_south', help='Path to South Island DEM raster.', type=str)
     parser.add_argument('output', help='Path to the output folder', type=str)
-    parser.add_argument('--temp_folder', help='(optional) cache folder for downloading files ', type=str)
-    parser.add_argument('--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
     parser.add_argument('--debug', help='(optional) more output about things like memory usage. There is a performance cost', action='store_true', default=False)
     args = dotenv.parse_args_env(parser)
 
-    # Initiate the log file
-    log = Logger("RS Context")
-    log.setup(logPath=os.path.join(args.output, "rs_context_nz.log"), verbose=args.verbose)
+    log = Logger('RS Context')
+    log.setup(logPath=os.path.join(args.output, 'rs_context_nz.log'), verbose=args.verbose)
     log.title(f'Riverscapes Context NZ For Watershed: {args.watershed_id}')
 
-    log.info(f'HUC: {args.huc}')
+    log.info(f'Watershed ID: {args.waterhsed_id}')
     log.info(f'Model Version: {__version__}')
     log.info(f'EPSG: {cfg.OUTPUT_EPSG}')
     log.info(f'Output folder: {args.output}')
 
-    # This is a general place for unzipping downloaded files and other temporary work.
-    # We use GUIDS to make it specific to a particular run of the tool to avoid unzip collisions
-    scratch_dir = args.temp_folder if args.temp_folder else os.path.join('scratch', 'rs_context')
-    safe_makedirs(scratch_dir)
-
-    meta = parse_metadata(args.meta)
-
     try:
-        rs_context_nz(args.watershed_id, args.hydro_gpkg, args.dem_north, args.dem_south, args.output, args.download, scratch_dir, meta)
-
+        rs_context_nz(args.watershed_id, args.hydro_gpkg, args.dem_north, args.dem_south, args.output)
     except Exception as e:
         log.error(e)
-        traceback.print_exc(file=sys.stdout)
-        # Cleaning up the scratch folder is essential
-        safe_remove_dir(scratch_dir)
+        traceback.print_exc(file=sys.stdout)å
         sys.exit(1)
 
-    # Cleaning up the scratch folder is essential
-    safe_remove_dir(scratch_dir)
     sys.exit(0)
 
 
