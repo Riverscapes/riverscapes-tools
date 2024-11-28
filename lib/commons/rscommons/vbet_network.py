@@ -35,11 +35,11 @@ def vbet_network(flow_lines_path: str, flow_areas_path: str, out_path: str, epsg
         stream_names = []
         for line_ftr, *_ in flow_lines_lyr.iterate_features():
             if str(line_ftr.GetField(reach_code_field)) in fcodes:
-                if line_ftr.GetField('GNIS_Name') not in stream_names and line_ftr.GetField('GNIS_Name') is not None:
+                if len(stream_names) > 0 and line_ftr.GetField('GNIS_Name') not in stream_names and line_ftr.GetField('GNIS_Name') is not None:
                     stream_names.append(line_ftr.GetField('GNIS_Name'))  # this is NHD only this way
 
         for line_ftr, *_ in flow_lines_lyr.iterate_features():
-            if line_ftr.GetField('GNIS_Name') in stream_names:
+            if len(stream_names) > 0 and line_ftr.GetField('GNIS_Name') in stream_names:
                 if str(line_ftr.GetField(reach_code_field)) not in fcodes:
                     fcodes.append(str(line_ftr.GetField(reach_code_field)))
 
