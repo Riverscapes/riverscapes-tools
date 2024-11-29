@@ -73,8 +73,8 @@ def rs_context_nz(watershed_id: str, natl_hydro_gpkg: str, dem_north: str, dem_s
 
     safe_makedirs(output_folder)
 
-    hydro_gpkg, ws_name, is_north, trans_geom = process_hydrography(natl_hydro_gpkg, watershed_id, output_folder)
-    dem, slope, hillshade = process_topography(dem_north if is_north is True else dem_south, output_folder, None)
+    hydro_gpkg, ws_name, is_north, trans_geom, ws_boundary_path = process_hydrography(natl_hydro_gpkg, watershed_id, output_folder)
+    dem, slope, hillshade = process_topography(dem_north if is_north is True else dem_south, output_folder, ws_boundary_path)
 
     # Write a the project bounds as a GeoJSON file and return the centroid and bounding box
     bounds_file = os.path.join(output_folder, 'project_bounds.geojson')
@@ -144,8 +144,8 @@ def process_hydrography(national_hydro_gpkg: str, watershed_id: str, output_fold
 
     # Clip the national hydrography feature classes into the output GeoPackage
     output_gpkg = os.path.join(output_folder, 'hydrography', 'hydrography.gpkg')
-    output_watersheds = os.path.join(output_gpkg, 'watersheds')
-    copy_feature_class(input_watersheds, output_watersheds, 2193, attribute_filter=f'"HydroID"=\'{watershed_id}\'')
+    output_ws = os.path.join(output_gpkg, 'watersheds')
+    copy_feature_class(input_watersheds, output_ws, 2193, attribute_filter=f'"HydroID"=\'{watershed_id}\'')
     copy_feature_class(input_rivers, os.path.join(output_gpkg, 'riverlines'), cfg.OUTPUT_EPSG, clip_shape=orig_ws_boundary)
     copy_feature_class(input_catchments, os.path.join(output_gpkg, 'catchments'), cfg.OUTPUT_EPSG, clip_shape=orig_ws_boundary)
     copy_feature_class(input_junctions, os.path.join(output_gpkg, 'junctions'), cfg.OUTPUT_EPSG, clip_shape=orig_ws_boundary)
@@ -174,7 +174,7 @@ def process_hydrography(national_hydro_gpkg: str, watershed_id: str, output_fold
         curs.execute('UPDATE riverlines SET FCode = ? WHERE LID = 0', [46006])
 
         # Assign Drainage Area to the riverlines
-        curs.execute('UPDATE riverlines SET TotDASqKM = CUM_AREA')
+        curs.execute('UPDATE riverlines SET TotDASqKM = CUM_AREA / 1000000.0')
 
         log.info('Recreating triggers')
         for trigger in triggers:
@@ -184,7 +184,7 @@ def process_hydrography(national_hydro_gpkg: str, watershed_id: str, output_fold
 
     log.info(f'Hydrography processed and saved to {output_gpkg}')
 
-    return output_gpkg, watershed_name, is_north, trans_geom
+    return output_gpkg, watershed_name, is_north, trans_geom, output_ws
 
 
 def get_geometry(gpkg: str, layer_name: str, where_clause: str, output_epsg: int) -> Tuple[ogr.Geometry]:
@@ -244,7 +244,7 @@ def process_topography(input_dem: str, output_folder: str, processing_boundary) 
     topo_folder = os.path.join(output_folder, 'topography')
     output_dem = os.path.join(topo_folder, 'dem.tif')
     output_slope = os.path.join(topo_folder, 'slope.tif')
-    output_hillshade = os.path.join(topo_folder, 'hillshade.tif')
+    output_hillshade = os.path.join(topo_folder, 'dem_hillshade.tif')
 
     raster_warp(input_dem, output_dem, 2193, processing_boundary, {"cutlineBlend": 1})
     gdal_dem_geographic(output_dem, output_slope, 'slope')
