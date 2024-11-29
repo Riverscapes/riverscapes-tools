@@ -179,7 +179,8 @@ def copy_feature_class(in_layer_path: str, out_layer_path: str,
                        buffer: float = 0,
                        hard_clip=False,
                        indexes: List[str] = None,
-                       fields: List[str] = None) -> None:
+                       fields: List[str] = None,
+                       make_valid: bool = False) -> None:
     """Copy a Shapefile from one location to another
 
     This method is capable of reprojecting the geometries as they are copied.
@@ -249,6 +250,9 @@ def copy_feature_class(in_layer_path: str, out_layer_path: str,
                 geom = geom.Buffer(buffer_convert)
 
             geom.Transform(transform)
+
+            if make_valid is True:
+                geom = geom.MakeValid()
 
             # Create output Feature
             out_feature = ogr.Feature(out_layer.ogr_layer_def)
