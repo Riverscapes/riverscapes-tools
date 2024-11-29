@@ -1181,5 +1181,27 @@
     "url": null,
     "machineName": "NZNational",
     "state": "ACTIVE"
+  },
+  {
+    "name": "Riverscapes Context (New Zealand)",
+    "summary": null,
+    "description": "Riverscapes Context project type for New Zealand. Contains hydrography and topography data for individual New Zealand watersheds.",
+    "meta": [
+        { 
+          "key": "Resolution",
+          "value": "Reach,Cell"
+        },
+        { 
+          "key": "Extent",
+          "value": "Network"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "Model Output"
+        }
+       ],
+    "url": null,
+    "machineName": "RSContextNZ",
+    "state": "ACTIVE"
   }
 ]
