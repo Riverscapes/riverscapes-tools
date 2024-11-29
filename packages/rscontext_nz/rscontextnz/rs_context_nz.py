@@ -145,10 +145,10 @@ def process_hydrography(national_hydro_gpkg: str, watershed_id: str, output_fold
     # Clip the national hydrography feature classes into the output GeoPackage
     output_gpkg = os.path.join(output_folder, 'hydrography', 'hydrography.gpkg')
     output_ws = os.path.join(output_gpkg, 'watersheds')
-    copy_feature_class(input_watersheds, output_ws, 2193, attribute_filter=f'"HydroID"=\'{watershed_id}\'')
-    copy_feature_class(input_rivers, os.path.join(output_gpkg, 'riverlines'), cfg.OUTPUT_EPSG, clip_shape=orig_ws_boundary)
-    copy_feature_class(input_catchments, os.path.join(output_gpkg, 'catchments'), cfg.OUTPUT_EPSG, clip_shape=orig_ws_boundary)
-    copy_feature_class(input_junctions, os.path.join(output_gpkg, 'junctions'), cfg.OUTPUT_EPSG, clip_shape=orig_ws_boundary)
+    copy_feature_class(input_watersheds, output_ws, 2193, attribute_filter=f'"HydroID"=\'{watershed_id}\'', make_valid=True)
+    copy_feature_class(input_rivers, os.path.join(output_gpkg, 'riverlines'), cfg.OUTPUT_EPSG, clip_shape=orig_ws_boundary, make_valid=True)
+    copy_feature_class(input_catchments, os.path.join(output_gpkg, 'catchments'), cfg.OUTPUT_EPSG, clip_shape=orig_ws_boundary, make_valid=True)
+    copy_feature_class(input_junctions, os.path.join(output_gpkg, 'junctions'), cfg.OUTPUT_EPSG, clip_shape=orig_ws_boundary, make_valid=True)
 
     with sqlite3.connect(output_gpkg) as conn:
         curs = conn.cursor()
