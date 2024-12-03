@@ -17,7 +17,7 @@ Author:     Philip Bailey
 
 Date:       9 Nov 2024
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-from typing import Tuple
+from typing import Tuple, Dict
 import argparse
 import sqlite3
 import json
@@ -31,7 +31,7 @@ from rscommons.classes.rs_project import RSLayer, RSProject, RSMeta, RSMetaTypes
 from rscommons.geographic_raster import gdal_dem_geographic
 from rscommons.project_bounds import generate_project_extents_from_geom
 from rscommons.raster_warp import raster_warp
-from rscommons.util import safe_makedirs
+from rscommons.util import safe_makedirs, parse_metadata
 from rscommons.vector_ops import copy_feature_class
 from rscommons.classes.vector_classes import GeopackageLayer
 from rscommons.shapefile import get_transform_from_epsg
@@ -52,11 +52,12 @@ LayerTypes = {
         'Watersheds': RSLayer('Watersheds', 'watersheds', 'Vector', 'watersheds'),
         'Catchments': RSLayer('Catchments', 'catchments', 'Vector', 'catchments'),
         'Junctions': RSLayer('Hydro Junctions', 'junctions', 'Vector', 'junctions'),
+        'Lakes': RSLayer('Lakes', 'lakes', 'Vector', 'lakes'),
     }),
 }
 
 
-def rs_context_nz(watershed_id: str, natl_hydro_gpkg: str, dem_north: str, dem_south: str, output_folder: str) -> None:
+def rs_context_nz(watershed_id: str, natl_hydro_gpkg: str, dem_north: str, dem_south: str, output_folder: str, meta: Dict[str, str]) -> None:
     """
     Run the Riverscapes Context Tool for New Zealand for a single watershed.
     This function processes hydrographic and topographic data for a specified watershed in New Zealand.
@@ -94,6 +95,8 @@ def rs_context_nz(watershed_id: str, natl_hydro_gpkg: str, dem_north: str, dem_s
     ])
 
     project.add_project_extent(bounds_file, bounds_info['CENTROID'], bounds_info['BBOX'])
+    project.add_metadata([RSMeta(key, val, RSMetaTypes.HIDDEN, locked=True) for key, val in meta.items()])
+
     realization = project.add_realization(project_name, 'REALIZATION1', cfg.version)
     datasets = project.XMLBuilder.add_sub_element(realization, 'Datasets')
 
@@ -130,6 +133,7 @@ def process_hydrography(national_hydro_gpkg: str, watershed_id: str, output_fold
     input_rivers = os.path.join(national_hydro_gpkg, 'riverlines')
     input_catchments = os.path.join(national_hydro_gpkg, 'rec2ws')
     input_junctions = os.path.join(national_hydro_gpkg, 'hydro_net_junctions')
+    input_lakes = os.path.join(national_hydro_gpkg, 'nz_lake_polygons_topo_150k')
 
     # Load the watershed boundary polygon (in original projection)
     orig_ws_boundary, trans_geom = get_geometry(national_hydro_gpkg,  'NZ_Large_River_Catchments', f'HydroID={watershed_id}', cfg.OUTPUT_EPSG)
@@ -149,6 +153,7 @@ def process_hydrography(national_hydro_gpkg: str, watershed_id: str, output_fold
     copy_feature_class(input_rivers, os.path.join(output_gpkg, 'riverlines'), cfg.OUTPUT_EPSG, clip_shape=orig_ws_boundary, make_valid=True)
     copy_feature_class(input_catchments, os.path.join(output_gpkg, 'catchments'), cfg.OUTPUT_EPSG, clip_shape=orig_ws_boundary, make_valid=True)
     copy_feature_class(input_junctions, os.path.join(output_gpkg, 'junctions'), cfg.OUTPUT_EPSG, clip_shape=orig_ws_boundary, make_valid=True)
+    copy_feature_class(input_lakes, os.path.join(output_gpkg, 'lakes'), cfg.OUTPUT_EPSG, clip_shape=orig_ws_boundary, make_valid=True)
 
     with sqlite3.connect(output_gpkg) as conn:
         curs = conn.cursor()
@@ -260,7 +265,7 @@ def process_topography(input_dem: str, output_folder: str, processing_boundary) 
 
 def main():
     """ Main entry point for New Zealand RS Context"""
-    parser = argparse.ArgumentParser(description='Riverscapes Context Tool')
+    parser = argparse.ArgumentParser(description='Riverscapes Context Tool for New Zealand')
     parser.add_argument('watershed_id', help='Watershed/HUC identifier', type=int)
     parser.add_argument('hydro_gpkg', help='Path to GeoPackage containing national hydrography feature classes', type=str)
     parser.add_argument('dem_north', help='Path to North Island DEM raster.', type=str)
@@ -268,6 +273,8 @@ def main():
     parser.add_argument('output', help='Path to the output folder', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
     parser.add_argument('--debug', help='(optional) more output about things like memory usage. There is a performance cost', action='store_true', default=False)
+    parser.add_argument('--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
+
     args = dotenv.parse_args_env(parser)
 
     log = Logger('RS Context')
@@ -279,8 +286,10 @@ def main():
     log.info(f'EPSG: {cfg.OUTPUT_EPSG}')
     log.info(f'Output folder: {args.output}')
 
+    meta = parse_metadata(args.meta)
+
     try:
-        rs_context_nz(args.watershed_id, args.hydro_gpkg, args.dem_north, args.dem_south, args.output)
+        rs_context_nz(args.watershed_id, args.hydro_gpkg, args.dem_north, args.dem_south, args.output, meta)
     except Exception as e:
         log.error(e)
         traceback.print_exc(file=sys.stdout)
