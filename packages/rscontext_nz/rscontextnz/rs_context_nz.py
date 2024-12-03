@@ -109,7 +109,7 @@ def rs_context_nz(watershed_id: str, natl_hydro_gpkg: str, dem_north: str, dem_s
     log.info('Riverscapes Context processing complete')
 
 
-def process_hydrography(national_hydro_gpkg: str, watershed_id: str, output_folder: str) -> Tuple[str, str, bool: ogr.Geometry]:
+def process_hydrography(national_hydro_gpkg: str, watershed_id: str, output_folder: str) -> Tuple[str, str, bool, ogr.Geometry]:
     """
     Process the hydrography data for the specified watershed.
 
