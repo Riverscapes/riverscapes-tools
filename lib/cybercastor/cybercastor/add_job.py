@@ -81,11 +81,13 @@ def get_params(job_obj):
         elif job_resources["disk"] < 20 or job_resources["disk"] > 200:
             raise Exception('disk must be an integer between 20 and 200')
 
+    taskDefId = job_obj.get('taskDefId', 'riverscapesTools')
+
     params = {
         "job": {
             "name": job_obj['name'],
             "description": job_obj['description'],
-            "taskDefId": "riverscapesTools",  # we're hardcoding the Docker machine to this
+            "taskDefId": taskDefId,  # we're hardcoding the Docker machine to this
             "taskScriptId": job_obj['taskScriptId'],
             # Turn meta and env into stringified JSON which is what the API requires
             "meta": json.dumps(new_job_meta),
