@@ -14,7 +14,7 @@ from riverscapes import RiverscapesAPI, RiverscapesSearchParams
 SCHEMA_FILE = os.path.join(os.path.dirname(__file__), 'riverscapes_schema.sql')
 
 
-def dump_riverscapes(rs_api: RiverscapesAPI, db_path: str):
+def dump_riverscapes(rs_api: RiverscapesAPI, db_path: str, search_tags: str) -> None:
     """ DUmp all projects to a DB
 
     Args:
@@ -32,7 +32,7 @@ def dump_riverscapes(rs_api: RiverscapesAPI, db_path: str):
 
     # Basically just search for everything
     searchParams = RiverscapesSearchParams({
-        'tags': ['2024CONUS'],
+        'tags': [tag.strip() for tag in search_tags.split(',')],
     })
 
     # Determine last created date projects in the database.
@@ -56,7 +56,7 @@ def dump_riverscapes(rs_api: RiverscapesAPI, db_path: str):
         for key in ['HUC10', 'huc10', 'HUC', 'huc']:
             if key in project.project_meta:
                 value = project.project_meta[key]
-                huc10 = value if len(value) == 10 else None
+                huc10 = value
                 break
 
         # Attempt to retrieve the model version from the project metadata if it exists
@@ -126,6 +126,7 @@ if __name__ == '__main__':
     parser.add_argument('output_db_path', help='The final resting place of the SQLite DB', type=str)
     parser.add_argument('stage', help='URL to the cybercastor API', type=str, default='production')
     parser.add_argument('template', help='GeoPackage with HUC10 geometries on which to start the process', type=str)
+    parser.add_argument('search_tags', help='Comma separated tags to search for projects. Combined with "AND". e.g. 2024CONUS', type=str)
     args = dotenv.parse_args_env(parser)
 
     # Initiate the log file
@@ -138,7 +139,7 @@ if __name__ == '__main__':
             shutil.copyfile(args.template, args.output_db_path)
 
         with RiverscapesAPI(args.stage) as api:
-            dump_riverscapes(api, args.output_db_path)
+            dump_riverscapes(api, args.output_db_path, args.search_tags)
 
     except Exception as e:
         mainlog.error(e)
