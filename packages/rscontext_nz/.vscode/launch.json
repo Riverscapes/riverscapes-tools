@@ -8,7 +8,8 @@
       "type": "promptString",
       "id": "WatershedHydroID",
       "description": "Pick a WatershedHydroID to process",
-      "default": "563738" // South Island near Christchurch
+      // "default": "563738" // South Island near Christchurch
+      "default": "224060" // North Island near Waikato
     }
   ],  
   "configurations": [
