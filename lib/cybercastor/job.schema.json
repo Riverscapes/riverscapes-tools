@@ -11,6 +11,9 @@
     "description": {
       "type": "string"
     },
+    "taskDefId": {
+      "type": "string"
+    },
     "taskScriptId": {
       "type": "string"
     },
