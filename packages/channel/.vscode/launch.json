@@ -9,7 +9,8 @@
       "id": "HUC",
       "description": "What HUC?",
       // "default": "17070202" // North Fork John Day
-      "default": "563738" // Really small HUC
+      // "default": "563738" // Really small HUC
+      "default": "224060"
       // "default": "17060103" // Asotin
     }
   ],  
@@ -55,6 +56,7 @@
         "${input:HUC}",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrography/hydrography.gpkg/riverlines",
         "{env:DATA_ROOT}/channel_area/${input:HUC}", // output folder
+        "--waterbodies", "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrography/hydrography.gpkg/lakes",
         "--bankfull_function", "0.177 * (a ** 0.397) * (p ** 0.453)",
         "--bankfull_function_params", "a=TotDASqKM",
         "--reach_code_field", "FCode",
