@@ -98,6 +98,18 @@
       ]
     },
     {
+      "name": "Download NWI Data",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "scripts.download_nwi",
+      "console": "integratedTerminal",
+      "args": [
+        "{env:DATA_ROOT}/nwi_data",
+        "nardata",
+        "national_wetland_inventory"
+      ]
+    },
+    {
       "name": "Calculate Metrics",
       "type": "debugpy",
       "request": "launch",
