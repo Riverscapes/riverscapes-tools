@@ -69,6 +69,8 @@ existing_vegetation_colors = {
     "Non-vegetated": "#0000ff",
     "No Dominant Lifeform": "#ff7a8f",
     "Sparsely vegetated": "#646464",
+    "Agricultural": "#e3d41c",
+    "Developed": "#ad001c"
 }
 
 rcat_conversion_colors = {
