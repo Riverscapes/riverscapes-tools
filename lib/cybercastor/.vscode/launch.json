@@ -104,7 +104,7 @@
       ]
     },
     {
-      "name": "🦫 Add Batch Job - RUN Cybercastor",
+      "name": "🦫 Add Batch Job - RUN Cybercastor CONUS",
       "type": "debugpy",
       "request": "launch",
       "module": "cybercastor.add_job_batch",
@@ -114,6 +114,21 @@
       "args": [
         "production",
         "{env:DATA_ROOT}/warehouse_report/riverscapes_production.gpkg",
+        "5d5bcccc-6632-4054-85f1-19501a6b3cdf"
+      ]
+    },
+    {
+      "name": "🦫 Add Batch Job - RUN Cybercastor NEW ZEALAND",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "cybercastor.add_job_batch",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/.env",
+      "args": [
+        "production",
+        "{env:DATA_ROOT}/../nz/data_exchange/nz_data_exchange_production.gpkg",
+        "e7b017ae-9657-46e1-973a-aa50b7e245ad"
       ]
     },
     {

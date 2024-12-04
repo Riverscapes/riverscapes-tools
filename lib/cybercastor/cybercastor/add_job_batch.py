@@ -24,6 +24,10 @@ job_types = {
         'output': 'rscontext',
         'upstream': []
     },
+    'rscontextnz': {
+        'output': 'rscontextnz',
+        'upstream': []
+    },
     'channel': {
         'output': 'channelarea',
         'upstream': ['rscontext'],
@@ -63,7 +67,7 @@ job_types = {
     'brat':
     {
         'output': 'brat',
-        'upstream': ['rscontext', 'vbet', 'hydro', 'anthro'],
+        'upstream': ['rscontext', 'vbet', 'hydro_context', 'anthro'],
     },
     'rme_scraper': {
         'output': 'rs_metric_engine',
@@ -100,7 +104,7 @@ job_template = {
     "env": {
         "TAGS": None,
         "VISIBILITY": "PUBLIC",
-        "ORG_ID": "5d5bcccc-6632-4054-85f1-19501a6b3cdf"
+        "ORG_ID": None
     },
     "hucs": [],
     "lookups": {},
@@ -112,7 +116,7 @@ job_template = {
 }
 
 
-def create_and_run_batch_job(api: CybercastorAPI, stage: str, db_path: str, git_ref: str, engine: str) -> None:
+def create_and_run_batch_job(api: CybercastorAPI, stage: str, db_path: str, git_ref: str, engine: str, owner_guid: str) -> None:
 
     conn = sqlite3.connect(db_path)
     curs = conn.cursor()
@@ -171,7 +175,7 @@ def create_and_run_batch_job(api: CybercastorAPI, stage: str, db_path: str, git_
 
     if len(hucs) == 0:
         print(f'No HUCs found for the given batch ID ({batch_id}). Exiting.')
-        return
+        return None, None, None
 
     if (len(hucs) > MAX_TASKS):
         task_questions = [
@@ -213,7 +217,7 @@ def create_and_run_batch_job(api: CybercastorAPI, stage: str, db_path: str, git_
 
             partial_batch_answers = inquirer.prompt(partial_batch_questions)
             if not partial_batch_answers['partial_batch']:
-                return
+                return None, None, None
 
     start_answers = inquirer.prompt([
         inquirer.Text("git_ref", message="Git branch?", default='master' if git_ref is None else git_ref),
@@ -222,7 +226,7 @@ def create_and_run_batch_job(api: CybercastorAPI, stage: str, db_path: str, git_
 
     if start_answers['start_job'] is not True:
         print('Aborting. No job created or started.')
-        return
+        return None, None, None
 
     job_path = os.path.join(os.path.dirname(__file__), "..", "jobs", job_name_answers["name"] + ".json")
     job_path = get_unique_filename(job_path)
@@ -234,6 +238,7 @@ def create_and_run_batch_job(api: CybercastorAPI, stage: str, db_path: str, git_
     job_obj["env"]["TAGS"] = answers["tags"]
     job_obj["hucs"] = list(lookups.keys())
     job_obj["lookups"] = lookups
+    job_obj["env"]["ORG_ID"] = owner_guid
 
     git_ref = start_answers["git_ref"]
     if git_ref is not None and git_ref != '' and git_ref != 'master':
@@ -312,6 +317,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Create a job file for the cybercastor job scheduler')
     parser.add_argument('stage', help='Cybercastor API stage', type=str, default='production')
     parser.add_argument('db_path', type=str, help='Path to batch database')
+    parser.add_argument('owner_guid', type=str, help='Data Exchange owner GUID')
     args = dotenv.parse_args_env(parser)
 
     with CybercastorAPI(stage=args.stage) as cc_api:
@@ -319,7 +325,7 @@ if __name__ == "__main__":
         known_engine = None
         git_ref_repeat = None
         while another:
-            result = create_and_run_batch_job(cc_api, args.stage, args.db_path, git_ref_repeat, known_engine)
+            result = create_and_run_batch_job(cc_api, args.stage, args.db_path, git_ref_repeat, known_engine, args.owner_guid)
             if result is None:
                 another = False
             else:
