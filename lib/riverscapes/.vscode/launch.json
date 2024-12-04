@@ -45,7 +45,7 @@
       ]
     },
     {
-      "name": "🧰⬇️ DUMP Data Exchange to SQLite",
+      "name": "🧰⬇️ DUMP Data Exchange to SQLite - CONUS",
       "type": "debugpy",
       "request": "launch",
       "module": "riverscapes.lib.dump.dump_riverscapes",
@@ -57,6 +57,23 @@
         // "${input:cc_environment}",
         "production",
         "/Users/philipbailey/GISData/riverscapes/warehouse_report/watershed_boundary_template.gpkg",
+        "2024CONUS",
+      ]
+    },
+    {
+      "name": "🧰⬇️ DUMP Data Exchange to SQLite - NEW ZEALAND",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "riverscapes.lib.dump.dump_riverscapes",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/.env",
+      "args": [
+        "{env:DATA_ROOT}/../nz/data_exchange/nz_data_exchange_${input:environment}.gpkg",
+        // "${input:cc_environment}",
+        "production",
+        "/Users/philipbailey/GISData/riverscapes/warehouse_report/watershed_boundary_template.gpkg",
+        "nz",
       ]
     },
     {
