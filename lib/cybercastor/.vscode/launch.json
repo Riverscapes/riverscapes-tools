@@ -128,7 +128,8 @@
       "args": [
         "production",
         "{env:DATA_ROOT}/../nz/data_exchange/nz_data_exchange_production.gpkg",
-        "e7b017ae-9657-46e1-973a-aa50b7e245ad"
+        "e7b017ae-9657-46e1-973a-aa50b7e245ad",
+        "--cc_engine", "riverscapesToolsNZ"
       ]
     },
     {

@@ -24,10 +24,6 @@ job_types = {
         'output': 'rscontext',
         'upstream': []
     },
-    'rscontextnz': {
-        'output': 'rscontextnz',
-        'upstream': []
-    },
     'channel': {
         'output': 'channelarea',
         'upstream': ['rscontext'],
@@ -100,6 +96,7 @@ job_template = {
     "name": None,
     "description": None,
     "taskScriptId": None,
+    ""
     "server": "PRODUCTION",
     "env": {
         "TAGS": None,
@@ -116,7 +113,7 @@ job_template = {
 }
 
 
-def create_and_run_batch_job(api: CybercastorAPI, stage: str, db_path: str, git_ref: str, engine: str, owner_guid: str) -> None:
+def create_and_run_batch_job(api: CybercastorAPI, stage: str, db_path: str, git_ref: str, engine: str, owner_guid: str, cc_engine: str) -> None:
 
     conn = sqlite3.connect(db_path)
     curs = conn.cursor()
@@ -239,6 +236,7 @@ def create_and_run_batch_job(api: CybercastorAPI, stage: str, db_path: str, git_
     job_obj["hucs"] = list(lookups.keys())
     job_obj["lookups"] = lookups
     job_obj["env"]["ORG_ID"] = owner_guid
+    job_obj['taskDefId'] = cc_engine
 
     git_ref = start_answers["git_ref"]
     if git_ref is not None and git_ref != '' and git_ref != 'master':
@@ -318,6 +316,7 @@ if __name__ == "__main__":
     parser.add_argument('stage', help='Cybercastor API stage', type=str, default='production')
     parser.add_argument('db_path', type=str, help='Path to batch database')
     parser.add_argument('owner_guid', type=str, help='Data Exchange owner GUID')
+    parser.add_argument('--cc_engine', type=str, help='Cybercastor engine', default=None)
     args = dotenv.parse_args_env(parser)
 
     with CybercastorAPI(stage=args.stage) as cc_api:
@@ -325,7 +324,7 @@ if __name__ == "__main__":
         known_engine = None
         git_ref_repeat = None
         while another:
-            result = create_and_run_batch_job(cc_api, args.stage, args.db_path, git_ref_repeat, known_engine, args.owner_guid)
+            result = create_and_run_batch_job(cc_api, args.stage, args.db_path, git_ref_repeat, known_engine, args.owner_guid, args.cc_engine)
             if result is None:
                 another = False
             else:
