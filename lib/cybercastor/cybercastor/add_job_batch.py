@@ -113,7 +113,7 @@ job_template = {
 }
 
 
-def create_and_run_batch_job(api: CybercastorAPI, stage: str, db_path: str, git_ref: str, engine: str, owner_guid: str, cc_engine: str) -> None:
+def create_and_run_batch_job(api: CybercastorAPI, stage: str, db_path: str, git_ref: str, engine: str, owner_guid: str, default_tags: str, cc_engine: str) -> None:
 
     conn = sqlite3.connect(db_path)
     curs = conn.cursor()
@@ -124,7 +124,7 @@ def create_and_run_batch_job(api: CybercastorAPI, stage: str, db_path: str, git_
     questions = [
         inquirer.List('engine', message='Cybercastor engine?', choices=job_type_names, default=engine),
         inquirer.List("method", message="Method?", choices=["Batch", 'HUC List']),
-        inquirer.Text("tags", message="Tags?", default="2024CONUS"),
+        inquirer.Text("tags", message="Tags?", default=default_tags),
         inquirer.Confirm("omit_existing", message="Omit HUCs that already exist?", default=True),
     ]
     answers = inquirer.prompt(questions)
@@ -316,6 +316,7 @@ if __name__ == "__main__":
     parser.add_argument('stage', help='Cybercastor API stage', type=str, default='production')
     parser.add_argument('db_path', type=str, help='Path to batch database')
     parser.add_argument('owner_guid', type=str, help='Data Exchange owner GUID')
+    parser.add_argument('default_tags', type=str, help='Default tags for new projects', default=None)
     parser.add_argument('--cc_engine', type=str, help='Cybercastor engine', default=None)
     args = dotenv.parse_args_env(parser)
 
@@ -324,7 +325,7 @@ if __name__ == "__main__":
         known_engine = None
         git_ref_repeat = None
         while another:
-            result = create_and_run_batch_job(cc_api, args.stage, args.db_path, git_ref_repeat, known_engine, args.owner_guid, args.cc_engine)
+            result = create_and_run_batch_job(cc_api, args.stage, args.db_path, git_ref_repeat, known_engine, args.owner_guid, args.default_tags, args.cc_engine)
             if result is None:
                 another = False
             else:
