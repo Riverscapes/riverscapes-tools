@@ -422,6 +422,8 @@ def brat(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Path,
                                                                                      RSMeta('DocsUrl', f'https://tools.riverscapes.net/brat/data/#{int(buffer)}M_BUFFER', RSMetaTypes.URL)]
 
     watershed, max_drainage_area, ecoregion = get_watershed_info(outputs_gpkg_path)
+    if max_drainage_area == '':
+        max_drainage_area = None
 
     # Calculate the vegetation and combined FIS for the existing and historical vegetation epochs
     for epoch, prefix, ltype, orig_id in Epochs:
