@@ -67,7 +67,7 @@ VBET_TEMP=$DATA_DIR/vbet_temp
 
 # Get the RSCli project we need to make this happen
 rscli download $RS_CONTEXT_DIR --id $RSCONTEXT_ID \
-  --file-filter "(hillshade|slope|dem|hydrology|project_bounds.geojson|rscontext_metrics.json)" \
+  --file-filter "(hillshade|slope|dem|hydrography|project_bounds.geojson|rscontext_metrics.json)" \
   --no-input --no-ui --verbose
   
 rscli download $CHANNELAREA_DIR --id $CHANNELAREA_ID \
