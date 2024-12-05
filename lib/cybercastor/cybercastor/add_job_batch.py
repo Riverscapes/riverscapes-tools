@@ -28,9 +28,13 @@ job_types = {
         'output': 'channelarea',
         'upstream': ['rscontext'],
     },
+    'channelnz': {
+        'output': 'channelarea',
+        'upstream': ['rscontextnz'],
+    },
     'taudem': {
         'output': 'taudem',
-        'upstream': ['rscontext', 'channelarea'],
+        'upstream': ['rscontextnz', 'channelarea'],
     },
     'rs_context_channel_taudem': {
         'output': 'rscontext',
@@ -38,7 +42,7 @@ job_types = {
     },
     'vbet': {
         'output': 'vbet',
-        'upstream': ['rscontext', 'channelarea', 'taudem'],
+        'upstream': ['rscontextnz', 'channelarea', 'taudem'],
     },
     'rcat': {
         'output': 'rcat',
