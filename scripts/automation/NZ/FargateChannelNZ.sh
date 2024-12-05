@@ -59,7 +59,7 @@ CHANNELAREA_DIR=$DATA_DIR/output/channelarea
 
 # Get the RSCli project we need to make this happen
 rscli download $RS_CONTEXT_DIR --id $RSCONTEXT_ID \
-  --file-filter "(hillshade|slope|dem|climate|hydrology|project_bounds.geojson)" \
+  --file-filter "(dem|hydrography|project_bounds.geojson)" \
   --no-input --no-ui --verbose
 
 ##########################################################################################
