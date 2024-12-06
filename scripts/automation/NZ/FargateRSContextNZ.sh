@@ -73,7 +73,7 @@ echo "======================  Starting RSContext ======================="
 ##########################################################################################
 try() {
   rscontextnz $HUC \
-    /efsshare/NationalDatasetsNZ/hydrography/NZREC2_v5_Hydrography.gpkg \
+    /efsshare/NationalDatasetsNZ/hydrography/hydrography.gpkg \
     /efsshare/NationalDatasetsNZ/topography/NORTH_ISLAND_8m.tif \
     /efsshare/NationalDatasetsNZ/topography/SOUTH_ISLAND_8m.tif \
     $RS_CONTEXT_DIR \
