@@ -92,12 +92,11 @@ try() {
     NHD \
     level_path \
     HydroID \
-    DivDASqKm \
+    TotDASqKm \
     --pitfill $TAUDEM_DIR/intermediates/pitfill.tif \
     --dinfflowdir_ang $TAUDEM_DIR/intermediates/dinfflowdir_ang.tif \
     --dinfflowdir_slp $TAUDEM_DIR/outputs/dinfflowdir_slp.tif \
     --reach_codes 33400,46000,46003,46006,46007,55800 \
-    --mask $RS_CONTEXT_DIR/hydrography/hydrography.gpkg/watersheds \
     --meta "Runner=Cybercastor" \
     --verbose \
     --temp_folder $VBET_TEMP
