@@ -135,8 +135,8 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
     safe_makedirs(outputs_dir)
 
     with rasterio.open(in_dem) as dem_src:
-        if dem_src.crs.to_epsg() != cfg.OUTPUT_EPSG:
-            cfg.OUTPUT_EPSG = dem_src.crs.to_epsg()
+        if dem_src.crs != cfg.OUTPUT_EPSG:
+            cfg.OUTPUT_EPSG = 2193  # dem_src.crs
 
     project_name = f'VBET for HUC {huc}'
     project = RSProject(cfg, project_folder)
