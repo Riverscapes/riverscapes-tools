@@ -53,7 +53,7 @@ CREATE TABLE ReachAttributes
     FCode INTEGER REFERENCES FCodes (FCode),
     NHDPlusID INTEGER,
     StreamName TEXT,
-    level_path REAL,
+    level_path TEXT,
     ownership TEXT,
     divergence INTEGER,
     stream_order INTEGER,
@@ -76,7 +76,7 @@ CREATE TABLE DGOAttributes
 (
     DGOID INTEGER PRIMARY KEY NOT NULL,
     FCode INTEGER REFERENCES FCodes (FCode),
-    level_path REAL,
+    level_path TEXT,
     seg_distance REAL,
     centerline_length REAL,
     segment_area REAL,
@@ -99,7 +99,7 @@ CREATE TABLE IGOAttributes
 (
     IGOID INTEGER PRIMARY KEY NOT NULL,
     FCode INTEGER REFERENCES FCodes (FCode),
-    level_path REAL,
+    level_path TEXT,
     seg_distance REAL,
     stream_size INTEGER,
     WatershedID TEXT,

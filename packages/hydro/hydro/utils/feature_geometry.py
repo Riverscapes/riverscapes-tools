@@ -132,7 +132,11 @@ def dgo_geometry(gpk_path: str, dem_path: str, field_names=default_dgo_field_nam
                 continue
             else:
                 if len(ftrs) > 1:
-                    line = linemerge(ftrs)
+                    try:
+                        line = linemerge(ftrs)
+                    except Exception as e:
+                        log.warning('Error merging lines for DGO {}: {}'.format(dgoid, e))
+                        continue
                 else:
                     line = ftrs[0]
             line = VectorBase.shapely2ogr(line)
