@@ -218,9 +218,13 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
 
         database.conn.commit()
 
-        database.curs.execute('SELECT DISTINCT level_path FROM IGOGeometry')
+        levelpathsin = []
+        database.curs.execute('SELECT level_path FROM IGOGeometry')
         levelps = database.curs.fetchall()
-        levelpathsin = [lp['level_path'] for lp in levelps]
+        for lp in levelps:
+            if lp['level_path'] not in levelpathsin:
+                levelpathsin.append(str(lp['level_path']))
+        # levelpathsin = [str(lp['level_path']) for lp in levelps]
 
     with SQLiteCon(inputs_gpkg_path) as db:
         db.conn.execute('CREATE INDEX ix_dgo_levelpath on dgo(level_path)')

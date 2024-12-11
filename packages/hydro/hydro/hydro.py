@@ -139,6 +139,8 @@ def hydro_context(huc: int, dem: Path, hillshade: Path, igo: Path, dgo: Path, fl
     db_metadata = {
         'Hydro DateTime': datetime.datetime.now().isoformat()
     }
+    if huc == 'sand_creek':
+        huc = 1019000302
     create_database(str(huc), outputs_gpkg_path, db_metadata, cfg.OUTPUT_EPSG, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'hydro_schema.sql'))
 
     # add a table entry that corresponds to the huc being run if doesn't exist.
@@ -273,7 +275,7 @@ def hydro_context(huc: int, dem: Path, hillshade: Path, igo: Path, dgo: Path, fl
 def main():
 
     parser = argparse.ArgumentParser(description='Build a Hydrologic Context project')
-    parser.add_argument('huc', type=int, help='Hydrologic Unit Code')
+    parser.add_argument('huc', type=str, help='Hydrologic Unit Code')
     parser.add_argument('dem', type=str, help='Path to DEM raster')
     parser.add_argument('hillshade', type=str, help='Path to hillshade raster')
     parser.add_argument('igo', type=str, help='Path to IGO feature class')

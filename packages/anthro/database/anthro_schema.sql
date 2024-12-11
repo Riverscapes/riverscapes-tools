@@ -54,7 +54,7 @@ CREATE TABLE Watersheds (
 CREATE TABLE IGOAttributes (
     IGOID INTEGER PRIMARY KEY NOT NULL,
     FCode INTEGER,
-    level_path REAL,
+    level_path TEXT,
     seg_distance REAL,
     stream_size INTEGER,
     LUI REAL,
@@ -78,7 +78,7 @@ CREATE TABLE IGOAttributes (
 CREATE TABLE DGOAttributes (
     DGOID INTEGER PRIMARY KEY NOT NULL,
     FCode INTEGER,
-    level_path REAL,
+    level_path TEXT,
     seg_distance REAL,
     centerline_length REAL,
     segment_area REAL,
@@ -98,7 +98,7 @@ CREATE TABLE ReachAttributes (
     ReachCode TEXT,
     NHDPlusID INTEGER,
     StreamName TEXT,
-    level_path REAL,
+    level_path TEXT,
     TotDASqKm REAL,
     DivDASqKm REAL,
     WatershedID TEXT,

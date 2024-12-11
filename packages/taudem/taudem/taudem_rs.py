@@ -12,8 +12,8 @@ lyrs_in_out = {
     # ID: INPUT_ID
     'HILLSHADE': 'HILLSHADE',
     'DEM': 'DEM',
-    'channel_area': 'channel_area',
-    'GDAL_SLOPE': 'SLOPE'
+    'channel_area': 'channel_area'
+    #'GDAL_SLOPE': 'SLOPE'
 }
 
 

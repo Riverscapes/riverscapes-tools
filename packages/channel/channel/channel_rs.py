@@ -9,9 +9,9 @@ from rscommons import RSProject, RSMeta, dotenv, Logger
 from channel.channel_report import ChannelReport
 
 lyrs_in_out = {
-    'flowlines': 'network_intersected',
-    'flowareas': 'NHDAreaSplit',
-    'waterbody': 'NHDWaterbodySplit',
+    'flowlines': 'network_intersected'
+    # 'flowareas': 'NHDAreaSplit',
+    # 'waterbody': 'NHDWaterbodySplit',
 }
 
 
