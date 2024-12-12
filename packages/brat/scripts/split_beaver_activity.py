@@ -160,5 +160,5 @@ def split_beaver_activity(huc_list):
                 shutil.rmtree(huc_dir)
 
 
-hucs = [17010213, 17010212, 17010211, 17010210, 17010209, 17010208]
+hucs = ['10020004', '10020003', '10020002', '10020001', '09040002', '09040001']
 split_beaver_activity(hucs)
