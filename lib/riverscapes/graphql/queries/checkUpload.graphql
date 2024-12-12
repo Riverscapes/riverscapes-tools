@@ -3,6 +3,9 @@ query requestUploadImage_queries(
 ) {
   checkUpload(token: $token) {
     status
+    data
+    percentComplete
+    projectId
     errors
   }
 }
