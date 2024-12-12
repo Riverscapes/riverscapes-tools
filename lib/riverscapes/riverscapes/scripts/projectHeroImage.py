@@ -4,7 +4,7 @@ import inquirer
 import json
 import time
 import requests
-from riverscapes import RiverscapesAPI, RiverscapesSearchParams
+from riverscapes import RiverscapesAPI
 
 
 def update_hero_images(riverscapes_api: RiverscapesAPI):

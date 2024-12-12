@@ -51,11 +51,11 @@ class RiverscapesAPIException(Exception):
 
 
 class RiverscapesAPI:
-    """This class is a wrapper around the Riverscapes API. It handles authentication and provides a 
+    """This class is a wrapper around the Riverscapes API. It handles authentication and provides a
     simple interface for making queries.
 
-    If you specify a secretId and clientId then this class will use machine authentication. This is 
-    appropriate for development and administration tasks. Otherwise it will use a browser-based 
+    If you specify a secretId and clientId then this class will use machine authentication. This is
+    appropriate for development and administration tasks. Otherwise it will use a browser-based
     authentication workflow which is appropriate for end-users.
     """
 
@@ -267,8 +267,27 @@ class RiverscapesAPI:
                 self.send_response(200)
                 self.send_header("Content-type", "text/html")
                 self.end_headers()
-                self.wfile.write(b"<html><head><title>Riverscapes API: Authentication successful</title></head>")
-                self.wfile.write(b"<body><p>Riverscapes API: Authentication successful. You can now close this window.</p></body></html>")
+
+                url = "https://data.riverscapes.net/login_success?code=JSJJSDASDOAWIDJAW888dqwdqw88"
+
+                success_html_body = f"""
+                    <html>
+                        <head>
+                            <title>GraphQL API: Authentication successful</title>
+                            <script>
+                                window.onload = function() {{
+                                    window.location.replace('{url}');
+                                }}
+                            </script>
+                        </head>
+                        <body>
+                            <p>GraphQL API: Authentication successful. Redirecting....</p>
+                        </body>
+                    </html>
+                """
+
+                self.wfile.write(success_html_body.encode('utf-8'))
+
                 query = urlparse(self.path).query
                 if "=" in query and "code" in query:
                     self.server.auth_code = dict(x.split("=")
@@ -290,7 +309,7 @@ class RiverscapesAPI:
         return auth_code
 
     def load_query(self, query_name: str) -> str:
-        """ Load a query file from the file system. 
+        """ Load a query file from the file system.
 
         Args:
             queryName (str): _description_
@@ -329,8 +348,8 @@ class RiverscapesAPI:
     def search(self, search_params: RiverscapesSearchParams, progress_bar: bool = False, page_size: int = 500, sort: List[str] = None, max_results: int = None) -> Generator[Tuple[RiverscapesProject, Dict, int], None, None]:
         """ A simple function to make a yielded search on the riverscapes API
 
-        This search has two modes: If the total number of records is less than 10,000 then it will do a single paginated query. 
-        If the total number of records is greater than 10,000 then it will do a date-partitioned search. 
+        This search has two modes: If the total number of records is less than 10,000 then it will do a single paginated query.
+        If the total number of records is greater than 10,000 then it will do a date-partitioned search.
         This is because ElasticSearch pagination breaks down at 10,000 items.
 
         The mode used is chosen automatically based on the total number of records returned by the search.
@@ -340,7 +359,7 @@ class RiverscapesAPI:
             variables (Dict[str, str]): _description_
 
         Yields:
-            Tuple[project: RiverscapeProject, stats: Dict[str, any], total: int]: the project, the stats dictionary and the total number of records 
+            Tuple[project: RiverscapeProject, stats: Dict[str, any], total: int]: the project, the stats dictionary and the total number of records
         """
         qry = self.load_query('searchProjects')
         stats = {}
@@ -462,7 +481,7 @@ class RiverscapesAPI:
     def get_project_full(self, project_id: str) -> RiverscapesProject:
         """ This gets the full project record
 
-        This is a MUCH heavier query than what comes back from the search function. If all you need is the project metadata this is 
+        This is a MUCH heavier query than what comes back from the search function. If all you need is the project metadata this is
         probably not the query for you
 
         Args:
