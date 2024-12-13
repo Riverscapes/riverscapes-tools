@@ -141,7 +141,7 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, hillshade: Path, pitf
     with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['GEOM_POINTS'].rel_path, write=True) as out_lyr:
         out_lyr.create_layer(ogr.wkbMultiPoint, epsg=cfg.OUTPUT_EPSG, options=['FID=IGOID'], fields={
             'FCode': ogr.OFTInteger,
-            'level_path': ogr.OFTReal,
+            'level_path': ogr.OFTString,
             'seg_distance': ogr.OFTReal,
             'stream_size': ogr.OFTInteger,
             'LUI': ogr.OFTReal
@@ -150,7 +150,7 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, hillshade: Path, pitf
     with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['GEOM_DGOS'].rel_path, write=True) as out_lyr:
         out_lyr.create_layer(ogr.wkbMultiPolygon, epsg=cfg.OUTPUT_EPSG, options=['FID=DGOID'], fields={
             'FCode': ogr.OFTInteger,
-            'level_path': ogr.OFTReal,
+            'level_path': ogr.OFTString,
             'seg_distance': ogr.OFTReal,
             'centerline_length': ogr.OFTInteger,
             'segment_area': ogr.OFTReal,
@@ -164,7 +164,7 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, hillshade: Path, pitf
             'NHDPlusID': ogr.OFTReal,
             'WatershedID': ogr.OFTString,
             'StreamName': ogr.OFTString,
-            'level_path': ogr.OFTReal,
+            'level_path': ogr.OFTString,
             'TotDASqKm': ogr.OFTReal,
             'DivDASqKm': ogr.OFTReal,
             'ownership': ogr.OFTString,

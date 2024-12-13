@@ -193,7 +193,7 @@ def brat(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Path,
             'StreamName': ogr.OFTString,
             'NHDPlusID': ogr.OFTReal,
             'WatershedID': ogr.OFTString,
-            'level_path': ogr.OFTReal,
+            'level_path': ogr.OFTString,
             'ownership': ogr.OFTString,
             'divergence': ogr.OFTInteger,
             'stream_order': ogr.OFTInteger,
@@ -205,7 +205,7 @@ def brat(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Path,
     with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['DGO_GEOM'].rel_path, write=True) as dgo_lyr:
         dgo_lyr.create_layer(ogr.wkbPolygon, epsg=cfg.OUTPUT_EPSG, options=['FID=DGOID'], fields={
             'FCode': ogr.OFTInteger,
-            'level_path': ogr.OFTReal,
+            'level_path': ogr.OFTString,
             'seg_distance': ogr.OFTReal,
             'centerline_length': ogr.OFTReal,
             'segment_area': ogr.OFTReal
@@ -214,7 +214,7 @@ def brat(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Path,
     with GeopackageLayer(outputs_gpkg_path, layer_name=LayerTypes['OUTPUTS'].sub_layers['IGO_GEOM'].rel_path, write=True) as igo_lyr:
         igo_lyr.create_layer(ogr.wkbPoint, epsg=cfg.OUTPUT_EPSG, options=['FID=IGOID'], fields={
             'FCode': ogr.OFTInteger,
-            'level_path': ogr.OFTReal,
+            'level_path': ogr.OFTString,
             'seg_distance': ogr.OFTReal,
             'centerline_length': ogr.OFTReal,
             'stream_size': ogr.OFTInteger
