@@ -206,18 +206,18 @@ def calc_opportunities(opportunities: dict, risks: dict, risk_id: float, reachco
                         if ipc_vlowlu > 90:
                             return opportunities['Natural or Anthropogenic Limitations']
                         else:
-                            if ipc_highlu >= 25:
-                                return opportunities['Conflict Management']
-                            else:
-                                return opportunities['Address Resource Limitations']
+                            # if ipc_highlu >= 25:
+                            #     return opportunities['Conflict Management']
+                            # else:
+                            return opportunities['Land Management Change']
                 else:
                     if occ_ex > 5:
                         return opportunities['Conflict Management']
                     else:
-                        if ipc_highlu >= 25:
+                        if ipc_highlu >= 50:
                             return opportunities['Natural or Anthropogenic Limitations']
                         else:
-                            return opportunities['Appropriate for Beaver Mimicry']
+                            return opportunities['Beaver Mimicry']
 
             elif dam_setting == 'Floodplain':
                 if risk_id == risks['Negligible Risk'] or risk_id == risks['Minor Risk']:
@@ -236,7 +236,7 @@ def calc_opportunities(opportunities: dict, risks: dict, risk_id: float, reachco
         elif reachcode == 46003:
             if dam_setting in ('Classic', 'Steep'):
                 if risk_id == risks['Negligible Risk'] or risk_id == risks['Minor Risk']:
-                    return opportunities['Appropriate for Beaver Mimicry']
+                    return opportunities['Beaver Mimicry']
                 else:
                     return opportunities['Natural or Anthropogenic Limitations']
             else:
