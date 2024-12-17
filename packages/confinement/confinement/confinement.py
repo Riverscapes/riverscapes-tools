@@ -224,7 +224,7 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
         'side': ogr.FieldDefn("side", ogr.OFTString),
         # ArcGIS cannot read Int64 and will show up as 0, however data is stored correctly in GPKG
         'flowlineID': ogr.FieldDefn("NHDPlusID", ogr.OFTReal),
-        'level_path': ogr.FieldDefn("level_path", ogr.OFTReal),
+        'level_path': ogr.FieldDefn("level_path", ogr.OFTString),
         'confinement_type': ogr.FieldDefn("confinement_type", ogr.OFTString),
         'confinement_ratio': ogr.FieldDefn("confinement_ratio", ogr.OFTReal),
         'constriction_ratio': ogr.FieldDefn("constriction_ratio", ogr.OFTReal),
@@ -393,13 +393,13 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
             counter += 1
 
             flowlines = collect_feature_class(
-                flowlines_path, attribute_filter=f"level_path = {level_path} AND Divergence < 2")
+                flowlines_path, attribute_filter=f"level_path = '{level_path}' AND Divergence < 2")
             geom_flowlines = GeopackageLayer.ogr2shapely(flowlines)
             geom_flowlines_midpoints = MultiPoint(
                 [line.interpolate(0.5, normalized=True) for line in geom_flowlines])
 
             geom_flowline = get_geometry_unary_union(
-                flowlines_path, attribute_filter=f"level_path = {level_path}.0 AND Divergence < 2")
+                flowlines_path, attribute_filter=f"level_path = '{level_path}' AND Divergence < 2")
             if geom_flowline is None:
                 log.warning(
                     "No flowlines found for level path: {}".format(level_path))

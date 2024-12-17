@@ -45,7 +45,7 @@
       // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
       "args": [
         "${input:HUC}",
-        "{env:DATA_ROOT}/vbet/${input:HUC}/inputs/vbet_inputs.gpkg/network_intersected",
+        "{env:DATA_ROOT}/vbet/${input:HUC}/inputs/vbet_inputs.gpkg/single_parts",
         "{env:DATA_ROOT}/vbet/${input:HUC}/inputs/vbet_inputs.gpkg/channel_area_polygons",
         "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/vbet_full",
         "{env:DATA_ROOT}/confinement/${input:HUC}", // output folder
@@ -55,7 +55,7 @@
         "{env:DATA_ROOT}/vbet/${input:HUC}/intermediates/vbet_intermediates.gpkg/vbet_dgos",
         "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/vbet_igos",
         "--buffer", "15.0",
-        "--segmented_network", "{env:DATA_ROOT}/vbet/${input:HUC}/inputs/vbet_inputs.gpkg/network_intersected",
+        "--segmented_network", "{env:DATA_ROOT}/vbet/${input:HUC}/inputs/vbet_inputs.gpkg/single_parts",
         "--meta",
         "Runner=VSCode",
         "--verbose",
