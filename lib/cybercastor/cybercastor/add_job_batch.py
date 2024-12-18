@@ -21,14 +21,14 @@ MAX_TASKS = 500
 # The upstream value is a list of project type IDs that the job requires to run
 job_types = {
     'rs_context': {
-        'output': 'rscontext',
+        'output': 'rscontextnz',
         'upstream': []
     },
-    'channel': {
+    'channel_conus': {
         'output': 'channelarea',
         'upstream': ['rscontext'],
     },
-    'channelnz': {
+    'channel': {
         'output': 'channelarea',
         'upstream': ['rscontextnz'],
     },
