@@ -22,10 +22,10 @@ def change_owner(riverscapes_api: RiverscapesAPI):
 
     search_params = RiverscapesSearchParams.load_from_json(os.path.join(os.path.dirname(__file__), '..', '..', 'inputs', 'change_owner_search.json'))
 
-    default_dir = os.path.join(os.path.expanduser("~"), 'RSTagging')
+    default_dir = os.path.join(os.path.expanduser("~"), 'rstools-logs')
     out_questions = [
         inquirer.Text('logdir', message="Where do you want to save the log files?", default=default_dir),
-        inquirer.Text('orgGuid', message="Type the organization GUID?"),
+        inquirer.Text('orgGuid', message="Type the organization GUID that will take ownership of the projects?"),
     ]
     out_answers = inquirer.prompt(out_questions)
 
