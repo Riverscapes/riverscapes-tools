@@ -79,10 +79,10 @@ def calc_risks(risks: dict, occ_ex: float, ipc_lu: float, ipc_canal: float, ipc_
         [type]: [description]
     """
 
-    if occ_ex <= 0:
-        # if capacity is none risk is negligible
-        return risks['Negligible Risk']
-    elif ipc_canal is not None and ipc_canal <= 20:
+    # if occ_ex <= 0:
+    # if capacity is none risk is negligible
+    # return risks['Negligible Risk']
+    if ipc_canal is not None and ipc_canal <= 20:
         # if canals are within 20 meters (usually means canal is on the reach)
         return risks['Considerable Risk']
     else:
