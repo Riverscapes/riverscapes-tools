@@ -1203,5 +1203,27 @@
     "url": null,
     "machineName": "RSContextNZ",
     "state": "ACTIVE"
+  },
+  {
+    "name": "Italian National Datasets",
+    "summary": null,
+    "description": "National Datasets are containers for nationally available data to be accessed by the [Riverscapes Context model](https://tools.riverscapes.net/rscontext/), to package up for individual catchments. These datsets are not necessarily curated for all inputs to Riverscapes Context. Instead they are produced when national data is not available via a reliable API (e.g. when available only from a FTP server). These datasets are manually downloaded, curated and remain static (unlike datasets made available from a National Government and periodically updated and made availabe via their API.",
+    "meta": [
+        { 
+          "key": "Resolution",
+          "value": "Reach,Cell"
+        },
+        { 
+          "key": "Extent",
+          "value": "National"
+        },
+        {
+          "key": "Riverscapes Project Class",
+          "value": "Curated Dataset"
+        }
+       ],
+    "url": null,
+    "machineName": "ItalyNational",
+    "state": "ACTIVE"
   }
 ]
