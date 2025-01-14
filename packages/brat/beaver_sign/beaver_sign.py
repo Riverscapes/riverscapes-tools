@@ -151,7 +151,7 @@ def beaver_activity(huc, proj_boundary, dgos, igos, qris_path, output_dir, beave
     extents = generate_project_extents_from_layer(proj_boundary, extents_path)
     project.add_project_extent(extents_path, extents['CENTROID'], extents['BBOX'])
 
-    # add_layer_descriptions(project, LYR_DESCRIPTIONS_JSON, LayerTypes)
+    add_layer_descriptions(project, LYR_DESCRIPTIONS_JSON, rz_layers)
 
     log.info('Project created successfully')
 
