@@ -41,7 +41,7 @@ def rebuild_web_tiles(riverscapes_api: RiverscapesAPI):
 
     # Ask if it's one project or many based on a search
     questions = [
-        inquirer.Text('filedir', message="Where do you want to save the files?", default=default_dir),
+        inquirer.Text('filedir', message="Where do you want to save the log files?", default=default_dir),
         inquirer.List('oneOrSearch',
                       message="Would you like to rebuilt tiles for one project or many based on a search?",
                       default='one',
