@@ -1004,7 +1004,7 @@ VegetationID,EpochID,Name,DefaultSuitability,LandUseID,Physiognomy,Notes
 1379,2,Madrean Pinyon-Juniper Woodland,2,,,
 1380,2,Southern Rocky Mountain Ponderosa Pine Woodland,2,,,
 1381,2,Southern Rocky Mountain Pinyon-Juniper Woodland,2,,,
-1382,2,Chihuahuan Creosotebush Desert Scrub,0,,,
+1382,2,Chihuahuan Creosotebush Desert Scrub,1,,,
 1383,2,Chihuahuan Mixed Salt Desert Scrub,1,,,
 1384,2,Chihuahuan Stabilized Coppice Dune and Sand Flat Scrub,1,,,
 1385,2,Chihuahuan Succulent Desert Scrub,0,,,
