@@ -3187,7 +3187,7 @@ VegetationID,EpochID,Name,DefaultSuitability,LandUseID,Physiognomy,Notes
 7090,1,Sonoran Granite Outcrop Desert Scrub,1,53,Shrubland,
 7091,1,Sonoran Mid-Elevation Desert Scrub,1,53,Shrubland,
 7092,1,Southern California Coastal Scrub,1,125,Shrubland,
-7093,1,Southern Colorado Plateau Sand Shrubland,0,155,Shrubland,
+7093,1,Southern Colorado Plateau Sand Shrubland,0.5,155,Shrubland,
 7094,1,Western Great Plains Sandhill Steppe,0,155,Shrubland,
 7096,1,California Maritime Chaparral,0,44,Shrubland,
 7097,1,California Mesic Chaparral,1,44,Shrubland,
