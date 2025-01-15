@@ -383,7 +383,7 @@ def main():
     with RiverscapesAPI() as api:
         project_types = api.get_project_types()
         questions = [
-            inquirer.Text('collection_id', message="Enter a valid Collection ID", default="e93450e5-68bf-4c43-bca0-6a6995bd06ad"),
+            inquirer.Text('collection_id', message="Enter a valid Collection ID"),
             inquirer.Text('output_name', message="Enter the name for this project", default="test"),
             # Choose a project type from a list of available project types
             inquirer.List('project_type', message="Choose a project type", choices=project_types.keys(), default='BRAT'),
@@ -396,7 +396,7 @@ def main():
         output_name = f"{answers['output_name']} Merged {name_lookup.get(answers['project_type'], answers['project_type'])}"
 
         # Parse the file regex list separated by pipes.
-        file_regex_list = answers['file_regex_list'].split('|') if answers['file_regex_list'] != default_file_regex and answers['file_regex_list'] != '' else []
+        file_regex_list = answers['file_regex_list'].split('|') if answers['file_regex_list'] != default_file_regex and answers['file_regex_list'] != '' else default_file_regex.split('|')
 
         # Always include files used by the merge process: project xml, any logs and bounds GeoJSON
         file_regex_list.append(r'project\.rs\.xml')
