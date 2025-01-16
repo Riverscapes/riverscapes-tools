@@ -284,6 +284,8 @@ def brat(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Path,
     with SQLiteCon(intermediates_gpkg_path) as database:
         database.curs.execute("""ATTACH DATABASE ? AS inputs""", (inputs_gpkg_path,))
         database.curs.execute("""INSERT INTO HydroAnthroReach SELECT * FROM inputs.vwHydroAnthro""")
+        database.curs.execute("""UPDATE HydroAnthroReach SET DrainArea = 0.01, QLow = 0, Q2 = 0, SPLow = 0, SP2 = 0 WHERE DrainArea IS NULL""")
+        database.curs.execute("""UPDATE HydroAnthroReach SET DrainArea = 0.01, QLow = 0, Q2 = 0, SPLow = 0, SP2 = 0 WHERE DrainArea < 0""")
         database.conn.commit()
 
         database.curs.execute("""INSERT INTO ReachAttributes (ReachID, FCode, StreamName, NHDPlusID, WatershedID, level_path, ownership, divergence, stream_order, us_state, ecoregion_iii, ecoregion_iv)
@@ -312,6 +314,8 @@ def brat(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Path,
         # Data preparation SQL statements to handle any weird attributes
         database.curs.execute("""ATTACH DATABASE ? AS inputs""", (inputs_gpkg_path,))
         database.curs.execute("""INSERT INTO HydroAnthroDGO SELECT * FROM inputs.vwHydroAnthroDGO""")
+        database.curs.execute("""UPDATE HydroAnthroDGO SET DrainArea = 0.01, QLow = 0, Q2 = 0, SPLow = 0, SP2 = 0 WHERE DrainArea IS NULL""")
+        database.curs.execute("""UPDATE HydroAnthroDGO SET DrainArea = 0.01, QLow = 0, Q2 = 0, SPLow = 0, SP2 = 0 WHERE DrainArea < 0""")
         database.conn.commit()
 
         database.curs.execute("""INSERT INTO DGOAttributes (DGOID, ReachCode, level_path, seg_distance, centerline_length, segment_area)
@@ -334,8 +338,8 @@ def brat(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Path,
                               FROM ReachGeometry""")
 
         database.curs.execute(f'UPDATE ReachAttributes SET IsPeren = 1 WHERE (ReachCode IN ({", ".join(peren_codes)}))')
-        database.curs.execute('UPDATE ReachAttributes SET iGeo_DA = 0.01 WHERE iGeo_DA IS NULL')
-        database.curs.execute('UPDATE ReachAttributes SET iGeo_DA = 0.01 WHERE iGeo_DA = 0')
+        # database.curs.execute('UPDATE ReachAttributes SET iGeo_DA = 0.01 WHERE iGeo_DA IS NULL')
+        # database.curs.execute('UPDATE ReachAttributes SET iGeo_DA = 0.01 WHERE iGeo_DA = 0')
         database.curs.execute('UPDATE ReachAttributes SET IsMultiCh = 1 WHERE divergence > 0')
         database.curs.execute('UPDATE ReachAttributes SET IsMultiCh = 0 WHERE divergence = 0')
         database.conn.commit()
