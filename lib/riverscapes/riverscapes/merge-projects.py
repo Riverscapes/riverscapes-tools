@@ -8,6 +8,7 @@ Note:
 - periods in the actual string need to be escaped with a backslash.
 - the pipe character is used to separate the regexes.
 """
+from osgeo import ogr
 from typing import Dict, Tuple, List
 from datetime import datetime
 import re
@@ -143,81 +144,62 @@ def replace_log_file(merged_project_xml) -> None:
 
 
 def union_polygons(input_geojson_files, output_geojson_file) -> Tuple[str, str]:
-    """_summary_
+    """
+    Combine and union all polygon features from multiple GeoJSON files into a single polygon.
 
     Args:
-        input_geojson_files (_type_): _description_
-        output_geojson_file (_type_): _description_
-
-    Returns:
-        Tuple[str, str]: _description_
+        file_paths (list of str): Paths to input GeoJSON files.
+        output_path (str): Path to the output GeoJSON file.
     """
+    # Create an empty geometry to hold the union of all polygons
+    union_geometry = None
 
-    # Create a new OGR memory data source
-    mem_driver = ogr.GetDriverByName('Memory')
-    mem_ds = mem_driver.CreateDataSource('')
-
-    # Create a new layer in the memory data source
-    mem_layer = mem_ds.CreateLayer('union', geom_type=ogr.wkbPolygon)
-
-    # Iterate over input GeoJSON files
-    for input_file in input_geojson_files:
+    for file_path in input_geojson_files:
         # Open the GeoJSON file
-        with open(input_file, 'r', encoding='utf8') as file:
-            geojson_data = json.load(file)
+        driver = ogr.GetDriverByName("GeoJSON")
+        datasource = driver.Open(file_path, 0)  # 0 means read-only
+        if not datasource:
+            print(f"Could not open {file_path}")
+            continue
 
-        # Create an OGR feature and set its geometry
+        # Get the first layer from the file
+        layer = datasource.GetLayer()
 
-        # Extract coordinates from the GeoJSON structure
-        coordinates = geojson_data['features'][0]['geometry']['coordinates']
+        # Iterate through features and union geometries
+        for feature in layer:
+            geom = feature.GetGeometryRef()
+            if geom is not None and geom.GetGeometryType() in (ogr.wkbPolygon, ogr.wkbMultiPolygon):
+                if union_geometry is None:
+                    union_geometry = geom.Clone()
+                else:
+                    union_geometry = union_geometry.Union(geom)
 
-        # Create an OGR feature and set its geometry
-        feature_defn = mem_layer.GetLayerDefn()
-        feature = ogr.Feature(feature_defn)
-        geometry = ogr.CreateGeometryFromJson(json.dumps({
-            "type": "Polygon",
-            "coordinates": coordinates
-        }))
-        feature.SetGeometry(geometry)
+    if union_geometry is None:
+        print("No valid geometries found to union.")
+        return
 
-        # Add the feature to the layer
-        mem_layer.CreateFeature(feature)
-
-    # Perform the union operation on the layer
-    union_result = None
-    for feature in mem_layer:
-        if union_result is None:
-            union_result = feature.GetGeometryRef().Clone()
-        else:
-            union_result = union_result.Union(feature.GetGeometryRef())
-
-    # Remove any donuts (typically slivers caused by rounding the individual Polygon extents)
-    clean_polygon = ogr.Geometry(ogr.wkbPolygon)
-    ring = union_result.GetGeometryRef(0)
-    clean_polygon.AddGeometry(ring)
+    # Create the output GeoJSON file
+    driver = ogr.GetDriverByName("GeoJSON")
+    if os.path.exists(output_geojson_file):
+        driver.DeleteDataSource(output_geojson_file)
+    out_datasource = driver.CreateDataSource(output_geojson_file)
+    out_layer = out_datasource.CreateLayer("unioned", geom_type=ogr.wkbMultiPolygon)
 
     # Get centroid coordinates
-    centroid = clean_polygon.Centroid().GetPoint()
+    centroid = union_geometry.Centroid().GetPoint()
 
     # Get bounding rectangle coordinates (min_x, max_x, min_y, max_y)
-    bounding_rect = clean_polygon.GetEnvelope()
+    bounding_rect = union_geometry.GetEnvelope()
 
-    # Create a new GeoJSON file for the union result
-    output_driver = ogr.GetDriverByName('GeoJSON')
-    output_ds = output_driver.CreateDataSource(output_geojson_file)
-    output_layer = output_ds.CreateLayer('union', geom_type=ogr.wkbPolygon)
+    # Create a feature to hold the union geometry
+    out_feature = ogr.Feature(out_layer.GetLayerDefn())
+    out_feature.SetGeometry(union_geometry)
+    out_layer.CreateFeature(out_feature)
 
-    # Create a feature and set the geometry for the union result
-    feature_defn = output_layer.GetLayerDefn()
-    feature = ogr.Feature(feature_defn)
-    feature.SetGeometry(clean_polygon)
-
-    # Add the feature to the output layer
-    output_layer.CreateFeature(feature)
-
-    # Clean up resources
-    mem_ds = None
-    output_ds = None
+    # Cleanup
+    out_feature = None
+    out_datasource = None
+    print(f"Unioned GeoJSON written to {output_geojson_file}")
 
     return centroid, bounding_rect
 
