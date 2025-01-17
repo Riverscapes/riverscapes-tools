@@ -6,6 +6,7 @@ Philip Bailey
 Jan 2025.
 """
 import os
+import subprocess
 from datetime import datetime
 import xml.etree.ElementTree as ET
 from rsxml.util import safe_makedirs
@@ -150,7 +151,14 @@ for huc8_name, huc8_data in huc8s.items():
 
             # Copy output items for the realization
             for path in copy_paths['outputs']:
-                copy_file(os.path.join(input_realization_dir, path), output_realization_dir)
+                if path.endswith('.tif'):
+                    for file_name in os.listdir(input_realization_dir):
+                        if file_name.endswith('.tif'):
+                            input_raster_path = os.path.join(input_realization_dir, file_name)
+                            output_raster = os.path.join(output_realization_dir, os.path.basename(input_raster_path))
+                            subprocess.run(["gdal_translate", "-co", "COMPRESS=LZW", input_raster_path, output_raster], check=True)
+                else:
+                    copy_file(os.path.join(input_realization_dir, path), output_realization_dir)
 
         # Open the corresponding BRAT project and read the bounds information from the XML
         brat_project_file = os.path.join(huc10_path, 'project.rs.xml')
