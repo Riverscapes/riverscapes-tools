@@ -55,7 +55,7 @@ def main():
     tags = f'--tags {",".join(tags)}' if len(tags) > 0 else ''
 
     for project_file in project_files:
-        cmd = f'rscli upload {project_file} --no-wait --{'org' if answers['owner_type'] == 'Organization' else 'user'} {answers["owner"]} --visibility {answers["visibility"]} {tags}'
+        cmd = f'rscli upload {project_file} --no-input --{'org' if answers['owner_type'] == 'Organization' else 'user'} {answers["owner"]} --visibility {answers["visibility"]} {tags}'
         try:
             print(cmd)
             # subprocess.run(cmd, shell=True, check=True)
