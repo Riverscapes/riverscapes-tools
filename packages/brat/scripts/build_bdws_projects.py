@@ -6,6 +6,7 @@ Philip Bailey
 Jan 2025.
 """
 import os
+import zipfile
 import subprocess
 from datetime import datetime
 import xml.etree.ElementTree as ET
@@ -16,28 +17,81 @@ top_level_dir = '/Users/philipbailey/GISData/riverscapes/bdws'
 output_dir = '/Users/philipbailey/GISData/riverscapes/bdws/rs_projects'
 
 huc8s = {
-    "Tomales": {
-        "folder": 'Tomales',
+    # "Tomales": {
+    #     "folder": 'Tomales',
+    #     "inputs_uses_slug": True,
+    #     "huc10s": [
+    #         {
+    #             "huc": "1805000504",
+    #             "name": "Abbotts Lagoon",
+    #             "dir": "Abbotts_Lagoon"
+    #         },
+    #         {
+    #             "huc": "1805000505",
+    #             "name": "Drakes Bay",
+    #             "dir": "Drakes_Bay"
+    #         },
+    #         {
+    #             "huc": "1805000501",
+    #             "name": "Lagunitas Creek",
+    #             "dir": "Lagunitas_Creek"
+    #         },
+    #         {
+    #             "huc": "1805000503",
+    #             "name": "Tomales Bay",
+    #             "dir": "Tomales_Bay"
+    #         }
+    #     ]
+    # },
+    # "Yellow Creek": {
+    #     "folder": 'Yellow_Creek',
+    #     "inputs_uses_slug": False,
+    #     "huc10s": [
+    #         {
+    #             "huc": "1802012105",
+    #             "name": "Yellow Creek",
+    #             "dir": "Yellow_Creek"
+    #         }
+    #     ]
+    # },
+    "Sprague": {
+        "folder": 'Sprague',
+        "inputs_uses_slug": True,
         "huc10s": [
+            # {
+            #     "huc": "1801020203",
+            #     "name": "Fishhole",
+            #     "dir": "Fishhole"
+            # },
+            # {
+            #     "huc": "1801020206",
+            #     "name": "Lower Sycan",
+            #     "dir": "Lower_Sycan"
+            # },
+            # {
+            #     "huc": "1801020202",
+            #     "name": "Middle Sycan",
+            #     "dir": "Middle_Sycan"
+            # },
+            # {
+            #     "huc": "1801020205",
+            #     "name": "North Fork Sprague",
+            #     "dir": "NF_Sprague"
+            # },
+            # {
+            #     "huc": "1801020204",
+            #     "name": "South Fork Sprague",
+            #     "dir": "SF_Sprague"
+            # },
             {
-                "huc": "1805000504",
-                "name": "Abbotts Lagoon",
-                "dir": "Abbotts_Lagoon"
+                "huc": "1801020207",
+                "name": "Sprague Main",
+                "dir": "Sprague_main"
             },
             {
-                "huc": "1805000505",
-                "name": "Drakes Bay",
-                "dir": "Drakes_Bay"
-            },
-            {
-                "huc": "1805000501",
-                "name": "Lagunitas Creek",
-                "dir": "Lagunitas_Creek"
-            },
-            {
-                "huc": "1805000503",
-                "name": "Tomales Bay",
-                "dir": "Tomales_Bay"
+                "huc": "1801020201",
+                "name": "Upper Sycan",
+                "dir": "Upper_Sycan"
             }
         ]
     }
@@ -79,15 +133,15 @@ dataset_names = {
     'brat.': 'BRAT Output',
     'brat_perennial.': 'BRAT Perennial Output',
     'ModeledDamPoints.': 'Modeled Dam Points',
-    'head_hi.tif': 'Head High',
-    'WSESurf_lo.tif': 'Water Surface Elevation Low',
+    'head_hi.tif': 'Head - High',
+    'WSESurf_lo.tif': 'Water Surface - Low',
     'pondID.tif': 'Pond ID',
     'depLo.tif': 'Depths of modeded beaver ponds for low dam heights.',
     'damID.tif': 'Dam ID',
-    'head_mid.tif': 'head_mid',
-    'head_lo.tif': 'head_lo',
-    'htAbove.tif': 'htAbove',
-    'WSESurf_mid.tif': 'WSESurf_mid',
+    'head_mid.tif': 'Head - Middle',
+    'head_lo.tif': 'Head - Low',
+    'htAbove.tif': 'Height Above Drainage',
+    'WSESurf_mid.tif': 'Water Surface - Middle',
     'head_start.tif': '',
     'depHi.tif': 'Depths of modeded beaver ponds for high dam heights.',
     'depMid.tif': 'Depths of modeded beaver ponds for median dam heights.',
@@ -124,6 +178,18 @@ def get_dataset_name(input_file_name: str) -> str:
     return final_name
 
 
+def zip_with_exclusions(folder_to_zip, output_zipfile):
+    with zipfile.ZipFile(output_zipfile, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=9) as zipf:
+        for root, dirs, files in os.walk(folder_to_zip):
+            for file in files:
+                # Exclude files with specified extensions
+                if not file.endswith(tuple(['.tif', '.shp'])):
+                    file_path = os.path.join(root, file)
+                    # Write the file with a relative path to include the folder structure
+                    arcname = os.path.relpath(file_path, start=folder_to_zip)
+                    zipf.write(file_path, arcname)
+
+
 for huc8_name, huc8_data in huc8s.items():
     print(f'Processing HUC8 {huc8_name}')
     huc8_path = os.path.join(top_level_dir, huc8_data['folder'])
@@ -146,12 +212,19 @@ for huc8_name, huc8_data in huc8s.items():
             print(f'Processing realization {realization}')
             realization_name = f'realization_{realization}'
             realization_slug = f'{float(realization)}' if realization != 100 else f'{int(realization)}'
-            input_realization_dir = os.path.join(huc10_path, f'BDWS/perennial/{realization}/outputs{realization_slug}')
             output_realization_dir = os.path.join(output_huc10_folder, 'outputs',  realization_name)
+
+            input_realization_dir = os.path.join(huc10_path, f'BDWS/perennial/{realization}/outputs{realization_slug}')
+            if not os.path.isdir(input_realization_dir):
+                input_realization_dir = os.path.join(huc10_path, f'BDWS/perennial/{realization}/outputs')
+                if not os.path.isdir(input_realization_dir):
+                    continue
+                    # raise ValueError(f'Could not find realization {realization} at {input_realization_dir}')
 
             # Copy output items for the realization
             for path in copy_paths['outputs']:
                 if path.endswith('.tif'):
+
                     for file_name in os.listdir(input_realization_dir):
                         if file_name.endswith('.tif'):
                             input_raster_path = os.path.join(input_realization_dir, file_name)
@@ -159,6 +232,10 @@ for huc8_name, huc8_data in huc8s.items():
                             subprocess.run(["gdal_translate", "-co", "COMPRESS=LZW", input_raster_path, output_raster], check=True)
                 else:
                     copy_file(os.path.join(input_realization_dir, path), output_realization_dir)
+
+            # Zip the modflow outputs
+            output_modflow_path = os.path.join(output_realization_dir, 'modflow_outputs.zip')
+            zip_with_exclusions(os.path.join(input_realization_dir, '..', f'modflow{realization_slug}'), output_modflow_path)
 
         # Open the corresponding BRAT project and read the bounds information from the XML
         brat_project_file = os.path.join(huc10_path, 'project.rs.xml')
@@ -195,15 +272,24 @@ for huc8_name, huc8_data in huc8s.items():
             )
         )
 
-        for extensions in ['.tif', '.shp']:
+        for extensions in ['.tif', '.shp', '.zip']:
             for file_name in os.listdir(os.path.join(output_huc10_folder, 'Inputs')):
                 if file_name.endswith(extensions):
                     name = get_dataset_name(file_name)
+                    if file_name.endswith('.tif'):
+                        dataset_type = 'Raster'
+                    elif file_name.endswith('.shp'):
+                        dataset_type = 'Vector'
+                    elif file_name.endswith('.zip'):
+                        dataset_type = 'File'
+                    else:
+                        raise ValueError(f'Unknown dataset type for {file_name}')
+
                     project.common_datasets.append(Dataset(
                         name=name,
                         xml_id=f'{os.path.splitext(file_name)[0].upper()}',
                         path=os.path.relpath(os.path.join(output_huc10_folder, 'inputs', file_name), os.path.dirname(project_file)),
-                        ds_type='Raster' if file_name.endswith('.tif') else 'Vector'
+                        ds_type=dataset_type
                     ))
 
         for realization_value in realizations:
@@ -211,16 +297,28 @@ for huc8_name, huc8_data in huc8s.items():
             realization_slug = f'{float(realization_value)}' if realization_value != 100 else f'{int(realization_value)}'
             realization_dir = os.path.join(output_huc10_folder, 'outputs', f'realization_{realization_value}')
 
+            if not os.path.isdir(realization_dir):
+                continue
+
             datasets = []
-            for extensions in ['.tif', '.shp']:
+            for extensions in ['.tif', '.shp', '.zip']:
                 for file_name in os.listdir(realization_dir):
                     if file_name.endswith(extensions):
                         name = get_dataset_name(file_name)
+                        if file_name.endswith('.tif'):
+                            dataset_type = 'Raster'
+                        elif file_name.endswith('.shp'):
+                            dataset_type = 'Vector'
+                        elif file_name.endswith('.zip'):
+                            dataset_type = 'File'
+                        else:
+                            raise ValueError(f'Unknown dataset type for {file_name}')
+
                         datasets.append(Dataset(
                             name=name,
                             xml_id=f'{os.path.splitext(file_name)[0].upper()}',
                             path=os.path.relpath(os.path.join(realization_dir, file_name), os.path.dirname(project_file)),
-                            ds_type='Raster' if file_name.endswith('.tif') else 'Vector'
+                            ds_type=dataset_type
                         ))
 
             realization = Realization(
