@@ -54,7 +54,9 @@
   {
     "name": "Beaver Restoration Assessment Tool (BRAT) - Riverscape Network",
     "summary": "The hybrid channel network/riverscape network Beaver Restoration Assessment Tool (sqlBRAT)",
-    "description": "The [Beaver Restoration Assessment Tool](https://tools.riverscapes.net/brat) combines a model estimating the capacity of a riverscape to support dam building activity with analysis of potential anthropogenic conflicts to create a tool that can be used to inform where [LTPBR restoration](http://lowtechpbr.restoration.usu.edu/) using beaver can be targeted.",
+    "description": "The [Beaver Restoration Assessment Tool](https://tools.riverscapes.net/brat) combines a model estimating the capacity of a riverscape to support dam building activity with analysis of potential anthropogenic conflicts to create a tool that can be used to inform where [LTPBR restoration](http://lowtechpbr.restoration.usu.edu/) using beaver can be targeted.
+    
+    Hafen, K.C.; Wheaton, J.M.; Roper, B.B.; Bailey, P.; Macfarlane, W.W.; Neilson, B.T.; Tennant, C.J. Estimating Increased Transient Water Storage with Increases in Beaver Dam Activity. Water 2024, 16, 1515. [https://doi.org/10.3390/w16111515](https://doi.org/10.3390/w16111515)",
     "meta": [
       {
         "key": "Resolution",
