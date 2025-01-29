@@ -7,7 +7,6 @@ IFS=$'\n\t'
 # These environment variables need to be present before the script starts
 (: "${TAGS?}")
 (: "${VBET_ID?}")
-(: "${RSCONTEXT_ID?}")
 (: "${QRIS_ID?}")
 (: "${RS_API_URL?}")
 (: "${VISIBILITY?}")
@@ -37,7 +36,6 @@ EOF
 
 echo "TAGS: $TAGS"
 echo "VBET_ID: $VBET_ID"
-echo "RSCONTEXT_ID: $RSCONTEXT_ID"
 echo "QRIS_ID: $QRIS_ID"
 echo "VISIBILITY: $VISIBILITY"
 if [ -n "$USER_ID" ]; then
@@ -51,7 +49,6 @@ gdal-config --version
 
 # Define some folders that we can easily clean up later
 DATA_DIR=/usr/local/data
-RS_CONTEXT_DIR=$DATA_DIR/rs_context/data
 VBET_DIR=$DATA_DIR/vbet/data
 QRIS_DIR=$DATA_DIR/qris/data
 BEAVER_ACTIVITY_DIR=$DATA_DIR/output
@@ -65,17 +62,11 @@ cd /usr/local/src
 ##########################################################################################
 
 # Get the RSCli project we need to make this happen
-rscli download $RS_CONTEXT_DIR --id "$RSCONTEXT_ID" \
-  --file-filter "(hydrology|project_bounds.geojson)" \
-  --no-input --no-ui --verbose
-
-# Go get vbet result for this to work
 rscli download $VBET_DIR --id "$VBET_ID"\
   --file-filter "(vbet\.gpkg|vbet_intermediates\.gpkg)" \
   --no-input --no-ui --verbose
 
 rscli download $QRIS_DIR --id "$QRIS_ID" \
-  --file-filter "qris\.gpkg" \
   --no-input --no-ui --verbose
 
 echo "======================  Initial Disk space usage ======================="
@@ -88,7 +79,7 @@ try() {
   # Now Run Beaver Activity
   ##########################################################################################
   beaver_sign.beaver_sign $HUC \
-    $RS_CONTEXT_DIR/topography/dem_hillshade.tif \
+    $QRIS_DIR/context/feature_classes.gpkg/WBDHU10 \
     $VBET_DIR/intermediates/vbet_intermediates.gpkg/vbet_dgos \
     $VBET_DIR/outputs/vbet.gpkg/vbet_igos \
     $QRIS_DIR \
