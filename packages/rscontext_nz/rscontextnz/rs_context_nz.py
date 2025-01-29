@@ -54,10 +54,23 @@ LayerTypes = {
         'Junctions': RSLayer('Hydro Junctions', 'junctions', 'Vector', 'junctions'),
         'Lakes': RSLayer('Lakes', 'lakes', 'Vector', 'lakes'),
     }),
+    'TRANSPORTATION': RSLayer('Transportation', 'TRANSPORTATION', 'Geopackage', 'transportation/transportation.gpkg', {
+        'Roads': RSLayer('Roads', 'nzroadcentrelinestopo150k', 'Vector', 'nzroadcentrelinestopo150k'),
+        'Railways': RSLayer('Railways', 'nz-railway-centrelines-topo-150k', 'Vector', 'nz-railway-centrelines-topo-150k'),
+    }),
+    'ADMIN': RSLayer('Administrative Boundaries', 'ADMIN', 'Geopackage', 'administration/regional-council-2023-generalised.gpkg', {
+        'TerritorialAuthority': RSLayer('Territorial Authority', 'territorial_authority', 'Vector', 'territorial_authority'),
+        'RegionalCouncil': RSLayer('Regional Council', 'regional_council_2023_generalised', 'Vector', 'regional_council_2023_generalised'),
+    }),
+    'LANDUSE': RSLayer('Land Use', 'LANDUSE', 'Geopackage', 'landuse/landuse.gpkg', {
+        'LandUse': RSLayer('Land Use', 'nzlri-land-use-capability-2021', 'Vector', 'nzlri-land-use-capability-2021'),
+        'LandCover': RSLayer('Land Cover', 'lcdb_v50_land_cover_database_version_50_mainland_new_zealand', 'Vector', 'lcdb_v50_land_cover_database_version_50_mainland_new_zealand'),
+        'Suburb': RSLayer('Suburb', 'suburblocality', 'Vector', 'suburblocality'),
+    }),
 }
 
 
-def rs_context_nz(watershed_id: str, natl_hydro_gpkg: str, dem_north: str, dem_south: str, output_folder: str, meta: Dict[str, str]) -> None:
+def rs_context_nz(watershed_id: str, natl_hydro_gpkg: str, dem_north: str, dem_south: str, trans_gpkg: str, admin_gpkg: str, landuse_gpkg: str, output_folder: str, meta: Dict[str, str]) -> None:
     """
     Run the Riverscapes Context Tool for New Zealand for a single watershed.
     This function processes hydrographic and topographic data for a specified watershed in New Zealand.
@@ -76,6 +89,10 @@ def rs_context_nz(watershed_id: str, natl_hydro_gpkg: str, dem_north: str, dem_s
 
     hydro_gpkg, ws_name, is_north, trans_geom, ws_boundary_path = process_hydrography(natl_hydro_gpkg, watershed_id, output_folder)
     dem, slope, hillshade = process_topography(dem_north if is_north is True else dem_south, output_folder, ws_boundary_path)
+
+    process_transportation(trans_gpkg, output_folder, trans_geom)
+    process_landuse(landuse_gpkg, output_folder, trans_geom)
+    process_administrative(admin_gpkg, output_folder, trans_geom)
 
     # Write a the project bounds as a GeoJSON file and return the centroid and bounding box
     bounds_file = os.path.join(output_folder, 'project_bounds.geojson')
@@ -106,6 +123,10 @@ def rs_context_nz(watershed_id: str, natl_hydro_gpkg: str, dem_north: str, dem_s
     project.add_dataset(datasets, slope, LayerTypes['SLOPE'], 'Raster')
     project.add_dataset(datasets, hillshade, LayerTypes['HILLSHADE'], 'Raster')
 
+    project.add_project_geopackage(datasets, LayerTypes['TRANSPORTATION'])
+    project.add_project_geopackage(datasets, LayerTypes['ADMIN'])
+    project.add_project_geopackage(datasets, LayerTypes['LANDUSE'])
+
     log.info('Riverscapes Context processing complete')
 
 
@@ -113,7 +134,7 @@ def process_hydrography(national_hydro_gpkg: str, watershed_id: str, output_fold
     """
     Process the hydrography data for the specified watershed.
 
-    This function processes the hydrography data for a given watershed by clipping the national hydrography 
+    This function processes the hydrography data for a given watershed by clipping the national hydrography
     feature classes to the watershed boundary and saving the results to an output GeoPackage.
 
     Parameters:
@@ -192,6 +213,68 @@ def process_hydrography(national_hydro_gpkg: str, watershed_id: str, output_fold
     return output_gpkg, watershed_name, is_north, trans_geom, output_ws
 
 
+def process_transportation(national_trans_gpkg: str, output_folder: str, watershed_geom) -> str:
+    """
+    Process the transportation data for the specified watershed.
+    """
+
+    log = Logger('Transportation')
+    log.info('Processing Transportation')
+
+    input_roads = os.path.join(os.path.join(national_trans_gpkg, 'nzroadcentrelinestopo150k'))
+    input_rails = os.path.join(os.path.join(national_trans_gpkg, 'nz-railway-centrelines-topo-150k'))
+
+    # Clip the national feature classes into the output GeoPackage
+    output_gpkg = os.path.join(output_folder, 'transportation', 'transportation.gpkg')
+    output_ws = os.path.join(output_gpkg, 'roads')
+
+    copy_feature_class(input_roads, output_ws, 2193, clip_shape=watershed_geom, make_valid=True)
+    copy_feature_class(input_rails, output_ws, 2193, clip_shape=watershed_geom, make_valid=True)
+
+    return output_gpkg
+
+
+def process_landuse(national_landuse_gpkg: str, output_folder: str, watershed_geom) -> str:
+    """
+    Process the land use data for the specified watershed.
+    """
+
+    log = Logger('Land Use')
+    log.info('Processing Land Use')
+
+    input_landuse = os.path.join(os.path.join(national_landuse_gpkg, 'nzlri-land-use-capability-2021'))
+    input_landcover = os.path.join(os.path.join(national_landuse_gpkg, 'lcdb_v50_land_cover_database_version_50_mainland_new_zealand'))
+    input_suburb = os.path.join(os.path.join(national_landuse_gpkg, 'suburblocality'))
+
+    # Clip the national feature classes into the output GeoPackage
+    output_gpkg = os.path.join(output_folder, 'landuse', 'landuse.gpkg')
+    output_ws = os.path.join(output_gpkg, 'landuse')
+
+    copy_feature_class(input_landuse, output_ws, 2193, clip_shape=watershed_geom, make_valid=True)
+    copy_feature_class(input_landcover, output_ws, 2193, clip_shape=watershed_geom, make_valid=True)
+    copy_feature_class(input_suburb, output_ws, 2193, clip_shape=watershed_geom, make_valid=True)
+
+    return output_gpkg
+
+
+def process_administrative(national_admin_gpkg: str, output_folder: str, watershed_geom) -> str:
+    """
+    Process the administrative data for the specified watershed.
+    """
+
+    log = Logger('Administrative')
+    log.info('Processing Administrative')
+
+    input_regional = os.path.join(os.path.join(national_admin_gpkg, 'regional_council_2023_generalised'))
+
+    # Clip the national feature classes into the output GeoPackage
+    output_gpkg = os.path.join(output_folder, 'administration', 'administration.gpkg')
+    output_ws = os.path.join(output_gpkg, 'administration')
+    copy_feature_class(input_regional, output_ws, 2193, clip_shape=watershed_geom, make_valid=True)
+
+    return output_gpkg
+
+
 def get_geometry(gpkg: str, layer_name: str, where_clause: str, output_epsg: int) -> Tuple[ogr.Geometry]:
     """
     Get the geometry for a feature in a GeoPackage layer.
@@ -268,6 +351,9 @@ def main():
     parser = argparse.ArgumentParser(description='Riverscapes Context Tool for New Zealand')
     parser.add_argument('watershed_id', help='Watershed/HUC identifier', type=int)
     parser.add_argument('hydro_gpkg', help='Path to GeoPackage containing national hydrography feature classes', type=str)
+    parser.add_argument('trans_gpkg', help='Path to GeoPackage containing national transportation feature classes', type=str)
+    parser.add_argument('admin_gpkg', help='Path to GeoPackage containing national administrative feature classes', type=str)
+    parser.add_argument('landuse_gpkg', help='Path to GeoPackage containing national landuse feature classes', type=str)
     parser.add_argument('dem_north', help='Path to North Island DEM raster.', type=str)
     parser.add_argument('dem_south', help='Path to South Island DEM raster.', type=str)
     parser.add_argument('output', help='Path to the output folder', type=str)
@@ -289,7 +375,7 @@ def main():
     meta = parse_metadata(args.meta)
 
     try:
-        rs_context_nz(args.watershed_id, args.hydro_gpkg, args.dem_north, args.dem_south, args.output, meta)
+        rs_context_nz(args.watershed_id, args.hydro_gpkg, args.dem_north, args.dem_south, args.trans_gpkg, args.admin_gpkg, args.landuse_gpkg, args.output, meta)
     except Exception as e:
         log.error(e)
         traceback.print_exc(file=sys.stdout)
