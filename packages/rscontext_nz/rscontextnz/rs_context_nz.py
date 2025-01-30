@@ -252,11 +252,13 @@ def process_landuse(national_landuse_gpkg: str, output_folder: str, watershed_ge
 
     # Clip the national feature classes into the output GeoPackage
     output_gpkg = os.path.join(output_folder, 'landuse', 'landuse.gpkg')
-    output_ws = os.path.join(output_gpkg, 'landuse')
+    output_ws_use = os.path.join(output_gpkg, 'landuse')
+    output_ws_cover = os.path.join(output_gpkg, 'landcover')
+    output_ws_suburb = os.path.join(output_gpkg, 'suburb')
 
-    copy_feature_class(input_landuse, output_ws, 2193, clip_shape=watershed_geom, make_valid=True)
-    copy_feature_class(input_landcover, output_ws, 2193, clip_shape=watershed_geom, make_valid=True)
-    copy_feature_class(input_suburb, output_ws, 2193, clip_shape=watershed_geom, make_valid=True)
+    copy_feature_class(input_landuse, output_ws_use, 2193, clip_shape=watershed_geom, make_valid=True)
+    copy_feature_class(input_landcover, output_ws_cover, 2193, clip_shape=watershed_geom, make_valid=True)
+    copy_feature_class(input_suburb, output_ws_suburb, 2193, clip_shape=watershed_geom, make_valid=True)
 
     return output_gpkg
 
