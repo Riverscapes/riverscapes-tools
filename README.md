@@ -73,3 +73,8 @@ rscli download --id XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX /workspaces/data/rs_con
 A browser window should pop open to allow you to authenticate your Riverscapes Warehouse account. Once authenticated the project will be downloaded to the data folder.
 
 Make sure you use the folder name that matches what this tool expects for the project type and huc number.
+
+
+### M1-M4 Mac chip notes from Matt Reimer Jan 30, 2025
+
+I had to bump matplotlib to `matplotlib==3.7.5` to get it to install on the M4 Mac. This was with python 3.8.20 (same as cybercastor) installed using `pyenv`.
