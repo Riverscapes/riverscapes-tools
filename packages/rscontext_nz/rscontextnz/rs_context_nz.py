@@ -26,9 +26,10 @@ import sys
 import traceback
 from osgeo import ogr, gdal
 
-from rscommons import Logger, ModelConfig, dotenv, initGDALOGRErrors
 from rscommons.classes.rs_project import RSLayer, RSProject, RSMeta, RSMetaTypes
 from rscommons.geographic_raster import gdal_dem_geographic
+from rscommons import Logger, ModelConfig, dotenv, initGDALOGRErrors
+from rscommons.classes.rs_project import RSLayer, RSProject, RSMeta, RSMetaTypes
 from rscommons.project_bounds import generate_project_extents_from_geom
 from rscommons.raster_warp import raster_warp
 from rscommons.util import safe_makedirs, parse_metadata
