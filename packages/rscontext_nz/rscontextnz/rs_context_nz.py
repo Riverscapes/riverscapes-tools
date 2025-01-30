@@ -24,7 +24,7 @@ import json
 import os
 import sys
 import traceback
-from osgeo import ogr
+from osgeo import ogr, gdal
 
 from rscommons import Logger, ModelConfig, dotenv, initGDALOGRErrors
 from rscommons.classes.rs_project import RSLayer, RSProject, RSMeta, RSMetaTypes
@@ -340,8 +340,8 @@ def process_topography(input_dem: str, output_folder: str, processing_boundary) 
     output_hillshade = os.path.join(topo_folder, 'dem_hillshade.tif')
 
     raster_warp(input_dem, output_dem, 2193, processing_boundary, {"cutlineBlend": 1})
-    gdal_dem_geographic(output_dem, output_slope, 'slope')
-    gdal_dem_geographic(output_dem, output_hillshade, 'hillshade')
+    gdal.DEMProcessing(output_slope, output_dem, 'slope', creationOptions=["COMPRESS=DEFLATE"])
+    gdal.DEMProcessing(output_hillshade, output_dem, 'hillshade', creationOptions=["COMPRESS=DEFLATE"])
 
     log.info(f'DEM produced at {output_dem}')
     log.info(f'Slope produced at {output_slope}')
