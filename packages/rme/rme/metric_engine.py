@@ -395,6 +395,8 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
 
                     centerline_length, *_ = get_segment_measurements(
                         geom_centerline, src_dem, feat_geom, buffer_distance[stream_size], transform)
+                    if centerline_length <= 0:
+                        continue
                     measurements_output[measurements['VALLENG']['measurement_id']] = centerline_length
 
                     if any(elev is None for elev in [min_elev, max_elev]):
@@ -564,6 +566,8 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                         geom_flowline_full, src_dem, feat_geom, buffer_distance[stream_size], transform)
                     centerline_length, *_ = get_segment_measurements(
                         geom_centerline, src_dem, feat_geom, buffer_distance[stream_size], transform)
+                    if centerline_length <= 0:
+                        continue
 
                     relative_flow_length = str(
                         stream_length_total / centerline_length) if centerline_length > 0.0 else None
