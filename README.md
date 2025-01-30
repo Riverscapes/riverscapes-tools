@@ -86,3 +86,7 @@ cd docs
 yarn install
 yarn start
 ```
+
+### M1-M4 Mac chip notes from Matt Reimer Jan 30, 2025
+
+I had to bump matplotlib to `matplotlib==3.7.5` to get it to install on the M4 Mac. This was with python 3.8.20 (same as cybercastor) installed using `pyenv`.

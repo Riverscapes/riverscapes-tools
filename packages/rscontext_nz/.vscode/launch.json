@@ -31,7 +31,7 @@
         "{env:NATIONAL_PROJECT_NZ}/landuse/landuse.gpkg",
         "{env:NATIONAL_PROJECT_NZ}/topography/NORTH_ISLAND_8m.tif",
         "{env:NATIONAL_PROJECT_NZ}/topography/SOUTH_ISLAND_8m.tif",
-        "{env:DATA_ROOT}/rs_context/${input:WatershedHydroID}",
+        "{env:DATA_ROOT}/rs_context_nz/${input:WatershedHydroID}",
         "--verbose",
         "--debug"
       ]

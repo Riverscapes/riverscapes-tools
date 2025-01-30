@@ -55,17 +55,16 @@ LayerTypes = {
         'Lakes': RSLayer('Lakes', 'lakes', 'Vector', 'lakes'),
     }),
     'TRANSPORTATION': RSLayer('Transportation', 'TRANSPORTATION', 'Geopackage', 'transportation/transportation.gpkg', {
-        'Roads': RSLayer('Roads', 'nzroadcentrelinestopo150k', 'Vector', 'nzroadcentrelinestopo150k'),
-        'Railways': RSLayer('Railways', 'nz-railway-centrelines-topo-150k', 'Vector', 'nz-railway-centrelines-topo-150k'),
+        'Roads': RSLayer('Roads', 'roads', 'Vector', 'roads'),
+        'Railways': RSLayer('Railways', 'railways', 'Vector', 'railways'),
     }),
-    'ADMIN': RSLayer('Administrative Boundaries', 'ADMIN', 'Geopackage', 'administration/regional-council-2023-generalised.gpkg', {
-        'TerritorialAuthority': RSLayer('Territorial Authority', 'territorial_authority', 'Vector', 'territorial_authority'),
-        'RegionalCouncil': RSLayer('Regional Council', 'regional_council_2023_generalised', 'Vector', 'regional_council_2023_generalised'),
+    'ADMIN': RSLayer('Administrative Boundaries', 'ADMIN', 'Geopackage', 'administration/administration.gpkg', {
+        'RegionalCouncil': RSLayer('Regional Council', 'administration', 'Vector', 'administration'),
     }),
     'LANDUSE': RSLayer('Land Use', 'LANDUSE', 'Geopackage', 'landuse/landuse.gpkg', {
-        'LandUse': RSLayer('Land Use', 'nzlri-land-use-capability-2021', 'Vector', 'nzlri-land-use-capability-2021'),
-        'LandCover': RSLayer('Land Cover', 'lcdb_v50_land_cover_database_version_50_mainland_new_zealand', 'Vector', 'lcdb_v50_land_cover_database_version_50_mainland_new_zealand'),
-        'Suburb': RSLayer('Suburb', 'suburblocality', 'Vector', 'suburblocality'),
+        'LandUse': RSLayer('Land Use', 'landuse', 'Vector', 'landuse'),
+        'LandCover': RSLayer('Land Cover', 'landcover', 'Vector', 'landcover'),
+        'Suburb': RSLayer('Suburb', 'suburb', 'Vector', 'suburb'),
     }),
 }
 
