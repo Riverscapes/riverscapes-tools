@@ -124,6 +124,20 @@
       ]
     },
     {
+      "name": "💀💀💀 DELETE PROJECTS NEW ZEALAND- DANGER 💀💀💀",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "riverscapes.lib.dump.delete_project_batch",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/.env",
+      "args": [
+        "production",
+        "{env:DATA_ROOT}/../nz/data_exchange/nz_data_exchange_${input:environment}.gpkg",
+        "f181ed0d-dba2-4aa5-9974-6f83f918b230,f49007b2-04ba-452b-a0a7-b516b7a8d6f6,f9601e31-b1f8-4e32-bef0-80a24d3d178d,fac74d34-8c52-4bdf-91db-74cf68373eb3,fbd84919-c907-4485-9323-43d5fea18261"
+      ]
+    },
+    {
       "name": "Scrape RME",
       "type": "debugpy",
       "request": "launch",

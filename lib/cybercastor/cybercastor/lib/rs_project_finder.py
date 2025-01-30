@@ -26,6 +26,7 @@ engine_projecttype_map = {
 # Key is warehouse project type. Value is Fargate environment variable
 fargate_env_keys = {
     'rscontext': 'RSCONTEXT_ID',
+    'rscontextnz': 'RSCONTEXT_ID',
     'channelarea': 'CHANNELAREA_ID',
     'taudem': 'TAUDEM_ID',
     'vbet': 'VBET_ID',
