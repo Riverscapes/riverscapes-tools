@@ -87,12 +87,15 @@ def rs_context_nz(watershed_id: str, natl_hydro_gpkg: str, dem_north: str, dem_s
 
     safe_makedirs(output_folder)
 
-    hydro_gpkg, ws_name, is_north, trans_geom, ws_boundary_path = process_hydrography(natl_hydro_gpkg, watershed_id, output_folder)
+    # Load the watershed boundary polygon (in original projection)
+    orig_ws_boundary, trans_geom = get_geometry(natl_hydro_gpkg,  'NZ_Large_River_Catchments', f'HydroID={watershed_id}', cfg.OUTPUT_EPSG)
+
+    hydro_gpkg, ws_name, is_north, ws_boundary_path = process_hydrography(natl_hydro_gpkg, watershed_id, output_folder)
     dem, slope, hillshade = process_topography(dem_north if is_north is True else dem_south, output_folder, ws_boundary_path)
 
-    process_transportation(trans_gpkg, output_folder, trans_geom)
-    process_landuse(landuse_gpkg, output_folder, trans_geom)
-    process_administrative(admin_gpkg, output_folder, trans_geom)
+    process_transportation(trans_gpkg, output_folder, orig_ws_boundary)
+    process_landuse(landuse_gpkg, output_folder, orig_ws_boundary)
+    process_administrative(admin_gpkg, output_folder, orig_ws_boundary)
 
     # Write a the project bounds as a GeoJSON file and return the centroid and bounding box
     bounds_file = os.path.join(output_folder, 'project_bounds.geojson')
@@ -130,7 +133,7 @@ def rs_context_nz(watershed_id: str, natl_hydro_gpkg: str, dem_north: str, dem_s
     log.info('Riverscapes Context processing complete')
 
 
-def process_hydrography(national_hydro_gpkg: str, watershed_id: str, output_folder: str) -> Tuple[str, str, bool, ogr.Geometry]:
+def process_hydrography(national_hydro_gpkg: str, watershed_id: str, output_folder: str) -> Tuple[str, str, bool, str]:
     """
     Process the hydrography data for the specified watershed.
 
@@ -210,7 +213,7 @@ def process_hydrography(national_hydro_gpkg: str, watershed_id: str, output_fold
 
     log.info(f'Hydrography processed and saved to {output_gpkg}')
 
-    return output_gpkg, watershed_name, is_north, trans_geom, output_ws
+    return output_gpkg, watershed_name, is_north, output_ws
 
 
 def process_transportation(national_trans_gpkg: str, output_folder: str, watershed_geom) -> str:
@@ -221,15 +224,16 @@ def process_transportation(national_trans_gpkg: str, output_folder: str, watersh
     log = Logger('Transportation')
     log.info('Processing Transportation')
 
-    input_roads = os.path.join(os.path.join(national_trans_gpkg, 'nzroadcentrelinestopo150k'))
-    input_rails = os.path.join(os.path.join(national_trans_gpkg, 'nz-railway-centrelines-topo-150k'))
+    input_roads = os.path.join(national_trans_gpkg, 'nzroadcentrelinestopo150k')
+    input_rails = os.path.join(national_trans_gpkg, 'nz-railway-centrelines-topo-150k')
 
     # Clip the national feature classes into the output GeoPackage
     output_gpkg = os.path.join(output_folder, 'transportation', 'transportation.gpkg')
-    output_ws = os.path.join(output_gpkg, 'roads')
+    output_roads = os.path.join(output_gpkg, 'roads')
+    output_rails = os.path.join(output_gpkg, 'railways')
 
-    copy_feature_class(input_roads, output_ws, 2193, clip_shape=watershed_geom, make_valid=True)
-    copy_feature_class(input_rails, output_ws, 2193, clip_shape=watershed_geom, make_valid=True)
+    copy_feature_class(input_roads, output_roads, 2193, clip_shape=watershed_geom, make_valid=True)
+    copy_feature_class(input_rails, output_rails, 2193, clip_shape=watershed_geom, make_valid=True)
 
     return output_gpkg
 
@@ -242,9 +246,9 @@ def process_landuse(national_landuse_gpkg: str, output_folder: str, watershed_ge
     log = Logger('Land Use')
     log.info('Processing Land Use')
 
-    input_landuse = os.path.join(os.path.join(national_landuse_gpkg, 'nzlri-land-use-capability-2021'))
-    input_landcover = os.path.join(os.path.join(national_landuse_gpkg, 'lcdb_v50_land_cover_database_version_50_mainland_new_zealand'))
-    input_suburb = os.path.join(os.path.join(national_landuse_gpkg, 'suburblocality'))
+    input_landuse = os.path.join(national_landuse_gpkg, 'nzlri-land-use-capability-2021')
+    input_landcover = os.path.join(national_landuse_gpkg, 'lcdb_v50_land_cover_database_version_50_mainland_new_zealand')
+    input_suburb = os.path.join(national_landuse_gpkg, 'suburblocality')
 
     # Clip the national feature classes into the output GeoPackage
     output_gpkg = os.path.join(output_folder, 'landuse', 'landuse.gpkg')
@@ -265,7 +269,7 @@ def process_administrative(national_admin_gpkg: str, output_folder: str, watersh
     log = Logger('Administrative')
     log.info('Processing Administrative')
 
-    input_regional = os.path.join(os.path.join(national_admin_gpkg, 'regional_council_2023_generalised'))
+    input_regional = os.path.join(national_admin_gpkg, 'regional_council_2023_generalised')
 
     # Clip the national feature classes into the output GeoPackage
     output_gpkg = os.path.join(output_folder, 'administration', 'administration.gpkg')
@@ -360,7 +364,6 @@ def main():
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
     parser.add_argument('--debug', help='(optional) more output about things like memory usage. There is a performance cost', action='store_true', default=False)
     parser.add_argument('--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
-
     args = dotenv.parse_args_env(parser)
 
     log = Logger('RS Context')
