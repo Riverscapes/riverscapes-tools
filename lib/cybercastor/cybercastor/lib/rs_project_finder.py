@@ -1,6 +1,6 @@
 # from rsxml import Logger
 
-from rscommons import Logger  # Logger from rsxml is missing log.success
+# from rscommons import Logger  # Logger from rsxml is missing log.success
 
 import dateutil.parser
 import inquirer
@@ -14,6 +14,7 @@ engine_projecttype_map = {
     'vbet': ['rscontext', 'channelarea', 'taudem'],
     'brat': ['rscontext', 'hydro_context', 'anthro', 'vbet'],
     'channel': ['rscontext'],
+    'taudem': ['rscontext', 'channelarea'],
     'confinement': ['rscontext', 'vbet'],
     'anthro': ['rscontext', 'vbet'],
     'hydro_context': ['rscontext', 'vbet'],
@@ -53,7 +54,7 @@ def find_upstream_projects(job_data) -> bool:
         bool: _description_
     """
 
-    log = Logger('Upstream Project Finder')
+    # log = Logger('Upstream Project Finder')
 
     # global engine_projecttype_map
     # global fargate_env_keys
@@ -86,7 +87,7 @@ def find_upstream_projects(job_data) -> bool:
             # if
             if fargate_env_keys[project_type] in job_data['lookups'][huc]:
                 lookup_val = job_data['lookups'][huc][fargate_env_keys[project_type]]
-                log.info(f'Already found project for {huc} of type {project_type}: {lookup_val}. Skipping.')
+                # log.info(f'Already found project for {huc} of type {project_type}: {lookup_val}. Skipping.')
                 continue
 
             if org_id is not False:
@@ -98,7 +99,7 @@ def find_upstream_projects(job_data) -> bool:
                         org_id = False
 
             selected_project = None
-            log.info(f'Searching warehouse for project type {project_type} for HUC {huc}')
+            # log.info(f'Searching warehouse for project type {project_type} for HUC {huc}')
 
             # Search for projects of the given type that match the HUC
             searchParams = {
@@ -123,10 +124,10 @@ def find_upstream_projects(job_data) -> bool:
 
             if len(available_projects) < 1:
                 msg = f'Could not find project for {huc} of type {project_type}.'
-                log.error(msg)
+                # log.error(msg)
                 errors.append(msg)
             elif len(available_projects) == 1:
-                log.info(f'Found project for {huc} of type {project_type}: {available_projects[0]["item"]["id"]}')
+                # log.info(f'Found project for {huc} of type {project_type}: {available_projects[0]["item"]["id"]}')
                 selected_project = available_projects[0]['item']['id']
             else:
                 # Build a list of the projects that were found. Key is user-friendly string for CLI. Value is project GUID
@@ -183,14 +184,14 @@ def find_upstream_projects(job_data) -> bool:
         riverscapes_api.shutdown()
 
     if len(errors) > 0:
-        log.title('ERRORS')
-        log.error(f'Could not run this job because there were {len(errors)} errors:')
-        log.error('You need to resolve these before you can run this job.')
-        log.error('======================================================')
+        # log.title('ERRORS')
+        # log.error(f'Could not run this job because there were {len(errors)} errors:')
+        # log.error('You need to resolve these before you can run this job.')
+        # log.error('======================================================')
         counter = 0
         for error in errors:
             counter += 1
-            log.error(f"{counter}. {error}")
+            # log.error(f"{counter}. {error}")
         return False
 
     return True
