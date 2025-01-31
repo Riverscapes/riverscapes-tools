@@ -25,6 +25,7 @@ job_types = {
         'upstream': []
     },
     'rscontextnz': {
+        'taskScriptId': 'rs_context',
         'output': 'rscontextnz',
         'upstream': []
     },
@@ -243,7 +244,7 @@ def create_and_run_batch_job(api: CybercastorAPI, stage: str, db_path: str, git_
     job_obj = job_template.copy()
     job_obj["name"] = job_name_answers["name"]
     job_obj["description"] = job_name_answers["description"]
-    job_obj["taskScriptId"] = answers["engine"]
+    job_obj["taskScriptId"] = job_types[answers["engine"]].get('taskScriptId', answers['engine'])
     job_obj["env"]["TAGS"] = answers["tags"]
     job_obj["hucs"] = list(lookups.keys())
     job_obj["lookups"] = lookups
