@@ -9,34 +9,35 @@ feature class using the IGO points as geometries.
 3) Scrapes the metrics from the RME output GeoPackages into a single output GeoPackage
 4) Optionally deletes the downloaded GeoPackages
 """
-from typing import Dict, Tuple, List
+from typing import Dict, List
 import shutil
-import re
 import os
-import sys
 import subprocess
 import sqlite3
 import logging
 import argparse
-import json
-from osgeo import ogr, osr
 from datetime import datetime
-import xml.etree.ElementTree as ET
-from osgeo import gdal, ogr
+import semver
+from osgeo import ogr
 from rsxml import dotenv, Logger, safe_makedirs
+from rsxml.project_xml import Project, ProjectBounds, Coords, BoundingBox, Realization, MetaData, Meta, Geopackage, GeopackageLayer, GeoPackageDatasetTypes
 from riverscapes import RiverscapesAPI, RiverscapesSearchParams, RiverscapesProject
+from riverscapes.merge_projects import union_polygons, get_bounds_geojson_file
 
 # RegEx for finding the RME output GeoPackages
 RME_OUTPUT_GPKG_REGEX = r'.*riverscapes_metrics\.gpkg'
+MINIMUM_RME_VERSION = '2.1.1'
+SCRAPE_VERSION = '1.0.0'
 
 
-def scrape_rme(rs_api: RiverscapesAPI, search_params: RiverscapesSearchParams, download_dir: str, output_gpkg: str, delete_downloads: bool) -> None:
+def scrape_rme(rs_api: RiverscapesAPI, rs_stage: str, search_params: RiverscapesSearchParams, project_name: str, download_dir: str, output_gpkg: str, delete_downloads: bool) -> None:
     """
     Download RME output GeoPackages from Data Exchange and scrape the metrics into a single GeoPackage
     """
 
     log = Logger('Scrape RME')
     gpkg_driver = ogr.GetDriverByName("GPKG")
+    bounds_geojson_files = []
 
     file_regex_list = [RME_OUTPUT_GPKG_REGEX]
     file_regex_list.append(r'project\.rs\.xml')
@@ -44,16 +45,22 @@ def scrape_rme(rs_api: RiverscapesAPI, search_params: RiverscapesSearchParams, d
     file_regex_list.append(r'.*\.log')
 
     for project, _stats, search_total, _prg in rs_api.search(search_params, progress_bar=True):
+        project: RiverscapesProject = project
         if search_total < 1:
             raise ValueError(f'No projects found for search params: {search_params}')
 
         # Attempt to retrieve the huc10 from the project metadata if it exists
-        huc10 = None
-        for key in ['HUC10', 'huc10', 'HUC', 'huc']:
-            if key in project.project_meta:
-                value = project.project_meta[key]
-                huc10 = value if len(value) == 10 else None
-                break
+        huc10 = get_metadata_value(project.project_meta, ['HUC10', 'huc10', 'HUC', 'huc'], 10)
+        rme_version = get_metadata_value(project.project_meta, ['Model Version', 'ModelVersion', 'model_version', 'modelversion'])
+
+        # Create a semver and ensure the model version is greater or equal to 2.1.1
+        if rme_version is not None:
+            if semver.compare(rme_version, MINIMUM_RME_VERSION) < 0:
+                log.warning(f'RME version {rme_version} is less than the minimum version {MINIMUM_RME_VERSION}')
+                continue
+        else:
+            log.warning('No Model Version found in project metadata')
+            continue
 
         if continue_with_huc(huc10, output_gpkg) is not True:
             first_project_xml = False
@@ -62,21 +69,97 @@ def scrape_rme(rs_api: RiverscapesAPI, search_params: RiverscapesSearchParams, d
         download_path = os.path.join(download_dir, project.id)
         rs_api.download_files(project.id, download_path, file_regex_list)
 
-        input_gpkg = os.path.join(download_path, project.id, 'outputs', 'riverscapes_metrics.gpkg')
+        input_gpkg = os.path.join(download_path, 'outputs', 'riverscapes_metrics.gpkg')
         if not os.path.isfile(input_gpkg):
             raise FileNotFoundError(f'No RME output GeoPackage found for project at {input_gpkg}')
 
+        safe_makedirs(os.path.dirname(output_gpkg))
+
         # Copy IGOs from the input RME GeoPackages to the output GeoPackage
         # This will also create the GeoPackage if it doesn't exist
-        cmd = f'ogr2ogr -f GPKG -makevalid -append  -nln rme_igos "{output_gpkg}" "{input_gpkg}" rme_igos'
+        cmd = f'ogr2ogr -f GPKG -makevalid -append  -nln igos "{output_gpkg}" "{input_gpkg}" rme_igos'
         log.debug(f'EXECUTING: {cmd}')
         subprocess.call([cmd], shell=True, cwd=os.path.dirname(output_gpkg))
         first_project_xml = False
 
-        copy_dgo_values(input_gpkg, output_gpkg, huc10, gpkg_driver)
+        # Get the project bounds GeoJSON file
+        get_bounds_geojson_file(os.path.join(download_path, 'project.rs.xml'), bounds_geojson_files)
+
+        copy_dgo_values(input_gpkg, output_gpkg, gpkg_driver)
 
         # Record that the HUC is processed, so that the script can continue where it left off
-        track_huc(output_gpkg, huc10)
+        track_huc(output_gpkg, project.id, huc10)
+
+        # Cleanup the download folder
+        if delete_downloads:
+            shutil.rmtree(download_path)
+
+    # build union of project bounds
+    output_bounds_path = os.path.join(os.path.dirname(output_gpkg), 'project_bounds.geojson')
+    centroid, bounding_rect = union_polygons(bounds_geojson_files, output_bounds_path)
+
+    project = Project(
+        name=project_name,
+        proj_path='project.rs.xml',
+        project_type='igos',
+        description='''This project was generated by scraping RME projects together,
+            using the scrape_flat_rme.py script. Only the IGO feature class is retained, and it is 
+            enriched with any columns from the rme_dgos feature class that don't already exist on the
+            rme_igos feature class.
+            
+            The project bounds are the union of the bounds of the individual projects.''',
+        bounds=ProjectBounds(
+            centroid=Coords(centroid[0], centroid[1]),
+            bounding_box=BoundingBox(bounding_rect[0], bounding_rect[2], bounding_rect[1], bounding_rect[3]),
+            filepath='project_bounds.json',
+        ),
+        meta_data=MetaData([
+            Meta('Created On', str(datetime.now().isoformat()), type='isodate'),
+            Meta('Model Version', SCRAPE_VERSION)
+        ]),
+        realizations=[
+            Realization(
+                xml_id='igo_scrape_01',
+                name='Realization',
+                product_version='1.0.0',
+                date_created=datetime.now(), datasets=[
+                    Geopackage(
+                        xml_id='igo_geopackage',
+                        name='IGOs GeoPackage',
+                        path=os.path.basename(output_gpkg),
+                        description='''The one and only GeoPackage produced by the RME scrape. There is one feature class in this GeoPackage, the IGOs, which contains the IGOs from all the scraped projects.
+                        There is one non-spatial table called hucs, which tracks the progress of the scrape by recording the HUCs that have been processed.''',
+                        layers=[
+                            GeopackageLayer(lyr_name='igos',
+                                            name='IGO Points',
+                                            ds_type=GeoPackageDatasetTypes.VECTOR,
+                                            description='IGO points with all IGO and DGO metrics.')
+                        ]
+                    )
+                ]
+            )
+        ]
+    )
+
+    scrape_project_xml = os.path.join(os.path.dirname(output_bounds_path), 'project.rs.xml')
+    project.write(scrape_project_xml)
+    log.info(f'Scrape project.rs.xml file written to {scrape_project_xml}')
+
+
+def get_metadata_value(metadata: Dict[str, str], keys: List[str], required_length: int = None) -> str:
+
+    for key in keys:
+        if key in metadata:
+            value = metadata[key]
+            if value is not None:
+                if required_length is not None:
+                    if len(value) == required_length:
+                        return value
+                    else:
+                        raise ValueError(f'Value for key {key} is not the required length of {required_length}')
+                return value
+
+    raise ValueError(f'No Metadata found with one of the following keys: {keys}')
 
 
 def continue_with_huc(huc10: str, output_gpkg: str) -> bool:
@@ -105,7 +188,7 @@ def continue_with_huc(huc10: str, output_gpkg: str) -> bool:
     return False
 
 
-def track_huc(output_gpkg: str, huc: str) -> None:
+def track_huc(output_gpkg: str, rme_project_id: str, huc: str) -> None:
     '''
     Tract the progress of scraping a HUC
     '''
@@ -121,11 +204,11 @@ def track_huc(output_gpkg: str, huc: str) -> None:
             )
         ''')
 
-        curs.execute('INSERT INTO hucs (huc) VALUES (?)', [huc])
+        curs.execute('INSERT INTO hucs (huc, rme_project_id) VALUES (?, ?)', [huc, rme_project_id])
         conn.commit()
 
 
-def copy_dgo_values(input_gpkg: str, output_gpkg: str, huc10: str, gpkg_driver: ogr.Driver) -> None:
+def copy_dgo_values(input_gpkg: str, output_gpkg: str, gpkg_driver: ogr.Driver) -> None:
     '''
     Copy the DGO values from the input GeoPackage to the output GeoPackage
     '''
@@ -146,13 +229,15 @@ def copy_dgo_values(input_gpkg: str, output_gpkg: str, huc10: str, gpkg_driver: 
         raise ValueError('Input GeoPackage does not contain the "rme_dgos" layer')
 
     # Get the output layer
-    target_layer = target_ds.GetLayerByName('rme_igos')
+    target_layer = target_ds.GetLayerByName('igos')
     if target_layer is None:
         raise ValueError('Output GeoPackage does not contain the "rme_igos" layer')
 
     # Get the list of columns and their data types for the 'rme_dgos' layer
     input_layer_defn = input_layer.GetLayerDefn()
     dgo_cols = {input_layer_defn.GetFieldDefn(i).GetName(): input_layer_defn.GetFieldDefn(i).GetType() for i in range(input_layer_defn.GetFieldCount())}
+    # del dgo_cols['fid']
+    # del dgo_cols['geom']
 
     # Get the list of columns and their data types for the 'rme_igos' layer
     target_layer_defn = target_layer.GetLayerDefn()
@@ -175,7 +260,18 @@ def copy_dgo_values(input_gpkg: str, output_gpkg: str, huc10: str, gpkg_driver: 
 
         for field_name in required_dgo_cols.keys():
             input_value = input_feature.GetField(field_name)
-            target_ds.ExecuteSQL(f"UPDATE rme_igos SET {field_name} = {input_value} WHERE id = {input_feature.GetField('id')}")
+            target_ds.ExecuteSQL(f"UPDATE rme_igos SET {field_name} = {input_value} WHERE level_path = '{level_path}' AND seg_distance = {seg_distance}")
+
+    # Ensure that the necessary fields are indexed
+    target_ds.ExecuteSQL('CREATE INDEX IF NOT EXISTS idx_level_path ON igos (level_path)')
+    target_ds.ExecuteSQL('CREATE INDEX IF NOT EXISTS idx_seg_distance ON igos (seg_distance)')
+    target_ds.ExecuteSQL('CREATE INDEX IF NOT EXISTS idx_huc ON igos (huc)')
+    target_ds.ExecuteSQL('CREATE INDEX IF NOT EXISTS idx_fcode ON igos (FCode)')
+    target_ds.ExecuteSQL('CREATE INDEX IF NOT EXISTS idx_ownership ON igos (rme_dgo_ownership)')
+    target_ds.ExecuteSQL('CREATE INDEX IF NOT EXISTS idx_state ON igos (rme_dgo_state)')
+
+    target_ds.CommitTransaction()
+    target_ds = None
 
 
 def configure_gpkg(gpkg_driver, output_gpkg: str) -> Dict[str, str]:
@@ -226,6 +322,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('stage', help='Environment: staging or production', type=str)
     parser.add_argument('working_folder', help='top level folder for downloads and output', type=str)
+    parser.add_argument('project_name', help='Name for the new RME scrape project', type=str)
     parser.add_argument('tags', help='Data Exchange tags to search for projects', type=str)
     parser.add_argument('--delete', help='Whether or not to delete downloaded GeoPackages',  action='store_true', default=False)
     parser.add_argument('--huc_filter', help='HUC filter begins with (e.g. 14)', type=str, default='')
@@ -234,11 +331,14 @@ def main():
     # Set up some reasonable folders to store things
     working_folder = args.working_folder
     download_folder = os.path.join(working_folder, 'downloads')
-    output_gpkg = os.path.join(working_folder, 'rme_scrape.gpkg')
+    output_gpkg = os.path.join(working_folder, 'rme-scrape-project', 'rme-igos.gpkg')
 
     safe_makedirs(working_folder)
     log = Logger('Setup')
-    log.setup(log_path=os.path.join(working_folder, 'rme-scrape.log'), log_level=logging.DEBUG)
+    log.setup(log_path=os.path.join(os.path.dirname(output_gpkg), 'rme-scrape.log'), log_level=logging.DEBUG)
+    log.info(f'Data Exchange Tags: {args.tags}')
+    log.info(f'HUC Filter: {args.huc_filter if args.huc_filter != "" else "None"}')
+    log.info(f'Project Name: {args.project_name}')
 
     # Data Exchange Search Params
     search_params = RiverscapesSearchParams({
@@ -253,7 +353,7 @@ def main():
         }
 
     with RiverscapesAPI(stage=args.stage) as api:
-        scrape_rme(api, search_params, download_folder, output_gpkg, args.delete)
+        scrape_rme(api, args.stage, search_params, args.project_name, download_folder, output_gpkg, args.delete)
 
     log.info('Process complete')
 

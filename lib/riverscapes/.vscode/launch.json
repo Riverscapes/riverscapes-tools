@@ -36,7 +36,7 @@
       "name": "📦 Merge Projects Tool",
       "type": "debugpy",
       "request": "launch",
-      "module": "riverscapes.merge-projects",
+      "module": "riverscapes.merge_projects",
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "envFile": "${workspaceFolder}/.env",
@@ -140,7 +140,24 @@
         "--delete",
       ]
     },
-    ,
+    {
+      "name": "Scrape FLAT RME ************",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "riverscapes.scrape_flat_rme",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/.env",
+      "args": [
+        "production",
+        "{env:DATA_ROOT}/rme-scrape",
+        "Upper Bear RME Scrape",
+        "2024CONUS",
+        "--huc_filter",
+        "1601",
+        // "--delete",
+      ]
+    },
     {
       "name": "TAGS - batch update project tags",
       "type": "debugpy",
