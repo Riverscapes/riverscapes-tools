@@ -85,7 +85,7 @@ def scrape_rme(rs_api: RiverscapesAPI, rs_stage: str, search_params: Riverscapes
         # Get the project bounds GeoJSON file
         get_bounds_geojson_file(os.path.join(download_path, 'project.rs.xml'), bounds_geojson_files)
 
-        copy_dgo_values(input_gpkg, output_gpkg, gpkg_driver)
+        copy_dgo_values(input_gpkg, output_gpkg, gpkg_driver, huc10)
 
         # Record that the HUC is processed, so that the script can continue where it left off
         track_huc(output_gpkg, project.id, huc10)
@@ -111,11 +111,11 @@ def scrape_rme(rs_api: RiverscapesAPI, rs_stage: str, search_params: Riverscapes
         bounds=ProjectBounds(
             centroid=Coords(centroid[0], centroid[1]),
             bounding_box=BoundingBox(bounding_rect[0], bounding_rect[2], bounding_rect[1], bounding_rect[3]),
-            filepath='project_bounds.json',
+            filepath=os.path.basename(output_bounds_path),
         ),
         meta_data=MetaData([
             Meta('Created On', str(datetime.now().isoformat()), type='isodate'),
-            Meta('Model Version', SCRAPE_VERSION)
+            Meta('ModelVersion', SCRAPE_VERSION)
         ]),
         realizations=[
             Realization(
@@ -208,7 +208,7 @@ def track_huc(output_gpkg: str, rme_project_id: str, huc: str) -> None:
         conn.commit()
 
 
-def copy_dgo_values(input_gpkg: str, output_gpkg: str, gpkg_driver: ogr.Driver) -> None:
+def copy_dgo_values(input_gpkg: str, output_gpkg: str, gpkg_driver: ogr.Driver, huc: str) -> None:
     '''
     Copy the DGO values from the input GeoPackage to the output GeoPackage
     '''
@@ -231,7 +231,7 @@ def copy_dgo_values(input_gpkg: str, output_gpkg: str, gpkg_driver: ogr.Driver) 
     # Get the output layer
     target_layer = target_ds.GetLayerByName('igos')
     if target_layer is None:
-        raise ValueError('Output GeoPackage does not contain the "rme_igos" layer')
+        raise ValueError('Output GeoPackage does not contain the "igos" layer')
 
     # Get the list of columns and their data types for the 'rme_dgos' layer
     input_layer_defn = input_layer.GetLayerDefn()
@@ -246,9 +246,12 @@ def copy_dgo_values(input_gpkg: str, output_gpkg: str, gpkg_driver: ogr.Driver) 
     # Find the columns in rme_dgos that are not in rme_igos
     required_dgo_cols = {k: v for k, v in dgo_cols.items() if k not in igo_cols}
 
+    if 'huc' not in igo_cols:
+        target_layer.CreateField(ogr.FieldDefn('huc', ogr.OFTString))
+
     # Add the required columns to the output layer
     for field_name, field_type in required_dgo_cols.items():
-        target_ds.ExecuteSQL(f"ALTER TABLE rme_igos ADD COLUMN {field_name} {field_type};")
+        target_layer.CreateField(ogr.FieldDefn(field_name, field_type))
 
     # Copy the DGO values to the output layer
     for input_feature in input_layer:
@@ -260,7 +263,9 @@ def copy_dgo_values(input_gpkg: str, output_gpkg: str, gpkg_driver: ogr.Driver) 
 
         for field_name in required_dgo_cols.keys():
             input_value = input_feature.GetField(field_name)
-            target_ds.ExecuteSQL(f"UPDATE rme_igos SET {field_name} = {input_value} WHERE level_path = '{level_path}' AND seg_distance = {seg_distance}")
+            target_ds.ExecuteSQL(f"UPDATE igos SET {field_name} = {input_value} WHERE level_path = '{level_path}' AND seg_distance = {seg_distance} AND huc is NULL")
+
+    target_ds.ExecuteSQL(f"UPDATE igos SET huc = '{huc}' WHERE huc is NULL")
 
     # Ensure that the necessary fields are indexed
     target_ds.ExecuteSQL('CREATE INDEX IF NOT EXISTS idx_level_path ON igos (level_path)')
@@ -305,9 +310,8 @@ def configure_gpkg(gpkg_driver, output_gpkg: str) -> Dict[str, str]:
         ''')
 
     target_ds = gpkg_driver.Open(output_gpkg, 1)  # 1 means read/write mode
-    for field_name, field_type in required_dgo_cols.items():
-        target_ds.ExecuteSQL(f"ALTER TABLE rme_igos ADD COLUMN {field_name} {field_type};")
-    target_ds = None
+    target_layer = target_ds.GetLayerByName('igos')
+    target_layer.CreateField(ogr.FieldDefn('huc', ogr.OFTString))
 
     print(f'GeoPackage created with the "igos" point layer: {output_gpkg}')
 
