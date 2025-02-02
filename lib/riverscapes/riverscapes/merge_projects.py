@@ -204,7 +204,7 @@ def union_polygons(input_geojson_files, output_geojson_file) -> Tuple[str, str]:
     return centroid, bounding_rect
 
 
-def get_bounds_geojson_file(project_xml_path: str, bounds_files):
+def get_bounds_geojson_file(project_xml_path: str, bounds_files: List[str]) -> None:
     """
     Get the GeoJSON file for the project bounds
     project_xml_path: str - Path to the project.rs.xml file
@@ -212,7 +212,11 @@ def get_bounds_geojson_file(project_xml_path: str, bounds_files):
     """
 
     tree = ET.parse(project_xml_path)
-    rel_path = tree.find('.//ProjectBounds/Path').text
+    nodBounds = tree.find('.//ProjectBounds/Path')
+    if nodBounds is None:
+        return
+
+    rel_path = nodBounds.text
     abs_path = os.path.join(os.path.dirname(project_xml_path), rel_path)
     if os.path.isfile(abs_path):
         bounds_files.append(abs_path)
