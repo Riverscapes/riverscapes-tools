@@ -26,11 +26,11 @@ from riverscapes.merge_projects import union_polygons, get_bounds_geojson_file
 
 # RegEx for finding the RME output GeoPackages
 RME_OUTPUT_GPKG_REGEX = r'.*riverscapes_metrics\.gpkg'
-MINIMUM_RME_VERSION = '2.1.1'
+MINIMUM_RME_VERSION = '2.0.0'
 SCRAPE_VERSION = '1.0.0'
 
 
-def scrape_rme(rs_api: RiverscapesAPI, rs_stage: str, search_params: RiverscapesSearchParams, project_name: str, download_dir: str, output_gpkg: str, delete_downloads: bool) -> None:
+def scrape_rme(rs_api: RiverscapesAPI, rs_stage: str, search_params: RiverscapesSearchParams, project_name: str, download_dir: str, output_gpkg: str, delete_downloads: bool, min_rme_version: str) -> None:
     """
     Download RME output GeoPackages from Data Exchange and scrape the metrics into a single GeoPackage
     """
@@ -55,8 +55,8 @@ def scrape_rme(rs_api: RiverscapesAPI, rs_stage: str, search_params: Riverscapes
 
         # Create a semver and ensure the model version is greater or equal to 2.1.1
         if rme_version is not None:
-            if semver.compare(rme_version, MINIMUM_RME_VERSION) < 0:
-                log.warning(f'RME version {rme_version} is less than the minimum version {MINIMUM_RME_VERSION}')
+            if semver.compare(rme_version, min_rme_version) < 0:
+                log.warning(f'RME version {rme_version} is less than the minimum version {min_rme_version}')
                 continue
         else:
             log.warning('No Model Version found in project metadata')
@@ -71,19 +71,27 @@ def scrape_rme(rs_api: RiverscapesAPI, rs_stage: str, search_params: Riverscapes
 
         input_gpkg = os.path.join(download_path, 'outputs', 'riverscapes_metrics.gpkg')
         if not os.path.isfile(input_gpkg):
-            raise FileNotFoundError(f'No RME output GeoPackage found for project at {input_gpkg}')
+            log.warning(f'No RME output GeoPackage found for project at {input_gpkg}')
+            continue
 
         safe_makedirs(os.path.dirname(output_gpkg))
 
+        input_igo_layer_name = get_layer_name(input_gpkg, ['rme_igos', 'igos'])
+
+        # Get the project bounds GeoJSON file
+        project_xml_path = os.path.join(download_path, 'project.rs.xml')
+        if not os.path.isfile(project_xml_path):
+            log.warning(f'No project.rs.xml file found for project at {project_xml_path}')
+            continue
+
+        get_bounds_geojson_file(project_xml_path, bounds_geojson_files)
+
         # Copy IGOs from the input RME GeoPackages to the output GeoPackage
         # This will also create the GeoPackage if it doesn't exist
-        cmd = f'ogr2ogr -f GPKG -makevalid -append  -nln igos "{output_gpkg}" "{input_gpkg}" rme_igos'
+        cmd = f'ogr2ogr -f GPKG -makevalid -append  -nln igos "{output_gpkg}" "{input_gpkg}" {input_igo_layer_name}'
         log.debug(f'EXECUTING: {cmd}')
         subprocess.call([cmd], shell=True, cwd=os.path.dirname(output_gpkg))
         first_project_xml = False
-
-        # Get the project bounds GeoJSON file
-        get_bounds_geojson_file(os.path.join(download_path, 'project.rs.xml'), bounds_geojson_files)
 
         copy_dgo_values(input_gpkg, output_gpkg, gpkg_driver, huc10)
 
@@ -162,6 +170,25 @@ def get_metadata_value(metadata: Dict[str, str], keys: List[str], required_lengt
     raise ValueError(f'No Metadata found with one of the following keys: {keys}')
 
 
+def get_layer_name(gpkg_path: str, layer_names: List[str]) -> str:
+    '''
+    Get the name of the first layer in the GeoPackage that matches one of the layer names
+    '''
+
+    gpkg_driver = ogr.GetDriverByName("GPKG")
+    ds = gpkg_driver.Open(gpkg_path, 0)  # 0 means read-only mode
+    if ds is None:
+        raise FileNotFoundError(f'Unable to open GeoPackage: {gpkg_path}')
+
+    for layer_name in layer_names:
+        layer = ds.GetLayerByName(layer_name)
+        if layer is not None:
+            return layer_name
+
+    ds = None
+    raise ValueError(f'No layer found in GeoPackage: {gpkg_path} with names: {layer_names}')
+
+
 def continue_with_huc(huc10: str, output_gpkg: str) -> bool:
     '''
     Check if the HUC already exists in the output GeoPackage
@@ -224,14 +251,12 @@ def copy_dgo_values(input_gpkg: str, output_gpkg: str, gpkg_driver: ogr.Driver, 
         raise FileNotFoundError(f'Unable to open output GeoPackage: {output_gpkg}')
 
     # Get the input layer
-    input_layer = input_ds.GetLayerByName('rme_dgos')
-    if input_layer is None:
-        raise ValueError('Input GeoPackage does not contain the "rme_dgos" layer')
+    input_layer_name = get_layer_name(input_gpkg, ['rme_dgos', 'dgos'])
+    input_layer = input_ds.GetLayerByName(input_layer_name)
 
     # Get the output layer
-    target_layer = target_ds.GetLayerByName('igos')
-    if target_layer is None:
-        raise ValueError('Output GeoPackage does not contain the "igos" layer')
+    output_layer_name = get_layer_name(output_gpkg, ['rme_igos', 'igos'])
+    target_layer = target_ds.GetLayerByName(output_layer_name)
 
     # Get the list of columns and their data types for the 'rme_dgos' layer
     input_layer_defn = input_layer.GetLayerDefn()
@@ -328,6 +353,7 @@ def main():
     parser.add_argument('working_folder', help='top level folder for downloads and output', type=str)
     parser.add_argument('project_name', help='Name for the new RME scrape project', type=str)
     parser.add_argument('tags', help='Data Exchange tags to search for projects', type=str)
+    parser.add_argument('min_rme_version', help='Minimum RME version to scrape', type=str, default=MINIMUM_RME_VERSION)
     parser.add_argument('--delete', help='Whether or not to delete downloaded GeoPackages',  action='store_true', default=False)
     parser.add_argument('--huc_filter', help='HUC filter begins with (e.g. 14)', type=str, default='')
     args = dotenv.parse_args_env(parser)
@@ -343,6 +369,8 @@ def main():
     log.info(f'Data Exchange Tags: {args.tags}')
     log.info(f'HUC Filter: {args.huc_filter if args.huc_filter != "" else "None"}')
     log.info(f'Project Name: {args.project_name}')
+    log.info(f'Deleting downloads: {args.delete}')
+    log.info(f'Minimum RME version: {args.min_rme_version}')
 
     # Data Exchange Search Params
     search_params = RiverscapesSearchParams({
@@ -357,7 +385,7 @@ def main():
         }
 
     with RiverscapesAPI(stage=args.stage) as api:
-        scrape_rme(api, args.stage, search_params, args.project_name, download_folder, output_gpkg, args.delete)
+        scrape_rme(api, args.stage, search_params, args.project_name, download_folder, output_gpkg, args.delete, args.min_rme_version)
 
     log.info('Process complete')
 
