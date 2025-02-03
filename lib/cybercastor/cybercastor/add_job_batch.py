@@ -50,7 +50,7 @@ job_types = {
     },
     'rs_metric_engine': {
         'output': 'rs_metric_engine',
-        'upstream': ['rscontext', 'rcat',  'vbet', 'anthro'],  # 'brat''confinement',
+        'upstream': ['rscontext', 'rcat',  'vbet', 'anthro', 'riverscapes_brat', 'confinement'],
     },
     'anthro': {
         'output': 'anthro',
@@ -199,9 +199,9 @@ def create_and_run_batch_job(api: CybercastorAPI, stage: str, db_path: str, git_
                 if huc in lookups:
                     lookups.pop(huc)
             else:
-                if answers['engine'] == 'rs_metric_engine':
-                    upstream_projects['BRAT_ID'] = '00000000-0000-0000-0000-000000000000'
-                    upstream_projects['CONFINEMENT_ID'] = '00000000-0000-0000-0000-000000000000'
+                # if answers['engine'] == 'rs_metric_engine':
+                #     upstream_projects['BRAT_ID'] = '00000000-0000-0000-0000-000000000000'
+                #     upstream_projects['CONFINEMENT_ID'] = '00000000-0000-0000-0000-000000000000'
 
                 lookups[huc] = upstream_projects
 
