@@ -151,9 +151,9 @@
       "args": [
         "production",
         "{env:DATA_ROOT}/rme-scrape",
-        "Colorado RME Scrape 2025-02-01",
-        "20250201_colorado_rme_scrape",
-        "2.0.0",
+        "Upper Bear RME Scrape 2025-02-03",
+        "co_2_1_20250203", //"2024CONUS", //"20250201_colorado_rme_scrape",
+        "2.1.1",
         "--delete",
         // "--huc_filter",
         // "1601",
