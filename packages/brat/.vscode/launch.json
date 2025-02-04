@@ -158,6 +158,17 @@
       ]
     },
     {
+      "name": "Augment Beaver Activity XML",
+      "type": "python",
+      "request": "launch",
+      "module": "beaver_sign.beaver_act_rs",
+      "console": "integratedTerminal",
+      "args": [
+        "{env:DATA_ROOT}/beaver_activity/${input:HUC}/project.rs.xml",
+        "{env:DATA_ROOT}/vbet/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/qris/${input:HUC}/project.rs.xml"
+      ]
+    },
+    {
       "name": "Validate BRAT Capacity",
       "type": "python",
       "request": "launch",
