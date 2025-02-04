@@ -57,13 +57,17 @@ def beaver_activity(huc, proj_boundary, dgos, igos, qris_path, output_dir, beave
     # realization_nodes = {}
     for i in range(len(census)):
         r_num = i + 1
-        _realization, proj_nodes = project.add_realization(list(census.values())[i][1], f'REALIZATION{r_num}', cfg.version, data_nodes=['Outputs'], meta=[
+        _realization, proj_nodes = project.add_realization(list(census.values())[i][1], f'REALIZATION{r_num}', cfg.version, data_nodes=['Inputs', 'Outputs'], meta=[
             RSMeta('Description', list(census.values())[i][0], locked=True),
         ])
         # realization_nodes[i] = proj_nodes
         beaver_dams = os.path.join(qris_path, f'qris.gpkg/vw_beaver_dam_{r_num}')
 
         rz_layers = {
+            'BEAVER_ACTIVITY_INPUTS': RSLayer('Beaver Activity Inputs', 'BeaverActivityInputs', 'Geopackage', f'inputs_{r_num}.gpkg', {
+                'DGOS_IN': RSLayer('Discrete Geographic Objects', 'DGOS', 'Vector', 'dgos'),
+                'IGOS_IN': RSLayer('Integrated Geographic Objects', 'IGOS', 'Vector', 'igos'),
+            }),
             'BEAVER_ACTIVITY': RSLayer('Beaver Activity', 'BeaverActivity', 'Geopackage', f'beaver_activity_{r_num}.gpkg', {
                 'DGOS': RSLayer('Discrete Geographic Objects', 'DGOS', 'Vector', 'beaver_activity_dgos'),
                 'IGOS': RSLayer('Integrated Geographic Objects', 'IGOS', 'Vector', 'beaver_activity_igos'),
@@ -72,6 +76,7 @@ def beaver_activity(huc, proj_boundary, dgos, igos, qris_path, output_dir, beave
             })
         }
         output_gpkg_path = os.path.join(output_dir, rz_layers['BEAVER_ACTIVITY'].rel_path)
+        input_gpkg_path = os.path.join(output_dir, rz_layers['BEAVER_ACTIVITY_INPUTS'].rel_path)
 
         with GeopackageLayer(output_gpkg_path, rz_layers['BEAVER_ACTIVITY'].sub_layers['DAMS'].rel_path, write=True) as out_lyr, \
                 GeopackageLayer(beaver_dams) as dams, get_shp_or_gpkg(proj_boundary) as boundary:
@@ -96,6 +101,7 @@ def beaver_activity(huc, proj_boundary, dgos, igos, qris_path, output_dir, beave
                     new_ftr = None
 
             out_gpkg_node, *_ = project.add_project_geopackage(proj_nodes['Outputs'], rz_layers['BEAVER_ACTIVITY'])
+            project.add_project_geopackage(proj_nodes['Inputs'], rz_layers['BEAVER_ACTIVITY_INPUTS'])
 
         if beaver_sign:
             with GeopackageLayer(output_gpkg_path, rz_layers['BEAVER_ACTIVITY'].sub_layers['SIGN'].rel_path, delete_dataset=True) as out_lyr, \
@@ -119,10 +125,15 @@ def beaver_activity(huc, proj_boundary, dgos, igos, qris_path, output_dir, beave
     windows = None
     for i in range(len(census)):
         output_gpkg_path = os.path.join(output_dir, f'beaver_activity_{i+1}.gpkg')
+        input_gpkg_path = os.path.join(output_dir, f'inputs_{i+1}.gpkg')
         dgos_out = os.path.join(output_gpkg_path, 'beaver_activity_dgos')
         igos_out = os.path.join(output_gpkg_path, 'beaver_activity_igos')
+        dgos_in = os.path.join(input_gpkg_path, 'dgos')
+        igos_in = os.path.join(input_gpkg_path, 'igos')
         copy_feature_class(dgos, dgos_out, cfg.OUTPUT_EPSG)
         copy_feature_class(igos, igos_out, cfg.OUTPUT_EPSG)
+        copy_feature_class(dgos, dgos_in, cfg.OUTPUT_EPSG)
+        copy_feature_class(igos, igos_in, cfg.OUTPUT_EPSG)
 
         # list of level paths
         with SQLiteCon(output_gpkg_path) as db:
@@ -147,9 +158,9 @@ def beaver_activity(huc, proj_boundary, dgos, igos, qris_path, output_dir, beave
         riverscapes_dam_counts(output_gpkg_path, windows)
 
     # add project extents
-    extents_path = os.path.join(os.path.dirname(output_gpkg_path), 'project_bounds.geojson')
-    extents = generate_project_extents_from_layer(proj_boundary, extents_path)
-    project.add_project_extent(extents_path, extents['CENTROID'], extents['BBOX'])
+    # extents_path = os.path.join(os.path.dirname(output_gpkg_path), 'project_bounds.geojson')
+    # extents = generate_project_extents_from_layer(proj_boundary, extents_path)
+    # project.add_project_extent(extents_path, extents['CENTROID'], extents['BBOX'])
 
     add_layer_descriptions(project, LYR_DESCRIPTIONS_JSON, rz_layers)
 
@@ -159,7 +170,7 @@ def beaver_activity(huc, proj_boundary, dgos, igos, qris_path, output_dir, beave
 def main():
 
     parser = argparse.ArgumentParser(description='Beaver Activity')
-    parser.add_argument('huc', type=int, help='Hydrologic Unit Code')
+    parser.add_argument('huc', type=str, help='Hydrologic Unit Code')
     parser.add_argument('proj_boundary', type=str, help='Path to watershed boundary feature class')
     parser.add_argument('dgos', type=str, help='Path to valley bottom DGOs')
     parser.add_argument('igos', type=str, help='Path to integrated geographic objects')

@@ -87,6 +87,11 @@ try() {
     --verbose
   if [[ $? != 0 ]]; then return 1; fi
 
+  cd /usr/local/src/riverscapes-tools/packages/brat
+  python3 -m beaver_sign.beaver_act_rs \
+    $BEAVER_ACTIVITY_DIR/project.rs.xml\
+    $VBET_DIR/project.rs.xml,$QRIS_DIR/project.rs.xml
+
   echo "======================  Final Disk space usage ======================="
   df -h
 
