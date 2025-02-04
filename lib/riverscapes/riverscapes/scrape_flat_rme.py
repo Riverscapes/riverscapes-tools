@@ -16,13 +16,14 @@ import subprocess
 import sqlite3
 import logging
 import argparse
+import xml.etree.ElementTree as ET
 from datetime import datetime
 import semver
 from osgeo import ogr
 from rsxml import dotenv, Logger, safe_makedirs
 from rsxml.project_xml import Project, ProjectBounds, Coords, BoundingBox, Realization, MetaData, Meta, Geopackage, GeopackageLayer, GeoPackageDatasetTypes
 from riverscapes import RiverscapesAPI, RiverscapesSearchParams, RiverscapesProject
-from riverscapes.merge_projects import union_polygons, get_bounds_geojson_file
+from riverscapes.merge_projects import union_polygons
 
 # RegEx for finding the RME output GeoPackages
 RME_OUTPUT_GPKG_REGEX = r'.*riverscapes_metrics\.gpkg'
@@ -39,10 +40,16 @@ def scrape_rme(rs_api: RiverscapesAPI, rs_stage: str, search_params: Riverscapes
     gpkg_driver = ogr.GetDriverByName("GPKG")
     bounds_geojson_files = []
 
+    # This is a temporary location to store the bounds GeoJSON files
+    # so that we can delete the bulky project download folder but still have the bounds
+    # for unioning them at the end of the process.
+    bounds_geojson_dir = os.path.join(download_dir, 'bounds_geojson_files')
+    safe_makedirs(bounds_geojson_dir)
+
     file_regex_list = [RME_OUTPUT_GPKG_REGEX]
     file_regex_list.append(r'project\.rs\.xml')
     file_regex_list.append(r'project_bounds\.geojson')
-    file_regex_list.append(r'.*\.log')
+    # file_regex_list.append(r'.*\.log')
 
     for project, _stats, search_total, _prg in rs_api.search(search_params, progress_bar=True):
         project: RiverscapesProject = project
@@ -63,7 +70,6 @@ def scrape_rme(rs_api: RiverscapesAPI, rs_stage: str, search_params: Riverscapes
             continue
 
         if continue_with_huc(huc10, output_gpkg) is not True:
-            first_project_xml = False
             continue
 
         download_path = os.path.join(download_dir, project.id)
@@ -84,14 +90,23 @@ def scrape_rme(rs_api: RiverscapesAPI, rs_stage: str, search_params: Riverscapes
             log.warning(f'No project.rs.xml file found for project at {project_xml_path}')
             continue
 
-        get_bounds_geojson_file(project_xml_path, bounds_geojson_files)
+        # Get the project bounds file and copy it to a temporary location for unioning.
+        tree = ET.parse(project_xml_path)
+        nodBounds = tree.find('.//ProjectBounds/Path')
+        if not nodBounds is None:
+            project_bounds_path = os.path.join(os.path.dirname(project_xml_path), nodBounds.text)
+            if os.path.isfile(project_bounds_path):
+                temp_bounds_path = os.path.join(bounds_geojson_dir, f'{project.id}_bounds.geojson')
+                if os.path.isfile(temp_bounds_path):
+                    os.remove(temp_bounds_path)
+                shutil.copyfile(project_bounds_path, temp_bounds_path)
+                bounds_geojson_files.append(temp_bounds_path)
 
         # Copy IGOs from the input RME GeoPackages to the output GeoPackage
         # This will also create the GeoPackage if it doesn't exist
         cmd = f'ogr2ogr -f GPKG -makevalid -append  -nln igos "{output_gpkg}" "{input_gpkg}" {input_igo_layer_name}'
         log.debug(f'EXECUTING: {cmd}')
         subprocess.call([cmd], shell=True, cwd=os.path.dirname(output_gpkg))
-        first_project_xml = False
 
         copy_dgo_values(input_gpkg, output_gpkg, gpkg_driver, huc10)
 
