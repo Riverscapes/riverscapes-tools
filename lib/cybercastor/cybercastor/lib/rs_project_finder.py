@@ -21,6 +21,7 @@ engine_projecttype_map = {
     'blm_context': ['rscontext', 'vbet'],
     'rs_metric_engine': ['rscontext', 'vbet', 'riverscapes_brat', 'anthro', 'rcat', 'confinement'],
     'rme_scraper': ['rs_metric_engine', 'rcat'],
+    'beaver_activity': ['vbet', 'riverscapesstudio']
 }
 
 # Key is warehouse project type. Value is Fargate environment variable
@@ -36,6 +37,7 @@ fargate_env_keys = {
     'rcat': 'RCAT_ID',
     'confinement': 'CONFINEMENT_ID',
     'rs_metric_engine': 'RME_ID',
+    'riverscapesstudio': 'QRIS_ID'
 }
 
 
@@ -118,7 +120,10 @@ def find_upstream_projects(job_data) -> bool:
                 riverscapes_api.refresh_token()
 
             results = riverscapes_api.run_query(search_query, {"searchParams": searchParams, "limit": 50, "offset": 0})
-            available_projects = results['data']['searchProjects']['results']
+            if project_type == 'riverscapesstudio':
+                available_projects = [results['data']['searchProjects']['results'] if 'beaver_activity' in results['data']['searchProjects']['results'].tags else None]
+            else:
+                available_projects = results['data']['searchProjects']['results']
 
             if len(available_projects) < 1:
                 msg = f'Could not find project for {huc} of type {project_type}.'

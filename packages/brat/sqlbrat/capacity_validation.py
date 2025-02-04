@@ -317,7 +317,7 @@ def validation_plots(brat_gpkg_path: str):
 def main():
 
     parser = argparse.ArgumentParser(description='Validate BRAT capacity estimates')
-    parser.add_argument('huc', type=int, help='HUC code')
+    parser.add_argument('huc', type=str, help='HUC code')
     parser.add_argument('brat_gpkg', type=str, help='Path to BRAT geopackage')
     parser.add_argument('dams_gpkg', type=str, help='Path to dams geopackage')
     parser.add_argument('--verbose', action='store_true', help='Print log messages to console', default=False)
