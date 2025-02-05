@@ -77,7 +77,7 @@ try() {
   ##########################################################################################
   # Now Run Beaver Activity
   ##########################################################################################
-  beaver_sign $HUC \ 
+  beaver_activity $HUC \ 
     $QRIS_DIR/context/feature_classes.gpkg/WBDHU10 \
     $VBET_DIR/intermediates/vbet_intermediates.gpkg/vbet_dgos \
     $VBET_DIR/outputs/vbet.gpkg/vbet_igos \
