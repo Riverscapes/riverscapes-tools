@@ -31,7 +31,8 @@ setup(name='sqlbrat',
       zip_safe=False,
       entry_points={
           "console_scripts": [
-              'brat = sqlbrat.brat:main'
+              'brat = sqlbrat.brat:main',
+              'beaver_activity = beaver_sign.beaver_sign:main'
           ]
       },
       url='https://github.com/Riverscapes/vbet',
