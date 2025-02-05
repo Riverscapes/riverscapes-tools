@@ -3,7 +3,7 @@
 # Set -u will cause the script to exit if any variable is not set
 set -eu
 # Set -x will cause the script to print out each command before it is executed
-set -x
+# set -x
 IFS=$'\n\t'
 
 # These environment variables need to be present before the script starts
@@ -84,7 +84,7 @@ try() {
   ##########################################################################################
   # Now Run Beaver Activity
   ##########################################################################################
-  beaver_activity $HUC \ 
+  beaver_activity $HUC \
     $QRIS_DIR/context/feature_classes.gpkg/WBDHU10 \
     $VBET_DIR/intermediates/vbet_intermediates.gpkg/vbet_dgos \
     $VBET_DIR/outputs/vbet.gpkg/vbet_igos \
