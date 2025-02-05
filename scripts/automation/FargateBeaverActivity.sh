@@ -2,6 +2,8 @@
 # Set -e will cause the script to exit if any command fails
 # Set -u will cause the script to exit if any variable is not set
 set -eu
+# Set -x will cause the script to print out each command before it is executed
+set -x
 IFS=$'\n\t'
 
 # These environment variables need to be present before the script starts
