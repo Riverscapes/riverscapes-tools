@@ -85,7 +85,7 @@ try() {
     $VBET_DIR/intermediates/vbet_intermediates.gpkg/vbet_dgos \
     $VBET_DIR/outputs/vbet.gpkg/vbet_igos \
     $QRIS_DIR \
-    $BEAVER_ACTIVITY_DIR
+    $BEAVER_ACTIVITY_DIR \
     --verbose
   if [[ $? != 0 ]]; then return 1; fi
 
