@@ -72,13 +72,15 @@ rscli download $QRIS_DIR --id "$QRIS_ID" \
 echo "======================  Initial Disk space usage ======================="
 df -h
 
+cd /usr/local/src/riverscapes-tools/packages/brat
 
 try() {
 
   ##########################################################################################
   # Now Run Beaver Activity
   ##########################################################################################
-  beaver_sign.beaver_sign $HUC \
+  python3 -m beaver_sign.beaver_sign \ 
+    $HUC \
     $QRIS_DIR/context/feature_classes.gpkg/WBDHU10 \
     $VBET_DIR/intermediates/vbet_intermediates.gpkg/vbet_dgos \
     $VBET_DIR/outputs/vbet.gpkg/vbet_igos \
