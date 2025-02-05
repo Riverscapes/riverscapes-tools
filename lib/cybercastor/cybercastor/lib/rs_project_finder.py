@@ -121,10 +121,10 @@ def find_upstream_projects(job_data) -> bool:
                 riverscapes_api.refresh_token()
 
             results = riverscapes_api.run_query(search_query, {"searchParams": searchParams, "limit": 50, "offset": 0})
-            if project_type == 'riverscapesstudio':
-                available_projects = [results['data']['searchProjects']['results'] if 'beaver_activity' in results['data']['searchProjects']['results'].tags else None]
-            else:
-                available_projects = results['data']['searchProjects']['results']
+            available_projects = results['data']['searchProjects']['results']
+            # beaver census qris projects must have 'beaver_activity' tag to be found here
+            if project_type == 'riverscapesstudio' and task_script == 'beaver_activity':
+                available_projects = [x for x in available_projects if 'beaver_activity' in x['item']['tags']]
 
             if len(available_projects) < 1:
                 msg = f'Could not find project for {huc} of type {project_type}.'
