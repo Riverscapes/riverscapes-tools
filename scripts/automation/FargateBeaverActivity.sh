@@ -65,7 +65,7 @@ cd /usr/local/src
 
 # Get the RSCli project we need to make this happen
 rscli download $VBET_DIR --id "$VBET_ID"\
-  --file-filter "(vbet\.gpkg|vbet_intermediates\.gpkg)" \
+  --file-filter "(vbet\.gpkg|vbet_intermediates\.gpkg|project_bounds.geojson)" \
   --no-input --no-ui --verbose
 
 rscli download $QRIS_DIR --id "$QRIS_ID" \
