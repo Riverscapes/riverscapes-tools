@@ -447,6 +447,27 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                         is_headwater = str(1) if sum_attributes.get('1', 0) / sum(sum_attributes.values()) > 0.5 else str(0)
                     metrics_output[metric['metric_id']] = is_headwater
 
+                if 'STRMNAME' in metrics:
+                    metric = metrics['STRMNAME']
+
+                    attributes = {}
+                    with GeopackageLayer(line_network) as lyr_lines:
+                        for feat, *_ in lyr_lines.iterate_features(clip_shape=feat_geom):
+                            line_geom = feat.GetGeometryRef()
+                            attribute = str(feat.GetField('GNIS_Name'))
+                            geom_section = feat_geom.Intersection(line_geom)
+                            length = geom_section.Length()
+                            attributes[attribute] = attributes.get(
+                                attribute, 0) + length
+                        lyr_lines.ogr_layer.SetSpatialFilter(None)
+                        lyr_lines = None
+                    if len(attributes) == 0:
+                        majority_attribute = None
+                    else:
+                        majority_attribute = str(
+                            max(attributes, key=attributes.get))
+                    metrics_output[metric['metric_id']] = majority_attribute
+
                 if 'STRMTYPE' in metrics:
                     metric = metrics['STRMTYPE']
 
@@ -989,6 +1010,12 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                     if hw is not None:
                         curs.execute(
                             f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['HEDWTR']['metric_id']}, {str(hw)})")
+
+                if 'STRMNAME' in metrics:
+                    curs.execute(f"SELECT metric_value FROM dgo_metric_values WHERE metric_id = {metrics['STRMNAME']['metric_id']} AND dgo_id = {igo_dgo[igo_id]}")
+                    stream_name = curs.fetchone()[0]
+                    if stream_name is not None:
+                        curs.execute(f"INSERT INTO igo_metric_values (igo_id, metric_id, metric_value) VALUES ({igo_id}, {metrics['STRMNAME']['metric_id']}, '{str(stream_name)}')")
 
                 if 'STRMTYPE' in metrics:
                     curs.execute(
