@@ -76,7 +76,7 @@ def run_validation(huc_list: List, working_dir: str, brat_model_version: str = '
         # download qris beaver census projects
         beaver_params = RiverscapesSearchParams(
             {
-                "projectTypeId": "riverscapesstudio",
+                "projectTypeId": "beaver_activity",
                 "meta": {
                     "HUC": str(huc)
                 }})
@@ -104,21 +104,48 @@ def run_validation(huc_list: List, working_dir: str, brat_model_version: str = '
                 # Use selected_project for further processing
             to_download[huc] = selected_project
 
-        beaver_gpgks = []
+        num_beaver_gpkgs = {}
         for huc, project in to_download.items():
             dl_dir = os.path.join(download_dir, 'beaver_activity', project.huc)
-            beaver_gpgks.append(os.path.join(dl_dir, 'beaver_activity_1.gpkg'))
             riverscapes_api.download_files(project.id, dl_dir)
+            num_beaver_gpkgs[huc] = [os.path.join(dl_dir, f) for f in os.listdir(dl_dir) if f.endswith('.gpkg')]
 
-        # merge projects
+        # merge projects -- DO I COMBINE ALL REALIZATIONS OR JUST USE A SINGLE CHOSEN FOR EACH...?
         safe_makedirs(os.path.join(brat_dir, huc))
         safe_makedirs(os.path.join(qris_dir, huc))
         out_brat_gpkg = os.path.join(brat_dir, huc, 'brat.gpkg')
-        out_beaver_gpkg = os.path.join(qris_dir, huc, 'beaver_activity_1.gpkg')
+        # out_beaver_gpkg = os.path.join(qris_dir, huc, 'beaver_activity_1.gpkg')
 
         for g in brat_gpkgs:
-            cmd = f"ogr2ogr -f GPKG -makevalid -append -nln 'vwReaches' {out_brat_gpkg} {g} 'vwReachs'"
+            cmd = f"ogr2ogr -f GPKG -makevalid -append -nln 'vwReaches' {out_brat_gpkg} {g} 'vwReaches'"
             subprocess.run(cmd, shell=True)
+
+        beaver_gpkgs = []
+        for huc, gpkgs in num_beaver_gpkgs.items():
+            if len(gpkgs) > 1:
+                beav_questions = [
+                    inquirer.List('selected gpkg',
+                                  message=f"Select a beaver activity gpkg for HUC {huc}",
+                                  choices=[f"{f}" for f in gpkgs])
+                ]
+                beav_answers = inquirer.prompt(beav_questions)
+                selected_beaver_gpkg = beav_answers['selected gpkg']
+                beaver_gpkgs.append(selected_beaver_gpkg)
+            else:
+                beaver_gpkgs.append(num_beaver_gpkgs[huc][0])
+
+        out_beaver_gpkg = os.path.join(qris_dir, huc, 'beaver_activity.gpkg')
+        for g in beaver_gpkgs:
+            cmd = f"ogr2ogr -f GPKG -makevalid -append -nln 'dams' {out_beaver_gpkg} {g} 'dams'"
+            subprocess.run(cmd, shell=True)
+
+        # run capacity validation
+        validate_capacity(out_brat_gpkg, out_beaver_gpkg)
+        valid_path = os.path.join(os.path.dirname(out_brat_gpkg), 'validation')
+        for g in brat_gpkgs:
+            cmd = f"cp -r {valid_path} {os.path.dirname(os.path.dirname(g))}"
+            subprocess.run(cmd, shell=True)
+            # reupload the brat projects with the validation folder
 
 
 run_validation([10190007], '/workspaces/data/', brat_model_version=None)
