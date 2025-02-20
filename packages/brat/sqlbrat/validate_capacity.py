@@ -8,18 +8,30 @@
 # reupload the brat projects with the validation folder
 # delete projects for that huc
 
+import argparse
 import os
 import subprocess
 import sys
+import traceback
 from riverscapes import RiverscapesAPI, RiverscapesSearchParams
 from typing import List
 import inquirer
 
 from rscommons.util import safe_makedirs, safe_remove_dir
-from sqlbrat.capacity_validation import validate_capacity
+from rscommons import Logger, dotenv, RSProject
+from sqlbrat.utils.capacity_validation import validate_capacity
 
 
-def run_validation(huc_list: List, working_dir: str, upload_tags: str = None):
+def run_validation(huc: int, working_dir: str = '/workspaces/data', upload_tags: str = None):
+    """Download the HUC10s within a HUC8 and run the BRAT validation process
+
+    Args:
+        huc_list (List): A list of HUC8 watersheds for which beaver activity projects exist
+        working_dir (str): The directory in which to store the downloaded files
+        upload_tags (str, optional): tags to add to the BRAT projects that are reuploaded. Defaults to None.
+    """
+
+    log = Logger("BRAT Capacity Validation")
 
     download_dir = os.path.join(working_dir, "downloads")
     safe_makedirs(download_dir)
@@ -31,133 +43,174 @@ def run_validation(huc_list: List, working_dir: str, upload_tags: str = None):
     riverscapes_api = RiverscapesAPI(stage='production')
     riverscapes_api.refresh_token()
 
-    for huc in huc_list:
+    # download brat projects
+    brat_params = RiverscapesSearchParams(
+        {
+            "projectTypeId": "riverscapes_brat",
+            "meta": {
+                "HUC": str(huc)
+            }})
 
-        # download brat projects
-        brat_params = RiverscapesSearchParams(
-            {
-                "projectTypeId": "riverscapes_brat",
-                "meta": {
-                    "HUC": str(huc)
-                }})
+    to_download = {}
+    projects = {}
 
-        to_download = {}
-        projects = {}
+    for project, _stats, search_total, _prg in riverscapes_api.search(brat_params):
+        if project.huc not in projects.keys():
+            projects[project.huc] = [project]
+        else:
+            projects[project.huc].append(project)
 
-        for project, _stats, search_total, _prg in riverscapes_api.search(brat_params):
-            if project.huc not in projects.keys():
-                projects[project.huc] = [project]
-            else:
-                projects[project.huc].append(project)
+    for hucnum, project_list in projects.items():
+        if len(project_list) > 1:
+            project_list.sort(key=lambda x: x.created_date)
+            questions = [
+                inquirer.List('selected_project',
+                              message=f"Select a project for HUC {hucnum}",
+                              choices=[f"{proj.name} (Created: {proj.created_date})" for proj in project_list])
+            ]
+            answers = inquirer.prompt(questions)
+            selected_project = next(proj for proj in project_list if f"{proj.name} (Created: {proj.created_date})" == answers['selected_project'])
+            # Use selected_project for further processing
+        else:
+            selected_project = project_list[0]
+            # Use selected_project for further processing
+        to_download[hucnum] = selected_project
 
-        for hucnum, project_list in projects.items():
-            if len(project_list) > 1:
-                project_list.sort(key=lambda x: x.created_date)
-                questions = [
-                    inquirer.List('selected_project',
-                                  message=f"Select a project for HUC {hucnum}",
-                                  choices=[f"{proj.name} (Created: {proj.created_date})" for proj in project_list])
-                ]
-                answers = inquirer.prompt(questions)
-                selected_project = next(proj for proj in project_list if f"{proj.name} (Created: {proj.created_date})" == answers['selected_project'])
-                # Use selected_project for further processing
-            else:
-                selected_project = project_list[0]
-                # Use selected_project for further processing
-            to_download[hucnum] = selected_project
+    log.info('Downloading BRAT projects')
+    brat_gpkgs = []
+    for hucnum, project in to_download.items():
+        dl_dir = os.path.join(download_dir, 'brat', project.huc)
+        brat_gpkgs.append(os.path.join(dl_dir, 'outputs', 'brat.gpkg'))
+        riverscapes_api.download_files(project.id, dl_dir)
 
-        brat_gpkgs = []
-        for hucnum, project in to_download.items():
-            dl_dir = os.path.join(download_dir, 'brat', project.huc)
-            brat_gpkgs.append(os.path.join(dl_dir, 'outputs', 'brat.gpkg'))
-            riverscapes_api.download_files(project.id, dl_dir)
+    # download qris beaver census projects
+    beaver_params = RiverscapesSearchParams(
+        {
+            "projectTypeId": "beaver_activity",
+            "meta": {
+                "HUC": str(huc)
+            }})
+    to_download = {}
+    projects = {}
 
-        # download qris beaver census projects
-        beaver_params = RiverscapesSearchParams(
-            {
-                "projectTypeId": "beaver_activity",
-                "meta": {
-                    "HUC": str(huc)
-                }})
-        to_download = {}
-        projects = {}
+    for project, _stats, search_total, _prg in riverscapes_api.search(beaver_params):
+        if len(project.huc) < 10:
+            continue
+        if project.huc not in projects.keys():
+            projects[project.huc] = [project]
+        else:
+            projects[project.huc].append(project)
 
-        for project, _stats, search_total, _prg in riverscapes_api.search(beaver_params):
-            if len(project.huc) < 10:
-                continue
-            if project.huc not in projects.keys():
-                projects[project.huc] = [project]
-            else:
-                projects[project.huc].append(project)
+    for hucnum, project_list in projects.items():
+        if len(project_list) > 1:
+            project_list.sort(key=lambda x: x.created_date)
+            questions = [
+                inquirer.List('selected_project',
+                              message=f"Select a project for HUC {hucnum}",
+                              choices=[f"{proj.name} (Created: {proj.created_date})" for proj in project_list])
+            ]
+            answers = inquirer.prompt(questions)
+            selected_project = next(proj for proj in project_list if f"{proj.name} (Created: {proj.created_date})" == answers['selected_project'])
+            # Use selected_project for further processing
+        else:
+            selected_project = project_list[0]
+            # Use selected_project for further processing
+        to_download[hucnum] = selected_project
 
-        for hucnum, project_list in projects.items():
-            if len(project_list) > 1:
-                project_list.sort(key=lambda x: x.created_date)
-                questions = [
-                    inquirer.List('selected_project',
-                                  message=f"Select a project for HUC {hucnum}",
-                                  choices=[f"{proj.name} (Created: {proj.created_date})" for proj in project_list])
-                ]
-                answers = inquirer.prompt(questions)
-                selected_project = next(proj for proj in project_list if f"{proj.name} (Created: {proj.created_date})" == answers['selected_project'])
-                # Use selected_project for further processing
-            else:
-                selected_project = project_list[0]
-                # Use selected_project for further processing
-            to_download[hucnum] = selected_project
+    log.info('Downloading Beaver Activity projects')
+    num_beaver_gpkgs = {}
+    for hucnum, project in to_download.items():
+        dl_dir = os.path.join(download_dir, 'beaver_activity', project.huc)
+        riverscapes_api.download_files(project.id, dl_dir)
+        num_beaver_gpkgs[hucnum] = [os.path.join(dl_dir, f) for f in os.listdir(dl_dir) if f.endswith('.gpkg')]
 
-        num_beaver_gpkgs = {}
-        for hucnum, project in to_download.items():
-            dl_dir = os.path.join(download_dir, 'beaver_activity', project.huc)
-            riverscapes_api.download_files(project.id, dl_dir)
-            num_beaver_gpkgs[hucnum] = [os.path.join(dl_dir, f) for f in os.listdir(dl_dir) if f.endswith('.gpkg')]
+    # merge projects
+    log.info('Merging projects')
+    safe_makedirs(os.path.join(brat_dir, str(huc)))
+    safe_makedirs(os.path.join(beav_dir, str(huc)))
+    out_brat_gpkg = os.path.join(brat_dir, str(huc), 'brat.gpkg')
+    # out_beaver_gpkg = os.path.join(qris_dir, huc, 'beaver_activity_1.gpkg')
 
-        # merge projects -- DO I COMBINE ALL REALIZATIONS OR JUST USE A SINGLE CHOSEN FOR EACH...?
-        safe_makedirs(os.path.join(brat_dir, str(huc)))
-        safe_makedirs(os.path.join(beav_dir, str(huc)))
-        out_brat_gpkg = os.path.join(brat_dir, str(huc), 'brat.gpkg')
-        # out_beaver_gpkg = os.path.join(qris_dir, huc, 'beaver_activity_1.gpkg')
+    for g in brat_gpkgs:
+        cmd = f"ogr2ogr -f GPKG -makevalid -append -nln 'vwReaches' {out_brat_gpkg} {g} 'vwReaches'"
+        subprocess.run(cmd, shell=True)
 
-        for g in brat_gpkgs:
-            cmd = f"ogr2ogr -f GPKG -makevalid -append -nln 'vwReaches' {out_brat_gpkg} {g} 'vwReaches'"
-            subprocess.run(cmd, shell=True)
+    beaver_gpkgs = []
+    for hucnum, gpkgs in num_beaver_gpkgs.items():
+        if len(gpkgs) > 1:
+            beav_questions = [
+                inquirer.List('selected gpkg',
+                              message=f"Select a beaver activity gpkg for HUC {hucnum}",
+                              choices=[f"{f}" for f in gpkgs])
+            ]
+            beav_answers = inquirer.prompt(beav_questions)
+            selected_beaver_gpkg = beav_answers['selected gpkg']
+            beaver_gpkgs.append(selected_beaver_gpkg)
+        else:
+            beaver_gpkgs.append(num_beaver_gpkgs[hucnum][0])
 
-        beaver_gpkgs = []
-        for hucnum, gpkgs in num_beaver_gpkgs.items():
-            if len(gpkgs) > 1:
-                beav_questions = [
-                    inquirer.List('selected gpkg',
-                                  message=f"Select a beaver activity gpkg for HUC {hucnum}",
-                                  choices=[f"{f}" for f in gpkgs])
-                ]
-                beav_answers = inquirer.prompt(beav_questions)
-                selected_beaver_gpkg = beav_answers['selected gpkg']
-                beaver_gpkgs.append(selected_beaver_gpkg)
-            else:
-                beaver_gpkgs.append(num_beaver_gpkgs[hucnum][0])
+    out_beaver_gpkg = os.path.join(beav_dir, str(huc), 'beaver_activity.gpkg')
+    for g in beaver_gpkgs:
+        cmd = f"ogr2ogr -f GPKG -makevalid -append -nln 'dams' {out_beaver_gpkg} {g} 'dams'"
+        subprocess.run(cmd, shell=True)
 
-        out_beaver_gpkg = os.path.join(beav_dir, str(huc), 'beaver_activity.gpkg')
-        for g in beaver_gpkgs:
-            cmd = f"ogr2ogr -f GPKG -makevalid -append -nln 'dams' {out_beaver_gpkg} {g} 'dams'"
-            subprocess.run(cmd, shell=True)
+    # run capacity validation
+    log.info('Validating BRAT capacity outputs')
+    validate_capacity(out_brat_gpkg, out_beaver_gpkg)
+    valid_path = os.path.join(os.path.dirname(out_brat_gpkg), 'validation')
+    for g in brat_gpkgs:
+        cmd = f"cp -r {valid_path} {os.path.dirname(g)}"
+        subprocess.run(cmd, shell=True)
+        # update project xml
+        log.info('Updating project xml file')
+        project = RSProject(None, os.path.join(os.path.dirname(os.path.dirname(g)), 'project.rs.xml'))
+        outputs_node = project.XMLBuilder.root.find('Realizations').find('Realization').find('Outputs')
+        image_node1 = project.XMLBuilder.add_sub_element(outputs_node, 'Image', attribs={'id': 'quantile'})
+        name_node1 = project.XMLBuilder.add_sub_element(image_node1, 'Name', text='Quantile Regressions')
+        path_node1 = project.XMLBuilder.add_sub_element(image_node1, 'Path', text='outputs/validation/regressions.png')
+        image_node2 = project.XMLBuilder.add_sub_element(outputs_node, 'Image', attribs={'id': 'observed'})
+        name_node2 = project.XMLBuilder.add_sub_element(image_node2, 'Name', text='Observed vs Predicted')
+        path_node2 = project.XMLBuilder.add_sub_element(image_node2, 'Path', text='outputs/validation/obs_v_pred.png')
+        csv_node = project.XMLBuilder.add_sub_element(outputs_node, 'CSV', attribs={'id': 'electivity_index'})
+        name_node3 = project.XMLBuilder.add_sub_element(csv_node, 'Name', text='Electivity Index')
+        path_node3 = project.XMLBuilder.add_sub_element(csv_node, 'Path', text='outputs/validation/electivity_index.csv')
+        project.XMLBuilder.write()
+        # reupload the brat projects with the validation folder
+        if upload_tags:
+            cmd2 = f"rscli upload {os.path.dirname(os.path.dirname(g))} --tags {upload_tags} --no-input --no-ui --verbose"
+        else:
+            cmd2 = f"rscli upload {os.path.dirname(os.path.dirname(g))} --no-input --no-ui --verbose"
+        subprocess.run(cmd2, shell=True)
 
-        # run capacity validation
-        validate_capacity(out_brat_gpkg, out_beaver_gpkg)
-        valid_path = os.path.join(os.path.dirname(out_brat_gpkg), 'validation')
-        for g in brat_gpkgs:
-            cmd = f"cp -r {valid_path} {os.path.dirname(g)}"
-            subprocess.run(cmd, shell=True)
-            # reupload the brat projects with the validation folder
-            if upload_tags:
-                cmd2 = f"rscli upload {os.path.dirname(os.path.dirname(g))} --tags {upload_tags} --no-input --no-ui --verbose"
-            else:
-                cmd2 = f"rscli upload {os.path.dirname(os.path.dirname(g))} --no-input --no-ui --verbose"
-            subprocess.run(cmd2, shell=True)
+    safe_remove_dir(os.path.join(download_dir, 'brat'))
+    safe_remove_dir(os.path.join(download_dir, 'beaver_activity'))
+    safe_remove_dir(os.path.join(brat_dir, str(huc)))
+    safe_remove_dir(os.path.join(beav_dir, str(huc)))
 
-        safe_remove_dir(os.path.join(download_dir, 'brat'))
-        safe_remove_dir(os.path.join(download_dir, 'beaver_activity'))
-        safe_remove_dir(os.path.join(brat_dir, str(huc)))
-        safe_remove_dir(os.path.join(beav_dir, str(huc)))
+    log.info('Completed validation for HUC {}'.format(huc))
+
+    return
 
 
-run_validation([17010203], '/workspaces/data/', upload_tags='2024CONUS,validation_data')
+def main():
+    parser = argparse.ArgumentParser(description='Run BRAT capacity validation')
+    parser.add_argument('huc', metavar='HUC8', type=int, help='HUC8 watersheds to validate')
+    parser.add_argument('working_dir', type=str, default='/workspaces/data', help='Directory to store downloaded files')
+    parser.add_argument('--upload_tags', type=str, default=None, help='Tags to add to the reuploaded BRAT projects')
+
+    args = dotenv.parse_args_env(parser)
+
+    log = Logger("BRAT Capacity Validation")
+    try:
+        run_validation(args.huc, args.working_dir, args.upload_tags)
+
+    except Exception as e:
+        log.error(f"Error running capacity validation: {e}")
+        traceback.print_exc(file=sys.stdout)
+        sys.exit(1)
+
+    sys.exit(0)
+
+
+if __name__ == '__main__':
+    main()
