@@ -172,13 +172,13 @@
       "name": "Validate BRAT Capacity",
       "type": "python",
       "request": "launch",
-      "module": "sqlbrat.capacity_validation",
+      "module": "sqlbrat.validate_capacity",
       "console": "integratedTerminal",
       "args": [
         "${input:HUC}",
-        "{env:DATA_ROOT}/brat/${input:HUC}/outputs/brat.gpkg",
-        "{env:DATA_ROOT}/beaver_activity/${input:HUC}/beaver_activity.gpkg",
-        "--verbose"
+        "{env:DATA_ROOT}",
+        "--upload_tags", 
+        "2024CONUS,validation_data"
       ]
     },
     {
