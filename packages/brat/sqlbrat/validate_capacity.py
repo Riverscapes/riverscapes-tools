@@ -18,7 +18,7 @@ from typing import List
 import inquirer
 
 from rscommons.util import safe_makedirs, safe_remove_dir
-from rscommons import Logger, dotenv, RSProject
+from rscommons import Logger, dotenv, RSProject, RSMeta
 from sqlbrat.utils.capacity_validation import validate_capacity
 
 
@@ -119,6 +119,7 @@ def run_validation(huc: int, working_dir: str = '/workspaces/data', upload_tags:
 
     log.info('Downloading Beaver Activity projects')
     num_beaver_gpkgs = {}
+
     for hucnum, project in to_download.items():
         dl_dir = os.path.join(download_dir, 'beaver_activity', project.huc)
         riverscapes_api.download_files(project.id, dl_dir)
@@ -150,9 +151,21 @@ def run_validation(huc: int, working_dir: str = '/workspaces/data', upload_tags:
             beaver_gpkgs.append(num_beaver_gpkgs[hucnum][0])
 
     out_beaver_gpkg = os.path.join(beav_dir, str(huc), 'beaver_activity.gpkg')
+    census_dates = []
     for g in beaver_gpkgs:
         cmd = f"ogr2ogr -f GPKG -makevalid -append -nln 'dams' {out_beaver_gpkg} {g} 'dams'"
         subprocess.run(cmd, shell=True)
+        proj = RSProject(None, os.path.join(os.path.dirname(g), 'project.rs.xml'))
+        gpkg_node = proj.XMLBuilder.root.find('Realizations').find('Realization').find('Outputs').find('Geopackage')
+        if gpkg_node.find('Path').text == os.path.basename(g):
+            try:
+                metas = gpkg_node.find('MetaData').findall('Meta')
+                for meta in metas:
+                    if meta.attrib['name'] == 'CensusDate':
+                        if meta.text not in census_dates:
+                            census_dates.append(meta.text)
+            except:
+                pass
 
     # run capacity validation
     log.info('Validating BRAT capacity outputs')
@@ -166,14 +179,16 @@ def run_validation(huc: int, working_dir: str = '/workspaces/data', upload_tags:
         project = RSProject(None, os.path.join(os.path.dirname(os.path.dirname(g)), 'project.rs.xml'))
         outputs_node = project.XMLBuilder.root.find('Realizations').find('Realization').find('Outputs')
         image_node1 = project.XMLBuilder.add_sub_element(outputs_node, 'Image', attribs={'id': 'quantile'})
-        name_node1 = project.XMLBuilder.add_sub_element(image_node1, 'Name', text='Quantile Regressions')
-        path_node1 = project.XMLBuilder.add_sub_element(image_node1, 'Path', text='outputs/validation/regressions.png')
+        project.XMLBuilder.add_sub_element(image_node1, 'Name', text='Quantile Regressions')
+        project.XMLBuilder.add_sub_element(image_node1, 'Path', text='outputs/validation/regressions.png')
         image_node2 = project.XMLBuilder.add_sub_element(outputs_node, 'Image', attribs={'id': 'observed'})
-        name_node2 = project.XMLBuilder.add_sub_element(image_node2, 'Name', text='Observed vs Predicted')
-        path_node2 = project.XMLBuilder.add_sub_element(image_node2, 'Path', text='outputs/validation/obs_v_pred.png')
+        project.XMLBuilder.add_sub_element(image_node2, 'Name', text='Observed vs Predicted')
+        project.XMLBuilder.add_sub_element(image_node2, 'Path', text='outputs/validation/obs_v_pred.png')
         csv_node = project.XMLBuilder.add_sub_element(outputs_node, 'CSV', attribs={'id': 'electivity_index'})
-        name_node3 = project.XMLBuilder.add_sub_element(csv_node, 'Name', text='Electivity Index')
-        path_node3 = project.XMLBuilder.add_sub_element(csv_node, 'Path', text='outputs/validation/electivity_index.csv')
+        project.XMLBuilder.add_sub_element(csv_node, 'Name', text='Electivity Index')
+        project.XMLBuilder.add_sub_element(csv_node, 'Path', text='outputs/validation/electivity_index.csv')
+        # meta_node = project.XMLBuilder.root.find('MetaData')
+        project.add_metadata([RSMeta('CensusDate', ','.join(census_dates))])
         project.XMLBuilder.write()
         # reupload the brat projects with the validation folder
         if upload_tags:
