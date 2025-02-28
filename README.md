@@ -1,4 +1,4 @@
-# Open GIS
+# Riverscapes Tools
 
 This is a monorepo housing the python open-source GIS tools for Riverscapes.
 
