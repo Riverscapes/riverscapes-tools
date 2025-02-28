@@ -1,6 +1,6 @@
 # Open GIS
 
-This is a monorepo housing all of the python open-gis tools.
+This is a monorepo housing the python open-source GIS tools for Riverscapes.
 
 * [Riverscapes Context](./packages/rscontext)
 * [BRAT](./packages/brat)
@@ -8,22 +8,22 @@ This is a monorepo housing all of the python open-gis tools.
 
 ### `./lib` and `./packages`
 
-Both `./lib` and `./packages` contain pep8-compliant python packages. 
+Both `./lib` and `./packages` contain pep8-compliant python packages.
 
 * `./lib` is for anything that can be shared between tools
-* `./packages` is for the tools themselves. They cannot depend on one another. 
+* `./packages` is for the tools themselves. They cannot depend on one another.
 
 If you find that your tools have code they need to share you can either pull it into the `./lib/commons` package or, if there's enough code, create a new `./lib/whatever` package.
 
-## Repo guidelines:
+## Repo guidelines
 
 We're pretty much using the [Gitflow Workflow](https://www.atlassian.com/git/tutorials/comparing-workflows/gitflow-workflow)
 
-1. All work ***MUST*** happen on branches. 
-2. Make sure your pull requests merge onto `dev` and not `master`.
+1. All work ***MUST*** happen on branches.
+2. Make sure your pull requests merge onto `dev` or `docs` and not `master`.
 3. Hotfixes may be applied directly to `master`... carefully and after lots of testing.
 4. Add your issue and/or pull request to a milestone to make sure it will be included.
-5. Attach your commits to issues and pull requests by [referencing them in commit messages](https://docs.github.com/en/enterprise/2.16/user/github/managing-your-work-on-github/closing-issues-using-keywords)
+5. Attach your commits to issues and pull requests by [referencing them in commit messages](https://docs.github.com/en/enterprise/user/github/managing-your-work-on-github/closing-issues-using-keywords)
 
 ## Python Environment
 
@@ -49,7 +49,6 @@ Then inside the package workspace you can do the following to point the workspac
 
 This workflow needs to be repeated for each riverscapes tools package.
 
-
 ## Working inside Github codespaces
 
 If you are working inside a Github codespace there is no need for any kind of bootstrapping or `.venv` or even `.env` files. 
@@ -62,9 +61,9 @@ You can open a window to the data by typing `code /workspaces/data/`.
 
 From there files can be dragged into the vscode window to upload them to the codespace. To download files or folders right click on them and select "Download".
 
-You may wish to use projects downloaded from the Riverscapes Warehouse. This codespace comes complete with `rscli` installed. 
+You may wish to use projects downloaded from the Riverscapes Warehouse. This codespace comes complete with `rscli` installed.
 
-To download projects you must know: The project id from the warehouse, the HUC and the project type. 
+To download projects you must know: The project id from the warehouse, the HUC and the project type.
 
 ```bash
 rscli download --id XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX /workspaces/data/rs_context/17060304
