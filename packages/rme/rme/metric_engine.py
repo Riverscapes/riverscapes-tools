@@ -39,6 +39,7 @@ from rme.__version__ import __version__
 from rme.analysis_window import AnalysisLine
 from rme.rme_report import RMEReport, FILTER_NAMES
 from rme.utils.check_vbet_inputs import vbet_inputs
+from rme.utils.summarize_functions import get_max_value, value_from_max_length
 
 Path = str
 
@@ -59,7 +60,7 @@ LayerTypes = {
         'COUNTIES': RSLayer('Counties', 'COUNTIES', 'Vector', 'counties'),
         'VBET_DGOS': RSLayer('Vbet DGOs', 'VBET_DGOS', 'Vector', 'vbet_dgos'),
         'VBET_IGOS': RSLayer('Vbet IGOs', 'VBET_IGOS', 'Vector', 'vbet_igos'),
-        'VBET_CENTERLINES': RSLayer('VBET Centerline', 'VBET_CENTERLINE', 'Vector', 'valley_centerlines'),
+        'VBET_CENTERLINES': RSLayer('VBET Centerline', 'VBET_CENTERLINE', 'Vector', 'valley_centerlines')
         # 'ECOREGIONS': RSLayer('Ecoregions', 'ECOREGIONS', 'Vector', 'ecoregions'),
         # 'ROADS': RSLayer('Roads', 'Roads', 'Vector', 'roads'),
         # 'RAIL': RSLayer('Rail', 'Rail', 'Vector', 'rail'),
@@ -70,6 +71,8 @@ LayerTypes = {
     }),
     'DEM': RSLayer('DEM', 'DEM', 'Raster', 'inputs/dem.tif'),
     'HILLSHADE': RSLayer('Hillshade', 'HILLSHADE', 'Raster', 'inputs/hillshade.tif'),
+    'EVT': RSLayer('Landfire EVT', 'EVT', 'Raster', 'inputs/evt.tif'),
+    'BPS': RSLayer('Landfire BPS', 'BPS', 'Raster', 'inputs/bps.tif'),
     'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/rme_intermediates.gpkg', {
         'JUNCTION_POINTS': RSLayer('Junction Points', 'JUNCTION_POINTS', 'Vector', 'junction_points'),
         'RME_DGO': RSLayer('RME DGO', 'RME_DGO', 'Vector', 'dgos'),
@@ -102,9 +105,9 @@ window_distance = {'0': 200.0, '1': 400.0,
 
 
 def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties: Path, in_segments: Path, in_points: Path,
-                  in_vbet_centerline: Path, in_dem: Path, in_hillshade: Path, project_folder: Path,
-                  in_confinement_dgos: Path = None, in_anthro_dgos: Path = None, in_rcat_dgos: Path = None, in_brat_dgos: Path = None,
-                  level_paths: list = None, meta: dict = None):
+                  in_vbet_centerline: Path, in_dem: Path, in_hillshade: Path, in_evt: Path, in_bps: Path, project_folder: Path,
+                  in_confinement_dgos: Path = None, in_hydro_dgos: Path = None, in_anthro_dgos: Path = None, in_anthro_lines: Path = None,
+                  in_rcat_dgos: Path = None, in_brat_dgos: Path = None, level_paths: list = None, meta: dict = None):
     """Generate Riverscapes Metric Engine project and calculate metrics
 
     Args:
@@ -125,7 +128,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
 
     # Check that all inputs have the same VBET input
     project_dgos = []
-    for p in [in_confinement_dgos, in_anthro_dgos, in_rcat_dgos]:
+    for p in [in_confinement_dgos, in_hydro_dgos, in_anthro_dgos, in_rcat_dgos, in_brat_dgos]:
         if p is not None:
             project_dgos.append(os.path.dirname(os.path.dirname(os.path.dirname(p))))
 
@@ -188,6 +191,8 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
     copy_feature_class(in_vbet_centerline, centerlines)
     _dem_node, dem = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], in_dem)
     _hs_node, hillshade = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], in_hillshade)
+    _evt_node, evt = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['EVT'], in_evt)
+    _bps_node, bps = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['BPS'], in_bps)
 
     in_gpkg_node, *_ = project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
     if in_confinement_dgos:
@@ -196,12 +201,24 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
         project.add_dataset(in_gpkg_node.find('Layers'), 'confinement_dgo', RSLayer('Confinement DGO', 'CONFINEMENT_DGO', 'Vector', 'confinement_dgo'), 'Vector', rel_path=True, sublayer=True)
     else:
         confinement_dgos = None
+    if in_hydro_dgos:
+        hydro_dgos = os.path.join(inputs_gpkg, 'hydro_dgo')
+        copy_feature_class(in_hydro_dgos, hydro_dgos)
+        project.add_dataset(in_gpkg_node.find('Layers'), 'hydro_dgo', RSLayer('Hydrologic DGO', 'HYDRO_DGO', 'Vector', 'hydro_dgo'), 'Vector', rel_path=True, sublayer=True)
+    else:
+        hydro_dgos = None
     if in_anthro_dgos:
         anthro_dgos = os.path.join(inputs_gpkg, 'anthro_dgo')
         copy_feature_class(in_anthro_dgos, anthro_dgos)
         project.add_dataset(in_gpkg_node.find('Layers'), 'anthro_dgo', RSLayer('Anthropogenic DGO', 'ANTHRO_DGO', 'Vector', 'anthro_dgo'), 'Vector', rel_path=True, sublayer=True)
     else:
         anthro_dgos = None
+    if in_anthro_lines:
+        anthro_lines = os.path.join(inputs_gpkg, 'anthro_flowlines')
+        copy_feature_class(in_anthro_lines, anthro_lines)
+        project.add_dataset(in_gpkg_node.find('Layers'), 'anthro_flowlines', RSLayer('Anthropogenic FLowline', 'ANTHRO_LINE', 'Vector', 'anthro_flowlines'), 'Vector', rel_path=True, sublayer=True)
+    else:
+        anthro_lines = None
     if in_rcat_dgos:
         rcat_dgos = os.path.join(inputs_gpkg, 'rcat_dgo')
         copy_feature_class(in_rcat_dgos, rcat_dgos)
@@ -412,15 +429,8 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                 if 'STRMORDR' in metrics:
                     metric = metrics['STRMORDR']
 
-                    results = []
-                    with GeopackageLayer(line_network) as lyr_lines:
-                        for feat, *_ in lyr_lines.iterate_features(clip_shape=feat_geom):
-                            results.append(feat.GetField('stream_order'))
-                        lyr_lines.ogr_layer.SetSpatialFilter(None)
-                    if len(results) > 0:
-                        stream_order = str(max(results))
-                    else:
-                        stream_order = None
+                    stream_order = get_max_value('stream_order', line_network, feat_geom)
+                    if stream_order is None:
                         log.warning(
                             f'Unable to calculate Stream Order for dgo {dgo_id} in level path {level_path}')
                     metrics_output[metric['metric_id']] = stream_order
@@ -450,22 +460,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                 if 'STRMNAME' in metrics:
                     metric = metrics['STRMNAME']
 
-                    attributes = {}
-                    with GeopackageLayer(line_network) as lyr_lines:
-                        for feat, *_ in lyr_lines.iterate_features(clip_shape=feat_geom):
-                            line_geom = feat.GetGeometryRef()
-                            attribute = str(feat.GetField('GNIS_Name'))
-                            geom_section = feat_geom.Intersection(line_geom)
-                            length = geom_section.Length()
-                            attributes[attribute] = attributes.get(
-                                attribute, 0) + length
-                        lyr_lines.ogr_layer.SetSpatialFilter(None)
-                        lyr_lines = None
-                    if len(attributes) == 0:
-                        majority_attribute = None
-                    else:
-                        majority_attribute = str(
-                            max(attributes, key=attributes.get))
+                    majority_attribute = value_from_max_length('GNIS_NAME', line_network, feat_geom)
                     metrics_output[metric['metric_id']] = majority_attribute
 
                 if 'STRMTYPE' in metrics:
