@@ -39,7 +39,7 @@ from rme.__version__ import __version__
 from rme.analysis_window import AnalysisLine
 from rme.rme_report import RMEReport, FILTER_NAMES
 from rme.utils.check_vbet_inputs import vbet_inputs
-from rme.utils.summarize_functions import get_max_value, value_from_max_length
+from rme.utils.summarize_functions import get_max_value, value_from_max_length, value_from_dgo, value_density_from_dgo, value_from_dataset_area
 
 Path = str
 
@@ -466,20 +466,6 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                 if 'STRMTYPE' in metrics:
                     metric = metrics['STRMTYPE']
 
-                    # attributes = {}
-                    # with GeopackageLayer(line_network) as lyr_lines:
-                    #     for feat, *_ in lyr_lines.iterate_features(clip_shape=feat_geom):
-                    #         line_geom = feat.GetGeometryRef()
-                    #         attribute = str(feat.GetField('FCode'))
-                    #         geom_section = feat_geom.Intersection(line_geom)
-                    #         length = geom_section.Length()
-                    #         attributes[attribute] = attributes.get(attribute, 0) + length
-                    #     lyr_lines.ogr_layer.SetSpatialFilter(None)
-                    #     lyr_lines = None
-                    # if len(attributes) == 0:
-                    #     majority_fcode = None
-                    # else:
-                    #     majority_fcode = str(max(attributes, key=attributes.get))
                     fcode = feat_seg_dgo.GetField('FCode')
                     metrics_output[metric['metric_id']] = str(fcode)
 
@@ -527,8 +513,6 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                 if 'INTGWDTH' in metrics:
                     metric = metrics['INTGWDTH']
 
-                    # ig_width = str(feat_seg_dgo.GetField('segment_area') / feat_seg_dgo.GetField(
-                    #     'centerline_length')) if feat_seg_dgo.GetField('centerline_length') is not None else None
                     ig_width = feat_seg_dgo.GetField('integrated_width')
                     metrics_output[metric['metric_id']] = str(ig_width)
 
@@ -602,56 +586,17 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                 if 'ECORGIII' in metrics:
                     metric = metrics['ECORGIII']
 
-                    attributes = {}
-                    # with GeopackageLayer(ecoregions) as lyr_ecoregions:
-                    #     for feat, *_ in lyr_ecoregions.iterate_features(clip_shape=feat_geom):
-                    #         geom_ecoregion = feat.GetGeometryRef()
-                    #         attribute = str(feat.GetField('US_L3CODE'))
-                    #         geom_section = feat_geom.Intersection(
-                    #             geom_ecoregion)
-                    #         area = geom_section.GetArea()
-                    #         attributes[attribute] = attributes.get(
-                    #             attribute, 0) + area
-                    #     lyr_ecoregions = None
-                    # if len(attributes) == 0:
-                    #     log.warning(
-                    #         f'Unable to find majority ecoregion III for pt {dgo_id} in level path {level_path}')
-                    #     majority_attribute = None
-                    # else:
-                    #     majority_attribute = str(
-                    #         max(attributes, key=attributes.get))
-                    with GeopackageLayer(line_network) as lyr_lines:
-                        for feat, *_ in lyr_lines.iterate_features(clip_shape=feat_geom):
-                            geom_ecoregion = feat.GetGeometryRef()
-                            attribute = feat.GetField('ecoregion_iii')
-                            geom_section = feat_geom.Intersection(geom_ecoregion)
-                            length = geom_section.Length()
-                            attributes[attribute] = attributes.get(
-                                attribute, 0) + length
-                    if len(attributes) == 0:
+                    majority_attribute = value_from_max_length('ecoregion_iii', line_network, feat_geom)
+                    if majority_attribute is None:
                         log.warning(f'Unable to find majority ecoregion III for dgo {dgo_id} in level path {level_path}')
-                        majority_attribute = None
-                    else:
-                        majority_attribute = str(max(attributes, key=attributes.get))
                     metrics_output[metric['metric_id']] = majority_attribute
 
                 if 'ECORGIV' in metrics:
                     metric = metrics['ECORGIV']
 
-                    attributes = {}
-                    with GeopackageLayer(line_network) as lyr_lines:
-                        for feat, *_ in lyr_lines.iterate_features(clip_shape=feat_geom):
-                            geom_ecoregion = feat.GetGeometryRef()
-                            attribute = feat.GetField('ecoregion_iv')
-                            geom_section = feat_geom.Intersection(geom_ecoregion)
-                            length = geom_section.Length()
-                            attributes[attribute] = attributes.get(
-                                attribute, 0) + length
-                    if len(attributes) == 0:
+                    majority_attribute = value_from_max_length('ecoregion_iv', line_network, feat_geom)
+                    if majority_attribute is None:
                         log.warning(f'Unable to find majority ecoregion IV for dgo {dgo_id} in level path {level_path}')
-                        majority_attribute = None
-                    else:
-                        majority_attribute = str(max(attributes, key=attributes.get))
                     metrics_output[metric['metric_id']] = majority_attribute
 
                 if 'CONF' in metrics:
@@ -693,14 +638,8 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                 if 'DRAINAREA' in metrics:
                     metric = metrics['DRAINAREA']
 
-                    results = []
-                    with GeopackageLayer(line_network) as lyr_lines:
-                        for feat, *_ in lyr_lines.iterate_features(clip_shape=feat_geom):
-                            results.append(feat.GetField('DivDASqKm'))
-                    if len(results) > 0:
-                        drainage_area = str(max(results))
-                    else:
-                        drainage_area = None
+                    drainage_area = get_max_value('DivDASqKm', line_network, feat_geom)
+                    if drainage_area is None:
                         log.warning(f'Unable to calculate drainage area for dgo {dgo_id} in level path {level_path}')
                     metrics_output[metric['metric_id']] = drainage_area
 
@@ -714,251 +653,127 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                 if 'CNFMT' in metrics and confinement_dgos:
                     metric = metrics['CNFMT']
 
-                    with sqlite3.connect(inputs_gpkg) as conn:
-                        curs = conn.cursor()
-                        curs.execute(
-                            f"SELECT confinement_ratio FROM confinement_dgo WHERE fid = {dgo_id}")
-                        conf_ratio = curs.fetchone()[0]
+                    conf_ratio = value_from_dgo(inputs_gpkg, dgo_id, 'confinement_ratio', 'confinement_dgo')
                     metrics_output[metric['metric_id']] = str(conf_ratio)
 
                 if 'CONST' in metrics and confinement_dgos:
                     metric = metrics['CONST']
 
-                    with sqlite3.connect(inputs_gpkg) as conn:
-                        curs = conn.cursor()
-                        curs.execute(
-                            f"SELECT constriction_ratio FROM confinement_dgo WHERE fid = {dgo_id}")
-                        cons_ratio = curs.fetchone()[0]
+                    cons_ratio = value_from_dgo(inputs_gpkg, dgo_id, 'constriction_ratio', 'confinement_dgo')
                     metrics_output[metric['metric_id']] = str(cons_ratio)
 
                 if 'CONFMARG' in metrics and confinement_dgos:
                     metric = metrics['CONFMARG']
 
-                    with sqlite3.connect(inputs_gpkg) as conn:
-                        curs = conn.cursor()
-                        curs.execute(
-                            f"SELECT confin_leng FROM confinement_dgo WHERE fid = {dgo_id}")
-                        conf_margin = curs.fetchone()[0]
+                    conf_margin = value_from_dgo(inputs_gpkg, dgo_id, 'confin_leng', 'confinement_dgo')
                     metrics_output[metric['metric_id']] = str(conf_margin)
 
                 if 'ROADDENS' in metrics and anthro_dgos:
                     metric = metrics['ROADDENS']
 
-                    with sqlite3.connect(inputs_gpkg) as conn:
-                        curs = conn.cursor()
-                        curs.execute(
-                            f"SELECT Road_len, centerline_length FROM anthro_dgo WHERE fid = {dgo_id}")
-                        roadd = curs.fetchone()
-                        if roadd[0] is not None and roadd[1] is not None:
-                            road_density = roadd[0] / \
-                                roadd[1] if roadd[1] > 0.0 else None
-                            metrics_output[metric['metric_id']] = str(road_density)
-                        else:
-                            road_density = None
-                            metrics_output[metric['metric_id']] = None
+                    road_density = value_density_from_dgo(inputs_gpkg, dgo_id, 'Road_len', 'anthro_dgo')
+                    if road_density is None:
+                        log.warning(f'Unable to calculate road density for dgo {dgo_id} in level path {level_path}')
+                        metrics_output[metric['metric_id']] = None
+                    else:
+                        metrics_output[metric['metric_id']] = str(road_density)
 
                 if 'RAILDENS' in metrics and anthro_dgos:
                     metric = metrics['RAILDENS']
 
-                    with sqlite3.connect(inputs_gpkg) as conn:
-                        curs = conn.cursor()
-                        curs.execute(
-                            f"SELECT Rail_len, centerline_length FROM anthro_dgo WHERE fid = {dgo_id}")
-                        raild = curs.fetchone()
-                        if raild[0] is not None and raild[1] is not None:
-                            rail_density = raild[0] / \
-                                raild[1] if raild[1] > 0.0 else None
-                            metrics_output[metric['metric_id']] = str(rail_density)
-                        else:
-                            rail_density = None
-                            metrics_output[metric['metric_id']] = None
+                    rail_density = value_density_from_dgo(inputs_gpkg, dgo_id, 'Rail_len', 'anthro_dgo')
+                    if rail_density is None:
+                        log.warning(f'Unable to calculate rail density for dgo {dgo_id} in level path {level_path}')
+                        metrics_output[metric['metric_id']] = None
+                    else:
+                        metrics_output[metric['metric_id']] = str(rail_density)
 
                 if 'LUI' in metrics and anthro_dgos:
                     metric = metrics['LUI']
 
-                    with sqlite3.connect(inputs_gpkg) as conn:
-                        curs = conn.cursor()
-                        curs.execute(
-                            f"SELECT LUI FROM anthro_dgo WHERE fid = {dgo_id}")
-                        lui = curs.fetchone()[0]
+                    lui = value_from_dgo(inputs_gpkg, dgo_id, 'LUI', 'anthro_dgo')
                     metrics_output[metric['metric_id']] = str(lui)
 
                 if 'FPACCESS' in metrics and rcat_dgos:
                     metric = metrics['FPACCESS']
 
-                    with sqlite3.connect(inputs_gpkg) as conn:
-                        curs = conn.cursor()
-                        curs.execute(
-                            f"SELECT FloodplainAccess FROM rcat_dgo WHERE fid = {dgo_id}")
-                        fp_access = curs.fetchone()[0]
+                    fp_access = value_from_dgo(inputs_gpkg, dgo_id, 'FloodplainAccess', 'rcat_dgo')
                     metrics_output[metric['metric_id']] = str(fp_access)
 
                 if 'AGENCY' in metrics:
                     metric = metrics['AGENCY']
 
-                    agencies = {}
-                    # with GeopackageLayer(ownership) as lyr:
-                    #     for feat, *_ in lyr.iterate_features(clip_shape=feat_geom):
-                    #         geom_agency = feat.GetGeometryRef()
-                    #         attribute = feat.GetField('ADMIN_AGEN')
-                    #         geom_section = feat_geom.Intersection(geom_agency)
-                    #         area = geom_section.GetArea()
-                    #         agencies[attribute] = agencies.get(
-                    #             attribute, 0) + area
-                    #     lyr = None
-                    # if len(agencies) == 0:
-                    #     log.warning(
-                    #         f'Unable to find majority agency for pt {dgo_id} in level path {level_path}')
-                    #     majority_agency = None
-                    # else:
-                    #     majority_agency = str(max(agencies, key=agencies.get))
-                    # metrics_output[metric['metric_id']] = majority_agency
-                    with GeopackageLayer(line_network) as lyr_lines:
-                        for feat, *_ in lyr_lines.iterate_features(clip_shape=feat_geom):
-                            geom_agency = feat.GetGeometryRef()
-                            attribute = feat.GetField('ownership')
-                            geom_section = feat_geom.Intersection(geom_agency)
-                            length = geom_section.Length()
-                            agencies[attribute] = agencies.get(attribute, 0) + length
-                    if len(agencies) == 0:
-                        log.warning(f'Unable to find majority agency for dgo {dgo_id} in level path {level_path}')
-                        majority_agency = None
-                    else:
-                        majority_agency = str(max(agencies, key=agencies.get))
+                    majority_agency = value_from_max_length('ownership', line_network, feat_geom)
+                    if majority_agency is None:
+                        log.info(f'Unable to find majority agency for dgo {dgo_id} in level path {level_path}')
                     metrics_output[metric['metric_id']] = majority_agency
 
                 if 'STATE' in metrics:
                     metric = metrics['STATE']
 
-                    states = {}
-                    # with GeopackageLayer(states_f) as lyr:
-                    #     for feat, *_ in lyr.iterate_features(clip_shape=feat_geom):
-                    #         geom_state = feat.GetGeometryRef()
-                    #         attribute = feat.GetField('NAME')
-                    #         geom_section = feat_geom.Intersection(geom_state)
-                    #         area = geom_section.GetArea()
-                    #         states[attribute] = states.get(attribute, 0) + area
-                    #     lyr = None
-                    # if len(states) == 0:
-                    #     log.warning(
-                    #         f'Unable to find majority state for pt {dgo_id} in level path {level_path}')
-                    #     majority_state = None
-                    # else:
-                    #     majority_state = str(max(states, key=states.get))
-                    # metrics_output[metric['metric_id']] = majority_state
-                    with GeopackageLayer(line_network) as lyr_lines:
-                        for feat, *_ in lyr_lines.iterate_features(clip_shape=feat_geom):
-                            geom_state = feat.GetGeometryRef()
-                            attribute = feat.GetField('us_state')
-                            geom_section = feat_geom.Intersection(geom_state)
-                            length = geom_section.Length()
-                            states[attribute] = states.get(attribute, 0) + length
-                    if len(states) == 0:
+                    majority_state = value_from_max_length('us_state', line_network, feat_geom)
+                    if majority_state is None:
                         log.warning(f'Unable to find majority state for dgo {dgo_id} in level path {level_path}')
-                        majority_state = None
-                    else:
-                        majority_state = str(max(states, key=states.get))
                     metrics_output[metric['metric_id']] = majority_state
 
                 if 'COUNTY' in metrics:
                     metric = metrics['COUNTY']
 
-                    counties = {}
-                    with GeopackageLayer(counties_f) as lyr:
-                        for feat, *_ in lyr.iterate_features(clip_shape=feat_geom):
-                            geom_county = feat.GetGeometryRef()
-                            attribute = feat.GetField('NAME')
-                            geom_section = feat_geom.Intersection(geom_county)
-                            area = geom_section.GetArea()
-                            counties[attribute] = counties.get(
-                                attribute, 0) + area
-                        lyr = None
-                    if len(counties) == 0:
-                        log.warning(
-                            f'Unable to find majority county for dgo {dgo_id} in level path {level_path}')
-                        majority_county = None
-                    else:
-                        majority_county = str(max(counties, key=counties.get))
+                    majority_county = value_from_dataset_area('NAME', counties_f, feat_geom)
+                    if majority_county is None:
+                        log.info(f'Unable to find majority county for dgo {dgo_id} in level path {level_path}')
                     metrics_output[metric['metric_id']] = majority_county
 
                 if 'PROP_RIP' in metrics:
                     metric = metrics['PROP_RIP']
 
-                    with sqlite3.connect(inputs_gpkg) as conn:
-                        curs = conn.cursor()
-                        curs.execute(
-                            f"SELECT ExistingRiparianMean FROM rcat_dgo WHERE fid = {dgo_id}")
-                        fp_access = curs.fetchone()[0]
-                    metrics_output[metric['metric_id']] = str(fp_access)
+                    prop_rip = value_from_dgo(inputs_gpkg, dgo_id, 'RiparianProp', 'rcat_dgo')
+                    metrics_output[metric['metric_id']] = str(prop_rip)
 
                 if 'RVD' in metrics:
                     metric = metrics['RVD']
 
-                    with sqlite3.connect(inputs_gpkg) as conn:
-                        curs = conn.cursor()
-                        curs.execute(
-                            f"SELECT RiparianDeparture FROM rcat_dgo WHERE fid = {dgo_id}")
-                        rvd = 1 - min(1, curs.fetchone()[0])
-                    metrics_output[metric['metric_id']] = str(rvd)
+                    rvd = value_from_dgo(inputs_gpkg, dgo_id, 'RiparianDeparture', 'rcat_dgo')
+                    if rvd is not None:
+                        rvd_out = 1 - min(1, rvd)
+                    else:
+                        rvd_out = None
+                    metrics_output[metric['metric_id']] = str(rvd_out)
 
                 if 'AGCONV' in metrics:
                     metric = metrics['AGCONV']
 
-                    with sqlite3.connect(inputs_gpkg) as conn:
-                        curs = conn.cursor()
-                        curs.execute(
-                            f"SELECT Agriculture FROM rcat_dgo WHERE fid = {dgo_id}")
-                        ag_conv = curs.fetchone()[0]
+                    ag_conv = value_from_dgo(inputs_gpkg, dgo_id, 'Agriculture', 'rcat_dgo')
                     metrics_output[metric['metric_id']] = str(ag_conv)
 
                 if 'DEVEL' in metrics:
                     metric = metrics['DEVEL']
 
-                    with sqlite3.connect(inputs_gpkg) as conn:
-                        curs = conn.cursor()
-                        curs.execute(
-                            f"SELECT Development FROM rcat_dgo WHERE fid = {dgo_id}")
-                        devel = curs.fetchone()[0]
+                    devel = value_from_dgo(inputs_gpkg, dgo_id, 'Development', 'rcat_dgo')
                     metrics_output[metric['metric_id']] = str(devel)
 
                 if 'RIPCOND' in metrics:
                     metric = metrics['RIPCOND']
 
-                    with sqlite3.connect(inputs_gpkg) as conn:
-                        curs = conn.cursor()
-                        curs.execute(
-                            f"SELECT Condition FROM rcat_dgo WHERE fid = {dgo_id}")
-                        rip_cond = curs.fetchone()[0]
+                    rip_cond = value_from_dgo(inputs_gpkg, dgo_id, 'Condition', 'rcat_dgo')
                     metrics_output[metric['metric_id']] = str(rip_cond)
 
                 if 'BRATCAP' in metrics and brat_dgos:
                     metric = metrics['BRATCAP']
 
-                    with sqlite3.connect(inputs_gpkg) as conn:
-                        curs = conn.cursor()
-                        curs.execute(
-                            f"SELECT oCC_EX FROM brat_dgo WHERE fid = {dgo_id}")
-                        bratcap = curs.fetchone()[0]
+                    bratcap = value_from_dgo(inputs_gpkg, dgo_id, 'oCC_EX', 'brat_dgo')
                     metrics_output[metric['metric_id']] = str(bratcap)
 
                 if 'BRATRISK' in metrics and brat_dgos:
                     metric = metrics['BRATRISK']
 
-                    with sqlite3.connect(inputs_gpkg) as conn:
-                        curs = conn.cursor()
-                        curs.execute(
-                            f"SELECT Risk FROM brat_dgo WHERE fid = {dgo_id}")
-                        bratrisk = curs.fetchone()[0]
+                    bratrisk = value_from_dgo(inputs_gpkg, dgo_id, 'Risk', 'brat_dgo')
                     metrics_output[metric['metric_id']] = str(bratrisk)
 
                 if 'BRATOPP' in metrics and brat_dgos:
                     metric = metrics['BRATOPP']
 
-                    with sqlite3.connect(inputs_gpkg) as conn:
-                        curs = conn.cursor()
-                        curs.execute(
-                            f"SELECT Opportunity FROM brat_dgo WHERE fid = {dgo_id}")
-                        bratopp = curs.fetchone()[0]
+                    bratopp = value_from_dgo(inputs_gpkg, dgo_id, 'Opportunity', 'brat_dgo')
                     metrics_output[metric['metric_id']] = str(bratopp)
 
                 if 'WATERSHED' in metrics:
