@@ -69,7 +69,7 @@ LayerTypes = {
     'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/rme_intermediates.gpkg', {
         'JUNCTION_POINTS': RSLayer('Junction Points', 'JUNCTION_POINTS', 'Vector', 'junction_points')
     }),
-    'RME_OUTPUTS': RSLayer('Riverscapes Metrics', 'RME_OUTPUTS', 'Geopackage', 'outputs/riverscapes_metrics.gpkg', {
+    'OUTPUTS': RSLayer('Riverscapes Metrics', 'OUTPUTS', 'Geopackage', 'outputs/riverscapes_metrics.gpkg', {
         'GEOM_IGOS': RSLayer('RME IGO', 'GEOM_IGOS', 'Vector', 'igos'),
         'GEOM_DGOS': RSLayer('RME DGO', 'GEOM_DGOS', 'Vector', 'dgos'),
         'DGO_METRICS': RSLayer('RME DGO', 'RME_DGO', 'Vector', 'rme_dgos'),
@@ -162,7 +162,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
 
     inputs_gpkg = os.path.join(project_folder, LayerTypes['INPUTS'].rel_path)
     intermediates_gpkg = os.path.join(project_folder, LayerTypes['INTERMEDIATES'].rel_path)
-    outputs_gpkg = os.path.join(project_folder, LayerTypes['RME_OUTPUTS'].rel_path)
+    outputs_gpkg = os.path.join(project_folder, LayerTypes['OUTPUTS'].rel_path)
     GeopackageLayer.delete(inputs_gpkg)
     GeopackageLayer.delete(intermediates_gpkg)
     GeopackageLayer.delete(outputs_gpkg)
@@ -228,7 +228,8 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
     with GeopackageLayer(outputs_gpkg, layer_name=LayerTypes['OUTPUTS'].sub_layers['GEOM_IGOS'].rel_path, write=True) as out_lyr:
         out_lyr.create_layer(ogr.wkbMultiPoint, epsg=cfg.OUTPUT_EPSG, options=['FID=IGOID'], fields={
             'level_path': ogr.OFTReal,
-            'seg_distance': ogr.OFTReal
+            'seg_distance': ogr.OFTReal,
+            'stream_size': ogr.OFTInteger
         })
 
     with GeopackageLayer(outputs_gpkg, layer_name=LayerTypes['OUTPUTS'].sub_layers['GEOM_DGOS'].rel_path, write=True) as out_lyr:
@@ -378,7 +379,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                 continue
 
             geom_centerline = collect_linestring(
-                centerlines, f'level_path = {level_path}', precision=8)
+                input_layers['VBET_CENTERLINES'], f'level_path = {level_path}', precision=8)
 
             for feat_seg_dgo, *_ in lyr_segments.iterate_features(attribute_filter=f'level_path = {level_path}'):
                 # Gather common components for metric calcuations
@@ -425,7 +426,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                 if 'COUNTY' in metrics:
                     metric = metrics['COUNTY']
 
-                    majority_county = value_from_dataset_area('NAME', counties_f, feat_geom)
+                    majority_county = value_from_dataset_area('NAME', input_layers['COUNTIES'], feat_geom)
                     if majority_county is None:
                         log.info(f'Unable to find majority county for dgo {dgo_id} in level path {level_path}')
                     metrics_output[metric['metric_id']] = majority_county
@@ -590,12 +591,12 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                 if 'WATERTYPE' in metrics:
                     metric = metrics['WATERTYPE']
 
-                    wbtype = value_from_dataset_area('fcode', waterbodies, feat_geom)
+                    wbtype = value_from_dataset_area('fcode', input_layers['WATERBODIES'], feat_geom)
                     metrics_output[metric['metric_id']] = wbtype
 
                 if 'WATEREXT' in metrics:
                     metric = metrics['WATEREXT']
-                    with GeopackageLayer(waterbodies) as lyr_wb:
+                    with GeopackageLayer(input_layers['WATERBODIES']) as lyr_wb:
                         wb_area = 0
                         for feat_wb, *_ in lyr_wb.iterate_features(clip_shape=feat_geom):
                             wb_geom = feat_wb.GetGeometryRef()
@@ -1568,8 +1569,8 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                 oft_type = ogr.OFTReal
             field_types[row[1].lower()] = oft_type
 
-    rme_igos = LayerTypes['RME_OUTPUTS'].sub_layers['IGO_METRICS'].rel_path
-    rme_dgos = LayerTypes['RME_OUTPUTS'].sub_layers['DGO_METRICS'].rel_path
+    rme_igos = LayerTypes['OUTPUTS'].sub_layers['IGO_METRICS'].rel_path
+    rme_dgos = LayerTypes['OUTPUTS'].sub_layers['DGO_METRICS'].rel_path
 
     with GeopackageLayer(intermediates_gpkg, 'vw_igo_metrics') as igo_metrics_layer, \
             GeopackageLayer(outputs_gpkg, rme_igos, write=True) as igo_output_layer:
@@ -1621,7 +1622,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
     # Add nodes to the project
     project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
     project.add_project_geopackage(
-        proj_nodes['Outputs'], LayerTypes['RME_OUTPUTS'])
+        proj_nodes['Outputs'], LayerTypes['OUTPUTS'])
 
     ellapsed = time.time() - start_time
     project.add_metadata([
@@ -1787,27 +1788,26 @@ def main():
     parser = argparse.ArgumentParser(description='Riverscapes Metric Engine')
 
     parser.add_argument('huc', help='HUC identifier', type=str)
-    parser.add_argument(
-        'flowlines', help="NHD Flowlines (.shp, .gpkg/layer_name)", type=str)
-    parser.add_argument('vaa_table', help="NHD Plus vaa table")
+    parser.add_argument('flowlines', help='NHD Flowlines (.shp, .gpkg/layer_name)', type=str)
+    parser.add_argument('waterbodies', help='NHD Waterbodies', type=str)
+    parser.add_argument('vaa_table', help='NHD Plus vaa table')
     parser.add_argument('counties', help='Counties shapefile')
-    parser.add_argument('dgos', help='vbet segment polygons')
-    parser.add_argument(
-        'vbet_points', help='valley bottom or other polygon representing confining boundary (.shp, .gpkg/layer_name)', type=str)
-    parser.add_argument('valley_centerline',
-                        help='vbet centerline feature class')
+    parser.add_argument('vbet_dgos', help='vbet segment polygons')
+    parser.add_argument('vbet_igos', help='valley bottom or other polygon representing confining boundary (.shp, .gpkg/layer_name)', type=str)
+    parser.add_argument('valley_centerline', help='vbet centerline feature class')
     parser.add_argument('dem', help='dem')
     parser.add_argument('hillshade', help='hillshade')
+    parser.add_argument('evt', help='landfire evt raster')
+    parser.add_argument('bps', help='landfire bps raster')
     parser.add_argument('output_folder', help='Output folder', type=str)
-    parser.add_argument('--confinement_dgos',
-                        help='confinement dgos', type=str)
+    parser.add_argument('--confinement_dgos', help='confinement dgos', type=str)
+    parser.add_argument('--hydro_dgos', help='hydro dgos', type=str)
     parser.add_argument('--anthro_dgos', help='anthro dgos', type=str)
+    parser.add_argument('--anthro_lines', help='anthro lines', type=str)
     parser.add_argument('--rcat_dgos', help='rcat_dgos', type=str)
     parser.add_argument('--brat_dgos', help='brat dgos', type=str)
-    parser.add_argument(
-        '--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
-    parser.add_argument('--verbose', help='(optional) a little extra logging ',
-                        action='store_true', default=False)
+    parser.add_argument('--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
+    parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
     parser.add_argument('--debug', help="(optional) save intermediate outputs for debugging",
                         action='store_true', default=False)
 
@@ -1827,16 +1827,21 @@ def main():
             retcode, max_obj = ThreadRun(metric_engine, memfile,
                                          args.huc,
                                          args.flowlines,
+                                         args.waterbodies,
                                          args.vaa_table,
                                          args.counties,
-                                         args.dgos,
-                                         args.vbet_points,
+                                         args.vbet_dgos,
+                                         args.vbet_igos,
                                          args.valley_centerline,
                                          args.dem,
                                          args.hillshade,
+                                         args.evt,
+                                         args.bps,
                                          args.output_folder,
                                          args.confinement_dgos,
+                                         args.hydro_dgos,
                                          args.anthro_dgos,
+                                         args.anthro_lines,
                                          args.rcat_dgos,
                                          args.brat_dgos,
                                          meta=meta)
@@ -1845,16 +1850,21 @@ def main():
         else:
             metric_engine(args.huc,
                           args.flowlines,
+                          args.waterbodies,
                           args.vaa_table,
                           args.counties,
-                          args.dgos,
-                          args.vbet_points,
+                          args.vbet_dgos,
+                          args.vbet_igos,
                           args.valley_centerline,
                           args.dem,
                           args.hillshade,
+                          args.evt,
+                          args.bps,
                           args.output_folder,
                           args.confinement_dgos,
+                          args.hydro_dgos,
                           args.anthro_dgos,
+                          args.anthro_lines,
                           args.rcat_dgos,
                           args.brat_dgos,
                           meta=meta)
