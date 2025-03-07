@@ -1,4 +1,6 @@
 import sqlite3
+import numpy as np
+from rasterio.mask import mask
 from rscommons import GeopackageLayer, Logger
 
 
@@ -80,3 +82,39 @@ def value_from_dataset_area(field_name, dataset, dgo_ftr):
         majority_attribute = str(max(attributes, key=attributes.get))
 
     return majority_attribute
+
+
+def raster_pixel_value_count(raster, dgo_ftr):
+    values = {}
+    raw_raster = mask(raster, [dgo_ftr], crop=True)[0]
+    mask_raster = np.ma.masked_values(raw_raster, raster.nodata)
+
+    for value in np.unique(mask_raster):
+        if value is not np.ma.masked:
+            values[value] = np.count_nonzero(mask_raster == value)
+
+    return values
+
+
+def proportion_of_veg_type(veg_id_dict: dict, veg_class: str, database: str):
+    class_count = {}
+    for veg_id, count in veg_id_dict.items():
+        with sqlite3.connect(database) as conn:
+            curs = conn.cursor()
+            curs.execute(
+                f"SELECT Physiognomy FROM VegetationTypes WHERE veg_id = {veg_id}")
+            v_class = curs.fetchone()[0]
+            class_count[v_class] = class_count.get(v_class, 0) + count
+
+    proportion = class_count[veg_class] / sum(class_count.values())
+
+    return proportion
+
+
+def value_by_count(junctions, dgo_ftr, junction_type):
+    with GeopackageLayer(junctions) as lyr_pts:
+        count = 0
+        for feat, *_ in lyr_pts.iterate_features(clip_shape=dgo_ftr, attribute_filter=f""""JunctionType" = '{junction_type}'"""):
+            count += 1
+
+    return count
