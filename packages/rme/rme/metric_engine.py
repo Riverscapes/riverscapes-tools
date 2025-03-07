@@ -31,6 +31,7 @@ from rscommons.util import parse_metadata, pretty_duration
 from rscommons.database import load_lookup_data
 from rscommons.geometry_ops import reduce_precision, get_endpoints
 from rscommons.vector_ops import copy_feature_class, collect_linestring
+from rscommons.copy_features import copy_features_fields
 from rscommons.vbet_network import copy_vaa_attributes, join_attributes
 from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions
 from rscommons.moving_window import moving_window_dgo_ids
@@ -39,7 +40,7 @@ from rme.__version__ import __version__
 from rme.analysis_window import AnalysisLine
 from rme.rme_report import RMEReport, FILTER_NAMES
 from rme.utils.check_vbet_inputs import vbet_inputs
-from rme.utils.summarize_functions import get_max_value, value_from_max_length, value_from_dgo, value_density_from_dgo, value_from_dataset_area
+from rme.utils.summarize_functions import *
 
 Path = str
 
@@ -55,33 +56,22 @@ LayerTypes = {
     # key: (name, id, tag, relpath)]
     'INPUTS': RSLayer('Inputs', 'INPUTS', 'Geopackage', 'inputs/inputs.gpkg', {
         'FLOWLINES': RSLayer('Flowlines', 'FLOWLINES', 'Vector', 'flowlines'),
-        # 'OWNERSHIP': RSLayer('Ownership', 'OWNERSHIP', 'Vector', 'ownership'),
-        # 'STATES': RSLayer('States', 'STATES', 'Vector', 'states'),
+        'WATERBODIES': RSLayer('Waterbodies', 'WATERBODIES', 'Vector', 'waterbodies'),
         'COUNTIES': RSLayer('Counties', 'COUNTIES', 'Vector', 'counties'),
         'VBET_DGOS': RSLayer('Vbet DGOs', 'VBET_DGOS', 'Vector', 'vbet_dgos'),
         'VBET_IGOS': RSLayer('Vbet IGOs', 'VBET_IGOS', 'Vector', 'vbet_igos'),
         'VBET_CENTERLINES': RSLayer('VBET Centerline', 'VBET_CENTERLINE', 'Vector', 'valley_centerlines')
-        # 'ECOREGIONS': RSLayer('Ecoregions', 'ECOREGIONS', 'Vector', 'ecoregions'),
-        # 'ROADS': RSLayer('Roads', 'Roads', 'Vector', 'roads'),
-        # 'RAIL': RSLayer('Rail', 'Rail', 'Vector', 'rail'),
-        # add these dynamically if they exist
-        # 'CONFINEMENT_DGO': RSLayer('Confinement DGO', 'CONFINEMENT_DGO', 'Vector', 'confinement_dgo'),
-        # 'ANTHRO_DGO': RSLayer('Anthropogenic DGO', 'ANTHRO_DGO', 'Vector', 'anthro_dgo'),
-        # 'RCAT_DGO': RSLayer('RCAT DGO', 'RCAT_DGO', 'Vector', 'rcat_dgo')
     }),
     'DEM': RSLayer('DEM', 'DEM', 'Raster', 'inputs/dem.tif'),
     'HILLSHADE': RSLayer('Hillshade', 'HILLSHADE', 'Raster', 'inputs/hillshade.tif'),
     'EVT': RSLayer('Landfire EVT', 'EVT', 'Raster', 'inputs/evt.tif'),
     'BPS': RSLayer('Landfire BPS', 'BPS', 'Raster', 'inputs/bps.tif'),
     'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/rme_intermediates.gpkg', {
-        'JUNCTION_POINTS': RSLayer('Junction Points', 'JUNCTION_POINTS', 'Vector', 'junction_points'),
-        'RME_DGO': RSLayer('RME DGO', 'RME_DGO', 'Vector', 'dgos'),
-        'RME_IGO': RSLayer('RME IGO', 'RME_IGO', 'Vector', 'igos'),
-        'DGO_METRIC_VIEW': RSLayer('DGO Metrics', 'DGO_METRICS', 'Vector', 'vw_dgo_metrics'),
-        'IGO_METRIC_VIEW': RSLayer('IGO Metrics', 'IGO_METRICS', 'Vector', 'vw_igo_metrics'),
-        'DGO_MEASUREMENTS': RSLayer('DGO Measurements', 'DGO_MEASUREMENTS', 'Vector', 'vw_measurements')
+        'JUNCTION_POINTS': RSLayer('Junction Points', 'JUNCTION_POINTS', 'Vector', 'junction_points')
     }),
     'RME_OUTPUTS': RSLayer('Riverscapes Metrics', 'RME_OUTPUTS', 'Geopackage', 'outputs/riverscapes_metrics.gpkg', {
+        'GEOM_IGOS': RSLayer('RME IGO', 'GEOM_IGOS', 'Vector', 'igos'),
+        'GEOM_DGOS': RSLayer('RME DGO', 'GEOM_DGOS', 'Vector', 'dgos'),
         'DGO_METRICS': RSLayer('RME DGO', 'RME_DGO', 'Vector', 'rme_dgos'),
         'IGO_METRICS': RSLayer('RME IGO', 'RME_IGO', 'Vector', 'rme_igos'),
     }),
@@ -104,7 +94,7 @@ window_distance = {'0': 200.0, '1': 400.0,
                    '2': 1200.0, '3': 2000.0, '4': 8000.0}
 
 
-def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties: Path, in_segments: Path, in_points: Path,
+def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_table: Path, in_counties: Path, in_segments: Path, in_points: Path,
                   in_vbet_centerline: Path, in_dem: Path, in_hillshade: Path, in_evt: Path, in_bps: Path, project_folder: Path,
                   in_confinement_dgos: Path = None, in_hydro_dgos: Path = None, in_anthro_dgos: Path = None, in_anthro_lines: Path = None,
                   in_rcat_dgos: Path = None, in_brat_dgos: Path = None, level_paths: list = None, meta: dict = None):
@@ -177,18 +167,20 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
     GeopackageLayer.delete(intermediates_gpkg)
     GeopackageLayer.delete(outputs_gpkg)
 
-    flowlines = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
-    copy_feature_class(in_flowlines, flowlines)
-    counties_f = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['COUNTIES'].rel_path)
-    copy_feature_class(in_counties, counties_f)
-    segments = os.path.join(intermediates_gpkg, LayerTypes['INTERMEDIATES'].sub_layers['RME_DGO'].rel_path)
-    copy_feature_class(in_segments, os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['VBET_DGOS'].rel_path))
-    copy_feature_class(in_segments, segments)
-    points = os.path.join(intermediates_gpkg, LayerTypes['INTERMEDIATES'].sub_layers['RME_IGO'].rel_path)
-    copy_feature_class(in_points, os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['VBET_IGOS'].rel_path))
-    copy_feature_class(in_points, points)
-    centerlines = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['VBET_CENTERLINES'].rel_path)
-    copy_feature_class(in_vbet_centerline, centerlines)
+    src_layers = {
+        'FLOWLINES': in_flowlines,
+        'WATERBODIES': in_waterbodies,
+        'COUNTIES': in_counties,
+        'VBET_DGOS': in_segments,
+        'VBET_IGOS': in_points,
+        'VBET_CENTERLINES': in_vbet_centerline
+    }
+
+    input_layers = {}
+    for input_key, rslayer in LayerTypes['INPUTS'].sub_layers.items():
+        input_layers[input_key] = os.path.join(inputs_gpkg, rslayer.rel_path)
+        copy_feature_class(src_layers[input_key], input_layers[input_key], cfg.OUTPUT_EPSG)
+
     _dem_node, dem = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], in_dem)
     _hs_node, hillshade = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], in_hillshade)
     _evt_node, evt = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['EVT'], in_evt)
@@ -232,14 +224,34 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
     else:
         brat_dgos = None
 
+    # create output feature class fields. Only those listed here will get copied from the source
+    with GeopackageLayer(outputs_gpkg, layer_name=LayerTypes['OUTPUTS'].sub_layers['GEOM_IGOS'].rel_path, write=True) as out_lyr:
+        out_lyr.create_layer(ogr.wkbMultiPoint, epsg=cfg.OUTPUT_EPSG, options=['FID=IGOID'], fields={
+            'level_path': ogr.OFTReal,
+            'seg_distance': ogr.OFTReal
+        })
+
+    with GeopackageLayer(outputs_gpkg, layer_name=LayerTypes['OUTPUTS'].sub_layers['GEOM_DGOS'].rel_path, write=True) as out_lyr:
+        out_lyr.create_layer(ogr.wkbMultiPolygon, epsg=cfg.OUTPUT_EPSG, options=['FID=DGOID'], fields={
+            'level_path': ogr.OFTReal,
+            'seg_distance': ogr.OFTReal,
+            'centerline_length': ogr.OFTInteger,
+            'segment_area': ogr.OFTReal
+        })
+
+    points = os.path.join(outputs_gpkg, LayerTypes['OUTPUTS'].sub_layers['GEOM_IGOS'].rel_path)
+    segments = os.path.join(outputs_gpkg, LayerTypes['OUTPUTS'].sub_layers['GEOM_DGOS'].rel_path)
+    copy_features_fields(input_layers['VBET_IGOS'], points, epsg=cfg.OUTPUT_EPSG)
+    copy_features_fields(input_layers['VBET_DGOS'], segments, epsg=cfg.OUTPUT_EPSG)
+
     # get utm
-    with GeopackageLayer(points) as lyr_pts:
+    with GeopackageLayer(input_layers['VBET_IGOS']) as lyr_pts:
         feat = lyr_pts.ogr_layer.GetNextFeature()
         geom = feat.GetGeometryRef()
         utm_epsg = get_utm_zone_epsg(geom.GetPoint(0)[0])
 
-    vaa_table_name = copy_vaa_attributes(flowlines, in_vaa_table)
-    line_network = join_attributes(inputs_gpkg, "vw_flowlines_vaa", os.path.basename(flowlines), vaa_table_name, 'NHDPlusID', [
+    vaa_table_name = copy_vaa_attributes(input_layers['FLOWLINES'], in_vaa_table)
+    line_network = join_attributes(inputs_gpkg, "vw_flowlines_vaa", os.path.basename(input_layers['FLOWLINES']), vaa_table_name, 'NHDPlusID', [
                                    'STARTFLAG', 'DnDrainCou', 'RtnDiv'], 4326)
 
     # Prepare Junctions
@@ -286,25 +298,25 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
 
     database_folder = os.path.join(os.path.abspath(
         os.path.dirname(__file__)), 'database')
-    with sqlite3.connect(intermediates_gpkg) as conn:
+    with sqlite3.connect(outputs_gpkg) as conn:
         cursor = conn.cursor()
         with open(os.path.join(database_folder, 'metrics_schema.sql'), encoding='utf-8') as sqlfile:
             sql_commands = sqlfile.read()
             cursor.executescript(sql_commands)
             conn.commit()
     # Load tables
-    load_lookup_data(intermediates_gpkg, os.path.join(
-        database_folder, 'data_metrics'))
+    load_lookup_data(outputs_gpkg, os.path.join(
+        database_folder, 'data'))
 
     # index level path and seg distance
-    with sqlite3.connect(intermediates_gpkg) as conn:
-        curs = conn.cursor()
-        curs.execute("CREATE INDEX ix_dgos_level_path_seg_distance ON dgos (level_path, seg_distance)")
-        curs.execute("CREATE INDEX idx_igos_size ON igos (stream_size)")
-        curs.execute("CREATE INDEX ix_dgos_fcode ON dgos (FCode)")
-        curs.execute("CREATE INDEX ix_igos_level_path_seg_distance ON igos (level_path, seg_distance)")
-        curs.execute("CREATE INDEX idx_igos_fcode ON igos (FCode)")
-        conn.commit()
+    # with sqlite3.connect(intermediates_gpkg) as conn:
+    #     curs = conn.cursor()
+    #     curs.execute("CREATE INDEX ix_dgos_level_path_seg_distance ON dgos (level_path, seg_distance)")
+    #     curs.execute("CREATE INDEX idx_igos_size ON igos (stream_size)")
+    #     curs.execute("CREATE INDEX ix_dgos_fcode ON dgos (FCode)")
+    #     curs.execute("CREATE INDEX ix_igos_level_path_seg_distance ON igos (level_path, seg_distance)")
+    #     curs.execute("CREATE INDEX idx_igos_fcode ON igos (FCode)")
+    #     conn.commit()
 
     # Generate the list of level paths to run, sorted by ascending order and optional user filter
     level_paths_to_run = []
@@ -394,6 +406,29 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                 max_elev = None
 
                 # Calculate each metric if it is active
+                if 'AGENCY' in metrics:
+                    metric = metrics['AGENCY']
+
+                    majority_agency = value_from_max_length('ownership', line_network, feat_geom)
+                    if majority_agency is None:
+                        log.info(f'Unable to find majority agency for dgo {dgo_id} in level path {level_path}')
+                    metrics_output[metric['metric_id']] = majority_agency
+
+                if 'STATE' in metrics:
+                    metric = metrics['STATE']
+
+                    majority_state = value_from_max_length('us_state', line_network, feat_geom)
+                    if majority_state is None:
+                        log.warning(f'Unable to find majority state for dgo {dgo_id} in level path {level_path}')
+                    metrics_output[metric['metric_id']] = majority_state
+
+                if 'COUNTY' in metrics:
+                    metric = metrics['COUNTY']
+
+                    majority_county = value_from_dataset_area('NAME', counties_f, feat_geom)
+                    if majority_county is None:
+                        log.info(f'Unable to find majority county for dgo {dgo_id} in level path {level_path}')
+                    metrics_output[metric['metric_id']] = majority_county
                 if 'STRMGRAD' in metrics:
                     metric = metrics['STRMGRAD']
 
@@ -426,6 +461,82 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                         (max_elev - min_elev) / centerline_length)
                     metrics_output[metric['metric_id']] = gradient
 
+                if 'RELFLWLNGTH' in metrics:
+                    metric = metrics['RELFLWLNGTH']
+
+                    geom_flowline_full = collect_linestring(line_network, f'level_path = {level_path}')
+                    stream_length_total, *_ = get_segment_measurements(
+                        geom_flowline_full, src_dem, feat_geom, buffer_distance[stream_size], transform)
+                    centerline_length, *_ = get_segment_measurements(
+                        geom_centerline, src_dem, feat_geom, buffer_distance[stream_size], transform)
+                    if centerline_length <= 0:
+                        continue
+
+                    relative_flow_length = str(
+                        stream_length_total / centerline_length) if centerline_length > 0.0 else None
+                    metrics_output[metric['metric_id']] = relative_flow_length
+
+                if 'VALAZMTH' in metrics:
+                    metric = metrics['VALAZMTH']
+
+                    cline = AnalysisLine(geom_centerline, feat_geom)
+                    az = str(cline.azimuth()) if cline.azimuth() is not None else None
+                    metrics_output[metric['metric_id']] = az
+
+                if 'CONF' in metrics:
+                    metric = metrics['CONF']
+
+                    with GeopackageLayer(junctions) as lyr_pts:
+                        count = 0
+                        for feat, *_ in lyr_pts.iterate_features(clip_shape=feat_geom, attribute_filter=""""JunctionType" = 'Confluence'"""):
+                            count += 1
+                        metrics_output[metric['metric_id']] = str(count)
+
+                if 'DIFF' in metrics:
+                    metric = metrics['DIFF']
+
+                    with GeopackageLayer(junctions) as lyr_pts:
+                        count = 0
+                        for feat, *_ in lyr_pts.iterate_features(clip_shape=feat_geom, attribute_filter=""""JunctionType" = 'Diffluence'"""):
+                            count += 1
+                        metrics_output[metric['metric_id']] = str(count)
+
+                if 'TRIBS' in metrics:
+                    metric = metrics['TRIBS']
+
+                    with GeopackageLayer(junctions) as lyr_pts:
+                        count = 0
+                        for feat, *_ in lyr_pts.iterate_features(clip_shape=feat_geom, attribute_filter=""""JunctionType" = 'Tributary'"""):
+                            count += 1
+                        metrics_output[metric['metric_id']] = str(count)
+
+                if 'CHANSIN' in metrics:
+                    metric = metrics['CHANSIN']
+
+                    line = AnalysisLine(geom_flowline, feat_geom)
+                    measurements_output[measurements['STRMSTRLENG']['measurement_id']] = line.endpoint_distance
+                    sin = str(line.sinuosity()) if line.sinuosity(
+                    ) is not None else None
+                    metrics_output[metric['metric_id']] = sin
+
+                if 'DRAINAREA' in metrics:
+                    metric = metrics['DRAINAREA']
+
+                    drainage_area = get_max_value('DivDASqKm', line_network, feat_geom)
+                    if drainage_area is None:
+                        log.warning(f'Unable to calculate drainage area for dgo {dgo_id} in level path {level_path}')
+                    metrics_output[metric['metric_id']] = drainage_area
+
+                if 'WATERSHED' in metrics:
+                    metric = metrics['WATERSHED']
+                    metrics_output[metric['metric_id']] = str(huc)
+
+                if 'STRMNAME' in metrics:
+                    metric = metrics['STRMNAME']
+
+                    majority_attribute = value_from_max_length('GNIS_NAME', line_network, feat_geom)
+                    metrics_output[metric['metric_id']] = majority_attribute
+
                 if 'STRMORDR' in metrics:
                     metric = metrics['STRMORDR']
 
@@ -457,12 +568,6 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                         is_headwater = str(1) if sum_attributes.get('1', 0) / sum(sum_attributes.values()) > 0.5 else str(0)
                     metrics_output[metric['metric_id']] = is_headwater
 
-                if 'STRMNAME' in metrics:
-                    metric = metrics['STRMNAME']
-
-                    majority_attribute = value_from_max_length('GNIS_NAME', line_network, feat_geom)
-                    metrics_output[metric['metric_id']] = majority_attribute
-
                 if 'STRMTYPE' in metrics:
                     metric = metrics['STRMTYPE']
 
@@ -481,6 +586,69 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                             leng += section_proj.length
                         lyr_lines = None
                     metrics_output[metric['metric_id']] = str(leng)
+
+                if 'WATERTYPE' in metrics:
+                    metric = metrics['WATERTYPE']
+
+                    wbtype = value_from_dataset_area('fcode', waterbodies, feat_geom)
+                    metrics_output[metric['metric_id']] = wbtype
+
+                if 'WATEREXT' in metrics:
+                    metric = metrics['WATEREXT']
+                    with GeopackageLayer(waterbodies) as lyr_wb:
+                        wb_area = 0
+                        for feat_wb, *_ in lyr_wb.iterate_features(clip_shape=feat_geom):
+                            wb_geom = feat_wb.GetGeometryRef()
+                            wb_section = wb_geom.Intersection(feat_geom)
+                            wb_proj = VectorBase.ogr2shapely(wb_section, transform=transform)
+                            wb_area += wb_proj.area
+                        metrics_output[metric['metric_id']] = str(wb_area)
+
+                if 'ECORGIII' in metrics:
+                    metric = metrics['ECORGIII']
+
+                    majority_attribute = value_from_max_length('ecoregion_iii', line_network, feat_geom)
+                    if majority_attribute is None:
+                        log.warning(f'Unable to find majority ecoregion III for dgo {dgo_id} in level path {level_path}')
+                    metrics_output[metric['metric_id']] = majority_attribute
+
+                if 'ECORGIV' in metrics:
+                    metric = metrics['ECORGIV']
+
+                    majority_attribute = value_from_max_length('ecoregion_iv', line_network, feat_geom)
+                    if majority_attribute is None:
+                        log.warning(f'Unable to find majority ecoregion IV for dgo {dgo_id} in level path {level_path}')
+                    metrics_output[metric['metric_id']] = majority_attribute
+
+                if 'LFEVT' in metrics:
+                    metric = metrics['LFEVT']
+                    outvals = []
+
+                    with rasterio.open(evt) as src_evt:
+                        evt_vals = raster_pixel_value_count(src_evt, feat_geom)
+                        for pixelval, count in evt_vals.items():
+                            if count / sum(evt_vals.values()) > 0.3:  # arbitrarily 30%
+                                outvals.append(str(pixelval))
+                    outevt = ','.join(outvals)
+                    metrics_output[metric['metric_id']] = outevt
+
+                if 'LFBPS' in metrics:
+                    metric = metrics['LFBPS']
+                    outvals = []
+
+                    with rasterio.open(bps) as src_bps:
+                        bps_vals = raster_pixel_value_count(src_bps, feat_geom)
+                        for pixelval, count in bps_vals.items():
+                            if count / sum(bps_vals.values()) > 0.3:
+                                outvals.append(str(pixelval))
+                    outbps = ','.join(outvals)
+                    metrics_output[metric['metric_id']] = outbps
+
+                if 'LFAG' in metrics and evt_vals:
+                    metric = metrics['LFAG']
+                    # take dict of evt_vals and get corresponding proportion of vals whos phys is ag
+                    prop = proportion_of_veg_type(evt_vals, 'Agriculture', intermediates_gpkg)
+                    metrics_output[metric['metric_id']] = str(prop)
 
                 if 'ACTFLDAREA' in metrics:
                     metric = metrics['ACTFLDAREA']
@@ -558,21 +726,6 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                         'centerline_length') * 0.001)) if feat_seg_dgo.GetField('centerline_length') is not None else None
                     metrics_output[metric['metric_id']] = ac_km
 
-                if 'RELFLWLNGTH' in metrics:
-                    metric = metrics['RELFLWLNGTH']
-
-                    geom_flowline_full = collect_linestring(line_network, f'level_path = {level_path}')
-                    stream_length_total, *_ = get_segment_measurements(
-                        geom_flowline_full, src_dem, feat_geom, buffer_distance[stream_size], transform)
-                    centerline_length, *_ = get_segment_measurements(
-                        geom_centerline, src_dem, feat_geom, buffer_distance[stream_size], transform)
-                    if centerline_length <= 0:
-                        continue
-
-                    relative_flow_length = str(
-                        stream_length_total / centerline_length) if centerline_length > 0.0 else None
-                    metrics_output[metric['metric_id']] = relative_flow_length
-
                 if 'STRMSIZE' in metrics:
                     metric = metrics['STRMSIZE']
 
@@ -582,73 +735,6 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
                     stream_size_metric = str(feat_seg_dgo.GetField(
                         'active_channel_area') / stream_length) if stream_length > 0.0 else None
                     metrics_output[metric['metric_id']] = stream_size_metric
-
-                if 'ECORGIII' in metrics:
-                    metric = metrics['ECORGIII']
-
-                    majority_attribute = value_from_max_length('ecoregion_iii', line_network, feat_geom)
-                    if majority_attribute is None:
-                        log.warning(f'Unable to find majority ecoregion III for dgo {dgo_id} in level path {level_path}')
-                    metrics_output[metric['metric_id']] = majority_attribute
-
-                if 'ECORGIV' in metrics:
-                    metric = metrics['ECORGIV']
-
-                    majority_attribute = value_from_max_length('ecoregion_iv', line_network, feat_geom)
-                    if majority_attribute is None:
-                        log.warning(f'Unable to find majority ecoregion IV for dgo {dgo_id} in level path {level_path}')
-                    metrics_output[metric['metric_id']] = majority_attribute
-
-                if 'CONF' in metrics:
-                    metric = metrics['CONF']
-
-                    with GeopackageLayer(junctions) as lyr_pts:
-                        count = 0
-                        for feat, *_ in lyr_pts.iterate_features(clip_shape=feat_geom, attribute_filter=""""JunctionType" = 'Confluence'"""):
-                            count += 1
-                        metrics_output[metric['metric_id']] = str(count)
-
-                if 'DIFF' in metrics:
-                    metric = metrics['DIFF']
-
-                    with GeopackageLayer(junctions) as lyr_pts:
-                        count = 0
-                        for feat, *_ in lyr_pts.iterate_features(clip_shape=feat_geom, attribute_filter=""""JunctionType" = 'Diffluence'"""):
-                            count += 1
-                        metrics_output[metric['metric_id']] = str(count)
-
-                if 'TRIBS' in metrics:
-                    metric = metrics['TRIBS']
-
-                    with GeopackageLayer(junctions) as lyr_pts:
-                        count = 0
-                        for feat, *_ in lyr_pts.iterate_features(clip_shape=feat_geom, attribute_filter=""""JunctionType" = 'Tributary'"""):
-                            count += 1
-                        metrics_output[metric['metric_id']] = str(count)
-
-                if 'CHANSIN' in metrics:
-                    metric = metrics['CHANSIN']
-
-                    line = AnalysisLine(geom_flowline, feat_geom)
-                    measurements_output[measurements['STRMSTRLENG']['measurement_id']] = line.endpoint_distance
-                    sin = str(line.sinuosity()) if line.sinuosity(
-                    ) is not None else None
-                    metrics_output[metric['metric_id']] = sin
-
-                if 'DRAINAREA' in metrics:
-                    metric = metrics['DRAINAREA']
-
-                    drainage_area = get_max_value('DivDASqKm', line_network, feat_geom)
-                    if drainage_area is None:
-                        log.warning(f'Unable to calculate drainage area for dgo {dgo_id} in level path {level_path}')
-                    metrics_output[metric['metric_id']] = drainage_area
-
-                if 'VALAZMTH' in metrics:
-                    metric = metrics['VALAZMTH']
-
-                    cline = AnalysisLine(geom_centerline, feat_geom)
-                    az = str(cline.azimuth()) if cline.azimuth() is not None else None
-                    metrics_output[metric['metric_id']] = az
 
                 if 'CNFMT' in metrics and confinement_dgos:
                     metric = metrics['CNFMT']
@@ -699,30 +785,6 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
 
                     fp_access = value_from_dgo(inputs_gpkg, dgo_id, 'FloodplainAccess', 'rcat_dgo')
                     metrics_output[metric['metric_id']] = str(fp_access)
-
-                if 'AGENCY' in metrics:
-                    metric = metrics['AGENCY']
-
-                    majority_agency = value_from_max_length('ownership', line_network, feat_geom)
-                    if majority_agency is None:
-                        log.info(f'Unable to find majority agency for dgo {dgo_id} in level path {level_path}')
-                    metrics_output[metric['metric_id']] = majority_agency
-
-                if 'STATE' in metrics:
-                    metric = metrics['STATE']
-
-                    majority_state = value_from_max_length('us_state', line_network, feat_geom)
-                    if majority_state is None:
-                        log.warning(f'Unable to find majority state for dgo {dgo_id} in level path {level_path}')
-                    metrics_output[metric['metric_id']] = majority_state
-
-                if 'COUNTY' in metrics:
-                    metric = metrics['COUNTY']
-
-                    majority_county = value_from_dataset_area('NAME', counties_f, feat_geom)
-                    if majority_county is None:
-                        log.info(f'Unable to find majority county for dgo {dgo_id} in level path {level_path}')
-                    metrics_output[metric['metric_id']] = majority_county
 
                 if 'PROP_RIP' in metrics:
                     metric = metrics['PROP_RIP']
@@ -775,10 +837,6 @@ def metric_engine(huc: int, in_flowlines: Path, in_vaa_table: Path, in_counties:
 
                     bratopp = value_from_dgo(inputs_gpkg, dgo_id, 'Opportunity', 'brat_dgo')
                     metrics_output[metric['metric_id']] = str(bratopp)
-
-                if 'WATERSHED' in metrics:
-                    metric = metrics['WATERSHED']
-                    metrics_output[metric['metric_id']] = str(huc)
 
                 # Write to Metrics
                 if len(metrics_output) > 0:

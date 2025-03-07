@@ -10,32 +10,31 @@ CREATE TABLE metrics (
     medium REAL,
     large REAL,
     metric_group_id INTEGER,
+    metric_calculation_id INTEGER,
     is_active BOOLEAN,
     docs_url TEXT
+
+    CONSTRAINT fk_metric_group_id FOREIGN KEY (metric_group_id) REFERENCES metric_groups (metric_group_id),
+    CONSTRAINT fk_metric_calculation_id FOREIGN KEY (metric_calculation_id) REFERENCES metric_calculations (metric_calculation_id)
 );
 
-CREATE TABLE dgo_metric_values (
-    dgo_id INTEGER NOT NULL,
-    metric_id INTEGER NOT NULL,
-    metric_value TEXT,
-    metadata TEXT,
-    qaqc_date TEXT,
-    PRIMARY KEY (dgo_id, metric_id)
-
-    CONSTRAINT fk_point_id FOREIGN KEY (dgo_id) REFERENCES dgos (fid) ON DELETE CASCADE,
-    CONSTRAINT fk_metric_id FOREIGN KEY (metric_id) REFERENCES metrics (metric_id) ON DELETE CASCADE
+CREATE TABLE metric_groups (
+    metric_group_id INTEGER PRIMARY KEY NOT NULL,
+    metric_group_name TEXT,
+    description TEXT
 );
 
-CREATE TABLE igo_metric_values (
-    igo_id INTEGER NOT NULL,
-    metric_id INTEGER NOT NULL,
-    metric_value TEXT,
-    metadata TEXT,
-    qaqc_date TEXT,
-    PRIMARY KEY (igo_id, metric_id)
+CREATE TABLE metric_calculations (
+    metric_calculation_id INTEGER PRIMARY KEY NOT NULL,
+    calculation_method TEXT,
+    description TEXT
+);
 
-    CONSTRAINT fk_igo_id FOREIGN KEY (igo_id) REFERENCES igos (fid),
-    CONSTRAINT fk_metric_id FOREIGN KEY (metric_id) REFERENCES metrics (metric_id)
+CREATE TABLE VegetationTypes (
+    VegetationID INTEGER PRIMARY KEY NOT NULL,
+    EpochID INTEGER,
+    Name TEXT,
+    Physiognomy TEXT
 );
 
 CREATE TABLE measurements (
@@ -58,6 +57,71 @@ CREATE TABLE measurement_values (
     CONSTRAINT fk_measurement_values_dgo_id FOREIGN KEY (dgo_id) REFERENCES dgos (fid),
     CONSTRAINT fk_measurement_values_measurement_id FOREIGN KEY (measurement_id) REFERENCES measurements (measurement_id)
 );
+
+CREATE TABLE dgo_dataset_metrics (
+    DGOID INTEGER PRIMARY KEY NOT NULL,
+    ownership TEXT,
+    state TEXT,
+    county TEXT,
+    drainage_area REAL,
+    watershed_id TEXT,
+    stream_name TEXT,
+    stream_order INTEGER,
+    headwater INTEGER,
+    stream_type INTEGER,
+    stream_length REAL,
+    waterbody_type INTEGER,
+    waterbody_extent REAL,
+    ecoregion3 TEXT,
+    ecoregion4 TEXT,
+    landfire_evt TEXT,
+    landfire_bps TEXT,
+    ex_agriculture REAL,
+    ex_prop_agriculture REAL,
+    ex_conifer REAL,
+    ex_prop_conifer REAL,
+    ex_conifer_hardwood REAL,
+    ex_prop_conifer_hardwood REAL,
+    ex_developed REAL,
+    ex_prop_developed REAL,
+    ex_exotic_herbaceous REAL,
+    ex_prop_exotic_herbaceous REAL,
+    ex_exotic_tree_shrub REAL,
+    ex_prop_exotic_tree_shrub REAL,
+    ex_grassland REAL,
+    ex_prop_grassland REAL,
+    ex_hardwood REAL,
+    ex_prop_hardwood REAL,
+    ex_riparian REAL,
+    ex_prop_riparian REAL,
+    ex_shrubland REAL,
+    ex_prop_shrubland REAL,
+    ex_sparsely_vegetated REAL,
+    ex_prop_sparsely_vegetated REAL,
+    hist_conifer REAL,
+    hist_prop_conifer REAL,
+    hist_conifer_hardwood REAL,
+    hist_prop_conifer_hardwood REAL,
+    hist_grassland REAL,
+    hist_prop_grassland REAL,
+    hist_hardwood REAL,
+    hist_prop_hardwood REAL,
+    hist_hardwood_conifer REAL,
+    hist_peatland_forest REAL,
+    hist_prop_peatland_forest REAL,
+    hist_peatland_nonforest REAL,
+    hist_prop_peatland_nonforest REAL,
+    hist_riparian REAL,
+    hist_prop_riparian REAL,
+    hist_savanna REAL,
+    hist_prop_savanna REAL,
+    hist_shrubland REAL,
+    hist_prop_shrubland REAL,
+    hist_sparsely_vegetated REAL,
+    hist_prop_sparsely_vegetated REAL
+);
+
+
 CREATE INDEX fx_measurement_values_measurement_id ON measurement_values (measurement_id);
 
 CREATE INDEX ix_dgo_metric_values_metric_id ON dgo_metric_values (metric_id);

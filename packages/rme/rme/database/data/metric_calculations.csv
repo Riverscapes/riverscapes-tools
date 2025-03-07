@@ -1,0 +1,8 @@
+metric_calculation_id,calculation_method,description
+1,value from dgo,copy the value directly from another dgo as the metric
+2,value density from dgo,take the value from another dgo and divide by the dgo centerline length
+3,max value,take the largest value of the data as the metric
+4,value from max length,take the value from the feature with the longest length as the metric
+5,value from max area,take the value from the feature with the largest area as the metric
+6,value from count, count the number of features to get the metric
+7,other,another bespoke method that must be hardcoded
