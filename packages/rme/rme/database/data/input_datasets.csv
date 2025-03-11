@@ -1,0 +1,75 @@
+metric_id,dataset,field_name,field_value
+1,inputs/inputs.gpkg/flowlines,ownership,
+2,inputs/inputs.gpkg/flowlines,state,
+3,inputs/inputs.gpkg/counties,NAME,
+8,intermediates/rme_intermediates.gpkg/junction_points,JunctionType,Confluence
+9,intermediates/rme_intermediates.gpkg/junction_points,JunctionType,Diffluence
+10,intermediates/rme_intermediates.gpkg/junction_points,JunctionType,Tributary
+12,inputs/inputs.gpkg/flowlines,DivDASqKm,
+14,inputs/inputs.gpkg/flowlines,GNIS_Name,
+15,inputs/inputs.gpkg/flowlines,stream_order,
+17,inputs/inputs.gpkg/flowlines,FCode,
+19,inputs/inputs.gpkg/waterbodies,FCode,
+21,inputs/inputs.gpkg/flowlines,ecoregion_iii,
+22,inputs/inputs.gpkg/flowlines,ecoregion_iv,
+25,outputs/riverscapes_metrics.gpkg/dgo_vegetation,physiognomy,Agriculture
+26,outputs/riverscapes_metrics.gpkg/dgo_vegetation,physiognomy,Conifer
+27,outputs/riverscapes_metrics.gpkg/dgo_vegetation,physiognomy,Conifer-Hardwood
+28,outputs/riverscapes_metrics.gpkg/dgo_vegetation,physiognomy,Developed
+29,outputs/riverscapes_metrics.gpkg/dgo_vegetation,physiognomy,Exotic Herbaceous
+30,outputs/riverscapes_metrics.gpkg/dgo_vegetation,physiognomy,Exotic Tree-Shrub
+31,outputs/riverscapes_metrics.gpkg/dgo_vegetation,physiognomy,Grassland
+32,outputs/riverscapes_metrics.gpkg/dgo_vegetation,physiognomy,Hardwood
+33,outputs/riverscapes_metrics.gpkg/dgo_vegetation,physiognomy,Riparian
+34,outputs/riverscapes_metrics.gpkg/dgo_vegetation,physiognomy,Shrubland
+35,outputs/riverscapes_metrics.gpkg/dgo_vegetation,physiognomy,Sparsely Vegetated
+36,outputs/riverscapes_metrics.gpkg/dgo_hist_vegetation,physiognomy,Conifer
+37,outputs/riverscapes_metrics.gpkg/dgo_hist_vegetation,physiognomy,Conifer-Hardwood
+38,outputs/riverscapes_metrics.gpkg/dgo_hist_vegetation,physiognomy,Grassland
+39,outputs/riverscapes_metrics.gpkg/dgo_hist_vegetation,physiognomy,Hardwood
+40,outputs/riverscapes_metrics.gpkg/dgo_hist_vegetation,physiognomy,Hardwood-Conifer
+41,outputs/riverscapes_metrics.gpkg/dgo_hist_vegetation,physiognomy,Peatland Forest
+42,outputs/riverscapes_metrics.gpkg/dgo_hist_vegetation,physiognomy,Peatland Non-Forest
+43,outputs/riverscapes_metrics.gpkg/dgo_hist_vegetation,physiognomy,Riparian
+44,outputs/riverscapes_metrics.gpkg/dgo_hist_vegetation,physiognomy,Savanna
+45,outputs/riverscapes_metrics.gpkg/dgo_hist_vegetation,physiognomy,Shrubland
+46,outputs/riverscapes_metrics.gpkg/dgo_hist_vegetation,physiognomy,Sparsely Vegetated
+47,inputs/inputs.gpkg/vbet_dgos,low_lying_floodplain_area,
+48,inputs/inputs.gpkg/vbet_dgos,elevated_floodplain_area,
+49,inputs/inputs.gpkg/vbet_dgos,active_channel_area,
+50,inputs/inputs.gpkg/vbet_dgos,floodplain_area,
+51,inputs/inputs.gpkg/vbet_dgos,integrated_width,
+52,inputs/inputs.gpkg/vbet_dgos,active_channel_prop,
+53,inputs/inputs.gpkg/vbet_dgos,low_lying_floodplain_prop,
+54,inputs/inputs.gpkg/vbet_dgos,elevated_floodplain_prop,
+55,inputs/inputs.gpkg/vbet_dgos,floodplain_prop,
+59,inputs/inputs.gpkg/confinement_dgo,confinement_ratio,
+60,inputs/inputs.gpkg/confinement_dgo,constriction_ratio,
+61,inputs/inputs.gpkg/confinement_dgo,confin_leng,
+63,inputs/inputs.gpkg/hydro_dgo,SPLow,
+64,inputs/inputs.gpkg/hydro_dgo,SP2,
+65,inputs/inputs.gpkg/anthro_dgo,Road_len,
+66,inputs/inputs.gpkg/anthro_dgo,Rail_len,
+67,inputs/inputs.gpkg/anthro_dgo,LUI,
+68,inputs/inputs.gpkg/anthro_flowlines,iPC_Road,
+69,inputs/inputs.gpkg/anthro_flowlines,iPC_Rail,
+70,inputs/inputs.gpkg/anthro_flowlines,iPC_DivPts,
+71,inputs/inputs.gpkg/anthro_flowlines,iPC_Canal,
+72,inputs/inputs.gpkg/anthro_flowlines,oPC_Dist,
+73,inputs/inputs.gpkg/rcat_dgo,FloodplainAccess,
+77,inputs/inputs.gpkg/rcat_dgo,ExistingRiparianMean,
+78,inputs/inputs.gpkg/rcat_dgo,HistoricRiparainMean,
+79,inputs/inputs.gpkg/rcat_dgo,RiparianDeparture,
+80,inputs/inputs.gpkg/rcat_dgo,Agriculture,
+81,inputs/inputs.gpkg/rcat_dgo,Development,
+82,inputs/inputs.gpkg/rcat_dgo,GrassShrubland,
+83,inputs/inputs.gpkg/rcat_dgo,Conifer,
+84,inputs/inputs.gpkg/rcat_dgo,Invasive,
+85,inputs/inputs.gpkg/rcat_dgo,Condition,
+86,inputs/inputs.gpkg/brat_dgo,oCC_EX,
+87,inputs/inputs.gpkg/brat_dgo,oCC_HPE,
+88,inputs/inputs.gpkg/brat_dgo,Risk,
+89,inputs/inputs.gpkg/brat_dgo,Opportunity,
+90,inputs/inputs.gpkg/brat_dgo,Limitation,
+91,inputs/inputs.gpkg/brat_dgo,mCC_EX_CT,
+92,inputs/inputs.gpkg/brat_dgo,mCC_HPE_CT,

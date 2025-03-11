@@ -14,6 +14,7 @@ import os
 import sys
 import sqlite3
 import time
+import inspect
 import argparse
 import traceback
 from collections import Counter
@@ -353,6 +354,11 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
 
     measurements = generate_metric_list(intermediates_gpkg, group_id=None, source_table='measurements')
 
+    buffer_distance = {}
+    for stream_size, distance in gradient_buffer_lookup.items():
+        buffer = VectorBase.rough_convert_metres_to_raster_units(dem, distance)
+        buffer_distance[stream_size] = buffer
+
     with sqlite3.connect(outputs_gpkg) as conn:
         curs = conn.cursor()
         curs.execute("SELECT DISTINCT metric_group_id, metric_group_name FROM metric_groups")
@@ -363,60 +369,62 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
 
         metrics = generate_metric_list(outputs_gpkg, metric_group[0])
 
-    buffer_distance = {}
-    for stream_size, distance in gradient_buffer_lookup.items():
-        buffer = VectorBase.rough_convert_metres_to_raster_units(dem, distance)
-        buffer_distance[stream_size] = buffer
+        progbar = ProgressBar(len(level_paths_to_run), 50,
+                            f"Calculating Riverscapes Metrics for {metric_group[1]}")
+        counter = 0
+        for level_path in level_paths_to_run:
+            lp_metrics = {}
+            lp_meas = {}
+            progbar.update(counter)
+            counter += 1
 
-    progbar = ProgressBar(len(level_paths_to_run), 50,
-                          "Calculating Riverscapes Metrics")
-    counter = 0
-    for level_path in level_paths_to_run:
-        lp_metrics = {}
-        lp_meas = {}
-        progbar.update(counter)
-        counter += 1
+            with GeopackageLayer(segments) as lyr_segments, \
+                    rasterio.open(dem) as src_dem:
 
-        with GeopackageLayer(segments) as lyr_segments, \
-                rasterio.open(dem) as src_dem:
+                # buffer_size_clip = lyr_points.rough_convert_metres_to_vector_units(0.25)
+                _transform_ref, transform = VectorBase.get_transform_from_epsg(lyr_segments.spatial_ref, utm_epsg)
+                AnalysisLine.transform = transform
 
-            # buffer_size_clip = lyr_points.rough_convert_metres_to_vector_units(0.25)
-            _transform_ref, transform = VectorBase.get_transform_from_epsg(lyr_segments.spatial_ref, utm_epsg)
-            AnalysisLine.transform = transform
-
-            geom_flowline = collect_linestring(line_network, f'level_path = {level_path}')
-            if geom_flowline.IsEmpty():
-                log.error(
-                    f'Flowline for level path {level_path} is empty geometry')
-                continue
-
-            geom_centerline = collect_linestring(
-                input_layers['VBET_CENTERLINES'], f'level_path = {level_path}', precision=8)
-
-            for feat_seg_dgo, *_ in lyr_segments.iterate_features(attribute_filter=f'level_path = {level_path}'):
-                # Gather common components for metric calcuations
-                feat_geom = feat_seg_dgo.GetGeometryRef().Clone()
-                dgo_id = feat_seg_dgo.GetFID()
-                segment_distance = feat_seg_dgo.GetField('seg_distance')
-                if segment_distance is None:
+                geom_flowline = collect_linestring(line_network, f'level_path = {level_path}')
+                if geom_flowline.IsEmpty():
+                    log.error(
+                        f'Flowline for level path {level_path} is empty geometry')
                     continue
-                # stream_size_id = feat_seg_pt.GetField('stream_size')
-                # curs.execute("SELECT stream_size from points WHERE seg_distance = ? and LevelPathI = ?", (segment_distance, level_path))
-                # stream_size_id = curs.fetchone()[0]
-                with GeopackageLayer(points) as lyr_points:
-                    for pt_ftr, *_ in lyr_points.iterate_features(attribute_filter=f'level_path = {level_path} and seg_distance = {segment_distance}'):
-                        stream_size_id = pt_ftr.GetField('stream_size')
-                        break
-                if not 'stream_size_id' in locals():
-                    log.warning(f'Unable to find stream size for dgo {dgo_id} in level path {level_path}')
-                    stream_size_id = 0
 
-                stream_size = stream_size_lookup[stream_size_id]
-                # window_geoms = {}  # Different metrics may require different windows. Store generated windows here for reuse.
-                metrics_output = {}
-                measurements_output = {}
-                min_elev = None
-                max_elev = None
+                geom_centerline = collect_linestring(
+                    input_layers['VBET_CENTERLINES'], f'level_path = {level_path}', precision=8)
+
+                for feat_seg_dgo, *_ in lyr_segments.iterate_features(attribute_filter=f'level_path = {level_path}'):
+                    # Gather common components for metric calcuations
+                    feat_geom = feat_seg_dgo.GetGeometryRef().Clone()
+                    dgo_id = feat_seg_dgo.GetFID()
+                    segment_distance = feat_seg_dgo.GetField('seg_distance')
+                    if segment_distance is None:
+                        continue
+
+                    with GeopackageLayer(points) as lyr_points:
+                        for pt_ftr, *_ in lyr_points.iterate_features(attribute_filter=f'level_path = {level_path} and seg_distance = {segment_distance}'):
+                            stream_size_id = pt_ftr.GetField('stream_size')
+                            break
+                    if not 'stream_size_id' in locals():
+                        log.warning(f'Unable to find stream size for dgo {dgo_id} in level path {level_path}')
+                        stream_size_id = 0
+
+                    stream_size = stream_size_lookup[stream_size_id]
+                    # window_geoms = {}  # Different metrics may require different windows. Store generated windows here for reuse.
+                    metrics_output = {}
+                    measurements_output = {}
+                    min_elev = None
+                    max_elev = None
+
+                    possible_args = {
+                        'in_line_network': line_network,
+                        'dgo_ftr': feat_geom,
+                        'dgoid': dgo_id,
+                        'layer_name'
+                    }
+                    for metric in metrics:
+
 
                 # Calculate each metric if it is active
                 if 'AGENCY' in metrics:

@@ -1,10 +1,11 @@
 import sqlite3
+import os
 import numpy as np
 from rasterio.mask import mask
 from rscommons import GeopackageLayer, Logger
 
 
-def get_max_value(field_name, in_line_network, dgo_ftr):
+def get_max_value(dgo_ftr, in_line_network, field_name):
 
     results = []
     with GeopackageLayer(in_line_network) as lyr_lines:
@@ -19,7 +20,7 @@ def get_max_value(field_name, in_line_network, dgo_ftr):
     return out_val
 
 
-def value_from_max_length(field_name, in_line_network, dgo_ftr):
+def value_from_max_length(dgo_ftr, in_line_network, field_name):
     attributes = {}
     with GeopackageLayer(in_line_network) as lyr_lines:
         for feat, *_ in lyr_lines.iterate_features(clip_shape=dgo_ftr):
@@ -40,21 +41,23 @@ def value_from_max_length(field_name, in_line_network, dgo_ftr):
     return majority_attribute
 
 
-def value_from_dgo(geopackage, dgoid, layer_name, field_name):
-    with sqlite3.connect(geopackage) as conn:
+def value_from_dgo(dgo_ftr, in_dataset, field_name):
+    dgoid = dgo_ftr.GetField("DGOID")
+    with sqlite3.connect(os.path.dirname(in_dataset)) as conn:
         curs = conn.cursor()
         curs.execute(
-            f"SELECT {field_name} FROM {layer_name} WHERE fid = {dgoid}")
+            f"SELECT {field_name} FROM {os.path.basename(in_dataset)} WHERE fid = {dgoid}")
         value = curs.fetchone()[0]
 
     return value
 
 
-def value_density_from_dgo(geopackage, dgoid, layer_name, field_name):
-    with sqlite3.connect(geopackage) as conn:
+def value_density_from_dgo(dgo_ftr, in_dataset, field_name):
+    dgoid = dgo_ftr.GetField("DGOID")
+    with sqlite3.connect(os.path.dirname(in_dataset)) as conn:
         curs = conn.cursor()
         curs.execute(
-            f"SELECT {field_name}, centerline_length FROM {layer_name} WHERE fid = {dgoid}")
+            f"SELECT {field_name}, centerline_length FROM {os.path.basename(in_dataset)} WHERE fid = {dgoid}")
         val = curs.fetchone()
         if val[0] is not None and val[1] is not None:
             density = val[0] / \
@@ -65,13 +68,13 @@ def value_density_from_dgo(geopackage, dgoid, layer_name, field_name):
     return density
 
 
-def value_from_dataset_area(field_name, dataset, dgo_ftr):
+def value_from_dataset_area(dgo_ftr, in_dataset, field_name):
     attributes = {}
-    with GeopackageLayer(dataset) as lyr:
+    with GeopackageLayer(os.path.dirname(in_dataset)) as lyr:
         for feat, *_ in lyr.iterate_features(clip_shape=dgo_ftr):
-            geom_county = feat.GetGeometryRef()
+            geom = feat.GetGeometryRef()
             attribute = feat.GetField(field_name)
-            geom_section = dgo_ftr.Intersection(geom_county)
+            geom_section = dgo_ftr.Intersection(geom)
             area = geom_section.GetArea()
             attributes[attribute] = attributes.get(
                 attribute, 0) + area
@@ -84,7 +87,7 @@ def value_from_dataset_area(field_name, dataset, dgo_ftr):
     return majority_attribute
 
 
-def raster_pixel_value_count(raster, dgo_ftr):
+def raster_pixel_value_count(dgo_ftr, in_dataset):
     values = {}
     raw_raster = mask(raster, [dgo_ftr], crop=True)[0]
     mask_raster = np.ma.masked_values(raw_raster, raster.nodata)
@@ -111,10 +114,14 @@ def proportion_of_veg_type(veg_id_dict: dict, veg_class: str, database: str):
     return proportion
 
 
-def value_by_count(junctions, dgo_ftr, junction_type):
-    with GeopackageLayer(junctions) as lyr_pts:
+def value_by_count(dgo_ftr, in_dataset, field_name, field_value):
+    with GeopackageLayer(in_dataset) as lyr_pts:
         count = 0
-        for feat, *_ in lyr_pts.iterate_features(clip_shape=dgo_ftr, attribute_filter=f""""JunctionType" = '{junction_type}'"""):
+        for feat, *_ in lyr_pts.iterate_features(clip_shape=dgo_ftr, attribute_filter=f"""{field_name} = {field_value}"""):
             count += 1
 
     return count
+
+
+def call_function(func_name, *args):
+    return globals()[func_name](*args)
