@@ -113,8 +113,16 @@ def dgo_geometry(gpk_path: str, dem_path: str, field_names=default_dgo_field_nam
             # Get the reach attributes for this DGO
             drain_area = [0]
             ftrs = []
+            # choose only primary channel
+            da = 0
+            lp = None
+            for reach_ftr, *_ in reaches_lyr.iterate_features(clip_shape=dgo_geom):
+                if reach_ftr.GetField('DrainArea') > da:
+                    lp = reach_ftr.GetField('level_path')
             for reach_ftr, *_ in reaches_lyr.iterate_features(clip_shape=dgo_geom):
                 if reach_ftr.GetGeometryRef() is None:
+                    continue
+                if reach_ftr.GetField('level_path') != lp:
                     continue
                 geom_clipped = dgo_geom.Intersection(reach_ftr.GetGeometryRef())
                 if geom_clipped.GetGeometryName() == 'MULTILINESTRING':
@@ -147,8 +155,10 @@ def dgo_geometry(gpk_path: str, dem_path: str, field_names=default_dgo_field_nam
                 value = float(mask_raster.min())
                 elevations.append(value)
             elevations.sort()
-            geom_clipped.Transform(transform)
-            stream_length = geom_clipped.Length()
+            # geom_clipped.Transform(transform)
+            # stream_length = geom_clipped.Length()
+            line.Transform(transform)
+            stream_length = line.Length()
             dgo_atts[dgoid] = {field_names['Length']: stream_length,
                                field_names['MaxElevation']: elevations[-1],
                                field_names['MinElevation']: elevations[0],
