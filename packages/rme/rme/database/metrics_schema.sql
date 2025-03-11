@@ -58,80 +58,6 @@ CREATE TABLE measurement_values (
     CONSTRAINT fk_measurement_values_measurement_id FOREIGN KEY (measurement_id) REFERENCES measurements (measurement_id)
 );
 
-CREATE TABLE dgo_dataset_metrics (
-    DGOID INTEGER PRIMARY KEY NOT NULL,
-    ownership TEXT,
-    state TEXT,
-    county TEXT,
-    drainage_area REAL,
-    watershed_id TEXT,
-    stream_name TEXT,
-    stream_order INTEGER,
-    headwater INTEGER,
-    stream_type INTEGER,
-    stream_length REAL,
-    waterbody_type INTEGER,
-    waterbody_extent REAL,
-    ecoregion3 TEXT,
-    ecoregion4 TEXT,
-    landfire_evt TEXT,
-    landfire_bps TEXT,
-    ex_agriculture REAL,
-    ex_prop_agriculture REAL,
-    ex_conifer REAL,
-    ex_prop_conifer REAL,
-    ex_conifer_hardwood REAL,
-    ex_prop_conifer_hardwood REAL,
-    ex_developed REAL,
-    ex_prop_developed REAL,
-    ex_exotic_herbaceous REAL,
-    ex_prop_exotic_herbaceous REAL,
-    ex_exotic_tree_shrub REAL,
-    ex_prop_exotic_tree_shrub REAL,
-    ex_grassland REAL,
-    ex_prop_grassland REAL,
-    ex_hardwood REAL,
-    ex_prop_hardwood REAL,
-    ex_riparian REAL,
-    ex_prop_riparian REAL,
-    ex_shrubland REAL,
-    ex_prop_shrubland REAL,
-    ex_sparsely_vegetated REAL,
-    ex_prop_sparsely_vegetated REAL,
-    hist_conifer REAL,
-    hist_prop_conifer REAL,
-    hist_conifer_hardwood REAL,
-    hist_prop_conifer_hardwood REAL,
-    hist_grassland REAL,
-    hist_prop_grassland REAL,
-    hist_hardwood REAL,
-    hist_prop_hardwood REAL,
-    hist_hardwood_conifer REAL,
-    hist_peatland_forest REAL,
-    hist_prop_peatland_forest REAL,
-    hist_peatland_nonforest REAL,
-    hist_prop_peatland_nonforest REAL,
-    hist_riparian REAL,
-    hist_prop_riparian REAL,
-    hist_savanna REAL,
-    hist_prop_savanna REAL,
-    hist_shrubland REAL,
-    hist_prop_shrubland REAL,
-    hist_sparsely_vegetated REAL,
-    hist_prop_sparsely_vegetated REAL
-);
-
-CREATE TABLE dgo_rme_metrics (
-    DGOID INTEGER PRIMARY KEY NOT NULL,
-    prim_channel_gradient REAL,
-    valley_gradient REAL,
-    relative_flow_length REAL,
-    confluences INTEGER,
-    diffluences INTEGER,
-    trib_junctions REAL,
-    planform_sinuosity REAL
-);
-
 
 CREATE INDEX fx_measurement_values_measurement_id ON measurement_values (measurement_id);
 
@@ -144,4 +70,3 @@ INSERT INTO gpkg_contents (table_name, data_type) VALUES ('metrics', 'attributes
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('VegetationTypes', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('measurements', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('measurement_values', 'attributes');
-INSERT INTO gpkg_contents (table_name, data_type) VALUES ('dgo_dataset_metrics', 'attributes');

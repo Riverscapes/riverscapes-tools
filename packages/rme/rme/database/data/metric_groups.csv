@@ -1,9 +1,7 @@
 metric_group_id,metric_group_name,description
-1,dataset metrics,metrics calculated directly from datasets
-2,rme metrics,metrics newly calculated by rme
-3,vbet metrics,metrics calculated in vbet
-4,confinement metrics,metrics calculated in confinement
-5,hydro metrics,metrics calculated in hydrologic context
-6,anthro metrics,metrics calculated in anthropogenic context
-7,rcat metrics,metrics calculated in rcat
-8,brat metrics,metrics calculated in brat
+1,desc,metrics that provide contextual information about the riverscape
+2,geomorph,geomorphic metrics of the riverscape
+3,veg,metrics related to vegetation and land cover
+4,hydro,metrics related to riverscape hydrology
+5,impacts,metrics related to human impacts on the riverscape
+6,beaver,beaver and beaver-based restoration metrics

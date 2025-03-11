@@ -41,6 +41,7 @@ from rme.analysis_window import AnalysisLine
 from rme.rme_report import RMEReport, FILTER_NAMES
 from rme.utils.check_vbet_inputs import vbet_inputs
 from rme.utils.summarize_functions import *
+from rme.utils.thematic_tables import create_thematic_table
 
 Path = str
 
@@ -92,6 +93,8 @@ gradient_buffer_lookup = {'small': 25.0, 'medium': 50.0, 'large': 100.0,
                           'very large': 100.0, 'huge': 100.0}  # should this go as high as it does
 window_distance = {'0': 200.0, '1': 400.0,
                    '2': 1200.0, '3': 2000.0, '4': 8000.0}
+metric_functions = {1: value_from_dgo, 2: value_density_from_dgo, 3: get_max_value, 4: value_from_max_length,
+                    5: value_from_dataset_area, 6: value_by_count}
 
 
 def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_table: Path, in_counties: Path, in_segments: Path, in_points: Path,
@@ -348,8 +351,17 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                 igo_dgo[igo_id] = feat_seg.GetFID()
                 break
 
-    metrics = generate_metric_list(intermediates_gpkg)
-    measurements = generate_metric_list(intermediates_gpkg, 'measurements')
+    measurements = generate_metric_list(intermediates_gpkg, group_id=None, source_table='measurements')
+
+    with sqlite3.connect(outputs_gpkg) as conn:
+        curs = conn.cursor()
+        curs.execute("SELECT DISTINCT metric_group_id, metric_group_name FROM metric_groups")
+        metric_groups = curs.fetchall()
+
+    for i, metric_group, in enumerate(metric_groups):
+        create_thematic_table(outputs_gpkg, metric_group[1], metric_group[0])
+
+        metrics = generate_metric_list(outputs_gpkg, metric_group[0])
 
     buffer_distance = {}
     for stream_size, distance in gradient_buffer_lookup.items():
@@ -1664,7 +1676,7 @@ def sql_round(datatype: str, metric_id, table='metric') -> str:
     return f"CAST{'(ROUND(' if datatype == 'REAL' else '('}SUM(M.{table}_value) FILTER (WHERE M.{table}_id == {metric_id}){', 4) AS REAL)' if datatype == 'REAL' else 'AS INT)'}"
 
 
-def generate_metric_list(database: Path, source_table: str = 'metrics') -> dict:
+def generate_metric_list(database: Path, group_id: int = None, source_table: str = 'metrics') -> dict:
     """_summary_
 
     Args:
@@ -1678,8 +1690,12 @@ def generate_metric_list(database: Path, source_table: str = 'metrics') -> dict:
     with sqlite3.connect(database) as conn:
         conn.row_factory = sqlite3.Row
         curs = conn.cursor()
-        metric_data = curs.execute(
-            f"""SELECT * from {source_table} WHERE is_active = 1""").fetchall()
+        if group_id:
+            metric_data = curs.execute(
+                f"""SELECT * from {source_table} WHERE is_active = 1 AND metric_group_id = {group_id}""").fetchall()
+        else:
+            metric_data = curs.execute(
+                f"""SELECT * from {source_table} WHERE is_active = 1""").fetchall()
         metrics = {metric['machine_code']: metric for metric in metric_data}
     return metrics
 
