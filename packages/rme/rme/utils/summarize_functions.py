@@ -89,9 +89,8 @@ def value_from_dataset_area(dgo_ftr, in_dataset, field_name):
 
 def raster_pixel_value_count(dgo_ftr, in_dataset):
     values = {}
-    raw_raster = mask(raster, [dgo_ftr], crop=True)[0]
-    mask_raster = np.ma.masked_values(raw_raster, raster.nodata)
-
+    raw_raster = mask(in_dataset, [dgo_ftr], crop=True)[0]
+    mask_raster = np.ma.masked_values(raw_raster, in_dataset.nodata)
     for value in np.unique(mask_raster):
         if value is not np.ma.masked:
             values[value] = np.count_nonzero(mask_raster == value)
@@ -124,4 +123,4 @@ def value_by_count(dgo_ftr, in_dataset, field_name, field_value):
 
 
 def call_function(func_name, *args):
-    return globals()[func_name](*args)
+    return func_name(*args)
