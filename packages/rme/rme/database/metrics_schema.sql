@@ -54,18 +54,6 @@ CREATE TABLE measurements (
     is_active INTEGER
 );
 
-CREATE TABLE measurement_values (
-    dgo_id INTEGER NOT NULL,
-    measurement_id INTEGER NOT NULL,
-    measurement_value REAL,
-    metadata TEXT,
-    qaqc_date TEXT,
-    PRIMARY KEY (dgo_id, measurement_id),
-    
-    CONSTRAINT fk_measurement_values_dgo_id FOREIGN KEY (dgo_id) REFERENCES dgos (fid),
-    CONSTRAINT fk_measurement_values_measurement_id FOREIGN KEY (measurement_id) REFERENCES measurements (measurement_id)
-);
-
 CREATE TABLE dgo_vegetation(
     DGOID INTEGER PRIMARY KEY NOT NULL,
     physiognomy TEXT,
