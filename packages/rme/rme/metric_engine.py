@@ -352,7 +352,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                 igo_dgo[igo_id] = feat_seg.GetFID()
                 break
 
-    measurements = generate_metric_list(intermediates_gpkg, group_id=None, source_table='measurements')
+    measurements = generate_metric_list(outputs_gpkg, group_id=None, source_table='measurements')
 
     buffer_distance = {}
     for stream_size, distance in gradient_buffer_lookup.items():
@@ -370,7 +370,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
         metrics = generate_metric_list(outputs_gpkg, metric_group[0])
 
         progbar = ProgressBar(len(level_paths_to_run), 50,
-                            f"Calculating Riverscapes Metrics for {metric_group[1]}")
+                              f"Calculating Riverscapes Metrics for {metric_group[1]}")
         counter = 0
         for level_path in level_paths_to_run:
             lp_metrics = {}
@@ -417,14 +417,21 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                     min_elev = None
                     max_elev = None
 
-                    possible_args = {
-                        'in_line_network': line_network,
-                        'dgo_ftr': feat_geom,
-                        'dgoid': dgo_id,
-                        'layer_name'
-                    }
                     for metric in metrics:
-
+                        with sqlite3.connect(outputs_gpkg) as conn:
+                            curs = conn.cursor()
+                            curs.execute(f"SELECT dataset, field_name, field_value FROM input_datasets WHERE metric_id = {metrics[metric]['metric_id']}")
+                            input_args = curs.fetchone()
+                            input_args = [item for item in input_args if item]
+                            input_args.insert(0, feat_geom)
+                            input_args[1] = os.path.join(project_folder, input_args[1])
+                            curs.execute(f"SELECT metric_calculation_id FROM metrics WHERE metric_id = {metrics[metric]['metric_id']}")
+                            metric_calculation_id = int(curs.fetchone()[0])
+                            if metric_calculation_id not in metric_functions.keys():
+                                continue
+                            val = call_function(metric_functions[metric_calculation_id], *input_args)
+                            if val is not None:
+                                print(val)
 
                 # Calculate each metric if it is active
                 if 'AGENCY' in metrics:
@@ -757,107 +764,107 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                         'active_channel_area') / stream_length) if stream_length > 0.0 else None
                     metrics_output[metric['metric_id']] = stream_size_metric
 
-                if 'CNFMT' in metrics and confinement_dgos:
-                    metric = metrics['CNFMT']
+                # if 'CNFMT' in metrics and confinement_dgos:
+                #     metric = metrics['CNFMT']
 
-                    conf_ratio = value_from_dgo(inputs_gpkg, dgo_id, 'confinement_ratio', 'confinement_dgo')
-                    metrics_output[metric['metric_id']] = str(conf_ratio)
+                #     conf_ratio = value_from_dgo(inputs_gpkg, dgo_id, 'confinement_ratio', 'confinement_dgo')
+                #     metrics_output[metric['metric_id']] = str(conf_ratio)
 
-                if 'CONST' in metrics and confinement_dgos:
-                    metric = metrics['CONST']
+                # if 'CONST' in metrics and confinement_dgos:
+                #     metric = metrics['CONST']
 
-                    cons_ratio = value_from_dgo(inputs_gpkg, dgo_id, 'constriction_ratio', 'confinement_dgo')
-                    metrics_output[metric['metric_id']] = str(cons_ratio)
+                #     cons_ratio = value_from_dgo(inputs_gpkg, dgo_id, 'constriction_ratio', 'confinement_dgo')
+                #     metrics_output[metric['metric_id']] = str(cons_ratio)
 
-                if 'CONFMARG' in metrics and confinement_dgos:
-                    metric = metrics['CONFMARG']
+                # if 'CONFMARG' in metrics and confinement_dgos:
+                #     metric = metrics['CONFMARG']
 
-                    conf_margin = value_from_dgo(inputs_gpkg, dgo_id, 'confin_leng', 'confinement_dgo')
-                    metrics_output[metric['metric_id']] = str(conf_margin)
+                #     conf_margin = value_from_dgo(inputs_gpkg, dgo_id, 'confin_leng', 'confinement_dgo')
+                #     metrics_output[metric['metric_id']] = str(conf_margin)
 
-                if 'ROADDENS' in metrics and anthro_dgos:
-                    metric = metrics['ROADDENS']
+                # if 'ROADDENS' in metrics and anthro_dgos:
+                #     metric = metrics['ROADDENS']
 
-                    road_density = value_density_from_dgo(inputs_gpkg, dgo_id, 'Road_len', 'anthro_dgo')
-                    if road_density is None:
-                        log.warning(f'Unable to calculate road density for dgo {dgo_id} in level path {level_path}')
-                        metrics_output[metric['metric_id']] = None
-                    else:
-                        metrics_output[metric['metric_id']] = str(road_density)
+                #     road_density = value_density_from_dgo(inputs_gpkg, dgo_id, 'Road_len', 'anthro_dgo')
+                #     if road_density is None:
+                #         log.warning(f'Unable to calculate road density for dgo {dgo_id} in level path {level_path}')
+                #         metrics_output[metric['metric_id']] = None
+                #     else:
+                #         metrics_output[metric['metric_id']] = str(road_density)
 
-                if 'RAILDENS' in metrics and anthro_dgos:
-                    metric = metrics['RAILDENS']
+                # if 'RAILDENS' in metrics and anthro_dgos:
+                #     metric = metrics['RAILDENS']
 
-                    rail_density = value_density_from_dgo(inputs_gpkg, dgo_id, 'Rail_len', 'anthro_dgo')
-                    if rail_density is None:
-                        log.warning(f'Unable to calculate rail density for dgo {dgo_id} in level path {level_path}')
-                        metrics_output[metric['metric_id']] = None
-                    else:
-                        metrics_output[metric['metric_id']] = str(rail_density)
+                #     rail_density = value_density_from_dgo(inputs_gpkg, dgo_id, 'Rail_len', 'anthro_dgo')
+                #     if rail_density is None:
+                #         log.warning(f'Unable to calculate rail density for dgo {dgo_id} in level path {level_path}')
+                #         metrics_output[metric['metric_id']] = None
+                #     else:
+                #         metrics_output[metric['metric_id']] = str(rail_density)
 
-                if 'LUI' in metrics and anthro_dgos:
-                    metric = metrics['LUI']
+                # if 'LUI' in metrics and anthro_dgos:
+                #     metric = metrics['LUI']
 
-                    lui = value_from_dgo(inputs_gpkg, dgo_id, 'LUI', 'anthro_dgo')
-                    metrics_output[metric['metric_id']] = str(lui)
+                #     lui = value_from_dgo(inputs_gpkg, dgo_id, 'LUI', 'anthro_dgo')
+                #     metrics_output[metric['metric_id']] = str(lui)
 
-                if 'FPACCESS' in metrics and rcat_dgos:
-                    metric = metrics['FPACCESS']
+                # if 'FPACCESS' in metrics and rcat_dgos:
+                #     metric = metrics['FPACCESS']
 
-                    fp_access = value_from_dgo(inputs_gpkg, dgo_id, 'FloodplainAccess', 'rcat_dgo')
-                    metrics_output[metric['metric_id']] = str(fp_access)
+                #     fp_access = value_from_dgo(inputs_gpkg, dgo_id, 'FloodplainAccess', 'rcat_dgo')
+                #     metrics_output[metric['metric_id']] = str(fp_access)
 
-                if 'PROP_RIP' in metrics:
-                    metric = metrics['PROP_RIP']
+                # if 'PROP_RIP' in metrics:
+                #     metric = metrics['PROP_RIP']
 
-                    prop_rip = value_from_dgo(inputs_gpkg, dgo_id, 'RiparianProp', 'rcat_dgo')
-                    metrics_output[metric['metric_id']] = str(prop_rip)
+                #     prop_rip = value_from_dgo(inputs_gpkg, dgo_id, 'RiparianProp', 'rcat_dgo')
+                #     metrics_output[metric['metric_id']] = str(prop_rip)
 
-                if 'RVD' in metrics:
-                    metric = metrics['RVD']
+                # if 'RVD' in metrics:
+                #     metric = metrics['RVD']
 
-                    rvd = value_from_dgo(inputs_gpkg, dgo_id, 'RiparianDeparture', 'rcat_dgo')
-                    if rvd is not None:
-                        rvd_out = 1 - min(1, rvd)
-                    else:
-                        rvd_out = None
-                    metrics_output[metric['metric_id']] = str(rvd_out)
+                #     rvd = value_from_dgo(inputs_gpkg, dgo_id, 'RiparianDeparture', 'rcat_dgo')
+                #     if rvd is not None:
+                #         rvd_out = 1 - min(1, rvd)
+                #     else:
+                #         rvd_out = None
+                #     metrics_output[metric['metric_id']] = str(rvd_out)
 
-                if 'AGCONV' in metrics:
-                    metric = metrics['AGCONV']
+                # if 'AGCONV' in metrics:
+                #     metric = metrics['AGCONV']
 
-                    ag_conv = value_from_dgo(inputs_gpkg, dgo_id, 'Agriculture', 'rcat_dgo')
-                    metrics_output[metric['metric_id']] = str(ag_conv)
+                #     ag_conv = value_from_dgo(inputs_gpkg, dgo_id, 'Agriculture', 'rcat_dgo')
+                #     metrics_output[metric['metric_id']] = str(ag_conv)
 
-                if 'DEVEL' in metrics:
-                    metric = metrics['DEVEL']
+                # if 'DEVEL' in metrics:
+                #     metric = metrics['DEVEL']
 
-                    devel = value_from_dgo(inputs_gpkg, dgo_id, 'Development', 'rcat_dgo')
-                    metrics_output[metric['metric_id']] = str(devel)
+                #     devel = value_from_dgo(inputs_gpkg, dgo_id, 'Development', 'rcat_dgo')
+                #     metrics_output[metric['metric_id']] = str(devel)
 
-                if 'RIPCOND' in metrics:
-                    metric = metrics['RIPCOND']
+                # if 'RIPCOND' in metrics:
+                #     metric = metrics['RIPCOND']
 
-                    rip_cond = value_from_dgo(inputs_gpkg, dgo_id, 'Condition', 'rcat_dgo')
-                    metrics_output[metric['metric_id']] = str(rip_cond)
+                #     rip_cond = value_from_dgo(inputs_gpkg, dgo_id, 'Condition', 'rcat_dgo')
+                #     metrics_output[metric['metric_id']] = str(rip_cond)
 
-                if 'BRATCAP' in metrics and brat_dgos:
-                    metric = metrics['BRATCAP']
+                # if 'BRATCAP' in metrics and brat_dgos:
+                #     metric = metrics['BRATCAP']
 
-                    bratcap = value_from_dgo(inputs_gpkg, dgo_id, 'oCC_EX', 'brat_dgo')
-                    metrics_output[metric['metric_id']] = str(bratcap)
+                #     bratcap = value_from_dgo(inputs_gpkg, dgo_id, 'oCC_EX', 'brat_dgo')
+                #     metrics_output[metric['metric_id']] = str(bratcap)
 
-                if 'BRATRISK' in metrics and brat_dgos:
-                    metric = metrics['BRATRISK']
+                # if 'BRATRISK' in metrics and brat_dgos:
+                #     metric = metrics['BRATRISK']
 
-                    bratrisk = value_from_dgo(inputs_gpkg, dgo_id, 'Risk', 'brat_dgo')
-                    metrics_output[metric['metric_id']] = str(bratrisk)
+                #     bratrisk = value_from_dgo(inputs_gpkg, dgo_id, 'Risk', 'brat_dgo')
+                #     metrics_output[metric['metric_id']] = str(bratrisk)
 
-                if 'BRATOPP' in metrics and brat_dgos:
-                    metric = metrics['BRATOPP']
+                # if 'BRATOPP' in metrics and brat_dgos:
+                #     metric = metrics['BRATOPP']
 
-                    bratopp = value_from_dgo(inputs_gpkg, dgo_id, 'Opportunity', 'brat_dgo')
-                    metrics_output[metric['metric_id']] = str(bratopp)
+                #     bratopp = value_from_dgo(inputs_gpkg, dgo_id, 'Opportunity', 'brat_dgo')
+                #     metrics_output[metric['metric_id']] = str(bratopp)
 
                 # Write to Metrics
                 if len(metrics_output) > 0:
