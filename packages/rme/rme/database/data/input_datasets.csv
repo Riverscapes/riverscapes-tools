@@ -1,6 +1,6 @@
 metric_id,dataset,field_name,field_value
 1,inputs/inputs.gpkg/flowlines,ownership,
-2,inputs/inputs.gpkg/flowlines,state,
+2,inputs/inputs.gpkg/flowlines,us_state,
 3,inputs/inputs.gpkg/counties,NAME,
 8,intermediates/rme_intermediates.gpkg/junction_points,JunctionType,Confluence
 9,intermediates/rme_intermediates.gpkg/junction_points,JunctionType,Diffluence
