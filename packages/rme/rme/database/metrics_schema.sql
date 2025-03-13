@@ -68,8 +68,6 @@ CREATE TABLE dgo_hist_vegetation(
     CONSTRAINT fk_dgo_vegetation_DGOID FOREIGN KEY (DGOID) REFERENCES dgos (fid)
 );
 
-CREATE INDEX fx_measurement_values_measurement_id ON measurement_values (measurement_id);
-
 -- CREATE INDEX ix_dgo_metric_values_metric_id ON dgo_metric_values (metric_id);
 -- CREATE INDEX ix_igo_metric_values_metric_id ON igo_metric_values (metric_id);
 
@@ -79,6 +77,5 @@ INSERT INTO gpkg_contents (table_name, data_type) VALUES ('metrics', 'attributes
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('vegetation_types', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('input_datasets', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('measurements', 'attributes');
-INSERT INTO gpkg_contents (table_name, data_type) VALUES ('measurement_values', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('dgo_vegetation', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('dgo_hist_vegetation', 'attributes');

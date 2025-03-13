@@ -70,7 +70,7 @@ def value_density_from_dgo(dgo_ftr, in_dataset, field_name):
 
 def value_from_dataset_area(dgo_ftr, in_dataset, field_name):
     attributes = {}
-    with GeopackageLayer(os.path.dirname(in_dataset)) as lyr:
+    with GeopackageLayer(in_dataset) as lyr:
         for feat, *_ in lyr.iterate_features(clip_shape=dgo_ftr):
             geom = feat.GetGeometryRef()
             attribute = feat.GetField(field_name)
