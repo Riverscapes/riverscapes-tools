@@ -17,12 +17,13 @@ CREATE TABLE metrics (
     data_type TEXT NOT NULL,
     field_name TEXT,
     description TEXT,
-    method TEXT,
     small REAL,
     medium REAL,
     large REAL,
     metric_group_id INTEGER,
     metric_calculation_id INTEGER,
+    primary_metric INTEGER,
+    moving_window INTEGER,
     is_active BOOLEAN,
     docs_url TEXT,
 
@@ -54,19 +55,6 @@ CREATE TABLE measurements (
     is_active INTEGER
 );
 
-CREATE TABLE dgo_vegetation(
-    DGOID INTEGER PRIMARY KEY NOT NULL,
-    physiognomy TEXT,
-    proportion INTEGER,
-    CONSTRAINT fk_dgo_vegetation_DGOID FOREIGN KEY (DGOID) REFERENCES dgos (fid)
-);
-
-CREATE TABLE dgo_hist_vegetation(
-    DGOID INTEGER PRIMARY KEY NOT NULL,
-    physiognomy TEXT,
-    proportion INTEGER,
-    CONSTRAINT fk_dgo_vegetation_DGOID FOREIGN KEY (DGOID) REFERENCES dgos (fid)
-);
 
 -- CREATE INDEX ix_dgo_metric_values_metric_id ON dgo_metric_values (metric_id);
 -- CREATE INDEX ix_igo_metric_values_metric_id ON igo_metric_values (metric_id);
@@ -77,5 +65,3 @@ INSERT INTO gpkg_contents (table_name, data_type) VALUES ('metrics', 'attributes
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('vegetation_types', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('input_datasets', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('measurements', 'attributes');
-INSERT INTO gpkg_contents (table_name, data_type) VALUES ('dgo_vegetation', 'attributes');
-INSERT INTO gpkg_contents (table_name, data_type) VALUES ('dgo_hist_vegetation', 'attributes');
