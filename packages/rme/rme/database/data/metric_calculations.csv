@@ -5,5 +5,6 @@ metric_calculation_id,calculation_method,description
 4,value from max length,take the value from the feature with the longest length as the metric
 5,value from max area,take the value from the feature with the largest area as the metric
 6,value from count, count the number of features to get the metric
-7,proportion from raster,calculate the proportion of the dgo that is a certain raster value
-8,other,another bespoke method that must be hardcoded
+7,proportion from existing,calculate the proportion of the dgo that is a certain raster value
+8,proportion from historic,calculate the proportion of the dgo that is a certain raster value from a historic dataset
+99,other,another bespoke method that must be hardcoded

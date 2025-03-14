@@ -95,14 +95,16 @@ gradient_buffer_lookup = {'small': 25.0, 'medium': 50.0, 'large': 100.0,
                           'very large': 100.0, 'huge': 100.0}  # should this go as high as it does
 window_distance = {'0': 200.0, '1': 400.0,
                    '2': 1200.0, '3': 2000.0, '4': 8000.0}
+# metric_functions = {metric_calculation_id: function (from summarize functions.py)}
 metric_functions = {1: value_from_dgo, 2: value_density_from_dgo, 3: get_max_value, 4: value_from_max_length,
-                    5: value_from_dataset_area, 6: value_by_count}
+                    5: value_from_dataset_area, 6: value_by_count, 7: ex_veg_proportion, 8: hist_veg_proportion}
 
 
 def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_table: Path, in_counties: Path, in_segments: Path, in_points: Path,
-                  in_vbet_centerline: Path, in_dem: Path, in_hillshade: Path, in_evt: Path, in_bps: Path, project_folder: Path,
+                  in_vbet_centerline: Path, in_dem: Path, in_hillshade: Path, project_folder: Path,
                   in_confinement_dgos: Path = None, in_hydro_dgos: Path = None, in_anthro_dgos: Path = None, in_anthro_lines: Path = None,
-                  in_rcat_dgos: Path = None, in_brat_dgos: Path = None, level_paths: list = None, meta: dict = None):
+                  in_rcat_dgos: Path = None, in_rcat_dgo_table: Path = None, in_brat_dgos: Path = None, in_brat_lines: Path = None,
+                  level_paths: list = None, meta: dict = None):
     """Generate Riverscapes Metric Engine project and calculate metrics
 
     Args:
@@ -188,8 +190,6 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
 
     _dem_node, dem = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], in_dem)
     _hs_node, hillshade = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], in_hillshade)
-    _evt_node, evt = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['EVT'], in_evt)
-    _bps_node, bps = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['BPS'], in_bps)
 
     in_gpkg_node, *_ = project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
     if in_confinement_dgos:
@@ -213,7 +213,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
     if in_anthro_lines:
         anthro_lines = os.path.join(inputs_gpkg, 'anthro_flowlines')
         copy_feature_class(in_anthro_lines, anthro_lines)
-        project.add_dataset(in_gpkg_node.find('Layers'), 'anthro_flowlines', RSLayer('Anthropogenic FLowline', 'ANTHRO_LINE', 'Vector', 'anthro_flowlines'), 'Vector', rel_path=True, sublayer=True)
+        project.add_dataset(in_gpkg_node.find('Layers'), 'anthro_flowlines', RSLayer('Anthropogenic Flowline', 'ANTHRO_LINE', 'Vector', 'anthro_flowlines'), 'Vector', rel_path=True, sublayer=True)
     else:
         anthro_lines = None
     if in_rcat_dgos:
@@ -228,6 +228,12 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
         project.add_dataset(in_gpkg_node.find('Layers'), 'brat_dgo', RSLayer('BRAT DGO', 'BRAT_DGO', 'Vector', 'brat_network'), 'Vector', rel_path=True, sublayer=True)
     else:
         brat_dgos = None
+    if in_brat_lines:
+        brat_lines = os.path.join(inputs_gpkg, 'brat_flowlines')
+        copy_feature_class(in_brat_lines, brat_lines)
+        project.add_dataset(in_gpkg_node.find('Layers'), 'brat_flowlines', RSLayer('BRAT Flowline', 'BRAT_LINE', 'Vector', 'brat_flowlines'), 'Vector', rel_path=True, sublayer=True)
+    else:
+        brat_lines = None
 
     # create output feature class fields. Only those listed here will get copied from the source
     with GeopackageLayer(outputs_gpkg, layer_name=LayerTypes['OUTPUTS'].sub_layers['GEOM_IGOS'].rel_path, write=True) as out_lyr:
@@ -249,6 +255,13 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
     segments = os.path.join(outputs_gpkg, LayerTypes['OUTPUTS'].sub_layers['GEOM_DGOS'].rel_path)
     copy_features_fields(input_layers['VBET_IGOS'], points, epsg=cfg.OUTPUT_EPSG)
     copy_features_fields(input_layers['VBET_DGOS'], segments, epsg=cfg.OUTPUT_EPSG)
+
+    # copy DGOVegetation table from RCAT into outputs gpkg
+    if in_rcat_dgo_table:
+        rcat_dgo_table = os.path.join(inputs_gpkg, 'DGOVegetation')
+        copy_table(os.path.dirname(in_rcat_dgo_table), outputs_gpkg, 'DGOVegetation')
+    else:
+        rcat_dgo_table = None
 
     # get utm
     with GeopackageLayer(input_layers['VBET_IGOS']) as lyr_pts:
@@ -319,9 +332,9 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
         curs = conn.cursor()
         curs.execute("CREATE INDEX ix_dgos_level_path_seg_distance ON dgos (level_path, seg_distance)")
         curs.execute("CREATE INDEX idx_igos_size ON igos (stream_size)")
-        curs.execute("CREATE INDEX ix_dgos_fcode ON dgos (FCode)")
+        # curs.execute("CREATE INDEX ix_dgos_fcode ON dgos (FCode)")
         curs.execute("CREATE INDEX ix_igos_level_path_seg_distance ON igos (level_path, seg_distance)")
-        curs.execute("CREATE INDEX idx_igos_fcode ON igos (FCode)")
+        # curs.execute("CREATE INDEX idx_igos_fcode ON igos (FCode)")
         conn.commit()
 
     # Generate the list of level paths to run, sorted by ascending order and optional user filter
@@ -412,6 +425,8 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
         metric_groups = curs.fetchall()
 
     for i, metric_group, in enumerate(metric_groups):
+        if metric_group[1] != 'veg':  # remove this later
+            continue
         create_thematic_table(outputs_gpkg, metric_group[1], metric_group[0])
         metrics = generate_metric_list(outputs_gpkg, metric_group[0])
         bespoke_method_metrics = []
@@ -435,8 +450,11 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                     curs.execute(f"SELECT dataset, field_name, field_value FROM input_datasets WHERE metric_id = {metrics[metric]['metric_id']}")
                     input_args = curs.fetchone()
                     input_args = [item for item in input_args if item]
-                    input_args.insert(0, feat_geom)
+                    input_args.insert(0, feat_seg_dgo)
                     input_args[1] = os.path.join(project_folder, input_args[1])
+                    if not os.path.exists(input_args[1]) and not os.path.exists(os.path.dirname(input_args[1])):
+                        log.error(f"Input file {input_args[1]} does not exist, unable to calucalate {metrics[metric]['metric_name']}")
+                        continue
                     curs.execute(f"SELECT metric_calculation_id FROM metrics WHERE metric_id = {metrics[metric]['metric_id']}")
                     metric_calculation_id = int(curs.fetchone()[0])
                     if metric_calculation_id not in metric_functions.keys():
@@ -540,12 +558,42 @@ def generate_metric_list(database: Path, group_id: int = None, source_table: str
         curs = conn.cursor()
         if group_id:
             metric_data = curs.execute(
-                f"""SELECT * from {source_table} WHERE is_active = 1 AND metric_group_id = {group_id} and primary = 1""").fetchall()
+                f"""SELECT * from {source_table} WHERE is_active = 1 AND metric_group_id = {group_id} and primary_metric = 1""").fetchall()
         else:
             metric_data = curs.execute(
-                f"""SELECT * from {source_table} WHERE is_active = 1 and primary = 1""").fetchall()
+                f"""SELECT * from {source_table} WHERE is_active = 1 and primary_metric = 1""").fetchall()
         metrics = {metric['machine_code']: metric for metric in metric_data}
     return metrics
+
+
+def copy_table(source_db_path, dest_db_path, table_name):
+    # Connect to the source database
+    source_conn = sqlite3.connect(source_db_path)
+    source_cursor = source_conn.cursor()
+
+    # Connect to the destination database
+    dest_conn = sqlite3.connect(dest_db_path)
+    dest_cursor = dest_conn.cursor()
+
+    # Create the same table structure in the destination database (if it doesn't exist)
+    source_cursor.execute(f"SELECT sql FROM sqlite_master WHERE type='table' AND name='{table_name}';")
+    create_table_sql = source_cursor.fetchone()[0]
+    dest_cursor.execute(create_table_sql)
+
+    # Copy the data from the source table to the destination table
+    source_cursor.execute(f"SELECT * FROM {table_name};")
+    rows = source_cursor.fetchall()
+
+    # Insert rows into the destination table
+    placeholders = ', '.join(['?'] * len(rows[0]))  # Create placeholders for each column
+    insert_sql = f"INSERT INTO {table_name} VALUES ({placeholders});"
+    dest_cursor.executemany(insert_sql, rows)
+    dest_cursor.execute(f"INSERT INTO gpkg_contents (table_name, data_type) VALUES ('{table_name}', 'attributes')")
+
+    # Commit changes and close connections
+    dest_conn.commit()
+    source_conn.close()
+    dest_conn.close()
 
 
 def generate_window(lyr: GeopackageLayer, window: float, level_path: str, segment_dist: float, buffer: float = 0) -> ogr.Geometry:
@@ -666,15 +714,15 @@ def main():
     parser.add_argument('valley_centerline', help='vbet centerline feature class')
     parser.add_argument('dem', help='dem')
     parser.add_argument('hillshade', help='hillshade')
-    parser.add_argument('evt', help='landfire evt raster')
-    parser.add_argument('bps', help='landfire bps raster')
     parser.add_argument('output_folder', help='Output folder', type=str)
     parser.add_argument('--confinement_dgos', help='confinement dgos', type=str)
     parser.add_argument('--hydro_dgos', help='hydro dgos', type=str)
     parser.add_argument('--anthro_dgos', help='anthro dgos', type=str)
     parser.add_argument('--anthro_lines', help='anthro lines', type=str)
     parser.add_argument('--rcat_dgos', help='rcat_dgos', type=str)
+    parser.add_argument('--rcat_dgo_table', help='The DGOVegetation table from rcat output gpkg', type=str)
     parser.add_argument('--brat_dgos', help='brat dgos', type=str)
+    parser.add_argument('--brat_lines', help='brat lines', type=str)
     parser.add_argument('--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
     parser.add_argument('--debug', help="(optional) save intermediate outputs for debugging",
@@ -704,15 +752,15 @@ def main():
                                          args.valley_centerline,
                                          args.dem,
                                          args.hillshade,
-                                         args.evt,
-                                         args.bps,
                                          args.output_folder,
                                          args.confinement_dgos,
                                          args.hydro_dgos,
                                          args.anthro_dgos,
                                          args.anthro_lines,
                                          args.rcat_dgos,
+                                         args.rcat_dgo_table,
                                          args.brat_dgos,
+                                         args.brat_lines,
                                          meta=meta)
             log.debug(f'Return code: {retcode}, [Max process usage] {max_obj}')
 
@@ -727,15 +775,15 @@ def main():
                           args.valley_centerline,
                           args.dem,
                           args.hillshade,
-                          args.evt,
-                          args.bps,
                           args.output_folder,
                           args.confinement_dgos,
                           args.hydro_dgos,
                           args.anthro_dgos,
                           args.anthro_lines,
                           args.rcat_dgos,
+                          args.rcat_dgo_table,
                           args.brat_dgos,
+                          args.brat_lines,
                           meta=meta)
 
     except Exception as e:

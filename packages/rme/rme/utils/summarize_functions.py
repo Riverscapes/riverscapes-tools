@@ -9,7 +9,7 @@ def get_max_value(dgo_ftr, in_line_network, field_name):
 
     results = []
     with GeopackageLayer(in_line_network) as lyr_lines:
-        for feat, *_ in lyr_lines.iterate_features(clip_shape=dgo_ftr):
+        for feat, *_ in lyr_lines.iterate_features(clip_shape=dgo_ftr.GetGeometryRef()):
             results.append(feat.GetField(field_name))
         lyr_lines.ogr_layer.SetSpatialFilter(None)
     if len(results) > 0:
@@ -22,11 +22,12 @@ def get_max_value(dgo_ftr, in_line_network, field_name):
 
 def value_from_max_length(dgo_ftr, in_line_network, field_name):
     attributes = {}
+    dgo_geom = dgo_ftr.GetGeometryRef()
     with GeopackageLayer(in_line_network) as lyr_lines:
-        for feat, *_ in lyr_lines.iterate_features(clip_shape=dgo_ftr):
+        for feat, *_ in lyr_lines.iterate_features(clip_shape=dgo_geom):
             line_geom = feat.GetGeometryRef()
             attribute = str(feat.GetField(field_name))
-            geom_section = dgo_ftr.Intersection(line_geom)
+            geom_section = dgo_geom.Intersection(line_geom)
             length = geom_section.Length()
             attributes[attribute] = attributes.get(
                 attribute, 0) + length
@@ -42,7 +43,7 @@ def value_from_max_length(dgo_ftr, in_line_network, field_name):
 
 
 def value_from_dgo(dgo_ftr, in_dataset, field_name):
-    dgoid = dgo_ftr.GetField("DGOID")
+    dgoid = dgo_ftr.GetFID()
     with sqlite3.connect(os.path.dirname(in_dataset)) as conn:
         curs = conn.cursor()
         curs.execute(
@@ -53,7 +54,7 @@ def value_from_dgo(dgo_ftr, in_dataset, field_name):
 
 
 def value_density_from_dgo(dgo_ftr, in_dataset, field_name):
-    dgoid = dgo_ftr.GetField("DGOID")
+    dgoid = dgo_ftr.GetFID()
     with sqlite3.connect(os.path.dirname(in_dataset)) as conn:
         curs = conn.cursor()
         curs.execute(
@@ -70,11 +71,12 @@ def value_density_from_dgo(dgo_ftr, in_dataset, field_name):
 
 def value_from_dataset_area(dgo_ftr, in_dataset, field_name):
     attributes = {}
+    dgo_geom = dgo_ftr.GetGeometryRef()
     with GeopackageLayer(in_dataset) as lyr:
-        for feat, *_ in lyr.iterate_features(clip_shape=dgo_ftr):
+        for feat, *_ in lyr.iterate_features(clip_shape=dgo_geom):
             geom = feat.GetGeometryRef()
             attribute = feat.GetField(field_name)
-            geom_section = dgo_ftr.Intersection(geom)
+            geom_section = dgo_geom.Intersection(geom)
             area = geom_section.GetArea()
             attributes[attribute] = attributes.get(
                 attribute, 0) + area
@@ -98,28 +100,47 @@ def raster_pixel_value_count(dgo_ftr, in_dataset):
     return values
 
 
-def proportion_of_veg_type(veg_id_dict: dict, veg_class: str, database: str):
-    class_count = {}
-    for veg_id, count in veg_id_dict.items():
-        with sqlite3.connect(database) as conn:
-            curs = conn.cursor()
-            curs.execute(
-                f"SELECT Physiognomy FROM VegetationTypes WHERE veg_id = {veg_id}")
-            v_class = curs.fetchone()[0]
-            class_count[v_class] = class_count.get(v_class, 0) + count
-
-    proportion = class_count[veg_class] / sum(class_count.values())
-
-    return proportion
-
-
 def value_by_count(dgo_ftr, in_dataset, field_name, field_value):
     with GeopackageLayer(in_dataset) as lyr_pts:
         count = 0
-        for feat, *_ in lyr_pts.iterate_features(clip_shape=dgo_ftr, attribute_filter=f"""{field_name} = {field_value}"""):
+        for feat, *_ in lyr_pts.iterate_features(clip_shape=dgo_ftr.GetGeometryRef(), attribute_filter=f"""{field_name} = {field_value}"""):
             count += 1
 
     return count
+
+
+def ex_veg_proportion(dgo_ftr, in_dataset, field_name, field_value):
+    dgoid = dgo_ftr.GetFID()
+    veg_areas = {}
+    with sqlite3.connect(os.path.dirname(in_dataset)) as conn:
+        curs = conn.cursor()
+        curs.execute(f"""SELECT {field_name}, SUM(Area) FROM {os.path.basename(in_dataset)} 
+                     LEFT JOIN vegetation_types ON {os.path.basename(in_dataset)}.VegetationID = vegetation_types.VegetationID 
+                     WHERE DGOID = {dgoid} AND EpochID = 1 GROUP BY {field_name}""")
+        for row in curs.fetchall():
+            veg_areas[row[0]] = row[1]
+        if field_value in veg_areas:
+            proportion = veg_areas[field_value] / sum(veg_areas.values())
+        else:
+            proportion = 0.0
+    return proportion
+
+
+def hist_veg_proportion(dgo_ftr, in_dataset, field_name, field_value):
+    dgoid = dgo_ftr.GetFID()
+    veg_areas = {}
+    with sqlite3.connect(os.path.dirname(in_dataset)) as conn:
+        curs = conn.cursor()
+        curs.execute(f"""SELECT {field_name}, SUM(Area) FROM {os.path.basename(in_dataset)} 
+                     LEFT JOIN vegetation_types ON {os.path.basename(in_dataset)}.VegetationID = vegetation_types.VegetationID 
+                     WHERE DGOID = {dgoid} AND EpochID = 2 GROUP BY {field_name}""")
+        for row in curs.fetchall():
+            veg_areas[row[0]] = row[1]
+        if field_value in veg_areas:
+            proportion = veg_areas[field_value] / sum(veg_areas.values())
+        else:
+            proportion = 0.0
+    return proportion
 
 
 def call_function(func_name, *args):
