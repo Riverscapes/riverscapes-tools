@@ -40,6 +40,7 @@ from rscommons.moving_window import moving_window_dgo_ids
 from rme.__version__ import __version__
 from rme.analysis_window import AnalysisLine
 from rme.rme_report import RMEReport, FILTER_NAMES
+from rme.utils.measurements import get_segment_measurements
 from rme.utils.check_vbet_inputs import vbet_inputs
 from rme.utils.summarize_functions import *
 from rme.utils.bespoke_functions import *
@@ -393,6 +394,9 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                     f'Flowline for level path {level_path} is empty geometry')
                 continue
 
+            geom_centerline = collect_linestring(
+                input_layers['VBET_CENTERLINES'], f'level_path = {level_path}', precision=8)
+
             for feat_seg_dgo, *_ in lyr_segments.iterate_features(attribute_filter=f'level_path = {level_path}'):
                 # Gather common components for metric calcuations
                 feat_geom = feat_seg_dgo.GetGeometryRef().Clone()
@@ -412,20 +416,25 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                 stream_size = stream_size_lookup[stream_size_id]
                 stream_length, straight_length, min_elev, max_elev = get_segment_measurements(
                     geom_flowline, src_dem, feat_geom, buffer_distance[stream_size], transform)
-                dgo_meas[dgo_id] = [stream_length, straight_length, min_elev, max_elev]
+
+                cl_length, cl_straight, cl_min_elev, cl_max_elev = get_segment_measurements(
+                    geom_centerline, src_dem, feat_geom, buffer_distance[stream_size], transform)
+
+                dgo_meas[dgo_id] = [stream_length, straight_length, cl_length, min_elev, max_elev, cl_min_elev, cl_max_elev]
 
     # add dgo measurements to the table and get metric groups
     with sqlite3.connect(outputs_gpkg) as conn:
         curs = conn.cursor()
         for dgo_id, meas in dgo_meas.items():
             if None not in meas:
-                curs.execute(f"INSERT INTO dgo_measurements (DGOID, STRMLENG, STRMSTRLENG, STRMMINELEV, STRMMAXELEV) VALUES ({dgo_id}, {meas[0]}, {meas[1]}, {meas[2]}, {meas[3]})")
+                curs.execute(f"""INSERT INTO dgo_measurements (DGOID, STRMLENG, STRMSTRLENG, VALLENG, STRMMINELEV, STRMMAXELEV, CLMINELEV, CLMAXELEV)
+                             VALUES ({dgo_id}, {meas[0]}, {meas[1]}, {meas[2]}, {meas[3]}, {meas[4]}, {meas[5]}, {meas[6]})""")
         conn.commit()
         curs.execute("SELECT DISTINCT metric_group_id, metric_group_name FROM metric_groups")
         metric_groups = curs.fetchall()
 
     for i, metric_group, in enumerate(metric_groups):
-        if metric_group[1] != 'veg':  # remove this later
+        if metric_group[1] != 'geomorph':  # remove this later
             continue
         create_thematic_table(outputs_gpkg, metric_group[1], metric_group[0])
         metrics = generate_metric_list(outputs_gpkg, metric_group[0])
@@ -460,6 +469,8 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                     if metric_calculation_id not in metric_functions.keys():
                         continue
                     val = call_function(metric_functions[metric_calculation_id], *input_args)
+                    if val is None:
+                        continue
                     if metrics[metric]['data_type'] == 'REAL':
                         metrics_output[metrics[metric]['field_name']] = float(val)
                     elif metrics[metric]['data_type'] == 'INTEGER':
@@ -492,6 +503,18 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                         if metric == 'WATEREXT':
                             area = waterbody_extent(feat_geom, input_layers['WATERBODIES'], transform)
                             curs.execute(f"UPDATE {metric_group[1]} SET {metrics[metric]['field_name']} = {area} WHERE DGOID = {dgo_id}")
+
+                        if metric == 'STRMGRAD':
+                            grad = calculate_gradient(outputs_gpkg, dgo_id)
+                            curs.execute(f"UPDATE {metric_group[1]} SET {metrics[metric]['field_name']} = {grad} WHERE DGOID = {dgo_id}")
+
+                        if metric == 'VALGRAD':
+                            grad = calculate_gradient(outputs_gpkg, dgo_id, channel=False)
+                            curs.execute(f"UPDATE {metric_group[1]} SET {metrics[metric]['field_name']} = {grad} WHERE DGOID = {dgo_id}")
+
+                        if metric == 'RELFLWLNGTH':
+                            rel_len = rel_flow_length(feat_seg_dgo, line_network, transform)
+                            curs.execute(f"UPDATE {metric_group[1]} SET {metrics[metric]['field_name']} = {rel_len} WHERE DGOID = {dgo_id}")
 
         conn.commit()
 
@@ -627,49 +650,6 @@ def generate_window(lyr: GeopackageLayer, window: float, level_path: str, segmen
     geom_window = geom_window_sections.Buffer(buffer)
 
     return geom_window
-
-
-def get_segment_measurements(geom_line: ogr.Geometry, src_raster: rasterio.DatasetReader, geom_window: ogr.Geometry, buffer: float, transform) -> tuple:
-    """ return length of segment and endpoint elevations of a line
-
-    Args:
-        geom_line (ogr.Geometry): unclipped line geometry
-        raster (rasterio.DatasetReader): open dataset reader of elevation raster
-        geom_window (ogr.Geometry): analysis window for clipping line
-        buffer (float): buffer of endpoints to find min elevation
-        transform(CoordinateTransform): transform used to obtain length
-    Returns:
-        float: stream length
-        float: maximum elevation
-        float: minimum elevation
-    """
-
-    geom_clipped = geom_window.Intersection(geom_line)
-    if geom_clipped.GetGeometryName() == "MULTILINESTRING":
-        geom_clipped = reduce_precision(geom_clipped, 6)
-        geom_clipped = ogr.ForceToLineString(geom_clipped)
-    endpoints = get_endpoints(geom_clipped)
-    elevations = [None, None]
-    straight_length = None
-    if len(endpoints) == 2:
-        elevations = []
-        for pnt in endpoints:
-            point = Point(pnt)
-            # BRAT uses 100m here for all stream sizes?
-            polygon = point.buffer(buffer)
-            raw_raster, _out_transform = mask(src_raster, [polygon], crop=True)
-            mask_raster = np.ma.masked_values(raw_raster, src_raster.nodata)
-            value = float(mask_raster.min())  # BRAT uses mean here
-            elevations.append(value)
-        elevations.sort()
-        straight = LineString([endpoints[0], endpoints[1]])
-        straight_ogr = VectorBase.shapely2ogr(straight)
-        straight_ogr.Transform(transform)
-        straight_length = straight_ogr.Length()
-    geom_clipped.Transform(transform)
-    stream_length = geom_clipped.Length()
-
-    return stream_length, straight_length, elevations[0], elevations[1]
 
 
 def sum_window_attributes(lyr: GeopackageLayer, window: float, level_path: str, segment_dist: float, fields: list) -> dict:

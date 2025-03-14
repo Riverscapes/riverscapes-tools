@@ -103,7 +103,7 @@ def raster_pixel_value_count(dgo_ftr, in_dataset):
 def value_by_count(dgo_ftr, in_dataset, field_name, field_value):
     with GeopackageLayer(in_dataset) as lyr_pts:
         count = 0
-        for feat, *_ in lyr_pts.iterate_features(clip_shape=dgo_ftr.GetGeometryRef(), attribute_filter=f"""{field_name} = {field_value}"""):
+        for feat, *_ in lyr_pts.iterate_features(clip_shape=dgo_ftr.GetGeometryRef(), attribute_filter=f"""{field_name} = '{field_value}'"""):
             count += 1
 
     return count
