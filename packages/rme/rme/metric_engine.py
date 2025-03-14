@@ -540,10 +540,10 @@ def generate_metric_list(database: Path, group_id: int = None, source_table: str
         curs = conn.cursor()
         if group_id:
             metric_data = curs.execute(
-                f"""SELECT * from {source_table} WHERE is_active = 1 AND metric_group_id = {group_id}""").fetchall()
+                f"""SELECT * from {source_table} WHERE is_active = 1 AND metric_group_id = {group_id} and primary = 1""").fetchall()
         else:
             metric_data = curs.execute(
-                f"""SELECT * from {source_table} WHERE is_active = 1""").fetchall()
+                f"""SELECT * from {source_table} WHERE is_active = 1 and primary = 1""").fetchall()
         metrics = {metric['machine_code']: metric for metric in metric_data}
     return metrics
 
