@@ -1,4 +1,7 @@
+import rasterio
+import sqlite3
 from rscommons import GeopackageLayer, VectorBase
+from rme.utils.measurements import get_segment_measurements
 
 
 def watershed(huc):
@@ -51,3 +54,37 @@ def waterbody_extent(feat_geom, waterbodies, transform):
             area += section_proj.area
 
     return area
+
+
+def calculate_gradient(gpkg, dgoid, channel=True):
+    with sqlite3.connect(gpkg) as conn:
+        curs = conn.cursor()
+        if channel:
+            curs.execute(
+                f"SELECT STRMMAXELEV, STRMMINELEV, STRMLENG FROM dgo_measurements WHERE DGOID = {dgoid}")
+        else:
+            curs.execute(
+                f"SELECT CLMAXELEV, CLMINELEV, VALLENG FROM dgo_measurements WHERE DGOID = {dgoid}")
+        vals = curs.fetchone()
+        if vals[2] > 0.0:
+            gradient = (vals[0] - vals[1]) / vals[2]
+        else:
+            gradient = None
+
+    return gradient
+
+
+def rel_flow_length(feat_geom, line_network, transform):
+    dgo_ftr = feat_geom.GetGeometryRef()
+    cl_length = feat_geom.GetField('centerline_length')
+    if cl_length is None or cl_length == 0:
+        return None
+    with GeopackageLayer(line_network) as lyr_lines:
+        length = 0
+        for feat, *_ in lyr_lines.iterate_features(clip_shape=dgo_ftr):
+            geom_flowline_full = feat.GetGeometryRef()
+            feat_section = geom_flowline_full.Intersection(dgo_ftr)
+            section_proj = VectorBase.ogr2shapely(feat_section, transform=transform)
+            length += section_proj.length
+
+    return length
