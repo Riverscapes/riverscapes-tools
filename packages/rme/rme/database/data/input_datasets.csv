@@ -14,7 +14,7 @@ metric_id,dataset,field_name,field_value
 23,inputs/inputs.gpkg/flowlines,ecoregion_iv,
 24,outputs/riverscapes_metrics.gpkg/DGOVegetation,
 25,outputs/riverscapes_metrics.gpkg/DGOVegetation,
-26,outputs/riverscapes_metrics.gpkg/DGOVegetation,Physiognomy,Agriculture
+26,outputs/riverscapes_metrics.gpkg/DGOVegetation,Physiognomy,Agricultural
 28,outputs/riverscapes_metrics.gpkg/DGOVegetation,Physiognomy,Conifer
 30,outputs/riverscapes_metrics.gpkg/DGOVegetation,Physiognomy,Conifer-Hardwood
 32,outputs/riverscapes_metrics.gpkg/DGOVegetation,Physiognomy,Developed
