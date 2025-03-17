@@ -2526,12 +2526,12 @@ VegetationID,EpochID,Name,Physiognomy
 7290,1,North-Central Oak Barrens Herbaceous,Grassland
 7291,1,Central Interior Highlands Calcareous Glade and Barrens Herbaceous,Grassland
 7292,1,Open Water,Open Water
-7295,1,Quarries-Strip Mines-Gravel Pits-Well and Wind Pads,Quarries-Strip Mines-Gravel Pits-Well and Wind Pads
-7296,1,Developed-Low Intensity,Developed-Low Intensity
-7297,1,Developed-Medium Intensity,Developed-Medium Intensity
-7298,1,Developed-High Intensity,Developed-High Intensity
-7299,1,Developed-Roads,Developed-Roads
-7300,1,Developed-Open Space,Developed-Open Space
+7295,1,Quarries-Strip Mines-Gravel Pits-Well and Wind Pads,Developed
+7296,1,Developed-Low Intensity,Developed
+7297,1,Developed-Medium Intensity,Developed
+7298,1,Developed-High Intensity,Developed
+7299,1,Developed-Roads,Developed
+7300,1,Developed-Open Space,Developed
 7301,1,Laurentian-Acadian Sub-boreal Aspen-Birch Forest,Hardwood
 7302,1,Laurentian-Acadian Northern Hardwoods Forest,Hardwood
 7303,1,Northeastern Interior Dry-Mesic Oak Forest,Hardwood
