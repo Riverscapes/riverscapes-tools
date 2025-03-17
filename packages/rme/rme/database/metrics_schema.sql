@@ -55,6 +55,13 @@ CREATE TABLE measurements (
     is_active INTEGER
 );
 
+CREATE INDEX ix_metric_group_metrics ON metrics (metric_group_id);
+CREATE INDEX ix_metric_group_groups ON metric_groups (metric_group_id);
+CREATE INDEX ix_metric_calculation_metrics ON metrics (metric_calculation_id);
+CREATE INDEX ix_metric_calculation_calcs ON metric_calculations (metric_calculation_id);
+CREATE INDEX ix_input_datasets ON input_datasets (metric_id);
+CREATE INDEX ix_vegetation_types ON vegetation_types (VegetationID);
+
 
 -- CREATE INDEX ix_dgo_metric_values_metric_id ON dgo_metric_values (metric_id);
 -- CREATE INDEX ix_igo_metric_values_metric_id ON igo_metric_values (metric_id);
