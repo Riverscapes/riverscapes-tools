@@ -67,6 +67,8 @@ def calculate_gradient(gpkg, dgoid, channel=True):
             curs.execute(
                 f"SELECT CLMAXELEV, CLMINELEV, VALLENG FROM dgo_measurements WHERE DGOID = {dgoid}")
         vals = curs.fetchone()
+        if vals is None:
+            return None
         if vals[2] > 0.0:
             gradient = (vals[0] - vals[1]) / vals[2]
         else:

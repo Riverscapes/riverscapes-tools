@@ -8,6 +8,7 @@ def create_thematic_table(gpkg_path, table_name, metric_group_id):
     columns = "DGOID, "+", ".join([f"{field_name} {data_type}" for field_name, data_type in c.fetchall()])
     c.execute(f"CREATE TABLE {table_name} ({columns})")
     c.execute(f"INSERT INTO gpkg_contents (table_name, data_type) VALUES ('{table_name}', 'attributes')")
+    c.execute(f"CREATE INDEX ix_dgoid_{table_name} ON {table_name} (DGOID)")
     conn.commit()
     conn.close()
 
@@ -19,5 +20,6 @@ def create_measurement_table(gpkg_path):
     columns = "DGOID, "+", ".join([f"{machine_code} {data_type}" for machine_code, data_type in c.fetchall()])
     c.execute(f"CREATE TABLE dgo_measurements ({columns})")
     c.execute("INSERT INTO gpkg_contents (table_name, data_type) VALUES ('dgo_measurements', 'attributes')")
+    c.execute("CREATE INDEX ix_dgoid_meas ON dgo_measurements (DGOID)")
     conn.commit()
     conn.close()
