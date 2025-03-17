@@ -434,7 +434,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
         metric_groups = curs.fetchall()
 
     for i, metric_group, in enumerate(metric_groups):
-        if metric_group[1] != 'geomorph':  # remove this later
+        if metric_group[1] != 'veg':  # remove this later
             continue
         create_thematic_table(outputs_gpkg, metric_group[1], metric_group[0])
         metrics = generate_metric_list(outputs_gpkg, metric_group[0])
@@ -515,6 +515,16 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                         if metric == 'RELFLWLNGTH':
                             rel_len = rel_flow_length(feat_seg_dgo, line_network, transform)
                             curs.execute(f"UPDATE {metric_group[1]} SET {metrics[metric]['field_name']} = {rel_len} WHERE DGOID = {dgo_id}")
+
+                        if metric == 'LFEVT':
+                            evt = landfire_classes(feat_seg_dgo, outputs_gpkg)
+                            classes = ','.join([str(c) for c in evt])
+                            curs.execute(f"UPDATE {metric_group[1]} SET {metrics[metric]['field_name']} = '{classes}' WHERE DGOID = {dgo_id}")
+
+                        if metric == 'LFBPS':
+                            bps = landfire_classes(feat_seg_dgo, outputs_gpkg, epoch=2)
+                            classes = ','.join([str(c) for c in bps])
+                            curs.execute(f"UPDATE {metric_group[1]} SET {metrics[metric]['field_name']} = '{classes}' WHERE DGOID = {dgo_id}")
 
         conn.commit()
 
