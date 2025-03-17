@@ -1,3 +1,4 @@
+import os
 import rasterio
 import sqlite3
 from rscommons import GeopackageLayer, VectorBase
@@ -88,3 +89,22 @@ def rel_flow_length(feat_geom, line_network, transform):
             length += section_proj.length
 
     return length
+
+
+def landfire_classes(feat_geom, gpkg, epoch=1):
+    classes = {}
+    classes_out = []
+    dgo_id = feat_geom.GetFID()
+    with sqlite3.connect(gpkg) as conn:
+        curs = conn.cursor()
+        curs.execute(
+            f"""SELECT DGOVegetation.VegetationID, CellCount FROM DGOVegetation LEFT JOIN vegetation_types 
+            ON DGOVegetation.VegetationID = vegetation_types.VegetationID WHERE DGOID = {dgo_id} AND EpochID = {epoch}""")
+        for row in curs.fetchall():
+            classes[row[0]] = row[1]
+
+    for key, value in classes.items():
+        if value / sum(classes.values()) > 0.3:
+            classes_out.append(key)
+
+    return classes_out

@@ -2,9 +2,9 @@ metric_id,name,machine_code,data_type,field_name,description,small,medium,large,
 1,Ownership,AGENCY,TEXT,ownership,majority land ownership within the dgo,200,400,1400,1,4,1,0,1,
 2,State,STATE,TEXT,state,majority state that the dgo intersects,200,400,1400,1,4,1,0,1,
 3,County,COUNTY,TEXT,county,majority county that the dgo intersects,200,400,1400,1,5,1,0,1,
-4,Primary Channel Gradient,STRMGRAD,REAL,prim_channel_gradient,gradient calculated along the main flowline,200,400,1400,2,99,0,1,1,"Hack, J. T. (1973). Stream-profile analysis and stream-gradient index. Journal of Research of the U.S. Geological Survey, 1(4), 421–429. Nagel, D., Buffington, J., & Isaak, D. (4006). Comparison of methods for estimating stream channel gradient using GIS. USDA Forest Service, Rocky Mountain Research Station Boise Aquatic Sciences Lab."
-5,Valley Gradient,VALGRAD,REAL,valleybottom_gradient,gradient calculated along the valley centerline,200,400,1400,2,99,0,1,1,
-6,Relative Flow Length,RELFLWLNGTH,REAL,rel_flow_length,ratio of channel length to centerline length,200,400,1400,2,99,0,1,1,
+4,Primary Channel Gradient,STRMGRAD,REAL,prim_channel_gradient,gradient calculated along the main flowline,200,400,1400,2,99,1,1,1,"Hack, J. T. (1973). Stream-profile analysis and stream-gradient index. Journal of Research of the U.S. Geological Survey, 1(4), 421–429. Nagel, D., Buffington, J., & Isaak, D. (4006). Comparison of methods for estimating stream channel gradient using GIS. USDA Forest Service, Rocky Mountain Research Station Boise Aquatic Sciences Lab."
+5,Valley Gradient,VALGRAD,REAL,valleybottom_gradient,gradient calculated along the valley centerline,200,400,1400,2,99,1,1,1,
+6,Relative Flow Length,RELFLWLNGTH,REAL,rel_flow_length,ratio of channel length to centerline length,200,400,1400,2,99,1,1,1,
 7,Valley Azimuth,VALAZMTH,REAL,valley_azimuth,,200,400,1400,2,99,1,0,0,
 8,Confluence Count,CONF,INTEGER,confluences,number of locations where anabranches converge,200,400,1400,2,6,1,1,1,
 9,Diffluence Count,DIFF,INTEGER,diffluences,number of locations where anabranches split,200,400,1400,2,6,1,1,1,
