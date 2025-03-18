@@ -3,5 +3,5 @@ calculation_id,calculation_method,description
 1,add value across window,the sum of the value for a given field for each dgo in a window
 2,add and divide by centerline,sum the values for a given field across the window then divide by the total centerline length
 3,add and divide by channel length,sum the values for a given field across the window then divide by the channel length
-4,proportion, the proportion across a window
-5,area weighted average, the area weighted average of a field across a window
+4,proportion,the proportion across a window
+5,area weighted average,the area weighted average of a field across a window
