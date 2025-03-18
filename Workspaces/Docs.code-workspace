@@ -13,8 +13,7 @@
     },
   ],
   "settings": {
-    // TODO: Add your own site name here. Replace "GATSBYDOCS" with your site name or "QRiS Docs -" or whatever you want to see in the window title. 
-    "window.title": "GATSBYDOCS${separator}${activeEditorShort}${separator}${rootName}",
+    "window.title": "riverscapes-tools developer.riverscapes.net GATSBYDOCS${separator}${activeEditorShort}${separator}${rootName}",
     "[mdx]": {
       "editor.wordWrap": "on"
     },
@@ -40,6 +39,15 @@
     },
     "files.exclude": {
       "**/node_modules/**": true
+    },
+    "markdownlint.configFile": ".vscode/.markdownlint.json",
+    "cSpell.customDictionaries": {
+      "riverscapesWords": {
+        "name": "riverscapesWords",
+        "path": "./.vscode/riverscapesWords.txt",
+        "scope":"workspace",
+        "addWords": true
+      }
     }
   },
   "extensions": {
@@ -51,7 +59,9 @@
       "unifiedjs.vscode-mdx",
       "dbaeumer.vscode-eslint",
       "christian-kohler.npm-intellisense",
-      "mhutchie.git-graph"
+      "mhutchie.git-graph",
+      "streetsidesoftware.code-spell-checker",
+      "DavidAnson.vscode-markdownlint"
     ]
   },
   "terminal.integrated.defaultProfile.linux": "zsh"
