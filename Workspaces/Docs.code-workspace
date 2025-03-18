@@ -13,7 +13,7 @@
     },
   ],
   "settings": {
-    "window.title": "riverscapes-tools developer.riverscapes.net GATSBYDOCS${separator}${activeEditorShort}${separator}${rootName}",
+    "window.title": "riverscapes-tools GATSBYDOCS${separator}${activeEditorShort}${separator}${rootName}",
     "[mdx]": {
       "editor.wordWrap": "on"
     },
@@ -40,7 +40,12 @@
     "files.exclude": {
       "**/node_modules/**": true
     },
+    // treat mdx as markdown
+    "files.associations": {
+      "*.mdx": "markdown"
+    },
     "markdownlint.configFile": ".vscode/.markdownlint.json",
+    // spell check settings
     "cSpell.customDictionaries": {
       "riverscapesWords": {
         "name": "riverscapesWords",
@@ -48,7 +53,18 @@
         "scope":"workspace",
         "addWords": true
       }
-    }
+    },
+    "cSpell.languageSettings": [
+      {
+          // use with Markdown files
+          "languageId": "markdown",
+          // Exclude code.
+          "ignoreRegExpList": [
+              "/^\\s*```[\\s\\S]*?^\\s*```/gm",
+              "`[^`]*?`"
+          ]
+      }
+  ]
   },
   "extensions": {
     "recommendations": [
