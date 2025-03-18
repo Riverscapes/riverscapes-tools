@@ -643,16 +643,22 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
         with sqlite3.connect(outputs_gpkg) as conn:
             curs = conn.cursor()
 
+            progbar = ProgressBar(len(windows), 50, f'Caclulating {metric_group[1]} metrics for IGOs')
+            counter = 0
             for igo_id, dgo_ids in windows.items():
+                counter += 1
+                progbar.update(counter)
                 bespoke_method_metrics = []
                 metrics_output = {}
                 # Gather common components for metric calcuations
                 for metric in metrics:
-                    if metrics[metric]['window_calc_id'] not in metric_functions.keys():
+                    if metrics[metric]['window_calc_id'] not in mw_metric_functions.keys():
                         bespoke_method_metrics.append(metric)
                         continue
 
                     if metrics[metric]['window_calc_id'] == 0:
+                        if igo_id not in igo_dgo.keys():
+                            continue
                         input_args = mw_input_datasets[metrics[metric]['metric_id']]
                         input_args = [item for item in input_args if item]
                         input_args.insert(0, igo_dgo[igo_id])
@@ -686,7 +692,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                 if len(metrics_output) > 0:
                     field_names = ', '.join(metrics_output.keys())
                     placeholders = ', '.join(['?'] * len(metrics_output))
-                    sql = f"""INSERT INTO {metric_group[1]}_igo (DGOID, {field_names}) VALUES ({igo_id}, {placeholders})"""
+                    sql = f"""INSERT INTO {metric_group[1]}_igo (IGOID, {field_names}) VALUES ({igo_id}, {placeholders})"""
                     curs.execute(sql, list(metrics_output.values()))
                 else:
                     log.warning(f"No {metric_group[1]} metrics calculated for IGO {igo_id}")
@@ -720,7 +726,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                             besp_output[metrics[metric]['field_name']] = rvd
 
                     set_clause = ', '.join([f"{k} = ?" for k in besp_output.keys()])
-                    sql = f"""UPDATE {metric_group[1]}_igo SET {set_clause} WHERE DGOID = {igo_id}"""
+                    sql = f"""UPDATE {metric_group[1]}_igo SET {set_clause} WHERE IGOID = {igo_id}"""
                     curs.execute(sql, list(besp_output.values()))
 
             conn.commit()

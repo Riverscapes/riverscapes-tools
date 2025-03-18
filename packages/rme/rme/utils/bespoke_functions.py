@@ -191,7 +191,7 @@ def mw_stream_power(dgo_ids, gpkg, q='QLow'):
             slope = (result[0] - result[1]) / result[2]
             curs.execute(f"SELECT MAX({q}) FROM hydro_dgo WHERE DGOID IN ({','.join(map(str, dgo_ids))})")
             discharge = curs.fetchone()[0]
-            return slope * discharge * 9810
+            return slope * discharge * 0.0283168 * 9810
 
 
 def mw_rvd(dgo_ids, gpkg):
