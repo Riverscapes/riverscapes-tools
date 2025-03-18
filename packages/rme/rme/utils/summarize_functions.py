@@ -143,5 +143,26 @@ def hist_veg_proportion(dgo_ftr, in_dataset, field_name, field_value):
     return proportion
 
 
+def mw_sum(dgo_ids, table_name, field_name):
+    with sqlite3.connect(os.path.dirname(table_name)) as conn:
+        curs = conn.cursor()
+        curs.execute(f"""SELECT SUM({field_name}) FROM {os.path.basename(table_name)} 
+                     WHERE DGOID IN ({", ".join(map(str, dgo_ids))}) GROUP BY {field_name}""")
+        result = curs.fetchone()
+
+    return result
+
+
+def mw_sum_div_length(dgo_ids, table_name, field_name):
+    with sqlite3.connect(os.path.dirname(table_name)) as conn:
+        curs = conn.cursor()
+        curs.execute(f"""SELECT SUM({field_name}), SUM(VALLENG) FROM {os.path.basename(table_name)} LEFT JOIN dgo_measurements
+                     ON {os.path.basename(table_name)}.DGOID = dgo_measurements.DGOID 
+                     WHERE {os.path.basename(table_name)}.DGOID IN ({", ".join(map(str, dgo_ids))}""")
+        result = curs.fetchone()
+
+    return result
+
+
 def call_function(func_name, *args):
     return func_name(*args)
