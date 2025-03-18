@@ -2,7 +2,7 @@
   {
     "name": "Anthro",
     "summary": "Anthropogenic Context Project",
-    "description": "The Anthropogenic Context Project sumarizes anthropogenic impacts to riverscapes and channels. It uses roads, railroads, canals, land cover and land use as inputs from a [Riverscapes Context Project](https://tools.riverscapes.net/rscontext/) to look at infrastructre intersecting riverscape and channel networks, as well as landuses within and adjacent to the riverscape. The Anthropogenic Context Tool adds attributes to stream network reaches and to points along the riverscape (valley bottom) center line that help to contextualize potential anthropogenic impacts to the riverscape. These attributes are used in portions of the [BRAT](https://tools.riverscapes.net/brat) and [RCAT](https://tools.riverscapes.net/rcat) models./n Anthro is a [production-grade, hybrid channel network and riverscape network model](https://tools.riverscapes.net/).",
+    "description": "An Anthropogenic Context Project summarizes anthropogenic impacts to riverscapes and channels. It uses roads, railroads, canals, land cover and land use as inputs from a [Riverscapes Context Project](https://tools.riverscapes.net/rscontext/) to look at infrastructure intersecting riverscape and channel networks, as well as land uses within and adjacent to the riverscape. The Anthropogenic Context Tool adds attributes to stream network reaches and to points along the riverscape (valley bottom) center line that help to contextualize potential anthropogenic impacts to the riverscape. These attributes are used in portions of the [BRAT](https://tools.riverscapes.net/brat) and [RCAT](https://tools.riverscapes.net/rcat) models./n Anthro is a [production-grade, hybrid channel network and riverscape network model](https://tools.riverscapes.net/).",
     "meta": [
       {
         "key": "Resolution",
@@ -54,9 +54,7 @@
   {
     "name": "Beaver Restoration Assessment Tool (BRAT) - Riverscape Network",
     "summary": "The hybrid channel network/riverscape network Beaver Restoration Assessment Tool (sqlBRAT)",
-    "description": "The [Beaver Restoration Assessment Tool](https://tools.riverscapes.net/brat) combines a model estimating the capacity of a riverscape to support dam building activity with analysis of potential anthropogenic conflicts to create a tool that can be used to inform where [LTPBR restoration](http://lowtechpbr.restoration.usu.edu/) using beaver can be targeted.
-    
-    Hafen, K.C.; Wheaton, J.M.; Roper, B.B.; Bailey, P.; Macfarlane, W.W.; Neilson, B.T.; Tennant, C.J. Estimating Increased Transient Water Storage with Increases in Beaver Dam Activity. Water 2024, 16, 1515. [https://doi.org/10.3390/w16111515](https://doi.org/10.3390/w16111515)",
+    "description": "The [Beaver Restoration Assessment Tool](https://tools.riverscapes.net/brat) combines a model estimating the capacity of a riverscape to support dam building activity with analysis of potential anthropogenic conflicts to create a tool that can be used to inform where [LTPBR restoration](http://lowtechpbr.restoration.usu.edu/) using beaver can be targeted./n/n Hafen, K.C.; Wheaton, J.M.; Roper, B.B.; Bailey, P.; Macfarlane, W.W.; Neilson, B.T.; Tennant, C.J. Estimating Increased Transient Water Storage with Increases in Beaver Dam Activity. Water 2024, 16, 1515. [https://doi.org/10.3390/w16111515](https://doi.org/10.3390/w16111515)",
     "meta": [
       {
         "key": "Resolution",
@@ -82,7 +80,7 @@
   {
     "name": "CAD Export - CHaMP",
     "summary": "Raw Topographic Survey Data Export",
-    "description": "In the [CHAMP](https://champmonitoring.org) site visits, topographic survyes were collected with total stations. This is the raw topographic exports including points and breaklines in a DXF format. This was used as input into [CHaMP Topo Processing Toolbar](http://champtools.northarrowresearch.com/) to produce TINs and DEMs.",
+    "description": "In the [CHAMP](https://champmonitoring.org) site visits, topographic surveys were collected with total stations. This is the raw topographic exports including points and breaklines in a DXF format. This was used as input into [CHaMP Topo Processing Toolbar](http://champtools.northarrowresearch.com/) to produce TINs and DEMs.",
     "meta": [
       {
         "key": "Monitoring Program",
@@ -152,7 +150,7 @@
   {
     "name": "Channel Area",
     "summary": "Channel Area",
-    "description": "The [Channel Area tool](https://tools.riverscapes.net/channel) generates polygons representing the active channel network within a watershed. It is used as an input into [TauDEM](https://tools.riverscapes.net/taudem) and [VBET](https://tools.riverscapes.net/vbet). The default CONUS implementation is based on the NHD+HR inputs from [Riverscapes Context](https://tools.riverscapes.net/rscontext/), whereby it uses a mix of flow area and waterbody polygons where they exist, and for the rest of the drainage network, uses a buffer based on an estimate of bankfull width from a regional curve.",
+    "description": "The [Channel Area tool](https://tools.riverscapes.net/channelarea) generates polygons representing the active channel network within a watershed. It is used as an input into [TauDEM](https://tools.riverscapes.net/taudem) and [VBET](https://tools.riverscapes.net/vbet). The default CONUS implementation is based on the NHD+HR inputs from [Riverscapes Context](https://tools.riverscapes.net/rscontext/), whereby it uses a mix of flow area and waterbody polygons where they exist, and for the rest of the drainage network, uses a buffer based on an estimate of bankfull width from a regional curve.",
     "meta": [
       {
         "key": "Resolution",
@@ -171,7 +169,7 @@
         "value": "Model Output"
       }
     ],
-    "url": "https://tools.riverscapes.net/channel",
+    "url": "https://tools.riverscapes.net/channelarea",
     "machineName": "ChannelArea",
     "state": "ACTIVE"
   },
@@ -197,14 +195,14 @@
         "value": "Model Output"
       }
     ],
-    "url": null,
+    "url": "https://tools.riverscapes.net/confinement/",
     "machineName": "Confinement",
     "state": "ACTIVE"
   },
   {
     "name": "Electric Conductivity - CHaMP",
     "summary": null,
-    "description": "Electric Conductivity was used to aid in producing network-scale gross primary production models. ",
+    "description": "Electric Conductivity was used to aid in producing network-scale gross primary production models.",
     "meta": [
       {
         "key": "Monitoring Program",
@@ -405,7 +403,7 @@
   {
     "name": "RIM",
     "summary": "Riverscape Inundation Mapper",
-    "description": "[RIM](https://rim.riverscapes.net/) is a protocol for the efficient mapping of structurally forced inundation patterns in beaver impacted riverscapes.The RIM protocol is accessebile from [Riverscapes Studio](https://qris.riverscapes.net), and these scripts package the tool outputs into RIM riverscapes projects.",
+    "description": "[RIM](https://rim.riverscapes.net/) is a protocol for the efficient mapping of structurally forced inundation patterns in beaver impacted riverscapes.The RIM protocol is accessible from [Riverscapes Studio](https://qris.riverscapes.net), and these scripts package the tool outputs into RIM riverscapes projects.",
     "meta": [
       {
         "key": "Resolution",
@@ -431,7 +429,7 @@
   {
     "name": "LST",
     "summary": "Land Surface Temperature Model",
-    "description": "SQLite Database of landsurface temperature summaries for HUC 4s.",
+    "description": "SQLite Database of land surface temperature summaries for HUC 4s.",
     "meta": [
       {
         "key": "Resolution",
@@ -457,7 +455,7 @@
   {
     "name": "National Datasets",
     "summary": null,
-    "description": "National Datasets are containers for nationally available data to be accessed by the [Riverscapes Context model](https://tools.riverscapes.net/rscontext/), to package up for individual catchments. These datsets are not necessarily curated for all inputs to Riverscapes Context. Instead they are produced when national data is not available via a reliable API (e.g. when available only from a FTP server). These datasets are manually downloaded, curated and remain static (unlike datasets made available from a National Government and periodically updated and made availabe via their API.",
+    "description": "National Datasets are containers for nationally available data to be accessed by the [Riverscapes Context model](https://tools.riverscapes.net/rscontext/), to package up for individual catchments. These datasets are not necessarily curated for all inputs to Riverscapes Context. Instead they are produced when national data is not available via a reliable API (e.g. when available only from a FTP server). These datasets are manually downloaded, curated and remain static (unlike datasets made available from a National Government and periodically updated and made available via their API.",
     "meta": [
       {
         "key": "Resolution",
@@ -551,7 +549,7 @@
     "summary": "Riparian Condition Assessment Tool (RCAT)",
     "description": "Riparian Condition Assessment Tool (RCAT)",
     "meta": [],
-    "url": null,
+    "url": "https://tools.riverscapes.net/rcat/",
     "machineName": "rcat",
     "state": "ACTIVE"
   },
@@ -612,12 +610,12 @@
         "value": "Model Output"
       }
     ],
-    "url": null,
+    "url": "https://tools.riverscapes.net/rme/",
     "machineName": "rs_metric_engine",
     "state": "ACTIVE"
   },
   {
-    "name": "Sediment Fingerpinting",
+    "name": "Sediment Fingerprinting",
     "summary": "Sediment Fingerprinting Database",
     "description": "Sediment fingerprinting data that has been collected within the Mississippi River Basin into a coherent database, which contains 225,035 samples and a total of 3,715,811 geochemical measurements.",
     "meta": [
@@ -888,7 +886,7 @@
   {
     "name": "VBET",
     "summary": "Valley Bottom Extraction Tool",
-    "description": "The [Valley Bottom Extraction Tool](https://tools.riverscapes.net/vbet) uses a DEM and a channel area network to estimate the valley bottom extents (area that could plausibly flood in contemporary natural flow regime) thereby defining the riverscape network. ",
+    "description": "The [Valley Bottom Extraction Tool](https://tools.riverscapes.net/vbet) uses a DEM and a channel area network to estimate the valley bottom extents (area that could plausibly flood in contemporary natural flow regime) thereby defining the riverscape network.",
     "meta": [
       {
         "key": "Resolution",
@@ -968,7 +966,7 @@
         "value": "Model Output"
       }
     ],
-    "url": null,
+    "url": "https://tools.riverscapes.net/rscontext/",
     "machineName": "RSContextBC",
     "state": "ACTIVE"
   },
@@ -1001,7 +999,7 @@
   {
     "name": "LTPBR Projects",
     "summary": "Low Tech Process Based Restoration Projects",
-    "description": "Details of Low Tech Process Based Restoration Projects captured in the LTPBR Explorer online system. The LTPBR Explorer is a web-based tool that provides access to a database of Low Tech Process Based Restoration (LTPBR) projects. The LTPBR Explorer is a product of the Riverscapes Consortium, a group of scientists and practicioners working to advance the science and practice of river restoration. The LTPBR Explorer is designed to help users learn about LTPBR projects, explore the methods used in these projects, and access data and information that can be used to inform future restoration efforts. The LTPBR Explorer is a work in progress, and new projects are being added regularly. If you have a project that you would like to add to the LTPBR Explorer, please login to the system and click the Add a Project button.",
+    "description": "Details of Low Tech Process Based Restoration Projects captured in the LTPBR Explorer online system. The LTPBR Explorer is a web-based tool that provides access to a database of Low Tech Process Based Restoration (LTPBR) projects. The LTPBR Explorer is a product of the Riverscapes Consortium, a group of scientists and practitioners working to advance the science and practice of river restoration. The LTPBR Explorer is designed to help users learn about LTPBR projects, explore the methods used in these projects, and access data and information that can be used to inform future restoration efforts. The LTPBR Explorer is a work in progress, and new projects are being added regularly. If you have a project that you would like to add to the LTPBR Explorer, please login to the system and click the Add a Project button.",
     "meta": [
       {
         "key": "Resolution",
@@ -1081,7 +1079,7 @@
         "value": "Model Output"
       }
     ],
-    "url": null,
+    "url": "https://tools.riverscapes.net/hydro/",
     "machineName": "hydro_context",
     "state": "ACTIVE"
   },
@@ -1140,7 +1138,7 @@
   {
     "name": "Riverscapes IGOs",
     "summary": "Riverscapes integrated geographic objects scraped from RME projects into a synthesis project at other scales.",
-    "description": "Riverscapes integrated geographic objects scraped from RME projects into a synthesis project at other scales.",
+    "description": "Riverscapes integrated geographic objects scraped from [RME](https://tools.riverscapes.net/rme/) projects into a synthesis project at other scales.",
     "meta": [
       {
         "key": "Resolution",
@@ -1166,7 +1164,7 @@
   {
     "name": "New Zealand National Datasets",
     "summary": null,
-    "description": "National Datasets are containers for nationally available data to be accessed by the [Riverscapes Context model](https://tools.riverscapes.net/rscontext/), to package up for individual catchments. These datsets are not necessarily curated for all inputs to Riverscapes Context. Instead they are produced when national data is not available via a reliable API (e.g. when available only from a FTP server). These datasets are manually downloaded, curated and remain static (unlike datasets made available from a National Government and periodically updated and made availabe via their API.",
+    "description": "National Datasets are containers for nationally available data to be accessed by the [Riverscapes Context model](https://tools.riverscapes.net/rscontext/), to package up for individual catchments. These datasets are not necessarily curated for all inputs to Riverscapes Context. Instead they are produced when national data is not available via a reliable API (e.g. when available only from a FTP server). These datasets are manually downloaded, curated and remain static (unlike datasets made available from a National Government and periodically updated and made available via their API.",
     "meta": [
       {
         "key": "Resolution",
@@ -1210,7 +1208,7 @@
   {
     "name": "Italian National Datasets",
     "summary": null,
-    "description": "National Datasets are containers for nationally available data to be accessed by the [Riverscapes Context model](https://tools.riverscapes.net/rscontext/), to package up for individual catchments. These datsets are not necessarily curated for all inputs to Riverscapes Context. Instead they are produced when national data is not available via a reliable API (e.g. when available only from a FTP server). These datasets are manually downloaded, curated and remain static (unlike datasets made available from a National Government and periodically updated and made availabe via their API.",
+    "description": "National Datasets are containers for nationally available data to be accessed by the [Riverscapes Context model](https://tools.riverscapes.net/rscontext/), to package up for individual catchments. These datasets are not necessarily curated for all inputs to Riverscapes Context. Instead they are produced when national data is not available via a reliable API (e.g. when available only from a FTP server). These datasets are manually downloaded, curated and remain static (unlike datasets made available from a National Government and periodically updated and made available via their API.",
     "meta": [
       {
         "key": "Resolution",
@@ -1232,7 +1230,7 @@
   {
     "name": "Beaver Dam Water Storage (BDWS)",
     "summary": "Distributing beaver dams and calculating the water storage associated with them.",
-    "description": "Beaver Dam Water Storage (BDWS) is a collection of Python classes for estimating surface water and groundwater stored by beaver dams. BDWS uses beaver dam capacity estimates from the Beaver Restoration Assesment Tool (BRAT) to place beaver dams along stream reaches, flow direction algebra to determine the area inundated by a dam, and MODFLOW-2005 to model potential changes to groundwater tables from beaver dam construction. BDWS is comprised of three classes. BDLoG (Beaver Dam Location Generator), which generates beaver dam locations along a stream network using BRAT outputs. BDSWEA (Beaver Dam Surface Water Estimation Algorithm), which estimates the amount of water a beaver dam of a given height at a given location could potentially store. BDflopy (Beaver Dam flopy), which uses the existing FloPy python module to automatically parameterize and run MODFLOW-2005 to estimate changes to groundwater storage resulting from beaver dam construction.",
+    "description": "Beaver Dam Water Storage (BDWS) is a collection of Python classes for estimating surface water and groundwater stored by beaver dams. BDWS uses beaver dam capacity estimates from the Beaver Restoration Assessment Tool (BRAT) to place beaver dams along stream reaches, flow direction algebra to determine the area inundated by a dam, and MODFLOW-2005 to model potential changes to groundwater tables from beaver dam construction. BDWS is comprised of three classes. BDLoG (Beaver Dam Location Generator), which generates beaver dam locations along a stream network using BRAT outputs. BDSWEA (Beaver Dam Surface Water Estimation Algorithm), which estimates the amount of water a beaver dam of a given height at a given location could potentially store. BDflopy (Beaver Dam flopy), which uses the existing FloPy python module to automatically parameterize and run MODFLOW-2005 to estimate changes to groundwater storage resulting from beaver dam construction.",
     "meta": [
       {
         "key": "Resolution",
