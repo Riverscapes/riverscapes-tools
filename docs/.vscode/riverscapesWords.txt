@@ -15,6 +15,7 @@ QGIS
 RCAT
 riverscape
 riverscapes
+Strahler
 Tarboton
 taudem
 Tennant
