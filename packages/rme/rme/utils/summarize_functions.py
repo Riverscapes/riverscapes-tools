@@ -143,6 +143,16 @@ def hist_veg_proportion(dgo_ftr, in_dataset, field_name, field_value):
     return proportion
 
 
+def mw_copy_from_dgo(dgo_id, table_name, field_name):
+    with sqlite3.connect(os.path.dirname(table_name)) as conn:
+        curs = conn.cursor()
+        curs.execute(f"""SELECT {field_name} FROM {os.path.basename(table_name)} 
+                     WHERE DGOID = {dgo_id}""")
+        result = curs.fetchone()
+
+    return result
+
+
 def mw_sum(dgo_ids, table_name, field_name):
     with sqlite3.connect(os.path.dirname(table_name)) as conn:
         curs = conn.cursor()
@@ -160,8 +170,45 @@ def mw_sum_div_length(dgo_ids, table_name, field_name):
                      ON {os.path.basename(table_name)}.DGOID = dgo_measurements.DGOID 
                      WHERE {os.path.basename(table_name)}.DGOID IN ({", ".join(map(str, dgo_ids))}""")
         result = curs.fetchone()
+        out = result[0] / result[1] if result[1] > 0.0 else None
 
-    return result
+    return out
+
+
+def mw_sum_div_chan_length(dgo_ids, table_name, field_name):
+    with sqlite3.connect(os.path.dirname(table_name)) as conn:
+        curs = conn.cursor()
+        curs.execute(f"""SELECT SUM({field_name}), SUM(CHANLEN) FROM {os.path.basename(table_name)} LEFT JOIN dgo_measurements
+                     ON {os.path.basename(table_name)}.DGOID = dgo_measurements.DGOID 
+                     WHERE {os.path.basename(table_name)}.DGOID IN ({", ".join(map(str, dgo_ids))}""")
+        result = curs.fetchone()
+        out = result[0] / result[1] if result[1] > 0.0 else None
+
+    return out
+
+
+def mw_proportion(dgo_ids, table_name, field_name):
+    with sqlite3.connect(os.path.dirname(table_name)) as conn:
+        curs = conn.cursor()
+        curs.execute(f"""SELECT SUM({field_name}), SUM(segment_area) FROM {os.path.basename(table_name)}
+                     LEFT JOIN dgos ON {os.path.basename(table_name)}.DGOID = DGOID 
+                     WHERE DGOID IN ({", ".join(map(str, dgo_ids))})""")
+        result = curs.fetchone()
+        prop = result[0] / result[1] if result[1] > 0.0 else None
+
+    return prop
+
+
+def mw_area_weighted_av(dgo_ids, table_name, field_name):
+    with sqlite3.connect(os.path.dirname(table_name)) as conn:
+        curs = conn.cursor()
+        curs.execute(f"""SELECT SUM({field_name} * segment_area), SUM(segment_area) FROM {os.path.basename(table_name)}
+                     LEFT JOIN dgos ON {os.path.basename(table_name)}.DGOID = DGOID 
+                     WHERE DGOID IN ({", ".join(map(str, dgo_ids))})""")
+        result = curs.fetchone()
+        out = result[0] / result[1] if result[1] > 0.0 else None
+
+    return out
 
 
 def call_function(func_name, *args):
