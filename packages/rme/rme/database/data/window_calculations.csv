@@ -1,0 +1,3 @@
+calculation_id,calculation_method,description
+1,add value across window,the sum of the value for a given field for each dgo in a window
+99,value from dgo,copy the value directly from another dgo as the metric
