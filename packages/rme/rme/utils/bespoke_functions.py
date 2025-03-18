@@ -110,3 +110,97 @@ def landfire_classes(feat_geom, gpkg, epoch=1):
             classes_out.append(key)
 
     return classes_out
+
+
+def mw_calculate_gradient(gpkg, dgo_ids, channel=True):
+    with sqlite3.connect(gpkg) as conn:
+        curs = conn.cursor()
+        if channel:
+            curs.execute(
+                f"SELECT MAX(STRMMAXELEV), MIN(STRMMINELEV), SUM(STRMLENG) FROM dgo_measurements WHERE DGOID IN ({','.join(map(str, dgo_ids))})")
+        else:
+            curs.execute(
+                f"SELECT MAX(CLMAXELEV), MIN(CLMINELEV), SUM(VALLENG) FROM dgo_measurements WHERE DGOID IN ({','.join(map(str, dgo_ids))})")
+        vals = curs.fetchone()
+        if vals is None:
+            return None
+        if vals[2] > 0.0:
+            gradient = (vals[0] - vals[1]) / vals[2]
+        else:
+            gradient = None
+
+    return gradient
+
+
+def mw_calculate_sinuosity(gpkg, dgo_ids):
+    with sqlite3.connect(gpkg) as conn:
+        curs = conn.cursor()
+        curs.execute(
+            f"SELECT SUM(STRMLENG), SUM(STRMSTRLENG) FROM dgo_measurements WHERE DGOID IN ({','.join(map(str, dgo_ids))})")
+        vals = curs.fetchone()
+        if vals is None:
+            return None
+        if vals[1] > 0.0:
+            sinuosity = vals[0] / vals[1]
+        else:
+            sinuosity = None
+
+    return sinuosity
+
+
+def mw_acres_per_mi(dgo_ids, gpkg):
+    with sqlite3.connect(gpkg) as conn:
+        curs = conn.cursor()
+        curs.execute(
+            f"""SELECT SUM(segment_area), SUM(centerline_length) FROM dgos 
+            WHERE DGOID IN ({','.join(map(str, dgo_ids))})""")
+        result = curs.fetchone()
+        if result[1] > 0.0:
+            out = (result[0] * 0.000247105) / (result[1] * 0.000621371)
+        else:
+            out = None
+
+    return out
+
+
+def mw_hect_per_km(dgo_ids, gpkg):
+    with sqlite3.connect(gpkg) as conn:
+        curs = conn.cursor()
+        curs.execute(
+            f"""SELECT SUM(segment_area), SUM(centerline_length) FROM dgos 
+            WHERE DGOID IN ({','.join(map(str, dgo_ids))})""")
+        result = curs.fetchone()
+        if result[1] > 0.0:
+            out = (result[0] * 0.0001) / (result[1] * 0.001)
+        else:
+            out = None
+
+    return out
+
+
+def mw_stream_power(dgo_ids, gpkg, q='QLow'):
+    with sqlite3.connect(gpkg) as conn:
+        curs = conn.cursor()
+        curs.execute(
+            f"""SELECT MAX(STRMMAXELEV), MIN(STRMMINELEV), SUM(STRMLENG) FROM dgo_measurements 
+            WHERE DGOID IN ({','.join(map(str, dgo_ids))})""")
+        result = curs.fetchone()
+        if result[2] > 0.0:
+            return None
+        else:
+            slope = (result[0] - result[1]) / result[2]
+            curs.execute(f"SELECT MAX({q}) FROM hydro_dgo WHERE DGOID IN ({','.join(map(str, dgo_ids))})")
+            discharge = curs.fetchone()[0]
+            return slope * discharge * 9810
+
+
+def mw_rvd(dgo_ids, gpkg):
+    with sqlite3.connect(gpkg) as conn:
+        curs = conn.cursor()
+        curs.execute(f"""SELECT riparian_veg_departure, segment_area FROM veg_dgo LEFT JOIN dgos
+                     ON veg_dgo.DGOID = dgos.DGOID WHERE dgos.DGOID IN ({','.join(map(str, dgo_ids))})""")
+        result = curs.fetchall()
+        if len(result) == 0:
+            return None
+        else:
+            return sum([r[0] * r[1] for r in result]) / sum([r[1] for r in result])

@@ -30,6 +30,7 @@ CREATE TABLE metrics (
     metric_calculation_id INTEGER,
     primary_metric INTEGER,
     moving_window INTEGER,
+    window_calc_id INTEGER,
     is_active BOOLEAN,
     docs_url TEXT,
 
@@ -43,6 +44,13 @@ CREATE TABLE input_datasets (
     field_name TEXT,
     field_value TEXT,
     CONSTRAINT fk_input_datasets_metric_id FOREIGN KEY (metric_id) REFERENCES metrics (metric_id)
+);
+
+CREATE TABLE mw_input_datasets (
+    metric_id INTEGER PRIMARY KEY NOT NULL,
+    dataset TEXT,
+    field_name TEXT,
+    CONSTRAINT fk_mw_input_datasets_metric_id FOREIGN KEY (metric_id) REFERENCES metrics (metric_id)
 );
 
 CREATE TABLE vegetation_types (
@@ -67,6 +75,7 @@ CREATE INDEX ix_metric_calculation_metrics ON metrics (metric_calculation_id);
 CREATE INDEX ix_window_calculation ON window_calculations (calculation_id);
 CREATE INDEX ix_metric_calculation_calcs ON metric_calculations (metric_calculation_id);
 CREATE INDEX ix_input_datasets ON input_datasets (metric_id);
+CREATE INDEX ix_mw_input_datasets ON mw_input_datasets (metric_id);
 CREATE INDEX ix_vegetation_types ON vegetation_types (VegetationID);
 
 
@@ -79,4 +88,5 @@ INSERT INTO gpkg_contents (table_name, data_type) VALUES ('window_calculations',
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('metrics', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('vegetation_types', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('input_datasets', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('mw_input_datasets', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('measurements', 'attributes');
