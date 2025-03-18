@@ -55,7 +55,7 @@
   {
     "toolId": "anthro",
     "name": "Anthropologic Context",
-    "description": "Dervies anthropologic context from a variety of sources.",
+    "description": "Derives anthropologic context from a variety of sources.",
     "url": "https://tools.riverscapes.net/anthro/",
     "grade": ["Operational"],
     "compliance": ["Compliant"],
