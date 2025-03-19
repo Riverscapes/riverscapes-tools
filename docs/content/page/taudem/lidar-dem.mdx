@@ -1,22 +1,24 @@
 ---
-title: Generating Riverscapes from High Res DEMs 
+title: Generating Stream Networks 
 banner: true
 layout: default
-description: A workflow for generating riverscapes from high resolution digital elevation models.
+description: A workflow for generating stream networks from high resolution digital elevation models.
 ---
 
 This workflow outlines the process of generating riverscapes using only a high-resolution DEM. It is particularly useful for working with LiDAR datasets or other detailed elevation models to create riverscapes. Developed by Philip Bailey in March 2025, this approach builds upon Jordan Gilbert's work with [TauDEM](https://hydrology.usu.edu/taudem/taudem5/) for Riverscapes tools.
 
-# Step 0. Preparation
+The motivation is to be able to build a stream network that can be used within the [Riverscapes tools waterfall](https://tools.riverscapes.net/#the-waterfall) for generating riverscapes polygons. With nothing more than a DEM, this workflow is the first step to running the Channel Area, tauDEM and VBET portion of the tools waterfall.
+
+# Preparation
 
 1. Launch a GitHub CodeSpace in the [Riverscapes Tools](https://github.com/Riverscapes/riverscapes-tools) repository. Experiment with different CodeSpace sizes to find the best performance. This workflow was developed using the largest size available and all tools ran in under 1 minute on 350Mb rasters.
-1. Create a folder for storing data at `/workspace/data` and open a new Visual Studio Code window in that folder.
+1. Create a data processing folder at `/workspace/data` and open a new Visual Studio Code window in that folder.
 1. Upload the high resolution DEM to the `/workspace/data` folder. (Simply drag the file into the Visual Studio Code window at the appropriate location.)
 1. Open a terminal in the `/workspace/data` folder.
 
-This workflow was developed on a LiDAR DEM for Cole Creek in southwestern Wyoming. The raster was provided by the Bureau of Land Management. The cartographic projection is EPSG:26913, UTM zone 13N.
+This workflow was developed on a LiDAR DEM for [Cole Creek](https://www.google.com/maps/place/41%C2%B018'36.0%22N+109%C2%B043'48.0%22W/@41.2878846,-109.8572072,11z/data=!4m4!3m3!8m2!3d41.31!4d-109.73!5m1!1e3?entry=ttu&g_ep=EgoyMDI1MDMxNi4wIKXMDSoASAFQAw%3D%3D) in southwestern Wyoming. The raster was provided by the Bureau of Land Management. The cartographic projection is EPSG:26913, UTM zone 13N.
 
-![original DEM](/images/tauDEM/cole-creek-dem.png)
+![original DEM](/images/tauDEM/cole_creek_dem.png)
 
 # Step 1. Pitfill the DEM
 
