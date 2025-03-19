@@ -122,7 +122,7 @@ def mw_calculate_gradient(gpkg, dgo_ids, channel=True):
             curs.execute(
                 f"SELECT MAX(CLMAXELEV), MIN(CLMINELEV), SUM(VALLENG) FROM dgo_measurements WHERE DGOID IN ({','.join(map(str, dgo_ids))})")
         vals = curs.fetchone()
-        if vals is None:
+        if None in vals:
             return None
         if vals[2] > 0.0:
             gradient = (vals[0] - vals[1]) / vals[2]
@@ -138,7 +138,7 @@ def mw_calculate_sinuosity(gpkg, dgo_ids):
         curs.execute(
             f"SELECT SUM(STRMLENG), SUM(STRMSTRLENG) FROM dgo_measurements WHERE DGOID IN ({','.join(map(str, dgo_ids))})")
         vals = curs.fetchone()
-        if vals is None:
+        if None in vals:
             return None
         if vals[1] > 0.0:
             sinuosity = vals[0] / vals[1]
@@ -155,6 +155,8 @@ def mw_acres_per_mi(dgo_ids, gpkg):
             f"""SELECT SUM(segment_area), SUM(centerline_length) FROM dgos 
             WHERE DGOID IN ({','.join(map(str, dgo_ids))})""")
         result = curs.fetchone()
+        if None in result:
+            return None
         if result[1] > 0.0:
             out = (result[0] * 0.000247105) / (result[1] * 0.000621371)
         else:
@@ -170,6 +172,8 @@ def mw_hect_per_km(dgo_ids, gpkg):
             f"""SELECT SUM(segment_area), SUM(centerline_length) FROM dgos 
             WHERE DGOID IN ({','.join(map(str, dgo_ids))})""")
         result = curs.fetchone()
+        if None in result:
+            return None
         if result[1] > 0.0:
             out = (result[0] * 0.0001) / (result[1] * 0.001)
         else:
@@ -185,13 +189,15 @@ def mw_stream_power(dgo_ids, gpkg, q='QLow'):
             f"""SELECT MAX(STRMMAXELEV), MIN(STRMMINELEV), SUM(STRMLENG) FROM dgo_measurements 
             WHERE DGOID IN ({','.join(map(str, dgo_ids))})""")
         result = curs.fetchone()
-        if result[2] > 0.0:
+        if None in result:
             return None
-        else:
+        if result[2] > 0.0:
             slope = (result[0] - result[1]) / result[2]
             curs.execute(f"SELECT MAX({q}) FROM hydro_dgo WHERE DGOID IN ({','.join(map(str, dgo_ids))})")
             discharge = curs.fetchone()[0]
             return slope * discharge * 0.0283168 * 9810
+        else:
+            return None
 
 
 def mw_rvd(dgo_ids, gpkg):
@@ -203,4 +209,4 @@ def mw_rvd(dgo_ids, gpkg):
         if len(result) == 0:
             return None
         else:
-            return sum([r[0] * r[1] for r in result]) / sum([r[1] for r in result])
+            return sum([r[0] * r[1] for r in result]) / sum([r[1] for r in result if None not in r])
