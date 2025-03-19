@@ -148,9 +148,11 @@ def mw_copy_from_dgo(dgo_id, table_name, field_name):
         curs = conn.cursor()
         curs.execute(f"""SELECT {field_name} FROM {os.path.basename(table_name)} 
                      WHERE DGOID = {dgo_id}""")
-        result = curs.fetchone()[0]
-
-    return result
+        result = curs.fetchone()
+        if result is None:
+            return None
+        else:
+            return result[0]
 
 
 def mw_sum(dgo_ids, table_name, field_name):
@@ -158,25 +160,30 @@ def mw_sum(dgo_ids, table_name, field_name):
         curs = conn.cursor()
         curs.execute(f"""SELECT SUM({field_name}) FROM {os.path.basename(table_name)} 
                      WHERE DGOID IN ({", ".join(map(str, dgo_ids))})""")
-        result = curs.fetchone()[0]
-
-    return result
+        result = curs.fetchone()
+        if result[0] is None:
+            return None
+        else:
+            return result[0]
 
 
 def mw_sum_div_length(dgo_ids, table_name, field_name):
     with sqlite3.connect(os.path.dirname(table_name)) as conn:
         curs = conn.cursor()
         if os.path.basename(table_name) == "dgo_measurements":
-            curs.execute(f"""SELECT SUM({field_name}), SUM(STRMLENG) FROM {os.path.basename(table_name)} 
+            curs.execute(f"""SELECT SUM({field_name}), SUM(VALLENG) FROM {os.path.basename(table_name)} 
                          WHERE DGOID IN ({", ".join(map(str, dgo_ids))})""")
         else:
             curs.execute(f"""SELECT SUM({field_name}), SUM(VALLENG) FROM {os.path.basename(table_name)} LEFT JOIN dgo_measurements
                         ON {os.path.basename(table_name)}.DGOID = dgo_measurements.DGOID 
                         WHERE {os.path.basename(table_name)}.DGOID IN ({", ".join(map(str, dgo_ids))})""")
         result = curs.fetchone()
-        if result[0] is None or result[1] is None:
+        if None in result:
             return None
-        out = result[0] / result[1] if result[1] > 0.0 else None
+        if 'beaver' in table_name or 'geomorph' in table_name:
+            out = result[0] / (result[1] / 1000) if result[1] > 0.0 else None
+        else:
+            out = result[0] / result[1] if result[1] > 0.0 else None
 
     return out
 
@@ -188,7 +195,7 @@ def mw_sum_div_chan_length(dgo_ids, table_name, field_name):
                      ON {os.path.basename(table_name)}.DGOID = dgo_measurements.DGOID 
                      WHERE {os.path.basename(table_name)}.DGOID IN ({", ".join(map(str, dgo_ids))})""")
         result = curs.fetchone()
-        if result[0] is None or result[1] is None:
+        if None in result:
             return None
         out = result[0] / result[1] if result[1] > 0.0 else None
 
@@ -202,7 +209,7 @@ def mw_proportion(dgo_ids, table_name, field_name):
                      LEFT JOIN dgos ON {os.path.basename(table_name)}.DGOID = dgos.DGOID 
                      WHERE {os.path.basename(table_name)}.DGOID IN ({", ".join(map(str, dgo_ids))})""")
         result = curs.fetchone()
-        if result[0] is None or result[1] is None:
+        if None in result:
             return None
         prop = result[0] / result[1] if result[1] > 0.0 else None
 
@@ -216,7 +223,7 @@ def mw_area_weighted_av(dgo_ids, table_name, field_name):
                      LEFT JOIN dgos ON {os.path.basename(table_name)}.DGOID = dgos.DGOID 
                      WHERE {os.path.basename(table_name)}.DGOID IN ({", ".join(map(str, dgo_ids))})""")
         result = curs.fetchone()
-        if result[0] is None or result[1] is None:
+        if None in result:
             return None
         out = result[0] / result[1] if result[1] > 0.0 else None
 
