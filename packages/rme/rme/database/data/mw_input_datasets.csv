@@ -77,7 +77,7 @@ metric_id,dataset,field_name
 82,outputs/riverscapes_metrics.gpkg/geomorph_dgo,confining_margins
 83,outputs/riverscapes_metrics.gpkg/geomorph_dgo,constricting_margins
 84,outputs/riverscapes_metrics.gpkg/geomorph_dgo,confining_margins
-86,outputs/riverscapes_metrics.gpkg/geomorph_dgo,constricting_margins
+85,outputs/riverscapes_metrics.gpkg/geomorph_dgo,constricting_margins
 87,outputs/riverscapes_metrics.gpkg/hydro_dgo,qlow
 88,outputs/riverscapes_metrics.gpkg/hydro_dgo,q2
 91,outputs/riverscapes_metrics.gpkg/impacts_dgo,road_len
