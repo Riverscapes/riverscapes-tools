@@ -639,7 +639,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
     # fill out igo_metrics table using moving window analysis
     for i, metric_group, in enumerate(metric_groups):
 
-        metrics = generate_metric_list(outputs_gpkg, metric_group[0])
+        metrics = generate_metric_list(outputs_gpkg, metric_group[0], primary=None)
         with sqlite3.connect(outputs_gpkg) as conn:
             curs = conn.cursor()
 
@@ -791,11 +791,19 @@ def generate_metric_list(database: Path, group_id: int = None, source_table: str
         conn.row_factory = sqlite3.Row
         curs = conn.cursor()
         if group_id:
-            metric_data = curs.execute(
-                f"""SELECT * from {source_table} WHERE is_active = 1 AND metric_group_id = {group_id} and primary_metric = {primary}""").fetchall()
+            if primary:
+                metric_data = curs.execute(
+                    f"""SELECT * from {source_table} WHERE is_active = 1 AND metric_group_id = {group_id} and primary_metric = {primary}""").fetchall()
+            else:
+                metric_data = curs.execute(
+                    f"""SELECT * from {source_table} WHERE is_active = 1 and primary_metric = {primary}""").fetchall()
         else:
-            metric_data = curs.execute(
-                f"""SELECT * from {source_table} WHERE is_active = 1 and primary_metric = {primary}""").fetchall()
+            if primary:
+                metric_data = curs.execute(
+                    f"""SELECT * from {source_table} WHERE is_active = 1 AND primary_metric = {primary}""").fetchall()
+            else:
+                metric_data = curs.execute(
+                    f"""SELECT * from {source_table} WHERE is_active = 1""").fetchall()
         metrics = {metric['machine_code']: metric for metric in metric_data}
     return metrics
 

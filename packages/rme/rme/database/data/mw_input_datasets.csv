@@ -18,7 +18,7 @@ metric_id,dataset,field_name
 21,outputs/riverscapes_metrics.gpkg/desc_dgo,waterbodyextent
 22,outputs/riverscapes_metrics.gpkg/desc_dgo,ecoregion3
 23,outputs/riverscapes_metrics.gpkg/desc_dgo,ecoregion4
-24,outputs/riverscapes_metrics.gpkg/veg_dgo,lf-evt
+24,outputs/riverscapes_metrics.gpkg/veg_dgo,lf_evt
 25,outputs/riverscapes_metrics.gpkg/veg_dgo,lf_bps
 26,outputs/riverscapes_metrics.gpkg/veg_dgo,lf_agriculture_prop
 27,outputs/riverscapes_metrics.gpkg/veg_dgo,lf_agriculture
@@ -69,10 +69,10 @@ metric_id,dataset,field_name
 72,outputs/riverscapes_metrics.gpkg/geomorph_dgo,channel_area
 73,outputs/riverscapes_metrics.gpkg/geomorph_dgo,floodplain_area
 74,outputs/riverscapes_metrics.gpkg/dgos,segment_area
-75,outputs/riverscapes_metrics.gpkg/geomorph_dgo,active_channel_ratio
-76,outputs/riverscapes_metrics.gpkg/geomorph_dgo,low_lying_ratio
-77,outputs/riverscapes_metrics.gpkg/geomorph_dgo,elevated_ratio
-78,outputs/riverscapes_metrics.gpkg/geomorph_dgo,floodplain_ratio
+75,outputs/riverscapes_metrics.gpkg/geomorph_dgo,channel_area
+76,outputs/riverscapes_metrics.gpkg/geomorph_dgo,lowlying_area
+77,outputs/riverscapes_metrics.gpkg/geomorph_dgo,elevated_area
+78,outputs/riverscapes_metrics.gpkg/geomorph_dgo,floodplain_area
 81,outputs/riverscapes_metrics.gpkg/geomorph_dgo,channel_area
 82,outputs/riverscapes_metrics.gpkg/geomorph_dgo,confining_margins
 83,outputs/riverscapes_metrics.gpkg/geomorph_dgo,constricting_margins
