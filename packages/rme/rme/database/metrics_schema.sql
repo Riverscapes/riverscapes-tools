@@ -84,69 +84,69 @@ CREATE INDEX ix_vegetation_types ON vegetation_types (VegetationID);
 
 CREATE VIEW vw_dgo_desc_metrics AS SELECT desc_dgo.*, dgos.geom
 FROM desc_dgo 
-INNER JOIN dgos ON desc_dgo.dgo_id = dgos.dgo_id;
+INNER JOIN dgos ON desc_dgo.DGOID = dgos.DGOID;
 
 CREATE VIEW vw_igo_desc_metrics AS SELECT desc_igo.*, igos.geom
 FROM desc_igo
-INNER JOIN igos ON desc_igo.igo_id = igos.igo_id;
+INNER JOIN igos ON desc_igo.IGOID = igos.IGOID;
 
 CREATE VIEW vw_dgo_geomorph_metrics AS SELECT geomorph_dgo.*, dgos.geom
 FROM geomorph_dgo
-INNER JOIN dgos ON geomorph_dgo.dgo_id = dgos.dgo_id;
+INNER JOIN dgos ON geomorph_dgo.DGOID = dgos.DGOID;
 
 CREATE VIEW vw_igo_geomorph_metrics AS SELECT geomorph_igo.*, igos.geom
 FROM geomorph_igo
-INNER JOIN igos ON geomorph_igo.igo_id = igos.igo_id;
+INNER JOIN igos ON geomorph_igo.IGOID = igos.IGOID;
 
-CREATE VIEW vw_veg_metrics AS SELECT veg_dgo.*, dgos.geom
+CREATE VIEW vw_dgo_veg_metrics AS SELECT veg_dgo.*, dgos.geom
 FROM veg_dgo
-INNER JOIN dgos ON veg_dgo.dgo_id = dgos.dgo_id;
+INNER JOIN dgos ON veg_dgo.DGOID = dgos.DGOID;
 
-CREATE VIEW vw_veg_igo_metrics AS SELECT veg_igo.*, igos.geom
+CREATE VIEW vw_igo_veg_metrics AS SELECT veg_igo.*, igos.geom
 FROM veg_igo
-INNER JOIN igos ON veg_igo.igo_id = igos.igo_id;
+INNER JOIN igos ON veg_igo.IGOID = igos.IGOID;
 
 CREATE VIEW vw_dgo_hydro_metrics AS SELECT hydro_dgo.*, dgos.geom
 FROM hydro_dgo
-INNER JOIN dgos ON hydro_dgo.dgo_id = dgos.dgo_id;
+INNER JOIN dgos ON hydro_dgo.DGOID = dgos.DGOID;
 
 CREATE VIEW vw_igo_hydro_metrics AS SELECT hydro_igo.*, igos.geom
 FROM hydro_igo
-INNER JOIN igos ON hydro_igo.igo_id = igos.igo_id;
+INNER JOIN igos ON hydro_igo.IGOID = igos.IGOID;
 
-CREATE VIEW vw_impacts_dgo_metrics AS SELECT impacts_dgo.*, dgos.geom
+CREATE VIEW vw_dgo_impacts_metrics AS SELECT impacts_dgo.*, dgos.geom
 FROM impacts_dgo
-INNER JOIN dgos ON impacts_dgo.dgo_id = dgos.dgo_id;
+INNER JOIN dgos ON impacts_dgo.DGOID = dgos.DGOID;
 
-CREATE VIEW vw_impacts_igo_metrics AS SELECT impacts_igo.*, igos.geom
+CREATE VIEW vw_igo_impacts_metrics AS SELECT impacts_igo.*, igos.geom
 FROM impacts_igo
-INNER JOIN igos ON impacts_igo.igo_id = igos.igo_id;
+INNER JOIN igos ON impacts_igo.IGOID = igos.IGOID;
 
 CREATE VIEW vw_dgo_beaver_metrics AS SELECT beaver_dgo.*, dgos.geom
 FROM beaver_dgo
-INNER JOIN dgos ON beaver_dgo.dgo_id = dgos.dgo_id;
+INNER JOIN dgos ON beaver_dgo.DGOID = dgos.DGOID;
 
 CREATE VIEW vw_igo_beaver_metrics AS SELECT beaver_igo.*, igos.geom
 FROM beaver_igo
-INNER JOIN igos ON beaver_igo.igo_id = igos.igo_id;
+INNER JOIN igos ON beaver_igo.IGOID = igos.IGOID;
 
 CREATE VIEW vw_dgo_metrics AS SELECT desc_dgo.*, geomorph_dgo.*, veg_dgo.*, hydro_dgo.*, impacts_dgo.*, beaver_dgo.*, dgos.geom
 FROM desc_dgo
-INNER JOIN geomorph_dgo ON desc_dgo.dgo_id = geomorph_dgo.dgo_id
-INNER JOIN veg_dgo ON desc_dgo.dgo_id = veg_dgo.dgo_id
-INNER JOIN hydro_dgo ON desc_dgo.dgo_id = hydro_dgo.dgo_id
-INNER JOIN impacts_dgo ON desc_dgo.dgo_id = impacts_dgo.dgo_id
-INNER JOIN beaver_dgo ON desc_dgo.dgo_id = beaver_dgo.dgo_id
-INNER JOIN dgos ON desc_dgo.dgo_id = dgos.dgo_id;
+INNER JOIN geomorph_dgo ON desc_dgo.DGOID = geomorph_dgo.DGOID
+INNER JOIN veg_dgo ON desc_dgo.DGOID = veg_dgo.DGOID
+INNER JOIN hydro_dgo ON desc_dgo.DGOID = hydro_dgo.DGOID
+INNER JOIN impacts_dgo ON desc_dgo.DGOID = impacts_dgo.DGOID
+INNER JOIN beaver_dgo ON desc_dgo.DGOID = beaver_dgo.DGOID
+INNER JOIN dgos ON desc_dgo.DGOID = dgos.DGOID;
 
 CREATE VIEW vw_igo_metrics AS SELECT desc_igo.*, geomorph_igo.*, veg_igo.*, hydro_igo.*, impacts_igo.*, beaver_igo.*, igos.geom
 FROM desc_igo
-INNER JOIN geomorph_igo ON desc_igo.igo_id = geomorph_igo.igo_id
-INNER JOIN veg_igo ON desc_igo.igo_id = veg_igo.igo_id
-INNER JOIN hydro_igo ON desc_igo.igo_id = hydro_igo.igo_id
-INNER JOIN impacts_igo ON desc_igo.igo_id = impacts_igo.igo_id
-INNER JOIN beaver_igo ON desc_igo.igo_id = beaver_igo.igo_id
-INNER JOIN igos ON desc_igo.igo_id = igos.igo_id;
+INNER JOIN geomorph_igo ON desc_igo.IGOID = geomorph_igo.IGOID
+INNER JOIN veg_igo ON desc_igo.IGOID = veg_igo.IGOID
+INNER JOIN hydro_igo ON desc_igo.IGOID = hydro_igo.IGOID
+INNER JOIN impacts_igo ON desc_igo.IGOID = impacts_igo.IGOID
+INNER JOIN beaver_igo ON desc_igo.IGOID = beaver_igo.IGOID
+INNER JOIN igos ON desc_igo.IGOID = igos.IGOID;
 
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('metric_groups', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('metric_calculations', 'attributes');
