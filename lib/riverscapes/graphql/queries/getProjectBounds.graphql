@@ -1,0 +1,30 @@
+query getProjectFull($id: ID!) {
+  project(id: $id) {
+    ...dbobj
+    bounds {
+      polygonUrl
+    }
+  }
+}
+
+fragment dbobj on DBObj {
+  id
+  name
+  summary
+  description
+  createdBy {
+    id
+    name
+  }
+  updatedBy {
+    id
+    name
+  }
+  createdOn
+  updatedOn
+  meta {
+    key
+    type
+    value
+  }
+}
