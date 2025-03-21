@@ -47,11 +47,11 @@ CREATE TABLE input_datasets (
     CONSTRAINT fk_input_datasets_metric_id FOREIGN KEY (metric_id) REFERENCES metrics (metric_id)
 );
 
-CREATE TABLE mw_input_datasets (
+CREATE TABLE input_datasets_mw (
     metric_id INTEGER PRIMARY KEY NOT NULL,
     dataset TEXT,
     field_name TEXT,
-    CONSTRAINT fk_mw_input_datasets_metric_id FOREIGN KEY (metric_id) REFERENCES metrics (metric_id)
+    CONSTRAINT fk_input_datasets_mw_metric_id FOREIGN KEY (metric_id) REFERENCES metrics (metric_id)
 );
 
 CREATE TABLE vegetation_types (
@@ -77,74 +77,74 @@ CREATE INDEX ix_window_calculation ON window_calculations (calculation_id);
 CREATE INDEX ix_window_metric_cals ON metrics (window_calc_id);
 CREATE INDEX ix_metric_calculation_calcs ON metric_calculations (metric_calculation_id);
 CREATE INDEX ix_input_datasets ON input_datasets (metric_id);
-CREATE INDEX ix_mw_input_datasets ON mw_input_datasets (metric_id);
+CREATE INDEX ix_input_datasets_mw ON input_datasets_mw (metric_id);
 CREATE INDEX ix_vegetation_types ON vegetation_types (VegetationID);
 
-CREATE VIEW vw_dgo_desc_metrics AS SELECT desc_dgo.*, dgos.geom, dgos.level_path, dgos.seg_distance, dgos.centerline_length, dgos.segment_area, dgos.FCode
-FROM desc_dgo 
-INNER JOIN dgos ON desc_dgo.DGOID = dgos.DGOID;
+CREATE VIEW vw_dgo_desc_metrics AS SELECT dgo_desc.*, dgos.geom, dgos.level_path, dgos.seg_distance, dgos.centerline_length, dgos.segment_area, dgos.FCode
+FROM dgo_desc 
+INNER JOIN dgos ON dgo_desc.dgoid = dgos.dgoid;
 
-CREATE VIEW vw_igo_desc_metrics AS SELECT desc_igo.*, igos.geom, igos.level_path, igos.seg_distance, igos.FCode
-FROM desc_igo
-INNER JOIN igos ON desc_igo.IGOID = igos.IGOID;
+CREATE VIEW vw_igo_desc_metrics AS SELECT igo_desc.*, igos.geom, igos.level_path, igos.seg_distance, igos.FCode
+FROM igo_desc
+INNER JOIN igos ON igo_desc.igoid = igos.igoid;
 
-CREATE VIEW vw_dgo_geomorph_metrics AS SELECT geomorph_dgo.*, dgos.geom, dgos.level_path, dgos.seg_distance, dgos.centerline_length, dgos.segment_area, dgos.FCode
-FROM geomorph_dgo
-INNER JOIN dgos ON geomorph_dgo.DGOID = dgos.DGOID;
+CREATE VIEW vw_dgo_geomorph_metrics AS SELECT dgo_geomorph.*, dgos.geom, dgos.level_path, dgos.seg_distance, dgos.centerline_length, dgos.segment_area, dgos.FCode
+FROM dgo_geomorph
+INNER JOIN dgos ON dgo_geomorph.dgoid = dgos.dgoid;
 
-CREATE VIEW vw_igo_geomorph_metrics AS SELECT geomorph_igo.*, igos.geom, igos.level_path, igos.seg_distance, igos.FCode
-FROM geomorph_igo
-INNER JOIN igos ON geomorph_igo.IGOID = igos.IGOID;
+CREATE VIEW vw_igo_geomorph_metrics AS SELECT igo_geomorph.*, igos.geom, igos.level_path, igos.seg_distance, igos.FCode
+FROM igo_geomorph
+INNER JOIN igos ON igo_geomorph.igoid = igos.igoid;
 
-CREATE VIEW vw_dgo_veg_metrics AS SELECT veg_dgo.*, dgos.geom, dgos.level_path, dgos.seg_distance, dgos.centerline_length, dgos.segment_area, dgos.FCode
-FROM veg_dgo
-INNER JOIN dgos ON veg_dgo.DGOID = dgos.DGOID;
+CREATE VIEW vw_dgo_veg_metrics AS SELECT dgo_veg.*, dgos.geom, dgos.level_path, dgos.seg_distance, dgos.centerline_length, dgos.segment_area, dgos.FCode
+FROM dgo_veg
+INNER JOIN dgos ON dgo_veg.dgoid = dgos.dgoid;
 
-CREATE VIEW vw_igo_veg_metrics AS SELECT veg_igo.*, igos.geom, igos.level_path, igos.seg_distance, igos.FCode
-FROM veg_igo
-INNER JOIN igos ON veg_igo.IGOID = igos.IGOID;
+CREATE VIEW vw_igo_veg_metrics AS SELECT igo_veg.*, igos.geom, igos.level_path, igos.seg_distance, igos.FCode
+FROM igo_veg
+INNER JOIN igos ON igo_veg.igoid = igos.igoid;
 
-CREATE VIEW vw_dgo_hydro_metrics AS SELECT hydro_dgo.*, dgos.geom, dgos.level_path, dgos.seg_distance, dgos.centerline_length, dgos.segment_area, dgos.FCode
-FROM hydro_dgo
-INNER JOIN dgos ON hydro_dgo.DGOID = dgos.DGOID;
+CREATE VIEW vw_dgo_hydro_metrics AS SELECT dgo_hydro.*, dgos.geom, dgos.level_path, dgos.seg_distance, dgos.centerline_length, dgos.segment_area, dgos.FCode
+FROM dgo_hydro
+INNER JOIN dgos ON dgo_hydro.dgoid = dgos.dgoid;
 
-CREATE VIEW vw_igo_hydro_metrics AS SELECT hydro_igo.*, igos.geom, igos.level_path, igos.seg_distance, igos.FCode
-FROM hydro_igo
-INNER JOIN igos ON hydro_igo.IGOID = igos.IGOID;
+CREATE VIEW vw_igo_hydro_metrics AS SELECT igo_hydro.*, igos.geom, igos.level_path, igos.seg_distance, igos.FCode
+FROM igo_hydro
+INNER JOIN igos ON igo_hydro.igoid = igos.igoid;
 
-CREATE VIEW vw_dgo_impacts_metrics AS SELECT impacts_dgo.*, dgos.geom, dgos.level_path, dgos.seg_distance, dgos.centerline_length, dgos.segment_area, dgos.FCode
-FROM impacts_dgo
-INNER JOIN dgos ON impacts_dgo.DGOID = dgos.DGOID;
+CREATE VIEW vw_dgo_impacts_metrics AS SELECT dgo_impacts.*, dgos.geom, dgos.level_path, dgos.seg_distance, dgos.centerline_length, dgos.segment_area, dgos.FCode
+FROM dgo_impacts
+INNER JOIN dgos ON dgo_impacts.dgoid = dgos.dgoid;
 
-CREATE VIEW vw_igo_impacts_metrics AS SELECT impacts_igo.*, igos.geom, igos.level_path, igos.seg_distance, igos.FCode
-FROM impacts_igo
-INNER JOIN igos ON impacts_igo.IGOID = igos.IGOID;
+CREATE VIEW vw_igo_impacts_metrics AS SELECT igo_impacts.*, igos.geom, igos.level_path, igos.seg_distance, igos.FCode
+FROM igo_impacts
+INNER JOIN igos ON igo_impacts.igoid = igos.igoid;
 
-CREATE VIEW vw_dgo_beaver_metrics AS SELECT beaver_dgo.*, dgos.geom, dgos.level_path, dgos.seg_distance, dgos.centerline_length, dgos.segment_area, dgos.FCode
-FROM beaver_dgo
-INNER JOIN dgos ON beaver_dgo.DGOID = dgos.DGOID;
+CREATE VIEW vw_dgo_beaver_metrics AS SELECT dgo_beaver.*, dgos.geom, dgos.level_path, dgos.seg_distance, dgos.centerline_length, dgos.segment_area, dgos.FCode
+FROM dgo_beaver
+INNER JOIN dgos ON dgo_beaver.dgoid = dgos.dgoid;
 
-CREATE VIEW vw_igo_beaver_metrics AS SELECT beaver_igo.*, igos.geom, igos.level_path, igos.seg_distance, igos.FCode
-FROM beaver_igo
-INNER JOIN igos ON beaver_igo.IGOID = igos.IGOID;
+CREATE VIEW vw_igo_beaver_metrics AS SELECT igo_beaver.*, igos.geom, igos.level_path, igos.seg_distance, igos.FCode
+FROM igo_beaver
+INNER JOIN igos ON igo_beaver.igoid = igos.igoid;
 
-CREATE VIEW vw_dgo_metrics AS SELECT desc_dgo.*, geomorph_dgo.*, veg_dgo.*, hydro_dgo.*, impacts_dgo.*, beaver_dgo.*, dgos.geom, dgos.level_path, dgos.seg_distance, dgos.centerline_length, dgos.segment_area, dgos.FCode
-FROM desc_dgo
-INNER JOIN geomorph_dgo ON desc_dgo.DGOID = geomorph_dgo.DGOID
-INNER JOIN veg_dgo ON desc_dgo.DGOID = veg_dgo.DGOID
-INNER JOIN hydro_dgo ON desc_dgo.DGOID = hydro_dgo.DGOID
-INNER JOIN impacts_dgo ON desc_dgo.DGOID = impacts_dgo.DGOID
-INNER JOIN beaver_dgo ON desc_dgo.DGOID = beaver_dgo.DGOID
-INNER JOIN dgos ON desc_dgo.DGOID = dgos.DGOID;
+CREATE VIEW vw_dgo_metrics AS SELECT dgo_desc.*, dgo_geomorph.*, dgo_veg.*, dgo_hydro.*, dgo_impacts.*, dgo_beaver.*, dgos.geom, dgos.level_path, dgos.seg_distance, dgos.centerline_length, dgos.segment_area, dgos.FCode
+FROM dgo_desc
+INNER JOIN dgo_geomorph ON dgo_desc.dgoid = dgo_geomorph.dgoid
+INNER JOIN dgo_veg ON dgo_desc.dgoid = dgo_veg.dgoid
+INNER JOIN dgo_hydro ON dgo_desc.dgoid = dgo_hydro.dgoid
+INNER JOIN dgo_impacts ON dgo_desc.dgoid = dgo_impacts.dgoid
+INNER JOIN dgo_beaver ON dgo_desc.dgoid = dgo_beaver.dgoid
+INNER JOIN dgos ON dgo_desc.dgoid = dgos.dgoid;
 
-CREATE VIEW vw_igo_metrics AS SELECT desc_igo.*, geomorph_igo.*, veg_igo.*, hydro_igo.*, impacts_igo.*, beaver_igo.*, igos.geom, igos.level_path, igos.seg_distance, igos.FCode
-FROM desc_igo
-INNER JOIN geomorph_igo ON desc_igo.IGOID = geomorph_igo.IGOID
-INNER JOIN veg_igo ON desc_igo.IGOID = veg_igo.IGOID
-INNER JOIN hydro_igo ON desc_igo.IGOID = hydro_igo.IGOID
-INNER JOIN impacts_igo ON desc_igo.IGOID = impacts_igo.IGOID
-INNER JOIN beaver_igo ON desc_igo.IGOID = beaver_igo.IGOID
-INNER JOIN igos ON desc_igo.IGOID = igos.IGOID;
+CREATE VIEW vw_igo_metrics AS SELECT igo_desc.*, igo_geomorph.*, igo_veg.*, igo_hydro.*, igo_impacts.*, igo_beaver.*, igos.geom, igos.level_path, igos.seg_distance, igos.FCode
+FROM igo_desc
+INNER JOIN igo_geomorph ON igo_desc.igoid = igo_geomorph.igoid
+INNER JOIN igo_veg ON igo_desc.igoid = igo_veg.igoid
+INNER JOIN igo_hydro ON igo_desc.igoid = igo_hydro.igoid
+INNER JOIN igo_impacts ON igo_desc.igoid = igo_impacts.igoid
+INNER JOIN igo_beaver ON igo_desc.igoid = igo_beaver.igoid
+INNER JOIN igos ON igo_desc.igoid = igos.igoid;
 
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('metric_groups', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('metric_calculations', 'attributes');
@@ -152,5 +152,5 @@ INSERT INTO gpkg_contents (table_name, data_type) VALUES ('window_calculations',
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('metrics', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('vegetation_types', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('input_datasets', 'attributes');
-INSERT INTO gpkg_contents (table_name, data_type) VALUES ('mw_input_datasets', 'attributes');
+INSERT INTO gpkg_contents (table_name, data_type) VALUES ('input_datasets_mw', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('measurements', 'attributes');
