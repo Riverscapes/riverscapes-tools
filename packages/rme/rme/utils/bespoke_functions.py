@@ -203,10 +203,14 @@ def mw_stream_power(dgo_ids, gpkg, q='QLow'):
 def mw_rvd(dgo_ids, gpkg):
     with sqlite3.connect(gpkg) as conn:
         curs = conn.cursor()
-        curs.execute(f"""SELECT riparian_veg_departure, segment_area FROM veg_dgo LEFT JOIN dgos
+        curs.execute(f"""SELECT SUM(prop_riparian*segment_area), sum(hist_prop_riparian*segment_area) FROM veg_dgo LEFT JOIN dgos
                      ON veg_dgo.DGOID = dgos.DGOID WHERE dgos.DGOID IN ({','.join(map(str, dgo_ids))})""")
-        result = curs.fetchall()
-        if len(result) == 0:
+        result = curs.fetchone()
+        if None in result:
             return None
+        if result[1] > 0.0:
+            out = 1 - (result[0] / result[1])
         else:
-            return sum([r[0] * r[1] for r in result]) / sum([r[1] for r in result if None not in r])
+            out = None
+
+    return out
