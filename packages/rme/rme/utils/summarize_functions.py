@@ -199,13 +199,16 @@ def mw_sum_div_chan_length(dgo_ids, table_name, field_name):
             return None
         out = result[0] / result[1] if result[1] > 0.0 else None
 
+        if field_name in ('confining_margins', 'constricting_margins'):
+            out = min(out, 1.0)
+
     return out
 
 
 def mw_proportion(dgo_ids, table_name, field_name):
     with sqlite3.connect(os.path.dirname(table_name)) as conn:
         curs = conn.cursor()
-        curs.execute(f"""SELECT SUM({field_name}), SUM(segment_area) FROM {os.path.basename(table_name)}
+        curs.execute(f"""SELECT SUM({field_name}*segment_area), SUM(segment_area) FROM {os.path.basename(table_name)}
                      LEFT JOIN dgos ON {os.path.basename(table_name)}.DGOID = dgos.DGOID 
                      WHERE {os.path.basename(table_name)}.DGOID IN ({", ".join(map(str, dgo_ids))})""")
         result = curs.fetchone()

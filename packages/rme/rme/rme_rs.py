@@ -9,17 +9,21 @@ from rscommons import RSProject, RSMeta, dotenv, Logger
 from rme.rme_report import RMEReport, FILTER_NAMES
 
 lyrs_in_out = {
-    'flowlines': 'network_intersected',
-    'counties': 'Counties',
-    'DEM': 'DEM',
-    'HILLSHADE': 'HILLSHADE',
-    'vbet_dgos': 'vbet_dgos',
-    'vbet_igos': 'vbet_igos',
-    'valley_centerlines': 'vbet_centerlines',
-    'confinement_dgo': 'confinement_dgos',
-    'anthro_dgo': 'vwDgos',
-    'rcat_dgo': 'vwDgos',
-    'brat_dgo': 'vwDgos'
+    'flowlines': ['network_intersected', 'RSContext'],
+    'waterbodies': ['NHDWaterbody', 'RSContext'],
+    'counties': ['Counties', 'RSContext'],
+    'DEM': ['DEM', 'RSContext'],
+    'HILLSHADE': ['HILLSHADE', 'RSContext'],
+    'vbet_dgos': ['vbet_dgos', 'VBET'],
+    'vbet_igos': ['vbet_igos', 'VBET'],
+    'valley_centerlines': ['vbet_centerlines', 'VBET'],
+    'confinement_dgo': ['confinement_dgos', 'Cofinement'],
+    'hydro_dgo': ['vwDgos', 'hydro_context'],
+    'anthro_dgo': ['vwDgos', 'Anthro'],
+    'anthro_flowlines': ['vwReaches', 'Anthro'],
+    'rcat_dgo': ['vwDgos', 'RCAT'],
+    'brat_dgo': ['vwDgos', 'Riverscapes_BRAT'],
+    'brat_flowlines': ['vwReaches', 'Riverscapes_BRAT']
 }
 
 
@@ -74,7 +78,7 @@ def main():
 
         out_prj.XMLBuilder.write()
         geopackage_path = out_prj.XMLBuilder.find(
-            './/Geopackage[@id="RME_OUTPUTS"]/Path'
+            './/Geopackage[@id="OUTPUTS"]/Path'
         ).text
 
         intermediates_path = out_prj.XMLBuilder.find(
@@ -82,23 +86,23 @@ def main():
         ).text
 
         # None will run report normally with no filters
-        filter_names = [None] + FILTER_NAMES
+        # filter_names = [None] + FILTER_NAMES
 
-        for filter_name in filter_names:
-            report_suffix = f"_{filter_name.upper()}" if filter_name is not None else ""
+        # for filter_name in filter_names:
+        #     report_suffix = f"_{filter_name.upper()}" if filter_name is not None else ""
 
-            report_path = out_prj.XMLBuilder.find(
-                f'.//HTMLFile[@id="REPORT{report_suffix}"]/Path'
-            ).text
+        #     report_path = out_prj.XMLBuilder.find(
+        #         f'.//HTMLFile[@id="REPORT{report_suffix}"]/Path'
+        #     ).text
 
-            report = RMEReport(
-                os.path.join(out_prj.project_dir, geopackage_path),
-                os.path.join(out_prj.project_dir, report_path),
-                out_prj,
-                filter_name,
-                os.path.join(out_prj.project_dir, intermediates_path)
-            )
-            report.write()
+        #     report = RMEReport(
+        #         os.path.join(out_prj.project_dir, geopackage_path),
+        #         os.path.join(out_prj.project_dir, report_path),
+        #         out_prj,
+        #         filter_name,
+        #         os.path.join(out_prj.project_dir, intermediates_path)
+        #     )
+        #     report.write()
 
     except Exception as e:
         log.error(e)

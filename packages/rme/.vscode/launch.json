@@ -193,7 +193,7 @@
       "console": "integratedTerminal",
       "args": [
         "{env:DATA_ROOT}/rme/${input:HUC}/project.rs.xml",
-        "{env:DATA_ROOT}/rs_context/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/vbet/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/anthro/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/rcat/${input:HUC}/project.rs.xml" //{env:DATA_ROOT}/brat/${input:HUC}/project.rs.xml"
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/vbet/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/confinement/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/hydro/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/anthro/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/rcat/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/brat/${input:HUC}/project.rs.xml"
       ]
     }
   ]

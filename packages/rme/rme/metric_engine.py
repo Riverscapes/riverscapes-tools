@@ -241,17 +241,19 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
     # create output feature class fields. Only those listed here will get copied from the source
     with GeopackageLayer(outputs_gpkg, layer_name=LayerTypes['OUTPUTS'].sub_layers['GEOM_IGOS'].rel_path, write=True) as out_lyr:
         out_lyr.create_layer(ogr.wkbMultiPoint, epsg=cfg.OUTPUT_EPSG, options=['FID=IGOID'], fields={
-            'level_path': ogr.OFTReal,
+            'level_path': ogr.OFTString,
             'seg_distance': ogr.OFTReal,
-            'stream_size': ogr.OFTInteger
+            'stream_size': ogr.OFTInteger,
+            'FCode': ogr.OFTInteger
         })
 
     with GeopackageLayer(outputs_gpkg, layer_name=LayerTypes['OUTPUTS'].sub_layers['GEOM_DGOS'].rel_path, write=True) as out_lyr:
         out_lyr.create_layer(ogr.wkbMultiPolygon, epsg=cfg.OUTPUT_EPSG, options=['FID=DGOID'], fields={
-            'level_path': ogr.OFTReal,
+            'level_path': ogr.OFTString,
             'seg_distance': ogr.OFTReal,
-            'centerline_length': ogr.OFTInteger,
-            'segment_area': ogr.OFTReal
+            'centerline_length': ogr.OFTReal,
+            'segment_area': ogr.OFTReal,
+            'FCode': ogr.OFTInteger
         })
 
     points = os.path.join(outputs_gpkg, LayerTypes['OUTPUTS'].sub_layers['GEOM_IGOS'].rel_path)
@@ -336,12 +338,12 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
         curs.execute("CREATE INDEX ix_dgos_dgoid ON dgos (DGOID)")
         curs.execute("CREATE INDEX ix_dgos_level_path_seg_distance ON dgos (level_path, seg_distance)")
         curs.execute("CREATE INDEX idx_igos_size ON igos (stream_size)")
-        # curs.execute("CREATE INDEX ix_dgos_fcode ON dgos (FCode)")
+        curs.execute("CREATE INDEX ix_dgos_fcode ON dgos (FCode)")
         curs.execute("CREATE INDEX ix_igos_igosid ON igos (IGOID)")
         curs.execute("CREATE INDEX ix_igos_level_path_seg_distance ON igos (level_path, seg_distance)")
         curs.execute("CREATE INDEX ix_veg_dgoid ON DGOVegetation (DGOID)")
         curs.execute("CREATE INDEX ix_veg_vegid ON DGOVegetation (VegetationID)")
-        # curs.execute("CREATE INDEX idx_igos_fcode ON igos (FCode)")
+        curs.execute("CREATE INDEX idx_igos_fcode ON igos (FCode)")
         conn.commit()
 
     # Generate the list of level paths to run, sorted by ascending order and optional user filter
