@@ -62,10 +62,10 @@ def calculate_gradient(gpkg, dgoid, channel=True):
         curs = conn.cursor()
         if channel:
             curs.execute(
-                f"SELECT STRMMAXELEV, STRMMINELEV, STRMLENG FROM dgo_measurements WHERE dgoid = {dgoid}")
+                f"SELECT strmmaxelev, strmminelev, strmleng FROM dgo_measurements WHERE dgoid = {dgoid}")
         else:
             curs.execute(
-                f"SELECT CLMAXELEV, CLMINELEV, VALLENG FROM dgo_measurements WHERE dgoid = {dgoid}")
+                f"SELECT clmaxelev, clminelev, valleng FROM dgo_measurements WHERE dgoid = {dgoid}")
         vals = curs.fetchone()
         if vals is None:
             return None
@@ -117,10 +117,10 @@ def mw_calculate_gradient(gpkg, dgo_ids, channel=True):
         curs = conn.cursor()
         if channel:
             curs.execute(
-                f"SELECT MAX(STRMMAXELEV), MIN(STRMMINELEV), SUM(STRMLENG) FROM dgo_measurements WHERE dgoid IN ({','.join(map(str, dgo_ids))})")
+                f"SELECT MAX(strmmaxelev), MIN(strmminelev), SUM(strmleng) FROM dgo_measurements WHERE dgoid IN ({','.join(map(str, dgo_ids))})")
         else:
             curs.execute(
-                f"SELECT MAX(CLMAXELEV), MIN(CLMINELEV), SUM(VALLENG) FROM dgo_measurements WHERE dgoid IN ({','.join(map(str, dgo_ids))})")
+                f"SELECT MAX(clmaxelev), MIN(clminelev), SUM(valleng) FROM dgo_measurements WHERE dgoid IN ({','.join(map(str, dgo_ids))})")
         vals = curs.fetchone()
         if None in vals:
             return None
@@ -136,7 +136,7 @@ def mw_calculate_sinuosity(gpkg, dgo_ids):
     with sqlite3.connect(gpkg) as conn:
         curs = conn.cursor()
         curs.execute(
-            f"SELECT SUM(STRMLENG), SUM(STRMSTRLENG) FROM dgo_measurements WHERE dgoid IN ({','.join(map(str, dgo_ids))})")
+            f"SELECT SUM(strmleng), SUM(strmstrleng) FROM dgo_measurements WHERE dgoid IN ({','.join(map(str, dgo_ids))})")
         vals = curs.fetchone()
         if None in vals:
             return None
@@ -186,7 +186,7 @@ def mw_stream_power(dgo_ids, gpkg, q='QLow'):
     with sqlite3.connect(gpkg) as conn:
         curs = conn.cursor()
         curs.execute(
-            f"""SELECT MAX(STRMMAXELEV), MIN(STRMMINELEV), SUM(STRMLENG) FROM dgo_measurements 
+            f"""SELECT MAX(strmmaxelev), MIN(strmminelev), SUM(strmleng) FROM dgo_measurements 
             WHERE dgoid IN ({','.join(map(str, dgo_ids))})""")
         result = curs.fetchone()
         if None in result:

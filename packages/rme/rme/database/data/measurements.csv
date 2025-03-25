@@ -1,9 +1,9 @@
 measurement_id,name,machine_code,data_type,description,is_active
-1,Min Stream Elevation,STRMMINELEV,REAL,,1
-2,Max Stream Elevation,STRMMAXELEV,REAL,,1
-3,Min Centerline Elevation,CLMINELEV,REAL,,1
-4,Max Centerline Elevation,CLMAXELEV,REAL,,1
-5,Stream Length,STRMLENG,REAL,Stream Length of main flowline,1
-6,Centerline Length,VALLENG,REAL,,1
-7,Stream Total Length,STRMLENGTOT,REAL,Stream length of all flowlines (includes branches),1
-8,Stream Segment Straight Length,STRMSTRLENG,REAL,straight line length of segment,1
+1,Min Stream Elevation,strmminelev,REAL,,1
+2,Max Stream Elevation,strmmaxelev,REAL,,1
+3,Min Centerline Elevation,clminelev,REAL,,1
+4,Max Centerline Elevation,clmaxelev,REAL,,1
+5,Stream Length,strmleng,REAL,Stream Length of main flowline,1
+6,Centerline Length,valleng,REAL,,1
+7,Stream Total Length,strmlengtot,REAL,Stream length of all flowlines (includes branches),1
+8,Stream Segment Straight Length,strmstrleng,REAL,straight line length of segment,1

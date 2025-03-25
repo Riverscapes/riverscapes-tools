@@ -100,7 +100,7 @@ window_distance = {'0': 200.0, '1': 400.0,
 # metric_functions = {metric_calculation_id: function (from summarize functions.py)}
 metric_functions = {1: value_from_dgo, 2: value_density_from_dgo, 3: get_max_value, 4: value_from_max_length,
                     5: value_from_dataset_area, 6: value_by_count, 7: ex_veg_proportion, 8: hist_veg_proportion}
-mw_metric_functions = {0: mw_copy_from_dgo, 1: mw_sum, 2: mw_sum_div_length, 3: mw_sum_div_chan_length, 4: mw_proportion, 5: mw_area_weighted_av}
+mw_metric_functions = {1: mw_copy_from_dgo, 2: mw_sum, 3: mw_sum_div_length, 4: mw_sum_div_chan_length, 5: mw_proportion, 6: mw_area_weighted_av}
 
 
 def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_table: Path, in_counties: Path, in_segments: Path, in_points: Path,
@@ -240,7 +240,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
 
     # create output feature class fields. Only those listed here will get copied from the source
     with GeopackageLayer(outputs_gpkg, layer_name=LayerTypes['OUTPUTS'].sub_layers['GEOM_IGOS'].rel_path, write=True) as out_lyr:
-        out_lyr.create_layer(ogr.wkbMultiPoint, epsg=cfg.OUTPUT_EPSG, options=['FID=igoid'], fields={
+        out_lyr.create_layer(ogr.wkbPoint, epsg=cfg.OUTPUT_EPSG, options=['FID=igoid'], fields={
             'level_path': ogr.OFTString,
             'seg_distance': ogr.OFTReal,
             'stream_size': ogr.OFTInteger,
@@ -435,7 +435,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
         curs = conn.cursor()
         for dgo_id, meas in dgo_meas.items():
             if None not in meas:
-                curs.execute(f"""INSERT INTO dgo_measurements (dgoid, STRMLENG, STRMSTRLENG, VALLENG, STRMMINELEV, STRMMAXELEV, CLMINELEV, CLMAXELEV)
+                curs.execute(f"""INSERT INTO dgo_measurements (dgoid, strmleng, strmstrleng, valleng, strmminelev, strmmaxelev, clminelev, clmaxelev)
                              VALUES ({dgo_id}, {meas[0]}, {meas[1]}, {meas[2]}, {meas[3]}, {meas[4]}, {meas[5]}, {meas[6]})""")
         conn.commit()
         curs.execute("SELECT DISTINCT metric_group_id, metric_group_name FROM metric_groups")
@@ -560,14 +560,14 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
         lf_field_names = {row[0]: row[1] for row in curs.fetchall() if row[0][0] == 'L' and row[0][1] == 'F'}
         for metric in secondary_metrics:
             if metric == 'TRIBDENS':
-                curs.execute("SELECT geomorph_dgo.dgoid, tributaries, VALLENG FROM geomorph_dgo LEFT JOIN dgo_measurements ON geomorph_dgo.dgoid = dgo_measurements.dgoid")
+                curs.execute("SELECT geomorph_dgo.dgoid, tributaries, valleng FROM geomorph_dgo LEFT JOIN dgo_measurements ON geomorph_dgo.dgoid = dgo_measurements.dgoid")
                 data = curs.fetchall()
                 for dgo_id, tribs, length in data:
                     if tribs is not None and length is not None:
                         trib_density = float(tribs) / float(length)
                         curs.execute(f"""UPDATE geomorph_dgo SET tribs_per_km = {trib_density} WHERE dgoid = {dgo_id}""")
             if metric == 'CHANSIN':
-                curs.execute("SELECT dgoid, STRMLENG, STRMSTRLENG FROM dgo_measurements")
+                curs.execute("SELECT dgoid, strmleng, strmstrleng FROM dgo_measurements")
                 data = curs.fetchall()
                 for dgo_id, stream_length, straight_length in data:
                     if stream_length is not None and straight_length is not None:
@@ -595,7 +595,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                         hectares = (float(area) * 0.0001) / (float(length) * 0.001)
                         curs.execute(f"UPDATE geomorph_dgo SET hect_vb_per_km = {hectares} WHERE dgoid = {dgo_id}")
             if metric == 'STRMSIZE':
-                curs.execute("SELECT geomorph_dgo.dgoid, channel_area, STRMLENG FROM geomorph_dgo LEFT JOIN dgo_measurements ON geomorph_dgo.dgoid = dgo_measurements.dgoid")
+                curs.execute("SELECT geomorph_dgo.dgoid, channel_area, strmleng FROM geomorph_dgo LEFT JOIN dgo_measurements ON geomorph_dgo.dgoid = dgo_measurements.dgoid")
                 data = curs.fetchall()
                 for dgo_id, area, length in data:
                     if area is not None and length is not None and length > 0:
