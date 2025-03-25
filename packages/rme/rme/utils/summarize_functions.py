@@ -171,10 +171,10 @@ def mw_sum_div_length(dgo_ids, table_name, field_name):
     with sqlite3.connect(os.path.dirname(table_name)) as conn:
         curs = conn.cursor()
         if os.path.basename(table_name) == "dgo_measurements":
-            curs.execute(f"""SELECT SUM({field_name}), SUM(VALLENG) FROM {os.path.basename(table_name)} 
+            curs.execute(f"""SELECT SUM({field_name}), SUM(valleng) FROM {os.path.basename(table_name)} 
                          WHERE dgoid IN ({", ".join(map(str, dgo_ids))})""")
         else:
-            curs.execute(f"""SELECT SUM({field_name}), SUM(VALLENG) FROM {os.path.basename(table_name)} LEFT JOIN dgo_measurements
+            curs.execute(f"""SELECT SUM({field_name}), SUM(valleng) FROM {os.path.basename(table_name)} LEFT JOIN dgo_measurements
                         ON {os.path.basename(table_name)}.dgoid = dgo_measurements.dgoid 
                         WHERE {os.path.basename(table_name)}.dgoid IN ({", ".join(map(str, dgo_ids))})""")
         result = curs.fetchone()
@@ -191,7 +191,7 @@ def mw_sum_div_length(dgo_ids, table_name, field_name):
 def mw_sum_div_chan_length(dgo_ids, table_name, field_name):
     with sqlite3.connect(os.path.dirname(table_name)) as conn:
         curs = conn.cursor()
-        curs.execute(f"""SELECT SUM({field_name}), SUM(STRMLENG) FROM {os.path.basename(table_name)} LEFT JOIN dgo_measurements
+        curs.execute(f"""SELECT SUM({field_name}), SUM(strmleng) FROM {os.path.basename(table_name)} LEFT JOIN dgo_measurements
                      ON {os.path.basename(table_name)}.dgoid = dgo_measurements.dgoid 
                      WHERE {os.path.basename(table_name)}.dgoid IN ({", ".join(map(str, dgo_ids))})""")
         result = curs.fetchone()

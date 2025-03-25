@@ -1,18 +1,18 @@
 CREATE TABLE metric_groups (
     metric_group_id INTEGER PRIMARY KEY NOT NULL,
-    metric_group_name TEXT,
+    metric_group_name TEXT UNIQUE NOT NULL,
     description TEXT
 );
 
 CREATE TABLE metric_calculations (
     metric_calculation_id INTEGER PRIMARY KEY NOT NULL,
-    calculation_method TEXT,
+    calculation_method TEXT UNIQUE NOT NULL,
     description TEXT
 );
 
 CREATE TABLE window_calculations (
     calculation_id INTEGER PRIMARY KEY NOT NULL,
-    calculation_method TEXT,
+    calculation_method TEXT UNIQUE NOT NULL,
     description TEXT
 );
 
