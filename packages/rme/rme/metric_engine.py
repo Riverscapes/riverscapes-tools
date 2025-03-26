@@ -439,13 +439,13 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                              VALUES ({dgo_id}, {meas[0]}, {meas[1]}, {meas[2]}, {meas[3]}, {meas[4]}, {meas[5]}, {meas[6]})""")
         conn.commit()
         curs.execute("SELECT DISTINCT metric_group_id, metric_group_name FROM metric_groups")
-        metric_groups = curs.fetchall()
+        metric_groups = list(curs.fetchall())
         curs.execute("SELECT * FROM input_datasets")
         input_datasets = {row[0]: row[1:] for row in curs.fetchall()}
-        curs.execute("SELECT * FROM mw_input_datasets")
+        curs.execute("SELECT * FROM input_datasets_mw")
         mw_input_datasets = {row[0]: row[1:] for row in curs.fetchall()}
 
-    for i, metric_group, in enumerate(metric_groups):
+    for metric_group in metric_groups:
         # if metric_group[1] != 'veg':  # remove this later
         #     continue
         create_thematic_table(outputs_gpkg, metric_group[1], metric_group[0])
@@ -497,7 +497,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                 if len(metrics_output) > 0:
                     field_names = ', '.join(metrics_output.keys())
                     placeholders = ', '.join(['?'] * len(metrics_output))
-                    sql = f"""INSERT INTO {metric_group[1]}_dgo (dgoid, {field_names}) VALUES ({dgo_id}, {placeholders})"""
+                    sql = f"""INSERT INTO dgo_{metric_group[1]} (dgoid, {field_names}) VALUES ({dgo_id}, {placeholders})"""
                     curs.execute(sql, list(metrics_output.values()))
                 else:
                     log.warning(f"No {metric_group[1]} metrics calculated for DGO {dgo_id}")
@@ -545,7 +545,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                             besp_output[metrics[metric]['field_name']] = classes
 
                     set_clause = ', '.join([f"{k} = ?" for k in besp_output.keys()])
-                    sql = f"""UPDATE {metric_group[1]}_dgo SET {set_clause} WHERE dgoid = {dgo_id}"""
+                    sql = f"""UPDATE dgo_{metric_group[1]} SET {set_clause} WHERE dgoid = {dgo_id}"""
                     curs.execute(sql, list(besp_output.values()))
 
                 # log.info(f"Calculated for DGO {dgo_id}")
@@ -560,86 +560,86 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
         lf_field_names = {row[0]: row[1] for row in curs.fetchall() if row[0][0] == 'L' and row[0][1] == 'F'}
         for metric in secondary_metrics:
             if metric == 'TRIBDENS':
-                curs.execute("SELECT geomorph_dgo.dgoid, tributaries, valleng FROM geomorph_dgo LEFT JOIN dgo_measurements ON geomorph_dgo.dgoid = dgo_measurements.dgoid")
+                curs.execute("SELECT dgo_geomorph.dgoid, tributaries, valleng FROM dgo_geomorph LEFT JOIN dgo_measurements ON dgo_geomorph.dgoid = dgo_measurements.dgoid")
                 data = curs.fetchall()
                 for dgo_id, tribs, length in data:
                     if tribs is not None and length is not None:
                         trib_density = float(tribs) / float(length)
-                        curs.execute(f"""UPDATE geomorph_dgo SET tribs_per_km = {trib_density} WHERE dgoid = {dgo_id}""")
+                        curs.execute(f"""UPDATE dgo_geomorph SET tribs_per_km = {trib_density} WHERE dgoid = {dgo_id}""")
             if metric == 'CHANSIN':
                 curs.execute("SELECT dgoid, strmleng, strmstrleng FROM dgo_measurements")
                 data = curs.fetchall()
                 for dgo_id, stream_length, straight_length in data:
                     if stream_length is not None and straight_length is not None:
                         sin = float(stream_length) / float(straight_length)
-                        curs.execute(f"UPDATE geomorph_dgo SET planform_sinuosity = {sin} WHERE dgoid = {dgo_id}")
+                        curs.execute(f"UPDATE dgo_geomorph SET planform_sinuosity = {sin} WHERE dgoid = {dgo_id}")
             if metric in ('LFAG', 'LFCON', 'LFCONHW', 'LFDEV', 'LFEXOTH', 'LFEXTSH', 'LFGRASS', 'LFHW', 'LFRIP', 'LFSHRUB', 'LFSPARSE', 'LFCONBPS', 'LFCONHWBPS', 'LFGRASSGPS', 'LFHWBPS', 'LFHWCONBPS', 'LFPEATBPS', 'LFPEATNONBPS', 'LFRIPBPS', 'LFSAVBPS', 'LFSHRUBBPS', 'LFSPARSEBPS'):
-                curs.execute(f"SELECT veg_dgo.dgoid, {lf_field_names[metric]}_prop, segment_area from veg_dgo LEFT JOIN dgos on dgos.dgoid = veg_dgo.dgoid")
+                curs.execute(f"SELECT dgo_veg.dgoid, {lf_field_names[metric]}_prop, segment_area from dgo_veg LEFT JOIN dgos on dgos.dgoid = dgo_veg.dgoid")
                 data = curs.fetchall()
                 for dgo_id, veg_class, area in data:
                     if veg_class is not None and area is not None:
                         veg_area = float(veg_class) * float(area)
-                        curs.execute(f"UPDATE veg_dgo SET {lf_field_names[metric]} = {veg_area} WHERE dgoid = {dgo_id}")
+                        curs.execute(f"UPDATE dgo_veg SET {lf_field_names[metric]} = {veg_area} WHERE dgoid = {dgo_id}")
             if metric == 'ACRESVBPM':
                 curs.execute("SELECT dgoid, segment_area, centerline_length FROM dgos")
                 data = curs.fetchall()
                 for dgo_id, area, length in data:
                     if area is not None and length is not None and length > 0:
                         acres = (float(area) * 0.000247105) / (float(length) * 0.000621371)
-                        curs.execute(f"UPDATE geomorph_dgo SET acres_vb_per_mile = {acres} WHERE dgoid = {dgo_id}")
+                        curs.execute(f"UPDATE dgo_geomorph SET acres_vb_per_mile = {acres} WHERE dgoid = {dgo_id}")
             if metric == 'HECTVBPKM':
                 curs.execute("SELECT dgoid, segment_area, centerline_length FROM dgos")
                 data = curs.fetchall()
                 for dgo_id, area, length in data:
                     if area is not None and length is not None and length > 0:
                         hectares = (float(area) * 0.0001) / (float(length) * 0.001)
-                        curs.execute(f"UPDATE geomorph_dgo SET hect_vb_per_km = {hectares} WHERE dgoid = {dgo_id}")
+                        curs.execute(f"UPDATE dgo_geomorph SET hect_vb_per_km = {hectares} WHERE dgoid = {dgo_id}")
             if metric == 'STRMSIZE':
-                curs.execute("SELECT geomorph_dgo.dgoid, channel_area, strmleng FROM geomorph_dgo LEFT JOIN dgo_measurements ON geomorph_dgo.dgoid = dgo_measurements.dgoid")
+                curs.execute("SELECT dgo_geomorph.dgoid, channel_area, strmleng FROM dgo_geomorph LEFT JOIN dgo_measurements ON dgo_geomorph.dgoid = dgo_measurements.dgoid")
                 data = curs.fetchall()
                 for dgo_id, area, length in data:
                     if area is not None and length is not None and length > 0:
                         size = float(area) / float(length)
-                        curs.execute(f"UPDATE geomorph_dgo SET channel_width = {size} WHERE dgoid = {dgo_id}")
+                        curs.execute(f"UPDATE dgo_geomorph SET channel_width = {size} WHERE dgoid = {dgo_id}")
             if metric == 'ROADDENS':
-                curs.execute("SELECT impacts_dgo.dgoid, road_len, centerline_length FROM impacts_dgo LEFT JOIN dgos on dgos.dgoid = impacts_dgo.dgoid")
+                curs.execute("SELECT dgo_impacts.dgoid, road_len, centerline_length FROM dgo_impacts LEFT JOIN dgos on dgos.dgoid = dgo_impacts.dgoid")
                 data = curs.fetchall()
                 for dgo_id, road_len, length in data:
                     if road_len is not None and length is not None and length > 0:
                         road_density = float(road_len) / float(length)
-                        curs.execute(f"UPDATE impacts_dgo SET road_dens = {road_density} WHERE dgoid = {dgo_id}")
+                        curs.execute(f"UPDATE dgo_impacts SET road_dens = {road_density} WHERE dgoid = {dgo_id}")
             if metric == 'RAILDENS':
-                curs.execute("SELECT impacts_dgo.dgoid, rail_len, centerline_length FROM impacts_dgo LEFT JOIN dgos on dgos.dgoid = impacts_dgo.dgoid")
+                curs.execute("SELECT dgo_impacts.dgoid, rail_len, centerline_length FROM dgo_impacts LEFT JOIN dgos on dgos.dgoid = dgo_impacts.dgoid")
                 data = curs.fetchall()
                 for dgo_id, rail_len, length in data:
                     if rail_len is not None and length is not None and length > 0:
                         rail_density = float(rail_len) / float(length)
-                        curs.execute(f"UPDATE impacts_dgo SET rail_dens = {rail_density} WHERE dgoid = {dgo_id}")
+                        curs.execute(f"UPDATE dgo_impacts SET rail_dens = {rail_density} WHERE dgoid = {dgo_id}")
             if metric == 'ACFPEXT':
-                curs.execute("SELECT impacts_dgo.dgoid, fldpln_access, segment_area FROM impacts_dgo LEFT JOIN dgos on dgos.dgoid = impacts_dgo.dgoid")
+                curs.execute("SELECT dgo_impacts.dgoid, fldpln_access, segment_area FROM dgo_impacts LEFT JOIN dgos on dgos.dgoid = dgo_impacts.dgoid")
                 data = curs.fetchall()
                 for dgo_id, prop, area in data:
                     if prop is not None and area is not None and area > 0:
                         acpf = float(prop) * float(area)
-                        curs.execute(f"UPDATE impacts_dgo SET access_fldpln_extent = {acpf} WHERE dgoid = {dgo_id}")
+                        curs.execute(f"UPDATE dgo_impacts SET access_fldpln_extent = {acpf} WHERE dgoid = {dgo_id}")
             if metric == 'EXRIP':
-                curs.execute("SELECT veg_dgo.dgoid, prop_riparian, segment_area FROM veg_dgo LEFT JOIN dgos on dgos.dgoid = veg_dgo.dgoid")
+                curs.execute("SELECT dgo_veg.dgoid, prop_riparian, segment_area FROM dgo_veg LEFT JOIN dgos on dgos.dgoid = dgo_veg.dgoid")
                 data = curs.fetchall()
                 for dgo_id, prop, area in data:
                     if prop is not None and area is not None and area > 0:
                         exrip = float(prop) * float(area)
-                        curs.execute(f"UPDATE veg_dgo SET ex_riparian = {exrip} WHERE dgoid = {dgo_id}")
+                        curs.execute(f"UPDATE dgo_veg SET ex_riparian = {exrip} WHERE dgoid = {dgo_id}")
             if metric == 'HISTRIP':
-                curs.execute("SELECT veg_dgo.dgoid, prop_riparian, segment_area FROM veg_dgo LEFT JOIN dgos on dgos.dgoid = veg_dgo.dgoid")
+                curs.execute("SELECT dgo_veg.dgoid, prop_riparian, segment_area FROM dgo_veg LEFT JOIN dgos on dgos.dgoid = dgo_veg.dgoid")
                 data = curs.fetchall()
                 for dgo_id, prop, area in data:
                     if prop is not None and area is not None and area > 0:
                         hisrip = float(prop) * float(area)
-                        curs.execute(f"UPDATE veg_dgo SET hist_riparian = {hisrip} WHERE dgoid = {dgo_id}")
+                        curs.execute(f"UPDATE dgo_veg SET hist_riparian = {hisrip} WHERE dgoid = {dgo_id}")
         conn.commit()
 
     # fill out igo_metrics table using moving window analysis
-    for i, metric_group, in enumerate(metric_groups):
+    for metric_group in metric_groups:
 
         metrics = generate_metric_list(outputs_gpkg, metric_group[0], primary=None)
         with sqlite3.connect(outputs_gpkg) as conn:
@@ -658,7 +658,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                         bespoke_method_metrics.append(metric)
                         continue
 
-                    if metrics[metric]['window_calc_id'] == 0:
+                    if metrics[metric]['window_calc_id'] == 1:
                         if igo_id not in igo_dgo.keys():
                             continue
                         input_args = mw_input_datasets[metrics[metric]['metric_id']]
@@ -694,7 +694,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                 if len(metrics_output) > 0:
                     field_names = ', '.join(metrics_output.keys())
                     placeholders = ', '.join(['?'] * len(metrics_output))
-                    sql = f"""INSERT INTO {metric_group[1]}_igo (igoid, {field_names}) VALUES ({igo_id}, {placeholders})"""
+                    sql = f"""INSERT INTO igo_{metric_group[1]} (igoid, {field_names}) VALUES ({igo_id}, {placeholders})"""
                     curs.execute(sql, list(metrics_output.values()))
                 else:
                     log.warning(f"No {metric_group[1]} metrics calculated for IGO {igo_id}")
@@ -728,7 +728,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                             besp_output[metrics[metric]['field_name']] = rvd
 
                     set_clause = ', '.join([f"{k} = ?" for k in besp_output.keys()])
-                    sql = f"""UPDATE {metric_group[1]}_igo SET {set_clause} WHERE igoid = {igo_id}"""
+                    sql = f"""UPDATE igo_{metric_group[1]} SET {set_clause} WHERE igoid = {igo_id}"""
                     curs.execute(sql, list(besp_output.values()))
 
             conn.commit()
