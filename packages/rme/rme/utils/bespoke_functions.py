@@ -193,9 +193,12 @@ def mw_stream_power(dgo_ids, gpkg, q='QLow'):
             return None
         if result[2] > 0.0:
             slope = (result[0] - result[1]) / result[2]
-            curs.execute(f"SELECT MAX({q}) FROM hydro_dgo WHERE dgoid IN ({','.join(map(str, dgo_ids))})")
+            curs.execute(f"SELECT MAX({q}) FROM dgo_hydro WHERE dgoid IN ({','.join(map(str, dgo_ids))})")
             discharge = curs.fetchone()[0]
-            return slope * discharge * 0.0283168 * 9810
+            if discharge:
+                return slope * discharge * 0.0283168 * 9810
+            else:
+                return None
         else:
             return None
 
@@ -203,8 +206,8 @@ def mw_stream_power(dgo_ids, gpkg, q='QLow'):
 def mw_rvd(dgo_ids, gpkg):
     with sqlite3.connect(gpkg) as conn:
         curs = conn.cursor()
-        curs.execute(f"""SELECT SUM(prop_riparian*segment_area), sum(hist_prop_riparian*segment_area) FROM veg_dgo LEFT JOIN dgos
-                     ON veg_dgo.dgoid = dgos.dgoid WHERE dgos.dgoid IN ({','.join(map(str, dgo_ids))})""")
+        curs.execute(f"""SELECT SUM(prop_riparian*segment_area), sum(hist_prop_riparian*segment_area) FROM dgo_veg LEFT JOIN dgos
+                     ON dgo_veg.dgoid = dgos.dgoid WHERE dgos.dgoid IN ({','.join(map(str, dgo_ids))})""")
         result = curs.fetchone()
         if None in result:
             return None

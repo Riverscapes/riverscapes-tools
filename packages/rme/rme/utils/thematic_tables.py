@@ -22,7 +22,7 @@ def create_measurement_table(gpkg_path):
     conn = sqlite3.connect(gpkg_path)
     c = conn.cursor()
     c.execute("SELECT machine_code, data_type FROM measurements WHERE is_active = 1")
-    columns = "dgoid INTEGER, "+", ".join([f"{machine_code} {data_type}" for machine_code, data_type in c.fetchall()])
+    columns = "dgoid INTEGER PRIMARY KEY NOT NULL REFERENCES dgos(DGOID) ON DELETE CASCADE, "+", ".join([f"{machine_code} {data_type}" for machine_code, data_type in c.fetchall()])
     c.execute(f"CREATE TABLE dgo_measurements ({columns})")
     c.execute("INSERT INTO gpkg_contents (table_name, data_type) VALUES ('dgo_measurements', 'attributes')")
     c.execute("CREATE INDEX ix_dgoid_meas ON dgo_measurements (dgoid)")
