@@ -70,6 +70,8 @@ LayerTypes = {
         'JUNCTION_POINTS': RSLayer('Junction Points', 'JUNCTION_POINTS', 'Vector', 'junction_points')
     }),
     'OUTPUTS': RSLayer('Riverscapes Metrics', 'OUTPUTS', 'Geopackage', 'outputs/riverscapes_metrics.gpkg', {
+        'GEOM_IGOS': RSLayer('RME IGO', 'GEOM_IGOS', 'Vector', 'igos'),
+        'GEOM_DGOS': RSLayer('RME DGO', 'GEOM_DGOS', 'Vector', 'dgos'),
         'DGO_BEAVER': RSLayer('RME DGO Beaver', 'DGO_BEAVER', 'Vector', 'vw_dgo_beaver_metrics'),
         'DGO_DESC': RSLayer('RME DGO Descriptive', 'DGO_DESC', 'Vector', 'vw_dgo_desc_metrics'),
         'DGO_GEOMORPH': RSLayer('RME DGO Geomorph', 'DGO_GEOMORPH', 'Vector', 'vw_dgo_geomorph_metrics'),

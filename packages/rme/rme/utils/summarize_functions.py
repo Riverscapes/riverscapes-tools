@@ -57,8 +57,7 @@ def value_from_max_length(dgo_ftr, in_line_network, field_name):
     if len(attributes) == 0:
         majority_attribute = None
     else:
-        majority_attribute = str(
-            max(attributes, key=attributes.get))
+        majority_attribute = max(attributes, key=attributes.get)
 
     return majority_attribute
 

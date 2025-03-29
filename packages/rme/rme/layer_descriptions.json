@@ -1,5 +1,7 @@
 {
     "JUNCTION_POINTS": ["Points where flowlines converge or diverge","",""],
+    "GEOM_DGOS": ["Discrete geographic objects (DGO) polygon geometries for storing RME attributes (intermediate data product only)","",""],
+    "GEOM_IGOS": ["Integrated geographic objects (IGO) point geometries for storing RME moving window attributes (intermediate data product only)","",""],
     "DGO_BEAVER": ["Beaver/BRAT related metrics calculated for DGOs","",""],
     "DGO_DESC": ["Descriptive metrics for DGOs","",""],
     "DGO_GEOMORPH": ["Geomorphological metrics for DGOs","",""],
