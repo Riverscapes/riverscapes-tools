@@ -5,5 +5,4 @@ measurement_id,name,machine_code,data_type,description,is_active
 4,Max Centerline Elevation,clmaxelev,REAL,,1
 5,Stream Length,strmleng,REAL,Stream Length of main flowline,1
 6,Centerline Length,valleng,REAL,,1
-7,Stream Total Length,strmlengtot,REAL,Stream length of all flowlines (includes branches),1
-8,Stream Segment Straight Length,strmstrleng,REAL,straight line length of segment,1
+7,Stream Segment Straight Length,strmstrleng,REAL,straight line length of segment,1

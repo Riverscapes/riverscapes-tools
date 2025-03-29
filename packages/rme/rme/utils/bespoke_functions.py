@@ -112,108 +112,107 @@ def landfire_classes(feat_geom, gpkg, epoch=1):
     return classes_out
 
 
-def mw_calculate_gradient(gpkg, dgo_ids, channel=True):
-    with sqlite3.connect(gpkg) as conn:
-        curs = conn.cursor()
-        if channel:
-            curs.execute(
-                f"SELECT MAX(strmmaxelev), MIN(strmminelev), SUM(strmleng) FROM dgo_measurements WHERE dgoid IN ({','.join(map(str, dgo_ids))})")
-        else:
-            curs.execute(
-                f"SELECT MAX(clmaxelev), MIN(clminelev), SUM(valleng) FROM dgo_measurements WHERE dgoid IN ({','.join(map(str, dgo_ids))})")
-        vals = curs.fetchone()
-        if None in vals:
-            return None
-        if vals[2] > 0.0:
-            gradient = (vals[0] - vals[1]) / vals[2]
-        else:
-            gradient = None
+def mw_calculate_gradient(cursor, dgo_ids, channel=True):
+    # with sqlite3.connect(gpkg) as conn:
+    #     curs = conn.cursor()
+    if channel:
+        cursor.execute(
+            f"SELECT MAX(strmmaxelev), MIN(strmminelev), SUM(strmleng) FROM dgo_measurements WHERE dgoid IN ({','.join(map(str, dgo_ids))})")
+    else:
+        cursor.execute(
+            f"SELECT MAX(clmaxelev), MIN(clminelev), SUM(valleng) FROM dgo_measurements WHERE dgoid IN ({','.join(map(str, dgo_ids))})")
+    vals = cursor.fetchone()
+    if None in vals:
+        gradient = None
+    elif vals[2] > 0.0:
+        gradient = (vals[0] - vals[1]) / vals[2]
+    else:
+        gradient = None
 
     return gradient
 
 
-def mw_calculate_sinuosity(gpkg, dgo_ids):
-    with sqlite3.connect(gpkg) as conn:
-        curs = conn.cursor()
-        curs.execute(
-            f"SELECT SUM(strmleng), SUM(strmstrleng) FROM dgo_measurements WHERE dgoid IN ({','.join(map(str, dgo_ids))})")
-        vals = curs.fetchone()
-        if None in vals:
-            return None
-        if vals[1] > 0.0:
-            sinuosity = vals[0] / vals[1]
-        else:
-            sinuosity = None
+def mw_calculate_sinuosity(cursor, dgo_ids):
+    # with sqlite3.connect(gpkg) as conn:
+    #     curs = conn.cursor()
+    cursor.execute(
+        f"SELECT SUM(strmleng), SUM(strmstrleng) FROM dgo_measurements WHERE dgoid IN ({','.join(map(str, dgo_ids))})")
+    vals = cursor.fetchone()
+    if None in vals:
+        sinuosity = None
+    elif vals[1] > 0.0:
+        sinuosity = vals[0] / vals[1]
+    else:
+        sinuosity = None
 
     return sinuosity
 
 
-def mw_acres_per_mi(dgo_ids, gpkg):
-    with sqlite3.connect(gpkg) as conn:
-        curs = conn.cursor()
-        curs.execute(
-            f"""SELECT SUM(segment_area), SUM(centerline_length) FROM dgos 
-            WHERE dgoid IN ({','.join(map(str, dgo_ids))})""")
-        result = curs.fetchone()
-        if None in result:
-            return None
-        if result[1] > 0.0:
-            out = (result[0] * 0.000247105) / (result[1] * 0.000621371)
-        else:
-            out = None
+def mw_acres_per_mi(cursor, dgo_ids):
+    # with sqlite3.connect(gpkg) as conn:
+    #     curs = conn.cursor()
+    cursor.execute(
+        f"""SELECT SUM(segment_area), SUM(centerline_length) FROM dgos 
+        WHERE dgoid IN ({','.join(map(str, dgo_ids))})""")
+    result = cursor.fetchone()
+    if None in result:
+        out = None
+    elif result[1] > 0.0:
+        out = (result[0] * 0.000247105) / (result[1] * 0.000621371)
+    else:
+        out = None
 
     return out
 
 
-def mw_hect_per_km(dgo_ids, gpkg):
-    with sqlite3.connect(gpkg) as conn:
-        curs = conn.cursor()
-        curs.execute(
-            f"""SELECT SUM(segment_area), SUM(centerline_length) FROM dgos 
-            WHERE dgoid IN ({','.join(map(str, dgo_ids))})""")
-        result = curs.fetchone()
-        if None in result:
-            return None
-        if result[1] > 0.0:
-            out = (result[0] * 0.0001) / (result[1] * 0.001)
-        else:
-            out = None
+def mw_hect_per_km(cursor, dgo_ids):
+    # with sqlite3.connect(gpkg) as conn:
+    #     curs = conn.cursor()
+    cursor.execute(
+        f"""SELECT SUM(segment_area), SUM(centerline_length) FROM dgos 
+        WHERE dgoid IN ({','.join(map(str, dgo_ids))})""")
+    result = cursor.fetchone()
+    if None in result:
+        out = None
+    elif result[1] > 0.0:
+        out = (result[0] * 0.0001) / (result[1] * 0.001)
+    else:
+        out = None
 
     return out
 
 
-def mw_stream_power(dgo_ids, gpkg, q='QLow'):
-    with sqlite3.connect(gpkg) as conn:
-        curs = conn.cursor()
-        curs.execute(
-            f"""SELECT MAX(strmmaxelev), MIN(strmminelev), SUM(strmleng) FROM dgo_measurements 
-            WHERE dgoid IN ({','.join(map(str, dgo_ids))})""")
-        result = curs.fetchone()
-        if None in result:
-            return None
-        if result[2] > 0.0:
-            slope = (result[0] - result[1]) / result[2]
-            curs.execute(f"SELECT MAX({q}) FROM dgo_hydro WHERE dgoid IN ({','.join(map(str, dgo_ids))})")
-            discharge = curs.fetchone()[0]
-            if discharge:
-                return slope * discharge * 0.0283168 * 9810
-            else:
-                return None
-        else:
-            return None
+def mw_stream_power(cursor, dgo_ids, q='QLow'):
+    # with sqlite3.connect(gpkg) as conn:
+    #     curs = conn.cursor()
+    cursor.execute(
+        f"""SELECT MAX(strmmaxelev), MIN(strmminelev), SUM(strmleng), MAX({q}) FROM dgo_measurements
+        LEFT JOIN dgo_hydro ON dgo_measurements.dgoid = dgo_hydro.dgoid 
+        WHERE dgo_measurements.dgoid IN ({','.join(map(str, dgo_ids))})""")
+    result = cursor.fetchone()
+    if None in result:
+        out = None
+    elif result[2] > 0.0 and result[3] is not None:
+        slope = (result[0] - result[1]) / result[2]
+        discharge = result[3]
+        out = slope * discharge * 0.0283168 * 9810
+    else:
+        out = None
+
+    return out
 
 
-def mw_rvd(dgo_ids, gpkg):
-    with sqlite3.connect(gpkg) as conn:
-        curs = conn.cursor()
-        curs.execute(f"""SELECT SUM(prop_riparian*segment_area), sum(hist_prop_riparian*segment_area) FROM dgo_veg LEFT JOIN dgos
-                     ON dgo_veg.dgoid = dgos.dgoid WHERE dgos.dgoid IN ({','.join(map(str, dgo_ids))})""")
-        result = curs.fetchone()
-        if None in result:
-            return None
-        if result[1] > 0.0:
-            out = 1 - (result[0] / result[1])
-        else:
-            out = None
+def mw_rvd(cursor, dgo_ids):
+    # with sqlite3.connect(gpkg) as conn:
+    #     curs = conn.cursor()
+    cursor.execute(f"""SELECT SUM(prop_riparian*segment_area), sum(hist_prop_riparian*segment_area) FROM dgo_veg LEFT JOIN dgos
+                    ON dgo_veg.dgoid = dgos.dgoid WHERE dgo_veg.dgoid IN ({','.join(map(str, dgo_ids))})""")
+    result = cursor.fetchone()
+    if None in result:
+        out = None
+    elif result[1] > 0.0:
+        out = 1 - (result[0] / result[1])
+    else:
+        out = None
 
     return out
