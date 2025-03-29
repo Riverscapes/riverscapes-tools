@@ -14,24 +14,19 @@ import os
 import sys
 import sqlite3
 import time
-import inspect
 import argparse
 import traceback
 from collections import Counter
 import time
 
-from osgeo import ogr, osr
+from osgeo import ogr
 from osgeo import gdal
-import numpy as np
 import rasterio
-from rasterio.mask import mask
-from shapely.geometry import Point, LineString
 
 from rscommons import GeopackageLayer, dotenv, Logger, initGDALOGRErrors, ModelConfig, RSLayer, RSMeta, RSMetaTypes, RSProject, VectorBase, ProgressBar
 from rscommons.classes.vector_base import get_utm_zone_epsg
 from rscommons.util import parse_metadata, pretty_duration
 from rscommons.database import load_lookup_data
-from rscommons.geometry_ops import reduce_precision, get_endpoints
 from rscommons.vector_ops import copy_feature_class, collect_linestring
 from rscommons.copy_features import copy_features_fields
 from rscommons.vbet_network import copy_vaa_attributes, join_attributes
@@ -75,20 +70,30 @@ LayerTypes = {
         'JUNCTION_POINTS': RSLayer('Junction Points', 'JUNCTION_POINTS', 'Vector', 'junction_points')
     }),
     'OUTPUTS': RSLayer('Riverscapes Metrics', 'OUTPUTS', 'Geopackage', 'outputs/riverscapes_metrics.gpkg', {
-        'GEOM_IGOS': RSLayer('RME IGO', 'GEOM_IGOS', 'Vector', 'igos'),
-        'GEOM_DGOS': RSLayer('RME DGO', 'GEOM_DGOS', 'Vector', 'dgos'),
-        'DGO_METRICS': RSLayer('RME DGO', 'RME_DGO', 'Vector', 'rme_dgos'),
-        'IGO_METRICS': RSLayer('RME IGO', 'RME_IGO', 'Vector', 'rme_igos'),
+        'DGO_BEAVER': RSLayer('RME DGO Beaver', 'DGO_BEAVER', 'Vector', 'vw_dgo_beaver_metrics'),
+        'DGO_DESC': RSLayer('RME DGO Descriptive', 'DGO_DESC', 'Vector', 'vw_dgo_desc_metrics'),
+        'DGO_GEOMORPH': RSLayer('RME DGO Geomorph', 'DGO_GEOMORPH', 'Vector', 'vw_dgo_geomorph_metrics'),
+        'DGO_HYDRO': RSLayer('RME DGO Hydro', 'DGO_HYDRO', 'Vector', 'vw_dgo_hydro_metrics'),
+        'DGO_IMPACTS': RSLayer('RME DGO Impacts', 'DGO_IMPACTS', 'Vector', 'vw_dgo_impacts_metrics'),
+        'DGO_VEG': RSLayer('RME DGO Vegetation', 'DGO_VEG', 'Vector', 'vw_dgo_veg_metrics'),
+        'IGO_BEAVER': RSLayer('RME IGO Beaver', 'IGO_BEAVER', 'Vector', 'vw_igo_beaver_metrics'),
+        'IGO_DESC': RSLayer('RME IGO Descriptive', 'IGO_DESC', 'Vector', 'vw_igo_desc_metrics'),
+        'IGO_GEOMORPH': RSLayer('RME IGO Geomorph', 'IGO_GEOMORPH', 'Vector', 'vw_igo_geomorph_metrics'),
+        'IGO_HYDRO': RSLayer('RME IGO Hydro', 'IGO_HYDRO', 'Vector', 'vw_igo_hydro_metrics'),
+        'IGO_IMPACTS': RSLayer('RME IGO Impacts', 'IGO_IMPACTS', 'Vector', 'vw_igo_impacts_metrics'),
+        'IGO_VEG': RSLayer('RME IGO Vegetation', 'IGO_VEG', 'Vector', 'vw_igo_veg_metrics'),
+        'DGO_METRICS': RSLayer('RME DGO', 'DGO_METRICS', 'Vector', 'vw_dgo_metrics'),
+        'IGO_METRICS': RSLayer('RME IGO', 'IGO_METRICS', 'Vector', 'vw_igo_metrics')
     }),
     'REPORT': RSLayer('RME Report', 'REPORT', 'HTMLFile', 'outputs/rme.html'),
-    'REPORT_PERENNIAL': RSLayer('RME Perennial Streams Report', 'REPORT_PERENNIAL', 'HTMLFile', 'outputs/rme_perennial.html'),
-    'REPORT_PUBLIC_PERENNIAL': RSLayer('RME Public Perennial Streams Report', 'REPORT_PUBLIC_PERENNIAL', 'HTMLFile', 'outputs/rme_public_perennial.html'),
-    'REPORT_BLM_LANDS': RSLayer('RME BLM Lands Report', 'REPORT_BLM_LANDS', 'HTMLFile', 'outputs/rme_blm_lands.html'),
-    'REPORT_BLM_PERENNIAL': RSLayer('RME BLM Perennial Report', 'REPORT_BLM_PERENNIAL', 'HTMLFile', 'outputs/rme_blm_perennial.html'),
-    'REPORT_USFS_PERENNIAL': RSLayer('RME USFS Perennial Report', 'REPORT_USFS_PERENNIAL', 'HTMLFile', 'outputs/rme_usfs_perennial.html'),
-    'REPORT_NPS_PERENNIAL': RSLayer('RME NPS Perennial Report', 'REPORT_NPS_PERENNIAL', 'HTMLFile', 'outputs/rme_nps_perennial.html'),
-    'REPORT_ST_PERENNIAL': RSLayer('RME ST Perennial Report', 'REPORT_ST_PERENNIAL', 'HTMLFile', 'outputs/rme_st_perennial.html'),
-    'REPORT_FWS_PERENNIAL': RSLayer('RME FWS Perennial Report', 'REPORT_FWS_PERENNIAL', 'HTMLFile', 'outputs/rme_fws_perennial.html'),
+    # 'REPORT_PERENNIAL': RSLayer('RME Perennial Streams Report', 'REPORT_PERENNIAL', 'HTMLFile', 'outputs/rme_perennial.html'),
+    # 'REPORT_PUBLIC_PERENNIAL': RSLayer('RME Public Perennial Streams Report', 'REPORT_PUBLIC_PERENNIAL', 'HTMLFile', 'outputs/rme_public_perennial.html'),
+    # 'REPORT_BLM_LANDS': RSLayer('RME BLM Lands Report', 'REPORT_BLM_LANDS', 'HTMLFile', 'outputs/rme_blm_lands.html'),
+    # 'REPORT_BLM_PERENNIAL': RSLayer('RME BLM Perennial Report', 'REPORT_BLM_PERENNIAL', 'HTMLFile', 'outputs/rme_blm_perennial.html'),
+    # 'REPORT_USFS_PERENNIAL': RSLayer('RME USFS Perennial Report', 'REPORT_USFS_PERENNIAL', 'HTMLFile', 'outputs/rme_usfs_perennial.html'),
+    # 'REPORT_NPS_PERENNIAL': RSLayer('RME NPS Perennial Report', 'REPORT_NPS_PERENNIAL', 'HTMLFile', 'outputs/rme_nps_perennial.html'),
+    # 'REPORT_ST_PERENNIAL': RSLayer('RME ST Perennial Report', 'REPORT_ST_PERENNIAL', 'HTMLFile', 'outputs/rme_st_perennial.html'),
+    # 'REPORT_FWS_PERENNIAL': RSLayer('RME FWS Perennial Report', 'REPORT_FWS_PERENNIAL', 'HTMLFile', 'outputs/rme_fws_perennial.html'),
 }
 
 stream_size_lookup = {0: 'small', 1: 'medium',
@@ -242,7 +247,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
     with GeopackageLayer(outputs_gpkg, layer_name=LayerTypes['OUTPUTS'].sub_layers['GEOM_IGOS'].rel_path, write=True) as out_lyr:
         out_lyr.create_layer(ogr.wkbPoint, epsg=cfg.OUTPUT_EPSG, options=['FID=igoid'], fields={
             'level_path': ogr.OFTString,
-            'seg_distance': ogr.OFTReal,
+            'seg_distance': ogr.OFTInteger,
             'stream_size': ogr.OFTInteger,
             'FCode': ogr.OFTInteger
         })
@@ -250,7 +255,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
     with GeopackageLayer(outputs_gpkg, layer_name=LayerTypes['OUTPUTS'].sub_layers['GEOM_DGOS'].rel_path, write=True) as out_lyr:
         out_lyr.create_layer(ogr.wkbMultiPolygon, epsg=cfg.OUTPUT_EPSG, options=['FID=dgoid'], fields={
             'level_path': ogr.OFTString,
-            'seg_distance': ogr.OFTReal,
+            'seg_distance': ogr.OFTInteger,
             'centerline_length': ogr.OFTReal,
             'segment_area': ogr.OFTReal,
             'FCode': ogr.OFTInteger
@@ -259,14 +264,11 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
     points = os.path.join(outputs_gpkg, LayerTypes['OUTPUTS'].sub_layers['GEOM_IGOS'].rel_path)
     segments = os.path.join(outputs_gpkg, LayerTypes['OUTPUTS'].sub_layers['GEOM_DGOS'].rel_path)
     copy_features_fields(input_layers['VBET_IGOS'], points, epsg=cfg.OUTPUT_EPSG)  # seg dist not null
-    copy_features_fields(input_layers['VBET_DGOS'], segments, attribute_filter='seg_distance IS NOT NULL', epsg=cfg.OUTPUT_EPSG)
+    copy_features_fields(input_layers['VBET_DGOS'], segments, epsg=cfg.OUTPUT_EPSG)
 
     # copy DGOVegetation table from RCAT into outputs gpkg
     if in_rcat_dgo_table:
-        rcat_dgo_table = os.path.join(inputs_gpkg, 'DGOVegetation')
         copy_table(os.path.dirname(in_rcat_dgo_table), outputs_gpkg, 'DGOVegetation')
-    else:
-        rcat_dgo_table = None
 
     # get utm
     with GeopackageLayer(input_layers['VBET_IGOS']) as lyr_pts:
@@ -335,11 +337,9 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
     # index level path and seg distance
     with sqlite3.connect(outputs_gpkg) as conn:
         curs = conn.cursor()
-        curs.execute("CREATE INDEX ix_dgos_dgoid ON dgos (dgoid)")
         curs.execute("CREATE INDEX ix_dgos_level_path_seg_distance ON dgos (level_path, seg_distance)")
         curs.execute("CREATE INDEX idx_igos_size ON igos (stream_size)")
         curs.execute("CREATE INDEX ix_dgos_fcode ON dgos (FCode)")
-        curs.execute("CREATE INDEX ix_igos_igosid ON igos (igoid)")
         curs.execute("CREATE INDEX ix_igos_level_path_seg_distance ON igos (level_path, seg_distance)")
         curs.execute("CREATE INDEX ix_veg_dgoid ON DGOVegetation (dgoid)")
         curs.execute("CREATE INDEX ix_veg_vegid ON DGOVegetation (VegetationID)")
@@ -446,8 +446,6 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
         mw_input_datasets = {row[0]: row[1:] for row in curs.fetchall()}
 
     for metric_group in metric_groups:
-        # if metric_group[1] != 'veg':  # remove this later
-        #     continue
         create_thematic_table(outputs_gpkg, metric_group[1], metric_group[0])
         metrics = generate_metric_list(outputs_gpkg, metric_group[0])
 
@@ -456,7 +454,6 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
             for feat_seg_dgo, *_ in lyr_segments.iterate_features(f'Calculating {metric_group[1]} metrics for DGOs'):
                 bespoke_method_metrics = []
                 metrics_output = {}
-                # Gather common components for metric calcuations
                 feat_geom = feat_seg_dgo.GetGeometryRef().Clone()
                 dgo_id = feat_seg_dgo.GetFID()
                 segment_distance = feat_seg_dgo.GetField('seg_distance')
@@ -468,8 +465,6 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                         bespoke_method_metrics.append(metric)
                         continue
 
-                    # curs.execute(f"SELECT dataset, field_name, field_value FROM input_datasets WHERE metric_id = {metrics[metric]['metric_id']}")
-                    # input_args = curs.fetchone()
                     input_args = input_datasets[metrics[metric]['metric_id']]
                     input_args = [item for item in input_args if item]
                     input_args.insert(0, feat_seg_dgo)
@@ -483,16 +478,14 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                         continue
                     val = call_function(metric_functions[metric_calculation_id], *input_args)
                     if val is None:
-                        continue
-                    if metrics[metric]['data_type'] == 'REAL':
-                        metrics_output[metrics[metric]['field_name']] = float(val)
-                    elif metrics[metric]['data_type'] == 'INTEGER':
-                        metrics_output[metrics[metric]['field_name']] = int(val)
+                        metrics_output[metrics[metric]['field_name']] = None
                     else:
-                        metrics_output[metrics[metric]['field_name']] = str(val)
-
-                    # if val is not None:
-                    # curs.execute(f"INSERT INTO {metric_group[1]} (dgoid, {metrics[metric]['field_name']}) VALUES ({dgo_id}, {val})")
+                        if metrics[metric]['data_type'] == 'REAL':
+                            metrics_output[metrics[metric]['field_name']] = float(val)
+                        elif metrics[metric]['data_type'] == 'INTEGER':
+                            metrics_output[metrics[metric]['field_name']] = int(val)
+                        else:
+                            metrics_output[metrics[metric]['field_name']] = str(val)
 
                 if len(metrics_output) > 0:
                     field_names = ', '.join(metrics_output.keys())
@@ -505,7 +498,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                 if len(bespoke_method_metrics) > 0:
                     besp_output = {}
                     for metric in bespoke_method_metrics:
-                        # these are the metrics that need a specific, bespoke method (metric_calculation_id = 7),
+                        # these are the metrics that need a specific, bespoke method (metric_calculation_id = 99),
                         if metric == 'WATERSHED':
                             watsid = watershed(huc)
                             besp_output[metrics[metric]['field_name']] = watsid
@@ -547,8 +540,6 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                     set_clause = ', '.join([f"{k} = ?" for k in besp_output.keys()])
                     sql = f"""UPDATE dgo_{metric_group[1]} SET {set_clause} WHERE dgoid = {dgo_id}"""
                     curs.execute(sql, list(besp_output.values()))
-
-                # log.info(f"Calculated for DGO {dgo_id}")
 
         conn.commit()
 
@@ -652,7 +643,6 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                 progbar.update(counter)
                 bespoke_method_metrics = []
                 metrics_output = {}
-                # Gather common components for metric calcuations
                 for metric in metrics:
                     if metrics[metric]['window_calc_id'] not in mw_metric_functions.keys():
                         bespoke_method_metrics.append(metric)
@@ -677,19 +667,20 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                             log.error(f"Input file {input_args[1]} does not exist, unable to calucalate {metrics[metric]['metric_name']}")
                             continue
 
-                    # curs.execute(f"SELECT window_calc_id FROM metrics WHERE metric_id = {metrics[metric]['metric_id']}")
-                    window_calc_id = metrics[metric]['window_calc_id']  # int(curs.fetchone()[0])
+                    window_calc_id = metrics[metric]['window_calc_id']
                     if window_calc_id not in mw_metric_functions.keys():
                         continue
+                    input_args.insert(0, curs)
                     val = call_function(mw_metric_functions[window_calc_id], *input_args)
                     if val is None:
-                        continue
-                    if metrics[metric]['data_type'] == 'REAL':
-                        metrics_output[metrics[metric]['field_name']] = float(val)
-                    elif metrics[metric]['data_type'] == 'INTEGER':
-                        metrics_output[metrics[metric]['field_name']] = int(val)
+                        metrics_output[metrics[metric]['field_name']] = None
                     else:
-                        metrics_output[metrics[metric]['field_name']] = str(val)
+                        if metrics[metric]['data_type'] == 'REAL':
+                            metrics_output[metrics[metric]['field_name']] = float(val)
+                        elif metrics[metric]['data_type'] == 'INTEGER':
+                            metrics_output[metrics[metric]['field_name']] = int(val)
+                        else:
+                            metrics_output[metrics[metric]['field_name']] = str(val)
 
                 if len(metrics_output) > 0:
                     field_names = ', '.join(metrics_output.keys())
@@ -703,28 +694,28 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                     besp_output = {}
                     for metric in bespoke_method_metrics:
                         if metric == 'STRMGRAD':
-                            grad = mw_calculate_gradient(outputs_gpkg, dgo_ids)
+                            grad = mw_calculate_gradient(curs, dgo_ids)
                             besp_output[metrics[metric]['field_name']] = grad
                         if metric == 'VALGRAD':
-                            grad = mw_calculate_gradient(outputs_gpkg, dgo_ids, channel=False)
+                            grad = mw_calculate_gradient(curs, dgo_ids, channel=False)
                             besp_output[metrics[metric]['field_name']] = grad
                         if metric == 'CHANSIN':
-                            sin = mw_calculate_sinuosity(outputs_gpkg, dgo_ids)
+                            sin = mw_calculate_sinuosity(curs, dgo_ids)
                             besp_output[metrics[metric]['field_name']] = sin
                         if metric == 'ACRESVBPM':
-                            acres = mw_acres_per_mi(dgo_ids, outputs_gpkg)
+                            acres = mw_acres_per_mi(curs, dgo_ids)
                             besp_output[metrics[metric]['field_name']] = acres
                         if metric == 'HECTVBPKM':
-                            hectares = mw_hect_per_km(dgo_ids, outputs_gpkg)
+                            hectares = mw_hect_per_km(curs, dgo_ids)
                             besp_output[metrics[metric]['field_name']] = hectares
                         if metric == 'LOWFLOWSP':
-                            sp_low = mw_stream_power(dgo_ids, outputs_gpkg)
+                            sp_low = mw_stream_power(curs, dgo_ids)
                             besp_output[metrics[metric]['field_name']] = sp_low
                         if metric == 'HIGHFLOWSP':
-                            sp_high = mw_stream_power(dgo_ids, outputs_gpkg, q='Q2')
+                            sp_high = mw_stream_power(curs, dgo_ids, q='Q2')
                             besp_output[metrics[metric]['field_name']] = sp_high
                         if metric == 'RVD':
-                            rvd = mw_rvd(dgo_ids, outputs_gpkg)
+                            rvd = mw_rvd(curs, dgo_ids)
                             besp_output[metrics[metric]['field_name']] = rvd
 
                     set_clause = ', '.join([f"{k} = ?" for k in besp_output.keys()])
@@ -829,16 +820,6 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
     return
 
 
-def sql_name(name: str) -> str:
-    """return cleaned metric column name"""
-    return name.lower().replace(' ', '_')
-
-
-def sql_round(datatype: str, metric_id, table='metric') -> str:
-    """return round function"""
-    return f"CAST{'(ROUND(' if datatype == 'REAL' else '('}SUM(M.{table}_value) FILTER (WHERE M.{table}_id == {metric_id}){', 4) AS REAL)' if datatype == 'REAL' else 'AS INT)'}"
-
-
 def generate_metric_list(database: Path, group_id: int = None, source_table: str = 'metrics', primary: int = 1) -> dict:
     """_summary_
 
@@ -899,66 +880,6 @@ def copy_table(source_db_path, dest_db_path, table_name):
     dest_conn.commit()
     source_conn.close()
     dest_conn.close()
-
-
-def generate_window(lyr: GeopackageLayer, window: float, level_path: str, segment_dist: float, buffer: float = 0) -> ogr.Geometry:
-    """generate the window polygon geometry
-
-    Args:
-        lyr (GeopackageLayer): vbet segments polygon layer
-        window (float): size of window
-        level_path (str): level path of window
-        segment_dist (float): vbet segment point of window (identifed by segment distance)
-        buffer (float, optional): buffer the window polygon. Defaults to 0.
-
-    Returns:
-        ogr.Geometry: polygon of window
-    """
-
-    min_dist = segment_dist - 0.5 * window
-    max_dist = segment_dist + 0.5 * window
-    sql = f'level_path = {level_path} AND seg_distance >= {min_dist} AND seg_distance <={max_dist}'
-    geom_window_sections = ogr.Geometry(ogr.wkbMultiPolygon)
-    for feat, *_ in lyr.iterate_features(attribute_filter=sql):
-        geom = feat.GetGeometryRef()
-        if geom.GetGeometryName() in ['MULTIPOLYGON', 'GEOMETRYCOLLECTION']:
-            for i in range(0, geom.GetGeometryCount()):
-                geo = geom.GetGeometryRef(i)
-                if geo.GetGeometryName() == 'POLYGON':
-                    geom_window_sections.AddGeometry(geo)
-        else:
-            geom_window_sections.AddGeometry(geom)
-    # ogr.ForceToPolygon(geom_window_sections)
-    geom_window = geom_window_sections.Buffer(buffer)
-
-    return geom_window
-
-
-def sum_window_attributes(lyr: GeopackageLayer, window: float, level_path: str, segment_dist: float, fields: list) -> dict:
-    """summerize window attributes from a list
-
-    Args:
-        lyr (GeopackageLayer): vbet segmented polygons layer
-        window (float): size of window
-        level_path (str): level path to summeize
-        segment_dist (float): distance of segment
-        fields (list): attribute fields to summerize
-
-    Returns:
-        dict: field name: attribute value
-    """
-
-    results = {}
-    min_dist = segment_dist - 0.5 * window
-    max_dist = segment_dist + 0.5 * window
-    sql = f'level_path = {level_path} AND seg_distance >= {min_dist} AND seg_distance <={max_dist}'
-    for feat, *_ in lyr.iterate_features(attribute_filter=sql):
-        for field in fields:
-            result = feat.GetField(field)
-            result = result if result is not None else 0.0
-            results[field] = results.get(field, 0) + result
-
-    return results
 
 
 def main():

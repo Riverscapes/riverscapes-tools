@@ -2,10 +2,20 @@ import sqlite3
 import os
 import numpy as np
 from rasterio.mask import mask
-from rscommons import GeopackageLayer, Logger
+from rscommons import GeopackageLayer
 
 
 def get_max_value(dgo_ftr, in_line_network, field_name):
+    """get the maximum value of an attribute on a line network
+
+    Args:
+        dgo_ftr (ogr geometry): DGO ogr geometry
+        in_line_network (str): path to line network feature class
+        field_name (str): the field name from the line network
+
+    Returns:
+        _type_: the maximum value of the field
+    """
 
     results = []
     with GeopackageLayer(in_line_network) as lyr_lines:
@@ -21,6 +31,17 @@ def get_max_value(dgo_ftr, in_line_network, field_name):
 
 
 def value_from_max_length(dgo_ftr, in_line_network, field_name):
+    """get the value of an attribute on a line network based on the maximum length of the intersection
+    between the line and the dgo feature
+
+    Args:
+        dgo_ftr (ogr geometry): DGO ogr geometry
+        in_line_network (str): path to line network feature class
+        field_name (str): the field name from the line network
+
+    Returns:
+        _type_: the value from the line segment with the longest length
+    """
     attributes = {}
     dgo_geom = dgo_ftr.GetGeometryRef()
     with GeopackageLayer(in_line_network) as lyr_lines:
@@ -43,6 +64,16 @@ def value_from_max_length(dgo_ftr, in_line_network, field_name):
 
 
 def value_from_dgo(dgo_ftr, in_dataset, field_name):
+    """copy a value straight from another DGO
+
+    Args:
+        dgo_ftr (ogr geometry): DGO ogr geometry
+        in_dataset (str): path to the DGO table
+        field_name (str): the field name from the DGO table
+
+    Returns:
+        _type_: the value from the DGO table
+    """
     dgoid = dgo_ftr.GetFID()
     with sqlite3.connect(os.path.dirname(in_dataset)) as conn:
         curs = conn.cursor()
@@ -54,6 +85,16 @@ def value_from_dgo(dgo_ftr, in_dataset, field_name):
 
 
 def value_density_from_dgo(dgo_ftr, in_dataset, field_name):
+    """get the value of an attribute from a DGO divided by the DGO centerline
+
+    Args:
+        dgo_ftr (ogr geometry): DGO ogr geometry
+        in_dataset (str): path to the DGO table
+        field_name (str): the field name from the DGO table
+
+    Returns:
+        _type_: the value from the DGO table divided by the centerline length
+    """
     dgoid = dgo_ftr.GetFID()
     with sqlite3.connect(os.path.dirname(in_dataset)) as conn:
         curs = conn.cursor()
@@ -70,6 +111,16 @@ def value_density_from_dgo(dgo_ftr, in_dataset, field_name):
 
 
 def value_from_dataset_area(dgo_ftr, in_dataset, field_name):
+    """get the value of an attribute from the feature with the largest area
+
+    Args:
+        dgo_ftr (ogr geometry): DGO ogr geometry
+        in_dataset (str): path to the DGO table
+        field_name (str): the field name from the DGO table
+
+    Returns:
+        _type_: the value from the DGO table
+    """
     attributes = {}
     dgo_geom = dgo_ftr.GetGeometryRef()
     with GeopackageLayer(in_dataset) as lyr:
@@ -90,6 +141,15 @@ def value_from_dataset_area(dgo_ftr, in_dataset, field_name):
 
 
 def raster_pixel_value_count(dgo_ftr, in_dataset):
+    """get a dictionary of raster pixel values and their count
+
+    Args:
+        dgo_ftr (ogr geometry): DGO ogr geometry
+        in_dataset (rasterio raster): rasterio raster dataset
+
+    Returns:
+        dict: a dictionary of pixel values and their count
+    """
     values = {}
     raw_raster = mask(in_dataset, [dgo_ftr], crop=True)[0]
     mask_raster = np.ma.masked_values(raw_raster, in_dataset.nodata)
@@ -101,6 +161,7 @@ def raster_pixel_value_count(dgo_ftr, in_dataset):
 
 
 def value_by_count(dgo_ftr, in_dataset, field_name, field_value):
+
     with GeopackageLayer(in_dataset) as lyr_pts:
         count = 0
         for feat, *_ in lyr_pts.iterate_features(clip_shape=dgo_ftr.GetGeometryRef(), attribute_filter=f"""{field_name} = '{field_value}'"""):
@@ -110,6 +171,7 @@ def value_by_count(dgo_ftr, in_dataset, field_name, field_value):
 
 
 def ex_veg_proportion(dgo_ftr, in_dataset, field_name, field_value):
+
     dgoid = dgo_ftr.GetFID()
     veg_areas = {}
     with sqlite3.connect(os.path.dirname(in_dataset)) as conn:
@@ -127,6 +189,7 @@ def ex_veg_proportion(dgo_ftr, in_dataset, field_name, field_value):
 
 
 def hist_veg_proportion(dgo_ftr, in_dataset, field_name, field_value):
+
     dgoid = dgo_ftr.GetFID()
     veg_areas = {}
     with sqlite3.connect(os.path.dirname(in_dataset)) as conn:
@@ -143,91 +206,104 @@ def hist_veg_proportion(dgo_ftr, in_dataset, field_name, field_value):
     return proportion
 
 
-def mw_copy_from_dgo(dgo_id, table_name, field_name):
-    with sqlite3.connect(os.path.dirname(table_name)) as conn:
-        curs = conn.cursor()
-        curs.execute(f"""SELECT {field_name} FROM {os.path.basename(table_name)} 
-                     WHERE dgoid = {dgo_id}""")
-        result = curs.fetchone()
-        if result is None:
-            return None
-        else:
-            return result[0]
+def mw_copy_from_dgo(cursor, dgo_id, table_name, field_name):
 
-
-def mw_sum(dgo_ids, table_name, field_name):
-    with sqlite3.connect(os.path.dirname(table_name)) as conn:
-        curs = conn.cursor()
-        curs.execute(f"""SELECT SUM({field_name}) FROM {os.path.basename(table_name)} 
-                     WHERE dgoid IN ({", ".join(map(str, dgo_ids))})""")
-        result = curs.fetchone()
-        if result[0] is None:
-            return None
-        else:
-            return result[0]
-
-
-def mw_sum_div_length(dgo_ids, table_name, field_name):
-    with sqlite3.connect(os.path.dirname(table_name)) as conn:
-        curs = conn.cursor()
-        if os.path.basename(table_name) == "dgo_measurements":
-            curs.execute(f"""SELECT SUM({field_name}), SUM(valleng) FROM {os.path.basename(table_name)} 
-                         WHERE dgoid IN ({", ".join(map(str, dgo_ids))})""")
-        else:
-            curs.execute(f"""SELECT SUM({field_name}), SUM(valleng) FROM {os.path.basename(table_name)} LEFT JOIN dgo_measurements
-                        ON {os.path.basename(table_name)}.dgoid = dgo_measurements.dgoid 
-                        WHERE {os.path.basename(table_name)}.dgoid IN ({", ".join(map(str, dgo_ids))})""")
-        result = curs.fetchone()
-        if None in result:
-            return None
-        if 'beaver' in table_name or 'geomorph' in table_name:
-            out = result[0] / (result[1] / 1000) if result[1] > 0.0 else None
-        else:
-            out = result[0] / result[1] if result[1] > 0.0 else None
+    # with sqlite3.connect(os.path.dirname(table_name)) as conn:
+    #     curs = conn.cursor()
+    cursor.execute(f"""SELECT {field_name} FROM {os.path.basename(table_name)} 
+                    WHERE dgoid = {dgo_id}""")
+    result = cursor.fetchone()
+    if result is None:
+        out = None
+    else:
+        out = result[0]
 
     return out
 
 
-def mw_sum_div_chan_length(dgo_ids, table_name, field_name):
-    with sqlite3.connect(os.path.dirname(table_name)) as conn:
-        curs = conn.cursor()
-        curs.execute(f"""SELECT SUM({field_name}), SUM(strmleng) FROM {os.path.basename(table_name)} LEFT JOIN dgo_measurements
-                     ON {os.path.basename(table_name)}.dgoid = dgo_measurements.dgoid 
-                     WHERE {os.path.basename(table_name)}.dgoid IN ({", ".join(map(str, dgo_ids))})""")
-        result = curs.fetchone()
-        if None in result:
-            return None
+def mw_sum(cursor, dgo_ids, table_name, field_name):
+
+    # with sqlite3.connect(os.path.dirname(table_name)) as conn:
+    #     curs = conn.cursor()
+    cursor.execute(f"""SELECT SUM({field_name}) FROM {os.path.basename(table_name)} 
+                    WHERE dgoid IN ({", ".join(map(str, dgo_ids))})""")
+    result = cursor.fetchone()
+    if result[0] is None:
+        out = None
+    else:
+        out = result[0]
+
+    return out
+
+
+def mw_sum_div_length(cursor, dgo_ids, table_name, field_name):
+
+    # with sqlite3.connect(os.path.dirname(table_name)) as conn:
+    #     curs = conn.cursor()
+    if os.path.basename(table_name) == "dgo_measurements":
+        cursor.execute(f"""SELECT SUM({field_name}), SUM(valleng) FROM {os.path.basename(table_name)} 
+                        WHERE dgoid IN ({", ".join(map(str, dgo_ids))})""")
+    else:
+        cursor.execute(f"""SELECT SUM({field_name}), SUM(valleng) FROM {os.path.basename(table_name)} LEFT JOIN dgo_measurements
+                    ON {os.path.basename(table_name)}.dgoid = dgo_measurements.dgoid 
+                    WHERE {os.path.basename(table_name)}.dgoid IN ({", ".join(map(str, dgo_ids))})""")
+    result = cursor.fetchone()
+    if None in result:
+        out = None
+    elif 'beaver' in table_name or 'geomorph' in table_name:
+        out = result[0] / (result[1] / 1000) if result[1] > 0.0 else None
+    else:
         out = result[0] / result[1] if result[1] > 0.0 else None
 
-        if field_name in ('confining_margins', 'constricting_margins'):
-            out = min(out, 1.0)
+    return out
+
+
+def mw_sum_div_chan_length(cursor, dgo_ids, table_name, field_name):
+
+    # with sqlite3.connect(os.path.dirname(table_name)) as conn:
+    #     curs = conn.cursor()
+    cursor.execute(f"""SELECT SUM({field_name}), SUM(strmleng) FROM {os.path.basename(table_name)} LEFT JOIN dgo_measurements
+                    ON {os.path.basename(table_name)}.dgoid = dgo_measurements.dgoid 
+                    WHERE {os.path.basename(table_name)}.dgoid IN ({", ".join(map(str, dgo_ids))})""")
+    result = cursor.fetchone()
+    if None in result:
+        out = None
+    else:
+        out = result[0] / result[1] if result[1] > 0.0 else None
+
+    if field_name in ('confining_margins', 'constricting_margins') and out is not None:
+        out = min(out, 1.0)
 
     return out
 
 
-def mw_proportion(dgo_ids, table_name, field_name):
-    with sqlite3.connect(os.path.dirname(table_name)) as conn:
-        curs = conn.cursor()
-        curs.execute(f"""SELECT SUM({field_name}*segment_area), SUM(segment_area) FROM {os.path.basename(table_name)}
-                     LEFT JOIN dgos ON {os.path.basename(table_name)}.dgoid = dgos.dgoid 
-                     WHERE {os.path.basename(table_name)}.dgoid IN ({", ".join(map(str, dgo_ids))})""")
-        result = curs.fetchone()
-        if None in result:
-            return None
+def mw_proportion(cursor, dgo_ids, table_name, field_name):
+
+    # with sqlite3.connect(os.path.dirname(table_name)) as conn:
+    #     curs = conn.cursor()
+    cursor.execute(f"""SELECT SUM({field_name}*segment_area), SUM(segment_area) FROM {os.path.basename(table_name)}
+                    LEFT JOIN dgos ON {os.path.basename(table_name)}.dgoid = dgos.dgoid 
+                    WHERE {os.path.basename(table_name)}.dgoid IN ({", ".join(map(str, dgo_ids))})""")
+    result = cursor.fetchone()
+    if None in result:
+        prop = None
+    else:
         prop = result[0] / result[1] if result[1] > 0.0 else None
 
     return prop
 
 
-def mw_area_weighted_av(dgo_ids, table_name, field_name):
-    with sqlite3.connect(os.path.dirname(table_name)) as conn:
-        curs = conn.cursor()
-        curs.execute(f"""SELECT SUM({field_name} * segment_area), SUM(segment_area) FROM {os.path.basename(table_name)}
-                     LEFT JOIN dgos ON {os.path.basename(table_name)}.dgoid = dgos.dgoid 
-                     WHERE {os.path.basename(table_name)}.dgoid IN ({", ".join(map(str, dgo_ids))})""")
-        result = curs.fetchone()
-        if None in result:
-            return None
+def mw_area_weighted_av(cursor, dgo_ids, table_name, field_name):
+
+    # with sqlite3.connect(os.path.dirname(table_name)) as conn:
+    #     curs = conn.cursor()
+    cursor.execute(f"""SELECT SUM({field_name} * segment_area), SUM(segment_area) FROM {os.path.basename(table_name)}
+                    LEFT JOIN dgos ON {os.path.basename(table_name)}.dgoid = dgos.dgoid 
+                    WHERE {os.path.basename(table_name)}.dgoid IN ({", ".join(map(str, dgo_ids))})""")
+    result = cursor.fetchone()
+    if None in result:
+        out = None
+    else:
         out = result[0] / result[1] if result[1] > 0.0 else None
 
     return out

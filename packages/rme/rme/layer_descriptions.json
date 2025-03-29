@@ -1,10 +1,17 @@
 {
     "JUNCTION_POINTS": ["Points where flowlines converge or diverge","",""],
-    "IGO_METRIC_VIEW": ["Riverscape metrics summarized onto integrated geographic objects (IGO) points using a moving window analysis (intermediate data product only)","",""],
-    "DGO_METRIC_VIEW": ["Riverscape metrics summarized within and attributed onto discrete geographic object (DGO) polygons (intermediate data product only)","",""],
-    "RME_DGO": ["Discrete geographic objects (DGO) polygon geometries for storing RME attributes (intermediate data product only)","",""],
-    "RME_IGO": ["Integrated geographic objects (IGO) point geometries for storing RME moving window attributes (intermediate data product only)","",""],
-    "DGO_METRICS": ["Riverscape metrics summarized within and attributed onto discrete geographic object (DGO) polygons","",""],
-    "IGO_METRICS": ["Riverscape metrics summarized onto integrated geographic objects (IGO) points using a moving window analysis","",""],
-    "DGO_MEASUREMENTS": ["Measurements taken from DEM input stored for each DGO","",""]
+    "DGO_BEAVER": ["Beaver/BRAT related metrics calculated for DGOs","",""],
+    "DGO_DESC": ["Descriptive metrics for DGOs","",""],
+    "DGO_GEOMORPH": ["Geomorphological metrics for DGOs","",""],
+    "DGO_HYDRO": ["Hydrological metrics for DGOs","",""],
+    "DGO_IMPACTS": ["Metrics related to anthropological impacts for DGOs","",""],
+    "DGO_VEG": ["Vegetation metrics for DGOs","",""],
+    "IGO_BEAVER": ["Beaver/BRAT related metrics calculated for IGOs","",""],
+    "IGO_DESC": ["Descriptive metrics for IGO_DESC","",""],
+    "IGO_GEOMORPH": ["Geomorphological metrics for IGOs","",""],
+    "IGO_HYDRO": ["Hydrological metrics for DGOs","",""],
+    "IGO_IMPACTS": ["Metrics related to anthropological impacts for IGOs","",""],
+    "IGO_VEG": ["Vegetation metrics for IGOs","",""],
+    "DGO_METRICS": ["Combination of all metrics for DGOs","",""],
+    "IGO_METRICS": ["Combination of all metrics for IGOs","",""]
 }
