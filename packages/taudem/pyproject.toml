@@ -1,13 +1,13 @@
 [project]
-name = "rs-context"
+name = "TauDEM"
 version = "0.0.0"  # Replace with the actual version from rscontext/__version__.py
-description = "Riverscapes Context"
+description = "TauDEM"
 readme = "README.md"
 license = { text = "MIT" }
 authors = [
     { name = "Matt Reimer", email = "info@northarrowresearch.com" }
 ]
 requires-python = ">=3.9"
-keywords = ["riverscapes", "context"]
+keywords = ["riverscapes", "taudem"]
 # Note: All dependencies are managed at the root of this monorepo
 dependencies = []

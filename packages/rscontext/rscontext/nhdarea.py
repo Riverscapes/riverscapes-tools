@@ -60,10 +60,12 @@ def split_nhd_polygon(in_nhd_poly: str, in_nhd_catchments: str, out_area_split: 
             field_def: ogr.FieldDefn = in_layer_def.GetFieldDefn(i)
             field_name: str = field_def.GetName()
             fieldTypeCode = field_def.GetType()
+
+            new_field_def = ogr.FieldDefn(field_name, fieldTypeCode)
             if field_name.lower() == 'nhdplusid' and fieldTypeCode == ogr.OFTReal:
-                field_def.SetWidth(32)
-                field_def.SetPrecision(0)
-            outlyr.CreateField(field_def)
+                new_field_def.SetWidth(32)
+                new_field_def.SetPrecision(0)
+            outlyr.CreateField(new_field_def)
 
         outlyr_def: ogr.FeatureDefn = outlyr.GetLayerDefn()
         progbar = ProgressBar(len(area_ids), 50, "Adding features to output layer")

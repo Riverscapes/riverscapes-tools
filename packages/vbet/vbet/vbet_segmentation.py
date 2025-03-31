@@ -12,7 +12,7 @@ import argparse
 from osgeo import ogr, osr
 from shapely.ops import linemerge, voronoi_diagram
 from shapely.geometry import MultiLineString, MultiPoint
-from shapely.topology import TopologicalError
+from shapely.errors import TopologicalError
 from shapely.validation import make_valid
 
 from rscommons import GeopackageLayer, Logger, VectorBase, dotenv
