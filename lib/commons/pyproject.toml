@@ -7,27 +7,7 @@ license = { text = "MIT" }
 authors = [
     { name = "Matt Reimer", email = "info@northarrowresearch.com" }
 ]
-requires-python = ">=3.5.2"
+requires-python = ">=3.9"
 keywords = ["GIS", "Riverscapes", "Python3"]
-
-dependencies = [
-    "affine",
-    "gdal>=3.0",
-    "html5print",
-    "jinja2",
-    "matplotlib",
-    "mccabe==0.6.1",
-    "networkx==2.5",
-    "numpy",
-    "pyinquirer",
-    "python-dateutil",
-    "rasterio>=1.3.3",
-    "scikit-fuzzy>=0.4.2",
-    "scikit-image>=0.19.2",
-    "scipy>=1.8.1",
-    "semver==2.10.2",
-    "shapely>=1.8.5.post1",
-    "termcolor",
-    "urllib3>=1.26.5",
-]
-
+# Note: All dependencies are managed at the root of this monorepo
+dependencies = []
