@@ -16,7 +16,7 @@
   "configurations": [
     {
       "name": "Run HAND",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "hand.hand",
       "console": "integratedTerminal",
@@ -44,7 +44,7 @@
     },
     {
       "name": "Version Bump",
-      "type": "python",
+      "type": "debugpy",
       "module": "hand.version",
       "args": [
         "${workspaceFolder}/hand/__version__.py"
@@ -54,7 +54,7 @@
     },
     {
       "name": "Run HAND Custom",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "hand.hand",
       "console": "integratedTerminal",

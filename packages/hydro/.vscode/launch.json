@@ -16,7 +16,7 @@
     "configurations": [
         {
             "name": "Hydro Project",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "module": "hydro.hydro",
             "console": "integratedTerminal",
@@ -34,7 +34,7 @@
         },
         {
           "name": "Augment XML",
-          "type": "python",
+          "type": "debugpy",
           "request": "launch",
           "module": "hydro.hydro_rs",
           "console": "integratedTerminal",
@@ -45,7 +45,7 @@
         },
         {
           "name": "Calculate Hydro Metrics",
-          "type": "python",
+          "type": "debugpy",
           "request": "launch",
           "module": "hydro.hydro_metrics",
           "console": "integratedTerminal",
@@ -56,7 +56,7 @@
         },
         {
           "name": "Write Hydro report",
-          "type": "python",
+          "type": "debugpy",
           "request": "launch",
           "module": "hydro.hydro_report",
           "console": "integratedTerminal",
@@ -67,7 +67,7 @@
         },
         {
           "name": "Fill in Flow Equations",
-          "type": "python",
+          "type": "debugpy",
           "request": "launch",
           "module": "hydro.utils.hydro_regressions",
           "console": "integratedTerminal",
@@ -79,7 +79,7 @@
         },
         {
           "name": "Version Bump",
-          "type": "python",
+          "type": "debugpy",
           "module": "rscommons.version",
           "args": [
             "${workspaceFolder}/hydro/__version__.py"

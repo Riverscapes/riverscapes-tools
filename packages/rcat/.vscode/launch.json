@@ -16,7 +16,7 @@
     "configurations": [
         {
           "name": "RCAT Run",
-          "type": "python",
+          "type": "debugpy",
           "request": "launch",
           "module": "rcat.rcat",
           "console": "integratedTerminal",
@@ -43,7 +43,7 @@
         },
         {
           "name": "Augment XML",
-          "type": "python",
+          "type": "debugpy",
           "request": "launch",
           "module": "rcat.rcat_rs",
           "console": "integratedTerminal",
@@ -54,7 +54,7 @@
         },
         {
           "name": "Calculate RCAT Metrics",
-          "type": "python",
+          "type": "debugpy",
           "request": "launch",
           "module": "rcat.rcat_metrics",
           "console": "integratedTerminal",
@@ -65,7 +65,7 @@
         },
         {
           "name": "Make RCAT report",
-          "type": "python",
+          "type": "debugpy",
           "request": "launch",
           "module": "rcat.rcat_report",
           "console": "integratedTerminal",
@@ -76,7 +76,7 @@
         },
         {
           "name": "Version Bump",
-          "type": "python",
+          "type": "debugpy",
           "module": "rscommons.version",
           "args": [
             "${workspaceFolder}/rcat/__version__.py"

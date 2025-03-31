@@ -16,7 +16,7 @@
     "configurations": [
         {
           "name": "stitcher Run",
-          "type": "python",
+          "type": "debugpy",
           "request": "launch",
           "module": "stitcher.stitcher",
           "console": "integratedTerminal",
@@ -30,7 +30,7 @@
         },
         {
           "name": "Version Bump",
-          "type": "python",
+          "type": "debugpy",
           "module": "rscommons.version",
           "args": [
             "${workspaceFolder}/stitcher/__version__.py"

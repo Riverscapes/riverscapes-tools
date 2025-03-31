@@ -52,7 +52,7 @@
   "configurations": [
     {
       "name": "Run VBET",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "vbet.vbet",
       "console": "integratedTerminal",
@@ -82,7 +82,7 @@
     },
     {
       "name": "VBET Metrics",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "vbet.vbet_metrics",
       "console": "integratedTerminal",
@@ -93,7 +93,7 @@
     },
     {
       "name": "Least Cost Path",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "scripts.cost_path",
       "console": "integratedTerminal",
@@ -107,7 +107,7 @@
     },
     {
       "name": "VBET Centerlines",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "scripts.raster_centerline",
       "console": "integratedTerminal",
@@ -128,7 +128,7 @@
     },
     {
       "name": "VBET Segmentation",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "vbet.vbet_segmentation",
       "console": "integratedTerminal",
@@ -141,7 +141,7 @@
     },
     {
       "name": "Augment XML",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "vbet.vbet_rs",
       "console": "integratedTerminal",
@@ -152,7 +152,7 @@
     },    
     {
       "name": "Write report",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "vbet.vbet_report",
       "console": "integratedTerminal",
@@ -163,7 +163,7 @@
     },    
     {
       "name": "Version Bump",
-      "type": "python",
+      "type": "debugpy",
       "module": "rscommons.version",
       "args": [
         "${workspaceFolder}/vbet/__version__.py"
@@ -173,49 +173,49 @@
     },
     {
       "name": "Floodplain Connectivity",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "vbet.floodplain_connectivity",
       "console": "integratedTerminal",
     },
     {
       "name": "Transformation Curve",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "vbet.scripts.transformation_curves",
       "console": "integratedTerminal",
     },
     {
       "name": "Sanitize Testing",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "vbet.vbet_outputs",
       "console": "integratedTerminal"
     },
     { 
       "name": "HAND Testing",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "scripts.hand",
       "console": "integratedTerminal"
     },
     { 
       "name": "Newtork",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "vbet.vbet_network",
       "console": "integratedTerminal"
     },
     { 
       "name": "Vbet centerline",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "vbet.vbet_centerline",
       "console": "integratedTerminal"
     },
     {
       "name": "VBET Observations",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "scripts.vbet_evidence",
       "console": "integratedTerminal",
@@ -227,7 +227,7 @@
     }, 
     {
       "name": "Python: Current File",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "program": "${file}",
       "console": "integratedTerminal"

@@ -21,7 +21,7 @@
   "configurations": [
     {
       "name": "🚀 Run RME",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "rme.metric_engine",
       "console": "integratedTerminal",
@@ -55,7 +55,7 @@
     },
     {
       "name": "Write RME report",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "rme.rme_report",
       "console": "integratedTerminal",
@@ -68,7 +68,7 @@
     },
     {
       "name": "Write RME Metrics",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "rme.rme_metrics",
       "console": "integratedTerminal",
@@ -81,7 +81,7 @@
     },
     {
       "name": "Write Watershed Condition Assessment Report",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "rme.wsca_report",
       "console": "integratedTerminal",
@@ -107,7 +107,7 @@
     },
     {
       "name": "Version Bump",
-      "type": "python",
+      "type": "debugpy",
       "module": "rscommons.version",
       "args": [
         "${workspaceFolder}/rme/__version__.py"
@@ -117,7 +117,7 @@
     },
     {
       "name": "Confinement",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "rme.confinement",
       "console": "integratedTerminal",
@@ -140,7 +140,7 @@
     },
     {
       "name": "Calculate Confinement",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "rme.confinement",
       "console": "integratedTerminal",
@@ -193,7 +193,7 @@
     },
     {
       "name": "Augment Confinement XML",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "rme.confinement_rs",
       "console": "integratedTerminal",
@@ -204,7 +204,7 @@
     },
     {
       "name": "Augment RME XML",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "rme.rme_rs",
       "console": "integratedTerminal",

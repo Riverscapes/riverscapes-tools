@@ -16,7 +16,7 @@
     "configurations": [
         {
             "name": "Anthro Project",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "module": "anthro.anthro",
             "console": "integratedTerminal",
@@ -41,7 +41,7 @@
         },
         {
           "name": "Augment XML",
-          "type": "python",
+          "type": "debugpy",
           "request": "launch",
           "module": "anthro.anthro_rs",
           "console": "integratedTerminal",
@@ -52,7 +52,7 @@
         },
         {
           "name": "Calculate Anthro Metrics",
-          "type": "python",
+          "type": "debugpy",
           "request": "launch",
           "module": "anthro.anthro_metrics",
           "console": "integratedTerminal",
@@ -63,7 +63,7 @@
         },
         {
           "name": "Write Anthro report",
-          "type": "python",
+          "type": "debugpy",
           "request": "launch",
           "module": "anthro.anthro_report",
           "console": "integratedTerminal",
@@ -74,7 +74,7 @@
         },
         {
           "name": "Version Bump",
-          "type": "python",
+          "type": "debugpy",
           "module": "rscommons.version",
           "args": [
             "${workspaceFolder}/anthro/__version__.py"
