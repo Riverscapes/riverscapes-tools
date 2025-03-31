@@ -10,10 +10,9 @@ from taudem.taudem_report import TauDEMReport
 
 lyrs_in_out = {
     # ID: INPUT_ID
-    'HILLSHADE': 'HILLSHADE',
-    'DEM': 'DEM',
-    'channel_area': 'channel_area',
-    'GDAL_SLOPE': 'SLOPE'
+    'HILLSHADE': ['HILLSHADE', 'RSContext'],
+    'DEM': ['DEM', 'RSContext'],
+    'channel_area': ['channel_area', 'ChannelArea']
 }
 
 

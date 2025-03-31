@@ -10,11 +10,11 @@ from hydro.hydro_report import HydroReport
 
 lyrs_in_out = {
     # HYDRO_ID: INPUT_ID
-    'DEM': 'DEM',
-    'HILLSHADE': 'HILLSHADE',
-    'flowlines': 'network_segmented',
-    'igo': 'vbet_igos',
-    'dgo': 'vbet_dgos'
+    'DEM': ['DEM', 'RSContext'],
+    'HILLSHADE': ['HILLSHADE', 'RSContext'],
+    'flowlines': ['network_segmented', 'RSContext'],
+    'igo': ['vbet_igos', 'VBET'],
+    'dgo': ['vbet_dgos', 'VBET']
 }
 
 
