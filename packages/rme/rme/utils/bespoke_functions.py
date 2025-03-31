@@ -1,11 +1,16 @@
-import os
-import rasterio
 import sqlite3
 from rscommons import GeopackageLayer, VectorBase
-from rme.utils.measurements import get_segment_measurements
 
 
 def watershed(huc):
+    """get the 10-digit (or less) watershed ID
+
+    Args:
+        huc (int): the hydrologic unit code (watershed ID)
+
+    Returns:
+        str: watershed ID
+    """
     if len(str(huc)) > 10:
         return str(huc[:10])
     else:
@@ -13,6 +18,15 @@ def watershed(huc):
 
 
 def headwater(feat_geom, line_network):
+    """determine if a stream reach is a headwater
+
+    Args:
+        feat_geom (ogr.Geometry): DGO ogr geometry
+        line_network (str): path to the line network feature class 
+
+    Returns:
+        _type_: binary headwater classification 
+    """
     sum_attributes = {}
     with GeopackageLayer(line_network) as lyr_lines:
         for feat, *_ in lyr_lines.iterate_features(clip_shape=feat_geom):
@@ -34,6 +48,16 @@ def headwater(feat_geom, line_network):
 
 
 def total_stream_length(feat_geom, line_network, transform):
+    """get the total stream length in a DGO
+
+    Args:
+        feat_geom (ogr.Geometry): DGO ogr geometry
+        line_network (str): path to the line network feature class
+        transform (ogr.Transform): a transform to project the line_network for calculating length
+
+    Returns:
+        _type_: length (m)
+    """
     with GeopackageLayer(line_network) as lyr_lines:
         leng = 0
         for feat, *_ in lyr_lines.iterate_features(clip_shape=feat_geom):
@@ -46,6 +70,16 @@ def total_stream_length(feat_geom, line_network, transform):
 
 
 def waterbody_extent(feat_geom, waterbodies, transform):
+    """calculate the waterbody extent within a DGO
+
+    Args:
+        feat_geom (ogr.Geometry): DGO ogr geometry 
+        waterbodies (str): path to the waterbody feature class
+        transform (ogr.Transform): a transform to project the waterbodies for calculating area
+
+    Returns:
+        _type_: area (m²)
+    """
     with GeopackageLayer(waterbodies) as lyr:
         area = 0
         for feat, *_ in lyr.iterate_features(clip_shape=feat_geom):
@@ -58,6 +92,16 @@ def waterbody_extent(feat_geom, waterbodies, transform):
 
 
 def calculate_gradient(gpkg, dgoid, channel=True):
+    """calculate the gradient of a stream reach or centerline
+
+    Args:
+        gpkg (str): path to geopackage
+        dgoid (int): the DGO ID
+        channel (bool, optional): If calcualted channel gradient, True; if centerline, False. Defaults to True.
+
+    Returns:
+        _type_: gradient (unitless)
+    """
     with sqlite3.connect(gpkg) as conn:
         curs = conn.cursor()
         if channel:
@@ -78,6 +122,16 @@ def calculate_gradient(gpkg, dgoid, channel=True):
 
 
 def rel_flow_length(feat_geom, line_network, transform):
+    """Calculate relative flow length
+
+    Args:
+        feat_geom (ogr.Geometry): DGO ogr geometry
+        line_network (str): path to the line network feature class
+        transform (ogr.Transform): a transform to project the line_network for calculating length
+
+    Returns:
+        _type_: stream length divided by valley length
+    """
     dgo_ftr = feat_geom.GetGeometryRef()
     cl_length = feat_geom.GetField('centerline_length')
     if cl_length is None or cl_length == 0:
@@ -94,6 +148,8 @@ def rel_flow_length(feat_geom, line_network, transform):
 
 
 def landfire_classes(feat_geom, gpkg, epoch=1):
+    """get the landfire vegetation classes for a DGO if they make up more than 30% of the area"""
+
     classes = {}
     classes_out = []
     dgo_id = feat_geom.GetFID()
@@ -113,8 +169,17 @@ def landfire_classes(feat_geom, gpkg, epoch=1):
 
 
 def mw_calculate_gradient(cursor, dgo_ids, channel=True):
-    # with sqlite3.connect(gpkg) as conn:
-    #     curs = conn.cursor()
+    """calculate gradient over a moving window
+
+    Args:
+        cursor (sqlite3.Cursor): SQLite cursor to execute queries
+        dgo_ids (list(int)): a list of DGO IDs that make up the moving window
+        channel (bool, optional): For channel gradient, True; For valley gradient, False. Defaults to True.
+
+    Returns:
+        _type_: gradient (unitless)
+    """
+
     if channel:
         cursor.execute(
             f"SELECT MAX(strmmaxelev), MIN(strmminelev), SUM(strmleng) FROM dgo_measurements WHERE dgoid IN ({','.join(map(str, dgo_ids))})")
@@ -133,8 +198,15 @@ def mw_calculate_gradient(cursor, dgo_ids, channel=True):
 
 
 def mw_calculate_sinuosity(cursor, dgo_ids):
-    # with sqlite3.connect(gpkg) as conn:
-    #     curs = conn.cursor()
+    """calculate sinuosity over a moving window
+
+    Args:
+        cursor (sqlite3.Cursor): SQLite cursor to execute queries
+        dgo_ids (list(int)): a list of DGO IDs that make up the moving window
+
+    Returns:
+        _type_: sinuosity (unitless)
+    """
     cursor.execute(
         f"SELECT SUM(strmleng), SUM(strmstrleng) FROM dgo_measurements WHERE dgoid IN ({','.join(map(str, dgo_ids))})")
     vals = cursor.fetchone()
@@ -149,8 +221,16 @@ def mw_calculate_sinuosity(cursor, dgo_ids):
 
 
 def mw_acres_per_mi(cursor, dgo_ids):
-    # with sqlite3.connect(gpkg) as conn:
-    #     curs = conn.cursor()
+    """calculate acres of valley bottom per mile over a moving window
+
+    Args:
+        cursor (sqlite3.Cursor): SQLite cursor to execute queries
+        dgo_ids (list(int)): a list of DGO IDs that make up the moving window
+
+    Returns:
+        _type_: acres/mi
+    """
+
     cursor.execute(
         f"""SELECT SUM(segment_area), SUM(centerline_length) FROM dgos 
         WHERE dgoid IN ({','.join(map(str, dgo_ids))})""")
@@ -166,8 +246,16 @@ def mw_acres_per_mi(cursor, dgo_ids):
 
 
 def mw_hect_per_km(cursor, dgo_ids):
-    # with sqlite3.connect(gpkg) as conn:
-    #     curs = conn.cursor()
+    """calculate hectares of valley bottom per km over a moving window
+
+    Args:
+        cursor (sqlite3.Cursor): SQLite cursor to execute queries
+        dgo_ids (list(int)): a list of DGO IDs that make up the moving window
+
+    Returns:
+        _type_: hectares/km
+    """
+
     cursor.execute(
         f"""SELECT SUM(segment_area), SUM(centerline_length) FROM dgos 
         WHERE dgoid IN ({','.join(map(str, dgo_ids))})""")
@@ -183,8 +271,17 @@ def mw_hect_per_km(cursor, dgo_ids):
 
 
 def mw_stream_power(cursor, dgo_ids, q='QLow'):
-    # with sqlite3.connect(gpkg) as conn:
-    #     curs = conn.cursor()
+    """calculate stream power over a moving window
+
+    Args:
+        cursor (sqlite3.Cursor): SQLite cursor to execute queries
+        dgo_ids (list(int)): a list of DGO IDs that make up the moving window
+        q (str, optional): the discharge to use for stream power calculation.
+
+    Returns:
+        _type_: stream power (W)
+    """
+
     cursor.execute(
         f"""SELECT MAX(strmmaxelev), MIN(strmminelev), SUM(strmleng), MAX({q}) FROM dgo_measurements
         LEFT JOIN dgo_hydro ON dgo_measurements.dgoid = dgo_hydro.dgoid 
@@ -203,8 +300,16 @@ def mw_stream_power(cursor, dgo_ids, q='QLow'):
 
 
 def mw_rvd(cursor, dgo_ids):
-    # with sqlite3.connect(gpkg) as conn:
-    #     curs = conn.cursor()
+    """calculate riparian vegetation departure within a moving window
+
+    Args:
+        cursor (sqlite3.Cursor): SQLite cursor to execute queries
+        dgo_ids (list(int)): a list of DGO IDs that make up the moving window
+
+    Returns:
+        _type_: proportion departure (unitless)
+    """
+
     cursor.execute(f"""SELECT SUM(prop_riparian*segment_area), sum(hist_prop_riparian*segment_area) FROM dgo_veg LEFT JOIN dgos
                     ON dgo_veg.dgoid = dgos.dgoid WHERE dgo_veg.dgoid IN ({','.join(map(str, dgo_ids))})""")
     result = cursor.fetchone()
