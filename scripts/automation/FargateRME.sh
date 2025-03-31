@@ -124,7 +124,7 @@ try() {
 
   rme $HUC \
     $RS_CONTEXT_DIR/hydrology/hydro_derivatives.gpkg/network_intersected \
-    $RS_CONTEXT_DIR/hydrology/nhdplushr.gpkg/NHDWaterbody
+    $RS_CONTEXT_DIR/hydrology/nhdplushr.gpkg/NHDWaterbody \
     $RS_CONTEXT_DIR/hydrology/nhdplushr.gpkg/NHDPlusFlowlineVAA \
     $RS_CONTEXT_DIR/political_boundaries/counties.shp \
     $VBET_DIR/intermediates/vbet_intermediates.gpkg/vbet_dgos \

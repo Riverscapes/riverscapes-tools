@@ -19,7 +19,7 @@ engine_projecttype_map = {
     'hydro_context': ['rscontext', 'vbet'],
     'rcat': ['rscontext', 'vbet', 'taudem', 'anthro'],
     'blm_context': ['rscontext', 'vbet'],
-    'rs_metric_engine': ['rscontext', 'vbet', 'confinement', 'hydro', 'anthro', 'rcat', 'riverscapes_brat'],
+    'rs_metric_engine': ['rscontext', 'vbet', 'confinement', 'hydro_context', 'anthro', 'rcat', 'riverscapes_brat'],
     'rme_scraper': ['rs_metric_engine', 'rcat'],
 }
 
