@@ -160,6 +160,16 @@ def raster_pixel_value_count(dgo_ftr, in_dataset):
 
 
 def value_by_count(dgo_ftr, in_dataset, field_name, field_value):
+    """get the count of a specific attribute value within a DGO feature
+
+    Args:
+        dgo_ftr (ogr geometry): DGO ogr geometry
+        in_dataset (str): the path to the DGO table
+        field_name (str): the field name from the DGO table
+
+    Returns:
+        _type_: the count of the specified attribute value
+    """
 
     with GeopackageLayer(in_dataset) as lyr_pts:
         count = 0
@@ -170,6 +180,16 @@ def value_by_count(dgo_ftr, in_dataset, field_name, field_value):
 
 
 def ex_veg_proportion(dgo_ftr, in_dataset, field_name, field_value):
+    """get proportion of an existing vegetation type within a DGO
+
+    Args:
+        dgo_ftr (ogr geometry): DGO ogr geometry
+        in_dataset (str): the path to the DGO table
+        field_name (str): the field name from the DGO table (veg type)
+
+    Returns:
+        _type_: the proportion of the field_value
+    """
 
     dgoid = dgo_ftr.GetFID()
     veg_areas = {}
@@ -188,6 +208,16 @@ def ex_veg_proportion(dgo_ftr, in_dataset, field_name, field_value):
 
 
 def hist_veg_proportion(dgo_ftr, in_dataset, field_name, field_value):
+    """get proportion of a historic vegetation type within a DGO
+
+    Args:
+        dgo_ftr (ogr geometry): DGO ogr geometry
+        in_dataset (str): the path to the DGO table
+        field_name (str): the field name from the DGO table (veg type)
+
+    Returns:
+        _type_: the proportion of the field_value
+    """
 
     dgoid = dgo_ftr.GetFID()
     veg_areas = {}
@@ -206,9 +236,18 @@ def hist_veg_proportion(dgo_ftr, in_dataset, field_name, field_value):
 
 
 def mw_copy_from_dgo(cursor, dgo_id, table_name, field_name):
+    """copy a field value from a DGO to an associated IGO
 
-    # with sqlite3.connect(os.path.dirname(table_name)) as conn:
-    #     curs = conn.cursor()
+    Args:
+        cursor (sqlite3.Cursor): SQLite cursor to execute queries
+        dgo_id (int): DGO ID to look up
+        table_name (str): the name of the table to query
+        field_name (str): the field name from the DGO table
+
+    Returns:
+        _type_: the value from the DGO table for the specified field
+    """
+
     cursor.execute(f"""SELECT {field_name} FROM {os.path.basename(table_name)} 
                     WHERE dgoid = {dgo_id}""")
     result = cursor.fetchone()
@@ -221,9 +260,18 @@ def mw_copy_from_dgo(cursor, dgo_id, table_name, field_name):
 
 
 def mw_sum(cursor, dgo_ids, table_name, field_name):
+    """sum a field over a moving window of DGOs
 
-    # with sqlite3.connect(os.path.dirname(table_name)) as conn:
-    #     curs = conn.cursor()
+    Args:
+        cursor (sqlite3.Cursor): SQLite cursor to execute queries
+        dgo_ids (list(int)): a list of DGOIDs that make up the moving window
+        table_name (str): the name of the table to query
+        field_name (str): the field name from the DGO table
+
+    Returns:
+        _type_: sum of the specified field for the given DGO IDs
+    """
+
     cursor.execute(f"""SELECT SUM({field_name}) FROM {os.path.basename(table_name)} 
                     WHERE dgoid IN ({", ".join(map(str, dgo_ids))})""")
     result = cursor.fetchone()
@@ -236,9 +284,18 @@ def mw_sum(cursor, dgo_ids, table_name, field_name):
 
 
 def mw_sum_div_length(cursor, dgo_ids, table_name, field_name):
+    """sum a field over a moving window of DGOs divided by the centerline length
 
-    # with sqlite3.connect(os.path.dirname(table_name)) as conn:
-    #     curs = conn.cursor()
+    Args:
+        cursor (sqlite3.Cursor): SQLite cursor to execute queries
+        dgo_ids (list(int)): a list of DGOIDs that make up the moving window
+        table_name (str): the name of the table to query
+        field_name (str): the field name from the DGO table
+
+    Returns:
+        _type_: sum of the specified field for the given DGO IDs divided by the total centerline length
+    """
+
     if os.path.basename(table_name) == "dgo_measurements":
         cursor.execute(f"""SELECT SUM({field_name}), SUM(valleng) FROM {os.path.basename(table_name)} 
                         WHERE dgoid IN ({", ".join(map(str, dgo_ids))})""")
@@ -258,9 +315,18 @@ def mw_sum_div_length(cursor, dgo_ids, table_name, field_name):
 
 
 def mw_sum_div_chan_length(cursor, dgo_ids, table_name, field_name):
+    """sum a field over a moving window of DGOs divided by the channel length
 
-    # with sqlite3.connect(os.path.dirname(table_name)) as conn:
-    #     curs = conn.cursor()
+    Args:
+        cursor (sqlite3.Cursor): SQLite cursor to execute queries
+        dgo_ids (list(int)): a list of DGOIDs that make up the moving window
+        table_name (str): the name of the table to query
+        field_name (str): the field name from the DGO table
+
+    Returns:
+        _type_: sum of the specified field for the given DGO IDs divided by the total channel length
+    """
+
     cursor.execute(f"""SELECT SUM({field_name}), SUM(strmleng) FROM {os.path.basename(table_name)} LEFT JOIN dgo_measurements
                     ON {os.path.basename(table_name)}.dgoid = dgo_measurements.dgoid 
                     WHERE {os.path.basename(table_name)}.dgoid IN ({", ".join(map(str, dgo_ids))})""")
@@ -277,9 +343,18 @@ def mw_sum_div_chan_length(cursor, dgo_ids, table_name, field_name):
 
 
 def mw_proportion(cursor, dgo_ids, table_name, field_name):
+    """get the proportion of a given field over a moving window of DGOs
 
-    # with sqlite3.connect(os.path.dirname(table_name)) as conn:
-    #     curs = conn.cursor()
+    Args:
+        cursor (sqlite3.Cursor): SQLite cursor to execute queries
+        dgo_ids (list(int)): a list of DGOIDs that make up the moving window
+        table_name (str): the name of the table to query
+        field_name (str): the field name from the DGO table
+
+    Returns:
+        _type_: the proportion of the specified field for the given DGO IDs
+    """
+
     cursor.execute(f"""SELECT SUM({field_name}*segment_area), SUM(segment_area) FROM {os.path.basename(table_name)}
                     LEFT JOIN dgos ON {os.path.basename(table_name)}.dgoid = dgos.dgoid 
                     WHERE {os.path.basename(table_name)}.dgoid IN ({", ".join(map(str, dgo_ids))})""")
@@ -293,9 +368,18 @@ def mw_proportion(cursor, dgo_ids, table_name, field_name):
 
 
 def mw_area_weighted_av(cursor, dgo_ids, table_name, field_name):
+    """get the area weighted average of a field across a moving window of DGOs
 
-    # with sqlite3.connect(os.path.dirname(table_name)) as conn:
-    #     curs = conn.cursor()
+    Args:
+        cursor (sqlite3.Cursor): SQLite cursor to execute queries
+        dgo_ids (list(int)): a list of DGOIDs that make up the moving window
+        table_name (str): the name of the table to query
+        field_name (str): the field name from the DGO table
+
+    Returns:
+        _type_: the average of the specified field for the given DGO IDs
+    """
+
     cursor.execute(f"""SELECT SUM({field_name} * segment_area), SUM(segment_area) FROM {os.path.basename(table_name)}
                     LEFT JOIN dgos ON {os.path.basename(table_name)}.dgoid = dgos.dgoid 
                     WHERE {os.path.basename(table_name)}.dgoid IN ({", ".join(map(str, dgo_ids))})""")
