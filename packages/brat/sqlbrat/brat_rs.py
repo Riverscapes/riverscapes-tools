@@ -10,18 +10,18 @@ from sqlbrat.brat_report import BratReport
 
 lyrs_in_out = {
     # BRAT_ID: INPUT_ID
-    'HILLSHADE': 'HILLSHADE',
-    'EXVEG': 'EXVEG',
-    'HISTVEG': 'HISTVEG',
-    'flowareas': 'NHDArea',
-    'waterbodies': 'NHDWaterbody',
-    'hydro_flowlines': 'vwReaches',
-    'hydro_igos': 'vwIgos',
-    'hydro_dgos': 'vwDgos',
-    'anthro_flowlines': 'vwReaches',
-    'anthro_igos': 'vwIgos',
-    'anthro_dgos': 'vwDgos',
-    'valley_bottom': 'vbet_full'
+    'HILLSHADE': ['HILLSHADE', 'RSContext'],
+    'EXVEG': ['EXVEG', 'RSContext'],
+    'HISTVEG': ['HISTVEG', 'RSContext'],
+    'flowareas': ['NHDArea', 'RSContext'],
+    'waterbodies': ['NHDWaterbody', 'RSContext'],
+    'hydro_flowlines': ['vwReaches', 'hydro_context'],
+    'hydro_igos': ['vwIgos', 'hydro_context'],
+    'hydro_dgos': ['vwDgos', 'hydro_context'],
+    'anthro_flowlines': ['vwReaches', 'Anthro'],
+    'anthro_igos': ['vwIgos', 'Anthro'],
+    'anthro_dgos': ['vwDgos', 'Anthro'],
+    'valley_bottom': ['vbet_full', 'VBET']
 }
 
 

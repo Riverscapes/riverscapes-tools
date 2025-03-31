@@ -10,13 +10,13 @@ from confinement.confinement_report import ConfinementReport
 
 lyrs_in_out = {
     # CONFINEMENT_ID: INPUT_ID
-    'segmented_network': 'network_intersected',
-    'channel_area': 'channel_area_polygons',
-    'flowlines': 'network_intersected',
-    'confining_polygon': 'vbet_full',
-    'dgos': 'vbet_dgos',
-    'igos': 'vbet_igos',
-    'HILLSHADE': 'HILLSHADE'
+    'segmented_network': ['network_intersected', 'VBET'],
+    'channel_area': ['channel_area_polygons', 'VBET'],
+    'flowlines': ['network_intersected', 'VBET'],
+    'confining_polygon': ['vbet_full', 'VBET'],
+    'dgos': ['vbet_dgos', 'VBET'],
+    'igos': ['vbet_igos', 'VBET'],
+    'HILLSHADE': ['HILLSHADE', 'VBET']
 }
 
 

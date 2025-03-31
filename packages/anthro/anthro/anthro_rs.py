@@ -10,16 +10,16 @@ from anthro.anthro_report import AnthroReport
 
 lyrs_in_out = {
     # ANTHRO_ID: INPUT_ID
-    'HILLSHADE': 'HILLSHADE',
-    'EXVEG': 'EXVEG',
-    'flowlines': 'network_segmented',
-    'roads': 'Roads',
-    'rails': 'Rail',
-    'canals': 'Canals',
-    'ownership': 'Ownership',
-    'valley_bottom': 'vbet_full',
-    'igo': 'vbet_igos',
-    'dgo': 'vbet_dgos'
+    'HILLSHADE': ['HILLSHADE', 'RSContext'],
+    'EXVEG': ['EXVEG', 'RSContext'],
+    'flowlines': ['network_segmented', 'RSContext'],
+    'roads': ['Roads', 'RSContext'],
+    'rails': ['Rail', 'RSContext'],
+    'canals': ['Canals', 'RSContext'],
+    'ownership': ['Ownership', 'RSContext'],
+    'valley_bottom': ['vbet_full', 'VBET'],
+    'igo': ['vbet_igos', 'VBET'],
+    'dgo': ['vbet_dgos', 'VBET']
 }
 
 

@@ -10,18 +10,18 @@ from rcat.rcat_report import RcatReport
 
 lyrs_in_out = {
     # RCAT_ID: INPUT_ID
-    'EXVEG': 'EXVEG',
-    'HISTVEG': 'HISTVEG',
-    'flowareas': 'NHDArea',
-    'waterbodies': 'NHDWaterbody',
-    'PITFILL': 'PITFILL',
-    'igo': 'IGOGeometry',
-    'dgo': 'DGOGeometry',
-    'reaches': 'ReachGeometry',
-    'roads': 'roads',
-    'rails': 'rails',
-    'canals': 'canals',
-    'valley_bottom': 'vbet_full'
+    'EXVEG': ['EXVEG', 'RSContext'],
+    'HISTVEG': ['HISTVEG', 'RSContext'],
+    'flowareas': ['NHDArea', 'RSContext'],
+    'waterbodies': ['NHDWaterbody', 'RSContext'],
+    'PITFILL': ['PITFILL', 'TauDEM'],
+    'igo': ['IGOGeometry', 'Anthro'],
+    'dgo': ['DGOGeometry', 'Anthro'],
+    'reaches': ['ReachGeometry', 'Anthro'],
+    'roads': ['roads', 'Anthro'],
+    'rails': ['rails', 'Anthro'],
+    'canals': ['canals', 'Anthro'],
+    'valley_bottom': ['vbet_full', 'VBET']
 }
 
 

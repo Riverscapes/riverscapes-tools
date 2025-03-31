@@ -10,14 +10,14 @@ from vbet.vbet_report import VBETReport
 
 lyrs_in_out = {
     # VBET_ID: INPUT_ID
-    'network_intersected': 'network_intersected',
-    'DEM': 'DEM',
-    'SLOPE_RASTER': 'SLOPE',
-    'HILLSHADE': 'HILLSHADE',
-    'channel_area_polygons': 'channel_area',
-    'PITFILL': 'PITFILL',
-    'DINFFLOWDIR_ANG': 'DINFFLOWDIR_ANG',
-    'DINFFLOWDIR_SLP': 'DINFFLOWDIR_SLP'
+    'network_intersected': ['network_intersected', 'RSContext'],
+    'DEM': ['DEM', 'RSContext'],
+    'SLOPE_RASTER': ['SLOPE', 'RSContext'],
+    'HILLSHADE': ['HILLSHADE', 'RSContext'],
+    'channel_area_polygons': ['channel_area', 'ChannelArea'],
+    'PITFILL': ['PITFILL', 'TauDEM'],
+    'DINFFLOWDIR_ANG': ['DINFFLOWDIR_ANG', 'TauDEM'],
+    'DINFFLOWDIR_SLP': ['DINFFLOWDIR_SLP', 'TauDEM']
 }
 
 
