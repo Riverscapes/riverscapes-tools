@@ -45,7 +45,7 @@ FLOW_DRAINAGE=6000
 ```json
     {
       "name": "flow_accumulation",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "console": "integratedTerminal",
       "module": "lib.whatevermodule",

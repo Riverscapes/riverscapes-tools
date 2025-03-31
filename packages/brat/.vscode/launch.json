@@ -16,7 +16,7 @@
   "configurations": [
     {
       "name": "Run BRAT",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "sqlbrat.brat",
       "console": "integratedTerminal",
@@ -54,7 +54,7 @@
     },
     {
       "name": "Augment XML",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "sqlbrat.brat_rs",
       "console": "integratedTerminal",
@@ -65,7 +65,7 @@
     }, 
     {
       "name": "Update BRAT Parameters",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "scripts.update_brat_parameters",
       "console": "integratedTerminal",
@@ -79,7 +79,7 @@
     },
     {
       "name": "Riverscapes Parameter CLI",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "scripts.riverscapes_parameter_cli",
       "envFile": "${workspaceFolder}/.env",
@@ -87,7 +87,7 @@
     },
     {
       "name": "Write BRAT report",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "sqlbrat.brat_report",
       "console": "integratedTerminal",
@@ -99,7 +99,7 @@
     },
     {
       "name": "Calculate Metrics",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "rscommons.classes.project_metrics",
       "console": "integratedTerminal",
@@ -111,7 +111,7 @@
     },
     {
       "name": "Watershed Parameters",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "scripts.national_streamflow.watershed_parameters",
       "console": "integratedTerminal",
@@ -122,7 +122,7 @@
     },
     {
       "name": "Create BRAT Parameter SQLite DB",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "scripts.brat_parameters_sqlite.brat_params_create_sqlite",
       "console": "integratedTerminal",
@@ -133,7 +133,7 @@
 
     {
       "name": "Dump BRAT Parameters from SQLite to CSV files",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "scripts.brat_parameters_sqlite.brat_params_dump_to_file",
       "console": "integratedTerminal",
@@ -143,7 +143,7 @@
     },
     {
       "name": "Create Beaver Activity Project",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "beaver_sign.beaver_sign",
       "console": "integratedTerminal",
@@ -159,7 +159,7 @@
     },
     {
       "name": "Validate BRAT Capacity",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "sqlbrat.capacity_validation",
       "console": "integratedTerminal",
@@ -172,7 +172,7 @@
     },
     {
       "name": "Version Bump",
-      "type": "python",
+      "type": "debugpy",
       "module": "rscommons.version",
       "args": [
         "${workspaceFolder}/sqlbrat/__version__.py"
