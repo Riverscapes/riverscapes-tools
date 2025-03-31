@@ -7,7 +7,10 @@ import sys
 import traceback
 from concurrent.futures import ThreadPoolExecutor
 from time import sleep
-import psutil
+try:
+    import psutil
+except ImportError:
+    psutil = None
 import matplotlib.pyplot as plt
 from rscommons import Logger
 
@@ -59,6 +62,8 @@ class ProcStats():
 
 class MemoryMonitor:
     def __init__(self, logfile: str, loop_delay=1):
+        if psutil is None:
+            raise ImportError("psutil module is required for MemoryMonitor")
         self.keep_measuring = True
         self.filepath = logfile
         self.loop_delay = loop_delay

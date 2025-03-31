@@ -8,8 +8,8 @@
       "type": "promptString",
       "id": "HUC",
       "description": "What HUC?",
-      // "default": "17070202" // North Fork John Day
-      "default": "1005001208" // Really small HUC
+      "default": "1706030402" // North Fork John Day
+      // "default": "1005001208" // Really small HUC
       // "default": "17060103" // Asotin
     },
     {

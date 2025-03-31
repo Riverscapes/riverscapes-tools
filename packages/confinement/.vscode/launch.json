@@ -16,7 +16,7 @@
   "configurations": [
     {
       "name": "Write Confinement report",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "confinement.confinement_report",
       "console": "integratedTerminal",
@@ -28,7 +28,7 @@
     },
     {
       "name": "Version Bump",
-      "type": "python",
+      "type": "debugpy",
       "module": "rscommons.version",
       "args": [
         "${workspaceFolder}/confinement/__version__.py"
@@ -38,7 +38,7 @@
     },
     {
       "name": "Confinement",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "confinement.confinement",
       "console": "integratedTerminal",
@@ -88,7 +88,7 @@
     // },
     {
       "name": "Augment Confinement XML",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "confinement.confinement_rs",
       "console": "integratedTerminal",

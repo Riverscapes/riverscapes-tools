@@ -16,7 +16,7 @@
     "configurations": [
         {
           "name": "RVD Run",
-          "type": "python",
+          "type": "debugpy",
           "request": "launch",
           "module": "rvd.rvd",
           "console": "integratedTerminal",
@@ -36,7 +36,7 @@
         },
         {
           "name": "Version Bump",
-          "type": "python",
+          "type": "debugpy",
           "module": "rscommons.version",
           "args": [
             "${workspaceFolder}/rvd/__version__.py"

@@ -22,7 +22,7 @@
   "configurations": [
     {
       "name": "Validation -- Vegetation",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "sqlbrat.validation.vegetation_summary_validation",
       "cwd": "${workspaceFolder}/../../",
@@ -35,7 +35,7 @@
     },
     {
       "name": "Validation -- Vegetation FIS",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "sqlbrat.validation.vegetation_fis_validation",
       "cwd": "${workspaceFolder}/../../",
@@ -47,7 +47,7 @@
     },
     {
       "name": "Validation -- Stream Power",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "console": "integratedTerminal",
       "module": "sqlbrat.validation.stream_power_validation",
@@ -60,7 +60,7 @@
     },
     {
       "name": "Validation -- Land Use",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "console": "integratedTerminal",
       "module": "sqlbrat.validation.land_use_validation",
@@ -73,7 +73,7 @@
     }, 
     {
       "name": "Validation -- Hydro Param",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "console": "integratedTerminal",
       "module": "sqlbrat.validation.hydrology_param_validation",

@@ -17,7 +17,7 @@
   "configurations": [
     {
       "name": "Channel Area Tool",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "channel.channel",
       "console": "integratedTerminal",
@@ -45,7 +45,7 @@
       ]
     },{
       "name": "Channel Area Tool NZ",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "channel.channel",
       "console": "integratedTerminal",
@@ -72,7 +72,7 @@
     },
     {
       "name": "Calculate Metrics",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "rscommons.classes.project_metrics",
       "console": "integratedTerminal",
@@ -83,7 +83,7 @@
     },
     {
       "name": "Write Channel Area Report",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "channel.channel_report",
       "console": "integratedTerminal",
@@ -94,7 +94,7 @@
     },
     {
       "name": "Version Bump",
-      "type": "python",
+      "type": "debugpy",
       "module": "rscommons.version",
       "args": [
         "${workspaceFolder}/channel/__version__.py"
@@ -104,7 +104,7 @@
     },
     {
       "name": "Augment XML",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "channel.channel_rs",
       "console": "integratedTerminal",

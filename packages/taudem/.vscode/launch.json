@@ -31,7 +31,7 @@
   "configurations": [
     {
       "name": "Run TauDEM",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "taudem.taudem",
       "console": "integratedTerminal",
@@ -50,7 +50,7 @@
     },
     {
       "name": "Run TauDEM Custom",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "taudem.taudem",
       "console": "integratedTerminal",
@@ -71,7 +71,7 @@
     },
     {
       "name": "Write TauDEM Report",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "taudem.taudem_report",
       "console": "integratedTerminal",
@@ -82,7 +82,7 @@
     },
     {
       "name": "Version Bump",
-      "type": "python",
+      "type": "debugpy",
       "module": "rscommons.version",
       "args": [
         "${workspaceFolder}/taudem/__version__.py"
@@ -92,7 +92,7 @@
     },
     {
       "name": "Augment XML",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "taudem.taudem_rs",
       "console": "integratedTerminal",

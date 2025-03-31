@@ -6,7 +6,7 @@
   "configurations": [
     {
       "name": "LTPBR Export",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "ltpbrexport.ltpbrexport",
       "console": "integratedTerminal",
@@ -21,7 +21,7 @@
     },
     {
       "name": "Version Bump",
-      "type": "python",
+      "type": "debugpy",
       "module": "rscommons.version",
       "args": [
         "${workspaceFolder}/channel/__version__.py"

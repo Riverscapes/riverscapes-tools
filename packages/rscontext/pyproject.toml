@@ -1,0 +1,22 @@
+[project]
+name = "rs-context"
+version = "0.0.0"  # Replace with the actual version from rscontext/__version__.py
+description = "Riverscapes Context"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [
+    { name = "Matt Reimer", email = "info@northarrowresearch.com" }
+]
+requires-python = ">=3.5.2"
+keywords = ["riverscapes", "context"]
+dependencies = [
+    "termcolor",
+    "Cython>=0.29.7",
+    "numpy>=1.16.3",
+    "scipy>=1.8",
+    "argparse",
+    "GDAL>=3.0",
+    "rasterio>=1.1.5",
+    "Shapely==1.8.5.post1",
+    "rs-commons"
+]
