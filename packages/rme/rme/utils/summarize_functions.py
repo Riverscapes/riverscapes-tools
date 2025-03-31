@@ -23,7 +23,7 @@ def get_max_value(dgo_ftr, in_line_network, field_name):
             results.append(feat.GetField(field_name))
         lyr_lines.ogr_layer.SetSpatialFilter(None)
     if len(results) > 0:
-        out_val = str(max(results))
+        out_val = max(results)
     else:
         out_val = None
 
@@ -47,7 +47,7 @@ def value_from_max_length(dgo_ftr, in_line_network, field_name):
     with GeopackageLayer(in_line_network) as lyr_lines:
         for feat, *_ in lyr_lines.iterate_features(clip_shape=dgo_geom):
             line_geom = feat.GetGeometryRef()
-            attribute = str(feat.GetField(field_name))
+            attribute = feat.GetField(field_name)
             geom_section = dgo_geom.Intersection(line_geom)
             length = geom_section.Length()
             attributes[attribute] = attributes.get(
@@ -134,7 +134,7 @@ def value_from_dataset_area(dgo_ftr, in_dataset, field_name):
     if len(attributes) == 0:
         majority_attribute = None
     else:
-        majority_attribute = str(max(attributes, key=attributes.get))
+        majority_attribute = max(attributes, key=attributes.get)
 
     return majority_attribute
 

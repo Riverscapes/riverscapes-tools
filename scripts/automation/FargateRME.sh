@@ -9,6 +9,7 @@ IFS=$'\n\t'
 (: "${VBET_ID?}")
 (: "${RSCONTEXT_ID?}")
 (: "${CONFINEMENT_ID?}")
+(: "${HYDRO_ID?}")
 (: "${ANTHRO_ID?}")
 (: "${RCAT_ID?}")
 (: "${BRAT_ID?}")
@@ -48,6 +49,7 @@ echo "TAGS: $TAGS"
 echo "VBET_ID: $VBET_ID"
 echo "RSCONTEXT_ID: $RSCONTEXT_ID"
 echo "CONFINEMENT_ID: $CONFINEMENT_ID"
+echo "HYDRO_ID: $HYDRO_ID"
 echo "ANTHRO_ID: $ANTHRO_ID"
 echo "RCAT_ID: $RCAT_ID"
 echo "BRAT_ID: $BRAT_ID"
@@ -67,6 +69,7 @@ DATA_DIR=/usr/local/data
 RS_CONTEXT_DIR=$DATA_DIR/rs_context/rs_context_$RSCONTEXT_ID
 VBET_DIR=$DATA_DIR/vbet/vbet_$VBET_ID
 CONFINEMENT_DIR=$DATA_DIR/confinement/confinement_$CONFINEMENT_ID
+HYDRO_DIR=$DATA_DIR/hydro/hydro_$HYDRO_ID
 ANTHRO_DIR=$DATA_DIR/anthro/anthro_$ANTHRO_ID
 RCAT_DIR=$DATA_DIR/rcat/rcat_$RCAT_ID
 BRAT_DIR=$DATA_DIR/brat/brat_$BRAT_ID
@@ -93,6 +96,10 @@ rscli download $CONFINEMENT_DIR --id $CONFINEMENT_ID \
   --file-filter "(confinement\.gpkg)" \
   --no-input --no-ui --verbose
 
+rscli download $HYDRO_DIR --id $HYDRO_ID \
+  --file-filter "(hydro\.gpkg)" \
+  --no-input --no-ui --verbose
+
 rscli download $ANTHRO_DIR --id $ANTHRO_ID \
   --file-filter "(anthro\.gpkg)" \
   --no-input --no-ui --verbose
@@ -117,6 +124,7 @@ try() {
 
   rme $HUC \
     $RS_CONTEXT_DIR/hydrology/hydro_derivatives.gpkg/network_intersected \
+    $RS_CONTEXT_DIR/hydrology/nhdplushr.gpkg/NHDWaterbody
     $RS_CONTEXT_DIR/hydrology/nhdplushr.gpkg/NHDPlusFlowlineVAA \
     $RS_CONTEXT_DIR/political_boundaries/counties.shp \
     $VBET_DIR/intermediates/vbet_intermediates.gpkg/vbet_dgos \
@@ -126,9 +134,13 @@ try() {
     $RS_CONTEXT_DIR/topography/dem_hillshade.tif \
     $RME_DIR \
     --confinement_dgos $CONFINEMENT_DIR/outputs/confinement.gpkg/confinement_dgos \
+    --hydro_dgos $HYDRO_DIR/outputs/hydro.gpkg/vwDgos \
     --anthro_dgos $ANTHRO_DIR/outputs/anthro.gpkg/vwDgos \
+    --anthro_lines $ANTHRO_DIR/outputs/anthro.gpkg/vwReaches \
     --rcat_dgos $RCAT_DIR/outputs/rcat.gpkg/vwDgos \
+    --rcat_dgo_table $RCAT_DIR/outputs/rcat.gpkg/DGOVegetation \
     --brat_dgos $BRAT_DIR/outputs/brat.gpkg/vwDgos \
+    --brat_lines $BRAT_DIR/outputs/brat.gpkg/vwReaches \
     --meta "Runner=Cybercastor" \
     --verbose
   if [[ $? != 0 ]]; then return 1; fi
@@ -137,7 +149,7 @@ try() {
   cd /usr/local/src/riverscapes-tools/packages/rme
   python3 -m rme.rme_rs \
     $RME_DIR/project.rs.xml \
-    $RS_CONTEXT_DIR/project.rs.xml,$VBET_DIR/project.rs.xml,$ANTHRO_DIR/project.rs.xml,$RCAT_DIR/project.rs.xml,$CONFINEMENT_DIR/project.rs.xml,$BRAT_DIR/project.rs.xml
+    $RS_CONTEXT_DIR/project.rs.xml,$VBET_DIR/project.rs.xml,$CONFINEMENT_DIR/project.rs.xml,$HYDRO_DIR/project.rs.xml,$ANTHRO_DIR/project.rs.xml,$RCAT_DIR/project.rs.xml,$BRAT_DIR/project.rs.xml
   
   if [[ $? != 0 ]]; then return 1; fi
 

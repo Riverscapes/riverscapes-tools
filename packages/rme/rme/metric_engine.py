@@ -566,7 +566,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                     if stream_length is not None and straight_length is not None:
                         sin = float(stream_length) / float(straight_length)
                         curs.execute(f"UPDATE dgo_geomorph SET planform_sinuosity = {sin} WHERE dgoid = {dgo_id}")
-            if metric in ('LFAG', 'LFCON', 'LFCONHW', 'LFDEV', 'LFEXOTH', 'LFEXTSH', 'LFGRASS', 'LFHW', 'LFRIP', 'LFSHRUB', 'LFSPARSE', 'LFCONBPS', 'LFCONHWBPS', 'LFGRASSGPS', 'LFHWBPS', 'LFHWCONBPS', 'LFPEATBPS', 'LFPEATNONBPS', 'LFRIPBPS', 'LFSAVBPS', 'LFSHRUBBPS', 'LFSPARSEBPS'):
+            if metric in ('LFAG', 'LFCON', 'LFCONHW', 'LFDEV', 'LFEXOTH', 'LFEXTSH', 'LFGRASS', 'LFHW', 'LFRIP', 'LFSHRUB', 'LFSPARSE', 'LFCONBPS', 'LFCONHWBPS', 'LFGRASSBPS', 'LFHWBPS', 'LFHWCONBPS', 'LFPEATBPS', 'LFPEATNONBPS', 'LFRIPBPS', 'LFSAVBPS', 'LFSHRUBBPS', 'LFSPARSEBPS'):
                 curs.execute(f"SELECT dgo_veg.dgoid, {lf_field_names[metric]}_prop, segment_area from dgo_veg LEFT JOIN dgos on dgos.dgoid = dgo_veg.dgoid")
                 data = curs.fetchall()
                 for dgo_id, veg_class, area in data:
