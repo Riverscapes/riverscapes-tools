@@ -55,10 +55,12 @@ def export_feature_class(filegdb, featureclass, output_dir, output_epsg, retaine
             continue
 
         fieldTypeCode = field_def.GetType()
+        new_field_def = ogr.FieldDefn(field_name, fieldTypeCode)
+
         if field_name.lower() == 'nhdplusid' and fieldTypeCode == ogr.OFTReal:
-            field_def.SetWidth(32)
-            field_def.SetPrecision(0)
-        out_layer.CreateField(field_def)
+            new_field_def.SetWidth(32)
+            new_field_def.SetPrecision(0)
+        out_layer.CreateField(new_field_def)
 
     # Get the output Layer's Feature Definition
     out_layer_def = out_layer.GetLayerDefn()
