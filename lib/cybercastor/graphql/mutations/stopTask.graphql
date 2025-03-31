@@ -1,6 +1,0 @@
-mutation ($jobId: ID!, $taskIds: [ID!]!) {
-    stopTasks(jobId: $jobId, taskIds: $taskIds) {
-      id
-      status
-    }
-}

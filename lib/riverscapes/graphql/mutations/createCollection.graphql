@@ -1,5 +1,0 @@
-mutation CreateCollection($collection: CollectionInput!, $orgId: ID) {
-  createCollection(collection: $collection, orgId: $orgId) {
-    id
-  }
-}

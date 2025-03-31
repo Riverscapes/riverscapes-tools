@@ -1,7 +1,0 @@
-mutation updateProjectType_mutation($id: String!, $projectType: ProjectTypeInput!, $state: ProjectTypeStateEnum) {
-  updateProjectType(id: $id,  projectType: $projectType, state: $state) {
-    id
-    createdOn
-    updatedOn
-  }
-}

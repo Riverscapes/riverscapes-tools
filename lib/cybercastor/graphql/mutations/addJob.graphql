@@ -1,6 +1,0 @@
-mutation ($job: JobInput!, $tasks: [TaskInput!]!) {
-    addJob(job: $job, tasks: $tasks) {
-        id
-        name
-    }
-}
