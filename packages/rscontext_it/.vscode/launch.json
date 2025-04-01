@@ -1,0 +1,60 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "WatershedHydroID",
+      "description": "Pick a WatershedHydroID to process",
+      // "default": "563738" // South Island near Christchurch
+      "default": "224060" // North Island near Waikato
+    }
+  ],  
+  "configurations": [
+    {
+      "name": "RS Context - ITALY",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "rscontextit.rs_context_it",
+      "cwd": "${workspaceFolder}", // Ensures the correct working directory
+      "console": "integratedTerminal",
+      // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
+      "env": {
+        "NATIONAL_PROJECT_IT": "/workspaces/data/italynational/italy_national_project"
+      },
+      "args": [
+        "${input:WatershedHydroID}",
+        "{env:NATIONAL_PROJECT_IT}/hydrography/combined_hydro_net.gpkg",
+        "{env:NATIONAL_PROJECT_IT}/topography/dem.tif",
+        "{env:DATA_ROOT}/rs_context/${input:WatershedHydroID}",
+        "--verbose",
+        "--debug"
+      ]
+    },
+    {
+      "name": "Calculate Level Paths",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "scripts.calc_level_path",
+      "console": "integratedTerminal",
+      "args": [
+        "/Users/philipbailey/GISData/nz/nz_national_project2/hydrography/NZREC2_v5_Hydrography.gpkg",
+        "${input:WatershedHydroID}",
+        "True"
+      ]
+    },
+    {
+      "name": "Traverse Network",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "scripts.traverse_network",
+      "console": "integratedTerminal",
+      "args": [
+        "/Users/philipbailey/GISData/nz/nz_national_project2/hydrography/NZREC2_v5_Hydrography.gpkg",
+        "${input:HydroID}"
+      ]
+    },
+  ]
+}
