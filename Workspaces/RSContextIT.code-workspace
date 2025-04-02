@@ -20,10 +20,8 @@
 			"name": "🏠 Git Root",
 			"path": ".."
 		},
-    {
-      "name": "🌍 Italy National Data",
-      "path": "/workspaces/data/italynational"
-    },
+    { "name": "🗺️ Worskpace Data",
+      "path": "/workspaces/data/"},
   ],
   "settings": {
     "terminal.integrated.defaultProfile.linux": "zsh",
