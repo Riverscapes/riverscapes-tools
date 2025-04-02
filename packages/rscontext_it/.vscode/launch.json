@@ -38,12 +38,16 @@
       "name": "Calculate Level Paths",
       "type": "debugpy",
       "request": "launch",
-      "module": "scripts.calc_level_path",
+      "module": "rscontextit.calc_level_path",
       "console": "integratedTerminal",
+      "env": {
+        "DATA_ROOT": "/workspaces/data"
+      },
       "args": [
-        "/Users/philipbailey/GISData/nz/nz_national_project2/hydrography/NZREC2_v5_Hydrography.gpkg",
+        "${env:DATA_ROOT}/rs_context/99/hydrography/hydrography.gpkg",
         "${input:WatershedID}",
-        "True"
+        "True",
+        "--verbose",
       ]
     },
     {
@@ -57,5 +61,19 @@
         "${input:WatershedID}"
       ]
     },
+    {
+      "name": "explore_gpkg",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "scripts.explore_gpkg",
+      "console": "integratedTerminal",
+      "env": {
+        "DATA_ROOT": "/workspaces/data"
+      },
+      "args": [
+        "${env:DATA_ROOT}/rs_context/99/hydrography/hydrography.gpkg",
+        "--verbose"
+      ]
+    }
   ]
 }
