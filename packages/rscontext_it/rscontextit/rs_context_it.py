@@ -29,7 +29,7 @@ from osgeo import ogr
 from rscommons import Logger, ModelConfig, dotenv, initGDALOGRErrors
 from rscommons.classes.rs_project import RSLayer, RSProject, RSMeta, RSMetaTypes
 from rscommons.geographic_raster import gdal_dem_geographic
-from rscommons.project_bounds import generate_project_extents_from_geom
+from rscommons.project_bounds import generate_project_extents_from_layer
 from rscommons.raster_warp import raster_warp
 from rscommons.util import safe_makedirs, parse_metadata
 from rscommons.vector_ops import copy_feature_class
@@ -44,20 +44,17 @@ initGDALOGRErrors()
 
 LayerTypes = {
     # key: (name, id, tag, relpath)
-    'DEM': RSLayer('8m DEM', 'DEM', 'Raster', 'topography/dem.tif'),
+    'DEM': RSLayer('DEM', 'DEM', 'Raster', 'topography/dem.tif'),
     'HILLSHADE': RSLayer('DEM Hillshade', 'HILLSHADE', 'Raster', 'topography/dem_hillshade.tif'),
     'SLOPE': RSLayer('Slope', 'SLOPE', 'Raster', 'topography/slope.tif'),
     'HYDRO': RSLayer('Hydrography', 'HYDROGRAPHY', 'Geopackage', 'hydrography/hydrography.gpkg', {
         'FlowLines': RSLayer('Flow Lines', 'riverlines', 'Vector', 'riverlines'),
         'Watersheds': RSLayer('Watersheds', 'watersheds', 'Vector', 'watersheds'),
-        'Catchments': RSLayer('Catchments', 'catchments', 'Vector', 'catchments'),
-        'Junctions': RSLayer('Hydro Junctions', 'junctions', 'Vector', 'junctions'),
-        'Lakes': RSLayer('Lakes', 'lakes', 'Vector', 'lakes'),
     }),
 }
 
 
-def rs_context_it(watershed_id: str, natl_hydro_gpkg: str, dem: str, output_folder: str, meta: Dict[str, str]) -> None:
+def rs_context_it(watershed_id: str, natl_hydro_gpkg: str, watershed_gpkg: str, dem: str, output_folder: str, meta: Dict[str, str]) -> None:
     """
     Run the Riverscapes Context Tool for Italy for a single watershed.
     This function processes hydrographic and topographic data for a specified watershed.
@@ -73,15 +70,16 @@ def rs_context_it(watershed_id: str, natl_hydro_gpkg: str, dem: str, output_fold
 
     safe_makedirs(output_folder)
 
-    hydro_gpkg, ws_name, trans_geom, ws_boundary_path = process_hydrography(natl_hydro_gpkg, watershed_id, output_folder)
-    dem, slope, hillshade = process_topography(dem, output_folder, ws_boundary_path)
+    hydro_gpkg, ws_name, ws_layer_name = process_hydrography(natl_hydro_gpkg, watershed_gpkg, watershed_id, output_folder, cfg.OUTPUT_EPSG)
+    dem, slope, hillshade = process_topography(dem, output_folder, ws_layer_name, cfg.OUTPUT_EPSG)
 
-    # Write a the project bounds as a GeoJSON file and return the centroid and bounding box
+    # Write the project bounds as a GeoJSON file and return the centroid and bounding box
     bounds_file = os.path.join(output_folder, 'project_bounds.geojson')
-    bounds_info = generate_project_extents_from_geom(trans_geom, bounds_file)
+    bounds_info = generate_project_extents_from_layer(ws_layer_name, bounds_file)
 
     metrics_file = os.path.join(output_folder, 'rscontext_metrics.json')
-    calculate_metrics(hydro_gpkg, dem, slope, metrics_file)
+    # todo: make this work as well
+    # calculate_metrics(hydro_gpkg, dem, slope, metrics_file)
 
     # Build the Riverscapes Context project
     project_name = f'Riverscapes Context for {ws_name}'
@@ -108,7 +106,7 @@ def rs_context_it(watershed_id: str, natl_hydro_gpkg: str, dem: str, output_fold
     log.info('Riverscapes Context processing complete')
 
 
-def process_hydrography(national_hydro_gpkg: str, watershed_id: str, output_folder: str) -> Tuple[str, str, ogr.Geometry]:
+def process_hydrography(national_hydro_gpkg: str, watershed_gpkg: str, watershed_id: str, output_folder: str, output_epsg: int) -> Tuple[str, str, str]:
     """
     Process the hydrography data for the specified watershed.
 
@@ -117,39 +115,49 @@ def process_hydrography(national_hydro_gpkg: str, watershed_id: str, output_fold
 
     Parameters:
     hydro_gpkg (str): Path to the GeoPackage containing national hydrography feature classes.
+    watershed_gpkg (str): Path to the GeoPackage containing watershed feature classes.
     watershed_id (str): Identifier for the watershed.
     output_folder (str): Directory where the output files will be saved.
 
     Returns:
-    Tuple[str, str, geom]: A tuple containing the path to the output GeoPackage, the name of the watershed,
-    the watershed boundary geometry
+    Tuple[str, str, str]: A tuple containing the path to the output GeoPackage, the name of the watershed,
+    the watershed boundary layer
     """
 
     log = Logger('Hydrography')
     log.info(f'Processing Hydrography for watershed {watershed_id}')
 
-    watershed_layer = 'sample_watershed_99'
-    # sample_watershed hardcode
-    input_watersheds = os.path.join('sample_watershed.gpkg', watershed_layer)
+    # name of the watersheds layer hardcoded here
+    watershed_layer = 'watersheds'
+    input_watersheds = os.path.join(watershed_gpkg, watershed_layer)
     input_rivers = os.path.join(national_hydro_gpkg, 'hydro_net_l')
 
     # Load the watershed boundary polygon (in original projection)
-    orig_ws_boundary, trans_geom = get_geometry(national_hydro_gpkg,  watershed_layer, f'HydroID={watershed_id}', cfg.OUTPUT_EPSG)
+    orig_ws_boundary, trans_geom = get_geometry(watershed_gpkg,  watershed_layer, f'CatchID={watershed_id}', cfg.OUTPUT_EPSG)
 
     # Retrieve the watershed name
-    with sqlite3.connect(national_hydro_gpkg) as conn:
-        curs = conn.cursor()
-        # SQLite does not support parameterizing table or column names. These must be hardcoded or dynamically constructed in the query string.
-        query = f'SELECT RivName, island FROM {watershed_layer} WHERE HydroID = ?'
-        curs.execute(query, [watershed_id])
-        row = curs.fetchone()
-        watershed_name = row[0]
+    # currently the watershed layer doesn't have name so we'll just call it the id
+    watershed_name = 'spartiacque ' + str(watershed_id)
+    # with sqlite3.connect(national_hydro_gpkg) as conn:
+    #     curs = conn.cursor()
+    #     # SQLite does not support parameterizing table or column names. These must be hardcoded or dynamically constructed in the query string.
+    #     query = f'SELECT RivName, island FROM {watershed_layer} WHERE HydroID = ?'
+    #     curs.execute(query, [watershed_id])
+    #     row = curs.fetchone()
+    #     watershed_name = row[0]
 
-    # Clip the national hydrography feature classes into the output GeoPackage
+    # Define the output geopackage and layer paths
     output_gpkg = os.path.join(output_folder, 'hydrography', 'hydrography.gpkg')
     output_ws = os.path.join(output_gpkg, 'watersheds')
-    copy_feature_class(input_watersheds, output_ws, 2193, attribute_filter=f'"HydroID"=\'{watershed_id}\'', make_valid=True)
-    copy_feature_class(input_rivers, os.path.join(output_gpkg, 'riverlines'), cfg.OUTPUT_EPSG, clip_shape=orig_ws_boundary, make_valid=True)
+
+    # Check if the output GeoPackage already exists and if so, remove it
+    if os.path.exists(output_gpkg):
+        log.warning(f'Removing existing GeoPackage: {output_gpkg}')
+        os.remove(output_gpkg)
+
+    # Clip the national hydrography feature classes into the output GeoPackage
+    copy_feature_class(input_watersheds, output_ws, output_epsg, attribute_filter=f'"CatchID"=\'{watershed_id}\'', make_valid=True)
+    copy_feature_class(input_rivers, os.path.join(output_gpkg, 'riverlines'), output_epsg, clip_shape=orig_ws_boundary, make_valid=True)
 
     with sqlite3.connect(output_gpkg) as conn:
         curs = conn.cursor()
@@ -164,18 +172,22 @@ def process_hydrography(national_hydro_gpkg: str, watershed_id: str, output_fold
         for field, data_type in [('level_path', 'REAL'), ('FCode', 'INTEGER'), ('TotDASqKM', 'REAL')]:
             curs.execute(f'ALTER TABLE riverlines ADD COLUMN {field} {data_type}')
 
-        for field in ['level_path', 'HydroID', 'FCode', 'TO_NODE', 'FROM_NODE']:
+        for field in ['level_path', 'FCode', 'CatchID', 'TNODE', 'FNODE']:
             curs.execute(f'CREATE INDEX idx_{field} ON riverlines({field})')
 
         # Assign level paths to all reaches in the GeoPackage
-        calc_level_path(curs, watershed_id, True)
+        # TODO: MAKE THIS STEP WORK
+        # calc_level_path(curs, watershed_id, True)
 
-        # Assign FCode. Apply the NHD artifical path code to any features that have an LID (presumed to be Lake ID)
-        curs.execute('UPDATE riverlines SET FCode = ? WHERE LID <> 0', [55800])
-        curs.execute('UPDATE riverlines SET FCode = ? WHERE LID = 0', [46006])
+        # Assign FCode.
+
+        curs.execute("UPDATE riverlines SET FCode = 33600 WHERE (DFDD = 'BH020' OR DFDD = 'BH030')")
+        curs.execute("UPDATE riverlines SET FCode = 46006 WHERE (DFDD='BH140' AND HYP=1)")
+        curs.execute("UPDATE riverlines SET FCode = 46000 WHERE (DFDD='BH140' AND (HYP IS NULL OR HYP<>1))")
 
         # Assign Drainage Area to the riverlines
-        curs.execute('UPDATE riverlines SET TotDASqKM = CUM_AREA / 1000000.0')
+        # TODO: Make this work
+        # curs.execute('UPDATE riverlines SET TotDASqKM = CUM_AREA / 1000000.0')
 
         log.info('Recreating triggers')
         for trigger in triggers:
@@ -185,13 +197,13 @@ def process_hydrography(national_hydro_gpkg: str, watershed_id: str, output_fold
 
     log.info(f'Hydrography processed and saved to {output_gpkg}')
 
-    return output_gpkg, watershed_name, trans_geom, output_ws
+    return output_gpkg, watershed_name, output_ws
 
 
 def get_geometry(gpkg: str, layer_name: str, where_clause: str, output_epsg: int) -> Tuple[ogr.Geometry]:
     """
     Retrieves the geometry for a feature in a specified GeoPackage layer, 
-    optionally transforming it to a target spatial reference system (SRS).
+    optionally transforming it to a target (output) spatial reference system (SRS).
 
     Args:
         gpkg (str): The file path to the GeoPackage.
@@ -201,8 +213,9 @@ def get_geometry(gpkg: str, layer_name: str, where_clause: str, output_epsg: int
             to which the geometry should be transformed.
 
     Returns:
-        Tuple[ogr.Geometry]: A tuple containing the original geometry and the 
-        transformed geometry in the target SRS.
+        Tuple[ogr.Geometry]: A tuple containing 
+        the original geometry and 
+        the transformed geometry in the target SRS.
 
     Raises:
         ValueError: If no features or multiple features match the `where_clause`.
@@ -220,7 +233,7 @@ def get_geometry(gpkg: str, layer_name: str, where_clause: str, output_epsg: int
                 raise ValueError(f"Multiple features ({feature_count}) found for where_clause: '{where_clause}' in layer '{layer_name}'. Expected exactly one feature.")
 
             rme_feature: ogr.Feature
-            original_geom: ogr.Geometry = rme_feature.GeometryetGeometryRef().Clone()
+            original_geom: ogr.Geometry = rme_feature.GetGeometryRef().Clone()
             transform_geom = original_geom.Clone()
             transform_geom.TransformTo(output_srs)
 
@@ -261,9 +274,10 @@ def calculate_metrics(output_gpkg: str, dem_path: str, slope_path: str, output_f
         json.dump(metrics, f, indent=2)
 
 
-def process_topography(input_dem: str, output_folder: str, processing_boundary) -> Tuple[str, str, str]:
+def process_topography(input_dem: str, output_folder: str, processing_boundary, output_epsg: int) -> Tuple[str, str, str]:
     """
     Process the topography data for the specified watershed.
+    Return: tuple with paths of each of output dem, slope and hillshade rasters.
     """
 
     log = Logger('Topography')
@@ -274,7 +288,8 @@ def process_topography(input_dem: str, output_folder: str, processing_boundary) 
     output_slope = os.path.join(topo_folder, 'slope.tif')
     output_hillshade = os.path.join(topo_folder, 'dem_hillshade.tif')
 
-    raster_warp(input_dem, output_dem, 2193, processing_boundary, {"cutlineBlend": 1})
+    # TODO- check ADD WARNING IF output_epsg not same as input
+    raster_warp(input_dem, output_dem, output_epsg, processing_boundary, {"cutlineBlend": 1})
     gdal_dem_geographic(output_dem, output_slope, 'slope')
     gdal_dem_geographic(output_dem, output_hillshade, 'hillshade')
 
@@ -291,6 +306,7 @@ def main():
     parser = argparse.ArgumentParser(description='Riverscapes Context Tool for Italy')
     parser.add_argument('watershed_id', help='Watershed/HUC identifier', type=int)
     parser.add_argument('hydro_gpkg', help='Path to GeoPackage containing national hydrography feature classes', type=str)
+    parser.add_argument('watershed_gpkg', help='Path to GeoPackage containing watershed classes', type=str)
     parser.add_argument('dem', help='Path to DEM raster.', type=str)
     parser.add_argument('output', help='Path to the output folder', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
@@ -311,7 +327,7 @@ def main():
     meta = parse_metadata(args.meta)
 
     try:
-        rs_context_it(args.watershed_id, args.hydro_gpkg, args.dem, args.output, meta)
+        rs_context_it(args.watershed_id, args.hydro_gpkg, args.watershed_gpkg, args.dem, args.output, meta)
     except Exception as e:
         log.error(e)
         traceback.print_exc(file=sys.stdout)

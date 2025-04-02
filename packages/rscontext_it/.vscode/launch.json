@@ -6,10 +6,9 @@
   "inputs": [
     {
       "type": "promptString",
-      "id": "WatershedHydroID",
-      "description": "Pick a WatershedHydroID to process",
-      // "default": "563738" // South Island near Christchurch
-      "default": "224060" // North Island near Waikato
+      "id": "WatershedID",
+      "description": "Pick a Watershed ID to process",
+      "default": "99" 
     }
   ],  
   "configurations": [
@@ -25,10 +24,12 @@
         "NATIONAL_PROJECT_IT": "/workspaces/data/italynational/italy_national_project"
       },
       "args": [
-        "${input:WatershedHydroID}",
-        "{env:NATIONAL_PROJECT_IT}/hydrography/combined_hydro_net.gpkg",
+        "${input:WatershedID}",
+        "{env:NATIONAL_PROJECT_IT}/hydrography/combined_hydro_net.gpkg", 
+        // path to watershed geopackage
+        "{env:NATIONAL_PROJECT_IT}/../sample_watershed.gpkg", 
         "{env:NATIONAL_PROJECT_IT}/topography/dem.tif",
-        "{env:DATA_ROOT}/rs_context/${input:WatershedHydroID}",
+        "{env:DATA_ROOT}/rs_context/${input:WatershedID}",
         "--verbose",
         "--debug"
       ]
@@ -41,7 +42,7 @@
       "console": "integratedTerminal",
       "args": [
         "/Users/philipbailey/GISData/nz/nz_national_project2/hydrography/NZREC2_v5_Hydrography.gpkg",
-        "${input:WatershedHydroID}",
+        "${input:WatershedID}",
         "True"
       ]
     },
@@ -53,7 +54,7 @@
       "console": "integratedTerminal",
       "args": [
         "/Users/philipbailey/GISData/nz/nz_national_project2/hydrography/NZREC2_v5_Hydrography.gpkg",
-        "${input:HydroID}"
+        "${input:WatershedID}"
       ]
     },
   ]
