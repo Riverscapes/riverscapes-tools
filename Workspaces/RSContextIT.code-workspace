@@ -37,6 +37,7 @@
       "--max-line-length=240"
     ],
     "python.analysis.extraPaths": ["../../lib/commons"],
+    "python.analysis.typeCheckingMode": "basic",
     "python.terminal.activateEnvironment": true,
     "python.testing.pytestEnabled": true,
     "python.testing.unittestEnabled": true,
