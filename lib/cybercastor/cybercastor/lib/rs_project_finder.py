@@ -11,6 +11,7 @@ from riverscapes import RiverscapesAPI
 engine_projecttype_map = {
     'rs_context': [],
     'rs_context_channel_taudem': [],
+    'taudem': ['rscontext', 'channelarea'],
     'vbet': ['rscontext', 'channelarea', 'taudem'],
     'brat': ['rscontext', 'hydro_context', 'anthro', 'vbet'],
     'channel': ['rscontext'],
