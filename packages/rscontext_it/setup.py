@@ -15,7 +15,7 @@ with open("README.md", "rb") as f:
 
 version = re.search(
     '^__version__\\s*=\\s*"(.*)"',
-    open('rscontextnz/__version__.py', encoding='utf8').read(),
+    open('rscontextit/__version__.py', encoding='utf8').read(),
     re.M
 ).group(1)
 
