@@ -17,8 +17,7 @@ Author:     Lorin Gaertner - based on Riverscapes Context NZ by Philip Bailey
 
 Date:       2025-03-31
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-from rscommons.classes.raster import Raster
-from osgeo import osr
+# from rscommons.classes.raster import Raster
 from typing import Tuple, Dict
 import argparse
 import sqlite3
@@ -26,18 +25,19 @@ import json
 import os
 import sys
 import traceback
+from osgeo import gdal, osr
 from osgeo import ogr
 
 from rscommons import Logger, ModelConfig, dotenv, initGDALOGRErrors
 from rscommons.classes.rs_project import RSLayer, RSProject, RSMeta, RSMetaTypes
 from rscommons.geographic_raster import gdal_dem_geographic
-from rscommons.project_bounds import generate_project_extents_from_layer
+from rscommons.project_bounds import generate_project_extents_from_geom
 from rscommons.raster_warp import raster_warp
 from rscommons.util import safe_makedirs, parse_metadata
 from rscommons.vector_ops import copy_feature_class
 from rscommons.classes.vector_classes import GeopackageLayer
 from rscommons.shapefile import get_transform_from_epsg
-from rscontextnz.__version__ import __version__
+from rscontextit.__version__ import __version__
 from .calc_level_path import calc_level_path, get_triggers
 
 cfg = ModelConfig('https://xml.riverscapes.net/Projects/XSD/V2/RiverscapesProject.xsd', __version__)
@@ -56,7 +56,7 @@ LayerTypes = {
 }
 
 
-def rs_context_it(watershed_id: str, natl_hydro_gpkg: str, watershed_gpkg: str, dem: str, output_folder: str, meta: Dict[str, str]) -> None:
+def rs_context_it(watershed_id: int, natl_hydro_gpkg: str, watershed_gpkg: str, dem: str, output_folder: str, meta: Dict[str, str]) -> None:
     """
     Run the Riverscapes Context Tool for Italy for a single watershed.
     This function processes hydrographic and topographic data for a specified watershed.
@@ -72,12 +72,14 @@ def rs_context_it(watershed_id: str, natl_hydro_gpkg: str, watershed_gpkg: str, 
 
     safe_makedirs(output_folder)
 
-    hydro_gpkg, ws_name, ws_layer_name = process_hydrography(natl_hydro_gpkg, watershed_gpkg, watershed_id, output_folder, cfg.OUTPUT_EPSG)
+    hydro_gpkg, ws_name, ws_layer_name, ws_geom_4326 = process_hydrography(natl_hydro_gpkg, watershed_gpkg, watershed_id, output_folder, cfg.OUTPUT_EPSG)
     dem, slope, hillshade = process_topography(dem, output_folder, ws_layer_name, cfg.OUTPUT_EPSG)
 
     # Write the project bounds as a GeoJSON file and return the centroid and bounding box
+    # project bounds are expected to be in EPSG:4326
+
     bounds_file = os.path.join(output_folder, 'project_bounds.geojson')
-    bounds_info = generate_project_extents_from_layer(ws_layer_name, bounds_file)
+    bounds_info = generate_project_extents_from_geom(ws_geom_4326, bounds_file)
 
     metrics_file = os.path.join(output_folder, 'rscontext_metrics.json')
     calculate_metrics(hydro_gpkg, dem, slope, metrics_file)
@@ -85,8 +87,9 @@ def rs_context_it(watershed_id: str, natl_hydro_gpkg: str, watershed_gpkg: str, 
     # Build the Riverscapes Context project
     project_name = f'Riverscapes Context for {ws_name}'
     project = RSProject(cfg, output_folder)
-    project.create(project_name, 'RSContextNZ', [
-        RSMeta('Model Documentation', 'https://tools.riverscapes.net/rscontextnz', RSMetaTypes.URL, locked=True),
+    # we don't have a riverscapes context italy project type yet, but when we do change this
+    project.create(project_name, 'rscontext', [
+        RSMeta('Model Documentation', 'https://tools.riverscapes.net/rscontext', RSMetaTypes.URL, locked=True),
         RSMeta('HUC', str(watershed_id), RSMetaTypes.HIDDEN, locked=True),
         RSMeta('Hydrologic Unit Code', str(watershed_id), locked=True),
         RSMeta('Watershed Name', ws_name, RSMetaTypes.HIDDEN, locked=True),
@@ -181,7 +184,7 @@ def copy_feature_class_attribute_descriptions(from_layer: str,
     log.info(f'Inserted {len(from_metadata)} records into {to_pkg}: gpkg_data_columns for {to_lyr}')
 
 
-def process_hydrography(national_hydro_gpkg: str, watershed_gpkg: str, watershed_id: str, output_folder: str, output_epsg: int) -> Tuple[str, str, str]:
+def process_hydrography(national_hydro_gpkg: str, watershed_gpkg: str, watershed_id: int, output_folder: str, output_epsg: int) -> Tuple[str, str, str, ogr.Geometry]:
     """
     Process the hydrography data for the specified watershed.
 
@@ -195,8 +198,8 @@ def process_hydrography(national_hydro_gpkg: str, watershed_gpkg: str, watershed
     output_folder (str): Directory where the output files will be saved.
 
     Returns:
-    Tuple[str, str, str]: A tuple containing the path to the output GeoPackage, the name of the watershed,
-    the watershed boundary layer
+    Tuple[str, str, str, Geometry]: A tuple containing the path to the output GeoPackage, the name of the watershed,
+    the watershed boundary layer, the watershed boundary geometry in EPSG:4326.
     """
 
     log = Logger('Hydrography')
@@ -208,11 +211,11 @@ def process_hydrography(national_hydro_gpkg: str, watershed_gpkg: str, watershed
     input_rivers = os.path.join(national_hydro_gpkg, 'hydro_net_l')
 
     # Load the watershed boundary polygon (in original projection)
-    orig_ws_boundary, _trans_geom = get_geometry(watershed_gpkg,  watershed_layer, f'CatchID={watershed_id}', cfg.OUTPUT_EPSG)
+    orig_ws_boundary, ws_boundary_4326 = get_geometry(watershed_gpkg,  watershed_layer, f'CatchID={watershed_id}', 4326)
 
     # Retrieve the watershed name
     # currently the watershed layer doesn't have name so we'll just call it the id
-    watershed_name = 'spartiacque ' + str(watershed_id)
+    watershed_name = 'Catch ' + str(watershed_id)
     # with sqlite3.connect(national_hydro_gpkg) as conn:
     #     curs = conn.cursor()
     #     # SQLite does not support parameterizing table or column names. These must be hardcoded or dynamically constructed in the query string.
@@ -272,10 +275,10 @@ def process_hydrography(national_hydro_gpkg: str, watershed_gpkg: str, watershed
 
     log.info(f'Hydrography processed and saved to {output_gpkg}')
 
-    return output_gpkg, watershed_name, output_ws
+    return output_gpkg, watershed_name, output_ws, ws_boundary_4326
 
 
-def get_geometry(gpkg: str, layer_name: str, where_clause: str, output_epsg: int) -> Tuple[ogr.Geometry]:
+def get_geometry(gpkg: str, layer_name: str, where_clause: str, output_epsg: int) -> Tuple[ogr.Geometry, ogr.Geometry]:
     """
     Retrieves the geometry for a feature in a specified GeoPackage layer, 
     optionally transforming it to a target (output) spatial reference system (SRS).
@@ -299,8 +302,6 @@ def get_geometry(gpkg: str, layer_name: str, where_clause: str, output_epsg: int
         output_srs, _transform = get_transform_from_epsg(in_layer.spatial_ref, output_epsg)
 
         feature_count = 0
-        original_geom = None
-        transform_geom = None
 
         for rme_feature, *_ in in_layer.iterate_features(attribute_filter=where_clause):
             feature_count += 1
@@ -318,7 +319,7 @@ def get_geometry(gpkg: str, layer_name: str, where_clause: str, output_epsg: int
         return original_geom, transform_geom
 
 
-def calculate_metrics(output_gpkg: str, dem_path: str, slope_path: str, output_file: str) -> dict:
+def calculate_metrics(output_gpkg: str, dem_path: str, slope_path: str, output_file: str) -> None:
     """
     Calculate some basic metrics
     """
@@ -347,9 +348,9 @@ def calculate_metrics(output_gpkg: str, dem_path: str, slope_path: str, output_f
         json.dump(metrics, f, indent=2)
 
 
-def get_raster_epsg(raster_path: str) -> int:
+def get_raster_epsg(raster_path: str) -> int | None:
     """
-    Get the EPSG code of a raster file using the Raster class from rscommons.
+    Get the EPSG code of a raster file using using GDAL
 
     Args:
         raster_path (str): Path to the raster file.
@@ -357,15 +358,17 @@ def get_raster_epsg(raster_path: str) -> int:
     Returns:
         int: EPSG code of the raster's CRS, or None if not found.
     """
-    # Create a Raster object
-    raster = Raster(raster_path)
+    # Open the raster file in read-only mode
+    raster = gdal.Open(raster_path, gdal.GA_ReadOnly)
 
     # Get the projection in WKT format
-    wkt_projection = raster.proj
+    projection_wkt = raster.GetProjection()
+    if not projection_wkt:
+        return None
 
     # Parse the WKT projection to get the EPSG code
     spatial_ref = osr.SpatialReference()
-    spatial_ref.ImportFromWkt(wkt_projection)
+    spatial_ref.ImportFromWkt(projection_wkt)
 
     # Extract the EPSG code
     if spatial_ref.IsProjected() or spatial_ref.IsGeographic():
@@ -390,7 +393,9 @@ def process_topography(input_dem: str, output_folder: str, processing_boundary, 
     output_hillshade = os.path.join(topo_folder, 'dem_hillshade.tif')
 
     # check if we are trying to transform the raster and WARNING if so
-    if get_raster_epsg(input_dem) != output_epsg:
+    input_epsg = get_raster_epsg(input_dem)
+    log.info(f'Input DEM EPSG: {input_epsg}')
+    if input_epsg != output_epsg:
         log.warning(f'Input DEM EPSG {get_raster_epsg(input_dem)} does not match output EPSG {output_epsg}. Usually  inadvisable to transform, but we will.')
     # clip, and possibly transform, the input DEM
     raster_warp(input_dem, output_dem, output_epsg, processing_boundary, {"cutlineBlend": 1})

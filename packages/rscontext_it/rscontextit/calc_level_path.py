@@ -1,7 +1,7 @@
 import os
 import argparse
 import sqlite3
-from rscommons import Logger
+from rscommons import Logger, ProgressBar
 
 # us is upstream, ds is downstream
 # NEXT_REACH_QUERY = 'SELECT us.LENGTH, ds.OBJECT_ID FROM riverlines us LEFT JOIN riverlines ds on us.TNODE = ds.FNODE WHERE us.OBJECT_ID = ?'
@@ -11,6 +11,7 @@ NEXT_REACH_QUERY = 'SELECT us.LENGTH, ds.OBJECT_ID FROM riverlines us LEFT JOIN 
 def calc_level_path(curs: sqlite3.Cursor, watershed_id: int, reset_first: bool) -> None:
     """
     Calculate the level path for each reach in a watershed.
+    note if watershed_id is a string, it better not have spaces in it... not thoroughly tested
     """
     log = Logger('Calc Level Path')
     log.info(f'Calculating level path for watershed {watershed_id}')
@@ -45,13 +46,15 @@ def calc_level_path(curs: sqlite3.Cursor, watershed_id: int, reset_first: bool) 
 
     num_processed = 0
     log.info('Assigning level paths to reaches...')
-
+    progbar = ProgressBar(len(level_path_lengths), text="Assigning level paths to reaches")
     for hydro_id, _length in sorted(level_path_lengths.items(), key=lambda item: item[1], reverse=True):
         # print(f"{key}: {value}")
         num_processed += 1
         new_level_path = float(watershed_id * 10**8 + num_processed)
         num_reaches = assign_level_path(curs, hydro_id, new_level_path)
-        log.debug(f'Assigned level path {new_level_path} to {num_reaches} reaches starting at HydroID {hydro_id}')
+        progbar.update(num_processed)
+        # rather noisy even for debug
+        # log.debug(f'Assigned level path {new_level_path} to {num_reaches} reaches starting at HydroID {hydro_id}')
 
     log.info(f'Assigned level paths to {num_processed} headwaters in watershed {watershed_id}')
 
@@ -94,7 +97,8 @@ def assign_level_path(curs: sqlite3.Cursor, headwater_hydro_id, level_path: floa
         curs.execute('UPDATE riverlines SET level_path = ? WHERE OBJECT_ID = ? AND level_path IS NULL', [level_path, hydro_id])
         if curs.rowcount:
             num_reaches_updated += curs.rowcount  # this better be one, given we're selecting on OBJECT_ID
-            Logger('Calc Level Path').debug(f'Assigned level path {level_path} to reach {hydro_id}')
+            # noisy even for debug
+            # Logger('Calc Level Path').debug(f'Assigned level path {level_path} to reach {hydro_id}')
         curs.execute(NEXT_REACH_QUERY, [hydro_id])
         row = curs.fetchall()
         if len(row) == 1:
