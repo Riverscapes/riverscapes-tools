@@ -17,6 +17,8 @@ Author:     Lorin Gaertner - based on Riverscapes Context NZ by Philip Bailey
 
 Date:       2025-03-31
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+from rscommons.classes.raster import Raster
+from osgeo import osr
 from typing import Tuple, Dict
 import argparse
 import sqlite3
@@ -78,8 +80,7 @@ def rs_context_it(watershed_id: str, natl_hydro_gpkg: str, watershed_gpkg: str, 
     bounds_info = generate_project_extents_from_layer(ws_layer_name, bounds_file)
 
     metrics_file = os.path.join(output_folder, 'rscontext_metrics.json')
-    # todo: make this work as well
-    # calculate_metrics(hydro_gpkg, dem, slope, metrics_file)
+    calculate_metrics(hydro_gpkg, dem, slope, metrics_file)
 
     # Build the Riverscapes Context project
     project_name = f'Riverscapes Context for {ws_name}'
@@ -104,6 +105,80 @@ def rs_context_it(watershed_id: str, natl_hydro_gpkg: str, watershed_gpkg: str, 
     project.add_dataset(datasets, hillshade, LayerTypes['HILLSHADE'], 'Raster')
 
     log.info('Riverscapes Context processing complete')
+
+
+GPKG_DATA_COLUMNS_DEFINITION = """
+CREATE TABLE IF NOT EXISTS gpkg_data_columns (
+  table_name TEXT NOT NULL,
+  column_name TEXT NOT NULL,
+  name TEXT,
+  title TEXT,
+  description TEXT,
+  mime_type TEXT,
+  constraint_name TEXT,
+  CONSTRAINT pk_gdc PRIMARY KEY (table_name, column_name),
+  CONSTRAINT gdc_tn UNIQUE (table_name, name)
+);
+"""
+
+
+def copy_feature_class_attribute_descriptions(from_layer: str,
+                                              to_layer: str) -> None:
+    """ Copy the description (also known as the comment) for each attribute in the input layer
+    to the same-named attribute in the output layer. 
+
+    This is useful for copying metadata after creating a layer from another, for example using the RSCommons.copy_feature_class method. 
+
+    Geopackages have two different metadata implementations: 
+    * using `gpkg_data_columns` table
+    * using `gpkg_metadata` and `gpkg_metadata_reference` tables
+
+    This uses only the first, which is the one implemented by QGIS.
+
+    Future enhancement ideas: 
+    * copy both forms of metadata
+    * copy constraints
+    * add parameter to allow user to specify which attributes to copy
+    * add parameter to allow usre to specify attributes to exclude
+    * also copy layer-level metadata (probably with a separate function) 
+
+    Args:
+        input_gpkg_layer (str): geopackage layer (e.g. "path/to/hydrography.gpkg/hydro_net_l")
+        output_gpkg_layer (str): geopackage layer (e.g. "path/to/hydrography.gpkg/riverlines")
+    """
+    # we don't actually check if these are truly geopackages or the layers exist within them
+    # from rscommons import get_shp_or_gpkg, VectorBase
+    log = Logger('Copy Feature Class Attribute Descriptions')
+
+    from_pkg = os.path.dirname(from_layer)
+    from_lyr = os.path.basename(from_layer)
+    to_pkg = os.path.dirname(to_layer)
+    to_lyr = os.path.basename(to_layer)
+
+    # connect to the input geopackage and fetch metadata
+    with sqlite3.connect(from_pkg) as conn:
+        curs = conn.cursor()
+        curs.execute('SELECT table_name, column_name, name, title, description, mime_type, constraint_name FROM gpkg_data_columns WHERE table_name = ?', (from_lyr,))
+        from_metadata = curs.fetchall()
+
+    log.info(f'Fetched {len(from_metadata)} records from {from_pkg}: gpkg_data_columns for {from_lyr}')
+
+    # connect to the output geopackage
+    with sqlite3.connect(to_pkg) as conn:
+        curs = conn.cursor()
+        # create table if not exists
+        curs.execute(GPKG_DATA_COLUMNS_DEFINITION)
+        # delete any existing metadata for the output layer
+        curs.execute('DELETE FROM gpkg_data_columns WHERE table_name = ?', (to_lyr,))
+        if curs.rowcount > 0:
+            log.warning(f'Deleted {curs.rowcount} existing rows from {to_pkg}: gpkg_data_columns for {to_lyr}')
+        # insert records from from_metadata but use to_lyr as table_name
+        for record in from_metadata:
+            new_record = (to_lyr, record[1], record[2], record[3], record[4], record[5], record[6])
+            curs.execute('INSERT INTO gpkg_data_columns (table_name, column_name, name, title, description, mime_type, constraint_name) VALUES (?, ?, ?, ?, ?, ?, ?)', new_record)
+        conn.commit()
+
+    log.info(f'Inserted {len(from_metadata)} records into {to_pkg}: gpkg_data_columns for {to_lyr}')
 
 
 def process_hydrography(national_hydro_gpkg: str, watershed_gpkg: str, watershed_id: str, output_folder: str, output_epsg: int) -> Tuple[str, str, str]:
@@ -133,7 +208,7 @@ def process_hydrography(national_hydro_gpkg: str, watershed_gpkg: str, watershed
     input_rivers = os.path.join(national_hydro_gpkg, 'hydro_net_l')
 
     # Load the watershed boundary polygon (in original projection)
-    orig_ws_boundary, trans_geom = get_geometry(watershed_gpkg,  watershed_layer, f'CatchID={watershed_id}', cfg.OUTPUT_EPSG)
+    orig_ws_boundary, _trans_geom = get_geometry(watershed_gpkg,  watershed_layer, f'CatchID={watershed_id}', cfg.OUTPUT_EPSG)
 
     # Retrieve the watershed name
     # currently the watershed layer doesn't have name so we'll just call it the id
@@ -158,6 +233,7 @@ def process_hydrography(national_hydro_gpkg: str, watershed_gpkg: str, watershed
     # Clip the national hydrography feature classes into the output GeoPackage
     copy_feature_class(input_watersheds, output_ws, output_epsg, attribute_filter=f'"CatchID"=\'{watershed_id}\'', make_valid=True)
     copy_feature_class(input_rivers, os.path.join(output_gpkg, 'riverlines'), output_epsg, clip_shape=orig_ws_boundary, make_valid=True)
+    copy_feature_class_attribute_descriptions(input_rivers, os.path.join(output_gpkg, 'riverlines'))
 
     with sqlite3.connect(output_gpkg) as conn:
         curs = conn.cursor()
@@ -176,8 +252,7 @@ def process_hydrography(national_hydro_gpkg: str, watershed_gpkg: str, watershed
             curs.execute(f'CREATE INDEX idx_{field} ON riverlines({field})')
 
         # Assign level paths to all reaches in the GeoPackage
-        # TODO: MAKE THIS STEP WORK
-        # calc_level_path(curs, watershed_id, True)
+        calc_level_path(curs, watershed_id, True)
 
         # Assign FCode.
 
@@ -254,14 +329,12 @@ def calculate_metrics(output_gpkg: str, dem_path: str, slope_path: str, output_f
     with sqlite3.connect(output_gpkg) as conn:
         curs = conn.cursor()
 
-        curs.execute('SELECT RivName, island, CUM_AREA FROM watersheds')
+        curs.execute('SELECT CatchID FROM watersheds')
         row = curs.fetchone()
-        metrics['watershedName'] = row[0]
-        metrics['island'] = 'north' if row[1] == 'N' else 'south'
-        metrics['watershedArea'] = row[2]
+        metrics['watershed id'] = row[0]
 
         # River lines
-        curs.execute('SELECT COUNT(*), Sum(Shape_Length), Min(TotDASqKm), Max(TotDASqKm) FROM riverlines')
+        curs.execute('SELECT COUNT(*), Sum(LENGTH), Min(TotDASqKm), Max(TotDASqKm) FROM riverlines')
         row = curs.fetchone()
         metrics['riverCount'] = row[0]
         metrics['riverLength'] = row[1]
@@ -272,6 +345,34 @@ def calculate_metrics(output_gpkg: str, dem_path: str, slope_path: str, output_f
 
     with open(output_file, 'w', encoding='utf8') as f:
         json.dump(metrics, f, indent=2)
+
+
+def get_raster_epsg(raster_path: str) -> int:
+    """
+    Get the EPSG code of a raster file using the Raster class from rscommons.
+
+    Args:
+        raster_path (str): Path to the raster file.
+
+    Returns:
+        int: EPSG code of the raster's CRS, or None if not found.
+    """
+    # Create a Raster object
+    raster = Raster(raster_path)
+
+    # Get the projection in WKT format
+    wkt_projection = raster.proj
+
+    # Parse the WKT projection to get the EPSG code
+    spatial_ref = osr.SpatialReference()
+    spatial_ref.ImportFromWkt(wkt_projection)
+
+    # Extract the EPSG code
+    if spatial_ref.IsProjected() or spatial_ref.IsGeographic():
+        epsg = spatial_ref.GetAttrValue("AUTHORITY", 1)
+        return int(epsg) if epsg else None
+    else:
+        return None
 
 
 def process_topography(input_dem: str, output_folder: str, processing_boundary, output_epsg: int) -> Tuple[str, str, str]:
@@ -288,8 +389,12 @@ def process_topography(input_dem: str, output_folder: str, processing_boundary, 
     output_slope = os.path.join(topo_folder, 'slope.tif')
     output_hillshade = os.path.join(topo_folder, 'dem_hillshade.tif')
 
-    # TODO- check ADD WARNING IF output_epsg not same as input
+    # check if we are trying to transform the raster and WARNING if so
+    if get_raster_epsg(input_dem) != output_epsg:
+        log.warning(f'Input DEM EPSG {get_raster_epsg(input_dem)} does not match output EPSG {output_epsg}. Usually  inadvisable to transform, but we will.')
+    # clip, and possibly transform, the input DEM
     raster_warp(input_dem, output_dem, output_epsg, processing_boundary, {"cutlineBlend": 1})
+    # generate slope and hillshade rasters
     gdal_dem_geographic(output_dem, output_slope, 'slope')
     gdal_dem_geographic(output_dem, output_hillshade, 'hillshade')
 
@@ -302,7 +407,7 @@ def process_topography(input_dem: str, output_folder: str, processing_boundary, 
 
 
 def main():
-    """ Main entry point for New Zealand RS Context"""
+    """ Main entry point for Italy RS Context"""
     parser = argparse.ArgumentParser(description='Riverscapes Context Tool for Italy')
     parser.add_argument('watershed_id', help='Watershed/HUC identifier', type=int)
     parser.add_argument('hydro_gpkg', help='Path to GeoPackage containing national hydrography feature classes', type=str)
