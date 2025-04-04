@@ -16,10 +16,15 @@ import traceback
 from riverscapes import RiverscapesAPI, RiverscapesSearchParams
 from typing import List
 import inquirer
+from osgeo import ogr
 
 from rscommons.util import safe_makedirs, safe_remove_dir
-from rscommons import Logger, dotenv, RSProject, RSMeta
+from rscommons import Logger, dotenv, RSProject, RSMeta, GeopackageLayer, ModelConfig
+from rscommons.copy_features import copy_features_fields
 from sqlbrat.utils.capacity_validation import validate_capacity
+from sqlbrat.__version__ import __version__
+
+cfg = ModelConfig('https://xml.riverscapes.net/Projects/XSD/V2/RiverscapesProject.xsd', __version__)
 
 
 def run_validation(huc: int, working_dir: str = '/workspaces/data', upload_tags: str = None):
@@ -174,12 +179,38 @@ def run_validation(huc: int, working_dir: str = '/workspaces/data', upload_tags:
     validate_capacity(out_brat_gpkg, out_beaver_gpkg)
     valid_path = os.path.join(os.path.dirname(out_brat_gpkg), 'validation')
     for g in brat_gpkgs:
+        # copy the validation folder to the brat projects
         cmd = f"cp -r {valid_path} {os.path.dirname(g)}"
         subprocess.run(cmd, shell=True)
+
+        # copy the realized capacity feature class to the brat projects
+        huc_id = None
+        with GeopackageLayer(os.path.join(g, 'vwReaches')) as lyr:
+            while huc_id is None:
+                huc_id = lyr.ogr_layer.GetNextFeature().GetField('WatershedID')
+
+        with GeopackageLayer(g, layer_name='vwCapacity', write=True) as cap_lyr:
+            cap_lyr.create_layer(ogr.wkbMultiLineString, epsg=cfg.OUTPUT_EPSG, fields={
+                'WatershedID': ogr.OFTString,
+                'ReachCode': ogr.OFTInteger,
+                'predicted_capacity': ogr.OFTReal,
+                'dam_density': ogr.OFTReal,
+                'percent_capacity': ogr.OFTReal
+            })
+
+        full_fc = os.path.join(out_brat_gpkg, 'vwCapacity')
+        copy_fc = os.path.join(g, 'vwCapacity')
+        copy_features_fields(full_fc, copy_fc, attribute_filter=f"WatershedID = '{huc_id}'")
+
         # update project xml
         log.info('Updating project xml file')
         project = RSProject(None, os.path.join(os.path.dirname(os.path.dirname(g)), 'project.rs.xml'))
         outputs_node = project.XMLBuilder.root.find('Realizations').find('Realization').find('Outputs')
+        outgpkg_node = outputs_node.find('Geopackage').find('Layers')
+        cap_node = project.XMLBuilder.add_sub_element(outgpkg_node, 'Vector', attribs={'lyrName': 'vwCapacity'})
+        project.XMLBuilder.add_sub_element(cap_node, 'Name', text='Realized BRAT Capacity')
+        newmeta_node = project.XMLBuilder.add_sub_element(cap_node, 'MetaData')
+        project.XMLBuilder.add_sub_element(newmeta_node, 'Meta', attribs={'name': 'Description'}, text='Realized BRAT Capacity from Beaver Activity')
         image_node1 = project.XMLBuilder.add_sub_element(outputs_node, 'Image', attribs={'id': 'quantile'})
         project.XMLBuilder.add_sub_element(image_node1, 'Name', text='Quantile Regressions')
         project.XMLBuilder.add_sub_element(image_node1, 'Path', text='outputs/validation/regressions.png')
