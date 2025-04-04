@@ -71,8 +71,8 @@ def dam_count_table(brat_gpkg_path: str, dams_gpkg_path: str):
         db.curs.execute('SELECT fid FROM vwReaches')
         reachids = [row['fid'] for row in db.curs.fetchall()]
         db.curs.execute('DROP TABLE IF EXISTS dam_counts')
-        db.curs.execute('CREATE TABLE dam_counts (ReachID INTEGER PRIMARY KEY, FCode INTEGER, dam_count INTEGER, dam_density REAL, predicted_capacity REAL, length REAL, percent_capacity REAL)')
-        db.curs.execute('INSERT INTO dam_counts (ReachID, FCode, predicted_capacity, length) SELECT fid, ReachCode, oCC_EX, iGeo_Len FROM vwReaches')
+        db.curs.execute('CREATE TABLE dam_counts (ReachID INTEGER PRIMARY KEY, FCode INTEGER, WatershedID TEXT, dam_count INTEGER, dam_density REAL, predicted_capacity REAL, length REAL, percent_capacity REAL)')
+        db.curs.execute('INSERT INTO dam_counts (ReachID, FCode, WatershedID, predicted_capacity, length) SELECT fid, ReachCode, WatershedID, oCC_EX, iGeo_Len FROM vwReaches')
         for reachid in reachids:
             if reachid in dam_cts.keys():
                 db.curs.execute('UPDATE dam_counts SET dam_count = ? WHERE reachid = ?', (dam_cts[reachid], reachid))
@@ -86,7 +86,7 @@ def dam_count_table(brat_gpkg_path: str, dams_gpkg_path: str):
         # db.conn.commit()
 
         try:
-            db.curs.execute("""CREATE VIEW vwCapacity AS SELECT B.geom, B.fid, B.ReachCode, C.predicted_capacity, C.dam_density, C.percent_capacity FROM vwReaches B
+            db.curs.execute("""CREATE VIEW vwCapacity AS SELECT B.geom, B.fid, B.ReachCode, B.WatershedID, C.predicted_capacity, C.dam_density, C.percent_capacity FROM vwReaches B
                             LEFT JOIN dam_counts C ON B.fid = C.ReachID""")
             db.conn.commit()
 
