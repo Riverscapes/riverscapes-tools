@@ -67,7 +67,7 @@ def run_validation(huc: int, working_dir: str = '/workspaces/data', upload_tags:
 
     for hucnum, project_list in projects.items():
         if len(project_list) > 1:
-            project_list.sort(key=lambda x: x.created_date)
+            project_list.sort(key=lambda x: x.created_date, reverse=True)
             questions = [
                 inquirer.List('selected_project',
                               message=f"Select a project for HUC {hucnum}",
@@ -108,7 +108,7 @@ def run_validation(huc: int, working_dir: str = '/workspaces/data', upload_tags:
 
     for hucnum, project_list in projects.items():
         if len(project_list) > 1:
-            project_list.sort(key=lambda x: x.created_date)
+            project_list.sort(key=lambda x: x.created_date, reverse=True)
             questions = [
                 inquirer.List('selected_project',
                               message=f"Select a project for HUC {hucnum}",
