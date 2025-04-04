@@ -58,8 +58,8 @@ def dam_counts_to_dgos(dam_pts: str, dgos: str):
     for fid, dam_ct in dam_cts.items():
         ct += 1
         progbar.update(ct)
-        conn.ExecuteSQL(f'UPDATE dgos SET dam_ct = {dam_ct[0]}, dam_density = {dam_ct[0] / (dam_ct[1] / 1000)} WHERE fid = {fid}')
+        conn.ExecuteSQL(f'UPDATE beaver_activity_dgos SET dam_ct = {dam_ct[0]}, dam_density = {dam_ct[0] / (dam_ct[1] / 1000)} WHERE fid = {fid}')
 
-    conn.ExecuteSQL('UPDATE dgos SET dam_ct = 0, dam_density = 0 WHERE dam_ct IS NULL')
+    conn.ExecuteSQL('UPDATE beaver_activity_dgos SET dam_ct = 0, dam_density = 0 WHERE dam_ct IS NULL')
 
     log.info('Dam counts added to DGOs')

@@ -149,25 +149,36 @@
       "console": "integratedTerminal",
       "args": [
         "${input:HUC}",
-        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhdplushr.gpkg/WBDHU8",
+        "{env:DATA_ROOT}/qris/${input:HUC}/context/feature_classes.gpkg/WBDHU10",
         "{env:DATA_ROOT}/vbet/${input:HUC}/intermediates/vbet_intermediates.gpkg/vbet_dgos", //change this to the BRAT DGOs once implemented
         "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/vbet_igos",
-        "{env:DATA_ROOT}/test_data/Survey_MT_Complete.shp",
+        "{env:DATA_ROOT}/qris/${input:HUC}",
         "{env:DATA_ROOT}/beaver_activity/${input:HUC}",
         "--verbose"
+      ]
+    },
+    {
+      "name": "Augment Beaver Activity XML",
+      "type": "python",
+      "request": "launch",
+      "module": "beaver_sign.beaver_act_rs",
+      "console": "integratedTerminal",
+      "args": [
+        "{env:DATA_ROOT}/beaver_activity/${input:HUC}/project.rs.xml",
+        "{env:DATA_ROOT}/vbet/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/qris/${input:HUC}/project.rs.xml"
       ]
     },
     {
       "name": "Validate BRAT Capacity",
       "type": "python",
       "request": "launch",
-      "module": "sqlbrat.capacity_validation",
+      "module": "sqlbrat.validate_capacity",
       "console": "integratedTerminal",
       "args": [
         "${input:HUC}",
-        "{env:DATA_ROOT}/brat/${input:HUC}/outputs/brat.gpkg",
-        "{env:DATA_ROOT}/beaver_activity/${input:HUC}/beaver_activity.gpkg",
-        "--verbose"
+        "{env:DATA_ROOT}",
+        "--upload_tags", 
+        "2024CONUS,validation_data"
       ]
     },
     {
