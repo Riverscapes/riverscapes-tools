@@ -117,7 +117,10 @@ def dgo_geometry(gpk_path: str, dem_path: str, field_names=default_dgo_field_nam
             da = 0
             lp = None
             for reach_ftr, *_ in reaches_lyr.iterate_features(clip_shape=dgo_geom):
-                if reach_ftr.GetField('DrainArea') > da:
+                drain_area = reach_ftr.GetField('DrainArea')
+                if drain_area is None:
+                    continue
+                if drain_area > da:
                     lp = reach_ftr.GetField('level_path')
             for reach_ftr, *_ in reaches_lyr.iterate_features(clip_shape=dgo_geom):
                 if reach_ftr.GetGeometryRef() is None:
