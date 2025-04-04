@@ -9,7 +9,7 @@ from semver import VersionInfo
 
 _INIT_PARAMS = {
     'PROJ_FILE': 'project.rs.xml',
-    'OUTPUT_EPSG': 32632
+    'OUTPUT_EPSG': 4326
 }
 
 
