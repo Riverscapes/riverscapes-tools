@@ -135,6 +135,8 @@ def run_validation(huc: int, working_dir: str = '/workspaces/data', upload_tags:
     for g in brat_gpkgs:
         cmd = f"ogr2ogr -f GPKG -makevalid -append -nln 'vwReaches' {out_brat_gpkg} {g} 'vwReaches'"
         subprocess.run(cmd, shell=True)
+        cmd2 = f"ogr2ogr -f GPKG -makevalid -append -nln 'ReachGeometry' {out_brat_gpkg} {g} 'ReachGeometry'"
+        subprocess.run(cmd2, shell=True)
 
     beaver_gpkgs = []
     for hucnum, gpkgs in num_beaver_gpkgs.items():

@@ -86,7 +86,7 @@ def dam_count_table(brat_gpkg_path: str, dams_gpkg_path: str):
         # db.conn.commit()
 
         try:
-            db.curs.execute("""CREATE VIEW vwCapacity AS SELECT B.fid, B.ReachCode, B.geom, C.predicted_capacity, C.dam_density, C.percent_capacity FROM vwReaches B
+            db.curs.execute("""CREATE VIEW vwCapacity AS SELECT B.geom, B.fid, B.ReachCode, C.predicted_capacity, C.dam_density, C.percent_capacity FROM vwReaches B
                             LEFT JOIN dam_counts C ON B.fid = C.ReachID""")
             db.conn.commit()
 
