@@ -518,11 +518,11 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                             besp_output[metrics[metric]['field_name']] = area
 
                         if metric == 'STRMGRAD':
-                            grad = calculate_gradient(outputs_gpkg, dgo_id)
+                            grad = calculate_gradient(curs, dgo_id)
                             besp_output[metrics[metric]['field_name']] = grad
 
                         if metric == 'VALGRAD':
-                            grad = calculate_gradient(outputs_gpkg, dgo_id, channel=False)
+                            grad = calculate_gradient(curs, dgo_id, channel=False)
                             besp_output[metrics[metric]['field_name']] = grad
 
                         if metric == 'RELFLWLNGTH':
@@ -530,12 +530,12 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                             besp_output[metrics[metric]['field_name']] = rel_len
 
                         if metric == 'LFEVT':
-                            evt = landfire_classes(feat_seg_dgo, outputs_gpkg)
+                            evt = landfire_classes(feat_seg_dgo, curs)
                             classes = ','.join([str(c) for c in evt])
                             besp_output[metrics[metric]['field_name']] = classes
 
                         if metric == 'LFBPS':
-                            bps = landfire_classes(feat_seg_dgo, outputs_gpkg, epoch=2)
+                            bps = landfire_classes(feat_seg_dgo, curs, epoch=2)
                             classes = ','.join([str(c) for c in bps])
                             besp_output[metrics[metric]['field_name']] = classes
 

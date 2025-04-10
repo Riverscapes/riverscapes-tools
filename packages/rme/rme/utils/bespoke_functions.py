@@ -91,7 +91,7 @@ def waterbody_extent(feat_geom, waterbodies, transform):
     return area
 
 
-def calculate_gradient(gpkg, dgoid, channel=True):
+def calculate_gradient(cursor, dgoid, channel=True):
     """calculate the gradient of a stream reach or centerline
 
     Args:
@@ -102,21 +102,19 @@ def calculate_gradient(gpkg, dgoid, channel=True):
     Returns:
         _type_: gradient (unitless)
     """
-    with sqlite3.connect(gpkg) as conn:
-        curs = conn.cursor()
-        if channel:
-            curs.execute(
-                f"SELECT strmmaxelev, strmminelev, strmleng FROM dgo_measurements WHERE dgoid = {dgoid}")
-        else:
-            curs.execute(
-                f"SELECT clmaxelev, clminelev, valleng FROM dgo_measurements WHERE dgoid = {dgoid}")
-        vals = curs.fetchone()
-        if vals is None:
-            return None
-        if vals[2] > 0.0:
-            gradient = (vals[0] - vals[1]) / vals[2]
-        else:
-            gradient = None
+    if channel:
+        cursor.execute(
+            f"SELECT strmmaxelev, strmminelev, strmleng FROM dgo_measurements WHERE dgoid = {dgoid}")
+    else:
+        cursor.execute(
+            f"SELECT clmaxelev, clminelev, valleng FROM dgo_measurements WHERE dgoid = {dgoid}")
+    vals = cursor.fetchone()
+    if vals is None:
+        return None
+    if vals[2] > 0.0:
+        gradient = (vals[0] - vals[1]) / vals[2]
+    else:
+        gradient = None
 
     return gradient
 
@@ -147,19 +145,18 @@ def rel_flow_length(feat_geom, line_network, transform):
     return length
 
 
-def landfire_classes(feat_geom, gpkg, epoch=1):
+def landfire_classes(feat_geom, cursor, epoch=1):
     """get the landfire vegetation classes for a DGO if they make up more than 30% of the area"""
 
     classes = {}
     classes_out = []
     dgo_id = feat_geom.GetFID()
-    with sqlite3.connect(gpkg) as conn:
-        curs = conn.cursor()
-        curs.execute(
-            f"""SELECT DGOVegetation.VegetationID, CellCount FROM DGOVegetation LEFT JOIN vegetation_types 
-            ON DGOVegetation.VegetationID = vegetation_types.VegetationID WHERE dgoid = {dgo_id} AND EpochID = {epoch}""")
-        for row in curs.fetchall():
-            classes[row[0]] = row[1]
+
+    cursor.execute(
+        f"""SELECT DGOVegetation.VegetationID, CellCount FROM DGOVegetation LEFT JOIN vegetation_types 
+        ON DGOVegetation.VegetationID = vegetation_types.VegetationID WHERE dgoid = {dgo_id} AND EpochID = {epoch}""")
+    for row in cursor.fetchall():
+        classes[row[0]] = row[1]
 
     for key, value in classes.items():
         if value / sum(classes.values()) > 0.3:
