@@ -69,10 +69,10 @@ metric_id,dataset,field_name
 72,outputs/riverscapes_metrics.gpkg/dgo_geomorph,channel_area
 73,outputs/riverscapes_metrics.gpkg/dgo_geomorph,floodplain_area
 74,outputs/riverscapes_metrics.gpkg/dgos,segment_area
-75,outputs/riverscapes_metrics.gpkg/dgo_geomorph,channel_area
-76,outputs/riverscapes_metrics.gpkg/dgo_geomorph,lowlying_area
-77,outputs/riverscapes_metrics.gpkg/dgo_geomorph,elevated_area
-78,outputs/riverscapes_metrics.gpkg/dgo_geomorph,floodplain_area
+75,outputs/riverscapes_metrics.gpkg/dgo_geomorph,active_channel_ratio
+76,outputs/riverscapes_metrics.gpkg/dgo_geomorph,low_lying_ratio
+77,outputs/riverscapes_metrics.gpkg/dgo_geomorph,elevated_ratio
+78,outputs/riverscapes_metrics.gpkg/dgo_geomorph,floodplain_ratio
 81,outputs/riverscapes_metrics.gpkg/dgo_geomorph,channel_area
 82,outputs/riverscapes_metrics.gpkg/dgo_geomorph,confining_margins
 83,outputs/riverscapes_metrics.gpkg/dgo_geomorph,constricting_margins
