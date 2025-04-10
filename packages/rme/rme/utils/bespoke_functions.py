@@ -84,6 +84,8 @@ def waterbody_extent(feat_geom, waterbodies, transform):
         area = 0
         for feat, *_ in lyr.iterate_features(clip_shape=feat_geom):
             geom_wb_full = feat.GetGeometryRef()
+            if not geom_wb_full.IsValid():
+                geom_wb_full = geom_wb_full.MakeValid()
             feat_section = geom_wb_full.Intersection(feat_geom)
             section_proj = VectorBase.ogr2shapely(feat_section, transform=transform)
             area += section_proj.area
