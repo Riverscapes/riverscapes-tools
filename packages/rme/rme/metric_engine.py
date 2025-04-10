@@ -457,6 +457,8 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                 bespoke_method_metrics = []
                 metrics_output = {}
                 feat_geom = feat_seg_dgo.GetGeometryRef().Clone()
+                if not feat_geom.IsValid():
+                    feat_geom = feat_geom.MakeValid()
                 dgo_id = feat_seg_dgo.GetFID()
                 segment_distance = feat_seg_dgo.GetField('seg_distance')
                 if segment_distance is None:
