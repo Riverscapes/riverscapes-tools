@@ -125,6 +125,8 @@ def value_from_dataset_area(dgo_ftr, in_dataset, field_name):
     with GeopackageLayer(in_dataset) as lyr:
         for feat, *_ in lyr.iterate_features(clip_shape=dgo_geom):
             geom = feat.GetGeometryRef()
+            if not geom.IsValid():
+                geom = geom.MakeValid()
             attribute = feat.GetField(field_name)
             geom_section = dgo_geom.Intersection(geom)
             area = geom_section.GetArea()
