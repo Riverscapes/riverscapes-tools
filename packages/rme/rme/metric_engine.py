@@ -434,6 +434,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
 
     # add dgo measurements to the table and get metric groups
     with sqlite3.connect(outputs_gpkg) as conn:
+        conn.execute("PRAGMA journal_mode=WAL;")
         curs = conn.cursor()
         for dgo_id, meas in dgo_meas.items():
             if None not in meas:
@@ -453,6 +454,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
 
         with GeopackageLayer(segments) as lyr_segments, sqlite3.connect(outputs_gpkg) as conn:
             curs = conn.cursor()
+            # log.info(f'Calculating {metric_group[1]} metrics for DGOs')
             for feat_seg_dgo, *_ in lyr_segments.iterate_features(f'Calculating {metric_group[1]} metrics for DGOs'):
                 bespoke_method_metrics = []
                 metrics_output = {}
@@ -544,6 +546,8 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                     set_clause = ', '.join([f"{k} = ?" for k in besp_output.keys()])
                     sql = f"""UPDATE dgo_{metric_group[1]} SET {set_clause} WHERE dgoid = {dgo_id}"""
                     curs.execute(sql, list(besp_output.values()))
+                if dgo_id % 100 == 0:
+                    conn.commit()
 
         conn.commit()
 
@@ -635,6 +639,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
 
     # fill out igo_metrics table using moving window analysis
     for metric_group in metric_groups:
+        log.info(f'Calculating {metric_group[1]} metrics for IGOs')
 
         metrics = generate_metric_list(outputs_gpkg, metric_group[0], primary=None)
         with sqlite3.connect(outputs_gpkg) as conn:
