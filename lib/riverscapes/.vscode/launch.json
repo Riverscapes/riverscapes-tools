@@ -204,6 +204,18 @@
       ]
     },
     {
+      "name": "Download HUC17 bounds",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "riverscapes.scripts.download_huc17_bounds",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/.env",
+      "args": [
+        "{env:DATA_ROOT}/huc17_bounds",
+      ]
+    },
+    {
       "name": "Python: Current File",
       "type": "debugpy",
       "request": "launch",
