@@ -1,7 +1,10 @@
-from rscommons import Raster, GeodatabaseLayer, GeopackageLayer, VectorBase
+from rscommons import Raster, GeodatabaseLayer, GeopackageLayer, VectorBase, ProgressBar
 from rscommons.classes.vector_base import get_utm_zone_epsg
 
 from osgeo import gdal, ogr
+import numpy as np
+import rasterio
+import os
 
 
 veg_class_lookup = {
@@ -132,7 +135,7 @@ def rasterize_gpkg_layer(gpkg_path: str, attribute: str, output_raster: str, res
         target_ds.SetProjection(spatial_ref.ExportToWkt())
 
         # Rasterize the layer
-        gdal.RasterizeLayer(target_ds, [1], layer.ogr_layer, options=[f"ATTRIBUTE={attribute}"])
+        gdal.RasterizeLayer(target_ds, [1], layer.ogr_layer, options=[f"ATTRIBUTE={attribute}", "COMPRESS=LZW"])
 
         # Close the datasets
         target_ds = None
@@ -140,5 +143,36 @@ def rasterize_gpkg_layer(gpkg_path: str, attribute: str, output_raster: str, res
         print(f"Rasterization complete. Output saved to {output_raster}")
 
 
+def hybrid_raster(ripmap_raster: str, lf_raster: str, out_raster: str):
+
+    with Raster(ripmap_raster) as ripmap, Raster(lf_raster) as lf:
+        lf_res = os.path.join(os.path.dirname(lf_raster), os.path.basename(lf_raster).replace('.tif', '_res.tif'))
+
+        gdal.Warp(lf_res, lf_raster, format='GTiff', width=ripmap.array.shape[1], height=ripmap.array.shape[0],
+                  outputBounds=(ripmap.gt[0], ripmap.gt[3],
+                  ripmap.gt[0] + ripmap.cellWidth * ripmap.array.shape[1],
+                  ripmap.gt[3] + ripmap.cellHeight * ripmap.array.shape[0]),
+                  dstSRS=ripmap.proj, resampleAlg=gdal.GRA_NearestNeighbour, srcNodata=lf.nodata, dstNodata=lf.nodata)
+
+    with rasterio.open(lf_res) as lf_ras, rasterio.open(ripmap_raster) as ripmap:
+
+        ripmap_array = ripmap.read(1)
+        lf_array = lf_ras.read(1)
+
+        ripmap_array = np.flipud(ripmap_array)  # Flip the array vertically
+
+        out_array = np.where(ripmap_array == ripmap.nodata, lf_array, ripmap_array)
+
+    with rasterio.open(lf_res) as src:
+        meta = src.profile
+        meta.update({})
+
+    with rasterio.open(out_raster, 'w', **meta) as dst:
+        dst.write(out_array, 1)
+
+    print(f"Hybrid rasterization complete. Output saved to {out_raster}")
+
+
 # clip_ripmap('/workspaces/data/URG_Version2_0Plus.gdb', '/workspaces/data/rs_context/1302010213/hydrology/nhdplushr.gpkg/WBDHU10', '/workspaces/data/ripmap.gpkg/ripmap', veg_class_lookup)
-rasterize_gpkg_layer('/workspaces/data/ripmap.gpkg/ripmap', 'RipMapID', '/workspaces/data/ripmap.tif', 1)
+# rasterize_gpkg_layer('/workspaces/data/ripmap.gpkg/ripmap', 'RipMapID', '/workspaces/data/ripmap2.tif', 5)
+hybrid_raster('/workspaces/data/ripmap2.tif', '/workspaces/data/rs_context/1302010213/vegetation/existing_veg.tif', '/workspaces/data/hybrid_ripmap.tif')
