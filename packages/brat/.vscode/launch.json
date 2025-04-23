@@ -29,7 +29,7 @@
         "{env:DATA_ROOT}/anthro/${input:HUC}/outputs/anthro.gpkg/vwReaches",
         "{env:DATA_ROOT}/anthro/${input:HUC}/outputs/anthro.gpkg/vwIgos",
         "{env:DATA_ROOT}/anthro/${input:HUC}/outputs/anthro.gpkg/vwDgos",
-        "{env:DATA_ROOT}/rs_context/${input:HUC}/vegetation/existing_veg.tif",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/vegetation/hybrid_nmripmap.tif",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/vegetation/historic_veg.tif",
         "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/vbet_full", // VBET!!!!!
         "30", // streamside_buffer
@@ -191,6 +191,23 @@
         "{env:DATA_ROOT}",
         "--upload_tags", 
         "2024CONUS,validation_data"
+      ]
+    },
+    {
+      "name": "Prepare NMRipMap Raster",
+      "type": "python",
+      "request": "launch",
+      "module": "scripts.nmripmap",
+      "console": "integratedTerminal",
+      "args": [
+        "${input:HUC}",
+        "{env:DATA_ROOT}/URG_Version2_0Plus.gdb",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhdplushr.gpkg/WBDHU10",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/vegetation/ripmap.gpkg/ripmap",
+        "RipMapID",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/vegetation/nmripmap.tif",
+        "5",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/vegetation/existing_veg.tif"
       ]
     },
     {
