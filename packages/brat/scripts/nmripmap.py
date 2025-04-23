@@ -1,66 +1,70 @@
-from rscommons import Raster, GeodatabaseLayer, GeopackageLayer, VectorBase, ProgressBar
-from rscommons.classes.vector_base import get_utm_zone_epsg
+from rscommons import Raster, GeodatabaseLayer, GeopackageLayer, VectorBase
 
 from osgeo import gdal, ogr
 import numpy as np
 import rasterio
 import os
+import argparse
+import traceback
+import sys
 
 
 veg_class_lookup = {
-    "IA1": 0,
-    "IA2": 1,
-    "IA3": 2,
-    "IB1": 3,
-    "IB2": 4,
-    "IB3": 5,
-    "IB4": 6,
-    "IB5": 7,
-    "IB6": 8,
-    "IB7": 9,
-    "IB8": 10,
-    "IB9": 11,
-    "IC1": 12,
-    "IC2": 13,
-    "IC3": 14,
-    "IC4": 15,
-    "ID1": 16,
-    "IE1": 17,
-    "IIA1": 18,
-    "IIA2": 19,
-    "IIB1": 20,
-    "IIB2": 21,
-    "IIB3": 22,
-    "IIB4": 23,
-    "IIB5": 24,
-    "IIB6": 25,
-    "IIC1": 26,
-    "IIIA1": 27,
-    "IIIA2": 28,
-    "IIIB1": 29,
-    "IIIB2": 30,
-    "IIIB3": 31,
-    "IIIB4": 32,
-    "IIIC1": 33,
-    "IIID1": 34,
-    "IIID2": 35,
-    "IIIE1": 36,
-    "IIIE2": 37,
-    "IIIF1": 38,
-    "IVA1": 39,
-    "IVB1": 40,
-    "IVC1": 41,
-    "IVC2": 42,
-    "IVD1": 43,
-    "IVD2": 44,
-    "IVE1": 45,
-    "IVF1": 46,
-    "IVG1": 47
+    "IA1": 10001,
+    "IA2": 10002,
+    "IA3": 10003,
+    "IB1": 10004,
+    "IB2": 10005,
+    "IB3": 10006,
+    "IB4": 10007,
+    "IB5": 10008,
+    "IB6": 10009,
+    "IB7": 10010,
+    "IB8": 10011,
+    "IB9": 10012,
+    "IC1": 10013,
+    "IC2": 10014,
+    "IC3": 10015,
+    "IC4": 10016,
+    "ID1": 10017,
+    "IE1": 10018,
+    "IIA1": 10019,
+    "IIA2": 10020,
+    "IIB1": 10021,
+    "IIB2": 10022,
+    "IIB3": 10023,
+    "IIB4": 10024,
+    "IIB5": 10025,
+    "IIB6": 10026,
+    "IIC1": 10027,
+    "IIIA1": 10028,
+    "IIIA2": 10029,
+    "IIIB1": 10030,
+    "IIIB2": 10031,
+    "IIIB3": 10032,
+    "IIIB4": 10033,
+    "IIIC1": 10034,
+    "IIID1": 10035,
+    "IIID2": 10036,
+    "IIIE1": 10037,
+    "IIIE2": 10038,
+    "IIIF1": 10039,
+    "IVA1": 10040,
+    "IVB1": 10041,
+    "IVC1": 10042,
+    "IVC2": 10043,
+    "IVD1": 10044,
+    "IVD2": 10045,
+    "IVE1": 10046,
+    "IVF1": 10047,
+    "IVG1": 10048
 }
 
 
 def clip_ripmap(rip_map: str, clip_shp: str, out_polygon: str, lookup: dict):
-    with GeopackageLayer(clip_shp) as clip_layer, GeodatabaseLayer(rip_map, layer_name='URG_Version2Plus_NMRipMap') as rip_layer, GeopackageLayer(out_polygon, write=True) as out_layer:
+    with GeopackageLayer(clip_shp) as clip_layer, \
+            GeodatabaseLayer(rip_map, layer_name='MRG_Version2Plus_NMRipMap') as rip_layer, \
+            GeopackageLayer(out_polygon, write=True) as out_layer:
         transform = clip_layer.get_transform_from_layer(rip_layer)
         transformback = rip_layer.get_transform_from_layer(clip_layer)
 
@@ -73,8 +77,22 @@ def clip_ripmap(rip_map: str, clip_shp: str, out_polygon: str, lookup: dict):
         clip_ftr = clip_layer.ogr_layer.GetNextFeature()
         if clip_ftr is None:
             raise RuntimeError(f"Clip shapefile {clip_shp} is empty.")
-        clip_geom = clip_ftr.GetGeometryRef()
+        geom = clip_ftr.GetGeometryRef()
+        # geom.Transform(transform)
+        envelope = geom.GetEnvelope()
+        min_x, max_x, min_y, max_y = envelope
+        clip_geom = ogr.Geometry(ogr.wkbPolygon)
+        ring = ogr.Geometry(ogr.wkbLinearRing)
+        ring.AddPoint(min_x, min_y)
+        ring.AddPoint(max_x, min_y)
+        ring.AddPoint(max_x, max_y)
+        ring.AddPoint(min_x, max_y)
+        ring.AddPoint(min_x, min_y)
+        clip_geom.AddGeometry(ring)
+
         clip_geom.Transform(transform)
+        if not clip_geom.IsValid():
+            raise RuntimeError(f"Clip geometry is not valid: {clip_geom.ExportToWkt()}")
 
         for rip_ftr, *_ in rip_layer.iterate_features(clip_shape=clip_geom):
             rip_geom = rip_ftr.GetGeometryRef()
@@ -173,6 +191,32 @@ def hybrid_raster(ripmap_raster: str, lf_raster: str, out_raster: str):
     print(f"Hybrid rasterization complete. Output saved to {out_raster}")
 
 
-# clip_ripmap('/workspaces/data/URG_Version2_0Plus.gdb', '/workspaces/data/rs_context/1302010213/hydrology/nhdplushr.gpkg/WBDHU10', '/workspaces/data/ripmap.gpkg/ripmap', veg_class_lookup)
-# rasterize_gpkg_layer('/workspaces/data/ripmap.gpkg/ripmap', 'RipMapID', '/workspaces/data/ripmap2.tif', 5)
-hybrid_raster('/workspaces/data/ripmap2.tif', '/workspaces/data/rs_context/1302010213/vegetation/existing_veg.tif', '/workspaces/data/hybrid_ripmap.tif')
+# def main():
+#     parser = argparse.ArgumentParser(description="Clip RipMap and rasterize it.")
+#     parser.add_argument("huc", help="HUC code for the RipMap.")
+#     parser.add_argument("rip_map", help="Path to the RipMap geodatabase.")
+#     parser.add_argument("clip_shp", help="Path to the shapefile to clip the RipMap.")
+#     parser.add_argument("out_polygon", help="Path to the output polygon shapefile.")
+#     parser.add_argument("attribute", help="Attribute to use for rasterization.")
+#     parser.add_argument("output_raster", help="Path to the output raster file.")
+#     parser.add_argument("resolution", type=int, help="Resolution of the output raster.")
+#     parser.add_argument("landfire_raster", help="Path to the Landfire raster file.")
+
+#     args = parser.parse_args()
+
+#     try:
+#         clip_ripmap(args.rip_map, args.clip_shp, args.out_polygon, veg_class_lookup)
+#         rasterize_gpkg_layer(args.out_polygon, args.attribute, args.output_raster, args.resolution)
+#         hybrid_raster(args.output_raster, args.landfire_raster, os.path.join(os.path.dirname(args.landfire_raster), "hybrid_" + os.path.basename(args.output_raster)))
+#     except Exception as e:
+#         print(f"Error: {e}")
+#         traceback.print_exc()
+#         sys.exit(1)
+
+
+# if __name__ == "__main__":
+#     main()
+
+# clip_ripmap('/workspaces/data/MRG_Version2_0Plus.gdb', '/workspaces/data/rs_context/1302020201/hydrology/nhdplushr.gpkg/WBDHU10', '/workspaces/data/rs_context/1302020201/vegetation/ripmap.gpkg/ripmap', veg_class_lookup)
+# rasterize_gpkg_layer('/workspaces/data/rs_context/1302020201/vegetation/ripmap.gpkg/ripmap', 'RipMapID', '/workspaces/data/rs_context/1302020201/vegetation/nmripmap.tif', 5)
+hybrid_raster('/workspaces/data/rs_context/1302020201/vegetation/nmripmap.tif', '/workspaces/data/rs_context/1302020201/vegetation/existing_veg.tif', '/workspaces/data/rs_context/1302020201/vegetation/hybrid_nmripmap.tif')
