@@ -4052,3 +4052,51 @@ VegetationID,EpochID,Name,DefaultSuitability,LandUseID,Physiognomy,Notes
 9852,1,Polynesian Ruderal Subalpine-Montane Grassland,1,,,
 9993,1,West Gulf Coastal Plain Flatwoods Pond,1,94,Riparian,
 9994,1,West Gulf Coastal Plain Herbaceous Seep and Bog,0,94,Riparian,
+10001,1,Montane Native Evergreen Riparian Forest,2,,,From NMRiparianHabitatMap Version 2
+10002,1,Montane Native Evergreen-Deciduous Riparian Forest,3,,,From NMRiparianHabitatMap Version 2
+10003,1,Montane Native Deciduous Riparian Forest,4,,,From NMRiparianHabitatMap Version 2
+10004,1,Western Lowland Native Deciduous Riparian Forest,4,,,From NMRiparianHabitatMap Version 2
+10005,1,Great Plains Lowland Native Deciduous Riparian Forest,4,,,From NMRiparianHabitatMap Version 2
+10006,1,Lowland Native-Introduced Russian Olive Deciduous Riparian Forest,3,,,From NMRiparianHabitatMap Version 2
+10007,1,Lowland Native-Introduced Tamarisk Deciduous Riparian Forest,3,,,From NMRiparianHabitatMap Version 2
+10008,1,Lowland Native-Introduced Russian Olive - Tamarisk Deciduous Riparian Forest,3,,,From NMRiparianHabitatMap Version 2
+10009,1,Lowland Native Evergreen Dry Riparian Forest,2,,,From NMRiparianHabitatMap Version 2
+10010,1,Lowland Native Evergreen-Deciduous Riparian Forest,2.5,,,From NMRiparianHabitatMap Version 2
+10011,1,Southwest Warm Desert Native Deciduous Riparian Forest,4,,,From NMRiparianHabitatMap Version 2
+10012,1,Southwest Desert Native Dry Deciduous Riparian Woodland,3,,,From NMRiparianHabitatMap Version 2
+10013,1,Russian Olive Introduced Riparian Woodland and Scrub,2,,,From NMRiparianHabitatMap Version 2
+10014,1,Tamarisk Introduced Riparian Woodland and Scrub,1.5,,,From NMRiparianHabitatMap Version 2
+10015,1,Russian Olive - Tamarisk Introduced Riparian Woodland and Scrub,2,,,From NMRiparianHabitatMap Version 2
+10016,1,Mixed Introduced Forest and Scrub,2.5,,,From NMRiparianHabitatMap Version 2
+10017,1,Upland Forest and Woodland,2,,,From NMRiparianHabitatMap Version 2
+10018,1,Semi-Natural Riparian Woodland and Scrub,3,,,From NMRiparianHabitatMap Version 2
+10019,1,Subalpine-Montane Riparian Shrubland,4,,,From NMRiparianHabitatMap Version 2
+10020,1,Montane Dry Riparian Shrubland,3,,,From NMRiparianHabitatMap Version 2
+10021,1,Lowland Wet Riparian Shrubland,3,,,From NMRiparianHabitatMap Version 2
+10022,1,Lowland Dry Riparian Shrubland,2,,,From NMRiparianHabitatMap Version 2
+10023,1,Desert Alkaline-Saline Wet Shrubland,1,,,From NMRiparianHabitatMap Version 2
+10024,1,Lowland Mixed Native- Russian Olive Riparian Scrub,2.5,,,From NMRiparianHabitatMap Version 2
+10025,1,Lowland Mixed Native-Introduced Tamarisk Riparian Scrub,2.5,,,From NMRiparianHabitatMap Version 2
+10026,1,Lowland Mixed Native - Russian Olive - Tamarisk Riparian Woodland and Scrub,2.5,,,From NMRiparianHabitatMap Version 2
+10027,1,Upland Shrubland,2,,,From NMRiparianHabitatMap Version 2
+10028,1,Subalpine and Montane Wetland,1,,,From NMRiparianHabitatMap Version 2
+10029,1,Montane Wet Meadow,1,,,From NMRiparianHabitatMap Version 2
+10030,1,Western Lowland Marsh,1,,,From NMRiparianHabitatMap Version 2
+10031,1,Great Plains Lowland Marsh,1,,,From NMRiparianHabitatMap Version 2
+10032,1,Arid West Lowland Wet Meadow,1,,,From NMRiparianHabitatMap Version 2
+10033,1,Great Plains Lowland Wet Meadow,1,,,From NMRiparianHabitatMap Version 2
+10034,1,Montane Dry Riparian Meadow and Grassland,1,,,From NMRiparianHabitatMap Version 2
+10035,1,Western Lowland Salt Meadow and Dry Grassland,1,,,From NMRiparianHabitatMap Version 2
+10036,1,Great Plains Lowland Salt Meadow and Dry Grassland,1,,,From NMRiparianHabitatMap Version 2
+10037,1,Ruderal Forb Meadow,1,,,From NMRiparianHabitatMap Version 2
+10038,1,Pasture Wetlands,1,,,From NMRiparianHabitatMap Version 2
+10039,1,Upland Grassland,1,,,From NMRiparianHabitatMap Version 2
+10040,1,Riparian Bare Ground/Rockland [non-channel],0,,,From NMRiparianHabitatMap Version 2
+10041,1,Open Channel Riverwash/Water/Non-vegetated Bars,2,,,From NMRiparianHabitatMap Version 2
+10042,1,Agriculture – Cultivated crops,0,,,From NMRiparianHabitatMap Version 2
+10043,1,Agriculture – Hay/Pasture,1,,,From NMRiparianHabitatMap Version 2
+10044,1,Agriculture – Cultivated crops,0,,,From NMRiparianHabitatMap Version 2
+10045,1,Agriculture – Hay/Pasture,1,,,From NMRiparianHabitatMap Version 2
+10046,1,Development/Disturbed Ground,0,,,From NMRiparianHabitatMap Version 2
+10047,1,Roads,0,,,From NMRiparianHabitatMap Version 2
+10048,1,Upland Bare Ground/Rockland,0,,,From NMRiparianHabitatMap Version 2
