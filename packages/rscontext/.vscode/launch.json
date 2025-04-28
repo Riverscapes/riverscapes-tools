@@ -52,6 +52,21 @@
       ]
     },
     {
+      "name": "DEM Builder",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "rscontext.dem_builder",
+      "console": "integratedTerminal",
+      "args": [
+        "{env:DATA_ROOT}/dem-builder/bounds.gpkg/my_polygon_layer",
+        "123456789ABCDEFGHIJ",
+        "1",
+        "{env:DATA_ROOT}/dem-builder/output_dem.tif",
+        "4326",
+        "{env:DATA_ROOT}/dem-builder/download"
+      ]
+    },
+    {
       "name": "RS Context Metrics",
       "type": "debugpy",
       "request": "launch",
