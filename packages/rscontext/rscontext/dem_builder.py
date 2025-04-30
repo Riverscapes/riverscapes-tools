@@ -35,14 +35,15 @@ def dem_builder(bounds_path: str, parent_guid: str, output_res: float, output_ep
 
     log = Logger('DEM Builder')
 
-    # Load the geometries from the bounds feature class and unnion them into a single geometry
+    # Load the geometries from the bounds feature class and union them into a single geometry
     # Note that this function can do other things, such as force the geometry onto a specific projection
+    # download_dem also does something similar -- i don't know if we need to
     bounds_polygon = get_geometry_unary_union(bounds_path)
 
     ned_download_folder = os.path.join(download_folder, 'ned')
     ned_unzip_folder = os.path.join(scratch_dir, 'ned')
 
-    dem_rasters, _urls = download_dem(bounds_polygon, output_epsg, 0.01, ned_download_folder, ned_unzip_folder, force_download)
+    dem_rasters, _urls = download_dem(bounds_path, output_epsg, 0.01, ned_download_folder, ned_unzip_folder, force_download)
 
     raster_vrt_stitch(dem_rasters, output_path, output_epsg, clip=bounds_path, warp_options={"cutlineBlend": 1})
     area_ratio = verify_areas(output_path, bounds_polygon)
@@ -70,6 +71,11 @@ def main():
     parser.add_argument('--force', help='(optional) download existing files ', action='store_true', default=False)
 
     args = dotenv.parse_args_env(parser)
+
+    # Hard-code args.parallel and args.verbose
+    args.parallel = False
+    args.verbose = True
+    args.temp_folder = r'/workspaces/data/temp'
 
     log = Logger('DEM Builder')
     log.setup(logPath=os.path.join(os.path.dirname(args.output_path), 'dem_builder.log'), verbose=args.verbose)

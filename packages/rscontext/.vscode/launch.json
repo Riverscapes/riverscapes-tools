@@ -58,7 +58,7 @@
       "module": "rscontext.dem_builder",
       "console": "integratedTerminal",
       "args": [
-        "{env:DATA_ROOT}/dem-builder/bounds.gpkg/my_polygon_layer",
+        "{env:DATA_ROOT}/dem-builder/test_regionsv.gpkg/v_test_regions_1",
         "123456789ABCDEFGHIJ",
         "1",
         "{env:DATA_ROOT}/dem-builder/output_dem.tif",
