@@ -37,7 +37,7 @@ def dem_builder(bounds_path: str, parent_guid: str, output_res: float, output_ep
 
     # Load the geometries from the bounds feature class and union them into a single geometry
     # Note that this function can do other things, such as force the geometry onto a specific projection
-    # download_dem also does something similar -- i don't know if we need to
+    # download_dem also does something similar -- i don't know if we need to do it twice
     bounds_polygon = get_geometry_unary_union(bounds_path)
 
     ned_download_folder = os.path.join(download_folder, 'ned')
@@ -46,7 +46,7 @@ def dem_builder(bounds_path: str, parent_guid: str, output_res: float, output_ep
     dem_rasters, _urls = download_dem(bounds_path, output_epsg, 0.01, ned_download_folder, ned_unzip_folder, force_download)
 
     raster_vrt_stitch(dem_rasters, output_path, output_epsg, clip=bounds_path, warp_options={"cutlineBlend": 1})
-    area_ratio = verify_areas(output_path, bounds_polygon)
+    area_ratio = verify_areas(output_path, bounds_path)
     if area_ratio < 0.85:
         log.warning(f'DEM data less than 85%% of bounds extent ({area_ratio:%})')
         # raise Exception(f'DEM data less than 85%% of nhd extent ({area_ratio:%})')
