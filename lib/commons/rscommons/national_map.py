@@ -11,6 +11,7 @@ from typing import Dict
 
 from rscommons.download import download_unzip
 from rscommons.national_map_api import TNM
+from rscommons.shapefile import get_geometry_union
 from rscommons.vector_ops import get_geometry_unary_union
 from rscommons import Logger
 
@@ -177,35 +178,22 @@ def _get_shapefile_urls(dataset, file_format, region_type, region):
 
 def get_1m_dem_urls(vector_path: str, buffer_dist: int | float) -> list[str]:
     """
-    Retrieve a list of all DEM rasters within the polygons found in input layer 
+    Retrieve a list of all 1-metre DEM rasters within the polygons found in input layer 
 
-    Note that this query used to include a browseType = citation but some
-    NED DEM catalog items are not tracked as citations and they get omitted.
     :param vector_path: path to Shapefile or geopackage layer 
     :param buffer_dist: Distance in DEGREES to buffer the polygons 
     :return: List of HTTPS download URLs for DEMs
+
+    Based on the get_dem_urls function below - see for comments
     """
-
+    log = Logger('The National Map')
     # Get a union of all polygon features in the input
-    # Science Base API calls cannot handle very long lpolygon vertex lists.
-    # Simplify the polygon so that there are few enough vertices to shorten the WKT
-    # Resorting to using polygon envelope to guarantee successful API request
-
     polygon = get_geometry_unary_union(vector_path)
+
     buffered = polygon
     if buffer_dist:
         buffered = polygon.buffer(buffer_dist)
 
-    # simple = buffered.simplify(0.01)
-
-    # Experimentation with using the bounding rectangle instead of the polygon.
-    # simple = polygon.envelope
-    # Cut and paste the dump text below into a json file and then drag it into QGIS
-    # raw = shapely.geometry.mapping(simple)
-    # dump = json.dumps(raw)
-    # print(dump)
-
-    # Pylint doesn't like this, but it works
     polygon_coords = list(buffered.envelope.exterior.coords)
 
     params = {
@@ -218,7 +206,6 @@ def get_1m_dem_urls(vector_path: str, buffer_dist: int | float) -> list[str]:
     urls = _get_urls(params)
 
     if len(urls) < 1:
-        log = Logger('The National Map')
         log.error('TNM API Query returned no results.')
         # lsg - think this will be fairly common and shouldn't trigger an exception that bubbles up that way
         raise Exception('No DEM rasters identified on The National Map')
@@ -241,10 +228,7 @@ def get_dem_urls(vector_path, buffer_dist):
     # Science Base API calls cannot handle very long lpolygon vertex lists.
     # Simplify the polygon so that there are few enough vertices to shorten the WKT
     # Resorting to using polygon envelope to guarantee successful API request
-
-    # LSG: this didn't work, so replaced with unary version from different module
-    # polygon = get_geometry_union(vector_path, 4326)
-    polygon = get_geometry_unary_union(vector_path)
+    polygon = get_geometry_union(vector_path, 4326)
     buffered = polygon
     if buffer_dist:
         buffered = polygon.buffer(buffer_dist)
@@ -263,28 +247,24 @@ def get_dem_urls(vector_path, buffer_dist):
 
     params = {
         "polygon": ",".join([f"{lat} {long}" for lat, long in polygon_coords]),
-        "datasets": "Digital Elevation Model (DEM) 1 meter",
-        "prodFormats": "GeoTIFF",
+        "datasets": "National Elevation Dataset (NED) 1/3 arc-second",
+        "prodFormats": "IMG",
     }
 
     urls = _get_urls(params)
 
-    # lsg we're starting with GeoTiff so this is not needed
     # IMGs might not be available. Fall back to Geotiff
     # NOTE: We can't just do an OR here in case both IMG and GeoTIFF are present because then
     # We'll have overlapping rasters and download too much stuff
-    # if len(urls) < 1:
-    #     params["prodFormats"] = "GeoTIFF"
-    #     urls = _get_urls(params)
+    if len(urls) < 1:
+        params["prodFormats"] = "GeoTIFF"
+        urls = _get_urls(params)
 
     if len(urls) < 1:
         log = Logger('The National Map')
         log.error('TNM API Query: {}'.format(params))
-        # lsg - think this will be fairly common and shouldn't trigger an exception that bubbles up that way
         raise Exception('No DEM rasters identified on The National Map')
 
-    return urls
-    # lsg what are we doing with this csv list of URLs? do not think they are needed
     with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'ned_urls.csv'), 'rt') as f:
         reader = csv.reader(f)
         data = [item[0] for item in list(reader)]
