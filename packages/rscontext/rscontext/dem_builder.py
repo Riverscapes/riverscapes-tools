@@ -13,17 +13,16 @@ import os
 import sys
 import traceback
 import uuid
-from rscommons import (Logger, dotenv, initGDALOGRErrors)
-from rscommons.util import (safe_makedirs, safe_remove_dir)
+from rscommons import Logger, dotenv, initGDALOGRErrors
+from rscommons.util import safe_makedirs, safe_remove_dir
 from rscommons.download_dem import download_dem, verify_areas
-from rscommons.vector_ops import get_geometry_unary_union
 from rscontext.boundary_management import raster_area_intersection
 from rscommons.raster_warp import raster_vrt_stitch, raster_warp
 
 
 def dem_builder(bounds_path: str, parent_guid: str, output_res: float, output_epsg: int, download_folder: str, scratch_dir: str, output_path: str, force_download: bool):
-    """_summary_
-
+    """Build a mosaiced raster for input area from 3DEP 1m DEM
+    TODO: Q for PB - What is intention of parent_guid ? 
     Args:
         bounds_path (str): _description_
         parent_guid (str): _description_
@@ -34,16 +33,12 @@ def dem_builder(bounds_path: str, parent_guid: str, output_res: float, output_ep
     """
 
     log = Logger('DEM Builder')
-
-    # Load the geometries from the bounds feature class and union them into a single geometry
-    # Note that this function can do other things, such as force the geometry onto a specific projection
-    # download_dem also does something similar -- i don't know if we need to do it twice
-    bounds_polygon = get_geometry_unary_union(bounds_path)
+    initGDALOGRErrors()
 
     ned_download_folder = os.path.join(download_folder, 'ned')
     ned_unzip_folder = os.path.join(scratch_dir, 'ned')
 
-    dem_rasters, _urls = download_dem(bounds_path, output_epsg, 0.01, ned_download_folder, ned_unzip_folder, force_download)
+    dem_rasters, _urls = download_dem(bounds_path, output_epsg, 0.01, ned_download_folder, ned_unzip_folder, force_download, '1m')
 
     raster_vrt_stitch(dem_rasters, output_path, output_epsg, clip=bounds_path, warp_options={"cutlineBlend": 1})
     area_ratio = verify_areas(output_path, bounds_path)
@@ -72,7 +67,7 @@ def main():
 
     args = dotenv.parse_args_env(parser)
 
-    # Hard-code args.parallel and args.verbose
+    # Hard-code certain args
     args.parallel = False
     args.verbose = True
     args.temp_folder = r'/workspaces/data/temp'
@@ -93,6 +88,7 @@ def main():
 
     try:
         dem_builder(args.bounds_path, args.parent_guid, args.output_res, args.output_epsg, args.download_dir, scratch_dir, args.output_path, args.force)
+        # build_rs_context_project(os.path.basename(args.bounds_path), os.path.join(args.output_path, "project"))
 
     except Exception as e:
         log.error(e)
@@ -103,7 +99,24 @@ def main():
 
     # Cleaning up the scratch folder is essential
     safe_remove_dir(scratch_dir)
+    log.info("DEM Builder complete.")
     sys.exit(0)
+
+
+def build_rs_context_project(project_identifier, output_folder):
+    """generate a Riverscapes project of type RSContext but with just the 3DEP 1m DEM products
+
+    This is a much simplified version of rs_context.rs_context 
+    Todo: review to back-port features additional features 
+
+    :param project_identifier: Could be HUC, or other identifier. 
+    :param output_folder: Output location for the riverscapes context project
+
+    """
+
+    log = Logger("RS Context for 3DEP")
+    log.title("RS Context 3DEP project builder")
+    safe_makedirs(output_folder)
 
 
 if __name__ == "__main__":

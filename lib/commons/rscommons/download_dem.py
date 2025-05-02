@@ -1,6 +1,6 @@
 # Name:     Download DEM
 #
-# Purpose:  Identify all the NED 10m DEM rasters that intersect with a HUC
+# Purpose:  Identify all the NED rasters that intersect with a (HUC)
 #           boundary polygon. Download and unzip all the rasters then mosaic
 #           them into a single compressed GeoTIF raster possessing a specific
 #           spatial reference.
@@ -21,7 +21,6 @@ import rasterio
 from rscommons.download import download_unzip, download_file
 from rscommons.national_map import get_dem_urls, get_1m_dem_urls
 from rscommons import Logger, Geotransform, ProgressBar, get_shp_or_gpkg
-from rscommons.vector_ops import load_geometries
 
 
 # NED data sometimes has small discrepencies in its cell widths. For this reason we need a tolerance,
@@ -38,7 +37,7 @@ def download_dem(vector_path, _epsg, buffer_dist, download_folder, unzip_folder,
     """
     Identify rasters within HUC, download them and mosaic into single GeoTIF
     :param vector_path: Path to bounding polygon ShapeFile
-    :param epsg: Output spatial reference
+    :param epsg: Output spatial reference NOT USED
     :param buffer_dist: Distance in DEGREES to buffer the bounding polygon
     :param unzip_folder: Temporary folder where downloaded rasters will be saved
     :param force_download: The download will always be performed if this is true.
