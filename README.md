@@ -86,3 +86,23 @@ cd docs
 yarn install
 yarn start
 ```
+
+
+-----------------------------------
+
+## Using UV (March 31, 2025)
+
+NOTE: EVERYTHING ABOVE THIS LINE IS OUT OF DATE AND WILL NEED TO BE REVISITED
+
+```sh
+# We can use QGIS's python3 to give us a bootstrapped environment with GDAL, rasterio, scipy etc.
+uv venv --python /Applications/QGIS.app/Contents/MacOS/bin/python3 --system-site-packages
+
+# Activate the environment
+source .venv/bin/activate
+
+# Do the synching
+uv sync
+
+python3 -c "import sys; print(sys.path)"
+```
