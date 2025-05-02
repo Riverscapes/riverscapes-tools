@@ -13,13 +13,8 @@ import sqlite3
 
 from osgeo import ogr, osr
 from shapely.ops import linemerge, voronoi_diagram
-<<<<<<< HEAD
 from shapely.geometry import MultiLineString, MultiPoint, LineString, Point
 from shapely.topology import TopologicalError
-=======
-from shapely.geometry import MultiLineString, MultiPoint
-from shapely.errors import TopologicalError
->>>>>>> 4e046688 (more work needed to modernize this but it's looking good)
 from shapely.validation import make_valid
 
 from rscommons import GeopackageLayer, Logger, VectorBase, dotenv
