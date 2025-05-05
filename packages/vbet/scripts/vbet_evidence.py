@@ -4,17 +4,18 @@
 import os
 import sqlite3
 import sys
-import csv
 from csv import DictWriter
 from math import floor
 
 from osgeo import gdal, ogr
 
-from rscommons import GeopackageLayer, get_shp_or_gpkg
+from rscommons import GeopackageLayer
+from riverscapes import RiverscapesAPI, RiverscapesSearchParams
 
 
-attributes = {'HAND': 'outputs/HAND.tif',
-              'Slope': 'outputs/gdal_slope.tif'}
+attributes = {'HAND': 'outputs/hand.tif',
+              'Slope': 'outputs/gdal_slope.tif',
+              'RelLikelihood': 'outputs/vbet_evidence.tif'}
 
 observation_fields = {'observationid': ogr.OFTInteger,
                       # 'HUC8': ogr.OFTInteger,
@@ -46,27 +47,87 @@ category_lookup = {11: 'Active Channel Area',
                    19: 'Fan - Inactive Floodplain'}
 
 
-def extract_vbet_evidence(observation_points, vbet_data_root, out_points, hucid):
+def extract_vbet_evidence(observation_points, huc10s, out_points, data_root):
 
     if os.path.exists(out_points):
         csv_mode = 'a'
     else:
         csv_mode = 'w'
 
-    with open(out_points, csv_mode, newline='') as csvfile, \
-            GeopackageLayer(observation_points) as in_points:
+    huc_pts = {}
 
-        writer = DictWriter(csvfile, [n for n in observation_fields] + ['category_name', 'StreamOrder', 'DrainageAreaSqkm', 'InputZone'] + [n for n in attributes])
+    api = RiverscapesAPI(stage='PRODUCTION')
+
+    with open(out_points, csv_mode, newline='') as csvfile, \
+            GeopackageLayer(observation_points) as in_points, \
+            GeopackageLayer(huc10s) as in_hucs:
+
+        writer = DictWriter(csvfile, [n for n in observation_fields] + ['category_name', 'StreamOrder', 'DrainageAreaSqkm', 'InputZone'] + [n for n in attributes] + 'RelLikelihood')
         if csv_mode == 'w':
             writer.writeheader()
 
         for feat, *_ in in_points.iterate_features():
+            # feat_attributes = {name: feat.GetField(name) for name in observation_fields}
+            # feat_attributes['category_name'] = category_lookup[feat_attributes['categoryid']]
+            geom = feat.GetGeometryRef()
+
+            for huc_ftr, *_ in in_hucs.iterate_features(clip_shape=geom):
+                huc = huc_ftr.GetField('HUC10')
+                if huc in huc_pts.keys():
+                    huc_pts[str(huc)].append(feat)
+                else:
+                    huc_pts[str(huc)] = [feat]
+
+                    # download the necessary project data
+                    taudem_dir = os.path.join(data_root, 'taudem', huc)
+                    if not os.path.exists(taudem_dir):
+                        os.makedirs(taudem_dir)
+                    vbet_dir = os.path.join(data_root, 'vbet', huc)
+                    if not os.path.exists(vbet_dir):
+                        os.makedirs(vbet_dir)
+                    api.refresh_token()
+                    taudem_params = RiverscapesSearchParams(
+                        {
+                            "projectTypeId": "taudem",
+                            "meta": {
+                                "HUC": str(huc),
+                            },
+                            "tags": ["2024CONUS"]
+                        }
+                    )
+                    for proj, _stats, _total, _prg in api.search(taudem_params):
+                        api.download_files(proj, taudem_dir, re_filter=['hand.tif', 'gdal_slope.tif'])
+
+                    vbet_params = RiverscapesSearchParams(
+                        {
+                            "projectTypeId": "vbet",
+                            "meta": {
+                                "HUC": str(huc),
+                            },
+                            "tags": ["2024CONUS"]
+                        }
+                    )
+                    for proj, _stats, _total, _prg in api.search(vbet_params):
+                        api.download_files(proj, vbet_dir, re_filter=['vbet_evidence.tif'])
+
+                    rs_context_params = RiverscapesSearchParams(
+                        {
+                            "projectTypeId": "rs_context",
+                            "meta": {
+                                "HUC": str(huc),
+                            },
+                            "tags": ["2024CONUS"]
+                        }
+                    )
+                    for proj, _stats, _total, _prg in api.search(rs_context_params):
+                        api.download_files(proj, vbet_dir, re_filter=[r'.*nhdplushr\.gpkg'])
+
+        for huc, feat in huc_pts.items():
             feat_attributes = {name: feat.GetField(name) for name in observation_fields}
             feat_attributes['category_name'] = category_lookup[feat_attributes['categoryid']]
             geom = feat.GetGeometryRef()
-
             for attribute, path in attributes.items():
-                raster_path = os.path.join(vbet_data_root, 'taudem', hucid, path)
+                raster_path = os.path.join(data_root, 'taudem', huc, path)
                 if os.path.exists(raster_path):
                     src_ds = gdal.Open(raster_path)
                     gt = src_ds.GetGeoTransform()
@@ -88,29 +149,28 @@ def extract_vbet_evidence(observation_points, vbet_data_root, out_points, hucid)
                         continue
 
             if 'HAND' and 'Slope' in feat_attributes.keys():
-                catchments_path = os.path.join(vbet_data_root, 'rs_context', hucid, 'hydrology', 'NHDPlusCatchment.shp')
-                flowlines_path = os.path.join(vbet_data_root, 'rs_context', hucid, 'hydrology', 'nhd_data.sqlite')
+                catchments_path = os.path.join(data_root, 'rs_context', huc, 'hydrology', 'nhdplushr.gpkg/NHDPlusCatchment')
+                flowlines_path = os.path.join(data_root, 'rs_context', huc, 'hydrology', 'nhdplushr.gpkg/NHDPlusFlowlineVAA')
 
-                with get_shp_or_gpkg(catchments_path) as catchments:
+                with GeopackageLayer(catchments_path) as catchments:
 
                     for catchment_feat, *_ in catchments.iterate_features(clip_shape=geom):
                         nhd_id = catchment_feat.GetField('NHDPlusID')
 
                         with sqlite3.connect(flowlines_path) as conn:
-
                             curs = conn.cursor()
                             if len(curs.execute('select * from NHDPlusFlowlineVAA where NHDPlusID = ?', (nhd_id,)).fetchall()) > 0:
-                                feat_attributes['StreamOrder'] = curs.execute('select StreamOrde from NHDPlusFlowlineVAA where NHDPlusID = ?', (nhd_id,)).fetchall()[0][0]
-                                feat_attributes['DrainageAreaSqkm'] = curs.execute('select TotDASqKm from NHDPlusFlowlineVAA where NHDPlusID = ?', (nhd_id,)).fetchall()[0][0]
+                                # feat_attributes['StreamOrder'] = curs.execute('select StreamOrde from NHDPlusFlowlineVAA where NHDPlusID = ?', (nhd_id,)).fetchall()[0][0]
+                                feat_attributes['DrainageAreaSqkm'] = curs.execute('select DivDASqKm from NHDPlusFlowlineVAA where NHDPlusID = ?', (nhd_id,)).fetchall()[0][0]
 
-                                if feat_attributes['StreamOrder'] < 2:
+                                if feat_attributes['DrainageAreaSqkm'] < 25:
                                     feat_attributes['InputZone'] = 'Small'
-                                elif feat_attributes['StreamOrder'] < 4:
+                                elif 25 <= feat_attributes['DrainageAreaSqkm'] < 250:
                                     feat_attributes['InputZone'] = "Medium"
                                 else:
                                     feat_attributes['InputZone'] = 'Large'
 
-                writer.writerow(feat_attributes)
+            writer.writerow(feat_attributes)
 
 
 def main():
