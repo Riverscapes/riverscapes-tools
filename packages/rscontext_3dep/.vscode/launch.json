@@ -1,0 +1,160 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "HUC",
+      "description": "What HUC?",
+      // "default": "17070202" // North Fork John Day
+      "default": "1005001208" // Really small HUC
+      // "default": "17060103" // Asotin
+    },
+    {
+      "type": "promptString",
+      "id": "VPU",
+      "description": "What VPU?",
+      // "default": "17070202" // North Fork John Day
+      "default": "1701" // Really small HUC
+      // "default": "17060103" // Asotin
+    }
+  ],  
+  "configurations": [
+    {
+      "name": "RS Context",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "rscontext.rs_context",
+      "console": "integratedTerminal",
+      // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
+      "args": [
+        "${input:HUC}",
+        "{env:NATIONAL_PROJECT}/landfire/220",
+        "{env:NATIONAL_PROJECT}/ownership/surface_management_agency.shp",
+        "{env:NATIONAL_PROJECT}/ownership/FairMarketValue.tif",
+        "{env:NATIONAL_PROJECT}/ecoregions/us_eco_l4_state_boundaries.shp",
+        "{env:NATIONAL_PROJECT}/political_boundaries/cb_2021_us_state_500k.shp",
+        "{env:NATIONAL_PROJECT}/political_boundaries/cb_2021_us_county_500k.shp",
+        "{env:NATIONAL_PROJECT}/geology/SGMC_Geology.shp",
+        "{env:NATIONAL_PROJECT}/prism",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}",
+        "{env:DOWNLOAD_FOLDER}",
+        "--meta", "Runner=VSCode",
+        // "--temp_folder", "{env:DOWNLOAD_FOLDER}/tmp",
+        // "--force",
+        // "--parallel",
+        "--verbose",
+        "--debug"
+      ]
+    },
+    {
+      "name": "DEM Builder",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "rscontext.dem_builder",
+      "console": "integratedTerminal",
+      "args": [
+        "{env:DATA_ROOT}/dem-builder/test_regionsv.gpkg/140500040202",
+        "1",
+        "{env:DATA_ROOT}/dem-builder",
+        "4326",
+        "{env:DATA_ROOT}/dem-builder/download"
+      ]
+    },
+    {
+      "name": "RS Context Metrics",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "rscontext.rs_context_metrics",
+      "console": "integratedTerminal",
+      "args": [
+        "{env:DATA_ROOT}/rs_context/${input:HUC}"
+      ]
+    },
+    {
+      "name": "Modis (LST)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "scripts.land_surface_temp",
+      "console": "integratedTerminal",
+      // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
+      "args": [
+        "{env:DATA_ROOT}/MODIS/outputs/${input:VPU}/${input:VPU}.sqlite",
+        "{env:DATA_ROOT}/MODIS/MODIS_Mosaic",
+        "{env:NHD_ROOT}/NHDPLUS_H_${input:VPU}_HU4_GDB.gdb",
+        "--verbose",
+        "--debug"
+      ]
+    },
+    // {
+    //   "name": "Land Surface Temp XMLS",
+    //   "type": "python",
+    //   "request": "launch",
+    //   "module": "scripts.modis_xmls",
+    //   "console": "integratedTerminal",
+    //   // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
+    //   "args": [
+    //     "{env:DATA_ROOT}/MODIS/xmls",
+    //     "--verbose",
+    //   ]
+    // },
+
+    {
+      "name": "Write report",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "rscontext.rs_context_report",
+      "console": "integratedTerminal",
+      "args": [
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/project.rs.xml",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/rsc_report.html"
+      ]
+    },
+    {
+      "name": "Download NWI Data",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "scripts.download_nwi",
+      "console": "integratedTerminal",
+      "args": [
+        "{env:DATA_ROOT}/nwi_data",
+        "nardata",
+        "national_wetland_inventory"
+      ]
+    },
+    {
+      "name": "Calculate Metrics",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "rscommons.classes.project_metrics",
+      "console": "integratedTerminal",
+      "args": [
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhdplushr.gpkg",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/project.rs.xml"
+      ]
+    },
+    {
+      "name": "Generate Bounding GeoJSON",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "rscommons.project_bounds",
+      "console": "integratedTerminal",
+      "args":[
+        "${input:in_layer}",
+        "${input:out_layer}",
+      ]
+    },
+    {
+      "name": "Version Bump",
+      "type": "debugpy",
+      "module": "rscommons.version",
+      "args": [
+        "${workspaceFolder}/rscontext/__version__.py"
+      ],
+      "request": "launch",
+      "console": "integratedTerminal"
+    }    
+  ]
+}

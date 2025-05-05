@@ -1,0 +1,12 @@
+{
+  "DEM": [
+    "National Elevation Dataset (NED) Digital Elevation Models (DEM). These DEMs are downloaded from Science Base and mosaiced into a single 10m DEM that covers the riverscapes context project extent. The output raster data extent is clipped to the watershed boundary.",
+    "https://gdg.sc.egov.usda.gov/Catalog/ProductDescription/NED.html",
+    ""
+  ],
+  "HILLSHADE": [
+    "Hillshade raster generated from the NED DEM using the gdal_dem tool specifying the hillshade option. This raster has the same raster properties and data extent as the DEM.",
+    "https://gdal.org/programs/gdaldem.html",
+    ""
+  ],
+}
