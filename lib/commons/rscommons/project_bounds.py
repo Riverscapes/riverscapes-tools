@@ -13,7 +13,7 @@ from typing import Dict
 from osgeo import ogr
 from osgeo.ogr import Geometry
 
-from rscommons.vector_ops import collect_feature_class
+from rscommons.vector_ops import collect_feature_class, get_geometry_unary_union
 from rscommons.classes.vector_classes import VectorBase
 
 Path = str
@@ -31,7 +31,10 @@ def generate_project_extents_from_layer(bounding_layer: Path, output: Path, simp
         Dict[str, tuple]: {'CENTROID': (X, Y), "BBOX": (minX, maxX, minY, maxY)}
     """
 
-    geom = collect_feature_class(bounding_layer)
+    # this assumes bounding_layer is a simple type - fails for MULTIPOLYGON. returns ogr.Geometry
+    # geom = collect_feature_class(bounding_layer)
+    # this doesn't fail. returns shapely geometry
+    geom = get_geometry_unary_union(bounding_layer)
     result = generate_project_extents_from_geom(geom, output, simplify_tolerance=simplify_tolerance)
 
     return result
