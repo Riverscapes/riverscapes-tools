@@ -13,7 +13,8 @@ def dam_reach_type(brat_gpkg):
 
     if max_drainage is None or max_drainage == '':
         max_drainage = 1000000
-    curs.execute(f"""UPDATE ReachAttributes SET Dam_Setting = 'Classic' WHERE iGeo_DA < {max_drainage} AND iGeo_Slope < 0.06 AND oCC_EX > 0 and ReachCode in (46000, 46006, 46003, 46007, 55800, 33400)""")
+    curs.execute(f"""UPDATE ReachAttributes SET Dam_Setting = 'Classic' WHERE iGeo_DA < {max_drainage} AND iGeo_Slope < 0.06 AND oCC_EX > 0 AND IsMainCh == 1 AND ReachCode in (46000, 46006, 46003, 46007, 55800, 33400)""")
+    curs.execute(f"""UPDATE ReachAttributes SET Dam_Setting = 'Floodplain' WHERE iGeo_DA < {max_drainage} AND iGeo_Slope < 0.06 AND oCC_EX > 0 AND IsMainCh == 0 AND ReachCode in (46000, 46006, 46003, 46007, 55800, 33400)""")
     curs.execute(f"""UPDATE ReachAttributes SET Dam_Setting = 'Steep' WHERE iGeo_DA < {max_drainage} AND iGeo_Slope >= 0.06 AND oCC_EX > 0 and ReachCode in (46000, 46006, 46003, 46007, 55800, 33400)""")
     curs.execute(f"""UPDATE ReachAttributes SET Dam_Setting = 'Floodplain' WHERE iGeo_DA >= {max_drainage} AND oVC_EX > 0 and ReachCode in (46000, 46006, 46003, 46007, 55800, 33400)""")
     conn.commit()
