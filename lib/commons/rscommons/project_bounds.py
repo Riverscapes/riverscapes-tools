@@ -13,7 +13,7 @@ from typing import Dict
 from osgeo import ogr
 from osgeo.ogr import Geometry
 
-from rscommons.vector_ops import collect_feature_class, get_geometry_unary_union
+from rscommons.vector_ops import collect_feature_class
 from rscommons.classes.vector_classes import VectorBase
 
 Path = str
