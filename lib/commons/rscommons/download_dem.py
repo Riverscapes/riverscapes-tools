@@ -136,6 +136,7 @@ def verify_areas(raster_path: str, boundary_shp: str):
         [real] -- ratio of raster area over shape file area
 
     Caution - this will use degrees and square degrees as units of measure if inputs are in a geographic CRS
+    TODO: I am sometimes getting GDAL ERROR unable to add to band, I think it's coming from this function
     """
     log = Logger('Verify Areas')
 

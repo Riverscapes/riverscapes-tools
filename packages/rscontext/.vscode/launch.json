@@ -59,9 +59,8 @@
       "console": "integratedTerminal",
       "args": [
         "{env:DATA_ROOT}/dem-builder/test_regionsv.gpkg/140500040202",
-        "123456789ABCDEFGHIJ",
         "1",
-        "{env:DATA_ROOT}/dem-builder/output_dem_140500040202.tif",
+        "{env:DATA_ROOT}/dem-builder",
         "4326",
         "{env:DATA_ROOT}/dem-builder/download"
       ]
