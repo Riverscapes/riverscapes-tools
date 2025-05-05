@@ -31,10 +31,8 @@ def generate_project_extents_from_layer(bounding_layer: Path, output: Path, simp
         Dict[str, tuple]: {'CENTROID': (X, Y), "BBOX": (minX, maxX, minY, maxY)}
     """
 
-    # this assumes bounding_layer is a simple type - fails for MULTIPOLYGON. returns ogr.Geometry
-    # geom = collect_feature_class(bounding_layer)
-    # this doesn't fail. returns shapely geometry
-    geom = get_geometry_unary_union(bounding_layer)
+    # this assumes bounding_layer is a simple type - fails for MULTIPOLYGON. returns ogr.Geometry. Consider changing.
+    geom = collect_feature_class(bounding_layer)
     result = generate_project_extents_from_geom(geom, output, simplify_tolerance=simplify_tolerance)
 
     return result
