@@ -46,6 +46,7 @@ def riverscape_brat(gpkg_path: str, windows: dict):
             risk = []
             limitation = []
             opportunity = []
+            setting = []
             with get_shp_or_gpkg(reaches) as reach_lyr:
                 for reach_feature, _counter, _progbar in reach_lyr.iterate_features(clip_shape=dgo_geom):
                     reach_geom = reach_feature.GetGeometryRef()
@@ -71,6 +72,7 @@ def riverscape_brat(gpkg_path: str, windows: dict):
                         risk.append(reach_feature.GetField('Risk'))
                         limitation.append(reach_feature.GetField('Limitation'))
                         opportunity.append(reach_feature.GetField('Opportunity'))
+                        setting.append(reach_feature.GetField('Dam_Setting'))
                         ex30[exveg30] = reach_length
                         ex100[exveg100] = reach_length
                         hpe30[hpeveg30] = reach_length
@@ -82,11 +84,13 @@ def riverscape_brat(gpkg_path: str, windows: dict):
                 dgo_atts[dgoid]['Risk'] = risk[ix]
                 dgo_atts[dgoid]['Limitation'] = limitation[ix]
                 dgo_atts[dgoid]['Opportunity'] = opportunity[ix]
+                dgo_atts[dgoid]['Dam_Setting'] = setting[ix]
             else:
                 dgo_atts[dgoid] = {'Lengths': 0}
                 dgo_atts[dgoid]['Risk'] = 'NA'
                 dgo_atts[dgoid]['Limitation'] = 'NA'
                 dgo_atts[dgoid]['Opportunity'] = 'NA'
+                dgo_atts[dgoid]['Dam_Setting'] = 'NA'
 
             if centerline_len > 0:
                 dgo_atts[dgoid]['oCC_EX'] = ex_num_dams / (centerline_len / 1000)
@@ -135,7 +139,7 @@ def riverscape_brat(gpkg_path: str, windows: dict):
         curs.execute(f"""UPDATE DGOAttributes SET oCC_EX = {attrs['oCC_EX']}, oCC_HPE = {attrs['oCC_HPE']}, oVC_EX = {attrs['oVC_EX']}, oVC_HPE = {attrs['oVC_HPE']},
                         mCC_EX_CT = {attrs['mCC_EX_CT']}, mCC_HPE_CT = {attrs['mCC_HPE_CT']}, iVeg_30EX = {attrs['iVeg_30EX']}, iVeg100EX = {attrs['iVeg100EX']},
                         iVeg_30HPE = {attrs['iVeg_30HPE']}, iVeg100HPE = {attrs['iVeg100HPE']} WHERE DGOID = {dgoid}""")
-        curs.execute(f"UPDATE DGOAttributes SET Risk = '{attrs['Risk']}', Limitation = '{attrs['Limitation']}', Opportunity = '{attrs['Opportunity']}' WHERE DGOID = {dgoid}")
+        curs.execute(f"UPDATE DGOAttributes SET Risk = '{attrs['Risk']}', Limitation = '{attrs['Limitation']}', Opportunity = '{attrs['Opportunity']}', Dam_Setting = '{attrs['Dam_Setting']}' WHERE DGOID = {dgoid}")
         conn.commit()
 
     log.info('Calculating BRAT Outputs on IGOs (moving window)')

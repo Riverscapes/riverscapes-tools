@@ -190,7 +190,8 @@ CREATE TABLE DGOAttributes(
      Road_4wd_len REAL,
      Risk TEXT,
      Limitation TEXT,
-     Opportunity TEXT
+     Opportunity TEXT,
+     Dam_Setting TEXT
      );
 
 CREATE INDEX ix_dgo_attributes_level_path ON DGOAttributes(level_path, seg_distance);
@@ -207,7 +208,8 @@ CREATE TABLE IGOAttributes(
      oCC_HPE REAL,
      Risk TEXT,
      Limitation TEXT,
-     Opportunity TEXT
+     Opportunity TEXT,
+     Dam_Setting TEXT
      );
 
 CREATE INDEX ix_igo_attributes_level_path ON IGOAttributes(level_path, seg_distance);
