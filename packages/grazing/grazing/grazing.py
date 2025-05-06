@@ -2,6 +2,7 @@ import argparse
 import os
 import sys
 import time
+import datetime
 from typing import Dict, List
 
 from osgeo import gdal, ogr
@@ -130,3 +131,61 @@ def grazing_likelihood(huc: int, existing_veg: Path, slope: Path, hillshade: Pat
             'centerline_length': ogr.OFTReal,
             'segment_area': ogr.OFTReal
         })
+
+    db_metadata = {'Grazing DateTime': datetime.datetime.now().isoformat()}
+
+    # Execute the SQL to create the lookup tables in the output geopackage
+    create_database(huc, outputs_gpkg_path, db_metadata, cfg.OUTPUT_EPSG, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'grazing_schema.sql'))
+
+    igo_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['GRAZING_IGO_GEOM'].rel_path)
+    dgo_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['GRAZING_DGO_GEOM'].rel_path)
+    copy_features_fields(input_layers['IGO'], igo_geom_path, epsg=cfg.OUTPUT_EPSG)
+    copy_features_fields(input_layers['DGO'], dgo_geom_path, epsg=cfg.OUTPUT_EPSG)
+
+    with SQLiteCon(outputs_gpkg_path) as database:
+        database.curs.execute("""INSERT INTO IGOAttributes (IGOID, FCode, level_path, seg_distance, stream_size)
+                              SELECT IGOID, FCode, level_path, seg_distance, stream_size FROM igo_geometry""")
+        database.curs.execute("""INSERT INTO DGOAttributes (DGOID, FCode, level_path, seg_distance, segment_area, centerline_length)
+                              SELECT DGOID, FCode, level_path, seg_distance, segment_area, centerline_length FROM dgo_geometry""")
+        # Register layers as feature layer as well as geometry column
+        database.curs.execute("""INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id)
+            SELECT 'grazing_igos', data_type, 'igos', min_x, min_y, max_x, max_y, srs_id FROM gpkg_contents WHERE table_name = 'igo_geometry'""")
+
+        database.curs.execute("""INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m)
+            SELECT 'grazing_igos', column_name, geometry_type_name, srs_id, z, m FROM gpkg_geometry_columns WHERE table_name = 'igo_geometry'""")
+
+        database.curs.execute("""INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id)
+            SELECT 'grazing_dgos', data_type, 'dgos', min_x, min_y, max_x, max_y, srs_id FROM gpkg_contents WHERE table_name = 'dgo_geometry'""")
+
+        database.curs.execute("""INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m)
+            SELECT 'grazing_dgos', column_name, geometry_type_name, srs_id, z, m FROM gpkg_geometry_columns WHERE table_name = 'dgo_geometry'""")
+
+        database.conn.execute('CREATE INDEX ix_igo_levelpath on igo_eometry(level_path)')
+        database.conn.execute('CREATE INDEX ix_igo_segdist on igo_geometry(seg_distance)')
+        database.conn.execute('CREATE INDEX ix_igo_size on igo_geometry(stream_size)')
+        database.conn.execute('CREATE INDEX ix_dgo_levelpath on dgo_geometry(level_path)')
+        database.conn.execute('CREATE INDEX ix_dgo_segdist on dgo_geometry(seg_distance)')
+
+        database.conn.commit()
+
+        database.curs.execute('SELECT DISTINCT level_path FROM IGOGeometry')
+        levelps = database.curs.fetchall()
+        levelpathsin = [lp['level_path'] for lp in levelps]
+
+        # set window distances for different stream sizes
+        distancein = {
+            '0': 200,
+            '1': 400,
+            '2': 1200,
+            '3': 2000,
+            '4': 8000
+        }
+        project.add_metadata(
+            [RSMeta('Small Search Window', str(distancein['0']), RSMetaTypes.INT, locked=True),
+             RSMeta('Medium Search Window', str(distancein['1']), RSMetaTypes.INT, locked=True),
+             RSMeta('Large Search Window', str(distancein['2']), RSMetaTypes.INT, locked=True),
+             RSMeta('Very Large Search Window', str(distancein['3']), RSMetaTypes.INT, locked=True),
+             RSMeta('Huge Search Window', str(distancein['4']), RSMetaTypes.INT, locked=True)])
+
+        # associate DGO IDs with IGO IDs for moving windows
+        windows = moving_window_dgo_ids(igo_geom_path, dgo_geom_path, levelpathsin, distancein)
