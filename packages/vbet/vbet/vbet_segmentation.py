@@ -23,7 +23,7 @@ from rscommons.geometry_ops import get_rectangle_as_geom
 Path = str
 
 
-def generate_igo_points(line_network: Path, out_points_layer: Path, unique_stream_field, stream_size_lookup: dict, distance: dict):
+def generate_igo_points(line_network: Path, out_points_layer: Path, vb_layer: Path, unique_stream_field, aspect_ratio: float):
     """generate the vbet segmentation center points/igos
 
     Args:
@@ -39,15 +39,15 @@ def generate_igo_points(line_network: Path, out_points_layer: Path, unique_strea
     # init_distance = distance / 2
 
     with GeopackageLayer(out_points_layer, write=True) as out_lyr, \
-            GeopackageLayer(line_network) as line_lyr:
+            GeopackageLayer(line_network) as line_lyr, \
+            GeopackageLayer(vb_layer) as vb_lyr:
 
         out_fields = {f"{unique_stream_field}": ogr.OFTString,
-                      "seg_distance": ogr.OFTReal,
-                      "stream_size": ogr.OFTInteger}
+                      "seg_distance": ogr.OFTReal}
         out_lyr.create_layer(
             ogr.wkbPoint, spatial_ref=line_lyr.spatial_ref, fields=out_fields)
 
-        extent_poly = get_rectangle_as_geom(out_lyr.ogr_layer.GetExtent())
+        extent_poly = get_rectangle_as_geom(line_lyr.ogr_layer.GetExtent())
         extent_centroid = extent_poly.Centroid()
         utm_epsg = get_utm_zone_epsg(extent_centroid.GetX())
         transform_ref, transform = VectorBase.get_transform_from_epsg(
@@ -58,12 +58,6 @@ def generate_igo_points(line_network: Path, out_points_layer: Path, unique_strea
 
         for feat, *_ in line_lyr.iterate_features(write_layers=[out_lyr]):
             level_path = feat.GetField(f'{unique_stream_field}')
-            if level_path not in stream_size_lookup:
-                log.error(
-                    f'Stream Size not found for Level Path {level_path}. Skipping segmentation')
-                continue
-            stream_size = stream_size_lookup[level_path]
-            init_distance = distance[stream_size] / 2
             geom_line = feat.GetGeometryRef()
             geom_line.FlattenTo2D()
             geom_line.Transform(transform)
@@ -72,6 +66,31 @@ def generate_igo_points(line_network: Path, out_points_layer: Path, unique_strea
                 continue
             cleaned_line = clean_linestring(shapely_multiline)
 
+            vb_area = 0.0
+            for vb_feat, *_ in vb_lyr.iterate_features(attribute_filter=f'{unique_stream_field} = {level_path}'):
+                vb_geom = vb_feat.GetGeometryRef()
+                if not vb_geom.IsValid():
+                    vb_geom = vb_geom.MakeValid()
+                # vb_proj = vb_geom.Transform(transform)
+                # vb_shapely = VectorBase.ogr2shapely(vb_proj)
+                # if vb_shapely is None or vb_shapely.is_empty:
+                #     continue
+                if vb_geom is None or vb_geom.IsEmpty():
+                    continue
+                vb_geom.Transform(transform)
+                vb_area += vb_geom.GetArea()
+
+            if vb_area == 0.0:
+                log.warning(
+                    f'Unable to generate metrics for vbet segment {feat.GetFID()}: VBET Segment has no area')
+                continue
+
+            vb_width = vb_area / cleaned_line.length
+            spacing = int(vb_width * aspect_ratio)
+            if spacing % 2 != 0:
+                spacing += 1
+
+            init_distance = spacing / 2
             for shapely_line in cleaned_line.geoms:
                 # list to hold all the point coords
                 if shapely_line.geom_type != "LineString":
@@ -90,7 +109,7 @@ def generate_igo_points(line_network: Path, out_points_layer: Path, unique_strea
                     # use interpolate and increase the current distance
                     list_points.append(
                         (shapely_line.interpolate(current_dist), current_dist))
-                    current_dist += distance[stream_size]
+                    current_dist += spacing
 
                 # add points to the layer
                 # for each point in the list
@@ -102,8 +121,7 @@ def generate_igo_points(line_network: Path, out_points_layer: Path, unique_strea
                     geom_pnt.Transform(transform_back)
                     # add the point feature to the output.
                     attributes = {f'{unique_stream_field}': str(int(level_path)),
-                                  'seg_distance': out_dist,
-                                  'stream_size': stream_size}
+                                  'seg_distance': out_dist}
                     out_lyr.create_feature(geom_pnt, attributes=attributes)
 
 
