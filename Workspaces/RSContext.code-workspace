@@ -8,21 +8,18 @@
       "name": "📦 RSCommons",
       "path": "../lib/commons"
     },
-    {
+		{
       "name": "🤖 Cybercastor Automation Scripts",
-      "path": "../scripts/automation"
-    },
+			"path": "../scripts/automation"
+		},
     {
       "name": "🧰 Workspaces",
       "path": "."
     },
-    {
-      "name": "🏠 Git Root",
-      "path": ".."
-    },
-    {
-      "path": "../../data"
-    }
+		{
+			"name": "🏠 Git Root",
+			"path": ".."
+		},
   ],
   "settings": {
     "terminal.integrated.defaultProfile.linux": "zsh",

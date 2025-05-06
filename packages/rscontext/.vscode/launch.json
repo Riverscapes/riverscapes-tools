@@ -52,20 +52,6 @@
       ]
     },
     {
-      "name": "DEM Builder",
-      "type": "debugpy",
-      "request": "launch",
-      "module": "rscontext.dem_builder",
-      "console": "integratedTerminal",
-      "args": [
-        "{env:DATA_ROOT}/dem-builder/test_regionsv.gpkg/140500040202",
-        "1",
-        "{env:DATA_ROOT}/dem-builder",
-        "4326",
-        "{env:DATA_ROOT}/dem-builder/download"
-      ]
-    },
-    {
       "name": "RS Context Metrics",
       "type": "debugpy",
       "request": "launch",
