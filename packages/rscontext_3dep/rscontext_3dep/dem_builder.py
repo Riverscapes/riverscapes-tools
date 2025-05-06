@@ -13,18 +13,17 @@ import os
 import sys
 import traceback
 import uuid
-from rscommons import (Logger, dotenv, initGDALOGRErrors, ModelConfig, RSProject, RSLayer, Raster)
+from rscommons import (Logger, dotenv, initGDALOGRErrors, ModelConfig, RSProject, RSLayer)
 from rscommons.download_dem import download_dem, verify_areas
 from rscommons.geographic_raster import gdal_dem_geographic
 from rscommons.project_bounds import generate_project_extents_from_layer
 from rscommons.raster_warp import raster_vrt_stitch, raster_warp
 from rscommons.util import safe_makedirs, safe_remove_dir
 from rscontext_3dep.__version__ import __version__
-from rscontext.boundary_management import raster_area_intersection
 
 from osgeo import gdal, osr
 from collections import Counter
-from typing import List, Optional  # Use these for cleaner type hints
+from typing import List  # Use for cleaner type hints
 
 initGDALOGRErrors()
 
@@ -107,7 +106,7 @@ def get_epsg(raster_path: str) -> int | None:
 
     except Exception as e:
         # Log any unexpected exceptions during the process
-        log.error(f"An unexpected error occurred while processing {raster_path}: {e}", exc_info=True)  # Add stack trace
+        log.error(f"An unexpected error occurred while processing {raster_path}: e", traceback.format_exc())  # Add stack trace
         return None  # Return None on unexpected error
 
     finally:
