@@ -102,9 +102,26 @@ def download_shapefile_collection(url, download_folder, unzip_folder, force_down
     return shapefiles
 
 
+def _get_metadata(item: dict):
+    """extract and log other metadata from the TNM API return item 
+
+    Args:
+        item (dict): a single TNM API return item
+    """
+    log = Logger('Download')
+    # other keys are moreInfo, sourceId, sourceName, publicationDate, format, etc.
+    # A simple CRS/EPSG/projection is not one of them. That info can be found embedded in the product metadata (xml)
+    for key_name in ['title', 'metaUrl']:
+        if item.get(key_name):
+            log.info(f'{key_name}:\t{item[key_name]}')
+        else:
+            log.info(f'{key_name} not found')
+
+
 def _get_urls(params: Dict[str, str]):
     """
     Call TNM API with the argument params and return list of download URLs
+
     :param params: TNM API params object
     :return: List of HTTPS download URLs for items on S3
     """
@@ -119,6 +136,7 @@ def _get_urls(params: Dict[str, str]):
     urls = []
     for item in items["items"]:
         urls.extend(item["urls"].values())
+        _get_metadata(item)
 
     return urls
 
