@@ -1,22 +1,19 @@
-# Riverscapes Context
+# Riverscapes Context 3DEP
 
-Python 3 package to build the contextual layers used by our outher python riverscapes tools.
+Python 3 package to build a single high-resolution DEM from USGS 3DEP program, which can be used as a contextual layers for other python riverscapes tools.
 
 ```
 usage: rs-context [-h] [--force] [--temp_folder TEMP_FOLDER] [--verbose]
                   huc existing historic ownership ecoregions output download
 
-Riverscapes Context Tool
+Riverscapes Context Tool - 3DEP
 
 positional arguments:
-  huc                   HUC identifier
-  existing              National existing vegetation raster
-  historic              National historic vegetation raster
-  ownership             National land ownership shapefile
-  ecoregions            National EcoRegions shapefile
+  boundary_layer        Path to shapefile or geopackage layer   containing the area for which the DEM will be built
+  resolution            Target resolution in metres, between 1-10
   output                Path to the output folder
-  download              Temporary folder for downloading data. Different HUCs may
-                        share this
+  target epsg           (Ignored)
+  download              Temporary folder for downloading data. Different HUCs may share this
 
 optional arguments:
   -h, --help            show this help message and exit
