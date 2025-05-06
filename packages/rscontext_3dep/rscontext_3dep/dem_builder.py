@@ -10,26 +10,33 @@
 # Date:     28 Apr 2025
 # -------------------------------------------------------------------------------
 import argparse
+import json
 import os
 import sys
 import traceback
 import uuid
+from collections import Counter
+from osgeo import gdal, osr
+
 from rscommons import (Logger, dotenv, initGDALOGRErrors, ModelConfig, RSProject, RSLayer)
+from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.download_dem import download_dem, verify_areas
 from rscommons.geographic_raster import gdal_dem_geographic
 from rscommons.project_bounds import generate_project_extents_from_layer
-from rscommons.raster_warp import raster_vrt_stitch, raster_warp
+from rscommons.raster_warp import raster_vrt_stitch
 from rscommons.util import safe_makedirs, safe_remove_dir
 from rscontext_3dep.__version__ import __version__
-
-from osgeo import gdal, osr
-from collections import Counter
-from typing import List  # Use for cleaner type hints
 
 initGDALOGRErrors()
 
 cfg = ModelConfig(
     'https://xml.riverscapes.net/Projects/XSD/V2/RiverscapesProject.xsd', __version__)
+
+LayerTypes = {
+    # key: RSLayer(name, id, tag, relpath)
+    'DEM': RSLayer('3DEP 1m DEM', '3DEPDEM', 'Raster', 'topography/dem.tif'),
+    'HILLSHADE': RSLayer('DEM Hillshade', 'HILLSHADE', 'Raster', 'topography/dem_hillshade.tif'),
+}
 
 
 def get_epsg(raster_path: str) -> int | None:
@@ -76,10 +83,10 @@ def get_epsg(raster_path: str) -> int | None:
             srs.AutoIdentifyEPSG()
             # GDAL returns authority code as string
             authority_code_str = srs.GetAuthorityCode(None)
-            authority_name = srs.GetAuthorityName(None)
 
             if authority_code_str:
-                # log.debug(f"Identified Authority: {authority_name}, Code: {authority_code_str}")
+                authority_name = srs.GetAuthorityName(None)
+                log.debug(f"Identified Authority: {authority_name}, Code: {authority_code_str}")
                 try:
                     # Convert string code to integer for return
                     epsg_code_int = int(authority_code_str)
@@ -107,13 +114,13 @@ def get_epsg(raster_path: str) -> int | None:
 
     except Exception as e:
         # Log any unexpected exceptions during the process
-        log.error(f"An unexpected error occurred while processing {raster_path}: e", traceback.format_exc())  # Add stack trace
+        log.error(f"An unexpected error occurred while processing {raster_path}: {e}", traceback.format_exc())  # Add stack trace
         return None  # Return None on unexpected error
 
     finally:
         # This block ALWAYS runs, ensuring the dataset is closed (dereferenced)
         if dataset is not None:
-            log.debug(f"Closing GDAL dataset for: {raster_path}")
+            # log.debug(f"Closing GDAL dataset for: {raster_path}")
             dataset = None
         # else:
             # log.debug("GDAL dataset was already None or not opened.")
@@ -121,7 +128,7 @@ def get_epsg(raster_path: str) -> int | None:
         # gdal.PopErrorHandler()
 
 
-def get_best_crs(raster_paths: List[str]) -> int | None:
+def get_best_crs(raster_paths: list[str]) -> int | None:
     """
     Determines the Coordinate Reference System (EPSG) that best represents the supplied rasters.
 
@@ -131,7 +138,7 @@ def get_best_crs(raster_paths: List[str]) -> int | None:
     lowest EPSG number among the tied codes.
 
     Args:
-        raster_paths (List[str]): List of paths to raster files to check.
+        raster_paths (list[str]): List of paths to raster files to check.
 
     Returns:
         Optional[int]: The EPSG code (integer) that represents the best fit
@@ -198,12 +205,12 @@ def is_geographic_epsg(epsg_code: int) -> bool:
     return srs.IsGeographic() == 1
 
 
-def should_resample(dem_rasters: List[str], output_res: float, threshold: float = 0.1) -> bool:
+def should_resample(dem_rasters: list[str], output_res: float, threshold: float = 0.1) -> bool:
     """
     Determines whether resampling is necessary based on the resolution of input rasters.
 
     Args:
-        dem_rasters (List[str]): List of paths to input DEM rasters.
+        dem_rasters (list[str]): List of paths to input DEM rasters.
         output_res (float): Desired output resolution in meters.
         threshold (float): Relative difference threshold (default: 0.1, i.e., 10%).
 
@@ -255,28 +262,28 @@ def should_resample(dem_rasters: List[str], output_res: float, threshold: float 
     return True
 
 
-def dem_builder(bounds_path: str,  output_res: float, output_epsg: int, download_folder: str, scratch_dir: str, output_path: str, force_download: bool):
-    """Build a mosaiced raster for input area from 3DEP 1m DEM
+def dem_builder(bounds_path: str,  output_res: float, download_folder: str, scratch_dir: str, output_path: str, force_download: bool):
+    """Build a mosaiced raster for input area from 3DEP 1m DEM then put it together in a Riverscapes Project
     Args:
-        bounds_path (str): _description_
-        output_res (float): _description_
-        download_folder (str): _description_
-        scratch_dir (str): _description_
-        output_path (str): path to folder where dem files will be placed
+        bounds_path (str): path to the layer of the area we are building 
+        output_res (float): target resolution of the raster (downsample if needed)
+        download_folder (str): where the source DEMs will go (outside of and not included in final project)
+        scratch_dir (str): folder for unzipping files (outside of and not included in final project)
+        output_path (str): path to folder where the outputs will go (project file, log file, and dem files will be placed in subfolder)
         force_download (bool): if True, download from source even if we already have local copy
-    """
 
+    """
     log = Logger('DEM Builder')
+    log.title('Prepare DEM and Hillshade')
 
     ned_download_folder = os.path.join(download_folder, 'ned')
     ned_unzip_folder = os.path.join(scratch_dir, 'ned')
 
-    dem_rasters, _urls = download_dem(bounds_path, None, 0.01, ned_download_folder, ned_unzip_folder, force_download, '1m')
-    output_dem_file_path = os.path.join(output_path, 'output_dem.tif')
+    dem_rasters, dem_raster_source_urls = download_dem(bounds_path, None, 0.01, ned_download_folder, ned_unzip_folder, force_download, '1m')
+    output_dem_file_path = os.path.join(output_path, LayerTypes['DEM'].rel_path)
     need_dem_rebuild = force_download or not os.path.exists(output_dem_file_path)
 
     output_epsg = get_best_crs(dem_rasters)
-
     if need_dem_rebuild:
         warp_options = {"cutlineBlend": 1}
         if should_resample(dem_rasters, output_res):
@@ -294,7 +301,7 @@ def dem_builder(bounds_path: str,  output_res: float, output_epsg: int, download
         # raise Exception(f'DEM data less than 85%% of nhd extent ({area_ratio:%})')
 
     # build hillshade
-    hillshade_path = os.path.join(output_path, 'topography', 'HS.tif')
+    hillshade_path = os.path.join(output_path, LayerTypes['HILLSHADE'].rel_path)
     need_hs_rebuild = need_dem_rebuild or not os.path.isfile(hillshade_path)
     if need_hs_rebuild:
         if is_geographic_epsg(output_epsg):
@@ -307,29 +314,22 @@ def dem_builder(bounds_path: str,  output_res: float, output_epsg: int, download
     log.info(f'Output DEM Size: {os.path.getsize(output_path) / 1024 / 1024:.2f} MB')
     log.info(f'Output DEM Resolution: {output_res} m')
     log.info(f'Output DEM Projection: {output_epsg}')
-    log.info('DEM Builder complete!')
+    log.info('DEM Builder complete')
 
-    "build the project here - this where we know the paths to "
-    ...
+    # STEP 2. Build the Riverscapes project of type RSContext but with just the 3DEP 1m DEM products
+    # This is a much simplified version of rs_context.rs_context
+    # TODO: review to back-port features additional features
+    # metadata to include:
+    # source urls
+    # were the inputs resampled, if so from what to what
+    # were the inputs reprojected, if so from what to what
 
-
-def build_rs_context_project(project_identifier, output_folder, bounds_path):
-    """generate a Riverscapes project of type RSContext but with just the 3DEP 1m DEM products
-
-    This is a much simplified version of rs_context.rs_context 
-    Todo: review to back-port features additional features 
-
-    :param project_identifier: Could be HUC, or other identifier. 
-    :param output_folder: Output location for the riverscapes context project
-
-    """
-
-    log = Logger("RS Context for 3DEP")
     log.title("RS Context 3DEP project builder")
-    safe_makedirs(output_folder)
+    project_identifier = os.path.basename(bounds_path)
 
     project_name = f'Riverscapes Context-3DEP for {project_identifier}'
-    project = RSProject(cfg, output_folder)
+    project_description = 'Riverscapes Context-3DEP'
+    project = RSProject(cfg, output_path)
 
     project.create(project_name, 'RSContext')
 
@@ -337,25 +337,27 @@ def build_rs_context_project(project_identifier, output_folder, bounds_path):
         project_name, 'REALIZATION1', cfg.version)
     datasets = project.XMLBuilder.add_sub_element(realization, 'Datasets')
 
-    dem_node, dem_raster = project.add_project_raster(
-        datasets, RSLayer('3DEP 1m DEM', '3DEPDEM', 'Raster', 'topography/1mdem.tif'))
+    dem_node, _dem_raster = project.add_project_raster(datasets, LayerTypes['DEM'])
+    project.add_metadata([
+        RSMeta('NumRasters', str(len(dem_raster_source_urls)), RSMetaTypes.INT),
+        RSMeta('OriginUrls', json.dumps(dem_raster_source_urls), RSMetaTypes.JSON)
+    ], dem_node)
 
-    project.add_project_raster(
-        datasets, RSLayer('1m DEM Hillshade', 'HILLSHADE', 'Raster', 'topography/HS.tif')
-    )
+    project.add_project_raster(datasets, LayerTypes['HILLSHADE'])
 
     name_node = project.XMLBuilder.find('Name')
     name_node.text = project_name
 
+    project.XMLBuilder.add_sub_element(project.XMLBuilder.root, 'Description', project_description)
+
     # Add Project Extents
-    extents_json_path = os.path.join(output_folder, 'project_bounds.geojson')
+    extents_json_path = os.path.join(output_path, 'project_bounds.geojson')
     extents = generate_project_extents_from_layer(
         bounds_path, extents_json_path)
     project.add_project_extent(
         extents_json_path, extents['CENTROID'], extents['BBOX'])
 
-    log.info('Process completed successfully.')
-    return {'DEM': dem_raster}
+    log.info('Riverscapes project build completed successfully.')
 
 
 def is_valid_output_res(output_res) -> bool:
@@ -371,9 +373,9 @@ def main():
     """Main function to run the DEM Builder tool."""
     parser = argparse.ArgumentParser(description='DEM Builder Tool')
     parser.add_argument('bounds_path', help='Path to feature class containing polygon bounds feature', type=str)
-    parser.add_argument('output_res', help='Horizontal resolution of output DEM in metres', type=float)
-    parser.add_argument('output_path', help='Path to folder where the output rasters will get generated', type=str)
-    parser.add_argument('output_epsg', help='Output Coordinate Refence System', type=int)
+    parser.add_argument('output_res', help='Horizontal resolution of output DEM in metres (1-10)', type=float)
+    parser.add_argument('output_path', help='Path to folder where the project and output rasters will go', type=str)
+    parser.add_argument('output_epsg', help='NOT USED Output Coordinate Refence System', type=int)
     parser.add_argument('download_dir', help='Temporary folder for downloading data. Different HUCs may share this', type=str)
     parser.add_argument('--force', help='(optional) download existing files ', action='store_true', default=False)
 
@@ -385,6 +387,7 @@ def main():
     args.temp_folder = r'/workspaces/data/temp'
 
     # verify args
+    safe_makedirs(args.output_path)
     if not os.path.isdir(args.output_path):
         raise ValueError(f"Expect `output_path` argument to be path to a folder. Value supplied: {args.output_path}")
     if not is_valid_output_res(args.output_res):
@@ -404,9 +407,7 @@ def main():
     safe_makedirs(scratch_dir)
 
     try:
-        dem_builder(args.bounds_path, args.output_res, args.output_epsg, args.download_dir, scratch_dir, args.output_path, args.force)
-        project_id = os.path.basename(args.bounds_path)
-        build_rs_context_project(project_id, args.output_path, args.bounds_path)
+        dem_builder(args.bounds_path, args.output_res, args.download_dir, scratch_dir, args.output_path, args.force)
 
     except Exception as e:
         log.error(e)

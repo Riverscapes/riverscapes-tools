@@ -207,6 +207,7 @@ def get_1m_dem_urls(vector_path: str, buffer_dist: int | float) -> list[str]:
     log = Logger('The National Map')
     # Get a union of all polygon features in the input
     # Note that this function can do other things, such as force the geometry onto a specific projection
+    log.info(f'Processing input path {vector_path} to use as parameter for National Map query')
     polygon = get_geometry_unary_union(vector_path)
 
     buffered = polygon
