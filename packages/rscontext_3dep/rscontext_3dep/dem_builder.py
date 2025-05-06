@@ -13,19 +13,189 @@ import os
 import sys
 import traceback
 import uuid
-from rscommons import (Logger, dotenv, initGDALOGRErrors, ModelConfig, RSProject, RSLayer)
+from rscommons import (Logger, dotenv, initGDALOGRErrors, ModelConfig, RSProject, RSLayer, Raster)
 from rscommons.download_dem import download_dem, verify_areas
 from rscommons.geographic_raster import gdal_dem_geographic
 from rscommons.project_bounds import generate_project_extents_from_layer
 from rscommons.raster_warp import raster_vrt_stitch, raster_warp
 from rscommons.util import safe_makedirs, safe_remove_dir
-from rscontext.__version__ import __version__
+from rscontext_3dep.__version__ import __version__
 from rscontext.boundary_management import raster_area_intersection
+
+from osgeo import gdal, osr
+from collections import Counter
+from typing import List, Optional  # Use these for cleaner type hints
 
 initGDALOGRErrors()
 
 cfg = ModelConfig(
     'https://xml.riverscapes.net/Projects/XSD/V2/RiverscapesProject.xsd', __version__)
+
+
+def get_epsg(raster_path: str) -> int | None:
+    """
+    Gets the EPSG code from a raster file using GDAL.
+
+    Also outputs some extra CRS info via logging at the DEBUG level.
+
+    Args:
+        raster_path (str): Path to the raster file.
+
+    Returns:
+        int | None: EPSG code for the CRS if found and identifiable, otherwise None.
+    """
+    log = Logger("get_epsg")
+    dataset = None  # Initialize dataset to None to ensure it exists for finally block
+
+    try:
+        # Optional: Enable GDAL exceptions (might be cleaner than checking return codes)
+        # gdal.UseExceptions()
+
+        dataset = gdal.Open(raster_path, gdal.GA_ReadOnly)
+
+        if dataset is None:
+            log.error(f"Could not open file {raster_path} with GDAL.")
+            # If exceptions aren't enabled, check GDAL error message if needed
+            # log.error(f"GDAL Error: {gdal.GetLastErrorMsg()}")
+            return None  # Dataset is None, finally block handles it
+
+        log.debug(f"Successfully opened: {raster_path} with GDAL")
+
+        wkt_projection = dataset.GetProjection()
+
+        if wkt_projection:
+            log.debug("CRS Found.")  # Corrected typo from debut to debug
+            log.debug(f"WKT:\n{wkt_projection}")
+
+            srs = osr.SpatialReference()
+            # Handle potential errors during WKT import
+            if srs.ImportFromWkt(wkt_projection) != 0:  # Returns 0 on success
+                log.error(f"Failed to import WKT for {raster_path}")
+                return None  # Cannot proceed without valid SRS
+
+            srs.AutoIdentifyEPSG()
+            # GDAL returns authority code as string
+            authority_code_str = srs.GetAuthorityCode(None)
+            authority_name = srs.GetAuthorityName(None)
+
+            if authority_code_str:
+                log.debug(f"Identified Authority: {authority_name}, Code: {authority_code_str}")
+                try:
+                    # Convert string code to integer for return
+                    epsg_code_int = int(authority_code_str)
+                    log.info(f"Returning EPSG: {epsg_code_int} for {raster_path}")
+                    return epsg_code_int  # Return the integer EPSG code
+                except ValueError:
+                    log.error(f"Could not convert identified authority code '{authority_code_str}' to an integer.")
+                    return None  # Return None as we couldn't get an integer code
+            else:
+                log.warning(f"EPSG Code: Could not automatically identify from WKT for {raster_path}.")
+                # Log extra details that might help diagnose why
+                log.debug(f"  Is Projected? {srs.IsProjected()}")
+                log.debug(f"  Is Geographic? {srs.IsGeographic()}")
+                proj_name = srs.GetAttrValue('PROJCS')
+                geog_name = srs.GetAttrValue('GEOGCS')
+                if proj_name:
+                    log.debug(f"  Projected CS Name: {proj_name}")
+                if geog_name:
+                    log.debug(f"  Geographic CS Name: {geog_name}")
+                return None  # No EPSG code identified
+
+        else:
+            log.warning(f"No CRS/projection information found in the file: {raster_path}")
+            return None  # No WKT found
+
+    except Exception as e:
+        # Log any unexpected exceptions during the process
+        log.error(f"An unexpected error occurred while processing {raster_path}: {e}", exc_info=True)  # Add stack trace
+        return None  # Return None on unexpected error
+
+    finally:
+        # This block ALWAYS runs, ensuring the dataset is closed (dereferenced)
+        if dataset is not None:
+            log.debug(f"Closing GDAL dataset for: {raster_path}")
+            dataset = None
+        # else:
+            # log.debug("GDAL dataset was already None or not opened.")
+        # If you used PushErrorHandler, Pop it here:
+        # gdal.PopErrorHandler()
+
+
+def get_best_crs(raster_paths: List[str]) -> int | None:
+    """
+    Determines the Coordinate Reference System (EPSG) that best represents the supplied rasters.
+
+    Checks the CRS of all inputs in the supplied list by calling get_epsg().
+    Returns the EPSG code used by the majority of the rasters for which an EPSG
+    could be determined. If there's a tie for the majority, it returns the
+    lowest EPSG number among the tied codes.
+
+    Args:
+        raster_paths (List[str]): List of paths to raster files to check.
+
+    Returns:
+        Optional[int]: The EPSG code (integer) that represents the best fit
+                       for this set of rasters, or None if no valid EPSG codes
+                       could be determined from any input raster.
+    """
+    log = Logger('get_best_crs')
+    if not raster_paths:
+        log.warning("Input raster_paths list is empty.")
+        return None
+
+    raster_codes = []
+    log.info(f"Checking EPSG codes for {len(raster_paths)} raster(s)...")
+    for i, raster_path in enumerate(raster_paths):
+        log.debug(f"Processing raster {i+1}/{len(raster_paths)}: {raster_path}")
+        epsg_code = get_epsg(raster_path)  # Call the previously defined function
+        raster_codes.append(epsg_code)
+        # Optional: Log intermediate results
+        # if epsg_code is not None:
+        #     log.debug(f"  -> Found EPSG: {epsg_code}")
+        # else:
+        #     log.debug(f"  -> EPSG not found or identifiable.")
+
+    # Filter out None values (where EPSG couldn't be determined)
+    valid_codes = [code for code in raster_codes if code is not None]
+
+    if not valid_codes:
+        log.error("Could not determine a valid EPSG code for any of the input rasters.")
+        return None
+
+    # Count the frequency of each valid EPSG code
+    code_counts = Counter(valid_codes)
+    log.debug(f"Counts of valid EPSG codes found: {dict(code_counts)}")  # Log the counts
+
+    # Find the maximum frequency
+    max_frequency = code_counts.most_common(1)[0][1]  # Gets the count of the most common item
+
+    # Find all codes that have this maximum frequency
+    majority_codes = [code for code, freq in code_counts.items() if freq == max_frequency]
+
+    # Apply the tie-breaking rule: return the lowest EPSG number among the most frequent ones
+    if len(majority_codes) == 1:
+        best_epsg = majority_codes[0]
+        log.debug(f"Majority EPSG code found: {best_epsg} (Frequency: {max_frequency})")
+    else:
+        best_epsg = min(majority_codes)  # Tie-breaker: choose the smallest EPSG code
+        log.debug(f"Tie detected for majority frequency ({max_frequency}). Choosing lowest EPSG: {best_epsg} from tied codes {sorted(majority_codes)}.")
+
+    return best_epsg
+
+
+def is_geographic_epsg(epsg_code: int) -> bool:
+    """
+    Determines if the given EPSG code corresponds to a geographic coordinate system.
+
+    Args:
+        epsg_code (int): EPSG code to check.
+
+    Returns:
+        bool: True if the EPSG is geographic, False otherwise.
+    """
+    srs = osr.SpatialReference()
+    srs.ImportFromEPSG(epsg_code)
+    return srs.IsGeographic() == 1
 
 
 def dem_builder(bounds_path: str,  output_res: float, output_epsg: int, download_folder: str, scratch_dir: str, output_path: str, force_download: bool):
@@ -44,15 +214,17 @@ def dem_builder(bounds_path: str,  output_res: float, output_epsg: int, download
     ned_download_folder = os.path.join(download_folder, 'ned')
     ned_unzip_folder = os.path.join(scratch_dir, 'ned')
 
-    dem_rasters, _urls = download_dem(bounds_path, output_epsg, 0.01, ned_download_folder, ned_unzip_folder, force_download, '1m')
+    dem_rasters, _urls = download_dem(bounds_path, None, 0.01, ned_download_folder, ned_unzip_folder, force_download, '1m')
     output_dem_file_path = os.path.join(output_path, 'output_dem.tif')
     need_dem_rebuild = force_download or not os.path.exists(output_dem_file_path)
+
+    output_epsg = get_best_crs(dem_rasters)
 
     if need_dem_rebuild:
         raster_vrt_stitch(dem_rasters, output_dem_file_path, output_epsg, clip=bounds_path, warp_options={"cutlineBlend": 1})
     # TODO: just for testing, skip the calculation
-    area_ratio = 999
-    # area_ratio = verify_areas(output_dem_file_path, bounds_path)
+    # area_ratio = 999
+    area_ratio = verify_areas(output_dem_file_path, bounds_path)
     if area_ratio < 0.85:
         log.warning(f'DEM data less than 85%% of bounds extent ({area_ratio:%})')
         # raise Exception(f'DEM data less than 85%% of nhd extent ({area_ratio:%})')
@@ -61,7 +233,10 @@ def dem_builder(bounds_path: str,  output_res: float, output_epsg: int, download
     hillshade_path = os.path.join(output_path, 'HS.tif')
     need_hs_rebuild = need_dem_rebuild or not os.path.isfile(hillshade_path)
     if need_hs_rebuild:
-        gdal_dem_geographic(output_dem_file_path, hillshade_path, 'hillshade')
+        if is_geographic_epsg(output_epsg):
+            gdal_dem_geographic(output_dem_file_path, hillshade_path, 'hillshade')
+        else:
+            gdal.DEMProcessing(hillshade_path, output_dem_file_path, 'hillshade', creationOptions=["COMPRESS=DEFLATE"])
 
     log.info(f'Area Ratio: {area_ratio:%}')
     log.info(f'Output DEM: {output_path}')

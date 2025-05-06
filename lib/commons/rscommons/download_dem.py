@@ -33,9 +33,10 @@ CELL_SIZE_THRESH_STDDEV = 1e-13
 CELL_SIZE_MAX_STDDEV = 1e-8
 
 
-def download_dem(vector_path, _epsg, buffer_dist, download_folder, unzip_folder, force_download=False, resolution='10m'):
+def download_dem(vector_path: str, _epsg, buffer_dist, download_folder, unzip_folder, force_download=False, resolution='10m'):
     """
     Identify rasters within HUC, download them and mosaic into single GeoTIF
+
     :param vector_path: Path to bounding polygon ShapeFile
     :param epsg: Output spatial reference NOT USED
     :param buffer_dist: Distance in DEGREES to buffer the bounding polygon
