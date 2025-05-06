@@ -3,6 +3,7 @@
 #
 # Purpose:  Take a polygon and download all the necessary DEM tiles to create it.
 #           Mosaic them together and produce a single DEM GeoTiFF at specified resolution.
+#           And build a Riverscapes project with it.
 #
 # Author:   Lorin Gaertner
 #
@@ -58,13 +59,13 @@ def get_epsg(raster_path: str) -> int | None:
             # log.error(f"GDAL Error: {gdal.GetLastErrorMsg()}")
             return None  # Dataset is None, finally block handles it
 
-        log.debug(f"Successfully opened: {raster_path} with GDAL")
+        # log.debug(f"Successfully opened: {raster_path} with GDAL")
 
         wkt_projection = dataset.GetProjection()
 
         if wkt_projection:
-            log.debug("CRS Found.")  # Corrected typo from debut to debug
-            log.debug(f"WKT:\n{wkt_projection}")
+            # log.debug("CRS Found.")  # Corrected typo from debut to debug
+            # log.debug(f"WKT:\n{wkt_projection}")
 
             srs = osr.SpatialReference()
             # Handle potential errors during WKT import
@@ -78,7 +79,7 @@ def get_epsg(raster_path: str) -> int | None:
             authority_name = srs.GetAuthorityName(None)
 
             if authority_code_str:
-                log.debug(f"Identified Authority: {authority_name}, Code: {authority_code_str}")
+                # log.debug(f"Identified Authority: {authority_name}, Code: {authority_code_str}")
                 try:
                     # Convert string code to integer for return
                     epsg_code_int = int(authority_code_str)
@@ -197,6 +198,63 @@ def is_geographic_epsg(epsg_code: int) -> bool:
     return srs.IsGeographic() == 1
 
 
+def should_resample(dem_rasters: List[str], output_res: float, threshold: float = 0.1) -> bool:
+    """
+    Determines whether resampling is necessary based on the resolution of input rasters.
+
+    Args:
+        dem_rasters (List[str]): List of paths to input DEM rasters.
+        output_res (float): Desired output resolution in meters.
+        threshold (float): Relative difference threshold (default: 0.1, i.e., 10%).
+
+    Returns:
+        bool: True if resampling is necessary, False otherwise.
+    """
+    log = Logger("Resolution Check")
+    resolutions = []
+
+    for raster_path in dem_rasters:
+        dataset = gdal.Open(raster_path, gdal.GA_ReadOnly)
+        if dataset is None:
+            log.warning(f"Could not open raster: {raster_path}")
+            continue
+
+        # Get the geotransform to calculate pixel size
+        geotransform = dataset.GetGeoTransform()
+        if geotransform is None:
+            log.warning(f"Could not retrieve geotransform for raster: {raster_path}")
+            continue
+
+        # Pixel size (resolution) is in geotransform[1] (x) and geotransform[5] (y, negative)
+        pixel_size_x = abs(geotransform[1])
+        pixel_size_y = abs(geotransform[5])
+
+        # Assume square pixels and take the average resolution
+        avg_resolution = (pixel_size_x + pixel_size_y) / 2
+        resolutions.append(avg_resolution)
+
+        log.debug(f"Raster: {raster_path}, Resolution: {avg_resolution:.2f}m")
+
+    if not resolutions:
+        log.error("No valid resolutions found for input rasters. Resampling will proceed by default.")
+        return True
+
+    # Calculate the average resolution of all input rasters
+    avg_input_resolution = sum(resolutions) / len(resolutions)
+    log.info(f"Average input resolution: {avg_input_resolution:.2f}m")
+
+    # Check if the relative difference exceeds the threshold
+    relative_difference = abs(avg_input_resolution - output_res) / avg_input_resolution
+    log.info(f"Relative difference: {relative_difference:.2%}")
+
+    if relative_difference <= threshold:
+        log.info("Resampling is not necessary. Input resolution is close to the desired resolution.")
+        return False
+
+    log.info("Resampling is necessary. Input resolution differs significantly from the desired resolution.")
+    return True
+
+
 def dem_builder(bounds_path: str,  output_res: float, output_epsg: int, download_folder: str, scratch_dir: str, output_path: str, force_download: bool):
     """Build a mosaiced raster for input area from 3DEP 1m DEM
     Args:
@@ -220,16 +278,23 @@ def dem_builder(bounds_path: str,  output_res: float, output_epsg: int, download
     output_epsg = get_best_crs(dem_rasters)
 
     if need_dem_rebuild:
-        raster_vrt_stitch(dem_rasters, output_dem_file_path, output_epsg, clip=bounds_path, warp_options={"cutlineBlend": 1})
-    # TODO: just for testing, skip the calculation
-    # area_ratio = 999
+        warp_options = {"cutlineBlend": 1}
+        if should_resample(dem_rasters, output_res):
+            warp_options.update({
+                "xRes": output_res,
+                "yRes": output_res,
+                "resampleAlg": "bilinear"  # Use bilinear resampling for downsampling
+            })
+
+        raster_vrt_stitch(dem_rasters, output_dem_file_path, output_epsg, clip=bounds_path, warp_options=warp_options)
+
     area_ratio = verify_areas(output_dem_file_path, bounds_path)
     if area_ratio < 0.85:
         log.warning(f'DEM data less than 85%% of bounds extent ({area_ratio:%})')
         # raise Exception(f'DEM data less than 85%% of nhd extent ({area_ratio:%})')
 
     # build hillshade
-    hillshade_path = os.path.join(output_path, 'HS.tif')
+    hillshade_path = os.path.join(output_path, 'topography', 'HS.tif')
     need_hs_rebuild = need_dem_rebuild or not os.path.isfile(hillshade_path)
     if need_hs_rebuild:
         if is_geographic_epsg(output_epsg):
@@ -243,6 +308,9 @@ def dem_builder(bounds_path: str,  output_res: float, output_epsg: int, download
     log.info(f'Output DEM Resolution: {output_res} m')
     log.info(f'Output DEM Projection: {output_epsg}')
     log.info('DEM Builder complete!')
+
+    "build the project here - this where we know the paths to "
+    ...
 
 
 def build_rs_context_project(project_identifier, output_folder, bounds_path):
@@ -290,13 +358,22 @@ def build_rs_context_project(project_identifier, output_folder, bounds_path):
     return {'DEM': dem_raster}
 
 
+def is_valid_output_res(output_res) -> bool:
+    """check if supplied output resolution is within expected bounds"""
+    log = Logger("check arguments")
+    is_valid = output_res >= 1 and output_res <= 10
+    if not is_valid:
+        log.error(f"Supplied output resolution of {output_res} is not within expected value of 1 to 10 inclusive (representing metres).")
+    return is_valid
+
+
 def main():
     """Main function to run the DEM Builder tool."""
     parser = argparse.ArgumentParser(description='DEM Builder Tool')
     parser.add_argument('bounds_path', help='Path to feature class containing polygon bounds feature', type=str)
-    parser.add_argument('output_res', help='Horizontal resolution of output DEM in metres', type=str)
+    parser.add_argument('output_res', help='Horizontal resolution of output DEM in metres', type=float)
     parser.add_argument('output_path', help='Path to folder where the output rasters will get generated', type=str)
-    parser.add_argument('output_epsg', help='Output Coordinate Refence System', type=str)
+    parser.add_argument('output_epsg', help='Output Coordinate Refence System', type=int)
     parser.add_argument('download_dir', help='Temporary folder for downloading data. Different HUCs may share this', type=str)
     parser.add_argument('--force', help='(optional) download existing files ', action='store_true', default=False)
 
@@ -310,6 +387,8 @@ def main():
     # verify args
     if not os.path.isdir(args.output_path):
         raise ValueError(f"Expect `output_path` argument to be path to a folder. Value supplied: {args.output_path}")
+    if not is_valid_output_res(args.output_res):
+        raise ValueError("Output resolution not within expected bounds.")
 
     log = Logger('DEM Builder')
     log.setup(logPath=os.path.join(args.output_path, 'dem_builder.log'), verbose=args.verbose)
@@ -327,8 +406,7 @@ def main():
     try:
         dem_builder(args.bounds_path, args.output_res, args.output_epsg, args.download_dir, scratch_dir, args.output_path, args.force)
         project_id = os.path.basename(args.bounds_path)
-        project_output_path = os.path.join(args.output_path, "project")
-        build_rs_context_project(project_id, project_output_path, args.bounds_path)
+        build_rs_context_project(project_id, args.output_path, args.bounds_path)
 
     except Exception as e:
         log.error(e)
