@@ -217,6 +217,6 @@ def hybrid_raster(ripmap_raster: str, lf_raster: str, out_raster: str):
 # if __name__ == "__main__":
 #     main()
 
-# clip_ripmap('/workspaces/data/MRG_Version2_0Plus.gdb', '/workspaces/data/rs_context/1302020201/hydrology/nhdplushr.gpkg/WBDHU10', '/workspaces/data/rs_context/1302020201/vegetation/ripmap.gpkg/ripmap', veg_class_lookup)
-# rasterize_gpkg_layer('/workspaces/data/rs_context/1302020201/vegetation/ripmap.gpkg/ripmap', 'RipMapID', '/workspaces/data/rs_context/1302020201/vegetation/nmripmap.tif', 5)
-hybrid_raster('/workspaces/data/rs_context/1302020201/vegetation/nmripmap.tif', '/workspaces/data/rs_context/1302020201/vegetation/existing_veg.tif', '/workspaces/data/rs_context/1302020201/vegetation/hybrid_nmripmap.tif')
+# clip_ripmap('/workspaces/data/MRG_Version2_0Plus.gdb', '/workspaces/data/rs_context/1302020202/hydrology/nhdplushr.gpkg/WBDHU10', '/workspaces/data/rs_context/1302020202/vegetation/ripmap.gpkg/ripmap', veg_class_lookup)
+# rasterize_gpkg_layer('/workspaces/data/rs_context/1302020202/vegetation/ripmap.gpkg/ripmap', 'RipMapID', '/workspaces/data/rs_context/1302020202/vegetation/nmripmap.tif', 5)
+hybrid_raster('/workspaces/data/rs_context/1302020202/vegetation/nmripmap.tif', '/workspaces/data/rs_context/1302020202/vegetation/existing_veg.tif', '/workspaces/data/rs_context/1302020202/vegetation/hybrid_nmripmap.tif')
