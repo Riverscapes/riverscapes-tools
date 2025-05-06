@@ -4079,8 +4079,8 @@ VegetationID,EpochID,Name,DefaultSuitability,LandUseID,Physiognomy,Notes
 10025,1,Lowland Mixed Native-Introduced Tamarisk Riparian Scrub,2.5,,,From NMRiparianHabitatMap Version 2
 10026,1,Lowland Mixed Native - Russian Olive - Tamarisk Riparian Woodland and Scrub,2.5,,,From NMRiparianHabitatMap Version 2
 10027,1,Upland Shrubland,2,,,From NMRiparianHabitatMap Version 2
-10028,1,Subalpine and Montane Wetland,1,,,From NMRiparianHabitatMap Version 2
-10029,1,Montane Wet Meadow,1,,,From NMRiparianHabitatMap Version 2
+10028,1,Subalpine and Montane Wetland,2.5,,,From NMRiparianHabitatMap Version 2
+10029,1,Montane Wet Meadow,2,,,From NMRiparianHabitatMap Version 2
 10030,1,Western Lowland Marsh,1,,,From NMRiparianHabitatMap Version 2
 10031,1,Great Plains Lowland Marsh,1,,,From NMRiparianHabitatMap Version 2
 10032,1,Arid West Lowland Wet Meadow,1,,,From NMRiparianHabitatMap Version 2
