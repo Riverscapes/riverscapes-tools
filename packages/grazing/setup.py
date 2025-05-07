@@ -29,7 +29,7 @@ setup(name='grazing',
       author_email='info@northarrowresearch.com',
       install_requires=install_requires,
       entry_points={
-          "console_scripts": ['grazing = grazing.grazing:main']
+          "console_scripts": ['grazing = grazing.grazing_likelihood:main']
       },
       zip_safe=False,
       url='https://github.com/Riverscapes/riverscapes-tools/tree/master/packages/grazing',
