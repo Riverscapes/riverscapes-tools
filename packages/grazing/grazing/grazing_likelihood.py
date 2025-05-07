@@ -16,8 +16,11 @@ from rscommons.database import create_database, SQLiteCon
 from rscommons.copy_features import copy_features_fields
 from rscommons.moving_window import moving_window_dgo_ids
 from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions, raster_resolution_meta
+from vbet.vbet_raster_ops import proximity_raster
 
-from grazing import __version__
+from grazing.__version__ import __version__
+from grazing.utils.water_raster import combine_water_features, create_water_raster
+from grazing.utils.veg_suitability import vegetation_suitability
 
 
 Path = str
@@ -32,18 +35,18 @@ LayerTypes = {
     'EXVEG': RSLayer('Existing Land Cover', 'EXVEG', 'Raster', 'inputs/existing_veg.tif'),
     'HILLSHADE': RSLayer('DEM Hillshade', 'HILLSHADE', 'Raster', 'inputs/dem_hillshade.tif'),
     'SLOPE': RSLayer('DEM Slope', 'SLOPE', 'Raster', 'inputs/dem_slope.tif'),
-    'INPUTS': RSLayer('Grazing Inputs', 'INPUTS', 'Vector', 'inputs/inputs.gpkg', {
+    'INPUTS': RSLayer('Grazing Inputs', 'INPUTS', 'Geopackage', 'inputs/inputs.gpkg', {
         'IGO': RSLayer('Integrated Geographic Objects', 'IGO', 'Vector', 'igo'),
         'DGO': RSLayer('Discrete Geographic Object', 'DGO', 'Vector', 'dgo'),
         'CHANNEL': RSLayer('Channel Area', 'CHANNELS', 'Vector', 'channel'),
         'WATERBODIES': RSLayer('Waterbodies', 'WATERBODIES', 'Vector', 'waterbodies'),
     }),
     'VEGSUIT': RSLayer('Grazing Vegetation Suitability', 'VEGSUIT', 'Raster', 'intermediates/veg_suitability.tif'),
-    'INTERMEDIATES': RSLayer('Grazing Intermediates', 'INTERMEDIATES', 'Vector', 'intermediates/intermediates.gpkg', {
+    'INTERMEDIATES': RSLayer('Grazing Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/intermediates.gpkg', {
         'WATER': RSLayer('Merged Channel and Waterbodies', 'WATER', 'Vector', 'water')
     }),
     'LIKELIHOOD': RSLayer('Grazing Likelihood', 'LIKELIHOOD', 'Raster', 'outputs/likelihood.tif'),
-    'OUTPUTS': RSLayer('Grazing Outputs', 'OUTPUTS', 'Vector', 'outputs/outputs.gpkg', {
+    'OUTPUTS': RSLayer('Grazing Outputs', 'OUTPUTS', 'Geopackage', 'outputs/outputs.gpkg', {
         'GRAZING_DGO_GEOM': RSLayer('Grazing DGO Polygon Geometry', 'GRAZING_DGO_GEOM', 'Vector', 'dgo_geometry'),
         'GRAZING_DGOS': RSLayer('Grazing Likelihood (DGOs)', 'GRAZING_LIKELIHOOD_DGO', 'Vector', 'grazing_dgos'),
         'GRAZING_IGO_GEOM': RSLayer('Grazing IGO Point Geometry', 'GRAZING_IGO_GEOM', 'Vector', 'igo_geometry'),
@@ -53,7 +56,7 @@ LayerTypes = {
 
 
 def grazing_likelihood(huc: int, existing_veg: Path, slope: Path, hillshade: Path, igo: Path, dgo: Path,
-                       waterbodies: Path, channel: Path, output_dir: Path, meta: Dict[str, str]) -> None:
+                       waterbodies: Path, channel: Path, output_dir: Path, meta: Dict[str, str] = None) -> None:
     """
     Main function to run the Grazing Likelihood model.
 
@@ -68,11 +71,11 @@ def grazing_likelihood(huc: int, existing_veg: Path, slope: Path, hillshade: Pat
     """
     # Initialize logger and project
     log = Logger('GrazingLikelihood')
-    log.info(f'Starting Grazing Likelihood model (v{cfg.version})')
+    log.info(f'Starting Grazing Likelihood model v.{cfg.version}')
     log.info(f'HUC: {huc}')
     log.info(f'EPSG: {cfg.OUTPUT_EPSG}')
 
-    augment_layermeta('grazing', LYR_DESCRIPTIONS_JSON, LayerTypes)
+    # augment_layermeta('grazing', LYR_DESCRIPTIONS_JSON, LayerTypes)
 
     project_name = f'Grazing Likelihood for HUC {huc}'
     project = RSProject(cfg, output_dir)
@@ -172,20 +175,40 @@ def grazing_likelihood(huc: int, existing_veg: Path, slope: Path, hillshade: Pat
         levelps = database.curs.fetchall()
         levelpathsin = [lp['level_path'] for lp in levelps]
 
-        # set window distances for different stream sizes
-        distancein = {
-            '0': 200,
-            '1': 400,
-            '2': 1200,
-            '3': 2000,
-            '4': 8000
-        }
-        project.add_metadata(
-            [RSMeta('Small Search Window', str(distancein['0']), RSMetaTypes.INT, locked=True),
-             RSMeta('Medium Search Window', str(distancein['1']), RSMetaTypes.INT, locked=True),
-             RSMeta('Large Search Window', str(distancein['2']), RSMetaTypes.INT, locked=True),
-             RSMeta('Very Large Search Window', str(distancein['3']), RSMetaTypes.INT, locked=True),
-             RSMeta('Huge Search Window', str(distancein['4']), RSMetaTypes.INT, locked=True)])
+    # set window distances for different stream sizes
+    distancein = {
+        '0': 200,
+        '1': 400,
+        '2': 1200,
+        '3': 2000,
+        '4': 8000
+    }
+    project.add_metadata(
+        [RSMeta('Small Search Window', str(distancein['0']), RSMetaTypes.INT, locked=True),
+            RSMeta('Medium Search Window', str(distancein['1']), RSMetaTypes.INT, locked=True),
+            RSMeta('Large Search Window', str(distancein['2']), RSMetaTypes.INT, locked=True),
+            RSMeta('Very Large Search Window', str(distancein['3']), RSMetaTypes.INT, locked=True),
+            RSMeta('Huge Search Window', str(distancein['4']), RSMetaTypes.INT, locked=True)])
 
-        # associate DGO IDs with IGO IDs for moving windows
-        windows = moving_window_dgo_ids(igo_geom_path, dgo_geom_path, levelpathsin, distancein)
+    # associate DGO IDs with IGO IDs for moving windows
+    windows = moving_window_dgo_ids(igo_geom_path, dgo_geom_path, levelpathsin, distancein)
+
+    # generate raster of water features
+    combine_water_features(input_layers['CHANNEL'], input_layers['WATERBODIES'], os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['WATER'].rel_path), cfg.OUTPUT_EPSG)
+    create_water_raster(os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['WATER'].rel_path), os.path.join(output_dir, 'intermediates/water.tif'), slope)
+    # create raster of proximity to water features
+    proximity_raster(os.path.join(output_dir, 'intermediates/water.tif'), os.path.join(output_dir, 'intermediates/proximity.tif'), "GEO")
+
+    # resample landfire down to 10m to match slope and proximity rasters
+    ds = gdal.Open(slope)
+    if ds is None:
+        raise FileNotFoundError(f"Could not open slope raster: {slope}")
+    gt = ds.GetGeoTransform()
+    xres = gt[1]
+    yres = abs(gt[5])
+    existing_veg_resampled = os.path.join(output_dir, 'intermediates/existing_veg_resampled.tif')
+    gdal.Warp(existing_veg_resampled, existing_veg, format='GTiff', xRes=xres, yRes=yres, resampleAlg='nearest_neighbor', targetSRS=f'EPSG:{cfg.OUTPUT_EPSG}', outputType=gdal.GDT_Int16)
+    ds = None
+
+    # create vegetation suitability raster
+    vegetation_suitability(outputs_gpkg_path, existing_veg_resampled, os.path.join(intermediates_gpkg_path, LayerTypes['VEGSUIT'].rel_path))
