@@ -24,7 +24,7 @@ from rscommons.download_dem import download_dem, verify_areas
 from rscommons.geographic_raster import gdal_dem_geographic
 from rscommons.project_bounds import generate_project_extents_from_layer
 from rscommons.raster_warp import raster_vrt_stitch
-from rscommons.util import safe_makedirs, safe_remove_dir
+from rscommons.util import safe_makedirs, safe_remove_dir, safe_remove_file
 from rscontext_3dep.__version__ import __version__
 
 initGDALOGRErrors()
@@ -218,6 +218,7 @@ def should_resample(dem_rasters: list[str], output_res: float, threshold: float 
         bool: True if resampling is necessary, False otherwise.
     """
     log = Logger("Resolution Check")
+    log.info(f"Checking resolution of source rasters vs desired target resolution ({output_res})")
     resolutions = []
 
     for raster_path in dem_rasters:
@@ -248,17 +249,17 @@ def should_resample(dem_rasters: list[str], output_res: float, threshold: float 
 
     # Calculate the average resolution of all input rasters
     avg_input_resolution = sum(resolutions) / len(resolutions)
-    log.info(f"Average input resolution: {avg_input_resolution:.2f}m")
+    log.info(f"Average source resolution: {avg_input_resolution:.2f}m")
 
     # Check if the relative difference exceeds the threshold
     relative_difference = abs(avg_input_resolution - output_res) / avg_input_resolution
     log.info(f"Relative difference: {relative_difference:.2%}")
 
     if relative_difference <= threshold:
-        log.info("Resampling is not necessary. Input resolution is close to the desired resolution.")
+        log.info("Resampling is not necessary. Source resolution is close to the target resolution.")
         return False
 
-    log.info("Resampling is necessary. Input resolution differs significantly from the desired resolution.")
+    log.info("Resampling is necessary. Source resolution differs significantly from the target resolution.")
     return True
 
 
@@ -281,12 +282,17 @@ def dem_builder(bounds_path: str,  output_res: float, download_folder: str, scra
 
     dem_rasters, dem_raster_source_urls = download_dem(bounds_path, None, 0.01, ned_download_folder, ned_unzip_folder, force_download, '1m')
     output_dem_file_path = os.path.join(output_path, LayerTypes['DEM'].rel_path)
-    need_dem_rebuild = force_download or not os.path.exists(output_dem_file_path)
+    resample = should_resample(dem_rasters, output_res)
+    # this forces rebuild if there is a resampling which isn't always needed but helps in case the only difference between two runs is the output_res
+    need_dem_rebuild = force_download or not os.path.exists(output_dem_file_path) or resample
 
     output_epsg = get_best_crs(dem_rasters)
     if need_dem_rebuild:
+        log.info('Building mosaiced DEM')
+        if os.path.exists(output_dem_file_path):
+            safe_remove_file(output_dem_file_path)
         warp_options = {"cutlineBlend": 1}
-        if should_resample(dem_rasters, output_res):
+        if resample:
             warp_options.update({
                 "xRes": output_res,
                 "yRes": output_res,
@@ -294,6 +300,8 @@ def dem_builder(bounds_path: str,  output_res: float, download_folder: str, scra
             })
 
         raster_vrt_stitch(dem_rasters, output_dem_file_path, output_epsg, clip=bounds_path, warp_options=warp_options)
+    else:
+        log.info('Skipping DEM build as it already exists. Use force option to trigger rebuild anyway.')
 
     area_ratio = verify_areas(output_dem_file_path, bounds_path)
     if area_ratio < 0.85:
@@ -304,31 +312,29 @@ def dem_builder(bounds_path: str,  output_res: float, download_folder: str, scra
     hillshade_path = os.path.join(output_path, LayerTypes['HILLSHADE'].rel_path)
     need_hs_rebuild = need_dem_rebuild or not os.path.isfile(hillshade_path)
     if need_hs_rebuild:
+        log.info('Building hillshade from DEM')
         if is_geographic_epsg(output_epsg):
             gdal_dem_geographic(output_dem_file_path, hillshade_path, 'hillshade')
         else:
             gdal.DEMProcessing(hillshade_path, output_dem_file_path, 'hillshade', creationOptions=["COMPRESS=DEFLATE"])
+    else:
+        log.info('Skipping hillshade build as one already exists. Use force option to trigger rebuild anyway.')
 
     log.info(f'Area Ratio: {area_ratio:%}')
-    log.info(f'Output DEM: {output_path}')
-    log.info(f'Output DEM Size: {os.path.getsize(output_path) / 1024 / 1024:.2f} MB')
+    log.info(f'Output DEM: {output_dem_file_path}')
+    log.info(f'Output DEM Size: {os.path.getsize(output_dem_file_path) / 1024 / 1024:.2f} MB')
     log.info(f'Output DEM Resolution: {output_res} m')
     log.info(f'Output DEM Projection: {output_epsg}')
-    log.info('DEM Builder complete')
+    log.info('DEM building portion complete')
 
     # STEP 2. Build the Riverscapes project of type RSContext but with just the 3DEP 1m DEM products
     # This is a much simplified version of rs_context.rs_context
-    # TODO: review to back-port features additional features
-    # metadata to include:
-    # source urls
-    # were the inputs resampled, if so from what to what
-    # were the inputs reprojected, if so from what to what
 
     log.title("RS Context 3DEP project builder")
     project_identifier = os.path.basename(bounds_path)
 
     project_name = f'Riverscapes Context-3DEP for {project_identifier}'
-    project_description = 'Riverscapes Context-3DEP'
+    project_description = 'Riverscapes Context-3DEP built from high resolution topographic data from USGS 3DEP Program. See dem_builder.log for additional details of the processing performed.'
     project = RSProject(cfg, output_path)
 
     project.create(project_name, 'RSContext')
@@ -340,8 +346,10 @@ def dem_builder(bounds_path: str,  output_res: float, download_folder: str, scra
     dem_node, _dem_raster = project.add_project_raster(datasets, LayerTypes['DEM'])
     project.add_metadata([
         RSMeta('NumRasters', str(len(dem_raster_source_urls)), RSMetaTypes.INT),
-        RSMeta('OriginUrls', json.dumps(dem_raster_source_urls), RSMetaTypes.JSON)
+        RSMeta('OriginUrls', json.dumps(dem_raster_source_urls), RSMetaTypes.JSON),
     ], dem_node)
+    if resample:
+        project.add_metadata([RSMeta('Processing', str(f'Resampled to {output_res} m'))], dem_node)
 
     project.add_project_raster(datasets, LayerTypes['HILLSHADE'])
 
@@ -351,6 +359,7 @@ def dem_builder(bounds_path: str,  output_res: float, download_folder: str, scra
     project.XMLBuilder.add_sub_element(project.XMLBuilder.root, 'Description', project_description)
 
     # Add Project Extents
+    log.info("Use input bounds to generate project bounds geojson for RS project")
     extents_json_path = os.path.join(output_path, 'project_bounds.geojson')
     extents = generate_project_extents_from_layer(
         bounds_path, extents_json_path)
@@ -375,7 +384,6 @@ def main():
     parser.add_argument('bounds_path', help='Path to feature class containing polygon bounds feature', type=str)
     parser.add_argument('output_res', help='Horizontal resolution of output DEM in metres (1-10)', type=float)
     parser.add_argument('output_path', help='Path to folder where the project and output rasters will go', type=str)
-    parser.add_argument('output_epsg', help='NOT USED Output Coordinate Refence System', type=int)
     parser.add_argument('download_dir', help='Temporary folder for downloading data. Different HUCs may share this', type=str)
     parser.add_argument('--force', help='(optional) download existing files ', action='store_true', default=False)
 
