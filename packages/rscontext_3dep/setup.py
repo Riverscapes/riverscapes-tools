@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-from setuptools import setup
 import re
+from setuptools import setup
 
 # https://packaging.python.org/discussions/install-requires-vs-requirements/
 install_requires = [
@@ -15,25 +15,25 @@ with open("README.md", "rb") as f:
 
 version = re.search(
     '^__version__\\s*=\\s*"(.*)"',
-    open('rscontext/__version__.py').read(),
+    open('rscontext_3dep/__version__.py').read(),
     re.M
 ).group(1)
 
-setup(name='rs-context',
+setup(name='rs-context-3dep',
       version=version,
       description='Riverscapes Context',
-      author='Matt Reimer',
+      author='Lorin at North Arrow Research',
       license='MIT',
-      python_requires='>3.5.2',
+      python_requires='>=3.10',
       long_description=long_descr,
       author_email='info@northarrowresearch.com',
       install_requires=install_requires,
       entry_points={
-          "console_scripts": ['rscontext = rscontext.rs_context:main']
+          "console_scripts": ['dembuilder = rscontext_3dep.dem_builder:main']
       },
       zip_safe=False,
-      url='https://github.com/Riverscapes/rs-context',
+      url='https://github.com/Riverscapes/riverscapes-tools',
       packages=[
-          'rscontext'
+          'rscontext_3dep'
       ]
       )
