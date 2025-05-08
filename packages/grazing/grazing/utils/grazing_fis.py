@@ -3,7 +3,7 @@ import skfuzzy as fuzz
 import skfuzzy.control as ctrl
 import numpy as np
 
-from rscommons import Logger
+from rscommons import Logger, ProgressBar
 
 
 def calculate_grazing_fis(water_promixity: str, slope: str, vegetation_suitability: str, output_raster: str):
@@ -28,9 +28,10 @@ def calculate_grazing_fis(water_promixity: str, slope: str, vegetation_suitabili
     if water_array.shape != slope_array.shape or water_array.shape != veg_array.shape:
         raise ValueError("All input rasters must have the same shape.")
 
-    # create nodata array for output
-    output_array = np.full(slope_array.shape, slope_nd, dtype=np.float32)
-    output_array = np.ma.masked_where(mask, output_array)
+    raster_stack = np.stack((water_array, slope_array, veg_array))
+
+    num_rasters, height, width = raster_stack.shape
+    pixel_data = raster_stack.reshape(num_rasters, -1)
 
     # limit input values to ranges
     water_array[water_array > 50000] = 50000
@@ -110,21 +111,71 @@ def calculate_grazing_fis(water_promixity: str, slope: str, vegetation_suitabili
     mfx = fuzz.trimf(x_vals, [0, 0, 0.0005])
     defuzz_centroid = round(fuzz.defuzz(x_vals, mfx, 'centroid'), 6)
 
-    def apply_fis(water, slope, veg):
-        """
-        Apply the FIS to the input values.
-        """
+    results = np.full(pixel_data.shape[1], slope_nd)
+    progbar = ProgressBar(len(results), 50, "Calculating Grazing Likelihood")
+    counter = 0
+    for i in range(pixel_data.shape[1]):
+        counter += 1
+        progbar.update(counter)
+        water = pixel_data[0, i]
+        slope = pixel_data[1, i]
+        veg = pixel_data[2, i]
+
+        if slope == slope_nd:
+            continue
+
         grazing_fis.input['water'] = water
         grazing_fis.input['slope'] = slope
         grazing_fis.input['veg'] = veg
         grazing_fis.compute()
-        return grazing_fis.output['grazing']
+        results[i] = grazing_fis.output['grazing']
 
-    vectorized_fis = np.vectorize(apply_fis)
-
-    log.info('Applying FIS to input data')
-    output_array = vectorized_fis(water_array, slope_array, veg_array)
-    output_array[output_array == defuzz_centroid] = 0
+    results[results == defuzz_centroid] = 0
+    result_raster = results.reshape(height, width)
+    result_raster[result_raster == defuzz_centroid] = 0
 
     with rasterio.open(output_raster, 'w', **meta) as dst:
-        dst.write(output_array.astype(meta['dtype']), 1)
+        dst.write(result_raster.astype(meta['dtype']), 1)
+
+    # def apply_fis(water, slope, veg):
+    #     """
+    #     Apply the FIS to the input values.
+    #     """
+    #     grazing_fis.input['water'] = water
+    #     grazing_fis.input['slope'] = slope
+    #     grazing_fis.input['veg'] = veg
+    #     grazing_fis.compute()
+    #     return grazing_fis.output['grazing']
+
+    # vectorized_fis = np.vectorize(apply_fis)
+
+    # log.info('Applying FIS to input data')
+
+    # with rasterio.open(slope) as slope_src, rasterio.open(water_promixity) as water_src, \
+    #         rasterio.open(vegetation_suitability) as veg_src:
+    #     meta = slope_src.meta
+
+    #     with rasterio.open(output_raster, 'w', **meta) as dst:
+    #         progbar = ProgressBar(len(list(slope_src.block_windows(1))), 50, "Writing Grazing Likelihood Raster")
+    #         counter = 0
+    #         for ji, window in dst.block_windows(1):
+    #             progbar.update(counter)
+    #             counter += 1
+    #             # Read the data from the source raster
+    #             water_data = water_src.read(1, window=window, masked=True)
+    #             slope_data = slope_src.read(1, window=window, masked=True)
+    #             veg_data = veg_src.read(1, window=window, masked=True)
+
+    #             # Apply the translation function to the data
+    #             out_data = vectorized_fis(water_data, slope_data, veg_data)
+
+    #             # Write the output data to the destination raster
+    #             dst.write(out_data.astype(meta['dtype']), window=window, indexes=1)
+
+    #         progbar.finish()
+
+    # output_array = vectorized_fis(water_array, slope_array, veg_array)
+    # output_array[output_array == defuzz_centroid] = 0
+
+    # with rasterio.open(output_raster, 'w', **meta) as dst:
+    #     dst.write(output_array.astype(meta['dtype']), 1)

@@ -54,7 +54,7 @@ CREATE VIEW vwVegetationSuitability AS SELECT VT.VegetationID,
        DefaultSuitability,
        OverrideSuitability,
        IFNULL(OverrideSuitability, DefaultSuitability) EffectiveSuitability
-  FROM VegetationTypes VT INNER JOIN VegetationOverrides OV ON VT.VegetationID = OV.VegetationID;
+  FROM VegetationTypes VT LEFT JOIN VegetationOverrides OV ON VT.VegetationID = OV.VegetationID;
 
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('VegetationTypes', 'attributes');
 INSERT INTO gpkg_contents (table_name, data_type) VALUES ('VegetationOverrides', 'attributes');
