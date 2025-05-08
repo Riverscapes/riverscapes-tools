@@ -211,7 +211,8 @@ def grazing_likelihood(huc: int, existing_veg: Path, slope: Path, hillshade: Pat
     xres = gt[1]
     yres = abs(gt[5])
     existing_veg_resampled = os.path.join(output_dir, 'intermediates/existing_veg_resampled.tif')
-    gdal.Warp(existing_veg_resampled, existing_veg, format='GTiff', xRes=xres, yRes=yres, resampleAlg='nearest_neighbor', dstSRS=ds.GetSpatialRef(), outputType=gdal.GDT_Int16)
+    gdal.Warp(existing_veg_resampled, existing_veg, format='GTiff', height=ds.RasterYSize, width=ds.RasterXSize,
+              resampleAlg='nearest_neighbor', dstSRS=ds.GetSpatialRef(), outputType=gdal.GDT_Int16)
     ds = None
 
     # create vegetation suitability raster
