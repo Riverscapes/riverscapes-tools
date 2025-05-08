@@ -151,6 +151,57 @@ def update_database(db_path, csv_path):
     return db_path
 
 
+def create_db_nowats(huc: str, db_path: str, metadata: Dict[str, str], epsg: int, schema_path: str, delete: bool = False):
+    """[summary]
+
+    Args:
+        huc (str): [description]
+        db_path (str): [description]
+        metadata (Dict[str, str]): [description]
+        epsg (int): [description]
+        schema_path (str): [description]
+        delete (bool, optional): [description]. Defaults to False.
+
+    Raises:
+        Exception: [description]
+
+    Returns:
+        [type]: [description]
+    """
+
+    # We need to create a projection for this DB
+    db_srs = osr.SpatialReference()
+    db_srs.ImportFromEPSG(int(epsg))
+    metadata['gdal_srs_proj4'] = str(db_srs.ExportToProj4())
+    metadata['gdal_srs_axis_mapping_strategy'] = str(osr.OAMS_TRADITIONAL_GIS_ORDER)
+
+    if not os.path.isfile(schema_path):
+        raise Exception('Unable to find database schema file at {}'.format(schema_path))
+
+    log = Logger('Database')
+    if os.path.isfile(db_path) and delete is True:
+        log.info('Removing existing SQLite database at {0}'.format(db_path))
+        os.remove(db_path)
+
+    log.info('Creating database schema at {0}'.format(db_path))
+    qry = open(schema_path, 'r').read()
+    sqlite3.complete_statement(qry)
+    conn = sqlite3.connect(db_path)
+    conn.execute('PRAGMA foreign_keys = ON;')
+    curs = conn.cursor()
+    curs.executescript(qry)
+
+    csv_dir = os.path.join(os.path.dirname(schema_path), 'data')
+    load_lookup_data(db_path, csv_dir)
+
+    conn.commit()
+    conn.execute("VACUUM")
+
+    # Write the metadata to the database
+    if metadata:
+        [store_metadata(db_path, key, value) for key, value in metadata.items()]
+
+
 def load_lookup_data(db_path, csv_dir):
     """Load the database lookup data from CSV files.
     This gets called both during database creation during BRAT build,

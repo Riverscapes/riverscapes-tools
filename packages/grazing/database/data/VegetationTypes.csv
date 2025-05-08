@@ -1,0 +1,1069 @@
+VegetationID,Name,EVT_PHYS,DefaultSuitability
+4401,Alaska Arctic Coastal Sedge-Dwarf-Shrubland,Shrubland,4
+4402,Alaska Arctic Floodplain Forest,Riparian,4
+4403,Alaska Arctic Large River Floodplain Forest,Riparian,4
+4404,Alaska Arctic Mesic Alder Shrubland,Shrubland,4
+4405,Alaska Arctic Permafrost Plateau Dwarf-Shrub Lichen Tundra,Shrubland,4
+4406,Alaska Arctic Tidal Flat,Sparsely Vegetated,1
+4407,Alaska Sub-boreal and Maritime Alpine Mesic Herbaceous Meadow,Grassland,4
+4408,Alaska Sub-boreal Mesic Subalpine Alder Shrubland,Shrubland,4
+4409,Alaska Sub-boreal Mountain Hemlock-White Spruce Forest,Conifer,2
+4410,Alaska Sub-boreal White-Lutz Spruce Forest and Woodland,Conifer,2
+4411,Alaskan Pacific Acidic Shrub Peatland,Riparian,4
+4412,Alaskan Pacific Alpine-Subalpine Dwarf-shrubland & Heath,Shrubland,4
+4413,Alaskan Pacific Floodplain Conifer Forest,Riparian,4
+4414,Alaskan Pacific Maritime Alpine Floodplain Shrubland,Riparian,4
+4415,Alaskan Pacific Maritime Avalanche Slope Shrubland,Shrubland,4
+4416,Alaskan Pacific Maritime Coastal Meadow and Slough-Levee,Grassland,4
+4417,Alaskan Pacific Maritime Mesic Herbaceous Meadow,Grassland,4
+4418,Alaskan Pacific Maritime Mountain Hemlock-Shore Pine Peatland,Conifer,2
+4419,Alaskan Pacific Maritime Western Hemlock Forest,Conifer,2
+4420,Alaskan Pacific Mesic Western Hemlock-Yellow-cedar Forest,Conifer,2
+4421,Alaskan Pacific Mountain Hemlock Forest and Subalpine Woodland ,Conifer,2
+4422,Alaskan Pacific Poorly Drained Conifer Woodland,Conifer,2
+4423,Alaskan Pacific Sitka Spruce Forest and Beach Ridge,Conifer,2
+4424,Alaskan Pacific Wet Low Shrubland & Floodplain Wetland,Riparian,4
+4425,Alaskan Pacific-Aleutian Alder-Salmonberry-Copperbush Shrubland,Shrubland,4
+4426,Alaskan Pacific-Aleutian Coastal Dune Beach and Beach Meadow,Grassland,4
+4427,Alaskan Pacific-Aleutian Fen and Wet Meadow,Riparian,4
+4428,Alaskan Pacific-Aleutian Rocky Coastline and Sea Cliff,Sparsely Vegetated,1
+4429,Aleutian Ericaceous Dwarf-shrubland Heath and Fell-field,Shrubland,4
+4430,Aleutian Mesic Herbaceous Meadow,Grassland,4
+4431,Aleutian Mesic-Wet Willow Shrubland,Shrubland,4
+4432,Aleutian Volcanic Rock and Talus,Sparsely Vegetated,1
+4434,North American Arctic Bedrock and Talus,Sparsely Vegetated,1
+4435,North American Arctic Dryas Tundra,Shrubland,4
+4436,North American Arctic Dwarf-Shrub Lichen Tundra,Shrubland,4
+4437,North American Arctic Dwarf-shrub-Sphagnum Peatland,Riparian,4
+4438,North American Arctic Freshwater Marsh,Riparian,4
+4439,North American Arctic Lichen Tundra,Grassland,4
+4440,North American Arctic Mesic Herbaceous Meadow,Grassland,4
+4441,North American Arctic Mesic Sedge-Willow Tundra,Shrubland,4
+4442,North American Arctic Mesic-Wet Low Willow Shrubland,Shrubland,4
+4443,North American Arctic Polygonal Ground Shrub-Tussock Tundra,Shrubland,4
+4444,North American Arctic Scrub Birch-Ericaceous Shrubland,Shrubland,4
+4445,North American Arctic Sparse Tundra,Shrubland,4
+4446,North American Arctic Wet Sedge Tundra and Polygonal Ground ,Riparian,4
+4447,North American Arctic-Subarctic Coastal Dune & Beach Meadow,Grassland,4
+4448,North American Arctic-Subarctic Shrub-Tussock Tundra,Shrubland,4
+4449,North American Arctic-Subarctic Tidal Salt and Brackish Marsh,Riparian,4
+4450,North American Arctic-Subarctic Tussock Tundra,Grassland,4
+4453,Western North American Boreal Alpine Dwarf-shrubland,Shrubland,4
+4454,Western North American Boreal Alpine Mesic Herbaceous Meadow,Grassland,4
+4455,Western North American Boreal Montane-Alpine Talus and Bedrock,Sparsely Vegetated,1
+4456,Western North American Boreal Black Spruce Bog and Dwarf-Tree Peatland,Conifer,2
+4457,Western North American Boreal Black Spruce-Tamarack Fen,Conifer,2
+4458,Western North American Boreal Cliff Scree and Rock,Sparsely Vegetated,1
+4459,Western North American Boreal Dry Aspen-Steppe Bluff,Shrubland,4
+4460,Western North American Boreal Dry Grassland,Grassland,4
+4461,Western North American Boreal Freshwater Emergent Marsh,Riparian,4
+4462,Western North American Boreal Lowland Large River Floodplain Conifer Forest,Riparian,4
+4463,Western North American Boreal Mesic Birch-Aspen Forest,Hardwood,3
+4464,Western North American Boreal Mesic Bluejoint-Forb Meadow,Riparian,4
+4465,Western North American Boreal Mesic Scrub Birch-Willow Shrubland,Shrubland,4
+4466,Western North American Boreal Mesic White Spruce Forest,Conifer,2
+4467,Western North American Boreal Mesic-Wet Black Spruce Forest and Woodland,Conifer,2
+4468,Western North American Boreal Montane Floodplain Conifer Forest,Riparian,4
+4469,Western North American Boreal Riparian Stringer Conifer Forest,Riparian,4
+4470,Western North American Boreal Shrub Floodplain,Riparian,4
+4471,Western North American Boreal Shrub Swamp,Shrubland,4
+4472,Western North American Boreal Shrub-Sedge Bog & Acidic Fen,Shrubland,4
+4473,Western North American Boreal Shrub-Sedge Rich and Alkaline Fen,Riparian,4
+4474,Western North American Boreal Spruce-Lichen Woodland,Conifer,2
+4475,Western North American Boreal Treeline White Spruce Woodland,Conifer,2
+4476,Western North American Boreal Wet Black Spruce-Tussock Woodland,Conifer,2
+4477,Western North American Boreal Wet Meadow,Riparian,4
+4478,Western North American Boreal Treeline Hardwood-White Spruce Woodland,Hardwood,3
+4479,Western North American Boreal Treeline White Spruce-Hardwood Woodland,Conifer-Hardwood,3
+4480,Western North American Boreal Mesic Hardwood-White Spruce Forest,Conifer-Hardwood,3
+4481,Western North American Boreal Mesic White Spruce-Hardwood Forest,Conifer-Hardwood,3
+4482,Alaska Sub-boreal Hardwood-White-Lutz Spruce Forest and Woodland,Conifer-Hardwood,3
+4483,Alaska Sub-boreal White-Lutz Spruce-Hardwood Forest and Woodland,Conifer-Hardwood,3
+4484,Western North American Boreal Mesic-Wet Black Spruce-Hardwood Forest and Woodland,Conifer-Hardwood,3
+4485,Alaskan Pacific Floodplain Deciduous Forest,Riparian,4
+4486,Alaskan Pacific Floodplain Mixed Forest,Riparian,4
+4487,Western North American Boreal Lowland Large River Floodplain Deciduous Forest,Riparian,4
+4488,Western North American Boreal Lowland Large River Floodplain Mixed Forest,Riparian,4
+4489,Western North American Boreal Montane Floodplain Deciduous Forest,Riparian,4
+4490,Western North American Boreal Montane Floodplain Mixed Forest,Riparian,4
+4491,Western North American Boreal Riparian Stringer Deciduous Forest,Riparian,4
+4492,Western North American Boreal Riparian Stringer Mixed Forest,Riparian,4
+4601,Micronesian Dry Cliff,Sparsely Vegetated,1
+4602,Micronesian Dry-Site Lava Flow,Sparsely Vegetated,1
+4603,Micronesian Dry Coastal Strand,Sparsely Vegetated,1
+4604,Micronesian Lowland Rain Forest,Hardwood,3
+4605,Micronesian Lowland Limestone Forest,Hardwood,3
+4606,Central and Southern Polynesian Montane Rainforest,Hardwood,3
+4609,Micronesian Ravine and Riparian Forest,Hardwood,3
+4610,Polynesian Freshwater Marsh,Riparian,4
+4611,Micronesian Swamp Forest,Riparian,4
+4612,Western Pacific Mangrove,Hardwood,3
+4614,Central and Southern Polynesian Coastal Wooded Strand,Hardwood,3
+4615,Central and Southern Polynesian Cliff,Sparsely Vegetated,1
+4616,Central and Southern Polynesian Lava Flow,Sparsely Vegetated,1
+4617,Central and Southern Polynesian Dry Coastal Strand,Sparsely Vegetated,1
+4618,Central and Southern Polynesian Lowland Rain Forest,Hardwood,3
+4620,Central and Southern Polynesian Cloud Forest,Hardwood,3
+4621,Central and Southern Polynesian Littoral Forest,Hardwood,3
+4622,Central and Southern Polynesian Ravine and Riparian Forest,Hardwood,3
+4623,Central and Southern Polynesian Swamp Forest,Riparian,4
+4624,Micronesian Ravine and Riparian Shrubland,Riparian,4
+4627,Central and Southern Polynesian Dry Coastal Strand Shrubland,Shrubland,4
+4628,Central and Southern Polynesian Dry Coastal Strand Herbaceous,Grassland,4
+4629,Micronesian Dry Coastal Strand Shrubland,Shrubland,4
+4630,Micronesian Dry Coastal Strand Herbaceous,Grassland,4
+4902,Alaska Arctic Floodplain Shrubland,Riparian,4
+4903,Alaska Arctic Large River Floodplain Shrubland,Riparian,4
+4904,Alaska Arctic Floodplain Herbaceous,Riparian,4
+4905,Alaska Arctic Large River Floodplain Herbaceous,Riparian,4
+4911,Alaskan Pacific Acidic Sedge Peatland,Riparian,4
+4913,Alaskan Pacific Floodplain Shrubland (Conifer Forest),Riparian,4
+4914,Alaskan Pacific Maritime Alpine Floodplain Herbaceous,Riparian,4
+4937,North American Arctic Wet Sedge-Sphagnum Peatland,Riparian,4
+4943,North American Arctic Polygonal Ground Tussock Tundra,Grassland,4
+4947,North American Arctic-Subarctic Coastal Dune & Beach,Sparsely Vegetated,1
+4962,Western North American Boreal Lowland Large River Floodplain Shrubland (Conifer Forest),Riparian,4
+4963,Western North American Boreal Lowland Large River Floodplain Sparse Vegetation,Sparsely Vegetated,1
+4964,Western North American Boreal Montane Floodplain Sparse Vegetation,Sparsely Vegetated,1
+4965,Alaskan Pacific Floodplain Sparse Vegetation,Sparsely Vegetated,1
+4966,Alaska Arctic Large River Floodplain Sparse Vegetation ,Sparsely Vegetated,1
+4968,Western North American Boreal Montane Floodplain Shrubland (Conifer Forest),Riparian,4
+4969,Western North American Boreal Riparian Stringer Shrubland (Conifer Forest),Riparian,4
+4970,Western North American Boreal Herbaceous Floodplain,Riparian,4
+4973,Western North American Boreal Herbaceous Rich and Alkaline Fen,Riparian,4
+4985,Alaskan Pacific Floodplain Shrubland (Deciduous Forest),Riparian,4
+4986,Alaskan Pacific Floodplain Shrubland (Mixed Forest),Riparian,4
+4987,Western North American Boreal Lowland Large River Floodplain Shrubland (Deciduous Forest),Riparian,4
+4988,Western North American Boreal Lowland Large River Floodplain Shrubland (Mixed Forest),Riparian,4
+4989,Western North American Boreal Montane Floodplain Shrubland (Deciduous Forest),Riparian,4
+4990,Western North American Boreal Montane Floodplain Shrubland (Mixed Forest),Riparian,4
+4991,Western North American Boreal Riparian Stringer Shrubland (Deciduous Forest),Riparian,4
+4992,Western North American Boreal Riparian Stringer Shrubland (Mixed Forest),Riparian,4
+7008,North Pacific Oak Woodland,Hardwood,3
+7009,Northwestern Great Plains Aspen Forest and Parkland,Hardwood,3
+7010,Northern Rocky Mountain Western Larch Savanna,Conifer,2
+7011,Rocky Mountain Aspen Forest and Woodland,Hardwood,3
+7012,Rocky Mountain Bigtooth Maple Ravine Woodland,Hardwood,3
+7013,Western Great Plains Dry Bur Oak Forest and Woodland,Hardwood,3
+7014,Central and Southern California Mixed Evergreen Woodland,Conifer,2
+7015,California Coastal Redwood Forest,Conifer,2
+7016,Colorado Plateau Pinyon-Juniper Woodland,Conifer,2
+7017,Columbia Plateau Western Juniper Woodland and Savanna,Conifer,2
+7018,East Cascades Mesic Montane Mixed-Conifer Forest and Woodland,Conifer,2
+7019,Great Basin Pinyon-Juniper Woodland,Conifer,2
+7020,Inter-Mountain Basins Subalpine Limber-Bristlecone Pine Woodland,Conifer,2
+7021,Klamath-Siskiyou Lower Montane Serpentine Mixed Conifer Woodland,Conifer,2
+7022,Klamath-Siskiyou Upper Montane Serpentine Mixed Conifer Woodland,Conifer,2
+7023,Madrean Encinal,Conifer-Hardwood,3
+7024,Madrean Lower Montane Pine-Oak Forest and Woodland,Conifer-Hardwood,3
+7025,Madrean Pinyon-Juniper Woodland,Conifer,2
+7026,Madrean Upper Montane Conifer-Oak Forest and Woodland,Conifer-Hardwood,3
+7027,Mediterranean California Dry-Mesic Mixed Conifer Forest and Woodland,Conifer,2
+7028,Mediterranean California Mesic Mixed Conifer Forest and Woodland,Conifer,2
+7029,Mediterranean California Mixed Oak Woodland,Hardwood,3
+7030,Mediterranean California Lower Montane Conifer Forest and Woodland,Conifer,2
+7031,California Montane Jeffrey Pine-(Ponderosa Pine) Woodland,Conifer,2
+7032,Mediterranean California Red Fir Forest,Conifer,2
+7033,Mediterranean California Subalpine Woodland,Conifer,2
+7034,Mediterranean California Mesic Serpentine Woodland,Conifer,2
+7035,North Pacific Dry Douglas-fir-(Madrone) Forest and Woodland,Conifer,2
+7036,North Pacific Seasonal Sitka Spruce Forest,Conifer,2
+7037,North Pacific Maritime Dry-Mesic Douglas-fir-Western Hemlock Forest,Conifer,2
+7038,North Pacific Maritime Mesic Subalpine Parkland,Conifer,2
+7039,North Pacific Maritime Mesic-Wet Douglas-fir-Western Hemlock Forest,Conifer,2
+7041,North Pacific Mountain Hemlock Forest,Conifer,2
+7042,North Pacific Mesic Western Hemlock-Silver Fir Forest,Conifer,2
+7043,Mediterranean California Mixed Evergreen Forest,Conifer,2
+7044,Northern California Mesic Subalpine Woodland,Conifer,2
+7045,Northern Rocky Mountain Dry-Mesic Montane Mixed Conifer Forest,Conifer,2
+7046,Northern Rocky Mountain Subalpine Woodland and Parkland,Conifer,2
+7047,Northern Rocky Mountain Mesic Montane Mixed Conifer Forest,Conifer,2
+7048,Northwestern Great Plains Highland White Spruce Woodland,Conifer,2
+7049,Rocky Mountain Foothill Limber Pine-Juniper Woodland,Conifer,2
+7050,Rocky Mountain Lodgepole Pine Forest,Conifer,2
+7051,Southern Rocky Mountain Dry-Mesic Montane Mixed Conifer Forest and Woodland,Conifer,2
+7052,Southern Rocky Mountain Mesic Montane Mixed Conifer Forest and Woodland,Conifer,2
+7053,Northern Rocky Mountain Ponderosa Pine Woodland and Savanna,Conifer,2
+7054,Southern Rocky Mountain Ponderosa Pine Woodland,Conifer,2
+7055,Rocky Mountain Subalpine Dry-Mesic Spruce-Fir Forest and Woodland,Conifer,2
+7056,Rocky Mountain Subalpine Mesic-Wet Spruce-Fir Forest and Woodland,Conifer,2
+7057,Rocky Mountain Subalpine-Montane Limber-Bristlecone Pine Woodland,Conifer,2
+7058,Sierra Nevada Subalpine Lodgepole Pine Forest and Woodland,Conifer,2
+7059,Southern Rocky Mountain Pinyon-Juniper Woodland,Conifer,2
+7060,East Cascades Ponderosa Pine Forest and Woodland,Conifer,2
+7061,Inter-Mountain Basins Aspen-Mixed Conifer Forest and Woodland,Conifer-Hardwood,3
+7062,Inter-Mountain Basins Curl-leaf Mountain Mahogany Woodland,Conifer,2
+7063,North Pacific Broadleaf Landslide Forest,Hardwood,3
+7064,Colorado Plateau Mixed Low Sagebrush Shrubland,Shrubland,4
+7065,Columbia Plateau Scabland Shrubland,Shrubland,4
+7066,Inter-Mountain Basins Mat Saltbush Shrubland,Shrubland,4
+7067,Mediterranean California Alpine Fell-Field,Shrubland,4
+7068,North Pacific Dry and Mesic Alpine Dwarf-Shrubland,Shrubland,4
+7069,North Pacific Dry and Mesic Alpine Fell-field or Meadow,Grassland,4
+7070,Rocky Mountain Alpine Dwarf-Shrubland,Shrubland,4
+7071,Sierra Nevada Alpine Dwarf-Shrubland,Shrubland,4
+7072,Wyoming Basins Dwarf Sagebrush Shrubland and Steppe,Shrubland,4
+7073,Baja Semi-Desert Coastal Succulent Scrub,Shrubland,4
+7074,Chihuahuan Creosotebush Desert Scrub,Shrubland,4
+7075,Chihuahuan Mixed Salt Desert Scrub,Shrubland,4
+7076,Chihuahuan Stabilized Coppice Dune and Sand Flat Scrub,Shrubland,4
+7077,Chihuahuan Succulent Desert Scrub,Shrubland,4
+7078,Colorado Plateau Blackbrush-Mormon-tea Shrubland,Shrubland,4
+7079,Great Basin Xeric Mixed Sagebrush Shrubland,Shrubland,4
+7080,Inter-Mountain Basins Big Sagebrush Shrubland,Shrubland,4
+7081,Inter-Mountain Basins Mixed Salt Desert Scrub,Shrubland,4
+7082,Mojave Mid-Elevation Mixed Desert Scrub,Shrubland,4
+7083,North Pacific Avalanche Chute Shrubland,Shrubland,4
+7084,North Pacific Montane Shrubland,Shrubland,4
+7085,Northwestern Great Plains Shrubland,Shrubland,4
+7086,Rocky Mountain Lower Montane-Foothill Shrubland,Shrubland,4
+7087,Sonora-Mojave Creosotebush-White Bursage Desert Scrub,Shrubland,4
+7088,Sonora-Mojave Mixed Salt Desert Scrub,Shrubland,4
+7090,Sonoran Granite Outcrop Desert Scrub,Shrubland,4
+7091,Sonoran Mid-Elevation Desert Scrub,Shrubland,4
+7092,Southern California Coastal Scrub,Shrubland,4
+7093,Southern Colorado Plateau Sand Shrubland,Shrubland,4
+7094,Western Great Plains Sandhill Steppe,Shrubland,4
+7096,California Maritime Chaparral,Shrubland,4
+7097,California Mesic Chaparral,Shrubland,4
+7098,California Montane Woodland and Chaparral,Shrubland,4
+7099,California Xeric Serpentine Chaparral,Shrubland,4
+7100,Chihuahuan Mixed Desert and Thornscrub,Shrubland,4
+7101,Madrean Oriental Chaparral,Shrubland,4
+7102,Colorado Plateau Pinyon-Juniper Shrubland,Shrubland,4
+7103,Great Basin Semi-Desert Chaparral,Shrubland,4
+7104,Mogollon Chaparral,Shrubland,4
+7105,Northern and Central California Dry-Mesic Chaparral,Shrubland,4
+7106,Northern Rocky Mountain Montane-Foothill Deciduous Shrubland,Shrubland,4
+7107,Rocky Mountain Gambel Oak-Mixed Montane Shrubland,Shrubland,4
+7108,Sonora-Mojave Semi-Desert Chaparral,Shrubland,4
+7109,Sonoran Paloverde-Mixed Cacti Desert Scrub,Shrubland,4
+7110,Southern California Dry-Mesic Chaparral,Shrubland,4
+7111,Western Great Plains Mesquite Shrubland,Shrubland,4
+7112,California Central Valley Mixed Oak Savanna,Hardwood,3
+7113,California Coastal Live Oak Woodland and Savanna,Hardwood,3
+7114,California Lower Montane Foothill Pine Woodland and Savanna,Conifer,2
+7115,Inter-Mountain Basins Juniper Savanna,Conifer,2
+7116,Madrean Juniper Savanna,Conifer,2
+7117,Southern Rocky Mountain Ponderosa Pine Savanna,Conifer,2
+7118,Southern California Oak Woodland and Savanna,Hardwood,3
+7119,Southern Rocky Mountain Juniper Woodland and Savanna,Conifer,2
+7120,Willamette Valley Upland Prairie,Grassland,4
+7121,Apacherian-Chihuahuan Semi-Desert Shrub-Steppe,Shrubland,4
+7122,Chihuahuan Gypsophilous Grassland and Steppe,Grassland,4
+7123,Columbia Plateau Steppe and Grassland,Grassland,4
+7124,Columbia Plateau Low Sagebrush Steppe,Shrubland,4
+7125,Inter-Mountain Basins Big Sagebrush Steppe,Shrubland,4
+7126,Inter-Mountain Basins Montane Sagebrush Steppe,Shrubland,4
+7127,Inter-Mountain Basins Semi-Desert Shrub-Steppe,Shrubland,4
+7128,Northern California Coastal Scrub,Shrubland,4
+7129,California Central Valley and Southern Coastal Grassland,Grassland,4
+7130,California Mesic Serpentine Grassland,Grassland,4
+7131,California Northern Coastal Grassland,Grassland,4
+7132,Central Mixedgrass Prairie Grassland,Grassland,4
+7133,Chihuahuan Sandy Plains Semi-Desert Grassland,Grassland,4
+7134,Columbia Basin Foothill and Canyon Dry Grassland,Grassland,4
+7135,Inter-Mountain Basins Semi-Desert Grassland,Grassland,4
+7136,Mediterranean California Alpine Dry Tundra,Grassland,4
+7137,Mediterranean California Subalpine Meadow,Grassland,4
+7138,North Pacific Montane Grassland,Grassland,4
+7139,Northern Rocky Mountain Lower Montane-Foothill-Valley Grassland,Grassland,4
+7140,Northern Rocky Mountain Subalpine-Upper Montane Grassland,Grassland,4
+7141,Northwestern Great Plains Mixedgrass Prairie,Grassland,4
+7142,Columbia Basin Palouse Prairie,Grassland,4
+7143,Rocky Mountain Alpine Fell-Field,Grassland,4
+7144,Rocky Mountain Alpine Turf,Grassland,4
+7145,Rocky Mountain Subalpine-Montane Mesic Meadow,Grassland,4
+7146,Southern Rocky Mountain Montane-Subalpine Grassland,Grassland,4
+7147,Western Great Plains Foothill and Piedmont Grassland,Grassland,4
+7148,Western Great Plains Sand Prairie,Grassland,4
+7149,Western Great Plains Shortgrass Prairie,Grassland,4
+7150,Western Great Plains Tallgrass Prairie,Grassland,4
+7151,California Central Valley Riparian Woodland,Riparian,4
+7152,California Central Valley Riparian Shrubland,Riparian,4
+7153,Inter-Mountain Basins Greasewood Flat,Shrubland,4
+7156,North Pacific Lowland Riparian Forest,Riparian,4
+7157,North Pacific Lowland Riparian Shrubland,Riparian,4
+7158,North Pacific Montane Riparian Woodland,Riparian,4
+7159,North Pacific Montane Riparian Shrubland,Riparian,4
+7161,Northern Rocky Mountain Conifer Swamp,Riparian,4
+7165,Northern Rocky Mountain Foothill Conifer Wooded Steppe,Conifer,2
+7166,Middle Rocky Mountain Montane Douglas-fir Forest and Woodland,Conifer,2
+7167,Rocky Mountain Poor-Site Lodgepole Pine Forest,Conifer,2
+7168,Northern Rocky Mountain Avalanche Chute Shrubland,Shrubland,4
+7169,Northern Rocky Mountain Subalpine Deciduous Shrubland,Shrubland,4
+7170,Klamath-Siskiyou Xeromorphic Serpentine Savanna,Conifer,2
+7171,North Pacific Alpine and Subalpine Dry Grassland,Grassland,4
+7172,Sierran-Intermontane Desert Western White Pine-White Fir Woodland,Conifer,2
+7173,North Pacific Wooded Volcanic Flowage,Conifer,2
+7174,North Pacific Dry-Mesic Silver Fir-Western Hemlock-Douglas-fir Forest,Conifer,2
+7177,California Coastal Closed-Cone Conifer Forest and Woodland,Conifer,2
+7178,North Pacific Hypermaritime Western Red-cedar-Western Hemlock Forest,Conifer,2
+7179,Northwestern Great Plains-Black Hills Ponderosa Pine Woodland and Savanna,Conifer,2
+7191,Recently Logged-Herb and Grass Cover,Grassland,4
+7192,Recently Logged-Shrub Cover,Shrubland,4
+7193,Recently Logged-Tree Cover,Conifer,2
+7195,Recently Burned-Herb and Grass Cover,Grassland,4
+7196,Recently Burned-Shrub Cover,Shrubland,4
+7197,Recently Burned-Tree Cover,Conifer,2
+7198,Recently Disturbed Other-Herb and Grass Cover,Grassland,4
+7199,Recently Disturbed Other-Shrub Cover,Shrubland,4
+7200,Recently Disturbed Other-Tree Cover,Conifer,2
+7207,Central Mixedgrass Prairie Shrubland,Shrubland,4
+7234,Mediterranean California Mesic Serpentine Chaparral,Shrubland,4
+7238,Laurentian-Acadian Northern Oak Forest,Hardwood,3
+7239,Laurentian-Acadian Northern Pine-(Oak) Forest,Conifer-Hardwood,3
+7240,Laurentian-Acadian Hardwood Forest,Hardwood,3
+7241,Laurentian-Acadian Pine-Hemlock-Hardwood Forest,Conifer-Hardwood,3
+7242,Laurentian Oak Barrens,Hardwood,3
+7243,Laurentian Pine-Oak Barrens,Conifer-Hardwood,3
+7247,Southern Appalachian Grass Bald,Grassland,4
+7248,Northern Atlantic Coastal Plain Dune and Swale Grassland,Grassland,4
+7249,Atlantic Coastal Plain Peatland Pocosin and Canebrake Shrubland,Riparian,4
+7250,Inter-Mountain Basins Curl-leaf Mountain Mahogany Shrubland,Shrubland,4
+7256,Apacherian-Chihuahuan Semi-Desert Grassland,Grassland,4
+7260,Mediterranean California Lower Montane Black Oak Forest and Woodland,Hardwood,3
+7261,Mediterranean California Lower Montane Black Oak-Conifer Forest and Woodland,Conifer-Hardwood,3
+7262,East Cascades Oak Forest and Woodland,Hardwood,3
+7263,East Cascades Oak-Ponderosa Pine Forest and Woodland,Conifer-Hardwood,3
+7264,California Lower Montane Blue Oak Woodland and Savanna,Hardwood,3
+7265,California Lower Montane Blue Oak-Foothill Pine Woodland and Savanna,Conifer-Hardwood,3
+7268,Eastern Great Plains Tallgrass Aspen Shrubland,Shrubland,4
+7270,Klamath-Siskiyou Xeromorphic Serpentine Chaparral,Shrubland,4
+7272,Eastern Boreal Floodplain Shrubland,Riparian,4
+7286,Paleozoic Plateau Bluff and Talus Herbaceous,Grassland,4
+7288,Acadian-Appalachian Alpine Tundra Meadow,Grassland,4
+7289,Acadian-Appalachian Subalpine Heath-Krummholz,Shrubland,4
+7290,North-Central Oak Barrens Herbaceous,Grassland,4
+7291,Central Interior Highlands Calcareous Glade and Barrens Herbaceous,Grassland,4
+7292,Open Water,Open Water,0
+7295,Quarries-Strip Mines-Gravel Pits-Well and Wind Pads,Quarries-Strip Mines-Gravel Pits-Well and Wind Pads,0
+7296,Developed-Low Intensity,Developed-Low Intensity,0
+7297,Developed-Medium Intensity,Developed-Medium Intensity,0
+7298,Developed-High Intensity,Developed-High Intensity,0
+7299,Developed-Roads,Developed-Roads,0
+7300,Developed-Open Space,Developed-Open Space,0
+7301,Laurentian-Acadian Sub-boreal Aspen-Birch Forest,Hardwood,3
+7302,Laurentian-Acadian Northern Hardwoods Forest,Hardwood,3
+7303,Northeastern Interior Dry-Mesic Oak Forest,Hardwood,3
+7304,Ozark-Ouachita Dry-Mesic Oak Forest,Hardwood,3
+7305,Southern Interior Low Plateau Dry-Mesic Oak Forest,Hardwood,3
+7306,East Gulf Coastal Plain Northern Loess Plain Oak-Hickory Upland,Hardwood,3
+7307,East Gulf Coastal Plain Northern Dry Upland Hardwood Forest,Hardwood,3
+7308,Crosstimbers Oak Forest and Woodland,Hardwood,3
+7309,Southern Appalachian Northern Hardwood Forest,Hardwood,3
+7310,North-Central Interior Dry-Mesic Oak Forest and Woodland,Hardwood,3
+7311,North-Central Interior Dry Oak Forest and Woodland,Hardwood,3
+7312,Ouachita Montane Oak Forest,Hardwood,3
+7313,North-Central Interior Beech-Maple Forest,Hardwood,3
+7314,North-Central Interior Maple-Basswood Forest,Hardwood,3
+7315,Southern Appalachian Oak Forest,Hardwood,3
+7316,Southern Piedmont Mesic Forest,Hardwood,3
+7317,Allegheny-Cumberland Dry Oak Forest and Woodland,Hardwood,3
+7318,Southern and Central Appalachian Cove Forest,Hardwood,3
+7320,Central and Southern Appalachian Montane Oak Forest,Hardwood,3
+7321,South-Central Interior Mesophytic Forest,Hardwood,3
+7322,Crowley's Ridge Mesic Loess Slope Forest,Hardwood,3
+7323,West Gulf Coastal Plain Mesic Hardwood Forest,Hardwood,3
+7324,Northern Atlantic Coastal Plain Hardwood Forest,Hardwood,3
+7325,East Gulf Coastal Plain Northern Mesic Hardwood Slope Forest,Hardwood,3
+7326,South-Central Interior / Upper Coastal Plain Flatwoods,Hardwood,3
+7327,East Gulf Coastal Plain Northern Loess Bluff Forest,Hardwood,3
+7328,Southern Coastal Plain Limestone Forest,Hardwood,3
+7329,East Gulf Coastal Plain Southern Loess Bluff Forest,Hardwood,3
+7330,Southern Coastal Plain Dry Upland Hardwood Forest,Hardwood,3
+7331,Eastern Great Plains Tallgrass Aspen Forest and Woodland,Hardwood,3
+7333,South Florida Hardwood Hammock,Hardwood,3
+7334,Ozark-Ouachita Mesic Hardwood Forest,Hardwood,3
+7335,Southern Atlantic Coastal Plain Dry and Dry-Mesic Oak Forest,Hardwood,3
+7336,Southwest Florida Maritime Hammock,Hardwood,3
+7337,Southeast Florida Maritime Hammock,Hardwood,3
+7338,Central and South Texas Coastal Fringe Forest and Woodland,Hardwood,3
+7339,West Gulf Coastal Plain Chenier and Upper Texas Coastal Fringe Forest and Woodland,Hardwood,3
+7340,Appalachian Shale Barrens,Conifer-Hardwood,3
+7342,Piedmont Hardpan Woodland and Forest,Hardwood,3
+7343,Southern Atlantic Coastal Plain Mesic Hardwood Forest,Hardwood,3
+7346,Atlantic Coastal Plain Fall-line Sandhills Longleaf Pine Woodland,Conifer,2
+7347,Atlantic Coastal Plain Upland Longleaf Pine Woodland,Conifer,2
+7348,West Gulf Coastal Plain Upland Longleaf Pine Forest and Woodland,Conifer,2
+7349,East Gulf Coastal Plain Interior Upland Longleaf Pine Woodland,Conifer,2
+7350,Central and Southern Appalachian Spruce-Fir Forest,Conifer,2
+7351,Southeastern Interior Longleaf Pine Woodland,Conifer,2
+7352,Southern Appalachian Montane Pine Forest and Woodland,Conifer,2
+7353,Southern Appalachian Low-Elevation Pine Forest,Conifer,2
+7354,Northeastern Interior Pine Barrens,Conifer,2
+7355,Northern Atlantic Coastal Plain Pitch Pine Barrens,Conifer,2
+7356,Florida Longleaf Pine Sandhill,Conifer,2
+7357,Southern Coastal Plain Mesic Slope Forest,Hardwood,3
+7358,Bastrop Lost Pines Forest and Woodland,Conifer,2
+7360,South Florida Pine Rockland,Conifer,2
+7361,Central Atlantic Coastal Plain Maritime Forest,Hardwood,3
+7362,Laurentian-Acadian Northern Pine Forest,Conifer,2
+7363,Central Interior Highlands Dry Acidic Glade and Barrens,Conifer-Hardwood,3
+7364,Ozark-Ouachita Dry Oak Woodland,Hardwood,3
+7366,Laurentian-Acadian Pine-Hemlock Forest,Conifer,2
+7367,Ozark-Ouachita Shortleaf Pine Forest and Woodland,Conifer,2
+7368,Southern Piedmont Dry Pine Forest,Conifer,2
+7369,Central Appalachian Dry Pine Forest,Conifer,2
+7370,Appalachian Hemlock Forest,Conifer,2
+7371,West Gulf Coastal Plain Pine Forest,Conifer,2
+7372,East Gulf Coastal Plain Interior Shortleaf Pine Forest,Conifer,2
+7373,Acadian Low-Elevation Spruce-Fir Forest,Conifer,2
+7374,Acadian-Appalachian Montane Spruce-Fir Forest,Conifer-Hardwood,3
+7375,Eastern Serpentine Woodland,Conifer-Hardwood,3
+7376,Southern Ridge and Valley / Cumberland Dry Calcareous Forest,Hardwood,3
+7377,Central Appalachian Pine Rocky Woodland,Conifer,2
+7378,West Gulf Coastal Plain Sandhill Shortleaf Pine Forest and Woodland,Conifer,2
+7379,Northern Atlantic Coastal Plain Maritime Forest,Hardwood,3
+7380,East Gulf Coastal Plain Maritime Forest,Hardwood,3
+7381,Lower Mississippi River Dune Woodland and Forest,Hardwood,3
+7382,Southern Atlantic Coastal Plain Maritime Forest,Hardwood,3
+7383,Edwards Plateau Limestone Savanna and Woodland,Hardwood,3
+7384,Mississippi Delta Maritime Forest,Hardwood,3
+7385,Great Plains Wooded Draw and Ravine Woodland,Riparian,4
+7386,Acadian-Appalachian Alpine Tundra Shrubland,Shrubland,4
+7387,Florida Peninsula Inland Scrub Shrubland,Shrubland,4
+7389,Acadian-Appalachian Subalpine Woodland,Conifer,2
+7390,Tamaulipan Mixed Deciduous Thornscrub,Shrubland,4
+7391,Tamaulipan Mesquite Upland Woodland,Hardwood,3
+7392,Tamaulipan Calcareous Thornscrub,Shrubland,4
+7393,Edwards Plateau Limestone Shrubland,Shrubland,4
+7394,North-Central Interior Oak Savanna,Hardwood,3
+7395,North-Central Oak Barrens Woodland,Hardwood,3
+7396,Great Plains Wooded Draw and Ravine Shrubland,Riparian,4
+7397,Nashville Basin Limestone Glade and Woodland,Conifer-Hardwood,3
+7398,Cumberland Sandstone Glade and Barrens,Conifer-Hardwood,3
+7399,Northern Atlantic Coastal Plain Grassland,Grassland,4
+7400,Central Appalachian Alkaline Glade and Woodland,Conifer-Hardwood,3
+7401,Central Interior Highlands Calcareous Glade and Barrens Woodland,Conifer-Hardwood,3
+7403,West Gulf Coastal Plain Catahoula Barrens,Conifer-Hardwood,3
+7405,West Gulf Coastal Plain Nepheline Syenite Glade,Conifer-Hardwood,3
+7406,Southern Piedmont Dry Oak Forest,Hardwood,3
+7407,Laurentian Pine Barrens,Conifer,2
+7408,Alabama Ketona Glade and Woodland,Conifer-Hardwood,3
+7409,Great Lakes Alvar,Grassland,4
+7410,Llano Uplift Acidic Forest and Woodland,Conifer-Hardwood,3
+7411,Great Lakes Wet-Mesic Lakeplain Prairie,Riparian,4
+7412,North-Central Interior Sand and Gravel Tallgrass Prairie,Grassland,4
+7413,Bluegrass Savanna and Woodland Prairie,Grassland,4
+7414,Southern Appalachian Shrub Bald,Shrubland,4
+7415,Arkansas Valley Prairie,Grassland,4
+7416,Western Highland Rim Prairie and Barrens,Grassland,4
+7417,Eastern Highland Rim Prairie and Barrens,Grassland,4
+7418,Pennyroyal Karst Plain Prairie and Barrens,Grassland,4
+7419,Southern Ridge and Valley Patch Prairie,Grassland,4
+7420,Northern Tallgrass Prairie,Grassland,4
+7421,Central Tallgrass Prairie,Grassland,4
+7422,Texas Blackland Tallgrass Prairie,Grassland,4
+7423,Southeastern Great Plains Tallgrass Prairie,Grassland,4
+7424,East-Central Texas Plains Xeric Sandyland,Grassland,4
+7425,Florida Dry Prairie Grassland,Grassland,4
+7426,Southern Atlantic Coastal Plain Dune and Maritime Grassland,Grassland,4
+7428,West Gulf Coastal Plain Northern Calcareous Prairie,Grassland,4
+7429,West Gulf Coastal Plain Southern Calcareous Prairie,Grassland,4
+7430,Southern Coastal Plain Blackland Prairie,Grassland,4
+7431,Southwest Florida Dune and Coastal Grassland,Grassland,4
+7434,Texas-Louisiana Coastal Prairie,Riparian,4
+7435,East Gulf Coastal Plain Dune and Coastal Grassland,Grassland,4
+7436,Northern Atlantic Coastal Plain Dune and Swale Shrubland,Shrubland,4
+7437,Texas Coast Dune and Coastal Grassland,Grassland,4
+7438,Tamaulipan Savanna Grassland,Grassland,4
+7439,Tamaulipan Lomas,Shrubland,4
+7441,Bluegrass Savanna and Woodland,Hardwood,3
+7442,Arkansas Valley Prairie and Woodland,Hardwood,3
+7444,Eastern Boreal Floodplain Woodland,Riparian,4
+7445,South Florida Dwarf Cypress Savanna,Riparian,4
+7446,South Florida Pine Flatwoods,Conifer,2
+7447,South Florida Cypress Dome,Riparian,4
+7448,Southern Piedmont Dry Oak-(Pine) Forest,Conifer-Hardwood,3
+7449,Central Atlantic Coastal Plain Wet Longleaf Pine Savanna and Flatwoods,Riparian,4
+7450,Southern Atlantic Coastal Plain Wet Pine Savanna and Flatwoods,Riparian,4
+7451,West Gulf Coastal Plain Wet Longleaf Pine Savanna and Flatwoods,Riparian,4
+7452,Atlantic Coastal Plain Peatland Pocosin and Canebrake Woodland,Riparian,4
+7453,Central Florida Pine Flatwoods,Conifer,2
+7454,East Gulf Coastal Plain Near-Coast Pine Flatwoods,Conifer,2
+7455,East Gulf Coastal Plain Southern Loblolly Flatwoods,Conifer,2
+7456,Northern Atlantic Coastal Plain Pitch Pine Lowland,Riparian,4
+7457,South-Central Interior / Upper Coastal Plain Wet Flatwoods,Riparian,4
+7458,West Gulf Coastal Plain Pine Flatwoods,Conifer,2
+7459,Atlantic Coastal Plain Clay-Based Carolina Bay Wetland,Riparian,4
+7460,Southern Coastal Plain Nonriverine Cypress Dome,Riparian,4
+7461,Southern Coastal Plain Seepage Swamp and Baygall Woodland,Riparian,4
+7462,West Gulf Coastal Plain Seepage Swamp and Baygall,Riparian,4
+7463,Central Appalachian Dry Oak Forest,Hardwood,3
+7464,Acadian Sub-Boreal Spruce Barrens,Conifer,2
+7465,Acadian Sub-Boreal Spruce Flat,Conifer,2
+7466,Great Lakes Wooded Dune and Swale,Riparian,4
+7467,Tamaulipan Floodplain Woodland,Riparian,4
+7468,Atlantic Coastal Plain Streamhead Seepage Swamp-Pocosin-Baygall Woodland,Riparian,4
+7469,Atlantic Coastal Plain Streamhead Seepage Swamp-Pocosin-Baygall Shrubland,Riparian,4
+7471,Southwest Florida Coastal Strand Shrubland,Shrubland,4
+7472,Southeast Florida Coastal Strand Shrubland,Shrubland,4
+7474,Tamaulipan Floodplain Shrubland,Riparian,4
+7475,Tamaulipan Floodplain Herbaceous ,Riparian,4
+7476,Tamaulipan Riparian Woodland,Riparian,4
+7481,Laurentian-Acadian Alkaline Conifer-Hardwood Swamp,Riparian,4
+7482,Great Plains Prairie Pothole,Riparian,4
+7483,South Florida Everglades Sawgrass Marsh,Riparian,4
+7484,South Florida Wet Marl Prairie,Riparian,4
+7485,East Gulf Coastal Plain Wet Prairie,Riparian,4
+7486,Texas Saline Coastal Prairie,Riparian,4
+7487,Texas-Louisiana Coastal Prairie Pondshore,Riparian,4
+7488,Eastern Great Plains Wet Meadow-Prairie-Marsh,Riparian,4
+7489,Floridian Highlands Freshwater Marsh,Riparian,4
+7500,South Texas Salt and Brackish Tidal Flat,Sparsely Vegetated,1
+7501,Southern Atlantic Coastal Plain Nonriverine Swamp and Wet Hardwood Forest,Riparian,4
+7502,Central Appalachian Dry Oak-Pine Forest,Conifer-Hardwood,3
+7503,Chihuahuan Loamy Plains Desert Grassland,Grassland,4
+7504,Chihuahuan-Sonoran Desert Bottomland and Swale Grassland,Riparian,4
+7505,Ouachita Novaculite Glade and Woodland,Hardwood,3
+7506,West Gulf Coastal Plain Nonriverine Wet Hardwood Flatwoods,Riparian,4
+7507,Ozark-Ouachita Shortleaf Pine-Bluestem Woodland,Conifer,2
+7509,Mississippi River Alluvial Plain Dry-Mesic Loess Slope Forest,Hardwood,3
+7510,Crowley's Ridge Sand Forest,Conifer-Hardwood,3
+7511,Appalachian Northern Hardwood Forest,Hardwood,3
+7512,Appalachian (Hemlock)-Northern Hardwood Forest,Conifer-Hardwood,3
+7513,Lower Mississippi River Flatwoods,Riparian,4
+7514,Central Florida Herbaceous Pondshore,Riparian,4
+7515,Southern Coastal Plain Herbaceous Seep and Bog,Riparian,4
+7516,Atlantic Coastal Plain Sandhill Seep,Riparian,4
+7517,Paleozoic Plateau Bluff and Talus Woodland,Hardwood,3
+7518,North-Central Interior Wet Flatwoods,Riparian,4
+7519,East-Central Texas Plains Post Oak Savanna and Woodland,Hardwood,3
+7522,Northern Atlantic Coastal Plain Heathland,Shrubland,4
+7523,Edwards Plateau Dry-Mesic Slope Forest and Woodland,Conifer-Hardwood,3
+7524,Edwards Plateau Mesic Canyon,Hardwood,3
+7525,Edwards Plateau Riparian Forest and Woodland,Riparian,4
+7527,East Gulf Coastal Plain Interior Oak Forest,Hardwood,3
+7545,East Gulf Coastal Plain Near-Coast Pine Wet Flatwoods,Riparian,4
+7546,East Gulf Coastal Plain Interior Shortleaf Pine-Oak Forest,Conifer-Hardwood,3
+7547,Central Florida Pine Wet Flatwoods,Riparian,4
+7548,South Florida Pine Wet Flatwoods,Riparian,4
+7554,Acadian Low-Elevation Hardwood Forest,Hardwood,3
+7555,Acadian Low-Elevation Spruce-Fir-Hardwood Forest,Conifer-Hardwood,3
+7556,Central Appalachian Oak Rocky Woodland,Hardwood,3
+7557,Central Appalachian Pine-Oak Rocky Woodland,Conifer-Hardwood,3
+7560,Tamaulipan Mesquite Upland Scrub,Shrubland,4
+7561,Llano Uplift Acidic Herbaceous Glade,Grassland,4
+7562,Tamaulipan Riparian Shrubland,Riparian,4
+7563,Edwards Plateau Riparian Shrubland,Riparian,4
+7564,Edwards Plateau Riparian Herbaceous,Riparian,4
+7565,Florida Peninsula Inland Scrub Woodland,Conifer,2
+7566,Florida Dry Prairie Shruband,Shrubland,4
+7567,Southern Coastal Plain Blackland Prairie Woodland,Conifer-Hardwood,3
+7571,Southern Coastal Plain Seepage Swamp and Baygall Shrubland,Riparian,4
+7573,Tamaulipan Riparian Herbaceous,Riparian,4
+7578,East Gulf Coastal Plain Wet Savanna,Riparian,4
+7582,Ozark-Ouachita Oak Forest and Woodland,Hardwood,3
+7583,Ozark-Ouachita Shortleaf Pine-Oak Forest and Woodland,Conifer-Hardwood,3
+7584,West Gulf Coastal Plain Hardwood Forest,Hardwood,3
+7585,West Gulf Coastal Plain Pine-Hardwood Forest,Conifer-Hardwood,3
+7586,West Gulf Coastal Plain Sandhill Oak Forest and Woodland,Hardwood,3
+7587,West Gulf Coastal Plain Sandhill Oak and Shortleaf Pine Forest and Woodland,Conifer-Hardwood,3
+7588,East Gulf Coastal Plain Southern Hardwood Flatwoods,Hardwood,3
+7589,East Gulf Coastal Plain Southern Loblolly-Hardwood Flatwoods,Conifer-Hardwood,3
+7590,West Gulf Coastal Plain Hardwood Flatwoods,Hardwood,3
+7591,West Gulf Coastal Plain Pine-Hardwood Flatwoods,Conifer-Hardwood,3
+7662,Temperate Pacific Freshwater Emergent Marsh,Riparian,4
+7663,North Pacific Shrub Swamp,Shrubland,4
+7668,Temperate Pacific Tidal Salt and Brackish Marsh,Riparian,4
+7669,Temperate Pacific Intertidal Flat,Sparsely Vegetated,1
+7733,North Pacific Montane Massive Bedrock-Cliff and Talus,Sparsely Vegetated,1
+7734,North Pacific Alpine and Subalpine Bedrock and Scree,Sparsely Vegetated,1
+7735,North American Glacier and Ice Field,Snow-Ice,0
+7736,Unconsolidated Shore,Sparsely Vegetated,1
+7737,North American Glacial Outwash,Sparsely Vegetated,1
+7754,Agriculture-Pasture and Hay,Agricultural,4
+7755,Agriculture-Cultivated Crops and Irrigated Agriculture,Agricultural,0
+7800,Hawai'i Floodplain Forest,Riparian,4
+7802,Hawai'i Riparian Forest,Riparian,4
+7804,Hawai'i Freshwater Marsh,Riparian,4
+7806,Hawai'i Bog,Grassland,4
+7807,Northern Polynesia Tidal Salt Marsh,Grassland,4
+7808,Hawai'i Lowland Rainforest,Hardwood,3
+7809,Hawai'i Montane Cloud Forest,Hardwood,3
+7810,Hawai'i Montane Rainforest,Hardwood,3
+7811,Hawai'i Wet Cliff and Ridge Crest Shrubland,Shrubland,4
+7812,Hawai'i Mesic Coastal Forest,Hardwood,3
+7813,Hawai'i Lowland Dry Forest,Hardwood,3
+7814,Hawai'i Lowland Mesic Forest,Hardwood,3
+7815,Hawai'i Montane-Subalpine Dry Forest and Woodland,Hardwood,3
+7816,Hawai'i Montane-Subalpine Mesic Forest,Hardwood,3
+7817,Hawai'i Lowland Dry Shrubland,Shrubland,4
+7818,Hawai'i Lowland Mesic Shrubland,Shrubland,4
+7819,Hawai'i Lowland Dry Grassland,Grassland,4
+7820,Hawai'i Lowland Mesic Grassland,Grassland,4
+7821,Hawai'i Montane-Subalpine Dry Shrubland,Shrubland,4
+7822,Hawai'i Montane-Subalpine Dry Grassland,Grassland,4
+7823,Hawai'i Montane-Subalpine Mesic Grassland,Grassland,4
+7824,Hawai'i Alpine Dwarf-Shrubland,Shrubland,4
+7826,Hawai'i Dry Coastal Strand Shrubland,Shrubland,4
+7827,Hawai'i Wet-Mesic Coastal Strand,Shrubland,4
+7828,Hawai'i Subalpine Mesic Shrubland,Shrubland,4
+7829,Hawai'i Alpine Bedrock and Scree,Sparsely Vegetated,1
+7830,Hawai'i Dry Coastal Strand Sparse Vegetation,Sparsely Vegetated,1
+7831,Hawai'i Dry-Site Lava Flow,Sparsely Vegetated,1
+7832,Hawai'I Floodplain Shrubland,Riparian,4
+7833,Hawai'i Riparian Shrubland,Riparian,4
+7834,Tropical Pacific Orchard,Agricultural,0
+7835,Tropical Pacific Bush fruit and Berries,Agricultural,0
+7836,Tropical Pacific Aquaculture,Agricultural,0
+7837,Sugar Cane,Agricultural,0
+7838,Caribbean Bush fruit and berries,Agricultural,0
+7860,Caribbean Coastal Dry Evergreen Forest,Hardwood,3
+7861,Caribbean Coastal Mangrove,Riparian,4
+7862,Caribbean Coastal Rocky Shore,Sparsely Vegetated,1
+7863,Caribbean Coastal Thornscrub,Shrubland,4
+7864,Caribbean Dry Karst Shrubland,Shrubland,4
+7865,"Caribbean Edapho-Xerophilous ""Mogote"" Complex",Hardwood,3
+7866,Caribbean Emergent Herbaceous Estuary,Riparian,4
+7867,Caribbean Estuary Mangrove,Riparian,4
+7868,Caribbean Floodplain Forest,Riparian,4
+7869,Caribbean Freshwater Marsh,Riparian,4
+7870,Caribbean Lowland Moist Serpentine Woodland,Hardwood,3
+7871,Caribbean Montane Meadow,Grassland,4
+7872,Caribbean Montane Wet Elfin Forest,Hardwood,3
+7873,Caribbean Montane Wet Serpentine Woodland,Hardwood,3
+7874,Caribbean Montane Wet Short Shrubland,Riparian,4
+7875,Caribbean Riparian Forest,Riparian,4
+7876,Caribbean Salt Flat and Pond,Sparsely Vegetated,1
+7877,Caribbean Sand Beach Vegetation,Sparsely Vegetated,1
+7878,Caribbean Sand Savanna,Hardwood,3
+7879,Caribbean Seasonal Evergreen Lowland Forest,Hardwood,3
+7880,Caribbean Seasonal Evergreen Submontane/Lowland Forest,Hardwood,3
+7881,Caribbean Semi-deciduous Lowland Forest,Hardwood,3
+7882,Caribbean Serpentine Dry Scrub,Shrubland,4
+7883,Caribbean Submontane/Montane Karstic Forest,Hardwood,3
+7884,Caribbean Wet Montane Forest,Riparian,4
+7885,Caribbean Wet Submontane/Lowland Forest,Riparian,4
+7886,Stabilized Caribbean Dunes,Sparsely Vegetated,1
+7887,Caribbean Floodplain Shrubland,Riparian,4
+7888,Caribbean Riparian Shrubland,Riparian,4
+7900,Western Cool Temperate Urban Deciduous Forest,Developed,2
+7901,Western Cool Temperate Urban Evergreen Forest,Developed,2
+7902,Western Cool Temperate Urban Mixed Forest,Developed,2
+7903,Western Cool Temperate Urban Herbaceous,Developed,2
+7904,Western Cool Temperate Urban Shrubland,Developed,2
+7905,Eastern Cool Temperate Urban Deciduous Forest,Developed,2
+7906,Eastern Cool Temperate Urban Evergreen Forest,Developed,2
+7907,Eastern Cool Temperate Urban Mixed Forest,Developed,2
+7908,Eastern Cool Temperate Urban Herbaceous,Developed,2
+7909,Eastern Cool Temperate Urban Shrubland,Developed,2
+7910,Western Warm Temperate Urban Deciduous Forest,Developed,2
+7911,Western Warm Temperate Urban Evergreen Forest,Developed,2
+7912,Western Warm Temperate Urban Mixed Forest,Developed,2
+7913,Western Warm Temperate Urban Herbaceous,Developed,2
+7914,Western Warm Temperate Urban Shrubland,Developed,2
+7915,Eastern Warm Temperate Urban Deciduous Forest,Developed,2
+7916,Eastern Warm Temperate Urban Evergreen Forest,Developed,2
+7917,Eastern Warm Temperate Urban Mixed Forest,Developed,2
+7918,Eastern Warm Temperate Urban Herbaceous,Developed,2
+7919,Eastern Warm Temperate Urban Shrubland,Developed,2
+7920,Western Cool Temperate Developed Deciduous Forest,Developed,2
+7921,Western Cool Temperate Developed Evergreen Forest,Developed,2
+7922,Western Cool Temperate Developed Mixed Forest,Developed,2
+7923,Western Cool Temperate Developed Shrubland,Developed,2
+7924,Western Cool Temperate Developed Herbaceous,Developed,2
+7925,Eastern Cool Temperate Developed Deciduous Forest,Developed,2
+7926,Eastern Cool Temperate Developed Evergreen Forest,Developed,2
+7927,Eastern Cool Temperate Developed Mixed Forest,Developed,2
+7928,Eastern Cool Temperate Developed Shrubland,Developed,2
+7929,Eastern Cool Temperate Developed Herbaceous,Developed,2
+7930,Western Warm Temperate Developed Deciduous Forest,Developed,2
+7931,Western Warm Temperate Developed Evergreen Forest,Developed,2
+7932,Western Warm Temperate Developed Mixed Forest,Developed,2
+7933,Western Warm Temperate Developed Shrubland,Developed,2
+7934,Western Warm Temperate Developed Herbaceous,Developed,2
+7935,Eastern Warm Temperate Developed Deciduous Forest,Developed,2
+7936,Eastern Warm Temperate Developed Evergreen Forest,Developed,2
+7937,Eastern Warm Temperate Developed Mixed Forest,Developed,2
+7938,Eastern Warm Temperate Developed Shrubland,Developed,2
+7939,Eastern Warm Temperate Developed Herbaceous,Developed,2
+7960,Western Cool Temperate Orchard,Agricultural,0
+7961,Western Cool Temperate Vineyard,Agricultural,0
+7962,Western Cool Temperate Bush fruit and berries,Agricultural,0
+7963,Western Cool Temperate Row Crop - Close Grown Crop,Agricultural,0
+7964,Western Cool Temperate Row Crop,Agricultural,0
+7965,Western Cool Temperate Close Grown Crop,Agricultural,0
+7966,Western Cool Temperate Fallow/Idle Cropland,Agricultural,3
+7967,Western Cool Temperate Pasture and Hayland,Agricultural,4
+7968,Western Cool Temperate Wheat,Agricultural,0
+7969,Western Cool Temperate Aquaculture,Agricultural,0
+7970,Eastern Cool Temperate Orchard,Agricultural,0
+7971,Eastern Cool Temperate Vineyard,Agricultural,0
+7972,Eastern Cool Temperate Bush fruit and berries,Agricultural,0
+7973,Eastern Cool Temperate Row Crop - Close Grown Crop,Agricultural,0
+7974,Eastern Cool Temperate Row Crop,Agricultural,0
+7975,Eastern Cool Temperate Close Grown Crop,Agricultural,0
+7976,Eastern Cool Temperate Fallow/Idle Cropland,Agricultural,3
+7977,Eastern Cool Temperate Pasture and Hayland,Agricultural,4
+7978,Eastern Cool Temperate Wheat,Agricultural,0
+7979,Eastern Cool Temperate Aquaculture,Agricultural,0
+7980,Western Warm Temperate Orchard,Agricultural,0
+7981,Western Warm Temperate Vineyard,Agricultural,0
+7982,Western Warm Temperate Bush fruit and berries,Agricultural,0
+7983,Western Warm Temperate Row Crop - Close Grown Crop,Agricultural,0
+7984,Western Warm Temperate Row Crop,Agricultural,0
+7985,Western Warm Temperate Close Grown Crop,Agricultural,0
+7986,Western Warm Temperate Fallow/Idle Cropland,Agricultural,3
+7987,Western Warm Temperate Pasture and Hayland,Agricultural,4
+7988,Western Warm Temperate Wheat,Agricultural,0
+7989,Western Warm Temperate Aquaculture,Agricultural,0
+7990,Eastern Warm Temperate Orchard,Agricultural,0
+7991,Eastern Warm Temperate Vineyard,Agricultural,0
+7992,Eastern Warm Temperate Bush fruit and berries,Agricultural,0
+7993,Eastern Warm Temperate Row Crop - Close Grown Crop,Agricultural,0
+7994,Eastern Warm Temperate Row Crop,Agricultural,0
+7995,Eastern Warm Temperate Close Grown Crop,Agricultural,0
+7996,Eastern Warm Temperate Fallow/Idle Cropland,Agricultural,3
+7997,Eastern Warm Temperate Pasture and Hayland,Agricultural,4
+7998,Eastern Warm Temperate Wheat,Agricultural,0
+7999,Eastern Warm Temperate Aquaculture,Agricultural,0
+9001,Colorado Plateau Mixed Bedrock Canyon and Tableland,Sparsely Vegetated,1
+9002,Columbia Basin Foothill Riparian Woodland,Riparian,4
+9003,Great Basin Foothill and Lower Montane Riparian Woodland,Riparian,4
+9004,Inter-Mountain Basins Active and Stabilized Dune,Sparsely Vegetated,1
+9005,Inter-Mountain Basins Alkaline Closed Depression,Riparian,4
+9006,Inter-Mountain Basins Cliff and Canyon,Sparsely Vegetated,1
+9008,Inter-Mountain Basins Playa,Sparsely Vegetated,1
+9009,Inter-Mountain Basins Shale Badland,Sparsely Vegetated,1
+9010,Inter-Mountain Basins Wash,Sparsely Vegetated,1
+9011,North American Arid West Emergent Marsh,Riparian,4
+9012,Northern Rocky Mountain Lower Montane Riparian Woodland,Riparian,4
+9014,Northwestern Great Plains Floodplain Forest and Woodland,Riparian,4
+9015,Northwestern Great Plains Riparian Forest ,Riparian,4
+9016,Rocky Mountain Alpine Bedrock and Scree,Sparsely Vegetated,1
+9017,Rocky Mountain Alpine-Montane Wet Meadow,Riparian,4
+9018,Rocky Mountain Cliff Canyon and Massive Bedrock,Sparsely Vegetated,1
+9019,Rocky Mountain Lower Montane-Foothill Riparian Woodland,Riparian,4
+9021,Rocky Mountain Subalpine-Montane Riparian Shrubland,Riparian,4
+9022,Rocky Mountain Subalpine-Montane Riparian Woodland,Riparian,4
+9023,Western Great Plains Badlands,Sparsely Vegetated,1
+9024,Western Great Plains Cliff and Outcrop,Sparsely Vegetated,1
+9025,Western Great Plains Closed Depression Wetland,Riparian,4
+9026,Western Great Plains Floodplain Forest and Woodland,Riparian,4
+9027,Western Great Plains Open Freshwater Depression Wetland,Riparian,4
+9028,Western Great Plains Riparian Woodland,Riparian,4
+9029,Western Great Plains Saline Depression Wetland,Riparian,4
+9030,Columbia Plateau Silver Sagebrush Seasonally Flooded Shrub-Steppe,Riparian,4
+9032,Columbia Plateau Ash and Tuff Badland,Sparsely Vegetated,1
+9033,Inter-Mountain Basins Volcanic Rock and Cinder Land,Sparsely Vegetated,1
+9034,North American Warm Desert Riparian Woodland,Riparian,4
+9035,North American Warm Desert Lower Montane Riparian Woodland,Riparian,4
+9036,Acadian Coastal Salt Marsh,Riparian,4
+9037,Acadian Estuary Marsh,Riparian,4
+9038,Acadian Maritime Bog,Riparian,4
+9039,Acadian-Appalachian Conifer Seepage Forest,Riparian,4
+9040,Acadian-North Atlantic Rocky Coast,Sparsely Vegetated,1
+9041,Atlantic Coastal Plain Blackwater Stream Floodplain Forest,Riparian,4
+9042,Atlantic Coastal Plain Brownwater Stream Floodplain Forest,Riparian,4
+9044,Atlantic Coastal Plain Embayed Region Tidal Freshwater Marsh,Riparian,4
+9045,Atlantic Coastal Plain Embayed Region Tidal Salt and Brackish Marsh,Riparian,4
+9047,Atlantic Coastal Plain Indian River Lagoon Tidal Marsh,Riparian,4
+9048,Atlantic Coastal Plain Northern Bog,Riparian,4
+9050,Atlantic Coastal Plain Small Blackwater River Floodplain Forest,Riparian,4
+9051,Atlantic Coastal Plain Small Brownwater River Floodplain Forest,Riparian,4
+9055,Boreal-Laurentian Bog,Riparian,4
+9056,Boreal-Laurentian Conifer Acidic Swamp and Treed Poor Fen,Riparian,4
+9057,Boreal-Laurentian-Acadian Acidic Basin Fen,Riparian,4
+9059,Central Appalachian River Floodplain Forest,Riparian,4
+9060,Central Appalachian Stream and Riparian Woodland,Riparian,4
+9061,Central Atlantic Coastal Plain Sandy Beach,Sparsely Vegetated,1
+9062,Central California Coast Ranges Cliff and Canyon,Sparsely Vegetated,1
+9063,Central Florida Wet Prairie and Herbaceous Seep,Riparian,4
+9064,Central Interior Acidic Cliff and Talus,Sparsely Vegetated,1
+9065,Central Interior Calcareous Cliff and Talus,Sparsely Vegetated,1
+9066,Central Interior Highlands and Appalachian Sinkhole and Depression Pond,Riparian,4
+9068,Central Texas Coastal Prairie Riparian Forest,Riparian,4
+9069,Central Texas Coastal Prairie River Floodplain Forest,Riparian,4
+9071,Columbia Bottomlands Forest and Woodland,Riparian,4
+9073,Cumberland Acidic Cliff and Rockhouse,Sparsely Vegetated,1
+9075,Cumberland Seepage Forest,Riparian,4
+9077,East Gulf Coastal Plain Depression Pondshore,Riparian,4
+9080,East Gulf Coastal Plain Freshwater Tidal Wooded Swamp,Riparian,4
+9082,East Gulf Coastal Plain Large River Floodplain Forest,Riparian,4
+9083,East Gulf Coastal Plain Northern Seepage Swamp,Riparian,4
+9085,East Gulf Coastal Plain Small Stream and River Floodplain Forest,Riparian,4
+9088,Laurentian-Acadian Sub-boreal Dry-Mesic Pine-Black Spruce Forest,Conifer,2
+9089,Laurentian-Acadian Sub-boreal Mesic Balsam Fir-Spruce Forest,Conifer,2
+9091,Edwards Plateau Cliff,Sparsely Vegetated,1
+9092,Edwards Plateau Floodplain Terrace Forest and Woodland,Riparian,4
+9094,Florida Big Bend Fresh and Oligohaline Tidal Marsh,Riparian,4
+9095,Florida Big Bend Salt and Brackish Tidal Marsh,Riparian,4
+9097,Florida Panhandle Beach Vegetation,Sparsely Vegetated,1
+9098,Florida River Floodplain Marsh,Riparian,4
+9099,Great Lakes Acidic Rocky Shore and Cliff,Sparsely Vegetated,1
+9100,Great Lakes Alkaline Rocky Shore and Cliff,Sparsely Vegetated,1
+9101,Great Lakes Dune,Sparsely Vegetated,1
+9102,Great Lakes Freshwater Estuary and Delta,Riparian,4
+9103,Gulf Coast Chenier Plain Beach,Sparsely Vegetated,1
+9104,Gulf Coast Chenier Plain Fresh and Oligohaline Tidal Marsh,Riparian,4
+9105,Gulf Coast Chenier Plain Salt and Brackish Tidal Marsh,Riparian,4
+9106,High Allegheny Wetland,Riparian,4
+9110,Klamath-Siskiyou Cliff and Outcrop,Sparsely Vegetated,1
+9111,Laurentian Acidic Rocky Outcrop Woodland,Conifer,2
+9112,Laurentian Jack Pine-Red Pine Forest,Conifer,2
+9113,Laurentian-Acadian Acidic Cliff and Talus,Sparsely Vegetated,1
+9114,Laurentian-Acadian Alkaline Fen,Riparian,4
+9115,Laurentian-Acadian Calcareous Cliff and Talus,Sparsely Vegetated,1
+9116,Laurentian-Acadian Calcareous Rocky Outcrop Woodland,Conifer-Hardwood,3
+9117,Laurentian-Acadian Floodplain Forest,Riparian,4
+9118,Laurentian-Acadian Freshwater Marsh,Riparian,4
+9119,Laurentian-Acadian Lakeshore Beach,Sparsely Vegetated,1
+9120,Laurentian-Acadian Wet Meadow,Riparian,4
+9121,Llano Estacado Caprock Escarpment and Breaks Shrubland and Steppe,Shrubland,4
+9122,Louisiana Beach,Sparsely Vegetated,1
+9125,Mediterranean California Alpine Bedrock and Scree,Sparsely Vegetated,1
+9129,Mediterranean California Foothill and Lower Montane Riparian Woodland,Riparian,4
+9130,Mediterranean California Northern Coastal Dune,Sparsely Vegetated,1
+9133,Mediterranean California Serpentine Foothill and Lower Montane Riparian Woodland and Seep,Riparian,4
+9134,Mediterranean California Southern Coastal Dune,Sparsely Vegetated,1
+9136,Mississippi Delta Fresh and Oligohaline Tidal Marsh,Riparian,4
+9137,Mississippi Delta Salt and Brackish Tidal Marsh,Riparian,4
+9138,Mississippi River Bottomland Depression,Riparian,4
+9139,Mississippi River High Floodplain (Bottomland) Forest,Riparian,4
+9140,Mississippi River Low Floodplain (Bottomland) Forest,Riparian,4
+9141,Mississippi River Riparian Forest,Riparian,4
+9142,Mississippi Sound Fresh and Oligohaline Tidal Marsh,Riparian,4
+9143,Mississippi Sound Salt and Brackish Tidal Marsh,Riparian,4
+9145,North American Warm Desert Active and Stabilized Dune,Sparsely Vegetated,1
+9146,North American Warm Desert Badland,Sparsely Vegetated,1
+9147,North American Warm Desert Bedrock Cliff and Outcrop,Sparsely Vegetated,1
+9148,North American Warm Desert Cienega,Riparian,4
+9150,North American Warm Desert Pavement,Sparsely Vegetated,1
+9151,North American Warm Desert Playa,Sparsely Vegetated,1
+9152,North American Warm Desert Riparian Mesquite Bosque Woodland,Riparian,4
+9153,North American Warm Desert Volcanic Rockland,Sparsely Vegetated,1
+9154,North American Warm Desert Wash Woodland,Riparian,4
+9160,North Pacific Active Volcanic Rock and Cinder Land,Sparsely Vegetated,1
+9165,North Pacific Hardwood-Conifer Swamp,Riparian,4
+9166,North Pacific Herbaceous Bald and Bluff,Grassland,4
+9167,North Pacific Hypermaritime Herbaceous Headland,Grassland,4
+9170,North Pacific Lowland Mixed Hardwood-Conifer Forest,Conifer-Hardwood,3
+9171,North Pacific Maritime Coastal Sand Dune and Strand,Sparsely Vegetated,1
+9173,North-Central Appalachian Acidic Cliff and Talus,Sparsely Vegetated,1
+9174,North-Central Appalachian Acidic Swamp,Riparian,4
+9175,North-Central Appalachian Circumneutral Cliff and Talus,Sparsely Vegetated,1
+9176,North-Central Appalachian Seepage Fen,Riparian,4
+9177,North-Central Interior and Appalachian Acidic Peatland Woodland,Riparian,4
+9178,North-Central Interior and Appalachian Rich Swamp,Riparian,4
+9179,North-Central Interior Floodplain Forest,Riparian,4
+9180,North-Central Interior Freshwater Marsh,Riparian,4
+9181,North-Central Interior Quartzite Glade,Conifer-Hardwood,3
+9182,North-Central Interior Shrub Alkaline Fen,Riparian,4
+9183,North-Central Interior Shrub Swamp,Riparian,4
+9184,Northeastern Erosional Bluff,Sparsely Vegetated,1
+9185,Northern Appalachian-Acadian Conifer-Hardwood Acidic Swamp,Riparian,4
+9186,Northern Appalachian-Acadian Rocky Heath Outcrop Woodland,Conifer,2
+9187,Northern Atlantic Coastal Plain Basin Peat Swamp,Riparian,4
+9188,Northern Atlantic Coastal Plain Basin Swamp and Wet Hardwood Forest,Riparian,4
+9189,Northern Atlantic Coastal Plain Brackish Tidal Marsh,Riparian,4
+9190,Northern Atlantic Coastal Plain Calcareous Ravine,Hardwood,3
+9191,Northern Atlantic Coastal Plain Fresh and Oligohaline Tidal Marsh,Riparian,4
+9192,Northern Atlantic Coastal Plain Pond,Riparian,4
+9193,Northern Atlantic Coastal Plain Sandy Beach,Sparsely Vegetated,1
+9195,Northern Atlantic Coastal Plain Riparian and Floodplain Forest,Riparian,4
+9197,Northern Atlantic Coastal Plain Tidal Salt Marsh,Riparian,4
+9198,Northern Atlantic Coastal Plain Tidal Swamp,Riparian,4
+9202,Northern Great Lakes Coastal Marsh,Riparian,4
+9203,Northern Great Lakes Interdunal Wetland,Riparian,4
+9207,Ozark-Ouachita Riparian Forest,Riparian,4
+9208,Panhandle Florida Limestone Glade,Conifer-Hardwood,3
+9209,Piedmont Seepage Wetland,Riparian,4
+9210,Piedmont Upland Depression Swamp,Riparian,4
+9211,Red River Large Floodplain Forest,Riparian,4
+9213,Sierra Nevada Cliff and Canyon,Sparsely Vegetated,1
+9216,South Florida Bayhead Swamp,Riparian,4
+9218,South Florida Hydric Hammock,Riparian,4
+9220,South Florida Pond-apple/Popash Slough,Riparian,4
+9221,South Florida Shell Hash Beach,Sparsely Vegetated,1
+9222,South Florida Slough Gator Hole and Willow Head Herbaceous,Riparian,4
+9223,South-Central Interior Large Floodplain Forest,Riparian,4
+9224,South-Central Interior Small Stream and Riparian Forest,Riparian,4
+9226,Southeast Florida Beach,Sparsely Vegetated,1
+9227,Southeastern Coastal Plain Cliff,Sparsely Vegetated,1
+9228,Southeastern Coastal Plain Interdunal Wetland,Riparian,4
+9229,Southeastern Coastal Plain Natural Lakeshore,Riparian,4
+9230,Southeastern Great Plains Floodplain Forest and Woodland,Riparian,4
+9231,Southeastern Great Plains Riparian Forest and Woodland,Riparian,4
+9232,Southern and Central Appalachian Bog and Fen,Riparian,4
+9233,Southern and Central Appalachian Mafic Glade and Barrens,Conifer-Hardwood,3
+9234,Southern Appalachian Granitic Dome,Sparsely Vegetated,1
+9237,Southern Appalachian Seepage Wetland,Riparian,4
+9239,Southern Atlantic Coastal Plain Depression Pondshore,Riparian,4
+9240,Southern Atlantic Coastal Plain Florida Beach,Sparsely Vegetated,1
+9241,Southern Atlantic Coastal Plain Fresh and Oligohaline Tidal Marsh,Riparian,4
+9242,Southern Atlantic Coastal Plain Large River Floodplain Forest,Riparian,4
+9243,Southern Atlantic Coastal Plain Salt and Brackish Tidal Marsh,Riparian,4
+9244,Southern Atlantic Coastal Plain Sea Island Beach,Sparsely Vegetated,1
+9245,Southern Atlantic Coastal Plain Tidal Wooded Swamp,Riparian,4
+9246,Southern California Coast Ranges Cliff and Canyon,Sparsely Vegetated,1
+9247,Southern Coastal Plain Blackwater River Floodplain Forest,Riparian,4
+9248,Southern Coastal Plain Hydric Hammock,Riparian,4
+9249,Southern Coastal Plain Nonriverine Basin Swamp,Riparian,4
+9250,Southern Coastal Plain Oak Dome and Hammock,Riparian,4
+9251,Southern Coastal Plain Sinkhole,Sparsely Vegetated,1
+9256,Southern Piedmont Glade and Barrens,Conifer-Hardwood,3
+9257,Southern Piedmont Granite Flatrock and Outcrop,Sparsely Vegetated,1
+9258,Southern Piedmont Large Floodplain Forest,Riparian,4
+9259,Southern Piedmont Small Floodplain and Riparian Forest,Riparian,4
+9260,Southern Ridge and Valley Calcareous Glade and Woodland,Conifer-Hardwood,3
+9261,Southern Ridge and Valley Seepage Fen,Riparian,4
+9262,Southwest Florida Beach,Sparsely Vegetated,1
+9265,Southwestern Great Plains Canyon,Sparsely Vegetated,1
+9266,Tamaulipan Closed Depression Wetland Woodland,Riparian,4
+9268,Tamaulipan Ramadero,Riparian,4
+9270,Tamaulipan Saline Thornscrub,Shrubland,4
+9272,Temperate Pacific Subalpine-Montane Wet Meadow,Riparian,4
+9273,Texas Coast Beach,Sparsely Vegetated,1
+9274,Texas Coast Fresh and Oligohaline Tidal Marsh,Riparian,4
+9275,Texas Coast Salt and Brackish Tidal Marsh,Riparian,4
+9282,West Gulf Coastal Plain Large River Floodplain Forest,Riparian,4
+9283,West Gulf Coastal Plain Near-Coast Large River Swamp,Riparian,4
+9284,West Gulf Coastal Plain Small Stream and River Forest,Riparian,4
+9288,Northeastern Interior Calcareous Oak Forest,Hardwood,3
+9289,Madrean Mesic Canyon Forest and Woodland,Conifer-Hardwood,3
+9290,Southeastern Great Plains Cliff,Sparsely Vegetated,1
+9295,Laurentian-Acadian Sub-boreal Dry-Mesic Pine-Black Spruce-Hardwood Forest,Conifer-Hardwood,3
+9301,California Ruderal Grassland and Meadow,Exotic Herbaceous,4
+9302,Californian Ruderal Forest,Exotic Tree-Shrub,3
+9303,Caribbean & Mesoamerican Lowland Ruderal Shrubland,Shrubland,4
+9304,Caribbean Forest Plantation,Hardwood,3
+9305,Caribbean Ruderal Dry Forest,Hardwood,3
+9307,Great Basin & Intermountain Introduced Annual and Biennial Forbland,Exotic Herbaceous,4
+9308,Great Basin & Intermountain Introduced Annual Grassland,Exotic Herbaceous,4
+9309,Great Basin & Intermountain Introduced Perennial Grassland and Forbland,Exotic Herbaceous,4
+9310,North American Warm Desert Ruderal & Planted Scrub,Exotic Tree-Shrub,3
+9311,North Pacific Maritime Coastal Sand Dune Ruderal Scrub,Exotic Tree-Shrub,3
+9312,Northeastern North American Temperate Forest Plantation,Conifer,2
+9314,Northern & Central Native Ruderal Flooded & Swamp Forest,Riparian,4
+9315,Northern & Central Native Ruderal Forest,Conifer-Hardwood,3
+9316,Northern & Central Plains Ruderal & Planted Shrubland,Exotic Tree-Shrub,3
+9317,Northern & Central Ruderal Shrubland,Exotic Tree-Shrub,3
+9318,Northern & Central Ruderal Wet Meadow & Marsh,Riparian,4
+9319,Southeastern Exotic Ruderal Forest,Exotic Tree-Shrub,3
+9320,Southeastern Native Ruderal Flooded & Swamp Forest,Riparian,4
+9321,Southeastern Native Ruderal Forest,Conifer-Hardwood,3
+9322,Southeastern North American Temperate Forest Plantation,Conifer,2
+9323,Southeastern Ruderal Shrubland,Exotic Tree-Shrub,3
+9324,Southeastern Ruderal Wet Meadow & Marsh,Riparian,4
+9325,Great Plains Comanchian Ruderal Shrubland,Exotic Tree-Shrub,3
+9326,Southern Vancouverian Lowland Ruderal Shrubland,Exotic Tree-Shrub,3
+9327,Interior West Ruderal Riparian Forest,Riparian,4
+9328,Interior Western North American Temperate Ruderal Shrubland,Exotic Tree-Shrub,3
+9329,Western North American Ruderal Wet Shrubland,Riparian,4
+9332,Southeastern Exotic Ruderal Flooded & Swamp Forest,Riparian,4
+9336,Great Basin & Intermountain Ruderal Shrubland,Exotic Tree-Shrub,3
+9337,California Ruderal Scrub,Exotic Tree-Shrub,3
+9340,Caribbean Lowland Ruderal Rainforest,Hardwood,3
+9341,Caribbean Montane Ruderal Forest,Hardwood,3
+9343,Hawaiian Montane Ruderal Forest & Woodland,Hardwood,3
+9344,Hawaiian Ruderal Coastal Salt Marsh,Riparian,4
+9345,Hawaiian Ruderal Flooded & Swamp Forest,Riparian,4
+9346,Hawaiian Ruderal Freshwater Wet Meadow & Marsh,Riparian,4
+9347,Hawaiian Ruderal Mangrove,Hardwood,3
+9348,Polynesian Ruderal Dry Woodland,Hardwood,3
+9349,Polynesian Ruderal Lowland Rainforest,Hardwood,3
+9350,Polynesian Ruderal Lowland Shrubland,Shrubland,4
+9351,Polynesian Ruderal Scrub Coastal Strand,Shrubland,4
+9352,Polynesian Ruderal Subalpine-Montane Shrubland,Shrubland,4
+9353,Tropical Pacific Forest Plantation,Hardwood,3
+9354,Caribbean Ruderal Freshwater Wet Meadow & Marsh,Grassland,4
+9355,Tropical Agroforestry Plantation,Hardwood,3
+9502,Columbia Basin Foothill Riparian Shrubland,Riparian,4
+9503,Great Basin Foothill and Lower Montane Riparian Shrubland,Riparian,4
+9504,Columbia Basin Foothill Riparian Herbaceous,Riparian,4
+9505,Great Basin Foothill and Lower Montane Riparian Herbaceous,Riparian,4
+9512,Northern Rocky Mountain Lower Montane Riparian Shrubland,Riparian,4
+9513,Northwestern Great Plains Floodplain Shrubland,Riparian,4
+9514,Northwestern Great Plains Floodplain Herbaceous,Riparian,4
+9515,Northwestern Great Plains Riparian Shrubland,Riparian,4
+9516,Northwestern Great Plains Riparian Herbaceous,Riparian,4
+9519,Rocky Mountain Lower Montane-Foothill Riparian Shrubland,Riparian,4
+9526,Western Great Plains Floodplain Shrubland,Riparian,4
+9527,Western Great Plains Floodplain Herbaceous,Riparian,4
+9528,Western Great Plains Riparian Shrubland,Riparian,4
+9529,Western Great Plains Riparian Herbaceous,Riparian,4
+9533,North American Warm Desert Riparian Herbaceous,Riparian,4
+9534,North American Warm Desert Riparian Shrubland,Riparian,4
+9535,North American Warm Desert Lower Montane Riparian Shrubland,Riparian,4
+9541,Atlantic Coastal Plain Blackwater Stream Floodplain Shrubland,Riparian,4
+9542,Atlantic Coastal Plain Blackwater Stream Floodplain Herbaceous,Riparian,4
+9559,Central Appalachian River Floodplain Shrubland,Riparian,4
+9560,Central Appalachian Stream and Riparian Shrubland,Riparian,4
+9561,Central Appalachian River Floodplain Herbaceous,Riparian,4
+9562,Central Appalachian Stream and Riparian Herbaceous,Riparian,4
+9568,Central Texas Coastal Prairie Riparian Shrubland,Riparian,4
+9569,Central Texas Coastal Prairie River Floodplain Shrubland,Riparian,4
+9570,Central Texas Coastal Prairie Riparian Herbaceous,Riparian,4
+9571,Central Texas Coastal Prairie River Floodplain Herbaceous,Riparian,4
+9582,East Gulf Coastal Plain Large River Floodplain Shrubland,Riparian,4
+9583,East Gulf Coastal Plain Large River Floodplain Herbaceous,Riparian,4
+9585,East Gulf Coastal Plain Small Stream and River Floodplain Shrubland,Riparian,4
+9586,East Gulf Coastal Plain Small Stream and River Floodplain Herbaceous,Riparian,4
+9592,Edwards Plateau Floodplain Terrace Shrubland,Riparian,4
+9593,Edwards Plateau Floodplain Terrace Herbaceous,Riparian,4
+9601,Great Lakes Dune Grassland,Grassland,4
+9604,Gulf Coast Chenier Plain Fresh and Oligohaline Tidal Marsh Shrubland,Riparian,4
+9605,Gulf Coast Chenier Plain Salt and Brackish Tidal Marsh Shrubland,Riparian,4
+9611,Laurentian Acidic Rocky Outcrop Shrubland,Shrubland,4
+9616,Laurentian-Acadian Calcareous Rocky Outcrop Shrubland,Shrubland,4
+9617,Laurentian-Acadian Floodplain Shrubland,Riparian,4
+9620,Laurentian-Acadian Shrub Swamp,Riparian,4
+9629,Mediterranean California Foothill and Lower Montane Riparian Shrubland,Riparian,4
+9633,Mediterranean California Serpentine Foothill and Lower Montane Riparian Shrubland and Seep,Riparian,4
+9639,Mississippi River High Floodplain (Bottomland) Shrubland,Riparian,4
+9640,Mississippi River Low Floodplain (Bottomland) Shrubland,Riparian,4
+9641,Mississippi River High Floodplain (Bottomland) Herbaceous,Riparian,4
+9642,Mississippi River Low Floodplain (Bottomland) Herbaceous,Riparian,4
+9652,North American Warm Desert Riparian Mesquite Bosque Shrubland,Riparian,4
+9654,North American Warm Desert Wash Shrubland,Riparian,4
+9667,North Pacific Hypermaritime Shrub Headland,Shrubland,4
+9677,North-Central Interior and Appalachian Acidic Peatland Shrubland,Riparian,4
+9679,North-Central Interior Floodplain Shrubland,Riparian,4
+9682,North-Central Interior Graminoid Alkaline Fen,Riparian,4
+9683,North-Central Interior Wet Meadow,Riparian,4
+9686,Northern Appalachian-Acadian Rocky Heath Outcrop Shrubland,Shrubland,4
+9695,Northern Atlantic Coastal Plain Riparian and Floodplain Shrubland,Riparian,4
+9696,Northern Atlantic Coastal Plain Riparian and Floodplain Herbaceous,Riparian,4
+9707,Ozark-Ouachita Riparian Shrubland,Riparian,4
+9708,Ozark-Ouachita Riparian Herbaceous,Riparian,4
+9722,South Florida Slough Gator Hole and Willow Head Woodland,Riparian,4
+9723,South-Central Interior Large Floodplain Shrubland,Riparian,4
+9724,South-Central Interior Small Stream and Riparian Shrubland,Riparian,4
+9725,South-Central Interior Large Floodplain Herbaceous,Riparian,4
+9726,South-Central Interior Small Stream and Riparian Herbaceous,Riparian,4
+9730,Southeastern Great Plains Floodplain Shrubland,Riparian,4
+9731,Southeastern Great Plains Riparian Shrubland,Riparian,4
+9732,Southeastern Great Plains Floodplain Herbaceous,Riparian,4
+9733,Southeastern Great Plains Riparian Herbaceous,Riparian,4
+9742,Southern Atlantic Coastal Plain Large River Floodplain Shrubland,Riparian,4
+9743,Southern Atlantic Coastal Plain Large River Floodplain Herbaceous,Riparian,4
+9758,Southern Piedmont Large Floodplain Shrubland,Riparian,4
+9759,Southern Piedmont Small Floodplain and Riparian Shrubland,Riparian,4
+9760,Southern Piedmont Large Floodplain Herbaceous,Riparian,4
+9761,Southern Piedmont Small Floodplain and Riparian Herbaceous,Riparian,4
+9766,Tamaulipan Closed Depression Wetland Shrubland,Riparian,4
+9774,Texas Coast Fresh and Oligohaline Tidal Marsh Shrubland,Riparian,4
+9775,Texas Coast Salt and Brackish Tidal Marsh Shrubland,Riparian,4
+9782,West Gulf Coastal Plain Large River Floodplain Shrubland,Riparian,4
+9783,West Gulf Coastal Plain Large River Floodplain Herbaceous,Riparian,4
+9784,West Gulf Coastal Plain Small Stream and River Shrubland,Riparian,4
+9785,West Gulf Coastal Plain Small Stream and River Herbaceous,Riparian,4
+9803,Caribbean & Mesoamerican Lowland Ruderal Grassland,Grassland,4
+9810,North American Warm Desert Ruderal & Planted Grassland,Exotic Herbaceous,4
+9811,North Pacific Maritime Coastal Sand Dune Ruderal Herb Vegetation,Exotic Herbaceous,4
+9816,Northern & Central Plains Ruderal & Planted Grassland,Exotic Herbaceous,4
+9817,Northern & Central Ruderal Meadow,Exotic Herbaceous,4
+9823,Southeastern Ruderal Grassland,Exotic Herbaceous,4
+9825,Great Plains Comanchian Ruderal Grassland,Exotic Herbaceous,4
+9826,Southern Vancouverian Lowland Ruderal Grassland,Exotic Herbaceous,4
+9827,Interior West Ruderal Riparian Scrub,Riparian,4
+9828,Interior Western North American Temperate Ruderal Grassland,Exotic Herbaceous,4
+9829,Western North American Ruderal Wet Meadow & Marsh,Riparian,4
+9848,Polynesian Ruderal Dry Scrub,Shrubland,4
+9850,Polynesian Ruderal Lowland Grassland,Grassland,4
+9851,Polynesian Ruderal Herb Coastal Strand,Grassland,4
+9852,Polynesian Ruderal Subalpine-Montane Grassland,Grassland,4
+9993,West Gulf Coastal Plain Flatwoods Pond,Riparian,4
+9994,West Gulf Coastal Plain Herbaceous Seep and Bog,Riparian,4

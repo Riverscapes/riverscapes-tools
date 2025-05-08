@@ -61,8 +61,8 @@ def create_water_raster(water_layer: str, output: str, raster_like: str) -> None
         target_ds.GetRasterBand(1).SetNoDataValue(0)
         target_ds.GetRasterBand(1).Fill(0)
         # Rasterize the water features
-        gdal.RasterizeLayer(target_ds, [1], water_layer.ogr_layer, options=['ALL_TOUCHED=TRUE', 'COMPRESS=LZW'])
-
+        gdal.RasterizeLayer(target_ds, [1], water_layer.ogr_layer, burn_values=[1], options=['ALL_TOUCHED=TRUE', 'COMPRESS=LZW'])
+        target_ds.FlushCache()
         target_ds = None
 
     print('done')

@@ -4,15 +4,16 @@ import sys
 import time
 import datetime
 from typing import Dict, List
+import traceback
 
 from osgeo import gdal, ogr
 
-from rscommons import GeopackageLayer
+from rscommons import GeopackageLayer, VectorBase
 from rscommons.util import parse_metadata, pretty_duration
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.vector_ops import copy_feature_class
 from rscommons import Logger, initGDALOGRErrors, RSLayer, RSProject, ModelConfig, dotenv
-from rscommons.database import create_database, SQLiteCon
+from rscommons.database import create_db_nowats, SQLiteCon
 from rscommons.copy_features import copy_features_fields
 from rscommons.moving_window import moving_window_dgo_ids
 from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions, raster_resolution_meta
@@ -21,6 +22,7 @@ from vbet.vbet_raster_ops import proximity_raster
 from grazing.__version__ import __version__
 from grazing.utils.water_raster import combine_water_features, create_water_raster
 from grazing.utils.veg_suitability import vegetation_suitability
+from grazing.utils.grazing_fis import calculate_grazing_fis
 
 
 Path = str
@@ -90,6 +92,7 @@ def grazing_likelihood(huc: int, existing_veg: Path, slope: Path, hillshade: Pat
     log.info('Adding input rasters to project')
     project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], hillshade)
     project.add_project_raster(proj_nodes['Inputs'], LayerTypes['EXVEG'], existing_veg)
+    _slope_node, slope_in = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['SLOPE'], slope)
 
     project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
     project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['OUTPUTS'])
@@ -138,7 +141,7 @@ def grazing_likelihood(huc: int, existing_veg: Path, slope: Path, hillshade: Pat
     db_metadata = {'Grazing DateTime': datetime.datetime.now().isoformat()}
 
     # Execute the SQL to create the lookup tables in the output geopackage
-    create_database(huc, outputs_gpkg_path, db_metadata, cfg.OUTPUT_EPSG, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'grazing_schema.sql'))
+    create_db_nowats(huc, outputs_gpkg_path, db_metadata, cfg.OUTPUT_EPSG, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'grazing_schema.sql'))
 
     igo_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['GRAZING_IGO_GEOM'].rel_path)
     dgo_geom_path = os.path.join(outputs_gpkg_path, LayerTypes['OUTPUTS'].sub_layers['GRAZING_DGO_GEOM'].rel_path)
@@ -163,7 +166,7 @@ def grazing_likelihood(huc: int, existing_veg: Path, slope: Path, hillshade: Pat
         database.curs.execute("""INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m)
             SELECT 'grazing_dgos', column_name, geometry_type_name, srs_id, z, m FROM gpkg_geometry_columns WHERE table_name = 'dgo_geometry'""")
 
-        database.conn.execute('CREATE INDEX ix_igo_levelpath on igo_eometry(level_path)')
+        database.conn.execute('CREATE INDEX ix_igo_levelpath on igo_geometry(level_path)')
         database.conn.execute('CREATE INDEX ix_igo_segdist on igo_geometry(seg_distance)')
         database.conn.execute('CREATE INDEX ix_igo_size on igo_geometry(stream_size)')
         database.conn.execute('CREATE INDEX ix_dgo_levelpath on dgo_geometry(level_path)')
@@ -171,7 +174,7 @@ def grazing_likelihood(huc: int, existing_veg: Path, slope: Path, hillshade: Pat
 
         database.conn.commit()
 
-        database.curs.execute('SELECT DISTINCT level_path FROM IGOGeometry')
+        database.curs.execute('SELECT DISTINCT level_path FROM igo_geometry')
         levelps = database.curs.fetchall()
         levelpathsin = [lp['level_path'] for lp in levelps]
 
@@ -194,21 +197,73 @@ def grazing_likelihood(huc: int, existing_veg: Path, slope: Path, hillshade: Pat
     windows = moving_window_dgo_ids(igo_geom_path, dgo_geom_path, levelpathsin, distancein)
 
     # generate raster of water features
-    combine_water_features(input_layers['CHANNEL'], input_layers['WATERBODIES'], os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['WATER'].rel_path), cfg.OUTPUT_EPSG)
-    create_water_raster(os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['WATER'].rel_path), os.path.join(output_dir, 'intermediates/water.tif'), slope)
+    combine_water_features(input_layers['CHANNEL'], input_layers['WATERBODIES'], intermediates_gpkg_path, cfg.OUTPUT_EPSG)
+    create_water_raster(os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['WATER'].rel_path), os.path.join(output_dir, 'intermediates/water.tif'), slope_in)
     # create raster of proximity to water features
-    proximity_raster(os.path.join(output_dir, 'intermediates/water.tif'), os.path.join(output_dir, 'intermediates/proximity.tif'), "GEO")
+    conv_factor = VectorBase.rough_convert_metres_to_raster_units(slope_in, 1)
+    proximity_raster(os.path.join(output_dir, 'intermediates/water.tif'), os.path.join(output_dir, 'intermediates/proximity.tif'), "GEO", preserve_nodata=False, dist_factor=conv_factor)
 
     # resample landfire down to 10m to match slope and proximity rasters
-    ds = gdal.Open(slope)
+    ds = gdal.Open(slope_in)
     if ds is None:
-        raise FileNotFoundError(f"Could not open slope raster: {slope}")
+        raise FileNotFoundError(f"Could not open slope raster: {slope_in}")
     gt = ds.GetGeoTransform()
     xres = gt[1]
     yres = abs(gt[5])
     existing_veg_resampled = os.path.join(output_dir, 'intermediates/existing_veg_resampled.tif')
-    gdal.Warp(existing_veg_resampled, existing_veg, format='GTiff', xRes=xres, yRes=yres, resampleAlg='nearest_neighbor', targetSRS=f'EPSG:{cfg.OUTPUT_EPSG}', outputType=gdal.GDT_Int16)
+    gdal.Warp(existing_veg_resampled, existing_veg, format='GTiff', xRes=xres, yRes=yres, resampleAlg='nearest_neighbor', dstSRS=ds.GetSpatialRef(), outputType=gdal.GDT_Int16)
     ds = None
 
     # create vegetation suitability raster
-    vegetation_suitability(outputs_gpkg_path, existing_veg_resampled, os.path.join(intermediates_gpkg_path, LayerTypes['VEGSUIT'].rel_path))
+    vegetation_suitability(outputs_gpkg_path, existing_veg_resampled, os.path.join(output_dir, LayerTypes['VEGSUIT'].rel_path))
+
+    # create grazing likelihood raster
+    calculate_grazing_fis(os.path.join(output_dir, 'intermediates/proximity.tif'), slope, os.path.join(output_dir, LayerTypes['VEGSUIT'].rel_path), os.path.join(output_dir, LayerTypes['LIKELIHOOD'].rel_path))
+
+
+def main():
+
+    parser = argparse.ArgumentParser(description='Grazing Likelihood Model')
+    parser.add_argument('huc', type=int, help='HUC number for the project')
+    parser.add_argument('existing_veg', type=str, help='Path to existing vegetation raster')
+    parser.add_argument('slope', type=str, help='Path to slope raster')
+    parser.add_argument('hillshade', type=str, help='Path to hillshade raster')
+    parser.add_argument('igo', type=str, help='Path to IGO vector file')
+    parser.add_argument('dgo', type=str, help='Path to DGO vector file')
+    parser.add_argument('waterbodies', type=str, help='Path to waterbodies vector file')
+    parser.add_argument('channel', type=str, help='Path to channel vector file')
+    parser.add_argument('output_dir', type=str, help='Directory to save outputs')
+    parser.add_argument('--meta', type=str, help='riverscapes project metadata as comma separated key=value pairs', default=None)
+    parser.add_argument('--verbose', help='(optional) a little extra logging', action='store_true', default=False)
+    parser.add_argument('--debug', help='(optional) run in debug mode', action='store_true', default=False)
+
+    args = dotenv.parse_args_env(parser)
+
+    log = Logger('Grazing Likelihood')
+    log.setup(logPath=os.path.join(args.output_dir, 'grazing_likelihood.log'), verbose=args.verbose)
+    log.title(f'Grazing Likelihood Model for HUC: {args.huc}')
+
+    meta = parse_metadata(args.meta)
+
+    try:
+        if args.debug is True:
+            from rscommons.debug import ThreadRun
+            memfile = os.path.join(args.output_dir, 'grazing_memusage.log')
+            retcode, max_obj = ThreadRun(grazing_likelihood, args.huc, args.existing_veg, args.slope, args.hillshade,
+                                         args.igo, args.dgo, args.waterbodies,
+                                         args.channel, args.output_dir, meta)
+            log.debug(f'Return code: {retcode} [Max process usage] {max_obj}')
+        else:
+            grazing_likelihood(args.huc, args.existing_veg, args.slope, args.hillshade,
+                               args.igo, args.dgo, args.waterbodies,
+                               args.channel, args.output_dir)
+    except Exception as e:
+        log.error(f'Error running Grazing Likelihood model: {e}')
+        traceback.print_exc(file=sys.stdout)
+        sys.exit(1)
+
+    sys.exit(0)
+
+
+if __name__ == '__main__':
+    main()
