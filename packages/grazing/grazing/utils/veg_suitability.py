@@ -46,7 +46,7 @@ def vegetation_suitability(gpkg_path: str, input_raster: str, output_raster: str
                 out_data = vector(data, src.nodata, out_meta['nodata'])
 
                 # Write the output data to the destination raster
-                dst.write(out_data.astype(out_meta['dtype']), 1, window=window, indexes=1)
+                dst.write(out_data.astype(out_meta['dtype']), window=window, indexes=1)
 
             progbar.finish()
 
