@@ -80,17 +80,20 @@ def raster_vrt_stitch(inrasters, outraster, epsg, clip=None, clean=False, warp_o
 
 
 def raster_warp(inraster: str, outraster: str, epsg, clip=None, warp_options: dict = {}, raster_compression: str = " -co COMPRESS=DEFLATE"):
-    """
-    Reproject a raster to a different coordinate system.
+    """Reproject a raster to a different coordinate system.
+
     :param inraster: Input dataset
     :param outraster: Output dataset
     :param epsg: Output spatial reference EPSG identifier
     :param log: Log file object
     :param clip: Optional Polygon dataset to clip the output.
-    :param warp_options: Extra GDALWarpOptions.
+    :param warp_options: Extra GDALWarpOptions (e.g. xRes, yRes for resolution) see link below
+    :param raster_compression: Compression options for the output raster.
     :return: None
 
     https://gdal.org/python/osgeo.gdal-module.html#WarpOptions
+
+    TODO: Address Pylint WO102 warp_options = {} is a mutable argument, is better to have default of None. 
     """
 
     log = Logger('Raster Warp')

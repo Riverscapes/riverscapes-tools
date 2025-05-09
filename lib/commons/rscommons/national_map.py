@@ -12,6 +12,7 @@ from typing import Dict
 from rscommons.download import download_unzip
 from rscommons.national_map_api import TNM
 from rscommons.shapefile import get_geometry_union
+from rscommons.vector_ops import get_geometry_unary_union
 from rscommons import Logger
 
 
@@ -101,9 +102,26 @@ def download_shapefile_collection(url, download_folder, unzip_folder, force_down
     return shapefiles
 
 
+def _get_metadata(item: dict):
+    """extract and log other metadata from the TNM API return item 
+
+    Args:
+        item (dict): a single TNM API return item
+    """
+    log = Logger('Download')
+    # other keys are moreInfo, sourceId, sourceName, publicationDate, format, etc.
+    # A simple CRS/EPSG/projection is not one of them. That info can be found embedded in the product metadata (xml)
+    for key_name in ['title', 'metaUrl']:
+        if item.get(key_name):
+            log.info(f'{key_name}:\t{item[key_name]}')
+        else:
+            log.info(f'{key_name} not found')
+
+
 def _get_urls(params: Dict[str, str]):
     """
     Call TNM API with the argument params and return list of download URLs
+
     :param params: TNM API params object
     :return: List of HTTPS download URLs for items on S3
     """
@@ -118,6 +136,7 @@ def _get_urls(params: Dict[str, str]):
     urls = []
     for item in items["items"]:
         urls.extend(item["urls"].values())
+        _get_metadata(item)
 
     return urls
 
@@ -173,6 +192,45 @@ def _get_shapefile_urls(dataset, file_format, region_type, region):
         return url[0]
     else:
         return url[0]
+
+
+def get_1m_dem_urls(vector_path: str, buffer_dist: int | float) -> list[str]:
+    """
+    Retrieve a list of all 1-metre DEM rasters within the polygons found in input layer 
+
+    :param vector_path: path to Shapefile or geopackage layer 
+    :param buffer_dist: Distance in DEGREES to buffer the polygons 
+    :return: List of HTTPS download URLs for DEMs
+
+    Based on the get_dem_urls function below - see for comments
+    """
+    log = Logger('The National Map')
+    # Get a union of all polygon features in the input
+    # Note that this function can do other things, such as force the geometry onto a specific projection
+    log.info(f'Processing input path {vector_path} to use as parameter for National Map query')
+    polygon = get_geometry_unary_union(vector_path)
+
+    buffered = polygon
+    if buffer_dist:
+        buffered = polygon.buffer(buffer_dist)
+
+    polygon_coords = list(buffered.envelope.exterior.coords)
+
+    params = {
+        "polygon": ",".join([f"{lat} {long}" for lat, long in polygon_coords]),
+        "datasets": "Digital Elevation Model (DEM) 1 meter",
+        "prodFormats": "GeoTIFF",
+    }
+
+    log.info(f'TNM API Query params: {params}')
+    urls = _get_urls(params)
+
+    if len(urls) < 1:
+        log.error('TNM API Query returned no results.')
+        # lsg - think this will be fairly common and shouldn't trigger an exception that bubbles up that way
+        raise Exception('No DEM rasters identified on The National Map')
+
+    return urls
 
 
 def get_dem_urls(vector_path, buffer_dist):

@@ -1,6 +1,6 @@
 # Name:     Download DEM
 #
-# Purpose:  Identify all the NED 10m DEM rasters that intersect with a HUC
+# Purpose:  Identify all the NED rasters that intersect with a (HUC)
 #           boundary polygon. Download and unzip all the rasters then mosaic
 #           them into a single compressed GeoTIF raster possessing a specific
 #           spatial reference.
@@ -19,8 +19,8 @@ import traceback
 from osgeo import gdal, ogr, osr
 import rasterio
 from rscommons.download import download_unzip, download_file
-from rscommons.national_map import get_dem_urls
-from rscommons import Logger, Geotransform, ProgressBar
+from rscommons.national_map import get_dem_urls, get_1m_dem_urls
+from rscommons import Logger, Geotransform, ProgressBar, get_shp_or_gpkg
 
 
 # NED data sometimes has small discrepencies in its cell widths. For this reason we need a tolerance,
@@ -33,11 +33,12 @@ CELL_SIZE_THRESH_STDDEV = 1e-13
 CELL_SIZE_MAX_STDDEV = 1e-8
 
 
-def download_dem(vector_path, _epsg, buffer_dist, download_folder, unzip_folder, force_download=False):
+def download_dem(vector_path: str, _epsg, buffer_dist, download_folder, unzip_folder, force_download=False, resolution='10m'):
     """
     Identify rasters within HUC, download them and mosaic into single GeoTIF
+
     :param vector_path: Path to bounding polygon ShapeFile
-    :param epsg: Output spatial reference
+    :param epsg: Output spatial reference NOT USED
     :param buffer_dist: Distance in DEGREES to buffer the bounding polygon
     :param unzip_folder: Temporary folder where downloaded rasters will be saved
     :param force_download: The download will always be performed if this is true.
@@ -46,8 +47,13 @@ def download_dem(vector_path, _epsg, buffer_dist, download_folder, unzip_folder,
 
     log = Logger('DEM')
 
-    # Query The National Map API for NED 10m DEM rasters within HUC 8 boundary
-    urls = get_dem_urls(vector_path, buffer_dist)
+    if resolution == '10m':
+        # Query The National Map API for NED 10m DEM rasters within HUC 8 boundary
+        urls = get_dem_urls(vector_path, buffer_dist)
+    elif resolution == '1m':
+        urls = get_1m_dem_urls(vector_path, buffer_dist)
+    else:
+        raise NotImplementedError("only implemented options are 1m or 10m DEM resolution")
     log.info('{} DEM raster(s) identified on The National Map.'.format(len(urls)))
 
     rasters = {}
@@ -101,11 +107,11 @@ def download_dem(vector_path, _epsg, buffer_dist, download_folder, unzip_folder,
     return list(rasters.keys()), urls
 
 
-def find_rasters(search_dir):
+def find_rasters(search_dir: str) -> str:
     """
     Recursively search a folder for any *.img or *.tif rasters
     :param search_dir: Folder to be searched
-    :return: List of full paths to any rasters found
+    :return: full path to first raster found
     """
 
     for root, _subFolder, files in os.walk(search_dir):
@@ -116,19 +122,22 @@ def find_rasters(search_dir):
     raise Exception('Failed to find IMG raster in folder {}'.format(search_dir))
 
 
-def verify_areas(raster_path, boundary_shp):
-    """[summary]
+def verify_areas(raster_path: str, boundary_shp: str):
+    """check and compare the area of the raster vs the boundary
 
     Arguments:
-        raster_path {[type]} -- path
-        boundary_shp {[type]} -- path
+        raster_path {str} -- path
+        boundary_shp {str} -- path to boundary shapefile or geopackage layer
 
     Raises:
         Exception: [description] if raster area is zero
         Exception: [description] if shapefile area is zero
 
     Returns:
-        [type] -- rastio of raster area over shape file area
+        [real] -- ratio of raster area over shape file area
+
+    Caution - this will use degrees and square degrees as units of measure if inputs are in a geographic CRS
+    TODO: I am sometimes getting GDAL ERROR unable to add to band, I think it's coming from this function
     """
     log = Logger('Verify Areas')
 
@@ -160,22 +169,21 @@ def verify_areas(raster_path, boundary_shp):
     # We could just use Rasterio's CRS object but it doesn't seem to play nice with GDAL so....
     raster_ds = gdal.Open(raster_path)
     raster_srs = osr.SpatialReference(wkt=raster_ds.GetProjection())
+    log.debug(f'Raster Spatial Ref is {raster_srs.GetName()} and linear units are {raster_srs.GetLinearUnitsName()}')
 
-    # Load and transform ownership polygons by adminstration agency
-    driver = ogr.GetDriverByName("ESRI Shapefile")
-    data_source = driver.Open(boundary_shp, 0)
-    layer = data_source.GetLayer()
-    in_spatial_ref = layer.GetSpatialRef()
+    with get_shp_or_gpkg(boundary_shp) as layer:
+        layer = layer.ogr_layer
+        in_spatial_ref = layer.GetSpatialRef()
 
-    # https://github.com/OSGeo/gdal/issues/1546
-    raster_srs.SetAxisMappingStrategy(in_spatial_ref.GetAxisMappingStrategy())
-    transform = osr.CoordinateTransformation(in_spatial_ref, raster_srs)
+        # https://github.com/OSGeo/gdal/issues/1546
+        raster_srs.SetAxisMappingStrategy(in_spatial_ref.GetAxisMappingStrategy())
+        transform = osr.CoordinateTransformation(in_spatial_ref, raster_srs)
 
-    shape_area = 0
-    for polygon in layer:
-        geom = polygon.GetGeometryRef()
-        geom.Transform(transform)
-        shape_area = shape_area + geom.GetArea()
+        shape_area = 0
+        for polygon in layer:
+            geom = polygon.GetGeometryRef()
+            geom.Transform(transform)
+            shape_area = shape_area + geom.GetArea()
 
     log.debug('shape file area {}'.format(shape_area))
     if (shape_area == 0):
