@@ -1,0 +1,8 @@
+{
+    "VEGSUIT": ["Landfire Existing Vegetation reclassified into suitability for ungulate forage (0 unuitable - 4 preferred)", "", ""],
+    "WATER": ["A combined dataset of waterbodies and perennial flowlines for calculating proximity to water", "", ""],
+    "GRAZING_DGO_GEOM": ["Discrete Geographic Objects (DGOs) for the grazing likelihood model", "", ""],
+    "GRAZING_DGOS": ["DGOs attributed with value for average grazing likelihood within the polygon", "", ""],
+    "GRAZING_IGO_GEOM": ["Integrated Geographic Objects (IGOs) for the grazing likelihood model", "", ""],
+    "GRAZING_IGOS": ["IGOs attributed with value for average grazing likelihood within the analysis window", "", ""]
+}

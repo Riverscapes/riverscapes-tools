@@ -322,6 +322,32 @@
     "state": "ACTIVE"
   },
   {
+    "name": "Grazing",
+    "summary": "Grazing Likelihood Project",
+    "description": "A Grazing Likelihood Project predicts the likelihood of grazing utlization across lanscape and summarizes it within the riverscape",
+    "meta": [
+      {
+        "key": "Resolution",
+        "value": "Reach"
+      },
+      {
+        "key": "Extent",
+        "value": "Network"
+      },
+      {
+        "key": "Model Status",
+        "value": "Production Grade"
+      },
+      {
+        "key": "Riverscapes Project Class",
+        "value": "Model Output"
+      }
+    ],
+    "url": "https://tools.riverscapes.net/grazing",
+    "machineName": "grazing",
+    "state": "ACTIVE"
+  },
+  {
     "name": "GRTS - CHaMP",
     "summary": "Generalized Random Tessellation Stratified Sample Frames - CHaMP",
     "description": "Generalized Random Tessellation Stratified sample frames used for Study Designs in CHaMP Priority Watersheds.",

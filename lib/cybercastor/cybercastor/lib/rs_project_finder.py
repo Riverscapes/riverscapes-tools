@@ -22,7 +22,8 @@ engine_projecttype_map = {
     'blm_context': ['rscontext', 'vbet'],
     'rs_metric_engine': ['rscontext', 'vbet', 'confinement', 'hydro_context', 'anthro', 'rcat', 'riverscapes_brat'],
     'rme_scraper': ['rs_metric_engine', 'rcat'],
-    'beaver_activity': ['vbet', 'riverscapesstudio']
+    'beaver_activity': ['vbet', 'riverscapesstudio'],
+    'grazing': ['rscontext', 'channelarea', 'vbet']
 }
 
 # Key is warehouse project type. Value is Fargate environment variable
@@ -38,7 +39,8 @@ fargate_env_keys = {
     'rcat': 'RCAT_ID',
     'confinement': 'CONFINEMENT_ID',
     'rs_metric_engine': 'RME_ID',
-    'riverscapesstudio': 'QRIS_ID'
+    'riverscapesstudio': 'QRIS_ID',
+    'grazing': 'GRAZING_ID'
 }
 
 
