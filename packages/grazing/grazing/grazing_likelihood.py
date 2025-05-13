@@ -16,13 +16,15 @@ from rscommons import Logger, initGDALOGRErrors, RSLayer, RSProject, ModelConfig
 from rscommons.database import create_db_nowats, SQLiteCon
 from rscommons.copy_features import copy_features_fields
 from rscommons.moving_window import moving_window_dgo_ids
-from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions, raster_resolution_meta
+from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions
 from vbet.vbet_raster_ops import proximity_raster
 
 from grazing.__version__ import __version__
+from grazing.grazing_report import GrazingReport
 from grazing.utils.water_raster import combine_water_features, create_water_raster
 from grazing.utils.veg_suitability import vegetation_suitability
 from grazing.utils.grazing_fis import calculate_grazing_fis
+from grazing.utils.riverscapes_grazing import riverscape_grazing
 
 
 Path = str
@@ -77,7 +79,9 @@ def grazing_likelihood(huc: int, existing_veg: Path, slope: Path, hillshade: Pat
     log.info(f'HUC: {huc}')
     log.info(f'EPSG: {cfg.OUTPUT_EPSG}')
 
-    # augment_layermeta('grazing', LYR_DESCRIPTIONS_JSON, LayerTypes)
+    augment_layermeta('grazing', LYR_DESCRIPTIONS_JSON, LayerTypes)
+
+    start_time = time.time()
 
     project_name = f'Grazing Likelihood for HUC {huc}'
     project = RSProject(cfg, output_dir)
@@ -219,7 +223,30 @@ def grazing_likelihood(huc: int, existing_veg: Path, slope: Path, hillshade: Pat
     vegetation_suitability(outputs_gpkg_path, existing_veg_resampled, os.path.join(output_dir, LayerTypes['VEGSUIT'].rel_path))
 
     # create grazing likelihood raster
-    calculate_grazing_fis(os.path.join(output_dir, 'intermediates/proximity.tif'), slope, os.path.join(output_dir, LayerTypes['VEGSUIT'].rel_path), os.path.join(output_dir, LayerTypes['LIKELIHOOD'].rel_path))
+    likelihood_raster = os.path.join(output_dir, LayerTypes['LIKELIHOOD'].rel_path)
+    calculate_grazing_fis(os.path.join(output_dir, 'intermediates/proximity.tif'), slope, os.path.join(output_dir, LayerTypes['VEGSUIT'].rel_path), likelihood_raster)
+
+    # sample likelihood raster to riverscapes sample frames
+    riverscape_grazing(likelihood_raster, outputs_gpkg_path, windows)
+
+    ellapsed_time = time.time() - start_time
+
+    report_path = os.path.join(project.project_dir, LayerTypes['GRAZING_REPORT'].rel_path)
+    project.add_report(proj_nodes['Outputs'], LayerTypes['GRAZING_REPORT'], replace=True)
+
+    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['VEGSUIT'])
+    project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
+    project.add_metadata([
+        RSMeta('GrazingProcTimeS', "{:.2f}".format(ellapsed_time), RSMetaTypes.HIDDEN, locked=True),
+        RSMeta('Processing Time', pretty_duration(ellapsed_time), RSMetaTypes.TIMESTAMP, locked=True)
+    ])
+
+    add_layer_descriptions(project, LYR_DESCRIPTIONS_JSON, LayerTypes)
+
+    report = GrazingReport(report_path, project)
+    report.write()
+
+    log.info('Grazing Likelihood model completed successfully')
 
 
 def main():

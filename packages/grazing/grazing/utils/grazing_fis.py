@@ -4,6 +4,7 @@ import skfuzzy.control as ctrl
 import numpy as np
 
 from rscommons import Logger, ProgressBar
+from concurrent.futures import ThreadPoolExecutor
 
 
 def calculate_grazing_fis(water_promixity: str, slope: str, vegetation_suitability: str, output_raster: str):
@@ -132,7 +133,6 @@ def calculate_grazing_fis(water_promixity: str, slope: str, vegetation_suitabili
 
     results[results == defuzz_centroid] = 0
     result_raster = results.reshape(height, width)
-    result_raster[result_raster == defuzz_centroid] = 0
 
     with rasterio.open(output_raster, 'w', **meta) as dst:
         dst.write(result_raster.astype(meta['dtype']), 1)
