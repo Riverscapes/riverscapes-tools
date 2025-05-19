@@ -8,7 +8,7 @@ IFS=$'\n\t'
 (: "${TAGS?}")
 (: "${RSCONTEXT_ID?}")
 (: "${VBET_ID?}")
-(: "${CHANNEL_ID?}")
+(: "${CHANNELAREA_ID?}")
 (: "${RS_API_URL?}")
 (: "${VISIBILITY?}")
 # These are machine credentials for the API which will allow the CLI to delegate uploading to either a specific user or an org
@@ -41,7 +41,7 @@ EOF
 
 echo "TAGS: $TAGS"
 echo "RSCONTEXT_ID: $RSCONTEXT_ID"
-echo "CHANNEL_ID: $CHANNEL_ID"
+echo "CHANNELAREA_ID: $CHANNELAREA_ID"
 echo "VBET_ID: $VBET_ID"
 echo "VISIBILITY: $VISIBILITY"
 if [ -n "$USER_ID" ]; then
@@ -73,7 +73,7 @@ rscli download $RS_CONTEXT_DIR --id "$RSCONTEXT_ID" \
   --file-filter "(dem_hillshade||hydrology|existing_veg|project_bounds.geojson)" \
   --no-input --no-ui --verbose
 
-rscli download $CHANNEL_DIR --id "$CHANNEL_ID" \
+rscli download $CHANNEL_DIR --id "$CHANNELAREA_ID" \
   --file-filter "channel_area\.gpkg" \
   --no-input --no-ui --verbose
 
