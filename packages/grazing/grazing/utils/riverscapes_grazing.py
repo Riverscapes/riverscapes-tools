@@ -48,33 +48,37 @@ def riverscape_grazing(likelihood: str, gpkg_path: str, windows: dict):
                 log.error(f'Error processing DGO {dgoid}: {e}')
                 continue
 
-    for igo_id, dgo_ids in windows.items():
-        dgovals = []
-        for dgoid in dgo_ids:
-            if dgoid in dgo_vals:
-                dgovals.append(dgo_vals[dgoid])
-            else:
-                log.warning(f'DGO {dgoid} not found in grazing probability calculation')
-        if len(dgovals) == 0:
-            log.warning(f'No values found for IGO {igo_id}')
-            continue
-        igo_vals[igo_id] = np.mean(dgovals)
-
     with sqlite3.connect(gpkg_path) as conn:
-        with conn:
-            cursor = conn.cursor()
-            log.info('Updating DGO Attributes')
-            for dgoid, val in dgo_vals.items():
-                cursor.execute(
-                    f"UPDATE DGOAttributes SET grazing_likelihood = {val} WHERE DGOID = {dgoid}"
-                )
-            conn.commit()
+        cursor = conn.cursor()
+        for igo_id, dgo_ids in windows.items():
+            dgovals = []
+            for dgoid in dgo_ids:
+                if dgoid in dgo_vals:
+                    cursor.execute(f"SELECT segment_area FROM grazing_dgos WHERE DGOID = {dgoid}")
+                    seg_area = cursor.fetchone()
+                    dgovals.append([dgo_vals[dgoid], seg_area[0]])
+                else:
+                    log.warning(f'DGO {dgoid} not found in grazing probability calculation')
+            if len(dgovals) == 0:
+                log.warning(f'No values found for IGO {igo_id}')
+                continue
+            tot_area = sum(dgo[1] for dgo in dgovals)
+            igo_vals[igo_id] = sum(
+                dgo[0] * (dgo[1] / tot_area) for dgo in dgovals
+            )
 
-            log.info('Updating IGO Attributes')
-            for igo_id, val in igo_vals.items():
-                cursor.execute(
-                    f"UPDATE IGOAttributes SET grazing_likelihood = {val} WHERE IGOID = {igo_id}"
-                )
-            conn.commit()
+        log.info('Updating DGO Attributes')
+        for dgoid, val in dgo_vals.items():
+            cursor.execute(
+                f"UPDATE DGOAttributes SET grazing_likelihood = {val} WHERE DGOID = {dgoid}"
+            )
+        conn.commit()
+
+        log.info('Updating IGO Attributes')
+        for igo_id, val in igo_vals.items():
+            cursor.execute(
+                f"UPDATE IGOAttributes SET grazing_likelihood = {val} WHERE IGOID = {igo_id}"
+            )
+        conn.commit()
 
     log.info('Grazing probability calculation complete')
