@@ -202,8 +202,6 @@ def grazing_likelihood(huc: int, existing_veg: Path, slope: Path, hillshade: Pat
 
     # associate DGO IDs with IGO IDs for moving windows
     windows = moving_window_dgo_ids(igo_geom_path, dgo_geom_path, levelpathsin, distancein)
-    with open(os.path.join(output_dir, 'intermediates/windows.json'), 'w') as f:
-        json.dump(windows, f)
 
     # generate raster of water features
     combine_water_features(input_layers['CHANNEL'], input_layers['WATERBODIES'], intermediates_gpkg_path, cfg.OUTPUT_EPSG)
