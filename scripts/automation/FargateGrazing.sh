@@ -91,7 +91,7 @@ try() {
   ##########################################################################################
   # Now Run Grazing Likelihood
   ##########################################################################################
-  brat $HUC \
+  grazing_likelihood $HUC \
     $RS_CONTEXT_DIR/vegetation/existing_veg.tif \
     $RS_CONTEXT_DIR/topography/slope.tif \
     $RS_CONTEXT_DIR/topography/dem_hillshade.tif \
@@ -106,7 +106,7 @@ try() {
   if [[ $? != 0 ]]; then return 1; fi
 
   cd /usr/local/src/riverscapes-tools/packages/grazing
-  python3 -m sqlbrat.grazing_rs \
+  python3 -m grazing.grazing_rs \
     $GRAZING_DIR/project.rs.xml \
     $RS_CONTEXT_DIR/project.rs.xml,$CHANNEL_DIR/project.rs.xml,$VBET_DIR/project.rs.xml
 
