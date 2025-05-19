@@ -99,7 +99,7 @@ try() {
     $VBET_DIR/intermediates/vbet_intermediates.gpkg/vbet_igos \
     $RS_CONTEXT_DIR/hydrology/nhdplushr/NHDWaterbody \
     $CHANNEL_DIR/outputs/channel_area.gpkg/channel_area \
-    $GRAZING_DIR/
+    $GRAZING_DIR \
     --meta "Runner=Cybercastor" \
     --verbose
 
