@@ -48,6 +48,7 @@ LayerTypes = {
         'WATERBODIES': RSLayer('Waterbodies', 'WATERBODIES', 'Vector', 'waterbodies'),
     }),
     'VEGSUIT': RSLayer('Grazing Vegetation Suitability', 'VEGSUIT', 'Raster', 'intermediates/veg_suitability.tif'),
+    'PROXIMITY': RSLayer('Proximity to Water', 'PROXIMITY', 'Raster', 'intermediates/proximity.tif'),
     'INTERMEDIATES': RSLayer('Grazing Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/intermediates.gpkg', {
         'WATER': RSLayer('Merged Channel and Waterbodies', 'WATER', 'Vector', 'water')
     }),
@@ -238,6 +239,7 @@ def grazing_likelihood(huc: int, existing_veg: Path, slope: Path, hillshade: Pat
     project.add_report(proj_nodes['Outputs'], LayerTypes['GRAZING_REPORT'], replace=True)
 
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['VEGSUIT'])
+    project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['PROXIMITY'])
     project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
     project.add_metadata([
         RSMeta('GrazingProcTimeS', "{:.2f}".format(ellapsed_time), RSMetaTypes.HIDDEN, locked=True),
