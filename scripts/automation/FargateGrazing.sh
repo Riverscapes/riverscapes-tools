@@ -91,7 +91,7 @@ try() {
   ##########################################################################################
   # Now Run Grazing Likelihood
   ##########################################################################################
-  grazing_likelihood $HUC \
+  grazing $HUC \
     $RS_CONTEXT_DIR/vegetation/existing_veg.tif \
     $RS_CONTEXT_DIR/topography/slope.tif \
     $RS_CONTEXT_DIR/topography/dem_hillshade.tif \
