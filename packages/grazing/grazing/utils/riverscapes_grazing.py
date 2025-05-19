@@ -2,10 +2,10 @@ import os
 import sqlite3
 import rasterio
 import numpy as np
+import numpy.ma as ma
 from rasterio.mask import mask
 
-from rscommons import Logger, ProgressBar, GeopackageLayer, VectorBase
-from rscommons.classes.vector_base import get_utm_zone_epsg
+from rscommons import Logger, GeopackageLayer, VectorBase
 
 
 def riverscape_grazing(likelihood: str, gpkg_path: str, windows: dict):
@@ -28,7 +28,8 @@ def riverscape_grazing(likelihood: str, gpkg_path: str, windows: dict):
                 continue
 
             try:
-                raw_raster = mask(src, [dgo_geom], crop=True)[0]
+                dgo_shap = VectorBase.ogr2shapely(dgo_geom)
+                raw_raster = mask(src, [dgo_shap], crop=True)[0]
                 mask_raster = np.ma.masked_values(raw_raster, src.nodata)
 
                 vals = []
@@ -37,9 +38,11 @@ def riverscape_grazing(likelihood: str, gpkg_path: str, windows: dict):
                         continue
                     vals.append(val)
 
+                vals = [v for v in vals if not ma.is_masked(v)]
                 if len(vals) == 0:
                     log.warning(f'No values found in DGO {dgoid}')
                     continue
+
                 dgo_vals[dgoid] = np.mean(vals)
             except Exception as e:
                 log.error(f'Error processing DGO {dgoid}: {e}')
@@ -60,17 +63,17 @@ def riverscape_grazing(likelihood: str, gpkg_path: str, windows: dict):
     with sqlite3.connect(gpkg_path) as conn:
         with conn:
             cursor = conn.cursor()
+            log.info('Updating DGO Attributes')
             for dgoid, val in dgo_vals.items():
                 cursor.execute(
-                    f"UPDATE grazing_dgos SET grazing_probability = ? WHERE id = ?",
-                    (val, dgoid)
+                    f"UPDATE DGOAttributes SET grazing_likelihood = {val} WHERE DGOID = {dgoid}"
                 )
             conn.commit()
 
+            log.info('Updating IGO Attributes')
             for igo_id, val in igo_vals.items():
                 cursor.execute(
-                    f"UPDATE grazing_igos SET grazing_probability = ? WHERE id = ?",
-                    (val, igo_id)
+                    f"UPDATE IGOAttributes SET grazing_likelihood = {val} WHERE IGOID = {igo_id}"
                 )
             conn.commit()
 
