@@ -89,6 +89,19 @@
       ]
     },
     {
+      "name": "Write Land Health Assessment Report",
+      "type": "python",
+      "request": "launch",
+      "module": "rme.lha_report",
+      "console": "integratedTerminal",
+      "args": [
+        "/workspaces/data/riverscapes_metrics.gpkg",
+        "{env:DATA_ROOT}",
+        "{env:DATA_ROOT}/rme/outputs/lha_report.html",
+        "--verbose"
+      ]
+    },
+    {
       "name": "Version Bump",
       "type": "python",
       "module": "rscommons.version",

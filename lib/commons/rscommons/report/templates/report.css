@@ -246,6 +246,12 @@ table tr.total>td {
   border-top: 1px solid #40434e55;
 }
 
+/* report.css */
+.copy-button {
+    float: right;
+    margin-left: 1em;
+}
+
 /* Link from the sections back to the TOC */
 
 .top-button {
