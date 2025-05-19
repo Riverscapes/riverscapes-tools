@@ -97,7 +97,7 @@ try() {
     $RS_CONTEXT_DIR/topography/dem_hillshade.tif \
     $VBET_DIR/outputs/vbet.gpkg/vbet_igos \
     $VBET_DIR/intermediates/vbet_intermediates.gpkg/vbet_dgos \
-    $RS_CONTEXT_DIR/hydrology/nhdplushr/NHDWaterbody \
+    $RS_CONTEXT_DIR/hydrology/nhdplushr.gpkg/NHDWaterbody \
     $CHANNEL_DIR/outputs/channel_area.gpkg/channel_area \
     $GRAZING_DIR \
     --meta "Runner=Cybercastor" \
