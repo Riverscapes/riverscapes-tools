@@ -70,7 +70,7 @@ cd /usr/local/src
 
 # Get the RSCli project we need to make this happen
 rscli download $RS_CONTEXT_DIR --id "$RSCONTEXT_ID" \
-  --file-filter "(dem_hillshade|hydrology|existing_veg|project_bounds.geojson)" \
+  --file-filter "(dem_hillshade|slope|hydrology|existing_veg|project_bounds.geojson)" \
   --no-input --no-ui --verbose
 
 rscli download $CHANNEL_DIR --id "$CHANNELAREA_ID" \
