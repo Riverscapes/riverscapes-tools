@@ -70,7 +70,7 @@ cd /usr/local/src
 
 # Get the RSCli project we need to make this happen
 rscli download $RS_CONTEXT_DIR --id "$RSCONTEXT_ID" \
-  --file-filter "(dem_hillshade||hydrology|existing_veg|project_bounds.geojson)" \
+  --file-filter "(dem_hillshade|hydrology|existing_veg|project_bounds.geojson)" \
   --no-input --no-ui --verbose
 
 rscli download $CHANNEL_DIR --id "$CHANNELAREA_ID" \
@@ -79,7 +79,7 @@ rscli download $CHANNEL_DIR --id "$CHANNELAREA_ID" \
 
 # Go get vbet result for this to work
 rscli download $VBET_DIR --id "$VBET_ID"\
-  --file-filter "(vbet\.gpkg|vbet_intermediates\.gpkg" \
+  --file-filter "(vbet\.gpkg|vbet_intermediates\.gpkg)" \
   --no-input --no-ui --verbose
 
 echo "======================  Initial Disk space usage ======================="
