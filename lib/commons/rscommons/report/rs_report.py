@@ -310,12 +310,17 @@ class RSReport():
         Returns:
             [type] - - [description]
         """
+
         if attrib is None:
             attrib = {}
         if 'class' in attrib:
             attrib['class'] = 'dictable {}'.format(attrib['class'])
         else:
             attrib['class'] = 'dictable'
+
+        # generate unique id for the table
+        table_id = str(uuid4())
+        attrib['id'] = f'table_id_{table_id}'
 
         table = ET.Element('table', attrib=attrib)
 
@@ -344,6 +349,35 @@ class RSReport():
             tr.append(td)
 
         el_parent.append(table)
+
+        # Add a button element
+        button = ET.Element('button', attrib={
+            'onclick': f"copyTableToClipboard('{attrib['id']}')",
+            'class': 'copy-button'
+        })
+        button.text = 'Copy Table Data to Clipboard'
+        el_parent.append(button)
+
+        # Add the script block
+        script = ET.Element('script')
+        script.text = """
+        function copyTableToClipboard(tableId) {
+            let data = "";
+            const rows = document.querySelectorAll("#" + tableId + " tr");
+            rows.forEach(row => {
+                const cols = row.querySelectorAll("th, td");
+                const line = Array.from(cols).map(cell => cell.innerText).join("\\t");
+                data += line + "\\n";
+            });
+
+            navigator.clipboard.writeText(data).then(() => {
+                alert("Copied to clipboard!");
+            }, (err) => {
+                alert("Failed to copy: " + err);
+            });
+        }
+        """
+        el_parent.append(script)
 
     @staticmethod
     def format_value(value, val_type=None):
