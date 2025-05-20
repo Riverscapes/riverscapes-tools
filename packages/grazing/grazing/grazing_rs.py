@@ -62,7 +62,7 @@ def main():
         watershed_node = out_prj.XMLBuilder.find('MetaData').find('Meta[@name="Watershed"]')
         if watershed_node is not None:
             name_node = out_prj.XMLBuilder.find('Name')
-            name_node.text = f"Anthro for {watershed_node.text}"
+            name_node.text = f"Grazing Likelihood for {watershed_node.text}"
 
         out_prj.XMLBuilder.write()
         report_path = out_prj.XMLBuilder.find('.//HTMLFile[@id="REPORT"]/Path').text
