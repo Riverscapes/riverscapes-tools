@@ -77,10 +77,10 @@
   // This is for rscli to open the browser on the host machine so we can authenticate
   "portsAttributes": {
     // NOTE: Now that the Riverscapes API and CC API are moved into new repos we don't need to port forward these ports anymore
-    // "4721": {
-    //   "label": "Authentication",
-    //   "onAutoForward": "openBrowser"
-    // },
+    "4721": {
+      "label": "Authentication",
+      "onAutoForward": "openBrowser"
+    }
     // "4722": {
     //   "label": "Authentication",
     //   "onAutoForward": "openBrowser"
@@ -88,6 +88,7 @@
   },
   // Use 'forwardPorts' to make a list of ports inside the container available locally.
   "forwardPorts": [
-    // 4721, 4722
+    4721 
+    // 4722
   ]
 }
