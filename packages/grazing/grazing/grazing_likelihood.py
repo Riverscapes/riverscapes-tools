@@ -209,7 +209,7 @@ def grazing_likelihood(huc: int, existing_veg: Path, slope: Path, hillshade: Pat
     create_water_raster(os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['WATER'].rel_path), os.path.join(output_dir, 'intermediates/water.tif'), slope_in)
     # create raster of proximity to water features
     conv_factor = VectorBase.rough_convert_metres_to_raster_units(slope_in, 1)
-    proximity_raster(os.path.join(output_dir, 'intermediates/water.tif'), os.path.join(output_dir, 'intermediates/proximity.tif'), "GEO", preserve_nodata=False, dist_factor=conv_factor)
+    proximity_raster(os.path.join(output_dir, 'intermediates/water.tif'), os.path.join(output_dir, 'intermediates/proximity.tif'), "GEO", preserve_nodata=True, dist_factor=conv_factor)
 
     # resample landfire down to 10m to match slope and proximity rasters
     ds = gdal.Open(slope_in)
@@ -240,6 +240,7 @@ def grazing_likelihood(huc: int, existing_veg: Path, slope: Path, hillshade: Pat
 
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['VEGSUIT'])
     project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['PROXIMITY'])
+    project.add_project_raster(proj_nodes['Outputs'], LayerTypes['LIKELIHOOD'])
     project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
     project.add_metadata([
         RSMeta('GrazingProcTimeS', "{:.2f}".format(ellapsed_time), RSMetaTypes.HIDDEN, locked=True),
