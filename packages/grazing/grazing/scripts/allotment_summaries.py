@@ -14,7 +14,7 @@ def grazing_model_summaries(grazing_dir: str, allotments: str, out_path: str):
 
     outputs = {}
 
-    slope = os.path.join(grazing_dir, 'inputs/slope.tif')
+    slope = os.path.join(grazing_dir, 'inputs/dem_slope.tif')
     proximity = os.path.join(grazing_dir, 'intermediates/proximity.tif')
 
     with GeopackageLayer(allotments) as allotment_lyr, \
@@ -56,13 +56,13 @@ def grazing_model_summaries(grazing_dir: str, allotments: str, out_path: str):
                     print(f'No values found in allotment {allot_name} slope raster')
                     continue
 
-                proxone = prox_vals[prox_vals < 1]
-                proxtwo = prox_vals[1 <= prox_vals < 2]
-                proxthree = prox_vals[prox_vals >= 2]
-                slopeone = slope_vals[slope_vals < 10]
-                slopetwo = slope_vals[10 <= slope_vals < 30]
-                slopethree = slope_vals[30 <= slope_vals < 60]
-                slopefour = slope_vals[slope_vals >= 60]
+                proxone = [x for x in prox_vals if x < 1]
+                proxtwo = [x for x in prox_vals if 1 <= x < 2]
+                proxthree = [x for x in prox_vals if 2 <= x]
+                slopeone = [x for x in slope_vals if x < 10]
+                slopetwo = [x for x in slope_vals if 10 <= x < 30]
+                slopethree = [x for x in slope_vals if 30 <= x < 60]
+                slopefour = [x for x in slope_vals if x >= 60]
                 outputs[allot_name] = {
                     'proximityToWater': {
                         '< 1 mile': (len(proxone) / len(prox_vals)) * allot_acres,
@@ -83,3 +83,6 @@ def grazing_model_summaries(grazing_dir: str, allotments: str, out_path: str):
     with open(out_path, 'w') as f:
         json.dump(outputs, f, indent=4)
     print(f'Grazing model summaries written to {out_path}')
+
+
+grazing_model_summaries('/workspaces/data/grazing/Owyhee', '/workspaces/data/Owyhee_GA.gpkg/owyhee_ga', '/workspaces/data/grazing/Owyhee/outputs/grazing_model_summaries.json')
