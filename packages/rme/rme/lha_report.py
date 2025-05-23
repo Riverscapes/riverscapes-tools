@@ -6,21 +6,15 @@ This is the next version of the Watershed Health Condition Assessment Report (WH
 from typing import List, Dict, Tuple
 import os
 import sys
-import copy
 import argparse
 import sqlite3
 import json
-from collections import defaultdict
 from xml.etree import ElementTree as ET
-import numpy as np
-from shapely.geometry import shape
 import matplotlib.pyplot as plt
-from osgeo import ogr
 from rscommons import Logger, dotenv, RSReport
 from rscommons.util import safe_makedirs
 from rscommons.plotting import pie, horizontal_bar
 from rme.__version__ import __version__
-
 
 from .utils.hypsometric_curve import hipsometric_curve
 from .utils.blm_charts import charts as blm_charts, vegetation_charts, land_ownership_labels, riparian_charts
@@ -112,41 +106,159 @@ huc8_data = [
 ]
 
 
-scopes = [
-    {
-        'title': 'Owyhee',
-        'ids': 'SELECT igoid FROM igos_pastures WHERE 0 = ?',
-    },
-    {
-        'title': 'HUC10 Watersheds',
-        'sql': 'SELECT DISTINCT huc10 FROM igos_pastures',
-        'names': huc10_data,
-        'ids': 'SELECT igoid FROM igos_pastures WHERE huc10 = ?',
-    },
-    {
-        'title': ' HUC8 Watersheds',
-        'sql': 'select distinct substr(huc10, 0,9) from igos_pastures',
-        'names': huc8_data,
-        'ids': 'SELECT igoid FROM igos_pastures WHERE substr(huc10, 0, 9) = ?',
-    },
-    {
-        'title': 'Allottments',
-        'sql': 'SELECT DISTINCT ALLOT_NAME FROM igos_pastures WHERE allot_name IS NOT NULL',
-        'ids': 'SELECT igoid FROM igos_pastures WHERE allot_name = ?',
-    },
-    {
-        'title': 'Pastures',
-        'sql': 'SELECT DISTINCT past_name FROM igos_pastures WHERE past_name IS NOT NULL',
-        'ids': 'SELECT igoid FROM igos_pastures WHERE past_name = ?',
-    }
+cols = ['huc10', 'state', 'county', 'ownership_name', 'ALLOT_NAME', 'ALLOT_NO', 'PAST_NAME', 'PAST_NO', 'GIS_ACRES', 'centerline_length', 'segment_area', 'FCode', 'fcode_name',
+        'dgoid', 'ownership', 'state', 'county', 'drainage_area', 'watershed_id', 'stream_name', 'stream_order', 'headwater', 'stream_length', 'waterbody_type', 'waterbody_extent',
+        'ecoregion3', 'ecoregion4', 'ownership_name', 'dgoid', 'brat_capacity', 'brat_hist_capacity', 'brat_risk', 'brat_opportunity', 'brat_limitation', 'brat_complex_size',
+        'brat_hist_complex_size', 'dam_setting', 'dgoid', 'prim_channel_gradient', 'valleybottom_gradient', 'rel_flow_length', 'confluences', 'diffluences', 'tributaries', 'tribs_per_km',
+        'planform_sinuosity', 'lowlying_area', 'elevated_area', 'channel_area', 'floodplain_area', 'integrated_width', 'active_channel_ratio', 'low_lying_ratio', 'elevated_ratio', 'floodplain_ratio',
+        'acres_vb_per_mile', 'hect_vb_per_km', 'channel_width', 'confinement_ratio', 'constriction_ratio', 'confining_margins', 'constricting_margins', 'dgoid', 'qlow', 'q2', 'splow', 'sphigh', 'dgoid',
+        'road_len', 'road_dens', 'rail_len', 'rail_dens', 'land_use_intens', 'road_dist', 'rail_dist', 'div_dist', 'canal_dist', 'infra_dist', 'fldpln_access', 'access_fldpln_extent', 'dgoid', 'strmminelev', 'strmmaxelev', 'clminelev', 'clmaxelev',
+        'strmleng', 'valleng', 'strmstrleng', 'dgoid', 'lf_evt', 'lf_bps', 'lf_agriculture_prop', 'lf_agriculture', 'lf_conifer_prop',
+        'lf_conifer', 'lf_conifer_hardwood_prop', 'lf_conifer_hardwood', 'lf_developed_prop', 'lf_developed', 'lf_exotic_herbaceous_prop', 'lf_exotic_herbaceous',
+        'lf_exotic_tree_shrub_prop', 'lf_exotic_tree_shrub', 'lf_grassland_prop', 'lf_grassland', 'lf_hardwood_prop', 'lf_hardwood', 'lf_riparian_prop',
+        'lf_riparian', 'lf_shrubland_prop', 'lf_shrubland', 'lf_sparsely_vegetated_prop', 'lf_sparsely_vegetated', 'lf_hist_conifer_prop',
+        'lf_hist_conifer', 'lf_hist_conifer_hardwood_prop', 'lf_hist_conifer_hardwood', 'lf_hist_grassland_prop', 'lf_hist_grassland',
+        'lf_hist_hardwood_prop', 'lf_hist_hardwood', 'lf_hist_hardwood_conifer_prop', 'lf_hist_hardwood_conifer', 'lf_hist_peatland_forest_prop',
+        'lf_hist_peatland_forest', 'lf_hist_peatland_nonforest_prop', 'lf_hist_peatland_nonforest', 'lf_hist_riparian_prop', 'lf_hist_riparian',
+        'lf_hist_savanna_prop', 'lf_hist_savanna', 'lf_hist_shrubland_prop', 'lf_hist_shrubland', 'lf_hist_sparsely_vegetated_prop',
+        'lf_hist_sparsely_vegetated', 'ex_riparian', 'hist_riparian', 'prop_riparian', 'hist_prop_riparian', 'riparian_veg_departure',
+        'ag_conversion', 'develop', 'grass_shrub_conversion', 'conifer_encroachment', 'invasive_conversion', 'riparian_condition']
+
+sum_fields = [
+    'centerline_length',
+    'segment_area'
 ]
 
-fcode_lookup = {
-    46006: 'Perennial',
-    46003: 'Intermittent',
-    46007: 'Ephemeral',
-    33600: 'Canal'
-}
+stat_fields = [
+    'brat_capacity',
+    'riparian_veg_departure',
+    'hist_prop_riparian',
+    'prim_channel_gradient', 'valleybottom_gradient', 'rel_flow_length', 'confluences', 'diffluences', 'tributaries', 'tribs_per_km',
+    'planform_sinuosity', 'lowlying_area', 'elevated_area', 'channel_area', 'floodplain_area', 'integrated_width', 'active_channel_ratio', 'low_lying_ratio', 'elevated_ratio', 'floodplain_ratio',
+    'acres_vb_per_mile', 'hect_vb_per_km', 'channel_width', 'confinement_ratio', 'constriction_ratio', 'confining_margins', 'constricting_margins',
+    'lf_evt', 'lf_bps', 'lf_agriculture_prop', 'lf_agriculture', 'lf_conifer_prop',
+    'lf_conifer', 'lf_conifer_hardwood_prop', 'lf_conifer_hardwood', 'lf_developed_prop', 'lf_developed', 'lf_exotic_herbaceous_prop', 'lf_exotic_herbaceous',
+    'lf_exotic_tree_shrub_prop', 'lf_exotic_tree_shrub', 'lf_grassland_prop', 'lf_grassland', 'lf_hardwood_prop', 'lf_hardwood', 'lf_riparian_prop',
+    'lf_riparian', 'lf_shrubland_prop', 'lf_shrubland', 'lf_sparsely_vegetated_prop', 'lf_sparsely_vegetated', 'lf_hist_conifer_prop',
+    'lf_hist_conifer', 'lf_hist_conifer_hardwood_prop', 'lf_hist_conifer_hardwood', 'lf_hist_grassland_prop', 'lf_hist_grassland',
+    'lf_hist_hardwood_prop', 'lf_hist_hardwood', 'lf_hist_hardwood_conifer_prop', 'lf_hist_hardwood_conifer', 'lf_hist_peatland_forest_prop',
+    'lf_hist_peatland_forest', 'lf_hist_peatland_nonforest_prop', 'lf_hist_peatland_nonforest', 'lf_hist_riparian_prop', 'lf_hist_riparian',
+    'lf_hist_savanna_prop', 'lf_hist_savanna', 'lf_hist_shrubland_prop', 'lf_hist_shrubland', 'lf_hist_sparsely_vegetated_prop',
+    'lf_hist_sparsely_vegetated', 'ex_riparian', 'hist_riparian', 'prop_riparian', 'hist_prop_riparian', 'riparian_veg_departure',
+    'ag_conversion', 'develop', 'grass_shrub_conversion', 'conifer_encroachment', 'invasive_conversion', 'riparian_condition'
+]
+
+fcode_names = ['Perennial', 'Intermittent', 'Ephemeral', 'Canals, Pipes and Ditches']
+pivot_fields = [f"SUM(CASE WHEN fcode_name = '{fcode}' THEN centerline_length ELSE 0 END) AS \"{fcode}\"" for fcode in fcode_names]
+
+
+all_fields = []
+
+all_fields.extend([{
+    'field': field_name,
+    'methods': ['sum'],
+    'conversion': MILES_PER_M
+} for field_name in sum_fields])
+
+all_fields.extend([{
+    'field': field_name,
+    'methods': ['sum', 'min', 'max', 'avg'],
+} for field_name in stat_fields])
+
+pivot_fields = [
+    {
+        'english': 'Perennial Stream Length (mi)',
+        'name': 'perennial',
+        'field': 'centerline_length',
+        'whereClause': "fcode_name = 'Perennial'",
+        'methods': ['pivot'],
+        'conversion': MILES_PER_M
+    },
+    {
+        'english': 'Intermittent Stream Length (mi)',
+        'name': 'intermittent',
+        'field': 'centerline_length',
+        'whereClause': "fcode_name = 'Intermittent'",
+        'methods': ['pivot'],
+        'conversion': MILES_PER_M
+    },
+    {
+        'english': 'Ephemeral Stream Length (mi)',
+        'name': 'ephemeral',
+        'field': 'centerline_length',
+        'whereClause': "fcode_name = 'Ephemeral'",
+        'methods': ['pivot'],
+        'conversion': MILES_PER_M
+    },
+    {
+        'english': 'Canals, Pipes and Ditches Stream Length (mi)',
+        'name': 'Canals, Pipes and Ditches',
+        'field': 'centerline_length',
+        'whereClause': "fcode_name = 'Canals, Pipes and Ditches'",
+        'methods': ['pivot'],
+        'conversion': MILES_PER_M
+    },
+    {
+        'english': 'BLM Perennial Stream Length (mi)',
+        'name': 'blm_perennial',
+        'field': 'centerline_length',
+        'whereClause': "fcode_name = 'Perennial' and ownership_name = 'BLM'",
+        'methods': ['pivot'],
+        'conversion': MILES_PER_M
+    },
+    {
+        'english': 'BLM Intermittent Stream Length (mi)',
+        'name': 'blm_intermittent',
+        'field': 'centerline_length',
+        'whereClause': "fcode_name = 'Intermittent' and ownership_name = 'BLM'",
+        'methods': ['pivot'],
+        'conversion': MILES_PER_M
+    },
+    {
+        'english': 'Non-BLM Perennial Stream Length (mi)',
+        'name': 'non_blm_perennial',
+        'field': 'centerline_length',
+        'whereClause': "fcode_name = 'Perennial' and ownership_name <> 'BLM'",
+        'methods': ['pivot'],
+        'conversion': MILES_PER_M
+    },
+    {
+        'english': 'Non-BLM Intermittent Stream Length (mi)',
+        'name': 'non_blm_intermittent',
+        'field': 'centerline_length',
+        'whereClause': "fcode_name = 'Intermittent' and ownership_name <> 'BLM'",
+        'methods': ['pivot'],
+        'conversion': MILES_PER_M
+    }
+]
+all_fields.extend(pivot_fields)
+
+for risk_value in ["Minor Risk", "Negligible Risk", "Some Risk", "Considerable Risk"]:
+    all_fields.append({
+        'english': f'BRAT {risk_value} Stream Length (mi)',
+        'name': risk_value,
+        'field': 'centerline_length',
+        'methods': ['pivot'],
+        'whereClause': f"brat_risk = '{risk_value}'",
+        'conversion': MILES_PER_M
+    })
+
+for limit_value in ["Anthropogenically Limited", "Dam Building Possible", "Naturally Vegetation Limited", "Other", "Slope Limited", "Stream Power Limited", "Stream Size Limited"]:
+    all_fields.append({
+        'english': f'BRAT {limit_value} Stream Length (mi)',
+        'name': limit_value,
+        'field': 'centerline_length',
+        'methods': ['pivot'],
+        'whereClause': f"brat_limitation = '{limit_value}'",
+        'conversion': MILES_PER_M
+    })
+
+
+def dict_factory(cursor, row):
+    d = {}
+    for idx, col in enumerate(cursor.description):
+        d[col[0]] = row[idx]
+    return d
 
 
 class LHAReport(RSReport):
@@ -160,36 +272,208 @@ class LHAReport(RSReport):
         self.images_dir = os.path.join(os.path.dirname(report_path), 'images')
         self.verbose = verbose
 
+        # Load JSON field aliases
+        field_aliases = {}
+        with open('/workspaces/data/rme_v3_fields.json', 'r', encoding='utf-8') as f:
+            field_aliases = json.load(f)
+        field_aliases = {f['fieldName']: f['fullName'] for f in field_aliases}
+
         # The report has a core CSS file but we can extend it with our own if we want:
         css_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'rme_report.css')
         self.add_css(css_path)
 
         safe_makedirs(self.images_dir)
 
+        where_clauses = [
+            ('BLM', "(ownership_name = 'BLM')"),
+            ('Non-BLM', "(ownership_name <> 'BLM')"),
+            ('Perennial', "(fcode_name = 'Perennial')"),
+            ('Non-Perennial', "(fcode_name <> 'Perennial')"),
+        ]
+
+        for clause_name, clause in where_clauses:
+            print(f'Processing {clause_name}...')
+
+            data = {}
+            with sqlite3.connect(rme_scrape) as conn:
+                conn.row_factory = dict_factory
+                curs = conn.cursor()
+
+                fields_list = []
+                for field in all_fields:
+                    field_name = field.get('name', field['field'])
+                    conversion = field.get('conversion', 1)
+                    for method in field['methods']:
+                        if method == 'pivot':
+                            fields_list.append(f'SUM(CASE WHEN {field["whereClause"]} THEN {conversion} * {field["field"]} ELSE 0 END) AS "pivot_{field_name}"')
+                        else:
+                            fields_list.append(f'{conversion} * {method}({field["field"]}) as {method}_{field_name}')
+
+                curs.execute(f'''
+                    SELECT
+                        ALLOT_NAME,
+                        PAST_NAME,
+                        {",".join(fields_list)}
+                    FROM dgos d
+                            inner join dgo_desc dd on d.dgoid = dd.dgoid
+                            inner join igos_pastures i on d.level_path = i.level_path and d.seg_distance = i.seg_distance
+                    inner join dgo_beaver db on d.dgoid = db.dgoid
+                    inner join dgo_geomorph dg on d.dgoid = dg.dgoid
+                    inner join dgo_hydro dh on d.dgoid = dh.dgoid
+                    inner join dgo_impacts di on d.dgoid = di.dgoid
+                    inner join dgo_measurements dm on d.DGOID = dm.dgoid
+                    inner join dgo_veg dv on d.dgoid = dv.dgoid
+                    where i.ALLOT_NAME is not null
+                        and {clause}
+                    group by ALLOT_NAME, PAST_NAME''')
+
+                for row in curs.fetchall():
+                    allotment = row['ALLOT_NAME']
+                    pasture = row['PAST_NAME']
+                    data.setdefault(allotment, {})
+                    data[allotment].setdefault(pasture, {})
+
+                    for field in all_fields:
+                        for method in field['methods']:
+                            col_name = f'{method}_{field.get("name", field["field"])}'
+                            out_name = method + ' ' + field.get('english', field_aliases.get(field['field'], field.get('name', field['field'])))
+                            out_name = out_name.replace('pivot', 'sum')
+                            data[allotment][pasture][out_name] = row[col_name]
+
+            # write the data to a JSON file
+            with open(f'/workspaces/data/{clause_name}-metrics.json', 'w', encoding='utf-8') as f:
+                f.write(json.dumps(data, indent=4))
+
+            # Load your JSON data (assuming it's stored in a variable called `data`)
+            # with open('your_file.json', 'r') as f:
+            #     data = json.load(f)
+
+            # Output tab-delimited file
+            output_file = os.path.join(os.path.dirname(rme_scrape), f'{clause_name}_output.tsv')
+            with open(output_file, 'w', encoding='utf8') as out:
+                # Write header
+                headers = ["Allotment", "Pasture"]
+                # Get all metric keys from the first pasture found
+                for allotment in data.values():
+                    for pasture_data in allotment.values():
+                        headers.extend(pasture_data.keys())
+                        break
+                    break
+                out.write("\t".join(headers) + "\n")
+
+                # Write data rows
+                for allotment_name, pastures in data.items():
+                    for pasture_name, metrics in pastures.items():
+                        row = [allotment_name, pasture_name]
+                        for key in headers[2:]:
+                            row.append(str(metrics.get(key, "")))  # Use empty string if key is missing
+                        out.write("\t".join(row) + "\n")
+
+        # for allot, allot_data in data.items():
+        #     for past, past_data in allot_data.items():
+        #         for metric, value in past_data:
+
+        return
+
+        #############################################################################
+        curs.execute('''
+SELECT d.huc10,
+       dd.state,
+       dd.county,
+       dd.ownership_name,
+       i.ALLOT_NAME,
+       i.ALLOT_NO,
+       i.PAST_NAME,
+       i.PAST_NO,
+       i.GIS_ACRES,
+       d.centerline_length,
+       d.segment_area,
+       d.FCode,
+       i.fcode_name,
+       dd.*,
+       db.*,
+       dg.*,
+       dh.*,
+       di.*,
+       dm.*,
+       dv.*
+FROM dgos d
+         inner join dgo_desc dd on d.dgoid = dd.dgoid
+         inner join igos_pastures i on d.level_path = i.level_path and d.seg_distance = i.seg_distance
+inner join dgo_beaver db on d.dgoid = db.dgoid
+inner join dgo_geomorph dg on d.dgoid = dg.dgoid
+inner join dgo_hydro dh on d.dgoid = dh.dgoid
+inner join dgo_impacts di on d.dgoid = di.dgoid
+inner join dgo_measurements dm on d.DGOID = dm.dgoid
+inner join dgo_veg dv on d.dgoid = dv.dgoid
+where i.ALLOT_NAME is not null;
+                         ''')
+
+        # rows = curs.fetchall()
+
+        # huc10_names = {row['key']: row['name'] for row in huc10_data}
+
+        # # get dictionary of keys
+        # keys = [col[0] for col in curs.description]
+        # data = []
+        #  for row in rows:
+
+        #       row_data = {
+        #            'HUC10': row['huc10'],
+        #             'HUC10Name': huc10_names[row['huc10']],
+        #             'County': row['county'],
+        #             'Ownership': row['ownership_name'],
+        #             'Allotment': row['ALLOT_NAME'],
+        #             'AllotmentNo': row['ALLOT_NO'],
+        #             'Pasture': row['PAST_NAME'],
+        #             'PastureNo': row['PAST_NO'],
+        #            }
+
+        #        for field in sum_fields:
+        #             row_data[field] = row[field]
+
+        #         data.append(row_data)
+
+        # allotments = {}
+        # for row in data:
+        #     if row['Allotment'] not in allotments:
+        #         allotments[row['Allotment']] = {}
+
+        #     allotment = allotments[row['Allotment']]
+        #     if row['Pasture'] not in allotment:
+        #         allotment[row['Pasture']] = {}
+
+        #     pasture = allotment[row['Pasture']]
+        #     for field in sum_fields:
+        #         metric_name = f'Total {field_aliases[field]}'
+        #         pasture[metric_name] = pasture[field] + row[field] if field in pasture else row[field]
+
+        #     pass
+
         # my_data = {"fred": 1, "andrew": 2}
 
         # ws_context_section = self.section('WSContext', 'Watershed Context')
 
         # self.create_table_from_dict(my_data, ws_context_section)
-        report_scopes = []
-        with sqlite3.connect(rme_scrape) as conn:
-            curs = conn.cursor()
-            for scope in scopes:
-                scope_section = self.section(scope['title'].replace(' ', ''), scope['title'],)
-                if 'sql' in scope:
-                    curs.execute(scope['sql'])
-                    for row in curs.fetchall():
-                        name = row[0]
-                        if 'names' in scope:
-                            names_lookup = {name['key']: name['name'] for name in scope['names']}
-                            if name in names_lookup:
-                                name = f'{names_lookup[name]} ({name})'
-                        sub_section = self.section(name.replace(' ', ''), name, scope_section, 2)
-                        self.hydrology_section(curs, sub_section, scope['ids'], row[0])
+        # report_scopes = []
+        # with sqlite3.connect(rme_scrape) as conn:
+        #     curs = conn.cursor()
+        #     for scope in scopes:
+        #         scope_section = self.section(scope['title'].replace(' ', ''), scope['title'],)
+        #         if 'sql' in scope:
+        #             curs.execute(scope['sql'])
+        #             for row in curs.fetchall():
+        #                 name = row[0]
+        #                 if 'names' in scope:
+        #                     names_lookup = {name['key']: name['name'] for name in scope['names']}
+        #                     if name in names_lookup:
+        #                         name = f'{names_lookup[name]} ({name})'
+        #                 sub_section = self.section(name.replace(' ', ''), name, scope_section, 2)
+        #                 self.hydrology_section(curs, sub_section, scope['ids'], row[0])
 
-                else:
-                    self.scope = 'Owyhee'
-                    self.hydrology_section(curs, scope_section, scope['ids'], 0)
+        #         else:
+        #             self.scope = 'Owyhee'
+        #             self.hydrology_section(curs, scope_section, scope['ids'], 0)
 
     def hydrology_section(self, curs, parent, ids_sql, filter_key):
         """
@@ -216,10 +500,10 @@ class LHAReport(RSReport):
         total_length = sum([row['length'] for row in raw_data.values()])
 
         table_data = []
-        for fcode, fcode_name in fcode_lookup.items():
-            if fcode in raw_data:
-                area = raw_data[fcode]['area']
-                length = raw_data[fcode]['length']
+        for key, value in fcode_lookup.items():
+            if key in raw_data:
+                area = raw_data[key]['area']
+                length = raw_data[key]['length']
             else:
                 area = 0
                 length = 0
@@ -229,7 +513,42 @@ class LHAReport(RSReport):
             length_miles = length * MILES_PER_M
             area_percent = 100 * area / total_area if area > 0 and total_area > 0 else 0
             length_percent = 100 * length / total_length if length > 0 and total_length > 0 else 0
-            table_data.append((fcode_name, area_acres, area_percent, length_miles, length_percent))
+            table_data.append((value, area_acres, area_percent, length_miles, length_percent))
+
+        table_data.append(('Total', total_area * ACRES_PER_SQ_M, 100, total_length * MILES_PER_M, 100))
+
+        self.create_table_from_tuple_list(['', 'Area (ac)', 'Area (%)', 'Length (mi)', 'Length (%)'], table_data, parent, None, True)
+
+        # Ownership
+
+        curs.execute(f'''
+            SELECT ownership, sum(segment_area), sum(centerline_length)
+            FROM (
+                SELECT v.*
+                FROM vw_dgo_desc_metrics v
+                    INNER JOIN ({ids_sql}) f ON v.igoid = f.igoid
+            ) group by ownership
+        ''', [filter_key])
+
+        raw_data = {row[0]: {'area': row[1], 'length': row[2]} for row in curs.fetchall()}
+        total_area = sum([row['area'] for row in raw_data.values()])
+        total_length = sum([row['length'] for row in raw_data.values()])
+
+        table_data = []
+        for key, value in ownership_lookup.items():
+            if key in raw_data:
+                area = raw_data[key]['area']
+                length = raw_data[key]['length']
+            else:
+                area = 0
+                length = 0
+
+            # Convert to acres and miles
+            area_acres = area * ACRES_PER_SQ_M
+            length_miles = length * MILES_PER_M
+            area_percent = 100 * area / total_area if area > 0 and total_area > 0 else 0
+            length_percent = 100 * length / total_length if length > 0 and total_length > 0 else 0
+            table_data.append((value, area_acres, area_percent, length_miles, length_percent))
 
         table_data.append(('Total', total_area * ACRES_PER_SQ_M, 100, total_length * MILES_PER_M, 100))
 
