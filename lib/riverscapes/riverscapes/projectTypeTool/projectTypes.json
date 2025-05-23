@@ -1132,5 +1132,31 @@
     "url": null,
     "machineName": "IGOScrape",
     "state": "ACTIVE"
+  }, 
+   {
+    "name": "Stream Temperature Predictions",
+    "summary": "Daily stream temperature predictions and associated covariates.",
+    "description": "Past and future daily stream temperature predictions and covariates for each reach in the 1:100,000-scale National Hydrography Dataset, version 2, produced from a statistical model described in Siegel JE, Fullerton AH, FitzGerald AM, Holzer D, Jordan CE (2023) Daily stream temperature predictions for free-flowing streams in the Pacific Northwest, USA. PLOS Water 2(8): e0000119.",
+    "meta": [
+      {
+        "key": "Resolution",
+        "value": "Reach"
+      },
+      {
+        "key": "Extent",
+        "value": "Network"
+      },
+      {
+        "key": "Model Status",
+        "value": "Research Grade"
+      },
+      {
+        "key": "Riverscapes Project Class",
+        "value": "Model Output"
+      }
+    ],
+    "url": "https://doi.org/10.1371/journal.pwat.0000119",
+    "machineName": "streamtemp",
+    "state": "ACTIVE"
   }
 ]
