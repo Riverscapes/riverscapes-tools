@@ -44,7 +44,7 @@ ARG dataDir=/data
 ARG projectDir=/foss_fim
 ARG taudemVersion=v5.3.8
 ARG taudemSrcDir=/opt/builder/taudem
-ENV DEBIAN_FRONTEND noninteractive
+ENV DEBIAN_FRONTEND=noninteractive
 ENV taudemDir=/dependencies/taudem/bin
 
 RUN git clone --depth 1 --branch ${taudemVersion} \
