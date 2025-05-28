@@ -8,6 +8,8 @@
   // Put any environment variables you need here (as long as they apply to everyone)
   "containerEnv": {
     "DATA_ROOT": "/workspaces/data",
+    // Tell RSCLI to use a different port so that it doesn't conflict with the user's root machine use
+    "RSCLI_ALTPORT": "TRUE",
     "NATIONAL_PROJECT": "/workspaces/data/NationalDatasets",
     "DOWNLOAD_FOLDER": "/workspaces/data/download",
     "NATIONAL_PROJECT_NZ": "/workspaces/data/NationalDatasetsNZ"
@@ -88,7 +90,6 @@
   },
   // Use 'forwardPorts' to make a list of ports inside the container available locally.
   "forwardPorts": [
-    4721 
-    // 4722
+    4723
   ]
 }

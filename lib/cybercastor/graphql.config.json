@@ -1,8 +1,0 @@
-{
-  "$schema": "https://unpkg.com/graphql-config@3.3.0/config-schema.json",
-  "schema": "./graphql/cybercastor.schema.graphql",
-  "documents": [
-    "./graphql/queries/**/*.graphql",
-    "./graphql/mutations/**/*.graphql"
-  ]
-}
