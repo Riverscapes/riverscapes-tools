@@ -45,6 +45,7 @@ from rscontext.nhdarea import split_nhd_polygon, nhd_poly_level_paths
 from rscontext.rs_context_report import RSContextReport
 from rscontext.rs_segmentation import rs_segmentation
 from rscontext.vegetation import clip_vegetation
+from rscontext.national_wetlands_inventory import national_wetlands_inventory
 
 initGDALOGRErrors()
 
@@ -113,6 +114,15 @@ LayerTypes = {
     'NATIONAL_DAMS': RSLayer('National Dams', 'NATIONAL_DAMS', 'Geopackage', 'hydrology/national_dams.gpkg', {
         'NationalDams': RSLayer('National Dams', 'NATIONAL_DAMS', 'Vector', 'NationalDams', lyr_meta=[
             RSMeta('SourceUrl', 'https://www.usace.army.mil/Missions/Civil-Works/National-Dams/Downloadable-Data/', RSMetaTypes.URL),])
+    }),
+
+    # National Wetland Inventory
+    'NATIONAL_WETLANDS': RSLayer('National Wetlands Inventory', 'NATIONAL_WETLANDS', 'Geopackage', 'hydrology/national_wetlands_inventory.gpkg', {
+        'Wetlands': RSLayer('Wetlands', 'WETLANDS', 'Vector', 'Wetlands', lyr_meta=[RSMeta('SourceUrl', 'https://www.fws.gov/program/national-wetlands-inventory', RSMetaTypes.URL)]),
+        'Riparian': RSLayer('Riparian Areas', 'RIPARIAN', 'Vector', 'Riparian', lyr_meta=[RSMeta('SourceUrl', 'https://www.fws.gov/program/national-wetlands-inventory', RSMetaTypes.URL)]),
+        'Riparian_Project_metadata': RSLayer('Riparian Project Metadata', 'RIPARIAN_PROJECT_METADATA', 'Vector', 'Riparian_Project_metadata'),
+        'Wetlands_Project_metadata': RSLayer('Wetlands Project Metadata', 'WETLANDS_PROJECT_METADATA', 'Vector', 'Wetlands_Project_metadata'),
+        'Wetlands_Historic_Map_Info': RSLayer('Wetlands Historic Map Information', 'WETLANDS_HISTORIC_MAP_INFO', 'Vector', 'Wetlands_Historic_Map_Info')
     }),
 
     # Prism Layers
@@ -276,8 +286,7 @@ def rs_context(huc: str, landfire_dir: str, ownership: str, fair_market: str, ec
     nhd_poly_level_paths(waterbody_split_out, nhd_gpkg_path)
 
     # HUC 10 extent polygon
-    nhd['ProcessingExtent'] = os.path.join(
-        os.path.dirname(nhd['WBDHU10']), 'max_extent.shp')
+    nhd['ProcessingExtent'] = os.path.join(os.path.dirname(nhd['WBDHU10']), 'max_extent.shp')
     with get_shp_or_gpkg(nhd['WBDHU10']) as huc10lyr, get_shp_or_gpkg(nhd['ProcessingExtent'], write=True) as outlyr:
         bbox = huc10lyr.ogr_layer.GetExtent()
         extent_box = get_rectangle_as_geom(bbox)
@@ -300,6 +309,12 @@ def rs_context(huc: str, landfire_dir: str, ownership: str, fair_market: str, ec
     nhd_boundary_poly = get_geometry_unary_union(nhd['WBDHU10'], cfg.OUTPUT_EPSG)
     copy_feature_class(f'{national_dams}/dams', output_dams_gpkg, cfg.OUTPUT_EPSG, clip_shape=nhd_boundary_poly)
     project.add_project_geopackage(datasets, LayerTypes['NATIONAL_DAMS'])
+
+    ################################################################################################################################################
+    # National Wetland Inventory
+    nwi_gpkg = os.path.join(output_folder, LayerTypes['NATIONAL_WETLANDS'].rel_path)
+    national_wetlands_inventory(huc, download_folder, nhd['WBDHU10'], nwi_gpkg, cfg.OUTPUT_EPSG)
+    project.add_project_geopackage(datasets, LayerTypes['NATIONAL_WETLANDS'])
 
     ################################################################################################################################################
     # PRISM climate rasters
@@ -491,16 +506,16 @@ def rs_context(huc: str, landfire_dir: str, ownership: str, fair_market: str, ec
     lines = {'roads': ntd_clean['Roads'], 'railways': ntd_clean['Rail']}
     areas = [{'name': 'ownership',
               'path': own_path,
-              'attributes': [{
-                  'in_field': 'ADMIN_AGEN',
-                  'out_field': 'ownership'}]},
+             'attributes': [{
+                 'in_field': 'ADMIN_AGEN',
+                 'out_field': 'ownership'}]},
              {'name': 'states',
-              'path': states_path,
+             'path': states_path,
               'attributes': [{
                   'in_field': 'STUSPS',
                   'out_field': 'us_state'}]},
              {'name': 'ecoregions',
-              'path': eco_path,
+             'path': eco_path,
               'attributes': [{
                   'in_field': 'US_L3NAME',
                   'out_field': 'ecoregion_iii'}, {

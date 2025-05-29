@@ -49,7 +49,7 @@ def national_wetlands_inventory(huc10: str, download_dir: str, clip_layer_path: 
         raise ValueError('HUC10 code must be 10 characters long.')
     huc8 = huc10[:8]
 
-    if not os.path.isfile(os.path.dirname(clip_layer_path)):
+    if not os.path.isdir(os.path.dirname(clip_layer_path)):
         log.error(f'Clip layer path does not exist: {clip_layer_path}')
         raise FileNotFoundError(f'Clip layer path does not exist: {clip_layer_path}')
 
