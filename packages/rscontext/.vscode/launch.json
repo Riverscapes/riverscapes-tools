@@ -39,6 +39,7 @@
         "{env:NATIONAL_PROJECT}/political_boundaries/cb_2021_us_county_500k.shp",
         "{env:NATIONAL_PROJECT}/geology/SGMC_Geology.shp",
         "{env:NATIONAL_PROJECT}/prism",
+        "{env:DATA_ROOT}/national_dams/usace_national_dams.gpkg", 
         "{env:DATA_ROOT}/rs_context/${input:HUC}",
         "{env:DOWNLOAD_FOLDER}",
         "--meta", "Runner=VSCode",
