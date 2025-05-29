@@ -134,6 +134,19 @@
       ]
     },
     {
+      "name": "National Wetlands Inventory",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "rscontext.national_wetlands_inventory",
+      "console": "integratedTerminal",
+      "args":[
+        "${input:HUC}",
+        "{env:DATA_ROOT}/download",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhdplushr.gpkg/wbdhu10",
+        "{env:DATA_ROOT}/nwi_data/nwi.gpkg",
+      ]
+    },
+    {
       "name": "Version Bump",
       "type": "debugpy",
       "module": "rscommons.version",
