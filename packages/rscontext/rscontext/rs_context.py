@@ -34,7 +34,7 @@ from rscommons.raster_warp import raster_vrt_stitch, raster_warp
 from rscommons.national_map import (download_shapefile_collection, get_ntd_urls, us_states)
 from rscommons.util import (parse_metadata, pretty_duration, safe_makedirs, safe_remove_dir)
 # from rscommons.raster_buffer_stats import raster_buffer_stats2
-from rscommons.vector_ops import copy_feature_class
+from rscommons.vector_ops import copy_feature_class, get_geometry_unary_union
 from rscommons.geometry_ops import get_rectangle_as_geom
 from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions, raster_resolution_meta
 from rscommons.segment_network import segment_network
@@ -114,6 +114,12 @@ LayerTypes = {
         'NHDWATERBODYSPLIT': RSLayer('NDH Waterbody layer split by NHDPlusCatchments', 'NHDWaterbodySplit', 'Vector', 'NHDWaterbodySplit')
     }),
 
+    # National Dams Database
+    'NATIONAL_DAMS': RSLayer('National Dams', 'NATIONAL_DAMS', 'Geopackage', 'hydrology/national_dams.gpkg', {
+        'NationalDams': RSLayer('National Dams', 'NATIONAL_DAMS', 'Vector', 'NationalDams', lyr_meta=[
+            RSMeta('SourceUrl', 'https://www.usace.army.mil/Missions/Civil-Works/National-Dams/Downloadable-Data/', RSMetaTypes.URL),])
+    }),
+
     # Prism Layers
     'PPT': RSLayer('Precipitation', 'Precip', 'Raster', 'climate/precipitation.tif'),
     'TMEAN': RSLayer('Mean Temperature', 'MeanTemp', 'Raster', 'climate/mean_temp.tif'),
@@ -131,7 +137,7 @@ SEGMENTATION = {
 }
 
 
-def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states_shp, us_counties, geology, prism_folder, output_folder, download_folder, scratch_dir, parallel, force_download, meta: Dict[str, str]):
+def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states_shp, us_counties, geology, prism_folder, national_dams, output_folder, download_folder, scratch_dir, parallel, force_download, meta: Dict[str, str]):
     """
 
     Download riverscapes context layers for the specified HUC and organize them as a Riverscapes project
@@ -146,6 +152,7 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states_
     :param download_folder: Temporary folder where downloads are cached. This can be shared between rs_context processes
     :param force_download: If false then downloads can be skipped if the files already exist
     :param prism_folder: folder containing PRISM rasters in *.bil format
+    :param national_dams: Path to the National Dams GeoPackage (separate RDx project from the National Project)
     :param meta (Dict[str,str]): dictionary of riverscapes metadata key: value pairs
     :return:
     """
@@ -314,6 +321,16 @@ def rs_context(huc, landfire_dir, ownership, fair_market, ecoregions, us_states_
     name_node.text = f"Riverscapes Context for {huc_name}"
     project.add_metadata([RSMeta('Watershed', huc_name)])
 
+    #############################################################################################################################
+    # National Dams
+
+    output_dams_gpkg = os.path.join(output_folder, LayerTypes['NATIONAL_DAMS'].rel_path, LayerTypes['NATIONAL_DAMS'].sub_layers['NationalDams'].rel_path)
+    log.info(f'Processing National Dams. Output: {output_dams_gpkg}')
+    nhd_boundary_poly = get_geometry_unary_union(nhd['WBDHU10'], cfg.OUTPUT_EPSG)
+    copy_feature_class(f'{national_dams}/dams', output_dams_gpkg, cfg.OUTPUT_EPSG, clip_shape=nhd_boundary_poly)
+    project.add_project_geopackage(datasets, LayerTypes['NATIONAL_DAMS'])
+
+    #############################################################################################################################
     # PRISM climate rasters
     # mean_annual_precip = None
     bil_files = glob.glob(os.path.join(prism_folder, '*.bil'))
@@ -649,6 +666,7 @@ def main():
         'geology', help='National SGMC geology shapefile', type=str)
     parser.add_argument(
         'prism', help='Folder containing PRISM rasters in BIL format', type=str)
+    parser.add_argument('dams', help='Path to National Dams GeoPackage', type=str)
     parser.add_argument('output', help='Path to the output folder', type=str)
     parser.add_argument(
         'download', help='Temporary folder for downloading data. Different HUCs may share this', type=str)
@@ -697,12 +715,12 @@ def main():
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output, 'rs_context_memusage.log')
             retcode, max_obj = ThreadRun(rs_context, memfile, args.huc, args.landfire_dir, args.ownership, args.fairmarket, args.ecoregions,
-                                         args.states, args.counties, args.geology, args.prism, args.output, args.download, scratch_dir, args.parallel, args.force, meta)
+                                         args.states, args.counties, args.geology, args.prism, args.dams, args.output, args.download, scratch_dir, args.parallel, args.force, meta)
             log.debug('Return code: {}, [Max process usage] {}'.format(
                 retcode, max_obj))
         else:
             rs_context(args.huc, args.landfire_dir, args.ownership, args.fairmarket, args.ecoregions, args.states, args.counties,
-                       args.geology, args.prism, args.output, args.download, scratch_dir, args.parallel, args.force, meta)
+                       args.geology, args.prism, args.dams, args.output, args.download, scratch_dir, args.parallel, args.force, meta)
 
     except Exception as e:
         log.error(e)
