@@ -473,12 +473,16 @@ def clip(features, clip, output):
     stdout, stderr = proc.communicate()
 
 
-def copy_feature_class(inpath, epsg, outpath, intersect_shape=None, clip_shape=None, attribute_filter=None):
+def copy_feature_class_shapefile(inpath, epsg, outpath, intersect_shape=None, clip_shape=None, attribute_filter=None):
     """Copy a Shapefile from one location to another
 
     This method is capable of reprojecting the geometries as they are copied.
     It is also possible to filter features by both attributes and also clip the
     features to another geometryNone
+
+    This method used to be called copy_feature_class(), but it shared a name with a similar
+    function in vector_ops.copy_feature_class() which caused confusion. It was renamed in
+    May 2025 as part of cleaning this module up.
 
     Arguments:
         inpath {str} -- File path to input Shapefile that will be copied.
