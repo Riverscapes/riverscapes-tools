@@ -19,6 +19,7 @@ import traceback
 import uuid
 
 from osgeo import ogr
+from shapely.wkb import loads as wkbload
 
 from rscommons import (Logger, ModelConfig, RSLayer, RSProject, get_shp_or_gpkg, Timer, dotenv, initGDALOGRErrors)
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
@@ -116,6 +117,16 @@ LayerTypes = {
             RSMeta('SourceUrl', 'https://www.usace.army.mil/Missions/Civil-Works/National-Dams/Downloadable-Data/', RSMetaTypes.URL),])
     }),
 
+    # NHDPlus V2 (1:100,000)
+    'NHDPLUSV2': RSLayer('NHDPlus V2', 'NHDPLUSV2', 'Geopackage', 'hydrology/nhdplusv2.gpkg', {
+        'NHDFlowline': RSLayer('NHDPlusV2 Flowlines', 'NHDPLUSV2_FLOWLINE', 'Vector', 'nhdflowline_network', lyr_meta=[
+            RSMeta('SourceUrl', 'https://nhdplus.com/NHDPlus/NHDPlusV2_home.php', RSMetaTypes.URL)]),
+        'NHDArea': RSLayer('NHDPlusV2 Flow Areas', 'NHDPLUSV2_AREA', 'Vector', 'nhdarea', lyr_meta=[
+            RSMeta('SourceUrl', 'https://nhdplus.com/NHDPlus/NHDPlusV2_home.php', RSMetaTypes.URL),]),
+        'NHDWaterbody': RSLayer('NHDPlusV2 Waterbodies', 'NHDPLUSV2_WATERBODY', 'Vector', 'nhdwaterbody', lyr_meta=[
+            RSMeta('SourceUrl', 'https://nhdplus.com/NHDPlus/NHDPlusV2_home.php', RSMetaTypes.URL),])
+    }),
+
     # National Wetland Inventory
     'NATIONAL_WETLANDS': RSLayer('National Wetlands Inventory', 'NATIONAL_WETLANDS', 'Geopackage', 'hydrology/national_wetlands_inventory.gpkg', {
         'Wetlands': RSLayer('Wetlands', 'WETLANDS', 'Vector', 'Wetlands', lyr_meta=[RSMeta('SourceUrl', 'https://www.fws.gov/program/national-wetlands-inventory', RSMetaTypes.URL)]),
@@ -143,7 +154,7 @@ SEGMENTATION = {
 
 
 def rs_context(huc: str, landfire_dir: str, ownership: str, fair_market: str, ecoregions: str,
-               us_states_shp: str, us_counties: str, geology: str, prism_folder: str, national_dams: str,
+               us_states_shp: str, us_counties: str, geology: str, prism_folder: str, national_dams: str, nhdplusv2: str,
                output_folder: str, download_folder: str, scratch_dir: str, parallel: bool, force_download: bool, meta: Dict[str, str]) -> Dict[str, str]:
     """
     Download riverscapes context layers for the specified HUC and organize them as a Riverscapes project
@@ -157,6 +168,7 @@ def rs_context(huc: str, landfire_dir: str, ownership: str, fair_market: str, ec
     :param geology: Path to the geology shapefile
     :param prism_folder: Path to the folder containing PRISM climate data in BIL format
     :param national_dams: Path to the National Dams data directory
+    :param nhdplusv2: Path to the national NHDPlus V2 1:100,000 GeoPackage
     :param output_folder: Path to the output folder where the Riverscapes project will be created
     :param download_folder: Path to the folder where downloaded data will be stored
     :param scratch_dir: Path to the scratch directory for temporary files
@@ -302,8 +314,18 @@ def rs_context(huc: str, landfire_dir: str, ownership: str, fair_market: str, ec
     project.add_metadata([RSMeta('Watershed', huc_name)])
 
     ################################################################################################################################################
-    # National Dams
+    # NHDPlus V2 (1:100,000)
+    output_nhdplusv2_gpkg = os.path.join(output_folder, LayerTypes['NHDPLUSV2'].rel_path)
+    log.info(f'Processing NHDPlus V2 Output: {output_nhdplusv2_gpkg}')
+    huc10_shapely_4269 = get_geometry_unary_union(nhd['WBDHU10'], 4269)
 
+    copy_feature_class(f'{nhdplusv2}/nhdflowline_network', os.path.join(output_nhdplusv2_gpkg, LayerTypes['NHDPLUSV2'].sub_layers['NHDFlowline'].rel_path), cfg.OUTPUT_EPSG, clip_shape=huc10_shapely_4269)
+    copy_feature_class(f'{nhdplusv2}/nhdarea', os.path.join(output_nhdplusv2_gpkg, LayerTypes['NHDPLUSV2'].sub_layers['NHDArea'].rel_path), cfg.OUTPUT_EPSG, clip_shape=huc10_shapely_4269)
+    copy_feature_class(f'{nhdplusv2}/nhdwaterbody', os.path.join(output_nhdplusv2_gpkg, LayerTypes['NHDPLUSV2'].sub_layers['NHDWaterbody'].rel_path), cfg.OUTPUT_EPSG, clip_shape=huc10_shapely_4269)
+    project.add_project_geopackage(datasets, LayerTypes['NHDPLUSV2'])
+
+    ################################################################################################################################################
+    # National Dams
     output_dams_gpkg = os.path.join(output_folder, LayerTypes['NATIONAL_DAMS'].rel_path, LayerTypes['NATIONAL_DAMS'].sub_layers['NationalDams'].rel_path)
     log.info(f'Processing National Dams. Output: {output_dams_gpkg}')
     nhd_boundary_poly = get_geometry_unary_union(nhd['WBDHU10'], cfg.OUTPUT_EPSG)
@@ -313,12 +335,12 @@ def rs_context(huc: str, landfire_dir: str, ownership: str, fair_market: str, ec
     ################################################################################################################################################
     # National Wetland Inventory
     nwi_gpkg = os.path.join(output_folder, LayerTypes['NATIONAL_WETLANDS'].rel_path)
+    log.info(f'Processing National Wetland Inventory. Output: {nwi_gpkg}')
     national_wetlands_inventory(huc, download_folder, nhd['WBDHU10'], nwi_gpkg, cfg.OUTPUT_EPSG)
     project.add_project_geopackage(datasets, LayerTypes['NATIONAL_WETLANDS'])
 
     ################################################################################################################################################
     # PRISM climate rasters
-    # mean_annual_precip = None
     bil_files = glob.glob(os.path.join(prism_folder, '*.bil'))
     if len(bil_files) == 0:
         all_files = glob.glob(os.path.join(prism_folder, '*'))
@@ -622,6 +644,7 @@ def main():
     parser.add_argument('geology', help='National SGMC geology shapefile', type=str)
     parser.add_argument('prism', help='Folder containing PRISM rasters in BIL format', type=str)
     parser.add_argument('dams', help='Path to National Dams GeoPackage', type=str)
+    parser.add_argument('nhdplusv2', help='Path to NHDPlusV2 1:100,000 GeoPackage', type=str)
     parser.add_argument('output', help='Path to the output folder', type=str)
     parser.add_argument('download', help='Temporary folder for downloading data. Different HUCs may share this', type=str)
     parser.add_argument('--force', help='(optional) download existing files ', action='store_true', default=False)
@@ -659,12 +682,12 @@ def main():
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output, 'rs_context_memusage.log')
             retcode, max_obj = ThreadRun(rs_context, memfile, args.huc, args.landfire_dir, args.ownership, args.fairmarket, args.ecoregions,
-                                         args.states, args.counties, args.geology, args.prism, args.dams, args.output, args.download,
+                                         args.states, args.counties, args.geology, args.prism, args.dams, args.nhdplusv2, args.output, args.download,
                                          scratch_dir, args.parallel, args.force, meta)
             log.debug(f'Return code: {retcode}, [Max process usage] {max_obj}')
         else:
             rs_context(args.huc, args.landfire_dir, args.ownership, args.fairmarket, args.ecoregions, args.states, args.counties,
-                       args.geology, args.prism, args.dams, args.output, args.download, scratch_dir, args.parallel, args.force, meta)
+                       args.geology, args.prism, args.dams, args.nhdplusv2, args.output, args.download, scratch_dir, args.parallel, args.force, meta)
 
     except Exception as e:
         log.error(e)
