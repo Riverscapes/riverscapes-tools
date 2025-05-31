@@ -11,7 +11,7 @@ import os
 import sqlite3
 from collections import Counter
 from copy import copy
-from typing import List
+from typing import Union, List
 from functools import reduce
 
 from osgeo import ogr, gdal, osr
@@ -171,31 +171,39 @@ def get_geometry_unary_union(in_layer_path: str, epsg: int = None, spatial_ref: 
     return geom_union
 
 
-def copy_feature_class(in_layer_path: str, out_layer_path: str,
+def copy_feature_class(in_layer_path: str,
+                       out_layer_path: str,
                        epsg: int = None,
                        attribute_filter: str = None,
-                       clip_shape: BaseGeometry = None,
+                       clip_shape: Union[BaseGeometry, ogr.Feature, ogr.Geometry] = None,
                        clip_rect: List[float] = None,
                        buffer: float = 0,
                        hard_clip=False,
                        indexes: List[str] = None,
                        fields: List[str] = None,
                        make_valid: bool = False) -> None:
-    """Copy a Shapefile from one location to another
+    """
+    Copy a feature class from one location to another.
 
     This method is capable of reprojecting the geometries as they are copied.
     It is also possible to filter features by both attributes and also clip the
-    features to another geometryNone
+    features to another geometry
 
     Args:
         in_layer (str): Input layer path
-        epsg ([type]): EPSG Code to use for the transformation
         out_layer (str): Output layer path
+        epsg (int): EPSG Code to use for the transformation
         attribute_filter (str, optional): [description]. Defaults to None.
-        clip_shape (BaseGeometry, optional): [description]. Defaults to None.
+        clip_shape (BaseGeometry, optional): MUST BE IN SAME PROJECTION AS INPUT FEATURES. Defaults to None.
         clip_rect (List[double minx, double miny, double maxx, double maxy)]): Iterate over a subset by clipping to a Shapely-ish geometry. Defaults to None.
         buffer (float): Buffer the output features (in meters).
-        indexes: A list of fields to index IF copying the feature into a geopackage.
+        hard_clip (bool): If True, clip the features to the clip_shape. Defaults to False. Note that just providing a clip_shape will filter to
+            any features that TOUCH the clip_shape. Setting hard_clip to True will actually clip the features to the clip_shape.
+        indexes (List[str]): A list of fields to index IF copying the feature into a geopackage.
+        fields (List[str]): A list of fields to copy from the input layer to the output layer. If None, all fields are copied.
+        make_valid (bool): If True, will attempt to make the geometries valid using the MakeValid method. Defaults to False.
+    Returns:
+        None: This method does not return anything. It writes the output to the out_layer_path.
     """
 
     log = Logger('copy_feature_class')
@@ -243,7 +251,17 @@ def copy_feature_class(in_layer_path: str, out_layer_path: str,
                     continue
 
             if hard_clip is True and clip_shape is not None:
-                geom = clip_shape.Intersection(geom)
+                clip_geom: ogr.Geometry = None
+                if isinstance(clip_shape, BaseGeometry):
+                    clip_geom = VectorBase.shapely2ogr(clip_shape)
+                elif isinstance(clip_shape, ogr.Feature):
+                    clip_geom = clip_shape.GetGeometryRef()
+                else:
+                    clip_geom = clip_shape
+
+                geom = clip_geom.Intersection(geom)
+                if geom is None or geom.IsEmpty():
+                    continue
 
             # Buffer the shape if we need to
             if buffer_convert != 0:
