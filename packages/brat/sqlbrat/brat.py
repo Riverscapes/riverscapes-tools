@@ -425,15 +425,22 @@ def brat(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Path,
                                                                                      RSMeta('DataProductVersion', cfg.version),
                                                                                      RSMeta('DocsUrl', f'https://tools.riverscapes.net/brat/data/#{int(buffer)}M_BUFFER', RSMetaTypes.URL)]
 
-    watershed, max_drainage_area, ecoregion = get_watershed_info(outputs_gpkg_path)
+    watershed, max_drainage_area, ecoregion_av = get_watershed_info(outputs_gpkg_path)
     if max_drainage_area == '':
         max_drainage_area = None
 
+    # get unique ecoregions from the reaches
+    with SQLiteCon(outputs_gpkg_path) as database:
+        database.curs.execute('SELECT ecoregion_iii FROM vwReaches')
+        ers = [val['ecoregion_iii'] for val in database.curs.fetchall()]
+        ecoregions = list(set(ers))
+
     # Calculate the vegetation and combined FIS for the existing and historical vegetation epochs
     for epoch, prefix, ltype, orig_id in Epochs:
+        for ecoregion in ecoregions:
 
-        # Calculate the vegetation suitability for each buffer
-        [vegetation_suitability(outputs_gpkg_path, buffer, prefix, ecoregion) for buffer in get_stream_buffers(outputs_gpkg_path)]
+            # Calculate the vegetation suitability for each buffer
+            [vegetation_suitability(outputs_gpkg_path, buffer, prefix, ecoregion) for buffer in get_stream_buffers(outputs_gpkg_path)]
 
         # Run the vegetation and then combined FIS for this epoch
         vegetation_fis(outputs_gpkg_path, epoch, prefix)
@@ -441,7 +448,7 @@ def brat(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Path,
 
         orig_raster = os.path.join(project.project_dir, proj_nodes['Inputs'].find('Raster[@id="{}"]/Path'.format(orig_id)).text)
         _veg_suit_raster_node, veg_suit_raster = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes[ltype], None, True)
-        output_vegetation_raster(outputs_gpkg_path, orig_raster, veg_suit_raster, epoch, prefix, ecoregion)
+        output_vegetation_raster(outputs_gpkg_path, orig_raster, veg_suit_raster, epoch, prefix, ecoregion_av)
 
     # Calculate departure from historical conditions
     with SQLiteCon(outputs_gpkg_path) as database:
