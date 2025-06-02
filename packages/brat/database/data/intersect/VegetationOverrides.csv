@@ -44,6 +44,21 @@ EcoregionID,VegetationID,OverrideSuitability,Notes
 3,3985,0,
 3,7967,2,
 4,7967,2,
+5,9017,3,From Jessie M
+5,9272,3,From Jessie M
+6,7662,3,From Jessie M
+6,7668,1,From Jessie M
+6,7913,2,From Jessie M
+6,7914,2,From Jessie M
+6,7961,2,From Jessie M
+6,7987,2,From Jessie M
+6,9272,4,From Jessie M
+6,9302,1,From Jessie M
+6,9337,1,From Jessie M
+6,9829,3,From Jessie M
+7,7662,2,From Jessie M
+7,7914,2,From Jessie M
+7,9829,3,From Jessie M
 9,510,1,
 9,639,1,
 9,656,2,
@@ -63,6 +78,11 @@ EcoregionID,VegetationID,OverrideSuitability,Notes
 9,3965,0,
 9,3980,0,
 9,3985,0,
+9,7904,3,From Jessie M
+9,7967,2,From Jessie M
+9,9011,4,From Jessie M
+9,9272,4,From Jessie M
+9,9308,2,From Jessie M
 10,443,1,
 10,448,2,
 10,651,4,
@@ -155,6 +175,12 @@ EcoregionID,VegetationID,OverrideSuitability,Notes
 13,9329,4,
 13,9827,4,
 13,9829,3,
+14,9148,4,From Jessie M
+14,9272,4,From Jessie M
+14,9327,4,From Jessie M
+14,9533,4,From Jessie M
+14,9827,4,From Jessie M
+14,9829,3,From Jessie M
 15,421,3,
 15,443,2,
 15,486,3,
@@ -347,3 +373,6 @@ EcoregionID,VegetationID,OverrideSuitability,Notes
 80,9032,0,
 80,9327,4,
 80,9829,3,
+85,7662,3,From Jessie M
+85,7914,3,From Jessie M
+85,9829,3,From Jessie M
