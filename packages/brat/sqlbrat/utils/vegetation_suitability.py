@@ -31,7 +31,7 @@ def vegetation_suitability(gpkg_path: str, buffer: float, prefix: str, ecoregion
     veg_col = 'iVeg{}{}{}'.format('_' if len(str(int(buffer))) < 3 else '', int(buffer), prefix)
 
     reaches = calculate_vegetation_suitability(gpkg_path, buffer, prefix, veg_col, ecoregion)
-    write_db_attributes(gpkg_path, reaches, [veg_col])
+    write_db_attributes(gpkg_path, reaches, [veg_col], set_null_first=False)
 
 
 def calculate_vegetation_suitability(gpkg_path: str, buffer: float, epoch: str, veg_col: str, ecoregion: str) -> dict:
@@ -66,8 +66,8 @@ def calculate_vegetation_suitability(gpkg_path: str, buffer: float, epoch: str, 
 
         database.curs.execute('SELECT R.ReachID, Round(SUM(CAST(IFNULL(OverrideSuitability, DefaultSuitability) AS REAL) * CAST(CellCount AS REAL) / CAST(TotalCells AS REAL)), 2) AS VegSuitability'
                               ' FROM vwReaches R'
-                              ' INNER JOIN Watersheds W ON R.WatershedID = W.WatershedID'
-                              ' INNER JOIN Ecoregions E ON W.EcoregionID = E.EcoregionID'
+                              #   ' INNER JOIN Watersheds W ON R.WatershedID = W.WatershedID'
+                              ' INNER JOIN Ecoregions E ON R.ecoregion_iii = E.Name'
                               ' INNER JOIN ReachVegetation RV ON R.ReachID = RV.ReachID'
                               ' INNER JOIN VegetationTypes VT ON RV.VegetationID = VT.VegetationID'
                               ' INNER JOIN Epochs EP ON VT.EpochID = EP.EpochID'
@@ -79,7 +79,7 @@ def calculate_vegetation_suitability(gpkg_path: str, buffer: float, epoch: str, 
                               ' WHERE Buffer = ? AND E.Metadata = ?'
                               ' GROUP BY ReachID) AS RS ON R.ReachID = RS.ReachID'
                               ' LEFT JOIN VegetationOverrides VO ON E.EcoregionID = VO.EcoregionID AND VT.VegetationID = VO.VegetationID'
-                              ' WHERE (Buffer = ?) AND (EP.Metadata = ?)  AND (E.EcoregionID = ? OR E.EcoregionID IS NULL)'
+                              ' WHERE (Buffer = ?) AND (EP.Metadata = ?)  AND (E.Name = ? OR E.EcoregionID IS NULL)'
                               ' GROUP BY R.ReachID', [buffer, epoch, buffer, epoch, ecoregion])
         results = {row['ReachID']: {veg_col: row['VegSuitability']} for row in database.curs.fetchall()}
 
