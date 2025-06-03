@@ -149,7 +149,7 @@
       "console": "integratedTerminal",
       "args": [
         "${input:HUC}",
-        "{env:DATA_ROOT}/qris/${input:HUC}/context/feature_classes.gpkg/WBDHU10",
+        "{env:DATA_ROOT}/qris/${input:HUC}/context/feature_classes.gpkg/Watersheds10DigitHUC",
         "{env:DATA_ROOT}/vbet/${input:HUC}/intermediates/vbet_intermediates.gpkg/vbet_dgos", //change this to the BRAT DGOs once implemented
         "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/vbet_igos",
         "{env:DATA_ROOT}/qris/${input:HUC}",

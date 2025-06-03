@@ -85,7 +85,7 @@ try() {
   # Now Run Beaver Activity
   ##########################################################################################
   beaver_activity $HUC \
-    $QRIS_DIR/context/feature_classes.gpkg/WBDHU10 \
+    $QRIS_DIR/context/feature_classes.gpkg/Watersheds10DigitHUC \
     $VBET_DIR/intermediates/vbet_intermediates.gpkg/vbet_dgos \
     $VBET_DIR/outputs/vbet.gpkg/vbet_igos \
     $QRIS_DIR \
