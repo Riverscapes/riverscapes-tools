@@ -258,6 +258,27 @@ def channel(huc: int,
             feat = None
         layer.ogr_layer.CommitTransaction()
 
+    # add attributes from line network to channel polygons
+    if proj_flowlines is not None:
+        log.info('Adding attributes from flowlines to channel polygons')
+        with GeopackageLayer(output_channel_area, write=True) as channel_lyr, GeopackageLayer(proj_flowlines) as flowline_lyr:
+            fields = []
+            for i in range(flowline_lyr.ogr_layer.GetLayerDefn().GetFieldCount()):
+                field_defn = flowline_lyr.ogr_layer.GetLayerDefn().GetFieldDefn(i)
+                if field_defn.GetName() not in ['fid', 'geom', 'bankfull_m']:
+                    fields.append(field_defn.GetName())
+            if 'NHDPlusID' in fields:
+                for channel_ftr, *_ in channel_lyr.iterate_features("Adding flowline attributes"):
+                    nhdplus_id = channel_ftr.GetField('NHDPlusID')
+                    for fn in fields:
+                        if channel_ftr.GetField(fn) is None:
+                            for flowline_ftr, *_ in flowline_lyr.iterate_features(attribute_filter=f'NHDPlusID = {nhdplus_id}'):
+                                if flowline_ftr.GetField(fn) is not None:
+                                    channel_ftr.SetField(fn, flowline_ftr.GetField(fn))
+                                    break
+                    channel_lyr.ogr_layer.SetFeature(channel_ftr)
+    log.info('Adding attributes from flowlines to channel polygons completed')
+
     # Now add our Geopackages to the project XML
     project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
     project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['OUTPUTS'])
