@@ -89,6 +89,8 @@ def generate_igo_points(line_network: Path, out_points_layer: Path, vb_layer: Pa
             spacing = int(vb_width * aspect_ratio)
             if spacing % 2 != 0:
                 spacing += 1
+            if spacing < 100:
+                spacing = 100
 
             init_distance = spacing / 2
             for shapely_line in cleaned_line.geoms:
