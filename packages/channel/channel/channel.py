@@ -201,7 +201,7 @@ def channel(huc: int,
         log.info('Filtering bankfull flowline network')
         bankfull_network = os.path.join(intermediates_gpkg_path, LayerTypes['INTERMEDIATES'].sub_layers['BANKFULL_NETWORK'].rel_path)
         if reach_code_field is not None and reach_codes['flowline'] is not None:
-            vbet_network(proj_flowlines, None, bankfull_network, epsg, reach_codes['flowline'], reach_code_field, flow_areas_path_exclude=None)
+            vbet_network(proj_flowlines, None, bankfull_network, epsg, reach_codes['flowline'], reach_code_field, flow_areas_path_exclude=combined_flow_polygons)
         else:
             copy_feature_class(proj_flowlines, bankfull_network)
 
