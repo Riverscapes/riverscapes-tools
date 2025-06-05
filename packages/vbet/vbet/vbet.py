@@ -17,7 +17,7 @@ import sqlite3
 import shutil
 from copy import deepcopy
 import warnings
-from math import ceil
+from math import ceil, floor
 
 from osgeo import ogr
 import rasterio
@@ -285,7 +285,9 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
     out_meta['compress'] = 'deflate'
     size_x = read_rasters['Slope'].width
     size_y = read_rasters['Slope'].height
-    pixel_x, _pixel_y = read_rasters['Slope'].res
+    pixel_x, pixel_y = read_rasters['Slope'].res
+    origin_x = read_rasters['Slope'].bounds.left
+    origin_y = read_rasters['Slope'].bounds.top
     srs = read_rasters['Slope'].crs
     espg = srs.to_epsg()
 
@@ -526,6 +528,20 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
         else:
             envelope_geom = raster_envelope_geom
 
+        xmin, xmax, ymin, ymax = envelope_geom.GetEnvelope()
+        s_xmin = origin_x + floor((xmin - origin_x) / pixel_x) * pixel_x
+        s_ymin = origin_y + floor((ymin - origin_y) / pixel_y) * pixel_y
+        s_xmax = origin_x + ceil((xmax - origin_x) / pixel_x) * pixel_x
+        s_ymax = origin_y + ceil((ymax - origin_y) / pixel_y) * pixel_y
+        ring = ogr.Geometry(ogr.wkbLinearRing)
+        ring.AddPoint(s_xmin, s_ymin)
+        ring.AddPoint(s_xmin, s_ymax)
+        ring.AddPoint(s_xmax, s_ymax)
+        ring.AddPoint(s_xmax, s_ymin)
+        ring.AddPoint(s_xmin, s_ymin)
+        envelope_geometry = ogr.Geometry(ogr.wkbPolygon)
+        envelope_geometry.AddGeometry(ring)
+
         envelope = os.path.join(
             temp_folder_lpath, 'envelope_polygon.gpkg', f'level_path_{level_path}')
         with TimerBuckets('ogr'):
@@ -533,7 +549,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
                 lyr_envelope.create_layer(ogr.wkbPolygon, cfg.OUTPUT_EPSG)
                 lyr_envelope_dfn = lyr_envelope.ogr_layer_def
                 feat = ogr.Feature(lyr_envelope_dfn)
-                feat.SetGeometry(envelope_geom)
+                feat.SetGeometry(envelope_geometry)
                 lyr_envelope.ogr_layer.CreateFeature(feat)
 
         # use the channel extent to mask all hand input raster and channel area extents

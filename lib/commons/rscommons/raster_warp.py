@@ -110,6 +110,10 @@ def raster_warp(inraster: str, outraster: str, epsg, clip=None, warp_options: di
 
     log.info('Performing GDAL warp to temporary VRT file.')
 
+    raster_ds = gdal.Open(inraster)
+    xres = raster_ds.GetGeoTransform()[1]
+    yres = abs(raster_ds.GetGeoTransform()[5])
+
     if clip:
         log.info('Clipping to polygons using {}'.format(clip))
         clip_ds, clip_layer = VectorBase.path_sorter(clip)
@@ -117,7 +121,9 @@ def raster_warp(inraster: str, outraster: str, epsg, clip=None, warp_options: di
             dstSRS='EPSG:{}'.format(epsg), format='vrt',
             cutlineDSName=clip_ds,
             cutlineLayer=clip_layer,
-            cropToCutline=True, **warp_options
+            cropToCutline=True,
+            xRes=xres,
+            yRes=yres, **warp_options
         )
     else:
         warp_options_obj = gdal.WarpOptions(dstSRS='EPSG:{}'.format(epsg), format='vrt', **warp_options)
