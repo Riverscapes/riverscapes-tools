@@ -87,6 +87,8 @@ rscontext $HUC \
   /efsshare/NationalDatasets/political_boundaries/cb_2021_us_county_500k.shp \
   /efsshare/NationalDatasets/geology/SGMC_Geology.shp \
   /efsshare/download/prism \
+  /efsshare/USACENationalDams/usace_national_dams.gpkg \
+  /efsshare/NHDPlusV2/nhdplusv2.gpkg \
   $RSCONTEXT_DIR \
   /efsshare/download \
   --parallel \
