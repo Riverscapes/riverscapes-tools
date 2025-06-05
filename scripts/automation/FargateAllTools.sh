@@ -88,6 +88,8 @@ try() {
     /efsshare/NationalDatasets/ownership/FairMarketValue.tif \
     /efsshare/NationalDatasets/ecoregions/us_eco_l3_state_boundaries.shp \
     /efsshare/download/prism \
+    /efsshare/USACENationalDams/usace_national_dams.gpkg \
+    /efsshare/NHDPlusV2/nhdplusv2.gpkg \
     $RSCONTEXT_DIR \
     /efsshare/download \
     --meta "Runner=Cybercastor" \
