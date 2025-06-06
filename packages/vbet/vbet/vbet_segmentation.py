@@ -8,6 +8,7 @@
 import os
 import sys
 import argparse
+import rasterio
 
 from osgeo import ogr, osr
 from shapely.ops import linemerge, voronoi_diagram
@@ -23,7 +24,7 @@ from rscommons.geometry_ops import get_rectangle_as_geom
 Path = str
 
 
-def generate_igo_points(line_network: Path, out_points_layer: Path, vb_layer: Path, unique_stream_field, aspect_ratio: float):
+def generate_igo_points(line_network: Path, dem: Path, out_points_layer: Path, vb_layer: Path, unique_stream_field, aspect_ratio: float):
     """generate the vbet segmentation center points/igos
 
     Args:
@@ -113,10 +114,25 @@ def generate_igo_points(line_network: Path, out_points_layer: Path, vb_layer: Pa
                         (shapely_line.interpolate(current_dist), current_dist))
                     current_dist += spacing
 
+                # check that elevation decreases with increasing seg distance, reverse if needed
+                if len(list_points) >= 2:
+                    with rasterio.open(dem, 'r') as src:
+                        # sample the elevation at the first and last point
+                        pt_beg = VectorBase.shapely2ogr(list_points[0][0], transform_back)
+                        pt_end = VectorBase.shapely2ogr(list_points[-1][0], transform_back)
+                        elev_begin = list(src.sample([(pt_beg.GetPoint()[0], pt_beg.GetPoint()[1])]))[0][0]
+                        elev_end = list(src.sample([(pt_end.GetPoint()[0], pt_end.GetPoint()[1])]))[0][0]
+                    if elev_end is not None and elev_begin is not None and elev_end > elev_begin:
+                        list_points_out = [(list_points[-(i+1)][0], list_points[i][1]) for i, vals in enumerate(list_points)]
+                    else:
+                        list_points_out = list_points
+                else:
+                    list_points_out = list_points
+
                 # add points to the layer
                 # for each point in the list
                 # enumerate(list_points, 1):
-                for (pnt, out_dist) in list_points:
+                for (pnt, out_dist) in list_points_out:
                     # create a point object
                     geom_pnt = ogr.Geometry(ogr.wkbPoint)
                     geom_pnt.AddPoint_2D(pnt.x, pnt.y)
