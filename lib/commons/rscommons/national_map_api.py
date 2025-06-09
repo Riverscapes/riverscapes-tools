@@ -8,9 +8,11 @@ class TNM:
     HEADERS = {"Accept": "application/json"}
 
     @staticmethod
-    def get_items(params):
+    def get_items(params: dict[str,str]):
         """
         Call TNM API with the argument params and return list of items if successful.
+        Will navigate pagination if number of items requires it.
+
         :param params: TNM API params object
         :return: List of items from TNM API
         """
@@ -30,26 +32,49 @@ class TNM:
             cmd = 'curl --request GET --url "{}" --header "accept: application/json"'.format(full_url)
             return '\n\nCurl command: {}\n'.format(cmd)
 
-        response = requests.get(url, headers=TNM.HEADERS, params=params, timeout=60)
+        # Pagination variables
+        all_items = []
+        offset = 0
+        page_size = params.get("max",50)
+        total = None
 
-        log.debug('Response code: {}'.format(response.status_code))
+        while total is None or offset < total:
+            params["offset"] = offset
 
-        if 'errorMessage' in response.text:
-            log.error(curl_str())
-            raise Exception('Failed to get items from TNM API with error message: {}'.format(response.text))
+            response = requests.get(url, headers=TNM.HEADERS, params=params, timeout=60)
+            log.debug('Response code: {}'.format(response.status_code))
 
-        if response.status_code == 200:
-            try:
-                response = response.json()
-                log.debug(curl_str())
-                return response
-            except json.JSONDecodeError as e:
+            if 'errorMessage' in response.text:
                 log.error(curl_str())
-                log.error('Failed to decode JSON response: {}'.format(e))
-                log.info('Response text: {}'.format(response.text))
-                raise Exception('Failed to get items from TNM API')
+                raise Exception('Failed to get items from TNM API with error message: {}'.format(response.text))
 
-        else:
-            log.error(curl_str())
-            log.info('Response text: {}'.format(response.text))
-            raise Exception('Failed to get items from TNM API with status code: {}'.format(response.status_code))
+            if response.status_code == 200:
+                try:
+                    data = response.json()
+                    log.debug(curl_str())
+                except json.JSONDecodeError as e:
+                    log.error(curl_str())
+                    log.error('Failed to decode JSON response: {}'.format(e))
+                    log.info('Response text: {}'.format(response.text))
+                    raise Exception('Failed to get items from TNM API')
+
+                items = data.get("items", [])
+                all_items.extend(items)
+                total = data.get("total",len(all_items))
+
+                if len(all_items) >= total or not items:
+                    # all items fetched or no more items
+                    data["items"] = all_items
+                    return data
+                
+                # Log messages array if present
+                messages = data.get("messages",[])
+                if messages: 
+                    log.debug("Messages from API: " + " | ".join(messages))
+                log.debug('Loading next page of data')
+                
+                offset += len(items)
+            else:
+                log.error(curl_str())
+                log.info('Response text: {}'.format(response.text))
+                raise Exception('Failed to get items from TNM API with status code: {}'.format(response.status_code))
