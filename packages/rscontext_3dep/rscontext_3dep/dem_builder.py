@@ -381,7 +381,7 @@ def is_valid_output_res(output_res) -> bool:
 def main():
     """Main function to run the DEM Builder tool."""
     parser = argparse.ArgumentParser(description='DEM Builder Tool')
-    parser.add_argument('bounds_path', help='Path to feature class containing polygon bounds feature', type=str)
+    parser.add_argument('bounds_path', help='Path to feature class (e.g. geopackage layer) containing polygon bounds feature', type=str)
     parser.add_argument('output_res', help='Horizontal resolution of output DEM in metres (1-10)', type=float)
     parser.add_argument('output_path', help='Path to folder where the project and output rasters will go', type=str)
     parser.add_argument('download_dir', help='Temporary folder for downloading data. Different HUCs may share this', type=str)

@@ -56,7 +56,7 @@
       "module": "rscontext_3dep.dem_builder",
       "console": "integratedTerminal",
       "args": [
-        "{env:DATA_ROOT}/dem-builder/test_regionsv.gpkg/140500040202_SP",
+        "{env:DATA_ROOT}/dem-builder/bounds.gpkg/little_spokane",
         "5", // parsed as float
         "{env:DATA_ROOT}/dem-builder/rs_project",
         "{env:DATA_ROOT}/dem-builder/download"

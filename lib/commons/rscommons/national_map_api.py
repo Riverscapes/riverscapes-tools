@@ -8,7 +8,7 @@ class TNM:
     HEADERS = {"Accept": "application/json"}
 
     @staticmethod
-    def get_items(params: dict[str,str]):
+    def get_items(params: dict[str, str]):
         """
         Call TNM API with the argument params and return list of items if successful.
         Will navigate pagination if number of items requires it.
@@ -35,11 +35,10 @@ class TNM:
         # Pagination variables
         all_items = []
         offset = 0
-        page_size = params.get("max",50)
         total = None
 
         while total is None or offset < total:
-            params["offset"] = offset
+            params["offset"] = str(offset)
 
             response = requests.get(url, headers=TNM.HEADERS, params=params, timeout=60)
             log.debug('Response code: {}'.format(response.status_code))
@@ -56,23 +55,24 @@ class TNM:
                     log.error(curl_str())
                     log.error('Failed to decode JSON response: {}'.format(e))
                     log.info('Response text: {}'.format(response.text))
-                    raise Exception('Failed to get items from TNM API')
+                    raise Exception('Failed to get items from TNM API') from e
 
                 items = data.get("items", [])
                 all_items.extend(items)
-                total = data.get("total",len(all_items))
+                total = data.get("total", len(all_items))
+
+                # Log messages array if present
+                messages = data.get("messages", [])
+                if messages:
+                    log.debug("Messages from TNM API response: " + " | ".join(messages))
 
                 if len(all_items) >= total or not items:
                     # all items fetched or no more items
                     data["items"] = all_items
                     return data
-                
-                # Log messages array if present
-                messages = data.get("messages",[])
-                if messages: 
-                    log.debug("Messages from API: " + " | ".join(messages))
+
                 log.debug('Loading next page of data')
-                
+
                 offset += len(items)
             else:
                 log.error(curl_str())
