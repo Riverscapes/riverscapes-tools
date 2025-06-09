@@ -31,7 +31,7 @@
       // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
       "args": [
         "${input:HUC}",
-        "{env:NATIONAL_PROJECT}/landfire/220",
+        "{env:NATIONAL_PROJECT}/landfire/240",
         "{env:NATIONAL_PROJECT}/ownership/surface_management_agency.shp",
         "{env:NATIONAL_PROJECT}/ownership/FairMarketValue.tif",
         "{env:NATIONAL_PROJECT}/ecoregions/us_eco_l4_state_boundaries.shp",

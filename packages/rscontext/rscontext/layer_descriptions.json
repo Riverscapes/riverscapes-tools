@@ -15,54 +15,54 @@
     ""
   ],
   "EXVEG": [
-    "LandFire Existing Vegetation Type (EVT) raster: Complexes of plant communities representing NatureServe's terrestrial Ecological Systems classification. Version 2.1.0 LF REMAP 2019: Reflects change and disturbance since completion of LF 2016 Remap, including the years of 2017, 2018, and 2019. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes context project extent. This raster has the same raster properties and data extent as the DEM.",
+    "LandFire Existing Vegetation Type (EVT) raster: Complexes of plant communities representing NatureServe's terrestrial Ecological Systems classification. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes context project extent. This raster has the same raster properties and data extent as the DEM.",
     "https://landfire.gov/data_overviews.php",
-    "2.2.0"
+    "2.4.0"
   ],
   "HISTVEG": [
-    "LandFire BioPhysical Settings (BPS) raster: Vegetation system that may have been dominant on the landscape pre Euro-American settlement. Version 2.1.0 LF REMAP 2019: Reflects change and disturbance since completion of LF 2016 Remap, including the years of 2017, 2018, and 2019. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes context project extent.",
+    "LandFire BioPhysical Settings (BPS) raster: Vegetation system that may have been dominant on the landscape pre Euro-American settlement. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes context project extent.",
     "https://landfire.gov/data_overviews.php",
     "2.2.0"
   ],
   "VEGCOVER": [
-    "LandFire Existing Vegetation Cover (EVC) raster: Vertically projected percent cover of the live canopy layer for a specific area. Version 2.2.0: Reflects adjustments to vegetation and fuels since LF 2016 Remap in disturbed areas for disturbances recorded in 2017-2020. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes context project extent.",
+    "LandFire Existing Vegetation Cover (EVC) raster: Vertically projected percent cover of the live canopy layer for a specific area. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes context project extent.",
     "https://landfire.gov/data_overviews.php",
-    "2.2.0"
+    "2.4.0"
   ],
   "VEGHEIGHT": [
-    "LandFire Existing Vegetation Height (EVH) raster: Average height of the dominant vegetation. Version 2.2.0: Reflects adjustments to vegetation and fuels since LF 2016 Remap in disturbed areas for disturbances recorded in 2017-2020. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes context project extent.",
+    "LandFire Existing Vegetation Height (EVH) raster: Average height of the dominant vegetation. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes context project extent.",
     "https://landfire.gov/data_overviews.php",
-    "2.2.0"
+    "2.4.0"
   ],
   "HDIST": [
     "LandFire Historical Disturbance (HDst) raster: The latest 10 years of Annual Disturbance products are used to identify disturbance year, type, and severity. Starting with LF Remap, HDist replaces VDist from previous LF versions incorporating pre-disturbance vegetation logic (based on disturbance year and vegetation type). The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes context project extent.",
     "https://landfire.gov/data_overviews.php",
-    "2.2.0"
+    "2.4.0"
   ],
   "FDIST": [
     "LandFire Fuel Disturbance (FDst) raster: The latest 10 years of Annual Disturbance products representing disturbance year and original disturbance code. FDist was a refinement of VDist in LF 1.x products and is a refinement of Historical Disturbance in LF Remap to more accurately represent disturbance scenarios within the fuels environment. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes context project extent.",
     "https://landfire.gov/data_overviews.php",
-    "2.2.0"
+    "2.4.0"
   ],
   "FCCS": [
     "LandFire Fuel Characteristic Classification System (FCCS) raster: Describes the phsical characteristics of a relatively uniform unit on a lanscape that represents a distinct fire environment; provides land managers, regulators, and scientists with a nationally consistent and durable procedure to characterize and classify fuelbed characteristics to predict fuel consumption and smoke production. For LF Remap, FCCS will be released as part of the final release for CONUS. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes context project extent.",
     "https://landfire.gov/data_overviews.php",
-    "2.2.0"
+    "2.4.0"
   ],
   "VEGCONDITION": [
     "LandFire Vegetation Condition Class (VCC) raster: A discrete metric that quantifies the amount that current vegetation has departed from the simulated historical vegetation reference conditions. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes context project extent.",
     "https://landfire.gov/data_overviews.php",
-    "2.2.0"
+    "2.4.0"
   ],
   "VEGDEPARTURE": [
     "LandFire Vegetation Depature (VDEP) raster: Range from 0-100 depicting the amount that current vegetation has departed from simulated historical vegetation reference. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes context project extent.",
     "https://landfire.gov/data_overviews.php",
-    "2.2.0"
+    "2.4.0"
   ],
   "SCLASS": [
     "LandFire Succession Classes (SCla) raster: Current vegetation conditions with respect to vegetation species composition, cover, and height ranges of successional states occurring within each biophysical setting. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes context project extent.",
     "https://landfire.gov/data_overviews.php",
-    "2.2.0"
+    "2.4.0"
   ],
   "OWNERSHIP": [
     "Land ownership obtained from the Bureau of Management (BLM) Land Surface Agency. A single ShapeFile was downloaded and then pre-processed to remove invalid geometries and other irregularities.",
