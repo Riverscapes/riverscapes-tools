@@ -628,6 +628,13 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
                                                                   "-src", rasterized_channel,
                                                                   "-dd", hand_raster, "-m", "ave", "v"])
             if dinfdistdown_status != 0 or not os.path.isfile(hand_raster):
+                # try one more time
+                dinfdistdown_status = run_subprocess(project_folder, ["mpiexec", "-n", NCORES, "dinfdistdown",
+                                                                      "-ang", local_dinfflowdir_ang,
+                                                                      "-fel", local_pitfill_dem,
+                                                                      "-src", rasterized_channel,
+                                                                      "-dd", hand_raster, "-m", "ave", "v"])
+            if dinfdistdown_status != 0 or not os.path.isfile(hand_raster):
                 err_msg = f'Error generating HAND for level path {level_path}'
                 log.error(err_msg)
                 _tmterr("HAND_ERROR", err_msg)
@@ -1043,7 +1050,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
                         segmentation_polygons, unique_stream_field)
     _tmr_waypt.timer_break('GenerateVBETSegmentPolys')
     if flowline_type == 'NHD':
-        add_fcodes(segmentation_polygons, segmentation_points, line_network)
+        add_fcodes(segmentation_polygons, segmentation_points, line_network, unique_stream_field)
 
     log.info('Calculating Segment Metrics')
     metric_layers = {'low_lying_floodplain': output_active_fp, 'active_channel': channel_area,
@@ -1208,37 +1215,26 @@ def main():
         # epilog="This is an epilog"
     )
     parser.add_argument('huc', help='nhd watershed id', type=str)
-    parser.add_argument('flowline_network',
-                        help='full nhd line network', type=str)
+    parser.add_argument('flowline_network', help='full nhd line network', type=str)
     parser.add_argument('dem', help='dem', type=str)
     parser.add_argument('slope', help='slope', type=str)
     parser.add_argument('hillshade', type=str)
     parser.add_argument('channel_area', type=str)
-    parser.add_argument(
-        'output_dir', help='Folder where output VBET project will be created', type=str)
+    parser.add_argument('output_dir', help='Folder where output VBET project will be created', type=str)
     parser.add_argument('flowline_type', type=str, default='NHD')
     parser.add_argument('unique_stream_field', type=str, default='level_path')
     parser.add_argument('unique_reach_field', type=str, default='NHDPlusID')
     parser.add_argument('drain_area_field', type=str, default='DivDASqKm')
-    parser.add_argument(
-        '--level_paths', help='csv list of level paths', type=str, default="")
-    parser.add_argument(
-        '--pitfill', help='riverscapes project metadata as comma separated key=value pairs', default=None)
-    parser.add_argument('--dinfflowdir_ang',
-                        help='(optional) a little extra logging ', default=None)
-    parser.add_argument(
-        '--dinfflowdir_slp', help='Add debug tools for tracing things like memory usage at a performance cost.', default=None)
-    parser.add_argument(
-        '--reach_codes', help='Comma delimited reach codes (FCode) to retain when filtering features. Omitting this option retains all features.', type=str)
-    parser.add_argument(
-        '--temp_folder', help='(optional) cache folder for downloading files ', type=str)
+    parser.add_argument('--level_paths', help='csv list of level paths', type=str, default="")
+    parser.add_argument('--pitfill', help='riverscapes project metadata as comma separated key=value pairs', default=None)
+    parser.add_argument('--dinfflowdir_ang', help='(optional) a little extra logging ', default=None)
+    parser.add_argument('--dinfflowdir_slp', help='Add debug tools for tracing things like memory usage at a performance cost.', default=None)
+    parser.add_argument('--reach_codes', help='Comma delimited reach codes (FCode) to retain when filtering features. Omitting this option retains all features.', type=str)
+    parser.add_argument('--temp_folder', help='(optional) cache folder for downloading files ', type=str)
     parser.add_argument('--mask', type=str, default=None)
-    parser.add_argument(
-        '--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
-    parser.add_argument('--verbose', help='(optional) a little extra logging ',
-                        action='store_true', default=False)
-    parser.add_argument('--debug', help='Add debug tools for tracing things like memory usage at a performance cost.',
-                        action='store_true', default=False)
+    parser.add_argument('--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
+    parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
+    parser.add_argument('--debug', help='Add debug tools for tracing things like memory usage at a performance cost.', action='store_true', default=False)
     args = dotenv.parse_args_env(parser)
 
     # make sure the output folder exists

@@ -458,7 +458,7 @@ def calculate_vbet_window_metrics(vbet_igos: Path, vbet_dgos: Path, level_paths:
                 feat_igo = None
 
 
-def add_fcodes(in_dgos, in_igos, in_flowlines):
+def add_fcodes(in_dgos, in_igos, in_flowlines, unique_stream_field):
 
     with GeopackageLayer(in_dgos, write=True) as dgo_lyr, \
             GeopackageLayer(in_igos, write=True) as igo_lyr, \
@@ -468,13 +468,13 @@ def add_fcodes(in_dgos, in_igos, in_flowlines):
 
         for dgo_feat, *_ in dgo_lyr.iterate_features("Getting FCodes For DGOs and IGOs"):
             feat_geom = dgo_feat.GetGeometryRef().Clone()
-            levelpath = dgo_feat.GetField('level_path')
+            levelpath = dgo_feat.GetField(unique_stream_field)
             segdistance = dgo_feat.GetField('seg_distance')
             if segdistance is None:
                 continue
 
             attributes = {}
-            for line_feat, *_ in lines_lyr.iterate_features(clip_shape=feat_geom):
+            for line_feat, *_ in lines_lyr.iterate_features(clip_shape=feat_geom, attribute_filter=f'{unique_stream_field} = {levelpath}'):
                 line_geom = line_feat.GetGeometryRef()
                 if line_geom.Intersects(feat_geom):
                     geom_section = feat_geom.Intersection(line_geom)
