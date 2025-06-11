@@ -431,7 +431,6 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, hillshade: Path, pitf
         database.curs.execute('UPDATE IGOAttributes SET RiparianDepartureID = 6 WHERE IGOID IN ({})'.format(', '.join(map(str, too_small_igo))))
         database.curs.execute('UPDATE DGOAttributes SET Condition = -9999 WHERE DGOID IN ({})'.format(', '.join(map(str, too_small_dgo))))
         database.curs.execute('UPDATE DGOAttributes SET RiparianDeparture = -9999 WHERE DGOID IN ({})'.format(', '.join(map(str, too_small_dgo))))
-        database.curs.execute('UPDATE DGOAttributes SET RiparianDepartureID = 6 WHERE DGOID IN ({})'.format(', '.join(map(str, too_small_dgo))))
         database.conn.commit()
 
     ellapsed = time.time() - start_time
