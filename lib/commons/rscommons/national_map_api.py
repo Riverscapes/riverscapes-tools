@@ -1,3 +1,4 @@
+from typing import Dict
 import json
 import requests
 import urllib.parse
@@ -8,7 +9,7 @@ class TNM:
     HEADERS = {"Accept": "application/json"}
 
     @staticmethod
-    def get_items(params: dict[str, str]):
+    def get_items(params: Dict[str, str]):
         """
         Call TNM API with the argument params and return list of items if successful.
         Will navigate pagination if number of items requires it.
