@@ -454,16 +454,16 @@ def rs_context(huc: str, landfire_dir: str, ownership: str, fair_market: str, ec
     # Clip and re-project the existing and historic vegetation
     log.info('Processing existing and historic vegetation rasters.')
     in_veg_rasters = [
-        os.path.join(landfire_dir, 'LC20_EVT_220.tif'),
+        os.path.join(landfire_dir, 'LC23_EVT_220.tif'),
         os.path.join(landfire_dir, 'LC20_BPS_220.tif'),
-        os.path.join(landfire_dir, 'LC22_EVC_220.tif'),
-        os.path.join(landfire_dir, 'LC22_EVH_220.tif'),
-        os.path.join(landfire_dir, 'LC20_HDst_220.tif'),
-        os.path.join(landfire_dir, 'LC22_FDst_220.tif'),
-        os.path.join(landfire_dir, 'LC22_FCCS_220.tif'),
-        os.path.join(landfire_dir, 'LC20_VCC_220.tif'),
-        os.path.join(landfire_dir, 'LC20_VDep_220.tif'),
-        os.path.join(landfire_dir, 'LC20_SCla_220.tif')
+        os.path.join(landfire_dir, 'LC23_EVC_240.tif'),
+        os.path.join(landfire_dir, 'LC23_EVH_240.tif'),
+        os.path.join(landfire_dir, 'LC23_HDst_240.tif'),
+        os.path.join(landfire_dir, 'LC23_FDst_240.tif'),
+        os.path.join(landfire_dir, 'LC23_FCCS_240.tif'),
+        os.path.join(landfire_dir, 'LC23_VCC_240.tif'),
+        os.path.join(landfire_dir, 'LC23_VDep_240.tif'),
+        os.path.join(landfire_dir, 'LC23_SCla_240.tif')
     ]
     out_veg_rasters = [existing_clip, historic_clip, veg_cover_clip, veg_height_clip,
                        hdist_clip, fdist_clip, fccs_clip, veg_condition_clip, veg_departure_clip, sclass_clip]
