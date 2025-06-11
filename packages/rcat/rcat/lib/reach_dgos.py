@@ -35,16 +35,22 @@ def reach_dgos(reaches: str, dgos: str, proj_raster: str, flowarea: str = None, 
                     log.info(f'feature {reach_id} has no associated DGOs, using 100m buffer')
                     p = VectorBase.ogr2shapely(geom)
                     polygon = p.buffer(raster_buffer)
+                    width = 100
                 elif dgolyr.ogr_layer.GetFeatureCount == 1:
                     ftrs = [ftr for ftr in dgolyr.ogr_layer]
+                    seg_area = ftrs[0].GetField('segment_area')
+                    cl_len = ftrs[0].GetField('centerline_length')
                     polygon = VectorBase.ogr2shapely(ftrs[0].GetGeometryRef())
                     if window_buffer:
                         polygon = polygon.buffer(window_buffer)
+                    width = seg_area / cl_len
                 else:
                     polys = [VectorBase.ogr2shapely(ftr.GetGeometryRef()) for ftr in dgolyr.ogr_layer]
+                    widths = [ftr.GetField('segment_area') / ftr.GetField('centerline_length') for ftr in dgolyr.ogr_layer if ftr.GetField('centerline_length') > 0]
                     if window_buffer:
                         polys = [poly.buffer(window_buffer) for poly in polys]
                     polygon = unary_union(polys)
+                    width = min(widths)
 
                 if flowarea:
                     polygon = polygon.difference(flowarea)
@@ -54,7 +60,7 @@ def reach_dgos(reaches: str, dgos: str, proj_raster: str, flowarea: str = None, 
                 # buffer by raster resolution to ensure sampling of at least one pixel
                 polygon = polygon.buffer(x_res / 2)
 
-                polygons[reach_id] = polygon
+                polygons[reach_id] = [polygon, width]
 
     return polygons
 

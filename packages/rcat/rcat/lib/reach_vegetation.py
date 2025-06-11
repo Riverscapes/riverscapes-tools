@@ -47,7 +47,7 @@ def vegetation_summary(outputs_gpkg_path: str, reach_dgos: dict, veg_raster: str
         for reach_id, poly in reach_dgos.items():
             try:
                 # retrieve an array for the cells under the polygon
-                raw_raster = mask(src, [poly], crop=True)[0]
+                raw_raster = mask(src, [poly[0]], crop=True)[0]
                 mask_raster = np.ma.masked_values(raw_raster, src.nodata)
                 # print(mask_raster)
 

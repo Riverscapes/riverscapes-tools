@@ -71,7 +71,8 @@ def calculate_fis(feature_values: dict, igos: bool):
 
     # adjust inputs to be within FIS membership range
     rvd_array[rvd_array < 0] = 0
-    rvd_array[rvd_array > 1] = 1
+    # rvd_array[rvd_array > 1] = 1
+    rvd_array = [r if r < 1 else 1 - (r - 1) for r in rvd_array]
     lui_array[lui_array < 0] = 0
     lui_array[lui_array > 100] = 100
     fpaccess_array[fpaccess_array < 0] = 0
@@ -143,7 +144,7 @@ def calculate_fis(feature_values: dict, igos: bool):
         rcat_fis.input['input2'] = lui_array[i]
         rcat_fis.input['input3'] = fpaccess_array[i]
         rcat_fis.compute()
-        condition = rcat_fis.output['result']
+        condition = rescale(rcat_fis.output['result'], 0.033, 0.9766)
 
         feature_values[id]['Condition'] = round(condition, 2)
 
@@ -152,6 +153,22 @@ def calculate_fis(feature_values: dict, igos: bool):
 
     progbar.finish()
     log.info('Done')
+
+
+def rescale(value, old_min, old_max):
+    """Rescale a value from one range to another
+
+    Arguments:
+        value (float): The value to rescale
+        old_min (float): The minimum of the old range
+        old_max (float): The maximum of the old range
+        new_min (float): The minimum of the new range
+        new_max (float): The maximum of the new range
+
+    Returns:
+        float: The rescaled value
+    """
+    return (value - old_min) / (old_max - old_min)
 
 
 def main():
