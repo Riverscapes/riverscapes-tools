@@ -352,39 +352,31 @@ def igo_attributes(database: str, windows: dict):
 
     # departure
     log.info('Finding riparian departure')
-    curs.execute('SELECT IGOAttributes.IGOID, ExistingRiparianMean, HistoricRiparianMean, LUI FROM IGOAttributes')
+    curs.execute('SELECT IGOAttributes.IGOID, ExistingRiparianMean, HistoricRiparianMean FROM IGOAttributes')
 
-    dep = {row[0]: [row[1], row[2], row[3]] for row in curs.fetchall()}
+    dep = {row[0]: [row[1], row[2]] for row in curs.fetchall()}
     for igoid, val in dep.items():
         # if val[0] is None:
         #     val[0] = 0
         # if val[1] is None:
-        if val[1] == 0 or val[2] is None:
+        if val[1] == 0:
             curs.execute(f'UPDATE IGOAttributes SET RiparianDeparture = 1, RiparianDepartureID = 0 WHERE IGOID = {igoid}')
         else:
             if 1 > val[0] / val[1] >= 0.9:
                 depid = 1
                 curs.execute(f'UPDATE IGOAttributes SET RiparianDeparture = {val[0]/val[1]}, RiparianDepartureID = {depid} WHERE IGOID = {igoid}')
-            elif 0.9 >= val[0] / val[1] > 0.66 and val[2] > 0:
+            elif 0.9 >= val[0] / val[1] > 0.66:
                 depid = 2
                 curs.execute(f'UPDATE IGOAttributes SET RiparianDeparture = {val[0]/val[1]}, RiparianDepartureID = {depid} WHERE IGOID = {igoid}')
-            elif 0.66 >= val[0] / val[1] > 0.33 and val[2] > 0:
+            elif 0.66 >= val[0] / val[1] > 0.33:
                 depid = 3
                 curs.execute(f'UPDATE IGOAttributes SET RiparianDeparture = {val[0]/val[1]}, RiparianDepartureID = {depid} WHERE IGOID = {igoid}')
-            elif val[0] / val[1] <= 0.33 and val[2] > 0:
+            elif val[0] / val[1] <= 0.33:
                 depid = 4
                 curs.execute(f'UPDATE IGOAttributes SET RiparianDeparture = {val[0]/val[1]}, RiparianDepartureID = {depid} WHERE IGOID = {igoid}')
             else:
-                depid = 1
-                curs.execute(f'UPDATE IGOAttributes SET RiparianDeparture = 1, RiparianDepartureID = {depid} WHERE IGOID = {igoid}')
-
-    curs.execute('SELECT DGOAttributes.DGOID, ExistingRiparianMean, HistoricRiparianMean FROM DGOAttributes')
-    dep_dgo = {row[0]: [row[1], row[2]] for row in curs.fetchall()}
-    for dgoid, val in dep_dgo.items():
-        if val[1] == 0:
-            curs.execute(f'UPDATE DGOAttributes SET RiparianDeparture = 1 WHERE DGOID = {dgoid}')
-        else:
-            curs.execute(f'UPDATE DGOAttributes SET RiparianDeparture = {val[0]/val[1]} WHERE DGOID = {dgoid}')
+                depid = 5
+                curs.execute(f'UPDATE IGOAttributes SET RiparianDeparture = {val[0]/val[1]}, RiparianDepartureID = {depid} WHERE IGOID = {igoid}')
 
     curs.execute('SELECT DGOAttributes.DGOID, ExistingRiparianMean, HistoricRiparianMean FROM DGOAttributes')
     dep_dgo = {row[0]: [row[1], row[2]] for row in curs.fetchall()}
@@ -607,28 +599,28 @@ def reach_attributes(database: str):
 
     # departure
     log.info('Finding riparian departure')
-    curs.execute('SELECT ReachAttributes.ReachID, ExistingRiparianMean, HistoricRiparianMean, iPC_LU FROM ReachAttributes')
+    curs.execute('SELECT ReachAttributes.ReachID, ExistingRiparianMean, HistoricRiparianMean FROM ReachAttributes')
 
-    dep = {row[0]: [row[1], row[2], row[3]] for row in curs.fetchall()}
+    dep = {row[0]: [row[1], row[2]] for row in curs.fetchall()}
     for rid, val in dep.items():
-        if val[1] == 0 or val[2] is None:
+        if val[1] == 0:
             curs.execute(f'UPDATE ReachAttributes SET RiparianDeparture = 1, RiparianDepartureID = 0 WHERE ReachID = {rid}')
         else:
             if 1 > val[0] / val[1] >= 0.9:
                 depid = 1
                 curs.execute(f'UPDATE ReachAttributes SET RiparianDeparture = {val[0]/val[1]}, RiparianDepartureID = {depid} WHERE ReachID = {rid}')
-            elif 0.9 >= val[0] / val[1] > 0.66 and val[2] > 0:
+            elif 0.9 >= val[0] / val[1] > 0.66:
                 depid = 2
                 curs.execute(f'UPDATE ReachAttributes SET RiparianDeparture = {val[0]/val[1]}, RiparianDepartureID = {depid} WHERE ReachID = {rid}')
-            elif 0.66 >= val[0] / val[1] > 0.33 and val[2] > 0:
+            elif 0.66 >= val[0] / val[1] > 0.33:
                 depid = 3
                 curs.execute(f'UPDATE ReachAttributes SET RiparianDeparture = {val[0]/val[1]}, RiparianDepartureID = {depid} WHERE ReachID = {rid}')
-            elif val[0] / val[1] <= 0.33 and val[2] > 0:
+            elif val[0] / val[1] <= 0.33:
                 depid = 4
                 curs.execute(f'UPDATE ReachAttributes SET RiparianDeparture = {val[0]/val[1]}, RiparianDepartureID = {depid} WHERE ReachID = {rid}')
             else:
-                depid = 1
-                curs.execute(f'UPDATE ReachAttributes SET RiparianDeparture = 1, RiparianDepartureID = {depid} WHERE ReachID = {rid}')
+                depid = 5
+                curs.execute(f'UPDATE ReachAttributes SET RiparianDeparture = {val[0]/val[1]}, RiparianDepartureID = {depid} WHERE ReachID = {rid}')
 
     # native riparian
     # curs.execute('SELECT ReachAttributes.ReachID, ExistingRiparianMean - (ExInv / TotCells), HistoricRiparianMean FROM ReachAttributes'

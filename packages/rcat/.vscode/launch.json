@@ -34,9 +34,10 @@
             "{env:DATA_ROOT}/anthro/${input:HUC}/inputs/inputs.gpkg/canals",
             "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/vbet_full",
             "{env:DATA_ROOT}/rcat/${input:HUC}", // output folder
-            "--meta", "Runner=VSCode",
             "--flow_areas", "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhdplushr.gpkg/NHDArea",
             "--waterbodies", "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhdplushr.gpkg/NHDWaterbody",
+            //"--hist_range", "(41000100000207,0.05,0.15),(41000100001111,0.05,0.15)",
+            "--meta", "Runner=VSCode",
             "--verbose"
           ]
         },

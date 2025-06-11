@@ -10,13 +10,16 @@ import datetime
 import sys
 import traceback
 import rasterio
+import re
 
-from typing import Dict
-from osgeo import ogr
+from typing import Dict, Tuple, List
+from osgeo import ogr, gdal
+from shapely.geometry import LineString
 
-from rscommons import initGDALOGRErrors, ModelConfig, RSLayer, RSProject, get_shp_or_gpkg
+from rscommons import initGDALOGRErrors, ModelConfig, RSLayer, RSProject, get_shp_or_gpkg, VectorBase
 from rscommons import Logger, GeopackageLayer
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
+from rscommons.classes.vector_base import get_utm_zone_epsg
 from rscommons import dotenv
 from rscommons.vector_ops import copy_feature_class, get_geometry_unary_union
 from rscommons.database import create_database, SQLiteCon
@@ -82,7 +85,7 @@ LayerTypes = {
 
 def rcat(huc: int, existing_veg: Path, historic_veg: Path, hillshade: Path, pitfilled: Path, igo: Path, dgo: Path,
          reaches: Path, roads: Path, rails: Path, canals: Path, valley: Path, output_folder: Path,
-         flow_areas: Path, waterbodies: Path, meta: Dict[str, str]):
+         flow_areas: Path, waterbodies: Path, hist_range: List[Tuple[float, float, float]] = None, meta: Dict[str, str] = None) -> None:
 
     log = Logger('RCAT')
     log.info(f'Starting RCAT v.{cfg.version}')
@@ -276,9 +279,14 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, hillshade: Path, pitf
          RSMeta('Huge Search Window', str(distance_in['4']), RSMetaTypes.INT, locked=True)])
 
     log.info('removing large rivers from DGO polygons')
-    with rasterio.open(prj_existing_path) as veg_raster:
-        gt = veg_raster.transform
-        x_res = gt[0]
+    veg_raster = gdal.Open(prj_existing_path)
+    gt = veg_raster.GetGeoTransform()
+    lin = LineString([(gt[0], gt[3]), (gt[0] + gt[1], gt[3])])
+    long = gt[0]
+    utm = get_utm_zone_epsg(long)
+    _sref, transform = VectorBase.get_transform_from_epsg(veg_raster.GetSpatialRef(), utm)
+    ogr_lin = VectorBase.shapely2ogr(lin, transform)
+    x_res = ogr_lin.Length()*1.5  # buffer by 1.5x resolution to ensure sampling of at least one pixel
 
     if flow_areas:
         with get_shp_or_gpkg(flow_areas) as flow_areas_lyr:
@@ -315,12 +323,21 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, hillshade: Path, pitf
         geom_waterbodies = None
 
     updated_dgo_geoms = {}
+    too_small_dgo = []
+    too_small_igo = []
     with GeopackageLayer(outputs_gpkg_path, 'DGOGeometry') as dgo_lyr:
         for dgo_ftr, *_ in dgo_lyr.iterate_features('Clipping large rivers from DGO polygons'):
             dgoid = dgo_ftr.GetFID()
+            cl_length = dgo_ftr.GetField('centerline_length')
+            if cl_length is None or cl_length == 0:
+                log.warning(f'DGO {dgoid} has no centerline length. Skipping.')
+                continue
+            area = dgo_ftr.GetField('segment_area')
+            if area / cl_length <= x_res:
+                too_small_dgo.append(dgoid)
             dgo_ogr = dgo_ftr.GetGeometryRef()
-            dgo_geom = GeopackageLayer.ogr2shapely(dgo_ogr)
-            geom = dgo_geom.buffer(x_res / 2)  # buffer by landfire resolution to make sure cells are captured in small streams
+            geom = GeopackageLayer.ogr2shapely(dgo_ogr)
+            # geom = dgo_geom.buffer(x_res / 2)  # buffer by landfire resolution to make sure cells are captured in small streams
             if geom_flow_areas is not None:
                 if geom.intersects(geom_flow_areas):
                     geom = geom.difference(geom_flow_areas)
@@ -332,10 +349,15 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, hillshade: Path, pitf
 
     # get IDs of DGOs within moving windows of IGOs
     windows = moving_window_dgo_ids(igo_geom_path, input_layers['ANTHRODGO'], levelpathsin, distance_in)
+    for igoid, dgoids in windows.items():
+        for dgoid in dgoids:
+            if dgoid in too_small_dgo:
+                too_small_igo.append(igoid)
+                break
 
     # store dgos associated with reaches with large rivers removed
     rdgos = reach_dgos(os.path.join(outputs_gpkg_path, 'ReachGeometry'), input_layers['ANTHRODGO'],
-                       os.path.join(output_folder, LayerTypes['EXVEG'].rel_path), geom_flow_areas, geom_waterbodies, x_res)
+                       os.path.join(output_folder, LayerTypes['EXVEG'].rel_path), geom_flow_areas, geom_waterbodies)
 
     # generate vegetation derivative rasters
     intermediates = os.path.join(output_folder, 'intermediates')
@@ -370,10 +392,47 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, hillshade: Path, pitf
     igo_attributes(outputs_gpkg_path, windows)
     reach_attributes(outputs_gpkg_path)
 
+    # update vegetation departure if historic range is provided
+    if hist_range is not None:
+        matches = re.findall(r'\(([^)]+)\)', hist_range)
+        hist_range = [tuple(float(x) for x in m.split(',')) for m in matches]
+        with SQLiteCon(outputs_gpkg_path) as database:
+            database.curs.execute('ALTER TABLE ReachAttributes ADD COLUMN RiparianDepartureLow REAL')
+            database.curs.execute('ALTER TABLE ReachAttributes ADD COLUMN RiparianDepartureHigh REAL')
+            database.curs.execute('ALTER TABLE IGOAttributes ADD COLUMN RiparianDepartureLow REAL')
+            database.curs.execute('ALTER TABLE IGOAttributes ADD COLUMN RiparianDepartureHigh REAL')
+            database.curs.execute('ALTER TABLE DGOAttributes ADD COLUMN RiparianDepartureLow REAL')
+            database.curs.execute('ALTER TABLE DGOAttributes ADD COLUMN RiparianDepartureHigh REAL')
+            database.conn.commit()
+            for i, hr in enumerate(hist_range):
+                log.info(f'Updating vegetation departure for stream: {hr[0]} with historic range: {hr[1]} - {hr[2]}')
+                database.curs.execute(f'UPDATE ReachAttributes SET RiparianDepartureLow = ExistingRiparianMean/{hr[1]}, RiparianDepartureHigh = ExistingRiparianMean/{hr[2]} WHERE level_path = {hr[0]}')
+                database.curs.execute(f'UPDATE ReachAttributes SET RiparianDeparture = ExistingRiparianMean / {(hr[1] + hr[2]) / 2} WHERE level_path = {hr[0]}')
+                database.curs.execute(f'UPDATE IGOAttributes SET RiparianDepartureLow = ExistingRiparianMean/{hr[1]}, RiparianDepartureHigh = ExistingRiparianMean/{hr[2]} WHERE level_path = {hr[0]}')
+                database.curs.execute(f'UPDATE IGOAttributes SET RiparianDeparture = ExistingRiparianMean / {(hr[1] + hr[2]) / 2} WHERE level_path = {hr[0]}')
+                database.curs.execute(f'UPDATE DGOAttributes SET RiparianDepartureLow = ExistingRiparianMean/{hr[1]}, RiparianDepartureHigh = ExistingRiparianMean/{hr[2]} WHERE level_path = {hr[0]}')
+                database.curs.execute(f'UPDATE DGOAttributes SET RiparianDeparture = ExistingRiparianMean / {(hr[1] + hr[2]) / 2} WHERE level_path = {hr[0]}')
+                database.conn.commit()
+
     # Calculate FIS for IGOs
     rcat_fis(outputs_gpkg_path, igos=True)
     # Calculate FIS for reaches
     rcat_fis(outputs_gpkg_path, igos=False)
+
+    # override outputs for segments where valley is too narrow to sample rasters
+    log.info('Updating outputs for reaches with valley too narrow to sample vegetation rasters')
+    too_small_reaches = [r for r, v in rdgos.items() if v[1] <= x_res]
+    with SQLiteCon(outputs_gpkg_path) as database:
+        database.curs.execute('UPDATE ReachAttributes SET Condition = -9999 WHERE ReachID IN ({})'.format(', '.join(map(str, too_small_reaches))))
+        database.curs.execute('UPDATE ReachAttributes SET RiparianDeparture = -9999 WHERE ReachID IN ({})'.format(', '.join(map(str, too_small_reaches))))
+        database.curs.execute('UPDATE ReachAttributes SET RiparianDepartureID = 6 WHERE ReachID IN ({})'.format(', '.join(map(str, too_small_reaches))))
+        database.curs.execute('UPDATE IGOAttributes SET Condition = -9999 WHERE IGOID IN ({})'.format(', '.join(map(str, too_small_igo))))
+        database.curs.execute('UPDATE IGOAttributes SET RiparianDeparture = -9999 WHERE IGOID IN ({})'.format(', '.join(map(str, too_small_igo))))
+        database.curs.execute('UPDATE IGOAttributes SET RiparianDepartureID = 6 WHERE IGOID IN ({})'.format(', '.join(map(str, too_small_igo))))
+        database.curs.execute('UPDATE DGOAttributes SET Condition = -9999 WHERE DGOID IN ({})'.format(', '.join(map(str, too_small_dgo))))
+        database.curs.execute('UPDATE DGOAttributes SET RiparianDeparture = -9999 WHERE DGOID IN ({})'.format(', '.join(map(str, too_small_dgo))))
+        database.curs.execute('UPDATE DGOAttributes SET RiparianDepartureID = 6 WHERE DGOID IN ({})'.format(', '.join(map(str, too_small_dgo))))
+        database.conn.commit()
 
     ellapsed = time.time() - start_time
 
@@ -416,6 +475,7 @@ def main():
     parser.add_argument('output_folder', help='Output folder', type=str)
     parser.add_argument('--flow_areas', help='(optional) path to the flow area polygon feature class containing artificial paths', type=str)
     parser.add_argument('--waterbodies', help='(optional) waterbodies input', type=str)
+    parser.add_argument('--hist_range', help='(optional) level path and historic range for vegetation departure calculation as tuple (level_path, low, high)', type=str, default=None)
     parser.add_argument('--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
     parser.add_argument('--debug', help="(optional) save intermediate outputs for debugging", action='store_true', default=False)
@@ -436,14 +496,14 @@ def main():
             retcode, max_obj = ThreadRun(rcat, memfile, args.huc,
                                          args.existing_veg, args.historic_veg, args.hillshade, args.pitfilled, args.igo,
                                          args.dgo, args.reaches, args.roads, args.rails, args.canals,
-                                         args.valley, args.output_folder, args.flow_areas, args.waterbodies,
+                                         args.valley, args.output_folder, args.flow_areas, args.waterbodies, args.hist_range,
                                          meta=meta)
             log.debug(f'Return code: {retcode}, [Max process usage] {max_obj}')
 
         else:
             rcat(args.huc, args.existing_veg, args.historic_veg, args.hillshade, args.pitfilled, args.igo, args.dgo,
                  args.reaches, args.roads, args.rails, args.canals, args.valley, args.output_folder, args.flow_areas,
-                 args.waterbodies, meta=meta)
+                 args.waterbodies, args.hist_range, meta)
 
     except Exception as e:
         log.error(e)
