@@ -1,3 +1,4 @@
+import os
 from shutil import ExecError
 import rasterio
 import numpy as np
@@ -19,10 +20,21 @@ def clip_vegetation(boundary_path: str, veg_rasters: list, veg_raster_clips: lis
     widths = []
     heights = []
 
+    if len(veg_rasters) != len(veg_raster_clips):
+        msg = 'Number of vegetation rasters does not match number of output vegetation raster clips'
+        raise ValueError(msg)
+
     # https://gdal.org/python/osgeo.gdal-module.html#WarpOptions
     warp_options = {"cutlineBlend": 2}
 
     for i, rast in enumerate(veg_rasters):
+
+        log.info(f'Clipping vegetation raster {i + 1} of {len(veg_rasters)}: {rast}')
+
+        if not os.path.isfile(rast):
+            msg = f'Raster {rast} does not exist'
+            raise FileNotFoundError(msg)
+        
         with rasterio.open(rast) as vegraster:
             meta = vegraster.meta
             widths.append(meta['transform'][0])
