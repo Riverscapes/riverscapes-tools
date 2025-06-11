@@ -454,7 +454,7 @@ def rs_context(huc: str, landfire_dir: str, ownership: str, fair_market: str, ec
     # Clip and re-project the existing and historic vegetation
     log.info('Processing existing and historic vegetation rasters.')
     in_veg_rasters = [
-        os.path.join(landfire_dir, 'LC23_EVT_220.tif'),
+        os.path.join(landfire_dir, 'LC23_EVT_240.tif'),
         os.path.join(landfire_dir, 'LC20_BPS_220.tif'),
         os.path.join(landfire_dir, 'LC23_EVC_240.tif'),
         os.path.join(landfire_dir, 'LC23_EVH_240.tif'),
