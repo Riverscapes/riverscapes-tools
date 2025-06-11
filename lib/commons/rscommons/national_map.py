@@ -6,7 +6,7 @@
 # -------------------------------------------------------------------------------
 import os
 import csv
-from typing import Dict
+from typing import Dict, List
 
 
 from rscommons.download import download_unzip
@@ -194,7 +194,7 @@ def _get_shapefile_urls(dataset, file_format, region_type, region):
         return url[0]
 
 
-def get_1m_dem_urls(vector_path: str, buffer_dist: int | float) -> list[str]:
+def get_1m_dem_urls(vector_path: str, buffer_dist) -> List[str]:
     """
     Retrieve a list of all 1-metre DEM rasters within the polygons found in input layer 
 
