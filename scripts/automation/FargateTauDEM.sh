@@ -79,7 +79,8 @@ taudem $HUC \
   $RS_CONTEXT_DIR/topography/dem.tif \
   $TAUDEM_DIR \
   --meta "Runner=Cybercastor" \
-  --verbose
+  --verbose \
+  --debug
 if [[ $? != 0 ]]; then return 1; fi
 
 cd /usr/local/src/riverscapes-tools/packages/taudem
