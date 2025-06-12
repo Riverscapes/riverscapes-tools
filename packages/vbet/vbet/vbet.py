@@ -566,9 +566,9 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
                     raster_warp(dinfflowdir_ang, local_dinfflowdir_ang, cfg.OUTPUT_EPSG)
                 else:
                     raster_warp(dinfflowdir_ang, local_dinfflowdir_ang,
-                                cfg.OUTPUT_EPSG, clip=envelope)
+                                cfg.OUTPUT_EPSG, clip=envelope, warp_options={'xRes': pixel_x, 'yRes': pixel_y})
                     raster_warp(pitfill_dem, local_pitfill_dem,
-                                cfg.OUTPUT_EPSG, clip=envelope)
+                                cfg.OUTPUT_EPSG, clip=envelope, warp_options={'xRes': pixel_x, 'yRes': pixel_y})
 
         rasterized_channel = os.path.join(
             temp_folder_lpath, f'rasterized_channel_{level_path}.tif')
