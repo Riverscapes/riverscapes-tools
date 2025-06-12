@@ -2,6 +2,9 @@
 for each igo in the input dataset.
 """
 
+import os
+import sqlite3
+
 from osgeo import ogr
 
 from rscommons import GeopackageLayer, VectorBase
@@ -44,11 +47,26 @@ def get_moving_windows(igo: str, dgo: str, level_paths: list, distance: dict):
 def moving_window_dgo_ids(igo: str, dgo: str, level_paths: list, distance: dict):
 
     windows = {}
+    dists = {}
+
+    with sqlite3.connect(os.path.dirname(dgo)) as conn:
+        curs = conn.cursor()
+        for level_path in level_paths:
+            curs.execute(f'SELECT seg_distance FROM {os.path.basename(dgo)} WHERE level_path = {level_path}')
+            sds = [row[0] for row in curs.fetchall() if row[0] is not None]
+            sds.sort()
+            if len(sds) >= 2:
+                dists[level_path] = sds[1] - sds[0]
+            else:
+                dists[level_path] = None
 
     with GeopackageLayer(igo) as lyr_igo, GeopackageLayer(dgo) as lyr_dgo:
         for level_path in level_paths:
             for feat_seg_pt, *_, in lyr_igo.iterate_features(f'Finding windows on {level_path}', attribute_filter=f"level_path = {level_path}"):
                 window_distance = distance[str(feat_seg_pt.GetField('stream_size'))]
+                if dists[level_path] is not None:
+                    if window_distance < 2 * dists[level_path]:
+                        window_distance = 2 * dists[level_path]
                 dist = feat_seg_pt.GetField('seg_distance')
                 min_dist = dist - 0.5 * window_distance
                 max_dist = dist + 0.5 * window_distance
