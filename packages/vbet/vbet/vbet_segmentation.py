@@ -9,6 +9,7 @@ import os
 import sys
 import argparse
 import rasterio
+import sqlite3
 
 from osgeo import ogr, osr
 from shapely.ops import linemerge, voronoi_diagram
@@ -362,6 +363,21 @@ def calculate_vbet_window_metrics(vbet_igos: Path, vbet_dgos: Path, level_paths:
         metric_names (list): list of metric names to generate summary attributes on
     """
 
+    dists = {}
+
+    with sqlite3.connect(os.path.dirname(vbet_dgos)) as conn:
+        curs = conn.cursor()
+        for level_path in level_paths:
+            if level_path is None:
+                continue
+            curs.execute(f'SELECT seg_distance FROM {os.path.basename(vbet_dgos)} WHERE level_path = {level_path}')
+            sds = [row[0] for row in curs.fetchall() if row[0] is not None]
+            sds.sort()
+            if len(sds) >= 2:
+                dists[level_path] = sds[1] - sds[0]
+            else:
+                dists[level_path] = None
+
     with GeopackageLayer(vbet_igos, write=True) as lyr_igos, \
             GeopackageLayer(vbet_dgos) as lyr_dgos:
 
@@ -388,6 +404,9 @@ def calculate_vbet_window_metrics(vbet_igos: Path, vbet_dgos: Path, level_paths:
             if level_path is None or level_path not in distance_lookup.keys():
                 continue
             window_distance = distance_lookup[level_path]
+            if dists[level_path] is not None:
+                if window_distance < 2 * dists[level_path]:
+                    window_distance = 2 * dists[level_path]
             window_addon = {200: 100, 400: 200, 1200: 300, 2000: 500, 8000: 2000}
             for feat_igo, *_ in lyr_igos.iterate_features(f'Summerizing vbet metrics for {level_path}', attribute_filter=f"{unique_stream_field} = {level_path}"):
                 # Construct the igo window selection logic
