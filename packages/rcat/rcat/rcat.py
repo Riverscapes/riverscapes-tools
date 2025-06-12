@@ -423,13 +423,13 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, hillshade: Path, pitf
     log.info('Updating outputs for reaches with valley too narrow to sample vegetation rasters')
     too_small_reaches = [r for r, v in rdgos.items() if v[1] <= x_res]
     with SQLiteCon(outputs_gpkg_path) as database:
-        database.curs.execute('UPDATE ReachAttributes SET Condition = -9999 WHERE ReachID IN ({})'.format(', '.join(map(str, too_small_reaches))))
+        database.curs.execute('UPDATE ReachAttributes SET Condition = -1 WHERE ReachID IN ({})'.format(', '.join(map(str, too_small_reaches))))
         database.curs.execute('UPDATE ReachAttributes SET RiparianDeparture = -9999 WHERE ReachID IN ({})'.format(', '.join(map(str, too_small_reaches))))
         database.curs.execute('UPDATE ReachAttributes SET RiparianDepartureID = 6 WHERE ReachID IN ({})'.format(', '.join(map(str, too_small_reaches))))
-        database.curs.execute('UPDATE IGOAttributes SET Condition = -9999 WHERE IGOID IN ({})'.format(', '.join(map(str, too_small_igo))))
+        database.curs.execute('UPDATE IGOAttributes SET Condition = -1 WHERE IGOID IN ({})'.format(', '.join(map(str, too_small_igo))))
         database.curs.execute('UPDATE IGOAttributes SET RiparianDeparture = -9999 WHERE IGOID IN ({})'.format(', '.join(map(str, too_small_igo))))
         database.curs.execute('UPDATE IGOAttributes SET RiparianDepartureID = 6 WHERE IGOID IN ({})'.format(', '.join(map(str, too_small_igo))))
-        database.curs.execute('UPDATE DGOAttributes SET Condition = -9999 WHERE DGOID IN ({})'.format(', '.join(map(str, too_small_dgo))))
+        database.curs.execute('UPDATE DGOAttributes SET Condition = -1 WHERE DGOID IN ({})'.format(', '.join(map(str, too_small_dgo))))
         database.curs.execute('UPDATE DGOAttributes SET RiparianDeparture = -9999 WHERE DGOID IN ({})'.format(', '.join(map(str, too_small_dgo))))
         database.conn.commit()
 
