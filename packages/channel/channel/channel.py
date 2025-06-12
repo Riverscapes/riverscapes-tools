@@ -270,6 +270,8 @@ def channel(huc: int,
             if 'NHDPlusID' in fields:
                 for channel_ftr, *_ in channel_lyr.iterate_features("Adding flowline attributes"):
                     nhdplus_id = channel_ftr.GetField('NHDPlusID')
+                    if nhdplus_id is None:
+                        continue
                     for fn in fields:
                         if channel_ftr.GetField(fn) is None:
                             for flowline_ftr, *_ in flowline_lyr.iterate_features(attribute_filter=f'NHDPlusID = {nhdplus_id}'):
