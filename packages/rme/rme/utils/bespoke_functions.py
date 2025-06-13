@@ -20,7 +20,7 @@ def watershed(huc):
         return str(huc)
 
 
-def headwater(feat_geom, line_network):
+def headwater(feat_seg_dgo, line_network):
     """determine if a stream reach is a headwater
 
     Args:
@@ -30,14 +30,16 @@ def headwater(feat_geom, line_network):
     Returns:
         _type_: binary headwater classification 
     """
+    lp = feat_seg_dgo.GetField('level_path')
+    dgo_geom = feat_seg_dgo.GetGeometryRef()
     sum_attributes = {}
     with GeopackageLayer(line_network) as lyr_lines:
-        for feat, *_ in lyr_lines.iterate_features(clip_shape=feat_geom):
+        for feat, *_ in lyr_lines.iterate_features(clip_shape=dgo_geom, attribute_filter=f"level_path = {lp}"):
             line_geom = feat.GetGeometryRef()
             attribute = str(feat.GetField('STARTFLAG'))
             if attribute not in ['1', '0']:
                 continue
-            geom_section = feat_geom.Intersection(line_geom)
+            geom_section = dgo_geom.Intersection(line_geom)
             length = geom_section.Length()
             sum_attributes[attribute] = sum_attributes.get(
                 attribute, 0) + length
