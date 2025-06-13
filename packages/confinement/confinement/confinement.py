@@ -443,6 +443,12 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
             geom_channel_buffer = geom_intersected.buffer(
                 buffer * meter_conversion)
 
+            if geom_channel_buffer.geom_type == "MultiPolygon":  # try just taking the largest polygon if its multipolygon
+                areas = [g.area for g in geom_channel_buffer.geoms]
+                for geom in geom_channel_buffer.geoms:
+                    if geom.area == max(areas):
+                        geom_channel_buffer = geom
+                        break
             if geom_channel_buffer is None or geom_channel_buffer.area == 0.0 or geom_channel_buffer.geom_type == "MultiPolygon":
                 progbar.erase()
                 log.warning(
