@@ -25,7 +25,7 @@ from rscommons.geometry_ops import get_rectangle_as_geom
 Path = str
 
 
-def generate_igo_points(line_network: Path, dem: Path, out_points_layer: Path, vb_layer: Path, unique_stream_field, aspect_ratio: float):
+def generate_igo_points(line_network: Path, dem: Path, out_points_layer: Path, vb_layer: Path, unique_stream_field, stream_size_lookup: dict, aspect_ratio: float):
     """generate the vbet segmentation center points/igos
 
     Args:
@@ -45,7 +45,8 @@ def generate_igo_points(line_network: Path, dem: Path, out_points_layer: Path, v
             GeopackageLayer(vb_layer) as vb_lyr:
 
         out_fields = {f"{unique_stream_field}": ogr.OFTString,
-                      "seg_distance": ogr.OFTReal}
+                      "seg_distance": ogr.OFTReal,
+                      "stream_size": ogr.OFTInteger}
         out_lyr.create_layer(
             ogr.wkbPoint, spatial_ref=line_lyr.spatial_ref, fields=out_fields)
 
@@ -60,6 +61,9 @@ def generate_igo_points(line_network: Path, dem: Path, out_points_layer: Path, v
 
         for feat, *_ in line_lyr.iterate_features(write_layers=[out_lyr]):
             level_path = feat.GetField(f'{unique_stream_field}')
+            if level_path not in stream_size_lookup:
+                log.error(f'stream size not ofund for level path {level_path}')
+            stream_size = stream_size_lookup[level_path]
             geom_line = feat.GetGeometryRef()
             geom_line.FlattenTo2D()
             geom_line.Transform(transform)
@@ -140,7 +144,8 @@ def generate_igo_points(line_network: Path, dem: Path, out_points_layer: Path, v
                     geom_pnt.Transform(transform_back)
                     # add the point feature to the output.
                     attributes = {f'{unique_stream_field}': str(int(level_path)),
-                                  'seg_distance': out_dist}
+                                  'seg_distance': out_dist,
+                                  'stream_size': stream_size}
                     out_lyr.create_feature(geom_pnt, attributes=attributes)
 
 
@@ -407,9 +412,10 @@ def calculate_vbet_window_metrics(vbet_igos: Path, vbet_dgos: Path, level_paths:
             if dists[level_path] is not None:
                 if window_distance < 2 * dists[level_path]:
                     window_distance = 2 * dists[level_path]
-            window_addon = {200: 100, 400: 200, 1200: 300, 2000: 500, 8000: 2000}
+            window_addon = {0: 100, 1: 200, 2: 300, 3: 500, 4: 2000}
             for feat_igo, *_ in lyr_igos.iterate_features(f'Summerizing vbet metrics for {level_path}', attribute_filter=f"{unique_stream_field} = {level_path}"):
                 # Construct the igo window selection logic
+                stream_size = feat_igo.GetField('stream_size')
                 igo_distance = feat_igo.GetField('seg_distance')
                 min_dist = igo_distance - 0.5 * window_distance
                 max_dist = igo_distance + 0.5 * window_distance
@@ -463,7 +469,7 @@ def calculate_vbet_window_metrics(vbet_igos: Path, vbet_dgos: Path, level_paths:
 
                 # Write to fields
                 feat_igo.SetField('integrated_width', integrated_width)
-                feat_igo.SetField('window_size', window_distance + window_addon[int(window_distance)])
+                feat_igo.SetField('window_size', window_distance + window_addon[stream_size])
                 feat_igo.SetField('window_area', window_area_m2)
                 feat_igo.SetField('centerline_length', window_cl_length_m)
                 feat_igo.SetField('vb_acreage_per_mile', vb_acreage_per_mile)

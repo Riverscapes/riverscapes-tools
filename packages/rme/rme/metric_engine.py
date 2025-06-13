@@ -907,6 +907,7 @@ def main():
     parser.add_argument('waterbodies', help='NHD Waterbodies', type=str)
     parser.add_argument('vaa_table', help='NHD Plus vaa table')
     parser.add_argument('counties', help='Counties shapefile')
+    parser.add_argument('geology', help='Geology feature class')
     parser.add_argument('vbet_dgos', help='vbet segment polygons')
     parser.add_argument('vbet_igos', help='valley bottom or other polygon representing confining boundary (.shp, .gpkg/layer_name)', type=str)
     parser.add_argument('valley_centerline', help='vbet centerline feature class')
@@ -945,6 +946,7 @@ def main():
                                          args.waterbodies,
                                          args.vaa_table,
                                          args.counties,
+                                         args.geology,
                                          args.vbet_dgos,
                                          args.vbet_igos,
                                          args.valley_centerline,
@@ -968,6 +970,7 @@ def main():
                           args.waterbodies,
                           args.vaa_table,
                           args.counties,
+                          args.geology,
                           args.vbet_dgos,
                           args.vbet_igos,
                           args.valley_centerline,
