@@ -58,6 +58,7 @@ LayerTypes = {
         'FLOWLINES': RSLayer('Flowlines', 'FLOWLINES', 'Vector', 'flowlines'),
         'WATERBODIES': RSLayer('Waterbodies', 'WATERBODIES', 'Vector', 'waterbodies'),
         'COUNTIES': RSLayer('Counties', 'COUNTIES', 'Vector', 'counties'),
+        'GEOLOGY': RSLayer('Geology', 'GEOLOGY', 'Vector', 'geology'),
         'VBET_DGOS': RSLayer('Vbet DGOs', 'VBET_DGOS', 'Vector', 'vbet_dgos'),
         'VBET_IGOS': RSLayer('Vbet IGOs', 'VBET_IGOS', 'Vector', 'vbet_igos'),
         'VBET_CENTERLINES': RSLayer('VBET Centerline', 'VBET_CENTERLINE', 'Vector', 'valley_centerlines')
@@ -110,7 +111,7 @@ metric_functions = {1: value_from_dgo, 2: value_density_from_dgo, 3: get_max_val
 mw_metric_functions = {1: mw_copy_from_dgo, 2: mw_sum, 3: mw_sum_div_length, 4: mw_sum_div_chan_length, 5: mw_proportion, 6: mw_area_weighted_av}
 
 
-def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_table: Path, in_counties: Path, in_segments: Path, in_points: Path,
+def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_table: Path, in_counties: Path, in_geology: Path, in_segments: Path, in_points: Path,
                   in_vbet_centerline: Path, in_dem: Path, in_hillshade: Path, project_folder: Path,
                   in_confinement_dgos: Path = None, in_hydro_dgos: Path = None, in_anthro_dgos: Path = None, in_anthro_lines: Path = None,
                   in_rcat_dgos: Path = None, in_rcat_dgo_table: Path = None, in_brat_dgos: Path = None, in_brat_lines: Path = None,
@@ -188,6 +189,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
         'FLOWLINES': in_flowlines,
         'WATERBODIES': in_waterbodies,
         'COUNTIES': in_counties,
+        'GEOLOGY': in_geology,
         'VBET_DGOS': in_segments,
         'VBET_IGOS': in_points,
         'VBET_CENTERLINES': in_vbet_centerline
@@ -542,6 +544,10 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                             bps = landfire_classes(feat_seg_dgo, curs, epoch=2)
                             classes = ','.join([str(c) for c in bps])
                             besp_output[metrics[metric]['field_name']] = classes
+
+                        if metric == 'ELEV':
+                            elev = get_elevation(feat_geom, src_dem)
+                            besp_output[metrics[metric]['field_name']] = elev
 
                     set_clause = ', '.join([f"{k} = ?" for k in besp_output.keys()])
                     sql = f"""UPDATE dgo_{metric_group[1]} SET {set_clause} WHERE dgoid = {dgo_id}"""
