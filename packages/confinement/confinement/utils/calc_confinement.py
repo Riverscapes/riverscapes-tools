@@ -94,12 +94,15 @@ def dgo_confinement(confinement_type_network, out_dgos):
 
         dgo_lyr.ogr_layer.StartTransaction()
         for dgo_feat, *_ in dgo_lyr.iterate_features("Calculating confinement per DGO"):
+            level_path = dgo_feat.GetField("level_path")
+            if level_path is None:
+                continue
             dgo_ogr = dgo_feat.GetGeometryRef()
             dgo_geom = GeopackageLayer.ogr2shapely(dgo_ogr)
 
             confinement_lengths = {c_type: 0.0 for c_type in [
                 "Left", "Right", "Both", "None"]}
-            for confinement_feat, *_ in confinement_lyr.iterate_features(clip_shape=dgo_geom):
+            for confinement_feat, *_ in confinement_lyr.iterate_features(clip_shape=dgo_geom, attribute_filter=f'level_path = {level_path}'):
                 con_type = confinement_feat.GetField("confinement_type")
                 confinement_ogr = confinement_feat.GetGeometryRef()
                 confinement_geom = GeopackageLayer.ogr2shapely(confinement_ogr)
