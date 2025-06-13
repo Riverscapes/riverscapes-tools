@@ -21,7 +21,7 @@ import argparse
 import sqlite3
 
 
-NEXT_REACH_QUERY = 'SELECT us.Length, ds.LINKNO FROM {} us LEFT JOIN edited_network ds on us.DSLINKNO = ds.LINKNO WHERE us.LINKNO = ?'
+NEXT_REACH_QUERY = 'SELECT us.Length, ds.LINKNO FROM {} us LEFT JOIN {} ds on us.DSLINKNO = ds.LINKNO WHERE us.LINKNO = ?'
 
 
 def calc_level_path(curs: sqlite3.Cursor, feature_class: str, reset_first: bool) -> None:
@@ -67,7 +67,7 @@ def calculate_length(curs: sqlite3.Cursor, feature_class: str, hydro_id: int):
     cum_length = 0
     while hydro_id is not None:
         # Get the length of the current, upstream, riverline as well as the HydroID of the downstream reach.
-        curs.execute(NEXT_REACH_QUERY.format(feature_class), [hydro_id])
+        curs.execute(NEXT_REACH_QUERY.format(feature_class, feature_class), [hydro_id])
         row = curs.fetchall()
         if len(row) == 1:
             cum_length += row[0][0]
@@ -87,8 +87,8 @@ def assign_level_path(curs: sqlite3.Cursor, feature_class: str, headwater_hydro_
     hydro_id = headwater_hydro_id
     while hydro_id is not None:
         num_reaches += 1
-        curs.execute('UPDATE edited_network SET level_path = ? WHERE LINKNO = ? AND level_path IS NULL', [level_path, hydro_id])
-        curs.execute(NEXT_REACH_QUERY.format(feature_class), [hydro_id])
+        curs.execute(f'UPDATE {feature_class} SET level_path = ? WHERE LINKNO = ? AND level_path IS NULL', [level_path, hydro_id])
+        curs.execute(NEXT_REACH_QUERY.format(feature_class, feature_class), [hydro_id])
         row = curs.fetchall()
         if len(row) == 1:
             hydro_id = row[0][1]
@@ -152,9 +152,19 @@ def main():
             for trigger in triggers:
                 curs.execute(trigger[4])
 
+            print(f"Level paths calculated successfully for feature class {args.feature_class} in {args.hydro_gpkg}")
+
+            curs.execute(f'SELECT level_path IS NULL, Count(*) FROM {args.feature_class} GROUP BY level_path IS NULL ORDER BY level_path IS NULL'.format(args.feature_class))
+            row = curs.fetchone()
+            without_level_path, with_level_path = row[0], row[1]
+            print(f'{with_level_path} reaches with level path.')
+            print(f'{without_level_path} reaches without level path.')
+
         except Exception as e:
             conn.rollback()
             raise e
+
+    print('Process completed successfully.')
 
 
 if __name__ == '__main__':
