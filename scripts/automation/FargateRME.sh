@@ -85,7 +85,7 @@ cd /usr/local/src
 
 # Get the RSCli project we need to make this happen
 rscli download $RS_CONTEXT_DIR --id $RSCONTEXT_ID \
-  --file-filter "(nhdplushr\.gpkg|hydro_derivatives\.gpkg|dem.tif|dem_hillshade.tif|political_boundaries|project_bounds.geojson)" \
+  --file-filter "(nhdplushr\.gpkg|hydro_derivatives\.gpkg|dem.tif|dem_hillshade.tif|political_boundaries|geology|project_bounds.geojson)" \
   --no-input --no-ui --verbose
 
 rscli download $VBET_DIR --id $VBET_ID \
@@ -127,6 +127,7 @@ try() {
     $RS_CONTEXT_DIR/hydrology/nhdplushr.gpkg/NHDWaterbody \
     $RS_CONTEXT_DIR/hydrology/nhdplushr.gpkg/NHDPlusFlowlineVAA \
     $RS_CONTEXT_DIR/political_boundaries/counties.shp \
+    $RS_CONTEXT_DIR/geology/geology.shp \
     $VBET_DIR/intermediates/vbet_intermediates.gpkg/vbet_dgos \
     $VBET_DIR/outputs/vbet.gpkg/vbet_igos \
     $VBET_DIR/outputs/vbet.gpkg/vbet_centerlines \
