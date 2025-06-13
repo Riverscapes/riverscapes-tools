@@ -17,9 +17,10 @@ def get_max_value(dgo_ftr, in_line_network, field_name):
         _type_: the maximum value of the field
     """
 
+    lp = dgo_ftr.GetField('level_path')
     results = []
     with GeopackageLayer(in_line_network) as lyr_lines:
-        for feat, *_ in lyr_lines.iterate_features(clip_shape=dgo_ftr.GetGeometryRef()):
+        for feat, *_ in lyr_lines.iterate_features(clip_shape=dgo_ftr.GetGeometryRef(), attribute_filter=f'level_path = {lp}'):
             results.append(feat.GetField(field_name))
         lyr_lines.ogr_layer.SetSpatialFilter(None)
     if len(results) > 0:
@@ -42,10 +43,11 @@ def value_from_max_length(dgo_ftr, in_line_network, field_name):
     Returns:
         _type_: the value from the line segment with the longest length
     """
+    lp = dgo_ftr.GetField('level_path')
     attributes = {}
     dgo_geom = dgo_ftr.GetGeometryRef()
     with GeopackageLayer(in_line_network) as lyr_lines:
-        for feat, *_ in lyr_lines.iterate_features(clip_shape=dgo_geom):
+        for feat, *_ in lyr_lines.iterate_features(clip_shape=dgo_geom,  attribute_filter=f'level_path = {lp}'):
             line_geom = feat.GetGeometryRef()
             attribute = feat.GetField(field_name)
             geom_section = dgo_geom.Intersection(line_geom)

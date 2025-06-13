@@ -512,7 +512,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                             besp_output[metrics[metric]['field_name']] = watsid
 
                         if metric == 'HEDWTR':
-                            is_headwater = headwater(feat_geom, line_network)
+                            is_headwater = headwater(feat_seg_dgo, line_network)
                             besp_output[metrics[metric]['field_name']] = is_headwater
 
                         if metric == 'STRMLENGTH':
