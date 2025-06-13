@@ -1,3 +1,6 @@
+import numpy as np
+import rasterio
+from rasterio.mask import mask
 import sqlite3
 from rscommons import GeopackageLayer, VectorBase
 
@@ -165,6 +168,20 @@ def landfire_classes(feat_geom, cursor, epoch=1):
             classes_out.append(key)
 
     return classes_out
+
+
+def get_elevation(feat_geom, dem):
+    """get the elevation of a DGO"""
+
+    with rasterio.open(dem) as src:
+        raw_raster, _out_transform = mask(src, [feat_geom], crop=True)
+        mask_raster = np.ma.masked_values(raw_raster, src.nodata)
+        if not mask_raster.mask.all():
+            elevation = float(mask_raster.min())
+        else:
+            elevation = None
+
+    return elevation
 
 
 def mw_calculate_gradient(cursor, dgo_ids, channel=True):

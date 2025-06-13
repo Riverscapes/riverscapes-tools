@@ -79,3 +79,4 @@ metric_id,dataset,field_name,field_value
 119,inputs/inputs.gpkg/brat_dgo,mCC_EX_CT,
 120,inputs/inputs.gpkg/brat_dgo,mCC_HPE_CT,
 121,inputs/inputs.gpkg/brat_flowlines,Dam_Setting,
+126,inputs/inputs.gpkg/geology,GENERALIZE,
