@@ -110,3 +110,5 @@ metric_id,dataset,field_name
 119,outputs/riverscapes_metrics.gpkg/dgo_beaver,brat_complex_size
 120,outputs/riverscapes_metrics.gpkg/dgo_beaver,brat_hist_complex_size
 121,outputs/riverscapes_metrics.gpkg/dgo_beaver,dam_setting
+125,outputs/riverscapes_metrics.gpkg/dgo_desc,elevation
+126,outputs/riverscapes_metrics.gpkg/dgo_desc,geology
