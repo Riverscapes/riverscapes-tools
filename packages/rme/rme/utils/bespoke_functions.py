@@ -175,8 +175,10 @@ def landfire_classes(feat_geom, cursor, epoch=1):
 def get_elevation(feat_geom, dem):
     """get the elevation of a DGO"""
 
+    poly = VectorBase.ogr2shapely(feat_geom)
+
     with rasterio.open(dem) as src:
-        raw_raster, _out_transform = mask(src, [feat_geom], crop=True)
+        raw_raster, _out_transform = mask(src, [poly], crop=True)
         mask_raster = np.ma.masked_values(raw_raster, src.nodata)
         if not mask_raster.mask.all():
             elevation = float(mask_raster.min())
