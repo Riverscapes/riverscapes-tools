@@ -546,7 +546,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                             besp_output[metrics[metric]['field_name']] = classes
 
                         if metric == 'ELEV':
-                            elev = get_elevation(feat_geom, src_dem)
+                            elev = get_elevation(feat_geom, dem)
                             besp_output[metrics[metric]['field_name']] = elev
 
                     set_clause = ', '.join([f"{k} = ?" for k in besp_output.keys()])
@@ -635,7 +635,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                         exrip = float(prop) * float(area)
                         curs.execute(f"UPDATE dgo_veg SET ex_riparian = {exrip} WHERE dgoid = {dgo_id}")
             if metric == 'HISTRIP':
-                curs.execute("SELECT dgo_veg.dgoid, prop_riparian, segment_area FROM dgo_veg LEFT JOIN dgos on dgos.dgoid = dgo_veg.dgoid")
+                curs.execute("SELECT dgo_veg.dgoid, hist_prop_riparian, segment_area FROM dgo_veg LEFT JOIN dgos on dgos.dgoid = dgo_veg.dgoid")
                 data = curs.fetchall()
                 for dgo_id, prop, area in data:
                     if prop is not None and area is not None and area > 0:
