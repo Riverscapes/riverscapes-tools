@@ -149,7 +149,7 @@ def rel_flow_length(feat_geom, line_network, transform):
             section_proj = VectorBase.ogr2shapely(feat_section, transform=transform)
             length += section_proj.length
 
-    return length
+    return length / cl_length if cl_length > 0 else None
 
 
 def landfire_classes(feat_geom, cursor, epoch=1):
@@ -330,14 +330,17 @@ def mw_rvd(cursor, dgo_ids):
         _type_: proportion departure (unitless)
     """
 
-    cursor.execute(f"""SELECT SUM(prop_riparian*segment_area), sum(hist_prop_riparian*segment_area) FROM dgo_veg LEFT JOIN dgos
+    cursor.execute(f"""SELECT prop_riparian, hist_prop_riparian, segment_area, riparian_veg_departure FROM dgo_veg LEFT JOIN dgos
                     ON dgo_veg.dgoid = dgos.dgoid WHERE dgo_veg.dgoid IN ({','.join(map(str, dgo_ids))})""")
-    result = cursor.fetchone()
-    if None in result:
-        out = None
-    elif result[1] > 0.0:
-        out = 1 - (result[0] / result[1])
-    else:
-        out = None
+    result = cursor.fetchall()
+    if len(result) == 0:
+        return None
+    for row in result:
+        if row[3] == -9999:
+            result.remove(row)
+    if len(result) == 0 or sum([row[1] for row in result]) == 0:
+        return None
+
+    out = sum([row[0]*row[2] for row in result]) / sum([row[1]*row[2] for row in result])
 
     return out
