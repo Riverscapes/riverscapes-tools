@@ -55,7 +55,7 @@ LayerTypes = {
 }
 
 
-def rs_context_nz(watershed_id: str, natl_hydro_gpkg: str, dem_north: str, dem_south: str, output_folder: str, meta: Dict[str, str]) -> None:
+def rs_context_nz(watershed_id: str, natl_hydro_gpkg: str, lidar_gpkg: str, dem_north: str, dem_south: str, output_folder: str, meta: Dict[str, str]) -> None:
     """
     Run the Riverscapes Context Tool for New Zealand for a single watershed.
     This function processes hydrographic and topographic data for a specified watershed in New Zealand.
@@ -73,7 +73,8 @@ def rs_context_nz(watershed_id: str, natl_hydro_gpkg: str, dem_north: str, dem_s
     safe_makedirs(output_folder)
 
     hydro_gpkg, ws_name, is_north, trans_geom, ws_boundary_path = process_hydrography(natl_hydro_gpkg, watershed_id, output_folder)
-    dem, slope, hillshade = process_topography(dem_north if is_north is True else dem_south, output_folder, ws_boundary_path)
+    # dem, slope, hillshade = process_8m_topography(dem_north if is_north is True else dem_south, output_folder, ws_boundary_path)
+    dem, slope, hillshade = process_lidar_topography(lidar_gpkg, output_folder, ws_boundary_path)
 
     # Write a the project bounds as a GeoJSON file and return the centroid and bounding box
     bounds_file = os.path.join(output_folder, 'project_bounds.geojson')
@@ -236,7 +237,7 @@ def calculate_metrics(output_gpkg: str, dem_path: str, slope_path: str, output_f
         json.dump(metrics, f, indent=2)
 
 
-def process_topography(input_dem: str, output_folder: str, processing_boundary) -> Tuple[str, str, str]:
+def process_8m_topography(input_dem: str, output_folder: str, processing_boundary) -> Tuple[str, str, str]:
     """
     Process the topography data for the specified watershed.
     """
@@ -261,11 +262,24 @@ def process_topography(input_dem: str, output_folder: str, processing_boundary) 
     return output_dem, output_slope, output_hillshade
 
 
+def process_lidar_topography(lidar_gpkg: str, output_folder, processing_boundary) -> Tuple[str, str, str]:
+    """
+    Process the LiDAR data for the specified watershed.
+    This function assumes that the LiDAR data is stored in a GeoPackage with a specific structure.
+    """
+
+    log = Logger('Topography')
+    log.info(f'Processing topography using LiDAR GeoPackage: {lidar_gpkg}')
+
+    return (None, None, None)
+
+
 def main():
     """ Main entry point for New Zealand RS Context"""
     parser = argparse.ArgumentParser(description='Riverscapes Context Tool for New Zealand')
     parser.add_argument('watershed_id', help='Watershed/HUC identifier', type=int)
     parser.add_argument('hydro_gpkg', help='Path to GeoPackage containing national hydrography feature classes', type=str)
+    parser.add_argument('lidar_gpkg', help='Path to the LiDAR project and tile extents feature classes', type=str)
     parser.add_argument('dem_north', help='Path to North Island DEM raster.', type=str)
     parser.add_argument('dem_south', help='Path to South Island DEM raster.', type=str)
     parser.add_argument('output', help='Path to the output folder', type=str)
@@ -287,7 +301,7 @@ def main():
     meta = parse_metadata(args.meta)
 
     try:
-        rs_context_nz(args.watershed_id, args.hydro_gpkg, args.dem_north, args.dem_south, args.output, meta)
+        rs_context_nz(args.watershed_id, args.hydro_gpkg, args.lidar_gpkg, args.dem_north, args.dem_south, args.output, meta)
     except Exception as e:
         log.error(e)
         traceback.print_exc(file=sys.stdout)

@@ -26,6 +26,7 @@
       "args": [
         "${input:WatershedHydroID}",
         "{env:NATIONAL_PROJECT_NZ}/hydrography/hydrography.gpkg",
+        "{env:NATIONAL_PROJECT_NZ}/topography/lidar.gpkg",
         "{env:NATIONAL_PROJECT_NZ}/topography/NORTH_ISLAND_8m.tif",
         "{env:NATIONAL_PROJECT_NZ}/topography/SOUTH_ISLAND_8m.tif",
         "{env:DATA_ROOT}/rs_context/${input:WatershedHydroID}",
