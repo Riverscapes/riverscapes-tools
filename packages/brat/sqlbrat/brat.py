@@ -58,6 +58,7 @@ LayerTypes = {
         'FLOW_AREA': RSLayer('NHD Flow Area', 'FLOW_AREA', 'Vector', 'flowareas'),
         'WATERBODIES': RSLayer('NHD Waterbody', 'WATERBODIES', 'Vector', 'waterbodies'),
         'VALLEY_BOTTOM': RSLayer('Valley Bottom', 'VALLEY_BOTTOM', 'Vector', 'valley_bottom'),
+        'CHANNEL_AREA': RSLayer('Channel Area', 'CHANNEL_AREA', 'Vector', 'channel_area'),
     }),
     'INTERMEDIATES': RSLayer('Intermediates', 'INTERMEDIATES', 'Geopackage', 'intermediates/intermediates.gpkg', {
         'ATTRIBUTED_NETWORK': RSLayer('Segmented Network', 'ATTRIBUTED_NETWORK', 'Vector', 'attributed_network'),
@@ -171,7 +172,8 @@ def brat(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Path,
         'ANTHRO_DGOS': anthro_dgos,
         'FLOW_AREA': flow_areas,
         'WATERBODIES': waterbodies,
-        'VALLEY_BOTTOM': valley_bottom
+        'VALLEY_BOTTOM': valley_bottom,
+        'CHANNEL_AREA': channel_area
     }
 
     input_layers = {}
@@ -414,7 +416,7 @@ def brat(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Path,
         for buffer in [streamside_buffer, riparian_buffer]:
             buffer_path = os.path.join(intermediates_gpkg_path, f'buffer_{int(buffer)}m')
             polygon_path = buffer_path if buffer_path in buffer_paths else None
-            vegetation_summary(outputs_gpkg_path, '{} {}m'.format(label, buffer), veg_raster, buffer, channel_area, polygon_path)
+            vegetation_summary(outputs_gpkg_path, '{} {}m'.format(label, buffer), veg_raster, buffer, input_layers['CHANNEL_AREA'], polygon_path)
             buffer_paths.append(buffer_path)
 
     # add buffers to project
