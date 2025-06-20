@@ -24,7 +24,6 @@ import json
 import os
 import sys
 import traceback
-import boto3
 from osgeo import ogr, gdal
 from rscommons import Logger, ModelConfig, dotenv, initGDALOGRErrors
 from rscommons.classes.rs_project import RSLayer, RSProject, RSMeta, RSMetaTypes
@@ -33,7 +32,8 @@ from rscommons.raster_warp import raster_warp
 from rscommons.build_vrt import build_vrt
 from rscommons.util import safe_makedirs, parse_metadata
 from rscommons.vector_ops import copy_feature_class
-from rscommons.classes.vector_classes import GeopackageLayer, VectorBase
+from rscommons.classes.vector_classes import GeopackageLayer
+from rscommons.download import download_file
 from rscommons.shapefile import get_transform_from_epsg
 from rscontextnz.__version__ import __version__
 from .calc_level_path import calc_level_path, get_triggers
@@ -277,8 +277,6 @@ def process_lidar_topography(lidar_gpkg: str, download_folder: str, output_folde
     log = Logger('Topography')
     log.info(f'Processing topography using LiDAR GeoPackage: {lidar_gpkg}')
 
-    s3 = boto3.client('s3')
-
     topo_folder = os.path.join(output_folder, 'topography')
     output_dem = os.path.join(topo_folder, 'dem.tif')
     output_slope = os.path.join(topo_folder, 'slope.tif')
@@ -296,45 +294,14 @@ def process_lidar_topography(lidar_gpkg: str, download_folder: str, output_folde
         for feature, _counter, _progbar in lidar_layer.iterate_features("LiDAR Tiles", clip_shape=ws_shape):
             # s3://nz-elevation/manawatu-whanganui/rangitikei-river_2021/dem_1m/2193/BK35_10000_0505.tiff
             s3_key = feature.GetField('href')
-            s3_path = s3_key.split('s3://nz-elevation/')[1]
-            local_path = os.path.join(download_folder, os.path.basename(s3_path))
-
-            if os.path.exists(local_path):
-                log.info(f'Using existing DEM file: {local_path}')
-            else:
-                log.info(f'Downloading DEM file from S3: {s3_path} to {local_path}')
-                safe_makedirs(os.path.dirname(local_path))
-                # Download the file from S3
-                try:
-                    s3.download_file('nz-elevation', s3_path, local_path)
-                except s3.exceptions.ClientError as e:
-                    log.error(f'Error downloading {s3_path}: {e}')
-                    raise e
-
-            # local_dem_paths.append(local_path)
+            url = s3_key.replace('s3://nz-elevation', 'https://nz-elevation.s3.ap-southeast-2.amazonaws.com')
+            # local_path = os.path.join(download_folder, os.path.basename(s3_path))
+            _local_path = download_file(url, download_folder, False)
 
     vrt_file = os.path.join(download_folder, 'lidar_dem.vrt')
     build_vrt(download_folder, vrt_file)
 
-    # clip_ds, clip_layer = VectorBase.path_sorter(processing_boundary)
-    # warp_options_obj = gdal.WarpOptions(
-    #     dstSRS='EPSG:2193',
-    #     format='vrt',
-    #     cutlineDSName=clip_ds,
-    #     cutlineLayer=clip_layer,
-    #     cropToCutline=True,
-    #     tr=f"{dem_resolution} {dem_resolution}",
-    #     bigTiff='YES',
-    # )
-
-    # tmp_vrt = os.path.join(download_folder, 'gdal_warp_input.vrt')
-    # gdal.Warp(tmp_vrt, vrt_file, options=warp_options_obj)
-
-    # log.info('Using GDAL translate to convert VRT to compressed raster format.')
-    # translateoptions = gdal.TranslateOptions(gdal.ParseCommandLine(f"-of Gtiff {raster_compression}"))
-    # gdal.Translate(outraster, ds, options=translateoptions)
-
-    raster_warp(vrt_file, output_dem, 2193, processing_boundary, {"xRes": 5, "yRes": 5})
+    raster_warp(vrt_file, output_dem, 2193, processing_boundary, {"xRes": dem_resolution, "yRes": dem_resolution})
 
     gdal.DEMProcessing(output_slope, output_dem, 'slope', creationOptions=["COMPRESS=DEFLATE"])
     gdal.DEMProcessing(output_hillshade, output_dem, 'hillshade', creationOptions=["COMPRESS=DEFLATE"])
@@ -351,7 +318,7 @@ def main():
     parser.add_argument('dem_north', help='Path to North Island DEM raster.', type=str)
     parser.add_argument('dem_south', help='Path to South Island DEM raster.', type=str)
     parser.add_argument('output', help='Path to the output folder', type=str)
-    parser.add_argument('dem_resolution', help='Output DEM resolution in meters (e.g., 5 for 5m DEM)', type=int, default=5)
+    parser.add_argument('--dem_resolution', help='Output DEM resolution in meters (e.g., 5 for 5m DEM)', type=int, default=5)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
     parser.add_argument('--debug', help='(optional) more output about things like memory usage. There is a performance cost', action='store_true', default=False)
     parser.add_argument('--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
