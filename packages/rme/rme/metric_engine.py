@@ -57,6 +57,7 @@ LayerTypes = {
     'INPUTS': RSLayer('Inputs', 'INPUTS', 'Geopackage', 'inputs/inputs.gpkg', {
         'FLOWLINES': RSLayer('Flowlines', 'FLOWLINES', 'Vector', 'flowlines'),
         'WATERBODIES': RSLayer('Waterbodies', 'WATERBODIES', 'Vector', 'waterbodies'),
+        'HUC12': RSLayer('HUC12 Watersheds', 'HUC12', 'Vector', 'huc12'),
         'COUNTIES': RSLayer('Counties', 'COUNTIES', 'Vector', 'counties'),
         'GEOLOGY': RSLayer('Geology', 'GEOLOGY', 'Vector', 'geology'),
         'VBET_DGOS': RSLayer('Vbet DGOs', 'VBET_DGOS', 'Vector', 'vbet_dgos'),
@@ -111,8 +112,8 @@ metric_functions = {1: value_from_dgo, 2: value_density_from_dgo, 3: get_max_val
 mw_metric_functions = {1: mw_copy_from_dgo, 2: mw_sum, 3: mw_sum_div_length, 4: mw_sum_div_chan_length, 5: mw_proportion, 6: mw_area_weighted_av}
 
 
-def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_table: Path, in_counties: Path, in_geology: Path, in_segments: Path, in_points: Path,
-                  in_vbet_centerline: Path, in_dem: Path, in_hillshade: Path, project_folder: Path,
+def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_huc12: Path, in_vaa_table: Path, in_counties: Path, in_geology: Path,
+                  in_segments: Path, in_points: Path, in_vbet_centerline: Path, in_dem: Path, in_hillshade: Path, project_folder: Path,
                   in_confinement_dgos: Path = None, in_hydro_dgos: Path = None, in_anthro_dgos: Path = None, in_anthro_lines: Path = None,
                   in_rcat_dgos: Path = None, in_rcat_dgo_table: Path = None, in_brat_dgos: Path = None, in_brat_lines: Path = None,
                   level_paths: list = None, meta: dict = None):
@@ -188,6 +189,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
     src_layers = {
         'FLOWLINES': in_flowlines,
         'WATERBODIES': in_waterbodies,
+        'HUC12': in_huc12,
         'COUNTIES': in_counties,
         'GEOLOGY': in_geology,
         'VBET_DGOS': in_segments,
@@ -510,6 +512,10 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_vaa_tab
                         if metric == 'WATERSHED':
                             watsid = watershed(huc)
                             besp_output[metrics[metric]['field_name']] = watsid
+
+                        if metric == 'SUBWATERSHED':
+                            subwatsid = subwatershed(feat_seg_dgo, input_layers['HUC12'])
+                            besp_output[metrics[metric]['field_name']] = subwatsid
 
                         if metric == 'HEDWTR':
                             is_headwater = headwater(feat_seg_dgo, line_network)
@@ -905,6 +911,7 @@ def main():
     parser.add_argument('huc', help='HUC identifier', type=str)
     parser.add_argument('flowlines', help='NHD Flowlines (.shp, .gpkg/layer_name)', type=str)
     parser.add_argument('waterbodies', help='NHD Waterbodies', type=str)
+    parser.add_argument('huc12', help='HUC12 feature class', type=str)
     parser.add_argument('vaa_table', help='NHD Plus vaa table')
     parser.add_argument('counties', help='Counties shapefile')
     parser.add_argument('geology', help='Geology feature class')
@@ -944,6 +951,7 @@ def main():
                                          args.huc,
                                          args.flowlines,
                                          args.waterbodies,
+                                         args.huc12,
                                          args.vaa_table,
                                          args.counties,
                                          args.geology,
@@ -968,6 +976,7 @@ def main():
             metric_engine(args.huc,
                           args.flowlines,
                           args.waterbodies,
+                          args.huc12,
                           args.vaa_table,
                           args.counties,
                           args.geology,

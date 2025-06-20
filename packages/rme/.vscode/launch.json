@@ -30,6 +30,7 @@
         "${input:HUC}",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydro_derivatives.gpkg/network_intersected",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhdplushr.gpkg/NHDWaterbody",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhdplushr.gpkg/WBDHU12",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhdplushr.gpkg/NHDPlusFlowlineVAA",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/political_boundaries/counties.shp",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/geology/geology.shp",

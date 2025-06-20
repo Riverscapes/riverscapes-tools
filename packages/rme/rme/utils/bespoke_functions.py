@@ -20,6 +20,21 @@ def watershed(huc):
         return str(huc)
 
 
+def subwatershed(feat_seg_dgo, huc12):
+    """find the huc12 watershed that the DGO segment falls within
+
+    Args:
+        feat_seg_dgo (ogr.Geometry): DGO ogr feature
+        huc12 (str): huc12 gpkg feature class layer
+    """
+    with GeopackageLayer(huc12) as lyr_huc:
+        for feat, *_ in lyr_huc.iterate_features(clip_shape=feat_seg_dgo.GetGeometryRef()):
+            huc12_id = feat.GetField('huc12')
+            if huc12_id is not None:
+                return huc12_id
+    return None
+
+
 def headwater(feat_seg_dgo, line_network):
     """determine if a stream reach is a headwater
 
