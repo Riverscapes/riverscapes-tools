@@ -30,7 +30,7 @@
         "{env:NATIONAL_PROJECT_NZ}/topography/NORTH_ISLAND_8m.tif",
         "{env:NATIONAL_PROJECT_NZ}/topography/SOUTH_ISLAND_8m.tif",
         "{env:DATA_ROOT}/rs_context/${input:WatershedHydroID}",
-        "5",
+        "--dem_resolution", "5",
         "--verbose",
         "--debug"
       ]
