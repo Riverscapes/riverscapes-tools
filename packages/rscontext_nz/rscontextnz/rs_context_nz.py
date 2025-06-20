@@ -24,11 +24,13 @@ import json
 import os
 import sys
 import traceback
+import boto3
 from osgeo import ogr, gdal
 from rscommons import Logger, ModelConfig, dotenv, initGDALOGRErrors
 from rscommons.classes.rs_project import RSLayer, RSProject, RSMeta, RSMetaTypes
 from rscommons.project_bounds import generate_project_extents_from_geom
 from rscommons.raster_warp import raster_warp
+from rscommons.build_vrt import build_vrt
 from rscommons.util import safe_makedirs, parse_metadata
 from rscommons.vector_ops import copy_feature_class
 from rscommons.classes.vector_classes import GeopackageLayer
@@ -72,9 +74,12 @@ def rs_context_nz(watershed_id: str, natl_hydro_gpkg: str, lidar_gpkg: str, dem_
 
     safe_makedirs(output_folder)
 
+    download_folder = os.path.join(output_folder, '..', '..', 'lidar_downloads')
+    safe_makedirs(download_folder)
+
     hydro_gpkg, ws_name, is_north, trans_geom, ws_boundary_path = process_hydrography(natl_hydro_gpkg, watershed_id, output_folder)
     # dem, slope, hillshade = process_8m_topography(dem_north if is_north is True else dem_south, output_folder, ws_boundary_path)
-    dem, slope, hillshade = process_lidar_topography(lidar_gpkg, output_folder, ws_boundary_path)
+    dem, slope, hillshade = process_lidar_topography(lidar_gpkg, download_folder, output_folder, ws_boundary_path)
 
     # Write a the project bounds as a GeoJSON file and return the centroid and bounding box
     bounds_file = os.path.join(output_folder, 'project_bounds.geojson')
@@ -100,7 +105,8 @@ def rs_context_nz(watershed_id: str, natl_hydro_gpkg: str, lidar_gpkg: str, dem_
     datasets = project.XMLBuilder.add_sub_element(realization, 'Datasets')
 
     project.add_project_geopackage(datasets, LayerTypes['HYDRO'])
-    project.add_dataset(datasets, metrics_file, RSLayer('Metrics', 'Metrics', 'File', os.path.basename(metrics_file)), 'File')
+    project.add_dataset(datasets, metrics_file, RSLayer('Metrics', 'Metrics', 'File', os.path.basename(metrics_file)), 'File'
+                        )
     project.add_dataset(datasets, dem, LayerTypes['DEM'], 'DEM')
     project.add_dataset(datasets, slope, LayerTypes['SLOPE'], 'Raster')
     project.add_dataset(datasets, hillshade, LayerTypes['HILLSHADE'], 'Raster')
@@ -262,7 +268,7 @@ def process_8m_topography(input_dem: str, output_folder: str, processing_boundar
     return output_dem, output_slope, output_hillshade
 
 
-def process_lidar_topography(lidar_gpkg: str, output_folder, processing_boundary) -> Tuple[str, str, str]:
+def process_lidar_topography(lidar_gpkg: str, download_folder: str, output_folder: str, processing_boundary) -> Tuple[str, str, str]:
     """
     Process the LiDAR data for the specified watershed.
     This function assumes that the LiDAR data is stored in a GeoPackage with a specific structure.
@@ -270,6 +276,38 @@ def process_lidar_topography(lidar_gpkg: str, output_folder, processing_boundary
 
     log = Logger('Topography')
     log.info(f'Processing topography using LiDAR GeoPackage: {lidar_gpkg}')
+
+    s3 = boto3.client('s3')
+
+    topo_folder = os.path.join(output_folder, 'topography')
+    output_dem = os.path.join(topo_folder, 'dem.tif')
+    output_slope = os.path.join(topo_folder, 'slope.tif')
+    output_hillshade = os.path.join(topo_folder, 'dem_hillshade.tif')
+
+    local_dem_paths = []
+    with GeopackageLayer(processing_boundary) as ws_layer, GeopackageLayer(lidar_gpkg) as lidar_layer:
+
+        feature = ws_layer.GetNextFeature()
+        ws_shape = feature.GetGeometryRef().Clone()
+
+        for feature, _counter, progbar in lidar_layer.iterate_features("LiDAR Tiles", clip_shape=ws_shape):
+            geom: ogr.Geometry = feature.GetGeometryRef()
+
+            # s3://nz-elevation/manawatu-whanganui/rangitikei-river_2021/dem_1m/2193/BK35_10000_0505.tiff
+            s3_key = feature.GetField('href')
+            s3_path = s3_key.split('s3://nz-elevation/')[1]
+            local_path = os.path.join(download_folder, os.path.basename(s3_path))
+
+            s3.download_file('nz-elevation', s3_path, local_path)
+            local_dem_paths.append(local_path)
+
+    vrt_file = os.path.join(download_folder, 'lidar_dem.vrt')
+    build_vrt(download_folder, vrt_file)
+
+    raster_warp(vrt_file, output_dem, 2193, processing_boundary, {"cutlineBlend": 1})
+
+    gdal.DEMProcessing(output_slope, output_dem, 'slope', creationOptions=["COMPRESS=DEFLATE"])
+    gdal.DEMProcessing(output_hillshade, output_dem, 'hillshade', creationOptions=["COMPRESS=DEFLATE"])
 
     return (None, None, None)
 
