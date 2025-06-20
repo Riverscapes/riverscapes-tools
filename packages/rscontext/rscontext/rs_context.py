@@ -345,7 +345,8 @@ def rs_context(huc: str, landfire_dir: str, ownership: str, fair_market: str, ec
     log.info(f'Deleting {del_items} from Layer Types')  # for debug, remove
     for layer in del_items:
         del (LayerTypes['NATIONAL_WETLANDS'].sub_layers[layer])
-    project.add_project_geopackage(datasets, LayerTypes['NATIONAL_WETLANDS'])
+    if len(LayerTypes['NATIONAL_WETLANDS'].sub_layers) > 0:
+        project.add_project_geopackage(datasets, LayerTypes['NATIONAL_WETLANDS'])
 
     ################################################################################################################################################
     # PRISM climate rasters
