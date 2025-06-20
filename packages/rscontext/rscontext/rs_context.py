@@ -340,7 +340,7 @@ def rs_context(huc: str, landfire_dir: str, ownership: str, fair_market: str, ec
     for layer in LayerTypes['NATIONAL_WETLANDS'].sub_layers:
         layer_path = os.path.join(nwi_gpkg, LayerTypes['NATIONAL_WETLANDS'].sub_layers[layer].rel_path)
         if not os.path.exists(layer_path):
-            LayerTypes['NATIONAL_WETLANDS'].sub_layers.remove(layer)
+            del (LayerTypes['NATIONAL_WETLANDS'].sub_layers[layer])
     project.add_project_geopackage(datasets, LayerTypes['NATIONAL_WETLANDS'])
 
     ################################################################################################################################################
