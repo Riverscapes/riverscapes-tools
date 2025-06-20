@@ -33,7 +33,7 @@ from rscommons.raster_warp import raster_warp
 from rscommons.build_vrt import build_vrt
 from rscommons.util import safe_makedirs, parse_metadata
 from rscommons.vector_ops import copy_feature_class
-from rscommons.classes.vector_classes import GeopackageLayer
+from rscommons.classes.vector_classes import GeopackageLayer, VectorBase
 from rscommons.shapefile import get_transform_from_epsg
 from rscontextnz.__version__ import __version__
 from .calc_level_path import calc_level_path, get_triggers
@@ -57,7 +57,7 @@ LayerTypes = {
 }
 
 
-def rs_context_nz(watershed_id: str, natl_hydro_gpkg: str, lidar_gpkg: str, dem_north: str, dem_south: str, output_folder: str, meta: Dict[str, str]) -> None:
+def rs_context_nz(watershed_id: str, natl_hydro_gpkg: str, lidar_gpkg: str, dem_north: str, dem_south: str, output_folder: str, dem_resolution: int, meta: Dict[str, str]) -> None:
     """
     Run the Riverscapes Context Tool for New Zealand for a single watershed.
     This function processes hydrographic and topographic data for a specified watershed in New Zealand.
@@ -79,7 +79,7 @@ def rs_context_nz(watershed_id: str, natl_hydro_gpkg: str, lidar_gpkg: str, dem_
 
     hydro_gpkg, ws_name, is_north, trans_geom, ws_boundary_path = process_hydrography(natl_hydro_gpkg, watershed_id, output_folder)
     # dem, slope, hillshade = process_8m_topography(dem_north if is_north is True else dem_south, output_folder, ws_boundary_path)
-    dem, slope, hillshade = process_lidar_topography(lidar_gpkg, download_folder, output_folder, ws_boundary_path)
+    dem, slope, hillshade = process_lidar_topography(lidar_gpkg, download_folder, output_folder, ws_boundary_path, dem_resolution)
 
     # Write a the project bounds as a GeoJSON file and return the centroid and bounding box
     bounds_file = os.path.join(output_folder, 'project_bounds.geojson')
@@ -268,7 +268,7 @@ def process_8m_topography(input_dem: str, output_folder: str, processing_boundar
     return output_dem, output_slope, output_hillshade
 
 
-def process_lidar_topography(lidar_gpkg: str, download_folder: str, output_folder: str, processing_boundary) -> Tuple[str, str, str]:
+def process_lidar_topography(lidar_gpkg: str, download_folder: str, output_folder: str, processing_boundary, dem_resolution) -> Tuple[str, str, str]:
     """
     Process the LiDAR data for the specified watershed.
     This function assumes that the LiDAR data is stored in a GeoPackage with a specific structure.
@@ -284,27 +284,57 @@ def process_lidar_topography(lidar_gpkg: str, download_folder: str, output_folde
     output_slope = os.path.join(topo_folder, 'slope.tif')
     output_hillshade = os.path.join(topo_folder, 'dem_hillshade.tif')
 
-    local_dem_paths = []
-    with GeopackageLayer(processing_boundary) as ws_layer, GeopackageLayer(lidar_gpkg) as lidar_layer:
+    lidar_tiles = os.path.join(lidar_gpkg, 'lidar_tiles')
 
-        feature = ws_layer.GetNextFeature()
+    # local_dem_paths = []
+    with GeopackageLayer(processing_boundary) as ws_layer, GeopackageLayer(lidar_tiles) as lidar_layer:
+
+        # Get the watershed boundary geometry
+        feature = ws_layer.ogr_layer.GetNextFeature()
         ws_shape = feature.GetGeometryRef().Clone()
 
-        for feature, _counter, progbar in lidar_layer.iterate_features("LiDAR Tiles", clip_shape=ws_shape):
-            geom: ogr.Geometry = feature.GetGeometryRef()
-
+        for feature, _counter, _progbar in lidar_layer.iterate_features("LiDAR Tiles", clip_shape=ws_shape):
             # s3://nz-elevation/manawatu-whanganui/rangitikei-river_2021/dem_1m/2193/BK35_10000_0505.tiff
             s3_key = feature.GetField('href')
             s3_path = s3_key.split('s3://nz-elevation/')[1]
             local_path = os.path.join(download_folder, os.path.basename(s3_path))
 
-            s3.download_file('nz-elevation', s3_path, local_path)
-            local_dem_paths.append(local_path)
+            if os.path.exists(local_path):
+                log.info(f'Using existing DEM file: {local_path}')
+            else:
+                log.info(f'Downloading DEM file from S3: {s3_path} to {local_path}')
+                safe_makedirs(os.path.dirname(local_path))
+                # Download the file from S3
+                try:
+                    s3.download_file('nz-elevation', s3_path, local_path)
+                except s3.exceptions.ClientError as e:
+                    log.error(f'Error downloading {s3_path}: {e}')
+                    raise e
+
+            # local_dem_paths.append(local_path)
 
     vrt_file = os.path.join(download_folder, 'lidar_dem.vrt')
     build_vrt(download_folder, vrt_file)
 
-    raster_warp(vrt_file, output_dem, 2193, processing_boundary, {"cutlineBlend": 1})
+    # clip_ds, clip_layer = VectorBase.path_sorter(processing_boundary)
+    # warp_options_obj = gdal.WarpOptions(
+    #     dstSRS='EPSG:2193',
+    #     format='vrt',
+    #     cutlineDSName=clip_ds,
+    #     cutlineLayer=clip_layer,
+    #     cropToCutline=True,
+    #     tr=f"{dem_resolution} {dem_resolution}",
+    #     bigTiff='YES',
+    # )
+
+    # tmp_vrt = os.path.join(download_folder, 'gdal_warp_input.vrt')
+    # gdal.Warp(tmp_vrt, vrt_file, options=warp_options_obj)
+
+    # log.info('Using GDAL translate to convert VRT to compressed raster format.')
+    # translateoptions = gdal.TranslateOptions(gdal.ParseCommandLine(f"-of Gtiff {raster_compression}"))
+    # gdal.Translate(outraster, ds, options=translateoptions)
+
+    raster_warp(vrt_file, output_dem, 2193, processing_boundary, {"xRes": 5, "yRes": 5})
 
     gdal.DEMProcessing(output_slope, output_dem, 'slope', creationOptions=["COMPRESS=DEFLATE"])
     gdal.DEMProcessing(output_hillshade, output_dem, 'hillshade', creationOptions=["COMPRESS=DEFLATE"])
@@ -321,6 +351,7 @@ def main():
     parser.add_argument('dem_north', help='Path to North Island DEM raster.', type=str)
     parser.add_argument('dem_south', help='Path to South Island DEM raster.', type=str)
     parser.add_argument('output', help='Path to the output folder', type=str)
+    parser.add_argument('dem_resolution', help='Output DEM resolution in meters (e.g., 5 for 5m DEM)', type=int, default=5)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
     parser.add_argument('--debug', help='(optional) more output about things like memory usage. There is a performance cost', action='store_true', default=False)
     parser.add_argument('--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
@@ -339,7 +370,7 @@ def main():
     meta = parse_metadata(args.meta)
 
     try:
-        rs_context_nz(args.watershed_id, args.hydro_gpkg, args.lidar_gpkg, args.dem_north, args.dem_south, args.output, meta)
+        rs_context_nz(args.watershed_id, args.hydro_gpkg, args.lidar_gpkg, args.dem_north, args.dem_south, args.output, args.dem_resolution, meta)
     except Exception as e:
         log.error(e)
         traceback.print_exc(file=sys.stdout)

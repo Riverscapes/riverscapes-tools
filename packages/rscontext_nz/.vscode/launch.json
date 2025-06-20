@@ -9,7 +9,7 @@
       "id": "WatershedHydroID",
       "description": "Pick a WatershedHydroID to process",
       // "default": "563738" // South Island near Christchurch
-      "default": "224060" // North Island near Waikato
+      "default": "586561" // North Island near Waikato
     }
   ],  
   "configurations": [
@@ -30,6 +30,7 @@
         "{env:NATIONAL_PROJECT_NZ}/topography/NORTH_ISLAND_8m.tif",
         "{env:NATIONAL_PROJECT_NZ}/topography/SOUTH_ISLAND_8m.tif",
         "{env:DATA_ROOT}/rs_context/${input:WatershedHydroID}",
+        "5",
         "--verbose",
         "--debug"
       ]

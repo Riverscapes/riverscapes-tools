@@ -35,7 +35,7 @@ def build_vrt(search_dir, vrt):
     rasters = []
     for root, _sub_folder, files in os.walk(search_dir):
         for item in files:
-            if item.endswith('.img') or item.endswith('.tif'):
+            if item.endswith('.img') or item.endswith('.tiff'):
                 rasters.append(os.path.join(root, item))
 
     log.info('{} rasters found in {}'.format(len(rasters), search_dir))
