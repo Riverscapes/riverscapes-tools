@@ -306,7 +306,7 @@ def process_lidar_topography(lidar_gpkg: str, download_folder: str, output_folde
     gdal.DEMProcessing(output_slope, output_dem, 'slope', creationOptions=["COMPRESS=DEFLATE"])
     gdal.DEMProcessing(output_hillshade, output_dem, 'hillshade', creationOptions=["COMPRESS=DEFLATE"])
 
-    return (None, None, None)
+    return output_dem, output_slope, output_hillshade
 
 
 def main():
