@@ -9,13 +9,14 @@ import numpy as np
 from osgeo import gdal, ogr
 import rasterio
 import sqlite3
+from shapely.ops import unary_union
 from rasterio.mask import mask
 from rscommons import GeopackageLayer, Logger
 from rscommons.database import SQLiteCon
 from rscommons.classes.vector_base import VectorBase
 
 
-def vegetation_summary(outputs_gpkg_path: str, label: str, veg_raster: str, buffer: float, save_polygons_path: str):
+def vegetation_summary(outputs_gpkg_path: str, label: str, veg_raster: str, buffer: float, channel_polygons: str, save_polygons_path: str):
     """ Loop through every reach in a BRAT database and
     retrieve the values from a vegetation raster within
     the specified buffer. Then store the tally of
@@ -42,7 +43,8 @@ def vegetation_summary(outputs_gpkg_path: str, label: str, veg_raster: str, buff
     # Open the raster and then loop over all polyline features
     veg_counts = []
     polygons = {}
-    with rasterio.open(veg_raster) as src, GeopackageLayer(os.path.join(outputs_gpkg_path, 'ReachGeometry')) as lyr:
+    with rasterio.open(veg_raster) as src, GeopackageLayer(os.path.join(outputs_gpkg_path, 'ReachGeometry')) as lyr, \
+            GeopackageLayer(channel_polygons) as channel_lyr:
         _srs, transform = VectorBase.get_transform_from_raster(lyr.spatial_ref, veg_raster)
         spatial_ref = lyr.spatial_ref
 
@@ -51,8 +53,18 @@ def vegetation_summary(outputs_gpkg_path: str, label: str, veg_raster: str, buff
             geom = feature.GetGeometryRef()
             if transform:
                 geom.Transform(transform)
+            chan_polys = []
+            for chan_feature, *_ in channel_lyr.iterate_features(clip_shape=geom):
+                chan_polys.append(VectorBase.ogr2shapely(chan_feature.GetGeometryRef()))
+            if len(chan_polys) > 0:
+                geom = unary_union(chan_polys)
+            else:
+                geom = VectorBase.ogr2shapely(geom)
 
-            polygon = VectorBase.ogr2shapely(geom).buffer(raster_buffer)
+            polygon = geom.buffer(raster_buffer)
+            if geom.geom_type not in ('LineString', 'MultiLineString'):
+                polygon = polygon.difference(geom)
+
             polygons[reach_id] = polygon
 
             try:

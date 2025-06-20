@@ -95,7 +95,7 @@ def brat(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Path,
          anthro_flowlines: Path, anthro_igos: Path, anthro_dgos: Path, hillshade: Path,
          existing_veg: Path, historical_veg: Path, output_folder: Path, streamside_buffer: float,
          riparian_buffer: float, reach_codes: List[str], canal_codes: List[str], peren_codes: List[str],
-         flow_areas: Path, waterbodies: Path, max_waterbody: float, valley_bottom: Path,
+         flow_areas: Path, waterbodies: Path, max_waterbody: float, valley_bottom: Path, channel_area: Path,
          meta: Dict[str, str]):
     """Build a BRAT project by segmenting a reach network and copying
     all the necessary layers into the resultant BRAT project
@@ -414,7 +414,7 @@ def brat(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Path,
         for buffer in [streamside_buffer, riparian_buffer]:
             buffer_path = os.path.join(intermediates_gpkg_path, f'buffer_{int(buffer)}m')
             polygon_path = buffer_path if buffer_path in buffer_paths else None
-            vegetation_summary(outputs_gpkg_path, '{} {}m'.format(label, buffer), veg_raster, buffer, polygon_path)
+            vegetation_summary(outputs_gpkg_path, '{} {}m'.format(label, buffer), veg_raster, buffer, channel_area, polygon_path)
             buffer_paths.append(buffer_path)
 
     # add buffers to project
@@ -579,7 +579,8 @@ def main():
     parser.add_argument('existing_veg', help='existing_veg input', type=str)
     parser.add_argument('historical_veg', help='historical_veg input', type=str)
 
-    parser.add_argument('valley_bottom', help='Valley bottom shapeFile', type=str)
+    parser.add_argument('valley_bottom', help='Valley bottom input', type=str)
+    parser.add_argument('channel_area', help='Channel area input', type=str)
 
     parser.add_argument('streamside_buffer', help='streamside_buffer input', type=float)
     parser.add_argument('riparian_buffer', help='riparian_buffer input', type=float)
@@ -622,7 +623,7 @@ def main():
                                          args.streamside_buffer, args.riparian_buffer,
                                          reach_codes, canal_codes, peren_codes,
                                          args.flow_areas, args.waterbodies, args.max_waterbody,
-                                         args.valley_bottom, meta
+                                         args.valley_bottom, args.channel_area, meta
                                          )
             log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
         else:
@@ -633,7 +634,7 @@ def main():
                 args.streamside_buffer, args.riparian_buffer,
                 reach_codes, canal_codes, peren_codes,
                 args.flow_areas, args.waterbodies, args.max_waterbody,
-                args.valley_bottom, meta
+                args.valley_bottom, args.channel_area, meta
             )
 
     except Exception as ex:

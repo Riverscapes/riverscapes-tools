@@ -29,9 +29,10 @@
         "{env:DATA_ROOT}/anthro/${input:HUC}/outputs/anthro.gpkg/vwReaches",
         "{env:DATA_ROOT}/anthro/${input:HUC}/outputs/anthro.gpkg/vwIgos",
         "{env:DATA_ROOT}/anthro/${input:HUC}/outputs/anthro.gpkg/vwDgos",
-        "{env:DATA_ROOT}/rs_context/${input:HUC}/vegetation/hybrid_nmripmap.tif",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/vegetation/existing_veg.tif",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/vegetation/historic_veg.tif",
         "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet.gpkg/vbet_full", // VBET!!!!!
+        "{env:DATA_ROOT}/vbet/${input:HUC}/inputs/vbet_inputs.gpkg/channel_area_polygons", // VBET DGOs
         "30", // streamside_buffer
         "100", // riparian_buffer
         "{env:DATA_ROOT}/brat/${input:HUC}", // output folder
