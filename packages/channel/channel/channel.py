@@ -126,7 +126,7 @@ def channel(huc: int,
     GeopackageLayer.delete(intermediates_gpkg_path)
     GeopackageLayer.delete(output_gpkg_path)
 
-    fields = ['fid', 'geom', 'GNIS_ID', 'GNIS_Name', 'ReachCode', 'FType', 'FCode', 'NHDPlusID', 'level_path']
+    fields = ['fid', 'geom', 'gnis_id', 'gnis_name', 'reachcode', 'ftype', 'fcode', 'nhdplusid', 'level_path']
 
     if flowlines is not None:
         proj_flowlines = os.path.join(inputs_gpkg_path, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
@@ -262,22 +262,23 @@ def channel(huc: int,
     if proj_flowlines is not None:
         log.info('Adding attributes from flowlines to channel polygons')
         with GeopackageLayer(output_channel_area, write=True) as channel_lyr, GeopackageLayer(proj_flowlines) as flowline_lyr:
-            fields = []
+            fc_fields = []
             for i in range(flowline_lyr.ogr_layer.GetLayerDefn().GetFieldCount()):
                 field_defn = flowline_lyr.ogr_layer.GetLayerDefn().GetFieldDefn(i)
                 if field_defn.GetName() not in ['fid', 'geom', 'bankfull_m']:
-                    fields.append(field_defn.GetName())
-            if 'NHDPlusID' in fields:
+                    fc_fields.append(field_defn.GetName().lower())
+            if 'nhdplusid' in fc_fields:
                 for channel_ftr, *_ in channel_lyr.iterate_features("Adding flowline attributes"):
-                    nhdplus_id = channel_ftr.GetField('NHDPlusID')
+                    nhdplus_id = channel_ftr.GetField('nhdplusid')
                     if nhdplus_id is None:
                         continue
-                    for fn in fields:
+                    for fn in fc_fields:
                         if channel_ftr.GetField(fn) is None:
-                            for flowline_ftr, *_ in flowline_lyr.iterate_features(attribute_filter=f'NHDPlusID = {nhdplus_id}'):
-                                if flowline_ftr.GetField(fn) is not None:
-                                    channel_ftr.SetField(fn, flowline_ftr.GetField(fn))
-                                    break
+                            for flowline_ftr, *_ in flowline_lyr.iterate_features(attribute_filter=f'nhdplusid = {nhdplus_id}'):
+                                if flowline_ftr.GetGeometryRef().Intersects(channel_ftr.GetGeometryRef()):
+                                    if flowline_ftr.GetField(fn) is not None:
+                                        channel_ftr.SetField(fn, flowline_ftr.GetField(fn))
+                                        break
                     channel_lyr.ogr_layer.SetFeature(channel_ftr)
     log.info('Adding attributes from flowlines to channel polygons completed')
 
