@@ -74,7 +74,7 @@ rscli download $RS_CONTEXT_DIR --id "$RSCONTEXT_ID" \
 
 # Go get vbet result for this to work
 rscli download $VBET_DIR --id "$VBET_ID"\
-  --file-filter "vbet\.gpkg" \
+  --file-filter "(vbet\.gpkg|vbet_inputs\.gpkg)" \
   --no-input --no-ui --verbose
 
 rscli download $HYDRO_DIR --id "$HYDRO_ID" \
@@ -105,6 +105,7 @@ try() {
     $RS_CONTEXT_DIR/vegetation/existing_veg.tif \
     $RS_CONTEXT_DIR/vegetation/historic_veg.tif \
     $VBET_DIR/outputs/vbet.gpkg/vbet_full \
+    $VBET_DIR/outputs/vbet_inputs.gpkg/channel_area_polygons \
     30 \
     100 \
     $BRAT_DIR \
