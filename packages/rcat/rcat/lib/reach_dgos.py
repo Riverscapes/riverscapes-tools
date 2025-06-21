@@ -50,7 +50,11 @@ def reach_dgos(reaches: str, dgos: str, proj_raster: str, flowarea: str = None, 
                     if window_buffer:
                         polys = [poly.buffer(window_buffer) for poly in polys]
                     polygon = unary_union(polys)
-                    width = min(widths)
+                    if len(widths) == 0:
+                        log.warning(f'feature {reach_id} has no valid widths')
+                        width = 10
+                    else:
+                        width = min(widths)
 
                 if flowarea:
                     polygon = polygon.difference(flowarea)
