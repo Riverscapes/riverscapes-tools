@@ -295,8 +295,9 @@ def process_lidar_topography(lidar_gpkg: str, download_folder: str, output_folde
             # s3://nz-elevation/manawatu-whanganui/rangitikei-river_2021/dem_1m/2193/BK35_10000_0505.tiff
             s3_key = feature.GetField('href')
             url = s3_key.replace('s3://nz-elevation', 'https://nz-elevation.s3.ap-southeast-2.amazonaws.com')
+            local_folder = os.path.join(download_folder, os.path.dirname(s3_key).replace('s3://nz-elevation/', ''))
             # local_path = os.path.join(download_folder, os.path.basename(s3_path))
-            _local_path = download_file(url, download_folder, False)
+            _local_path = download_file(url, local_folder, False)
 
     vrt_file = os.path.join(download_folder, 'lidar_dem.vrt')
     build_vrt(download_folder, vrt_file)
