@@ -24,47 +24,52 @@ def reach_dgos(reaches: str, dgos: str, proj_raster: str, flowarea: str = None, 
         gt = raster.transform
         x_res = gt[0]
     polygons = {}
-    with GeopackageLayer(reaches) as lyr:
+
+    # Open DGO layer once outside the loop for better performance
+    with get_shp_or_gpkg(dgos) as dgolyr, GeopackageLayer(reaches) as lyr:
         for feature, _counter, _progbar in lyr.iterate_features():
             reach_id = feature.GetFID()
             geom = feature.GetGeometryRef()
 
-            with get_shp_or_gpkg(dgos) as dgolyr:
-                dgolyr.ogr_layer.SetSpatialFilter(feature.GetGeometryRef())
-                if dgolyr.ogr_layer.GetFeatureCount() == 0:
-                    log.info(f'feature {reach_id} has no associated DGOs, using 100m buffer')
-                    p = VectorBase.ogr2shapely(geom)
-                    polygon = p.buffer(raster_buffer)
-                    width = 100
-                elif dgolyr.ogr_layer.GetFeatureCount == 1:
-                    ftrs = [ftr for ftr in dgolyr.ogr_layer]
-                    seg_area = ftrs[0].GetField('segment_area')
-                    cl_len = ftrs[0].GetField('centerline_length')
-                    polygon = VectorBase.ogr2shapely(ftrs[0].GetGeometryRef())
-                    if window_buffer:
-                        polygon = polygon.buffer(window_buffer)
-                    width = seg_area / cl_len
+            # Reset spatial filter and query for intersecting DGOs
+            dgolyr.ogr_layer.SetSpatialFilter(geom)
+            intersecting_dgos = list(dgolyr.ogr_layer)
+
+            if len(intersecting_dgos) == 0:
+                log.info(f'feature {reach_id} has no associated DGOs, using 100m buffer')
+                p = VectorBase.ogr2shapely(geom)
+                polygon = p.buffer(raster_buffer)
+                width = 100
+            elif len(intersecting_dgos) == 1:
+                ftr = intersecting_dgos[0]
+                seg_area = ftr.GetField('segment_area')
+                cl_len = ftr.GetField('centerline_length')
+                polygon = VectorBase.ogr2shapely(ftr.GetGeometryRef())
+                if window_buffer:
+                    polygon = polygon.buffer(window_buffer)
+                width = seg_area / cl_len
+            else:
+                polys = [VectorBase.ogr2shapely(ftr.GetGeometryRef()) for ftr in intersecting_dgos]
+                widths = [ftr.GetField('segment_area') / ftr.GetField('centerline_length')
+                          for ftr in intersecting_dgos if ftr.GetField('centerline_length') > 0]
+                if window_buffer:
+                    polys = [poly.buffer(window_buffer) for poly in polys]
+                polygon = unary_union(polys)
+                if len(widths) == 0:
+                    log.warning(f'feature {reach_id} has no valid widths')
+                    width = 10
                 else:
-                    polys = [VectorBase.ogr2shapely(ftr.GetGeometryRef()) for ftr in dgolyr.ogr_layer]
-                    widths = [ftr.GetField('segment_area') / ftr.GetField('centerline_length') for ftr in dgolyr.ogr_layer if ftr.GetField('centerline_length') > 0]
-                    if window_buffer:
-                        polys = [poly.buffer(window_buffer) for poly in polys]
-                    polygon = unary_union(polys)
-                    if len(widths) == 0:
-                        log.warning(f'feature {reach_id} has no valid widths')
-                        width = 10
-                    else:
-                        width = min(widths)
+                    width = min(widths)
 
-                if flowarea:
-                    polygon = polygon.difference(flowarea)
-                if waterbody:
-                    polygon = polygon.difference(waterbody)
+            if flowarea:
+                polygon = polygon.difference(flowarea)
+            if waterbody:
+                polygon = polygon.difference(waterbody)
 
-                # buffer by raster resolution to ensure sampling of at least one pixel
-                polygon = polygon.buffer(x_res / 2)
+            # buffer by raster resolution to ensure sampling of at least one pixel
+            polygon = polygon.buffer(x_res / 2)
 
-                polygons[reach_id] = [polygon, width]
+            polygons[reach_id] = [polygon, width]
 
     return polygons
 
