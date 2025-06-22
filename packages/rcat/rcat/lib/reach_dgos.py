@@ -25,51 +25,122 @@ def reach_dgos(reaches: str, dgos: str, proj_raster: str, flowarea: str = None, 
         x_res = gt[0]
     polygons = {}
 
+    # Load flowarea and waterbody geometries once if provided
+    flowarea_geom = None
+    waterbody_geom = None
+    if flowarea:
+        try:
+            with get_shp_or_gpkg(flowarea) as flow_lyr:
+                flow_features = [VectorBase.ogr2shapely(f.GetGeometryRef()) for f in flow_lyr.ogr_layer]
+                if flow_features:
+                    flowarea_geom = unary_union(flow_features)
+        except Exception as e:
+            log.warning(f'Could not load flowarea: {e}')
+    
+    if waterbody:
+        try:
+            with get_shp_or_gpkg(waterbody) as wb_lyr:
+                wb_features = [VectorBase.ogr2shapely(f.GetGeometryRef()) for f in wb_lyr.ogr_layer]
+                if wb_features:
+                    waterbody_geom = unary_union(wb_features)
+        except Exception as e:
+            log.warning(f'Could not load waterbody: {e}')
+
     # Open DGO layer once outside the loop for better performance
     with get_shp_or_gpkg(dgos) as dgolyr, GeopackageLayer(reaches) as lyr:
-        for feature, _counter, _progbar in lyr.iterate_features():
-            reach_id = feature.GetFID()
-            geom = feature.GetGeometryRef()
+        total_features = lyr.ogr_layer.GetFeatureCount()
+        log.info(f'Processing {total_features} reach features')
+        
+        for feature, counter, progbar in lyr.iterate_features():
+            try:
+                reach_id = feature.GetFID()
+                geom = feature.GetGeometryRef()
 
-            # Reset spatial filter and query for intersecting DGOs
-            dgolyr.ogr_layer.SetSpatialFilter(geom)
-            intersecting_dgos = list(dgolyr.ogr_layer)
-
-            if len(intersecting_dgos) == 0:
-                log.info(f'feature {reach_id} has no associated DGOs, using 100m buffer')
-                p = VectorBase.ogr2shapely(geom)
-                polygon = p.buffer(raster_buffer)
-                width = 100
-            elif len(intersecting_dgos) == 1:
-                ftr = intersecting_dgos[0]
-                seg_area = ftr.GetField('segment_area')
-                cl_len = ftr.GetField('centerline_length')
-                polygon = VectorBase.ogr2shapely(ftr.GetGeometryRef())
-                if window_buffer:
-                    polygon = polygon.buffer(window_buffer)
-                width = seg_area / cl_len
-            else:
-                polys = [VectorBase.ogr2shapely(ftr.GetGeometryRef()) for ftr in intersecting_dgos]
-                widths = [ftr.GetField('segment_area') / ftr.GetField('centerline_length')
-                          for ftr in intersecting_dgos if ftr.GetField('centerline_length') > 0]
-                if window_buffer:
-                    polys = [poly.buffer(window_buffer) for poly in polys]
-                polygon = unary_union(polys)
-                if len(widths) == 0:
-                    log.warning(f'feature {reach_id} has no valid widths')
-                    width = 10
+                # Clear any existing spatial filter and set new one
+                dgolyr.ogr_layer.SetSpatialFilter(None)
+                dgolyr.ogr_layer.SetSpatialFilter(geom)
+                
+                # Count intersecting features first to avoid loading all into memory
+                intersecting_count = dgolyr.ogr_layer.GetFeatureCount()
+                
+                if intersecting_count == 0:
+                    log.debug(f'Reach {reach_id} has no associated DGOs, using 100m buffer')
+                    p = VectorBase.ogr2shapely(geom)
+                    polygon = p.buffer(raster_buffer)
+                    width = 100
+                elif intersecting_count == 1:
+                    # Get the single feature
+                    dgolyr.ogr_layer.ResetReading()
+                    ftr = next(iter(dgolyr.ogr_layer))
+                    seg_area = ftr.GetField('segment_area')
+                    cl_len = ftr.GetField('centerline_length')
+                    polygon = VectorBase.ogr2shapely(ftr.GetGeometryRef())
+                    if window_buffer:
+                        polygon = polygon.buffer(window_buffer)
+                    width = seg_area / cl_len if cl_len > 0 else 10
                 else:
-                    width = min(widths)
+                    # Process multiple features
+                    dgolyr.ogr_layer.ResetReading()
+                    polys = []
+                    widths = []
+                    for ftr in dgolyr.ogr_layer:
+                        try:
+                            poly = VectorBase.ogr2shapely(ftr.GetGeometryRef())
+                            if poly and poly.is_valid:
+                                polys.append(poly)
+                                cl_len = ftr.GetField('centerline_length')
+                                seg_area = ftr.GetField('segment_area')
+                                if cl_len and cl_len > 0 and seg_area:
+                                    widths.append(seg_area / cl_len)
+                        except Exception as e:
+                            log.warning(f'Error processing DGO feature: {e}')
+                            continue
+                    
+                    if not polys:
+                        log.warning(f'Reach {reach_id} has no valid DGO geometries, using 100m buffer')
+                        p = VectorBase.ogr2shapely(geom)
+                        polygon = p.buffer(raster_buffer)
+                        width = 100
+                    else:
+                        if window_buffer:
+                            polys = [poly.buffer(window_buffer) for poly in polys]
+                        polygon = unary_union(polys)
+                        width = min(widths) if widths else 10
 
-            if flowarea:
-                polygon = polygon.difference(flowarea)
-            if waterbody:
-                polygon = polygon.difference(waterbody)
+                # Apply difference operations if geometries were loaded
+                try:
+                    if flowarea_geom and polygon.intersects(flowarea_geom):
+                        polygon = polygon.difference(flowarea_geom)
+                    if waterbody_geom and polygon.intersects(waterbody_geom):
+                        polygon = polygon.difference(waterbody_geom)
+                except Exception as e:
+                    log.warning(f'Error applying flowarea/waterbody difference for reach {reach_id}: {e}')
 
-            # buffer by raster resolution to ensure sampling of at least one pixel
-            polygon = polygon.buffer(x_res / 2)
+                # buffer by raster resolution to ensure sampling of at least one pixel
+                try:
+                    polygon = polygon.buffer(x_res / 2)
+                    polygons[reach_id] = [polygon, width]
+                except Exception as e:
+                    log.warning(f'Error buffering polygon for reach {reach_id}: {e}')
+                    # Fallback to simple buffer
+                    p = VectorBase.ogr2shapely(geom)
+                    polygon = p.buffer(raster_buffer)
+                    polygons[reach_id] = [polygon, 100]
 
-            polygons[reach_id] = [polygon, width]
+                # Log progress every 1000 features
+                if counter % 1000 == 0:
+                    log.info(f'Processed {counter}/{total_features} reaches')
+                    
+            except Exception as e:
+                log.error(f'Error processing reach {reach_id}: {e}')
+                # Add fallback polygon to keep processing
+                try:
+                    p = VectorBase.ogr2shapely(geom)
+                    polygon = p.buffer(raster_buffer)
+                    polygons[reach_id] = [polygon, 100]
+                except:
+                    log.error(f'Could not create fallback polygon for reach {reach_id}')
+                continue
 
     return polygons
 
