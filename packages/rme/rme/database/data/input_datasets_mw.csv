@@ -112,3 +112,4 @@ metric_id,dataset,field_name
 121,outputs/riverscapes_metrics.gpkg/dgo_beaver,dam_setting
 125,outputs/riverscapes_metrics.gpkg/dgo_desc,elevation
 126,outputs/riverscapes_metrics.gpkg/dgo_desc,geology
+127,outputs/riverscapes_metrics.gpkg/dgo_desc,huc12
