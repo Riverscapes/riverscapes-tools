@@ -513,7 +513,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_huc12: 
                             watsid = watershed(huc)
                             besp_output[metrics[metric]['field_name']] = watsid
 
-                        if metric == 'SUBWATERSHED':
+                        if metric == 'SUBWATS':
                             subwatsid = subwatershed(feat_seg_dgo, input_layers['HUC12'])
                             besp_output[metrics[metric]['field_name']] = subwatsid
 
