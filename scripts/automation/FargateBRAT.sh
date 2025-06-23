@@ -105,7 +105,7 @@ try() {
     $RS_CONTEXT_DIR/vegetation/existing_veg.tif \
     $RS_CONTEXT_DIR/vegetation/historic_veg.tif \
     $VBET_DIR/outputs/vbet.gpkg/vbet_full \
-    $VBET_DIR/outputs/vbet_inputs.gpkg/channel_area_polygons \
+    $VBET_DIR/inputs/vbet_inputs.gpkg/channel_area_polygons \
     30 \
     100 \
     $BRAT_DIR \

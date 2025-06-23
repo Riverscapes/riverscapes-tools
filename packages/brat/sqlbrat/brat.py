@@ -178,7 +178,6 @@ def brat(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Path,
 
     input_layers = {}
     for input_key, rslayer in LayerTypes['INPUTS'].sub_layers.items():
-        log.info(f'layer: {input_key}')
         input_layers[input_key] = os.path.join(inputs_gpkg_path, rslayer.rel_path)
         copy_feature_class(source_layers[input_key], input_layers[input_key], cfg.OUTPUT_EPSG)
 
