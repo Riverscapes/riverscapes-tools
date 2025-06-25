@@ -299,6 +299,7 @@ def dem_builder(bounds_path: str,  output_res: float, download_folder: str, scra
                 "resampleAlg": "bilinear"  # Use bilinear resampling for downsampling
             })
 
+        safe_makedirs(os.path.dirname(output_dem_file_path))
         raster_vrt_stitch(dem_rasters, output_dem_file_path, output_epsg, clip=bounds_path, warp_options=warp_options)
     else:
         log.info('Skipping DEM build as it already exists. Use force option to trigger rebuild anyway.')
