@@ -1,11 +1,11 @@
 zone_id,scenario_input_id,transform_id,min_value,max_value,zone_type
 1,1,1,0,25,drainage_area
-2,1,2,25,250,drainage_area
-3,1,3,250,50000,drainage_area
+2,1,2,25,1000,drainage_area
+3,1,3,1000,50000,drainage_area
 4,1,4,50000,250000,drainage_area
 5,1,5,250000,,drainage_area
 6,2,6,0,25,drainage_area
-7,2,7,25,250,drainage_area
-8,2,8,250,50000,drainage_area
+7,2,7,25,1000,drainage_area
+8,2,8,1000,50000,drainage_area
 9,2,9,50000,250000,drainage_area
 10,2,10,250000,,drainage_area
