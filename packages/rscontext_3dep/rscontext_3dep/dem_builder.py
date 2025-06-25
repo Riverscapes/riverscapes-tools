@@ -34,7 +34,7 @@ cfg = ModelConfig(
 
 LayerTypes = {
     # key: RSLayer(name, id, tag, relpath)
-    'DEM': RSLayer('3DEP 1m DEM', '3DEPDEM', 'Raster', 'topography/dem.tif'),
+    'DEM': RSLayer('3DEP DEM', '3DEPDEM', 'Raster', 'topography/dem.tif'),
     'HILLSHADE': RSLayer('DEM Hillshade', 'HILLSHADE', 'Raster', 'topography/dem_hillshade.tif'),
 }
 
@@ -344,8 +344,11 @@ def dem_builder(bounds_path: str,  output_res: float, download_folder: str, scra
         project_name, 'REALIZATION1', cfg.version)
     datasets = project.XMLBuilder.add_sub_element(realization, 'Datasets')
 
+    dem_info = LayerTypes['DEM']
+    dem_info.name = f'{dem_info.name} downsampled to {output_res} m' if resample is True else dem_info.name
     dem_node, _dem_raster = project.add_project_raster(datasets, LayerTypes['DEM'])
     project.add_metadata([
+        RSMeta('Resolution', str(output_res), RSMetaTypes.FLOAT),
         RSMeta('NumRasters', str(len(dem_raster_source_urls)), RSMetaTypes.INT),
         RSMeta('OriginUrls', json.dumps(dem_raster_source_urls), RSMetaTypes.JSON),
     ], dem_node)
