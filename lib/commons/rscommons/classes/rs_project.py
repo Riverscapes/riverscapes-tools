@@ -723,11 +723,10 @@ class RSProject:
         There are similarities to XPath but they are not the same. The idea is that you can use this path to find the
         same node in another XML document. This is useful for things like linking to external data sources.
         """
-        path_arr = [(lyrnod_in.tag, lyrnod_in.attrib['id'] if 'id' in lyrnod_in.attrib else None)]
+        path_arr = []
         curr_node = lyrnod_in
         try:
-            while xml_builder.find_element_parent(curr_node) is not None:
-                curr_node = xml_builder.find_element_parent(curr_node)
+            while curr_node is not None:
                 if 'id' in curr_node.attrib:
                     item2 = curr_node.attrib['id']
                 elif 'lyrName' in curr_node.attrib:
@@ -735,6 +734,7 @@ class RSProject:
                 else:
                     item2 = None
                 path_arr.append((curr_node.tag, item2))
+                curr_node = xml_builder.find_element_parent(curr_node)
         except Exception:
             # find_element_parent will throw an exception if it can't find a parent.
             pass
