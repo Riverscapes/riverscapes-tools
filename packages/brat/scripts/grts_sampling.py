@@ -33,6 +33,7 @@ def sample_reaches(brat_gpgk_path: str, sample_size: int, stratification: dict =
     # associate each reach with the rectangles
     for i, poly in enumerate(polys):
         with GeopackageLayer(brat_gpgk_path, 'vwReaches') as reaches:
+            tot_reaches = reaches.ogr_layer.GetFeatureCount()
             for ftr, *_ in reaches.iterate_features(clip_shape=poly):
                 fid = ftr.GetFID()
                 if i not in poly_reaches:
@@ -124,7 +125,7 @@ def sample_reaches(brat_gpgk_path: str, sample_size: int, stratification: dict =
         else:  # if you end up with more than you want selectively delete
             while out_tot > sample_size:
                 for fid in out_reaches:
-                    if strat_1_cts[reach_intersections[fid][0]] > tot_strat_1 or poly_strat_cts[reach_intersections[fid][1]] > tot_poly:
+                    if strat_1_cts[reach_intersections[fid][0]] > tot_strat_1 and poly_strat_cts[reach_intersections[fid][1]] > tot_poly:
                         out_reaches.remove(fid)
                         strat_1_cts[reach_intersections[fid][0]] -= 1
                         poly_strat_cts[reach_intersections[fid][1]] -= 1
