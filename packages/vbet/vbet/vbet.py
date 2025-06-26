@@ -114,7 +114,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
          reach_codes=None, mask=None, temp_folder=None):
     """Run VBET"""
 
-    thresh_vals = {'VBET_IA': 0.85, 'VBET_FULL': 0.65}
+    thresh_vals = {'VBET_IA': 0.95, 'VBET_FULL': 0.65}
     _tmr_waypt = TimerWaypoints()
     log = Logger('VBET')
     log.info(f'Starting VBET v.{cfg.version}')
@@ -790,7 +790,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
             low_lying_valley_bottom_raster = os.path.join(
                 temp_folder_lpath, f'low_lying_valley_bottom_{level_path}.tif')
             generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster,
-                                  low_lying_valley_bottom_raster, temp_folder_lpath, rasterized_level_path, thresh_value=0.85)
+                                  low_lying_valley_bottom_raster, temp_folder_lpath, rasterized_level_path, thresh_value=0.95)
 
         with TimerBuckets('rasterio'):
             raster_update_multiply(
