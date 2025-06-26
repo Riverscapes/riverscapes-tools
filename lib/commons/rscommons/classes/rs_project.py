@@ -632,7 +632,9 @@ class RSProject:
                     self.add_metadata([RSMeta('Watershed', watershed_node.text)])
 
             # Define our default, generic warehouse and project meta
-            projmeta: List[RSMeta] = self.meta_keys_ext(in_prj.get_metadata(), RSMetaExt.PROJECT)
+            projmeta: Dict[str, RSMeta] = self.meta_keys_ext(in_prj.get_metadata(), RSMetaExt.PROJECT)
+            if 'DEXID' not in projmeta and warehouse_id is not None:
+                projmeta['DEXID'] = RSMeta("DEXID", warehouse_id, RSMetaTypes.GUID, meta_ext=RSMetaExt.WAREHOUSE)
 
             projtype = None
             # look for any valid mappings and move metadata into them
