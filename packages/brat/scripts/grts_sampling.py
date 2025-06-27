@@ -1,12 +1,17 @@
+import argparse
+import sys
 import os
+import traceback
 import numpy as np
 from math import ceil
 from shapely.geometry import Polygon
-from rscommons import GeopackageLayer, get_shp_or_gpkg
+from rscommons import GeopackageLayer, get_shp_or_gpkg, dotenv, Logger
 from rscommons.vector_ops import copy_feature_class
 
 
 def sample_reaches(brat_gpgk_path: str, sample_size: int, stratification: dict = None, min_strat_sample: int = 1):
+
+    log = Logger('Sample Reaches')
 
     split = ceil(sample_size ** 0.5)
 
@@ -21,6 +26,7 @@ def sample_reaches(brat_gpgk_path: str, sample_size: int, stratification: dict =
         y_step = (y_max - y_min) / split
 
     # generate a grid of rectangles that overlap the dataset
+    log.info(f'Generating {split}x{split} grid of rectangles to sample from.')
     x_curr = x_min
     while x_curr < (x_max + x_step):
         y_curr = y_min
@@ -49,6 +55,7 @@ def sample_reaches(brat_gpgk_path: str, sample_size: int, stratification: dict =
         del poly_reaches[poly_id]
 
     # get the field values of the stratification features for each reach
+    log.info('Getting stratification values for each reach.')
     if stratification is not None:
         for dataset, field in stratification.items():
             strat_vals[field] = []
@@ -93,6 +100,7 @@ def sample_reaches(brat_gpgk_path: str, sample_size: int, stratification: dict =
         del reach_intersections[id]
 
     # now reach_intersections has all info needed? {reach_FID: [strat_val1, strat_val2, poly_id1]}
+    log.info('Sampling reaches based on stratification and polygon coverage.')
     out_reaches = []
     out_tot = 0
 
@@ -112,7 +120,6 @@ def sample_reaches(brat_gpgk_path: str, sample_size: int, stratification: dict =
             poly_strat_cts[reach_intersections[fid][1]] += 1
 
             out_tot += 1
-            print(strat_1_cts, poly_strat_cts, out_tot)
 
         if out_tot < sample_size:  # if you end up with less than you want, randomly select more
             while out_tot < sample_size:
@@ -209,14 +216,54 @@ def sample_reaches(brat_gpgk_path: str, sample_size: int, stratification: dict =
                                 break
 
     # out_reaches now has the FIDs of the reaches to sample
+    log.info('Creating output feature class with sampled reaches.')
     in_fc = os.path.join(brat_gpgk_path, 'vwReaches')
     out_fc = os.path.join(os.path.dirname(brat_gpgk_path), 'sample_reaches.gpkg/samples')
     copy_feature_class(in_fc, out_fc, attribute_filter=f'ReachID IN ({",".join(map(str, out_reaches))})')
 
-    return out_reaches
+    return
 
 
-in1 = '/workspaces/data/brat/1602010203/outputs/brat.gpkg'
-in2 = 500
-in3 = {'/workspaces/data/rs_context/1602010203/ecoregions/ecoregions.shp': 'US_L3NAME'}
-sample_reaches(in1, in2, in3, 50)
+def main():
+    parser = argparse.ArgumentParser(description='Sample reaches from a BRAT geopackage.')
+    parser.add_argument('huc', type=str, help='HUC or watershed.')
+    parser.add_argument('brat_gpkg', type=str, help='Path to the BRAT geopackage file.')
+    parser.add_argument('sample_size', type=int, help='Number of reaches to sample.')
+    parser.add_argument('--stratification', type=str, help='Stratification fields in the format dataset:field.')
+    parser.add_argument('--min_strat_sample', type=int, default=1, help='Minimum number of samples per stratification group.')
+
+    args = dotenv.parse_args_env(parser)
+
+    # Parse stratification argument if provided
+    stratification = None
+    if args.stratification:
+        try:
+            # Split on : to get dataset:field format
+            dataset, field = args.stratification.split(':')
+            stratification = {dataset: field}
+        except ValueError:
+            raise Exception(f'Stratification argument must be in format "dataset:field", got: {args.stratification}')
+
+    log = Logger('GRTS Sampling')
+    log.setup(logPath=os.path.join(os.path.dirname(args.brat_gpkg), 'sample_log'))
+    log.title(f'GRTS Sample Reaches for {args.huc}')
+
+    try:
+        sample_reaches(args.brat_gpkg, args.sample_size, stratification, args.min_strat_sample)
+
+    except Exception as e:
+        log.error(f'Error occurred while sampling reaches: {e}')
+        traceback.print_exc(file=sys.stdout)
+        sys.exit(1)
+
+    sys.exit(0)
+
+
+if __name__ == '__main__':
+    main()
+
+
+# in1 = '/workspaces/data/brat/1602010203/outputs/brat.gpkg'
+# in2 = 500
+# in3 = {'/workspaces/data/rs_context/1602010203/ecoregions/ecoregions.shp': 'US_L3NAME'}
+# sample_reaches(in1, in2, in3, 50)

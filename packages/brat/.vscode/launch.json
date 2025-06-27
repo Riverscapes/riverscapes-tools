@@ -212,6 +212,22 @@
       ]
     },
     {
+      "name": "Generate Sample Reaches",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "scripts.grts_sampling",
+      "console": "integratedTerminal",
+      "args": [
+        "${input:HUC}",
+        "{env:DATA_ROOT}/brat/${input:HUC}/outputs/brat.gpkg",
+        "500",
+        "--stratification",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/ecoregions/ecoregions.shp:US_L3NAME",
+        "--min_strat_sample",
+        "50"
+      ]
+    },
+    {
       "name": "Version Bump",
       "type": "python",
       "module": "rscommons.version",
