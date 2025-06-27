@@ -3,6 +3,7 @@ import numpy as np
 from math import ceil
 from shapely.geometry import Polygon
 from rscommons import GeopackageLayer, get_shp_or_gpkg
+from rscommons.vector_ops import copy_feature_class
 
 
 def sample_reaches(brat_gpgk_path: str, sample_size: int, stratification: dict = None, min_strat_sample: int = 1):
@@ -134,17 +135,19 @@ def sample_reaches(brat_gpgk_path: str, sample_size: int, stratification: dict =
                             break
 
     elif num_strats == 2:
-        tot_strat_1 = sample_size // len(strat_1_unique)
-        tot_strat_2 = sample_size // len(strat_2_unique)
+        tot_strat_1 = min(sample_size // len(strat_1_unique), min_strat_sample)
+        tot_strat_2 = min(sample_size // len(strat_2_unique), min_strat_sample)
         tot_poly = sample_size // len(poly_reaches)
         strat_1_cts = {v: 0 for v in strat_1_unique}
         strat_2_cts = {v: 0 for v in strat_2_unique}
         poly_strat_cts = {v: 0 for v in poly_reaches}
 
-        while (any(strat_1_cts.values() < tot_strat_1) or
-               any(strat_2_cts.values() < tot_strat_2) or
-               any(poly_strat_cts.values() < tot_poly)):
-            fid = np.random.choice(np.asarray(reach_intersections.keys()), size=1, replace=False)
+        while any(val < tot_strat_1 for val in strat_1_cts.values()) or any(val < tot_strat_2 for val in strat_2_cts.values()) or \
+                any(val < tot_poly for val in poly_strat_cts.values()):
+            fid = None
+            while fid is None or fid in out_reaches:
+                fid = np.random.choice([fid for fid in reach_intersections.keys()])
+
             out_reaches.append(fid)
             strat_1_cts[reach_intersections[fid][0]] += 1
             strat_2_cts[reach_intersections[fid][1]] += 1
@@ -152,22 +155,63 @@ def sample_reaches(brat_gpgk_path: str, sample_size: int, stratification: dict =
 
             out_tot += 1
 
-            if out_tot >= sample_size:
-                break
+            if out_tot < sample_size:  # if you end up with less than you want, randomly select more
+                while out_tot < sample_size:
+                    fid = np.random.choice([fid for fid in reach_intersections.keys()])
+                    if fid not in out_reaches:
+                        out_reaches.append(fid)
+                        strat_1_cts[reach_intersections[fid][0]] += 1
+                        strat_2_cts[reach_intersections[fid][1]] += 1
+                        poly_strat_cts[reach_intersections[fid][2]] += 1
+                        out_tot += 1
+
+            else:  # if you end up with more than you want selectively delete
+                while out_tot > sample_size:
+                    for fid in out_reaches:
+                        if strat_1_cts[reach_intersections[fid][0]] > tot_strat_1 and strat_2_cts[reach_intersections[fid][1]] > tot_strat_2 and poly_strat_cts[reach_intersections[fid][2]] > tot_poly:
+                            out_reaches.remove(fid)
+                            strat_1_cts[reach_intersections[fid][0]] -= 1
+                            strat_2_cts[reach_intersections[fid][1]] -= 1
+                            poly_strat_cts[reach_intersections[fid][2]] -= 1
+                            out_tot -= 1
+                            if out_tot <= sample_size:
+                                break
 
     else:
         tot_poly = sample_size // len(poly_reaches)
         poly_strat_cts = {v: 0 for v in poly_reaches}
 
         while any(poly_strat_cts.values() < tot_poly):
-            fid = np.random.choice(np.asarray(reach_intersections.keys()), size=1, replace=False)
+            fid = None
+            while fid is None or fid in out_reaches:
+                fid = np.random.choice([fid for fid in reach_intersections.keys()])
             out_reaches.append(fid)
             poly_strat_cts[reach_intersections[fid][0]] += 1
 
             out_tot += 1
 
-            if out_tot >= sample_size:
-                break
+            if out_tot < sample_size:
+                while out_tot < sample_size:
+                    fid = np.random.choice([fid for fid in reach_intersections.keys()])
+                    if fid not in out_reaches:
+                        out_reaches.append(fid)
+                        poly_strat_cts[reach_intersections[fid][0]] += 1
+                        out_tot += 1
+
+            else:
+                while out_tot > sample_size:
+                    for fid in out_reaches:
+                        if poly_strat_cts[reach_intersections[fid][0]] > tot_poly:
+                            out_reaches.remove(fid)
+                            poly_strat_cts[reach_intersections[fid][0]] -= 1
+                            out_tot -= 1
+                            if out_tot <= sample_size:
+                                break
+
+    # out_reaches now has the FIDs of the reaches to sample
+    in_fc = os.path.join(brat_gpgk_path, 'vwReaches')
+    out_fc = os.path.join(os.path.dirname(brat_gpgk_path), 'sample_reaches.gpkg/samples')
+    copy_feature_class(in_fc, out_fc, attribute_filter=f'ReachID IN ({",".join(map(str, out_reaches))})')
 
     return out_reaches
 
