@@ -25,7 +25,7 @@ from rscommons.geometry_ops import get_rectangle_as_geom
 Path = str
 
 
-def generate_igo_points(line_network: Path, dem: Path, out_points_layer: Path, vb_layer: Path, unique_stream_field, stream_size_lookup: dict, levelpaths: list, aspect_ratio: float):
+def generate_igo_points(line_network: Path, dem: Path, out_points_layer: Path, vb_layer: Path, unique_stream_field, stream_size_lookup: dict, aspect_ratio: float, output_epsg: int):
     """generate the vbet segmentation center points/igos
 
     Args:
@@ -69,7 +69,16 @@ def generate_igo_points(line_network: Path, dem: Path, out_points_layer: Path, v
 
         for level_path in levelpaths:
             if level_path not in stream_size_lookup:
-                log.error(f'stream size not found for level path {level_path}')
+                log.error(f'stream size not ofund for level path {level_path}')
+            stream_size = stream_size_lookup[level_path]
+            geom_line = feat.GetGeometryRef()
+            geom_line.FlattenTo2D()
+            try:
+                geom_line.Transform(transform)
+            except Exception as err:
+                log.error(f'Error transforming geometry: {err}')
+            shapely_multiline = VectorBase.ogr2shapely(geom_line)
+            if shapely_multiline.length == 0.0:
                 continue
             cl_ftrs = []
             for feat, *_ in line_lyr.iterate_features('Generating Segmentation Points', attribute_filter=f'{unique_stream_field} = {level_path}', write_layers=[out_lyr]):
@@ -548,7 +557,7 @@ def add_fcodes(in_dgos, in_igos, in_flowlines, unique_stream_field):
                 igo_feat = None
 
 
-def vbet_segmentation(in_centerlines: str, vbet_polygons: str, unique_stream_field: str, metric_layers: dict, out_gpkg: str, ss_lookup: dict):
+def vbet_segmentation(in_centerlines: str, vbet_polygons: str, unique_stream_field: str, metric_layers: dict, out_gpkg: str, ss_lookup: dict, output_epsg: int):
     """
     Chop the lines in a polyline feature class at the specified interval unless
     this would create a line less than the minimum in which case the line is not segmented.
