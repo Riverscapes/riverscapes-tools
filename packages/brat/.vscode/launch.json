@@ -220,11 +220,11 @@
       "args": [
         "${input:HUC}",
         "{env:DATA_ROOT}/brat/${input:HUC}/outputs/brat.gpkg",
-        "500",
+        "300",
         "--stratification",
-        "{env:DATA_ROOT}/rs_context/${input:HUC}/ecoregions/ecoregions.shp:US_L3NAME",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/ownership/ownership.shp:ADMIN_AGEN",
         "--min_strat_sample",
-        "50"
+        "64"
       ]
     },
     {
