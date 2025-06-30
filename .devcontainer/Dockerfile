@@ -14,11 +14,17 @@ RUN apt-get install -y python3-pip proj-data proj-bin \
               gdal-bin libgdal-dev libspatialindex-dev \
               python3-matplotlib
 
-# Install Node18
-RUN curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-RUN apt-get install -y nodejs
+# https://launchpad.net/~ubuntugis/+archive/ppa/
+# Install node please. Order matters here so it should come after all other apt-get update steps or it may be removed by a cleanup process
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y nodejs
+RUN apt-get install nodejs -y
+RUN npm install -g npm
+RUN node --version
+RUN npm --version
+
 # Install Gatsby CLI and Yarn
-RUN npm install -g gatsby-cli
+ARG CACHEBREAKER3=2.0.53
 RUN npm install -g @riverscapes/cli
 
 # Let's get the latest version of Yarn
@@ -87,11 +93,5 @@ USER vscode
 RUN wget https://raw.githubusercontent.com/Riverscapes/environment/master/nar-ys.zsh-theme -O ~/.oh-my-zsh/custom/themes/nar-ys.zsh-theme
 RUN wget https://raw.githubusercontent.com/Riverscapes/environment/master/.aliases -O ~/.aliases
 RUN wget https://raw.githubusercontent.com/Riverscapes/environment/master/.zshrc -O ~/.zshrc
-
-# set memory to 8Gb so that Gatsby has a chance
-ENV NODE_OPTIONS=--max-old-space-size=8192
-ENV GATSBY_CPU_COUNT=2
-ENV GATSBY_TELEMETRY_DISABLED=1
-
 
 WORKDIR /workspaces/riverscapes-tools
