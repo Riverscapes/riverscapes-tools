@@ -104,7 +104,7 @@ LayerTypes = {
         'VBET_CENTERLINES': RSLayer('VBET Centerline', 'VBET_CENTERLINES', 'Vector', 'vbet_centerlines'),
         'SEGMENTATION_POINTS': RSLayer('Segmentation Points', 'SEGMENTATION_POINTS', 'Vector', 'vbet_igos')
     }),
-    'REPORT': RSLayer('RSContext Report', 'REPORT', 'HTMLFile', 'outputs/vbet.html')
+    'REPORT': RSLayer('VBET Report', 'REPORT', 'HTMLFile', 'outputs/vbet.html')
 }
 
 

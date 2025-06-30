@@ -59,7 +59,7 @@ LayerTypes = {
     'OUTPUTS': RSLayer('Outputs', 'OUTPUTS', 'Geopackage', 'outputs/channel_area.gpkg', {
         'CHANNEL_AREA': RSLayer('Channel Area Polygons', 'CHANNEL_AREA', 'Vector', 'channel_area'),
     }),
-    'REPORT': RSLayer('RSContext Report', 'REPORT', 'HTMLFile', 'outputs/channel_area.html')
+    'REPORT': RSLayer('Channel Area Report', 'REPORT', 'HTMLFile', 'outputs/channel_area.html')
 }
 
 

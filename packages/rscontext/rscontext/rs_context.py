@@ -119,12 +119,9 @@ LayerTypes = {
 
     # NHDPlus V2 (1:100,000)
     'NHDPLUSV2': RSLayer('NHDPlus V2', 'NHDPLUSV2', 'Geopackage', 'hydrology/nhdplusv2.gpkg', {
-        'NHDFlowline': RSLayer('NHDPlusV2 Flowlines', 'NHDPLUSV2_FLOWLINE', 'Vector', 'nhdflowline_network', lyr_meta=[
-            RSMeta('SourceUrl', 'https://nhdplus.com/NHDPlus/NHDPlusV2_home.php', RSMetaTypes.URL)]),
-        'NHDArea': RSLayer('NHDPlusV2 Flow Areas', 'NHDPLUSV2_AREA', 'Vector', 'nhdarea', lyr_meta=[
-            RSMeta('SourceUrl', 'https://nhdplus.com/NHDPlus/NHDPlusV2_home.php', RSMetaTypes.URL),]),
-        'NHDWaterbody': RSLayer('NHDPlusV2 Waterbodies', 'NHDPLUSV2_WATERBODY', 'Vector', 'nhdwaterbody', lyr_meta=[
-            RSMeta('SourceUrl', 'https://nhdplus.com/NHDPlus/NHDPlusV2_home.php', RSMetaTypes.URL),])
+        'NHDFlowlineV2': RSLayer('NHDPlusV2 Flowlines', 'NHDPLUSV2_FLOWLINE', 'Vector', 'nhdflowline_network'),
+        'NHDAreaV2': RSLayer('NHDPlusV2 Flow Areas', 'NHDPLUSV2_AREA', 'Vector', 'nhdarea'),
+        'NHDWaterbodyV2': RSLayer('NHDPlusV2 Waterbodies', 'NHDPLUSV2_WATERBODY', 'Vector', 'nhdwaterbody')
     }),
 
     # National Wetland Inventory
@@ -319,9 +316,9 @@ def rs_context(huc: str, landfire_dir: str, ownership: str, fair_market: str, ec
     log.info(f'Processing NHDPlus V2 Output: {output_nhdplusv2_gpkg}')
     huc10_shapely_4269 = get_geometry_unary_union(nhd['WBDHU10'], 4269)
 
-    copy_feature_class(f'{nhdplusv2}/nhdflowline_network', os.path.join(output_nhdplusv2_gpkg, LayerTypes['NHDPLUSV2'].sub_layers['NHDFlowline'].rel_path), cfg.OUTPUT_EPSG, clip_shape=huc10_shapely_4269)
-    copy_feature_class(f'{nhdplusv2}/nhdarea', os.path.join(output_nhdplusv2_gpkg, LayerTypes['NHDPLUSV2'].sub_layers['NHDArea'].rel_path), cfg.OUTPUT_EPSG, clip_shape=huc10_shapely_4269)
-    copy_feature_class(f'{nhdplusv2}/nhdwaterbody', os.path.join(output_nhdplusv2_gpkg, LayerTypes['NHDPLUSV2'].sub_layers['NHDWaterbody'].rel_path), cfg.OUTPUT_EPSG, clip_shape=huc10_shapely_4269)
+    copy_feature_class(f'{nhdplusv2}/nhdflowline_network', os.path.join(output_nhdplusv2_gpkg, LayerTypes['NHDPLUSV2'].sub_layers['NHDFlowlineV2'].rel_path), cfg.OUTPUT_EPSG, clip_shape=huc10_shapely_4269)
+    copy_feature_class(f'{nhdplusv2}/nhdarea', os.path.join(output_nhdplusv2_gpkg, LayerTypes['NHDPLUSV2'].sub_layers['NHDAreaV2'].rel_path), cfg.OUTPUT_EPSG, clip_shape=huc10_shapely_4269)
+    copy_feature_class(f'{nhdplusv2}/nhdwaterbody', os.path.join(output_nhdplusv2_gpkg, LayerTypes['NHDPLUSV2'].sub_layers['NHDWaterbodyV2'].rel_path), cfg.OUTPUT_EPSG, clip_shape=huc10_shapely_4269)
     project.add_project_geopackage(datasets, LayerTypes['NHDPLUSV2'])
 
     ################################################################################################################################################
