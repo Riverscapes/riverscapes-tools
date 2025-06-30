@@ -243,5 +243,20 @@
     "A set of NHDPlus HR attributes called the Value-Added Attributes (VAAs) boost nhd analytic power by pre-calculating a number of network characteristics to make network analysis easier and richer.",
     "https://www.usgs.gov/national-hydrography/value-added-attributes-vaas",
     ""
+  ],
+  "NationalDams": [
+    "National Inventory of Dams (NID) is a database of dams in the United States. The NID is maintained by the US Army Corps of Engineers and contains information on the location, size, type, and purpose of dams.",
+    "https://geospatial.sec.usace.army.mil/dls/rest/services/NID/National_Inventory_of_Dams_Public_Service/MapServer/0",
+    "2020"
+  ],
+  "Wetlands": [
+    "The National Wetlands Inventory (NWI) is a program of the US Fish and Wildlife Service that maps the location and extent of wetlands in the United States. The NWI provides data on wetland types, hydrology, and vegetation. The 'wetlands' layer is a subset of the NWI data that includes wetlands classified by type.",
+    "https://www.fws.gov/program/national-wetlands-inventory",
+    "1.3.0"
+  ],
+  "Riparian": [
+    "The National Wetlands Inventory (NWI) is a program of the US Fish and Wildlife Service that maps the location and extent of wetlands in the United States. The NWI provides data on wetland types, hydrology, and vegetation. The 'riparian' layer is a subset of the NWI data that includes riparian areas classified by type.",
+    "https://www.fws.gov/program/national-wetlands-inventory",
+    "1.3.0"
   ]
 }
