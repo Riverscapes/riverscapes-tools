@@ -69,20 +69,20 @@ def anthro_metrics(anthro_proj_path, vbet_proj_path):
                      (SELECT SUM(segment_area) AS tot_area FROM DGOAttributes WHERE seg_distance is not NULL))""")
         av_div_pts = curs.fetchone()[0]
 
-    metrics['aveLUI'] = str(av_lui)
-    metrics['totVBRoadLength'] = str(vb_road_len)
-    metrics['totVBRailLength'] = str(vb_rail_len)
-    metrics['totVBCanalLength'] = str(vb_canal_len)
-    metrics['totRoadCrossings'] = str(vb_road_cross)
-    metrics['totDiversionPoints'] = str(vb_div_pts)
-    metrics['aveRoadDensity'] = str(av_road_dens)
-    metrics['avePrimaryRoadDensity'] = str(av_prim_road_dens)
-    metrics['aveSecondaryRoadDensity'] = str(av_sec_road_dens)
-    metrics['ave4wdRoadDensity'] = str(av_4wd_road_dens)
-    metrics['aveRailDensity'] = str(av_rail_dens)
-    metrics['aveCanalDensity'] = str(av_canal_dens)
-    metrics['aveRoadCrossingDensity'] = str(av_road_cross)
-    metrics['aveDiversionDensity'] = str(av_div_pts)
+    metrics['aveLUI'] = av_lui
+    metrics['totVBRoadLength'] = vb_road_len
+    metrics['totVBRailLength'] = vb_rail_len
+    metrics['totVBCanalLength'] = vb_canal_len
+    metrics['totRoadCrossings'] = vb_road_cross
+    metrics['totDiversionPoints'] = vb_div_pts
+    metrics['aveRoadDensity'] = av_road_dens
+    metrics['avePrimaryRoadDensity'] = av_prim_road_dens
+    metrics['aveSecondaryRoadDensity'] = av_sec_road_dens
+    metrics['ave4wdRoadDensity'] = av_4wd_road_dens
+    metrics['aveRailDensity'] = av_rail_dens
+    metrics['aveCanalDensity'] = av_canal_dens
+    metrics['aveRoadCrossingDensity'] = av_road_cross
+    metrics['aveDiversionDensity'] = av_div_pts
 
     with open(os.path.join(anthro_proj_path, 'anthro_metrics.json'), 'w') as json_file:
         json.dump(metrics, json_file, indent=2)

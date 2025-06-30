@@ -12,6 +12,7 @@ lyrs_in_out = {
     # RCAT_ID: INPUT_ID
     'EXVEG': ['EXVEG', 'RSContext'],
     'HISTVEG': ['HISTVEG', 'RSContext'],
+    'HILLSHADE': ['HILLSHADE', 'RSContext'],
     'flowareas': ['NHDArea', 'RSContext'],
     'waterbodies': ['NHDWaterbody', 'RSContext'],
     'PITFILL': ['PITFILL', 'TauDEM'],

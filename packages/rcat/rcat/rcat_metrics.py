@@ -32,9 +32,9 @@ def rcat_metrics(rcat_proj_path, anthro_proj_path):
                      (SELECT ExistingRiparianMean, segment_area FROM DGOAttributes WHERE seg_distance is not NULL),
                      (SELECT SUM(segment_area) AS tot_area FROM DGOAttributes WHERE seg_distance is not NULL))""")
         av_riparian_mean = curs.fetchone()[0]
-        curs.execute("""SELECT SUM(frac) FROM (SELECT (1 - MIN(RiparianDeparture, 1)) * (segment_area / tot_area) frac FROM 
-                     (SELECT RiparianDeparture, segment_area FROM DGOAttributes WHERE seg_distance is not NULL),
-                     (SELECT SUM(segment_area) AS tot_area FROM DGOAttributes WHERE seg_distance is not NULL))""")
+        curs.execute("""SELECT SUM(frac) FROM (SELECT RiparianDeparture * (segment_area / tot_area) frac FROM 
+                     (SELECT RiparianDeparture, segment_area FROM DGOAttributes WHERE seg_distance is not NULL AND RiparianDeparture != -9999),
+                     (SELECT SUM(segment_area) AS tot_area FROM DGOAttributes WHERE seg_distance is not NULL AND RiparianDeparture != -9999))""")
         av_riparian_departure = curs.fetchone()[0]
         curs.execute("""SELECT SUM(Agriculture * segment_area) / 1000000 FROM DGOAttributes WHERE seg_distance is not NULL""")
         ag_km2 = curs.fetchone()[0]
@@ -46,15 +46,15 @@ def rcat_metrics(rcat_proj_path, anthro_proj_path):
         av_condition = curs.fetchone()[0]
 
     if os.path.exists(os.path.join(anthro_proj_path, 'anthro_metrics.json')):
-        metrics['inaccessibleFloodplain'] = str(float(metrics['riverscapeArea']) - accessible_floodplain_km2)
-        metrics['propInaccessibleFloodplain'] = str(float(metrics['inaccessibleFloodplain']) / float(metrics['riverscapeArea']))
-        metrics['propAgriculture'] = str(ag_km2 / float(metrics['riverscapeArea']))
-        metrics['propDeveloped'] = str(dev_km2 / float(metrics['riverscapeArea']))
+        metrics['inaccessibleFloodplain'] = float(metrics['riverscapeArea']) - accessible_floodplain_km2
+        metrics['propInaccessibleFloodplain'] = float(metrics['inaccessibleFloodplain']) / float(metrics['riverscapeArea'])
+        metrics['propAgriculture'] = ag_km2 / float(metrics['riverscapeArea'])
+        metrics['propDeveloped'] = dev_km2 / float(metrics['riverscapeArea'])
 
-    metrics['avePropAccessibleFloodplain'] = str(av_floodplain_access)
-    metrics['avePropRiparian'] = str(av_riparian_mean)
-    metrics['aveRiparianDeparture'] = str(av_riparian_departure)
-    metrics['aveRiparianCondition'] = str(av_condition)
+    metrics['avePropAccessibleFloodplain'] = av_floodplain_access
+    metrics['avePropRiparian'] = av_riparian_mean
+    metrics['aveRiparianDeparture'] = av_riparian_departure
+    metrics['aveRiparianCondition'] = av_condition
 
     with open(os.path.join(rcat_proj_path, 'rcat_metrics.json'), 'w') as json_out:
         json.dump(metrics, json_out, indent=2)

@@ -360,7 +360,10 @@ def igo_attributes(database: str, windows: dict):
         #     val[0] = 0
         # if val[1] is None:
         if val[1] == 0:
-            curs.execute(f'UPDATE IGOAttributes SET RiparianDeparture = 1, RiparianDepartureID = 0 WHERE IGOID = {igoid}')
+            if val[0] == 0:
+                curs.execute(f'UPDATE IGOAttributes SET RiparianDeparture = 1, RiparianDepartureID = 0 WHERE IGOID = {igoid}')
+            else:
+                curs.execute(f'UPDATE IGOAttributes SET RiparianDeparture = 1+{val[0]}, RiparianDepartureID = 5 WHERE IGOID = {igoid}')
         else:
             if 1 > val[0] / val[1] >= 0.9:
                 depid = 1
@@ -382,7 +385,10 @@ def igo_attributes(database: str, windows: dict):
     dep_dgo = {row[0]: [row[1], row[2]] for row in curs.fetchall()}
     for dgoid, val in dep_dgo.items():
         if val[1] == 0:
-            curs.execute(f'UPDATE DGOAttributes SET RiparianDeparture = 1 WHERE DGOID = {dgoid}')
+            if val[0] == 0:
+                curs.execute(f'UPDATE DGOAttributes SET RiparianDeparture = 1 WHERE DGOID = {dgoid}')
+            else:
+                curs.execute(f'UPDATE DGOAttributes SET RiparianDeparture = 1+{val[0]} WHERE DGOID = {dgoid}')
         else:
             curs.execute(f'UPDATE DGOAttributes SET RiparianDeparture = {val[0]/val[1]} WHERE DGOID = {dgoid}')
 
@@ -604,7 +610,10 @@ def reach_attributes(database: str):
     dep = {row[0]: [row[1], row[2]] for row in curs.fetchall()}
     for rid, val in dep.items():
         if val[1] == 0:
-            curs.execute(f'UPDATE ReachAttributes SET RiparianDeparture = 1, RiparianDepartureID = 0 WHERE ReachID = {rid}')
+            if val[0] == 0:
+                curs.execute(f'UPDATE ReachAttributes SET RiparianDeparture = 1, RiparianDepartureID = 0 WHERE ReachID = {rid}')
+            else:
+                curs.execute(f'UPDATE ReachAttributes SET RiparianDeparture = 1+{val[0]}, RiparianDepartureID = 5 WHERE ReachID = {rid}')
         else:
             if 1 > val[0] / val[1] >= 0.9:
                 depid = 1
