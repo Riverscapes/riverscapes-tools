@@ -1,5 +1,5 @@
 {
-    "VBET_DGO_POLYGONS": ["Discrete Geographic Objects - The valley bottom split into a sampling frame of polygons where length of the polygon varies based on stream size.", 
+    "VBET_DGO_POLYGONS": ["Discrete Geographic Objects - The valley bottom split into a sampling frame of polygons where the IGO points are at the center of each polygon.", 
     "", 
     ""],
     "COMPOSITE_VBET_EVIDENCE": ["Relative likelihood of being valley bottom for each individual relative path combined into a single composite raster.", 
@@ -47,13 +47,13 @@
     "ELEVATED_FLOODPLAIN": ["The elevated valley bottom surface.", 
     "", 
     ""],
-    "FLOODPLAIN": ["The low-lying and elevated valley bottom surfaces with the channel not included", 
+    "FLOODPLAIN": ["The low-lying and elevated valley bottom surfaces with the channel not included.", 
     "", 
     ""],
     "VBET_CENTERLINES": ["The centerline of the valley bottom.", 
     "", 
     ""],
-    "SEGMENTATION_POINTS": ["Points placed at a specified distance interval along the valley centerline.", 
+    "SEGMENTATION_POINTS": ["Integrated Geographic Objects - Points placed at a specified distance interval along the valley centerline. This distance is a function of the average valley width for a given stream.", 
     "", 
     ""]
 }

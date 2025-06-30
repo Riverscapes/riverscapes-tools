@@ -1,11 +1,31 @@
 {
-    "HYDRO_GEOM_POINTS": ["", "", ""],
-    "HYDRO_POINTS": ["Integrated Geographic Objects (points spaced at equal intervals along the riverscape centerline) attributed with values for hydrology",
-                     "", ""],
-    "HYDRO_GEOM_LINES": ["", "", ""],
-    "HYDRO_LINES": ["NHD Flowlines attributed with values for physical characteristics and hydrology",
-                    "", ""],
-    "HYDRO_GEOM_DGOS": ["", "", ""],
-    "HYDRO_DGOS": ["Discrete Geographic Objects (riverscape segmented into discrete polygons) attributed with values for physical stream characteristics and hydrology",
-                   "",""]
+    "HYDRO_GEOM_POINTS": [
+        "Integrated Geographic Objects - Points placed at a specified distance interval along the valley centerline. This distance is a function of the average valley width for a given stream.", 
+        "", 
+        ""
+    ],
+    "HYDRO_POINTS": [
+        "IGOs attributed with values for hydrology calculated within a single DGO or an aggregation of DGOs.",
+        "", 
+        ""
+    ],
+    "HYDRO_GEOM_LINES": [
+        "NHD Flowlines that have been intersected with land ownership, road and rail.", 
+        "", 
+        ""],
+    "HYDRO_LINES": [
+        "NHD Flowlines attributed with values for physical characteristics and hydrology",
+        "", 
+        ""
+    ],
+    "HYDRO_GEOM_DGOS": [
+        "Discrete Geographic Objects - The valley bottom split into a sampling frame of polygons where the IGO points are at the center of each polygon.",
+        "",
+        ""
+    ],
+    "HYDRO_DGOS": [
+        "DGOs attributed with values for physical stream characteristics and hydrology within the DGO extent.",
+        "",
+        ""
+    ]
 }

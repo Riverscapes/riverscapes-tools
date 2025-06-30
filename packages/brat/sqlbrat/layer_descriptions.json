@@ -1,6 +1,42 @@
 {
-    "BRAT_GEOMETRY": ["The BRAT drainage network: NHD Flowlines that have been segmented to 300 m.","",""],
-    "BRAT": ["The output network of the BRAT tool, with various attributes added representing model intermediates and outputs.","",""],
-    "EXVEG_SUIT": ["The existing vegetation raster classified into suitability for dam building material, where 0 is unsuitable and 4 is preferred.","",""],
-    "HISTVEG_SUIT": ["The historice vegetation raster classified into suitability for dam building material, where 0 is unsuitable and 4 is preferred.","",""]
+    "BRAT_GEOMETRY": [
+        "The BRAT drainage network: NHD Flowlines that have been segmented to 300 m.",
+        "",
+        ""
+    ],
+    "BRAT": [
+        "The output network of the BRAT tool, with various attributes added representing model intermediates and outputs.",
+        "",
+        ""
+    ],
+    "EXVEG_SUIT": [
+        "The existing vegetation raster classified into suitability for dam building material, where 0 is unsuitable and 4 is preferred.",
+        "",
+        ""
+    ],
+    "HISTVEG_SUIT": [
+        "The historice vegetation raster classified into suitability for dam building material, where 0 is unsuitable and 4 is preferred.",
+        "",
+        ""
+    ],
+    "DGO_GEOM": [
+        "Discrete Geographic Objects - The valley bottom split into a sampling frame of polygons where the IGO points are at the center of each polygon.",
+        "",
+        ""
+    ],
+    "BRAT_DGOS": [
+        "DGOs attributed with values related to BRAT outputs calculated within the DGO extent.",
+        "",
+        ""
+    ],
+    "IGO_GEOM": [
+        "Integrated Geographic Objects - Points placed at a specified distance interval along the valley centerline. This distance is a function of the average valley width for a given stream.",
+        "",
+        ""
+    ],
+    "BRAT_IGOS": [
+        "IGOs attributed with values related to BRAT outputs calculated within a single DGO or an aggregation of DGOs.",
+        "",
+        ""
+    ]
 }

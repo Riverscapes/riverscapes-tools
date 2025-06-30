@@ -1,23 +1,67 @@
 {
-    "EXRIPARIAN": ["Landfire EVT reclassified into a binary raster where non-riparian cells are 0 and riparian cells are 1",
-                  "https://landfire.gov/data_overviews.php","2.2.0"],
-    "HISTRIPARIAN": ["Landfire BpS reclassified into a binary raster where non-riparian cells are 0 and riparian cells are 1",
-                    "https://landfire.gov/data_overviews.php","2.2.0"],
-    "EXVEGETATED": ["Landfire EVT reclassified into a binary raster where non-vegetated cells are 0 and vegetated cells are 1",
-                   "https://landfire.gov/data_overviews.php","2.2.0"],
-    "HISTVEGETATED": ["Landfire BpS reclassified into a binary raster where non-vegetated cells are 0 and vegetated cells are 1",
-                     "https://landfire.gov/data_overviews.php","2.2.0"],
-    "CONVERSION": ["Integer raster where each value represents a conversion from one vegetation type to another between EVT and BpS Landfire rasters",
-                  "https://landfire.gov/data_overviews.php","2.2.0"],
-    "D8FLOWDIR": ["D8 Flow directions calculated using TauDEM from input pitfilled DEM",
-                 "https://hydrology.usu.edu/taudem/taudem5/help53/D8FlowDirections.html","5.3.7"],
-    "FPACCESS": ["Floodplain accessibility raster where inaccessible areas are 0 and accessible areas are 1",
-                "",""],
-    "GEOM_POINTS": ["Integrated Geographic Objects (points) attributed with values for rcat analyses",
-                   "",""],
-    "GEOM_LINES": ["NHD Flowlines attributed with values for rcat analyses", 
-                   "", ""],
-    "REACHES": ["", "", ""],
-    "GEOM_DGOS": ["", "", ""],
-    "DGOS": ["", "", ""]
+    "EXRIPARIAN": [
+        "Landfire EVT reclassified into a binary raster where non-riparian cells are 0 and riparian cells are 1.",
+        "https://landfire.gov/data_overviews.php",
+        "2.4.0"
+    ],
+    "HISTRIPARIAN": [
+        "Landfire BpS reclassified into a binary raster where non-riparian cells are 0 and riparian cells are 1.",
+        "https://landfire.gov/data_overviews.php",
+        "2.4.0"
+    ],
+    "EXVEGETATED": [
+        "Landfire EVT reclassified into a binary raster where non-vegetated cells are 0 and vegetated cells are 1.",
+        "https://landfire.gov/data_overviews.php",
+        "2.4.0"
+    ],
+    "HISTVEGETATED": [
+        "Landfire BpS reclassified into a binary raster where non-vegetated cells are 0 and vegetated cells are 1.",
+        "https://landfire.gov/data_overviews.php",
+        "2.4.0"
+    ],
+    "CONVERSION": [
+        "Integer raster where each value represents a conversion from one vegetation type to another between EVT and BpS Landfire rasters.",
+        "https://landfire.gov/data_overviews.php",
+        "2.4.0"
+    ],
+    "D8FLOWDIR": [
+        "D8 Flow directions calculated using TauDEM from input pitfilled DEM.",
+        "https://hydrology.usu.edu/taudem/taudem5/help53/D8FlowDirections.html",
+        "5.3.8"
+    ],
+    "FPACCESS": [
+        "Floodplain accessibility raster where inaccessible areas are 0 and accessible areas are 1.",
+        "",
+        ""
+    ],
+    "GEOM_POINTS": [
+        "Integrated Geographic Objects - Points placed at a specified distance interval along the valley centerline. This distance is a function of the average valley width for a given stream.",
+        "",
+        ""
+    ],
+    "IGOS": [
+        "IGOs attributed with values for rcat analyses calculated within a single DGO or an aggregation of DGOs.",
+        "",
+        ""
+    ],
+    "GEOM_LINES": [
+        "NHD Flowlines intersected with land ownership, road and rail.",
+        "",
+        ""
+    ],
+    "REACHES": [
+        "NHD Flowlines attributed with values for rcat analyses.",
+        "",
+        ""
+    ],
+    "GEOM_DGOS": [
+        "Discrete Geographic Objects - The valley bottom split into a sampling frame of polygons where the IGO points are at the center of each polygon.",
+        "",
+        ""
+    ],
+    "DGOS": [
+        "DGOs attributed with values for rcat analyses within the DGO extent.",
+        "",
+        ""
+    ]
 }

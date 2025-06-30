@@ -1,19 +1,87 @@
 {
-    "JUNCTION_POINTS": ["Points where flowlines converge or diverge","",""],
-    "GEOM_DGOS": ["Discrete geographic objects (DGO) polygon geometries for storing RME attributes (intermediate data product only)","",""],
-    "GEOM_IGOS": ["Integrated geographic objects (IGO) point geometries for storing RME moving window attributes (intermediate data product only)","",""],
-    "DGO_BEAVER": ["Beaver/BRAT related metrics calculated for DGOs","",""],
-    "DGO_DESC": ["Descriptive metrics for DGOs","",""],
-    "DGO_GEOMORPH": ["Geomorphological metrics for DGOs","",""],
-    "DGO_HYDRO": ["Hydrological metrics for DGOs","",""],
-    "DGO_IMPACTS": ["Metrics related to anthropological impacts for DGOs","",""],
-    "DGO_VEG": ["Vegetation metrics for DGOs","",""],
-    "IGO_BEAVER": ["Beaver/BRAT related metrics calculated for IGOs","",""],
-    "IGO_DESC": ["Descriptive metrics for IGO_DESC","",""],
-    "IGO_GEOMORPH": ["Geomorphological metrics for IGOs","",""],
-    "IGO_HYDRO": ["Hydrological metrics for DGOs","",""],
-    "IGO_IMPACTS": ["Metrics related to anthropological impacts for IGOs","",""],
-    "IGO_VEG": ["Vegetation metrics for IGOs","",""],
-    "DGO_METRICS": ["Combination of all metrics for DGOs","",""],
-    "IGO_METRICS": ["Combination of all metrics for IGOs","",""]
+    "JUNCTION_POINTS": [
+        "Points where flowlines converge or diverge.",
+        "",
+        ""
+    ],
+    "GEOM_DGOS": [
+        "Discrete Geographic Objects - The valley bottom split into a sampling frame of polygons where the IGO points are at the center of each polygon.",
+        "",
+        ""
+    ],
+    "GEOM_IGOS": [
+        "Integrated Geographic Objects - Points placed at a specified distance interval along the valley centerline. This distance is a function of the average valley width for a given stream.",
+        "",
+        ""
+    ],
+    "DGO_BEAVER": [
+        "Beaver/BRAT related metrics calculated for DGOs.",
+        "",
+        ""
+    ],
+    "DGO_DESC": [
+        "Descriptive metrics for DGOs.",
+        "",
+        ""
+    ],
+    "DGO_GEOMORPH": [
+        "Geomorphological metrics for DGOs.",
+        "",
+        ""
+    ],
+    "DGO_HYDRO": [
+        "Hydrological metrics for DGOs.",
+        "",
+        ""
+    ],
+    "DGO_IMPACTS": [
+        "Metrics related to anthropological impacts for DGOs.",
+        "",
+        ""
+    ],
+    "DGO_VEG": [
+        "Vegetation metrics for DGOs calculated from LANDFIRE.",
+        "",
+        ""
+    ],
+    "IGO_BEAVER": [
+        "Beaver/BRAT related metrics calculated for IGOs.",
+        "",
+        ""
+    ],
+    "IGO_DESC": [
+        "Descriptive metrics for IGOs.",
+        "",
+        ""
+    ],
+    "IGO_GEOMORPH": [
+        "Geomorphological metrics for IGOs.",
+        "",
+        ""
+    ],
+    "IGO_HYDRO": [
+        "Hydrological metrics for IGOs.",
+        "",
+        ""
+    ],
+    "IGO_IMPACTS": [
+        "Metrics related to anthropological impacts for IGOs.",
+        "",
+        ""
+    ],
+    "IGO_VEG": [
+        "Vegetation metrics for IGOs calculated from LANDFIRE",
+        "",
+        ""
+    ],
+    "DGO_METRICS": [
+        "Combination of all of the different thematic metrics attributed to the DGOs.",
+        "",
+        ""
+    ],
+    "IGO_METRICS": [
+        "Combination of all of the different thematic metrics attributed to the IGOs.",
+        "",
+        ""
+    ]
 }
