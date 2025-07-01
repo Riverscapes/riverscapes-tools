@@ -53,18 +53,22 @@ const config: Config = {
         src: 'img/logo.png', // Logo image path
       },
       items: [
-        { to: '/anthro/', label: 'Anthro', position: 'left' },
-        { to: '/brat/', label: 'BRAT', position: 'left' },
-        { to: '/channelarea/', label: 'Channel Area', position: 'left' },
-        { to: '/confinement/', label: 'Confinement', position: 'left' },
-        { to: '/hydro/', label: 'Hydro', position: 'left' },
-        { to: '/rcat/', label: 'RCAT', position: 'left' },
-        { to: '/rme/', label: 'RME', position: 'left' },
-        { to: '/rscontext/', label: 'RS Context', position: 'left' },
-        { to: '/taudem/', label: 'TauDEM', position: 'left' },
-        { to: '/vbet/', label: 'VBET', position: 'left' },
-        { to: '/downloading-data', label: 'Download Data', position: 'left' },
-        { to: '/viewing-projects', label: 'View Projects', position: 'left' },
+        // {
+        //   to: 'none',
+        //   label: 'Production Grade',
+        //   position: 'left',
+        //   items: [
+        //     { to: '/anthro/', label: 'Anthro'  },
+        //     { to: '/brat/', label: 'BRAT' },
+        //     { to: '/channelarea/', label: 'Channel Area' },
+        //     { to: '/confinement/', label: 'Confinement' },
+        //     { to: '/hydro/', label: 'Hydro'},
+        //     { to: '/rcat/', label: 'RCAT'},
+        //     { to: '/rme/', label: 'RME' },
+        //     { to: '/rscontext/', label: 'RS Context'},
+        //     { to: '/taudem/', label: 'TauDEM' },
+        //     { to: '/vbet/', label: 'VBET'},
+        // ]},
         {
           href: 'https://github.com/Riverscapes/riverscapes-tools', // External GitHub link
           label: 'GitHub',
