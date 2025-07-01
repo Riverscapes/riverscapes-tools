@@ -1039,7 +1039,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
     segmentation_points = os.path.join(
         vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['SEGMENTATION_POINTS'].rel_path)
     stream_size_lookup = get_distance_lookup(
-        inputs_gpkg, level_paths_to_run, level_paths_drainage, vbet_run)
+        vbet_gpkg, level_paths_to_run, level_paths_drainage, vbet_run)
     generate_igo_points(output_centerlines, dem, segmentation_points, output_vbet, unique_stream_field, stream_size_lookup, 1.5)
     _tmr_waypt.timer_break('GenerateVBETSegmentPts')
 
@@ -1065,15 +1065,15 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
     log.info('Summerizing VBET Metrics')
     window_size = {0: 200.0, 1: 400.0, 2: 1200.0, 3: 2000.0, 4: 8000.0}
     distance_lookup = get_distance_lookup(
-        inputs_gpkg, level_paths_to_run, level_paths_drainage, vbet_run, window_size)
-    project.add_metadata([RSMeta("Small Search Window", str(window_size[0]), RSMetaTypes.INT, locked=True),
-                          RSMeta("Medium Search Window", str(
-                              window_size[1]), RSMetaTypes.INT, locked=True),
-                          RSMeta("Large Search Window", str(
-                              window_size[2]), RSMetaTypes.INT, locked=True),
-                          RSMeta("Very Large Search Window", str(
-                              window_size[3]), RSMetaTypes.INT, locked=True),
-                          RSMeta("Huge Search Window", str(window_size[4]), RSMetaTypes.INT, locked=True)])
+        vbet_gpkg, level_paths_to_run, level_paths_drainage, vbet_run, window_size)
+    # project.add_metadata([RSMeta("Small Search Window", str(window_size[0]), RSMetaTypes.INT, locked=True),
+    #                       RSMeta("Medium Search Window", str(
+    #                           window_size[1]), RSMetaTypes.INT, locked=True),
+    #                       RSMeta("Large Search Window", str(
+    #                           window_size[2]), RSMetaTypes.INT, locked=True),
+    #                       RSMeta("Very Large Search Window", str(
+    #                           window_size[3]), RSMetaTypes.INT, locked=True),
+    #                       RSMeta("Huge Search Window", str(window_size[4]), RSMetaTypes.INT, locked=True)])
     metric_fields = list(metric_layers.keys())
     calculate_vbet_window_metrics(segmentation_points, segmentation_polygons,
                                   level_paths_to_run, unique_stream_field, distance_lookup, metric_fields)

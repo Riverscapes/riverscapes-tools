@@ -277,38 +277,65 @@ def get_levelpath_catchment(level_path_id: int, catchments_fc: Path) -> BaseGeom
     return out_geom
 
 
-def get_distance_lookup(inputs_gpkg, level_paths, level_paths_drainage, vbet_run, conversion=None):
+def get_distance_lookup(outputs_gpkg, level_paths, level_paths_drainage, vbet_run, conversion=None):
 
     output = {}
-    with sqlite3.connect(inputs_gpkg) as conn:
+
+    with sqlite3.connect(outputs_gpkg) as conn:
         curs = conn.cursor()
         for level_path in level_paths:
             if level_path is None:
                 continue
 
+            if conversion is not None:
+                curs.execute(f"SELECT seg_distance FROM vbet_igos WHERE level_path = '{level_path}'")
+                dists = [row[0] for row in curs.fetchall()]
+                if len(dists) > 2:
+                    dists.sort()
+                    min_dist = dists[1] - dists[0]
+                else:
+                    min_dist = 0
+            else:
+                min_dist = 0
+
             if level_paths_drainage[level_path] < vbet_run['Zones']['Slope'][0]:
                 if conversion is not None:
-                    output[level_path] = conversion[0]
+                    if min_dist > conversion[0]:
+                        output[level_path] = min_dist
+                    else:
+                        output[level_path] = conversion[0]
                 else:
                     output[level_path] = 0
             elif vbet_run['Zones']['Slope'][0] <= level_paths_drainage[level_path] < vbet_run['Zones']['Slope'][1]:
                 if conversion is not None:
-                    output[level_path] = conversion[1]
+                    if min_dist > conversion[1]:
+                        output[level_path] = min_dist
+                    else:
+                        output[level_path] = conversion[1]
                 else:
                     output[level_path] = 1
             elif vbet_run['Zones']['Slope'][1] <= level_paths_drainage[level_path] < vbet_run['Zones']['Slope'][2]:
                 if conversion is not None:
-                    output[level_path] = conversion[2]
+                    if min_dist > conversion[2]:
+                        output[level_path] = min_dist
+                    else:
+                        output[level_path] = conversion[2]
                 else:
                     output[level_path] = 2
             elif vbet_run['Zones']['Slope'][3] != '' and vbet_run['Zones']['Slope'][2] <= level_paths_drainage[level_path] < vbet_run['Zones']['Slope'][3]:
                 if conversion is not None:
-                    output[level_path] = conversion[3]
+                    if min_dist > conversion[3]:
+                        output[level_path] = min_dist
+                    else:
+                        output[level_path] = conversion[3]
                 else:
                     output[level_path] = 3
             elif vbet_run['Zones']['Slope'][4] != '' and vbet_run['Zones']['Slope'][3] <= level_paths_drainage[level_path] < vbet_run['Zones']['Slope'][4]:
                 if conversion is not None:
-                    output[level_path] = conversion[4]
+                    if min_dist > conversion[4]:
+                        output[level_path] = min_dist
+                    else:
+                        output[level_path] = conversion[4]
                 else:
                     output[level_path] = 4
 
