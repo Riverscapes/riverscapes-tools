@@ -1,45 +1,54 @@
 ---
-title: TauDEM Data
+title: Data
 layout: default
 description: Data Produced by the TauDEM Project
+sidebar_position: 2
 ---
 
-<h2><a name="CHANNEL_LINES">Channel Lines</a></h2>
+# Data
+
+## Inputs
+
+<h3><a name="CHANNEL_LINES">Channel Lines</a></h3>
 
 Channel network (lines) feature class.
 
-<h2><a name="DEM_MASK_POLY">DEM Mask Polygon</a></h2>
+<h3><a name="DEM_MASK_POLY">DEM Mask Polygon</a></h3>
 
 A polygon feature used to mask the input DEM.
 
-<h2><a name="DEM_MASKED">Masked DEM</a></h2>
+<h3><a name="DEM_MASKED">Masked DEM</a></h3>
 
 The input DEM masked using an input polygon feature.
 
-<h2><a name="PITFILL">Pit Filled DEM</a></h2>
+## Intermediates
+
+<h3><a name="PITFILL">Pit Filled DEM</a></h3>
 
 The input DEM with the TauDEM Pit Remove algorithm applied to it.
 
-<h2><a name="DINFFLOWDIR_ANG">D-infinity Flow Direction Raster</a></h2>
+<h3><a name="DINFFLOWDIR_ANG">D-infinity Flow Direction Raster</a></h3>
 
 Flow direction raster produced by applying the TauDEM D-infity Flow Directions algorithm to the pit filled DEM.
 
-<h2><a name="RASTERIZED_CHANNEL">Raterized Channel</a></h2>
+<h3><a name="RASTERIZED_CHANNEL">Raterized Channel</a></h3>
 
 The input channel polygon or line network converted to a raster where the channel cells have the value 1 and all other cells have the value 0.
 
-<h2><a name="DINFFLOWDIR_SLP">D-infinity Slope Raster</a></h2>
+<h3><a name="DINFFLOWDIR_SLP">D-infinity Slope Raster</a></h3>
 
 Slope raster produced by applying the TauDEM D-infinity Flow Directions algorithm to the pit filled DEM.
 
-<h2><a name="AREADINF_SCA">D-infinity Specific Catchment Area Raster</a></h2>
+<h3><a name="AREADINF_SCA">D-infinity Specific Catchment Area Raster</a></h3>
 
 A raster of specific catchment area produced by applying that TauDEM algorithm to the D-infinity flow direction raster.
 
-<h2><a name="HAND_RASTER">Height Above Nearest Drainage Raster</a></h2>
+## Outputs 
+
+<h3><a name="HAND_RASTER">Height Above Nearest Drainage Raster</a></h3>
 
 A raster where each pixel value is the height above the nearest drainage area, produced using the D-infinity Distance Down TauDEM algorithm.
 
-<h2><a name="TWI_RASTER">Topographic Wetness Index Raster</a></h2>
+<h3><a name="TWI_RASTER">Topographic Wetness Index Raster</a></h3>
 
 A raster of Topographic Wetness Index produced using TauDEMs application of the algorithm.

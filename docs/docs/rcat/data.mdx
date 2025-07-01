@@ -1,12 +1,11 @@
 ---
-title: Riparian Condition Assessment Tool Data
-layout: default
-banner: true
+title: Data
+sidebar_position: 3
 ---
 
-## RCAT Data
+# Data
 
-This page documents and explains the new datasets created by the Anthropogenic Context tool.
+This page documents and explains the new datasets created by the Riparian Condition Assessment Tool (RCAT).
 
 <h2><a name="EXRIPARIAN">Existing Riparian Vegetation Cover</a></h2>
 
@@ -60,3 +59,73 @@ infrastructure first, all associated cells are coded as 0 for disconnected.
 <h2><a name="RCAT_DGOS"></a> <a name="DGOS">RCAT Output DGOs</a></h2>
 
 
+
+
+
+
+## Output Attributes
+
+### Channel Network Outputs (vwReaches)
+
+- **ReachID**: Unique identifier for each reach
+- **FCode**: NHD FCode for each reach
+- **ReachCode**: A unique identifier for each reach from the NHD attributes 
+- **NDHPlusID**: Unique identifier for each reach in the NHDPlus dataset
+- **StreamName**: The name of the stream
+- **level_path**: A unique identifier for each individual stream from the NHD attributes
+- **TotDASqKm**: Total drainage area in square kilometers from NHD attributes
+- **DivDASqMi**: Total drainage area in square kilometers partioned among diversions, side channels, etc. from NHD attributes
+- **WatershedID**: Unique identifier for each watershed (the hydrologic unit code) from the NHD attributes
+- **ownership**: Dominant ownership of the reach (e.g. private, public, tribal)
+- **divergence**: An integer code from NHD attributes indicating channel divergence and type of divergence
+- **stream_order**: Strahler stream stream order from NHD attributes
+- **us_state**: The state in which the reach is located
+- **ecoregion_iii**: Level III ecoregion from the EPA
+- **ecoregion_iv**: Level IV ecoregion from the EPA
+- **iPC_LU**: The land use itensity within the valley bottom adjacent to the reach ranging from 0 (natural land cover) to 100 (urban land cover)
+- **FloodplainAccess**: The proportion of the floodplain associated with the reach that is accessible to the stream (0-1)
+- **FromConifer**: The proportion of the riverscape associated with the reach that changed from conifer historically to riparian vegetation (0-1)
+- **FromDevegetated**: The proportion of the riverscape associated with the reach that changed from bare or unvegetated cover historically to riparian vegetation (0-1)
+- **FromGrassShrubland**: The proportion of the riverscape associated with the reach that changed from grass or shrubland historically to riparian vegetation (0-1)
+- **NoChange**: The proportion of the riverscape associated with the reach that has was riparian historically and remains riparian (0-1)
+- **GrassShrubland**: The proportion of the riverscape associated with the reach that was riparian vegetation historically that has been converted from riparian to grass or shrubland (0-1)
+- **Devegetation**: The proportion of the riverscape associated with the reach that was riparian vegetation historically that has been converted from riparian to bare or unvegetated cover (0-1)
+- **Conifer**: The proportion of the riverscape associated with the reach that was riparian vegetation historically that has been converted from riparian to conifer (0-1)
+- **Invasive**: The proportion of the riverscape associated with the reach that was riparian vegetation historically that has been converted from riparian to invasive species (0-1)
+- **Development**: The proportion of the riverscape associated with the reach that was riparian vegetation historically that has been converted from riparian to developed land (0-1)
+- **Agriculture**: The proportion of the riverscape associated with the reach that was riparian vegetation historically that has been converted from riparian to agriculture (0-1)
+- **NonRiparian**: The proportion of the riverscape associated with the reach that has experienced non-riparian conversion (i.e., from one upland community to another) (0-1)
+- **ExistingRiparianMean**: The proportion of the riverscape associated with the reach that currently has riparian cover (0-1)
+- **HistoricRiparianMean**: The proportion of the riverscape associated with the reach that had riparian cover historically (0-1)
+- **RiparianDeparture**: The difference in riparian cover between the current and historic conditions (1 - (ExistingRiparianMean / HistoricRiparianMean)). In small, headwater streams where vegetation can't be meaningfully sampled, this is overridden to be 0 if there is no detectable land use change.
+- **Condition**: The overall condition of the reach based on the three lines of evidence (land use intensity, riparian vegetation departure, and floodplain accessibility) (0-1)
+- **ConversionType**: The dominant type of riparian conversion in the riverscape associated with the reach
+- **Departure**: Categorical classification of riparian departure
+
+### Riverscape Network Outputs (vwDgos/vwIgos)
+
+- **IGODID/DGOID**: Unique identifier for each riverscape polygon or point
+- **FCode**: NHD FCode for each riverscape polygon or point
+- **level_path**:  A unique identifier for each individual stream from the NHD attributes associated with the riverscape polygon or point
+- **seg_distance**: A distance along a given level_path. In combination with level_path, this provides a unique identifier for each riverscape polygon or point
+- **stream_size**: A categorical classification of stream size from 0 (small, headwater streams) to 4 (large continental rivers)
+- **centerline_length**: (DGOs) The length of the centerline (m) of the riverscape polygon (riverscape network length)
+- **LUI**: The land use intensity averaged across the DGO or moving window, ranging from 0 (natural land cover) to 100 (urban land cover)
+- **FloodplainAccess**: The proportion of the DGO or moving window that is accessible to the stream (0-1)
+- **FromConifer**: The proportion of the DGO or moving window that changed from conifer historically to riparian vegetation (0-1)
+- **FromDevegetated**: The proportion of the DGO or moving window that changed from bare or unvegetated cover historically to riparian vegetation (0-1)
+- **FromGrassShrubland**: The proportion of the DGO or moving window that changed from grass or shrubland historically to riparian vegetation (0-1)
+- **NoChange**: The proportion of the DGO or moving window that has was riparian historically and remains riparian (0-1)
+- **GrassShrubland**: The proportion of the DGO or moving window that was riparian vegetation historically that has been converted from riparian to grass or shrubland (0-1)
+- **Devegetation**: The proportion of the DGO or moving window that was riparian vegetation historically that has been converted from riparian to bare or unvegetated cover (0-1)
+- **Conifer**: The proportion of the DGO or moving window that was riparian vegetation historically that has been converted from riparian to conifer (0-1)
+- **Invasive**: The proportion of the DGO or moving window that was riparian vegetation historically that has been converted from riparian to invasive species (0-1)
+- **Development**: The proportion of the DGO or moving window that was riparian vegetation historically that has been converted from riparian to developed land (0-1)
+- **Agriculture**: The proportion of the DGO or moving window that was riparian vegetation historically that has been converted from riparian to agriculture (0-1)
+- **NonRiparian**: The proportion of the DGO or moving window that has experienced non-riparian conversion (i.e., from one upland community to another) (0-1)
+- **ExistingRiparianMean**: The proportion of the DGO or moving window that currently has riparian cover (0-1)
+- **HistoricRiparianMean**: The proportion of the DGO or moving window that had riparian cover historically (0-1)
+- **RiparianDeparture**: The difference in riparian cover between the current and historic conditions (1 - (ExistingRiparianMean / HistoricRiparianMean)). In small, headwater streams where vegetation can't be meaningfully sampled, this is overridden to be 0 if there is no detectable land use change.
+- **Condition**: The overall condition of the reach based on the three lines of evidence (land use intensity, riparian vegetation departure, and floodplain accessibility) (0-1)
+- **ConversionType**: The dominant type of riparian conversion in the DGO or moving window
+- **Departure**: Categorical classification of riparian departure
