@@ -96,6 +96,17 @@
         "{env:DATA_ROOT}/confinement/${input:HUC}/project.rs.xml",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/vbet/${input:HUC}/project.rs.xml"
       ]
+    },
+    {
+      "name": "Calculate Confinement Metrics",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "confinement.confinement_metrics",
+      "console": "integratedTerminal",
+      "args": [
+        "{env:DATA_ROOT}/confinement/${input:HUC}",
+        "{env:DATA_ROOT}/vbet/${input:HUC}"
+      ]
     }
   ]
 }

@@ -13,12 +13,14 @@ def rcat_metrics(rcat_proj_path, anthro_proj_path):
     log = Logger('RCAT Metrics')
     log.info('Calculating RCAT Metrics')
 
-    if not os.path.exists(os.path.join(anthro_proj_path, 'anthro_metrics.json')):
-        log.warning(f'anthro_metrics.json not found in {anthro_proj_path}; creating new metrics file')
-        metrics = {}
-    else:
+    rcat_metrics = {}
+
+    try:
         with open(os.path.join(anthro_proj_path, 'anthro_metrics.json')) as json_file:
             metrics = json.load(json_file)
+    except FileNotFoundError as e:
+        log.warning(f'anthro_metrics.json not found in {anthro_proj_path}; creating new metrics file. {e}')
+        metrics = {}
 
     with sqlite3.connect(os.path.join(rcat_proj_path, 'outputs', 'rcat.gpkg')) as conn:
         curs = conn.cursor()
@@ -46,15 +48,17 @@ def rcat_metrics(rcat_proj_path, anthro_proj_path):
         av_condition = curs.fetchone()[0]
 
     if os.path.exists(os.path.join(anthro_proj_path, 'anthro_metrics.json')):
-        metrics['inaccessibleFloodplain'] = float(metrics['riverscapeArea']) - accessible_floodplain_km2
-        metrics['propInaccessibleFloodplain'] = float(metrics['inaccessibleFloodplain']) / float(metrics['riverscapeArea'])
-        metrics['propAgriculture'] = ag_km2 / float(metrics['riverscapeArea'])
-        metrics['propDeveloped'] = dev_km2 / float(metrics['riverscapeArea'])
+        rcat_metrics['inaccessibleFloodplain'] = float(metrics['riverscapeArea']) - accessible_floodplain_km2
+        rcat_metrics['propInaccessibleFloodplain'] = float(rcat_metrics['inaccessibleFloodplain']) / float(metrics['riverscapeArea'])
+        rcat_metrics['propAgriculture'] = ag_km2 / float(metrics['riverscapeArea'])
+        rcat_metrics['propDeveloped'] = dev_km2 / float(metrics['riverscapeArea'])
 
-    metrics['avePropAccessibleFloodplain'] = av_floodplain_access
-    metrics['avePropRiparian'] = av_riparian_mean
-    metrics['aveRiparianDeparture'] = av_riparian_departure
-    metrics['aveRiparianCondition'] = av_condition
+    rcat_metrics['avePropAccessibleFloodplain'] = av_floodplain_access
+    rcat_metrics['avePropRiparian'] = av_riparian_mean
+    rcat_metrics['aveRiparianDeparture'] = av_riparian_departure
+    rcat_metrics['aveRiparianCondition'] = av_condition
+
+    metrics['rcat'] = rcat_metrics
 
     with open(os.path.join(rcat_proj_path, 'rcat_metrics.json'), 'w') as json_out:
         json.dump(metrics, json_out, indent=2)

@@ -104,6 +104,10 @@ try() {
     $CONFINEMENT_DIR/project.rs.xml \
     $RS_CONTEXT_DIR/project.rs.xml,$VBET_DIR/project.rs.xml
 
+  python3 -m confinement.confinement_metrics \
+    $CONFINEMENT_DIR \
+    $VBET_DIR
+
   echo "======================  Final Disk space usage ======================="
   df -h
 

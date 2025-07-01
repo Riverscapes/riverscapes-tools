@@ -64,6 +64,18 @@
       ]
     }, 
     {
+      "name": "BRAT Metrics",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "sqlbrat.brat_metrics",
+      "console": "integratedTerminal",
+      "args": [
+        "{env:DATA_ROOT}/brat/${input:HUC}",
+        "{env:DATA_ROOT}/hydro/${input:HUC}",
+        "{env:DATA_ROOT}/anthro/${input:HUC}"
+      ]
+    },
+    {
       "name": "Update BRAT Parameters",
       "type": "python",
       "request": "launch",

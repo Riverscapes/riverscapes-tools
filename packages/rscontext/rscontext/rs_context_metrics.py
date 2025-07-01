@@ -121,9 +121,10 @@ def rscontext_metrics(project_path):
                                          out_metrics['flowlineLengthEphemeralKm']) / catchment_area_km2
 
     out_metrics['ownership'] = land_ownership(project_path)
+    out_metrics_f = {'rs_context': out_metrics}
 
     with open(os.path.join(project_path, 'rscontext_metrics.json'), 'w', encoding='utf8') as f:
-        json.dump(out_metrics, f, indent=2)
+        json.dump(out_metrics_f, f, indent=2)
 
     proj = RSProject(None, os.path.join(project_path, 'project.rs.xml'))
     datasets_node = proj.XMLBuilder.find('Realizations').find('Realization').find('Datasets')
