@@ -113,9 +113,6 @@ def national_wetlands_inventory(huc10: str, download_dir: str, clip_layer_path: 
                     proj_huc10_shapely = wkbload(bytes(proj_huc10_boundary_ogr.ExportToWkb()))
 
                 output_layer_path = os.path.join(output_gpkg, layer_name)
-                if not os.path.exists(output_layer_path):
-                    log.warning(f'Output layer {output_layer_path} does not exist, skipping.')
-                    continue
                 log.info(f'Creating output layer: {output_layer_path}')
                 copy_feature_class(shapefile_path, output_layer_path, output_epsg, clip_shape=proj_huc10_shapely, make_valid=True)
                 output_layers.append(output_layer_path)
