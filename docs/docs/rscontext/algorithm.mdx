@@ -1,0 +1,20 @@
+---
+title: Algorithm
+layout: default
+position: 2
+---
+
+:::info
+This documentation describes the RSContext model as implemented for the **United States**. Similar models exist for other regions, such as New Zealand, France, and Italy. While the overarching concept—retrieving publicly available river-related data—is consistent across jurisdictions, the specific algorithms are tailored to each country to accommodate differences in government data providers.
+:::
+
+The Riverscapes Context tool doesn't have an algorithm *per se*. It's main function is to reach out of the internet and retrieve data from various external sources. It uses a mixture of API requests and known URLs to download data and then reformat it into the preferred data formats (GeoTiFFs for rasters and [GeoPackages](https://www.geopackage.org) for vector) This manipulation is performed in Python using a variety of technologies, primarily [GDAL](https://gdal.org/en/stable), OGR and [[Shapely](https://pypi.org/project/shapely/)]. 
+
+Very little processing is performed on the data. The goal is to package the input data in as close to the original format as possible. Exceptions are described below.
+
+# Hydrography
+
+The one exception is hydrography; The RSContext tool downloads NHDPlus HR (1:24,000) from the National Map and then segments it to a fixed distance. This segmentation is needed by other downstream models ([Hydro](/hydro) and [Anthro](/anthro)) and so it must be done in RSContext, for the same data to be used by all downstream models.
+
+
+
