@@ -1,7 +1,6 @@
 ---
-title: Riverscapes Report Card - BRAT 4.3.2
-banner: true
-layout: default
+title: Report Card
+sidebar_position: 9
 ---
 
 BRAT is one of several tools developed by the [Riverscapes Consortium](https://riverscapes.net). This report card communicates BRAT's compliance with the Riverscape Consortium's published [tool standards](https://riverscapes.net/Tools).
@@ -24,34 +23,29 @@ Assessment Rationale | BRAT has been applied extensively throughout the Western 
 
 This tool's [discrimination](https://riverscapes.net/Tools/#model-discrimination) evaluation by the [Riverscapes Consortium's](https://riverscapes.net) is:
 
-**Evaluation Key:**
-None or Not Applicable: <i class="fa fa-battery-empty" aria-hidden="true"></i> •
-Minimal or In Progress: <i class="fa fa-battery-quarter" aria-hidden="true"></i> •
-Functional: <i class="fa fa-battery-half" aria-hidden="true"></i> •
-Fully Developed: <i class="fa fa-battery-full" aria-hidden="true"></i>  
 
 Criteria | Value | Evaluation | Comments and/or Recommendations
 :--- | :--- | :--- | :---
-Tool Interface(s) | [Command Line Interface](https://en.wikipedia.org/wiki/Command-line_interface) | <i class="fa fa-battery-full" aria-hidden="true"></i> | Tool is two primary command line commands that specify inputs and use lookup tables for parameterization. The tables contain information specific to freely available US data, but can be extended to contain other data.
-Scale | Network (reach scale resolution, watershed extent) | <i class="fa fa-battery-full" aria-hidden="true"></i> | This tool has been applied across entire states, regions and watersheds, resolving detail down to 250 m to 300 m length reaches of riverscape.
-Language(s) and Dependencies | Python | <i class="fa fa-battery-full" aria-hidden="true"></i> | Python package dependencies are open source.
-Vetted in Peer-Reviewed Literature | Yes.  [Macfarlane et al. (2015)]({{site.baseurl}}/references.html) | <i class="fa fa-battery-half" aria-hidden="true"></i> | The existing capacity model is vetted, and the historical capacity model is well described. The version in the publication is [2.0](https://github.com/Riverscapes/pyBRAT/releases/tag/v2.0.0), but the capacity model is basically the same in 3.0. Many of the risk, beaver management, conservation and restoration concepts have not yet been vetted in scholarly literature but have been applied, tested and vetted by many scientists and managers across the US and UK.
-Source Code Documentation | Available at [Github](https://github.com/Riverscapes/riverscaps-tools/brat) <i class="fa fa-github" aria-hidden="true"></i> | <i class="fa fa-battery-full" aria-hidden="true"></i> | Source code is clearly organized and documented
-Open Source | [open-source](https://github.com/Riverscapes/riverscaps-tools/brat) <i class="fa fa-github" aria-hidden="true"></i> with [GNU General Public License v 3.0](https://github.com/Riverscapes/riverscapes-tools/blob/master/LICENSE) | <i class="fa fa-battery-full" aria-hidden="true"></i> |
-User Documentation | [Documentation](http://tools.riverscapes.net/brat/) is in progress. | <i class="fa fa-battery-half" aria-hidden="true"></i> | Previous versions were thoroughly documented but much of that documentation is out of date with the current version. New, updated documentation for sqlBRAT is currently in progress.
-Easy User Interface | Tool is accessed via command prompt. | <i class="fa fa-battery-quarter" aria-hidden="true"></i> | Most BRAT runs right now are performed by North Arrow Research analysts. For a user to run this version of the tool themselves would require advanced understanding (programming capability) and significant documentation on the process.
-Scalability | Batch processing | <i class="fa fa-battery-full" aria-hidden="true"></i> | The tool is typically batch processed at the HUC 8 level
-Produces Riverscapes Projects | Yes | <i class="fa fa-battery-half" aria-hidden="true"></i> | BRAT is now producing Riverscapes Projects that are fully-compatible with [RAVE](https://rave.riverscapes.net), but some changes to curation and business logic are still being made
+Tool Interface(s) | [Command Line Interface](https://en.wikipedia.org/wiki/Command-line_interface) | Pass | Tool is two primary command line commands that specify inputs and use lookup tables for parameterization. The tables contain information specific to freely available US data, but can be extended to contain other data.
+Scale | Network (reach scale resolution, watershed extent) | Pass | This tool has been applied across entire states, regions and watersheds, resolving detail down to 250 m to 300 m length reaches of riverscape.
+Language(s) and Dependencies | Python | Pass | Python package dependencies are open source.
+Vetted in Peer-Reviewed Literature | Yes.  [Macfarlane et al. (2015)](references.html) | Partial | The existing capacity model is vetted, and the historical capacity model is well described. The version in the publication is [2.0](https://github.com/Riverscapes/pyBRAT/releases/tag/v2.0.0), but the capacity model is basically the same in 3.0. Many of the risk, beaver management, conservation and restoration concepts have not yet been vetted in scholarly literature but have been applied, tested and vetted by many scientists and managers across the US and UK.
+Source Code Documentation | Available at [Github](https://github.com/Riverscapes/riverscaps-tools/brat) Partial | Pass | Source code is clearly organized and documented
+Open Source | [open-source](https://github.com/Riverscapes/riverscaps-tools/brat) Partial with [GNU General Public License v 3.0](https://github.com/Riverscapes/riverscapes-tools/blob/master/LICENSE) | Pass |
+User Documentation | [Documentation](http://tools.riverscapes.net/brat/) is in progress. | Partial | Previous versions were thoroughly documented but much of that documentation is out of date with the current version. New, updated documentation for sqlBRAT is currently in progress.
+Easy User Interface | Tool is accessed via command prompt. | Partial | Most BRAT runs right now are performed by North Arrow Research analysts. For a user to run this version of the tool themselves would require advanced understanding (programming capability) and significant documentation on the process.
+Scalability | Batch processing | Pass | The tool is typically batch processed at the HUC 8 level
+Produces Riverscapes Projects | Yes | Partial | BRAT is now producing Riverscapes Projects that are fully-compatible with [RAVE](https://rave.riverscapes.net), but some changes to curation and business logic are still being made
 
 ## Tool Output Utility
 
 Criteria | Value | Evaluation | Comments
 ---|---|---|---
-[RAVE](https://viewer.riverscapes.net)- Compliant Riverscapes Projects | Yes | <i class="fa fa-battery-full" aria-hidden="true"></i> |
-[RAVE](https://viewer.riverscapes.net) Business Logic Defined | Yes | <i class="fa fa-battery-half" aria-hidden="true"></i> | Business logic is defined, but undergoing minor changes and not finalized for a release |
-Riverscapes Projects hosted in public-facing [Riverscapes Warehouse(s)](https://riverscapes.net/Data_Warehouses/#warehouse-explorer-concept) | Yes. Current BRAT runs are being housed in the [Riverscapes Warehouse](https://data.riverscapes.net). | <i class="fa fa-battery-half" aria-hidden="true"></i> | There is data in the warehouse, but is provisional and wider access to the warehouse is forthcoming
-Riverscapes Projects connected to [Web-Maps](https://riverscapes.net/Data_Warehouses#web-maps) <i class="fa fa-map-o" aria-hidden="true"></i> | Current projects are viewable in [WebRAVE](https://rave.riverscapes.net/Download/install_webrave.html) through the Riverscapes Warehouse. A [DataBasin](https://databasin.org/datasets/1420ffb7e9674753a5fb626e2b830c1f) entry exists for Utah BRAT | <i class="fa fa-battery-full" aria-hidden="true"></i> | All old data sets should be made Web Map accessible and clear about what version they were produced from and what years they correspond to (i.e. Riverscapes Project metadata)
-Riverscapes Projects connected to Field [Apps](https://riverscapes.net//Data_Warehouses#apps---pwas) | Not publicly. Some simple Arc Data Collector field apps have been used, but they are not reliable, scalable or deployable to external audiences. | <i class="fa fa-battery-quarter" aria-hidden="true"></i> | Workflows and forms are well tested and vetted. This needs funding to develop as commercial, professional-grade reliable web app.
+[RAVE](https://viewer.riverscapes.net)- Compliant Riverscapes Projects | Yes | Pass |
+[RAVE](https://viewer.riverscapes.net) Business Logic Defined | Yes | Partial | Business logic is defined, but undergoing minor changes and not finalized for a release |
+Riverscapes Projects hosted in public-facing [Riverscapes Warehouse(s)](https://riverscapes.net/Data_Warehouses/#warehouse-explorer-concept) | Yes. Current BRAT runs are being housed in the [Riverscapes Warehouse](https://data.riverscapes.net). | Partial | There is data in the warehouse, but is provisional and wider access to the warehouse is forthcoming
+Riverscapes Projects connected to [Web-Maps](https://riverscapes.net/Data_Warehouses#web-maps) <i class="fa fa-map-o" aria-hidden="true"></i> | Current projects are viewable in [WebRAVE](https://rave.riverscapes.net/Download/install_webrave.html) through the Riverscapes Warehouse. A [DataBasin](https://databasin.org/datasets/1420ffb7e9674753a5fb626e2b830c1f) entry exists for Utah BRAT | Pass | All old data sets should be made Web Map accessible and clear about what version they were produced from and what years they correspond to (i.e. Riverscapes Project metadata)
+Riverscapes Projects connected to Field [Apps](https://riverscapes.net//Data_Warehouses#apps---pwas) | Not publicly. Some simple Arc Data Collector field apps have been used, but they are not reliable, scalable or deployable to external audiences. | Partial | Workflows and forms are well tested and vetted. This needs funding to develop as commercial, professional-grade reliable web app.
 
 ## Developer Intent
 The current (unreleased) **Production Grade** version of BRAT will improve on previous versions by:
@@ -60,7 +54,7 @@ The current (unreleased) **Production Grade** version of BRAT will improve on pr
 - Allowing discovery of past BRAT runs in Warehouse
 - Presenting transparent ranking of level of BRAT model curation or [dataset rank](https://riverscapes.net/Data_Warehouses/#dataset-rank) and facilitating community commenting
 
-The BRAT development team are in the process of building a **Commercial Grade** > version of BRAT, which would additionally:
+The BRAT development team are in the process of building a **Commercial Grade** version of BRAT, which would additionally:
 - Encourage more user-interaction with BRAT outputs and crowd-sourcing of information to create ownership of outputs
 - Allow users to visualize dynamic outputs of BRAT through time
 - Allow users to upload their own BRAT projects
@@ -71,7 +65,3 @@ The BRAT development team are in the process of building a **Commercial Grade** 
 This report card is for a current, beta version of a **Production Grade**  version of BRAT ([sqlBRAT](https://github.com/Riverscapes/riverscapes-tools/brat) with no release yet), which will be necessary to support the **Commercial Grade** product.
 
 If you share this [vision](./index#vision), get in touch with the developers to support/fund the effort.
-
-
-<a href="https://riverscapes.net"></a>
-The [Riverscapes Consortium's](https://riverscapes.net) Technical Committee provides report cards for tools either deemed as "[riverscapes-compliant](https://riverscapes.net/Tools/#riverscapes-compliant)" or "[pending riverscapes-compliance](https://riverscapes.net/Tools/#tools-pending-riverscapes-compliance)".

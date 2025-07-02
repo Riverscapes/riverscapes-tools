@@ -1,0 +1,8 @@
+{
+  "label": "Advanced",
+  "position": 4,
+  "link": {
+    "type": "generated-index",
+    "description": "The following pages provide background information about using BRAT and decribe its architecture."
+  }
+}

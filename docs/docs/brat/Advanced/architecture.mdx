@@ -4,6 +4,8 @@ layout: default
 banner: true
 ---
 
+# Architecture
+
 BRAT comprises three separate processes that are run in order. Operations that involve data that  change infrequently and also don't involve human judegment are broken out into their own process. This avoids unnecessarily performing time consuming processes on data that hasn't changed. Conversely, the third step is designed as a separate process because it requires the selection of hydraulic equations and vegetation suitability, which is subjective and might change over time.
 
 ![BRAT Steps](https://docs.google.com/drawings/d/e/2PACX-1vRRKtomvaqD04BLRU7e6VyzlnKuayLs7ZgyIyR6B63akJp3tVGzZfAcuqmOOgIUxShZSH3ESxSgTiOJ/pub?w=1958&h=784)
