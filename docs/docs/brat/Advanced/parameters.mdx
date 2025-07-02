@@ -4,7 +4,7 @@ layout: default
 banner: true
 ---
 
-BRAT parameters for the Continental United States (CONUS) are stored in the BRAT git repository [here](https://github.com/Riverscapes/riverscapes-tools/tree/master/packages/brat/database/data). The parameters are stored in a series of plain text CSV files. These files are then used to populate the [BRAT SQLite database](https://tools.riverscapes.net/brat/advanced/database/) each time BRAT is run. Be careful to check your git branch to ensure you are looking at the latest parameters.
+BRAT parameters for the Conterminous United States (CONUS) are stored in the BRAT git repository [here](https://github.com/Riverscapes/riverscapes-tools/tree/master/packages/brat/database/data). The parameters are stored in a series of plain text CSV files. These files are then used to populate the [BRAT SQLite database](https://tools.riverscapes.net/brat/advanced/database/) each time BRAT is run. Be careful to check your git branch to ensure you are looking at the latest parameters.
 
 We used to maintain a Postgres database for managing the contents of these CSV files. A Python script was used to populate the Postgres with the latest contents of the CSV files. Users would then connect to the Postgres database using software such as DataGrip to edit the values in Postgres. This provided a more powerful and rigorous way of working with the data because the database would enforce referential integrity as well as protect read only information from being overwritten.
 
