@@ -39,6 +39,13 @@ def get_segment_measurements(geom_line: ogr.Geometry, src_raster: rasterio.Datas
             mask_raster = np.ma.masked_values(raw_raster, src_raster.nodata)
             value = float(mask_raster.min())  # BRAT uses mean here
             elevations.append(value)
+    
+    # Handle case where there are insufficient endpoints
+    if len(endpoints) < 2:
+        geom_clipped.Transform(transform)
+        stream_length = geom_clipped.Length()
+        return stream_length, None, None, None
+    
     combined = zip(elevations, endpoints)
     sorted_combined = sorted(combined)
     sorted_elevs, sorted_epts = zip(*sorted_combined)
