@@ -16,138 +16,102 @@ Learn more about: [tool grades](https://developer.riverscapes.net/MIGRATED/Tools
 
 # Professional Grade Tools
 
+The Riverscapes Consortium uses the Application Readiness Levels to discriminate tools. The following list comprises those tools that have been designated as professional grade.
 
-
-import { ToolsWrapper } from '@site/src/components/ToolsWrapper/ToolsWrapper';
+import { ToolsWrapper } from "@site/src/components/ToolsWrapper/ToolsWrapper";
 
 <ToolsWrapper
   cardsize="md"
   cards={[
-  {
-    title: "Riverscapes Context",
-    description: "Discovers, downloads and compiles together disparate datasets that are helpful for contextualizing riverscape health.",
-    toolUrl: "https://tools.riverscapes.net/rscontext",
-    logoUrl: "/img/logo.png"
-  },
-  {
-    title: "Channel Area",
-    description: "Genters polygons representing the spatial extent of the drainage network within a watershed by buffering flow lines and combining with waterbody polygons.",
-    toolUrl: "https://tools.riverscapes.net/channelarea/",
-    logoUrl: "/img/logo.png"
-  },
-  {
-    title: "TauDEM",
-    description: "A riverscapes compliant wrapper around the Terrain Analysis Using Digital Elevation Models (TauDEM) is a suite of tools developed by David Tarboton at the Utah State University Hydrology Research Group.",
-    toolUrl: "https://tools.riverscapes.net/taudem/",
-    logoUrl: "/img/logo.png"
-  },
-  {
-    title: "VBET",
-    description: "The Valley Bottom Extraction Tool (VBET) is a tool used to identify the valley bottom of a riverscape, and roughly separate it into geomorphic units (channel, active floodplain, and inactive floodplain).",
-    toolUrl: "https://tools.riverscapes.net/vbet/",
-    logoUrl: "/img/logo.png"
-  },
-  {
-    title: "Anthropologic Context",
-    description: "Derives anthropologic context from a variety of sources.",
-    toolUrl: "https://tools.riverscapes.net/anthro/",
-    logoUrl: "/img/logo.png"
-  },
-  {
-    title: "Confinement",
-    description: "Quantifies the amount that reaches are confined by valley margins.",
-    toolUrl: "https://tools.riverscapes.net/confinement/",
-    logoUrl: "/img/logo.png"
-  },
-  {
-    title: "Riparian Condition Assessment Tool",
-    description: "",
-    toolUrl: "https://tools.riverscapes.net/rcat/",
-    logoUrl: "/img/logo.png"
-  },
-  {
-    title: "Hydrological Context",
-    description: "A series of algorithms that calculate key discharges for assessing riverscapes health.",
-    toolUrl: "https://tools.riverscapes.net/hydro/",
-    logoUrl: "/img/logo.png"
-  },
-  {
-    title: "Metric Engine",
-    description: "Synthesizes and calculates metrics from a variety of other riverscapes models.",
-    toolUrl: "https://tools.riverscapes.net/rme/",
-    logoUrl: "/img/logo.png"
-  },
-  {
-    title: "BRAT",
-    description: "The Beaver Restoration Assessment Tool (BRAT) is a tool used to assess the potential for beaver restoration in a riverscape.",
-    toolUrl: "https://tools.riverscapes.net/brat/",
-    logoUrl: "/img/logo.png"
-  },
-  {
-    title: "GCD",
-    description: "The Geomorphic Change Detection, GCD, measures differences between elevation rasters while accounting for uncertainty.",
-    toolUrl: "https://gcd.riverscapes.net",
-    logoUrl: "/img/logo.png"
-  },
-  {
-    title: "Fluvial Corridor Toolbox",
-    description: "",
-    toolUrl: "https://github.com/EVS-GIS/Fluvial-Corridor-Toolbox-ArcGIS",
-    logoUrl: "/img/logo.png"
-  },
-  {
-    title: "Geomorphic Unit Toolbox",
-    description: "",
-    toolUrl: "https://gut.riverscapes.net/",
-    logoUrl: "/img/logo.png"
-  },
-  {
-    title: "Riverscapes Viewer for QGIS",
-    description: "",
-    toolUrl: "https://viewer.riverscapes.net",
-    logoUrl: "/img/logo.png"
-  },
-  {
-    title: "Riverscapes Viewer for ArcMap",
-    description: "",
-    toolUrl: "https://viewer.riverscapes.net",
-    logoUrl: "/img/logo.png"
-  },
-  {
-    title: "Riverscapes Viewer for ArcPro",
-    description: "",
-    toolUrl: "https://viewer.riverscapes.net",
-    logoUrl: "/img/logo.png"
-  },
-  {
-    title: "Riverscapes Viewer for Web",
-    description: "",
-    toolUrl: "https://viewer.riverscapes.net",
-    logoUrl: "/img/logo.png"
-  },
-  {
-    title: "Fish Habitat Model",
-    description: "",
-    toolUrl: "https://habitat.northarrowresearch.com",
-    logoUrl: "/img/logo.png"
-  },
-  {
-    title: "CHaMP Topo Processing tools",
-    description: "",
-    toolUrl: "https://champtopo.northarrowresearch.com",
-    logoUrl: "/img/logo.png"
-  },
-  {
-    title: "Data Exchange",
-    description: "The Riverscapes Data Exchange is a warehouse for storing, discovering and sharing riverscapes compliant data.",
-    toolUrl: "https://data.riverscapes.net",
-    logoUrl: "/img/logo.png"
-  }
-]
-}
+    {
+      title: "Riverscapes Context",
+      description:
+        "Discovers, downloads and compiles together disparate datasets that are helpful for contextualizing riverscape health.",
+      toolUrl: "https://tools.riverscapes.net/rscontext",
+      logoUrl: "/img/logo.png",
+    },
+    {
+      title: "Channel Area",
+      description:
+        "Genterates polygons representing the spatial extent of the drainage network within a watershed by buffering flow lines and combining with waterbody polygons.",
+      toolUrl: "https://tools.riverscapes.net/channelarea/",
+      logoUrl: "/img/logo.png",
+    },
+    {
+      title: "TauDEM",
+      description:
+        "A riverscapes compliant wrapper around the Terrain Analysis Using Digital Elevation Models (TauDEM) is a suite of tools developed by David Tarboton at the Utah State University Hydrology Research Group.",
+      toolUrl: "https://tools.riverscapes.net/taudem/",
+      logoUrl: "/img/logo.png",
+    },
+    {
+      title: "VBET",
+      description:
+        "The Valley Bottom Extraction Tool (VBET) is a tool used to identify the valley bottom of a riverscape, and roughly separate it into geomorphic units (channel, active floodplain, and inactive floodplain).",
+      toolUrl: "https://tools.riverscapes.net/vbet/",
+      logoUrl: "/img/logo.png",
+    },
+    {
+      title: "Anthropologic Context",
+      description: "Derives anthropologic context from a variety of sources.",
+      toolUrl: "https://tools.riverscapes.net/anthro/",
+      logoUrl: "/img/logo.png",
+    },
+    {
+      title: "Confinement",
+      description:
+        "Quantifies the amount that reaches are confined by valley margins.",
+      toolUrl: "https://tools.riverscapes.net/confinement/",
+      logoUrl: "/img/logo.png",
+    },
+    {
+      title: "Riparian Condition Assessment Tool",
+      description: "",
+      toolUrl: "https://tools.riverscapes.net/rcat/",
+      logoUrl: "/img/logo.png",
+    },
+    {
+      title: "Hydrological Context",
+      description:
+        "A series of algorithms that calculate key discharges for assessing riverscapes health.",
+      toolUrl: "https://tools.riverscapes.net/hydro/",
+      logoUrl: "/img/logo.png",
+    },
+    {
+      title: "Metric Engine",
+      description:
+        "Synthesizes and calculates metrics from a variety of other riverscapes models.",
+      toolUrl: "https://tools.riverscapes.net/rme/",
+      logoUrl: "/img/logo.png",
+    },
+    {
+      title: "BRAT",
+      description:
+        "The Beaver Restoration Assessment Tool (BRAT) is a tool used to assess the potential for beaver restoration in a riverscape.",
+      toolUrl: "https://tools.riverscapes.net/brat/",
+      logoUrl: "/img/logo.png",
+    },
+    {
+      title: "GCD",
+      description:
+        "The Geomorphic Change Detection, GCD, measures differences between elevation rasters while accounting for uncertainty.",
+      toolUrl: "https://gcd.riverscapes.net",
+      logoUrl: "/img/logo.png",
+    },
+    {
+      title: "Fluvial Corridor Toolbox",
+      description: "",
+      toolUrl: "https://github.com/EVS-GIS/Fluvial-Corridor-Toolbox-ArcGIS",
+      logoUrl: "/img/logo.png",
+    },
+    {
+      title: "Geomorphic Unit Toolbox",
+      description: "",
+      toolUrl: "https://gut.riverscapes.net/",
+      logoUrl: "/img/logo.png",
+    },
+  ]}
 />
-
-
 
 # The Waterfall
 
