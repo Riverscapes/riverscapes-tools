@@ -4,15 +4,17 @@ layout: default
 description: Home page for riverscapes tools documentation
 ---
 
-Use the list below to discover and learn more about tools related to riverscapes health. Use the filters to find tools that comply with the Riverscapes Consortium's tool standards, and that meet the tool grade that you are looking for.
+# Riverscapes Tools
 
-Some of the tools are developed by the [Riverscapes Consortium](https://riverscapes.net)'s own developers and these tools also have documentation on this website. Other tools listed below were developed by partners and collaborators.
+The Riverscapes Consortium has developed standards for working with riverscapes related data. This site lists tools that conform with these standards and produce data in compliant riverscapes projects. Several of the tools below were developed by Utah State University and North Arrow Research, two of the core developers within the Riverscapes Constrium. These tools are also documented on this site. Tools contributed by others are also listed here and link to the external documentation on other sites.
 
-:::tip
+:::info
 The Riverscapes Consortium is committed to supporting the development of tools that meet the consortium's standards, and to providing a platform for the distribution of these tools. Email support@riverscapes.freshdesk.com if you have a tool that you would like listed here.
 :::
 
 Learn more about: [tool grades](https://developer.riverscapes.net/MIGRATED/Tools/toolStandards/) and [riverscapes standards and compliance](https://developer.riverscapes.net/standards/).
+
+# Professional Grade Tools
 
 
 
@@ -23,19 +25,19 @@ import { ToolsWrapper } from '@site/src/components/ToolsWrapper/ToolsWrapper';
   cards={[
   {
     title: "Riverscapes Context",
-    description: "Discovers and compiles together disparate datasets that are helpful for contextualizing riverscape health.",
+    description: "Discovers, downloads and compiles together disparate datasets that are helpful for contextualizing riverscape health.",
     toolUrl: "https://tools.riverscapes.net/rscontext",
     logoUrl: "/img/logo.png"
   },
   {
     title: "Channel Area",
-    description: "The Channel Area Tool is a simple tool for generating polygons representing the spatial extent of the drainage network within a watershed.",
+    description: "Genters polygons representing the spatial extent of the drainage network within a watershed by buffering flow lines and combining with waterbody polygons.",
     toolUrl: "https://tools.riverscapes.net/channelarea/",
     logoUrl: "/img/logo.png"
   },
   {
     title: "TauDEM",
-    description: "The Terrain Analysis Using Digital Elevation Models (TauDEM) is a suite of tools developed by David Tarboton at Utah State University's Hydrology Research Group. The Riverscapes compliant, Production Grade TauDEM, utilizes some of the useful TauDEM algorithms, packaging inputs and outputs into a Riverscapes project that can be accessed as a product of its own, or used as inputs to other Riverscapes tools.",
+    description: "A riverscapes compliant wrapper around the Terrain Analysis Using Digital Elevation Models (TauDEM) is a suite of tools developed by David Tarboton at the Utah State University Hydrology Research Group.",
     toolUrl: "https://tools.riverscapes.net/taudem/",
     logoUrl: "/img/logo.png"
   },
