@@ -77,9 +77,9 @@ def vbet_metrics(vbet_proj_path, rsc_proj_path):
                      (SELECT SUM(window_area) AS tot_area FROM vbet_igos))""")
         integrated_width = curs.fetchone()[0]
 
-    riverscape_network_density = riverscape_length / float(metrics['catchmentArea'])
+    riverscape_network_density = riverscape_length / float(metrics['rs_context']['catchmentArea'])
     tot_hec_per_km = riverscape_area * 100 / riverscape_length
-    prop_riverscape = riverscape_area / float(metrics['catchmentArea'])
+    prop_riverscape = riverscape_area / float(metrics['rs_context']['catchmentArea'])
 
     vbet_metrics['riverscapeLength'] = riverscape_length
     vbet_metrics['riverscapeArea'] = riverscape_area
