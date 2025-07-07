@@ -47,54 +47,54 @@ import { ToolsWrapper } from "@site/src/components/ToolsWrapper/ToolsWrapper";
     {
       title: "VBET",
       description:
-        "The Valley Bottom Extraction Tool (VBET) is a tool used to identify the valley bottom of a riverscape, and roughly separate it into geomorphic units (channel, active floodplain, and inactive floodplain).",
+        "The Valley Bottom Extraction Tool (VBET) identifies the valley bottom of a riverscape, and dividies it into geomorphic units (channel, active floodplain, and inactive floodplain).",
       toolUrl: "https://tools.riverscapes.net/vbet/",
       logoUrl: "/img/logo.png",
     },
     {
       title: "Anthropologic Context",
-      description: "Derives anthropologic context from a variety of sources.",
+      description: "Derives anthropologic context, such as roads, rail, canals, land use itensity from a variety of publicly available data sources.",
       toolUrl: "https://tools.riverscapes.net/anthro/",
       logoUrl: "/img/logo.png",
     },
     {
       title: "Confinement",
       description:
-        "Quantifies the amount that reaches are confined by valley margins.",
+        "Quantifies the amount that reaches are confined by valley margins, outputting left and right confined margins as well as constriction ratios.",
       toolUrl: "https://tools.riverscapes.net/confinement/",
       logoUrl: "/img/logo.png",
     },
     {
       title: "Riparian Condition Assessment Tool",
-      description: "",
+      description: "Quantifies the current and historic riparian vegetation and the different ways in which it has evolved over time.",
       toolUrl: "https://tools.riverscapes.net/rcat/",
       logoUrl: "/img/logo.png",
     },
     {
       title: "Hydrological Context",
       description:
-        "A series of algorithms that calculate key discharges for assessing riverscapes health.",
+        "Uses regional regression curves to calculate key discharges for assessing riverscapes health.",
       toolUrl: "https://tools.riverscapes.net/hydro/",
       logoUrl: "/img/logo.png",
     },
     {
       title: "Metric Engine",
       description:
-        "Synthesizes and calculates metrics from a variety of other riverscapes models.",
+        "Synthesizes metrics from all the other production grade tools in the waterfall and combines them into a single, wholistic dataset for looking at riverscapes health.",
       toolUrl: "https://tools.riverscapes.net/rme/",
       logoUrl: "/img/logo.png",
     },
     {
       title: "BRAT",
       description:
-        "The Beaver Restoration Assessment Tool (BRAT) is a tool used to assess the potential for beaver restoration in a riverscape.",
+        "The Beaver Restoration Assessment Tool (BRAT) is used to assess the potential for beaver restoration in a riverscape.",
       toolUrl: "https://tools.riverscapes.net/brat/",
       logoUrl: "/img/logo.png",
     },
     {
       title: "GCD",
       description:
-        "The Geomorphic Change Detection, GCD, measures differences between elevation rasters while accounting for uncertainty.",
+        "The Geomorphic Change Detection software, measures differences between elevation rasters while accounting for uncertainty.",
       toolUrl: "https://gcd.riverscapes.net",
       logoUrl: "/img/logo.png",
     },
@@ -113,11 +113,33 @@ import { ToolsWrapper } from "@site/src/components/ToolsWrapper/ToolsWrapper";
   ]}
 />
 
+# Research Grade Tools
+
+
+<ToolsWrapper
+  cardsize="md"
+  cards={[
+    {
+      title: "Geomorphic Unit Toolbox",
+      description: "Uses topographic evidence to segregate riverscapes into hierarchical geomorphic units such as pools, riffles and glides.",
+      toolUrl: "https://gut.riverscapes.net/",
+      logoUrl: "/img/logo.png",
+    },
+    {
+      title: "RIM",
+      description: "The Riverscapes Inundation Mapper Tool aids in the efficient mapping of structurally forced inundation patterns in beaver impacted riverscapes.",
+      toolUrl: "https://gut.riverscapes.net/",
+      logoUrl: "/img/logo.png",
+    },
+  ]}
+/>
+
+
 # The Waterfall
 
-The Riverscapes Consortium production-grade tools listed above can be chained together to create a "waterfall" that produces a riverscapes project. The [Riverscapes Context](/rscontext) tool is the first tool in the waterfall, and it is used to create a series of riverscapes projects focused on different aspects of riverscape health.
+The Riverscapes Consortium production-grade tools listed above can be chained together to create a "waterfall" that produces a riverscapes project. The [Riverscapes Context](/rscontext) tool is the first tool in the waterfall, and it is used to create a series of riverscapes projects focused on different aspects of riverscape health. All models depend on this initial [Riverscapes Context](/rscontext) project that collects together the prerequisite national datasets for a given watershed. The dependencies of the other tools are shown in the waterfall diagram below.
 
-All models depend on an initial [Riverscapes Context](/rscontext) project that collects together the prerequisite national datasets for a given watershed. The dependencies of the other tools are shown in the waterfall diagram below. The [Riverscapes Metric Engine](/rme) collates metrics from the other tools to create a comprehensive assessment of riverscape health based on Discrete and Integrated Geographic Objects (DGO and IGO respectively).
+The [Riverscapes Metric Engine](/rme) synthesizes metrics from the other tools to create a comprehensive assessment of riverscape health based on Discrete and Integrated Geographic Objects (DGO and IGO respectively).
 
 ![waterfall](https://docs.google.com/drawings/d/124W86S-fZ2D09I-u47-XKWab0_SKRCcoHO4DP2dv5TE/pub?w=887&h=782 "Flow chart illustrating the waterfall of tools starting from National and Public Datasets as source and ending at the Metric Engine")
 
