@@ -17,7 +17,7 @@ df -h
 echo "======================  Sleeping for 5 minutes ======================="
 find /
 echo "======================  Sleeping for 5 minutes ======================="
-sleep 5m
+sleep 1m
 echo "done sleeping"
 
 
