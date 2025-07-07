@@ -43,9 +43,9 @@ def brat_metrics(brat_proj_path, hydro_proj_path, anthro_proj_path):
 
     with sqlite3.connect(os.path.join(brat_proj_path, 'outputs', 'brat.gpkg')) as conn:
         curs = conn.cursor()
-        curs.execute("SELECT SUM(mCC_EX_CT) FROM brat_dgos WHERE mCC_EX_CT IS NOT NULL")
+        curs.execute("SELECT SUM(mCC_EX_CT) FROM vwDgos WHERE mCC_EX_CT IS NOT NULL")
         brat_metrics['totalExistingDamCapacity'] = curs.fetchone()[0]
-        curs.execute("SELECT SUM(mCC_HPE_CT) FROM brat_dgos WHERE mCC_HPE_CT IS NOT NULL")
+        curs.execute("SELECT SUM(mCC_HPE_CT) FROM vwDgos WHERE mCC_HPE_CT IS NOT NULL")
         brat_metrics['totalHistoricDamCapacity'] = curs.fetchone()[0]
         curs.execute("""SELECT SUM(frac) FROM (SELECT oCC_EX * (segment_area / tot_area) frac FROM (SELECT oCC_EX, segment_area
                      FROM vwDgos WHERE seg_distance IS NOT NULL), (SELECT SUM(segment_area) AS tot_area FROM vwDgos WHERE seg_distance IS NOT NULL))""")
