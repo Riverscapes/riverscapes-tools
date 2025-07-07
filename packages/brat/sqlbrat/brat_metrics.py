@@ -33,7 +33,7 @@ def brat_metrics(brat_proj_path, hydro_proj_path, anthro_proj_path):
 
     if anthro_metrics and hydro_metrics:
         metrics = hydro_metrics.copy()
-        metrics['anthro'] = anthro_metrics
+        metrics['anthro'] = anthro_metrics['anthro']
     elif hydro_metrics and not anthro_metrics:
         metrics = hydro_metrics.copy()
     elif not hydro_metrics and anthro_metrics:
