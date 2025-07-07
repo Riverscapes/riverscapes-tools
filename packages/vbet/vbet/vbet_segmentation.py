@@ -50,14 +50,20 @@ def generate_igo_points(line_network: Path, dem: Path, out_points_layer: Path, v
         out_lyr.create_layer(
             ogr.wkbPoint, spatial_ref=line_lyr.spatial_ref, fields=out_fields)
 
-        extent_poly = get_rectangle_as_geom(line_lyr.ogr_layer.GetExtent())
-        extent_centroid = extent_poly.Centroid()
-        utm_epsg = get_utm_zone_epsg(extent_centroid.GetX())
-        transform_ref, transform = VectorBase.get_transform_from_epsg(
-            line_lyr.spatial_ref, utm_epsg)
-        # In order to get accurate lengths we are going to need to project into some coordinate system
-        transform_back = osr.CoordinateTransformation(
-            transform_ref, line_lyr.spatial_ref)
+        if line_lyr.spatial_ref.IsProjected() == 0:
+            extent_poly = get_rectangle_as_geom(line_lyr.ogr_layer.GetExtent())
+            extent_centroid = extent_poly.Centroid()
+            utm_epsg = get_utm_zone_epsg(extent_centroid.GetX())
+            transform_ref, transform = VectorBase.get_transform_from_epsg(
+                line_lyr.spatial_ref, utm_epsg)
+            # In order to get accurate lengths we are going to need to project into some coordinate system
+            transform_back = osr.CoordinateTransformation(
+                transform_ref, line_lyr.spatial_ref)
+        else:
+            transform = osr.CoordinateTransformation(
+                line_lyr.spatial_ref, line_lyr.spatial_ref)
+            transform_back = osr.CoordinateTransformation(
+                line_lyr.spatial_ref, line_lyr.spatial_ref)
 
         for feat, *_ in line_lyr.iterate_features(write_layers=[out_lyr]):
             level_path = feat.GetField(f'{unique_stream_field}')
