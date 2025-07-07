@@ -29,7 +29,7 @@ def hydro_metrics(hydro_proj_path, vbet_proj_path):
 
     with sqlite3.connect(os.path.join(hydro_proj_path, 'outputs', 'hydro.gpkg')) as conn:
         curs = conn.cursor()
-        curs.execute("SELECT MAX(drainage_area) FROM vwDgos WHERE drainage_area IS NOT NULL")
+        curs.execute("SELECT MAX(DrainArea) FROM vwDgos WHERE DrainArea IS NOT NULL")
         hydro_metrics['DrainageArea'] = curs.fetchone()[0]
         curs.execute("SELECT MAX(QLow) FROM vwDgos WHERE QLow IS NOT NULL")
         hydro_metrics['QLow'] = curs.fetchone()[0]
