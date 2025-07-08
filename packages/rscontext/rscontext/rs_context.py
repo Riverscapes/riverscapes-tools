@@ -128,9 +128,9 @@ LayerTypes = {
     'NATIONAL_WETLANDS': RSLayer('National Wetlands Inventory', 'NATIONAL_WETLANDS', 'Geopackage', 'hydrology/national_wetlands_inventory.gpkg', {
         'Wetlands': RSLayer('Wetlands', 'WETLANDS', 'Vector', 'Wetlands', lyr_meta=[RSMeta('SourceUrl', 'https://www.fws.gov/program/national-wetlands-inventory', RSMetaTypes.URL)]),
         'Riparian': RSLayer('Riparian Areas', 'RIPARIAN', 'Vector', 'Riparian', lyr_meta=[RSMeta('SourceUrl', 'https://www.fws.gov/program/national-wetlands-inventory', RSMetaTypes.URL)]),
-        'Riparian_Project_metadata': RSLayer('Riparian Project Metadata', 'RIPARIAN_PROJECT_METADATA', 'Vector', 'Riparian_Project_metadata'),
-        'Wetlands_Project_metadata': RSLayer('Wetlands Project Metadata', 'WETLANDS_PROJECT_METADATA', 'Vector', 'Wetlands_Project_metadata'),
-        'Wetlands_Historic_Map_Info': RSLayer('Wetlands Historic Map Information', 'WETLANDS_HISTORIC_MAP_INFO', 'Vector', 'Wetlands_Historic_Map_Info')
+        # 'Riparian_Project_metadata': RSLayer('Riparian Project Metadata', 'RIPARIAN_PROJECT_METADATA', 'Vector', 'Riparian_Project_metadata'),
+        # 'Wetlands_Project_metadata': RSLayer('Wetlands Project Metadata', 'WETLANDS_PROJECT_METADATA', 'Vector', 'Wetlands_Project_metadata'),
+        # 'Wetlands_Historic_Map_Info': RSLayer('Wetlands Historic Map Information', 'WETLANDS_HISTORIC_MAP_INFO', 'Vector', 'Wetlands_Historic_Map_Info')
     }),
 
     # Prism Layers
@@ -334,16 +334,16 @@ def rs_context(huc: str, landfire_dir: str, ownership: str, fair_market: str, ec
     nwi_gpkg = os.path.join(output_folder, LayerTypes['NATIONAL_WETLANDS'].rel_path)
     log.info(f'Processing National Wetland Inventory. Output: {nwi_gpkg}')
     national_wetlands_inventory(huc, download_folder, nhd['WBDHU10'], nwi_gpkg, cfg.OUTPUT_EPSG)
-    del_items = []
-    for layer in LayerTypes['NATIONAL_WETLANDS'].sub_layers:
-        layer_path = os.path.join(nwi_gpkg, LayerTypes['NATIONAL_WETLANDS'].sub_layers[layer].rel_path)
-        if not os.path.exists(layer_path):
-            del_items.append(layer)
-    log.info(f'Deleting {del_items} from Layer Types')  # for debug, remove
-    for layer in del_items:
-        del (LayerTypes['NATIONAL_WETLANDS'].sub_layers[layer])
-    if len(LayerTypes['NATIONAL_WETLANDS'].sub_layers) > 0:
-        project.add_project_geopackage(datasets, LayerTypes['NATIONAL_WETLANDS'])
+    # del_items = []
+    # for layer in LayerTypes['NATIONAL_WETLANDS'].sub_layers:
+    #     layer_path = os.path.join(nwi_gpkg, LayerTypes['NATIONAL_WETLANDS'].sub_layers[layer].rel_path)
+    #     if not os.path.exists(layer_path):
+    #         del_items.append(layer)
+    # log.info(f'Deleting {del_items} from Layer Types')  # for debug, remove
+    # for layer in del_items:
+    #     del (LayerTypes['NATIONAL_WETLANDS'].sub_layers[layer])
+    # if len(LayerTypes['NATIONAL_WETLANDS'].sub_layers) > 0:
+    project.add_project_geopackage(datasets, LayerTypes['NATIONAL_WETLANDS'])
 
     ################################################################################################################################################
     # PRISM climate rasters
