@@ -106,11 +106,15 @@ def national_wetlands_inventory(huc10: str, download_dir: str, clip_layer_path: 
                     layer_name = layer_name[len(f'HU8{huc8}'):]
 
                 # Transform the HUC10 boundary to the NWI layer's spatial reference
-                with get_shp_or_gpkg(shapefile_path) as nwi_layer:
-                    transform = VectorBase.get_transform(huc10_spatial_ref, nwi_layer.spatial_ref)
-                    proj_huc10_boundary_ogr = ogr.CreateGeometryFromWkb(raw_huc10_boundary.wkb)
-                    proj_huc10_boundary_ogr.Transform(transform)
-                    proj_huc10_shapely = wkbload(bytes(proj_huc10_boundary_ogr.ExportToWkb()))
+                try:
+                    with get_shp_or_gpkg(shapefile_path) as nwi_layer:
+                        transform = VectorBase.get_transform(huc10_spatial_ref, nwi_layer.spatial_ref)
+                        proj_huc10_boundary_ogr = ogr.CreateGeometryFromWkb(raw_huc10_boundary.wkb)
+                        proj_huc10_boundary_ogr.Transform(transform)
+                        proj_huc10_shapely = wkbload(bytes(proj_huc10_boundary_ogr.ExportToWkb()))
+                except Exception as e:
+                    log.error(f'Error transforming HUC10 boundary for {shapefile_path}: {e}')
+                    continue
 
                 output_layer_path = os.path.join(output_gpkg, layer_name)
                 log.info(f'Creating output layer: {output_layer_path}')
