@@ -63,11 +63,15 @@ def generate_igo_points(line_network: Path, dem: Path, out_points_layer: Path, v
         else:
             # if the line layer is projected, we can use the spatial reference directly
             transform_ref = line_lyr.spatial_ref
-            transform = osr.CoordinateTransformation(
-                line_lyr.spatial_ref, transform_ref)
+            transform = osr.CoordinateTransformation(line_lyr.spatial_ref, output_sr)
             transform_back = transform
 
-        for level_path in levelpaths:
+        # In order to get accurate lengths we are going to need to project into some coordinate system
+        # transform_back = osr.CoordinateTransformation(
+        #     transform_ref, line_lyr.spatial_ref)
+
+        for feat, *_ in line_lyr.iterate_features(write_layers=[out_lyr]):
+            level_path = feat.GetField(f'{unique_stream_field}')
             if level_path not in stream_size_lookup:
                 log.error(f'stream size not ofund for level path {level_path}')
             stream_size = stream_size_lookup[level_path]
