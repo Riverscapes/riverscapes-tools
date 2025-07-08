@@ -50,20 +50,22 @@ def generate_igo_points(line_network: Path, dem: Path, out_points_layer: Path, v
         out_lyr.create_layer(
             ogr.wkbPoint, spatial_ref=line_lyr.spatial_ref, fields=out_fields)
 
+        # if the line layer is not projected, we need to project it to a UTM zone
+        # in order to get accurate lengths
         if line_lyr.spatial_ref.IsProjected() == 0:
             extent_poly = get_rectangle_as_geom(line_lyr.ogr_layer.GetExtent())
             extent_centroid = extent_poly.Centroid()
             utm_epsg = get_utm_zone_epsg(extent_centroid.GetX())
             transform_ref, transform = VectorBase.get_transform_from_epsg(
                 line_lyr.spatial_ref, utm_epsg)
-            # In order to get accurate lengths we are going to need to project into some coordinate system
             transform_back = osr.CoordinateTransformation(
                 transform_ref, line_lyr.spatial_ref)
         else:
+            # if the line layer is projected, we can use the spatial reference directly
+            transform_ref = line_lyr.spatial_ref
             transform = osr.CoordinateTransformation(
-                line_lyr.spatial_ref, line_lyr.spatial_ref)
-            transform_back = osr.CoordinateTransformation(
-                line_lyr.spatial_ref, line_lyr.spatial_ref)
+                line_lyr.spatial_ref, transform_ref)
+            transform_back = transform
 
         for feat, *_ in line_lyr.iterate_features(write_layers=[out_lyr]):
             level_path = feat.GetField(f'{unique_stream_field}')
@@ -83,10 +85,6 @@ def generate_igo_points(line_network: Path, dem: Path, out_points_layer: Path, v
                 vb_geom = vb_feat.GetGeometryRef()
                 if not vb_geom.IsValid():
                     vb_geom = vb_geom.MakeValid()
-                # vb_proj = vb_geom.Transform(transform)
-                # vb_shapely = VectorBase.ogr2shapely(vb_proj)
-                # if vb_shapely is None or vb_shapely.is_empty:
-                #     continue
                 if vb_geom is None or vb_geom.IsEmpty():
                     continue
                 vb_geom.Transform(transform)
