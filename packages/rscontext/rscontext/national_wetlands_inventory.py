@@ -114,8 +114,11 @@ def national_wetlands_inventory(huc10: str, download_dir: str, clip_layer_path: 
 
                 output_layer_path = os.path.join(output_gpkg, layer_name)
                 log.info(f'Creating output layer: {output_layer_path}')
-                copy_feature_class(shapefile_path, output_layer_path, output_epsg, clip_shape=proj_huc10_shapely, make_valid=True)
-                output_layers.append(output_layer_path)
+                try:
+                    copy_feature_class(shapefile_path, output_layer_path, output_epsg, clip_shape=proj_huc10_shapely, make_valid=True)
+                    output_layers.append(output_layer_path)
+                except Exception as e:
+                    log.error(f'Error creating output layer {output_layer_path}: {e}')
 
     return output_layers
 
