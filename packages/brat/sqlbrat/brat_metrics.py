@@ -15,6 +15,8 @@ def brat_metrics(brat_proj_path, hydro_proj_path, anthro_proj_path):
     log.info('Calculating BRAT Metrics')
 
     brat_metrics = {}
+    all = {}
+    perennial = {}
 
     hydro_metrics = None
     anthro_metrics = None
@@ -44,15 +46,26 @@ def brat_metrics(brat_proj_path, hydro_proj_path, anthro_proj_path):
     with sqlite3.connect(os.path.join(brat_proj_path, 'outputs', 'brat.gpkg')) as conn:
         curs = conn.cursor()
         curs.execute("SELECT SUM(mCC_EX_CT) FROM vwDgos WHERE mCC_EX_CT IS NOT NULL")
-        brat_metrics['totalExistingDamCapacity'] = curs.fetchone()[0]
+        all['totalExistingDamCapacity'] = curs.fetchone()[0]
         curs.execute("SELECT SUM(mCC_HPE_CT) FROM vwDgos WHERE mCC_HPE_CT IS NOT NULL")
-        brat_metrics['totalHistoricDamCapacity'] = curs.fetchone()[0]
+        all['totalHistoricDamCapacity'] = curs.fetchone()[0]
         curs.execute("""SELECT SUM(frac) FROM (SELECT oCC_EX * (segment_area / tot_area) frac FROM (SELECT oCC_EX, segment_area
                      FROM vwDgos WHERE seg_distance IS NOT NULL), (SELECT SUM(segment_area) AS tot_area FROM vwDgos WHERE seg_distance IS NOT NULL))""")
-        brat_metrics['avgExistingDamCapacity'] = curs.fetchone()[0]
+        all['avgExistingDamCapacity'] = curs.fetchone()[0]
         curs.execute("""SELECT SUM(frac) FROM (SELECT oCC_HPE * (segment_area / tot_area) frac FROM (SELECT oCC_HPE, segment_area
                      FROM vwDgos WHERE seg_distance IS NOT NULL), (SELECT SUM(segment_area) AS tot_area FROM vwDgos WHERE seg_distance IS NOT NULL))""")
-        brat_metrics['avgHistoricDamCapacity'] = curs.fetchone()[0]
+        all['avgHistoricDamCapacity'] = curs.fetchone()[0]
+
+        curs.execute("SELECT SUM(mCC_EX_CT) FROM vwDgos WHERE mCC_EX_CT IS NOT NULL AND ReachCode IN (46006, 55800)")
+        perennial['totalExistingDamCapacity'] = curs.fetchone()[0]
+        curs.execute("SELECT SUM(mCC_HPE_CT) FROM vwDgos WHERE mCC_HPE_CT IS NOT NULL AND ReachCode IN (46006, 55800)")
+        perennial['totalHistoricDamCapacity'] = curs.fetchone()[0]
+        curs.execute("""SELECT SUM(frac) FROM (SELECT oCC_EX * (segment_area / tot_area) frac FROM (SELECT oCC_EX, segment_area
+                     FROM vwDgos WHERE seg_distance IS NOT NULL AND ReachCode IN (46006, 55800)), (SELECT SUM(segment_area) AS tot_area FROM vwDgos WHERE seg_distance IS NOT NULL AND ReachCode IN (46006, 55800)))""")
+        perennial['avgExistingDamCapacity'] = curs.fetchone()[0]
+        curs.execute("""SELECT SUM(frac) FROM (SELECT oCC_HPE * (segment_area / tot_area) frac FROM (SELECT oCC_HPE, segment_area
+                     FROM vwDgos WHERE seg_distance IS NOT NULL AND ReachCode IN (46006, 55800)), (SELECT SUM(segment_area) AS tot_area FROM vwDgos WHERE seg_distance IS NOT NULL AND ReachCode IN (46006, 55800)))""")
+        perennial['avgHistoricDamCapacity'] = curs.fetchone()[0]
 
         ex_capacity_length = {}
         hist_capacity_length = {}
@@ -117,11 +130,83 @@ def brat_metrics(brat_proj_path, hydro_proj_path, anthro_proj_path):
         curs.execute("SELECT SUM(iGeo_Len) FROM vwReaches WHERE Opportunity = 'Natural or Anthropogenic Limitations'")
         opportunity_length['natural_or_anthropogenic'] = curs.fetchone()[0]
 
-        brat_metrics['ex_capacity_length'] = ex_capacity_length
-        brat_metrics['hist_capacity_length'] = hist_capacity_length
-        brat_metrics['risk_length'] = risk_length
-        brat_metrics['limited_length'] = limited_length
-        brat_metrics['opportunity_length'] = opportunity_length
+        all['ex_capacity_length'] = ex_capacity_length
+        all['hist_capacity_length'] = hist_capacity_length
+        all['risk_length'] = risk_length
+        all['limited_length'] = limited_length
+        all['opportunity_length'] = opportunity_length
+
+        ex_capacity_length = {}
+        hist_capacity_length = {}
+        risk_length = {}
+        limited_length = {}
+        opportunity_length = {}
+
+        curs.execute("SELECT SUM(iGeo_Len) FROM vwReaches WHERE oCC_EX == 0 AND ReachCode IN (46006, 55800)")
+        ex_capacity_length['none'] = curs.fetchone()[0]
+        curs.execute("SELECT SUM(iGeo_Len) FROM vwReaches WHERE oCC_EX > 0 AND oCC_EX <= 1 AND ReachCode IN (46006, 55800)")
+        ex_capacity_length['rare'] = curs.fetchone()[0]
+        curs.execute("SELECT SUM(iGeo_Len) FROM vwReaches WHERE oCC_EX > 1 AND oCC_EX <= 5 AND ReachCode IN (46006, 55800)")
+        ex_capacity_length['occasional'] = curs.fetchone()[0]
+        curs.execute("SELECT SUM(iGeo_Len) FROM vwReaches WHERE oCC_EX > 5 AND oCC_EX <= 15 AND ReachCode IN (46006, 55800)")
+        ex_capacity_length['frequent'] = curs.fetchone()[0]
+        curs.execute("SELECT SUM(iGeo_Len) FROM vwReaches WHERE oCC_EX > 15 AND ReachCode IN (46006, 55800)")
+        ex_capacity_length['pervasive'] = curs.fetchone()[0]
+        curs.execute("SELECT SUM(iGeo_Len) FROM vwReaches WHERE oCC_HPE == 0 AND ReachCode IN (46006, 55800)")
+        hist_capacity_length['none'] = curs.fetchone()[0]
+        curs.execute("SELECT SUM(iGeo_Len) FROM vwReaches WHERE oCC_HPE > 0 AND oCC_HPE <= 1 AND ReachCode IN (46006, 55800)")
+        hist_capacity_length['rare'] = curs.fetchone()[0]
+        curs.execute("SELECT SUM(iGeo_Len) FROM vwReaches WHERE oCC_HPE > 1 AND oCC_HPE <= 5 AND ReachCode IN (46006, 55800)")
+        hist_capacity_length['occasional'] = curs.fetchone()[0]
+        curs.execute("SELECT SUM(iGeo_Len) FROM vwReaches WHERE oCC_HPE > 5 AND oCC_HPE <= 15 AND ReachCode IN (46006, 55800)")
+        hist_capacity_length['frequent'] = curs.fetchone()[0]
+        curs.execute("SELECT SUM(iGeo_Len) FROM vwReaches WHERE oCC_HPE > 15 AND ReachCode IN (46006, 55800)")
+        hist_capacity_length['pervasive'] = curs.fetchone()[0]
+        curs.execute("SELECT SUM(iGeo_Len) FROM vwReaches WHERE Risk = 'Negligible Risk' AND ReachCode IN (46006, 55800)")
+        risk_length['negligible'] = curs.fetchone()[0]
+        curs.execute("SELECT SUM(iGeo_Len) FROM vwReaches WHERE Risk = 'Minor Risk' AND ReachCode IN (46006, 55800)")
+        risk_length['minor'] = curs.fetchone()[0]
+        curs.execute("SELECT SUM(iGeo_Len) FROM vwReaches WHERE Risk = 'Some Risk' AND ReachCode IN (46006, 55800)")
+        risk_length['some'] = curs.fetchone()[0]
+        curs.execute("SELECT SUM(iGeo_Len) FROM vwReaches WHERE Risk = 'Considerable Risk' AND ReachCode IN (46006, 55800)")
+        risk_length['considerable'] = curs.fetchone()[0]
+        curs.execute("SELECT SUM(iGeo_Len) FROM vwReaches WHERE Limitation = 'Anthropogenically Limited' AND ReachCode IN (46006, 55800)")
+        limited_length['anthropogenic'] = curs.fetchone()[0]
+        curs.execute("SELECT SUM(iGeo_Len) FROM vwReaches WHERE Limitation = 'Stream Power Limited' AND ReachCode IN (46006, 55800)")
+        limited_length['stream_power'] = curs.fetchone()[0]
+        curs.execute("SELECT SUM(iGeo_Len) FROM vwReaches WHERE Limitation = 'Slope Limited' AND ReachCode IN (46006, 55800)")
+        limited_length['slope'] = curs.fetchone()[0]
+        curs.execute("SELECT SUM(iGeo_Len) FROM vwReaches WHERE Limitation = 'Potential Reservoir or Land Use Change' AND ReachCode IN (46006, 55800)")
+        limited_length['reservoir_or_land_use'] = curs.fetchone()[0]
+        curs.execute("SELECT SUM(iGeo_Len) FROM vwReaches WHERE Limitation = 'Naturally Vegetation Limited' AND ReachCode IN (46006, 55800)")
+        limited_length['naturally_vegetation'] = curs.fetchone()[0]
+        curs.execute("SELECT SUM(iGeo_Len) FROM vwReaches WHERE Limitation = 'Stream Size Limited' AND ReachCode IN (46006, 55800)")
+        limited_length['stream_size'] = curs.fetchone()[0]
+        curs.execute("SELECT SUM(iGeo_Len) FROM vwReaches WHERE Limitation = 'Dam Building Possible' AND ReachCode IN (46006, 55800)")
+        limited_length['dam_building_possible'] = curs.fetchone()[0]
+        curs.execute("SELECT SUM(iGeo_Len) FROM vwReaches WHERE Opportunity = 'Conservation/Appropriate for Translocation' AND ReachCode IN (46006, 55800)")
+        opportunity_length['conservation'] = curs.fetchone()[0]
+        curs.execute("SELECT SUM(iGeo_Len) FROM vwReaches WHERE Opportunity = 'Encourage Beaver Expansion/Colonization' AND ReachCode IN (46006, 55800)")
+        opportunity_length['beaver_expansion'] = curs.fetchone()[0]
+        curs.execute("SELECT SUM(iGeo_Len) FROM vwReaches WHERE Opportunity = 'Beaver Mimicry' AND ReachCode IN (46006, 55800)")
+        opportunity_length['beaver_mimicry'] = curs.fetchone()[0]
+        curs.execute("SELECT SUM(iGeo_Len) FROM vwReaches WHERE Opportunity = 'Land Management Chanage' AND ReachCode IN (46006, 55800)")
+        opportunity_length['land_management'] = curs.fetchone()[0]
+        curs.execute("SELECT SUM(iGeo_Len) FROM vwReaches WHERE Opportunity = 'Conflict Management' AND ReachCode IN (46006, 55800)")
+        opportunity_length['conflict_management'] = curs.fetchone()[0]
+        curs.execute("SELECT SUM(iGeo_Len) FROM vwReaches WHERE Opportunity = 'Potential Floodplain/Side Channel Opportunities' AND ReachCode IN (46006, 55800)")
+        opportunity_length['potential_floodplain'] = curs.fetchone()[0]
+        curs.execute("SELECT SUM(iGeo_Len) FROM vwReaches WHERE Opportunity = 'Natural or Anthropogenic Limitations' AND ReachCode IN (46006, 55800)")
+        opportunity_length['natural_or_anthropogenic'] = curs.fetchone()[0]
+
+        perennial['ex_capacity_length'] = ex_capacity_length
+        perennial['hist_capacity_length'] = hist_capacity_length
+        perennial['risk_length'] = risk_length
+        perennial['limited_length'] = limited_length
+        perennial['opportunity_length'] = opportunity_length
+
+        brat_metrics['all'] = all
+        brat_metrics['perennial'] = perennial
 
     metrics['brat'] = brat_metrics
 
