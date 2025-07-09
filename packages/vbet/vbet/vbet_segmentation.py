@@ -63,7 +63,7 @@ def generate_igo_points(line_network: Path, dem: Path, out_points_layer: Path, v
         else:
             # if the line layer is projected, we can use the spatial reference directly
             transform_ref = line_lyr.spatial_ref
-            transform = osr.CoordinateTransformation(line_lyr.spatial_ref, output_sr)
+            transform = osr.CoordinateTransformation(line_lyr.spatial_ref, transform_ref)
             transform_back = transform
 
         # In order to get accurate lengths we are going to need to project into some coordinate system
@@ -561,7 +561,7 @@ def add_fcodes(in_dgos, in_igos, in_flowlines, unique_stream_field):
                 igo_feat = None
 
 
-def vbet_segmentation(in_centerlines: str, vbet_polygons: str, unique_stream_field: str, metric_layers: dict, out_gpkg: str, ss_lookup: dict, output_epsg: int):
+def vbet_segmentation(in_centerlines: str, dem: str, out_points: str, vbet_polygons: str, unique_stream_field: str, metric_layers: dict, out_gpkg: str, ss_lookup: dict, aspect_ratio: float, output_epsg: int):
     """
     Chop the lines in a polyline feature class at the specified interval unless
     this would create a line less than the minimum in which case the line is not segmented.
@@ -580,7 +580,7 @@ def vbet_segmentation(in_centerlines: str, vbet_polygons: str, unique_stream_fie
     split_polygons = os.path.join(out_gpkg, 'segmented_vbet_polygons')
 
     log.info('Generating Segment Points')
-    generate_igo_points(in_centerlines, out_points, unique_stream_field, ss_lookup, distance={0: 100, 1: 200, 2: 300})
+    generate_igo_points(in_centerlines, dem, out_points, vbet_polygons, unique_stream_field, ss_lookup, aspect_ratio, output_epsg)
 
     log.info('Splitting vbet Polygons')
     split_vbet_polygons(vbet_polygons, out_points, split_polygons, unique_stream_field)
@@ -671,17 +671,21 @@ def main():
         # epilog="This is an epilog"
     )
     parser.add_argument('centerlines', help='vbet_centerlines', type=str)
+    parser.add_argument('dem', help='DEM for elevation sampling', type=str)
+    parser.add_argument('out_points', help='output segmentation points', type=str)
     parser.add_argument('vbet_polygons', help='vbet polygons', type=str)
     parser.add_argument('unique_stream_field', help='unique stream field', type=str)
     parser.add_argument('metric_polygons', help='key value metric polygons', type=str)
-    parser.add_argument('--interval', default=200)
     parser.add_argument('out_gpkg')
+    parser.add_argument('ss_lookup', help='stream size lookup dict', type=str, default=None)
+    parser.add_argument('aspect_ratio', help='aspect ratio for segmentation', type=float, default=1.5)
+    parser.add_argument('output_epsg', help='output epsg code', type=int, default=4326)
 
     args = dotenv.parse_args_env(parser)
 
     metrics = parse_metadata(args.metric_polygons)
 
-    vbet_segmentation(args.centerlines, args.vbet_polygons, args.unique_stream_field, metrics, args.out_gpkg, args.interval)
+    vbet_segmentation(args.centerlines, args.dem, args.out_points, args.vbet_polygons, args.unique_stream_field, metrics, args.out_gpkg, args.ss_lookup, args.aspect_ratio, args.output_epsg)
 
     sys.exit(0)
 
