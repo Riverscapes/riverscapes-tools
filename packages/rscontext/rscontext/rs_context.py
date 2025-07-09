@@ -337,7 +337,7 @@ def rs_context(huc: str, landfire_dir: str, ownership: str, fair_market: str, ec
     while nwi_attempts < 3:
         try:
             # Download the NWI data
-            national_wetlands_inventory(huc, download_folder, nhd['WBDHU10'], nwi_gpkg, cfg.OUTPUT_EPSG)
+            national_wetlands_inventory(huc, scratch_dir, nhd['WBDHU10'], nwi_gpkg, cfg.OUTPUT_EPSG)
             project.add_project_geopackage(datasets, LayerTypes['NATIONAL_WETLANDS'])
             log.info('Processing National Wetland Inventory completed successfully.')
             break
