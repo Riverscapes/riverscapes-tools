@@ -1,4 +1,4 @@
-from rscommons import Raster, GeodatabaseLayer, GeopackageLayer, VectorBase
+from rscommons import Raster, GeodatabaseLayer, GeopackageLayer, VectorBase, dotenv
 
 from osgeo import gdal, ogr
 import numpy as np
@@ -195,31 +195,31 @@ def hybrid_raster(ripmap_raster: str, lf_raster: str, out_raster: str):
     print(f"Hybrid rasterization complete. Output saved to {out_raster}")
 
 
-# def main():
-#     parser = argparse.ArgumentParser(description="Clip RipMap and rasterize it.")
-#     parser.add_argument("huc", help="HUC code for the RipMap.")
-#     parser.add_argument("rip_map", help="Path to the RipMap geodatabase.")
-#     parser.add_argument("clip_shp", help="Path to the shapefile to clip the RipMap.")
-#     parser.add_argument("out_polygon", help="Path to the output polygon shapefile.")
-#     parser.add_argument("attribute", help="Attribute to use for rasterization.")
-#     parser.add_argument("output_raster", help="Path to the output raster file.")
-#     parser.add_argument("resolution", type=int, help="Resolution of the output raster.")
-#     parser.add_argument("landfire_raster", help="Path to the Landfire raster file.")
+def main():
+    parser = argparse.ArgumentParser(description="Clip RipMap and rasterize it.")
+    parser.add_argument("huc", help="HUC code for the RipMap.")
+    parser.add_argument("rip_map", help="Path to the RipMap geodatabase.")
+    parser.add_argument("clip_shp", help="Path to the shapefile to clip the RipMap.")
+    parser.add_argument("out_polygon", help="Path to the output polygon shapefile.")
+    parser.add_argument("attribute", help="Attribute to use for rasterization.")
+    parser.add_argument("output_raster", help="Path to the output raster file.")
+    parser.add_argument("resolution", type=int, help="Resolution of the output raster.")
+    parser.add_argument("landfire_raster", help="Path to the Landfire raster file.")
 
-#     args = parser.parse_args()
+    args = dotenv.parse_args_env(parser)
 
-#     try:
-#         clip_ripmap(args.rip_map, args.clip_shp, args.out_polygon, veg_class_lookup)
-#         rasterize_gpkg_layer(args.out_polygon, args.attribute, args.output_raster, args.resolution)
-#         hybrid_raster(args.output_raster, args.landfire_raster, os.path.join(os.path.dirname(args.landfire_raster), "hybrid_" + os.path.basename(args.output_raster)))
-#     except Exception as e:
-#         print(f"Error: {e}")
-#         traceback.print_exc()
-#         sys.exit(1)
+    try:
+        clip_ripmap(args.rip_map, args.clip_shp, args.out_polygon, veg_class_lookup)
+        rasterize_gpkg_layer(args.out_polygon, args.attribute, args.output_raster, args.resolution)
+        hybrid_raster(args.output_raster, args.landfire_raster, os.path.join(os.path.dirname(args.landfire_raster), "hybrid_" + os.path.basename(args.output_raster)))
+    except Exception as e:
+        print(f"Error: {e}")
+        traceback.print_exc()
+        sys.exit(1)
 
 
-# if __name__ == "__main__":
-#     main()
+if __name__ == "__main__":
+    main()
 
 # clip_ripmap('/workspaces/data/URG_Version2_0Plus.gdb', '/workspaces/data/rs_context/1302010110/hydrology/nhdplushr.gpkg/WBDHU10', '/workspaces/data/rs_context/1302010110/vegetation/ripmap.gpkg/ripmap', veg_class_lookup)
 # rasterize_gpkg_layer('/workspaces/data/rs_context/1302010110/vegetation/ripmap.gpkg/ripmap', 'RipMapID', '/workspaces/data/rs_context/1302010110/vegetation/nmripmap.tif', 5)
