@@ -1,161 +1,134 @@
-"""
-Generate Metrics JSON for a single Riverscapes Context Project
-"""
-import sqlite3
 import argparse
 import os
 import traceback
 import sys
 import json
-from rscommons import GeopackageLayer, dotenv, Logger, RSProject, RSLayer, ShapefileLayer
+import sqlite3
 
-PERENNIAL = [46006, 55800]
-INERMITTENT = [46003]
-EPHEMERAL = [46007]
-
-owner_clauses = {
-    'All': '1=1',
-    'BLM': "rme_dgo_ownership = 'BLM'",
-    'Non-BLM': "rme_dgo_ownership != 'BLM'",
-    'Federal': "rme_dgo_ownership IN ('BLM', 'USFS', 'NPS', 'FWS', 'USFWS', 'USBR', 'USGS', 'USACE', 'USDA', 'USDOI', 'DoD')"
-}
-
-flow_type_clauses = {
-    'All': '1=1',
-    'Perennial': f'FCode IN ({",".join([str(x) for x in PERENNIAL])})',
-    'Intermittent': f'FCode IN ({",".join([str(x) for x in INERMITTENT])})',
-    'Ephemeral': f'FCode IN ({",".join([str(x) for x in EPHEMERAL])})',
-    'Non-Perennial': f'FCode NOT IN ({",".join([str(x) for x in PERENNIAL])})',
-}
+from rscommons import Logger, dotenv, RSProject, RSLayer
 
 
-def rme_metrics(project_path, vbet_proj_path):
-    """Calculate summary watershed level RME metrics in JSON for this project."""
+def rme_metrics(rme_proj_path, brat_proj_path, rcat_proj_path, confinement_proj_path):
+    """Append RME metrics to the metrics"""
 
-    log = Logger('rme_metrics')
-    log.info('Calculating metrics for RME project')
+    log = Logger('RME Context Metrics')
+    log.info('Calculating RME Metrics')
 
-    if not os.path.exists(os.path.join(vbet_proj_path, 'vbet_metrics.json')):
-        raise FileNotFoundError(f'vbet_metrics.json not found in {vbet_proj_path}')
-
-    # TODO: metrics here
     rme_metrics = {}
 
-    with sqlite3.connect(os.path.join(project_path, 'outputs', 'riverscapes_metrics.gpkg')) as conn:
-        conn.row_factory = dict_factory
+    brat_metrics = None
+    rcat_metrics = None
+    confinement_metrics = None
+
+    try:
+        with open(os.path.join(brat_proj_path, 'brat_metrics.json')) as f:
+            brat_metrics = json.load(f)
+    except FileNotFoundError as e:
+        log.warning(f'brat_metrics.json not found in {brat_proj_path}; {e}')
+
+    try:
+        with open(os.path.join(rcat_proj_path, 'rcat_metrics.json')) as f:
+            rcat_metrics = json.load(f)
+    except FileNotFoundError as e:
+        log.warning(f'rcat_metrics.json not found in {rcat_proj_path}; {e}')
+
+    try:
+        with open(os.path.join(confinement_proj_path, 'confinement_metrics.json')) as f:
+            confinement_metrics = json.load(f)
+    except FileNotFoundError as e:
+        log.warning(f'confinement_metrics.json not found in {confinement_proj_path}; {e}')
+
+    if confinement_metrics:
+        try:
+            rme_metrics['rs_context'] = confinement_metrics['rs_context']
+        except KeyError as e:
+            log.warning(f'Key "rs_context" not found in confinement_metrics.json; {e}')
+            rme_metrics['rs_context'] = confinement_metrics.get('rs_context', {})
+        try:
+            rme_metrics['vbet'] = confinement_metrics['vbet']
+        except KeyError as e:
+            log.warning(f'Key "vbet" not found in confinement_metrics.json; {e}')
+            rme_metrics['vbet'] = confinement_metrics.get('vbet', {})
+        try:
+            rme_metrics['confinement'] = confinement_metrics['confinement']
+        except KeyError as e:
+            log.warning(f'Key "confinement" not found in confinement_metrics.json; {e}')
+            rme_metrics['confinement'] = confinement_metrics.get('confinement', {})
+    if brat_metrics:
+        try:
+            rme_metrics['hydro_context'] = brat_metrics['hydro_context']
+        except KeyError as e:
+            log.warning(f'Key "hydro_context" not found in brat_metrics.json; {e}')
+            rme_metrics['hydro_context'] = brat_metrics.get('hydro_context', {})
+        try:
+            rme_metrics['anthro'] = brat_metrics['anthro']
+        except KeyError as e:
+            log.warning(f'Key "anthro" not found in brat_metrics.json; {e}')
+            rme_metrics['anthro'] = brat_metrics.get('anthro', {})
+        try:
+            rme_metrics['brat'] = brat_metrics['brat']
+        except KeyError as e:
+            log.warning(f'Key "brat" not found in brat_metrics.json; {e}')
+            rme_metrics['brat'] = brat_metrics.get('brat', {})
+    if rcat_metrics:
+        try:
+            rme_metrics['rcat'] = rcat_metrics['rcat']
+        except KeyError as e:
+            log.warning(f'Key "rcat" not found in rcat_metrics.json; {e}')
+            rme_metrics['rcat'] = rcat_metrics.get('rcat', {})
+
+    rme = {}
+
+    with sqlite3.connect(os.path.join(rme_proj_path, 'outputs', 'riverscapes_metrics.gpkg')) as conn:
         curs = conn.cursor()
+        curs.execute("""SELECT SUM(frac) FROM (SELECT valleybottom_gradient * (segment_area / tot_area) frac FROM
+                     (SELECT valleybottom_gradient, segment_area FROM vw_dgo_metrics WHERE seg_distance is not NULL),
+                     (SELECT SUM(segment_area) AS tot_area FROM vw_dgo_metrics WHERE seg_distance is not NULL))""")
+        rme['avgValleyBottomGradient'] = curs.fetchone()[0]
+        curs.execute("""SELECT SUM(frac) FROM (SELECT rel_flow_length * (segment_area / tot_area) frac FROM
+                     (SELECT rel_flow_length, segment_area FROM vw_dgo_metrics WHERE seg_distance is not NULL),
+                     (SELECT SUM(segment_area) AS tot_area FROM vw_dgo_metrics WHERE seg_distance is not NULL))""")
+        rme['avgRelFlowLength'] = curs.fetchone()[0]
+        curs.execute("""SELECT SUM(frac) FROM (SELECT planform_sinuosity * (segment_area / tot_area) frac FROM
+                     (SELECT planform_sinuosity, segment_area FROM vw_dgo_metrics WHERE seg_distance is not NULL),
+                     (SELECT SUM(segment_area) AS tot_area FROM vw_dgo_metrics WHERE seg_distance is not NULL))""")
+        rme['avgPlanformSinuosity'] = curs.fetchone()[0]
+        curs.execute("""SELECT SUM(confluences) FROM vw_dgo_metrics WHERE seg_distance is not NULL""")
+        rme['totConfluences'] = curs.fetchone()[0]
+        curs.execute("""SELECT SUM(diffluences) FROM vw_dgo_metrics WHERE seg_distance is not NULL""")
+        rme['totDiffluences'] = curs.fetchone()[0]
+        curs.execute("""SELECT SUM(tributaries) FROM vw_dgo_metrics WHERE seg_distance is not NULL""")
+        rme['totTributaries'] = curs.fetchone()[0]
 
-        curs.execute('SELECT COUNT(*), SUM(segment_area) FROM rme_dgos')
-        dgo_count, total_area = curs.fetchone()
+        rme_metrics['rme'] = rme
 
-        curs.execute("""
-            SELECT
-            COALESCE(rme_dgo_ownership, 'Unknown') AS owner,
-            CASE
-                WHEN FCode IN (46006, 55800) THEN 'Perennial'
-                WHEN FCode = 46003 THEN 'Intermittent'
-                WHEN FCode = 46007 THEN 'Ephemeral'
-                ELSE 'Unknown'
-            END AS flowType,
-            COALESCE(SUM(segment_area), 0) area,
-            COALESCE(SUM(centerline_length), 0) length
-        FROM
-            rme_dgos
-        GROUP BY
-            owner, flowType""")
+    with open(os.path.join(rme_proj_path, 'rme_metrics.json'), 'w', encoding='utf8') as f:
+        json.dump(rme_metrics, f, indent=2)
 
-        rme_metrics['ownership'] = [{'owner': row['owner'], 'flowTpe': row['flowType'], 'area': row['area'], 'length': row['length']} for row in curs.fetchall()]
+    proj = RSProject(None, os.path.join(rme_proj_path, 'project.rs.xml'))
+    realization_node = proj.XMLBuilder.find('Realizations').find('Realization')
+    datasets_node = proj.XMLBuilder.add_sub_element(realization_node, 'Datasets')
+    proj.add_dataset(datasets_node, os.path.join(rme_proj_path, 'rme_metrics.json'),
+                     RSLayer('Metrics', 'Metrics', 'File', 'rme_metrics.json'), 'File')
+    proj.XMLBuilder.write()
 
-        curs.execute("SELECT name, type FROM pragma_table_info('rme_dgos') WHERE LOWER(type) IN ('real', 'float', 'double', 'decimal')")
-        decimal_fields = [row['name'] for row in curs.fetchall()]
-
-        for field in decimal_fields:
-            metric_name = field.replace('_', '')
-            rme_metrics[metric_name] = []
-            for owner_name, owner_clause in owner_clauses.items():
-                for flow_name, flow_clause in flow_type_clauses.items():
-
-                    curs.execute(f"""
-                        SELECT
-                            MIN({field}) AS MinValue,
-                            MAX({field}) AS MaxValue,
-                            AVG(rme_igo_prim_channel_gradient) AS AvgValue,
-                            COUNT(*) AS Tally,
-                            Sum({field}) AS SumValue
-                        FROM
-                            rme_dgos
-                        WHERE
-                            {owner_clause}
-                            AND {flow_clause}
-                    """)
-                    row = curs.fetchone()
-                    if row['Tally'] > 0:
-                        rme_metrics[metric_name].append({
-                            'owner': owner_name,
-                            'flowType': flow_name,
-                            'min': row['MinValue'],
-                            'max': row['MaxValue'],
-                            'avg': row['AvgValue'],
-                            'count': row['Tally'],
-                            'sum': row['SumValue']
-                        })
-
-        # Riparian area requires multiplying proportion by segment area
-        for owner_name, owner_clause in owner_clauses.items():
-            rme_metrics['riparianarea'] = []
-            for flow_name, flow_clause in flow_type_clauses.items():
-                curs.execute(f"""
-                    SELECT
-                        COALESCE(SUM(rcat_igo_prop_riparian * segment_area), 0) AS SumValue
-                    FROM
-                        rme_dgos
-                    WHERE
-                        {owner_clause}
-                        AND {flow_clause}
-                """)
-                row = curs.fetchone()
-                rme_metrics['riparianarea'].append({
-                    'owner': owner_name,
-                    'flowType': flow_name,
-                    'sum': row['SumValue']
-                })
-
-        # curs.execute("SELECT name, type FROM pragma_table_info('your_table_name') WHERE LOWER(type) IN ('integer', 'int', 'smallint', 'tinyint', 'bigint', 'unsigned big int')")
-        # integer_fields = [row['name'] for row in curs.fetchall()]
-
-        with open(os.path.join(vbet_proj_path, 'vbet_metrics.json'), encoding='utf8') as json_file:
-            metrics = json.load(json_file)
-
-        metrics['rme'] = rme_metrics
-
-        with open(os.path.join(project_path, 'rme_metrics.json'), 'w', encoding='utf8') as f:
-            json.dump(metrics, f, indent=2)
-
-        # proj = RSProject(None, os.path.join(project_path, 'project.rs.xml'))
-        # datasets_node = proj.XMLBuilder.find('Realizations').find('Realization').find('Datasets')
-        # proj.add_dataset(datasets_node, os.path.join(project_path, 'rme_metrics.json'), RSLayer('Metrics', 'Metrics', 'File', 'rme_metrics.json'), 'File')
-        # proj.XMLBuilder.write()
-
-
-def dict_factory(cursor, row):
-    d = {}
-    for idx, col in enumerate(cursor.description):
-        d[col[0]] = row[idx]
-    return d
+    log.info('RME Metrics calculated successfully')
 
 
 def main():
-    """Run this method to generate the summary JSON metrics for the RME project."""
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('project_path', help='Path to project directory', type=str)
-    parser.add_argument('vbet_path', help='Path to VBET project directory', type=str)
+    parser = argparse.ArgumentParser(description='RME Metrics')
+    parser.add_argument('rme_proj_path', help='Path to the RME project')
+    parser.add_argument('brat_proj_path', help='Path to the BRAT project')
+    parser.add_argument('rcat_proj_path', help='Path to the RCAT project')
+    parser.add_argument('confinement_proj_path', help='Path to the Confinement project')
+
     args = dotenv.parse_args_env(parser)
 
     try:
-        rme_metrics(args.project_path, args.vbet_path)
+        rme_metrics(args.rme_proj_path, args.brat_proj_path, args.rcat_proj_path, args.confinement_proj_path)
     except Exception as e:
-        Logger('rme_metrics').error(e)
+        Logger('RME Metrics').error(e)
         traceback.print_exc(file=sys.stdout)
         sys.exit(1)
 

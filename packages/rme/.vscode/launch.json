@@ -74,7 +74,9 @@
       "console": "integratedTerminal",
       "args": [
         "{env:DATA_ROOT}/rme/${input:HUC}",
-        "{env:DATA_ROOT}/vbet/${input:HUC}",
+        "{env:DATA_ROOT}/brat/${input:HUC}",
+        "{env:DATA_ROOT}/rcat/${input:HUC}",
+        "{env:DATA_ROOT}/confinement/${input:HUC}"
       ]
     },
     {
