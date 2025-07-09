@@ -333,9 +333,19 @@ def rs_context(huc: str, landfire_dir: str, ownership: str, fair_market: str, ec
     # National Wetland Inventory
     nwi_gpkg = os.path.join(output_folder, LayerTypes['NATIONAL_WETLANDS'].rel_path)
     log.info(f'Processing National Wetland Inventory. Output: {nwi_gpkg}')
-    national_wetlands_inventory(huc, download_folder, nhd['WBDHU10'], nwi_gpkg, cfg.OUTPUT_EPSG)
-
-    project.add_project_geopackage(datasets, LayerTypes['NATIONAL_WETLANDS'])
+    nwi_attempts = 0
+    while nwi_attempts < 3:
+        try:
+            # Download the NWI data
+            national_wetlands_inventory(huc, download_folder, nhd['WBDHU10'], nwi_gpkg, cfg.OUTPUT_EPSG)
+            project.add_project_geopackage(datasets, LayerTypes['NATIONAL_WETLANDS'])
+            log.info('Processing National Wetland Inventory completed successfully.')
+            break
+        except Exception as exc:
+            nwi_attempts += 1
+            log.error(f'Failed to download NWI data on attempt {nwi_attempts + 1}: {exc}')
+            if nwi_attempts >= 3:
+                raise Exception(f'Failed to download NWI data after {nwi_attempts + 1} attempts') from exc
 
     ################################################################################################################################################
     # PRISM climate rasters
