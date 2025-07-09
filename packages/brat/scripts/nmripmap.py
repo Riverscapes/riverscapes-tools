@@ -62,8 +62,12 @@ veg_class_lookup = {
 
 
 def clip_ripmap(rip_map: str, clip_shp: str, out_polygon: str, lookup: dict):
+
+    filename = os.path.basename(rip_map)  # Gets 'URG_Version2_0Plus.gdb'
+    name_part = filename.split('_')[0]
+    layer = f'{name_part}_Version2Plus_NMRipMap'
     with GeopackageLayer(clip_shp) as clip_layer, \
-            GeodatabaseLayer(rip_map, layer_name='MRG_Version2Plus_NMRipMap') as rip_layer, \
+            GeodatabaseLayer(rip_map, layer_name=layer) as rip_layer, \
             GeopackageLayer(out_polygon, write=True) as out_layer:
         transform = clip_layer.get_transform_from_layer(rip_layer)
         transformback = rip_layer.get_transform_from_layer(clip_layer)
@@ -217,6 +221,6 @@ def hybrid_raster(ripmap_raster: str, lf_raster: str, out_raster: str):
 # if __name__ == "__main__":
 #     main()
 
-# clip_ripmap('/workspaces/data/MRG_Version2_0Plus.gdb', '/workspaces/data/rs_context/1302020202/hydrology/nhdplushr.gpkg/WBDHU10', '/workspaces/data/rs_context/1302020202/vegetation/ripmap.gpkg/ripmap', veg_class_lookup)
-# rasterize_gpkg_layer('/workspaces/data/rs_context/1302020202/vegetation/ripmap.gpkg/ripmap', 'RipMapID', '/workspaces/data/rs_context/1302020202/vegetation/nmripmap.tif', 5)
-hybrid_raster('/workspaces/data/rs_context/1302020202/vegetation/nmripmap.tif', '/workspaces/data/rs_context/1302020202/vegetation/existing_veg.tif', '/workspaces/data/rs_context/1302020202/vegetation/hybrid_nmripmap.tif')
+# clip_ripmap('/workspaces/data/URG_Version2_0Plus.gdb', '/workspaces/data/rs_context/1302010110/hydrology/nhdplushr.gpkg/WBDHU10', '/workspaces/data/rs_context/1302010110/vegetation/ripmap.gpkg/ripmap', veg_class_lookup)
+# rasterize_gpkg_layer('/workspaces/data/rs_context/1302010110/vegetation/ripmap.gpkg/ripmap', 'RipMapID', '/workspaces/data/rs_context/1302010110/vegetation/nmripmap.tif', 5)
+# hybrid_raster('/workspaces/data/rs_context/1302010110/vegetation/nmripmap.tif', '/workspaces/data/rs_context/1302010110/vegetation/existing_veg.tif', '/workspaces/data/rs_context/1302010110/vegetation/hybrid_nmripmap.tif')

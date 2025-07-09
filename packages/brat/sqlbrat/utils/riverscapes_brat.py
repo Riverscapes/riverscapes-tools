@@ -12,7 +12,7 @@ def riverscape_brat(gpkg_path: str, windows: dict):
         windows (dict): dictionary of moving windows relating dgo IDs to igo IDs
     """
 
-    log = Logger('Riversapes BRAT')
+    log = Logger('Riverscapes BRAT')
 
     reaches = os.path.join(gpkg_path, 'vwReaches')
     dgo = os.path.join(gpkg_path, 'vwDgos')
