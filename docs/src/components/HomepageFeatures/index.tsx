@@ -12,7 +12,7 @@ export default function HomepageFeatures() {
           Developer Documentation please use one of the links below.
         </p>
       </section>
-      
+
       <Section title="Other Riverscapes Sites">
         <CardGrid>
           <ResourceCard

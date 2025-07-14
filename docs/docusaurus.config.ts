@@ -52,12 +52,12 @@ const config: Config = {
 
     algolia: {
       // The application ID provided by Algolia
-      appId: "4TGS8ZPIMY",
+      appId: '4TGS8ZPIMY',
 
       // Public API key: it is safe to commit it
-      apiKey: "d084a7919fe7b5940d7125f14221eaca",
+      apiKey: 'd084a7919fe7b5940d7125f14221eaca',
 
-      indexName: "tools.riverscapes.net",
+      indexName: 'tools.riverscapes.net',
 
       // Optional: see doc section below
       contextualSearch: true,
