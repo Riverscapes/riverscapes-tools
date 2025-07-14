@@ -1,6 +1,6 @@
 # Riverscapes Tools
 
-This is a monorepo housing the python open-source GIS tools for Riverscapes.
+This is a monorepo housing the python open-source GIS tools for Riverscapes, and the documentation site tools.riverscapes.net. Packages include:  
 
 * [Riverscapes Context](./packages/rscontext)
 * [BRAT](./packages/brat)
@@ -72,3 +72,17 @@ rscli download --id XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX /workspaces/data/rs_con
 A browser window should pop open to allow you to authenticate your Riverscapes Warehouse account. Once authenticated the project will be downloaded to the data folder.
 
 Make sure you use the folder name that matches what this tool expects for the project type and huc number.
+
+# Documentation Site
+
+The documentation site is built with [Docusaurus](https://docusaurus.io/) and published [tools.riverscapes.net] from the **`docs` branch** to (https://tools.riverscapes.net). 
+
+## Editing & preview changes using VS Code
+
+Use the [`Docs` VS code workspace](/Workspaces/Docs.code-workspace) for editing documentation in VS Code.
+```sh
+cd docs
+yarn install
+yarn start
+```
+
