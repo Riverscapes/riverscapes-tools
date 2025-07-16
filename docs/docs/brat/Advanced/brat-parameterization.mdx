@@ -1,0 +1,59 @@
+---
+title: BRAT Vegetation Suitability Parameterization
+description: Instructions for checking and assigning vegetation suitability scores for running the BRAT model.
+---
+
+This page provides instructions on using a database that contains LANDFIRE vegetation class frequency within the valley bottom across the US to check their BRAT suitability classification as a first step for parameterization prior to running BRAT for a given region. The database is available in the [LANDFIRE EVT Class Frequency Database](https://usu.box.com/s/4rl18sct3dphx4vb7ps8ft5i99xhrp3j).
+
+## Step 1: Download the LANDFIRE EVT Class Frequency Database
+
+Download the database from the [LANDFIRE EVT Class Frequency Database](https://usu.box.com/s/4rl18sct3dphx4vb7ps8ft5i99xhrp3j) and save it to your local machine.
+
+## Step 2: Use the database to find the dominant vegetation classes within the valley bottoms of a given region (e.g., a HUC4 watershed)
+
+Open the database and connect to it in SQLiteStudio. Open an SQL editor page, and run the following query to find the dominant vegetation classes within the valley bottoms of a given region. In this example, we are using the HUC4 watershed code `1006`. The 'hucs' table in the database has all of the HUC10s, in the US, so to look at data for a HUC4, we use the `WHERE SUBSTR(huc10, 0, 5) = '1006'` line in the query.:
+
+```sql
+SELECT VegetationID,
+       area / total_area proportion
+  FROM (
+           SELECT VegetationID,
+                  area,
+                  (
+                      SELECT SUM(area) 
+                        FROM (
+                                 SELECT VegetationID,
+                                        sum(VegArea) / 1000000 area
+                                   FROM veg_summary
+                                  WHERE substr(huc10, 0, 5) = '1006'
+                                  GROUP BY VegetationID
+                             )
+                  )
+                  AS total_area
+             FROM (
+                      SELECT VegetationID,
+                             sum(VegArea) / 1000000 area
+                        FROM veg_summary
+                       WHERE substr(huc10, 0, 5) = '1006'
+                       GROUP BY VegetationID
+                  )
+       ) order by proportion desc;
+```
+
+Running this query returns the dominant vegetation classes within the valley bottoms of the HUC4 watershed `1006` and their proportion of the total area. The `VegetationID` corresponds to the vegetation class ID in the LANDFIRE EVT class table. The `proportion` column shows the proportion of the total area that each vegetation class occupies. This information can be used to check the BRAT suitability classifications for the vegetation classes in the `riverscapes-tools` repository. The query above returns the following results (only the first few rows shown):
+
+| VegetationID | proportion |
+|--------------|------------|
+| 1284         | 0.3563     |
+| 7141         | 0.1539     |
+| 7968         | 0.1143     |
+| 1287         | 0.0790     |
+| 9516         | 0.0423     |
+
+## Step 3: Check the BRAT suitability classification for the vegetation classes
+
+Within the `riverscapes-tools` repository, open the BRAT Workspace. Make sure you are working on a branch to make changes (e.g., `git checkout -b brat_1006_veg`). Navigate to the `data` directory, and open the `VegetationTypes.csv` file. This file contains the BRAT suitability classification for each vegetation class. Check the BRAT suitability classification for the vegetation classes identified in the previous step that have a proportion above a selected threshold (e.g., 1%). In this example, this results in 12 vegetation classes to check (you can use `Ctrl + F` to search for the `VegetationID` in the `VegetationTypes.csv` file).
+Based on the name of the class, ensure that the BRAT suitability classification is appropriate for the vegetation class. If the classification is not appropriate, assign a new classification based on the BRAT suitability classification guidelines. LANDFIRE hosts tables [here](https://www.landfire.gov/vegetation/evc) for 'EVT' (existing vegetation cover) and [here](https://www.landfire.gov/vegetation/bps) for BpS (modeled historic vegetation cover) containing all of the attributes for each vegetation class that can be used to help determine the suitability classification. Commit any changes to the branch, push them, and create a pull request to merge the changes into the main branch.
+
+The video below demonstrates the steps outlined above:
+<YouTubeEmbed videoId="HKShaFZ0_M0" caption="Vegetation Suitability Parameterization"/>

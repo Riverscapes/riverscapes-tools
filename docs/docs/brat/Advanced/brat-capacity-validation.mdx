@@ -1,0 +1,39 @@
+---
+title: BRAT Capacity Validation
+description: Instructions for running the BRAT capacity validation tool.
+banner: true
+---
+
+This page contains instructions on running the BRAT capacity validation tool. This tool is designed to use beaver dam census data, packaged into the Beaver Activity riverscapes project type, to produce some plots and statistics that can be used to validate the capacity predictions of the BRAT model. Prior to running the tool, Beaver Activity projects and BRAT projects need to exist for the desired extent. Typically, the Beaver Activity projects are packaged at the HUC8 watershed scale, whereas BRAT is run at the HUC10 watershed scale. Performing the validation, therefore, often involves merging HUC10 BRAT projects into a single HUC8 project.
+
+## Step 1: Download the Beaver Activity project
+
+In the [data exchange](https://data.riverscapes.net), search for the Beaver Activity project for the desired HUC8 watershed. If you are using GitHub Codespaces, you can download the project directly to your Codespace using the command line (rscli). If you are working on your local machine, download the project to your local machine. In Codespaces, the default data directory is `/workspaces/data/`. If you are working locally, within the `BRAT-Workspace` in the `riverscapes-tools` repository, you will need to make sure there is a .env file with the following content:
+
+```bash
+DATA_ROOT=/path/to/data
+```
+
+If you have not created this file, you can simply right click on 'BRAT' node in the explorer panel on the left of the VSCode screen and select 'new file' and type .env as the name. Then edit the file to have the content above. Any data you download locally should then be saved in this location (DATA_ROOT). For example the beaver activity project would be saved in `/path/to/data/beaver_activity/<HUC>/`, and the BRAT projects would be saved in `path/to/data/brat/<HUC>/`, where `<HUC>` is the actual HUC number.
+
+If you are downloading the projects to Codespaces, you can use the following command to download the Beaver Activity project:
+
+```bash
+rscli download /workspaces/data/beaver_activity/<HUC> --id <beaver_activity_project_id>
+```
+
+where `<HUC>` is the actual HUC number and `<beaver_activity_project_id>` is the ID of the Beaver Activity project (found the project page path in the data exchange; e.g., if the path is 'https://data.riverscapes.net/p/12dd95b3-3084-435d-b2c0-daee05581483/', the id is '12dd95b3-3084-435d-b2c0-daee05581483'). The API will authenticate you as a user, then ask if you want to download the project files. Type 'y' and press enter to download the project.
+
+## Step 2: Merge the BRAT projects
+
+Search the data exchange for all BRAT projects within the HUC8 of the Beaver Activity project. Click the `Modify Search` button, then use the metadata search parameter. Enter 'HUC' for the Meta Key, and the HUC8 number for the Meta Value. You can then further specify the search using tags or Meta Key ModelVersion to find the BRAT projects you are interested in. After clicking search, verify that your search returned all of the HUC10s within the HUC8, and that there are not duplicate projects for any HUC. Then, create a collection from your selection by clicking the three dots at the top right of the data exchange screen and choosing 'New collection from these search results'. If there are duplicates, you could also create a collection from a single project and then add the other projects to the collection individually. 
+
+After creating the collection, you can create a merged project from it. In the `riverscapes-tools` repository, open the `RiverscapesAPI.code-workspace`. Click on the run and debug tab on the left. Then, on the top left of the VSCode screen, use the drop down menu to select the `Merge Projects Tool`. Click the green play button to run the tool. When prompted, enter the ID of the collection you created in the data exchange (e.g., if the path is 'https://data.riverscapes.net/c/b7ae5d99-ae58-4a30-88f4-19efb73b2391/', the ID is 'b7ae5d99-ae58-4a30-88f4-19efb73b2391'). The tool will have you select a project type, choose if you want to delete source files after merging, and use regex filtering to select which specific files to merge. It will then merge the projects and save the merged project in the data directory in a folder called `merged-projects`. Inside this folder is a subdirectory called `merged`. Copy this into you BRAT directory (e.g., `/path/to/data/brat/` or `/workspaces/data/brat/`) and change the name from merged to the HUC number.
+
+## Step 3: Run the BRAT capacity validation tool
+
+As soon as a Beaver Activity project and a BRAT project are available for the same HUC8 watershed within your data directory, the BRAT capacity validation tool can be run. In the `riverscapes-tools` repository, open the `BRAT-Workspace` in VSCode. Click on the run and debug tab on the left and then choose `Validate BRAT Capacity` from the drop down on the top left of the screen. Click the green play button to run the tool. When prompted, enter the HUC number for the HUC8 watershed you are working with. The tool will then run and produce plots and statistics that can be used to validate the capacity predictions of the BRAT model. The tool adds a directory called `validation` to the BRAT project directory, which contains the plots and statistics. 
+
+The video below demonstrates the steps outlined above:
+
+<YouTubeEmbed videoId="t0hVw0VXdQU"/>
