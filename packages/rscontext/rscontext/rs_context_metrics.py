@@ -166,6 +166,8 @@ def land_ownership(project_path: str, ) -> dict:
             geom: ogr.Geometry = feature.GetGeometryRef()
             geom.TransformTo(huc_srs)
             intersection = geom.Intersection(geom_huc10)
+            if intersection is None or intersection.IsEmpty():
+                continue
             intersection.MakeValid()
             if intersection.IsEmpty() or intersection.GetArea() == 0.0:
                 continue
