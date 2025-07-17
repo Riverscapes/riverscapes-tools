@@ -143,16 +143,16 @@ def calc_limited(limitations: dict, ovc_hpe: float, ovc_ex: float, occ_ex: float
             return limitations['Potential Reservoir or Land Use Change']
         else:
             return limitations['Naturally Vegetation Limited']
+    elif max_da is not None and da is not None and da > max_da:
+        return limitations['Stream Size Limited']
     # 'iGeo_Slope' > 23%
     elif slope is not None and slope > 0.23:
         return limitations['Slope Limited']
-    elif (splow is not None and splow >= 190) or (sp2 is not None and sp2 >= 2400) and da < max_da:
+    elif (splow is not None and splow >= 190) or (sp2 is not None and sp2 >= 2400):
         return limitations['Stream Power Limited']
     # 'oCC_EX' None (Primary focus of this layer is the places that can't support dams now... so why?)
     elif occ_ex is not None and occ_ex <= 0:
-        if max_da is not None and da is not None and da > max_da:
-            return limitations['Stream Size Limited']
-        elif (max_da is not None and da is not None and da < max_da) or max_da is None:
+        if (max_da is not None and da is not None and da < max_da) or max_da is None:
             if landuse is not None and landuse > 30:
                 return limitations['Anthropogenically Limited']
             else:
