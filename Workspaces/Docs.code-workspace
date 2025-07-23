@@ -44,7 +44,11 @@
     "files.associations": {
       "*.mdx": "markdown"
     },
-    "markdownlint.configFile": ".vscode/.markdownlint.json",
+    "markdownlint": {
+        "MD033": false,
+        "MD013": false,
+        "MD025": false,
+    },
     // spell check settings
     "cSpell.customDictionaries": {
       "riverscapesWords": {
