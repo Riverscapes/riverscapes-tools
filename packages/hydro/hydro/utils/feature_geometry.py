@@ -48,6 +48,17 @@ def reach_geometry(gpk_path: str, dem_path: str, buffer_distance: float, field_n
         for feature, _counter, _progbar in lyr.iterate_features("Processing reaches"):
             reach_id = feature.GetFID()
             geom = feature.GetGeometryRef()
+            if geom is None or geom.IsEmpty():
+                log.warning('Reach ID {} has no geometry, skipping'.format(reach_id))
+                continue
+            if geom.GetGeometryType() == ogr.wkbMultiLineString:
+                # If the geometry is a MultiLineString, merge it into a single LineString
+                geom = linemerge([VectorBase.ogr2shapely(g) for g in geom])
+                geom = VectorBase.shapely2ogr(geom)
+            if geom.GetGeometryType() != ogr.wkbLineString:
+                log.warning('Reach ID {} has geometry type {}, expected LineString, skipping'.format(reach_id, geom.GetGeometryType()))
+                continue
+
             geom_clone = geom.Clone()
 
             # Calculate the reach length in the output spatial reference
