@@ -205,7 +205,10 @@ class BratReport(RSReport):
         curs.execute('SELECT {} FROM vwReaches'.format(', '.join([field for label, field in fields])))
         row = curs.fetchone()
 
-        table_dict = {fields[i][0]: int(row[fields[i][1]]) for i in range(len(fields))}
+        table_dict = {
+            fields[i][0]: int(row[fields[i][1]]) if row[fields[i][1]] is not None else None
+            for i in range(len(fields))
+        }
         RSReport.create_table_from_dict(table_dict, section)
 
         # self.dam_capacity_lengths()  # 'oCC_EX', section)
