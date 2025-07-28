@@ -17,12 +17,14 @@
     "[mdx]": {
       "editor.wordWrap": "on"
     },
-    "css.lint.validProperties": ["composes"],
+    "css.lint.validProperties": [
+      "composes"
+    ],
     "workbench.colorCustomizations": {
-			"titleBar.activeBackground": "#001768",
+      "titleBar.activeBackground": "#001768",
       "sideBar.background": "#242132",
-			"editor.background": "#1e1c2c"
-		},
+      "editor.background": "#1e1c2c"
+    },
     "editor.tabSize": 2,
     "editor.codeActionsOnSave": {
       "source.fixAll.eslint": "explicit"
@@ -44,31 +46,31 @@
     "files.associations": {
       "*.mdx": "markdown"
     },
-    "markdownlint": {
-        "MD033": false,
-        "MD013": false,
-        "MD025": false,
-    },
     // spell check settings
     "cSpell.customDictionaries": {
       "riverscapesWords": {
         "name": "riverscapesWords",
         "path": "./.vscode/riverscapesWords.txt",
-        "scope":"workspace",
+        "scope": "workspace",
         "addWords": true
       }
     },
     "cSpell.languageSettings": [
       {
-          // use with Markdown files
-          "languageId": "markdown",
-          // Exclude code.
-          "ignoreRegExpList": [
-              "/^\\s*```[\\s\\S]*?^\\s*```/gm",
-              "`[^`]*?`"
-          ]
+        // use with Markdown files
+        "languageId": "markdown",
+        // Exclude code.
+        "ignoreRegExpList": [
+          "/^\\s*```[\\s\\S]*?^\\s*```/gm",
+          "`[^`]*?`"
+        ]
       }
-  ]
+    ],
+    "markdownlint.config": {
+      "MD033": false,
+      "MD013": false,
+      "MD025": false,
+    }
   },
   "extensions": {
     "recommendations": [

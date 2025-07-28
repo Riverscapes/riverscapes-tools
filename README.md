@@ -6,7 +6,7 @@ This is a monorepo housing the python open-source GIS tools for Riverscapes, and
 * [BRAT](./packages/brat)
 * [VBET](./packages/vbet)
 
-### `./lib` and `./packages`
+## `./lib` and `./packages`
 
 Both `./lib` and `./packages` contain pep8-compliant python packages.
 
@@ -51,7 +51,7 @@ This workflow needs to be repeated for each riverscapes tools package.
 
 ## Working inside Github codespaces
 
-If you are working inside a Github codespace there is no need for any kind of bootstrapping or `.venv` or even `.env` files. 
+If you are working inside a Github codespace there is no need for any kind of bootstrapping or `.venv` or even `.env` files.
 
 ### Data and files
 
@@ -75,14 +75,14 @@ Make sure you use the folder name that matches what this tool expects for the pr
 
 # Documentation Site
 
-The documentation site is built with [Docusaurus](https://docusaurus.io/) and published [tools.riverscapes.net] from the **`docs` branch** to (https://tools.riverscapes.net). 
+The documentation site is built with [Docusaurus](https://docusaurus.io/) and published  from the **`docs` branch** to [tools.riverscapes.net](https://tools.riverscapes.net).
 
 ## Editing & preview changes using VS Code
 
 Use the [`Docs` VS code workspace](/Workspaces/Docs.code-workspace) for editing documentation in VS Code.
+
 ```sh
 cd docs
 yarn install
 yarn start
 ```
-
