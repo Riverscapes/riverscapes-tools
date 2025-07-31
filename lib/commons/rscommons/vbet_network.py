@@ -330,7 +330,7 @@ def get_distance_lookup(outputs_gpkg, level_paths, level_paths_drainage, vbet_ru
                         output[level_path] = conversion[3]
                 else:
                     output[level_path] = 3
-            elif vbet_run['Zones']['Slope'][4] != '' and vbet_run['Zones']['Slope'][3] <= level_paths_drainage[level_path] < vbet_run['Zones']['Slope'][4]:
+            elif vbet_run['Zones']['Slope'][3] != '' and vbet_run['Zones']['Slope'][3] < level_paths_drainage[level_path]:
                 if conversion is not None:
                     if min_dist > conversion[4]:
                         output[level_path] = min_dist
