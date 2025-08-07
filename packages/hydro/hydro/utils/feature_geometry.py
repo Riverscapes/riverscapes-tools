@@ -51,11 +51,11 @@ def reach_geometry(gpk_path: str, dem_path: str, buffer_distance: float, field_n
             if geom is None or geom.IsEmpty():
                 log.warning('Reach ID {} has no geometry, skipping'.format(reach_id))
                 continue
-            if geom.GetGeometryType() == ogr.wkbMultiLineString:
+            if geom.GetGeometryType() in (ogr.wkbMultiLineString, ogr.wkbMultiLineStringM, ogr.wkbMultiLineStringZM):
                 # If the geometry is a MultiLineString, merge it into a single LineString
                 geom = linemerge([VectorBase.ogr2shapely(g) for g in geom])
                 geom = VectorBase.shapely2ogr(geom)
-            if geom.GetGeometryType() != ogr.wkbLineString:
+            if geom.GetGeometryName() != 'LINESTRING':
                 log.warning('Reach ID {} has geometry type {}, expected LineString, skipping'.format(reach_id, geom.GetGeometryType()))
                 continue
 
