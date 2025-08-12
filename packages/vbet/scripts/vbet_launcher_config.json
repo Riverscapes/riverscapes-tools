@@ -1,0 +1,19 @@
+{
+  "flowline_network": "{env:DATA_ROOT}/rs_context/{env:HUC}/hydrography/hydrography.gpkg/riverlines",
+  "dem": "{env:DATA_ROOT}/rs_context/{env:HUC}/topography/dem.tif",
+  "slope": "{env:DATA_ROOT}/rs_context/{env:HUC}/topography/slope.tif",
+  "hillshade": "{env:DATA_ROOT}/rs_context/{env:HUC}/topography/dem_hillshade.tif",
+  "channel_area": "{env:DATA_ROOT}/channel_area/{env:HUC}/outputs/channel_area.gpkg/channel_area",
+  "output_dir": "{env:DATA_ROOT}/vbet/{env:HUC}",
+  "flowline_type": "NHD",
+  "unique_stream_field": "level_path",
+  "unique_reach_field": "HydroID",
+  "drain_area_field": "TotDASqKm",
+  "pitfill": "{env:DATA_ROOT}/taudem/{env:HUC}/intermediates/pitfill.tif",
+  "dinfflowdir_ang": "{env:DATA_ROOT}/taudem/{env:HUC}/intermediates/dinfflowdir_ang.tif",
+  "dinfflowdir_slp": "{env:DATA_ROOT}/taudem/{env:HUC}/outputs/dinfflowdir_slp.tif",
+  "reach_codes": "33400,46000,46003,46006,46007,55800",
+  "meta": "Runner=VSCode",
+  "verbose": true,
+  "debug": true
+}
