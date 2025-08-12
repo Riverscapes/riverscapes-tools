@@ -81,6 +81,17 @@
       ]
     },
     {
+      "name": "Run VBET (Config File)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "scripts.vbet_launcher",
+      "console": "integratedTerminal",
+      "args": [
+        "${workspaceFolder}/scripts/vbet_launcher_config.json",
+        "${input:HUC}"
+      ]
+    },    
+    {
       "name": "VBET Metrics",
       "type": "python",
       "request": "launch",

@@ -1,9 +1,26 @@
 import codecs
-from typing import List, Dict
-import re
-import os
-import argparse
 from pathlib import Path
+import argparse
+import os
+import re
+from typing import List, Dict
+
+
+def parse_dict_env(arg_dict: dict, env_path=None):
+    """Substitute environment variables for dictionary values containing {env:VARNAME} patterns
+
+    Args:
+        arg_dict (dict): Dictionary of arguments
+        env_path (str, optional): Path to dotenv file. Defaults to None.
+
+    Returns:
+        dict: Dictionary with environment variables substituted
+    """
+    _env = parse_dotenv(env_path) if env_path is not None else {}
+    pattern = r'{env:([^}]+)}'
+    for k, v in arg_dict.items():
+        arg_dict[k] = replace_env_varts(pattern, v, os.environ)
+    return arg_dict
 
 
 def parse_dotenv(dotenv_path):
