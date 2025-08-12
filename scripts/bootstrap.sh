@@ -12,7 +12,7 @@ python3 -m venv .venv
 
 # Need numpy before GDAL
 .venv/bin/pip install GDAL==$(gdal-config --version)
-
+ ## 
 # Now install everything else
 .venv/bin/pip --timeout=120 install -r requirements.txt
 
