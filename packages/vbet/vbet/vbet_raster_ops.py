@@ -588,7 +588,7 @@ def raster_update_multiply(raster: Path, update_values_raster: Path, value=None)
             for row_offset in range(window.height):
                 row_window = Window(window.col_off, window.row_off + row_offset, window.width, 1)
                 out_window = Window(row_window.col_off + col_off_delta, row_window.row_off + row_off_delta, row_window.width, row_window.height)
-                # print(f"Block at {_ji}: Window={window}")
+
                 array_dest = rio_dest.read(1, window=out_window, masked=True)
                 array_update = rio_updates.read(1, window=row_window, masked=True)
                 if array_dest.shape[0] == 0:
@@ -861,9 +861,13 @@ def clean_raster_regions(raster: Path, target_value: int, out_raster: Path, out_
 
     size = np.bincount(regions.ravel())
     print(len(size))
-    biggest_label = size[1:].argmax() + 1
-    regions[regions != biggest_label] = 0
-    regions[regions == biggest_label] = 1
+    biggest_label = [size[1:].argmax() + 1]
+    biggest_pixels = size[biggest_label[0]]
+    for i, ct in enumerate(size[1:]):
+        if ct / biggest_pixels > 0.1 and i+1 not in biggest_label:
+            biggest_label.append(i+1)
+    regions[~np.isin(regions, biggest_label)] = 0
+    regions[np.isin(regions, biggest_label)] = 1
 
     array_non_target = raster2array(raster)
     array_non_target[array_non_target == target_value] = -9999
