@@ -585,24 +585,26 @@ def raster_update_multiply(raster: Path, update_values_raster: Path, value=None)
         if rio_dest.width - col_off_delta < rio_updates.width:
             col_off_delta = col_off_delta - (rio_updates.width - (rio_dest.width - col_off_delta))
         for _ji, window in rio_updates.block_windows(1):
-            out_window = Window(window.col_off + col_off_delta, window.row_off + row_off_delta, window.width, window.height)
+            for row_offset in range(window.height):
+                row_window = Window(window.col_off, window.row_off + row_offset, window.width, 1)
+                out_window = Window(row_window.col_off + col_off_delta, row_window.row_off + row_off_delta, row_window.width, row_window.height)
+                # print(f"Block at {_ji}: Window={window}")
+                array_dest = rio_dest.read(1, window=out_window, masked=True)
+                array_update = rio_updates.read(1, window=row_window, masked=True)
+                if array_dest.shape[0] == 0:
+                    continue
 
-            array_dest = rio_dest.read(1, window=out_window, masked=True)
-            array_update = rio_updates.read(1, window=window, masked=True)
-            if array_dest.shape[0] == 0:
-                continue
+                if value is not None:
+                    array_update = np.multiply(array_update, value)
 
-            if value is not None:
-                array_update = np.multiply(array_update, value)
+                # we're choosing from two values in an array. 0 = array_dest 1 = array_update
+                chooser = array_dest.mask.astype(int)
+                # Make sure that any nodata values in the array_update default back to array_dest
+                chooser[array_update.mask | array_update == 0] = 0
 
-            # we're choosing from two values in an array. 0 = array_dest 1 = array_update
-            chooser = array_dest.mask.astype(int)
-            # Make sure that any nodata values in the array_update default back to array_dest
-            chooser[array_update.mask | array_update == 0] = 0
-
-            array_out = np.choose(chooser, [array_dest, array_update])
-            array_out_format = array_out if out_meta['dtype'] == 'int32' else np.float32(array_out)
-            rio_dest.write(array_out_format, window=out_window, indexes=1)
+                array_out = np.choose(chooser, [array_dest, array_update])
+                array_out_format = array_out if out_meta['dtype'] == 'int32' else np.float32(array_out)
+                rio_dest.write(array_out_format, window=out_window, indexes=1)
     return
 
 
