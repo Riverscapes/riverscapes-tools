@@ -67,17 +67,36 @@ def generate_igo_points(line_network: Path, dem: Path, out_points_layer: Path, v
                 line_lyr.spatial_ref, transform_ref)
             transform_back = transform
 
-        for feat, *_ in line_lyr.iterate_features(write_layers=[out_lyr]):
+        lps = []
+        for feat, *_ in line_lyr.iterate_features():
             level_path = feat.GetField(f'{unique_stream_field}')
             if level_path not in stream_size_lookup:
-                log.error(f'stream size not ofund for level path {level_path}')
-            stream_size = stream_size_lookup[level_path]
-            geom_line = feat.GetGeometryRef()
-            geom_line.FlattenTo2D()
-            geom_line.Transform(transform)
-            shapely_multiline = VectorBase.ogr2shapely(geom_line)
-            if shapely_multiline.length == 0.0:
-                continue
+                log.error(f'stream size not found for level path {level_path}')
+            lps.append(level_path)
+
+        for level_path in lps:
+            cl_ftrs = []
+            for feat, *_ in line_lyr.iterate_features(attribute_filter=f'{unique_stream_field} = {level_path}', write_layers=[out_lyr]):
+                stream_size = stream_size_lookup[level_path]
+                geom_line = feat.GetGeometryRef()
+                geom_line.FlattenTo2D()
+                geom_line.Transform(transform)
+                shapely_line = VectorBase.ogr2shapely(geom_line)
+                if shapely_line.length == 0.0:
+                    continue
+                if shapely_line.geom_type == "MultiLineString":
+                    cl_ftrs.append(linemerge(geom for geom in shapely_line.geoms))
+                elif shapely_line.geom_type == "LineString":
+                    cl_ftrs.append(shapely_line)
+                else:
+                    raise ValueError(f"Unexpected geometry type: {shapely_line.geom_type}")
+
+            try:
+                shapely_multiline = linemerge(cl_ftrs)
+            except Exception as e:
+                log.warning(f"Error merging centerlines for {level_path}: {e}")
+                shapely_multiline = shapely_line
+            # shapely_multiline = MultiLineString(cl_ftrs)
             cleaned_line = clean_linestring(shapely_multiline)
 
             vb_area = 0.0
