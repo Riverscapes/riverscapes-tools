@@ -188,7 +188,6 @@ def clean_up_centerlines(in_centerlines, vbet_polygons, out_centerlines, clip_bu
             level_path = feat_vbet.GetField(f'{unique_stream_field}')
             if level_path is None or level_path == 'None':
                 continue
-
             geom_vbet = feat_vbet.GetGeometryRef()
             geom_clip = geom_vbet.Buffer(clip_buffer_value)
             for feat_centerline, *_ in lyr_in_centerlines.iterate_features(write_layers=[lyr_centerlines], attribute_filter=f"{unique_stream_field} = {level_path}", clip_shape=geom_vbet):
@@ -196,61 +195,3 @@ def clean_up_centerlines(in_centerlines, vbet_polygons, out_centerlines, clip_bu
                 geom_centerline_clipped = geom_clip.Intersection(geom_centerline)
                 attributes = {f'{unique_stream_field}': level_path}
                 lyr_centerlines.create_feature(geom_centerline_clipped, attributes)
-
-            cl_ftrs = []
-            for feat_cl, *_ in lyr_centerlines.iterate_features(attribute_filter=f'{unique_stream_field} = {level_path}'):
-                geom_centerline = feat_cl.GetGeometryRef()
-                geom_shapely = VectorBase.ogr2shapely(geom_centerline)
-                if geom_shapely.geom_type == 'MultiLineString':
-                    cl_ftrs.append(linemerge([geom for geom in geom_shapely.geoms if geom.geom_type == 'LineString']))
-                else:
-                    cl_ftrs.append(geom_shapely)
-            if len(cl_ftrs) == 2:
-                try:
-                    new_line = fill_in_line(MultiLineString(cl_ftrs))
-                    lyr_centerlines.create_feature(new_line, attributes={f'{unique_stream_field}': level_path})
-                except Exception as e:
-                    log.warning(f"Error filling in line for {level_path}: {e}")
-                    continue
-
-
-def fill_in_line(line):
-    """draw a new segment to fill in gaps in line"""
-
-    end_points = []
-
-    for geom in line.geoms:
-        end_points.append(geom.coords[0])
-        end_points.append(geom.coords[-1])
-
-    min_distance = 10000000
-    points = [None, None]
-    for pt in end_points:
-        for other_pt in end_points:
-            if pt != other_pt:
-                distance = Point(pt).distance(Point(other_pt))
-                if distance < min_distance:
-                    min_distance = distance
-                    points = [pt, other_pt]
-
-    # st_dists = {pnt: [] for pnt in start_points}
-    # for s_pnt in start_points:
-    #     for e_pnt in end_points:
-    #         st_dists[s_pnt].append(Point(s_pnt).distance(Point(e_pnt)))
-    # start_dists = {k: min(v) for k, v in st_dists.items()}
-    # pnt_end = min(start_dists, key=start_dists.get)
-
-    # end_dists = {pnt: [] for pnt in end_points}
-    # for e_pnt in end_points:
-    #     for s_pnt in start_points:
-    #         end_dists[e_pnt].append(Point(e_pnt).distance(Point(s_pnt)))
-    # end_dists = {k: min(v) for k, v in end_dists.items()}
-    # pnt_start = min(end_dists, key=end_dists.get)
-    # out_lines = [geom for geom in line.geoms]
-    # out_lines.append(LineString([pnt_start, pnt_end]))
-    # final_out_lines = [out_lines[0], LineString([pnt_start, pnt_end]), out_lines[1]]
-
-    # new_line = MultiLineString(final_out_lines)
-    new_line = LineString(points)
-
-    return VectorBase.shapely2ogr(new_line)

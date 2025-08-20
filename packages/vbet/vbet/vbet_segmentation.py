@@ -13,7 +13,7 @@ import sqlite3
 
 from osgeo import ogr, osr
 from shapely.ops import linemerge, voronoi_diagram
-from shapely.geometry import MultiLineString, MultiPoint
+from shapely.geometry import MultiLineString, MultiPoint, LineString, Point
 from shapely.topology import TopologicalError
 from shapely.validation import make_valid
 
@@ -75,8 +75,11 @@ def generate_igo_points(line_network: Path, dem: Path, out_points_layer: Path, v
             lps.append(level_path)
 
         for level_path in lps:
+            print(level_path)
+            if level_path == '70000400070782':
+                print('checking')
             cl_ftrs = []
-            for feat, *_ in line_lyr.iterate_features(attribute_filter=f'{unique_stream_field} = {level_path}', write_layers=[out_lyr]):
+            for feat, *_ in line_lyr.iterate_features('Generating Segmentation Points', attribute_filter=f'{unique_stream_field} = {level_path}', write_layers=[out_lyr]):
                 stream_size = stream_size_lookup[level_path]
                 geom_line = feat.GetGeometryRef()
                 geom_line.FlattenTo2D()
@@ -85,17 +88,20 @@ def generate_igo_points(line_network: Path, dem: Path, out_points_layer: Path, v
                 if shapely_line.length == 0.0:
                     continue
                 if shapely_line.geom_type == "MultiLineString":
-                    cl_ftrs.append(linemerge(geom for geom in shapely_line.geoms))
+                    for geom in shapely_line.geoms:
+                        cl_ftrs.append(geom)
                 elif shapely_line.geom_type == "LineString":
                     cl_ftrs.append(shapely_line)
                 else:
                     raise ValueError(f"Unexpected geometry type: {shapely_line.geom_type}")
 
-            try:
-                shapely_multiline = linemerge(cl_ftrs)
-            except Exception as e:
-                log.warning(f"Error merging centerlines for {level_path}: {e}")
-                shapely_multiline = shapely_line
+            m_line = linemerge(cl_ftrs)
+
+            if m_line.geom_type == "MultiLineString":
+                shapely_multiline = fill_in_line(cl_ftrs)
+            else:
+                shapely_multiline = m_line
+
             # shapely_multiline = MultiLineString(cl_ftrs)
             cleaned_line = clean_linestring(shapely_multiline)
 
@@ -570,6 +576,49 @@ def vbet_segmentation(in_centerlines: str, vbet_polygons: str, unique_stream_fie
 
     log.info('Calcuating vbet metrics')
     calculate_dgo_metrics(split_polygons, in_centerlines, metric_layers)
+
+
+def fill_in_line(lines):
+    """draw a new segment to fill in gaps in line"""
+
+    merged_line = linemerge(lines)
+    init_segments = len(merged_line.geoms)
+    while merged_line.geom_type != "LineString":
+        end_points = []
+
+        for line in merged_line.geoms:
+            if line.geom_type == 'LineString':
+                end_points.append(line.coords[0])
+                end_points.append(line.coords[-1])
+            elif line.geom_type == 'MultiLineString':
+                for geom in line.geoms:
+                    end_points.append(geom.coords[0])
+                    end_points.append(geom.coords[-1])
+            else:
+                raise ValueError("Unsupported geometry type")
+                continue
+
+        min_distance = 10000000
+        points = [None, None]
+        for pt in end_points:
+            for other_pt in end_points:
+                if pt != other_pt:
+                    distance = Point(pt).distance(Point(other_pt))
+                    if distance < min_distance:
+                        min_distance = distance
+                        points = [pt, other_pt]
+
+        if None in points:
+            return merged_line
+        else:
+            new_line = LineString(points)
+            lines.append(new_line)
+            merged_line = linemerge(lines)
+            if merged_line.geom_type == "MultiLineString":
+                if len(merged_line.geoms) >= init_segments:
+                    break
+
+    return merged_line
 
 
 def main():
