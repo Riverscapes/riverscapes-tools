@@ -632,8 +632,8 @@ def clean_igos(igo, dgo, unique_stream_field, level_paths):
                 continue
 
             for igo_feat, *_ in igo_lyr.iterate_features('Cleaning IGO features', attribute_filter=f'{unique_stream_field} = {level_path}'):
-                # igo_segdist = igo_feat.GetField('seg_distance')
-                for dgo_feat, *_ in dgo_lyr.iterate_features(clip_shape=igo_feat.GetGeometryRef()):
+                igo_segdist = igo_feat.GetField('seg_distance')
+                for dgo_feat, *_ in dgo_lyr.iterate_features(attribute_filter=f'{unique_stream_field} = {level_path} AND seg_distance = {igo_segdist}'):
                     if dgo_feat.GetGeometryRef() is None or dgo_feat.GetGeometryRef().IsEmpty():
                         igo_lyr.ogr_layer.DeleteFeature(igo_feat.GetFID())
                     # else:
