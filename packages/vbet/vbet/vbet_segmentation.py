@@ -25,7 +25,7 @@ from rscommons.geometry_ops import get_rectangle_as_geom
 Path = str
 
 
-def generate_igo_points(line_network: Path, dem: Path, out_points_layer: Path, vb_layer: Path, unique_stream_field, stream_size_lookup: dict, aspect_ratio: float):
+def generate_igo_points(line_network: Path, dem: Path, out_points_layer: Path, vb_layer: Path, unique_stream_field, stream_size_lookup: dict, levelpaths: list, aspect_ratio: float):
     """generate the vbet segmentation center points/igos
 
     Args:
@@ -67,18 +67,16 @@ def generate_igo_points(line_network: Path, dem: Path, out_points_layer: Path, v
                 line_lyr.spatial_ref, transform_ref)
             transform_back = transform
 
-        lps = []
-        for feat, *_ in line_lyr.iterate_features():
-            level_path = feat.GetField(f'{unique_stream_field}')
+        for level_path in levelpaths:
             if level_path not in stream_size_lookup:
                 log.error(f'stream size not found for level path {level_path}')
-            lps.append(level_path)
-
-        for level_path in lps:
+                continue
             cl_ftrs = []
             for feat, *_ in line_lyr.iterate_features('Generating Segmentation Points', attribute_filter=f'{unique_stream_field} = {level_path}', write_layers=[out_lyr]):
                 stream_size = stream_size_lookup[level_path]
                 geom_line = feat.GetGeometryRef()
+                if geom_line is None or geom_line.IsEmpty():
+                    continue
                 geom_line.FlattenTo2D()
                 geom_line.Transform(transform)
                 shapely_line = VectorBase.ogr2shapely(geom_line)
@@ -101,6 +99,8 @@ def generate_igo_points(line_network: Path, dem: Path, out_points_layer: Path, v
 
             # shapely_multiline = MultiLineString(cl_ftrs)
             cleaned_line = clean_linestring(shapely_multiline)
+            if cleaned_line.length == 0:
+                continue
 
             vb_area = 0.0
             for vb_feat, *_ in vb_lyr.iterate_features(attribute_filter=f'{unique_stream_field} = {level_path}'):
@@ -622,22 +622,25 @@ def fill_in_line(lines):
     return merged_line
 
 
-def clean_igos(igo, dgo, unique_stream_field):
+def clean_igos(igo, dgo, unique_stream_field, level_paths):
     """Clean up IGO features by removing those that are fully contained within DGO features."""
     with GeopackageLayer(igo, write=True) as igo_lyr, \
             GeopackageLayer(dgo) as dgo_lyr:
 
-        for igo_feat, *_ in igo_lyr.iterate_features('Cleaning IGO features'):
-            igo_lp = igo_feat.GetField(f'{unique_stream_field}')
-            igo_segdist = igo_feat.GetField('seg_distance')
-            for dgo_feat, *_ in dgo_lyr.iterate_features(clip_shape=igo_feat.GetGeometryRef()):
-                if dgo_feat.GetGeometryRef() is None:
-                    igo_lyr.ogr_layer.DeleteFeature(igo_feat.GetFID())
-                else:
-                    dgo_lp = dgo_feat.GetField(f'{unique_stream_field}')
-                    dgo_segdist = dgo_feat.GetField('seg_distance')
-                    if igo_lp != dgo_lp or igo_segdist != dgo_segdist:
+        for level_path in level_paths:
+            if level_path is None:
+                continue
+
+            for igo_feat, *_ in igo_lyr.iterate_features('Cleaning IGO features', attribute_filter=f'{unique_stream_field} = {level_path}'):
+                # igo_segdist = igo_feat.GetField('seg_distance')
+                for dgo_feat, *_ in dgo_lyr.iterate_features(clip_shape=igo_feat.GetGeometryRef()):
+                    if dgo_feat.GetGeometryRef() is None or dgo_feat.GetGeometryRef().IsEmpty():
                         igo_lyr.ogr_layer.DeleteFeature(igo_feat.GetFID())
+                    # else:
+                    #     dgo_lp = dgo_feat.GetField(f'{unique_stream_field}')
+                    #     dgo_segdist = dgo_feat.GetField('seg_distance')
+                    #     if dgo_lp != level_path or igo_segdist != dgo_segdist:
+                    #         igo_lyr.ogr_layer.DeleteFeature(igo_feat.GetFID())
 
 
 def main():
