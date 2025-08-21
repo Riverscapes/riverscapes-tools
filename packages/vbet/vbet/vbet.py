@@ -40,7 +40,7 @@ from vbet.vbet_database import build_vbet_database, load_configuration
 from vbet.vbet_raster_ops import rasterize, raster_logic_mask, raster_update_multiply, raster_remove_zone, get_endpoints_on_raster, generate_vbet_polygon, generate_centerline_surface, clean_raster_regions, proximity_raster
 from vbet.vbet_outputs import clean_up_centerlines
 from vbet.vbet_report import VBETReport
-from vbet.vbet_segmentation import calculate_dgo_metrics, generate_igo_points, split_vbet_polygons, calculate_vbet_window_metrics, add_fcodes
+from vbet.vbet_segmentation import calculate_dgo_metrics, generate_igo_points, split_vbet_polygons, calculate_vbet_window_metrics, add_fcodes, clean_igos
 from vbet.lib.CompositeRaster import CompositeRaster
 from vbet.__version__ import __version__
 
@@ -1048,6 +1048,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
         intermediates_gpkg, LayerTypes['INTERMEDIATES'].sub_layers['VBET_DGO_POLYGONS'].rel_path)
     split_vbet_polygons(output_vbet, segmentation_points,
                         segmentation_polygons, unique_stream_field)
+    clean_igos(segmentation_points, segmentation_polygons, unique_stream_field)
     _tmr_waypt.timer_break('GenerateVBETSegmentPolys')
     if flowline_type == 'NHD':
         add_fcodes(segmentation_polygons, segmentation_points, line_network, unique_stream_field)

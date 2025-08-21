@@ -75,9 +75,6 @@ def generate_igo_points(line_network: Path, dem: Path, out_points_layer: Path, v
             lps.append(level_path)
 
         for level_path in lps:
-            print(level_path)
-            if level_path == '70000400070782':
-                print('checking')
             cl_ftrs = []
             for feat, *_ in line_lyr.iterate_features('Generating Segmentation Points', attribute_filter=f'{unique_stream_field} = {level_path}', write_layers=[out_lyr]):
                 stream_size = stream_size_lookup[level_path]
@@ -583,6 +580,7 @@ def fill_in_line(lines):
 
     merged_line = linemerge(lines)
     init_segments = len(merged_line.geoms)
+    seg_lengths = [line.length for line in merged_line.geoms]
     while merged_line.geom_type != "LineString":
         end_points = []
 
@@ -612,13 +610,34 @@ def fill_in_line(lines):
             return merged_line
         else:
             new_line = LineString(points)
-            lines.append(new_line)
-            merged_line = linemerge(lines)
-            if merged_line.geom_type == "MultiLineString":
-                if len(merged_line.geoms) >= init_segments:
-                    break
+            if new_line.length < 0.5 * max(seg_lengths):
+                lines.append(new_line)
+                merged_line = linemerge(lines)
+                if merged_line.geom_type == "MultiLineString":
+                    if len(merged_line.geoms) >= init_segments:
+                        break
+            else:
+                break
 
     return merged_line
+
+
+def clean_igos(igo, dgo, unique_stream_field):
+    """Clean up IGO features by removing those that are fully contained within DGO features."""
+    with GeopackageLayer(igo, write=True) as igo_lyr, \
+            GeopackageLayer(dgo) as dgo_lyr:
+
+        for igo_feat, *_ in igo_lyr.iterate_features('Cleaning IGO features'):
+            igo_lp = igo_feat.GetField(f'{unique_stream_field}')
+            igo_segdist = igo_feat.GetField('seg_distance')
+            for dgo_feat, *_ in dgo_lyr.iterate_features(clip_shape=igo_feat.GetGeometryRef()):
+                if dgo_feat.GetGeometryRef() is None:
+                    igo_lyr.ogr_layer.DeleteFeature(igo_feat.GetFID())
+                else:
+                    dgo_lp = dgo_feat.GetField(f'{unique_stream_field}')
+                    dgo_segdist = dgo_feat.GetField('seg_distance')
+                    if igo_lp != dgo_lp or igo_segdist != dgo_segdist:
+                        igo_lyr.ogr_layer.DeleteFeature(igo_feat.GetFID())
 
 
 def main():
