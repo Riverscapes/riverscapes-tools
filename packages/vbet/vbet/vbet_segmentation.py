@@ -241,7 +241,8 @@ def split_vbet_polygons(vbet_polygons: Path, segmentation_points: Path, out_spli
 
         for segment_feat, *_ in out_lyr.iterate_features('Writing segment dist to polygons'):
             polygon = segment_feat.GetGeometryRef()
-            for pt_feat, *_ in points_lyr.iterate_features(clip_shape=polygon):
+            lp = segment_feat.GetField(f'{unique_stream_field}')
+            for pt_feat, *_ in points_lyr.iterate_features(clip_shape=polygon, attribute_filter=f'{unique_stream_field} = {lp}'):
                 seg_distance = pt_feat.GetField('seg_distance')
                 segment_feat.SetField('seg_distance', seg_distance)
                 out_lyr.ogr_layer.SetFeature(segment_feat)
@@ -635,7 +636,7 @@ def clean_igos(igo, dgo, unique_stream_field, level_paths):
                 igo_segdist = igo_feat.GetField('seg_distance')
                 rem_feat = True
                 for dgo_feat, *_ in dgo_lyr.iterate_features(attribute_filter=f'{unique_stream_field} = {level_path} AND seg_distance = {igo_segdist}'):
-                    if not dgo_feat.GetGeometryRef().IsEmpty():
+                    if not dgo_feat.GetGeometryRef().IsEmpty() and dgo_feat.GetGeometryRef().Contains(igo_feat.GetGeometryRef()):
                         rem_feat = False
 
                 if rem_feat is True:
