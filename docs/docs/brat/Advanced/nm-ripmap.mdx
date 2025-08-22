@@ -1,0 +1,38 @@
+# New Mexico Riparian Mapping Integration
+
+Part of the agreement for producing BRAT for New Mexico (A63320) included incorporating their custom riparian mapping from the [New Mexico Riparian Habitat Map Version 2.0](https://nhnm.unm.edu/riparian/NMRipMap). In order use this custom vegetation dataset, it needs to be incorporated into the vegetation data in Riverscapes Context. This mapping is vector data, whereas BRAT uses raster vegetation data as an input ([LANDFIRE](https://landfire.gov/) by default), so this page documents the process for preparing Riverscapes Context with this custom riparian data in order to run BRAT for NM using this custom mapping.
+
+## 1. Open a [riverscapes-tools](https://github.com/Riverscapes/riverscapes-tools/tree/master) codespace
+
+If you don't already have a codespace, create a new one by clicking the green `Code` button. Click on the `codespaces` tab, then the three dots and select `new with options`. 
+![new_with_options]()
+
+When the codespace build is finished, it will open VSCode in a browser. You can either work directly in the browser, or close it and reopen the codespace in VSCode locally. To do that, return to the `Code>Codespaces` tab. There will now be a named codespace that you created, and you can open it by clicking on the three dots next to it and selecting `Open in Visual Studio Code`. This will open a new instance of VSCode, connected to your codespace. 
+
+If you *do* already have a codespace you want to work in, open that codespace in VSCode. When it is open, make sure you are on the master branch, and do a git pull to make sure that it is up to date.
+
+In the VSCode directory (on the left side) navigate to the `Workspaces` folder in the riverscapes-tools repository and open the BRAT.code-workspace file. A blue `Open Workspace` button should appear on the screen. Click it to enter the BRAT code workspace.
+
+## 2. Add the NMRipMap file geodatabase to your codespace data directory
+
+If you do not already have a data directory for the codespace you're working in, you will need to create one. Pressing `ctrl+j` will open a terminal. Typing `mkdir /workspaces/data` will create a directory called data where you can store data. To open this folder to interact with it you can type `code /workspaces/data`, which will open a new instance of VSCode in the data directory you just created. From here, you can drag data into the VSCode directory as well as right click and download data from your codespace data directory to your local machine. For this, you will need to have the correct file geodatabase of the NMRipMap data loaded into this data directory.
+
+Go to the [NMRipMap](https://nhnm.unm.edu/riparian/NMRipMap) website. The data is broken into six regions, which are shown on a map on the page. Identify the region for which you need data, then download the file geodatabase to your local machine from the links on the right. After it is downloaded, you can navigate to where you saved it in a Windows Explorer window, click on it, and drag it into the VSCode directory that is open to the data folder to upload it to your codespace.
+
+## 3. Download the Riverscapes Context Project
+
+To download the Riverscapes Context Project for the HUC you are processing, you can either:
+- download the project from the Data Exchange to your local machine and then drag it into the codespace data directory (same process as the NMRipMap data) OR
+- use the `rscli` command line to download the data directly from the data exchange to your codespace data directory. This is the recommended option.
+
+To use the `rscli` method, first get the project guid of the RSContext project you're going to download from the Data Exchange. Open a terminal in the VSCode data directory (`ctrl+j`). and enter `rscli download /workspaces/data/rs_context/<huc> --id <guid>` replacing huc and guid with the actual values, and press enter. You will be authenticated and prompted to type y or n to download the project. 
+
+## 4. Run the Prepare NMRipMap launch script
+
+Return to the VSCode instance that is open to the BRAT code workspace. Under the `.vscode` subdirectory, open the `launch.json` file and scroll down to the "Prepare NMRipMap Raster" code block (lines 198-213 as of this documentation). under the "args" the second arg is the path to the NMRipMap data. Make sure that the name is the name of the .gdb that you downloaded to your data directory (the name is different for each of the six regions). Save any changes you make.
+
+Click on the `Run and Debug` tab on the left. Then, at the top left of the window there will be a dropdown with options for different scripts/tasks to run. Navigate down to the `Prepare NMRipMap Raster` option and click on it. You will be prompted to enter a HUC number. Type in the number of the HUC you are processing and press enter. This should run the code to create a hybrid raster of the NMRipMap where coverage exists and LANDFIRE EVT where it doesn't.
+
+## 5. Upload the Riverscapes Context to the data exchange
+
+After updating the RSContext project, it will need uploaded to the data exchange. Return to the VSCode instance open to the data directory and use the command line to upload the project to the Data Exchange again. Click `ctrl+j` to open a terminal and enter `rscli upload /workspaces/data/rs_context/<huc> --tags <any existing tags>,NMRipMap` and press enter. Project tags are overridden, so make sure you type in any tags that the RSContext project already had (e.g., 2025CONUS) in addition to the NMRipMap to add that as a tag for identification. You'll be authenticated and will confirm you want to upload the project.
