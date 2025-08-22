@@ -599,13 +599,20 @@ def fill_in_line(lines):
 
         min_distance = 10000000
         points = [None, None]
-        for pt in end_points:
+        for i, pt in enumerate(end_points):
             for other_pt in end_points:
-                if pt != other_pt:
-                    distance = Point(pt).distance(Point(other_pt))
-                    if distance < min_distance:
-                        min_distance = distance
-                        points = [pt, other_pt]
+                if (i + 2) % 2 == 0:  # if point is even index
+                    if pt != other_pt and other_pt != end_points[i + 1]:
+                        distance = Point(pt).distance(Point(other_pt))
+                        if distance < min_distance:
+                            min_distance = distance
+                            points = [pt, other_pt]
+                elif (i + 2) % 2 != 0:  # if point is odd index
+                    if pt != other_pt and other_pt != end_points[i - 1]:
+                        distance = Point(pt).distance(Point(other_pt))
+                        if distance < min_distance:
+                            min_distance = distance
+                            points = [pt, other_pt]
 
         if None in points:
             return merged_line
