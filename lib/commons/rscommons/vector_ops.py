@@ -216,11 +216,12 @@ def copy_feature_class(in_layer_path: str,
         out_layer.create_layer_from_ref(in_layer, epsg=epsg)
 
         # drop fields if they don't exist in the fields list
+        fields = [f.lower() for f in fields] if fields is not None else None
         if fields is not None:
             # iterate fields in ogr_layer
             for i in reversed(range(out_layer.ogr_layer_def.GetFieldCount())):
                 field = out_layer.ogr_layer_def.GetFieldDefn(i).GetNameRef()
-                if field not in fields:
+                if field.lower() not in fields:
                     out_layer.ogr_layer.DeleteField(i)
 
         transform = VectorBase.get_transform(in_layer.spatial_ref, out_layer.spatial_ref)
@@ -279,7 +280,7 @@ def copy_feature_class(in_layer_path: str,
             # Add field values from input Layer
             for i in range(0, out_layer.ogr_layer_def.GetFieldCount()):
                 field = out_layer.ogr_layer_def.GetFieldDefn(i).GetNameRef()
-                if fields is None or field in fields:
+                if fields is None or field.lower() in fields:
                     out_feature.SetField(field, feature.GetField(field))
 
             out_layer.ogr_layer.CreateFeature(out_feature)
