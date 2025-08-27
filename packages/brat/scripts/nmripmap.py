@@ -122,7 +122,7 @@ def clip_ripmap(rip_map: str, clip_shp: str, out_polygon: str, lookup: dict):
             })
 
 
-def rasterize_gpkg_layer(gpkg_path: str, attribute: str, output_raster: str, resolution: int):
+def rasterize_gpkg_layer(gpkg_path: str, extent_poly: str, attribute: str, output_raster: str, resolution: int):
     """
     Rasterize a file geodatabase layer based on an attribute value.
 
@@ -134,16 +134,20 @@ def rasterize_gpkg_layer(gpkg_path: str, attribute: str, output_raster: str, res
         resolution (int): Resolution of the output raster.
     """
     # Open the file geodatabase
-    with GeopackageLayer(gpkg_path) as layer:
+    with GeopackageLayer(gpkg_path) as layer, GeopackageLayer(extent_poly) as clip_layer:
         res_deg = VectorBase.rough_convert_metres_to_spatial_ref_units(layer.spatial_ref, layer.ogr_layer.GetExtent(), resolution)
 
         # Get the layer's extent
-        extent = layer.ogr_layer.GetExtent()
+        extent = clip_layer.ogr_layer.GetExtent()
         x_min, x_max, y_min, y_max = extent
 
-        # Calculate raster dimensions
-        x_res = int((x_max - x_min) / res_deg)
-        y_res = int((y_max - y_min) / res_deg)
+        # Calculate raster dimensions - ensure we cover the full extent
+        x_res = int(np.ceil((x_max - x_min) / res_deg))
+        y_res = int(np.ceil((y_max - y_min) / res_deg))
+
+        # Adjust the max extents to match the raster dimensions exactly
+        x_max = x_min + (x_res * res_deg)
+        y_min = y_max - (y_res * res_deg)
 
         # Create the output raster
         target_ds = gdal.GetDriverByName("GTiff").Create(output_raster, x_res, y_res, 1, gdal.GDT_Int32)
@@ -210,7 +214,7 @@ def main():
 
     try:
         clip_ripmap(args.rip_map, args.clip_shp, args.out_polygon, veg_class_lookup)
-        rasterize_gpkg_layer(args.out_polygon, args.attribute, args.output_raster, args.resolution)
+        rasterize_gpkg_layer(args.out_polygon, args.clip_shp, args.attribute, args.output_raster, args.resolution)
         hybrid_raster(args.output_raster, args.landfire_raster, os.path.join(os.path.dirname(args.landfire_raster), "hybrid_" + os.path.basename(args.output_raster)))
     except Exception as e:
         print(f"Error: {e}")
