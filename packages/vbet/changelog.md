@@ -1,5 +1,14 @@
 # VBET
 
+## [4.1.4] - 2025-AUG-27
+
+### Fixed
+- a bug in 'raster_update_multipy' function that was causing failures
+
+### Changed
+- allowed multiple output regions to be retained for a single level path
+- seg_distance does not reset for distinct centerline features of the same level path; instead, seg_distance is continuous even if the level path has a gap
+
 ## [0.8.6] - 2022-DEC-15
 
 ### Changed

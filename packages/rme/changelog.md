@@ -1,5 +1,10 @@
 # Riverscapes Metric Engine (RME)
 
+## [3.0.6] - 2025-AUGUST-28
+
+### Fixed
+- incorrect calculation of tribs_per_km on DGO polygons
+
 ## [0.6.10] - 2024-JULY-31
 
 ### Changed
