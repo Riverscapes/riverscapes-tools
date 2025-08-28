@@ -693,6 +693,9 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
             if read_rasters['Slope'].width - col_off_delta < read_rasters['HAND'].width:
                 log.warning('Slope raster is smaller than the HAND raster. Adjusting col_off_delta.')
                 col_off_delta = col_off_delta - (read_rasters['HAND'].width - (read_rasters['Slope'].width-col_off_delta))
+            if read_rasters['Slope'].height - row_off_delta < read_rasters['HAND'].height:
+                log.warning('Slope raster is shorter than HAND raster. Adjusting row_off_delta.')
+                row_off_delta = row_off_delta - (read_rasters['HAND'].height - (read_rasters['Slope'].height - row_off_delta))
 
             for _ji, window in read_rasters['HAND'].block_windows(1):
                 progbar.update(counter)
