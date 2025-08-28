@@ -575,7 +575,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_huc12: 
                 data = curs.fetchall()
                 for dgo_id, tribs, length in data:
                     if tribs is not None and length is not None:
-                        trib_density = float(tribs) / float(length)
+                        trib_density = float(tribs) / float(length)/1000
                         curs.execute(f"""UPDATE dgo_geomorph SET tribs_per_km = {trib_density} WHERE dgoid = {dgo_id}""")
             if metric == 'CHANSIN':
                 curs.execute("SELECT dgoid, strmleng, strmstrleng FROM dgo_measurements")
