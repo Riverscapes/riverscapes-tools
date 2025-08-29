@@ -10,6 +10,34 @@ sidebar_position: 10
 
 The Riverscape Metric Engine compiles a suite of metrics that provide information regarding riverscape health as well as practical information useful for planning and prioritization purposes. All metrics are summarized onto a point feature class (Integrated Geographic Objects or IGOs) representative of a certain area of valley bottom. Metrics names with the second prefix 'dgo' represent metrics calculated within a single Discrete Geographic Object (DGO) associated with the IGO point, whereas metrics with the 'igo' second prefix represent metrics calculated using a moving window some distance up and downstream of the IGO that aggregates multiple DGOs.
 
+## Resources
+
+<ToolsWrapper
+  cards={[
+    {
+      title: "Data",
+      description: "Discover RME model runs available in the Riverscapes Data Exchange.",
+      toolUrl: "https://data.riverscapes.net/s?type=Project&projectTypeId=rs_metric_engine&view=map&geo=81.42132446345016%2C-0.08831460361146526%2C0.7458255305538636"
+    },
+    {
+      title: "Communities",
+      description: "Communicate with other RME users and people in the riverscapes community.",
+      toolUrl: "https://www.riverscapes.net/topics"
+    },
+    {
+      title: "Latest Version Change Log",
+      description: "Release notes tracking changes, bug fixes and issues.",
+      toolUrl: "https://github.com/Riverscapes/riverscapes-tools/blob/master/packages/rme/changelog.md"
+    },
+    {
+      title: "Source Code",
+      description: "RME is open source under the GNU general public license. The code is available on GitHub.",
+      toolUrl: "https://github.com/Riverscapes/riverscapes-tools/tree/master/packages/rme",
+    }
+  ]}
+  cardsize="sm"
+/>
+
 
 ## Attribute Names 
 Below is a list of the attribute names and their descriptions that are included in the IGO point feature class. This is an actively evolving list and will be updated as new metrics are added to the Riverscape Metric Engine.\
