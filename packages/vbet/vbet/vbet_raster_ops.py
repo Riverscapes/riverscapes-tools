@@ -556,7 +556,7 @@ def raster_recompress(raster_path: Path):
     log.debug(f'raster_recompress: {_tmr.toString()}')
 
 
-def raster_update_multiply(raster: Path, update_values_raster: Path, value=None):
+def raster_update_multiply(raster: Path, update_values_raster: Path, raster_width: float, value=None):
     """use np.multiply to apply values from update_values_raster to raster
 
     Args:
@@ -580,14 +580,14 @@ def raster_update_multiply(raster: Path, update_values_raster: Path, value=None)
         # GT(5) n-s pixel resolution / pixel height (negative value for a north-up image).
         in_transform = rio_updates.get_transform()
         out_transform = rio_dest.get_transform()
-        col_off_delta = round((in_transform[0] - out_transform[0]) / out_transform[1])
-        row_off_delta = round((in_transform[3] - out_transform[3]) / out_transform[5])
+        col_off_delta = max(0, round((in_transform[0] - out_transform[0]) / out_transform[1]))
+        row_off_delta = max(0, round((in_transform[3] - out_transform[3]) / out_transform[5]))
         if rio_dest.width - col_off_delta < rio_updates.width:
-            col_off_delta = col_off_delta - (rio_updates.width - (rio_dest.width - col_off_delta))
+            col_off_delta = max(0, col_off_delta - (rio_updates.width - (rio_dest.width - col_off_delta)))
         for _ji, window in rio_updates.block_windows(1):
             for row_offset in range(window.height):
-                row_window = Window(window.col_off, window.row_off + row_offset, window.width, 1)
-                out_window = Window(row_window.col_off + col_off_delta, row_window.row_off + row_off_delta, row_window.width, row_window.height)
+                row_window = Window(window.col_off, window.row_off + row_offset, min(window.width, raster_width), 1)
+                out_window = Window(row_window.col_off + col_off_delta, row_window.row_off + row_off_delta, min(row_window.width, raster_width), row_window.height)
 
                 array_dest = rio_dest.read(1, window=out_window, masked=True)
                 array_update = rio_updates.read(1, window=row_window, masked=True)

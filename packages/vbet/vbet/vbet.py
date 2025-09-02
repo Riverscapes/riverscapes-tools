@@ -692,16 +692,19 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
                 (in_transform[3] - out_transform[3]) / out_transform[5])
             if read_rasters['Slope'].width - col_off_delta < read_rasters['HAND'].width:
                 log.warning('Slope raster is smaller than the HAND raster. Adjusting col_off_delta.')
-                col_off_delta = col_off_delta - (read_rasters['HAND'].width - (read_rasters['Slope'].width-col_off_delta))
+                col_off_delta = max(0, col_off_delta - (read_rasters['HAND'].width - (read_rasters['Slope'].width-col_off_delta)))
             if read_rasters['Slope'].height - row_off_delta < read_rasters['HAND'].height:
                 log.warning('Slope raster is shorter than HAND raster. Adjusting row_off_delta.')
-                row_off_delta = row_off_delta - (read_rasters['HAND'].height - (read_rasters['Slope'].height - row_off_delta))
+                row_off_delta = max(0, row_off_delta - (read_rasters['HAND'].height - (read_rasters['Slope'].height - row_off_delta)))
 
             for _ji, window in read_rasters['HAND'].block_windows(1):
                 progbar.update(counter)
                 counter += 1
                 modified_window = Window(
-                    window.col_off + col_off_delta, window.row_off + row_off_delta, window.width, window.height)
+                    window.col_off + col_off_delta, window.row_off + row_off_delta, min(window.width, size_x), window.height)
+                if window.width > size_x:
+                    window = Window(
+                        window.col_off, window.row_off, size_x, window.height)
                 block = {}
                 for block_name, raster in read_rasters.items():
                     out_window = window if block_name in [
@@ -773,7 +776,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
         log.info('Add VBET Raster to Output')
         with TimerBuckets('rasterio'):
             raster_update_multiply(
-                vbet_zone_raster, valley_bottom_raster, value=level_path_key)
+                vbet_zone_raster, valley_bottom_raster, size_x, value=level_path_key)
 
         if level_path is not None:
             with TimerBuckets('scipy'):
@@ -791,7 +794,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
 
         with TimerBuckets('rasterio'):
             raster_update_multiply(
-                active_zone_raster, low_lying_valley_bottom_raster, value=level_path_key)
+                active_zone_raster, low_lying_valley_bottom_raster, size_x, value=level_path_key)
 
         # Generate centerline for level paths only
         with TimerBuckets('centerline'):
