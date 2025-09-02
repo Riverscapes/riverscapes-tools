@@ -1,5 +1,10 @@
 # VBET
 
+## [4.1.6] - 2025-SEP-2
+
+### Fixed
+- a lingering bug with block window size mismatch
+
 ## [4.1.4] - 2025-AUG-27
 
 ### Fixed
