@@ -107,15 +107,15 @@ def clip_ripmap(rip_map: str, clip_shp: str, out_polygon: str, lookup: dict):
 
             rip_code = rip_ftr.GetField("L3_Code")
             if rip_code is None:
-                raise RuntimeError(f"L3_Code not found in feature {rip_ftr.GetFID()}.")
+                print(f"L3_Code not found in feature {rip_ftr.GetFID()}.")
                 continue
             rip_name = rip_ftr.GetField("L3_Name")
             if rip_name is None:
-                raise RuntimeError(f"L3_Name not found in feature {rip_ftr.GetFID()}.")
+                print(f"L3_Name not found in feature {rip_ftr.GetFID()}.")
                 continue
             rip_id = lookup[rip_code]
             if rip_id is None:
-                raise Exception(f"RipMapID not found for L3_Code {rip_code}.")
+                print(f"RipMapID not found for L3_Code {rip_code}.")
                 continue
 
             out_layer.create_feature(geom_clone, {
