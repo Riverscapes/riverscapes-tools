@@ -275,7 +275,7 @@ def anthro_context(huc: int, existing_veg: Path, hillshade: Path, igo: Path, dgo
 
     # calculate conflict attributes for reaches
     conflict_attributes(outputs_gpkg_path, line_geom_path, input_layers['VALLEYBOTTOM'], input_layers['ROADS'], input_layers['RAILS'],
-                        input_layers['CANALS'], input_layers['OWNERSHIP'], 30, 5, cfg.OUTPUT_EPSG, canal_codes, intermediates_gpkg_path)
+                        input_layers['CANALS'], input_layers['OWNERSHIP'], 30, 10, cfg.OUTPUT_EPSG, canal_codes, intermediates_gpkg_path)
     crossings = os.path.join(intermediates_gpkg_path, 'road_crossings')
     diversions = os.path.join(intermediates_gpkg_path, 'diversions')
 
