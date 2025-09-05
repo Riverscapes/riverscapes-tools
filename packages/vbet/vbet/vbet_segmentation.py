@@ -25,7 +25,7 @@ from rscommons.geometry_ops import get_rectangle_as_geom
 Path = str
 
 
-def generate_igo_points(line_network: Path, dem: Path, out_points_layer: Path, vb_layer: Path, unique_stream_field, stream_size_lookup: dict, aspect_ratio: float, output_epsg: int):
+def generate_igo_points(line_network: Path, dem: Path, out_points_layer: Path, vb_layer: Path, unique_stream_field, stream_size_lookup: dict, levelpaths: list, aspect_ratio: float):
     """generate the vbet segmentation center points/igos
 
     Args:
@@ -66,23 +66,9 @@ def generate_igo_points(line_network: Path, dem: Path, out_points_layer: Path, v
             transform = osr.CoordinateTransformation(line_lyr.spatial_ref, transform_ref)
             transform_back = transform
 
-        # In order to get accurate lengths we are going to need to project into some coordinate system
-        # transform_back = osr.CoordinateTransformation(
-        #     transform_ref, line_lyr.spatial_ref)
-
-        for feat, *_ in line_lyr.iterate_features(write_layers=[out_lyr]):
-            level_path = feat.GetField(f'{unique_stream_field}')
+        for level_path in levelpaths:
             if level_path not in stream_size_lookup:
-                log.error(f'stream size not ofund for level path {level_path}')
-            stream_size = stream_size_lookup[level_path]
-            geom_line = feat.GetGeometryRef()
-            geom_line.FlattenTo2D()
-            try:
-                geom_line.Transform(transform)
-            except Exception as err:
-                log.error(f'Error transforming geometry: {err}')
-            shapely_multiline = VectorBase.ogr2shapely(geom_line)
-            if shapely_multiline.length == 0.0:
+                log.error(f'stream size not found for level path {level_path}')
                 continue
             cl_ftrs = []
             for feat, *_ in line_lyr.iterate_features('Generating Segmentation Points', attribute_filter=f'{unique_stream_field} = {level_path}', write_layers=[out_lyr]):

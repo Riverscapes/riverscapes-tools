@@ -1046,7 +1046,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
         vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['SEGMENTATION_POINTS'].rel_path)
     stream_size_lookup = get_distance_lookup(
         inputs_gpkg, level_paths_to_run, level_paths_drainage, vbet_run)
-    generate_igo_points(output_centerlines, dem, segmentation_points, output_vbet, unique_stream_field, stream_size_lookup, 1.5, cfg.OUTPUT_EPSG)
+    generate_igo_points(output_centerlines, dem, segmentation_points, output_vbet, unique_stream_field, stream_size_lookup, level_paths_to_run, 1.5)
     _tmr_waypt.timer_break('GenerateVBETSegmentPts')
 
     log.info('Generating VBET Segment Polygons')
