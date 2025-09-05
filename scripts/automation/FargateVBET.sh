@@ -83,7 +83,7 @@ rscli download $TAUDEM_DIR --id $TAUDEM_ID \
 try() {
 
   vbet $HUC \
-    $RS_CONTEXT_DIR/hydrology/hydro_derivatives.gpkg/network_intersected \
+    $RS_CONTEXT_DIR/hydrography/hydrography.gpkg/riverlines \
     $RS_CONTEXT_DIR/topography/dem.tif \
     $RS_CONTEXT_DIR/topography/slope.tif \
     $RS_CONTEXT_DIR/topography/dem_hillshade.tif \
@@ -91,13 +91,12 @@ try() {
     $VBET_DIR \
     NHD \
     level_path \
-    NHDPlusID \
-    DivDASqKm \
+    HydroID \
+    TotDASqKm \
     --pitfill $TAUDEM_DIR/intermediates/pitfill.tif \
     --dinfflowdir_ang $TAUDEM_DIR/intermediates/dinfflowdir_ang.tif \
     --dinfflowdir_slp $TAUDEM_DIR/outputs/dinfflowdir_slp.tif \
     --reach_codes 33400,46000,46003,46006,46007,55800 \
-    --mask $RS_CONTEXT_DIR/hydrology/hydro_derivatives.gpkg/processing_extent \
     --meta "Runner=Cybercastor" \
     --verbose \
     --temp_folder $VBET_TEMP
