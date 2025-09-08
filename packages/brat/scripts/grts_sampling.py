@@ -49,7 +49,7 @@ def sample_reaches(brat_gpgk_path: str, sample_size: int, stratification: dict =
                     poly_reaches[i].append(fid)
     to_del = []
     for poly_id, reach_ids in poly_reaches.items():
-        if len(reach_ids) < tot_reaches * 0.005:
+        if len(reach_ids) < ceil((tot_reaches / split**2) * .05):
             to_del.append(poly_id)
     for poly_id in to_del:
         del poly_reaches[poly_id]
