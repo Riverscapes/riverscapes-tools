@@ -221,10 +221,10 @@
         "${input:HUC}",
         "{env:DATA_ROOT}/brat/${input:HUC}/outputs/brat.gpkg",
         "300",
-        "--stratification",
-        "{env:DATA_ROOT}/rs_context/${input:HUC}/ownership/ownership.shp:ADMIN_AGEN",
-        "--min_strat_sample",
-        "64"
+        // "--stratification",
+        // "{env:DATA_ROOT}/rs_context/${input:HUC}/ownership/ownership.shp:ADMIN_AGEN",
+        // "--min_strat_sample",
+        // "64"
       ]
     },
     {

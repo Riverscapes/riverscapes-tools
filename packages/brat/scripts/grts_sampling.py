@@ -39,7 +39,7 @@ def sample_reaches(brat_gpgk_path: str, sample_size: int, stratification: dict =
 
     # associate each reach with the rectangles
     for i, poly in enumerate(polys):
-        with GeopackageLayer(brat_gpgk_path, 'vwReaches') as reaches:
+        with GeopackageLayer(brat_gpgk_path, 'vwReaches_peren') as reaches:
             tot_reaches = reaches.ogr_layer.GetFeatureCount()
             for ftr, *_ in reaches.iterate_features(clip_shape=poly):
                 fid = ftr.GetFID()
@@ -49,7 +49,7 @@ def sample_reaches(brat_gpgk_path: str, sample_size: int, stratification: dict =
                     poly_reaches[i].append(fid)
     to_del = []
     for poly_id, reach_ids in poly_reaches.items():
-        if len(reach_ids) < ceil((tot_reaches / split**2) * .05):
+        if len(reach_ids) < ceil((tot_reaches / split**2) * 0.5):
             to_del.append(poly_id)
     for poly_id in to_del:
         del poly_reaches[poly_id]
@@ -84,17 +84,22 @@ def sample_reaches(brat_gpgk_path: str, sample_size: int, stratification: dict =
             strat_2_unique = list(set(strat_2_vals))
     else:
         num_strats = 0
+        with GeopackageLayer(brat_gpgk_path, "vwReaches_peren") as reaches:
+            for ftr, *_ in reaches.iterate_features():
+                fid = ftr.GetFID()
+                if fid not in reach_intersections:
+                    reach_intersections[fid] = []
 
     # add the polygon id to the reach intersections
     for id, vals in reach_intersections.items():
         for polyid, reach_ids in poly_reaches.items():
             if id in reach_ids:
-                if polyid not in reach_intersections[id] and len(reach_intersections[id]) < 2:
+                if polyid not in reach_intersections[id] and len(reach_intersections[id]) == 0:
                     reach_intersections[id].append(polyid)
 
     to_del = []
     for id, vals in reach_intersections.items():
-        if len(vals) < 2:
+        if len(vals) == 0:
             to_del.append(id)
     for id in to_del:
         del reach_intersections[id]
@@ -172,80 +177,84 @@ def sample_reaches(brat_gpgk_path: str, sample_size: int, stratification: dict =
             poly_strat_cts[reach_intersections[fid][2]] += 1
 
             out_tot += 1
+            print(strat_1_cts, strat_2_cts, poly_strat_cts, out_tot)
 
-            if out_tot < sample_size:  # if you end up with less than you want, randomly select more
-                progbar = ProgressBar(sample_size - out_tot, text='Adding more reaches')
+        if out_tot < sample_size:  # if you end up with less than you want, randomly select more
+            progbar = ProgressBar(sample_size - out_tot, text='Adding more reaches')
+            ct = 0
+            progbar.update(ct)
+            while out_tot < sample_size:
+                fid = np.random.choice([fid for fid in reach_intersections.keys()])
+                if fid not in out_reaches:
+                    out_reaches.append(fid)
+                    strat_1_cts[reach_intersections[fid][0]] += 1
+                    strat_2_cts[reach_intersections[fid][1]] += 1
+                    poly_strat_cts[reach_intersections[fid][2]] += 1
+                    out_tot += 1
+                    ct += 1
+                    progbar.update(ct)
+
+        else:  # if you end up with more than you want selectively delete
+            progbar = ProgressBar(out_tot - sample_size, text='Removing excess reaches')
+            ct = 0
+            progbar.update(ct)
+            while out_tot > sample_size:
                 ct = 0
-                progbar.update(ct)
-                while out_tot < sample_size:
-                    fid = np.random.choice([fid for fid in reach_intersections.keys()])
-                    if fid not in out_reaches:
-                        out_reaches.append(fid)
-                        strat_1_cts[reach_intersections[fid][0]] += 1
-                        strat_2_cts[reach_intersections[fid][1]] += 1
-                        poly_strat_cts[reach_intersections[fid][2]] += 1
-                        out_tot += 1
+                for fid in out_reaches:
+                    if strat_1_cts[reach_intersections[fid][0]] > tot_strat_1 and strat_2_cts[reach_intersections[fid][1]] > tot_strat_2 and poly_strat_cts[reach_intersections[fid][2]] > tot_poly:
+                        out_reaches.remove(fid)
+                        strat_1_cts[reach_intersections[fid][0]] -= 1
+                        strat_2_cts[reach_intersections[fid][1]] -= 1
+                        poly_strat_cts[reach_intersections[fid][2]] -= 1
+                        out_tot -= 1
                         ct += 1
                         progbar.update(ct)
-
-            else:  # if you end up with more than you want selectively delete
-                progbar = ProgressBar(out_tot - sample_size, text='Removing excess reaches')
-                ct = 0
-                progbar.update(ct)
-                while out_tot > sample_size:
-                    ct = 0
-                    for fid in out_reaches:
-                        if strat_1_cts[reach_intersections[fid][0]] > tot_strat_1 and strat_2_cts[reach_intersections[fid][1]] > tot_strat_2 and poly_strat_cts[reach_intersections[fid][2]] > tot_poly:
-                            out_reaches.remove(fid)
-                            strat_1_cts[reach_intersections[fid][0]] -= 1
-                            strat_2_cts[reach_intersections[fid][1]] -= 1
-                            poly_strat_cts[reach_intersections[fid][2]] -= 1
-                            out_tot -= 1
-                            ct += 1
-                            progbar.update(ct)
-                            if out_tot <= sample_size:
-                                break
+                        if out_tot <= sample_size:
+                            break
 
     else:
         tot_poly = sample_size // len(poly_reaches)
         poly_strat_cts = {v: 0 for v in poly_reaches}
 
-        while any(poly_strat_cts.values() < tot_poly):
+        fids = [fid for fid in reach_intersections.keys()]
+        while any(val < tot_poly for val in poly_strat_cts.values()):
             fid = None
             while fid is None or fid in out_reaches:
-                fid = np.random.choice([fid for fid in reach_intersections.keys()])
+                fid = np.random.choice(fids)
             out_reaches.append(fid)
+            fids.remove(fid)
             poly_strat_cts[reach_intersections[fid][0]] += 1
 
             out_tot += 1
+            print(poly_strat_cts, out_tot)
 
-            if out_tot < sample_size:
-                progbar = ProgressBar(sample_size - out_tot, text='Adding more reaches')
-                ct = 0
-                progbar.update(ct)
-                while out_tot < sample_size:
-                    fid = np.random.choice([fid for fid in reach_intersections.keys()])
-                    if fid not in out_reaches:
-                        out_reaches.append(fid)
-                        poly_strat_cts[reach_intersections[fid][0]] += 1
-                        out_tot += 1
+        if out_tot < sample_size:
+            progbar = ProgressBar(sample_size - out_tot, text='Adding more reaches')
+            ct = 0
+            progbar.update(ct)
+            while out_tot < sample_size:
+                fid = np.random.choice([fid for fid in reach_intersections.keys()])
+                if fid not in out_reaches:
+                    out_reaches.append(fid)
+                    poly_strat_cts[reach_intersections[fid][0]] += 1
+                    out_tot += 1
+                    ct += 1
+                    progbar.update(ct)
+
+        else:
+            progbar = ProgressBar(out_tot - sample_size, text='Removing excess reaches')
+            ct = 0
+            progbar.update(ct)
+            while out_tot > sample_size:
+                for fid in out_reaches:
+                    if poly_strat_cts[reach_intersections[fid][0]] > tot_poly:
+                        out_reaches.remove(fid)
+                        poly_strat_cts[reach_intersections[fid][0]] -= 1
+                        out_tot -= 1
                         ct += 1
                         progbar.update(ct)
-
-            else:
-                progbar = ProgressBar(out_tot - sample_size, text='Removing excess reaches')
-                ct = 0
-                progbar.update(ct)
-                while out_tot > sample_size:
-                    for fid in out_reaches:
-                        if poly_strat_cts[reach_intersections[fid][0]] > tot_poly:
-                            out_reaches.remove(fid)
-                            poly_strat_cts[reach_intersections[fid][0]] -= 1
-                            out_tot -= 1
-                            ct += 1
-                            progbar.update(ct)
-                            if out_tot <= sample_size:
-                                break
+                        if out_tot <= sample_size:
+                            break
 
     # out_reaches now has the FIDs of the reaches to sample
     log.info('Creating output feature class with sampled reaches.')
@@ -262,7 +271,7 @@ def main():
     parser.add_argument('brat_gpkg', type=str, help='Path to the BRAT geopackage file.')
     parser.add_argument('sample_size', type=int, help='Number of reaches to sample.')
     parser.add_argument('--stratification', type=str, help='Stratification fields in the format dataset1:field1,dataset2:field2 (comma-separated).')
-    parser.add_argument('--min_strat_sample', type=str, default=1, help='Minimum number of samples per stratification group.')
+    parser.add_argument('--min_strat_sample', type=str, help='Minimum number of samples per stratification group.')
 
     args = dotenv.parse_args_env(parser)
 
