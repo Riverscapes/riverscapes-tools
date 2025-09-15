@@ -427,7 +427,7 @@ WatershedID,Name,AreaSqkm,States,Qlow,Q2,MaxDrainage,EcoregionID,Notes,Metadata
 04100010,Cedar-Portage,2478.68,OH,,,,57,,
 04100011,Sandusky,4714.6,OH,,,,55,,
 04100012,Huron-Vermilion,1976.7,OH,,,,55,,
-04100013,Huron,1976.7,OH,,,,55,,
+04100013,Huron,1976.7,OH,,,1600,55,,
 04110001,Black-Rocky,2317.1,OH,,,,61,,
 04110002,Cuyahoga,2101.57,OH,,,,61,,
 04110003,Ashtabula-Chagrin,1625.24,OH_PA,,,,61,,
