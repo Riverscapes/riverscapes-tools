@@ -143,9 +143,13 @@ def dgo_geometry(gpk_path: str, dem_path: str, field_names=default_dgo_field_nam
                     # geom_clipped = reduce_precision(geom_clipped, 6)
                     # geom_clipped = ogr.ForceToLineString(geom_clipped)
                     for geom in geom_clipped:
-                        ftrs.append(VectorBase.ogr2shapely(geom))
+                        geom_shapely = VectorBase.ogr2shapely(geom)
+                        if geom_shapely.geom_type == 'LineString' and geom_shapely.length > 0:
+                            ftrs.append(geom_shapely)
                 else:
-                    ftrs.append(VectorBase.ogr2shapely(geom_clipped))
+                    geom_shapely = VectorBase.ogr2shapely(geom_clipped)
+                    if geom_shapely.geom_type == 'LineString' and geom_shapely.length > 0:
+                        ftrs.append(geom_shapely)
 
                 da = reach_ftr.GetField('DrainArea')
                 if da is not None:
