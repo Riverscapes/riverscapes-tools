@@ -273,12 +273,16 @@ def channel(huc: int,
                     if nhdplus_id is None:
                         continue
                     for fn in fc_fields:
-                        if channel_ftr.GetField(fn) is None:
-                            for flowline_ftr, *_ in flowline_lyr.iterate_features(attribute_filter=f'nhdplusid = {nhdplus_id}'):
-                                if flowline_ftr.GetGeometryRef().Intersects(channel_ftr.GetGeometryRef()):
-                                    if flowline_ftr.GetField(fn) is not None:
-                                        channel_ftr.SetField(fn, flowline_ftr.GetField(fn))
-                                        break
+                        try:
+                            if channel_ftr.GetField(fn) is None:
+                                for flowline_ftr, *_ in flowline_lyr.iterate_features(attribute_filter=f'nhdplusid = {nhdplus_id}'):
+                                    if flowline_ftr.GetGeometryRef().Intersects(channel_ftr.GetGeometryRef()):
+                                        if flowline_ftr.GetField(fn) is not None:
+                                            channel_ftr.SetField(fn, flowline_ftr.GetField(fn))
+                                            break
+                        except Exception as e:
+                            log.error(f'Error setting field {fn} on channel polygon: {e}')
+                            continue
                     channel_lyr.ogr_layer.SetFeature(channel_ftr)
     log.info('Adding attributes from flowlines to channel polygons completed')
 
