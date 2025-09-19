@@ -79,6 +79,7 @@ try() {
     /efsshare/NationalDatasetsNZ/topography/SOUTH_ISLAND_8m.tif \
     $RS_CONTEXT_DIR \
     --meta "Runner=Cybercastor" \
+    --dem_resolution 8 \
     --verbose
 
   if [[ $? != 0 ]]; then return 1; fi
