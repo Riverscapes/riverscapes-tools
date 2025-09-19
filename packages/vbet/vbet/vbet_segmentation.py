@@ -192,51 +192,55 @@ def split_vbet_polygons(vbet_polygons: Path, segmentation_points: Path, out_spli
         out_lyr.create_layer(ogr.wkbMultiPolygon, spatial_ref=vbet_lyr.spatial_ref, fields=fields)
 
         for vbet_feat, *_ in vbet_lyr.iterate_features(write_layers=[out_lyr]):
+            try:
 
-            level_path = vbet_feat.GetField(f'{unique_stream_field}')
-            if level_path is None:
-                continue
-
-            vbet_geom = vbet_feat.GetGeometryRef()
-            if not vbet_geom.IsValid():
-                vbet_geom = vbet_geom.MakeValid()
-            vbet_sgeom = VectorBase.ogr2shapely(vbet_geom)
-            if vbet_sgeom is None or vbet_sgeom.is_empty:
-                continue
-            list_points = []
-
-            for point_feat, *_ in points_lyr.iterate_features(attribute_filter=f'{unique_stream_field} = {level_path}'):
-                point_geom = point_feat.GetGeometryRef()
-                point_sgeom = VectorBase.ogr2shapely(point_geom)
-                if not point_sgeom.is_valid:
-                    make_valid(point_sgeom)
-                if point_sgeom is None or point_sgeom.is_empty:
+                level_path = vbet_feat.GetField(f'{unique_stream_field}')
+                if level_path is None:
                     continue
-                list_points.append(point_sgeom)
 
-            seed_points_sgeom_mpt = MultiPoint(list_points)
-            if not seed_points_sgeom_mpt.is_valid:
-                make_valid(seed_points_sgeom_mpt)
-            if seed_points_sgeom_mpt is None or seed_points_sgeom_mpt.is_empty:
+                vbet_geom = vbet_feat.GetGeometryRef()
+                if not vbet_geom.IsValid():
+                    vbet_geom = vbet_geom.MakeValid()
+                vbet_sgeom = VectorBase.ogr2shapely(vbet_geom)
+                if vbet_sgeom is None or vbet_sgeom.is_empty:
+                    continue
+                list_points = []
+
+                for point_feat, *_ in points_lyr.iterate_features(attribute_filter=f'{unique_stream_field} = {level_path}'):
+                    point_geom = point_feat.GetGeometryRef()
+                    point_sgeom = VectorBase.ogr2shapely(point_geom)
+                    if not point_sgeom.is_valid:
+                        make_valid(point_sgeom)
+                    if point_sgeom is None or point_sgeom.is_empty:
+                        continue
+                    list_points.append(point_sgeom)
+
+                seed_points_sgeom_mpt = MultiPoint(list_points)
+                if not seed_points_sgeom_mpt.is_valid:
+                    make_valid(seed_points_sgeom_mpt)
+                if seed_points_sgeom_mpt is None or seed_points_sgeom_mpt.is_empty:
+                    continue
+                log.info(f'Generating Voronoi Diagram for Level Path {level_path}')
+                # log.info(f'pts: {[pt.wkt for pt in seed_points_sgeom_mpt.geoms]}')
+                # log.info(f'vbet: {vbet_sgeom.wkt}')
+                voronoi = voronoi_diagram(seed_points_sgeom_mpt, envelope=vbet_sgeom)
+                log.info(f'    Done')
+                for poly in voronoi.geoms:
+                    try:
+                        poly_intersect = vbet_sgeom.intersection(poly)
+                    except TopologicalError as err:
+                        # The operation 'GEOSIntersection_r' could not be performed. Likely cause is invalidity of the geometry
+                        log.error(err)
+                        continue
+                    if poly_intersect.geom_type in ['GeometryCollection', 'LineString'] or poly_intersect.is_empty:
+                        continue
+                    clean_geom = poly_intersect.buffer(0) if poly_intersect.is_valid is not True else poly_intersect
+                    geom_out = VectorBase.shapely2ogr(clean_geom)
+                    geom_out = ogr.ForceToMultiPolygon(geom_out)
+                    out_lyr.create_feature(geom_out, {f'{unique_stream_field}': str(int(level_path))})
+            except Exception as e:
+                log.error(f'Error processing vbet polygon {vbet_feat.GetFID()}: {e}')
                 continue
-            log.info(f'Generating Voronoi Diagram for Level Path {level_path}')
-            # log.info(f'pts: {[pt.wkt for pt in seed_points_sgeom_mpt.geoms]}')
-            # log.info(f'vbet: {vbet_sgeom.wkt}')
-            voronoi = voronoi_diagram(seed_points_sgeom_mpt, envelope=vbet_sgeom)
-            log.info(f'    Done')
-            for poly in voronoi.geoms:
-                try:
-                    poly_intersect = vbet_sgeom.intersection(poly)
-                except TopologicalError as err:
-                    # The operation 'GEOSIntersection_r' could not be performed. Likely cause is invalidity of the geometry
-                    log.error(err)
-                    continue
-                if poly_intersect.geom_type in ['GeometryCollection', 'LineString'] or poly_intersect.is_empty:
-                    continue
-                clean_geom = poly_intersect.buffer(0) if poly_intersect.is_valid is not True else poly_intersect
-                geom_out = VectorBase.shapely2ogr(clean_geom)
-                geom_out = ogr.ForceToMultiPolygon(geom_out)
-                out_lyr.create_feature(geom_out, {f'{unique_stream_field}': str(int(level_path))})
 
         for segment_feat, *_ in out_lyr.iterate_features('Writing segment dist to polygons'):
             polygon = segment_feat.GetGeometryRef()
