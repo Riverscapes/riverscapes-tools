@@ -123,6 +123,9 @@ def generate_igo_points(line_network: Path, dem: Path, out_points_layer: Path, v
             if spacing < 100:
                 spacing = 100
 
+            # New Zealand hack requested by Rodrigo
+            spacing = 200 if spacing > 200 else spacing
+
             init_distance = spacing / 2
             for shapely_line in cleaned_line.geoms:
                 # list to hold all the point coords
