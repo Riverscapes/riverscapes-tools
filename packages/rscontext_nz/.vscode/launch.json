@@ -58,5 +58,17 @@
         "${input:HydroID}"
       ]
     },
+    {
+      "name": "Build LiDAR Tiles",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "scripts.build_lidar_tiles",
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/.env",
+      "args": [
+        "{env:LINZ_API_KEY}",
+        "/Users/philipbailey/GISData/nz/nz_national_project2/topography/lidar.gpkg",
+      ]
+    }
   ]
 }
