@@ -154,6 +154,18 @@
       ],
       "request": "launch",
       "console": "integratedTerminal"
+    },
+    {
+      "name": "Generate LCT 3DEP DEM projects",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "scripts.build_lct_dems",
+      "console": "integratedTerminal",
+      "args": [
+        "/Users/philipbailey/GISData/lct/geojson_bounds",
+        "/Users/philipbailey/GISData/lct/dem_projects",
+        "3.0",
+      ]
     }    
   ]
 }
