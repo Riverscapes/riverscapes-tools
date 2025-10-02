@@ -44,3 +44,4 @@ ParamID,Name,Description,Aliases,DataUnits,EquationUnits,Conversion,Definition
 43,SLOP30_10M, Percent area with slopes greater than 30 percent, SLOP30_10M,percent,percent,1.0,Percent area with slopes greater than 30 percent from 10m NED
 44,HIGHREG,High flow region number,HIGHREG,unknown,unknown,1.0,High flow region number
 45,PREC10TO4, Basinwide Winter Precipitation,PREC10TO4,mm,inches,0.0393701,Mean basinwide precipitation for the winter period (from October to April)
+46,I24H100YA2,24hr 100 Year Precipitation,I24H100YA2,mm,inches,0.0393701,Maximum 24-hour precipitation that occurs on average once in 100 years from NOAA Atlas 2
