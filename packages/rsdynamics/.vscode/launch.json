@@ -9,7 +9,7 @@
       "id": "WatershedHydroID",
       "description": "Pick a WatershedHydroID to process",
       // "default": "563738" // South Island near Christchurch
-      "default": "224060" // North Island near Waikato
+      "default": "593481" // Wairau River, Marlborough
     }
   ],  
   "configurations": [
@@ -17,20 +17,15 @@
       "name": "RS Dynamics - NEW ZEALAND",
       "type": "debugpy",
       "request": "launch",
-      "module": "rsdynamics.rs_context_nz",
+      "module": "rsdynamics.rsdynamics",
       "console": "integratedTerminal",
-      // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
-      "env": {
-        "NATIONAL_PROJECT_NZ": "/workspaces/data/NationalDatasetsNZ"
-      },
+      "envFile": "${workspaceFolder}/../.env",
       "args": [
         "${input:WatershedHydroID}",
-        "{env:NATIONAL_PROJECT_NZ}/hydrography/NZREC2_v5_Hydrography.gpkg",
-        "{env:NATIONAL_PROJECT_NZ}/topography/NORTH_ISLAND_8m.tif",
-        "{env:NATIONAL_PROJECT_NZ}/topography/SOUTH_ISLAND_8m.tif",
-        "{env:DATA_ROOT}/rs_context/${input:WatershedHydroID}",
-        "--verbose",
-        "--debug"
+        "/Users/philipbailey/GISData/nz/vbet/${input:WatershedHydroID}/project.rs.xml",
+        "/Users/philipbailey/GISData/nz/rodrigo_output/output",
+        "/Users/philipbailey/GISData/nz/rsdynamics",
+        "--verbose"
       ]
     }
   ]
