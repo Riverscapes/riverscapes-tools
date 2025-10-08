@@ -210,31 +210,27 @@ def build_dynamics_project(vbet_project_xml: str, output_dir: str) -> RSProject:
 
     # Create the output Riverscapes project
     vbet_project = RSProject(None, vbet_project_xml)
-    vbet_project_meta = vbet_project.get_metadata_dict()
-    vbet_project_name = vbet_project.XMLBuilder.find('Name')
+    vbet_project_name = vbet_project.XMLBuilder.find('Name').text
+    vbet_metadata = vbet_project.get_metadata()
     vbet_id = vbet_project.XMLBuilder.find('Warehouse').attrib.get('id', None)
 
-    rsd_project_meta = copy.deepcopy(vbet_project_meta)
-    rsd_project_meta['Model Documentation'] = 'https://tools.riverscapes.net/rsdynamics'
-    rsd_project_meta['Model Version'] = __version__
-    rsd_project_meta['Date Created'] = datetime.now().isoformat()
-    rsd_project_meta.pop('Flowline Type', None)
-    rsd_project_meta.pop('Low Lying Valley Threshold', None)
-    rsd_project_meta.pop('Elevated Valley Threshold', None)
-    rsd_project_meta.pop('Runner', None)
-    rsd_project_meta.pop('ProcTimeS', None)
-    rsd_project_meta.pop('Processing Time', None)
+    rs_meta = [
+        RSMeta('Model Documentation', 'https://tools.riverscapes.net/rsdynamics', meta_type=RSMetaTypes.URL, locked=True),
+        RSMeta('Model Version', __version__, locked=True),
+        RSMeta('Date Created', datetime.now().isoformat(), locked=True),
+        RSMeta('VBET Input',  f'https://data.riverscapes.net/p/{vbet_id}', meta_type=RSMetaTypes.URL, locked=True)
+    ]
 
-    vbet_project.add_metadata()
-    if vbet_id is not None:
-        rsd_project_meta['VBET Input'] = RSMeta('VBET Input',  f'https://data.riverscapes.net/p/{vbet_id}', type=RSMetaTypes.URL, locked=True)
-
-    rs_meta = [RSMeta(k, v) for k, v in rsd_project_meta.items()]
+    for k, v in vbet_metadata.items():
+        if k in ['HUC', 'Hydrologic Unit Code']:
+            rs_meta.append(v)
+        elif 'rscontextnz' in k.lower() or 'taudem' in k.lower() or 'channelarea' in k.lower():
+            rs_meta.append(v)
 
     # Build the Riverscapes Context project
-    project_name = vbet_project_name.text.replace('VBET', 'Riverscapes Dynamics')
+    project_name = vbet_project_name.replace('VBET', 'Riverscapes Dynamics')
     rsd_project = RSProject(cfg, output_dir)
-    rsd_project.create(project_name, 'rsdynamics', rs_meta)
+    rsd_project.create(project_name, 'rsdynamics', meta=rs_meta)
 
     # Reuse the project extents from the input Riverscapes Context project
     rsd_project.rs_copy_project_extents(vbet_project_xml)
