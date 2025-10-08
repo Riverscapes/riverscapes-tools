@@ -52,6 +52,9 @@ classified_raster_pattern = r'.*_([0-9]{8})_(\w*)\.tif'
 LayerTypes = {
     # key: (name, id, tag, relpath)
     'HILLSHADE': RSLayer('DEM Hillshade', 'HILLSHADE', 'Raster', 'topography/dem_hillshade.tif'),
+    'RSDYNAMICS_DGOS': RSLayer('Riverscapes Dynamics DGOs', 'RSDYNAMICS_DGOS', 'Geopackage', 'dgos/rsdynamics.gpkg', {
+        'DGOS': RSLayer('DGOs', 'DGOS', 'Vector', 'vbet_dgos'),
+    })
 }
 
 
@@ -82,6 +85,8 @@ def rsdynamics(watershed_id: str, vbet_project_xml: str, raster_folder: str, out
     nod_inputs = rsd_project.XMLBuilder.add_sub_element(nod_realization, 'Inputs')
     nod_outputs = rsd_project.XMLBuilder.add_sub_element(nod_realization, 'Outputs')
 
+    # rsd_project.add_project_vector(GeopackageLayer(rsd_gpkg, 'vbet_dgos'), nod_outputs)
+
     rsd_project.add_project_raster(nod_inputs, LayerTypes['HILLSHADE'])
 
     for i, classified_info in enumerate(input_rasters):
@@ -91,14 +96,91 @@ def rsdynamics(watershed_id: str, vbet_project_xml: str, raster_folder: str, out
         rsd_project.add_project_raster(nod_inputs, layer_rs)
 
     for i, epoch_info in enumerate(epoch_rasters):
+        # Create a spatial view for each statistic of each epoch raster
+        spatial_views = create_spatial_views(rsd_gpkg, epoch_info[3])
+
+        for view in spatial_views:
+            display_name = view.replace('vw_', '').replace('_', ' ').replace('veg', 'vegetation').replace('yr', ' year').title()
+            LayerTypes['RSDYNAMICS_DGOS'].add_sub_layer(view, RSLayer(display_name, view, 'Vector', view))
+
         raster_path, raster_name, raster_id, __att_prefix = epoch_info
         rel_layer_path = rsd_project.get_relative_path(raster_path)
         layer_rs = RSLayer(raster_name, raster_id, 'Raster', rel_layer_path)
         rsd_project.add_project_raster(nod_outputs, layer_rs)
 
+    # This has to come after all the spatial views have been added
+    rsd_project.add_project_geopackage(nod_outputs, LayerTypes['RSDYNAMICS_DGOS'])
+
     rsd_project.XMLBuilder.write()
 
     return rsd_project
+
+
+def create_spatial_views(rsd_gpkg: str, col_prefix: str) -> List[str]:
+    """
+    Create a spatial view for each of the statistics from each epoch raster
+    in the Riverscapes Dynamics GeoPackage.
+
+    This makes it easier to visualize the statistics in QGIS because we can 
+    reuse symbology files that expect a single 'value' field.
+    """
+
+    # Create spatial views for each of the statistics from each epoch raster
+    views = []
+    with sqlite3.connect(rsd_gpkg) as conn:
+        c = conn.cursor()
+        for stat in ['mean', 'min', 'max', 'std']:
+
+            view_name = f'vw_{col_prefix.replace("-", "_")}_{stat}'
+            views.append(view_name)
+
+            c.execute(f'DROP VIEW IF EXISTS "{view_name}"')
+            c.execute(f'CREATE VIEW "{view_name}" AS SELECT fid, geom, "{col_prefix}-{stat}" AS value FROM "vbet_dgos"')
+
+            c.execute(f"""
+                INSERT INTO gpkg_contents (
+                    table_name,
+                    data_type,
+                    identifier,
+                    min_x,
+                    min_y,
+                    max_x,
+                    max_y,
+                    srs_id
+                ) SELECT
+                    '{view_name}',
+                    data_type,
+                    '{view_name}',
+                    min_x,
+                    min_y,
+                    max_x,
+                    max_y,
+                    srs_id
+                FROM gpkg_contents
+                WHERE table_name='vbet_dgos'
+            """)
+
+            c.execute(f"""
+                INSERT INTO gpkg_geometry_columns (
+                    table_name,
+                    column_name,
+                    geometry_type_name,
+                    srs_id,
+                    z,
+                    m
+                ) SELECT
+                    '{view_name}',
+                    'geom',
+                    geometry_type_name,
+                    srs_id,
+                    z,
+                    m
+                FROM gpkg_geometry_columns
+                WHERE table_name='vbet_dgos'
+            """)
+
+        conn.commit()
+    return views
 
 
 def copy_vbet_layer(vbet_project_xml: str, gpkg_id: str, layer_name: str, output_gpkg: str) -> str:
@@ -130,6 +212,7 @@ def build_dynamics_project(vbet_project_xml: str, output_dir: str) -> RSProject:
     vbet_project = RSProject(None, vbet_project_xml)
     vbet_project_meta = vbet_project.get_metadata_dict()
     vbet_project_name = vbet_project.XMLBuilder.find('Name')
+    vbet_id = vbet_project.XMLBuilder.find('Warehouse').attrib.get('id', None)
 
     rsd_project_meta = copy.deepcopy(vbet_project_meta)
     rsd_project_meta['Model Documentation'] = 'https://tools.riverscapes.net/rsdynamics'
@@ -141,6 +224,10 @@ def build_dynamics_project(vbet_project_xml: str, output_dir: str) -> RSProject:
     rsd_project_meta.pop('Runner', None)
     rsd_project_meta.pop('ProcTimeS', None)
     rsd_project_meta.pop('Processing Time', None)
+
+    vbet_project.add_metadata()
+    if vbet_id is not None:
+        rsd_project_meta['VBET Input'] = RSMeta('VBET Input',  f'https://data.riverscapes.net/p/{vbet_id}', type=RSMetaTypes.URL, locked=True)
 
     rs_meta = [RSMeta(k, v) for k, v in rsd_project_meta.items()]
 
