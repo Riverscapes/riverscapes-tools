@@ -19,9 +19,9 @@ version = re.search(
     re.M
 ).group(1)
 
-setup(name='rs-context-nz',
+setup(name='rsdynamics',
       version=version,
-      description='Riverscapes Context NZ',
+      description='Riverscapes Dynamics',
       author='Philip Bailey',
       license='MIT',
       python_requires='>3.5.2',
@@ -29,11 +29,11 @@ setup(name='rs-context-nz',
       author_email='info@northarrowresearch.com',
       install_requires=install_requires,
       entry_points={
-          "console_scripts": ['rscontextnz = rscontextnz.rs_context_nz:main']
+          "console_scripts": ['rsdynamics = rsdynamics.rs_dynamics:main']
       },
       zip_safe=False,
-      url='https://github.com/Riverscapes/rs-context',
+      url='https://github.com/Riverscapes/rs-dynamics',
       packages=[
-          'rscontextnz'
+          'rsdynamics'
       ]
       )
