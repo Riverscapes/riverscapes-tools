@@ -1,7 +1,8 @@
 import numpy as np
 import sys
 from os import path
-from champmetrics.lib.raster import Raster
+from champ_metrics.lib.raster import Raster
+
 
 def RasterMetrics(rpath):
 
@@ -10,6 +11,7 @@ def RasterMetrics(rpath):
     result['StDev'] = np.std(theRaster.array)
 
     return result
+
 
 if __name__ == "__main__":
     import logging

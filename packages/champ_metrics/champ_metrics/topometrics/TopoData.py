@@ -8,19 +8,20 @@ from champ_metrics.lib.topoproject import TopoProject
 
 class TopoData:
 
-    def __init__(self, sFolder, visitID):
+    def __init__(self, topo_project_xml: str, visitID: int) -> None:
 
-        self.directory = sFolder
+        self.directory = topo_project_xml
         self.visitID = visitID
         self.Channels = {'Wetted': Channel(), 'Bankfull': Channel()}
         self.DEM = ""
+        self.Detrended = ""
         self.Depth = ""
         self.WaterSurface = ""
         self.ChannelUnits = ""
         self.Thalweg = ""
         self.TopoPoints = ""
         # This object will be empty if there is no project.rs.xml file in the sFolder
-        self.riverscapes = TopoProject(sFolder)
+        self.riverscapes = TopoProject(topo_project_xml)
 
     def buildManualFile(self, layerFileName, bMandatory):
         """
@@ -43,23 +44,28 @@ class TopoData:
             #     raise DataException("The file called '{0}' does not exist")
         return path
 
-    def buildProjectFile(self, layerName, bMandatory):
+    def buildProjectFile(self, layer_key: str, bMandatory: bool) -> str:
         """
         Build a file using riverscapes XML
         :param layerName:
         :param bMandatory:
         :return:
         """
-        path = ""
+        file_path = ""
+
         try:
-            path = self.riverscapes.getpath(layerName)
+            file_path = self.riverscapes.getpath(layer_key)
+
         except DataException as e:
             pass
             # if bMandatory:
             #     raise e
-        return path
+        return file_path
 
     def loadlayers(self):
+        """
+        Load all the layers from the topo project
+        """
 
         # If we have a topo toolbar project with a project.rs.xml file this is what we have to do
         if self.riverscapes.isrsproject:
