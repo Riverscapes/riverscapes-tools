@@ -1,19 +1,21 @@
 import argparse
-import sys, traceback
+import sys
+import traceback
 import os
 from os import path
 import xml.etree.ElementTree as ET
 
-import geopandas, rasterio
+import geopandas
+import rasterio
 from shapely.geometry import Point
 import numpy as np
 
-from champmetrics.lib import env
-from champmetrics.lib.sitkaAPI import downloadUnzipTopo
-from champmetrics.lib.loghelper import Logger
-from champmetrics.lib.exception import DataException, MissingException, NetworkException
+from champ_metrics.lib import env
+from champ_metrics.lib.sitkaAPI import downloadUnzipTopo
+from champ_metrics.lib.loghelper import Logger
+from champ_metrics.lib.exception import DataException, MissingException, NetworkException
 
-__version__="0.0.2"
+__version__ = "0.0.2"
 
 
 def BankfullMetrics(dem, detrended_dem, shp_points):
@@ -40,7 +42,7 @@ def BankfullMetrics(dem, detrended_dem, shp_points):
     with rasterio.open(detrended_dem) as rio_detrended:
         bf_elevations = [v[0] for v in rio_detrended.sample(zip([Point(p).x for p in gdf_bf_points.geometry],
                                                                 [Point(p).y for p in gdf_bf_points.geometry]))
-                         if v[0] != rio_detrended.nodata] # Filter out points not within detrendedDEM data extent.
+                         if v[0] != rio_detrended.nodata]  # Filter out points not within detrendedDEM data extent.
         detrended_band = rio_detrended.read(1)
 
     if len(bf_elevations) == 0:
@@ -92,7 +94,7 @@ def BankfullMetrics(dem, detrended_dem, shp_points):
     np_bf_volume = np.multiply(np_bf_depth, 0.1*0.1)
     log.info("BF Depth surface created")
 
-    ma_bf_depth = np.ma.MaskedArray(np_bf_depth, np.equal(np_bf_depth, -0.0)) # -0.0 values were getting included in the mean calculation
+    ma_bf_depth = np.ma.MaskedArray(np_bf_depth, np.equal(np_bf_depth, -0.0))  # -0.0 values were getting included in the mean calculation
 
     # Run ZonalStatisticsAsTable to get the metric values:
     # Sum the bankfull depth raster values and multiply by the area of one cell to produce BFVol.
@@ -179,7 +181,7 @@ def main():
     parser.add_argument('visitID', help='Visit ID', type=int)
     parser.add_argument('outputfolder', help='Path to output folder', type=str)
     parser.add_argument('--datafolder', help='(optional) Top level folder containing TopoMetrics Riverscapes projects', type=str)
-    parser.add_argument('--verbose', help='Get more information in your logs.', action='store_true', default=False )
+    parser.add_argument('--verbose', help='Get more information in your logs.', action='store_true', default=False)
     args = parser.parse_args()
 
     # Make sure the output folder exists
@@ -210,14 +212,14 @@ def main():
         else:
             projectFolder = args.datafolder
 
-        from champmetrics.lib.topoproject import TopoProject
+        from champ_metrics.lib.topoproject import TopoProject
         topo_project = TopoProject(os.path.join(projectFolder, "project.rs.xml"))
         tree = ET.parse(os.path.join(projectFolder, "project.rs.xml"))
         root = tree.getroot()
         visitid = root.findtext("./MetaData/Meta[@name='Visit']") if root.findtext("./MetaData/Meta[@name='Visit']") is not None else root.findtext("./MetaData/Meta[@name='VisitID']")
         finalResult = BankfullMetrics(topo_project.getpath("DEM"),
-                                       topo_project.getpath("DetrendedDEM"),
-                                       topo_project.getpath("Topo_Points"))
+                                      topo_project.getpath("DetrendedDEM"),
+                                      topo_project.getpath("Topo_Points"))
 
         write_bfmetrics_xml(finalResult, visitid, xmlfile)
         sys.exit(0)

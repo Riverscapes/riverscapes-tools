@@ -36,7 +36,7 @@ def champ_metrics(visit_id: int, workbench_db: str, topo_project_xml: str, outpu
         log.error(f'Topo project XML not found: {topo_project_xml}')
         sys.exit(1)
 
-    # If visit ID is not an integer, exit
+    # If visit ID is not an integer, exittopo
     try:
         int(visit_id)
     except ValueError:
@@ -44,9 +44,10 @@ def champ_metrics(visit_id: int, workbench_db: str, topo_project_xml: str, outpu
         sys.exit(1)
 
     safe_makedirs(output_folder)
+    metric_xml_path = os.path.join(output_folder, f'CHaMP_Metrics_Visit_{visit_id}.xml')
 
     # Calculate the topo metrics and write them to XML file
-    metrics = visit_topo_metrics(visit_id, topo_project_xml, output_folder, None, workbench_db, None)
+    metrics = visit_topo_metrics(visit_id, topo_project_xml, output_folder, None, workbench_db, None, metric_xml_path)
 
 
 def main():
@@ -64,9 +65,6 @@ def main():
 
     log = Logger('CHaMP Metrics')
     log.setup(logPath=os.path.join(args.output_folder, "champ_metrics.log"), verbose=args.verbose)
-    log.title(f'CHaMP Metrics for HUC: {args.huc}')
-
-    safe_makedirs(args.output_folder)
 
     try:
         champ_metrics(int(args.visit_id), args.workbench_db, args.topo_project_xml, args.output_folder)

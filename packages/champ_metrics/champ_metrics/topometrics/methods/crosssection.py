@@ -1,15 +1,16 @@
 import sys
 import copy
 import numpy as np
-from shapely.geos import TopologicalError
+from shapely.errors import TopologicalError
+from shapely.geometry import MultiLineString
+
 
 from os import path
-from champmetrics.lib.shapefileloader import Shapefile
-from champmetrics.lib.raster import Raster
-from champmetrics.lib.metrics import CHaMPMetric
-from champmetrics.lib.loghelper import Logger
-from champmetrics.lib.exception import DataException
-from shapely.geometry import MultiLineString
+from champ_metrics.lib.shapefileloader import Shapefile
+from champ_metrics.lib.raster import Raster
+from champ_metrics.lib.metrics import CHaMPMetric
+from champ_metrics.lib.loghelper import Logger
+from champ_metrics.lib.exception import DataException
 from .thalweg import ThalwegMetrics
 
 # There are various ways of summarizing the attributes of a dictionary:
@@ -21,6 +22,7 @@ from .thalweg import ThalwegMetrics
 #       of the mean width
 # none - includes all cross sections
 # crew - uses the IsValid flag on the original dictionary
+
 
 class CrossSectionMetrics(CHaMPMetric):
 
@@ -100,7 +102,6 @@ class CrossSectionMetrics(CHaMPMetric):
                     raise DataException("No features in crosssection shape file")
                 polyRiverShape = channelShapes[0]
 
-
             # Calculate the topometrics from scratch for a single cross section
             shpXS = Shapefile(crosssections)
             demRaster = Raster(demPath)
@@ -108,7 +109,7 @@ class CrossSectionMetrics(CHaMPMetric):
             if shpXS.loaded:
                 for aFeat in shpXS.featuresToShapely():
                     # Calculate the topometrics for this cross section. They will be stored on the aFeat dict under key 'topometrics'
-                    calcXSMetrics(aFeat, polyRiverShape , demRaster, stationInterval)
+                    calcXSMetrics(aFeat, polyRiverShape, demRaster, stationInterval)
 
                     # Build the all features dictionary that would be expect had the topometrics already
                     # existed in the XS shapefile and simply got loaded. This is a combination of the new topometrics
@@ -225,6 +226,7 @@ def calcXSMetrics(xs, rivershapeWithDonuts, demRaster, fStationInterval):
 
     return ptsdict
 
+
 def maxDepth(arr):
     """
     Calculate the maximum   depth from a list of values
@@ -248,6 +250,7 @@ def meanDepth(deptharr):
 
     return fValue
 
+
 def dryWidth(xs, rivershapeWithDonuts):
     """
 
@@ -258,7 +261,7 @@ def dryWidth(xs, rivershapeWithDonuts):
     # Get all intersects of this crosssection with the rivershape
     log = Logger("dryWidth")
     try:
-        intersects = xs.intersection(rivershapeWithDonuts.buffer(0))  #KMW: buffer(0) clears up invalid geoms
+        intersects = xs.intersection(rivershapeWithDonuts.buffer(0))  # KMW: buffer(0) clears up invalid geoms
     except TopologicalError as e:
         log.error(e)
         raise DataException("Could not perform intersection on `rivershapeWithDonuts`. Look for small, invalid islands as a possible cause.")
@@ -269,7 +272,8 @@ def dryWidth(xs, rivershapeWithDonuts):
     elif intersects.type == "Point":
         return 0
 
-    return sum([intersect.length for intersect in intersects])
+    return sum([intersect.length for intersect in intersects.geoms])
+
 
 def metricSanitize(metric):
     """
@@ -285,6 +289,7 @@ def metricSanitize(metric):
     # We explicitly cast this to np.float (NOT np.float32 or np.float64 etc.) to keep ogr from breaking
     return num
 
+
 def getRefElev(arr):
     """
     Take a masked array and return a reference depth
@@ -298,6 +303,7 @@ def getRefElev(arr):
 
     return fValue
 
+
 def populateChannelStatistics(dChannelMetrics, filteringName, metricName, featureList):
 
     if not filteringName in dChannelMetrics:
@@ -305,11 +311,11 @@ def populateChannelStatistics(dChannelMetrics, filteringName, metricName, featur
 
     dChannelMetrics[filteringName][metricName] = getStatistics(featureList, metricName)
 
+
 def getStatistics(lFeatures, sAttribute):
 
     lValues = [x[sAttribute] for x in lFeatures]
     dStatistics = {}
-
 
     if len(lValues) > 0 and not all(b is None for b in lValues):
         # TODO: What do we mean here by np.mean? Do we mean any or all above?
@@ -334,6 +340,7 @@ def getStatistics(lFeatures, sAttribute):
         dStatistics['CV'] = None
 
     return dStatistics
+
 
 if __name__ == "__main__":
     import logging
