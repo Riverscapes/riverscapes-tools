@@ -14,14 +14,14 @@ from .methods.raster import RasterMetrics
 from .methods.bankfull import BankfullMetrics
 
 
-def visit_topo_metrics(visit_id, metric_xml_path, topo_data_folder, channel_units_file, workbench_db, channel_unit_defs):
+def visit_topo_metrics(visit_id: int, topo_project_xml: str, topo_data_folder: str, channel_units_file: str, workbench_db: str, channel_unit_defs: dict, metric_xml_path: str) -> dict:
     """Calculate all the topometrics for a given visit and write them to an XML file."""
 
     log = Logger('Metrics')
     log.info(f'Topo topometrics for visit {visit_id}')
     log.info(f'Loading topo data from {topo_data_folder}')
 
-    topo = TopoData(topo_data_folder, visit_id)
+    topo = TopoData(topo_project_xml, visit_id)
     topo.loadlayers()
 
     # Load the channel unit information from the argument XML file

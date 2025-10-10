@@ -1,21 +1,22 @@
+import dateutil.parser
+from .metricxmloutput import DATECREATEDFIELD
 import requests
 import os
 import json
 import datetime
 import time
 from tempfile import NamedTemporaryFile
-from champmetrics.lib.tokenator import Tokenator
+from champ_metrics.lib.tokenator import Tokenator
 import zipfile
 import logging
-from champmetrics.lib.loghelper import Logger
-from champmetrics.lib.sslverify import verification
-from champmetrics.lib.exception import MissingException, NetworkException
+from champ_metrics.lib.loghelper import Logger
+from champ_metrics.lib.sslverify import verification
+from champ_metrics.lib.exception import MissingException, NetworkException
 logging.getLogger("requests").setLevel(logging.ERROR)
-from .metricxmloutput import DATECREATEDFIELD
-import dateutil.parser
 
 RETRIES_ALLOWED = 5
 RETRY_DELAY = 4
+
 
 def APIGet(url, absolute=False):
     """
@@ -25,9 +26,8 @@ def APIGet(url, absolute=False):
     :return:
     """
     log = Logger("APIGet")
-    #log.info("Making Call: GET {}".format(url))
+    # log.info("Making Call: GET {}".format(url))
     return APICall(url, absolute, method=requests.get)
-
 
 
 def APIDelete(url, absolute=False):
@@ -110,6 +110,7 @@ def APICall(url, absolute=False, method=requests.get):
         return respObj
     else:
         return response
+
 
 def downloadUnzipTopo(visitID, unzipPath):
     """
@@ -222,11 +223,10 @@ def latestMetricInstances(insts, single=False):
 
     # Filter out the instances without dates
 
-
     # First create a "sortdate" helper. Setting the second and microsecond to zero is a hack to cover slight timing
     # differences
     for idx, inst in enumerate(insts):
-        gendate = list(filter(lambda x: x['name']==DATECREATEDFIELD, inst['values']))
+        gendate = list(filter(lambda x: x['name'] == DATECREATEDFIELD, inst['values']))
         try:
             inst['date'] = dateutil.parser.parse(gendate[0]['value'])
             if not single:
@@ -243,10 +243,10 @@ def latestMetricInstances(insts, single=False):
     latestDate = max(x['date'] for x in filteredinsts)
 
     # Now filter out the ones with the right date
-    filteredInstances = filter(lambda x: x['date'] == latestDate , filteredinsts)
+    filteredInstances = filter(lambda x: x['date'] == latestDate, filteredinsts)
 
     # Only cast things to floating point where necessary
-    formatter = lambda x: float(x['value']) if x['type'] == "Numeric" and x['value'] is not None else x['value']
+    def formatter(x): return float(x['value']) if x['type'] == "Numeric" and x['value'] is not None else x['value']
 
     # Now turn it inside out so it's a proper {name: value} pair
     results = []

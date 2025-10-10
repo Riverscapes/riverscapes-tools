@@ -1,8 +1,9 @@
 import sys
 
 from os import path
-from champmetrics.lib.shapefileloader import Shapefile
-from champmetrics.lib.metrics import CHaMPMetric
+from champ_metrics.lib.shapefileloader import Shapefile
+from champ_metrics.lib.metrics import CHaMPMetric
+
 
 class IslandMetrics(CHaMPMetric):
 
@@ -54,7 +55,8 @@ class IslandMetrics(CHaMPMetric):
 
 
 if __name__ == "__main__":
-    import argparse, logging
+    import argparse
+    import logging
     logfmt = "[%(asctime)s - %(levelname)s] - %(message)s"
     dtfmt = "%Y-%m-%d %I:%M:%S"
     logging.basicConfig(filename='islands.log', level=logging.DEBUG, format=logfmt, datefmt=dtfmt)
