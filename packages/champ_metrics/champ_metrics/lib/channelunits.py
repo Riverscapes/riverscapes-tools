@@ -57,6 +57,8 @@ def loadChannelUnitsFromSQLite(visitID, workbenchDB):
     for unitRow in c.fetchall():
         dUnits[unitRow[0]] = (unitRow[1], unitRow[2], unitRow[3])
 
+    log = Logger("Channel Units")
+    log.info(f"{len(dUnits)} channel units loaded from SQLite workbench DB")
     return dUnits
 
 

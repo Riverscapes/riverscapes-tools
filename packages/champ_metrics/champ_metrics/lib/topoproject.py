@@ -10,36 +10,125 @@ from champ_metrics.lib.util import getAbsInsensitivePath
 class TopoProject():
     # Dictionary with layer { layernname : layerxpath }
     LAYERS = {
-        "DEM": "./Realizations/Topography/TIN[@active='true']/DEM/Path",
-        "DetrendedDEM": "./Realizations/Topography/TIN[@active='true']/Detrended/Path",
-        "WaterDepth": "./Realizations/Topography/TIN[@active='true']/WaterDepth/Path",
-        "ErrorSurface": "./Realizations/Topography/TIN[@active='true']/AssocSurfaces/ErrSurface/Path",
-        "WaterSurfaceDEM": "./Realizations/Topography/TIN[@active='true']/WaterSurfaceDEM/Path",
-        "AssocPointQuality": "./Realizations/Topography/TIN[@active='true']/AssocSurfaces/PointQuality3D/Path",
-        "AssocSlope": "./Realizations/Topography/TIN[@active='true']/AssocSurfaces/Slope/Path",
-        "AssocRough": "./Realizations/Topography/TIN[@active='true']/AssocSurfaces/Roughness/Path",
-        "AssocPointDensity": "./Realizations/Topography/TIN[@active='true']/AssocSurfaces/PointDensity/Path",
-        "AssocInterpolationError": "./Realizations/Topography/TIN[@active='true']/AssocSurfaces/InterpolationError/Path",
-        "Topo_Points": "./Realizations/SurveyData[@projected='true']/Vector[@id='topo_points']/Path",
-        "StreamFeatures": "./Realizations/SurveyData[@projected='true']/Vector[@id='stream_features']/Path",
-        "EdgeofWater_Points": "./Realizations/SurveyData[@projected='true']/Vector[@id='eow_points']/Path",
-        "Control_Points": "./Realizations/SurveyData[@projected='true']/Vector[@id='control_points']/Path",
-        "Error_Points": "./Realizations/SurveyData[@projected='true']/Vector[@id='error_points']/Path",
-        "Breaklines": "./Realizations/SurveyData[@projected='true']/Vector[@id='breaklines']/Path",
-        "WaterExtent": "./Realizations/Topography/TIN[@active='true']/Stages/Vector[@stage='wetted'][@type='extent']/Path",
-        "BankfullExtent": "./Realizations/Topography/TIN[@active='true']/Stages/Vector[@stage='bankfull'][@type='extent']/Path",
-        "WettedIslands": "./Realizations/Topography/TIN[@active='true']/Stages/Vector[@stage='wetted'][@type='islands']/Path",
-        "BankfullIslands": "./Realizations/Topography/TIN[@active='true']/Stages/Vector[@stage='bankfull'][@type='islands']/Path",
-        "ChannelUnits": "./Realizations/Topography/TIN[@active='true']/ChannelUnits/Path",
-        "Thalweg": "./Realizations/Topography/TIN[@active='true']/Thalweg/Path",
-        "WettedCenterline": "./Realizations/Topography/TIN[@active='true']/Stages/Vector[@stage='wetted'][@type='centerline']/Path",
-        "BankfullCenterline": "./Realizations/Topography/TIN[@active='true']/Stages/Vector[@stage='bankfull'][@type='centerline']/Path",
-        "WettedCrossSections": "./Realizations/Topography/TIN[@active='true']/Stages/Vector[@stage='wetted'][@type='crosssections']/Path",
-        "BankfullCrossSections": "./Realizations/Topography/TIN[@active='true']/Stages/Vector[@stage='bankfull'][@type='crosssections']/Path",
-        "SurveyExtent": "./Realizations/SurveyData/SurveyExtents/Vector[@active='true']/Path",  # MR?
-        "ControlPoints": "./Realizations/SurveyData/Vector[@id='control_points']/Path",
+        "DEM": [
+            "./Realizations/Topography/TIN[@active='true']/DEM/Path",
+            "./Realizations/Realization[@id='topography']/Outputs/Raster[@id='DEM']/Path"
+        ],
+        "DetrendedDEM": [
+            "./Realizations/Topography/TIN[@active='true']/Detrended/Path",
+            "./Realizations/Realization[@id='topography']/Outputs/Raster[@id='Detrended']/Path"
+        ],
+        "WaterDepth": [
+            "./Realizations/Topography/TIN[@active='true']/WaterDepth/Path",
+            "./Realizations/Realization[@id='topography']/Outputs/Raster[@id='WaterDepth']/Path"
+        ],
+        "ErrorSurface": [
+            "./Realizations/Topography/TIN[@active='true']/AssocSurfaces/ErrSurface/Path",
+            "./Realizations/Realization[@id='topography']/Outputs/Raster[@id='ErrorSurface']/Path"
+        ],
+        "WaterSurfaceDEM": [
+            "./Realizations/Topography/TIN[@active='true']/WaterSurfaceDEM/Path",
+            "./Realizations/Realization[@id='topography']/Outputs/Raster[@id='WaterSurfaceDEM']/Path"
+        ],
+        "AssocPointQuality": [
+            "./Realizations/Topography/TIN[@active='true']/AssocSurfaces/PointQuality3D/Path",
+            "./Realizations/Realization[@id='topography']/Outputs/Raster[@id='AssocPointQuality']/Path"
+        ],
+        "AssocSlope": [
+            "./Realizations/Topography/TIN[@active='true']/AssocSurfaces/Slope/Path",
+            "./Realizations/Realization[@id='topography']/Outputs/Raster[@id='Slope']/Path"
+        ],
+        "AssocRough": [
+            "./Realizations/Topography/TIN[@active='true']/AssocSurfaces/Roughness/Path",
+            "./Realizations/Realization[@id='topography']/Outputs/Raster[@id='Roughness']/Path"
+        ],
+        "AssocPointDensity": [
+            "./Realizations/Topography/TIN[@active='true']/AssocSurfaces/PointDensity/Path",
+            "./Realizations/Realization[@id='topography']/Outputs/Raster[@id='PointDensity']/Path"
+        ],
+        "AssocInterpolationError": [
+            "./Realizations/Topography/TIN[@active='true']/AssocSurfaces/InterpolationError/Path",
+            "./Realizations/Realization[@id='topography']/Outputs/Raster[@id='InterpolationError']/Path"
+        ],
+        "Topo_Points": [
+            "./Realizations/SurveyData[@projected='true']/Vector[@id='topo_points']/Path",
+            "./Realizations/Realization[@id='survey_data_projected']/Datasets/Vector[@id='topo_points']/Path"
+        ],
+        "StreamFeatures": [
+            "./Realizations/SurveyData[@projected='true']/Vector[@id='stream_features']/Path",
+            "./Realizations/Realization[@id='survey_data_projected']/Datasets/Vector[@id='stream_features']/Path"
+        ],
+        "EdgeofWater_Points": [
+            "./Realizations/SurveyData[@projected='true']/Vector[@id='eow_points']/Path",
+            "./Realizations/Realization[@id='survey_data_projected']/Datasets/Vector[@id='eow_points']/Path"
+        ],
+        "Control_Points": [
+            "./Realizations/SurveyData[@projected='true']/Vector[@id='control_points']/Path",
+            "./Realizations/Realization[@id='survey_data_projected']/Datasets/Vector[@id='control_points']/Path"
+        ],
+        "Error_Points": [
+            "./Realizations/SurveyData[@projected='true']/Vector[@id='error_points']/Path",
+            "./Realizations/Realization[@id='survey_data_projected']/Datasets/Vector[@id='error_points']/Path"
+        ],
+        "Breaklines": [
+            "./Realizations/SurveyData[@projected='true']/Vector[@id='breaklines']/Path",
+            "./Realizations/Realization[@id='survey_data_projected']/Datasets/Vector[@id='breaklines']/Path"
+        ],
+        "WaterExtent": [
+            "./Realizations/Topography/TIN[@active='true']/Stages/Vector[@stage='wetted'][@type='extent']/Path",
+            "./Realizations/Realization/Outputs/Vector[@id='wetted_extent']/Path"
+        ],
+        "BankfullExtent": [
+            "./Realizations/Topography/TIN[@active='true']/Stages/Vector[@stage='bankfull'][@type='extent']/Path",
+            "./Realizations/Realization/Outputs/Vector[@id='bankfull_extent']/Path"
+        ],
+        "WettedIslands": [
+            "./Realizations/Topography/TIN[@active='true']/Stages/Vector[@stage='wetted'][@type='islands']/Path",
+            "./Realizations/Realization[@id='topography']/Outputs/Vector[@id='wetted_islands']/Path"
+
+        ],
+        "BankfullIslands": [
+            "./Realizations/Topography/TIN[@active='true']/Stages/Vector[@stage='bankfull'][@type='islands']/Path",
+            "./Realizations/Realization[@id='topography']/Outputs/Vector[@id='bankfull_islands']/Path"
+        ],
+        "ChannelUnits": [
+            "./Realizations/Topography/TIN[@active='true']/ChannelUnits/Path",
+            "./Realizations/Realization[@id='topography']/Outputs/Vector[@id='ChannelUnits']/Path"
+        ],
+        "Thalweg": [
+            "./Realizations/Topography/TIN[@active='true']/Thalweg/Path",
+            "./Realizations/Realization[@id='topography']/Outputs/Vector[@id='thalweg']/Path"
+        ],
+        "WettedCenterline": [
+            "./Realizations/Topography/TIN[@active='true']/Stages/Vector[@stage='wetted'][@type='centerline']/Path",
+            "./Realizations/Realization[@id='topography']/Outputs/Vector[@id='wetted_centerline']/Path"
+        ],
+        "BankfullCenterline": [
+            "./Realizations/Topography/TIN[@active='true']/Stages/Vector[@stage='bankfull'][@type='centerline']/Path",
+            "./Realizations/Realization[@id='topography']/Outputs/Vector[@id='bankfull_centerline']/Path"
+        ],
+        "WettedCrossSections": [
+            "./Realizations/Topography/TIN[@active='true']/Stages/Vector[@stage='wetted'][@type='crosssections']/Path",
+            "./Realizations/Realization[@id='topography']/Outputs/Vector[@id='wetted_crosssections']/Path"
+        ],
+        "BankfullCrossSections": [
+            "./Realizations/Topography/TIN[@active='true']/Stages/Vector[@stage='bankfull'][@type='crosssections']/Path",
+            "./Realizations/Realization[@id='topography']/Outputs/Vector[@id='bankfull_crosssections']/Path"
+        ],
+        "SurveyExtent": [
+            "./Realizations/SurveyData/SurveyExtents/Vector[@active='true']/Path",
+            "./Realizations/Realization[@id='survey_data']/Outputs/Vector[@id='survey_extent']/Path"
+        ],
+        "ControlPoints": [
+            "./Realizations/SurveyData/Vector[@id='control_points']/Path",
+            "./Realizations/Realization[@id='survey_data_projected']/Datasets/Vector[@id='control_points']/Path"
+        ],
         "TopoTin": "./Realizations/Topography/TIN[@active='true']/Path",
-        "Survey_Extent": "./Realizations/SurveyData[@projected='true']/SurveyExtents/Vector[@id='survey_extent']/Path"}  # KMW
+        "Survey_Extent": [
+            "./Realizations/SurveyData[@projected='true']/SurveyExtents/Vector[@id='survey_extent']/Path",
+            "./Realizations/Realization[@id='survey_data_projected']/Outputs/Vector[@id='survey_extent']/Path"
+        ]
+    }
 
     def __init__(self, sProjPath):
         """
@@ -74,7 +163,7 @@ class TopoProject():
     def getdir(self, layername):
         return path.dirname(self.getpath(layername))
 
-    def getpath(self, layername):
+    def getpath(self, layer_key):
         """
         Turn a relative path into an absolute one.
         :param project_path:
@@ -83,23 +172,42 @@ class TopoProject():
         :return:
         """
 
-        if layername not in TopoProject.LAYERS:
-            raise DataException("'{}' is not a valid layer name".format(layername))
+        if layer_key not in TopoProject.LAYERS:
+            raise DataException(f"'{layer_key}' is not a valid layer name key")
 
         try:
-            node = self.domroot.find(TopoProject.LAYERS[layername]).text.replace("\\", path.sep).replace("/", path.sep)
-        except Exception as e:
-            raise DataException("Error retrieving layer '{}' from project file.".format(layername))
+            xpaths = TopoProject.LAYERS[layer_key]
+            if isinstance(xpaths, str):
+                xpaths = [xpaths]
+            elif isinstance(xpaths, list):
+                # This could be a list of xpaths. One for the old active tin XML structure and one
+                # for the new realization output structure
+                pass
+            else:
+                raise DataException(f"Layer definition for '{layer_key}' is not a string or list.")
 
-        if node is not None:
-            finalpath = path.join(self.projpath, node)
-            if not path.isfile(finalpath) and not path.isdir(finalpath):
-                # One last, desparate call to see if there's a case error. This is expensive and should not be run
-                # as default
-                finalpath = getAbsInsensitivePath(finalpath, ignoreAbsent=True)
-            return finalpath
-        else:
-            raise DataException("Could not find layer '{}' with xpath '{}'".format(layername, TopoProject.LAYERS[layername]))
+            # Find the first xpath that exists in the XML
+            node = None
+            for xpath in xpaths:
+                node = self.domroot.find(xpath)
+                if node is not None:
+                    break
+
+            if node is not None:
+                # Replace any back or forward slashes with the current OS path separator
+                # This is because the riverscapes project file always uses forward slashes
+                rel_path = node.text.replace("\\", path.sep).replace("/", path.sep)
+
+                final_path = path.join(self.projpath, rel_path)
+                if not path.isfile(final_path) and not path.isdir(final_path):
+                    # One last, desparate call to see if there's a case error. This is expensive and should not be run as default
+                    final_path = getAbsInsensitivePath(final_path, ignoreAbsent=True)
+                return final_path
+            else:
+                raise DataException(f"Could not find layer '{layer_key}' with xpath '{TopoProject.LAYERS[layer_key]}' in project file.")
+
+        except Exception as e:
+            raise DataException(f"Error retrieving layer '{layer_key}' from project file.")
 
     def getMeta(self, metaname):
         """
