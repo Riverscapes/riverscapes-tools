@@ -45,3 +45,4 @@ ParamID,Name,Description,Aliases,DataUnits,EquationUnits,Conversion,Definition
 44,HIGHREG,High flow region number,HIGHREG,unknown,unknown,1.0,High flow region number
 45,PREC10TO4, Basinwide Winter Precipitation,PREC10TO4,mm,inches,0.0393701,Mean basinwide precipitation for the winter period (from October to April)
 46,I24H100YA2,24hr 100 Year Precipitation,I24H100YA2,mm,inches,0.0393701,Maximum 24-hour precipitation that occurs on average once in 100 years from NOAA Atlas 2
+47,LU92HRBN,Percent Natural Herbaceous Upland from NLCD1992,"HERBUPLND,HERBNAT_NLCD92",percent,percent,1.0,Area covered by Herbaceous Upland in percent
