@@ -10,7 +10,7 @@ This report card communicates the Channel Area Tool's compliance with the Rivers
 <table>
   <tr>
     <th>Tool</th>
-    <td>[Channel Area Tool](https://tools.riverscapes.net/channel)</td>
+    <td>[Channel Area Tool](https://tools.riverscapes.net/channelarea)</td>
   </tr>
   <tr>
     <th>Version</th>
@@ -51,9 +51,9 @@ This tool's [discrimination](https://riverscapes.net/Tools/#model-discrimination
 | Scale | Network (reach scale resolution, watershed extent) | Pass | This tool has been applied across watersheds in various regions; results are reach-scale performed across whole watersheds |
 | Language(s) and Dependencies | Python | Pass | Package dependencies are open source |
 | Vetted in Peer-Reviewed Literature | The equation used to estimate channel width in areas without NHD polygons is from  [Beechie and Imaki (2013)](https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/2013WR013629) | Partial | The width equation used in the tool has been reliable in a variety of landscapes, but was developed for the Columbia River Basin and may give poor results in different landscapes |
-| Source Code Documentation | Available at [Github repository](https://github.com/Riverscapes/riverscaps-tools/channel)  | Pass | Source code is clearly organized and documented |
-| Open Source | [open-source](https://github.com/Riverscapes/riverscaps-tools/channel) with [GNU General Public License v 3.0](https://github.com/Riverscapes/riverscapes-tools/blob/master/LICENSE) | Pass | |
-| User Documentation | [Documentation](http://tools.riverscapes.net/channel/) is in progress | Partial | Documentation is in progress but has not been published to the website |
+| Source Code Documentation | Available at [Github repository](https://github.com/Riverscapes/riverscapes-tools/tree/master/packages/channel)  | Pass | Source code is clearly organized and documented |
+| Open Source | [open-source](https://github.com/Riverscapes/riverscapes-tools/tree/master/packages/channel) with [GNU General Public License v 3.0](https://github.com/Riverscapes/riverscapes-tools/blob/master/LICENSE) | Pass | |
+| User Documentation | [Documentation](http://tools.riverscapes.net/channelarea/) is in progress | Partial | Documentation is in progress but has not been published to the website |
 | Easy User Interface | Tool is accessed via command prompt | Partial | Most projects right now are performed by North Arrow Research analysts. For a user to run this version of the tool themselves would require advanced understanding (programming capability) and significant documentation on the process. |
 | Scalability | Batch-processing | Pass | The tool can be batch processed at the HUC 8 level |
 | Produces Riverscapes Projects | Yes | Pass | Produces Riverscapes Projects that are fully-compatible with [RAVE](https://rave.riverscapes.net) |
@@ -72,10 +72,10 @@ This tool's [discrimination](https://riverscapes.net/Tools/#model-discrimination
 
 The current **Production Grade** version of Channel Area improves on previous versions by:
 - Having an inviting [web-map interface](https://riverscapes.net/Data_Warehouses/#web-maps) so non GIS-users can discover tool runs and explore and interrogate them.
-- Making it easy for GIS users to download channel area [projects](https://riverscapes.net/Tools/Technical_Reference/Documentation_Standards/Riverscapes_Projects/) for use in [Viwer](https://viewer.riverscapes.net) 
+- Making it easy for GIS users to download channel area [projects](https://riverscapes.net/Tools/Technical_Reference/Documentation_Standards/Riverscapes_Projects/) for use in [Viewer](https://viewer.riverscapes.net) 
 - Allowing discovery of past Channel Area runs in Warehouse
 
-The development team envision a **Professional Grade** version of Channel Area, which would additionally:
+The development team envisions a **Professional Grade** version of Channel Area, which would additionally:
 
 - Encourage more user-interaction with Channel Area outputs and crowd-sourcing of information to improve the accuracy of outputs
 - Allow users to upload their own Channel Area projects

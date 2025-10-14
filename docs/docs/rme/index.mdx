@@ -8,22 +8,20 @@ sidebar_position: 10
 
 # Riverscapes Metric Engine (RME)
 
-The Riverscape Metric Engine compiles a suite of metrics that provide information regarding riverscape health as well as practical information useful for planning and prioritization purposes. All metrics are summarized onto a point feature class (Integrated Geographic Objects or IGOs) representative of a certain area of valley bottom. Metrics names with the second prefix 'dgo' represent metrics calculated within a single Discrete Geographic Object (DGO) associated with the IGO point, whereas metrics with the 'igo' second prefix represent metrics calculated using a moving window some distance up and downstream of the IGO that aggregates multiple DGOs.
+The Riverscapes Metric Engine compiles a suite of metrics that describe riverscape health and provide practical information for planning and prioritization. These metrics are summarized in a point feature class, Integrated Geographic Objects (IGOs), representative of a specific area of valley bottom. 
+
+Metrics with the “dgo” prefix are calculated for a single Discrete Geographic Object (DGO) associated with the IGO point. Metrics with the prefix “igo” are calculated using a moving window that extends a set distance upstream and downstream from the IGO, aggregating values from multiple DGOs. 
 
 ## Resources
 
 <ToolsWrapper
   cards={[
     {
-      title: "Data",
-      description: "Discover RME model runs available in the Riverscapes Data Exchange.",
+      title: "Download RME Projects",
+      description: "Discover RME model run projects available in the Riverscapes Data Exchange.",
       toolUrl: "https://data.riverscapes.net/s?type=Project&projectTypeId=rs_metric_engine&view=map&geo=81.42132446345016%2C-0.08831460361146526%2C0.7458255305538636"
     },
-    {
-      title: "Communities",
-      description: "Communicate with other RME users and people in the riverscapes community.",
-      toolUrl: "https://www.riverscapes.net/topics"
-    },
+    
     {
       title: "Latest Version Change Log",
       description: "Release notes tracking changes, bug fixes and issues.",

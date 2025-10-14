@@ -9,6 +9,6 @@ Land use intensity is calculated using a simple lookup table that converts land 
 
 ![LUI](/img/anthro/lui_conv.png)
 
-To calculate land use intensity values for each reach of the drainage network in the `vwReaches` output, the land use intensity raster is sampled within a 100m buffer of the reach. The mean intensity value is then calculated for each reach. Similarly to calculate and average land use intensity for DGO and IGO outputs `vwDgos` `vwIgos`, the land use intensity raster is sampled within the entire DGO or moving window, and the average value assigned to the DGO/IGO.
+To calculate land use intensity values for each reach of the drainage network in the `vwReaches` output, the land use intensity raster is sampled within a 100m buffer of the reach. The mean intensity value is then calculated for each reach. Similarly, to calculate and average land use intensity for DGO and IGO outputs (`vwDgos` `vwIgos`), the land use intensity raster is sampled within the entire DGO or moving window, and the average value assigned to the DGO/IGO.
 
 ![lui_sampling](/img/anthro/lui_sampling.png)
