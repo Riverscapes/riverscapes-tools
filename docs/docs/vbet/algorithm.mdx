@@ -3,7 +3,7 @@ title: Algorithm
 sidebar_position: 2
 ---
 
-VBET generates valley bottom on a stream by stream basis (using 'level_path' for NHD data or whatever unique stream ID fields exists for custom data), starting with the largest stream and working down to the smallest stream. For each unique stream:
+VBET generates valley bottom on a stream by stream basis (using 'level_path' for NHD data or whatever unique stream ID fields exist for custom data), starting with the largest stream and working down to the smallest stream. For each unique stream:
 
 1. **Extract channel area for stream**: the channel area polygon for just the unique stream is extracted and rasterized. This raster is used to generate the HAND raster, as well as for a line of evidence in the valley bottom extraction process.
 2. **Clip DEM**: the input DEM is clipped to an extent that includes the drainage wings of the stream.
@@ -13,8 +13,8 @@ VBET generates valley bottom on a stream by stream basis (using 'level_path' for
 6. **Inverse distance weighting of slope evidence**: the slope raster is reweighted using the inverse of the distance from the stream channel. This is done to give more weight to the low slope values near the stream channel relative to low slope values far from the channel (e.g. ridge tops have low slopes but are essentially the opposite of valley bottom).  This is done by computing a proximity raster from the rasterized channel area input. For each slope evidence raster cell, the square root of the distance at that cell divided by the square root of the maximum distance is subtracted from the slope evidence value. 
 7. **Combine evidence rasters**: the slope and HAND evidence rasters are combined using a weighted product. The weights can be set by the user, but the default is 0.65 for HAND and 0.35 for slope. Cells that correspond with the channel area raster are automatically set to 0.995. 
 8. **Threshold the combined evidence raster**: the combined evidence raster is thresholded at 0.65 to extract the full valley bottom, and 0.85 to extract the low-lying valley bottom, and those extents are polygonized and cleaned to remove small isolated features.
-9. **Generate centerline for valley bottom**: a least cost path raster analysis is used to genereate a raster representing the centerline of the valley bottom, which is then converted to a polyline.  
+9. **Generate centerline for valley bottom**: a least cost path raster analysis is used to generate a raster representing the centerline of the valley bottom, which is then converted to a polyline.  
 10. **Generate integrated geographic object (IGO) points**: points are dropped along the centerline at a specified interval, determined by the size category of the stream (i.e., in larger streams the spacing between points is larger).
 11. **Segment the valley bottom into discrete geographic object (DGO) polygons**: The IGO points are used to generate Voronoi polygons, which are then clipped to the valley bottom extent to 'segment' the valley bottom and generate DGO polygons.
 12. **Calculate metrics for each DGO**: metrics are calculated for each DGO polygon.
-13. **Calculate moving window metrics for IGOs**: metrics are calculated for each IGO point based on the DGOs within a specified analysis window around the IGO point. For example a moving window may be specified as two polygons up and downstream of a given point; the resulting analysis window would consist of five DGOs (the two up and downstream and the polygon associated with the IGO point itself).
+13. **Calculate moving window metrics for IGOs**: metrics are calculated for each IGO point based on the DGOs within a specified analysis window around the IGO point. For example, a moving window may be specified as two polygons upstream and downstream of a given point; the resulting analysis window would consist of five DGOs (the two upstream and downstream and the polygon associated with the IGO point itself).

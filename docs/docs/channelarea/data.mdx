@@ -9,9 +9,9 @@ sidebar_position: 3
 
 The channel area tool takes three vector feature class inputs:
 
-1. **Flow lines** - these polylines represent the river network. The features must have two attributes, one that represents the feature typeperennial, internmittent, pipe, canal, artificial path etc (this is the NHD `FCode` field in the United States), and the other is the total upstream drainage area of each feature (`TotDASqKm` in the NHD).
+1. **Flow lines** - these polylines represent the river network. The features must have two attributes, one that represents the feature type (perennial, intermittent, pipe, canal, artificial path, etc (this is the NHD `FCode` field in the United States)), and the other is the total upstream drainage area of each feature (`TotDASqKm` in the NHD).
 1. **Flow Areas** - polygons that represent larger flow areas that are big enough to be represented cartographically as polygons.
-1. **Waterbodies** - polygons representing ponds, lakes and reservoirs.
+1. **Waterbodies** - polygons representing ponds, lakes, and reservoirs.
 
 
 ## Output Attributes
@@ -29,7 +29,7 @@ The channel area tool takes three vector feature class inputs:
 - `WatershedID`: Unique identifier for each watershed (the hydrologic unit code) from the NHD attributes
 - `ownership`: Dominant ownership of the reach (e.g. private, public, tribal)
 - `divergence`: An integer code from NHD attributes indicating channel divergence and type of divergence
-- `stream_order`: Strahler stream stream order from NHD attributes
+- `stream_order`: Strahler stream order from NHD attributes
 - `us_state`: The state in which the reach is located
 - `ecoregion_iii`: Level III ecoregion from the EPA
 - `ecoregion_iv`: Level IV ecoregion from the EPA

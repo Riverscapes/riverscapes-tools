@@ -8,24 +8,26 @@ sidebar_position: 2
 
 # Channel Area
 
-The Channel Area Tool is a simple tool for generating polygons representing the spatial extent of the drainage network within a watershed. The primary purpose for the tool is that the outputs it produces are used as *inputs* in other Riverscapes tools. Geospatial tools often use a simple line network to represent streams. Depending on the functions a tool is performing, this can be problematic as a line can represent both a narrow, first order stream as well as large, wide rivers. Many Riverscapes tools analyze areas outside of the channel (for example, to look at streamside vegetation), therefore an accurate representation of the actual channel, not simply a line, is necessary.
+The Channel Area Tool generates polygons representing the spatial extent of a watershed’s drainage network, providing a more realistic depiction of stream and river channels than simple line networks do. 
 
-The tool is comprised of a simple algorithm for combining polygons representing channels with polygons derived from attributes on a drainage network (line). As long as a drainage network has an attribute recording the upstream contributing drainage area for each segment, regional relationships relating channel width to drainage area can be used to buffer the channel segments, and the resulting polygons can be merged with any other available polygons. This gives a first order approximation of the active channel area. As channels are active and constantly moving through time, greater accuracy can be achieved with more recent, high resolution datasets, or with user input (e.g., editing channel positions or channel polygons). 
+Many geospatial tools use a simple line network to represent streams, which can misrepresent channel width and scale. A single line might describe both a small, first-order stream and a large river, creating problems for analyses that depend on spatial accuracy, like assessing streamside vegetation. The Channel Area Tool solves this by producing polygons that approximate true active channel area. 
+
+This tool uses a simple algorithm for combining polygons representing channels with polygons derived from attributes on a drainage network (line). Where a drainage network includes an attribute recording upstream contributing drainage area for each segment, regional relationships between drainage area and channel width can be applied to buffer channel segments. These buffered segments are then merged with other available polygons to create a first-order approximation of the active channel area.
+
+This tool’s primary purpose is to produce *outputs* to be used as *inputs* in other Riverscapes tools. 
+
+As channels are active and constantly moving through time, greater accuracy can be achieved with more recent, high-resolution datasets or user input (e.g., editing channel positions or channel polygons).
 
 ## Resources
 
 <ToolsWrapper
   cards={[
     {
-      title: "Data",
-      description: "Discover Channel Area model runs available in the Riverscapes Data Exchange.",
+      title: "Download Channel Area Projects",
+      description: "Discover Channel Area model run projects available in the Riverscapes Data Exchange.",
       toolUrl: "https://data.riverscapes.net/s?type=Project&projectTypeId=channelarea&view=map&geo=56.915746141861376%2C11.171228562178229%2C1.0160873547098384"
     },
-    {
-      title: "Communities",
-      description: "Communicate with other Channel Area users and people in the riverscapes community.",
-      toolUrl: "https://www.riverscapes.net/topics"
-    },
+   
     {
       title: "Latest Version Change Log",
       description: "Release notes tracking changes, bug fixes and issues.",
