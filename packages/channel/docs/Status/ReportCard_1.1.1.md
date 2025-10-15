@@ -3,7 +3,7 @@ title: Riverscapes Report Card - Channel Area 1.1.1
 weight: 1
 ---
 
-This report card communicates the Channel Area Tool's compliance with the Riverscape Consortium's published [tool standards](https://riverscapes.net/Tools).
+This report card communicates the Channel Area Tool's compliance with the Riverscape Consortium's published [tool standards](https://docs.riverscapes.net/standards/toolStandards)).
 
 # Report Card Summary
 
@@ -19,7 +19,7 @@ This report card communicates the Channel Area Tool's compliance with the Rivers
 
 # Report Card Details
 
-This tool's [discrimination](https://riverscapes.net/Tools/#model-discrimination) evaluation by the [Riverscapes Consortium](https://riverscapes.net) is:
+This tool's [discrimination](https://docs.riverscapes.net/standards/toolStandards) evaluation by the [Riverscapes Consortium](https://riverscapes.net) is:
 
 **Evaluation Key:**
 None or Not Applicable: <i class="fa fa-battery-empty" aria-hidden="true"></i> •

@@ -3,7 +3,7 @@ title: Riverscapes Report Card - VBET 0.5.1
 weight: 1
 ---
 
-VBET is one of several tools developed by the [Riverscapes Consortium](https://riverscapes.net). This report card communicates VBET's compliance with the Riverscape Consortium's published [tool standards](https://riverscapes.net/Tools).
+VBET is one of several tools developed by the [Riverscapes Consortium](https://riverscapes.net). This report card communicates VBET's compliance with the Riverscape Consortium's published [tool standards](https://docs.riverscapes.net/standards/toolStandards)).
 
 # Report Card Summary
 
@@ -19,7 +19,7 @@ VBET is one of several tools developed by the [Riverscapes Consortium](https://r
 
 # Report Card Details
 
-This tool's [discrimnation](https://riverscapes.net/Tools/#model-discrimination) evaluation by the [Riverscapes Consortium's](https://riverscapes.net) is:
+This tool's [discrimnation](https://docs.riverscapes.net/standards/toolStandards) evaluation by the [Riverscapes Consortium's](https://riverscapes.net) is:
 
 **Evaluation Key:**
 None or Not Applicable: <i class="fa fa-battery-empty" aria-hidden="true"></i> •

@@ -3,7 +3,7 @@ title: Riverscapes Report Card - TauDEM 1.0.2
 weight: 1
 ---
 
-[TauDEM](https://hydrology.usu.edu/taudem/taudem5/index.html) is a package of tools developed by David Tarboton of Utah State University's Hydrology Research Group. This report card communicates the Riverscape appliation that utilizes TauDEM's algorithms/scripts compliance with the Riverscape Consortium's published [tool standards](https://riverscapes.net/Tools).
+[TauDEM](https://hydrology.usu.edu/taudem/taudem5/index.html) is a package of tools developed by David Tarboton of Utah State University's Hydrology Research Group. This report card communicates the Riverscape appliation that utilizes TauDEM's algorithms/scripts compliance with the Riverscape Consortium's published [tool standards](https://docs.riverscapes.net/standards/toolStandards)).
 
 # Report Card Summary
 
@@ -19,7 +19,7 @@ weight: 1
 
 # Report Card Details
 
-This tool's [discrimnation](https://riverscapes.net/Tools/#model-discrimination) evaluation by the [Riverscapes Consortium's](https://riverscapes.net) is:
+This tool's [discrimnation](https://docs.riverscapes.net/standards/toolStandards) evaluation by the [Riverscapes Consortium's](https://riverscapes.net) is:
 
 **Evaluation Key:**
 None or Not Applicable: <i class="fa fa-battery-empty" aria-hidden="true"></i> •
