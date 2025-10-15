@@ -1,12 +1,13 @@
 import os
-import sys
-from os import path
 from rscommons import Logger
 from champ_metrics.lib.exception import DataException
 from champ_metrics.lib.topoproject import TopoProject
 
 
 class TopoData:
+    """
+    Class to hold all the topo data for a given visit
+    """
 
     def __init__(self, topo_project_xml: str, visitID: int) -> None:
 
@@ -23,7 +24,7 @@ class TopoData:
         # This object will be empty if there is no project.rs.xml file in the sFolder
         self.riverscapes = TopoProject(topo_project_xml)
 
-    def buildManualFile(self, layerFileName, bMandatory):
+    def buildManualFile(self, layerFileName: str, bMandatory: bool) -> str:
         """
         Building a file path using manual layer file naming
         :param layerName:
@@ -32,16 +33,16 @@ class TopoData:
         """
         path = ""
         log = Logger("buildManualFile")
+
         try:
             match = next(file for file in os.listdir(self.directory) if file.lower() == layerFileName.lower())
             path = os.path.join(self.directory, match)
 
         except Exception as e:
-            log.warning("The file called '{0}' does not exist in directory: {1}".format(layerFileName, self.directory))
-            pass
-            # if bMandatory:
-            #     log.error("The file called '{0}' does not exist in directory: {1}".format(layerFileName, self.directory))
-            #     raise DataException("The file called '{0}' does not exist")
+            log.warning(f"The file called '{layerFileName}' does not exist in directory: {self.directory}")
+            if bMandatory is True:
+                log.error(f"The file called '{layerFileName}' does not exist in directory: {self.directory}")
+                raise DataException(f"The file called '{layerFileName}' does not exist: {e}") from e
         return path
 
     def buildProjectFile(self, layer_key: str, bMandatory: bool) -> str:
@@ -67,6 +68,8 @@ class TopoData:
         Load all the layers from the topo project
         """
 
+        log = Logger("TopoData")
+
         # If we have a topo toolbar project with a project.rs.xml file this is what we have to do
         if self.riverscapes.isrsproject:
             self.Channels['Wetted'].Centerline = self.buildProjectFile("WettedCenterline", True)
@@ -87,6 +90,8 @@ class TopoData:
             self.ChannelUnits = self.buildProjectFile("ChannelUnits", True)
             self.Thalweg = self.buildProjectFile("Thalweg", True)
             self.TopoPoints = self.buildProjectFile("Topo_Points", True)
+
+            log.info('Loaded layers from riverscapes topo project')
 
         # If this is just a folder full of files we have to use filenames
         else:
@@ -109,14 +114,13 @@ class TopoData:
             self.Thalweg = self.buildManualFile("Thalweg.shp", True)
             self.TopoPoints = self.buildManualFile("Topo_Points.shp", True)
 
-    # def loadlayersproj(self):
-
-    #     tp = TopoProject(self.directory)
-
-    #     self.Channels['Wetted'] = tp['Weted']
+            log.info('Loaded layers from manual file naming')
 
 
 class Channel:
+    """
+    Class to hold wetted or bankfull channel data
+    """
 
     def __init__(self):
         self.Centerline = ""
