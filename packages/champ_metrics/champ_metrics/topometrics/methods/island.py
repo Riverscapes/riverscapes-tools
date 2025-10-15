@@ -1,6 +1,7 @@
 import sys
 
 from os import path
+from rscommons import Logger
 from champ_metrics.lib.shapefileloader import Shapefile
 from champ_metrics.lib.metrics import CHaMPMetric
 
@@ -11,11 +12,14 @@ class IslandMetrics(CHaMPMetric):
 
     def calc(self, shpIslands):
         """
-
+        Calculate island topometrics
         :param shpIslands:
         :return:
         """
         self.metrics = {'Count': 0, 'Area': 0.0, 'QualifyingCount': 0, 'QualifyingArea': 0.0}
+
+        log = Logger("IslandMetrics")
+        log.info("Calculating Island Metrics")
 
         if not path.isfile(shpIslands):
             return
@@ -32,6 +36,8 @@ class IslandMetrics(CHaMPMetric):
                     if aFeat['fields']['IsValid'] == 1:
                         self.metrics['QualifyingCount'] += 1
                         self.metrics['QualifyingArea'] += aFeat['geometry'].area
+
+        log.info("Island Metrics Complete")
 
     def _getMainstemGeometry(self, shpCenterline):
         """

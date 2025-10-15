@@ -8,6 +8,7 @@ from champ_metrics.lib.shapefileloader import Shapefile
 from champ_metrics.lib.exception import DataException, MissingException
 from champ_metrics.lib.metrics import CHaMPMetric
 from champ_metrics.lib.raster import Raster
+from rscommons import Logger
 
 
 class ThalwegMetrics(CHaMPMetric):
@@ -27,6 +28,18 @@ class ThalwegMetrics(CHaMPMetric):
     }
 
     def calc(self, sThalwegshp, sDepthRaster, sWaterSurfaceRaster, fDist, visitMetrics):
+        """
+        Calculate thalweg topometrics
+        :param sThalwegshp: path to the thalweg shapefile
+        :param sDepthRaster: path to the depth raster
+        :param sWaterSurfaceRaster: path to the water surface raster
+        :param fDist: distance interval for sampling the raster along the thalweg
+        :param visitMetrics: dictionary of all the visit metrics calculated so far
+        :return:
+        """
+
+        log = Logger("ThalwegMetrics")
+        log.info("Calculating Thalweg Metrics")
 
         if not path.isfile(sThalwegshp):
             raise MissingException("Thalweg shapefile missing")
@@ -85,6 +98,8 @@ class ThalwegMetrics(CHaMPMetric):
         }
         if self.metrics['StDev'] != 0 and self.metrics['Mean'] != 0:
             self.metrics['CV'] = self.metrics['StDev'] / self.metrics['Mean']
+
+        log.info("Thalweg Metrics Complete")
 
     @staticmethod
     def interpolateRasterAlongLine(line, fStationInterval):
