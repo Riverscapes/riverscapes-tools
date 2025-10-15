@@ -1,13 +1,14 @@
 import sys
-from os import path
-from champ_metrics.lib.shapefileloader import *
+from shapely.geometry import MultiLineString, Point
+from champ_metrics.lib.shapefileloader import Shapefile
 from champ_metrics.lib.exception import DataException
 from champ_metrics.lib.metrics import CHaMPMetric
-from copy import copy
-from shapely.geometry import MultiLineString, Point
 
 
 class CenterlineMetrics(CHaMPMetric):
+    """
+    Centerline Metrics
+    """
 
     TEMPLATE = {
         'ChannelCount': None,
@@ -23,16 +24,19 @@ class CenterlineMetrics(CHaMPMetric):
     }
 
     def calc(self, centerline):
+        """
+        Calculate the centerline metrics
+        """
         dMetrics = self._CenterlinePartMetrics(centerline)
         self._CenterlineSummaryMetrics(dMetrics)
 
-    def _CenterlinePartMetrics(self, centerline):
+    def _CenterlinePartMetrics(self, centerline: str) -> dict:
         """
         Centerline Part Metrics
         :param centerline:
         :return:
         """
-        self.log.info("Loading centerline shapefile: {}".format(centerline))
+        self.log.info(f"Loading centerline shapefile: {centerline}")
 
         clShp = Shapefile(centerline)
         clList = clShp.featuresToShapely()
@@ -42,7 +46,7 @@ class CenterlineMetrics(CHaMPMetric):
         lineIndex = 1
         for aLine in clList:
 
-            if type(aLine['geometry']) is MultiLineString:
+            if isinstance(aLine['geometry'], MultiLineString):
                 raise DataException('Multipart features in centerline')
 
             curvedLength = aLine['geometry'].length
@@ -92,7 +96,7 @@ class CenterlineMetrics(CHaMPMetric):
         self.metrics['SideChannelLength'] = sum([fLen['Length'] for fLen in lSideParts])
         self.metrics['TotalChannelLength'] = self.metrics['MainstemLength'] + self.metrics['SideChannelLength']
 
-        if self.metrics['ChannelCount'] > 0:
+        if self.metrics['SideChannelCount'] > 0:
             self.metrics['AverageSideChannelLength'] = self.metrics['TotalChannelLength'] / self.metrics['ChannelCount']
 
         if self.metrics['MainstemLength'] > 0:
@@ -130,5 +134,5 @@ if __name__ == "__main__":
     except AssertionError as e:
         sys.exit(0)
     except Exception as e:
+        print(f"Unhandled exception: {e}", exc_info=True)
         raise
-        sys.exit(0)
