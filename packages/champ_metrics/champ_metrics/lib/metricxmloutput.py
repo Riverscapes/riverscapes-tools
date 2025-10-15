@@ -7,8 +7,10 @@ from .loghelper import Logger
 DATECREATEDFIELD = "GenerationDate"
 VERSIONFIELD = "ModelVersion"
 
+
 def writeMetricsToXML(dMetricsArg, visitID, sourceDir, xmlFilePath, modelEngineRootNode, modelVersion):
-    log = Logger(__name__)
+    log = Logger("Metric XML")
+    log.info("Writing metrics to XML")
 
     tree = ET.ElementTree(ET.Element(modelEngineRootNode))
 
@@ -32,7 +34,8 @@ def writeMetricsToXML(dMetricsArg, visitID, sourceDir, xmlFilePath, modelEngineR
     with open(xmlFilePath, "w") as f:
         f.write(pretty)
 
-    log.info("Wrote metrics to file: {}".format(xmlFilePath))
+    log.info(f"Wrote metrics to file: {xmlFilePath}")
+
 
 def _writeDictionaryToXML(parentNode, dValues):
 
@@ -47,6 +50,7 @@ def _writeDictionaryToXML(parentNode, dValues):
         elif item is not None:
             newParent.text = "{0}".format(item)
 
+
 def integrateMetricDictionary(topo_metrics, prefix, newCollection):
     """
     Incorporate a dictionary into another one
@@ -58,9 +62,15 @@ def integrateMetricDictionary(topo_metrics, prefix, newCollection):
     if not newCollection:
         return
 
+    log = Logger("Integrating Metrics")
+    log.info(f"Integrating metrics for {prefix}")
+
     topo_metrics[prefix] = {}
     for key, item in newCollection.items():
         topo_metrics[prefix][key] = copy.deepcopy(item)
+
+    log.info(f"Finished integrating metrics for {prefix}")
+
 
 def integrateMetricList(topo_metrics, parentPrefix, itemPrefix, newCollection):
     topo_metrics[parentPrefix] = []

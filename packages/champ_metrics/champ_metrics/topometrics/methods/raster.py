@@ -2,9 +2,16 @@ import numpy as np
 import sys
 from os import path
 from champ_metrics.lib.raster import Raster
+from rscommons import Logger
 
 
 def RasterMetrics(rpath):
+    """
+    Calculate raster
+    """
+
+    log = Logger("RasterMetrics")
+    log.info(f'Calculating {path.splitext(path.basename(rpath))[0].replace("_", " ")} Raster Metrics')
 
     result = {'StDev': None}
     theRaster = Raster(rpath)
