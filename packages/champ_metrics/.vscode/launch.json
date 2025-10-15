@@ -23,11 +23,26 @@
       "name": "CHaMP Metrics",
       "type": "debugpy",
       "module": "champ_metrics.champ_metrics",
+      "envFile": "${workspaceFolder}/.env",
       "args": [
         "${input:visitID}",
         "{env:DATA_ROOT}/champ/workbench.db",
         "{env:DATA_ROOT}/champ/topo_projects/${input:visitID}/project.rs.xml",
         "{env:DATA_ROOT}/champ/metrics/${input:visitID}"
+      ],
+      "request": "launch",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "BATCH CHaMP Metrics",
+      "type": "debugpy",
+      "module": "champ_metrics.champ_metrics_batch",
+      "envFile": "${workspaceFolder}/.env",
+      "args": [
+        "{env:DATA_ROOT}/champ/workbench.db",
+        "{env:CSV_FOLDER}",
+        "{env:DATA_ROOT}/project_download",
+        "{env:DATA_ROOT}/champ/metrics"
       ],
       "request": "launch",
       "console": "integratedTerminal"
