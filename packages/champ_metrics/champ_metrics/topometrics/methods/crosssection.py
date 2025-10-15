@@ -55,6 +55,11 @@ class CrossSectionMetrics(CHaMPMetric):
         super(CrossSectionMetrics, self).__init__(*args, **kwargs)
 
     def calc(self, crosssections, waterExtent, demPath, stationInterval):
+        """
+        Calculate cross section topometrics
+        """
+        log = Logger("CrossSectionMetrics")
+        log.info("Calculating Cross Section Metrics")
 
         # Save space by only loading the desired fields from the ShapeFile.
         # We also need the 'Channel' and 'IsValid' fields if they exist.
@@ -164,6 +169,7 @@ class CrossSectionMetrics(CHaMPMetric):
         # For complex ShapeFiles this will be just the results for the main channel.
         # For simple, single threaded, ShapeFiles this will all cross sections.
         self.metrics['Channel'] = self.metrics['Main']
+        log.info("Cross Section Metrics Complete")
 
 
 def calcXSMetrics(xs, rivershapeWithDonuts, demRaster, fStationInterval):
