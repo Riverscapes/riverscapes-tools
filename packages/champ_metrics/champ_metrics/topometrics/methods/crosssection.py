@@ -283,7 +283,10 @@ def metricSanitize(metric):
     """
 
     try:
-        num = np.float(metric)
+        if metric is None:
+            num = None
+        else:
+            num = float(metric)
     except:
         num = None
     # We explicitly cast this to np.float (NOT np.float32 or np.float64 etc.) to keep ogr from breaking
