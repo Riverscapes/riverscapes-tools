@@ -11,7 +11,7 @@ This report card communicates the Riverscape Context Tool's compliance with the 
 | Version | [1.2.2](https://github.com/Riverscapes/riverscapes-tools/tree/master/packages/rscontext) |
 | Date | 2021-11-22 |
 | Assessment Team | Bailey, Wheaton & Gilbert |
-| Current Assessment | ![production](https://raw.githubusercontent.com/Riverscapes/riverscapes-website/master/assets/images/tools/grade/TRL_6_32p.png) [Production Grade](https://riverscapes.net/Tools/#tool-grade) |
+| Current Assessment | ![production](https://raw.githubusercontent.com/Riverscapes/riverscapes-website/master/assets/images/tools/grade/TRL_6_32p.png) [Production Grade](https://docs.riverscapes.net/standards/discrimination) |
 | Target Status | ![production](https://raw.githubusercontent.com/Riverscapes/riverscapes-website/master/assets/images/tools/grade/TRL_6_32p.png) Production Grade |
 | Riverscapes Compliance | ![Compliant](https://riverscapes.net/assets/images/rc/RiverscapesCompliant_24.png) Compliant|
 | Assessment Rationale | The tool can be used to aggregate data anywhere the nationally available datasets used to drive many riverscapes tools are available, and produces riverscapes projects that are compatible with [RAVE](https://rave.riverscapes.net). These projects are also being uploaded to the riverscapes warehouse. The tool needs documentation, but qualifies for Production Grade. |
@@ -48,9 +48,9 @@ Fully Developed: <i class="fa fa-battery-full" aria-hidden="true"></i>
 | :------- | :---- | :--------- | :------- |
 | [RAVE](https://rave.riverscapes.net)- Compliant Riverscapes Projects <img  src="https://riverscapes.net/assets/images/data/RiverscapesProject_24.png"> | Yes | <i class="fa fa-battery-full" aria-hidden="true"></i> | |
 | [RAVE](https://rave.riverscapes.net) Business Logic Defined | Yes | <i class="fa fa-battery-full" aria-hidden="true"></i> |  |
-| Riverscapes Projects hosted in public-facing [Riverscapes Warehouse(s)](https://riverscapes.net/Data_Warehouses/#warehouse-explorer-concept) <img src="https://riverscapes.net/assets/images/data/RiverscapesWarehouseCloud_24.png"> | Yes. Current Riverscape Context projects are being housed in the [Riverscapes Warehouse](https://data.riverscapes.net). | <i class="fa fa-battery-half" aria-hidden="true"></i> | There is data in the warehouse, but is provisional and wider access to the warehouse is forthcoming |
-| Riverscapes Projects connected to [Web-Maps](https://riverscapes.net/Data_Warehouses#web-maps) <i class="fa fa-map-o" aria-hidden="true"></i> | Yes | <i class="fa fa-battery-full" aria-hidden="true"></i> | Current projects are viewable in [WebRAVE](https://rave.riverscapes.net/Download/install_webrave.html) through the Riverscapes Warehouse |
-| Riverscapes Projects connected to Field [Apps](https://riverscapes.net//Data_Warehouses#apps---pwas) <img src="http://riverscapes.net/assets/images/tools/PWA.png"> | No | <i class="fa fa-battery-quarter" aria-hidden="true"></i> | These can be used as basemaps or context layers with QField. |
+| Riverscapes Projects hosted in public-facing [Riverscapes Data Exchange](https://riverscapes.net) <img src="https://riverscapes.net/assets/images/data/RiverscapesWarehouseCloud_24.png"> | Yes. Current Riverscape Context projects are being housed in the [Riverscapes Warehouse](https://data.riverscapes.net). | <i class="fa fa-battery-half" aria-hidden="true"></i> | There is data in the warehouse, but is provisional and wider access to the warehouse is forthcoming |
+| Riverscapes Projects connected to [Web-Maps](https://riverscapes.net/software-help/help-web) <i class="fa fa-map-o" aria-hidden="true"></i> | Yes | <i class="fa fa-battery-full" aria-hidden="true"></i> | Current projects are viewable in [WebRAVE](https://rave.riverscapes.net/Download/install_webrave.html) through the Riverscapes Warehouse |
+| Riverscapes Projects connected to Field [Apps](https://docs.riverscapes.net/category/products) <img src="http://riverscapes.net/assets/images/tools/PWA.png"> | No | <i class="fa fa-battery-quarter" aria-hidden="true"></i> | These can be used as basemaps or context layers with QField. |
 
 ## Developer Intent
 ...
@@ -65,4 +65,5 @@ Future enhancements under consideration include:
 
 
 <a href="https://riverscapes.net"><img class="float-left" src="https://riverscapes.net/assets/images/rc/RiverscapesConsortium_Logo_Black_BHS_200w.png"></a>
-The [Riverscapes Consortium's](https://riverscapes.net) Technical Committee provides report cards for tools either deemed as "[riverscapes-compliant](https://riverscapes.net/Tools/#riverscapes-compliant)" <img  src="https://riverscapes.net/assets/images/rc/RiverscapesCompliant_24.png"> or "[pending riverscapes-compliance](https://riverscapes.net/Tools/#tools-pending-riverscapes-compliance)" <img  src="https://riverscapes.net/assets/images/rc/RiverscapesCompliantPending_28.png">.
+The [Riverscapes Consortium's](https://riverscapes.net) Technical Committee provides report cards for tools either deemed as "[riverscapes-compliant](https://docs.riverscapes.net/standards
+)" <img  src="https://riverscapes.net/assets/images/rc/RiverscapesCompliant_24.png"> or "[pending riverscapes-compliance](https://riverscapes.net/Tools/#tools-pending-riverscapes-compliance)" <img  src="https://riverscapes.net/assets/images/rc/RiverscapesCompliantPending_28.png">.
