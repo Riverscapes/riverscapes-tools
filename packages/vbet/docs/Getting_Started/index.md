@@ -6,7 +6,7 @@ VBET can be used at two different levels. Most users will want to access data fr
 
 ### Accessing Data
 
-Instructions on downloading projects from the [Riverscapes Warehouse](https://data.riverscapes.net/#/), including VBET projects can be found [**here**](https://tools.riverscapes.net/DownloadingData.html).
+Instructions on downloading projects from the [Riverscapes Data Exchange](https://data.riverscapes.net/#/), including VBET projects can be found [**here**](https://tools.riverscapes.net/DownloadingData.html).
 
 Instructions on opening and viewing projects in [RAVE](https://rave.riverscapes.net/) can be found [**here**](https://tools.riverscapes.net/ViewingProjects.html)
 
