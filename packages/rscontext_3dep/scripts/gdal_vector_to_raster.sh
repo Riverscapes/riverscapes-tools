@@ -1,0 +1,1 @@
+gdal_rasterize -a TotDASqKM -l catchments /Users/philipbailey/GISData/riverscapes/pytorch_vbet/rscontext/hydrology/hydro_derivatives.gpkg /Users/philipbailey/GISData/riverscapes/pytorch_vbet/drainage_area.tif
