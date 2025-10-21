@@ -13,10 +13,11 @@ import os
 import subprocess
 import sys
 import traceback
-from riverscapes import RiverscapesAPI, RiverscapesSearchParams
+# from riverscapes import RiverscapesAPI, RiverscapesSearchParams
 from typing import List
 import questionary
 from osgeo import ogr
+import sqlite3
 
 from rsxml.util import safe_makedirs, safe_remove_dir
 from rsxml import Logger, dotenv
@@ -24,6 +25,11 @@ from rscommons import RSProject, RSMeta, GeopackageLayer, ModelConfig
 from rscommons.copy_features import copy_features_fields
 from sqlbrat.utils.capacity_validation import validate_capacity
 from sqlbrat.__version__ import __version__
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.abspath(os.path.join(__file__, "../../../../data_exchange_scripts")))
+
+from pydex.classes.RiverscapesAPI import RiverscapesAPI, RiverscapesSearchParams
 
 cfg = ModelConfig('https://xml.riverscapes.net/Projects/XSD/V2/RiverscapesProject.xsd', __version__)
 
@@ -53,6 +59,7 @@ def run_validation(huc: int, working_dir: str = '/workspaces/data', upload_tags:
     brat_params = RiverscapesSearchParams(
         {
             "projectTypeId": "riverscapes_brat",
+            "tags": ["NMBRAT2025"],
             "meta": {
                 "HUC": str(huc)
             }})
@@ -137,9 +144,9 @@ def run_validation(huc: int, working_dir: str = '/workspaces/data', upload_tags:
     # out_beaver_gpkg = os.path.join(qris_dir, huc, 'beaver_activity_1.gpkg')
 
     for g in brat_gpkgs:
-        cmd = f"ogr2ogr -f GPKG -makevalid -append -nln 'vwReaches' {out_brat_gpkg} {g} 'vwReaches'"
+        cmd = f"ogr2ogr -f GPKG -makevalid -append -nln 'vwDgos' {out_brat_gpkg} {g} 'vwDgos'"
         subprocess.run(cmd, shell=True)
-        cmd2 = f"ogr2ogr -f GPKG -makevalid -append -nln 'ReachGeometry' {out_brat_gpkg} {g} 'ReachGeometry'"
+        cmd2 = f"ogr2ogr -f GPKG -makevalid -append -nln 'DGOGeometry' {out_brat_gpkg} {g} 'DGOGeometry'"
         subprocess.run(cmd2, shell=True)
 
     beaver_gpkgs = []
@@ -181,18 +188,37 @@ def run_validation(huc: int, working_dir: str = '/workspaces/data', upload_tags:
 
         # copy the realized capacity feature class to the brat projects
         huc_id = None
-        with GeopackageLayer(os.path.join(g, 'vwReaches')) as lyr:
+        with GeopackageLayer(os.path.join(g, 'vwDgos')) as lyr:
             while huc_id is None:
                 huc_id = lyr.ogr_layer.GetNextFeature().GetField('WatershedID')
 
+        driver = ogr.GetDriverByName('GPKG')
+        ds = driver.Open(g, 1)
+        if ds is not None:
+            layer = ds.GetLayer('vwCapacity')
+            if layer is not None:
+                del_lyr = True
+            else: 
+                del_lyr = False
+            ds = None
+
+        if del_lyr:
+            with sqlite3.connect(g) as conn:
+                cursor = conn.cursor()
+                cursor.execute("DROP TABLE vwCapacity")
+                cursor.execute("DELETE FROM gpkg_contents WHERE table_name='vwCapacity'")
+                cursor.execute("DELETE FROM gpkg_geometry_columns WHERE table_name='vwCapacity'")
+                
+                conn.commit()
+
         with GeopackageLayer(g, layer_name='vwCapacity', write=True) as cap_lyr:
-            cap_lyr.create_layer(ogr.wkbMultiLineString, epsg=cfg.OUTPUT_EPSG, fields={
+            cap_lyr.create_layer(ogr.wkbMultiPolygon, epsg=cfg.OUTPUT_EPSG, fields={
                 'WatershedID': ogr.OFTString,
                 'ReachCode': ogr.OFTInteger,
                 'predicted_capacity': ogr.OFTReal,
                 'dam_density': ogr.OFTReal,
                 'percent_capacity': ogr.OFTReal
-            })
+            }, options=['OVERWRITE=YES'])
 
         full_fc = os.path.join(out_brat_gpkg, 'vwCapacity')
         copy_fc = os.path.join(g, 'vwCapacity')
@@ -203,22 +229,27 @@ def run_validation(huc: int, working_dir: str = '/workspaces/data', upload_tags:
         project = RSProject(None, os.path.join(os.path.dirname(os.path.dirname(g)), 'project.rs.xml'))
         outputs_node = project.XMLBuilder.root.find('Realizations').find('Realization').find('Outputs')
         outgpkg_node = outputs_node.find('Geopackage').find('Layers')
-        cap_node = project.XMLBuilder.add_sub_element(outgpkg_node, 'Vector', attribs={'lyrName': 'vwCapacity'})
-        project.XMLBuilder.add_sub_element(cap_node, 'Name', text='Realized BRAT Capacity')
-        newmeta_node = project.XMLBuilder.add_sub_element(cap_node, 'MetaData')
-        project.XMLBuilder.add_sub_element(newmeta_node, 'Meta', attribs={'name': 'Description'}, text='Realized BRAT Capacity from Beaver Activity')
-        image_node1 = project.XMLBuilder.add_sub_element(outputs_node, 'Image', attribs={'id': 'quantile'})
-        project.XMLBuilder.add_sub_element(image_node1, 'Name', text='Quantile Regressions')
-        project.XMLBuilder.add_sub_element(image_node1, 'Path', text='outputs/validation/regressions.png')
-        image_node2 = project.XMLBuilder.add_sub_element(outputs_node, 'Image', attribs={'id': 'observed'})
-        project.XMLBuilder.add_sub_element(image_node2, 'Name', text='Observed vs Predicted')
-        project.XMLBuilder.add_sub_element(image_node2, 'Path', text='outputs/validation/obs_v_pred.png')
-        csv_node = project.XMLBuilder.add_sub_element(outputs_node, 'CSV', attribs={'id': 'electivity_index'})
-        project.XMLBuilder.add_sub_element(csv_node, 'Name', text='Electivity Index')
-        project.XMLBuilder.add_sub_element(csv_node, 'Path', text='outputs/validation/electivity_index.csv')
-        # meta_node = project.XMLBuilder.root.find('MetaData')
-        project.add_metadata([RSMeta('CensusDate', ','.join(census_dates))])
-        project.XMLBuilder.write()
+        
+        # Check if vwCapacity node already exists and remove it if it does
+        existing_cap_node = outgpkg_node.find('Vector[@lyrName="vwCapacity"]')
+        if existing_cap_node is None:
+        
+            cap_node = project.XMLBuilder.add_sub_element(outgpkg_node, 'Vector', attribs={'lyrName': 'vwCapacity'})
+            project.XMLBuilder.add_sub_element(cap_node, 'Name', text='Realized BRAT Capacity')
+            newmeta_node = project.XMLBuilder.add_sub_element(cap_node, 'MetaData')
+            project.XMLBuilder.add_sub_element(newmeta_node, 'Meta', attribs={'name': 'Description'}, text='Realized BRAT Capacity from Beaver Activity')
+            image_node1 = project.XMLBuilder.add_sub_element(outputs_node, 'Image', attribs={'id': 'quantile'})
+            project.XMLBuilder.add_sub_element(image_node1, 'Name', text='Quantile Regressions')
+            project.XMLBuilder.add_sub_element(image_node1, 'Path', text='outputs/validation/regressions.png')
+            image_node2 = project.XMLBuilder.add_sub_element(outputs_node, 'Image', attribs={'id': 'observed'})
+            project.XMLBuilder.add_sub_element(image_node2, 'Name', text='Observed vs Predicted')
+            project.XMLBuilder.add_sub_element(image_node2, 'Path', text='outputs/validation/obs_v_pred.png')
+            csv_node = project.XMLBuilder.add_sub_element(outputs_node, 'CSV', attribs={'id': 'electivity_index'})
+            project.XMLBuilder.add_sub_element(csv_node, 'Name', text='Electivity Index')
+            project.XMLBuilder.add_sub_element(csv_node, 'Path', text='outputs/validation/electivity_index.csv')
+            # meta_node = project.XMLBuilder.root.find('MetaData')
+            project.add_metadata([RSMeta('CensusDate', ','.join(census_dates))])
+            project.XMLBuilder.write()
         # reupload the brat projects with the validation folder
         if upload_tags:
             cmd2 = f"rscli upload {os.path.dirname(os.path.dirname(g))} --tags {upload_tags} --no-input --no-ui --verbose"

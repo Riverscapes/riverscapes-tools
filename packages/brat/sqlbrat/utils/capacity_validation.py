@@ -31,54 +31,71 @@ def dam_count_table(brat_gpkg_path: str, dams_gpkg_path: str):
 
     log = Logger('Dam Count Table')
 
-    dam_cts = {}  # reachid: dam count
+    dam_cts = {}  # fid: dam count
 
-    with GeopackageLayer(os.path.join(brat_gpkg_path, 'vwReaches')) as brat_lyr, \
+    with GeopackageLayer(os.path.join(brat_gpkg_path, 'vwDgos')) as brat_lyr, \
             GeopackageLayer(os.path.join(dams_gpkg_path, 'dams')) as dams_lyr:
 
-        buffer_distance = brat_lyr.rough_convert_metres_to_vector_units(0.1)
-        max_distance = brat_lyr.rough_convert_metres_to_vector_units(30)
+        # buffer_distance = brat_lyr.rough_convert_metres_to_vector_units(0.1)
+        # max_distance = brat_lyr.rough_convert_metres_to_vector_units(30)
 
         # create a dissolved drainage network
-        line_geoms = [ftr for ftr in brat_lyr.ogr_layer]
-        line_geoms_shapely = [VectorBase.ogr2shapely(line_geom) for line_geom in line_geoms]
-        merged_line = unary_union(line_geoms_shapely)
+        # line_geoms = [ftr for ftr in brat_lyr.ogr_layer]
+        # line_geoms_shapely = [VectorBase.ogr2shapely(line_geom) for line_geom in line_geoms]
+        # merged_line = unary_union(line_geoms_shapely)
 
         # get the points on the line network that are closest to the dam points
-        for dam_ftr, *_ in dams_lyr.iterate_features('Finding dam counts for reaches'):
+        # for dam_ftr, *_ in dams_lyr.iterate_features('Finding dam counts for reaches'):
+        #     dam_id = dam_ftr.GetFID()
+        #     dam_geom = dam_ftr.GetGeometryRef()
+        #     nearest_line = nearest_points(merged_line, VectorBase.ogr2shapely(dam_geom))
+        #     if nearest_line[0].distance(VectorBase.ogr2shapely(dam_geom)) > max_distance:
+        #         continue
+        #     dam_buf = nearest_line[0].buffer(buffer_distance)
+
+        #     ct = 0
+        #     for line_ftr, *_ in brat_lyr.iterate_features(clip_shape=dam_buf):
+        #         if ct == 0:
+        #             if line_ftr.GetField('iGeo_Len') < 100:
+        #                 continue
+        #             reachid = line_ftr.GetFID()
+        #             line_geom = line_ftr.GetGeometryRef()
+        #             if line_geom is not None:
+        #                 if reachid not in dam_cts.keys():
+        #                     dam_cts[reachid] = 1
+        #                     ct += 1
+        #                 else:
+        #                     dam_cts[reachid] += 1
+        #                     ct += 1
+
+        for dam_ftr, *_ in dams_lyr.iterate_features('Finding dam counts for DGOs'):
             dam_id = dam_ftr.GetFID()
             dam_geom = dam_ftr.GetGeometryRef()
-            nearest_line = nearest_points(merged_line, VectorBase.ogr2shapely(dam_geom))
-            if nearest_line[0].distance(VectorBase.ogr2shapely(dam_geom)) > max_distance:
-                continue
-            dam_buf = nearest_line[0].buffer(buffer_distance)
 
             ct = 0
-            for line_ftr, *_ in brat_lyr.iterate_features(clip_shape=dam_buf):
+            for dgo_ftr, *_ in brat_lyr.iterate_features(clip_shape=dam_geom):
                 if ct == 0:
-                    if line_ftr.GetField('iGeo_Len') < 100:
-                        continue
-                    reachid = line_ftr.GetFID()
-                    line_geom = line_ftr.GetGeometryRef()
-                    if line_geom is not None:
-                        if reachid not in dam_cts.keys():
-                            dam_cts[reachid] = 1
+                    fid = dgo_ftr.GetFID()
+                    dgo_geom = dgo_ftr.GetGeometryRef()
+                    if dgo_geom is not None:
+                        if fid not in dam_cts.keys():
+                            dam_cts[fid] = 1
                             ct += 1
                         else:
-                            dam_cts[reachid] += 1
+                            dam_cts[fid] += 1
                             ct += 1
 
     with SQLiteCon(brat_gpkg_path) as db:
-        db.curs.execute('SELECT fid FROM vwReaches')
-        reachids = [row['fid'] for row in db.curs.fetchall()]
+        db.curs.execute('SELECT fid FROM vwDgos')
+        fids = [row['fid'] for row in db.curs.fetchall()]
         db.curs.execute('DROP TABLE IF EXISTS dam_counts')
-        db.curs.execute('CREATE TABLE dam_counts (ReachID INTEGER PRIMARY KEY, FCode INTEGER, WatershedID TEXT, dam_count INTEGER, dam_density REAL, predicted_capacity REAL, length REAL, percent_capacity REAL)')
-        db.curs.execute('INSERT INTO dam_counts (ReachID, FCode, WatershedID, predicted_capacity, length) SELECT fid, ReachCode, WatershedID, oCC_EX, iGeo_Len FROM vwReaches')
-        for reachid in reachids:
-            if reachid in dam_cts.keys():
-                db.curs.execute('UPDATE dam_counts SET dam_count = ? WHERE reachid = ?', (dam_cts[reachid], reachid))
+        db.curs.execute('CREATE TABLE dam_counts (fid INTEGER PRIMARY KEY, FCode INTEGER, WatershedID TEXT, dam_count INTEGER, dam_density REAL, predicted_capacity REAL, length REAL, percent_capacity REAL)')
+        db.curs.execute('INSERT INTO dam_counts (fid, FCode, WatershedID, predicted_capacity, length) SELECT fid, ReachCode, WatershedID, oCC_EX, centerline_length FROM vwDgos')
+        for fid in fids:
+            if fid in dam_cts.keys():
+                db.curs.execute('UPDATE dam_counts SET dam_count = ? WHERE fid = ?', (dam_cts[fid], fid))
             else:
-                db.curs.execute('UPDATE dam_counts SET dam_count = ? WHERE reachid = ?', (0, reachid))
+                db.curs.execute('UPDATE dam_counts SET dam_count = ? WHERE fid = ?', (0, fid))
         db.curs.execute('UPDATE dam_counts SET dam_density = dam_count / (length/1000)')
         db.conn.commit()
         db.curs.execute('UPDATE dam_counts SET percent_capacity = dam_density / predicted_capacity')
@@ -87,14 +104,14 @@ def dam_count_table(brat_gpkg_path: str, dams_gpkg_path: str):
         # db.conn.commit()
 
         try:
-            db.curs.execute("""CREATE VIEW vwCapacity AS SELECT B.geom, B.fid, B.ReachCode, B.WatershedID, C.predicted_capacity, C.dam_density, C.percent_capacity FROM vwReaches B
-                            LEFT JOIN dam_counts C ON B.fid = C.ReachID""")
+            db.curs.execute("""CREATE VIEW vwCapacity AS SELECT B.geom, B.fid, B.ReachCode, B.WatershedID, C.predicted_capacity, C.dam_density, C.percent_capacity FROM vwDgos B
+                            LEFT JOIN dam_counts C ON B.fid = C.fid""")
             db.conn.commit()
 
             db.curs.execute("""INSERT INTO gpkg_contents (table_name, data_type, identifier, min_x, min_y, max_x, max_y, srs_id)
-                SELECT 'vwCapacity', data_type, 'Capacity', min_x, min_y, max_x, max_y, srs_id FROM gpkg_contents WHERE table_name = 'ReachGeometry'""")
+                SELECT 'vwCapacity', data_type, 'Capacity', min_x, min_y, max_x, max_y, srs_id FROM gpkg_contents WHERE table_name = 'DGOGeometry'""")
             db.curs.execute("""INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m)
-                SELECT 'vwCapacity', column_name, geometry_type_name, srs_id, z, m FROM gpkg_geometry_columns WHERE table_name = 'ReachGeometry'""")
+                SELECT 'vwCapacity', column_name, geometry_type_name, srs_id, z, m FROM gpkg_geometry_columns WHERE table_name = 'DGOGeometry'""")
             db.conn.commit()
         except Exception as e:
             log.info(e)
@@ -160,23 +177,23 @@ def electivity_index(gpkg_path: str):
         perv_percap = round((perv_ct / perv_predcap)*100, 2) if perv_predcap > 0 else 'NA'
         perv_ei = (perv_ct / total_dams) / (perv_len / total_length)
 
-        db.curs.execute('SELECT ReachID, dam_count, predicted_capacity*(length/1000) AS pred FROM dam_counts WHERE dam_count > 0 and predicted_capacity NOT NULL')
+        db.curs.execute('SELECT fid, dam_count, predicted_capacity*(length/1000) AS pred FROM dam_counts WHERE dam_count > 0 and predicted_capacity NOT NULL')
         for row in db.curs.fetchall():
             if row['dam_count'] > row['pred'] + 1 or row['pred'] == 0:
-                err_segs[row['ReachID']] = int(row['dam_count'] - row['pred'])
+                err_segs[row['fid']] = int(row['dam_count'] - row['pred'])
             if row['pred'] == 0:
-                none_segs[row['ReachID']] = row['dam_count']
+                none_segs[row['fid']] = row['dam_count']
 
     if os.path.exists(out_path):
         os.remove(out_path)
     with open(out_path, 'w', newline='') as csvfile:
-        fieldnames = ['Capacity', 'Stream Length (km)', 'Percent of Drainage Network', 'Surveyed Dams', 'BRAT Estimated Capacity',
+        fieldnames = ['Capacity', 'Riverscape Length (km)', 'Percent of Riverscape Network', 'Surveyed Dams', 'BRAT Estimated Capacity',
                       'Average Surveyed Dam Density (dams/km)', 'Average Predicted Capacity (dams/km)', 'Percent of Modeled Capacity', 'Electivity Index']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerow({'Capacity': 'None',
-                         'Stream Length (km)': int(none_len/1000),
-                         'Percent of Drainage Network': round((none_len/total_length)*100, 1),
+                         'Riverscape Length (km)': int(none_len/1000),
+                         'Percent of Riverscape Network': round((none_len/total_length)*100, 1),
                          'Surveyed Dams': none_ct,
                          'BRAT Estimated Capacity': int(none_predcap),
                          'Average Surveyed Dam Density (dams/km)': round(none_ct / (none_len/1000), 3),
@@ -184,8 +201,8 @@ def electivity_index(gpkg_path: str):
                          'Percent of Modeled Capacity': none_percap,
                          'Electivity Index': round(none_ei, 2)})
         writer.writerow({'Capacity': 'Rare',
-                         'Stream Length (km)': int(rare_len/1000),
-                         'Percent of Drainage Network': round((rare_len/total_length)*100, 1),
+                         'Riverscape Length (km)': int(rare_len/1000),
+                         'Percent of Riverscape Network': round((rare_len/total_length)*100, 1),
                          'Surveyed Dams': rare_ct,
                          'BRAT Estimated Capacity': int(rare_predcap),
                          'Average Surveyed Dam Density (dams/km)': round(rare_ct / (rare_len/1000), 3),
@@ -193,8 +210,8 @@ def electivity_index(gpkg_path: str):
                          'Percent of Modeled Capacity': rare_percap,
                          'Electivity Index': round(rare_ei, 2)})
         writer.writerow({'Capacity': 'Occasional',
-                         'Stream Length (km)': int(occ_len/1000),
-                         'Percent of Drainage Network': round((occ_len/total_length)*100, 1),
+                         'Riverscape Length (km)': int(occ_len/1000),
+                         'Percent of Riverscape Network': round((occ_len/total_length)*100, 1),
                          'Surveyed Dams': occ_ct,
                          'BRAT Estimated Capacity': int(occ_predcap),
                          'Average Surveyed Dam Density (dams/km)': round(occ_ct / (occ_len/1000), 3),
@@ -202,8 +219,8 @@ def electivity_index(gpkg_path: str):
                          'Percent of Modeled Capacity': occ_percap,
                          'Electivity Index': round(occ_ei, 2)})
         writer.writerow({'Capacity': 'Frequent',
-                         'Stream Length (km)': int(freq_len/1000),
-                         'Percent of Drainage Network': round((freq_len/total_length)*100, 1),
+                         'Riverscape Length (km)': int(freq_len/1000),
+                         'Percent of Riverscape Network': round((freq_len/total_length)*100, 1),
                          'Surveyed Dams': freq_ct,
                          'BRAT Estimated Capacity': int(freq_predcap),
                          'Average Surveyed Dam Density (dams/km)': round(freq_ct / (freq_len/1000), 3),
@@ -211,8 +228,8 @@ def electivity_index(gpkg_path: str):
                          'Percent of Modeled Capacity': freq_percap,
                          'Electivity Index': round(freq_ei, 2)})
         writer.writerow({'Capacity': 'Pervasive',
-                         'Stream Length (km)': int(perv_len/1000),
-                         'Percent of Drainage Network': round((perv_len/total_length)*100, 1),
+                         'Riverscape Length (km)': int(perv_len/1000),
+                         'Percent of Riverscape Network': round((perv_len/total_length)*100, 1),
                          'Surveyed Dams': perv_ct,
                          'BRAT Estimated Capacity': int(perv_predcap),
                          'Average Surveyed Dam Density (dams/km)': round(perv_ct / (perv_len/1000), 3),
@@ -220,8 +237,8 @@ def electivity_index(gpkg_path: str):
                          'Percent of Modeled Capacity': perv_percap,
                          'Electivity Index': round(perv_ei, 2)})
         writer.writerow({'Capacity': 'Total',
-                         'Stream Length (km)': int(total_length/1000),
-                         'Percent of Drainage Network': 100,
+                         'Riverscape Length (km)': int(total_length/1000),
+                         'Percent of Riverscape Network': 100,
                          'Surveyed Dams': total_dams,
                          'BRAT Estimated Capacity': int(none_predcap + rare_predcap + occ_predcap + freq_predcap + perv_predcap),
                          'Average Surveyed Dam Density (dams/km)': round((none_ct + rare_ct + occ_ct + freq_ct + perv_ct) / (total_length/1000), 3),
@@ -231,20 +248,18 @@ def electivity_index(gpkg_path: str):
 
     if len(err_segs) > 0:
         with open(os.path.join(os.path.dirname(gpkg_path), 'validation/error_segments.csv'), 'w', newline='') as csvfile:
-            fieldnames = ['ReachID', 'Error']
+            fieldnames = ['fid', 'Error']
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writeheader()
             for k, v in err_segs.items():
-                writer.writerow({'ReachID': k, 'Error': v})
-
+                writer.writerow({'fid': k, 'Error': v})
     if len(none_segs) > 0:
         with open(os.path.join(os.path.dirname(gpkg_path), 'validation/none_segments.csv'), 'w', newline='') as csvfile:
-            fieldnames = ['ReachID', 'Dams']
+            fieldnames = ['fid', 'Dams']
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writeheader()
             for k, v in none_segs.items():
-                writer.writerow({'ReachID': k, 'Dams': v})
-
+                writer.writerow({'fid': k, 'Dams': v})
 
 def validation_plots(brat_gpkg_path: str):
     pred_obs = {}
