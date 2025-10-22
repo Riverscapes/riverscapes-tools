@@ -78,7 +78,7 @@
     },
     // {
     //   "name": "Land Surface Temp XMLS",
-    //   "type": "python",
+    //   "type": "debugpy",
     //   "request": "launch",
     //   "module": "scripts.modis_xmls",
     //   "console": "integratedTerminal",

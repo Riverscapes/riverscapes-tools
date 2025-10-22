@@ -94,7 +94,7 @@
     },
     {
       "name": "Write Land Health Assessment Report",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "rme.lha_report",
       "console": "integratedTerminal",

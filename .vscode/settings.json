@@ -1,0 +1,46 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+  "python.terminal.activateEnvironment": true,
+  "python.testing.pytestEnabled": true,
+  "python.testing.unittestEnabled": false,
+  "python.testing.autoTestDiscoverOnSaveEnabled": false,
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}/lib/commons",
+    "${workspaceFolder}/packages"
+  ],
+  "[python]": {
+    "editor.tabSize": 4,
+    "editor.formatOnSave": true
+  },
+  "autopep8.args": [
+    "--max-line-length=240"
+  ],
+  "pylint.args": [
+    "--disable=C0301,C0114,C0103,W0719,W0718",
+    "--max-line-length=240"
+  ],
+  "files.watcherExclude": {
+    "**/*.egg-info/**": true,
+    "**/.venv/**": true,
+    "**/__pycache__/**": true,
+    "**/*.pytest_cache/**": true,
+    "**/docs/**": true
+  },
+  "files.exclude": {
+    "**/*.egg-info/**": true,
+    "**/.venv/**": true,
+    "**/__pycache__/**": true,
+    "**/*.pytest_cache/**": true
+  },
+  "search.exclude": {
+    "**/*.egg-info/**": true,
+    "**/.venv/**": true,
+    "**/__pycache__/**": true,
+    "**/*.pytest_cache/**": true,
+    "**/docs/**": true
+  },
+  "python.envFile": "${workspaceFolder}/.env",
+  "windows": {
+    "python.defaultInterpreterPath": "${workspaceFolder}\\\\.venv\\\\Scripts\\\\python.exe"
+  }
+}
