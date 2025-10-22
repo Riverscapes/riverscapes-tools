@@ -1,18 +1,31 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "riverscapes-tools-uv"
+name = "riverscapes-tools"
 version = "0.1.0"
-description = "Add your description here"
+description = "Riverscapes open source toolchain packaged as a single distribution"
 readme = "README.md"
 requires-python = ">=3.9"
-# The commented-out dependencies are going to be coming from 
+license = { file = "LICENSE" }
+authors = [
+    { name = "North Arrow Research", email = "info@northarrowresearch.com" },
+]
+keywords = ["riverscapes", "gis", "restoration"]
 dependencies = [
     "affine",
     "html5print",
     "jinja2",
+    "matplotlib",
     "networkx==2.5",
+    "numpy>=1.21.0",
     "pyinquirer",
     "python-dateutil",
-    "rs-commons",
+    "rasterio>=1.3.3",
+    "scikit-fuzzy>=0.4.2",
+    "scikit-image>=0.19.2",
+    "scipy>=1.8.1",
     "semver==2.10.2",
     "shapely==1.8.5.post1",
     "sympy>=1.13.3",
@@ -20,22 +33,38 @@ dependencies = [
     "urllib3>=1.26.5",
 ]
 
-[tool.uv.sources]
-rs-commons = { path = "lib/commons", editable = true }
+[project.scripts]
+anthro = "anthro.anthro:main"
+beaver_activity = "beaver_sign.beaver_sign:main"
+blm_context = "blm_context.blm_context:main"
+brat = "sqlbrat.brat:main"
+confinement = "confinement.confinement:main"
+dembuilder = "rscontext_3dep.dem_builder:main"
+grazing = "grazing.grazing_likelihood:main"
+hand = "hand.hand:main"
+hydro_context = "hydro.hydro:main"
+ltpbrexport = "ltpbrexport.ltpbrexport:main"
+rcat = "rcat.rcat:main"
+rme = "rme.metric_engine:main"
+rscontextit = "rscontextit.rs_context_it:main"
+rscontextnz = "rscontextnz.rs_context_nz:main"
+rvd = "rvd.rvd:main"
+
+[tool.setuptools.packages.find]
+where = ["packages", "lib"]
 
 [dependency-groups]
 dev = [
+    "autopep8",
+    "isort",
     "psutil>=7.0.0",
+    "pylint",
 ]
-# When running this locally we usually use managed dependencies to save configuration by letting QGIS provide
-# us the environment we need. If we are on a more managed system (like a server) we may need to install all the 
-# dependencies ourselves.
 standalone = [
-    "gdal>=3.3.2",
-    "matplotlib",
-    "numpy",
-    "rasterio>=1.3.3",
-    "scikit-fuzzy>=0.4.2",
-    "scikit-image>=0.19.2",
-    "scipy>=1.8.1",
+    "Cython>=0.29.23",
+    "GDAL>=3.3.2",
+
+    "psycopg2-binary",
+    "postgis",
+    "Rtree",
 ]
