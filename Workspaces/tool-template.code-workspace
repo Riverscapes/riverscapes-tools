@@ -1,15 +1,15 @@
 {
   "folders": [
     {
-      "name": "🚀 VBET",
-      "path": "../packages/vbet"
+      "name": "🚀 <Tool Name>",
+      "path": "../packages/<tool-folder>"
     },
     {
       "name": "📦 RSCommons",
       "path": "../lib/commons"
     },
     {
-      "name": "🤖 Cybercastor Automation Scripts",
+      "name": "🤖 Automation Scripts",
       "path": "../scripts/automation"
     },
     {

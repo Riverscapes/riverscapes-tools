@@ -172,7 +172,7 @@
     },
     {
       "name": "Augment Beaver Activity XML",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "beaver_sign.beaver_act_rs",
       "console": "integratedTerminal",
@@ -196,7 +196,7 @@
     },
     {
       "name": "Prepare NMRipMap Raster",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "scripts.nmripmap",
       "console": "integratedTerminal",

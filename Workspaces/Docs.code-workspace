@@ -2,76 +2,13 @@
   "folders": [
     {
       "name": "📜 Docs",
-      // Depending on where this workspace file ends up you may need to adjust this path "." is for when it is in the same folder as `gatsby-config.ts`
       "path": "../docs"
     },
     {
-      // The root folder is necessary so that this workspace can access git. The path will need to be adjuested depending on where this workspace file ends up.
-      // ".." is appropriate if this workspace file is in `ROOT/docs`
       "name": "🏠 Root",
       "path": ".."
-    },
-  ],
-  "settings": {
-    "window.title": "riverscapes-tools DocusaurusDOCS${separator}${activeEditorShort}${separator}${rootName}",
-    "[mdx]": {
-      "editor.wordWrap": "on"
-    },
-    "css.lint.validProperties": [
-      "composes"
-    ],
-    "workbench.colorCustomizations": {
-      "titleBar.activeBackground": "#001768",
-      "sideBar.background": "#242132",
-      "editor.background": "#1e1c2c"
-    },
-    "editor.tabSize": 2,
-    "editor.codeActionsOnSave": {
-      "source.fixAll.eslint": "explicit"
-    },
-    "files.watcherExclude": {
-      "**/node_modules/**": true,
-      "**/.cache/**": true
-    },
-    "search.exclude": {
-      "**/node_modules/**": true,
-      "**/.cache/**": true,
-      "**/public/**": true,
-      "**/dist/**": true,
-    },
-    "files.exclude": {
-      "**/node_modules/**": true
-    },
-    // treat mdx as markdown
-    "files.associations": {
-      "*.mdx": "markdown"
-    },
-    // spell check settings
-    "cSpell.customDictionaries": {
-      "riverscapesWords": {
-        "name": "riverscapesWords",
-        "path": "./.vscode/riverscapesWords.txt",
-        "scope": "workspace",
-        "addWords": true
-      }
-    },
-    "cSpell.languageSettings": [
-      {
-        // use with Markdown files
-        "languageId": "markdown",
-        // Exclude code.
-        "ignoreRegExpList": [
-          "/^\\s*```[\\s\\S]*?^\\s*```/gm",
-          "`[^`]*?`"
-        ]
-      }
-    ],
-    "markdownlint.config": {
-      "MD033": false,
-      "MD013": false,
-      "MD025": false,
     }
-  },
+  ],
   "extensions": {
     "recommendations": [
       "GitHub.copilot",

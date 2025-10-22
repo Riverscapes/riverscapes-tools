@@ -1,0 +1,84 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "uv: sync dependencies",
+      "type": "shell",
+      "command": "uv",
+      "args": [
+        "sync"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "uv: lock",
+      "type": "shell",
+      "command": "uv",
+      "args": [
+        "lock"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "uv: run tests",
+      "type": "shell",
+      "command": "uv",
+      "args": [
+        "run",
+        "pytest"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "uv: run CLI",
+      "type": "shell",
+      "command": "uv run ${input:uvCliCommand} ${input:uvCliArgs}",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "uvCliCommand",
+      "type": "pickString",
+      "description": "Select a Riverscapes CLI to run",
+      "options": [
+        "anthro",
+        "beaver_activity",
+        "blm_context",
+        "brat",
+        "confinement",
+        "dembuilder",
+        "grazing",
+        "hand",
+        "hydro_context",
+        "ltpbrexport",
+        "rcat",
+        "rme",
+        "rscontextit",
+        "rscontextnz",
+        "rvd"
+      ],
+      "default": "rcat"
+    },
+    {
+      "id": "uvCliArgs",
+      "type": "promptString",
+      "description": "Arguments to pass to the CLI",
+      "default": "--help"
+    }
+  ]
+}

@@ -64,7 +64,7 @@
     },
     // {
     //   "name": "Calculate Confinement",
-    //   "type": "python",
+    //   "type": "debugpy",
     //   "request": "launch",
     //   "module": "confinement.confinement",
     //   "console": "integratedTerminal",

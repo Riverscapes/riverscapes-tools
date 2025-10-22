@@ -16,7 +16,7 @@
     "configurations": [
         {
             "name": "Grazing Likelihood",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "module": "grazing.grazing_likelihood",
             "console": "integratedTerminal",
@@ -36,7 +36,7 @@
         },
         {
           "name": "Augment XML",
-          "type": "python",
+          "type": "debugpy",
           "request": "launch",
           "module": "grazing.grazing_rs",
           "console": "integratedTerminal",
@@ -47,7 +47,7 @@
         },
         {
           "name": "Calculate Grazing Metrics",
-          "type": "python",
+          "type": "debugpy",
           "request": "launch",
           "module": "grazing.grazing_metrics",
           "console": "integratedTerminal",
@@ -58,7 +58,7 @@
         },
         {
           "name": "Write Grazing report",
-          "type": "python",
+          "type": "debugpy",
           "request": "launch",
           "module": "grazing.grazing_report",
           "console": "integratedTerminal",
@@ -69,7 +69,7 @@
         },
         {
           "name": "Version Bump",
-          "type": "python",
+          "type": "debugpy",
           "module": "rscommons.version",
           "args": [
             "${workspaceFolder}/grazing/__version__.py"
