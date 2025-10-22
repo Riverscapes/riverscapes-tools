@@ -3,7 +3,7 @@ title: Riverscapes Report Card - TauDEM 1.0.2
 weight: 1
 ---
 
-[TauDEM](https://hydrology.usu.edu/taudem/taudem5/index.html) is a package of tools developed by David Tarboton of Utah State University's Hydrology Research Group. This report card communicates the Riverscape appliation that utilizes TauDEM's algorithms/scripts compliance with the Riverscape Consortium's published [tool standards](https://riverscapes.net/Tools).
+[TauDEM](https://hydrology.usu.edu/taudem/taudem5/index.html) is a package of tools developed by David Tarboton of Utah State University's Hydrology Research Group. This report card communicates the Riverscape appliation that utilizes TauDEM's algorithms/scripts compliance with the Riverscape Consortium's published [tool standards](https://docs.riverscapes.net/standards/toolStandards)).
 
 # Report Card Summary
 
@@ -19,7 +19,7 @@ weight: 1
 
 # Report Card Details
 
-This tool's [discrimnation](https://riverscapes.net/Tools/#model-discrimination) evaluation by the [Riverscapes Consortium's](https://riverscapes.net) is:
+This tool's [discrimnation](https://docs.riverscapes.net/standards/toolStandards) evaluation by the [Riverscapes Consortium's](https://riverscapes.net) is:
 
 **Evaluation Key:**
 None or Not Applicable: <i class="fa fa-battery-empty" aria-hidden="true"></i> •
@@ -48,12 +48,13 @@ Fully Developed: <i class="fa fa-battery-full" aria-hidden="true"></i>
 | :------- | :---- | :--------- | :------- |
 | [RAVE](https://rave.riverscapes.net)- Compliant Riverscapes Projects <img  src="https://riverscapes.net/assets/images/data/RiverscapesProject_24.png"> | Yes | <i class="fa fa-battery-full" aria-hidden="true"></i> | |
 | [RAVE](https://rave.riverscapes.net) Business Logic Defined | Yes | <i class="fa fa-battery-full" aria-hidden="true"></i> |  |
-| Riverscapes Projects hosted in public-facing [Riverscapes Warehouse(s)](https://riverscapes.net/Data_Warehouses/#warehouse-explorer-concept) <img src="https://riverscapes.net/assets/images/data/RiverscapesWarehouseCloud_24.png"> | Yes. Current TauDEM projects are being housed in the [Riverscapes Warehouse](https://data.riverscapes.net). | <i class="fa fa-battery-half" aria-hidden="true"></i> | There is data in the warehouse, but is provisional and wider access to the warehouse is forthcoming |
-| Riverscapes Projects connected to [Web-Maps](https://riverscapes.net/Data_Warehouses#web-maps) <i class="fa fa-map-o" aria-hidden="true"></i> | Yes | <i class="fa fa-battery-full" aria-hidden="true"></i> | Current projects are viewable in [WebRAVE](https://rave.riverscapes.net/Download/install_webrave.html) through the Riverscapes Warehouse |
-| Riverscapes Projects connected to Field [Apps](https://riverscapes.net//Data_Warehouses#apps---pwas) <img src="http://riverscapes.net/assets/images/tools/PWA.png"> | No | <i class="fa fa-battery-empty" aria-hidden="true"></i> |  |
+| Riverscapes Projects hosted in public-facing [Riverscapes Data Exchange](https://data.riverscapes.net) <img src="https://riverscapes.net/assets/images/data/RiverscapesWarehouseCloud_24.png"> | Yes. Current TauDEM projects are being housed in the [Riverscapes Data Exchange](https://data.riverscapes.net). | <i class="fa fa-battery-half" aria-hidden="true"></i> | There is data in the warehouse, but is provisional and wider access to the warehouse is forthcoming |
+| Riverscapes Projects connected to [Web-Maps](https://riverscapes.net/software-help/help-web) <i class="fa fa-map-o" aria-hidden="true"></i> | Yes | <i class="fa fa-battery-full" aria-hidden="true"></i> | Current projects are viewable in [WebRAVE](https://rave.riverscapes.net/Download/install_webrave.html) through the Riverscapes Warehouse |
+| Riverscapes Projects connected to Field [Apps](https://docs.riverscapes.net/category/products) <img src="http://riverscapes.net/assets/images/tools/PWA.png"> | No | <i class="fa fa-battery-empty" aria-hidden="true"></i> |  |
 
 ## Developer Intent
 ...
 
 <a href="https://riverscapes.net"><img class="float-left" src="https://riverscapes.net/assets/images/rc/RiverscapesConsortium_Logo_Black_BHS_200w.png"></a>
-The [Riverscapes Consortium's](https://riverscapes.net) Technical Committee provides report cards for tools either deemed as "[riverscapes-compliant](https://riverscapes.net/Tools/#riverscapes-compliant)" <img  src="https://riverscapes.net/assets/images/rc/RiverscapesCompliant_24.png"> or "[pending riverscapes-compliance](https://riverscapes.net/Tools/#tools-pending-riverscapes-compliance)" <img  src="https://riverscapes.net/assets/images/rc/RiverscapesCompliantPending_28.png">.
+The [Riverscapes Consortium's](https://riverscapes.net) Technical Committee provides report cards for tools either deemed as "[riverscapes-compliant](https://docs.riverscapes.net/standards
+)" <img  src="https://riverscapes.net/assets/images/rc/RiverscapesCompliant_24.png"> or "[pending riverscapes-compliance](https://riverscapes.net/Tools/#tools-pending-riverscapes-compliance)" <img  src="https://riverscapes.net/assets/images/rc/RiverscapesCompliantPending_28.png">.
