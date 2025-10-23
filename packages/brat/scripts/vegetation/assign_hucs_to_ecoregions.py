@@ -15,8 +15,9 @@ import sqlite3
 from osgeo import ogr, osr
 import json
 from rscommons import dotenv
-from shapely.geometry import shape, mapping
+from shapely.geometry import shape
 import argparse
+from rscommons.geometry_ops import shapely_to_ogr_geometry
 
 
 def assign_hucs_to_ecoregions(huc_path, database, ecoregion_path):
@@ -77,7 +78,7 @@ def assign_hucs_to_ecoregions(huc_path, database, ecoregion_path):
 
         try:
             # Filter the ecoregions to just those that intersect the current HUC
-            eco_layer.SetSpatialFilter(ogr.CreateGeometryFromJson(json.dumps(mapping(values['Geometry']))))
+            eco_layer.SetSpatialFilter(shapely_to_ogr_geometry(values['Geometry']))
             for feature in eco_layer:
                 geom = feature.GetGeometryRef()
                 featobj = json.loads(geom.ExportToJson())

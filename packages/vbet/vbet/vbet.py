@@ -236,8 +236,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
     if in_pitfill_dem is None:
         pitfill_dem = os.path.join(
             project_folder, LayerTypes['PITFILL'].rel_path)
-        pitfill_status = run_subprocess(project_folder, [
-                                        "mpiexec", "-n", NCORES, "pitremove", "-z", dem, "-fel", pitfill_dem])
+        pitfill_status = run_subprocess(project_folder, ["mpiexec", "-n", NCORES, "pitremove", "-z", dem, "-fel", pitfill_dem])
         if pitfill_status != 0 or not os.path.isfile(pitfill_dem):
             raise Exception('TauDEM: pitfill failed')
         _proj_pitfill_node, pitfill_dem = project.add_project_raster(
@@ -256,8 +255,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
             project_folder, LayerTypes['DINFFLOWDIR_SLP'].rel_path)
         dinfflowdir_ang = os.path.join(
             project_folder, LayerTypes['DINFFLOWDIR_ANG'].rel_path)
-        dinfflowdir_status = run_subprocess(project_folder, [
-                                            "mpiexec", "-n", NCORES, "dinfflowdir", "-fel", pitfill_dem, "-ang", dinfflowdir_ang, "-slp", dinfflowdir_slp])
+        dinfflowdir_status = run_subprocess(project_folder, ["mpiexec", "-n", NCORES, "dinfflowdir", "-fel", pitfill_dem, "-ang", dinfflowdir_ang, "-slp", dinfflowdir_slp])
         if dinfflowdir_status != 0 or not os.path.isfile(dinfflowdir_ang):
             raise Exception('TauDEM: dinfflowdir failed')
         _proj_dinfflowdir_ang_node, dinfflowdir_ang = project.add_project_raster(
@@ -300,22 +298,16 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
     int_meta['dtype'] = 'int32'
 
     # Initialize empty zone rasters
-    vbet_zone_raster = os.path.join(
-        project_folder, LayerTypes['VBET_ZONES'].rel_path)
-    active_zone_raster = os.path.join(
-        project_folder, LayerTypes['LOWLYING_FP_ZONES'].rel_path)
+    vbet_zone_raster = os.path.join(project_folder, LayerTypes['VBET_ZONES'].rel_path)
+    active_zone_raster = os.path.join(project_folder, LayerTypes['LOWLYING_FP_ZONES'].rel_path)
     # Difference raster created later on...
-    inactive_zone_raster = os.path.join(
-        project_folder, LayerTypes['ELEVATED_FP_ZONES'].rel_path)
+    inactive_zone_raster = os.path.join(project_folder, LayerTypes['ELEVATED_FP_ZONES'].rel_path)
     for raster in [vbet_zone_raster, active_zone_raster, inactive_zone_raster]:
         with rasterio.open(raster, 'w', **int_meta) as rio:
             rio.write(empty_array, 1)
-    _vbet_zones_node, vbet_zone_ras = project.add_project_raster(
-        proj_nodes['Intermediates'], LayerTypes['VBET_ZONES'])
-    _active_zones_node, active_zones_ras = project.add_project_raster(
-        proj_nodes['Intermediates'], LayerTypes['LOWLYING_FP_ZONES'])
-    _inactive_zones_node, inactive_zones_ras = project.add_project_raster(
-        proj_nodes['Intermediates'], LayerTypes['ELEVATED_FP_ZONES'])
+    _vbet_zones_node, vbet_zone_ras = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['VBET_ZONES'])
+    _active_zones_node, active_zones_ras = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['LOWLYING_FP_ZONES'])
+    _inactive_zones_node, inactive_zones_ras = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['ELEVATED_FP_ZONES'])
     proj_rasters.extend([[_vbet_zones_node, vbet_zone_ras], [
                         _active_zones_node, active_zones_ras], [_inactive_zones_node, inactive_zones_ras]])
 
@@ -325,14 +317,11 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
     level_path_keys = {}
 
     # Initialize Outputs
-    output_centerlines = os.path.join(
-        vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['VBET_CENTERLINES'].rel_path)
-    temp_centerlines = os.path.join(
-        temp_folder, 'raw_centerlines.gpkg', 'centerlines')
-    output_vbet = os.path.join(
-        vbet_gpkg, LayerTypes["VBET_OUTPUTS"].sub_layers['VBET_FULL'].rel_path)
-    output_vbet_ia = os.path.join(
-        vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['VBET_IA'].rel_path)
+    output_centerlines = os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['VBET_CENTERLINES'].rel_path)
+    temp_centerlines = os.path.join(temp_folder, 'raw_centerlines.gpkg', 'centerlines')
+    output_vbet = os.path.join(vbet_gpkg, LayerTypes["VBET_OUTPUTS"].sub_layers['VBET_FULL'].rel_path)
+    output_vbet_ia = os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['VBET_IA'].rel_path)
+
     with GeopackageLayer(temp_centerlines, write=True) as lyr_temp_cl_init, \
         GeopackageLayer(output_vbet, write=True) as lyr_vbet_init, \
         GeopackageLayer(output_vbet_ia, write=True) as lyr_active_vbet_init, \
@@ -722,8 +711,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
                             locs = {'a': block[name].data}
                             with warnings.catch_warnings(record=True) as w:
                                 warnings.simplefilter("always")
-                                trans_ds = eval(
-                                    transform, {'__builtins__': None}, locs)
+                                trans_ds = eval(transform, {'__builtins__': None}, locs)
                                 if w and issubclass(w[-1].category, RuntimeWarning):
                                     pass
                             transformed[name] = np.ma.MaskedArray(
@@ -884,14 +872,10 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
                     out_feature = None
 
         # Mask the raster and create the inner versions of itself
-        raster_logic_mask(hand_raster, hand_raster_interior,
-                          valley_bottom_raster)
-        raster_logic_mask(transformed_hand,
-                          transformed_hand_interior, valley_bottom_raster)
-        raster_logic_mask(
-            evidence_raster, evidence_raster_interior, valley_bottom_raster)
-        raster_logic_mask(transformed_slope,
-                          transformed_slope_interior, valley_bottom_raster)
+        raster_logic_mask(hand_raster, hand_raster_interior, valley_bottom_raster)
+        raster_logic_mask(transformed_hand, transformed_hand_interior, valley_bottom_raster)
+        raster_logic_mask(evidence_raster, evidence_raster_interior, valley_bottom_raster)
+        raster_logic_mask(transformed_slope, transformed_slope_interior, valley_bottom_raster)
 
         # Add these to arrays so that we can use them later
         if os.path.isfile(hand_raster):
@@ -949,33 +933,25 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
     _tmr_waypt.timer_break('LevelPaths for loop')
 
     # The interior rasters are a stitched-together composite of the local, levelpath rasters with the valley bottom logic applied
-    out_hand_interior = os.path.join(
-        project_folder, LayerTypes['COMPOSITE_HAND_INTERIOR'].rel_path)
-    out_transformed_hand_interior = os.path.join(
-        project_folder, LayerTypes['TRANSFORMED_HAND_INTERIOR'].rel_path)
-    out_vbet_evidence_interior = os.path.join(
-        project_folder, LayerTypes['COMPOSITE_VBET_EVIDENCE_INTERIOR'].rel_path)
-    out_transformed_slope_interior = os.path.join(
-        project_folder, LayerTypes['TRANSFORMED_SLOPE_INTERIOR'].rel_path)
+    out_hand_interior = os.path.join(project_folder, LayerTypes['COMPOSITE_HAND_INTERIOR'].rel_path)
+    out_transformed_hand_interior = os.path.join(project_folder, LayerTypes['TRANSFORMED_HAND_INTERIOR'].rel_path)
+    out_vbet_evidence_interior = os.path.join(project_folder, LayerTypes['COMPOSITE_VBET_EVIDENCE_INTERIOR'].rel_path)
+    out_transformed_slope_interior = os.path.join(project_folder, LayerTypes['TRANSFORMED_SLOPE_INTERIOR'].rel_path)
 
     # Make VRTs for our composite rasters
-    out_hand_interior_cmp = CompositeRaster(
-        out_hand_interior, raster_lookup['hand_raster_interior'], vrt_path=os.path.join(temp_folder, 'hand_interior.vrt'))
+    out_hand_interior_cmp = CompositeRaster(out_hand_interior, raster_lookup['hand_raster_interior'], vrt_path=os.path.join(temp_folder, 'hand_interior.vrt'))
     out_hand_interior_cmp.make_vrt()
     out_hand_interior_cmp.make_composite()
 
-    out_transformed_hand_interior_cmp = CompositeRaster(
-        out_transformed_hand_interior, raster_lookup['transformed_hand_interior'], vrt_path=os.path.join(temp_folder, 'transformed_hand_interior.vrt'))
+    out_transformed_hand_interior_cmp = CompositeRaster(out_transformed_hand_interior, raster_lookup['transformed_hand_interior'], vrt_path=os.path.join(temp_folder, 'transformed_hand_interior.vrt'))
     out_transformed_hand_interior_cmp.make_vrt()
     out_transformed_hand_interior_cmp.make_composite()
 
-    out_transformed_slope_interior_cmp = CompositeRaster(
-        out_transformed_slope_interior, raster_lookup['transformed_slope_interior'], vrt_path=os.path.join(temp_folder, 'transformed_slope_interior.vrt'))
+    out_transformed_slope_interior_cmp = CompositeRaster(out_transformed_slope_interior, raster_lookup['transformed_slope_interior'], vrt_path=os.path.join(temp_folder, 'transformed_slope_interior.vrt'))
     out_transformed_slope_interior_cmp.make_vrt()
     out_transformed_slope_interior_cmp.make_composite()
 
-    out_vbet_evidence_interior_cmp = CompositeRaster(
-        out_vbet_evidence_interior, raster_lookup['evidence_raster_interior'], vrt_path=os.path.join(temp_folder, 'vbet_evidence_interior.vrt'))
+    out_vbet_evidence_interior_cmp = CompositeRaster(out_vbet_evidence_interior, raster_lookup['evidence_raster_interior'], vrt_path=os.path.join(temp_folder, 'vbet_evidence_interior.vrt'))
     out_vbet_evidence_interior_cmp.make_vrt()
     out_vbet_evidence_interior_cmp.make_composite()
 
@@ -987,8 +963,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
 
     # Difference Raster
     log.info("Differencing inactive floodplain raster")
-    raster_remove_zone(vbet_zone_raster, active_zone_raster,
-                       inactive_zone_raster)
+    raster_remove_zone(vbet_zone_raster, active_zone_raster, inactive_zone_raster)
 
     # Geomorphic layers
     output_floodplain = os.path.join(

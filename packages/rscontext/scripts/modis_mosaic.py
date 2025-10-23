@@ -1,6 +1,7 @@
 import os
 import argparse
 import glob
+# NOTE: arcpy is only available within an ArcGIS Pro Python environment
 import arcpy
 
 

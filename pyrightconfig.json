@@ -1,0 +1,24 @@
+{
+  "include": [
+    "packages",
+    "lib",
+    "scripts"
+  ],
+  "venvPath": ".",
+  "venv": ".venv",
+  "executionEnvironments": [
+    {
+      "root": "packages/rscontext",
+      "extraPaths": [
+        "packages",
+        "lib/commons"
+      ]
+    },
+    {
+      "root": "lib/commons",
+      "extraPaths": [
+        "packages"
+      ]
+    }
+  ]
+}

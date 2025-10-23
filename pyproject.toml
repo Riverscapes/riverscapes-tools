@@ -14,23 +14,28 @@ authors = [
 ]
 keywords = ["riverscapes", "gis", "restoration"]
 dependencies = [
-    "affine",
+    "affine>=2.4",
+    "Cython>=3.0",
+    "GDAL>=3.8",
     "html5print",
-    "jinja2",
-    "matplotlib",
-    "networkx>=2.8,<3",
-    "numpy>=1.21.0",
+    "jinja2>=3.1",
+    "matplotlib>=3.8",
+    "networkx>=2.8",
+    "numpy>=1.26",
+    "postgis>=1.0.4",
+    "psycopg2-binary>=2.9.9",
     "pyinquirer",
-    "python-dateutil",
-    "rasterio>=1.3.3",
+    "python-dateutil>=2.9.0.post0",
+    "rasterio>=1.3.9",
+    "Rtree>=1.2.0",
     "scikit-fuzzy>=0.4.2",
-    "scikit-image>=0.22,<0.25",
-    "scipy>=1.8.1",
-    "semver==2.10.2",
-    "shapely>=2.0.3,<3",
+    "scikit-image>=0.24,<0.25",
+    "scipy>=1.12",
+    "semver>=2.10.2,<3",
+    "shapely>=2.0.4,<3",
     "sympy>=1.13.3",
-    "termcolor",
-    "urllib3>=1.26.5",
+    "termcolor>=2.4",
+    "urllib3>=2.2",
 ]
 
 [project.scripts]
@@ -55,16 +60,54 @@ where = ["packages", "lib"]
 
 [dependency-groups]
 dev = [
-    "autopep8",
-    "isort",
+    "autopep8>=2.3",
+    "isort>=5.13",
     "psutil>=7.0.0",
-    "pylint",
+    "pylint>=3.2",
 ]
-standalone = [
-    "Cython>=0.29.23",
-    "GDAL>=3.3.2",
 
-    "psycopg2-binary",
-    "postgis",
-    "Rtree",
+[tool.pylint.main]
+py-version = "3.12"
+jobs = 1
+persistent = false
+ignored-modules = ["osgeo"]
+init-hook = "import sys, types, importlib; from pathlib import Path; ROOT = Path(__file__).resolve().parent; sys.path.extend([str(ROOT / 'packages'), str(ROOT / 'lib' / 'commons')]);\nimportlib.invalidate_caches();\ntry:\n    importlib.import_module('osgeo')\nexcept ModuleNotFoundError:\n    osgeo = types.ModuleType('osgeo')\n    ogr = types.ModuleType('ogr')\n    osgeo.ogr = ogr\n    sys.modules['osgeo'] = osgeo\n    sys.modules['osgeo.ogr'] = ogr"
+
+[tool.pylint."MESSAGES CONTROL"]
+disable = [
+    "C0301",
+    "C0114",
+    "C0103",
+    "W0719",
+    "W0718",
+]
+
+[tool.pylint.format]
+max-line-length = 240
+
+[tool.isort]
+profile = "black"
+line_length = 240
+combine_as_imports = true
+src_paths = ["packages", "lib"]
+known_first_party = [
+    "anthro",
+    "blm_context",
+    "brat",
+    "channel",
+    "confinement",
+    "grazing",
+    "hand",
+    "hydro",
+    "ltpbrexport",
+    "rcat",
+    "rme",
+    "rscontext",
+    "rscontext_3dep",
+    "rscontext_it",
+    "rscontext_nz",
+    "rvd",
+    "stitcher",
+    "taudem",
+    "vbet",
 ]

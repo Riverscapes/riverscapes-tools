@@ -19,7 +19,6 @@ import traceback
 import uuid
 
 from osgeo import ogr
-from shapely.wkb import loads as wkbload
 
 from rscommons import (Logger, ModelConfig, RSLayer, RSProject, get_shp_or_gpkg, Timer, dotenv, initGDALOGRErrors)
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes

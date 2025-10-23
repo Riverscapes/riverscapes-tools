@@ -12,6 +12,7 @@
 from typing import List
 import argparse
 import os
+# NOTE: boto3 is not included in cybercastor so you will need to install it locally and use it only here
 import boto3.s3
 import boto3.s3.transfer
 import requests

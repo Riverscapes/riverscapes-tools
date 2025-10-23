@@ -64,8 +64,10 @@ def rasterize(in_lyr_path: Path, out_raster_path: Path, template_path: Path, all
     progbar = ProgressBar(100, 50, "Rasterizing ")
 
     with rasterio.open(template_path) as raster:
-        t = raster.transform
+        t = raster.transform  # affine: (a, b, c, d, e, f) => a=px width, e=py height (negative for north-up)
         raster_bounds = raster.bounds
+        pixel_width = abs(t[0])  # a
+        pixel_height = abs(t[4])  # e (ensure positive)
 
     def poly_progress(progress, _msg, _data):
         progbar.update(int(progress * 100))
@@ -75,19 +77,23 @@ def rasterize(in_lyr_path: Path, out_raster_path: Path, template_path: Path, all
 
     # Rasterize the polygon to a temporary file
     with TempRaster('vbet_rasterize') as tempfile:
-        log.debug('Temporary file: {}'.format(tempfile.filepath))
-        gdal.Rasterize(
-            tempfile.filepath,
-            ds_path,
-            layers=[lyr_path],
-            xRes=t[0], yRes=t[4],
-            allTouched=all_touched,
-            burnValues=1, outputType=gdal.GDT_Int16,
-            creationOptions=['COMPRESS=LZW'],
-            # outputBounds --- assigned output bounds: [minx, miny, maxx, maxy]
-            outputBounds=[raster_bounds.left, raster_bounds.bottom, raster_bounds.right, raster_bounds.top],
-            callback=poly_progress
-        )
+        log.debug(f'Temporary file: {tempfile.filepath}')
+        try:
+            gdal.Rasterize(
+                tempfile.filepath,
+                ds_path,
+                layers=[lyr_path],
+                xRes=pixel_width, yRes=pixel_height,
+                allTouched=all_touched,
+                burnValues=1, outputType=gdal.GDT_Int16,
+                creationOptions=['COMPRESS=LZW'],
+                # outputBounds --- assigned output bounds: [minx, miny, maxx, maxy]
+                outputBounds=[raster_bounds.left, raster_bounds.bottom, raster_bounds.right, raster_bounds.top],
+                callback=poly_progress
+            )
+        except RuntimeError as err:  # noqa: BLE001
+            log.error(f"GDAL Rasterize failed: {err}. pixel_width={pixel_width}, pixel_height={pixel_height}, bounds={raster_bounds}")
+            raise
         progbar.finish()
 
         # Now mask the output correctly

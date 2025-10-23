@@ -8,13 +8,13 @@
 import os
 import sys
 import argparse
-import rasterio
 import sqlite3
+import rasterio
 
 from osgeo import ogr, osr
 from shapely.ops import linemerge, voronoi_diagram
 from shapely.geometry import MultiLineString, MultiPoint, LineString, Point
-from shapely.topology import TopologicalError
+from shapely.errors import TopologicalError
 from shapely.validation import make_valid
 
 from rscommons import GeopackageLayer, Logger, VectorBase, dotenv
@@ -68,11 +68,15 @@ def generate_igo_points(line_network: Path, dem: Path, out_points_layer: Path, v
             transform_back = transform
 
         for level_path in levelpaths:
+            # Skip entirely if level_path is None; segmentation metrics require a valid identifier
+            if level_path is None:
+                continue
             if level_path not in stream_size_lookup:
                 log.error(f'stream size not found for level path {level_path}')
                 continue
             cl_ftrs = []
-            for feat, *_ in line_lyr.iterate_features('Generating Segmentation Points', attribute_filter=f'{unique_stream_field} = {level_path}', write_layers=[out_lyr]):
+            lp_filter = f"{unique_stream_field} = {level_path}" if level_path is not None else f"{unique_stream_field} IS NULL"
+            for feat, *_ in line_lyr.iterate_features('Generating Segmentation Points', attribute_filter=lp_filter, write_layers=[out_lyr]):
                 stream_size = stream_size_lookup[level_path]
                 geom_line = feat.GetGeometryRef()
                 if geom_line is None or geom_line.IsEmpty():
@@ -103,7 +107,8 @@ def generate_igo_points(line_network: Path, dem: Path, out_points_layer: Path, v
                 continue
 
             vb_area = 0.0
-            for vb_feat, *_ in vb_lyr.iterate_features(attribute_filter=f'{unique_stream_field} = {level_path}'):
+            vb_filter = f"{unique_stream_field} = {level_path}" if level_path is not None else f"{unique_stream_field} IS NULL"
+            for vb_feat, *_ in vb_lyr.iterate_features(attribute_filter=vb_filter):
                 vb_geom = vb_feat.GetGeometryRef()
                 if not vb_geom.IsValid():
                     vb_geom = vb_geom.MakeValid()
@@ -114,7 +119,7 @@ def generate_igo_points(line_network: Path, dem: Path, out_points_layer: Path, v
 
             if vb_area == 0.0:
                 log.warning(
-                    f'Unable to generate metrics for vbet segment {feat.GetFID()}: VBET Segment has no area')
+                    f'Unable to generate metrics for level_path {level_path}: VBET polygon area is zero')
                 continue
 
             vb_width = vb_area / cleaned_line.length
@@ -146,16 +151,20 @@ def generate_igo_points(line_network: Path, dem: Path, out_points_layer: Path, v
                     current_dist += spacing
 
                 # check that elevation decreases with increasing seg distance, reverse if needed
-                if len(list_points) >= 2:
-                    with rasterio.open(dem, 'r') as src:
-                        # sample the elevation at the first and last point
-                        pt_beg = VectorBase.shapely2ogr(list_points[0][0], transform_back)
-                        pt_end = VectorBase.shapely2ogr(list_points[-1][0], transform_back)
-                        elev_begin = list(src.sample([(pt_beg.GetPoint()[0], pt_beg.GetPoint()[1])]))[0][0]
-                        elev_end = list(src.sample([(pt_end.GetPoint()[0], pt_end.GetPoint()[1])]))[0][0]
-                    if elev_end is not None and elev_begin is not None and elev_end > elev_begin:
-                        list_points_out = [(list_points[-(i+1)][0], list_points[i][1]) for i, vals in enumerate(list_points)]
-                    else:
+                if dem is not None and len(list_points) >= 2:
+                    try:
+                        with rasterio.open(dem, 'r') as src:
+                            # sample the elevation at the first and last point
+                            pt_beg = VectorBase.shapely2ogr(list_points[0][0], transform_back)
+                            pt_end = VectorBase.shapely2ogr(list_points[-1][0], transform_back)
+                            elev_begin = list(src.sample([(pt_beg.GetPoint()[0], pt_beg.GetPoint()[1])]))[0][0]
+                            elev_end = list(src.sample([(pt_end.GetPoint()[0], pt_end.GetPoint()[1])]))[0][0]
+                        if elev_end is not None and elev_begin is not None and elev_end > elev_begin:
+                            list_points_out = [(list_points[-(i+1)][0], list_points[i][1]) for i, _ in enumerate(list_points)]
+                        else:
+                            list_points_out = list_points
+                    except Exception as e:
+                        log.warning(f"Elevation sampling failed for level_path {level_path}: {e}. Proceeding without reversal check.")
                         list_points_out = list_points
                 else:
                     list_points_out = list_points
@@ -224,7 +233,7 @@ def split_vbet_polygons(vbet_polygons: Path, segmentation_points: Path, out_spli
             # log.info(f'pts: {[pt.wkt for pt in seed_points_sgeom_mpt.geoms]}')
             # log.info(f'vbet: {vbet_sgeom.wkt}')
             voronoi = voronoi_diagram(seed_points_sgeom_mpt, envelope=vbet_sgeom)
-            log.info(f'    Done')
+            log.info('    Done')
             for poly in voronoi.geoms:
                 try:
                     poly_intersect = vbet_sgeom.intersection(poly)
@@ -239,6 +248,7 @@ def split_vbet_polygons(vbet_polygons: Path, segmentation_points: Path, out_spli
                 geom_out = ogr.ForceToMultiPolygon(geom_out)
                 out_lyr.create_feature(geom_out, {f'{unique_stream_field}': str(int(level_path))})
 
+    # Dataset flush not required; GeopackageLayer handles closure
         for segment_feat, *_ in out_lyr.iterate_features('Writing segment dist to polygons'):
             polygon = segment_feat.GetGeometryRef()
             lp = segment_feat.GetField(f'{unique_stream_field}')
@@ -567,7 +577,10 @@ def vbet_segmentation(in_centerlines: str, vbet_polygons: str, unique_stream_fie
     split_polygons = os.path.join(out_gpkg, 'segmented_vbet_polygons')
 
     log.info('Generating Segment Points')
-    generate_igo_points(in_centerlines, out_points, unique_stream_field, ss_lookup, distance={0: 100, 1: 200, 2: 300})
+    # aspect_ratio currently derived from legacy distance dict; choose representative aspect_ratio=2.0 (adjustable)
+    # generate IGO points using centerlines & polygons; aspect_ratio heuristic 2.0
+    generate_igo_points(in_centerlines, dem=None, out_points_layer=out_points, vb_layer=vbet_polygons, unique_stream_field=unique_stream_field,
+                        stream_size_lookup=ss_lookup, levelpaths=list(ss_lookup.keys()), aspect_ratio=2.0)
 
     log.info('Splitting vbet Polygons')
     split_vbet_polygons(vbet_polygons, out_points, split_polygons, unique_stream_field)
@@ -595,7 +608,6 @@ def fill_in_line(lines):
                     end_points.append(geom.coords[-1])
             else:
                 raise ValueError("Unsupported geometry type")
-                continue
 
         min_distance = 10000000
         points = [None, None]
