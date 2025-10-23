@@ -8,7 +8,7 @@
       "type": "promptString",
       "id": "HUC",
       "description": "What HUC?",
-      "default": "1601010101"
+      "default": "1704021804"
       // "default": "17070202" // North Fork John Day
       // "default": "17060304", // Really small HUC
       // "default": "10190002" // VBET TAKING TOO LONG
@@ -46,7 +46,7 @@
       "type": "promptString",
       "id": "level_paths",
       "description": "level_paths",
-      "default": "70000600007170,70000600010450,70000600035519,70000400011364"
+      "default": "55001200000174,55001200000656,55001200000887,55001200001881"
     },
   ],
   "configurations": [
@@ -56,6 +56,9 @@
       "request": "launch",
       "module": "vbet.vbet",
       "console": "integratedTerminal",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+      },      
       "args": [
         "${input:HUC}",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydro_derivatives.gpkg/network_intersected",
@@ -68,7 +71,7 @@
         "level_path",
         "NHDPlusID",
         "DivDASqKm",
-        // "--level_paths","${input:level_paths}",
+        "--level_paths","${input:level_paths}",
         "--pitfill","{env:DATA_ROOT}/taudem/${input:HUC}/intermediates/pitfill.tif",
         "--dinfflowdir_ang","{env:DATA_ROOT}/taudem/${input:HUC}/intermediates/dinfflowdir_ang.tif",
         "--dinfflowdir_slp","{env:DATA_ROOT}/taudem/${input:HUC}/outputs/dinfflowdir_slp.tif",

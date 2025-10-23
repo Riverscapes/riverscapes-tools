@@ -7,8 +7,12 @@
 """
 
 from collections import Counter
+import json
+from typing import Optional
 
 from osgeo import ogr
+from shapely.geometry import mapping
+from shapely.geometry.base import BaseGeometry
 
 
 def reduce_precision(geom_multiline: ogr.Geometry, rounding_precision: int = 13) -> ogr.Geometry:
@@ -89,3 +93,29 @@ def get_rectangle_as_geom(envelope: tuple) -> ogr.Geometry():
     geom_envelope = ogr.Geometry(ogr.wkbPolygon)
     geom_envelope.AddGeometry(ring)
     return geom_envelope
+
+
+def shapely_to_ogr_geometry(geom: BaseGeometry) -> ogr.Geometry:
+    """Safely convert a Shapely geometry to an OGR geometry."""
+    if geom is None or not hasattr(geom, "wkb"):
+        raise ValueError("Input must be a valid Shapely geometry object")
+
+    ogr_geom: Optional[ogr.Geometry] = None
+    wkb_data = getattr(geom, "wkb", None)
+    if wkb_data and len(wkb_data) > 0:
+        try:
+            ogr_geom = ogr.CreateGeometryFromWkb(bytes(wkb_data))
+        except Exception:
+            ogr_geom = None
+
+    if ogr_geom is None:
+        try:
+            geojson = json.dumps(mapping(geom))
+            ogr_geom = ogr.CreateGeometryFromJson(geojson)
+        except Exception:
+            ogr_geom = None
+
+    if ogr_geom is None:
+        raise ValueError("Failed to convert Shapely geometry to OGR")
+
+    return ogr_geom

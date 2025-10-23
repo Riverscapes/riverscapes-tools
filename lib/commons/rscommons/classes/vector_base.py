@@ -537,7 +537,10 @@ class VectorBase():
         VectorBase.__start_transaction(write_layers)
 
         # Get an accurate feature count after clipping and filtering
-        fcount = self.ogr_layer.GetFeatureCount()
+        try:
+            fcount = self.ogr_layer.GetFeatureCount()
+        except Exception:
+            fcount = 0
 
         # Initialize the progress bar
         progbar = None
@@ -751,7 +754,7 @@ class VectorBase():
         extent = self.ogr_layer.GetExtent()
         return VectorBase.rough_convert_metres_to_spatial_ref_units(self.spatial_ref, extent, distance)
 
-    @ staticmethod
+    @staticmethod
     def rough_convert_metres_to_raster_units(raster_path: str, distance: float) -> float:
         """Convert from Meters into the units of the supplied raster
 
@@ -777,7 +780,7 @@ class VectorBase():
 
         return VectorBase.rough_convert_metres_to_spatial_ref_units(in_spatial_ref, extent, distance)
 
-    @ staticmethod
+    @staticmethod
     def rough_convert_metres_to_spatial_ref_units(in_spatial_ref: osr.SpatialReference, extent: list, distance: float) -> float:
         """Convert from meters to the units of a given spatial_ref
 
@@ -932,7 +935,7 @@ class VectorBase():
         if ex:
             raise ex
 
-    @ staticmethod
+    @staticmethod
     def get_srs_debug(spatial_ref: osr.SpatialReference) -> List[str, str]:
         """useful method for printing spatial ref information to the log
 

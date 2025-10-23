@@ -48,6 +48,8 @@ def initGDALOGRErrors():
         # http://trac.osgeo.org/gdal/ticket/5186#comment:4
 
         gdal.UseExceptions()  # Exceptions will get raised on anything >= gdal.CE_Failure
+        # Print the gdal version
+        print(f"GDAL Version: {gdal.__version__}")
         ogr.UseExceptions()
         gdal.PushErrorHandler(handler)
         CREATED = True

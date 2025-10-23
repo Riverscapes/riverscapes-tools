@@ -127,9 +127,13 @@ def _get_urls(params: Dict[str, str]):
     """
 
     log = Logger('Download')
-    log.info('TNM query: {}'.format(params))
+    log.info(f'TNM query: {params}')
 
     items = TNM.get_items(params)
+
+    if items['error'] and items['error'] is not None:
+        log.error(f'TNM API error: {items["error"]}')
+        raise Exception(f'TNM API error: {items["error"]}')
 
     log.info('{} item(s) identified.'.format(items['total']))
 

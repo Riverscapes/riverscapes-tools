@@ -6,10 +6,10 @@ import argparse
 from shapely.ops import transform
 from functools import reduce
 import json
-from shapely.geometry import mapping, shape
 from rscommons.util import safe_makedirs
 from rscommons import ProgressBar, Logger
 from rscommons.shapefile import create_field, get_transform_from_epsg
+from rscommons.geometry_ops import shapely_to_ogr_geometry
 
 
 def export_feature_class(filegdb, featureclass, output_dir, output_epsg, retained_fields, attribute_filter, spatial_filter):
@@ -29,7 +29,7 @@ def export_feature_class(filegdb, featureclass, output_dir, output_epsg, retaine
 
     if spatial_filter:
         log.info('Export spatial filter area: {}'.format(spatial_filter.area))
-        in_layer.SetSpatialFilter(ogr.CreateGeometryFromJson(json.dumps(mapping(spatial_filter))))
+        in_layer.SetSpatialFilter(shapely_to_ogr_geometry(spatial_filter))
 
     safe_makedirs(output_dir)
 

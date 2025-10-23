@@ -1,8 +1,7 @@
 import sqlite3
-import json
 from osgeo import ogr
-from shapely.geometry import mapping
 from rscommons.classes.vector_base import VectorBase
+from rscommons.geometry_ops import shapely_to_ogr_geometry
 
 
 def clean_nhdplus_catchments(gpkg_path: str, huc_boundary_lyr: str, hucid: str):
@@ -28,7 +27,7 @@ def clean_nhdplus_catchments(gpkg_path: str, huc_boundary_lyr: str, hucid: str):
     bound = geom.boundary
 
     catchlyr = nhdsrc.GetLayerByName("NHDPlusCatchment")
-    catchlyr.SetSpatialFilter(ogr.CreateGeometryFromJson(json.dumps(mapping(bound))))
+    catchlyr.SetSpatialFilter(shapely_to_ogr_geometry(bound))
 
     del_ids = []
 
