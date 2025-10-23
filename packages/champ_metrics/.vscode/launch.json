@@ -46,6 +46,19 @@
       ],
       "request": "launch",
       "console": "integratedTerminal"
+    },
+    {
+      "name": "Stream Temp",
+      "type": "debugpy",
+      "module": "champ_metrics.stream_temp",
+      "envFile": "${workspaceFolder}/.env",
+      "args": [
+        "/Users/philipbailey/GISData/champ/stream_temp/whatever",
+        "/Users/philipbailey/GISData/champ/stream_temp/champ_stream_temp.gpkg",
+        "/Users/philipbailey/GISData/champ/stream_temp/champ_site_locations.json"
+      ],
+      "request": "launch",
+      "console": "integratedTerminal"
     }
   ]
 }
