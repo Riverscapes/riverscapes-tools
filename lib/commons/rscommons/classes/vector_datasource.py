@@ -7,12 +7,7 @@ from rscommons.util import safe_remove_file
 
 
 class DatasetRegistryException(Exception):
-    """Special exceptions
-
-    Args:
-        Exception ([type]): [description]
-    """
-    pass
+    """Special exceptions for DatasetRegistry errors."""
 
 
 class Dataset():
@@ -133,7 +128,11 @@ class DatasetRegistry(object):
         # Clean up if this is the last one
         if len(self._registry[filepath].layers) == 0:
             if self._registry[filepath].ds is not None:
-                self._registry[filepath].ds.Destroy()
+                try:
+                    self._registry[filepath].ds.Destroy()
+                except RuntimeError as err:
+                    # Swallow readonly database trigger creation failures so they don't crash pipeline
+                    self.log.warning(f'Ignoring dataset close error (readonly?): {err}')
             del self._registry[filepath]
             # self.log.debug('Dataset closed: {}'.format(filepath))
 
@@ -143,7 +142,7 @@ class DatasetRegistry(object):
         # If this dataset is known to the registry then we need to handle it
         if filepath in self._registry:
             if len(self._registry[filepath].layers) > 1:
-                raise DatasetRegistryException('Cannot delete dataset when there are > 1 layers accessing it. {}'.format(self._registry[filepath].layers))
+                raise DatasetRegistryException(f'Cannot delete dataset when there are > 1 layers accessing it. {self._registry[filepath].layers}')
 
             # Unload the DS
             if self._registry[filepath].ds is not None:

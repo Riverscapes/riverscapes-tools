@@ -47,8 +47,7 @@ def generate_igo_points(line_network: Path, dem: Path, out_points_layer: Path, v
         out_fields = {f"{unique_stream_field}": ogr.OFTString,
                       "seg_distance": ogr.OFTReal,
                       "stream_size": ogr.OFTInteger}
-        out_lyr.create_layer(
-            ogr.wkbPoint, spatial_ref=line_lyr.spatial_ref, fields=out_fields)
+        out_lyr.create_layer(ogr.wkbPoint, spatial_ref=line_lyr.spatial_ref, fields=out_fields)
 
         # if the line layer is not projected, we need to project it to a UTM zone
         # in order to get accurate lengths
@@ -56,15 +55,12 @@ def generate_igo_points(line_network: Path, dem: Path, out_points_layer: Path, v
             extent_poly = get_rectangle_as_geom(line_lyr.ogr_layer.GetExtent())
             extent_centroid = extent_poly.Centroid()
             utm_epsg = get_utm_zone_epsg(extent_centroid.GetX())
-            transform_ref, transform = VectorBase.get_transform_from_epsg(
-                line_lyr.spatial_ref, utm_epsg)
-            transform_back = osr.CoordinateTransformation(
-                transform_ref, line_lyr.spatial_ref)
+            transform_ref, transform = VectorBase.get_transform_from_epsg(line_lyr.spatial_ref, utm_epsg)
+            transform_back = osr.CoordinateTransformation(transform_ref, line_lyr.spatial_ref)
         else:
             # if the line layer is projected, we can use the spatial reference directly
             transform_ref = line_lyr.spatial_ref
-            transform = osr.CoordinateTransformation(
-                line_lyr.spatial_ref, transform_ref)
+            transform = osr.CoordinateTransformation(line_lyr.spatial_ref, transform_ref)
             transform_back = transform
 
         for level_path in levelpaths:
@@ -248,14 +244,27 @@ def split_vbet_polygons(vbet_polygons: Path, segmentation_points: Path, out_spli
                 geom_out = ogr.ForceToMultiPolygon(geom_out)
                 out_lyr.create_feature(geom_out, {f'{unique_stream_field}': str(int(level_path))})
 
-    # Dataset flush not required; GeopackageLayer handles closure
-        for segment_feat, *_ in out_lyr.iterate_features('Writing segment dist to polygons'):
+    # Second phase: reopen cleanly to annotate seg_distance (avoid mixed RO/WO handles)
+    with GeopackageLayer(out_split_polygons, write=True) as out_lyr, \
+            GeopackageLayer(segmentation_points) as points_lyr:
+        for segment_feat, *_ in out_lyr.iterate_features('Writing segment dist to polygons', write_layers=[out_lyr]):
             polygon = segment_feat.GetGeometryRef()
             lp = segment_feat.GetField(f'{unique_stream_field}')
+            if lp is None:
+                continue
+            # Find nearest segmentation point inside polygon (could be >1; choose min seg_distance)
+            seg_values = []
             for pt_feat, *_ in points_lyr.iterate_features(clip_shape=polygon, attribute_filter=f'{unique_stream_field} = {lp}'):
-                seg_distance = pt_feat.GetField('seg_distance')
-                segment_feat.SetField('seg_distance', seg_distance)
-                out_lyr.ogr_layer.SetFeature(segment_feat)
+                sd = pt_feat.GetField('seg_distance')
+                if sd is not None:
+                    seg_values.append(sd)
+            if seg_values:
+                segment_feat.SetField('seg_distance', min(seg_values))
+                try:
+                    out_lyr.ogr_layer.SetFeature(segment_feat)
+                except RuntimeError as err:
+                    log.warning(f'Failed to update segment (fid={segment_feat.GetFID()}): {err}')
+                    raise err
 
     log.info('VBET polygon successfully segmented')
 

@@ -1027,8 +1027,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
     log.info('Generating VBET Segment Polygons')
     segmentation_polygons = os.path.join(
         intermediates_gpkg, LayerTypes['INTERMEDIATES'].sub_layers['VBET_DGO_POLYGONS'].rel_path)
-    split_vbet_polygons(output_vbet, segmentation_points,
-                        segmentation_polygons, unique_stream_field)
+    split_vbet_polygons(output_vbet, segmentation_points, segmentation_polygons, unique_stream_field)
     clean_igos(segmentation_points, segmentation_polygons, unique_stream_field, level_paths_to_run)
     _tmr_waypt.timer_break('GenerateVBETSegmentPolys')
     if flowline_type == 'NHD':
@@ -1040,8 +1039,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
     for level_path in level_paths_to_run:
         if level_path is None:
             continue
-        calculate_dgo_metrics(segmentation_polygons, output_centerlines,
-                              metric_layers, f"{unique_stream_field} = {level_path}")
+        calculate_dgo_metrics(segmentation_polygons, output_centerlines, metric_layers, f"{unique_stream_field} = {level_path}")
     _tmr_waypt.timer_break('CalcSegmentMetrics')
 
     log.info('Summerizing VBET Metrics')
