@@ -3,14 +3,14 @@
   // Hover to view descriptions of existing attributes.
   // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
   "version": "0.2.0",
-   "inputs": [
+  "inputs": [
     {
       "type": "promptString",
       "id": "visitID",
       "description": "Which Visit ID?",
       "default": "0687"
     }
-  ],  
+  ],
   "configurations": [
     {
       "name": "Python: Current File",
@@ -20,9 +20,23 @@
       "console": "integratedTerminal"
     },
     {
-      "name": "CHaMP Metrics",
+      "name": "CHaMP Topo Metrics",
       "type": "debugpy",
       "module": "champ_metrics.champ_metrics",
+      "envFile": "${workspaceFolder}/.env",
+      "args": [
+        "${input:visitID}",
+        "{env:DATA_ROOT}/champ/workbench.db",
+        "{env:DATA_ROOT}/champ/topo_projects/${input:visitID}/project.rs.xml",
+        "{env:DATA_ROOT}/champ/metrics/${input:visitID}"
+      ],
+      "request": "launch",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "CHaMP Aux Metrics",
+      "type": "debugpy",
+      "module": "champ_metrics.champ_aux_metrics.py",
       "envFile": "${workspaceFolder}/.env",
       "args": [
         "${input:visitID}",

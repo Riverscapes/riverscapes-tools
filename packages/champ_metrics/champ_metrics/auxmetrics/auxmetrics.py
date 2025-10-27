@@ -1,23 +1,23 @@
 import sys
 import os
-
-import champmetrics.lib.env
-from champmetrics.lib.loghelper import Logger
-from champmetrics.lib.sitkaAPI import downloadUnzipTopo, APIGet
 import argparse
 import traceback
-from champmetrics.lib.exception import DataException, MissingException, NetworkException
-from champmetrics.lib.metricxmloutput import writeMetricsToXML
-import os
-import argparse
 
+from rscommons import Logger
+from rscommons.util import safe_makedirs
+import champ_metrics.lib.env
+from champ_metrics.lib.exception import DataException, MissingException, NetworkException
+from champ_metrics.lib.metricxmloutput import writeMetricsToXML
 from .metriclib.auxMetrics import calculateMetricsForVisit, calculateMetricsForChannelUnitSummary, calculateMetricsForTier1Summary, calculateMetricsForStructureSummary
 # from .metriclib.fishMetrics import *
 
 
 __version__ = "0.0.4"
 
-def runAuxMetrics(xmlfile, outputDirectory, visit_id):
+
+def runAuxMetrics(xmlfile: str, visit_id: int, data_folder: str, results_folder: str) -> None:
+    """Run the auxmetrics for a given visit and write them to an XML file."""
+
     log = Logger("Validation")
 
     # Make a big object we can pass around
@@ -64,16 +64,15 @@ def runAuxMetrics(xmlfile, outputDirectory, visit_id):
 
     log.info("Visit " + str(visit_id) + " - " + protocol + ": " + iteration)
 
-    # Populate our measurements from the API
-    for key,url in measurekeys.items():
+    # Populate our measurements from the Aux JSON files.
+    # This used to call the Sitka API to get this information.
+    for key, url in measurekeys.items():
         try:
             visitobj[key] = APIGet("visits/{0}/measurements/{1}".format(visit_id, url))
         except MissingException as e:
             visitobj[key] = None
 
-    log.info("Writing Metrics for Visit {0} XML File".format(visit_id))
-
-    # do metric calcs
+    # Metric calculations
     visitMetrics = calculateMetricsForVisit(visitobj)
     channelUnitMetrics = calculateMetricsForChannelUnitSummary(visitobj)
     tier1Metrics = calculateMetricsForTier1Summary(visitobj)
@@ -81,6 +80,7 @@ def runAuxMetrics(xmlfile, outputDirectory, visit_id):
 
     # write these files
     # dMetricsArg, visitID, sourceDir, xmlFilePath, modelEngineRootNode, modelVersion
+    log.info(f'Writing Metrics for Visit {visit_id} XML File')
     writeMetricsToXML({
         "VisitMetrics": visitMetrics,
         "ChannelUnitMetrics": channelUnitMetrics,
@@ -90,32 +90,27 @@ def runAuxMetrics(xmlfile, outputDirectory, visit_id):
 
 
 def main():
-    # parse command line options
+    """Main function for running auxmetrics from the command line."""
+
     parser = argparse.ArgumentParser()
-    parser.add_argument('visitID', help='Visit ID', type=int)
+    parser.add_argument('visit_id', help='Visit ID', type=int)
     parser.add_argument('outputfolder', help='Path to output folder', type=str)
-    parser.add_argument('--datafolder', help='(optional) Top level folder containing TopoMetrics Riverscapes projects', type=str)
-    parser.add_argument('--verbose', help='Get more information in your logs.', action='store_true', default=False )
+    parser.add_argument('data_folder', help='Top level folder containing topo riverscapes projects', type=str)
+    parser.add_argument('--verbose', help='Get more information in your logs.', action='store_true', default=False)
     args = parser.parse_args()
 
     # Make sure the output folder exists
     resultsFolder = os.path.join(args.outputfolder, "outputs")
+    safe_makedirs(resultsFolder)
 
     # Initiate the log file
-    logg = Logger("Program")
+    log = Logger("Aux Metrics")
     logfile = os.path.join(resultsFolder, "aux_metrics.log")
     xmlfile = os.path.join(resultsFolder, "aux_metrics.xml")
-    logg.setup(logPath=logfile, verbose=args.verbose)
-
-    # Initiate the log file
-    log = Logger("Program")
     log.setup(logPath=logfile, verbose=args.verbose)
 
     try:
-        if not os.path.isdir(resultsFolder):
-            os.makedirs(resultsFolder)
-
-        runAuxMetrics(xmlfile, resultsFolder, args.visitID)
+        runAuxMetrics(xmlfile, args.visit_id, args.data_folder, resultsFolder)
 
     except (DataException, MissingException, NetworkException) as e:
         # Exception class prints the relevant information
@@ -131,6 +126,7 @@ def main():
         sys.exit(1)
 
     sys.exit(0)
+
 
 if __name__ == "__main__":
     main()
