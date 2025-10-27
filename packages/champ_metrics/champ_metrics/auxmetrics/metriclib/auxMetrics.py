@@ -7,7 +7,7 @@ from .pebbleMetrics import visitPebbleMetrics
 from .coverMetrics import visitCoverMetrics
 from .fishMetrics import visitFishCountMetrics, channelUnitFishCountMetrics, tier1FishCountMetrics, structureFishCountMetrics
 from .woodMetrics import visitLWDMetrics, channelUnitLWDMetrics, tier1LWDMetrics
-from champmetrics.lib.channelunits import getCleanTierName
+from champ_metrics.lib.channelunits import getCleanTierName
 
 
 def calculateMetricsForVisit(visitobj):
