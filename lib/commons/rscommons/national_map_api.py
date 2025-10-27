@@ -23,15 +23,15 @@ class TNM:
         params["outputFormat"] = "JSON"
 
         log = Logger('TNM API Get Items')
-        log.info('Get items from TNM API with query: {}'.format(json.dumps(params, indent=4)))
+        log.info(f'Get items from TNM API with query: {json.dumps(params, indent=4)}')
 
         def curl_str():
             """A little helper script to printout the curl command to replicate the request with all the params
             """
             encoded_params = urllib.parse.urlencode(params)
             full_url = f"{url}?{encoded_params}"
-            cmd = 'curl --request GET --url "{}" --header "accept: application/json"'.format(full_url)
-            return '\n\nCurl command: {}\n'.format(cmd)
+            cmd = f'curl --request GET --url "{full_url}" --header "accept: application/json"'
+            return f'\n\nCurl command: {cmd}\n'
 
         # Pagination variables
         all_items = []

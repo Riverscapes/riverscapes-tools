@@ -46,7 +46,7 @@ def download_unzip(url, download_folder, unzip_folder=None, force_download=False
             dl_retry += 1
 
     if (not dl_success):
-        raise Exception('Downloading of file failed after {} attempts'.format(retries))
+        raise Exception(f'Downloading of file failed after {retries} attempts')
 
     final_unzip_folder = unzip_folder if unzip_folder is not None else os.path.splitext(zipfilepath)[0]
 

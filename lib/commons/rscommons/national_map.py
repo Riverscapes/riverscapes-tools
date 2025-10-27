@@ -98,7 +98,7 @@ def download_shapefile_collection(url, download_folder, unzip_folder, force_down
             if item.endswith('.shp'):
                 shapefiles[os.path.splitext(os.path.basename(item))[0]] = os.path.join(root, item)
 
-    log.info('{} shapefiles identified.'.format(len(shapefiles)))
+    log.info(f'{len(shapefiles)} shapefiles identified.')
     return shapefiles
 
 

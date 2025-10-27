@@ -12,12 +12,10 @@ import os
 import sys
 import traceback
 import time
-import json
-from typing import Dict, List
+from typing import Dict
 
 # LEave OSGEO import alone. It is necessary even if it looks unused
 from osgeo import gdal, osr
-from osgeo.ogr import Layer
 import rasterio
 from rscommons.classes.vector_classes import get_shp_or_gpkg, VectorBase
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
@@ -27,7 +25,6 @@ from rscommons import GeopackageLayer, ProgressBar
 from rscommons.vector_ops import copy_feature_class
 from rscommons.hand import hand_rasterize, run_subprocess
 from rscommons.raster_warp import raster_warp
-from rscommons.geographic_raster import gdal_dem_geographic
 from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions, raster_resolution_meta
 
 from taudem.taudem_report import TauDEMReport
@@ -339,7 +336,7 @@ def main():
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output_dir, 'taudem_mem.log')
             retcode, max_obj = ThreadRun(taudem, memfile, args.huc, args.channel, args.dem, args.output_dir, args.mask, epsg, meta)
-            log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
+            log.debug(f'Return code: {retcode}, [Max process usage] {max_obj}')
 
         else:
             taudem(args.huc, args.channel, args.dem, args.output_dir, args.mask, epsg, meta)

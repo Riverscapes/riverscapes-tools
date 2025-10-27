@@ -35,6 +35,9 @@
       "request": "launch",
       "module": "taudem.taudem",
       "console": "integratedTerminal",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+      },
       "args": [
         "${input:HUC}",
         "{env:DATA_ROOT}/channel_area/${input:HUC}/outputs/channel_area.gpkg/channel_area",
