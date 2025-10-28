@@ -83,7 +83,8 @@ df -h
 
 try() {
 
-  confinement $HUC \
+  cd /usr/local/src/riverscapes-tools/packages/confinement
+  python3 -m confinement.confinement $HUC \
     $VBET_DIR/inputs/vbet_inputs.gpkg/network_intersected \
     $VBET_DIR/inputs/vbet_inputs.gpkg/channel_area_polygons \
     $VBET_DIR/outputs/vbet.gpkg/vbet_full \

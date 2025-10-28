@@ -77,7 +77,8 @@ rscli download $VBET_DIR --id $VBET_ID \
 ##########################################################################################
 try() {
 
-  anthro $HUC \
+  cd /usr/local/src/riverscapes-tools/packages/anthro
+  python3 -m anthro.anthro $HUC \
     $RS_CONTEXT_DIR/vegetation/existing_veg.tif \
     $RS_CONTEXT_DIR/topography/dem_hillshade.tif \
     $VBET_DIR/outputs/vbet.gpkg/vbet_igos \

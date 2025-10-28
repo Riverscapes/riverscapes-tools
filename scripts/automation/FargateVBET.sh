@@ -82,7 +82,8 @@ rscli download $TAUDEM_DIR --id $TAUDEM_ID \
 ##########################################################################################
 try() {
 
-  vbet $HUC \
+  cd /usr/local/src/riverscapes-tools/packages/vbet
+  python3 -m vbet.vbet $HUC \
     $RS_CONTEXT_DIR/hydrology/hydro_derivatives.gpkg/network_intersected \
     $RS_CONTEXT_DIR/topography/dem.tif \
     $RS_CONTEXT_DIR/topography/slope.tif \

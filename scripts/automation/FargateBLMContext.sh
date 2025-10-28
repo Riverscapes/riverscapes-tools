@@ -83,7 +83,8 @@ rscli download $VBET_DIR --id $VBET_ID \
 ##########################################################################################
 try() {
 
-  blm_context $HUC \
+  cd /usr/local/src/riverscapes-tools/packages/blm_context
+  python3 -m blm_context.blm_context $HUC \
     $NATIONAL_BLM_CONTEXT_DIR \
     $RS_CONTEXT_DIR \
     $VBET_DIR \

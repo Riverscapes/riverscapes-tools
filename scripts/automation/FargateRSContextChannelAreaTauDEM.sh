@@ -78,7 +78,8 @@ TAUDEM_DIR=$DATA_DIR/taudem/$HUC
 
 try() {
 
-rscontext $HUC \
+cd /usr/local/src/riverscapes-tools/packages/rscontext
+python3 -m rscontext.rscontext $HUC \
   /efsshare/NationalDatasets/landfire/240/ \
   /efsshare/NationalDatasets/ownership/surface_management_agency.shp \
   /efsshare/NationalDatasets/ownership/FairMarketValue.tif \
@@ -136,7 +137,8 @@ rm -fr $RSCONTEXT_SCRATCH
 # Now Run Channel Area Tool
 ##########################################################################################
 
-channel $HUC \
+cd /usr/local/src/riverscapes-tools/packages/channel
+python3 -m channel.channel $HUC \
   $RSCONTEXT_DIR/hydrology/hydro_derivatives.gpkg/network_intersected  \
   $CHANNELAREA_DIR \
   --flowareas $RSCONTEXT_DIR/hydrology/hydro_derivatives.gpkg/NHDAreaSplit \
@@ -187,7 +189,8 @@ echo "<<Channel Area COMPLETE>>"
 # Now Run TauDEM
 ##########################################################################################
 
-taudem $HUC \
+cd /usr/local/src/riverscapes-tools/packages/taudem
+python3 -m taudem.taudem $HUC \
   $CHANNELAREA_DIR/outputs/channel_area.gpkg/channel_area \
   $RSCONTEXT_DIR/topography/dem.tif \
   $TAUDEM_DIR \

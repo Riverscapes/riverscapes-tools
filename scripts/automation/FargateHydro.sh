@@ -81,7 +81,8 @@ rscli download $VBET_DIR --id $VBET_ID \
 ##########################################################################################
 try() {
 
-  hydro_context $HUC \
+  cd /usr/local/src/riverscapes-tools/packages/hydro
+  python3 -m hydro.hydro $HUC \
     $RS_CONTEXT_DIR/topography/dem.tif \
     $RS_CONTEXT_DIR/topography/dem_hillshade.tif \
     $VBET_DIR/outputs/vbet.gpkg/vbet_igos \

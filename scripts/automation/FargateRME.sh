@@ -122,7 +122,8 @@ df -h
 echo "======================  Running RME ======================="
 try() {
 
-  rme $HUC \
+  cd /usr/local/src/riverscapes-tools/packages/rme
+  python3 -m rme.rme $HUC \
     $RS_CONTEXT_DIR/hydrology/hydro_derivatives.gpkg/network_intersected \
     $RS_CONTEXT_DIR/hydrology/nhdplushr.gpkg/NHDWaterbody \
     $RS_CONTEXT_DIR/hydrology/nhdplushr.gpkg/WBDHU12 \

@@ -80,7 +80,8 @@ df -h
 
 try() {
 
-  rvd $HUC \
+  cd /usr/local/src/riverscapes-tools/packages/rvd
+  python3 -m rvd.rvd $HUC \
       $RSCONTEXT_DIR/hydrology/hydrology.gpkg/network_intersected_300m \
       $RSCONTEXT_DIR/vegetation/existing_veg.tif \
       $RSCONTEXT_DIR/vegetation/historic_veg.tif \

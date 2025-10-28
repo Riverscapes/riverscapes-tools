@@ -81,7 +81,8 @@ df -h
 
 try() {
 
-  rscontext $HUC \
+  cd /usr/local/src/riverscapes-tools/packages/rscontext
+  python3 -m rscontext.rs_context $HUC \
     /efsshare/NationalDatasets/landfire/220/us_200evt.tif \
     /efsshare/NationalDatasets/landfire/220/us_200bps.tif \
     /efsshare/NationalDatasets/ownership/surface_management_agency.shp \
@@ -134,7 +135,8 @@ try() {
   # Now Run Channel Area Tool
   ##########################################################################################
 
-  channel $HUC \
+  cd /usr/local/src/riverscapes-tools/packages/channel
+  python3 -m channel.channel $HUC \
     $RSCONTEXT_DIR/hydrology/hydro_derivatives.gpkg/network_intersected \
     $CHANNELAREA_DIR \
     --flowareas $RSCONTEXT_DIR/hydrology/hydro_derivatives.gpkg/NHDAreaSplit \
@@ -183,7 +185,8 @@ try() {
   # Now Run TauDEM
   ##########################################################################################
 
-  taudem $HUC \
+  cd /usr/local/src/riverscapes-tools/packages/taudem
+  python3 -m taudem.taudem $HUC \
     $CHANNELAREA_DIR/outputs/channel_area.gpkg/channel_area \
     $RSCONTEXT_DIR/topography/dem.tif \
     $TAUDEM_DIR \
@@ -223,23 +226,24 @@ try() {
   # Now Run VBET
   ##########################################################################################
 
-vbet $HUC \
-  "APRIL_2022" \
-  $RS_CONTEXT_DIR/hydrology/hydrology.gpkg/network \
-  $RS_CONTEXT_DIR/topography/dem.tif \
-  $RS_CONTEXT_DIR/topography/slope.tif \
-  $RS_CONTEXT_DIR/topography/dem_hillshade.tif \
-  $RS_CONTEXT_DIR/hydrology/NHDPlusCatchment.shp \
-  $CHANNELAREA_DIR/outputs/channel_area.gpkg/channel_area \
-  $VBET_DIR \
-  --pitfill $TAUDEM_DIR/intermediates/pitfill.tif \
-  --dinfflowdir_ang $TAUDEM_DIR/intermediates/dinfflowdir_ang.tif \
-  --dinfflowdir_slp $TAUDEM_DIR/outputs/dinfflowdir_slp.tif \
-  --twi_raster $TAUDEM_DIR/outputs/twi.tif \
-  --reach_codes 33400,46000,46003,46006,46007,55800 \
-  --mask $RS_CONTEXT_DIR/hydrology/WBDHU8.shp \
-  --meta "Runner=Cybercastor" \
-  --verbose
+  cd /usr/local/src/riverscapes-tools/packages/vbet
+  python3 -m vbet.vbet $HUC \
+    "APRIL_2022" \
+    $RS_CONTEXT_DIR/hydrology/hydrology.gpkg/network \
+    $RS_CONTEXT_DIR/topography/dem.tif \
+    $RS_CONTEXT_DIR/topography/slope.tif \
+    $RS_CONTEXT_DIR/topography/dem_hillshade.tif \
+    $RS_CONTEXT_DIR/hydrology/NHDPlusCatchment.shp \
+    $CHANNELAREA_DIR/outputs/channel_area.gpkg/channel_area \
+    $VBET_DIR \
+    --pitfill $TAUDEM_DIR/intermediates/pitfill.tif \
+    --dinfflowdir_ang $TAUDEM_DIR/intermediates/dinfflowdir_ang.tif \
+    --dinfflowdir_slp $TAUDEM_DIR/outputs/dinfflowdir_slp.tif \
+    --twi_raster $TAUDEM_DIR/outputs/twi.tif \
+    --reach_codes 33400,46000,46003,46006,46007,55800 \
+    --mask $RS_CONTEXT_DIR/hydrology/WBDHU8.shp \
+    --meta "Runner=Cybercastor" \
+    --verbose
   if [[ $? != 0 ]]; then return 1; fi
 
   cd /usr/local/src/riverscapes-tools/packages/vbet

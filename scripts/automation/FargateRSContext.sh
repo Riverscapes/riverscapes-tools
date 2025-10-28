@@ -64,7 +64,8 @@ echo "======================  Starting RSContext ======================="
 # First Run RS_Context
 ##########################################################################################
 try() {
-  rscontext $HUC \
+  cd /usr/local/src/riverscapes-tools/packages/rscontext  
+  python3 -m rscontext.rscontext $HUC \
     /efsshare/NationalDatasets/landfire/240/ \
     /efsshare/NationalDatasets/ownership/surface_management_agency.shp \
     /efsshare/NationalDatasets/ownership/FairMarketValue.tif \

@@ -107,7 +107,8 @@ df -h
 
 try() {
 
-  rcat $HUC \
+  cd /usr/local/src/riverscapes-tools/packages/rcat
+  python3 -m rcat.rcat $HUC \
     $RSCONTEXT_DIR/vegetation/existing_veg.tif \
     $RSCONTEXT_DIR/vegetation/historic_veg.tif \
     $RSCONTEXT_DIR/topography/dem_hillshade.tif \

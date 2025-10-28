@@ -74,7 +74,8 @@ rscli download $CHANNELAREA_DIR --id $CHANNELAREA_ID \
 ##########################################################################################
 try() {
 
-taudem $HUC \
+cd /usr/local/src/riverscapes-tools/packages/taudem
+python3 -m taudem.taudem $HUC \
   $CHANNELAREA_DIR/outputs/channel_area.gpkg/channel_area \
   $RS_CONTEXT_DIR/topography/dem.tif \
   $TAUDEM_DIR \
