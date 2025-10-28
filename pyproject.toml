@@ -37,23 +37,6 @@ dependencies = [
     "urllib3>=2.2",
 ]
 
-[project.scripts]
-anthro = "anthro.anthro:main"
-beaver_activity = "beaver_sign.beaver_sign:main"
-blm_context = "blm_context.blm_context:main"
-brat = "sqlbrat.brat:main"
-confinement = "confinement.confinement:main"
-dembuilder = "rscontext_3dep.dem_builder:main"
-grazing = "grazing.grazing_likelihood:main"
-hand = "hand.hand:main"
-hydro_context = "hydro.hydro:main"
-ltpbrexport = "ltpbrexport.ltpbrexport:main"
-rcat = "rcat.rcat:main"
-rme = "rme.metric_engine:main"
-rscontextit = "rscontextit.rs_context_it:main"
-rscontextnz = "rscontextnz.rs_context_nz:main"
-rvd = "rvd.rvd:main"
-
 [tool.setuptools.packages.find]
 where = ["packages", "lib"]
 

@@ -67,7 +67,7 @@ rscli download $RS_CONTEXT_DIR --id $RSCONTEXT_ID \
 ##########################################################################################
 try() {
 
-channel $HUC \
+python packages/channel/channel/channel.py $HUC \
   $RS_CONTEXT_DIR/hydrology/hydro_derivatives.gpkg/network_intersected \
   $CHANNELAREA_DIR \
   --flowareas $RS_CONTEXT_DIR/hydrology/hydro_derivatives.gpkg/NHDAreaSplit \
