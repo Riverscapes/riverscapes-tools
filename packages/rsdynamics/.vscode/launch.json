@@ -23,7 +23,7 @@
       "args": [
         "${input:WatershedHydroID}",
         "/Users/philipbailey/GISData/nz/vbet/${input:WatershedHydroID}/project.rs.xml",
-        "/Users/philipbailey/GISData/nz/rodrigo_output/output",
+        "/Users/philipbailey/GISData/nz/rodrigo_output/output2",
         "/Users/philipbailey/GISData/nz/rsdynamics",
         "--verbose"
       ]
