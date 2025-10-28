@@ -122,14 +122,12 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
     # This could be a re-run and we need to clear out the tmp folders
     if os.path.isdir(temp_folder):
         safe_remove_dir(temp_folder)
-    intermediates_dir = os.path.dirname(os.path.join(
-        project_folder, LayerTypes['INTERMEDIATES'].rel_path))
+    intermediates_dir = os.path.dirname(os.path.join(project_folder, LayerTypes['INTERMEDIATES'].rel_path))
     if os.path.isdir(intermediates_dir):
         safe_remove_dir(intermediates_dir)
     safe_makedirs(intermediates_dir)
     # Wipe the outputs directory so we don't get any bleed over from the last run
-    outputs_dir = os.path.dirname(os.path.join(
-        project_folder, LayerTypes['VBET_OUTPUTS'].rel_path))
+    outputs_dir = os.path.dirname(os.path.join(project_folder, LayerTypes['VBET_OUTPUTS'].rel_path))
     if os.path.isdir(outputs_dir):
         safe_remove_dir(outputs_dir)
     safe_makedirs(outputs_dir)
@@ -162,10 +160,8 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
 
     log.info('Preparing inputs:')
     inputs_gpkg = os.path.join(project_folder, LayerTypes['INPUTS'].rel_path)
-    intermediates_gpkg = os.path.join(
-        project_folder, LayerTypes['INTERMEDIATES'].rel_path)
-    vbet_gpkg = os.path.join(
-        project_folder, LayerTypes['VBET_OUTPUTS'].rel_path)
+    intermediates_gpkg = os.path.join(project_folder, LayerTypes['INTERMEDIATES'].rel_path)
+    vbet_gpkg = os.path.join(project_folder, LayerTypes['VBET_OUTPUTS'].rel_path)
     GeopackageLayer.delete(inputs_gpkg)
     GeopackageLayer.delete(intermediates_gpkg)
     GeopackageLayer.delete(vbet_gpkg)
@@ -202,8 +198,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
 
     GeopackageLayer.delete(os.path.dirname(tmp_line_network))
 
-    channel_area = os.path.join(
-        inputs_gpkg, LayerTypes['INPUTS'].sub_layers['CHANNEL_AREA_POLYGONS'].rel_path)
+    channel_area = os.path.join(inputs_gpkg, LayerTypes['INPUTS'].sub_layers['CHANNEL_AREA_POLYGONS'].rel_path)
     copy_feature_class(in_channel_area, channel_area, epsg=cfg.OUTPUT_EPSG)
 
     log.info('Building VBET Database')
@@ -219,15 +214,11 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
     with rasterio.open(in_dem) as dem_src, rasterio.open(in_slope) as slope_src, rasterio.open(in_hillshade) as hillshade_src:
         dem_crs = dem_src.crs
         if dem_src.crs != slope_src.crs or dem_src.crs != hillshade_src.crs:
-            raise Exception(
-                'DEM, slope, and hillshade rasters must have the same projection.')
+            raise Exception('DEM, slope, and hillshade rasters must have the same projection.')
 
-    _proj_hillshade_node, _hillshade = project.add_project_raster(
-        proj_nodes['Inputs'], LayerTypes['HILLSHADE'], in_hillshade, replace=True)
-    _proj_dem_node, dem = project.add_project_raster(
-        proj_nodes['Inputs'], LayerTypes['DEM'], in_dem, replace=True)
-    _proj_slope_node, in_rasters['Slope'] = project.add_project_raster(
-        proj_nodes['Inputs'], LayerTypes['SLOPE_RASTER'], in_slope, replace=True)
+    _proj_hillshade_node, _hillshade = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], in_hillshade, replace=True)
+    _proj_dem_node, dem = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], in_dem, replace=True)
+    _proj_slope_node, in_rasters['Slope'] = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['SLOPE_RASTER'], in_slope, replace=True)
 
     # Use the size of the DEM to guess if we need the bigTIFF flag for files at or near 4Gb
     use_big_tiff = os.path.getsize(dem) > BIG_TIFF_THRESH
@@ -239,29 +230,23 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
         pitfill_status = run_subprocess(project_folder, ["mpiexec", "-n", NCORES, "pitremove", "-z", dem, "-fel", pitfill_dem])
         if pitfill_status != 0 or not os.path.isfile(pitfill_dem):
             raise Exception('TauDEM: pitfill failed')
-        _proj_pitfill_node, pitfill_dem = project.add_project_raster(
-            proj_nodes['Intermediates'], LayerTypes['PITFILL'])
+        _proj_pitfill_node, pitfill_dem = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['PITFILL'])
         proj_rasters.append([_proj_pitfill_node, pitfill_dem])
     else:
         with rasterio.open(in_pitfill_dem) as pitfill_src:
             if pitfill_src.crs != dem_crs:
                 raise Exception(
                     'Input Pitfill raster must have the same projection as the DEM')
-        _proj_pitfill_node, pitfill_dem = project.add_project_raster(
-            proj_nodes['Intermediates'], LayerTypes['PITFILL'], in_pitfill_dem, replace=True)
+        _proj_pitfill_node, pitfill_dem = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['PITFILL'], in_pitfill_dem, replace=True)
 
     if not all([in_dinfflowdir_ang, in_dinfflowdir_slp]):
-        dinfflowdir_slp = os.path.join(
-            project_folder, LayerTypes['DINFFLOWDIR_SLP'].rel_path)
-        dinfflowdir_ang = os.path.join(
-            project_folder, LayerTypes['DINFFLOWDIR_ANG'].rel_path)
+        dinfflowdir_slp = os.path.join(project_folder, LayerTypes['DINFFLOWDIR_SLP'].rel_path)
+        dinfflowdir_ang = os.path.join(project_folder, LayerTypes['DINFFLOWDIR_ANG'].rel_path)
         dinfflowdir_status = run_subprocess(project_folder, ["mpiexec", "-n", NCORES, "dinfflowdir", "-fel", pitfill_dem, "-ang", dinfflowdir_ang, "-slp", dinfflowdir_slp])
         if dinfflowdir_status != 0 or not os.path.isfile(dinfflowdir_ang):
             raise Exception('TauDEM: dinfflowdir failed')
-        _proj_dinfflowdir_ang_node, dinfflowdir_ang = project.add_project_raster(
-            proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_ANG'])
-        _proj_dinfflowdir_slp_node, dinfflowdir_slp = project.add_project_raster(
-            proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_SLP'])
+        _proj_dinfflowdir_ang_node, dinfflowdir_ang = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_ANG'])
+        _proj_dinfflowdir_slp_node, dinfflowdir_slp = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_SLP'])
         proj_rasters.extend([[_proj_dinfflowdir_ang_node, dinfflowdir_ang], [
                             _proj_dinfflowdir_slp_node, dinfflowdir_slp]])
     else:
@@ -269,14 +254,11 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
             if fdir_src.crs != dem_crs:
                 raise Exception(
                     'Input Dinf Flow Direction raster must have the same projection as the DEM')
-        _proj_dinfflowdir_ang_node, dinfflowdir_ang = project.add_project_raster(
-            proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_ANG'], in_dinfflowdir_ang, replace=True)
-        _proj_dinfflowdir_slp_node, dinfflowdir_slp = project.add_project_raster(
-            proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_SLP'], in_dinfflowdir_slp, replace=True)
+        _proj_dinfflowdir_ang_node, dinfflowdir_ang = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_ANG'], in_dinfflowdir_ang, replace=True)
+        _proj_dinfflowdir_slp_node, dinfflowdir_slp = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['DINFFLOWDIR_SLP'], in_dinfflowdir_slp, replace=True)
 
     log.info('Writing Topo Evidence raster for project')
-    read_rasters = {name: rasterio.open(raster)
-                    for name, raster in in_rasters.items()}
+    read_rasters = {name: rasterio.open(raster) for name, raster in in_rasters.items()}
     out_meta = read_rasters['Slope'].meta
     out_meta['driver'] = 'GTiff'
     out_meta['count'] = 1
@@ -308,8 +290,11 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
     _vbet_zones_node, vbet_zone_ras = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['VBET_ZONES'])
     _active_zones_node, active_zones_ras = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['LOWLYING_FP_ZONES'])
     _inactive_zones_node, inactive_zones_ras = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes['ELEVATED_FP_ZONES'])
-    proj_rasters.extend([[_vbet_zones_node, vbet_zone_ras], [
-                        _active_zones_node, active_zones_ras], [_inactive_zones_node, inactive_zones_ras]])
+    proj_rasters.extend([
+        [_vbet_zones_node, vbet_zone_ras],
+        [_active_zones_node, active_zones_ras],
+        [_inactive_zones_node, inactive_zones_ras]
+    ])
 
     # Allow us to specify a temp folder outside our project folder
     temp_rasters_folder = os.path.join(temp_folder, 'rasters')
@@ -327,34 +312,25 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
         GeopackageLayer(output_vbet_ia, write=True) as lyr_active_vbet_init, \
             GeopackageLayer(line_network) as lyr_ref:
         fields = {f'{unique_stream_field}': ogr.OFTString}
-        lyr_temp_cl_init.create_layer(
-            ogr.wkbMultiLineString, spatial_ref=lyr_ref.spatial_ref, fields=fields)
+        lyr_temp_cl_init.create_layer(ogr.wkbMultiLineString, spatial_ref=lyr_ref.spatial_ref, fields=fields)
 
-        lyr_vbet_init.create_layer(
-            ogr.wkbMultiPolygon, spatial_ref=lyr_ref.spatial_ref, fields=fields)
-        lyr_active_vbet_init.create_layer(
-            ogr.wkbMultiPolygon, spatial_ref=lyr_ref.spatial_ref, fields=fields)
+        lyr_vbet_init.create_layer(ogr.wkbMultiPolygon, spatial_ref=lyr_ref.spatial_ref, fields=fields)
+        lyr_active_vbet_init.create_layer(ogr.wkbMultiPolygon, spatial_ref=lyr_ref.spatial_ref, fields=fields)
 
     with GeopackageLayer(line_network) as lyr_ref:
         if lyr_ref.ogr_layer.GetFeatureCount() == 0:
             with GeopackageLayer(os.path.join(intermediates_gpkg, LayerTypes['INTERMEDIATES'].sub_layers['VBET_DGO_POLYGONS'].rel_path), write=True) as lyr_dgo:
-                lyr_dgo.create_layer(
-                    ogr.wkbMultiPolygon, spatial_ref=lyr_ref.spatial_ref)
+                lyr_dgo.create_layer(ogr.wkbMultiPolygon, spatial_ref=lyr_ref.spatial_ref)
             with GeopackageLayer(os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['SEGMENTATION_POINTS'].rel_path), write=True) as lyr_igo:
-                lyr_igo.create_layer(
-                    ogr.wkbMultiPoint, spatial_ref=lyr_ref.spatial_ref)
+                lyr_igo.create_layer(ogr.wkbMultiPoint, spatial_ref=lyr_ref.spatial_ref)
             with GeopackageLayer(os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['LOW_LYING_FLOODPLAIN'].rel_path), write=True) as lyr_fp:
-                lyr_fp.create_layer(
-                    ogr.wkbMultiPolygon, spatial_ref=lyr_ref.spatial_ref)
+                lyr_fp.create_layer(ogr.wkbMultiPolygon, spatial_ref=lyr_ref.spatial_ref)
             with GeopackageLayer(os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['ELEVATED_FLOODPLAIN'].rel_path), write=True) as lyr_fp:
-                lyr_fp.create_layer(
-                    ogr.wkbMultiPolygon, spatial_ref=lyr_ref.spatial_ref)
+                lyr_fp.create_layer(ogr.wkbMultiPolygon, spatial_ref=lyr_ref.spatial_ref)
             with GeopackageLayer(os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['FLOODPLAIN'].rel_path), write=True) as lyr_fp:
-                lyr_fp.create_layer(
-                    ogr.wkbMultiPolygon, spatial_ref=lyr_ref.spatial_ref)
+                lyr_fp.create_layer(ogr.wkbMultiPolygon, spatial_ref=lyr_ref.spatial_ref)
             with GeopackageLayer(os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['VBET_CENTERLINES'].rel_path), write=True) as lyr_fp:
-                lyr_fp.create_layer(
-                    ogr.wkbMultiLineString, spatial_ref=lyr_ref.spatial_ref)
+                lyr_fp.create_layer(ogr.wkbMultiLineString, spatial_ref=lyr_ref.spatial_ref)
             project.add_project_geopackage(proj_nodes['Inputs'], LayerTypes['INPUTS'])
             project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['VBET_OUTPUTS'])
             log.info('No features found in the input network. Exiting.')
@@ -401,8 +377,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
         raster_bounds = raster.bounds
     bbox = box(*raster_bounds)
     raster_envelope_geom = VectorBase.shapely2ogr(bbox)
-    vbet_clip_buffer_size = VectorBase.rough_convert_metres_to_raster_units(
-        dem, 0.25)
+    vbet_clip_buffer_size = VectorBase.rough_convert_metres_to_raster_units(dem, 0.25)
 
     _tmr_waypt.timer_break('InputPrep')  # this is where input prep ends
 
@@ -456,8 +431,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
 
         # Gather the channel area polygon for the level path
         sql = f"{unique_stream_field} = {level_path}" if level_path is not None else f"{unique_stream_field} is NULL"
-        level_path_polygons = os.path.join(
-            temp_folder_lpath, 'channel_polygons.gpkg', f'level_path_{level_path}')
+        level_path_polygons = os.path.join(temp_folder_lpath, 'channel_polygons.gpkg', f'level_path_{level_path}')
         with TimerBuckets('ogr'):
             copy_feature_class(
                 channel_area, level_path_polygons, attribute_filter=sql)
@@ -559,13 +533,10 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
                     raster_warp(pitfill_dem, local_pitfill_dem,
                                 cfg.OUTPUT_EPSG, clip=envelope, warp_options={'xRes': pixel_x, 'yRes': pixel_y})
 
-        rasterized_channel = os.path.join(
-            temp_folder_lpath, f'rasterized_channel_{level_path}.tif')
-        prox_raster_path = os.path.join(
-            temp_folder_lpath, f'chan_proximity_{level_path}.tif')
+        rasterized_channel = os.path.join(temp_folder_lpath, f'rasterized_channel_{level_path}.tif')
+        prox_raster_path = os.path.join(temp_folder_lpath, f'chan_proximity_{level_path}.tif')
         with TimerBuckets('rasterize'):
-            rasterize(level_path_polygons, rasterized_channel,
-                      local_pitfill_dem, all_touched=True)
+            rasterize(level_path_polygons, rasterized_channel, local_pitfill_dem, all_touched=True)
             in_rasters['Channel'] = rasterized_channel
             # distance weighting for Slope evidence
             proximity_raster(rasterized_channel, prox_raster_path)
@@ -577,10 +548,8 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
         with TimerBuckets('flowline'):
             if level_path is not None:
                 # Generate and add rasterized version of level path flowline to make sure endpoint coords are on the raster.
-                level_path_flowlines = os.path.join(
-                    temp_folder_lpath, 'flowlines.gpkg', f'level_path_{level_path}')
-                copy_feature_class(line_network, level_path_flowlines,
-                                   attribute_filter=f'{unique_stream_field} = {level_path}')
+                level_path_flowlines = os.path.join(temp_folder_lpath, 'flowlines.gpkg', f'level_path_{level_path}')
+                copy_feature_class(line_network, level_path_flowlines, attribute_filter=f'{unique_stream_field} = {level_path}')
                 # check if the level path flowlines are empty or are of type point
                 with GeopackageLayer(level_path_flowlines) as lyr_flowlines:
                     if lyr_flowlines.ogr_layer.GetFeatureCount() == 0:
@@ -741,14 +710,10 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
                 fvals_channel = 0.995 * block['Channel']
                 fvals_evidence = np.maximum(fvals_topo, fvals_channel)
 
-                write_rasters['topo_evidence'].write(np.ma.filled(np.float32(
-                    fvals_topo), out_meta['nodata']), window=window, indexes=1)
-                write_rasters['VBET_EVIDENCE'].write(np.ma.filled(np.float32(
-                    fvals_evidence), out_meta['nodata']), window=window, indexes=1)
-                write_rasters['TRANSFORMED_HAND'].write(np.ma.filled(np.float32(
-                    transformed['HAND']), out_meta['nodata']), window=window, indexes=1)
-                write_rasters['TRANSFORMED_SLOPE'].write(np.ma.filled(np.float32(
-                    transformed['Slope']), out_meta['nodata']), window=window, indexes=1)
+                write_rasters['topo_evidence'].write(np.ma.filled(np.float32(fvals_topo), out_meta['nodata']), window=window, indexes=1)
+                write_rasters['VBET_EVIDENCE'].write(np.ma.filled(np.float32(fvals_evidence), out_meta['nodata']), window=window, indexes=1)
+                write_rasters['TRANSFORMED_HAND'].write(np.ma.filled(np.float32(transformed['HAND']), out_meta['nodata']), window=window, indexes=1)
+                write_rasters['TRANSFORMED_SLOPE'].write(np.ma.filled(np.float32(transformed['Slope']), out_meta['nodata']), window=window, indexes=1)
             write_rasters['VBET_EVIDENCE'].close()
             write_rasters['TRANSFORMED_HAND'].close()
             write_rasters['TRANSFORMED_SLOPE'].close()
@@ -756,33 +721,27 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
 
         # Generate VBET Polygon
         with TimerBuckets('gdal'):
-            valley_bottom_raster = os.path.join(
-                temp_folder_lpath, f'valley_bottom_{level_path}.tif')
-            generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster,
-                                  valley_bottom_raster, temp_folder_lpath, rasterized_level_path, thresh_value=0.65)
+            valley_bottom_raster = os.path.join(temp_folder_lpath, f'valley_bottom_{level_path}.tif')
+            generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, valley_bottom_raster, temp_folder_lpath, rasterized_level_path, thresh_value=0.65)
 
         log.info('Add VBET Raster to Output')
         with TimerBuckets('rasterio'):
-            raster_update_multiply(
-                vbet_zone_raster, valley_bottom_raster, size_x, value=level_path_key)
+            raster_update_multiply(vbet_zone_raster, valley_bottom_raster, size_x, value=level_path_key)
 
         if level_path is not None:
             with TimerBuckets('scipy'):
                 region_raster = os.path.join(
                     temp_folder_lpath, f'region_cleaning_{level_path}.tif')
-                clean_raster_regions(
-                    vbet_zone_raster, level_path_key, vbet_zone_raster, region_raster)
+                clean_raster_regions(vbet_zone_raster, level_path_key, vbet_zone_raster, region_raster)
 
         # Generate the Active Floodplain Polygon
         with TimerBuckets('gdal'):
             low_lying_valley_bottom_raster = os.path.join(
                 temp_folder_lpath, f'low_lying_valley_bottom_{level_path}.tif')
-            generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster,
-                                  low_lying_valley_bottom_raster, temp_folder_lpath, rasterized_level_path, thresh_value=0.85)
+            generate_vbet_polygon(evidence_raster, rasterized_channel, hand_raster, low_lying_valley_bottom_raster, temp_folder_lpath, rasterized_level_path, thresh_value=0.85)
 
         with TimerBuckets('rasterio'):
-            raster_update_multiply(
-                active_zone_raster, low_lying_valley_bottom_raster, size_x, value=level_path_key)
+            raster_update_multiply(active_zone_raster, low_lying_valley_bottom_raster, size_x, value=level_path_key)
 
         # Generate centerline for level paths only
         with TimerBuckets('centerline'):
@@ -794,24 +753,19 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
                         rasterio.open(rasterized_level_path, 'r') as rio_flowline:
                     out_meta = rio_vbet.meta
 
-                    use_big_tiff_cline = os.path.getsize(
-                        valley_bottom_raster) > BIG_TIFF_THRESH
+                    use_big_tiff_cline = os.path.getsize(valley_bottom_raster) > BIG_TIFF_THRESH
                     if use_big_tiff_cline:
                         out_meta['BIGTIFF'] = 'YES'
 
                     out_meta['compress'] = 'deflate'
                     with rasterio.open(valley_bottom_flowline_raster, 'w', **out_meta) as rio_out:
                         for _ji, window in rio_vbet.block_windows(1):
-                            array_vbet = np.ma.MaskedArray(
-                                rio_vbet.read(1, window=window).data)
-                            array_flowline = np.ma.MaskedArray(
-                                rio_flowline.read(1, window=window).data)
+                            array_vbet = np.ma.MaskedArray(rio_vbet.read(1, window=window).data)
+                            array_flowline = np.ma.MaskedArray(rio_flowline.read(1, window=window).data)
                             array_logic = array_vbet + array_flowline
                             array_out = np.greater_equal(array_logic, 1)
-                            array_out_format = array_out if out_meta['dtype'] == 'int32' else np.float32(
-                                array_out)
-                            rio_out.write(np.ma.filled(
-                                array_out_format, out_meta['nodata']), window=window, indexes=1)
+                            array_out_format = array_out if out_meta['dtype'] == 'int32' else np.float32(array_out)
+                            rio_out.write(np.ma.filled(array_out_format, out_meta['nodata']), window=window, indexes=1)
 
                 # Generate Centerline from Cost Path
                 log.info('Generating Centerline from cost path')
@@ -1005,8 +959,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
     _tmr_waypt.timer_break('set_level_path_id')
 
     # Clean Up Centerlines
-    clean_up_centerlines(temp_centerlines, output_vbet,
-                         output_centerlines, vbet_clip_buffer_size, unique_stream_field)
+    clean_up_centerlines(temp_centerlines, output_vbet, output_centerlines, vbet_clip_buffer_size, unique_stream_field)
     _tmr_waypt.timer_break('clean_up_centerlines')
 
     log.info('Generating geomorphic layers')
@@ -1017,16 +970,13 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
 
     # Calculate VBET Metrics
     log.info('Generating VBET Segmentation Points')
-    segmentation_points = os.path.join(
-        vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['SEGMENTATION_POINTS'].rel_path)
-    stream_size_lookup = get_distance_lookup(
-        vbet_gpkg, level_paths_to_run, level_paths_drainage, vbet_run)
+    segmentation_points = os.path.join(vbet_gpkg, LayerTypes['VBET_OUTPUTS'].sub_layers['SEGMENTATION_POINTS'].rel_path)
+    stream_size_lookup = get_distance_lookup(vbet_gpkg, level_paths_to_run, level_paths_drainage, vbet_run)
     generate_igo_points(output_centerlines, dem, segmentation_points, output_vbet, unique_stream_field, stream_size_lookup, level_paths_to_run, 1.5)
     _tmr_waypt.timer_break('GenerateVBETSegmentPts')
 
     log.info('Generating VBET Segment Polygons')
-    segmentation_polygons = os.path.join(
-        intermediates_gpkg, LayerTypes['INTERMEDIATES'].sub_layers['VBET_DGO_POLYGONS'].rel_path)
+    segmentation_polygons = os.path.join(intermediates_gpkg, LayerTypes['INTERMEDIATES'].sub_layers['VBET_DGO_POLYGONS'].rel_path)
     split_vbet_polygons(output_vbet, segmentation_points, segmentation_polygons, unique_stream_field)
     clean_igos(segmentation_points, segmentation_polygons, unique_stream_field, level_paths_to_run)
     _tmr_waypt.timer_break('GenerateVBETSegmentPolys')
@@ -1062,14 +1012,10 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
     log.info('Apply values to No Data areas of HAND and Evidence rasters')
 
     # Now let's assemble the rasters using a VRT then bake that back to a real raster so we can clean up the temp folder later if we want.
-    out_hand = os.path.join(
-        project_folder, LayerTypes['COMPOSITE_HAND'].rel_path)
-    out_transformed_hand = os.path.join(
-        project_folder, LayerTypes['TRANSFORMED_HAND'].rel_path)
-    out_transformed_slope = os.path.join(
-        project_folder, LayerTypes['TRANSFORMED_SLOPE'].rel_path)
-    out_vbet_evidence = os.path.join(
-        project_folder, LayerTypes['COMPOSITE_VBET_EVIDENCE'].rel_path)
+    out_hand = os.path.join(project_folder, LayerTypes['COMPOSITE_HAND'].rel_path)
+    out_transformed_hand = os.path.join(project_folder, LayerTypes['TRANSFORMED_HAND'].rel_path)
+    out_transformed_slope = os.path.join(project_folder, LayerTypes['TRANSFORMED_SLOPE'].rel_path)
+    out_vbet_evidence = os.path.join(project_folder, LayerTypes['COMPOSITE_VBET_EVIDENCE'].rel_path)
 
     out_hand_composite = CompositeRaster(out_hand, raster_paths=[
         out_hand_interior,
@@ -1132,10 +1078,8 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
                              _trans_hand_interior_node, trans_hand_interior_ras],
                          [_trans_slp_interior_node, trans_slp_interior_ras]])
 
-    project.add_project_geopackage(
-        proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
-    project.add_project_geopackage(
-        proj_nodes['Outputs'], LayerTypes['VBET_OUTPUTS'])
+    project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
+    project.add_project_geopackage(proj_nodes['Outputs'], LayerTypes['VBET_OUTPUTS'])
 
     # Processing time in hours
     _tmr_waypt.timer_break('END')
@@ -1144,8 +1088,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
     log.debug(_tmr_waypt.toString())
 
     project.add_metadata([
-        RSMeta("ProcTimeS", f"{ellapsed_time:.2f}",
-               RSMetaTypes.HIDDEN, locked=True),
+        RSMeta("ProcTimeS", f"{ellapsed_time:.2f}", RSMetaTypes.HIDDEN, locked=True),
         RSMeta("Processing Time", pretty_duration(ellapsed_time), locked=True)
     ])
 
@@ -1155,10 +1098,8 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
     add_layer_descriptions(project, LYR_DESCRIPTIONS_JSON, LayerTypes)
 
     # Report
-    report_path = os.path.join(
-        project.project_dir, LayerTypes['REPORT'].rel_path)
-    project.add_report(proj_nodes['Outputs'],
-                       LayerTypes['REPORT'], replace=True)
+    report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
+    project.add_report(proj_nodes['Outputs'], LayerTypes['REPORT'], replace=True)
 
     report = VBETReport(report_path, project)
     report.write()

@@ -91,12 +91,21 @@ def rasterize(in_lyr_path: Path, out_raster_path: Path, template_path: Path, all
                 outputBounds=[raster_bounds.left, raster_bounds.bottom, raster_bounds.right, raster_bounds.top],
                 callback=poly_progress
             )
+            # Now unset the nodata value for this raster
+            out_raster = gdal.Open(tempfile.filepath, gdal.GA_Update)
+            # The rasterize operation sets nodata to 0 by default; we want -9999 so that this will create a boolean mask
+            out_raster.GetRasterBand(1).SetNoDataValue(-9999)
+            out_raster.GetRasterBand(1).FlushCache()
+            # Good now close everything out
+            out_raster = None
+
         except RuntimeError as err:  # noqa: BLE001
             log.error(f"GDAL Rasterize failed: {err}. pixel_width={pixel_width}, pixel_height={pixel_height}, bounds={raster_bounds}")
             raise
         progbar.finish()
 
         # Now mask the output correctly
+
         mask_rasters_nodata(tempfile.filepath, template_path, out_raster_path)
 
 
@@ -163,6 +172,8 @@ def proximity_raster(src_raster_path: Path, out_raster_path: Path, dist_units: s
         dst_ds.SetProjection(src_ds.GetProjectionRef())
 
         dstband = dst_ds.GetRasterBand(1)
+        # Set COMPRESS to DEFLATE for this raster
+        dstband.SetMetadataItem("COMPRESS", "DEFLATE")
 
         progbar = ProgressBar(100, 50, "ComputeProximity ")
 
@@ -171,7 +182,7 @@ def proximity_raster(src_raster_path: Path, out_raster_path: Path, dist_units: s
 
         log.info('Creating proximity raster')
         progbar.update(0)
-        gdal.ComputeProximity(srcband, dstband, callback=poly_progress, options=["VALUES=1", f"DISTUNITS={dist_units}", "COMPRESS=DEFLATE"])
+        gdal.ComputeProximity(srcband, dstband, callback=poly_progress, options=["VALUES=1", f"DISTUNITS={dist_units}"])
         progbar.finish()
 
         srcband = None
@@ -208,7 +219,7 @@ def proximity_raster(src_raster_path: Path, out_raster_path: Path, dist_units: s
         else:
             shutil.copyfile(temp_path, out_raster_path)
 
-        log.info('completed in {}'.format(tmr.toString()))
+    log.info(f'completed in {tmr.toString()}')
 
 
 def translate(vrtpath_in: Path, raster_out_path: Path, band: int):
