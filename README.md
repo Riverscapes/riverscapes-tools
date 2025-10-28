@@ -5,6 +5,7 @@ This is a monorepo housing the python open-source GIS tools for Riverscapes, and
 * [Riverscapes Context](./packages/rscontext)
 * [BRAT](./packages/brat)
 * [VBET](./packages/vbet)
+* ...etc.
 
 ## `./lib` and `./packages`
 
@@ -90,19 +91,74 @@ yarn start
 
 -----------------------------------
 
-## Using UV (March 31, 2025)
+## Using UV for Environment Management
 
-NOTE: EVERYTHING ABOVE THIS LINE IS OUT OF DATE AND WILL NEED TO BE REVISITED
+This project uses [uv](https://github.com/astral-sh/uv) to manage Python virtual environments and dependencies. `uv` is an alternative to tools like `pipenv` and `poetry`.
 
-```sh
-# We can use QGIS's python3 to give us a bootstrapped environment with GDAL, rasterio, scipy etc.
-uv venv --python /Applications/QGIS.app/Contents/MacOS/bin/python3 --system-site-packages
 
-# Activate the environment
-source .venv/bin/activate
+## Environment Setup
 
-# Do the synching
-uv sync
+### Prerequisites
 
-python3 -c "import sys; print(sys.path)"
+1. Install `uv` by following the [installation instructions](https://github.com/astral-sh/uv#installation) for your operating system.
+2. Ensure you have Python 3.12 or higher installed. See specific instructions below for tools like `pyenv` that can help you with that.
+
+### OSX Setup (2 methods)
+
+#### Method 1: Using pyenv (Recommended)
+
+1. Install `pyenv` by following the [installation instructions](https://github.com/pyenv/pyenv#installation).
+2. Install GDAL. You can do this using [homebrew](https://formulae.brew.sh/formula/gdal)
+3. Install Python 3.12 or higher using `pyenv`:
+4. Set the local Python version for this project. Once you do this the python version will be locked into the `.venv` and you won't need to set it again.
+
+```bash
+# If you don't have 3.12 installed yet then go get it
+pyenv install 3.12
+# Either set it globally ... 
+pyenv global 3.12
+# Or you can set it just for this project
+pyenv shell 3.12
+# Test that the correct version is active:
+> python --version
+Python 3.12.3
 ```
+
+4. Now create the uv environment and add the gdal package afterwards:
+
+```bash
+cd /path/to/riverscapes-tools
+uv sync
+# GDAL is not included in the pyproject.toml file so we need to install it after every time we run uv sync. Running the command like this will install 
+# the correct version of GDAL that matches the system installation. Hopefully it's GDAL > 3.8
+> uv pip install GDAL==$(gdal-config --version)
+Resolved 1 package in 112ms
+Installed 1 package in 23ms
+ + gdal==3.11.4
+```
+
+5. Now you simply need to set the python interpreter for the tool you will be running inside VSCode. You should set it to the uv environment python interpreter located at `/path/to/riverscapes-tools/.venv/bin/python`.
+
+### Method 2: Using your QGIS Python Environment
+
+If you don't want to go through the trouble of `pyenv` you can latch onto the Python environment that comes with QGIS. This can be a convenient option if you already have QGIS installed and configured.
+
+1. Find the path to the QGIS Python interpreter. This is typically located at `/Applications/QGIS.app/Contents/MacOS/bin/python3` on OSX but you'll need to explore a bit. Your path may vary depending on your installation.
+2. Run `uv sync` with that interpreter:
+
+```bash
+cd /path/to/riverscapes-tools
+# Create a .venv using the QGIS python interpreter and make sure to use system site packages
+/Applications/QGIS-3.42.1-Münster.app/Contents/MacOS/bin/python3 -m venv .venv --system-site-packages
+# Now you can run uv sync as normal
+uv sync
+# Now find out which version of gdal is installed in that QGIS python environment
+> /Applications/QGIS-3.42.1-Münster.app/Contents/MacOS/bin/python3 -m pip show gdal
+Name: GDAL
+Version: 3.3.2
+
+# Now install that version of GDAL into the uv environment. --no-cache is important here to make sure uv doesn't try to re-resolve the package version
+> uv pip install GDAL==3.3.2 --no-cache
+```
+
+5. Now you simply need to set the python interpreter for the tool you will be running inside VSCode. You should set it to the uv environment python interpreter located at `/path/to/riverscapes-tools/.venv/bin/python`.

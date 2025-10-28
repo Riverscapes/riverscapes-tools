@@ -1,7 +1,7 @@
 ############################################################################################
 # Dev Container for riverscapes-tools
 ############################################################################################
-FROM mcr.microsoft.com/devcontainers/python:3.11 AS worker
+FROM mcr.microsoft.com/devcontainers/python:3.12 AS worker
 
 # Some preliminary dependencies
 RUN apt update && apt upgrade -y && apt autoremove -y
@@ -50,7 +50,7 @@ ARG dataDir=/data
 ARG projectDir=/foss_fim
 ARG taudemVersion=v5.3.8
 ARG taudemSrcDir=/opt/builder/taudem
-ENV DEBIAN_FRONTEND noninteractive
+ENV DEBIAN_FRONTEND=noninteractive
 ENV taudemDir=/dependencies/taudem/bin
 
 RUN git clone --depth 1 --branch ${taudemVersion} \
@@ -75,18 +75,17 @@ COPY --from=builder $depDir $depDir
 # Add TauDEM to the path so we have access to those methods
 ENV PATH="${taudemDir}:${PATH}"
 
-# Now follow up on python install
-RUN pip install --upgrade pip
-RUN pip install numpy==1.23.4 Cython==3.0.8
-
-# https://bobbyhadz.com/blog/python-error-in-package-setup-command-use-2to3-is-invalid
-RUN pip install "setuptools<58.0"
 # Now install the right version of gdal from the apt-get above
 RUN pip install GDAL==$(gdal-config --version)
 
 # Now install any lingering dependencies
-COPY requirements.docker.txt /workspaces/requirements.txt
-RUN pip --timeout=120 install -r /workspaces/requirements.txt
+WORKDIR /workspaces/riverscapes-tools
+# Install UV
+# Make sure we get whatever version of GDAL is installed system-wide
+RUN pip install uv
+RUN uv sync
+# We need to install whatever of GDAL matches the system version
+RUN uv pip install gdal==$(gdal-config --version)
 
 # Now install  18 
 USER vscode
