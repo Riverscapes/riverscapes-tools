@@ -71,12 +71,56 @@ def rsdynamics(watershed_id: str, vbet_project_xml: str, raster_folder: str, out
     epoch_rasters = process_epoch_rasters(raster_folder, output_dir, vbet_full)
     __hillshade_raster = copy_hillshade(vbet_project_xml, output_dir)
 
-    for raster_path, __raster_name, __raster_id, att_prefix in epoch_rasters:
-        try:
-            calc_raster_stats(raster_path, vbet_dgos, att_prefix)
-        except Exception as e:
-            log.warning(f'Error calculating stats for {raster_path}: {e}')
+    # Reshape the rasters into the right structure for calculating stats
+    stats_sets = {}
+    for raster_path, __raster_name, __raster_id, att_prefix, epoch_data in epoch_rasters:
+        epoch_length = epoch_data['length']
+        epoch_start_year = epoch_data['start_year']
+        epoch_end_year = epoch_data['end_year']
+        epoch_key = f'{epoch_length}yr_{epoch_start_year}_{epoch_end_year}'
+        if epoch_key not in stats_sets:
+            stats_sets[epoch_key] = {
+                'wet': None,
+                'active': None
+            }
+
+        if epoch_data['type'].lower() == 'water':
+            stats_sets[epoch_key]['wet'] = raster_path
+        elif epoch_data['type'].lower() == 'alluvial':
+            stats_sets[epoch_key]['active'] = raster_path
+
+    # As we are calculating stats, keep track of the spatial views we create
+    spatial_view_attributes = []
+
+    for threshold in [0.68, 0.95]:
+
+        if threshold == 0.68:
+            log.warning('temp skip')
             continue
+
+        log.info(f'Calculating zonal stats for threshold: {threshold}')
+        for epoch_key, rasters in stats_sets.items():
+
+            if '5yr' in epoch_key:
+                log.info('Skipping 5yr epoch for now')
+                continue
+
+            if rasters['wet'] is None or rasters['active'] is None:
+                log.warning(f'Skipping epoch {epoch_key} because required rasters are missing')
+                continue
+
+            log.info(f'Processing epoch: {epoch_key}')
+
+            att_prefix = f'{epoch_key}_{int(threshold*100)}pc'.replace('-', '_')
+
+            calc_raster_stats(rasters['active'], vbet_dgos, f'active_{att_prefix}', threshold, spatial_view_attributes)
+            calc_raster_stats(rasters['wet'], vbet_dgos, f'wet_{att_prefix}', threshold, spatial_view_attributes)
+            calc_stable_stats(vbet_dgos, att_prefix, threshold, spatial_view_attributes)
+
+            # if threshold == 0.95:
+            #     calc_width_stats(vbet_dgos, att_prefix, threshold)
+
+        # Wet and alluvial attributes should be calculated. Now calculate "stable" areas as the residual.
 
     # Create the output Riverscapes project.rs.xml based on the rscontext XML
     rsd_project = build_dynamics_project(vbet_project_xml, output_dir)
@@ -96,17 +140,16 @@ def rsdynamics(watershed_id: str, vbet_project_xml: str, raster_folder: str, out
         rsd_project.add_project_raster(nod_inputs, layer_rs)
 
     for i, epoch_info in enumerate(epoch_rasters):
-        # Create a spatial view for each statistic of each epoch raster
-        spatial_views = create_spatial_views(rsd_gpkg, epoch_info[3])
-
-        for view in spatial_views:
-            display_name = view.replace('vw_', '').replace('_', ' ').replace('veg', 'vegetation').replace('yr', ' year').title()
-            LayerTypes['RSDYNAMICS_DGOS'].add_sub_layer(view, RSLayer(display_name, view, 'Vector', view))
-
-        raster_path, raster_name, raster_id, __att_prefix = epoch_info
+        raster_path, raster_name, raster_id, __att_prefix, __epoch_data = epoch_info
         rel_layer_path = rsd_project.get_relative_path(raster_path)
         layer_rs = RSLayer(raster_name, raster_id, 'Raster', rel_layer_path)
         rsd_project.add_project_raster(nod_outputs, layer_rs)
+
+    spatial_view_attributes = list(set(spatial_view_attributes))
+    for view in spatial_view_attributes:
+        spatial_view = create_spatial_view(rsd_gpkg, view)
+        display_name = spatial_view.replace('vw_', '').replace('_', ' ').replace('veg', 'vegetation').replace('yr', ' year').title()
+        LayerTypes['RSDYNAMICS_DGOS'].add_sub_layer(view, RSLayer(display_name, spatial_view, 'Vector', spatial_view))
 
     # This has to come after all the spatial views have been added
     rsd_project.add_project_geopackage(nod_outputs, LayerTypes['RSDYNAMICS_DGOS'])
@@ -116,7 +159,7 @@ def rsdynamics(watershed_id: str, vbet_project_xml: str, raster_folder: str, out
     return rsd_project
 
 
-def create_spatial_views(rsd_gpkg: str, col_prefix: str) -> List[str]:
+def create_spatial_view(rsd_gpkg: str, attribute_name: str) -> str:
     """
     Create a spatial view for each of the statistics from each epoch raster
     in the Riverscapes Dynamics GeoPackage.
@@ -125,62 +168,67 @@ def create_spatial_views(rsd_gpkg: str, col_prefix: str) -> List[str]:
     reuse symbology files that expect a single 'value' field.
     """
 
+    # Deconstruct the epoch characteristics
+    match = re.match(r'(active|wet|stable)(.*)_([0-9]{2})pc_(width|area|pc)', attribute_name)
+    if not match:
+        raise ValueError(f"Invalid attribute name format: {attribute_name}")
+    stat_type = match.group(1)  # wet, active, stable
+    stat_epoch = match.group(2)  # 5yr-2000-2005
+    stat_measure = match.group(3)  # 68, 95
+    stat_metric = match.group(4)  # area, pc, width
+
     # Create spatial views for each of the statistics from each epoch raster
-    views = []
+    view_name = f'vw_{stat_metric}_{stat_measure}_{stat_type}_{stat_epoch}'.replace('-', '_').replace('__', '_')
     with sqlite3.connect(rsd_gpkg) as conn:
         c = conn.cursor()
-        for stat in ['mean', 'min', 'max', 'std']:
 
-            view_name = f'vw_{col_prefix.replace("-", "_")}_{stat}'
-            views.append(view_name)
+        c.execute(f'DROP VIEW IF EXISTS {view_name}')
+        c.execute(f'CREATE VIEW {view_name} AS SELECT fid, geom, "{attribute_name}" AS value FROM vbet_dgos')
 
-            c.execute(f'DROP VIEW IF EXISTS "{view_name}"')
-            c.execute(f'CREATE VIEW "{view_name}" AS SELECT fid, geom, "{col_prefix}-{stat}" AS value FROM "vbet_dgos"')
+        c.execute(f"""
+            INSERT INTO gpkg_contents (
+                table_name,
+                data_type,
+                identifier,
+                min_x,
+                min_y,
+                max_x,
+                max_y,
+                srs_id
+            ) SELECT
+                '{view_name}',
+                data_type,
+                '{view_name}',
+                min_x,
+                min_y,
+                max_x,
+                max_y,
+                srs_id
+            FROM gpkg_contents
+            WHERE table_name='vbet_dgos'
+        """)
 
-            c.execute(f"""
-                INSERT INTO gpkg_contents (
-                    table_name,
-                    data_type,
-                    identifier,
-                    min_x,
-                    min_y,
-                    max_x,
-                    max_y,
-                    srs_id
-                ) SELECT
-                    '{view_name}',
-                    data_type,
-                    '{view_name}',
-                    min_x,
-                    min_y,
-                    max_x,
-                    max_y,
-                    srs_id
-                FROM gpkg_contents
-                WHERE table_name='vbet_dgos'
-            """)
-
-            c.execute(f"""
-                INSERT INTO gpkg_geometry_columns (
-                    table_name,
-                    column_name,
-                    geometry_type_name,
-                    srs_id,
-                    z,
-                    m
-                ) SELECT
-                    '{view_name}',
-                    'geom',
-                    geometry_type_name,
-                    srs_id,
-                    z,
-                    m
-                FROM gpkg_geometry_columns
-                WHERE table_name='vbet_dgos'
-            """)
+        c.execute(f"""
+            INSERT INTO gpkg_geometry_columns (
+                table_name,
+                column_name,
+                geometry_type_name,
+                srs_id,
+                z,
+                m
+            ) SELECT
+                '{view_name}',
+                'geom',
+                geometry_type_name,
+                srs_id,
+                z,
+                m
+            FROM gpkg_geometry_columns
+            WHERE table_name='vbet_dgos'
+        """)
 
         conn.commit()
-    return views
+    return view_name
 
 
 def copy_vbet_layer(vbet_project_xml: str, gpkg_id: str, layer_name: str, output_gpkg: str) -> str:
@@ -306,7 +354,7 @@ def process_classified_rasters(raster_folder: str, output_dir: str, dgos: str) -
     return raster_paths
 
 
-def process_epoch_rasters(raster_folder: str, output_dir: str, vbet_dgos: str) -> List[Tuple[str, str, str, str]]:
+def process_epoch_rasters(raster_folder: str, output_dir: str, vbet_dgos: str) -> List[Tuple[str, str, str, str, dict]]:
     """
     Copy the epoch rasters (5yr, 30yr etc) to the output folder and clip them to the
     DGO ppolygons.
@@ -345,7 +393,13 @@ def process_epoch_rasters(raster_folder: str, output_dir: str, vbet_dgos: str) -
                     epoch_end_year = match.group(6)
                     epoch_prefix = 'veg' if epoch_type == 'vegetation' else epoch_type
 
-                    att_prefix = f'{epoch_length}yr-{epoch_prefix}-{epoch_start_year}-{epoch_end_year}'
+                    att_prefix = f'{epoch_length}yr_{epoch_prefix}_{epoch_start_year}_{epoch_end_year}'
+                    epoch_data = {
+                        'type': epoch_type,
+                        'length': epoch_length,
+                        'start_year': epoch_start_year,
+                        'end_year': epoch_end_year
+                    }
                 else:
                     log.warning(f'Could not parse epoch from raster name: {epoch}')
                     continue
@@ -356,12 +410,12 @@ def process_epoch_rasters(raster_folder: str, output_dir: str, vbet_dgos: str) -
 
                 raster_name = f'Epoch Raster - {epoch_type.capitalize()} - {epoch_length} yr{"s" if int(epoch_length) > 1 else ""} - {epoch_start_year}-{epoch_end_year}'
                 raster_id = f'EPOCH_{epoch_type.upper()}_{epoch_length}yr_{epoch_start_year}_{epoch_end_year}'
-                raster_paths.append((out_raster, raster_name, raster_id, att_prefix))
+                raster_paths.append((out_raster, raster_name, raster_id, att_prefix, epoch_data))
 
     return raster_paths
 
 
-def calc_raster_stats(raster_path: str, polygon_path: str, prefix: str) -> None:
+def calc_raster_stats(raster_path: str, polygon_path: str, prefix: str, threshold: float, spatial_view_attributes: list) -> None:
     """
     Calculate zonal statistics for a raster based on polygons in a vector file.
     The stats are added as new columns to the input vector file and saved to a new
@@ -376,36 +430,118 @@ def calc_raster_stats(raster_path: str, polygon_path: str, prefix: str) -> None:
     gdf = gpd.read_file(gpkg, layer=layer)
 
     # add columns for the stats
-    stats = ["mean", "min", "max", "std"]
+    stats = ["area", "pc", "width"]
     for stat in stats:
-        gdf[f'{prefix}-{stat}'] = np.nan
+        gdf[f'{prefix}_{stat}'] = np.nan
 
     # Open the raster and calculate stats for each polygon
-    means, mins, maxs, stds = [], [], [], []
+    dgo_areas, raster_areas, coverage_percents, widths = [], [], [], []
 
     with rasterio.open(raster_path) as src:
         for _, row in gdf.iterrows():
+
+            # Get the area of the polygon
+            dgo_area = row.geometry.area
+            dgo_length = row['centerline_length']
+            dgo_areas.append(dgo_area)
+
             out_image, __out_transform = rasterio.mask.mask(src, [row.geometry], crop=True)
             data = out_image[0]
             data = data[data != src.nodata]
             data = data[~np.isnan(data)]
             if data.size > 0:
-                means.append(float(data.mean()))
-                mins.append(float(data.min()))
-                maxs.append(float(data.max()))
-                stds.append(float(data.std()))
-            else:
-                means.append(np.nan)
-                mins.append(np.nan)
-                maxs.append(np.nan)
-                stds.append(np.nan)
 
-    gdf[f'{prefix}-mean'] = means
-    gdf[f'{prefix}-min'] = mins
-    gdf[f'{prefix}-max'] = maxs
-    gdf[f'{prefix}-std'] = stds
+                # Count the number of pixels with value 0.95 or above
+                count = np.sum(data >= threshold)
+                raster_area = float(count) * (src.res[0] * src.res[1])
+                raster_areas.append(raster_area)
+
+                coverage_percent = (raster_area / dgo_area) * 100 if dgo_area != 0 and raster_area != 0 else 0
+                coverage_percent = min(coverage_percent, 100.0)
+                coverage_percent = max(coverage_percent, 0.0)
+                coverage_percents.append(coverage_percent)
+
+                widths.append(raster_area / dgo_length if dgo_length != 0 else 0)
+
+                # means.append(float(data.mean()))
+                # mins.append(float(data.min()))
+                # maxs.append(float(data.max()))
+                # stds.append(float(data.std()))
+            else:
+                # means.append(np.nan)
+                # mins.append(np.nan)
+                # maxs.append(np.nan)
+                # stds.append(np.nan)
+                raster_areas.append(np.nan)
+                coverage_percents.append(np.nan)
+                widths.append(np.nan)
+
+    # gdf[f'{prefix}-mean'] = means
+    # gdf[f'{prefix}-min'] = mins
+    # gdf[f'{prefix}-max'] = maxs
+    # gdf[f'{prefix}-std'] = stds
+    gdf[f'{prefix}_area'] = raster_areas
+    gdf[f'{prefix}_pc'] = coverage_percents
+    gdf[f'{prefix}_width'] = widths
+
+    # Create spatial views for the calculated statistics
+    for stat in ['area', 'pc', 'width']:
+        spatial_view_attributes.append(f'{prefix}_{stat}')
 
     # Write back to GeoPackage
+    gdf.to_file(gpkg, layer=layer, driver="GPKG")
+
+
+def calc_stable_stats(vbet_dgos: str, att_prefix: str, threshold: float, spatial_view_attributes: list) -> None:
+    """
+    Calculate the stable area as the residual area after subtracting wetted,
+    and alluvial areas from the total DGO area."""
+
+    # Load polygons from the feature class that is already in the RS Dynamics project
+    gpkg, layer = VectorBase.path_sorter(vbet_dgos)
+    gdf = gpd.read_file(gpkg, layer=layer)
+
+    stable_areas = []
+    stable_area_pcs = []
+    stable_widths = []
+    for _, row in gdf.iterrows():
+        dgo_area = row.geometry.area
+        dgo_length = row['centerline_length']
+
+        if f'wet_{att_prefix}_area' not in row or f'active_{att_prefix}_area' not in row:
+            stable_areas.append(np.nan)
+            stable_area_pcs.append(np.nan)
+            stable_widths.append(np.nan)
+            continue
+
+        wetted_area = row[f'wet_{att_prefix}_area']
+        alluvial_area = row[f'active_{att_prefix}_area']
+
+        if np.isnan(wetted_area) or np.isnan(alluvial_area):
+            stable_areas.append(np.nan)
+            stable_area_pcs.append(np.nan)
+            stable_widths.append(np.nan)
+            continue
+
+        stable_area = dgo_area - (wetted_area + alluvial_area)
+        stable_areas.append(stable_area)
+
+        stable_area_pc = (stable_area / dgo_area * 100) if dgo_area != 0 else 0
+        stable_area_pc = min(stable_area_pc, 100.0)
+        stable_area_pc = max(stable_area_pc, 0.0)
+        stable_area_pcs.append(stable_area_pc)
+
+        stable_width = stable_area / dgo_length if dgo_length != 0 else 0
+        stable_widths.append(stable_width)
+
+    gdf[f'stable_{att_prefix}_area'] = stable_areas
+    gdf[f'stable_{att_prefix}_pc'] = stable_area_pcs
+    gdf[f'stable_{att_prefix}_width'] = stable_widths
+
+    spatial_view_attributes.append(f'stable_{att_prefix}_area')
+    spatial_view_attributes.append(f'stable_{att_prefix}_pc')
+    spatial_view_attributes.append(f'stable_{att_prefix}_width')
+
     gdf.to_file(gpkg, layer=layer, driver="GPKG")
 
 
