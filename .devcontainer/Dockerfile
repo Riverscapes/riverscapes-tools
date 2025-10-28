@@ -5,7 +5,7 @@ FROM mcr.microsoft.com/devcontainers/python:3.12 AS worker
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Base system packages (combine update + install to retain apt lists only once). Remove software-properties-common (not needed) which caused not found error.
+# Base system packages (combine update + install to retain apt lists only once).
 RUN apt-get update \
     && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends \
@@ -88,10 +88,10 @@ RUN pip install GDAL==$(gdal-config --version)
 WORKDIR /workspaces/riverscapes-tools
 # Install UV
 # Make sure we get whatever version of GDAL is installed system-wide
-RUN pip install uv
-RUN uv sync
-# We need to install whatever of GDAL matches the system version
-RUN uv pip install gdal==$(gdal-config --version)
+# RUN pip install uv
+# RUN uv sync
+# # We need to install whatever of GDAL matches the system version
+# RUN uv pip install gdal==$(gdal-config --version)
 
 # Now install  18 
 USER vscode
