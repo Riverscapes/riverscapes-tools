@@ -3,16 +3,21 @@
 ############################################################################################
 FROM mcr.microsoft.com/devcontainers/python:3.12 AS worker
 
-# Some preliminary dependencies
-RUN apt update && apt upgrade -y && apt autoremove -y
+ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get install -y curl wget git build-essential libssl-dev gcc g++ make zsh vim \
-                software-properties-common awscli locales
+# Base system packages (combine update + install to retain apt lists only once). Remove software-properties-common (not needed) which caused not found error.
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && apt-get install -y --no-install-recommends \
+       curl wget git build-essential libssl-dev gcc g++ make zsh vim \
+       awscli locales lsb-release ca-certificates tzdata \
+    && rm -rf /var/lib/apt/lists/*
 
 # Python stuff
-RUN apt-get install -y python3-pip proj-data proj-bin \
-              gdal-bin libgdal-dev libspatialindex-dev \
-              python3-matplotlib
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3-pip proj-data proj-bin \
+       gdal-bin libgdal-dev libspatialindex-dev python3-matplotlib \
+    && rm -rf /var/lib/apt/lists/*
 
 # https://launchpad.net/~ubuntugis/+archive/ppa/
 # Install node please. Order matters here so it should come after all other apt-get update steps or it may be removed by a cleanup process
@@ -28,6 +33,7 @@ ARG CACHEBREAKER3=2.0.53
 RUN npm install -g @riverscapes/cli
 
 # Let's get the latest version of Yarn
+# THis isn't really for the CLI. this is just for the Docusaurus stuff.
 RUN corepack enable
 RUN yarn set version berry
 
