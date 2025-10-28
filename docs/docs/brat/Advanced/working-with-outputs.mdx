@@ -65,3 +65,64 @@ The **management** output layers include outputs that describe:
 ## The BRAT Attribute Table
 
 This section lists and describes all of the attributes associated with network segments after BRAT has been run.
+
+#### Channel Network Output (vwReaches)
+
+|Field|Plain English Name|Units|Description|
+|---|---|---|---|
+|ReachCode|Stream Flow Type|NA|The NHD FCode integer that describes the flow type of a flowline (e.g., perennial, intermittent)|
+|StreamName|Stream Name|NA|The stream name according the NHDPlusHR dataset|
+|NHDPlusID|Unique ID|NA|A unique identifier from the NHDPlusHR dataset|
+|WatershedID|Watershed ID|NA|The 10-digit hydrologic unit code (HUC) of the watershed|
+|level_path|NHD Stream ID|NA|A unique identifier from the NHDPlusHR dataset for each unique stream from headwater to outlet|
+|ownership|Land Administrator|NA|An abbreviation representing the land administrator of the riverscape associated with the reach|
+|divergence|||
+|stream_order|Stream Order|NA|The Strahler stream order of the reach|
+|us_state|US State|NA|The US State that the reach falls within|
+|ecoregion_iii|Ecoregion III|NA|The EPA Level III ecoregion that the reach falls within|
+|ecoregion_iv|Ecoregion IV|NA|The EPA Level IV ecoregion that the reach falls within|
+|IsPeren|Is Perennial|Binary|1 if the reach is perennial, 0 if not|
+|iGeo_Slope|Slope|unitless|The reach-averaged slope (m/m)|
+|iGeo_Len|Length|m|The length of the reach|
+|iGeo_DA|Drainage Area|km<sup>2</sup>|The upstream contributing drainage area of the reach|
+|iVeg100EX|Existing 100 m Vegetation Suitability|NA|The average vegetation suitability (0-4) of existing vegetation within 100 m of the stream|
+|iVeg_30EX|Existing 30 m Vegetation Suitability|NA|The average vegetation suitability (0-4) of existing vegetation within 30 m of the stream|
+|iVeg100HPE|Historic 100 m Vegetation Suitability|NA|The average vegetation suitability (0-4) of historic vegetation within 100 m of the stream|
+|iVeg_30HPE|Historic 30 m Vegetation Suitability|NA|The average vegetation suitability (0-4) of historic vegetation within 30 m of the stream|
+|iPC_Road|Distance to Nearest Road|m|The distance from the stream reach to the nearest road|
+|iPC_RoadX|Distance to Nearest Road Crossing|m|The distance from the stream reach to the nearest road crossing|
+|iPC_RoadVB|Distance to the Nearest Road in the Valley|m|The distance from the stream reach to the nearest road within the valley bottom|
+|iPC_Rail|Distance to the Nearest Railroad|m|The distance from the stream reach to the nearest railroad|
+|iPC_RailVB|Distance to the Nearest Railroad in the Valley|m|Distance from the stream reach to the nearest railroad within the valley bottom|
+|iPC_LU|Land Use Intensity|NA|The average land use intensity (0-100) within the riverscape associated with the stream reach|
+|iPC_VlowLU|Very Low Land Use Intensity|unitless|The proportion of the riverscape associated with the stream reach with very low land use intensity|
+|iPC_LowLU|Low Land Use Intensity|unitless|The proportion of the riverscape associated with the stream reach with low land use intensity|
+|iPC_ModeLU|Moderate Land Use Intensity|unitless|The proportion of the riverscape associated with the stream reach with moderate land use intensity|
+|iPC_HighLU|High Land Use Intensity|unitless|The proportion of the riverscape associated with the stream reach with high land use intensity|
+|iHyd_QLow|Low Flow Discharge|ft<sup>3</sup>/s|The estimated low flow discharge|
+|iHyd_Q2|Typical Flood Discharge|ft<sup>3</sup>/s|The estimated 2-year recurrence interval flow discharge|
+|iHyd_SPLow|Low Flow Stream Power|w|The stream power associated with the low flow discharge|
+|iHyd_SP2|Flood Flow Stream Power|w|The stream power associated wtih the 2-year recurrence interval flood discharge|
+|oVC_HPE|Historic Vegetation Capacity|km<sup>-1</sup>|Dams per kilometer that the historic vegetation could support|
+|oVC_EX|Existing Vegetation Capacity|km<sup>-1</sup>|Dams per kilometer that the existing vegetation could support|
+|oCC_HPE|Historic Dam Capacity|km<sup>-1</sup>|Dams per kilometer that the stream could support historically|
+|mCC_HPE_CT|Historic Dam Count|#|The number of dams the stream reach could support historically|
+|oCC_EX|Existing Dam Capacity|km<sup>-1</sup>|Dams per kilometer that the stream could support currently|
+|mCC_EX_CT|Existing Dam Count|#|The number of dams the stream reach current currently support|
+|LimitationID|Limitation ID|NA|An identifier for the reach dam building limitation type|
+|RiskID|Risk ID|NA|An identifier for the reach risk of conflict with infrastructure category|
+|OpportunityID|Opportunity ID|NA|An identifier for the reach conservation/restoration opportunity category|
+|iPC_Canal|Distance to Nearest Canal|m|The distance from the stream reach to the nearest canal|
+|iPC_DivPts|Distance to Nearest Diversion|m|The distance from the stream reach to the nearest stream diversion point|
+|iPC_Privat|Distance to Private Land|m|The distance from the stream reach to the nearest private land|
+|oPC_Dist|Distance to Nearest Infrastructure|m|The distance from the stream reach to the nearest infrastructure|
+|IsMainCh|Is the Main Channel|binary|1 if the stream reach is the main channel, 0 if it is a side channel/anabranch|
+|IsMultiCh|Is Multi-Channel|binary|1 if there are multiple channels associated with the stream reach, 0 if not|
+|mCC_HisDep|Difference From Historic Dam Count|#|The difference between the number of dams that the reach could historically support and what it currently can|
+|Dam_Setting|Dam Setting|NA|Classic, Steep, or Floodplain dam setting type|
+|ReachType|Reach Type|NA|A description of the `ReachCode` field|
+|Limitation|Dam Building Limitation|NA|Dam building limitation type for the reach|
+|Risk|Dam Risk|NA|The categorical value of risk of dam building conflict with infrastructure|
+|Opportunity|Restoration/Conservation Opportunity|NA|Categories describing potential opportunties for beaver-based conservation/restoration strategies|
+
+
