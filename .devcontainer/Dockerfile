@@ -88,10 +88,7 @@ RUN pip install GDAL==$(gdal-config --version)
 WORKDIR /workspaces/riverscapes-tools
 # Install UV
 # Make sure we get whatever version of GDAL is installed system-wide
-# RUN pip install uv
-# RUN uv sync
-# # We need to install whatever of GDAL matches the system version
-# RUN uv pip install gdal==$(gdal-config --version)
+RUN pip install uv
 
 # Now install  18 
 USER vscode

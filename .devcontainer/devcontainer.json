@@ -7,6 +7,8 @@
   },
   // Put any environment variables you need here (as long as they apply to everyone)
   "containerEnv": {
+    // Add the commons library to the PYTHONPATH so that all tools can find it
+    "PYTHONPATH": "/workspaces/riverscapes-tools/lib/commons",
     "DATA_ROOT": "/workspaces/data",
     // Tell RSCLI to use a different port so that it doesn't conflict with the user's root machine use
     "RSCLI_ALTPORT": "TRUE",
