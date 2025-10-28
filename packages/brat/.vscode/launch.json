@@ -9,7 +9,7 @@
       "id": "HUC",
       "description": "What HUC?",
       // "default": "17070202" // North Fork John Day
-      "default": "17060304" // Really small HUC
+      "default": "1704021804" // Really small HUC
       // "default": "17060103" // Asotin
     }
   ],
@@ -20,6 +20,9 @@
       "request": "launch",
       "module": "sqlbrat.brat",
       "console": "integratedTerminal",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+      },      
       "args": [
         "${input:HUC}",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/topography/dem_hillshade.tif",
