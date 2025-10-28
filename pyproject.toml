@@ -16,7 +16,6 @@ keywords = ["riverscapes", "gis", "restoration"]
 dependencies = [
     "affine>=2.4",
     "Cython>=3.0",
-    "GDAL>=3.8",
     "html5print",
     "jinja2>=3.1",
     "matplotlib>=3.8",
