@@ -40,7 +40,8 @@ def clean_nhdplus_catchments(gpkg_path: str, huc_boundary_lyr: str, hucid: str):
                 if hucid[:8] not in join_data_dict[nhdid]:
                     del_ids.append(nhdid)
 
-    [curs.execute('DELETE FROM NHDPlusCatchment WHERE NHDPlusCatchment.NHDPlusID = ?', [id]) for id in del_ids]
+    for id_str in del_ids:
+        curs.execute('DELETE FROM NHDPlusCatchment WHERE NHDPlusCatchment.NHDPlusID = ?', [id_str])
     conn.commit()
 
     curs.execute('VACUUM')

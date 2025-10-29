@@ -12,6 +12,11 @@ from rscontext.__version__ import __version__
 
 
 class RSContextReport(RSReport):
+    """Generates a report for the RSContext project.
+
+    Args:
+        RSReport (RSReport): The base report class.
+    """
 
     def __init__(self, report_path, rs_project, project_root):
         super().__init__(rs_project, report_path)
@@ -20,6 +25,8 @@ class RSContextReport(RSReport):
         self.report_intro()
 
     def report_intro(self):
+        """ Intro to the report
+        """
         section = self.section('LayerSummary', 'Layer Summary')
         layers = self.xml_project.XMLBuilder.find('Realizations').find('Realization').find('Datasets')
 

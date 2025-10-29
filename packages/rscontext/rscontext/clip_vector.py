@@ -8,6 +8,16 @@ from rscommons.shapefile import delete_shapefile
 
 
 def clip_vector_layer(boundary, vector, out_path, output_epsg, buffer_meters, clip=False):
+    """ Clip a vector layers
+
+    Args:
+        boundary (_type_): _description_
+        vector (_type_): _description_
+        out_path (_type_): _description_
+        output_epsg (_type_): _description_
+        buffer_meters (_type_): _description_
+        clip (bool, optional): _description_. Defaults to False.
+    """
 
     log = Logger('Vector Layer')
 
@@ -17,15 +27,17 @@ def clip_vector_layer(boundary, vector, out_path, output_epsg, buffer_meters, cl
     huc_boundary = get_geometry_unary_union(boundary, output_epsg)
     buffered = huc_boundary.buffer(buff_dist)
     if clip:
-        log.info('Clipping {} feature class to {}m buffer around HUC boundary.'.format(os.path.basename(out_path), buffer_meters))
+        log.info(f'Clipping {os.path.basename(out_path)} feature class to {buffer_meters}m buffer around HUC boundary.')
         copy_feature_class_shapefile(vector, output_epsg, out_path, clip_shape=buffered)
     else:
-        log.info('Selecting features from {} feature class that intersect HUC boundary.'.format(os.path.basename(out_path)))
+        log.info(f'Selecting features from {os.path.basename(out_path)} feature class that intersect HUC boundary.')
         copy_feature_class_shapefile(vector, output_epsg, out_path, intersect_shape=buffered)
     log.info(f'{os.path.basename(vector)} clip complete.')
 
 
 def main():
+    """ Main for this module
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument('boundary', help='HUC boundary polygon shapefile', type=argparse.FileType('r'))
     parser.add_argument('vector', help='vector polygon shapefile', type=argparse.FileType('r'))

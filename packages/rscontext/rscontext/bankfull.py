@@ -8,17 +8,18 @@ import os
 from uuid import uuid4
 from osgeo import ogr
 
-from rsxml import Logger, ProgressBar
-from rscommons import GeopackageLayer, VectorBase, TempRaster, TempGeopackage
+from rscommons import GeopackageLayer, TempGeopackage
 from rscommons.vector_ops import get_geometry_unary_union, collect_feature_class, buffer_by_field, merge_feature_classes
 
 
 def bankfull_buffer(in_flowlines, espg, bankfull_path):
+    """ Generate bankfull polygons by buffering flowlines by bankfull width field"""
 
     buffer_by_field(in_flowlines, bankfull_path, "BFwidth", espg, min_buffer=0.0, centered=True)
 
 
 def bankfull_nhd_area(bankfull_path, nhd_path, clip_path, espg, output_path, out_name):
+    """ Generate bankfull area by merging bankfull polygons and NHDPlusCatchments"""
 
     clip_geom = collect_feature_class(clip_path)
 

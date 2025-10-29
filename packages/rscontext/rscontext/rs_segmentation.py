@@ -7,8 +7,8 @@ from osgeo import ogr
 from shapely.geometry import Point, MultiPoint, LineString
 from shapely.ops import split
 
-from rscommons import get_shp_or_gpkg, GeopackageLayer
 from rsxml import Logger
+from rscommons import get_shp_or_gpkg, GeopackageLayer
 from rscommons.segment_network import copy_fields
 from rscommons.vector_ops import collect_feature_class
 from rscommons.classes.vector_base import VectorBase, get_utm_zone_epsg
@@ -218,14 +218,15 @@ def split_geoms(base_feature_path: str, intersect_feature_path: str, split_feats
                     elif isinstance(intersection, MultiPoint):
                         intersection_pts += list(intersection.geoms)
                     else:
-                        raise Exception(
-                            'Unhandled type: {}'.format(intersection.type))
+                        raise Exception(f'Unhandled type: {intersection.type}')
 
             split_feats[fid] = new_splits
     return intersection_pts
 
 
 def polygon_to_polyline(lines_path, polygon_path, network_path):
+    """ convert polygon to polyline
+    """
     with GeopackageLayer(lines_path, write=True) as out_layer, get_shp_or_gpkg(polygon_path) as polygon_lyr:
         out_layer.create_layer(
             ogr.wkbLineString, spatial_ref=polygon_lyr.spatial_ref)
@@ -253,8 +254,7 @@ def polygon_to_polyline(lines_path, polygon_path, network_path):
                 elif b_type == ogr.wkbLineString:
                     boundary = [boundary]
                 else:
-                    raise Exception('Unsupported type: {}'.format(
-                        ogr.GeometryTypeToName(b_type)))
+                    raise Exception(f'Unsupported type: {ogr.GeometryTypeToName(b_type)}')
 
                 # Now write each individual linestring back to our output layer
                 for b_line in boundary:
@@ -294,8 +294,8 @@ def remove_small_features(hydro_derivatives_gpkg: str, layer_name: str, threshol
             feature = VectorBase.ogr2shapely(feat, transform)
             if feature.length < threshold_length:
                 fids.append(fid)
-
-        [layer.ogr_layer.DeleteFeature(fid) for fid in fids]
+        for fid in fids:
+            layer.ogr_layer.DeleteFeature(fid)
 
     log.info(
         f'Deleted {len(fids)} features with length less than {threshold_length} from {layer_name} in {hydro_derivatives_gpkg}')

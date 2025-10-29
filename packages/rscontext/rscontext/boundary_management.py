@@ -1,14 +1,14 @@
 
 from osgeo import ogr
 
-from rscommons.vector_ops import get_geometry_unary_union
 from shapely.ops import unary_union
-
+from rscommons.vector_ops import get_geometry_unary_union
 from rscommons.classes.vector_classes import GeopackageLayer, get_shp_or_gpkg
 from rscommons.classes.raster import get_data_polygon
 
 
 def raster_area_intersection(rasters, bound_layer, out_layer):
+    """ Generate intersection polygon of raster data extent and boundary layer"""
 
     with get_shp_or_gpkg(bound_layer) as in_lyr:
         spatial_ref = in_lyr.spatial_ref

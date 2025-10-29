@@ -20,8 +20,8 @@ import uuid
 
 from osgeo import ogr
 
-from rscommons import (ModelConfig, RSLayer, RSProject, get_shp_or_gpkg, Timer, initGDALOGRErrors)
 from rsxml import Logger, dotenv
+from rscommons import ModelConfig, RSLayer, RSProject, get_shp_or_gpkg, Timer, initGDALOGRErrors
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.clean_nhd_data import clean_nhd_data
 from rscommons.clean_ntd_data import clean_ntd_data
@@ -30,7 +30,7 @@ from rscommons.filegdb import export_table
 from rscommons.geographic_raster import gdal_dem_geographic
 from rscommons.project_bounds import generate_project_extents_from_layer
 from rscommons.raster_warp import raster_vrt_stitch, raster_warp
-from rscommons.national_map import (download_shapefile_collection, get_ntd_urls, us_states)
+from rscommons.national_map import download_shapefile_collection, get_ntd_urls, us_states
 from rscommons.util import (parse_metadata, pretty_duration, safe_makedirs, safe_remove_dir)
 from rscommons.vector_ops import copy_feature_class, get_geometry_unary_union
 from rscommons.geometry_ops import get_rectangle_as_geom
@@ -687,6 +687,7 @@ def main():
     try:
 
         if args.debug is True:
+            # Leave this import here so that we. don't over-import if not needed
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output, 'rs_context_memusage.log')
             retcode, max_obj = ThreadRun(rs_context, memfile, args.huc, args.landfire_dir, args.ownership, args.fairmarket, args.ecoregions,

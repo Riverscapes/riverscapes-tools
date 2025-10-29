@@ -1,5 +1,4 @@
 import os
-from shutil import ExecError
 import rasterio
 import numpy as np
 from rsxml import Logger

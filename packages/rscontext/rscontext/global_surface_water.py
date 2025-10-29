@@ -10,6 +10,15 @@ from rsxml import Logger
 
 
 def global_surface_water(vector_path: str, destination_folder: str):
+    """ Global Surface Water
+
+    Args:
+        vector_path (str): _description_
+        destination_folder (str): _description_
+
+    Returns:
+        _type_: _description_
+    """
 
     log = Logger('Global Surface Water')
 
@@ -62,6 +71,7 @@ def global_surface_water(vector_path: str, destination_folder: str):
 
 
 def main():
+    """ Main function for command line execution """
     parser = argparse.ArgumentParser()
     parser.add_argument('aoi_vector', help='Path to the vector feature class whose area tiles will be downloaded for', type=str)
     parser.add_argument('download_folder', help='Path to a folder where the tiles will be downloaded', type=str)
