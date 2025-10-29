@@ -5,7 +5,7 @@ sidebar_position: 3
 
 # Data
 
-# Inputs
+## Inputs
 
 The channel area tool takes three vector feature class inputs:
 
@@ -14,67 +14,33 @@ The channel area tool takes three vector feature class inputs:
 1. **Waterbodies** - polygons representing ponds, lakes, and reservoirs.
 
 
-## Output Attributes
+## Output Attributes (For U.S. application using NHDPlusHR as input)
 
-### Channel Network Outputs (vwReaches)
+### Channel Area Output (channel_area)
 
-- `ReachID`: Unique identifier for each reach
-- `FCode`: NHD FCode for each reach
-- `ReachCode`: A unique identifier for each reach from the NHD attributes 
-- `NDHPlusID`: Unique identifier for each reach in the NHDPlus dataset
-- `StreamName`: The name of the stream
-- `level_path`: A unique identifier for each individual stream from the NHD attributes
-- `TotDASqKm`: Total drainage area in square kilometers from NHD attributes
-- `DivDASqMi`: Total drainage area in square kilometers partitioned among diversions, side channels, etc. from NHD attributes
-- `WatershedID`: Unique identifier for each watershed (the hydrologic unit code) from the NHD attributes
-- `ownership`: Dominant ownership of the reach (e.g. private, public, tribal)
-- `divergence`: An integer code from NHD attributes indicating channel divergence and type of divergence
-- `stream_order`: Strahler stream order from NHD attributes
-- `us_state`: The state in which the reach is located
-- `ecoregion_iii`: Level III ecoregion from the EPA
-- `ecoregion_iv`: Level IV ecoregion from the EPA
-- `iPC_Road`: The distance (m) from the reach to the nearest road
-- `iPC_RoadX`: The distance (m) from the reach to the nearest road crossing
-- `iPC_RoadVB`: The distance (m) from the reach to the nearest road within the valley bottom
-- `iPC_Rail`: The distance (m) from the reach to the nearest railroad
-- `iPC_RailVB`: The distance (m) from the reach to the nearest railroad within the valley bottom
-- `iPC_DivPts`: The distance (m) from the reach to the nearest diversion point
-- `iPC_Privat`: The distance (m) from the reach to the nearest private land
-- `iPC_Canal`: The distance (m) from the reach to the nearest canal
-- `iPC_LU`: The land use intensity within the valley bottom adjacent to the reach ranging from 0 (natural land cover) to 100 (urban land cover)
-- `iPC_VLowLU`: The percent of the adjacent valley bottom that is classified as very low intensity land use
-- `iPC_LowLU`: The percent of the adjacent valley bottom that is classified as low intensity land use
-- `iPC_ModLU`: The percent of the adjacent valley bottom that is classified as moderate intensity land use
-- `iPC_HighLU`: The percent of the adjacent valley bottom that is classified as high intensity land use
-- `oPC_Dist`: The distance (m) from the reach to the nearest infrastructure (road, railroad, canal, diversion or crossing)
+|Field|Units|Description|
+|---|---|---|
+|`fid`|NA|Unique identifier for each polygon|
+|`GNIS_ID`|NA|A unique ID associated with the 'GNIS_Name'|
+|`GNIS_Name`|NA|The Stream Name|
+|`ReachCode`|NA|A unique identifier for each reach from the NHD attributes|
+|`FType`|NA|NHD FType - broad flowline types (e.g., natural stream, pipeline, canal)|
+|`FCode`||NHD FCode for each reach, reprenting specific flow types (e.g., perennial, intermittent, ephemeral)|
+|`NDHPlusID`|NA|Unique identifier for each reach in the NHDPlus dataset|
+|`TotDASqKm`|km<sup>2</sup>|Total drainage area in square kilometers from NHD attributes|
+|`DivDASqMi`|km<sup>2</sup>|Total drainage area in square kilometers partitioned among diversions, side channels, etc. from NHD attributes|
+|`level_path`|NA|A unique identifier for each individual stream from the NHD attributes|
+|`upstream_level_path`|NA|The level path of the next segment upstream|
+|`downstream_level_path`|NA|The level path of the next segment downstream|
+|`divergence`|NA|An integer code from NHD attributes indicating channel divergence and type of divergence|
+|`stream_order`|NA|Strahler stream order from NHD attributes|
+|`us_state`|NA|The state in which the reach is located|
+|`ecoregion_iii`|NA|Level III ecoregion from the EPA|
+|`ecoregion_iv`|NA|Level IV ecoregion from the EPA|
+|`bankfull_m`|m|The bankfull width calculated using the regional regression used|
+|`area_m2`|m<sup>2</sup>|the area of the channel polygon|
 
-### Riverscape Network Outputs (vwDgos/vwIgos)
-
-- `IGODID/DGOID`: Unique identifier for each riverscape polygon or point
-- `FCode`: NHD FCode for each riverscape polygon or point
-- `level_path`:  A unique identifier for each individual stream from the NHD attributes associated with the riverscape polygon or point
-- `seg_distance`: A distance along a given level_path. In combination with level_path, this provides a unique identifier for each riverscape polygon or point
-- `stream_size`: A categorical classification of stream size from 0 (small, headwater streams) to 4 (large continental rivers)
-- `centerline_length`: (DGOs) The length of the centerline (m) of the riverscape polygon (riverscape network length)
-- `LUI`: The land use intensity averaged across the DGO or moving window, ranging from 0 (natural land cover) to 100 (urban land cover)
-- `Road_len`: The length of road within the riverscape DGO or moving window
-- `Road_dens`: The density of roads within the riverscape DGO or moving window, calculated as road length divided by the centerline length (length of roads per length of riverscape; m/m)
--`Rail_len`: The length of railroads within the riverscape DGO or moving window
-- `Rail_dens`: The density of railroads within the riverscape DGO or moving window, calculated as railroad length divided by the centerline length (length of railroads per length of riverscape; m/m)
-- `Canal_len`: The length of canals within the riverscape DGO or moving window
-- `Canal_dens`: The density of canals within the riverscape DGO or moving window, calculated as canal length divided by the centerline length (length of canals per length of riverscape; m/m)
-- `RoadX_ct`: The number of road crossings within the riverscape DGO or moving window
-- `RoadX_dens`: The density of road crossings within the riverscape DGO or moving window, calculated as the number of road crossings divided by the centerline length (number of road crossings per length of riverscape; number/m)
-- `DivPts_ct`: The number of diversion points within the riverscape DGO or moving window
-- `DivPts_dens`: The density of diversion points within the riverscape DGO or moving window, calculated as the number of diversion points divided by the centerline length (number of diversion points per length of riverscape; number/m)
-- `Road_prim_len`: The length of primary roads within the riverscape DGO or moving window
-- `Road_prim_dens`: The density of primary roads within the riverscape DGO or moving window, calculated as the length of primary roads divided by the centerline length (length of primary roads per length of riverscape; m/m)
-- `Road_sec_len`: The length of secondary roads within the riverscape DGO or moving window
-- `Road_sec_dens`: The density of secondary roads within the riverscape DGO or moving window, calculated as the length of secondary roads divided by the centerline length (length of secondary roads per length of riverscape; m/m)
-- `Road_4wd_len`: The length of primitive 4wd roads within the riverscape DGO or moving window
-- `Road_4wd_dens`: The density of primitive 4wd roads within the riverscape DGO or moving window, calculated as the length of primitive 4wd roads divided by the centerline length (length of primitive 4wd roads per length of riverscape; m/m)
-
-# Outputs
+## Data Layers Produced by the Channel Area Tool
 
 <h3><a name="FILTERED_WATERBODY">Filtered NHD Waterbodies</a></h3>
 
