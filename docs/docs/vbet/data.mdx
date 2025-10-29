@@ -5,38 +5,183 @@ sidebar_position: 3
 
 # Data
 
-<h2><a name="VBET_ZONES">VBET LevelPath Zones</a></h2>
+## Inputs
 
-<h2><a name="LOWLYING_FP_ZONES">Active/Low-Lying Floodplain LevelPath Zones</a></h2>
+|Layer|Data Type|Description|Source|
+|---|---|---|---|
+|dem_hillshade|GeoTiff|Hillshade raster derived from DEM|[Riverscapes Context](https://tools.riverscapes.net/rscontext/data/#HILLSHADE)|
+|dem|GeoTiff|Digital Elevation Model|[Riverscapes Context](https://tools.riverscapes.net/rscontext/data/#DEM)|
+|slope|GeoTiff|Slope raster derived from DEM|[Riverscapes Context](https://tools.riverscapes.net/rscontext/data/#SLOPE)|
+|network_intersected|Geopackage Feature Class|NHD Flowlines intersected with road, rail and ownership|[Riverscapes Context](ttps://tools.riverscapes.net/rscontext/data/#NETWORK_INTERSECTION)|
+|channel_area_polygons|Geopackage Feature Class|polygon feature class representing the extent of channels|[Channel Area Tool](https://tools.riverscapes.net/channelarea/data/#CHANNEL_AREA)|
+|pitfill|GeoTiff|the DEM with the TauDEM Pit Remove algorithm applied to it|[TauDEM](https://tools.riverscapes.net/taudem/data/#PITFILL)|
+|dinfflowdir_ang|GeoTiff|flow direction raster produced by apply the TauDEM D-infinity flow direction algorithm to pitfilled DEM|[TauDEM](https://tools.riverscapes.net/taudem/data/#DINFFLOWDIR_ANG)|
+|dinfflowdir_slp|GeoTiff|slope raster produced by applying the TauDEM D-infinity flow direction algorithm to pitfilled DEM|[TauDEM](https://tools.riverscapes.net/taudem/data/#DINFFLOWDIR_SLP)|
 
-<h2><a name="ELEVATED_FP_ZONES">Inactive/Elevated Floodplain LevelPath Zones</a></h2>
+---
 
-<h2><a name="HAND_RASTER">Hand Raster</a></h2>
+## Data Layers Produced by VBET
 
-<h2><a name="TRANSFORMED_HAND">Transformed HAND Evidence</a></h2>
+### Intermediates
 
-<h2><a name="TRANSFORMED_SLOPE">Transformed Slope</a></h2>
+<h4><a name="VBET_ZONES">VBET LevelPath Zones</a></h4>
+The raster valley bottom output, where the valley associated with each level path is a unique raster pixel value.
 
-<h2><a name="EVIDENCE_TOPO_INTERIOR">Topo Evidence (Interior)</a></h2>
+<h4><a name="LOWLYING_FP_ZONES">Active/Low-Lying Floodplain LevelPath Zones</a></h4>
+The raster low-lying valley bottom where the valley associated with each level path is a unique raster pixel value.
 
-<h2><a name="HAND_RASTER_INTERIOR">Hand Raster (Interior)</a></h2>
+<h4><a name="ELEVATED_FP_ZONES">Inactive/Elevated Floodplain LevelPath Zones</a></h4>
+The raster elevated valley bottom where the valley associated with each level path is a unique raster pixel value.
 
-<h2><a name="TRANSFORMED_HAND_INTERIOR">Transformed HAND Evidence (Interior)</a></h2>
+<h4><a name="HAND_RASTER">Hand Raster</a></h4>
+Height Above Nearest Drainage raster for each individual level path combined into a single raster.
 
-<h2><a name="TRANSFORMED_SLOPE_INTERIOR">Transformed Slope (Interior)</a></h2>
+<h4><a name="TRANSFORMED_HAND">Transformed HAND Evidence</a></h4>
+Height Above Nearest Drainage transformed into relative likelihood (0-1) for each individual level path combined into a single raster.
 
-<h2><a name="VBET_DGO_POLYGONS">VBET DGO Polygons</a></h2>
+<h4><a name="TRANSFORMED_SLOPE">Transformed Slope</a></h4>
+Slope transformed into relative likelihood (with inverse distance weighting) for each individual level path combined into a single raster.
 
-<h2><a name="VBET_EVIDENCE">VBET Evidence Raster</a></h2>
+<h4><a name="EVIDENCE_TOPO_INTERIOR">Topo Evidence (Interior)</a></h4>
+Relative likelihood of being valley bottom for each individual relative path combined into a single composite raster, limited to the valley bottom extent.
 
-<h2><a name="VBET_FULL">VBET Full Extent</a></h2>
+<h4><a name="HAND_RASTER_INTERIOR">Hand Raster (Interior)</a></h4>
+Height Above Nearest Drainage raster for each individual level path combined into a single raster, limited to the valley bottom extent.
 
-<h2><a name="VBET_IA">VBET Low lying/Elevated Boundary</a></h2>
+<h4><a name="TRANSFORMED_HAND_INTERIOR">Transformed HAND Evidence (Interior)</a></h4>
+Height Above Nearest Drainage transformed into relative likelihood (0-1) for each individual level path combined into a single raster, limited to the valley bottom extent.
 
-<h2><a name="ELEVATED_FLOODPLAIN">Elevated Floodplain</a></h2>
+<h4><a name="TRANSFORMED_SLOPE_INTERIOR">Transformed Slope (Interior)</a></h4>
+Slope transformed into relative likelihood (with inverse distance weighting) for each individual level path combined into a single raster, limited to the valley bottom extent.
 
-<h2><a name="FLOODPLAIN">Floodplain</a></h2>
+### Outputs
 
-<h2><a name="VBET_CENTERLINES">VBET Centerlines</a></h2>
+<h4><a name="VBET_DGO_POLYGONS">VBET DGO Polygons</a></h4>
+Discrete Geographic Objects - The valley bottom split into a sampling frame of polygons where the IGO points are at the center of each polygon.
 
-<h2><a name="SEGMENTATION_POINTS">Segmentation Points</a></h2>
+<h4><a name="VBET_EVIDENCE">VBET Evidence Raster</a></h4>
+Relative likelihood of being valley bottom for each individual relative path combined into a single composite raster.
+
+<h4><a name="VBET_FULL">VBET Full Extent</a></h4>
+The full polygonized valley bottom output.
+
+<h4><a name="VBET_IA">VBET Low lying/Elevated Boundary</a></h4>
+The low-lying valley bottom surface.
+
+<h4><a name="LOW_LYING_FLOODPLAIN">Low Lying Floodplain</a></h4>
+The low-lying valley bottom surface with the channel not included
+
+<h4><a name="ELEVATED_FLOODPLAIN">Elevated Floodplain</a></h4>
+The elevated valley bottom surface.
+
+<h4><a name="FLOODPLAIN">Floodplain</a></h4>
+The low-lying and elevated valley bottom surfaces with the channel not included.
+
+<h4><a name="VBET_CENTERLINES">VBET Centerlines</a></h4>
+The centerline of the valley bottom.
+
+<h4><a name="SEGMENTATION_POINTS">Segmentation Points</a></h4>
+Integrated Geographic Objects - Points placed at a specified distance interval along the valley centerline. This distance is a function of the average valley width for a given stream.
+
+---
+
+## Output Attributes
+
+### Discrete Geographic Objects (DGOs; vbet_dgos)
+
+|Field|Units|Description|
+|---|---|---|
+|`fid`|NA|Unique identifier for each feature|
+|`level_path`|NA|Unique identifier for each stream in the NHD dataset from headwater to outlet|
+|`seg_distance`|m|Distance downstream along a given level path of the feature|
+|`FCode`|NA|NHD FCode representing the flow type of the main channel in the riverscape|
+|`low_lying_floodplain_area|m<sup>2</sup>|Area of low-lying floodplain surface in the polygon|
+|`low_lying_floodplain_prop|unitless|Proportion of the polygon that is low-lying floodplain|
+|`active_channel_area`|m|area of channel polygon in the polygon|
+|`active_channel_prop`|unitless|Proportion of the polygon that is channel|
+|`elevated_floodplain_area`|m<sup>2</sup>|Area of elevation floodplain in the polygon|
+|`elevated_floodplain_prop`|unitless|Proportion of the polygon that is elevated floodplain|
+|`floodplain_area`|m<sup>2</sup>|Area of floodplain (low-lying + elevated) in the polygon|
+|`floodplain_prop`|unitless|Proportion of the polygon that is floodplain|
+|`centerline_length`|m|Total valley length of the polygon|
+|`segment_area`|m<sup>2</sup>|Area of the polygon|
+|`integrated_width`|m|Average width (area/centerline length) of the polygon|
+
+### Integrated Geographic Objects (IGOs; vbet_igos)
+
+|Field|Units|Description|
+|---|---|---|
+|`fid`|NA|Unique identifier for each feature|
+|`level_path`|NA|Unique identifier for each stream in the NHD dataset from headwater to outlet|
+|`seg_distance`|m|Distance downstream along a given level path of the feature|
+|`stream_size`|NA|Categorical classification of stream size based on drainage area from 0 small to 4 large|
+|`FCode`|NA|NHD FCode representing the flow type of the main channel in the riverscape|
+|`window_size`|m|Search distance used to generate moving windows for metric(i.e., half this distance upstream and downstream)|
+|`centerline_length`|m|Total valley length of the window|
+|`window_area`|m<sup>2</sup>|Area of the window|
+|`integrated_width`|m|Average width (area/centerline length) of the window|
+|`low_lying_floodplain_area|m<sup>2</sup>|Area of low-lying floodplain surface in the window|
+|`low_lying_floodplain_proportion|unitless|Proportion of the window that is low-lying floodplain|
+|`low_lying_floodplain_itgr_width`|m|Average width (area/centerline length) of low-lying floodplain in the window|
+|`active_channel_area`|m|area of channel polygon in the window|
+|`active_channel_proportion`|unitless|Proportion of the window that is channel|
+|`active_channel_itgr_width`|m|Average width (area/length) of channel in the window|
+|`elevated_floodplain_area`|m<sup>2</sup>|Area of elevation floodplain in the window|
+|`elevated_floodplain_proportion`|unitless|Proportion of the window that is elevated floodplain|
+|`elevated_floodplain_itgr_width`|m|Average width (area/centerline length) of the elevated floodplain in the window|
+|`floodplain_area`|m<sup>2</sup>|Area of floodplain (low-lying + elevated) in the window|
+|`floodplain_proportion`|unitless|Proportion of the window that is floodplain|
+|`floodplain_itgr_width`|m|Average width (area/centerline length) of floodplain in the window|
+|`vb_acreage_per_mile`|ac/mi|Acres of valley bottom per mile of centerline length in the window|
+|`vb_hectares_per_km`|ha/km|Hectares of valley bottom per kilometer of centerline length in the window|
+|`low_lying_acreage_per_mile`|ac/mi|Acres of low-lying valley bottom per mile of centerline length in the window|
+|`low_lying_hectares_per_km`|ha/km|Hectares of low-lying valley bottom per kilomter of centerline length in the window|
+|`elevated_acreage_per_mile`|ac/mi|Acres of elevated valley bottom per mile of centerline length in the window|
+|`elevated_hectares_per_km`|ha/km|Hectares of elevated valley bottom per kilomter of centerline length in the window|
+
+### Valley Centerlines (vbet_centerlines)
+
+|Field|Units|Description|
+|---|---|---|
+|`fid`|NA|Unique identifier for each feature|
+|`level_path`|NA|Unique identifier for the stream associated with the valley centerline feature in the NHD dataset from headwater to outlet|
+
+### Full Valley Bottom (vbet_full)
+
+|Field|Units|Description|
+|---|---|---|
+|`fid`|NA|Unique identifier for each feature|
+|`id`|NA|The VBET_ZONE raster value that the feature was polygonized from|
+|`level_path`|NA|Unique identifier for the stream associated with the valley feature in the NHD dataset from headwater to outlet|
+
+### Elevated Floodplain (elevated_floodplain)
+
+|Field|Units|Description|
+|---|---|---|
+|`fid`|NA|Unique identifier for each feature|
+|`id`|NA|The VBET_ZONE raster value that the feature was polygonized from|
+|`level_path`|NA|Unique identifier for the stream associated with the valley feature in the NHD dataset from headwater to outlet|
+
+### Floodplain (floodplain)
+
+|Field|Units|Description|
+|---|---|---|
+|`fid`|NA|Unique identifier for each feature|
+|`id`|NA|The VBET_ZONE raster value that the feature was polygonized from|
+|`level_path`|NA|Unique identifier for the stream associated with the valley feature in the NHD dataset from headwater to outlet|
+
+### Low-Lying Floodplain (low_lying_floodplain)
+
+|Field|Units|Description|
+|---|---|---|
+|`fid`|NA|Unique identifier for each feature|
+|`id`|NA|The VBET_ZONE raster value that the feature was polygonized from|
+|`level_path`|NA|Unique identifier for the stream associated with the valley feature in the NHD dataset from headwater to outlet|
+
+### Low-Lying Valley Bottom (low_lying_valley_bottom)
+
+|Field|Units|Description|
+|---|---|---|
+|`fid`|NA|Unique identifier for each feature|
+|`id`|NA|The VBET_ZONE raster value that the feature was polygonized from|
+|`level_path`|NA|Unique identifier for the stream associated with the valley feature in the NHD dataset from headwater to outlet|
