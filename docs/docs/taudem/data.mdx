@@ -9,19 +9,16 @@ sidebar_position: 2
 
 ## Inputs
 
-<h3><a name="CHANNEL_LINES">Channel Lines</a></h3>
+|Feature Class|Description|Source|
+|---|---|---|
+|channel_area|polygon feature class representing the extent of channels|[Channel Area Tool](https://tools.riverscapes.net/channelarea/data/#CHANNEL_AREA)|
+|dem|Digital Elevation Model|[Riverscapes Context](https://tools.riverscapes.net/rscontext/data/#DEM)|
+|dem_hillshade|Hillshade raster derived from the DEM|[Riverscapes Context](https://tools.riverscapes.net/rscontext/data/#HILLSHADE)|
 
-Channel network (lines) feature class.
 
-<h3><a name="DEM_MASK_POLY">DEM Mask Polygon</a></h3>
+## Data Layers Produced by TauDEM
 
-A polygon feature used to mask the input DEM.
-
-<h3><a name="DEM_MASKED">Masked DEM</a></h3>
-
-The input DEM masked using an input polygon feature.
-
-## Intermediates
+### Intermediates
 
 <h3><a name="PITFILL">Pit Filled DEM</a></h3>
 
@@ -43,7 +40,7 @@ Slope raster produced by applying the TauDEM D-infinity Flow Directions algorith
 
 A raster of specific catchment area produced by applying the TauDEM algorithm to the D-infinity flow direction raster.
 
-## Outputs 
+### Outputs 
 
 <h3><a name="HAND_RASTER">Height Above Nearest Drainage Raster</a></h3>
 
