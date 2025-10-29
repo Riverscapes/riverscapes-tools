@@ -1,0 +1,34 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "WatershedHydroID",
+      "description": "Pick a WatershedHydroID to process",
+      // "default": "563738" // South Island near Christchurch
+      "default": "593481" // Wairau River, Marlborough
+    }
+  ],  
+  "configurations": [
+    {
+      "name": "RS Dynamics - NEW ZEALAND",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "rsdynamics.rsdynamics",
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/../.env",
+      "args": [
+        "${input:WatershedHydroID}",
+        "/Users/philipbailey/GISData/nz/vbet/${input:WatershedHydroID}/project.rs.xml",
+        "0.68,0.95", // thresholds
+        "5,30", // epochs 1,5, 30
+        "/Users/philipbailey/GISData/nz/rodrigo_output/output2",
+        "/Users/philipbailey/GISData/nz/rsdynamics",
+        "--verbose"
+      ]
+    }
+  ]
+}
