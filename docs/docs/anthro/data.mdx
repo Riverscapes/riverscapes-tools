@@ -5,29 +5,146 @@ sidebar_position: 3
 
 # Anthropogenic Context Data
 
-This page documents and explains the new datasets created by the Anthropogenic Context tool.
+## Inputs
 
+|Layer|Data Type|Description|Source|
+|---|---|---|---|
+|dem_hillshade|GeoTiff|Hillshade raster derived from DEM|[Riverscapes Context](https://tools.riverscapes.net/rscontext/data/#HILLSHADE)|
+|existing_veg|GeoTiff|Landfire Existing Vegetation Type (EVT) raster|[Riverscapes Context](https://tools.riverscapes.net/rscontext/data/#EXVEG)|
+|igo|Geopackage Feature Class|VBET integrated geographic object (IGO) points|[VBET](https://tools.riverscapes.net/vbet/data/#SEGMENTATION_POINTS)|
+|dgo|Geopackage Feature Class|VBET discrete geographic object (DGO) points|[VBET](https://tools.riverscapes.net/vbet/data/#VBET_DGO_POLYGONS)|
+|flowlines|Geopackage Feature Class|The NHD flow lines previously intersected with land ownership, road and rail|[Riverscapes Context](https://tools.riverscapes.net/rscontext/data/#NETWORK_SEGMENTED)|
+|valley_bottom|Geopackage Feature Class|Full valley bottom polygon|[VBET](https://tools.riverscapes.net/vbet/data/#VBET_FULL)|
+|ownership|Geopackage Feature Class|Land ownership/administration polygons|[Riverscapes Context](https://tools.riverscapes.net/rscontext/data/#Ownership)|
+|canals|Geopackage Feature Class|Lines representing canals|[Riverscapes Context](https://tools.riverscapes.net/rscontext/data/#Canals)|
+|roads|Geopackage Feature Class|Lines representing the road network|[Riverscapes Context](https://tools.riverscapes.net/rscontext/data/#Roads)|
+|rails|Geopackage Feature Class|Lines representing railroads|[Riverscapes Context](https://tools.riverscapes.net/rscontext/data/#Rail)|
 
-<h2><a name="LUI">Land Use Intensity Raster</a></h2>
+---
 
-<h2><a name="DIVERSIONS">Diversion Points</a></h2>
+## Data Layers Produced by Anthropogenic Context
 
-<h2><a name="PRIVATE">Private Land</a></h2>
+### Intermediates
 
-<h2><a name="RAIL_VB">Railroad Within Valley Bottom</a></h2>
+<h4><a name="LUI">Land Use Intensity Raster</a></h4>
+Existing vegetation raster classified into four land use intensity categories.
 
-<h2><a name="ROAD_CROSSINGS">Road Stream Crossings</a></h2>
+<h4><a name="DIVERSIONS">Diversion Points</a></h4>
+Points of diversion from streams.
 
-<h2><a name="ROAD_VB">Roads Within Valley Bottom</a></h2>
+<h4><a name="PRIVATE">Private Land</a></h4>
+Areas from the ownership input classified as private ownership.
 
-<h2><a name="ANTHRO_GEOM_POINTS">Anthropogenic Context IGOs</a></h2>
+<h4><a name="RAIL_VB">Railroad Within Valley Bottom</a></h4>
+Railroad features within the valley bottom.
 
-<h2><a name="ANTHRO_POINTS">Anthropogenic Output Points</a></h2>
+<h4><a name="ROAD_CROSSINGS">Road Stream Crossings</a></h4>
+Intersection of the road and flowline features (where roads cross streams).
 
-<h2><a name="ANTHRO_GEOM_LINES">Anthropogenic Context Reaches</a></h2>
+<h4><a name="ROAD_VB">Roads Within Valley Bottom</a></h4>
+Roads with the valley bottom.
 
-<h2><a name="ANTHRO_LINES">Anthropogenic Output Lines</a></h2>
+### Outputs
 
-<h2><a name="ANTHRO_GEOM_DGOS">Anthropogenic Context DGOs</a></h2>
+<h4><a name="ANTHRO_GEOM_POINTS">Anthropogenic Context IGOs</a></h4>
+Integrated Geographic Objects - Points placed at a specified distance interval along the valley centerline. This distance is a function of the average valley width for a given stream.
 
-<h2><a name="ANTHRO_DGOS">Anthropogenic Output DGOs</a></h2>
+<h4><a name="ANTHRO_POINTS">Anthropogenic Output Points</a></h4>
+IGOs attributed with values related to anthropogenic impact calculated within a single DGO or an aggregation of DGOs.
+
+<h4><a name="ANTHRO_GEOM_LINES">Anthropogenic Context Reaches</a></h4>
+The original NHD flow lines intersected with land ownership, road and rail.
+
+<h4><a name="ANTHRO_LINES">Anthropogenic Output Lines</a></h4>
+NHD Flowlines attributed with values related to anthropogenic impact.
+
+<h4><a name="ANTHRO_GEOM_DGOS">Anthropogenic Context DGOs</a></h4>
+Discrete Geographic Objects - The valley bottom split into a sampling frame of polygons where the IGO points are at the center of each polygon.
+
+<h4><a name="ANTHRO_DGOS">Anthropogenic Output DGOs</a></h4>
+DGOs attributed with values related to anthropogenic impact calculated with the DGO extent.
+
+---
+
+## Output Attributes
+
+### Anthropogenic Context Lines (vwReaches)
+
+|Field|Units|Description|
+|---|---|---|
+|`ReachID`|NA|Unique identifier for each reach|
+|`FCode`|NA|NHD FCode representing flow type|
+|`ReachCode`|NA|NHD Reach Code identifier|
+|`NHDPlusID`|NA|Unique NHDPlus ID used to join additional value added attributes|
+|`StreamName`|NA|The name of the stream|
+|`level_path`|NA|A unique identifier from NHD for each stream from headwaters to outlet|
+|`TotDASqKm`|km<sup>2</sup>|Total upstream contributing drainage area|
+|`DivDASqKm`|km<sup>2</sup>|Contributing drainage area accounting for flow partitioning into canals, side channels, etc.|
+|`WatershedID`|NA|10-Digit USGS hydrologic unit code (HUC)|
+|`ownership`|NA|land owner/administrator of the area line intersects|
+|`divergence`|NA|An integer code from NHD attributes indicating channel divergence and type of divergence|
+|`stream_order`|NA|Strahler stream order from NHD attributes|
+|`us_state`|NA|The state in which the reach is located|
+|`ecoregion_iii`|NA|Level III ecoregion from the EPA|
+|`ecoregion_iv`|NA|Level IV ecoregion from the EPA|
+|`iPC_Road`|m|Distance between the stream line and the nearest road|
+|`iPC_RoadX`|m|Distance between the stream line and the nearest road crossing|
+|`iPC_RoadVB`|m|Distance between the stream line and the nearest road within the valley bottom|
+|`iPC_Rail`|m|Distance between the stream line and the nearest railroad|
+|`iPC_RailVB`|m|Distance between the stream line and the nearest railroad within the valley bottom|
+|`iPC_DivPts`|m|Distance between the stream line and the nearest stream diversion point|
+|`PC_Privat'|m|Distance between the stream line and the nearest private land|
+|`iPC_Canal`|m|Distance between the stream line and the nearest canal|
+|`iPC_LU`|NA|Average land use intensity within the riverscape associated with the reach from 0 (low) to 100 (high)|
+|`iPC_VLowLU`|%|Percent of the riverscape associated with the reach with very low land use intensity (natural vegetation)|
+|`iPC_LowLU`|%|Percent of the riverscape associated with the reach with low land use intensity (low intensity farming)|
+|`iPC_ModLU`|%|Percent of the riverscape associated with the reach with moderate land use intensity (high intensity farming)|
+|`iPC_HighLU`|%|Percent of the riverscape associated with the reach with high land use intensity (Developed/Urbanized)|
+|`oPC_Dist`|m|Distance between the stream line and the nearest infrastructure|
+
+### Anthropogenic Context DGOs (vwDgos)
+
+|Field|Units|Description|
+|---|---|---|
+|`DGOID`|NA|Unique identifier for each DGO polygon|
+|`FCode`|NA|NHD FCode representing flow type of the primary channel in the polygon|
+|`level_path`|NA|A unique identifier for the primary stream within the polygon from headwaters to outlet|
+|`seg_distance`|m|Distance downstream along a given level path of the feature|
+|`centerline_length`|m|Total valley length of the polygon|
+|`segment_area`|m<sup>2</sup>|Area of the polygon|
+|`LUI`|NA|Average land use intensity within the polygon from 0 (low) to 100 (high)|
+|`Road_len`|m|Length of roads within the polygon|
+|`Rail_len`|m|Length of railroads within the polygon|
+|`Canal_len`|m|Length of canals within the polygon|
+|`RoadX_ct`|#|Number of road crossings of streams within the polygon|
+|`DivPts_ct`|#|Number of stream diversion points within the polygon|
+|`Road_prim_len`|m|Length of primary roads within the polygon|
+|`Road_sec_len`|m|Length of secondary roads within the polygon|
+|`Road_4wd_len`|m|Length of primitive/4wd roads within the polygon|
+
+### Anthropogenic Context IGOs (vwIgos)
+
+|Field|Units|Description|
+|---|---|---|
+|`IGOID`|NA|Unique identifier for each IGO point|
+|`seg_distance`|m|Distance downstream along a given level path of the feature|
+|`stream_size`|NA|Categorical classification of stream size based on drainage area from 0 small to 4 large|
+|`FCode`|NA|NHD FCode representing flow type of the primary channel in the window|
+|`level_path`|NA|A unique identifier for the primary stream within the window from headwaters to outlet|
+|`LUI`|NA|Average land use intensity within the window from 0 (low) to 100 (high)|
+|`Road_len`|m|Length of roads within the window|
+|`Road_dens`|unitless|Length of roads in the window divided by centerline length of the window|
+|`Rail_len`|m|Length of railroads within the window|
+|`Rail_dens`|unitless|Length of railroads in the window divided by centerline length of the window|
+|`Canal_len`|m|Length of canals within the window|
+|`Canal_dens`|unitless|Length of canals in the window divided by centerline length of the window|
+|`RoadX_ct`|#|Number of road crossings of streams within the window|
+|`RoadX_dens`|km<sup>-1</sup>|Number of road crossings in the window per centerline length of the window|
+|`DivPts_ct`|#|Number of stream diversion points within the window|
+|`DivPts_dens`|km<sup>-1</sup>|Number of diversion points in the window per centerline length of the window|
+|`Road_prim_len`|m|Length of primary roads within the window|
+|`Road_prim_dens`|unitless|Length of primary roads within the window divded by centerline length of the window|
+|`Road_sec_len`|m|Length of secondary roads within the window|
+|`Road_sec_dens`|unitless|Length of secondary roads within the window divided by centerline length of the window|
+|`Road_4wd_len`|m|Length of primitive/4wd roads within the window|
+|`Road_4wd_dens`|unitless|Length of primitive/4wd roads within the window divided by the centerline length of the window|
