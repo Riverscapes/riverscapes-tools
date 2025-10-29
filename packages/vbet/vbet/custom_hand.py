@@ -6,10 +6,10 @@ Jordan Gilbert
 """
 
 import argparse
-from vbet.lib.hand import dem_hand
 import rasterio
 import numpy as np
 from rsxml import dotenv
+from vbet.lib.hand import dem_hand
 
 
 def hand(in_dem: str, in_channel: str, out_hand_path: str):

@@ -37,6 +37,7 @@
     ],
     "graphql-config.load.rootDir": "${workspaceFolder}",
     "python.analysis.extraPaths": [
+      "${workspaceFolder:🚀 VBET}",
       "${workspaceFolder:🏠 Git Root}/lib/commons"
     ],
     "python.terminal.activateEnvironment": true,

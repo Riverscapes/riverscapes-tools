@@ -60,11 +60,11 @@ def build_network(flowlines_path: str,
 
     log = Logger('Build Network')
 
-    log.info("Building network from flow lines {0}".format(flowlines_path))
+    log.info(f"Building network from flow lines {flowlines_path}")
 
     if reach_codes:
         for r in reach_codes:
-            log.info('Retaining {} reaches with code {}'.format(FCodeValues[int(r)], r))
+            log.info(f'Retaining {FCodeValues[int(r)]} reaches with code {r}')
     else:
         log.info('Retaining all reaches. No reach filtering.')
 
@@ -74,10 +74,12 @@ def build_network(flowlines_path: str,
             out_spatial_ref, transform = VectorBase.get_transform_from_epsg(flowareas_lyr.spatial_ref, epsg)
 
     # Process all perennial/intermittment/ephemeral reaches first
+    out_spatial_ref = None
     attribute_filter = None
+    transform = None
     if reach_codes and len(reach_codes) > 0:
-        _result = [log.info("{0} {1} network features (FCode {2})".format('Retaining', FCodeValues[int(key)], key)) for key in reach_codes]
-        attribute_filter = "FCode IN ({0})".format(','.join([key for key in reach_codes]))
+        _result = [log.info(f"{'Retaining'} {FCodeValues[int(key)]} network features (FCode {key})") for key in reach_codes]
+        attribute_filter = f"FCode IN ({','.join([key for key in reach_codes])})"
 
     if create_layer is True:
         with get_shp_or_gpkg(flowlines_path) as flowlines_lyr, get_shp_or_gpkg(out_path, write=True) as out_lyr:
@@ -88,12 +90,12 @@ def build_network(flowlines_path: str,
 
     # Process artifical paths through small waterbodies
     if waterbodies_path is not None and waterbody_max_size is not None:
-        small_waterbodies = get_geometry_unary_union(waterbodies_path, epsg, attribute_filter='AreaSqKm <= ({0})'.format(waterbody_max_size))
-        log.info('Retaining artificial features within waterbody features smaller than {0}km2'.format(waterbody_max_size))
+        small_waterbodies = get_geometry_unary_union(waterbodies_path, epsg, attribute_filter=f'AreaSqKm <= ({waterbody_max_size})')
+        log.info(f'Retaining artificial features within waterbody features smaller than {waterbody_max_size}km2')
         process_reaches(flowlines_path,
                         out_path,
                         transform=transform,
-                        attribute_filter='FCode = {0}'.format(ARTIFICIAL_REACHES),
+                        attribute_filter=f'FCode = {ARTIFICIAL_REACHES}',
                         clip_shape=small_waterbodies
                         )
 
@@ -105,7 +107,7 @@ def build_network(flowlines_path: str,
             process_reaches(flowlines_path,
                             out_path,
                             transform=transform,
-                            attribute_filter='FCode = {0}'.format(ARTIFICIAL_REACHES),
+                            attribute_filter=f'FCode = {ARTIFICIAL_REACHES}',
                             clip_shape=flow_polygons
                             )
 
@@ -113,7 +115,7 @@ def build_network(flowlines_path: str,
             log.info('Zero artifical paths to be retained.')
 
     with get_shp_or_gpkg(out_path) as out_lyr:
-        log.info(('{:,} features written to {:}'.format(out_lyr.ogr_layer.GetFeatureCount(), out_path)))
+        log.info(f'{out_lyr.ogr_layer.GetFeatureCount():,} features written to {out_path}')
 
     log.info('Process completed successfully.')
     return out_spatial_ref

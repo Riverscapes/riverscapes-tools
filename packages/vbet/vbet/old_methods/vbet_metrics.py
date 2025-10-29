@@ -1,7 +1,7 @@
 import os
 import sqlite3
 
-import ogr
+from osgeo import ogr
 
 from rscommons.classes.vector_classes import GeopackageLayer
 from rscommons.hand import run_subprocess
@@ -32,7 +32,7 @@ def build_vbet_metric_tables(database):
 
     for layer_name in ['active_floodplain', 'inactive_floodplain', 'vbet_channel_area']:
         fields = {'prop_valley_bottom_pc': ogr.OFTReal,
-                  f'prop_{layer_name.replace("_floodplain","").replace("_area","").replace("vbet_","")}_pc': ogr.OFTReal}
+                  f'prop_{layer_name.replace("_floodplain", "").replace("_area", "").replace("vbet_", "")}_pc': ogr.OFTReal}
         copy_metric_tables(database, layer_name, f'{layer_name}_metrics', fields, 'fid')
 
 
@@ -87,7 +87,7 @@ def floodplain_metrics(layer_name, db_path):
 
     with GeopackageLayer(os.path.join(db_path, layer_name), write=True) as vbet_lyr:
         fields = {'prop_valley_bottom_pc': ogr.OFTReal,
-                  f'prop_{layer_name.replace("_floodplain","").replace("_area","").replace("vbet_","")}_pc': ogr.OFTReal}
+                  f'prop_{layer_name.replace("_floodplain", "").replace("_area", "").replace("vbet_", "")}_pc': ogr.OFTReal}
         vbet_lyr.create_fields(fields)
         for feat, *_ in vbet_lyr.iterate_features(f"Writing metrics for {os.path.join(db_path, layer_name)}", write_layers=[vbet_lyr]):
             fid = feat.GetFID()

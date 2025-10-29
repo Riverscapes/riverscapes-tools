@@ -7,8 +7,8 @@ That is just tedious enough that it deservers its own class
 import os
 from typing import List
 from osgeo import gdal
-from rscommons.util import safe_makedirs
 from rsxml import Logger
+from rsxml.util import safe_makedirs
 from rscommons import Timer
 
 

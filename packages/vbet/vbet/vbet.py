@@ -25,6 +25,7 @@ from rasterio.windows import Window
 from shapely.geometry import box
 import numpy as np
 
+from rsxml import Logger, ProgressBar, dotenv
 from rscommons import RSProject, RSLayer, ModelConfig, GeopackageLayer, VectorBase, initGDALOGRErrors
 from rscommons.vector_ops import copy_feature_class, polygonize, difference, collect_linestring, collect_feature_class
 from rscommons.geometry_ops import get_extent_as_geom, get_rectangle_as_geom
@@ -35,7 +36,7 @@ from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.raster_warp import raster_warp
 from rscommons import TimerBuckets, TimerWaypoints
 from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions, raster_resolution_meta
-from rsxml import Logger, ProgressBar, dotenv
+
 
 from vbet.vbet_database import build_vbet_database, load_configuration
 from vbet.vbet_raster_ops import rasterize, raster_logic_mask, raster_update_multiply, raster_remove_zone, get_endpoints_on_raster, generate_vbet_polygon, generate_centerline_surface, clean_raster_regions, proximity_raster
@@ -43,10 +44,10 @@ from vbet.vbet_outputs import clean_up_centerlines
 from vbet.vbet_report import VBETReport
 from vbet.vbet_segmentation import calculate_dgo_metrics, generate_igo_points, split_vbet_polygons, calculate_vbet_window_metrics, add_fcodes, clean_igos
 from vbet.lib.CompositeRaster import CompositeRaster
-from vbet.__version__ import __version__
 
-from .lib.cost_path import least_cost_path
-from .lib.raster2line import raster2line_geom
+from vbet.lib.cost_path import least_cost_path
+from vbet.lib.raster2line import raster2line_geom
+from vbet.__version__ import __version__
 
 Path = str
 

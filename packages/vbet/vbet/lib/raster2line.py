@@ -13,10 +13,12 @@ from math import sqrt
 from osgeo import gdal, ogr
 import numpy as np
 
-from vbet. vbet_raster_ops import raster2array
+from vbet.vbet_raster_ops import raster2array
 
 
 def pixelOffset2coord(rasterfn, xOffset, yOffset):
+    """ Convert pixel offset to map coordinates
+    """
     raster = gdal.Open(rasterfn)
     geotransform = raster.GetGeoTransform()
     originX = geotransform[0]
@@ -29,6 +31,7 @@ def pixelOffset2coord(rasterfn, xOffset, yOffset):
 
 
 def array2shp(array, outSHPfn, rasterfn, pixelValue):
+    """ array2shp"""
 
     multiline = array2geom(array, rasterfn, pixelValue)
 
