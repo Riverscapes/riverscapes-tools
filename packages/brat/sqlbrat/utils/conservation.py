@@ -41,7 +41,7 @@ def calculate_conservation(database: str, max_da: float = None):
                               ['ReachCode', 'oVC_HPE', 'oVC_EX', 'oCC_HPE', 'oCC_EX', 'iGeo_Slope', 'iPC_VLowLU', 'iPC_HighLU', 'iPC_LU', 'iPC_RoadX', 'iPC_RoadVB', 'iPC_RailVB', 'iHyd_SPLow', 'iHyd_SP2', 'iPC_Canal', 'Dam_Setting', 'iGeo_DA'],
                               '(oCC_EX IS NOT NULL)')
 
-    log.info('Calculating conservation for {:,} reaches.'.format(len(reaches)))
+    log.info(f'Calculating conservation for {len(reaches):,} reaches.')
 
     risks = load_lookup(database, 'SELECT Name, RiskID AS ID FROM DamRisks')
     limitations = load_lookup(database, 'SELECT Name, LimitationID AS ID FROM DamLimitations')

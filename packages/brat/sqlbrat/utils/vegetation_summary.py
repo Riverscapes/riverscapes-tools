@@ -5,14 +5,14 @@
    28 Aug 2019
 """
 import os
+import sqlite3
 import numpy as np
 from osgeo import gdal, ogr
 import rasterio
-import sqlite3
 from shapely.ops import unary_union
 from rasterio.mask import mask
-from rscommons import GeopackageLayer
 from rsxml import Logger
+from rscommons import GeopackageLayer
 from rscommons.database import SQLiteCon
 from rscommons.classes.vector_base import VectorBase
 
@@ -30,7 +30,7 @@ def vegetation_summary(outputs_gpkg_path: str, label: str, veg_raster: str, buff
     """
 
     log = Logger('Vegetation')
-    log.info('Summarizing {}m vegetation buffer from {}'.format(int(buffer), veg_raster))
+    log.info(f'Summarizing {int(buffer)}m vegetation buffer from {veg_raster}')
 
     # Retrieve the raster spatial reference and geotransformation
     dataset = gdal.Open(veg_raster)
@@ -80,7 +80,7 @@ def vegetation_summary(outputs_gpkg_path: str, label: str, veg_raster: str, buff
                         cell_count = np.count_nonzero(mask_raster == oldvalue)
                         veg_counts.append([reach_id, int(oldvalue), buffer, cell_count * cell_area, cell_count])
             except Exception as ex:
-                log.warning('Error obtaining vegetation raster values for ReachID {}'.format(reach_id))
+                log.warning(f'Error obtaining vegetation raster values for ReachID {reach_id}')
                 log.warning(ex)
 
     # Write the reach vegetation values to the database
@@ -96,13 +96,14 @@ def vegetation_summary(outputs_gpkg_path: str, label: str, veg_raster: str, buff
                     database.conn.execute('INSERT INTO ReachVegetation (ReachID, VegetationID, Buffer, Area, CellCount) VALUES (?, ?, ?, ?, ?)', veg_record)
                 # Sqlite can't report on SQL errors so we have to print good log messages to help intuit what the problem is
                 except sqlite3.IntegrityError as err:
+                    log.debug(str(err))
                     # THis is likely a constraint error.
-                    errstr = "Integrity Error when inserting records: ReachID: {} VegetationID: {}".format(veg_record[0], veg_record[1])
+                    errstr = f"Integrity Error when inserting records: ReachID: {veg_record[0]} VegetationID: {veg_record[1]}"
                     log.error(errstr)
                     errs += 1
                 except sqlite3.Error as err:
                     # This is any other kind of error
-                    errstr = "SQL Error when inserting records: ReachID: {} VegetationID: {} ERROR: {}".format(veg_record[0], veg_record[1], str(err))
+                    errstr = f"SQL Error when inserting records: ReachID: {veg_record[0]} VegetationID: {veg_record[1]} ERROR: {str(err)}"
                     log.error(errstr)
                     errs += 1
         if errs > 0:

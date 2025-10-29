@@ -28,20 +28,20 @@ def combined_fis(database: str, label: str, veg_type: str, max_drainage_area: fl
     """
 
     log = Logger('Combined FIS')
-    log.info('Processing {} vegetation'.format(label))
+    log.info(f'Processing {label} vegetation')
 
-    veg_fis_field = 'oVC_{}'.format(veg_type)
-    capacity_field = 'oCC_{}'.format(veg_type)
-    dam_count_field = 'mCC_{}_CT'.format(veg_type)
+    veg_fis_field = f'oVC_{veg_type}'
+    capacity_field = f'oCC_{veg_type}'
+    dam_count_field = f'mCC_{veg_type}_CT'
 
     fields = [veg_fis_field, 'iGeo_Slope', 'iGeo_DA', 'iHyd_SP2', 'iHyd_SPLow', 'iGeo_Len', 'ReachCode']
 
     if not dgo:
-        reaches = load_attributes(database, fields, ' AND '.join(['({} IS NOT NULL)'.format(f) for f in fields]))
+        reaches = load_attributes(database, fields, ' AND '.join([f'({f} IS NOT NULL)' for f in fields]))
         calculate_combined_fis(reaches, veg_fis_field, capacity_field, dam_count_field, max_drainage_area)
         write_db_attributes(database, reaches, [capacity_field, dam_count_field], log)
     else:
-        feature_values = load_dgo_attributes(database, fields, ' AND '.join(['({} IS NOT NULL)'.format(f) for f in fields]))
+        feature_values = load_dgo_attributes(database, fields, ' AND '.join([f'({f} IS NOT NULL)' for f in fields]))
         calculate_combined_fis(feature_values, veg_fis_field, capacity_field, dam_count_field, max_drainage_area)
         write_db_dgo_attributes(database, feature_values, [capacity_field, dam_count_field], log)
 

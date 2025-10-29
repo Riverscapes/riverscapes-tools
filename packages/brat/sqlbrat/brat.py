@@ -18,10 +18,10 @@ import json
 import sqlite3
 from typing import List, Dict
 from osgeo import ogr
+from rsxml import Logger, dotenv
 from rscommons import GeopackageLayer
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.vector_ops import copy_feature_class
-from rsxml import Logger, dotenv
 from rscommons import initGDALOGRErrors, RSLayer, RSProject, ModelConfig
 from rscommons.util import parse_metadata, pretty_duration
 from rscommons.build_network import build_network
@@ -248,7 +248,7 @@ def brat(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Path,
     project.add_metadata([RSMeta('HUC8_Watershed', watershed_name)])
 
     # set up intermediates db
-    qry = open(os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'intermediates_schema.sql'), 'r').read()
+    qry = open(os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'database', 'intermediates_schema.sql'), 'r', encoding='utf-8').read()
     sqlite3.complete_statement(qry)
     conn = sqlite3.connect(intermediates_gpkg_path)
     conn.execute('PRAGMA foreign_keys=ON')
@@ -334,7 +334,7 @@ def brat(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Path,
                                   WHERE DGOID = {row['DGOID']}""")
         database.conn.commit()
 
-        database.curs.execute("""INSERT INTO ReachAttributes (ReachID, ReachCode, StreamName, NHDPlusID, WatershedID, level_path, ownership, divergence, stream_order, us_state, ecoregion_iii, ecoregion_iv, 
+        database.curs.execute("""INSERT INTO ReachAttributes (ReachID, ReachCode, StreamName, NHDPlusID, WatershedID, level_path, ownership, divergence, stream_order, us_state, ecoregion_iii, ecoregion_iv,
                               iGeo_Slope, iGeo_Len, iGeo_DA, iHyd_QLow, iHyd_Q2, iHyd_SPLow, iHyd_SP2, iPC_Road, iPC_RoadX, iPC_RoadVB, iPC_Rail, iPC_RailVB, iPC_DivPts, iPC_Privat, iPC_Canal, iPC_LU, iPC_VLowLU, iPC_LowLU, iPC_ModLU, iPC_HighLU, oPC_Dist)
                               SELECT fid, FCode, StreamName, NHDPlusID, WatershedID, level_path, ownership, divergence, stream_order, us_state, ecoregion_iii, ecoregion_iv,
                               iGeo_Slope, iGeo_Len, iGeo_DA, iHyd_QLow, iHyd_Q2, iHyd_SPLow, iHyd_SP2, iPC_Road, iPC_RoadX, iPC_RoadVB, iPC_Rail, iPC_RailVB, iPC_DivPts, iPC_Privat, iPC_Canal, iPC_LU, iPC_VLowLU, iPC_LowLU, iPC_ModLU, iPC_HighLU, oPC_Dist 
@@ -417,7 +417,7 @@ def brat(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Path,
         for buffer in [streamside_buffer, riparian_buffer]:
             buffer_path = os.path.join(intermediates_gpkg_path, f'buffer_{int(buffer)}m')
             polygon_path = buffer_path if buffer_path in buffer_paths else None
-            vegetation_summary(outputs_gpkg_path, '{} {}m'.format(label, buffer), veg_raster, buffer, input_layers['CHANNEL_AREA'], polygon_path)
+            vegetation_summary(outputs_gpkg_path, f'{label} {buffer}m', veg_raster, buffer, input_layers['CHANNEL_AREA'], polygon_path)
             buffer_paths.append(buffer_path)
 
     # add buffers to project
@@ -443,13 +443,14 @@ def brat(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Path,
         for ecoregion in ecoregions:
 
             # Calculate the vegetation suitability for each buffer
-            [vegetation_suitability(outputs_gpkg_path, buffer, prefix, ecoregion) for buffer in get_stream_buffers(outputs_gpkg_path)]
+            for buffer in get_stream_buffers(outputs_gpkg_path):
+                vegetation_suitability(outputs_gpkg_path, buffer, prefix, ecoregion)
 
         # Run the vegetation and then combined FIS for this epoch
         vegetation_fis(outputs_gpkg_path, epoch, prefix)
         combined_fis(outputs_gpkg_path, epoch, prefix, max_drainage_area)
 
-        orig_raster = os.path.join(project.project_dir, proj_nodes['Inputs'].find('Raster[@id="{}"]/Path'.format(orig_id)).text)
+        orig_raster = os.path.join(project.project_dir, proj_nodes['Inputs'].find(f'Raster[@id="{orig_id}"]/Path').text)
         _veg_suit_raster_node, veg_suit_raster = project.add_project_raster(proj_nodes['Intermediates'], LayerTypes[ltype], None, True)
         output_vegetation_raster(outputs_gpkg_path, orig_raster, veg_suit_raster, epoch, prefix, ecoregion_av)
 
@@ -473,7 +474,7 @@ def brat(huc: int, hydro_flowlines: Path, hydro_igos: Path, hydro_dgos: Path,
 
     project.add_project_geopackage(proj_nodes['Intermediates'], LayerTypes['INTERMEDIATES'])
     project.add_metadata([
-        RSMeta("BratBuildProcTimeS", "{:.2f}".format(ellapsed_time), RSMetaTypes.INT),
+        RSMeta("BratBuildProcTimeS", f"{ellapsed_time:.2f}", RSMetaTypes.INT),
         RSMeta("BratBuildProcTimeHuman", pretty_duration(ellapsed_time))
     ])
 
@@ -506,13 +507,13 @@ def get_watershed_info(gpkg_path):
     log = Logger('BRAT Run')
 
     if not watershed:
-        raise Exception('Missing watershed in BRAT datatabase {}'.format(database))
+        raise Exception(f'Missing watershed in BRAT database {database}')
 
     if not max_drainage:
-        log.warning('Missing max drainage for watershed {}'.format(watershed))
+        log.warning(f'Missing max drainage for watershed {watershed}')
 
     if not ecoregion:
-        raise Exception('Missing ecoregion for watershed {}'.format(watershed))
+        raise Exception(f'Missing ecoregion for watershed {watershed}')
 
     return watershed, max_drainage, ecoregion
 
@@ -539,7 +540,7 @@ def augment_layermeta():
     """
     For RSContext we've written a JSON file with extra layer meta. We may use this pattern elsewhere but it's just here for now
     """
-    with open(LYR_DESCRIPTIONS_JSON, 'r') as f:
+    with open(LYR_DESCRIPTIONS_JSON, 'r', encoding='utf-8') as f:
         json_data = json.load(f)
 
     for k, lyr in LayerTypes.items():
@@ -550,14 +551,14 @@ def augment_layermeta():
                         RSMeta('Description', json_data[h][0]),
                         RSMeta('SourceUrl', json_data[h][1], RSMetaTypes.URL),
                         RSMeta('DataProductVersion', json_data[h][2]),
-                        RSMeta('DocsUrl', 'https://tools.riverscapes.net/brat/data/#{}'.format(sublyr.id), RSMetaTypes.URL)
+                        RSMeta('DocsUrl', f'https://tools.riverscapes.net/brat/data/#{sublyr.id}', RSMetaTypes.URL)
                     ]
         if k in json_data and len(json_data[k]) > 0:
             lyr.lyr_meta = [
                 RSMeta('Description', json_data[k][0]),
                 RSMeta('SourceUrl', json_data[k][1], RSMetaTypes.URL),
                 RSMeta('DataProductVersion', json_data[k][2]),
-                RSMeta('DocsUrl', 'https://tools.riverscapes.net/brat/data/#{}'.format(lyr.id), RSMetaTypes.URL)
+                RSMeta('DocsUrl', f'https://tools.riverscapes.net/brat/data/#{lyr.id}', RSMetaTypes.URL)
             ]
 
 
@@ -611,12 +612,13 @@ def main():
     # Initiate the log file
     log = Logger("BRAT Build")
     log.setup(log_path=os.path.join(args.output_folder, "brat.log"), verbose=args.verbose)
-    log.title('BRAT Build Tool For HUC: {}'.format(args.huc))
+    log.title(f'BRAT Build Tool For HUC: {args.huc}')
 
     meta = parse_metadata(args.meta)
 
     try:
         if args.debug is True:
+            # Leave this import here so that we don't pay the cost of importing it unless we need it
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output_folder, 'brat_build_memusage.log')
             retcode, max_obj = ThreadRun(brat, memfile,

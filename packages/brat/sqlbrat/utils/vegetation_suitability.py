@@ -28,7 +28,7 @@ def vegetation_suitability(gpkg_path: str, buffer: float, prefix: str, ecoregion
         ecoregion {int} -- Database ID of the ecoregion associated with the watershed
     """
 
-    veg_col = 'iVeg{}{}{}'.format('_' if len(str(int(buffer))) < 3 else '', int(buffer), prefix)
+    veg_col = f'iVeg{"_" if len(str(int(buffer))) < 3 else ""}{int(buffer)}{prefix}'
 
     reaches = calculate_vegetation_suitability(gpkg_path, buffer, prefix, veg_col, ecoregion)
     write_db_attributes(gpkg_path, reaches, [veg_col], set_null_first=False)
@@ -52,9 +52,9 @@ def calculate_vegetation_suitability(gpkg_path: str, buffer: float, epoch: str, 
     """
 
     log = Logger('Veg Suitability')
-    log.info('Buffer: {}'.format(buffer))
-    log.info('Epoch: {}'.format(epoch))
-    log.info('Veg Column: {}'.format(veg_col))
+    log.info(f'Buffer: {buffer}')
+    log.info(f'Epoch: {epoch}')
+    log.info(f'Veg Column: {veg_col}')
 
     with SQLiteCon(gpkg_path) as database:
 
@@ -62,7 +62,7 @@ def calculate_vegetation_suitability(gpkg_path: str, buffer: float, epoch: str, 
         database.curs.execute('SELECT EpochID FROM Epochs WHERE Metadata = ?', [epoch])
         epochid = database.curs.fetchone()['EpochID']
         if not epochid:
-            raise Exception('Missing epoch in database with metadata value of "{}"'.format(epoch))
+            raise Exception(f'Missing epoch in database with metadata value of "{epoch}"')
 
         database.curs.execute('SELECT R.ReachID, Round(SUM(CAST(IFNULL(OverrideSuitability, DefaultSuitability) AS REAL) * CAST(CellCount AS REAL) / CAST(TotalCells AS REAL)), 2) AS VegSuitability'
                               ' FROM vwReaches R'
@@ -100,7 +100,7 @@ def output_vegetation_raster(gpkg_path, raster_path, output_path, epoch, prefix,
         ecoregion {int} -- Database ID of the ecoregion associated with the watershed
     """
     log = Logger('Veg Suitability Rasters')
-    log.info('Epoch: {}'.format(epoch))
+    log.info(f'Epoch: {epoch}')
 
     with SQLiteCon(gpkg_path) as database:
 
@@ -108,7 +108,7 @@ def output_vegetation_raster(gpkg_path, raster_path, output_path, epoch, prefix,
         database.curs.execute('SELECT EpochID FROM Epochs WHERE Metadata = ?', [prefix])
         epochid = database.curs.fetchone()['EpochID']
         if not epochid:
-            raise Exception('Missing epoch in database with metadata value of "{}"'.format(epoch))
+            raise Exception(f'Missing epoch in database with metadata value of "{epoch}"')
 
         database.curs.execute('SELECT VegetationID, EffectiveSuitability '
                               'FROM vwVegetationSuitability '
@@ -120,7 +120,7 @@ def output_vegetation_raster(gpkg_path, raster_path, output_path, epoch, prefix,
             return out_nodata
         elif in_val in results:
             return results[in_val]
-        log.warning('Could not find {} VegetationID={}'.format(prefix, in_val))
+        log.warning(f'Could not find {prefix} VegetationID={in_val}')
         return -1
 
     vector = np.vectorize(translate_suit)
@@ -132,7 +132,7 @@ def output_vegetation_raster(gpkg_path, raster_path, output_path, epoch, prefix,
         out_meta['compress'] = 'deflate'
 
         with rasterio.open(output_path, "w", **out_meta) as dest_ds:
-            progbar = ProgressBar(len(list(source_ds.block_windows(1))), 50, "Writing Vegetation Raster: {}".format(epoch))
+            progbar = ProgressBar(len(list(source_ds.block_windows(1))), 50, f"Writing Vegetation Raster: {epoch}")
             counter = 0
             for ji, window in dest_ds.block_windows(1):
                 progbar.update(counter)

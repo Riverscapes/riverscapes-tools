@@ -29,7 +29,7 @@ def main():
     # Initiate the log file
     log = Logger('XML Augmenter')
     log.setup(verbose=args.verbose)
-    log.title('XML Augmenter: {}'.format(args.out_project_xml))
+    log.title(f'XML Augmenter: {args.out_project_xml}')
 
     try:
         out_prj = RSProject(None, args.out_project_xml)

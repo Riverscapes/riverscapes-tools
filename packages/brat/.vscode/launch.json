@@ -39,20 +39,13 @@
         "30", // streamside_buffer
         "100", // riparian_buffer
         "{env:DATA_ROOT}/brat/${input:HUC}", // output folder
-        "--meta",
-        "Runner=VSCode",
-        "--reach_codes",
-        "33400,33600,33601,33603,46000,46003,46006,46007",
-        "--canal_codes",
-        "33600,33601,33603",
-        "--peren_codes",
-        "46006,55800,33400",
-        "--flow_areas",
-        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhdplushr.gpkg/NHDArea",
-        "--waterbodies",
-        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhdplushr.gpkg/NHDWaterbody",
-        "--max_waterbody",
-        "0.001", // max_waterbody
+        "--meta", "Runner=VSCode",
+        "--reach_codes", "33400,33600,33601,33603,46000,46003,46006,46007",
+        "--canal_codes", "33600,33601,33603",
+        "--peren_codes", "46006,55800,33400",
+        "--flow_areas", "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhdplushr.gpkg/NHDArea",
+        "--waterbodies", "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhdplushr.gpkg/NHDWaterbody",
+        "--max_waterbody", "0.001", // max_waterbody
         "--verbose"
       ]
     },

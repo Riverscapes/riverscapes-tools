@@ -29,18 +29,18 @@ def vegetation_fis(database: str, label: str, veg_type: str, dgo: bool = None):
     """
 
     log = Logger('Vegetation FIS')
-    log.info('Processing {} vegetation'.format(label))
+    log.info(f'Processing {label} vegetation')
 
-    streamside_field = 'iVeg_30{}'.format(veg_type)
-    riparian_field = 'iVeg100{}'.format(veg_type)
-    out_field = 'oVC_{}'.format(veg_type)
+    streamside_field = f'iVeg_30{veg_type}'
+    riparian_field = f'iVeg100{veg_type}'
+    out_field = f'oVC_{veg_type}'
 
     if not dgo:
-        feature_values = load_attributes(database, [streamside_field, riparian_field], '({} IS NOT NULL) AND ({} IS NOT NULL)'.format(streamside_field, riparian_field))
+        feature_values = load_attributes(database, [streamside_field, riparian_field], f'({streamside_field} IS NOT NULL) AND ({riparian_field} IS NOT NULL)')
         calculate_vegegtation_fis(feature_values, streamside_field, riparian_field, out_field)
         write_db_attributes(database, feature_values, [out_field])
     else:
-        feature_values = load_dgo_attributes(database, [streamside_field, riparian_field], '({} IS NOT NULL) AND ({} IS NOT NULL)'.format(streamside_field, riparian_field))
+        feature_values = load_dgo_attributes(database, [streamside_field, riparian_field], f'({streamside_field} IS NOT NULL) AND ({riparian_field} IS NOT NULL)')
         calculate_vegegtation_fis(feature_values, streamside_field, riparian_field, out_field)
         write_db_dgo_attributes(database, feature_values, [out_field])
 
