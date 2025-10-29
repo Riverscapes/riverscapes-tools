@@ -1,25 +1,52 @@
 {
-    "CHANNEL_LINES": ["Channel network (lines) feature class.", "", ""],
-    "DEM_MASK_POLY": ["A polygon feature used to mask the input DEM.", "", ""],
-    "DEM_MASKED": ["The input DEM masked using an input polygon feature.", "", ""],
-    "PITFILL": ["The input DEM with the TauDEM Pit Remove algorithm applied to it.",
-    "https://hydrology.usu.edu/taudem/taudem5/help53/PitRemove.html",
-    "5.3.8"],
-    "DINFFLOWDIR_ANG": ["Flow direction raster produced by applying the TauDEM D-infity Flow Directions algorithm to the pit filled DEM.",
-    "https://hydrology.usu.edu/taudem/taudem5/help53/DInfinityFlowDirections.html",
-    "5.3.8"],
-    "RASTERIZED_CHANNEL": ["The input channel polygon or line network converted to a raster where the channel cells have the value 1 and all other cells have the value 0.",
-    "", ""],
-    "DINFFLOWDIR_SLP": ["Slope raster produced by applying the TauDEM D-infinity Flow Directions algorithm to the pit filled DEM.",
-    "https://hydrology.usu.edu/taudem/taudem5/help53/DInfinityFlowDirections.html",
-    "5.3.8"],
-    "AREADINF_SCA": ["A raster of specific catchment area produced by applying that TauDEM algorithm to the D-infinity flow direction raster.",
-    "https://hydrology.usu.edu/taudem/taudem5/help53/DInfinityContributingArea.html",
-    "5.3.8"],
-    "HAND_RASTER": ["A raster where each pixel value is the height above the nearest drainage area, produced using the D-infinity Distance Down TauDEM algorithm.",
-    "https://hydrology.usu.edu/taudem/taudem5/help53/DInfinityDistanceDown.html",
-    "5.3.8"],
-    "TWI_RASTER": ["A raster of Topographic Wetness Index produced using TauDEMs application of the algorithm.",
+  "CHANNEL_LINES": [
+    "Channel network (lines) feature class.",
     "",
-    "5.3.8"]
+    ""
+  ],
+  "DEM_MASK_POLY": [
+    "A polygon feature used to mask the input DEM.",
+    "",
+    ""
+  ],
+  "DEM_MASKED": [
+    "The input DEM masked using an input polygon feature.",
+    "",
+    ""
+  ],
+  "PITFILL": [
+    "The input DEM with the TauDEM Pit Remove algorithm applied to it.",
+    "https://hydrology.usu.edu/taudem/taudem5/help53/PitRemove.html",
+    "5.3.8"
+  ],
+  "DINFFLOWDIR_ANG": [
+    "Flow direction raster produced by applying the TauDEM D-infity Flow Directions algorithm to the pit filled DEM.",
+    "https://hydrology.usu.edu/taudem/taudem5/help53/DInfinityFlowDirections.html",
+    "5.3.8"
+  ],
+  "RASTERIZED_CHANNEL": [
+    "The input channel polygon or line network converted to a raster where the channel cells have the value 1 and all other cells have the value 0.",
+    "",
+    ""
+  ],
+  "DINFFLOWDIR_SLP": [
+    "Slope raster produced by applying the TauDEM D-infinity Flow Directions algorithm to the pit filled DEM.",
+    "https://hydrology.usu.edu/taudem/taudem5/help53/DInfinityFlowDirections.html",
+    "5.3.8"
+  ],
+  "AREADINF_SCA": [
+    "A raster of specific catchment area produced by applying that TauDEM algorithm to the D-infinity flow direction raster.",
+    "https://hydrology.usu.edu/taudem/taudem5/help53/DInfinityContributingArea.html",
+    "5.3.8"
+  ],
+  "HAND_RASTER": [
+    "A raster where each pixel value is the height above the nearest drainage area, produced using the D-infinity Distance Down TauDEM algorithm.",
+    "https://hydrology.usu.edu/taudem/taudem5/help53/DInfinityDistanceDown.html",
+    "5.3.8"
+  ],
+  "TWI_RASTER": [
+    "A raster of Topographic Wetness Index produced using TauDEMs application of the algorithm.",
+    "",
+    "5.3.8"
+  ]
 }

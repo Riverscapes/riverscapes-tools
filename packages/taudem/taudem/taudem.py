@@ -21,13 +21,12 @@ from rscommons.classes.vector_classes import get_shp_or_gpkg, VectorBase
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.util import safe_makedirs, parse_metadata, pretty_duration
 from rscommons import RSProject, RSLayer, ModelConfig, initGDALOGRErrors
-from rsxml import Logger, dotenv
 from rscommons import GeopackageLayer
-from rsxml import ProgressBar
 from rscommons.vector_ops import copy_feature_class
 from rscommons.hand import hand_rasterize, run_subprocess
 from rscommons.raster_warp import raster_warp
 from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions, raster_resolution_meta
+from rsxml import ProgressBar, Logger, dotenv
 
 from taudem.taudem_report import TauDEMReport
 from taudem.__version__ import __version__
@@ -86,9 +85,9 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, project_folder:
     """
 
     log = Logger('TauDEM')
-    log.info('Starting TauDEM v.{}'.format(cfg.version))
+    log.info(f'Starting TauDEM v.{cfg.version}')
     start_time = time.time()
-    project_name = 'TauDEM project for HUC {}'.format(huc)
+    project_name = f'TauDEM project for HUC {huc}'
     project = RSProject(cfg, project_folder)
     project.create(project_name, 'TauDEM', [
         RSMeta('Model Documentation', 'https://tools.riverscapes.net/taudem', RSMetaTypes.URL, locked=True),
@@ -280,10 +279,10 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, project_folder:
 
     ellapsed_time = time.time() - start_time
     project.add_metadata([
-        RSMeta("ProcTimeS", "{:.2f}".format(ellapsed_time), RSMetaTypes.HIDDEN, locked=True),
+        RSMeta("ProcTimeS", f"{ellapsed_time:.2f}", RSMetaTypes.HIDDEN, locked=True),
         RSMeta("Processing Time", pretty_duration(ellapsed_time), locked=True)
     ])
-    log.info("TauDEM process complete in {}".format(ellapsed_time))
+    log.info(f"TauDEM process complete in {ellapsed_time}")
 
     new_rasters = [[_raster_channel_node, raster_channel], [_pitfill_node, pitfill_raster], [_dinfd_ang_node, dinf_ang_raster],
                    [_dinfd_slp_node, dinf_slp_raster], [_hand_node, hand_ras], [_area_dinf_node, area_dinf_raster],
@@ -303,6 +302,8 @@ def taudem(huc: int, input_channel_vector: Path, orig_dem: Path, project_folder:
 
 
 def main():
+    """ Taudem Launcher
+    """
 
     parser = argparse.ArgumentParser(
         description='Riverscapes TauDEM Tool',
@@ -327,7 +328,7 @@ def main():
     # Initiate the log file
     log = Logger('TauDEM')
     log.setup(log_path=os.path.join(args.output_dir, 'taudem.log'), verbose=args.verbose)
-    log.title('Riverscapes TauDEM project For HUC: {}'.format(args.huc))
+    log.title(f'Riverscapes TauDEM project For HUC: {args.huc}')
 
     meta = parse_metadata(args.meta)
 
@@ -335,6 +336,7 @@ def main():
 
     try:
         if args.debug is True:
+            # Leave this import here to avoid overhead when not in debug mode
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output_dir, 'taudem_mem.log')
             retcode, max_obj = ThreadRun(taudem, memfile, args.huc, args.channel, args.dem, args.output_dir, args.mask, epsg, meta)

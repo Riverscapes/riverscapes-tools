@@ -18,6 +18,8 @@ lyrs_in_out = {
 
 
 def main():
+    """ Taudem report augmentor
+    """
 
     parser = argparse.ArgumentParser(
         description='TauDEM XML Augmenter',
