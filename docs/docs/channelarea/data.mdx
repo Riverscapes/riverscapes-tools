@@ -7,12 +7,49 @@ sidebar_position: 3
 
 ## Inputs
 
-The channel area tool takes three vector feature class inputs:
+|Layer|Data Type|Description|Source|
+|---|---|---|---|
+|flowlines|Geopackage Feature Class|these polylines represent the river network. The features must have two attributes, one that represents the feature type (perennial, intermittent, pipe, canal, artificial path, etc (this is the NHD `FCode` field in the United States)), and the other is the total upstream drainage area of each feature (`TotDASqKm` in the NHD)|[Riverscapes Context](https://tools.riverscapes.net/rscontext/data/#NETWORK_INTERSECTION)|
+|flowareas|Geopackage Feature Class|polygons that represent larger flow areas that are big enough to be represented cartographically as polygons|[Riverscapes Context](https://tools.riverscapes.net/rscontext/data/#NHDAreaSplit)|
+|waterbody|Geopackage Feature Class|polygons representing ponds, lakes, and reservoirs|[Riverscapes Context](https://tools.riverscapes.net/rscontext/data/#NHDWaterbodySplit)|
 
-1. **Flow lines** - these polylines represent the river network. The features must have two attributes, one that represents the feature type (perennial, intermittent, pipe, canal, artificial path, etc (this is the NHD `FCode` field in the United States)), and the other is the total upstream drainage area of each feature (`TotDASqKm` in the NHD).
-1. **Flow Areas** - polygons that represent larger flow areas that are big enough to be represented cartographically as polygons.
-1. **Waterbodies** - polygons representing ponds, lakes, and reservoirs.
+---
 
+## Data Layers Produced by the Channel Area Tool
+
+### Intermediates
+
+<h4><a name="FILTERED_WATERBODY">Filtered NHD Waterbodies</a></h4>
+
+A subset of the NHDWaterbody layer filtered using specified NHD FCodes.
+
+<h4><a name="FILTERED_FLOWAREAS">Filtered NHD Areas</a></h4>
+
+A subset of the NHDArea layer filtered using specified NHD FCodes.
+
+<h4><a name="COMBINED_FA_WB">NHD Waterbodies and NHD Areas combined</a></h4>
+
+The NHDArea and NHDWaterbody layers combined.
+
+<h4><a name="BANKFULL_NETWORK">Bankfull Network</a></h4>
+
+The NHDFlowlines layer with an attribute 'bankfull_m' added that is used to buffer the network. This layer is the network without the segments that fall within NHDWaterbody or NHDArea features.
+
+<h4><a name="BANKFULL_POLYGONS">Bankfull Polygons</a></h4>
+
+Polygons derived by buffering the bankfull_network feature using the 'bankfull_m' attribute. This value is calculated using region equations for bankfull width.
+
+<h4><a name="DIFFERENCE_POLYGONS">Difference Polygons</a></h4>
+
+The bankfull polygons with areas that overlap the NHDArea layer removed.
+
+### Outputs
+
+<h4><a name="CHANNEL_AREA">Channel Area Polygons</a></h4>
+
+A polygon feature class representing the bankfull channel for the input network. The filtered NHDArea and NHDWaterbody features are combined with the buffered NHDFlowline features to create a single feature class.
+
+---
 
 ## Output Attributes (For U.S. application using NHDPlusHR as input)
 
@@ -39,33 +76,3 @@ The channel area tool takes three vector feature class inputs:
 |`ecoregion_iv`|NA|Level IV ecoregion from the EPA|
 |`bankfull_m`|m|The bankfull width calculated using the regional regression used|
 |`area_m2`|m<sup>2</sup>|the area of the channel polygon|
-
-## Data Layers Produced by the Channel Area Tool
-
-<h3><a name="FILTERED_WATERBODY">Filtered NHD Waterbodies</a></h3>
-
-A subset of the NHDWaterbody layer filtered using specified NHD FCodes.
-
-<h3><a name="FILTERED_FLOWAREAS">Filtered NHD Areas</a></h3>
-
-A subset of the NHDArea layer filtered using specified NHD FCodes.
-
-<h3><a name="COMBINED_FA_WB">NHD Waterbodies and NHD Areas combined</a></h3>
-
-The NHDArea and NHDWaterbody layers combined.
-
-<h3><a name="BANKFULL_NETWORK">Bankfull Network</a></h3>
-
-The NHDFlowlines layer with an attribute 'bankfull_m' added that is used to buffer the network. This layer is the network without the segments that fall within NHDWaterbody or NHDArea features.
-
-<h3><a name="BANKFULL_POLYGONS">Bankfull Polygons</a></h3>
-
-Polygons derived by buffering the bankfull_network feature using the 'bankfull_m' attribute. This value is calculated using region equations for bankfull width.
-
-<h3><a name="DIFFERENCE_POLYGONS">Difference Polygons</a></h3>
-
-The bankfull polygons with areas that overlap the NHDArea layer removed.
-
-<h3><a name="CHANNEL_AREA">Channel Area Polygons</a></h3>
-
-A polygon feature class representing the bankfull channel for the input network. The filtered NHDArea and NHDWaterbody features are combined with the buffered NHDFlowline features to create a single feature class.
