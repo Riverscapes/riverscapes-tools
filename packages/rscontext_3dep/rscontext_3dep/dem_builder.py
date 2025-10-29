@@ -18,7 +18,8 @@ import uuid
 from collections import Counter
 from osgeo import gdal, osr
 
-from rscommons import (Logger, dotenv, initGDALOGRErrors, ModelConfig, RSProject, RSLayer)
+from rscommons import (initGDALOGRErrors, ModelConfig, RSProject, RSLayer)
+from rsxml import Logger, dotenv
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.download_dem import download_dem, verify_areas
 from rscommons.geographic_raster import gdal_dem_geographic
@@ -406,7 +407,7 @@ def main():
         raise ValueError("Output resolution not within expected bounds.")
 
     log = Logger('DEM Builder')
-    log.setup(logPath=os.path.join(args.output_path, 'dem_builder.log'), verbose=args.verbose)
+    log.setup(log_path=os.path.join(args.output_path, 'dem_builder.log'), verbose=args.verbose)
     log.title('DEM Builder')
     log.info(f'Bounds Path: {args.bounds_path}')
     log.info(f'Output Resolution: {args.output_res}m')

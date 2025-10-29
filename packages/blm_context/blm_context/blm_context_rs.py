@@ -5,7 +5,8 @@ import argparse
 import traceback
 import sys
 import os
-from rscommons import RSProject, dotenv, Logger
+from rscommons import RSProject
+from rsxml import dotenv, Logger
 from blm_context.blm_context_report import BLMContextReport
 
 lyrs_in_out = {

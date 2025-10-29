@@ -1,6 +1,6 @@
 import numpy as np
 import rasterio
-from rscommons import ProgressBar
+from rsxml import ProgressBar
 
 
 def relative_elevation(dem: str, channel: str, out_raster: str):

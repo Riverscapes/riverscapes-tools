@@ -8,22 +8,15 @@
 # Date:     22 Feb 2021
 # -------------------------------------------------------------------------------
 
-import sys
 import os
-import glob
-import traceback
-import datetime
-import json
 import argparse
 
 import networkx as nx
 
 from osgeo import ogr
-from osgeo import gdal
 
-from rscommons import Logger, ProgressBar, dotenv
+from rsxml import Logger, ProgressBar, dotenv
 from rscommons import GeopackageLayer
-from rscommons import database
 
 Path = str
 

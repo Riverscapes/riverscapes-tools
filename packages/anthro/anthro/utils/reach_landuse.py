@@ -4,7 +4,7 @@
 """
 import argparse
 import sqlite3
-from rscommons import Logger, dotenv
+from rsxml import Logger, dotenv
 from rscommons.database import write_db_attributes
 
 

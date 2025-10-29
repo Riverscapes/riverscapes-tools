@@ -14,7 +14,8 @@ from typing import List
 import subprocess
 from osgeo import gdal
 from rscommons.util import pretty_duration
-from rscommons import Logger, ProgressBar, VectorBase
+from rsxml import Logger, ProgressBar
+from rscommons import VectorBase
 
 NCORES = os.environ['TAUDEM_CORES'] if 'TAUDEM_CORES' in os.environ else '2'
 

@@ -1,6 +1,7 @@
 import os
 from osgeo import ogr
-from rscommons import Logger, get_shp_or_gpkg, VectorBase
+from rsxml import Logger
+from rscommons import get_shp_or_gpkg, VectorBase
 
 
 def copy_features_fields(in_path: str, out_path: str, attribute_filter=None, epsg=None, clip_shape=None):

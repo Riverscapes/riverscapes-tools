@@ -14,7 +14,7 @@ import numpy as np
 import skfuzzy as fuzz
 from skfuzzy import control as ctrl
 from rscommons.database import load_attributes, write_db_attributes, load_dgo_attributes, write_db_dgo_attributes
-from rscommons import ProgressBar, Logger, dotenv
+from rsxml import Logger, ProgressBar, dotenv
 
 
 def combined_fis(database: str, label: str, veg_type: str, max_drainage_area: float, dgo: bool = False):
@@ -278,7 +278,7 @@ def main():
     # Initiate the log file
     logg = Logger("Combined FIS")
     logfile = os.path.join(os.path.dirname(args.network.name), "combined_fis.log")
-    logg.setup(logPath=logfile, verbose=args.verbose)
+    logg.setup(log_path=logfile, verbose=args.verbose)
 
     try:
         combined_fis(args.database.name, 'existing', 'EX', args.maxdrainage)

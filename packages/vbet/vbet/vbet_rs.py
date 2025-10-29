@@ -5,7 +5,8 @@ import argparse
 import traceback
 import sys
 import os
-from rscommons import RSProject, dotenv, Logger
+from rscommons import RSProject
+from rsxml import dotenv, Logger
 from vbet.vbet_report import VBETReport
 
 lyrs_in_out = {

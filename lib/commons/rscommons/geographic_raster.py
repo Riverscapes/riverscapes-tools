@@ -13,7 +13,7 @@
 # -------------------------------------------------------------------------------
 from osgeo import gdal
 from math import radians, cos, sin, asin, sqrt, degrees
-from rscommons import Logger
+from rsxml import Logger
 
 
 def gdal_dem_geographic(dem_raster: str, output_raster: str, operation: str):

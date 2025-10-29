@@ -23,7 +23,8 @@ import numpy as np
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 
 from rscommons.util import safe_makedirs, parse_metadata, pretty_duration
-from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALOGRErrors, ProgressBar
+from rsxml import Logger, dotenv, ProgressBar
+from rscommons import RSProject, RSLayer, ModelConfig, initGDALOGRErrors
 from rscommons import GeopackageLayer, VectorBase
 from rscommons.build_network import build_network
 from rscommons.database import create_database, write_db_attributes, dict_factory, SQLiteCon
@@ -288,7 +289,8 @@ def rvd(huc: int, flowlines_orig: Path, existing_veg_orig: Path, historic_veg_or
         project.add_project_raster(proj_nodes['Intermediates'], LayerTypes[name])
 
     # Calculate Riparian Departure per Reach
-    riparian_arrays = {f"{epoch.capitalize()}{(name.capitalize()).replace('Native_riparian', 'NativeRiparian')}Mean": array for epoch, arrays in vegetation.items() for name, array in arrays.items() if name in ["RIPARIAN", "NATIVE_RIPARIAN"]}
+    riparian_arrays = {f"{epoch.capitalize()}{(name.capitalize()).replace('Native_riparian', 'NativeRiparian')}Mean": array for epoch, arrays in vegetation.items()
+                       for name, array in arrays.items() if name in ["RIPARIAN", "NATIVE_RIPARIAN"]}
 
     # Vegetation Cell Counts
     raw_arrays = {f"{epoch}": array for epoch, arrays in vegetation.items() for name, array in arrays.items() if name == "RAW"}
@@ -663,7 +665,7 @@ def main():
 
     # Initiate the log file
     log = Logger("RVD")
-    log.setup(logPath=os.path.join(args.output_folder, "rvd.log"), verbose=args.verbose)
+    log.setup(log_path=os.path.join(args.output_folder, "rvd.log"), verbose=args.verbose)
     log.title('RVD For HUC: {}'.format(args.huc))
 
     try:

@@ -1,4 +1,5 @@
-from rscommons import Logger, GeopackageLayer
+from rsxml import Logger
+from rscommons import GeopackageLayer
 
 
 def igo_confinement(igo: str, dgo: str, windows: dict):

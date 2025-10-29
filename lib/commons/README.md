@@ -13,7 +13,7 @@ Take a look at `rscommons/classes/__init__.py`. It's the only init file that has
 from rscommons.classes.Logger import Logger
 from rscommons.classes.ProgressBar import ProgressBar
 # We can type 
-from rscommons import Logger, ProgressBar
+from rsxml import Logger, ProgressBar
 ```
 
 We also use it to make classes we'd rather people use more convenient

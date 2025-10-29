@@ -12,7 +12,7 @@ import os
 import sqlite3
 import argparse
 from datetime import datetime
-from rscommons import dotenv
+from rsxml import dotenv
 from rscommons.util import safe_makedirs
 
 

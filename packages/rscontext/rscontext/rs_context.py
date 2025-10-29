@@ -20,7 +20,8 @@ import uuid
 
 from osgeo import ogr
 
-from rscommons import (Logger, ModelConfig, RSLayer, RSProject, get_shp_or_gpkg, Timer, dotenv, initGDALOGRErrors)
+from rscommons import (ModelConfig, RSLayer, RSProject, get_shp_or_gpkg, Timer, initGDALOGRErrors)
+from rsxml import Logger, dotenv
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.clean_nhd_data import clean_nhd_data
 from rscommons.clean_ntd_data import clean_ntd_data
@@ -664,7 +665,7 @@ def main():
 
     # Initiate the log file
     log = Logger("RS Context")
-    log.setup(logPath=os.path.join(args.output, "rs_context.log"), verbose=args.verbose)
+    log.setup(log_path=os.path.join(args.output, "rs_context.log"), verbose=args.verbose)
     log.title(f'Riverscapes Context For HUC: {args.huc}')
     log.info(f'HUC: {args.huc}')
     log.info(f'EPSG: {cfg.OUTPUT_EPSG}')

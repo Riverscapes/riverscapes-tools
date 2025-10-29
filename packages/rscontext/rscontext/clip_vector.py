@@ -1,6 +1,6 @@
 import os
 import argparse
-from rscommons import Logger, dotenv
+from rsxml import Logger, dotenv
 from rscommons.shapefile import get_geometry_unary_union
 from rscommons.shapefile import _rough_convert_metres_to_shapefile_units
 from rscommons.shapefile import copy_feature_class_shapefile

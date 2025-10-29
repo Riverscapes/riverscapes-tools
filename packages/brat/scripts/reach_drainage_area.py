@@ -17,7 +17,8 @@ from rasterio.mask import mask
 from osgeo import ogr
 from osgeo import osr
 from shapely.geometry import *
-from rscommons import Logger, Raster, dotenv
+from rsxml import Logger, dotenv
+from rscommons import Raster
 from rscommons.shapefile import create_field
 
 # BRAT drainage area field
@@ -94,7 +95,7 @@ def main():
     # Initiate the log file
     logg = Logger("Reach Flow Accum")
     logfile = os.path.join(os.path.dirname(args.network.name), "reach_flowaccum.log")
-    logg.setup(logPath=logfile, verbose=args.verbose)
+    logg.setup(log_path=logfile, verbose=args.verbose)
 
     try:
         reach_drainage_area(args.network.name, args.flowaccum.name, args.buffer)

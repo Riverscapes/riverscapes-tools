@@ -4,7 +4,7 @@ import datetime
 from uuid import uuid4
 from xml.etree import ElementTree as ET
 from jinja2 import Template
-from rscommons import Logger
+from rsxml import Logger
 from rscommons.util import sizeof_fmt
 
 

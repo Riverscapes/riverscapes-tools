@@ -12,7 +12,8 @@ import numpy as np
 from osgeo import gdal
 from rasterio.mask import mask
 
-from rscommons import Logger, VectorBase, dotenv
+from rsxml import Logger, dotenv
+from rscommons import VectorBase
 from rscommons.database import SQLiteCon
 
 

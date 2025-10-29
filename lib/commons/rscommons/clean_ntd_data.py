@@ -6,7 +6,7 @@ from rscommons.shapefile import get_geometry_union
 from rscommons.shapefile import merge_feature_classes
 from rscommons.shapefile import get_transform_from_epsg
 from rscommons.util import safe_makedirs
-from rscommons import Logger
+from rsxml import Logger
 
 # The NHD FCodes that identify canals
 canal_fcodes = [33600, 33601, 33603]

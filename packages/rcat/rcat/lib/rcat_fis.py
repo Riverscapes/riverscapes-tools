@@ -10,7 +10,7 @@ import numpy as np
 import skfuzzy as fuzz
 from skfuzzy import control as ctrl
 from rscommons.database import load_attributes, load_igo_attributes, load_dgo_attributes, write_db_attributes, write_db_igo_attributes, write_db_dgo_attributes
-from rscommons import Logger, ProgressBar, dotenv
+from rsxml import Logger, ProgressBar, dotenv
 
 
 def rcat_fis(database: str, igos: bool):

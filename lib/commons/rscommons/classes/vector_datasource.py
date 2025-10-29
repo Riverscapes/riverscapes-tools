@@ -2,7 +2,7 @@
 """
 from __future__ import annotations
 from osgeo import ogr
-from rscommons.classes.logger import Logger
+from rsxml import Logger
 from rscommons.util import safe_remove_file
 
 

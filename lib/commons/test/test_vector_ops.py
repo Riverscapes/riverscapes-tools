@@ -6,7 +6,8 @@ import os
 from tempfile import mkdtemp
 from osgeo import ogr
 from rscommons import vector_ops
-from rscommons import Logger, ShapefileLayer, GeopackageLayer, initGDALOGRErrors
+from rsxml import Logger
+from rscommons import ShapefileLayer, GeopackageLayer, initGDALOGRErrors
 from rscommons.util import safe_remove_dir
 
 

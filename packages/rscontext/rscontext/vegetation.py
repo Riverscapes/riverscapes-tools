@@ -2,7 +2,7 @@ import os
 from shutil import ExecError
 import rasterio
 import numpy as np
-from rscommons import Logger
+from rsxml import Logger
 from rscommons.raster_warp import raster_warp
 
 
@@ -34,7 +34,7 @@ def clip_vegetation(boundary_path: str, veg_rasters: list, veg_raster_clips: lis
         if not os.path.isfile(rast):
             msg = f'Raster {rast} does not exist'
             raise FileNotFoundError(msg)
-        
+
         with rasterio.open(rast) as vegraster:
             meta = vegraster.meta
             widths.append(meta['transform'][0])

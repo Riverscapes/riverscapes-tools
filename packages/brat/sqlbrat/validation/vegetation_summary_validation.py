@@ -14,7 +14,7 @@ import os
 import argparse
 # from osgeo import gdal, ogr, osr
 
-from rscommons import dotenv
+from rsxml import dotenv
 from rscommons.shapefile import load_geometries
 from rscommons.shapefile import load_attributes
 from rscommons.plotting import validation_chart

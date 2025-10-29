@@ -136,7 +136,7 @@
 
 #     # Initiate the log file
 #     log = Logger("GNAT")
-#     log.setup(logPath=os.path.join(args.output_folder, "gnat.log"), verbose=args.verbose)
+#     log.setup(log_path=os.path.join(args.output_folder, "gnat.log"), verbose=args.verbose)
 #     log.title('GNAT For HUC: {}'.format(args.huc))
 
 #     inputs = parse_metadata(args.inputs)

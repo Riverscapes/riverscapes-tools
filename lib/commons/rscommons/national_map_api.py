@@ -2,7 +2,7 @@ from typing import Dict
 import json
 import requests
 import urllib.parse
-from rscommons import Logger
+from rsxml import Logger
 
 
 class TNM:

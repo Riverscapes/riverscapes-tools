@@ -12,7 +12,7 @@ from osgeo import gdal
 import rasterio
 import sqlite3
 from rasterio.mask import mask
-from rscommons import Logger, dotenv
+from rsxml import Logger, dotenv
 from rscommons.database import SQLiteCon
 from rscommons.classes.vector_base import VectorBase
 

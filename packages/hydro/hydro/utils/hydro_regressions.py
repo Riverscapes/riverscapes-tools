@@ -1,14 +1,14 @@
-import argparse
-import sqlite3
-import numpy as np
-from sklearn.linear_model import LinearRegression
 import csv
 import json
 import datetime
 import traceback
 import sys
+import argparse
+import sqlite3
+import numpy as np
+from sklearn.linear_model import LinearRegression
 
-from rscommons import Logger, dotenv, ProgressBar
+from rsxml import Logger, dotenv, ProgressBar
 
 
 def generate_linear_regressions(data_dict, x_key, y_key):
@@ -237,7 +237,7 @@ def update_watersheds_table(csv_path, db_path, operator):
 
             update_csv_rows(csv_path, 'WatershedID', huc, 'Q2', q2_eqn)
             update_csv_rows(csv_path, 'WatershedID', huc, 'Metadata', json.dumps(metadata[huc]))
-        
+
         except ValueError as e:
             log.error(e)
 
@@ -253,7 +253,7 @@ def main():
     args = dotenv.parse_args_env(parser)
 
     log = Logger('Flow Equations')
-    log.setup(logPath='', verbose=args.verbose)
+    log.setup(log_path='', verbose=args.verbose)
     log.title('Update Flow Equations using USGS Gage Data')
 
     try:

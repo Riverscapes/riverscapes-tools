@@ -25,7 +25,7 @@ from rasterio.windows import Window
 from shapely.geometry import box
 import numpy as np
 
-from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, GeopackageLayer, dotenv, VectorBase, initGDALOGRErrors
+from rscommons import RSProject, RSLayer, ModelConfig, GeopackageLayer, VectorBase, initGDALOGRErrors
 from rscommons.vector_ops import copy_feature_class, polygonize, difference, collect_linestring, collect_feature_class
 from rscommons.geometry_ops import get_extent_as_geom, get_rectangle_as_geom
 from rscommons.util import safe_makedirs, parse_metadata, pretty_duration, safe_remove_dir
@@ -35,6 +35,7 @@ from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.raster_warp import raster_warp
 from rscommons import TimerBuckets, TimerWaypoints
 from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions, raster_resolution_meta
+from rsxml import Logger, ProgressBar, dotenv
 
 from vbet.vbet_database import build_vbet_database, load_configuration
 from vbet.vbet_raster_ops import rasterize, raster_logic_mask, raster_update_multiply, raster_remove_zone, get_endpoints_on_raster, generate_vbet_polygon, generate_centerline_surface, clean_raster_regions, proximity_raster
@@ -1163,7 +1164,7 @@ def main():
 
     # Initiate the log file
     log = Logger('VBET')
-    log.setup(logPath=os.path.join(args.output_dir,
+    log.setup(log_path=os.path.join(args.output_dir,
               'vbet.log'), verbose=args.verbose)
     log.title(f'Riverscapes VBET For HUC: {args.huc}')
 

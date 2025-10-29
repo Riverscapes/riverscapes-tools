@@ -16,7 +16,7 @@ import os
 import sys
 import traceback
 from osgeo import gdal
-from rscommons import Logger
+from rsxml import Logger
 
 
 def build_vrt(search_dir, vrt):
@@ -62,7 +62,7 @@ def main():
     # Initiate the log file
     logg = Logger("Build VRT")
     logfile = os.path.join(results_folder, "build_vrt.log")
-    logg.setup(logPath=logfile, verbose=args.verbose)
+    logg.setup(log_path=logfile, verbose=args.verbose)
 
     try:
         build_vrt(args.dir, args.vrt)

@@ -16,7 +16,8 @@ from osgeo import ogr
 from shapely.geometry import MultiPolygon, MultiLineString, LineString, Point, MultiPoint, Polygon
 from shapely.ops import polygonize, unary_union
 
-from rscommons import ProgressBar, Logger, dotenv, initGDALOGRErrors, GeopackageLayer
+from rsxml import ProgressBar, Logger, dotenv
+from rscommons import initGDALOGRErrors, GeopackageLayer
 from rscommons.util import safe_makedirs
 from rscommons.vector_ops import get_geometry_unary_union, load_geometries
 
@@ -234,7 +235,7 @@ def main():
 
     # Initiate the log file
     log = Logger('FLOOD_CONN')
-    log.setup(logPath=os.path.join(args.output_dir, 'floodplain_connectivity.log'), verbose=args.verbose)
+    log.setup(log_path=os.path.join(args.output_dir, 'floodplain_connectivity.log'), verbose=args.verbose)
     log.title('Floodplain Connectivity (BETA)')
 
     try:

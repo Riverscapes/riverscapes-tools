@@ -12,8 +12,9 @@ import argparse
 
 import ogr
 
-#from gnat.gnat import gnat_database, write_gnat_attributes
-from rscommons import GeopackageLayer, get_shp_or_gpkg, dotenv, Logger, ProgressBar, VectorBase
+# from gnat.gnat import gnat_database, write_gnat_attributes
+from rscommons import GeopackageLayer, get_shp_or_gpkg, VectorBase
+from rsxml import dotenv, Logger, ProgressBar
 
 Path = typing.Union[str, bytes, os.PathLike]
 

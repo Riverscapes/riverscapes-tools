@@ -8,7 +8,8 @@ import os
 from osgeo import gdal
 import rasterio
 from shapely.geometry import Point, box
-from rscommons import Logger, VectorBase
+from rsxml import Logger
+from rscommons import VectorBase
 from rscommons.raster_buffer_stats import raster_buffer_stats2
 from rscommons.classes.vector_classes import get_shp_or_gpkg
 from rscommons.database import write_db_attributes

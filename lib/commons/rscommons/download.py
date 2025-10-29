@@ -7,7 +7,8 @@ import shutil
 import zipfile
 import requests
 from rscommons.util import safe_makedirs, safe_remove_dir, safe_remove_file, file_compare
-from rscommons import Logger, ProgressBar, Timer
+from rscommons import Timer
+from rsxml import Logger, ProgressBar
 
 MAX_ATTEMPTS = 3  # Number of attempts for things like downloading and copying
 PENDING_TIMEOUT = 60  # number of seconds before pending files are deemed stale

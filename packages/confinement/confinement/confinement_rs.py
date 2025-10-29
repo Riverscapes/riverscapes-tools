@@ -5,7 +5,8 @@ import argparse
 import traceback
 import sys
 import os
-from rscommons import RSProject, dotenv, Logger, RSMeta
+from rscommons import RSProject, RSMeta
+from rsxml import dotenv, Logger
 from confinement.confinement_report import ConfinementReport
 
 lyrs_in_out = {

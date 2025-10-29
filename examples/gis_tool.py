@@ -10,12 +10,9 @@ import argparse
 import sys
 import os
 import traceback
-import uuid
-import datetime
-from osgeo import ogr
-from osgeo import gdal
 
-from rscommons import Logger, initGDALOGRErrors, RSProject, RSLayer, ModelConfig, dotenv
+from rscommons import initGDALOGRErrors, RSProject, RSLayer, ModelConfig
+from rsxml import Logger, dotenv
 from rscommons.util import safe_makedirs
 # Import your own version. Don't just use RSCommons
 from rscommons.__version__ import __version__
@@ -45,7 +42,7 @@ if __name__ == '__main__':
 
     # Initiate the log file
     log = Logger("My Awesome Tool")
-    log.setup(logPath=os.path.join(args.output, "LOGFILE.log"), verbose=args.verbose)
+    log.setup(log_path=os.path.join(args.output, "LOGFILE.log"), verbose=args.verbose)
     log.title("My Awesome Tool")
 
     # We catch the main call because it allows us to exit gracefully with an error message and stacktrace

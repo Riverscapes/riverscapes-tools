@@ -5,7 +5,8 @@ import argparse
 import traceback
 import sys
 import os
-from rscommons import RSProject, RSMeta, dotenv, Logger
+from rscommons import RSProject, RSMeta
+from rsxml import dotenv, Logger
 from taudem.taudem_report import TauDEMReport
 
 lyrs_in_out = {
@@ -31,7 +32,7 @@ def main():
     # Initiate the log file
     log = Logger('XML Augmenter')
     log.setup(verbose=args.verbose)
-    log.title('XML Augmenter: {}'.format(args.out_project_xml))
+    log.title(f'XML Augmenter: {args.out_project_xml}')
 
     try:
         out_prj = RSProject(None, args.out_project_xml)

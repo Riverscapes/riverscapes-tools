@@ -13,7 +13,7 @@ import traceback
 import numpy as np
 import skfuzzy as fuzz
 from skfuzzy import control as ctrl
-from rscommons import Logger, ProgressBar, dotenv
+from rsxml import Logger, ProgressBar, dotenv
 from rscommons.database import load_attributes, load_dgo_attributes
 from rscommons.database import write_db_attributes, write_db_dgo_attributes
 
@@ -177,7 +177,7 @@ def main():
     # Initiate the log file
     logg = Logger("Vegetation FIS")
     logfile = os.path.join(os.path.dirname(args.network.name), "vegetation_fis.log")
-    logg.setup(logPath=logfile, verbose=args.verbose)
+    logg.setup(log_path=logfile, verbose=args.verbose)
 
     try:
         # vegetation_fis(args.network.name, 'historic', 'HPE')

@@ -8,7 +8,7 @@ from rasterio.mask import mask
 from shapely.geometry import shape
 from osgeo import ogr, osr
 
-from rscommons import dotenv
+from rsxml import dotenv
 from rscommons.plotting import horizontal_bar, vertical_bar
 from rscommons.classes.vector_base import get_utm_zone_epsg
 from rscommons.classes.vector_classes import ShapefileLayer, GeopackageLayer

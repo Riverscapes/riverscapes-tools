@@ -11,7 +11,8 @@ import sqlite3
 import json
 from xml.etree import ElementTree as ET
 import matplotlib.pyplot as plt
-from rscommons import Logger, dotenv, RSReport
+from rsxml import Logger, dotenv
+from rscommons import RSReport
 from rscommons.util import safe_makedirs
 from rscommons.plotting import pie, horizontal_bar
 from rme.__version__ import __version__
@@ -638,7 +639,7 @@ def get_rme_stats(rme_gpkg: str, filter_blm: bool, include_fcodes: bool, fcodes:
                 inner join dgo_metric_values mv ON d.fid = mv.dgo_id
                 inner join metrics m on mv.metric_id = m.metric_id
                 inner join (select dgo_id, metric_value from dgo_metric_values WHERE (metric_id = 1)) o ON mv.dgo_id = o.dgo_id
-            WHERE (o.metric_value {'=' if filter_blm is True else '<>' } 'BLM')
+            WHERE (o.metric_value {'=' if filter_blm is True else '<>'} 'BLM')
                 {filter_fcodes}
             group by m.machine_code'''
 
@@ -679,7 +680,7 @@ def main():
     # Initiate the log file
     title = 'Owyhee Land Health Assessment Report'
     log = Logger(title)
-    log.setup(logPath=os.path.join(os.path.dirname(args.report_path), "wsca_report.log"), verbose=args.verbose)
+    log.setup(log_path=os.path.join(os.path.dirname(args.report_path), "wsca_report.log"), verbose=args.verbose)
     log.title(title)
 
     # try:

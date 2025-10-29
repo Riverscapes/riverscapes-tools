@@ -5,7 +5,8 @@ import sys
 import json
 import sqlite3
 
-from rscommons import Logger, dotenv, RSProject, RSLayer
+from rsxml import Logger, dotenv
+from rscommons import RSProject, RSLayer
 
 
 def vbet_metrics(vbet_proj_path, rsc_proj_path):

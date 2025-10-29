@@ -3,7 +3,7 @@ import argparse
 import json
 import sqlite3
 import datetime
-from rscommons import dotenv
+from rsxml import dotenv
 
 
 def warehouse_to_json(sql_path, json_path):

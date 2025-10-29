@@ -7,10 +7,11 @@
 #
 # Date:     18 Feb 2021
 # -------------------------------------------------------------------------------
-from gdal import ogr
+from osgeo import ogr
 
 from rscommons.reach_geometry import reach_geometry
-from rscommons import GeopackageLayer, Logger
+from rscommons import GeopackageLayer
+from rsxml import Logger
 
 
 def gradient(line_network, name, dem, gnat_database):
@@ -24,8 +25,6 @@ def gradient(line_network, name, dem, gnat_database):
     """
     log = Logger("GNAT Gradient")
     log.info(f'Starting gradient')
-
-    
 
     with GeopackageLayer(line_network, write=True) as flowlines_lyr:
 

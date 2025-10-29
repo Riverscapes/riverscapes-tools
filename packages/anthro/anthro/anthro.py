@@ -16,7 +16,8 @@ from rscommons import GeopackageLayer
 from rscommons.util import parse_metadata, pretty_duration
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.vector_ops import copy_feature_class
-from rscommons import Logger, initGDALOGRErrors, RSLayer, RSProject, ModelConfig, dotenv
+from rsxml import Logger, dotenv
+from rscommons import initGDALOGRErrors, RSLayer, RSProject, ModelConfig
 from rscommons.database import create_database, SQLiteCon
 from rscommons.copy_features import copy_features_fields
 from rscommons.moving_window import moving_window_dgo_ids
@@ -345,7 +346,7 @@ def main():
     canal_codes = args.canal_codes.split(',') if args.canal_codes else None
 
     log = Logger('Anthropogenic Context')
-    log.setup(logPath=os.path.join(args.output_folder, "anthro.log"), verbose=args.verbose)
+    log.setup(log_path=os.path.join(args.output_folder, "anthro.log"), verbose=args.verbose)
     log.title(f'Anthropogenic Context for HUC: {args.huc}')
 
     meta = parse_metadata(args.meta)

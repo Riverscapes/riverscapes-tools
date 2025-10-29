@@ -1,9 +1,8 @@
+from typing import List
 import os
 from xml.etree import ElementTree as ET
 
-from rscommons import Logger
-
-from typing import List
+from rsxml import Logger
 
 
 def vbet_inputs(vbet_path: str, proj_paths: List):

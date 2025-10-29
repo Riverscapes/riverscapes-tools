@@ -20,7 +20,7 @@ import shapely.geometry
 from typing import Dict
 from rscommons.download import download_unzip
 from rscommons.shapefile import get_geometry_union
-from rscommons import Logger
+from rsxml import Logger
 
 # The ID of the science base parent item for 10m DEMs
 # https://www.sciencebase.gov/catalog/item/4f70aa71e4b058caae3f8de1

@@ -1,6 +1,6 @@
 import unittest
 from rscommons.national_map_api import TNM
-from rscommons import Logger
+from rsxml import Logger
 Logger('TESTER').setup(verbose=True)
 
 

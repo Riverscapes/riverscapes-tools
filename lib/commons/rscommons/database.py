@@ -8,7 +8,8 @@ import csv
 from typing import Dict
 import sqlite3
 from osgeo import ogr, osr
-from rscommons import Logger, VectorBase
+from rsxml import Logger
+from rscommons import VectorBase
 
 
 class SQLiteCon():

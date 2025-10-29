@@ -8,7 +8,7 @@ from scipy.spatial.qhull import QhullError
 from scipy.spatial import Voronoi
 from shapely.geometry import Point, MultiPoint, LineString, Polygon, MultiPolygon
 from shapely.ops import unary_union, linemerge
-from rscommons import Logger, ProgressBar
+from rsxml import Logger, ProgressBar
 from rscommons.thiessen.shapes import RiverPoint
 
 

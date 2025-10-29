@@ -4,11 +4,11 @@
 # so there isn't a double import involved
 from rscommons.classes.gdal_errors import initGDALOGRErrors
 from rscommons.classes.geotransform import Geotransform
-from rscommons.classes.logger import Logger
+from rsxml import Logger
 from rscommons.classes.timer import Timer, TimerBuckets, TimerWaypoints
 from rscommons.classes.loop_timer import LoopTimer
 from rscommons.classes.model_config import ModelConfig
-from rscommons.classes.progress_bar import ProgressBar
+from rsxml import ProgressBar
 from rscommons.classes.raster import Raster
 from rscommons.classes.vector_classes import GeopackageLayer, GeodatabaseLayer, ShapefileLayer, get_shp_or_gpkg
 from rscommons.classes.vector_base import VectorBase

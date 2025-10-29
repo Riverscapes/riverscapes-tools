@@ -19,7 +19,8 @@ from copy import copy
 from shapely.wkb import loads as wkbload
 from shapely.ops import unary_union
 from shapely.geometry import shape, mapping, Point, MultiPoint, LineString, MultiLineString, GeometryCollection, Polygon, MultiPolygon
-from rscommons import Logger, Raster, ProgressBar
+from rsxml import Logger, ProgressBar
+from rscommons import Raster
 from rscommons.util import safe_makedirs, sizeof_fmt, get_obj_size
 
 NO_UI = os.environ.get('NO_UI') is not None

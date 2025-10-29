@@ -2,7 +2,7 @@ import sqlite3
 import json
 import argparse
 import os
-from rscommons import dotenv
+from rsxml import dotenv
 
 
 def huc_summary_stats(database):

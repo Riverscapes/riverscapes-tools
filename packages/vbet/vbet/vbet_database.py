@@ -10,7 +10,7 @@ import sqlite3
 import numpy as np
 from scipy import interpolate
 
-from rscommons import Logger
+from rsxml import Logger
 from rscommons.database import load_lookup_data
 
 

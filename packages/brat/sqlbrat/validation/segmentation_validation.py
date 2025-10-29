@@ -10,7 +10,7 @@
 # -------------------------------------------------------------------------------
 import argparse
 import os
-from rscommons import dotenv
+from rsxml import dotenv
 from rscommons.shapefile import load_attributes, load_geometries
 from rscommons.database import get_db_srs
 from rscommons.plotting import validation_chart

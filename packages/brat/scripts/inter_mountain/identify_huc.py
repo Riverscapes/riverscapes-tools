@@ -13,7 +13,7 @@ import os
 import sys
 import csv
 from osgeo import ogr
-from rscommons import dotenv
+from rsxml import dotenv
 
 
 def identify_huc(input_path):

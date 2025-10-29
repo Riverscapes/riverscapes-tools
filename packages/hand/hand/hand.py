@@ -22,7 +22,8 @@ from osgeo import gdal
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 
 from rscommons.util import safe_makedirs, parse_metadata, safe_remove_dir
-from rscommons import RSProject, RSLayer, ModelConfig, Logger, dotenv, initGDALOGRErrors
+from rscommons import RSProject, RSLayer, ModelConfig, initGDALOGRErrors
+from rsxml import Logger, dotenv
 from rscommons import GeopackageLayer
 from rscommons.vector_ops import buffer_by_field, copy_feature_class, merge_feature_classes
 from rscommons.hand import create_hand_raster, hand_rasterize, run_subprocess
@@ -240,7 +241,7 @@ def main():
 
     # Initiate the log file
     log = Logger('HAND')
-    log.setup(logPath=os.path.join(args.output_dir, 'hand.log'), verbose=args.verbose)
+    log.setup(log_path=os.path.join(args.output_dir, 'hand.log'), verbose=args.verbose)
     log.title('Riverscapes HAND For HUC: {}'.format(args.huc))
 
     meta = parse_metadata(args.meta)

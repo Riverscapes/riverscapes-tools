@@ -9,7 +9,8 @@ from shapely.ops import nearest_points, unary_union
 import matplotlib.pyplot as plt
 from scipy.stats import linregress
 
-from rscommons import GeopackageLayer, Logger, dotenv
+from rscommons import GeopackageLayer
+from rsxml import Logger, dotenv
 from rscommons.classes.vector_base import VectorBase
 from rscommons.database import SQLiteCon
 
@@ -325,7 +326,7 @@ def main():
     args = dotenv.parse_args_env(parser)
 
     log = Logger('BRAT Capacity Validation')
-    log.setup(logPath=os.path.join(os.path.dirname(args.brat_gpkg), 'validation/validation.log'), verbose=args.verbose)
+    log.setup(log_path=os.path.join(os.path.dirname(args.brat_gpkg), 'validation/validation.log'), verbose=args.verbose)
     log.title(f'BRAT Capacity Validation for HUC {args.huc}')
 
     try:

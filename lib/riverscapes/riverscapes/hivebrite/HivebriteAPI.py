@@ -1,11 +1,9 @@
 '''Query script to set all the external ids in the system to the SSO_ID so we can look them up from different places
     June 06, 2023
 '''
-from typing import Dict, List, NamedTuple
+from typing import Dict, NamedTuple
 import os
 import requests
-from collections import namedtuple
-from termcolor import colored
 from rsxml import Logger, dotenv
 
 

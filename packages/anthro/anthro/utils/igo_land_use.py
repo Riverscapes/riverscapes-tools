@@ -5,7 +5,7 @@
     Dec 2022
 """
 import sqlite3
-from rscommons import Logger
+from rsxml import Logger
 
 
 def calculate_land_use(database: str, windows: dict):

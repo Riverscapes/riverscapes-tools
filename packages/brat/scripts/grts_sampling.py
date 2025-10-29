@@ -5,7 +5,8 @@ import traceback
 import numpy as np
 from math import ceil
 from shapely.geometry import Polygon
-from rscommons import GeopackageLayer, get_shp_or_gpkg, dotenv, Logger, ProgressBar
+from rscommons import GeopackageLayer, get_shp_or_gpkg
+from rsxml import dotenv, Logger, ProgressBar
 from rscommons.vector_ops import copy_feature_class
 
 
@@ -298,7 +299,7 @@ def main():
             raise Exception(f'Minimum stratification sample must be a comma-separated list of integers, got: {args.min_strat_sample}')
 
     log = Logger('GRTS Sampling')
-    log.setup(logPath=os.path.join(os.path.dirname(args.brat_gpkg), 'sample_log'))
+    log.setup(log_path=os.path.join(os.path.dirname(args.brat_gpkg), 'sample_log'))
     log.title(f'GRTS Sample Reaches for {args.huc}')
 
     try:

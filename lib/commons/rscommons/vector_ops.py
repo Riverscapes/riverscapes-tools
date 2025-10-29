@@ -19,7 +19,8 @@ from shapely.ops import unary_union, linemerge
 from shapely.geometry.base import BaseGeometry
 from shapely.geometry import mapping, Point, MultiPoint, LineString, MultiLineString, GeometryCollection, Polygon, MultiPolygon
 
-from rscommons import Logger, ProgressBar, get_shp_or_gpkg, Timer, VectorBase, GeopackageLayer
+from rsxml import Logger, ProgressBar
+from rscommons import get_shp_or_gpkg, Timer, VectorBase, GeopackageLayer
 from rscommons.util import sizeof_fmt, get_obj_size
 from rscommons.geometry_ops import reduce_precision
 from rscommons.classes.vector_base import VectorBaseException

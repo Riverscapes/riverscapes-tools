@@ -5,7 +5,8 @@ import numpy as np
 import numpy.ma as ma
 from rasterio.mask import mask
 
-from rscommons import Logger, GeopackageLayer, VectorBase
+from rsxml import Logger
+from rscommons import GeopackageLayer, VectorBase
 
 
 def riverscape_grazing(likelihood: str, gpkg_path: str, windows: dict):

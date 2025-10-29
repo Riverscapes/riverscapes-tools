@@ -28,7 +28,8 @@ import traceback
 from osgeo import gdal, osr
 from osgeo import ogr
 
-from rscommons import Logger, ModelConfig, dotenv, initGDALOGRErrors
+from rsxml import Logger, dotenv
+from rscommons import ModelConfig, initGDALOGRErrors
 from rscommons.classes.rs_project import RSLayer, RSProject, RSMeta, RSMetaTypes
 from rscommons.geographic_raster import gdal_dem_geographic
 from rscommons.project_bounds import generate_project_extents_from_geom
@@ -426,7 +427,7 @@ def main():
     args = dotenv.parse_args_env(parser)
 
     log = Logger('RS Context')
-    log.setup(logPath=os.path.join(args.output, 'RSContextIT.log'), verbose=args.verbose)
+    log.setup(log_path=os.path.join(args.output, 'RSContextIT.log'), verbose=args.verbose)
     log.title(f'Riverscapes Context IT For Watershed: {args.watershed_id}')
 
     log.info(f'Watershed ID: {args.watershed_id}')

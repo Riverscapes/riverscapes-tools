@@ -17,7 +17,8 @@ from shapely.geometry import MultiLineString, MultiPoint, LineString, Point
 from shapely.errors import TopologicalError
 from shapely.validation import make_valid
 
-from rscommons import GeopackageLayer, Logger, VectorBase, dotenv
+from rsxml import dotenv, dotenv
+from rscommons import GeopackageLayer, VectorBase
 from rscommons.util import parse_metadata
 from rscommons.classes.vector_base import get_utm_zone_epsg
 from rscommons.geometry_ops import get_rectangle_as_geom

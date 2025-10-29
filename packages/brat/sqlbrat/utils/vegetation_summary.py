@@ -11,7 +11,8 @@ import rasterio
 import sqlite3
 from shapely.ops import unary_union
 from rasterio.mask import mask
-from rscommons import GeopackageLayer, Logger
+from rscommons import GeopackageLayer
+from rsxml import Logger
 from rscommons.database import SQLiteCon
 from rscommons.classes.vector_base import VectorBase
 

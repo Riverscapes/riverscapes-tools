@@ -14,7 +14,8 @@
 # -------------------------------------------------------------------------------
 from typing import List
 from osgeo import ogr
-from rscommons import Logger, get_shp_or_gpkg, VectorBase
+from rsxml import Logger
+from rscommons import get_shp_or_gpkg, VectorBase
 from rscommons.vector_ops import get_geometry_unary_union
 
 # https://nhd.usgs.gov/userGuide/Robohelpfiles/NHD_User_Guide/Feature_Catalog/Hydrography_Dataset/Complete_FCode_List.htm

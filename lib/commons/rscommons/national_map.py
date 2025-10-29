@@ -13,7 +13,7 @@ from rscommons.download import download_unzip
 from rscommons.national_map_api import TNM
 from rscommons.shapefile import get_geometry_union
 from rscommons.vector_ops import get_geometry_unary_union
-from rscommons import Logger
+from rsxml import Logger
 
 
 us_states = {

@@ -17,10 +17,11 @@ from osgeo import ogr, gdal
 from shapely.geometry import LineString
 
 from rscommons import initGDALOGRErrors, ModelConfig, RSLayer, RSProject, get_shp_or_gpkg, VectorBase
-from rscommons import Logger, GeopackageLayer
+from rsxml import Logger
+from rscommons import GeopackageLayer
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.classes.vector_base import get_utm_zone_epsg
-from rscommons import dotenv
+from rsxml import dotenv
 from rscommons.vector_ops import copy_feature_class, get_geometry_unary_union
 from rscommons.database import create_database, SQLiteCon
 from rscommons.copy_features import copy_features_fields
@@ -485,7 +486,7 @@ def main():
 
     # Initiate the log file
     log = Logger('RCAT')
-    log.setup(logPath=os.path.join(args.output_folder, "rcat.log"), verbose=args.verbose)
+    log.setup(log_path=os.path.join(args.output_folder, "rcat.log"), verbose=args.verbose)
     log.title(f'RCAT for HUC: {args.huc}')
 
     try:

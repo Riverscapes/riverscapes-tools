@@ -5,7 +5,9 @@ import sys
 import json
 import sqlite3
 
-from rscommons import Logger, dotenv, RSProject, RSLayer
+from rsxml import dotenv
+from rscommons import RSProject, RSLayer
+from rsxml import Logger
 
 
 def brat_metrics(brat_proj_path, hydro_proj_path, anthro_proj_path):

@@ -11,7 +11,7 @@ from matplotlib.ticker import MultipleLocator
 from matplotlib.colors import LinearSegmentedColormap
 from shapely.geometry import shape
 
-from rscommons import dotenv
+from rsxml import dotenv
 from rscommons.classes.vector_classes import GeopackageLayer
 
 FEET_PER_METER = 3.28084

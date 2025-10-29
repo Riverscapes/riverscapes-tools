@@ -8,7 +8,7 @@ import rasterio
 import sqlite3
 import numpy as np
 
-from rscommons import Logger
+from rsxml import Logger
 
 
 def lui_raster(existing_veg_raster, database, out_raster_path):

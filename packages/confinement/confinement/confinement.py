@@ -22,7 +22,8 @@ from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from shapely.ops import split, nearest_points, linemerge, substring
 from shapely.geometry import Point, MultiPoint, LineString, MultiLineString
 
-from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALOGRErrors, ProgressBar
+from rsxml import Logger, dotenv, ProgressBar
+from rscommons import RSProject, RSLayer, ModelConfig, initGDALOGRErrors
 from rscommons import GeopackageLayer
 from rscommons.vector_ops import collect_feature_class, get_geometry_unary_union, copy_feature_class
 from rscommons.util import safe_makedirs, parse_metadata
@@ -783,7 +784,7 @@ def main():
     else:
         # Initiate the log file
         log = Logger("Confinement")
-        log.setup(logPath=os.path.join(args.output_folder,
+        log.setup(log_path=os.path.join(args.output_folder,
                   "confinement.log"), verbose=args.verbose)
         log.title('Confinement For HUC: {}'.format(args.huc))
 

@@ -10,7 +10,8 @@ from osgeo import ogr, gdal, osr
 from shapely.wkb import loads as wkbload, dumps as wkbdumps
 from shapely.geometry.base import BaseGeometry
 from shapely.geometry import Point
-from rscommons import Logger, ProgressBar, Raster
+from rsxml import Logger, ProgressBar
+from rscommons import Raster
 from rscommons.util import safe_makedirs
 from rscommons.classes.vector_datasource import DatasetRegistry
 

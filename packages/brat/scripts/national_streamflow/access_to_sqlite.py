@@ -8,7 +8,7 @@ from collections import namedtuple
 import re
 import os
 import argparse
-from rscommons import dotenv
+from rsxml import dotenv
 
 
 def convert(in_path, out_path):

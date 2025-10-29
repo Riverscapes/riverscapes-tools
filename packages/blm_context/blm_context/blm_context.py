@@ -16,7 +16,8 @@ from typing import Dict
 
 from osgeo import ogr
 
-from rscommons import (Logger, ModelConfig, RSLayer, RSProject, get_shp_or_gpkg, dotenv, initGDALOGRErrors)
+from rscommons import (ModelConfig, RSLayer, RSProject, get_shp_or_gpkg, initGDALOGRErrors)
+from rsxml import Logger, dotenv
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 
 from rscommons.util import (parse_metadata, pretty_duration, safe_makedirs, safe_remove_dir)
@@ -273,7 +274,7 @@ def main():
 
     # Initiate the log file
     log = Logger("BLM Context")
-    log.setup(logPath=os.path.join(args.output_folder, "blm_context.log"), verbose=args.verbose)
+    log.setup(log_path=os.path.join(args.output_folder, "blm_context.log"), verbose=args.verbose)
     log.title(f'BLM Context For HUC: {args.huc}')
 
     # Version info also logged from blm_context() function but log it here at the top for consistency

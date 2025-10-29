@@ -5,7 +5,8 @@ import argparse
 import traceback
 import sys
 import os
-from rscommons import RSProject, RSMeta, dotenv, Logger
+from rscommons import RSProject, RSMeta
+from rsxml import dotenv, Logger
 from rme.rme_report import RMEReport, FILTER_NAMES
 
 lyrs_in_out = {

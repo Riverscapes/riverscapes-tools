@@ -1,7 +1,7 @@
 from __future__ import annotations
 import os
 from tempfile import mkstemp
-from rscommons import Logger
+from rsxml import Logger
 
 
 class TempGISFileException(Exception):

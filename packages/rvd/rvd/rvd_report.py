@@ -1,7 +1,8 @@
 import argparse
 import os
 
-from rscommons import Logger, dotenv, ModelConfig, RSReport, RSProject
+from rsxml import Logger, dotenv
+from rscommons import ModelConfig, RSReport, RSProject
 from rvd.__version__ import __version__
 
 

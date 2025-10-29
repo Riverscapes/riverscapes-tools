@@ -5,7 +5,7 @@ import time
 import shutil
 import os
 from math import cos, sin, asin, sqrt, radians
-from rscommons import Logger
+from rsxml import Logger
 
 # Set if this environment variable is set don't show any UI
 NO_UI = os.environ.get('NO_UI') is not None

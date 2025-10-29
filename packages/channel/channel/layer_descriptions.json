@@ -1,23 +1,37 @@
 {
-    "FILTERED_WATERBODY": ["A subset of the NHDWaterbody layer filtered using specified NHD FCodes.",
+  "FILTERED_WATERBODY": [
+    "A subset of the NHDWaterbody layer filtered using specified NHD FCodes.",
     "https://nhd.usgs.gov/userGuide/Robohelpfiles/NHD_User_Guide/Feature_Catalog/Hydrography_Dataset/Complete_FCode_List.htm",
-    "2017"],
-    "FILTERED_FLOWAREAS": ["A subset of the NHDArea layer filtered using specified NHD FCodes.",
+    "2017"
+  ],
+  "FILTERED_FLOWAREAS": [
+    "A subset of the NHDArea layer filtered using specified NHD FCodes.",
     "https://nhd.usgs.gov/userGuide/Robohelpfiles/NHD_User_Guide/Feature_Catalog/Hydrography_Dataset/Complete_FCode_List.htm",
-    "2017"],
-    "COMBINED_FA_WB": ["The NHDArea and NHDWaterbody layers combined.",
+    "2017"
+  ],
+  "COMBINED_FA_WB": [
+    "The NHDArea and NHDWaterbody layers combined.",
     "https://www.usgs.gov/national-hydrography/nhdplus-high-resolution",
-    "2017"],
-    "BANKFULL_NETWORK": ["The NHDFlowlines layer with an attribute 'bankfull_m' added that is used to buffer the network. This layer is the network without the segments that fall within NHDWaterbody or NHDArea features.",
+    "2017"
+  ],
+  "BANKFULL_NETWORK": [
+    "The NHDFlowlines layer with an attribute 'bankfull_m' added that is used to buffer the network. This layer is the network without the segments that fall within NHDWaterbody or NHDArea features.",
     "https://www.usgs.gov/national-hydrography/nhdplus-high-resolution",
-    "2017"],
-    "BANKFULL_POLYGONS": ["Polygons derived by buffering the bankfull_network feature using the 'bankfull_m' attribute. This value is calculated using region equations for bankfull width.",
+    "2017"
+  ],
+  "BANKFULL_POLYGONS": [
+    "Polygons derived by buffering the bankfull_network feature using the 'bankfull_m' attribute. This value is calculated using region equations for bankfull width.",
     "",
-    ""],
-    "DIFFERENCE_POLYGONS": ["The bankfull polygons with areas that overlap the NHDArea layer removed.",
+    ""
+  ],
+  "DIFFERENCE_POLYGONS": [
+    "The bankfull polygons with areas that overlap the NHDArea layer removed.",
     "",
-    ""],
-    "CHANNEL_AREA": ["A polygon feature class representing the bankfull channel for the input network. The filtered NHDArea and NHDWaterbody features are combined with the buffered NHDFlowline features to create a single feature class.",
+    ""
+  ],
+  "CHANNEL_AREA": [
+    "A polygon feature class representing the bankfull channel for the input network. The filtered NHDArea and NHDWaterbody features are combined with the buffered NHDFlowline features to create a single feature class.",
     "",
-    ""]
+    ""
+  ]
 }

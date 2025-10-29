@@ -1,7 +1,7 @@
 import os
 from osgeo import ogr
 from osgeo import gdal
-from rscommons.classes.logger import Logger
+from rsxml import Logger
 
 CREATED = False
 
@@ -57,7 +57,7 @@ def initGDALOGRErrors():
 
 if __name__ == '__main__':
     log = Logger('Test GDAL Errors')
-    log.setup(logPath=os.path.join("./GDAL_Error.log"), verbose=True)
+    log.setup(log_path=os.path.join("./GDAL_Error.log"), verbose=True)
 
     initGDALOGRErrors()
 

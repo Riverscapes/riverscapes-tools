@@ -21,7 +21,7 @@
 #
 
 import numpy as np
-from rscommons import Logger
+from rsxml import Logger
 from scipy.interpolate import splprep, splev
 from shapely.geometry import LineString, Polygon, mapping, asShape, MultiPolygon
 
@@ -53,7 +53,7 @@ class Splines(GeoSmtBase):
         if ier > 0:
             self.log.error("{0}. ier={1}".format(msg, ier))
 
-        return(tck_u, fp)
+        return (tck_u, fp)
 
     def compSplineEv(self, x, tck, zoom=10):
         """
@@ -69,7 +69,7 @@ class Splines(GeoSmtBase):
         n_len = n_coords * zoom
         x_ip, y_ip = splev(np.linspace(0, 1, n_len), tck)
 
-        return(x_ip, y_ip)
+        return (x_ip, y_ip)
 
 
 class GeoSmoothing(GeoSmtBase):
@@ -98,7 +98,7 @@ class GeoSmoothing(GeoSmtBase):
             x = np.array(geom.exterior.coords.xy[0])
             y = np.array(geom.exterior.coords.xy[1])
 
-        return(x, y)
+        return (x, y)
 
     def __getGeomIp(self, coords_ip, geom):
         """

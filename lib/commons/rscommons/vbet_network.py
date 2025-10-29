@@ -15,7 +15,8 @@ import sqlite3
 from typing import List
 from osgeo import ogr
 from shapely.geometry.base import BaseGeometry
-from rscommons import Logger, VectorBase, GeopackageLayer
+from rsxml import Logger
+from rscommons import VectorBase, GeopackageLayer
 from rscommons.vector_ops import get_geometry_unary_union
 from rscommons import get_shp_or_gpkg
 

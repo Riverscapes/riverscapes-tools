@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import List
 import subprocess
-from rscommons import Logger
+from rsxml import Logger
 
 
 def runrscli(cwd: str, cmd: List[str]):

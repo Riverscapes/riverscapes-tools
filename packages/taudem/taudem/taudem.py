@@ -20,8 +20,10 @@ import rasterio
 from rscommons.classes.vector_classes import get_shp_or_gpkg, VectorBase
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.util import safe_makedirs, parse_metadata, pretty_duration
-from rscommons import RSProject, RSLayer, ModelConfig, Logger, dotenv, initGDALOGRErrors
-from rscommons import GeopackageLayer, ProgressBar
+from rscommons import RSProject, RSLayer, ModelConfig, initGDALOGRErrors
+from rsxml import Logger, dotenv
+from rscommons import GeopackageLayer
+from rsxml import ProgressBar
 from rscommons.vector_ops import copy_feature_class
 from rscommons.hand import hand_rasterize, run_subprocess
 from rscommons.raster_warp import raster_warp
@@ -324,7 +326,7 @@ def main():
 
     # Initiate the log file
     log = Logger('TauDEM')
-    log.setup(logPath=os.path.join(args.output_dir, 'taudem.log'), verbose=args.verbose)
+    log.setup(log_path=os.path.join(args.output_dir, 'taudem.log'), verbose=args.verbose)
     log.title('Riverscapes TauDEM project For HUC: {}'.format(args.huc))
 
     meta = parse_metadata(args.meta)

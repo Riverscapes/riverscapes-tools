@@ -1,7 +1,8 @@
 import os
 import sqlite3
 from osgeo import ogr
-from rscommons import ProgressBar, Logger, GeopackageLayer, get_shp_or_gpkg
+from rsxml import Logger, ProgressBar
+from rscommons import GeopackageLayer, get_shp_or_gpkg
 
 
 def split_nhd_polygon(in_nhd_poly: str, in_nhd_catchments: str, out_area_split: str):

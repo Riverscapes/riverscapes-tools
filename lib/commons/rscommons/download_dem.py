@@ -20,7 +20,8 @@ from osgeo import gdal, ogr, osr
 import rasterio
 from rscommons.download import download_unzip, download_file
 from rscommons.national_map import get_dem_urls, get_1m_dem_urls
-from rscommons import Logger, Geotransform, ProgressBar, get_shp_or_gpkg
+from rsxml import Logger, ProgressBar
+from rscommons import Geotransform, get_shp_or_gpkg
 
 
 # NED data sometimes has small discrepencies in its cell widths. For this reason we need a tolerance,

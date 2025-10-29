@@ -3,7 +3,7 @@ import sys
 import os
 import traceback
 import rscommons.shapefile
-from rscommons import ProgressBar, Logger, dotenv
+from rsxml import Logger, ProgressBar, dotenv
 from rscommons.util import safe_makedirs
 
 from osgeo import ogr, osr
@@ -86,7 +86,7 @@ def main():
 
     # Initiate the log file
     # log = Logger("BRAT Inputs")
-    # log.setup(logPath=os.path.join(args.output, "rs_context.log"))
+    # log.setup(log_path=os.path.join(args.output, "rs_context.log"))
 
     try:
         cleaner(args.input, args.output)

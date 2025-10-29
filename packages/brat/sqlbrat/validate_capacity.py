@@ -19,7 +19,8 @@ import questionary
 from osgeo import ogr
 
 from rscommons.util import safe_makedirs, safe_remove_dir
-from rscommons import Logger, dotenv, RSProject, RSMeta, GeopackageLayer, ModelConfig
+from rsxml import Logger, dotenv
+from rscommons import RSProject, RSMeta, GeopackageLayer, ModelConfig
 from rscommons.copy_features import copy_features_fields
 from sqlbrat.utils.capacity_validation import validate_capacity
 from sqlbrat.__version__ import __version__

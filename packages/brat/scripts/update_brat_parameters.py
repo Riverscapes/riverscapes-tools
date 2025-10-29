@@ -8,8 +8,7 @@ import os
 import argparse
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from rscommons import dotenv
-from rscommons import ProgressBar
+from rsxml import dotenv, ProgressBar
 
 
 relative_path = '../database/data'

@@ -1,7 +1,7 @@
 import os
 import argparse
 from osgeo import ogr
-from rscommons import dotenv
+from rsxml import dotenv
 from rscommons.download import unzip
 import shutil
 import csv

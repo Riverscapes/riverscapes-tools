@@ -9,7 +9,8 @@ from osgeo import gdal
 import rasterio
 import sqlite3
 from rasterio.mask import mask
-from rscommons import GeopackageLayer, Logger, get_shp_or_gpkg
+from rscommons import GeopackageLayer, get_shp_or_gpkg
+from rsxml import Logger
 from rscommons.database import SQLiteCon
 from rscommons.classes.vector_base import VectorBase
 from shapely.ops import unary_union

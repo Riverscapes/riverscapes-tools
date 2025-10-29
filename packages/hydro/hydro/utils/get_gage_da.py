@@ -4,7 +4,7 @@ import json
 import sqlite3
 import os
 
-from rscommons import ProgressBar
+from rsxml import ProgressBar
 
 
 def get_gage_da(gage_id):
@@ -79,6 +79,7 @@ def add_da_to_sites(db_path, err_filepath):
 
     return
 
+
 def add_da_from_json(db_path, json_path):
     conn = sqlite3.connect(db_path)
     c = conn.cursor()
@@ -99,6 +100,7 @@ def add_da_from_json(db_path, json_path):
     conn.commit()
     conn.close()
     return
+
 
 db_in = '/mnt/c/Users/jordang/Documents/StreamStats/riverscapes_production.gpkg'
 err_file = '/mnt/c/Users/jordang/Documents/StreamStats/da_errors.json'

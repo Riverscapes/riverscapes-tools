@@ -14,7 +14,7 @@ import os
 import sqlite3
 from osgeo import ogr, osr
 import json
-from rscommons import dotenv
+from rsxml import dotenv
 from shapely.geometry import shape
 import argparse
 from rscommons.geometry_ops import shapely_to_ogr_geometry

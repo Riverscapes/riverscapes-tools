@@ -9,7 +9,7 @@ import os
 import argparse
 import requests
 import pickle
-from rscommons import dotenv
+from rsxml import dotenv
 import psycopg2
 from psycopg2.extras import RealDictCursor
 

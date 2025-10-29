@@ -9,7 +9,7 @@ import argparse
 from vbet.lib.hand import dem_hand
 import rasterio
 import numpy as np
-from rscommons import dotenv
+from rsxml import dotenv
 
 
 def hand(in_dem: str, in_channel: str, out_hand_path: str):

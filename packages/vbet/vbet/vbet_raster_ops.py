@@ -5,7 +5,6 @@
     Date:     August 2022
 """
 
-from typing import List
 import os
 import shutil
 
@@ -18,7 +17,8 @@ import numpy as np
 from scipy.ndimage import label, generate_binary_structure, binary_closing
 from scipy import ndimage
 
-from rscommons import ProgressBar, Logger, VectorBase, Timer, TempRaster
+from rsxml import ProgressBar, Logger
+from rscommons import VectorBase, Timer, TempRaster
 from rscommons.classes.raster import deleteRaster
 
 Path = str

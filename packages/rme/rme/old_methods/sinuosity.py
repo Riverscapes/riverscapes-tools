@@ -9,18 +9,11 @@
 # -------------------------------------------------------------------------------
 
 
-import sys
-import os
-import glob
-import traceback
-import datetime
-import json
 from math import radians, cos, sin, asin, sqrt
 
 from osgeo import ogr
-from osgeo import gdal
 
-from rscommons import Logger, ProgressBar
+from rsxml import Logger
 from rscommons import GeopackageLayer
 
 Path = str

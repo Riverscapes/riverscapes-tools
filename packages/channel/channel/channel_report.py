@@ -5,7 +5,8 @@ import argparse
 import os
 from xml.etree import ElementTree as ET
 
-from rscommons import Logger, dotenv, ModelConfig, RSReport, RSProject, VectorBase, get_shp_or_gpkg
+from rsxml import Logger, dotenv
+from rscommons import ModelConfig, RSReport, RSProject, VectorBase, get_shp_or_gpkg
 from rscommons.classes.vector_base import get_utm_zone_epsg
 # from rscommons.util import safe_makedirs, sizeof_fmt
 from rscommons.plotting import pie
@@ -57,7 +58,7 @@ class ChannelReport(RSReport):
     def layersummary(self, xml_id: str, name: str):
         """Intro section
         """
-        section = self.section('LayerSummary', 'Layer Summary: {}'.format(name))
+        section = self.section('LayerSummary', f'Layer Summary: {name}')
         layers = self.xml_project.XMLBuilder.find('Realizations').find('Realization').find(xml_id)
 
         for lyr in layers:
@@ -67,6 +68,13 @@ class ChannelReport(RSReport):
                 self.layerprint(lyr, section, self.project_root)
 
     def custom_table(self, table_contents, el_parent, header_names=None):
+        """ make a table
+
+        Args:
+            table_contents (_type_): _description_
+            el_parent (_type_): _description_
+            header_names (_type_, optional): _description_. Defaults to None.
+        """
         table = ET.Element('table')
 
         if header_names is not None:
@@ -108,6 +116,8 @@ class ChannelReport(RSReport):
         el_parent.append(table)
 
     def outputs_content(self):
+        """ Output the contents to the actual report
+        """
 
         poly_areas = {}
         lyr_label_dict = {'flowarea_filtered': 'NHD Flow Area', 'waterbody_filtered': 'NHD Waterbody', 'difference_polygons': 'Buffered NHD Flowlines', 'other_channels': 'Custom Polygons'}
@@ -130,7 +140,7 @@ class ChannelReport(RSReport):
                             feature = feature.buffer(0)
                         area += feature.area
 
-                    poly_areas[lyr_label] = float('{:.2f}'.format(area))
+                    poly_areas[lyr_label] = float(f'{area:.2f}')
 
         for lyr_label in inlayers:
             with get_shp_or_gpkg(inpath, layer_name=lyr_label) as lyr:
@@ -145,7 +155,7 @@ class ChannelReport(RSReport):
                             feature = feature.buffer(0)
                         area += feature.area
 
-                    poly_areas[lyr_label] = float('{:.2f}'.format(area))
+                    poly_areas[lyr_label] = float(f'{area:.2f}')
 
         section = self.section('AreaBreakdown', 'Data Source Breakdown', el_parent=self.out_section, level=2)
         table_contents = {

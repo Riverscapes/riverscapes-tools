@@ -2,7 +2,7 @@ import os
 import csv
 import argparse
 import sqlite3
-from rscommons import dotenv
+from rsxml import dotenv
 from rscommons.plotting import validation_chart
 
 

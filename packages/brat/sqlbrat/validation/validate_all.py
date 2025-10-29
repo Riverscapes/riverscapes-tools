@@ -11,7 +11,7 @@
 # -------------------------------------------------------------------------------
 import argparse
 import os
-from rscommons import dotenv
+from rsxml import dotenv
 from sqlbrat.validation.vegetation_fis_validation import vegetation_fis_validation
 from sqlbrat.validation.combined_fis_validation import combined_fis_validation
 from sqlbrat.validation.reach_geometry_validation import reach_geometry_validation

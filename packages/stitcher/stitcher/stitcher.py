@@ -1,7 +1,7 @@
 # Philip Bailey
 # 2023-07-07
 # Demonstration script for stitching together multiple VBET geopackages
-# This was built as a proof of concept for the BLM San Luis Valley 
+# This was built as a proof of concept for the BLM San Luis Valley
 # focal watershed project. It is not intended to be a production script.
 
 import os
@@ -12,9 +12,10 @@ import tempfile
 import zipfile
 import subprocess
 import argparse
-from rscommons import (Logger, dotenv, initGDALOGRErrors)
+from rscommons import (initGDALOGRErrors)
+from rsxml import Logger, dotenv
 
-# Literal list of VBET feature classes to be stitched together. 
+# Literal list of VBET feature classes to be stitched together.
 # This should be enhanced to "self discover" the feature classes
 feature_classes = {
     'vbet': {
@@ -58,7 +59,7 @@ def stitch_projects(directory: str, relative_input_gpkg, output_gpkg: str, layer
     directory: str - path to directory containing VBET zips downloaded from Data Exchange
     output_gpkg: str - path to output geopackage
     """
-    
+
     # Get a list of zip files in the directory
     zip_files = [file for file in os.listdir(directory) if file.endswith('.zip')]
 
@@ -111,7 +112,7 @@ def main():
 
     # Initiate the log file
     log = Logger("Sticher")
-    log.setup(logPath=os.path.join(os.path.dirname(args.output_gpkg), "sticher.log"), verbose=args.verbose)
+    log.setup(log_path=os.path.join(os.path.dirname(args.output_gpkg), "sticher.log"), verbose=args.verbose)
     log.title('Stitcher')
 
     if args.layers not in feature_classes:

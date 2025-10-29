@@ -23,7 +23,8 @@ from osgeo import ogr
 from osgeo import gdal
 import rasterio
 
-from rscommons import GeopackageLayer, dotenv, Logger, initGDALOGRErrors, ModelConfig, RSLayer, RSMeta, RSMetaTypes, RSProject, VectorBase, ProgressBar
+from rscommons import GeopackageLayer, initGDALOGRErrors, ModelConfig, RSLayer, RSMeta, RSMetaTypes, RSProject, VectorBase
+from rsxml import dotenv, Logger, ProgressBar
 from rscommons.classes.vector_base import get_utm_zone_epsg
 from rscommons.util import parse_metadata, pretty_duration
 from rscommons.database import load_lookup_data
@@ -938,7 +939,7 @@ def main():
 
     # Initiate the log file
     log = Logger("Riverscapes Metric Engine")
-    log.setup(logPath=os.path.join(
+    log.setup(log_path=os.path.join(
         args.output_folder, "rme.log"), verbose=args.verbose)
     log.title(f'Riverscapes Metrics For HUC: {args.huc}')
 

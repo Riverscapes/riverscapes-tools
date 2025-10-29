@@ -1,6 +1,6 @@
 import numpy as np
 import rasterio
-from rscommons import Logger, ProgressBar
+from rsxml import Logger, ProgressBar
 from rscommons.database import SQLiteCon
 
 

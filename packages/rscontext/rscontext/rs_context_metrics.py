@@ -10,7 +10,8 @@ from math import pi
 import json
 from shapely.geometry import Point
 from osgeo import ogr, osr
-from rscommons import GeopackageLayer, dotenv, Logger, RSProject, RSLayer, ShapefileLayer
+from rscommons import GeopackageLayer, RSProject, RSLayer, ShapefileLayer
+from rsxml import dotenv, Logger
 from rscommons.classes.vector_base import VectorBase, get_utm_zone_epsg
 from rscommons.raster_buffer_stats import raster_buffer_stats2
 

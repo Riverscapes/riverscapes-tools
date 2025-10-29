@@ -27,7 +27,9 @@ from shapely.geometry import MultiPolygon
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 
 from rscommons.util import safe_makedirs, parse_metadata, pretty_duration
-from rscommons import RSProject, RSLayer, ModelConfig, ProgressBar, Logger, dotenv, initGDALOGRErrors, TempRaster, VectorBase
+from rscommons import RSProject, RSLayer, ModelConfig, initGDALOGRErrors, TempRaster, VectorBase
+from rsxml import ProgressBar
+from rsxml import Logger, dotenv
 from rscommons import GeopackageLayer
 from rscommons.vector_ops import difference, copy_feature_class, dissolve_feature_class, intersect_feature_classes, remove_holes_feature_class, geom_validity_fix
 from rscommons.thiessen.vor import NARVoronoi
@@ -626,7 +628,7 @@ def main():
 
     # Initiate the log file
     log = Logger('VBET')
-    log.setup(logPath=os.path.join(args.output_dir, 'vbet.log'), verbose=args.verbose)
+    log.setup(log_path=os.path.join(args.output_dir, 'vbet.log'), verbose=args.verbose)
     log.title('Riverscapes VBET For HUC: {}'.format(args.huc))
 
     meta = parse_metadata(args.meta)

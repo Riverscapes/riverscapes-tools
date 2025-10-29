@@ -6,7 +6,7 @@ import traceback
 import urllib.request
 from osgeo import ogr
 
-from rscommons import Logger
+from rsxml import Logger
 
 
 def global_surface_water(vector_path: str, destination_folder: str):

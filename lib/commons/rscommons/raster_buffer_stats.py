@@ -20,7 +20,7 @@ from osgeo import gdal
 from shapely.geometry import shape
 from osgeo import ogr
 from osgeo import osr
-from rscommons import ProgressBar, Logger
+from rsxml import ProgressBar, Logger
 from rasterio.mask import mask
 import numpy as np
 

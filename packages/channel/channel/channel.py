@@ -17,7 +17,7 @@ from osgeo import ogr
 
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.util import safe_makedirs, parse_metadata, pretty_duration
-from rscommons import RSProject, RSLayer, ModelConfig, Logger, dotenv, initGDALOGRErrors
+from rscommons import RSProject, RSLayer, ModelConfig, initGDALOGRErrors
 from rscommons import GeopackageLayer, get_shp_or_gpkg
 from rscommons.math import safe_eval
 from rscommons.raster_buffer_stats import raster_buffer_stats2
@@ -25,6 +25,7 @@ from rscommons.vector_ops import get_geometry_unary_union, buffer_by_field, copy
 from rscommons.classes.vector_base import VectorBase, get_utm_zone_epsg
 from rscommons.vbet_network import vbet_network
 from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions
+from rsxml import Logger, dotenv
 
 from channel.channel_report import ChannelReport
 from channel.__version__ import __version__
@@ -94,8 +95,8 @@ def channel(huc: int,
 
     timer = time.time()
     log = Logger('ChannelAreaTool')
-    log.info('Starting Channel Area Tool v.{}'.format(cfg.version))
-    log.info('Using Equation: "{}" and params: "{}"'.format(bankfull_function, bankfull_function_params))
+    log.info(f'Starting Channel Area Tool v.{cfg.version}')
+    log.info(f'Using Equation: "{bankfull_function}" and params: "{bankfull_function_params}"')
 
     # Add the layer metadata immediately before we write anything
     augment_layermeta('channelarea', LYR_DESCRIPTIONS_JSON, LayerTypes)
@@ -106,7 +107,7 @@ def channel(huc: int,
     for layer, codes in reach_codes.items():
         meta[f'{layer} Reach Codes'] = str(codes)
 
-    project_name = 'Channel Area for HUC {}'.format(huc)
+    project_name = f'Channel Area for HUC {huc}'
     project = RSProject(cfg, project_folder)
     project.create(project_name, 'ChannelArea', [
         RSMeta('Model Documentation', 'https://tools.riverscapes.net/channelarea', RSMetaTypes.URL, locked=True),
@@ -293,7 +294,7 @@ def channel(huc: int,
     # Processing time in hours
     ellapsed_time = time.time() - timer
     project.add_metadata([
-        RSMeta("ProcTimeS", "{:.2f}".format(ellapsed_time), RSMetaTypes.HIDDEN, locked=True),
+        RSMeta("ProcTimeS", f"{ellapsed_time:.2f}", RSMetaTypes.HIDDEN, locked=True),
         RSMeta("Processing Time", pretty_duration(ellapsed_time), locked=True)
     ])
 
@@ -352,8 +353,8 @@ def main():
     parser.add_argument('output_dir', help='Folder where output VBET project will be created', type=str)
     parser.add_argument('--flowareas', help='NHD flowareas feature class', type=str)
     parser.add_argument('--waterbodies', help='NHD waterbodies', type=str)
-    parser.add_argument('--bankfull_function', help='width field in flowlines feature class (e.g. BFWidth). Default: "{}"'.format(DEFAULT_FUNCTION), type=str, default=DEFAULT_FUNCTION)
-    parser.add_argument('--bankfull_function_params', help='Field that contains reach code (e.g. FCode). Omitting this option retains all features. Default: "{}"'.format(DEFAULT_FUNCTION_PARAMS), type=str, default=DEFAULT_FUNCTION_PARAMS)
+    parser.add_argument('--bankfull_function', help=f'width field in flowlines feature class (e.g. BFWidth). Default: "{DEFAULT_FUNCTION}"', type=str, default=DEFAULT_FUNCTION)
+    parser.add_argument('--bankfull_function_params', help=f'Field that contains reach code (e.g. FCode). Omitting this option retains all features. Default: "{DEFAULT_FUNCTION_PARAMS}"', type=str, default=DEFAULT_FUNCTION_PARAMS)
     parser.add_argument('--reach_code_field', help='Field that contains reach code (e.g. FCode). Omitting this option retains all features.', type=str)
     parser.add_argument('--flowline_reach_codes', help='Comma delimited reach codes (FCode) to retain when filtering features. Omitting this option retains all features.', type=str)
     parser.add_argument('--flowarea_reach_codes', help='Comma delimited reach codes (FCode) to retain when filtering features. Omitting this option retains all features.', type=str)
@@ -375,11 +376,11 @@ def main():
 
     # Initiate the log file
     log = Logger('Channel Area')
-    log.setup(logPath=os.path.join(args.output_dir, 'channel_area.log'), verbose=args.verbose)
-    log.title('Riverscapes Channel Area For HUC: {}'.format(args.huc))
+    log.setup(log_path=os.path.join(args.output_dir, 'channel_area.log'), verbose=args.verbose)
+    log.title(f'Riverscapes Channel Area For HUC: {args.huc}')
 
     # Version is also reported from channel function but due to below section it gets slightly buried
-    log.info('Channel Area Tool v.{}'.format(cfg.version))
+    log.info(f'Channel Area Tool v.{cfg.version}')
 
     meta = parse_metadata(args.meta)
     bankfull_params = parse_metadata(args.bankfull_function_params)
@@ -394,7 +395,7 @@ def main():
     elif args.prism_data is not None and args.huc8boundary is not None:
         polygon = get_geometry_unary_union(args.huc8boundary)
         precip = raster_buffer_stats2({1: polygon}, args.prism_data)[1]['Mean'] / 10
-        log.info('Mean annual precipitation for HUC {} is {} cm'.format(args.huc, precip))
+        log.info(f'Mean annual precipitation for HUC {args.huc} is {precip} cm')
 
     else:
         raise ValueError('precip or prism_data and huc8boundary not provided.')
@@ -408,7 +409,7 @@ def main():
             memfile = os.path.join(args.output_dir, 'vbet_mem.log')
             retcode, max_obj = ThreadRun(channel, memfile, args.huc, args.flowlines, args.flowareas, args.waterbodies, args.bankfull_function, bankfull_params, args.output_dir,
                                          args.reach_code_field, reach_codes, epsg=epsg, meta=meta, other_polygons=args.other_polygons, bankfull_field=args.bankfull_field)
-            log.debug('Return code: {}, [Max process usage] {}'.format(retcode, max_obj))
+            log.debug(f'Return code: {retcode}, [Max process usage] {max_obj}')
 
         else:
             channel(args.huc, args.flowlines, args.flowareas, args.waterbodies, args.bankfull_function, bankfull_params, args.output_dir,

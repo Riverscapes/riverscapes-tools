@@ -16,7 +16,8 @@ import argparse
 import requests
 from osgeo import ogr
 from shapely.wkb import loads as wkbload
-from rscommons import Logger, dotenv, get_shp_or_gpkg
+from rsxml import Logger, dotenv
+from rscommons import get_shp_or_gpkg
 from rscommons.util import safe_makedirs
 from rscommons.vector_ops import copy_feature_class, get_geometry_unary_union
 from rscommons.classes.vector_base import VectorBase
@@ -140,7 +141,7 @@ def main():
     args = dotenv.parse_args_env(parser)
 
     log = Logger('NWI')
-    log.setup(logPath=os.path.join(os.path.dirname(args.output_gpkg), 'nwi.log'), verbose=True)
+    log.setup(log_path=os.path.join(os.path.dirname(args.output_gpkg), 'nwi.log'), verbose=True)
     log.title(f'NWI for HUC10: {args.huc10}')
 
     nwi_url = national_wetlands_inventory(args.huc10, args.download_dir, args.clip_layer_path, args.output_gpkg, args.output_epsg)

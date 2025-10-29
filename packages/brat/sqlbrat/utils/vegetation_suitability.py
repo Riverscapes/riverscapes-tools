@@ -13,7 +13,7 @@ import sys
 import traceback
 import rasterio
 import numpy as np
-from rscommons import Logger, ProgressBar, dotenv
+from rsxml import Logger, ProgressBar, dotenv
 from rscommons.database import write_db_attributes, SQLiteCon
 
 
@@ -160,7 +160,7 @@ def main():
     # Initiate the log file
     logg = Logger('Veg Summary')
     logfile = os.path.join(os.path.dirname(args.database.name), 'vegetation_summary.log')
-    logg.setup(logPath=logfile, verbose=args.verbose)
+    logg.setup(log_path=logfile, verbose=args.verbose)
 
     try:
         vegetation_suitability(args.database.name, args.raster.name, args.buffer, args.table)

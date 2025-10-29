@@ -10,7 +10,7 @@ import datetime
 import argparse
 from rscommons.hand import run_subprocess
 from rscommons.util import safe_makedirs, safe_remove_dir
-from rscommons import Logger, dotenv
+from rsxml import Logger, dotenv
 from osgeo import gdal, ogr, osr
 import numpy as np
 import rasterio

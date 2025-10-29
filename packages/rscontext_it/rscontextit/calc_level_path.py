@@ -1,7 +1,7 @@
 import os
 import argparse
 import sqlite3
-from rscommons import Logger, ProgressBar
+from rsxml import Logger, ProgressBar
 
 # us is upstream, ds is downstream
 # NEXT_REACH_QUERY = 'SELECT us.LENGTH, ds.OBJECT_ID FROM riverlines us LEFT JOIN riverlines ds on us.TNODE = ds.FNODE WHERE us.OBJECT_ID = ?'
@@ -150,7 +150,7 @@ def main():
 
     # Initiate the log file
     log = Logger("RS Context")
-    log.setup(logPath=os.path.join(os.path.dirname(args.hydro_gpkg), "it_calc_level_path.log"), verbose=args.verbose)
+    log.setup(log_path=os.path.join(os.path.dirname(args.hydro_gpkg), "it_calc_level_path.log"), verbose=args.verbose)
     log.title(f'Calculate level path For Watershed: {args.watershed_id}')
 
     log.info(f'HUC: {args.watershed_id}')

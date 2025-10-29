@@ -4,7 +4,8 @@ import sys
 import traceback
 from osgeo import ogr
 
-from rscommons import initGDALOGRErrors, ModelConfig, Logger, RSLayer, RSProject, RSMeta, RSMetaTypes, get_shp_or_gpkg, GeopackageLayer, dotenv
+from rscommons import initGDALOGRErrors, ModelConfig, RSLayer, RSProject, RSMeta, RSMetaTypes, get_shp_or_gpkg, GeopackageLayer
+from rsxml import Logger, dotenv
 from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions
 from rscommons.vector_ops import copy_feature_class
 from rscommons.database import SQLiteCon
@@ -183,7 +184,7 @@ def main():
     args = dotenv.parse_args_env(parser)
 
     log = Logger('Beaver Activity')
-    log.setup(logPath=os.path.join(args.output_dir, 'beaver_activity.log'), verbose=args.verbose)
+    log.setup(log_path=os.path.join(args.output_dir, 'beaver_activity.log'), verbose=args.verbose)
     log.title(f'Beaver Activity for HUC: {args.huc}')
 
     try:

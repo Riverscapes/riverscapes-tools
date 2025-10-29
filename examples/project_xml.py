@@ -1,17 +1,18 @@
-import argparse
+from typing import Dict
 import sys
 import os
 import traceback
 import uuid
-from typing import Dict
-from osgeo import ogr
-
 import datetime
 import uuid
-from rscommons import RSProject, RSLayer, ModelConfig, Logger, RSMeta, RSMetaTypes, dotenv
-from rscommons.util import safe_makedirs
-# Import your own version. Don't just use RSCommons
+import argparse
+from osgeo import ogr
+
+from rscommons import RSProject, RSLayer, ModelConfig, RSMeta, RSMetaTypes
 from rscommons.__version__ import __version__
+from rscommons.util import safe_makedirs
+from rsxml import Logger, dotenv
+# Import your own version. Don't just use RSCommons
 """
 Instructuions:
     1. create a file called .env in the root and add the following line (without the quotes):
@@ -151,7 +152,7 @@ if __name__ == '__main__':
     safe_makedirs(args.projectpath)
     # Initiate the log file
     log = Logger('Inundation XML')
-    log.setup(logPath=os.path.join(args.projectpath, 'Inundation.log'), verbose=args.verbose)
+    log.setup(log_path=os.path.join(args.projectpath, 'Inundation.log'), verbose=args.verbose)
 
     try:
         log.info('Starting')

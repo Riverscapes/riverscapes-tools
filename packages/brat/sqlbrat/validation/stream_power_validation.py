@@ -11,7 +11,7 @@
 import os
 # import sys
 import argparse
-from rscommons import dotenv
+from rsxml import dotenv
 from rscommons import shapefile
 from rscommons import plotting
 from sqlbrat.utils import load_hucs

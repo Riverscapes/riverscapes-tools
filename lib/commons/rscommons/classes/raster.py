@@ -5,7 +5,7 @@ from affine import Affine
 from osgeo import ogr, osr, gdal
 import numpy as np
 from shapely.geometry import Polygon
-from rscommons import Logger
+from rsxml import Logger
 
 
 class Raster:

@@ -6,7 +6,8 @@ from shapely.ops import split, unary_union, linemerge, nearest_points
 from shapely.geometry import LineString, MultiLineString, Point, MultiPoint
 
 from rscommons.vector_ops import copy_feature_class, get_geometry_unary_union
-from rscommons import GeopackageLayer, get_shp_or_gpkg, ProgressBar
+from rscommons import GeopackageLayer, get_shp_or_gpkg
+from rsxml import ProgressBar
 from rscommons import VectorBase
 
 

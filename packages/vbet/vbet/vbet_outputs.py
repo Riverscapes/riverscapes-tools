@@ -10,7 +10,8 @@ from osgeo import ogr
 from shapely.geometry import Point, LineString, MultiLineString
 from shapely.ops import linemerge
 
-from rscommons import Logger, GeopackageLayer, TempGeopackage, get_shp_or_gpkg, Timer, VectorBase
+from rsxml import Logger
+from rscommons import GeopackageLayer, TempGeopackage, get_shp_or_gpkg, Timer, VectorBase
 from vbet.__version__ import __version__
 
 Path = str

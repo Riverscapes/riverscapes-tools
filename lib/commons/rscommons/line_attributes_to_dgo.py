@@ -1,4 +1,5 @@
-from rscommons import Logger, get_shp_or_gpkg, VectorBase
+from rsxml import Logger
+from rscommons import get_shp_or_gpkg, VectorBase
 from rscommons.database import SQLiteCon
 
 

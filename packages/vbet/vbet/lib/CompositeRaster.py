@@ -8,7 +8,8 @@ import os
 from typing import List
 from osgeo import gdal
 from rscommons.util import safe_makedirs
-from rscommons import Logger, Timer
+from rsxml import Logger
+from rscommons import Timer
 
 
 class CompositeRaster(object):

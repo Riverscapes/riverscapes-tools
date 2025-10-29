@@ -18,7 +18,8 @@ import sys
 import traceback
 from osgeo import ogr, osr
 from shapely.geometry import LineString, Point
-from rscommons import Logger, ProgressBar, initGDALOGRErrors, dotenv, get_shp_or_gpkg, VectorBase
+from rsxml import Logger, ProgressBar, dotenv
+from rscommons import initGDALOGRErrors, get_shp_or_gpkg, VectorBase
 from rscommons.classes.vector_base import get_utm_zone_epsg
 
 initGDALOGRErrors()
@@ -267,7 +268,7 @@ def main():
     # Initiate the log file
     logg = Logger("Segment Network")
     logfile = os.path.join(os.path.dirname(args.segmented), "segment_network.log")
-    logg.setup(logPath=logfile, verbose=args.verbose)
+    logg.setup(log_path=logfile, verbose=args.verbose)
 
     if os.path.isfile(args.segmented):
         logg.info('Deleting existing output {}'.format(args.segmented))

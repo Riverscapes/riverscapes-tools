@@ -5,7 +5,8 @@ import argparse
 import traceback
 import sys
 import os
-from rscommons import RSProject, dotenv, Logger
+from rscommons import RSProject
+from rsxml import dotenv, Logger
 from rvd.rvd_report import RVDReport
 
 lyrs_in_out = {

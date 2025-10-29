@@ -14,7 +14,8 @@ from rscommons import GeopackageLayer, VectorBase
 from rscommons.util import parse_metadata, pretty_duration
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.vector_ops import copy_feature_class
-from rscommons import Logger, initGDALOGRErrors, RSLayer, RSProject, ModelConfig, dotenv
+from rsxml import Logger, dotenv
+from rscommons import initGDALOGRErrors, RSLayer, RSProject, ModelConfig
 from rscommons.database import create_db_nowats, SQLiteCon
 from rscommons.copy_features import copy_features_fields
 from rscommons.moving_window import moving_window_dgo_ids
@@ -274,7 +275,7 @@ def main():
     args = dotenv.parse_args_env(parser)
 
     log = Logger('Grazing Likelihood')
-    log.setup(logPath=os.path.join(args.output_dir, 'grazing_likelihood.log'), verbose=args.verbose)
+    log.setup(log_path=os.path.join(args.output_dir, 'grazing_likelihood.log'), verbose=args.verbose)
     log.title(f'Grazing Likelihood Model for HUC: {args.huc}')
 
     meta = parse_metadata(args.meta)

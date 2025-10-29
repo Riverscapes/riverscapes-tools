@@ -5,7 +5,8 @@ import sys
 import json
 import sqlite3
 
-from rscommons import Logger, dotenv, RSProject, RSLayer
+from rscommons import RSProject, RSLayer
+from rsxml import Logger, dotenv
 
 
 def rme_metrics(rme_proj_path, brat_proj_path, rcat_proj_path, confinement_proj_path):

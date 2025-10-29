@@ -12,7 +12,8 @@ from typing import Dict
 from osgeo import ogr
 
 from rscommons.util import pretty_duration, parse_metadata
-from rscommons import Logger, initGDALOGRErrors, dotenv
+from rsxml import Logger, dotenv
+from rscommons import initGDALOGRErrors
 from rscommons import RSLayer, RSProject, ModelConfig
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons import GeopackageLayer
@@ -315,7 +316,7 @@ def main():
     args = dotenv.parse_args_env(parser)
 
     log = Logger('Hydrologic Context')
-    log.setup(logPath=os.path.join(args.output_folder, 'hydro.log'), verbose=args.verbose)
+    log.setup(log_path=os.path.join(args.output_folder, 'hydro.log'), verbose=args.verbose)
     log.title(f'Hydrologic Context for HUC: {args.huc}')
 
     meta = parse_metadata(args.meta)

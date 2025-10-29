@@ -1,7 +1,8 @@
 import os
 from osgeo import ogr
 
-from rscommons import GeopackageLayer, Logger, ProgressBar
+from rscommons import GeopackageLayer
+from rsxml import Logger, ProgressBar
 
 
 def riverscapes_dam_counts(gpkg_path: str, windows: dict):

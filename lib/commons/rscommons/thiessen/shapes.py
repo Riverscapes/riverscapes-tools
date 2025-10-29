@@ -4,7 +4,8 @@ from typing import List, Dict, Any
 from osgeo import ogr
 from shapely.geometry import Point, Polygon, MultiPolygon, LineString, LinearRing
 from shapely.ops import unary_union
-from rscommons import Logger, ProgressBar, get_shp_or_gpkg, VectorBase
+from rsxml import Logger, ProgressBar
+from rscommons import get_shp_or_gpkg, VectorBase
 from rscommons.shapefile import get_transform_from_epsg
 # from rscommons.vector_ops import export_geojson
 
@@ -110,9 +111,9 @@ def centerline_points(in_lines: Path, distance: float = 0.0, transform: Transfor
 
             if fields:
                 for field in fields:
-                    divergence = feat.GetField(divergence_field) # 'Divergence'
+                    divergence = feat.GetField(divergence_field)  # 'Divergence'
                     if divergence == 2:
-                        value = feat.GetField(downlevel_field) # 'DnLevelPat'
+                        value = feat.GetField(downlevel_field)  # 'DnLevelPat'
                     else:
                         value = feat.GetField(field)
                     props[field] = str(int(value)) if value else None

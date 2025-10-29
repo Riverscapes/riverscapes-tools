@@ -12,7 +12,7 @@ try:
 except ImportError:
     psutil = None
 import matplotlib.pyplot as plt
-from rscommons import Logger
+from rsxml import Logger
 
 # https://medium.com/survata-engineering-blog/monitoring-memory-usage-of-a-running-python-program-49f027e3d1ba
 

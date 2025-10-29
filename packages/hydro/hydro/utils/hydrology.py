@@ -7,7 +7,7 @@ import argparse
 import os
 import sys
 import traceback
-from rscommons import Logger, dotenv
+from rsxml import Logger, dotenv
 from rscommons.database import write_db_attributes, write_db_dgo_attributes, SQLiteCon, load_attributes, load_dgo_attributes
 
 
@@ -145,7 +145,7 @@ def main():
     # Initiate the log file
     logg = Logger("Hydrology")
     logfile = os.path.join(os.path.dirname(args.database), "hydrology.log")
-    logg.setup(logPath=logfile, verbose=args.verbose)
+    logg.setup(log_path=logfile, verbose=args.verbose)
 
     try:
         hydrology(args.database, args.prefix, args.huc)

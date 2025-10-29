@@ -7,7 +7,7 @@ import os
 import sys
 import traceback
 import argparse
-from rscommons import Logger, dotenv
+from rsxml import Logger, dotenv
 from rscommons.database import load_attributes, write_db_attributes, SQLiteCon
 
 
@@ -272,7 +272,7 @@ def main():
 
     log = Logger('Conservation')
     logfile = os.path.join(os.path.dirname(args.database), 'conservation.log')
-    log.setup(logPath=logfile, verbose=args.verbose)
+    log.setup(log_path=logfile, verbose=args.verbose)
 
     try:
         conservation(args.database)

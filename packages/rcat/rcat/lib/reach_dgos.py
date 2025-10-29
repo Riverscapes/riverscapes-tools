@@ -1,7 +1,8 @@
 import argparse
 import rasterio
 from shapely.ops import unary_union
-from rscommons import VectorBase, GeopackageLayer, Logger, dotenv
+from rscommons import VectorBase, GeopackageLayer
+from rsxml import Logger, dotenv
 from rscommons.vector_ops import get_shp_or_gpkg
 
 
@@ -36,7 +37,7 @@ def reach_dgos(reaches: str, dgos: str, proj_raster: str, flowarea: str = None, 
                     flowarea_geom = unary_union(flow_features)
         except Exception as e:
             log.warning(f'Could not load flowarea: {e}')
-    
+
     if waterbody:
         try:
             with get_shp_or_gpkg(waterbody) as wb_lyr:
@@ -50,7 +51,7 @@ def reach_dgos(reaches: str, dgos: str, proj_raster: str, flowarea: str = None, 
     with get_shp_or_gpkg(dgos) as dgolyr, GeopackageLayer(reaches) as lyr:
         total_features = lyr.ogr_layer.GetFeatureCount()
         log.info(f'Processing {total_features} reach features')
-        
+
         for feature, counter, progbar in lyr.iterate_features():
             try:
                 reach_id = feature.GetFID()
@@ -59,10 +60,10 @@ def reach_dgos(reaches: str, dgos: str, proj_raster: str, flowarea: str = None, 
                 # Clear any existing spatial filter and set new one
                 dgolyr.ogr_layer.SetSpatialFilter(None)
                 dgolyr.ogr_layer.SetSpatialFilter(geom)
-                
+
                 # Count intersecting features first to avoid loading all into memory
                 intersecting_count = dgolyr.ogr_layer.GetFeatureCount()
-                
+
                 if intersecting_count == 0:
                     log.debug(f'Reach {reach_id} has no associated DGOs, using 100m buffer')
                     p = VectorBase.ogr2shapely(geom)
@@ -95,7 +96,7 @@ def reach_dgos(reaches: str, dgos: str, proj_raster: str, flowarea: str = None, 
                         except Exception as e:
                             log.warning(f'Error processing DGO feature: {e}')
                             continue
-                    
+
                     if not polys:
                         log.warning(f'Reach {reach_id} has no valid DGO geometries, using 100m buffer')
                         p = VectorBase.ogr2shapely(geom)
@@ -130,7 +131,7 @@ def reach_dgos(reaches: str, dgos: str, proj_raster: str, flowarea: str = None, 
                 # Log progress every 1000 features
                 if counter % 1000 == 0:
                     log.info(f'Processed {counter}/{total_features} reaches')
-                    
+
             except Exception as e:
                 log.error(f'Error processing reach {reach_id}: {e}')
                 # Add fallback polygon to keep processing

@@ -7,7 +7,8 @@ from osgeo import ogr
 from shapely.geometry import Point, MultiPoint, LineString
 from shapely.ops import split
 
-from rscommons import get_shp_or_gpkg, GeopackageLayer, Logger
+from rscommons import get_shp_or_gpkg, GeopackageLayer
+from rsxml import Logger
 from rscommons.segment_network import copy_fields
 from rscommons.vector_ops import collect_feature_class
 from rscommons.classes.vector_base import VectorBase, get_utm_zone_epsg

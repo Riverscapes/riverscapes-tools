@@ -1,13 +1,12 @@
 #!/usr/bin/env python
 from __future__ import annotations
-from typing import Mapping
 import os
 import re
 import argparse
 import semver
 from termcolor import colored
 import questionary
-from rscommons.dotenv import parse_args_env
+from rsxml import dotenv
 
 
 def get_version(fname: str):
@@ -37,50 +36,84 @@ def get_version(fname: str):
 
 
 def write_version(fname, newver):
+    """ Write the version
+    """
     verdir = os.path.dirname(fname)
     if not os.path.splitext(fname)[1] == '.py':
-        raise Exception('File must have a .py suffix: {}'.format(fname))
+        raise Exception(f'File must have a .py suffix: {fname}')
     if not os.path.isdir(verdir):
-        raise Exception('Could not find root folder: {}'.format(verdir))
-        open(fname, 'w', encoding='utf-8').write('__version__ = "{}"\n'.format(newver))
+        raise Exception(f'Could not find root folder: {verdir}')
+    # Previously the write was indented under the error branch and never executed
+    with open(fname, 'w', encoding='utf-8') as f:
+        f.write(f'__version__ = "{newver}"\n')
 
 
-def version_bump(version: semver.VersionInfo):
-    """ Bump the version number
+def version_bump(version: semver.VersionInfo, bump: str | None = None, set_version: str | None = None):
+    """Return a bumped version, optionally non-interactively.
 
     Args:
-        version (semver.VersionInfo): parsed value
+        version: Current semantic version.
+        bump: Optional bump keyword (patch|minor|major|build|prerelease).
+        set_version: Optional explicit version string to set (overrides bump).
 
     Returns:
-        bumped (semver.VersionInfo):  parsed value with bump
+        semver.VersionInfo: New version.
     """
+
+    # Non-interactive explicit version wins
+    if set_version:
+        return semver.VersionInfo.parse(set_version)
+
+    # Non-interactive bump keywords
+    if bump:
+        bump = bump.lower().strip()
+        if bump == 'patch':
+            return version.bump_patch()
+        if bump == 'minor':
+            return version.bump_minor()
+        if bump == 'major':
+            return version.bump_major()
+        if bump == 'build':
+            return version.bump_build()
+        if bump == 'prerelease':
+            return version.bump_prerelease()
+        raise ValueError(f"Unknown bump type: {bump}")
+
+    # Interactive mode
+    # Pre-compute bump values as strings to avoid semver comparison strictness inside questionary
+    patch_v = str(version.bump_patch())
+    minor_v = str(version.bump_minor())
+    major_v = str(version.bump_major())
+    build_v = str(version.bump_build())
+    pre_v = str(version.bump_prerelease())
     choices = [
-        questionary.Choice('Patch: {} ==> {}'.format(version, version.bump_patch()), value=version.bump_patch()),
-        questionary.Choice('Minor: {} ==> {}'.format(version, version.bump_minor()), value=version.bump_minor()),
-        questionary.Choice('Major: {} ==> {}'.format(version, version.bump_major()), value=version.bump_major()),
-        questionary.Choice('Build: {} ==> {}'.format(version, version.bump_build()), value=version.bump_build()),
-        questionary.Choice('Prerelease: {} ==> {}'.format(version, version.bump_prerelease()), value=version.bump_prerelease()),
+        questionary.Choice(f'Patch: {version} ==> {patch_v}', value=patch_v),
+        questionary.Choice(f'Minor: {version} ==> {minor_v}', value=minor_v),
+        questionary.Choice(f'Major: {version} ==> {major_v}', value=major_v),
+        questionary.Choice(f'Build: {version} ==> {build_v}', value=build_v),
+        questionary.Choice(f'Prerelease: {version} ==> {pre_v}', value=pre_v),
         questionary.Separator(),
         questionary.Choice('Manual type version', value='manual'),
         questionary.Separator(),
         questionary.Choice('Quit', value='quit'),
     ]
-    # PyInquirer has a mouse-click problem (yes you read that correctly)
-    # https://github.com/CITGuru/PyInquirer/issues/41
-    # Until that's fixed we need to handle menus carefully
+
+    default_choice = patch_v
     response = None
     while response is None:
         response = questionary.select(
             'What bump do you want?',
-            choices=choices
+            choices=choices,
+            default=default_choice
         ).ask()
 
-    if type(response) is str and response == 'manual':
-        return get_manual()
-    elif type(response) is str and response == 'quit':
-        exit(0)
-    else:
-        return response
+    if isinstance(response, str):
+        if response == 'manual':
+            return get_manual()
+        if response == 'quit':
+            exit(0)
+        return semver.VersionInfo.parse(response)
+    return semver.VersionInfo.parse(str(response))
 
 
 def get_manual():
@@ -102,17 +135,24 @@ def get_manual():
     return newversion
 
 
-def bump_version_file(verfile_path: str):
-    """The Main function really only applies to this package
+def bump_version_file(verfile_path: str, bump: str | None = None, set_version: str | None = None):
+    """Bump (or set) the version stored in a version file.
+
+    Args:
+        verfile_path: Path to file containing __version__ = "x.y.z".
+        bump: Optional bump keyword (patch|minor|major|build|prerelease) for non-interactive use.
+        set_version: Optional explicit version string to set (overrides bump).
     """
     version = get_version(verfile_path)
-    bumped = version_bump(version)
+    bumped = version_bump(version, bump=bump, set_version=set_version)
     write_version(verfile_path, bumped)
-    print('Patching done: {}  ==> {}'.format(version, bumped))
+    print(f'Patching done: {version}  ==> {bumped}')
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('version_file', help='Path to __version__.py file', type=str)
-    args = parse_args_env(parser, os.path.join(os.path.dirname(__file__), '.env'))
-    bump_version_file(args.version_file)
+    parser.add_argument('--bump', choices=['patch', 'minor', 'major', 'build', 'prerelease'], help='Non-interactive bump keyword')
+    parser.add_argument('--set-version', dest='set_version', help='Explicit version to set (overrides --bump)')
+    args = dotenv.parse_args_env(parser, os.path.join(os.path.dirname(__file__), '.env'))
+    bump_version_file(args.version_file, bump=args.bump, set_version=args.set_version)

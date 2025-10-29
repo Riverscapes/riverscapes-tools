@@ -12,7 +12,7 @@
 # -------------------------------------------------------------------------------
 import argparse
 import os
-from rscommons import dotenv
+from rsxml import dotenv
 from rscommons.shapefile import load_attributes
 from rscommons.plotting import validation_chart
 from sqlbrat.utils.load_hucs import get_hucs_present

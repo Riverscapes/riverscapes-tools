@@ -2,8 +2,10 @@ import os
 
 from osgeo import ogr
 
-from rscommons import GeopackageLayer, Logger, ProgressBar
+from rscommons import GeopackageLayer
+from rsxml import ProgressBar
 from rscommons.database import SQLiteCon
+from rsxml import Logger
 
 
 def dam_counts_to_dgos(dam_pts: str, dgos: str):

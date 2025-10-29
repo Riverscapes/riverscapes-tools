@@ -5,7 +5,7 @@ import hashlib
 import os
 from datetime import datetime
 from math import floor
-from rscommons import Logger
+from rsxml import Logger
 
 # Set if this environment variable is set don't show any UI
 NO_UI = os.environ.get('NO_UI') is not None
@@ -81,7 +81,7 @@ def file_compare(file_a, file_b, md5=True):
             md5_b = (str(hasher2.hexdigest()))
 
         # Compare md5
-        if(md5_a == md5_b):
+        if (md5_a == md5_b):
             log.debug('File MD5 hashes match')
             return True
         else:

@@ -1,6 +1,8 @@
 import argparse
 
-from rscommons import Logger, dotenv, ModelConfig, RSReport, RSProject
+from rsxml import dotenv
+from rscommons import ModelConfig, RSReport, RSProject
+from rsxml import Logger
 from anthro.__version__ import __version__
 
 

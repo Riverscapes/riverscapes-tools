@@ -6,7 +6,8 @@ from shapely.ops import linemerge
 from shapely.geometry import Point, box
 import numpy as np
 
-from rscommons import GeopackageLayer, VectorBase, Logger
+from rscommons import GeopackageLayer, VectorBase
+from rsxml import Logger
 from rscommons.geometry_ops import reduce_precision, get_endpoints
 from rscommons.classes.vector_base import get_utm_zone_epsg
 from rscommons.database import SQLiteCon, write_db_attributes, write_db_dgo_attributes

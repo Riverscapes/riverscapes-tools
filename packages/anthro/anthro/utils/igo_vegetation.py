@@ -10,7 +10,8 @@ import numpy as np
 from osgeo import gdal
 from rasterio.mask import mask
 
-from rscommons import Logger, VectorBase, GeopackageLayer
+from rscommons import VectorBase, GeopackageLayer
+from rsxml import Logger
 from rscommons.database import SQLiteCon
 
 

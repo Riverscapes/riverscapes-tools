@@ -13,7 +13,8 @@ from shapely.geometry import LineString, Polygon, Point
 from shapely.ops import linemerge, split
 from shapely.wkb import loads as wkbload
 
-from rscommons import GeopackageLayer, Logger
+from rsxml import Logger
+from rscommons import GeopackageLayer
 from rscommons.thiessen.shapes import RiverPoint, densifyShape, GetBufferedBounds, projToShape, splitClockwise
 from rscommons.thiessen.vor import NARVoronoi
 
@@ -35,8 +36,8 @@ def vbet_centerline(flowlines, vbet_polygons, out_layer):
 
     reaches = {}
 
-    with GeopackageLayer(flowlines) as lyr,\
-            GeopackageLayer(vbet_polygons) as lyr_polygons,\
+    with GeopackageLayer(flowlines) as lyr, \
+            GeopackageLayer(vbet_polygons) as lyr_polygons, \
             GeopackageLayer(out_layer, write=True) as lyr_output:
 
         srs = lyr.ogr_layer.GetSpatialRef()

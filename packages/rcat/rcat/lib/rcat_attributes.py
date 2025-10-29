@@ -2,7 +2,7 @@
 """
 import sqlite3
 
-from rscommons import Logger
+from rsxml import Logger
 
 
 def igo_attributes(database: str, windows: dict):

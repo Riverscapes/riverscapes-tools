@@ -16,7 +16,7 @@ from osgeo import ogr, gdal
 from scipy.ndimage import distance_transform_edt
 import numpy as np
 import rasterio.shutil
-from rscommons import ProgressBar, Logger
+from rsxml import Logger, ProgressBar
 from rscommons.raster_buffer_stats import raster_buffer_stats2
 from rscommons.util import safe_makedirs, safe_remove_dir
 from rscommons.database import write_db_attributes

@@ -12,14 +12,13 @@ from typing import List, Dict
 import os
 import shutil
 import datetime
-import uuid
-
-import rasterio.shutil
-from osgeo import ogr
 from copy import copy
 import json
 
-from rscommons import Logger
+import rasterio.shutil
+from osgeo import ogr
+
+from rsxml import Logger
 from rscommons.rspaths import parse_posix_path
 from rscommons.classes.xml_builder import XMLBuilder
 from rscommons.util import safe_makedirs

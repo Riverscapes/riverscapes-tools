@@ -1,16 +1,6 @@
 import os
 import argparse
-import psycopg2
-import json
-import sys
-from osgeo import ogr, gdal
-import postgis
-from shapely import wkb
-import subprocess
-from psycopg2.extras import RealDictCursor
-from rscommons import Logger, ProgressBar, dotenv
-from rscommons.raster_buffer_stats import raster_buffer_stats2
-from rscommons.util import safe_makedirs
+from rsxml import Logger, dotenv
 # TODO: THIS NEEDS TO GO IN COMMON
 from rscommons.clean_nhd_data import download_unzip
 
@@ -45,13 +35,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('vpuids', help='Comma separated list of VPUs to process', type=str)
     parser.add_argument('data_folder', help='Top level data folder containing riverscapes context projects', type=str)
-    #parser.add_argument('user_name', help='Postgres user name', type=str)
-    #parser.add_argument('password', help='Postgres password', type=str)
+    # parser.add_argument('user_name', help='Postgres user name', type=str)
+    # parser.add_argument('password', help='Postgres password', type=str)
     args = dotenv.parse_args_env(parser, os.path.join(os.path.dirname(__file__), '.env'))
 
     # Initiate the log file
     log = Logger('Load NHD')
-    log.setup(logPath=os.path.join(args.data_folder, 'load_nhd.log'), verbose=True)
+    log.setup(log_path=os.path.join(args.data_folder, 'load_nhd.log'), verbose=True)
 
     try:
         load_nhd(args.vpuids, args.data_folder)  # , args.user_name, args.password)

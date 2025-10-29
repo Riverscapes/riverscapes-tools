@@ -13,7 +13,7 @@ import os
 import requests
 import argparse
 import json
-from rscommons import dotenv
+from rsxml import dotenv
 from rscommons.classes.vector_classes import get_shp_or_gpkg
 from rscommons.database import SQLiteCon
 from shapely.geometry import LineString

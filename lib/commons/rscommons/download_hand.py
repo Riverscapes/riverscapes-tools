@@ -13,7 +13,7 @@ import argparse
 import sys
 import os
 import traceback
-from rscommons import Logger
+from rsxml import Logger
 from rscommons.raster_warp import raster_warp
 from rscommons.util import safe_makedirs
 from rscommons.download import download_file

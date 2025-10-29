@@ -1,7 +1,7 @@
 import os
 import csv
 import argparse
-from rscommons import dotenv
+from rsxml import dotenv
 from rscommons.national_map import get_nhdhr_url
 from rscommons.download import download_file
 

@@ -4,7 +4,7 @@ import argparse
 import os
 from osgeo import ogr, osr
 from shapely.geometry import shape, mapping
-from rscommons import dotenv
+from rsxml import dotenv
 # idaho_regions = '/SOMEPATH/StreamStats/Idaho_4269/idaho_4269.shp'
 # streamstatsdb = '/SOMEPATH/NationalProject/streamstats/NSS_v6_2018-01-12.sqlite'
 # streamstatsgdb = '/SOMEPATH/StreamStats/SS_regionPolys_20191017/SS_regionPolys.gdb'

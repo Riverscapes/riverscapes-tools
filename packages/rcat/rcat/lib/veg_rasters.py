@@ -11,7 +11,7 @@ import sqlite3
 import numpy as np
 import os
 
-from rscommons import Logger, dotenv
+from rsxml import Logger, dotenv
 
 
 def rcat_rasters(existing_veg: str, historic_veg: str, database: str, out_folder: str):

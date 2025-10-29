@@ -4,9 +4,8 @@ Augment BRAT with the power of riverscapes context
 import argparse
 import traceback
 import sys
-import os
-from rscommons import RSProject, RSMeta, dotenv, Logger
-from sqlbrat.brat_report import BratReport
+from rscommons import RSProject, RSMeta
+from rsxml import Logger, dotenv
 
 lyrs_in_out = {
     # BEAVER_ACTIVITY_ID: INPUT_ID

@@ -4,8 +4,9 @@ import traceback
 import sys
 from math import pi
 import json
-from rscommons import GeopackageLayer, Raster, dotenv, Logger, RSProject, RSLayer
+from rscommons import GeopackageLayer, Raster, RSProject, RSLayer
 from rscommons.classes.vector_base import VectorBase, get_utm_zone_epsg
+from rsxml import dotenv, Logger
 from shapely.geometry import Point
 
 

@@ -5,7 +5,8 @@ Dec 2022
 import os
 import sqlite3
 from osgeo import ogr
-from rscommons import Logger, get_shp_or_gpkg, GeopackageLayer
+from rsxml import Logger
+from rscommons import get_shp_or_gpkg, GeopackageLayer
 from rscommons.classes.vector_base import VectorBase, get_utm_zone_epsg
 from rscommons.vector_ops import get_geometry_unary_union
 

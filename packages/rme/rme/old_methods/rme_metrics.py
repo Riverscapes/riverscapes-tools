@@ -7,7 +7,8 @@ import os
 import traceback
 import sys
 import json
-from rscommons import GeopackageLayer, dotenv, Logger, RSProject, RSLayer, ShapefileLayer
+from rscommons import GeopackageLayer, RSProject, RSLayer, ShapefileLayer
+from rsxml import dotenv, Logger
 
 PERENNIAL = [46006, 55800]
 INERMITTENT = [46003]

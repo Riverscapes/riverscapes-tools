@@ -21,7 +21,8 @@ from osgeo import ogr
 from rscommons import GeopackageLayer
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.vector_ops import copy_feature_class
-from rscommons import Logger, initGDALOGRErrors, RSLayer, RSProject, ModelConfig, dotenv
+from rsxml import Logger, dotenv
+from rscommons import initGDALOGRErrors, RSLayer, RSProject, ModelConfig
 from rscommons.util import parse_metadata, pretty_duration
 from rscommons.build_network import build_network
 from rscommons.database import create_database, SQLiteCon
@@ -609,7 +610,7 @@ def main():
 
     # Initiate the log file
     log = Logger("BRAT Build")
-    log.setup(logPath=os.path.join(args.output_folder, "brat.log"), verbose=args.verbose)
+    log.setup(log_path=os.path.join(args.output_folder, "brat.log"), verbose=args.verbose)
     log.title('BRAT Build Tool For HUC: {}'.format(args.huc))
 
     meta = parse_metadata(args.meta)

@@ -20,7 +20,8 @@ import requests
 from osgeo import ogr
 
 from rscommons.util import safe_makedirs, parse_metadata
-from rscommons import ModelConfig, Logger, dotenv, initGDALOGRErrors
+from rscommons import ModelConfig, initGDALOGRErrors
+from rsxml import Logger, dotenv
 from rscommons import GeopackageLayer as RSGeopackageLayer
 
 from rsxml.project_xml import (
@@ -284,7 +285,7 @@ def main():
 
     # Initiate the log file
     log = Logger('LTPBR Export')
-    log.setup(logPath=os.path.join(args.output_dir, 'ltpbr_export.log'), verbose=args.verbose)
+    log.setup(log_path=os.path.join(args.output_dir, 'ltpbr_export.log'), verbose=args.verbose)
     log.title('LTPBR Export')
 
     meta = parse_metadata(args.meta)

@@ -3,22 +3,19 @@ import argparse
 import glob
 import datetime
 import sqlite3
-import rasterio
 import json
 import math
 import csv
 import sys
 import traceback
+import rasterio
 from rasterio.mask import mask
-from rasterio.io import MemoryFile
 from shapely.wkb import loads
 from shapely.geometry import box, shape
 import numpy as np
-from osgeo import osr, ogr
-from rscommons import Logger, ProgressBar, dotenv, LoopTimer, ProgressBar
-from rscommons.shapefile import get_transform_from_epsg, export_geojson
-from rscommons.classes.raster import PrintArr
-from rscommons.raster_buffer_stats import raster_buffer_stats2
+from osgeo import ogr
+from rsxml import Logger, ProgressBar, dotenv
+from rscommons.shapefile import export_geojson
 
 
 def process_modis(out_sqlite, modis_folder, nhd_folder, verbose, debug_flag):
@@ -292,7 +289,7 @@ def main():
 
     # Initiate the log file
     log = Logger('Land Surface Temperature')
-    log.setup(logPath=os.path.join(os.path.dirname(args.out_sqlite), os.path.splitext(args.out_sqlite)[0] + 'process_LST.log'), verbose=args.verbose)
+    log.setup(log_path=os.path.join(os.path.dirname(args.out_sqlite), os.path.splitext(args.out_sqlite)[0] + 'process_LST.log'), verbose=args.verbose)
 
     try:
         process_modis(args.out_sqlite, args.modis_folder, args.nhd_folder, args.verbose, args.debug)

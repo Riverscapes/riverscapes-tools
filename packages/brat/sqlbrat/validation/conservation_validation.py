@@ -11,7 +11,7 @@
 import os
 import sys
 import argparse
-from rscommons import dotenv
+from rsxml import dotenv
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 shapefile = __import__('lib.shapefile', fromlist=[''])

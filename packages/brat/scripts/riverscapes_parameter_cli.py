@@ -9,7 +9,7 @@
     """
 import os
 import pickle
-import inquirer
+import questionary
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
@@ -29,7 +29,7 @@ def watershed_info(cinfo):
             watershed_id = pickle.load(infile)
 
     # Ask the user for the watershed they want to work on
-    watershed_id = inquirer.text(message='Watershed ID', default=watershed_id)
+    watershed_id = questionary.text('Watershed ID', default=watershed_id).ask()
 
     # Pickle the watershed ID for next time
     with open(WATERSHED_PICKLE_FILE, 'wb') as outfile:
@@ -56,14 +56,16 @@ def watershed_info(cinfo):
         for row in pgcurs.fetchall():
             print('{}:'.format(row['name']), row['value'], 'data units:', row['data_units'], 'equation units:', row['equation_units'], 'conversion', row['conversion'])
 
-        choice = inquirer.list_input('What do you want to do?',
-                                     choices=[
-                                         '1. Q2 equation',
-                                         '2. QLow equation',
-                                         '3. Max drainage',
-                                         '4. Add or edit hydro params for this watershed',
-                                         '5. Remove a hydro param for this watershed',
-                                         '6. Return to main menu'])
+        choice = questionary.select(
+            'What do you want to do?',
+            choices=[
+                '1. Q2 equation',
+                '2. QLow equation',
+                '3. Max drainage',
+                '4. Add or edit hydro params for this watershed',
+                '5. Remove a hydro param for this watershed',
+                '6. Return to main menu']
+        ).ask() or ''
 
         if choice.startswith('1') or choice.startswith('2'):
             equation_type = 'q2' if choice.startswith('1') else 'qlow'
@@ -81,7 +83,7 @@ def watershed_info(cinfo):
 
 def update_equation(cinfo, equation_type, watershed_id, existing_value):
 
-    new_equation = inquirer.text(message='{} equation'.format(equation_type), default=existing_value)
+    new_equation = questionary.text(f'{equation_type} equation', default=existing_value or '').ask()
 
     if existing_value is not None and new_equation.lower() == existing_value.lower():
         print('Equation unchanged. No action taken.')
@@ -95,7 +97,7 @@ def update_equation(cinfo, equation_type, watershed_id, existing_value):
 
 def update_watershed_params(cinfo, watershed_id):
 
-    param_name = inquirer.text(message='Hydro parameter abbreviation')
+    param_name = questionary.text('Hydro parameter abbreviation').ask()
     if param_name is None or len(param_name) < 1:
         return
 
@@ -110,7 +112,7 @@ def update_watershed_params(cinfo, watershed_id):
         print('Hydro Parameter with name "{}" does not exist. Return to main menu to add it.'.format(param_name))
         return
 
-    value = inquirer.text(message='Value for {} for watershed {} ({})'.format(param['name'], watershed_id, param['data_units']), default=param['value'])
+    value = questionary.text(f"Value for {param['name']} for watershed {watershed_id} ({param['data_units']})", default=str(param['value']) if param['value'] is not None else '').ask()
     if value is None or len(value) < 1:
         print('No value. No action taken.')
         return
@@ -130,7 +132,7 @@ def delete_watershed_hydro_param(cinfo, watershed_id):
     choices = ['{}, {} ({})'.format(row['name'], row['value'], row['param_id']) for row in pgcurs.fetchall()]
     choices.append('Exit')
 
-    param = inquirer.list_input('Which hydro parameter for {} do you want to remove?'.format(watershed_id), choices=choices)
+    param = questionary.select(f'Which hydro parameter for {watershed_id} do you want to remove?', choices=choices).ask() or 'Exit'
     if param.lower() == 'exit':
         return
 
@@ -140,7 +142,7 @@ def delete_watershed_hydro_param(cinfo, watershed_id):
 
 def update_max_drainage(cinfo, watershed_id, existing_value):
 
-    new_value = inquirer.text(message='Max draiange (sqkm)', default=existing_value)
+    new_value = questionary.text('Max drainage (sqkm)', default=str(existing_value) if existing_value is not None else '').ask()
 
     if existing_value is not None and new_value.lower() == existing_value.lower():
         print('Max drainage unchanged. No action taken.')
@@ -162,10 +164,10 @@ def hydro_params(cinfo):
         pgcurs.execute('SELECT * FROM hydro_params  ORDER BY name')
         [print(row['name'], ', data units:', row['data_units'], ', equation units:', row['equation_units']) for row in pgcurs.fetchall()]
 
-        choice = inquirer.list_input('What do you want to do?', choices=[
+        choice = questionary.select('What do you want to do?', choices=[
             '1. Add Hydro Parameter',
             '2. Delete hydro parameter',
-            '3. Exit'])
+            '3. Exit']).ask() or ''
 
         if choice.startswith('1'):
             add_hydro_parameter(cinfo)
@@ -176,21 +178,21 @@ def hydro_params(cinfo):
 
 def add_hydro_parameter(cinfo):
 
-    responses = inquirer.prompt([
-        inquirer.Text('name', message='Parameter name (e.g. ELEV)'),
-        inquirer.Text('description', message='Description'),
-        inquirer.Text('data_units', message='Data units'),
-        inquirer.Text('equation_units', message='Equation units'),
-        inquirer.Text('conversion', message='Conversion factor', default='1'),
-        inquirer.Text('definition', message='definition')
-    ])
+    responses = {
+        'name': questionary.text('Parameter name (e.g. ELEV)').ask() or '',
+        'description': questionary.text('Description').ask() or '',
+        'data_units': questionary.text('Data units').ask() or '',
+        'equation_units': questionary.text('Equation units').ask() or '',
+        'conversion': questionary.text('Conversion factor', default='1').ask() or '1',
+        'definition': questionary.text('Definition').ask() or ''
+    }
 
     for name, val in responses.items():
         print('{}: {}'.format(name, val))
         if len(val) < 1:
             responses[name] = None
 
-    proceed = inquirer.confirm('Do you want to proceed and save the new hydro parameter?')
+    proceed = questionary.confirm('Do you want to proceed and save the new hydro parameter?').ask()
     if proceed is not True:
         return
 
@@ -209,7 +211,7 @@ def delete_hydro_parameter(cinfo):
     params = ['{} ({})'.format(row['name'], row['param_id']) for row in pgcurs.fetchall()]
     params.append('Exit')
 
-    param = inquirer.list_input('Which hydro parameter do you want to delete?', choices=params)
+    param = questionary.select('Which hydro parameter do you want to delete?', choices=params).ask() or 'Exit'
     if param.lower() == 'exit':
         return
 
@@ -236,11 +238,11 @@ def main():
 
     choice = ''
     while not choice.startswith('6'):
-        choice = inquirer.list_input('What do you want to do?',
-                                     choices=[
-                                         '1. Review Watershed',
-                                         '2. Hydro Parameters',
-                                         '6. Exit'])
+        choice = questionary.select('What do you want to do?', choices=[
+            '1. Review Watershed',
+            '2. Hydro Parameters',
+            '6. Exit'
+        ]).ask() or ''
 
         if choice.startswith('1'):
             watershed_info(connection_info)

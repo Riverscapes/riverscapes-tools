@@ -16,7 +16,7 @@ import sys
 import traceback
 import os
 from osgeo import ogr
-from rscommons import dotenv
+from rsxml import dotenv
 
 
 def build_watershed_topology(shapefile, database):

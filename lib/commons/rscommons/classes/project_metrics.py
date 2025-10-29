@@ -12,7 +12,8 @@ from rscommons.classes.raster import get_raster_cell_area, categorical_raster_co
 from rscommons.classes.vector_base import get_utm_zone_epsg
 from rscommons.raster_buffer_stats import raster_buffer_stats2
 from rscommons.get_project_datasets import get_project_datasets
-from rscommons import VectorBase, get_shp_or_gpkg, Logger, dotenv
+from rscommons import VectorBase, get_shp_or_gpkg
+from rsxml import Logger, dotenv
 from sympy import arg
 
 

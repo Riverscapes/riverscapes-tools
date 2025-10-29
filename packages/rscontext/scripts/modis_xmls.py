@@ -6,7 +6,8 @@ import sys
 import traceback
 import uuid
 import datetime
-from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALOGRErrors
+from rsxml import Logger, dotenv
+from rscommons import RSProject, RSLayer, ModelConfig, initGDALOGRErrors
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.util import safe_makedirs, safe_remove_file
 
@@ -59,7 +60,7 @@ def main():
 
     # Initiate the log file
     log = Logger('Land Surface Temperature XML Generator')
-    log.setup(logPath=os.path.join(os.path.dirname(args.lst_xml_folder), 'lst_xml.log'), verbose=args.verbose)
+    log.setup(log_path=os.path.join(os.path.dirname(args.lst_xml_folder), 'lst_xml.log'), verbose=args.verbose)
 
     try:
         process_lst(args.lst_xml_folder)

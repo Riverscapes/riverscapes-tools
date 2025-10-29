@@ -1,7 +1,8 @@
 import os
 import sqlite3
 
-from rscommons import Logger, ProgressBar, get_shp_or_gpkg, VectorBase
+from rsxml import Logger, ProgressBar
+from rscommons import get_shp_or_gpkg, VectorBase
 from rscommons.classes.vector_base import get_utm_zone_epsg
 
 

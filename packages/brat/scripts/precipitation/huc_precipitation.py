@@ -15,7 +15,7 @@ import sqlite3
 import numpy as np
 from statistics import mean
 from osgeo import ogr, osr
-from rscommons import dotenv
+from rsxml import dotenv
 from rscommons.shapefile import get_transform_from_epsg
 from shapely.geometry import shape, Point, mapping
 

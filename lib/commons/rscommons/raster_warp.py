@@ -21,7 +21,8 @@ import traceback
 from osgeo import gdal
 from rscommons.download import get_unique_file_path
 from rscommons.util import safe_remove_file
-from rscommons import Logger, VectorBase
+from rsxml import Logger
+from rscommons import VectorBase
 
 
 def raster_vrt_stitch(inrasters, outraster, epsg, clip=None, clean=False, warp_options: dict = {}):
@@ -152,7 +153,7 @@ def main():
 
     # Initiate the log file
     log = Logger("Raster Warp")
-    log.setup(logPath=os.path.join(os.path.dirname(args.outraster), "raster_warp.log"))
+    log.setup(log_path=os.path.join(os.path.dirname(args.outraster), "raster_warp.log"))
 
     # make sure the output folder exists
     results_folder = os.path.dirname(args.outraster)

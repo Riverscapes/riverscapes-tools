@@ -1,8 +1,8 @@
 import os
-import numpy as np
 import rasterio
 from osgeo import ogr, gdal
-from rscommons import Logger, GeopackageLayer, VectorBase
+from rsxml import Logger
+from rscommons import GeopackageLayer, VectorBase
 
 
 def combine_water_features(channel: str, waterbody: str, output: str, epsg: int) -> None:

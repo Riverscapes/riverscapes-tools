@@ -4,7 +4,8 @@
 import unittest
 import os
 from shapely.geometry import LineString
-from rscommons import Logger, initGDALOGRErrors, GeopackageLayer, ShapefileLayer
+from rsxml import Logger
+from rscommons import initGDALOGRErrors, GeopackageLayer, ShapefileLayer
 from rscommons.classes.vector_base import VectorBase, VectorBaseException
 from rscommons.util import safe_remove_dir
 

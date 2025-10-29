@@ -6,7 +6,8 @@ import argparse
 from osgeo import ogr
 from osgeo import osr
 from rscommons.shapefile import load_attributes, load_geometries, get_transform_from_epsg
-from rscommons import ProgressBar, ModelConfig, dotenv
+from rsxml import ProgressBar, dotenv
+from rscommons import ModelConfig
 
 fields = [
     'StreamName',

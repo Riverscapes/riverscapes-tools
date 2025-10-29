@@ -13,7 +13,7 @@
 import argparse
 import os
 import sqlite3
-from rscommons import dotenv
+from rsxml import dotenv
 from rscommons.shapefile import load_attributes
 from rscommons.plotting import validation_chart
 from sqlbrat.utils.combined_fis import calculate_combined_fis

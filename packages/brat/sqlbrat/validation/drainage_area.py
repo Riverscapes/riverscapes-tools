@@ -10,7 +10,8 @@ import os
 # import json
 # import time
 from osgeo import ogr, osr
-from rscommons import Logger, LoopTimer, dotenv, initGDALOGRErrors
+from rsxml import Logger, dotenv
+from rscommons import LoopTimer, initGDALOGRErrors
 from rscommons import plotting
 
 initGDALOGRErrors()

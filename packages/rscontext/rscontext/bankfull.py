@@ -8,7 +8,8 @@ import os
 from uuid import uuid4
 from osgeo import ogr
 
-from rscommons import ProgressBar, Logger, GeopackageLayer, VectorBase, TempRaster, TempGeopackage
+from rsxml import Logger, ProgressBar
+from rscommons import GeopackageLayer, VectorBase, TempRaster, TempGeopackage
 from rscommons.vector_ops import get_geometry_unary_union, collect_feature_class, buffer_by_field, merge_feature_classes
 
 

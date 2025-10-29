@@ -5,7 +5,8 @@ import argparse
 import traceback
 import sys
 import os
-from rscommons import RSProject, RSMeta, dotenv, Logger
+from rscommons import RSProject, RSMeta
+from rsxml import dotenv, Logger
 from sqlbrat.brat_report import BratReport
 
 lyrs_in_out = {

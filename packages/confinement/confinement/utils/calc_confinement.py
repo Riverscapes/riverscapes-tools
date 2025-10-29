@@ -1,4 +1,5 @@
-from rscommons import GeopackageLayer, Logger
+from rscommons import GeopackageLayer
+from rsxml import Logger
 
 from osgeo import ogr
 

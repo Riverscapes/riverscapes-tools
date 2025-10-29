@@ -2,7 +2,8 @@ import argparse
 import os
 from xml.etree import ElementTree as ET
 
-from rscommons import Logger, dotenv, ModelConfig, RSReport, RSProject
+from rsxml import Logger, dotenv
+from rscommons import ModelConfig, RSReport, RSProject
 from rscommons.util import safe_makedirs
 from rscommons.plotting import line
 

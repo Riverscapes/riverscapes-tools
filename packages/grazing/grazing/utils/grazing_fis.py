@@ -3,8 +3,7 @@ import skfuzzy as fuzz
 import skfuzzy.control as ctrl
 import numpy as np
 
-from rscommons import Logger, ProgressBar
-from concurrent.futures import ThreadPoolExecutor
+from rsxml import Logger, ProgressBar
 
 
 def calculate_grazing_fis(water_promixity: str, slope: str, vegetation_suitability: str, output_raster: str):

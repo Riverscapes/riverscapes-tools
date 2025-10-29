@@ -5,7 +5,8 @@ import argparse
 import traceback
 import sys
 import os
-from rscommons import RSProject, RSMeta, dotenv, Logger
+from rscommons import RSProject, RSMeta
+from rsxml import dotenv, Logger
 from channel.channel_report import ChannelReport
 
 lyrs_in_out = {
@@ -16,6 +17,8 @@ lyrs_in_out = {
 
 
 def main():
+    """ Channel XML Augmenter
+    """
 
     parser = argparse.ArgumentParser(
         description='Channel XML Augmenter',
@@ -30,10 +33,10 @@ def main():
     # Initiate the log file
     log = Logger('XML Augmenter')
     log.setup(verbose=args.verbose)
-    log.title('XML Augmenter: {}'.format(args.out_project_xml))
+    log.title(f'XML Augmenter: {args.out_project_xml}')
 
     try:
-        log.info('args: {}'.format(args))
+        log.info(f'args: {args}')
         out_prj = RSProject(None, args.out_project_xml)
         out_prj.rs_meta_augment(
             args.in_xmls.split(','),
