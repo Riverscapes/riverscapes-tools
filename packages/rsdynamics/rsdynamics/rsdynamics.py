@@ -91,22 +91,15 @@ def rsdynamics(watershed_id: str, vbet_project_xml: str, thresholds: List[float]
 
             calc_raster_stats(epoch_data['active'], vbet_dgos, f'active_{att_prefix}', threshold, spatial_view_attributes)
             calc_raster_stats(epoch_data['wet'], vbet_dgos, f'wet_{att_prefix}', threshold, spatial_view_attributes)
-            calc_stable_stats(vbet_dgos, att_prefix, threshold, spatial_view_attributes)
 
-            # if threshold == 0.95:
-            #     calc_width_stats(vbet_dgos, att_prefix, threshold)
-
-        # Wet and alluvial attributes should be calculated. Now calculate "stable" areas as the residual.
+            # TODO: Reintroduce stable
+            # calc_stable_stats(vbet_dgos, att_prefix, threshold, spatial_view_attributes)
 
     # Create the output Riverscapes project.rs.xml based on the rscontext XML
     rsd_project = build_dynamics_project(vbet_project_xml, output_dir)
-
     nod_realization = rsd_project.add_realization('Riverscapes Dynamics', 'REALIZATION1', cfg.version)
     nod_inputs = rsd_project.XMLBuilder.add_sub_element(nod_realization, 'Inputs')
     nod_outputs = rsd_project.XMLBuilder.add_sub_element(nod_realization, 'Outputs')
-
-    # rsd_project.add_project_vector(GeopackageLayer(rsd_gpkg, 'vbet_dgos'), nod_outputs)
-
     rsd_project.add_project_raster(nod_inputs, LayerTypes['HILLSHADE'])
 
     for i, classified_info in enumerate(input_rasters):
@@ -185,8 +178,10 @@ def create_spatial_view(rsd_gpkg: str, attribute_name: str) -> str:
     reuse symbology files that expect a single 'value' field.
     """
 
+    log = Logger('Spatial View')
+
     # Deconstruct the epoch characteristics
-    match = re.match(r'(active|wet|stable)(.*)_([0-9]{2})pc_(width|area|pc)', attribute_name)
+    match = re.match(r'(active|wet|stable)(.*)_([0-9]{2})pc_(.*)', attribute_name)
     if not match:
         raise ValueError(f"Invalid attribute name format: {attribute_name}")
     stat_type = match.group(1)  # wet, active, stable
@@ -196,6 +191,8 @@ def create_spatial_view(rsd_gpkg: str, attribute_name: str) -> str:
 
     # Create spatial views for each of the statistics from each epoch raster
     view_name = f'vw_{stat_metric}_{stat_measure}_{stat_type}_{stat_epoch}'.replace('-', '_').replace('__', '_')
+    log.info(f'Creating spatial view: {view_name} for attribute: {attribute_name}')
+
     with sqlite3.connect(rsd_gpkg) as conn:
         c = conn.cursor()
 
@@ -446,21 +443,30 @@ def calc_raster_stats(raster_path: str, polygon_path: str, prefix: str, threshol
     gpkg, layer = VectorBase.path_sorter(polygon_path)
     gdf = gpd.read_file(gpkg, layer=layer)
 
-    # add columns for the stats
-    stats = ["area", "pc", "width"]
-    for stat in stats:
-        gdf[f'{prefix}_{stat}'] = np.nan
+    # Make lists to hold the stats
+    stats = {
+        "area": [],
+        "areapc": [],
+        "width": [],
+        "widthpc": []
+    }
 
-    # Open the raster and calculate stats for each polygon
-    dgo_areas, raster_areas, coverage_percents, widths = [], [], [], []
+    # Set up the columns in the GeoDataFrame
+    # Specify which spatial views are needed for the attributes
+    for stat_key in stats:
+        attribute_name = f'{prefix}_{stat_key}'
+        gdf[attribute_name] = np.nan
+        spatial_view_attributes.append(attribute_name)
 
+    # Open the raster and calculate stats for each polygon using a mask
     with rasterio.open(raster_path) as src:
         for _, row in gdf.iterrows():
 
             # Get the area of the polygon
             dgo_area = row.geometry.area
             dgo_length = row['centerline_length']
-            dgo_areas.append(dgo_area)
+            dgo_width = dgo_area / dgo_length if dgo_length != 0 else 0
+            # dgo_areas.append(dgo_area)
 
             out_image, __out_transform = rasterio.mask.mask(src, [row.geometry], crop=True)
             data = out_image[0]
@@ -471,39 +477,30 @@ def calc_raster_stats(raster_path: str, polygon_path: str, prefix: str, threshol
                 # Count the number of pixels with value 0.95 or above
                 count = np.sum(data >= threshold)
                 raster_area = float(count) * (src.res[0] * src.res[1])
-                raster_areas.append(raster_area)
+                stats['area'].append(raster_area)
 
-                coverage_percent = (raster_area / dgo_area) * 100 if dgo_area != 0 and raster_area != 0 else 0
-                coverage_percent = min(coverage_percent, 100.0)
-                coverage_percent = max(coverage_percent, 0.0)
-                coverage_percents.append(coverage_percent)
+                row[f'{prefix}_area'] = raster_area
 
-                widths.append(raster_area / dgo_length if dgo_length != 0 else 0)
+                areapc = (raster_area / dgo_area) * 100 if dgo_area != 0 and raster_area != 0 else np.nan
+                areapc = min(areapc, 100.0)
+                areapc = max(areapc, 0.0)
+                stats['areapc'].append(areapc)
 
-                # means.append(float(data.mean()))
-                # mins.append(float(data.min()))
-                # maxs.append(float(data.max()))
-                # stds.append(float(data.std()))
+                width = raster_area / dgo_length if dgo_length != 0 else np.nan
+                stats['width'].append(width)
+
+                widthpc = (width / dgo_width) * 100 if dgo_width != 0 and width != 0 else np.nan
+                widthpc = min(widthpc, 100.0)
+                widthpc = max(widthpc, 0.0)
+                stats['widthpc'].append(widthpc)
             else:
-                # means.append(np.nan)
-                # mins.append(np.nan)
-                # maxs.append(np.nan)
-                # stds.append(np.nan)
-                raster_areas.append(np.nan)
-                coverage_percents.append(np.nan)
-                widths.append(np.nan)
+                for key, __value in stats.items():
+                    stats[key].append(np.nan)
 
-    # gdf[f'{prefix}-mean'] = means
-    # gdf[f'{prefix}-min'] = mins
-    # gdf[f'{prefix}-max'] = maxs
-    # gdf[f'{prefix}-std'] = stds
-    gdf[f'{prefix}_area'] = raster_areas
-    gdf[f'{prefix}_pc'] = coverage_percents
-    gdf[f'{prefix}_width'] = widths
-
-    # Create spatial views for the calculated statistics
-    for stat in ['area', 'pc', 'width']:
-        spatial_view_attributes.append(f'{prefix}_{stat}')
+    # Assign the stats back to the GeoDataFrame
+    for stat_key, values in stats.items():
+        attribute_name = f'{prefix}_{stat_key}'
+        gdf[attribute_name] = values
 
     # Write back to GeoPackage
     gdf.to_file(gpkg, layer=layer, driver="GPKG")
