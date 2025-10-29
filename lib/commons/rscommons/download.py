@@ -135,7 +135,7 @@ def download_file(s3_url, download_folder, force_download=False):
 
         # Write our pending file. No matter what we must clean this file up!!!
         def refresh_pending(init=False):
-            with open(file_path_pending, 'w') as f:
+            with open(file_path_pending, 'w', encoding='utf-8') as f:
                 f.write(str(datetime.datetime.now()))
 
         # Cleaning up the commone areas is really important

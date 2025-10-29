@@ -54,6 +54,7 @@
       "module": "channel.channel",
       "console": "integratedTerminal",
       "env": {
+        "PYTHONPATH": "${workspaceFolder}/../../lib/commons",
         "NATIONAL_PROJECT_NZ": "/workspaces/data/NationalDatasetsNZ"
       },
       "args": [
@@ -80,6 +81,9 @@
       "request": "launch",
       "module": "rscommons.classes.project_metrics",
       "console": "integratedTerminal",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+      },
       "args": [
         "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhdplushr.gpkg",
         "{env:DATA_ROOT}/channel_area/${input:HUC}/project.rs.xml"
@@ -91,6 +95,9 @@
       "request": "launch",
       "module": "channel.channel_report",
       "console": "integratedTerminal",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+      },   
       "args": [
         "{env:DATA_ROOT}/channel_area/${input:HUC}/project.rs.xml",
         "{env:DATA_ROOT}/channel_area/${input:HUC}/outputs/channel_area.html"
@@ -100,6 +107,9 @@
       "name": "Version Bump",
       "type": "debugpy",
       "module": "rscommons.version",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+      },   
       "args": [
         "${workspaceFolder}/channel/__version__.py"
       ],
@@ -112,6 +122,9 @@
       "request": "launch",
       "module": "channel.channel_rs",
       "console": "integratedTerminal",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+      },
       "args": [
         "{env:DATA_ROOT}/channel_area/${input:HUC}/project.rs.xml",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/project.rs.xml"

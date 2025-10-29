@@ -61,7 +61,7 @@
       "**/.venv/**": true,
       "**/__pycache__/**": true
     },
-    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+  "python.defaultInterpreterPath": "${workspaceFolder:🏠 Git Root}/.venv/bin/python",
     "python.testing.autoTestDiscoverOnSaveEnabled": false
   }
 }

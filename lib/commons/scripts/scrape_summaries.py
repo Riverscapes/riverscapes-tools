@@ -72,7 +72,7 @@ owners = {row[0]: row[1] for row in curs.fetchall() if row[1] in owners_pres}
 curs.execute('SELECT name, where_clause FROM flows')
 flows = {row[0]: row[1] for row in curs.fetchall()}
 
-with open(csv_out, 'w') as f:
+with open(csv_out, 'w', encoding='utf-8') as f:
     writer = csv.writer(f)
     writer.writerow(['Metric', 'State', 'Flow', 'Ownership', 'Value'])
 

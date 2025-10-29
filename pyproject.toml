@@ -7,7 +7,7 @@ name = "riverscapes-tools"
 version = "0.1.0"
 description = "Riverscapes open source toolchain packaged as a single distribution"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.12"
 license = { file = "LICENSE" }
 authors = [
     { name = "North Arrow Research", email = "info@northarrowresearch.com" },
@@ -16,16 +16,16 @@ keywords = ["riverscapes", "gis", "restoration"]
 dependencies = [
     "affine>=2.4",
     "Cython>=3.0",
-    "html5print",
     "jinja2>=3.1",
     "matplotlib>=3.8",
     "networkx>=2.8",
     "numpy>=1.26",
     "postgis>=1.0.4",
     "psycopg2-binary>=2.9.9",
-    "pyinquirer",
+    "questionary>=2.0.1",
     "python-dateutil>=2.9.0.post0",
     "rasterio>=1.3.9",
+    "requests>=2.32.5",
     "Rtree>=1.2.0",
     "scikit-fuzzy>=0.4.2",
     "scikit-image>=0.24,<0.25",
@@ -35,6 +35,7 @@ dependencies = [
     "sympy>=1.13.3",
     "termcolor>=2.4",
     "urllib3>=2.2",
+    "rsxml>=2.0.6",
 ]
 
 [tool.setuptools.packages.find]

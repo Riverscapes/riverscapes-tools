@@ -1,5 +1,27 @@
 # Riverscapes Tools
 
+## Table of Contents
+
+- [Riverscapes Tools](#riverscapes-tools)
+  - [Table of Contents](#table-of-contents)
+  - [`./lib` and `./packages`](#lib-and-packages)
+  - [Repo guidelines](#repo-guidelines)
+  - [Python Environment](#python-environment)
+  - [Working inside Github codespaces](#working-inside-github-codespaces)
+    - [Data and files](#data-and-files)
+  - [Documentation Site](#documentation-site)
+  - [Editing \& preview changes using VS Code](#editing--preview-changes-using-vs-code)
+  - [Using UV for Environment Management](#using-uv-for-environment-management)
+  - [Environment Setup](#environment-setup)
+    - [Prerequisites](#prerequisites)
+    - [OSX Setup (2 methods)](#osx-setup-2-methods)
+      - [Method 1: Using pyenv (Recommended)](#method-1-using-pyenv-recommended)
+      - [Method 2: Using your QGIS Python Environment](#method-2-using-your-qgis-python-environment)
+    - [Windows Setup](#windows-setup)
+      - [Method 1: Using WSL (Recommended)](#method-1-using-wsl-recommended)
+      - [Method 2: Using QGIS Python Environment](#method-2-using-qgis-python-environment)
+
+
 This is a monorepo housing the python open-source GIS tools for Riverscapes, and the documentation site tools.riverscapes.net. Packages include:  
 
 * [Riverscapes Context](./packages/rscontext)
@@ -74,7 +96,7 @@ A browser window should pop open to allow you to authenticate your Riverscapes W
 
 Make sure you use the folder name that matches what this tool expects for the project type and huc number.
 
-# Documentation Site
+## Documentation Site
 
 The documentation site is built with [Docusaurus](https://docusaurus.io/) and published  from the **`docs` branch** to [tools.riverscapes.net](https://tools.riverscapes.net).
 
@@ -139,7 +161,7 @@ Installed 1 package in 23ms
 
 5. Now you simply need to set the python interpreter for the tool you will be running inside VSCode. You should set it to the uv environment python interpreter located at `/path/to/riverscapes-tools/.venv/bin/python`.
 
-### Method 2: Using your QGIS Python Environment
+#### Method 2: Using your QGIS Python Environment
 
 If you don't want to go through the trouble of `pyenv` you can latch onto the Python environment that comes with QGIS. This can be a convenient option if you already have QGIS installed and configured.
 
@@ -162,3 +184,21 @@ Version: 3.3.2
 ```
 
 5. Now you simply need to set the python interpreter for the tool you will be running inside VSCode. You should set it to the uv environment python interpreter located at `/path/to/riverscapes-tools/.venv/bin/python`.
+
+### Windows Setup
+
+
+#### Method 1: Using WSL (Recommended)
+
+1. Install WSL by following the [installation instructions](https://learn.microsoft.com/en-us/windows/wsl/install).
+2. Install a Linux distribution of your choice (e.g., Ubuntu) from the Microsoft Store. These instructions will pertain to Ubuntu. If you choose a different distribution, some commands may vary.
+3. Install prerequisites. You can find instructions for bootstrapping to our preferred environment settings at https://github.com/Riverscapes/environment/blob/master/wsl-bootstrap.sh
+4. Install uv: `curl -LsSf https://astral.sh/uv/install.sh | sh
+` [Source](https://docs.astral.sh/uv/getting-started/installation/)
+5. Generate new ssh keys and add them to your GitHub account if you haven't already done so. This will allow you to clone repositories using SSH. `ssh-keygen -t rsa"`
+
+#### Method 2: Using QGIS Python Environment
+
+
+
+

@@ -4,12 +4,13 @@ import datetime
 from uuid import uuid4
 from xml.etree import ElementTree as ET
 from jinja2 import Template
-# from html5print import HTMLBeautifier, CSSBeautifier
 from rscommons import Logger
 from rscommons.util import sizeof_fmt
 
 
 class RSReport():
+    """
+    """
 
     def __init__(self, rs_project, filepath):
         self.log = Logger('Report')

@@ -30,7 +30,7 @@
       "console": "integratedTerminal",
       "env": {
         "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
-      },      
+      },
       // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
       "args": [
         "${input:HUC}",
@@ -59,6 +59,9 @@
       "type": "debugpy",
       "request": "launch",
       "module": "rscontext.rs_context_metrics",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+      },
       "console": "integratedTerminal",
       "args": [
         "{env:DATA_ROOT}/rs_context/${input:HUC}"
@@ -70,6 +73,9 @@
       "request": "launch",
       "module": "scripts.land_surface_temp",
       "console": "integratedTerminal",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+      },
       // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
       "args": [
         "{env:DATA_ROOT}/MODIS/outputs/${input:VPU}/${input:VPU}.sqlite",
@@ -98,6 +104,9 @@
       "request": "launch",
       "module": "rscontext.rs_context_report",
       "console": "integratedTerminal",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+      },
       "args": [
         "{env:DATA_ROOT}/rs_context/${input:HUC}/project.rs.xml",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/rsc_report.html"
@@ -109,6 +118,9 @@
       "request": "launch",
       "module": "scripts.download_nwi",
       "console": "integratedTerminal",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+      },
       "args": [
         "{env:DATA_ROOT}/nwi_data",
         "nardata",
@@ -121,6 +133,9 @@
       "request": "launch",
       "module": "rscommons.classes.project_metrics",
       "console": "integratedTerminal",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+      },
       "args": [
         "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhdplushr.gpkg",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/project.rs.xml"
@@ -132,6 +147,9 @@
       "request": "launch",
       "module": "rscommons.project_bounds",
       "console": "integratedTerminal",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+      },
       "args":[
         "${input:in_layer}",
         "${input:out_layer}",
@@ -143,6 +161,9 @@
       "request": "launch",
       "module": "rscontext.national_wetlands_inventory",
       "console": "integratedTerminal",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+      },
       "args":[
         "${input:HUC}",
         "{env:DATA_ROOT}/download",
@@ -154,6 +175,9 @@
       "name": "Version Bump",
       "type": "debugpy",
       "module": "rscommons.version",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+      },
       "args": [
         "${workspaceFolder}/rscontext/__version__.py"
       ],

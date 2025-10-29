@@ -289,7 +289,7 @@ def get_dem_urls(vector_path, buffer_dist):
         log.error('TNM API Query: {}'.format(params))
         raise Exception('No DEM rasters identified on The National Map')
 
-    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'ned_urls.csv'), 'rt') as f:
+    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'ned_urls.csv'), 'rt', encoding='utf-8') as f:
         reader = csv.reader(f)
         data = [item[0] for item in list(reader)]
 

@@ -9,7 +9,7 @@ from collections import Counter
 import sys
 import logging
 import os
-import inquirer
+import questionary
 from rsxml import Logger, ProgressBar
 from riverscapes import RiverscapesAPI
 
@@ -25,12 +25,21 @@ def tag_projects(rs_api: RiverscapesAPI):
     log = Logger('TagProjectsCSV')
     log.title('Tagging Projects from CSV')
 
-    questions = [
-        inquirer.Text('new_tags', message="What tags do you want to apply?", default='abc,zzz'),
-        inquirer.List('method', message="Do you want to paste project GUIDs or load from file", choices=['Cut/Paste comma separated list of project GUIDs', 'CSV File of project GUIDS'], default='Cut/Paste'),
-        inquirer.List('replace', message='Replace existing tags?', choices=['Yes', 'No'], default='No'),
-    ]
-    answers = inquirer.prompt(questions)
+    new_tags = questionary.text("What tags do you want to apply?", default='abc,zzz').ask()
+    method = questionary.select(
+        "Do you want to paste project GUIDs or load from file",
+        choices=[
+            'Cut/Paste comma separated list of project GUIDs',
+            'CSV File of project GUIDS'
+        ],
+        default='Cut/Paste'
+    ).ask()
+    replace = questionary.select(
+        'Replace existing tags?',
+        choices=['Yes', 'No'],
+        default='No'
+    ).ask()
+    answers = {'new_tags': new_tags, 'method': method, 'replace': replace}
 
     if answers['new_tags'] is None or answers['new_tags'] == '':
         log.error("No new tags specified. Aborting")
@@ -38,11 +47,11 @@ def tag_projects(rs_api: RiverscapesAPI):
 
     project_ids = []
     if str.startswith(answers['method'], 'Cut'):
-        answers.update(inquirer.prompt([inquirer.Text('projects', message="Paste the project GUIDs separated by commas")]))
+        projects = questionary.text("Paste the project GUIDs separated by commas").ask()
+        answers['projects'] = projects
     else:
-        answers.update(inquirer.prompt([inquirer.Text('file', message="What is the path to the file with the project GUIDs?")]))
-
-        with open(answers['file'], 'r', encoding='utf8') as f:
+        file_path = questionary.text("What is the path to the file with the project GUIDs?").ask()
+        with open(file_path, 'r', encoding='utf8') as f:
             guids = f.readlines()
             answers['projects'] = ','.join([s.replace('\n', '').replace(',', '') for s in guids])
 
@@ -92,9 +101,12 @@ def main():
     Tag projects in Data Exchange with the user specified tag
     """
 
-    answers = inquirer.prompt([
-        inquirer.List('stage', message="What API stage?", choices=['production', 'staging'], default='production'),
-    ])
+    stage = questionary.select(
+        "What API stage?",
+        choices=['production', 'staging'],
+        default='production'
+    ).ask()
+    answers = {'stage': stage}
 
     log = Logger('Setup')
     log.setup(log_path=os.path.join(os.path.dirname(__file__), 'tag_projects_csv.log'), log_level=logging.DEBUG)

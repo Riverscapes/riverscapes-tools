@@ -15,7 +15,7 @@ import sys
 import traceback
 from riverscapes import RiverscapesAPI, RiverscapesSearchParams
 from typing import List
-import inquirer
+import questionary
 from osgeo import ogr
 
 from rscommons.util import safe_makedirs, safe_remove_dir
@@ -68,13 +68,11 @@ def run_validation(huc: int, working_dir: str = '/workspaces/data', upload_tags:
     for hucnum, project_list in projects.items():
         if len(project_list) > 1:
             project_list.sort(key=lambda x: x.created_date, reverse=True)
-            questions = [
-                inquirer.List('selected_project',
-                              message=f"Select a project for HUC {hucnum}",
-                              choices=[f"{proj.name} (Created: {proj.created_date})" for proj in project_list])
-            ]
-            answers = inquirer.prompt(questions)
-            selected_project = next(proj for proj in project_list if f"{proj.name} (Created: {proj.created_date})" == answers['selected_project'])
+            selected_project_name = questionary.select(
+                f"Select a project for HUC {hucnum}",
+                choices=[f"{proj.name} (Created: {proj.created_date})" for proj in project_list]
+            ).ask()
+            selected_project = next(proj for proj in project_list if f"{proj.name} (Created: {proj.created_date})" == selected_project_name)
             # Use selected_project for further processing
         else:
             selected_project = project_list[0]
@@ -146,13 +144,10 @@ def run_validation(huc: int, working_dir: str = '/workspaces/data', upload_tags:
     beaver_gpkgs = []
     for hucnum, gpkgs in num_beaver_gpkgs.items():
         if len(gpkgs) > 1:
-            beav_questions = [
-                inquirer.List('selected gpkg',
-                              message=f"Select a beaver activity gpkg for HUC {hucnum}",
-                              choices=[f"{f}" for f in gpkgs])
-            ]
-            beav_answers = inquirer.prompt(beav_questions)
-            selected_beaver_gpkg = beav_answers['selected gpkg']
+            selected_beaver_gpkg = questionary.select(
+                f"Select a beaver activity gpkg for HUC {hucnum}",
+                choices=[f"{f}" for f in gpkgs]
+            ).ask()
             beaver_gpkgs.append(selected_beaver_gpkg)
         else:
             beaver_gpkgs.append(num_beaver_gpkgs[hucnum][0])
