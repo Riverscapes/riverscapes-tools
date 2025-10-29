@@ -10,34 +10,25 @@ Author:     Philip Bailey
 Date:       1 Oct 2025
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 import re
-import copy
-from typing import Tuple, Dict, List
-from datetime import datetime
-import argparse
-import sqlite3
-import json
 import os
 import sys
+import argparse
+import sqlite3
 import traceback
-from xml.etree.ElementTree import Element
-from osgeo import ogr
+from typing import Tuple, List
+from datetime import datetime
 import geopandas as gpd
 import rasterio
 import rasterio.mask
 import numpy as np
 
-
 from rscommons import Logger, ModelConfig, dotenv, initGDALOGRErrors
 from rscommons.classes.rs_project import RSLayer, RSProject, RSMeta, RSMetaTypes
-from rscommons.geographic_raster import gdal_dem_geographic
-from rscommons.project_bounds import generate_project_extents_from_geom
-from rscommons.raster_warp import raster_warp
-from rscommons.util import safe_makedirs, parse_metadata
-from rscommons.vector_ops import copy_feature_class
-from rscommons.classes.vector_classes import GeopackageLayer
-from rscommons.shapefile import get_transform_from_epsg
-from rsdynamics.__version__ import __version__
 from rscommons.classes.vector_classes import VectorBase
+from rscommons.raster_warp import raster_warp
+from rscommons.util import safe_makedirs
+from rscommons.vector_ops import copy_feature_class
+from rsdynamics.__version__ import __version__
 
 cfg = ModelConfig('https://xml.riverscapes.net/Projects/XSD/V2/RiverscapesProject.xsd', __version__)
 cfg.OUTPUT_EPSG = 2193  # NZTM
@@ -58,12 +49,16 @@ LayerTypes = {
 }
 
 
-def rsdynamics(watershed_id: str, vbet_project_xml: str, raster_folder: str, output_dir: str):
+def rsdynamics(watershed_id: str, vbet_project_xml: str, thresholds: List[float], epochs: List[int], raster_folder: str, output_dir: str):
     """ Main function for running Riverscapes Dynamics"""
 
     log = Logger('RS Dynamics')
 
     rsd_gpkg = os.path.join(output_dir, 'dgos', 'rsdynamics.gpkg')
+    if os.path.isfile(rsd_gpkg):
+        log.info(f'Removing existing Riverscapes Dynamics GeoPackage: {rsd_gpkg}')
+        os.remove(rsd_gpkg)
+
     vbet_full = copy_vbet_layer(vbet_project_xml, 'VBET_OUTPUTS', 'vbet_full', rsd_gpkg)
     vbet_dgos = copy_vbet_layer(vbet_project_xml, 'Intermediates', 'vbet_dgos', rsd_gpkg)
 
@@ -71,50 +66,31 @@ def rsdynamics(watershed_id: str, vbet_project_xml: str, raster_folder: str, out
     epoch_rasters = process_epoch_rasters(raster_folder, output_dir, vbet_full)
     __hillshade_raster = copy_hillshade(vbet_project_xml, output_dir)
 
-    # Reshape the rasters into the right structure for calculating stats
-    stats_sets = {}
-    for raster_path, __raster_name, __raster_id, att_prefix, epoch_data in epoch_rasters:
-        epoch_length = epoch_data['length']
-        epoch_start_year = epoch_data['start_year']
-        epoch_end_year = epoch_data['end_year']
-        epoch_key = f'{epoch_length}yr_{epoch_start_year}_{epoch_end_year}'
-        if epoch_key not in stats_sets:
-            stats_sets[epoch_key] = {
-                'wet': None,
-                'active': None
-            }
+    # Group the epoch rasters into sets of wet and alluvial rasters for stats calculation
+    epoch_sets = get_raster_sets(epoch_rasters)
 
-        if epoch_data['type'].lower() == 'water':
-            stats_sets[epoch_key]['wet'] = raster_path
-        elif epoch_data['type'].lower() == 'alluvial':
-            stats_sets[epoch_key]['active'] = raster_path
-
-    # As we are calculating stats, keep track of the spatial views we create
+    # As we are calculating stats, keep track of the spatial views we need to create later
     spatial_view_attributes = []
 
-    for threshold in [0.68, 0.95]:
-
-        if threshold == 0.68:
-            log.warning('temp skip')
-            continue
+    # Loop over each threshold (e.g. 0.68, 0.95) and calculate stats for each epoch raster set
+    for threshold in thresholds:
 
         log.info(f'Calculating zonal stats for threshold: {threshold}')
-        for epoch_key, rasters in stats_sets.items():
+        for epoch_key, epoch_data in epoch_sets.items():
 
-            if '5yr' in epoch_key:
-                log.info('Skipping 5yr epoch for now')
+            if epoch_data['epoch_length'] not in epochs:
+                log.info(f'Skipping epoch {epoch_key} because its length ({epoch_data["epoch_length"]}) is not in the specified epochs list')
                 continue
 
-            if rasters['wet'] is None or rasters['active'] is None:
-                log.warning(f'Skipping epoch {epoch_key} because required rasters are missing')
+            if epoch_data['wet'] is None or epoch_data['active'] is None:
+                log.warning(f'Skipping epoch {epoch_key} because either wet or active raster rasters are missing')
                 continue
-
-            log.info(f'Processing epoch: {epoch_key}')
 
             att_prefix = f'{epoch_key}_{int(threshold*100)}pc'.replace('-', '_')
+            log.info(f'Processing epoch: {epoch_key} to produce attribute with prefix: {att_prefix}')
 
-            calc_raster_stats(rasters['active'], vbet_dgos, f'active_{att_prefix}', threshold, spatial_view_attributes)
-            calc_raster_stats(rasters['wet'], vbet_dgos, f'wet_{att_prefix}', threshold, spatial_view_attributes)
+            calc_raster_stats(epoch_data['active'], vbet_dgos, f'active_{att_prefix}', threshold, spatial_view_attributes)
+            calc_raster_stats(epoch_data['wet'], vbet_dgos, f'wet_{att_prefix}', threshold, spatial_view_attributes)
             calc_stable_stats(vbet_dgos, att_prefix, threshold, spatial_view_attributes)
 
             # if threshold == 0.95:
@@ -157,6 +133,47 @@ def rsdynamics(watershed_id: str, vbet_project_xml: str, raster_folder: str, out
     rsd_project.XMLBuilder.write()
 
     return rsd_project
+
+
+def get_raster_sets(epoch_rasters: List[Tuple[str, str, str, str, dict]]) -> dict:
+    """ 
+    Reshape the rasters into the right structure for calculating stats. We need a pair
+    of wet and alluvial rasters for each epoch.
+
+    Returns a dict of epoch_key: {'wet': raster_path, 'active': raster_path}
+    """
+
+    stats_sets = {}
+    for raster_path, __raster_name, __raster_id, _att_prefix, epoch_data in epoch_rasters:
+        epoch_length = int(epoch_data['length'])
+        epoch_start_year = int(epoch_data['start_year'])
+        epoch_end_year = int(epoch_data['end_year'])
+        epoch_key = f'{epoch_length}yr_{epoch_start_year}_{epoch_end_year}'
+        if epoch_key not in stats_sets:
+            stats_sets[epoch_key] = {
+                'wet': None,
+                'active': None,
+                'epoch_length': epoch_length,
+                'start_year': epoch_start_year,
+                'end_year': epoch_end_year
+            }
+
+        if epoch_data['type'].lower() == 'water':
+            stats_sets[epoch_key]['wet'] = raster_path
+        elif epoch_data['type'].lower() == 'alluvial':
+            stats_sets[epoch_key]['active'] = raster_path
+
+    log = Logger('Raster Sets')
+    log.info(f'Found {len(stats_sets)} epoch raster sets for stats calculation')
+
+    # Verify that each set has both a water and active raster
+    for epoch_key, raster_paths in stats_sets.items():
+        if raster_paths['wet'] is None:
+            log.warning(f'No wet raster found for epoch: {epoch_key}')
+        if raster_paths['active'] is None:
+            log.warning(f'No alluvial raster found for epoch: {epoch_key}')
+
+    return stats_sets
 
 
 def create_spatial_view(rsd_gpkg: str, attribute_name: str) -> str:
@@ -550,6 +567,8 @@ def main():
     parser = argparse.ArgumentParser(description='Riverscapes Context Tool for New Zealand')
     parser.add_argument('watershed_id', help='Watershed/HUC identifier', type=int)
     parser.add_argument('vbet_project_xml', help='Path to VBET project XML file.', type=str)
+    parser.add_argument('thresholds', help='Comma-separated list of thresholds to process (e.g. 0.68,0.95)', type=str)
+    parser.add_argument('epochs', help='Comma-separated list of epochs to process (e.g. 1,5,30)', type=str)
     parser.add_argument('raster_folder', help='Path to the folder containing the river dynamics raster files', type=str)
     parser.add_argument('output_dir', help='Path to the output folder', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
@@ -563,9 +582,14 @@ def main():
     log.info(f'Model Version: {__version__}')
     log.info(f'EPSG: {cfg.OUTPUT_EPSG}')
     log.info(f'Output folder: {args.output_dir}')
+    log.info(f'Thresholds: {args.thresholds}')
+    log.info(f'Epochs: {args.epochs}')
+
+    thresholds_list = [float(x) for x in args.thresholds.split(',')]
+    epochs_list = [int(x) for x in args.epochs.split(',')]
 
     try:
-        rsdynamics(args.watershed_id, args.vbet_project_xml, args.raster_folder, args.output_dir)
+        rsdynamics(args.watershed_id, args.vbet_project_xml, thresholds_list, epochs_list, args.raster_folder, args.output_dir)
     except Exception as e:
         log.error(e)
         traceback.print_exc(file=sys.stdout)
