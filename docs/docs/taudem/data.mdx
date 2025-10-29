@@ -9,43 +9,43 @@ sidebar_position: 2
 
 ## Inputs
 
-|Feature Class|Description|Source|
-|---|---|---|
-|channel_area|polygon feature class representing the extent of channels|[Channel Area Tool](https://tools.riverscapes.net/channelarea/data/#CHANNEL_AREA)|
-|dem|Digital Elevation Model|[Riverscapes Context](https://tools.riverscapes.net/rscontext/data/#DEM)|
-|dem_hillshade|Hillshade raster derived from the DEM|[Riverscapes Context](https://tools.riverscapes.net/rscontext/data/#HILLSHADE)|
+|Layer|Data Type|Description|Source|
+|---|---|---|---|
+|channel_area|Geopackage Feature Class|polygon feature class representing the extent of channels|[Channel Area Tool](https://tools.riverscapes.net/channelarea/data/#CHANNEL_AREA)|
+|dem|Digital Elevation Model|GeoTiff|[Riverscapes Context](https://tools.riverscapes.net/rscontext/data/#DEM)|
+|dem_hillshade|GeoTiff|Hillshade raster derived from the DEM|[Riverscapes Context](https://tools.riverscapes.net/rscontext/data/#HILLSHADE)|
 
 
 ## Data Layers Produced by TauDEM
 
 ### Intermediates
 
-<h3><a name="PITFILL">Pit Filled DEM</a></h3>
+<h4><a name="PITFILL">Pit Filled DEM</a></h4>
 
 The input DEM with the TauDEM Pit Remove algorithm applied to it.
 
-<h3><a name="DINFFLOWDIR_ANG">D-infinity Flow Direction Raster</a></h3>
+<h4><a name="DINFFLOWDIR_ANG">D-infinity Flow Direction Raster</a></h4>
 
 Flow direction raster produced by applying the TauDEM D-infinity Flow Directions algorithm to the pit filled DEM.
 
-<h3><a name="RASTERIZED_CHANNEL">Rasterized Channel</a></h3>
+<h4><a name="RASTERIZED_CHANNEL">Rasterized Channel</a></h4>
 
 The input channel polygon or line network converted to a raster where the channel cells have the value 1 and all other cells have the value 0.
 
-<h3><a name="DINFFLOWDIR_SLP">D-infinity Slope Raster</a></h3>
+<h4><a name="DINFFLOWDIR_SLP">D-infinity Slope Raster</a></h4>
 
 Slope raster produced by applying the TauDEM D-infinity Flow Directions algorithm to the pit filled DEM.
 
-<h3><a name="AREADINF_SCA">D-infinity Specific Catchment Area Raster</a></h3>
+<h4><a name="AREADINF_SCA">D-infinity Specific Catchment Area Raster</a></h4>
 
 A raster of specific catchment area produced by applying the TauDEM algorithm to the D-infinity flow direction raster.
 
 ### Outputs 
 
-<h3><a name="HAND_RASTER">Height Above Nearest Drainage Raster</a></h3>
+<h4><a name="HAND_RASTER">Height Above Nearest Drainage Raster</a></h4>
 
 A raster where each pixel value is the height above the nearest drainage area, produced using the D-infinity Distance Down TauDEM algorithm.
 
-<h3><a name="TWI_RASTER">Topographic Wetness Index Raster</a></h3>
+<h4><a name="TWI_RASTER">Topographic Wetness Index Raster</a></h4>
 
 A raster of Topographic Wetness Index produced using TauDEM's application of the algorithm.
