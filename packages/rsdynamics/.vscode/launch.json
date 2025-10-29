@@ -23,6 +23,8 @@
       "args": [
         "${input:WatershedHydroID}",
         "/Users/philipbailey/GISData/nz/vbet/${input:WatershedHydroID}/project.rs.xml",
+        "0.68,0.95", // thresholds
+        "30", // epochs 1,5, 30
         "/Users/philipbailey/GISData/nz/rodrigo_output/output2",
         "/Users/philipbailey/GISData/nz/rsdynamics",
         "--verbose"
