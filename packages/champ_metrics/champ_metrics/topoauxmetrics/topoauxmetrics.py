@@ -1,4 +1,4 @@
-from champ_metrics.lib.loghelper import Logger
+from rscommons import Logger
 from champ_metrics.lib.exception import MissingException
 from champ_metrics.lib.metricxmloutput import writeMetricsToXML
 from champ_metrics.lib.metricxmloutput import integrateMetricDictionary

@@ -1,4 +1,5 @@
-from .loghelper import Logger
+from rscommons import Logger
+
 
 class DataException(Exception):
 
@@ -9,6 +10,7 @@ class DataException(Exception):
         logg = Logger('DataException')
         logg.error(message)
 
+
 class NetworkException(Exception):
 
     def __init__(self, message):
@@ -18,6 +20,7 @@ class NetworkException(Exception):
 
         logg = Logger('NetworkException')
         logg.error(message)
+
 
 class MissingException(Exception):
 
