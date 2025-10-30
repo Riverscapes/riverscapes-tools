@@ -1,5 +1,5 @@
-from champmetrics.lib.loghelper import Logger
 import numpy as np
+from rscommons import Logger
 
 
 largeWoodVolumeEstimatesDict = {
@@ -47,7 +47,7 @@ woodyDebrisJamVolumeEstimatesDict = {
 
 
 def visitLWDMetrics(visitMetrics, visitobj):
-    visit  = visitobj['visit']
+    visit = visitobj['visit']
     channelUnits = visitobj['channelUnits']
     largeWoodyPieces = visitobj['largeWoodyPieces']
     largeWoodyDebris = visitobj['largeWoodyDebris']
@@ -83,8 +83,6 @@ def visitLWDMetrics(visitMetrics, visitobj):
         visitMetrics["LargeWoodyPiecesCount"] = None
 
 
-
-
 def visitLargeWoodVolumeForTier1AndWetted(visitMetrics, visit, channelUnits, largeWoodyPieces, largeWoodyDebris, woodyDebrisJams, jamHasChannelUnits, tier1, metricName, isWet):
 
     channelUnitIDs = filterChannelUnitsToTier1Type(channelUnits, tier1, True)
@@ -95,14 +93,12 @@ def visitLargeWoodVolumeForTier1AndWetted(visitMetrics, visit, channelUnits, lar
     visitMetrics[metricName] = volume
 
 
-
 def visitLargeWoodVolumeBySite(visitMetrics, visit, largeWoodyPieces, largeWoodyDebris, woodyDebrisJams, jamHasChannelUnits, metricName, isWet):
 
     vols = getDebrisVolumeForVisitAndChannelUnits(visit, None, isWet, largeWoodyPieces, largeWoodyDebris, woodyDebrisJams, jamHasChannelUnits)
     volume = np.sum(vols)
 
     visitMetrics[metricName] = volume
-
 
 
 def visitLWDVolumeStdDev(visitMetrics, visit, channelUnits, largeWoodyPieces, largeWoodyDebris, woodyDebrisJams, jamHasChannelUnits, tier1, metricName, isWet):
@@ -125,13 +121,12 @@ def visitLWDVolumeStdDev(visitMetrics, visit, channelUnits, largeWoodyPieces, la
         visitMetrics[metricName] = None
 
 
-
 def filterChannelUnitsToTier1Type(channelUnits, tier1Type, excludeOffChannel):
     if channelUnits is None:
         return []
 
     # filter channel units without channel unit id set
-    cus = [c for c in channelUnits["values"] if c["value"]["ChannelUnitID"] is not None]
+    cus = [c for c in channelUnits["value"] if c["value"]["ChannelUnitID"] is not None]
     # filter out off channels
     if excludeOffChannel:
         cus = [c for c in cus if c["value"]["Tier2"] != "Off Channel"]
@@ -140,8 +135,6 @@ def filterChannelUnitsToTier1Type(channelUnits, tier1Type, excludeOffChannel):
         cus = [c for c in cus if c["value"]["Tier1"] == tier1Type]
 
     return [c["value"]["ChannelUnitID"] for c in cus]
-
-
 
 
 def getDebrisVolumeForVisitAndChannelUnits(visit, channelUnitIDs, isWet, largeWoodyPieces, largeWoodyDebris, woodyDebrisJams, jamHasChannelUnits):
@@ -174,7 +167,7 @@ def getDebrisVolumeForVisitAndChannelUnits_2013Backwards(channelUnitIDs, isWet, 
         return []
 
     # filter large woody debris to one's with cuIDs
-    debris = [p for p in largeWoodyDebris["values"] if p["value"]["ChannelUnitID"] is not None]
+    debris = [p for p in largeWoodyDebris["value"] if p["value"]["ChannelUnitID"] is not None]
 
     # filter to id's that are passed in
     if channelUnitIDs is not None:
@@ -191,9 +184,9 @@ def getDebrisVolumeForVisitAndChannelUnits_2013Backwards(channelUnitIDs, isWet, 
         return volumes
 
     # filter jams to wet
-    jams = [j for j in woodyDebrisJams["values"]]
+    jams = [j for j in woodyDebrisJams["value"]]
     if isWet:
-        jams = [j for j in jams if j["value"]["IsDry"] is None or not j["value"]["IsDry"] ]
+        jams = [j for j in jams if j["value"]["IsDry"] is None or not j["value"]["IsDry"]]
 
     # filter jam has channel units to passed in channel units
     jamUnits = [j for j in jamHasChannelUnits["values"] if j["value"]["ProportionOfJam"] is not None and j["value"]["ChannelUnitID"] is not None]
@@ -202,7 +195,7 @@ def getDebrisVolumeForVisitAndChannelUnits_2013Backwards(channelUnitIDs, isWet, 
 
     # match jam to jam has channel unit and compute volume and add to volume array
     for ju in jamUnits:
-        jam = next((j for j in jams if j["value"]["WoodyDebrisJamID"] == ju["value"]["WoodyDebrisJamID"]), None) #FirstOrDefault
+        jam = next((j for j in jams if j["value"]["WoodyDebrisJamID"] == ju["value"]["WoodyDebrisJamID"]), None)  # FirstOrDefault
         volumes.append(volumeEstimates(jam, woodyDebrisJamVolumeEstimatesDict) * ju["value"]["ProportionOfJam"] / 100)
 
     return volumes
@@ -221,8 +214,6 @@ def volumeEstimates(measurement, volumeEstimatesDict):
             result = result + volEst * measVal
 
     return result
-
-
 
 
 def channelUnitLWDMetrics(channelUnitMetrics, visitobj):

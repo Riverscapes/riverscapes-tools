@@ -1,7 +1,7 @@
-from champmetrics.lib.loghelper import Logger
-
 import datetime
 import numpy as np
+from rscommons import Logger
+
 
 def visitReachMetrics(visitMetrics, visitobj):
     visit = visitobj['visit']
@@ -209,7 +209,6 @@ def driftBiomassDensity(visitMetrics, driftInverts, driftInvertResults, sampleBi
     if any([v is None for v in volumes]):
         log.warning("VolumeSampled contains 'None'")
 
-
     sumVolumeSampled = np.sum([v for v in volumes if v is not None])
     sampleResult = next((i for i in driftInvertResults["values"]))
     sumSampleBiomass = np.sum([s["value"]["DryMassGrams"] / sampleResult["value"]["PortionOfSampleSorted"]
@@ -233,7 +232,7 @@ def totalUndercutArea(visitMetrics, visit, undercutBanks):
 
 
 def totalUndercutVolume(visitMetrics, visit, undercutBanks):
-    if visit["iterationID"] != 2 or undercutBanks is None: # only 2012
+    if visit["iterationID"] != 2 or undercutBanks is None:  # only 2012
         visitMetrics["TotalUndercutVolume"] = None
         return
 
@@ -304,7 +303,6 @@ def siteDischarge(visitMetrics, discharge):
         visitMetrics["SiteDischarge"] = None
 
 
-
 def poolTailFinesPctObservationsLessThan2mm(visitMetrics, visit, poolTailFines):
     if poolTailFines is None:
         visitMetrics["PercentOfObservationsLessThan2mm"] = None
@@ -353,6 +351,7 @@ def poolTailFinesPctObservationsLessThan2mm_2012(poolTailFines):
     if len([len(x) > 0 for x in [fineMeas1, fineMeas2, fineMeas3]]) > 1:
         return np.mean(percents) * 100
     return None
+
 
 def poolTailFinesPctObservationsLessThan2mm_2011(poolTailFines):
     nonSelected = -99

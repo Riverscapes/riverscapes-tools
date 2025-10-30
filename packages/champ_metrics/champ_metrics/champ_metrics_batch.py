@@ -11,7 +11,7 @@ import xml.etree.ElementTree as ET
 
 from rscommons import Logger, dotenv
 from rscommons.util import safe_makedirs
-from champ_metrics.champ_metrics import champ_metrics
+from champ_metrics.run_topo_metrics import champ_metrics
 from champ_metrics.load_project_guids_from_csv import load_project_guids_from_csv
 
 
