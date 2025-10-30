@@ -13,7 +13,7 @@ from xml.etree import ElementTree as ET
 import matplotlib.pyplot as plt
 from rsxml import Logger, dotenv
 from rscommons import RSReport
-from rscommons.util import safe_makedirs
+from rsxml.util import safe_makedirs
 from rscommons.plotting import pie, horizontal_bar
 from rme.__version__ import __version__
 

@@ -1,7 +1,6 @@
-from typing import List, Dict, Tuple
+from typing import List, Tuple
 import os
 import sys
-import copy
 import argparse
 import sqlite3
 import json
@@ -12,9 +11,9 @@ from shapely.geometry import shape
 import matplotlib.pyplot as plt
 from osgeo import ogr
 from rscommons import RSReport
-from rsxml import Logger, dotenv
-from rscommons.util import safe_makedirs
 from rscommons.plotting import pie, horizontal_bar
+from rsxml import Logger, dotenv
+from rsxml.util import safe_makedirs
 from rme.__version__ import __version__
 
 

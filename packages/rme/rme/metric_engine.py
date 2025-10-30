@@ -17,14 +17,13 @@ import time
 import argparse
 import traceback
 from collections import Counter
-import time
 
 from osgeo import ogr
 from osgeo import gdal
 import rasterio
 
-from rscommons import GeopackageLayer, initGDALOGRErrors, ModelConfig, RSLayer, RSMeta, RSMetaTypes, RSProject, VectorBase
 from rsxml import dotenv, Logger, ProgressBar
+from rscommons import GeopackageLayer, initGDALOGRErrors, ModelConfig, RSLayer, RSMeta, RSMetaTypes, RSProject, VectorBase
 from rscommons.classes.vector_base import get_utm_zone_epsg
 from rscommons.util import parse_metadata, pretty_duration
 from rscommons.database import load_lookup_data
@@ -36,7 +35,7 @@ from rscommons.moving_window import moving_window_dgo_ids
 
 from rme.__version__ import __version__
 from rme.analysis_window import AnalysisLine
-from rme.rme_report import RMEReport, FILTER_NAMES
+# from rme.rme_report import RMEReport, FILTER_NAMES
 from rme.utils.measurements import get_segment_measurements
 from rme.utils.check_vbet_inputs import vbet_inputs
 from rme.utils.summarize_functions import *

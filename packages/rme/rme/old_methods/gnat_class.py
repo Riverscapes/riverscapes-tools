@@ -4,7 +4,7 @@ import sqlite3
 import ogr
 
 from rscommons import GeopackageLayer
-from rscommons.util import safe_makedirs, safe_remove_dir, parse_metadata
+from rsxml.util import safe_makedirs, safe_remove_dir, parse_metadata
 from rscommons.database import load_lookup_data
 
 

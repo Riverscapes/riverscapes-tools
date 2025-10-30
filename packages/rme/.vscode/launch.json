@@ -25,6 +25,9 @@
       "request": "launch",
       "module": "rme.metric_engine",
       "console": "integratedTerminal",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+      },         
       // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
       "args": [
         "${input:HUC}",
@@ -72,6 +75,9 @@
       "request": "launch",
       "module": "rme.rme_metrics",
       "console": "integratedTerminal",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+      },         
       "args": [
         "{env:DATA_ROOT}/rme/${input:HUC}",
         "{env:DATA_ROOT}/brat/${input:HUC}",
@@ -85,6 +91,9 @@
       "request": "launch",
       "module": "rme.wsca_report",
       "console": "integratedTerminal",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+      },         
       "args": [
         "${input:HUC}",
         "{env:DATA_ROOT}",
@@ -98,6 +107,9 @@
       "request": "launch",
       "module": "rme.lha_report",
       "console": "integratedTerminal",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+      },         
       "args": [
         "/workspaces/data/riverscapes_metrics.gpkg",
         "{env:DATA_ROOT}",
@@ -109,6 +121,9 @@
       "name": "Version Bump",
       "type": "debugpy",
       "module": "rscommons.version",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+      },         
       "args": [
         "${workspaceFolder}/rme/__version__.py"
       ],
@@ -121,6 +136,9 @@
       "request": "launch",
       "module": "rme.confinement",
       "console": "integratedTerminal",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+      },         
       // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
       "args": [
         "${input:HUC}",
@@ -144,6 +162,9 @@
       "request": "launch",
       "module": "rme.confinement",
       "console": "integratedTerminal",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+      },         
       // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
       "args": [
         "${input:HUC}",
@@ -168,6 +189,9 @@
       "request": "launch",
       "module": "rme.utils.hypsometric_curve",
       "console": "integratedTerminal",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+      },         
       "args": [
         "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhdplushr.gpkg",
         "WBDHU10",
@@ -181,6 +205,9 @@
       "request": "launch",
       "module": "rme.utils.blm_charts",
       "console": "integratedTerminal",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+      },         
       "args": [
         "{env:DATA_ROOT}/rs_context/${input:HUC}",
         "{env:DATA_ROOT}/vbet/${input:HUC}",
@@ -197,6 +224,9 @@
       "request": "launch",
       "module": "rme.confinement_rs",
       "console": "integratedTerminal",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+      },         
       "args": [
         "{env:DATA_ROOT}/confinement/${input:HUC}/project.rs.xml",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/vbet/${input:HUC}/project.rs.xml"
@@ -208,6 +238,9 @@
       "request": "launch",
       "module": "rme.rme_rs",
       "console": "integratedTerminal",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+      },         
       "args": [
         "{env:DATA_ROOT}/rme/${input:HUC}/project.rs.xml",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/vbet/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/confinement/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/hydro/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/anthro/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/rcat/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/brat/${input:HUC}/project.rs.xml"

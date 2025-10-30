@@ -6,19 +6,14 @@ This is the next version of the Watershed Health Condition Assessment Report (WH
 from typing import List, Dict, Tuple
 import os
 import sys
-import copy
 import argparse
 import sqlite3
 import json
-from collections import defaultdict
 from xml.etree import ElementTree as ET
-import numpy as np
-from shapely.geometry import shape
 import matplotlib.pyplot as plt
-from osgeo import ogr
 from rsxml import Logger, dotenv
+from rsxml.util import safe_makedirs
 from rscommons import RSReport
-from rscommons.util import safe_makedirs
 from rscommons.plotting import pie, horizontal_bar
 from rme.__version__ import __version__
 

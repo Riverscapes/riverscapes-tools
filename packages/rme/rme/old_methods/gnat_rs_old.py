@@ -21,7 +21,7 @@
 # from osgeo import gdal
 
 # from rscommons import Logger, RSProject, RSLayer, ModelConfig, dotenv, initGDALOGRErrors
-# from rscommons.util import safe_makedirs, safe_remove_dir, parse_metadata
+# from rsxml.util import safe_makedirs, safe_remove_dir, parse_metadata
 # from rscommons import GeopackageLayer
 # from rscommons.database import load_lookup_data
 
