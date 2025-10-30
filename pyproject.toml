@@ -35,7 +35,7 @@ dependencies = [
     "sympy>=1.13.3",
     "termcolor>=2.4",
     "urllib3>=2.2",
-    "rsxml>=2.0.6",
+    "rsxml>=2.1.0",
 ]
 
 [tool.setuptools.packages.find]

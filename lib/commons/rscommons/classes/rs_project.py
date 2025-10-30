@@ -615,8 +615,11 @@ class RSProject:
             in_prj = RSProject(None, in_prj_path)
 
             proj_type = in_prj.XMLBuilder.find('ProjectType').text
-            warehouse_id = in_prj.XMLBuilder.find('Warehouse').attrib['id']
-            apiurl = in_prj.XMLBuilder.find('Warehouse').attrib['apiUrl']
+            warehouse_node = in_prj.XMLBuilder.find('Warehouse')
+            if warehouse_node is None:
+                continue
+            warehouse_id = warehouse_node.attrib.get('id', None)
+            apiurl = warehouse_node.attrib.get('apiUrl', None)
             if 'staging' in apiurl:
                 apipath = 'https://staging.data.riverscapes.net/p/'
             else:
