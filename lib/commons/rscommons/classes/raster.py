@@ -9,6 +9,7 @@ from rsxml import Logger
 
 
 class Raster:
+    """Class to hold raster data and metadata"""
 
     def __init__(self, sfilename):
         self.filename = sfilename
@@ -18,10 +19,11 @@ class Raster:
             if (path.isfile(self.filename)):
                 src_ds = gdal.Open(self.filename)
             else:
-                self.log.error('Missing file: {}'.format(self.filename))
-                raise Exception('Could not find raster file: {}'.format(path.basename(self.filename)))
+                self.log.error(f'Missing file: {self.filename}')
+                raise Exception(f'Could not find raster file: {path.basename(self.filename)}')
         except RuntimeError as e:
-            raise Exception('Raster file exists but has problems: {}'.format(path.basename(self.filename)))
+            self.log.debug(str(e))
+            raise Exception(f'Raster file exists but has problems: {path.basename(self.filename)}')
 
         try:
             # Read Raster Properties

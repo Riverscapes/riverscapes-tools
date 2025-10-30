@@ -23,7 +23,7 @@ class TempGISFile():
 
     def __init__(self, suffix: str, prefix: str = None):
         self.suffix = suffix
-        self.prefix = 'rstools_{}'.format(prefix)
+        self.prefix = f'rstools_{prefix}'
         self.filepath = None
         self.file = None
 
@@ -41,14 +41,18 @@ class TempGISFile():
         try:
             os.remove(self.filepath)
         except Exception as e:
-            self.log.warning('Error cleaning up file: {} {}'.format(self.filepath, e))
+            self.log.warning(f'Error cleaning up file: {self.filepath} {e}')
 
 
 class TempRaster(TempGISFile):
+    """Temporary Raster File"""
+
     def __init__(self, prefix: str):
         super(TempRaster, self).__init__(suffix='.tiff', prefix=prefix)
 
 
 class TempGeopackage(TempGISFile):
+    """Temporary Geopackage File"""
+
     def __init__(self, prefix: str):
         super(TempGeopackage, self).__init__(suffix='.gpkg', prefix=prefix)

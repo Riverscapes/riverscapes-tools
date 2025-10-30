@@ -1,10 +1,10 @@
 import os
 import re
 from osgeo import ogr
+from rsxml.util import safe_makedirs
 from rscommons.national_map import get_nhdhr_url
 from rscommons.download import download_unzip
-from rscommons.filegdb import export_feature_class, copy_attributes, export_table
-from rsxml.util import safe_makedirs
+from rscommons.filegdb import export_feature_class, copy_attributes
 from rscommons.shapefile import get_geometry_union
 
 # NHDPlus HR Value Added Attributes (VAA) to be copied to the NHDFlowline feature class
@@ -27,11 +27,11 @@ def clean_nhd_data(huc, download_folder, unzip_folder, out_dir, out_epsg, force_
 
     # Export the watershed boundaries, using an attribute filter if desired HUC is smaller than the 4 digit download
     for digits in [2, 4, 6, 8, 10, 12]:
-        fclass = 'WBDHU{}'.format(digits)
+        fclass = f'WBDHU{digits}'
 
         # operator = 'LIKE' if digits > len(huc) else '='
         # wildcard = '%' if digits > len(huc) else ''
-        # attribute_filter = "HUC{} {} '{}{}'".format(digits, operator, huc[:digits], wildcard) if digits >= len(huc) else None
+        # attribute_filter = f"HUC{digits} {operator} '{huc[:digits]}{wildcard}'" if digits >= len(huc) else None
         if digits <= len(huc):
             attribute_filter = f"HUC{digits} = '{huc[:digits]}'"
         else:

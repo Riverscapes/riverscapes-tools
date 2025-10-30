@@ -24,6 +24,9 @@ def get_project_datasets(project_xml: str) -> list:
 
     # rasters
     ds = realization.find('Datasets')
+    cat_datasets = []
+    float_datasets = []
+    vector_datasets = []
     if ds:
         raster = ds.findall('Raster')
         if raster:

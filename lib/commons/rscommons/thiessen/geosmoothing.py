@@ -23,7 +23,7 @@
 import numpy as np
 from rsxml import Logger
 from scipy.interpolate import splprep, splev
-from shapely.geometry import LineString, Polygon, mapping, asShape, MultiPolygon
+from shapely.geometry import LineString, Polygon, MultiPolygon
 
 
 class GeoSmtBase(object):
@@ -90,6 +90,8 @@ class GeoSmoothing(GeoSmtBase):
         """
         Getting x,y coordinates from geometry...
         """
+        x = None
+        y = None
         if isinstance(geom, LineString):
             x = np.array(geom.coords.xy[0])
             y = np.array(geom.coords.xy[1])
@@ -103,6 +105,7 @@ class GeoSmoothing(GeoSmtBase):
     def __getGeomIp(self, coords_ip, geom):
         """
         """
+        geom_ip = None
         if isinstance(geom, LineString):
             geom_ip = LineString(coords_ip.T)
 
@@ -112,6 +115,10 @@ class GeoSmoothing(GeoSmtBase):
         return geom_ip
 
     def smooth(self, geom):
+        """
+        Run smoothing geometries
+        """
+        ext = None
         if isinstance(geom, LineString):
             return self.__smoothGeom(geom)
 

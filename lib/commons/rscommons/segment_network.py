@@ -74,15 +74,15 @@ def segment_network(inpath: str, outpath: str, interval: float, minimum: float, 
     if interval <= 0:
         log.info('Skipping segmentation.')
     else:
-        log.info('Segmenting network to {}m, with minimum feature length of {}m'.format(interval, minimum))
-        log.info('Segmenting network from {0}'.format(inpath))
+        log.info(f'Segmenting network to {interval}m, with minimum feature length of {minimum}m')
+        log.info(f'Segmenting network from {inpath}')
 
     # NOTE: Remember to always open the 'write' layer first in case it's the same geopackage
     with get_shp_or_gpkg(outpath, write=True) as out_lyr, get_shp_or_gpkg(inpath) as in_lyr:
         # Get the input NHD flow lines layer
         srs = in_lyr.spatial_ref
         feature_count = in_lyr.ogr_layer.GetFeatureCount()
-        log.info('Input feature count {:,}'.format(feature_count))
+        log.info(f'Input feature count {feature_count:,}')
 
         # Get the closest EPSG possible to calculate length
         extent_poly = ogr.Geometry(ogr.wkbPolygon)
@@ -109,7 +109,7 @@ def segment_network(inpath: str, outpath: str, interval: float, minimum: float, 
 
         # Omit pipelines with FCode 428**
         attribute_filter = 'FCode < 42800 OR FCode > 42899'
-        log.info('Filtering out pipelines ({})'.format(attribute_filter))
+        log.info(f'Filtering out pipelines ({attribute_filter})')
 
         for in_feature, _counter, _progbar in in_lyr.iterate_features("Loading Network", attribute_filter=attribute_filter):
             # Store relevant items as a tuple:
@@ -133,10 +133,10 @@ def segment_network(inpath: str, outpath: str, interval: float, minimum: float, 
         # Only merge them if they meet at a junction where no other lines meet.
         log.info('Merging simple features with the same GNIS name...')
         for name, features in named_features.items():
-            log.debug('   {} x{}'.format(name.encode('utf-8'), len(features)))
+            log.debug(f'   {name.encode("utf-8")} x{len(features)}')
             all_features.extend(features)
 
-        log.info('{:,} features after merging. Starting segmentation...'.format(len(all_features)))
+        log.info(f'{len(all_features):,} features after merging. Starting segmentation...')
 
         # Segment the features at the desired interval
         # rid = 0
@@ -205,7 +205,7 @@ def segment_network(inpath: str, outpath: str, interval: float, minimum: float, 
         out_lyr.ogr_layer.CommitTransaction()
         progbar.finish()
 
-        log.info(('{:,} features written to {:}'.format(out_lyr.ogr_layer.GetFeatureCount(), outpath)))
+        log.info(f'{out_lyr.ogr_layer.GetFeatureCount():,} features written to {outpath}')
         log.info('Process completed successfully.')
 
 

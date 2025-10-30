@@ -372,7 +372,7 @@ class RSProject:
         return abs_path[len(os.path.dirname(self.xml_path)) + 1:]
 
     def add_dataset(self, parent_node, abs_path_val: str, rs_lyr: RSLayer, default_tag: str, replace=False, rel_path=False, sublayer=False):
-
+        ds_id = rs_lyr.id
         xml_tag = rs_lyr.tag if rs_lyr.tag is not None else default_tag
         if not sublayer:
             ds_id = rs_lyr.id if replace else RSProject.unique_type_id(parent_node, xml_tag, rs_lyr.id)

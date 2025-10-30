@@ -30,7 +30,7 @@ def build_vrt(search_dir, vrt):
     log = Logger("Build VRT")
 
     if not os.path.isdir(search_dir):
-        raise Exception('Directory specified does not exist: {}'.format(search_dir))
+        raise Exception(f'Directory specified does not exist: {search_dir}')
 
     rasters = []
     for root, _sub_folder, files in os.walk(search_dir):
@@ -38,8 +38,8 @@ def build_vrt(search_dir, vrt):
             if item.endswith('.img') or item.endswith('.tif'):
                 rasters.append(os.path.join(root, item))
 
-    log.info('{} rasters found in {}'.format(len(rasters), search_dir))
-    log.info('Generating VRT file to {}'.format(vrt))
+    log.info(f'{len(rasters)} rasters found in {search_dir}')
+    log.info(f'Generating VRT file to {vrt}')
 
     gdal.BuildVRT(vrt, rasters)
 
