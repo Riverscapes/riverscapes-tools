@@ -58,10 +58,10 @@ def constrainingFeatureHeightAvg(visitMetrics, channelConstraints, channelConstr
         visitMetrics["ConstrainingFeatureHeightAvg"] = None
         return
 
-    constraintMeas = next((c for c in channelConstraints["values"]
+    constraintMeas = next((c for c in channelConstraints["value"]
                            if c["value"]["ConstrainingType"] == "Natural"), None)
     if constraintMeas is None:
-        constraintMeas = next((c for c in channelConstraints["values"]
+        constraintMeas = next((c for c in channelConstraints["value"]
                                if c["value"]["ConstrainingType"] == "Levee"), None)
 
     if constraintMeas is None or constraintMeas["value"]["ConstrainingFeatures"] == "No Constraining Features":
@@ -70,7 +70,7 @@ def constrainingFeatureHeightAvg(visitMetrics, channelConstraints, channelConstr
 
     constraintID = constraintMeas["value"]["ConstraintID"]
 
-    measValues = [m["value"]["ConstraintHeightCM"] for m in channelConstraintMeasurements["values"]
+    measValues = [m["value"]["ConstraintHeightCM"] for m in channelConstraintMeasurements["value"]
                   if m["value"]["ConstraintID"] == constraintID and m["value"]["ConstraintHeightCM"] is not None]
 
     if measValues.__len__() == 0:
@@ -84,13 +84,13 @@ def floodProneWidthMetersAverage(visitMetrics, channelConstraintMeasurements):
         visitMetrics["FloodProneWidthMetersAverage"] = None
         return
 
-    floodProne = [c["value"]["FloodProneWidthM"] for c in channelConstraintMeasurements["values"]
+    floodProne = [c["value"]["FloodProneWidthM"] for c in channelConstraintMeasurements["value"]
                   if c["value"]["FloodProneWidthM"] is not None]
     if floodProne.__len__() > 0:
         visitMetrics["FloodProneWidthMetersAverage"] = np.mean(floodProne)
         return
 
-    floodProneRemote = [c["value"]["FloodProneWidthRemoteM"] for c in channelConstraintMeasurements["values"]
+    floodProneRemote = [c["value"]["FloodProneWidthRemoteM"] for c in channelConstraintMeasurements["value"]
                         if c["value"]["FloodProneWidthRemoteM"] is not None]
     if floodProneRemote.__len__() > 0:
         visitMetrics["FloodProneWidthMetersAverage"] = np.mean(floodProneRemote)
@@ -104,13 +104,13 @@ def valleyWidth(visitMetrics, channelConstraints):
         visitMetrics["ValleyWidth"] = None
         return
 
-    naturalMeas = next((c for c in channelConstraints["values"] if c["value"]["ConstrainingType"] == "Natural"
+    naturalMeas = next((c for c in channelConstraints["value"] if c["value"]["ConstrainingType"] == "Natural"
                         and c["value"]["ValleyWidthM"] is not None), None)
     if naturalMeas is not None:
         visitMetrics["ValleyWidth"] = naturalMeas["value"]["ValleyWidthM"]
         return
 
-    leveeMeas = next((c for c in channelConstraints["values"] if c["value"]["ConstrainingType"] == "Levee"
+    leveeMeas = next((c for c in channelConstraints["value"] if c["value"]["ConstrainingType"] == "Levee"
                       and c["value"]["ValleyWidthM"] is not None), None)
     if leveeMeas is not None:
         visitMetrics["ValleyWidth"] = leveeMeas["value"]["ValleyWidthM"]
@@ -124,7 +124,7 @@ def constrainingFeatures(visitMetrics, channelConstraints):
         visitMetrics["ConstrainingFeatures"] = None
         return
 
-    visitMeas = next((c for c in channelConstraints["values"]), None)
+    visitMeas = next((c for c in channelConstraints["value"]), None)
 
     if visitMeas is None:
         visitMetrics["ConstrainingFeatures"] = None
@@ -137,9 +137,9 @@ def percentConstrained(visitMetrics, channelConstraints):
         visitMetrics["PercentConstrained"] = None
         return
 
-    constraintMeas = next((c for c in channelConstraints["values"] if c["value"]["ConstrainingType"] == "Natural"), None)
+    constraintMeas = next((c for c in channelConstraints["value"] if c["value"]["ConstrainingType"] == "Natural"), None)
     if constraintMeas is None:
-        constraintMeas = next((c for c in channelConstraints["values"] if c["value"]["ConstrainingType"] == "Levee"), None)
+        constraintMeas = next((c for c in channelConstraints["value"] if c["value"]["ConstrainingType"] == "Levee"), None)
 
     if constraintMeas is None or constraintMeas["value"]["ConstrainingFeatures"] == "No Constraining Features":
         visitMetrics["PercentConstrained"] = None
@@ -153,9 +153,9 @@ def channelPattern(visitMetrics, channelConstraints):
         visitMetrics["ChannelPattern"] = None
         return
 
-    constraintMeas = next((c for c in channelConstraints["values"] if c["value"]["ConstrainingType"] == "Natural"), None)
+    constraintMeas = next((c for c in channelConstraints["value"] if c["value"]["ConstrainingType"] == "Natural"), None)
     if constraintMeas is None:
-        constraintMeas = next((c for c in channelConstraints["values"] if c["value"]["ConstrainingType"] == "Levee"), None)
+        constraintMeas = next((c for c in channelConstraints["value"] if c["value"]["ConstrainingType"] == "Levee"), None)
 
     if constraintMeas is None:
         visitMetrics["ChannelPattern"] = None
@@ -169,7 +169,7 @@ def siteLength(visitMetrics, bankfullWidths):
         visitMetrics["SiteLength"] = None
         return
 
-    visitMeas = next((w for w in bankfullWidths["values"]), None)
+    visitMeas = next((w for w in bankfullWidths["value"]), None)
 
     if visitMeas is None:
         visitMetrics["SiteLength"] = None
@@ -182,7 +182,7 @@ def bankfullWidthAvg(visitMetrics, bankfullWidths):
         visitMetrics["BankfullWidthAvg"] = None
         return
 
-    visitMeas = next((w for w in bankfullWidths["values"]), None)
+    visitMeas = next((w for w in bankfullWidths["value"]), None)
 
     if visitMeas is None:
         visitMetrics["BankfullWidthAvg"] = None
@@ -192,11 +192,11 @@ def bankfullWidthAvg(visitMetrics, bankfullWidths):
 
 def driftBiomassDensity(visitMetrics, driftInverts, driftInvertResults, sampleBiomasses):
     log = Logger("driftBiomassDensity")
-    if driftInverts is None or driftInverts["values"].__len__() == 0:
+    if driftInverts is None or driftInverts["value"].__len__() == 0:
         visitMetrics["DriftBiomassDensity"] = None
         return
 
-    if driftInvertResults is None or driftInvertResults["values"].__len__() == 0:
+    if driftInvertResults is None or driftInvertResults["value"].__len__() == 0:
         visitMetrics["DriftBiomassDensity"] = None
         return
 
@@ -204,15 +204,15 @@ def driftBiomassDensity(visitMetrics, driftInverts, driftInvertResults, sampleBi
         visitMetrics["DriftBiomassDensity"] = None
         return
 
-    volumes = [s["value"]["VolumeSampled"] for s in driftInverts["values"]]
+    volumes = [s["value"]["VolumeSampled"] for s in driftInverts["value"]]
 
     if any([v is None for v in volumes]):
         log.warning("VolumeSampled contains 'None'")
 
     sumVolumeSampled = np.sum([v for v in volumes if v is not None])
-    sampleResult = next((i for i in driftInvertResults["values"]))
+    sampleResult = next((i for i in driftInvertResults["value"]))
     sumSampleBiomass = np.sum([s["value"]["DryMassGrams"] / sampleResult["value"]["PortionOfSampleSorted"]
-                               for s in sampleBiomasses["values"]])
+                               for s in sampleBiomasses["value"]])
 
     visitMetrics["DriftBiomassDensity"] = None
 
@@ -226,7 +226,7 @@ def totalUndercutArea(visitMetrics, visit, undercutBanks):
         return
 
     areas = [(b["value"]["EstimatedUndercutArea"] if b["value"]["EstimatedUndercutArea"] is not None else 0)
-             for b in undercutBanks["values"]]
+             for b in undercutBanks["value"]]
 
     visitMetrics["TotalUndercutArea"] = np.sum(areas)
 
@@ -239,7 +239,7 @@ def totalUndercutVolume(visitMetrics, visit, undercutBanks):
     volumes = [(b["value"]["EstimatedLength"] if b["value"]["EstimatedLength"] is not None else 0)
                * (b["value"]["MidpointWidth"] if b["value"]["MidpointWidth"] is not None else 0)
                * (b["value"]["MidpointDepth"] if b["value"]["MidpointDepth"] is not None else 0)
-               for b in undercutBanks["values"]]
+               for b in undercutBanks["value"]]
 
     visitMetrics["TotalUndercutVolume"] = np.sum(volumes)
 
@@ -249,7 +249,7 @@ def siteMeasurementOfConductivity(visitMetrics, waterChemistry):
         visitMetrics["SiteMeasurementOfConductivity"] = None
         return
 
-    visitMeas = next((w for w in waterChemistry["values"] if w["value"]["Conductivity"] is not None), None)
+    visitMeas = next((w for w in waterChemistry["value"] if w["value"]["Conductivity"] is not None), None)
 
     if visitMeas is None:
         visitMetrics["SiteMeasurementOfConductivity"] = None
@@ -262,7 +262,7 @@ def siteMeasurementOfAlkalinity(visitMetrics, waterChemistry):
         visitMetrics["SiteMeasurementOfAlkalinity"] = None
         return
 
-    visitMeas = next((w for w in waterChemistry["values"] if w["value"]["TotalAlkalinity"] is not None), None)
+    visitMeas = next((w for w in waterChemistry["value"] if w["value"]["TotalAlkalinity"] is not None), None)
 
     if visitMeas is None:
         visitMetrics["SiteMeasurementOfAlkalinity"] = None
@@ -275,7 +275,7 @@ def solarAccessSummerAvg(visitMetrics, visit, solarInputMeasurements):
         visitMetrics["SolarAccessSummerAvg"] = None
         return
 
-    measWithValues = [m for m in solarInputMeasurements["values"] if m["value"]["SolarAccessDate"] is not None
+    measWithValues = [m for m in solarInputMeasurements["value"] if m["value"]["SolarAccessDate"] is not None
                       and m["value"]["SolarAccessValue"] is not None]
     summerAccessValues = [m["value"]["SolarAccessValue"] for m in measWithValues
                           if datetime.datetime.strptime(m["value"]["SolarAccessDate"], "%Y-%m-%dT%H:%M:%S").month >= 7
@@ -295,7 +295,7 @@ def siteDischarge(visitMetrics, discharge):
     discharges = [(d["value"]["StationWidth"] if d["value"]["StationWidth"] is not None else 0)
                   * (d["value"]["Depth"] if d["value"]["Depth"] is not None else 0)
                   * (d["value"]["Velocity"] if d["value"]["Velocity"] is not None else 0)
-                  for d in discharge["values"]]
+                  for d in discharge["value"]]
 
     if discharges.__len__() > 0:
         visitMetrics["SiteDischarge"] = np.sum(discharges)
@@ -318,15 +318,15 @@ def poolTailFinesPctObservationsLessThan2mm_2012(poolTailFines):
     nonSelected = -99
     magicNum = 50
 
-    fineMeas1 = [f for f in poolTailFines["values"] if f["value"]["Grid1Lessthan2mm"] is not None
+    fineMeas1 = [f for f in poolTailFines["value"] if f["value"]["Grid1Lessthan2mm"] is not None
                  and f["value"]["Grid1NonMeasureable"] is not None
                  and (f["value"]["Grid1Lessthan2mm"] + f["value"]["Grid1NonMeasureable"]) <= magicNum]
 
-    fineMeas2 = [f for f in poolTailFines["values"] if f["value"]["Grid2Lessthan2mm"] is not None
+    fineMeas2 = [f for f in poolTailFines["value"] if f["value"]["Grid2Lessthan2mm"] is not None
                  and f["value"]["Grid2NonMeasureable"] is not None
                  and (f["value"]["Grid2Lessthan2mm"] + f["value"]["Grid2NonMeasureable"]) <= magicNum]
 
-    fineMeas3 = [f for f in poolTailFines["values"] if f["value"]["Grid3Lessthan2mm"] is not None
+    fineMeas3 = [f for f in poolTailFines["value"] if f["value"]["Grid3Lessthan2mm"] is not None
                  and f["value"]["Grid3NonMeasureable"] is not None
                  and (f["value"]["Grid3Lessthan2mm"] + f["value"]["Grid3NonMeasureable"]) <= magicNum]
 
@@ -357,19 +357,19 @@ def poolTailFinesPctObservationsLessThan2mm_2011(poolTailFines):
     nonSelected = -99
     magicNum = 50
 
-    fineMeas1 = [f for f in poolTailFines["values"] if f["value"]["Grid1Lessthan2mm"] is not None
+    fineMeas1 = [f for f in poolTailFines["value"] if f["value"]["Grid1Lessthan2mm"] is not None
                  and f["value"]["Grid1Lessthan6mm"] is not None
                  and f["value"]["Grid1NonMeasureable"] is not None
                  and f["value"]["Grid1Lessthan2mm"] <= f["value"]["Grid1Lessthan6mm"]
                  and (f["value"]["Grid1Lessthan2mm"] + f["value"]["Grid1NonMeasureable"]) <= magicNum]
 
-    fineMeas2 = [f for f in poolTailFines["values"] if f["value"]["Grid2Lessthan2mm"] is not None
+    fineMeas2 = [f for f in poolTailFines["value"] if f["value"]["Grid2Lessthan2mm"] is not None
                  and f["value"]["Grid2Lessthan6mm"] is not None
                  and f["value"]["Grid2NonMeasureable"] is not None
                  and f["value"]["Grid2Lessthan2mm"] <= f["value"]["Grid2Lessthan6mm"]
                  and (f["value"]["Grid2Lessthan2mm"] + f["value"]["Grid2NonMeasureable"]) <= magicNum]
 
-    fineMeas3 = [f for f in poolTailFines["values"] if f["value"]["Grid3Lessthan2mm"] is not None
+    fineMeas3 = [f for f in poolTailFines["value"] if f["value"]["Grid3Lessthan2mm"] is not None
                  and f["value"]["Grid3Lessthan6mm"] is not None
                  and f["value"]["Grid3NonMeasureable"] is not None
                  and f["value"]["Grid3Lessthan2mm"] <= f["value"]["Grid3Lessthan6mm"]
@@ -412,15 +412,15 @@ def poolTailFinesPctObservationsLessThan6mm(visitMetrics, visit, poolTailFines):
 def poolTailFinesPctObservationsLessThan6mm_2012(poolTailFines):
     magicNum = 50
 
-    fineMeas1 = [f for f in poolTailFines["values"] if f["value"]["Grid1Lessthan2mm"] is not None
+    fineMeas1 = [f for f in poolTailFines["value"] if f["value"]["Grid1Lessthan2mm"] is not None
                  and f["value"]["Grid1NonMeasureable"] is not None
                  and f["value"]["Grid1Btwn2and6mm"] is not None]
 
-    fineMeas2 = [f for f in poolTailFines["values"] if f["value"]["Grid2Lessthan2mm"] is not None
+    fineMeas2 = [f for f in poolTailFines["value"] if f["value"]["Grid2Lessthan2mm"] is not None
                  and f["value"]["Grid2NonMeasureable"] is not None
                  and f["value"]["Grid2Btwn2and6mm"] is not None]
 
-    fineMeas3 = [f for f in poolTailFines["values"] if f["value"]["Grid3Lessthan2mm"] is not None
+    fineMeas3 = [f for f in poolTailFines["value"] if f["value"]["Grid3Lessthan2mm"] is not None
                  and f["value"]["Grid3NonMeasureable"] is not None
                  and f["value"]["Grid3Btwn2and6mm"] is not None]
 
@@ -448,19 +448,19 @@ def poolTailFinesPctObservationsLessThan6mm_2011(poolTailFines):
     nonSelected = -99
     magicNum = 50
 
-    fineMeas1 = [f for f in poolTailFines["values"] if f["value"]["Grid1Lessthan2mm"] is not None
+    fineMeas1 = [f for f in poolTailFines["value"] if f["value"]["Grid1Lessthan2mm"] is not None
                  and f["value"]["Grid1Lessthan6mm"] is not None
                  and f["value"]["Grid1NonMeasureable"] is not None
                  and f["value"]["Grid1Lessthan2mm"] <= f["value"]["Grid1Lessthan6mm"]
                  and (f["value"]["Grid1Lessthan6mm"] + f["value"]["Grid1NonMeasureable"]) <= magicNum]
 
-    fineMeas2 = [f for f in poolTailFines["values"] if f["value"]["Grid2Lessthan2mm"] is not None
+    fineMeas2 = [f for f in poolTailFines["value"] if f["value"]["Grid2Lessthan2mm"] is not None
                  and f["value"]["Grid2Lessthan6mm"] is not None
                  and f["value"]["Grid2NonMeasureable"] is not None
                  and f["value"]["Grid2Lessthan2mm"] <= f["value"]["Grid2Lessthan6mm"]
                  and (f["value"]["Grid2Lessthan6mm"] + f["value"]["Grid2NonMeasureable"]) <= magicNum]
 
-    fineMeas3 = [f for f in poolTailFines["values"] if f["value"]["Grid3Lessthan2mm"] is not None
+    fineMeas3 = [f for f in poolTailFines["value"] if f["value"]["Grid3Lessthan2mm"] is not None
                  and f["value"]["Grid3Lessthan6mm"] is not None
                  and f["value"]["Grid3NonMeasureable"] is not None
                  and f["value"]["Grid3Lessthan2mm"] <= f["value"]["Grid3Lessthan6mm"]

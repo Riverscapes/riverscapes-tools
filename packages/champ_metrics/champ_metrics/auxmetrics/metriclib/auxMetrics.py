@@ -31,7 +31,7 @@ def calculateMetricsForChannelUnitSummary(visitobj):
     # create the channel unit summary metric rows with the channel unit id
 
     if channelUnits is not None:
-        for c in channelUnits["values"]:
+        for c in channelUnits["value"]:
             cu = dict()
             cu["ChannelUnitID"] = c["value"]["ChannelUnitID"]
             cu["ChannelUnitNumber"] = c["value"]["ChannelUnitNumber"]
@@ -52,7 +52,7 @@ def calculateMetricsForTier1Summary(visitobj):
     tier1Metrics = []
     # create the tier 1 summary metric rows with the correct tier 1
     if channelUnits is not None:
-        tier1s = [t["value"]["Tier1"] for t in channelUnits["values"]]
+        tier1s = [t["value"]["Tier1"] for t in channelUnits["value"]]
         tier1s = list(set(tier1s))  # this is a quick distinct
 
         for c in tier1s:
@@ -83,11 +83,11 @@ def calculateMetricsForStructureSummary(visitobj):
     structures = []
 
     if snorkelFish is not None:
-        structures.extend([t["value"]["HabitatStructure"] for t in snorkelFish["values"]])
+        structures.extend([t["value"]["HabitatStructure"] for t in snorkelFish["value"]])
     if snorkelFishBinned is not None:
-        structures.extend([t["value"]["HabitatStructure"] for t in snorkelFishBinned["values"]])
+        structures.extend([t["value"]["HabitatStructure"] for t in snorkelFishBinned["value"]])
     if snorkelFishSteelheadBinned is not None:
-        structures.extend([t["value"]["HabitatStructure"] for t in snorkelFishSteelheadBinned["values"]])
+        structures.extend([t["value"]["HabitatStructure"] for t in snorkelFishSteelheadBinned["value"]])
 
     st = list(set(structures))
 
