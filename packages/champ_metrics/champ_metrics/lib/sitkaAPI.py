@@ -226,7 +226,7 @@ def latestMetricInstances(insts, single=False):
     # First create a "sortdate" helper. Setting the second and microsecond to zero is a hack to cover slight timing
     # differences
     for idx, inst in enumerate(insts):
-        gendate = list(filter(lambda x: x['name'] == DATECREATEDFIELD, inst['values']))
+        gendate = list(filter(lambda x: x['name'] == DATECREATEDFIELD, inst['value']))
         try:
             inst['date'] = dateutil.parser.parse(gendate[0]['value'])
             if not single:

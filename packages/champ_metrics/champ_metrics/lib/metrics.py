@@ -2,7 +2,11 @@ from copy import deepcopy
 from .loghelper import Logger
 from .exception import DataException, MissingException
 
+
 class CHaMPMetric(object):
+    """
+    Base class for all CHaMP metrics
+    """
 
     # This is the dictionary representation of the object
     # in its null state.
@@ -17,7 +21,7 @@ class CHaMPMetric(object):
         try:
             self.calc(*args, **kwargs)
         except (DataException, MissingException) as e:
-            self.log.warning("Could not complete metric calculation")
+            self.log.warning(f"Could not complete metric calculation: {e}")
             self.metrics = deepcopy(self.TEMPLATE)
 
     def calc(self, *args, **kwargs):

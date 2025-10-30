@@ -131,14 +131,14 @@ def loadChannelUnitsFromAPI(vid):
 
 def loadChannelUnitsFromJSON(jsonFilePath):
     if jsonFilePath is not None and not path.isfile(jsonFilePath):
-        raise "Missing channel unit file at {0}".format(jsonFilePath)
+        raise FileNotFoundError(f"Missing channel unit file at {jsonFilePath}")
 
     dUnits = {}
 
     with open(jsonFilePath) as data_file:
         data = json.load(data_file)
 
-        for nodUnit in data['values']:
+        for nodUnit in data['value']:
             value = nodUnit['value']
             nCUNumber = int(value['ChannelUnitNumber'])
             tier1 = value['Tier1']
@@ -148,7 +148,7 @@ def loadChannelUnitsFromJSON(jsonFilePath):
             dUnits[nCUNumber] = (tier1, tier2, segment)
 
     log = Logger("Channel Units")
-    log.info("{0} channel units loaded from XML file".format(len(dUnits)))
+    log.info(f"{len(dUnits)} channel units loaded from XML file")
 
     return dUnits
 
