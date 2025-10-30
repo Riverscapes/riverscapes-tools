@@ -15,11 +15,13 @@ This documentation describes the RSContext model as implemented for the **United
 
 <h3><a name="SLOPE">Slope Analysis</a></h3>
 
-Slope raster generated using [gdal_dem](https://gdal.org/programs/gdaldem.html) tool specifying the slope option. Units are in percent.
+Slope raster generated using [gdal_dem](https://gdal.org/programs/gdaldem.html) tool specifying the slope option. Units are in degrees.
 
 <h3><a name="HILLSHADE">Hillshade</a></h3>
 
 Hillshade raster generated using the [gdal_dem](https://gdal.org/programs/gdaldem.html) tool specifying the hillshade option.
+
+---
 
 ## Vegetation
 
@@ -63,6 +65,8 @@ Hillshade raster generated using the [gdal_dem](https://gdal.org/programs/gdalde
 
 [LandFire](https://landfire.gov) SCla raster: Current vegetation conditions with respect to vegetation species composition, cover, and height ranges of successional states occurring within each biophysical setting. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes project extent.
 
+---
+
 ## Transportation
 
 <h3><a name="ROADS"></a> <a name="Roads">Roads</a></h3>
@@ -70,6 +74,8 @@ Hillshade raster generated using the [gdal_dem](https://gdal.org/programs/gdalde
 <h3><a name="RAIL"></a> <a name="Rail">Railways</a></h3>
 
 <h3><a name="CANALS"></a> <a name="Canals">Canals</a></h3>
+
+---
 
 ## Land Management
 
@@ -81,21 +87,33 @@ Land ownership obtained from the [Bureau of Management (BLM) Land Surface Agency
 
 [Fair Market Value](https://orcid.org/0000-0001-7827-689X) raster. This raster was downloaded and converted to US dollars per hectare.
 
+---
+
 ## Political Boundaries
 
 <h3><a name="STATES"></a> <a name="States">States</a></h3>
 
+State boundaries obtained from the US Census Bureau.
+
 <h3><a name="COUNTIES"></a> <a name="Counties">Counties</a></h3>
+
+County boundaries obtained from the US Census Bureau.
+
+---
 
 ## Geology
 
 <h3><a name="GEOLOGY"></a> <a name="Geology">Geology</a></h3>
+
+Shapefile of geologic units from the State Geologic Map Compilation (SGMC) available via the USGS; the dataset is a compiliation of geologic maps from each state with a field added ('GENERALIZE') for consistent symbology across the country.
 
 ## Ecoregions
 
 <h3><a name="ECOREGIONS"></a> <a name="Ecoregions">Ecoregions</a></h3>
 
 Level IV ecoregions (also contains levels I-III) obtained from the [Environmental Protection Agency](https://www.epa.gov/eco-research/ecoregions) (EPA).
+
+---
 
 ## Climate
 
@@ -127,6 +145,8 @@ Level IV ecoregions (also contains levels I-III) obtained from the [Environmenta
 
 [PRISM](https://prism.oregonstate.edu/normals) 30 year normal maximum vapor pressure deficit raster. Normals are baseline datasets describing average monthly and annual conditions over the most recent three full decades.
 
+---
+
 ## Hydrology
 
 <h3><a name="NHDFLOWLINE"></a> <a name="NHDFlowline">Flow line Network</a></h3>
@@ -139,14 +159,20 @@ Level IV ecoregions (also contains levels I-III) obtained from the [Environmenta
 
 <h3><a name="NHDAREA"></a> <a name="NHDArea">NHD Area</a></h3>
 
+NHDArea contains many additional water-polygon features. One of the more important is the stream/river feature. It represents the areal extent of the water in a wide stream/river with a basic set of attributes. These polygons typically encompass NHDFlowline artificial paths that represent the stream network. Artificial path carries the critical attributes of the stream/river, whereas NHDArea represents the geometric extent.
+
 <h3><a name="NHDPLUSFLOWLINEVAA"></a> <a name="NHDPlusFlowlineVAA"></a> <a name="VAA">NHD Plus Flowline Value Added Attributes</a></h3> 
 
 <h3><a name="NHDPLUSCATCHMENT"></a> <a name="NHDPlusCatchment">NHD Catchment</a></h3>
 
 <h3><a name="NHDWATERBODY"></a> <a name="NHDWaterbody">NHD Waterbody</a></h3> 
 
+Waterbodies such as lake/pond features are represented in NHDWaterbody. They portray the spatial geometry and the attributes of the feature. These water polygons may have NHDFlowline artificial paths drawn through them to allow the representation of water flow direction. Other NHDWaterbody features are swamp/marsh, reservoir, playa, estuary, and ice mass.
+
 <h3>
   <a name="WBDHU2"> Hydrological Units </a>
+  The Watershed Boundary Dataset (WBD) is a seamless, national hydrologic unit dataset. Hydrologic units represent the area of the landscape that drains to a portion of the stream network. WBD contains eight levels of progressive hydrologic units identified by unique 2- to 16-digit codes.
+
   <a name="WBDHU4"></a>
   <a name="WBDHU6"></a>
   <a name="WBDHU8"></a>
@@ -164,16 +190,27 @@ The riverscapes context project extent polygon buffered by 500m.
 
 <h3><a name="NETWORK_CROSSINGS"> Network Crossings </a></h3>
 
+This polyline feeature class is the network featureclass intersected with road and rail crossings and ownership.
+
 <h3><a name="NETWORK_INTERSECTION">  Network Intersection </a></h3>
+
+The original NHD flow lines intersected with land ownership, road and rail. It includes several attributes from the NHD VAA table, in order to reduce the steps required by subsequent models. The attributes also include US state, ecoregions III and IV, and land ownership. This is the flow line feature class that is intended for use by all downstream models.
 
 <h3><a name="CATCHMENTS"> Catchments </a></h3>
 
+The NHD Plus Catchment layer clipped to the riverscapes context project extent. It includes several attributes from the NHD VAA table, in order to reduce the steps required by subsequent models.
+
 <h3><a name="PROCESSING_EXTENT"> Processing Extent </a></h3>  
+
+The riverscapes context project extent polygon clipped to the dem data extent. This polygon can be used ensure that the resultant dataset always includes area within the dem data extent.
 
 <h3><a name="NHDAREASPLIT"></a> <a name="NHDAreaSplit"> NHD Area Split </a></h3>
 
+"The NHD Area layer split using the NHD Plus Catchment Layer, with the 'NHDPlusID' field from the Catchments attributed to each resulting NHD Area feature. This layer is intended to be used by other models when they need to use the NHD flow area dataset. The segmented geometries in this layer are intended to prevent errors in other models because the original NHD data can include vast feeatures that extend well beyond the watershed boundary extent.
+
 <h3><a name="NHDWATERBODYSPLIT"></a> <a name="NHDWaterbodySplit"> NHD Waterbody Split </a></h3>
 
+The NHD Waterbody layer split using the NHD Plus Catchment Layer, with the 'NHDPlusID' field from the Catchments attributed to each resulting NHD Area feature. This layer is intended to be used by other models when they need to use the NHD waterbody dataset. This is done so that the NHDPlusID field can be joined to the NHD VAA table to attribute waterbody features with the level path they are a part of.
 
 {/* Not used in rscontext report */}
 <h3><a name="NETWORK_300M"></a> <a name="network_300m"> Network 300m</a></h3>
@@ -184,4 +221,25 @@ This polyline feature class is the original NHDPlusHR flow line network segmente
 <h3><a name="NETWORK_INTERSECTED_300M"></a> <a name="network_intersected_300m">Segmented Flow line Network Intersected with Infrastructure</a></h3>
 
 This polyline feature class is the NETWORK300M feature class intersected with road and rail crossings and ownership.
+
+---
+
+## National Dams
+
+<h3><a name="NationalDams">National Inventory of Dams</a></h3>
+
+National Inventory of Dams (NID) is a database of dams in the United States. The NID is maintained by the US Army Corps of Engineers and contains information on the location, size, type, and purpose of dams.
+
+---
+
+## National Wetland Inventory (NWI)
+
+<h3><a name="Wetlands">Wetlands</a></h3>
+
+The National Wetlands Inventory (NWI) is a program of the US Fish and Wildlife Service that maps the location and extent of wetlands in the United States. The NWI provides data on wetland types, hydrology, and vegetation. The 'wetlands' layer is a subset of the NWI data that includes wetlands classified by type.
+
+<h3><a name="Riparian">Riparian</a></h3>
+
+The National Wetlands Inventory (NWI) is a program of the US Fish and Wildlife Service that maps the location and extent of wetlands in the United States. The NWI provides data on wetland types, hydrology, and vegetation. The 'riparian' layer is a subset of the NWI data that includes riparian areas classified by type.
+
 
