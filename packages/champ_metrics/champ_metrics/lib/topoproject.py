@@ -1,8 +1,8 @@
 from os import path
 from xml.etree import ElementTree as ET
-from .exception import DataException, MissingException
 from rscommons import Logger
 from champ_metrics.lib.util import getAbsInsensitivePath
+from .exception import DataException, MissingException
 
 # TODO: This shares a lot in common with riverscapes.py. Let's look at refactoring
 

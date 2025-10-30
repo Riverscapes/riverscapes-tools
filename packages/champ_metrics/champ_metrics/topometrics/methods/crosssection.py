@@ -4,12 +4,10 @@ import numpy as np
 from shapely.errors import TopologicalError
 from shapely.geometry import MultiLineString
 
-
-from os import path
+from rscommons import Logger
 from champ_metrics.lib.shapefileloader import Shapefile
 from champ_metrics.lib.raster import Raster
 from champ_metrics.lib.metrics import CHaMPMetric
-from rscommons import Logger
 from champ_metrics.lib.exception import DataException
 from .thalweg import ThalwegMetrics
 

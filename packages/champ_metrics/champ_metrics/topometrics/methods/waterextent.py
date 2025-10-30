@@ -1,10 +1,10 @@
+import os
 import sys
-from os import path
+import numpy as np
 from champ_metrics.lib.raster import Raster
-from champ_metrics.lib.shapefileloader import *
+from champ_metrics.lib.shapefileloader import Shapefile
 from champ_metrics.lib.metrics import CHaMPMetric
 from champ_metrics.lib.exception import MissingException
-import numpy as np
 
 # Metrics
 #   area = sum of area of all water extent polygon features
