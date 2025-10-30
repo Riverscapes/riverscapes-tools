@@ -1,5 +1,4 @@
 import numpy as np
-from rscommons import Logger
 
 
 def visitPebbleMetrics(visitMetrics, visitobj):
@@ -40,7 +39,7 @@ def pebbleSubstrateAtPercentile(visit, percent, pebbles, pebbleCrossSections, ch
 
 
 def pebbleSubstrateAtPercentile_2011(percent, pebbles):
-    records = sorted([p["value"]["Substrate"] for p in pebbles["values"] if p["value"]["Substrate"] is not None and p["value"]["Substrate"] > 0])
+    records = sorted([p["value"]["Substrate"] for p in pebbles["value"] if p["value"]["Substrate"] is not None and p["value"]["Substrate"] > 0])
 
     len = records.__len__()
     if len == 0:
@@ -121,10 +120,10 @@ def getPebbleSubstrateSummary(pebbles, pebbleCrossSections, channelUnits):
     if channelUnits is None or pebbleCrossSections is None:
         return []
 
-    channelUnitIDs = [c["value"]["ChannelUnitID"] for c in channelUnits["values"] if c["value"]["ChannelUnitID"] is not None and c["value"]["Tier1"] != "Slow/Pool"]
-    crossSectionIDsInScope = [c["value"]["CrossSectionID"] for c in pebbleCrossSections["values"] if c["value"]["CrossSectionID"] is not None and c["value"]["ChannelUnitID"] is not None and c["value"]["ChannelUnitID"] in channelUnitIDs]
+    channelUnitIDs = [c["value"]["ChannelUnitID"] for c in channelUnits["value"] if c["value"]["ChannelUnitID"] is not None and c["value"]["Tier1"] != "Slow/Pool"]
+    crossSectionIDsInScope = [c["value"]["CrossSectionID"] for c in pebbleCrossSections["value"] if c["value"]["CrossSectionID"] is not None and c["value"]["ChannelUnitID"] is not None and c["value"]["ChannelUnitID"] in channelUnitIDs]
 
-    pebblesInScope = [p for p in pebbles["values"] if p["value"]["CrossSectionID"] is not None and p["value"]["CrossSectionID"] in crossSectionIDsInScope]
+    pebblesInScope = [p for p in pebbles["value"] if p["value"]["CrossSectionID"] is not None and p["value"]["CrossSectionID"] in crossSectionIDsInScope]
     result = []
 
     for substrate in maxDiameterDictionary:
@@ -179,11 +178,11 @@ def sortMaxDiameter(a):
 
 def getCobbles(visit, pebbles):
     if visit["iterationID"] == 1:
-        return [p for p in pebbles["values"] if p["value"]["CobbleEmbededPercent"] is not None and p["value"]["CobblePercentFines"] is not None and p["value"]["Substrate"] is not None and p["value"]["Substrate"] > 64 and p["value"]["Substrate"] <= 250]
+        return [p for p in pebbles["value"] if p["value"]["CobbleEmbededPercent"] is not None and p["value"]["CobblePercentFines"] is not None and p["value"]["Substrate"] is not None and p["value"]["Substrate"] > 64 and p["value"]["Substrate"] <= 250]
 
     substrateSizeForCobbles = ["64 - 90mm", "90 - 128mm", "128 - 180mm", "180 - 256mm"]
 
-    res = [p for p in pebbles["values"] if p["value"]["CobbleEmbededPercent"] is not None and p["value"]["SubstrateSizeClass"] is not None and p["value"]["SubstrateSizeClass"] in substrateSizeForCobbles]
+    res = [p for p in pebbles["value"] if p["value"]["CobbleEmbededPercent"] is not None and p["value"]["SubstrateSizeClass"] is not None and p["value"]["SubstrateSizeClass"] in substrateSizeForCobbles]
     res = [p for p in res if (p["value"]["CobbleEmbededPercent"] > 0 and p["value"]["CobblePercentFines"] is not None) or (p["value"]["CobbleEmbededPercent"] == 0)]
     return res
 

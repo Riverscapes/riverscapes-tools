@@ -156,7 +156,7 @@ def loadChannelUnitsFromJSON(jsonFilePath):
 def writeChannelUnitsToJSON(jsonFilePath, dUnits):
 
     dJson = {}
-    dJson["values"] = []
+    dJson["value"] = []
 
     for nChannelUnitNumber, aUnit in dUnits.items():
         value = {}
@@ -167,7 +167,7 @@ def writeChannelUnitsToJSON(jsonFilePath, dUnits):
 
         outDict = {}
         outDict["value"] = value
-        dJson["values"].append(outDict)
+        dJson["value"].append(outDict)
 
     with open(jsonFilePath, 'w') as outfile:
         json.dump(dJson, outfile, indent=4)

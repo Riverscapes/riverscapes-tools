@@ -1,13 +1,8 @@
-import sys
 import os
-import argparse
-import traceback
 import json
 
 from rscommons import Logger
-from rscommons.util import safe_makedirs
-import champ_metrics.lib.env
-from champ_metrics.lib.exception import DataException, MissingException, NetworkException
+from champ_metrics.lib.exception import MissingException
 from champ_metrics.lib.metricxmloutput import writeMetricsToXML
 from .metriclib.auxMetrics import calculateMetricsForVisit, calculateMetricsForChannelUnitSummary, calculateMetricsForTier1Summary, calculateMetricsForStructureSummary
 # from .metriclib.fishMetrics import *
@@ -42,10 +37,11 @@ MEASURE_KEYS = {
 }
 
 
-def aux_metrics(xmlfile: str, visit_id: int, visit_year: int, aux_data_folder: str, results_folder: str) -> None:
+def visit_aux_metrics(visit_id: int, visit_year: int, aux_data_folder: str, xmlfile: str) -> None:
     """Run the auxmetrics for a given visit and write them to an XML file."""
 
     log = Logger("Aux Metrics")
+    log.info(f'Aux metrics for visit {visit_id}')
 
     if not os.path.isdir(aux_data_folder):
         raise Exception(f"Aux measurement folder does not exist: {aux_data_folder}")
@@ -70,7 +66,7 @@ def aux_metrics(xmlfile: str, visit_id: int, visit_year: int, aux_data_folder: s
         try:
             # visitobj[key] = APIGet("visits/{0}/measurements/{1}".format(visit_id, url))
             visitobj[key] = load_measurement_file(aux_data_folder, url)
-        except MissingException as e:
+        except MissingException:
             visitobj[key] = None
 
     # Metric calculations
@@ -79,9 +75,6 @@ def aux_metrics(xmlfile: str, visit_id: int, visit_year: int, aux_data_folder: s
     tier1Metrics = calculateMetricsForTier1Summary(visitobj)
     structureMetrics = calculateMetricsForStructureSummary(visitobj)
 
-    # write these files
-    # dMetricsArg, visitID, sourceDir, xmlFilePath, modelEngineRootNode, modelVersion
-    log.info(f'Writing Metrics for Visit {visit_id} XML File')
     writeMetricsToXML({
         "VisitMetrics": visitMetrics,
         "ChannelUnitMetrics": channelUnitMetrics,
@@ -91,7 +84,10 @@ def aux_metrics(xmlfile: str, visit_id: int, visit_year: int, aux_data_folder: s
 
 
 def load_measurement_file(measure_folder: str, url_slug: str) -> dict:
-    """Load a measurement file from a given path."""
+    """
+    Load a measurement JSON file from a given path.
+    This replaces calls to the Sitka API for aux measurement data.
+    """
 
     file_name = f"{url_slug.replace(' ', '_').lower()}.json"
     file_path = os.path.join(measure_folder, file_name)

@@ -6,7 +6,7 @@ import traceback
 from rscommons import Logger, dotenv
 from rscommons.util import safe_makedirs
 
-from champ_metrics.auxmetrics.auxmetrics import aux_metrics
+from champ_metrics.auxmetrics.auxmetrics import visit_aux_metrics
 from champ_metrics.lib.exception import DataException, MissingException, NetworkException
 
 
@@ -35,7 +35,7 @@ def main():
     xmlfile = os.path.join(resultsFolder, "aux_metrics.xml")
 
     try:
-        aux_metrics(xmlfile, args.visit_id, args.visit_year, aux_measurement_dir, args.output_folder)
+        visit_aux_metrics(xmlfile, args.visit_id, args.visit_year, aux_measurement_dir, args.output_folder)
 
     except (DataException, MissingException, NetworkException) as e:
         # Exception class prints the relevant information

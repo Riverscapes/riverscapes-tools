@@ -1,4 +1,3 @@
-import logging
 from champ_metrics.lib.exception import DataException
 
 maxSizeToBeConsideredJuvinile = 250
@@ -48,16 +47,16 @@ def visitFishCountMetricsForSpecies(visitMetrics, snorkelFish, snorkelFishBinned
         speciesNames = [speciesNames]
 
     if snorkelFish is not None:
-        snorkelFishForSpecies = [s for s in snorkelFish["values"] if s["value"]["FishSpecies"] in speciesNames]
+        snorkelFishForSpecies = [s for s in snorkelFish["value"] if s["value"]["FishSpecies"] in speciesNames]
         snorkelFishJuvinileCount = sum([int(s["value"]["FishCount"]) for s in snorkelFishForSpecies if int(s["value"]["SizeClass"].replace("mm", "").replace(">", "")) <= maxSizeToBeConsideredJuvinile])
 
     if snorkelFishBinned is not None:
-        snorkelFishBinnedForSpecies = [s for s in snorkelFishBinned["values"] if s["value"]["FishSpecies"] in speciesNames]
+        snorkelFishBinnedForSpecies = [s for s in snorkelFishBinned["value"] if s["value"]["FishSpecies"] in speciesNames]
         snorkelFishBinnedJuvinileCount = sum([int(s["value"]["FishCountLT50mm"]) + int(s["value"]["FishCount50to69mm"]) + int(s["value"]["FishCount70to89mm"]) +
                                              int(s["value"]["FishCount90to99mm"]) + int(s["value"]["FishCountGT100mm"]) for s in snorkelFishBinnedForSpecies])
 
     if snorkelFishSteelheadBinned is not None:
-        snorkelFishSteelheadBinnedForSpecies = [s for s in snorkelFishSteelheadBinned["values"] if s["value"]["FishSpecies"] in speciesNames]
+        snorkelFishSteelheadBinnedForSpecies = [s for s in snorkelFishSteelheadBinned["value"] if s["value"]["FishSpecies"] in speciesNames]
         snorkelFishSteelheadBinnedJuvinileCount = sum([int(s["value"]["FishCountLT50mm"]) + int(s["value"]["FishCount50to79mm"]) + int(s["value"]["FishCount80to129mm"]) +
                                                       int(s["value"]["FishCount130to199mm"]) + int(s["value"]["FishCount200to249mm"]) for s in snorkelFishSteelheadBinnedForSpecies])
 
@@ -76,7 +75,7 @@ def visitFishCountMetrics(visitMetrics, visitobj):
             visitFishCountMetricsForSpecies(visitMetrics, snorkelFish, snorkelFishBinned, snorkelFishSteelheadBinned,
                                             mItem[0], mItem[1])
         except AttributeError as e:
-            raise DataException("visitFishCountMetricsForSpecies: Missing attribute for item: {}, {}".format(str(mItem[0]), str(mItem[1])))
+            raise DataException(f"visitFishCountMetricsForSpecies: Missing attribute for item: {str(mItem[0])}, {str(mItem[1])}") from e
 
 
 def channelUnitFishCountMetricsForSpecies(channelUnitMetrics, snorkelFish, snorkelFishBinned, snorkelFishSteelheadBinned, speciesNames, metricName):
@@ -94,16 +93,16 @@ def channelUnitFishCountMetricsForSpecies(channelUnitMetrics, snorkelFish, snork
             speciesNames = [speciesNames]
 
         if snorkelFish is not None:
-            snorkelFishForSpecies = [s for s in snorkelFish["values"] if s["value"]["FishSpecies"] in speciesNames and s["value"]["ChannelUnitID"] == channelUnitID]
+            snorkelFishForSpecies = [s for s in snorkelFish["value"] if s["value"]["FishSpecies"] in speciesNames and s["value"]["ChannelUnitID"] == channelUnitID]
             snorkelFishJuvinileCount = sum([int(s["value"]["FishCount"]) for s in snorkelFishForSpecies if int(s["value"]["SizeClass"].replace("mm", "").replace(">", "")) <= maxSizeToBeConsideredJuvinile])
 
         if snorkelFishBinned is not None:
-            snorkelFishBinnedForSpecies = [s for s in snorkelFishBinned["values"] if s["value"]["FishSpecies"] in speciesNames and s["value"]["ChannelUnitID"] == channelUnitID]
+            snorkelFishBinnedForSpecies = [s for s in snorkelFishBinned["value"] if s["value"]["FishSpecies"] in speciesNames and s["value"]["ChannelUnitID"] == channelUnitID]
             snorkelFishBinnedJuvinileCount = sum([int(s["value"]["FishCountLT50mm"]) + int(s["value"]["FishCount50to69mm"]) + int(s["value"]["FishCount70to89mm"]) +
                                                  int(s["value"]["FishCount90to99mm"]) + int(s["value"]["FishCountGT100mm"]) for s in snorkelFishBinnedForSpecies])
 
         if snorkelFishSteelheadBinned is not None:
-            snorkelFishSteelheadBinnedForSpecies = [s for s in snorkelFishSteelheadBinned["values"] if s["value"]["FishSpecies"] in speciesNames and s["value"]["ChannelUnitID"] == channelUnitID]
+            snorkelFishSteelheadBinnedForSpecies = [s for s in snorkelFishSteelheadBinned["value"] if s["value"]["FishSpecies"] in speciesNames and s["value"]["ChannelUnitID"] == channelUnitID]
             snorkelFishSteelheadBinnedJuvinileCount = sum([int(s["value"]["FishCountLT50mm"]) + int(s["value"]["FishCount50to79mm"]) + int(s["value"]["FishCount80to129mm"]) +
                                                           int(s["value"]["FishCount130to199mm"]) + int(s["value"]["FishCount200to249mm"]) for s in snorkelFishSteelheadBinnedForSpecies])
 
@@ -122,7 +121,7 @@ def channelUnitFishCountMetrics(channelUnitMetrics, visitobj):
             channelUnitFishCountMetricsForSpecies(channelUnitMetrics, snorkelFish, snorkelFishBinned, snorkelFishSteelheadBinned,
                                                   mItem[0], mItem[1])
         except AttributeError as e:
-            raise DataException("channelUnitFishCountMetricsForSpecies: Missing attribute for item: {}, {}".format(str(mItem[0]), str(mItem[1])))
+            raise DataException(f"channelUnitFishCountMetricsForSpecies: Missing attribute for item: {str(mItem[0])}, {str(mItem[1])}") from e
 
 
 def tier1FishCountMetricsForSpecies(tier1Metrics, channelUnits, snorkelFish, snorkelFishBinned, snorkelFishSteelheadBinned, speciesNames, metricName):
@@ -132,7 +131,7 @@ def tier1FishCountMetricsForSpecies(tier1Metrics, channelUnits, snorkelFish, sno
             t[metricName] = None
             continue
 
-        channelUnitIDsForTier = [c["value"]["ChannelUnitID"] for c in channelUnits["values"] if c["value"]["Tier1"] == tier1]
+        channelUnitIDsForTier = [c["value"]["ChannelUnitID"] for c in channelUnits["value"] if c["value"]["Tier1"] == tier1]
 
         snorkelFishJuvinileCount = 0
         snorkelFishBinnedJuvinileCount = 0
@@ -142,16 +141,16 @@ def tier1FishCountMetricsForSpecies(tier1Metrics, channelUnits, snorkelFish, sno
             speciesNames = [speciesNames]
 
         if snorkelFish is not None:
-            snorkelFishForSpecies = [s for s in snorkelFish["values"] if s["value"]["FishSpecies"] in speciesNames and s["value"]["ChannelUnitID"] in channelUnitIDsForTier]
+            snorkelFishForSpecies = [s for s in snorkelFish["value"] if s["value"]["FishSpecies"] in speciesNames and s["value"]["ChannelUnitID"] in channelUnitIDsForTier]
             snorkelFishJuvinileCount = sum([int(s["value"]["FishCount"]) for s in snorkelFishForSpecies if int(s["value"]["SizeClass"].replace("mm", "").replace(">", "")) <= maxSizeToBeConsideredJuvinile])
 
         if snorkelFishBinned is not None:
-            snorkelFishBinnedForSpecies = [s for s in snorkelFishBinned["values"] if s["value"]["FishSpecies"] in speciesNames and s["value"]["ChannelUnitID"] in channelUnitIDsForTier]
+            snorkelFishBinnedForSpecies = [s for s in snorkelFishBinned["value"] if s["value"]["FishSpecies"] in speciesNames and s["value"]["ChannelUnitID"] in channelUnitIDsForTier]
             snorkelFishBinnedJuvinileCount = sum([int(s["value"]["FishCountLT50mm"]) + int(s["value"]["FishCount50to69mm"]) + int(s["value"]["FishCount70to89mm"]) +
                                                  int(s["value"]["FishCount90to99mm"]) + int(s["value"]["FishCountGT100mm"]) for s in snorkelFishBinnedForSpecies])
 
         if snorkelFishSteelheadBinned is not None:
-            snorkelFishSteelheadBinnedForSpecies = [s for s in snorkelFishSteelheadBinned["values"] if s["value"]["FishSpecies"] in speciesNames and s["value"]["ChannelUnitID"] in channelUnitIDsForTier]
+            snorkelFishSteelheadBinnedForSpecies = [s for s in snorkelFishSteelheadBinned["value"] if s["value"]["FishSpecies"] in speciesNames and s["value"]["ChannelUnitID"] in channelUnitIDsForTier]
             snorkelFishSteelheadBinnedJuvinileCount = sum([int(s["value"]["FishCountLT50mm"]) + int(s["value"]["FishCount50to79mm"]) + int(s["value"]["FishCount80to129mm"]) +
                                                           int(s["value"]["FishCount130to199mm"]) + int(s["value"]["FishCount200to249mm"]) for s in snorkelFishSteelheadBinnedForSpecies])
 
@@ -171,7 +170,7 @@ def tier1FishCountMetrics(tier1Metrics, visitobj):
             tier1FishCountMetricsForSpecies(tier1Metrics, channelUnits, snorkelFish, snorkelFishBinned, snorkelFishSteelheadBinned,
                                             mItem[0], mItem[1])
         except AttributeError as e:
-            raise DataException("tier1FishCountMetrics: Missing attribute for item: {}, {}".format(str(mItem[0]), str(mItem[1])))
+            raise DataException(f"tier1FishCountMetrics: Missing attribute for item: {str(mItem[0])}, {str(mItem[1])}") from e
 
 
 def structureFishCountMetricsForSpecies(structureMetrics, snorkelFish, snorkelFishBinned, snorkelFishSteelheadBinned, speciesNames, metricName):
@@ -189,16 +188,16 @@ def structureFishCountMetricsForSpecies(structureMetrics, snorkelFish, snorkelFi
             speciesNames = [speciesNames]
 
         if snorkelFish is not None:
-            snorkelFishForSpecies = [s for s in snorkelFish["values"] if s["value"]["FishSpecies"] in speciesNames and s["value"]["HabitatStructure"] == structure]
+            snorkelFishForSpecies = [s for s in snorkelFish["value"] if s["value"]["FishSpecies"] in speciesNames and s["value"]["HabitatStructure"] == structure]
             snorkelFishJuvinileCount = sum([int(s["value"]["FishCount"]) for s in snorkelFishForSpecies if int(s["value"]["SizeClass"].replace("mm", "").replace(">", "")) <= maxSizeToBeConsideredJuvinile])
 
         if snorkelFishBinned is not None:
-            snorkelFishBinnedForSpecies = [s for s in snorkelFishBinned["values"] if s["value"]["FishSpecies"] in speciesNames and s["value"]["HabitatStructure"] == structure]
+            snorkelFishBinnedForSpecies = [s for s in snorkelFishBinned["value"] if s["value"]["FishSpecies"] in speciesNames and s["value"]["HabitatStructure"] == structure]
             snorkelFishBinnedJuvinileCount = sum([int(s["value"]["FishCountLT50mm"]) + int(s["value"]["FishCount50to69mm"]) + int(s["value"]["FishCount70to89mm"]) +
                                                  int(s["value"]["FishCount90to99mm"]) + int(s["value"]["FishCountGT100mm"]) for s in snorkelFishBinnedForSpecies])
 
         if snorkelFishSteelheadBinned is not None:
-            snorkelFishSteelheadBinnedForSpecies = [s for s in snorkelFishSteelheadBinned["values"] if s["value"]["FishSpecies"] in speciesNames and s["value"]["HabitatStructure"] == structure]
+            snorkelFishSteelheadBinnedForSpecies = [s for s in snorkelFishSteelheadBinned["value"] if s["value"]["FishSpecies"] in speciesNames and s["value"]["HabitatStructure"] == structure]
             snorkelFishSteelheadBinnedJuvinileCount = sum([int(s["value"]["FishCountLT50mm"]) + int(s["value"]["FishCount50to79mm"]) + int(s["value"]["FishCount80to129mm"]) +
                                                           int(s["value"]["FishCount130to199mm"]) + int(s["value"]["FishCount200to249mm"]) for s in snorkelFishSteelheadBinnedForSpecies])
 
@@ -217,4 +216,4 @@ def structureFishCountMetrics(structureMetrics, visitobj):
             structureFishCountMetricsForSpecies(structureMetrics, snorkelFish, snorkelFishBinned, snorkelFishSteelheadBinned,
                                                 mItem[0], mItem[1])
         except AttributeError as e:
-            raise DataException("structureFishCountMetrics: Missing attribute for item: {}, {}".format(str(mItem[0]), str(mItem[1])))
+            raise DataException(f"structureFishCountMetrics: Missing attribute for item: {str(mItem[0])}, {str(mItem[1])}") from e

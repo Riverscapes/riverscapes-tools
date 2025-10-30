@@ -1,19 +1,20 @@
 import argparse
-import sys, traceback
+import sys
+import traceback
 import os
-from champmetrics.lib.loghelper import Logger
-from champmetrics.lib.exception import DataException, MissingException, NetworkException
-from champmetrics.lib.metricxmloutput import writeMetricsToXML
-from champmetrics.lib.metricxmloutput import integrateMetricDictionary
-from champmetrics.lib.sitkaAPI import APIGet
-import champmetrics.lib.env
+from champ_metrics.lib.loghelper import Logger
+from champ_metrics.lib.exception import DataException, MissingException, NetworkException
+from champ_metrics.lib.metricxmloutput import writeMetricsToXML
+from champ_metrics.lib.metricxmloutput import integrateMetricDictionary
+from champ_metrics.lib.sitkaAPI import APIGet
+import champ_metrics.lib.env
 from .methods.undercut import UndercutMetrics
 from .methods.substrate import SubstrateMetrics
 from .methods.sidechannel import SidechannelMetrics
 from .methods.fishcover import FishcoverMetrics
 from .methods.largewood import LargeWoodMetrics
-from champmetrics.lib.channelunits import dUnitDefs
-from champmetrics.lib.channelunits import getCleanTierName
+from champ_metrics.lib.channelunits import dUnitDefs
+from champ_metrics.lib.channelunits import getCleanTierName
 
 __version__ = "0.0.4"
 
@@ -25,48 +26,50 @@ apiCalls = {
     # 'TopoTier1Metrics' : 'metricschemas/QA - Topo Tier 1 Metrics/metrics',
     'LargeWoodyDebris': 'measurements/Large Woody Debris',
     'LargeWoodyPiece': 'measurements/Large Woody Piece',
-    'WoodyDebrisJam' : 'measurements/Woody Debris Jam',
-    'VisitDetails' : '',
-    'TopoVisitMetrics' : 'metricschemas/QA - Topo Visit Metrics/metrics',
-    'ChannelUnitMetrics' : 'metricschemas/QA - Topo Channel Metrics/metrics',
+    'WoodyDebrisJam': 'measurements/Woody Debris Jam',
+    'VisitDetails': '',
+    'TopoVisitMetrics': 'metricschemas/QA - Topo Visit Metrics/metrics',
+    'ChannelUnitMetrics': 'metricschemas/QA - Topo Channel Metrics/metrics',
     'ChannelUnitMeasurements': 'measurements/Channel Unit',
-    'ChannelSegments' : 'measurements/Channel Segment',
-    'FishCover' : 'measurements/Fish Cover',
-    'SubstrateCover' : 'measurements/Substrate Cover',
-    'UndercutBanks' : 'measurements/Undercut Banks'
+    'ChannelSegments': 'measurements/Channel Segment',
+    'FishCover': 'measurements/Fish Cover',
+    'SubstrateCover': 'measurements/Substrate Cover',
+    'UndercutBanks': 'measurements/Undercut Banks'
 }
 
-def visitTopoAuxMetrics(visitID, metricXMLPath):
+
+def visit_topo_aux_metrics(visitID, metricXMLPath):
 
     log = Logger('Metrics')
-    log.info("Topo aux metrics for visit {0}".format(visitID))
+    log.info(f'Topo aux metrics for visit {visitID}')
 
     # Make all the API calls and return a dictionary of API call name keyed to data
     apiData = downloadAPIData(visitID)
 
     # Dictionary to hold the metric values
-    visitMetrics = {}
+    visit_metrics = {}
 
     metric_uc = UndercutMetrics(apiData)
-    integrateMetricDictionaryWithTopLevelType(visitMetrics, 'Undercut', metric_uc.metrics )
+    integrateMetricDictionaryWithTopLevelType(visit_metrics, 'Undercut', metric_uc.metrics)
 
     metrics_su = SubstrateMetrics(apiData)
-    integrateMetricDictionaryWithTopLevelType(visitMetrics, 'Substrate', metrics_su.metrics)
+    integrateMetricDictionaryWithTopLevelType(visit_metrics, 'Substrate', metrics_su.metrics)
 
     metrics_si = SidechannelMetrics(apiData)
-    integrateMetricDictionaryWithTopLevelType(visitMetrics, 'SideChannel', metrics_si.metrics)
+    integrateMetricDictionaryWithTopLevelType(visit_metrics, 'SideChannel', metrics_si.metrics)
 
     metrics_fi = FishcoverMetrics(apiData)
-    integrateMetricDictionaryWithTopLevelType(visitMetrics, 'FishCover', metrics_fi.metrics)
+    integrateMetricDictionaryWithTopLevelType(visit_metrics, 'FishCover', metrics_fi.metrics)
 
     metrics_wo = LargeWoodMetrics(apiData)
-    integrateMetricDictionaryWithTopLevelType(visitMetrics, 'LargeWood', metrics_wo.metrics)
+    integrateMetricDictionaryWithTopLevelType(visit_metrics, 'LargeWood', metrics_wo.metrics)
 
     # Metric calculation complete. Write the topometrics to the XML file
-    writeMetricsToXML(visitMetrics, visitID, '', metricXMLPath, 'TopoAuxMetrics', __version__)
+    writeMetricsToXML(visit_metrics, visitID, '', metricXMLPath, 'TopoAuxMetrics', __version__)
 
-    log.info("Metric calculation complete for visit {0}".format(visitID))
-    return visitMetrics
+    log.info(f"Topo aux metric calculation complete for visit {visitID}")
+    return visit_metrics
+
 
 def integrateMetricDictionaryWithTopLevelType(topo_metrics, prefix, newCollection):
     """
@@ -95,9 +98,10 @@ def integrateMetricDictionaryWithTopLevelType(topo_metrics, prefix, newCollectio
             safet1Type = getCleanTierName(t1Type)
 
             if not safet1Type in topo_metrics['Tier1Metrics']:
-                topo_metrics['Tier1Metrics'][safet1Type] = {'Name' : t1Type}
+                topo_metrics['Tier1Metrics'][safet1Type] = {'Name': t1Type}
 
             integrateMetricDictionary(topo_metrics['Tier1Metrics'][safet1Type], prefix, newCollection['Tier1Metrics'][safet1Type])
+
 
 def downloadAPIData(visitID):
 
@@ -115,12 +119,13 @@ def downloadAPIData(visitID):
 
     return apiData
 
+
 def main():
     # parse command line options
     parser = argparse.ArgumentParser()
     parser.add_argument('visitID', help='Visit ID', type=int)
     parser.add_argument('outputfolder', help='Path to output folder', type=str)
-    parser.add_argument('--verbose', help='Get more information in your logs.', action='store_true', default=False )
+    parser.add_argument('--verbose', help='Get more information in your logs.', action='store_true', default=False)
     args = parser.parse_args()
 
     # Make sure the output folder exists
@@ -143,7 +148,7 @@ def main():
         if not os.path.isdir(resultsFolder):
             os.makedirs(resultsFolder)
 
-        visitTopoAuxMetrics(args.visitID, xmlfile)
+        visit_topo_aux_metrics(args.visitID, xmlfile)
 
     except (DataException, MissingException, NetworkException) as e:
         # Exception class prints the relevant information
@@ -159,6 +164,7 @@ def main():
         sys.exit(1)
 
     sys.exit(0)
+
 
 if __name__ == "__main__":
     main()

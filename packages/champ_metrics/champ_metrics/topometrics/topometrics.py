@@ -1,3 +1,4 @@
+import os
 from rscommons import Logger
 from champ_metrics.lib.metricxmloutput import writeMetricsToXML, integrateMetricDictionary, integrateMetricList
 from champ_metrics.lib.channelunits import loadChannelUnitsFromAPI, loadChannelUnitsFromJSON, loadChannelUnitsFromSQLite
@@ -14,23 +15,18 @@ from .methods.raster import RasterMetrics
 from .methods.bankfull import BankfullMetrics
 
 
-def visit_topo_metrics(visit_id: int, topo_project_xml: str, topo_data_folder: str, channel_units_file: str, workbench_db: str, channel_unit_defs: dict, metric_xml_path: str) -> dict:
+def visit_topo_metrics(visit_id: int, topo_project_xml: str, metric_xml_path: str) -> dict:
     """Calculate all the topometrics for a given visit and write them to an XML file."""
 
-    log = Logger('Metrics')
-    log.info(f'Topo topometrics for visit {visit_id}')
-    log.info(f'Loading topo data from {topo_data_folder}')
+    log = Logger('Topo Metrics')
+    log.info(f'Topo metrics for visit {visit_id}')
 
+    topo_data_folder = os.path.dirname(topo_project_xml)
     topo = TopoData(topo_project_xml, visit_id)
     topo.loadlayers()
 
-    # Load the channel unit information from the argument XML file
-    if channel_units_file is not None:
-        channelUnitInfo = loadChannelUnitsFromJSON(channel_units_file)
-    elif workbench_db is not None:
-        channelUnitInfo = loadChannelUnitsFromSQLite(visit_id, workbench_db)
-    else:
-        channelUnitInfo = loadChannelUnitsFromAPI(visit_id)
+    channel_units_file = os.path.join(topo_data_folder, 'channel_units.json')
+    channelUnitInfo = loadChannelUnitsFromJSON(channel_units_file)
 
     # This is the dictionary for all topometrics to this visit. This will get written to XML when done.
     visitMetrics = {}
@@ -84,5 +80,5 @@ def visit_topo_metrics(visit_id: int, topo_project_xml: str, topo_data_folder: s
     # Metric calculation complete. Write the topometrics to the XML file
     writeMetricsToXML(visitMetrics, visit_id, topo_data_folder, metric_xml_path, "TopoMetrics", __version__)
 
-    log.info(f'Metric calculation complete for visit {visit_id}')
+    log.info(f'Topo metric calculation complete for visit {visit_id}')
     return visitMetrics
