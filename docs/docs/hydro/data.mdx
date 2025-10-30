@@ -3,14 +3,110 @@ title: Data
 sidebar_position: 3
 ---
 
-<h2><a name="HYDRO_GEOM_POINTS">Hydrologic IGO Point Geometry</a></h2>
+# Data
 
-<h2><a name="ANTHRO_POINTS">Hydrologic Output Points</a></h2>
+## Inputs
 
-<h2><a name="HYDRO_GEOM_LINES">Hydrologic Reach Geometry</a></h2>
+|Layer|Data Type|Description|Source|
+|---|---|---|---|
+|dem_hillshade|GeoTiff|Hillshade derived from DEM|[Riverscapes Context](https://tools.riverscapes.net/rscontext/data/#HILLSHADE)|
+|dem|Digital Elevation Model|GeoTiff|[Riverscapes Context](https://tools.riverscapes.net/rscontext/data/#DEM)|
+|igo|Geopackage Feature Class|VBET integrated geographic object (IGO) points|[VBET](https://tools.riverscapes.net/vbet/data/#SEGMENTATION_POINTS)|
+|dgo|Geopackage Feature Class|VBET discrete geographic object (DGO) polygons|[VBET](https://tools.riverscapes.net/vbet/data/#VBET_DGO_POLYGONS)|
+|flowlines|Geopackage Feature Class|The NHD flow lines previously intersected with land ownership, road and rail|[VBET](https://tools.riverscapes.net/rscontext/data/#NETWORK_SEGMENTED)|
 
-<h2><a name="HYDRO_LINES">Hydrologic Output Lines</a></h2>
+---
 
-<h2><a name="HYDRO_GEOM_DGOS">Hydrologic Output DGOs Polygons</a></h2>
+## Data Layers Produced by Hydrologic Context
 
-<h2><a name="HYDRO_DGOS">Hydrologic Output DGOs</a></h2>
+###Outputs 
+
+<h4><a name="HYDRO_GEOM_POINTS">Hydrologic IGO Point Geometry</a></h4>
+Integrated Geographic Objects - Points placed at a specified distance interval along the valley centerline. This distance is a function of the average valley width for a given stream.
+
+<h4><a name="HYDRO_POINTS">Hydrologic Output Points</a></h4>
+IGOs attributed with values for hydrology calculated within a single DGO or an aggregation of DGOs.
+
+<h4><a name="HYDRO_GEOM_LINES">Hydrologic Reach Geometry</a></h4>
+NHD Flowlines that have been intersected with land ownership, road and rail.
+
+<h4><a name="HYDRO_LINES">Hydrologic Output Lines</a></h4>
+NHD Flowlines attributed with values for physical characteristics and hydrology.
+
+<h4><a name="HYDRO_GEOM_DGOS">Hydrologic Output DGOs Polygons</a></h4>
+Discrete Geographic Objects - The valley bottom split into a sampling frame of polygons where the IGO points are at the center of each polygon.
+
+<h4><a name="HYDRO_DGOS">Hydrologic Output DGOs</a></h4>
+DGOs attributed with values for physical stream characteristics and hydrology within the DGO extent.
+
+---
+
+## Output Attributes
+
+### Hydrologic Context Lines (vwReaches)
+
+|Field|Units|Description|
+|---|---|---|
+|`ReachID`|NA|Unique identifier for each reach|
+|`FCode`|NA|NHD FCode representing flow type|
+|`ReachCode`|NA|NHD Reach Code identifier|
+|`NHDPlusID`|NA|Unique NHDPlus ID used to join additional value added attributes|
+|`StreamName`|NA|The name of the stream|
+|`level_path`|NA|A unique identifier from NHD for each stream from headwaters to outlet|
+|`TotDASqKm`|km<sup>2</sup>|Total upstream contributing drainage area|
+|`DivDASqKm`|km<sup>2</sup>|Contributing drainage area accounting for flow partitioning into canals, side channels, etc.|
+|`WatershedID`|NA|10-Digit USGS hydrologic unit code (HUC)|
+|`ownership`|NA|land owner/administrator of the area line intersects|
+|`divergence`|NA|An integer code from NHD attributes indicating channel divergence and type of divergence|
+|`stream_order`|NA|Strahler stream order from NHD attributes|
+|`us_state`|NA|The state in which the reach is located|
+|`ecoregion_iii`|NA|Level III ecoregion from the EPA|
+|`ecoregion_iv`|NA|Level IV ecoregion from the EPA|
+|`ElevMax`|m|Maximum elevation along the stream reach|
+|`ElevMin`|m|Minimum elevation along the stream reach|
+|`Length_m`|m|Length of the reach|
+|`Slope`|unitless|Slope of the reach; '(ElevMax - ElevMin) / Length_m'|
+|`DrainArea`|km<sup>2</sup>|Upstream contributing drainage area of the reach|
+|`QLow`|ft<sup>3</sup>/sec|Low flow discharge|
+|`Q2`|ft<sup>3</sup>/sec|Typical flood (2-year recurrence interval) discharge|
+|`SPLow`|W|Low flow stream power|
+|`SP2`|W|Typical flood (2-year recurrence interval) stream power|
+
+### Hydrologic Context DGOs (vwDgos)
+
+|Field|Units|Description|
+|---|---|---|
+|`DGOID`|NA|Unique identifier for each DGO polygon|
+|`FCode`|NA|NHD FCode representing flow type of the primary channel in the polygon|
+|`level_path`|NA|A unique identifier for the primary stream within the polygon from headwaters to outlet|
+|`seg_distance`|m|Distance downstream along a given level path of the feature|
+|`centerline_length`|m|Total valley length of the polygon|
+|`segment_area`|m<sup>2</sup>|Area of the polygon|
+|`ElevMax`|m|Maximum elevation along the stream reach within the polygon|
+|`ElevMin`|m|Minimum elevation along the stream reach within the polygon|
+|`Length_m`|m|Length of the reach within the polygon|
+|`Slope`|unitless|Slope of the reach within the polygon; '(ElevMax - ElevMin) / Length_m'|
+|`DrainArea`|km<sup>2</sup>|Upstream contributing drainage area of the reach|
+|`QLow`|ft<sup>3</sup>/sec|Low flow discharge|
+|`Q2`|ft<sup>3</sup>/sec|Typical flood (2-year recurrence interval) discharge|
+|`SPLow`|W|Low flow stream power|
+|`SP2`|W|Typical flood (2-year recurrence interval) stream power|
+
+### Hydrologic Context IGOs (vwIgos)
+
+|Field|Units|Description|
+|---|---|---|
+|`IGOID`|NA|Unique identifier for each IGO point|
+|`seg_distance`|m|Distance downstream along a given level path of the feature|
+|`stream_size`|NA|Categorical classification of stream size based on drainage area from 0 small to 4 large|
+|`FCode`|NA|NHD FCode representing flow type of the primary channel in the window|
+|`level_path`|NA|A unique identifier for the primary stream within the window from headwaters to outlet|
+|`ElevMax`|m|Maximum elevation along the stream reach within the window|
+|`ElevMin`|m|Minimum elevation along the stream reach within the window|
+|`Length_m`|m|Length of the reach within the window|
+|`Slope`|unitless|Slope of the reach within the window; '(ElevMax - ElevMin) / Length_m'|
+|`DrainArea`|km<sup>2</sup>|Upstream contributing drainage area of the reach|
+|`QLow`|ft<sup>3</sup>/sec|Low flow discharge|
+|`Q2`|ft<sup>3</sup>/sec|Typical flood (2-year recurrence interval) discharge|
+|`SPLow`|W|Low flow stream power|
+|`SP2`|W|Typical flood (2-year recurrence interval) stream power|
