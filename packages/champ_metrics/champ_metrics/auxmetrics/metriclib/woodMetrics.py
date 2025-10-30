@@ -1,5 +1,4 @@
 import numpy as np
-from rscommons import Logger
 
 
 largeWoodVolumeEstimatesDict = {
@@ -66,13 +65,13 @@ def visitLWDMetrics(visitMetrics, visitobj):
     visitLargeWoodVolumeForTier1AndWetted(visitMetrics, visit, channelUnits, largeWoodyPieces, largeWoodyDebris, woodyDebrisJams, jamHasChannelUnits, "Fast-NonTurbulent/Glide", "BankfullLargeWoodVolumeInFastNonTurbulent", False)
 
     if largeWoodyPieces is not None:
-        visitMetrics["LargeWoodyPiecesCountPoolForming"] = [p for p in largeWoodyPieces["values"] if p["value"]["IsPoolForming"] is not None and p["value"]["IsPoolForming"] == "Yes"].__len__()
-        visitMetrics["LargeWoodyPiecesCountIsKey"] = [p for p in largeWoodyPieces["values"] if p["value"]["IsKeyPiece"] is not None and p["value"]["IsKeyPiece"] == "Yes"].__len__()
-        visitMetrics["LargeWoodyPiecesCountIsJam"] = [p for p in largeWoodyPieces["values"] if p["value"]["IsJam"] is not None and p["value"]["IsJam"] == "Yes"].__len__()
-        visitMetrics["LargeWoodyPiecesCountRightBank"] = [p for p in largeWoodyPieces["values"] if p["value"]["PieceLocation"] is not None and p["value"]["PieceLocation"] == "Right"].__len__()
-        visitMetrics["LargeWoodyPiecesCountLeftBank"] = [p for p in largeWoodyPieces["values"] if p["value"]["PieceLocation"] is not None and p["value"]["PieceLocation"] == "Left"].__len__()
-        visitMetrics["LargeWoodyPiecesCountMidChannel"] = [p for p in largeWoodyPieces["values"] if p["value"]["PieceLocation"] is not None and p["value"]["PieceLocation"] == "Mid-Channel"].__len__()
-        visitMetrics["LargeWoodyPiecesCount"] = [p for p in largeWoodyPieces["values"]].__len__()
+        visitMetrics["LargeWoodyPiecesCountPoolForming"] = [p for p in largeWoodyPieces["value"] if p["value"]["IsPoolForming"] is not None and p["value"]["IsPoolForming"] == "Yes"].__len__()
+        visitMetrics["LargeWoodyPiecesCountIsKey"] = [p for p in largeWoodyPieces["value"] if p["value"]["IsKeyPiece"] is not None and p["value"]["IsKeyPiece"] == "Yes"].__len__()
+        visitMetrics["LargeWoodyPiecesCountIsJam"] = [p for p in largeWoodyPieces["value"] if p["value"]["IsJam"] is not None and p["value"]["IsJam"] == "Yes"].__len__()
+        visitMetrics["LargeWoodyPiecesCountRightBank"] = [p for p in largeWoodyPieces["value"] if p["value"]["PieceLocation"] is not None and p["value"]["PieceLocation"] == "Right"].__len__()
+        visitMetrics["LargeWoodyPiecesCountLeftBank"] = [p for p in largeWoodyPieces["value"] if p["value"]["PieceLocation"] is not None and p["value"]["PieceLocation"] == "Left"].__len__()
+        visitMetrics["LargeWoodyPiecesCountMidChannel"] = [p for p in largeWoodyPieces["value"] if p["value"]["PieceLocation"] is not None and p["value"]["PieceLocation"] == "Mid-Channel"].__len__()
+        visitMetrics["LargeWoodyPiecesCount"] = [p for p in largeWoodyPieces["value"]].__len__()
     else:
         visitMetrics["LargeWoodyPiecesCountPoolForming"] = None
         visitMetrics["LargeWoodyPiecesCountIsKey"] = None
@@ -149,7 +148,7 @@ def getDebrisVolumeForVisitAndChannelUnits_2014(channelUnitIDs, isWet, largeWood
         return []
 
     # filter large woody piece to one's with cuIDs
-    pieces = [p for p in largeWoodyPieces["values"] if p["value"]["ChannelUnitID"] is not None]
+    pieces = [p for p in largeWoodyPieces["value"] if p["value"]["ChannelUnitID"] is not None]
     # filter to id's that are passed in
     if channelUnitIDs is not None:
         pieces = [p for p in pieces if p["value"]["ChannelUnitID"] in channelUnitIDs]
@@ -189,7 +188,7 @@ def getDebrisVolumeForVisitAndChannelUnits_2013Backwards(channelUnitIDs, isWet, 
         jams = [j for j in jams if j["value"]["IsDry"] is None or not j["value"]["IsDry"]]
 
     # filter jam has channel units to passed in channel units
-    jamUnits = [j for j in jamHasChannelUnits["values"] if j["value"]["ProportionOfJam"] is not None and j["value"]["ChannelUnitID"] is not None]
+    jamUnits = [j for j in jamHasChannelUnits["value"] if j["value"]["ProportionOfJam"] is not None and j["value"]["ChannelUnitID"] is not None]
     if channelUnitIDs is not None:
         jamUnits = [j for j in jamUnits if j["value"]["ChannelUnitID"] in channelUnitIDs]
 
@@ -222,11 +221,11 @@ def channelUnitLWDMetrics(channelUnitMetrics, visitobj):
     for c in channelUnitMetrics:
         channelUnitID = c["ChannelUnitID"]
         if largeWoodyPieces is not None:
-            c["LargeWoodyPiecesCount"] = [p for p in largeWoodyPieces["values"] if
+            c["LargeWoodyPiecesCount"] = [p for p in largeWoodyPieces["value"] if
                                           p["value"]["ChannelUnitID"] is not None and p["value"][
                                               "ChannelUnitID"] == channelUnitID].__len__()
         elif largeWoodyDebris is not None:
-            c["LargeWoodyPiecesCount"] = sum([p['value']['SumLWDCount'] for p in largeWoodyDebris["values"] if p["value"]["ChannelUnitID"] is not None and p["value"]["ChannelUnitID"] == channelUnitID])
+            c["LargeWoodyPiecesCount"] = sum([p['value']['SumLWDCount'] for p in largeWoodyDebris["value"] if p["value"]["ChannelUnitID"] is not None and p["value"]["ChannelUnitID"] == channelUnitID])
         else:
             c["LargeWoodyPiecesCount"] = 0
 
@@ -244,10 +243,10 @@ def tier1LWDMetrics(tier1Metrics, visitobj):
         visitLargeWoodVolumeForTier1AndWetted(t, visit, channelUnits, largeWoodyPieces, largeWoodyDebris, woodyDebrisJams, jamHasChannelUnits, tier1, "BankfullLargeWoodVolumeByTier1", False)
         visitLargeWoodVolumeForTier1AndWetted(t, visit, channelUnits, largeWoodyPieces, largeWoodyDebris, woodyDebrisJams, jamHasChannelUnits, tier1, "WettedLargeWoodVolumeByTier1", True)
 
-        channelUnitIDsForTier = [c["value"]["ChannelUnitID"] for c in channelUnits["values"] if c["value"]["Tier1"] == tier1]
+        channelUnitIDsForTier = [c["value"]["ChannelUnitID"] for c in channelUnits["value"] if c["value"]["Tier1"] == tier1]
 
         if largeWoodyPieces is not None:
-            t["LargeWoodyPiecesCount"] = [p for p in largeWoodyPieces["values"] if p["value"]["ChannelUnitID"] in channelUnitIDsForTier].__len__()
+            t["LargeWoodyPiecesCount"] = [p for p in largeWoodyPieces["value"] if p["value"]["ChannelUnitID"] in channelUnitIDsForTier].__len__()
             visitLWDVolumeStdDev(t, visit, channelUnits, largeWoodyPieces, largeWoodyDebris, woodyDebrisJams, jamHasChannelUnits, tier1, "WettedLWDVolumeStdDev", True)
             visitLWDVolumeStdDev(t, visit, channelUnits, largeWoodyPieces, largeWoodyDebris, woodyDebrisJams, jamHasChannelUnits, tier1, "BankfullLWDVolumeStdDev", False)
         else:

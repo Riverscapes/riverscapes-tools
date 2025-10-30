@@ -9,8 +9,12 @@ VERSIONFIELD = "ModelVersion"
 
 
 def writeMetricsToXML(dMetricsArg, visitID, sourceDir, xmlFilePath, modelEngineRootNode, modelVersion):
+    """
+    Write a dictionary of metrics to an XML file.
+    """
+
     log = Logger("Metric XML")
-    log.info("Writing metrics to XML")
+    log.info(f"Writing metrics to XML file: {xmlFilePath}")
 
     tree = ET.ElementTree(ET.Element(modelEngineRootNode))
 
@@ -31,7 +35,7 @@ def writeMetricsToXML(dMetricsArg, visitID, sourceDir, xmlFilePath, modelEngineR
     rough_string = ET.tostring(tree.getroot(), 'utf-8')
     reparsed = xml.dom.minidom.parseString(rough_string)
     pretty = reparsed.toprettyxml(indent="\t")
-    with open(xmlFilePath, "w") as f:
+    with open(xmlFilePath, "w", encoding="utf-8") as f:
         f.write(pretty)
 
     log.info(f"Wrote metrics to file: {xmlFilePath}")

@@ -150,7 +150,7 @@ class TopoProject():
         self.isrsproject = False
 
         if path.isfile(self.projpathxml):
-            log.info("Attempting to load project file: {}".format(self.projpathxml))
+            log.info("Attempting to load topo project file: {}".format(self.projpathxml))
             self.isrsproject = True
             try:
                 self.domtree = ET.parse(self.projpathxml)
