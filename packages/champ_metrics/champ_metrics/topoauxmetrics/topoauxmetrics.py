@@ -127,20 +127,3 @@ def integrateMetricDictionaryWithTopLevelType(topo_metrics, prefix, newCollectio
                 topo_metrics['Tier1Metrics'][safet1Type] = {'Name': t1Type}
 
             integrateMetricDictionary(topo_metrics['Tier1Metrics'][safet1Type], prefix, newCollection['Tier1Metrics'][safet1Type])
-
-
-# def downloadAPIData(visitID):
-
-#     apiData = {}
-#     for name, URL in apiCalls.items():
-#         try:
-#             apiData[name] = APIGet('visits/{0}/{1}'.format(visitID, URL))
-#         except MissingException as e:
-#             pass
-#             # if not (name == 'LargeWoodyDebris' or name == 'LargeWoodyPiece' or name== 'WoodyDebrisJam'):
-#             #     raise MissingException("Missing API Data {}".format(URL))
-
-#     # if 'LargeWoodyDebris' not in apiData and 'LargeWoodyPiece' not in apiData:
-#     #     raise MissingException('Missing large wood API data')
-
-#     return apiData

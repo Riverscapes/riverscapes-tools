@@ -28,23 +28,23 @@ def champ_metrics_batch(csv_dir: str, projects_dir: str, output_dir: str):
 
     # Load the project GUIDs from the CSV file in the specified folder
     project_guids = load_project_guids_from_csv(csv_dir)
-    log.info(f'{len(project_guids)} project GUIDs loaded from CSV files in {csv_dir}.')
+    log.info(f'{len(project_guids)} project GUIDs loaded from CSV files from directory: {csv_dir}')
 
     # Loop over the projects and find the project.rs.xml file in each subfolder of projects_dir
     project_xmls = []
-    for visit_id in project_guids:
-        project_xml = os.path.join(projects_dir, str(visit_id), 'project.rs.xml')
+    for guid in project_guids:
+        project_xml = os.path.join(projects_dir, guid, 'project.rs.xml')
         if os.path.isfile(project_xml):
-            project_xmls.append((visit_id, project_xml))
+            project_xmls.append((guid, project_xml))
         else:
-            log.warning(f'No project.rs.xml file found for Visit ID {visit_id} in folder {os.path.join(projects_dir, str(visit_id))}. Skipping this visit.')
+            log.warning(f'No project.rs.xml file found for Visit ID {guid} in folder {os.path.join(projects_dir, str(guid))}. Skipping this visit.')
 
     log.info(f'{len(project_xmls)} project.rs.xml files found for processing.')
 
     # Determine the visit IDs from the project XML files and process each one
     # Load the project XML into elementree and find the visit ID metadata item
     visit_ids = {}
-    for visit_id, project_xml in project_xmls:
+    for guid, project_xml in project_xmls:
         tree = ET.parse(project_xml)
         root = tree.getroot()
         nod_visit = root.find('MetaData/Meta[@name="Visit"]')
