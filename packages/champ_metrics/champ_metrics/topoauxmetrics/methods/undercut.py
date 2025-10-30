@@ -1,5 +1,3 @@
-from champ_metrics.lib.exception import MissingException
-from champ_metrics.lib.sitkaAPI import latestMetricInstance
 from champ_metrics.lib.exception import DataException, MissingException
 from champ_metrics.lib.metrics import CHaMPMetric
 

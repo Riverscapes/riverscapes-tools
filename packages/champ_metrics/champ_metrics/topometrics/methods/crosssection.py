@@ -9,7 +9,7 @@ from os import path
 from champ_metrics.lib.shapefileloader import Shapefile
 from champ_metrics.lib.raster import Raster
 from champ_metrics.lib.metrics import CHaMPMetric
-from champ_metrics.lib.loghelper import Logger
+from rscommons import Logger
 from champ_metrics.lib.exception import DataException
 from .thalweg import ThalwegMetrics
 

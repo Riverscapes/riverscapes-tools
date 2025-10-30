@@ -1,5 +1,4 @@
 from champ_metrics.lib.exception import MissingException
-from champ_metrics.lib.sitkaAPI import latestMetricInstances
 from champ_metrics.lib.metrics import CHaMPMetric
 from champ_metrics.topoauxmetrics.methods.metricsbychannelunit import metricsByChannelUnit, emptiesByChannelUnit
 

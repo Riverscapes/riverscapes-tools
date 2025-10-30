@@ -2,7 +2,7 @@ from osgeo import ogr
 import json
 import os
 from shapely.geometry import shape
-from .loghelper import Logger
+from rscommons import Logger
 from .exception import DataException
 
 

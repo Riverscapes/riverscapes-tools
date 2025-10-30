@@ -1,6 +1,5 @@
 import numpy as np
 from champ_metrics.lib.exception import DataException
-from champ_metrics.lib.sitkaAPI import latestMetricInstance
 from champ_metrics.lib.metrics import CHaMPMetric
 from champ_metrics.lib.exception import MissingException
 

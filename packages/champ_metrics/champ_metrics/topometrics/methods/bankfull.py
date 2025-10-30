@@ -1,8 +1,3 @@
-import argparse
-import sys
-import traceback
-import os
-from os import path
 import xml.etree.ElementTree as ET
 
 import geopandas
@@ -11,8 +6,7 @@ from shapely.geometry import Point
 import numpy as np
 
 from champ_metrics.lib import env
-from champ_metrics.lib.sitkaAPI import downloadUnzipTopo
-from champ_metrics.lib.loghelper import Logger
+from rscommons import Logger
 from champ_metrics.lib.exception import DataException, MissingException, NetworkException
 
 __version__ = "0.0.2"
@@ -173,70 +167,3 @@ def indent(elem, level=0, more_sibs=False):
             elem.tail = i
             if more_sibs:
                 elem.tail += '  '
-
-
-def main():
-    # parse command line options
-    parser = argparse.ArgumentParser()
-    parser.add_argument('visitID', help='Visit ID', type=int)
-    parser.add_argument('outputfolder', help='Path to output folder', type=str)
-    parser.add_argument('--datafolder', help='(optional) Top level folder containing TopoMetrics Riverscapes projects', type=str)
-    parser.add_argument('--verbose', help='Get more information in your logs.', action='store_true', default=False)
-    args = parser.parse_args()
-
-    # Make sure the output folder exists
-    resultsFolder = os.path.join(args.outputfolder, "outputs")
-
-    # Initiate the log file
-    logg = Logger("Program")
-    logfile = os.path.join(resultsFolder, "bankfull_metrics.log")
-    xmlfile = os.path.join(resultsFolder, "bankfull_metrics.xml")
-    logg.setup(logPath=logfile, verbose=args.verbose)
-
-    # Initiate the log file
-    log = Logger("Program")
-    log.setup(logPath=logfile, verbose=args.verbose)
-
-    try:
-        # Make some folders if we need to:
-        if not os.path.isdir(args.outputfolder):
-            os.makedirs(args.outputfolder)
-        if not os.path.isdir(resultsFolder):
-            os.makedirs(resultsFolder)
-
-        # If we need to go get our own topodata.zip file and unzip it we do this
-        if args.datafolder is None:
-            topoDataFolder = os.path.join(args.outputfolder, "inputs")
-            fileJSON, projectFolder = downloadUnzipTopo(args.visitID, topoDataFolder)
-        # otherwise just pass in a path to existing data
-        else:
-            projectFolder = args.datafolder
-
-        from champ_metrics.lib.topoproject import TopoProject
-        topo_project = TopoProject(os.path.join(projectFolder, "project.rs.xml"))
-        tree = ET.parse(os.path.join(projectFolder, "project.rs.xml"))
-        root = tree.getroot()
-        visitid = root.findtext("./MetaData/Meta[@name='Visit']") if root.findtext("./MetaData/Meta[@name='Visit']") is not None else root.findtext("./MetaData/Meta[@name='VisitID']")
-        finalResult = BankfullMetrics(topo_project.getpath("DEM"),
-                                      topo_project.getpath("DetrendedDEM"),
-                                      topo_project.getpath("Topo_Points"))
-
-        write_bfmetrics_xml(finalResult, visitid, xmlfile)
-        sys.exit(0)
-
-    except (DataException, MissingException, NetworkException) as e:
-        # Exception class prints the relevant information
-        traceback.print_exc(file=sys.stdout)
-        sys.exit(e.returncode)
-    except AssertionError as e:
-        log.error(e)
-        traceback.print_exc(file=sys.stdout)
-        sys.exit(1)
-    except Exception as e:
-        log.error(e)
-        traceback.print_exc(file=sys.stdout)
-        sys.exit(1)
-
-
-if __name__ == "__main__":
-    main()

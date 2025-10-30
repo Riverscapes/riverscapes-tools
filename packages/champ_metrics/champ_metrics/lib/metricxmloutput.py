@@ -3,7 +3,7 @@ import xml.etree.ElementTree as ET
 import xml.dom.minidom
 import datetime
 import copy
-from .loghelper import Logger
+from rscommons import Logger
 from rscommons.util import safe_makedirs
 
 DATECREATEDFIELD = "GenerationDate"

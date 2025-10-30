@@ -1,5 +1,5 @@
 from copy import deepcopy
-from .loghelper import Logger
+from rscommons import Logger
 from .exception import DataException, MissingException
 
 

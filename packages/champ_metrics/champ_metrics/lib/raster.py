@@ -6,7 +6,7 @@ import numpy as np
 from osgeo import gdal, ogr, osr
 from shapely.geometry import shape, Polygon
 from .exception import DataException, NetworkException, MissingException
-from .loghelper import Logger
+from rscommons import Logger
 
 # this allows GDAL to throw Python Exceptions
 gdal.UseExceptions()
