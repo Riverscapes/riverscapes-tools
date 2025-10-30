@@ -34,7 +34,7 @@
     {
       "name": "BATCH CHaMP Metrics",
       "type": "debugpy",
-      "module": "champ_metrics.champ_metrics_batch",
+      "module": "champ_metrics.run_champ_metrics_batch",
       "envFile": "${workspaceFolder}/.env",
       "args": [
         "{env:CSV_FOLDER}",
