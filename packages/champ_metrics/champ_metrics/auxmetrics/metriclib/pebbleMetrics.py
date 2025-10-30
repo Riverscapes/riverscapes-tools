@@ -1,14 +1,12 @@
-from champmetrics.lib.loghelper import Logger
 import numpy as np
-
+from rscommons import Logger
 
 
 def visitPebbleMetrics(visitMetrics, visitobj):
-    visit  = visitobj['visit']
+    visit = visitobj['visit']
     pebbles = visitobj['pebbles']
     pebbleCrossSections = visitobj['pebbleCrossSections']
     channelUnits = visitobj['channelUnits']
-
 
     # ChampMetricVisitInformation.AvgFastWaterCobbleEmbeddedness
     fastWaterCobbleEmbeddednessAvg(visitMetrics, visit, pebbles)
@@ -124,7 +122,7 @@ def getPebbleSubstrateSummary(pebbles, pebbleCrossSections, channelUnits):
         return []
 
     channelUnitIDs = [c["value"]["ChannelUnitID"] for c in channelUnits["values"] if c["value"]["ChannelUnitID"] is not None and c["value"]["Tier1"] != "Slow/Pool"]
-    crossSectionIDsInScope = [c["value"]["CrossSectionID"] for c in pebbleCrossSections["values"] if c["value"]["CrossSectionID"]  is not None and c["value"]["ChannelUnitID"] is not None and c["value"]["ChannelUnitID"] in channelUnitIDs]
+    crossSectionIDsInScope = [c["value"]["CrossSectionID"] for c in pebbleCrossSections["values"] if c["value"]["CrossSectionID"] is not None and c["value"]["ChannelUnitID"] is not None and c["value"]["ChannelUnitID"] in channelUnitIDs]
 
     pebblesInScope = [p for p in pebbles["values"] if p["value"]["CrossSectionID"] is not None and p["value"]["CrossSectionID"] in crossSectionIDsInScope]
     result = []
@@ -142,7 +140,7 @@ def getPebbleSubstrateSummary(pebbles, pebbleCrossSections, channelUnits):
         result.append(summary)
 
     for pebble in sorted([p for p in pebblesInScope if p["value"]["SubstrateSizeClass"] == "> 512mm" and p["value"]["Substrate"] is not None and p["value"]["Substrate"] > 512], key=sortSubstrate):
-        summary = next((r for r in result if r["MaxDiameter"] == pebble["value"]["Substrate"]), None) #FirstOrDefault
+        summary = next((r for r in result if r["MaxDiameter"] == pebble["value"]["Substrate"]), None)  # FirstOrDefault
 
         if summary is None:
             summary = dict()
@@ -174,12 +172,14 @@ def getPebbleSubstrateSummary(pebbles, pebbleCrossSections, channelUnits):
 def sortSubstrate(a):
     return a["value"]["Substrate"]
 
+
 def sortMaxDiameter(a):
     return a["MaxDiameter"]
 
+
 def getCobbles(visit, pebbles):
     if visit["iterationID"] == 1:
-        return [p for p in pebbles["values"] if p["value"]["CobbleEmbededPercent"] is not None  and p["value"]["CobblePercentFines"] is not None and p["value"]["Substrate"] is not None and p["value"]["Substrate"] > 64 and p["value"]["Substrate"] <= 250]
+        return [p for p in pebbles["values"] if p["value"]["CobbleEmbededPercent"] is not None and p["value"]["CobblePercentFines"] is not None and p["value"]["Substrate"] is not None and p["value"]["Substrate"] > 64 and p["value"]["Substrate"] <= 250]
 
     substrateSizeForCobbles = ["64 - 90mm", "90 - 128mm", "128 - 180mm", "180 - 256mm"]
 
@@ -199,7 +199,6 @@ def fastWaterCobbleEmbeddednessAvg(visitMetrics, visit, pebbles):
             visitMetrics["FastWaterCobbleEmbeddednessAvg"] = np.mean(embeddedness)/100
 
 
-
 def fastWaterCobbleEmbeddednessStdDev(visitMetrics, visit, pebbles):
     visitMetrics["FastWaterCobbleEmbeddednessStdDev"] = None
 
@@ -209,5 +208,3 @@ def fastWaterCobbleEmbeddednessStdDev(visitMetrics, visit, pebbles):
         if cobbles.__len__() > 0:
             embeddedness = [(c["value"]["CobbleEmbededPercent"] * (c["value"]["CobblePercentFines"] if c["value"]["CobblePercentFines"] is not None else 0)) for c in cobbles]
             visitMetrics["FastWaterCobbleEmbeddednessStdDev"] = np.std(embeddedness, ddof=1)/100
-
-
