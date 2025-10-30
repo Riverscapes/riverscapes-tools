@@ -1,7 +1,7 @@
-from champmetrics.lib.exception import MissingException
-from champmetrics.lib.sitkaAPI import latestMetricInstances
-from champmetrics.lib.metrics import CHaMPMetric
-from metricsbychannelunit import metricsByChannelUnit, emptiesByChannelUnit
+from champ_metrics.lib.exception import MissingException
+from champ_metrics.lib.sitkaAPI import latestMetricInstances
+from champ_metrics.lib.metrics import CHaMPMetric
+from champ_metrics.topoauxmetrics.methods.metricsbychannelunit import metricsByChannelUnit, emptiesByChannelUnit
 
 
 class FishcoverMetrics(CHaMPMetric):
@@ -26,7 +26,6 @@ class FishcoverMetrics(CHaMPMetric):
         super(FishcoverMetrics, self).__init__(apiData)
 
     def calc(self, apiData):
-
         """
         Calculate fish cover metrics
         :param apiData: dictionary of API data. Key is API call name. Value is API data
@@ -39,17 +38,17 @@ class FishcoverMetrics(CHaMPMetric):
             raise MissingException("FishCover missing from apiData")
 
         # Retrieve the undercut API data
-        fishCoverVals = [val['value'] for val in apiData['FishCover']['values'] ]
+        fishCoverVals = [val['value'] for val in apiData['FishCover']['value']]
 
-        if 'ChannelUnitMetrics' not in apiData:
-            raise MissingException('Missing channel metric instances')
+        if 'ChannelUnits' not in apiData['TopoVisitMetrics']:
+            raise MissingException('Missing channel unit instances')
 
         # Retrieve the channel unit metrics
-        channelInstances = latestMetricInstances(apiData['ChannelUnitMetrics'])
+        # channelInstances = latestMetricInstances(apiData['ChannelUnitMetrics'])
+        channelInstances = apiData['TopoVisitMetrics']['ChannelUnits']
         channelUnitMeasurements = apiData['ChannelUnitMeasurements']
         if channelInstances is None:
             raise MissingException('Missing channel unit metric instances')
 
         # calculate metrics
         self.metrics = metricsByChannelUnit(FishcoverMetrics.fishCoverClasses, channelInstances, fishCoverVals, channelUnitMeasurements)
-

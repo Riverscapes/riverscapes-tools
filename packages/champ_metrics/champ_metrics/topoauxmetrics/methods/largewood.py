@@ -1,8 +1,8 @@
-from champmetrics.lib.exception import DataException
-from champmetrics.lib.sitkaAPI import latestMetricInstance
 import numpy as np
-from champmetrics.lib.metrics import CHaMPMetric
-from champmetrics.lib.exception import MissingException
+from champ_metrics.lib.exception import DataException
+from champ_metrics.lib.sitkaAPI import latestMetricInstance
+from champ_metrics.lib.metrics import CHaMPMetric
+from champ_metrics.lib.exception import MissingException
 
 
 class LargeWoodMetrics(CHaMPMetric):
@@ -19,27 +19,27 @@ class LargeWoodMetrics(CHaMPMetric):
         self.log.info("Running Large Wood Metrics")
 
         # Retrieve the site wetted length from the latest topo metrics
-        metricInstance = latestMetricInstance(apiData['TopoVisitMetrics'])
+        metricInstance = apiData['TopoVisitMetrics']
         if metricInstance is None:
             raise MissingException('Missing topo visit metric instance')
-        siteWettedLength = metricInstance['Lgth_Wet']
+        siteWettedLength = metricInstance['Wetted']['Centerline']['TotalChannelLength']
 
-        if apiData['VisitDetails']['sampleYear'] < 2014:
-            woodData = [val['value'] for val in apiData['LargeWoodyDebris']['values']]
+        if apiData['VisitYear'] < 2014:
+            woodData = [val['value'] for val in apiData['LargeWoodyDebris']['value']]
 
             # Only 2011 and 2012 have separate wood jam data
             jamData = None
-            if 'WoodyDebrisJam' in apiData:
-                jamData = [val['value'] for val in apiData['WoodyDebrisJam']['values']]
+            if 'WoodyDebrisJam' in apiData and apiData['WoodyDebrisJam'] is not None:
+                jamData = [val['value'] for val in apiData['WoodyDebrisJam']['value']]
 
             metrics = LargeWoodMetrics._calcFrequency2011to2013(woodData, jamData, siteWettedLength)
         else:
             if 'LargeWoodyPiece' not in apiData:
                 raise DataException("LargeWoodyPiece needed and not found.")
-            woodData = [val['value'] for val in apiData['LargeWoodyPiece']['values']]
+            woodData = [val['value'] for val in apiData['LargeWoodyPiece']['value']]
             metrics = LargeWoodMetrics._calcFrequency2014On(woodData, siteWettedLength)
 
-        self.metrics = {'VisitMetrics' : {'Frequency' : metrics } }
+        self.metrics = {'VisitMetrics': {'Frequency': metrics}}
 
     @staticmethod
     def _calcFrequency2014On(woodData, siteWettedLength):
@@ -55,13 +55,13 @@ class LargeWoodMetrics(CHaMPMetric):
         if bankfullWoodCount != 0.0 and siteWettedLength is not None and siteWettedLength != 0.0:
             LWFreqBankfull = 100 * bankfullWoodCount / siteWettedLength
 
-        return { 'Wetted' : LWFreqWetted, 'Bankfull' : LWFreqBankfull}
+        return {'Wetted': LWFreqWetted, 'Bankfull': LWFreqBankfull}
 
     @staticmethod
     def _calcFrequency2011to2013(woodData, jamData, siteWettedLength):
 
         # Wet wood includes the wet count plus any wood that has a null value for LargeWood Type
-        wetWoodCount = np.sum([val['SumLWDCount'] for val in woodData if  val['LargeWoodType'] is None or val['LargeWoodType'].startswith('Wet')])
+        wetWoodCount = np.sum([val['SumLWDCount'] for val in woodData if val['LargeWoodType'] is None or val['LargeWoodType'].startswith('Wet')])
         wetJamCount = 0
         if jamData:
             wetJamCount = np.sum([val['SumJamCount'] for val in jamData if val['LargeWoodType'] is None or val['LargeWoodType'].startswith('Wet')])
@@ -72,7 +72,7 @@ class LargeWoodMetrics(CHaMPMetric):
             LWFreqWetted = 100 * wetTotalCount / siteWettedLength
 
         # All dry wood should have a largeWoodType value that starts with 'Dry'
-        dryWoodCount = np.sum([val['SumLWDCount'] for val in woodData if  val['LargeWoodType'] is None or val['LargeWoodType'].startswith('Dry')])
+        dryWoodCount = np.sum([val['SumLWDCount'] for val in woodData if val['LargeWoodType'] is None or val['LargeWoodType'].startswith('Dry')])
 
         dryJamCount = 0
         if jamData:
@@ -86,7 +86,7 @@ class LargeWoodMetrics(CHaMPMetric):
         if bankfullCount != 0 and siteWettedLength is not None and siteWettedLength != 0.0:
             LWFreqBankfull = 100 * bankfullCount / siteWettedLength
 
-        visitMetrics = { 'Wetted' : LWFreqWetted, 'Bankfull' : LWFreqBankfull }
+        visitMetrics = {'Wetted': LWFreqWetted, 'Bankfull': LWFreqBankfull}
         return visitMetrics
 
 # def _calcVol(sampleYear, woodData, channelUnitMeasurements):

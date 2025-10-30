@@ -1,6 +1,7 @@
 import sys
-import numpy as np
 from os import path
+import numpy as np
+from shapely.geometry import Point
 from champ_metrics.lib.raster import Raster
 from champ_metrics.lib.shapefileloader import Shapefile
 from champ_metrics.lib.exception import DataException
@@ -8,7 +9,6 @@ from champ_metrics.lib.channelunits import dUnitDefs
 from champ_metrics.lib.channelunits import getCleanTierName
 from champ_metrics.lib.metrics import CHaMPMetric
 from champ_metrics.lib.exception import MissingException
-from shapely.geometry import Point
 
 
 class ChannelUnitMetrics(CHaMPMetric):

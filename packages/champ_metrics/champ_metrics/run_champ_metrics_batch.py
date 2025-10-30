@@ -8,15 +8,21 @@ import os
 import traceback
 import sys
 import xml.etree.ElementTree as ET
-
 from rscommons import Logger, dotenv
-from rscommons.util import safe_makedirs
-from champ_metrics.run_topo_metrics import champ_metrics
-from champ_metrics.load_project_guids_from_csv import load_project_guids_from_csv
+from champ_metrics.run_champ_metrics import run_champ_metrics
+from champ_metrics.scripts.load_project_guids_from_csv import load_project_guids_from_csv
 
 
-def champ_metrics_batch(workbench_db: str, csv_dir: str, projects_dir: str, output_folder: str):
-    """Process each of the different kind of metrics."""
+def champ_metrics_batch(csv_dir: str, projects_dir: str, output_dir: str):
+    """Process each of the different kind of metrics.
+
+    Note that in both directry arguments are parent folders. The code will append
+    the visit ID subfolder to find the project.rs.xml file in the projects_dir.
+
+    :param csv_dir: Directory containing CSV files with project GUIDs to process
+    :param projects_dir: Local parent folder where the topo projects are already downloaded
+    :param output_folder: Parent folder where output metric XML files will be saved
+    """
 
     log = Logger('CHaMP Metrics Batch')
 
@@ -53,10 +59,8 @@ def champ_metrics_batch(workbench_db: str, csv_dir: str, projects_dir: str, outp
 
     for visit_id, project_xml in visit_ids.items():
         log.info(f'Processing Visit ID {visit_id} with project file {project_xml}')
-        visit_output_folder = os.path.join(output_folder, str(visit_id))
         try:
-            safe_makedirs(visit_output_folder)
-            champ_metrics(visit_id, workbench_db, project_xml, visit_output_folder)
+            run_champ_metrics(project_xml, output_dir)
         except Exception as e:
             log.error(f'Error processing Visit ID {visit_id}: {e}')
             continue
@@ -68,9 +72,8 @@ def main():
     """Parse CHaMP Metrics command line arguments and call the main processing function."""
 
     args = argparse.ArgumentParser(description='CHaMP Metrics')
-    args.add_argument('workbench_db', help='SQLite workbench db to load channel units from', type=str)
     args.add_argument('csv_dir', help='Directory containing CSV files with project GUIDs to process', type=str)
-    args.add_argument('project_files_dir', help='Local parent folder where the topo projects are already downloaded', type=str)
+    args.add_argument('topo_project_parent_dir', help='Local parent folder where the topo projects are already downloaded', type=str)
     args.add_argument('output_folder', help='Parent folder where output metric XML files will be saved', type=str)
     args.add_argument('--verbose', help='Get more information in your logs.', action='store_true', default=False)
     args.add_argument('--debug', help='(optional) more output about thigs like memory usage. There is a performance cost', action='store_true', default=False)
@@ -80,7 +83,7 @@ def main():
     log.setup(logPath=os.path.join(args.output_folder, "champ_metrics.log"), verbose=args.verbose)
 
     try:
-        champ_metrics_batch(args.workbench_db, args.csv_dir, args.project_files_dir, args.output_folder)
+        champ_metrics_batch(args.csv_dir, args.topo_project_parent_dir, args.output_folder)
     except Exception as ex:
         log.error(ex)
         traceback.print_exc(file=sys.stdout)

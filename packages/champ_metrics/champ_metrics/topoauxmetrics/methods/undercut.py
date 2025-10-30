@@ -1,16 +1,17 @@
-from champmetrics.lib.exception import MissingException
-from champmetrics.lib.sitkaAPI import latestMetricInstance
-from champmetrics.lib.exception import DataException, MissingException
-from champmetrics.lib.metrics import CHaMPMetric
+from champ_metrics.lib.exception import MissingException
+from champ_metrics.lib.sitkaAPI import latestMetricInstance
+from champ_metrics.lib.exception import DataException, MissingException
+from champ_metrics.lib.metrics import CHaMPMetric
+
 
 class UndercutMetrics(CHaMPMetric):
 
     TEMPLATE = {
         'VisitMetrics': {
-            'Length' : 0.0,
-            'LengthPercent' : 0.0,
-            'Area' :  0.0,
-            'AreaPerecent' : 0.0
+            'Length': 0.0,
+            'LengthPercent': 0.0,
+            'Area':  0.0,
+            'AreaPerecent': 0.0
         }
     }
 
@@ -27,10 +28,10 @@ class UndercutMetrics(CHaMPMetric):
             raise MissingException("UndercutBanks missing from apiData")
 
         # Retrieve the undercut API data
-        undercutVals = [val['value'] for val in apiData['UndercutBanks']['values'] ]
+        undercutVals = [val['value'] for val in apiData['UndercutBanks']['value']] if apiData['UndercutBanks'] else []
 
         # Retrieve the latest topo metrics
-        metricInstance = latestMetricInstance(apiData['TopoVisitMetrics'])
+        metricInstance = apiData['TopoVisitMetrics']
         if metricInstance is None:
             raise MissingException('Missing topo visit metric instance')
 
@@ -48,10 +49,10 @@ class UndercutMetrics(CHaMPMetric):
 
         # initialize all metrics as zero
         dMetrics = {
-            'Length' : 0.0,
-            'LengthPercent' : 0.0,
-            'Area' :  0.0,
-            'AreaPerecent' : 0.0
+            'Length': 0.0,
+            'LengthPercent': 0.0,
+            'Area':  0.0,
+            'AreaPerecent': 0.0
         }
 
         if len(undercutVals) > 0:
@@ -72,6 +73,6 @@ class UndercutMetrics(CHaMPMetric):
             dMetrics['LengthPercent'] = dMetrics['Length'] / (visitTopoVals['Lgth_Wet'] * 100 / 2)
             dMetrics['AreaPerecent'] = dMetrics['Area'] / (visitTopoVals['Area_Wet'] + dMetrics['Area']) * 100
 
-        dResults = { 'VisitMetrics' : dMetrics}
+        dResults = {'VisitMetrics': dMetrics}
 
         return dResults

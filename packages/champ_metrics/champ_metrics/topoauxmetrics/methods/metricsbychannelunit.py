@@ -1,8 +1,9 @@
-from champmetrics.lib.channelunits import dUnitDefs
-from champmetrics.lib.channelunits import getCleanTierName
 import numpy as np
+from champ_metrics.lib.channelunits import dUnitDefs
+from champ_metrics.lib.channelunits import getCleanTierName
 
-def emptiesByChannelUnit(metricDict):
+
+def emptiesByChannelUnit(metricDict: dict):
     """
     Instantiate an "Empty" object full of null values in case our calculation fails
     :param metricDict:
@@ -10,29 +11,30 @@ def emptiesByChannelUnit(metricDict):
     """
     cleantypes = [getCleanTierName(t1Type) for t1Type in dUnitDefs]
 
-    cuMetrics = { t1type: {} for t1type in cleantypes}
+    cuMetrics = {t1type: {} for t1type in cleantypes}
 
-    for t1Name, t1Obj in cuMetrics.items():
-        for metricName in metricDict.iterkeys():
+    for _t1Name, t1Obj in cuMetrics.items():
+        for metricName in metricDict.keys():
             # The Tier 1 types from the API need to be sanitized for the metric XML file
             t1Obj[metricName] = None
         t1Obj['Total'] = None
 
-    visitMetrics = { metricName: None for metricName in metricDict.iterkeys()}
+    visitMetrics = {metricName: None for metricName in metricDict.keys()}
     visitMetrics['Total'] = None
 
-    dResults = {'VisitMetrics' : visitMetrics, 'Tier1Metrics' : cuMetrics}
+    dResults = {'VisitMetrics': visitMetrics, 'Tier1Metrics': cuMetrics}
     return dResults
+
 
 def metricsByChannelUnit(metricDict, channelUnitMetrics, apiValues, channelUnitMeasurements):
 
     # Retrieve channel unit areas and tier 1 type from channel unit metrics
     dChannelUnits = {}
     for unit in channelUnitMetrics:
-        unitNumber = int(unit['ChUnitNumber'])
-        unitID = next(u['value']['ChannelUnitID'] for u in channelUnitMeasurements['values'] if u['value']['ChannelUnitNumber'] == unitNumber)
+        unitNumber = int(unit['ChannelUnitNumber'])
+        unitID = next(u['value']['ChannelUnitID'] for u in channelUnitMeasurements['value'] if u['value']['ChannelUnitNumber'] == unitNumber)
         dChannelUnits[unitNumber] = {}
-        dChannelUnits[unitNumber]['Area'] = unit['AreaTotal']
+        dChannelUnits[unitNumber]['Area'] = unit['Area']
         dChannelUnits[unitNumber]['Tier1'] = unit['Tier1']
 
         # Loop over each metric.
@@ -51,7 +53,6 @@ def metricsByChannelUnit(metricDict, channelUnitMetrics, apiValues, channelUnitM
                     if dChannelUnits[unitNumber][metricName] is None:
                         dChannelUnits[unitNumber][metricName] = 0
                     dChannelUnits[unitNumber][metricName] += np.sum(vals)
-
 
     cuMetrics = {}
     for t1Type in dUnitDefs:
@@ -79,7 +80,7 @@ def metricsByChannelUnit(metricDict, channelUnitMetrics, apiValues, channelUnitM
                     cuMetrics[safet1Type][metricName] = t1SumProd / t1AreaTot
 
                     if subClasses[1] and cuMetrics[safet1Type][metricName]:
-                        tier1Total  += cuMetrics[safet1Type][metricName]
+                        tier1Total += cuMetrics[safet1Type][metricName]
 
                     cuMetrics[safet1Type]['Total'] = tier1Total
 
@@ -106,9 +107,9 @@ def metricsByChannelUnit(metricDict, channelUnitMetrics, apiValues, channelUnitM
 
             # Only include the metric in the overall total if the argument tuple indicates that the metric should be included
             if subClasses[1]:
-                metricTotal+= visitMetrics[metricName]
+                metricTotal += visitMetrics[metricName]
 
             visitMetrics['Total'] = metricTotal
 
-    dResults = {'VisitMetrics' : visitMetrics, 'Tier1Metrics' : cuMetrics}
+    dResults = {'VisitMetrics': visitMetrics, 'Tier1Metrics': cuMetrics}
     return dResults

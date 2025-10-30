@@ -8,13 +8,7 @@
       "type": "promptString",
       "id": "visitID",
       "description": "Which Visit ID?",
-      "default": "857"
-    },
-    {
-      "type": "promptString",
-      "id": "VisitYear",
-      "description": "Which Visit Year?",
-      "default": "2011"
+      "default": "213"
     }
   ],
   "configurations": [
@@ -26,29 +20,13 @@
       "console": "integratedTerminal"
     },
     {
-      "name": "CHaMP Topo Metrics",
+      "name": "CHaMP Metrics",
       "type": "debugpy",
-      "module": "champ_metrics.champ_metrics",
+      "module": "champ_metrics.run_champ_metrics",
       "envFile": "${workspaceFolder}/.env",
       "args": [
-        "${input:visitID}",
-        "{env:DATA_ROOT}/champ/workbench.db",
-        "{env:DATA_ROOT}/champ/topo_projects/${input:visitID}/project.rs.xml",
-        "{env:DATA_ROOT}/champ/metrics/${input:visitID}"
-      ],
-      "request": "launch",
-      "console": "integratedTerminal"
-    },
-    {
-      "name": "CHaMP Aux Metrics",
-      "type": "debugpy",
-      "module": "champ_metrics.run_aux_metrics",
-      "envFile": "${workspaceFolder}/.env",
-      "args": [
-        "${input:visitID}",
-        "${input:VisitYear}",
-        "{env:DATA_ROOT}/champ/visit_aux_data/visit_857_d440665c-6318-45e1-8553-664c953840ba",
-        "{env:DATA_ROOT}/champ/metrics/${input:visitID}"
+        "{env:DATA_ROOT}/champ/topo_projects/0213/TOPO_-_CHaMP-ASW00001-CC-F1_P2BR_with_aux/project.rs.xml",
+        "{env:DATA_ROOT}/champ/metrics"
       ],
       "request": "launch",
       "console": "integratedTerminal"
@@ -59,9 +37,8 @@
       "module": "champ_metrics.champ_metrics_batch",
       "envFile": "${workspaceFolder}/.env",
       "args": [
-        "{env:DATA_ROOT}/champ/workbench.db",
         "{env:CSV_FOLDER}",
-        "{env:DATA_ROOT}/project_download",
+        "{env:DATA_ROOT}/champ/topo_projects",
         "{env:DATA_ROOT}/champ/metrics"
       ],
       "request": "launch",

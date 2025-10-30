@@ -52,7 +52,8 @@ class TopoProject():
         ],
         "Topo_Points": [
             "./Realizations/SurveyData[@projected='true']/Vector[@id='topo_points']/Path",
-            "./Realizations/Realization[@id='survey_data_projected']/Datasets/Vector[@id='topo_points']/Path"
+            "./Realizations/Realization[@id='survey_data_projected']/Datasets/Vector[@id='topo_points']/Path",
+            "./Realizations/Realization[@id='survey_data_projected']/Inputs/Vector[@id='topo_points']/Path"
         ],
         "StreamFeatures": [
             "./Realizations/SurveyData[@projected='true']/Vector[@id='stream_features']/Path",

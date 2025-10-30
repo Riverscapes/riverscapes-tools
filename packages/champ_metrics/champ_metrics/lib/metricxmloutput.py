@@ -1,8 +1,10 @@
+import os
 import xml.etree.ElementTree as ET
 import xml.dom.minidom
 import datetime
 import copy
 from .loghelper import Logger
+from rscommons.util import safe_makedirs
 
 DATECREATEDFIELD = "GenerationDate"
 VERSIONFIELD = "ModelVersion"
@@ -35,6 +37,8 @@ def writeMetricsToXML(dMetricsArg, visitID, sourceDir, xmlFilePath, modelEngineR
     rough_string = ET.tostring(tree.getroot(), 'utf-8')
     reparsed = xml.dom.minidom.parseString(rough_string)
     pretty = reparsed.toprettyxml(indent="\t")
+
+    safe_makedirs(os.path.dirname(xmlFilePath))
     with open(xmlFilePath, "w", encoding="utf-8") as f:
         f.write(pretty)
 

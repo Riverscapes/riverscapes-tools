@@ -5,17 +5,16 @@ import traceback
 import sys
 import xml.etree.ElementTree as ET
 
-from rscommons import Logger, initGDALOGRErrors, ModelConfig, dotenv
-from rscommons.util import safe_makedirs
-from champ_metrics.topometrics.topometrics import visit_topo_metrics
+from rscommons import Logger, initGDALOGRErrors, dotenv
 from champ_metrics.__version__ import __version__
-from champ_metrics.topoauxmetrics.topoauxmetrics import visit_topo_aux_metrics
+from champ_metrics.topometrics.topometrics import visit_topo_metrics
 from champ_metrics.auxmetrics.auxmetrics import visit_aux_metrics
+from champ_metrics.topoauxmetrics.topoauxmetrics import visit_topo_aux_metrics
 
 initGDALOGRErrors()
 
 
-def run_champ_metrics(topo_project: str, output_folder: str) -> None:
+def run_champ_metrics(topo_project_xml_path: str, output_dir: str) -> None:
     """
     Run CHaMP topo, aux and topo+aux metrics for a given topo project
     :param topo_project: Path to the topo project.rs.xml file
@@ -25,23 +24,28 @@ def run_champ_metrics(topo_project: str, output_folder: str) -> None:
 
     log = Logger('CHaMP Metrics')
     log.info(f'CHaMP Metrics Version: {__version__}')
-    log.info(f'Loading topo project from: {topo_project}')
+    log.info(f'Loading topo project from: {topo_project_xml_path}')
 
     # Load visit info from the topo project XML
-    watershed, site, visit_id, visit_year = load_visit_info(topo_project)
+    watershed, site, visit_id, visit_year = load_visit_info(topo_project_xml_path)
 
     log.info(f'Watershed: {watershed}')
     log.info(f'Site: {site}')
     log.info(f'Visit ID: {visit_id}')
     log.info(f'Year: {visit_year}')
 
-    topo_metric_xml = os.path.join(output_folder, visit_id, 'topo_metrics.xml')
-    aux_metric_xml = os.path.join(output_folder, visit_id, 'aux_metrics.xml')
-    topo_aux_metric_xml = os.path.join(output_folder, visit_id, 'topo_aux_metrics.xml')
+    # Zero pad the visit ID to four characters for folder naming
 
-    topo_metrics = visit_topo_metrics(visit_id, topo_project, topo_metric_xml)
-    aux_metrics = visit_aux_metrics(visit_id, visit_year, os.path.join(topo_project, 'aux_measurements'), aux_metric_xml)
-    topo_aux_metrics = visit_topo_aux_metrics(visit_id, topo_aux_metric_xml)
+    visit_output_dir = os.path.join(output_dir, str(visit_id).zfill(4))
+    topo_metric_xml = os.path.join(visit_output_dir, 'topo_metrics.xml')
+    aux_metric_xml = os.path.join(visit_output_dir, 'aux_metrics.xml')
+    topo_aux_metric_xml = os.path.join(visit_output_dir, 'topo_aux_metrics.xml')
+    aux_data_folder = os.path.join(os.path.dirname(topo_project_xml_path), 'aux_measurements')
+
+    topo_metrics = visit_topo_metrics(visit_id, topo_project_xml_path, topo_metric_xml)
+    aux_metrics = visit_aux_metrics(visit_id, visit_year, aux_data_folder, aux_metric_xml)
+
+    visit_topo_aux_metrics(visit_id, topo_metrics, aux_metrics, topo_aux_metric_xml)
 
     log.info('CHaMP Metrics processing complete.')
 
@@ -70,7 +74,7 @@ def get_metadata_item(nod_parent: ET.Element, item_name: str, is_mandatory: bool
     Extract a metadata item from the topo project.rs.xml project level Meta data.
     """
 
-    nod_item = nod_parent.find(f'Meta[@name="{item_name}"]')
+    nod_item = nod_parent.find(f'MetaData/Meta[@name="{item_name}"]')
     if nod_item is not None and nod_item.text is not None:
         return nod_item.text
     elif is_mandatory:
