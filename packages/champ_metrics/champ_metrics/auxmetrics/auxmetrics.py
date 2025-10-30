@@ -2,6 +2,7 @@ import sys
 import os
 import argparse
 import traceback
+import json
 
 from rscommons import Logger
 from rscommons.util import safe_makedirs
@@ -14,61 +15,61 @@ from .metriclib.auxMetrics import calculateMetricsForVisit, calculateMetricsForC
 
 __version__ = "0.0.4"
 
+# {key: urlslug} dict
+MEASURE_KEYS = {
+    "snorkelFish": "Snorkel Fish",
+    "snorkelFishBinned": "Snorkel Fish Count Binned",
+    "snorkelFishSteelheadBinned": "Snorkel Fish Count Steelhead Binned",
+    "channelUnits": "Channel Unit",
+    "largeWoodyPieces": "Large Woody Piece",
+    "largeWoodyDebris": "Large Woody Debris",
+    "woodyDebrisJams": "Woody Debris Jam",
+    "jamHasChannelUnits": "Jam Has Channel Unit",
+    "riparianStructures": "Riparian Structure",
+    "pebbles": "Pebble",
+    "pebbleCrossSections": "Pebble Cross-Section",
+    "channelConstraints": "Channel Constraints",
+    "channelConstraintMeasurements": "Channel Constraint Measurements",
+    "bankfullWidths": "Bankfull Width",
+    "driftInverts": "Drift Invertebrate Sample",
+    "driftInvertResults": "Drift Invertebrate Sample Results",
+    "sampleBiomasses": "Sample Biomasses",
+    "undercutBanks": "Undercut Banks",
+    "solarInputMeasurements": "Daily Solar Access Meas",
+    "discharge": "Discharge",
+    "waterChemistry": "Water Chemistry",
+    "poolTailFines": "Pool Tail Fines",
+}
 
-def runAuxMetrics(xmlfile: str, visit_id: int, data_folder: str, results_folder: str) -> None:
+
+def aux_metrics(xmlfile: str, visit_id: int, visit_year: int, aux_data_folder: str, results_folder: str) -> None:
     """Run the auxmetrics for a given visit and write them to an XML file."""
 
-    log = Logger("Validation")
+    log = Logger("Aux Metrics")
 
-    # Make a big object we can pass around
-    try:
-        visit = APIGet("visits/{}".format(visit_id))
-    except MissingException as e:
-        raise MissingException("Visit Not Found in API")
-
-    protocol = visit["protocol"]
-    iteration = str(visit["iterationID"] + 2010)
-
-    # {key: urlslug} dict
-    measurekeys = {
-        "snorkelFish": "Snorkel Fish",
-        "snorkelFishBinned": "Snorkel Fish Count Binned",
-        "snorkelFishSteelheadBinned": "Snorkel Fish Count Steelhead Binned",
-        "channelUnits": "Channel Unit",
-        "largeWoodyPieces": "Large Woody Piece",
-        "largeWoodyDebris": "Large Woody Debris",
-        "woodyDebrisJams": "Woody Debris Jam",
-        "jamHasChannelUnits": "Jam Has Channel Unit",
-        "riparianStructures": "Riparian Structure",
-        "pebbles": "Pebble",
-        "pebbleCrossSections": "Pebble Cross-Section",
-        "channelConstraints": "Channel Constraints",
-        "channelConstraintMeasurements": "Channel Constraint Measurements",
-        "bankfullWidths": "Bankfull Width",
-        "driftInverts": "Drift Invertebrate Sample",
-        "driftInvertResults": "Drift Invertebrate Sample Results",
-        "sampleBiomasses": "Sample Biomasses",
-        "undercutBanks": "Undercut Banks",
-        "solarInputMeasurements": "Daily Solar Access Meas",
-        "discharge": "Discharge",
-        "waterChemistry": "Water Chemistry",
-        "poolTailFines": "Pool Tail Fines",
-    }
+    if not os.path.isdir(aux_data_folder):
+        raise Exception(f"Aux measurement folder does not exist: {aux_data_folder}")
 
     visitobj = {
         "visit_id": visit_id,
-        "visit": APIGet("visits/{}".format(visit_id)),
-        "iteration": iteration,
-        "protocol": protocol,
+        # "visit": APIGet("visits/{}".format(visit_id)),
+        "visit": {
+            "VisitID": visit_id,
+            "iterationID": visit_year - 2010,
+            "protocol": 'champ',
+        },
+        "iteration": visit_year,
+        "protocol": 'champ',
     }
 
-    log.info("Visit " + str(visit_id) + " - " + protocol + ": " + iteration)
+    log.info("Visit " + str(visit_id) + " - " + visitobj['protocol'] + ": " + str(visitobj['iteration']))
 
     # Populate our measurements from the Aux JSON files.
     # This used to call the Sitka API to get this information.
-    for key, url in measurekeys.items():
+    for key, url in MEASURE_KEYS.items():
         try:
-            visitobj[key] = APIGet("visits/{0}/measurements/{1}".format(visit_id, url))
+            # visitobj[key] = APIGet("visits/{0}/measurements/{1}".format(visit_id, url))
+            visitobj[key] = load_measurement_file(aux_data_folder, url)
         except MissingException as e:
             visitobj[key] = None
 
@@ -89,44 +90,16 @@ def runAuxMetrics(xmlfile: str, visit_id: int, data_folder: str, results_folder:
     }, visit_id, "", xmlfile, "AuxMetrics", __version__)
 
 
-def main():
-    """Main function for running auxmetrics from the command line."""
+def load_measurement_file(measure_folder: str, url_slug: str) -> dict:
+    """Load a measurement file from a given path."""
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('visit_id', help='Visit ID', type=int)
-    parser.add_argument('outputfolder', help='Path to output folder', type=str)
-    parser.add_argument('data_folder', help='Top level folder containing topo riverscapes projects', type=str)
-    parser.add_argument('--verbose', help='Get more information in your logs.', action='store_true', default=False)
-    args = parser.parse_args()
+    file_name = f"{url_slug.replace(' ', '_').lower()}.json"
+    file_path = os.path.join(measure_folder, file_name)
 
-    # Make sure the output folder exists
-    resultsFolder = os.path.join(args.outputfolder, "outputs")
-    safe_makedirs(resultsFolder)
-
-    # Initiate the log file
-    log = Logger("Aux Metrics")
-    logfile = os.path.join(resultsFolder, "aux_metrics.log")
-    xmlfile = os.path.join(resultsFolder, "aux_metrics.xml")
-    log.setup(logPath=logfile, verbose=args.verbose)
-
-    try:
-        runAuxMetrics(xmlfile, args.visit_id, args.data_folder, resultsFolder)
-
-    except (DataException, MissingException, NetworkException) as e:
-        # Exception class prints the relevant information
-        traceback.print_exc(file=sys.stdout)
-        sys.exit(e.returncode)
-    except AssertionError as e:
-        log.error(e)
-        traceback.print_exc(file=sys.stdout)
-        sys.exit(1)
-    except Exception as e:
-        log.error(e)
-        traceback.print_exc(file=sys.stdout)
-        sys.exit(1)
-
-    sys.exit(0)
-
-
-if __name__ == "__main__":
-    main()
+    if os.path.exists(file_path):
+        with open(file_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        return data
+    else:
+        # raise MissingException(f"Measurement file not found: {file_path}")
+        pass

@@ -8,7 +8,13 @@
       "type": "promptString",
       "id": "visitID",
       "description": "Which Visit ID?",
-      "default": "0687"
+      "default": "857"
+    },
+    {
+      "type": "promptString",
+      "id": "VisitYear",
+      "description": "Which Visit Year?",
+      "default": "2011"
     }
   ],
   "configurations": [
@@ -36,12 +42,12 @@
     {
       "name": "CHaMP Aux Metrics",
       "type": "debugpy",
-      "module": "champ_metrics.champ_aux_metrics.py",
+      "module": "champ_metrics.run_aux_metrics",
       "envFile": "${workspaceFolder}/.env",
       "args": [
         "${input:visitID}",
-        "{env:DATA_ROOT}/champ/workbench.db",
-        "{env:DATA_ROOT}/champ/topo_projects/${input:visitID}/project.rs.xml",
+        "${input:VisitYear}",
+        "{env:DATA_ROOT}/champ/visit_aux_data/visit_857_d440665c-6318-45e1-8553-664c953840ba",
         "{env:DATA_ROOT}/champ/metrics/${input:visitID}"
       ],
       "request": "launch",
