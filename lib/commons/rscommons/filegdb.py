@@ -6,7 +6,7 @@ import argparse
 from shapely.ops import transform
 from functools import reduce
 import json
-from rscommons.util import safe_makedirs
+from rsxml.util import safe_makedirs
 from rsxml import ProgressBar, Logger
 from rscommons.shapefile import create_field, get_transform_from_epsg
 from rscommons.geometry_ops import shapely_to_ogr_geometry

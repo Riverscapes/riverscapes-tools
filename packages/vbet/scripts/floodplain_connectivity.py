@@ -18,7 +18,7 @@ from shapely.ops import polygonize, unary_union
 
 from rsxml import ProgressBar, Logger, dotenv
 from rscommons import initGDALOGRErrors, GeopackageLayer
-from rscommons.util import safe_makedirs
+from rsxml.util import safe_makedirs
 from rscommons.vector_ops import get_geometry_unary_union, load_geometries
 
 

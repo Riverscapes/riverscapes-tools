@@ -5,7 +5,7 @@ import os
 
 from rscommons import ModelConfig, RSReport, RSProject
 from rsxml import Logger, dotenv
-# from rscommons.util import safe_makedirs, sizeof_fmt
+# from rsxml.util import safe_makedirs, sizeof_fmt
 # from rscommons.plotting import xyscatter, box_plot
 
 from blm_context.__version__ import __version__

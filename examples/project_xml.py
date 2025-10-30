@@ -10,7 +10,7 @@ from osgeo import ogr
 
 from rscommons import RSProject, RSLayer, ModelConfig, RSMeta, RSMetaTypes
 from rscommons.__version__ import __version__
-from rscommons.util import safe_makedirs
+from rsxml.util import safe_makedirs
 from rsxml import Logger, dotenv
 # Import your own version. Don't just use RSCommons
 """

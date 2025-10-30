@@ -16,7 +16,7 @@ from typing import List, Dict
 from osgeo import ogr
 
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
-from rscommons.util import safe_makedirs, parse_metadata, pretty_duration
+from rsxml.util import safe_makedirs, parse_metadata, pretty_duration
 from rscommons import RSProject, RSLayer, ModelConfig, initGDALOGRErrors
 from rscommons import GeopackageLayer, get_shp_or_gpkg
 from rscommons.math import safe_eval

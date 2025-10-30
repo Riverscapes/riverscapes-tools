@@ -6,7 +6,7 @@ import time
 import shutil
 import zipfile
 import requests
-from rscommons.util import safe_makedirs, safe_remove_dir, safe_remove_file, file_compare
+from rsxml.util import safe_makedirs, safe_remove_dir, safe_remove_file, file_compare
 from rscommons import Timer
 from rsxml import Logger, ProgressBar
 

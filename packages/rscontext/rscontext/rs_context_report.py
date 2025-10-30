@@ -5,7 +5,7 @@ import os
 
 from rsxml import Logger, dotenv
 from rscommons import ModelConfig, RSReport, RSProject
-# from rscommons.util import safe_makedirs, sizeof_fmt
+# from rsxml.util import safe_makedirs, sizeof_fmt
 # from rscommons.plotting import xyscatter, box_plot
 
 from rscontext.__version__ import __version__

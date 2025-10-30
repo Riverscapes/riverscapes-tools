@@ -26,7 +26,7 @@ from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons import RSProject, RSLayer, ModelConfig, initGDALOGRErrors
 from rscommons import GeopackageLayer
 from rscommons.vector_ops import collect_feature_class, get_geometry_unary_union, copy_feature_class
-from rscommons.util import safe_makedirs, parse_metadata
+from rsxml.util import safe_makedirs, parse_metadata
 from rscommons.copy_features import copy_features_fields
 from rscommons.moving_window import moving_window_dgo_ids
 from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions

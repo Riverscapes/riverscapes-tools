@@ -9,7 +9,7 @@ import datetime
 from rsxml import Logger, dotenv
 from rscommons import RSProject, RSLayer, ModelConfig, initGDALOGRErrors
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
-from rscommons.util import safe_makedirs, safe_remove_file
+from rsxml.util import safe_makedirs, safe_remove_file
 
 cfg = ModelConfig('http://xml.riverscapes.net/Projects/XSD/V1/LST.xsd', '0.0.1')
 

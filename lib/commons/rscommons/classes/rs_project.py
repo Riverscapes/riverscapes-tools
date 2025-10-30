@@ -21,7 +21,7 @@ from osgeo import ogr
 from rsxml import Logger
 from rscommons.rspaths import parse_posix_path
 from rscommons.classes.xml_builder import XMLBuilder
-from rscommons.util import safe_makedirs
+from rsxml.util import safe_makedirs
 from rscommons.vector_ops import copy_feature_class
 
 Path = str

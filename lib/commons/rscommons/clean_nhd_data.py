@@ -4,7 +4,7 @@ from osgeo import ogr
 from rscommons.national_map import get_nhdhr_url
 from rscommons.download import download_unzip
 from rscommons.filegdb import export_feature_class, copy_attributes, export_table
-from rscommons.util import safe_makedirs
+from rsxml.util import safe_makedirs
 from rscommons.shapefile import get_geometry_union
 
 # NHDPlus HR Value Added Attributes (VAA) to be copied to the NHDFlowline feature class

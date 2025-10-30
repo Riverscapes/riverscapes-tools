@@ -25,7 +25,7 @@ from rscommons.download_dem import download_dem, verify_areas
 from rscommons.geographic_raster import gdal_dem_geographic
 from rscommons.project_bounds import generate_project_extents_from_layer
 from rscommons.raster_warp import raster_vrt_stitch
-from rscommons.util import safe_makedirs, safe_remove_dir, safe_remove_file
+from rsxml.util import safe_makedirs, safe_remove_dir, safe_remove_file
 from rscontext_3dep.__version__ import __version__
 
 initGDALOGRErrors()

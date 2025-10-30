@@ -12,7 +12,7 @@ from shapely.geometry.base import BaseGeometry
 from shapely.geometry import Point
 from rsxml import Logger, ProgressBar
 from rscommons import Raster
-from rscommons.util import safe_makedirs
+from rsxml.util import safe_makedirs
 from rscommons.classes.vector_datasource import DatasetRegistry
 
 # NO_UI = os.environ.get('NO_UI') is not None

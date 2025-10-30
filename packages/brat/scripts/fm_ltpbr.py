@@ -9,7 +9,7 @@ from rsxml import Logger, dotenv
 from rscommons import ModelConfig, RSProject, RSLayer
 from rscommons.classes.rs_project import RSMeta
 from rscommons.shapefile import create_field
-from rscommons.util import safe_makedirs
+from rsxml.util import safe_makedirs
 from osgeo import gdal, ogr, osr
 import csv
 from sqlbrat.__version__ import __version__

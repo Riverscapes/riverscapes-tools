@@ -18,7 +18,7 @@ from typing import List
 import questionary
 from osgeo import ogr
 
-from rscommons.util import safe_makedirs, safe_remove_dir
+from rsxml.util import safe_makedirs, safe_remove_dir
 from rsxml import Logger, dotenv
 from rscommons import RSProject, RSMeta, GeopackageLayer, ModelConfig
 from rscommons.copy_features import copy_features_fields

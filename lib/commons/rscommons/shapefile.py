@@ -21,7 +21,7 @@ from shapely.ops import unary_union
 from shapely.geometry import shape, mapping, Point, MultiPoint, LineString, MultiLineString, GeometryCollection, Polygon, MultiPolygon
 from rsxml import Logger, ProgressBar
 from rscommons import Raster
-from rscommons.util import safe_makedirs, sizeof_fmt, get_obj_size
+from rsxml.util import safe_makedirs, sizeof_fmt, get_obj_size
 
 NO_UI = os.environ.get('NO_UI') is not None
 

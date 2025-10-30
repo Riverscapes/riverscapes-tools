@@ -20,7 +20,7 @@ from skimage.graph import route_through_array
 import numpy as np
 
 from rsxml import dotenv
-from rscommons.util import safe_makedirs
+from rsxml.util import safe_makedirs
 
 from vbet.vbet_raster_ops import raster2array, array2raster
 

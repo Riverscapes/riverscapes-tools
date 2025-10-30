@@ -22,7 +22,7 @@ from osgeo import ogr, gdal, osr
 import numpy as np
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 
-from rscommons.util import safe_makedirs, parse_metadata, pretty_duration
+from rsxml.util import safe_makedirs, parse_metadata, pretty_duration
 from rsxml import Logger, dotenv, ProgressBar
 from rscommons import RSProject, RSLayer, ModelConfig, initGDALOGRErrors
 from rscommons import GeopackageLayer, VectorBase

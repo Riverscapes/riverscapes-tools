@@ -18,7 +18,7 @@ import numpy as np
 import rasterio.shutil
 from rsxml import Logger, ProgressBar
 from rscommons.raster_buffer_stats import raster_buffer_stats2
-from rscommons.util import safe_makedirs, safe_remove_dir
+from rsxml.util import safe_makedirs, safe_remove_dir
 from rscommons.database import write_db_attributes
 from rscommons.vector_ops import intersect_feature_classes, get_geometry_unary_union, load_geometries, intersect_geometry_with_feature_class, copy_feature_class
 from rscommons.classes.vector_classes import get_shp_or_gpkg, GeopackageLayer

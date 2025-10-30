@@ -34,7 +34,7 @@ from rscommons.classes.rs_project import RSLayer, RSProject, RSMeta, RSMetaTypes
 from rscommons.geographic_raster import gdal_dem_geographic
 from rscommons.project_bounds import generate_project_extents_from_geom
 from rscommons.raster_warp import raster_warp
-from rscommons.util import safe_makedirs, parse_metadata
+from rsxml.util import safe_makedirs, parse_metadata
 from rscommons.vector_ops import copy_feature_class
 from rscommons.classes.vector_classes import GeopackageLayer
 from rscommons.shapefile import get_transform_from_epsg

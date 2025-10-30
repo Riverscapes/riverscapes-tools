@@ -18,7 +18,7 @@ from osgeo import ogr
 from shapely.wkb import loads as wkbload
 from rsxml import Logger, dotenv
 from rscommons import get_shp_or_gpkg
-from rscommons.util import safe_makedirs
+from rsxml.util import safe_makedirs
 from rscommons.vector_ops import copy_feature_class, get_geometry_unary_union
 from rscommons.classes.vector_base import VectorBase
 

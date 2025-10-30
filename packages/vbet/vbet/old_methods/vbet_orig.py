@@ -26,7 +26,7 @@ import numpy as np
 from shapely.geometry import MultiPolygon
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 
-from rscommons.util import safe_makedirs, parse_metadata, pretty_duration
+from rsxml.util import safe_makedirs, parse_metadata, pretty_duration
 from rscommons import RSProject, RSLayer, ModelConfig, initGDALOGRErrors, TempRaster, VectorBase
 from rsxml import ProgressBar
 from rsxml import Logger, dotenv

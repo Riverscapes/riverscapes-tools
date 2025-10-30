@@ -19,7 +19,7 @@ from osgeo import gdal, osr
 import rasterio
 from rscommons.classes.vector_classes import get_shp_or_gpkg, VectorBase
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
-from rscommons.util import safe_makedirs, parse_metadata, pretty_duration
+from rsxml.util import safe_makedirs, parse_metadata, pretty_duration
 from rscommons import RSProject, RSLayer, ModelConfig, initGDALOGRErrors
 from rscommons import GeopackageLayer
 from rscommons.vector_ops import copy_feature_class

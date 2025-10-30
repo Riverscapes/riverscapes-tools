@@ -3,7 +3,7 @@ import xml.etree.ElementTree as ET
 import sqlite3
 import rasterio
 import numpy as np
-from rscommons.util import safe_makedirs
+from rsxml.util import safe_makedirs
 
 
 def load_vegetation_raster(rasterpath: str, gpkg: str, existing=False, output_folder=None):
@@ -116,7 +116,7 @@ def load_vegetation_raster(rasterpath: str, gpkg: str, existing=False, output_fo
         valid_values = [v[0] for v in c.execute("SELECT VegetationID FROM VegetationTypes").fetchall()]
         conversion_values = {row[0]: conversion_lookup.setdefault(row[1], 0) for row in c.execute('SELECT VegetationID, Physiognomy FROM VegetationTypes').fetchall()}
         riparian_values = {row[0]: 1 if row[1] == "Riparian" else 0 for row in c.execute('SELECT VegetationID, Physiognomy FROM VegetationTypes').fetchall()}
-        native_riparian_values = {row[0]: 1 if row[1] == "Riparian" and not("Introduced" in row[2]) else 0 for row in c.execute('SELECT VegetationID, Physiognomy, LandUseGroup FROM VegetationTypes').fetchall()}
+        native_riparian_values = {row[0]: 1 if row[1] == "Riparian" and not ("Introduced" in row[2]) else 0 for row in c.execute('SELECT VegetationID, Physiognomy, LandUseGroup FROM VegetationTypes').fetchall()}
         vegetation_values = {row[0]: 1 if row[1] in vegetated_classes else 0 for row in c.execute('SELECT VegetationID, Physiognomy FROM VegetationTypes').fetchall()}
         lui_values = {row[0]: lui_lookup.setdefault(row[1], 0) for row in c.execute('SELECT VegetationID, LandUseGroup FROM VegetationTypes').fetchall()} if existing else {}
 

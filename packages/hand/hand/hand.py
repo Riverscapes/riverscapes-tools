@@ -21,7 +21,7 @@ from typing import List, Dict
 from osgeo import gdal
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 
-from rscommons.util import safe_makedirs, parse_metadata, safe_remove_dir
+from rsxml.util import safe_makedirs, parse_metadata, safe_remove_dir
 from rscommons import RSProject, RSLayer, ModelConfig, initGDALOGRErrors
 from rsxml import Logger, dotenv
 from rscommons import GeopackageLayer

@@ -4,7 +4,7 @@ import os
 import traceback
 import rscommons.shapefile
 from rsxml import Logger, ProgressBar, dotenv
-from rscommons.util import safe_makedirs
+from rsxml.util import safe_makedirs
 
 from osgeo import ogr, osr
 

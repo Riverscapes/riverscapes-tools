@@ -13,7 +13,7 @@ import traceback
 
 from rscommons import initGDALOGRErrors, RSProject, RSLayer, ModelConfig
 from rsxml import Logger, dotenv
-from rscommons.util import safe_makedirs
+from rsxml.util import safe_makedirs
 # Import your own version. Don't just use RSCommons
 from rscommons.__version__ import __version__
 # Make sure we catch GDAL errors

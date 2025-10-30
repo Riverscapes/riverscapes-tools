@@ -13,7 +13,7 @@ import sqlite3
 import argparse
 from datetime import datetime
 from rsxml import dotenv
-from rscommons.util import safe_makedirs
+from rsxml.util import safe_makedirs
 
 
 def load_brat_parameters(sqlite_path: str, csv_dir: str) -> None:

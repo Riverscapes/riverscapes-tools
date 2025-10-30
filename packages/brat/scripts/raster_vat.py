@@ -4,7 +4,7 @@ import json
 import argparse
 import os
 from rsxml import dotenv
-from rscommons.util import safe_makedirs
+from rsxml.util import safe_makedirs
 from osgeo import gdal, ogr
 import dbf
 

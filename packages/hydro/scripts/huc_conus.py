@@ -3,11 +3,12 @@ import shutil
 import subprocess
 import argparse
 
-from rscommons.util import safe_makedirs
+from rsxml.util import safe_makedirs
 from rscommons.clean_nhd_data import download_unzip
 
 bucket = 'prd-tnm'
 prefix = 'StagedProducts/Hydrography/NHDPlusHR/VPU/Current/GDB/'
+
 
 def get_huc_conus(output_dir, huc_csv, temp_dir):
     # Output GeoPackage file
@@ -43,7 +44,7 @@ def get_huc_conus(output_dir, huc_csv, temp_dir):
             unzip_folder = os.path.join(temp_dir, f'unzip_huc_{vpu_id}')
 
             # Download and unzip the VPU zip file
-            _out_zip_dir = download_unzip(nhd_url, download_folder, unzip_folder, False) 
+            _out_zip_dir = download_unzip(nhd_url, download_folder, unzip_folder, False)
 
             # Get the GDB file
             gdb_files = [f for f in os.listdir(unzip_folder) if f.endswith('.gdb')]
@@ -73,6 +74,7 @@ def get_huc_conus(output_dir, huc_csv, temp_dir):
             print(f"Processed {vpu}")
 
     return output_gpkg_file
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

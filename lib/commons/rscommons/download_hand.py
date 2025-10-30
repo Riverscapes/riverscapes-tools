@@ -15,7 +15,7 @@ import os
 import traceback
 from rsxml import Logger
 from rscommons.raster_warp import raster_warp
-from rscommons.util import safe_makedirs
+from rsxml.util import safe_makedirs
 from rscommons.download import download_file
 
 base_url = 'https://web.corral.tacc.utexas.edu/nfiedata/HAND'

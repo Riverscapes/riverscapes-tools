@@ -5,7 +5,7 @@ from osgeo import osr
 from rscommons.shapefile import get_geometry_union
 from rscommons.shapefile import merge_feature_classes
 from rscommons.shapefile import get_transform_from_epsg
-from rscommons.util import safe_makedirs
+from rsxml.util import safe_makedirs
 from rsxml import Logger
 
 # The NHD FCodes that identify canals

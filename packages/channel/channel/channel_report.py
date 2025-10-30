@@ -8,7 +8,7 @@ from xml.etree import ElementTree as ET
 from rsxml import Logger, dotenv
 from rscommons import ModelConfig, RSReport, RSProject, VectorBase, get_shp_or_gpkg
 from rscommons.classes.vector_base import get_utm_zone_epsg
-# from rscommons.util import safe_makedirs, sizeof_fmt
+# from rsxml.util import safe_makedirs, sizeof_fmt
 from rscommons.plotting import pie
 
 from channel.__version__ import __version__

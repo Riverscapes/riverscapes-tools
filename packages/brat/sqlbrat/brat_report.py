@@ -5,7 +5,7 @@ import os
 from xml.etree import ElementTree as ET
 
 from rscommons import ModelConfig, RSReport, RSProject
-from rscommons.util import safe_makedirs
+from rsxml.util import safe_makedirs
 from rscommons.plotting import xyscatter, box_plot, pie, horizontal_bar
 from rsxml import Logger, dotenv
 

@@ -8,7 +8,7 @@ from statistics import mean
 from sqlbrat.lib.plotting import validation_chart
 from rscommons.download import download_unzip
 from rscommons.national_map import get_nhdhr_url
-from rscommons.util import safe_makedirs
+from rsxml.util import safe_makedirs
 
 from osgeo import ogr
 

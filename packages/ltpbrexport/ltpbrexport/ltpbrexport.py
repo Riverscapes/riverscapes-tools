@@ -19,7 +19,7 @@ from datetime import datetime
 import requests
 from osgeo import ogr
 
-from rscommons.util import safe_makedirs, parse_metadata
+from rsxml.util import safe_makedirs, parse_metadata
 from rscommons import ModelConfig, initGDALOGRErrors
 from rsxml import Logger, dotenv
 from rscommons import GeopackageLayer as RSGeopackageLayer
