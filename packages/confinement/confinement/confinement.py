@@ -18,11 +18,11 @@ import sqlite3
 
 from osgeo import ogr, osr
 from osgeo import gdal
-from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from shapely.ops import split, nearest_points, linemerge, substring
 from shapely.geometry import Point, MultiPoint, LineString, MultiLineString
 
 from rsxml import Logger, dotenv, ProgressBar
+from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons import RSProject, RSLayer, ModelConfig, initGDALOGRErrors
 from rscommons import GeopackageLayer
 from rscommons.vector_ops import collect_feature_class, get_geometry_unary_union, copy_feature_class
@@ -30,7 +30,12 @@ from rscommons.util import safe_makedirs, parse_metadata
 from rscommons.copy_features import copy_features_fields
 from rscommons.moving_window import moving_window_dgo_ids
 from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions
+
+# TODO: NOT SURE WHY CONFINEMENT IS DEPENDING ON RME HERE? THIS IS VERY STRANGE
+# ===============================================================================
 from rme.shapley_ops import line_segments, select_geoms_by_intersection, cut
+# ===============================================================================
+
 from confinement.utils.calc_confinement import calculate_confinement, dgo_confinement
 from confinement.utils.continuous_line import continuous_line
 from confinement.utils.confinement_moving_window import igo_confinement
@@ -103,12 +108,12 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
 
     try:
         int(huc)
-    except ValueError:
-        raise Exception(
-            'Invalid HUC identifier "{}". Must be an integer'.format(huc))
+    except ValueError as ve:
+        log.debug(str(ve))
+        raise Exception(f'Invalid HUC identifier "{huc}". Must be an integer')
 
     if not (len(huc) == 4 or len(huc) == 8 or len(huc) == 10):
-        raise Exception('Invalid HUC identifier. Must be four digit integer')
+        raise Exception(f'Invalid HUC identifier "{huc}". Must be four digit integer')
 
     # search windows for moving window analysis
     search_distance = {
@@ -123,32 +128,22 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
 
     # Make the projectXML
     project, _realization, proj_nodes, report_path = create_project(huc, output_folder, [
-        RSMeta('HUC{}'.format(len(huc)), str(huc)),
+        RSMeta(f'HUC{len(huc)}', str(huc)),
         RSMeta('HUC', str(huc)),
         RSMeta('ConfinementType', confinement_type),
-        RSMeta('Small Search Window', str(
-            search_distance['0']), RSMetaTypes.INT, locked=True),
-        RSMeta('Medium Search Window', str(
-            search_distance['1']), RSMetaTypes.INT, locked=True),
-        RSMeta('Large Search Window', str(
-            search_distance['2']), RSMetaTypes.INT, locked=True),
-        RSMeta('Very Large Search Window', str(
-            search_distance['3']), RSMetaTypes.INT, locked=True),
-        RSMeta('Huge Search Window', str(
-            search_distance['4']), RSMetaTypes.INT, locked=True)
+        RSMeta('Small Search Window', str(search_distance['0']), RSMetaTypes.INT, locked=True),
+        RSMeta('Medium Search Window', str(search_distance['1']), RSMetaTypes.INT, locked=True),
+        RSMeta('Large Search Window', str(search_distance['2']), RSMetaTypes.INT, locked=True),
+        RSMeta('Very Large Search Window', str(search_distance['3']), RSMetaTypes.INT, locked=True),
+        RSMeta('Huge Search Window', str(search_distance['4']), RSMetaTypes.INT, locked=True)
     ], meta)
 
     # Copy input shapes to a geopackage
-    flowlines_path = os.path.join(
-        output_folder, LayerTypes['INPUTS'].rel_path, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
-    confining_path = os.path.join(
-        output_folder, LayerTypes['INPUTS'].rel_path, LayerTypes['INPUTS'].sub_layers['CONFINING_POLYGON'].rel_path)
-    channel_area = os.path.join(
-        output_folder, LayerTypes['INPUTS'].rel_path, LayerTypes['INPUTS'].sub_layers['CHANNEL_AREA'].rel_path)
-    dgo_path = os.path.join(
-        output_folder, LayerTypes['INPUTS'].rel_path, LayerTypes['INPUTS'].sub_layers['DGOS'].rel_path)
-    igo_path = os.path.join(
-        output_folder, LayerTypes['INPUTS'].rel_path, LayerTypes['INPUTS'].sub_layers['IGOS'].rel_path)
+    flowlines_path = os.path.join(output_folder, LayerTypes['INPUTS'].rel_path, LayerTypes['INPUTS'].sub_layers['FLOWLINES'].rel_path)
+    confining_path = os.path.join(output_folder, LayerTypes['INPUTS'].rel_path, LayerTypes['INPUTS'].sub_layers['CONFINING_POLYGON'].rel_path)
+    channel_area = os.path.join(output_folder, LayerTypes['INPUTS'].rel_path, LayerTypes['INPUTS'].sub_layers['CHANNEL_AREA'].rel_path)
+    dgo_path = os.path.join(output_folder, LayerTypes['INPUTS'].rel_path, LayerTypes['INPUTS'].sub_layers['DGOS'].rel_path)
+    igo_path = os.path.join(output_folder, LayerTypes['INPUTS'].rel_path, LayerTypes['INPUTS'].sub_layers['IGOS'].rel_path)
 
     copy_feature_class(flowlines_orig, flowlines_path, epsg=cfg.OUTPUT_EPSG)
     copy_feature_class(channel_area_orig, channel_area)
@@ -199,6 +194,10 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
         f"Generating Confinement from vbet summary field: {vbet_summary_field}")
 
     # Load input datasets and set the global srs and a meter conversion factor
+    srs = None
+    meter_conversion = None
+    offset = None
+    selection_buffer = None
     with GeopackageLayer(flowlines_path) as flw_lyr:
         empty = False
         # if there are no flowlines, skip the rest of the process
@@ -244,8 +243,7 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
     # Opening these layers to instantiate them
 
     # Standard Outputs
-    confining_margins_path = os.path.join(
-        output_gpkg, LayerTypes['CONFINEMENT'].sub_layers["CONFINEMENT_MARGINS"].rel_path)
+    confining_margins_path = os.path.join(output_gpkg, LayerTypes['CONFINEMENT'].sub_layers["CONFINEMENT_MARGINS"].rel_path)
     with GeopackageLayer(confining_margins_path, write=True) as margins_lyr:
         margins_lyr.create(ogr.wkbLineString, spatial_ref=srs)
         margins_lyr.ogr_layer.CreateField(field_lookup['side'])
@@ -386,29 +384,23 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
         err_count = 0
         raw_lyr.ogr_layer.StartTransaction()
         dbg_splitpts_lyr.ogr_layer.StartTransaction()
-        progbar = ProgressBar(len(level_paths), 50,
-                              "Calculating confinement by Level Path")
+        progbar = ProgressBar(len(level_paths), 50, "Calculating confinement by Level Path")
         counter = 0
         for level_path in level_paths:
             progbar.update(counter)
             counter += 1
 
-            flowlines = collect_feature_class(
-                flowlines_path, attribute_filter=f"level_path = {level_path} AND Divergence < 2")
+            flowlines = collect_feature_class(flowlines_path, attribute_filter=f"level_path = {level_path} AND Divergence < 2")
             geom_flowlines = GeopackageLayer.ogr2shapely(flowlines)
-            geom_flowlines_midpoints = MultiPoint(
-                [line.interpolate(0.5, normalized=True) for line in geom_flowlines])
+            geom_flowlines_midpoints = MultiPoint([line.interpolate(0.5, normalized=True) for line in geom_flowlines])
 
-            geom_flowline = get_geometry_unary_union(
-                flowlines_path, attribute_filter=f"level_path = {level_path}.0 AND Divergence < 2")
+            geom_flowline = get_geometry_unary_union(flowlines_path, attribute_filter=f"level_path = {level_path}.0 AND Divergence < 2")
             if geom_flowline is None:
-                log.warning(
-                    "No flowlines found for level path: {}".format(level_path))
+                log.warning(f"No flowlines found for level path: {level_path}")
                 continue
 
             if geom_flowline.geom_type == 'MultiLineString':
-                log.warning(
-                    "Attempting to merge MultiLineString flowline for level path: {}".format(level_path))
+                log.warning(f"Attempting to merge MultiLineString flowline for level path: {level_path}")
                 geom_flowline = linemerge(geom_flowline)
                 if geom_flowline.geom_type == 'MultiLineString':
                     log.warning(f'Gaps in flowline for level path: {level_path}, attempting to fill')
@@ -416,33 +408,28 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
 
             if not geom_flowline.is_valid or geom_flowline.is_empty or geom_flowline.length == 0 or geom_flowline.geom_type == 'MultiLineString':
                 progbar.erase()
-                log.warning(
-                    "Invalid flowline with level path: {}".format(level_path))
+                log.warning(f"Invalid flowline with level path: {level_path}")
                 dbg_err_lines_lyr.create_feature(geom_flowline, {
-                                                 "ErrorProcess": "Unary Union", 'level_path': level_path, "ErrorMessage": f"Invalid flowline level_path: {level_path}"})
+                                                 "ErrorProcess": "Unary Union",
+                                                 'level_path': level_path,
+                                                 "ErrorMessage": f"Invalid flowline level_path: {level_path}"
+                                                 })
                 continue
 
-            geom_confining_polygon = get_geometry_unary_union(
-                confining_path, clip_shape=geom_flowlines)
+            geom_confining_polygon = get_geometry_unary_union(confining_path, clip_shape=geom_flowlines)
             if geom_confining_polygon is None:
                 progbar.erase()
-                log.warning(
-                    "Invalid confining polygon with level path: {}".format(level_path))
+                log.warning(f"Invalid confining polygon with level path: {level_path}")
                 continue
-            confining_polygon_lyr.create_feature(
-                geom_confining_polygon, {'level_path': level_path})
+            confining_polygon_lyr.create_feature(geom_confining_polygon, {'level_path': level_path})
 
-            geom_channel = get_geometry_unary_union(
-                channel_area, clip_shape=geom_flowlines_midpoints)
+            geom_channel = get_geometry_unary_union(channel_area, clip_shape=geom_flowlines_midpoints)
             if geom_channel is None:
-                log.warning(
-                    "No channel polygons found with level path: {}".format(level_path))
+                log.warning(f"No channel polygons found with level path: {level_path}")
                 continue
 
-            geom_intersected = geom_channel.intersection(
-                geom_confining_polygon)
-            geom_channel_buffer = geom_intersected.buffer(
-                buffer * meter_conversion)
+            geom_intersected = geom_channel.intersection(geom_confining_polygon)
+            geom_channel_buffer = geom_intersected.buffer(buffer * meter_conversion)
 
             if geom_channel_buffer.geom_type == "MultiPolygon":  # try just taking the largest polygon if its multipolygon
                 areas = [g.area for g in geom_channel_buffer.geoms]
@@ -452,34 +439,24 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
                         break
             if geom_channel_buffer is None or geom_channel_buffer.area == 0.0 or geom_channel_buffer.geom_type == "MultiPolygon":
                 progbar.erase()
-                log.warning(
-                    "Invalid buffer polygon with level path: {}".format(level_path))
+                log.warning(f"Invalid buffer polygon with level path: {level_path}")
                 continue
             buff_lyr.create_feature(geom_channel_buffer)
 
             # Split the Buffer by the flowline
-            start = nearest_points(
-                Point(geom_flowline.coords[0]), geom_channel_buffer.exterior)[1]
-            end = nearest_points(
-                Point(geom_flowline.coords[-1]), geom_channel_buffer.exterior)[1]
-            geom_flowline_extended = LineString(
-                [start] + [pt for pt in geom_flowline.coords] + [end])
-            geom_buffer_splits = split(
-                geom_channel_buffer, geom_flowline_extended)
+            start = nearest_points(Point(geom_flowline.coords[0]), geom_channel_buffer.exterior)[1]
+            end = nearest_points(Point(geom_flowline.coords[-1]), geom_channel_buffer.exterior)[1]
+            geom_flowline_extended = LineString([start] + [pt for pt in geom_flowline.coords] + [end])
+            geom_buffer_splits = split(geom_channel_buffer, geom_flowline_extended)
 
             # Process only if 2 buffers exist
             if len(geom_buffer_splits) != 2:
-                log.warning(
-                    "Buffer geom not split into exactly 2 parts with level path: {}".format(level_path))
+                log.warning(f"Buffer geom not split into exactly 2 parts with level path: {level_path}")
                 # Force the line extensions to a common coordinate
-                geom_coords = MultiPoint(
-                    [coord for coord in geom_channel_buffer.exterior.coords])
-                start = nearest_points(
-                    Point(geom_flowline.coords[0]), geom_coords)[1]
-                end = nearest_points(
-                    Point(geom_flowline.coords[-1]), geom_coords)[1]
-                geom_newline = LineString(
-                    [start] + [pt for pt in geom_flowline.coords] + [end])
+                geom_coords = MultiPoint([coord for coord in geom_channel_buffer.exterior.coords])
+                start = nearest_points(Point(geom_flowline.coords[0]), geom_coords)[1]
+                end = nearest_points(Point(geom_flowline.coords[-1]), geom_coords)[1]
+                geom_newline = LineString([start] + [pt for pt in geom_flowline.coords] + [end])
                 geom_buffer_splits = split(geom_channel_buffer, geom_newline)
 
                 if len(geom_buffer_splits) != 2:
@@ -488,17 +465,30 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
                     progbar.erase()
                     log.warning(error_message)
                     dbg_err_lines_lyr.create_feature(geom_newline, {
-                                                     "ErrorProcess": "Buffer Split", 'level_path': level_path, "ErrorMessage": error_message})
+                                                     "ErrorProcess": "Buffer Split",
+                                                     'level_path': level_path,
+                                                     "ErrorMessage": error_message
+                                                     })
                     dbg_err_lines_lyr.create_feature(geom_flowline_extended, {
-                                                     "ErrorProcess": "Buffer Split", 'level_path': level_path, "ErrorMessage": error_message})
+                                                     "ErrorProcess": "Buffer Split",
+                                                     'level_path': level_path,
+                                                     "ErrorMessage": error_message
+                                                     })
                     err_count += 1
                     if len(geom_buffer_splits) > 1:
                         for geom in geom_buffer_splits:
                             dbg_err_polygons_lyr.create_feature(
-                                geom, {"ErrorProcess": "Buffer Split", 'level_path': level_path, "ErrorMessage": error_message})
+                                geom, {
+                                    "ErrorProcess": "Buffer Split",
+                                    'level_path': level_path,
+                                    "ErrorMessage": error_message
+                                })
                     else:
                         dbg_err_polygons_lyr.create_feature(geom_buffer_splits, {
-                                                            "ErrorProcess": "Buffer Split", 'level_path': level_path, "ErrorMessage": error_message})
+                                                            "ErrorProcess": "Buffer Split",
+                                                            'level_path': level_path,
+                                                            "ErrorMessage": error_message
+                                                            })
                         continue
 
             # Generate point to test side of flowline
@@ -506,20 +496,24 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
                 geom_offset = geom_flowline.parallel_offset(offset, "left")
             except Exception as e:
                 progbar.erase()
-                log.warning(
-                    "Error offsetting flowline with level path: {}".format(level_path))
+                log.warning(f"Error offsetting flowline with level path: {level_path}")
                 log.warning(e)
                 err_count += 1
                 dbg_err_lines_lyr.create_feature(geom_flowline, {
-                                                 "ErrorProcess": "Offset Error", 'level_path': level_path, "ErrorMessage": "Error offsetting flowline"})
+                                                 "ErrorProcess": "Offset Error",
+                                                 'level_path': level_path,
+                                                 "ErrorMessage": "Error offsetting flowline"
+                                                 })
                 continue
             if not geom_offset.is_valid or geom_offset.is_empty or geom_offset.length == 0:
                 progbar.erase()
-                log.warning(
-                    "Invalid flowline (after offset) id: {}".format(level_path))
+                log.warning(f"Invalid flowline (after offset) id: {level_path}")
                 err_count += 1
                 dbg_err_lines_lyr.create_feature(geom_flowline, {
-                                                 "ErrorProcess": "Offset Error", 'level_path': level_path, "ErrorMessage": "Invalid flowline (after offset) id: {}".format(level_path)})
+                                                 "ErrorProcess": "Offset Error",
+                                                 'level_path': level_path,
+                                                 "ErrorMessage": f"Invalid flowline (after offset) id: {level_path}"
+                                                 })
                 continue
 
             geom_side_point = geom_offset.interpolate(0.5, True)
@@ -531,17 +525,14 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
             for geom_side in geom_buffer_splits:
 
                 # Identify side of flowline
-                side = "LEFT" if geom_side.contains(
-                    geom_side_point) else "RIGHT"
+                side = "LEFT" if geom_side.contains(geom_side_point) else "RIGHT"
 
                 # Save the polygon
-                conf_buff_split_lyr.create_feature(
-                    geom_side, {"side": side, "level_path": level_path})
+                conf_buff_split_lyr.create_feature(geom_side, {"side": side, "level_path": level_path})
 
                 geom_difference = geom_side.difference(geom_confining_polygon)
                 if not geom_difference.is_valid or geom_difference.is_empty or geom_difference.geom_type == 'GeometryCollection':
-                    log.warning(
-                        "No differenced polygons for level path: {}".format(level_path))
+                    log.warning(f"No differenced polygons for level path: {level_path}")
                     continue
                 difference_lyr.create_feature(
                     geom_difference, {"level_path": level_path, 'side': side})
@@ -553,8 +544,7 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
                 for geom in geom_difference:
                     difference_segments = [
                         g for g in line_segments(geom.exterior)]
-                    selected_lines = select_geoms_by_intersection(
-                        difference_segments, [geom_side.exterior], buffer=selection_buffer)
+                    selected_lines = select_geoms_by_intersection(difference_segments, [geom_side.exterior], buffer=selection_buffer)
                     line = linemerge(selected_lines)
                     line = line if line.geom_type == 'MultiLineString' else [
                         line]
@@ -564,8 +554,7 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
                 # Multilinestring to individual linestrings
                 for line in lines:
                     if line.geom_type == 'GeometryCollection':
-                        log.warning(
-                            "GeometryCollection instead of polygon with level path: {}".format(level_path))
+                        log.warning(f"GeometryCollection instead of polygon with level path: {level_path}")
                         continue
 
                     margins_lyr.create_feature(
@@ -712,8 +701,10 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
 
 
 def create_project(huc, output_dir: str, meta: List[RSMeta], meta_dict: Dict[str, str]):
+    """ Create a Project
+    """
 
-    project_name = 'Confinement for HUC {}'.format(huc)
+    project_name = f'Confinement for HUC {huc}'
     project = RSProject(cfg, output_dir)
     project.create(project_name, 'Confinement', meta, meta_dict)
 
@@ -742,43 +733,32 @@ def create_project(huc, output_dir: str, meta: List[RSMeta], meta_dict: Dict[str
 
 
 def main():
-
+    """ Confinement Launcher
+    """
     parser = argparse.ArgumentParser(description='Confinement Tool')
 
     parser.add_argument('huc', help='HUC identifier', type=str)
-    parser.add_argument(
-        'flowlines', help="NHD Flowlines (.shp, .gpkg/layer_name)", type=str)
+    parser.add_argument('flowlines', help="NHD Flowlines (.shp, .gpkg/layer_name)", type=str)
     parser.add_argument('channel_area')
-    parser.add_argument(
-        'confining_polygon', help='valley bottom or other polygon representing confining boundary (.shp, .gpkg/layer_name)', type=str)
+    parser.add_argument('confining_polygon', help='valley bottom or other polygon representing confining boundary (.shp, .gpkg/layer_name)', type=str)
     parser.add_argument('output_folder', help='Output folder', type=str)
     parser.add_argument('hillshade', help='Hillshade raster', type=str)
-    parser.add_argument(
-        'vbet_summary_field', help='(optional) float field in flowlines with vbet level_paths', default=None)
-    parser.add_argument('confinement_type',
-                        help='type of confinement', default="Unspecified")
+    parser.add_argument('vbet_summary_field', help='(optional) float field in flowlines with vbet level_paths', default=None)
+    parser.add_argument('confinement_type', help='type of confinement', default="Unspecified")
     parser.add_argument('dgos', help='vbet dgo polygons', type=str)
     parser.add_argument('igos', help='vbet igo points', type=str)
-    parser.add_argument(
-        '--buffer', help='buffer to apply to channel area polygons (m)', type=float)
-    parser.add_argument('--segmented_network',
-                        help='segmented network to calculate confinement on (optional)', type=str)
-    parser.add_argument('--calculate_existing',
-                        action='store_true', default=False)
-    parser.add_argument(
-        '--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
-    parser.add_argument('--verbose', help='(optional) a little extra logging ',
-                        action='store_true', default=False)
-    parser.add_argument('--debug', help="(optional) save intermediate outputs for debugging",
-                        action='store_true', default=False)
+    parser.add_argument('--buffer', help='buffer to apply to channel area polygons (m)', type=float)
+    parser.add_argument('--segmented_network', help='segmented network to calculate confinement on (optional)', type=str)
+    parser.add_argument('--calculate_existing', action='store_true', default=False)
+    parser.add_argument('--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
+    parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
+    parser.add_argument('--debug', help="(optional) save intermediate outputs for debugging", action='store_true', default=False)
 
     args = dotenv.parse_args_env(parser)
 
     if args.calculate_existing:
-        raw = os.path.join(args.output_folder, 'outputs',
-                           'confinement.gpkg', 'confinement_raw')
-        out = os.path.join(args.output_folder, 'outputs',
-                           'confinement.gpkg', 'confinement_ratio_segmented')
+        raw = os.path.join(args.output_folder, 'outputs', 'confinement.gpkg', 'confinement_raw')
+        out = os.path.join(args.output_folder, 'outputs', 'confinement.gpkg', 'confinement_ratio_segmented')
         calculate_confinement(raw, args.segmented_network, out)
 
     else:
@@ -786,11 +766,12 @@ def main():
         log = Logger("Confinement")
         log.setup(log_path=os.path.join(args.output_folder,
                   "confinement.log"), verbose=args.verbose)
-        log.title('Confinement For HUC: {}'.format(args.huc))
+        log.title(f'Confinement For HUC: {args.huc}')
 
         meta = parse_metadata(args.meta)
         try:
             if args.debug is True:
+                # LEAVE THIS IMPORT HERE SO THAT IT ONLY LOADS IF NEEDED
                 from rscommons.debug import ThreadRun
                 memfile = os.path.join(
                     args.output_folder, 'confinement_mem.log')
@@ -808,8 +789,7 @@ def main():
                                              buffer=args.buffer,
                                              segmented_network=args.segmented_network,
                                              meta=meta)
-                log.debug('Return code: {}, [Max process usage] {}'.format(
-                    retcode, max_obj))
+                log.debug(f'Return code: {retcode}, [Max process usage] {max_obj}')
 
             else:
                 confinement(args.huc,

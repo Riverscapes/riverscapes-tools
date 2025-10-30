@@ -22,23 +22,21 @@ lyrs_in_out = {
 
 
 def main():
-
-    parser = argparse.ArgumentParser(
-        description='Confinement XML Augmenter',
-        # epilog="This is an epilog"
-    )
+    """ Confinement Augmentor
+    """
+    parser = argparse.ArgumentParser(description='Confinement XML Augmenter',
+                                     # epilog="This is an epilog"
+                                     )
     parser.add_argument('out_project_xml', help='Input XML file', type=str)
-    parser.add_argument(
-        'in_xmls', help='Comma-separated list of XMLs in decreasing priority', type=str)
-    parser.add_argument('--verbose', help='(optional) a little extra logging ',
-                        action='store_true', default=False)
+    parser.add_argument('in_xmls', help='Comma-separated list of XMLs in decreasing priority', type=str)
+    parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
 
     args = dotenv.parse_args_env(parser)
 
     # Initiate the log file
     log = Logger('XML Augmenter')
     log.setup(verbose=args.verbose)
-    log.title('XML Augmenter: {}'.format(args.out_project_xml))
+    log.title(f'XML Augmenter: {args.out_project_xml}')
 
     try:
         out_prj = RSProject(None, args.out_project_xml)
@@ -72,12 +70,9 @@ def main():
             name_node.text = f"Confinement for {watershed_node.text}"
 
         out_prj.XMLBuilder.write()
-        report_path = out_prj.XMLBuilder.find(
-            './/HTMLFile[@id="CONFINEMENT_RUN_REPORT"]/Path').text
-        geopackage_path = out_prj.XMLBuilder.find(
-            './/Geopackage[@id="CONFINEMENT"]/Path').text
-        report = ConfinementReport(os.path.join(out_prj.project_dir, geopackage_path), os.path.join(
-            out_prj.project_dir, report_path), out_prj)
+        report_path = out_prj.XMLBuilder.find('.//HTMLFile[@id="CONFINEMENT_RUN_REPORT"]/Path').text
+        geopackage_path = out_prj.XMLBuilder.find('.//Geopackage[@id="CONFINEMENT"]/Path').text
+        report = ConfinementReport(os.path.join(out_prj.project_dir, geopackage_path), os.path.join(out_prj.project_dir, report_path), out_prj)
         report.write()
 
     except Exception as e:

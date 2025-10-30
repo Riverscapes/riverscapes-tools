@@ -18,7 +18,7 @@ def confinement_metrics(confinement_proj_path, vbet_proj_path):
     confinement_metrics = {}
 
     try:
-        with open(os.path.join(vbet_proj_path, 'vbet_metrics.json')) as f:
+        with open(os.path.join(vbet_proj_path, 'vbet_metrics.json'), encoding='utf8') as f:
             metrics = json.load(f)
     except FileNotFoundError as e:
         log.warning(f'vbet_metrics.json not found in {vbet_proj_path}; creating new metrics file. {e}')
@@ -49,7 +49,7 @@ def confinement_metrics(confinement_proj_path, vbet_proj_path):
 
 
 def main():
-
+    """ Confinement Metrics"""
     parser = argparse.ArgumentParser(description='Confinement Metrics')
     parser.add_argument('confinement_proj_path', help='Path to the Confinement project')
     parser.add_argument('vbet_proj_path', help='Path to the VBET project')

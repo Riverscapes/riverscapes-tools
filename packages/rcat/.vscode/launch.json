@@ -20,6 +20,9 @@
           "request": "launch",
           "module": "rcat.rcat",
           "console": "integratedTerminal",
+          "env": {
+            "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+          },              
           "args": [
             "${input:HUC}",
             "{env:DATA_ROOT}/rs_context/${input:HUC}/vegetation/existing_veg.tif",
@@ -47,6 +50,9 @@
           "request": "launch",
           "module": "rcat.rcat_rs",
           "console": "integratedTerminal",
+          "env": {
+            "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+          },    
           "args": [
             "{env:DATA_ROOT}/rcat/${input:HUC}/project.rs.xml",
             "{env:DATA_ROOT}/rs_context/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/taudem/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/anthro/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/vbet/${input:HUC}/project.rs.xml"
@@ -58,6 +64,9 @@
           "request": "launch",
           "module": "rcat.rcat_metrics",
           "console": "integratedTerminal",
+          "env": {
+            "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+          },    
           "args": [
             "{env:DATA_ROOT}/rcat/${input:HUC}",
             "{env:DATA_ROOT}/anthro/${input:HUC}"
@@ -69,6 +78,9 @@
           "request": "launch",
           "module": "rcat.rcat_report",
           "console": "integratedTerminal",
+          "env": {
+            "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+          },    
           "args": [
             "{env:DATA_ROOT}/rcat/${input:HUC}/project.rs.xml",
             "{env:DATA_ROOT}/rcat/${input:HUC}/outputs/rcat.html",
@@ -78,6 +90,9 @@
           "name": "Version Bump",
           "type": "debugpy",
           "module": "rscommons.version",
+          "env": {
+            "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+          },    
           "args": [
             "${workspaceFolder}/rcat/__version__.py"
           ],

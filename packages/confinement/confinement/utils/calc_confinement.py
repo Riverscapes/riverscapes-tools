@@ -5,7 +5,7 @@ from osgeo import ogr
 
 
 def calculate_confinement(confinement_type_network, segment_network, output_network):
-
+    """Calculate Confinement Ratios for each segment in the segment_network"""
     log = Logger("Calculate Confinement")
     log.info("Starting confinement calculation")
 
@@ -84,7 +84,7 @@ def calculate_confinement(confinement_type_network, segment_network, output_netw
 
 
 def dgo_confinement(confinement_type_network, out_dgos):
-
+    """Calculate Confinement Ratios for each DGO in the out_dgos"""
     log = Logger("Calculate Confinement (DGO)")
     log.info("Starting confinement calculation")
 

@@ -19,6 +19,8 @@ def _dict_factory(cursor, row):
 
 
 class ConfinementReport(RSReport):
+    """ Confinement Report
+    """
 
     def __init__(self, database, report_path, rs_project):
         super().__init__(rs_project, report_path)
@@ -33,6 +35,8 @@ class ConfinementReport(RSReport):
         self.report_content()
 
     def report_intro(self):
+        """ report introduction
+        """
         section = self.section('ReportIntro', 'Introduction')
         conn = sqlite3.connect(self.database)
         conn.row_factory = _dict_factory
@@ -41,23 +45,29 @@ class ConfinementReport(RSReport):
         row = curs.execute(
             'SELECT Sum(approx_leng) AS TotalLength, Count(*) AS TotalReaches FROM confinement_ratio').fetchone()
         values = {
-            'Number of reaches': '{0:,d}'.format(row['TotalReaches']),
-            'Total reach length (km)': '{0:,.0f}'.format(row['TotalLength'] / 1000),
-            'Total reach length (miles)': '{0:,.0f}'.format(row['TotalLength'] * 0.000621371)
+            'Number of reaches': f'{row["TotalReaches"]:,d}',
+            'Total reach length (km)': f'{row["TotalLength"] / 1000:,.0f}',
+            'Total reach length (miles)': f'{row["TotalLength"] * 0.000621371:,.0f}'
         }
 
         self.create_table_from_dict(values, section)
 
     def report_content(self):
+        """ report contents
+        """
         realization = self.xml_project.XMLBuilder.find('Realizations').find('Realization')
 
         section_in = self.section('Inputs', 'Inputs')
         inputs = list(realization.find('Inputs'))
-        [self.layerprint(lyr, section_in, self.project_root) for lyr in inputs if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']]
+        for lyr in inputs:
+            if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']:
+                self.layerprint(lyr, section_in, self.project_root)
 
         section_inter = self.section('Intermediates', 'Intermediates')
         intermediates = list(realization.find('Intermediates'))
-        [self.layerprint(lyr, section_inter, self.project_root) for lyr in intermediates if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']]
+        for lyr in intermediates:
+            if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']:
+                self.layerprint(lyr, section_inter, self.project_root)
 
         section_out = self.section('Outputs', 'Outputs')
 
@@ -68,31 +78,35 @@ class ConfinementReport(RSReport):
             self.confinement_ratio(field, format_label, section_out)
 
         outputs = list(realization.find('Outputs'))
-        [self.layerprint(lyr, section_out, self.project_root) for lyr in outputs if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']]
+        for lyr in outputs:
+            if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']:
+                self.layerprint(lyr, section_out, self.project_root)
 
     def confinement_ratio(self, db_field, label, parent=None):
+        """ Generate a histogram of confinement ratio"""
         section = self.section(None, label, el_parent=parent, level=2)
 
         conn = sqlite3.connect(self.database)
         curs = conn.cursor()
 
-        curs.execute('SELECT {} FROM confinement_ratio'.format(db_field))
+        curs.execute(f'SELECT {db_field} FROM confinement_ratio')
         data = [row[0] for row in curs.fetchall()]
 
         image_path = os.path.join(
-            self.images_dir, '{}.png'.format(db_field.lower()))
+            self.images_dir, f'{db_field.lower()}.png')
         histogram(data, 10, image_path, 'Confinement Ratio', 'Length (km)')
 
         img_wrap = ET.Element('div', attrib={'class': 'imgWrap'})
         img = ET.Element('img', attrib={
             'class': 'boxplot',
-            'src': '{}/{}'.format(os.path.basename(self.images_dir), os.path.basename(image_path)),
-            'alt': '{}/{}'.format(os.path.basename(self.images_dir), os.path.basename(image_path))
+            'src': f'{os.path.basename(self.images_dir)}/{os.path.basename(image_path)}',
+            'alt': f'{os.path.basename(self.images_dir)}/{os.path.basename(image_path)}'
         })
         img_wrap.append(img)
         section.append(img_wrap)
 
     def raw_confinement(self, parent=None):
+        """ Generate a table summarizing raw confinement types"""
         section = self.section('RawConfinement', 'Raw Confinement', el_parent=parent, level=2)
         keys = OrderedDict()
         keys['Left'] = {
@@ -103,11 +117,21 @@ class ConfinementReport(RSReport):
             'label': 'Right Confinement',
             'length': 0.0, 'percent': 0.0
         }
-        keys['None'] = {'label': 'Unconfined', 'length': 0.0, 'percent': 0.0}
-        keys['Both'] = {
-            'label': 'Constricted - Both Left and Right Confined', 'length': 0.0, 'percent': 0.0
+        keys['None'] = {
+            'label': 'Unconfined',
+            'length': 0.0,
+            'percent': 0.0
         }
-        keys['Total'] = {'label': 'Total', 'length': 0.0, 'percent': 100.0}
+        keys['Both'] = {
+            'label': 'Constricted - Both Left and Right Confined',
+            'length': 0.0,
+            'percent': 0.0
+        }
+        keys['Total'] = {
+            'label': 'Total',
+            'length': 0.0,
+            'percent': 100.0
+        }
         conn = sqlite3.connect(self.database)
         conn.row_factory = _dict_factory
 

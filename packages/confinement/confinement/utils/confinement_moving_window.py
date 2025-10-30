@@ -3,7 +3,7 @@ from rscommons import GeopackageLayer
 
 
 def igo_confinement(igo: str, dgo: str, windows: dict):
-
+    """Calculate Moving Window Confinement Ratios for each IGO in the igo"""
     logger = Logger("Moving Window Confinement")
     logger.info('Starting moving window confinement analysis')
 

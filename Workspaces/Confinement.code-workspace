@@ -37,7 +37,10 @@
     ],
     "graphql-config.load.rootDir": "${workspaceFolder}",
     "python.analysis.extraPaths": [
-      "${workspaceFolder:🏠 Git Root}/lib/commons"
+      "${workspaceFolder:🚀 Confinement}",      
+      "${workspaceFolder:🏠 Git Root}/lib/commons",
+      // Weirdly, confinement depends on rme for some reason
+      "${workspaceFolder:🏠 Git Root}/packages/rme"
     ],
     "python.terminal.activateEnvironment": true,
     "python.testing.pytestEnabled": true,
