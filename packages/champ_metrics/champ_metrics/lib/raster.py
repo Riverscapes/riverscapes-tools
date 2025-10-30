@@ -1,12 +1,11 @@
 from os import path
 import copy
-# from decimal import *
 from affine import Affine
 import numpy as np
 from osgeo import gdal, ogr, osr
-from shapely.geometry import shape, Polygon
-from .exception import DataException, NetworkException, MissingException
+from shapely.geometry import Polygon
 from rscommons import Logger
+from .exception import DataException, MissingException
 
 # this allows GDAL to throw Python Exceptions
 gdal.UseExceptions()
@@ -22,10 +21,10 @@ class Raster:
             if (path.isfile(self.filename)):
                 src_ds = gdal.Open(self.filename)
             else:
-                self.log.error("Missing file: {}".format(self.filename))
-                raise MissingException("Could not find raster file: {}".format(path.basename(self.filename)))
+                self.log.error(f"Missing file: {self.filename}")
+                raise MissingException(f"Could not find raster file: {path.basename(self.filename)}")
         except RuntimeError as e:
-            raise DataException("Raster file exists but has problems: {}".format(path.basename(self.filename)))
+            raise DataException(f"Raster file exists but has problems: {path.basename(self.filename)}") from e
         try:
             # Read Raster Properties
             srcband = src_ds.GetRasterBand(1)

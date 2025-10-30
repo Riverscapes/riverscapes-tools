@@ -2,7 +2,8 @@ import datetime
 
 __version__ = '0.1.0'
 
+
 def populateDefaultColumns(dict, visitid):
     dict["VisitID"] = visitid
     dict["EngineVersion"] = __version__
-    dict["CalcDate"] = datetime.datetime.utcnow().isoformat() + 'Z'
+    dict["CalcDate"] = datetime.datetime.now(datetime.timezone.utc).isoformat() + 'Z'

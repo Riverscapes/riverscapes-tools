@@ -2,7 +2,6 @@ from rscommons import Logger
 from champ_metrics.lib.exception import MissingException
 from champ_metrics.lib.metricxmloutput import writeMetricsToXML
 from champ_metrics.lib.metricxmloutput import integrateMetricDictionary
-# from champ_metrics.lib.sitkaAPI import APIGet
 from champ_metrics.lib.channelunits import dUnitDefs
 from champ_metrics.lib.channelunits import getCleanTierName
 from .methods.undercut import UndercutMetrics

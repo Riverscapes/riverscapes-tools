@@ -4,11 +4,11 @@ import argparse
 from os import path
 from shapely.geometry import Point
 import numpy as np
+from rscommons import Logger
 from champ_metrics.lib.shapefileloader import Shapefile
 from champ_metrics.lib.exception import DataException, MissingException
 from champ_metrics.lib.metrics import CHaMPMetric
 from champ_metrics.lib.raster import Raster
-from rscommons import Logger
 
 
 class ThalwegMetrics(CHaMPMetric):
