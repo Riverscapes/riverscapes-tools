@@ -1,16 +1,16 @@
 import os
 import json
-
 from rscommons import Logger
 from champ_metrics.lib.exception import MissingException
 from champ_metrics.lib.metricxmloutput import writeMetricsToXML
 from .metriclib.auxMetrics import calculateMetricsForVisit, calculateMetricsForChannelUnitSummary, calculateMetricsForTier1Summary, calculateMetricsForStructureSummary
-# from .metriclib.fishMetrics import *
 
 
 __version__ = "0.0.4"
 
 # {key: urlslug} dict
+# This dictionary maps old API endpoints to measurement keys.
+# Instead of calling the API, we will load these from local measurement JSON files.
 MEASURE_KEYS = {
     "snorkelFish": "Snorkel Fish",
     "snorkelFishBinned": "Snorkel Fish Count Binned",

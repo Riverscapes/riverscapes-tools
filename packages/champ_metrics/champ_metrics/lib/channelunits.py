@@ -19,7 +19,7 @@ def getCleanTierName(sTierName):
     try:
         return sTierName.replace(' ', '').replace('/', '').replace('-', '')
     except Exception as e:
-        raise DataException("Invalid or null tiername passed to 'getCleanTierName()'")
+        raise DataException("Invalid or null tiername passed to 'getCleanTierName()'") from e
 
 
 def createChannelUnitXMLFile(visitID, workbenchDB, xmlFilePath):
@@ -169,14 +169,14 @@ def writeChannelUnitsToJSON(jsonFilePath, dUnits):
         outDict["value"] = value
         dJson["value"].append(outDict)
 
-    with open(jsonFilePath, 'w') as outfile:
+    with open(jsonFilePath, 'w', encoding='utf-8') as outfile:
         json.dump(dJson, outfile, indent=4)
 
 
 def loadChannelUnitsFromXML(xmlFilePath):
 
     if not path.isfile(xmlFilePath):
-        raise "Missing channel unit file at {0}".format(xmlFilePath)
+        raise FileNotFoundError(f"Missing channel unit file at {xmlFilePath}")
 
     tree = ET.parse(xmlFilePath)
     nodRoot = tree.getroot()
@@ -191,6 +191,6 @@ def loadChannelUnitsFromXML(xmlFilePath):
         dUnits[nCUNumber] = (tier1, tier2, segment)
 
     log = Logger("Channel Units")
-    log.info("{0} channel units loaded from XML file".format(len(dUnits)))
+    log.info(f"{len(dUnits)} channel units loaded from XML file")
 
     return dUnits

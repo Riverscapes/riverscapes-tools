@@ -1,10 +1,11 @@
-from champmetrics.lib.loghelper import Logger
 import numpy as np
+from rscommons import Logger
 
 dAlias = {
-    'LBGroundcoverWoodyShrubs' : 'LBGroundcoverWoodyShurbs',
-    'RBGroundcoverNonWoodyShrubs' : 'RBGroundcoverNonWoodyShurbs'
+    'LBGroundcoverWoodyShrubs': 'LBGroundcoverWoodyShurbs',
+    'RBGroundcoverNonWoodyShrubs': 'RBGroundcoverNonWoodyShurbs'
 }
+
 
 def calculate(apiData):
     """
@@ -19,10 +20,11 @@ def calculate(apiData):
     log.info("Running RiparianCoverMetrics")
 
     # Retrieve the riparian structure API data
-    riparianVals = [val['value'] for val in apiData['RiparianStructure']['values'] ]
+    riparianVals = [val['value'] for val in apiData['RiparianStructure']['values']]
 
     # calculate metrics
     return _calc(riparianVals)
+
 
 def _calc(riparianVals):
     """
@@ -37,12 +39,12 @@ def _calc(riparianVals):
     # Note that the actual lookup is performed on both the left
     # and right bank by prefixing these items with 'LB' and 'RB'
     dLookups = {
-        #'RipCovBigTree' : ['CanopyBigTrees'],
-        #'RipCovConif'   : ['CanopyWoodyConiferous', 'UnderstoryWoodyConiferous'],
-        #'RipCovGrnd'    : ['GroundcoverWoodyShrubs', 'GroundcoverNonWoodyShrubs'],
-        #'RipCovNonWood' : ['UnderstoryNonWoodyShrubs', 'GroundcoverNonWoodyShrubs'],
-        #'RipCovUstory'  : ['UnderstoryWoodyShrubs', 'UnderstoryNonWoodyShrubs'],
-        'RipCovWood'    : ['CanopyBigTrees', 'CanopySmallTrees', 'UnderstoryWoodyShrubs', 'GroundcoverWoodyShrubs']
+        # 'RipCovBigTree' : ['CanopyBigTrees'],
+        # 'RipCovConif'   : ['CanopyWoodyConiferous', 'UnderstoryWoodyConiferous'],
+        # 'RipCovGrnd'    : ['GroundcoverWoodyShrubs', 'GroundcoverNonWoodyShrubs'],
+        # 'RipCovNonWood' : ['UnderstoryNonWoodyShrubs', 'GroundcoverNonWoodyShrubs'],
+        # 'RipCovUstory'  : ['UnderstoryWoodyShrubs', 'UnderstoryNonWoodyShrubs'],
+        'RipCovWood': ['CanopyBigTrees', 'CanopySmallTrees', 'UnderstoryWoodyShrubs', 'GroundcoverWoodyShrubs']
     }
 
     # Loop over each metric and get the mean of all the lookup values
@@ -51,9 +53,10 @@ def _calc(riparianVals):
 
     # Doesn't work for 2011 data.  No documentation on how this was calculated then.
     dResults['RipCovCanNone'] = 100 - _getMeanLeftAndRightBank(riparianVals,
-        ['CanopyWoodyConiferous', 'CanopyWoodyDeciduous', 'CanopyWoodyBroadleafEvergreen', 'CanopyStandingDeadVegetation'])
+                                                               ['CanopyWoodyConiferous', 'CanopyWoodyDeciduous', 'CanopyWoodyBroadleafEvergreen', 'CanopyStandingDeadVegetation'])
 
     return dResults
+
 
 def _getMeanLeftAndRightBank(riparianVals, lookupList):
     """
@@ -79,7 +82,6 @@ def _getMeanLeftAndRightBank(riparianVals, lookupList):
                     typeSum += apiVal[apiLookup]
 
             bankVals.append(typeSum)
-
 
         # Remove any None values but retain zeroes
         print(bankVals)

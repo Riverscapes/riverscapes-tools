@@ -1,8 +1,8 @@
-import numpy as np
 import sys
 from os import path
-from champ_metrics.lib.raster import Raster
+import numpy as np
 from rscommons import Logger
+from champ_metrics.lib.raster import Raster
 
 
 def RasterMetrics(rpath):

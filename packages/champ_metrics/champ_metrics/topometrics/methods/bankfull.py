@@ -1,13 +1,9 @@
 import xml.etree.ElementTree as ET
-
 import geopandas
 import rasterio
 from shapely.geometry import Point
 import numpy as np
-
-from champ_metrics.lib import env
 from rscommons import Logger
-from champ_metrics.lib.exception import DataException, MissingException, NetworkException
 
 __version__ = "0.0.2"
 
@@ -42,7 +38,7 @@ def BankfullMetrics(dem, detrended_dem, shp_points):
     if len(bf_elevations) == 0:
         log.error("No valid bf elevation points found.")
     else:
-        log.info("Sampled {} valid BF point elevations from the DetrendedDEM".format(str(len(bf_elevations))))
+        log.info(f"Sampled {len(bf_elevations)} valid BF point elevations from the DetrendedDEM")
 
     with rasterio.open(dem) as rio_dem:
         dem_band = rio_dem.read(1)

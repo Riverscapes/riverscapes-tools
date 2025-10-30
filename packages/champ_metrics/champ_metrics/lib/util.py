@@ -41,13 +41,13 @@ def getAbsInsensitivePath(abs_insensitive_path, ignoreAbsent=False):
                     raise OSError("Not found")
             except OSError as e:
                 if not ignoreAbsent:
-                    raise MissingException("Could not find case-insensitive path: {}".format(abs_insensitive_path))
+                    raise MissingException(f"Could not find case-insensitive path: {abs_insensitive_path}") from e
                 else:
                     return abs_insensitive_path
 
     finalpath = os.path.sep.join(improved_parts)
 
     if (abs_insensitive_path != finalpath):
-        log.warning("Paths do not match: `{}`  != `{}`".format(abs_insensitive_path, finalpath))
+        log.warning(f"Paths do not match: `{abs_insensitive_path}`  != `{finalpath}`")
 
     return finalpath

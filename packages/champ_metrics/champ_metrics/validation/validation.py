@@ -1,21 +1,20 @@
 import sys
 import os
-
-import champmetrics.lib.env
-
-from champmetrics.lib.loghelper import Logger
-from champmetrics.lib.sitkaAPI import downloadUnzipTopo
 import argparse
 import traceback
-from writetoxml import writeMetricsToXML
-from champmetrics.lib.exception import DataException, MissingException, NetworkException
-from champ_survey import CHaMPSurvey
+
+from rscommons import Logger
+from champ_metrics.lib.exception import DataException, MissingException, NetworkException
+from .writetoxml import writeMetricsToXML
+from .champ_survey import CHaMPSurvey
 
 __version__ = "0.0.4"
+
 
 class Status():
     PASS = "Pass"
     FAIL = "Fail"
+
 
 def validate(topoPath, xmlfile, visitID):
     """
@@ -45,7 +44,7 @@ def validate(topoPath, xmlfile, visitID):
         layerstatus = Status.PASS
         for result in datasetResults:
             log.info("[{0:{4}<{5}}] [{1}] [{2}] {3}".format(result["Status"], datasetName, result["TestName"], result["Message"], " ", 10))
-            if result["Status"] == "Error" :#or result["Status"] == "NotTested":
+            if result["Status"] == "Error":  # or result["Status"] == "NotTested":
                 stats["errors"] += 1
                 stats["status"] = Status.FAIL
                 layerstatus = Status.FAIL
@@ -80,7 +79,7 @@ def main():
     parser.add_argument('visitID', help='Visit ID', type=int)
     parser.add_argument('outputfolder', help='Path to output folder', type=str)
     parser.add_argument('--datafolder', help='(optional) Top level folder containing TopoMetrics Riverscapes projects', type=str)
-    parser.add_argument('--verbose', help='Get more information in your logs.', action='store_true', default=False )
+    parser.add_argument('--verbose', help='Get more information in your logs.', action='store_true', default=False)
     args = parser.parse_args()
 
     # Make sure the output folder exists
@@ -128,6 +127,7 @@ def main():
         sys.exit(1)
 
     sys.exit(0)
+
 
 if __name__ == "__main__":
     main()

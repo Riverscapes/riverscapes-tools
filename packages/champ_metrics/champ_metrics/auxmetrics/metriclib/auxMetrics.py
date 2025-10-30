@@ -1,13 +1,10 @@
-import json
-
+from champ_metrics.lib.channelunits import getCleanTierName
 from .metricUtil import populateDefaultColumns
-
 from .reachMetrics import visitReachMetrics
 from .pebbleMetrics import visitPebbleMetrics
 from .coverMetrics import visitCoverMetrics
 from .fishMetrics import visitFishCountMetrics, channelUnitFishCountMetrics, tier1FishCountMetrics, structureFishCountMetrics
 from .woodMetrics import visitLWDMetrics, channelUnitLWDMetrics, tier1LWDMetrics
-from champ_metrics.lib.channelunits import getCleanTierName
 
 
 def calculateMetricsForVisit(visitobj):
