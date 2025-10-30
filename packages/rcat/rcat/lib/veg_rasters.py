@@ -5,11 +5,11 @@ Jordan Gilbert
 01/2023
 """
 
-import rasterio
-import argparse
-import sqlite3
-import numpy as np
 import os
+import sqlite3
+import argparse
+import rasterio
+import numpy as np
 
 from rsxml import Logger, dotenv
 
@@ -83,13 +83,14 @@ def rcat_rasters(existing_veg: str, historic_veg: str, database: str, out_folder
                         os.path.join(out_folder, 'conversion.tif')]
 
     for i, array in enumerate(out_arrays):
-        log.info(f'writing raster')
+        log.info('writing raster')
         with rasterio.open(out_raster_paths[i], 'w', **meta) as dst:
             dst.write(array, 1)
 
 
 def main():
-
+    """ Veg Rasters Launcher
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument('existing_veg', help='Path to landfire EVT raster', type=str)
     parser.add_argument('historic_veg', help='Path to landfire BpS raster', type=str)

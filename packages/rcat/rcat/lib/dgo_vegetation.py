@@ -84,15 +84,14 @@ def dgo_vegetation(raster: str, dgo: dict, out_gpkg_path: str):
                         database.conn.execute(
                             'INSERT INTO DGOFPAccess (DGOID, AccessVal, CellArea, CellCount) VALUES (?, ?, ?, ?)', veg_record)
                 except sqlite3.IntegrityError as err:
-                    # THis is likely a constraint error.
-                    errstr = "Integrity Error when inserting records: DGOID: {} VegetationID: {}".format(
-                        veg_record[0], veg_record[1])
+                    log.debug(str(err))
+                    # TThis is likely a constraint error.
+                    errstr = f"Integrity Error when inserting records: DGOID: {veg_record[0]} VegetationID: {veg_record[1]}"
                     log.error(errstr)
                     errs += 1
                 except sqlite3.Error as err:
                     # This is any other kind of error
-                    errstr = "SQL Error when inserting records: IGOID: {} VegetationID: {} ERROR: {}".format(
-                        veg_record[0], veg_record[1], str(err))
+                    errstr = f"SQL Error when inserting records: IGOID: {veg_record[0]} VegetationID: {veg_record[1]} ERROR: {str(err)}"
                     log.error(errstr)
                     errs += 1
         if errs > 0:

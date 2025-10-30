@@ -5,7 +5,7 @@ Jordan Gilbert
 01/2023
 """
 
-from rcat.lib.accessibility import access
+import os
 import datetime
 import argparse
 from rscommons.hand import run_subprocess
@@ -14,7 +14,7 @@ from rsxml import Logger, dotenv
 from osgeo import gdal, ogr, osr
 import numpy as np
 import rasterio
-import os
+from rcat.lib.accessibility import access
 
 
 def flooplain_access(filled_dem: str, valley: str, reaches: str, intermediates_path: str, outraster: str, road: str = None, rail: str = None, canal: str = None):
@@ -161,7 +161,8 @@ def flooplain_access(filled_dem: str, valley: str, reaches: str, intermediates_p
 
 
 def main():
-
+    """ Floodplain accessibility launcher
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument('pit_filled', help='', type=str)
     parser.add_argument('valley', help='', type=str)

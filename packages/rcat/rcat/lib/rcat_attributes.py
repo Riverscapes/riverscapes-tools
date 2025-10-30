@@ -6,7 +6,8 @@ from rsxml import Logger
 
 
 def igo_attributes(database: str, windows: dict):
-
+    """ IGO Attributes
+    """
     log = Logger('RCAT IGO Attributes')
 
     conn = sqlite3.connect(database)
@@ -412,6 +413,8 @@ def igo_attributes(database: str, windows: dict):
 
 
 def reach_attributes(database: str):
+    """ Reach Attributes
+    """
 
     log = Logger('RCAT Reach Attributes')
 

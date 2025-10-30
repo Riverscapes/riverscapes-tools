@@ -28,7 +28,8 @@ lyrs_in_out = {
 
 
 def main():
-
+    """ Report Augmentor launcher
+    """
     parser = argparse.ArgumentParser(
         description='Anthro XML Augmenter',
         # epilog="This is an epilog"
@@ -42,7 +43,7 @@ def main():
     # Initiate the log file
     log = Logger('XML Augmenter')
     log.setup(verbose=args.verbose)
-    log.title('XML Augmenter: {}'.format(args.out_project_xml))
+    log.title(f'XML Augmenter: {args.out_project_xml}')
 
     try:
         out_prj = RSProject(None, args.out_project_xml)

@@ -3,25 +3,23 @@
 Jordan Gilbert Jan 2023
 """
 
+from typing import Dict, Tuple, List
 import argparse
 import os
 import time
 import datetime
 import sys
 import traceback
-import rasterio
 import re
 
-from typing import Dict, Tuple, List
 from osgeo import ogr, gdal
 from shapely.geometry import LineString
 
+from rsxml import Logger, dotenv
 from rscommons import initGDALOGRErrors, ModelConfig, RSLayer, RSProject, get_shp_or_gpkg, VectorBase
-from rsxml import Logger
 from rscommons import GeopackageLayer
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.classes.vector_base import get_utm_zone_epsg
-from rsxml import dotenv
 from rscommons.vector_ops import copy_feature_class, get_geometry_unary_union
 from rscommons.database import create_database, SQLiteCon
 from rscommons.copy_features import copy_features_fields
@@ -87,7 +85,8 @@ LayerTypes = {
 def rcat(huc: int, existing_veg: Path, historic_veg: Path, hillshade: Path, pitfilled: Path, igo: Path, dgo: Path,
          reaches: Path, roads: Path, rails: Path, canals: Path, valley: Path, output_folder: Path,
          flow_areas: Path, waterbodies: Path, hist_range: List[Tuple[float, float, float]] = None, meta: Dict[str, str] = None) -> None:
-
+    """ RCAT Tool
+    """
     log = Logger('RCAT')
     log.info(f'Starting RCAT v.{cfg.version}')
     log.info(f'HUC: {huc}')
@@ -222,7 +221,7 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, hillshade: Path, pitf
         return
 
     with SQLiteCon(outputs_gpkg_path) as database:
-        database.curs.execute("""INSERT INTO ReachAttributes (ReachID, FCode, ReachCode, NHDPlusID, WatershedID, StreamName, level_path, TotDASqKm, DivDASqKm, ownership, divergence, stream_order, us_state, ecoregion_iii, ecoregion_iv, iPC_LU) 
+        database.curs.execute("""INSERT INTO ReachAttributes (ReachID, FCode, ReachCode, NHDPlusID, WatershedID, StreamName, level_path, TotDASqKm, DivDASqKm, ownership, divergence, stream_order, us_state, ecoregion_iii, ecoregion_iv, iPC_LU)
                               SELECT ReachID, FCode, ReachCode, NHDPlusID, WatershedID, StreamName, level_path, TotDASqKm, DivDASqKm, ownership, divergence, stream_order, us_state, ecoregion_iii, ecoregion_iv, iPC_LU 
                               FROM ReachGeometry""")
         database.curs.execute('INSERT INTO IGOAttributes (IGOID, FCode, level_path, seg_distance, stream_size, LUI) SELECT IGOID, FCode, level_path, seg_distance, stream_size, LUI FROM IGOGeometry')
@@ -424,20 +423,20 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, hillshade: Path, pitf
     log.info('Updating outputs for reaches with valley too narrow to sample vegetation rasters')
     too_small_reaches = [r for r, v in rdgos.items() if v[1] <= x_res]
     with SQLiteCon(outputs_gpkg_path) as database:
-        database.curs.execute('UPDATE ReachAttributes SET Condition = -1 WHERE ReachID IN ({})'.format(', '.join(map(str, too_small_reaches))))
-        database.curs.execute('UPDATE ReachAttributes SET RiparianDeparture = -9999 WHERE ReachID IN ({})'.format(', '.join(map(str, too_small_reaches))))
-        database.curs.execute('UPDATE ReachAttributes SET RiparianDepartureID = 6 WHERE ReachID IN ({})'.format(', '.join(map(str, too_small_reaches))))
-        database.curs.execute('UPDATE IGOAttributes SET Condition = -1 WHERE IGOID IN ({})'.format(', '.join(map(str, too_small_igo))))
-        database.curs.execute('UPDATE IGOAttributes SET RiparianDeparture = -9999 WHERE IGOID IN ({})'.format(', '.join(map(str, too_small_igo))))
-        database.curs.execute('UPDATE IGOAttributes SET RiparianDepartureID = 6 WHERE IGOID IN ({})'.format(', '.join(map(str, too_small_igo))))
-        database.curs.execute('UPDATE DGOAttributes SET Condition = -1 WHERE DGOID IN ({})'.format(', '.join(map(str, too_small_dgo))))
-        database.curs.execute('UPDATE DGOAttributes SET RiparianDeparture = -9999 WHERE DGOID IN ({})'.format(', '.join(map(str, too_small_dgo))))
+        database.curs.execute(f'UPDATE ReachAttributes SET Condition = -1 WHERE ReachID IN ({", ".join(map(str, too_small_reaches))})')
+        database.curs.execute(f'UPDATE ReachAttributes SET RiparianDeparture = -9999 WHERE ReachID IN ({", ".join(map(str, too_small_reaches))})')
+        database.curs.execute(f'UPDATE ReachAttributes SET RiparianDepartureID = 6 WHERE ReachID IN ({", ".join(map(str, too_small_reaches))})')
+        database.curs.execute(f'UPDATE IGOAttributes SET Condition = -1 WHERE IGOID IN ({", ".join(map(str, too_small_igo))})')
+        database.curs.execute(f'UPDATE IGOAttributes SET RiparianDeparture = -9999 WHERE IGOID IN ({", ".join(map(str, too_small_igo))})')
+        database.curs.execute(f'UPDATE IGOAttributes SET RiparianDepartureID = 6 WHERE IGOID IN ({", ".join(map(str, too_small_igo))})')
+        database.curs.execute(f'UPDATE DGOAttributes SET Condition = -1 WHERE DGOID IN ({", ".join(map(str, too_small_dgo))})')
+        database.curs.execute(f'UPDATE DGOAttributes SET RiparianDeparture = -9999 WHERE DGOID IN ({", ".join(map(str, too_small_dgo))})')
         database.conn.commit()
 
     ellapsed = time.time() - start_time
 
     project.add_metadata([
-        RSMeta("ProcTimeS", "{:.2f}".format(ellapsed), RSMetaTypes.HIDDEN, locked=True),
+        RSMeta("ProcTimeS", f"{ellapsed:.2f}", RSMetaTypes.HIDDEN, locked=True),
         RSMeta("ProcessingTime", pretty_duration(ellapsed), locked=True)
     ])
 
@@ -456,6 +455,8 @@ def rcat(huc: int, existing_veg: Path, historic_veg: Path, hillshade: Path, pitf
 
 
 def main():
+    """ Launcher for RCAT
+    """
     parser = argparse.ArgumentParser(
         description='RCAT'
     )
@@ -491,6 +492,7 @@ def main():
 
     try:
         if args.debug is True:
+            # LEAVE THIS IMPORT HERE for memory profiling so that it doesn't slow down normal runs
             from rscommons.debug import ThreadRun
             memfile = os.path.join(args.output_dir, 'rcat_mem.log')
             retcode, max_obj = ThreadRun(rcat, memfile, args.huc,

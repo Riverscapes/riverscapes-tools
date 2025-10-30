@@ -26,15 +26,15 @@ def rcat_fis(database: str, igos: bool):
 
     if igos is True:
         fields = ['RiparianDeparture', 'LUI', 'FloodplainAccess']
-        features = load_igo_attributes(database, fields, ' AND '.join(['({} IS NOT NULL)'.format(f) for f in fields]))
+        features = load_igo_attributes(database, fields, ' AND '.join([f'({field} IS NOT NULL)'.format(field) for field in fields]))
         calculate_fis(features, igos)
         write_db_igo_attributes(database, features, ['Condition'], summarize=False)
-        dgo_features = load_dgo_attributes(database, fields, ' AND '.join(['({} IS NOT NULL)'.format(f) for f in fields]))
+        dgo_features = load_dgo_attributes(database, fields, ' AND '.join([f'({field} IS NOT NULL)'.format(field) for field in fields]))
         calculate_fis(dgo_features, igos)
         write_db_dgo_attributes(database, dgo_features, ['Condition'], summarize=False)
     else:
         fields = ['RiparianDeparture', 'iPC_LU', 'FloodplainAccess']
-        features = load_attributes(database, fields, ' AND '.join(['({} IS NOT NULL)'.format(f) for f in fields]))
+        features = load_attributes(database, fields, ' AND '.join([f'({field} IS NOT NULL)'.format(field) for field in fields]))
         calculate_fis(features, igos)
         write_db_attributes(database, features, ['Condition'], log)
 
@@ -172,7 +172,8 @@ def rescale(value, old_min, old_max):
 
 
 def main():
-
+    """ RCAT FIS
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument('database', help='The RCAT database (output geopackage)', type=str)
     parser.add_argument('igos', help='True if the FIS is being run for the IGO output', type=bool)

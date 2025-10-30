@@ -10,6 +10,8 @@ from rscommons import RSProject, RSLayer
 
 
 def rcat_metrics(rcat_proj_path, anthro_proj_path):
+    """ Calculate RCAT Metrics
+    """
 
     log = Logger('RCAT Metrics')
     log.info('Calculating RCAT Metrics')
@@ -17,7 +19,7 @@ def rcat_metrics(rcat_proj_path, anthro_proj_path):
     rcat_metrics = {}
 
     try:
-        with open(os.path.join(anthro_proj_path, 'anthro_metrics.json')) as json_file:
+        with open(os.path.join(anthro_proj_path, 'anthro_metrics.json'), encoding='utf-8') as json_file:
             metrics = json.load(json_file)
     except FileNotFoundError as e:
         log.warning(f'anthro_metrics.json not found in {anthro_proj_path}; creating new metrics file. {e}')
@@ -61,7 +63,7 @@ def rcat_metrics(rcat_proj_path, anthro_proj_path):
 
     metrics['rcat'] = rcat_metrics
 
-    with open(os.path.join(rcat_proj_path, 'rcat_metrics.json'), 'w') as json_out:
+    with open(os.path.join(rcat_proj_path, 'rcat_metrics.json'), 'w', encoding='utf-8') as json_out:
         json.dump(metrics, json_out, indent=2)
 
     proj = RSProject(None, os.path.join(rcat_proj_path, 'project.rs.xml'))
@@ -74,6 +76,8 @@ def rcat_metrics(rcat_proj_path, anthro_proj_path):
 
 
 def main():
+    """ RCAT Metrics Launcher
+    """
     parser = argparse.ArgumentParser(description='Calculate RCAT Metrics')
     parser.add_argument('rcat_proj_path', type=str, help='Path to RCAT project')
     parser.add_argument('anthro_proj_path', type=str, help='Path to Anthro project')

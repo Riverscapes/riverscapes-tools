@@ -37,6 +37,7 @@
     ],
     "graphql-config.load.rootDir": "${workspaceFolder}",
     "python.analysis.extraPaths": [
+      "${workspaceFolder:🚀 RCAT}",
       "${workspaceFolder:🏠 Git Root}/lib/commons"
     ],
     "python.terminal.activateEnvironment": true,
@@ -61,7 +62,7 @@
       "**/.venv/**": true,
       "**/__pycache__/**": true
     },
-  "python.defaultInterpreterPath": "${workspaceFolder:🏠 Git Root}/.venv/bin/python",
+    "python.defaultInterpreterPath": "${workspaceFolder:🏠 Git Root}/.venv/bin/python",
     "python.testing.autoTestDiscoverOnSaveEnabled": false
   }
 }

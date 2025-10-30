@@ -1,8 +1,8 @@
 import argparse
 import rasterio
 from shapely.ops import unary_union
-from rscommons import VectorBase, GeopackageLayer
 from rsxml import Logger, dotenv
+from rscommons import VectorBase, GeopackageLayer
 from rscommons.vector_ops import get_shp_or_gpkg
 
 
@@ -139,8 +139,8 @@ def reach_dgos(reaches: str, dgos: str, proj_raster: str, flowarea: str = None, 
                     p = VectorBase.ogr2shapely(geom)
                     polygon = p.buffer(raster_buffer)
                     polygons[reach_id] = [polygon, 100]
-                except:
-                    log.error(f'Could not create fallback polygon for reach {reach_id}')
+                except Exception as ex:
+                    log.error(f'Error creating fallback polygon for reach {reach_id}: {ex}')
                 continue
 
     return polygons

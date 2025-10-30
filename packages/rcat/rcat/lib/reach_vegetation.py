@@ -7,10 +7,10 @@ Jordan Gilbert
 
 import argparse
 import os
+import sqlite3
 import numpy as np
 from osgeo import gdal
 import rasterio
-import sqlite3
 from rasterio.mask import mask
 from rsxml import Logger, dotenv
 from rscommons.database import SQLiteCon
@@ -57,7 +57,7 @@ def vegetation_summary(outputs_gpkg_path: str, reach_dgos: dict, veg_raster: str
                         cell_count = np.count_nonzero(mask_raster == oldvalue)
                         veg_counts.append([reach_id, int(oldvalue), cell_count * cell_area, cell_count])
             except Exception as ex:
-                log.warning('Error obtaining vegetation raster values for ReachID {}'.format(reach_id))
+                log.warning(f'Error obtaining vegetation raster values for ReachID {reach_id}')
                 log.warning(ex)
 
     with SQLiteCon(outputs_gpkg_path) as database:
@@ -82,13 +82,14 @@ def vegetation_summary(outputs_gpkg_path: str, reach_dgos: dict, veg_raster: str
                     elif os.path.basename(veg_raster) == 'fp_access.tif':
                         database.conn.execute('INSERT INTO ReachFPAccess (ReachID, AccessVal, CellArea, CellCount) VALUES (?, ?, ?, ?)', veg_record)
                 except sqlite3.IntegrityError as err:
-                    # THis is likely a constraint error.
-                    errstr = "Integrity Error when inserting records: ReachID: {} VegetationID: {}".format(veg_record[0], veg_record[1])
+                    # This is likely a constraint error.
+                    log.debug(str(err))
+                    errstr = f"Integrity Error when inserting records: ReachID: {veg_record[0]} VegetationID: {veg_record[1]}"
                     log.error(errstr)
                     errs += 1
                 except sqlite3.Error as err:
                     # This is any other kind of error
-                    errstr = "SQL Error when inserting records: ReachID: {} VegetationID: {} ERROR: {}".format(veg_record[0], veg_record[1], str(err))
+                    errstr = f"SQL Error when inserting records: ReachID: {veg_record[0]} VegetationID: {veg_record[1]} ERROR: {str(err)}"
                     log.error(errstr)
                     errs += 1
         if errs > 0:
@@ -99,7 +100,8 @@ def vegetation_summary(outputs_gpkg_path: str, reach_dgos: dict, veg_raster: str
 
 
 def main():
-
+    """ Reach Vegetation Launcher
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument('outputs_gpkg_path', help='Path to RCAT database', type=str)
     parser.add_argument('reach_dgos', help='Dictionary where the key is the reachid and the value is the dgo features that intersect the reach', type=dict)

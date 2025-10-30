@@ -6,6 +6,8 @@ from rcat.__version__ import __version__
 
 
 class RcatReport(RSReport):
+    """ RCAT Report
+    """
 
     def __init__(self, report_path, rs_project):
         super().__init__(rs_project, report_path)
@@ -14,19 +16,27 @@ class RcatReport(RSReport):
         self.report_intro()
 
     def report_intro(self):
+        """ report intro
+        """
         realization = self.xml_project.XMLBuilder.find('Realizations').find('Realization')
 
         section_in = self.section('Inputs', 'Inputs')
         inputs = list(realization.find('Inputs'))
-        [self.layerprint(lyr, section_in, self.project_root) for lyr in inputs if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']]
+        for lyr in inputs:
+            if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']:
+                self.layerprint(lyr, section_in, self.project_root)
 
         section_inter = self.section('Intermediates', 'Intermediates')
         intermediates = list(realization.find('Intermediates'))
-        [self.layerprint(lyr, section_inter, self.project_root) for lyr in intermediates if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']]
+        for lyr in intermediates:
+            if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']:
+                self.layerprint(lyr, section_inter, self.project_root)
 
         section_out = self.section('Outputs', 'Outputs')
         outputs = list(realization.find('Outputs'))
-        [self.layerprint(lyr, section_out, self.project_root) for lyr in outputs if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']]
+        for lyr in outputs:
+            if lyr.tag in ['DEM', 'Raster', 'Vector', 'Geopackage']:
+                self.layerprint(lyr, section_out, self.project_root)
 
 
 if __name__ == '__main__':
