@@ -11,8 +11,8 @@ import datetime
 from typing import Dict
 from osgeo import ogr
 
-from rscommons.util import pretty_duration, parse_metadata
 from rsxml import Logger, dotenv
+from rsxml.util import pretty_duration, parse_metadata
 from rscommons import initGDALOGRErrors
 from rscommons import RSLayer, RSProject, ModelConfig
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes

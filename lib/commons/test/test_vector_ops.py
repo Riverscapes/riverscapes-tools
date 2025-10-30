@@ -5,10 +5,10 @@ import unittest
 import os
 from tempfile import mkdtemp
 from osgeo import ogr
-from rscommons import vector_ops
 from rsxml import Logger
+from rsxml.util import safe_remove_dir
+from rscommons import vector_ops
 from rscommons import ShapefileLayer, GeopackageLayer, initGDALOGRErrors
-from rscommons.util import safe_remove_dir
 
 
 initGDALOGRErrors()

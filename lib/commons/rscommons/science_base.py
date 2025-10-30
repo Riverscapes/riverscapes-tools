@@ -7,17 +7,10 @@
 #
 # Date:     15 Jun 2019
 # -------------------------------------------------------------------------------
+from typing import Dict
 import os
 import csv
-import re
 import sciencebasepy
-import zipfile
-import requests
-import json
-import sys
-import time
-import shapely.geometry
-from typing import Dict
 from rscommons.download import download_unzip
 from rscommons.shapefile import get_geometry_union
 from rsxml import Logger

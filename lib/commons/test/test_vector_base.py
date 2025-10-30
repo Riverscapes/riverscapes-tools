@@ -7,7 +7,7 @@ from shapely.geometry import LineString
 from rsxml import Logger
 from rscommons import initGDALOGRErrors, GeopackageLayer, ShapefileLayer
 from rscommons.classes.vector_base import VectorBase, VectorBaseException
-from rscommons.util import safe_remove_dir
+# from rsxml.util import safe_remove_dir
 
 
 initGDALOGRErrors()

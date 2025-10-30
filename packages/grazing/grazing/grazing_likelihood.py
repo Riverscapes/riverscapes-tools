@@ -10,11 +10,11 @@ import json
 
 from osgeo import gdal, ogr
 
+from rsxml import Logger, dotenv
+from rsxml.util import parse_metadata, pretty_duration
 from rscommons import GeopackageLayer, VectorBase
-from rscommons.util import parse_metadata, pretty_duration
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.vector_ops import copy_feature_class
-from rsxml import Logger, dotenv
 from rscommons import initGDALOGRErrors, RSLayer, RSProject, ModelConfig
 from rscommons.database import create_db_nowats, SQLiteCon
 from rscommons.copy_features import copy_features_fields

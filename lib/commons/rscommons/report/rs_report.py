@@ -5,7 +5,7 @@ from uuid import uuid4
 from xml.etree import ElementTree as ET
 from jinja2 import Template
 from rsxml import Logger
-from rscommons.util import sizeof_fmt
+from rsxml.util import sizeof_fmt
 
 
 class RSReport():

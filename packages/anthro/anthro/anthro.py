@@ -12,11 +12,11 @@ import datetime
 from typing import Dict, List
 from osgeo import ogr
 
+from rsxml import Logger, dotenv
+from rsxml.util import parse_metadata, pretty_duration
 from rscommons import GeopackageLayer
-from rscommons.util import parse_metadata, pretty_duration
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.vector_ops import copy_feature_class
-from rsxml import Logger, dotenv
 from rscommons import initGDALOGRErrors, RSLayer, RSProject, ModelConfig
 from rscommons.database import create_database, SQLiteCon
 from rscommons.copy_features import copy_features_fields

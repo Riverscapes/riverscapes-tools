@@ -16,11 +16,12 @@ from typing import Dict
 
 from osgeo import ogr
 
-from rscommons import (ModelConfig, RSLayer, RSProject, get_shp_or_gpkg, initGDALOGRErrors)
 from rsxml import Logger, dotenv
+from rsxml.util import parse_metadata, safe_makedirs, safe_remove_dir
+
+from rscommons import ModelConfig, RSLayer, RSProject, get_shp_or_gpkg, initGDALOGRErrors
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 
-from rscommons.util import (parse_metadata, pretty_duration, safe_makedirs, safe_remove_dir)
 from rscommons.vector_ops import copy_feature_class
 from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions
 

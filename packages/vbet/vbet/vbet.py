@@ -26,10 +26,10 @@ from shapely.geometry import box
 import numpy as np
 
 from rsxml import Logger, ProgressBar, dotenv
+from rsxml.util import safe_makedirs, parse_metadata, pretty_duration, safe_remove_dir
 from rscommons import RSProject, RSLayer, ModelConfig, GeopackageLayer, VectorBase, initGDALOGRErrors
 from rscommons.vector_ops import copy_feature_class, polygonize, difference, collect_linestring, collect_feature_class
 from rscommons.geometry_ops import get_extent_as_geom, get_rectangle_as_geom
-from rsxml.util import safe_makedirs, parse_metadata, pretty_duration, safe_remove_dir
 from rscommons.hand import run_subprocess
 from rscommons.vbet_network import get_channel_level_path, get_distance_lookup, vbet_network
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes

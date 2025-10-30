@@ -1,6 +1,6 @@
 import sqlite3
 import os
-from rscommons.util import safe_remove_dir
+from rsxml.util import safe_remove_dir
 from cybercastor.lib.file_download import download_files
 
 brat_dir = '/mnt/c/Users/jordang/Documents/Riverscapes/data/brat'

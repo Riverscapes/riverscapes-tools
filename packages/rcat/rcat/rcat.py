@@ -16,6 +16,7 @@ from osgeo import ogr, gdal
 from shapely.geometry import LineString
 
 from rsxml import Logger, dotenv
+from rsxml.util import parse_metadata, pretty_duration
 from rscommons import initGDALOGRErrors, ModelConfig, RSLayer, RSProject, get_shp_or_gpkg, VectorBase
 from rscommons import GeopackageLayer
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
@@ -23,7 +24,6 @@ from rscommons.classes.vector_base import get_utm_zone_epsg
 from rscommons.vector_ops import copy_feature_class, get_geometry_unary_union
 from rscommons.database import create_database, SQLiteCon
 from rscommons.copy_features import copy_features_fields
-from rscommons.util import parse_metadata, pretty_duration
 from rscommons.moving_window import moving_window_dgo_ids
 from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions, raster_resolution_meta
 

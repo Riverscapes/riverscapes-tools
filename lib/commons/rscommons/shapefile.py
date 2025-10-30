@@ -7,21 +7,19 @@
 # Date:     30 May 2019
 # -------------------------------------------------------------------------------
 import os
-import sys
-import json
+from copy import copy
 import subprocess
 import math
 from functools import reduce
 from osgeo import gdal
 from osgeo import ogr
 from osgeo import osr
-from copy import copy
 from shapely.wkb import loads as wkbload
 from shapely.ops import unary_union
-from shapely.geometry import shape, mapping, Point, MultiPoint, LineString, MultiLineString, GeometryCollection, Polygon, MultiPolygon
+from shapely.geometry import mapping, Point, MultiPoint, LineString, MultiLineString, GeometryCollection, Polygon, MultiPolygon
 from rsxml import Logger, ProgressBar
-from rscommons import Raster
 from rsxml.util import safe_makedirs, sizeof_fmt, get_obj_size
+from rscommons import Raster
 
 NO_UI = os.environ.get('NO_UI') is not None
 

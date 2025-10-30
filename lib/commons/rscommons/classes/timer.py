@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Dict, List, Tuple
 import time
 import csv
-from rscommons.util import pretty_duration
+from rsxml.util import pretty_duration
 
 
 class Timer:

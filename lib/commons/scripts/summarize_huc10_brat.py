@@ -1,6 +1,6 @@
-import os 
+import os
 import json
-from rscommons.util import safe_remove_dir
+from rsxml.util import safe_remove_dir
 from cybercastor.lib.file_download import download_files
 
 from brat_proj_metrics import get_metrics
@@ -14,13 +14,13 @@ brat_dir = '/mnt/c/Users/jordang/Documents/Riverscapes/data/brat'
 
 huc_list = []
 
-with open(priority_hucs, 'r') as f:
+with open(priority_hucs, 'r', encoding='utf-8') as f:
     hucs = json.load(f)
 for name, hucs in hucs.items():
     for huc in hucs:
         huc_list.append(huc)
 
-with open(in_json, 'r') as f:
+with open(in_json, 'r', encoding='utf-8') as f:
     huc10_metrics = json.load(f)
 
 for huc in huc_list:
@@ -48,7 +48,7 @@ for huc in huc_list:
 
             safe_remove_dir(os.path.join(brat_dir, direc))
 
-with open(in_json, 'w') as f:
+with open(in_json, 'w', encoding='utf-8') as f:
     json.dump(huc10_metrics, f, indent=4)
 
 print('done summarizing huc10s')

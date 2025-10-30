@@ -18,8 +18,8 @@ from shapely.errors import TopologicalError
 from shapely.validation import make_valid
 
 from rsxml import dotenv, Logger
+from rsxml.util import parse_metadata
 from rscommons import GeopackageLayer, VectorBase
-from rscommons.util import parse_metadata
 from rscommons.classes.vector_base import get_utm_zone_epsg
 from rscommons.geometry_ops import get_rectangle_as_geom
 

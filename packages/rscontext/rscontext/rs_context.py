@@ -21,6 +21,7 @@ import uuid
 from osgeo import ogr
 
 from rsxml import Logger, dotenv
+from rsxml.util import parse_metadata, pretty_duration, safe_makedirs, safe_remove_dir
 from rscommons import ModelConfig, RSLayer, RSProject, get_shp_or_gpkg, Timer, initGDALOGRErrors
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.clean_nhd_data import clean_nhd_data
@@ -31,7 +32,6 @@ from rscommons.geographic_raster import gdal_dem_geographic
 from rscommons.project_bounds import generate_project_extents_from_layer
 from rscommons.raster_warp import raster_vrt_stitch, raster_warp
 from rscommons.national_map import download_shapefile_collection, get_ntd_urls, us_states
-from rscommons.util import (parse_metadata, pretty_duration, safe_makedirs, safe_remove_dir)
 from rscommons.vector_ops import copy_feature_class, get_geometry_unary_union
 from rscommons.geometry_ops import get_rectangle_as_geom
 from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions, raster_resolution_meta

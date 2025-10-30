@@ -19,9 +19,9 @@ import os
 import sys
 import traceback
 from osgeo import gdal
-from rscommons.download import get_unique_file_path
-from rscommons.util import safe_remove_file
 from rsxml import Logger
+from rsxml.util import safe_remove_file
+from rscommons.download import get_unique_file_path
 from rscommons import VectorBase
 
 
@@ -64,7 +64,7 @@ def raster_vrt_stitch(inrasters, outraster, epsg, clip=None, clean=False, warp_o
     # clipping out the HUC boundary and reprojecting to the output spatial reference
     path_vrt = get_unique_file_path(os.path.dirname(outraster), os.path.basename(outraster).split('.')[0] + '.vrt')
 
-    log.info('Building temporary vrt: {}'.format(path_vrt))
+    log.info(f'Building temporary vrt: {path_vrt}')
     vrt_options = gdal.BuildVRTOptions()
     gdal.BuildVRT(path_vrt, inrasters, options=vrt_options)
 

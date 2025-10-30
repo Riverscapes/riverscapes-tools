@@ -6,9 +6,9 @@ import time
 import shutil
 import zipfile
 import requests
+from rsxml import Logger, ProgressBar
 from rsxml.util import safe_makedirs, safe_remove_dir, safe_remove_file, file_compare
 from rscommons import Timer
-from rsxml import Logger, ProgressBar
 
 MAX_ATTEMPTS = 3  # Number of attempts for things like downloading and copying
 PENDING_TIMEOUT = 60  # number of seconds before pending files are deemed stale
@@ -148,19 +148,19 @@ def download_file(s3_url, download_folder, force_download=False):
         refresh_pending()
 
         pending_timer = Timer()
-        log.info('Downloading {}'.format(s3_url))
+        log.info(f'Downloading {s3_url}')
 
         # Actual file download
         for download_retries in range(MAX_ATTEMPTS):
             if download_retries > 0:
-                log.warning('Download file retry: {}'.format(download_retries))
+                log.warning(f'Download file retry: {download_retries}')
             try:
                 dl = 0
                 _file, tmpfilepath = tempfile.mkstemp(suffix=".temp", prefix="rstools_download")
-                with requests.get(s3_url, stream=True) as r:
+                with requests.get(s3_url, stream=True, timeout=120) as r:
                     r.raise_for_status()
                     byte_total = int(r.headers.get('content-length'))
-                    progbar = ProgressBar(byte_total, 50, s3_url, byteFormat=True)
+                    progbar = ProgressBar(byte_total, 50, s3_url, byte_format=True)
 
                     # Binary write to file
                     with open(tmpfilepath, 'wb') as tempf:

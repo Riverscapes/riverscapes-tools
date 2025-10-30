@@ -13,7 +13,7 @@ import time
 from typing import List
 import subprocess
 from osgeo import gdal
-from rscommons.util import pretty_duration
+from rsxml.util import pretty_duration
 from rsxml import Logger, ProgressBar
 from rscommons import VectorBase
 

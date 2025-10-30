@@ -19,11 +19,11 @@ import sqlite3
 from typing import List, Dict
 from osgeo import ogr
 from rsxml import Logger, dotenv
+from rsxml.util import parse_metadata, pretty_duration
 from rscommons import GeopackageLayer
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.vector_ops import copy_feature_class
 from rscommons import initGDALOGRErrors, RSLayer, RSProject, ModelConfig
-from rscommons.util import parse_metadata, pretty_duration
 from rscommons.build_network import build_network
 from rscommons.database import create_database, SQLiteCon
 from rscommons.copy_features import copy_features_fields

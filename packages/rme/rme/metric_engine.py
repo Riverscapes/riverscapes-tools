@@ -23,9 +23,9 @@ from osgeo import gdal
 import rasterio
 
 from rsxml import dotenv, Logger, ProgressBar
+from rsxml.util import parse_metadata, pretty_duration
 from rscommons import GeopackageLayer, initGDALOGRErrors, ModelConfig, RSLayer, RSMeta, RSMetaTypes, RSProject, VectorBase
 from rscommons.classes.vector_base import get_utm_zone_epsg
-from rscommons.util import parse_metadata, pretty_duration
 from rscommons.database import load_lookup_data
 from rscommons.vector_ops import copy_feature_class, collect_linestring
 from rscommons.copy_features import copy_features_fields

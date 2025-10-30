@@ -3,7 +3,7 @@
 from __future__ import annotations
 from osgeo import ogr
 from rsxml import Logger
-from rscommons.util import safe_remove_file
+from rsxml.util import safe_remove_file
 
 
 class DatasetRegistryException(Exception):

@@ -15,8 +15,9 @@ from typing import List, Dict
 
 from osgeo import ogr
 
-from rscommons.classes.rs_project import RSMeta, RSMetaTypes
+from rsxml import Logger, dotenv
 from rsxml.util import safe_makedirs, parse_metadata, pretty_duration
+from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons import RSProject, RSLayer, ModelConfig, initGDALOGRErrors
 from rscommons import GeopackageLayer, get_shp_or_gpkg
 from rscommons.math import safe_eval
@@ -25,7 +26,6 @@ from rscommons.vector_ops import get_geometry_unary_union, buffer_by_field, copy
 from rscommons.classes.vector_base import VectorBase, get_utm_zone_epsg
 from rscommons.vbet_network import vbet_network
 from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions
-from rsxml import Logger, dotenv
 
 from channel.channel_report import ChannelReport
 from channel.__version__ import __version__

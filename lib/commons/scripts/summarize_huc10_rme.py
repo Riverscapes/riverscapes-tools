@@ -1,6 +1,6 @@
 import os
 import json
-from rscommons.util import safe_remove_dir
+from rsxml.util import safe_remove_dir
 from cybercastor.lib.file_download import download_files
 
 from rme_proj_metrics import get_rme_metrics
