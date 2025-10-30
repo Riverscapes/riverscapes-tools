@@ -1,20 +1,15 @@
-import argparse
-import sys
-import traceback
-import os
 from champ_metrics.lib.loghelper import Logger
-from champ_metrics.lib.exception import DataException, MissingException, NetworkException
+from champ_metrics.lib.exception import MissingException
 from champ_metrics.lib.metricxmloutput import writeMetricsToXML
 from champ_metrics.lib.metricxmloutput import integrateMetricDictionary
-from champ_metrics.lib.sitkaAPI import APIGet
-import champ_metrics.lib.env
+# from champ_metrics.lib.sitkaAPI import APIGet
+from champ_metrics.lib.channelunits import dUnitDefs
+from champ_metrics.lib.channelunits import getCleanTierName
 from .methods.undercut import UndercutMetrics
 from .methods.substrate import SubstrateMetrics
 from .methods.sidechannel import SidechannelMetrics
 from .methods.fishcover import FishcoverMetrics
 from .methods.largewood import LargeWoodMetrics
-from champ_metrics.lib.channelunits import dUnitDefs
-from champ_metrics.lib.channelunits import getCleanTierName
 
 __version__ = "0.0.4"
 
@@ -25,26 +20,58 @@ apiCalls = {
     # 'RiparianStructure' : 'measurements/Riparian Structure',
     # 'TopoTier1Metrics' : 'metricschemas/QA - Topo Tier 1 Metrics/metrics',
     'LargeWoodyDebris': 'measurements/Large Woody Debris',
-    'LargeWoodyPiece': 'measurements/Large Woody Piece',
-    'WoodyDebrisJam': 'measurements/Woody Debris Jam',
+    'LargeWoodyPiece': 'measurements/Large Woody Pieces',
+    'WoodyDebrisJam': 'measurements/Woody Debris Jams',
     'VisitDetails': '',
     'TopoVisitMetrics': 'metricschemas/QA - Topo Visit Metrics/metrics',
     'ChannelUnitMetrics': 'metricschemas/QA - Topo Channel Metrics/metrics',
-    'ChannelUnitMeasurements': 'measurements/Channel Unit',
-    'ChannelSegments': 'measurements/Channel Segment',
+    'ChannelUnitMeasurements': 'measurements/Channel Units',
+    'ChannelSegments': 'measurements/Channel Segments',
     'FishCover': 'measurements/Fish Cover',
     'SubstrateCover': 'measurements/Substrate Cover',
     'UndercutBanks': 'measurements/Undercut Banks'
 }
 
 
-def visit_topo_aux_metrics(visitID, metricXMLPath):
+def visit_topo_aux_metrics(visit_id: int, topo_metrics: dict, aux_metrics: dict, metricXMLPath: str) -> dict:
+    """
+    Calculate TopoAux metrics for a given visit
 
-    log = Logger('Metrics')
-    log.info(f'Topo aux metrics for visit {visitID}')
+    NOTE: the aux_metrics dictionary contains the aux measurements
+
+    :param visit_id: Visit ID
+    :param topo_metrics: Dictionary of topo metrics data
+    :param aux_metrics: Dictionary of auxiliary metrics data
+    :param metricXMLPath: Path to output metric XML file
+    :return: Dictionary of calculated TopoAux metrics"""
+
+    log = Logger('TopoAux Metrics')
+    log.info(f'Topo aux metrics for visit {visit_id}')
 
     # Make all the API calls and return a dictionary of API call name keyed to data
-    apiData = downloadAPIData(visitID)
+    # apiData = downloadAPIData(visit_id)
+
+    # Instead of calling API, retrieve the data from the passed dictionaries
+    apiData = {
+        'VisitYear': aux_metrics['VisitMetrics']['VisitYear'],
+    }
+    for key, api_path in apiCalls.items():
+
+        if 'measurements' in api_path:
+            actual_key = api_path.replace('measurements/', '').replace(' ', '')
+            # lower case the first letter to match aux_metrics keys now they are from JSON files and not API
+            actual_key = actual_key[0].lower() + actual_key[1:]
+
+            if actual_key in aux_metrics['AuxMeasurements']:
+                apiData[key] = aux_metrics['AuxMeasurements'][actual_key]
+            else:
+                raise MissingException(f"Aux measurement data for {actual_key} not found for visit {visit_id}")
+        elif 'Topo Visit Metrics' in api_path:
+            apiData[key] = topo_metrics
+        elif 'Channel Unit Metrics' in api_path:
+            apiData[key] = topo_metrics['ChannelUnits']
+        # else:
+        #     raise MissingException(f"API path for {key} not recognized for visit {visit_id}")
 
     # Dictionary to hold the metric values
     visit_metrics = {}
@@ -65,9 +92,9 @@ def visit_topo_aux_metrics(visitID, metricXMLPath):
     integrateMetricDictionaryWithTopLevelType(visit_metrics, 'LargeWood', metrics_wo.metrics)
 
     # Metric calculation complete. Write the topometrics to the XML file
-    writeMetricsToXML(visit_metrics, visitID, '', metricXMLPath, 'TopoAuxMetrics', __version__)
+    writeMetricsToXML(visit_metrics, visit_id, '', metricXMLPath, 'TopoAuxMetrics', __version__)
 
-    log.info(f"Topo aux metric calculation complete for visit {visitID}")
+    log.info(f"Topo aux metric calculation complete for visit {visit_id}")
     return visit_metrics
 
 
@@ -103,68 +130,18 @@ def integrateMetricDictionaryWithTopLevelType(topo_metrics, prefix, newCollectio
             integrateMetricDictionary(topo_metrics['Tier1Metrics'][safet1Type], prefix, newCollection['Tier1Metrics'][safet1Type])
 
 
-def downloadAPIData(visitID):
+# def downloadAPIData(visitID):
 
-    apiData = {}
-    for name, URL in apiCalls.items():
-        try:
-            apiData[name] = APIGet('visits/{0}/{1}'.format(visitID, URL))
-        except MissingException as e:
-            pass
-            # if not (name == 'LargeWoodyDebris' or name == 'LargeWoodyPiece' or name== 'WoodyDebrisJam'):
-            #     raise MissingException("Missing API Data {}".format(URL))
+#     apiData = {}
+#     for name, URL in apiCalls.items():
+#         try:
+#             apiData[name] = APIGet('visits/{0}/{1}'.format(visitID, URL))
+#         except MissingException as e:
+#             pass
+#             # if not (name == 'LargeWoodyDebris' or name == 'LargeWoodyPiece' or name== 'WoodyDebrisJam'):
+#             #     raise MissingException("Missing API Data {}".format(URL))
 
-    # if 'LargeWoodyDebris' not in apiData and 'LargeWoodyPiece' not in apiData:
-    #     raise MissingException('Missing large wood API data')
+#     # if 'LargeWoodyDebris' not in apiData and 'LargeWoodyPiece' not in apiData:
+#     #     raise MissingException('Missing large wood API data')
 
-    return apiData
-
-
-def main():
-    # parse command line options
-    parser = argparse.ArgumentParser()
-    parser.add_argument('visitID', help='Visit ID', type=int)
-    parser.add_argument('outputfolder', help='Path to output folder', type=str)
-    parser.add_argument('--verbose', help='Get more information in your logs.', action='store_true', default=False)
-    args = parser.parse_args()
-
-    # Make sure the output folder exists
-    resultsFolder = os.path.join(args.outputfolder, "outputs")
-
-    # Initiate the log file
-    logg = Logger("Program")
-    logfile = os.path.join(resultsFolder, "topo_aux_metrics.log")
-    xmlfile = os.path.join(resultsFolder, "topo_aux_metrics.xml")
-    logg.setup(logPath=logfile, verbose=args.verbose)
-
-    # Initiate the log file
-    log = Logger("Program")
-    log.setup(logPath=logfile, verbose=args.verbose)
-
-    try:
-        # Make some folders if we need to:
-        if not os.path.isdir(args.outputfolder):
-            os.makedirs(args.outputfolder)
-        if not os.path.isdir(resultsFolder):
-            os.makedirs(resultsFolder)
-
-        visit_topo_aux_metrics(args.visitID, xmlfile)
-
-    except (DataException, MissingException, NetworkException) as e:
-        # Exception class prints the relevant information
-        traceback.print_exc(file=sys.stdout)
-        sys.exit(e.returncode)
-    except AssertionError as e:
-        logg.error(e)
-        traceback.print_exc(file=sys.stdout)
-        sys.exit(1)
-    except Exception as e:
-        logg.error(e)
-        traceback.print_exc(file=sys.stdout)
-        sys.exit(1)
-
-    sys.exit(0)
-
-
-if __name__ == "__main__":
-    main()
+#     return apiData

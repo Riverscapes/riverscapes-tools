@@ -1,7 +1,7 @@
-from champmetrics.lib.sitkaAPI import latestMetricInstances
-from metricsbychannelunit import metricsByChannelUnit, emptiesByChannelUnit
-from champmetrics.lib.exception import MissingException
-from champmetrics.lib.metrics import CHaMPMetric
+# from champmetrics.lib.sitkaAPI import latestMetricInstances
+from champ_metrics.topoauxmetrics.methods.metricsbychannelunit import metricsByChannelUnit, emptiesByChannelUnit
+from champ_metrics.lib.exception import MissingException
+from champ_metrics.lib.metrics import CHaMPMetric
 
 
 class SubstrateMetrics(CHaMPMetric):
@@ -24,7 +24,6 @@ class SubstrateMetrics(CHaMPMetric):
         super(SubstrateMetrics, self).__init__(apiData)
 
     def calc(self, apiData):
-
         """
         Calculate substrate metrics
         :param apiData: dictionary of API data. Key is API call name. Value is API data
@@ -37,13 +36,14 @@ class SubstrateMetrics(CHaMPMetric):
             raise MissingException("SubstrateCover missing from apiData")
 
         # Retrieve the undercut API data
-        substrateCoverVals = [val['value'] for val in apiData['SubstrateCover']['values'] ]
+        substrateCoverVals = [val['value'] for val in apiData['SubstrateCover']['value']]
 
-        if 'ChannelUnitMetrics' not in apiData:
-            raise MissingException('Missing channel metric instances')
+        if 'ChannelUnits' not in apiData['TopoVisitMetrics']:
+            raise MissingException('Missing channel unit instances')
 
         # Retrieve the channel unit metrics
-        channelInstances = latestMetricInstances(apiData['ChannelUnitMetrics'])
+        # channelInstances = latestMetricInstances(apiData['ChannelUnitMetrics'])
+        channelInstances = apiData['TopoVisitMetrics']['ChannelUnits']
         channelUnitMeasurements = apiData['ChannelUnitMeasurements']
         if channelInstances is None:
             raise MissingException('Missing channel metric instances')

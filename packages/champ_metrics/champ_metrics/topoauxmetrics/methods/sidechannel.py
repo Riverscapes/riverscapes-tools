@@ -1,7 +1,8 @@
-from champmetrics.lib.exception import MissingException
-from champmetrics.lib.sitkaAPI import latestMetricInstances
-from champmetrics.lib.metrics import CHaMPMetric
 import numpy as np
+from champ_metrics.lib.exception import MissingException
+from champ_metrics.lib.sitkaAPI import latestMetricInstances
+from champ_metrics.lib.metrics import CHaMPMetric
+
 
 class SidechannelMetrics(CHaMPMetric):
 
@@ -13,7 +14,6 @@ class SidechannelMetrics(CHaMPMetric):
     }
 
     def calc(self, apiData):
-
         """
         Calculate side channel metrics
         :param apiData: dictionary of API data. Key is API call name. Value is API data
@@ -24,15 +24,14 @@ class SidechannelMetrics(CHaMPMetric):
         if 'ChannelSegments' not in apiData:
             raise MissingException("ChannelSegments missing from apiData")
 
-
         # Retrieve the channel segment measurements
-        channelSegmentVals = [val['value'] for val in apiData['ChannelSegments']['values']]
+        channelSegmentVals = [val['value'] for val in apiData['ChannelSegments']['value']]
 
-        if 'ChannelUnitMetrics' not in apiData:
-            raise MissingException('Missing channel metric instances')
+        if 'ChannelUnits' not in apiData['TopoVisitMetrics']:
+            raise MissingException('Missing channel unit instances')
 
         # Retrieve the channel unit metrics
-        channelInstances = latestMetricInstances(apiData['ChannelUnitMetrics'])
+        channelInstances = apiData['TopoVisitMetrics']['ChannelUnits']
         if channelInstances is None:
             raise MissingException('Missing channel unit metric instances')
 
@@ -48,7 +47,7 @@ class SidechannelMetrics(CHaMPMetric):
         """
 
         # Total area of all channel units
-        totalArea = np.sum([val['AreaTotal'] for val in channelInstances])
+        totalArea = np.sum([val['Area'] for val in channelInstances])
 
         dResults = {}
 

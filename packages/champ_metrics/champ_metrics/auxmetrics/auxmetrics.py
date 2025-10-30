@@ -34,10 +34,15 @@ MEASURE_KEYS = {
     "discharge": "Discharge",
     "waterChemistry": "Water Chemistry",
     "poolTailFines": "Pool Tail Fines",
+
+    # The following are not needed by aux, but were added because they are needed by topo+aux
+    "channelSegments": "Channel Segment",
+    "fishCover": "Fish Cover",
+    "substrateCover": "Substrate Cover"
 }
 
 
-def visit_aux_metrics(visit_id: int, visit_year: int, aux_data_folder: str, xmlfile: str) -> None:
+def visit_aux_metrics(visit_id: int, visit_year: int, aux_data_folder: str, xmlfile: str) -> dict:
     """Run the auxmetrics for a given visit and write them to an XML file."""
 
     log = Logger("Aux Metrics")
@@ -75,12 +80,24 @@ def visit_aux_metrics(visit_id: int, visit_year: int, aux_data_folder: str, xmlf
     tier1Metrics = calculateMetricsForTier1Summary(visitobj)
     structureMetrics = calculateMetricsForStructureSummary(visitobj)
 
+    # Needed for topo+aux metrics
+    visitMetrics['VisitYear'] = visit_year
+
     writeMetricsToXML({
         "VisitMetrics": visitMetrics,
         "ChannelUnitMetrics": channelUnitMetrics,
         "Tier1Metrics": tier1Metrics,
         "StructureMetrics": structureMetrics
     }, visit_id, "", xmlfile, "AuxMetrics", __version__)
+
+    # Including aux measurements in the return so that topo+aux metrics can use them
+    return {
+        "VisitMetrics": visitMetrics,
+        "ChannelUnitMetrics": channelUnitMetrics,
+        "Tier1Metrics": tier1Metrics,
+        "StructureMetrics": structureMetrics,
+        "AuxMeasurements": visitobj
+    }
 
 
 def load_measurement_file(measure_folder: str, url_slug: str) -> dict:
