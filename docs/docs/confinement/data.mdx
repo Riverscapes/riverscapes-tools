@@ -3,30 +3,139 @@ title: Data
 sidebar_position: 3
 ---
 
-<h2><a name="SPLIT_POINTS">Split Points</a></h2>
+# Data
 
-<h2><a name="FLOWLINE_SEGMENTS">Flowline Segments</a></h2>
+## Inputs
 
-<h2><a name="ERROR_POLYLINES">Error Polylines</a></h2>
+|Layer|Data Type|Description|Source|
+|---|---|---|---|
+|flowlines|Geopackage Feature Class|The NHD flow lines, road and rail|[Riverscapes Context](https://tools.riverscapes.net/rscontext/data/#NETWORK_SEGMENTED)|
+|channel_area|Geopackage Feature Class|polygon feature class representing the extent of channels|[Channel Area](https://tools.riverscapes.net/channelarea/data/#CHANNEL_AREA)|
+|confining_polygon|Geopackage Feature Class|Valley bottom polygon|[VBET](https://tools.riverscapes.net/vbet/data/#VBET_FULL)|
+|dgos|Geopackage Feature Class|VBET discrete geographic object (DGO) points|[VBET](https://tools.riverscapes.net/vbet/data/#VBET_DGO_POLYGONS)|
+|igos|Geopackage Feature Class|VBET integrated geographic object (IGO) points|[VBET](https://tools.riverscapes.net/vbet/data/#SEGMENTATION_POINTS)|
+|segmented_network|Geopackage Feature Class|The NHD flow lines previously intersected with land ownership, road and rail|[Riverscapes Context](https://tools.riverscapes.net/rscontext/data/#NETWORK_SEGMENTED)|
+|dem_hillshade|GeoTiff|Hillshade derived from DEM|[Riverscapes Context](https://tools.riverscapes.net/rscontext/data/#HILLSHADE)|
 
-<h2><a name="ERROR_POLYGONS">Error Polygons</a></h2>
+---
 
-<h2><a name="CONFINEMENT_BUFFER_SPLITS">Active Channel Split Buffers</a></h2>
+## Data Layers Produced by Confinement
 
-<h2><a name="CONFINEMENT_ZONES">Confinement Zones</a></h2>
+### Intermediates
 
-<h2><a name="CONFINING_POLYGONS_UNION"> Confinement Polygons (unioned) </a></h2>
+<h4><a name="SPLIT_POINTS">Split Points</a></h4>
+Points that indicate where confinement type changes along each input flowline.
 
-<h2><a name="CONFINEMENT_RAW">Confinement Raw</a></h2>
+<h4><a name="FLOWLINE_SEGMENTS">Flowline Segments</a></h4>
+Segments of flowline that are confined with an attribute indicating whether they are confined on the right or left side.
 
-<h2><a name="CONFINEMENT_MARGINS">Confinement Margins</a></h2>
+<h4><a name="ERROR_POLYLINES">Error Polylines</a></h4>
+A polyline feature class used to store stream segments with invalid geometries for which outputs were unable to be calculated.
 
-<h2><a name="CONFINEMENT_RATIO">Confinement Ratio</a></h2>
+<h4><a name="ERROR_POLYGONS">Error Polygons</a></h4>
+A polygon feature class used to store channel polygons which were unable to be cleanly split.
 
-<h2><a name="CONFINEMENT_BUFFERS">Active Channel Buffer</a></h2>
+<h4><a name="CONFINEMENT_BUFFER_SPLITS">Active Channel Split Buffers</a></h4>
+The buffered channel area split into two (left and right) parts.
 
-<h2><a name="CONFINEMENT_RATIO_SEGMENTED">Confinement Ratio Segmented</a></h2>
+<h4><a name="CONFINEMENT_ZONES">Confinement Zones</a></h4>
+The difference between the buffered channel area and the confining polygon (valley bottom).
 
-<h2><a name="CONFINEMENT_DGOS">Confinement DGOs</a></h2>
+<h4><a name="CONFINING_POLYGONS_UNION"> Confinement Polygons (unioned) </a></h4>
+A union of all of the parts of the confining polygon (valley bottom).
 
-<h2><a name="CONFINEMENT_IGOS">Confinement IGOs</a></h2>
+<h4><a name="CONFINEMENT_BUFFERS">Active Channel Buffer</a></h4>
+A buffer of the channel area polygon input used to account for positional innaccuracy in calculating CONFINEMENT_DGOS.
+
+<h4><a name="CONFINEMENT_MARGINS">Confinement Margins</a></h4>
+Lines that indicate where the confinement buffers (buffered channel area) intersect with the confining polygon (valley bottom).
+
+### Outputs
+
+<h4><a name="CONFINEMENT_RAW">Confinement Raw</a></h4>
+Input flowlines segmented at each point where confinement type (left, right, both, none) changes with lengths of those confinement types calculated.
+
+<h4><a name="CONFINEMENT_RATIO">Confinement Ratio</a></h4>
+Input flowlines, aggregated by 'level path' with confinement attributes calculated.
+
+<h4><a name="CONFINEMENT_RATIO_SEGMENTED">Confinement Ratio Segmented</a></h4>
+Input segmented flowlines with confinement attributes calulated.
+
+<h4><a name="CONFINEMENT_DGOS">Confinement DGOs</a></h4>
+DGO polygons attributed with confinement attributes, where these attributes are summed for the flowlines within the polygon.
+
+<h4><a name="CONFINEMENT_IGOS">Confinement IGOs</a></h4>
+IGO points with confinement attributes calculated by performing a moving window analysis on the DGO polygons.
+
+---
+
+## Output Attributes
+
+### Confinement Raw (confinement_raw)
+
+|Field|Units|Description|
+|---|---|---|
+|`level_path`|NA|A unique identifier from NHD for each stream from headwaters to outlet|
+|`confinement_type`|NA|Whether the segment is confined on river left, right, or both|
+|`approx_leng`|m|Approximate length of the segment|
+
+### Confinement by Stream (confinement_ratio)
+
+|Field|Units|Description|
+|---|---|---|
+|`level_path`|NA|A unique identifier from NHD for each stream from headwaters to outlet|
+|`confinement_ratio`|unitless|Confinement Ratio: length of confining margins divided by the length of channel|
+|`constriction_ratio`|unitless|Constriction Ratio: length of constricting margins (confined on both sides) divided by the length of channel|
+|`approx_len`|m|Approximate length of channel|
+|`confin_len`|m|Length of channel abutting a confining margin|
+|`constr_len`|m|Length of channel confined on both sides simultaneously|
+
+### Confinement by Reach (confinement_ratio_segmented)
+
+|Field|Units|Description|
+|---|---|---|
+|`confinement_ratio`|unitless|Confinement Ratio: length of confining margins divided by the length of channel|
+|`constriction_ratio`|unitless|Constriction Ratio: length of constricting margins (confined on both sides) divided by the length of channel|
+|`approx_len`|m|Approximate length of channel|
+|`confin_len`|m|Length of channel abutting a confining margin|
+|`constr_len`|m|Length of channel confined on both sides simultaneously|
+
+### Confining Margins (confining_margins)
+
+|Field|Units|Description|
+|---|---|---|
+|`side`|NA|The side the confining margin is on (left or right)|
+|`level_path`|NA|A unique identifier from NHD for each stream from headwaters to outlet|
+|`approx_leng`|m|Approximate length of the confining margin|
+
+### Confinement DGOs (confinement_dgos)
+
+|Field|Units|Description|
+|---|---|---|
+|`DGOID`|NA|Unique identifier for each DGO polygon|
+|`FCode`|NA|NHD FCode representing flow type of the primary channel in the polygon|
+|`level_path`|NA|A unique identifier for the primary stream within the polygon from headwaters to outlet|
+|`seg_distance`|m|Distance downstream along a given level path of the feature|
+|`centerline_length`|m|Total valley length of the polygon|
+|`segment_area`|m<sup>2</sup>|Area of the polygon|
+|`confinement_ratio`|unitless|Confinement Ratio: length of confining margins divided by the length of channel within the polygon|
+|`constriction_ratio`|unitless|Constriction Ratio: length of constricting margins (confined on both sides) divided by the length of channel within the polygon|
+|`approx_len`|m|Approximate length of channel within the polygon|
+|`confin_len`|m|Length of channel abutting a confining margin within the polygon|
+|`constr_len`|m|Length of channel confined on both sides simultaneously within the polygon|
+
+### Confinement IGOs (confinement_igos)
+
+|Field|Units|Description|
+|---|---|---|
+|`IGOID`|NA|Unique identifier for each IGO point|
+|`seg_distance`|m|Distance downstream along a given level path of the feature|
+|`stream_size`|NA|Categorical classification of stream size based on drainage area from 0 small to 4 large|
+|`FCode`|NA|NHD FCode representing flow type of the primary channel in the window|
+|`level_path`|NA|A unique identifier for the primary stream within the window from headwaters to outlet|
+|`confinement_ratio`|unitless|Confinement Ratio: length of confining margins divided by the length of channel within the window|
+|`constriction_ratio`|unitless|Constriction Ratio: length of constricting margins (confined on both sides) divided by the length of channel within the window|
+|`approx_len`|m|Approximate length of channel within the window|
+|`confin_len`|m|Length of channel abutting a confining margin within the window|
+|`constr_len`|m|Length of channel confined on both sides simultaneously within the window|
+
