@@ -5,14 +5,223 @@ sidebar_position: 3
 
 # Data
 
-<h2><a name="JUNCTION_POINTS">Junction Points</a></h2>
+## Inputs 
 
-<h2><a name="RME_DGO">RME DGO</a></h2>
+|Layer|Data Type|Description|Source|
+|---|---|---|---|
+|dem|GeoTiff|Digital Elevation Model|[Riverscapes Context](https://tools.riverscapes.net/rscontext/data/#DEM)|
+|hillshade|GeoTiff|Hillshade derived from DEM|[Riverscapes Context](https://tools.riverscapes.net/rscontext/data/#HILLSHADE)|
+|flowlines|Geopackage Feature Class|NDH flowlines intersected with land ownership, roads and railroads|[Riverscapes Context](https://tools.riverscapes.net/rscontext/data/#NETWORK_INTERSECTION)|
+|waterbodies|Geopackage Feature Class|NHD waterbody polygons representing lakes, ponds, and reservoirs|[Riverscapes Context](https://tools.riverscapes.net/rscontext/data/#NHDWaterbody)|
+|huc12|Geopackage Feature Class|Polygons representing the 12-digit hydrologic unit code watersheds|[Riverscapes Context](https://tools.riverscapes.net/rscontext/data/#WBDHU12)|
+|counties|Geopackage Feature Class|Polygons representing US counties|[Riverscapes Context](https://tools.riverscapes.net/rscontext/data/#Counties)|
+|geology|Geopackage Feature Class|Polygons representing geologic units|[Riverscapes Context](https://tools.riverscapes.net/rscontext/data/#GEOLOGY)|
+|vbet_dgos|Geopackage Feature Class|Discrete Geographic Objects - The valley bottom split into a sampling frame of polygons where the IGO points are at the center of each polygon|[VBET](https://tools.riverscapes.net/vbet/data/#VBET_DGO_POLYGONS)|
+|vbet_igos|Geopackage Feature Class|Integrated Geographic Objects - Points placed at a specified distance interval along the valley centerline. This distance is a function of the average valley width for a given stream|[VBET](https://tools.riverscapes.net/vbet/data/#SEGMENTATION_POINTS)|
+|valley_centerlines|Geopackage Feature Class|The centerline of the valley bottom|[VBET](https://tools.riverscapes.net/vbet/data/#VBET_CENTERLINES)|
+|confinement_dgo|Geopackage Feature Class|DGO polygons attributed with confinement attributes, where these attributes are summed for the flowlines within the polygon|[Confinement](https://tools.riverscapes.net/confinement/data/#CONFINEMENT_DGOS)|
+|hydro_dgo|Geopackage Feature Class|DGOs attributed with values for physical stream characteristics and hydrology within the DGO extent|[Hydrologic Context](https://tools.riverscapes.net/hydro/data/#HYDRO_DGOS)|
+|anthro_dgo|Geopackage Feature Class|DGOs attributed with values related to anthropogenic impact calculated with the DGO extent|[Anthropogenic Context](https://tools.riverscapes.net/anthro/data/#ANTHRO_DGOS)|
+|anthro_flowlines|Geopackage Feature Class|NHD Flowlines attributed with values related to anthropogenic impact|[Anthropogenic Context](https://tools.riverscapes.net/anthro/data/#ANTHRO_LINES)|
+|rcat_dgo|Geopackage Feature Class|DGOs attributed with values for rcat analyses within the DGO extent|[RCAT](https://tools.riverscapes.net/rcat/data/#RCAT_DGOS)|
+|brat_dgo|Geopackage Feature Class|DGOs attributed with values for BRAT analyses within the DGO extent|[BRAT](https://tools.riverscapes.net/brat/data/#BRAT_DGOS)|
+|brat_flowlines|Geopackage Feature Class|NHD Flowlines attributed with values related to BRAT analyses|[BRAT](https://tools.riverscapes.net/brat/data/#BRAT_RESULTS)|
 
-<h2><a name="RME_IGO">RME IGO</a></h2>
+---
 
-<h2><a name="DGO_METRICS">DGO Metrics</a></h2>
+## Data Layers Produced by RME
 
-<h2><a name="IGO_METRICS">IGO Metrics</a></h2>  
+### Intermediates
 
-<h2><a name="DGO_MEASUREMENTS">DGO Measurements</a></h2>  
+<h4><a name="JUNCTION_POINTS">Junction Points</a></h4>
+
+Points where flowlines converge or diverge.
+
+### Outputs
+
+<h4><a name="DGO_METRICS"><a name="GEOM_DGOS"></a>RME DGOs</a></h4>
+
+Combination of all of the different thematic metrics attributed to the DGOs.
+
+<h4><a name="IGO_METRICS"><a name="GEOM_IGOS"></a>RME IGOs</a></h4>
+
+Combination of all of the different thematic metrics attributed to the IGOs.
+
+<h4><a name="DGO_MEASUREMENTS">DGO Measurements</a></h4>  
+
+<h4><a name="DGO_BEAVER">Beaver DGO Metrics</a></h4>
+
+Beaver/BRAT related metrics calculated for DGOs.
+
+<h4><a name="DGO_DESC">Descriptive DGO Metrics</a></h4>
+
+Descriptive metrics for DGOs.
+
+<h4><a name="DGO_GEOMORPH">Geomorphic DGO Metrics</a></h4>
+
+Geomorphologic metrics for DGOs.
+
+<h4><a name="DGO_HYDRO">Hydrologic DGO Metrics</a></h4>
+
+Hydrological metrics for DGOs.
+
+<h4><a name="DGO_IMPACTS">Human Impact DGO Metrics</a></h4>
+
+Metrics related to anthropological impacts for DGOs.
+
+<h4><a name="DGO_VEG">Vegetation DGO Metrics</a></h4>
+
+Vegetation metrics for DGOs calculated from LANDFIRE.
+
+<h4><a name="IGO_BEAVER">Beaver IGO Metrics</a></h4>
+
+Beaver/BRAT related metrics calculated for IGOs.
+
+<h4><a name="IGO_DESC">Descriptive IGO Metrics</a></h4>
+
+Descriptive metrics for IGOs.
+
+<h4><a name="IGO_GEOMORPH">Geomorphic IGO Metrics</a></h4>
+
+Geomorphologic metrics for IGOs.
+
+<h4><a name="IGO_HYDRO">Hydrologic IGO Metrics</a></h4>
+
+Hydrological metrics for IGOs.
+
+<h4><a name="IGO_IMPACTS">Human Impact IGO Metrics</a></h4>
+
+Metrics related to anthropological impacts for IGOs.
+
+<h4><a name="IGO_VEG">Vegetation IGO Metrics</a></h4>
+
+Vegetation metrics for IGOs calculated from LANDFIRE.
+
+---
+
+## Output Attributes
+
+|Field|Units|Description|
+|---|---|---|
+|`ownership`|NA|The owner/administrator of the majority of the area within the DGO|
+|`state`|NA|The state that the majority of the area in the DGO falls within|
+|`county`|NA|The county that the majority of the DGO falls within|
+|`drainage_area`|km<sup>2</sup>|The upstream contributing drainage area of the primary channel within the DGO|
+|`watershed_id`|NA|The 10-digit Hydrologic Unit Code (HUC) ID|
+|`stream_name`|NA|The stream name of the primary channel within the DGO|
+|`stream_order`|NA|The strahler stream order of the primary channel within the DGO|
+|`headwater`|binary|1 if the stream is a headwater (stream order 1), 0 if not|
+|`stream_length`|m|The length of flowlines within the DGO|
+|`waterbody_type`|NA|The NHD FCode of the waterbody within the DGO with the largest area|
+|`waterbody_extent`|m<sup>2</sup>|The area of waterbody polygons within the DGO|
+|`ecoregion3`|NA|The level 3 ecoregion with the greatest area within the DGO|
+|`ecoregion4`|NA|The level 4 ecoregion with the greatest area within the DGO|
+|`prim_channel_gradient`|unitless (m/m)|The gradient of the primary channel within the DGO|
+|`valleybottom_gradient`|unitless (m/m)|The gradient of the valley centerline within the DGO|
+|`rel_flow_length`|unitless (m/m)|A proportion of the length of flowlines within the DGO to the length of the valley centerline|
+|`confluences`|#|The number of confluences with anabranches and the main channel within the DGO|
+|`diffluences`|#|The number of diffluences betweem anabranches and the main channel within the DGO|
+|`tributaries`|#|The number of tributary confluences with the primary flowline within the DGO|
+|`tribs_per_km`|km<sup>-1</sup>|The number of tributaries divided by the km of flowline length within the DGO|
+|`planform_sinuosity`|unitless (m/m)|The length of the primary flowline divided by the straight distance length between its end points|
+|`lowlying_area`|m<sup>2</sup>|The area of the DGO classified as low-lying valley bottom|
+|`elevated_area`|m<sup>2</sup>|The area of the DGO classified as elevated valley bottom|
+|`channel_area`|m<sup>2</sup>|The area of the DGO classified as channel|
+|`floodplain_area`|m<sup>2</sup>|The area of the DGO classified as floodplain (elevated + low-lying)|
+|`integrated_width`|m|The integrated width of the DGO (DGO area/centerline length)|
+|`active_channel_ratio`|unitless (m<sup>2</sup>/m<sup>2</sup>)|The proportion of the DGO that is active channel|
+|`low_lying_ratio`|unitless (m<sup>2</sup>/m<sup>2</sup>)|The proportion of the DGO that is classified as low lying valley bottom|
+|`elevated_ratio`|unitless (m<sup>2</sup>/m<sup>2</sup>)|The proportion of the DGO that is classified as elevated valley bottom|
+|`floodplain_ratio`|unitless (m<sup>2</sup>/m<sup>2</sup>)|The proportion of the DGO that is classified as floodplain (elevated + low-lying)|
+|`acres_vb_per_mile`|ac/mi|Acres of valley bottom per mile of DGO centerline length|
+|`hect_vb_per_km`|ha/km|Hectares of valley bottom per km of DGO centerline length|
+|`channel_width`|m|Channel width calucalated as the area of channel divided by flowline length|
+|`confinement_ratio`|unitless (m/m)|length of confined channel margin divided by the total length of channel margin|
+|`constriction_ratio`|unitless (m/m)|length of where the channel is confined on both sides divided by the flowline length|
+|`confining_margins`|m|length of confining margins, where flowlines abut the valley bottom margins|
+|`lf_evt`|NA|landfire evt class IDs that make up >=30% of the DGO|
+|`lf_bps`|NA|landfire bps class IDs that make up >=30% of the DGO|
+|`lf_agriculture_prop`|unitless (m<sup>2</sup>/m<sup>2</sup>)|proportion of the DGO classified in the landfire evt layer as agriculture|
+|`lf_agriculture`|m<sup>2</sup>|extent within the DGO classified in the landfire evt layer as agriculture|
+|`lf_conifer_prop`|unitless (m<sup>2</sup>/m<sup>2</sup>)|proportion of the DGO classified in the landfire evt layer as conifer|
+|`lf_conifer`|m<sup>2</sup>|extent within the DGO classified in the landfire evt layer as conifer|
+|`lf_conifer_hardwood_prop`|unitless (m<sup>2</sup>/m<sup>2</sup>)|proportion of the DGO classified in the landfire evt layer as conifer/hardwood|
+|`lf_conifer_hardwood`|m<sup>2</sup>|extent within the DGO classified in the landfire evt layer as conifer/hardwood|
+|`lf_developed_prop`|unitless (m<sup>2</sup>/m<sup>2</sup>)|proportion of the DGO classified in the landfire evt layer as developed|
+|`lf_developed`|m<sup>2</sup>|extent within the DGO classified in the landfire evt layer as developed|
+|`lf_exotic_herbaceous_prop`|unitless (m<sup>2</sup>/m<sup>2</sup>)|proportion of the DGO classified in the landfire evt layer as exotic herbaceous|
+|`lf_exotic_herbaceous`|m<sup>2</sup>|extent within the DGO classified in the landfire evt layer as exotic herbaceous|
+|`lf_exotic_tree_shrub_prop`|unitless (m<sup>2</sup>/m<sup>2</sup>)|proportion of the DGO classified in the landfire evt layer as exotic tree/shrub|
+|`lf_exotic_tree_shrub`|m<sup>2</sup>|extent within the DGO classified in the landfire evt layer as exotic tree/shrub|
+|`lf_grassland_prop`|unitless (m<sup>2</sup>/m<sup>2</sup>)|proportion of the DGO classified in the landfire evt layer as grassland|
+|`lf_grassland`|m<sup>2</sup>|extent within the DGO classified in the landfire evt layer as grassland|
+|`lf_hardwood_prop`|unitless (m<sup>2</sup>/m<sup>2</sup>)|proportion of the DGO classified in the landfire evt layer as hardwood|
+|`lf_hardwood`|m<sup>2</sup>|extent within the DGO classified in the landfire evt layer as hardwood|
+|`lf_riparian_prop`|unitless (m<sup>2</sup>/m<sup>2</sup>)|proportion of the DGO classified in the landfire evt layer as riparian|
+|`lf_riparian`|m<sup>2</sup>|extent within the DGO classified in the landfire evt layer as riparian|
+|`lf_shrubland_prop`|unitless (m<sup>2</sup>/m<sup>2</sup>)|proportion of the DGO classified in the landfire evt layer as shrubland|
+|`lf_shrubland`|m<sup>2</sup>|extent within the DGO classified in the landfire evt layer as shrubland|
+|`lf_sparsely_vegetated_prop`|unitless (m<sup>2</sup>/m<sup>2</sup>)|proportion of the DGO classified in the landfire evt layer as sparsely vegetated|
+|`lf_sparsely_vegetated`|m<sup>2</sup>|extent within the DGO classified in the landfire evt layer as sparsely vegetated|
+|`lf_hist_conifer_prop`|unitless (m<sup>2</sup>/m<sup>2</sup>)|proportion of the DGO classified in the landfire bps layer as conifer|
+|`lf_hist_conifer`|m<sup>2</sup>|extent within the DGO classified in the landfire bps layer as conifer|
+|`lf_hist_conifer_hardwood_prop`|unitless (m<sup>2</sup>/m<sup>2</sup>)|proportion of the DGO classified in the landfire bps layer as conifer/hardwood|
+|`lf_hist_conifer_hardwood`|m<sup>2</sup>|extent within the DGO classified in the landfire bps layer as conifer/hardwood|
+|`lf_hist_grassland_prop`|unitless (m<sup>2</sup>/m<sup>2</sup>)|proportion of the DGO classified in the landfire bps layer as grassland|
+|`lf_hist_grassland`|m<sup>2</sup>|extent within the DGO classified in the landfire bps layer as grassland|
+|`lf_hist_hardwood_prop`|unitless (m<sup>2</sup>/m<sup>2</sup>)|proportion of the DGO classified in the landfire bps layer as hardwood|
+|`lf_hist_hardwood`|m<sup>2</sup>|extent within the DGO classified in the landfire bps layer as hardwood|
+|`lf_hist_hardwood_conifer_prop`|unitless (m<sup>2</sup>/m<sup>2</sup>)|proportion of the DGO classified in the landfire bps layer as hardwood/conifer|
+|`lf_hist_hardwood_conifer`|m<sup>2</sup>|extent within the DGO classified in the landfire bps layer as hardwood/conifer|
+|`lf_hist_peatland_forest_prop`|unitless (m<sup>2</sup>/m<sup>2</sup>)|proportion of the DGO classified in the landfire bps layer as peatland forest|
+|`lf_hist_peatland_forest`|m<sup>2</sup>|extent within the DGO classified in the landfire bps layer as peatland forest|
+|`lf_hist_peatland_nonforest_prop`|unitless (m<sup>2</sup>/m<sup>2</sup>)|proportion of the DGO classified in the landfire bps layer as peatland nonforest|
+|`lf_hist_peatland_nonforest`|m<sup>2</sup>|extent within the DGO classified in the landfire bps layer as peatland nonforest|
+|`lf_hist_riparian_prop`|unitless (m<sup>2</sup>/m<sup>2</sup>)|proportion of the DGO classified in the landfire bps layer as riparian|
+|`lf_hist_riparian`|m<sup>2</sup>|extent within the DGO classified in the landfire bps layer as riparian|
+|`lf_hist_savanna_prop`|unitless (m<sup>2</sup>/m<sup>2</sup>)|proportion of the DGO classified in the landfire bps layer as savanna|
+|`lf_hist_savanna`|m<sup>2</sup>|extent within the DGO classified in the landfire bps layer as savanna|
+|`lf_hist_shrubland_prop`|unitless (m<sup>2</sup>/m<sup>2</sup>)|proportion of the DGO classified in the landfire bps layer as shrubland|
+|`lf_hist_shrubland`|m<sup>2</sup>|extent within the DGO classified in the landfire bps layer as shrubland|
+|`lf_hist_sparsely_vegetated_prop`|unitless (m<sup>2</sup>/m<sup>2</sup>)|proportion of the DGO classified in the landfire bps layer as sparsely vegetated|
+|`lf_hist_sparsely_vegetated`|m<sup>2</sup>|extent within the DGO classified in the landfire bps layer as sparsely vegetated|
+|`ex_riparian`|unitless (m<sup>2</sup>/m<sup>2</sup>)|extent within the DGO classified in the landfire evt layer as riparian from RCAT. This includes other hardwood not classified as riparian to account for small riparian bands not visible in 30m pixels|
+|`hist_riparian`|unitless (m<sup>2</sup>/m<sup>2</sup>)|extent within the DGO classified in the landfire bps layer as riparian from RCAT|
+|`prop_riparian`|unitless (m<sup>2</sup>/m<sup>2</sup>)|proportion of the DGO classified in the landfire evt layer as riparian from RCAT. This includes other hardwood not classified as riparian to account for small riparian bands not visible in 30m pixels|
+|`hist_prop_riparian`|unitless (m<sup>2</sup>/m<sup>2</sup>)|proportion of the DGO classified in the landfire bps layer as riparian from RCAT|
+|`riparian_veg_departure`|unitless (m<sup>2</sup>/m<sup>2</sup>)|proportion of the DGO classified as riparian divided by the proportion historically classified as riparian|
+|`ag_conversion`|unitless (m<sup>2</sup>/m<sup>2</sup>)|proportion of the DGO that was classified as riparian historically that is now classifed as agriculture|
+|`develop`|unitless (m<sup>2</sup>/m<sup>2</sup>)|proportion of the DGO that was classified as riparian historically that is now classifed as developed|
+|`grass_shrub_conversion`|unitless (m<sup>2</sup>/m<sup>2</sup>)|proportion of the DGO that was classified as riparian historically that is now classifed as grass/shrubland|
+|`conifer_encroachment`|unitless (m<sup>2</sup>/m<sup>2</sup>)|proportion of the DGO that was classified as riparian historically that is now classifed as conifer|
+|`invasive_conversion`|unitless (m<sup>2</sup>/m<sup>2</sup>)|proportion of the DGO that was classified as riparian historically that is now classifed as invasive|
+|`riparian_condition`|NA|index of riparian condition from 0 (poor) to 1 (intact) calculated in RCAT|
+|`qlow`|ft<sup>3</sup>/s|estimated low flow discharge of the primary channel in cubic feet per second|
+|`q2`|ft<sup>3</sup>/s|estimated typical flood flow discharge (two-year recurrence-interval) of the primary channel in cubic feet per second|
+|`splow`|W|estimated low flow stream power of the primary channel|
+|`sphigh`|W|estimated typical flood flow stream power (two-year recurrence-interval) of the primary channel|
+|`road_len`|m|length of roads within the DGO|
+|`road_dens`|unitless (m/m)|length of roads within the DGO divded by the centerline length|
+|`rail_len`|m|length of railroads within the DGO|
+|`rail_dens`|unitless (m/m)|length of railroads within the DGO divded by the centerline length|
+|`land_use_intens`|NA|average land use intensity from 0 (low) to 100 (high) within the DGO from Anthropogenic Context|
+|`road_dist`|m|distance from the channel to the nearest road|
+|`rail_dist`|m|distance from the channel to the nearest railroad|
+|`div_dist`|m|distance from the channel to the nearest railroad|
+|`canal_dist`|m|distance from the channel to the nearest canal|
+|`infra_dist`|m|distance from the channel to the nearest human infrastructure|
+|`fldpln_access`|unitless (m<sup>2</sup>/m<sup>2</sup>)|proportion of the DGO that is accessible to the channel (not dissected by infrastructure)|
+|`access_fldpln_extent`|m<sup>2</sup>|area of the DGO that is accessible to the channel (not dissected by infrastructure)|
+|`brat_capacity`|km<sup>-1</sup>|beaver dams per km of riverscape that the DGO can support|
+|`brat_hist_capacity`|km<sup>-1</sup>|beaver dams per km of riverscape that the DGO could historically support|
+|`brat_risk`|NA|categorical risk of conflict between beaver and infrastructure|
+|`brat_opportunity`|NA|categorical beaver-based restoration/conservation opportunties|
+|`brat_limitation`|NA|categorical descriptions of limitations to beaver dam building|
+|`brat_complex_size`|#|number of dams that the riverscape could support within the DGO|
+|`brat_hist_complex_size`|#|number of dams that the riverscape could historically support within the DGO|
+|`dam_setting`|NA|setting for dam building activity in the DGO (classic, steep, floodplain)|
+|`level_path`|NA|NHD level path; a unique ID for a given stream|
+|`seg_distance`|m|distance along a level path within a given watershed (HUC10)|
+|`centerline_length`|m|length of the centerline of the DGO|
+|segment_area|m<sup>2</sup>|area of the DGO|
+|FCode|NA|The NHD FCode (flow type) of the primary flowline within the DGO|
