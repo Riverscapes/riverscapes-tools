@@ -9,307 +9,139 @@ BRAT stores input, intermediate and output data in a GeoPackage. The two main [d
 
 Each column in the `ReachAttributes` table is described below. Columns are grouped into two categories depending on which [model phase](Advanced_Users/architecture.html) they are populated; input and intermediate attributes that are calculated once during the BRAT Build phase of running the tool, and output attributes that are calculated each time that the BRAT Run phase of the model is run.
 
-## Input & Intermediate Attributes
+---
 
-### ReachID
+## Inputs
 
-Data Type|Integer
-Units|Auto-incrementing ID
-Description|Automatically asigned unique identifier of each reach. This is the primary key (FID, OID) for each feature.
+|Layer|Data Type|Description|Source|
+|---|---|---|---|
+|existing_veg|GeoTiff|Landfire Existing Vegetation Type (EVT) raster|[Riverscapes Context](https://tools.riverscapes.net/rscontext/data/#EXVEG)|
+|historic_veg|GeoTiff|Landfire BipPhysical Settings (BPS) raster|[Riverscapes Context](https://tools.riverscapes.net/rscontext/data/#HISTVEG)|
+|dem_hillshade|GeoTiff|Hillshade raster derived from DEM|[Riverscapes Context](https://tools.riverscapes.net/rscontext/data/#HILLSHADE)|
+|hydro_flowlines|Geopackage Feature Class|Stream network lines produced by Hydrologic Context|[Hydrologic Context](https://tools.riverscapes.net/hydro/data/#HYDRO_LINES)|
+|hydro_igos|Geopackage Feature Class|Integrated Geographic Object (IGO) points produced by Hydrologic Context|[Hydrologic Context](https://tools.riverscapes.net/hydro/data/#HYDRO_POINTS)|
+|hydro_dgos|Geopackage Feature Class|Discrete Geographic Object (DGO) polygons produced by Hydrologic Context|[Hydrologic Context](https://tools.riverscapes.net/hydro/data/#HYDRO_DGOS)|
+|anthro_flowlines|Geopackage Feature Class|Stream network lines produced by Anthropogenic Context|[Anthropogenic Context](https://tools.riverscapes.net/anthro/data/#ANTHRO_LINES)|
+|anthro_igos|Geopackage Feature Class|Integrated Geographic Object (IGO) points produced by Anthropogenic Context|[Anthropogenic Context](https://tools.riverscapes.net/anthro/data/#ANTHRO_POINTS)|
+|anthro_dgos|Geopackage Feature Class|Discrete Geographic Object (DGO) polygons produced by Anthropogenic Context|[Anthropogenic Context](https://tools.riverscapes.net/anthro/data/#ANTHRO_DGOS)|
+|flowareas|Geopackage Feature Class|NHD Area polygons representing larger rivers|[Riverscapes Context](https://tools.riverscapes.net/rscontext/data/#NHDArea)|
+|waterbodies|Geopackage Feature Class|NHD waterbody polygons representing lakes, ponds, and reservoirs|[Riverscapes Context](https://tools.riverscapes.net/rscontext/data/#NHDWaterbody)|
+|valley_bottom|Geopackage Feature Class|Full valley bottom polygon|[VBET](https://tools.riverscapes.net/vbet/data/#VBET_FULL)|
+|channel_area|Geopackage Feature Class|Polygon representing the extent of channels|[Channel Area](https://tools.riverscapes.net/channelarea/data/#CHANNEL_AREA)|
 
-### WatershedID
+---
 
-Data Type|Text
-Units|NA
-Description|Identifies which watershed the reach belongs to. This value references the `Watersheds` table. For North American BRAT runs this typically represents the HUC8 identifier.
+## Data Layers Created by BRAT
 
-### Geometry
+### Intermediates
 
-Data Type|Binary
-Units|NA
-Description|The Reach polyline Geometry.
+<h4><a name="30M_BUFFER">30m Buffer</a></h4>
 
-### ReachCode
+A 30 meter buffer from the edge of the channel, representing the streamside area where beaver primarily browse for forage and dam building material.
 
-Data Type|Integer
-Units|NA
-Description|Identifies the type of reach. This column references the ReachCodes defined in the `ReachCodes` table. For North American runs this is typically the NHD `FCode`.
+<h4><a name="100M_BUFFER">100m Buffer</a></h4>
 
-### IsPeren
+A 100 meter buffer from the edge of the channel, representing the typical maximum distance that beaver will travel away from the stream for forage and buliding material.
 
-Data Type|Integer
-Units|Boolean
-Description|Depicts whether the reach is perennial or not. A value of zero means that the reach is NOT perennial. Any other value means that the reach is perennial. This column cannot be NULL.
+<h4><a name="EXVEG_SUIT">Existing Vegetation</a></h4>
 
-### IsMainCh
+The existing vegetation raster classified into suitability for dam building material, where 0 is unsuitable and 4 is preferred.
 
-Data Type|Ingeger
-Units|Boolean
-Description|Indicates whether the channel is the mainstem or not. Zero indicates that the reach is a side channel, diversion or other anabranch. Any other value indicates that the channel is the mainstem.
+<h4><a name="HISTVEG_SUIT">Historic Vegetation</a></h4>
 
-### IsMultiCh
+The historice vegetation raster classified into suitability for dam building material, where 0 is unsuitable and 4 is preferred.
 
-Data Type|Integer
-Units|Boolean
-Description|Indicates whether the reach polyline represents a multi-threaded channel or not. Zero indicates that the reach is single threaded. Any other value indicates that the feature represents a multi-threaded channel.
+### Outputs
 
-### StreamName
+<h4><a name="BRAT_RESULTS"><a name="BRAT_GEOMETRY"></a>BRAT Channel Network Output</a></h4>
 
-Data Type|Text
-Units|NA
-Description|Optional stream name. For North American BRAT runs this typically represents the GNIS feature name.
+The output network of the BRAT tool, with various attributes added representing model intermediates and outputs.
 
+<h4><a name="BRAT_IGOS"><a name="IGO_GEOM"></a>BRAT Riverscape Network Output (IGOs)</a></h4>
 
-### iGeo_Slope
+IGOs attributed with values related to BRAT outputs calculated within a single DGO or an aggregation of DGOs.
 
-Data Type|Float
-Units|Percent
-Description|Slope of the reach flow line. When BRAT calculates this value is samples the DEM at both ends of the reach polyline using a 30m buffer. The average elevation in each circle is subtracted and the difference divided by the length of the reach polyline.
+<h4><a name="BRAT_DGOS"><a name="DGO_GEOM"></a>BRAT Riverscape Network Output (DGOs)</a></h4>
 
-### iGeo_ElMax
+DGOs attributed with values related to BRAT outputs calculated within the DGO extent.
 
-Data Type|Float
-Units|Meters
-Description|The higher elevation of either end of the reach polyline.  When BRAT calculates this value it samples the DEM at both ends of the reach polyline using a 30m buffer. The higher of the two averages is then used as the max elevation.
-
-### iGeo_ElMin
-
-Data Type|Float
-Units|Meters
-Description|The lower elevation of either end of the reach polyline.  When BRAT calculates this value it samples the DEM at both ends of the reach polyline using a 30m buffer. The lower of the two averages is then used as the max elevation.
-
-### iGeo_Len
-
-Data Type|Float
-Units|Meters
-Description|Length of the reach flow line polyline. When BRAT calculates this attribute is measures the actual, sinuous length along the polyline.
-
-### Orig_DA
-
-Data Type|Float
-Units|Square kilometers. 
-Description|The total upstream drainage of the area that flows into the reach. This column differs from `iGeo_DA` because this value is never changed from the original data. It is provided as a means of comparing where users have overidden the original drainage area values. For North American BRAT runs this value is populated from the NHDPlus HR `totDASqKm` VAA attribute.
-
-### iGeo_DA
-
-Data Type|Float
-Units|Square Kilometers
-Description|This is the actual upstream drainage area used by BRAT when calculating the hydrology for a reach. This is initiated as a copy of the `Orig_DA` attribute value, but can be overridden should that value be deemed inaccurate.
-
-### AgencyID
-
-Data Type|Integer
-Units|NA
-Description|Identifies the land ownership for the property underlying the reach. This is calculated by intersecting the feature polyline with the land ownership layer and determining the agency that possessess the greatest length of reach. The ID is a lookup on the `Agencies` database table.
-
+---
 
 ## Output Attributes
 
-### iVeg100EX
-
-Data Type|Real
-Units|Beaver dams per kilometer
-Description|Existing beaver dam capacity based solely on vegetation located within 100m of the stream.
-
-### iVeg_30EX
-
-Data Type|Real
-Units|Beaver dams per kilometer
-Description|Existing beaver dam capacity based solely on vegetation located within 30m of the stream.
-
-### iVeg100HPE
-
-Data Type|Real
-Units|Beaver dams per kilometer
-Description|Historic beaver dam capacity based solely on vegetation located within 100m of the stream.
-
-### iVeg_30HPE
-
-Data Type|Real
-Units|Beaver dams per kilometer
-Description|Historic beaver dam capacity based solely on vegetation located within 100m of the stream.
-
-### iPC_Road
-
-Data Type|Real
-Units|
-Description|
-
-### iPC_RoadX
-
-### iPC_RoadVB
-
-Data Type|Real
-Units|
-Description|
-
-
-### iPC_Rail
-
-Data Type|Real
-Units|
-Description|
-
-### iPC_RailVB
-
-Data Type|Real
-Units|
-Description|
-
-### iPC_LU
-
-Data Type|Real
-Units|
-Description|
-
-### iPC_VLowLU
-
-Data Type|Real
-Units|
-Description|
-
-### iPC_LowLU
-
-Data Type|Real
-Units|
-Description|
-
-### iPC_ModLU
-
-Data Type|Real
-Units|
-Description|
-
-### iPC_HighLU
-
-Data Type|Real
-Units|
-Description|
-
-### iHyd_QLow
-
-Data Type|Real
-Units|Cubic feet per second (CFS)
-Description|Base streamflow that is execeeded 90% of the time. Low flow conditions are used in BRAT to determine if there is emough streamflow to support ponding behind beaver dams.
-
-#### iHyd_Q2
-
-Data Type|Real
-Units|Cubic feet per second (CFS)
-Description|High streamflow that reccurs every two years. This flood discharge is used to calculate when high flows will cause dam blowouts.
-
-### iHyd_SPLow
-
-Data Type|Real
-Units|
-Description|Base stream power is caculated by converting the base streamflow (`iHyd_QLow`) into stream power using the discharge by the slope and the gravitational constant.
-
-### iHyd_SP2
-
-Data Type|Real
-Units|
-Description|High flow stream power is caculated by converting the base streamflow (`iHyd_Q2`) into stream power using the discharge by the slope and the gravitational constant.
-
-### oVC_HPE
-
-Data Type|Real
-Units|
-Description|
-
-### oVC_EX
-
-Data Type|Real
-Units|
-Description|
-
-
-### oCC_HPE
-
-Data Type|Real
-Units|
-Description|
-
-### mCC_HPE_CT
-
-Data Type|Real
-Units|Beaver Dam Count
-Description|The historic number of beaver dams that the reach could support. This is calculaterd by multiplying the historic beaver dam capacity (`oHPE_EX`) by the length of the channel (`iGeo_Len`).
-
-### oCC_EX
-
-Data Type|Real
-Units|Beaver Dams Per Kilometer
-Description|Existing Beaver Dam Capacity. This is the main output of the beaver dam fuzzy inference system.
-
-### mCC_EX_CT
-
-Data Type|Real
-Units|Beaver Dam Count
-Description|
-
-### LimitationID
-
-Data Type|Integer
-Units|NA
-Description|The primary limitations to beaver dams occurring on the reach. This is a lookup to the `Limitations` table in the BRAT database. 
-
-### RiskID
-
-Data Type|Integer
-Units|NA
-Description|The primary risk to beaver dams occurring on the reach. This is a lookup to the `Risk` table in the BRAT database.
-
-### OpportunityID
-
-Data Type|Integer
-Units|NA
-Description|The types of opportunities for beaver dams occurring on the reach. This is a lookup to the `Opportunities` table in the BRAT database.
-
-### ManagementID
-
-Data Type|Integer
-Units|
-Description|
-
-### iPC_Canal
-
-Data Type|Real
-Units|
-Description|
-
-### iPC_DivPts
-
-Data Type|Real
-Units|
-Description|
-
-### iPC_Privat
-
-Data Type|Real
-Units|
-Description|
-
-### oPC_Dist
-
-Data Type|Real
-Units|
-Description|
-
-### mCC_HisDep
-
-Data Type|Real
-Units|
-Description|
-
-
-<h2><a name="30M_BUFFER">30m Buffer</a></h2>
-
-<h2><a name="100M_BUFFER">100m Buffer</a></h2>
-
-<h2><a name="EXVEG_SUIT">Existing Vegetation</a></h2>
-
-<h2><a name="HISTVEG_SUIT">Historic Vegetation</a></h2>
-
-<h2><a name="BRAT_GEOMETRY">BRAT Geometry</a></h2>
-
-<h2><a name="BRAT_RESULTS">BRAT Results</a></h2>
+### Channel Network Output (vwReaches)
+
+|Field|Plain English Name|Units|Description|
+|---|---|---|---|
+|`ReachCode`|Stream Flow Type|NA|The NHD FCode integer that describes the flow type of a flowline (e.g., perennial, intermittent)|
+|`StreamName`|Stream Name|NA|The stream name according the NHDPlusHR dataset|
+|`NHDPlusID`|Unique ID|NA|A unique identifier from the NHDPlusHR dataset|
+|`WatershedID`|Watershed ID|NA|The 10-digit hydrologic unit code (HUC) of the watershed|
+|`level_path`|NHD Stream ID|NA|A unique identifier from the NHDPlusHR dataset for each unique stream from headwater to outlet|
+|`ownership`|Land Administrator|NA|An abbreviation representing the land administrator of the riverscape associated with the reach|
+|`divergence`|Flow Divergence|NA|An integer code from NHD attributes indicating channel divergence and type of divergence|
+|`stream_order`|Stream Order|NA|The Strahler stream order of the reach|
+|`us_state`|US State|NA|The US State that the reach falls within|
+|`ecoregion_iii`|Ecoregion III|NA|The EPA Level III ecoregion that the reach falls within|
+|`ecoregion_iv`|Ecoregion IV|NA|The EPA Level IV ecoregion that the reach falls within|
+|`IsPeren`|Is Perennial|Binary|1 if the reach is perennial, 0 if not|
+|`iGeo_Slope`|Slope|unitless|The reach-averaged slope (m/m)|
+|`iGeo_Len`|Length|m|The length of the reach|
+|`iGeo_DA`|Drainage Area|km<sup>2</sup>|The upstream contributing drainage area of the reach|
+|`iVeg100EX`|Existing 100 m Vegetation Suitability|NA|The average vegetation suitability (0-4) of existing vegetation within 100 m of the stream|
+|`iVeg_30EX`|Existing 30 m Vegetation Suitability|NA|The average vegetation suitability (0-4) of existing vegetation within 30 m of the stream|
+|`iVeg100HPE`|Historic 100 m Vegetation Suitability|NA|The average vegetation suitability (0-4) of historic vegetation within 100 m of the stream|
+|`iVeg_30HPE`|Historic 30 m Vegetation Suitability|NA|The average vegetation suitability (0-4) of historic vegetation within 30 m of the stream|
+|`iPC_Road`|Distance to Nearest Road|m|The distance from the stream reach to the nearest road|
+|`iPC_RoadX`|Distance to Nearest Road Crossing|m|The distance from the stream reach to the nearest road crossing|
+|`iPC_RoadVB`|Distance to the Nearest Road in the Valley|m|The distance from the stream reach to the nearest road within the valley bottom|
+|`iPC_Rail`|Distance to the Nearest Railroad|m|The distance from the stream reach to the nearest railroad|
+|`iPC_RailVB`|Distance to the Nearest Railroad in the Valley|m|Distance from the stream reach to the nearest railroad within the valley bottom|
+|`iPC_LU`|Land Use Intensity|NA|The average land use intensity (0-100) within the riverscape associated with the stream reach|
+|`iPC_VlowLU`|Very Low Land Use Intensity|unitless|The proportion of the riverscape associated with the stream reach with very low land use intensity|
+|`iPC_LowLU`|Low Land Use Intensity|unitless|The proportion of the riverscape associated with the stream reach with low land use intensity|
+|`iPC_ModLU`|Moderate Land Use Intensity|unitless|The proportion of the riverscape associated with the stream reach with moderate land use intensity|
+|`iPC_HighLU`|High Land Use Intensity|unitless|The proportion of the riverscape associated with the stream reach with high land use intensity|
+|`iHyd_QLow`|Low Flow Discharge|ft<sup>3</sup>/s|The estimated low flow discharge|
+|`iHyd_Q2`|Typical Flood Discharge|ft<sup>3</sup>/s|The estimated 2-year recurrence interval flow discharge|
+|`iHyd_SPLow`|Low Flow Stream Power|w|The stream power associated with the low flow discharge|
+|`iHyd_SP2`|Flood Flow Stream Power|w|The stream power associated wtih the 2-year recurrence interval flood discharge|
+|`oVC_HPE`|Historic Vegetation Capacity|km<sup>-1</sup>|Dams per kilometer of channel that the historic vegetation could support|
+|`oVC_EX`|Existing Vegetation Capacity|km<sup>-1</sup>|Dams per kilometer of channel that the existing vegetation could support|
+|`oCC_HPE`|Historic Dam Capacity|km<sup>-1</sup>|Dams per kilometer of channel that the stream could support historically|
+|`mCC_HPE_CT`|Historic Dam Count|#|The number of dams the stream reach could support historically|
+|`oCC_EX`|Existing Dam Capacity|km<sup>-1</sup>|Dams per kilometer of channel that the stream could support currently|
+|`mCC_EX_CT`|Existing Dam Count|#|The number of dams the stream reach current currently support|
+|`LimitationID`|Limitation ID|NA|An identifier for the reach dam building limitation type|
+|`RiskID`|Risk ID|NA|An identifier for the reach risk of conflict with infrastructure category|
+|`OpportunityID`|Opportunity ID|NA|An identifier for the reach conservation/restoration opportunity category|
+|`iPC_Canal`|Distance to Nearest Canal|m|The distance from the stream reach to the nearest canal|
+|`iPC_DivPts`|Distance to Nearest Diversion|m|The distance from the stream reach to the nearest stream diversion point|
+|`iPC_Privat`|Distance to Private Land|m|The distance from the stream reach to the nearest private land|
+|`oPC_Dist`|Distance to Nearest Infrastructure|m|The distance from the stream reach to the nearest infrastructure|
+|`IsMainCh`|Is the Main Channel|binary|1 if the stream reach is the main channel, 0 if it is a side channel/anabranch|
+|`IsMultiCh`|Is Multi-Channel|binary|1 if there are multiple channels associated with the stream reach, 0 if not|
+|`mCC_HisDep`|Difference From Historic Dam Count|#|The difference between the number of dams that the reach could historically support and what it currently can|
+|`Dam_Setting`|Dam Setting|NA|Classic, Steep, or Floodplain dam setting type|
+|`ReachType`|Reach Type|NA|A description of the `ReachCode` field|
+|`Limitation`|Dam Building Limitation|NA|Dam building limitation type for the reach|
+|`Risk`|Dam Risk|NA|The categorical value of risk of dam building conflict with infrastructure|
+|`Opportunity`|Restoration/Conservation Opportunity|NA|Categories describing potential opportunties for beaver-based conservation/restoration strategies|
+
+### Riverscape Network Outputs (vwDgos/vwIgos)
+
+|Field|Units|Description|
+|---|---|---|
+|`IGOID/DGOID`|NA|Unique identifier for each riverscape polygon or point|
+|`FCode`|NA|NHD FCode of the primary reach in the riverscape segment|
+|`level_path`|NA|Unique identifier for each individual stream from the NHD attributes associated with the riverscape polygon or point|
+|`seg_distance`|m|Distance along a given level_path. In combination with level_path, this provides a unique identifier for each riverscape polygon or point|
+|`stream_size`|NA|Categorical classification of stream size from 0 (small, headwater streams) to 4 (large continental rivers)|
+|`centerline_length`|m|(DGOs) Length of the centerline (m) of the riverscape polygon (riverscape network length)|
+|`oVC_EX`|km<sup>-1</sup>|Dams per kilometer of riverscape that the existing vegetation could support|
+|`oVC_HPE`|km<sup>-1</sup>|Dams per kilometer of riverscape that the historic vegetation could support|
+|`oCC_EX`|km<sup>-1</sup>|Dams per kilometer of riverscape that the riverscape could support currently|
+|`oCC_HPE`|km<sup>-1</sup>|Dams per kilometer of riverscape that the riverscape could support historically|
+|`Risk`|NA|The categorical value of risk of dam building conflict with infrastructure|
+|`Limitation`|NA|Dam building limitation type for the reach|
+|`Opportunity`|NA|Categories describing potential opportunties for beaver-based conservation/restoration strategies|
