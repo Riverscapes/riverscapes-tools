@@ -60,16 +60,17 @@ class UndercutMetrics(CHaMPMetric):
                 try:
                     dMetrics['Area'] += undercut['EstimatedLength'] * (undercut['Width25Percent'] + undercut['Width50Percent'] + undercut['Width75Percent']) / 3.0
                 except TypeError as e:
-                    raise DataException("Undercut: Unhandled 'None' values during length calculation")
+                    raise DataException("Undercut: Unhandled 'None' values during length calculation") from e
 
             # Calculate the percent length and area of the site that is undercut
-            if visitTopoVals['Lgth_Wet'] is None:
-                raise DataException("Lgth_Wet cannot be null")
-            if visitTopoVals['Area_Wet'] is None:
-                raise DataException("Area_Wet cannot be null")
+            if visitTopoVals['Wetted']['Centerline']['TotalChannelLength'] is None:
+                raise DataException("Wetted centerline length cannot be null")
 
-            dMetrics['LengthPercent'] = dMetrics['Length'] / (visitTopoVals['Lgth_Wet'] * 100 / 2)
-            dMetrics['AreaPerecent'] = dMetrics['Area'] / (visitTopoVals['Area_Wet'] + dMetrics['Area']) * 100
+            if visitTopoVals['Wetted']['WaterExtent']['Area'] is None:
+                raise DataException("Wetted water extent area cannot be null")
+
+            dMetrics['LengthPercent'] = dMetrics['Length'] / (visitTopoVals['Wetted']['Centerline']['TotalChannelLength'] * 100 / 2)
+            dMetrics['AreaPerecent'] = dMetrics['Area'] / (visitTopoVals['Wetted']['WaterExtent']['Area'] + dMetrics['Area']) * 100
 
         dResults = {'VisitMetrics': dMetrics}
 
