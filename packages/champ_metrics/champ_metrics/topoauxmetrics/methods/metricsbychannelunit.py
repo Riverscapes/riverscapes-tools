@@ -43,16 +43,20 @@ def metricsByChannelUnit(metricDict, channelUnitMetrics, apiValues, channelUnitM
         for metricName, subClasses in metricDict.items():
             dChannelUnits[unitNumber][metricName] = 0.0
 
-            # Loop over the API measurements that are used by this metric
-            for subClass in subClasses[0]:
-                # Sum the proportions of the measurement for this class
-                vals = [val[subClass] for val in apiValues if val['ChannelUnitID'] == unitID and val[subClass] != None]
-                if len(vals) == 0:
-                    dChannelUnits[unitNumber][metricName] = None
-                else:
-                    if dChannelUnits[unitNumber][metricName] is None:
-                        dChannelUnits[unitNumber][metricName] = 0
-                    dChannelUnits[unitNumber][metricName] += np.sum(vals)
+            try:
+
+                # Loop over the API measurements that are used by this metric
+                for subClass in subClasses[0]:
+                    # Sum the proportions of the measurement for this class
+                    vals = [val[subClass] for val in apiValues if val['ChannelUnitID'] == unitID and val[subClass] != None]
+                    if len(vals) == 0:
+                        dChannelUnits[unitNumber][metricName] = None
+                    else:
+                        if dChannelUnits[unitNumber][metricName] is None:
+                            dChannelUnits[unitNumber][metricName] = 0
+                        dChannelUnits[unitNumber][metricName] += np.sum(vals)
+            except KeyError as e:
+                raise KeyError(f"Missing expected measurement class '{subClass}' in API data") from e
 
     cuMetrics = {}
     for t1Type in dUnitDefs:

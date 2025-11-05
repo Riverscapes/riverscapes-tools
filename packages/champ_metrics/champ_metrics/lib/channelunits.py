@@ -135,15 +135,15 @@ def loadChannelUnitsFromJSON(jsonFilePath):
 
     dUnits = {}
 
-    with open(jsonFilePath) as data_file:
+    with open(jsonFilePath, encoding='utf-8') as data_file:
         data = json.load(data_file)
 
         for nodUnit in data['value']:
             value = nodUnit['value']
-            nCUNumber = int(value['ChannelUnitNumber'])
-            tier1 = value['Tier1']
-            tier2 = value['Tier2']
-            segment = value['ChannelSegmentID']
+            nCUNumber = int(value.get('ChannelUnitNumber', value['channelunitnumber']))
+            tier1 = value.get('Tier1', value['tier1'])
+            tier2 = value.get('Tier2', value['tier2'])
+            segment = value.get('ChannelSegmentID', value['channelsegment'])
 
             dUnits[nCUNumber] = (tier1, tier2, segment)
 
