@@ -24,7 +24,7 @@ class LargeWoodMetrics(CHaMPMetric):
         siteWettedLength = metricInstance['Wetted']['Centerline']['TotalChannelLength']
 
         if apiData['VisitYear'] < 2014:
-            woodData = [val['value'] for val in apiData['LargeWoodyDebris']['value']]
+            woodData = [val['value'] for val in apiData['LargeWoodyDebris']['value']] if 'LargeWoodyDebris' in apiData and apiData['LargeWoodyDebris'] is not None else []
 
             # Only 2011 and 2012 have separate wood jam data
             jamData = None

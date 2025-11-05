@@ -186,10 +186,13 @@ class ChannelUnitMetrics(CHaMPMetric):
                 cuThalwegLine = thalwegLine.intersection(aFeat['geometry'])
 
                 exitPoint = None
-                if cuThalwegLine.type == 'LineString':
+                if cuThalwegLine.geom_type == 'LineString':
+                    exitPoint = cuThalwegLine.coords[0]
+                elif cuThalwegLine.geom_type == 'MultiLineString':
+                    cuThalwegLine = cuThalwegLine.geoms[0]
                     exitPoint = cuThalwegLine.coords[0]
                 else:
-                    exitPoint = cuThalwegLine[0].coords[0]
+                    raise DataException(f"Unexpected geometry type for cuThalwegLine: {cuThalwegLine.type}")
 
                 # Retrieve a list of points along the Thalweg in the channel unit
                 thalwegPoints = ChannelUnitMetrics.interpolatePointsAlongLine(cuThalwegLine, 0.13)

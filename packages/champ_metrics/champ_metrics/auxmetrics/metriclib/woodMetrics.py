@@ -1,5 +1,5 @@
 import numpy as np
-
+import math
 
 largeWoodVolumeEstimatesDict = {
     "SmallSmall": 0.02035,
@@ -158,7 +158,7 @@ def getDebrisVolumeForVisitAndChannelUnits_2014(channelUnitIDs, isWet, largeWood
         pieces = [p for p in pieces if p["value"]["LargeWoodType"] == "Wet"]
 
     # calculate volume for each piece and return as list.
-    return [np.pi * np.math.pow((p["value"]["DiameterM"] / 2.0), 2) * p["value"]["LengthM"] for p in pieces]
+    return [np.pi * math.pow((p["value"]["DiameterM"] / 2.0), 2) * p["value"]["LengthM"] for p in pieces]
 
 
 def getDebrisVolumeForVisitAndChannelUnits_2013Backwards(channelUnitIDs, isWet, largeWoodyDebris, woodyDebrisJams, jamHasChannelUnits):
