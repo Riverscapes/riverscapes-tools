@@ -1057,7 +1057,7 @@ requires-dist = [
     { name = "questionary", specifier = ">=2.0.1" },
     { name = "rasterio", specifier = ">=1.3.9" },
     { name = "requests", specifier = ">=2.32.5" },
-    { name = "rsxml", specifier = ">=2.1.0" },
+    { name = "rsxml", specifier = ">=2.1.1" },
     { name = "rtree", specifier = ">=1.2.0" },
     { name = "scikit-fuzzy", specifier = ">=0.4.2" },
     { name = "scikit-image", specifier = ">=0.24,<0.25" },
@@ -1079,16 +1079,16 @@ dev = [
 
 [[package]]
 name = "rsxml"
-version = "2.1.0"
+version = "2.1.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "lxml" },
     { name = "requests" },
     { name = "semver" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0d/b4/1b28db8ffbef49b1947d7863be1b5d217c10c26ec61675b70d35c7796b1b/rsxml-2.1.0.tar.gz", hash = "sha256:26d803aa252ba378ff3f4fddb13d0b546e50ca924c779d77438da1ce5d84b2d4", size = 46327, upload-time = "2025-10-30T23:23:51.435Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/af/41/100d1ee19132155480ff98a115c82c66dd824a6f92f67feca3fcf8b2b92f/rsxml-2.1.1.tar.gz", hash = "sha256:37edcdd4a3417f8d3b595417512c450f5fed8964e0e860511b1848700db644e7", size = 43183, upload-time = "2025-11-11T02:40:52.803Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/bc/fa/eb1f085967a21b3de248127771451dc727a934778c578048c07530eb3ad0/rsxml-2.1.0-py3-none-any.whl", hash = "sha256:8bdef85a374082077640a3e5aa5d15f99ec12b550f1165463d6e9d9d2aeb7b3b", size = 47771, upload-time = "2025-10-30T23:23:50.44Z" },
+    { url = "https://files.pythonhosted.org/packages/a8/ca/196e2a73c37d3f044bf9363de41555f2159c18ab9dbfd68f7a621aa02425/rsxml-2.1.1-py3-none-any.whl", hash = "sha256:4c43436d0bfac9543516123efc0c094b89d0e61d01eee9ca1a83132f1c3f8a56", size = 44558, upload-time = "2025-11-11T02:40:51.451Z" },
 ]
 
 [[package]]
