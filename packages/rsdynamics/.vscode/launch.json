@@ -24,8 +24,8 @@
         "${input:WatershedHydroID}",
         "/Users/philipbailey/GISData/nz/vbet/${input:WatershedHydroID}/project.rs.xml",
         "0.68,0.95", // thresholds
-        "5,30", // epochs 1,5, 30
-        "/Users/philipbailey/GISData/nz/rodrigo_output/output2",
+        "1,5,30", // epochs 1,5, 30
+        "/Users/philipbailey/GISData/nz/01_RIVERSCAPES/output",
         "/Users/philipbailey/GISData/nz/rsdynamics",
         "--verbose"
       ]
