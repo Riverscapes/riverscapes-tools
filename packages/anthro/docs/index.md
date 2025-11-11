@@ -1,5 +1,0 @@
----
-title: Home
----
-
-## Anthropogenic Context
