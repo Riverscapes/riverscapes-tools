@@ -37,7 +37,7 @@ initGDALOGRErrors()
 
 # regex for epoch raster names
 epoch_raster_pattern = r'mosaic_(\w*)_frequency_([0-9]{1,2})_.*_([0-9]{4})-([0-9]{2})-([0-9]{2})_([0-9]{4})-([0-9]{2})-([0-9]{2})\.tif'
-classified_raster_pattern = r'.*_([0-9]{8})_(\w*)\.tif'
+classified_raster_pattern = r'.*_([0-9]{8})\.tif'
 
 
 LayerTypes = {
@@ -151,7 +151,7 @@ def get_raster_sets(epoch_rasters: List[Tuple[str, str, str, str, dict]]) -> dic
                 'end_year': epoch_end_year
             }
 
-        if epoch_data['type'].lower() == 'water':
+        if epoch_data['type'].lower() == 'wetted':
             stats_sets[epoch_key]['wet'] = raster_path
         elif epoch_data['type'].lower() == 'alluvial':
             stats_sets[epoch_key]['active'] = raster_path
@@ -328,14 +328,14 @@ def process_classified_rasters(raster_folder: str, output_dir: str, dgos: str) -
     Returns tuple of (raster_path, raster plain english display name, project raster ID)
     """
 
-    log = Logger('Frequency Rasters')
+    log = Logger('Classified Rasters')
 
     raster_paths = []
-    for freq_type in ['00_WETTED', '01_ALLUVIAL', '02_VEGETATED']:
-        sub_dir = os.path.join('frequency_binaries', freq_type)
+    for class_type in ['01_wetted', '00_alluvial']:
+        sub_dir = os.path.join('classified_scenes', class_type)
         freq_dir = os.path.join(raster_folder, sub_dir)
         if not os.path.exists(freq_dir):
-            log.warning(f'Frequency folder not found: {freq_dir}')
+            log.warning(f'Classified raster folder not found: {freq_dir}')
             continue
 
         for raster_file in os.listdir(freq_dir):
@@ -348,7 +348,7 @@ def process_classified_rasters(raster_folder: str, output_dir: str, dgos: str) -
                 continue
 
             raster_date_str = match.group(1)
-            raster_class = match.group(2)
+            raster_class = class_type.split('_')[1]  # wetted or alluvial
 
             # parse the date as yyyymmdd
             try:
