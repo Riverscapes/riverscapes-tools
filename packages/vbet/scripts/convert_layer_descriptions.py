@@ -15,11 +15,9 @@ import json
 import os
 import shutil
 from collections.abc import Iterator
+from riverscapes_metadata import SCHEMA_URL
 from rscommons.classes.rs_project import RSLayer
 from vbet.vbet import LayerTypes
-
-
-SCHEMA_URL = "https://xml.riverscapes.net/riverscapes_metadata/schema/layer_definitions.schema.json"
 
 
 def _layer_lookup(layer_types: dict[str, RSLayer]) -> dict[str, tuple[RSLayer, str]]:
@@ -95,26 +93,31 @@ def convert_legacy_layer_descriptions(
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Convert VBET layer descriptions to unified schema")
     parser.add_argument("src", help="Path to legacy layer_descriptions.json")
-    parser.add_argument("dest", nargs="?", help="Destination file (defaults to src)")
+    parser.add_argument("dest", nargs="?", help="Destination file (defaults to layer_definitions.json)")
     parser.add_argument("--authority-name", default="vbet", help="authority_name value to embed")
     parser.add_argument(
         "--tool-schema-version",
         default='1.0.0',
         help="tool_schema_version value to embed",
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+    if not args.dest:
+        # If no destination is provided, use layer_definitions.json in the same directory as src
+        args.dest = os.path.join(os.path.dirname(args.src), "layer_definitions.json")
+    if os.path.abspath(args.src) == os.path.abspath(args.dest):
+        parser.error("Input and output file paths must be different.")
+    return args
 
 
 def main() -> None:
     args = _parse_args()
-    dest_path = args.dest or args.src
     convert_legacy_layer_descriptions(
         src_path=args.src,
-        dst_path=dest_path,
+        dst_path=args.dest,
         authority_name=args.authority_name,
         tool_schema_version=args.tool_schema_version,
     )
-    print(f'Converted file: {dest_path}')
+    print(f'Converted file: {args.dest}')
 
 
 if __name__ == "__main__":

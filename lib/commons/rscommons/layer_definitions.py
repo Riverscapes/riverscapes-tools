@@ -37,6 +37,7 @@ class LayerDefinition:
     description: str | None = None
     source_url: str | None = None
     data_product_version: str | None = None
+    theme: str | None = None
     columns: list[LayerColumn] = field(default_factory=list)
 
 
@@ -86,10 +87,9 @@ def load_layer_definitions(path: str) -> Dict[str, LayerDefinition]:
             description=entry.get("description"),
             source_url=entry.get("source_url"),
             data_product_version=entry.get("data_product_version"),
+            theme=entry.get("theme"),
             columns=_parse_columns(entry.get("columns")),
         )
         definitions.setdefault(definition.layer_id, definition)
-        if definition.layer_name:
-            definitions.setdefault(definition.layer_name, definition)
 
     return definitions
