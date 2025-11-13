@@ -16,55 +16,7 @@ import os
 import shutil
 from collections.abc import Iterator
 from rscommons.classes.rs_project import RSLayer
-
-
-LayerTypes = {
-    'DEM': RSLayer('DEM', 'DEM', 'Raster', 'inputs/dem.tif'),
-    'SLOPE_RASTER': RSLayer('Slope Raster', 'SLOPE_RASTER', 'Raster', 'inputs/slope.tif'),
-    'HILLSHADE': RSLayer('DEM Hillshade', 'HILLSHADE', 'Raster', 'inputs/dem_hillshade.tif'),
-    'INPUTS': RSLayer('Inputs', 'INPUTS', 'Geopackage', 'inputs/vbet_inputs.gpkg', {
-        'NETWORK_INTERSECTION': RSLayer('NHD Flowlines intersected with road, rail and ownership', 'NETWORK_INTERSECTION', 'Vector', 'network_intersected'),
-        # 'FLOWLINES': RSLayer('NHD Flowlines intersected with road, rail and ownership', 'FLOWLINES', 'Vector', 'flowlines'),
-        'CHANNEL_AREA_POLYGONS': RSLayer('Channel Area Polygons', 'CHANNEL_AREA_POLYGONS', 'Vector', 'channel_area_polygons')
-    }),
-    # Taudem intermediate rasters can be provided as inputs, or generated in vbet
-    'PITFILL': RSLayer('TauDEM Pitfill', 'PITFILL', 'Raster', 'intermediates/pitfill.tif'),
-    'DINFFLOWDIR_ANG': RSLayer('TauDEM D-Inf Flow Directions', 'DINFFLOWDIR_ANG', 'Raster', 'intermediates/dinfflowdir_ang.tif'),
-    'DINFFLOWDIR_SLP': RSLayer('TauDEM D-Inf Flow Directions Slope', 'DINFFLOWDIR_SLP', 'Raster', 'intermediates/dinfflowdir_slp.tif'),
-    'INTERMEDIATES': RSLayer('Intermediates', 'Intermediates', 'Geopackage', 'intermediates/vbet_intermediates.gpkg', {
-        'VBET_DGO_POLYGONS': RSLayer('VBET DGO Polygons', 'VBET_DGO_POLYGONS', 'Vector', 'vbet_dgos')
-        # We also add all tht raw thresholded shapes here but they get added dynamically later
-    }),
-    # Same here. Sub layers are added dynamically later.
-    'COMPOSITE_VBET_EVIDENCE': RSLayer('VBET Evidence Raster', 'VBET_EVIDENCE', 'Raster', 'outputs/vbet_evidence.tif'),
-    'COMPOSITE_VBET_EVIDENCE_INTERIOR': RSLayer('Topo Evidence (Interior)', 'EVIDENCE_TOPO_INTERIOR', 'Raster', 'intermediates/topographic_evidence_interior.tif'),
-
-    'COMPOSITE_HAND': RSLayer('Hand Raster', 'HAND_RASTER', 'Raster', 'intermediates/hand_composite.tif'),
-    'COMPOSITE_HAND_INTERIOR': RSLayer('Hand Raster (Interior)', 'HAND_RASTER_INTERIOR', 'Raster', 'intermediates/hand_composite_interior.tif'),
-
-    'TRANSFORMED_HAND': RSLayer('Transformed HAND Evidence', 'TRANSFORMED_HAND', 'Raster', 'intermediates/hand_transformed.tif'),
-    'TRANSFORMED_HAND_INTERIOR': RSLayer('Transformed HAND Evidence (Interior)', 'TRANSFORMED_HAND_INTERIOR', 'Raster', 'intermediates/hand_transformed_interior.tif'),
-
-    'EVIDENCE_TOPO': RSLayer('Topo Evidence', 'EVIDENCE_TOPO', 'Raster', 'intermediates/topographic_evidence.tif'),
-
-    'TRANSFORMED_SLOPE': RSLayer('Transformed Slope', 'TRANSFORMED_SLOPE', 'Raster', 'intermediates/slope_transformed.tif'),
-    'TRANSFORMED_SLOPE_INTERIOR': RSLayer('Transformed Slope (Interior)', 'TRANSFORMED_SLOPE_INTERIOR', 'Raster', 'intermediates/slope_transformed_interior.tif'),
-
-    'VBET_ZONES': RSLayer('VBET LevelPath Zones', 'VBET_ZONES', 'Raster', 'intermediates/vbet_level_path_zones.tif'),
-    'LOWLYING_FP_ZONES': RSLayer('Active Floodplain LevelPath Zones', 'LOWLYING_FP_ZONES', 'Raster', 'intermediates/lowlying_fp_level_path_zones.tif'),
-    'ELEVATED_FP_ZONES': RSLayer('Inactive Floodplain LevelPath Zones', 'ELEVATED_FP_ZONES', 'Raster', 'intermediates/elevated_fp_level_path_zones.tif'),
-
-    'VBET_OUTPUTS': RSLayer('VBET', 'VBET_OUTPUTS', 'Geopackage', 'outputs/vbet.gpkg', {
-        'VBET_FULL': RSLayer('VBET Full Extent', 'VBET_FULL', 'Vector', 'vbet_full'),
-        'VBET_IA': RSLayer('VBET Low lying/Elevated Boundary', 'VBET_IA', 'Vector', 'low_lying_valley_bottom'),
-        'LOW_LYING_FLOODPLAIN': RSLayer('Low Lying Floodplain', 'LOW_LYING_FLOODPLAIN', 'Vector', 'low_lying_floodplain'),
-        'ELEVATED_FLOODPLAIN': RSLayer('Elevated Floodplain', 'ELEVATED_FLOODPLAIN', 'Vector', 'elevated_floodplain'),
-        'FLOODPLAIN': RSLayer('Floodplain', 'FLOODPLAIN', 'Vector', 'floodplain'),
-        'VBET_CENTERLINES': RSLayer('VBET Centerline', 'VBET_CENTERLINES', 'Vector', 'vbet_centerlines'),
-        'SEGMENTATION_POINTS': RSLayer('Segmentation Points', 'SEGMENTATION_POINTS', 'Vector', 'vbet_igos')
-    }),
-    'REPORT': RSLayer('VBET Report', 'REPORT', 'HTMLFile', 'outputs/vbet.html')
-}
+from vbet.vbet import LayerTypes
 
 
 SCHEMA_URL = "https://xml.riverscapes.net/riverscapes_metadata/schema/layer_definitions.schema.json"
