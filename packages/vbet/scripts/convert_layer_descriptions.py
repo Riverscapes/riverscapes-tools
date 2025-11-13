@@ -162,6 +162,7 @@ def main() -> None:
         authority_name=args.authority_name,
         tool_schema_version=args.tool_schema_version,
     )
+    print(f'Converted file: {dest_path}')
 
 
 if __name__ == "__main__":
