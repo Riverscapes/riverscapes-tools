@@ -6,8 +6,10 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from typing import Any, Dict
+from typing import Any, Iterable
+
 from riverscapes_metadata import SCHEMA_URL
+from rscommons.classes.rs_project import RSLayer
 
 
 @dataclass
@@ -62,7 +64,7 @@ def _parse_columns(raw_columns: list[dict[str, Any]] | None) -> list[LayerColumn
     return columns
 
 
-def load_layer_definitions(path: str) -> Dict[str, LayerDefinition]:
+def load_layer_definitions(path: str) -> dict[str, LayerDefinition]:
     """Load and validate layer definitions that follow the unified Riverscapes schema."""
 
     with open(path, "r", encoding="utf-8") as handle:
@@ -77,7 +79,7 @@ def load_layer_definitions(path: str) -> Dict[str, LayerDefinition]:
             f"Layer definitions file {path} declares schema '{schema_ref}', expected '{SCHEMA_URL}'"
         )
 
-    definitions: Dict[str, LayerDefinition] = {}
+    definitions: dict[str, LayerDefinition] = {}
     for entry in payload.get("layers", []):
         definition = LayerDefinition(
             layer_id=entry["layer_id"],
@@ -93,3 +95,79 @@ def load_layer_definitions(path: str) -> Dict[str, LayerDefinition]:
         definitions.setdefault(definition.layer_id, definition)
 
     return definitions
+
+
+def _split_container_path(path: str | None) -> tuple[str | None, str | None]:
+    """Split a layer path into container and sublayer components."""
+
+    if not path:
+        return None, None
+    if ".gpkg/" in path:
+        container, sub_layer = path.split(".gpkg/", 1)
+        return f"{container}.gpkg", sub_layer
+    if ".gdb/" in path:
+        container, sub_layer = path.split(".gdb/", 1)
+        return f"{container}.gdb", sub_layer
+    if ".sqlite/" in path:
+        container, sub_layer = path.split(".sqlite/", 1)
+        return f"{container}.sqlite", sub_layer
+    return path, None
+
+
+def build_layer_types(definitions: Iterable[LayerDefinition]) -> dict[str, RSLayer]:
+    """Construct an RSLayer hierarchy keyed by layer_id from layer definitions."""
+
+    layer_defs: list[LayerDefinition] = list(definitions)
+    container_map: dict[str, RSLayer] = {}
+    layer_types: dict[str, RSLayer] = {}
+
+    # First pass: create top-level layers (including geopackage containers)
+    for definition in layer_defs:
+        _, sub_layer_name = _split_container_path(definition.path)
+        if sub_layer_name:
+            continue
+        rs_layer = RSLayer(
+            name=definition.layer_name,
+            lyr_id=definition.layer_id,
+            tag=definition.layer_type or "Vector",
+            rel_path=definition.path or "",
+            sub_layers={},
+        ) if definition.layer_type == "Geopackage" else RSLayer(
+            name=definition.layer_name,
+            lyr_id=definition.layer_id,
+            tag=definition.layer_type or "Vector",
+            rel_path=definition.path or "",
+        )
+        key = definition.path or definition.layer_id
+        container_map[key] = rs_layer
+        layer_types.setdefault(definition.layer_id, rs_layer)
+
+    # Second pass: attach sublayers to their containers
+    for definition in layer_defs:
+        container_path, sub_layer_name = _split_container_path(definition.path)
+        if not sub_layer_name:
+            continue
+        parent_layer = container_map.get(container_path)
+        if parent_layer is None:
+            # Fallback: create a container if the manifest omitted it
+            parent_layer = RSLayer(
+                name=container_path or definition.layer_id,
+                lyr_id=container_path or definition.layer_id,
+                tag="Geopackage",
+                rel_path=container_path or "",
+                sub_layers={},
+            )
+            container_map[container_path or definition.layer_id] = parent_layer
+            layer_types.setdefault(parent_layer.id, parent_layer)
+        if parent_layer.sub_layers is None:
+            parent_layer.sub_layers = {}
+        sub_layer = RSLayer(
+            name=definition.layer_name,
+            lyr_id=definition.layer_id,
+            tag=definition.layer_type or "Vector",
+            rel_path=sub_layer_name,
+        )
+        parent_layer.sub_layers.setdefault(definition.layer_id, sub_layer)
+        layer_types.setdefault(definition.layer_id, sub_layer)
+
+    return layer_types
