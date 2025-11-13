@@ -51,6 +51,16 @@
   ],
   "configurations": [
     {
+      "name": "Python Debugger with uv: Current File with Arguments",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal",
+      "args": "${command:pickArgs}",
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+    },
+    {
       "name": "Run VBET",
       "type": "debugpy",
       "request": "launch",
@@ -58,7 +68,7 @@
       "console": "integratedTerminal",
       "env": {
         "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
-      },      
+      },
       "args": [
         "${input:HUC}",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydro_derivatives.gpkg/network_intersected",
@@ -72,11 +82,16 @@
         "NHDPlusID",
         "DivDASqKm",
         // "--level_paths","${input:level_paths}",
-        "--pitfill","{env:DATA_ROOT}/taudem/${input:HUC}/intermediates/pitfill.tif",
-        "--dinfflowdir_ang","{env:DATA_ROOT}/taudem/${input:HUC}/intermediates/dinfflowdir_ang.tif",
-        "--dinfflowdir_slp","{env:DATA_ROOT}/taudem/${input:HUC}/outputs/dinfflowdir_slp.tif",
-        "--reach_codes", "33400,46000,46003,46006,46007,55800",
-        "--mask", "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydro_derivatives.gpkg/processing_extent",
+        "--pitfill",
+        "{env:DATA_ROOT}/taudem/${input:HUC}/intermediates/pitfill.tif",
+        "--dinfflowdir_ang",
+        "{env:DATA_ROOT}/taudem/${input:HUC}/intermediates/dinfflowdir_ang.tif",
+        "--dinfflowdir_slp",
+        "{env:DATA_ROOT}/taudem/${input:HUC}/outputs/dinfflowdir_slp.tif",
+        "--reach_codes",
+        "33400,46000,46003,46006,46007,55800",
+        "--mask",
+        "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/hydro_derivatives.gpkg/processing_extent",
         "--meta",
         "Runner=VSCode",
         "--verbose",
@@ -123,10 +138,14 @@
         "{env:DATA_ROOT}/rs_context/${input:HUC}/hydrology/nhd_data.sqlite/NHDPlusFlowlineVAA",
         "{env:DATA_ROOT}/vbet/${input:HUC}/centerlines",
         "${input:level_paths}",
-        "--pitfill","{env:DATA_ROOT}/taudem/${input:HUC}/intermediates/pitfill.tif",
-        "--dinfflowdir_ang","{env:DATA_ROOT}/taudem/${input:HUC}/intermediates/dinfflowdir_ang.tif",
-        "--dinfflowdir_slp","{env:DATA_ROOT}/taudem/${input:HUC}/outputs/dinfflowdir_slp.tif",
-        "--twi_raster","{env:DATA_ROOT}/taudem/${input:HUC}/outputs/twi.tif"
+        "--pitfill",
+        "{env:DATA_ROOT}/taudem/${input:HUC}/intermediates/pitfill.tif",
+        "--dinfflowdir_ang",
+        "{env:DATA_ROOT}/taudem/${input:HUC}/intermediates/dinfflowdir_ang.tif",
+        "--dinfflowdir_slp",
+        "{env:DATA_ROOT}/taudem/${input:HUC}/outputs/dinfflowdir_slp.tif",
+        "--twi_raster",
+        "{env:DATA_ROOT}/taudem/${input:HUC}/outputs/twi.tif"
       ]
     },
     {
@@ -152,7 +171,7 @@
         "{env:DATA_ROOT}/vbet/${input:HUC}/project.rs.xml",
         "{env:DATA_ROOT}/rs_context/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/taudem/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/channel_area/${input:HUC}/project.rs.xml"
       ]
-    },    
+    },
     {
       "name": "Write report",
       "type": "debugpy",
@@ -163,7 +182,7 @@
         "{env:DATA_ROOT}/vbet/${input:HUC}/project.rs.xml",
         "{env:DATA_ROOT}/vbet/${input:HUC}/outputs/vbet_report.html"
       ]
-    },    
+    },
     {
       "name": "Version Bump",
       "type": "debugpy",
@@ -195,21 +214,21 @@
       "module": "vbet.vbet_outputs",
       "console": "integratedTerminal"
     },
-    { 
+    {
       "name": "HAND Testing",
       "type": "debugpy",
       "request": "launch",
       "module": "scripts.hand",
       "console": "integratedTerminal"
     },
-    { 
+    {
       "name": "Newtork",
       "type": "debugpy",
       "request": "launch",
       "module": "vbet.vbet_network",
       "console": "integratedTerminal"
     },
-    { 
+    {
       "name": "Vbet centerline",
       "type": "debugpy",
       "request": "launch",
@@ -227,7 +246,7 @@
         "{env:DATA_ROOT}/vbet",
         "{env:GIS_PROJECTS_ROOT}/VBET_Evidence/vbet_evidence.csv",
       ]
-    }, 
+    },
     {
       "name": "Python: Current File",
       "type": "debugpy",
