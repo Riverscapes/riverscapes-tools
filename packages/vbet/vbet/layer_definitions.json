@@ -4,6 +4,24 @@
   "tool_schema_version": "1.0.0",
   "layers": [
     {
+      "layer_id": "INTERMEDIATES",
+      "layer_name": "VBET Intermediates Geopackage",
+      "layer_type": "Geopackage",
+      "path": "intermediates/vbet_intermediates.gpkg"
+    },
+    {
+      "layer_id": "VBET_OUTPUTS",
+      "layer_name": "VBET Outputs Geopackage",
+      "layer_type": "Geopackage",
+      "path": "outputs/vbet.gpkg"
+    },
+    {
+      "layer_id": "INPUTS",
+      "layer_name": "VBET Inputs Geopackage",
+      "layer_type": "Geopackage",
+      "path": "inputs/vbet_inputs.gpkg"
+    },
+    {
       "layer_id": "VBET_DGO_POLYGONS",
       "layer_name": "VBET DGO Polygons",
       "layer_type": "Vector",

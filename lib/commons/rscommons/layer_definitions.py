@@ -115,32 +115,44 @@ def _split_container_path(path: str | None) -> tuple[str | None, str | None]:
 
 
 def build_layer_types(definitions: Iterable[LayerDefinition]) -> dict[str, RSLayer]:
-    """Construct an RSLayer hierarchy keyed by layer_id from layer definitions."""
+    """Construct an RSLayer hierarchy keyed by layer_id from layer definitions.
+    In riverscapes tools, this is often declared as global variable named LayerTypes. 
+    A newer preferred approach would bypass this construction and 
+    instead use the LayerDefinition dataclass from this module.
+    """
 
     layer_defs: list[LayerDefinition] = list(definitions)
     container_map: dict[str, RSLayer] = {}
     layer_types: dict[str, RSLayer] = {}
+
+    def register_container(key: str | None, layer: RSLayer) -> None:
+        if key and key not in container_map:
+            container_map[key] = layer
 
     # First pass: create top-level layers (including geopackage containers)
     for definition in layer_defs:
         _, sub_layer_name = _split_container_path(definition.path)
         if sub_layer_name:
             continue
+        is_geopackage = definition.layer_type == "Geopackage"
         rs_layer = RSLayer(
             name=definition.layer_name,
             lyr_id=definition.layer_id,
             tag=definition.layer_type or "Vector",
             rel_path=definition.path or "",
             sub_layers={},
-        ) if definition.layer_type == "Geopackage" else RSLayer(
+        ) if is_geopackage else RSLayer(
             name=definition.layer_name,
             lyr_id=definition.layer_id,
             tag=definition.layer_type or "Vector",
             rel_path=definition.path or "",
         )
-        key = definition.path or definition.layer_id
-        container_map[key] = rs_layer
         layer_types.setdefault(definition.layer_id, rs_layer)
+        register_container(definition.path, rs_layer)
+        if is_geopackage:
+            if rs_layer.sub_layers is None:
+                rs_layer.sub_layers = {}
+            register_container(definition.layer_id, rs_layer)
 
     # Second pass: attach sublayers to their containers
     for definition in layer_defs:
@@ -148,6 +160,9 @@ def build_layer_types(definitions: Iterable[LayerDefinition]) -> dict[str, RSLay
         if not sub_layer_name:
             continue
         parent_layer = container_map.get(container_path)
+        if parent_layer is None and container_path:
+            container_hint = container_path.split("/", 1)[0].upper()
+            parent_layer = container_map.get(container_hint)
         if parent_layer is None:
             # Fallback: create a container if the manifest omitted it
             parent_layer = RSLayer(
@@ -157,7 +172,8 @@ def build_layer_types(definitions: Iterable[LayerDefinition]) -> dict[str, RSLay
                 rel_path=container_path or "",
                 sub_layers={},
             )
-            container_map[container_path or definition.layer_id] = parent_layer
+            register_container(container_path, parent_layer)
+            register_container(parent_layer.id, parent_layer)
             layer_types.setdefault(parent_layer.id, parent_layer)
         if parent_layer.sub_layers is None:
             parent_layer.sub_layers = {}
