@@ -120,7 +120,7 @@ class RSLayer:
             Exception: sub_layers must but a list of RSLayer(s)
         """
         if name is None:
-            raise Exception('Realization Name is required')
+            raise Exception('Layer Name is required')
         if lyr_id is None:
             raise Exception('id is required')
         if rel_path is None:
@@ -131,7 +131,7 @@ class RSLayer:
             # Make sure if we're a sub_layer that we've got the right shape
             if not type(sub_layers) == dict or \
                     not all([type(list(sub_layers.values())[0]) == RSLayer for a in sub_layers]):
-                raise Exception('sub_layers must but a list of RSLayer(s)')
+                raise Exception('sub_layers must be a list of RSLayer(s)')
             self.sub_layers = sub_layers
         else:
             self.sub_layers = None
