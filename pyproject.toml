@@ -48,6 +48,7 @@ dev = [
     "isort>=5.13",
     "psutil>=7.0.0",
     "pylint>=3.2",
+    "pytest>=8.3",
 ]
 
 [tool.pylint.main]
