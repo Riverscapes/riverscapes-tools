@@ -37,6 +37,7 @@ dependencies = [
     "urllib3>=2.2",
     "rsxml>=2.1.1",
     "geopandas>=1.1.1",
+    "riverscapes-metadata @ git+https://github.com/Riverscapes/RiverscapesXML.git@master#subdirectory=riverscapes_metadata",
 ]
 
 [tool.setuptools.packages.find]
