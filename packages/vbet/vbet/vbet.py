@@ -35,7 +35,7 @@ from rscommons.vbet_network import get_channel_level_path, get_distance_lookup, 
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.raster_warp import raster_warp
 from rscommons import TimerBuckets, TimerWaypoints
-from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions, raster_resolution_meta
+from rscommons.augment_lyr_meta2 import augment_layermeta, add_layer_descriptions, raster_resolution_meta
 
 
 from vbet.vbet_database import build_vbet_database, load_configuration
