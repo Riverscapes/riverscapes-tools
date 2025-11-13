@@ -8,11 +8,16 @@ from rscommons.layer_definitions import LayerDefinition, load_layer_definitions
 
 
 def augment_layermeta(proj_type: str, lyr_descriptions: str, lyr_types: dict):
-    """
-    For RSContext we've written a JSON file with extra layer meta. We may use this pattern elsewhere but it's just here for now
-    proj_type (str): the project type reference used in the documentation websites.
-    lyr_descriptions (str): path to a layer_descriptions.json {LayerType ref: [description, sourceurl, productversion]}.
-    lyr_types: the LayerTypes dict specified at the beginning of model scripts
+    """Populate layer metadata objects from a unified ``layer_descriptions`` manifest.
+
+    Parameters
+    ----------
+    proj_type: str
+        Riverscapes project type identifier used to build documentation URLs.
+    lyr_descriptions: str
+        Path to the JSON file containing unified layer definition entries.
+    lyr_types: dict
+        Mapping of layer keys to ``RSLayer`` objects that will receive metadata.
     """
 
     definitions = load_layer_definitions(lyr_descriptions)
@@ -52,7 +57,7 @@ def augment_layermeta(proj_type: str, lyr_descriptions: str, lyr_types: dict):
 
 
 def add_layer_descriptions(rsproject, lyr_descriptions: str, lyr_types: dict):
-
+    """Write layer descriptions into an ``RSProject`` XML document if present."""
     definitions = load_layer_definitions(lyr_descriptions)
 
     def _lookup(def_key: str, lyr) -> LayerDefinition | None:
@@ -82,7 +87,7 @@ def add_layer_descriptions(rsproject, lyr_descriptions: str, lyr_types: dict):
 
 
 def raster_resolution_meta(rsproject, raster_path: str, raster_node):
-
+    """Attach raster cell-size metadata to the provided XML node."""
     resx, resy = get_raster_cell_size(raster_path)
 
     rsproject.add_metadata([RSMeta('CellSizeX', str(resx)),
