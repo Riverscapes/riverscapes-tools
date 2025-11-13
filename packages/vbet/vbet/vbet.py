@@ -27,7 +27,7 @@ import numpy as np
 
 from rsxml import Logger, ProgressBar, dotenv
 from rsxml.util import safe_makedirs, parse_metadata, pretty_duration, safe_remove_dir
-from rscommons import RSProject, RSLayer, ModelConfig, GeopackageLayer, VectorBase, initGDALOGRErrors
+from rscommons import RSProject, ModelConfig, GeopackageLayer, VectorBase, initGDALOGRErrors
 from rscommons.vector_ops import copy_feature_class, polygonize, difference, collect_linestring, collect_feature_class
 from rscommons.geometry_ops import get_extent_as_geom, get_rectangle_as_geom
 from rscommons.hand import run_subprocess
@@ -36,6 +36,7 @@ from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscommons.raster_warp import raster_warp
 from rscommons import TimerBuckets, TimerWaypoints
 from rscommons.augment_lyr_meta2 import augment_layermeta, add_layer_descriptions, raster_resolution_meta
+from rscommons.layer_definitions import build_layer_types, load_layer_definitions
 
 
 from vbet.vbet_database import build_vbet_database, load_configuration
@@ -59,55 +60,10 @@ initGDALOGRErrors()
 cfg = ModelConfig(
     'https://xml.riverscapes.net/Projects/XSD/V2/RiverscapesProject.xsd', __version__)
 
-LYR_DESCRIPTIONS_JSON = os.path.join(
-    os.path.dirname(__file__), 'layer_descriptions.json')
-LayerTypes = {
-    'DEM': RSLayer('DEM', 'DEM', 'Raster', 'inputs/dem.tif'),
-    'SLOPE_RASTER': RSLayer('Slope Raster', 'SLOPE_RASTER', 'Raster', 'inputs/slope.tif'),
-    'HILLSHADE': RSLayer('DEM Hillshade', 'HILLSHADE', 'Raster', 'inputs/dem_hillshade.tif'),
-    'INPUTS': RSLayer('Inputs', 'INPUTS', 'Geopackage', 'inputs/vbet_inputs.gpkg', {
-        'NETWORK_INTERSECTION': RSLayer('NHD Flowlines intersected with road, rail and ownership', 'NETWORK_INTERSECTION', 'Vector', 'network_intersected'),
-        # 'FLOWLINES': RSLayer('NHD Flowlines intersected with road, rail and ownership', 'FLOWLINES', 'Vector', 'flowlines'),
-        'CHANNEL_AREA_POLYGONS': RSLayer('Channel Area Polygons', 'CHANNEL_AREA_POLYGONS', 'Vector', 'channel_area_polygons')
-    }),
-    # Taudem intermediate rasters can be provided as inputs, or generated in vbet
-    'PITFILL': RSLayer('TauDEM Pitfill', 'PITFILL', 'Raster', 'intermediates/pitfill.tif'),
-    'DINFFLOWDIR_ANG': RSLayer('TauDEM D-Inf Flow Directions', 'DINFFLOWDIR_ANG', 'Raster', 'intermediates/dinfflowdir_ang.tif'),
-    'DINFFLOWDIR_SLP': RSLayer('TauDEM D-Inf Flow Directions Slope', 'DINFFLOWDIR_SLP', 'Raster', 'intermediates/dinfflowdir_slp.tif'),
-    'INTERMEDIATES': RSLayer('Intermediates', 'Intermediates', 'Geopackage', 'intermediates/vbet_intermediates.gpkg', {
-        'VBET_DGO_POLYGONS': RSLayer('VBET DGO Polygons', 'VBET_DGO_POLYGONS', 'Vector', 'vbet_dgos')
-        # We also add all tht raw thresholded shapes here but they get added dynamically later
-    }),
-    # Same here. Sub layers are added dynamically later.
-    'COMPOSITE_VBET_EVIDENCE': RSLayer('VBET Evidence Raster', 'VBET_EVIDENCE', 'Raster', 'outputs/vbet_evidence.tif'),
-    'COMPOSITE_VBET_EVIDENCE_INTERIOR': RSLayer('Topo Evidence (Interior)', 'EVIDENCE_TOPO_INTERIOR', 'Raster', 'intermediates/topographic_evidence_interior.tif'),
-
-    'COMPOSITE_HAND': RSLayer('Hand Raster', 'HAND_RASTER', 'Raster', 'intermediates/hand_composite.tif'),
-    'COMPOSITE_HAND_INTERIOR': RSLayer('Hand Raster (Interior)', 'HAND_RASTER_INTERIOR', 'Raster', 'intermediates/hand_composite_interior.tif'),
-
-    'TRANSFORMED_HAND': RSLayer('Transformed HAND Evidence', 'TRANSFORMED_HAND', 'Raster', 'intermediates/hand_transformed.tif'),
-    'TRANSFORMED_HAND_INTERIOR': RSLayer('Transformed HAND Evidence (Interior)', 'TRANSFORMED_HAND_INTERIOR', 'Raster', 'intermediates/hand_transformed_interior.tif'),
-
-    'EVIDENCE_TOPO': RSLayer('Topo Evidence', 'EVIDENCE_TOPO', 'Raster', 'intermediates/topographic_evidence.tif'),
-
-    'TRANSFORMED_SLOPE': RSLayer('Transformed Slope', 'TRANSFORMED_SLOPE', 'Raster', 'intermediates/slope_transformed.tif'),
-    'TRANSFORMED_SLOPE_INTERIOR': RSLayer('Transformed Slope (Interior)', 'TRANSFORMED_SLOPE_INTERIOR', 'Raster', 'intermediates/slope_transformed_interior.tif'),
-
-    'VBET_ZONES': RSLayer('VBET LevelPath Zones', 'VBET_ZONES', 'Raster', 'intermediates/vbet_level_path_zones.tif'),
-    'LOWLYING_FP_ZONES': RSLayer('Active Floodplain LevelPath Zones', 'LOWLYING_FP_ZONES', 'Raster', 'intermediates/lowlying_fp_level_path_zones.tif'),
-    'ELEVATED_FP_ZONES': RSLayer('Inactive Floodplain LevelPath Zones', 'ELEVATED_FP_ZONES', 'Raster', 'intermediates/elevated_fp_level_path_zones.tif'),
-
-    'VBET_OUTPUTS': RSLayer('VBET', 'VBET_OUTPUTS', 'Geopackage', 'outputs/vbet.gpkg', {
-        'VBET_FULL': RSLayer('VBET Full Extent', 'VBET_FULL', 'Vector', 'vbet_full'),
-        'VBET_IA': RSLayer('VBET Low lying/Elevated Boundary', 'VBET_IA', 'Vector', 'low_lying_valley_bottom'),
-        'LOW_LYING_FLOODPLAIN': RSLayer('Low Lying Floodplain', 'LOW_LYING_FLOODPLAIN', 'Vector', 'low_lying_floodplain'),
-        'ELEVATED_FLOODPLAIN': RSLayer('Elevated Floodplain', 'ELEVATED_FLOODPLAIN', 'Vector', 'elevated_floodplain'),
-        'FLOODPLAIN': RSLayer('Floodplain', 'FLOODPLAIN', 'Vector', 'floodplain'),
-        'VBET_CENTERLINES': RSLayer('VBET Centerline', 'VBET_CENTERLINES', 'Vector', 'vbet_centerlines'),
-        'SEGMENTATION_POINTS': RSLayer('Segmentation Points', 'SEGMENTATION_POINTS', 'Vector', 'vbet_igos')
-    }),
-    'REPORT': RSLayer('VBET Report', 'REPORT', 'HTMLFile', 'outputs/vbet.html')
-}
+LAYER_DEFINITIONS_JSON = os.path.join(
+    os.path.dirname(__file__), 'layer_definitions.json')
+_LAYER_DEFINITIONS = load_layer_definitions(LAYER_DEFINITIONS_JSON)
+LayerTypes = build_layer_types(_LAYER_DEFINITIONS.values())
 
 
 def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, project_folder, huc, flowline_type='NHD',
@@ -152,7 +108,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
                f"{int(thresh_vals['VBET_FULL'] * 100)}", RSMetaTypes.INT, locked=True)
     ], meta)
 
-    augment_layermeta('vbet', LYR_DESCRIPTIONS_JSON, LayerTypes)
+    augment_layermeta('vbet', LAYER_DEFINITIONS_JSON, LayerTypes)
 
     # save raster nodes and paths for adding resolution metadata later
     proj_rasters = []
@@ -1097,7 +1053,7 @@ def vbet(in_line_network, in_dem, in_slope, in_hillshade, in_channel_area, proje
     for ras in proj_rasters:
         raster_resolution_meta(project, ras[1], ras[0])
 
-    add_layer_descriptions(project, LYR_DESCRIPTIONS_JSON, LayerTypes)
+    add_layer_descriptions(project, LAYER_DEFINITIONS_JSON, LayerTypes)
 
     # Report
     report_path = os.path.join(project.project_dir, LayerTypes['REPORT'].rel_path)
