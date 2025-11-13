@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 from collections.abc import Iterator
 from rscommons.classes.rs_project import RSLayer
 
@@ -67,27 +68,23 @@ LayerTypes = {
 
 
 SCHEMA_URL = "https://xml.riverscapes.net/riverscapes_metadata/schema/layer_definitions.schema.json"
-_TAG_TO_LAYER_TYPE = {
-    "Raster": "raster",
-    "Vector": "vector",
-    "Table": "table",
-    "View": "view",
-}
 
 
-def _flatten_layers(layer_types: dict[str, RSLayer]) -> dict[str, RSLayer]:
-    """Generate a flat layer-key -> RSLayer mapping, including sublayers."""
-    flattened: dict[str, RSLayer] = {}
+def _layer_lookup(layer_types: dict[str, RSLayer]) -> dict[str, tuple[RSLayer, str]]:
+    """Generate a mapping of layer keys to their metadata and paths."""
+
+    lookup: dict[str, tuple[RSLayer, str]] = {}
     for layer_key, rs_layer in layer_types.items():
-        flattened[layer_key] = rs_layer
-        if rs_layer.id not in flattened:
-            flattened[rs_layer.id] = rs_layer
+        lookup[layer_key] = (rs_layer, rs_layer.rel_path)
+        if rs_layer.id not in lookup:
+            lookup[rs_layer.id] = (rs_layer, rs_layer.rel_path)
         if rs_layer.sub_layers:
             for sub_key, sub in rs_layer.sub_layers.items():
-                flattened[sub_key] = sub
-                if sub.id not in flattened:
-                    flattened[sub.id] = sub
-    return flattened
+                sub_path = f"{rs_layer.rel_path}/{sub.rel_path}" if rs_layer.rel_path else sub.rel_path
+                lookup[sub_key] = (sub, sub_path)
+                if sub.id not in lookup:
+                    lookup[sub.id] = (sub, sub_path)
+    return lookup
 
 
 def _load_legacy_layers(path: str) -> Iterator[tuple[str, tuple[str, str, str]]]:
@@ -106,20 +103,20 @@ def convert_legacy_layer_descriptions(
     tool_schema_version: str,
 ) -> None:
     """Write the unified layer-definition payload for a legacy JSON file."""
-    layer_lookup = _flatten_layers(LayerTypes)
+    layer_lookup = _layer_lookup(LayerTypes)
     new_layers = []
     for layer_id, (description, source_url, version) in _load_legacy_layers(src_path):
         if layer_id not in layer_lookup:
             raise KeyError(f"Unknown layer id '{layer_id}' in {src_path}")
-        rs_layer = layer_lookup[layer_id]
-        if rs_layer.tag not in _TAG_TO_LAYER_TYPE:
-            raise ValueError(f"Layer '{layer_id}' uses unsupported tag '{rs_layer.tag}'")
+        rs_layer, layer_path = layer_lookup[layer_id]
         layer_entry = {
             "layer_id": layer_id,
             "layer_name": rs_layer.name,
-            "layer_type": _TAG_TO_LAYER_TYPE[rs_layer.tag],
+            "layer_type": rs_layer.tag,
             "description": description,
         }
+        if layer_path:
+            layer_entry["path"] = layer_path
         if source_url:
             layer_entry["source_url"] = source_url
         if version:
@@ -134,6 +131,10 @@ def convert_legacy_layer_descriptions(
     }
 
     os.makedirs(os.path.dirname(dst_path) or ".", exist_ok=True)
+    if os.path.abspath(src_path) == os.path.abspath(dst_path) and os.path.isfile(src_path):
+        stem, ext = os.path.splitext(dst_path)
+        backup_path = f"{stem}_legacy{ext}"
+        shutil.copyfile(src_path, backup_path)
     with open(dst_path, "w", encoding="utf-8") as handle:
         json.dump(output_payload, handle, indent=2)
         handle.write("\n")
