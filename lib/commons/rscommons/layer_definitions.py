@@ -1,10 +1,13 @@
-"""Helpers for Riverscapes layer definition manifests."""
+"""Helpers for Riverscapes layer definition manifests.
+Once this is stable, consider porting to RiverscapesXML and add accompanying tests there
+"""
 
 from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
 from typing import Any, Dict
+from riverscapes_metadata import SCHEMA_URL
 
 
 @dataclass
@@ -59,13 +62,19 @@ def _parse_columns(raw_columns: list[dict[str, Any]] | None) -> list[LayerColumn
 
 
 def load_layer_definitions(path: str) -> Dict[str, LayerDefinition]:
-    """Load layer definitions that follow the unified Riverscapes schema."""
+    """Load and validate layer definitions that follow the unified Riverscapes schema."""
 
     with open(path, "r", encoding="utf-8") as handle:
         payload = json.load(handle)
 
     if not isinstance(payload, dict) or "layers" not in payload:
         raise ValueError(f"Unsupported layer definitions format in {path}")
+
+    schema_ref = payload.get("$schema")
+    if schema_ref != SCHEMA_URL:
+        raise ValueError(
+            f"Layer definitions file {path} declares schema '{schema_ref}', expected '{SCHEMA_URL}'"
+        )
 
     definitions: Dict[str, LayerDefinition] = {}
     for entry in payload.get("layers", []):
