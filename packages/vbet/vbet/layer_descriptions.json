@@ -1,59 +1,140 @@
 {
-    "VBET_DGO_POLYGONS": ["Discrete Geographic Objects - The valley bottom split into a sampling frame of polygons where the IGO points are at the center of each polygon.", 
-    "", 
-    ""],
-    "COMPOSITE_VBET_EVIDENCE": ["Relative likelihood of being valley bottom for each individual relative path combined into a single composite raster.", 
-    "", 
-    ""],
-    "COMPOSITE_VBET_EVIDENCE_INTERIOR": ["Relative likelihood of being valley bottom for each individual relative path combined into a single composite raster, limited to the valley bottom extent.", 
-    "", 
-    ""],
-    "COMPOSITE_HAND": ["Height Above Nearest Drainage raster for each individual level path combined into a single raster.", 
-    "", 
-    ""],
-    "COMPOSITE_HAND_INTERIOR": ["Height Above Nearest Drainage raster for each individual level path combined into a single raster, limited to the valley bottom extent.", 
-    "", 
-    ""],
-    "TRANSFORMED_HAND": ["Height Above Nearest Drainage transformed into relative likelihood (0-1) for each individual level path combined into a single raster.", 
-    "", 
-    ""],
-    "TRANSFORMED_HAND_INTERIOR": ["Height Above Nearest Drainage transformed into relative likelihood (0-1) for each individual level path combined into a single raster, limited to the valley bottom extent.", 
-    "", 
-    ""],
-    "TRANSFORMED_SLOPE": ["Slope transformed into relative likelihood (with inverse distance weighting) for each individual level path combined into a single raster.", 
-    "", 
-    ""],
-    "TRANSFORMED_SLOPE_INTERIOR": ["Slope transformed into relative likelihood (with inverse distance weighting) for each individual level path combined into a single raster, limited to the valley bottom extent.", 
-    "", 
-    ""],
-    "VBET_ZONES": ["The raster valley bottom output, where the valley associated with each level path is a unique raster pixel value.", 
-    "", 
-    ""],
-    "LOWLYING_FP_ZONES": ["The raster low-lying valley bottom where the valley associated with each level path is a unique raster pixel value.", 
-    "", 
-    ""],
-    "ELEVATED_FP_ZONES": ["The raster elevated valley bottom where the valley associated with each level path is a unique raster pixel value.", 
-    "", 
-    ""],
-    "VBET_FULL": ["The full polygonized valley bottom output.", 
-    "", 
-    ""],
-    "VBET_IA": ["The low-lying valley bottom surface.", 
-    "", 
-    ""],
-    "LOW_LYING_FLOODPLAIN": ["The low-lying valley bottom surface with the channel not included.", 
-    "", 
-    ""],
-    "ELEVATED_FLOODPLAIN": ["The elevated valley bottom surface.", 
-    "", 
-    ""],
-    "FLOODPLAIN": ["The low-lying and elevated valley bottom surfaces with the channel not included.", 
-    "", 
-    ""],
-    "VBET_CENTERLINES": ["The centerline of the valley bottom.", 
-    "", 
-    ""],
-    "SEGMENTATION_POINTS": ["Integrated Geographic Objects - Points placed at a specified distance interval along the valley centerline. This distance is a function of the average valley width for a given stream.", 
-    "", 
-    ""]
+  "$schema": "https://xml.riverscapes.net/riverscapes_metadata/schema/layer_definitions.schema.json",
+  "authority_name": "vbet",
+  "tool_schema_version": "1.0.0",
+  "layers": [
+    {
+      "layer_id": "VBET_DGO_POLYGONS",
+      "layer_name": "VBET DGO Polygons",
+      "layer_type": "Vector",
+      "description": "Discrete Geographic Objects - The valley bottom split into a sampling frame of polygons where the IGO points are at the center of each polygon.",
+      "path": "intermediates/vbet_intermediates.gpkg/vbet_dgos"
+    },
+    {
+      "layer_id": "COMPOSITE_VBET_EVIDENCE",
+      "layer_name": "VBET Evidence Raster",
+      "layer_type": "Raster",
+      "description": "Relative likelihood of being valley bottom for each individual relative path combined into a single composite raster.",
+      "path": "outputs/vbet_evidence.tif"
+    },
+    {
+      "layer_id": "COMPOSITE_VBET_EVIDENCE_INTERIOR",
+      "layer_name": "Topo Evidence (Interior)",
+      "layer_type": "Raster",
+      "description": "Relative likelihood of being valley bottom for each individual relative path combined into a single composite raster, limited to the valley bottom extent.",
+      "path": "intermediates/topographic_evidence_interior.tif"
+    },
+    {
+      "layer_id": "COMPOSITE_HAND",
+      "layer_name": "Hand Raster",
+      "layer_type": "Raster",
+      "description": "Height Above Nearest Drainage raster for each individual level path combined into a single raster.",
+      "path": "intermediates/hand_composite.tif"
+    },
+    {
+      "layer_id": "COMPOSITE_HAND_INTERIOR",
+      "layer_name": "Hand Raster (Interior)",
+      "layer_type": "Raster",
+      "description": "Height Above Nearest Drainage raster for each individual level path combined into a single raster, limited to the valley bottom extent.",
+      "path": "intermediates/hand_composite_interior.tif"
+    },
+    {
+      "layer_id": "TRANSFORMED_HAND",
+      "layer_name": "Transformed HAND Evidence",
+      "layer_type": "Raster",
+      "description": "Height Above Nearest Drainage transformed into relative likelihood (0-1) for each individual level path combined into a single raster.",
+      "path": "intermediates/hand_transformed.tif"
+    },
+    {
+      "layer_id": "TRANSFORMED_HAND_INTERIOR",
+      "layer_name": "Transformed HAND Evidence (Interior)",
+      "layer_type": "Raster",
+      "description": "Height Above Nearest Drainage transformed into relative likelihood (0-1) for each individual level path combined into a single raster, limited to the valley bottom extent.",
+      "path": "intermediates/hand_transformed_interior.tif"
+    },
+    {
+      "layer_id": "TRANSFORMED_SLOPE",
+      "layer_name": "Transformed Slope",
+      "layer_type": "Raster",
+      "description": "Slope transformed into relative likelihood (with inverse distance weighting) for each individual level path combined into a single raster.",
+      "path": "intermediates/slope_transformed.tif"
+    },
+    {
+      "layer_id": "TRANSFORMED_SLOPE_INTERIOR",
+      "layer_name": "Transformed Slope (Interior)",
+      "layer_type": "Raster",
+      "description": "Slope transformed into relative likelihood (with inverse distance weighting) for each individual level path combined into a single raster, limited to the valley bottom extent.",
+      "path": "intermediates/slope_transformed_interior.tif"
+    },
+    {
+      "layer_id": "VBET_ZONES",
+      "layer_name": "VBET LevelPath Zones",
+      "layer_type": "Raster",
+      "description": "The raster valley bottom output, where the valley associated with each level path is a unique raster pixel value.",
+      "path": "intermediates/vbet_level_path_zones.tif"
+    },
+    {
+      "layer_id": "LOWLYING_FP_ZONES",
+      "layer_name": "Active Floodplain LevelPath Zones",
+      "layer_type": "Raster",
+      "description": "The raster low-lying valley bottom where the valley associated with each level path is a unique raster pixel value.",
+      "path": "intermediates/lowlying_fp_level_path_zones.tif"
+    },
+    {
+      "layer_id": "ELEVATED_FP_ZONES",
+      "layer_name": "Inactive Floodplain LevelPath Zones",
+      "layer_type": "Raster",
+      "description": "The raster elevated valley bottom where the valley associated with each level path is a unique raster pixel value.",
+      "path": "intermediates/elevated_fp_level_path_zones.tif"
+    },
+    {
+      "layer_id": "VBET_FULL",
+      "layer_name": "VBET Full Extent",
+      "layer_type": "Vector",
+      "description": "The full polygonized valley bottom output.",
+      "path": "outputs/vbet.gpkg/vbet_full"
+    },
+    {
+      "layer_id": "VBET_IA",
+      "layer_name": "VBET Low lying/Elevated Boundary",
+      "layer_type": "Vector",
+      "description": "The low-lying valley bottom surface.",
+      "path": "outputs/vbet.gpkg/low_lying_valley_bottom"
+    },
+    {
+      "layer_id": "LOW_LYING_FLOODPLAIN",
+      "layer_name": "Low Lying Floodplain",
+      "layer_type": "Vector",
+      "description": "The low-lying valley bottom surface with the channel not included.",
+      "path": "outputs/vbet.gpkg/low_lying_floodplain"
+    },
+    {
+      "layer_id": "ELEVATED_FLOODPLAIN",
+      "layer_name": "Elevated Floodplain",
+      "layer_type": "Vector",
+      "description": "The elevated valley bottom surface.",
+      "path": "outputs/vbet.gpkg/elevated_floodplain"
+    },
+    {
+      "layer_id": "FLOODPLAIN",
+      "layer_name": "Floodplain",
+      "layer_type": "Vector",
+      "description": "The low-lying and elevated valley bottom surfaces with the channel not included.",
+      "path": "outputs/vbet.gpkg/floodplain"
+    },
+    {
+      "layer_id": "VBET_CENTERLINES",
+      "layer_name": "VBET Centerline",
+      "layer_type": "Vector",
+      "description": "The centerline of the valley bottom.",
+      "path": "outputs/vbet.gpkg/vbet_centerlines"
+    },
+    {
+      "layer_id": "SEGMENTATION_POINTS",
+      "layer_name": "Segmentation Points",
+      "layer_type": "Vector",
+      "description": "Integrated Geographic Objects - Points placed at a specified distance interval along the valley centerline. This distance is a function of the average valley width for a given stream.",
+      "path": "outputs/vbet.gpkg/vbet_igos"
+    }
+  ]
 }
