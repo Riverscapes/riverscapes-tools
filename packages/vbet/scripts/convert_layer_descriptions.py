@@ -8,13 +8,17 @@ Usage example:
        packages/vbet/vbet/layer_descriptions.json
 
 Running without a destination argument converts the file in place. Use the
-optional ``dest`` argument to write to a new path instead."""
+optional ``dest`` argument to write to a new path instead.
+Written mostly by copilot, guided by Lorin Gaertner.
+"""
 from __future__ import annotations
 import argparse
 import json
 import os
 import shutil
 from collections.abc import Iterator
+from typing import Tuple
+
 from riverscapes_metadata import SCHEMA_URL
 from rscommons.classes.rs_project import RSLayer
 from vbet.vbet import LayerTypes
@@ -54,17 +58,40 @@ def convert_legacy_layer_descriptions(
 ) -> None:
     """Write the unified layer-definition payload for a legacy JSON file."""
     layer_lookup = _layer_lookup(LayerTypes)
-    new_layers = []
-    for layer_id, (description, source_url, version) in _load_legacy_layers(src_path):
-        if layer_id not in layer_lookup:
-            raise KeyError(f"Unknown layer id '{layer_id}' in {src_path}")
-        rs_layer, layer_path = layer_lookup[layer_id]
-        layer_entry = {
-            "layer_id": layer_id,
+    unique_layers: dict[int, tuple[RSLayer, str]] = {}
+    legacy_aliases: dict[str, str] = {}
+    for key, (rs_layer, layer_path) in layer_lookup.items():
+        existing = unique_layers.get(id(rs_layer))
+        if existing is None or (not existing[1] and layer_path):
+            unique_layers[id(rs_layer)] = (rs_layer, layer_path)
+        if key != rs_layer.id:
+            legacy_aliases[key] = rs_layer.id
+
+    legacy_metadata_raw = dict(_load_legacy_layers(src_path))
+    legacy_metadata: dict[str, tuple[str, str, str]] = {}
+    unknown_ids: list[str] = []
+    for legacy_id, metadata in legacy_metadata_raw.items():
+        lookup_entry = layer_lookup.get(legacy_id)
+        if lookup_entry is None:
+            unknown_ids.append(legacy_id)
+            continue
+        layer, _ = lookup_entry
+        legacy_metadata[layer.id] = metadata
+    if unknown_ids:
+        missing = ", ".join(sorted(unknown_ids))
+        raise KeyError(f"Unknown layer id(s) {missing} in {src_path}")
+    new_layers: list[dict[str, str]] = []
+    for rs_layer, layer_path in unique_layers.values():
+        description, source_url, version = legacy_metadata.get(
+            rs_layer.id, ("", "", "")
+        )
+        layer_entry: dict[str, str] = {
+            "layer_id": rs_layer.id,
             "layer_name": rs_layer.name,
             "layer_type": rs_layer.tag,
-            "description": description,
         }
+        if description:
+            layer_entry["description"] = description
         if layer_path:
             layer_entry["path"] = layer_path
         if source_url:
@@ -88,6 +115,12 @@ def convert_legacy_layer_descriptions(
     with open(dst_path, "w", encoding="utf-8") as handle:
         json.dump(output_payload, handle, indent=2)
         handle.write("\n")
+
+    if legacy_aliases:
+        alias_path = os.path.splitext(dst_path)[0] + "_aliases.json"
+        with open(alias_path, "w", encoding="utf-8") as handle:
+            json.dump(legacy_aliases, handle, indent=2)
+            handle.write("\n")
 
 
 def _parse_args() -> argparse.Namespace:
