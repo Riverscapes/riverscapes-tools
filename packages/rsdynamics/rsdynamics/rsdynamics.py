@@ -62,7 +62,7 @@ def rsdynamics(watershed_id: str, vbet_project_xml: str, thresholds: List[float]
     vbet_full = copy_vbet_layer(vbet_project_xml, 'VBET_OUTPUTS', 'vbet_full', rsd_gpkg)
     vbet_dgos = copy_vbet_layer(vbet_project_xml, 'Intermediates', 'vbet_dgos', rsd_gpkg)
 
-    input_rasters = process_classified_rasters(raster_folder, output_dir, vbet_full)
+    input_rasters = []  # process_classified_rasters(raster_folder, output_dir, vbet_full)
     epoch_rasters = process_epoch_rasters(raster_folder, output_dir, vbet_full)
     __hillshade_raster = copy_hillshade(vbet_project_xml, output_dir)
 
@@ -89,8 +89,9 @@ def rsdynamics(watershed_id: str, vbet_project_xml: str, thresholds: List[float]
             att_prefix = f'{epoch_key}_{int(threshold*100)}pc'.replace('-', '_')
             log.info(f'Processing epoch: {epoch_key} to produce attribute with prefix: {att_prefix}')
 
-            calc_raster_stats(epoch_data['active'], vbet_dgos, f'active_{att_prefix}', threshold, spatial_view_attributes)
-            calc_raster_stats(epoch_data['wet'], vbet_dgos, f'wet_{att_prefix}', threshold, spatial_view_attributes)
+            if epoch_data['epoch_length'] > 1:
+                calc_raster_stats(epoch_data['active'], vbet_dgos, f'active_{att_prefix}', threshold, spatial_view_attributes)
+                calc_raster_stats(epoch_data['wet'], vbet_dgos, f'wet_{att_prefix}', threshold, spatial_view_attributes)
 
             # TODO: Reintroduce stable
             # calc_stable_stats(vbet_dgos, att_prefix, threshold, spatial_view_attributes)
