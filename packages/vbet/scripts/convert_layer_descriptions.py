@@ -17,7 +17,6 @@ import json
 import os
 import shutil
 from collections.abc import Iterator
-from typing import Tuple
 
 from riverscapes_metadata import SCHEMA_URL
 from rscommons.classes.rs_project import RSLayer
