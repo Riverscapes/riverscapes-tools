@@ -1,359 +1,409 @@
 {
-  "$schema": "https://xml.riverscapes.net/riverscapes_metadata/schema/layer_definitions.schema.json",
-  "authority_name": "vbet",
-  "tool_schema_version": "1.0.0",
-  "layers": [
-    {
-      "layer_id": "INTERMEDIATES",
-      "layer_name": "VBET Intermediates Geopackage",
-      "layer_type": "Geopackage",
-      "path": "intermediates/vbet_intermediates.gpkg"
-    },
-    {
-      "layer_id": "VBET_OUTPUTS",
-      "layer_name": "VBET Outputs Geopackage",
-      "layer_type": "Geopackage",
-      "path": "outputs/vbet.gpkg"
-    },
-    {
-      "layer_id": "INPUTS",
-      "layer_name": "VBET Inputs Geopackage",
-      "layer_type": "Geopackage",
-      "path": "inputs/vbet_inputs.gpkg"
-    },
-    {
-      "layer_id": "VBET_DGO_POLYGONS",
-      "layer_name": "VBET DGO Polygons",
-      "layer_type": "Vector",
-      "description": "Discrete Geographic Objects - The valley bottom split into a sampling frame of polygons where the IGO points are at the center of each polygon.",
-      "path": "intermediates/vbet_intermediates.gpkg/vbet_dgos",
-      "theme": "Outputs",
-      "columns": [
+    "$schema": "https://xml.riverscapes.net/riverscapes_metadata/schema/layer_definitions.schema.json",
+    "authority_name": "vbet",
+    "tool_schema_version": "1.0.0",
+    "layers": [
         {
-          "name": "fid",
-          "dtype": "",
-          "friendly_name": "",
-          "data_unit": "NA",
-          "description": "Unique identifier for each feature",
-          "is_key": false,
-          "is_required": false,
-          "theme": "",
-          "preferred_bin_definition": "",
-          "default_value": null
+            "layer_id": "DEM",
+            "layer_name": "DEM",
+            "layer_type": "Raster",
+            "path": "inputs/dem.tif",
+            "theme": "Inputs"
         },
         {
-          "name": "level_path",
-          "dtype": "",
-          "friendly_name": "",
-          "data_unit": "NA",
-          "description": "Unique identifier for each stream in the NHD dataset from headwater to outlet",
-          "is_key": false,
-          "is_required": false,
-          "theme": "",
-          "preferred_bin_definition": "",
-          "default_value": null
+            "layer_id": "SLOPE_RASTER",
+            "layer_name": "Slope Raster",
+            "layer_type": "Raster",
+            "path": "inputs/slope.tif",
+            "theme": "Inputs"
         },
         {
-          "name": "seg_distance",
-          "dtype": "",
-          "friendly_name": "",
-          "data_unit": "m",
-          "description": "Distance downstream along a given level path of the feature",
-          "is_key": false,
-          "is_required": false,
-          "theme": "",
-          "preferred_bin_definition": "",
-          "default_value": null
+            "layer_id": "HILLSHADE",
+            "layer_name": "DEM Hillshade",
+            "layer_type": "Raster",
+            "path": "inputs/dem_hillshade.tif",
+            "theme": "Inputs"
         },
         {
-          "name": "FCode",
-          "dtype": "",
-          "friendly_name": "",
-          "data_unit": "NA",
-          "description": "NHD FCode representing the flow type of the main channel in the riverscape",
-          "is_key": false,
-          "is_required": false,
-          "theme": "",
-          "preferred_bin_definition": "",
-          "default_value": null
+            "layer_id": "INPUTS",
+            "layer_name": "Inputs",
+            "layer_type": "Geopackage",
+            "path": "inputs/vbet_inputs.gpkg"
         },
         {
-          "name": "low_lying_floodplain_area",
-          "dtype": "",
-          "friendly_name": "",
-          "data_unit": "m2",
-          "description": "Area of low-lying floodplain surface in the polygon",
-          "is_key": false,
-          "is_required": false,
-          "theme": "",
-          "preferred_bin_definition": "",
-          "default_value": null
+            "layer_id": "NETWORK_INTERSECTION",
+            "layer_name": "NHD Flowlines intersected with road, rail and ownership",
+            "layer_type": "Vector",
+            "path": "inputs/vbet_inputs.gpkg/network_intersected",
+            "theme": "Inputs"
         },
         {
-          "name": "low_lying_floodplain_prop",
-          "dtype": "",
-          "friendly_name": "",
-          "data_unit": "unitless",
-          "description": "Proportion of the polygon that is low-lying floodplain",
-          "is_key": false,
-          "is_required": false,
-          "theme": "",
-          "preferred_bin_definition": "",
-          "default_value": null
+            "layer_id": "CHANNEL_AREA_POLYGONS",
+            "layer_name": "Channel Area Polygons",
+            "layer_type": "Vector",
+            "path": "inputs/vbet_inputs.gpkg/channel_area_polygons",
+            "theme": "Inputs"
         },
         {
-          "name": "active_channel_area",
-          "dtype": "",
-          "friendly_name": "",
-          "data_unit": "m",
-          "description": "area of channel polygon in the polygon",
-          "is_key": false,
-          "is_required": false,
-          "theme": "",
-          "preferred_bin_definition": "",
-          "default_value": null
+            "layer_id": "PITFILL",
+            "layer_name": "TauDEM Pitfill",
+            "layer_type": "Raster",
+            "path": "intermediates/pitfill.tif",
+            "theme": "Intermediates"
         },
         {
-          "name": "active_channel_prop",
-          "dtype": "",
-          "friendly_name": "",
-          "data_unit": "unitless",
-          "description": "Proportion of the polygon that is channel",
-          "is_key": false,
-          "is_required": false,
-          "theme": "",
-          "preferred_bin_definition": "",
-          "default_value": null
+            "layer_id": "DINFFLOWDIR_ANG",
+            "layer_name": "TauDEM D-Inf Flow Directions",
+            "layer_type": "Raster",
+            "path": "intermediates/dinfflowdir_ang.tif",
+            "theme": "Intermediates"
         },
         {
-          "name": "elevated_floodplain_area",
-          "dtype": "",
-          "friendly_name": "",
-          "data_unit": "m2",
-          "description": "Area of elevation floodplain in the polygon",
-          "is_key": false,
-          "is_required": false,
-          "theme": "",
-          "preferred_bin_definition": "",
-          "default_value": null
+            "layer_id": "DINFFLOWDIR_SLP",
+            "layer_name": "TauDEM D-Inf Flow Directions Slope",
+            "layer_type": "Raster",
+            "path": "intermediates/dinfflowdir_slp.tif",
+            "theme": "Intermediates"
         },
         {
-          "name": "elevated_floodplain_prop",
-          "dtype": "",
-          "friendly_name": "",
-          "data_unit": "unitless",
-          "description": "Proportion of the polygon that is elevated floodplain",
-          "is_key": false,
-          "is_required": false,
-          "theme": "",
-          "preferred_bin_definition": "",
-          "default_value": null
+            "layer_id": "Intermediates",
+            "layer_name": "Intermediates",
+            "layer_type": "Geopackage",
+            "path": "intermediates/vbet_intermediates.gpkg"
         },
         {
-          "name": "floodplain_area",
-          "dtype": "",
-          "friendly_name": "",
-          "data_unit": "m2",
-          "description": "Area of floodplain (low-lying + elevated) in the polygon",
-          "is_key": false,
-          "is_required": false,
-          "theme": "",
-          "preferred_bin_definition": "",
-          "default_value": null
+            "layer_id": "VBET_DGO_POLYGONS",
+            "layer_name": "VBET DGO Polygons",
+            "layer_type": "Vector",
+            "description": "Discrete Geographic Objects - The valley bottom split into a sampling frame of polygons where the IGO points are at the center of each polygon.",
+            "path": "intermediates/vbet_intermediates.gpkg/vbet_dgos",
+            "theme": "Outputs",
+            "columns": [
+                {
+                    "name": "fid",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "NA",
+                    "description": "Unique identifier for each feature",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "level_path",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "NA",
+                    "description": "Unique identifier for each stream in the NHD dataset from headwater to outlet",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "seg_distance",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "m",
+                    "description": "Distance downstream along a given level path of the feature",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "FCode",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "NA",
+                    "description": "NHD FCode representing the flow type of the main channel in the riverscape",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "low_lying_floodplain_area",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "m2",
+                    "description": "Area of low-lying floodplain surface in the polygon",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "low_lying_floodplain_prop",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "unitless",
+                    "description": "Proportion of the polygon that is low-lying floodplain",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "active_channel_area",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "m",
+                    "description": "area of channel polygon in the polygon",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "active_channel_prop",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "unitless",
+                    "description": "Proportion of the polygon that is channel",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "elevated_floodplain_area",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "m2",
+                    "description": "Area of elevation floodplain in the polygon",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "elevated_floodplain_prop",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "unitless",
+                    "description": "Proportion of the polygon that is elevated floodplain",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "floodplain_area",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "m2",
+                    "description": "Area of floodplain (low-lying + elevated) in the polygon",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "floodplain_prop",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "unitless",
+                    "description": "Proportion of the polygon that is floodplain",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "centerline_length",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "m",
+                    "description": "Total valley length of the polygon",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "segment_area",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "m2",
+                    "description": "Area of the polygon",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "integrated_width",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "m",
+                    "description": "Average width (area/centerline length) of the polygon",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                }
+            ]
         },
         {
-          "name": "floodplain_prop",
-          "dtype": "",
-          "friendly_name": "",
-          "data_unit": "unitless",
-          "description": "Proportion of the polygon that is floodplain",
-          "is_key": false,
-          "is_required": false,
-          "theme": "",
-          "preferred_bin_definition": "",
-          "default_value": null
+            "layer_id": "VBET_EVIDENCE",
+            "layer_name": "VBET Evidence Raster",
+            "layer_type": "Raster",
+            "description": "Relative likelihood of being valley bottom for each individual relative path combined into a single composite raster.",
+            "path": "outputs/vbet_evidence.tif"
         },
         {
-          "name": "centerline_length",
-          "dtype": "",
-          "friendly_name": "",
-          "data_unit": "m",
-          "description": "Total valley length of the polygon",
-          "is_key": false,
-          "is_required": false,
-          "theme": "",
-          "preferred_bin_definition": "",
-          "default_value": null
+            "layer_id": "EVIDENCE_TOPO_INTERIOR",
+            "layer_name": "Topo Evidence (Interior)",
+            "layer_type": "Raster",
+            "description": "Relative likelihood of being valley bottom for each individual relative path combined into a single composite raster, limited to the valley bottom extent.",
+            "path": "intermediates/topographic_evidence_interior.tif"
         },
         {
-          "name": "segment_area",
-          "dtype": "",
-          "friendly_name": "",
-          "data_unit": "m2",
-          "description": "Area of the polygon",
-          "is_key": false,
-          "is_required": false,
-          "theme": "",
-          "preferred_bin_definition": "",
-          "default_value": null
+            "layer_id": "HAND_RASTER",
+            "layer_name": "Hand Raster",
+            "layer_type": "Raster",
+            "description": "Height Above Nearest Drainage raster for each individual level path combined into a single raster.",
+            "path": "intermediates/hand_composite.tif"
         },
         {
-          "name": "integrated_width",
-          "dtype": "",
-          "friendly_name": "",
-          "data_unit": "m",
-          "description": "Average width (area/centerline length) of the polygon",
-          "is_key": false,
-          "is_required": false,
-          "theme": "",
-          "preferred_bin_definition": "",
-          "default_value": null
+            "layer_id": "HAND_RASTER_INTERIOR",
+            "layer_name": "Hand Raster (Interior)",
+            "layer_type": "Raster",
+            "description": "Height Above Nearest Drainage raster for each individual level path combined into a single raster, limited to the valley bottom extent.",
+            "path": "intermediates/hand_composite_interior.tif"
+        },
+        {
+            "layer_id": "TRANSFORMED_HAND",
+            "layer_name": "Transformed HAND Evidence",
+            "layer_type": "Raster",
+            "description": "Height Above Nearest Drainage transformed into relative likelihood (0-1) for each individual level path combined into a single raster.",
+            "path": "intermediates/hand_transformed.tif"
+        },
+        {
+            "layer_id": "TRANSFORMED_HAND_INTERIOR",
+            "layer_name": "Transformed HAND Evidence (Interior)",
+            "layer_type": "Raster",
+            "description": "Height Above Nearest Drainage transformed into relative likelihood (0-1) for each individual level path combined into a single raster, limited to the valley bottom extent.",
+            "path": "intermediates/hand_transformed_interior.tif"
+        },
+        {
+            "layer_id": "EVIDENCE_TOPO",
+            "layer_name": "Topo Evidence",
+            "layer_type": "Raster",
+            "path": "intermediates/topographic_evidence.tif"
+        },
+        {
+            "layer_id": "TRANSFORMED_SLOPE",
+            "layer_name": "Transformed Slope",
+            "layer_type": "Raster",
+            "description": "Slope transformed into relative likelihood (with inverse distance weighting) for each individual level path combined into a single raster.",
+            "path": "intermediates/slope_transformed.tif"
+        },
+        {
+            "layer_id": "TRANSFORMED_SLOPE_INTERIOR",
+            "layer_name": "Transformed Slope (Interior)",
+            "layer_type": "Raster",
+            "description": "Slope transformed into relative likelihood (with inverse distance weighting) for each individual level path combined into a single raster, limited to the valley bottom extent.",
+            "path": "intermediates/slope_transformed_interior.tif"
+        },
+        {
+            "layer_id": "VBET_ZONES",
+            "layer_name": "VBET LevelPath Zones",
+            "layer_type": "Raster",
+            "description": "The raster valley bottom output, where the valley associated with each level path is a unique raster pixel value.",
+            "path": "intermediates/vbet_level_path_zones.tif"
+        },
+        {
+            "layer_id": "LOWLYING_FP_ZONES",
+            "layer_name": "Active Floodplain LevelPath Zones",
+            "layer_type": "Raster",
+            "description": "The raster low-lying valley bottom where the valley associated with each level path is a unique raster pixel value.",
+            "path": "intermediates/lowlying_fp_level_path_zones.tif"
+        },
+        {
+            "layer_id": "ELEVATED_FP_ZONES",
+            "layer_name": "Inactive Floodplain LevelPath Zones",
+            "layer_type": "Raster",
+            "description": "The raster elevated valley bottom where the valley associated with each level path is a unique raster pixel value.",
+            "path": "intermediates/elevated_fp_level_path_zones.tif"
+        },
+        {
+            "layer_id": "VBET_OUTPUTS",
+            "layer_name": "VBET",
+            "layer_type": "Geopackage",
+            "path": "outputs/vbet.gpkg"
+        },
+        {
+            "layer_id": "VBET_FULL",
+            "layer_name": "VBET Full Extent",
+            "layer_type": "Vector",
+            "description": "The full polygonized valley bottom output.",
+            "path": "outputs/vbet.gpkg/vbet_full"
+        },
+        {
+            "layer_id": "VBET_IA",
+            "layer_name": "VBET Low lying/Elevated Boundary",
+            "layer_type": "Vector",
+            "description": "The low-lying valley bottom surface.",
+            "path": "outputs/vbet.gpkg/low_lying_valley_bottom"
+        },
+        {
+            "layer_id": "LOW_LYING_FLOODPLAIN",
+            "layer_name": "Low Lying Floodplain",
+            "layer_type": "Vector",
+            "description": "The low-lying valley bottom surface with the channel not included.",
+            "path": "outputs/vbet.gpkg/low_lying_floodplain"
+        },
+        {
+            "layer_id": "ELEVATED_FLOODPLAIN",
+            "layer_name": "Elevated Floodplain",
+            "layer_type": "Vector",
+            "description": "The elevated valley bottom surface.",
+            "path": "outputs/vbet.gpkg/elevated_floodplain"
+        },
+        {
+            "layer_id": "FLOODPLAIN",
+            "layer_name": "Floodplain",
+            "layer_type": "Vector",
+            "description": "The low-lying and elevated valley bottom surfaces with the channel not included.",
+            "path": "outputs/vbet.gpkg/floodplain"
+        },
+        {
+            "layer_id": "VBET_CENTERLINES",
+            "layer_name": "VBET Centerline",
+            "layer_type": "Vector",
+            "description": "The centerline of the valley bottom.",
+            "path": "outputs/vbet.gpkg/vbet_centerlines"
+        },
+        {
+            "layer_id": "SEGMENTATION_POINTS",
+            "layer_name": "Segmentation Points",
+            "layer_type": "Vector",
+            "description": "Integrated Geographic Objects - Points placed at a specified distance interval along the valley centerline. This distance is a function of the average valley width for a given stream.",
+            "path": "outputs/vbet.gpkg/vbet_igos"
+        },
+        {
+            "layer_id": "REPORT",
+            "layer_name": "VBET Report",
+            "layer_type": "HTMLFile",
+            "path": "outputs/vbet.html"
         }
-      ]
-    },
-    {
-      "layer_id": "COMPOSITE_VBET_EVIDENCE",
-      "layer_name": "VBET Evidence Raster",
-      "layer_type": "Raster",
-      "description": "Relative likelihood of being valley bottom for each individual relative path combined into a single composite raster.",
-      "path": "outputs/vbet_evidence.tif",
-      "theme": "Outputs"
-    },
-    {
-      "layer_id": "COMPOSITE_VBET_EVIDENCE_INTERIOR",
-      "layer_name": "Topo Evidence (Interior)",
-      "layer_type": "Raster",
-      "description": "Relative likelihood of being valley bottom for each individual relative path combined into a single composite raster, limited to the valley bottom extent.",
-      "path": "intermediates/topographic_evidence_interior.tif",
-      "theme": "Intermediates"
-    },
-    {
-      "layer_id": "COMPOSITE_HAND",
-      "layer_name": "Hand Raster",
-      "layer_type": "Raster",
-      "description": "Height Above Nearest Drainage raster for each individual level path combined into a single raster.",
-      "path": "intermediates/hand_composite.tif",
-      "theme": "Intermediates"
-    },
-    {
-      "layer_id": "COMPOSITE_HAND_INTERIOR",
-      "layer_name": "Hand Raster (Interior)",
-      "layer_type": "Raster",
-      "description": "Height Above Nearest Drainage raster for each individual level path combined into a single raster, limited to the valley bottom extent.",
-      "path": "intermediates/hand_composite_interior.tif",
-      "theme": "Intermediates"
-    },
-    {
-      "layer_id": "TRANSFORMED_HAND",
-      "layer_name": "Transformed HAND Evidence",
-      "layer_type": "Raster",
-      "description": "Height Above Nearest Drainage transformed into relative likelihood (0-1) for each individual level path combined into a single raster.",
-      "path": "intermediates/hand_transformed.tif",
-      "theme": "Intermediates"
-    },
-    {
-      "layer_id": "TRANSFORMED_HAND_INTERIOR",
-      "layer_name": "Transformed HAND Evidence (Interior)",
-      "layer_type": "Raster",
-      "description": "Height Above Nearest Drainage transformed into relative likelihood (0-1) for each individual level path combined into a single raster, limited to the valley bottom extent.",
-      "path": "intermediates/hand_transformed_interior.tif",
-      "theme": "Intermediates"
-    },
-    {
-      "layer_id": "TRANSFORMED_SLOPE",
-      "layer_name": "Transformed Slope",
-      "layer_type": "Raster",
-      "description": "Slope transformed into relative likelihood (with inverse distance weighting) for each individual level path combined into a single raster.",
-      "path": "intermediates/slope_transformed.tif",
-      "theme": "Intermediates"
-    },
-    {
-      "layer_id": "TRANSFORMED_SLOPE_INTERIOR",
-      "layer_name": "Transformed Slope (Interior)",
-      "layer_type": "Raster",
-      "description": "Slope transformed into relative likelihood (with inverse distance weighting) for each individual level path combined into a single raster, limited to the valley bottom extent.",
-      "path": "intermediates/slope_transformed_interior.tif",
-      "theme": "Intermediates"
-    },
-    {
-      "layer_id": "VBET_ZONES",
-      "layer_name": "VBET LevelPath Zones",
-      "layer_type": "Raster",
-      "description": "The raster valley bottom output, where the valley associated with each level path is a unique raster pixel value.",
-      "path": "intermediates/vbet_level_path_zones.tif",
-      "theme": "Intermediates"
-    },
-    {
-      "layer_id": "LOWLYING_FP_ZONES",
-      "layer_name": "Active Floodplain LevelPath Zones",
-      "layer_type": "Raster",
-      "description": "The raster low-lying valley bottom where the valley associated with each level path is a unique raster pixel value.",
-      "path": "intermediates/lowlying_fp_level_path_zones.tif",
-      "theme": "Intermediates"
-    },
-    {
-      "layer_id": "ELEVATED_FP_ZONES",
-      "layer_name": "Inactive Floodplain LevelPath Zones",
-      "layer_type": "Raster",
-      "description": "The raster elevated valley bottom where the valley associated with each level path is a unique raster pixel value.",
-      "path": "intermediates/elevated_fp_level_path_zones.tif",
-      "theme": "Intermediates"
-    },
-    {
-      "layer_id": "VBET_FULL",
-      "layer_name": "VBET Full Extent",
-      "layer_type": "Vector",
-      "description": "The full polygonized valley bottom output.",
-      "path": "outputs/vbet.gpkg/vbet_full",
-      "theme": "Outputs"
-    },
-    {
-      "layer_id": "VBET_IA",
-      "layer_name": "VBET Low lying/Elevated Boundary",
-      "layer_type": "Vector",
-      "description": "The low-lying valley bottom surface.",
-      "path": "outputs/vbet.gpkg/low_lying_valley_bottom",
-      "theme": "Outputs"
-    },
-    {
-      "layer_id": "LOW_LYING_FLOODPLAIN",
-      "layer_name": "Low Lying Floodplain",
-      "layer_type": "Vector",
-      "description": "The low-lying valley bottom surface with the channel not included.",
-      "path": "outputs/vbet.gpkg/low_lying_floodplain",
-      "theme": "Outputs"
-    },
-    {
-      "layer_id": "ELEVATED_FLOODPLAIN",
-      "layer_name": "Elevated Floodplain",
-      "layer_type": "Vector",
-      "description": "The elevated valley bottom surface.",
-      "path": "outputs/vbet.gpkg/elevated_floodplain",
-      "theme": "Outputs"
-    },
-    {
-      "layer_id": "FLOODPLAIN",
-      "layer_name": "Floodplain",
-      "layer_type": "Vector",
-      "description": "The low-lying and elevated valley bottom surfaces with the channel not included.",
-      "path": "outputs/vbet.gpkg/floodplain",
-      "theme": "Outputs"
-    },
-    {
-      "layer_id": "VBET_CENTERLINES",
-      "layer_name": "VBET Centerline",
-      "layer_type": "Vector",
-      "description": "The centerline of the valley bottom.",
-      "path": "outputs/vbet.gpkg/vbet_centerlines",
-      "theme": "Outputs"
-    },
-    {
-      "layer_id": "SEGMENTATION_POINTS",
-      "layer_name": "Segmentation Points",
-      "layer_type": "Vector",
-      "description": "Integrated Geographic Objects - Points placed at a specified distance interval along the valley centerline. This distance is a function of the average valley width for a given stream.",
-      "path": "outputs/vbet.gpkg/vbet_igos",
-      "theme": "Outputs"
-    }
-  ]
+    ]
 }
