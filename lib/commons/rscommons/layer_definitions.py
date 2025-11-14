@@ -5,6 +5,7 @@ Once this is stable, consider porting to RiverscapesXML and add accompanying tes
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass, field
 from typing import Any, Iterable
 
@@ -41,6 +42,7 @@ class LayerDefinition:
     data_product_version: str | None = None
     theme: str | None = None
     columns: list[LayerColumn] = field(default_factory=list)
+    aliases: list[str] = field(default_factory=list)
 
 
 def _parse_columns(raw_columns: list[dict[str, Any]] | None) -> list[LayerColumn]:
@@ -79,6 +81,20 @@ def load_layer_definitions(path: str) -> dict[str, LayerDefinition]:
             f"Layer definitions file {path} declares schema '{schema_ref}', expected '{SCHEMA_URL}'"
         )
 
+    alias_map: dict[str, list[str]] = {}
+    alias_path = os.path.splitext(path)[0] + "_aliases.json"
+    if os.path.isfile(alias_path):
+        with open(alias_path, "r", encoding="utf-8") as handle:
+            alias_payload = json.load(handle)
+        if not isinstance(alias_payload, dict):
+            raise ValueError(f"Unsupported alias metadata format in {alias_path}")
+        for legacy_id, canonical_id in alias_payload.items():
+            if not isinstance(legacy_id, str) or not isinstance(canonical_id, str):
+                raise ValueError(
+                    f"Alias entries in {alias_path} must map strings to strings"
+                )
+            alias_map.setdefault(canonical_id, []).append(legacy_id)
+
     definitions: dict[str, LayerDefinition] = {}
     for entry in payload.get("layers", []):
         definition = LayerDefinition(
@@ -93,6 +109,19 @@ def load_layer_definitions(path: str) -> dict[str, LayerDefinition]:
             columns=_parse_columns(entry.get("columns")),
         )
         definitions.setdefault(definition.layer_id, definition)
+
+    if alias_map:
+        missing = sorted(
+            canonical_id for canonical_id in alias_map.keys() if canonical_id not in definitions
+        )
+        if missing:
+            missing_csv = ", ".join(missing)
+            raise KeyError(
+                f"Alias targets [{missing_csv}] in {alias_path} are not present in {path}"
+            )
+        for canonical_id, legacy_ids in alias_map.items():
+            definition = definitions[canonical_id]
+            definition.aliases.extend(legacy_ids)
 
     return definitions
 
@@ -117,8 +146,6 @@ def _split_container_path(path: str | None) -> tuple[str | None, str | None]:
 def build_layer_types(definitions: Iterable[LayerDefinition]) -> dict[str, RSLayer]:
     """Construct an RSLayer hierarchy keyed by layer_id from layer definitions.
     In riverscapes tools, this is often declared as global variable named LayerTypes. 
-    A newer preferred approach would bypass this construction and 
-    instead use the LayerDefinition dataclass from this module.
     """
 
     layer_defs: list[LayerDefinition] = list(definitions)
@@ -148,6 +175,10 @@ def build_layer_types(definitions: Iterable[LayerDefinition]) -> dict[str, RSLay
             rel_path=definition.path or "",
         )
         layer_types.setdefault(definition.layer_id, rs_layer)
+        for alias_id in definition.aliases:
+            layer_types.setdefault(alias_id, rs_layer)
+            if is_geopackage:
+                register_container(alias_id, rs_layer)
         register_container(definition.path, rs_layer)
         if is_geopackage:
             if rs_layer.sub_layers is None:
@@ -185,5 +216,7 @@ def build_layer_types(definitions: Iterable[LayerDefinition]) -> dict[str, RSLay
         )
         parent_layer.sub_layers.setdefault(definition.layer_id, sub_layer)
         layer_types.setdefault(definition.layer_id, sub_layer)
+        for alias_id in definition.aliases:
+            layer_types.setdefault(alias_id, sub_layer)
 
     return layer_types
