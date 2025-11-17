@@ -42,7 +42,7 @@ def igo_vegetation(windows: dict, landuse_raster: str, out_gpkg_path: str):
                 for oldvalue in np.unique(mask_raster):
                     if oldvalue is not np.ma.masked:
                         cell_count = np.count_nonzero(mask_raster == oldvalue)
-                        veg_counts.append([dgoid, int(oldvalue), cell_count * cell_area, cell_count])
+                        veg_counts.append([dgoid, int(oldvalue), float(cell_count * cell_area), int(cell_count)])
             except Exception as ex:
                 log.warning(f'Error obtaining land cover raster values for DGO ID {dgoid}')
                 log.warning(ex)
