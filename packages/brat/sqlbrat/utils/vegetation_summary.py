@@ -78,7 +78,7 @@ def vegetation_summary(outputs_gpkg_path: str, label: str, veg_raster: str, buff
                 for oldvalue in np.unique(mask_raster):
                     if oldvalue is not np.ma.masked:
                         cell_count = np.count_nonzero(mask_raster == oldvalue)
-                        veg_counts.append([reach_id, int(oldvalue), buffer, cell_count * cell_area, cell_count])
+                        veg_counts.append([reach_id, int(oldvalue), buffer, float(cell_count * cell_area), int(cell_count)])
             except Exception as ex:
                 log.warning(f'Error obtaining vegetation raster values for ReachID {reach_id}')
                 log.warning(ex)

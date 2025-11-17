@@ -37,7 +37,7 @@ CREATE TABLE ReachVegetation (
      VegetationID INTEGER REFERENCES VegetationTypes (VegetationID) NOT NULL, 
      Buffer REAL NOT NULL CONSTRAINT CHK_ReachVegetation_Buffer CHECK (Buffer > 0), 
      Area REAL NOT NULL CONSTRAINT CHK_ReachVegetation_Area CHECK (Area > 0), 
-     CellCount REAL NOT NULL CONSTRAINT CHK_ReachVegetation_CellCount CHECK (CellCount > 0), 
+     CellCount INTEGER NOT NULL CONSTRAINT CHK_ReachVegetation_CellCount CHECK (CellCount > 0), 
      PRIMARY KEY (ReachID, VegetationID, Buffer));
 
 CREATE TABLE MetaData (
