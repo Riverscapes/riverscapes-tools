@@ -72,7 +72,7 @@ CREATE TABLE DGOVegetation (
     DGOID INTEGER REFERENCES DGOAttributes ON DELETE CASCADE NOT NULL,
     VegetationID INTEGER REFERENCES VegetationTypes (VegetationID) NOT NULL,
     Area REAL NOT NULL CONSTRAINT CHK_Area CHECK (Area > 0),
-    CellCount REAL NOT NULL CONSTRAINT CHK_CellCount CHECK (CellCount > 0)
+    CellCount INTEGER NOT NULL CONSTRAINT CHK_CellCount CHECK (CellCount > 0)
 );
 
 CREATE TABLE DGOExRiparian (
@@ -114,14 +114,14 @@ CREATE TABLE DGOFPAccess(
     DGOID INTEGER REFERENCES DGOAttributes ON DELETE CASCADE NOT NULL,
     AccessVal INTEGER,
     CellArea REAL,
-    CellCount INTEGER
+    CellCount INTEGER NOT NULL CONSTRAINT CHK_FPCellCount CHECK (CellCount > 0)
 );
 
 CREATE TABLE ReachVegetation (
     ReachID INTEGER REFERENCES ReachAttributes ON DELETE CASCADE NOT NULL, 
     VegetationID INTEGER REFERENCES VegetationTypes (VegetationID) NOT NULL,  
     Area REAL NOT NULL CONSTRAINT CHK_ReachVegetation_Area CHECK (Area > 0), 
-    CellCount REAL NOT NULL CONSTRAINT CHK_ReachVegetation_CellCount CHECK (CellCount > 0)
+    CellCount INTEGER NOT NULL CONSTRAINT CHK_ReachVegetation_CellCount CHECK (CellCount > 0)
 );
 
 CREATE TABLE ReachExRiparian (
