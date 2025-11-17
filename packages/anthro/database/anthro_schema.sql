@@ -15,14 +15,14 @@ CREATE TABLE ReachVegetation (
     ReachID INTEGER REFERENCES ReachAttributes ON DELETE CASCADE NOT NULL, 
     VegetationID INTEGER REFERENCES VegetationTypes (VegetationID) NOT NULL,  
     Area REAL NOT NULL CONSTRAINT CHK_ReachVegetation_Area CHECK (Area > 0), 
-    CellCount REAL NOT NULL CONSTRAINT CHK_ReachVegetation_CellCount CHECK (CellCount > 0), 
+    CellCount INTEGER NOT NULL CONSTRAINT CHK_ReachVegetation_CellCount CHECK (CellCount > 0), 
     PRIMARY KEY (ReachID, VegetationID));
 
 CREATE TABLE DGOVegetation (
     DGOID INTEGER REFERENCES DGOAttributes ON DELETE CASCADE NOT NULL,
     VegetationID INTEGER REFERENCES VegetationTypes (VegetationID) NOT NULL,
     Area REAL NOT NULL CONSTRAINT CHK_DGOVegetation_Area CHECK (Area > 0),
-    CellCount REAL NOT NULL CONSTRAINT CHK_DGOVegetation_CellCount CHECK (CellCount > 0),
+    CellCount INTEGER NOT NULL CONSTRAINT CHK_DGOVegetation_CellCount CHECK (CellCount > 0),
     PRIMARY KEY (DGOID, VegetationID)
 );
 
