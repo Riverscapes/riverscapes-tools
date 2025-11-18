@@ -392,7 +392,7 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
 
             flowlines = collect_feature_class(flowlines_path, attribute_filter=f"level_path = {level_path} AND Divergence < 2")
             geom_flowlines = GeopackageLayer.ogr2shapely(flowlines)
-            geom_flowlines_midpoints = MultiPoint([line.interpolate(0.5, normalized=True) for line in geom_flowlines])
+            geom_flowlines_midpoints = MultiPoint([line.interpolate(0.5, normalized=True) for line in geom_flowlines.geoms])
 
             geom_flowline = get_geometry_unary_union(flowlines_path, attribute_filter=f"level_path = {level_path}.0 AND Divergence < 2")
             if geom_flowline is None:
@@ -450,7 +450,7 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
             geom_buffer_splits = split(geom_channel_buffer, geom_flowline_extended)
 
             # Process only if 2 buffers exist
-            if len(geom_buffer_splits) != 2:
+            if len(geom_buffer_splits.geoms) != 2:
                 log.warning(f"Buffer geom not split into exactly 2 parts with level path: {level_path}")
                 # Force the line extensions to a common coordinate
                 geom_coords = MultiPoint([coord for coord in geom_channel_buffer.exterior.coords])
@@ -459,7 +459,7 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
                 geom_newline = LineString([start] + [pt for pt in geom_flowline.coords] + [end])
                 geom_buffer_splits = split(geom_channel_buffer, geom_newline)
 
-                if len(geom_buffer_splits) != 2:
+                if len(geom_buffer_splits.geoms) != 2:
                     # triage the polygon if still cannot split it
                     error_message = f"WARNING: Flowline level_path {level_path} | Incorrect number of split buffer polygons: {len(geom_buffer_splits)}"
                     progbar.erase()
@@ -516,13 +516,13 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
                                                  })
                 continue
 
-            geom_side_point = geom_offset.interpolate(0.5, True)
+            geom_side_point = geom_offset.interpolate(0.5, normalized=True)
 
             # Store output segements
             lgeoms_right_confined_flowline_segments = []
             lgeoms_left_confined_flowline_segments = []
 
-            for geom_side in geom_buffer_splits:
+            for geom_side in geom_buffer_splits.geoms:
 
                 # Identify side of flowline
                 side = "LEFT" if geom_side.contains(geom_side_point) else "RIGHT"
@@ -540,13 +540,13 @@ def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confini
                 # Generate Confining margins
                 lines = []
                 geom_difference = [
-                    geom_difference] if geom_difference.geom_type == 'Polygon' else geom_difference
+                    geom_difference] if geom_difference.geom_type == 'Polygon' else [geom for geom in geom_difference.geoms]
                 for geom in geom_difference:
                     difference_segments = [
                         g for g in line_segments(geom.exterior)]
                     selected_lines = select_geoms_by_intersection(difference_segments, [geom_side.exterior], buffer=selection_buffer)
                     line = linemerge(selected_lines)
-                    line = line if line.geom_type == 'MultiLineString' else [
+                    line = [geom for geom in line.geoms] if line.geom_type == 'MultiLineString' else [
                         line]
                     for g in line:
                         lines.append(g)
