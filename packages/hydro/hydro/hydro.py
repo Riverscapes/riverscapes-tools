@@ -44,7 +44,7 @@ LayerTypes = {
     }),
     'OUTPUTS': RSLayer('Hydrologic Outputs', 'OUTPUTS', 'Geopackage', 'outputs/hydro.gpkg', {
         'HYDRO_GEOM_POINTS': RSLayer('Hydrologic IGO Point Geometry', 'HYDRO_GEOM_POINTS', 'Vector', 'IGOGeometry'),
-        'HYDRO_POINTS': RSLayer('Hydrologic Output Points', 'ANTHRO_POINTS', 'Vector', 'vwIgos'),
+        'HYDRO_POINTS': RSLayer('Hydrologic Output Points', 'HYDRO_POINTS', 'Vector', 'vwIgos'),
         'HYDRO_GEOM_LINES': RSLayer('Hydrologic Reach Geometry', 'HYDRO_GEOM_LINES', 'Vector', 'ReachGeometry'),
         'HYDRO_LINES': RSLayer('Hydrologic Output Lines', 'HYDRO_LINES', 'Vector', 'vwReaches'),
         'HYDRO_GEOM_DGOS': RSLayer('Hydrologic Output DGOs Polygons', 'HYDRO_GEOM_DGOS', 'Vector', 'DGOGeometry'),
