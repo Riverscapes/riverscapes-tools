@@ -14,7 +14,7 @@ def continuous_line(line):
 
     start_points = []
     end_points = []
-    for geom in line:
+    for geom in line.geoms:
         start_points.append(geom.coords[0])
         end_points.append(geom.coords[-1])
 
