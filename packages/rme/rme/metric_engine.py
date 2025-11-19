@@ -738,6 +738,9 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_huc12: 
                         if metric == 'RVD':
                             rvd = mw_rvd(curs, dgo_ids)
                             besp_output[metrics[metric]['field_name']] = rvd
+                        if metric == 'RIPCOND':
+                            cond = mw_rip_cond(curs, dgo_ids)
+                            besp_output[metrics[metric]['field_name']] = cond
 
                     set_clause = ', '.join([f"{k} = ?" for k in besp_output.keys()])
                     sql = f"""UPDATE igo_{metric_group[1]} SET {set_clause} WHERE igoid = {igo_id}"""

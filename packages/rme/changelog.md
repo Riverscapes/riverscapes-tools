@@ -1,5 +1,9 @@
 # Riverscapes Metric Engine (RME)
 
+## [3.1.1]
+- updated for compatibility with Python 3.12
+- Fixed moving window calculations for riparian vegetation departure and riparian condition to correctly reflect no data (valley too narrow to sample)
+
 ## [3.0.6] - 2025-AUGUST-28
 
 ### Fixed
