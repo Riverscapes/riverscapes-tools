@@ -22,7 +22,8 @@ lyrs_in_out = {
     'anthro_flowlines': ['vwReaches', 'Anthro'],
     'anthro_igos': ['vwIgos', 'Anthro'],
     'anthro_dgos': ['vwDgos', 'Anthro'],
-    'valley_bottom': ['vbet_full', 'VBET']
+    'valley_bottom': ['vbet_full', 'VBET'],
+    'channel_area': ['channel_area_polygons', 'VBET']
 }
 
 

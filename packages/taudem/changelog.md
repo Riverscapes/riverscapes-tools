@@ -1,5 +1,8 @@
 # TAUDEM
 
+## [2.1.0] - 19-NOV-2025 
+- updated for compatibility with Python 3.12
+
 ## [1.2.1] - 2022-DEC-12
 
 ## Changed

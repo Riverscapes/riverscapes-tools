@@ -1,5 +1,8 @@
 # VBET
 
+## [4.2.0] - 19-NOV-2025
+- updated for compatibility with Python 3.12
+
 ## [4.1.6] - 2025-SEP-2
 
 ### Fixed
