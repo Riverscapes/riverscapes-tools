@@ -350,12 +350,37 @@ def mw_rvd(cursor, dgo_ids):
     result = cursor.fetchall()
     if len(result) == 0:
         return None
-    for row in result:
-        if row[3] == -9999:
-            result.remove(row)
+
+    result = [row for row in result if row[3] != -9999]
     if len(result) == 0 or sum([row[1] for row in result]) == 0:
-        return None
+        return -9999
 
     out = sum([row[0]*row[2] for row in result]) / sum([row[1]*row[2] for row in result])
+
+    return out
+
+
+def mw_rip_cond(cursor, dgo_ids):
+    """calculate riparian condition within a moving window
+
+    Args:
+        cursor (sqlite3.Cursor): SQLite cursor to execute queries
+        dgo_ids (list(int)): a list of DGO IDs that make up the moving window
+
+    Returns:
+        _type_: proportion condition (unitless)
+    """
+
+    cursor.execute(f"""SELECT riparian_condition, segment_area FROM dgo_veg LEFT JOIN dgos
+                    ON dgo_veg.dgoid = dgos.dgoid WHERE dgo_veg.dgoid IN ({','.join(map(str, dgo_ids))})""")
+    result = cursor.fetchall()
+    if len(result) == 0:
+        return None
+
+    result = [row for row in result if row[0] != -1]
+    if len(result) == 0 or sum([row[1] for row in result]) == 0:
+        return -1
+
+    out = sum([row[0]*row[1] for row in result]) / sum([row[1] for row in result])
 
     return out
