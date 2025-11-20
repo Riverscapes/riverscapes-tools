@@ -71,8 +71,6 @@ RCAT_DIR=$DATA_DIR/output/rcat
 cd /usr/local/src/riverscapes-tools/packages/rcat/rcat/lib/accessibility
 python3 setup.py build_ext --inplace
 cd /usr/local/src/riverscapes-tools
-pip install -e packages/rcat
-cd /usr/local/src
 
 ##########################################################################################
 # First Get RS_Context, taudem, anthro and vbet inputs

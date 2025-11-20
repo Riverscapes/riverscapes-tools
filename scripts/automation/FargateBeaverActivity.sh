@@ -55,10 +55,6 @@ VBET_DIR=$DATA_DIR/vbet/data
 QRIS_DIR=$DATA_DIR/qris/data
 BEAVER_ACTIVITY_DIR=$DATA_DIR/output
 
-cd /usr/local/src/riverscapes-tools
-pip install -e packages/brat
-cd /usr/local/src
-
 ##########################################################################################
 # First Get RS_Context and VBET inputs
 ##########################################################################################

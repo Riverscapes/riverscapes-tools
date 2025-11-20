@@ -60,10 +60,6 @@ CHANNEL_DIR=$DATA_DIR/channel/data
 VBET_DIR=$DATA_DIR/vbet/data
 GRAZING_DIR=$DATA_DIR/output/grazing
 
-cd /usr/local/src/riverscapes-tools
-pip install -e packages/grazing
-cd /usr/local/src
-
 ##########################################################################################
 # First Get inputs
 ##########################################################################################

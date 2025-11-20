@@ -53,10 +53,6 @@ DATA_DIR=/usr/local/data
 BRAT_DIR=$DATA_DIR/brat/data
 BEAVERACTIVITY_DIR=$DATA_DIR/beaver_activity/data
 
-cd /usr/local/src/riverscapes-tools
-pip install -e packages/brat
-cd /usr/local/src
-
 ##########################################################################################
 # First Get RS_Context and VBET inputs
 ##########################################################################################
