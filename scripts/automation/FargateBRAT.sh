@@ -91,7 +91,7 @@ try() {
   # Now Run BRAT Build
   ##########################################################################################
   cd /usr/local/src/riverscapes-tools/packages/brat
-  python3 -m brat.brat $HUC \
+  python3 -m sqlbrat.brat $HUC \
     $RS_CONTEXT_DIR/topography/dem_hillshade.tif \
     $HYDRO_DIR/outputs/hydro.gpkg/vwReaches \
     $HYDRO_DIR/outputs/hydro.gpkg/vwIgos \
