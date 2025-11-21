@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="1024"
+   height="1024"
+   viewBox="0 0 1024 1024"
+   version="1.1"
+   xml:space="preserve"
+   style="clip-rule:evenodd;fill-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2"
+   id="svg7"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"><defs
+   id="defs7"><linearGradient
+     id="swatch16"><stop
+       style="stop-color:#ffffff;stop-opacity:1;"
+       offset="0"
+       id="stop16" /></linearGradient><linearGradient
+     id="swatch15"><stop
+       style="stop-color:#0060c7;stop-opacity:1;"
+       offset="0"
+       id="stop15" /></linearGradient><linearGradient
+     id="swatch14"><stop
+       style="stop-color:#b4ce00;stop-opacity:1;"
+       offset="0"
+       id="stop14" /></linearGradient><linearGradient
+     id="swatch13"><stop
+       style="stop-color:#004697;stop-opacity:1;"
+       offset="0"
+       id="stop13" /></linearGradient><linearGradient
+     id="swatch12"><stop
+       style="stop-color:#00c1d6;stop-opacity:1;"
+       offset="0"
+       id="stop12" /></linearGradient><linearGradient
+     id="swatch11"><stop
+       style="stop-color:#0382e2;stop-opacity:1;"
+       offset="0"
+       id="stop11" /></linearGradient><style
+     id="style1">
+      .cls-1 {
+        fill: #0382e2;
+      }
+
+      .cls-1, .cls-2, .cls-3, .cls-4, .cls-5, .cls-6 {
+        stroke-width: 0px;
+      }
+
+      .cls-2 {
+        fill: #00c1d6;
+      }
+
+      .cls-3 {
+        fill: #b4ce00;
+      }
+
+      .cls-4 {
+        fill: #fff;
+      }
+
+      .cls-5 {
+        fill: #0060c7;
+      }
+
+      .cls-6 {
+        fill: #004697;
+      }
+    </style><style
+     id="style1-9">
+      .cls-1 {
+        fill: #0382e2;
+      }
+
+      .cls-1, .cls-2, .cls-3, .cls-4, .cls-5, .cls-6 {
+        stroke-width: 0px;
+      }
+
+      .cls-2 {
+        fill: #00c1d6;
+      }
+
+      .cls-3 {
+        fill: #b4ce00;
+      }
+
+      .cls-4 {
+        fill: #fff;
+      }
+
+      .cls-5 {
+        fill: #0060c7;
+      }
+
+      .cls-6 {
+        fill: #004697;
+      }
+    </style><style
+     id="style1-7">
+      .cls-1 {
+        fill: #fff;
+      }
+
+      .cls-1, .cls-2 {
+        stroke-width: 0px;
+      }
+
+      .cls-2 {
+        fill: #004697;
+      }
+    </style><clipPath
+     clipPathUnits="userSpaceOnUse"
+     id="clipPath92"><circle
+       cx="512"
+       cy="512"
+       style="clip-rule:evenodd;display:inline;fill:url(#swatch16);fill-rule:evenodd;stroke:none;stroke-linejoin:round;stroke-miterlimit:2"
+       id="circle92"
+       clip-path="none"
+       r="450" /></clipPath><clipPath
+     clipPathUnits="userSpaceOnUse"
+     id="clipPath91"><circle
+       cx="512"
+       cy="512"
+       style="clip-rule:evenodd;display:inline;fill:url(#swatch16);fill-rule:evenodd;stroke:none;stroke-linejoin:round;stroke-miterlimit:2"
+       id="circle91"
+       clip-path="none"
+       r="450" /></clipPath><clipPath
+     clipPathUnits="userSpaceOnUse"
+     id="clipPath90"><circle
+       cx="512"
+       cy="512"
+       style="clip-rule:evenodd;display:inline;fill:url(#swatch16);fill-rule:evenodd;stroke:none;stroke-linejoin:round;stroke-miterlimit:2"
+       id="circle90"
+       clip-path="none"
+       r="450" /></clipPath><clipPath
+     clipPathUnits="userSpaceOnUse"
+     id="clipPath89"><circle
+       cx="512"
+       cy="512"
+       style="clip-rule:evenodd;display:inline;fill:url(#swatch16);fill-rule:evenodd;stroke:none;stroke-linejoin:round;stroke-miterlimit:2"
+       id="circle89"
+       clip-path="none"
+       r="450" /></clipPath><clipPath
+     clipPathUnits="userSpaceOnUse"
+     id="clipPath88"><circle
+       cx="512"
+       cy="512"
+       style="clip-rule:evenodd;display:inline;fill:url(#swatch16);fill-rule:evenodd;stroke:none;stroke-linejoin:round;stroke-miterlimit:2"
+       id="circle88"
+       clip-path="none"
+       r="450" /></clipPath><linearGradient
+     xlink:href="#swatch13"
+     id="linearGradient20"
+     gradientUnits="userSpaceOnUse"
+     x1="132"
+     y1="512"
+     x2="892"
+     y2="512" /><clipPath
+     clipPathUnits="userSpaceOnUse"
+     id="clipPath87"><circle
+       cx="512"
+       cy="512"
+       style="clip-rule:evenodd;display:inline;fill:url(#swatch16);fill-rule:evenodd;stroke:none;stroke-linejoin:round;stroke-miterlimit:2"
+       id="circle87"
+       clip-path="none"
+       r="450" /></clipPath></defs>
+    
+    <g
+   id="g7"
+   clip-path="none"
+   style="clip-rule:evenodd;fill-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2"><ellipse
+     style="clip-rule:evenodd;fill:url(#swatch11);fill-rule:evenodd;stroke-width:11.3386;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:2"
+     id="ellipse3"
+     cx="642.73987"
+     cy="547.76453"
+     rx="726.67151"
+     ry="636.11365"
+     clip-path="url(#clipPath92)" /><ellipse
+     style="clip-rule:evenodd;fill:url(#swatch12);fill-rule:evenodd;stroke-width:17.6384;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:2"
+     id="ellipse4"
+     cx="1709.9685"
+     cy="818.11798"
+     rx="1220.5096"
+     ry="449.45505"
+     clip-path="url(#clipPath91)" /><ellipse
+     style="clip-rule:evenodd;fill:url(#swatch14);fill-rule:evenodd;stroke-width:14.1512;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:2"
+     id="ellipse5"
+     cx="81.016731"
+     cy="997.836"
+     rx="598.13824"
+     ry="328.4375"
+     clip-path="url(#clipPath90)" /><ellipse
+     style="display:inline;fill:url(#swatch15);stroke-width:10.961;stroke-linecap:round;stroke-linejoin:round"
+     id="ellipse6"
+     cx="-280.50845"
+     cy="-132.46214"
+     rx="1044.7284"
+     ry="755.44653"
+     clip-path="url(#clipPath89)" /><ellipse
+     style="fill:url(#swatch13);stroke-width:11.3386;stroke-linecap:round;stroke-linejoin:round"
+     id="ellipse7"
+     cx="-552.18201"
+     cy="-267.2561"
+     rx="1069.0244"
+     ry="912.20465"
+     clip-path="url(#clipPath88)" /><circle
+     style="clip-rule:evenodd;display:inline;fill:url(#linearGradient20);fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:1.43092;stroke-linejoin:round;stroke-miterlimit:2"
+     id="circle7"
+     cx="512"
+     cy="512"
+     r="380"
+     clip-path="url(#clipPath87)"><desc
+       id="desc7">This is the background behind the text</desc></circle></g><g
+   id="g1"
+   style="display:inline"
+   transform="matrix(22.345525,0,0,22.345525,-2950.7407,-8638.3363)"><path
+     class="cls-4"
+     d="m 164.26575,402.21515 -5.74107,2.50887 3.23659,0.68133 c -0.74866,1.86489 -4.70576,13.86673 -6.47896,6.92125 -0.81043,-2.44028 -0.81774,-5.06285 -0.85063,-7.59634 -0.0177,-1.86932 0.2276,-4.93685 -1.8114,-6.11881 -9.22952,-3.9032 -10.44676,19.84811 -9.81888,21.68565 0.26135,0.8674 1.83123,0.53229 1.7447,-0.28738 0.11434,-5.50232 1.02002,-10.96209 3.24139,-16.29309 0.73182,-2.53932 3.57502,-5.16519 3.42372,-0.12274 -0.074,2.46812 0.27113,5.2303 0.59891,7.43521 0.33049,2.22331 2.33997,9.03632 6.96723,5.21401 3.38704,-3.02483 3.88108,-6.72227 5.45776,-10.31714 l 3.02881,0.63769 -2.99816,-4.34851 c 0,0 -3e-5,0 -1e-5,0 z"
+     id="path6"
+     style="clip-rule:evenodd;fill:#ffffff;fill-rule:evenodd;stroke-width:0px;stroke-linejoin:round;stroke-miterlimit:2" /></g>
+</svg>
