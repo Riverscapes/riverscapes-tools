@@ -87,7 +87,7 @@ const config: Config = {
       title: 'Riverscapes Tools', // Navbar title
       logo: {
         alt: 'Riverscapes Tools Logo', // Logo alt text
-        src: 'img/logo.png', // Logo image path
+        src: 'img/logo.svg', // Logo image path
       },
       items: [
         // {
