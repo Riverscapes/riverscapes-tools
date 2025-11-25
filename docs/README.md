@@ -22,6 +22,41 @@ NOTE: You need to have Node.js>=22 installed locally to run this project.
    ```
    The site will be available at `http://localhost:3000` by default. Open this URL in your browser to view the documentation site.
 
+## Updating Layer Definition Layers
+
+The docs site reads each tool's `layer_definitions.json` files from `docs/static/layers`. Those files are not copied; they are symlinks that point back into `packages/<tool>/<tool>/layer_definitions.json`, ensuring the docs stay in sync with the authoritative sources.
+
+### Why symlinks? 
+
+This approach avoids duplication and ensures that any updates to layer definitions in the tool packages are automatically reflected in the documentation.
+
+The symlinks allow us to preview the site locally instead of only being part of a build/launch workflow. They are committed to git. The symlinks become real files when the site is built for production, so they work correctly when deployed.
+
+1. **Regenerate symlinks**  
+   From the ./docs folder, run the link_layers.sh script:
+   ```sh
+   cd docs
+   ./scripts/link_layers.sh          # optionally pass a custom filename pattern
+   ```
+   The script scans every package for files matching the pattern (defaults to `layer_definitions.json`) and creates `<tool>_<filename>.json` symlinks inside `docs/static/layers`.
+
+2. **Commit the symlinks**  
+   Git tracks symlinks as lightweight entries, so commit them like any other file:
+   ```sh
+   git add docs/static/layers
+   git status                         # verify the new/updated links are listed as symbolic links
+   git commit -m "Update layer definition links"
+   ```
+   If a link shows up as a regular file your platform may not support symlinks—double-check before committing.
+
+3. **Handling broken symlinks**  
+   When a source file moves or is removed you may see broken links (they usually appear red in `ls -l`). Clean them up with:
+   ```sh
+   find docs/static/layers -xtype l -delete
+   ./scripts/link_layers.sh
+   ```
+   After regenerating, rerun `yarn start` (or the static build) to make sure the docs still render the layer tables correctly.
+
 
 ## Writing docs for Riverscapes Tools Documentation in GitHub Codespaces
 
