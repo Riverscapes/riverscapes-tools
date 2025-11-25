@@ -1634,7 +1634,7 @@ WatershedID,Name,AreaSqkm,States,Qlow,Q2,MaxDrainage,EcoregionID,Notes,Metadata
 14010002,Blue,1769.36,CO,0.16323803631109524 * DRNAREA,10.261508421832518 * DRNAREA ** 0.8763319656362166,,21,,"{""Operator"": ""Jordan Gilbert"", ""DateCreated"": ""2024-10-24T09:03:18.962095"", ""NumGages"": 8, ""HucLevel"": 8, ""QLowR2"": 0.9963138029707851, ""Q2R2"": 0.9071661826752291}"
 14010003,Eagle,2518.63,CO,0.11385060248953642 * DRNAREA,24.018305601061652 * DRNAREA ** 0.7731115118999866,,21,,"{""Operator"": ""Jordan Gilbert"", ""DateCreated"": ""2024-10-24T09:03:19.336610"", ""NumGages"": 17, ""HucLevel"": 8, ""QLowR2"": 0.9840453716044024, ""Q2R2"": 0.9070235848681483}"
 14010004,Roaring Fork,3767.35,CO,0.20389154268777324 * DRNAREA,4.940986987822968 * DRNAREA,,21,,"{""Operator"": ""Jordan Gilbert"", ""DateCreated"": ""2024-10-24T09:03:19.719772"", ""NumGages"": 13, ""HucLevel"": 8, ""QLowR2"": 0.9925356203134686, ""Q2R2"": 0.9372256507590023}"
-14010005,Colorado Headwaters-Plateau,9909.43,CO_UT,0.10956717059827055 * DRNAREA,2.1888664437168304 * DRNAREA,,20,,"{""Operator"": ""Jordan Gilbert"", ""DateCreated"": ""2024-10-24T09:03:20.117938"", ""NumGages"": 13, ""HucLevel"": 8, ""QLowR2"": 0.8911663551839915, ""Q2R2"": 0.9590991722163233}"
+14010005,Colorado Headwaters-Plateau,9909.43,CO_UT,0.10956717059827055 * DRNAREA,2.1888664437168304 * DRNAREA,10000,20,,"{""Operator"": ""Jordan Gilbert"", ""DateCreated"": ""2024-10-24T09:03:20.117938"", ""NumGages"": 13, ""HucLevel"": 8, ""QLowR2"": 0.8911663551839915, ""Q2R2"": 0.9590991722163233}"
 14020001,East-Taylor,1986.22,CO,0.023939695967865156 * DRNAREA ** 1.3997165192567715,9.856917985790583 * DRNAREA ** 0.8966763903808572,,21,,"{""Operator"": ""Jordan Gilbert"", ""DateCreated"": ""2024-10-24T09:03:20.486758"", ""NumGages"": 10, ""HucLevel"": 8, ""QLowR2"": 0.9594305409653364, ""Q2R2"": 0.7099454137271362}"
 14020002,Upper Gunnison,6245.14,CO,0.08948853712988375 * DRNAREA,24.0354169099737 * DRNAREA ** 0.695391125543422,,21,,"{""Operator"": ""Jordan Gilbert"", ""DateCreated"": ""2024-10-24T09:03:20.838203"", ""NumGages"": 12, ""HucLevel"": 8, ""QLowR2"": 0.7160336604353932, ""Q2R2"": 0.8948593347823678}"
 14020003,Tomichi,2855.88,CO,0.08382870044057858 * DRNAREA,2.1362546125742345 * DRNAREA,,21,,"{""Operator"": ""Jordan Gilbert"", ""DateCreated"": ""2024-10-24T09:03:21.219508"", ""NumGages"": 43, ""HucLevel"": 6, ""QLowR2"": 0.922763755543502, ""Q2R2"": 0.853026127515942}"
@@ -2383,3 +2383,4 @@ WatershedID,Name,AreaSqkm,States,Qlow,Q2,MaxDrainage,EcoregionID,Notes,Metadata
 22010000,Guam,1476.2,GU,,,,,,
 22020000,Saipan,613.41,MP,,,,,,
 22030000,American Samoa,1285.89,AS,,,,,,
+
