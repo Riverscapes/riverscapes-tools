@@ -36,6 +36,7 @@ dependencies = [
     "termcolor>=2.4",
     "urllib3>=2.2",
     "rsxml>=2.1.1",
+    "geopandas>=1.1.1",
 ]
 
 [tool.setuptools.packages.find]

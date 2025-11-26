@@ -19,7 +19,9 @@
       "request": "launch",
       "module": "rsdynamics.rsdynamics",
       "console": "integratedTerminal",
-      "envFile": "${workspaceFolder}/../.env",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+      },   
       "args": [
         "${input:WatershedHydroID}",
         "/Users/philipbailey/GISData/nz/vbet/${input:WatershedHydroID}/project.rs.xml",
