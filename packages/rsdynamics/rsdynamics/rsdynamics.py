@@ -22,12 +22,13 @@ import rasterio
 import rasterio.mask
 import numpy as np
 
-from rscommons import Logger, ModelConfig, dotenv, initGDALOGRErrors
+from rscommons import initGDALOGRErrors, ModelConfig
+from rsxml import Logger, dotenv
 from rscommons.classes.rs_project import RSLayer, RSProject, RSMeta, RSMetaTypes
 from rscommons.classes.vector_classes import VectorBase
 from rscommons.raster_warp import raster_warp
-from rscommons.util import safe_makedirs
 from rscommons.vector_ops import copy_feature_class
+from rsxml.util import safe_makedirs
 from rsdynamics.__version__ import __version__
 
 cfg = ModelConfig('https://xml.riverscapes.net/Projects/XSD/V2/RiverscapesProject.xsd', __version__)
