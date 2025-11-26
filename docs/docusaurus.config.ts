@@ -7,7 +7,18 @@ import type * as Preset from '@docusaurus/preset-classic'
 const config: Config = {
   title: 'Riverscapes Tools', // Site title displayed in the browser tab
   tagline: 'Homepage for riverscapes tools documentation', // Short description shown in meta tags
-  favicon: 'favicon.ico', // Path to site favicon
+  favicon: '/img/Consortium.svg', // Path to site favicon
+
+  headTags: [
+  {
+    tagName: 'link',
+    attributes: {
+      rel: 'alternate icon',
+      href: '/img/Consortium_64.png',
+        sizes: '64x64',
+      },
+    },
+  ],
 
   future: {
     v4: true, // Enables compatibility with upcoming Docusaurus v4 features
