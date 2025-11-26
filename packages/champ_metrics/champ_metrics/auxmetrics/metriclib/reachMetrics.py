@@ -1,6 +1,6 @@
 import datetime
 import numpy as np
-from rscommons import Logger
+from rsxml import Logger
 
 
 def visitReachMetrics(visitMetrics, visitobj):

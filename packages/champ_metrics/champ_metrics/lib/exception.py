@@ -1,4 +1,4 @@
-from rscommons import Logger
+from rsxml import Logger
 
 
 class DataException(Exception):

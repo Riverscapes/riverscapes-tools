@@ -1,7 +1,7 @@
 import sys
 from os import path
 import numpy as np
-from rscommons import Logger
+from rsxml import Logger
 from champ_metrics.lib.raster import Raster
 
 

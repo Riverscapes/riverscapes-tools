@@ -23,7 +23,9 @@
       "name": "CHaMP Metrics",
       "type": "debugpy",
       "module": "champ_metrics.run_champ_metrics",
-      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+      }, 
       "args": [
         "{env:DATA_ROOT}/champ/topo_projects/0213/TOPO_-_CHaMP-ASW00001-CC-F1_P2BR_with_aux/project.rs.xml",
         "{env:DATA_ROOT}/champ/metrics"
@@ -35,7 +37,9 @@
       "name": "BATCH CHaMP Metrics",
       "type": "debugpy",
       "module": "champ_metrics.run_champ_metrics_batch",
-      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+      }, 
       "args": [
         "{env:CSV_FOLDER}",
         "{env:DATA_ROOT}/champ/topo_projects",
@@ -48,7 +52,9 @@
       "name": "Stream Temp",
       "type": "debugpy",
       "module": "champ_metrics.stream_temp",
-      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+      }, 
       "args": [
         "/Users/philipbailey/GISData/champ/stream_temp/whatever",
         "/Users/philipbailey/GISData/champ/stream_temp/champ_stream_temp.gpkg",

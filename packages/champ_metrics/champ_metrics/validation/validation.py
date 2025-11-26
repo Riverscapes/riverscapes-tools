@@ -3,7 +3,7 @@ import os
 import argparse
 import traceback
 
-from rscommons import Logger
+from rsxml import Logger
 from champ_metrics.lib.exception import DataException, MissingException, NetworkException
 from .writetoxml import writeMetricsToXML
 from .champ_survey import CHaMPSurvey

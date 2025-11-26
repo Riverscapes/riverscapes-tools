@@ -1,5 +1,5 @@
 import os
-from rscommons import Logger
+from rsxml import Logger
 from champ_metrics.lib.metricxmloutput import writeMetricsToXML, integrateMetricDictionary, integrateMetricList
 from champ_metrics.lib.channelunits import loadChannelUnitsFromJSON
 from champ_metrics.__version__ import __version__

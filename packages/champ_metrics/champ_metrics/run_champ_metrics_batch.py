@@ -8,7 +8,7 @@ import os
 import traceback
 import sys
 import xml.etree.ElementTree as ET
-from rscommons import Logger, dotenv
+from rsxml import Logger, dotenv
 from champ_metrics.run_champ_metrics import run_champ_metrics
 from champ_metrics.scripts.load_project_guids_from_csv import load_project_guids_from_csv
 

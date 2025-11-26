@@ -1,6 +1,6 @@
 import os
 import json
-from rscommons import Logger
+from rsxml import Logger
 from champ_metrics.lib.exception import MissingException
 from champ_metrics.lib.metricxmloutput import writeMetricsToXML
 from .metriclib.auxMetrics import calculateMetricsForVisit, calculateMetricsForChannelUnitSummary, calculateMetricsForTier1Summary, calculateMetricsForStructureSummary

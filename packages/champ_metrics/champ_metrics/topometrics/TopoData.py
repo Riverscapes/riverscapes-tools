@@ -1,5 +1,5 @@
 import os
-from rscommons import Logger
+from rsxml import Logger
 from champ_metrics.lib.exception import DataException
 from champ_metrics.lib.topoproject import TopoProject
 
