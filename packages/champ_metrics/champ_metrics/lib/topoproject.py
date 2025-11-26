@@ -1,6 +1,6 @@
 from os import path
 from xml.etree import ElementTree as ET
-from rscommons import Logger
+from rsxml import Logger
 from champ_metrics.lib.util import getAbsInsensitivePath
 from .exception import DataException, MissingException
 

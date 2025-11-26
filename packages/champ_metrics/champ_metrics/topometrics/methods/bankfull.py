@@ -3,7 +3,7 @@ import geopandas
 import rasterio
 from shapely.geometry import Point
 import numpy as np
-from rscommons import Logger
+from rsxml import Logger
 
 __version__ = "0.0.2"
 

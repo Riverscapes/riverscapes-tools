@@ -1,5 +1,5 @@
 import numpy as np
-from rscommons import Logger
+from rsxml import Logger
 
 dAlias = {
     'LBGroundcoverWoodyShrubs': 'LBGroundcoverWoodyShurbs',

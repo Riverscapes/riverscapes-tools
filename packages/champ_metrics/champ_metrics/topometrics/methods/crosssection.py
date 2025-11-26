@@ -4,7 +4,7 @@ import numpy as np
 from shapely.errors import TopologicalError
 from shapely.geometry import MultiLineString
 
-from rscommons import Logger
+from rsxml import Logger
 from champ_metrics.lib.shapefileloader import Shapefile
 from champ_metrics.lib.raster import Raster
 from champ_metrics.lib.metrics import CHaMPMetric

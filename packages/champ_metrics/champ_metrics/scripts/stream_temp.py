@@ -12,7 +12,7 @@ import json
 import sqlite3
 import argparse
 from datetime import datetime
-from rscommons.util import Logger
+from rsxml import Logger
 from osgeo import gdal, ogr, osr
 
 FILE_NAME_REGEX = r'^(.*)-([0-9]{2}[0-9]{2}[0-9]{4})-.*\.csv\Z'

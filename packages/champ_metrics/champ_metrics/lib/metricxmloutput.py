@@ -3,8 +3,8 @@ import xml.etree.ElementTree as ET
 import xml.dom.minidom
 import datetime
 import copy
-from rscommons import Logger
-from rscommons.util import safe_makedirs
+from rsxml import Logger
+from rsxml.util import safe_makedirs
 
 DATECREATEDFIELD = "GenerationDate"
 VERSIONFIELD = "ModelVersion"

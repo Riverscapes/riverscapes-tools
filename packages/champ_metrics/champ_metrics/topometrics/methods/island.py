@@ -1,7 +1,7 @@
 import sys
 
 from os import path
-from rscommons import Logger
+from rsxml import Logger
 from champ_metrics.lib.shapefileloader import Shapefile
 from champ_metrics.lib.metrics import CHaMPMetric
 

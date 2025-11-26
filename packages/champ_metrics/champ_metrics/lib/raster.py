@@ -4,7 +4,7 @@ from affine import Affine
 import numpy as np
 from osgeo import gdal, ogr, osr
 from shapely.geometry import Polygon
-from rscommons import Logger
+from rsxml import Logger
 from .exception import DataException, MissingException
 
 # this allows GDAL to throw Python Exceptions

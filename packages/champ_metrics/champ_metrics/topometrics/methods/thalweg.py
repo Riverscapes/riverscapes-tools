@@ -4,7 +4,7 @@ import argparse
 from os import path
 from shapely.geometry import Point
 import numpy as np
-from rscommons import Logger
+from rsxml import Logger
 from champ_metrics.lib.shapefileloader import Shapefile
 from champ_metrics.lib.exception import DataException, MissingException
 from champ_metrics.lib.metrics import CHaMPMetric

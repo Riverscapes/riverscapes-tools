@@ -4,7 +4,7 @@ import xml.etree.ElementTree as ET
 import xml.dom.minidom
 import json
 import datetime
-from rscommons import Logger
+from rsxml import Logger
 from champ_metrics.lib.exception import DataException
 
 dUnitDefs = {

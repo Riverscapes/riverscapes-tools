@@ -5,7 +5,8 @@ import traceback
 import sys
 import xml.etree.ElementTree as ET
 
-from rscommons import Logger, initGDALOGRErrors, dotenv
+from rscommons import initGDALOGRErrors
+from rsxml import Logger, dotenv
 from champ_metrics.__version__ import __version__
 from champ_metrics.topometrics.topometrics import visit_topo_metrics
 from champ_metrics.auxmetrics.auxmetrics import visit_aux_metrics
