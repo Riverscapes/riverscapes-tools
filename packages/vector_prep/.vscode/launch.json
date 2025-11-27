@@ -1,0 +1,35 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Debugger: Current File with Arguments",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": "${command:pickArgs}"
+        },
+        {
+            "name": "🚀 Run Vector Prep",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "vector_prep.vector_prep",
+            "console": "integratedTerminal",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+            },
+            // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
+            "args": [
+                "/Users/philipbailey/GISData/blm/land_management_areas/BLM_Natl_Land_Use_Plans_Approved_2022_-1702520180236777929.gpkg",
+                "/Users/philipbailey/GISData/blm/land_management_areas/blm_land_management_clean.gpkg",
+                "--tolerance", "20",
+               //"--epsg", "5070",
+                //"--meta",
+                "--verbose"
+            ]
+        },
+    ]
+}
