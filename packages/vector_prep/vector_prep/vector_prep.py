@@ -1,36 +1,24 @@
 """
-clean_vector.py
+Clean a vector layer by fixing invalid geometries and simplifying it. Ostensibly used for
+preparing vector layers for use in the Riverscapes Reporting platform both as a picklist
+layer, but also for storing in Athena for use in reports.
 
-Usage:
-    python clean_vector.py input_file output_file --tolerance 5.0 [--layer layername] [--driver auto] [--overwrite]
+The input is a single ShapeFile for GeoPackage vector layer. It can be in any projection,
+and any fields.
 
-Examples:
-    python clean_vector.py parks.gpkg cleaned_parks.gpkg --tolerance 2.0 --layer parks
-    python clean_vector.py roads.shp cleaned_roads.shp --tolerance 0.5 --overwrite
+The output is always a GeoPackage layer with cleaned geometries, reprojected to EPSG:4326.
+
+Philip Bailey
+27 Nov 2025
 """
-
-import argparse
-import sys
-import os
-import geopandas as gpd
-from shapely.geometry import shape
-from shapely.ops import unary_union
-from shapely.geometry.base import BaseGeometry
-
 import argparse
 import sys
 import os
 import traceback
-
-from shapely.ops import split, nearest_points, linemerge, substring
+import geopandas as gpd
+from shapely.geometry.base import BaseGeometry
+from shapely import make_valid  # shapely >=1.8
 from rsxml import Logger, dotenv
-
-# Try to import make_valid (Shapely 1.8+/2.0), else fallback
-try:
-    from shapely.ops import make_valid  # shapely >=1.8
-    HAVE_MAKE_VALID = True
-except Exception:
-    HAVE_MAKE_VALID = False
 
 # This script always produces the output in GeoPackage format
 OUTPUT_DRIVER = "GPKG"
@@ -103,6 +91,11 @@ def vector_prep(input_dataset: str, output_dataset: str, layer_name: str, tolera
     for col in gdf_proc.select_dtypes(include=['object']).columns:
         gdf_proc[col] = gdf_proc[col].apply(lambda x: x if x and str(x).strip() != "" else None)
 
+    # Make sure there is a column called FID (some drivers require it)
+    if "FID" not in gdf_proc.columns:
+        gdf_proc = gdf_proc.reset_index(drop=True)
+        gdf_proc["FID"] = gdf_proc.index.astype('int64')
+
     # If output exists and overwrite requested, remove it first (be careful with gpkg)
     if os.path.exists(output_dataset):
         try:
@@ -141,14 +134,7 @@ def safe_make_valid(geom: BaseGeometry):
     if geom is None:
         return None
     try:
-        if HAVE_MAKE_VALID:
-            valid = make_valid(geom)
-            if valid is None:
-                raise Exception("make_valid returned None")
-            return valid
-        else:
-            # buffer(0) trick (may fail for some geometry types)
-            return geom.buffer(0)
+        valid = make_valid(geom)
     except Exception as e:
         log = Logger("Error")
         log.debug(f"make_valid/buffer(0) failed: {e}")
