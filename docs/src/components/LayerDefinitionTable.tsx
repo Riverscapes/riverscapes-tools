@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import useBaseUrl from '@docusaurus/useBaseUrl'
+import Heading from '@theme/Heading'
 
 type LayerColumn = {
   name?: string
@@ -21,6 +22,7 @@ type LayerDefinition = {
   path?: string
   theme?: string
   description?: string
+  source_url?: string
   columns?: LayerColumn[]
 }
 
@@ -40,13 +42,14 @@ type Props = {
   src: string
   title?: string
   showDescription?: boolean
+  theme?: string
 }
 
 const normalizeSrc = (src: string) => (src.startsWith('/') ? src : `/${src}`)
 
 const emptyLayers: LayerDefinition[] = []
 
-export default function LayerDefinitionTable({ src, title, showDescription = true }: Props) {
+export default function LayerDefinitionTable({ src, title, showDescription = true, theme }: Props) {
   const resolvedSrc = useBaseUrl(normalizeSrc(src))
   const [state, setState] = useState<FetchState>({ status: 'idle' })
 
@@ -106,24 +109,29 @@ export default function LayerDefinitionTable({ src, title, showDescription = tru
     )
   }
 
-  const layers = state.layers ?? emptyLayers
+  let layers = state.layers ?? emptyLayers
+
+  // Filter if a theme was provided
+  if (theme) {
+    layers = layers.filter((layer) => layer.theme === theme)
+  }
 
   if (layers.length === 0) {
     return <p>No layers found in definition file.</p>
   }
-
+  const hasSourceUrl = layers.some((layer) => layer.source_url)
   return (
     <div className="layer-definition-table">
-      {title && <h3>{title}</h3>}
+      {title && <Heading as="h3">{title}</Heading>}
       <div className="table-responsive">
         <table>
           <thead>
             <tr>
-              <th scope="col">ID</th>
+              <th scope="col">Layer</th>
               <th scope="col">Name</th>
               <th scope="col">Type</th>
-              <th scope="col">Theme</th>
               <th scope="col">Path</th>
+              <th scope="col">Source</th>
               {showDescription && <th scope="col">Description</th>}
             </tr>
           </thead>
@@ -133,8 +141,16 @@ export default function LayerDefinitionTable({ src, title, showDescription = tru
                 <td>{layer.layer_id ?? '—'}</td>
                 <td>{layer.layer_name ?? '—'}</td>
                 <td>{layer.layer_type ?? '—'}</td>
-                <td>{layer.theme ?? '—'}</td>
                 <td>{layer.path ? <code>{layer.path}</code> : <span aria-label="Path unavailable">—</span>}</td>
+                <td>
+                  {layer.source_url ? (
+                    <a href={layer.source_url} target="_blank" rel="noopener noreferrer">
+                      source
+                    </a>
+                  ) : (
+                    '—'
+                  )}
+                </td>
                 {showDescription && <td>{layer.description ?? '—'}</td>}
               </tr>
             ))}
