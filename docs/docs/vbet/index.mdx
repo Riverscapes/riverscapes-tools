@@ -8,6 +8,10 @@ sidebar_position: 4
 ---
 
 import LayerDefinitionTable from '@site/src/components/LayerDefinitionTable'
+import LayerDefinitionByTheme from '@site/src/components/LayerDefinitionByTheme';
+import LayerColumnsTable from '@site/src/components/LayerColumnsTable';
+import AllLayerColumnsTable from '@site/src/components/AllLayerColumnsTable';
+
 
 The Valley Bottom Extraction Tool (VBET) identifies and maps the valley bottom of a riverscape, roughly separating it into geomorphic units (channel, low-lying floodplain, and elevated (distal/inactive) floodplain). 
 
@@ -28,8 +32,17 @@ Both DGOs and IGOs include a range of calculated metrics. For a detailed descrip
 
 ## Layer Definitions
 
-<LayerDefinitionTable src="/layers/vbet_layer_definitions.json" title="VBET Layer Definitions" />
 
+<LayerDefinitionByTheme src="/layers/ellie_layer_definitions.json" title="VBET Layers"/>
+<LayerColumnsTable 
+  src="/layers/ellie_layer_definitions.json"
+  layerId="VBET_DGO_POLYGONS"
+  title="VBET DGO Polygon Columns"
+/>
+<AllLayerColumnsTable 
+  src="/layers/ellie_layer_definitions.json"
+  title="All VBET Layer Attributes"
+/>
 
 ## Resources
 
