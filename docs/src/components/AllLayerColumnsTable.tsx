@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import useBaseUrl from '@docusaurus/useBaseUrl'
-import LayerColumnsTable from './LayerColumnsTable'
+import { LayerColumnsTable } from './LayerColumnsTable'
 import Heading from '@theme/Heading'
 
-type LayerColumn = {
+interface LayerColumn {
   name?: string
   dtype?: string
   friendly_name?: string
@@ -16,13 +16,13 @@ type LayerColumn = {
   default_value?: string | number | boolean | null
 }
 
-type LayerDefinition = {
+interface LayerDefinition {
   layer_id?: string
   layer_name?: string
   columns?: LayerColumn[]
 }
 
-type LayerDefinitionFile = {
+interface LayerDefinitionFile {
   layers?: LayerDefinition[]
 }
 
@@ -32,14 +32,14 @@ type FetchState =
   | { status: 'success'; layers: LayerDefinition[] }
   | { status: 'error'; message: string }
 
-type Props = {
+interface AllLayerColumnsTableProps {
   src: string
   title?: string
 }
 
 const normalizeSrc = (src: string) => (src.startsWith('/') ? src : `/${src}`)
 
-export default function AllLayerColumnsTable({ src, title }: Props) {
+export const AllLayerColumnsTable: React.FC<AllLayerColumnsTableProps> = ({ src, title }) => {
   const resolvedSrc = useBaseUrl(normalizeSrc(src))
   const [state, setState] = useState<FetchState>({ status: 'idle' })
 
@@ -115,9 +115,7 @@ export default function AllLayerColumnsTable({ src, title }: Props) {
 
       {layersWithColumns.map((layer, index) => (
         <section key={layer.layer_id ?? index} style={{ marginBottom: '2rem' }}>
-          <h3>{layer.layer_name ?? layer.layer_id}</h3>
-
-          {/* Inner component */}
+          <Heading as="h3">{layer.layer_name ?? layer.layer_id}</Heading>
           <LayerColumnsTable src={src} layerId={layer.layer_id ?? ''} title="Attributes" />
         </section>
       ))}

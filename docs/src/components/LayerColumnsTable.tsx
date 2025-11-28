@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import useBaseUrl from '@docusaurus/useBaseUrl'
 import Heading from '@theme/Heading'
 
-type LayerColumn = {
+interface LayerColumn {
   name?: string
   dtype?: string
   friendly_name?: string
@@ -15,7 +15,7 @@ type LayerColumn = {
   default_value?: string | number | boolean | null
 }
 
-type LayerDefinition = {
+interface LayerDefinition {
   layer_id?: string
   layer_name?: string
   layer_type?: string
@@ -26,7 +26,7 @@ type LayerDefinition = {
   columns?: LayerColumn[]
 }
 
-type LayerDefinitionFile = {
+interface LayerDefinitionFile {
   authority_name?: string
   tool_schema_version?: string
   layers?: LayerDefinition[]
@@ -38,7 +38,7 @@ type FetchState =
   | { status: 'success'; layer: LayerDefinition | null }
   | { status: 'error'; message: string }
 
-type Props = {
+interface LayerColumnsTableProps {
   src: string
   layerId: string
   title?: string
@@ -46,7 +46,7 @@ type Props = {
 
 const normalizeSrc = (src: string) => (src.startsWith('/') ? src : `/${src}`)
 
-export default function LayerColumnsTable({ src, layerId, title }: Props) {
+export const LayerColumnsTable: React.FC<LayerColumnsTableProps> = ({ src, layerId, title }) => {
   const resolvedSrc = useBaseUrl(normalizeSrc(src))
   const [state, setState] = useState<FetchState>({ status: 'idle' })
 

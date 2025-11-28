@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import useBaseUrl from '@docusaurus/useBaseUrl'
-import LayerDefinitionTable from './LayerDefinitionTable'
+import { LayerDefinitionTable } from './LayerDefinitionTable'
 import Heading from '@theme/Heading'
 
-type LayerDefinition = {
+interface LayerDefinition {
   layer_id?: string
   layer_name?: string
   layer_type?: string
@@ -12,7 +12,7 @@ type LayerDefinition = {
   description?: string
 }
 
-type LayerDefinitionFile = {
+interface LayerDefinitionFile {
   authority_name?: string
   tool_schema_version?: string
   layers?: LayerDefinition[]
@@ -24,14 +24,14 @@ type FetchState =
   | { status: 'success'; themes: string[] }
   | { status: 'error'; message: string }
 
-type Props = {
+interface LayerDefinitionByThemeProps {
   src: string
   title?: string
 }
 
 const normalizeSrc = (src: string) => (src.startsWith('/') ? src : `/${src}`)
 
-export default function LayerDefinitionByTheme({ src, title }: Props) {
+export const LayerDefinitionByTheme: React.FC<LayerDefinitionByThemeProps> = ({ src, title }) => {
   const resolvedSrc = useBaseUrl(normalizeSrc(src))
   const [state, setState] = useState<FetchState>({ status: 'idle' })
 
@@ -41,7 +41,6 @@ export default function LayerDefinitionByTheme({ src, title }: Props) {
 
     const load = async () => {
       try {
-        // Same pattern your senior used
         type FetchLikeResponse = {
           ok: boolean
           status: number
@@ -64,7 +63,6 @@ export default function LayerDefinitionByTheme({ src, title }: Props) {
         const payload = (await response.json()) as LayerDefinitionFile
         const layers = Array.isArray(payload.layers) ? payload.layers : []
 
-        // Extract themes
         const themes = Array.from(new Set(layers.map((l) => l.theme).filter((t): t is string => Boolean(t))))
 
         if (isSubscribed) {

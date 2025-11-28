@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import useBaseUrl from '@docusaurus/useBaseUrl'
 import Heading from '@theme/Heading'
 
-type LayerColumn = {
+interface LayerColumn {
   name?: string
   dtype?: string
   friendly_name?: string
@@ -15,7 +15,7 @@ type LayerColumn = {
   default_value?: string | number | boolean | null
 }
 
-type LayerDefinition = {
+interface LayerDefinition {
   layer_id?: string
   layer_name?: string
   layer_type?: string
@@ -26,7 +26,7 @@ type LayerDefinition = {
   columns?: LayerColumn[]
 }
 
-type LayerDefinitionFile = {
+interface LayerDefinitionFile {
   authority_name?: string
   tool_schema_version?: string
   layers?: LayerDefinition[]
@@ -38,7 +38,7 @@ type FetchState =
   | { status: 'success'; layers: LayerDefinition[] }
   | { status: 'error'; message: string }
 
-type Props = {
+interface LayerDefinitionTableProps {
   src: string
   title?: string
   showDescription?: boolean
@@ -49,7 +49,12 @@ const normalizeSrc = (src: string) => (src.startsWith('/') ? src : `/${src}`)
 
 const emptyLayers: LayerDefinition[] = []
 
-export default function LayerDefinitionTable({ src, title, showDescription = true, theme }: Props) {
+export const LayerDefinitionTable: React.FC<LayerDefinitionTableProps> = ({
+  src,
+  title,
+  showDescription = true,
+  theme,
+}) => {
   const resolvedSrc = useBaseUrl(normalizeSrc(src))
   const [state, setState] = useState<FetchState>({ status: 'idle' })
 
@@ -119,7 +124,7 @@ export default function LayerDefinitionTable({ src, title, showDescription = tru
   if (layers.length === 0) {
     return <p>No layers found in definition file.</p>
   }
-  const hasSourceUrl = layers.some((layer) => layer.source_url)
+  // const hasSourceUrl = layers.some((layer) => layer.source_url)
   return (
     <div className="layer-definition-table">
       {title && <Heading as="h3">{title}</Heading>}
