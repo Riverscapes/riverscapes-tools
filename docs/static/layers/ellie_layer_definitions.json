@@ -8,14 +8,16 @@
             "layer_name": "DEM",
             "layer_type": "Raster",
             "path": "inputs/dem.tif",
-            "theme": "Inputs"
+            "theme": "Inputs",
+            "source_url": "https://tools.riverscapes.net/rscontext/data/#DEM"
         },
         {
             "layer_id": "SLOPE_RASTER",
             "layer_name": "Slope Raster",
             "layer_type": "Raster",
             "path": "inputs/slope.tif",
-            "theme": "Inputs"
+            "theme": "Inputs",
+            "source_url": "https://tools.riverscapes.net/rscontext/data/#SLOPE"
         },
         {
             "layer_id": "HILLSHADE",
@@ -23,7 +25,7 @@
             "layer_type": "Raster",
             "path": "inputs/dem_hillshade.tif",
             "theme": "Inputs",
-            "source_url": "https://www.usgs.gov/"
+            "source_url": "https://tools.riverscapes.net/rscontext/data/#HILLSHADE"
         },
         {
             "layer_id": "INPUTS",
@@ -37,7 +39,7 @@
             "layer_type": "Vector",
             "path": "inputs/vbet_inputs.gpkg/network_intersected",
             "theme": "Inputs",
-            "source_url": "https://tools.riverscapes.net/vbet"
+            "source_url": "https://tools.riverscapes.net/rscontext/data/#NETWORK_INTERSECTION"
         },
         {
             "layer_id": "CHANNEL_AREA_POLYGONS",
@@ -45,7 +47,7 @@
             "layer_type": "Vector",
             "path": "inputs/vbet_inputs.gpkg/channel_area_polygons",
             "theme": "Inputs",
-            "source_url": "https://tools.riverscapes.net/vbet/data"
+            "source_url": "https://tools.riverscapes.net/rscontext/data/#NETWORK_INTERSECTION"
         },
         {
             "layer_id": "PITFILL",
@@ -66,8 +68,8 @@
             "layer_name": "TauDEM D-Inf Flow Directions Slope",
             "layer_type": "Raster",
             "path": "intermediates/dinfflowdir_slp.tif",
-            "theme": "Intermediates"
-,            "columns": [
+            "theme": "Intermediates",
+            "columns": [
                 {
                     "name": "fid",
                     "dtype": "",
