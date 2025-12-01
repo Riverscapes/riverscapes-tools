@@ -32,6 +32,10 @@ This approach avoids duplication and ensures that any updates to layer definitio
 
 The symlinks allow us to preview the site locally instead of only being part of a build/launch workflow. They are committed to git. The symlinks become real files when the site is built for production, so they work correctly when deployed.
 
+#### Getting symlinks from git
+
+May require `git config --global core.symlinks true`
+
 1. **Regenerate symlinks**  
    From the ./docs folder, run the link_layers.sh script:
    ```sh

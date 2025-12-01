@@ -1,0 +1,29 @@
+---
+title: Data (from json)
+sidebar_position: 3
+---
+import { LayerDefinitionTable } from '@site/src/components/LayerDefinitionTable'
+import { LayerDefinitionByTheme } from '@site/src/components/LayerDefinitionByTheme'
+import { LayerColumnsTable } from '@site/src/components/LayerColumnsTable'
+import { AllLayerColumnsTable } from '@site/src/components/AllLayerColumnsTable'
+
+## Inputs
+<LayerDefinitionTable src="layers/vbet_layer_definitions.json" theme="Inputs"/>
+
+## Data Layers Produced by VBET 
+
+### Intermediates
+<LayerDefinitionTable src="layers/ellie_layer_definitions.json" theme="Intermediates"/>
+
+### Outputs
+
+<LayerDefinitionByTheme src="/layers/ellie_layer_definitions.json" title="VBET Layers"/>
+
+## Output Attributes
+
+### All
+
+<AllLayerColumnsTable 
+  src="/layers/ellie_layer_definitions.json"
+  title="All VBET Layer Attributes"
+/>
