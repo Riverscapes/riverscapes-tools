@@ -13,17 +13,25 @@ import { AllLayerColumnsTable } from '@site/src/components/AllLayerColumnsTable'
 ## Data Layers Produced by VBET 
 
 ### Intermediates
-<LayerDefinitionTable src="layers/ellie_layer_definitions.json" theme="Intermediates"/>
+<LayerDefinitionTable src="layers/vbet_layer_definitions.json" theme="Intermediates"/>
 
 ### Outputs
 
-<LayerDefinitionByTheme src="/layers/ellie_layer_definitions.json" title="VBET Layers"/>
+<LayerDefinitionByTheme src="/layers/vbet_layer_definitions.json" title="VBET Layers"/>
 
 ## Output Attributes
 
-### All
+### VBET DGO Polygons Attributes
 
+<LayerColumnsTable src="/layers/vbet_layer_definitions.json" layerId='VBET_DGO_POLYGONS' />
+
+### VBET IGO (Segmentation Points)
+
+<LayerColumnsTable src="/layers/vbet_layer_definitions.json" layerId='SEGMENTATION_POINTS' />
+
+### All
+ 
 <AllLayerColumnsTable 
-  src="/layers/ellie_layer_definitions.json"
+  src="/layers/vbet_layer_definitions.json"
   title="All VBET Layer Attributes"
-/>
+/> 

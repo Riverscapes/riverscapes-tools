@@ -360,35 +360,135 @@
             "layer_name": "VBET Full Extent",
             "layer_type": "Vector",
             "description": "The full polygonized valley bottom output.",
-            "path": "outputs/vbet.gpkg/vbet_full"
+            "path": "outputs/vbet.gpkg/vbet_full",
+            "columns": [
+                {
+                    "name": "fid",
+                    "friendly_name": "",
+                    "data_unit": "NA",
+                    "description": "Unique identifier for each feature",
+                },
+                {
+                    "name": "id",
+                    "friendly_name": "",
+                    "data_unit": "NA",
+                    "description": "The VBET_ZONE raster value that the feature was polygonized from",
+                },
+                {
+                    "name": "level_path",
+                    "friendly_name": "",
+                    "data_unit": "NA",
+                    "description": "Unique identifier for the stream associated with the valley feature in the NHD dataset from headwater to outlet",
+                }
+            ]
         },
         {
             "layer_id": "VBET_IA",
             "layer_name": "VBET Low lying/Elevated Boundary",
             "layer_type": "Vector",
             "description": "The low-lying valley bottom surface.",
-            "path": "outputs/vbet.gpkg/low_lying_valley_bottom"
+            "path": "outputs/vbet.gpkg/low_lying_valley_bottom",
+            "columns": [
+                {
+                    "name": "fid",
+                    "friendly_name": "",
+                    "data_unit": "NA",
+                    "description": "Unique identifier for each feature",
+                },
+                {
+                    "name": "id",
+                    "friendly_name": "",
+                    "data_unit": "NA",
+                    "description": "The VBET_ZONE raster value that the feature was polygonized from",
+                },
+                {
+                    "name": "level_path",
+                    "friendly_name": "",
+                    "data_unit": "NA",
+                    "description": "Unique identifier for the stream associated with the valley feature in the NHD dataset from headwater to outlet",
+                }
+            ]
         },
         {
             "layer_id": "LOW_LYING_FLOODPLAIN",
             "layer_name": "Low Lying Floodplain",
             "layer_type": "Vector",
             "description": "The low-lying valley bottom surface with the channel not included.",
-            "path": "outputs/vbet.gpkg/low_lying_floodplain"
+            "path": "outputs/vbet.gpkg/low_lying_floodplain",
+            "columns": [
+                {
+                    "name": "fid",
+                    "friendly_name": "",
+                    "data_unit": "NA",
+                    "description": "Unique identifier for each feature",
+                },
+                {
+                    "name": "id",
+                    "friendly_name": "",
+                    "data_unit": "NA",
+                    "description": "The VBET_ZONE raster value that the feature was polygonized from",
+                },
+                {
+                    "name": "level_path",
+                    "friendly_name": "",
+                    "data_unit": "NA",
+                    "description": "Unique identifier for the stream associated with the valley feature in the NHD dataset from headwater to outlet",
+                }
+            ]
         },
         {
             "layer_id": "ELEVATED_FLOODPLAIN",
             "layer_name": "Elevated Floodplain",
             "layer_type": "Vector",
             "description": "The elevated valley bottom surface.",
-            "path": "outputs/vbet.gpkg/elevated_floodplain"
+            "path": "outputs/vbet.gpkg/elevated_floodplain",
+            "columns": [
+                {
+                    "name": "fid",
+                    "friendly_name": "",
+                    "data_unit": "NA",
+                    "description": "Unique identifier for each feature",
+                },
+                {
+                    "name": "id",
+                    "friendly_name": "",
+                    "data_unit": "NA",
+                    "description": "The VBET_ZONE raster value that the feature was polygonized from",
+                },
+                {
+                    "name": "level_path",
+                    "friendly_name": "",
+                    "data_unit": "NA",
+                    "description": "Unique identifier for the stream associated with the valley feature in the NHD dataset from headwater to outlet",
+                }
+            ]
         },
         {
             "layer_id": "FLOODPLAIN",
             "layer_name": "Floodplain",
             "layer_type": "Vector",
             "description": "The low-lying and elevated valley bottom surfaces with the channel not included.",
-            "path": "outputs/vbet.gpkg/floodplain"
+            "path": "outputs/vbet.gpkg/floodplain",
+            "columns": [
+                {
+                    "name": "fid",
+                    "friendly_name": "",
+                    "data_unit": "NA",
+                    "description": "Unique identifier for each feature",
+                },
+                {
+                    "name": "id",
+                    "friendly_name": "",
+                    "data_unit": "NA",
+                    "description": "The VBET_ZONE raster value that the feature was polygonized from",
+                },
+                {
+                    "name": "level_path",
+                    "friendly_name": "",
+                    "data_unit": "NA",
+                    "description": "Unique identifier for the stream associated with the valley feature in the NHD dataset from headwater to outlet",
+                }
+            ]
         },
         {
             "layer_id": "VBET_CENTERLINES",
@@ -402,7 +502,333 @@
             "layer_name": "Segmentation Points",
             "layer_type": "Vector",
             "description": "Integrated Geographic Objects - Points placed at a specified distance interval along the valley centerline. This distance is a function of the average valley width for a given stream.",
-            "path": "outputs/vbet.gpkg/vbet_igos"
+            "path": "outputs/vbet.gpkg/vbet_igos",
+            "columns": [
+                {
+                    "name": "fid",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "NA",
+                    "description": "Unique identifier for each feature",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "level_path",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "NA",
+                    "description": "Unique identifier for each stream in the NHD dataset from headwater to outlet",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "seg_distance",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "m",
+                    "description": "Distance downstream along a given level path of the feature",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "stream_size",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "NA",
+                    "description": "Categorical classification of stream size based on drainage area from 0 small to 4 large",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "FCode",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "NA",
+                    "description": "NHD FCode representing the flow type of the main channel in the riverscape",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "window_size",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "m",
+                    "description": "Search distance used to generate moving windows for metric(i.e., half this distance upstream and downstream)",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "centerline_length",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "m",
+                    "description": "Total valley length of the window",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "window_area",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "m2",
+                    "description": "Area of the window",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "integrated_width",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "m",
+                    "description": "Average width (area/centerline length) of the window",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "low_lying_floodplain_area",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "m2",
+                    "description": "Area of low-lying floodplain surface in the window",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "low_lying_floodplain_proportion",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "unitless",
+                    "description": "Proportion of the window that is low-lying floodplain",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "low_lying_floodplain_itgr_width",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "m",
+                    "description": "Average width (area/centerline length) of low-lying floodplain in the window",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "active_channel_area",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "m",
+                    "description": "area of channel polygon in the window",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "active_channel_proportion",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "unitless",
+                    "description": "Proportion of the window that is channel",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "active_channel_itgr_width",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "m",
+                    "description": "Average width (area/length) of channel in the window",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "elevated_floodplain_area",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "m2",
+                    "description": "Area of elevation floodplain in the window",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "elevated_floodplain_proportion",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "unitless",
+                    "description": "Proportion of the window that is elevated floodplain",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "elevated_floodplain_itgr_width",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "m",
+                    "description": "Average width (area/centerline length) of the elevated floodplain in the window",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "floodplain_area",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "m2",
+                    "description": "Area of floodplain (low-lying + elevated) in the window",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "floodplain_proportion",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "unitless",
+                    "description": "Proportion of the window that is floodplain",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "floodplain_itgr_width",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "m",
+                    "description": "Average width (area/centerline length) of floodplain in the window",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "vb_acreage_per_mile",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "ac/mi",
+                    "description": "Acres of valley bottom per mile of centerline length in the window",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "vb_hectares_per_km",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "ha/km",
+                    "description": "Hectares of valley bottom per kilometer of centerline length in the window",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "low_lying_acreage_per_mile",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "ac/mi",
+                    "description": "Acres of low-lying valley bottom per mile of centerline length in the window",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "low_lying_hectares_per_km",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "ha/km",
+                    "description": "Hectares of low-lying valley bottom per kilomter of centerline length in the window",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "elevated_acreage_per_mile",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "ac/mi",
+                    "description": "Acres of elevated valley bottom per mile of centerline length in the window",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                },
+                {
+                    "name": "elevated_hectares_per_km",
+                    "dtype": "",
+                    "friendly_name": "",
+                    "data_unit": "ha/km",
+                    "description": "Hectares of elevated valley bottom per kilomter of centerline length in the window",
+                    "is_key": false,
+                    "is_required": false,
+                    "theme": "",
+                    "preferred_bin_definition": "",
+                    "default_value": null
+                }
+            ]
         },
         {
             "layer_id": "REPORT",
