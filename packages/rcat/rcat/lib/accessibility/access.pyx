@@ -1,3 +1,4 @@
+from libc.stdio cimport printf
 cimport cython
 import numpy as np
 cimport numpy as np
@@ -22,6 +23,7 @@ def access_algorithm(int[:, :] fdarray, int fd_nd, int[:, :] chan_a, int chan_nd
 
     print(f'x_max: {x_max}, y_max: {y_max}')
     cdef int cells_processed = 0
+    printf('Starting accessibility processing...\n')
     cdef int no_connect = 0
     for row in range(x_max):
         # If we're an even percent done then print a message

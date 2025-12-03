@@ -1,5 +1,10 @@
 [build-system]
-requires = ["setuptools>=68.0", "wheel"]
+requires = [
+    "setuptools>=68.0",
+    "wheel",
+    "Cython>=3.0",
+    "numpy>=1.26",
+]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -38,9 +43,6 @@ dependencies = [
     "rsxml>=2.1.1",
     "geopandas>=1.1.1",
 ]
-
-[tool.setuptools.packages.find]
-where = ["packages", "lib"]
 
 [dependency-groups]
 dev = [
@@ -95,3 +97,20 @@ known_first_party = [
     "taudem",
     "vbet",
 ]
+
+[tool.setuptools.packages.find]
+where = ["packages", "lib"]
+
+[tool.setuptools]
+ext-modules = [
+    { name = "rcat.lib.accessibility.access", sources = ["packages/rcat/rcat/lib/accessibility/access.pyx"], language = "c" }
+]
+cmdclass = { build_ext = "packages.rcat.rcat.lib.accessibility._build_ext.BuildExt" }
+
+[tool.setuptools.package-dir]
+rcat = "packages/rcat/rcat"
+"rcat.lib" = "packages/rcat/rcat/lib"
+"rcat.lib.accessibility" = "packages/rcat/rcat/lib/accessibility"
+
+[tool.setuptools.package-data]
+"rcat.lib.accessibility" = ["*.pyx"]
