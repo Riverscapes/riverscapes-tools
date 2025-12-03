@@ -30,11 +30,7 @@ from rsxml.util import safe_makedirs, parse_metadata
 from rscommons.copy_features import copy_features_fields
 from rscommons.moving_window import moving_window_dgo_ids
 from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions
-
-# TODO: NOT SURE WHY CONFINEMENT IS DEPENDING ON RME HERE? THIS IS VERY STRANGE
-# ===============================================================================
-from rme.shapley_ops import line_segments, select_geoms_by_intersection, cut
-# ===============================================================================
+from rscommons.shapley_ops import line_segments, select_geoms_by_intersection, cut
 
 from confinement.utils.calc_confinement import calculate_confinement, dgo_confinement
 from confinement.utils.continuous_line import continuous_line
