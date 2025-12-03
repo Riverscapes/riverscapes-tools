@@ -10,11 +10,11 @@ const config: Config = {
   favicon: '/img/Consortium.svg', // Path to site favicon
 
   headTags: [
-  {
-    tagName: 'link',
-    attributes: {
-      rel: 'alternate icon',
-      href: '/img/Consortium_64.png',
+    {
+      tagName: 'link',
+      attributes: {
+        rel: 'alternate icon',
+        href: '/img/Consortium_64.png',
         sizes: '64x64',
       },
     },
@@ -53,6 +53,7 @@ const config: Config = {
           sidebarPath: './sidebars.ts', // Path to sidebar config
           routeBasePath: '/', // Serve docs at site root
           editUrl: 'https://github.com/Riverscapes/riverscapes-tools/tree/docs/docs/', // "Edit this page" link
+          showLastUpdateTime: true,
         },
       } satisfies Preset.Options,
     ],
