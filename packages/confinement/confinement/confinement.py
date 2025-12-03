@@ -30,7 +30,7 @@ from rsxml.util import safe_makedirs, parse_metadata
 from rscommons.copy_features import copy_features_fields
 from rscommons.moving_window import moving_window_dgo_ids
 from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions
-from rscommons.shapley_ops import line_segments, select_geoms_by_intersection, cut
+from rscommons.shapely_ops import line_segments, select_geoms_by_intersection, cut
 
 from confinement.utils.calc_confinement import calculate_confinement, dgo_confinement
 from confinement.utils.continuous_line import continuous_line
@@ -81,7 +81,7 @@ LayerTypes = {
 }
 
 
-def confinement(huc: int, flowlines_orig: Path, channel_area_orig: Path, confining_polygon_orig: Path, output_folder: Path, in_hillshade: str, vbet_summary_field: str,
+def confinement(huc: str, flowlines_orig: Path, channel_area_orig: Path, confining_polygon_orig: Path, output_folder: Path, in_hillshade: str, vbet_summary_field: str,
                 confinement_type: str, dgos: str, igos: str, buffer: float = 0.0, segmented_network=None, meta=None):
     """Generate confinement attribute for a stream network
 
