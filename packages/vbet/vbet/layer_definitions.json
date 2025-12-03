@@ -366,19 +366,19 @@
                     "name": "fid",
                     "friendly_name": "",
                     "data_unit": "NA",
-                    "description": "Unique identifier for each feature",
+                    "description": "Unique identifier for each feature"
                 },
                 {
                     "name": "id",
                     "friendly_name": "",
                     "data_unit": "NA",
-                    "description": "The VBET_ZONE raster value that the feature was polygonized from",
+                    "description": "The VBET_ZONE raster value that the feature was polygonized from"
                 },
                 {
                     "name": "level_path",
                     "friendly_name": "",
                     "data_unit": "NA",
-                    "description": "Unique identifier for the stream associated with the valley feature in the NHD dataset from headwater to outlet",
+                    "description": "Unique identifier for the stream associated with the valley feature in the NHD dataset from headwater to outlet"
                 }
             ]
         },
@@ -393,19 +393,19 @@
                     "name": "fid",
                     "friendly_name": "",
                     "data_unit": "NA",
-                    "description": "Unique identifier for each feature",
+                    "description": "Unique identifier for each feature"
                 },
                 {
                     "name": "id",
                     "friendly_name": "",
                     "data_unit": "NA",
-                    "description": "The VBET_ZONE raster value that the feature was polygonized from",
+                    "description": "The VBET_ZONE raster value that the feature was polygonized from"
                 },
                 {
                     "name": "level_path",
                     "friendly_name": "",
                     "data_unit": "NA",
-                    "description": "Unique identifier for the stream associated with the valley feature in the NHD dataset from headwater to outlet",
+                    "description": "Unique identifier for the stream associated with the valley feature in the NHD dataset from headwater to outlet"
                 }
             ]
         },
@@ -420,19 +420,19 @@
                     "name": "fid",
                     "friendly_name": "",
                     "data_unit": "NA",
-                    "description": "Unique identifier for each feature",
+                    "description": "Unique identifier for each feature"
                 },
                 {
                     "name": "id",
                     "friendly_name": "",
                     "data_unit": "NA",
-                    "description": "The VBET_ZONE raster value that the feature was polygonized from",
+                    "description": "The VBET_ZONE raster value that the feature was polygonized from"
                 },
                 {
                     "name": "level_path",
                     "friendly_name": "",
                     "data_unit": "NA",
-                    "description": "Unique identifier for the stream associated with the valley feature in the NHD dataset from headwater to outlet",
+                    "description": "Unique identifier for the stream associated with the valley feature in the NHD dataset from headwater to outlet"
                 }
             ]
         },
@@ -447,19 +447,19 @@
                     "name": "fid",
                     "friendly_name": "",
                     "data_unit": "NA",
-                    "description": "Unique identifier for each feature",
+                    "description": "Unique identifier for each feature"
                 },
                 {
                     "name": "id",
                     "friendly_name": "",
                     "data_unit": "NA",
-                    "description": "The VBET_ZONE raster value that the feature was polygonized from",
+                    "description": "The VBET_ZONE raster value that the feature was polygonized from"
                 },
                 {
                     "name": "level_path",
                     "friendly_name": "",
                     "data_unit": "NA",
-                    "description": "Unique identifier for the stream associated with the valley feature in the NHD dataset from headwater to outlet",
+                    "description": "Unique identifier for the stream associated with the valley feature in the NHD dataset from headwater to outlet"
                 }
             ]
         },
@@ -474,19 +474,19 @@
                     "name": "fid",
                     "friendly_name": "",
                     "data_unit": "NA",
-                    "description": "Unique identifier for each feature",
+                    "description": "Unique identifier for each feature"
                 },
                 {
                     "name": "id",
                     "friendly_name": "",
                     "data_unit": "NA",
-                    "description": "The VBET_ZONE raster value that the feature was polygonized from",
+                    "description": "The VBET_ZONE raster value that the feature was polygonized from"
                 },
                 {
                     "name": "level_path",
                     "friendly_name": "",
                     "data_unit": "NA",
-                    "description": "Unique identifier for the stream associated with the valley feature in the NHD dataset from headwater to outlet",
+                    "description": "Unique identifier for the stream associated with the valley feature in the NHD dataset from headwater to outlet"
                 }
             ]
         },
