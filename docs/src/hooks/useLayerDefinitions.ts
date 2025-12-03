@@ -37,8 +37,9 @@ type State =
   | { status: 'success'; data: LayerDefinitionFile }
   | { status: 'error'; message: string }
 
-// ---- IN-MEMORY CACHE (so only 1 fetch per JSON file) ----
-const cache = new Map<string, LayerDefinitionFile>()
+// ---- PROMISE-AWARE CACHE ----
+type CacheValue = { data?: LayerDefinitionFile; promise?: Promise<LayerDefinitionFile> }
+const cache = new Map<string, CacheValue>()
 
 const normalizeSrc = (src: string) => (src.startsWith('/') ? src : `/${src}`)
 
@@ -49,52 +50,44 @@ export function useLayerDefinitions(src: string): State {
   useEffect(() => {
     let subscribed = true
 
-    async function load() {
-      // Serve from cache immediately
-      if (cache.has(resolvedSrc)) {
-        if (subscribed) {
-          setState({ status: 'success', data: cache.get(resolvedSrc)! })
-        }
-        return
-      }
+    const cacheEntry = cache.get(resolvedSrc)
+    if (cacheEntry?.data) {
+      setState({ status: 'success', data: cacheEntry.data })
+      return
+    }
 
-      setState({ status: 'loading' })
+    setState({ status: 'loading' })
 
-      try {
+    let promise: Promise<LayerDefinitionFile>
+    if (cacheEntry?.promise) {
+      promise = cacheEntry.promise
+    } else {
+      promise = (async () => {
         type FetchLikeResponse = {
           ok: boolean
           status: number
           json: () => Promise<unknown>
         }
-
         type FetchLike = (input: string) => Promise<FetchLikeResponse>
-
         const fetchFn = (globalThis as { fetch?: FetchLike }).fetch
-        if (typeof fetchFn !== 'function') {
-          throw new Error('Global fetch unavailable')
-        }
-
+        if (typeof fetchFn !== 'function') throw new Error('Global fetch unavailable')
         const response = await fetchFn(resolvedSrc)
-        if (!response.ok) {
-          throw new Error(`Failed with status ${response.status}`)
-        }
-
+        if (!response.ok) throw new Error(`Failed with status ${response.status}`)
         const json = (await response.json()) as LayerDefinitionFile
-
-        cache.set(resolvedSrc, json)
-
-        if (subscribed) {
-          setState({ status: 'success', data: json })
-        }
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Unknown error'
-        if (subscribed) {
-          setState({ status: 'error', message: msg })
-        }
-      }
+        cache.set(resolvedSrc, { data: json }) // Store the data
+        return json
+      })()
+      cache.set(resolvedSrc, { promise })
     }
 
-    load()
+    promise
+      .then((json) => {
+        if (subscribed) setState({ status: 'success', data: json })
+      })
+      .catch((err) => {
+        const msg = err instanceof Error ? err.message : 'Unknown error'
+        if (subscribed) setState({ status: 'error', message: msg })
+      })
 
     return () => {
       subscribed = false
