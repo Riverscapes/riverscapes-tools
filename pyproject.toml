@@ -12,7 +12,7 @@ name = "riverscapes-tools"
 version = "0.1.0"
 description = "Riverscapes open source toolchain packaged as a single distribution"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = "~=3.12"
 license = { file = "LICENSE" }
 authors = [
     { name = "North Arrow Research", email = "info@northarrowresearch.com" },
@@ -98,6 +98,8 @@ known_first_party = [
     "vbet",
 ]
 
+# setuptools: ext-modules is causing the error "Additional properties are not allowed ('ext-modules' was unexpected)"
+# We haven't found a way to suppress this error, but the configuration works fine regardless.
 [tool.setuptools.packages.find]
 where = ["packages", "lib"]
 
@@ -106,6 +108,7 @@ ext-modules = [
     { name = "rcat.lib.accessibility.access", sources = ["packages/rcat/rcat/lib/accessibility/access.pyx"], language = "c" }
 ]
 cmdclass = { build_ext = "packages.rcat.rcat.lib.accessibility._build_ext.BuildExt" }
+
 
 [tool.setuptools.package-dir]
 rcat = "packages/rcat/rcat"
