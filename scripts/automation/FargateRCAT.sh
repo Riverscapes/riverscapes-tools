@@ -67,10 +67,11 @@ ANTHRO_DIR=$DATA_DIR/anthro/anthro_$ANTHRO_ID
 VBET_DIR=$DATA_DIR/vbet/vbet_$VBET_ID
 RCAT_DIR=$DATA_DIR/output/rcat
 
-# build cython module and reinstall rcat
-cd /usr/local/src/riverscapes-tools/packages/rcat/rcat/lib/accessibility
-python3 setup.py build_ext --inplace
-cd /usr/local/src/riverscapes-tools
+# RCAT uses Cython scripts that may need to be recompiled
+echo "======================  Rebuild Cython for RCAT ======================="
+uv sync --reinstall
+# Then don't forget to put GDAL back in place
+uv pip install gdal==$(gdal-config --version)
 
 ##########################################################################################
 # First Get RS_Context, taudem, anthro and vbet inputs
