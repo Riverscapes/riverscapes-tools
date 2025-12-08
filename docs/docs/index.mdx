@@ -6,16 +6,14 @@ sidebar_position: 1
 ---
 
 # Riverscapes Network Models
+Rivers form dendritic drainage networks, and segmented, polyline hydrographic networks, are often the basis for modeling rivers at catchment extents. Here we have developed a family of riverscape network models, which model and calculate attributes for polygon riverscape segments. Riverscapes are defined laterally by the valley bottom extents, and are segmented into reach segments (discrete geographic objects -DGOs) that are connected across a riverscape drainage network. 
 
-The [Riverscapes Consortium](https://riverscapes.net) has developed standards for working with riverscapes related data. This site lists network models that conform with these standards and produce data in compliant riverscapes projects. Several of the tools below were developed by Utah State University and North Arrow Research, two of the core developers within the Riverscapes Consortium. These network models are also documented on this site.
+Unlike polyline drainage network models, these models attempt to characterize and quantify attributes (often zonal statistics) representative of the entire valley bottom width (or riverscape). Many of the models in the "waterfall" are hybrid - in that they include characterization of both polyline drainage network model outputs and polygon riverscape network model outputs. 
 
 :::info
-The Riverscapes Consortium is committed to supporting the development of tools that meet the consortium's standards, and to providing a platform for the distribution of these tools. Email support@riverscapes.freshdesk.com if you have a model or tool that you would like listed here.
+While many of the riverscape network model outputs are available for the entire lower 48 of the United States in the [Data Exchange](https://data.riverscapes.net) based on freely available national datasets (e.g. 10 m NED DEM and NHD+HR hydrography), the models themselves are capable of being run with higher resolution, datasets (e.g. high resolution topography like LiDAR and higher fidelity drainage network inputs). 
 :::
 
-Learn more about: [tool grades](https://docs.riverscapes.net/standards/toolStandards/) and [riverscapes standards and compliance](https://docs.riverscapes.net/standards/).
-
-The Riverscapes Consortium uses the Application Readiness Levels to discriminate models. The following list comprises those network models that have been designated as production grade.
 
 <ToolsWrapper
   cardsize="md"
@@ -100,7 +98,7 @@ The Riverscapes Consortium uses the Application Readiness Levels to discriminate
 
 # The Waterfall
 
-The Riverscapes Consortium riverscapes network models listed above can be chained together to create a "waterfall" that produces a riverscapes project. The [Riverscapes Context](/rscontext) model is the first in the waterfall, and it is used to create a series of riverscapes projects focused on different aspects of riverscape health. All models depend on this initial Riverscapes Context project that collects together the prerequisite national datasets for a given watershed. The dependencies of the other tools are shown in the waterfall diagram below.
+The Riverscapes Consortium riverscapes network models listed above can be chained together to create a "waterfall" that produces a riverscapes projects. The [Riverscapes Context](/rscontext) model is the first in the waterfall, and it is used to create a series of riverscapes projects focused on different aspects of riverscape health. All models depend on this initial Riverscapes Context project that collects together the prerequisite national datasets for a given watershed. The dependencies of the other tools are shown in the waterfall diagram below.
 
 The [Riverscapes Metric Engine](/rme) synthesizes metrics from the other tools to create a comprehensive assessment of riverscape health based on Discrete and Integrated Geographic Objects (DGO and IGO respectively).
 
