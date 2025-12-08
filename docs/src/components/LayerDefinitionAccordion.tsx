@@ -11,7 +11,7 @@ interface LayerDefinitionTableProps {
 
 const emptyLayers: LayerDefinition[] = []
 
-export const LayerDefinitionAccordion1: React.FC<LayerDefinitionTableProps> = ({
+export const LayerDefinitionAccordion: React.FC<LayerDefinitionTableProps> = ({
   src,
   title,
   showDescription = true,
@@ -101,18 +101,25 @@ export const LayerDefinitionAccordion1: React.FC<LayerDefinitionTableProps> = ({
           <details
             key={layer.layer_id ?? `${layer.layer_name}-${index}`}
             open={openIndexes.has(index)}
-            onClick={(e) => {
-              e.preventDefault()
-              handleToggle(index)
-            }}
             style={{
               width: '100%',
               borderBottom: '1px solid #eee',
               paddingBottom: '0.75rem',
-              cursor: 'pointer',
             }}
           >
-            <summary style={{ fontWeight: 500, minWidth: 180, userSelect: 'none' }}>{layer.layer_name ?? '—'}</summary>
+            <summary
+              onClick={(e) => {
+                e.preventDefault()
+                handleToggle(index)
+              }}
+              style={{
+                cursor: 'pointer',
+                minWidth: 180,
+                userSelect: 'none',
+              }}
+            >
+              {layer.layer_name ?? '—'}
+            </summary>
             <div style={{ marginTop: '0.5rem', marginLeft: '2rem' }}>
               <p>
                 <strong>Layer ID:</strong> {layer.layer_id ?? '—'}
