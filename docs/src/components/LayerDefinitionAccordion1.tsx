@@ -62,7 +62,7 @@ export const LayerDefinitionAccordion1: React.FC<LayerDefinitionTableProps> = ({
     <div className="layer-definition-list">
       {title && <Heading as="h3">{title}</Heading>}
 
-      <div style={{ marginBottom: '1rem' }}>
+      <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
         <a
           href="#"
           onClick={(e) => {
@@ -102,7 +102,6 @@ export const LayerDefinitionAccordion1: React.FC<LayerDefinitionTableProps> = ({
             key={layer.layer_id ?? `${layer.layer_name}-${index}`}
             open={openIndexes.has(index)}
             onClick={(e) => {
-              // Prevent summary click from toggling twice
               e.preventDefault()
               handleToggle(index)
             }}
