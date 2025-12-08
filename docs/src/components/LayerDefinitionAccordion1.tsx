@@ -55,22 +55,45 @@ export const LayerDefinitionAccordion1: React.FC<LayerDefinitionTableProps> = ({
     })
   }
 
-  const allOpen = openIndexes.size === layers.length
-
-  const toggleAll = () => {
-    if (allOpen) {
-      setOpenIndexes(new Set())
-    } else {
-      setOpenIndexes(new Set(layers.map((_, idx) => idx)))
-    }
-  }
+  const expandAll = () => setOpenIndexes(new Set(layers.map((_, idx) => idx)))
+  const collapseAll = () => setOpenIndexes(new Set())
 
   return (
     <div className="layer-definition-list">
       {title && <Heading as="h3">{title}</Heading>}
 
       <div style={{ marginBottom: '1rem' }}>
-        <button onClick={toggleAll}>{allOpen ? 'Collapse All' : 'Expand All'}</button>
+        <a
+          href="#"
+          onClick={(e) => {
+            e.preventDefault()
+            expandAll()
+          }}
+          style={{
+            color: '#0969da',
+            textDecoration: 'underline',
+            cursor: 'pointer',
+            marginRight: '1rem',
+            fontSize: '1rem',
+          }}
+        >
+          Expand All
+        </a>
+        <a
+          href="#"
+          onClick={(e) => {
+            e.preventDefault()
+            collapseAll()
+          }}
+          style={{
+            color: '#0969da',
+            textDecoration: 'underline',
+            cursor: 'pointer',
+            fontSize: '1rem',
+          }}
+        >
+          Collapse All
+        </a>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}>
