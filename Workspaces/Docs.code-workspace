@@ -23,5 +23,10 @@
       "DavidAnson.vscode-markdownlint"
     ]
   },
-  "terminal.integrated.defaultProfile.linux": "zsh"
+  "settings": {
+    "editor.tabSize": 2,
+    "editor.codeActionsOnSave": {
+      "source.fixAll.eslint": "explicit"
+    },    
+  }
 }
