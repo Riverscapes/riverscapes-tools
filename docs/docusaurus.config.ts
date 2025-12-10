@@ -96,7 +96,7 @@ const config: Config = {
     },
 
     navbar: {
-      title: 'Riverscapes Tools', // Navbar title
+      title: 'Riverscapes Network Models', // Navbar title
       logo: {
         alt: 'Riverscapes Tools Logo', // Logo alt text
         src: 'img/logo.svg', // Logo image path
