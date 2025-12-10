@@ -9,6 +9,7 @@
             "layer_type": "Raster",
             "path": "inputs/dem.tif",
             "theme": "Inputs",
+            "source_title": "Riverscapes Context",
             "source_url": "https://tools.riverscapes.net/rscontext/data/#DEM"
         },
         {
@@ -17,6 +18,7 @@
             "layer_type": "Raster",
             "path": "inputs/slope.tif",
             "theme": "Inputs",
+            "source_title": "Riverscapes Context",
             "source_url": "https://tools.riverscapes.net/rscontext/data/#SLOPE"
         },
         {
@@ -25,6 +27,7 @@
             "layer_type": "Raster",
             "path": "inputs/dem_hillshade.tif",
             "theme": "Inputs",
+            "source_title": "Riverscapes Context",
             "source_url": "https://tools.riverscapes.net/rscontext/data/#HILLSHADE"
         },
         {
@@ -39,6 +42,7 @@
             "layer_type": "Vector",
             "path": "inputs/vbet_inputs.gpkg/network_intersected",
             "theme": "Inputs",
+            "source_title": "Riverscapes Context",
             "source_url": "https://tools.riverscapes.net/rscontext/data/#NETWORK_INTERSECTION"
         },
         {
@@ -47,6 +51,7 @@
             "layer_type": "Vector",
             "path": "inputs/vbet_inputs.gpkg/channel_area_polygons",
             "theme": "Inputs",
+            "source_title": "Channel Area Tool",
             "source_url": "https://tools.riverscapes.net/channelarea/data/#CHANNEL_AREA"
         },
         {
@@ -54,12 +59,16 @@
             "layer_name": "TauDEM Pitfill",
             "layer_type": "Raster",
             "path": "intermediates/pitfill.tif",
+            "source_title": "TauDEM",
+            "source_url": "https://tools.riverscapes.net/taudem/data/#PITFILL",
             "theme": "Intermediates"
         },
         {
             "layer_id": "DINFFLOWDIR_ANG",
             "layer_name": "TauDEM D-Inf Flow Directions",
             "layer_type": "Raster",
+            "source_title": "TauDEM",
+            "source_url": "https://tools.riverscapes.net/taudem/data/#DINFFLOWDIR_ANG",
             "path": "intermediates/dinfflowdir_ang.tif",
             "theme": "Intermediates"
         },
@@ -67,6 +76,8 @@
             "layer_id": "DINFFLOWDIR_SLP",
             "layer_name": "TauDEM D-Inf Flow Directions Slope",
             "layer_type": "Raster",
+            "source_title": "TauDEM",
+            "source_url": "https://tools.riverscapes.net/taudem/data/#DINFFLOWDIR_SLP",
             "path": "intermediates/dinfflowdir_slp.tif",
             "theme": "Intermediates"
         },
