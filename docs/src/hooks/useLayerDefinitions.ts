@@ -22,6 +22,7 @@ export interface LayerDefinition {
   theme?: string
   description?: string
   source_url?: string
+  source_title?: string
   columns?: LayerColumn[]
 }
 

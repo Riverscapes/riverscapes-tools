@@ -131,7 +131,10 @@ export const LayerDefinitionAccordion: React.FC<LayerDefinitionTableProps> = ({
                 <strong>Path:</strong> {layer.path ? <code>{layer.path}</code> : '—'}
               </p>
               <p>
-                <strong>Source:</strong>{' '}
+                <strong>Source Title:</strong> {layer.source_title ?? '—'}
+              </p>
+              <p>
+                <strong>Source URL:</strong>{' '}
                 {layer.source_url ? (
                   <a href={layer.source_url} target="_blank" rel="noopener noreferrer">
                     {layer.source_url}
