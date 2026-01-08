@@ -6,13 +6,22 @@ sidebar_position: 1
 ---
 
 
-The Riverscapes Context Tool provides watershed-scale, ready-to-use contextual data, optimized for use with other Riverscapes tools. 
+The Riverscapes Context Tool provides watershed-scale, ready-to-use contextual data, optimized for use with other Riverscapes tools.
 
-It gathers key nationally available datasets, processes them for an area of interest, and organizes them into a Riverscapes project. Instead of manually retrieving datasets from multiple sources, mosaicking DEM tiles, or clipping data to watershed boundaries—all of which can introduce errors—the Riverscapes Context Tool automates the process. 
+It gathers key nationally available datasets, processes them for an area of interest, and organizes them into a Riverscapes project. Instead of manually retrieving datasets from multiple sources, mosaicking DEM tiles, or clipping data to watershed boundaries—all of which can introduce errors—the Riverscapes Context Tool automates the process.
 
-The resulting data can be used directly or as inputs to other Riverscapes tools, ensuring consistency across projects and saving significant setup time. 
+The resulting data can be used directly or as inputs to other Riverscapes tools, ensuring consistency across projects and saving significant setup time.
 
-See the [Data section](./data) for a complete listing of the layers produced for the United States Riverscapes Context tool. 
+## How to Get RSContext Data
+
+There are two ways to get RSContext data for your watershed:
+
+| Approach | Best for | What's involved |
+|----------|----------|-----------------|
+| **Download a pre-built project** | Most users | Browse the [Data Exchange](https://data.riverscapes.net), find your watershed, download. Ready to use. |
+| **Run RSContext locally** | Developers, new watersheds, custom runs | Download ~50-100GB of national datasets once, then generate projects for any HUC. See [Running Locally](./running-locally). |
+
+See [Data](./data) for a complete listing of the layers included in RSContext projects.
 
 ## Resources
 
@@ -24,7 +33,7 @@ See the [Data section](./data) for a complete listing of the layers produced for
       toolUrl: "https://data.riverscapes.net/s?type=Project&projectTypeId=rscontext&view=map&geo=56.915746141861376%2C11.171228562178229%2C1.0160873547098384",
       logoUrl: "https://cdn.riverscapes.net/icons/products/data-exchange/data-exchange.svg",
     },
-  
+
     {
       title: "Latest Version Change Log",
       description: "Release notes tracking changes, bug fixes and issues.",
