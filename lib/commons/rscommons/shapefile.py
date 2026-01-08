@@ -516,15 +516,32 @@ def copy_feature_class_shapefile(inpath, epsg, outpath, intersect_shape=None, cl
     # Note that this makes the subsequent intersection process a lot more
     # performant because the SetSaptialFilter() uses the ShapeFile's spatial
     # index which is much faster than manually checking if all pairs of features intersect.
+    #
+    # SetSpatialFilter() expects geometry in the input layer's CRS,
+    # but intersect_shape/clip_shape are in the output EPSG. We need to transform
+    # them to the input CRS for the spatial filter to work correctly.
+    reverse_transform = None
+    if intersect_shape or clip_shape:
+        outSpatialRefTemp = osr.SpatialReference()
+        outSpatialRefTemp.ImportFromEPSG(int(epsg))
+        outSpatialRefTemp.SetAxisMappingStrategy(inSpatialRef.GetAxisMappingStrategy())
+        reverse_transform = osr.CoordinateTransformation(outSpatialRefTemp, inSpatialRef)
+
     intersect_geom = None
     if intersect_shape:
-        intersect_geom = ogr.CreateGeometryFromWkb(intersect_shape.wkb)
-        inLayer.SetSpatialFilter(intersect_geom)
+        # Transform to input CRS for spatial filter
+        intersect_geom_filter = ogr.CreateGeometryFromWkb(intersect_shape.wkb)
+        intersect_geom_filter.Transform(reverse_transform)
+        inLayer.SetSpatialFilter(intersect_geom_filter)
 
     clip_geom = None
     if clip_shape:
+        # Keep clip_geom in output EPSG for intersection operation later
         clip_geom = ogr.CreateGeometryFromWkb(clip_shape.wkb)
-        inLayer.SetSpatialFilter(clip_geom)
+        # Transform a copy to input CRS for spatial filter only
+        clip_geom_filter = ogr.CreateGeometryFromWkb(clip_shape.wkb)
+        clip_geom_filter.Transform(reverse_transform)
+        inLayer.SetSpatialFilter(clip_geom_filter)
 
     outpath_dir = os.path.dirname(outpath)
     safe_makedirs(outpath_dir)
