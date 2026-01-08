@@ -37,11 +37,11 @@ Hillshade raster generated using the [gdal_dem](https//gdal.org/programs/gdaldem
 
 <h2><a name="HDIST">Historic Disturbance</a></h2>
 
-[LandFire](https//landfire.gov) Historic Disturbance (HDst) raster: The latest 10 years of Annual Disturbance products are used to identify disturbance year, type, and severity. Starting with LF Remap, HDist replaces VDist from previous LF versions incorporating pre-disturbance vegetation logic (based on disturbance year and vegetation type). The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes project extent.
+[LandFire](https//landfire.gov) Historic Disturbance (HDist) raster: The latest 10 years of Annual Disturbance products are used to identify disturbance year, type, and severity. Starting with LF Remap, HDist replaces VDist from previous LF versions incorporating pre-disturbance vegetation logic (based on disturbance year and vegetation type). The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes project extent.
 
 <h2><a name="FDIST">Fuel Disturbance</a></h2>
 
-[LandFire](https//landfire.gov) Fuel Disturbance (FDst) raster: The latest 10 years of Annual Disturbance products representing disturbance year and original disturbance code. FDist was a refinement of VDist in LF 1.x products and is a refinement of Historical Disturbance in LF Remap to more accurately represent disturbance scenarios within the fuels environment. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes project extent.
+[LandFire](https//landfire.gov) Fuel Disturbance (FDist) raster: The latest 10 years of Annual Disturbance products representing disturbance year and original disturbance code. FDist was a refinement of VDist in LF 1.x products and is a refinement of Historical Disturbance in LF Remap to more accurately represent disturbance scenarios within the fuels environment. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes project extent.
 
 <h2><a name="FCCS">Fuel Characteristic Classification System</a></h2>
 
@@ -57,13 +57,13 @@ Hillshade raster generated using the [gdal_dem](https//gdal.org/programs/gdaldem
 
 <h2><a name="SCLASS">Succession Classes</a></h2>
 
-[LandFire](https//landfire.gov) SCla raster: Current vegetation conditions with respect to vegetation species composition, cover, and height ranges of successional states occurring within each biophysical setting. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes project extent.
+[LandFire](https//landfire.gov) SClass raster: Current vegetation conditions with respect to vegetation species composition, cover, and height ranges of successional states occurring within each biophysical setting. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes project extent.
 
 ## Land Management
 
 <h2><a name="Ownership">Land Ownership</a></h2>
 
-Land ownership obtained from the [Bureau of Management (BLM) Land Surface Agency](https//catalog.data.gov/dataset/blm-national-surface-management-agency-area-polygons-national-geospatial-data-asset-ngda). A single ShapeFile was downloaded and then pre-processed to remove invalid geometries and other irregularities.
+Land ownership obtained from the [Bureau of Land Management (BLM) Surface Management Agency](https://gbp-blm-egis.hub.arcgis.com/datasets/6bf2e737c59d4111be92420ee5ab0b46/about). A single geodatabase was downloaded and then converted to shapefile, pre-processed to remove invalid geometries and other irregularities.
 
 <h2><a name="FAIRMARKETVALUE">Fair Market Value</a></h2>
 
