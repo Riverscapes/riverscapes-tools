@@ -16,7 +16,7 @@ The geospatial layers that the tool collects are:
   - Existing vegetation (class, name) from which an existing riparian layer is derived
   - Historic vegetation (name) from which a historic riparian layer is derived
 - **Land Management**:
-  - Land ownership/agency from [BLM Land Surface Management Agency Polygons](https://landscape.blm.gov/geoportal/catalog/search/resource/details.page?uuid=%7B2A8B8906-7711-4AF7-9510-C6C7FD991177%7D)
+  - Land ownership/agency from [BLM Surface Management Agency](https://gbp-blm-egis.hub.arcgis.com/datasets/6bf2e737c59d4111be92420ee5ab0b46/about)
   - Fair market value from [PLACES Lab](https://placeslab.org/fmv_usa/), Department of Earth & Environment, Boston University
 - **Ecoregions**:
   - level 1, 2, and 3 Ecoregions from the [EPA](https://www.epa.gov/eco-research/ecoregions)
