@@ -3,6 +3,10 @@ title: Data
 position: 3
 ---
 
+This page describes the **output layers** produced by RSContext for a given watershed. These are the datasets you'll find in a completed RSContext project, whether you [download a pre-built project](https://data.riverscapes.net) or [run RSContext locally](./running-locally).
+
+RSContext takes national-scale datasets, clips them to your watershed boundary, and packages them into a standardized Riverscapes project. The layers below are derived from publicly available sources, processed and organized for use with other Riverscapes tools.
+
 :::info
 This documentation describes the RSContext model as implemented for the **United States**. Similar models exist for other regions, such as New Zealand, France, and Italy. While the overarching concept—retrieving publicly available river-related data—is consistent across jurisdictions, the specific algorithms are tailored to each country to accommodate differences in government data providers.
 :::
@@ -43,11 +47,11 @@ Hillshade raster generated using the [gdal_dem](https://gdal.org/programs/gdalde
 
 <h3><a name="HDIST">Historic Disturbance</a></h3>
 
-[LandFire](https://landfire.gov) Historic Disturbance (HDst) raster: The latest 10 years of Annual Disturbance products are used to identify disturbance year, type, and severity. Starting with LF Remap, HDist replaces VDist from previous LF versions incorporating pre-disturbance vegetation logic (based on disturbance year and vegetation type). The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes project extent.
+[LandFire](https://landfire.gov) Historic Disturbance (HDist) raster: The latest 10 years of Annual Disturbance products are used to identify disturbance year, type, and severity. Starting with LF Remap, HDist replaces VDist from previous LF versions incorporating pre-disturbance vegetation logic (based on disturbance year and vegetation type). The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes project extent.
 
 <h3><a name="FDIST">Fuel Disturbance</a></h3>
 
-[LandFire](https://landfire.gov) Fuel Disturbance (FDst) raster: The latest 10 years of Annual Disturbance products representing disturbance year and original disturbance code. FDist was a refinement of VDist in LF 1.x products and is a refinement of Historical Disturbance in LF Remap to more accurately represent disturbance scenarios within the fuels environment. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes project extent.
+[LandFire](https://landfire.gov) Fuel Disturbance (FDist) raster: The latest 10 years of Annual Disturbance products representing disturbance year and original disturbance code. FDist was a refinement of VDist in LF 1.x products and is a refinement of Historical Disturbance in LF Remap to more accurately represent disturbance scenarios within the fuels environment. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes project extent.
 
 <h3><a name="FCCS">Fuel Characteristic Classification System</a></h3>
 
@@ -63,7 +67,7 @@ Hillshade raster generated using the [gdal_dem](https://gdal.org/programs/gdalde
 
 <h3><a name="SCLASS">Succession Classes</a></h3>
 
-[LandFire](https://landfire.gov) SCla raster: Current vegetation conditions with respect to vegetation species composition, cover, and height ranges of successional states occurring within each biophysical setting. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes project extent.
+[LandFire](https://landfire.gov) SClass raster: Current vegetation conditions with respect to vegetation species composition, cover, and height ranges of successional states occurring within each biophysical setting. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes project extent.
 
 ---
 
@@ -81,7 +85,7 @@ Hillshade raster generated using the [gdal_dem](https://gdal.org/programs/gdalde
 
 <h3><a name="OWNERSHIP"></a> <a name="Ownership">Land Ownership</a></h3>
 
-Land ownership obtained from the [Bureau of Management (BLM) Land Surface Agency](https://catalog.data.gov/dataset/blm-national-surface-management-agency-area-polygons-national-geospatial-data-asset-ngda). A single ShapeFile was downloaded and then pre-processed to remove invalid geometries and other irregularities.
+Land ownership obtained from the [Bureau of Land Management (BLM) Surface Management Agency](https://gbp-blm-egis.hub.arcgis.com/datasets/6bf2e737c59d4111be92420ee5ab0b46/about). A single geodatabase was downloaded and then converted to shapefile, pre-processed to remove invalid geometries and other irregularities.
 
 <h3><a name="FAIRMARKETVALUE">Fair Market Value</a></h3>
 

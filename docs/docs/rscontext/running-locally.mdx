@@ -1,0 +1,304 @@
+---
+title: Running Locally
+position: 4
+description: How to download and set up national datasets for running Riverscapes Context locally
+---
+
+# Running RSContext Locally
+
+:::tip Most users don't need this page
+If you just want to **use** Riverscapes Context data for your watershed, download a pre-built project from the [Riverscapes Data Exchange](https://data.riverscapes.net). The steps below are only needed if you want to **run RSContext yourself** to generate new projects.
+:::
+
+This guide explains how to set up your environment to run RSContext locally. RSContext takes national-scale datasets as inputs and clips/processes them for a specific watershed (HUC). You download these large datasets once, then reuse them for any watershed you want to process.
+
+**The workflow is:**
+1. Download national datasets (this page) → one-time setup
+2. Run RSContext for your HUC → clips national data to your watershed
+3. Use the outputs → described in [Data](./data)
+
+:::info
+This guide covers US datasets. Other regions (New Zealand, Italy, France) have different data sources and are covered in their respective tool documentation.
+:::
+
+## Prerequisites Overview
+
+Running RSContext requires several national datasets totaling **50-100+ GB**. These are the **input** datasets that RSContext will clip and process for your specific watershed. You download them once and reuse them across multiple HUC analyses.
+
+## Folder Structure
+
+Set up your data directories with this structure:
+
+```
+NATIONAL_PROJECT/                    # National datasets (download once)
+├── landfire/
+│   └── 240/                         # Pass this folder path to rscontext
+│       ├── LC23_EVT_240.tif         # Existing vegetation (LF 2023)
+│       ├── LC20_BPS_220.tif         # Historic vegetation (LF 2020)
+│       ├── LC23_EVC_240.tif         # Vegetation cover
+│       ├── LC23_EVH_240.tif         # Vegetation height
+│       └── ...                      # Other LANDFIRE layers (see table below)
+├── ownership/
+│   ├── surface_management_agency.shp
+│   └── FairMarketValue.tif
+├── ecoregions/
+│   └── us_eco_l4.shp
+├── political_boundaries/
+│   ├── states.shp                   # or cb_YYYY_us_state_500k.shp
+│   └── counties.shp                 # or cb_YYYY_us_county_500k.shp
+├── geology/
+│   └── SGMC_Geology.shp
+└── prism/                           # Climate data - pass this folder path
+    └── *.bil                        # PRISM BIL format rasters
+
+DATA_ROOT/                           # Working data
+├── national_dams/
+│   └── usace_national_dams.gpkg     # National Inventory of Dams
+├── nhd/
+│   └── nhdplusv2.gpkg               # NHDPlus V2 (1:100,000)
+└── rs_context/                      # Output projects
+    └── <HUC_ID>/
+
+DOWNLOAD_FOLDER/                     # Temporary download cache
+```
+
+## Environment Variables
+
+Create a `.env` file in each package directory (or your shell config):
+
+```bash
+NATIONAL_PROJECT=/path/to/NationalDatasets
+DATA_ROOT=/path/to/data
+DOWNLOAD_FOLDER=/path/to/downloads
+```
+
+## Required Input Datasets
+
+The following national datasets must be downloaded and organized before running RSContext. Each section includes download links and setup instructions.
+
+### 1. Vegetation Data (LANDFIRE)
+
+LANDFIRE provides vegetation rasters for the entire US. RSContext expects a **folder** containing these rasters with specific filenames.
+
+**Required files and versions:**
+
+| Dataset | Description | Expected Filename | Download Version |
+|---------|-------------|-------------------|------------------|
+| **EVT** (Existing Vegetation Type) | Current vegetation | `LC23_EVT_240.tif` | LF 2023 |
+| **BPS** (Biophysical Settings) | Historic/potential vegetation | `LC20_BPS_220.tif` | LF 2020 |
+| **EVC** (Existing Vegetation Cover) | Canopy cover percentage | `LC23_EVC_240.tif` | LF 2023 |
+| **EVH** (Existing Vegetation Height) | Vegetation height | `LC23_EVH_240.tif` | LF 2023 |
+| **HDist** (Historic Disturbance) | Disturbance history | `LC23_HDist_240.tif` | LF 2023 |
+| **FDist** (Fuel Disturbance) | Fuel disturbance | `LC23_FDist_240.tif` | LF 2023 |
+| **FCCS** (Fuel Classification) | Fuel characteristics | `LC23_FCCS_240.tif` | LF 2023 |
+| **VCC** (Vegetation Condition) | Vegetation condition class | `LC23_VCC_240.tif` | LF 2023 |
+| **VDep** (Vegetation Departure) | Departure from historic | `LC23_VDep_240.tif` | LF 2023 |
+| **SClass** (Succession Classes) | Succession class | `LC23_SClass_240.tif` | LF 2023 |
+
+:::caution Different versions required
+BPS (Biophysical Settings) represents historic/potential vegetation and is only updated periodically - LF 2020 is currently the latest available. All other products use LF 2023. This is intentional - see `LANDFIRE_INPUTS` in `rs_context.py` for the authoritative list of expected filenames.
+:::
+
+**Download:**
+1. Go to [LANDFIRE Full Extent Downloads](https://landfire.gov/data/FullExtentDownloads?field_region_id_target_id=4) (filtered to CONUS)
+2. Download each product at the version specified in the table above
+3. Extract all zip files to `NATIONAL_PROJECT/landfire/240/`
+4. Rename the extracted `.tif` files to match the expected filenames
+
+**Renaming example:**
+The downloaded zip extracts to a file like `LC23_EVT_240.tif` - this should already match the expected name. If names differ, rename to match the "Expected Filename" column above.
+
+```bash
+# Example: if extracted file has a different name
+mv "LF2023_EVT_240_CONUS/LC23_EVT_240.tif" LC23_EVT_240.tif
+```
+
+:::tip Checking expected filenames
+The expected LANDFIRE filenames are defined in `packages/rscontext/rscontext/rs_context.py` in the `LANDFIRE_INPUTS` dictionary at the top of the file. When LANDFIRE releases new versions, that config will be updated.
+:::
+
+---
+
+### 2. Land Ownership
+
+**Surface Management Agency:**
+1. Go to [BLM National Surface Management Agency](https://gbp-blm-egis.hub.arcgis.com/datasets/6bf2e737c59d4111be92420ee5ab0b46/about) or use the [direct download link](https://www.arcgis.com/sharing/rest/content/items/6bf2e737c59d4111be92420ee5ab0b46/data)
+2. Download the geodatabase
+3. Convert to shapefile:
+
+```bash
+ogr2ogr -f "ESRI Shapefile" \
+  $NATIONAL_PROJECT/ownership/surface_management_agency.shp \
+  /path/to/SMA_WM.gdb SurfaceManagementAgency \
+  -t_srs 'EPSG:4269' \
+  -select 'ADMIN_AGENCY_CODE'
+```
+
+**Fair Market Value:**
+1. Go to [PLACES Lab - US Land Values](https://placeslab.org/fmv_usa/)
+2. Or direct from [Dryad Dataset](https://datadryad.org/stash/dataset/doi:10.5061/dryad.np5hqbzq9)
+3. Download `places_fmv_pnas_dryad.zip`
+4. Extract to `NATIONAL_PROJECT/ownership/FairMarketValue.tif`
+
+---
+
+### 3. Ecoregions
+
+1. Go to [EPA Ecoregions](https://www.epa.gov/eco-research/level-iii-and-iv-ecoregions-continental-united-states)
+2. Download the Level IV ecoregions shapefile (includes Level III)
+3. Extract to `NATIONAL_PROJECT/ecoregions/` (file will be `us_eco_l4.shp`)
+
+---
+
+### 4. Political Boundaries
+
+**State and County boundaries from US Census Bureau:**
+
+1. Go to [Census Bureau Cartographic Boundary Files](https://www.census.gov/geographies/mapping-files/time-series/geo/cartographic-boundary.html)
+2. Download the latest year's 500k resolution shapefiles:
+   - States: `cb_YYYY_us_state_500k.zip`
+   - Counties: `cb_YYYY_us_county_500k.zip`
+3. Extract to `NATIONAL_PROJECT/political_boundaries/`
+
+:::tip
+Use the most recent year available. The filenames include the year (e.g., `cb_2024_us_state_500k.shp`).
+:::
+
+---
+
+### 5. Climate Data (PRISM)
+
+1. Go to [PRISM Climate Group](https://prism.oregonstate.edu/)
+2. Download precipitation normals at 800m resolution
+3. Place in `NATIONAL_PROJECT/prism/`
+
+---
+
+### 6. Geology
+
+1. Go to [USGS State Geologic Map Compilation](https://www.sciencebase.gov/catalog/item/5888bf4fe4b05ccb964bab9a)
+2. Download `SGMC_Geology.zip`
+3. Extract to `NATIONAL_PROJECT/geology/`
+
+---
+
+### 7. National Dams
+
+The USACE National Inventory of Dams is required.
+
+1. Go to [USACE National Inventory of Dams](https://nid.sec.usace.army.mil/)
+2. Download the national dataset
+3. Convert to GeoPackage and place at `DATA_ROOT/national_dams/usace_national_dams.gpkg`
+
+---
+
+### 8. NHDPlus V2 (1:100,000)
+
+RSContext requires the NHDPlus V2 dataset (medium resolution, 1:100,000 scale). This is **not** auto-downloaded.
+
+1. Go to [EPA NHDPlus](https://www.epa.gov/waterdata/nhdplus-national-hydrography-dataset-plus)
+2. Download the NHDPlusV2 data for your region
+3. Convert to GeoPackage and place at `DATA_ROOT/nhd/nhdplusv2.gpkg`
+
+:::info
+RSContext also downloads NHDPlus HR (high resolution, 1:24,000) automatically for each HUC during processing. But the V2 dataset above is a required input.
+:::
+
+---
+
+## Verification Checklist
+
+Before running rscontext, verify you have:
+
+- [ ] LANDFIRE folder with vegetation rasters (EVT, BPS, EVC, EVH, etc.)
+- [ ] Surface management agency shapefile
+- [ ] Fair market value raster
+- [ ] Ecoregions shapefile (`us_eco_l4.shp`)
+- [ ] State boundaries shapefile
+- [ ] County boundaries shapefile
+- [ ] Geology shapefile (SGMC)
+- [ ] PRISM folder with climate data (BIL format)
+- [ ] National dams GeoPackage
+- [ ] NHDPlusV2 GeoPackage
+- [ ] Environment variables set (NATIONAL_PROJECT, DATA_ROOT, DOWNLOAD_FOLDER)
+
+---
+
+## Finding Your Watershed (HUC)
+
+To find the HUC code for your area of interest:
+
+1. Go to [USGS Watershed Boundary Dataset](https://water.usgs.gov/wsc/map_index.html)
+2. Click on the map to find your watershed
+3. Note the HUC code (8 or 10 digit)
+
+Common test HUCs:
+- `17060304` - Asotin Creek, WA (small, good for testing)
+- `17100202` - Example from documentation
+
+---
+
+## Running with VS Code
+
+The easiest way to run RSContext is using the pre-configured VS Code launch configuration.
+
+1. Create a `.env` file in `packages/rscontext/` with your paths:
+
+```bash
+NATIONAL_PROJECT=/path/to/NationalDatasets
+DATA_ROOT=/path/to/data
+DOWNLOAD_FOLDER=/path/to/downloads
+```
+
+2. Open `packages/rscontext` in VS Code
+3. Press F5 or use **Run > Start Debugging**
+4. Select the "RS Context" configuration
+5. Enter a HUC ID when prompted (e.g., `17060304` for Asotin Creek)
+
+The launch configuration reads paths from your `.env` file and passes all required arguments automatically.
+
+---
+
+## Running from Command Line
+
+You can also run RSContext directly from the terminal. This requires passing all arguments in order:
+
+```bash
+source .venv/bin/activate
+cd packages/rscontext
+
+python -m rscontext.rs_context <HUC_ID> \
+  $NATIONAL_PROJECT/landfire/240 \
+  $NATIONAL_PROJECT/ownership/surface_management_agency.shp \
+  $NATIONAL_PROJECT/ownership/FairMarketValue.tif \
+  $NATIONAL_PROJECT/ecoregions/us_eco_l4.shp \
+  $NATIONAL_PROJECT/political_boundaries/<states_shapefile>.shp \
+  $NATIONAL_PROJECT/political_boundaries/<counties_shapefile>.shp \
+  $NATIONAL_PROJECT/geology/SGMC_Geology.shp \
+  $NATIONAL_PROJECT/prism \
+  $DATA_ROOT/national_dams/usace_national_dams.gpkg \
+  $DATA_ROOT/nhd/nhdplusv2.gpkg \
+  $DATA_ROOT/rs_context/<HUC_ID> \
+  $DOWNLOAD_FOLDER \
+  --verbose
+```
+
+:::note
+Replace `<states_shapefile>` and `<counties_shapefile>` with the actual filenames you downloaded (e.g., `cb_2024_us_state_500k`).
+:::
+
+**Arguments in order:**
+1. HUC ID (e.g., `17060304`)
+2. LANDFIRE folder
+3. Ownership shapefile
+4. Fair market value raster
+5. Ecoregions shapefile
+6. States shapefile
+7. Counties shapefile
+8. Geology shapefile
+9. PRISM folder
+10. National dams GeoPackage
+11. NHDPlusV2 GeoPackage
+12. Output folder
+13. Download/temp folder
+
