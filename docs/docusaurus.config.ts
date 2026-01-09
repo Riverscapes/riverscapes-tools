@@ -7,7 +7,7 @@ import type * as Preset from '@docusaurus/preset-classic'
 const config: Config = {
   title: 'Riverscapes Network Models', // Site title displayed in the browser tab
   tagline: 'Homepage for Riverscapes Network Models documentation', // Short description shown in meta tags
-  favicon: '/img/Consortium.svg', // Path to site favicon
+  favicon: 'https://cdn.riverscapes.net/icons/consortium/consortium.svg', // Path to site favicon
 
   headTags: [
     {
@@ -99,7 +99,7 @@ const config: Config = {
       title: 'Riverscapes Network Models', // Navbar title
       logo: {
         alt: 'Riverscapes Tools Logo', // Logo alt text
-        src: 'img/logo.svg', // Logo image path
+        src: 'https://cdn.riverscapes.net/icons/consortium/consortium.svg', // Logo image path
       },
       items: [
         // {
