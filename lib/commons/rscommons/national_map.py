@@ -131,7 +131,7 @@ def _get_urls(params: Dict[str, str]):
 
     items = TNM.get_items(params)
 
-    if items['error'] and items['error'] is not None:
+    if items.get('error') is not None:
         log.error(f'TNM API error: {items["error"]}')
         raise Exception(f'TNM API error: {items["error"]}')
 

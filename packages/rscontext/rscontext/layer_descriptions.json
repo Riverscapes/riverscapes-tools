@@ -35,12 +35,12 @@
     "2.4.0"
   ],
   "HDIST": [
-    "LandFire Historical Disturbance (HDst) raster: The latest 10 years of Annual Disturbance products are used to identify disturbance year, type, and severity. Starting with LF Remap, HDist replaces VDist from previous LF versions incorporating pre-disturbance vegetation logic (based on disturbance year and vegetation type). The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes context project extent.",
+    "LandFire Historical Disturbance (HDist) raster: The latest 10 years of Annual Disturbance products are used to identify disturbance year, type, and severity. Starting with LF Remap, HDist replaces VDist from previous LF versions incorporating pre-disturbance vegetation logic (based on disturbance year and vegetation type). The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes context project extent.",
     "https://landfire.gov/data_overviews.php",
     "2.4.0"
   ],
   "FDIST": [
-    "LandFire Fuel Disturbance (FDst) raster: The latest 10 years of Annual Disturbance products representing disturbance year and original disturbance code. FDist was a refinement of VDist in LF 1.x products and is a refinement of Historical Disturbance in LF Remap to more accurately represent disturbance scenarios within the fuels environment. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes context project extent.",
+    "LandFire Fuel Disturbance (FDist) raster: The latest 10 years of Annual Disturbance products representing disturbance year and original disturbance code. FDist was a refinement of VDist in LF 1.x products and is a refinement of Historical Disturbance in LF Remap to more accurately represent disturbance scenarios within the fuels environment. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes context project extent.",
     "https://landfire.gov/data_overviews.php",
     "2.4.0"
   ],
@@ -60,13 +60,13 @@
     "2.4.0"
   ],
   "SCLASS": [
-    "LandFire Succession Classes (SCla) raster: Current vegetation conditions with respect to vegetation species composition, cover, and height ranges of successional states occurring within each biophysical setting. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes context project extent.",
+    "LandFire Succession Classes (SClass) raster: Current vegetation conditions with respect to vegetation species composition, cover, and height ranges of successional states occurring within each biophysical setting. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes context project extent.",
     "https://landfire.gov/data_overviews.php",
     "2.4.0"
   ],
   "OWNERSHIP": [
-    "Land ownership obtained from the Bureau of Management (BLM) Land Surface Agency. A single ShapeFile was downloaded and then pre-processed to remove invalid geometries and other irregularities.",
-    "https://landscape.blm.gov/geoportal/catalog/search/resource/details.page?uuid=%7B2A8B8906-7711-4AF7-9510-C6C7FD991177%7D",
+    "Land ownership obtained from the Bureau of Land Management (BLM) Surface Management Agency. A single geodatabase was downloaded and then converted to shapefile, pre-processed to remove invalid geometries and other irregularities.",
+    "https://gbp-blm-egis.hub.arcgis.com/datasets/6bf2e737c59d4111be92420ee5ab0b46/about",
     ""
   ],
   "FAIR_MARKET": [
