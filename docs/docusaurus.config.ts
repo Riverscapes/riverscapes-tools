@@ -14,7 +14,7 @@ const config: Config = {
       tagName: 'link',
       attributes: {
         rel: 'alternate icon',
-        href: '/img/Consortium_64.png',
+        href: 'https://cdn.riverscapes.net/icons/consortium/consortium_64.png',
         sizes: '64x64',
       },
     },
