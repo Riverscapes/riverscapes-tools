@@ -1198,7 +1198,7 @@ def main():
                 args.flowline_network, args.dem, args.slope, args.hillshade, args.channel_area, args.output_dir,
                 args.huc, args.flowline_type, args.unique_stream_field, args.unique_reach_field, args.drain_area_field, level_paths,
                 args.pitfill, args.dinfflowdir_ang, args.dinfflowdir_slp, meta=meta, reach_codes=reach_codes, mask=args.mask,
-                debug=args.debug, temp_folder=args.temp_folder
+                debug=args.debug, temp_folder=temp_folder
             )
 
         safe_remove_dir(temp_folder)
