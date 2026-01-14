@@ -26,6 +26,9 @@ def create_spatial_view(nhd_gpkg_path: str, network_layer: str, join_table: str,
     with sqlite3.connect(nhd_gpkg_path) as conn:
         curs = conn.cursor()
         curs.execute(f"DROP VIEW IF EXISTS {out_view}")
+        # Clean up GeoPackage metadata from any previous view with this name
+        curs.execute(f"DELETE FROM gpkg_contents WHERE table_name = '{out_view}'")
+        curs.execute(f"DELETE FROM gpkg_geometry_columns WHERE table_name = '{out_view}'")
         # create the view with specified of the fields from the flowline table and add the fields from the join table. the fields from the join table should have an ailas of the value in the dict.
         curs.execute(f"CREATE VIEW {out_view} AS SELECT {', '.join([f'{network_layer}.{field} AS {alias}' for field, alias in network_fields.items()])}, {', '.join(
             [f'{join_table}.{field} AS {alias}' for field, alias in join_fields.items()])} FROM {network_layer} LEFT JOIN {join_table} ON {network_layer}.{join_id} = {join_table}.{join_id}")
