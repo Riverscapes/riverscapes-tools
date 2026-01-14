@@ -130,6 +130,10 @@ def _get_urls(params: dict[str, str]):
 
     items = TNM.get_items(params)
 
+    if items['errors'] and len(items['errors']) > 0:
+        log.error(f'TNM API error: {items["errors"]}')
+        raise Exception(f'TNM API error: {items["errors"]}')
+
     log.info('{} item(s) identified.'.format(items['total']))
 
     urls = []
