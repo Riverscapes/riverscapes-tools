@@ -457,7 +457,7 @@ def confinement(huc: str, flowlines_orig: Path, channel_area_orig: Path, confini
 
                 if len(geom_buffer_splits.geoms) != 2:
                     # triage the polygon if still cannot split it
-                    error_message = f"WARNING: Flowline level_path {level_path} | Incorrect number of split buffer polygons: {len(geom_buffer_splits)}"
+                    error_message = f"WARNING: Flowline level_path {level_path} | Incorrect number of split buffer polygons: {len(geom_buffer_splits.geoms)}"
                     progbar.erase()
                     log.warning(error_message)
                     dbg_err_lines_lyr.create_feature(geom_newline, {
