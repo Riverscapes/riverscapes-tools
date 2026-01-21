@@ -2,3 +2,22 @@
 title: Algorithm
 sidebar_position: 2
 ---
+The Confinement tool calculates the confinement and constriction ratios, as well as the confinement type (confined by the left or right valley margin or both) for a riverscape. The confinement of a riverscape is produced at several temporal scales. The confinement ratio is given at the individual stream level, at the stream reach level (100s of meters) and within the DGOs at the riverscapes reach scale. These metrics are calculated using an active channel area polygon and valley bottom extent polygon that are produced in the [Channel Area](https://tools.riverscapes.net/channelarea/) and Valley Bottom Extraction Tool [(VBET)](https://tools.riverscapes.net/vbet/). The confinement value for each stream or stream reach is calculated by finding where the active channel margins intersect or cross over the valley bottom polygon. This allows us to classify if the channel has a left confining margin, right confining margin, or is confined on both sides (constricted). The confinement ratio for the reach is calculated as
+
+
+![eq](/img/confinement/Confinmentequation.png) 
+
+
+ where C is confinement (between 0 and 100%), confinement (0–100%), sum of DS-US at CL is the sum total centerline length of channel over the distance that the channel margin along either bank abuts a confining margin (@CM), and CLT is the total centerline length of a channel segment under consideration. (O’Brien et. al, 2019). Additionally, the constriction ratio of the stream is found by dividing the length of constricting margins by the length of the channel.
+
+
+:::note
+The active channel area polygon is buffered to account for positional inaccuracies when calculating the confinement for the Discrete Geographic Objects (DGO’s)
+:::
+
+![threepan](/img/confinement/threepan.png)
+Figure 1: Shows how the confinement tool uses the active channel buffer to see where the channel exceeds the valley bottom. If the active channel exceeds the boundary, it notes if it is a left or right confining margin and the length of confinement.
+
+![fourpan](/img/confinement/fourpan.png) 
+Figure 2: Shows the four different outputs to the confinement tool. A shows the confinement for the level path or whole stream. Figure B shows the confinement broken into segments hundreds of meters long. C shows the DGO output which shows the confinement at a riverscape reach scale. D shows the IGO output which combines the outputs of the DGO's upstream and downstream through the moving window.
+<YouTubeEmbed videoId="jszMwDoiD8Y"/>
