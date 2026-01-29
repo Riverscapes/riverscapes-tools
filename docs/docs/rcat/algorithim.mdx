@@ -3,3 +3,18 @@ title: Algorithm
 sidebar_position: 2
 ---
 
+The Riparian Assessment and Condition Tool runs three inputs through a FUZZY inference system to provide a condition estimate of the riparian corridor of a riverscape. 
+
+## Land Use Intensity
+The land use intensity layer is pulled from the [Anthropogenic Context Tool](https://tools.riverscapes.net/anthro/) to see the extent of the anthropogenic impact within the adjacent valley bottom of the reach. The land use intensity is assigned a value from 0-100 with 0 being natural land use and 100 being high intensity land use (urban/developed). 
+
+## Riparian Vegetation Departure
+Riparian vegetation departure currently uses the nationally available [LANDFIRE](https://www.landfire.gov/)  land cover data to see how the riparian vegetation has changed from historic conditions. The LANDFIRE data set has a Bio Physical Setting layer that estimates the landcover pre Euro-American settlement. By comparing what the extent of riparian vegetation historically was to what is currently present we can see how the riparian vegetation has changed. The formula used to find the percentage of departure is (1-(ExistingRiparianMean / HistoricRiparianMean)). 
+
+## Floodplain Accessibility
+Floodplain accessibility uses a rasterized floodplain to differentiate between accessible and inaccessible floodplain. A D8 flow direction raster is first generated from a pitfilled DEM. Then for each cell within the valley bottom a flow direction tool is run and If the “flow” reaches the stream it is classified as accessible. If the flow reaches infrastructure first and not the channel it is classified as inaccessible. The accessibility is then ranked from 0-1 using the ratio of accessible flood plain to inaccessible. 
+
+## Outputs
+After running the three inputs through a Fuzzy inference system a riparian condition class is assigned to the riverscape. These classes are very poor, poor, moderate, good, or intact. Additionally, if the valley bottom of the riverscape is under 10 m the landcover data resolution is not fine enough to pick up meaningful changes so the tool returns too narrow to sample. The outputs are calculated in several different reach lengths for the whole riverscape or just for the perennial channels.
+
+<YouTubeEmbed videoId="qVDKbMw07Zc"/>
