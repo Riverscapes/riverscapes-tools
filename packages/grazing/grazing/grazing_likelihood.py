@@ -20,7 +20,6 @@ from rscommons.database import create_db_nowats, SQLiteCon
 from rscommons.copy_features import copy_features_fields
 from rscommons.moving_window import moving_window_dgo_ids
 from rscommons.augment_lyr_meta import augment_layermeta, add_layer_descriptions
-from vbet.vbet_raster_ops import proximity_raster
 
 from grazing.__version__ import __version__
 from grazing.grazing_report import GrazingReport
@@ -28,6 +27,7 @@ from grazing.utils.water_raster import combine_water_features, create_water_rast
 from grazing.utils.veg_suitability import vegetation_suitability
 from grazing.utils.grazing_fis import calculate_grazing_fis
 from grazing.utils.riverscapes_grazing import riverscape_grazing
+from grazing.utils.proximity import proximity_raster
 
 
 Path = str
