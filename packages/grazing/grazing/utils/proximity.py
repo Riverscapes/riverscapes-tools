@@ -3,8 +3,9 @@ import shutil
 import rasterio
 import numpy as np
 
-from rscommons import Logger, Timer, TempRaster, ProgressBar
+from rscommons import Timer, TempRaster
 from rscommons.classes.raster import deleteRaster
+from rsxml import Logger, ProgressBar
 
 from osgeo import gdal, gdal_array
 
