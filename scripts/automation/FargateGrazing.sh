@@ -89,7 +89,7 @@ try() {
   ##########################################################################################
 
   cd /usr/local/src/riverscapes-tools/packages/grazing
-  python3 -m grazing.grazing $HUC \
+  python3 -m grazing.grazing_likelihood $HUC \
     $RS_CONTEXT_DIR/vegetation/existing_veg.tif \
     $RS_CONTEXT_DIR/topography/slope.tif \
     $RS_CONTEXT_DIR/topography/dem_hillshade.tif \
