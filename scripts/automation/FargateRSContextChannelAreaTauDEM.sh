@@ -79,7 +79,7 @@ TAUDEM_DIR=$DATA_DIR/taudem/$HUC
 try() {
 
 cd /usr/local/src/riverscapes-tools/packages/rscontext
-python3 -m rscontext.rscontext $HUC \
+python3 -m rscontext.rs_context $HUC \
   /efsshare/NationalDatasets/landfire/240/ \
   /efsshare/NationalDatasets/ownership/surface_management_agency.shp \
   /efsshare/NationalDatasets/ownership/FairMarketValue.tif \
