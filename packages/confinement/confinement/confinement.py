@@ -471,8 +471,8 @@ def confinement(huc: str, flowlines_orig: Path, channel_area_orig: Path, confini
                                                      "ErrorMessage": error_message
                                                      })
                     err_count += 1
-                    if len(geom_buffer_splits) > 1:
-                        for geom in geom_buffer_splits:
+                    if len(geom_buffer_splits.geoms) > 1:
+                        for geom in geom_buffer_splits.geoms:
                             dbg_err_polygons_lyr.create_feature(
                                 geom, {
                                     "ErrorProcess": "Buffer Split",
