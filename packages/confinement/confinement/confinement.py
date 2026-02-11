@@ -141,7 +141,7 @@ def confinement(huc: str, flowlines_orig: Path, channel_area_orig: Path, confini
     dgo_path = os.path.join(output_folder, LayerTypes['INPUTS'].rel_path, LayerTypes['INPUTS'].sub_layers['DGOS'].rel_path)
     igo_path = os.path.join(output_folder, LayerTypes['INPUTS'].rel_path, LayerTypes['INPUTS'].sub_layers['IGOS'].rel_path)
 
-    copy_feature_class(flowlines_orig, flowlines_path, epsg=cfg.OUTPUT_EPSG)
+    copy_feature_class(flowlines_orig, flowlines_path, epsg=cfg.OUTPUT_EPSG, singlepart=True)
     copy_feature_class(channel_area_orig, channel_area)
     copy_feature_class(confining_polygon_orig,
                        confining_path, epsg=cfg.OUTPUT_EPSG)
