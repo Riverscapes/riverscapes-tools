@@ -31,7 +31,7 @@ Path = str
 def print_geom_size(logger: Logger, geom_obj: BaseGeometry):
     try:
         size_str = sizeof_fmt(get_obj_size(geom_obj.wkb))
-        logger.debug('Byte Size of output object: {} Type: {} IsValid: {} Length: {} Area: {}'.format(size_str, geom_obj.type, geom_obj.is_valid, geom_obj.length, geom_obj.area))
+        logger.debug('Byte Size of output object: {} Type: {} IsValid: {} Length: {} Area: {}'.format(size_str, geom_obj.geom_type, geom_obj.is_valid, geom_obj.length, geom_obj.area))
     except Exception as e:
         logger.debug(e)
         logger.debug('Byte Size of output object could not be determined')
@@ -182,7 +182,8 @@ def copy_feature_class(in_layer_path: str,
                        hard_clip=False,
                        indexes: List[str] = None,
                        fields: List[str] = None,
-                       make_valid: bool = False) -> None:
+                       make_valid: bool = False,
+                       singlepart: bool = False) -> None:
     """
     Copy a feature class from one location to another.
 
@@ -213,8 +214,21 @@ def copy_feature_class(in_layer_path: str,
     with get_shp_or_gpkg(out_layer_path, write=True) as out_layer, \
             get_shp_or_gpkg(in_layer_path) as in_layer:
 
+        # get multipart to single part geometry type if requested
+        in_geom_type = in_layer.ogr_layer.GetGeomType()
+        if singlepart:
+            if in_geom_type in VectorBase.MULTI_TYPES.keys():
+                geom_type = VectorBase.MULTI_TYPES[in_geom_type][0]
+            else:
+                geom_type = in_geom_type
+        else:
+            geom_type = in_geom_type
+
         # Add input Layer Fields to the output Layer if it is the one we want
-        out_layer.create_layer_from_ref(in_layer, epsg=epsg)
+        if in_geom_type == geom_type:
+            out_layer.create_layer_from_ref(in_layer, epsg=epsg)
+        else:
+            out_layer.create_layer(geom_type, epsg=epsg, fields=in_layer.get_fields())
 
         # drop fields if they don't exist in the fields list
         fields = [f.lower() for f in fields] if fields is not None else None
