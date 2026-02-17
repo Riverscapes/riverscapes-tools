@@ -326,15 +326,22 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_huc12: 
                 if geom and geom.GetPointCount() > 0:
                     pnt = geom.GetPoint(geom.GetPointCount() - 1)
                     pts.append(pnt)
+
+            counts = Counter(pts)
+            trib_junctions = [pt for pt, count in counts.items() if count > 1]
+
         else:
             for feat, *_ in lyr_lines.iterate_features():
                 geom = feat.GetGeometryRef()
                 if geom and geom.GetPointCount() > 0:
-                    pnt = geom.GetPoint(geom.GetPointCount() - 1)
-                    pts.append(pnt)
+                    pnt1 = geom.GetPoint(geom.GetPointCount() - 1)
+                    pnt2 = geom.GetPoint(0)
+                    pts.append(pnt1)
+                    pts.append(pnt2)
 
-        counts = Counter(pts)
-        trib_junctions = [pt for pt, count in counts.items() if count > 1]
+            counts = Counter(pts)
+            trib_junctions = [pt for pt, count in counts.items() if count > 2]
+
         for pnt in trib_junctions:
             geom_out = ogr.Geometry(ogr.wkbPoint)
             geom_out.AddPoint(*pnt)
@@ -534,7 +541,7 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_huc12: 
                             besp_output[metrics[metric]['field_name']] = subwatsid
 
                         if metric == 'HEDWTR':
-                            is_headwater = headwater(feat_seg_dgo, line_network)
+                            is_headwater = headwater(feat_seg_dgo, line_network, network=network_type)
                             besp_output[metrics[metric]['field_name']] = is_headwater
 
                         if metric == 'STRMLENGTH':
