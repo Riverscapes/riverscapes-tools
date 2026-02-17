@@ -200,7 +200,10 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_huc12: 
     input_layers = {}
     for input_key, rslayer in LayerTypes['INPUTS'].sub_layers.items():
         input_layers[input_key] = os.path.join(inputs_gpkg, rslayer.rel_path)
-        copy_feature_class(src_layers[input_key], input_layers[input_key], cfg.OUTPUT_EPSG)
+        if input_key == 'FLOWLINES':
+            copy_feature_class(src_layers[input_key], input_layers[input_key], cfg.OUTPUT_EPSG, singlepart=True)
+        else:
+            copy_feature_class(src_layers[input_key], input_layers[input_key], cfg.OUTPUT_EPSG)
 
     _dem_node, dem = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['DEM'], in_dem)
     _hs_node, hillshade = project.add_project_raster(proj_nodes['Inputs'], LayerTypes['HILLSHADE'], in_hillshade)
@@ -320,15 +323,15 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_huc12: 
             sql = '"DnDrainCou" <= 1 or "RtnDiv" = 0'
             for feat, *_ in lyr_lines.iterate_features(attribute_filter=sql):
                 geom = feat.GetGeometryRef()
-                pnt = geom.GetPoints()
-                # pnt = geom.GetPoint(geom.GetPointCount() - 1)
-                pts.append(pnt)
+                if geom and geom.GetPointCount() > 0:
+                    pnt = geom.GetPoint(geom.GetPointCount() - 1)
+                    pts.append(pnt)
         else:
             for feat, *_ in lyr_lines.iterate_features():
                 geom = feat.GetGeometryRef()
-                pnt = geom.GetPoints()
-                # pnt = geom.GetPoint(geom.GetPointCount() - 1)
-                pts.append(pnt)
+                if geom and geom.GetPointCount() > 0:
+                    pnt = geom.GetPoint(geom.GetPointCount() - 1)
+                    pts.append(pnt)
 
         counts = Counter(pts)
         trib_junctions = [pt for pt, count in counts.items() if count > 1]
