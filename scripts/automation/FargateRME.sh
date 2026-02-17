@@ -140,6 +140,7 @@ try() {
     --rcat_dgo_table $RCAT_DIR/outputs/rcat.gpkg/DGOVegetation \
     --brat_dgos $BRAT_DIR/outputs/brat.gpkg/vwDgos \
     --brat_lines $BRAT_DIR/outputs/brat.gpkg/vwReaches \
+    --network_type Custom \
     --meta "Runner=Cybercastor" \
     --verbose
   if [[ $? != 0 ]]; then return 1; fi
