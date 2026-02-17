@@ -72,7 +72,7 @@ def flooplain_access(filled_dem: str, valley: str, reaches: str, intermediates_p
     log.info('Rasterizing vector layers')
     inputs_ds = gdal.OpenEx(os.path.join(os.path.dirname(intermediates_path), 'inputs/inputs.gpkg'))
     chan_lyr = inputs_ds.GetLayer(os.path.basename(reaches))
-    chan_lyr.SetAttributeFilter('ReachCode != 33600')
+    chan_lyr.SetAttributeFilter('FCode != 33600')
     road_ds = gdal.OpenEx(os.path.join(temp_dir, 'road.shp'))
     road_lyr = road_ds.GetLayer()
     rail_ds = gdal.OpenEx(os.path.join(temp_dir, 'rail.shp'))
