@@ -115,7 +115,7 @@ mw_metric_functions = {1: mw_copy_from_dgo, 2: mw_sum, 3: mw_sum_div_length, 4: 
 def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_huc12: Path, in_vaa_table: Path, in_counties: Path, in_geology: Path,
                   in_segments: Path, in_points: Path, in_vbet_centerline: Path, in_dem: Path, in_hillshade: Path, project_folder: Path,
                   in_confinement_dgos: Path = None, in_hydro_dgos: Path = None, in_anthro_dgos: Path = None, in_anthro_lines: Path = None,
-                  in_rcat_dgos: Path = None, in_rcat_dgo_table: Path = None, in_brat_dgos: Path = None, in_brat_lines: Path = None,
+                  in_rcat_dgos: Path = None, in_rcat_dgo_table: Path = None, in_brat_dgos: Path = None, in_brat_lines: Path = None, network_type='NHD',
                   level_paths: list = None, meta: dict = None):
     """Generate Riverscapes Metric Engine project and calculate metrics
 
@@ -282,9 +282,12 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_huc12: 
         geom = feat.GetGeometryRef()
         utm_epsg = get_utm_zone_epsg(geom.GetPoint(0)[0])
 
-    vaa_table_name = copy_vaa_attributes(input_layers['FLOWLINES'], in_vaa_table)
-    line_network = join_attributes(inputs_gpkg, "vw_flowlines_vaa", os.path.basename(input_layers['FLOWLINES']), vaa_table_name, 'NHDPlusID', [
-                                   'STARTFLAG', 'DnDrainCou', 'RtnDiv'], 4326)
+    if network_type == 'NHD':
+        vaa_table_name = copy_vaa_attributes(input_layers['FLOWLINES'], in_vaa_table)
+        line_network = join_attributes(inputs_gpkg, "vw_flowlines_vaa", os.path.basename(input_layers['FLOWLINES']), vaa_table_name, 'NHDPlusID', [
+            'STARTFLAG', 'DnDrainCou', 'RtnDiv'], 4326)
+    else:
+        line_network = os.path.join(inputs_gpkg, 'flowlines')
 
     # Prepare Junctions
     junctions = os.path.join(
@@ -295,27 +298,37 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_huc12: 
         lyr_points.create_layer(ogr.wkbPoint, spatial_ref=srs, fields={
                                 'JunctionType': ogr.OFTString})
         lyr_points_defn = lyr_points.ogr_layer_def
+
         # Generate diffluence/confluence nodes
-        for attribute, sql in [('Diffluence', '"DnDrainCou" > 1'), ('Confluence', '"RtnDiv" > 0')]:
+        if network_type == 'NHD':
+            for attribute, sql in [('Diffluence', '"DnDrainCou" > 1'), ('Confluence', '"RtnDiv" > 0')]:
+                for feat, *_ in lyr_lines.iterate_features(attribute_filter=sql):
+                    geom = feat.GetGeometryRef()
+                    pnt = geom.GetPoint(0) if attribute == 'Confluence' else geom.GetPoint(
+                        geom.GetPointCount() - 1)
+                    geom_out = ogr.Geometry(ogr.wkbPoint)
+                    geom_out.AddPoint(*pnt)
+                    geom_out.FlattenTo2D()
+                    feat_out = ogr.Feature(lyr_points_defn)
+                    feat_out.SetGeometry(geom_out)
+                    feat_out.SetField('JunctionType', attribute)
+                    lyr_points.ogr_layer.CreateFeature(feat_out)
+
+        # generate list of nodes for all potential trib junctions
+        pts = []
+        if network_type == 'NHD':
+            sql = '"DnDrainCou" <= 1 or "RtnDiv" = 0'
             for feat, *_ in lyr_lines.iterate_features(attribute_filter=sql):
                 geom = feat.GetGeometryRef()
-                pnt = geom.GetPoint(0) if attribute == 'Confluence' else geom.GetPoint(
-                    geom.GetPointCount() - 1)
-                geom_out = ogr.Geometry(ogr.wkbPoint)
-                geom_out.AddPoint(*pnt)
-                geom_out.FlattenTo2D()
-                feat_out = ogr.Feature(lyr_points_defn)
-                feat_out.SetGeometry(geom_out)
-                feat_out.SetField('JunctionType', attribute)
-                lyr_points.ogr_layer.CreateFeature(feat_out)
-        # generate list of nodes for all potential trib junctions
-
-        pts = []
-        sql = '"DnDrainCou" <= 1 or "RtnDiv" = 0'
-        for feat, *_ in lyr_lines.iterate_features(attribute_filter=sql):
-            geom = feat.GetGeometryRef()
-            pnt = geom.GetPoint(geom.GetPointCount() - 1)
-            pts.append(pnt)
+                pnt = geom.GetPoints()
+                # pnt = geom.GetPoint(geom.GetPointCount() - 1)
+                pts.append(pnt)
+        else:
+            for feat, *_ in lyr_lines.iterate_features():
+                geom = feat.GetGeometryRef()
+                pnt = geom.GetPoints()
+                # pnt = geom.GetPoint(geom.GetPointCount() - 1)
+                pts.append(pnt)
 
         counts = Counter(pts)
         trib_junctions = [pt for pt, count in counts.items() if count > 1]
@@ -932,6 +945,7 @@ def main():
     parser.add_argument('--rcat_dgo_table', help='The DGOVegetation table from rcat output gpkg', type=str)
     parser.add_argument('--brat_dgos', help='brat dgos', type=str)
     parser.add_argument('--brat_lines', help='brat lines', type=str)
+    parser.add_argument('--network_type', help='NHD or custom', type=str, default='NHD')
     parser.add_argument('--meta', help='riverscapes project metadata as comma separated key=value pairs', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging ', action='store_true', default=False)
     parser.add_argument('--debug', help="(optional) save intermediate outputs for debugging",
@@ -972,6 +986,7 @@ def main():
                                          args.rcat_dgo_table,
                                          args.brat_dgos,
                                          args.brat_lines,
+                                         args.network_type,
                                          meta=meta)
             log.debug(f'Return code: {retcode}, [Max process usage] {max_obj}')
 
@@ -997,6 +1012,7 @@ def main():
                           args.rcat_dgo_table,
                           args.brat_dgos,
                           args.brat_lines,
+                          args.network_type,
                           meta=meta)
 
     except Exception as e:

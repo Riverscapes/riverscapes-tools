@@ -51,6 +51,7 @@
         "--rcat_dgo_table", "{env:DATA_ROOT}/rcat/${input:HUC}/outputs/rcat.gpkg/DGOVegetation",
         "--brat_dgos", "{env:DATA_ROOT}/brat/${input:HUC}/outputs/brat.gpkg/vwDgos",
         "--brat_lines", "{env:DATA_ROOT}/brat/${input:HUC}/outputs/brat.gpkg/vwReaches",
+        "--network_type", "Custom",
         //"--epsg", "5070",
         //"--meta",
         "--verbose"
