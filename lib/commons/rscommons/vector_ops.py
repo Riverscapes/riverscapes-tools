@@ -288,18 +288,28 @@ def copy_feature_class(in_layer_path: str,
             if make_valid is True:
                 geom = geom.MakeValid()
 
-            # Create output Feature
-            out_feature = ogr.Feature(out_layer.ogr_layer_def)
-            out_feature.SetGeometry(geom)
+            # Handle singlepart conversion if requested
+            geometries_to_write = []
+            if singlepart and geom.GetGeometryType() in VectorBase.MULTI_TYPES.keys():
+                # Split multipart geometry into individual parts
+                for i in range(geom.GetGeometryCount()):
+                    geometries_to_write.append(geom.GetGeometryRef(i).Clone())
+            else:
+                geometries_to_write.append(geom)
 
-            # Add field values from input Layer
-            for i in range(0, out_layer.ogr_layer_def.GetFieldCount()):
-                field = out_layer.ogr_layer_def.GetFieldDefn(i).GetNameRef()
-                if fields is None or field.lower() in fields:
-                    out_feature.SetField(field, feature.GetField(field))
+            # Create output Feature(s)
+            for geom_out in geometries_to_write:
+                out_feature = ogr.Feature(out_layer.ogr_layer_def)
+                out_feature.SetGeometry(geom_out)
 
-            out_layer.ogr_layer.CreateFeature(out_feature)
-            out_feature = None
+                # Add field values from input Layer
+                for i in range(0, out_layer.ogr_layer_def.GetFieldCount()):
+                    field = out_layer.ogr_layer_def.GetFieldDefn(i).GetNameRef()
+                    if fields is None or field.lower() in fields:
+                        out_feature.SetField(field, feature.GetField(field))
+
+                out_layer.ogr_layer.CreateFeature(out_feature)
+                out_feature = None
 
     if indexes and len(indexes) > 0:
         conn = sqlite3.connect(os.path.dirname(out_layer_path))
