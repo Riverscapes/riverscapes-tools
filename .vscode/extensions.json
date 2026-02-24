@@ -1,7 +1,6 @@
 {
   "recommendations": [
     "GitHub.copilot-chat",
-    "GitHub.copilot",
     "mhutchie.git-graph",
     "ms-azuretools.vscode-docker",
     "ms-python.autopep8",
