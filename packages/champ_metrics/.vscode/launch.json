@@ -62,6 +62,26 @@
       ],
       "request": "launch",
       "console": "integratedTerminal"
+    },
+    {
+      "name": "Photo Scraper",
+      "type": "debugpy",
+      "module": "champ_metrics.scripts.photo_scraper",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+      }, 
+      "args": [
+        "/Users/philipbailey/GISData/champ/photos/processing_status.json",
+        "/Users/philipbailey/GISData/champ/photos/visit_data.json",
+        "/Users/philipbailey/GISData/champ/photos",
+        "c7d8c487-c377-42b0-a5b6-4c16db18fb41",
+        // "--force-download",
+        "--retain-project",
+        "--retain-download",
+        // "--skip-upload",
+      ],
+      "request": "launch",
+      "console": "integratedTerminal"
     }
   ]
 }
