@@ -27,8 +27,23 @@
         "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
       }, 
       "args": [
-        "{env:DATA_ROOT}/champ/topo_projects/0213/TOPO_-_CHaMP-ASW00001-CC-F1_P2BR_with_aux/project.rs.xml",
-        "{env:DATA_ROOT}/champ/metrics"
+        "/Users/philipbailey/GISData/riverscapes/topo/visit_213/project.rs.xml",
+        "/Users/philipbailey/GISData/riverscapes/topo/visit_213"
+      ],
+      "request": "launch",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "CHaMP Metrics With Project Update",
+      "type": "debugpy",
+      "module": "champ_metrics.champ_metrics",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+      }, 
+      "args": [
+        // "/Users/philipbailey/GISData/riverscapes/topo/visit_2059/project.rs.xml",
+        // "/Users/philipbailey/GISData/riverscapes/topo/visit_213/project.rs.xml"
+        "/Users/philipbailey/GISData/riverscapes/topo/lemhi/project.rs.xml"
       ],
       "request": "launch",
       "console": "integratedTerminal"
@@ -75,10 +90,10 @@
         "/Users/philipbailey/GISData/champ/photos/visit_data.json",
         "/Users/philipbailey/GISData/champ/photos",
         "c7d8c487-c377-42b0-a5b6-4c16db18fb41",
-        // "--force-download",
+        "--force-download",
         "--retain-project",
         "--retain-download",
-        // "--skip-upload",
+        "--skip-upload",
       ],
       "request": "launch",
       "console": "integratedTerminal"

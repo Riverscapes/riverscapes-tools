@@ -15,7 +15,15 @@ def visitReachMetrics(visitMetrics, visitobj):
     waterChemistry = visitobj['waterChemistry']
     solarInputMeasurements = visitobj['solarInputMeasurements']
     discharge = visitobj['discharge']
-    poolTailFines = visitobj['poolTailFines']
+    poolTailFines = visitobj['poolTailFines']['value']
+
+    for rec in [r for r in poolTailFines]:
+        rec["value"]['Grid1Lessthan2mm'] = rec["value"].get('Grid1Lessthan2mm', None)
+        rec["value"]['Grid1NonMeasureable'] = rec["value"].get('Grid1NonMeasureable', None)
+        rec["value"]['Grid2Lessthan2mm'] = rec["value"].get('Grid2Lessthan2mm', None)
+        rec["value"]['Grid2NonMeasureable'] = rec["value"].get('Grid2NonMeasureable', None)
+        rec["value"]['Grid3Lessthan2mm'] = rec["value"].get('Grid3Lessthan2mm', None)
+        rec["value"]['Grid3NonMeasureable'] = rec["value"].get('Grid3NonMeasureable', None)
 
     # ChampMetricVisitInformation.ConstrainingFeatureHeightAvg
     constrainingFeatureHeightAvg(visitMetrics, channelConstraints, channelConstraintMeasurements)
@@ -318,15 +326,15 @@ def poolTailFinesPctObservationsLessThan2mm_2012(poolTailFines):
     nonSelected = -99
     magicNum = 50
 
-    fineMeas1 = [f for f in poolTailFines["value"] if f["value"]["Grid1Lessthan2mm"] is not None
+    fineMeas1 = [f for f in poolTailFines if f["value"]["Grid1Lessthan2mm"] is not None
                  and f["value"]["Grid1NonMeasureable"] is not None
                  and (f["value"]["Grid1Lessthan2mm"] + f["value"]["Grid1NonMeasureable"]) <= magicNum]
 
-    fineMeas2 = [f for f in poolTailFines["value"] if f["value"]["Grid2Lessthan2mm"] is not None
+    fineMeas2 = [f for f in poolTailFines if f["value"]["Grid2Lessthan2mm"] is not None
                  and f["value"]["Grid2NonMeasureable"] is not None
                  and (f["value"]["Grid2Lessthan2mm"] + f["value"]["Grid2NonMeasureable"]) <= magicNum]
 
-    fineMeas3 = [f for f in poolTailFines["value"] if f["value"]["Grid3Lessthan2mm"] is not None
+    fineMeas3 = [f for f in poolTailFines if f["value"]["Grid3Lessthan2mm"] is not None
                  and f["value"]["Grid3NonMeasureable"] is not None
                  and (f["value"]["Grid3Lessthan2mm"] + f["value"]["Grid3NonMeasureable"]) <= magicNum]
 
@@ -357,19 +365,19 @@ def poolTailFinesPctObservationsLessThan2mm_2011(poolTailFines):
     nonSelected = -99
     magicNum = 50
 
-    fineMeas1 = [f for f in poolTailFines["value"] if f["value"]["Grid1Lessthan2mm"] is not None
+    fineMeas1 = [f for f in poolTailFines if f["value"]["Grid1Lessthan2mm"] is not None
                  and f["value"]["Grid1Lessthan6mm"] is not None
                  and f["value"]["Grid1NonMeasureable"] is not None
                  and f["value"]["Grid1Lessthan2mm"] <= f["value"]["Grid1Lessthan6mm"]
                  and (f["value"]["Grid1Lessthan2mm"] + f["value"]["Grid1NonMeasureable"]) <= magicNum]
 
-    fineMeas2 = [f for f in poolTailFines["value"] if f["value"]["Grid2Lessthan2mm"] is not None
+    fineMeas2 = [f for f in poolTailFines if f["value"]["Grid2Lessthan2mm"] is not None
                  and f["value"]["Grid2Lessthan6mm"] is not None
                  and f["value"]["Grid2NonMeasureable"] is not None
                  and f["value"]["Grid2Lessthan2mm"] <= f["value"]["Grid2Lessthan6mm"]
                  and (f["value"]["Grid2Lessthan2mm"] + f["value"]["Grid2NonMeasureable"]) <= magicNum]
 
-    fineMeas3 = [f for f in poolTailFines["value"] if f["value"]["Grid3Lessthan2mm"] is not None
+    fineMeas3 = [f for f in poolTailFines if f["value"]["Grid3Lessthan2mm"] is not None
                  and f["value"]["Grid3Lessthan6mm"] is not None
                  and f["value"]["Grid3NonMeasureable"] is not None
                  and f["value"]["Grid3Lessthan2mm"] <= f["value"]["Grid3Lessthan6mm"]
@@ -412,15 +420,15 @@ def poolTailFinesPctObservationsLessThan6mm(visitMetrics, visit, poolTailFines):
 def poolTailFinesPctObservationsLessThan6mm_2012(poolTailFines):
     magicNum = 50
 
-    fineMeas1 = [f for f in poolTailFines["value"] if f["value"]["Grid1Lessthan2mm"] is not None
+    fineMeas1 = [f for f in poolTailFines if f["value"]["Grid1Lessthan2mm"] is not None
                  and f["value"]["Grid1NonMeasureable"] is not None
                  and f["value"]["Grid1Btwn2and6mm"] is not None]
 
-    fineMeas2 = [f for f in poolTailFines["value"] if f["value"]["Grid2Lessthan2mm"] is not None
+    fineMeas2 = [f for f in poolTailFines if f["value"]["Grid2Lessthan2mm"] is not None
                  and f["value"]["Grid2NonMeasureable"] is not None
                  and f["value"]["Grid2Btwn2and6mm"] is not None]
 
-    fineMeas3 = [f for f in poolTailFines["value"] if f["value"]["Grid3Lessthan2mm"] is not None
+    fineMeas3 = [f for f in poolTailFines if f["value"]["Grid3Lessthan2mm"] is not None
                  and f["value"]["Grid3NonMeasureable"] is not None
                  and f["value"]["Grid3Btwn2and6mm"] is not None]
 
@@ -448,19 +456,19 @@ def poolTailFinesPctObservationsLessThan6mm_2011(poolTailFines):
     nonSelected = -99
     magicNum = 50
 
-    fineMeas1 = [f for f in poolTailFines["value"] if f["value"]["Grid1Lessthan2mm"] is not None
+    fineMeas1 = [f for f in poolTailFines if f["value"]["Grid1Lessthan2mm"] is not None
                  and f["value"]["Grid1Lessthan6mm"] is not None
                  and f["value"]["Grid1NonMeasureable"] is not None
                  and f["value"]["Grid1Lessthan2mm"] <= f["value"]["Grid1Lessthan6mm"]
                  and (f["value"]["Grid1Lessthan6mm"] + f["value"]["Grid1NonMeasureable"]) <= magicNum]
 
-    fineMeas2 = [f for f in poolTailFines["value"] if f["value"]["Grid2Lessthan2mm"] is not None
+    fineMeas2 = [f for f in poolTailFines if f["value"]["Grid2Lessthan2mm"] is not None
                  and f["value"]["Grid2Lessthan6mm"] is not None
                  and f["value"]["Grid2NonMeasureable"] is not None
                  and f["value"]["Grid2Lessthan2mm"] <= f["value"]["Grid2Lessthan6mm"]
                  and (f["value"]["Grid2Lessthan6mm"] + f["value"]["Grid2NonMeasureable"]) <= magicNum]
 
-    fineMeas3 = [f for f in poolTailFines["value"] if f["value"]["Grid3Lessthan2mm"] is not None
+    fineMeas3 = [f for f in poolTailFines if f["value"]["Grid3Lessthan2mm"] is not None
                  and f["value"]["Grid3Lessthan6mm"] is not None
                  and f["value"]["Grid3NonMeasureable"] is not None
                  and f["value"]["Grid3Lessthan2mm"] <= f["value"]["Grid3Lessthan6mm"]

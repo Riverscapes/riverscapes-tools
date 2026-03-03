@@ -1,4 +1,6 @@
-""" CHaMP Metrics
+""" Batch CHaMP Metrics.
+
+This script is deprecated now that CHaMP metrics can be run on Cybercastor using the champ_metrics.py script.
 
 Philip Bailey
 9 Oct 2025

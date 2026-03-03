@@ -1,9 +1,26 @@
 import numpy as np
 
+# The key is the string used in the metric calculation code and the value is the string used in the JSON input.
+# This allows us to have some flexibility in renaming metrics in the JSON input without having to change the metric calculation code. 
+# It also allows us to have some flexibility in how we calculate metrics for different iterations if the JSON input changes between iterations.
+SUBSTITUTIONS = {
+    "CanopyBigTrees": "CanopyBigTreesGT30CmDBH",
+    "CanopyBigTrees": "RBCanopyBigTreesGT30CmDBH",
+    'GroundCover': 'TotalGroundCover',
+    'UnderstoryCover': 'TotalUnderstoryCover'
+}
+
 
 def visitCoverMetrics(visitMetrics, visitobj):
     visit = visitobj['visit']
-    riparianStructures = visitobj['riparianStructures']
+    riparianStructures = visitobj['riparianStructures']['value']
+
+    # PB Feb 2026
+    # Substitutions for legacy metrics
+    for dict in riparianStructures:
+        for bank in ["LB", "RB"]:
+            for metricKey, jsonKey in SUBSTITUTIONS.items():
+                dict["value"][f"{bank}{metricKey}"] = dict["value"].get(f"{bank}{jsonKey}", None)
 
     percentBigTreeCover(visitMetrics, riparianStructures)
     percentCanopyNoCover(visitMetrics, riparianStructures)
@@ -28,9 +45,9 @@ def getConiferousScore2012(riparianStructures):
 
     inScope = []
 
-    inScope.extend([s["value"]["LBCanopyWoodyConiferous"] + s["value"]["LBUnderstoryWoodyConiferous"] for s in riparianStructures["value"]
+    inScope.extend([s["value"]["LBCanopyWoodyConiferous"] + s["value"]["LBUnderstoryWoodyConiferous"] for s in riparianStructures
                    if s["value"]["LBCanopyWoodyConiferous"] is not None and s["value"]["LBUnderstoryWoodyConiferous"] is not None])
-    inScope.extend([s["value"]["RBCanopyWoodyConiferous"] + s["value"]["RBUnderstoryWoodyConiferous"] for s in riparianStructures["value"]
+    inScope.extend([s["value"]["RBCanopyWoodyConiferous"] + s["value"]["RBUnderstoryWoodyConiferous"] for s in riparianStructures
                    if s["value"]["RBCanopyWoodyConiferous"] is not None and s["value"]["RBUnderstoryWoodyConiferous"] is not None])
 
     if inScope.__len__() > 0:
@@ -47,7 +64,7 @@ def getConiferousScore2011(riparianStructures):
     result = 0
     multiplicationFactors = {"Coniferous": 1, "Mixed": 0.5}
 
-    for rec in [r for r in riparianStructures["value"]]:
+    for rec in [r for r in riparianStructures]:
         if rec["value"]["LBCanopyBigTrees"] is not None and rec["value"]["LBCanopySmallTrees"] is not None and rec["value"]["LBCanopyVegetationType"] is not None:
             lbfactor = 0
             if rec["value"]["LBCanopyVegetationType"] in multiplicationFactors:
@@ -93,8 +110,8 @@ def percentBigTreeCover(visitMetrics, riparianStructures):
 
     inScope = []
 
-    inScope.extend([s["value"]["LBCanopyBigTrees"] for s in riparianStructures["value"] if s["value"]["LBCanopyBigTrees"] is not None])
-    inScope.extend([s["value"]["RBCanopyBigTrees"] for s in riparianStructures["value"] if s["value"]["RBCanopyBigTrees"] is not None])
+    inScope.extend([s["value"]["LBCanopyBigTrees"] for s in riparianStructures if s["value"]["LBCanopyBigTrees"] is not None])
+    inScope.extend([s["value"]["RBCanopyBigTrees"] for s in riparianStructures if s["value"]["RBCanopyBigTrees"] is not None])
 
     if inScope.__len__() > 0:
         visitMetrics["PercentBigTreeCover"] = np.mean(inScope)
@@ -110,8 +127,8 @@ def percentUnderstoryCover(visitMetrics, riparianStructures):
 
     inScope = []
 
-    inScope.extend([s["value"]["LBUnderstoryCover"] for s in riparianStructures["value"] if s["value"]["LBUnderstoryCover"] is not None])
-    inScope.extend([s["value"]["RBUnderstoryCover"] for s in riparianStructures["value"] if s["value"]["RBUnderstoryCover"] is not None])
+    inScope.extend([s["value"]["LBUnderstoryCover"] for s in riparianStructures if s["value"]["LBUnderstoryCover"] is not None])
+    inScope.extend([s["value"]["RBUnderstoryCover"] for s in riparianStructures if s["value"]["RBUnderstoryCover"] is not None])
 
     if inScope.__len__() > 0:
         understoryCover = np.mean(inScope)
@@ -129,14 +146,14 @@ def percentNonWoodyGroundCover(visitMetrics, visit, riparianStructures):
 
     inScope = []
     if visit["iterationID"] == 1:
-        inScope.extend([s["value"]["LBGroundcoverNonWoodyShrubs"] + s["value"]["LBUnderstoryNonWoodyShrubs"] for s in riparianStructures["value"]
+        inScope.extend([s["value"]["LBGroundcoverNonWoodyShrubs"] + s["value"]["LBUnderstoryNonWoodyShrubs"] for s in riparianStructures
                        if s["value"]["LBGroundcoverNonWoodyShrubs"] is not None and s["value"]["LBUnderstoryNonWoodyShrubs"] is not None])
-        inScope.extend([s["value"]["RBGroundcoverNonWoodyShurbs"] + s["value"]["RBUnderstoryNonWoodyShrubs"] for s in riparianStructures["value"]
+        inScope.extend([s["value"]["RBGroundcoverNonWoodyShurbs"] + s["value"]["RBUnderstoryNonWoodyShrubs"] for s in riparianStructures
                        if s["value"]["RBGroundcoverNonWoodyShurbs"] is not None and s["value"]["RBUnderstoryNonWoodyShrubs"] is not None])
     else:
-        inScope.extend([s["value"]["LBUnderstoryNonWoodyForbesGrasses"] + s["value"]["LBGroundcoverNonWoodyForbesGrasses"] for s in riparianStructures["value"]
+        inScope.extend([s["value"]["LBUnderstoryNonWoodyForbesGrasses"] + s["value"]["LBGroundcoverNonWoodyForbesGrasses"] for s in riparianStructures
                        if s["value"]["LBUnderstoryNonWoodyForbesGrasses"] is not None and s["value"]["LBGroundcoverNonWoodyForbesGrasses"] is not None])
-        inScope.extend([s["value"]["RBUnderstoryNonWoodyForbesGrasses"] + s["value"]["RBGroundcoverNonWoodyForbesGrasses"] for s in riparianStructures["value"]
+        inScope.extend([s["value"]["RBUnderstoryNonWoodyForbesGrasses"] + s["value"]["RBGroundcoverNonWoodyForbesGrasses"] for s in riparianStructures
                        if s["value"]["RBUnderstoryNonWoodyForbesGrasses"] is not None and s["value"]["RBGroundcoverNonWoodyForbesGrasses"] is not None])
 
     if inScope.__len__() > 0:
@@ -172,8 +189,8 @@ def percentGroundCover(visitMetrics, riparianStructures):
 
     inScope = []
 
-    inScope.extend([s["value"]["LBGroundCover"] for s in riparianStructures["value"] if s["value"]["LBGroundCover"] is not None])
-    inScope.extend([s["value"]["RBGroundCover"] for s in riparianStructures["value"] if s["value"]["RBGroundCover"] is not None])
+    inScope.extend([s["value"]["LBGroundCover"] for s in riparianStructures if s["value"]["LBGroundCover"] is not None])
+    inScope.extend([s["value"]["RBGroundCover"] for s in riparianStructures if s["value"]["RBGroundCover"] is not None])
 
     if inScope.__len__() > 0:
         visitMetrics["PercentGroundCover"] = np.mean(inScope)
@@ -192,8 +209,8 @@ def percentGroundCoverNoCover(visitMetrics, riparianStructures):
 
     inScope = []
 
-    inScope.extend([s["value"]["LBGroundCoverNoCover"] for s in riparianStructures["value"] if s["value"]["LBGroundCoverNoCover"] is not None])
-    inScope.extend([s["value"]["RBGroundCoverNoCover"] for s in riparianStructures["value"] if s["value"]["RBGroundCoverNoCover"] is not None])
+    inScope.extend([s["value"]["LBGroundCoverNoCover"] for s in riparianStructures if s["value"]["LBGroundCoverNoCover"] is not None])
+    inScope.extend([s["value"]["RBGroundCoverNoCover"] for s in riparianStructures if s["value"]["RBGroundCoverNoCover"] is not None])
 
     if inScope.__len__() > 0:
         visitMetrics["PercentGroundCoverNoCover"] = np.mean(inScope)
@@ -208,8 +225,8 @@ def percentCanopyNoCover(visitMetrics, riparianStructures):
 
     inScope = []
 
-    inScope.extend([s["value"]["LBCanopyBigTrees"] + s["value"]["LBCanopySmallTrees"] for s in riparianStructures["value"] if s["value"]["LBCanopyBigTrees"] is not None and s["value"]["LBCanopySmallTrees"] is not None])
-    inScope.extend([s["value"]["RBCanopyBigTrees"] + s["value"]["RBCanopySmallTrees"] for s in riparianStructures["value"] if s["value"]["RBCanopyBigTrees"] is not None and s["value"]["RBCanopySmallTrees"] is not None])
+    inScope.extend([s["value"]["LBCanopyBigTrees"] + s["value"]["LBCanopySmallTrees"] for s in riparianStructures if s["value"]["LBCanopyBigTrees"] is not None and s["value"]["LBCanopySmallTrees"] is not None])
+    inScope.extend([s["value"]["RBCanopyBigTrees"] + s["value"]["RBCanopySmallTrees"] for s in riparianStructures if s["value"]["RBCanopyBigTrees"] is not None and s["value"]["RBCanopySmallTrees"] is not None])
 
     if inScope.__len__() > 0:
         visitMetrics["PercentCanopyNoCover"] = 100 - np.mean(inScope)

@@ -1,3 +1,15 @@
+"""
+This module contains the function to run CHaMP topo, aux, and topo+aux metrics for a given topo project.
+This version purely runs the metrics, it doesn't alter the topo riverscapes project. 
+
+Use this version to simply test and develop the metric calculations.
+The version in champ_metrics.py is the one that is designed to be used with the Fargate script for
+running this tool in Cybercastor.
+
+Philip Bailey
+Feb 2026
+"""
+
 from typing import Tuple
 import argparse
 import os
@@ -15,7 +27,7 @@ from champ_metrics.topoauxmetrics.topoauxmetrics import visit_topo_aux_metrics
 initGDALOGRErrors()
 
 
-def run_champ_metrics(topo_project_xml_path: str, output_dir: str) -> None:
+def run_champ_metrics(topo_project_xml_path: str, output_dir: str) -> Tuple[str, str, str]:
     """
     Run CHaMP topo, aux and topo+aux metrics for a given topo project
     :param topo_project: Path to the topo project.rs.xml file
@@ -37,7 +49,7 @@ def run_champ_metrics(topo_project_xml_path: str, output_dir: str) -> None:
 
     # Zero pad the visit ID to four characters for folder naming
 
-    visit_output_dir = os.path.join(output_dir, str(visit_id).zfill(4))
+    visit_output_dir = os.path.join(output_dir) #, str(visit_id).zfill(4))
     topo_metric_xml = os.path.join(visit_output_dir, 'topo_metrics.xml')
     aux_metric_xml = os.path.join(visit_output_dir, 'aux_metrics.xml')
     topo_aux_metric_xml = os.path.join(visit_output_dir, 'topo_aux_metrics.xml')
@@ -49,6 +61,8 @@ def run_champ_metrics(topo_project_xml_path: str, output_dir: str) -> None:
     visit_topo_aux_metrics(visit_id, topo_metrics, aux_metrics, topo_aux_metric_xml)
 
     log.info('CHaMP Metrics processing complete.')
+
+    return topo_metric_xml, aux_metric_xml, topo_aux_metric_xml
 
 
 def load_visit_info(topo_project_xml_path: str) -> Tuple[str, str, int, int]:
@@ -96,7 +110,7 @@ def main():
     args = dotenv.parse_args_env(args)
 
     log = Logger('CHaMP Metrics')
-    log.setup(logPath=os.path.join(args.output_folder, "champ_metrics.log"), verbose=args.verbose)
+    log.setup(log_path=os.path.join(args.output_folder, "champ_metrics.log"), verbose=args.verbose)
 
     try:
         run_champ_metrics(args.topo_project_xml, args.output_folder)

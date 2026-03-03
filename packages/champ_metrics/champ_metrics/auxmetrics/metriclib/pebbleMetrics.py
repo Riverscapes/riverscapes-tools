@@ -3,9 +3,15 @@ import numpy as np
 
 def visitPebbleMetrics(visitMetrics, visitobj):
     visit = visitobj['visit']
-    pebbles = visitobj['pebbles']
+    pebbles = visitobj['pebbles']['value']
     pebbleCrossSections = visitobj['pebbleCrossSections']
     channelUnits = visitobj['channelUnits']
+
+    # PB Feb 2026
+    # Substitutions for legacy metrics
+    for dict in pebbles:
+        dict["value"]['CobbleEmbededPercent'] = dict["value"].get('CobbleEmbededPercent', None)
+
 
     # ChampMetricVisitInformation.AvgFastWaterCobbleEmbeddedness
     fastWaterCobbleEmbeddednessAvg(visitMetrics, visit, pebbles)
@@ -39,7 +45,7 @@ def pebbleSubstrateAtPercentile(visit, percent, pebbles, pebbleCrossSections, ch
 
 
 def pebbleSubstrateAtPercentile_2011(percent, pebbles):
-    records = sorted([p["value"]["Substrate"] for p in pebbles["value"] if p["value"]["Substrate"] is not None and p["value"]["Substrate"] > 0])
+    records = sorted([p["value"]["Substrate"] for p in pebbles if p["value"]["Substrate"] is not None and p["value"]["Substrate"] > 0])
 
     len = records.__len__()
     if len == 0:
@@ -178,11 +184,11 @@ def sortMaxDiameter(a):
 
 def getCobbles(visit, pebbles):
     if visit["iterationID"] == 1:
-        return [p for p in pebbles["value"] if p["value"]["CobbleEmbededPercent"] is not None and p["value"]["CobblePercentFines"] is not None and p["value"]["Substrate"] is not None and p["value"]["Substrate"] > 64 and p["value"]["Substrate"] <= 250]
+        return [p for p in pebbles if p["value"]["CobbleEmbededPercent"] is not None and p["value"]["CobblePercentFines"] is not None and p["value"]["Substrate"] is not None and p["value"]["Substrate"] > 64 and p["value"]["Substrate"] <= 250]
 
     substrateSizeForCobbles = ["64 - 90mm", "90 - 128mm", "128 - 180mm", "180 - 256mm"]
 
-    res = [p for p in pebbles["value"] if p["value"]["CobbleEmbededPercent"] is not None and p["value"]["SubstrateSizeClass"] is not None and p["value"]["SubstrateSizeClass"] in substrateSizeForCobbles]
+    res = [p for p in pebbles if p["value"]["CobbleEmbededPercent"] is not None and p["value"]["SubstrateSizeClass"] is not None and p["value"]["SubstrateSizeClass"] in substrateSizeForCobbles]
     res = [p for p in res if (p["value"]["CobbleEmbededPercent"] > 0 and p["value"]["CobblePercentFines"] is not None) or (p["value"]["CobbleEmbededPercent"] == 0)]
     return res
 

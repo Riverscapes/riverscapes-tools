@@ -48,7 +48,7 @@ woodyDebrisJamVolumeEstimatesDict = {
 def visitLWDMetrics(visitMetrics, visitobj):
     visit = visitobj['visit']
     channelUnits = visitobj['channelUnits']
-    largeWoodyPieces = visitobj['largeWoodyPieces']
+    largeWoodyPieces = visitobj['largeWoodPieces']
     largeWoodyDebris = visitobj['largeWoodyDebris']
     woodyDebrisJams = visitobj['woodyDebrisJams']
     jamHasChannelUnits = visitobj['jamHasChannelUnits']
@@ -67,7 +67,7 @@ def visitLWDMetrics(visitMetrics, visitobj):
     if largeWoodyPieces is not None:
         visitMetrics["LargeWoodyPiecesCountPoolForming"] = [p for p in largeWoodyPieces["value"] if p["value"]["IsPoolForming"] is not None and p["value"]["IsPoolForming"] == "Yes"].__len__()
         visitMetrics["LargeWoodyPiecesCountIsKey"] = [p for p in largeWoodyPieces["value"] if p["value"]["IsKeyPiece"] is not None and p["value"]["IsKeyPiece"] == "Yes"].__len__()
-        visitMetrics["LargeWoodyPiecesCountIsJam"] = [p for p in largeWoodyPieces["value"] if p["value"]["IsJam"] is not None and p["value"]["IsJam"] == "Yes"].__len__()
+        visitMetrics["LargeWoodyPiecesCountIsJam"] = [p for p in largeWoodyPieces["value"] if p["value"].get("IsJam", "No") is not None and p["value"].get("IsJam", "No") == "Yes"].__len__()
         visitMetrics["LargeWoodyPiecesCountRightBank"] = [p for p in largeWoodyPieces["value"] if p["value"]["PieceLocation"] is not None and p["value"]["PieceLocation"] == "Right"].__len__()
         visitMetrics["LargeWoodyPiecesCountLeftBank"] = [p for p in largeWoodyPieces["value"] if p["value"]["PieceLocation"] is not None and p["value"]["PieceLocation"] == "Left"].__len__()
         visitMetrics["LargeWoodyPiecesCountMidChannel"] = [p for p in largeWoodyPieces["value"] if p["value"]["PieceLocation"] is not None and p["value"]["PieceLocation"] == "Mid-Channel"].__len__()
@@ -157,6 +157,12 @@ def getDebrisVolumeForVisitAndChannelUnits_2014(channelUnitIDs, isWet, largeWood
     if isWet:
         pieces = [p for p in pieces if p["value"]["LargeWoodType"] == "Wet"]
 
+    # PGB
+    # Feb 2026
+    for p in pieces:
+        p['value']['DiameterM'] = p['value']['Diameter'] * 0.0254 if p['value']['Diameter'] is not None else None
+        p['value']['LengthM'] = p['value']['Length'] * 0.3048 if p['value']['Length'] is not None else None
+
     # calculate volume for each piece and return as list.
     return [np.pi * math.pow((p["value"]["DiameterM"] / 2.0), 2) * p["value"]["LengthM"] for p in pieces]
 
@@ -216,7 +222,7 @@ def volumeEstimates(measurement, volumeEstimatesDict):
 
 
 def channelUnitLWDMetrics(channelUnitMetrics, visitobj):
-    largeWoodyPieces = visitobj['largeWoodyPieces']
+    largeWoodyPieces = visitobj['largeWoodPieces']
     largeWoodyDebris = visitobj['largeWoodyDebris']
     for c in channelUnitMetrics:
         channelUnitID = c["ChannelUnitID"]
@@ -233,7 +239,7 @@ def channelUnitLWDMetrics(channelUnitMetrics, visitobj):
 def tier1LWDMetrics(tier1Metrics, visitobj):
     visit = visitobj['visit']
     channelUnits = visitobj['channelUnits']
-    largeWoodyPieces = visitobj['largeWoodyPieces']
+    largeWoodyPieces = visitobj['largeWoodPieces']
     largeWoodyDebris = visitobj['largeWoodyDebris']
     woodyDebrisJams = visitobj['woodyDebrisJams']
     jamHasChannelUnits = visitobj['jamHasChannelUnits']

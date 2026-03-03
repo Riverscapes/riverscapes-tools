@@ -33,9 +33,9 @@ class LargeWoodMetrics(CHaMPMetric):
 
             metrics = LargeWoodMetrics._calcFrequency2011to2013(woodData, jamData, siteWettedLength)
         else:
-            if 'LargeWoodyPiece' not in apiData:
-                raise DataException("LargeWoodyPiece needed and not found.")
-            woodData = [val['value'] for val in apiData['LargeWoodyPiece']['value']]
+            if 'LargeWoodPiece' not in apiData or apiData['LargeWoodPiece'] is None:
+                raise DataException("LargeWoodPiece needed and not found.")
+            woodData = [val['value'] for val in apiData['LargeWoodPiece']['value']]
             metrics = LargeWoodMetrics._calcFrequency2014On(woodData, siteWettedLength)
 
         self.metrics = {'VisitMetrics': {'Frequency': metrics}}

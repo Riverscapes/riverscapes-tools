@@ -19,7 +19,8 @@ apiCalls = {
     # 'RiparianStructure' : 'measurements/Riparian Structure',
     # 'TopoTier1Metrics' : 'metricschemas/QA - Topo Tier 1 Metrics/metrics',
     'LargeWoodyDebris': 'measurements/Large Woody Debris',
-    'LargeWoodyPiece': 'measurements/Large Woody Pieces',
+    # 'LargeWoodyPiece': 'measurements/Large Woody Pieces',
+    'LargeWoodPiece': 'measurements/Large Wood Pieces',
     'WoodyDebrisJam': 'measurements/Woody Debris Jams',
     'VisitDetails': '',
     'TopoVisitMetrics': 'metricschemas/QA - Topo Visit Metrics/metrics',
@@ -71,6 +72,28 @@ def visit_topo_aux_metrics(visit_id: int, topo_metrics: dict, aux_metrics: dict,
             apiData[key] = topo_metrics['ChannelUnits']
         # else:
         #     raise MissingException(f"API path for {key} not recognized for visit {visit_id}")
+
+    substitutions = {
+        'SubstrateCover': {
+            'Boulders': 'BouldersGT256',
+            'Cobbles': 'Cobbles65255',
+            'CourseGravel': 'CoarseGravel1764',
+            'FineGravel': 'FineGravel316',
+            'Fines': 'FinesLT006',
+            'Sand': 'Sand0062'
+        },
+        'FishCover': {
+            'LWDFC': 'WoodyDebrisFC',
+            'VegetationFC': 'VegetationFC',
+        }
+    }
+
+    for key, sub_dict in substitutions.items():
+        for substrateMeasurement in apiData[key]['value']:
+                for metric_key, json_key in sub_dict.items():
+                    if metric_key not in substrateMeasurement['value']:
+                        substrateMeasurement['value'][metric_key] = substrateMeasurement['value'].get(json_key, None)
+                
 
     # Dictionary to hold the metric values
     visit_metrics = {}
