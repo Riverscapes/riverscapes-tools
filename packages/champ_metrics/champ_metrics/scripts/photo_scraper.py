@@ -4,7 +4,12 @@ Script to build a riverscapes project from CHaMP photos.
 Philip Bailey
 26 Feb 2026
 
-The input to this script is a folder structure of photos obtained from Streamnet, organized as follows:
+The input to this script is a folder structure of photos obtained from Streamnet, organized as follows.
+The image files have inconsistent file names, and this script makes no attempt to fix the file names.
+It uses them exactly as they come from Streamnet.T he image file names are not important to this script. 
+Some of them contain contextual information about where they were taken in a sight, but this script 
+ignores that information.
+
 photos/
     watershed1/
         year1/
@@ -21,12 +26,10 @@ photos/
             site4/
                 photo5.jpg
 
-The image file names are not important to this script. Some of them contain contextual information about
-where they were taken in a sight, but this script ignores that information.
 
 The script also takes as input a JSON file containing visit information for all CHaMP visits, which can be
-obtained from the CHaMP Google Cloud Postgres database using the following query. The site coordinates are
-used as the location for the photos in the absence of EXIF data.
+obtained from the CHaMP Google Cloud Postgres database using the following query. This query is saved to
+a JSON file and passed into the script as "visit info".
 
 SELECT v.WatershedID,
        v.WatershedName,
@@ -43,6 +46,19 @@ SELECT v.WatershedID,
        v.HitchName
 FROM vwVisits v
          inner join CHaMP_Sites s on v.SiteID = s.SiteID;
+
+The script first downloads image files from S3, then loops over them and copies them to a new directory
+that is the output Riverscapes project. The site locations from the visit info JSON are used unless 
+the image file contains EXIF location data, in which case the EXIF location data is used. 
+The visit info JSON is also used to populate metadata fields in the project.
+
+A list of all the photos is written to a temporary GeoJSON file, which is then converted to a GeoPackage 
+using ogr2ogr and added to the Riverscapes project as a dataset.
+
+Finally the project bounds are determined using a simple min/max approach to the photo locations. The
+centroid is determined by averaging the latitudes and longitudes of the photo locations.
+
+The project is uploaded to the Riverscapes Data Exchange using rscli command line operation.
 """
 import re
 import os
@@ -56,10 +72,12 @@ from datetime import datetime
 from rsxml import Logger
 from rsxml.project_xml import Project, Realization, Geopackage, GeopackageLayer, GeoPackageDatasetTypes, Meta, MetaData, ProjectBounds, Coords, BoundingBox
 
-def scrape_photos(champ_visits, watershed, year, download_dir: str, project_photos_dir: str) -> list:
+def scrape_photos(champ_visits: list, watershed: str, year: int, download_dir: str, project_photos_dir: str) -> list:
     """
     args:
-    champ_visits: a list of dicts containing visit information for all CHaMP visits
+    champ_visits: a list containing visit information for all CHaMP visits
+    watershed: Name of the watershed being processed. Might contain spaces.
+    year: 
     photos_dir: the top level directory under which photos occur, organized as described above
     """
 
@@ -174,8 +192,8 @@ def create_project_from_photos(watershed, year, photo_data, project_dir):
         Meta(name='ModelVersion', value='1.0.0'),
         Meta(name='Watershed', value=watershed),
         Meta(name='Year', value=year),
-        Meta(name='Documentation', value='https://docs.riverscapes.net/initiatives/champ#photos', type='URL'),
-        Meta(name='Streamnet', value='https://www.streamnet.org/home/data-maps/champ/champ-files/', type='URL')
+        Meta(name='Documentation', value='https://docs.riverscapes.net/initiatives/champ#photos', type='url'),
+        Meta(name='Streamnet', value='https://www.streamnet.org/home/data-maps/champ/champ-files/', type='url')
     ]
 
     ############################################################################################################
