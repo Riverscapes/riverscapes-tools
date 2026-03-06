@@ -8,6 +8,7 @@
 # Date:     11 Oct 2021
 # -------------------------------------------------------------------------------
 from shapely.geometry import Point, LineString
+from shapely.strtree import STRtree
 
 
 def line_segments(curve: LineString) -> list:
@@ -22,26 +23,51 @@ def line_segments(curve: LineString) -> list:
     return list(map(LineString, zip(curve.coords[:-1], curve.coords[1:])))
 
 
+# def select_geoms_by_intersection(in_geoms, select_geoms, buffer=None, inverse=False):
+#     """select geometires based on intersection (or non-intersection) of midpoint
+
+#     Args:
+#         in_geoms (list): list of LineString geometires to select from
+#         select_geoms ([type]): list of LineString geometries to make the selection
+#         buffer ([type], optional): apply a buffer on the midpoint selectors. Defaults to None.
+#         inverse (bool, optional): return list of LineStrings that Do Not intersect the selecion geometries. Defaults to False.
+
+#     Returns:
+#         list: List of LineString geometries that meet the selection criteria
+#     """
+#     out_geoms = []
+
+#     for geom in in_geoms:
+#         if inverse:
+#             if all([geom_select.disjoint(geom.interpolate(0.5, True).buffer(buffer) if buffer else geom.interpolate(0.5, True)) for geom_select in select_geoms]):
+#                 out_geoms.append(geom)
+#         else:
+#             if any([geom_select.intersects(geom.interpolate(0.5, True).buffer(buffer) if buffer else geom.interpolate(0.5, True)) for geom_select in select_geoms]):
+#                 out_geoms.append(geom)
+
+#     return out_geoms
+
 def select_geoms_by_intersection(in_geoms, select_geoms, buffer=None, inverse=False):
-    """select geometires based on intersection (or non-intersection) of midpoint
-
-    Args:
-        in_geoms (list): list of LineString geometires to select from
-        select_geoms ([type]): list of LineString geometries to make the selection
-        buffer ([type], optional): apply a buffer on the midpoint selectors. Defaults to None.
-        inverse (bool, optional): return list of LineStrings that Do Not intersect the selecion geometries. Defaults to False.
-
-    Returns:
-        list: List of LineString geometries that meet the selection criteria
-    """
+    # Build spatial index for select_geoms
+    tree = STRtree(select_geoms)
     out_geoms = []
 
     for geom in in_geoms:
+        midpoint = geom.interpolate(0.5, True)
+        if buffer:
+            midpoint = midpoint.buffer(buffer)
+
+        # Query spatial index for candidate indices (bounding box check)
+        candidate_indices = tree.query(midpoint)
+
+        # Verify actual intersection with candidates
         if inverse:
-            if all([geom_select.disjoint(geom.interpolate(0.5, True).buffer(buffer) if buffer else geom.interpolate(0.5, True)) for geom_select in select_geoms]):
+            # Include if midpoint is disjoint from all candidates
+            if len(candidate_indices) == 0 or all(midpoint.disjoint(select_geoms[idx]) for idx in candidate_indices):
                 out_geoms.append(geom)
         else:
-            if any([geom_select.intersects(geom.interpolate(0.5, True).buffer(buffer) if buffer else geom.interpolate(0.5, True)) for geom_select in select_geoms]):
+            # Include if midpoint intersects any candidate
+            if any(midpoint.intersects(select_geoms[idx]) for idx in candidate_indices):
                 out_geoms.append(geom)
 
     return out_geoms

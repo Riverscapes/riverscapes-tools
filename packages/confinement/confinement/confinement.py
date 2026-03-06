@@ -108,7 +108,7 @@ def confinement(huc: str, flowlines_orig: Path, channel_area_orig: Path, confini
         log.debug(str(ve))
         raise Exception(f'Invalid HUC identifier "{huc}". Must be an integer')
 
-    if not (len(huc) == 4 or len(huc) == 8 or len(huc) == 10):
+    if not (len(huc) == 4 or len(huc) == 6 or len(huc) == 8 or len(huc) == 10):
         raise Exception(f'Invalid HUC identifier "{huc}". Must be four digit integer')
 
     # search windows for moving window analysis
