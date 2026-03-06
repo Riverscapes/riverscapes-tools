@@ -15,6 +15,10 @@ def igo_confinement(igo: str, dgo: str, windows: dict):
         igo_lyr.ogr_layer.StartTransaction()
         for igo_ftr, *_ in igo_lyr.iterate_features():
             igoid = igo_ftr.GetFID()
+            if igoid not in windows:
+                logger.warning(
+                    f'IGO feature with FID {igoid} has no associated windows, skipping')
+                continue
 
             confinement_length = 0.0
             constricted_length = 0.0
