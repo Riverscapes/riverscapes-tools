@@ -22,6 +22,14 @@
     }
   ],
   "settings": {
+    "json.schemas": [
+      {
+        "fileMatch": [
+          "**/layer_definitions.json"
+        ],
+        "url": "https://xml.riverscapes.net/riverscapes_metadata/schema/layer_definitions.schema.json"
+      }
+    ],
     "python.envFile": "${workspaceFolder}/.env",
     "terminal.integrated.defaultProfile.linux": "zsh",
     "[python]": {
@@ -61,7 +69,7 @@
       "**/.venv/**": true,
       "**/__pycache__/**": true
     },
-  "python.defaultInterpreterPath": "${workspaceFolder:🏠 Git Root}/.venv/bin/python",
+    "python.defaultInterpreterPath": "${workspaceFolder:🏠 Git Root}/.venv/bin/python",
     "python.testing.autoTestDiscoverOnSaveEnabled": false
   }
 }

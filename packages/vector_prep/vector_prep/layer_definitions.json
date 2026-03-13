@@ -1,0 +1,64 @@
+{
+    "$schema": "https://xml.riverscapes.net/riverscapes_metadata/schema/layer_definitions.schema.json",
+    "tool_schema_name": "Riverscapes Vector Data Prep",
+    "tool_schema_version": "1.0.0",
+    "layers": [
+        {
+            "layer_id": "blm_natl_grazing_allotments",
+            "layer_name": "BLM National Grazing Allotments",
+            "source_url": "https://gbp-blm-egis.hub.arcgis.com/datasets/BLM-EGIS::blm-natl-grazing-allotment-polygons/about",
+            "source_title": "US DOI Bureau of Land Management Geospatial Business Platform",
+            "theme": "Administrative Areas",
+            "columns": [
+                {
+                    "name": "ALLOT_NO",
+                    "friendly_name": "Allotment Number",
+                    "dtype": "STRING",
+                    "description": "The number that identifies an Allotment which is unique within the BLM administrative state."
+                },
+                {
+                    "name": "ALLOT_NAME",
+                    "friendly_name": "Allotment Name",
+                    "dtype": "STRING",
+                    "description": "The name by which the allotment is commonly known."
+                },
+                {
+                    "name": "GIS_ACRES",
+                    "friendly_name": "GIS Acres",
+                    "dtype": "FLOAT",
+                    "description": "This is a calculated value of area in units of acres based on the area field created by default within the ESRI Polygon data structure."
+                },
+                {
+                    "name": "ADMIN_ST",
+                    "friendly_name": "Administrative State Code",
+                    "dtype": "STRING",
+                    "description": "An administrative unit that identifies the state or geographic area which has administrative jurisdiction over lands, and cases."
+                },
+                {
+                    "name": "ADM_OFC_CD",
+                    "friendly_name": "Administrative Office Code",
+                    "dtype": "STRING",
+                    "description": "BLM administrative office (which is subordinate to the state office) that has jurisdiction and/or management authority over lands within a geographic area."
+                },
+                {
+                    "name": "ADM_UNIT_CD",
+                    "friendly_name": "Adminstrative Unit Code",
+                    "dtype": "STRING",
+                    "description": "The BLM administrative unit/office that is a combination of Administrative State Code and Administrative Office Code that fully identifies the geographic area which has jurisdiction over the lands."
+                },
+                {
+                    "name": "ST_ALLOT",
+                    "friendly_name": "Managing State Allotment Number",
+                    "dtype": "STRING",
+                    "description": "This is a concatenation of two existing attributes but is not a substitute for having either of those two attributes.  It is the existing unique code that allows identification of individual allotments throughout the entire United States."
+                },
+                {
+                    "name": "ACTIVE_DT",
+                    "friendly_name": "Allotment Active Date",
+                    "dtype": "DATETIME",
+                    "description": "The calendar date on which the boundary of an allotment is established and becomes effective.  The format for the date will be MM/DD/YYYY, and will be entered only once for that polygon."
+                }
+            ]
+        }
+    ]
+}
