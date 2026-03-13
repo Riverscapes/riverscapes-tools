@@ -1,0 +1,113 @@
+name: Publish Metadata Catalog
+
+on:
+  push:
+    branches:
+      - master
+      - dev
+      - vectorprep2026
+    paths:
+      - "packages/vector_prep/**"
+      - ".github/workflows/metadata-catalog.yml"
+  pull_request:
+    branches:
+      - master
+      - dev
+      - vectorprep2026
+    paths:
+      - "packages/vector_prep/**"
+      - ".github/workflows/metadata-catalog.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write  # needed for OIDC role assumption
+
+concurrency:
+  group: metadata-catalog-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TABLE_NAME: layer_definitions
+  S3_BASE_PATH: s3://riverscapes-athena/riverscapes_metadata/layer_definitions_raw/0.8/
+  ATHENA_DATABASE: default
+  ATHENA_RESULT_BUCKET: s3://riverscapes-athena-output/query-results/metadata  # <-- ensure this exists
+  AWS_REGION: us-west-2                        
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        run: |
+          python -m pip install --upgrade pip
+          pip install uv
+
+      - name: Sync dependencies
+        run: |
+          uv sync --upgrade-package riverscapes-metadata
+
+      - name: Generate partitioned Parquet metadata
+        id: generate-metadata
+        run: |
+          uv run export-layer-definitions-for-s3 --root .
+          echo "Index manifest:"
+          cat dist/index.json | jq .
+          echo "Partition files:"
+          jq -r '.partitions[].path' dist/index.json
+
+      - name: Upload metadata artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: metadata-dist
+          path: dist/
+          retention-days: 1
+
+  build-and-publish:
+    needs: validate
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.METADATA_PUBLISH_ROLE_ARN }}
+          # aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          # aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        run: |
+          python -m pip install --upgrade pip
+          pip install uv
+      
+      - name: Sync dependencies
+        run: |
+          uv sync --upgrade-package riverscapes-metadata
+
+      - name: Download metadata artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: metadata-dist
+          path: dist/
+
+      - name: Upload and process metadata
+        run: |
+          uv run publish-metadata-to-s3 --root .
+

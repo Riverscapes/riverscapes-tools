@@ -19,6 +19,9 @@
     {
       "name": "🏠 Git Root",
       "path": ".."
+    },
+    {
+      "path": "../../../../../mnt/c/nardata/localcode/data-exchange-scripts"
     }
   ],
   "settings": {
