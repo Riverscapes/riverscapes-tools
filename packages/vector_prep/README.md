@@ -8,6 +8,9 @@ Example preparation includes:
 * simplify as needed
 * Documentation and Metadata enrichment - ingesting any existing metadata (eg. in an ISO xml format), source urls etc., making sure it is referenced/included and also translating it into the riverscapes metadata `.json` format, published at [xml.riverscapes.net](https://xml.riverscapes.net/riverscapes_metadata/schema/layer_definitions.schema.json) and documented on [docs.riverscapes.net](https://docs.riverscapes.net/standards/metadata) so it can be published to the central S3/Athena repository.
 
+Store run manifests (json files documenting what was done/changed) in processed_data
+If we move to more automated & frequent data processing we'll revisit this - the logs will probably in s3, AWS glue will help etc.
+
 Planned, not yet implemented:
 
 * Identify/Verify a primary key field that can be used for joins. Could be composite of existing fields.
