@@ -22,7 +22,7 @@
       - [Method 2: Using QGIS Python Environment](#method-2-using-qgis-python-environment)
 
 
-This is a monorepo housing the python open-source GIS tools for Riverscapes, and the documentation site tools.riverscapes.net. Packages include:  
+This is a monorepo housing the python open-source GIS tools for Riverscapes, and the documentation site [`tools.riverscapes.net`](https://tools.riverscapes.net). Packages include:  
 
 * [Riverscapes Context](./packages/rscontext)
 * [BRAT](./packages/brat)
@@ -98,7 +98,7 @@ Make sure you use the folder name that matches what this tool expects for the pr
 
 ## Documentation Site
 
-The documentation site is built with [Docusaurus](https://docusaurus.io/) and published  from the **`docs` branch** to [tools.riverscapes.net](https://tools.riverscapes.net).
+The documentation site is built with [Docusaurus](https://docusaurus.io/) and published from the **`docs` branch** to [tools.riverscapes.net](https://tools.riverscapes.net).
 
 ## Editing & preview changes using VS Code
 
@@ -110,15 +110,19 @@ yarn install
 yarn start
 ```
 
-
------------------------------------
+--------------------------------------
 
 ## Using UV for Environment Management
 
 This project uses [uv](https://github.com/astral-sh/uv) to manage Python virtual environments and dependencies. `uv` is an alternative to tools like `pipenv` and `poetry`.
 
-
 ## Environment Setup
+
+The UV *dependency groups* are for packages required only for local/CI use. These are not part of the package, so when users (or Cybercastor) run `pip install riverscapes-tools`, they won't get these extra libraries.  
+
+When you run `uv sync` for development, you get the development group by default. Any other groups will only be installed if explicitly called for with `uv sync --group catalog`.
+
+Confusingly, in addition to these 'development dependencies' called groups, UV has 'optional dependencies', called extras ([reference](https://docs.astral.sh/uv/concepts/projects/dependencies/)). We aren't currently using optional dependencies in this repo.
 
 ### Prerequisites
 

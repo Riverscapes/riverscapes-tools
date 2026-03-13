@@ -1,11 +1,14 @@
 name: Publish Metadata Catalog
-
+# TWO PARTS - validate (always run) and build and publish (only on Master branch)
+# The Python CODE EXECUTED comes from riverscapes-metadata which, as defined in pyproject.toml comes from RiverscapesXML repository
+# Validate searches for the layer_definitions.json and makes sure they are compliant with the current standard
+# Build and publish makes parquet files and uploads them to S3 path for consumption by Athena
+# Only triggered on changes with specific paths. Once other tools are on board we can loosen up or remove the `paths` limitation below  
 on:
   push:
     branches:
       - master
       - dev
-      - vectorprep2026
     paths:
       - "packages/vector_prep/**"
       - ".github/workflows/metadata-catalog.yml"
@@ -13,7 +16,6 @@ on:
     branches:
       - master
       - dev
-      - vectorprep2026
     paths:
       - "packages/vector_prep/**"
       - ".github/workflows/metadata-catalog.yml"
@@ -53,7 +55,7 @@ jobs:
 
       - name: Sync dependencies
         run: |
-          uv sync --upgrade-package riverscapes-metadata
+          uv sync --no-dev --group catalog --upgrade-package riverscapes-metadata
 
       - name: Generate partitioned Parquet metadata
         id: generate-metadata
@@ -82,7 +84,7 @@ jobs:
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.METADATA_PUBLISH_ROLE_ARN }}
+          role-to-assume: ${{ secrets.ATHENA_S3_ACCESS_ROLE_ARN }}
           # aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           # aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
@@ -99,7 +101,7 @@ jobs:
       
       - name: Sync dependencies
         run: |
-          uv sync --upgrade-package riverscapes-metadata
+          uv sync --no-dev --group catalog --upgrade-package riverscapes-metadata
 
       - name: Download metadata artifact
         uses: actions/download-artifact@v4
