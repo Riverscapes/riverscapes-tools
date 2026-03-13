@@ -10,6 +10,7 @@
             "source_title": "US DOI Bureau of Land Management Geospatial Business Platform",
             "theme": "Administrative Areas",
             "columns": [
+                {"name": "objectid"},
                 {
                     "name": "ALLOT_NO",
                     "friendly_name": "Allotment Number",
