@@ -330,8 +330,14 @@ def get_centroid(photo_data):
 
 def get_bounding_box(photo_data):
     # calculate the bounding box of the photo locations
-    latitudes = [entry["Latitude"] for entry in photo_data]
-    longitudes = [entry["Longitude"] for entry in photo_data]
+    latitudes, longitudes = [], []
+    for entry in photo_data:
+        lat = entry["Latitude"]
+        lon = entry["Longitude"]
+        if lat > 0 and lat < 90 and lon > -180 and lon < 180:
+            latitudes.append(lat)
+            longitudes.append(lon)
+
     min_lat = min(latitudes)
     max_lat = max(latitudes)
     min_lon = min(longitudes)
@@ -502,7 +508,7 @@ def main():
         if args.skip_upload is True:
             log.info("Skipping rscli upload step as --skip-upload flag is set.")
         else:
-            rscli_tags = f'CHAMP_Watershed_{watershed_name.replace(" ", "_")},CHAMP_Year_{year}'
+            rscli_tags = f'CHAMP_Watershed_{watershed_name.replace(" ", "").replace("(", "").replace(")", "")},CHAMP_Year_{year}'
             rscli_cmd = f'rscli upload --org {args.owner} --no-wait --no-input --tags {rscli_tags} "{project_dir}"'
             log.info(f"Uploading project to Riverscapes using command: {rscli_cmd}")
             os.system(rscli_cmd)
