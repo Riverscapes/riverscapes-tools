@@ -22,14 +22,18 @@ def simplify_geojson(input_path, output_path=None, target_size_kb=200, start_tol
     print(f"Initial file size: {file_size_kb:.2f} KB")
 
     if file_size_kb <= target_size_kb:
-        print("File is already under the target size. Copying to output...")
+        print("File is already under the target size. Enforcing standard format...")
         # Just creating a fresh copy to ensure consistent formatting if needed, or simple copy
         try:
             gdf = gpd.read_file(input_path)
-            # Ensure 4326
-            if gdf.crs and gdf.crs.to_epsg() != 4326:
+
+            if not gdf.crs:
+                print("Warning: Input CRS is missing. Assuming EPSG:4326.")
+                gdf.set_crs(epsg=4326, inplace=True)
+            elif gdf.crs.to_epsg() != 4326:
                 print("Reprojecting to EPSG:4326...")
                 gdf = gdf.to_crs(epsg=4326)
+
             gdf.to_file(output_path, driver='GeoJSON')
             print(f"Saved to {output_path}")
         except Exception as e:
