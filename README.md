@@ -120,7 +120,7 @@ This project uses [uv](https://github.com/astral-sh/uv) to manage Python virtual
 
 The UV *dependency groups* are for packages required only for local/CI use. These are not part of the package, so when users (or Cybercastor) run `pip install riverscapes-tools`, they won't get these extra libraries.  
 
-When you run `uv sync` for development, you get the development group by default. Any other groups will only be installed if explicitly called for with `uv sync --group catalog`.
+When you run `uv sync` for development, you get the development group by default. Any other groups will only be installed if explicitly called for, e.g. with `uv sync --group catalog`.
 
 Confusingly, in addition to these 'development dependencies' called groups, UV has 'optional dependencies', called extras ([reference](https://docs.astral.sh/uv/concepts/projects/dependencies/)). We aren't currently using optional dependencies in this repo.
 
