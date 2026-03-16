@@ -92,12 +92,12 @@ def beaver_activity(huc, proj_boundary, dgos, igos, qris_path, output_dir, beave
                 if ftr.GetGeometryRef().Intersects(boundary_ftr.GetGeometryRef()):
                     dam_cer = ftr.GetField('Dam CER')  # are these always the same or should it be a list param
                     dam_type = ftr.GetField('Dam Type')
-                    type_cer = ftr.GetField('Type CER')
+                    # type_cer = ftr.GetField('Type CER')
                     new_ftr = ogr.Feature(out_lyr.ogr_layer.GetLayerDefn())
                     new_ftr.SetGeometry(ftr.GetGeometryRef())
                     new_ftr.SetField('dam_cer', dam_cer)
                     new_ftr.SetField('dam_type', dam_type)
-                    new_ftr.SetField('type_cer', type_cer)
+                    # new_ftr.SetField('type_cer', type_cer)
                     out_lyr.ogr_layer.CreateFeature(new_ftr)
                     new_ftr = None
 
