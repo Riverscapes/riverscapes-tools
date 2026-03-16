@@ -80,7 +80,8 @@ try() {
   ##########################################################################################
   # Now Run Beaver Activity
   ##########################################################################################
-  beaver_activity $HUC \
+  cd /usr/local/src/riverscapes-tools/packages/brat
+  python3 -m beaver_sign.beaver_sign $HUC \
     $QRIS_DIR/context/feature_classes.gpkg/Watersheds10DigitHUC \
     $VBET_DIR/intermediates/vbet_intermediates.gpkg/vbet_dgos \
     $VBET_DIR/outputs/vbet.gpkg/vbet_igos \
