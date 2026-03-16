@@ -309,7 +309,7 @@ def main():
     parser.add_argument('dgo', type=str, help='Path to DGO feature class')
     parser.add_argument('flowlines', type=str, help='Path to flowlines feature class')
     parser.add_argument('output_folder', type=str, help='Output folder')
-    parser.add_argument('--meta', type=str, help='Metadata in JSON format', default='{}')
+    parser.add_argument('--meta', type=str, help='Metadata as comma separated key=value pairs')
     parser.add_argument('--verbose', help='(optional) a little extra logging', action='store_true', default=False)
     parser.add_argument('--debug', help='(optional) run in debug mode', action='store_true', default=False)
 
