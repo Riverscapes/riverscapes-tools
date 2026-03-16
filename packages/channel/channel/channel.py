@@ -386,9 +386,9 @@ def main():
     bankfull_params = parse_metadata(args.bankfull_function_params)
 
     reach_codes = {}
-    reach_codes['flowline'] = args.flowline_reach_codes.split(',') if args.flowline_reach_codes else None
-    reach_codes['flowarea'] = args.flowarea_reach_codes.split(',') if args.flowarea_reach_codes else None
-    reach_codes['waterbody'] = args.waterbody_reach_codes.split(',') if args.waterbody_reach_codes else None
+    reach_codes['flowline'] = [x.strip() for x in args.flowline_reach_codes.split(',')] if args.flowline_reach_codes else None
+    reach_codes['flowarea'] = [x.strip() for x in args.flowarea_reach_codes.split(',')] if args.flowarea_reach_codes else None
+    reach_codes['waterbody'] = [x.strip() for x in args.waterbody_reach_codes.split(',')] if args.waterbody_reach_codes else None
 
     if args.precip is not None:
         precip = args.precip

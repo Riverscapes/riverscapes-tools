@@ -55,6 +55,27 @@ cfg = ModelConfig('https://xml.riverscapes.net/Projects/XSD/V2/RiverscapesProjec
 # These are the Prism BIL types we expect
 PrismTypes = ['PPT', 'TMEAN', 'TMIN', 'TMAX', 'TDMEAN', 'VPDMIN', 'VPDMAX']
 
+# LANDFIRE input raster filenames
+# Download from: https://landfire.gov/getdata.php -> Full Extent Downloads -> CONUS
+# Note: Different products have different latest versions available:
+#   - BPS (Biophysical Settings) represents historic/potential vegetation and is only updated
+#     periodically. LF 2020 (version 220) is currently the latest.
+#   - Other products (EVT, EVC, EVH, etc.) represent current conditions and are updated annually.
+#     LF 2023 (version 240) is currently used.
+# When LANDFIRE releases new versions, update the filenames here.
+LANDFIRE_INPUTS = {
+    'EVT': 'LC23_EVT_240.tif',      # Existing Vegetation Type - LF 2023
+    'BPS': 'LC20_BPS_220.tif',      # Biophysical Settings - LF 2020 (latest available)
+    'EVC': 'LC23_EVC_240.tif',      # Existing Vegetation Cover - LF 2023
+    'EVH': 'LC23_EVH_240.tif',      # Existing Vegetation Height - LF 2023
+    'HDist': 'LC23_HDist_240.tif',  # Historic Disturbance - LF 2023
+    'FDist': 'LC23_FDist_240.tif',  # Fuel Disturbance - LF 2023
+    'FCCS': 'LC23_FCCS_240.tif',    # Fuel Characteristic Classification System - LF 2023
+    'VCC': 'LC23_VCC_240.tif',      # Vegetation Condition Class - LF 2023
+    'VDep': 'LC23_VDep_240.tif',    # Vegetation Departure - LF 2023
+    'SClass': 'LC23_SClass_240.tif', # Succession Classes - LF 2023
+}
+
 LYR_DESCRIPTIONS_JSON = os.path.join(os.path.os.path.dirname(__file__), 'layer_descriptions.json')
 LayerTypes = {
     # key: (name, id, tag, relpath)
@@ -461,17 +482,18 @@ def rs_context(huc: str, landfire_dir: str, ownership: str, fair_market: str, ec
     ################################################################################################################################################
     # Clip and re-project the existing and historic vegetation
     log.info('Processing existing and historic vegetation rasters.')
+    # Uses LANDFIRE_INPUTS config defined at top of file - update filenames there when new versions are released
     in_veg_rasters = [
-        os.path.join(landfire_dir, 'LC23_EVT_240.tif'),
-        os.path.join(landfire_dir, 'LC20_BPS_220.tif'),
-        os.path.join(landfire_dir, 'LC23_EVC_240.tif'),
-        os.path.join(landfire_dir, 'LC23_EVH_240.tif'),
-        os.path.join(landfire_dir, 'LC23_HDst_240.tif'),
-        os.path.join(landfire_dir, 'LC23_FDst_240.tif'),
-        os.path.join(landfire_dir, 'LC23_FCCS_240.tif'),
-        os.path.join(landfire_dir, 'LC23_VCC_240.tif'),
-        os.path.join(landfire_dir, 'LC23_VDep_240.tif'),
-        os.path.join(landfire_dir, 'LC23_SCla_240.tif')
+        os.path.join(landfire_dir, LANDFIRE_INPUTS['EVT']),
+        os.path.join(landfire_dir, LANDFIRE_INPUTS['BPS']),
+        os.path.join(landfire_dir, LANDFIRE_INPUTS['EVC']),
+        os.path.join(landfire_dir, LANDFIRE_INPUTS['EVH']),
+        os.path.join(landfire_dir, LANDFIRE_INPUTS['HDist']),
+        os.path.join(landfire_dir, LANDFIRE_INPUTS['FDist']),
+        os.path.join(landfire_dir, LANDFIRE_INPUTS['FCCS']),
+        os.path.join(landfire_dir, LANDFIRE_INPUTS['VCC']),
+        os.path.join(landfire_dir, LANDFIRE_INPUTS['VDep']),
+        os.path.join(landfire_dir, LANDFIRE_INPUTS['SClass']),
     ]
     out_veg_rasters = [existing_clip, historic_clip, veg_cover_clip, veg_height_clip,
                        hdist_clip, fdist_clip, fccs_clip, veg_condition_clip, veg_departure_clip, sclass_clip]
@@ -596,8 +618,8 @@ def rs_context(huc: str, landfire_dir: str, ownership: str, fair_market: str, ec
     return {
         'DEM': dem_raster,
         'Slope': slope_raster,
-        'ExistingVeg': os.path.join(landfire_dir, 'LC20_EVT_220.tif'),
-        'HistoricVeg': os.path.join(landfire_dir, 'LC20_BPS_220.tif'),
+        'ExistingVeg': os.path.join(landfire_dir, LANDFIRE_INPUTS['EVT']),
+        'HistoricVeg': os.path.join(landfire_dir, LANDFIRE_INPUTS['BPS']),
         'NHD': nhd
     }
 
