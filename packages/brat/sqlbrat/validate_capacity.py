@@ -27,8 +27,7 @@ from sqlbrat.utils.capacity_validation import validate_capacity
 from sqlbrat.__version__ import __version__
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.abspath(os.path.join(__file__, "../../../../data_exchange_scripts")))
-
+sys.path.append(os.path.abspath(os.path.join(current_dir, "../../../data-exchange-scripts")))
 from pydex.classes.RiverscapesAPI import RiverscapesAPI, RiverscapesSearchParams
 
 cfg = ModelConfig('https://xml.riverscapes.net/Projects/XSD/V2/RiverscapesProject.xsd', __version__)
@@ -59,7 +58,7 @@ def run_validation(huc: int, working_dir: str = '/workspaces/data', upload_tags:
     brat_params = RiverscapesSearchParams(
         {
             "projectTypeId": "riverscapes_brat",
-            "tags": ["NMBRAT2025"],
+            "tags": ["2025CONUS"],
             "meta": {
                 "HUC": str(huc)
             }})
