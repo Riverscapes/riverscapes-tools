@@ -58,7 +58,7 @@ def run_validation(huc: int, working_dir: str = '/workspaces/data', upload_tags:
     brat_params = RiverscapesSearchParams(
         {
             "projectTypeId": "riverscapes_brat",
-            "tags": ["2025CONUS"],
+            "tags": ["2026ORBRAT"],
             "meta": {
                 "HUC": str(huc)
             }})

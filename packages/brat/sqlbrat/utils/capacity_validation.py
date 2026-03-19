@@ -8,6 +8,7 @@ import numpy as np
 from shapely.ops import nearest_points, unary_union
 import matplotlib.pyplot as plt
 from scipy.stats import linregress
+from math import ceil
 
 from rscommons import GeopackageLayer
 from rsxml import Logger, dotenv
@@ -301,10 +302,10 @@ def validation_plots(brat_gpkg_path: str):
     plt.show()
 
     with SQLiteCon(brat_gpkg_path) as db:
-        db.curs.execute('SELECT dam_density, predicted_capacity FROM dam_counts WHERE dam_density > 0 or (dam_density = 0 and predicted_capacity = 0)')
+        db.curs.execute('SELECT dam_count, predicted_capacity, length FROM dam_counts WHERE dam_density > 0 or (dam_density = 0 and predicted_capacity = 0)')
         data = db.curs.fetchall()
-        obs_pred = np.asarray(([d['dam_density'] for d in data if d['dam_density'] is not None and d['predicted_capacity'] is not None],
-                               [d['predicted_capacity'] for d in data if d['dam_density'] is not None and d['predicted_capacity'] is not None]))
+        obs_pred = np.asarray(([d['dam_count'] for d in data if d['dam_count'] is not None and d['predicted_capacity'] is not None],
+                               [ceil(d['predicted_capacity'] * (d['length']/1000)) for d in data if d['dam_count'] is not None and d['predicted_capacity'] is not None]))
 
     quan_90 = np.quantile(obs_pred, 0.9, axis=0)
     quan_75 = np.quantile(obs_pred, 0.75, axis=0)
@@ -321,7 +322,7 @@ def validation_plots(brat_gpkg_path: str):
     ax.plot(xdata, res90.intercept + res90.slope * xdata, 'k', linestyle='-.', label='90th Percentile')
     ax.plot(xdata, res75.intercept + res75.slope * xdata, 'k', linestyle=':', label='75th Percentile')
     ax.plot(xdata, res.intercept + res.slope * xdata, 'k', linestyle='--', label='50th Percentile')
-    ax.set_ylim(0, 45)
+    # ax.set_ylim(0, 45)
     ax.set_title('Observed Vs. Predicted Dam Densities')
     ax.set_xlabel(r'Predicted Maximum Capacity $\frac{dams}{km}$')
     ax.set_ylabel(r'Observed Dam Density $\frac{dams}{km}$')
