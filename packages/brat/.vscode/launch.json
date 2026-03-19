@@ -187,7 +187,7 @@
         "${input:HUC}",
         "{env:DATA_ROOT}",
         "--upload_tags", 
-        "2025CONUS,validation_data"
+        "2026ORBRAT,calibrated,validation_data"
       ]
     },
     {

@@ -88,9 +88,11 @@ def run_validation(huc: int, working_dir: str = '/workspaces/data', upload_tags:
 
     log.info('Downloading BRAT projects')
     brat_gpkgs = []
+    evt_rasters = []
     for hucnum, project in to_download.items():
         dl_dir = os.path.join(download_dir, 'brat', project.huc)
         brat_gpkgs.append(os.path.join(dl_dir, 'outputs', 'brat.gpkg'))
+        evt_rasters.append(os.path.join(dl_dir, 'inputs', 'existing_veg.tif'))
         riverscapes_api.download_files(project.id, dl_dir)
 
     # download qris beaver census projects
@@ -140,6 +142,7 @@ def run_validation(huc: int, working_dir: str = '/workspaces/data', upload_tags:
     safe_makedirs(os.path.join(brat_dir, str(huc)))
     safe_makedirs(os.path.join(beav_dir, str(huc)))
     out_brat_gpkg = os.path.join(brat_dir, str(huc), 'brat.gpkg')
+    out_evt_raster = os.path.join(brat_dir, str(huc), 'existing_veg.tif')
     # out_beaver_gpkg = os.path.join(qris_dir, huc, 'beaver_activity_1.gpkg')
 
     for g in brat_gpkgs:
@@ -147,6 +150,10 @@ def run_validation(huc: int, working_dir: str = '/workspaces/data', upload_tags:
         subprocess.run(cmd, shell=True)
         cmd2 = f"ogr2ogr -f GPKG -makevalid -append -nln 'DGOGeometry' {out_brat_gpkg} {g} 'DGOGeometry'"
         subprocess.run(cmd2, shell=True)
+
+    input_evt_rasters = ' '.join(evt_rasters)
+    cmd = f"gdal_merge.py -o {out_evt_raster} -of GTiff -n 0 -a_nodata 0 {input_evt_rasters}"
+    subprocess.run(cmd, shell=True)
 
     beaver_gpkgs = []
     for hucnum, gpkgs in num_beaver_gpkgs.items():
@@ -178,7 +185,7 @@ def run_validation(huc: int, working_dir: str = '/workspaces/data', upload_tags:
 
     # run capacity validation
     log.info('Validating BRAT capacity outputs')
-    validate_capacity(out_brat_gpkg, out_beaver_gpkg)
+    validate_capacity(out_brat_gpkg, out_beaver_gpkg, out_evt_raster)
     valid_path = os.path.join(os.path.dirname(out_brat_gpkg), 'validation')
     for g in brat_gpkgs:
         # copy the validation folder to the brat projects

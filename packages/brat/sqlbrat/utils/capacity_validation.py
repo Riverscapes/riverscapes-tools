@@ -4,6 +4,8 @@ import sys
 import traceback
 import argparse
 
+import rasterio
+from rasterio.mask import mask
 import numpy as np
 from shapely.ops import nearest_points, unary_union
 import matplotlib.pyplot as plt
@@ -16,26 +18,28 @@ from rscommons.classes.vector_base import VectorBase
 from rscommons.database import SQLiteCon
 
 
-def validate_capacity(brat_gpkg_path: str, dams_gpkg_path: str):
+def validate_capacity(brat_gpkg_path: str, dams_gpkg_path: str, evt_path: str):
 
     log = Logger('BRAT Capacity Validation')
     if not os.path.exists(os.path.join(os.path.dirname(brat_gpkg_path), 'validation')):
         os.mkdir(os.path.join(os.path.dirname(brat_gpkg_path), 'validation'))
-    dam_count_table(brat_gpkg_path, dams_gpkg_path)
+    dam_count_table(brat_gpkg_path, dams_gpkg_path, evt_path)
     electivity_index(brat_gpkg_path)
     validation_plots(brat_gpkg_path)
 
     log.info('Done')
 
 
-def dam_count_table(brat_gpkg_path: str, dams_gpkg_path: str):
+def dam_count_table(brat_gpkg_path: str, dams_gpkg_path: str, evt_path: str):
 
     log = Logger('Dam Count Table')
 
     dam_cts = {}  # fid: dam count
+    veg_classes = {}  # veg class: count
 
     with GeopackageLayer(os.path.join(brat_gpkg_path, 'vwDgos')) as brat_lyr, \
-            GeopackageLayer(os.path.join(dams_gpkg_path, 'dams')) as dams_lyr:
+            GeopackageLayer(os.path.join(dams_gpkg_path, 'dams')) as dams_lyr, \
+                rasterio.open(evt_path) as src:
 
         # buffer_distance = brat_lyr.rough_convert_metres_to_vector_units(0.1)
         # max_distance = brat_lyr.rough_convert_metres_to_vector_units(30)
@@ -68,6 +72,29 @@ def dam_count_table(brat_gpkg_path: str, dams_gpkg_path: str):
         #                 else:
         #                     dam_cts[reachid] += 1
         #                     ct += 1
+
+        for dam_ftr, *_ in dams_lyr.iterate_features('Finding veg classes near dams'):
+            geom = dam_ftr.GetGeometryRef()
+            polygon = geom.Buffer(brat_lyr.rough_convert_metres_to_vector_units(100))
+            try:
+                raw_raster = mask(src, [polygon], crop=True)[0]
+                mask_raster = np.ma.masked_values(raw_raster, src.nodata)
+                unique, counts = np.unique(mask_raster.compressed(), return_counts=True)
+                for u, c in zip(unique, counts):
+                    if u not in veg_classes:
+                        veg_classes[u] = c
+                    else:
+                        veg_classes[u] += c
+            except Exception as e:
+                log.warning(f'Error masking raster for dam {dam_ftr.GetFID()}: {e}')
+                log.warning(e)
+
+        with open(os.path.join(os.path.dirname(brat_gpkg_path), 'validation/dam_classes.csv'), 'w', newline='') as csvfile:
+            fieldnames = ['VegClass', 'Count']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            for k, v in veg_classes.items():
+                writer.writerow({'VegClass': k, 'Count': v})
 
         for dam_ftr, *_ in dams_lyr.iterate_features('Finding dam counts for DGOs'):
             dam_id = dam_ftr.GetFID()
