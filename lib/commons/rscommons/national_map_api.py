@@ -1,7 +1,9 @@
 from typing import Dict
 import json
-import requests
 import urllib.parse
+
+import requests
+
 from rsxml import Logger
 
 
@@ -57,6 +59,10 @@ class TNM:
                     log.error('Failed to decode JSON response: {}'.format(e))
                     log.info('Response text: {}'.format(response.text))
                     raise Exception('Failed to get items from TNM API') from e
+
+                if data.get('error'):
+                    log.error(curl_str())
+                    raise Exception(f'TNM API error: {data["error"]}')
 
                 items = data.get("items", [])
                 all_items.extend(items)

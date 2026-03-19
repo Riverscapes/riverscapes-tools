@@ -4,16 +4,15 @@
 #
 # Date:     July 30 2024
 # -------------------------------------------------------------------------------
-import os
 import csv
-from typing import Dict, List
+import os
 
+from rsxml import Logger
 
 from rscommons.download import download_unzip
 from rscommons.national_map_api import TNM
 from rscommons.shapefile import get_geometry_union
 from rscommons.vector_ops import get_geometry_unary_union
-from rsxml import Logger
 
 
 us_states = {
@@ -118,7 +117,7 @@ def _get_metadata(item: dict):
             log.info(f'{key_name} not found')
 
 
-def _get_urls(params: Dict[str, str]):
+def _get_urls(params: dict[str, str]):
     """
     Call TNM API with the argument params and return list of download URLs
 
@@ -130,10 +129,6 @@ def _get_urls(params: Dict[str, str]):
     log.info(f'TNM query: {params}')
 
     items = TNM.get_items(params)
-
-    if items['error'] and items['error'] is not None:
-        log.error(f'TNM API error: {items["error"]}')
-        raise Exception(f'TNM API error: {items["error"]}')
 
     log.info('{} item(s) identified.'.format(items['total']))
 
@@ -198,7 +193,7 @@ def _get_shapefile_urls(dataset, file_format, region_type, region):
         return url[0]
 
 
-def get_1m_dem_urls(vector_path: str, buffer_dist) -> List[str]:
+def get_1m_dem_urls(vector_path: str, buffer_dist) -> list[str]:
     """
     Retrieve a list of all 1-metre DEM rasters within the polygons found in input layer 
 
