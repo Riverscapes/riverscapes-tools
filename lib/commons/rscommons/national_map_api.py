@@ -60,9 +60,9 @@ class TNM:
                     log.info('Response text: {}'.format(response.text))
                     raise Exception('Failed to get items from TNM API') from e
 
-                if data.get('error'):
+                if data.get('error') or data.get('errors'):
                     log.error(curl_str())
-                    raise Exception(f'TNM API error: {data["error"]}')
+                    raise Exception(f'TNM API error(s): {data.get('error')}{data.get('errors')}')
 
                 items = data.get("items", [])
                 all_items.extend(items)
