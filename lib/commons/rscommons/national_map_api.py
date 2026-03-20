@@ -1,4 +1,3 @@
-from typing import Dict
 import json
 import random
 import time
@@ -51,7 +50,7 @@ class TNM:
         return any(token in haystack for token in transient_tokens)
 
     @staticmethod
-    def get_items(params: Dict[str, str]):
+    def get_items(params: dict[str, str]):
         """
         Call TNM API with the argument params and return list of items if successful.
         Will navigate pagination if number of items requires it.
