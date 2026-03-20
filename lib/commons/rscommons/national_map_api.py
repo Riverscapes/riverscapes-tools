@@ -15,9 +15,9 @@ class TNM:
     logic with exponential backoff for transient network and service errors.
     """
     HEADERS = {"Accept": "application/json"}
-    MAX_RETRIES = 8
-    INITIAL_RETRY_DELAY_S = 2.0
-    MAX_RETRY_DELAY_S = 35.0
+    MAX_RETRIES = 7
+    INITIAL_RETRY_DELAY_S = 2.5
+    MAX_RETRY_DELAY_S = 65.0
     INITIAL_TIMEOUT_S = 60
     MAX_TIMEOUT_S = 150
 
