@@ -88,8 +88,10 @@ class TNM:
 
             for attempt in range(1, TNM.MAX_RETRIES + 1):
                 try:
-                    response = requests.get(url, headers=TNM.HEADERS, params=params, timeout=min(TNM.INITIAL_TIMEOUT_S+(attempt-1)*15,TNM.MAX_TIMEOUT_S))
-                    log.debug('Response code: {}'.format(response.status_code))
+                    timeout_s = min(TNM.INITIAL_TIMEOUT_S + (attempt - 1) * 15, TNM.MAX_TIMEOUT_S)
+                    log.debug(f'TNM request attempt {attempt}/{TNM.MAX_RETRIES} (offset={params["offset"]}, timeout={timeout_s}s)')
+                    response = requests.get(url, headers=TNM.HEADERS, params=params, timeout=timeout_s)
+                    log.debug(f'TNM response attempt {attempt}/{TNM.MAX_RETRIES}: status={response.status_code}')
 
                     if 'errorMessage' in response.text:
                         if TNM._is_transient_error(response.status_code, response.text):
@@ -122,10 +124,12 @@ class TNM:
                         log.error(curl_str())
                         raise Exception(f"TNM API error(s): {err_text}")
 
+                    log.info(f'TNM request succeeded on attempt {attempt}/{TNM.MAX_RETRIES} (offset={params["offset"]})')
                     break
 
                 except (requests.RequestException, RuntimeError) as e:
                     if attempt >= TNM.MAX_RETRIES:
+                        log.error(f'TNM request exhausted retries after {TNM.MAX_RETRIES} attempts (offset={params["offset"]})')
                         log.error(curl_str())
                         if response is not None:
                             log.info('Response text: {}'.format(response.text))

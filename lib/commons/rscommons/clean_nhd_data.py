@@ -1,6 +1,7 @@
 import os
 import re
 from osgeo import ogr
+from rsxml import Logger
 from rsxml.util import safe_makedirs
 from rscommons.national_map import get_nhdhr_url
 from rscommons.download import download_unzip
@@ -91,11 +92,14 @@ def clean_nhd_data(huc, download_folder, unzip_folder, out_dir, out_epsg, force_
 
 def download_unzip_nhd(huc, download_folder, unzip_folder, force_download):
 
+    log = Logger('NHD Download')
+
     try:
         nhd_url = get_nhdhr_url(huc[:4])
-    except Exception:
+    except Exception as e:
         # Fallback to guess at an address
         nhd_url = 'https://prd-tnm.s3.amazonaws.com/StagedProducts/Hydrography/NHDPlusHR/Beta/GDB/NHDPLUS_H_{}_HU4_GDB.zip'.format(huc[:4])
+        log.warning(f'Failed to resolve NHD HR URL via TNM for HUC4 {huc[:4]}. Falling back to guessed URL: {nhd_url}. Reason: {e}')
 
     safe_makedirs(download_folder)
     safe_makedirs(unzip_folder)
