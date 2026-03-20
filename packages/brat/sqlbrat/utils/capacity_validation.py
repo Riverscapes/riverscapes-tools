@@ -73,7 +73,7 @@ def dam_count_table(brat_gpkg_path: str, dams_gpkg_path: str, evt_path: str):
         #                     dam_cts[reachid] += 1
         #                     ct += 1
 
-        for dam_ftr, *_ in dams_lyr.iterate_features('Finding veg classes near dams'):
+        for dam_ftr, *_ in dams_lyr.iterate_features('Finding veg classes near dams'):  # MAYBE CHANGE TO ONLY HIGH CERTAINTY DAMS
             geom = dam_ftr.GetGeometryRef()
             polygon = geom.Buffer(brat_lyr.rough_convert_metres_to_vector_units(100))
             try:

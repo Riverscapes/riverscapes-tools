@@ -10,6 +10,7 @@
 
 import argparse
 import os
+import rasterio
 import subprocess
 import sys
 import traceback
@@ -94,6 +95,10 @@ def run_validation(huc: int, working_dir: str = '/workspaces/data', upload_tags:
         brat_gpkgs.append(os.path.join(dl_dir, 'outputs', 'brat.gpkg'))
         evt_rasters.append(os.path.join(dl_dir, 'inputs', 'existing_veg.tif'))
         riverscapes_api.download_files(project.id, dl_dir)
+        
+        if hucnum == list(to_download.keys())[0]: 
+            with rasterio.open(evt_rasters[0]) as src:
+                evt_nodata = src.nodata
 
     # download qris beaver census projects
     beaver_params = RiverscapesSearchParams(
@@ -152,7 +157,7 @@ def run_validation(huc: int, working_dir: str = '/workspaces/data', upload_tags:
         subprocess.run(cmd2, shell=True)
 
     input_evt_rasters = ' '.join(evt_rasters)
-    cmd = f"gdal_merge.py -o {out_evt_raster} -of GTiff -n 0 -a_nodata 0 {input_evt_rasters}"
+    cmd = f"gdal_merge.py -o {out_evt_raster} -co COMPRESS=DEFLATE -a_nodata {evt_nodata} {input_evt_rasters}"
     subprocess.run(cmd, shell=True)
 
     beaver_gpkgs = []
