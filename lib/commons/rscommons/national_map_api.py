@@ -15,9 +15,11 @@ class TNM:
     logic with exponential backoff for transient network and service errors.
     """
     HEADERS = {"Accept": "application/json"}
-    MAX_RETRIES = 5
-    INITIAL_RETRY_DELAY_S = 1.0
-    MAX_RETRY_DELAY_S = 16.0
+    MAX_RETRIES = 8
+    INITIAL_RETRY_DELAY_S = 2.0
+    MAX_RETRY_DELAY_S = 35.0
+    INITIAL_TIMEOUT_S = 60
+    MAX_TIMEOUT_S = 150
 
     @staticmethod
     def _retry_delay(attempt: int) -> float:
@@ -86,7 +88,7 @@ class TNM:
 
             for attempt in range(1, TNM.MAX_RETRIES + 1):
                 try:
-                    response = requests.get(url, headers=TNM.HEADERS, params=params, timeout=60+(attempt-1)*15)
+                    response = requests.get(url, headers=TNM.HEADERS, params=params, timeout=min(TNM.INITIAL_TIMEOUT_S+(attempt-1)*15,TNM.MAX_TIMEOUT_S))
                     log.debug('Response code: {}'.format(response.status_code))
 
                     if 'errorMessage' in response.text:
