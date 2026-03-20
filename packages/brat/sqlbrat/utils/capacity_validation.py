@@ -75,7 +75,8 @@ def dam_count_table(brat_gpkg_path: str, dams_gpkg_path: str, evt_path: str):
 
         for dam_ftr, *_ in dams_lyr.iterate_features('Finding veg classes near dams'):  # MAYBE CHANGE TO ONLY HIGH CERTAINTY DAMS
             geom = dam_ftr.GetGeometryRef()
-            polygon = geom.Buffer(brat_lyr.rough_convert_metres_to_vector_units(100))
+            buffer = geom.Buffer(brat_lyr.rough_convert_metres_to_vector_units(100))
+            polygon = VectorBase.ogr2shapely(buffer)
             try:
                 raw_raster = mask(src, [polygon], crop=True)[0]
                 mask_raster = np.ma.masked_values(raw_raster, src.nodata)
@@ -341,7 +342,7 @@ def validation_plots(brat_gpkg_path: str):
     res90 = linregress(obs_pred[1], quan_90)
     res75 = linregress(obs_pred[1], quan_75)
 
-    xdata = np.sort(obs_pred[1])
+    xdata = np.sort(obs_pred[1]) + np.random.normal(0, 0.1)
 
     fig, ax = plt.subplots()
     ax.scatter(obs_pred[1], obs_pred[0], marker='x', c='darkblue')
