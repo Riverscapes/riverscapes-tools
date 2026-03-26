@@ -380,10 +380,8 @@ def metric_engine(huc: int, in_flowlines: Path, in_waterbodies: Path, in_huc12: 
     with GeopackageLayer(line_network) as line_lyr:
         for feat, *_ in line_lyr.iterate_features():
             level_path = feat.GetField('level_path')
-            if level_path is None:
+            if level_path is not None:
                 level_paths_to_run.append(level_path)
-            else:
-                level_paths_to_run.append(str(int(level_path)))
     level_paths_to_run = list(set(level_paths_to_run))
     if level_paths:
         level_paths_to_run = [
