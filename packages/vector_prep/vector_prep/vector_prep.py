@@ -15,6 +15,8 @@ import argparse
 import sys
 import os
 import traceback
+from pathlib import Path
+
 import geopandas as gpd
 from shapely.geometry.base import BaseGeometry
 from shapely import make_valid  # shapely >=1.8
@@ -24,11 +26,11 @@ from rsxml import Logger, dotenv
 OUTPUT_DRIVER = "GPKG"
 
 
-def vector_prep(input_dataset: str, output_dataset: str, layer_name: str, tolerance: float, epsg: int) ->None:
+def vector_prep(input_dataset: Path | str, layer_name: str | None, tolerance: float, epsg: int | None) -> gpd.GeoDataFrame:
 
     log = Logger("Vector Prep")
-
-    if not os.path.exists(input_dataset):
+    input_dataset = Path(input_dataset)
+    if not input_dataset.exists():
         raise Exception(f"Input file does not exist: {input_dataset}")
 
     log.info(f"Reading input dataset with GeoPandas: {input_dataset}")
@@ -36,10 +38,10 @@ def vector_prep(input_dataset: str, output_dataset: str, layer_name: str, tolera
         if layer_name:
             gdf = gpd.read_file(input_dataset, layer=layer_name)
         else:
+            log.debug("No layer name specified, geopandas will choose default/first layer")
             gdf = gpd.read_file(input_dataset)  # geopandas will choose default/first layer
     except Exception as e:
-        log.error(f"GeoPandas failed to read input dataset: {e}")
-        sys.exit(1)
+        raise Exception(f"GeoPandas failed to read input dataset: {e}") from e
 
     initial_count = len(gdf)
     log.info(f"Loaded {initial_count} features. CRS: {gdf.crs}")
@@ -59,7 +61,7 @@ def vector_prep(input_dataset: str, output_dataset: str, layer_name: str, tolera
             gdf_proc = gdf_proc.to_crs(epsg=epsg)
             log.info(f"Reprojection complete. New CRS: {gdf_proc.crs}")
         except Exception as e:
-            raise Exception(f"Failed to reproject to EPSG:{epsg}: {e}")
+            raise Exception(f"Failed to reproject to EPSG:{epsg}: {e}") from e
 
     # Clean geometries (fix invalids, simplify)
     log.info(f"Cleaning geometries (tolerance={tolerance})...")
@@ -95,6 +97,14 @@ def vector_prep(input_dataset: str, output_dataset: str, layer_name: str, tolera
     if "FID" not in gdf_proc.columns:
         gdf_proc = gdf_proc.reset_index(drop=True)
         gdf_proc["FID"] = gdf_proc.index.astype('int64')
+    
+    return gdf_proc
+
+
+def output_gdf(gdf: gpd.GeoDataFrame, output_dataset:str, layer_name: str | None):
+    """Save the gpd to file (geopackage layer) in EPSG 4326"""
+    # Reproject to EPSG for final output
+    log = Logger ("Output GDF")
 
     # If output exists and overwrite requested, remove it first (be careful with gpkg)
     if os.path.exists(output_dataset):
@@ -108,9 +118,9 @@ def vector_prep(input_dataset: str, output_dataset: str, layer_name: str, tolera
             # for gpkg, removal may be different; try to proceed and fiona may overwrite if allowed
             log.debug("Could not remove existing file prior to write (continuing)...")
 
-    # Reproject to EPSG for final output
+
     log.info("Reprojecting to EPSG 4326 for output")
-    gdf_proc = gdf_proc.to_crs(epsg=4326)
+    gdf = gdf.to_crs(epsg=4326)
 
     # Write output
     log.info(f"Writing cleaned layer to {output_dataset} (driver={OUTPUT_DRIVER})...")
@@ -122,10 +132,10 @@ def vector_prep(input_dataset: str, output_dataset: str, layer_name: str, tolera
             layername = layer_name if layer_name else os.path.splitext(os.path.basename(output_dataset))[0]
             write_kwargs["layer"] = layername
 
-        gdf_proc.to_file(output_dataset, driver=OUTPUT_DRIVER, **write_kwargs)
+        gdf.to_file(output_dataset, driver=OUTPUT_DRIVER, **write_kwargs)
         log.info("Write complete.")
     except Exception as e:
-        raise Exception("Failed to write output: %s", e)
+        raise Exception(f"Failed to write output: {e}") from e
 
 
 def safe_make_valid(geom: BaseGeometry):
@@ -134,7 +144,7 @@ def safe_make_valid(geom: BaseGeometry):
     if geom is None:
         return None
     try:
-        valid = make_valid(geom)
+        return make_valid(geom)
     except Exception as e:
         log = Logger("Error")
         log.debug(f"make_valid/buffer(0) failed: {e}")
@@ -229,7 +239,8 @@ def main():
     log.setup(log_path=os.path.join(os.path.dirname(args.output), "vector_prep.log"), verbose=args.verbose)
 
     try:
-        vector_prep(args.input, args.output, args.layer, float(args.tolerance), int(args.epsg))
+        prepped_gdf = vector_prep(args.input, args.layer, float(args.tolerance), int(args.epsg))
+        output_gdf(prepped_gdf, args.output, args.layer)
     except Exception as e:
         log.error("Vector prep failed: %s", e)
         log.debug(traceback.format_exc())
