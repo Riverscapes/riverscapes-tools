@@ -120,24 +120,3 @@ rcat = "packages/rcat/rcat"
 
 [tool.setuptools.package-data]
 "rcat.lib.accessibility" = ["*.pyx"]
-
-# Ruff configuration, for those using it - no impact if not using Ruff
-[tool.ruff]
-line-length = 240
-target-version = "py312"
-
-[tool.ruff.lint]
-# E (Pycodestyle Errors): Standard PEP 8 formatting errors (e.g., whitespace, line length).
-# F (Pyflakes): Finds logical errors like unused imports, undefined variables, or f-strings without placeholders. Keep this.
-# UP (Pyupgrade): Automatically upgrades syntax to match your Python version (e.g., changes List[str] to list[str] since you are on 3.12). Highly recommended.
-# I (Isort): Sorts your imports automatically. Very helpful.
-# (Bugbear): Detects likely bugs and design problems (e.g., mutable default arguments).
-# N (PEP8 Naming): Enforces naming conventions (snake_case for functions, CapWords for classes). If your codebase is older, this might flag a lot of things.
-
-select = ["E", "F", "I", "N", "UP", "B"]
-ignore = [
-    "B018",   # NotImplementedError raised directly
-]
-
-[tool.ruff.format]
-quote-style = "preserve"
