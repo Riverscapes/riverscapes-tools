@@ -102,5 +102,5 @@ and add a "multi" flag (0/1) for each ST_ALLOT_PAST
 
 * [ ] upload new layer_definitions (merge with main)
 
-### Spacial intersection
+### Spatial intersection
 
