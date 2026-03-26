@@ -10,7 +10,9 @@
             "source_title": "US DOI Bureau of Land Management Geospatial Business Platform",
             "theme": "Administrative Areas",
             "columns": [
-                {"name": "objectid"},
+                {
+                    "name": "objectid"
+                },
                 {
                     "name": "ALLOT_NO",
                     "friendly_name": "Allotment Number",
@@ -58,6 +60,98 @@
                     "friendly_name": "Allotment Active Date",
                     "dtype": "DATETIME",
                     "description": "The calendar date on which the boundary of an allotment is established and becomes effective.  The format for the date will be MM/DD/YYYY, and will be entered only once for that polygon."
+                }
+            ]
+        },
+        {
+            "layer_id": "blm-natl-grazing-pasture-polygons",
+            "layer_name": "BLM Grazing Pastures",
+            "source_url": "https://gbp-blm-egis.hub.arcgis.com/datasets/BLM-EGIS::blm-natl-grazing-pasture-polygons/about",
+            "source_title": "US DOI Bureau of Land Management Geospatial Business Platform",
+            "columns": [
+                {
+                    "name": "ALLOT_NO",
+                    "friendly_name": "Allotment Number",
+                    "dtype": "STRING",
+                    "description": "The number that identifies an Allotment which is unique within the BLM administrative state."
+                },
+                {
+                    "name": "ALLOT_NAME",
+                    "friendly_name": "Allotment Name",
+                    "dtype": "STRING",
+                    "description": "The name by which the allotment is commonly known."
+                },
+                {
+                    "name": "PAST_NO",
+                    "friendly_name": "Pasture Number",
+                    "dtype": "STRING",
+                    "description": "The number that identifies a specific pasture within one Allotment."
+                },
+                {
+                    "name": "PAST_NAME",
+                    "friendly_name": "Pasture Name",
+                    "dtype": "STRING",
+                    "description": "A pasture name is given to an area that is a subset area of an allotment."
+                },
+                {
+                    "name": "GIS_ACRES",
+                    "friendly_name": "GIS Acres",
+                    "dtype": "FLOAT",
+                    "description": "This is a calculated value of area in units of acres based on the area field created by default within the ESRI Polygon data structure."
+                },
+                {
+                    "name": "ADMIN_ST",
+                    "friendly_name": "Administrative State Code",
+                    "dtype": "STRING",
+                    "description": "An administrative unit that identifies the state or geographic area which has administrative jurisdiction over lands, and cases."
+                },
+                {
+                    "name": "ADM_OFC_CD",
+                    "friendly_name": "Administrative Office Code",
+                    "dtype": "STRING",
+                    "description": "BLM administrative office (which is subordinate to the state office) that has jurisdiction and/or management authority over lands within a geographic area."
+                },
+                {
+                    "name": "ADM_UNIT_CD",
+                    "friendly_name": "Administrative Unit code",
+                    "dtype": "STRING",
+                    "description": "The BLM administrative unit/office that is a combination of Administrative State Code and Administrative Office Code that fully identifies the geographic area which has jurisdiction over the lands."
+                },
+                {
+                    "name": "ST_ALLOT_PAST",
+                    "friendly_name": "Managing State Allotment  Pasture Number",
+                    "dtype": "STRING",
+                    "description": "This is a concatenation of three existing attributes (ADMIN_ST + ALLOT_NO + PAST_NO) but is not a substitute for having any of those three attributes."
+                },
+                {
+                    "name": "ST_ALLOT_PAST_NAME",
+                    "friendly_name": "State Allotment Pasture Name",
+                    "dtype": "STRING",
+                    "description": "Minimum concatenation of ADMIN_ST, ALLOT_NAME, and PAST_NAME across all rows sharing the same ST_ALLOT_PAST value. Added in Riverscapes processing."
+                },
+                {
+                    "name": "ST_ALLOT_PAST_MULTI",
+                    "friendly_name": "State Allotment Pasture Multi-Row Flag",
+                    "dtype": "INTEGER",
+                    "description": "1 if the ST_ALLOT_PAST entity appears on more than one row, 0 otherwise. Added in Riverscapes processing."
+                },
+                {
+                    "name": "RS_ROW_ID",
+                    "friendly_name": "Riverscapes Row ID",
+                    "dtype": "STRING",
+                    "description": "Deterministic UUID5 derived from GlobalID using the Riverscapes OID namespace (_RS_ROW_ID_NAMESPACE). Unique per row. Added in Riverscapes processing."
+                },
+                {
+                    "name": "geometry",
+                    "friendly_name": "Geometry (binary)",
+                    "dtype": "GEOMETRY",
+                    "description": "Pasture Polygon geometry"
+                },
+                {
+                    "name": "geometry_bbox",
+                    "friendly_name": "Geometry Bounding Box",
+                    "dtype": "STRUCTURED",
+                    "description": "Used for improved spatial query performance. Added in Riverscapes processing."
                 }
             ]
         }
