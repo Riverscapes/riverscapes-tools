@@ -134,4 +134,4 @@ dmypy.json
 .pyre/
 
 # VS Code auto-generated workspace settings (python-envs extension)
-.vscode/settings.json
+**/.vscode/settings.json
