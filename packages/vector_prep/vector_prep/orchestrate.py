@@ -20,6 +20,7 @@ _RS_ROW_ID_NAMESPACE = uuid.UUID('6ba7b810-9dad-11d1-80b4-00c04fd430c8')  # uuid
 
 @dataclass
 class RunInputs:
+    """Stuff user needs to supply to establish what is being prepared"""
     input_vector_path: Path | str
     input_layer_name: str | None
     source_category: str
@@ -214,7 +215,7 @@ def _map_layer_dtype_to_athena(dtype: str, col_name: str) -> str:
 
 
 def build_athena_ddl(cfg: RunInputs, bucket: str = "riverscapes-athena", database: str = "rs_raw") -> Path:
-    """Build Athena CREATE EXTERNAL TABLE DDL from cfg and layer_definitions.
+    """Build Athena CREATE EXTERNAL TABLE DDL from cfg and `layer_definitions.json`
 
     Returns the path to the generated .sql file.
     """
@@ -263,7 +264,7 @@ def build_athena_ddl(cfg: RunInputs, bucket: str = "riverscapes-athena", databas
     # Capture/read parquet compression from pipeline output metadata so this is not hard-coded.    
     ddl = (
         f"CREATE EXTERNAL TABLE `{database}`.`{table_name}`(\n"
-        + ",\n".join(col_lines)
+        + ", \n".join(col_lines)
         + "\n)\n"
         + "ROW FORMAT SERDE \n"
         + "  'org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe' \n"
@@ -274,11 +275,11 @@ def build_athena_ddl(cfg: RunInputs, bucket: str = "riverscapes-athena", databas
         + "LOCATION\n"
         + f"  '{location}'\n"
         + "TBLPROPERTIES (\n"
-        + f"  'comment'='{_sql_escape(table_comment)}',\n"
         + "  'classification'='parquet', \n"
+        + f"  'comment'='{_sql_escape(table_comment)}',\n"
         + "  'compressionType'='snappy', \n"
         + "  'typeOfData'='file'\n"
-        + ");\n"
+        + ")"
     )
 
     repo_root = next(p for p in Path(__file__).resolve().parents if (p / "pyproject.toml").exists())
