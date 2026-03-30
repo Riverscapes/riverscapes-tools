@@ -116,5 +116,21 @@
         "{env:DATA_ROOT}/rs_context/${input:HUC}/project.rs.xml,{env:DATA_ROOT}/channel_area/${input:HUC}/project.rs.xml"
       ]
     },
+    {
+      "name": "Calculate Level Paths",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "taudem.scripts.calc_level_path_taudem",
+      "console": "integratedTerminal",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+      },
+      "args": [
+        "/opt/homebrew/Cellar/libspatialite/5.1.0_1/lib/mod_spatialite.8.dylib",
+        "/Users/philipbailey/GISData/auckland/2026_03_30_flowlines.gpkg",
+        "StreamNetwork",
+        "true"
+      ]
+    }
   ]
 }

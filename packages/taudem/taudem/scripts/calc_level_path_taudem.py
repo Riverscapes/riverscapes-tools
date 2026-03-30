@@ -18,13 +18,13 @@ Philip Bailey
 """
 from typing import List
 import argparse
-import sqlite3
+import apsw
 
 
 NEXT_REACH_QUERY = 'SELECT us.Length, ds.LINKNO FROM {} us LEFT JOIN {} ds on us.DSLINKNO = ds.LINKNO WHERE us.LINKNO = ?'
 
 
-def calc_level_path(curs: sqlite3.Cursor, feature_class: str, reset_first: bool) -> None:
+def calc_level_path(curs: apsw.Cursor, feature_class: str, reset_first: bool) -> None:
     """Calculate the level path for each reach in the watershed."""
 
     curs.execute(f'SELECT Count(*) FROM {feature_class}')
@@ -52,16 +52,8 @@ def calc_level_path(curs: sqlite3.Cursor, feature_class: str, reset_first: bool)
         new_level_path = float(10**9 + num_processed)
         num_reaches = assign_level_path(curs, feature_class, hydro_id, new_level_path)
         # log.debug(f'Assigned level path {new_level_path} to {num_reaches} reaches starting at HydroID {hydro_id}')
-        #
 
-
-def get_triggers(curs: sqlite3.Cursor, table: str):
-    """Get the triggers for the watershed."""
-    curs.execute("SELECT * FROM sqlite_master WHERE type = 'trigger' AND tbl_name = ?", [table])
-    return curs.fetchall()
-
-
-def calculate_length(curs: sqlite3.Cursor, feature_class: str, hydro_id: int):
+def calculate_length(curs: apsw.Cursor, feature_class: str, hydro_id: int):
     """Calculate the cumulative length of a riverline from the headwater to the mouth."""
 
     cum_length = 0
@@ -80,7 +72,7 @@ def calculate_length(curs: sqlite3.Cursor, feature_class: str, hydro_id: int):
     return cum_length
 
 
-def assign_level_path(curs: sqlite3.Cursor, feature_class: str, headwater_hydro_id, level_path: float) -> int:
+def assign_level_path(curs: apsw.Cursor, feature_class: str, headwater_hydro_id, level_path: float) -> int:
     """Assign a level path to each reach starting at the headwater down to the ocean."""
 
     num_reaches = 0
@@ -101,7 +93,7 @@ def assign_level_path(curs: sqlite3.Cursor, feature_class: str, headwater_hydro_
     return num_reaches
 
 
-def create_index(curs: sqlite3.Cursor, table: str, columns: List[str]) -> None:
+def create_index(curs: apsw.Cursor, table: str, columns: List[str]) -> None:
     """Create an index on the specified columns of the table if it does not already exist."""
 
     columns = columns if isinstance(columns, list) else [columns]
@@ -111,7 +103,7 @@ def create_index(curs: sqlite3.Cursor, table: str, columns: List[str]) -> None:
         curs.execute(f"CREATE INDEX {index_name} ON {table}({','.join(columns)})")
 
 
-def add_column(curs: sqlite3.Cursor, table: str, column_name: str, column_type: str) -> None:
+def add_column(curs: apsw.Cursor, table: str, column_name: str, column_type: str) -> None:
     """Add a column to the specified table if it does not already exist."""
     curs.execute(f"PRAGMA table_info({table})")
     columns = [row[1] for row in curs.fetchall()]
@@ -125,44 +117,44 @@ def add_column(curs: sqlite3.Cursor, table: str, column_name: str, column_type: 
 def main():
     """Calculate the level path for each reach in a single watershed."""
     parser = argparse.ArgumentParser()
-    parser.add_argument('hydro_gpkg', type=str)
-    parser.add_argument('feature_class', type=str)
-    parser.add_argument('reset_first', type=str)
+    parser.add_argument("spatialite", type=str, help="Path to the SpatialLite extension library")
+    parser.add_argument('hydro_gpkg', type=str, help='Path to the GeoPackage containing the hydro network')
+    parser.add_argument('feature_class', type=str, help='Name of the feature class in the GeoPackage that contains the hydro network')
+    parser.add_argument('reset_first', type=str, help='Whether to reset the level paths before calculation')
     args = parser.parse_args()
 
-    with sqlite3.connect(args.hydro_gpkg) as conn:
-        curs = conn.cursor()
+    conn = apsw.Connection(args.hydro_gpkg)
+    curs = conn.cursor()
+    conn.enableloadextension(True)
+    conn.loadextension(args.spatialite)
+
+    curs.execute('BEGIN')
+    try:
+        # Prepare the GeoPackage by adding the level paths column and indexes (if they do not already exist)
+        add_column(curs, args.feature_class, 'level_path', 'INTEGER')
+        create_index(curs, args.feature_class, ['level_path'])
+        create_index(curs, args.feature_class, ['LINKNO'])
+        create_index(curs, args.feature_class, ['USLINKNO1'])
+        create_index(curs, args.feature_class, ['DSLINKNO'])
+
+        calc_level_path(curs, args.feature_class, args.reset_first.lower() == 'true')
+
+        print(f"Level paths calculated successfully for feature class {args.feature_class} in {args.hydro_gpkg}")
+
+        curs.execute(f'SELECT level_path IS NULL, Count(*) FROM {args.feature_class} GROUP BY level_path IS NULL ORDER BY level_path IS NULL'.format(args.feature_class))
+        row = curs.fetchone()
+        without_level_path, with_level_path = row[0], row[1]
+        print(f'{with_level_path} reaches with level path.')
+        print(f'{without_level_path} reaches without level path.')
+
+        curs.execute('COMMIT')
+
+    except Exception as e:
         try:
-            # Hack because feature class tables have SpatialLite triggers that prevent us from altering the table.
-            triggers = get_triggers(curs, args.feature_class)
-
-            for trigger in triggers:
-                curs.execute(f"DROP TRIGGER {trigger[1]}")
-
-            # Prepare the GeoPackage by adding the level paths column and indexes (if they do not already exist)
-            add_column(curs, args.feature_class, 'level_path', 'INTEGER')
-            create_index(curs, args.feature_class, ['level_path'])
-            create_index(curs, args.feature_class, ['LINKNO'])
-            create_index(curs, args.feature_class, ['USLINKNO1'])
-            create_index(curs, args.feature_class, ['DSLINKNO'])
-
-            calc_level_path(curs, args.feature_class, args.reset_first.lower() == 'true')
-            conn.commit()
-
-            for trigger in triggers:
-                curs.execute(trigger[4])
-
-            print(f"Level paths calculated successfully for feature class {args.feature_class} in {args.hydro_gpkg}")
-
-            curs.execute(f'SELECT level_path IS NULL, Count(*) FROM {args.feature_class} GROUP BY level_path IS NULL ORDER BY level_path IS NULL'.format(args.feature_class))
-            row = curs.fetchone()
-            without_level_path, with_level_path = row[0], row[1]
-            print(f'{with_level_path} reaches with level path.')
-            print(f'{without_level_path} reaches without level path.')
-
-        except Exception as e:
-            conn.rollback()
-            raise e
+            curs.execute('ROLLBACK')
+        except apsw.SQLError:
+            pass
+        raise e
 
     print('Process completed successfully.')
 
