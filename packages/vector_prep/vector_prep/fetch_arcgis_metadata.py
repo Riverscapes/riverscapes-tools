@@ -156,7 +156,7 @@ def _resolve_hub_slug(slug: str) -> tuple[str, str, int]:
 # ---------------------------------------------------------------------------
 # Feature Service field fetch
 # ---------------------------------------------------------------------------
-def _fetch_service_fields(service_url: str) -> list[dict]:
+def fetch_service_fields(service_url: str) -> list[dict]:
     """GET the feature service layer JSON and return the ``fields`` array."""
     resp = requests.get(service_url, params={"f": "json"}, timeout=30)
     resp.raise_for_status()
@@ -201,6 +201,62 @@ def _fetch_fgdc_descriptions(item_id: str) -> dict[str, str]:
     return descs
 
 
+def build_columns_from_service_fields(
+    service_fields: list[dict],
+    field_descriptions: dict[str, str] | None = None,
+    friendly_name_overrides: dict[str, str] | None = None,
+    include_system_fields: bool = False,
+    use_service_alias_as_friendly_name: bool = True,
+) -> list[dict]:
+    """Build layer_definitions ``columns`` from ArcGIS feature-service fields.
+
+    Args:
+        service_fields: Raw ``fields`` array from a feature service layer JSON.
+        field_descriptions: Optional field-name keyed descriptions.
+        friendly_name_overrides: Optional field-name keyed friendly-name mapping.
+            If present for a field, override values take precedence over service
+            aliases.
+        include_system_fields: If True, include Esri-generated system fields.
+        use_service_alias_as_friendly_name: If True, use field ``alias`` when a
+            friendly-name override is not provided.
+    """
+    field_descriptions = field_descriptions or {}
+    friendly_name_overrides = friendly_name_overrides or {}
+
+    columns: list[dict] = []
+    for field in service_fields:
+        name: str = field["name"]
+        esri_type: str = field.get("type", "")
+
+        if not include_system_fields and name in SYSTEM_FIELDS:
+            continue
+
+        dtype = ESRI_TYPE_MAP.get(esri_type)
+        if dtype is None:
+            # Skip geometry pseudo-fields or unknown types
+            continue
+
+        col: dict = {"name": name}
+
+        # friendly_name from overrides or service alias.
+        friendly_name = friendly_name_overrides.get(name, "")
+        if not friendly_name and use_service_alias_as_friendly_name:
+            friendly_name = field.get("alias", "")
+        if friendly_name and friendly_name != name:
+            col["friendly_name"] = friendly_name
+
+        col["dtype"] = dtype
+
+        # description from external metadata map.
+        desc = field_descriptions.get(name, "")
+        if desc:
+            col["description"] = desc
+
+        columns.append(col)
+
+    return columns
+
+
 # ---------------------------------------------------------------------------
 # Core: merge into columns list
 # ---------------------------------------------------------------------------
@@ -220,39 +276,15 @@ def fetch_columns_from_hub_url(hub_url: str, include_system_fields: bool = False
     slug = _extract_slug(hub_url)
     item_id, service_url, _layer_index = _resolve_hub_slug(slug)
 
-    service_fields = _fetch_service_fields(service_url)
+    service_fields = fetch_service_fields(service_url)
     fgdc_descs = _fetch_fgdc_descriptions(item_id)
 
-    columns: list[dict] = []
-    for field in service_fields:
-        name: str = field["name"]
-        esri_type: str = field.get("type", "")
-
-        if not include_system_fields and name in SYSTEM_FIELDS:
-            continue
-
-        dtype = ESRI_TYPE_MAP.get(esri_type)
-        if dtype is None:
-            # Skip geometry pseudo-fields or unknown types
-            continue
-
-        col: dict = {"name": name}
-
-        # friendly_name from service alias (only if it differs from the raw name)
-        alias = field.get("alias", "")
-        if alias and alias != name:
-            col["friendly_name"] = alias
-
-        col["dtype"] = dtype
-
-        # description from FGDC metadata
-        desc = fgdc_descs.get(name, "")
-        if desc:
-            col["description"] = desc
-
-        columns.append(col)
-
-    return columns
+    return build_columns_from_service_fields(
+        service_fields,
+        field_descriptions=fgdc_descs,
+        include_system_fields=include_system_fields,
+        use_service_alias_as_friendly_name=True,
+    )
 
 
 # ---------------------------------------------------------------------------
