@@ -155,7 +155,7 @@
           "name": "DISTANCE",
           "dtype": "FLOAT",
           "friendly_name": "Distance to Nearest City",
-          "data_unit": "Miles",
+          "data_unit": "mile",
           "theme": "Description"
         },
         {
@@ -385,7 +385,7 @@
           "name": "NID_STORAGE",
           "dtype": "FLOAT",
           "friendly_name": "NID Storage",
-          "data_unit": "acre-ft",
+          "data_unit": "acre * ft",
           "description": "Calculated field: Maximum value of normal storage and maximum storage. Accepted as the general storage of the dam.",
           "theme": "Structure"
         },
@@ -393,7 +393,7 @@
           "name": "MAX_STORAGE",
           "dtype": "FLOAT",
           "friendly_name": "Max Storage",
-          "data_unit": "acre-ft",
+          "data_unit": "acre * ft",
           "description": "Maximum storage, which is defined as the total storage space in a reservoir below the maximum attainable water surface elevation, including any surcharge storage.",
           "theme": "Structure"
         },
@@ -401,7 +401,7 @@
           "name": "NORMAL_STORAGE",
           "dtype": "FLOAT",
           "friendly_name": "Normal Storage",
-          "data_unit": "acre-ft",
+          "data_unit": "acre * ft",
           "description": "Normal storage, which is defined as the total storage space in a reservoir below the normal retention level, including dead and inactive storage and excluding any flood control or surcharge storage. For normally dry dams, the normal storage will be a zero value. If unknown, the value will be blank and not zero.",
           "theme": "Structure"
         },
