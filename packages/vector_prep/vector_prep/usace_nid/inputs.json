@@ -1,0 +1,11 @@
+{
+    "input_vector_path": "nation.gpkg",
+    "input_layer_name": "National Inventory of Dams",
+    "source_category": "usgov",
+    "source_title": "National Inventory of Dams",
+    "source_url": "https://nid.sec.usace.army.mil/nid/#/downloads",
+    "layer_id": "usace-nid",
+    "snapshot_id": "2026-04-10",
+    "special_notes": "We have used the ESRI feature server at https://geospatial.sec.usace.army.mil/dls/rest/services/NID/National_Inventory_of_Dams_Public_Service/FeatureServer/0. GPKG is slightly different. Used the CSV and the [NID Data Dictionary](https://nid.sec.usace.army.mil/nid/#/documents) for friendly names and descriptions.",
+    "data_prep_operator": "Lorin Gaertner"
+}

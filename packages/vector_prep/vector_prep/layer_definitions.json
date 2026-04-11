@@ -154,6 +154,109 @@
                     "description": "Used for improved spatial query performance. Added in Riverscapes processing."
                 }
             ]
+        },
+        {
+            "layer_id": "blm-natl-grazing-pasture-polygons-nm-bootheel",
+            "layer_name": "BLM Grazing Pastures for NM Bootheel",
+            "source_title": "US DOI Bureau of Land Management National Operations Center Staff",
+            "columns": [
+                {
+                    "name": "OBJECTID",
+                    "friendly_name": "OBJECTID",
+                    "dtype": "INTEGER",
+                    "description": ""
+                },
+                {
+                    "name": "Allot_Number",
+                    "friendly_name": "Allot_Number",
+                    "dtype": "STRING",
+                    "description": ""
+                },
+                {
+                    "name": "Allot_Name",
+                    "friendly_name": "Allot_Name",
+                    "dtype": "STRING",
+                    "description": ""
+                },
+                {
+                    "name": "Pasture_Number",
+                    "friendly_name": "Pasture_Number",
+                    "dtype": "STRING",
+                    "description": ""
+                },
+                {
+                    "name": "Pasture_Name",
+                    "friendly_name": "Pasture_Name",
+                    "dtype": "STRING",
+                    "description": ""
+                },
+                {
+                    "name": "Pasture_Acres",
+                    "friendly_name": "Pasture_Acres",
+                    "dtype": "FLOAT",
+                    "description": ""
+                },
+                {
+                    "name": "Admin_State",
+                    "friendly_name": "Admin_State",
+                    "dtype": "STRING",
+                    "description": ""
+                },
+                {
+                    "name": "Admin_Agency",
+                    "friendly_name": "Admin_Agency",
+                    "dtype": "STRING",
+                    "description": ""
+                },
+                {
+                    "name": "Admin_Office",
+                    "friendly_name": "Admin_Office",
+                    "dtype": "STRING",
+                    "description": ""
+                },
+                {
+                    "name": "Pasture_Latitude",
+                    "friendly_name": "Pasture_Latitude",
+                    "dtype": "FLOAT",
+                    "description": ""
+                },
+                {
+                    "name": "Pasture_Longitude",
+                    "friendly_name": "Pasture_Longitude",
+                    "dtype": "FLOAT",
+                    "description": ""
+                },
+                {
+                    "name": "Shape_Length",
+                    "friendly_name": "Shape_Length",
+                    "dtype": "FLOAT",
+                    "description": ""
+                },
+                {
+                    "name": "Shape_Area",
+                    "friendly_name": "Shape_Area",
+                    "dtype": "FLOAT",
+                    "description": ""
+                },
+                {
+                    "name": "Pasture_ID",
+                    "friendly_name": "Pasture ID",
+                    "dtype": "STRING",
+                    "description": "Unique ID for pasture"
+                },
+                {
+                    "name": "geometry",
+                    "friendly_name": "Geometry (binary)",
+                    "dtype": "GEOMETRY",
+                    "description": "Pasture Multi-Polygon geometry"
+                },
+                {
+                    "name": "geometry_bbox",
+                    "friendly_name": "Geometry Bounding Box",
+                    "dtype": "STRUCTURED",
+                    "description": "Used for improved spatial query performance. Added in Riverscapes processing."
+                }
+            ]
         }
     ]
 }

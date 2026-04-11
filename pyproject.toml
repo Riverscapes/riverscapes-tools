@@ -44,6 +44,11 @@ dependencies = [
     "geopandas>=1.1.1",
 ]
 
+[project.optional-dependencies]
+geoparquet = [
+    "pyarrow>=23.0.1",
+]
+
 [dependency-groups]
 dev = [
     "autopep8>=2.3",
