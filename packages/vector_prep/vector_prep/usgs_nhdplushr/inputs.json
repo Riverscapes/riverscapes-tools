@@ -1,0 +1,35 @@
+{
+    "source_category": "usgov",
+    "source_title": "USGS NHDPlus HR National Release 2",
+    "source_url": "https://www.sciencebase.gov/catalog/item/679d39cbd34eb38981c9c7a5",
+    "doi": "10.5066/P13V7GVY",
+    "publication_date": "2025-01-31",
+    "snapshot_id": "2025-01-31",
+    "input_vector_path": "/mnt/f/nardata/datadownload/usgs/nhdplushr/NHDPlus_H_National_Release_2_GDB/NHDPlus_H_National_Release_2_GDB.gdb",
+    "data_prep_operator": "Lorin Gaertner",
+    "special_notes": "NHDPlus HR NR2 FileGDB downloaded from ScienceBase/TNM. 60 GB unzipped. 15 layers total (12 spatial, 3 attribute tables). CRS is NAD83 + NAVD88 (compound). User guide: https://pubs.usgs.gov/publication/ofr20191096",
+    "layers": [
+        {
+            "gdb_layer_name": "NetworkNHDFlowline",
+            "layer_id": "usgs-nhdplushr-network-flowline",
+            "include_geometry": false,
+            "unique_id_field": "permanent_identifier",
+            "notes": "Attributes only — no geometry for Athena reporting joins. ~25M features, ~80 columns. Geometry can be joined back via permanent_identifier or nhdplusid if needed."
+        },
+        {
+            "gdb_layer_name": "NHDPlusFlow",
+            "layer_id": "usgs-nhdplushr-flow",
+            "include_geometry": false,
+            "unique_id_field": null,
+            "notes": "Non-spatial flow routing/topology table. FromNHDPlusID → ToNHDPlusID. ~34.5M rows, 11 columns. No unique row ID — each row is a directed edge."
+        },
+        {
+            "gdb_layer_name": "WBDHU12",
+            "layer_id": "usgs-nhdplushr-wbdhu12",
+            "include_geometry": true,
+            "simplify_tolerance": 50.0,
+            "unique_id_field": "huc12",
+            "notes": "HUC12 watershed boundaries with simplified geometry for mapping and spatial queries. ~90K features."
+        }
+    ]
+}
