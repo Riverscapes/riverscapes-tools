@@ -73,7 +73,7 @@ def _repo_root() -> Path:
 
 def _dist_dir(cfg: NHDConfig) -> Path:
     source_stub = "usgov_sources" if cfg.source_category == "usgov" else f"raw_{cfg.source_category}"
-    d = _repo_root() / "dist" / "usgs_nhdplushr" / source_stub
+    d = _repo_root() / "dist" / source_stub / "usgs-nhdplushr"
     d.mkdir(parents=True, exist_ok=True)
     return d
 
@@ -518,6 +518,7 @@ def build_athena_ddl(cfg: NHDConfig) -> list[Path]:
     bucket = "riverscapes-athena"
     database = "rs_raw"
     source_stub = "usgov_sources" if cfg.source_category == "usgov" else f"raw_{cfg.source_category}"
+    source_root = f"{source_stub}/usgs-nhdplushr"
     ddl_paths = []
 
     for lcfg in cfg.layers:
@@ -534,7 +535,7 @@ def build_athena_ddl(cfg: NHDConfig) -> list[Path]:
 
         snapshot_stub = cfg.snapshot_id.replace("-", "")
         table_name = f"{layer_id.replace('-', '_')}_snapshot_{snapshot_stub}"
-        location = f"s3://{bucket}/{source_stub}/{layer_id}/{cfg.snapshot_id}/"
+        location = f"s3://{bucket}/{source_root}/{layer_id}/{cfg.snapshot_id}/"
 
         table_comment = (
             f"{lcfg['gdb_layer_name']}. Source: {cfg.source_title}. "

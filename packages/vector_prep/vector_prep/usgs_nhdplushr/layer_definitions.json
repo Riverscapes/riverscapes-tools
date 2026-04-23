@@ -1,0 +1,568 @@
+{
+    "$schema": "https://xml.riverscapes.net/riverscapes_metadata/schema/layer_definitions.schema.json",
+    "tool_schema_name": "vector-prep-usgs-nhdplushr",
+    "tool_schema_version": "0.0.1",
+    "layers": [
+        {
+            "layer_id": "usgs-nhdplushr-network-flowline",
+            "layer_name": "NetworkNHDFlowline",
+            "source_title": "USGS NHDPlus HR National Release 2",
+            "source_url": "https://www.sciencebase.gov/catalog/item/679d39cbd34eb38981c9c7a5",
+            "columns": [
+                {
+                    "name": "permanent_identifier",
+                    "dtype": "STRING"
+                },
+                {
+                    "name": "fdate",
+                    "dtype": "DATETIME"
+                },
+                {
+                    "name": "resolution",
+                    "dtype": "INTEGER",
+                    "description": "Domain 'Resolution': 1=Local, 2=High, 3=Medium"
+                },
+                {
+                    "name": "gnis_id",
+                    "dtype": "STRING"
+                },
+                {
+                    "name": "gnis_name",
+                    "dtype": "STRING"
+                },
+                {
+                    "name": "lengthkm",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "reachcode",
+                    "dtype": "STRING"
+                },
+                {
+                    "name": "flowdir",
+                    "dtype": "INTEGER",
+                    "description": "Domain 'HydroFlowDirections': 0=Uninitialized, 1=WithDigitized"
+                },
+                {
+                    "name": "wbarea_permanent_identifier",
+                    "dtype": "STRING"
+                },
+                {
+                    "name": "ftype",
+                    "dtype": "INTEGER"
+                },
+                {
+                    "name": "fcode",
+                    "dtype": "INTEGER"
+                },
+                {
+                    "name": "mainpath",
+                    "dtype": "INTEGER",
+                    "description": "Domain 'MainPath Domain': 0=Unspecified, 1=Confluence Main, 2=Divergence Main, 3=Both Confluence and Divergence Main"
+                },
+                {
+                    "name": "innetwork",
+                    "dtype": "INTEGER",
+                    "description": "Domain 'NoYes Domain': 1=Yes, 0=No"
+                },
+                {
+                    "name": "visibilityfilter",
+                    "dtype": "INTEGER",
+                    "description": "Domain 'VisibilityFilter Domain': 0=Unspecified, 4800=Approximately 1:4,800 or Larger Scale, 12500=Approximately 1:12,500 or Larger Scale, 24000=Approximately 1:24,000 or Larger Scale, 50000=Approximately 1:50,000 or Larger Scale, 100000=Approximately 1:100,000 or Larger Scale, 150000=Approximately 1:150,000 or Larger Scale, 250000=Approximately 1:250,000 or Larger Scale, 500000=Approximately 1:500,000 or Larger Scale, 1000000=Approximately 1:1,000,000 or Larger Scale, 2000000=Approximately 1:2,000,000 or Larger Scale, 5000000=Approximately 1:5,000,000 or Larger Scale"
+                },
+                {
+                    "name": "nhdplusid",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "vpuid",
+                    "dtype": "STRING"
+                },
+                {
+                    "name": "streamleve",
+                    "friendly_name": "StreamLevel",
+                    "dtype": "INTEGER"
+                },
+                {
+                    "name": "streamorde",
+                    "friendly_name": "StreamOrder",
+                    "dtype": "INTEGER"
+                },
+                {
+                    "name": "streamcalc",
+                    "friendly_name": "StreamCalculator",
+                    "dtype": "INTEGER"
+                },
+                {
+                    "name": "fromnode",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "tonode",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "hydroseq",
+                    "friendly_name": "HydrologicSequence",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "levelpathi",
+                    "friendly_name": "LevelPathIdentifier",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "pathlength",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "terminalpa",
+                    "friendly_name": "TerminalPathIdentifier",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "arbolatesu",
+                    "friendly_name": "UpstreamCumulativeStreamKm",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "divergence",
+                    "friendly_name": "DivergenceCode",
+                    "dtype": "INTEGER",
+                    "description": "Domain 'Divergence Domain': 2=Feature is a minor path of a divergence, 0=Feature is not part of a divergence, 1=Feature is the main path of a divergence"
+                },
+                {
+                    "name": "startflag",
+                    "friendly_name": "IsHeadwater",
+                    "dtype": "INTEGER",
+                    "description": "Domain 'NoYes Domain': 1=Yes, 0=No"
+                },
+                {
+                    "name": "terminalfl",
+                    "friendly_name": "IsNetworkEnd",
+                    "dtype": "INTEGER",
+                    "description": "Domain 'NoYes Domain': 1=Yes, 0=No"
+                },
+                {
+                    "name": "uplevelpat",
+                    "friendly_name": "UpstreamMainPathLevelPathID",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "uphydroseq",
+                    "friendly_name": "UpstreamMainPathHydroSeq",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "dnlevel",
+                    "friendly_name": "DownstreamMainPathStreamLevel",
+                    "dtype": "INTEGER"
+                },
+                {
+                    "name": "dnlevelpat",
+                    "friendly_name": "DownstreamMainPathLevelPathID",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "dnhydroseq",
+                    "friendly_name": "DownstreamMainPathHydroSeq",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "dnminorhyd",
+                    "friendly_name": "DownstreamMinorHydroSequence",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "dndraincou",
+                    "friendly_name": "DownstreamDrainageCount",
+                    "dtype": "INTEGER"
+                },
+                {
+                    "name": "frommeas",
+                    "friendly_name": "FromMeasure",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "tomeas",
+                    "friendly_name": "ToMeasure",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "rtndiv",
+                    "friendly_name": "HasReturningDivergence",
+                    "dtype": "INTEGER",
+                    "description": "Domain 'NoYes Domain': 1=Yes, 0=No"
+                },
+                {
+                    "name": "thinner",
+                    "dtype": "INTEGER"
+                },
+                {
+                    "name": "vpuin",
+                    "dtype": "INTEGER",
+                    "description": "Domain 'NoYes Domain': 1=Yes, 0=No"
+                },
+                {
+                    "name": "vpuout",
+                    "dtype": "INTEGER",
+                    "description": "Domain 'NoYes Domain': 1=Yes, 0=No"
+                },
+                {
+                    "name": "areasqkm",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "totdasqkm",
+                    "friendly_name": "TotalDrainageAreaSqKm",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "divdasqkm",
+                    "friendly_name": "DivergenceRoutedDrainAreaSqKm",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "maxelevraw",
+                    "friendly_name": "MaximumElevationRaw",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "minelevraw",
+                    "friendly_name": "MinimumElevationRaw",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "maxelevsmo",
+                    "friendly_name": "MaximumElevationSmoothed",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "minelevsmo",
+                    "friendly_name": "MinimumElevationSmoothed",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "slope",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "slopelenkm",
+                    "friendly_name": "SlopeLengthKm",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "elevfixed",
+                    "friendly_name": "IsElevationFixed",
+                    "dtype": "INTEGER",
+                    "description": "Domain 'NoYes Domain': 1=Yes, 0=No"
+                },
+                {
+                    "name": "hwtype",
+                    "friendly_name": "HeadwaterType",
+                    "dtype": "INTEGER",
+                    "description": "Domain 'HeadwaterType Domain': 1=Artificial Headwater, 0=Real Headwater"
+                },
+                {
+                    "name": "hwnodesqkm",
+                    "friendly_name": "HeadwaterNodeDrainageAreaSqKm",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "statusflag",
+                    "dtype": "STRING",
+                    "description": "Domain 'StatusFlag Domain': A=Add, C=Change, D=Delete, N=Not Set"
+                },
+                {
+                    "name": "qama",
+                    "friendly_name": "FlowEstARunoffMA",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "vama",
+                    "friendly_name": "VelocityARunoffMA",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "qincrama",
+                    "friendly_name": "IncrFlowEstARunoffMA",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "qbma",
+                    "friendly_name": "FlowEstBExcessETMA",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "vbma",
+                    "friendly_name": "VelocityBExcessETMA",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "qincrbma",
+                    "friendly_name": "IncrFlowEstBExcessETMA",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "qcma",
+                    "friendly_name": "FlowEstCRefGageRegressMA",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "vcma",
+                    "friendly_name": "VelocityCRefGageRegressMA",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "qincrcma",
+                    "friendly_name": "IncrFlowEstCRefGageRegressMA",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "qdma",
+                    "friendly_name": "FlowEstDAdditionRemovalMA",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "vdma",
+                    "friendly_name": "VelocityDAdditionRemovalMA",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "qincrdma",
+                    "friendly_name": "IncrFlowEstDAdditionRemovalMA",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "qema",
+                    "friendly_name": "FlowEstEGageAdjustedMA",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "vema",
+                    "friendly_name": "VelocityEGageAdjustedMA",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "qincrema",
+                    "friendly_name": "IncrFlowEstEGageAdjustedMA",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "qfma",
+                    "friendly_name": "FlowEstFGageSequesterMA",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "qincrfma",
+                    "friendly_name": "IncrFlowEstFGageSequesterMA",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "arqnavma",
+                    "friendly_name": "AddRemoveFlowNotAvailableMA",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "petma",
+                    "friendly_name": "CatchmentPotentialETMA",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "qlossma",
+                    "friendly_name": "FlowLossFromPotentialETMA",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "qgadjma",
+                    "friendly_name": "GageFlowAdjustmentMA",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "qgnavma",
+                    "friendly_name": "GageAdjustmentNotAvailableMA",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "gageadjma",
+                    "friendly_name": "IsGageAdjustedMA",
+                    "dtype": "INTEGER",
+                    "description": "Domain 'NoYes Domain': 1=Yes, 0=No"
+                },
+                {
+                    "name": "avgqadjma",
+                    "friendly_name": "GageFlowFlowlineBottomMA",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "gageidma",
+                    "friendly_name": "NWISGageIDMA",
+                    "dtype": "STRING"
+                },
+                {
+                    "name": "gageqma",
+                    "friendly_name": "GageFlowMA",
+                    "dtype": "FLOAT"
+                }
+            ]
+        },
+        {
+            "layer_id": "usgs-nhdplushr-flow",
+            "layer_name": "NHDPlusFlow",
+            "source_title": "USGS NHDPlus HR National Release 2",
+            "source_url": "https://www.sciencebase.gov/catalog/item/679d39cbd34eb38981c9c7a5",
+            "columns": [
+                {
+                    "name": "fromnhdpid",
+                    "friendly_name": "FromNHDPlusID",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "tonhdpid",
+                    "friendly_name": "ToNHDPlusID",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "nodenumber",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "deltalevel",
+                    "friendly_name": "FromStreamLevMinusToStreamLev",
+                    "dtype": "INTEGER"
+                },
+                {
+                    "name": "direction",
+                    "friendly_name": "FlowRelationshipType",
+                    "dtype": "INTEGER"
+                },
+                {
+                    "name": "gapdistkm",
+                    "friendly_name": "GapDistanceKm",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "hasgeo",
+                    "friendly_name": "IsGeometricConnection",
+                    "dtype": "INTEGER",
+                    "description": "Domain 'NoYes Domain': 1=Yes, 0=No"
+                },
+                {
+                    "name": "fromvpuid",
+                    "dtype": "STRING"
+                },
+                {
+                    "name": "tovpuid",
+                    "dtype": "STRING"
+                },
+                {
+                    "name": "frompermid",
+                    "friendly_name": "FromPermanentIdentifier",
+                    "dtype": "STRING"
+                },
+                {
+                    "name": "topermid",
+                    "friendly_name": "ToPermanentIdentifier",
+                    "dtype": "STRING"
+                }
+            ]
+        },
+        {
+            "layer_id": "usgs-nhdplushr-wbdhu12",
+            "layer_name": "WBDHU12",
+            "source_title": "USGS NHDPlus HR National Release 2",
+            "source_url": "https://www.sciencebase.gov/catalog/item/679d39cbd34eb38981c9c7a5",
+            "columns": [
+                {
+                    "name": "tnmid",
+                    "dtype": "STRING"
+                },
+                {
+                    "name": "metasourceid",
+                    "dtype": "STRING"
+                },
+                {
+                    "name": "sourcedatadesc",
+                    "dtype": "STRING"
+                },
+                {
+                    "name": "sourceoriginator",
+                    "dtype": "STRING"
+                },
+                {
+                    "name": "sourcefeatureid",
+                    "dtype": "STRING"
+                },
+                {
+                    "name": "loaddate",
+                    "dtype": "DATETIME"
+                },
+                {
+                    "name": "referencegnis_ids",
+                    "dtype": "STRING"
+                },
+                {
+                    "name": "areaacres",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "areasqkm",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "states",
+                    "dtype": "STRING"
+                },
+                {
+                    "name": "huc12",
+                    "dtype": "STRING"
+                },
+                {
+                    "name": "name",
+                    "dtype": "STRING"
+                },
+                {
+                    "name": "hutype",
+                    "dtype": "STRING",
+                    "description": "Domain 'HUType Domain': S=Standard, C=Closed Basin, F=Frontal, M=Multiple Outlet, W=Water, I=Island, U=Urban, D=Indeterminate"
+                },
+                {
+                    "name": "humod",
+                    "dtype": "STRING"
+                },
+                {
+                    "name": "tohuc",
+                    "dtype": "STRING"
+                },
+                {
+                    "name": "noncontributingareaacres",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "noncontributingareasqkm",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "nhdplusid",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "vpuid",
+                    "dtype": "STRING"
+                },
+                {
+                    "name": "geom_simplified",
+                    "friendly_name": "Simplified Geometry",
+                    "dtype": "GEOMETRY",
+                    "description": "Simplified to 150.0 m tolerance (Douglas-Peucker, topology-preserving) in EPSG:5070 then reprojected to EPSG:4326. Added in Riverscapes processing."
+                },
+                {
+                    "name": "geometry_bbox",
+                    "friendly_name": "Geometry Bounding Box",
+                    "dtype": "STRUCTURED",
+                    "description": "Bounding box struct (xmin/ymin/xmax/ymax, EPSG:4326, float32) for Athena spatial predicate push-down. Computed from original unsimplified geometry. Added in Riverscapes processing."
+                }
+            ]
+        }
+    ]
+}
