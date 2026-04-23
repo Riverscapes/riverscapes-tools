@@ -70,9 +70,23 @@ aka `"\\WSL.LOCALHOST\Ubuntu\home\narlorin\udata\usgs\nhdplushr\NHDPlus_H_Nation
 - [ ] **Evaluate Parquet partitioning strategy** — 25M+ row layers are large; plan to partition by `vpuid` (8-digit HU4 VPU) for largest tables, HUC2 (first two digits of vpu) for medium tables, no partitioning for smaller tables. Also within-parquet ordering matters - be deliberate in how rows are sorted.
 - [ ] **Handle compound CRS** — source is NAD83+NAVD88 (3D); strip Z and reproject to EPSG:4326 for output
 - [ ] **Address duplicate features** — per USGS docs: "adjacent VPUs often contained duplicate copies of features intersecting the VPU boundaries" with different NHDPlusID but same geometry/attributes; decide dedup strategy
-- [ ] **Generate Athena DDL** for each Phase 1 table
-- [ ] **Upload Parquet to S3** (`s3://riverscapes-athena/usgov_sources/usgs-nhdplushr-*/2025-01-31/`)
-- [ ] **Create Athena tables** and verify with test queries
+
+#### Generate Athena DDL
+
+* for each Phase 1 table
+* generated as part of `orchestrate-nhdplushr.py`
+
+#### Upload Parquet to S3
+
+* e.g. `s3://riverscapes-athena/usgov_sources/usgs-nhdplushr-*/2025-01-31/`
+* Use `aws s3 sync ~/ucode/riverscapes-tools/dist/usgov_sources/usgs-nhdplushr s3://riverscapes-athena/usgov_sources/usgs-nhdplushr --exclude "*.sql"`
+* verify `aws s3 ls s3://riverscapes-athena/usgov_sources/usgs-nhdplushr --recursive --human-readable --summarize`
+
+#### Create Athena tables
+
+* [ ] run each DDL script. 
+* [ ] Run `MSCK REPAIR TABLE {tablename}` for tables with partitions.
+* [ ] and verify with test queries
 
 ### Phase 1 — Decisions
 

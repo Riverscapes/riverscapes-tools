@@ -144,6 +144,62 @@ def read_nhdplusflow(gdb_path: str, vpuids: list[str] | None = None) -> pd.DataF
     return df
 
 
+def _layer_dtype_lookup(layer_id: str) -> dict[str, str]:
+    """Return a lower-cased column -> dtype lookup for a layer_id."""
+    layer_defs_path = Path(__file__).parent / "usgs_nhdplushr" / "layer_definitions.json"
+    with open(layer_defs_path, "r", encoding="utf-8") as fh:
+        doc = json.load(fh)
+
+    layer = next((l for l in doc.get("layers", []) if l.get("layer_id") == layer_id), None)
+    if layer is None:
+        return {}
+
+    lookup: dict[str, str] = {}
+    for col in layer.get("columns", []):
+        name = (col.get("name") or "").strip().lower()
+        dtype = (col.get("dtype") or "").strip().upper()
+        if name and dtype:
+            lookup[name] = dtype
+    return lookup
+
+
+def _coerce_df_to_layer_dtypes(df: pd.DataFrame, layer_id: str) -> pd.DataFrame:
+    """Coerce dataframe column dtypes to match layer_definitions where safe.
+
+    This avoids pandas nullable-int columns being serialized as floating-point
+    Parquet fields, which then drift from Athena DDL expectations.
+    """
+    log = Logger("coerce_dtypes")
+    dtype_lookup = _layer_dtype_lookup(layer_id)
+    if not dtype_lookup:
+        log.warning(f"No dtype metadata found for layer_id '{layer_id}'")
+        return df
+
+    out = df.copy()
+    for col in out.columns:
+        dtype = dtype_lookup.get(col.lower())
+        if not dtype:
+            continue
+
+        if dtype == "INTEGER":
+            numeric = pd.Series(pd.to_numeric(out[col], errors="coerce"), index=out.index)
+            non_null = numeric.dropna()
+            has_fractional = bool((non_null % 1 != 0).any()) if not non_null.empty else False
+            if has_fractional:
+                # Keep as float to avoid destructive truncation.
+                log.warning(f"Column '{col}' expected INTEGER but has fractional values; leaving as FLOAT")
+                out[col] = numeric.astype("float64")
+            else:
+                out[col] = numeric.astype("Int64")
+        elif dtype == "FLOAT":
+            numeric = pd.Series(pd.to_numeric(out[col], errors="coerce"), index=out.index)
+            out[col] = numeric.astype("float64")
+        elif dtype == "DATETIME":
+            out[col] = pd.to_datetime(out[col], errors="coerce")
+
+    return out
+
+
 # ---------------------------------------------------------------------------
 # Export helpers
 # ---------------------------------------------------------------------------
@@ -275,6 +331,8 @@ def process_network_flowline(cfg: NHDConfig, vpuids: list[str] | None = None) ->
         df = df.drop(columns=drop_cols)
         log.info(f"Dropped columns: {drop_cols}")
 
+    df = _coerce_df_to_layer_dtypes(df, lcfg["layer_id"])
+
     # Validate unique key
     uid = lcfg.get("unique_id_field")
     if uid and uid in df.columns:
@@ -312,6 +370,7 @@ def process_nhdplusflow(cfg: NHDConfig, vpuids: list[str] | None = None) -> None
     lcfg = _layer_cfg(cfg, "NHDPlusFlow")
 
     df = read_nhdplusflow(cfg.input_vector_path, vpuids=vpuids)
+    df = _coerce_df_to_layer_dtypes(df, lcfg["layer_id"])
 
     # Derive huc2 partition column from fromvpuid (first 2 digits)
     # Note: fromvpuid can be null for cross-boundary edges; those rows get huc2=None
@@ -493,6 +552,10 @@ def _sql_escape(value: str) -> str:
     return value.replace("'", "''")
 
 
+def _truncate_comment(value: str, max_len: int = 250) -> str:
+    return value if len(value) <= max_len else value[:max_len] + "..."
+
+
 def _map_dtype_to_athena(dtype: str, col_name: str) -> str:
     mapping = {
         "STRING": "string",
@@ -554,7 +617,7 @@ def build_athena_ddl(cfg: NHDConfig) -> list[Path]:
             if desc and friendly and friendly not in desc:
                 comment = f"{friendly}. {desc}"
             if comment:
-                col_lines.append(f"  `{name}` {dtype} COMMENT '{_sql_escape(comment)}'")
+                col_lines.append(f"  `{name}` {dtype} COMMENT '{_sql_escape(_truncate_comment(comment))}'")
             else:
                 col_lines.append(f"  `{name}` {dtype}")
 
@@ -607,7 +670,7 @@ def build_athena_ddl(cfg: NHDConfig) -> list[Path]:
     return ddl_paths
 
 
-# ---------------------------------------------------------------------------
+# --------------------------------------------------p-------------------------
 # CLI
 # ---------------------------------------------------------------------------
 def main():

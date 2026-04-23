@@ -20,7 +20,7 @@
                 {
                     "name": "resolution",
                     "dtype": "INTEGER",
-                    "description": "Domain 'Resolution': 1=Local, 2=High, 3=Medium"
+                    "description": "resolution (Resolution): 1=Local; 2=High; 3=Medium"
                 },
                 {
                     "name": "gnis_id",
@@ -41,7 +41,7 @@
                 {
                     "name": "flowdir",
                     "dtype": "INTEGER",
-                    "description": "Domain 'HydroFlowDirections': 0=Uninitialized, 1=WithDigitized"
+                    "description": "flowdir (HydroFlowDirections): 0=Uninitialized; 1=WithDigitized"
                 },
                 {
                     "name": "wbarea_permanent_identifier",
@@ -58,17 +58,17 @@
                 {
                     "name": "mainpath",
                     "dtype": "INTEGER",
-                    "description": "Domain 'MainPath Domain': 0=Unspecified, 1=Confluence Main, 2=Divergence Main, 3=Both Confluence and Divergence Main"
+                    "description": "mainpath (MainPath): 0=Unspecified; 1=Confluence Main; 2=Divergence Main; 3=Both Confluence and Divergence Main"
                 },
                 {
                     "name": "innetwork",
                     "dtype": "INTEGER",
-                    "description": "Domain 'NoYes Domain': 1=Yes, 0=No"
+                    "description": "innetwork (NoYes): 1=Yes; 0=No"
                 },
                 {
                     "name": "visibilityfilter",
                     "dtype": "INTEGER",
-                    "description": "Domain 'VisibilityFilter Domain': 0=Unspecified, 4800=Approximately 1:4,800 or Larger Scale, 12500=Approximately 1:12,500 or Larger Scale, 24000=Approximately 1:24,000 or Larger Scale, 50000=Approximately 1:50,000 or Larger Scale, 100000=Approximately 1:100,000 or Larger Scale, 150000=Approximately 1:150,000 or Larger Scale, 250000=Approximately 1:250,000 or Larger Scale, 500000=Approximately 1:500,000 or Larger Scale, 1000000=Approximately 1:1,000,000 or Larger Scale, 2000000=Approximately 1:2,000,000 or Larger Scale, 5000000=Approximately 1:5,000,000 or Larger Scale"
+                    "description": "visibilityfilter (VisibilityFilter): 0=Unspecified; 4800=Approximately 1:4,800 or Larger Scale; 12500=Approximately 1:12,500 or Larger Scale; 24000=Approximately 1:24,000 or Larger Scale; 50000=Approximately 1:50,000 or Larger Scale; 100000=Approximately 1:100,000 or Larger Scale; 150000=Approximately 1:150,000 or Larger Scale; 250000=Approximately 1:250,000 or Larger Scale; 500000=Approximately 1:500,000 or Larger Scale; 1000000=Approximately 1:1,000,000 or Larger Scale; 2000000=Approximately 1:2,000,000 or Larger Scale; 5000000=Approximately 1:5,000,000 or Larger Scale"
                 },
                 {
                     "name": "nhdplusid",
@@ -129,19 +129,19 @@
                     "name": "divergence",
                     "friendly_name": "DivergenceCode",
                     "dtype": "INTEGER",
-                    "description": "Domain 'Divergence Domain': 2=Feature is a minor path of a divergence, 0=Feature is not part of a divergence, 1=Feature is the main path of a divergence"
+                    "description": "DivergenceCode (Divergence): 2=Feature is a minor path of a divergence; 0=Feature is not part of a divergence; 1=Feature is the main path of a divergence"
                 },
                 {
                     "name": "startflag",
                     "friendly_name": "IsHeadwater",
                     "dtype": "INTEGER",
-                    "description": "Domain 'NoYes Domain': 1=Yes, 0=No"
+                    "description": "IsHeadwater (NoYes): 1=Yes; 0=No"
                 },
                 {
                     "name": "terminalfl",
                     "friendly_name": "IsNetworkEnd",
                     "dtype": "INTEGER",
-                    "description": "Domain 'NoYes Domain': 1=Yes, 0=No"
+                    "description": "IsNetworkEnd (NoYes): 1=Yes; 0=No"
                 },
                 {
                     "name": "uplevelpat",
@@ -192,7 +192,7 @@
                     "name": "rtndiv",
                     "friendly_name": "HasReturningDivergence",
                     "dtype": "INTEGER",
-                    "description": "Domain 'NoYes Domain': 1=Yes, 0=No"
+                    "description": "HasReturningDivergence (NoYes): 1=Yes; 0=No"
                 },
                 {
                     "name": "thinner",
@@ -201,12 +201,12 @@
                 {
                     "name": "vpuin",
                     "dtype": "INTEGER",
-                    "description": "Domain 'NoYes Domain': 1=Yes, 0=No"
+                    "description": "vpuin (NoYes): 1=Yes; 0=No"
                 },
                 {
                     "name": "vpuout",
                     "dtype": "INTEGER",
-                    "description": "Domain 'NoYes Domain': 1=Yes, 0=No"
+                    "description": "vpuout (NoYes): 1=Yes; 0=No"
                 },
                 {
                     "name": "areasqkm",
@@ -255,13 +255,13 @@
                     "name": "elevfixed",
                     "friendly_name": "IsElevationFixed",
                     "dtype": "INTEGER",
-                    "description": "Domain 'NoYes Domain': 1=Yes, 0=No"
+                    "description": "IsElevationFixed (NoYes): 1=Yes; 0=No"
                 },
                 {
                     "name": "hwtype",
                     "friendly_name": "HeadwaterType",
                     "dtype": "INTEGER",
-                    "description": "Domain 'HeadwaterType Domain': 1=Artificial Headwater, 0=Real Headwater"
+                    "description": "HeadwaterType (HeadwaterType): 1=Artificial Headwater; 0=Real Headwater"
                 },
                 {
                     "name": "hwnodesqkm",
@@ -271,7 +271,7 @@
                 {
                     "name": "statusflag",
                     "dtype": "STRING",
-                    "description": "Domain 'StatusFlag Domain': A=Add, C=Change, D=Delete, N=Not Set"
+                    "description": "statusflag (StatusFlag): A=Add; C=Change; D=Delete; N=Not Set"
                 },
                 {
                     "name": "qama",
@@ -387,7 +387,7 @@
                     "name": "gageadjma",
                     "friendly_name": "IsGageAdjustedMA",
                     "dtype": "INTEGER",
-                    "description": "Domain 'NoYes Domain': 1=Yes, 0=No"
+                    "description": "IsGageAdjustedMA (NoYes): 1=Yes; 0=No"
                 },
                 {
                     "name": "avgqadjma",
@@ -445,7 +445,7 @@
                     "name": "hasgeo",
                     "friendly_name": "IsGeometricConnection",
                     "dtype": "INTEGER",
-                    "description": "Domain 'NoYes Domain': 1=Yes, 0=No"
+                    "description": "IsGeometricConnection (NoYes): 1=Yes; 0=No"
                 },
                 {
                     "name": "fromvpuid",
@@ -524,7 +524,7 @@
                 {
                     "name": "hutype",
                     "dtype": "STRING",
-                    "description": "Domain 'HUType Domain': S=Standard, C=Closed Basin, F=Frontal, M=Multiple Outlet, W=Water, I=Island, U=Urban, D=Indeterminate"
+                    "description": "hutype (HUType): S=Standard; C=Closed Basin; F=Frontal; M=Multiple Outlet; W=Water; I=Island; U=Urban; D=Indeterminate"
                 },
                 {
                     "name": "humod",

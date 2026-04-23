@@ -97,13 +97,21 @@ def _fetch_domain_descriptions(ds) -> dict[str, dict]:
     return domains
 
 
-def _format_domain_description(domain_name: str, code_map: dict) -> str:
-    """Build a human-readable description suffix from a coded-value domain.
+def _format_domain_description(meaning: str, domain_name: str, code_map: dict) -> str:
+    """Build a human-readable domain description.
 
-    Example output: "Domain 'Resolution': 1=Local, 2=High, 3=Medium"
+    Example output: "Resolution (Resolution): 1=Local; 2=High; 3=Medium"
     """
-    pairs = ", ".join(f"{k}={v}" for k, v in code_map.items())
-    return f"Domain '{domain_name}': {pairs}"
+    pairs = "; ".join(f"{k}={v}" for k, v in code_map.items())
+    return f"{meaning} ({domain_name}): {pairs}"
+
+
+def _normalize_domain_name(domain_name: str) -> str:
+    """Normalize a domain name for display by trimming a trailing 'Domain'."""
+    name = domain_name.strip()
+    if name.lower().endswith("domain"):
+        return name[:-6].rstrip()
+    return name
 
 
 # ---------------------------------------------------------------------------
@@ -170,9 +178,13 @@ def fetch_columns_from_fgdb(
         if domain_name and include_domains_in_description:
             code_map = all_domains.get(domain_name)
             if code_map:
-                description_parts.append(_format_domain_description(domain_name, code_map))
+                normalized_domain_name = _normalize_domain_name(domain_name)
+                meaning = alias if alias and alias != name else name
+                description_parts.append(
+                    _format_domain_description(meaning, normalized_domain_name, code_map)
+                )
             else:
-                description_parts.append(f"Domain: {domain_name}")
+                description_parts.append(f"Domain: {_normalize_domain_name(domain_name)}")
 
         if description_parts:
             col["description"] = "; ".join(description_parts)
