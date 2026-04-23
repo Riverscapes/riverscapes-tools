@@ -179,6 +179,21 @@ def fetch_columns_from_fgdb(
 
         columns.append(col)
 
+    # Geometry column — only for spatial layers (non-table layers)
+    geom_type = lyr.GetGeomType()
+    if geom_type != ogr.wkbNone:
+        geom_type_name = ogr.GeometryTypeToName(geom_type)
+        # Geometry field name (usually "geometry" or "Shape" in FGDB)
+        geom_col_name = defn.GetGeomFieldDefn(0).GetName() if defn.GetGeomFieldCount() > 0 else "geometry"
+        geom_col_name = geom_col_name or "geometry"
+        columns.append({
+            "name": geom_col_name.lower(),
+            "friendly_name": "Geometry",
+            "dtype": "GEOMETRY",
+            "description": f"Feature geometry. Source type: {geom_type_name}. "
+                           "Riverscapes processing reprojects to EPSG:4326 and strips Z.",
+        })
+
     ds = None  # close
     return columns
 

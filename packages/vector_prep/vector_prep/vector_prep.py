@@ -64,7 +64,10 @@ def vector_prep(input_dataset: Path | str, layer_name: str | None, tolerance: fl
             raise Exception(f"Failed to reproject to EPSG:{epsg}: {e}") from e
 
     # Clean geometries (fix invalids, simplify)
-    log.info(f"Cleaning geometries (tolerance={tolerance})...")
+    if tolerance and tolerance > 0:
+        log.info(f"Fixing invalid geometries and simplifying to {tolerance} m tolerance...")
+    else:
+        log.info("Fixing invalid geometries (no simplification)...")
     cleaned_geom_series, stats = clean_geometries(gdf_proc.geometry, simplify_tolerance=tolerance)
 
     # assign cleaned geometries back
@@ -77,13 +80,13 @@ def vector_prep(input_dataset: Path | str, layer_name: str | None, tolerance: fl
     after_drop = len(gdf_proc)
     dropped = before_drop - after_drop
 
-    log.info(f"Input features: {stats['input_count']}")
-    log.info(f"Null/empty geometries found: {stats['null_or_empty']}")
-    log.info(f"Invalid geometries fixed: {stats['invalid_fixed']}")
-    log.info(f"Invalid geometries unfixed (dropped): {stats['invalid_unfixed']}")
-    log.info(f"Features simplified: {stats['simplified_count']}")
-    log.info(f"Dropped features after cleaning: {dropped}")
-    log.info(f"Remaining features to write: {len(gdf_proc)}")
+    log.info(f"Input features:                   {stats['input_count']:,}")
+    log.info(f"Null/empty geometries found:      {stats['null_or_empty']:,}")
+    log.info(f"Invalid geometries fixed:         {stats['invalid_fixed']:,}")
+    log.info(f"Invalid geometries unfixed (dropped): {stats['invalid_unfixed']:,}")
+    log.info(f"Features simplified ({tolerance} m):  {stats['simplified_count']:,}")
+    log.info(f"Dropped features after cleaning:  {dropped:,}")
+    log.info(f"Remaining features:               {len(gdf_proc):,}")
 
     # If nothing remains
     if len(gdf_proc) == 0:

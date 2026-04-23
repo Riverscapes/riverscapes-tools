@@ -10,7 +10,9 @@
 - **Size**: ~60 GB unzipped
 - **CRS**: NAD83 + NAVD88 height (compound; EPSG:4269 horizontal + EPSG:5703 vertical)
 - **Driver**: OpenFileGDB (GDAL)
-- **Local path**: `F:\nardata\datadownload\usgs\nhdplushr\NHDPlus_H_National_Release_2_GDB\NHDPlus_H_National_Release_2_GDB.gdb`
+- **Local path**: WINDOWS: `F:\nardata\datadownload\usgs\nhdplushr\NHDPlus_H_National_Release_2_GDB\NHDPlus_H_National_Release_2_GDB.gdb`
+WSL: `~/udata/usgs/nhdplushr/NHDPlus_H_National_Release_2_GDB/NHDPlus_H_National_Release_2_GDB.gdb`
+aka `"\\WSL.LOCALHOST\Ubuntu\home\narlorin\udata\usgs\nhdplushr\NHDPlus_H_National_Release_2_GDB\NHDPlus_H_National_Release_2_GDB.gdb"`
 
 ## GDB Layer Inventory (15 layers)
 

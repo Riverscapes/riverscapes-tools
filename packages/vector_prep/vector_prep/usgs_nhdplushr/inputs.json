@@ -4,10 +4,11 @@
     "source_url": "https://www.sciencebase.gov/catalog/item/679d39cbd34eb38981c9c7a5",
     "doi": "10.5066/P13V7GVY",
     "publication_date": "2025-01-31",
-    "snapshot_id": "2025-01-31",
-    "input_vector_path": "/mnt/f/nardata/datadownload/usgs/nhdplushr/NHDPlus_H_National_Release_2_GDB/NHDPlus_H_National_Release_2_GDB.gdb",
+    "file_modification_date" : "2026-02-11",
+    "snapshot_id": "2026-02-11",
+    "input_vector_path": "/home/narlorin/udata/usgs/nhdplushr/NHDPlus_H_National_Release_2_GDB/NHDPlus_H_National_Release_2_GDB.gdb",
     "data_prep_operator": "Lorin Gaertner",
-    "special_notes": "NHDPlus HR NR2 FileGDB downloaded from ScienceBase/TNM. 60 GB unzipped. 15 layers total (12 spatial, 3 attribute tables). CRS is NAD83 + NAVD88 (compound). User guide: https://pubs.usgs.gov/publication/ofr20191096",
+    "special_notes": "NHDPlus HR NR2 FileGDB downloaded from ScienceBase/TNM on 2026-04-16 has file modification date 2026-02-11. 60 GB unzipped. 15 layers total (12 spatial, 3 attribute tables). CRS is NAD83 + NAVD88 (compound). User guide: https://pubs.usgs.gov/publication/ofr20191096",
     "layers": [
         {
             "gdb_layer_name": "NetworkNHDFlowline",
@@ -27,7 +28,7 @@
             "gdb_layer_name": "WBDHU12",
             "layer_id": "usgs-nhdplushr-wbdhu12",
             "include_geometry": true,
-            "simplify_tolerance": 50.0,
+            "simplify_tolerance": 150.0,
             "unique_id_field": "huc12",
             "notes": "HUC12 watershed boundaries with simplified geometry for mapping and spatial queries. ~90K features."
         }
