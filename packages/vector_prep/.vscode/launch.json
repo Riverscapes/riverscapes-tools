@@ -9,14 +9,37 @@
             "type": "debugpy",
             "request": "launch",
             "program": "${file}",
+            "python": "${workspaceFolder}/../../.venv/bin/python",
+            "cwd": "${fileDirname}",
             "console": "integratedTerminal",
+            "env": {
+                "PYTHONPATH": "/usr/local/lib/python3.12/dist-packages:${env:PYTHONPATH}"
+            },
             "args": "${command:pickArgs}"
+        },
+        {
+            "name": "NHDPlusHR: orchestrate --skip-data",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/vector_prep/orchestrate-nhdplushr.py",
+            "python": "${workspaceFolder}/../../.venv/bin/python",
+            "cwd": "${workspaceFolder}/vector_prep",
+            "console": "integratedTerminal",
+            "env": {
+                "PYTHONPATH": "/usr/local/lib/python3.12/dist-packages:${env:PYTHONPATH}"
+            },
+            "stopOnEntry": true,
+            "justMyCode": false,
+            "args": [
+                "--skip-data"
+            ]
         },
         {
             "name": "🚀 Run Vector Prep",
             "type": "debugpy",
             "request": "launch",
             "module": "vector_prep.vector_prep",
+            "python": "${workspaceFolder}/../../.venv/bin/python",
             "console": "integratedTerminal",
             "env": {
                 "PYTHONPATH": "${workspaceFolder}/../../lib/commons"

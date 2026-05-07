@@ -687,6 +687,10 @@ def main():
         "--skip-data", action="store_true",
         help="Skip data processing; only build layer_definitions and DDL.",
     )
+    parser.add_argument(
+        "--skip-meta", action="store_true",
+        help="Skip layer_definitions and DDL generation; only process data.",
+    )
     args = parser.parse_args()
 
     vpuids = [v.strip() for v in args.vpuids.split(",")] if args.vpuids else None
@@ -720,10 +724,13 @@ def main():
             process_wbdhu12(cfg, vpuids)
 
     # --- Metadata & DDL ---
-    build_layer_defs(cfg)
-    ddl_paths = build_athena_ddl(cfg)
-    for p in ddl_paths:
-        log.info(f"DDL: {p}")
+    if not args.skip_meta:
+        build_layer_defs(cfg)
+        ddl_paths = build_athena_ddl(cfg)
+        for p in ddl_paths:
+            log.info(f"DDL: {p}")
+    else:
+        log.info("Skipping metadata and DDL generation (--skip-meta).")
 
     log.info("Done.")
 

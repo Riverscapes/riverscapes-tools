@@ -2,6 +2,23 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Vector Prep: NHDPlusHR --skip-data",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "/home/narlorin/ucode/riverscapes-tools/packages/vector_prep/vector_prep/orchestrate-nhdplushr.py",
+      "python": "/home/narlorin/ucode/riverscapes-tools/.venv/bin/python",
+      "cwd": "/home/narlorin/ucode/riverscapes-tools/packages/vector_prep/vector_prep",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "stopOnEntry": true,
+      "env": {
+        "PYTHONPATH": "/usr/local/lib/python3.12/dist-packages:${env:PYTHONPATH}"
+      },
+      "args": [
+        "--skip-data"
+      ]
+    },
+    {
       "name": "CLI: run module",
       "type": "debugpy",
       "request": "launch",

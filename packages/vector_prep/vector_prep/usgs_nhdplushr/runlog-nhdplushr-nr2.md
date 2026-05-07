@@ -62,12 +62,12 @@ aka `"\\WSL.LOCALHOST\Ubuntu\home\narlorin\udata\usgs\nhdplushr\NHDPlus_H_Nation
 
 ### Phase 1 — Immediate
 
-- [ ] **Build layer_definitions.json entries** — run `fetch_fgdb_metadata.py` for each Phase 1 layer to auto-generate column definitions (field names, aliases, types, coded-value domains) from the GDB
-- [ ] **Write `orchestrate-nhdplushr.py`** — multi-layer orchestration script
+- [x] **Build layer_definitions.json entries** — run `fetch_fgdb_metadata.py` for each Phase 1 layer to auto-generate column definitions (field names, aliases, types, coded-value domains) from the GDB
+- [x] **Write `orchestrate-nhdplushr.py`** — multi-layer orchestration script
   - NetworkNHDFlowline: geometry cleaning (vector prep), add end point coordinates, add simplified (11 m) geometry, partition and export to Parquet
   - NHDPlusFlow: non-spatial table → Parquet (no geometry processing needed)
   - WBDHU12: geometry cleaning (vector_prep), simplify at 100 m (TBC) tolerance, add `geometry_bbox`, export to GeoParquet
-- [ ] **Evaluate Parquet partitioning strategy** — 25M+ row layers are large; plan to partition by `vpuid` (8-digit HU4 VPU) for largest tables, HUC2 (first two digits of vpu) for medium tables, no partitioning for smaller tables. Also within-parquet ordering matters - be deliberate in how rows are sorted.
+- [x] **Evaluate Parquet partitioning strategy** — 25M+ row layers are large; plan to partition by `vpuid` (8-digit HU4 VPU) for largest tables, HUC2 (first two digits of vpu) for medium tables, no partitioning for smaller tables. Also within-parquet ordering matters - be deliberate in how rows are sorted.
 - [ ] **Handle compound CRS** — source is NAD83+NAVD88 (3D); strip Z and reproject to EPSG:4326 for output
 - [ ] **Address duplicate features** — per USGS docs: "adjacent VPUs often contained duplicate copies of features intersecting the VPU boundaries" with different NHDPlusID but same geometry/attributes; decide dedup strategy
 
@@ -90,7 +90,7 @@ aka `"\\WSL.LOCALHOST\Ubuntu\home\narlorin\udata\usgs\nhdplushr\NHDPlus_H_Nation
 
 ### Phase 1 — Decisions
 
-- Partition by `vpuid` (natural partition, ~200 VPUs)
+- Partition by `vpuid` (natural partition, there are ~200 VPUs in CONUS) where needed
 - Dedup: check if we can drop duplicates on `permanent_identifier`. If that isn't a clean fix then keep all rows (matching USGS as-published) and document?
 - NHDPlusFlow: skip `RS_ROW_ID` (, it is not useful for an edge table. Even though no natural unique key exists; a composite of `fromnhdpid+tonhdpid` is not strictly unique if multiple edges exist between same nodes.)
 - skip adding RS_ROW_ID to NHD tables in favour of checking that the business/natural keys are unique and documenting them, including in the json `unique_id_field`.
