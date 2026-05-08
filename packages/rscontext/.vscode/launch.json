@@ -178,10 +178,12 @@
       "module": "rscontext.scripts.scrape-raster",
       "console": "integratedTerminal",
       "args": [
-        "1406",
+        "2,16", // Comma separated list of HUC2s to process
+        "landfire_int", // Theme used as both folder name and prefix for output files
         "{env:DATA_ROOT}/../nhd/NHDPlus_H_National_Release_2_GDB.gdb",
         "{env:DATA_ROOT}/../landfire/LF2025_EVT_CONUS/Tif/LF2025_EVT_CONUS.tif",
         "{env:DATA_ROOT}/../raster_scrape",
+        "--integer",
         "--verbose",
       ]   ,
          "env": {
