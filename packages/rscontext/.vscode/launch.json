@@ -191,6 +191,39 @@
       },
     },
     {
+      "name": "Scrape Vector Stats",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "rscontext.scripts.scrape-vector",
+      "console": "integratedTerminal",
+      "args": [
+        "16", // Comma separated list of HUC2s to process
+        "ownership", // Theme used as both folder name and prefix for output files
+        "{env:DATA_ROOT}/../nhd/NHDPlus_H_National_Release_2_GDB.gdb",
+        "{env:DATA_ROOT}/../surface_management_agency_fixed.gpkg",
+        "{env:DATA_ROOT}/../raster_scrape",
+        "--layer", "ownership",
+        "--verbose",
+      ]   ,
+         "env": {
+        "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+      },
+    }
+    ,
+    {
+      "name": "Download Roads",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "rscontext.scripts.download_tiger_roads",
+      "console": "integratedTerminal",
+      "args": [
+        "{env:DATA_ROOT}/roads/national_map",
+      ]   ,
+         "env": {
+        "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+      },
+    },
+    {
       "name": "Version Bump",
       "type": "debugpy",
       "module": "rscommons.version",
