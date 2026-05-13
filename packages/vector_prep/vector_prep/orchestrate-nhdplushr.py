@@ -108,6 +108,69 @@ def read_gdb_attrs(gdb_path: str, layer_name: str, vpuids: list[str] | None = No
     return df
 
 
+def iter_gdb_attrs_chunks(
+    gdb_path: str,
+    layer_name: str,
+    vpuids: list[str] | None = None,
+    chunk_size: int = 500_000,
+):
+    """Yield chunked attrs-only reads for a GDB layer.
+
+    Uses geopandas+pyogrio row-window reads so we can process very large layers
+    without materializing the whole table in memory.
+    """
+    log = Logger("read_gdb_chunks")
+    where = None
+    if vpuids:
+        where = " OR ".join(f"vpuid = '{v}'" for v in vpuids)
+        log.info(f"Filtering {layer_name} where: {where}")
+
+    offset = 0
+    chunk_idx = 0
+    while True:
+        log.info(
+            f"Reading {layer_name} chunk {chunk_idx} "
+            f"(rows {offset:,}..{offset + chunk_size - 1:,}, where={where})..."
+        )
+        try:
+            df = gpd.read_file(
+                gdb_path,
+                layer=layer_name,
+                where=where,
+                ignore_geometry=True,
+                rows=slice(offset, offset + chunk_size),
+                engine="pyogrio",
+            )
+        except Exception as e:
+            if chunk_idx == 0:
+                log.warning(
+                    f"Chunked reads unavailable ({type(e).__name__}: {e}); "
+                    "falling back to one-shot read."
+                )
+                df = gpd.read_file(
+                    gdb_path,
+                    layer=layer_name,
+                    where=where,
+                    ignore_geometry=True,
+                )
+            else:
+                raise
+
+        if df.empty:
+            log.info("No more rows returned.")
+            break
+
+        log.info(f"Read chunk {chunk_idx}: {len(df):,} rows")
+        yield chunk_idx, df
+
+        if len(df) < chunk_size:
+            log.info("Final chunk reached.")
+            break
+
+        offset += len(df)
+        chunk_idx += 1
+
+
 def read_gdb_layer_gpd(gdb_path: str, layer_name: str, vpuids: list[str] | None = None) -> gpd.GeoDataFrame:
     """Read a spatial GDB layer into a GeoDataFrame, optionally filtered by vpuid."""
     log = Logger("read_gdb_gpd")
@@ -314,6 +377,46 @@ def export_partitioned(
     return paths
 
 
+def export_partitioned_chunk(
+    df: pd.DataFrame,
+    output_dir: Path,
+    partition_col: str,
+    filename_prefix: str,
+    chunk_idx: int,
+    sort_by: list[str] | None = None,
+) -> list[Path]:
+    """Write one parquet file per partition value for a single chunk.
+
+    Files are named {filename_prefix}_part-XXXXXX.parquet to support
+    incremental writes and early uploads while processing continues.
+    """
+    log = Logger("export_part_chunk")
+    output_dir = Path(output_dir)
+    paths: list[Path] = []
+
+    for val, group_df in df.groupby(partition_col, sort=True):
+        if pd.isna(val):
+            continue
+        part_dir = output_dir / f"{partition_col}={val}"
+        part_dir.mkdir(parents=True, exist_ok=True)
+        part_df = group_df.drop(columns=[partition_col])
+
+        if sort_by:
+            sort_cols = [c for c in sort_by if c in part_df.columns]
+            if sort_cols:
+                part_df = part_df.sort_values(sort_cols, ignore_index=True)
+
+        out_path = part_dir / f"{filename_prefix}_part-{chunk_idx:06d}.parquet"
+        table = pa.Table.from_pandas(part_df, preserve_index=False)
+        pq.write_table(table, str(out_path), compression="snappy")
+        paths.append(out_path)
+
+    log.info(
+        f"Chunk {chunk_idx}: wrote {len(paths)} partition files to {output_dir}"
+    )
+    return paths
+
+
 # ---------------------------------------------------------------------------
 # Layer processing steps
 # ---------------------------------------------------------------------------
@@ -321,6 +424,56 @@ def process_network_flowline(cfg: NHDConfig, vpuids: list[str] | None = None) ->
     """Process NetworkNHDFlowline: read attrs, validate unique key, export to partitioned Parquet."""
     log = Logger("NetworkNHDFlowline")
     lcfg = _layer_cfg(cfg, "NetworkNHDFlowline")
+
+    out_dir = _dist_dir(cfg) / lcfg["layer_id"] / cfg.snapshot_id
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    # For full national runs, stream in chunks to avoid OOM on ~25M rows.
+    if vpuids is None:
+        log.info("Reading NetworkNHDFlowline in chunked streaming mode (all VPUs)...")
+
+        total_rows = 0
+        chunk_count = 0
+        total_partition_files = 0
+
+        for chunk_idx, df in iter_gdb_attrs_chunks(
+            cfg.input_vector_path,
+            "NetworkNHDFlowline",
+            vpuids=None,
+            chunk_size=500_000,
+        ):
+            chunk_count += 1
+            total_rows += len(df)
+
+            drop_cols = [c for c in ("Shape_Length",) if c in df.columns]
+            if drop_cols:
+                df = df.drop(columns=drop_cols)
+
+            df = _coerce_df_to_layer_dtypes(df, lcfg["layer_id"])
+
+            if "vpuid" not in df.columns:
+                raise RuntimeError("NetworkNHDFlowline chunk is missing required 'vpuid' column")
+
+            paths = export_partitioned_chunk(
+                df,
+                out_dir,
+                partition_col="vpuid",
+                filename_prefix=lcfg["layer_id"],
+                chunk_idx=chunk_idx,
+                sort_by=["hydroseq"] if "hydroseq" in df.columns else None,
+            )
+            total_partition_files += len(paths)
+            log.info(
+                f"Progress: chunks={chunk_count}, rows={total_rows:,}, "
+                f"files_written={total_partition_files}"
+            )
+
+        log.info(
+            f"NetworkNHDFlowline streaming complete: {total_rows:,} rows across "
+            f"{chunk_count} chunks ({total_partition_files} parquet files)."
+        )
+        log.info("Note: global unique-key validation is skipped in streaming mode.")
+        return
 
     log.info("Reading NetworkNHDFlowline (attributes only)...")
     df = read_gdb_attrs(cfg.input_vector_path, "NetworkNHDFlowline", vpuids=vpuids)
@@ -348,9 +501,6 @@ def process_network_flowline(cfg: NHDConfig, vpuids: list[str] | None = None) ->
             log.info(f"  Sample duplicate IDs: {list(duped_ids)}")
 
     # Output — partition by vpuid
-    out_dir = _dist_dir(cfg) / lcfg["layer_id"] / cfg.snapshot_id
-    out_dir.mkdir(parents=True, exist_ok=True)
-
     if "vpuid" in df.columns:
         export_partitioned(
             df, out_dir,
