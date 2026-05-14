@@ -1,3 +1,18 @@
+"""
+Network Attribute Scraping Script for Raster Data
+This script calculates raster-based attributes for NHD catchments and writes results to parquet files. It is designed to be run once per raster theme and HUC2 region, and can be parallelized across multiple HUC2s.
+Only pixels whose centroid falls inside a catchment polygon contribute to its statistics, preventing double-counting at VPU boundaries.  The raster is never reprojected; catchment polygons are reprojected to the raster CRS when the two differ. Two modes are supported:
+
+- Float mode (default): calculates count, sum, min, and max of pixel values for each catchment, ignoring nodata pixels.
+- Integer mode (--integer flag): counts how many pixels of each unique integer value fall inside each catchment, ignoring nodata pixels. Results are written as a parquet file with columns: HUC2, NHDPlusID, value_counts (map type where keys are unique pixel values and values are the corresponding counts).
+
+The output file is organized in a subdirectory named after the theme (e.g. "landfire") under the specified output directory, with a filename pattern of {theme}_huc_{huc2}.parquet. 
+
+
+Philip Bailey
+May 2026
+"""
+
 import argparse
 import os
 import sys
@@ -27,8 +42,25 @@ except AttributeError:
         return _shapely_contains(polygon, x_flat, y_flat)
 
 
-def scrape_float_raster(huc2: str, theme: str, nhd_gdb: str, raster_path: str, output_dir: str) -> None:
-    """Calculate per-catchment raster statistics for a HUC2 region and write results to parquet.
+def get_huc4s_for_huc2(nhd_gdb: str, huc2: str, log) -> list:
+    """Return a sorted list of unique 4-digit VPUID prefixes (HUC4s) within a HUC2."""
+    log.info(f'Querying HUC4 codes within HUC2: {huc2}')
+    gdf = gpd.read_file(
+        nhd_gdb,
+        layer='NHDPlusCatchment',
+        where=f"SUBSTR(VPUID, 1, 2) = '{huc2}'",
+        ignore_geometry=True,
+    )
+    vpuid_col = next((c for c in gdf.columns if c.lower() == 'vpuid'), None)
+    if vpuid_col is None:
+        raise RuntimeError('VPUID column not found in NHDPlusCatchment')
+    huc4s = sorted(set(str(v)[:4] for v in gdf[vpuid_col].dropna()))
+    log.info(f'Found {len(huc4s)} HUC4(s) in HUC2 {huc2}: {", ".join(huc4s)}')
+    return huc4s
+
+
+def scrape_float_raster(huc4: str, theme: str, nhd_gdb: str, raster_path: str, output_dir: str, skip_values: set = None) -> None:
+    """Calculate per-catchment raster statistics for a HUC4 region and write results to parquet.
 
     Only pixels whose centroid falls inside a catchment polygon contribute to
     its statistics, preventing double-counting at VPU boundaries.  The raster
@@ -36,15 +68,20 @@ def scrape_float_raster(huc2: str, theme: str, nhd_gdb: str, raster_path: str, o
     when the two differ.
 
     Args:
-        huc2:        Two-digit HUC2 code used to filter NHDPlusCatchment by matching
-                     the first two characters of the VPUID field.
+        huc4:        Four-digit HUC4 code used to filter NHDPlusCatchment by matching
+                     the first four characters of the VPUID field.
         theme:       Theme name used as both folder name and prefix for output files.
         nhd_gdb:     Path to the NHD ESRI File Geodatabase.
         raster_path: Path to the source raster.
         output_dir:  Directory where the output parquet file will be written.
     """
-    log = Logger(f"Scrape {theme} HUC2 {huc2}")
-    huc2 = huc2.zfill(2)
+    log = Logger(f"Scrape {theme} HUC4 {huc4}")
+    huc4 = huc4.zfill(4)
+
+    output_path = os.path.join(output_dir, theme, f'{theme}_huc_{huc4}.parquet')
+    if os.path.exists(output_path):
+        log.info(f'Output already exists, skipping: {output_path}')
+        return
 
     # ------------------------------------------------------------------
     # 1. Read raster CRS and nodata value
@@ -57,19 +94,19 @@ def scrape_float_raster(huc2: str, theme: str, nhd_gdb: str, raster_path: str, o
     log.info(f'Raster NoData: {raster_nodata}')
 
     # ------------------------------------------------------------------
-    # 2. Load NHDPlusCatchment polygons filtered to the requested HUC2
+    # 2. Load NHDPlusCatchment polygons filtered to the requested HUC4
     # ------------------------------------------------------------------
-    log.info(f'Loading NHDPlusCatchment for HUC2: {huc2}')
+    log.info(f'Loading NHDPlusCatchment for HUC4: {huc4}')
     try:
-        gdf = gpd.read_file(nhd_gdb, layer='NHDPlusCatchment', where=f"SUBSTR(VPUID, 1, 2) = '{huc2}'")
+        gdf = gpd.read_file(nhd_gdb, layer='NHDPlusCatchment', where=f"SUBSTR(VPUID, 1, 4) = '{huc4}'")
     except Exception as exc:
         raise RuntimeError(f'Failed to read NHDPlusCatchment from {nhd_gdb}: {exc}') from exc
 
     log.info(f'Catchment CRS: {gdf.crs.to_string()}')
-    log.info(f'Loaded {len(gdf):,} catchments for HUC2: {huc2}')
+    log.info(f'Loaded {len(gdf):,} catchments for HUC4: {huc4}')
 
     if len(gdf) == 0:
-        log.warning(f'No catchments found for HUC2: {huc2}')
+        log.warning(f'No catchments found for HUC4: {huc4}')
         return
 
     # ------------------------------------------------------------------
@@ -157,10 +194,13 @@ def scrape_float_raster(huc2: str, theme: str, nhd_gdb: str, raster_path: str, o
                 valid_data = np.ma.array(data.data, mask=combined_mask)
                 valid_data = np.ma.masked_invalid(valid_data)
 
+                if skip_values:
+                    for sv in skip_values:
+                        valid_data = np.ma.masked_where(valid_data == sv, valid_data)
+
                 count = int(valid_data.count())
 
                 results.append({
-                    'HUC2': huc2,
                     'NHDPlusID': nhdplus_id,
                     'count': count,
                     'sum': float(valid_data.sum()) if count > 0 else None,
@@ -184,53 +224,77 @@ def scrape_float_raster(huc2: str, theme: str, nhd_gdb: str, raster_path: str, o
     # 5. Write results to a parquet file named after the VPU
     # ------------------------------------------------------------------
     df = pd.DataFrame(results)
-    output_path = os.path.join(output_dir, theme, f'{theme}_huc_{huc2}.parquet')
+    output_path = os.path.join(output_dir, theme, f'{theme}_huc_{huc4}.parquet')
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     df.to_parquet(output_path, index=False)
     log.info(f'Results written to: {output_path}')
 
 
-def scrape_integer_raster(huc2: str, theme: str, nhd_gdb: str, raster_path: str, output_dir: str) -> None:
+def scrape_integer_raster(huc4: str, theme: str, nhd_gdb: str, raster_path: str, output_dir: str, skip_values: set = None) -> None:
     """Calculate per-catchment pixel-value frequency maps for an integer raster and write to parquet.
 
     For each catchment polygon, counts how many pixels of each unique integer value fall inside it.
-    Results are written as a parquet file with columns: HUC2, NHDPlusID, value_counts (map type).
+    Results are written as a parquet file with columns: HUC4, NHDPlusID, value_counts (map type).
 
     Args:
-        huc2:        Two-digit HUC2 code used to filter NHDPlusCatchment by matching
-                     the first two characters of the VPUID field.
+        huc4:        Four-digit HUC4 code used to filter NHDPlusCatchment by matching
+                     the first four characters of the VPUID field.
         theme:       Theme name used as both folder name and prefix for output files.
         nhd_gdb:     Path to the NHD ESRI File Geodatabase.
         raster_path: Path to the source integer raster.
         output_dir:  Directory where the output parquet file will be written.
     """
-    log = Logger(f"Scrape {theme} HUC2 {huc2}")
-    huc2 = huc2.zfill(2)
+    log = Logger(f"Scrape {theme} HUC4 {huc4}")
+    huc4 = huc4.zfill(4)
+
+    output_path = os.path.join(output_dir, theme, f'{theme}_huc_{huc4}.parquet')
+    if os.path.exists(output_path):
+        log.info(f'Output already exists, skipping: {output_path}')
+        return
 
     # ------------------------------------------------------------------
-    # 1. Read raster CRS and nodata value
+    # 1. Read raster CRS, nodata value, and cell area in square metres
     # ------------------------------------------------------------------
+    _UNIT_TO_METRES = {
+        'metre': 1.0,
+        'meter': 1.0,
+        'foot': 0.3048,
+        'us survey foot': 0.30480060960121924,
+    }
+
     with rasterio.open(raster_path) as src:
         raster_crs = src.crs
         raster_nodata = src.nodata
+        raster_transform = src.transform
 
-    log.info(f'Raster CRS:    {raster_crs.to_string()}')
-    log.info(f'Raster NoData: {raster_nodata}')
+    linear_unit = raster_crs.linear_units.lower()
+    unit_factor = _UNIT_TO_METRES.get(linear_unit)
+    if unit_factor is None:
+        raise RuntimeError(
+            f'Cannot convert raster CRS linear unit "{linear_unit}" to metres for area calculation. '
+            'Ensure the raster is in a projected CRS with metre or foot units.'
+        )
+    cell_area_sqm = (abs(raster_transform.a) * unit_factor) * (abs(raster_transform.e) * unit_factor)
+
+    log.info(f'Raster CRS:      {raster_crs.to_string()}')
+    log.info(f'Raster NoData:   {raster_nodata}')
+    log.info(f'CRS linear unit: {linear_unit} (factor to m: {unit_factor})')
+    log.info(f'Cell area:       {cell_area_sqm:.4f} sq metres')
 
     # ------------------------------------------------------------------
-    # 2. Load NHDPlusCatchment polygons filtered to the requested HUC2
+    # 2. Load NHDPlusCatchment polygons filtered to the requested HUC4
     # ------------------------------------------------------------------
-    log.info(f'Loading NHDPlusCatchment for HUC2: {huc2}')
+    log.info(f'Loading NHDPlusCatchment for HUC4: {huc4}')
     try:
-        gdf = gpd.read_file(nhd_gdb, layer='NHDPlusCatchment', where=f"SUBSTR(VPUID, 1, 2) = '{huc2}'")
+        gdf = gpd.read_file(nhd_gdb, layer='NHDPlusCatchment', where=f"SUBSTR(VPUID, 1, 4) = '{huc4}'")
     except Exception as exc:
         raise RuntimeError(f'Failed to read NHDPlusCatchment from {nhd_gdb}: {exc}') from exc
 
     log.info(f'Catchment CRS: {gdf.crs.to_string()}')
-    log.info(f'Loaded {len(gdf):,} catchments for HUC2: {huc2}')
+    log.info(f'Loaded {len(gdf):,} catchments for HUC4: {huc4}')
 
     if len(gdf) == 0:
-        log.warning(f'No catchments found for HUC2: {huc2}')
+        log.warning(f'No catchments found for HUC4: {huc4}')
         return
 
     # ------------------------------------------------------------------
@@ -243,11 +307,10 @@ def scrape_integer_raster(huc2: str, theme: str, nhd_gdb: str, raster_path: str,
         log.info('Catchments and raster share the same CRS — no reprojection needed')
 
     # ------------------------------------------------------------------
-    # 4. Loop over catchments and compute value-count maps
+    # 4. Loop over catchments and compute value-area maps
     # ------------------------------------------------------------------
-    huc2_col = []
     nhdplus_id_col = []
-    value_counts_col = []  # list of list-of-tuples for pyarrow map type
+    value_counts_col = []  # list of list-of-tuples: (pixel_value, area_sqm)
     errors = 0
     skipped = 0
 
@@ -311,15 +374,19 @@ def scrape_integer_raster(huc2: str, theme: str, nhd_gdb: str, raster_path: str,
                 valid_data = np.ma.array(data.data, mask=combined_mask)
                 valid_pixels = valid_data.compressed().astype(np.int64)
 
+                if skip_values:
+                    skip_int = np.array([np.int64(sv) for sv in skip_values], dtype=np.int64)
+                    valid_pixels = valid_pixels[~np.isin(valid_pixels, skip_int)]
+
                 if valid_pixels.size == 0:
                     log.debug(f'NHDPlusID {nhdplus_id}: no valid pixels, skipping')
                     skipped += 1
                     continue
 
                 values, counts = np.unique(valid_pixels, return_counts=True)
-                value_counts = list(zip(values.tolist(), counts.tolist()))
+                areas = (counts.astype(np.float64) * cell_area_sqm).tolist()
+                value_counts = list(zip(values.tolist(), areas))
 
-                huc2_col.append(huc2)
                 nhdplus_id_col.append(nhdplus_id)
                 value_counts_col.append(value_counts)
 
@@ -329,9 +396,9 @@ def scrape_integer_raster(huc2: str, theme: str, nhd_gdb: str, raster_path: str,
                 errors += 1
                 continue
 
-    log.info(f'Processed {len(huc2_col):,} catchments, {skipped:,} skipped, {errors:,} errors')
+    log.info(f'Processed {len(nhdplus_id_col):,} catchments, {skipped:,} skipped, {errors:,} errors')
 
-    if not huc2_col:
+    if not nhdplus_id_col:
         log.warning('No results to write')
         return
 
@@ -339,19 +406,17 @@ def scrape_integer_raster(huc2: str, theme: str, nhd_gdb: str, raster_path: str,
     # 5. Write results to parquet using a pyarrow map column
     # ------------------------------------------------------------------
     schema = pa.schema([
-        pa.field('HUC2', pa.string()),
         pa.field('NHDPlusID', pa.float64()),
-        pa.field('value_counts', pa.map_(pa.int64(), pa.int64())),
+        pa.field('value_counts', pa.map_(pa.int64(), pa.float64())),
     ])
     table = pa.table(
         {
-            'HUC2': pa.array(huc2_col, type=pa.string()),
             'NHDPlusID': pa.array(nhdplus_id_col, type=pa.float64()),
-            'value_counts': pa.array(value_counts_col, type=pa.map_(pa.int64(), pa.int64())),
+            'value_counts': pa.array(value_counts_col, type=pa.map_(pa.int64(), pa.float64())),
         },
         schema=schema,
     )
-    output_path = os.path.join(output_dir, theme, f'{theme}_huc_{huc2}.parquet')
+    output_path = os.path.join(output_dir, theme, f'{theme}_huc_{huc4}.parquet')
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     pq.write_table(table, output_path)
     log.info(f'Results written to: {output_path}')
@@ -367,35 +432,48 @@ def main():
     parser.add_argument('raster', type=str, help='Path to the raster to scrape statistics from')
     parser.add_argument('output_dir', type=str, help='Directory to save the output parquet file')
     parser.add_argument('--integer', action='store_true', default=False, help='Treat raster as integer: output a value-count map instead of float statistics')
+    parser.add_argument('--skip', type=str, default=None, help='Comma-separated list of raster values to ignore (e.g. "-9999,0")')
     parser.add_argument('--verbose', action='store_true', default=False, help='Enable verbose logging')
     args = dotenv.parse_args_env(parser)
 
     # Parse and zero-fill each HUC2 code in the comma-separated list
     huc2_list = [h.strip().zfill(2) for h in args.huc2.split(',') if h.strip()]
 
-    output_dir = args.output_dir
-    os.makedirs(output_dir, exist_ok=True)
+    skip_values = {float(v.strip()) for v in args.skip.split(',') if v.strip()} if args.skip else None
+
+    # output_dir = os.path.join(args.output_dir, args.theme)
+    os.makedirs(args.output_dir, exist_ok=True)
 
     log = Logger(f"Scrape {args.theme}")
-    log.setup(log_path=os.path.join(output_dir, 'scrape-raster.log'), verbose=args.verbose)
+    log.setup(log_path=os.path.join(args.output_dir, 'scrape-raster.log'), verbose=args.verbose)
     log.title(f'Raster Scrape For HUC2(s): {", ".join(huc2_list)}')
     log.info(f'HUC2(s):       {", ".join(huc2_list)}')
     log.info(f'Theme:         {args.theme}')
     log.info(f'NHD GDB:       {args.nhd}')
     log.info(f'Raster:        {args.raster}')
-    log.info(f'Output folder: {output_dir}')
+    log.info(f'Output folder: {args.output_dir}')
     log.info(f'Mode:          {"integer (value counts)" if args.integer else "float (statistics)"}')
+    log.info(f'Skip values:   {", ".join(str(v) for v in sorted(skip_values)) if skip_values else "(none)"}')
 
     scrape_fn = scrape_integer_raster if args.integer else scrape_float_raster
 
     errors = []
     for huc2 in huc2_list:
         try:
-            scrape_fn(huc2, args.theme, args.nhd, args.raster, output_dir)
+            huc4s = get_huc4s_for_huc2(args.nhd, huc2, log)
         except Exception as exc:
-            log.error(f'Scrape raster failed for HUC2 {huc2}: {exc}')
+            log.error(f'Failed to retrieve HUC4s for HUC2 {huc2}: {exc}')
             traceback.print_exc()
             errors.append(huc2)
+            continue
+
+        for huc4 in huc4s:
+            try:
+                scrape_fn(huc4, args.theme, args.nhd, args.raster, args.output_dir, skip_values)
+            except Exception as exc:
+                log.error(f'Scrape raster failed for HUC4 {huc4}: {exc}')
+                traceback.print_exc()
+                errors.append(huc4)
 
     if errors:
         log.error(f'Failed HUC2(s): {", ".join(errors)}')
