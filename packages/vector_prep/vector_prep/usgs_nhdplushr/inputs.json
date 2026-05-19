@@ -12,9 +12,9 @@
         {
             "gdb_layer_name": "NetworkNHDFlowline",
             "layer_id": "usgs-nhdplushr-network-flowline",
-            "include_geometry": false,
+            "include_geometry": true,
             "unique_id_field": "permanent_identifier",
-            "notes": "Attributes only — no geometry for Athena reporting joins. ~25M features, ~80 columns. Geometry can be joined back via permanent_identifier or nhdplusid if needed."
+            "notes": "Attributes + unsimplified geometry (WGS84) with bbox struct for Athena spatial joins (DGO intersection). ~25M features, ~80 columns."
         },
         {
             "gdb_layer_name": "NHDPlusFlow",

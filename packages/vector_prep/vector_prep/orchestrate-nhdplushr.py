@@ -108,16 +108,18 @@ def read_gdb_attrs(gdb_path: str, layer_name: str, vpuids: list[str] | None = No
     return df
 
 
-def iter_gdb_attrs_chunks(
+def iter_gdb_chunks(
     gdb_path: str,
     layer_name: str,
     vpuids: list[str] | None = None,
     chunk_size: int = 500_000,
+    ignore_geometry: bool = True,
 ):
-    """Yield chunked attrs-only reads for a GDB layer.
+    """Yield chunked reads for a GDB layer.
 
     Uses geopandas+pyogrio row-window reads so we can process very large layers
-    without materializing the whole table in memory.
+    without materializing the whole table in memory.  When ignore_geometry is
+    False, yields GeoDataFrames with the native geometry column.
     """
     log = Logger("read_gdb_chunks")
     where = None
@@ -137,7 +139,7 @@ def iter_gdb_attrs_chunks(
                 gdb_path,
                 layer=layer_name,
                 where=where,
-                ignore_geometry=True,
+                ignore_geometry=ignore_geometry,
                 rows=slice(offset, offset + chunk_size),
                 engine="pyogrio",
             )
@@ -151,7 +153,7 @@ def iter_gdb_attrs_chunks(
                     gdb_path,
                     layer=layer_name,
                     where=where,
-                    ignore_geometry=True,
+                    ignore_geometry=ignore_geometry,
                 )
             else:
                 raise
@@ -266,6 +268,47 @@ def _coerce_df_to_layer_dtypes(df: pd.DataFrame, layer_id: str) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 # Export helpers
 # ---------------------------------------------------------------------------
+def _prepare_geodataframe_for_export(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """Reproject to EPSG:4326 and strip Z coordinates from a GeoDataFrame.
+
+    Returns a copy; does not mutate the input.
+    """
+    log = Logger("prepare_gdf")
+    if gdf.crs is None or gdf.crs.to_epsg() != 4326:
+        log.info(f"Reprojecting from {gdf.crs} to EPSG:4326...")
+        gdf = gdf.to_crs(epsg=4326)
+
+    geom_col = gdf.geometry.name
+    if gdf[geom_col].has_z.any():
+        from shapely.ops import transform as shp_transform
+        log.info("Stripping Z coordinates...")
+        gdf = gdf.copy()
+        gdf[geom_col] = gdf[geom_col].apply(
+            lambda g: shp_transform(lambda x, y, z=None: (x, y), g)
+        )
+    return gdf
+
+
+def _append_bbox_to_table(table: pa.Table, bounds: pd.DataFrame) -> pa.Table:
+    """Append a geometry_bbox struct column to a PyArrow table."""
+    bbox_type = pa.struct([
+        pa.field("xmin", pa.float32()),
+        pa.field("ymin", pa.float32()),
+        pa.field("xmax", pa.float32()),
+        pa.field("ymax", pa.float32()),
+    ])
+    bbox_col = pa.StructArray.from_arrays(
+        [
+            pa.array(bounds["minx"].to_numpy(dtype="float32"), type=pa.float32()),
+            pa.array(bounds["miny"].to_numpy(dtype="float32"), type=pa.float32()),
+            pa.array(bounds["maxx"].to_numpy(dtype="float32"), type=pa.float32()),
+            pa.array(bounds["maxy"].to_numpy(dtype="float32"), type=pa.float32()),
+        ],
+        fields=list(bbox_type),
+    )
+    return table.append_column(pa.field("geometry_bbox", bbox_type), bbox_col)
+
+
 def export_df_to_parquet(df: pd.DataFrame, output_path: Path, sort_by: list[str] | None = None) -> Path:
     """Export a pandas DataFrame to Snappy-compressed Parquet."""
     log = Logger("export_parquet")
@@ -322,23 +365,7 @@ def export_gdf_to_geoparquet(
     gdf.to_parquet(buf, compression="snappy", index=False)
     buf.seek(0)
     table = pq.read_table(buf)
-
-    bbox_type = pa.struct([
-        pa.field("xmin", pa.float32()),
-        pa.field("ymin", pa.float32()),
-        pa.field("xmax", pa.float32()),
-        pa.field("ymax", pa.float32()),
-    ])
-    bbox_col = pa.StructArray.from_arrays(
-        [
-            pa.array(bounds["minx"].to_numpy(dtype="float32"), type=pa.float32()),
-            pa.array(bounds["miny"].to_numpy(dtype="float32"), type=pa.float32()),
-            pa.array(bounds["maxx"].to_numpy(dtype="float32"), type=pa.float32()),
-            pa.array(bounds["maxy"].to_numpy(dtype="float32"), type=pa.float32()),
-        ],
-        fields=list(bbox_type),
-    )
-    table = table.append_column(pa.field("geometry_bbox", bbox_type), bbox_col)
+    table = _append_bbox_to_table(table, bounds)
 
     pq.write_table(table, str(output_path), compression="snappy")
     log.info(f"Wrote {len(gdf):,} features to {output_path} ({output_path.stat().st_size / 1e6:.1f} MB)")
@@ -378,7 +405,7 @@ def export_partitioned(
 
 
 def export_partitioned_chunk(
-    df: pd.DataFrame,
+    df: pd.DataFrame | gpd.GeoDataFrame,
     output_dir: Path,
     partition_col: str,
     filename_prefix: str,
@@ -389,10 +416,14 @@ def export_partitioned_chunk(
 
     Files are named {filename_prefix}_part-XXXXXX.parquet to support
     incremental writes and early uploads while processing continues.
+
+    If df is a GeoDataFrame, writes GeoParquet with a geometry_bbox struct
+    column for Athena spatial predicate push-down.
     """
     log = Logger("export_part_chunk")
     output_dir = Path(output_dir)
     paths: list[Path] = []
+    is_geo = isinstance(df, gpd.GeoDataFrame) and df.geometry is not None
 
     for val, group_df in df.groupby(partition_col, sort=True):
         if pd.isna(val):
@@ -407,12 +438,25 @@ def export_partitioned_chunk(
                 part_df = part_df.sort_values(sort_cols, ignore_index=True)
 
         out_path = part_dir / f"{filename_prefix}_part-{chunk_idx:06d}.parquet"
-        table = pa.Table.from_pandas(part_df, preserve_index=False)
-        pq.write_table(table, str(out_path), compression="snappy")
+
+        if is_geo:
+            # Write GeoParquet via geopandas for proper `geo` metadata, then append bbox
+            part_gdf = gpd.GeoDataFrame(part_df, geometry=part_df.geometry.name)
+            bounds = part_gdf.geometry.bounds
+            buf = io.BytesIO()
+            part_gdf.to_parquet(buf, compression="snappy", index=False)
+            buf.seek(0)
+            table = pq.read_table(buf)
+            table = _append_bbox_to_table(table, bounds)
+            pq.write_table(table, str(out_path), compression="snappy")
+        else:
+            table = pa.Table.from_pandas(part_df, preserve_index=False)
+            pq.write_table(table, str(out_path), compression="snappy")
+
         paths.append(out_path)
 
     log.info(
-        f"Chunk {chunk_idx}: wrote {len(paths)} partition files to {output_dir}"
+        f"Chunk {chunk_idx}: wrote {len(paths)} {'geo' if is_geo else ''}parquet files to {output_dir}"
     )
     return paths
 
@@ -421,9 +465,12 @@ def export_partitioned_chunk(
 # Layer processing steps
 # ---------------------------------------------------------------------------
 def process_network_flowline(cfg: NHDConfig, vpuids: list[str] | None = None) -> None:
-    """Process NetworkNHDFlowline: read attrs, validate unique key, export to partitioned Parquet."""
+    """Process NetworkNHDFlowline: read attrs (+ optional geometry), validate unique key,
+    export to partitioned Parquet or GeoParquet.
+    """
     log = Logger("NetworkNHDFlowline")
     lcfg = _layer_cfg(cfg, "NetworkNHDFlowline")
+    include_geometry = lcfg.get("include_geometry", False)
 
     out_dir = _dist_dir(cfg) / lcfg["layer_id"] / cfg.snapshot_id
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -436,11 +483,12 @@ def process_network_flowline(cfg: NHDConfig, vpuids: list[str] | None = None) ->
         chunk_count = 0
         total_partition_files = 0
 
-        for chunk_idx, df in iter_gdb_attrs_chunks(
+        for chunk_idx, df in iter_gdb_chunks(
             cfg.input_vector_path,
             "NetworkNHDFlowline",
             vpuids=None,
             chunk_size=500_000,
+            ignore_geometry=not include_geometry,
         ):
             chunk_count += 1
             total_rows += len(df)
@@ -453,6 +501,10 @@ def process_network_flowline(cfg: NHDConfig, vpuids: list[str] | None = None) ->
 
             if "vpuid" not in df.columns:
                 raise RuntimeError("NetworkNHDFlowline chunk is missing required 'vpuid' column")
+
+            # Prepare geometry if present (reproject to WGS84, strip Z)
+            if include_geometry and isinstance(df, gpd.GeoDataFrame):
+                df = _prepare_geodataframe_for_export(df)
 
             paths = export_partitioned_chunk(
                 df,
@@ -475,8 +527,13 @@ def process_network_flowline(cfg: NHDConfig, vpuids: list[str] | None = None) ->
         log.info("Note: global unique-key validation is skipped in streaming mode.")
         return
 
-    log.info("Reading NetworkNHDFlowline (attributes only)...")
-    df = read_gdb_attrs(cfg.input_vector_path, "NetworkNHDFlowline", vpuids=vpuids)
+    # --- VPU-filtered path (fits in memory) ---
+    if include_geometry:
+        log.info("Reading NetworkNHDFlowline (with geometry)...")
+        df = read_gdb_layer_gpd(cfg.input_vector_path, "NetworkNHDFlowline", vpuids=vpuids)
+    else:
+        log.info("Reading NetworkNHDFlowline (attributes only)...")
+        df = read_gdb_attrs(cfg.input_vector_path, "NetworkNHDFlowline", vpuids=vpuids)
 
     # Drop system/geometry columns that OGR may include
     drop_cols = [c for c in ("Shape_Length",) if c in df.columns]
@@ -485,6 +542,10 @@ def process_network_flowline(cfg: NHDConfig, vpuids: list[str] | None = None) ->
         log.info(f"Dropped columns: {drop_cols}")
 
     df = _coerce_df_to_layer_dtypes(df, lcfg["layer_id"])
+
+    # Prepare geometry if present (reproject to WGS84, strip Z)
+    if include_geometry and isinstance(df, gpd.GeoDataFrame):
+        df = _prepare_geodataframe_for_export(df)
 
     # Validate unique key
     uid = lcfg.get("unique_id_field")
@@ -501,7 +562,10 @@ def process_network_flowline(cfg: NHDConfig, vpuids: list[str] | None = None) ->
             log.info(f"  Sample duplicate IDs: {list(duped_ids)}")
 
     # Output — partition by vpuid
-    if "vpuid" in df.columns:
+    if include_geometry and isinstance(df, gpd.GeoDataFrame):
+        # GeoParquet with bbox — single file (VPU-filtered is small enough)
+        export_gdf_to_geoparquet(df, out_dir / f"{lcfg['layer_id']}.parquet")
+    elif "vpuid" in df.columns:
         export_partitioned(
             df, out_dir,
             partition_col="vpuid",
