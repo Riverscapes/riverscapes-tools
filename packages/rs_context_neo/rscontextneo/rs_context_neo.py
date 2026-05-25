@@ -18,6 +18,8 @@ from rsxml.util import safe_makedirs, parse_metadata
 from rsxml.project_xml import Project, MetaData
 from rscommons import initGDALOGRErrors
 from rscontextneo.__version__ import __version__
+from rscontextneo.lib.aoi import validate_copy_aoi
+from rscontextneo.lib.dem import dem_to_geojson
 from rscontextneo.lib.huc import fetch_huc_geometry
 
 
@@ -39,7 +41,7 @@ def rs_context_neo(
         output_folder (str): Directory where the output files will be saved.
         meta (dict[str, str]): Optional metadata key=value pairs.
         huc (str): Watershed/HUC identifier (HUC8, HUC10, or HUC12).
-        aoi (str): Path to a shapefile defining the area of interest.
+        aoi (str): Path to a geojson defining the area of interest.
         dem (str): Path to an already-downloaded DEM raster file.
     """
 
@@ -54,40 +56,40 @@ def rs_context_neo(
     if huc is not None:
         log.info(f'Using HUC code: {huc}')
         descriptor = f'HUC {huc}'
-        fetch_huc_geometry(huc, output_folder)
+        bounds_geojson = fetch_huc_geometry(huc, output_folder)
         # TODO: download DEM from 3DEP for the HUC AOI
     elif aoi is not None:
-        log.info(f'Using AOI shapefile: {aoi}')
+        log.info(f'Using AOI GeoJSON: {aoi}')
         descriptor = 'Custom AOI'
-        # TODO: read AOI from shapefile
+        bounds_geojson = validate_copy_aoi(aoi, output_folder)
         # TODO: download DEM from 3DEP for the AOI
     elif dem is not None:
         log.info(f'Using user-supplied DEM: {dem}')
         descriptor = 'User-supplied DEM'
-        # TODO: read AOI from DEM raster extent
+        bounds_geojson = dem_to_geojson(dem, output_folder)
     else:
         raise AssertionError('Unreachable: runtime guard ensures exactly one source arg is set.')
 
     # Build project metadata
     project_meta = MetaData()
-    project_meta.add_meta('ModelVersion', __version__, locked=True)
-    project_meta.add_meta('Model Documentation', 'https://tools.riverscapes.net/rscontext', 'url', locked=True)
+    project_meta.add_meta('ModelVersion', __version__)
+    project_meta.add_meta('Model Documentation', 'https://tools.riverscapes.net/rscontext', 'url')
 
     if huc is not None:
-        project_meta.add_meta('HUC', str(huc), 'hidden', locked=True)
-        project_meta.add_meta('Hydrologic Unit Code', str(huc), locked=True)
+        project_meta.add_meta('HUC', str(huc), 'hidden')
+        project_meta.add_meta('Hydrologic Unit Code', str(huc))
     elif aoi is not None:
-        project_meta.add_meta('AOI', aoi, 'hidden', locked=True)
+        project_meta.add_meta('AOI', aoi, 'hidden')
     elif dem is not None:
-        project_meta.add_meta('DEM', dem, 'hidden', locked=True)
+        project_meta.add_meta('DEM', dem, 'hidden')
 
     for key, val in meta.items():
-        project_meta.add_meta(key, val, 'hidden', locked=True)
+        project_meta.add_meta(key, val, 'hidden')
 
     project = Project(
         name=f'RSContext Neo for {descriptor}',
         project_type='rscontextneo',
-        bounds=None,  # TODO: set when actual bounds are available
+        bounds=None,  # type: ignore[arg-type]  # TODO: replace with real ProjectBounds once available
         proj_path=os.path.join(output_folder, 'project.rs.xml'),
         meta_data=project_meta,
     )
@@ -103,7 +105,7 @@ def main():
 
     source_group = parser.add_mutually_exclusive_group(required=True)
     source_group.add_argument('--huc', help='HUC code (HUC8, HUC10, or HUC12) for the area of interest', type=str)
-    source_group.add_argument('--aoi', help='Path to a shapefile defining the area of interest', type=str)
+    source_group.add_argument('--aoi', help='Path to a geojson defining the area of interest', type=str)
     source_group.add_argument('--dem', help='Path to an already-downloaded DEM raster file', type=str)
 
     parser.add_argument('--output', '-o', help='Path to the output folder', type=str, required=True)

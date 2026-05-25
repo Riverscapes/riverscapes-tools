@@ -8,6 +8,13 @@
   "venv": ".venv",
   "executionEnvironments": [
     {
+      "root": "packages/rs_context_neo",
+      "extraPaths": [
+        "packages",
+        "lib/commons"
+      ]
+    },
+    {
       "root": "packages/rscontext",
       "extraPaths": [
         "packages",
