@@ -1,0 +1,70 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "HUC",
+      "description": "HUC code to process (HUC8, HUC10, or HUC12)",
+      "default": "1701010101"
+    },
+    {
+      "type": "promptString",
+      "id": "EXTENTS",
+      "description": "Path to a shapefile defining the area of interest",
+      "default": "${env:DATA_ROOT}/aoi/my_area.shp"
+    },
+    {
+      "type": "promptString",
+      "id": "DEM",
+      "description": "Path to an already-downloaded DEM raster file",
+      "default": "${env:DATA_ROOT}/dems/my_dem.tif"
+    }
+  ],
+  "configurations": [
+    {
+      "name": "RS Context Neo (--huc)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "rscontextneo.rs_context_neo",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "args": [
+        "--huc", "${input:HUC}",
+        "--output", "${env:DATA_ROOT}/rs_context_neo/${input:HUC}",
+        "--verbose",
+        "--debug"
+      ]
+    },
+    {
+      "name": "RS Context Neo (--aoi)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "rscontextneo.rs_context_neo",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "args": [
+        "--aoi", "${input:EXTENTS}",
+        "--output", "${env:DATA_ROOT}/rs_context_neo/aoi",
+        "--verbose",
+        "--debug"
+      ]
+    },
+    {
+      "name": "RS Context Neo (--dem)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "rscontextneo.rs_context_neo",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "args": [
+        "--dem", "${input:DEM}",
+        "--output", "${env:DATA_ROOT}/rs_context_neo/dem",
+        "--verbose",
+        "--debug"
+      ]
+    }
+  ]
+}

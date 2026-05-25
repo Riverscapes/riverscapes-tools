@@ -100,6 +100,7 @@ known_first_party = [
     "rscontext_3dep",
     "rscontext_it",
     "rscontext_nz",
+    "rscontextneo",
     "rvd",
     "stitcher",
     "taudem",
