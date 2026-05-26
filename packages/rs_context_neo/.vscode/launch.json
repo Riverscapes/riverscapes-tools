@@ -36,7 +36,7 @@
         "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
       },
       "args": [
-        "--aoi", "{env:DATA_ROOT}/170402180402.geojson",
+        "--aoi", "${input:AOI}",
         "--output", "{env:DATA_ROOT}/rs_context_neo/aoi",
         "--download_dir", "{env:DATA_ROOT}/downloads",
         "--threshold", "${input:THRESHOLD}",

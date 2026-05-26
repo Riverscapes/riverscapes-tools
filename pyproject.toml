@@ -42,6 +42,7 @@ dependencies = [
     "urllib3>=2.2",
     "rsxml>=2.1.1",
     "geopandas>=1.1.1",
+    "whitebox==2.3.6",
 ]
 
 [project.optional-dependencies]

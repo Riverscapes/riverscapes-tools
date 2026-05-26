@@ -26,7 +26,7 @@ from rscontextneo.__version__ import __version__
 from rscontextneo.src.aoi import validate_copy_aoi
 from rscontextneo.src.dem import dem_to_geojson
 from rscontextneo.src.fetch_dem import fetch_dem_from_3dep
-from rscontextneo.src.hydrology import run_d8_hydrology, DEFAULT_THRESHOLD
+from rscontextneo.src.hydrology import run_d8_hydrology, DEFAULT_THRESHOLD, DEFAULT_BREACH_DIST
 
 initGDALOGRErrors()
 
@@ -53,6 +53,10 @@ LayerTypes = {
     'DEM_FILLED': RSLayer(
         'Pit-filled DEM', 'DEM_FILLED', 'Raster', 'hydrology/dem_filled.tif',
         lyr_meta=[RSMeta('Description', 'DEM with topographic sinks filled (TauDEM pitremove)')],
+    ),
+    'DEM_BREACH': RSLayer(
+        'Breach-conditioned DEM', 'DEM_BREACH', 'Raster', 'hydrology/dem_breach.tif',
+        lyr_meta=[RSMeta('Description', 'DEM hydrologically conditioned via least-cost depression breaching (WhiteboxTools BreachDepressionsLeastCost)')],
     ),
     'D8_FLOW': RSLayer(
         'D8 Flow Direction', 'D8_FLOW', 'Raster', 'hydrology/d8_flow.tif',
@@ -101,6 +105,7 @@ def rs_context_neo(
     output_res: float = 1.0,
     force_download: bool = False,
     threshold: int = DEFAULT_THRESHOLD,
+    breach_dist: int = DEFAULT_BREACH_DIST,
     cores: int | None = None,
 ) -> None:
     """
@@ -159,6 +164,7 @@ def rs_context_neo(
         dem_path,
         output_folder,
         threshold=threshold,
+        breach_dist=breach_dist,
         cores=cores,
         force=force_download,
     )
@@ -253,6 +259,7 @@ def _write_project_xml(
     # ── Intermediates: pit-fill, flow dir, slope, contributing area ───────────
     log.info('  Registering intermediate layers')
     project.add_project_raster(nodes['Intermediates'], LayerTypes['DEM_FILLED'])
+    project.add_project_raster(nodes['Intermediates'], LayerTypes['DEM_BREACH'])
     project.add_project_raster(nodes['Intermediates'], LayerTypes['D8_FLOW'])
     project.add_project_raster(nodes['Intermediates'], LayerTypes['D8_SLOPE'])
     project.add_project_raster(nodes['Intermediates'], LayerTypes['D8_CONTRIB_AREA'])
@@ -357,6 +364,7 @@ def main():
     parser.add_argument('--output_res', help='Target DEM resolution in metres (1–10, default: 1.0 m)', type=float, default=1.0)
     parser.add_argument('--force', help='Re-download 3DEP tiles and re-run all processing steps even if already cached', action='store_true', default=False)
     parser.add_argument('--threshold', help=f'Minimum upstream contributing-area cell count for stream classification (units: cells; default: {DEFAULT_THRESHOLD:,} cells). At 1 m resolution, {DEFAULT_THRESHOLD:,} cells ≈ {DEFAULT_THRESHOLD / 1e6:.2f} km². Lower values produce denser networks. See docs/STREAM_THRESHOLD.md.', type=int, default=DEFAULT_THRESHOLD)
+    parser.add_argument('--breach_dist', help=f'Maximum search distance in cells for the WhiteboxTools least-cost breach path (default: {DEFAULT_BREACH_DIST} cells). At 1 m resolution this is {DEFAULT_BREACH_DIST} m. Increase for wider flat areas; decrease to limit processing time.', type=int, default=DEFAULT_BREACH_DIST)
     parser.add_argument('--cores', help='Number of MPI ranks (parallel processes) for TauDEM steps (default: TAUDEM_CORES env var, or 2)', type=int, default=None)
     parser.add_argument('--meta', help='Riverscapes project metadata as comma separated key=value pairs', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging', action='store_true', default=False)
@@ -377,6 +385,7 @@ def main():
         log.info(f'Download cache: {args.download_dir}')
     log.info(f'Output resolution: {args.output_res} m')
     log.info(f'Stream threshold:  {args.threshold:,} cells')
+    log.info(f'Breach dist:       {args.breach_dist} cells')
 
     meta = parse_metadata(args.meta) if args.meta else {}
 
@@ -391,6 +400,7 @@ def main():
             output_res=args.output_res,
             force_download=args.force,
             threshold=args.threshold,
+            breach_dist=args.breach_dist,
             cores=args.cores,
         )
     except Exception as e:
