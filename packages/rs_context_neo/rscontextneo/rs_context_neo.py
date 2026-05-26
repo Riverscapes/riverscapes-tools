@@ -76,10 +76,11 @@ LayerTypes = {
         'Stream Order', 'STREAM_ORDER', 'Raster', 'hydrology/stream_order.tif',
         lyr_meta=[RSMeta('Description', 'Strahler stream-order raster (TauDEM streamnet)')],
     ),
-    'STREAM_NETWORK': RSLayer(
-        'Stream Network', 'STREAM_NETWORK', 'Geopackage', 'hydrology/stream_network.gpkg',
+    'HYDROLOGY_GPKG': RSLayer(
+        'Hydrology', 'HYDROLOGY_GPKG', 'Geopackage', 'hydrology/hydrology.gpkg',
         sub_layers={
             'network': RSLayer('Stream Network Reaches', 'NETWORK', 'Vector', 'network'),
+            'subwatersheds': RSLayer('Subwatersheds', 'SUBWATERSHEDS_VEC', 'Vector', 'subwatersheds'),
         },
     ),
     'SUBWATERSHEDS': RSLayer(
@@ -260,7 +261,7 @@ def _write_project_xml(
     log.info('  Registering output layers')
     project.add_project_raster(nodes['Outputs'], LayerTypes['STREAM_RASTER'])
     project.add_project_raster(nodes['Outputs'], LayerTypes['STREAM_ORDER'])
-    project.add_project_geopackage(nodes['Outputs'], LayerTypes['STREAM_NETWORK'])
+    project.add_project_geopackage(nodes['Outputs'], LayerTypes['HYDROLOGY_GPKG'])
     project.add_project_raster(nodes['Outputs'], LayerTypes['SUBWATERSHEDS'])
 
     # ── Project extent (bounds GeoJSON → centroid + bbox) ─────────────────────

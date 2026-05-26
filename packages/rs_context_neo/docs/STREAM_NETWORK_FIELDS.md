@@ -1,9 +1,16 @@
 # Stream Network GeoPackage — Field Reference
 
-`hydrology/stream_network.gpkg` (layer: **network**) is the primary vector output
-of RS Context Neo. It is produced by TauDEM's `streamnet` command and contains
-one feature per stream reach — a contiguous segment of channel between two
-junctions, a junction and a headwater, or a junction and the watershed outlet.
+`hydrology/hydrology.gpkg` is the primary vector output of RS Context Neo. It
+contains two layers:
+
+| Layer | Geometry | Description |
+|---|---|---|
+| `network` | LineString | One feature per stream reach (TauDEM `streamnet`) |
+| `subwatersheds` | MultiPolygon | One polygon per subwatershed, matching each reach (polygonised from `subwatersheds.tif`) |
+
+The two layers share a common join key: `WSNO` / `LINKNO` in `network` equals
+`WSNO` in `subwatersheds`, so you can join drainage polygons to their outlet
+reach directly.
 
 The GeoPackage is in the projected CRS of the input DEM (e.g. NAD83 / UTM).
 All distance and area values are in the linear units of that CRS (metres for
@@ -319,7 +326,29 @@ Several fields can legitimately be zero:
 
 ---
 
-## Source
+## `subwatersheds` layer fields
+
+Produced by `gdal.Polygonize` applied to `hydrology/subwatersheds.tif`.
+Each polygon is the drainage area that flows to the corresponding stream reach.
+
+| Field | Type | Description |
+|---|---|---|
+| `fid` | Integer | OGR auto-assigned feature identifier |
+| `WSNO` | Integer | Subwatershed / watershed number — joins to `LINKNO` and `WSNO` in the `network` layer |
+
+### `WSNO` in the subwatersheds layer
+
+The raster value from `subwatersheds.tif` is preserved directly as `WSNO`.
+Because TauDEM assigns one unique value per reach (equal to that reach's
+`LINKNO`), this field is the natural foreign key for joining the two layers:
+
+```sql
+-- Join subwatershed polygons to their outlet reach
+SELECT s.geom, n.strmOrder, n.USContArea, n.Slope
+FROM   subwatersheds s
+JOIN   network n ON s.WSNO = n.LINKNO
+```
+
 
 All fields are written directly by TauDEM `streamnet`. No post-processing
 modifies field values; only the output format is changed (shapefile → GeoPackage

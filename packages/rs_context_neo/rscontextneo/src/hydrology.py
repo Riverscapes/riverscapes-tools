@@ -53,7 +53,9 @@ Output layout (all relative to *output_folder*):
     hydrology/d8_contributing_area.tif  D8 contributing area  (intermediate)
     hydrology/stream_raster.tif         binary stream mask  (product)
     hydrology/stream_order.tif          Strahler stream-order raster  (product)
-    hydrology/stream_network.gpkg       vector stream network  (product)
+    hydrology/hydrology.gpkg            GeoPackage with two layers:
+                                            network       – vector stream network
+                                            subwatersheds – polygonised subwatershed boundaries
     hydrology/subwatersheds.tif         subwatershed raster  (product)
 
 Author:     Riverscapes
@@ -64,7 +66,7 @@ import sys
 import time
 from typing import Dict, List
 
-from osgeo import gdal
+from osgeo import gdal, ogr, osr
 from rsxml import Logger
 from rsxml.util import safe_makedirs, pretty_duration
 from rscommons.hand import run_subprocess
@@ -76,7 +78,7 @@ D8_SLOPE_RELPATH         = 'hydrology/d8_slope.tif'
 D8_CONTRIB_AREA_RELPATH  = 'hydrology/d8_contributing_area.tif'
 STREAM_RASTER_RELPATH    = 'hydrology/stream_raster.tif'
 STREAM_ORDER_RELPATH     = 'hydrology/stream_order.tif'
-STREAM_NETWORK_RELPATH   = 'hydrology/stream_network.gpkg'
+HYDROLOGY_GPKG_RELPATH   = 'hydrology/hydrology.gpkg'
 SUBWATERSHEDS_RELPATH    = 'hydrology/subwatersheds.tif'
 
 # Auxiliary TauDEM text outputs written alongside streamnet products
@@ -172,7 +174,7 @@ def run_d8_hydrology(
                 'd8_contributing_area':'<output_folder>/hydrology/d8_contributing_area.tif',
                 'stream_raster':       '<output_folder>/hydrology/stream_raster.tif',
                 'stream_order':        '<output_folder>/hydrology/stream_order.tif',
-                'stream_network':      '<output_folder>/hydrology/stream_network.gpkg',
+                'hydrology_gpkg':      '<output_folder>/hydrology/hydrology.gpkg',
                 'subwatersheds':       '<output_folder>/hydrology/subwatersheds.tif',
             }
 
@@ -216,7 +218,7 @@ def run_d8_hydrology(
         'd8_contributing_area': os.path.join(output_folder, D8_CONTRIB_AREA_RELPATH),
         'stream_raster':        os.path.join(output_folder, STREAM_RASTER_RELPATH),
         'stream_order':         os.path.join(output_folder, STREAM_ORDER_RELPATH),
-        'stream_network':       os.path.join(output_folder, STREAM_NETWORK_RELPATH),
+        'hydrology_gpkg':       os.path.join(output_folder, HYDROLOGY_GPKG_RELPATH),
         'subwatersheds':        os.path.join(output_folder, SUBWATERSHEDS_RELPATH),
     }
     stream_tree  = os.path.join(output_folder, _STREAM_TREE_RELPATH)
@@ -243,7 +245,7 @@ def run_d8_hydrology(
         paths['dem_filled'],
         paths['d8_contributing_area'],
         paths['stream_raster'],
-        paths['stream_network'],
+        paths['hydrology_gpkg'],
         paths['stream_order'],
         paths['subwatersheds'],
         stream_tree,
@@ -251,6 +253,14 @@ def run_d8_hydrology(
         hydro_dir,
         ncores,
         mpi_args,
+        force,
+        log,
+    )
+
+    # ── Step 6: Vectorise subwatersheds → hydrology.gpkg (subwatersheds layer) ─
+    _vectorize_subwatersheds(
+        paths['subwatersheds'],
+        paths['hydrology_gpkg'],
         force,
         log,
     )
@@ -450,7 +460,7 @@ def _streamnet(
     filled_dem_path: str,
     contrib_area_path: str,
     stream_raster_path: str,
-    stream_network_path: str,
+    gpkg_path: str,
     stream_order_path: str,
     subwatersheds_path: str,
     stream_tree_path: str,
@@ -482,8 +492,8 @@ def _streamnet(
         D8 contributing-area raster from Step 3.
     stream_raster_path : str
         Binary stream mask from Step 4.
-    stream_network_path : str
-        Output GeoPackage path for the vector stream network.
+    gpkg_path : str
+        Output GeoPackage path for the vector stream network (``network`` layer).
     stream_order_path : str
         Output Strahler stream-order raster.
     subwatersheds_path : str
@@ -497,7 +507,7 @@ def _streamnet(
     """
     # All three raster/vector products must exist for the step to be skipped
     outputs_exist = (
-        os.path.isfile(stream_network_path)
+        os.path.isfile(gpkg_path)
         and os.path.isfile(stream_order_path)
         and os.path.isfile(subwatersheds_path)
     )
@@ -509,7 +519,7 @@ def _streamnet(
 
     # TauDEM writes its network as a shapefile; we use a temporary path and
     # convert to GeoPackage afterwards for a cleaner single-file output.
-    shp_path = os.path.splitext(stream_network_path)[0] + '_tmp.shp'
+    shp_path = os.path.splitext(gpkg_path)[0] + '_tmp.shp'
 
     status = run_subprocess(cwd, [
         'mpiexec', '-n', ncores,
@@ -529,16 +539,126 @@ def _streamnet(
     log.info(f'  → {stream_order_path}')
     log.info(f'  → {subwatersheds_path}')
 
-    # Convert shapefile → GeoPackage
-    log.info(f'Converting stream network shapefile → GeoPackage: {stream_network_path}')
-    _shp_to_gpkg(shp_path, stream_network_path, layer_name='network')
-    log.info(f'  → {stream_network_path}')
+    # Convert shapefile → GeoPackage (network layer)
+    log.info(f'Converting stream network shapefile → GeoPackage: {gpkg_path}')
+    _shp_to_gpkg(shp_path, gpkg_path, layer_name='network')
+    log.info(f'  → {gpkg_path} (layer: network)')
 
     # Clean up temporary shapefile sidecar files
     _remove_shapefile(shp_path, log)
 
 
 # ── Private helpers ────────────────────────────────────────────────────────────
+
+def _vectorize_subwatersheds(
+    subwatersheds_raster_path: str,
+    gpkg_path: str,
+    force: bool,
+    log: Logger,
+    layer_name: str = 'subwatersheds',
+) -> None:
+    """
+    Step 6 — Polygonise the subwatersheds raster and append it as a vector layer
+    to an existing GeoPackage.
+
+    TauDEM's ``streamnet`` writes one unique integer value per reach to
+    ``subwatersheds.tif``.  This function converts those raster regions to
+    polygons using :func:`gdal.Polygonize` and stores them in a layer alongside
+    the ``network`` layer so that both the reach lines and their drainage
+    polygons live in a single GeoPackage.
+
+    The resulting layer has two fields:
+
+    ``fid``
+        OGR auto-assigned feature identifier.
+    ``WSNO``
+        Integer watershed number — matches ``WSNO`` / ``LINKNO`` in the
+        ``network`` layer, allowing a direct table join.
+
+    Parameters
+    ----------
+    subwatersheds_raster_path : str
+        Path to ``hydrology/subwatersheds.tif`` produced by TauDEM.
+    gpkg_path : str
+        Path to the GeoPackage to append to (must already exist and contain
+        the ``network`` layer).
+    force : bool
+        If ``True``, delete and recreate the layer even if it already exists.
+    log : Logger
+        Caller-supplied logger.
+    layer_name : str
+        Name for the new layer inside the GeoPackage.  Default: ``'subwatersheds'``.
+
+    Raises
+    ------
+    FileNotFoundError
+        If *subwatersheds_raster_path* does not exist.
+    RuntimeError
+        If the GeoPackage cannot be opened for update, or if
+        :func:`gdal.Polygonize` returns an error.
+    """
+    # ── Skip check ───────────────────────────────────────────────────────────────────
+    if not force and os.path.isfile(gpkg_path):
+        check_ds = ogr.Open(gpkg_path)
+        if check_ds is not None and check_ds.GetLayerByName(layer_name) is not None:
+            log.info(
+                f'subwatersheds vector layer already exists in {os.path.basename(gpkg_path)}'
+                ' — skipping (use force=True to re-run)'
+            )
+            check_ds = None
+            return
+        check_ds = None
+
+    if not os.path.isfile(subwatersheds_raster_path):
+        raise FileNotFoundError(f'Subwatersheds raster not found: {subwatersheds_raster_path}')
+
+    log.info(
+        f'Step 6 — Vectorising subwatersheds '
+        f'({os.path.basename(subwatersheds_raster_path)} → layer: {layer_name})'
+    )
+
+    # ── Open raster ──────────────────────────────────────────────────────────────────
+    raster_ds = gdal.Open(subwatersheds_raster_path, gdal.GA_ReadOnly)
+    if raster_ds is None:
+        raise RuntimeError(f'GDAL could not open subwatersheds raster: {subwatersheds_raster_path}')
+
+    band      = raster_ds.GetRasterBand(1)
+    mask_band = band.GetMaskBand()   # 255 = valid data, 0 = nodata — excludes edge fill
+
+    srs = osr.SpatialReference()
+    srs.ImportFromWkt(raster_ds.GetProjection())
+
+    # ── Open GeoPackage for update ────────────────────────────────────────────────────
+    vector_ds = ogr.Open(gpkg_path, 1)  # 1 = update
+    if vector_ds is None:
+        raise RuntimeError(f'Could not open GeoPackage for update: {gpkg_path}')
+
+    # Remove stale layer if force-rerunning
+    if force:
+        for i in range(vector_ds.GetLayerCount()):
+            if vector_ds.GetLayer(i).GetName() == layer_name:
+                vector_ds.DeleteLayer(i)
+                break
+
+    # ── Create layer and field ──────────────────────────────────────────────────────
+    layer = vector_ds.CreateLayer(layer_name, srs=srs, geom_type=ogr.wkbMultiPolygon)
+    layer.CreateField(ogr.FieldDefn('WSNO', ogr.OFTInteger))
+
+    # ── Polygonise ───────────────────────────────────────────────────────────────────
+    # Field index 0 = WSNO; mask_band excludes nodata cells at the domain edge.
+    err = gdal.Polygonize(band, mask_band, layer, 0, [], callback=None)
+    if err != gdal.CE_None:
+        raise RuntimeError(
+            f'gdal.Polygonize failed with error code {err}: {gdal.GetLastErrorMsg()}'
+        )
+
+    # Flush and close
+    vector_ds.SyncToDisk()
+    vector_ds = None
+    raster_ds = None
+
+    log.info(f'  → {gpkg_path} (layer: {layer_name})')
+
 
 def _resolve_cores(cores: int | None) -> int:
     """

@@ -15,7 +15,7 @@ The default is **50,000 cells**. At 1-metre resolution that corresponds to a con
 
 ## What gets stored per reach
 
-TauDEM's `streamnet` command writes two contributing-area fields to every feature in `hydrology/stream_network.gpkg`:
+TauDEM's `streamnet` command writes two contributing-area fields to every feature in `hydrology/hydrology.gpkg`:
 
 | Field | Description |
 |---|---|
@@ -79,14 +79,14 @@ Once the network is computed, you can filter in any OGR/GDAL-capable tool using 
 ogr2ogr \
   -sql "SELECT * FROM network WHERE USContArea >= 50000" \
   filtered_network.gpkg \
-  stream_network.gpkg
+  hydrology.gpkg
 ```
 
 **Python / Fiona:**
 ```python
 import fiona
 
-with fiona.open('stream_network.gpkg', layer='network') as src:
+with fiona.open('hydrology.gpkg', layer='network') as src:
     reaches = [f for f in src if f['properties']['USContArea'] >= 50_000]
 ```
 
@@ -94,7 +94,7 @@ with fiona.open('stream_network.gpkg', layer='network') as src:
 ```python
 import geopandas as gpd
 
-net = gpd.read_file('stream_network.gpkg', layer='network')
+net = gpd.read_file('hydrology.gpkg', layer='network')
 coarse = net[net['USContArea'] >= 50_000]
 ```
 
@@ -118,7 +118,7 @@ Downstream tools that read this project can use `StreamThreshold` to know the fi
 | Question | Answer |
 |---|---|
 | What does `--threshold` do? | Sets the minimum contributing-area cell count for stream classification (TauDEM Step 4) |
-| Where is it stored per reach? | `USContArea` (upstream end) and `DSContArea` (downstream end) in `stream_network.gpkg` |
+| Where is it stored per reach? | `USContArea` (upstream end) and `DSContArea` (downstream end) in `hydrology.gpkg` |
 | Can I filter to a coarser network after the fact? | Yes — filter on `USContArea >= X` for any X ≥ compute threshold |
 | Can I recover a finer network without rerunning? | No — the compute threshold is a hard floor on detail |
 | What is a good default? | 50,000 cells at 1 m resolution; inspect the stream raster and adjust |
