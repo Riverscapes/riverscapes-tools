@@ -6,38 +6,24 @@
   "inputs": [
     {
       "type": "promptString",
-      "id": "HUC",
-      "description": "HUC code to process (HUC8, HUC10, or HUC12)",
-      "default": "1701010101"
-    },
-    {
-      "type": "promptString",
-      "id": "EXTENTS",
-      "description": "Path to a shapefile defining the area of interest",
-      "default": "${env:DATA_ROOT}/aoi/my_area.shp"
+      "id": "AOI",
+      "description": "Path to a GeoJSON defining the area of interest",
+      "default": "{env:DATA_ROOT}/aoi/my_area.geojson"
     },
     {
       "type": "promptString",
       "id": "DEM",
       "description": "Path to an already-downloaded DEM raster file",
-      "default": "${env:DATA_ROOT}/dems/my_dem.tif"
+      "default": "{env:DATA_ROOT}/dems/my_dem.tif"
+    },
+    {
+      "type": "promptString",
+      "id": "THRESHOLD",
+      "description": "Contributing-area cell threshold for stream classification (higher = coarser network)",
+      "default": "50000"
     }
   ],
   "configurations": [
-    {
-      "name": "RS Context Neo (--huc)",
-      "type": "debugpy",
-      "request": "launch",
-      "module": "rscontextneo.rs_context_neo",
-      "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal",
-      "args": [
-        "--huc", "${input:HUC}",
-        "--output", "${env:DATA_ROOT}/rs_context_neo/${input:HUC}",
-        "--verbose",
-        "--debug"
-      ]
-    },
     {
       "name": "RS Context Neo (--aoi)",
       "type": "debugpy",
@@ -45,9 +31,15 @@
       "module": "rscontextneo.rs_context_neo",
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/rscontextneo/.env",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+      },
       "args": [
-        "--aoi", "${input:EXTENTS}",
-        "--output", "${env:DATA_ROOT}/rs_context_neo/aoi",
+        "--aoi", "{env:DATA_ROOT}/170402180402.geojson",
+        "--output", "{env:DATA_ROOT}/rs_context_neo/aoi",
+        "--download_dir", "{env:DATA_ROOT}/downloads",
+        "--threshold", "${input:THRESHOLD}",
         "--verbose",
         "--debug"
       ]
@@ -59,9 +51,14 @@
       "module": "rscontextneo.rs_context_neo",
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/rscontextneo/.env",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+      },
       "args": [
         "--dem", "${input:DEM}",
-        "--output", "${env:DATA_ROOT}/rs_context_neo/dem",
+        "--output", "{env:DATA_ROOT}/rs_context_neo/dem",
+        "--threshold", "${input:THRESHOLD}",
         "--verbose",
         "--debug"
       ]

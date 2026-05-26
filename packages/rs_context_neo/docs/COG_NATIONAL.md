@@ -733,7 +733,7 @@ The `/vsis3/` driver bypasses HTTP entirely and uses the AWS SDK for range reque
 
 | Area | Before | After |
 |---|---|---|
-| Input | Local `landfire_dir/` folder (~30–50 GB) | S3 URLs in code |
+| Input | Local `landfire_dir/` folder (~30-50 GB) | S3 URLs in code |
 | Data transfer | Full national rasters must be on disk | Only AOI tiles fetched at runtime |
 | Clipping method | Vector cutline (`cutlineDSName`) | Bounding box (`outputBounds`) |
 | Overview safety | N/A (local file) | `overviewLevel='NONE'` prevents silent pyramid reads |

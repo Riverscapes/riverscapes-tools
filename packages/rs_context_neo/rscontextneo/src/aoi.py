@@ -85,7 +85,7 @@ def validate_copy_aoi(aoi_path: str, output_folder: str, filename: str = 'projec
     if not geom_dicts:
         raise ValueError('AOI GeoJSON contains no features or geometries.')
 
-    # ── 5–7. Per-geometry checks ───────────────────────────────────────────────
+    # ── 5-7. Per-geometry checks ───────────────────────────────────────────────
     for idx, geom_dict in enumerate(geom_dicts):
         label = f'geometry {idx + 1}/{len(geom_dicts)}'
 

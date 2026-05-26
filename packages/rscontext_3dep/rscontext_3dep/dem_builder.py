@@ -40,7 +40,7 @@ LayerTypes = {
 }
 
 
-def get_epsg(raster_path: str) -> int | None:
+def get_epsg(raster_path: str) -> int | None    :
     """
     Gets the EPSG code from a raster file using GDAL.
 
