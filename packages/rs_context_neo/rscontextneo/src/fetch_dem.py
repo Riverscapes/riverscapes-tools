@@ -284,6 +284,104 @@ def fetch_dem_from_3dep(
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
+def generate_hillshade(
+    dem_path: str,
+    hillshade_path: str,
+    *,
+    epsg: int | None = None,
+    force: bool = False,
+    log: Logger | None = None,
+) -> None:
+    """
+    Generate a hillshade raster from *dem_path*.
+
+    For geographic (lat/lon) DEMs a haversine z-factor is applied via
+    ``gdal_dem_geographic``; projected DEMs use ``gdal.DEMProcessing`` directly.
+
+    Parameters
+    ----------
+    dem_path : str
+        Path to the source DEM.
+    hillshade_path : str
+        Destination path for the hillshade raster.
+    epsg : int or None
+        EPSG code of *dem_path*.  When ``None`` the CRS is read directly from
+        the raster.
+    force : bool
+        If ``True``, regenerate even when the output already exists.
+    log : Logger or None
+        rsxml Logger.  Falls back to a module-level logger when ``None``.
+    """
+    _log = log or Logger('Hillshade')
+
+    if epsg is None:
+        epsg = get_epsg(dem_path)
+
+    if not force and os.path.isfile(hillshade_path):
+        _log.info('Hillshade already exists - skipping rebuild')
+        return
+
+    _log.info('Generating hillshade ...')
+    safe_makedirs(os.path.dirname(hillshade_path))
+    if epsg is not None and is_geographic_epsg(epsg):
+        gdal_dem_geographic(dem_path, hillshade_path, 'hillshade')
+    else:
+        gdal.DEMProcessing(
+            hillshade_path, dem_path, 'hillshade',
+            creationOptions=['COMPRESS=DEFLATE'],
+        )
+    _log.info(f'Hillshade: {hillshade_path}')
+
+
+def generate_slope(
+    dem_path: str,
+    slope_path: str,
+    *,
+    force: bool = False,
+    log: Logger | None = None,
+) -> None:
+    """
+    Generate a Horn-method slope raster (degrees) from *dem_path*.
+
+    Uses ``gdal.DEMProcessing`` with Horn's method, matching the SLOPE layer
+    produced by ``rs_context`` and expected by BRAT, RME, and other downstream
+    tools.  This is **not** the D8 rise/run slope produced by TauDEM, which is
+    an internal flow-routing intermediate.
+
+    The input must be the raw DEM, **not** a pit-filled or breach-conditioned
+    version: hydrological conditioning raises depression cells, which would
+    artificially flatten areas and misrepresent true terrain slope.
+
+    Parameters
+    ----------
+    dem_path : str
+        Path to the raw source DEM.
+    slope_path : str
+        Destination path for the slope raster.
+    force : bool
+        If ``True``, regenerate even when the output already exists.
+    log : Logger or None
+        rsxml Logger.  Falls back to a module-level logger when ``None``.
+    """
+    _log = log or Logger('Slope')
+
+    if not force and os.path.isfile(slope_path):
+        _log.info('Slope already exists - skipping rebuild')
+        return
+
+    _log.info('Generating slope raster (gdal.DEMProcessing, degrees) ...')
+    safe_makedirs(os.path.dirname(slope_path))
+    result = gdal.DEMProcessing(
+        slope_path, dem_path, 'slope',
+        creationOptions=['COMPRESS=DEFLATE', 'PREDICTOR=2', 'TILED=YES', 'BIGTIFF=IF_SAFER'],
+    )
+    if result is None:
+        _log.warning(f'gdal.DEMProcessing slope failed: {gdal.GetLastErrorMsg()}')
+    else:
+        result = None  # flush GDAL handle
+        _log.info(f'Slope:     {slope_path}')
+
+
 def _download_tiles_parallel(
     urls: list[str],
     download_folder: str,

@@ -36,6 +36,12 @@ Processing steps
     Step 6   vectorize_subwatersheds (GDAL/OGR)
              Polygonise subwatershed raster into the hydrology GeoPackage.
 
+    Step 7   calc_level_paths
+             Walk the river network from headwaters to outlets, assigning a
+             unique integer level-path ID to each reach.  The value is stored
+             in the ``level_path`` column of the ``network_intersected`` layer
+             inside the hydrology GeoPackage.
+
 Output layout (all relative to *output_folder*):
     hydrology/dem_filled.tif            pit-filled DEM (TauDEM pitremove)
     hydrology/dem_breach.tif            breach-conditioned DEM (WBT BreachDepressionsLeastCost)
@@ -45,6 +51,7 @@ Output layout (all relative to *output_folder*):
     hydrology/stream_raster.tif         binary stream mask
     hydrology/stream_order.tif          Strahler stream-order raster
     hydrology/hydro_derivatives.gpkg    vector network + subwatersheds (two layers)
+                                        network_intersected.level_path  level-path IDs (Step 7)
     hydrology/subwatersheds.tif         subwatershed raster
 
 Author:     Matt Reimer
@@ -69,6 +76,7 @@ from rscontextneo.src.taudem import (
     apply_mpi_env,
 )
 from rscontextneo.src.wbt import breach_depressions_least_cost
+from rscontextneo.src.level_path import calc_level_paths
 
 # ── Output relative paths (relative to output_folder) ─────────────────────────
 FILLED_DEM_RELPATH      = 'hydrology/dem_filled.tif'
@@ -209,30 +217,30 @@ def run_d8_hydrology(
     stream_coord = os.path.join(output_folder, _STREAM_COORD_RELPATH)
 
     # ── Step 1a: Breach depressions least-cost (WhiteboxTools) ────────────────
-    log.info("Step 1a of 6: Breach depressions (WhiteboxTools BreachDepressionsLeastCost)")
+    log.info("Step 1a of 7: Breach depressions (WhiteboxTools BreachDepressionsLeastCost)")
     breach_depressions_least_cost(dem_path, paths['dem_breach'], breach_dist, force, log)
 
     # ── Step 1b: Pit removal (TauDEM) ─────────────────────────────────────────
-    log.info("Step 1b of 6: Pit removal (TauDEM pitremove)")
+    log.info("Step 1b of 7: Pit removal (TauDEM pitremove)")
     pitremove(paths['dem_breach'], paths['dem_filled'], hydro_dir, ncores, mpi_args, force, log)
 
     # ── Step 2: D8 flow directions & slope (TauDEM) ───────────────────────────
-    log.info("Step 2 of 6: D8 flow directions and slope (TauDEM d8flowdir)")
+    log.info("Step 2 of 7: D8 flow directions and slope (TauDEM d8flowdir)")
     d8flowdir(paths['dem_filled'], paths['d8_flow'], paths['d8_slope'],
               hydro_dir, ncores, mpi_args, force, log)
 
     # ── Step 3: D8 contributing area (TauDEM) ─────────────────────────────────
-    log.info("Step 3 of 6: D8 contributing area (TauDEM aread8)")
+    log.info("Step 3 of 7: D8 contributing area (TauDEM aread8)")
     aread8(paths['d8_flow'], paths['d8_contributing_area'],
            hydro_dir, ncores, mpi_args, force, log)
 
     # ── Step 4: Stream raster (TauDEM) ────────────────────────────────────────
-    log.info("Step 4 of 6: Stream raster (TauDEM threshold)")
+    log.info("Step 4 of 7: Stream raster (TauDEM threshold)")
     taudem_threshold(paths['d8_contributing_area'], paths['stream_raster'],
               threshold, hydro_dir, ncores, mpi_args, force, log)
 
     # ── Step 5: Stream network extraction (TauDEM) ────────────────────────────
-    log.info("Step 5 of 6: Stream network extraction (TauDEM streamnet)")
+    log.info("Step 5 of 7: Stream network extraction (TauDEM streamnet)")
     streamnet(
         paths['d8_flow'],
         paths['dem_filled'],
@@ -251,8 +259,12 @@ def run_d8_hydrology(
     )
 
     # ── Step 6: Vectorise subwatersheds (GDAL/OGR) ────────────────────────────
-    log.info("Step 6 of 6: Vectorising subwatersheds (GDAL Polygonize)")
+    log.info("Step 6 of 7: Vectorising subwatersheds (GDAL Polygonize)")
     vectorize_subwatersheds(paths['subwatersheds'], paths['hydrology_gpkg'], force, log)
+
+    # ── Step 7: Level path calculation ────────────────────────────────────────
+    log.info("Step 7 of 7: Calculating level paths")
+    calc_level_paths(paths['hydrology_gpkg'], 'network_intersected', force, log)
 
     elapsed = time.time() - start_time
     log.info(f'D8 hydrology workflow complete in {pretty_duration(elapsed)}')

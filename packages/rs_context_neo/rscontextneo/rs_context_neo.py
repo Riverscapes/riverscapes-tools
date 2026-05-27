@@ -26,7 +26,7 @@ from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 from rscontextneo.__version__ import __version__
 from rscontextneo.src.aoi import validate_copy_aoi
 from rscontextneo.src.dem import dem_to_geojson
-from rscontextneo.src.fetch_dem import fetch_dem_from_3dep, TILE_FOOTPRINTS_RELPATH, SLOPE_RELPATH
+from rscontextneo.src.fetch_dem import fetch_dem_from_3dep, generate_hillshade, generate_slope, TILE_FOOTPRINTS_RELPATH, SLOPE_RELPATH, HILLSHADE_RELPATH
 from rscontextneo.src.hydrology import run_d8_hydrology, DEFAULT_THRESHOLD, DEFAULT_BREACH_DIST
 
 initGDALOGRErrors()
@@ -169,6 +169,18 @@ def rs_context_neo(
     if sum(v is not None for v in (aoi, dem)) != 1:
         raise ValueError('Exactly one of aoi or dem must be provided.')
 
+    # ── Early input validation ─────────────────────────────────────────────────
+    # Validate before creating any output directories so a bad invocation
+    # doesn't leave behind an empty project folder.
+    if output_res <= 0:
+        raise ValueError(f'output_res must be a positive number, got {output_res}')
+    if threshold <= 0:
+        raise ValueError(f'threshold must be a positive integer, got {threshold}')
+    if breach_dist <= 0:
+        raise ValueError(f'breach_dist must be a positive integer, got {breach_dist}')
+    if dem is not None and not os.path.isfile(dem):
+        raise FileNotFoundError(f'User-supplied DEM not found: {dem}')
+
     safe_makedirs(output_folder)
 
     # ── Step 1: Acquire bounds GeoJSON and DEM ─────────────────────────────────
@@ -180,13 +192,25 @@ def rs_context_neo(
         bounds_geojson = validate_copy_aoi(aoi, output_folder)
         dem_path, _hillshade_path, _slope_path = _fetch_3dep(
             bounds_geojson, output_folder, download_folder, scratch_folder,
-            output_res, force_download,
+            output_res, force_download, debug,
         )
     elif dem is not None:
         log.info(f'  Input source: User-supplied DEM — {dem}')
         descriptor = 'User-supplied DEM'
         bounds_geojson = dem_to_geojson(dem, output_folder)
         dem_path = dem
+        generate_hillshade(
+            dem_path,
+            os.path.join(output_folder, HILLSHADE_RELPATH),
+            force=force_download,
+            log=log,
+        )
+        generate_slope(
+            dem_path,
+            os.path.join(output_folder, SLOPE_RELPATH),
+            force=force_download,
+            log=log,
+        )
     else:
         raise AssertionError('Unreachable: runtime guard above ensures exactly one source is set.')
     log.info(f'  Step 1 complete in {pretty_duration(step_timer.ellapsed())}')
@@ -208,19 +232,27 @@ def rs_context_neo(
     # ── Step 3: Write project XML ─────────────────────────────────────────────
     log.info('Step 3 of 3: Writing Riverscapes project XML')
     elapsed_time = time.time() - start_time
-    _write_project_xml(
-        output_folder=output_folder,
-        descriptor=descriptor,
-        bounds_geojson=bounds_geojson,
-        meta=meta,
-        aoi=aoi,
-        dem=dem,
-        threshold=threshold,
-        output_res=output_res,
-        breach_dist=breach_dist,
-        elapsed_time=elapsed_time,
-        log=log,
-    )
+    try:
+        _write_project_xml(
+            output_folder=output_folder,
+            descriptor=descriptor,
+            bounds_geojson=bounds_geojson,
+            meta=meta,
+            aoi=aoi,
+            dem=dem,
+            threshold=threshold,
+            output_res=output_res,
+            breach_dist=breach_dist,
+            elapsed_time=elapsed_time,
+            log=log,
+        )
+    except Exception as exc:
+        log.error(f'Failed to write project XML: {exc}')
+        log.error(
+            'All processing completed successfully but the project XML could not be written. '
+            'Outputs are present in the output folder. Re-run with --force to regenerate the XML.'
+        )
+        raise
 
     log.info(f'RS Context Neo complete — total processing time: {pretty_duration(elapsed_time)}')
 
@@ -309,8 +341,7 @@ def _write_project_xml(
     # ── Flat Datasets node ─────────────────────────────────────────────────────
     log.info('  Registering project layers')
     project.add_project_raster(datasets, LayerTypes['DEM'])
-    if aoi is not None:
-        project.add_project_raster(datasets, LayerTypes['HILLSHADE'])
+    project.add_project_raster(datasets, LayerTypes['HILLSHADE'])
     project.add_project_raster(datasets, LayerTypes['SLOPE'])
     project.add_project_raster(datasets, LayerTypes['DEM_FILLED'])
     project.add_project_raster(datasets, LayerTypes['DEM_BREACH'])
