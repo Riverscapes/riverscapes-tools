@@ -10,6 +10,12 @@
       "description": "Path to a GeoJSON defining the area of interest",
       "default": "{env:DATA_ROOT}/aoi/my_area.geojson"
     },
+      {
+        "type": "promptString",
+        "id": "BREACH_DIST",
+        "description": "Distance (in meters) to use when breaching DEM sinks (higher = more aggressive breaching)",
+        "default": "100"
+      },
     {
       "type": "promptString",
       "id": "DEM",
@@ -40,6 +46,7 @@
         "--output", "{env:DATA_ROOT}/rs_context_neo/aoi",
         "--download_dir", "{env:DATA_ROOT}/downloads",
         "--threshold", "${input:THRESHOLD}",
+        "--breach_dist", "${input:BREACH_DIST}",
         "--verbose",
         "--debug"
       ]
@@ -59,6 +66,7 @@
         "--dem", "${input:DEM}",
         "--output", "{env:DATA_ROOT}/rs_context_neo/dem",
         "--threshold", "${input:THRESHOLD}",
+        "--breach_dist", "${input:BREACH_DIST}",
         "--verbose",
         "--debug"
       ]

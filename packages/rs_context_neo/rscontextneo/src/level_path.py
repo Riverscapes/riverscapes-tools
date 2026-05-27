@@ -7,6 +7,7 @@ single continuous flow path from a headwater to an outlet (or to the point
 where a longer tributary takes over).
 
 Algorithm (adapted from Philip Bailey, 12 Jun 2025):
+Source: https://github.com/Riverscapes/riverscapes-tools/blob/master/packages/taudem/taudem/scripts/calc_level_path_taudem.py
     1. Find all headwater reaches (USLINKNO1 = -1) that lack a level_path.
     2. For each headwater, walk downstream summing reach lengths to obtain the
        total flow-path length from that headwater to the network outlet.

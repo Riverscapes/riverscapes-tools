@@ -490,20 +490,41 @@ def main():
     main_timer = time.time()
 
     try:
-        rs_context_neo(
-            args.output,
-            meta,
-            aoi=args.aoi,
-            dem=args.dem,
-            download_folder=args.download_dir,
-            scratch_folder=args.scratch_dir,
-            output_res=args.output_res,
-            force_download=args.force,
-            threshold=args.threshold,
-            breach_dist=args.breach_dist,
-            cores=args.cores,
-            debug=args.debug,
-        )
+        if args.debug is True:
+            # Leave this import here so that we don't over-import if not needed
+            from rscommons.debug import ThreadRun
+            memfile = os.path.join(args.output, 'rs_context_neo_memusage.log')
+            retcode, max_obj = ThreadRun(
+                rs_context_neo, memfile,
+                args.output,
+                meta,
+                aoi=args.aoi,
+                dem=args.dem,
+                download_folder=args.download_dir,
+                scratch_folder=args.scratch_dir,
+                output_res=args.output_res,
+                force_download=args.force,
+                threshold=args.threshold,
+                breach_dist=args.breach_dist,
+                cores=args.cores,
+                debug=args.debug,
+            )
+            log.debug(f'Return code: {retcode}, [Max process usage] {max_obj}')
+        else:
+            rs_context_neo(
+                args.output,
+                meta,
+                aoi=args.aoi,
+                dem=args.dem,
+                download_folder=args.download_dir,
+                scratch_folder=args.scratch_dir,
+                output_res=args.output_res,
+                force_download=args.force,
+                threshold=args.threshold,
+                breach_dist=args.breach_dist,
+                cores=args.cores,
+                debug=args.debug,
+            )
     except Exception as e:
         log.error(e)
         traceback.print_exc()
