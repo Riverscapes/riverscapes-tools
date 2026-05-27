@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="780" height="985" viewBox="0 0 780 985">
+  <defs>
+    <marker id="ah" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280"/>
+    </marker>
+  </defs>
+
+  <rect width="780" height="985" fill="#ffffff"/>
+
+  <!-- INPUT -->
+  <rect x="30" y="20" width="520" height="40" rx="20" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="290" y="44" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="13" font-weight="600" fill="#1e40af">bounds.geojson</text>
+
+  <line x1="290" y1="60" x2="290" y2="82" stroke="#6b7280" stroke-width="1.5" marker-end="url(#ah)"/>
+
+  <!-- [0] -->
+  <rect x="30" y="84" width="520" height="60" rx="6" fill="#f9fafb" stroke="#9ca3af" stroke-width="1.5"/>
+  <text x="50" y="109" font-family="system-ui,-apple-system,sans-serif" font-size="12" font-weight="600" fill="#111827">[0]  Convert to bounds.gpkg</text>
+  <text x="50" y="126" font-family="system-ui,-apple-system,sans-serif" font-size="11" fill="#6b7280">_geojson_to_gpkg()  ·  rscommons helpers require GPKG format</text>
+
+  <line x1="290" y1="144" x2="290" y2="166" stroke="#6b7280" stroke-width="1.5" marker-end="url(#ah)"/>
+
+  <!-- [1] -->
+  <rect x="30" y="168" width="520" height="60" rx="6" fill="#f9fafb" stroke="#9ca3af" stroke-width="1.5"/>
+  <text x="50" y="193" font-family="system-ui,-apple-system,sans-serif" font-size="12" font-weight="600" fill="#111827">[1]  Query The National Map</text>
+  <text x="50" y="210" font-family="system-ui,-apple-system,sans-serif" font-size="11" fill="#6b7280">get_1m_dem_urls()  ·  identifies all 3DEP 1 m tile URLs</text>
+
+  <line x1="290" y1="228" x2="290" y2="250" stroke="#6b7280" stroke-width="1.5" marker-end="url(#ah)"/>
+
+  <!-- [2] -->
+  <rect x="30" y="252" width="520" height="60" rx="6" fill="#f9fafb" stroke="#9ca3af" stroke-width="1.5"/>
+  <text x="50" y="277" font-family="system-ui,-apple-system,sans-serif" font-size="12" font-weight="600" fill="#111827">[2]  Download &amp; unzip tiles</text>
+  <text x="50" y="294" font-family="system-ui,-apple-system,sans-serif" font-size="11" fill="#6b7280">_download_tiles_parallel()  ·  ThreadPoolExecutor (4 workers)</text>
+
+  <line x1="290" y1="312" x2="290" y2="334" stroke="#6b7280" stroke-width="1.5" marker-end="url(#ah)"/>
+
+  <!-- [3a] -->
+  <rect x="30" y="336" width="520" height="60" rx="6" fill="#f9fafb" stroke="#9ca3af" stroke-width="1.5"/>
+  <text x="50" y="361" font-family="system-ui,-apple-system,sans-serif" font-size="12" font-weight="600" fill="#111827">[3a] Inspect tiles  (single pass)</text>
+  <text x="50" y="378" font-family="system-ui,-apple-system,sans-serif" font-size="11" fill="#6b7280">_inspect_tiles()  ·  majority-vote EPSG  ·  needs_resample flag</text>
+
+  <line x1="290" y1="396" x2="290" y2="418" stroke="#6b7280" stroke-width="1.5" marker-end="url(#ah)"/>
+
+  <!-- [3b] -->
+  <rect x="30" y="420" width="520" height="60" rx="6" fill="#f9fafb" stroke="#9ca3af" stroke-width="1.5"/>
+  <text x="50" y="445" font-family="system-ui,-apple-system,sans-serif" font-size="12" font-weight="600" fill="#111827">[3b] Resolve CRS conflicts</text>
+  <text x="50" y="462" font-family="system-ui,-apple-system,sans-serif" font-size="11" fill="#6b7280">_resolve_tiles()  ·  select best-coverage single-CRS tile set</text>
+
+  <line x1="290" y1="480" x2="290" y2="502" stroke="#6b7280" stroke-width="1.5" marker-end="url(#ah)"/>
+
+  <!-- [3c] -->
+  <rect x="30" y="504" width="520" height="60" rx="6" fill="#f9fafb" stroke="#9ca3af" stroke-width="1.5"/>
+  <text x="50" y="529" font-family="system-ui,-apple-system,sans-serif" font-size="12" font-weight="600" fill="#111827">[3c] Mosaic + clip  (+ optional resample)</text>
+  <text x="50" y="546" font-family="system-ui,-apple-system,sans-serif" font-size="11" fill="#6b7280">raster_vrt_stitch() / gdal.Warp  ·  → topography/dem.tif</text>
+
+  <!-- Vertical connector [3c] → [4], with side-branch junction dots -->
+  <line x1="290" y1="564" x2="290" y2="682" stroke="#6b7280" stroke-width="1.5" marker-end="url(#ah)"/>
+
+  <!-- Branch arrows -->
+  <line x1="290" y1="591" x2="568" y2="591" stroke="#6b7280" stroke-width="1.5" marker-end="url(#ah)"/>
+  <line x1="290" y1="649" x2="568" y2="649" stroke="#6b7280" stroke-width="1.5" marker-end="url(#ah)"/>
+
+  <!-- Junction dots (painted on top of lines) -->
+  <circle cx="290" cy="591" r="3.5" fill="#6b7280"/>
+  <circle cx="290" cy="649" r="3.5" fill="#6b7280"/>
+
+  <!-- Branch 1: Write tile footprints -->
+  <rect x="570" y="569" width="195" height="44" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+  <text x="580" y="588" font-family="system-ui,-apple-system,sans-serif" font-size="11" font-weight="600" fill="#15803d">Write tile footprints</text>
+  <text x="580" y="604" font-family="system-ui,-apple-system,sans-serif" font-size="10" fill="#16a34a">tile_footprints.gpkg</text>
+
+  <!-- Branch 2: Delete unzipped tiles -->
+  <rect x="570" y="627" width="195" height="44" rx="6" fill="#fef9c3" stroke="#ca8a04" stroke-width="1.5"/>
+  <text x="580" y="646" font-family="system-ui,-apple-system,sans-serif" font-size="11" font-weight="600" fill="#92400e">Delete unzipped tiles</text>
+  <text x="580" y="662" font-family="system-ui,-apple-system,sans-serif" font-size="10" fill="#ca8a04">if cleanup_scratch=True</text>
+
+  <!-- [4] -->
+  <rect x="30" y="684" width="520" height="60" rx="6" fill="#f9fafb" stroke="#9ca3af" stroke-width="1.5"/>
+  <text x="50" y="709" font-family="system-ui,-apple-system,sans-serif" font-size="12" font-weight="600" fill="#111827">[4]  Verify coverage</text>
+  <text x="50" y="726" font-family="system-ui,-apple-system,sans-serif" font-size="11" fill="#6b7280">verify_areas()  ·  warns if DEM covers &lt; 85% of AOI</text>
+
+  <line x1="290" y1="744" x2="290" y2="766" stroke="#6b7280" stroke-width="1.5" marker-end="url(#ah)"/>
+
+  <!-- [5] -->
+  <rect x="30" y="768" width="520" height="60" rx="6" fill="#f9fafb" stroke="#9ca3af" stroke-width="1.5"/>
+  <text x="50" y="793" font-family="system-ui,-apple-system,sans-serif" font-size="12" font-weight="600" fill="#111827">[5]  Generate hillshade</text>
+  <text x="50" y="810" font-family="system-ui,-apple-system,sans-serif" font-size="11" fill="#6b7280">gdal.DEMProcessing('hillshade')  ·  → dem_hillshade.tif</text>
+
+  <line x1="290" y1="828" x2="290" y2="850" stroke="#6b7280" stroke-width="1.5" marker-end="url(#ah)"/>
+
+  <!-- [6] -->
+  <rect x="30" y="852" width="520" height="60" rx="6" fill="#f9fafb" stroke="#9ca3af" stroke-width="1.5"/>
+  <text x="50" y="877" font-family="system-ui,-apple-system,sans-serif" font-size="12" font-weight="600" fill="#111827">[6]  Generate slope</text>
+  <text x="50" y="894" font-family="system-ui,-apple-system,sans-serif" font-size="11" fill="#6b7280">gdal.DEMProcessing('slope')  ·  Horn's method, degrees  ·  → slope.tif</text>
+
+  <line x1="290" y1="912" x2="290" y2="932" stroke="#6b7280" stroke-width="1.5" marker-end="url(#ah)"/>
+
+  <!-- OUTPUT -->
+  <rect x="30" y="934" width="520" height="30" rx="15" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="290" y="953" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="12" font-weight="600" fill="#1e40af">dem.tif  ·  dem_hillshade.tif  ·  slope.tif</text>
+</svg>

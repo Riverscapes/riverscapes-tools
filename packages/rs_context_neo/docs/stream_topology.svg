@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="620" height="190" viewBox="0 0 620 190">
+  <defs>
+    <marker id="ah" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280"/>
+    </marker>
+  </defs>
+
+  <rect width="620" height="190" fill="#ffffff"/>
+
+  <!-- USLINKNO2: horizontal from left to confluence -->
+  <line x1="20" y1="105" x2="213" y2="105" stroke="#6b7280" stroke-width="2" marker-end="url(#ah)"/>
+
+  <!-- USLINKNO1: diagonal from upper-right to confluence -->
+  <line x1="395" y1="28" x2="226" y2="103" stroke="#6b7280" stroke-width="2" marker-end="url(#ah)"/>
+
+  <!-- Confluence dot -->
+  <circle cx="220" cy="105" r="5" fill="#374151"/>
+
+  <!-- Main reach: confluence → DSLINKNO -->
+  <line x1="225" y1="105" x2="490" y2="105" stroke="#1d4ed8" stroke-width="2.5" marker-end="url(#ah)"/>
+
+  <!-- Label: USLINKNO1 -->
+  <text x="400" y="22" font-family="system-ui,-apple-system,sans-serif" font-size="12" font-weight="600" fill="#111827">USLINKNO1  (order 1)</text>
+
+  <!-- Label: USLINKNO2 (above the horizontal line) -->
+  <text x="20" y="93" font-family="system-ui,-apple-system,sans-serif" font-size="12" font-weight="600" fill="#111827">USLINKNO2  (order 1)</text>
+
+  <!-- Label: this reach (centered over the main reach) -->
+  <text x="357" y="88" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="12" font-weight="600" fill="#1d4ed8">this reach</text>
+  <text x="357" y="103" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="11" fill="#3b82f6">LINKNO, order 2</text>
+
+  <!-- Label: DSLINKNO -->
+  <text x="500" y="101" font-family="system-ui,-apple-system,sans-serif" font-size="12" font-weight="600" fill="#111827">DSLINKNO</text>
+
+  <!-- Confluence label -->
+  <text x="220" y="130" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="11" fill="#6b7280">confluence node</text>
+
+  <!-- Footer note -->
+  <text x="310" y="168" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="10" fill="#9ca3af">USLINKNO2 = -1 for headwater reaches  ·  DSLINKNO = -1 for watershed outlet</text>
+</svg>

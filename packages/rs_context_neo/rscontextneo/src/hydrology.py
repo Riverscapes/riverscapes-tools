@@ -13,12 +13,13 @@ imported from the tool-specific sub-modules:
 
 Processing steps
 ----------------
-    Step 1a  pitremove (TauDEM)
-             Fill topographic sinks so flow routes to the domain edge.
+    Step 1a  BreachDepressionsLeastCost (WhiteboxTools)
+             Hydrological conditioning via least-cost breaching — prefers
+             carving over filling where possible.
 
-    Step 1b  BreachDepressionsLeastCost (WhiteboxTools)
-             Alternative hydrological conditioning via least-cost breaching.
-             Run in parallel with Step 1a for comparison.
+    Step 1b  pitremove (TauDEM)
+             Fill any remaining topographic sinks so flow routes to the
+             domain edge.
 
     Step 2   d8flowdir (TauDEM)
              Assign each cell a single downstream direction (1-8) and slope.
@@ -39,14 +40,14 @@ Output layout (all relative to *output_folder*):
     hydrology/dem_filled.tif            pit-filled DEM (TauDEM pitremove)
     hydrology/dem_breach.tif            breach-conditioned DEM (WBT BreachDepressionsLeastCost)
     hydrology/d8_flow.tif               D8 flow direction
-    hydrology/d8_slope.tif              D8 slope
+    hydrology/d8_slope.tif              D8 slope (TauDEM d8flowdir, rise/run, internal intermediate)
     hydrology/d8_contributing_area.tif  D8 contributing area
     hydrology/stream_raster.tif         binary stream mask
     hydrology/stream_order.tif          Strahler stream-order raster
-    hydrology/hydrology.gpkg            vector network + subwatersheds (two layers)
+    hydrology/hydro_derivatives.gpkg    vector network + subwatersheds (two layers)
     hydrology/subwatersheds.tif         subwatershed raster
 
-Author:     Riverscapes
+Author:     Matt Reimer
 Date:       2026-05-25
 """
 import os
@@ -77,7 +78,7 @@ D8_SLOPE_RELPATH        = 'hydrology/d8_slope.tif'
 D8_CONTRIB_AREA_RELPATH = 'hydrology/d8_contributing_area.tif'
 STREAM_RASTER_RELPATH   = 'hydrology/stream_raster.tif'
 STREAM_ORDER_RELPATH    = 'hydrology/stream_order.tif'
-HYDROLOGY_GPKG_RELPATH  = 'hydrology/hydrology.gpkg'
+HYDROLOGY_GPKG_RELPATH  = 'hydrology/hydro_derivatives.gpkg'
 SUBWATERSHEDS_RELPATH   = 'hydrology/subwatersheds.tif'
 
 # Auxiliary TauDEM text outputs written alongside streamnet products
@@ -91,8 +92,21 @@ _STREAM_COORD_RELPATH = 'hydrology/stream_coord.dat'
 DEFAULT_THRESHOLD = 50_000
 
 # Maximum search distance (cells) for the WBT least-cost breach path.
-# 500 cells ≈ 500 m at 1 m resolution.  Scale proportionally for coarser DEMs.
-DEFAULT_BREACH_DIST = 500
+# At 1 m resolution this is a direct distance in metres.  The value needs to
+# be large enough to span the widest anthropogenic barrier you expect to
+# encounter (road embankment + any backed-up water behind it) but small enough
+# that the algorithm doesn't accidentally breach natural ridges or lake outlets.
+#
+# Typical feature widths at 1 m resolution:
+#   gravel / two-lane road          10–15 m
+#   highway with shoulders          30–50 m
+#   bridge approach embankment      20–150 m
+#
+# 100 cells (100 m) covers standard roads, rail lines, and most bridge
+# approaches without risking breaches through natural terrain features.
+# Increase to 200–300 for areas with major highway or rail infrastructure.
+# Scale proportionally for coarser DEMs (e.g. 10 cells at 10 m resolution).
+DEFAULT_BREACH_DIST = 100
 
 
 # ── Public entry point ─────────────────────────────────────────────────────────
@@ -149,7 +163,7 @@ def run_d8_hydrology(
                 'd8_contributing_area': '<output_folder>/hydrology/d8_contributing_area.tif',
                 'stream_raster':        '<output_folder>/hydrology/stream_raster.tif',
                 'stream_order':         '<output_folder>/hydrology/stream_order.tif',
-                'hydrology_gpkg':       '<output_folder>/hydrology/hydrology.gpkg',
+                'hydrology_gpkg':       '<output_folder>/hydrology/hydro_derivatives.gpkg',
                 'subwatersheds':        '<output_folder>/hydrology/subwatersheds.tif',
             }
 
@@ -178,6 +192,7 @@ def run_d8_hydrology(
 
     hydro_dir = os.path.join(output_folder, 'hydrology')
     safe_makedirs(hydro_dir)
+    safe_makedirs(os.path.join(output_folder, 'topography'))
 
     paths = {
         'dem_filled':           os.path.join(output_folder, FILLED_DEM_RELPATH),
@@ -193,25 +208,31 @@ def run_d8_hydrology(
     stream_tree  = os.path.join(output_folder, _STREAM_TREE_RELPATH)
     stream_coord = os.path.join(output_folder, _STREAM_COORD_RELPATH)
 
-    # ── Step 1a: Pit removal (TauDEM) ─────────────────────────────────────────
-    pitremove(dem_path, paths['dem_filled'], hydro_dir, ncores, mpi_args, force, log)
-
-    # ── Step 1b: Breach depressions least-cost (WhiteboxTools) ────────────────
+    # ── Step 1a: Breach depressions least-cost (WhiteboxTools) ────────────────
+    log.info("Step 1a of 6: Breach depressions (WhiteboxTools BreachDepressionsLeastCost)")
     breach_depressions_least_cost(dem_path, paths['dem_breach'], breach_dist, force, log)
 
+    # ── Step 1b: Pit removal (TauDEM) ─────────────────────────────────────────
+    log.info("Step 1b of 6: Pit removal (TauDEM pitremove)")
+    pitremove(paths['dem_breach'], paths['dem_filled'], hydro_dir, ncores, mpi_args, force, log)
+
     # ── Step 2: D8 flow directions & slope (TauDEM) ───────────────────────────
+    log.info("Step 2 of 6: D8 flow directions and slope (TauDEM d8flowdir)")
     d8flowdir(paths['dem_filled'], paths['d8_flow'], paths['d8_slope'],
               hydro_dir, ncores, mpi_args, force, log)
 
     # ── Step 3: D8 contributing area (TauDEM) ─────────────────────────────────
+    log.info("Step 3 of 6: D8 contributing area (TauDEM aread8)")
     aread8(paths['d8_flow'], paths['d8_contributing_area'],
            hydro_dir, ncores, mpi_args, force, log)
 
     # ── Step 4: Stream raster (TauDEM) ────────────────────────────────────────
+    log.info("Step 4 of 6: Stream raster (TauDEM threshold)")
     taudem_threshold(paths['d8_contributing_area'], paths['stream_raster'],
               threshold, hydro_dir, ncores, mpi_args, force, log)
 
     # ── Step 5: Stream network extraction (TauDEM) ────────────────────────────
+    log.info("Step 5 of 6: Stream network extraction (TauDEM streamnet)")
     streamnet(
         paths['d8_flow'],
         paths['dem_filled'],
@@ -230,6 +251,7 @@ def run_d8_hydrology(
     )
 
     # ── Step 6: Vectorise subwatersheds (GDAL/OGR) ────────────────────────────
+    log.info("Step 6 of 6: Vectorising subwatersheds (GDAL Polygonize)")
     vectorize_subwatersheds(paths['subwatersheds'], paths['hydrology_gpkg'], force, log)
 
     elapsed = time.time() - start_time

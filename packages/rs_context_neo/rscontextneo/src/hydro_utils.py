@@ -4,7 +4,7 @@ Shared utility functions for the RS Context Neo hydrology pipeline.
 These helpers are used by both the TauDEM (taudem.py) and WhiteboxTools
 (wbt.py) step modules and are kept here to avoid circular imports.
 
-Author:     Riverscapes
+Author:     Matt Reimer
 Date:       2026-05-25
 """
 import os

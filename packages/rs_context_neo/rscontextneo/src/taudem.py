@@ -1,6 +1,12 @@
 """
 TauDEM step functions for the RS Context Neo D8 hydrology pipeline.
 
+NOTE: Eventually we may want to move some of this functionality to the `rs-commons`
+package if it can be made generic enough to be reused by other projects. The Taudem
+tool and the VBET tool both make calles to the taudem binaries so there is some 
+nice overlap there. For now, though, this is done internally to rs_context_neo to 
+keep it self-contained and not affect any other tools.
+
 Each function in this module wraps a single TauDEM MPI command.  They are
 called in sequence by :func:`~rscontextneo.src.hydrology.run_d8_hydrology`
 and are not intended to be called directly.
@@ -21,7 +27,7 @@ fails on macOS with::
 ``OMPI_MCA_btl=tcp,self`` (Open MPI) into ``os.environ`` before any
 subprocess is spawned, routing traffic over the loopback interface instead.
 
-Author:     Riverscapes
+Author:     Matt Reimer
 Date:       2026-05-25
 """
 import os
@@ -132,7 +138,7 @@ def pitremove(
     log: Logger,
 ) -> None:
     """
-    Step 1a — Fill pits/sinks in the DEM (TauDEM ``pitremove``).
+    Fill pits/sinks in the DEM (TauDEM ``pitremove``).
 
     Removes topographic depressions that would otherwise trap flow and prevent
     the D8 algorithm from routing water to the watershed outlet.
@@ -157,7 +163,7 @@ def pitremove(
     if skip_if_exists(filled_dem_path, force, 'pitremove', log):
         return
 
-    log.info('Step 1a — Pit removal (TauDEM pitremove)')
+    log.info('Pit removal (TauDEM pitremove)')
     status = run_subprocess(cwd, [
         'mpiexec', '-n', ncores,
         *mpi_args,
@@ -181,7 +187,7 @@ def d8flowdir(
     log: Logger,
 ) -> None:
     """
-    Step 2 — Compute D8 flow directions and slope (TauDEM ``d8flowdir``).
+    Compute D8 flow directions and slope (TauDEM ``d8flowdir``).
 
     Assigns each cell a single downstream neighbour (one of 8 directions
     encoded as an integer 1-8) and records the downslope gradient.
@@ -200,7 +206,7 @@ def d8flowdir(
     if skip_if_exists(d8_flow_path, force, 'd8flowdir', log) and os.path.isfile(d8_slope_path):
         return
 
-    log.info('Step 2 — D8 flow directions and slope (TauDEM d8flowdir)')
+    log.info('D8 flow directions and slope (TauDEM d8flowdir)')
     status = run_subprocess(cwd, [
         'mpiexec', '-n', ncores,
         *mpi_args,
@@ -226,7 +232,7 @@ def aread8(
     log: Logger,
 ) -> None:
     """
-    Step 3 — Compute D8 contributing area (TauDEM ``aread8``).
+    Compute D8 contributing area (TauDEM ``aread8``).
 
     Accumulates cell counts upstream of each cell following the D8 flow
     directions.  The ``-nc`` flag omits edge contamination correction,
@@ -244,7 +250,7 @@ def aread8(
     if skip_if_exists(contrib_area_path, force, 'aread8', log):
         return
 
-    log.info('Step 3 — D8 contributing area (TauDEM aread8)')
+    log.info('D8 contributing area (TauDEM aread8)')
     status = run_subprocess(cwd, [
         'mpiexec', '-n', ncores,
         *mpi_args,
@@ -269,7 +275,7 @@ def threshold(
     log: Logger,
 ) -> None:
     """
-    Step 4 — Threshold contributing area to produce a stream raster (TauDEM ``threshold``).
+    Threshold contributing area to produce a stream raster (TauDEM ``threshold``).
 
     Marks cells with contributing area ≥ *threshold_cells* as stream (1);
     all others are 0.
@@ -288,7 +294,7 @@ def threshold(
     if skip_if_exists(stream_raster_path, force, 'threshold', log):
         return
 
-    log.info(f'Step 4 — Stream raster (TauDEM threshold = {threshold_cells:,} cells)')
+    log.info(f'Stream raster (TauDEM threshold = {threshold_cells:,} cells)')
     status = run_subprocess(cwd, [
         'mpiexec', '-n', ncores,
         *mpi_args,
@@ -319,7 +325,7 @@ def streamnet(
     log: Logger,
 ) -> None:
     """
-    Step 5 — Extract the vector stream network (TauDEM ``streamnet``).
+    Extract the vector stream network (TauDEM ``streamnet``).
 
     Vectorises the thresholded stream raster into a reach network, assigns
     Strahler stream order, and delineates subwatersheds for each reach.
@@ -339,7 +345,7 @@ def streamnet(
     stream_raster_path : str
         Binary stream mask from Step 4.
     gpkg_path : str
-        Output GeoPackage path (``network`` layer).
+        Output GeoPackage path (``network_intersected`` layer).
     stream_order_path : str
         Output Strahler stream-order raster.
     subwatersheds_path : str
@@ -360,7 +366,7 @@ def streamnet(
         log.info('streamnet: all outputs already exist — skipping (use force=True to re-run)')
         return
 
-    log.info('Step 5 — Stream network extraction (TauDEM streamnet)')
+    log.info('Stream network extraction (TauDEM streamnet)')
 
     shp_path = os.path.splitext(gpkg_path)[0] + '_tmp.shp'
 
@@ -385,8 +391,8 @@ def streamnet(
     compress_inplace(subwatersheds_path, log)
 
     log.info(f'Converting stream network shapefile → GeoPackage: {gpkg_path}')
-    _shp_to_gpkg(shp_path, gpkg_path, layer_name='network')
-    log.info(f'  → {gpkg_path} (layer: network)')
+    _shp_to_gpkg(shp_path, gpkg_path, layer_name='network_intersected')
+    log.info(f'  → {gpkg_path} (layer: network_intersected)')
 
     _remove_shapefile(shp_path, log)
 
@@ -399,7 +405,7 @@ def vectorize_subwatersheds(
     layer_name: str = 'subwatersheds',
 ) -> None:
     """
-    Step 6 — Polygonise the subwatersheds raster and append it as a vector layer
+    Polygonise the subwatersheds raster and append it as a vector layer
     to an existing GeoPackage.
 
     TauDEM's ``streamnet`` writes one unique integer value per reach to
@@ -452,7 +458,7 @@ def vectorize_subwatersheds(
         raise FileNotFoundError(f'Subwatersheds raster not found: {subwatersheds_raster_path}')
 
     log.info(
-        f'Step 6 — Vectorising subwatersheds '
+        f'Vectorising Catchment Wings '
         f'({os.path.basename(subwatersheds_raster_path)} → layer: {layer_name})'
     )
 
@@ -511,7 +517,7 @@ def _check_result(status: int | None, expected_path: str, step_name: str) -> Non
         )
 
 
-def _shp_to_gpkg(shp_path: str, gpkg_path: str, layer_name: str = 'network') -> None:
+def _shp_to_gpkg(shp_path: str, gpkg_path: str, layer_name: str = 'network_intersected') -> None:
     """
     Convert a shapefile to a single-layer GeoPackage using GDAL VectorTranslate.
 
@@ -522,7 +528,7 @@ def _shp_to_gpkg(shp_path: str, gpkg_path: str, layer_name: str = 'network') -> 
     gpkg_path : str
         Destination GeoPackage path.  Overwritten if it already exists.
     layer_name : str
-        Layer name inside the GeoPackage.  Default: ``'network'``.
+        Layer name inside the GeoPackage.  Default: ``'network_intersected'``.
 
     Raises
     ------

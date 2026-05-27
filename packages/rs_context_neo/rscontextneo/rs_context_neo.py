@@ -5,27 +5,28 @@ Purpose:    Build a Riverscapes Context project for a single watershed by
             downloading a 1-metre 3DEP DEM and running the standard TauDEM
             D8 hydrology processing chain.
 
-Author:     Riverscapes
+Author:     Matt Reimer
 Date:       2026-05-20
 """
 import argparse
 import json
 import os
 import sys
+import time
 import traceback
 
 from shapely.geometry import shape
 from shapely.ops import unary_union
 
 from rsxml import Logger, dotenv
-from rsxml.util import safe_makedirs, parse_metadata
-from rscommons import ModelConfig, RSLayer, RSProject, initGDALOGRErrors
+from rsxml.util import safe_makedirs, parse_metadata, pretty_duration
+from rscommons import ModelConfig, RSLayer, RSProject, Timer, initGDALOGRErrors
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
 
 from rscontextneo.__version__ import __version__
 from rscontextneo.src.aoi import validate_copy_aoi
 from rscontextneo.src.dem import dem_to_geojson
-from rscontextneo.src.fetch_dem import fetch_dem_from_3dep
+from rscontextneo.src.fetch_dem import fetch_dem_from_3dep, TILE_FOOTPRINTS_RELPATH, SLOPE_RELPATH
 from rscontextneo.src.hydrology import run_d8_hydrology, DEFAULT_THRESHOLD, DEFAULT_BREACH_DIST
 
 initGDALOGRErrors()
@@ -48,6 +49,20 @@ LayerTypes = {
     'HILLSHADE': RSLayer(
         'DEM Hillshade', 'HILLSHADE', 'Raster', 'topography/dem_hillshade.tif',
     ),
+    'TILE_FOOTPRINTS': RSLayer(
+        'DEM Tile Footprints', 'TILE_FOOTPRINTS', 'Geopackage', TILE_FOOTPRINTS_RELPATH,
+        sub_layers={
+            'tile_footprints': RSLayer('DEM Tile Footprints', 'TILE_FOOTPRINTS_LYR', 'Vector', 'tile_footprints'),
+        },
+        lyr_meta=[RSMeta(
+            'Description',
+            'Polygon footprint of every 3DEP tile downloaded for this project. '
+            'Attributes record each tile\'s original filename, native CRS (original_epsg / '
+            'original_crs_name), whether it required reprojection to be included in the '
+            'mosaic (is_reprojected = 1), the final mosaic CRS (final_epsg / final_crs_name), '
+            'pixel dimensions, resolution, file size, and nodata value.',
+        )],
+    ),
 
     # ── Intermediates ────────────────────────────────────────────────────────
     'DEM_FILLED': RSLayer(
@@ -62,9 +77,9 @@ LayerTypes = {
         'D8 Flow Direction', 'D8_FLOW', 'Raster', 'hydrology/d8_flow.tif',
         lyr_meta=[RSMeta('Description', 'D8 flow direction raster (1-8 encoding, TauDEM d8flowdir)')],
     ),
-    'D8_SLOPE': RSLayer(
-        'D8 Slope', 'D8_SLOPE', 'Raster', 'hydrology/d8_slope.tif',
-        lyr_meta=[RSMeta('Description', 'D8 slope raster — dimensionless rise/run (m/m) per cell (TauDEM d8flowdir)')],
+    'SLOPE': RSLayer(
+        'Slope', 'SLOPE', 'Raster', SLOPE_RELPATH,
+        lyr_meta=[RSMeta('Description', 'Topographic slope in degrees (gdal.DEMProcessing Horn method, calculated from the raw DEM)')],
     ),
     'D8_CONTRIB_AREA': RSLayer(
         'D8 Contributing Area', 'D8_CONTRIB_AREA', 'Raster', 'hydrology/d8_contributing_area.tif',
@@ -80,10 +95,10 @@ LayerTypes = {
         'Stream Order', 'STREAM_ORDER', 'Raster', 'hydrology/stream_order.tif',
         lyr_meta=[RSMeta('Description', 'Strahler stream-order raster (TauDEM streamnet)')],
     ),
-    'HYDROLOGY_GPKG': RSLayer(
-        'Hydrology', 'HYDROLOGY_GPKG', 'Geopackage', 'hydrology/hydrology.gpkg',
+    'HYDRODERIVATIVES': RSLayer(
+        'Hydrology Derivatives', 'HYDRODERIVATIVES', 'Geopackage', 'hydrology/hydro_derivatives.gpkg',
         sub_layers={
-            'network': RSLayer('Stream Network Reaches', 'NETWORK', 'Vector', 'network'),
+            'network_intersected': RSLayer('Stream Network Reaches', 'NETWORK', 'Vector', 'network_intersected'),
             'subwatersheds': RSLayer('Subwatersheds', 'SUBWATERSHEDS_VEC', 'Vector', 'subwatersheds'),
         },
     ),
@@ -107,6 +122,7 @@ def rs_context_neo(
     threshold: int = DEFAULT_THRESHOLD,
     breach_dist: int = DEFAULT_BREACH_DIST,
     cores: int | None = None,
+    debug: bool = False,
 ) -> None:
     """
     Run the Riverscapes Context Neo tool for a single watershed.
@@ -132,10 +148,23 @@ def rs_context_neo(
                          its contributing area ≥ this value. At 1 m resolution,
                          multiply by 1 m² to get contributing area in m²
                          (e.g. 50 000 cells ≈ 0.05 km²). Default: 50 000 cells.
+        breach_dist (int): Maximum search distance in cells for the WhiteboxTools
+                           least-cost breach path. Default: DEFAULT_BREACH_DIST.
         cores (int | None): Number of MPI ranks for TauDEM steps. None reads
                             the TAUDEM_CORES env var, falling back to 2.
+        debug (bool): If True, intermediate files are not deleted after processing
+                        and more verbose logging and diagnostics are enabled.
     """
     log = Logger('RS Context Neo')
+    start_time = time.time()
+
+    log.info(f'Starting RS Context Neo v{cfg.version}')
+    log.info(f'Output folder: {output_folder}')
+    log.info(f'Output resolution: {output_res} m')
+    log.info(f'Stream threshold:  {threshold:,} cells')
+    log.info(f'Breach distance:   {breach_dist} cells')
+    if cores is not None:
+        log.info(f'TauDEM cores:      {cores}')
 
     if sum(v is not None for v in (aoi, dem)) != 1:
         raise ValueError('Exactly one of aoi or dem must be provided.')
@@ -143,23 +172,29 @@ def rs_context_neo(
     safe_makedirs(output_folder)
 
     # ── Step 1: Acquire bounds GeoJSON and DEM ─────────────────────────────────
+    log.info('Step 1 of 3: Acquiring project bounds and DEM')
+    step_timer = Timer()
     if aoi is not None:
-        log.info(f'Using AOI GeoJSON: {aoi}')
+        log.info(f'  Input source: Custom AOI GeoJSON — {aoi}')
         descriptor = 'Custom AOI'
         bounds_geojson = validate_copy_aoi(aoi, output_folder)
-        dem_path, _hillshade_path = _fetch_3dep(
+        dem_path, _hillshade_path, _slope_path = _fetch_3dep(
             bounds_geojson, output_folder, download_folder, scratch_folder,
             output_res, force_download,
         )
     elif dem is not None:
-        log.info(f'Using user-supplied DEM: {dem}')
+        log.info(f'  Input source: User-supplied DEM — {dem}')
         descriptor = 'User-supplied DEM'
         bounds_geojson = dem_to_geojson(dem, output_folder)
         dem_path = dem
     else:
         raise AssertionError('Unreachable: runtime guard above ensures exactly one source is set.')
+    log.info(f'  Step 1 complete in {pretty_duration(step_timer.ellapsed())}')
 
     # ── Step 2: D8 Hydrology ──────────────────────────────────────────────────
+    log.info('Step 2 of 3: Running D8 hydrology processing chain')
+    log.info(f'  Stream threshold: {threshold:,} cells, breach distance: {breach_dist} cells')
+    step_timer = Timer()
     run_d8_hydrology(
         dem_path,
         output_folder,
@@ -168,8 +203,11 @@ def rs_context_neo(
         cores=cores,
         force=force_download,
     )
+    log.info(f'  Step 2 complete in {pretty_duration(step_timer.ellapsed())}')
 
     # ── Step 3: Write project XML ─────────────────────────────────────────────
+    log.info('Step 3 of 3: Writing Riverscapes project XML')
+    elapsed_time = time.time() - start_time
     _write_project_xml(
         output_folder=output_folder,
         descriptor=descriptor,
@@ -178,10 +216,13 @@ def rs_context_neo(
         aoi=aoi,
         dem=dem,
         threshold=threshold,
+        output_res=output_res,
+        breach_dist=breach_dist,
+        elapsed_time=elapsed_time,
         log=log,
     )
 
-    log.info('RS Context Neo processing complete')
+    log.info(f'RS Context Neo complete — total processing time: {pretty_duration(elapsed_time)}')
 
 
 def _write_project_xml(
@@ -192,6 +233,9 @@ def _write_project_xml(
     aoi: str | None,
     dem: str | None,
     threshold: int,
+    output_res: float,
+    breach_dist: int,
+    elapsed_time: float,
     log: Logger,
 ) -> None:
     """
@@ -219,6 +263,13 @@ def _write_project_xml(
     threshold : int
         Minimum upstream cell count for stream classification (units: cells).
         Recorded in project metadata as ``StreamThreshold``.
+    output_res : float
+        Target DEM resolution in metres. Recorded as ``OutputResolution``.
+    breach_dist : int
+        Maximum breach search distance in cells. Recorded as ``BreachDist``.
+    elapsed_time : float
+        Total processing time in seconds (``time.time()`` delta). Recorded as
+        ``ProcTimeS`` (hidden) and ``Processing Time`` (human-readable).
     log : Logger
         Caller-supplied logger.
     """
@@ -227,11 +278,15 @@ def _write_project_xml(
     project_name = f'RSContext Neo — {descriptor}'
 
     project = RSProject(cfg, output_folder)
-    project.create(project_name, 'rscontextneo', [
+    project.create(project_name, 'RSContext', [
         RSMeta('Model Documentation', 'https://tools.riverscapes.net/rscontext', RSMetaTypes.URL, locked=True),
         RSMeta('StreamThreshold', str(threshold), RSMetaTypes.HIDDEN, locked=True),
         RSMeta('StreamThresholdUnits', 'cells', RSMetaTypes.HIDDEN, locked=True),
         RSMeta('Stream Threshold', f'{threshold:,} cells', locked=True),
+        RSMeta('OutputResolution', str(output_res), RSMetaTypes.HIDDEN, locked=True),
+        RSMeta('Output Resolution', f'{output_res} m', locked=True),
+        RSMeta('BreachDist', str(breach_dist), RSMetaTypes.HIDDEN, locked=True),
+        RSMeta('Breach Distance', f'{breach_dist} cells', locked=True),
     ])
 
     # Caller-supplied metadata (hidden)
@@ -243,36 +298,39 @@ def _write_project_xml(
         project.add_metadata([RSMeta(k, v, RSMetaTypes.HIDDEN, locked=True) for k, v in meta.items()])
 
     # ── Realization ────────────────────────────────────────────────────────────
-    _realization, nodes = project.add_realization(
+    realization = project.add_realization(
         project_name,
         'REALIZATION1',
         cfg.version,
-        data_nodes=['Inputs', 'Intermediates', 'Outputs'],
         create_folders=False,  # folders already exist from processing
     )
+    datasets = project.XMLBuilder.add_sub_element(realization, 'Datasets')
 
-    # ── Inputs: DEM + hillshade ────────────────────────────────────────────────
-    log.info('  Registering input layers')
-    project.add_project_raster(nodes['Inputs'], LayerTypes['DEM'])
-    project.add_project_raster(nodes['Inputs'], LayerTypes['HILLSHADE'])
-
-    # ── Intermediates: pit-fill, flow dir, slope, contributing area ───────────
-    log.info('  Registering intermediate layers')
-    project.add_project_raster(nodes['Intermediates'], LayerTypes['DEM_FILLED'])
-    project.add_project_raster(nodes['Intermediates'], LayerTypes['DEM_BREACH'])
-    project.add_project_raster(nodes['Intermediates'], LayerTypes['D8_FLOW'])
-    project.add_project_raster(nodes['Intermediates'], LayerTypes['D8_SLOPE'])
-    project.add_project_raster(nodes['Intermediates'], LayerTypes['D8_CONTRIB_AREA'])
-
-    # ── Outputs: stream products ───────────────────────────────────────────────
-    log.info('  Registering output layers')
-    project.add_project_raster(nodes['Outputs'], LayerTypes['STREAM_RASTER'])
-    project.add_project_raster(nodes['Outputs'], LayerTypes['STREAM_ORDER'])
-    project.add_project_geopackage(nodes['Outputs'], LayerTypes['HYDROLOGY_GPKG'])
-    project.add_project_raster(nodes['Outputs'], LayerTypes['SUBWATERSHEDS'])
+    # ── Flat Datasets node ─────────────────────────────────────────────────────
+    log.info('  Registering project layers')
+    project.add_project_raster(datasets, LayerTypes['DEM'])
+    if aoi is not None:
+        project.add_project_raster(datasets, LayerTypes['HILLSHADE'])
+    project.add_project_raster(datasets, LayerTypes['SLOPE'])
+    project.add_project_raster(datasets, LayerTypes['DEM_FILLED'])
+    project.add_project_raster(datasets, LayerTypes['DEM_BREACH'])
+    project.add_project_raster(datasets, LayerTypes['D8_FLOW'])
+    project.add_project_raster(datasets, LayerTypes['D8_CONTRIB_AREA'])
+    project.add_project_raster(datasets, LayerTypes['STREAM_RASTER'])
+    project.add_project_raster(datasets, LayerTypes['STREAM_ORDER'])
+    project.add_project_geopackage(datasets, LayerTypes['HYDRODERIVATIVES'])
+    project.add_project_raster(datasets, LayerTypes['SUBWATERSHEDS'])
+    if aoi is not None:
+        project.add_project_geopackage(datasets, LayerTypes['TILE_FOOTPRINTS'])
 
     # ── Project extent (bounds GeoJSON → centroid + bbox) ─────────────────────
     _register_project_bounds(project, bounds_geojson, log)
+
+    # ── Timing metadata (mirrors rs_context.py convention) ────────────────────
+    project.add_metadata([
+        RSMeta('ProcTimeS', f'{elapsed_time:.2f}', RSMetaTypes.HIDDEN, locked=True),
+        RSMeta('Processing Time', pretty_duration(elapsed_time), locked=True),
+    ])
 
     log.info(f'Project XML written: {project.xml_path}')
 
@@ -336,7 +394,8 @@ def _fetch_3dep(
     scratch_folder: str | None,
     output_res: float,
     force_download: bool,
-) -> tuple[str, str]:
+    debug: bool = False,
+) -> tuple[str, str, str]:
     """Validate 3DEP fetch arguments and delegate to fetch_dem_from_3dep."""
     if download_folder is None:
         raise ValueError(
@@ -346,7 +405,7 @@ def _fetch_3dep(
     effective_scratch = scratch_folder or os.path.join(download_folder, 'scratch')
     return fetch_dem_from_3dep(
         bounds_geojson, output_folder, download_folder, effective_scratch,
-        output_res, force_download,
+        output_res, force_download, debug,
     )
 
 
@@ -364,7 +423,7 @@ def main():
     parser.add_argument('--output_res', help='Target DEM resolution in metres (1–10, default: 1.0 m)', type=float, default=1.0)
     parser.add_argument('--force', help='Re-download 3DEP tiles and re-run all processing steps even if already cached', action='store_true', default=False)
     parser.add_argument('--threshold', help=f'Minimum upstream contributing-area cell count for stream classification (units: cells; default: {DEFAULT_THRESHOLD:,} cells). At 1 m resolution, {DEFAULT_THRESHOLD:,} cells ≈ {DEFAULT_THRESHOLD / 1e6:.2f} km². Lower values produce denser networks. See docs/STREAM_THRESHOLD.md.', type=int, default=DEFAULT_THRESHOLD)
-    parser.add_argument('--breach_dist', help=f'Maximum search distance in cells for the WhiteboxTools least-cost breach path (default: {DEFAULT_BREACH_DIST} cells). At 1 m resolution this is {DEFAULT_BREACH_DIST} m. Increase for wider flat areas; decrease to limit processing time.', type=int, default=DEFAULT_BREACH_DIST)
+    parser.add_argument('--breach_dist', help=f'Maximum search distance in cells for the WhiteboxTools least-cost breach path (default: {DEFAULT_BREACH_DIST} cells = {DEFAULT_BREACH_DIST} m at 1 m resolution). Sized to span typical road and rail embankments without breaching natural ridges. Increase to 200-300 for areas with major highway infrastructure.', type=int, default=DEFAULT_BREACH_DIST)
     parser.add_argument('--cores', help='Number of MPI ranks (parallel processes) for TauDEM steps (default: TAUDEM_CORES env var, or 2)', type=int, default=None)
     parser.add_argument('--meta', help='Riverscapes project metadata as comma separated key=value pairs', type=str)
     parser.add_argument('--verbose', help='(optional) a little extra logging', action='store_true', default=False)
@@ -376,18 +435,28 @@ def main():
     args = dotenv.parse_args_env(parser, env_path=_env_path)
 
     log = Logger('RS Context Neo')
-    log.setup(log_path=os.path.join(args.output, 'RSContextNeo.log'), verbose=args.verbose)
+    log.setup(log_path=os.path.join(args.output, 'rs_context.log'), verbose=args.verbose)
     log.title('Riverscapes Context Neo')
 
-    log.info(f'Model Version: {__version__}')
-    log.info(f'Output folder: {args.output}')
+    log.info(f'Model Version:     {__version__}')
+    log.info(f'Output folder:     {args.output}')
+    if args.aoi:
+        log.info(f'AOI:               {args.aoi}')
+    if args.dem:
+        log.info(f'DEM:               {args.dem}')
     if args.download_dir:
-        log.info(f'Download cache: {args.download_dir}')
+        log.info(f'Download cache:    {args.download_dir}')
+    if args.scratch_dir:
+        log.info(f'Scratch dir:       {args.scratch_dir}')
     log.info(f'Output resolution: {args.output_res} m')
     log.info(f'Stream threshold:  {args.threshold:,} cells')
     log.info(f'Breach dist:       {args.breach_dist} cells')
+    if args.cores:
+        log.info(f'TauDEM cores:      {args.cores}')
+    log.info(f'Force download:    {args.force}')
 
     meta = parse_metadata(args.meta) if args.meta else {}
+    main_timer = time.time()
 
     try:
         rs_context_neo(
@@ -402,11 +471,14 @@ def main():
             threshold=args.threshold,
             breach_dist=args.breach_dist,
             cores=args.cores,
+            debug=args.debug,
         )
     except Exception as e:
         log.error(e)
         traceback.print_exc()
         sys.exit(1)
+
+    log.info(f'Total wall-clock time: {pretty_duration(time.time() - main_timer)}')
 
 
 if __name__ == '__main__':

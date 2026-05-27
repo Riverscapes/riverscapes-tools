@@ -10,7 +10,7 @@ Note on naming
 This module is named ``wbt.py`` rather than ``whitebox.py`` to avoid
 shadowing the ``whitebox`` PyPI package on the import path.
 
-Author:     Riverscapes
+Author:     Matt Reimer
 Date:       2026-05-25
 """
 import os
@@ -29,7 +29,7 @@ def breach_depressions_least_cost(
     log: Logger,
 ) -> None:
     """
-    Step 1b — Hydrologically condition the DEM via least-cost depression
+    Hydrologically condition the DEM via least-cost depression
     breaching (WhiteboxTools ``BreachDepressionsLeastCost``).
 
     Unlike simple pit-filling (which raises all cells in a depression to the
@@ -65,7 +65,7 @@ def breach_depressions_least_cost(
     if skip_if_exists(breach_dem_path, force, 'BreachDepressionsLeastCost', log):
         return
 
-    log.info(f'Step 1b — Breach depressions least-cost (WhiteboxTools, dist={breach_dist} cells)')
+    log.info(f'Breach depressions least-cost (WhiteboxTools, dist={breach_dist} cells)')
 
     wbt = whitebox.WhiteboxTools()
     wbt.set_verbose_mode(False)

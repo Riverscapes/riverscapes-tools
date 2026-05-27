@@ -3,6 +3,13 @@ HUC geometry fetching utilities.
 
 Fetches HUC boundary GeoJSON files from the Riverscapes tile server.
 Supports HUC8, HUC10, and HUC12 codes.
+
+Note:
+    This module is not currently called from rs_context_neo.py.
+    It is retained for future use when HUC-code-based AOI lookup is implemented.
+
+Author:     Matt Reimer
+Date:       2026-05-25
 """
 import os
 import urllib.request

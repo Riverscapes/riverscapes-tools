@@ -1,5 +1,7 @@
 # COG National Landfire Rasters on S3
 
+*NOTE: This is just an exploration of how we could put our Landfire rasters on S3 as Cloud Optimized GeoTiffs (COGs) and read them efficiently at runtime. It is not currently implemented in `rs_context` and may require refactoring to fit the existing code structure. We're basically just trying to remove the need for a national project.*
+
 This document describes how to convert the national Landfire rasters used by `rs_context` into Cloud Optimized GeoTiffs (COGs), host them on S3, and then efficiently extract only the bounding-box region needed for a given area of interest at runtime — replacing the need to ship a full national raster as a local input.
 
 ---

@@ -3,6 +3,9 @@ DEM boundary extraction for RS Context Neo.
 
 Extracts the spatial footprint of a DEM raster (non-nodata areas) and writes
 it as a buffered, smoothed GeoJSON MultiPolygon in WGS84 (EPSG:4326).
+
+Author:     Matt Reimer
+Date:       2026-05-25
 """
 import json
 import os
@@ -129,3 +132,5 @@ def dem_to_geojson(dem_path: str, output_folder: str, filename: str = 'project_b
 
     log.info(f'Project bounds written to: {dest}')
     return dest
+
+

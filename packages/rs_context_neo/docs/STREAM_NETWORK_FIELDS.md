@@ -1,14 +1,14 @@
 # Stream Network GeoPackage — Field Reference
 
-`hydrology/hydrology.gpkg` is the primary vector output of RS Context Neo. It
+`hydrology/hydro_derivatives.gpkg` is the primary vector output of RS Context Neo. It
 contains two layers:
 
 | Layer | Geometry | Description |
 |---|---|---|
-| `network` | LineString | One feature per stream reach (TauDEM `streamnet`) |
+| `network_intersected` | LineString | One feature per stream reach (TauDEM `streamnet`) |
 | `subwatersheds` | MultiPolygon | One polygon per subwatershed, matching each reach (polygonised from `subwatersheds.tif`) |
 
-The two layers share a common join key: `WSNO` / `LINKNO` in `network` equals
+The two layers share a common join key: `WSNO` / `LINKNO` in `network_intersected` equals
 `WSNO` in `subwatersheds`, so you can join drainage polygons to their outlet
 reach directly.
 
@@ -167,7 +167,7 @@ time without rerunning the model:
 
 ```sql
 -- Show only reaches where ≥ 200,000 cells drain through the upstream tip
-SELECT * FROM network WHERE USContArea >= 200000
+SELECT * FROM network_intersected WHERE USContArea >= 200000
 ```
 
 See [STREAM_THRESHOLD.md](STREAM_THRESHOLD.md) for a full explanation of how
@@ -298,14 +298,7 @@ above:
 
 ## Topology diagram
 
-```
-                    USLINKNO1 (order 1)
-                         \
-                          \
-  USLINKNO2 (order 1) ────╂──── this reach (LINKNO, order 2) ────► DSLINKNO
-                          │
-                    confluence node
-```
+![Stream network topology](stream_topology.svg)
 
 `USLINKNO2 = -1` for headwater reaches (no second upstream).  
 `DSLINKNO = -1` for the watershed outlet reach(es).
@@ -334,7 +327,7 @@ Each polygon is the drainage area that flows to the corresponding stream reach.
 | Field | Type | Description |
 |---|---|---|
 | `fid` | Integer | OGR auto-assigned feature identifier |
-| `WSNO` | Integer | Subwatershed / watershed number — joins to `LINKNO` and `WSNO` in the `network` layer |
+| `WSNO` | Integer | Subwatershed / watershed number — joins to `LINKNO` and `WSNO` in the `network_intersected` layer |
 
 ### `WSNO` in the subwatersheds layer
 
@@ -346,7 +339,7 @@ Because TauDEM assigns one unique value per reach (equal to that reach's
 -- Join subwatershed polygons to their outlet reach
 SELECT s.geom, n.strmOrder, n.USContArea, n.Slope
 FROM   subwatersheds s
-JOIN   network n ON s.WSNO = n.LINKNO
+JOIN   network_intersected n ON s.WSNO = n.LINKNO
 ```
 
 
