@@ -15,6 +15,7 @@ Date:       2026-05-25
 """
 import os
 
+from osgeo import gdal
 import whitebox
 from rsxml import Logger
 
@@ -87,4 +88,32 @@ def breach_depressions_least_cost(
             f'{breach_dem_path}'
         )
     log.info(f'  → {breach_dem_path}')
+    # WhiteboxTools writes breach DEMs as float64, which is overkill and causes 
+    # DEFLATE PREDICTOR=2 compression to fail in some GIS software. 
+    # Cast to float32 and recompress in-place so it works better with our other rasters.
+    _cast_to_float32(breach_dem_path, log)
     compress_inplace(breach_dem_path, log)
+
+
+def _cast_to_float32(path: str, log: Logger) -> None:
+    """
+    Convert a GeoTIFF to float32 in-place.
+
+    WhiteboxTools always writes float64; casting to float32 aligns the breach
+    DEM with every other raster in the pipeline and avoids DEFLATE PREDICTOR=2
+    incompatibility with 64-bit samples.
+    """
+    tmp = path + '.f32.tmp.tif'
+    try:
+        ds = gdal.Translate(tmp, path, outputType=gdal.GDT_Float32)
+        if ds is None:
+            raise RuntimeError(
+                f'float32 cast failed for {path}: {gdal.GetLastErrorMsg()}'
+            )
+        ds = None
+        os.replace(tmp, path)
+        log.info('  cast float64 → float32')
+    except Exception:
+        if os.path.isfile(tmp):
+            os.remove(tmp)
+        raise

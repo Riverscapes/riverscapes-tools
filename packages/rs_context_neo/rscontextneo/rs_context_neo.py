@@ -27,7 +27,8 @@ from rscontextneo.__version__ import __version__
 from rscontextneo.src.aoi import validate_copy_aoi
 from rscontextneo.src.dem import dem_to_geojson
 from rscontextneo.src.fetch_dem import fetch_dem_from_3dep, generate_hillshade, generate_slope, TILE_FOOTPRINTS_RELPATH, SLOPE_RELPATH, HILLSHADE_RELPATH
-from rscontextneo.src.hydrology import run_d8_hydrology, DEFAULT_THRESHOLD, DEFAULT_BREACH_DIST
+from rscontextneo.src.breach_diff import create_breach_diff_points, BREACH_DIFF_GPKG_RELPATH, BREACH_DIFF_LAYER_NAME
+from rscontextneo.src.hydrology import run_d8_hydrology, DEFAULT_THRESHOLD, DEFAULT_BREACH_DIST, DEM_BREACH_RELPATH
 
 initGDALOGRErrors()
 
@@ -105,6 +106,23 @@ LayerTypes = {
     'SUBWATERSHEDS': RSLayer(
         'Subwatersheds', 'SUBWATERSHEDS', 'Raster', 'hydrology/subwatersheds.tif',
         lyr_meta=[RSMeta('Description', 'Subwatershed raster — one unique value per stream reach (TauDEM streamnet)')],
+    ),
+    'BREACH_DIFF_POINTS': RSLayer(
+        'Breach Difference Points', 'BREACH_DIFF_POINTS', 'Geopackage',
+        BREACH_DIFF_GPKG_RELPATH,
+        sub_layers={
+            BREACH_DIFF_LAYER_NAME: RSLayer(
+                'Breach Difference Points', 'BREACH_DIFF_POINTS_LYR', 'Vector',
+                BREACH_DIFF_LAYER_NAME,
+            ),
+        },
+        lyr_meta=[RSMeta(
+            'Description',
+            'Debug layer: point feature at every pixel where the original DEM '
+            'elevation exceeds the breach-conditioned DEM by \u2265 1 m. '
+            'The diff_m attribute records the magnitude of the elevation change. '
+            'Only produced when --debug is set.',
+        )],
     ),
 }
 
@@ -229,6 +247,17 @@ def rs_context_neo(
     )
     log.info(f'  Step 2 complete in {pretty_duration(step_timer.ellapsed())}')
 
+    # ── Debug: breach difference points ──────────────────────────────────────
+    if debug:
+        log.info('Debug: generating breach difference points layer')
+        create_breach_diff_points(
+            dem_path=dem_path,
+            dem_breach_path=os.path.join(output_folder, DEM_BREACH_RELPATH),
+            output_gpkg=os.path.join(output_folder, BREACH_DIFF_GPKG_RELPATH),
+            force=force_download,
+            log=log,
+        )
+
     # ── Step 3: Write project XML ─────────────────────────────────────────────
     log.info('Step 3 of 3: Writing Riverscapes project XML')
     elapsed_time = time.time() - start_time
@@ -245,6 +274,7 @@ def rs_context_neo(
             breach_dist=breach_dist,
             elapsed_time=elapsed_time,
             log=log,
+            debug=debug,
         )
     except Exception as exc:
         log.error(f'Failed to write project XML: {exc}')
@@ -269,6 +299,7 @@ def _write_project_xml(
     breach_dist: int,
     elapsed_time: float,
     log: Logger,
+    debug: bool = False,
 ) -> None:
     """
     Create or overwrite the Riverscapes project XML file.
@@ -304,6 +335,8 @@ def _write_project_xml(
         ``ProcTimeS`` (hidden) and ``Processing Time`` (human-readable).
     log : Logger
         Caller-supplied logger.
+    debug : bool
+        If True, the BREACH_DIFF_POINTS debug layer is registered.
     """
     log.info('Writing project XML')
 
@@ -353,6 +386,8 @@ def _write_project_xml(
     project.add_project_raster(datasets, LayerTypes['SUBWATERSHEDS'])
     if aoi is not None:
         project.add_project_geopackage(datasets, LayerTypes['TILE_FOOTPRINTS'])
+    if debug:
+        project.add_project_geopackage(datasets, LayerTypes['BREACH_DIFF_POINTS'])
 
     # ── Project extent (bounds GeoJSON → centroid + bbox) ─────────────────────
     _register_project_bounds(project, bounds_geojson, log)

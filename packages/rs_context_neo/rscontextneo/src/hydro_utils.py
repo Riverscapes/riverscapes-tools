@@ -56,4 +56,6 @@ def compress_inplace(path: str, log: Logger) -> None:
     except Exception:
         if os.path.isfile(tmp):
             os.remove(tmp)
-        raise
+        result = None  # flush / dereference
+        os.replace(tmp, path)
+        log.info(f'  compressed → {os.path.basename(path)}')
