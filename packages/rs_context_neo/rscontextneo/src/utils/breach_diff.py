@@ -8,6 +8,7 @@ pixel where the difference is >= 1 m.
 Rasters are processed block-by-block (using each source raster's native tile
 layout) so arbitrarily large DEMs never need to be held in memory at once.
 """
+
 import os
 from logging import Logger
 
@@ -16,11 +17,11 @@ import rasterio
 from osgeo import ogr, osr
 from rsxml import ProgressBar
 
-from rscontextneo.src.hydro_utils import skip_if_exists
+from rscontextneo.src.utils.rasters import skip_if_exists
 
 # ── Module-level constants ─────────────────────────────────────────────────────
-BREACH_DIFF_GPKG_RELPATH = 'hydrology/breach_diff_points.gpkg'
-BREACH_DIFF_LAYER_NAME = 'breach_diff_points'
+BREACH_DIFF_GPKG_RELPATH = "hydrology/breach_diff_points.gpkg"
+BREACH_DIFF_LAYER_NAME = "breach_diff_points"
 MIN_DIFF_METRES = 0.001
 
 
@@ -32,7 +33,13 @@ def create_breach_diff_points(
     log: Logger,
 ) -> str:
     """
-    Compute pixel-wise elevation difference (DEM − breach-conditioned DEM) and
+    NOTE: This is not necessary for the core functionality of RS Context Neo and is only intended to be
+    used when the user runs with the --debug flag. It produces a vector visualization of where
+    the breaching is occurring and how much elevation change is happening at each point, which can be
+    helpful for troubleshooting and understanding the breaching process. It is not intended to be a
+    permanent output layer and may be removed in future versions of the tool.
+
+    Compute pixel-wise elevation difference (DEM - breach-conditioned DEM) and
     write every pixel with a difference ≥ 1 m as a point feature in a GeoPackage.
 
     Rasters are read block-by-block using the native tile layout of the DEM so
@@ -56,27 +63,30 @@ def create_breach_diff_points(
     str
         The path to the output GeoPackage (``output_gpkg``).
     """
-    if skip_if_exists(output_gpkg, force, 'Breach difference points', log):
+    if skip_if_exists(output_gpkg, force, "Breach difference points", log):
         return output_gpkg
 
-    for label, path in [('DEM', dem_path), ('breach DEM', dem_breach_path)]:
+    for label, path in [("DEM", dem_path), ("breach DEM", dem_breach_path)]:
         if not os.path.isfile(path):
-            log.warning(f'  Breach difference skipped: {label} not found at {path}')
+            log.warning(f"  Breach difference skipped: {label} not found at {path}")
             return output_gpkg
 
-    log.info(f'  Computing breach difference points: {os.path.basename(dem_path)} '
-             f'vs {os.path.basename(dem_breach_path)}')
+    log.info(
+        f"  Computing breach difference points: {os.path.basename(dem_path)} "
+        f"vs {os.path.basename(dem_breach_path)}"
+    )
 
     # ── Set up OGR output ──────────────────────────────────────────────────────
-    driver = ogr.GetDriverByName('GPKG')
+    driver = ogr.GetDriverByName("GPKG")
     os.makedirs(os.path.dirname(output_gpkg), exist_ok=True)
     if os.path.isfile(output_gpkg):
         driver.DeleteDataSource(output_gpkg)
 
     try:
-        with rasterio.open(dem_path) as src_dem, \
-                rasterio.open(dem_breach_path) as src_breach:
-
+        with (
+            rasterio.open(dem_path) as src_dem,
+            rasterio.open(dem_breach_path) as src_breach,
+        ):
             transform = src_dem.transform
             wkt_crs = src_dem.crs.to_wkt()
             dem_nodata = src_dem.nodata
@@ -85,9 +95,11 @@ def create_breach_diff_points(
             ds = driver.CreateDataSource(output_gpkg)
             srs = osr.SpatialReference()
             srs.ImportFromWkt(wkt_crs)
-            layer = ds.CreateLayer(BREACH_DIFF_LAYER_NAME, srs=srs, geom_type=ogr.wkbPoint)
+            layer = ds.CreateLayer(
+                BREACH_DIFF_LAYER_NAME, srs=srs, geom_type=ogr.wkbPoint
+            )
 
-            field_defn = ogr.FieldDefn('diff_m', ogr.OFTReal)
+            field_defn = ogr.FieldDefn("diff_m", ogr.OFTReal)
             field_defn.SetWidth(12)
             field_defn.SetPrecision(4)
             layer.CreateField(field_defn)
@@ -95,7 +107,7 @@ def create_breach_diff_points(
 
             # ── Iterate over native blocks ─────────────────────────────────────
             windows = list(src_dem.block_windows(1))
-            progbar = ProgressBar(len(windows), 50, 'Breach difference points')
+            progbar = ProgressBar(len(windows), 50, "Breach difference points")
             n_pixels = 0
 
             layer.StartTransaction()
@@ -118,9 +130,8 @@ def create_breach_diff_points(
                 diff_block = dem_block - breach_block
 
                 # Pixels where both are valid and difference meets threshold
-                valid_mask = (
-                    ~np.ma.getmaskarray(diff_block)
-                    & (np.ma.getdata(diff_block) >= MIN_DIFF_METRES)
+                valid_mask = ~np.ma.getmaskarray(diff_block) & (
+                    np.ma.getdata(diff_block) >= MIN_DIFF_METRES
                 )
 
                 row_idxs, col_idxs = np.where(valid_mask)
@@ -148,7 +159,7 @@ def create_breach_diff_points(
                     geom.AddPoint(float(x), float(y))
                     feat = ogr.Feature(feat_defn)
                     feat.SetGeometry(geom)
-                    feat.SetField('diff_m', float(dv))
+                    feat.SetField("diff_m", float(dv))
                     layer.CreateFeature(feat)
                     feat = None
 
@@ -166,10 +177,11 @@ def create_breach_diff_points(
             except Exception:
                 pass
         raise RuntimeError(
-            f'Breach difference points failed '
-            f'({type(exc).__name__}: {exc})'
+            f"Breach difference points failed ({type(exc).__name__}: {exc})"
         ) from exc
 
-    log.info(f'  Breach difference points written → {os.path.basename(output_gpkg)} '
-             f'({n_pixels:,} features)')
+    log.info(
+        f"  Breach difference points written → {os.path.basename(output_gpkg)} "
+        f"({n_pixels:,} features)"
+    )
     return output_gpkg

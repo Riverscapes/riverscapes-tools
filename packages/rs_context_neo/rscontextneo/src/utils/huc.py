@@ -11,12 +11,15 @@ Note:
 Author:     Matt Reimer
 Date:       2026-05-25
 """
+
 import os
 import urllib.request
 
 from rsxml import Logger
 
-_HUC_GEOM_URL = 'https://tiles.riverscapes.net/pmTiles/huc{level}/1.0/geom/{huc}.geojson'
+_HUC_GEOM_URL = (
+    "https://tiles.riverscapes.net/pmTiles/huc{level}/1.0/geom/{huc}.geojson"
+)
 _VALID_HUC_LENGTHS = {8, 10, 12}
 
 
@@ -36,16 +39,18 @@ def fetch_huc_geometry(huc: str, output_folder: str) -> str:
         ValueError: If the HUC code is not 8, 10, or 12 digits.
         urllib.error.URLError: If the download fails.
     """
-    log = Logger('HUC Geometry')
+    log = Logger("HUC Geometry")
 
     if not huc.isdigit() or len(huc) not in _VALID_HUC_LENGTHS:
-        raise ValueError(f'Invalid HUC code "{huc}". Must be exactly 8, 10, or 12 digits.')
+        raise ValueError(
+            f'Invalid HUC code "{huc}". Must be exactly 8, 10, or 12 digits.'
+        )
 
     url = _HUC_GEOM_URL.format(level=len(huc), huc=huc)
-    dest = os.path.join(output_folder, f'{huc}.geojson')
+    dest = os.path.join(output_folder, f"{huc}.geojson")
 
-    log.info(f'Fetching HUC geometry from: {url}')
+    log.info(f"Fetching HUC geometry from: {url}")
     urllib.request.urlretrieve(url, dest)
-    log.info(f'HUC geometry saved to: {dest}')
+    log.info(f"HUC geometry saved to: {dest}")
 
     return dest

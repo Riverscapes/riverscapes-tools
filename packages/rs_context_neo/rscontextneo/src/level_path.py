@@ -30,10 +30,18 @@ calc_level_paths(gpkg_path, layer_name, force, log) -> None
 Author:     Matt Reimer (adapted from Philip Bailey)
 Date:       2026-05-27
 """
+
 import sqlite3
 from typing import List, Union
 
 from rsxml import Logger
+
+from rscontextneo.src.utils.gpkg import (
+    add_column,
+    create_index,
+    drop_table_triggers,
+    restore_table_triggers,
+)
 
 # ---------------------------------------------------------------------------
 # SQL helpers
@@ -52,6 +60,7 @@ NEXT_REACH_QUERY = (
 # ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
+
 
 def calc_level_paths(gpkg_path: str, layer_name: str, force: bool, log: Logger) -> None:
     """Calculate and persist level-path values for every reach in *layer_name*.
@@ -91,10 +100,10 @@ def calc_level_paths(gpkg_path: str, layer_name: str, force: bool, log: Logger) 
 
         # Ensure the destination column and lookup indexes exist before the
         # transaction so that DDL changes are durable even on error.
-        _add_column(curs, layer_name, 'level_path', 'REAL')
-        _create_index(curs, layer_name, ['LINKNO'])
-        _create_index(curs, layer_name, ['DSLINKNO'])
-        _create_index(curs, layer_name, ['USLINKNO1'])
+        add_column(curs, layer_name, "level_path", "REAL")
+        create_index(curs, layer_name, ["LINKNO"])
+        create_index(curs, layer_name, ["DSLINKNO"])
+        create_index(curs, layer_name, ["USLINKNO1"])
         conn.commit()
 
         # Check whether all rows are already labelled.
@@ -113,9 +122,11 @@ def calc_level_paths(gpkg_path: str, layer_name: str, force: bool, log: Logger) 
         # SQLite compiles all trigger SQL the moment the table is first touched,
         # so those calls fail immediately even when the WHEN clause would never
         # have fired.  Drop them before the bulk UPDATE and restore afterwards.
-        triggers = _drop_table_triggers(conn, layer_name)
+        triggers = drop_table_triggers(conn, layer_name)
         if triggers:
-            log.debug(f"Dropped {len(triggers)} GeoPackage trigger(s) on '{layer_name}' for bulk UPDATE.")
+            log.debug(
+                f"Dropped {len(triggers)} GeoPackage trigger(s) on '{layer_name}' for bulk UPDATE."
+            )
 
         conn.execute("BEGIN")
         try:
@@ -130,9 +141,11 @@ def calc_level_paths(gpkg_path: str, layer_name: str, force: bool, log: Logger) 
             # Always restore triggers — even on error — so the GeoPackage
             # remains spatially consistent for subsequent operations.
             if triggers:
-                _restore_table_triggers(conn, triggers)
+                restore_table_triggers(conn, triggers)
                 conn.commit()
-                log.debug(f"Restored {len(triggers)} GeoPackage trigger(s) on '{layer_name}'.")
+                log.debug(
+                    f"Restored {len(triggers)} GeoPackage trigger(s) on '{layer_name}'."
+                )
     finally:
         conn.close()
 
@@ -140,6 +153,7 @@ def calc_level_paths(gpkg_path: str, layer_name: str, force: bool, log: Logger) 
 # ---------------------------------------------------------------------------
 # Core traversal logic
 # ---------------------------------------------------------------------------
+
 
 def _calc_level_path_core(
     curs: sqlite3.Cursor,
@@ -169,9 +183,7 @@ def _calc_level_path_core(
         log.info("force=True — resetting all level_path values to NULL.")
         curs.execute(f"UPDATE {feature_class} SET level_path = NULL")
 
-    curs.execute(
-        f"SELECT COUNT(*) FROM {feature_class} WHERE level_path IS NULL"
-    )
+    curs.execute(f"SELECT COUNT(*) FROM {feature_class} WHERE level_path IS NULL")
     unlabelled = curs.fetchone()[0]
     log.info(f"Reaches without a level_path: {unlabelled:,}")
 
@@ -186,8 +198,7 @@ def _calc_level_path_core(
     # Compute cumulative flow-path length from each headwater to the outlet.
     log.info("Computing flow-path lengths from each headwater to the outlet …")
     level_path_lengths = {
-        hw: _calculate_length(curs, feature_class, hw)
-        for hw in headwaters
+        hw: _calculate_length(curs, feature_class, hw) for hw in headwaters
     }
 
     # Process longest paths first so the main stem is labelled before
@@ -212,9 +223,8 @@ def _calc_level_path_core(
 # Private helpers
 # ---------------------------------------------------------------------------
 
-def _calculate_length(
-    curs: sqlite3.Cursor, feature_class: str, hydro_id: int
-) -> float:
+
+def _calculate_length(curs: sqlite3.Cursor, feature_class: str, hydro_id: int) -> float:
     """Walk downstream from *hydro_id*, accumulating reach lengths.
 
     Traversal stops when a reach has no downstream neighbour (outlet) or when
@@ -326,116 +336,3 @@ def _assign_level_path(
             )
 
     return num_reaches
-
-
-def _add_column(
-    curs: sqlite3.Cursor,
-    table: str,
-    column_name: str,
-    column_type: str,
-) -> None:
-    """Add *column_name* to *table* if it does not already exist.
-
-    Parameters
-    ----------
-    curs : sqlite3.Cursor
-        Active cursor.
-    table : str
-        Table name.
-    column_name : str
-        Name of the column to add.
-    column_type : str
-        SQLite type affinity string, e.g. ``'REAL'`` or ``'INTEGER'``.
-    """
-    curs.execute(f"PRAGMA table_info({table})")
-    existing = {row[1] for row in curs.fetchall()}
-    if column_name not in existing:
-        curs.execute(f"ALTER TABLE {table} ADD COLUMN {column_name} {column_type}")
-    else:
-        pass  # column already present — nothing to do
-
-
-def _create_index(
-    curs: sqlite3.Cursor,
-    table: str,
-    columns: Union[str, List[str]],
-) -> None:
-    """Create a covering index on *columns* in *table* if it does not exist.
-
-    The index is named ``ix_<table>_<col1>_<col2>_…``.
-
-    Parameters
-    ----------
-    curs : sqlite3.Cursor
-        Active cursor.
-    table : str
-        Table name.
-    columns : str or list[str]
-        Column name(s) to index.
-    """
-    col_list: List[str] = [columns] if isinstance(columns, str) else list(columns)
-    index_name = f"ix_{table}_{'_'.join(col_list)}"
-    curs.execute(
-        "SELECT name FROM sqlite_master WHERE type='index' AND name = ?",
-        (index_name,),
-    )
-    if curs.fetchone() is None:
-        curs.execute(
-            f"CREATE INDEX {index_name} ON {table}({', '.join(col_list)})"
-        )
-
-
-def _drop_table_triggers(
-    conn: sqlite3.Connection,
-    table: str,
-) -> List[tuple]:
-    """Drop all triggers on *table* and return their DDL for later restoration.
-
-    GeoPackage rtree triggers reference spatial functions (``ST_IsEmpty``,
-    ``ST_MinX``, etc.) that are only available when SpatiaLite is loaded.
-    SQLite compiles *all* trigger SQL the first time a statement touches the
-    table, so those calls fail even when the trigger's WHEN clause would never
-    fire.  Dropping triggers before a bulk non-geometry UPDATE avoids the
-    compile-time failure entirely.
-
-    Parameters
-    ----------
-    conn : sqlite3.Connection
-        Open connection (not inside an active transaction).
-    table : str
-        Table whose triggers should be dropped.
-
-    Returns
-    -------
-    list of (name, sql) tuples
-        The original trigger definitions so they can be recreated by
-        :func:`_restore_table_triggers`.
-    """
-    curs = conn.cursor()
-    curs.execute(
-        "SELECT name, sql FROM sqlite_master WHERE type='trigger' AND tbl_name=?",
-        (table,),
-    )
-    triggers = curs.fetchall()  # [(name, sql), ...]
-    for name, _sql in triggers:
-        curs.execute(f'DROP TRIGGER IF EXISTS "{name}"')
-    return triggers
-
-
-def _restore_table_triggers(
-    conn: sqlite3.Connection,
-    triggers: List[tuple],
-) -> None:
-    """Recreate triggers that were previously removed by :func:`_drop_table_triggers`.
-
-    Parameters
-    ----------
-    conn : sqlite3.Connection
-        Open connection (not inside an active transaction).
-    triggers : list of (name, sql) tuples
-        As returned by :func:`_drop_table_triggers`.
-    """
-    curs = conn.cursor()
-    for _name, sql in triggers:
-        if sql:
-            curs.execute(sql)

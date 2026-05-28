@@ -14,32 +14,36 @@ carries no runtime dependency on that package.
 Author:     Matt Reimer
 Date:       2026-05-25
 """
+
+import json
 import os
 import shutil
-import traceback
 from collections import Counter, defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import json
+
 import numpy as np
-
-from osgeo import gdal, ogr, osr
 import shapely.wkt as shapely_wkt
-from shapely.geometry import box as shapely_box, shape
-from shapely.ops import transform as shapely_transform, unary_union
-
+from osgeo import gdal, ogr, osr
+from rscommons.download import download_file, download_unzip
+from rscommons.download_dem import find_rasters, verify_areas
+from rscommons.geographic_raster import gdal_dem_geographic
+from rscommons.national_map import get_1m_dem_urls
+from rscommons.raster_warp import raster_vrt_stitch
 from rsxml import Logger
 from rsxml.util import safe_makedirs, safe_remove_file
-from rscommons.download_dem import verify_areas, find_rasters
-from rscommons.download import download_unzip, download_file
-from rscommons.national_map import get_1m_dem_urls
-from rscommons.geographic_raster import gdal_dem_geographic
-from rscommons.raster_warp import raster_vrt_stitch
+from shapely.geometry import box as shapely_box
+from shapely.geometry import shape
+from shapely.ops import transform as shapely_transform
+from shapely.ops import unary_union
+
+from rscontextneo.src.utils.dem import get_epsg, is_geographic_epsg
+from rscontextneo.src.utils.gpkg import geojson_to_gpkg
 
 # Output paths (relative to the project output_folder)
-DEM_RELPATH             = 'topography/dem.tif'
-HILLSHADE_RELPATH       = 'topography/dem_hillshade.tif'
-SLOPE_RELPATH           = 'topography/slope.tif'
-TILE_FOOTPRINTS_RELPATH = 'topography/tile_footprints.gpkg'
+DEM_RELPATH = "topography/dem.tif"
+HILLSHADE_RELPATH = "topography/dem_hillshade.tif"
+SLOPE_RELPATH = "topography/slope.tif"
+TILE_FOOTPRINTS_RELPATH = "topography/tile_footprints.gpkg"
 
 # Degrees to buffer the bounds polygon when querying The National Map
 _BUFFER_DIST_DEG = 0.01
@@ -49,7 +53,12 @@ _RESAMPLE_THRESHOLD = 0.1
 
 # GDAL creation options applied to the output DEM (PREDICTOR=2 = horizontal
 # differencing, ideal for continuous elevation data; shrinks files ~50-70%)
-_DEM_CREATION_OPTIONS = ['COMPRESS=DEFLATE', 'PREDICTOR=2', 'TILED=YES', 'BIGTIFF=IF_SAFER']
+_DEM_CREATION_OPTIONS = [
+    "COMPRESS=DEFLATE",
+    "PREDICTOR=2",
+    "TILED=YES",
+    "BIGTIFF=IF_SAFER",
+]
 
 # Number of tiles to download simultaneously.  Network I/O is the bottleneck
 # so threads (not processes) are the right tool - the GIL doesn't matter here.
@@ -60,6 +69,7 @@ _DEFAULT_DOWNLOAD_WORKERS = 4
 
 # ── Public entry point ────────────────────────────────────────────────────────
 
+
 def fetch_dem_from_3dep(
     bounds_geojson: str,
     output_folder: str,
@@ -69,7 +79,7 @@ def fetch_dem_from_3dep(
     force_download: bool = False,
     cleanup_scratch: bool = True,
     download_workers: int = _DEFAULT_DOWNLOAD_WORKERS,
-    debug: bool = False
+    debug: bool = False,
 ) -> tuple[str, str, str]:
     """
     Download and assemble a 3DEP 1-metre DEM for the area defined by a GeoJSON
@@ -111,44 +121,54 @@ def fetch_dem_from_3dep(
                     code could be determined from the downloaded tiles.
         Exception: Propagated from download / warp / verify steps.
     """
-    log = Logger('Fetch DEM')
+    log = Logger("Fetch DEM")
 
     if not os.path.exists(bounds_geojson):
-        raise FileNotFoundError(f'Bounds GeoJSON not found: {bounds_geojson}')
+        raise FileNotFoundError(f"Bounds GeoJSON not found: {bounds_geojson}")
 
     # Early-exit: if both outputs already exist and the caller hasn't asked for
     # a forced re-download, skip the entire tile-query / download / mosaic pipeline.
-    dem_path       = os.path.join(output_folder, DEM_RELPATH)
+    dem_path = os.path.join(output_folder, DEM_RELPATH)
     hillshade_path = os.path.join(output_folder, HILLSHADE_RELPATH)
-    slope_path     = os.path.join(output_folder, SLOPE_RELPATH)
-    if not force_download and os.path.isfile(dem_path) and os.path.isfile(hillshade_path) and os.path.isfile(slope_path):
-        log.info(f'DEM already exists at {dem_path} - skipping download (pass force_download=True to override)')
+    slope_path = os.path.join(output_folder, SLOPE_RELPATH)
+    if (
+        not force_download
+        and os.path.isfile(dem_path)
+        and os.path.isfile(hillshade_path)
+        and os.path.isfile(slope_path)
+    ):
+        log.info(
+            f"DEM already exists at {dem_path} - skipping download (pass force_download=True to override)"
+        )
         return dem_path, hillshade_path, slope_path
 
     # rscommons functions (download_dem, verify_areas) open vector files via
     # get_shp_or_gpkg which forces the GPKG driver.  GeoJSON isn't supported
     # by that path, so we convert once here and use the GeoPackage throughout.
-    bounds_gpkg = os.path.join(scratch_folder, 'bounds.gpkg')
+    bounds_gpkg = os.path.join(scratch_folder, "bounds.gpkg")
     safe_makedirs(scratch_folder)
-    _geojson_to_gpkg(bounds_geojson, bounds_gpkg)
+    geojson_to_gpkg(bounds_geojson, bounds_gpkg)
     # rscommons path_sorter returns (filepath, None) when the file exists,
     # so GeoPackage layer lookup fails.  Append the layer name as a compound
     # path (/path/to/bounds.gpkg/bounds) so the regex branch is used instead.
-    bounds_gpkg_layer = bounds_gpkg + '/bounds'
+    bounds_gpkg_layer = bounds_gpkg + "/bounds"
 
-    ned_download_folder = os.path.join(download_folder, 'ned')
-    ned_unzip_folder = os.path.join(scratch_folder, 'ned')
+    ned_download_folder = os.path.join(download_folder, "ned")
+    ned_unzip_folder = os.path.join(scratch_folder, "ned")
 
     # ── 1. Identify and download tiles ───────────────────────────────────────
-    log.info('Querying The National Map for 3DEP 1 m tiles ...')
+    log.info("Querying The National Map for 3DEP 1 m tiles ...")
     source_urls = get_1m_dem_urls(bounds_gpkg_layer, _BUFFER_DIST_DEG)
-    log.info(f'{len(source_urls)} tile(s) identified on The National Map')
+    log.info(f"{len(source_urls)} tile(s) identified on The National Map")
 
     dem_rasters = _download_tiles_parallel(
-        source_urls, ned_download_folder, ned_unzip_folder,
-        force_download, workers=download_workers,
+        source_urls,
+        ned_download_folder,
+        ned_unzip_folder,
+        force_download,
+        workers=download_workers,
     )
-    log.info(f'{len(dem_rasters)} tile(s) ready')
+    log.info(f"{len(dem_rasters)} tile(s) ready")
 
     # ── 2. Inspect tiles once: determine CRS and whether resampling is needed ─
     # A single pass avoids opening every raster file twice (previously
@@ -156,17 +176,17 @@ def fetch_dem_from_3dep(
     output_epsg, resample = _inspect_tiles(dem_rasters, output_res)
     if output_epsg is None:
         raise ValueError(
-            'Could not determine a valid EPSG code from the downloaded DEM tiles. '
-            'Check that the tiles are valid GeoTIFF/IMG files with embedded CRS information.'
+            "Could not determine a valid EPSG code from the downloaded DEM tiles. "
+            "Check that the tiles are valid GeoTIFF/IMG files with embedded CRS information."
         )
-    log.info(f'Output EPSG: {output_epsg}')
+    log.info(f"Output EPSG: {output_epsg}")
 
     # ── 3. Mosaic / clip / (optionally) resample ─────────────────────────────
 
     need_dem_rebuild = force_download or not os.path.exists(dem_path) or resample
 
     if need_dem_rebuild:
-        log.info('Mosaicing and clipping DEM tiles ...')
+        log.info("Mosaicing and clipping DEM tiles ...")
         safe_makedirs(os.path.dirname(dem_path))
         if os.path.exists(dem_path):
             safe_remove_file(dem_path)
@@ -189,18 +209,29 @@ def fetch_dem_from_3dep(
             dem_rasters, output_epsg, bounds_geojson, scratch_folder, log
         )
 
-        warp_options: dict = {'cutlineBlend': 1, 'creationOptions': _DEM_CREATION_OPTIONS}
+        warp_options: dict = {
+            "cutlineBlend": 1,
+            "creationOptions": _DEM_CREATION_OPTIONS,
+        }
         if resample:
-            log.info(f'Resampling to {output_res} m (bilinear)')
-            warp_options.update({
-                'xRes': output_res,
-                'yRes': output_res,
-                'resampleAlg': 'bilinear',
-            })
+            log.info(f"Resampling to {output_res} m (bilinear)")
+            warp_options.update(
+                {
+                    "xRes": output_res,
+                    "yRes": output_res,
+                    "resampleAlg": "bilinear",
+                }
+            )
 
         # bounds_geojson works here - raster_vrt_stitch uses gdal.WarpOptions
         # (cutlineDSName) which does native OGR auto-detection, not get_shp_or_gpkg.
-        raster_vrt_stitch(dem_rasters, dem_path, output_epsg, clip=bounds_geojson, warp_options=warp_options)
+        raster_vrt_stitch(
+            dem_rasters,
+            dem_path,
+            output_epsg,
+            clip=bounds_geojson,
+            warp_options=warp_options,
+        )
 
         # ── Tile footprints GeoPackage ────────────────────────────────────────
         # Record the footprint and provenance of every downloaded tile so the
@@ -213,29 +244,36 @@ def fetch_dem_from_3dep(
         # The .zip files in ned_download_folder are kept as a persistent cache;
         # the unzipped copies in ned_unzip_folder are now redundant.
         if cleanup_scratch and os.path.isdir(ned_unzip_folder):
-            log.info(f'Removing unzipped tile cache: {ned_unzip_folder}')
+            log.info(f"Removing unzipped tile cache: {ned_unzip_folder}")
             shutil.rmtree(ned_unzip_folder, ignore_errors=True)
     else:
-        log.info('DEM already exists and no resample needed - skipping rebuild (pass force_download=True to override)')
+        log.info(
+            "DEM already exists and no resample needed - skipping rebuild (pass force_download=True to override)"
+        )
 
     # ── 4. Verify coverage ────────────────────────────────────────────────────
     area_ratio = verify_areas(dem_path, bounds_gpkg_layer)
     if area_ratio < 0.85:
         log.warning(
-            f'DEM covers only {area_ratio:.1%} of the AOI bounds (threshold: 85%). '
-            '3DEP 1 m data may not be available for this region; consider using the 10 m product.'
+            f"DEM covers only {area_ratio:.1%} of the AOI bounds (threshold: 85%). "
+            "3DEP 1 m data may not be available for this region; consider using the 10 m product."
         )
 
     # ── 5. Hillshade ─────────────────────────────────────────────────────────
     need_hs_rebuild = need_dem_rebuild or not os.path.isfile(hillshade_path)
     if need_hs_rebuild:
-        log.info('Generating hillshade ...')
+        log.info("Generating hillshade ...")
         if is_geographic_epsg(output_epsg):
-            gdal_dem_geographic(dem_path, hillshade_path, 'hillshade')
+            gdal_dem_geographic(dem_path, hillshade_path, "hillshade")
         else:
-            gdal.DEMProcessing(hillshade_path, dem_path, 'hillshade', creationOptions=['COMPRESS=DEFLATE'])
+            gdal.DEMProcessing(
+                hillshade_path,
+                dem_path,
+                "hillshade",
+                creationOptions=["COMPRESS=DEFLATE"],
+            )
     else:
-        log.info('Hillshade already exists - skipping rebuild')
+        log.info("Hillshade already exists - skipping rebuild")
 
     # ── 6. Slope ──────────────────────────────────────────────────────────────
     # Slope is calculated from the raw assembled DEM using gdal.DEMProcessing,
@@ -262,124 +300,38 @@ def fetch_dem_from_3dep(
     # artificially flatten areas and misrepresent true terrain slope.
     need_slope_rebuild = need_dem_rebuild or not os.path.isfile(slope_path)
     if need_slope_rebuild:
-        log.info('Generating slope raster (gdal.DEMProcessing, degrees) ...')
+        log.info("Generating slope raster (gdal.DEMProcessing, degrees) ...")
         result = gdal.DEMProcessing(
-            slope_path, dem_path, 'slope',
-            creationOptions=['COMPRESS=DEFLATE', 'PREDICTOR=2', 'TILED=YES', 'BIGTIFF=IF_SAFER'],
+            slope_path,
+            dem_path,
+            "slope",
+            creationOptions=[
+                "COMPRESS=DEFLATE",
+                "PREDICTOR=2",
+                "TILED=YES",
+                "BIGTIFF=IF_SAFER",
+            ],
         )
         if result is None:
-            log.warning(f'gdal.DEMProcessing slope failed: {gdal.GetLastErrorMsg()}')
+            log.warning(f"gdal.DEMProcessing slope failed: {gdal.GetLastErrorMsg()}")
         else:
             result = None  # flush
-            log.info(f'Slope:     {slope_path}')
+            log.info(f"Slope:     {slope_path}")
     else:
-        log.info('Slope already exists - skipping rebuild')
+        log.info("Slope already exists - skipping rebuild")
 
-    log.info(f'DEM:       {dem_path}  ({os.path.getsize(dem_path) / 1_048_576:.1f} MB, compressed)')
-    log.info(f'Hillshade: {hillshade_path}')
-    log.info(f'Resolution: {output_res} m  |  EPSG: {output_epsg}  |  Coverage: {area_ratio:.1%}  |  Tiles: {len(source_urls)}')
+    log.info(
+        f"DEM:       {dem_path}  ({os.path.getsize(dem_path) / 1_048_576:.1f} MB, compressed)"
+    )
+    log.info(f"Hillshade: {hillshade_path}")
+    log.info(
+        f"Resolution: {output_res} m  |  EPSG: {output_epsg}  |  Coverage: {area_ratio:.1%}  |  Tiles: {len(source_urls)}"
+    )
 
     return dem_path, hillshade_path, slope_path
 
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
-
-def generate_hillshade(
-    dem_path: str,
-    hillshade_path: str,
-    *,
-    epsg: int | None = None,
-    force: bool = False,
-    log: Logger | None = None,
-) -> None:
-    """
-    Generate a hillshade raster from *dem_path*.
-
-    For geographic (lat/lon) DEMs a haversine z-factor is applied via
-    ``gdal_dem_geographic``; projected DEMs use ``gdal.DEMProcessing`` directly.
-
-    Parameters
-    ----------
-    dem_path : str
-        Path to the source DEM.
-    hillshade_path : str
-        Destination path for the hillshade raster.
-    epsg : int or None
-        EPSG code of *dem_path*.  When ``None`` the CRS is read directly from
-        the raster.
-    force : bool
-        If ``True``, regenerate even when the output already exists.
-    log : Logger or None
-        rsxml Logger.  Falls back to a module-level logger when ``None``.
-    """
-    _log = log or Logger('Hillshade')
-
-    if epsg is None:
-        epsg = get_epsg(dem_path)
-
-    if not force and os.path.isfile(hillshade_path):
-        _log.info('Hillshade already exists - skipping rebuild')
-        return
-
-    _log.info('Generating hillshade ...')
-    safe_makedirs(os.path.dirname(hillshade_path))
-    if epsg is not None and is_geographic_epsg(epsg):
-        gdal_dem_geographic(dem_path, hillshade_path, 'hillshade')
-    else:
-        gdal.DEMProcessing(
-            hillshade_path, dem_path, 'hillshade',
-            creationOptions=['COMPRESS=DEFLATE'],
-        )
-    _log.info(f'Hillshade: {hillshade_path}')
-
-
-def generate_slope(
-    dem_path: str,
-    slope_path: str,
-    *,
-    force: bool = False,
-    log: Logger | None = None,
-) -> None:
-    """
-    Generate a Horn-method slope raster (degrees) from *dem_path*.
-
-    Uses ``gdal.DEMProcessing`` with Horn's method, matching the SLOPE layer
-    produced by ``rs_context`` and expected by BRAT, RME, and other downstream
-    tools.  This is **not** the D8 rise/run slope produced by TauDEM, which is
-    an internal flow-routing intermediate.
-
-    The input must be the raw DEM, **not** a pit-filled or breach-conditioned
-    version: hydrological conditioning raises depression cells, which would
-    artificially flatten areas and misrepresent true terrain slope.
-
-    Parameters
-    ----------
-    dem_path : str
-        Path to the raw source DEM.
-    slope_path : str
-        Destination path for the slope raster.
-    force : bool
-        If ``True``, regenerate even when the output already exists.
-    log : Logger or None
-        rsxml Logger.  Falls back to a module-level logger when ``None``.
-    """
-    _log = log or Logger('Slope')
-
-    if not force and os.path.isfile(slope_path):
-        _log.info('Slope already exists - skipping rebuild')
-        return
-
-    _log.info('Generating slope raster (gdal.DEMProcessing, degrees) ...')
-    safe_makedirs(os.path.dirname(slope_path))
-    result = gdal.DEMProcessing(
-        slope_path, dem_path, 'slope',
-        creationOptions=['COMPRESS=DEFLATE', 'PREDICTOR=2', 'TILED=YES', 'BIGTIFF=IF_SAFER'],
-    )
-    if result is None:
-        _log.warning(f'gdal.DEMProcessing slope failed: {gdal.GetLastErrorMsg()}')
-    else:
-        result = None  # flush GDAL handle
-        _log.info(f'Slope:     {slope_path}')
 
 
 def _download_tiles_parallel(
@@ -414,21 +366,23 @@ def _download_tiles_parallel(
     Raises:
         Exception: If any individual tile download fails after retries.
     """
-    log = Logger('Download Tiles')
+    log = Logger("Download Tiles")
     safe_makedirs(download_folder)
     safe_makedirs(unzip_folder)
 
     def _download_one(url: str) -> str:
         base_path = os.path.basename(os.path.splitext(url)[0])
         final_unzip_path = os.path.join(unzip_folder, base_path)
-        if url.lower().endswith('.zip'):
-            file_path = download_unzip(url, download_folder, final_unzip_path, force_download)
+        if url.lower().endswith(".zip"):
+            file_path = download_unzip(
+                url, download_folder, final_unzip_path, force_download
+            )
             return find_rasters(file_path)
         else:
             return download_file(url, download_folder, force_download)
 
     effective_workers = min(workers, len(urls))
-    log.info(f'Downloading {len(urls)} tile(s) with {effective_workers} worker(s) ...')
+    log.info(f"Downloading {len(urls)} tile(s) with {effective_workers} worker(s) ...")
 
     raster_paths: list[str] = []
     errors: list[str] = []
@@ -439,21 +393,23 @@ def _download_tiles_parallel(
             url = future_to_url[future]
             try:
                 raster_paths.append(future.result())
-                log.info(f'  ✓  {os.path.basename(url)}')
+                log.info(f"  ✓  {os.path.basename(url)}")
             except Exception as exc:
-                log.error(f'  ✗  {os.path.basename(url)}: {exc}')
+                log.error(f"  ✗  {os.path.basename(url)}: {exc}")
                 errors.append(url)
 
     if errors:
         raise Exception(
-            f'{len(errors)} tile(s) failed to download:\n'
-            + '\n'.join(f'  {u}' for u in errors)
+            f"{len(errors)} tile(s) failed to download:\n"
+            + "\n".join(f"  {u}" for u in errors)
         )
 
     return raster_paths
 
 
-def _inspect_tiles(dem_rasters: list[str], output_res: float) -> tuple[int | None, bool]:
+def _inspect_tiles(
+    dem_rasters: list[str], output_res: float
+) -> tuple[int | None, bool]:
     """
     Open each tile *once* and return (best_epsg, needs_resample).
 
@@ -464,14 +420,14 @@ def _inspect_tiles(dem_rasters: list[str], output_res: float) -> tuple[int | Non
     product tier share the same pixel size, so averaging across all of them
     produces identical results at unnecessary cost.
     """
-    log = Logger('Inspect Tiles')
+    log = Logger("Inspect Tiles")
     epsg_codes: list[int] = []
     first_res: float | None = None
 
     for raster_path in dem_rasters:
         ds = gdal.Open(raster_path, gdal.GA_ReadOnly)
         if ds is None:
-            log.warning(f'Could not open {raster_path} - skipping')
+            log.warning(f"Could not open {raster_path} - skipping")
             continue
 
         # CRS
@@ -502,19 +458,25 @@ def _inspect_tiles(dem_rasters: list[str], output_res: float) -> tuple[int | Non
         max_freq = counts.most_common(1)[0][1]
         candidates = [c for c, f in counts.items() if f == max_freq]
         best_epsg = min(candidates)
-        log.info(f'Best CRS: EPSG:{best_epsg} (frequency {max_freq}/{len(epsg_codes)})')
+        log.info(f"Best CRS: EPSG:{best_epsg} (frequency {max_freq}/{len(epsg_codes)})")
     else:
-        log.error('Could not determine a valid EPSG from any tile.')
+        log.error("Could not determine a valid EPSG from any tile.")
 
     # Resample decision
     needs_resample = True  # default: resample if we can't read source res
     if first_res is not None:
         rel_diff = abs(first_res - output_res) / first_res
-        log.info(f'Source resolution: {first_res:.3f} m → target: {output_res} m (Δ {rel_diff:.1%})')
+        log.info(
+            f"Source resolution: {first_res:.3f} m → target: {output_res} m (Δ {rel_diff:.1%})"
+        )
         needs_resample = rel_diff > _RESAMPLE_THRESHOLD
-        log.info('Resampling required.' if needs_resample else 'Source resolution close enough - no resample needed.')
+        log.info(
+            "Resampling required."
+            if needs_resample
+            else "Source resolution close enough - no resample needed."
+        )
     else:
-        log.warning('No valid source resolution found - resampling by default.')
+        log.warning("No valid source resolution found - resampling by default.")
 
     return best_epsg, needs_resample
 
@@ -586,65 +548,67 @@ def _resolve_tiles(
 
     if len(groups) == 1:
         only_epsg = next(iter(groups))
-        log.info(f'All {len(dem_rasters)} tile(s) are in EPSG:{only_epsg} - no CRS selection needed')
+        log.info(
+            f"All {len(dem_rasters)} tile(s) are in EPSG:{only_epsg} - no CRS selection needed"
+        )
         return dem_rasters, only_epsg
 
     # ── Multiple CRSs - log the situation clearly before doing anything ───────
-    summary = '  |  '.join(
-        f'EPSG:{e}: {len(t)} tile(s)'
+    summary = "  |  ".join(
+        f"EPSG:{e}: {len(t)} tile(s)"
         for e, t in sorted(groups.items(), key=lambda x: -len(x[1]))
     )
-    log.warning('=' * 72)
-    log.warning('MIXED-CRS TILE SET DETECTED')
+    log.warning("=" * 72)
+    log.warning("MIXED-CRS TILE SET DETECTED")
     log.warning(
-        f'The downloaded tiles span {len(groups)} different coordinate reference '
-        f'systems, most likely because the AOI straddles a UTM zone boundary.'
+        f"The downloaded tiles span {len(groups)} different coordinate reference "
+        f"systems, most likely because the AOI straddles a UTM zone boundary."
     )
-    log.warning(f'Tile breakdown:  {summary}')
+    log.warning(f"Tile breakdown:  {summary}")
     log.warning(
-        'Strategy: measure AOI coverage for each CRS group and use the one '
-        'with the best coverage.  No reprojection will be performed.'
+        "Strategy: measure AOI coverage for each CRS group and use the one "
+        "with the best coverage.  No reprojection will be performed."
     )
-    log.warning('=' * 72)
+    log.warning("=" * 72)
 
     # ── Step 2: measure coverage for every CRS group ───────────────────────────
     # Load AOI once - same polygon is tested against every group.
     aoi_polygon = _load_aoi_polygon_wgs84(bounds_geojson)
 
-    best_epsg:     int   = target_epsg
-    best_tiles:    list  = groups[target_epsg]
+    best_epsg: int = target_epsg
+    best_tiles: list = groups[target_epsg]
     best_coverage: float = 0.0
 
     for epsg, tiles in sorted(groups.items(), key=lambda x: -len(x[1])):
-        log.info(f'Measuring coverage for EPSG:{epsg} ({len(tiles)} tile(s)) ...')
+        log.info(f"Measuring coverage for EPSG:{epsg} ({len(tiles)} tile(s)) ...")
         coverage = _compute_tile_coverage(tiles, epsg, aoi_polygon, log)
-        log.info(f'  EPSG:{epsg} covers {coverage:.2%} of the AOI')
+        log.info(f"  EPSG:{epsg} covers {coverage:.2%} of the AOI")
         if coverage > best_coverage:
             best_coverage = coverage
-            best_epsg     = epsg
-            best_tiles    = tiles
+            best_epsg = epsg
+            best_tiles = tiles
 
     # ── Report outcome ────────────────────────────────────────────────────────────
     discarded_count = len(dem_rasters) - len(best_tiles)
     log.warning(
-        f'Selected EPSG:{best_epsg} ({len(best_tiles)} tile(s), {best_coverage:.2%} AOI coverage) '
-        f'as the best available single-CRS tile set.'
+        f"Selected EPSG:{best_epsg} ({len(best_tiles)} tile(s), {best_coverage:.2%} AOI coverage) "
+        f"as the best available single-CRS tile set."
     )
     log.warning(
-        f'Discarding {discarded_count} tile(s) from other CRS group(s) - '
-        f'no reprojection will be performed.'
+        f"Discarding {discarded_count} tile(s) from other CRS group(s) - "
+        f"no reprojection will be performed."
     )
     for epsg, tiles in groups.items():
         if epsg != best_epsg:
             for t in tiles:
-                log.warning(f'  Discarded: {os.path.basename(t)}  (EPSG:{epsg})')
+                log.warning(f"  Discarded: {os.path.basename(t)}  (EPSG:{epsg})")
 
     if best_coverage < 0.999:
         log.warning(
-            f'WARNING: The selected tile set covers only {best_coverage:.2%} of the AOI. '
-            f'The remaining {1 - best_coverage:.2%} will have no elevation data in the output DEM. '
-            f'This is a consequence of the AOI straddling a UTM zone boundary and the '
-            f'decision not to reproject tiles.'
+            f"WARNING: The selected tile set covers only {best_coverage:.2%} of the AOI. "
+            f"The remaining {1 - best_coverage:.2%} will have no elevation data in the output DEM. "
+            f"This is a consequence of the AOI straddling a UTM zone boundary and the "
+            f"decision not to reproject tiles."
         )
 
     return best_tiles, best_epsg
@@ -658,20 +622,24 @@ def _load_aoi_polygon_wgs84(bounds_geojson: str):
     The returned geometry is the union of all features so multi-polygon AOIs
     are handled correctly.
     """
-    with open(bounds_geojson, encoding='utf-8') as f:
+    with open(bounds_geojson, encoding="utf-8") as f:
         data = json.load(f)
 
-    geoj_type = data.get('type', '')
-    if geoj_type == 'FeatureCollection':
-        geoms = [shape(feat['geometry']) for feat in data.get('features', []) if feat.get('geometry')]
-    elif geoj_type == 'Feature':
-        geoms = [shape(data['geometry'])] if data.get('geometry') else []
+    geoj_type = data.get("type", "")
+    if geoj_type == "FeatureCollection":
+        geoms = [
+            shape(feat["geometry"])
+            for feat in data.get("features", [])
+            if feat.get("geometry")
+        ]
+    elif geoj_type == "Feature":
+        geoms = [shape(data["geometry"])] if data.get("geometry") else []
     else:
         # Bare geometry object
         geoms = [shape(data)]
 
     if not geoms:
-        raise ValueError(f'No geometries found in bounds GeoJSON: {bounds_geojson}')
+        raise ValueError(f"No geometries found in bounds GeoJSON: {bounds_geojson}")
 
     return unary_union(geoms)
 
@@ -736,7 +704,9 @@ def _compute_tile_coverage(
     try:
         aoi_in_tile_crs = shapely_transform(_reproject_coords, aoi_polygon_wgs84)
     except Exception as exc:
-        log.warning(f'  Could not project AOI into EPSG:{tiles_epsg} for coverage check: {exc}')
+        log.warning(
+            f"  Could not project AOI into EPSG:{tiles_epsg} for coverage check: {exc}"
+        )
         return 0.0
 
     # ── Build the union of tile extents in the tile's native CRS ─────────────
@@ -746,7 +716,9 @@ def _compute_tile_coverage(
     for tile_path in tiles:
         ds = gdal.Open(tile_path, gdal.GA_ReadOnly)
         if ds is None:
-            log.warning(f'  Could not open {os.path.basename(tile_path)} for coverage check - skipping')
+            log.warning(
+                f"  Could not open {os.path.basename(tile_path)} for coverage check - skipping"
+            )
             continue
 
         gt = ds.GetGeoTransform()
@@ -757,21 +729,21 @@ def _compute_tile_coverage(
         # gt[1] = pixel width (positive); gt[5] = pixel height (negative for north-up)
         x_min = gt[0]
         y_max = gt[3]
-        x_max = gt[0] + width  * gt[1]
+        x_max = gt[0] + width * gt[1]
         y_min = gt[3] + height * gt[5]
         tile_boxes.append(shapely_box(x_min, y_min, x_max, y_max))
 
     if not tile_boxes:
-        log.warning('  No valid tiles could be opened for coverage check')
+        log.warning("  No valid tiles could be opened for coverage check")
         return 0.0
 
     # ── Compute coverage fraction ──────────────────────────────────────────────
-    tile_union    = unary_union(tile_boxes)
-    covered_area  = aoi_in_tile_crs.intersection(tile_union).area
-    aoi_area      = aoi_in_tile_crs.area
-    coverage      = covered_area / aoi_area if aoi_area > 0 else 0.0
+    tile_union = unary_union(tile_boxes)
+    covered_area = aoi_in_tile_crs.intersection(tile_union).area
+    aoi_area = aoi_in_tile_crs.area
+    coverage = covered_area / aoi_area if aoi_area > 0 else 0.0
 
-    log.info(f'  Coverage (checked in EPSG:{tiles_epsg}): {coverage:.2%}')
+    log.info(f"  Coverage (checked in EPSG:{tiles_epsg}): {coverage:.2%}")
     return coverage
 
 
@@ -836,16 +808,18 @@ def _write_tile_footprints_gpkg(
     log : Logger
         Caller-supplied logger.
     """
-    log.info(f'Writing tile footprints GeoPackage: {gpkg_path}')
+    log.info(f"Writing tile footprints GeoPackage: {gpkg_path}")
 
     # Overwrite any existing file so a force-rebuild always produces a fresh record.
-    driver = ogr.GetDriverByName('GPKG')
+    driver = ogr.GetDriverByName("GPKG")
     if os.path.exists(gpkg_path):
         driver.DeleteDataSource(gpkg_path)
     safe_makedirs(os.path.dirname(gpkg_path))
     ds = driver.CreateDataSource(gpkg_path)
     if ds is None:
-        log.warning(f'Could not create tile footprints GeoPackage at {gpkg_path} - skipping')
+        log.warning(
+            f"Could not create tile footprints GeoPackage at {gpkg_path} - skipping"
+        )
         return
 
     # The footprint geometries are stored in WGS84 so they are immediately
@@ -854,26 +828,29 @@ def _write_tile_footprints_gpkg(
     wgs84.ImportFromEPSG(4326)
     wgs84.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
 
-    layer = ds.CreateLayer('tile_footprints', srs=wgs84, geom_type=ogr.wkbPolygon)
+    layer = ds.CreateLayer("tile_footprints", srs=wgs84, geom_type=ogr.wkbPolygon)
 
     # ── Schema ───────────────────────────────────────────────────────────────────
     fields = [
-        ('filename',          ogr.OFTString),   # original base filename
-        ('source_path',       ogr.OFTString),   # absolute path on disk at mosaic time
-        ('original_epsg',     ogr.OFTInteger),  # native EPSG code
-        ('original_crs_name', ogr.OFTString),   # human-readable native CRS name
-        ('is_reprojected',    ogr.OFTInteger),  # 1 = would need reprojection; 0 = already in final CRS
-        ('final_epsg',        ogr.OFTInteger),  # EPSG of the assembled mosaic
-        ('final_crs_name',    ogr.OFTString),   # human-readable mosaic CRS name
-        ('width_px',          ogr.OFTInteger),  # tile width in pixels
-        ('height_px',         ogr.OFTInteger),  # tile height in pixels
-        ('resolution_m',      ogr.OFTReal),     # pixel size in metres
-        ('file_size_mb',      ogr.OFTReal),     # file size at write time
-        ('nodata_value',      ogr.OFTReal),     # nodata sentinel (may be NULL)
-        ('x_min_native',      ogr.OFTReal),     # left edge in native CRS
-        ('y_min_native',      ogr.OFTReal),     # bottom edge in native CRS
-        ('x_max_native',      ogr.OFTReal),     # right edge in native CRS
-        ('y_max_native',      ogr.OFTReal),     # top edge in native CRS
+        ("filename", ogr.OFTString),  # original base filename
+        ("source_path", ogr.OFTString),  # absolute path on disk at mosaic time
+        ("original_epsg", ogr.OFTInteger),  # native EPSG code
+        ("original_crs_name", ogr.OFTString),  # human-readable native CRS name
+        (
+            "is_reprojected",
+            ogr.OFTInteger,
+        ),  # 1 = would need reprojection; 0 = already in final CRS
+        ("final_epsg", ogr.OFTInteger),  # EPSG of the assembled mosaic
+        ("final_crs_name", ogr.OFTString),  # human-readable mosaic CRS name
+        ("width_px", ogr.OFTInteger),  # tile width in pixels
+        ("height_px", ogr.OFTInteger),  # tile height in pixels
+        ("resolution_m", ogr.OFTReal),  # pixel size in metres
+        ("file_size_mb", ogr.OFTReal),  # file size at write time
+        ("nodata_value", ogr.OFTReal),  # nodata sentinel (may be NULL)
+        ("x_min_native", ogr.OFTReal),  # left edge in native CRS
+        ("y_min_native", ogr.OFTReal),  # bottom edge in native CRS
+        ("x_max_native", ogr.OFTReal),  # right edge in native CRS
+        ("y_max_native", ogr.OFTReal),  # top edge in native CRS
     ]
     for field_name, field_type in fields:
         layer.CreateField(ogr.FieldDefn(field_name, field_type))
@@ -881,26 +858,27 @@ def _write_tile_footprints_gpkg(
     # Resolve the final CRS name once - it is the same for every feature.
     final_srs = osr.SpatialReference()
     final_srs.ImportFromEPSG(final_epsg)
-    final_crs_name = final_srs.GetName() or f'EPSG:{final_epsg}'
+    final_crs_name = final_srs.GetName() or f"EPSG:{final_epsg}"
 
-    feat_defn  = layer.GetLayerDefn()
-    n_written  = 0
-    n_skipped  = 0
+    feat_defn = layer.GetLayerDefn()
+    n_written = 0
+    n_skipped = 0
 
     for tile_path in dem_rasters:
-
         # ── Open tile and read metadata ─────────────────────────────────────────
         tile_ds = gdal.Open(tile_path, gdal.GA_ReadOnly)
         if tile_ds is None:
-            log.warning(f'  Could not open {os.path.basename(tile_path)} - skipping footprint')
+            log.warning(
+                f"  Could not open {os.path.basename(tile_path)} - skipping footprint"
+            )
             n_skipped += 1
             continue
 
-        gt     = tile_ds.GetGeoTransform()
-        width  = tile_ds.RasterXSize
+        gt = tile_ds.GetGeoTransform()
+        width = tile_ds.RasterXSize
         height = tile_ds.RasterYSize
-        band   = tile_ds.GetRasterBand(1)
-        nodata = band.GetNoDataValue()   # None if not set
+        band = tile_ds.GetRasterBand(1)
+        nodata = band.GetNoDataValue()  # None if not set
 
         # Read the tile's native CRS from its embedded WKT.
         src_srs = osr.SpatialReference()
@@ -910,8 +888,10 @@ def _write_tile_footprints_gpkg(
         tile_ds = None  # close file handle as soon as we have what we need
 
         epsg_code_str = src_srs.GetAuthorityCode(None)
-        src_epsg      = int(epsg_code_str) if epsg_code_str else None
-        src_crs_name  = src_srs.GetName() or (f'EPSG:{src_epsg}' if src_epsg else 'Unknown')
+        src_epsg = int(epsg_code_str) if epsg_code_str else None
+        src_crs_name = src_srs.GetName() or (
+            f"EPSG:{src_epsg}" if src_epsg else "Unknown"
+        )
 
         # ── Derive tile extent in its native CRS ─────────────────────────────────
         # gt[0], gt[3] = top-left corner (x, y)
@@ -919,7 +899,7 @@ def _write_tile_footprints_gpkg(
         # gt[5]        = pixel height (negative for north-up rasters)
         x_min = gt[0]
         y_max = gt[3]
-        x_max = gt[0] + width  * gt[1]
+        x_max = gt[0] + width * gt[1]
         y_min = gt[3] + height * gt[5]
 
         # ── Transform the four corners to WGS84 for the footprint geometry ────
@@ -935,42 +915,44 @@ def _write_tile_footprints_gpkg(
 
         # Ring goes: SW → NW → NE → SE → SW (closed)
         corners_native = [
-            (x_min, y_min),   # SW
-            (x_min, y_max),   # NW
-            (x_max, y_max),   # NE
-            (x_max, y_min),   # SE
-            (x_min, y_min),   # close the ring
+            (x_min, y_min),  # SW
+            (x_min, y_max),  # NW
+            (x_max, y_max),  # NE
+            (x_max, y_min),  # SE
+            (x_min, y_min),  # close the ring
         ]
         # TransformPoint returns (x, y, z) - slice to (lon, lat)
         corners_wgs84 = [ct.TransformPoint(x, y)[:2] for x, y in corners_native]
-        ring_wkt      = ', '.join(f'{lon} {lat}' for lon, lat in corners_wgs84)
-        geom          = ogr.CreateGeometryFromWkt(f'POLYGON (({ring_wkt}))')
+        ring_wkt = ", ".join(f"{lon} {lat}" for lon, lat in corners_wgs84)
+        geom = ogr.CreateGeometryFromWkt(f"POLYGON (({ring_wkt}))")
 
         # ── Build and write the feature ───────────────────────────────────────────
         feat = ogr.Feature(feat_defn)
         feat.SetGeometry(geom)
-        feat.SetField('filename',          os.path.basename(tile_path))
-        feat.SetField('source_path',       tile_path)
-        feat.SetField('original_epsg',     src_epsg or 0)
-        feat.SetField('original_crs_name', src_crs_name)
+        feat.SetField("filename", os.path.basename(tile_path))
+        feat.SetField("source_path", tile_path)
+        feat.SetField("original_epsg", src_epsg or 0)
+        feat.SetField("original_crs_name", src_crs_name)
         # is_reprojected = 1 means this tile's CRS differs from the mosaic CRS
         # and required reprojection.  Tiles that were discarded by _resolve_tiles
         # are never passed here, so every feature represents an actual contributor.
-        feat.SetField('is_reprojected',    0 if (src_epsg is None or src_epsg == final_epsg) else 1)
-        feat.SetField('final_epsg',        final_epsg)
-        feat.SetField('final_crs_name',    final_crs_name)
-        feat.SetField('width_px',          width)
-        feat.SetField('height_px',         height)
-        feat.SetField('resolution_m',      abs(gt[1]))
-        feat.SetField('file_size_mb',      os.path.getsize(tile_path) / 1_048_576)
-        feat.SetField('x_min_native',      x_min)
-        feat.SetField('y_min_native',      y_min)
-        feat.SetField('x_max_native',      x_max)
-        feat.SetField('y_max_native',      y_max)
+        feat.SetField(
+            "is_reprojected", 0 if (src_epsg is None or src_epsg == final_epsg) else 1
+        )
+        feat.SetField("final_epsg", final_epsg)
+        feat.SetField("final_crs_name", final_crs_name)
+        feat.SetField("width_px", width)
+        feat.SetField("height_px", height)
+        feat.SetField("resolution_m", abs(gt[1]))
+        feat.SetField("file_size_mb", os.path.getsize(tile_path) / 1_048_576)
+        feat.SetField("x_min_native", x_min)
+        feat.SetField("y_min_native", y_min)
+        feat.SetField("x_max_native", x_max)
+        feat.SetField("y_max_native", y_max)
         # nodata may be None if the tile has no nodata value set - leave the
         # field NULL in that case rather than writing a meaningless 0.
         if nodata is not None:
-            feat.SetField('nodata_value', nodata)
+            feat.SetField("nodata_value", nodata)
 
         layer.CreateFeature(feat)
         feat = None
@@ -979,10 +961,10 @@ def _write_tile_footprints_gpkg(
     ds.SyncToDisk()
 
     log.info(
-        f'Tile footprints layer written: {gpkg_path}  '
-        f'({n_written} feature(s)'
-        + (f', {n_skipped} skipped' if n_skipped else '')
-        + ')'
+        f"Tile footprints layer written: {gpkg_path}  "
+        f"({n_written} feature(s)"
+        + (f", {n_skipped} skipped" if n_skipped else "")
+        + ")"
     )
 
     # ── data_footprints layer ─────────────────────────────────────────────────
@@ -990,28 +972,31 @@ def _write_tile_footprints_gpkg(
     # in that tile, reprojected to WGS84.  Falls back to the bounding box when
     # no nodata is set or when polygonization yields no valid-data polygons.
 
-    data_layer = ds.CreateLayer('data_footprints', srs=wgs84, geom_type=ogr.wkbMultiPolygon)
+    data_layer = ds.CreateLayer(
+        "data_footprints", srs=wgs84, geom_type=ogr.wkbMultiPolygon
+    )
     for field_name, field_type in fields:
         data_layer.CreateField(ogr.FieldDefn(field_name, field_type))
 
     data_feat_defn = data_layer.GetLayerDefn()
-    mem_drv = ogr.GetDriverByName('Memory')
+    mem_drv = ogr.GetDriverByName("Memory")
     n_data_written = 0
     n_data_skipped = 0
 
     for tile_path in dem_rasters:
-
         # ── Open tile ────────────────────────────────────────────────────────
         tile_ds = gdal.Open(tile_path, gdal.GA_ReadOnly)
         if tile_ds is None:
-            log.warning(f'  [data_footprints] Could not open {os.path.basename(tile_path)} - skipping')
+            log.warning(
+                f"  [data_footprints] Could not open {os.path.basename(tile_path)} - skipping"
+            )
             n_data_skipped += 1
             continue
 
-        gt_d   = tile_ds.GetGeoTransform()
-        width_d  = tile_ds.RasterXSize
+        gt_d = tile_ds.GetGeoTransform()
+        width_d = tile_ds.RasterXSize
         height_d = tile_ds.RasterYSize
-        band_d   = tile_ds.GetRasterBand(1)
+        band_d = tile_ds.GetRasterBand(1)
         nodata_d = band_d.GetNoDataValue()
 
         src_srs_d = osr.SpatialReference()
@@ -1019,18 +1004,20 @@ def _write_tile_footprints_gpkg(
         src_srs_d.AutoIdentifyEPSG()
         src_srs_d.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
 
-        epsg_d_str  = src_srs_d.GetAuthorityCode(None)
-        src_epsg_d  = int(epsg_d_str) if epsg_d_str else None
-        src_crs_d   = src_srs_d.GetName() or (f'EPSG:{src_epsg_d}' if src_epsg_d else 'Unknown')
+        epsg_d_str = src_srs_d.GetAuthorityCode(None)
+        src_epsg_d = int(epsg_d_str) if epsg_d_str else None
+        src_crs_d = src_srs_d.GetName() or (
+            f"EPSG:{src_epsg_d}" if src_epsg_d else "Unknown"
+        )
 
         x_min_d = gt_d[0]
         y_max_d = gt_d[3]
-        x_max_d = gt_d[0] + width_d  * gt_d[1]
+        x_max_d = gt_d[0] + width_d * gt_d[1]
         y_min_d = gt_d[3] + height_d * gt_d[5]
 
         # ── Build binary data-presence mask ──────────────────────────────────
-        arr = band_d.ReadAsArray()     # shape (height, width)
-        tile_ds = None                 # release file handle
+        arr = band_d.ReadAsArray()  # shape (height, width)
+        tile_ds = None  # release file handle
 
         if nodata_d is not None and not np.isnan(nodata_d):
             mask_arr = np.where(arr == nodata_d, np.uint8(0), np.uint8(1))
@@ -1038,14 +1025,16 @@ def _write_tile_footprints_gpkg(
             if np.issubdtype(arr.dtype, np.floating):
                 mask_arr = np.where(np.isnan(arr), np.uint8(0), np.uint8(1))
             else:
-                mask_arr = np.ones((height_d, width_d), dtype=np.uint8)  # integer dtype cannot hold NaN
+                mask_arr = np.ones(
+                    (height_d, width_d), dtype=np.uint8
+                )  # integer dtype cannot hold NaN
         else:
             # No nodata value: treat all pixels as valid.
             mask_arr = np.ones((height_d, width_d), dtype=np.uint8)
 
         # ── Create in-memory mask raster for gdal.Polygonize ─────────────────
-        mem_raster_drv = gdal.GetDriverByName('MEM')
-        mask_ds = mem_raster_drv.Create('', width_d, height_d, 1, gdal.GDT_Byte)
+        mem_raster_drv = gdal.GetDriverByName("MEM")
+        mask_ds = mem_raster_drv.Create("", width_d, height_d, 1, gdal.GDT_Byte)
         mask_ds.SetGeoTransform(gt_d)
         mask_ds.SetProjection(src_srs_d.ExportToWkt())
         mask_band = mask_ds.GetRasterBand(1)
@@ -1053,10 +1042,10 @@ def _write_tile_footprints_gpkg(
         mask_band.SetNoDataValue(0)
 
         # ── Polygonize valid-data pixels into a Memory OGR layer ──────────────
-        poly_ds = mem_drv.CreateDataSource('')
-        poly_layer = poly_ds.CreateLayer('polygons', srs=src_srs_d)
-        poly_layer.CreateField(ogr.FieldDefn('val', ogr.OFTInteger))
-        val_idx = poly_layer.GetLayerDefn().GetFieldIndex('val')
+        poly_ds = mem_drv.CreateDataSource("")
+        poly_layer = poly_ds.CreateLayer("polygons", srs=src_srs_d)
+        poly_layer.CreateField(ogr.FieldDefn("val", ogr.OFTInteger))
+        val_idx = poly_layer.GetLayerDefn().GetFieldIndex("val")
         gdal.Polygonize(mask_band, None, poly_layer, val_idx, [], callback=None)
         mask_ds = None  # release mask raster
 
@@ -1064,7 +1053,7 @@ def _write_tile_footprints_gpkg(
         valid_geoms = []
         poly_layer.ResetReading()
         for poly_feat in poly_layer:
-            if poly_feat.GetField('val') == 1:
+            if poly_feat.GetField("val") == 1:
                 geom_ref = poly_feat.GetGeometryRef()
                 if geom_ref is not None:
                     valid_geoms.append(shapely_wkt.loads(geom_ref.ExportToWkt()))
@@ -1081,8 +1070,8 @@ def _write_tile_footprints_gpkg(
 
         if use_bbox_fallback:
             log.warning(
-                f'  [data_footprints] No valid-data polygons for '
-                f'{os.path.basename(tile_path)} - using bounding box'
+                f"  [data_footprints] No valid-data polygons for "
+                f"{os.path.basename(tile_path)} - using bounding box"
             )
             union_geom = shapely_box(x_min_d, y_min_d, x_max_d, y_max_d)
 
@@ -1090,44 +1079,53 @@ def _write_tile_footprints_gpkg(
         wgs84_d = osr.SpatialReference()
         wgs84_d.ImportFromEPSG(4326)
         wgs84_d.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
-        ct_d  = osr.CoordinateTransformation(src_srs_d, wgs84_d)
+        ct_d = osr.CoordinateTransformation(src_srs_d, wgs84_d)
 
         ogr_geom = ogr.CreateGeometryFromWkt(union_geom.wkt)
         if ogr_geom is None:
-            log.warning(f'  [data_footprints] CreateGeometryFromWkt returned None for '
-                        f'{os.path.basename(tile_path)} - skipping')
+            log.warning(
+                f"  [data_footprints] CreateGeometryFromWkt returned None for "
+                f"{os.path.basename(tile_path)} - skipping"
+            )
             n_data_skipped += 1
             continue
         if ogr_geom.Transform(ct_d) != 0:
-            log.warning(f'  [data_footprints] Reprojection failed for {os.path.basename(tile_path)} - skipping')
+            log.warning(
+                f"  [data_footprints] Reprojection failed for {os.path.basename(tile_path)} - skipping"
+            )
             n_data_skipped += 1
             continue
         ogr_geom = ogr.ForceTo(ogr_geom, ogr.wkbMultiPolygon)
         if ogr_geom is None:
-            log.warning(f'  [data_footprints] ForceTo(wkbMultiPolygon) returned None for {os.path.basename(tile_path)} - skipping')
+            log.warning(
+                f"  [data_footprints] ForceTo(wkbMultiPolygon) returned None for {os.path.basename(tile_path)} - skipping"
+            )
             n_data_skipped += 1
             continue
 
         # ── Write feature ────────────────────────────────────────────────────
         data_feat = ogr.Feature(data_feat_defn)
         data_feat.SetGeometry(ogr_geom)
-        data_feat.SetField('filename',          os.path.basename(tile_path))
-        data_feat.SetField('source_path',       tile_path)
-        data_feat.SetField('original_epsg',     src_epsg_d or 0)
-        data_feat.SetField('original_crs_name', src_crs_d)
-        data_feat.SetField('is_reprojected',    0 if (src_epsg_d is None or src_epsg_d == final_epsg) else 1)
-        data_feat.SetField('final_epsg',        final_epsg)
-        data_feat.SetField('final_crs_name',    final_crs_name)
-        data_feat.SetField('width_px',          width_d)
-        data_feat.SetField('height_px',         height_d)
-        data_feat.SetField('resolution_m',      abs(gt_d[1]))
-        data_feat.SetField('file_size_mb',      os.path.getsize(tile_path) / 1_048_576)
-        data_feat.SetField('x_min_native',      x_min_d)
-        data_feat.SetField('y_min_native',      y_min_d)
-        data_feat.SetField('x_max_native',      x_max_d)
-        data_feat.SetField('y_max_native',      y_max_d)
+        data_feat.SetField("filename", os.path.basename(tile_path))
+        data_feat.SetField("source_path", tile_path)
+        data_feat.SetField("original_epsg", src_epsg_d or 0)
+        data_feat.SetField("original_crs_name", src_crs_d)
+        data_feat.SetField(
+            "is_reprojected",
+            0 if (src_epsg_d is None or src_epsg_d == final_epsg) else 1,
+        )
+        data_feat.SetField("final_epsg", final_epsg)
+        data_feat.SetField("final_crs_name", final_crs_name)
+        data_feat.SetField("width_px", width_d)
+        data_feat.SetField("height_px", height_d)
+        data_feat.SetField("resolution_m", abs(gt_d[1]))
+        data_feat.SetField("file_size_mb", os.path.getsize(tile_path) / 1_048_576)
+        data_feat.SetField("x_min_native", x_min_d)
+        data_feat.SetField("y_min_native", y_min_d)
+        data_feat.SetField("x_max_native", x_max_d)
+        data_feat.SetField("y_max_native", y_max_d)
         if nodata_d is not None:
-            data_feat.SetField('nodata_value', nodata_d)
+            data_feat.SetField("nodata_value", nodata_d)
         data_layer.CreateFeature(data_feat)
         data_feat = None
         n_data_written += 1
@@ -1136,166 +1134,50 @@ def _write_tile_footprints_gpkg(
     ds = None
 
     log.info(
-        f'Data footprints layer written: {gpkg_path}  '
-        f'({n_data_written} feature(s)'
-        + (f', {n_data_skipped} skipped' if n_data_skipped else '')
-        + ')'
+        f"Data footprints layer written: {gpkg_path}  "
+        f"({n_data_written} feature(s)"
+        + (f", {n_data_skipped} skipped" if n_data_skipped else "")
+        + ")"
     )
 
 
-def _geojson_to_gpkg(geojson_path: str, gpkg_path: str) -> None:
-    """
-    Convert a GeoJSON file to a single-layer GeoPackage.
-
-    rscommons functions that accept vector bounds (download_dem, verify_areas,
-    etc.) route through get_shp_or_gpkg which forces the GPKG OGR driver.
-    This helper produces a compatible file from the GeoJSON bounds that are
-    the native format for rs_context_neo project bounds.
-
-    Raises:
-        RuntimeError: If GDAL VectorTranslate fails to produce an output file.
-    """
-    # Skip rebuild if the GPKG already exists and is newer than the GeoJSON
-    if (
-        os.path.exists(gpkg_path)
-        and os.path.getmtime(gpkg_path) >= os.path.getmtime(geojson_path)
-    ):
-        return
-
-    if os.path.exists(gpkg_path):
-        os.remove(gpkg_path)
-
-    result = gdal.VectorTranslate(
-        gpkg_path,
-        geojson_path,
-        format='GPKG',
-        layerName='bounds',
-    )
-
-    # VectorTranslate returns a DataSource on success, None on failure
-    if result is None:
-        raise RuntimeError(
-            f'GDAL VectorTranslate failed to convert {geojson_path} → {gpkg_path}. '
-            f'GDAL error: {gdal.GetLastErrorMsg()}'
-        )
-    result = None  # dereference / flush
-
-
-def get_epsg(raster_path: str) -> int | None:
-    """
-    Return the EPSG code embedded in a raster file, or None if it cannot be
-    determined.
-
-    Adapted from rscontext_3dep/rscontext_3dep/dem_builder.py.
-    """
-    log = Logger('get_epsg')
-    dataset = None
-    try:
-        dataset = gdal.Open(raster_path, gdal.GA_ReadOnly)
-        if dataset is None:
-            log.error(f'Could not open {raster_path} with GDAL.')
-            return None
-
-        wkt = dataset.GetProjection()
-        if not wkt:
-            log.warning(f'No CRS information found in {raster_path}')
-            return None
-
-        srs = osr.SpatialReference()
-        if srs.ImportFromWkt(wkt) != 0:
-            log.error(f'Failed to import WKT projection from {raster_path}')
-            return None
-
-        srs.AutoIdentifyEPSG()
-        code_str = srs.GetAuthorityCode(None)
-        if not code_str:
-            log.warning(f'Could not auto-identify EPSG for {raster_path}')
-            return None
-
-        try:
-            return int(code_str)
-        except ValueError:
-            log.error(f"Non-integer authority code '{code_str}' for {raster_path}")
-            return None
-
-    except Exception as exc:
-        log.error(f'Unexpected error reading EPSG from {raster_path}: {exc}')
-        log.debug(traceback.format_exc())
-        return None
-
-    finally:
-        dataset = None
-
-
-def get_best_crs(raster_paths: list[str]) -> int | None:
-    """
-    Return the EPSG code used by the majority of the supplied rasters.
-
-    Ties are broken by choosing the lowest EPSG number.  Returns None if no
-    valid EPSG code can be read from any raster.
-
-    Adapted from rscontext_3dep/rscontext_3dep/dem_builder.py.
-    """
-    log = Logger('get_best_crs')
-
-    valid_codes = [c for c in (get_epsg(p) for p in raster_paths) if c is not None]
-    if not valid_codes:
-        log.error('Could not determine a valid EPSG from any of the input rasters.')
-        return None
-
-    counts = Counter(valid_codes)
-    max_freq = counts.most_common(1)[0][1]
-    candidates = [code for code, freq in counts.items() if freq == max_freq]
-    best = min(candidates)  # tie-break: lowest EPSG number
-
-    log.info(f'Best CRS: EPSG:{best} (frequency {max_freq}/{len(valid_codes)})')
-    return best
-
-
-def is_geographic_epsg(epsg_code: int) -> bool:
-    """
-    Return True if the EPSG code refers to a geographic (lat/lon) CRS.
-
-    Adapted from rscontext_3dep/rscontext_3dep/dem_builder.py.
-    """
-    srs = osr.SpatialReference()
-    srs.ImportFromEPSG(epsg_code)
-    return srs.IsGeographic() == 1
-
-
-def should_resample(dem_rasters: list[str], output_res: float, threshold: float = _RESAMPLE_THRESHOLD) -> bool:
+def should_resample(
+    dem_rasters: list[str], output_res: float, threshold: float = _RESAMPLE_THRESHOLD
+) -> bool:
     """
     Return True if the average source resolution differs from output_res by
     more than *threshold* (relative, default 10%).
 
     Adapted from rscontext_3dep/rscontext_3dep/dem_builder.py.
     """
-    log = Logger('Resolution Check')
+    log = Logger("Resolution Check")
     resolutions = []
 
     for raster_path in dem_rasters:
         ds = gdal.Open(raster_path, gdal.GA_ReadOnly)
         if ds is None:
-            log.warning(f'Could not open {raster_path} - skipping resolution check')
+            log.warning(f"Could not open {raster_path} - skipping resolution check")
             continue
         gt = ds.GetGeoTransform()
         ds = None
         if gt is None:
-            log.warning(f'No geotransform for {raster_path} - skipping')
+            log.warning(f"No geotransform for {raster_path} - skipping")
             continue
         resolutions.append((abs(gt[1]) + abs(gt[5])) / 2.0)
 
     if not resolutions:
-        log.warning('No valid source resolutions found - will resample by default')
+        log.warning("No valid source resolutions found - will resample by default")
         return True
 
     avg = sum(resolutions) / len(resolutions)
     rel_diff = abs(avg - output_res) / avg
-    log.info(f'Source avg resolution: {avg:.3f} m  →  target: {output_res} m  (relative diff: {rel_diff:.1%})')
+    log.info(
+        f"Source avg resolution: {avg:.3f} m  →  target: {output_res} m  (relative diff: {rel_diff:.1%})"
+    )
 
     if rel_diff > threshold:
-        log.info('Resampling required.')
+        log.info("Resampling required.")
         return True
 
-    log.info('Source resolution close enough to target - resampling not required.')
+    log.info("Source resolution close enough to target - resampling not required.")
     return False

@@ -40,7 +40,7 @@ dependencies = [
     "sympy>=1.13.3",
     "termcolor>=2.4",
     "urllib3>=2.2",
-    "rsxml>=2.1.1",
+    "rsxml>=2.2.1",
     "geopandas>=1.1.1",
     "whitebox==2.3.6",
 ]

@@ -3,8 +3,8 @@ TauDEM step functions for the RS Context Neo D8 hydrology pipeline.
 
 NOTE: Eventually we may want to move some of this functionality to the `rs-commons`
 package if it can be made generic enough to be reused by other projects. The Taudem
-tool and the VBET tool both make calles to the taudem binaries so there is some 
-nice overlap there. For now, though, this is done internally to rs_context_neo to 
+tool and the VBET tool both make calles to the taudem binaries so there is some
+nice overlap there. For now, though, this is done internally to rs_context_neo to
 keep it self-contained and not affect any other tools.
 
 Each function in this module wraps a single TauDEM MPI command.  They are
@@ -30,24 +30,25 @@ subprocess is spawned, routing traffic over the loopback interface instead.
 Author:     Matt Reimer
 Date:       2026-05-25
 """
+
 import os
 import sys
 from typing import List
 
 from osgeo import gdal, ogr, osr
-from rsxml import Logger
 from rscommons.hand import run_subprocess
+from rsxml import Logger
 
-from rscontextneo.src.hydro_utils import skip_if_exists, compress_inplace
+from rscontextneo.src.utils.rasters import compress_inplace, skip_if_exists
 
 # ── MPI tuneable constants ────────────────────────────────────────────────────
 # Environment variable that controls MPI parallelism (shared with taudem package)
-_CORES_ENV_VAR    = 'TAUDEM_CORES'
-_DEFAULT_CORES    = 2
+_CORES_ENV_VAR = "TAUDEM_CORES"
+_DEFAULT_CORES = 2
 
 # Environment variable for injecting extra mpiexec flags (space-separated).
 # Example: export TAUDEM_MPI_ARGS="--oversubscribe"
-_MPI_ARGS_ENV_VAR = 'TAUDEM_MPI_ARGS'
+_MPI_ARGS_ENV_VAR = "TAUDEM_MPI_ARGS"
 
 # Environment variables injected into every TauDEM subprocess on macOS to
 # route MPI traffic over the loopback interface instead of en0:
@@ -56,12 +57,13 @@ _MPI_ARGS_ENV_VAR = 'TAUDEM_MPI_ARGS'
 # Both are set together; whichever MPI flavour is installed uses its own and
 # ignores the other.
 _MACOS_MPI_ENV: dict[str, str] = {
-    'FI_PROVIDER':    'tcp',
-    'OMPI_MCA_btl':   'tcp,self',
+    "FI_PROVIDER": "tcp",
+    "OMPI_MCA_btl": "tcp,self",
 }
 
 
 # ── MPI helpers ───────────────────────────────────────────────────────────────
+
 
 def resolve_cores(cores: int | None) -> int:
     """
@@ -79,8 +81,8 @@ def resolve_cores(cores: int | None) -> int:
         try:
             return int(env_val)
         except ValueError:
-            Logger('TauDEM').warning(
-                f'Invalid value for {_CORES_ENV_VAR!r}: {env_val!r} — using default {_DEFAULT_CORES}'
+            Logger("TauDEM").warning(
+                f"Invalid value for {_CORES_ENV_VAR!r}: {env_val!r} — using default {_DEFAULT_CORES}"
             )
     return _DEFAULT_CORES
 
@@ -111,22 +113,23 @@ def apply_mpi_env(log: Logger) -> None:
     Only active on macOS (``sys.platform == 'darwin'``).  Pre-existing values
     set by the caller are never overwritten.
     """
-    if sys.platform != 'darwin':
+    if sys.platform != "darwin":
         return
 
     applied = []
     for key, value in _MACOS_MPI_ENV.items():
         if key not in os.environ:
             os.environ[key] = value
-            applied.append(f'{key}={value}')
+            applied.append(f"{key}={value}")
 
     if applied:
-        log.info(f'macOS MPI env applied: {"  ".join(applied)}')
+        log.info(f"macOS MPI env applied: {'  '.join(applied)}")
     else:
-        log.debug('macOS MPI env already set by caller — not overriding')
+        log.debug("macOS MPI env already set by caller — not overriding")
 
 
 # ── TauDEM step functions ─────────────────────────────────────────────────────
+
 
 def pitremove(
     dem_path: str,
@@ -160,19 +163,26 @@ def pitremove(
     log : Logger
         Caller-supplied logger.
     """
-    if skip_if_exists(filled_dem_path, force, 'pitremove', log):
+    if skip_if_exists(filled_dem_path, force, "pitremove", log):
         return
 
-    log.info('Pit removal (TauDEM pitremove)')
-    status = run_subprocess(cwd, [
-        'mpiexec', '-n', ncores,
-        *mpi_args,
-        'pitremove',
-        '-z',   dem_path,
-        '-fel', filled_dem_path,
-    ])
-    _check_result(status, filled_dem_path, 'pitremove')
-    log.info(f'  → {filled_dem_path}')
+    log.info("Pit removal (TauDEM pitremove)")
+    status = run_subprocess(
+        cwd,
+        [
+            "mpiexec",
+            "-n",
+            ncores,
+            *mpi_args,
+            "pitremove",
+            "-z",
+            dem_path,
+            "-fel",
+            filled_dem_path,
+        ],
+    )
+    _check_result(status, filled_dem_path, "pitremove")
+    log.info(f"  → {filled_dem_path}")
     compress_inplace(filled_dem_path, log)
 
 
@@ -203,21 +213,31 @@ def d8flowdir(
     cwd, ncores, mpi_args, force, log
         See :func:`pitremove`.
     """
-    if skip_if_exists(d8_flow_path, force, 'd8flowdir', log) and os.path.isfile(d8_slope_path):
+    if skip_if_exists(d8_flow_path, force, "d8flowdir", log) and os.path.isfile(
+        d8_slope_path
+    ):
         return
 
-    log.info('D8 flow directions and slope (TauDEM d8flowdir)')
-    status = run_subprocess(cwd, [
-        'mpiexec', '-n', ncores,
-        *mpi_args,
-        'd8flowdir',
-        '-fel', filled_dem_path,
-        '-p',   d8_flow_path,
-        '-sd8', d8_slope_path,
-    ])
-    _check_result(status, d8_flow_path, 'd8flowdir')
-    log.info(f'  → {d8_flow_path}')
-    log.info(f'  → {d8_slope_path}')
+    log.info("D8 flow directions and slope (TauDEM d8flowdir)")
+    status = run_subprocess(
+        cwd,
+        [
+            "mpiexec",
+            "-n",
+            ncores,
+            *mpi_args,
+            "d8flowdir",
+            "-fel",
+            filled_dem_path,
+            "-p",
+            d8_flow_path,
+            "-sd8",
+            d8_slope_path,
+        ],
+    )
+    _check_result(status, d8_flow_path, "d8flowdir")
+    log.info(f"  → {d8_flow_path}")
+    log.info(f"  → {d8_slope_path}")
     compress_inplace(d8_flow_path, log)
     compress_inplace(d8_slope_path, log)
 
@@ -247,20 +267,27 @@ def aread8(
     cwd, ncores, mpi_args, force, log
         See :func:`pitremove`.
     """
-    if skip_if_exists(contrib_area_path, force, 'aread8', log):
+    if skip_if_exists(contrib_area_path, force, "aread8", log):
         return
 
-    log.info('D8 contributing area (TauDEM aread8)')
-    status = run_subprocess(cwd, [
-        'mpiexec', '-n', ncores,
-        *mpi_args,
-        'aread8',
-        '-p',   d8_flow_path,
-        '-ad8', contrib_area_path,
-        '-nc',
-    ])
-    _check_result(status, contrib_area_path, 'aread8')
-    log.info(f'  → {contrib_area_path}')
+    log.info("D8 contributing area (TauDEM aread8)")
+    status = run_subprocess(
+        cwd,
+        [
+            "mpiexec",
+            "-n",
+            ncores,
+            *mpi_args,
+            "aread8",
+            "-p",
+            d8_flow_path,
+            "-ad8",
+            contrib_area_path,
+            "-nc",
+        ],
+    )
+    _check_result(status, contrib_area_path, "aread8")
+    log.info(f"  → {contrib_area_path}")
     compress_inplace(contrib_area_path, log)
 
 
@@ -291,20 +318,28 @@ def threshold(
     cwd, ncores, mpi_args, force, log
         See :func:`pitremove`.
     """
-    if skip_if_exists(stream_raster_path, force, 'threshold', log):
+    if skip_if_exists(stream_raster_path, force, "threshold", log):
         return
 
-    log.info(f'Stream raster (TauDEM threshold = {threshold_cells:,} cells)')
-    status = run_subprocess(cwd, [
-        'mpiexec', '-n', ncores,
-        *mpi_args,
-        'threshold',
-        '-ssa',    contrib_area_path,
-        '-src',    stream_raster_path,
-        '-thresh', str(threshold_cells),
-    ])
-    _check_result(status, stream_raster_path, 'threshold')
-    log.info(f'  → {stream_raster_path}')
+    log.info(f"Stream raster (TauDEM threshold = {threshold_cells:,} cells)")
+    status = run_subprocess(
+        cwd,
+        [
+            "mpiexec",
+            "-n",
+            ncores,
+            *mpi_args,
+            "threshold",
+            "-ssa",
+            contrib_area_path,
+            "-src",
+            stream_raster_path,
+            "-thresh",
+            str(threshold_cells),
+        ],
+    )
+    _check_result(status, stream_raster_path, "threshold")
+    log.info(f"  → {stream_raster_path}")
     compress_inplace(stream_raster_path, log)
 
 
@@ -363,36 +398,52 @@ def streamnet(
         and os.path.isfile(subwatersheds_path)
     )
     if not force and outputs_exist:
-        log.info('streamnet: all outputs already exist — skipping (use force=True to re-run)')
+        log.info(
+            "streamnet: all outputs already exist — skipping (use force=True to re-run)"
+        )
         return
 
-    log.info('Stream network extraction (TauDEM streamnet)')
+    log.info("Stream network extraction (TauDEM streamnet)")
 
-    shp_path = os.path.splitext(gpkg_path)[0] + '_tmp.shp'
+    shp_path = os.path.splitext(gpkg_path)[0] + "_tmp.shp"
 
-    status = run_subprocess(cwd, [
-        'mpiexec', '-n', ncores,
-        *mpi_args,
-        'streamnet',
-        '-p',     d8_flow_path,
-        '-fel',   filled_dem_path,
-        '-ad8',   contrib_area_path,
-        '-src',   stream_raster_path,
-        '-net',   shp_path,
-        '-ord',   stream_order_path,
-        '-tree',  stream_tree_path,
-        '-coord', stream_coord_path,
-        '-w',     subwatersheds_path,
-    ])
-    _check_result(status, shp_path, 'streamnet')
-    log.info(f'  → {stream_order_path}')
-    log.info(f'  → {subwatersheds_path}')
+    status = run_subprocess(
+        cwd,
+        [
+            "mpiexec",
+            "-n",
+            ncores,
+            *mpi_args,
+            "streamnet",
+            "-p",
+            d8_flow_path,
+            "-fel",
+            filled_dem_path,
+            "-ad8",
+            contrib_area_path,
+            "-src",
+            stream_raster_path,
+            "-net",
+            shp_path,
+            "-ord",
+            stream_order_path,
+            "-tree",
+            stream_tree_path,
+            "-coord",
+            stream_coord_path,
+            "-w",
+            subwatersheds_path,
+        ],
+    )
+    _check_result(status, shp_path, "streamnet")
+    log.info(f"  → {stream_order_path}")
+    log.info(f"  → {subwatersheds_path}")
     compress_inplace(stream_order_path, log)
     compress_inplace(subwatersheds_path, log)
 
-    log.info(f'Converting stream network shapefile → GeoPackage: {gpkg_path}')
-    _shp_to_gpkg(shp_path, gpkg_path, layer_name='network_intersected')
-    log.info(f'  → {gpkg_path} (layer: network_intersected)')
+    log.info(f"Converting stream network shapefile → GeoPackage: {gpkg_path}")
+    _shp_to_gpkg(shp_path, gpkg_path, layer_name="network_intersected")
+    log.info(f"  → {gpkg_path} (layer: network_intersected)")
 
     _remove_shapefile(shp_path, log)
 
@@ -402,7 +453,7 @@ def vectorize_subwatersheds(
     gpkg_path: str,
     force: bool,
     log: Logger,
-    layer_name: str = 'subwatersheds',
+    layer_name: str = "subwatersheds",
 ) -> None:
     """
     Polygonise the subwatersheds raster and append it as a vector layer
@@ -447,34 +498,38 @@ def vectorize_subwatersheds(
         check_ds = ogr.Open(gpkg_path)
         if check_ds is not None and check_ds.GetLayerByName(layer_name) is not None:
             log.info(
-                f'subwatersheds vector layer already exists in {os.path.basename(gpkg_path)}'
-                ' — skipping (use force=True to re-run)'
+                f"subwatersheds vector layer already exists in {os.path.basename(gpkg_path)}"
+                " — skipping (use force=True to re-run)"
             )
             check_ds = None
             return
         check_ds = None
 
     if not os.path.isfile(subwatersheds_raster_path):
-        raise FileNotFoundError(f'Subwatersheds raster not found: {subwatersheds_raster_path}')
+        raise FileNotFoundError(
+            f"Subwatersheds raster not found: {subwatersheds_raster_path}"
+        )
 
     log.info(
-        f'Vectorising Catchment Wings '
-        f'({os.path.basename(subwatersheds_raster_path)} → layer: {layer_name})'
+        f"Vectorising Catchment Wings "
+        f"({os.path.basename(subwatersheds_raster_path)} → layer: {layer_name})"
     )
 
     raster_ds = gdal.Open(subwatersheds_raster_path, gdal.GA_ReadOnly)
     if raster_ds is None:
-        raise RuntimeError(f'GDAL could not open subwatersheds raster: {subwatersheds_raster_path}')
+        raise RuntimeError(
+            f"GDAL could not open subwatersheds raster: {subwatersheds_raster_path}"
+        )
 
-    band      = raster_ds.GetRasterBand(1)
-    mask_band = band.GetMaskBand()   # 255 = valid data, 0 = nodata
+    band = raster_ds.GetRasterBand(1)
+    mask_band = band.GetMaskBand()  # 255 = valid data, 0 = nodata
 
     srs = osr.SpatialReference()
     srs.ImportFromWkt(raster_ds.GetProjection())
 
     vector_ds = ogr.Open(gpkg_path, 1)  # 1 = update
     if vector_ds is None:
-        raise RuntimeError(f'Could not open GeoPackage for update: {gpkg_path}')
+        raise RuntimeError(f"Could not open GeoPackage for update: {gpkg_path}")
 
     if force:
         for i in range(vector_ds.GetLayerCount()):
@@ -483,22 +538,23 @@ def vectorize_subwatersheds(
                 break
 
     layer = vector_ds.CreateLayer(layer_name, srs=srs, geom_type=ogr.wkbMultiPolygon)
-    layer.CreateField(ogr.FieldDefn('WSNO', ogr.OFTInteger))
+    layer.CreateField(ogr.FieldDefn("WSNO", ogr.OFTInteger))
 
     err = gdal.Polygonize(band, mask_band, layer, 0, [], callback=None)
     if err != gdal.CE_None:
         raise RuntimeError(
-            f'gdal.Polygonize failed with error code {err}: {gdal.GetLastErrorMsg()}'
+            f"gdal.Polygonize failed with error code {err}: {gdal.GetLastErrorMsg()}"
         )
 
     vector_ds.SyncToDisk()
     vector_ds = None
     raster_ds = None
 
-    log.info(f'  → {gpkg_path} (layer: {layer_name})')
+    log.info(f"  → {gpkg_path} (layer: {layer_name})")
 
 
 # ── Private helpers ───────────────────────────────────────────────────────────
+
 
 def _check_result(status: int | None, expected_path: str, step_name: str) -> None:
     """
@@ -507,17 +563,19 @@ def _check_result(status: int | None, expected_path: str, step_name: str) -> Non
     """
     if status is not None and status != 0:
         raise RuntimeError(
-            f'TauDEM {step_name} failed with exit code {status}. '
-            'Check the log above for MPI/TauDEM error messages.'
+            f"TauDEM {step_name} failed with exit code {status}. "
+            "Check the log above for MPI/TauDEM error messages."
         )
     if not os.path.isfile(expected_path):
         raise RuntimeError(
-            f'TauDEM {step_name} returned success but expected output was not created: '
-            f'{expected_path}'
+            f"TauDEM {step_name} returned success but expected output was not created: "
+            f"{expected_path}"
         )
 
 
-def _shp_to_gpkg(shp_path: str, gpkg_path: str, layer_name: str = 'network_intersected') -> None:
+def _shp_to_gpkg(
+    shp_path: str, gpkg_path: str, layer_name: str = "network_intersected"
+) -> None:
     """
     Convert a shapefile to a single-layer GeoPackage using GDAL VectorTranslate.
 
@@ -541,13 +599,13 @@ def _shp_to_gpkg(shp_path: str, gpkg_path: str, layer_name: str = 'network_inter
     result = gdal.VectorTranslate(
         gpkg_path,
         shp_path,
-        format='GPKG',
+        format="GPKG",
         layerName=layer_name,
     )
     if result is None:
         raise RuntimeError(
-            f'GDAL VectorTranslate failed converting {shp_path} → {gpkg_path}. '
-            f'GDAL error: {gdal.GetLastErrorMsg()}'
+            f"GDAL VectorTranslate failed converting {shp_path} → {gpkg_path}. "
+            f"GDAL error: {gdal.GetLastErrorMsg()}"
         )
     result = None  # dereference / flush
 
@@ -560,7 +618,7 @@ def _remove_shapefile(shp_path: str, log: Logger) -> None:
     Failures are logged as warnings rather than raising exceptions so that a
     cleanup hiccup does not abort an otherwise-successful run.
     """
-    extensions = ['.shp', '.dbf', '.prj', '.shx', '.cpg', '.qpj']
+    extensions = [".shp", ".dbf", ".prj", ".shx", ".cpg", ".qpj"]
     base = os.path.splitext(shp_path)[0]
     for ext in extensions:
         candidate = base + ext
@@ -568,4 +626,6 @@ def _remove_shapefile(shp_path: str, log: Logger) -> None:
             try:
                 os.remove(candidate)
             except OSError as exc:
-                log.warning(f'Could not remove temporary shapefile sidecar {candidate}: {exc}')
+                log.warning(
+                    f"Could not remove temporary shapefile sidecar {candidate}: {exc}"
+                )

@@ -25,14 +25,14 @@
     "python.envFile": "${workspaceFolder}/.env",
     "terminal.integrated.defaultProfile.linux": "zsh",
     "[python]": {
-      "editor.tabSize": 4,
       "editor.formatOnSave": true,
+      "editor.defaultFormatter": "charliermarsh.ruff",
+      "editor.codeActionsOnSave": {
+        "source.fixAll.ruff": "explicit",
+        "source.organizeImports.ruff": "explicit"
+      }
     },
     "autopep8.args": [
-      "--max-line-length=240"
-    ],
-    "pylint.args": [
-      "--disable=C0301,C0114,C0103,W0719,W0718",
       "--max-line-length=240"
     ],
     "graphql-config.load.rootDir": "${workspaceFolder}",
@@ -61,7 +61,7 @@
       "**/.venv/**": true,
       "**/__pycache__/**": true
     },
-  "python.defaultInterpreterPath": "${workspaceFolder:🏠 Git Root}/.venv/bin/python",
+    "python.defaultInterpreterPath": "${workspaceFolder:🏠 Git Root}/.venv/bin/python",
     "python.testing.autoTestDiscoverOnSaveEnabled": false,
   }
 }
