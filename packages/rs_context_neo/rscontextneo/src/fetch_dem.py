@@ -51,6 +51,11 @@ _BUFFER_DIST_DEG = 0.01
 # Relative difference in resolution below which we skip resampling
 _RESAMPLE_THRESHOLD = 0.1
 
+# Nodata value written to the output DEM.  Float32 minimum (most negative
+# finite float32) is the standard fill sentinel for elevation rasters and
+# is guaranteed to be representable without loss in a 32-bit GeoTIFF band.
+_DEM_NODATA: float = float(np.finfo(np.float32).min)
+
 # GDAL creation options applied to the output DEM (PREDICTOR=2 = horizontal
 # differencing, ideal for continuous elevation data; shrinks files ~50-70%)
 _DEM_CREATION_OPTIONS = [
@@ -211,6 +216,7 @@ def fetch_dem_from_3dep(
 
         warp_options: dict = {
             "cutlineBlend": 1,
+            "dstNodata": _DEM_NODATA,
             "creationOptions": _DEM_CREATION_OPTIONS,
         }
         if resample:
@@ -384,7 +390,14 @@ def _download_tiles_parallel(
     effective_workers = min(workers, len(urls))
     log.info(f"Downloading {len(urls)} tile(s) with {effective_workers} worker(s) ...")
 
-    raster_paths: list[str] = []
+    # Build a URL→index map so we can restore input order after parallel download.
+    # get_1m_dem_urls returns URLs sorted oldest-to-newest by publication date;
+    # preserving that order here ensures GDAL BuildVRT places newer gap-fill tiles
+    # LAST, which makes them win for pixels where both old and new surveys have
+    # valid (non-nodata) elevation values (GDAL uses the last non-nodata source).
+    url_index: dict[str, int] = {url: i for i, url in enumerate(urls)}
+
+    raster_paths_keyed: list[tuple[int, str]] = []  # (original_url_index, local_path)
     errors: list[str] = []
 
     with ThreadPoolExecutor(max_workers=effective_workers) as executor:
@@ -392,7 +405,7 @@ def _download_tiles_parallel(
         for future in as_completed(future_to_url):
             url = future_to_url[future]
             try:
-                raster_paths.append(future.result())
+                raster_paths_keyed.append((url_index[url], future.result()))
                 log.info(f"  ✓  {os.path.basename(url)}")
             except Exception as exc:
                 log.error(f"  ✗  {os.path.basename(url)}: {exc}")
@@ -404,7 +417,10 @@ def _download_tiles_parallel(
             + "\n".join(f"  {u}" for u in errors)
         )
 
-    return raster_paths
+    # Restore original URL order (oldest-survey-first) so downstream VRT
+    # construction gives newer gap-fill tiles the highest priority.
+    raster_paths_keyed.sort(key=lambda pair: pair[0])
+    return [path for _, path in raster_paths_keyed]
 
 
 def _inspect_tiles(

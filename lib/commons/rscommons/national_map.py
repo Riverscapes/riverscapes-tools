@@ -195,17 +195,33 @@ def _get_shapefile_urls(dataset, file_format, region_type, region):
 
 def get_1m_dem_urls(vector_path: str, buffer_dist) -> list[str]:
     """
-    Retrieve a list of all 1-metre DEM rasters within the polygons found in input layer 
+    Retrieve a list of all 1-metre DEM rasters within the polygons found in input layer.
 
-    :param vector_path: path to Shapefile or geopackage layer 
-    :param buffer_dist: Distance in DEGREES to buffer the polygons 
-    :return: List of HTTPS download URLs for DEMs
+    URLs are returned sorted by publication date (oldest first) so that newer gap-fill
+    survey tiles (e.g. ``ID_SouthernGaps_D23``) appear last.  GDAL BuildVRT picks the
+    **last** contributing source with a valid (non-nodata) value when multiple sources
+    overlap, so placing newer gap-fill tiles last ensures they take priority over older
+    survey tiles for pixels where both have valid elevation measurements.
 
-    Based on the get_dem_urls function below - see for comments
+    For a given AOI the TNM API typically returns tiles from two complementary survey
+    projects:
+
+    * The *original* survey (older) — contains data for most of the area but has nodata
+      in gap zones where LiDAR was not collected or deemed insufficient.
+    * A *gap-fill* survey (newer) — contains data only for those gap zones; the rest of
+      the tile is nodata.
+
+    Both are required for complete coverage.  GDAL's nodata-transparency rules (nodata
+    pixels are treated as transparent when compositing VRT sources) ensure that the two
+    sets complement each other regardless of ordering.  The date-based ordering only
+    affects pixels where **both** sources happen to have valid measurements — there the
+    newer (gap-fill) survey wins, which is the correct preference.
+
+    :param vector_path: path to Shapefile or GeoPackage layer
+    :param buffer_dist: Distance in DEGREES to buffer the polygons
+    :return: List of HTTPS download URLs for DEMs sorted oldest-first by publication date
     """
     log = Logger('The National Map')
-    # Get a union of all polygon features in the input
-    # Note that this function can do other things, such as force the geometry onto a specific projection
     log.info(f'Processing input path {vector_path} to use as parameter for National Map query')
     polygon = get_geometry_unary_union(vector_path)
 
@@ -213,22 +229,52 @@ def get_1m_dem_urls(vector_path: str, buffer_dist) -> list[str]:
     if buffer_dist:
         buffered = polygon.buffer(buffer_dist)
 
+    # buffered.envelope gives the axis-aligned bounding box as a Shapely polygon.
+    # exterior.coords yields (x, y) = (longitude, latitude) tuples for geographic data.
+    # The TNM API polygon parameter expects "lon lat" space-separated pairs separated
+    # by commas, so the format string is f"{lon} {lat}" — note the variable names were
+    # previously transposed ("lat" held the longitude value, "long" held latitude)
+    # which was confusing even though the output format was accidentally correct.
     polygon_coords = list(buffered.envelope.exterior.coords)
 
     params = {
-        "polygon": ",".join([f"{lat} {long}" for lat, long in polygon_coords]),
+        "polygon": ",".join([f"{lon} {lat}" for lon, lat in polygon_coords]),
         "datasets": "Digital Elevation Model (DEM) 1 meter",
         "prodFormats": "GeoTIFF",
     }
 
     log.info(f'TNM API Query params: {params}')
-    urls = _get_urls(params)
 
-    if len(urls) < 1:
+    # Fetch the full item metadata (not just URLs) so we can sort by publication date.
+    # _get_urls discards date metadata, so we call TNM.get_items directly here.
+    items_response = TNM.get_items(params)
+    total = items_response.get('total', 0)
+    log.info(f'{total} item(s) identified on The National Map')
+
+    if total < 1:
         log.error('TNM API Query returned no results.')
-        # lsg - think this will be fairly common and shouldn't trigger an exception that bubbles up that way
         raise Exception('No DEM rasters identified on The National Map')
 
+    # Sort items oldest-first by publicationDate so newer gap-fill tiles come last
+    # in the returned URL list.  Missing dates sort to the front (treated as oldest).
+    sorted_items = sorted(
+        items_response.get('items', []),
+        key=lambda item: item.get('publicationDate') or '1900-01-01'
+    )
+
+    urls = []
+    for item in sorted_items:
+        item_urls = list(item.get('urls', {}).values())
+        urls.extend(item_urls)
+        _get_metadata(item)
+        if item.get('publicationDate'):
+            log.info(f'  publicationDate: {item["publicationDate"]}  title: {item.get("title", "")[:70]}')
+
+    if len(urls) < 1:
+        log.error('TNM API Query returned items but no downloadable URLs.')
+        raise Exception('No DEM rasters identified on The National Map')
+
+    log.info(f'{len(urls)} URL(s) queued oldest-first by publication date')
     return urls
 
 

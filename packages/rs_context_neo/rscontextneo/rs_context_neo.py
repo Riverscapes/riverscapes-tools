@@ -25,6 +25,7 @@ from rscontextneo.src.fetch_dem import (
     SLOPE_RELPATH,
     fetch_dem_from_3dep,
 )
+from rscontextneo.src.fetch_dem_wcs import fetch_dem_from_wcs
 from rscontextneo.src.hydrology import (
     DEFAULT_BREACH_DIST,
     DEFAULT_THRESHOLD,
@@ -59,6 +60,7 @@ def rs_context_neo(
     threshold: int = DEFAULT_THRESHOLD,
     breach_dist: int = DEFAULT_BREACH_DIST,
     cores: int | None = None,
+    dem_source: str = "tnm",
     debug: bool = False,
 ) -> None:
     """
@@ -77,6 +79,11 @@ def rs_context_neo(
                                Required when using --aoi.
         scratch_folder (str): Temporary folder for unzipping tiles.
                                Defaults to <download_folder>/scratch if not set.
+        dem_source (str): DEM download backend.  ``'tnm'`` (default) uses the
+                          USGS National Map tile API (proven, handles large AOIs
+                          via parallel tile downloads).  ``'wcs'`` uses the USGS
+                          3DEP WCS endpoint (single HTTP request, no tile
+                          management, best for small AOIs ≲ 8 km a side).
         output_res (float): Target DEM resolution in metres (1–10). Default 1.0.
         force_download (bool): Re-download tiles and re-run all steps even if
                                outputs are already cached. Default False.
@@ -98,6 +105,7 @@ def rs_context_neo(
     log.info(f"Starting RS Context Neo v{__version__}")
     log.info(f"Output folder: {output_folder}")
     log.info(f"Output resolution: {output_res} m")
+    log.info(f"DEM source:        {dem_source}")
     log.info(f"Stream threshold:  {threshold:,} cells")
     log.info(f"Breach distance:   {breach_dist} cells")
     if cores is not None:
@@ -134,7 +142,8 @@ def rs_context_neo(
             scratch_folder,
             output_res,
             force_download,
-            debug,
+            dem_source=dem_source,
+            debug=debug,
         )
     elif dem is not None:
         log.info(f"  Input source: User-supplied DEM — {dem}")
@@ -226,15 +235,27 @@ def _fetch_3dep(
     scratch_folder: str | None,
     output_res: float,
     force_download: bool,
+    dem_source: str = "tnm",
     debug: bool = False,
 ) -> tuple[str, str, str]:
-    """Validate 3DEP fetch arguments and delegate to fetch_dem_from_3dep."""
+    """Validate arguments and delegate to the appropriate 3DEP DEM fetcher."""
     if download_folder is None:
         raise ValueError(
             "download_folder is required when using --aoi. "
             "Provide a persistent cache directory with --download_dir."
         )
     effective_scratch = scratch_folder or os.path.join(download_folder, "scratch")
+    if dem_source == "wcs":
+        return fetch_dem_from_wcs(
+            bounds_geojson,
+            output_folder,
+            download_folder,
+            effective_scratch,
+            output_res,
+            force_download,
+            debug=debug,
+        )
+    # Default: TNM tile-based approach
     return fetch_dem_from_3dep(
         bounds_geojson,
         output_folder,
@@ -282,6 +303,17 @@ def main():
         help="Re-download 3DEP tiles and re-run all processing steps even if already cached",
         action="store_true",
         default=False,
+    )
+    parser.add_argument(
+        "--dem_source",
+        help=(
+            "DEM download backend. "
+            "'tnm' (default): USGS National Map tile API — proven, handles large AOIs via parallel tile downloads. "
+            "'wcs': USGS 3DEP WCS endpoint — single HTTP request, no tile management, "
+            "best for small AOIs (≲ 8 km per side at 1 m resolution)."
+        ),
+        choices=["tnm", "wcs"],
+        default="tnm",
     )
     parser.add_argument(
         "--threshold",
@@ -341,6 +373,7 @@ def main():
     if args.scratch_dir:
         log.info(f"Scratch dir:       {args.scratch_dir}")
     log.info(f"Output resolution: {args.output_res} m")
+    log.info(f"DEM source:        {args.dem_source}")
     log.info(f"Stream threshold:  {args.threshold:,} cells")
     log.info(f"Breach dist:       {args.breach_dist} cells")
     if args.cores:
@@ -370,6 +403,7 @@ def main():
                 threshold=args.threshold,
                 breach_dist=args.breach_dist,
                 cores=args.cores,
+                dem_source=args.dem_source,
                 debug=args.debug,
             )
             log.debug(f"Return code: {retcode}, [Max process usage] {max_obj}")
@@ -386,6 +420,7 @@ def main():
                 threshold=args.threshold,
                 breach_dist=args.breach_dist,
                 cores=args.cores,
+                dem_source=args.dem_source,
                 debug=args.debug,
             )
     except Exception as e:

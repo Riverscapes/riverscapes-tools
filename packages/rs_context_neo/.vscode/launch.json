@@ -47,6 +47,7 @@
         "--download_dir", "{env:DATA_ROOT}/downloads",
         "--threshold", "${input:THRESHOLD}",
         "--breach_dist", "${input:BREACH_DIST}",
+        "--dem_source", "wcs",
         "--verbose",
         "--debug"
       ]

@@ -128,12 +128,10 @@ def geojson_to_gpkg(geojson_path: str, gpkg_path: str) -> None:
     Raises:
         RuntimeError: If GDAL VectorTranslate fails to produce an output file.
     """
-    # Skip rebuild if the GPKG already exists and is newer than the GeoJSON
-    if os.path.exists(gpkg_path) and os.path.getmtime(gpkg_path) >= os.path.getmtime(
-        geojson_path
-    ):
-        return
-
+    # Always regenerate: this is a small scratch file derived from the GeoJSON.
+    # A mtime-based cache is unsafe because the scratch folder may be shared
+    # across different projects, causing a stale bounds.gpkg from a previous
+    # run (with different AOI coordinates) to be silently reused.
     if os.path.exists(gpkg_path):
         os.remove(gpkg_path)
 
