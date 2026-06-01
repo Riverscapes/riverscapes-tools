@@ -28,10 +28,8 @@ import shutil
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
-from osgeo import gdal
+from osgeo import gdal, osr
 from rscommons.download_dem import verify_areas
-from rscommons.geographic_raster import gdal_dem_geographic
-from rscommons.raster_warp import raster_vrt_stitch
 from rsxml import Logger
 from rsxml.util import safe_makedirs, safe_remove_file
 from shapely.geometry import shape
@@ -45,7 +43,6 @@ from rscontextneo.src.fetch_dem import (
     HILLSHADE_RELPATH,
     SLOPE_RELPATH,
 )
-from rscontextneo.src.utils.dem import is_geographic_epsg
 from rscontextneo.src.utils.gpkg import geojson_to_gpkg
 
 # ── WCS endpoint constants ────────────────────────────────────────────────────
@@ -175,7 +172,11 @@ def fetch_dem_from_wcs(
         f"Target CRS: EPSG:{output_epsg} (UTM zone derived from AOI centroid {center_lat:.4f}°N {center_lon:.4f}°)"
     )
 
-    # ── 3. Download raw WCS GeoTIFF ───────────────────────────────────────────
+    # ── 3. Download raw WCS GeoTIFF tiles in the target UTM CRS ──────────────
+    # Requesting tiles in the output UTM projection means tiles are already in
+    # the final CRS with consistent metre-based pixel sizes.  No reprojection
+    # step is needed afterward, eliminating the screen door artefacts that
+    # arise when geographic (EPSG:4326) tiles are stitched and then warped.
     safe_makedirs(download_folder)
     wcs_raw_path = os.path.join(download_folder, "wcs_raw_dem.tif")
     _wcs_get_coverage(
@@ -185,42 +186,43 @@ def fetch_dem_from_wcs(
         tiles_folder=os.path.join(scratch_folder, "wcs_tiles"),
         force=force_download,
         log=log,
+        request_epsg=output_epsg,
         debug=debug,
     )
 
-    # ── 4. Warp / clip / compress into the target UTM CRS ────────────────────
+    # ── 4. Clip to AOI bounds (no reprojection — raster is already in UTM) ───
     need_rebuild = force_download or not os.path.isfile(dem_path)
     if need_rebuild:
-        log.info(
-            f"Warping WCS raster → EPSG:{output_epsg} and clipping to AOI bounds ..."
-        )
+        log.info(f"Clipping WCS raster to AOI bounds (EPSG:{output_epsg}, no reprojection) ...")
         safe_makedirs(os.path.dirname(dem_path))
         if os.path.isfile(dem_path):
             safe_remove_file(dem_path)
 
-        warp_options = {
-            "xRes": output_res,
-            "yRes": output_res,
-            "resampleAlg": "bilinear",
-            "cutlineBlend": 1,
-            "dstNodata": _DEM_NODATA,
-            "creationOptions": _DEM_CREATION_OPTIONS,
-        }
-        # raster_vrt_stitch accepts a list; a single-element list works fine.
-        raster_vrt_stitch(
-            [wcs_raw_path],
-            dem_path,
-            output_epsg,
-            clip=bounds_geojson,
-            warp_options=warp_options,
+        # gdal.Warp handles a WGS84 cutline against a UTM raster automatically.
+        # Omitting dstSRS preserves the source CRS so no reprojection occurs.
+        clip_opts = gdal.WarpOptions(
+            xRes=output_res,
+            yRes=output_res,
+            resampleAlg=gdal.GRA_Bilinear,
+            cutlineDSName=bounds_geojson,
+            cropToCutline=True,
+            dstNodata=_DEM_NODATA,
+            creationOptions=_DEM_CREATION_OPTIONS,
+            format="GTiff",
         )
+        ds = gdal.Warp(dem_path, wcs_raw_path, options=clip_opts)
+        if ds is None:
+            raise RuntimeError(
+                f"gdal.Warp clip failed for DEM: {gdal.GetLastErrorMsg()}"
+            )
+        ds = None  # flush GDAL reference
 
         if (cleanup_scratch or not debug) and os.path.isfile(wcs_raw_path):
             log.info(f"Removing raw WCS file: {wcs_raw_path}")
             safe_remove_file(wcs_raw_path)
     else:
         log.info(
-            "DEM already exists - skipping warp (pass force_download=True to override)"
+            "DEM already exists - skipping clip (pass force_download=True to override)"
         )
 
     # ── 5. Verify coverage ────────────────────────────────────────────────────
@@ -236,15 +238,13 @@ def fetch_dem_from_wcs(
     need_hs = need_rebuild or not os.path.isfile(hillshade_path)
     if need_hs:
         log.info("Generating hillshade ...")
-        if is_geographic_epsg(output_epsg):
-            gdal_dem_geographic(dem_path, hillshade_path, "hillshade")
-        else:
-            gdal.DEMProcessing(
-                hillshade_path,
-                dem_path,
-                "hillshade",
-                creationOptions=["COMPRESS=DEFLATE"],
-            )
+        # Output is always a UTM projected CRS — use standard DEMProcessing.
+        gdal.DEMProcessing(
+            hillshade_path,
+            dem_path,
+            "hillshade",
+            creationOptions=["COMPRESS=DEFLATE"],
+        )
     else:
         log.info("Hillshade already exists - skipping")
 
@@ -287,6 +287,50 @@ def fetch_dem_from_wcs(
 
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
+
+
+def _bbox_wgs84_to_epsg(
+    bbox: tuple[float, float, float, float],
+    epsg: int,
+) -> tuple[float, float, float, float]:
+    """
+    Transform a WGS84 bounding box to the given EPSG and return the axis-
+    aligned envelope in that CRS.
+
+    All four corners are transformed so the returned envelope is tight even
+    for projections (such as UTM) where meridians curve relative to WGS84.
+
+    Parameters
+    ----------
+    bbox : (west, south, east, north)
+        Input bounding box in WGS84 decimal degrees.
+    epsg : int
+        Target EPSG code.
+
+    Returns
+    -------
+    (x_min, y_min, x_max, y_max)
+        Axis-aligned bounding box in the target CRS.
+    """
+    west, south, east, north = bbox
+
+    src_srs = osr.SpatialReference()
+    src_srs.ImportFromEPSG(4326)
+    src_srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+
+    dst_srs = osr.SpatialReference()
+    dst_srs.ImportFromEPSG(epsg)
+    dst_srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+
+    transform = osr.CoordinateTransformation(src_srs, dst_srs)
+
+    corners = [
+        transform.TransformPoint(x, y)
+        for x, y in [(west, south), (east, south), (east, north), (west, north)]
+    ]
+    xs = [c[0] for c in corners]
+    ys = [c[1] for c in corners]
+    return min(xs), min(ys), max(xs), max(ys)
 
 
 def _load_bounds_polygon(bounds_geojson: str):
@@ -332,16 +376,17 @@ def _wcs_get_coverage(
     tiles_folder: str,
     force: bool,
     log: Logger,
+    request_epsg: int = 4326,
     debug: bool = False,
 ) -> None:
     """
     Download a WCS coverage for *bbox* and save it to *out_path*.
 
-    Large coverages are automatically split into a grid of 1 000×1 000 px
-    tiles that are downloaded in parallel (up to ``_WCS_TILE_WORKERS``
-    concurrent requests) and then mosaiced into a single GeoTIFF.  This
-    avoids the 504 Gateway Timeout the USGS ArcGIS Server returns when asked
-    for more than ~3 000–4 000 px per dimension in a single request.
+    Large coverages are automatically split into a grid of tiles that are
+    downloaded in parallel (up to ``_WCS_TILE_WORKERS`` concurrent requests)
+    and then mosaiced into a single GeoTIFF.  This avoids the 504 Gateway
+    Timeout the USGS ArcGIS Server returns when asked for more than
+    ~3 000–4 000 px per dimension in a single request.
 
     Parameters
     ----------
@@ -355,6 +400,12 @@ def _wcs_get_coverage(
         Re-download even if *out_path* already exists.
     log : Logger
         Caller-supplied logger.
+    request_epsg : int
+        EPSG code to use for the WCS tile requests and the output raster.
+        Defaults to 4326 (WGS84).  Passing a UTM zone EPSG (e.g. 32611)
+        requests tiles in that projected CRS so all tiles share the same
+        metre-based pixel grid — this eliminates the geographic mismatch
+        that causes screen door artefacts when tiles are stitched.
     debug : bool
         If True, keep the individual tile files after mosaicing so they can
         be inspected.  If False (default), the tiles folder is deleted once
@@ -365,14 +416,24 @@ def _wcs_get_coverage(
         return
 
     west, south, east, north = bbox
-    center_lat = (south + north) / 2.0
 
-    # Metres-per-degree at the centre latitude.
-    m_per_deg_lat = 111_320.0
-    m_per_deg_lon = 111_320.0 * math.cos(math.radians(center_lat))
-
-    total_w = max(1, int(round((east - west) * m_per_deg_lon / output_res_m)))
-    total_h = max(1, int(round((north - south) * m_per_deg_lat / output_res_m)))
+    # ── Derive the tiling grid in the request CRS ─────────────────────────────
+    # When a projected UTM EPSG is requested, transform the WGS84 bbox into
+    # that CRS first.  Tiling in metres gives perfectly abutting tiles with a
+    # consistent pixel size — no degree-to-metre approximation, no seams.
+    if request_epsg != 4326:
+        req_west, req_south, req_east, req_north = _bbox_wgs84_to_epsg(
+            bbox, request_epsg
+        )
+        total_w = max(1, round((req_east - req_west) / output_res_m))
+        total_h = max(1, round((req_north - req_south) / output_res_m))
+    else:
+        req_west, req_south, req_east, req_north = west, south, east, north
+        center_lat = (south + north) / 2.0
+        m_per_deg_lat = 111_320.0
+        m_per_deg_lon = 111_320.0 * math.cos(math.radians(center_lat))
+        total_w = max(1, int(round((east - west) * m_per_deg_lon / output_res_m)))
+        total_h = max(1, int(round((north - south) * m_per_deg_lat / output_res_m)))
 
     n_cols = math.ceil(total_w / _WCS_TILE_PIXELS)
     n_rows = math.ceil(total_h / _WCS_TILE_PIXELS)
@@ -384,10 +445,11 @@ def _wcs_get_coverage(
     )
     log.info(f"  Coverage:  {_WCS_COVERAGE}")
     log.info(f"  Endpoint:  {_WCS_URL}")
+    log.info(f"  Request CRS: EPSG:{request_epsg}")
 
-    # Degree extent of one tile column / row
-    deg_per_col = (east - west) / n_cols
-    deg_per_row = (north - south) / n_rows
+    # Extent of one tile column / row in the request CRS units
+    step_x = (req_east - req_west) / n_cols
+    step_y = (req_north - req_south) / n_rows
 
     # ── Tile-cache validation ─────────────────────────────────────────────────
     # Tile files are named tile_rNNN_cNNN.tif (row/col only), so tiles from a
@@ -402,6 +464,7 @@ def _wcs_get_coverage(
         "output_res_m": output_res_m,
         "n_cols": n_cols,
         "n_rows": n_rows,
+        "request_epsg": request_epsg,
     }
     if os.path.isdir(tiles_folder):
         try:
@@ -424,22 +487,20 @@ def _wcs_get_coverage(
     tile_specs: list[tuple[tuple, int, int, str]] = []
     for row in range(n_rows):
         for col in range(n_cols):
-            t_west = west + col * deg_per_col
-            t_east = west + (col + 1) * deg_per_col
-            t_south = south + row * deg_per_row
-            t_north = south + (row + 1) * deg_per_row
+            t_west = req_west + col * step_x
+            t_east = req_west + (col + 1) * step_x
+            t_south = req_south + row * step_y
+            t_north = req_south + (row + 1) * step_y
 
-            # Pixel counts: proportional share of the total, clamped to tile max
-            t_w = min(
-                _WCS_TILE_PIXELS,
-                round((t_east - t_west) * m_per_deg_lon / output_res_m),
-            )
-            t_h = min(
-                _WCS_TILE_PIXELS,
-                round((t_north - t_south) * m_per_deg_lat / output_res_m),
-            )
-            t_w = max(1, t_w)
-            t_h = max(1, t_h)
+            # Pixel counts: proportional share of the total, clamped to tile max.
+            # In projected CRS units are metres so the calculation is exact;
+            # in EPSG:4326 we fall back to the degree-to-metre approximation.
+            if request_epsg != 4326:
+                t_w = max(1, min(_WCS_TILE_PIXELS, round((t_east - t_west) / output_res_m)))
+                t_h = max(1, min(_WCS_TILE_PIXELS, round((t_north - t_south) / output_res_m)))
+            else:
+                t_w = max(1, min(_WCS_TILE_PIXELS, round((t_east - t_west) * m_per_deg_lon / output_res_m)))
+                t_h = max(1, min(_WCS_TILE_PIXELS, round((t_north - t_south) * m_per_deg_lat / output_res_m)))
 
             t_path = os.path.join(tiles_folder, f"tile_r{row:03d}_c{col:03d}.tif")
             tile_specs.append(((t_west, t_south, t_east, t_north), t_w, t_h, t_path))
@@ -458,7 +519,7 @@ def _wcs_get_coverage(
     with ThreadPoolExecutor(max_workers=effective_workers) as executor:
         future_to_path = {
             executor.submit(
-                _wcs_request_tile, t_bbox, t_w, t_h, t_path, force, log
+                _wcs_request_tile, t_bbox, t_w, t_h, t_path, force, log, request_epsg
             ): t_path
             for t_bbox, t_w, t_h, t_path in tile_specs
         }
@@ -515,6 +576,7 @@ def _wcs_request_tile(
     out_path: str,
     force: bool,
     log: Logger,
+    request_epsg: int = 4326,
 ) -> None:
     """
     Issue a single WCS 1.0.0 GetCoverage request for one tile and write the
@@ -523,7 +585,7 @@ def _wcs_request_tile(
     Parameters
     ----------
     bbox : (west, south, east, north)
-        Tile bounding box in WGS84 decimal degrees.
+        Tile bounding box in the *request_epsg* CRS.
     width_px, height_px : int
         Pixel dimensions for this tile (each ≤ ``_WCS_TILE_PIXELS``).
     out_path : str
@@ -532,6 +594,10 @@ def _wcs_request_tile(
         Re-download even if *out_path* already exists.
     log : Logger
         Caller-supplied logger.
+    request_epsg : int
+        EPSG code for the WCS ``CRS`` and ``BBOX`` parameters.  Defaults to
+        4326 (WGS84).  Supply a UTM EPSG to receive tiles already projected
+        into the target CRS.
 
     Raises
     ------
@@ -543,14 +609,14 @@ def _wcs_request_tile(
     if not force and os.path.isfile(out_path):
         return  # already cached — caller will log the ✓
 
-    west, south, east, north = bbox
+    x_min, y_min, x_max, y_max = bbox
     params = {
         "SERVICE": "WCS",
         "VERSION": _WCS_VERSION,
         "REQUEST": "GetCoverage",
         "COVERAGE": _WCS_COVERAGE,
-        "CRS": "EPSG:4326",
-        "BBOX": f"{west},{south},{east},{north}",
+        "CRS": f"EPSG:{request_epsg}",
+        "BBOX": f"{x_min},{y_min},{x_max},{y_max}",
         "WIDTH": str(width_px),
         "HEIGHT": str(height_px),
         "FORMAT": _WCS_FORMAT,

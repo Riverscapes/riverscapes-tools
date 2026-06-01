@@ -214,6 +214,7 @@ def rs_context_neo(
             elapsed_time=elapsed_time,
             log=log,
             debug=debug,
+            dem_source=dem_source,
         )
     except Exception as exc:
         log.error(f"Failed to write project XML: {exc}")

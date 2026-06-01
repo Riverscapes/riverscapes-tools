@@ -5,6 +5,7 @@ import os
 from datetime import datetime
 from logging import Logger
 
+from osgeo import ogr
 from rscommons import initGDALOGRErrors
 from rsxml.project_xml import (
     BoundingBox,
@@ -313,6 +314,41 @@ def build_project_bounds(
         return None
 
 
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+
+def _dataset_exists(output_folder: str, dataset: Dataset | Geopackage) -> bool:
+    """
+    Return True if *dataset* is present and complete on disk.
+
+    For plain ``Dataset`` objects this means the file at
+    ``<output_folder>/<dataset.path>`` exists.
+
+    For ``Geopackage`` objects the file must exist **and** every layer
+    declared in ``dataset.layers`` must be present inside the GPKG.
+    This catches the case where the GPKG was created but a layer was
+    skipped (e.g. the TNM tile-footprints layer when using the WCS source).
+    """
+    abs_path = os.path.join(output_folder, dataset.path)
+    if not os.path.isfile(abs_path):
+        return False
+
+    if isinstance(dataset, Geopackage) and dataset.layers:
+        gpkg_ds = ogr.Open(abs_path)
+        if gpkg_ds is None:
+            return False
+        existing_layers = {
+            gpkg_ds.GetLayerByIndex(i).GetName()
+            for i in range(gpkg_ds.GetLayerCount())
+        }
+        gpkg_ds = None  # close
+        for lyr in dataset.layers:
+            if lyr.lyr_name not in existing_layers:
+                return False
+
+    return True
+
+
 def write_project_xml(
     output_folder: str,
     descriptor: str,
@@ -326,6 +362,7 @@ def write_project_xml(
     elapsed_time: float,
     log: Logger,
     debug: bool = False,
+    dem_source: str = "tnm",
 ) -> None:
     """
     Create or overwrite the Riverscapes project XML file.
@@ -362,6 +399,10 @@ def write_project_xml(
         Caller-supplied logger.
     debug : bool
         If True, the BREACH_DIFF_POINTS debug layer is registered.
+    dem_source : str
+        DEM backend used (``'tnm'`` or ``'wcs'``).  Only the TNM path writes
+        a tile footprints GeoPackage, so ``TILE_FOOTPRINTS`` is only
+        registered when this is ``'tnm'``.
     """
     log.info("Writing project XML")
 
@@ -401,8 +442,11 @@ def write_project_xml(
     project_meta.add_meta("Processing Time", pretty_duration(elapsed_time))
 
     # ── Realization datasets ───────────────────────────────────────────────────
+    # Filter to only layers whose files (and GPKG layers) actually exist on
+    # disk.  This prevents FILE_MAP errors for outputs that were skipped or
+    # belong to a different DEM source (e.g. TILE_FOOTPRINTS with --dem_source wcs).
     log.info("  Registering project layers")
-    realization_datasets: list[Dataset | Geopackage] = [
+    candidate_datasets: list[Dataset | Geopackage] = [
         LayerTypes["DEM"],
         LayerTypes["HILLSHADE"],
         LayerTypes["SLOPE"],
@@ -415,10 +459,20 @@ def write_project_xml(
         LayerTypes["HYDRODERIVATIVES"],
         LayerTypes["SUBWATERSHEDS"],
     ]
-    if aoi is not None:
-        realization_datasets.append(LayerTypes["TILE_FOOTPRINTS"])
+    if aoi is not None and dem_source == "tnm":
+        candidate_datasets.append(LayerTypes["TILE_FOOTPRINTS"])
     if debug:
-        realization_datasets.append(LayerTypes["BREACH_DIFF_POINTS"])
+        candidate_datasets.append(LayerTypes["BREACH_DIFF_POINTS"])
+
+    realization_datasets = []
+    for ds in candidate_datasets:
+        if _dataset_exists(output_folder, ds):
+            realization_datasets.append(ds)
+        else:
+            log.warning(
+                f"  Skipping dataset '{ds.xml_id}' — not found on disk: "
+                f"{os.path.join(output_folder, ds.path)}"
+            )
 
     # ── Project bounds ─────────────────────────────────────────────────────────
     bounds = build_project_bounds(bounds_geojson, output_folder, log)
